@@ -7,7 +7,9 @@
     "loading": "加载中...",
     "logout": "退出登录",
     "profile": "个人资料",
-    "changePassword": "修改密码"
+    "changePassword": "修改密码",
+    "toggleSidebar": "切换侧边栏",
+    "welcomeUser": "欢迎, {{username}}"
   },
   "auth": {
     "login": "登录",
@@ -51,9 +53,14 @@
     "envVars": "环境变量",
     "key": "键",
     "value": "值",
+    "enabled": "已启用",
     "enable": "启用",
     "disable": "禁用",
-    "remove": "移除"
+    "remove": "移除",
+    "toggleError": "切换服务器 {{serverName}} 状态失败",
+    "alreadyExists": "服务器 {{serverName}} 已经存在",
+    "invalidData": "提供的服务器数据无效",
+    "notFound": "找不到服务器 {{serverName}}"
   },
   "status": {
     "online": "在线",
@@ -72,6 +79,30 @@
   "common": {
     "processing": "处理中...",
     "save": "保存",
-    "cancel": "取消"
+    "cancel": "取消",
+    "refresh": "刷新"
+  },
+  "nav": {
+    "dashboard": "仪表盘",
+    "servers": "服务器",
+    "settings": "设置",
+    "changePassword": "修改密码"
+  },
+  "pages": {
+    "dashboard": {
+      "title": "仪表盘",
+      "totalServers": "服务器总数",
+      "onlineServers": "在线服务器",
+      "offlineServers": "离线服务器",
+      "connectingServers": "连接中服务",
+      "recentServers": "最近的服务器"
+    },
+    "servers": {
+      "title": "服务器管理"
+    },
+    "settings": {
+      "title": "设置",
+      "language": "语言"
+    }
   }
 }

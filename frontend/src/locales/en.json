@@ -7,7 +7,9 @@
     "loading": "Loading...",
     "logout": "Logout",
     "profile": "Profile",
-    "changePassword": "Change Password"
+    "changePassword": "Change Password",
+    "toggleSidebar": "Toggle Sidebar",
+    "welcomeUser": "Welcome, {{username}}"
   },
   "auth": {
     "login": "Login",
@@ -51,9 +53,14 @@
     "envVars": "Environment Variables",
     "key": "key",
     "value": "value",
+    "enabled": "Enabled",
     "enable": "Enable",
     "disable": "Disable",
-    "remove": "Remove"
+    "remove": "Remove",
+    "toggleError": "Failed to toggle server {{serverName}}",
+    "alreadyExists": "Server {{serverName}} already exists",
+    "invalidData": "Invalid server data provided",
+    "notFound": "Server {{serverName}} not found"
   },
   "status": {
     "online": "Online",
@@ -72,6 +79,30 @@
   "common": {
     "processing": "Processing...",
     "save": "Save",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "refresh": "Refresh"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "servers": "Servers",
+    "settings": "Settings",
+    "changePassword": "Change Password"
+  },
+  "pages": {
+    "dashboard": {
+      "title": "Dashboard",
+      "totalServers": "Total Servers",
+      "onlineServers": "Online Servers",
+      "offlineServers": "Offline Servers",
+      "connectingServers": "Connecting Servers",
+      "recentServers": "Recent Servers"
+    },
+    "servers": {
+      "title": "Servers Management"
+    },
+    "settings": {
+      "title": "Settings",
+      "language": "Language"
+    }
   }
 }

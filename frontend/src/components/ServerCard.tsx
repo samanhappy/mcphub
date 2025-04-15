@@ -63,12 +63,6 @@ const ServerCard = ({ server, onRemove, onEdit, onToggle }: ServerCardProps) => 
           >
             {t('server.edit')}
           </button>
-          <button
-            onClick={handleRemove}
-            className="px-3 py-1 bg-red-100 text-red-800 rounded hover:bg-red-200 text-sm"
-          >
-            {t('server.delete')}
-          </button>
           <div className="flex items-center">
             <button
               onClick={handleToggle}
@@ -89,6 +83,12 @@ const ServerCard = ({ server, onRemove, onEdit, onToggle }: ServerCardProps) => 
               }
             </button>
           </div>
+          <button
+            onClick={handleRemove}
+            className="px-3 py-1 bg-red-100 text-red-800 rounded hover:bg-red-200 text-sm"
+          >
+            {t('server.delete')}
+          </button>
           <button className="text-gray-400 hover:text-gray-600">
             {isExpanded ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
           </button>
