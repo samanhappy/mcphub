@@ -2,15 +2,17 @@ name: Build
 
 on:
   push:
-    branches: ['main']
     tags: ['v*.*.*']
+  schedule:
+    - cron: '0 23 * * *'
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        variant: [base, full]
+        variant: ${{ startsWith(github.ref, 'refs/tags/') && fromJSON('["base", "full"]') || fromJSON('["base"]') }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -31,7 +33,7 @@ jobs:
         with:
           images: samanhappy/mcphub
           tags: |
-            type=raw,value=edge${{ matrix.variant == 'full' && '-full' || '' }},enable=${{ github.ref == 'refs/heads/main' }}
+            type=raw,value=edge${{ matrix.variant == 'full' && '-full' || '' }},enable=${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
             type=semver,pattern={{version}}${{ matrix.variant == 'full' && '-full' || '' }},enable=${{ startsWith(github.ref, 'refs/tags/') }}
             type=raw,value=latest${{ matrix.variant == 'full' && '-full' || '' }},enable=${{ startsWith(github.ref, 'refs/tags/') }}
             
