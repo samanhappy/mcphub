@@ -5,7 +5,7 @@ import {
   addServer,
   removeServer,
   updateMcpServer,
-  recreateMcpServer,
+  notifyToolChanged,
   toggleServerStatus,
 } from '../services/mcpService.js';
 import { loadSettings } from '../config/index.js';
@@ -71,7 +71,7 @@ export const createServer = async (req: Request, res: Response): Promise<void> =
 
     const result = await addServer(name, config);
     if (result.success) {
-      recreateMcpServer();
+      notifyToolChanged();
       res.json({
         success: true,
         message: 'Server added successfully',
@@ -105,7 +105,7 @@ export const deleteServer = async (req: Request, res: Response): Promise<void> =
     const result = removeServer(name);
 
     if (result.success) {
-      recreateMcpServer();
+      notifyToolChanged();
       res.json({
         success: true,
         message: 'Server removed successfully',
@@ -155,7 +155,7 @@ export const updateServer = async (req: Request, res: Response): Promise<void> =
 
     const result = await updateMcpServer(name, config);
     if (result.success) {
-      recreateMcpServer();
+      notifyToolChanged();
       res.json({
         success: true,
         message: 'Server updated successfully',
@@ -231,9 +231,9 @@ export const toggleServer = async (req: Request, res: Response): Promise<void> =
     }
 
     const result = await toggleServerStatus(name, enabled);
-    
+
     if (result.success) {
-      recreateMcpServer();
+      notifyToolChanged();
       res.json({
         success: true,
         message: result.message || `Server ${enabled ? 'enabled' : 'disabled'} successfully`,

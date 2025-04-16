@@ -22,14 +22,10 @@ export const getMcpServer = (): Server => {
   return currentServer;
 };
 
-export const recreateMcpServer = async () => {
-  console.log('Re-creating McpServer instance');
-  const newServer = createMcpServer(config.mcpHubName, config.mcpHubVersion);
-  await registerAllTools(newServer, true);
-  const oldServer = getMcpServer();
-  setMcpServer(newServer);
-  oldServer.close();
-  console.log('McpServer instance successfully re-created');
+export const notifyToolChanged = async () => {
+  await registerAllTools(currentServer, true);
+  currentServer.sendToolListChanged();
+  console.log('Tool list changed notification sent');
 };
 
 // Store all server information
@@ -151,36 +147,6 @@ export const registerAllTools = async (server: Server, forceInit: boolean): Prom
       serverInfo.status = 'disconnected';
     }
   }
-
-  server.setRequestHandler(ListToolsRequestSchema, async () => {
-    console.log(`Handling ListToolsRequest`);
-    return {
-      tools: serverInfos.filter((info) => info.enabled !== false).flatMap((info) => info.tools),
-    };
-  });
-
-  server.setRequestHandler(CallToolRequestSchema, async (request, _) => {
-    console.log(`Handling CallToolRequest for tool: ${request.params.name}`);
-    try {
-      if (!request.params.arguments) {
-        throw new Error('Arguments are required');
-      }
-      const serverInfo = getServerByTool(request.params.name);
-      if (!serverInfo) {
-        throw new Error(`Server not found: ${request.params.name}`);
-      }
-      const client = serverInfo.client;
-      if (!client) {
-        throw new Error(`Client not found for server: ${request.params.name}`);
-      }
-      const result = await client.callTool(request.params);
-      console.log(`Tool call result: ${JSON.stringify(result)}`);
-      return result;
-    } catch (error) {
-      console.error(`Error handling CallToolRequest: ${error}`);
-      return { error: `Failed to call tool: ${error}` };
-    }
-  });
 };
 
 // Get all server information
@@ -340,5 +306,35 @@ export const toggleServerStatus = async (
 
 // Create McpServer instance
 export const createMcpServer = (name: string, version: string): Server => {
-  return new Server({ name, version }, { capabilities: { tools: {} } });
+  const server = new Server({ name, version }, { capabilities: { tools: {} } });
+  server.setRequestHandler(ListToolsRequestSchema, async () => {
+    console.log(`Handling ListToolsRequest`);
+    return {
+      tools: serverInfos.filter((info) => info.enabled !== false).flatMap((info) => info.tools),
+    };
+  });
+
+  server.setRequestHandler(CallToolRequestSchema, async (request, _) => {
+    console.log(`Handling CallToolRequest for tool: ${request.params.name}`);
+    try {
+      if (!request.params.arguments) {
+        throw new Error('Arguments are required');
+      }
+      const serverInfo = getServerByTool(request.params.name);
+      if (!serverInfo) {
+        throw new Error(`Server not found: ${request.params.name}`);
+      }
+      const client = serverInfo.client;
+      if (!client) {
+        throw new Error(`Client not found for server: ${request.params.name}`);
+      }
+      const result = await client.callTool(request.params);
+      console.log(`Tool call result: ${JSON.stringify(result)}`);
+      return result;
+    } catch (error) {
+      console.error(`Error handling CallToolRequest: ${error}`);
+      return { error: `Failed to call tool: ${error}` };
+    }
+  });
+  return server;
 };
