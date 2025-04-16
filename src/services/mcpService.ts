@@ -1,27 +1,25 @@
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { Server } from '@modelcontextprotocol/sdk/server/index.js';
+import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
-import { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
-import * as z from 'zod';
-import { ZodType, ZodRawShape } from 'zod';
 import { ServerInfo, ServerConfig } from '../types/index.js';
 import { loadSettings, saveSettings, expandEnvVars } from '../config/index.js';
 import config from '../config/index.js';
 
-let mcpServer: McpServer;
+let currentServer: Server;
 
 export const initMcpServer = async (name: string, version: string): Promise<void> => {
-  mcpServer = new McpServer({ name, version });
-  await registerAllTools(mcpServer, true);
+  currentServer = createMcpServer(name, version);
+  await registerAllTools(currentServer, true);
 };
 
-export const setMcpServer = (server: McpServer): void => {
-  mcpServer = server;
+export const setMcpServer = (server: Server): void => {
+  currentServer = server;
 };
 
-export const getMcpServer = (): McpServer => {
-  return mcpServer;
+export const getMcpServer = (): Server => {
+  return currentServer;
 };
 
 export const recreateMcpServer = async () => {
@@ -107,7 +105,7 @@ export const initializeClientsFromSettings = (): ServerInfo[] => {
     );
     client.connect(transport, { timeout: Number(config.timeout) }).catch((error) => {
       console.error(`Failed to connect client for server ${name} by error: ${error}`);
-      const serverInfo = getServerInfoByName(name);
+      const serverInfo = getServerByName(name);
       if (serverInfo) {
         serverInfo.status = 'disconnected';
       }
@@ -127,7 +125,7 @@ export const initializeClientsFromSettings = (): ServerInfo[] => {
 };
 
 // Register all MCP tools
-export const registerAllTools = async (server: McpServer, forceInit: boolean): Promise<void> => {
+export const registerAllTools = async (server: Server, forceInit: boolean): Promise<void> => {
   initializeClientsFromSettings();
   for (const serverInfo of serverInfos) {
     if (serverInfo.status === 'connected' && !forceInit) continue;
@@ -141,30 +139,11 @@ export const registerAllTools = async (server: McpServer, forceInit: boolean): P
       serverInfo.tools = tools.tools.map((tool) => ({
         name: tool.name,
         description: tool.description || '',
-        inputSchema: tool.inputSchema.properties || {},
+        inputSchema: tool.inputSchema || {},
       }));
 
       serverInfo.status = 'connected';
       console.log(`Successfully connected to server: ${serverInfo.name}`);
-
-      for (const tool of tools.tools) {
-        console.log(`Registering tool: ${JSON.stringify(tool)}`);
-        await server.tool(
-          tool.name,
-          tool.description || '',
-          json2zod(tool.inputSchema.properties, tool.inputSchema.required),
-          async (params: Record<string, unknown>) => {
-            const currentServer = getServerInfoByName(serverInfo.name)!;
-            console.log(`Calling tool: ${tool.name} with params: ${JSON.stringify(params)}`);
-            const result = await currentServer.client!.callTool({
-              name: tool.name,
-              arguments: params,
-            });
-            console.log(`Tool call result: ${JSON.stringify(result)}`);
-            return result as CallToolResult;
-          },
-        );
-      }
     } catch (error) {
       console.error(
         `Failed to connect to server for client: ${serverInfo.name} by error: ${error}`,
@@ -172,6 +151,36 @@ export const registerAllTools = async (server: McpServer, forceInit: boolean): P
       serverInfo.status = 'disconnected';
     }
   }
+
+  server.setRequestHandler(ListToolsRequestSchema, async () => {
+    console.log(`Handling ListToolsRequest`);
+    return {
+      tools: serverInfos.filter((info) => info.enabled !== false).flatMap((info) => info.tools),
+    };
+  });
+
+  server.setRequestHandler(CallToolRequestSchema, async (request, _) => {
+    console.log(`Handling CallToolRequest for tool: ${request.params.name}`);
+    try {
+      if (!request.params.arguments) {
+        throw new Error('Arguments are required');
+      }
+      const serverInfo = getServerByTool(request.params.name);
+      if (!serverInfo) {
+        throw new Error(`Server not found: ${request.params.name}`);
+      }
+      const client = serverInfo.client;
+      if (!client) {
+        throw new Error(`Client not found for server: ${request.params.name}`);
+      }
+      const result = await client.callTool(request.params);
+      console.log(`Tool call result: ${JSON.stringify(result)}`);
+      return result;
+    } catch (error) {
+      console.error(`Error handling CallToolRequest: ${error}`);
+      return { error: `Failed to call tool: ${error}` };
+    }
+  });
 };
 
 // Get all server information
@@ -195,9 +204,14 @@ export const getServersInfo = (): Omit<ServerInfo, 'client' | 'transport'>[] => 
   return infos;
 };
 
-// Get server information by name
-const getServerInfoByName = (name: string): ServerInfo | undefined => {
+// Get server by name
+const getServerByName = (name: string): ServerInfo | undefined => {
   return serverInfos.find((serverInfo) => serverInfo.name === name);
+};
+
+// Get server by tool name
+const getServerByTool = (toolName: string): ServerInfo | undefined => {
+  return serverInfos.find((serverInfo) => serverInfo.tools.some((tool) => tool.name === toolName));
 };
 
 // Add new server
@@ -216,7 +230,7 @@ export const addServer = async (
       return { success: false, message: 'Failed to save settings' };
     }
 
-    registerAllTools(mcpServer, false);
+    registerAllTools(currentServer, false);
     return { success: true, message: 'Server added successfully' };
   } catch (error) {
     console.error(`Failed to add server: ${name}`, error);
@@ -263,13 +277,7 @@ export const updateMcpServer = async (
       return { success: false, message: 'Failed to save settings' };
     }
 
-    const serverInfo = serverInfos.find((serverInfo) => serverInfo.name === name);
-    if (serverInfo) {
-      serverInfo.client!.close();
-      serverInfo.transport!.close();
-      console.log(`Closed client and transport for server: ${name}`);
-      // TODO kill process
-    }
+    closeServer(name);
 
     serverInfos = serverInfos.filter((serverInfo) => serverInfo.name !== name);
     return { success: true, message: 'Server updated successfully' };
@@ -278,6 +286,17 @@ export const updateMcpServer = async (
     return { success: false, message: 'Failed to update server' };
   }
 };
+
+// Close server client and transport
+function closeServer(name: string) {
+  const serverInfo = serverInfos.find((serverInfo) => serverInfo.name === name);
+  if (serverInfo && serverInfo.client && serverInfo.transport) {
+    serverInfo.client.close();
+    serverInfo.transport.close();
+    console.log(`Closed client and transport for server: ${serverInfo.name}`);
+    // TODO kill process
+  }
+}
 
 // Toggle server enabled status
 export const toggleServerStatus = async (
@@ -299,12 +318,7 @@ export const toggleServerStatus = async (
 
     // If disabling, disconnect the server and remove from active servers
     if (!enabled) {
-      const serverInfo = serverInfos.find((serverInfo) => serverInfo.name === name);
-      if (serverInfo && serverInfo.client && serverInfo.transport) {
-        serverInfo.client.close();
-        serverInfo.transport.close();
-        console.log(`Closed client and transport for server: ${name}`);
-      }
+      closeServer(name);
 
       // Update the server info to show as disconnected and disabled
       const index = serverInfos.findIndex((s) => s.name === name);
@@ -325,92 +339,6 @@ export const toggleServerStatus = async (
 };
 
 // Create McpServer instance
-export const createMcpServer = (name: string, version: string): McpServer => {
-  return new McpServer({ name, version });
+export const createMcpServer = (name: string, version: string): Server => {
+  return new Server({ name, version }, { capabilities: { tools: {} } });
 };
-
-// Helper function: Convert JSON Schema to Zod Schema
-function json2zod(inputSchema: unknown, required: unknown): ZodRawShape {
-  if (typeof inputSchema !== 'object' || inputSchema === null) {
-    throw new Error('Invalid input schema');
-  }
-
-  const properties = inputSchema as Record<string, any>;
-  const processedSchema: ZodRawShape = {};
-
-  for (const key in properties) {
-    const prop = properties[key];
-
-    if (prop instanceof ZodType) {
-      processedSchema[key] = prop;
-      continue;
-    }
-
-    if (typeof prop !== 'object' || prop === null) {
-      throw new Error(`Invalid property definition for ${key}`);
-    }
-
-    let zodType: ZodType;
-
-    if (prop.type === 'array' && prop.items) {
-      if (prop.items.type === 'string') {
-        zodType = z.array(z.string());
-      } else if (prop.items.type === 'number') {
-        zodType = z.array(z.number());
-      } else if (prop.items.type === 'integer') {
-        zodType = z.array(z.number().int());
-      } else if (prop.items.type === 'boolean') {
-        zodType = z.array(z.boolean());
-      } else if (prop.items.type === 'object' && prop.items.properties) {
-        zodType = z.array(z.object(json2zod(prop.items.properties, prop.items.required)));
-      } else {
-        zodType = z.array(z.any());
-      }
-    } else {
-      switch (prop.type) {
-        case 'string':
-          if (prop.enum && Array.isArray(prop.enum)) {
-            zodType = z.enum(prop.enum as [string, ...string[]]);
-          } else {
-            zodType = z.string();
-          }
-          break;
-        case 'number':
-          zodType = z.number();
-          break;
-        case 'boolean':
-          zodType = z.boolean();
-          break;
-        case 'integer':
-          zodType = z.number().int();
-          break;
-        case 'object':
-          if (prop.properties) {
-            zodType = z.object(json2zod(prop.properties, prop.required));
-          } else {
-            zodType = z.record(z.any());
-          }
-          break;
-        default:
-          zodType = z.any();
-      }
-    }
-
-    if (prop.description) {
-      zodType = zodType.describe(prop.description);
-    }
-
-    if (prop.default !== undefined) {
-      zodType = zodType.default(prop.default);
-    }
-
-    required = Array.isArray(required) ? required : [];
-    if (Array.isArray(required) && required.includes(key)) {
-      processedSchema[key] = zodType;
-    } else {
-      processedSchema[key] = zodType.optional();
-    }
-  }
-
-  return processedSchema;
-}

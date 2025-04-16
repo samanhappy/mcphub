@@ -1,6 +1,6 @@
 import express from 'express';
 import config from './config/index.js';
-import { initMcpServer, registerAllTools } from './services/mcpService.js';
+import { initMcpServer } from './services/mcpService.js';
 import { initMiddlewares } from './middlewares/index.js';
 import { initRoutes } from './routes/index.js';
 import { handleSseConnection, handleSseMessage } from './services/sseService.js';
