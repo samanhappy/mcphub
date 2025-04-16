@@ -31,7 +31,7 @@ export class AppServer {
       initMcpServer(config.mcpHubName, config.mcpHubVersion)
         .then(() => {
           console.log('MCP server initialized successfully');
-          this.app.get('/sse', (req, res) => handleSseConnection(req, res));
+          this.app.get('/sse/:groupId?', (req, res) => handleSseConnection(req, res));
           this.app.post('/messages', handleSseMessage);
         })
         .catch((error) => {

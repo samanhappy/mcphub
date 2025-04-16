@@ -6,6 +6,8 @@ import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js'
 import { ServerInfo, ServerConfig } from '../types/index.js';
 import { loadSettings, saveSettings, expandEnvVars } from '../config/index.js';
 import config from '../config/index.js';
+import { get } from 'http';
+import { getGroupId } from './sseService.js';
 
 let currentServer: Server;
 
@@ -130,7 +132,6 @@ export const registerAllTools = async (server: Server, forceInit: boolean): Prom
     try {
       serverInfo.status = 'connecting';
       console.log(`Connecting to server: ${serverInfo.name}...`);
-
       const tools = await serverInfo.client.listTools({}, { timeout: Number(config.timeout) });
       serverInfo.tools = tools.tools.map((tool) => ({
         name: tool.name,
@@ -208,7 +209,6 @@ export const addServer = async (
 export const removeServer = (name: string): { success: boolean; message?: string } => {
   try {
     const settings = loadSettings();
-
     if (!settings.mcpServers[name]) {
       return { success: false, message: 'Server not found' };
     }
@@ -307,9 +307,12 @@ export const toggleServerStatus = async (
 // Create McpServer instance
 export const createMcpServer = (name: string, version: string): Server => {
   const server = new Server({ name, version }, { capabilities: { tools: {} } });
-  server.setRequestHandler(ListToolsRequestSchema, async () => {
-    console.log(`Handling ListToolsRequest`);
+  server.setRequestHandler(ListToolsRequestSchema, async (_, extra) => {
+    const sessionId = extra.sessionId || '';
+    const groupId = getGroupId(sessionId);
+    console.log(`Handling ListToolsRequest for groupId: ${groupId}`);
     return {
+      // TODO filter tools by groupId
       tools: serverInfos.filter((info) => info.enabled !== false).flatMap((info) => info.tools),
     };
   });

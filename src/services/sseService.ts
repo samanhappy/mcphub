@@ -2,11 +2,16 @@ import { Request, Response } from 'express';
 import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
 import { getMcpServer } from './mcpService.js';
 
-const transports: { [sessionId: string]: SSEServerTransport } = {};
+const transports: { [sessionId: string]: { transport: SSEServerTransport; groupId: string } } = {};
+
+export const getGroupId = (sessionId: string): string => {
+  return transports[sessionId]?.groupId || '';
+};
 
 export const handleSseConnection = async (req: Request, res: Response): Promise<void> => {
   const transport = new SSEServerTransport('/messages', res);
-  transports[transport.sessionId] = transport;
+  const groupId = req.params.groupId;
+  transports[transport.sessionId] = { transport, groupId };
 
   res.on('close', () => {
     delete transports[transport.sessionId];
@@ -19,8 +24,10 @@ export const handleSseConnection = async (req: Request, res: Response): Promise<
 
 export const handleSseMessage = async (req: Request, res: Response): Promise<void> => {
   const sessionId = req.query.sessionId as string;
-  const transport = transports[sessionId];
-
+  const { transport, groupId } = transports[sessionId];
+  req.params.groupId = groupId;
+  req.query.groupId = groupId;
+  console.log(`Received message for sessionId: ${sessionId} in groupId: ${groupId}`);
   if (transport) {
     await transport.handlePostMessage(req, res);
   } else {
