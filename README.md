@@ -1,24 +1,27 @@
-# MCPHub: Deploy Your Own MCP Servers in Minutes
+# MCPHub: Your Complete Model Context Protocol Hub
 
 English | [中文版](README.zh.md)
 
-MCPHub is a unified hub server that consolidates multiple MCP (Model Context Protocol) servers into a single SSE endpoint. It streamlines service management by offering a centralized interface for all your MCP server needs.
+MCPHub is an elegant, unified management platform that consolidates multiple MCP (Model Context Protocol) servers into a single, high-performance SSE endpoint. It transforms service management by offering a comprehensive interface for all your AI tool connectivity needs.
 
 ![Dashboard Preview](assets/dashboard.png)
 
-## Features
+## 🚀 Key Features
 
-- **Built-in featured MCP Servers**: Comes with featured MCP servers like `amap-maps`, `playwright`, `slack`, and more.
-- **Centralized Management**: Oversee multiple MCP servers from one convenient hub.
-- **Broad Protocol Support**: Works seamlessly with both stdio and SSE MCP protocols.
-- **Intuitive Dashboard UI**: Monitor server status and manage servers dynamically via a web interface.
-- **Flexible Server Management**: Add, remove, or reconfigure MCP servers without restarting the hub.
+- **Comprehensive MCP Server Integration**: Out-of-the-box support for popular MCP servers including `amap-maps`, `playwright`, `fetch`, `slack`, and more.
+- **Unified Management Dashboard**: Intuitive web interface for monitoring real-time server status and performance metrics.
+- **Smart Protocol Handling**: Seamless compatibility with both stdio and SSE MCP protocols, ensuring flexible connectivity options.
+- **Dynamic Server Configuration**: Add, remove, or reconfigure MCP servers on-the-fly without service interruption.
+- **Group-based Access Control**: Organize and manage server access with customizable server groups.
+- **Secure Authentication**: Built-in user management system with role-based permissions.
+- **Docker-ready Deployment**: Simple containerized setup for quick deployment in any environment.
 
-## Quick Start
+## 🔧 Quick Start
 
 ### Configuration (Optional but Recommended)
 
-- Customize your MCP server settings by creating the `mcp_settings.json` file. For example:
+Customize your MCP server settings by creating a `mcp_settings.json` file:
+
 ```json
 {
   "mcpServers": {
@@ -67,72 +70,88 @@ MCPHub is a unified hub server that consolidates multiple MCP (Model Context Pro
 }
 ```
 
-- The above example includes the `amap-maps`, `playwright`, `fetch`, and `slack` servers. You can add or remove servers as needed.
-- The `users` section allows you to set up user authentication. The default root user is `admin` with the password `admin123`. You can change them as needed.
-- The password is hashed using bcrypt. You can generate a new password hash using the following command:
+- The example includes several MCP servers with their configuration details. Add or remove servers based on your needs.
+- The `users` section configures authentication. Default credentials: username `admin` with password `admin123`.
+- Passwords are securely hashed with bcrypt. Generate a new password hash with:
 
   ```bash
   npx bcryptjs your-password
   ```
 
-### Starting MCPHub with Docker
+### Deployment Options
 
-Run the following command to quickly launch MCPHub with default settings:
+#### Using Docker (Recommended)
+
+Launch MCPHub with default settings:
 
 ```bash
 docker run -p 3000:3000 samanhappy/mcphub
 ```
 
-Run the following command to launch MCPHub with custom settings:
+Or with custom settings:
 
 ```bash
 docker run -p 3000:3000 -v ./mcp_settings.json:/app/mcp_settings.json samanhappy/mcphub
 ```
 
-### Dashboard Access
+#### Accessing the Dashboard
 
-Open your web browser and navigate to: `http://localhost:3000`, then login using the credentials you set in the `mcp_settings.json` file.
-The default credentials are:
-- **Username**: `admin`
-- **Password**: `admin123`
+Navigate to `http://localhost:3000` in your browser and log in with your credentials (default: `admin`/`admin123`).
 
 The dashboard provides:
-- **Real-Time Monitoring**: Keep an eye on the status of all MCP servers.
-- **Service Status Indicators**: Quickly see which services are online.
-- **Dynamic Server Management**: Add or remove MCP servers on the fly without needing to restart.
+- **Real-time Status Monitoring**: Live overview of all connected MCP servers
+- **Server Management**: Enable/disable servers or modify their configuration
+- **Group Management**: Organize servers into functional groups
+- **User Administration**: Manage access permissions and user accounts
 
-### SSE Endpoint
+#### SSE Endpoint Integration
 
-Seamlessly connect your host applications (e.g., Claude Desktop, Cursor, Cherry Studio, etc.) to the MCPHub SSE endpoint at: `http://localhost:3000/sse`
+Connect your AI applications (Claude Desktop, Cursor, Cherry Studio, etc.) to MCPHub via the SSE endpoint at:
+```
+http://localhost:3000/sse
+```
 
-## Local Development
+## 🧑‍💻 Local Development
 
 ### Clone the Repository
-
-Clone MCPHub from GitHub:
 
 ```bash
 git clone https://github.com/samanhappy/mcphub.git
 ```
 
-### Optional Configuration
-
-Customize your MCP server settings by editing the `mcp_settings.json` file.
-
-### Start the Development Server
-
-Install dependencies and launch MCPHub:
+### Install Dependencies
 
 ```bash
-cd mcphub && pnpm install && pnpm dev
+cd mcphub && pnpm install
 ```
 
-## Community and Contributions
+### Start Development Servers
 
-MCPHub started as a small side project that I developed on a whim, and I'm amazed at the attention it has received. Thank you all for your support! 
+```bash
+pnpm dev
+```
 
-Currently, MCPHub still has many areas that need optimization and improvement. Any contributions, whether in the form of code, documentation, or suggestions, are more than welcome.
+This launches both the backend and frontend in development mode with hot-reloading enabled.
 
-## License
+## 🔍 Technical Details
+
+MCPHub is built with:
+- **Backend**: Node.js with Express, TypeScript
+- **Frontend**: React, Vite, Tailwind CSS
+- **Authentication**: JWT with bcrypt password hashing
+- **MCP Protocol**: Based on the official Model Context Protocol SDK
+
+## 👥 Community and Contributions
+
+MCPHub started as a small side project and has grown thanks to community interest and support. While already quite functional, there are many areas for optimization and improvement.
+
+Contributions are warmly welcomed, whether in the form of:
+- Code improvements or new features
+- Documentation enhancements
+- Bug reports or fixes
+- Translation assistance
+- Feature suggestions
+
+## 📄 License
 
 This project is licensed under the [Apache 2.0 license](LICENSE).
