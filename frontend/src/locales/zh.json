@@ -80,13 +80,17 @@
     "processing": "处理中...",
     "save": "保存",
     "cancel": "取消",
-    "refresh": "刷新"
+    "refresh": "刷新",
+    "create": "创建",
+    "submitting": "提交中...",
+    "delete": "删除"
   },
   "nav": {
     "dashboard": "仪表盘",
     "servers": "服务器",
     "settings": "设置",
-    "changePassword": "修改密码"
+    "changePassword": "修改密码",
+    "groups": "分组"
   },
   "pages": {
     "dashboard": {
@@ -103,6 +107,35 @@
     "settings": {
       "title": "设置",
       "language": "语言"
+    },
+    "groups": {
+      "title": "分组管理"
     }
+  },
+  "groups": {
+    "add": "添加",
+    "addNew": "添加新分组",
+    "edit": "编辑分组",
+    "delete": "删除",
+    "confirmDelete": "您确定要删除此分组吗？",
+    "deleteWarning": "删除分组 '{{name}}' 将会移除该分组及其所有服务器关联。此操作无法撤销。",
+    "name": "分组名称",
+    "namePlaceholder": "请输入分组名称",
+    "nameRequired": "分组名称不能为空",
+    "description": "描述",
+    "descriptionPlaceholder": "请输入分组描述（可选）",
+    "createError": "创建分组失败",
+    "updateError": "更新分组失败",
+    "deleteError": "删除分组失败",
+    "serverAddError": "向分组添加服务器失败",
+    "serverRemoveError": "从分组移除服务器失败",
+    "addServer": "添加服务器到分组",
+    "selectServer": "选择要添加的服务器",
+    "servers": "分组中的服务器",
+    "remove": "移除",
+    "noGroups": "暂无可用分组。创建一个新分组以开始使用。",
+    "noServers": "此分组中没有服务器。",
+    "noServerOptions": "没有可用的服务器",
+    "serverCount": "{{count}} 台服务器"
   }
 }

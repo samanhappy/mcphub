@@ -80,11 +80,15 @@
     "processing": "Processing...",
     "save": "Save",
     "cancel": "Cancel",
-    "refresh": "Refresh"
+    "refresh": "Refresh",
+    "create": "Create",
+    "submitting": "Submitting...",
+    "delete": "Delete"
   },
   "nav": {
     "dashboard": "Dashboard",
     "servers": "Servers",
+    "groups": "Groups",
     "settings": "Settings",
     "changePassword": "Change Password"
   },
@@ -100,9 +104,38 @@
     "servers": {
       "title": "Servers Management"
     },
+    "groups": {
+      "title": "Group Management"
+    },
     "settings": {
       "title": "Settings",
       "language": "Language"
     }
+  },
+  "groups": {
+    "add": "Add",
+    "addNew": "Add New Group",
+    "edit": "Edit Group",
+    "delete": "Delete",
+    "confirmDelete": "Are you sure you want to delete this group?",
+    "deleteWarning": "Deleting group '{{name}}' will remove it and all its server associations. This action cannot be undone.",
+    "name": "Group Name",
+    "namePlaceholder": "Enter group name",
+    "nameRequired": "Group name is required",
+    "description": "Description",
+    "descriptionPlaceholder": "Enter group description (optional)",
+    "createError": "Failed to create group",
+    "updateError": "Failed to update group",
+    "deleteError": "Failed to delete group",
+    "serverAddError": "Failed to add server to group",
+    "serverRemoveError": "Failed to remove server from group",
+    "addServer": "Add Server to Group",
+    "selectServer": "Select a server to add",
+    "servers": "Servers in Group",
+    "remove": "Remove",
+    "noGroups": "No groups available. Create a new group to get started.",
+    "noServers": "No servers in this group.",
+    "noServerOptions": "No servers available",
+    "serverCount": "{{count}} Servers"
   }
 }

@@ -6,6 +6,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/Dashboard';
 import ServersPage from './pages/ServersPage';
+import GroupsPage from './pages/GroupsPage';
 import SettingsPage from './pages/SettingsPage';
 
 function App() {
@@ -21,6 +22,7 @@ function App() {
             <Route element={<MainLayout />}>
               <Route path="/" element={<DashboardPage />} />
               <Route path="/servers" element={<ServersPage />} />
+              <Route path="/groups" element={<GroupsPage />} />
               <Route path="/settings" element={<SettingsPage />} />
             </Route>
           </Route>

@@ -5,33 +5,40 @@ interface DeleteDialogProps {
   onClose: () => void
   onConfirm: () => void
   serverName: string
+  isGroup?: boolean
 }
 
-const DeleteDialog = ({ isOpen, onClose, onConfirm, serverName }: DeleteDialogProps) => {
+const DeleteDialog = ({ isOpen, onClose, onConfirm, serverName, isGroup = false }: DeleteDialogProps) => {
   const { t } = useTranslation()
-  
+
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-      <div className="bg-white shadow rounded-lg p-6 w-full max-w-md">
-        <h3 className="text-lg font-medium text-gray-900 mb-4">{t('server.delete')}</h3>
-        <p className="text-gray-700">
-          {t('server.confirmDelete')} <strong>{serverName}</strong>
-        </p>
-        <div className="flex justify-end mt-6">
-          <button
-            onClick={onClose}
-            className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-medium py-2 px-4 rounded mr-2"
-          >
-            {t('server.cancel')}
-          </button>
-          <button
-            onClick={onConfirm}
-            className="bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded"
-          >
-            {t('server.delete')}
-          </button>
+    <div className="fixed inset-0 bg-black bg-opacity-30 z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-lg shadow-lg max-w-md w-full">
+        <div className="p-6">
+          <h3 className="text-lg font-medium text-gray-900 mb-3">
+            {isGroup ? t('groups.confirmDelete') : t('server.confirmDelete')}
+          </h3>
+          <p className="text-gray-500 mb-6">
+            {isGroup 
+              ? t('groups.deleteWarning', { name: serverName })
+              : t('server.deleteWarning', { name: serverName })}
+          </p>
+          <div className="flex justify-end space-x-3">
+            <button
+              onClick={onClose}
+              className="px-4 py-2 text-gray-600 hover:text-gray-800"
+            >
+              {t('common.cancel')}
+            </button>
+            <button
+              onClick={onConfirm}
+              className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
+            >
+              {t('common.delete')}
+            </button>
+          </div>
         </div>
       </div>
     </div>

@@ -1,30 +1,30 @@
-// 服务器状态类型
+// Server status types
 export type ServerStatus = 'connecting' | 'connected' | 'disconnected';
 
-// 工具输入模式类型
+// Tool input schema types
 export interface ToolInputSchema {
   type: string;
-  properties?: Record<string, any>;
+  properties?: Record<string, unknown>;
   required?: string[];
-  [key: string]: any;
 }
 
-// 工具类型
+// Tool types
 export interface Tool {
   name: string;
-  description?: string;
+  description: string;
   inputSchema: ToolInputSchema;
 }
 
-// 服务器配置类型
+// Server config types
 export interface ServerConfig {
   url?: string;
   command?: string;
-  args?: string[] | string;
+  args?: string[];
   env?: Record<string, string>;
+  enabled?: boolean;
 }
 
-// 服务器类型
+// Server types
 export interface Server {
   name: string;
   status: ServerStatus;
@@ -33,26 +33,41 @@ export interface Server {
   enabled?: boolean;
 }
 
-// 环境变量类型
+// Group types
+export interface Group {
+  id: string;
+  name: string;
+  description?: string;
+  servers: string[];
+}
+
+// Environment variable types
 export interface EnvVar {
   key: string;
   value: string;
 }
 
-// 表单数据类型
+// Form data types
 export interface ServerFormData {
   name: string;
   url: string;
   command: string;
   arguments: string;
-  args: string[];
+  env: EnvVar[];
 }
 
-// API响应类型
-export interface ApiResponse<T> {
+// Group form data types
+export interface GroupFormData {
+  name: string;
+  description: string;
+  servers: string[]; // Added servers array to include in form data
+}
+
+// API response types
+export interface ApiResponse<T = any> {
   success: boolean;
-  data: T;
   message?: string;
+  data?: T;
 }
 
 // Auth types
@@ -62,10 +77,9 @@ export interface IUser {
 }
 
 export interface AuthState {
-  token: string | null;
   isAuthenticated: boolean;
-  loading: boolean;
   user: IUser | null;
+  loading: boolean;
   error: string | null;
 }
 
@@ -88,5 +102,4 @@ export interface AuthResponse {
   token?: string;
   user?: IUser;
   message?: string;
-  errors?: Array<{ msg: string }>;
 }

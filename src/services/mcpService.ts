@@ -8,6 +8,7 @@ import { loadSettings, saveSettings, expandEnvVars } from '../config/index.js';
 import config from '../config/index.js';
 import { get } from 'http';
 import { getGroupId } from './sseService.js';
+import { getServersInGroup } from './groupService.js';
 
 let currentServer: Server;
 
@@ -311,9 +312,22 @@ export const createMcpServer = (name: string, version: string): Server => {
     const sessionId = extra.sessionId || '';
     const groupId = getGroupId(sessionId);
     console.log(`Handling ListToolsRequest for groupId: ${groupId}`);
+    const allServerInfos = serverInfos.filter((serverInfo) => {
+      if (serverInfo.enabled === false) return false;
+      if (!groupId) return true;
+      const serversInGroup = getServersInGroup(groupId);
+      return serversInGroup.includes(serverInfo.name);
+    });
+
+    const allTools = [];
+    for (const serverInfo of allServerInfos) {
+      if (serverInfo.tools && serverInfo.tools.length > 0) {
+        allTools.push(...serverInfo.tools);
+      }
+    }
+
     return {
-      // TODO filter tools by groupId
-      tools: serverInfos.filter((info) => info.enabled !== false).flatMap((info) => info.tools),
+      tools: allTools,
     };
   });
 

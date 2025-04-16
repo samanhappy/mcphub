@@ -9,12 +9,21 @@ export interface IUser {
   isAdmin?: boolean;
 }
 
+// Group interface for server grouping
+export interface IGroup {
+  id: string;        // Unique UUID for the group
+  name: string;      // Display name of the group
+  description?: string; // Optional description of the group
+  servers: string[]; // Array of server names that belong to this group
+}
+
 // Represents the settings for MCP servers
 export interface McpSettings {
   users?: IUser[]; // Array of user credentials and permissions
   mcpServers: {
     [key: string]: ServerConfig; // Key-value pairs of server names and their configurations
   };
+  groups?: IGroup[]; // Array of server groups
 }
 
 // Configuration details for an individual server

@@ -9,6 +9,17 @@ import {
   toggleServer,
 } from '../controllers/serverController.js';
 import {
+  getGroups,
+  getGroup,
+  createNewGroup,
+  updateExistingGroup,
+  deleteExistingGroup,
+  addServerToExistingGroup,
+  removeServerFromExistingGroup,
+  getGroupServers,
+  updateGroupServersBatch
+} from '../controllers/groupController.js';
+import {
   login,
   register,
   getCurrentUser,
@@ -26,6 +37,18 @@ export const initRoutes = (app: express.Application): void => {
   router.put('/servers/:name', updateServer);
   router.delete('/servers/:name', deleteServer);
   router.post('/servers/:name/toggle', toggleServer);
+  
+  // Group management routes
+  router.get('/groups', getGroups);
+  router.get('/groups/:id', getGroup);
+  router.post('/groups', createNewGroup);
+  router.put('/groups/:id', updateExistingGroup);
+  router.delete('/groups/:id', deleteExistingGroup);
+  router.post('/groups/:id/servers', addServerToExistingGroup);
+  router.delete('/groups/:id/servers/:serverName', removeServerFromExistingGroup);
+  router.get('/groups/:id/servers', getGroupServers);
+  // New route for batch updating servers in a group
+  router.put('/groups/:id/servers/batch', updateGroupServersBatch);
   
   // Auth routes (these will NOT be protected by auth middleware)
   app.post('/auth/login', [
