@@ -34,6 +34,7 @@
     "edit": "Edit",
     "delete": "Delete",
     "confirmDelete": "Are you sure you want to delete this server?",
+    "deleteWarning": "Deleting server '{{name}}' will remove it and all its data. This action cannot be undone.",
     "status": "Status",
     "tools": "Tools",
     "name": "Server Name",

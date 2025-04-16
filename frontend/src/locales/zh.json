@@ -34,6 +34,7 @@
     "edit": "编辑",
     "delete": "删除",
     "confirmDelete": "您确定要删除此服务器吗？",
+    "deleteWarning": "删除服务器 '{{name}}' 将会移除该服务器及其所有数据。此操作无法撤销。",
     "status": "状态",
     "tools": "工具",
     "name": "服务器名称",
