@@ -20,17 +20,24 @@ export class AppServer {
     try {
       // Migrate user data from users.json to mcp_settings.json if needed
       migrateUserData();
-      
+
       // Initialize default admin user if no users exist
       await initializeDefaultUser();
-      
-      const mcpServer = await initMcpServer(config.mcpHubName, config.mcpHubVersion);
-      await registerAllTools(mcpServer, true);
+
       initMiddlewares(this.app);
       initRoutes(this.app);
-      this.app.get('/sse', (req, res) => handleSseConnection(req, res));
-      this.app.post('/messages', handleSseMessage);
       console.log('Server initialized successfully');
+
+      initMcpServer(config.mcpHubName, config.mcpHubVersion)
+        .then(() => {
+          console.log('MCP server initialized successfully');
+          this.app.get('/sse', (req, res) => handleSseConnection(req, res));
+          this.app.post('/messages', handleSseMessage);
+        })
+        .catch((error) => {
+          console.error('Error initializing MCP server:', error);
+          throw error;
+        });
     } catch (error) {
       console.error('Error initializing server:', error);
       throw error;

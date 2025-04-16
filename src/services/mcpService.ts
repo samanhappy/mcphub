@@ -11,9 +11,9 @@ import config from '../config/index.js';
 
 let mcpServer: McpServer;
 
-export const initMcpServer = (name: string, version: string): McpServer => {
+export const initMcpServer = async (name: string, version: string): Promise<void> => {
   mcpServer = new McpServer({ name, version });
-  return mcpServer;
+  await registerAllTools(mcpServer, true);
 };
 
 export const setMcpServer = (server: McpServer): void => {
@@ -52,11 +52,11 @@ export const initializeClientsFromSettings = (): ServerInfo[] => {
         status: 'disconnected',
         tools: [],
         createTime: Date.now(),
-        enabled: false
+        enabled: false,
       });
       continue;
     }
-    
+
     // Check if server is already connected
     const existingServer = existingServerInfos.find(
       (s) => s.name === name && s.status === 'connected',
@@ -64,7 +64,7 @@ export const initializeClientsFromSettings = (): ServerInfo[] => {
     if (existingServer) {
       serverInfos.push({
         ...existingServer,
-        enabled: conf.enabled === undefined ? true : conf.enabled
+        enabled: conf.enabled === undefined ? true : conf.enabled,
       });
       console.log(`Server '${name}' is already connected.`);
       continue;
@@ -179,7 +179,7 @@ export const getServersInfo = (): Omit<ServerInfo, 'client' | 'transport'>[] => 
   const settings = loadSettings();
   const infos = serverInfos.map(({ name, status, tools, createTime }) => {
     const serverConfig = settings.mcpServers[name];
-    const enabled = serverConfig ? (serverConfig.enabled !== false) : true;
+    const enabled = serverConfig ? serverConfig.enabled !== false : true;
     return {
       name,
       status,
@@ -282,7 +282,7 @@ export const updateMcpServer = async (
 // Toggle server enabled status
 export const toggleServerStatus = async (
   name: string,
-  enabled: boolean
+  enabled: boolean,
 ): Promise<{ success: boolean; message?: string }> => {
   try {
     const settings = loadSettings();
@@ -292,7 +292,7 @@ export const toggleServerStatus = async (
 
     // Update the enabled status in settings
     settings.mcpServers[name].enabled = enabled;
-    
+
     if (!saveSettings(settings)) {
       return { success: false, message: 'Failed to save settings' };
     }
@@ -305,9 +305,9 @@ export const toggleServerStatus = async (
         serverInfo.transport.close();
         console.log(`Closed client and transport for server: ${name}`);
       }
-      
+
       // Update the server info to show as disconnected and disabled
-      const index = serverInfos.findIndex(s => s.name === name);
+      const index = serverInfos.findIndex((s) => s.name === name);
       if (index !== -1) {
         serverInfos[index] = {
           ...serverInfos[index],
