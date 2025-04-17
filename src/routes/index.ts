@@ -1,5 +1,6 @@
 import express from 'express';
 import { check } from 'express-validator';
+import path from 'path';
 import {
   getAllServers,
   getAllSettings,
@@ -71,6 +72,10 @@ export const initRoutes = (app: express.Application): void => {
   ], changePassword);
 
   app.use('/api', router);
+
+  app.get('*', (_req, res) => {
+    res.sendFile(path.join(process.cwd(), 'frontend', 'dist', 'index.html'));
+  });
 };
 
 export default router;
