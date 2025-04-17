@@ -1,59 +1,48 @@
-# MCPHub：一站式 MCP 服务管理平台
+# MCPHub：一站式 MCP 服务器聚合平台
 
 [English Version](README.md) | 中文版
 
-MCPHub 是一个优雅、统一的管理平台，将多个 MCP（Model Context Protocol）服务整合为单一的高性能 SSE 端点。它通过提供全面的接口，彻底简化了 AI 工具连接管理，满足您所有的 MCP 服务需求。
+MCPHub 是一个统一的 MCP（Model Context Protocol，模型上下文协议）服务器聚合平台，可以根据场景将多个服务器聚合到不同的 SSE 端点。它通过直观的界面和强大的协议处理能力，简化了您的 AI 工具集成流程。
 
 ![控制面板预览](assets/dashboard.zh.png)
 
-## 🚀 核心功能
+## 🚀 功能亮点
 
-- **全面的 MCP 服务集成**：开箱即用支持众多热门 MCP 服务，包括 `amap-maps`、`playwright`、`fetch`、`slack` 等。
-- **统一管理仪表盘**：直观的 Web 界面，实时监控服务器状态和性能指标。
-- **智能协议处理**：无缝兼容 stdio 和 SSE MCP 协议，确保灵活的连接选项。
-- **动态服务配置**：无需中断服务即可即时添加、移除或重新配置 MCP 服务。
-- **基于分组的访问控制**：通过自定义服务器分组组织和管理服务访问权限。
-- **安全认证系统**：内置用户管理系统，支持基于角色的权限控制。
-- **Docker 快速部署**：简单的容器化设置，适用于任何环境的快速部署。
+- **开箱即用的 MCP 服务器支持**：无缝集成 `amap-maps`、`playwright`、`fetch`、`slack` 等常见服务器。
+- **集中式管理控制台**：在一个简洁的 Web UI 中实时监控所有服务器的状态和性能指标。
+- **灵活的协议兼容**：完全支持 stdio 和 SSE 两种 MCP 协议。
+- **热插拔式配置**：在运行时动态添加、移除或更新服务器配置，无需停机。
+- **基于分组的访问控制**：自定义分组并管理服务器访问权限。
+- **安全认证机制**：内置用户管理，基于 JWT 和 bcrypt，实现角色权限控制。
+- **Docker 就绪**：提供容器化镜像，快速部署。
 
 ## 🔧 快速开始
 
-### 配置（可选但推荐）
+### 可选配置
 
-通过创建 `mcp_settings.json` 文件自定义 MCP 服务器设置：
+通过创建 `mcp_settings.json` 自定义服务器设置：
 
 ```json
 {
   "mcpServers": {
     "amap-maps": {
       "command": "npx",
-      "args": [
-        "-y",
-        "@amap/amap-maps-mcp-server"
-      ],
+      "args": ["-y", "@amap/amap-maps-mcp-server"],
       "env": {
         "AMAP_MAPS_API_KEY": "your-api-key"
       }
     },
     "playwright": {
       "command": "npx",
-      "args": [
-        "@playwright/mcp@latest",
-        "--headless"
-      ]
+      "args": ["@playwright/mcp@latest", "--headless"]
     },
     "fetch": {
       "command": "uvx",
-      "args": [
-        "mcp-server-fetch"
-      ]
+      "args": ["mcp-server-fetch"]
     },
     "slack": {
       "command": "npx",
-      "args": [
-        "-y",
-        "@modelcontextprotocol/server-slack"
-      ],
+      "args": ["-y", "@modelcontextprotocol/server-slack"],
       "env": {
         "SLACK_BOT_TOKEN": "your-bot-token",
         "SLACK_TEAM_ID": "your-team-id"
@@ -70,89 +59,68 @@ MCPHub 是一个优雅、统一的管理平台，将多个 MCP（Model Context P
 }
 ```
 
-- 示例包括多个 MCP 服务器及其配置详情，您可以根据需求添加或删除服务器。
-- `users` 部分配置用户认证，默认凭据：用户名 `admin`，密码 `admin123`。
-- 密码使用 bcrypt 安全哈希处理，可以使用以下命令生成新的密码哈希：
+> **提示**：默认用户名/密码为 `admin` / `admin123`。密码已通过 bcrypt 安全哈希。生成新密码哈希：
+>
+> ```bash
+> npx bcryptjs your-password
+> ```
 
-  ```bash
-  npx bcryptjs your-password
-  ```
+### Docker 部署
 
-### 部署选项
+**推荐**：挂载自定义配置：
+```bash
+docker run -p 3000:3000 -v $(pwd)/mcp_settings.json:/app/mcp_settings.json samanhappy/mcphub
+```
 
-#### 使用 Docker（推荐）
-
-使用默认设置启动 MCPHub：
-
+或使用默认配置运行：
 ```bash
 docker run -p 3000:3000 samanhappy/mcphub
 ```
 
-或使用自定义设置：
+### 访问控制台
 
-```bash
-docker run -p 3000:3000 -v ./mcp_settings.json:/app/mcp_settings.json samanhappy/mcphub
-```
+打开 `http://localhost:3000`，使用您的账号登录。
+> **提示**：默认用户名/密码为 `admin` / `admin123`。
 
-#### 访问控制面板
+**控制台功能**：
+- 实时监控所有 MCP 服务器状态
+- 启用/禁用或重新配置服务器
+- 分组管理，组织服务器访问
+- 用户管理，设定权限
 
-在浏览器中访问 `http://localhost:3000` 并使用您的凭据登录（默认：`admin`/`admin123`）。
+### SSE 端点集成
 
-控制面板提供：
-- **实时状态监控**：所有已连接 MCP 服务器的实时概览
-- **服务器管理**：启用/禁用服务器或修改其配置
-- **分组管理**：将服务器组织到功能分组中
-- **用户管理**：管理访问权限和用户账户
-
-#### SSE 端点集成
-
-通过以下 SSE 端点将您的 AI 应用程序（如 Claude Desktop、Cursor、Cherry Studio 等）连接到 MCPHub：
+通过以下地址连接 AI 客户端（如 Claude Desktop、Cursor、Cherry Studio 等）：
 ```
 http://localhost:3000/sse
 ```
 
 ## 🧑‍💻 本地开发
 
-### 克隆仓库
-
 ```bash
 git clone https://github.com/samanhappy/mcphub.git
-```
-
-### 安装依赖
-
-```bash
-cd mcphub && pnpm install
-```
-
-### 启动开发服务器
-
-```bash
+cd mcphub
+pnpm install
 pnpm dev
 ```
 
-这将同时启动前端和后端的开发模式，支持热重载。
+此命令将在开发模式下启动前后端，并启用热重载。
 
-## 🔍 技术细节
+## 🔍 技术栈
 
-MCPHub 采用以下技术构建：
-- **后端**：Node.js 与 Express、TypeScript
+- **后端**：Node.js、Express、TypeScript
 - **前端**：React、Vite、Tailwind CSS
-- **认证**：JWT 与 bcrypt 密码哈希
-- **MCP 协议**：基于官方 Model Context Protocol SDK
+- **认证**：JWT & bcrypt
+- **协议**：Model Context Protocol SDK
 
-## 👥 社区与贡献
+## 👥 贡献指南
 
-MCPHub 最初只是一个小型的个人项目，但得益于社区的兴趣和支持而不断成长。虽然功能已经相当完善，但仍有许多优化和改进的空间。
+期待您的贡献！
 
-我们热忱欢迎各种形式的贡献：
-- 代码改进或新功能
-- 文档增强
-- 错误报告或修复
-- 翻译协助
-- 功能建议
-
-![微信群](assets/wegroup.jpg)
+- 新功能与优化
+- 文档完善
+- Bug 报告与修复
+- 翻译与建议
 
 ## 📄 许可证
 
