@@ -31,8 +31,15 @@ jobs:
         with:
           images: samanhappy/mcphub
           tags: |
-            type=raw,value=edge${{ matrix.variant == 'full' && '-full' || '' }},enable=${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
-            type=semver,pattern={{version}}${{ matrix.variant == 'full' && '-full' || '' }},enable=${{ startsWith(github.ref, 'refs/tags/') }}
+            # edge 变体
+            type=raw,value=edge,enable=${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
+            type=raw,value=edge-full,enable=${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && matrix.variant == 'full' }}
+
+            # semver
+            type=semver,pattern={{version}},enable=${{ startsWith(github.ref, 'refs/tags/') && matrix.variant == 'base' }}
+            type=semver,pattern={{version}}-full,enable=${{ startsWith(github.ref, 'refs/tags/') && matrix.variant == 'full' }}
+
+            # latest
             type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/') && matrix.variant == 'base' }}
             type=raw,value=latest-full,enable=${{ startsWith(github.ref, 'refs/tags/') && matrix.variant == 'full' }}
             
