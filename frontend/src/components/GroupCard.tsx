@@ -11,10 +11,10 @@ interface GroupCardProps {
   onDelete: (groupId: string) => void
 }
 
-const GroupCard = ({ 
-  group, 
-  servers, 
-  onEdit, 
+const GroupCard = ({
+  group,
+  servers,
+  onEdit,
   onDelete
 }: GroupCardProps) => {
   const { t } = useTranslation()
@@ -55,7 +55,8 @@ const GroupCard = ({
         setCopied(true)
         setTimeout(() => setCopied(false), 2000)
       } catch (err) {
-        // Optionally handle error
+        alert(t('common.copyFailed') || 'Copy failed')
+        console.error('Copy to clipboard failed:', err)
       }
       document.body.removeChild(textArea)
     }
@@ -72,7 +73,7 @@ const GroupCard = ({
             <h2 className="text-xl font-semibold text-gray-800">{group.name}</h2>
             <div className="flex items-center ml-3">
               <span className="text-xs text-gray-500 mr-1">{group.id}</span>
-              <button 
+              <button
                 onClick={copyToClipboard}
                 className="p-1 text-gray-400 hover:text-gray-600 transition-colors"
                 title={t('common.copy')}
@@ -112,15 +113,14 @@ const GroupCard = ({
         ) : (
           <div className="flex flex-wrap gap-2 mt-2">
             {groupServers.map(server => (
-              <div 
+              <div
                 key={server.name}
                 className="inline-flex items-center px-3 py-1 bg-gray-50 rounded"
               >
                 <span className="font-medium text-gray-700 text-sm">{server.name}</span>
-                <span className={`ml-2 inline-block h-2 w-2 rounded-full ${
-                  server.status === 'connected' ? 'bg-green-500' : 
-                  server.status === 'connecting' ? 'bg-yellow-500' : 'bg-red-500'
-                }`}></span>
+                <span className={`ml-2 inline-block h-2 w-2 rounded-full ${server.status === 'connected' ? 'bg-green-500' :
+                    server.status === 'connecting' ? 'bg-yellow-500' : 'bg-red-500'
+                  }`}></span>
               </div>
             ))}
           </div>
