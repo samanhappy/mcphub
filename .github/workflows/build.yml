@@ -37,23 +37,26 @@ jobs:
             # latest
             type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/') }}
             
-      - name: Build and Push Docker Image
+      - name: Build and Push Base Docker Image
         uses: docker/build-push-action@v5
         with:
           context: .
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max,scope=base
+          cache-from: type=gha,scope=base-cache
+          cache-to: type=gha,mode=max,scope=base-cache
           platforms: linux/amd64,linux/arm64
           build-args: |
             INSTALL_EXT=false
+          # 确保构建完全独立，不共享缓存或中间层
+          provenance: false
+          no-cache: true
   
   build-full:
-    needs: build-base  # 确保在 base 变体完成后再构建 full 变体
+    needs: build-base
     runs-on: ubuntu-latest
-    if: ${{ startsWith(github.ref, 'refs/tags/') }}  # 只在发布标签时构建 full 变体
+    if: ${{ startsWith(github.ref, 'refs/tags/') }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -80,18 +83,18 @@ jobs:
             # latest-full
             type=raw,value=latest-full,enable=${{ startsWith(github.ref, 'refs/tags/') }}
             
-            # edge-full
-            type=raw,value=edge-full,enable=${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
-            
-      - name: Build and Push Docker Image
+      - name: Build and Push Full Docker Image
         uses: docker/build-push-action@v5
         with:
           context: .
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max,scope=full
+          cache-from: type=gha,scope=full-cache
+          cache-to: type=gha,mode=max,scope=full-cache
           platforms: linux/amd64,linux/arm64
           build-args: |
             INSTALL_EXT=true
+          # 确保构建完全独立，不共享缓存或中间层
+          provenance: false
+          no-cache: true
