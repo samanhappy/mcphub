@@ -3,8 +3,6 @@ name: Build
 on:
   push:
     tags: ['v*.*.*']
-  schedule:
-    - cron: '0 23 * * *'
   workflow_dispatch:
 
 jobs:
