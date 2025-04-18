@@ -6,11 +6,8 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
+  build-base:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        variant: ${{ startsWith(github.ref, 'refs/tags/') && fromJSON('["base", "full"]') || fromJSON('["base"]') }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -33,15 +30,12 @@ jobs:
           tags: |
             # edge 变体
             type=raw,value=edge,enable=${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
-            type=raw,value=edge-full,enable=${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && matrix.variant == 'full' }}
-
+            
             # semver
-            type=semver,pattern={{version}},enable=${{ startsWith(github.ref, 'refs/tags/') && matrix.variant == 'base' }}
-            type=semver,pattern={{version}}-full,enable=${{ startsWith(github.ref, 'refs/tags/') && matrix.variant == 'full' }}
-
+            type=semver,pattern={{version}},enable=${{ startsWith(github.ref, 'refs/tags/') }}
+            
             # latest
-            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/') && matrix.variant == 'base' }}
-            type=raw,value=latest-full,enable=${{ startsWith(github.ref, 'refs/tags/') && matrix.variant == 'full' }}
+            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/') }}
             
       - name: Build and Push Docker Image
         uses: docker/build-push-action@v5
@@ -51,7 +45,53 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
-          cache-to: type=gha,mode=max,scope=${{ matrix.variant }}
+          cache-to: type=gha,mode=max,scope=base
           platforms: linux/amd64,linux/arm64
           build-args: |
-            INSTALL_EXT=${{ matrix.variant == 'full' && 'true' || 'false' }}
+            INSTALL_EXT=false
+  
+  build-full:
+    needs: build-base  # 确保在 base 变体完成后再构建 full 变体
+    runs-on: ubuntu-latest
+    if: ${{ startsWith(github.ref, 'refs/tags/') }}  # 只在发布标签时构建 full 变体
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: samanhappy/mcphub
+          tags: |
+            # semver with full suffix
+            type=semver,pattern={{version}}-full,enable=${{ startsWith(github.ref, 'refs/tags/') }}
+            
+            # latest-full
+            type=raw,value=latest-full,enable=${{ startsWith(github.ref, 'refs/tags/') }}
+            
+            # edge-full
+            type=raw,value=edge-full,enable=${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
+            
+      - name: Build and Push Docker Image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max,scope=full
+          platforms: linux/amd64,linux/arm64
+          build-args: |
+            INSTALL_EXT=true
