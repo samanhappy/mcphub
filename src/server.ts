@@ -1,5 +1,6 @@
 import express from 'express';
 import config from './config/index.js';
+import path from 'path';
 import { initMcpServer } from './services/mcpService.js';
 import { initMiddlewares } from './middlewares/index.js';
 import { initRoutes } from './routes/index.js';
@@ -37,6 +38,11 @@ export class AppServer {
         .catch((error) => {
           console.error('Error initializing MCP server:', error);
           throw error;
+        })
+        .finally(() => {
+          this.app.get('*', (_req, res) => {
+            res.sendFile(path.join(process.cwd(), 'frontend', 'dist', 'index.html'));
+          });
         });
     } catch (error) {
       console.error('Error initializing server:', error);
