@@ -35,10 +35,30 @@ const GroupCard = ({
   }
 
   const copyToClipboard = () => {
-    navigator.clipboard.writeText(group.id).then(() => {
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
-    })
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(group.id).then(() => {
+        setCopied(true)
+        setTimeout(() => setCopied(false), 2000)
+      })
+    } else {
+      // Fallback for HTTP or unsupported clipboard API
+      const textArea = document.createElement('textarea')
+      textArea.value = group.id
+      // Avoid scrolling to bottom
+      textArea.style.position = 'fixed'
+      textArea.style.left = '-9999px'
+      document.body.appendChild(textArea)
+      textArea.focus()
+      textArea.select()
+      try {
+        document.execCommand('copy')
+        setCopied(true)
+        setTimeout(() => setCopied(false), 2000)
+      } catch (err) {
+        // Optionally handle error
+      }
+      document.body.removeChild(textArea)
+    }
   }
 
   // Get servers that belong to this group
