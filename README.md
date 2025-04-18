@@ -95,6 +95,20 @@ Connect AI clients (e.g., Claude Desktop, Cursor, Cherry Studio) via:
 http://localhost:3000/sse
 ```
 
+**Group-Specific Endpoints (Recommended)**:  
+
+![Group Management](assets/group.png)
+
+For targeted access to specific server groups, use the group-based SSE endpoint:
+```
+http://localhost:3000/sse/{groupId}
+```
+
+Where `{groupId}` is the ID of the group you created in the dashboard. This allows you to:
+- Connect to a specific subset of MCP servers organized by use case
+- Isolate different AI tools to access only relevant servers
+- Implement more granular access control for different environments or teams
+
 ## 🧑‍💻 Local Development
 
 ```bash

@@ -95,6 +95,20 @@ docker run -p 3000:3000 samanhappy/mcphub
 http://localhost:3000/sse
 ```
 
+**基于分组的 SSE 端点（推荐）**： 
+
+![分组](assets/group.zh.png) 
+
+要针对特定服务器分组进行访问，请使用基于分组的 SSE 端点：
+```
+http://localhost:3000/sse/{groupId}
+```
+
+其中 `{groupId}` 是您在控制面板中创建的分组 ID。这样做可以：
+- 连接到按用例组织的特定 MCP 服务器子集
+- 隔离不同的 AI 工具，使其只能访问相关服务器
+- 为不同环境或团队实现更精细的访问控制
+
 ## 🧑‍💻 本地开发
 
 ```bash
@@ -121,6 +135,10 @@ pnpm dev
 - 文档完善
 - Bug 报告与修复
 - 翻译与建议
+
+欢迎加入企微交流共建群
+
+<img src="assets/wegroup.png" width="500">
 
 ## 📄 许可证
 
