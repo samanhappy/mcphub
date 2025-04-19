@@ -1,6 +1,60 @@
 // Server status types
 export type ServerStatus = 'connecting' | 'connected' | 'disconnected';
 
+// Market server types
+export interface MarketServerRepository {
+  type: string;
+  url: string;
+}
+
+export interface MarketServerAuthor {
+  name: string;
+}
+
+export interface MarketServerInstallation {
+  type: string;
+  command: string;
+  args: string[];
+  env?: Record<string, string>;
+}
+
+export interface MarketServerArgument {
+  description: string;
+  required: boolean;
+  example: string;
+}
+
+export interface MarketServerExample {
+  title: string;
+  description: string;
+  prompt: string;
+}
+
+export interface MarketServerTool {
+  name: string;
+  description: string;
+  inputSchema: Record<string, any>;
+}
+
+export interface MarketServer {
+  name: string;
+  display_name: string;
+  description: string;
+  repository: MarketServerRepository;
+  homepage: string;
+  author: MarketServerAuthor;
+  license: string;
+  categories: string[];
+  tags: string[];
+  examples: MarketServerExample[];
+  installations: {
+    [key: string]: MarketServerInstallation;
+  };
+  arguments: Record<string, MarketServerArgument>;
+  tools: MarketServerTool[];
+  is_official?: boolean;
+}
+
 // Tool input schema types
 export interface ToolInputSchema {
   type: string;
