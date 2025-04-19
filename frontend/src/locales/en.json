@@ -9,7 +9,8 @@
     "profile": "Profile",
     "changePassword": "Change Password",
     "toggleSidebar": "Toggle Sidebar",
-    "welcomeUser": "Welcome, {{username}}"
+    "welcomeUser": "Welcome, {{username}}",
+    "name": "MCP Hub"
   },
   "auth": {
     "login": "Login",
@@ -26,7 +27,9 @@
     "passwordsNotMatch": "New password and confirmation do not match",
     "changePasswordSuccess": "Password changed successfully",
     "changePasswordError": "Failed to change password",
-    "changePassword": "Change Password"
+    "changePassword": "Change Password",
+    "passwordChanged": "Password changed successfully",
+    "passwordChangeError": "Failed to change password"
   },
   "server": {
     "addServer": "Add Server",
@@ -61,7 +64,11 @@
     "toggleError": "Failed to toggle server {{serverName}}",
     "alreadyExists": "Server {{serverName}} already exists",
     "invalidData": "Invalid server data provided",
-    "notFound": "Server {{serverName}} not found"
+    "notFound": "Server {{serverName}} not found",
+    "namePlaceholder": "Enter server name",
+    "urlPlaceholder": "Enter server URL",
+    "commandPlaceholder": "Enter command",
+    "argumentsPlaceholder": "Enter arguments"
   },
   "status": {
     "online": "Online",
@@ -84,14 +91,16 @@
     "refresh": "Refresh",
     "create": "Create",
     "submitting": "Submitting...",
-    "delete": "Delete"
+    "delete": "Delete",
+    "copy": "Copy"
   },
   "nav": {
     "dashboard": "Dashboard",
     "servers": "Servers",
     "groups": "Groups",
     "settings": "Settings",
-    "changePassword": "Change Password"
+    "changePassword": "Change Password",
+    "market": "Market"
   },
   "pages": {
     "dashboard": {
@@ -110,7 +119,13 @@
     },
     "settings": {
       "title": "Settings",
-      "language": "Language"
+      "language": "Language",
+      "account": "Account Settings",
+      "password": "Change Password",
+      "appearance": "Appearance"
+    },
+    "market": {
+      "title": "Server Market"
     }
   },
   "groups": {
@@ -138,5 +153,45 @@
     "noServers": "No servers in this group.",
     "noServerOptions": "No servers available",
     "serverCount": "{{count}} Servers"
+  },
+  "market": {
+    "title": "Server Market",
+    "official": "Official",
+    "by": "By",
+    "unknown": "Unknown",
+    "tools": "tools",
+    "search": "Search",
+    "searchPlaceholder": "Search for servers by name, category, or tags",
+    "clearFilters": "Clear Filters",
+    "clearCategoryFilter": "Clear category",
+    "clearTagFilter": "Clear tag",
+    "categories": "Categories",
+    "tags": "Tags",
+    "showTags": "Show tags",
+    "hideTags": "Hide tags",
+    "moreTags": "more",
+    "noServers": "No servers found matching your search",
+    "backToList": "Back to list",
+    "install": "Install",
+    "installing": "Installing...",
+    "installSuccess": "Server {{serverName}} installed successfully",
+    "author": "Author",
+    "license": "License",
+    "repository": "Repository",
+    "examples": "Examples",
+    "arguments": "Arguments",
+    "argumentName": "Name",
+    "description": "Description",
+    "required": "Required",
+    "example": "Example",
+    "viewSchema": "View schema",
+    "fetchError": "Error fetching market servers",
+    "serverNotFound": "Server not found",
+    "searchError": "Error searching servers",
+    "filterError": "Error filtering servers by category",
+    "tagFilterError": "Error filtering servers by tag",
+    "noInstallationMethod": "No installation method available for this server",
+    "showing": "Showing {{from}}-{{to}} of {{total}} servers",
+    "perPage": "Per page"
   }
 }

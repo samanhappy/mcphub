@@ -8,6 +8,7 @@ import DashboardPage from './pages/Dashboard';
 import ServersPage from './pages/ServersPage';
 import GroupsPage from './pages/GroupsPage';
 import SettingsPage from './pages/SettingsPage';
+import MarketPage from './pages/MarketPage';
 
 function App() {
   return (
@@ -23,6 +24,7 @@ function App() {
               <Route path="/" element={<DashboardPage />} />
               <Route path="/servers" element={<ServersPage />} />
               <Route path="/groups" element={<GroupsPage />} />
+              <Route path="/market" element={<MarketPage />} />
               <Route path="/settings" element={<SettingsPage />} />
             </Route>
           </Route>

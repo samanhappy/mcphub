@@ -1,0 +1,153 @@
+import React from 'react';
+import { useTranslation } from 'react-i18next';
+import { MarketServer } from '@/types';
+
+interface MarketServerCardProps {
+  server: MarketServer;
+  onClick: (server: MarketServer) => void;
+}
+
+const MarketServerCard: React.FC<MarketServerCardProps> = ({ server, onClick }) => {
+  const { t } = useTranslation();
+
+  // 智能计算要显示多少个标签，确保在单行内展示
+  const getTagsToDisplay = () => {
+    if (!server.tags || server.tags.length === 0) {
+      return { tagsToShow: [], hasMore: false, moreCount: 0 };
+    }
+    
+    // 估计卡片内单行可用宽度（以字符为单位）
+    const estimatedAvailableWidth = 30; // 估计一行可以容纳的字符数
+    
+    // 计算标签和加号所需的字符空间（包括#号和间距）
+    const calculateTagWidth = (tag: string) => tag.length + 3; // +3 for # and spacing
+    
+    // 循环确定能显示的最大标签数量
+    let totalWidth = 0;
+    let i = 0;
+    
+    // 首先对标签按长度排序，优先显示较短的标签
+    const sortedTags = [...server.tags].sort((a, b) => a.length - b.length);
+    
+    // 计算能够放入的标签数量
+    for (i = 0; i < sortedTags.length; i++) {
+      const tagWidth = calculateTagWidth(sortedTags[i]);
+      
+      // 如果这个标签会使总宽度超出可用宽度，停止添加
+      if (totalWidth + tagWidth > estimatedAvailableWidth) {
+        break;
+      }
+      
+      totalWidth += tagWidth;
+      
+      // 如果这是最后一个标签但仍有空间，不需要显示"更多"
+      if (i === sortedTags.length - 1) {
+        return {
+          tagsToShow: sortedTags,
+          hasMore: false,
+          moreCount: 0
+        };
+      }
+    }
+    
+    // 如果没有足够空间显示任何标签，至少显示一个
+    if (i === 0 && sortedTags.length > 0) {
+      i = 1;
+    }
+    
+    // 计算"更多"标签所需的空间
+    const moreCount = sortedTags.length - i;
+    const moreTagWidth = 3 + String(moreCount).length + t('market.moreTags').length;
+    
+    // 如果剩余空间足够显示"更多"标签
+    if (totalWidth + moreTagWidth <= estimatedAvailableWidth || i < 1) {
+      return {
+        tagsToShow: sortedTags.slice(0, i),
+        hasMore: true,
+        moreCount
+      };
+    }
+    
+    // 如果连"更多"标签都放不下，减少一个标签以腾出空间
+    return {
+      tagsToShow: sortedTags.slice(0, Math.max(1, i - 1)),
+      hasMore: true,
+      moreCount: moreCount + 1
+    };
+  };
+
+  const { tagsToShow, hasMore, moreCount } = getTagsToDisplay();
+
+  return (
+    <div 
+      className="bg-white rounded-lg shadow-md p-5 hover:shadow-lg transition-shadow cursor-pointer flex flex-col h-full"
+      onClick={() => onClick(server)}
+    >
+      <div className="flex justify-between items-start mb-3">
+        <h3 className="text-lg font-semibold text-gray-900 line-clamp-1 mr-2">{server.display_name}</h3>
+        {server.is_official && (
+          <span className="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded flex-shrink-0">
+            {t('market.official')}
+          </span>
+        )}
+      </div>
+      <p className="text-gray-600 text-sm mb-4 line-clamp-2 min-h-[40px]">{server.description}</p>
+      
+      {/* Categories */}
+      <div className="flex flex-wrap gap-1 mb-2 min-h-[28px]">
+        {server.categories?.length > 0 ? (
+          server.categories.map((category, index) => (
+            <span 
+              key={index}
+              className="bg-gray-100 text-gray-800 text-xs px-2 py-1 rounded whitespace-nowrap"
+            >
+              {category}
+            </span>
+          ))
+        ) : (
+          <span className="text-xs text-gray-400 py-1">-</span>
+        )}
+      </div>
+      
+      {/* Tags */}
+      <div className="relative mb-3 min-h-[28px] overflow-x-auto">
+        {server.tags?.length > 0 ? (
+          <div className="flex gap-1 items-center whitespace-nowrap">
+            {tagsToShow.map((tag, index) => (
+              <span 
+                key={index}
+                className="bg-green-50 text-green-700 text-xs px-2 py-1 rounded flex-shrink-0"
+              >
+                #{tag}
+              </span>
+            ))}
+            {hasMore && (
+              <span className="bg-gray-100 text-gray-600 text-xs px-1.5 py-1 rounded flex-shrink-0">
+                +{moreCount} {t('market.moreTags')}
+              </span>
+            )}
+          </div>
+        ) : (
+          <span className="text-xs text-gray-400 py-1">-</span>
+        )}
+      </div>
+      
+      <div className="flex justify-between items-center mt-auto pt-2 text-xs text-gray-500 border-t border-gray-100">
+        <div className="overflow-hidden">
+          <span className="whitespace-nowrap">{t('market.by')} </span>
+          <span className="font-medium whitespace-nowrap overflow-hidden text-ellipsis max-w-[120px] inline-block align-bottom">
+            {server.author?.name || t('market.unknown')}
+          </span>
+        </div>
+        <div className="flex items-center flex-shrink-0">
+          <svg className="h-4 w-4 mr-1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+            <path fillRule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clipRule="evenodd" />
+          </svg>
+          <span>{server.tools?.length || 0} {t('market.tools')}</span>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default MarketServerCard;

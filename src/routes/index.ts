@@ -20,6 +20,15 @@ import {
   updateGroupServersBatch
 } from '../controllers/groupController.js';
 import {
+  getAllMarketServers,
+  getMarketServer,
+  getAllMarketCategories,
+  getAllMarketTags,
+  searchMarketServersByQuery,
+  getMarketServersByCategory,
+  getMarketServersByTag
+} from '../controllers/marketController.js';
+import {
   login,
   register,
   getCurrentUser,
@@ -49,6 +58,15 @@ export const initRoutes = (app: express.Application): void => {
   router.get('/groups/:id/servers', getGroupServers);
   // New route for batch updating servers in a group
   router.put('/groups/:id/servers/batch', updateGroupServersBatch);
+  
+  // Market routes
+  router.get('/market/servers', getAllMarketServers);
+  router.get('/market/servers/search', searchMarketServersByQuery);
+  router.get('/market/servers/:name', getMarketServer);
+  router.get('/market/categories', getAllMarketCategories);
+  router.get('/market/categories/:category', getMarketServersByCategory);
+  router.get('/market/tags', getAllMarketTags);
+  router.get('/market/tags/:tag', getMarketServersByTag);
   
   // Auth routes (these will NOT be protected by auth middleware)
   app.post('/auth/login', [
