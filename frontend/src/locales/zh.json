@@ -100,7 +100,7 @@
     "settings": "设置",
     "changePassword": "修改密码",
     "groups": "分组",
-    "market": "服务器市场"
+    "market": "市场"
   },
   "pages": {
     "dashboard": {
@@ -125,7 +125,7 @@
       "title": "分组管理"
     },
     "market": {
-      "title": "服务器市场"
+      "title": "服务器市场 - （数据来源于 mcpm.sh）"
     }
   },
   "groups": {
@@ -162,14 +162,14 @@
     "tools": "工具",
     "search": "搜索",
     "searchPlaceholder": "搜索服务器名称、分类或标签",
-    "clearFilters": "清除筛选",
-    "clearCategoryFilter": "清除分类筛选",
-    "clearTagFilter": "清除标签筛选",
+    "clearFilters": "清除",
+    "clearCategoryFilter": "",
+    "clearTagFilter": "",
     "categories": "分类",
     "tags": "标签",
     "showTags": "显示标签",
     "hideTags": "隐藏标签",
-    "moreTags": "更多",
+    "moreTags": "",
     "noServers": "未找到匹配的服务器",
     "backToList": "返回列表",
     "install": "安装",

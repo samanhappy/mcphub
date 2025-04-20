@@ -125,7 +125,7 @@
       "appearance": "Appearance"
     },
     "market": {
-      "title": "Server Market"
+      "title": "Server Market - (Data from mcpm.sh)"
     }
   },
   "groups": {
@@ -162,14 +162,14 @@
     "tools": "tools",
     "search": "Search",
     "searchPlaceholder": "Search for servers by name, category, or tags",
-    "clearFilters": "Clear Filters",
-    "clearCategoryFilter": "Clear category",
-    "clearTagFilter": "Clear tag",
+    "clearFilters": "Clear",
+    "clearCategoryFilter": "",
+    "clearTagFilter": "",
     "categories": "Categories",
     "tags": "Tags",
     "showTags": "Show tags",
     "hideTags": "Hide tags",
-    "moreTags": "more",
+    "moreTags": "",
     "noServers": "No servers found matching your search",
     "backToList": "Back to list",
     "install": "Install",

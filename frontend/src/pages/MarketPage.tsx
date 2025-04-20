@@ -105,7 +105,12 @@ const MarketPage: React.FC = () => {
   return (
     <div>
       <div className="flex justify-between items-center mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">{t('pages.market.title')}</h1>
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 flex items-center">
+            {t('market.title')}
+            <span className="text-sm text-gray-500 font-normal ml-2">{t('pages.market.title').split(' - ')[1]}</span>
+          </h1>
+        </div>
       </div>
 
       {error && (
@@ -175,8 +180,8 @@ const MarketPage: React.FC = () => {
                       key={category}
                       onClick={() => handleCategoryClick(category)}
                       className={`px-3 py-2 rounded text-sm text-left ${selectedCategory === category
-                          ? 'bg-blue-100 text-blue-800 font-medium'
-                          : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
+                        ? 'bg-blue-100 text-blue-800 font-medium'
+                        : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
                         }`}
                     >
                       {category}
@@ -187,7 +192,7 @@ const MarketPage: React.FC = () => {
             )}
 
             {/* Tags */}
-            {tags.length > 0 && (
+            {/* {tags.length > 0 && (
               <div className="mb-4">
                 <div className="flex justify-between items-center mb-3">
                   <div className="flex items-center">
@@ -225,7 +230,7 @@ const MarketPage: React.FC = () => {
                   </div>
                 )}
               </div>
-            )}
+            )} */}
           </div>
         </div>
 
@@ -289,7 +294,7 @@ const MarketPage: React.FC = () => {
               </div>
 
               <div className="mt-6">
-                
+
               </div>
             </>
           )}
