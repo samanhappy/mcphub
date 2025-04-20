@@ -25,7 +25,7 @@ Create a `mcp_settings.json` file to customize your server settings:
 ```json
 {
   "mcpServers": {
-    "amap-maps": {
+    "amap": {
       "command": "npx",
       "args": ["-y", "@amap/amap-maps-mcp-server"],
       "env": {

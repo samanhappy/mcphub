@@ -25,7 +25,7 @@ MCPHub 是一个统一的 MCP（Model Context Protocol，模型上下文协议�
 ```json
 {
   "mcpServers": {
-    "amap-maps": {
+    "amap": {
       "command": "npx",
       "args": ["-y", "@amap/amap-maps-mcp-server"],
       "env": {
