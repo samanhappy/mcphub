@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { Group, Server } from '@/types'
 import { Edit, Trash, Copy, Check } from '@/components/icons/LucideIcons'
 import DeleteDialog from '@/components/ui/DeleteDialog'
+import { useToast } from '@/contexts/ToastContext'
 
 interface GroupCardProps {
   group: Group
@@ -18,6 +19,7 @@ const GroupCard = ({
   onDelete
 }: GroupCardProps) => {
   const { t } = useTranslation()
+  const { showToast } = useToast()
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [copied, setCopied] = useState(false)
 
@@ -55,7 +57,7 @@ const GroupCard = ({
         setCopied(true)
         setTimeout(() => setCopied(false), 2000)
       } catch (err) {
-        alert(t('common.copyFailed') || 'Copy failed')
+        showToast(t('common.copyFailed') || 'Copy failed', 'error')
         console.error('Copy to clipboard failed:', err)
       }
       document.body.removeChild(textArea)

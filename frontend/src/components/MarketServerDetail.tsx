@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { MarketServer } from '@/types';
+import { MarketServer, MarketServerInstallation } from '@/types';
+import ServerForm from './ServerForm';
 
 interface MarketServerDetailProps {
   server: MarketServer;
@@ -18,6 +19,8 @@ const MarketServerDetail: React.FC<MarketServerDetailProps> = ({
   isInstalled = false
 }) => {
   const { t } = useTranslation();
+  const [modalVisible, setModalVisible] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Helper function to determine button state
   const getButtonProps = () => {
@@ -42,7 +45,55 @@ const MarketServerDetail: React.FC<MarketServerDetailProps> = ({
     }
   };
 
+  const toggleModal = () => {
+    setModalVisible(!modalVisible);
+    setError(null); // Clear any previous errors when toggling modal
+  };
+
+  const handleInstall = () => {
+    if (!isInstalled) {
+      toggleModal();
+    }
+  };
+
+  // Get the preferred installation configuration based on priority:
+  // npm > uvx > default
+  const getPreferredInstallation = (): MarketServerInstallation | undefined => {
+    if (!server.installations) {
+      return undefined;
+    }
+
+    if (server.installations.npm) {
+      return server.installations.npm;
+    } else if (server.installations.uvx) {
+      return server.installations.uvx;
+    } else if (server.installations.default) {
+      return server.installations.default;
+    }
+    
+    // If none of the preferred types are available, get the first available installation type
+    const installTypes = Object.keys(server.installations);
+    if (installTypes.length > 0) {
+      return server.installations[installTypes[0]];
+    }
+    
+    return undefined;
+  };
+
+  const handleSubmit = async (payload: any) => {
+    try {
+      setError(null);
+      // Pass the server object to the parent component for installation
+      onInstall(server);
+      setModalVisible(false);
+    } catch (err) {
+      console.error('Error installing server:', err);
+      setError(t('errors.serverInstall'));
+    }
+  };
+
   const buttonProps = getButtonProps();
+  const preferredInstallation = getPreferredInstallation();
 
   return (
     <div className="bg-white rounded-lg shadow-md p-6">
@@ -84,7 +135,7 @@ const MarketServerDetail: React.FC<MarketServerDetailProps> = ({
             </span>
           )}
           <button
-            onClick={() => !isInstalled && onInstall(server)}
+            onClick={handleInstall}
             disabled={buttonProps.disabled}
             className={buttonProps.className}
           >
@@ -210,13 +261,35 @@ const MarketServerDetail: React.FC<MarketServerDetailProps> = ({
 
       <div className="mt-6 flex justify-end">
         <button
-          onClick={() => !isInstalled && onInstall(server)}
+          onClick={handleInstall}
           disabled={buttonProps.disabled}
           className={buttonProps.className}
         >
           {buttonProps.text}
         </button>
       </div>
+
+      {modalVisible && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <ServerForm
+            onSubmit={handleSubmit}
+            onCancel={toggleModal}
+            modalTitle={t('market.installServer', { name: server.display_name })}
+            formError={error}
+            initialData={{
+              name: server.name,
+              status: 'disconnected',
+              config: preferredInstallation 
+                ? {
+                    command: preferredInstallation.command || '',
+                    args: preferredInstallation.args || [],
+                    env: preferredInstallation.env || {}
+                  }
+                : undefined
+            }}
+          />
+        </div>
+      )}
     </div>
   );
 };

@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { MarketServer } from '@/types';
 import { useMarketData } from '@/hooks/useMarketData';
+import { useToast } from '@/contexts/ToastContext';
 import MarketServerCard from '@/components/MarketServerCard';
 import MarketServerDetail from '@/components/MarketServerDetail';
 import Pagination from '@/components/ui/Pagination';
@@ -12,6 +13,7 @@ const MarketPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { serverName } = useParams<{ serverName?: string }>();
+  const { showToast } = useToast();
   
   const {
     servers,
@@ -93,8 +95,8 @@ const MarketPage: React.FC = () => {
       setInstalling(true);
       const success = await installServer(server);
       if (success) {
-        // Show success message
-        alert(t('market.installSuccess', { serverName: server.display_name }));
+        // Show success message using toast instead of alert
+        showToast(t('market.installSuccess', { serverName: server.display_name }), 'success');
       }
     } finally {
       setInstalling(false);
@@ -230,7 +232,7 @@ const MarketPage: React.FC = () => {
                       aria-label={showTags ? t('market.hideTags') : t('market.showTags')}
                     >
                       <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 transition-transform ${showTags ? 'rotate-180' : ''}`} viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 011.414 1.414l-4 4a1 1 01-1.414 0l-4-4a1 1 010-1.414z" clipRule="evenodd" />
+                        <path fillRule="evenodd" d="M5.293 7.293a1 1 011.414 0L10 10.586l3.293-3.293a1 1 011.414 1.414l-4 4a1 1 01-1.414 0l-4-4a1 1 010-1.414z" clipRule="evenodd" />
                       </svg>
                     </button>
                   </div>

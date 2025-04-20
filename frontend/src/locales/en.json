@@ -82,7 +82,8 @@
     "serverAdd": "Failed to add server. Please check the server status",
     "serverUpdate": "Failed to edit server {{serverName}}. Please check the server status",
     "serverFetch": "Failed to retrieve server data. Please try again later",
-    "initialStartup": "The server might be starting up. Please wait a moment as this process can take some time on first launch..."
+    "initialStartup": "The server might be starting up. Please wait a moment as this process can take some time on first launch...",
+    "serverInstall": "Failed to install server"
   },
   "common": {
     "processing": "Processing...",
@@ -175,6 +176,7 @@
     "install": "Install",
     "installing": "Installing...",
     "installed": "Installed",
+    "installServer": "Install Server: {{name}}",
     "installSuccess": "Server {{serverName}} installed successfully",
     "author": "Author",
     "license": "License",
