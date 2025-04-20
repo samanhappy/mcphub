@@ -37,6 +37,9 @@ RUN pnpm install
 
 COPY . .
 
+# Download the latest servers.json from mcpm.sh and replace the existing file
+RUN curl -s -f --connect-timeout 10 https://mcpm.sh/api/servers.json -o servers.json || echo "Failed to download servers.json, using bundled version"
+
 RUN pnpm frontend:build && pnpm build
 
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
