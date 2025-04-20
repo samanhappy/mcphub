@@ -43,7 +43,7 @@
     "name": "服务器名称",
     "url": "服务器 URL",
     "apiKey": "API 密钥",
-    "save": "保存更改",
+    "save": "保存",
     "cancel": "取消",
     "addError": "添加服务器失败",
     "editError": "编辑服务器 {{serverName}} 失败",

@@ -43,7 +43,7 @@
     "name": "Server Name",
     "url": "Server URL",
     "apiKey": "API Key",
-    "save": "Save Changes",
+    "save": "Save",
     "cancel": "Cancel",
     "invalidConfig": "Could not find configuration data for {{serverName}}",
     "addError": "Failed to add server",
