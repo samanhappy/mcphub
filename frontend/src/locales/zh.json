@@ -174,6 +174,7 @@
     "backToList": "返回列表",
     "install": "安装",
     "installing": "安装中...",
+    "installed": "已安装",
     "installSuccess": "服务器 {{serverName}} 安装成功",
     "author": "作者",
     "license": "许可证",

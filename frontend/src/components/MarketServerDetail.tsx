@@ -7,15 +7,42 @@ interface MarketServerDetailProps {
   onBack: () => void;
   onInstall: (server: MarketServer) => void;
   installing?: boolean;
+  isInstalled?: boolean;
 }
 
 const MarketServerDetail: React.FC<MarketServerDetailProps> = ({
   server,
   onBack,
   onInstall,
-  installing = false
+  installing = false,
+  isInstalled = false
 }) => {
   const { t } = useTranslation();
+
+  // Helper function to determine button state
+  const getButtonProps = () => {
+    if (isInstalled) {
+      return {
+        className: "bg-green-600 cursor-default px-4 py-2 rounded text-sm font-medium text-white",
+        disabled: true,
+        text: t('market.installed')
+      };
+    } else if (installing) {
+      return {
+        className: "bg-gray-400 cursor-not-allowed px-4 py-2 rounded text-sm font-medium text-white",
+        disabled: true,
+        text: t('market.installing')
+      };
+    } else {
+      return {
+        className: "bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded text-sm font-medium text-white",
+        disabled: false,
+        text: t('market.install')
+      };
+    }
+  };
+
+  const buttonProps = getButtonProps();
 
   return (
     <div className="bg-white rounded-lg shadow-md p-6">
@@ -57,14 +84,11 @@ const MarketServerDetail: React.FC<MarketServerDetailProps> = ({
             </span>
           )}
           <button
-            onClick={() => onInstall(server)}
-            disabled={installing}
-            className={`px-4 py-2 rounded text-sm font-medium text-white ${installing
-                ? 'bg-gray-400 cursor-not-allowed'
-                : 'bg-blue-600 hover:bg-blue-700'
-              }`}
+            onClick={() => !isInstalled && onInstall(server)}
+            disabled={buttonProps.disabled}
+            className={buttonProps.className}
           >
-            {installing ? t('market.installing') : t('market.install')}
+            {buttonProps.text}
           </button>
         </div>
       </div>
@@ -186,14 +210,11 @@ const MarketServerDetail: React.FC<MarketServerDetailProps> = ({
 
       <div className="mt-6 flex justify-end">
         <button
-          onClick={() => onInstall(server)}
-          disabled={installing}
-          className={`px-6 py-2 rounded text-sm font-medium text-white ${installing
-              ? 'bg-gray-400 cursor-not-allowed'
-              : 'bg-blue-600 hover:bg-blue-700'
-            }`}
+          onClick={() => !isInstalled && onInstall(server)}
+          disabled={buttonProps.disabled}
+          className={buttonProps.className}
         >
-          {installing ? t('market.installing') : t('market.install')}
+          {buttonProps.text}
         </button>
       </div>
     </div>

@@ -14,6 +14,7 @@ export const useMarketData = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentServer, setCurrentServer] = useState<MarketServer | null>(null);
+  const [installedServers, setInstalledServers] = useState<string[]>([]);
   
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
@@ -285,6 +286,37 @@ export const useMarketData = () => {
     }
   }, [t, fetchMarketServers, applyPagination]);
 
+  // Fetch installed servers
+  const fetchInstalledServers = useCallback(async () => {
+    try {
+      const token = localStorage.getItem('mcphub_token');
+      const response = await fetch('/api/servers', {
+        headers: {
+          'x-auth-token': token || ''
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      
+      if (data && data.success && Array.isArray(data.data)) {
+        // Extract server names
+        const installedServerNames = data.data.map((server: any) => server.name);
+        setInstalledServers(installedServerNames);
+      }
+    } catch (err) {
+      console.error('Error fetching installed servers:', err);
+    }
+  }, []);
+
+  // Check if a server is already installed
+  const isServerInstalled = useCallback((serverName: string) => {
+    return installedServers.includes(serverName);
+  }, [installedServers]);
+
   // Install server to the local environment
   const installServer = useCallback(async (server: MarketServer) => {
     try {
@@ -323,13 +355,15 @@ export const useMarketData = () => {
         throw new Error(errorData.message || `Status: ${response.status}`);
       }
       
+      // Update installed servers list after successful installation
+      await fetchInstalledServers();
       return true;
     } catch (err) {
       console.error('Error installing server:', err);
       setError(err instanceof Error ? err.message : String(err));
       return false;
     }
-  }, [t]);
+  }, [t, fetchInstalledServers]);
 
   // Change servers per page
   const changeServersPerPage = useCallback((perPage: number) => {
@@ -343,7 +377,8 @@ export const useMarketData = () => {
     fetchMarketServers();
     fetchCategories();
     fetchTags();
-  }, [fetchMarketServers, fetchCategories, fetchTags]);
+    fetchInstalledServers();
+  }, [fetchMarketServers, fetchCategories, fetchTags, fetchInstalledServers]);
 
   return {
     servers,
@@ -368,6 +403,8 @@ export const useMarketData = () => {
     totalPages,
     serversPerPage,
     changePage,
-    changeServersPerPage
+    changeServersPerPage,
+    // Installed servers methods
+    isServerInstalled
   };
 };

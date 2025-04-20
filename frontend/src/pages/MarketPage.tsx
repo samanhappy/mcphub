@@ -28,6 +28,7 @@ const MarketPage: React.FC = () => {
     selectedTag,
     installServer,
     fetchServerByName,
+    isServerInstalled,
     // Pagination
     currentPage,
     totalPages,
@@ -123,6 +124,7 @@ const MarketPage: React.FC = () => {
         onBack={handleBackToList}
         onInstall={handleInstall}
         installing={installing}
+        isInstalled={isServerInstalled(selectedServer.name)}
       />
     );
   }
