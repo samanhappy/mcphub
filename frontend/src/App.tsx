@@ -25,6 +25,7 @@ function App() {
               <Route path="/servers" element={<ServersPage />} />
               <Route path="/groups" element={<GroupsPage />} />
               <Route path="/market" element={<MarketPage />} />
+              <Route path="/market/:serverName" element={<MarketPage />} />
               <Route path="/settings" element={<SettingsPage />} />
             </Route>
           </Route>

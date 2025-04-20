@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { MarketServer } from '@/types';
 import { useMarketData } from '@/hooks/useMarketData';
 import MarketServerCard from '@/components/MarketServerCard';
@@ -8,6 +9,10 @@ import Pagination from '@/components/ui/Pagination';
 
 const MarketPage: React.FC = () => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { serverName } = useParams<{ serverName?: string }>();
+  
   const {
     servers,
     allServers,
@@ -22,6 +27,7 @@ const MarketPage: React.FC = () => {
     selectedCategory,
     selectedTag,
     installServer,
+    fetchServerByName,
     // Pagination
     currentPage,
     totalPages,
@@ -34,6 +40,25 @@ const MarketPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [installing, setInstalling] = useState(false);
   const [showTags, setShowTags] = useState(false);
+
+  // Load server details if a server name is in the URL
+  useEffect(() => {
+    const loadServerDetails = async () => {
+      if (serverName) {
+        const server = await fetchServerByName(serverName);
+        if (server) {
+          setSelectedServer(server);
+        } else {
+          // If server not found, navigate back to market page
+          navigate('/market');
+        }
+      } else {
+        setSelectedServer(null);
+      }
+    };
+    
+    loadServerDetails();
+  }, [serverName, fetchServerByName, navigate]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -55,11 +80,11 @@ const MarketPage: React.FC = () => {
   };
 
   const handleServerClick = (server: MarketServer) => {
-    setSelectedServer(server);
+    navigate(`/market/${server.name}`);
   };
 
   const handleBackToList = () => {
-    setSelectedServer(null);
+    navigate('/market');
   };
 
   const handleInstall = async (server: MarketServer) => {
