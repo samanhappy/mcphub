@@ -83,7 +83,9 @@
     "serverUpdate": "编辑服务器 {{serverName}} 失败，请检查服务器状态",
     "serverFetch": "获取服务器数据失败，请稍后重试",
     "initialStartup": "服务器可能正在启动中。首次启动可能需要一些时间，请耐心等候...",
-    "serverInstall": "安装服务器失败"
+    "serverInstall": "安装服务器失败",
+    "failedToFetchSettings": "获取设置失败",
+    "failedToUpdateSystemConfig": "更新系统配置失败"
   },
   "common": {
     "processing": "处理中...",
@@ -120,7 +122,8 @@
       "language": "语言",
       "account": "账户设置",
       "password": "修改密码",
-      "appearance": "外观"
+      "appearance": "外观",
+      "routeConfig": "路由配置"
     },
     "groups": {
       "title": "分组管理"
@@ -196,5 +199,12 @@
     "noInstallationMethod": "该服务器没有可用的安装方法",
     "showing": "显示 {{from}}-{{to}}/{{total}} 个服务器",
     "perPage": "每页显示"
+  },
+  "settings": {
+    "enableGlobalRoute": "启用全局路由",
+    "enableGlobalRouteDescription": "允许不指定分组 ID 就连接到 /sse 端点",
+    "enableGroupNameRoute": "启用分组名称路由",
+    "enableGroupNameRouteDescription": "允许使用分组名称而非分组 ID 连接到 /sse 端点",
+    "systemConfigUpdated": "系统配置更新成功"
   }
 }

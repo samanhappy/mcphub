@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
 import { getMcpServer } from './mcpService.js';
+import { loadSettings } from '../config/index.js';
 
 const transports: { [sessionId: string]: { transport: SSEServerTransport; group: string } } = {};
 
@@ -9,16 +10,30 @@ export const getGroup = (sessionId: string): string => {
 };
 
 export const handleSseConnection = async (req: Request, res: Response): Promise<void> => {
-  const transport = new SSEServerTransport('/messages', res);
+  const settings = loadSettings();
+  const routingConfig = settings.systemConfig?.routing || {
+    enableGlobalRoute: true,
+    enableGroupNameRoute: true,
+  };
   const group = req.params.group;
-  transports[transport.sessionId] = { transport, group };
+
+  // Check if this is a global route (no group) and if it's allowed
+  if (!group && !routingConfig.enableGlobalRoute) {
+    res.status(403).send('Global routes are disabled. Please specify a group ID.');
+    return;
+  }
+
+  const transport = new SSEServerTransport('/messages', res);
+  transports[transport.sessionId] = { transport, group: group };
 
   res.on('close', () => {
     delete transports[transport.sessionId];
     console.log(`SSE connection closed: ${transport.sessionId}`);
   });
 
-  console.log(`New SSE connection established: ${transport.sessionId}`);
+  console.log(
+    `New SSE connection established: ${transport.sessionId} with group: ${group || 'global'}`,
+  );
   await getMcpServer().connect(transport);
 };
 

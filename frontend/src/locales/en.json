@@ -83,7 +83,9 @@
     "serverUpdate": "Failed to edit server {{serverName}}. Please check the server status",
     "serverFetch": "Failed to retrieve server data. Please try again later",
     "initialStartup": "The server might be starting up. Please wait a moment as this process can take some time on first launch...",
-    "serverInstall": "Failed to install server"
+    "serverInstall": "Failed to install server",
+    "failedToFetchSettings": "Failed to fetch settings",
+    "failedToUpdateRouteConfig": "Failed to update route configuration"
   },
   "common": {
     "processing": "Processing...",
@@ -123,7 +125,8 @@
       "language": "Language",
       "account": "Account Settings",
       "password": "Change Password",
-      "appearance": "Appearance"
+      "appearance": "Appearance",
+      "routeConfig": "Route Configuration"
     },
     "market": {
       "title": "Server Market - (Data from mcpm.sh)"
@@ -196,5 +199,12 @@
     "noInstallationMethod": "No installation method available for this server",
     "showing": "Showing {{from}}-{{to}} of {{total}} servers",
     "perPage": "Per page"
+  },
+  "settings": {
+    "enableGlobalRoute": "Enable Global Route",
+    "enableGlobalRouteDescription": "Allow connections to /sse endpoint without specifying a group ID",
+    "enableGroupNameRoute": "Enable Group Name Route",
+    "enableGroupNameRouteDescription": "Allow connections to /sse endpoint using group names instead of just group IDs",
+    "systemConfigUpdated": "System configuration updated successfully"
   }
 }

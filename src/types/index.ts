@@ -78,6 +78,13 @@ export interface McpSettings {
     [key: string]: ServerConfig; // Key-value pairs of server names and their configurations
   };
   groups?: IGroup[]; // Array of server groups
+  systemConfig?: {
+    routing?: {
+      enableGlobalRoute?: boolean; // Controls whether the /sse endpoint without group is enabled
+      enableGroupNameRoute?: boolean; // Controls whether group routing by name is allowed
+    };
+    // Add other system configuration sections here in the future
+  };
 }
 
 // Configuration details for an individual server

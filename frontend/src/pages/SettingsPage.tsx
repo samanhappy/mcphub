@@ -1,11 +1,25 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import ChangePasswordForm from '@/components/ChangePasswordForm';
+import { Switch } from '@/components/ui/ToggleGroup';
+import { useSettingsData } from '@/hooks/useSettingsData';
+import { useToast } from '@/contexts/ToastContext';
 
 const SettingsPage: React.FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const { showToast } = useToast();
+  
+  const { 
+    routingConfig, 
+    loading, 
+    updateRoutingConfig 
+  } = useSettingsData();
+  
+  const handleRoutingConfigChange = async (key: 'enableGlobalRoute' | 'enableGroupNameRoute', value: boolean) => {
+    await updateRoutingConfig(key, value);
+  };
   
   const handlePasswordChangeSuccess = () => {
     setTimeout(() => {
@@ -24,7 +38,37 @@ const SettingsPage: React.FC = () => {
         </div>
       </div>
       
-      {/* 其他设置可以在这里添加 */}
+      {/* Route Configuration Settings */}
+      <div className="bg-white shadow rounded-lg p-6 mt-6">
+        <h2 className="text-xl font-semibold text-gray-800 mb-4">{t('pages.settings.routeConfig')}</h2>
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="font-medium text-gray-700">{t('settings.enableGlobalRoute')}</h3>
+              <p className="text-sm text-gray-500">{t('settings.enableGlobalRouteDescription')}</p>
+            </div>
+            <Switch
+              disabled={loading}
+              checked={routingConfig.enableGlobalRoute}
+              onCheckedChange={(checked) => handleRoutingConfigChange('enableGlobalRoute', checked)}
+            />
+          </div>
+          
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="font-medium text-gray-700">{t('settings.enableGroupNameRoute')}</h3>
+              <p className="text-sm text-gray-500">{t('settings.enableGroupNameRouteDescription')}</p>
+            </div>
+            <Switch
+              disabled={loading}
+              checked={routingConfig.enableGroupNameRoute}
+              onCheckedChange={(checked) => handleRoutingConfigChange('enableGroupNameRoute', checked)}
+            />
+          </div>
+        </div>
+      </div>
+      
+      {/* Language Settings */}
       <div className="bg-white shadow rounded-lg p-6 mt-6">
         <h2 className="text-xl font-semibold text-gray-800 mb-4">{t('pages.settings.language')}</h2>
         <div className="flex space-x-4">

@@ -11,8 +11,17 @@ export const getAllGroups = (): IGroup[] => {
 
 // Get group by ID or name
 export const getGroupByIdOrName = (key: string): IGroup | undefined => {
+  const settings = loadSettings();
+  const routingConfig = settings.systemConfig?.routing || {
+    enableGlobalRoute: true,
+    enableGroupNameRoute: true,
+  };
   const groups = getAllGroups();
-  return groups.find((group) => group.id === key || group.name === key);
+  return (
+    groups.find(
+      (group) => group.id === key || (group.name === key && routingConfig.enableGroupNameRoute),
+    ) || undefined
+  );
 };
 
 // Create a new group

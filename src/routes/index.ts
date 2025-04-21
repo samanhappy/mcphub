@@ -7,6 +7,7 @@ import {
   updateServer,
   deleteServer,
   toggleServer,
+  updateSystemConfig
 } from '../controllers/serverController.js';
 import {
   getGroups,
@@ -46,6 +47,7 @@ export const initRoutes = (app: express.Application): void => {
   router.put('/servers/:name', updateServer);
   router.delete('/servers/:name', deleteServer);
   router.post('/servers/:name/toggle', toggleServer);
+  router.put('/system-config', updateSystemConfig);
   
   // Group management routes
   router.get('/groups', getGroups);

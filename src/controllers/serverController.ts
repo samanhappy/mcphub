@@ -8,7 +8,7 @@ import {
   notifyToolChanged,
   toggleServerStatus,
 } from '../services/mcpService.js';
-import { loadSettings } from '../config/index.js';
+import { loadSettings, saveSettings } from '../config/index.js';
 
 export const getAllServers = (_: Request, res: Response): void => {
   try {
@@ -235,6 +235,63 @@ export const toggleServer = async (req: Request, res: Response): Promise<void> =
       res.status(404).json({
         success: false,
         message: result.message || 'Server not found or failed to toggle status',
+      });
+    }
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+    });
+  }
+};
+
+export const updateSystemConfig = (req: Request, res: Response): void => {
+  try {
+    const { routing } = req.body;
+    
+    if (!routing || (typeof routing.enableGlobalRoute !== 'boolean' && typeof routing.enableGroupNameRoute !== 'boolean')) {
+      res.status(400).json({
+        success: false,
+        message: 'Invalid system configuration provided',
+      });
+      return;
+    }
+    
+    const settings = loadSettings();
+    if (!settings.systemConfig) {
+      settings.systemConfig = {
+        routing: {
+          enableGlobalRoute: true,
+          enableGroupNameRoute: true
+        }
+      };
+    }
+    
+    if (!settings.systemConfig.routing) {
+      settings.systemConfig.routing = {
+        enableGlobalRoute: true,
+        enableGroupNameRoute: true
+      };
+    }
+    
+    if (typeof routing.enableGlobalRoute === 'boolean') {
+      settings.systemConfig.routing.enableGlobalRoute = routing.enableGlobalRoute;
+    }
+    
+    if (typeof routing.enableGroupNameRoute === 'boolean') {
+      settings.systemConfig.routing.enableGroupNameRoute = routing.enableGroupNameRoute;
+    }
+    
+    if (saveSettings(settings)) {
+      res.json({
+        success: true,
+        data: settings.systemConfig,
+        message: 'System configuration updated successfully',
+      });
+    } else {
+      res.status(500).json({
+        success: false,
+        message: 'Failed to save system configuration',
       });
     }
   } catch (error) {
