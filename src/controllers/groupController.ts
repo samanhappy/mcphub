@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import { ApiResponse } from '../types/index.js';
 import {
   getAllGroups,
-  getGroupById,
+  getGroupByIdOrName,
   createGroup,
   updateGroup,
   updateGroupServers,
@@ -41,7 +41,7 @@ export const getGroup = (req: Request, res: Response): void => {
       return;
     }
 
-    const group = getGroupById(id);
+    const group = getGroupByIdOrName(id);
     if (!group) {
       res.status(404).json({
         success: false,
@@ -318,7 +318,7 @@ export const getGroupServers = (req: Request, res: Response): void => {
       return;
     }
 
-    const group = getGroupById(id);
+    const group = getGroupByIdOrName(id);
     if (!group) {
       res.status(404).json({
         success: false,

@@ -9,10 +9,10 @@ export const getAllGroups = (): IGroup[] => {
   return settings.groups || [];
 };
 
-// Get group by ID
-export const getGroupById = (id: string): IGroup | undefined => {
+// Get group by ID or name
+export const getGroupByIdOrName = (key: string): IGroup | undefined => {
   const groups = getAllGroups();
-  return groups.find((group) => group.id === id);
+  return groups.find((group) => group.id === key || group.name === key);
 };
 
 // Create a new group
@@ -218,6 +218,6 @@ export const removeServerFromGroup = (groupId: string, serverName: string): IGro
 
 // Get all servers in a group
 export const getServersInGroup = (groupId: string): string[] => {
-  const group = getGroupById(groupId);
+  const group = getGroupByIdOrName(groupId);
   return group ? group.servers : [];
 };

@@ -2,16 +2,16 @@ import { Request, Response } from 'express';
 import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
 import { getMcpServer } from './mcpService.js';
 
-const transports: { [sessionId: string]: { transport: SSEServerTransport; groupId: string } } = {};
+const transports: { [sessionId: string]: { transport: SSEServerTransport; group: string } } = {};
 
-export const getGroupId = (sessionId: string): string => {
-  return transports[sessionId]?.groupId || '';
+export const getGroup = (sessionId: string): string => {
+  return transports[sessionId]?.group || '';
 };
 
 export const handleSseConnection = async (req: Request, res: Response): Promise<void> => {
   const transport = new SSEServerTransport('/messages', res);
-  const groupId = req.params.groupId;
-  transports[transport.sessionId] = { transport, groupId };
+  const group = req.params.group;
+  transports[transport.sessionId] = { transport, group };
 
   res.on('close', () => {
     delete transports[transport.sessionId];
@@ -24,10 +24,10 @@ export const handleSseConnection = async (req: Request, res: Response): Promise<
 
 export const handleSseMessage = async (req: Request, res: Response): Promise<void> => {
   const sessionId = req.query.sessionId as string;
-  const { transport, groupId } = transports[sessionId];
-  req.params.groupId = groupId;
-  req.query.groupId = groupId;
-  console.log(`Received message for sessionId: ${sessionId} in groupId: ${groupId}`);
+  const { transport, group } = transports[sessionId];
+  req.params.group = group;
+  req.query.group = group;
+  console.log(`Received message for sessionId: ${sessionId} in group: ${group}`);
   if (transport) {
     await transport.handlePostMessage(req, res);
   } else {

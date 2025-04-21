@@ -7,7 +7,7 @@ import { ServerInfo, ServerConfig } from '../types/index.js';
 import { loadSettings, saveSettings, expandEnvVars } from '../config/index.js';
 import config from '../config/index.js';
 import { get } from 'http';
-import { getGroupId } from './sseService.js';
+import { getGroup } from './sseService.js';
 import { getServersInGroup } from './groupService.js';
 
 let currentServer: Server;
@@ -316,12 +316,12 @@ export const createMcpServer = (name: string, version: string): Server => {
   const server = new Server({ name, version }, { capabilities: { tools: {} } });
   server.setRequestHandler(ListToolsRequestSchema, async (_, extra) => {
     const sessionId = extra.sessionId || '';
-    const groupId = getGroupId(sessionId);
-    console.log(`Handling ListToolsRequest for groupId: ${groupId}`);
+    const group = getGroup(sessionId);
+    console.log(`Handling ListToolsRequest for group: ${group}`);
     const allServerInfos = serverInfos.filter((serverInfo) => {
       if (serverInfo.enabled === false) return false;
-      if (!groupId) return true;
-      const serversInGroup = getServersInGroup(groupId);
+      if (!group) return true;
+      const serversInGroup = getServersInGroup(group);
       return serversInGroup.includes(serverInfo.name);
     });
 
