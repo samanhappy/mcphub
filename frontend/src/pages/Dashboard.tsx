@@ -7,7 +7,7 @@ const DashboardPage: React.FC = () => {
   const { t } = useTranslation();
   const { servers, error, setError, isLoading } = useServerData();
 
-  // 计算服务器统计信息
+  // Calculate server statistics
   const serverStats = {
     total: servers.length,
     online: servers.filter(server => server.status === 'connected').length,
@@ -22,7 +22,7 @@ const DashboardPage: React.FC = () => {
     connecting: 'status.connecting'
   }
 
-  // 计算各状态百分比（用于仪表板展示）
+  // Calculate percentage for each status (for dashboard display)
   const getStatusPercentage = (status: ServerStatus) => {
     if (servers.length === 0) return 0;
     return Math.round((servers.filter(server => server.status === status).length / servers.length) * 100);
@@ -64,7 +64,7 @@ const DashboardPage: React.FC = () => {
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
-          {/* 服务器总数 */}
+          {/* Total servers */}
           <div className="bg-white rounded-lg shadow p-6">
             <div className="flex items-center">
               <div className="p-3 rounded-full bg-blue-100 text-blue-800">
@@ -79,7 +79,7 @@ const DashboardPage: React.FC = () => {
             </div>
           </div>
 
-          {/* 在线服务器 */}
+          {/* Online servers */}
           <div className="bg-white rounded-lg shadow p-6">
             <div className="flex items-center">
               <div className="p-3 rounded-full bg-green-100 text-green-800">
@@ -100,7 +100,7 @@ const DashboardPage: React.FC = () => {
             </div>
           </div>
 
-          {/* 离线服务器 */}
+          {/* Offline servers */}
           <div className="bg-white rounded-lg shadow p-6">
             <div className="flex items-center">
               <div className="p-3 rounded-full bg-red-100 text-red-800">
@@ -121,7 +121,7 @@ const DashboardPage: React.FC = () => {
             </div>
           </div>
 
-          {/* 连接中服务器 */}
+          {/* Connecting servers */}
           <div className="bg-white rounded-lg shadow p-6">
             <div className="flex items-center">
               <div className="p-3 rounded-full bg-yellow-100 text-yellow-800">
@@ -144,7 +144,7 @@ const DashboardPage: React.FC = () => {
         </div>
       )}
 
-      {/* 最近活动列表 */}
+      {/* Recent activity list */}
       {servers.length > 0 && !isLoading && (
         <div className="mt-8">
           <h2 className="text-xl font-semibold text-gray-900 mb-4">{t('pages.dashboard.recentServers')}</h2>

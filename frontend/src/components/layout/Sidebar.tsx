@@ -16,7 +16,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
   const { t } = useTranslation();
   const location = useLocation();
   
-  // 菜单项配置
+  // Menu item configuration
   const menuItems: MenuItem[] = [
     {
       path: '/',

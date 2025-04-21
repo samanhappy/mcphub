@@ -10,37 +10,37 @@ interface MarketServerCardProps {
 const MarketServerCard: React.FC<MarketServerCardProps> = ({ server, onClick }) => {
   const { t } = useTranslation();
 
-  // 智能计算要显示多少个标签，确保在单行内展示
+  // Intelligently calculate how many tags to display to ensure they fit in a single line
   const getTagsToDisplay = () => {
     if (!server.tags || server.tags.length === 0) {
       return { tagsToShow: [], hasMore: false, moreCount: 0 };
     }
     
-    // 估计卡片内单行可用宽度（以字符为单位）
-    const estimatedAvailableWidth = 30; // 估计一行可以容纳的字符数
+    // Estimate available width in the card (in characters)
+    const estimatedAvailableWidth = 28; // Estimated number of characters that can fit in one line
     
-    // 计算标签和加号所需的字符空间（包括#号和间距）
+    // Calculate the character space needed for tags and plus sign (including # and spacing)
     const calculateTagWidth = (tag: string) => tag.length + 3; // +3 for # and spacing
     
-    // 循环确定能显示的最大标签数量
+    // Loop to determine the maximum number of tags that can be displayed
     let totalWidth = 0;
     let i = 0;
     
-    // 首先对标签按长度排序，优先显示较短的标签
+    // First, sort tags by length to prioritize displaying shorter tags
     const sortedTags = [...server.tags].sort((a, b) => a.length - b.length);
     
-    // 计算能够放入的标签数量
+    // Calculate how many tags can fit
     for (i = 0; i < sortedTags.length; i++) {
       const tagWidth = calculateTagWidth(sortedTags[i]);
       
-      // 如果这个标签会使总宽度超出可用宽度，停止添加
+      // If this tag would make the total width exceed available width, stop adding
       if (totalWidth + tagWidth > estimatedAvailableWidth) {
         break;
       }
       
       totalWidth += tagWidth;
       
-      // 如果这是最后一个标签但仍有空间，不需要显示"更多"
+      // If this is the last tag but there's still space, no need to show "more"
       if (i === sortedTags.length - 1) {
         return {
           tagsToShow: sortedTags,
@@ -50,16 +50,16 @@ const MarketServerCard: React.FC<MarketServerCardProps> = ({ server, onClick }) 
       }
     }
     
-    // 如果没有足够空间显示任何标签，至少显示一个
+    // If there's not enough space to display any tags, show at least one
     if (i === 0 && sortedTags.length > 0) {
       i = 1;
     }
     
-    // 计算"更多"标签所需的空间
+    // Calculate space needed for the "more" tag
     const moreCount = sortedTags.length - i;
     const moreTagWidth = 3 + String(moreCount).length + t('market.moreTags').length;
     
-    // 如果剩余空间足够显示"更多"标签
+    // If there's enough remaining space to display the "more" tag
     if (totalWidth + moreTagWidth <= estimatedAvailableWidth || i < 1) {
       return {
         tagsToShow: sortedTags.slice(0, i),
@@ -68,7 +68,7 @@ const MarketServerCard: React.FC<MarketServerCardProps> = ({ server, onClick }) 
       };
     }
     
-    // 如果连"更多"标签都放不下，减少一个标签以腾出空间
+    // If there's not enough space for even the "more" tag, reduce one tag to make room
     return {
       tagsToShow: sortedTags.slice(0, Math.max(1, i - 1)),
       hasMore: true,
