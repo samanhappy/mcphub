@@ -32,8 +32,8 @@ i18n
     },
 
     detection: {
-      // Order of detection; we put 'navigator' first to use browser language
-      order: ['navigator', 'localStorage', 'cookie', 'htmlTag'],
+      // Order of detection; prioritize localStorage to respect user language choice
+      order: ['localStorage', 'cookie', 'htmlTag', 'navigator'],
       // Cache the language in localStorage
       caches: ['localStorage', 'cookie'],
     }

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import ChangePasswordForm from '@/components/ChangePasswordForm';
@@ -7,9 +7,15 @@ import { useSettingsData } from '@/hooks/useSettingsData';
 import { useToast } from '@/contexts/ToastContext';
 
 const SettingsPage: React.FC = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const { showToast } = useToast();
+  const [currentLanguage, setCurrentLanguage] = useState(i18n.language);
+
+  // Update current language when it changes
+  useEffect(() => {
+    setCurrentLanguage(i18n.language);
+  }, [i18n.language]);
 
   const {
     routingConfig,
@@ -17,10 +23,9 @@ const SettingsPage: React.FC = () => {
     updateRoutingConfig
   } = useSettingsData();
 
-  // 添加状态控制各个部分的可见性
   const [sectionsVisible, setSectionsVisible] = useState({
-    routingConfig: true,
-    password: false  // 改为默认不展开
+    routingConfig: false,
+    password: false
   });
 
   const toggleSection = (section: 'routingConfig' | 'password') => {
@@ -40,6 +45,11 @@ const SettingsPage: React.FC = () => {
     }, 2000);
   };
 
+  const handleLanguageChange = (lang: string) => {
+    localStorage.setItem('i18nextLng', lang);
+    window.location.reload();
+  };
+
   return (
     <div className="max-w-4xl mx-auto">
       <h1 className="text-2xl font-bold text-gray-900 mb-8">{t('pages.settings.title')}</h1>
@@ -49,21 +59,23 @@ const SettingsPage: React.FC = () => {
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-semibold text-gray-800">{t('pages.settings.language')}</h2>
           <div className="flex space-x-3">
-            <button 
-              className="px-3 py-1.5 bg-blue-100 text-blue-800 rounded-md hover:bg-blue-200 transition-colors text-sm"
-              onClick={() => {
-                localStorage.setItem('i18nextLng', 'en');
-                window.location.reload();
-              }}
+            <button
+              className={`px-3 py-1.5 rounded-md transition-colors text-sm ${
+                currentLanguage.startsWith('en') 
+                  ? 'bg-blue-500 text-white' 
+                  : 'bg-blue-100 text-blue-800 hover:bg-blue-200'
+              }`}
+              onClick={() => handleLanguageChange('en')}
             >
               English
             </button>
-            <button 
-              className="px-3 py-1.5 bg-blue-100 text-blue-800 rounded-md hover:bg-blue-200 transition-colors text-sm"
-              onClick={() => {
-                localStorage.setItem('i18nextLng', 'zh');
-                window.location.reload();
-              }}
+            <button
+              className={`px-3 py-1.5 rounded-md transition-colors text-sm ${
+                currentLanguage.startsWith('zh') 
+                  ? 'bg-blue-500 text-white' 
+                  : 'bg-blue-100 text-blue-800 hover:bg-blue-200'
+              }`}
+              onClick={() => handleLanguageChange('zh')}
             >
               中文
             </button>
