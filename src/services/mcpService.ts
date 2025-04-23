@@ -13,7 +13,7 @@ let currentServer: Server;
 
 export const initMcpServer = async (name: string, version: string): Promise<void> => {
   currentServer = createMcpServer(name, version);
-  await registerAllTools(currentServer, true);
+  await registerAllTools(currentServer, true, true);
 };
 
 export const setMcpServer = (server: Server): void => {
@@ -25,7 +25,7 @@ export const getMcpServer = (): Server => {
 };
 
 export const notifyToolChanged = async () => {
-  await registerAllTools(currentServer, true);
+  await registerAllTools(currentServer, true, false);
   currentServer
     .sendToolListChanged()
     .catch((error) => {
@@ -40,7 +40,7 @@ export const notifyToolChanged = async () => {
 let serverInfos: ServerInfo[] = [];
 
 // Initialize MCP server clients
-export const initializeClientsFromSettings = (): ServerInfo[] => {
+export const initializeClientsFromSettings = (isInit: boolean): ServerInfo[] => {
   const settings = loadSettings();
   const existingServerInfos = serverInfos;
   serverInfos = [];
@@ -109,13 +109,14 @@ export const initializeClientsFromSettings = (): ServerInfo[] => {
         },
       },
     );
+    const timeout = isInit ? Number(config.initTimeout) : Number(config.timeout);
     client
-      .connect(transport, { timeout: Number(config.timeout) })
+      .connect(transport, { timeout: timeout })
       .then(() => {
         console.log(`Successfully connected client for server: ${name}`);
 
         client
-          .listTools({}, { timeout: Number(config.timeout) })
+          .listTools({}, { timeout: timeout })
           .then((tools) => {
             console.log(`Successfully listed ${tools.tools.length} tools for server: ${name}`);
             const serverInfo = getServerByName(name);
@@ -169,8 +170,12 @@ export const initializeClientsFromSettings = (): ServerInfo[] => {
 };
 
 // Register all MCP tools
-export const registerAllTools = async (server: Server, forceInit: boolean): Promise<void> => {
-  initializeClientsFromSettings();
+export const registerAllTools = async (
+  server: Server,
+  forceInit: boolean,
+  isInit: boolean,
+): Promise<void> => {
+  initializeClientsFromSettings(isInit);
 };
 
 // Get all server information
@@ -221,7 +226,7 @@ export const addServer = async (
       return { success: false, message: 'Failed to save settings' };
     }
 
-    registerAllTools(currentServer, false);
+    registerAllTools(currentServer, false, false);
     return { success: true, message: 'Server added successfully' };
   } catch (error) {
     console.error(`Failed to add server: ${name}`, error);
