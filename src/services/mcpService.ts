@@ -108,13 +108,44 @@ export const initializeClientsFromSettings = (): ServerInfo[] => {
         },
       },
     );
-    client.connect(transport, { timeout: Number(config.timeout) }).catch((error) => {
-      console.error(`Failed to connect client for server ${name} by error: ${error}`);
-      const serverInfo = getServerByName(name);
-      if (serverInfo) {
-        serverInfo.status = 'disconnected';
-      }
-    });
+    client
+      .connect(transport, { timeout: Number(config.timeout) })
+      .then(() => {
+        console.log(`Successfully connected client for server: ${name}`);
+
+        client
+          .listTools({}, { timeout: Number(config.timeout) })
+          .then((tools) => {
+            console.log(`Successfully listed tools for server: ${name}`);
+            const serverInfo = getServerByName(name);
+            if (!serverInfo) {
+              console.warn(`Server info not found for server: ${name}`);
+              return;
+            }
+
+            serverInfo.tools = tools.tools.map((tool) => ({
+              name: tool.name,
+              description: tool.description || '',
+              inputSchema: tool.inputSchema || {},
+            }));
+            serverInfo.status = 'connected';
+            console.log(`Tools for server ${name}:`, JSON.stringify(serverInfo.tools, null, 2));
+          })
+          .catch((error) => {
+            console.error(`Failed to list tools for server ${name} by error: ${error}`);
+            const serverInfo = getServerByName(name);
+            if (serverInfo) {
+              serverInfo.status = 'disconnected';
+            }
+          });
+      })
+      .catch((error) => {
+        console.error(`Failed to connect client for server ${name} by error: ${error}`);
+        const serverInfo = getServerByName(name);
+        if (serverInfo) {
+          serverInfo.status = 'disconnected';
+        }
+      });
     serverInfos.push({
       name,
       status: 'connecting',
@@ -132,29 +163,6 @@ export const initializeClientsFromSettings = (): ServerInfo[] => {
 // Register all MCP tools
 export const registerAllTools = async (server: Server, forceInit: boolean): Promise<void> => {
   initializeClientsFromSettings();
-  for (const serverInfo of serverInfos) {
-    if (serverInfo.status === 'connected' && !forceInit) continue;
-    if (!serverInfo.client || !serverInfo.transport) continue;
-
-    try {
-      serverInfo.status = 'connecting';
-      console.log(`Connecting to server: ${serverInfo.name}...`);
-      const tools = await serverInfo.client.listTools({}, { timeout: Number(config.timeout) });
-      serverInfo.tools = tools.tools.map((tool) => ({
-        name: tool.name,
-        description: tool.description || '',
-        inputSchema: tool.inputSchema || {},
-      }));
-
-      serverInfo.status = 'connected';
-      console.log(`Successfully connected to server: ${serverInfo.name}`);
-    } catch (error) {
-      console.error(
-        `Failed to connect to server for client: ${serverInfo.name} by error: ${error}`,
-      );
-      serverInfo.status = 'disconnected';
-    }
-  }
 };
 
 // Get all server information

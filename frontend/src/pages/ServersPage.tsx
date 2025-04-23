@@ -31,6 +31,7 @@ const ServersPage: React.FC = () => {
 
   const handleEditComplete = () => {
     setEditingServer(null);
+    triggerRefresh();
   };
 
   const handleRefresh = async () => {
