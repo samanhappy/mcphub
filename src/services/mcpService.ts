@@ -116,7 +116,7 @@ export const initializeClientsFromSettings = (): ServerInfo[] => {
         client
           .listTools({}, { timeout: Number(config.timeout) })
           .then((tools) => {
-            console.log(`Successfully listed tools for server: ${name}`);
+            console.log(`Successfully listed ${tools.tools.length} tools for server: ${name}`);
             const serverInfo = getServerByName(name);
             if (!serverInfo) {
               console.warn(`Server info not found for server: ${name}`);
@@ -129,7 +129,6 @@ export const initializeClientsFromSettings = (): ServerInfo[] => {
               inputSchema: tool.inputSchema || {},
             }));
             serverInfo.status = 'connected';
-            console.log(`Tools for server ${name}:`, JSON.stringify(serverInfo.tools, null, 2));
           })
           .catch((error) => {
             console.error(`Failed to list tools for server ${name} by error: ${error}`);
