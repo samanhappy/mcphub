@@ -100,6 +100,7 @@ export interface ServerConfig {
 export interface ServerInfo {
   name: string; // Unique name of the server
   status: 'connected' | 'connecting' | 'disconnected'; // Current connection status
+  error: string | null; // Error message if any
   tools: ToolInfo[]; // List of tools available on the server
   client?: Client; // Client instance for communication
   transport?: SSEClientTransport | StdioClientTransport; // Transport mechanism used

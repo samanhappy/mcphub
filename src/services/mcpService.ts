@@ -6,7 +6,6 @@ import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js'
 import { ServerInfo, ServerConfig } from '../types/index.js';
 import { loadSettings, saveSettings, expandEnvVars } from '../config/index.js';
 import config from '../config/index.js';
-import { get } from 'http';
 import { getGroup } from './sseService.js';
 import { getServersInGroup } from './groupService.js';
 
@@ -53,6 +52,7 @@ export const initializeClientsFromSettings = (): ServerInfo[] => {
       serverInfos.push({
         name,
         status: 'disconnected',
+        error: null,
         tools: [],
         createTime: Date.now(),
         enabled: false,
@@ -89,6 +89,7 @@ export const initializeClientsFromSettings = (): ServerInfo[] => {
       serverInfos.push({
         name,
         status: 'disconnected',
+        error: 'Missing required configuration',
         tools: [],
         createTime: Date.now(),
       });
@@ -129,25 +130,33 @@ export const initializeClientsFromSettings = (): ServerInfo[] => {
               inputSchema: tool.inputSchema || {},
             }));
             serverInfo.status = 'connected';
+            serverInfo.error = null;
           })
           .catch((error) => {
-            console.error(`Failed to list tools for server ${name} by error: ${error}`);
+            console.error(
+              `Failed to list tools for server ${name} by error: ${error} with stack: ${error.stack}`,
+            );
             const serverInfo = getServerByName(name);
             if (serverInfo) {
               serverInfo.status = 'disconnected';
+              serverInfo.error = `Failed to list tools: ${error.stack} `;
             }
           });
       })
       .catch((error) => {
-        console.error(`Failed to connect client for server ${name} by error: ${error}`);
+        console.error(
+          `Failed to connect client for server ${name} by error: ${error} with stack: ${error.stack}`,
+        );
         const serverInfo = getServerByName(name);
         if (serverInfo) {
           serverInfo.status = 'disconnected';
+          serverInfo.error = `Failed to connect: ${error.stack} `;
         }
       });
     serverInfos.push({
       name,
       status: 'connecting',
+      error: null,
       tools: [],
       client,
       transport,
@@ -167,12 +176,13 @@ export const registerAllTools = async (server: Server, forceInit: boolean): Prom
 // Get all server information
 export const getServersInfo = (): Omit<ServerInfo, 'client' | 'transport'>[] => {
   const settings = loadSettings();
-  const infos = serverInfos.map(({ name, status, tools, createTime }) => {
+  const infos = serverInfos.map(({ name, status, tools, createTime, error }) => {
     const serverConfig = settings.mcpServers[name];
     const enabled = serverConfig ? serverConfig.enabled !== false : true;
     return {
       name,
       status,
+      error,
       tools,
       createTime,
       enabled,

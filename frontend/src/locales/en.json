@@ -68,7 +68,9 @@
     "namePlaceholder": "Enter server name",
     "urlPlaceholder": "Enter server URL",
     "commandPlaceholder": "Enter command",
-    "argumentsPlaceholder": "Enter arguments"
+    "argumentsPlaceholder": "Enter arguments",
+    "errorDetails": "Error Details",
+    "viewErrorDetails": "View error details"
   },
   "status": {
     "online": "Online",
@@ -95,7 +97,9 @@
     "create": "Create",
     "submitting": "Submitting...",
     "delete": "Delete",
-    "copy": "Copy"
+    "copy": "Copy",
+    "copySuccess": "Copied to clipboard",
+    "copyFailed": "Copy failed"
   },
   "nav": {
     "dashboard": "Dashboard",

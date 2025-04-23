@@ -82,6 +82,7 @@ export interface ServerConfig {
 export interface Server {
   name: string;
   status: ServerStatus;
+  error?: string;
   tools?: Tool[];
   config?: ServerConfig;
   enabled?: boolean;

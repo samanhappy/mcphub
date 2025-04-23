@@ -68,7 +68,9 @@
     "namePlaceholder": "请输入服务器名称",
     "urlPlaceholder": "请输入服务器URL",
     "commandPlaceholder": "请输入命令",
-    "argumentsPlaceholder": "请输入参数"
+    "argumentsPlaceholder": "请输入参数",
+    "errorDetails": "错误详情",
+    "viewErrorDetails": "查看错误详情"
   },
   "status": {
     "online": "在线",
@@ -95,7 +97,9 @@
     "create": "创建",
     "submitting": "提交中...",
     "delete": "删除",
-    "copy": "复制"
+    "copy": "复制",
+    "copySuccess": "已复制到剪贴板",
+    "copyFailed": "复制失败"
   },
   "nav": {
     "dashboard": "仪表盘",
