@@ -4,7 +4,12 @@ import path from 'path';
 import { initMcpServer } from './services/mcpService.js';
 import { initMiddlewares } from './middlewares/index.js';
 import { initRoutes } from './routes/index.js';
-import { handleSseConnection, handleSseMessage } from './services/sseService.js';
+import {
+  handleSseConnection,
+  handleSseMessage,
+  handleMcpPostRequest,
+  handleMcpOtherRequest,
+} from './services/sseService.js';
 import { migrateUserData } from './utils/migration.js';
 import { initializeDefaultUser } from './models/User.js';
 
@@ -34,6 +39,9 @@ export class AppServer {
           console.log('MCP server initialized successfully');
           this.app.get('/sse/:group?', (req, res) => handleSseConnection(req, res));
           this.app.post('/messages', handleSseMessage);
+          this.app.post('/mcp/:group?', handleMcpPostRequest);
+          this.app.get('/mcp/:group?', handleMcpOtherRequest);
+          this.app.delete('/mcp/:group?', handleMcpOtherRequest);
         })
         .catch((error) => {
           console.error('Error initializing MCP server:', error);
