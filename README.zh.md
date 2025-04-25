@@ -136,9 +136,9 @@ pnpm dev
 - Bug 报告与修复
 - 翻译与建议
 
-欢迎加入企微交流共建群
+欢迎加入企微交流共建群，由于群人数限制，有兴趣的同学可以扫码添加管理员为好友后拉入群聊。
 
-<img src="assets/wegroup.png" width="500">
+<img src="assets/wexin.png" width="350">
 
 ## 📄 许可证
 
