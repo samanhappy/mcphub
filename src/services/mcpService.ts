@@ -29,7 +29,7 @@ export const notifyToolChanged = async () => {
   currentServer
     .sendToolListChanged()
     .catch((error) => {
-      console.error('Failed to send tool list changed notification:', error);
+      console.warn('Failed to send tool list changed notification:', error.message);
     })
     .then(() => {
       console.log('Tool list changed notification sent successfully');
