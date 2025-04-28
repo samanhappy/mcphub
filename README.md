@@ -88,26 +88,44 @@ Open `http://localhost:3000` and log in with your credentials.
 - Group management for organizing servers
 - User administration for access control
 
-### SSE Endpoint
+### Streamable HTTP Endpoint
+> As of now, support for streaming HTTP endpoints varies across different AI clients. If you encounter issues, you can use the SSE endpoint or wait for future updates.
 
-Connect AI clients (e.g., Claude Desktop, Cursor, Cherry Studio) via:
+Connect AI clients (e.g., Claude Desktop, Cursor, DeepChat, etc.) via:
+```
+http://localhost:3000/mcp
+```
+This endpoint provides a unified streamable HTTP interface for all your MCP servers. It allows you to:
+- Send requests to any configured MCP server
+- Receive responses in real-time
+- Easily integrate with various AI clients and tools
+- Use the same endpoint for all servers, simplifying your integration process
+
+**Group-Specific Endpoints (Recommended)**:
+
+![Group Management](assets/group.png)
+
+For targeted access to specific server groups, use the group-based HTTP endpoint:
+```
+http://localhost:3000/mcp/{group}
+```
+
+Where `{group}` is the ID or name of the group you created in the dashboard. This allows you to:
+- Connect to a specific subset of MCP servers organized by use case
+- Isolate different AI tools to access only relevant servers
+- Implement more granular access control for different environments or teams
+
+### SSE Endpoint (Deprecated in Future)
+
+Connect AI clients (e.g., Claude Desktop, Cursor, DeepChat, etc.) via:
 ```
 http://localhost:3000/sse
 ```
 
-**Group-Specific Endpoints (Recommended)**:  
-
-![Group Management](assets/group.png)
-
 For targeted access to specific server groups, use the group-based SSE endpoint:
 ```
-http://localhost:3000/sse/{groupId}
+http://localhost:3000/sse/{group}
 ```
-
-Where `{groupId}` is the ID of the group you created in the dashboard. This allows you to:
-- Connect to a specific subset of MCP servers organized by use case
-- Isolate different AI tools to access only relevant servers
-- Implement more granular access control for different environments or teams
 
 ## 🧑‍💻 Local Development
 
@@ -119,6 +137,17 @@ pnpm dev
 ```
 
 This starts both frontend and backend in development mode with hot-reloading.
+
+> For windows users, you may need to start the backend server and frontend separately: `pnpm backend:dev`, `pnpm frontend:dev`.
+
+## 🛠️ Common Issues
+
+### Using Nginx as a Reverse Proxy
+If you are using Nginx to reverse proxy MCPHub, please make sure to add the following configuration in your Nginx setup:
+
+```nginx
+proxy_buffering off
+```
 
 ## 🔍 Tech Stack
 

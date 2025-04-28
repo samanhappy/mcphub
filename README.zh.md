@@ -88,26 +88,43 @@ docker run -p 3000:3000 samanhappy/mcphub
 - 分组管理，组织服务器访问
 - 用户管理，设定权限
 
-### SSE 端点集成
+### 支持流式的 HTTP 端点
+> 截至目前，各家 AI 客户端对流式的 HTTP 端点支持不一，如果遇到问题，可以使用 SSE 端点或者等待更新。
 
-通过以下地址连接 AI 客户端（如 Claude Desktop、Cursor、Cherry Studio 等）：
+通过以下地址连接 AI 客户端（如 Claude Desktop、Cursor、DeepChat 等）：
+```
+http://localhost:3000/mcp
+```
+这个端点为所有 MCP 服务器提供统一的流式 HTTP 接口。它允许您：
+- 向任何配置的 MCP 服务器发送请求
+- 实时接收响应
+- 轻松与各种 AI 客户端和工具集成
+- 对所有服务器使用相同的端点，简化集成过程
+
+**基于分组的 HTTP 端点（推荐）**：
+![分组](assets/group.zh.png)
+要针对特定服务器分组进行访问，请使用基于分组的 HTTP 端点：
+```
+http://localhost:3000/mcp/{group}
+```
+其中 `{group}` 是您在控制面板中创建的分组 ID 或名称。这样做可以：
+- 连接到按用例组织的特定 MCP 服务器子集
+- 隔离不同的 AI 工具，使其只能访问相关服务器
+- 为不同环境或团队实现更精细的访问控制
+- 通过分组名称轻松识别和管理服务器
+- 允许不同的 AI 客户端使用相同的端点，简化集成过程
+
+### SSE 端点集成 (即将废弃)
+
+通过以下地址连接 AI 客户端（如 Claude Desktop、Cursor、DeepChat 等）：
 ```
 http://localhost:3000/sse
 ```
 
-**基于分组的 SSE 端点（推荐）**： 
-
-![分组](assets/group.zh.png) 
-
 要针对特定服务器分组进行访问，请使用基于分组的 SSE 端点：
 ```
-http://localhost:3000/sse/{groupId}
+http://localhost:3000/sse/{group}
 ```
-
-其中 `{groupId}` 是您在控制面板中创建的分组 ID。这样做可以：
-- 连接到按用例组织的特定 MCP 服务器子集
-- 隔离不同的 AI 工具，使其只能访问相关服务器
-- 为不同环境或团队实现更精细的访问控制
 
 ## 🧑‍💻 本地开发
 
@@ -119,6 +136,17 @@ pnpm dev
 ```
 
 此命令将在开发模式下启动前后端，并启用热重载。
+
+> 针对 Windows 用户，可能需要分别启动后端服务器和前端：`pnpm backend:dev`，`pnpm frontend:dev`。
+
+## 🛠️ 常见问题
+
+### 使用 nginx 反向代理
+如果您在使用 nginx 反向代理 MCPHub，请确保在 nginx 配置中添加以下内容：
+
+```nginx
+proxy_buffering off
+```
 
 ## 🔍 技术栈
 
