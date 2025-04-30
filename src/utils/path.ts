@@ -33,7 +33,10 @@ export const getConfigFilePath = (filename: string, description = 'Configuration
   }
   
   // If all paths do not exist, use default path
+  // Using the default path is acceptable because it ensures the application can proceed
+  // even if the configuration file is missing. This fallback is particularly useful in
+  // development environments or when the file is optional.
   const defaultPath = path.resolve(process.cwd(), filename);
-  console.warn(`${description} file not found at any expected location, using default path: ${defaultPath}`);
+  console.debug(`${description} file not found at any expected location, using default path: ${defaultPath}`);
   return defaultPath;
 };
