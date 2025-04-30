@@ -1,7 +1,7 @@
 import dotenv from 'dotenv';
-import path from 'path';
 import fs from 'fs';
 import { McpSettings } from '../types/index.js';
+import { getConfigFilePath } from '../utils/path.js';
 
 dotenv.config();
 
@@ -14,7 +14,7 @@ const defaultConfig = {
 };
 
 export const getSettingsPath = (): string => {
-  return path.resolve(process.cwd(), 'mcp_settings.json');
+  return getConfigFilePath('mcp_settings.json', 'Settings');
 };
 
 export const loadSettings = (): McpSettings => {

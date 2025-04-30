@@ -1,10 +1,10 @@
 import fs from 'fs';
-import path from 'path';
 import { MarketServer } from '../types/index.js';
+import { getConfigFilePath } from '../utils/path.js';
 
 // Get path to the servers.json file
 export const getServersJsonPath = (): string => {
-  return path.resolve(process.cwd(), 'servers.json');
+  return getConfigFilePath('servers.json', 'Servers');
 };
 
 // Load all market servers from servers.json

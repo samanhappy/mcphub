@@ -1,0 +1,39 @@
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+
+// Get current file's directory
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+// Project root directory should be the parent directory of src
+const rootDir = dirname(dirname(__dirname));
+
+/**
+ * Find the path to a configuration file by checking multiple potential locations.
+ * @param filename The name of the file to locate (e.g., 'servers.json', 'mcp_settings.json')
+ * @param description Brief description of the file for logging purposes
+ * @returns The path to the file
+ */
+export const getConfigFilePath = (filename: string, description = 'Configuration'): string => {
+  // Try to find the correct path to the file
+  const potentialPaths = [
+    // Prioritize process.cwd() as the first location to check
+    path.resolve(process.cwd(), filename),
+    // Use path relative to the root directory
+    path.join(rootDir, filename),
+    // If installed with npx, may need to look one level up
+    path.join(dirname(rootDir), filename)
+  ];
+  
+  for (const filePath of potentialPaths) {
+    if (fs.existsSync(filePath)) {
+      return filePath;
+    }
+  }
+  
+  // If all paths do not exist, use default path
+  const defaultPath = path.resolve(process.cwd(), filename);
+  console.warn(`${description} file not found at any expected location, using default path: ${defaultPath}`);
+  return defaultPath;
+};
