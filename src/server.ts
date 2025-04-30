@@ -183,6 +183,9 @@ export class AppServer {
             return root;
           }
         } catch (e) {
+          if (debug) {
+            console.error(`DEBUG: Failed to parse package.json at ${packageJsonPath}:`, e);
+          }
           // Continue to the next potential root
         }
       }
