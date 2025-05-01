@@ -55,9 +55,9 @@ const SettingsPage: React.FC = () => {
       <h1 className="text-2xl font-bold text-gray-900 mb-8">{t('pages.settings.title')}</h1>
 
       {/* Language Settings */}
-      <div className="bg-white shadow rounded-lg p-6 mb-6">
+      <div className="bg-white shadow rounded-lg py-4 px-6 mb-6">
         <div className="flex items-center justify-between">
-          <h2 className="text-xl font-semibold text-gray-800">{t('pages.settings.language')}</h2>
+          <h2 className="font-semibold text-gray-800">{t('pages.settings.language')}</h2>
           <div className="flex space-x-3">
             <button
               className={`px-3 py-1.5 rounded-md transition-colors text-sm ${
@@ -84,12 +84,12 @@ const SettingsPage: React.FC = () => {
       </div>
 
       {/* Route Configuration Settings */}
-      <div className="bg-white shadow rounded-lg p-6 mb-6">
+      <div className="bg-white shadow rounded-lg py-4 px-6 mb-6">
         <div
           className="flex justify-between items-center cursor-pointer"
           onClick={() => toggleSection('routingConfig')}
         >
-          <h2 className="text-xl font-semibold text-gray-800">{t('pages.settings.routeConfig')}</h2>
+          <h2 className="font-semibold text-gray-800">{t('pages.settings.routeConfig')}</h2>
           <span className="text-gray-500">
             {sectionsVisible.routingConfig ? '▼' : '►'}
           </span>
@@ -125,12 +125,12 @@ const SettingsPage: React.FC = () => {
       </div>
 
       {/* Change Password */}
-      <div className="bg-white shadow rounded-lg p-6 mb-6">
+      <div className="bg-white shadow rounded-lg py-4 px-6 mb-6">
         <div
           className="flex justify-between items-center cursor-pointer"
           onClick={() => toggleSection('password')}
         >
-          <h2 className="text-xl font-semibold text-gray-800">{t('auth.changePassword')}</h2>
+          <h2 className="font-semibold text-gray-800">{t('auth.changePassword')}</h2>
           <span className="text-gray-500">
             {sectionsVisible.password ? '▼' : '►'}
           </span>
