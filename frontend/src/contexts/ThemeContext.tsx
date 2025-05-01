@@ -29,6 +29,7 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   // Function to set theme and save to localStorage
   const handleSetTheme = (newTheme: Theme) => {
+    console.log(`Theme changed to: ${newTheme}`); // 添加日志
     setTheme(newTheme);
     localStorage.setItem('theme', newTheme);
   };
@@ -45,9 +46,13 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       
       // Apply or remove dark class based on theme
       if (themeToApply === 'dark') {
+        console.log('Applying dark mode to HTML root element'); // 添加日志
         root.classList.add('dark');
+        document.body.style.backgroundColor = '#111827'; // Force a dark background to ensure visible effect
       } else {
+        console.log('Removing dark mode from HTML root element'); // 添加日志
         root.classList.remove('dark');
+        document.body.style.backgroundColor = ''; // Reset background color
       }
     };
 
