@@ -2,7 +2,7 @@
 
 English | [中文版](README.zh.md)
 
-MCPHub is a unified management platform that aggregates multiple MCP (Model Context Protocol) servers into separate SSE endpoints for different scenarios by group. It streamlines your AI tool integrations through an intuitive interface and robust protocol handling.
+MCPHub is a unified management platform that aggregates multiple MCP (Model Context Protocol) servers into separate Streamable HTTP (SSE) endpoints for different scenarios by group. It streamlines your AI tool integrations through an intuitive interface and robust protocol handling.
 
 ![Dashboard Preview](assets/dashboard.png)
 

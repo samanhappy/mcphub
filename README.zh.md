@@ -2,7 +2,7 @@
 
 [English Version](README.md) | 中文版
 
-MCPHub 是一个统一的 MCP（Model Context Protocol，模型上下文协议）服务器聚合平台，可以根据场景将多个服务器聚合到不同的 SSE 端点。它通过直观的界面和强大的协议处理能力，简化了您的 AI 工具集成流程。
+MCPHub 是一个统一的 MCP（Model Context Protocol，模型上下文协议）服务器聚合平台，可以根据场景将多个服务器聚合到不同的流式 HTTP（SSE）端点。它通过直观的界面和强大的协议处理能力，简化了您的 AI 工具集成流程。
 
 ![控制面板预览](assets/dashboard.zh.png)
 
