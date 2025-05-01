@@ -12,6 +12,12 @@
     "welcomeUser": "Welcome, {{username}}",
     "name": "MCP Hub"
   },
+  "theme": {
+    "title": "Theme",
+    "light": "Light",
+    "dark": "Dark",
+    "system": "System"
+  },
   "auth": {
     "login": "Login",
     "loginTitle": "Login to MCP Hub",

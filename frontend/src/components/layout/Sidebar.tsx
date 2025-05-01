@@ -68,7 +68,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
 
   return (
     <aside 
-      className={`bg-white shadow-sm transition-all duration-300 ease-in-out ${
+      className={`bg-white dark:bg-gray-800 shadow-sm transition-all duration-300 ease-in-out ${
         collapsed ? 'w-16' : 'w-64'
       }`}
     >
@@ -80,8 +80,8 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
             className={({ isActive }) => 
               `flex items-center px-3 py-2 rounded-md transition-colors ${
                 isActive 
-                  ? 'bg-blue-100 text-blue-800' 
-                  : 'text-gray-700 hover:bg-gray-100'
+                  ? 'bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200' 
+                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
               }`
             }
             end={item.path === '/'}

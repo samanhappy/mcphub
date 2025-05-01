@@ -12,6 +12,12 @@
     "welcomeUser": "欢迎, {{username}}",
     "name": "MCP Hub"
   },
+  "theme": {
+    "title": "主题",
+    "light": "浅色",
+    "dark": "深色",
+    "system": "系统"
+  },
   "auth": {
     "login": "登录",
     "loginTitle": "登录 MCP Hub",
