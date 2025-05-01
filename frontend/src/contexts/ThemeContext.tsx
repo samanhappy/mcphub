@@ -29,7 +29,6 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   // Function to set theme and save to localStorage
   const handleSetTheme = (newTheme: Theme) => {
-    console.log(`Theme changed to: ${newTheme}`); // 添加日志
     setTheme(newTheme);
     localStorage.setItem('theme', newTheme);
   };
