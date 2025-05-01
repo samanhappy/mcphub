@@ -2,6 +2,12 @@ FROM python:3.13-slim-bookworm AS base
 
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
+# 添加 HTTP_PROXY 和 HTTPS_PROXY 环境变量
+ARG HTTP_PROXY=""
+ARG HTTPS_PROXY=""
+ENV HTTP_PROXY=$HTTP_PROXY
+ENV HTTPS_PROXY=$HTTPS_PROXY
+
 RUN apt-get update && apt-get install -y curl gnupg git \
   && curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
   && apt-get install -y nodejs \
