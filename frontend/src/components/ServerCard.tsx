@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Server } from '@/types'
 import { ChevronDown, ChevronRight, AlertCircle, Copy, Check } from 'lucide-react'
-import Badge from '@/components/ui/Badge'
+import { StatusBadge } from '@/components/ui/Badge'
 import ToolCard from '@/components/ui/ToolCard'
 import DeleteDialog from '@/components/ui/DeleteDialog'
 import { useToast } from '@/contexts/ToastContext'
@@ -111,7 +111,7 @@ const ServerCard = ({ server, onRemove, onEdit, onToggle }: ServerCardProps) => 
         >
           <div className="flex items-center space-x-3">
             <h2 className={`text-xl font-semibold ${server.enabled === false ? 'text-gray-600' : 'text-gray-900'}`}>{server.name}</h2>
-            <Badge status={server.status} />
+            <StatusBadge status={server.status} />
             
             {server.error && (
               <div className="relative">

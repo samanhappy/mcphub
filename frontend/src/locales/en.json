@@ -113,7 +113,8 @@
     "groups": "Groups",
     "settings": "Settings",
     "changePassword": "Change Password",
-    "market": "Market"
+    "market": "Market",
+    "logs": "Logs"
   },
   "pages": {
     "dashboard": {
@@ -140,7 +141,23 @@
     },
     "market": {
       "title": "Server Market - (Data from mcpm.sh)"
+    },
+    "logs": {
+      "title": "System Logs"
     }
+  },
+  "logs": {
+    "filters": "Filters",
+    "search": "Search logs...",
+    "autoScroll": "Auto-scroll",
+    "clearLogs": "Clear logs",
+    "loading": "Loading logs...",
+    "noLogs": "No logs available.",
+    "noMatch": "No logs match the current filters.",
+    "mainProcess": "Main Process",
+    "childProcess": "Child Process",
+    "main": "Main",
+    "child": "Child"
   },
   "groups": {
     "add": "Add",

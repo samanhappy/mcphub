@@ -6,8 +6,10 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-this';
 
 // Middleware to authenticate JWT token
 export const auth = (req: Request, res: Response, next: NextFunction): void => {
-  // Get token from header
-  const token = req.header('x-auth-token');
+  // Get token from header or query parameter
+  const headerToken = req.header('x-auth-token');
+  const queryToken = req.query.token as string;
+  const token = headerToken || queryToken;
 
   // Check if no token
   if (!token) {

@@ -11,6 +11,7 @@ import ServersPage from './pages/ServersPage';
 import GroupsPage from './pages/GroupsPage';
 import SettingsPage from './pages/SettingsPage';
 import MarketPage from './pages/MarketPage';
+import LogsPage from './pages/LogsPage';
 
 function App() {
   return (
@@ -30,6 +31,7 @@ function App() {
                   <Route path="/groups" element={<GroupsPage />} />
                   <Route path="/market" element={<MarketPage />} />
                   <Route path="/market/:serverName" element={<MarketPage />} />
+                  <Route path="/logs" element={<LogsPage />} />
                   <Route path="/settings" element={<SettingsPage />} />
                 </Route>
               </Route>

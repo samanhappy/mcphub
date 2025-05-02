@@ -93,7 +93,8 @@
     "initialStartup": "服务器可能正在启动中。首次启动可能需要一些时间，请耐心等候...",
     "serverInstall": "安装服务器失败",
     "failedToFetchSettings": "获取设置失败",
-    "failedToUpdateSystemConfig": "更新系统配置失败"
+    "failedToUpdateSystemConfig": "更新系统配置失败",
+    "failedToUpdateRouteConfig": "更新路由配置失败"
   },
   "common": {
     "processing": "处理中...",
@@ -113,7 +114,8 @@
     "settings": "设置",
     "changePassword": "修改密码",
     "groups": "分组",
-    "market": "市场"
+    "market": "市场",
+    "logs": "日志"
   },
   "pages": {
     "dashboard": {
@@ -140,7 +142,23 @@
     },
     "market": {
       "title": "服务器市场 - （数据来源于 mcpm.sh）"
+    },
+    "logs": {
+      "title": "系统日志"
     }
+  },
+  "logs": {
+    "filters": "筛选",
+    "search": "搜索日志...",
+    "autoScroll": "自动滚动",
+    "clearLogs": "清除日志",
+    "loading": "加载日志中...",
+    "noLogs": "暂无日志。",
+    "noMatch": "没有匹配当前筛选条件的日志。",
+    "mainProcess": "主进程",
+    "childProcess": "子进程",
+    "main": "主",
+    "child": "子"
   },
   "groups": {
     "add": "添加",

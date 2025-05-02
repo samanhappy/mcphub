@@ -35,6 +35,11 @@ import {
   getCurrentUser,
   changePassword
 } from '../controllers/authController.js';
+import {
+  getAllLogs,
+  clearLogs,
+  streamLogs
+} from '../controllers/logController.js';
 import { auth } from '../middlewares/auth.js';
 
 const router = express.Router();
@@ -69,6 +74,11 @@ export const initRoutes = (app: express.Application): void => {
   router.get('/market/categories/:category', getMarketServersByCategory);
   router.get('/market/tags', getAllMarketTags);
   router.get('/market/tags/:tag', getMarketServersByTag);
+  
+  // Log routes
+  router.get('/logs', getAllLogs);
+  router.delete('/logs', clearLogs);
+  router.get('/logs/stream', streamLogs);
   
   // Auth routes (these will NOT be protected by auth middleware)
   app.post('/auth/login', [

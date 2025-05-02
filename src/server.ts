@@ -12,7 +12,6 @@ import {
   handleMcpPostRequest,
   handleMcpOtherRequest,
 } from './services/sseService.js';
-import { migrateUserData } from './utils/migration.js';
 import { initializeDefaultUser } from './models/User.js';
 
 // Get the directory name in ESM
@@ -31,9 +30,6 @@ export class AppServer {
 
   async initialize(): Promise<void> {
     try {
-      // Migrate user data from users.json to mcp_settings.json if needed
-      migrateUserData();
-
       // Initialize default admin user if no users exist
       await initializeDefaultUser();
 
