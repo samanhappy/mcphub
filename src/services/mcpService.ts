@@ -365,9 +365,6 @@ export const createMcpServer = (name: string, version: string): Server => {
   server.setRequestHandler(CallToolRequestSchema, async (request, _) => {
     console.log(`Handling CallToolRequest for tool: ${request.params.name}`);
     try {
-      if (!request.params.arguments) {
-        throw new Error('Arguments are required');
-      }
       const serverInfo = getServerByTool(request.params.name);
       if (!serverInfo) {
         throw new Error(`Server not found: ${request.params.name}`);
@@ -381,7 +378,15 @@ export const createMcpServer = (name: string, version: string): Server => {
       return result;
     } catch (error) {
       console.error(`Error handling CallToolRequest: ${error}`);
-      return { error: `Failed to call tool: ${error}` };
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `Error: ${error}`,
+          },
+        ],
+        isError: true,
+      };
     }
   });
   return server;
