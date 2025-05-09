@@ -52,7 +52,7 @@ export const useMarketData = () => {
     } finally {
       setLoading(false);
     }
-  }, [t, currentPage]);
+  }, [t]);
 
   // Apply pagination to data
   const applyPagination = useCallback((data: MarketServer[], page: number, itemsPerPage = serversPerPage) => {
