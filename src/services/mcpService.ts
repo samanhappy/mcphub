@@ -347,6 +347,7 @@ export const createMcpServer = (name: string, version: string): Server => {
       if (serverInfo.enabled === false) return false;
       if (!group) return true;
       const serversInGroup = getServersInGroup(group);
+      if (!serversInGroup || serversInGroup.length === 0) return serverInfo.name === group;
       return serversInGroup.includes(serverInfo.name);
     });
 
