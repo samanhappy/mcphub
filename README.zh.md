@@ -125,7 +125,18 @@ http://localhost:3000/mcp/{group}
 - 通过分组名称轻松识别和管理服务器
 - 允许不同的 AI 客户端使用相同的端点，简化集成过程
 
-### SSE 端点集成 (即将废弃)
+**针对特定服务器的 HTTP 端点**：
+要针对特定服务器进行访问，请使用以下格式：
+
+```
+http://localhost:3000/mcp/{server}
+```
+
+其中 `{server}` 是您要连接的服务器名称。这样做可以直接访问特定的 MCP 服务器。
+
+> **提示**：如果服务器名称和分组名称相同，则分组名称优先。
+
+### SSE 端点集成 (未来可能废弃)
 
 通过以下地址连接 AI 客户端（如 Claude Desktop、Cursor、DeepChat 等）：
 
@@ -137,6 +148,12 @@ http://localhost:3000/sse
 
 ```
 http://localhost:3000/sse/{group}
+```
+
+要针对特定服务器进行访问，请使用以下格式：
+
+```
+http://localhost:3000/sse/{server}
 ```
 
 ## 🧑‍💻 本地开发

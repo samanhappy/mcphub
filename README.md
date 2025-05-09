@@ -115,6 +115,15 @@ Where `{group}` is the ID or name of the group you created in the dashboard. Thi
 - Isolate different AI tools to access only relevant servers
 - Implement more granular access control for different environments or teams
 
+**Server-Specific Endpoints**:
+For direct access to individual servers, use the server-specific HTTP endpoint:
+```
+http://localhost:3000/mcp/{server}
+```
+Where `{server}` is the name of the server you want to connect to. This allows you to access a specific MCP server directly.
+
+> **Note**: If the server name and group name are the same, the group name will take precedence.
+
 ### SSE Endpoint (Deprecated in Future)
 
 Connect AI clients (e.g., Claude Desktop, Cursor, DeepChat, etc.) via:
@@ -125,6 +134,11 @@ http://localhost:3000/sse
 For targeted access to specific server groups, use the group-based SSE endpoint:
 ```
 http://localhost:3000/sse/{group}
+```
+
+For direct access to individual servers, use the server-specific SSE endpoint:
+```
+http://localhost:3000/sse/{server}
 ```
 
 ## 🧑‍💻 Local Development
