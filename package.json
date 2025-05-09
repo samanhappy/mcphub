@@ -79,7 +79,7 @@
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-i18next": "^15.4.1",
-    "react-router-dom": "^7.5.0",
+    "react-router-dom": "^7.6.0",
     "tailwind-merge": "^3.1.0",
     "tailwind-scrollbar-hide": "^2.0.0",
     "tailwindcss": "^4.0.17",
