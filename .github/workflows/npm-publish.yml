@@ -14,13 +14,13 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '20'
           registry-url: 'https://registry.npmjs.org'
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v2
         with:
-          version: 8
+          version: 10
           run_install: false
 
       - name: Get pnpm store directory
@@ -42,13 +42,10 @@ jobs:
 
       - name: Update version from tag
         run: |
-          # 提取标签版本号（移除 'v' 前缀）
           VERSION=${GITHUB_REF#refs/tags/v}
           echo "Updating package.json version to $VERSION"
-          # 使用 jq 更新 package.json 中的版本号
           jq ".version = \"$VERSION\"" package.json > package.json.tmp
           mv package.json.tmp package.json
-          # 显示更新后的版本号
           echo "Updated version in package.json:"
           grep -m 1 "version" package.json
 
