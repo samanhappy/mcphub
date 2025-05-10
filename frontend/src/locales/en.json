@@ -12,6 +12,16 @@
     "welcomeUser": "Welcome, {{username}}",
     "name": "MCP Hub"
   },
+  "about": {
+    "title": "About",
+    "versionInfo": "MCP Hub Version: {{version}}",
+    "newVersion": "New version available!",
+    "currentVersion": "Current version"
+  },
+  "profile": {
+    "viewProfile": "View profile",
+    "userCenter": "User Center"
+  },
   "theme": {
     "title": "Theme",
     "light": "Light",
@@ -105,7 +115,8 @@
     "delete": "Delete",
     "copy": "Copy",
     "copySuccess": "Copied to clipboard",
-    "copyFailed": "Copy failed"
+    "copyFailed": "Copy failed",
+    "close": "Close"
   },
   "nav": {
     "dashboard": "Dashboard",

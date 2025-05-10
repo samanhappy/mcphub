@@ -1,6 +1,6 @@
-import { ChevronDown, ChevronRight, Edit, Trash, Copy, Check } from 'lucide-react'
+import { ChevronDown, ChevronRight, Edit, Trash, Copy, Check, User, Settings, LogOut, Info } from 'lucide-react'
 
-export { ChevronDown, ChevronRight, Edit, Trash, Copy, Check }
+export { ChevronDown, ChevronRight, Edit, Trash, Copy, Check, User, Settings, LogOut, Info }
 
 const LucideIcons = {
   ChevronDown,
@@ -8,7 +8,11 @@ const LucideIcons = {
   Edit,
   Trash,
   Copy,
-  Check
+  Check,
+  User,
+  Settings,
+  LogOut,
+  Info
 }
 
 export default LucideIcons

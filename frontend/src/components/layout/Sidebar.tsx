@@ -1,6 +1,7 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { NavLink, useLocation } from 'react-router-dom';
+import UserProfileMenu from '@/components/ui/UserProfileMenu';
 
 interface SidebarProps {
   collapsed: boolean;
@@ -15,6 +16,9 @@ interface MenuItem {
 const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
   const { t } = useTranslation();
   const location = useLocation();
+  
+  // Application version from package.json (accessed via Vite environment variables)
+  const appVersion = import.meta.env.PACKAGE_VERSION as string;
   
   // Menu item configuration
   const menuItems: MenuItem[] = [
@@ -64,42 +68,41 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
         </svg>
       ),
     },
-    {
-      path: '/settings',
-      label: t('nav.settings'),
-      icon: (
-        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-          <path fillRule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
-        </svg>
-      ),
-    },
   ];
 
   return (
     <aside 
-      className={`bg-white dark:bg-gray-800 shadow-sm transition-all duration-300 ease-in-out ${
+      className={`bg-white dark:bg-gray-800 shadow-sm transition-all duration-300 ease-in-out flex flex-col h-full relative ${
         collapsed ? 'w-16' : 'w-64'
       }`}
     >
-      <nav className="p-3 space-y-1">
-        {menuItems.map((item) => (
-          <NavLink
-            key={item.path}
-            to={item.path}
-            className={({ isActive }) => 
-              `flex items-center px-3 py-2 rounded-md transition-colors ${
-                isActive 
-                  ? 'bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200' 
-                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-              }`
-            }
-            end={item.path === '/'}
-          >
-            <span className="flex-shrink-0">{item.icon}</span>
-            {!collapsed && <span className="ml-3">{item.label}</span>}
-          </NavLink>
-        ))}
-      </nav>
+      {/* Scrollable navigation area */}
+      <div className="overflow-y-auto flex-grow">
+        <nav className="p-3 space-y-1">
+          {menuItems.map((item) => (
+            <NavLink
+              key={item.path}
+              to={item.path}
+              className={({ isActive }) => 
+                `flex items-center px-3 py-2 rounded-md transition-colors ${
+                  isActive 
+                    ? 'bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200' 
+                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                }`
+              }
+              end={item.path === '/'}
+            >
+              <span className="flex-shrink-0">{item.icon}</span>
+              {!collapsed && <span className="ml-3">{item.label}</span>}
+            </NavLink>
+          ))}
+        </nav>
+      </div>
+      
+      {/* User profile menu fixed at the bottom */}
+      <div className="p-3 bg-white dark:bg-gray-800">
+        <UserProfileMenu collapsed={collapsed} version={appVersion} />
+      </div>
     </aside>
   );
 };

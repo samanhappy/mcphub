@@ -12,6 +12,16 @@
     "welcomeUser": "欢迎, {{username}}",
     "name": "MCP Hub"
   },
+  "about": {
+    "title": "关于",
+    "versionInfo": "MCP Hub 版本: {{version}}",
+    "newVersion": "有新版本可用！",
+    "currentVersion": "当前版本"
+  },
+  "profile": {
+    "viewProfile": "查看个人中心",
+    "userCenter": "个人中心"
+  },
   "theme": {
     "title": "主题",
     "light": "浅色",
@@ -106,7 +116,8 @@
     "delete": "删除",
     "copy": "复制",
     "copySuccess": "已复制到剪贴板",
-    "copyFailed": "复制失败"
+    "copyFailed": "复制失败",
+    "close": "关闭"
   },
   "nav": {
     "dashboard": "仪表盘",
