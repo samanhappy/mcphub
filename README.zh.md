@@ -203,6 +203,7 @@ proxy_buffering off
 
 <img src="assets/reward.png" width="350">
 
+## 致谢
 感谢以下人员的赞赏：小白、琛。你们的支持是我继续前进的动力！
 
 ## 📄 许可证
