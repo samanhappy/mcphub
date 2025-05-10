@@ -137,7 +137,8 @@
       "account": "Account Settings",
       "password": "Change Password",
       "appearance": "Appearance",
-      "routeConfig": "Route Configuration"
+      "routeConfig": "Route Configuration",
+      "installConfig": "Installation Configuration"
     },
     "market": {
       "title": "Server Market - (Data from mcpm.sh)"
@@ -232,6 +233,10 @@
     "enableGlobalRouteDescription": "Allow connections to /sse endpoint without specifying a group ID",
     "enableGroupNameRoute": "Enable Group Name Route",
     "enableGroupNameRouteDescription": "Allow connections to /sse endpoint using group names instead of just group IDs",
+    "pythonIndexUrl": "Python Package Repository URL",
+    "pythonIndexUrlDescription": "Set UV_DEFAULT_INDEX environment variable for Python package installation",
+    "pythonIndexUrlPlaceholder": "e.g. https://pypi.org/simple",
+    "installConfig": "Installation Configuration",
     "systemConfigUpdated": "System configuration updated successfully"
   }
 }

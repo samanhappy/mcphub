@@ -9,9 +9,14 @@ interface RoutingConfig {
   enableGroupNameRoute: boolean;
 }
 
+interface InstallConfig {
+  pythonIndexUrl: string;
+}
+
 interface SystemSettings {
   systemConfig?: {
     routing?: RoutingConfig;
+    install?: InstallConfig;
   };
 }
 
@@ -22,6 +27,10 @@ export const useSettingsData = () => {
   const [routingConfig, setRoutingConfig] = useState<RoutingConfig>({
     enableGlobalRoute: true,
     enableGroupNameRoute: true,
+  });
+
+  const [installConfig, setInstallConfig] = useState<InstallConfig>({
+    pythonIndexUrl: '',
   });
 
   const [loading, setLoading] = useState(false);
@@ -56,6 +65,12 @@ export const useSettingsData = () => {
         setRoutingConfig({
           enableGlobalRoute: data.data.systemConfig.routing.enableGlobalRoute ?? true,
           enableGroupNameRoute: data.data.systemConfig.routing.enableGroupNameRoute ?? true,
+        });
+      }
+
+      if (data.success && data.data?.systemConfig?.install) {
+        setInstallConfig({
+          pythonIndexUrl: data.data.systemConfig.install.pythonIndexUrl || '',
         });
       }
     } catch (error) {
@@ -114,6 +129,53 @@ export const useSettingsData = () => {
     }
   };
 
+  // Update install configuration
+  const updateInstallConfig = async (key: keyof InstallConfig, value: string) => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const token = localStorage.getItem('mcphub_token');
+      const response = await fetch('/api/system-config', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-auth-token': token || '',
+        },
+        body: JSON.stringify({
+          install: {
+            [key]: value,
+          },
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      if (data.success) {
+        setInstallConfig({
+          ...installConfig,
+          [key]: value,
+        });
+        showToast(t('settings.systemConfigUpdated'));
+        return true;
+      } else {
+        showToast(t('errors.failedToUpdateSystemConfig'));
+        return false;
+      }
+    } catch (error) {
+      console.error('Failed to update system config:', error);
+      setError(error instanceof Error ? error.message : 'Failed to update system config');
+      showToast(t('errors.failedToUpdateSystemConfig'));
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Fetch settings when the component mounts or refreshKey changes
   useEffect(() => {
     fetchSettings();
@@ -121,11 +183,13 @@ export const useSettingsData = () => {
 
   return {
     routingConfig,
+    installConfig,
     loading,
     error,
     setError,
     triggerRefresh,
     fetchSettings,
     updateRoutingConfig,
+    updateInstallConfig,
   };
 };

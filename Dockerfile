@@ -34,7 +34,6 @@ RUN if [ "$INSTALL_EXT" = "true" ]; then \
     fi
 
 RUN uv tool install mcp-server-fetch
-ENV UV_PYTHON_INSTALL_MIRROR="http://mirrors.aliyun.com/pypi/simple/"
 
 WORKDIR /app
 

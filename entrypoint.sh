@@ -18,6 +18,5 @@ if [ -n "$HTTPS_PROXY" ]; then
 fi
 
 echo "Using REQUEST_TIMEOUT: $REQUEST_TIMEOUT"
-echo "Using UV_PYTHON_INSTALL_MIRROR: $UV_PYTHON_INSTALL_MIRROR"
 
 exec "$@"

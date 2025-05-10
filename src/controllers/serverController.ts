@@ -247,9 +247,10 @@ export const toggleServer = async (req: Request, res: Response): Promise<void> =
 
 export const updateSystemConfig = (req: Request, res: Response): void => {
   try {
-    const { routing } = req.body;
+    const { routing, install } = req.body;
     
-    if (!routing || (typeof routing.enableGlobalRoute !== 'boolean' && typeof routing.enableGroupNameRoute !== 'boolean')) {
+    if ((!routing || (typeof routing.enableGlobalRoute !== 'boolean' && typeof routing.enableGroupNameRoute !== 'boolean')) 
+        && (!install || typeof install.pythonIndexUrl !== 'string')) {
       res.status(400).json({
         success: false,
         message: 'Invalid system configuration provided',
@@ -263,6 +264,9 @@ export const updateSystemConfig = (req: Request, res: Response): void => {
         routing: {
           enableGlobalRoute: true,
           enableGroupNameRoute: true
+        },
+        install: {
+          pythonIndexUrl: ''
         }
       };
     }
@@ -274,12 +278,26 @@ export const updateSystemConfig = (req: Request, res: Response): void => {
       };
     }
     
-    if (typeof routing.enableGlobalRoute === 'boolean') {
-      settings.systemConfig.routing.enableGlobalRoute = routing.enableGlobalRoute;
+    if (!settings.systemConfig.install) {
+      settings.systemConfig.install = {
+        pythonIndexUrl: ''
+      };
     }
     
-    if (typeof routing.enableGroupNameRoute === 'boolean') {
-      settings.systemConfig.routing.enableGroupNameRoute = routing.enableGroupNameRoute;
+    if (routing) {
+      if (typeof routing.enableGlobalRoute === 'boolean') {
+        settings.systemConfig.routing.enableGlobalRoute = routing.enableGlobalRoute;
+      }
+      
+      if (typeof routing.enableGroupNameRoute === 'boolean') {
+        settings.systemConfig.routing.enableGroupNameRoute = routing.enableGroupNameRoute;
+      }
+    }
+    
+    if (install) {
+      if (typeof install.pythonIndexUrl === 'string') {
+        settings.systemConfig.install.pythonIndexUrl = install.pythonIndexUrl;
+      }
     }
     
     if (saveSettings(settings)) {

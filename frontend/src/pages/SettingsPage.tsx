@@ -17,18 +17,34 @@ const SettingsPage: React.FC = () => {
     setCurrentLanguage(i18n.language);
   }, [i18n.language]);
 
+  const [installConfig, setInstallConfig] = useState<{
+    pythonIndexUrl: string;
+  }>({
+    pythonIndexUrl: '',
+  });
+
   const {
     routingConfig,
+    installConfig: savedInstallConfig,
     loading,
-    updateRoutingConfig
+    updateRoutingConfig,
+    updateInstallConfig
   } = useSettingsData();
+
+  // Update local installConfig when savedInstallConfig changes
+  useEffect(() => {
+    if (savedInstallConfig) {
+      setInstallConfig(savedInstallConfig);
+    }
+  }, [savedInstallConfig]);
 
   const [sectionsVisible, setSectionsVisible] = useState({
     routingConfig: false,
+    installConfig: false,
     password: false
   });
 
-  const toggleSection = (section: 'routingConfig' | 'password') => {
+  const toggleSection = (section: 'routingConfig' | 'installConfig' | 'password') => {
     setSectionsVisible(prev => ({
       ...prev,
       [section]: !prev[section]
@@ -37,6 +53,17 @@ const SettingsPage: React.FC = () => {
 
   const handleRoutingConfigChange = async (key: 'enableGlobalRoute' | 'enableGroupNameRoute', value: boolean) => {
     await updateRoutingConfig(key, value);
+  };
+
+  const handleInstallConfigChange = (value: string) => {
+    setInstallConfig({
+      ...installConfig,
+      pythonIndexUrl: value
+    });
+  };
+
+  const saveInstallConfig = async () => {
+    await updateInstallConfig('pythonIndexUrl', installConfig.pythonIndexUrl);
   };
 
   const handlePasswordChangeSuccess = () => {
@@ -119,6 +146,47 @@ const SettingsPage: React.FC = () => {
                 checked={routingConfig.enableGroupNameRoute}
                 onCheckedChange={(checked) => handleRoutingConfigChange('enableGroupNameRoute', checked)}
               />
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Installation Configuration Settings */}
+      <div className="bg-white shadow rounded-lg py-4 px-6 mb-6">
+        <div
+          className="flex justify-between items-center cursor-pointer"
+          onClick={() => toggleSection('installConfig')}
+        >
+          <h2 className="font-semibold text-gray-800">{t('settings.installConfig')}</h2>
+          <span className="text-gray-500">
+            {sectionsVisible.installConfig ? '▼' : '►'}
+          </span>
+        </div>
+
+        {sectionsVisible.installConfig && (
+          <div className="space-y-4 mt-4">
+            <div className="p-3 bg-gray-50 rounded-md">
+              <div className="mb-2">
+                <h3 className="font-medium text-gray-700">{t('settings.pythonIndexUrl')}</h3>
+                <p className="text-sm text-gray-500">{t('settings.pythonIndexUrlDescription')}</p>
+              </div>
+              <div className="flex items-center gap-3">
+                <input
+                  type="text"
+                  value={installConfig.pythonIndexUrl}
+                  onChange={(e) => handleInstallConfigChange(e.target.value)}
+                  placeholder={t('settings.pythonIndexUrlPlaceholder')}
+                  className="flex-1 mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  disabled={loading}
+                />
+                <button
+                  onClick={saveInstallConfig}
+                  disabled={loading}
+                  className="mt-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium disabled:opacity-50"
+                >
+                  {t('common.save')}
+                </button>
+              </div>
             </div>
           </div>
         )}

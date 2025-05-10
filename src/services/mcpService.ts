@@ -79,6 +79,13 @@ export const initializeClientsFromSettings = (isInit: boolean): ServerInfo[] => 
     } else if (conf.command && conf.args) {
       const env: Record<string, string> = conf.env || {};
       env['PATH'] = expandEnvVars(process.env.PATH as string) || '';
+      
+      // Add UV_DEFAULT_INDEX from settings if available (for Python packages)
+      const settings = loadSettings();
+      if (settings.systemConfig?.install?.pythonIndexUrl && conf.command === 'uvx') {
+        env['UV_DEFAULT_INDEX'] = settings.systemConfig.install.pythonIndexUrl;
+      }
+      
       transport = new StdioClientTransport({
         command: conf.command,
         args: conf.args,
