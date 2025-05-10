@@ -13,6 +13,35 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Update package.json version
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Extract version from tag (remove 'v' prefix)
+          TAG_VERSION=${GITHUB_REF#refs/tags/v}
+          echo "Updating package.json version to $TAG_VERSION"
+          
+          # Update package.json version field
+          sed -i "s/\"version\": \".*\"/\"version\": \"$TAG_VERSION\"/" package.json
+          
+          # Commit the change
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add package.json
+          git commit -m "chore: update version to $TAG_VERSION [skip ci]"
+          
+          # Push using GITHUB_TOKEN for authentication
+          git remote set-url origin https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git
+          git push origin HEAD:${GITHUB_REF#refs/tags/}
+
       - name: Release
         uses: softprops/action-gh-release@v2
         with:
