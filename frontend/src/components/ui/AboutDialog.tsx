@@ -25,6 +25,7 @@ const AboutDialog: React.FC<AboutDialogProps> = ({ isOpen, onClose, version }) =
           // const data = await response.json();
 
           // For demo purposes, we'll just pretend there's a new version
+          // TODO: Replace this placeholder logic with a real API call to check for updates
           setHasNewVersion(false);
           setLatestVersion("0.0.28"); // Just a higher version for demo
         } catch (error) {
