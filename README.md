@@ -179,6 +179,12 @@ Contributions are welcome!
 - Bug reports & fixes
 - Translations & suggestions
 
+## ❤️ Sponsor
+
+If you like this project, maybe you can consider:
+
+[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/samanhappy)
+
 ## 📄 License
 
 Licensed under the [Apache 2.0 License](LICENSE).
