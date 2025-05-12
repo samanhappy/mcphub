@@ -238,8 +238,7 @@
     "noInstallationMethod": "No installation method available for this server",
     "showing": "Showing {{from}}-{{to}} of {{total}} servers",
     "perPage": "Per page"
-  },
-  "settings": {
+  },  "settings": {
     "enableGlobalRoute": "Enable Global Route",
     "enableGlobalRouteDescription": "Allow connections to /sse endpoint without specifying a group ID",
     "enableGroupNameRoute": "Enable Group Name Route",
@@ -247,6 +246,9 @@
     "pythonIndexUrl": "Python Package Repository URL",
     "pythonIndexUrlDescription": "Set UV_DEFAULT_INDEX environment variable for Python package installation",
     "pythonIndexUrlPlaceholder": "e.g. https://pypi.org/simple",
+    "npmRegistry": "NPM Registry URL",
+    "npmRegistryDescription": "Set npm_config_registry environment variable for NPM package installation",
+    "npmRegistryPlaceholder": "e.g. https://registry.npmjs.org/",
     "installConfig": "Installation Configuration",
     "systemConfigUpdated": "System configuration updated successfully"
   }

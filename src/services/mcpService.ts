@@ -91,9 +91,14 @@ export const initializeClientsFromSettings = (isInit: boolean): ServerInfo[] => 
       env['PATH'] = expandEnvVars(process.env.PATH as string) || '';
 
       // Add UV_DEFAULT_INDEX from settings if available (for Python packages)
-      const settings = loadSettings();
+      const settings = loadSettings();      // Add UV_DEFAULT_INDEX from settings if available (for Python packages)
       if (settings.systemConfig?.install?.pythonIndexUrl && conf.command === 'uvx') {
         env['UV_DEFAULT_INDEX'] = settings.systemConfig.install.pythonIndexUrl;
+      }
+
+      // Add npm_config_registry from settings if available (for NPM packages)
+      if (settings.systemConfig?.install?.npmRegistry && (conf.command === 'npm' || conf.command === 'npx')) {
+        env['npm_config_registry'] = settings.systemConfig.install.npmRegistry;
       }
 
       transport = new StdioClientTransport({

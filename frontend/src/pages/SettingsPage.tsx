@@ -16,11 +16,12 @@ const SettingsPage: React.FC = () => {
   useEffect(() => {
     setCurrentLanguage(i18n.language);
   }, [i18n.language]);
-
   const [installConfig, setInstallConfig] = useState<{
     pythonIndexUrl: string;
+    npmRegistry: string;
   }>({
     pythonIndexUrl: '',
+    npmRegistry: '',
   });
 
   const {
@@ -54,16 +55,15 @@ const SettingsPage: React.FC = () => {
   const handleRoutingConfigChange = async (key: 'enableGlobalRoute' | 'enableGroupNameRoute', value: boolean) => {
     await updateRoutingConfig(key, value);
   };
-
-  const handleInstallConfigChange = (value: string) => {
+  const handleInstallConfigChange = (key: 'pythonIndexUrl' | 'npmRegistry', value: string) => {
     setInstallConfig({
       ...installConfig,
-      pythonIndexUrl: value
+      [key]: value
     });
   };
 
-  const saveInstallConfig = async () => {
-    await updateInstallConfig('pythonIndexUrl', installConfig.pythonIndexUrl);
+  const saveInstallConfig = async (key: 'pythonIndexUrl' | 'npmRegistry') => {
+    await updateInstallConfig(key, installConfig[key]);
   };
 
   const handlePasswordChangeSuccess = () => {
@@ -174,13 +174,37 @@ const SettingsPage: React.FC = () => {
                 <input
                   type="text"
                   value={installConfig.pythonIndexUrl}
-                  onChange={(e) => handleInstallConfigChange(e.target.value)}
+                  onChange={(e) => handleInstallConfigChange('pythonIndexUrl', e.target.value)}
                   placeholder={t('settings.pythonIndexUrlPlaceholder')}
                   className="flex-1 mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                   disabled={loading}
                 />
                 <button
-                  onClick={saveInstallConfig}
+                  onClick={() => saveInstallConfig('pythonIndexUrl')}
+                  disabled={loading}
+                  className="mt-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium disabled:opacity-50"
+                >
+                  {t('common.save')}
+                </button>
+              </div>
+            </div>
+            
+            <div className="p-3 bg-gray-50 rounded-md">
+              <div className="mb-2">
+                <h3 className="font-medium text-gray-700">{t('settings.npmRegistry')}</h3>
+                <p className="text-sm text-gray-500">{t('settings.npmRegistryDescription')}</p>
+              </div>
+              <div className="flex items-center gap-3">
+                <input
+                  type="text"
+                  value={installConfig.npmRegistry}
+                  onChange={(e) => handleInstallConfigChange('npmRegistry', e.target.value)}
+                  placeholder={t('settings.npmRegistryPlaceholder')}
+                  className="flex-1 mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  disabled={loading}
+                />
+                <button
+                  onClick={() => saveInstallConfig('npmRegistry')}
                   disabled={loading}
                   className="mt-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium disabled:opacity-50"
                 >

@@ -83,9 +83,9 @@ export interface McpSettings {
     routing?: {
       enableGlobalRoute?: boolean; // Controls whether the /sse endpoint without group is enabled
       enableGroupNameRoute?: boolean; // Controls whether group routing by name is allowed
-    };
-    install?: {
+    };    install?: {
       pythonIndexUrl?: string; // Python package repository URL (UV_DEFAULT_INDEX)
+      npmRegistry?: string; // NPM registry URL (npm_config_registry)
     };
     // Add other system configuration sections here in the future
   };
