@@ -3,6 +3,7 @@ import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprot
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
+import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { ServerInfo, ServerConfig } from '../types/index.js';
 import { loadSettings, saveSettings, expandEnvVars } from '../config/index.js';
 import config from '../config/index.js';
@@ -79,9 +80,13 @@ export const initializeClientsFromSettings = (isInit: boolean): ServerInfo[] => 
     }
 
     let transport;
-    if (conf.url) {
+    if (conf.type === 'streamable-http') {
+      transport = new StreamableHTTPClientTransport(new URL(conf.url || ''));
+    } else if (conf.url) {
+      // Default to SSE if type not specified and URL is available
       transport = new SSEClientTransport(new URL(conf.url));
     } else if (conf.command && conf.args) {
+      // If type is stdio or if command and args are provided without type
       const env: Record<string, string> = conf.env || {};
       env['PATH'] = expandEnvVars(process.env.PATH as string) || '';
 

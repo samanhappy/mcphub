@@ -12,9 +12,21 @@ interface ServerFormProps {
 
 const ServerForm = ({ onSubmit, onCancel, initialData = null, modalTitle, formError = null }: ServerFormProps) => {
   const { t } = useTranslation()
-  const [serverType, setServerType] = useState<'sse' | 'stdio'>(
-    initialData && initialData.config && initialData.config.url ? 'sse' : 'stdio',
-  )
+
+  // Determine the initial server type from the initialData
+  const getInitialServerType = () => {
+    if (!initialData || !initialData.config) return 'stdio';
+
+    if (initialData.config.type) {
+      return initialData.config.type; // Use explicit type if available
+    } else if (initialData.config.url) {
+      return 'sse'; // Fallback to SSE if URL exists
+    } else {
+      return 'stdio'; // Default to stdio
+    }
+  };
+
+  const [serverType, setServerType] = useState<'stdio' | 'sse' | 'streamable-http'>(getInitialServerType());
 
   const [formData, setFormData] = useState<ServerFormData>({
     name: (initialData && initialData.name) || '',
@@ -27,6 +39,8 @@ const ServerForm = ({ onSubmit, onCancel, initialData = null, modalTitle, formEr
           : String(initialData.config.args)
         : '',
     args: (initialData && initialData.config && initialData.config.args) || [],
+    type: getInitialServerType(), // Initialize the type field
+    env: []
   })
 
   const [envVars, setEnvVars] = useState<EnvVar[]>(
@@ -47,6 +61,11 @@ const ServerForm = ({ onSubmit, onCancel, initialData = null, modalTitle, formEr
   const handleArgsChange = (value: string) => {
     let args = value.split(' ').filter((arg) => arg.trim() !== '')
     setFormData({ ...formData, arguments: value, args })
+  }
+
+  const updateServerType = (type: 'stdio' | 'sse' | 'streamable-http') => {
+    setServerType(type);
+    setFormData(prev => ({ ...prev, type }));
   }
 
   const handleEnvVarChange = (index: number, field: 'key' | 'value', value: string) => {
@@ -80,14 +99,17 @@ const ServerForm = ({ onSubmit, onCancel, initialData = null, modalTitle, formEr
 
       const payload = {
         name: formData.name,
-        config:
-          serverType === 'sse'
+        config: {
+          type: serverType, // Always include the type
+          ...(serverType === 'sse' || serverType === 'streamable-http'
             ? { url: formData.url }
             : {
-                command: formData.command,
-                args: formData.args,
-                env: Object.keys(env).length > 0 ? env : undefined,
-              },
+              command: formData.command,
+              args: formData.args,
+              env: Object.keys(env).length > 0 ? env : undefined,
+            }
+          )
+        }
       }
 
       onSubmit(payload)
@@ -139,10 +161,10 @@ const ServerForm = ({ onSubmit, onCancel, initialData = null, modalTitle, formEr
                 name="serverType"
                 value="command"
                 checked={serverType === 'stdio'}
-                onChange={() => setServerType('stdio')}
+                onChange={() => updateServerType('stdio')}
                 className="mr-1"
               />
-              <label htmlFor="command">stdio</label>
+              <label htmlFor="command">STDIO</label>
             </div>
             <div>
               <input
@@ -151,15 +173,27 @@ const ServerForm = ({ onSubmit, onCancel, initialData = null, modalTitle, formEr
                 name="serverType"
                 value="url"
                 checked={serverType === 'sse'}
-                onChange={() => setServerType('sse')}
+                onChange={() => updateServerType('sse')}
                 className="mr-1"
               />
-              <label htmlFor="url">sse</label>
+              <label htmlFor="url">SSE</label>
+            </div>
+            <div>
+              <input
+                type="radio"
+                id="streamable-http"
+                name="serverType"
+                value="streamable-http"
+                checked={serverType === 'streamable-http'}
+                onChange={() => updateServerType('streamable-http')}
+                className="mr-1"
+              />
+              <label htmlFor="streamable-http">Streamable HTTP</label>
             </div>
           </div>
         </div>
 
-        {serverType === 'sse' ? (
+        {serverType === 'sse' || serverType === 'streamable-http' ? (
           <div className="mb-4">
             <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="url">
               {t('server.url')}
@@ -171,8 +205,8 @@ const ServerForm = ({ onSubmit, onCancel, initialData = null, modalTitle, formEr
               value={formData.url}
               onChange={handleInputChange}
               className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-              placeholder="e.g.: http://localhost:3000/sse"
-              required={serverType === 'sse'}
+              placeholder={serverType === 'streamable-http' ? "e.g.: http://localhost:3000/mcp" : "e.g.: http://localhost:3000/sse"}
+              required={serverType === 'sse' || serverType === 'streamable-http'}
             />
           </div>
         ) : (

@@ -71,6 +71,7 @@ export interface Tool {
 
 // Server config types
 export interface ServerConfig {
+  type?: 'stdio' | 'sse' | 'streamable-http';
   url?: string;
   command?: string;
   args?: string[];
@@ -108,6 +109,8 @@ export interface ServerFormData {
   url: string;
   command: string;
   arguments: string;
+  args?: string[]; // Added explicit args field
+  type?: 'stdio' | 'sse' | 'streamable-http'; // Added type field
   env: EnvVar[];
 }
 

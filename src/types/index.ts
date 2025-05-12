@@ -1,6 +1,7 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
+import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 
 // User interface
 export interface IUser {
@@ -11,8 +12,8 @@ export interface IUser {
 
 // Group interface for server grouping
 export interface IGroup {
-  id: string;        // Unique UUID for the group
-  name: string;      // Display name of the group
+  id: string; // Unique UUID for the group
+  name: string; // Display name of the group
   description?: string; // Optional description of the group
   servers: string[]; // Array of server names that belong to this group
 }
@@ -92,7 +93,8 @@ export interface McpSettings {
 
 // Configuration details for an individual server
 export interface ServerConfig {
-  url?: string; // URL for SSE-based servers
+  type?: 'stdio' | 'sse' | 'streamable-http'; // Type of server
+  url?: string; // URL for SSE or streamable HTTP servers
   command?: string; // Command to execute for stdio-based servers
   args?: string[]; // Arguments for the command
   env?: Record<string, string>; // Environment variables
@@ -106,7 +108,7 @@ export interface ServerInfo {
   error: string | null; // Error message if any
   tools: ToolInfo[]; // List of tools available on the server
   client?: Client; // Client instance for communication
-  transport?: SSEClientTransport | StdioClientTransport; // Transport mechanism used
+  transport?: SSEClientTransport | StdioClientTransport | StreamableHTTPClientTransport; // Transport mechanism used
   createTime: number; // Timestamp of when the server was created
   enabled?: boolean; // Flag to indicate if the server is enabled
 }

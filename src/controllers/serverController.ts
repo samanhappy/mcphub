@@ -69,6 +69,24 @@ export const createServer = async (req: Request, res: Response): Promise<void> =
       return;
     }
 
+    // Validate the server type if specified
+    if (config.type && !['stdio', 'sse', 'streamable-http'].includes(config.type)) {
+      res.status(400).json({
+        success: false,
+        message: 'Server type must be one of: stdio, sse, streamable-http',
+      });
+      return;
+    }
+
+    // Validate that URL is provided for sse and streamable-http types
+    if ((config.type === 'sse' || config.type === 'streamable-http') && !config.url) {
+      res.status(400).json({
+        success: false,
+        message: `URL is required for ${config.type} server type`,
+      });
+      return;
+    }
+
     const result = await addServer(name, config);
     if (result.success) {
       notifyToolChanged();
@@ -146,6 +164,24 @@ export const updateServer = async (req: Request, res: Response): Promise<void> =
       res.status(400).json({
         success: false,
         message: 'Server configuration must include either a URL or command with arguments',
+      });
+      return;
+    }
+
+    // Validate the server type if specified
+    if (config.type && !['stdio', 'sse', 'streamable-http'].includes(config.type)) {
+      res.status(400).json({
+        success: false,
+        message: 'Server type must be one of: stdio, sse, streamable-http',
+      });
+      return;
+    }
+
+    // Validate that URL is provided for sse and streamable-http types
+    if ((config.type === 'sse' || config.type === 'streamable-http') && !config.url) {
+      res.status(400).json({
+        success: false,
+        message: `URL is required for ${config.type} server type`,
       });
       return;
     }
@@ -248,58 +284,62 @@ export const toggleServer = async (req: Request, res: Response): Promise<void> =
 export const updateSystemConfig = (req: Request, res: Response): void => {
   try {
     const { routing, install } = req.body;
-    
-    if ((!routing || (typeof routing.enableGlobalRoute !== 'boolean' && typeof routing.enableGroupNameRoute !== 'boolean')) 
-        && (!install || typeof install.pythonIndexUrl !== 'string')) {
+
+    if (
+      (!routing ||
+        (typeof routing.enableGlobalRoute !== 'boolean' &&
+          typeof routing.enableGroupNameRoute !== 'boolean')) &&
+      (!install || typeof install.pythonIndexUrl !== 'string')
+    ) {
       res.status(400).json({
         success: false,
         message: 'Invalid system configuration provided',
       });
       return;
     }
-    
+
     const settings = loadSettings();
     if (!settings.systemConfig) {
       settings.systemConfig = {
         routing: {
           enableGlobalRoute: true,
-          enableGroupNameRoute: true
+          enableGroupNameRoute: true,
         },
         install: {
-          pythonIndexUrl: ''
-        }
+          pythonIndexUrl: '',
+        },
       };
     }
-    
+
     if (!settings.systemConfig.routing) {
       settings.systemConfig.routing = {
         enableGlobalRoute: true,
-        enableGroupNameRoute: true
+        enableGroupNameRoute: true,
       };
     }
-    
+
     if (!settings.systemConfig.install) {
       settings.systemConfig.install = {
-        pythonIndexUrl: ''
+        pythonIndexUrl: '',
       };
     }
-    
+
     if (routing) {
       if (typeof routing.enableGlobalRoute === 'boolean') {
         settings.systemConfig.routing.enableGlobalRoute = routing.enableGlobalRoute;
       }
-      
+
       if (typeof routing.enableGroupNameRoute === 'boolean') {
         settings.systemConfig.routing.enableGroupNameRoute = routing.enableGroupNameRoute;
       }
     }
-    
+
     if (install) {
       if (typeof install.pythonIndexUrl === 'string') {
         settings.systemConfig.install.pythonIndexUrl = install.pythonIndexUrl;
       }
     }
-    
+
     if (saveSettings(settings)) {
       res.json({
         success: true,
