@@ -83,7 +83,7 @@ export const initializeClientsFromSettings = (isInit: boolean): ServerInfo[] => 
     if (conf.type === 'streamable-http') {
       transport = new StreamableHTTPClientTransport(new URL(conf.url || ''));
     } else if (conf.url) {
-      // Default to SSE if type not specified and URL is available
+      // Default to SSE only when 'conf.type' is not specified and 'conf.url' is available
       transport = new SSEClientTransport(new URL(conf.url));
     } else if (conf.command && conf.args) {
       // If type is stdio or if command and args are provided without type
