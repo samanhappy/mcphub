@@ -4,7 +4,7 @@ import { Transport } from '@modelcontextprotocol/sdk/shared/transport.js';
 import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { isInitializeRequest } from '@modelcontextprotocol/sdk/types.js';
-import { getMcpServer } from './mcpService.js';
+import { deleteMcpServer, getMcpServer } from './mcpService.js';
 import { loadSettings } from '../config/index.js';
 
 const transports: { [sessionId: string]: { transport: Transport; group: string } } = {};
@@ -32,6 +32,7 @@ export const handleSseConnection = async (req: Request, res: Response): Promise<
 
   res.on('close', () => {
     delete transports[transport.sessionId];
+    deleteMcpServer(transport.sessionId);
     console.log(`SSE connection closed: ${transport.sessionId}`);
   });
 
@@ -56,7 +57,6 @@ export const handleSseMessage = async (req: Request, res: Response): Promise<voi
 };
 
 export const handleMcpPostRequest = async (req: Request, res: Response): Promise<void> => {
-  console.log(`current transports: ${Object.keys(transports)}`);
   const sessionId = req.headers['mcp-session-id'] as string | undefined;
   const group = req.params.group;
   console.log(`Handling MCP post request for sessionId: ${sessionId} and group: ${group}`);
@@ -85,24 +85,13 @@ export const handleMcpPostRequest = async (req: Request, res: Response): Promise
     transport.onclose = () => {
       if (transport.sessionId) {
         delete transports[transport.sessionId];
+        deleteMcpServer(transport.sessionId);
         console.log(`MCP connection closed: ${transport.sessionId}`);
       }
     };
 
     console.log(`MCP connection established: ${transport.sessionId}`);
-    if (transport.sessionId) {
-      await getMcpServer(transport.sessionId).connect(transport);
-    } else {
-      console.error('Unable to connect: session ID is undefined');
-      res.status(500).json({
-        jsonrpc: '2.0',
-        error: {
-          code: -32000,
-          message: 'Failed to establish connection: No session ID',
-        },
-        id: null,
-      });
-    }
+    await getMcpServer(transport.sessionId || 'mcp').connect(transport);
   } else {
     res.status(400).json({
       jsonrpc: '2.0',
