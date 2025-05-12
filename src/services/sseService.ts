@@ -38,7 +38,7 @@ export const handleSseConnection = async (req: Request, res: Response): Promise<
   console.log(
     `New SSE connection established: ${transport.sessionId} with group: ${group || 'global'}`,
   );
-  await getMcpServer().connect(transport);
+  await getMcpServer(transport.sessionId).connect(transport);
 };
 
 export const handleSseMessage = async (req: Request, res: Response): Promise<void> => {
@@ -56,9 +56,10 @@ export const handleSseMessage = async (req: Request, res: Response): Promise<voi
 };
 
 export const handleMcpPostRequest = async (req: Request, res: Response): Promise<void> => {
-  console.log('Handling MCP post request');
+  console.log(`current transports: ${Object.keys(transports)}`);
   const sessionId = req.headers['mcp-session-id'] as string | undefined;
   const group = req.params.group;
+  console.log(`Handling MCP post request for sessionId: ${sessionId} and group: ${group}`);
   const settings = loadSettings();
   const routingConfig = settings.systemConfig?.routing || {
     enableGlobalRoute: true,
@@ -71,6 +72,7 @@ export const handleMcpPostRequest = async (req: Request, res: Response): Promise
 
   let transport: StreamableHTTPServerTransport;
   if (sessionId && transports[sessionId]) {
+    console.log(`Reusing existing transport for sessionId: ${sessionId}`);
     transport = transports[sessionId].transport as StreamableHTTPServerTransport;
   } else if (!sessionId && isInitializeRequest(req.body)) {
     transport = new StreamableHTTPServerTransport({
@@ -83,10 +85,24 @@ export const handleMcpPostRequest = async (req: Request, res: Response): Promise
     transport.onclose = () => {
       if (transport.sessionId) {
         delete transports[transport.sessionId];
+        console.log(`MCP connection closed: ${transport.sessionId}`);
       }
     };
 
-    await getMcpServer().connect(transport);
+    console.log(`MCP connection established: ${transport.sessionId}`);
+    if (transport.sessionId) {
+      await getMcpServer(transport.sessionId).connect(transport);
+    } else {
+      console.error('Unable to connect: session ID is undefined');
+      res.status(500).json({
+        jsonrpc: '2.0',
+        error: {
+          code: -32000,
+          message: 'Failed to establish connection: No session ID',
+        },
+        id: null,
+      });
+    }
   } else {
     res.status(400).json({
       jsonrpc: '2.0',
@@ -99,6 +115,7 @@ export const handleMcpPostRequest = async (req: Request, res: Response): Promise
     return;
   }
 
+  console.log(`Handling request using transport with type ${transport.constructor.name}`);
   await transport.handleRequest(req, res, req.body);
 };
 

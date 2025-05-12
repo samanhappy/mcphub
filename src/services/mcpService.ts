@@ -9,31 +9,32 @@ import config from '../config/index.js';
 import { getGroup } from './sseService.js';
 import { getServersInGroup } from './groupService.js';
 
-let currentServer: Server;
+const servers: { [sessionId: string]: Server } = {};
 
 export const initMcpServer = async (name: string, version: string): Promise<void> => {
-  currentServer = createMcpServer(name, version);
-  await registerAllTools(currentServer, true, true);
+  await registerAllTools(true);
 };
 
-export const setMcpServer = (server: Server): void => {
-  currentServer = server;
-};
-
-export const getMcpServer = (): Server => {
-  return currentServer;
+export const getMcpServer = (sessionId: string): Server => {
+  if (!servers[sessionId]) {
+    const server = createMcpServer(config.mcpHubName, config.mcpHubVersion);
+    servers[sessionId] = server;
+  }
+  return servers[sessionId];
 };
 
 export const notifyToolChanged = async () => {
-  await registerAllTools(currentServer, true, false);
-  currentServer
-    .sendToolListChanged()
-    .catch((error) => {
-      console.warn('Failed to send tool list changed notification:', error.message);
-    })
-    .then(() => {
-      console.log('Tool list changed notification sent successfully');
-    });
+  await registerAllTools(false);
+  Object.values(servers).forEach((server) => {
+    server
+      .sendToolListChanged()
+      .catch((error) => {
+        console.warn('Failed to send tool list changed notification:', error.message);
+      })
+      .then(() => {
+        console.log('Tool list changed notification sent successfully');
+      });
+  });
 };
 
 // Store all server information
@@ -79,13 +80,13 @@ export const initializeClientsFromSettings = (isInit: boolean): ServerInfo[] => 
     } else if (conf.command && conf.args) {
       const env: Record<string, string> = conf.env || {};
       env['PATH'] = expandEnvVars(process.env.PATH as string) || '';
-      
+
       // Add UV_DEFAULT_INDEX from settings if available (for Python packages)
       const settings = loadSettings();
       if (settings.systemConfig?.install?.pythonIndexUrl && conf.command === 'uvx') {
         env['UV_DEFAULT_INDEX'] = settings.systemConfig.install.pythonIndexUrl;
       }
-      
+
       transport = new StdioClientTransport({
         command: conf.command,
         args: conf.args,
@@ -180,11 +181,7 @@ export const initializeClientsFromSettings = (isInit: boolean): ServerInfo[] => 
 };
 
 // Register all MCP tools
-export const registerAllTools = async (
-  server: Server,
-  forceInit: boolean,
-  isInit: boolean,
-): Promise<void> => {
+export const registerAllTools = async (isInit: boolean): Promise<void> => {
   initializeClientsFromSettings(isInit);
 };
 
@@ -236,7 +233,7 @@ export const addServer = async (
       return { success: false, message: 'Failed to save settings' };
     }
 
-    registerAllTools(currentServer, false, false);
+    registerAllTools(false);
     return { success: true, message: 'Server added successfully' };
   } catch (error) {
     console.error(`Failed to add server: ${name}`, error);

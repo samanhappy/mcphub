@@ -6,9 +6,7 @@ import tailwindcss from '@tailwindcss/vite';
 import { readFileSync } from 'fs';
 
 // Get package.json version
-const packageJson = JSON.parse(
-  readFileSync(path.resolve(__dirname, '../package.json'), 'utf-8')
-);
+const packageJson = JSON.parse(readFileSync(path.resolve(__dirname, '../package.json'), 'utf-8'));
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -21,6 +19,9 @@ export default defineConfig({
   define: {
     // Make package version available as global variable
     'import.meta.env.PACKAGE_VERSION': JSON.stringify(packageJson.version),
+  },
+  build: {
+    sourcemap: true, // Enable source maps for production build
   },
   server: {
     proxy: {
