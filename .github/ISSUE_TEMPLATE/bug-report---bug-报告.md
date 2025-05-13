@@ -1,32 +1,29 @@
 ---
 name: Bug Report / Bug 报告
-about: Create a report to help us improve / 创建一个报告来帮助我们改进
+about: Create a report to help us improve / 报告问题以帮助改进
 title: ''
 labels: bug
 assignees: ''
 
 ---
 
-**Describe the bug / 描述问题**
-A clear and concise description of what the bug is.
-请清晰简洁地描述这个 bug。
+**Bug Description / 问题描述**
+What happened? / 发生了什么？
 
-**To Reproduce / 复现步骤**
-Steps to reproduce the behavior.
-重现该问题的步骤。
+**Steps to Reproduce / 复现步骤**
+1. 
+2. 
+3. 
 
-**Expected behavior / 预期行为**
-A clear and concise description of what you expected to happen.
-请清晰简洁地描述您期望发生的情况。
+**Expected Behavior / 预期行为**
+What should happen? / 应该发生什么？
+
+**Environment / 运行环境**
+- Running on / 运行方式: [docker/npx/local / docker/npx/本地]
+- Version / 版本: [e.g. 1.0.0]
 
 **Screenshots / 截图**
-If applicable, add screenshots to help explain your problem.
-如果适用，请添加截图以帮助解释您的问题。
+If relevant, add screenshots / 如果有帮助的话，请添加截图
 
-**Version Information / 版本信息:**
- - Environment / 运行环境: [e.g. docker, npx, local / 如 docker, npx, 本地]
- - Version / 版本: [e.g. 1.0.0 / 如 1.0.0]
-
-**Additional context / 补充信息**
-Add any other context about the problem here.
-在此添加关于该问题的任何其他信息。
+**Additional Info / 补充信息**
+Any other details? / 还有其他信息吗？
