@@ -239,7 +239,8 @@
     "noInstallationMethod": "该服务器没有可用的安装方法",
     "showing": "显示 {{from}}-{{to}}/{{total}} 个服务器",
     "perPage": "每页显示"
-  },  "settings": {
+  },
+  "settings": {
     "enableGlobalRoute": "启用全局路由",
     "enableGlobalRouteDescription": "允许不指定组 ID 就连接到 /sse 端点",
     "enableGroupNameRoute": "启用组名路由",

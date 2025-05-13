@@ -87,21 +87,19 @@ const SettingsPage: React.FC = () => {
           <h2 className="font-semibold text-gray-800">{t('pages.settings.language')}</h2>
           <div className="flex space-x-3">
             <button
-              className={`px-3 py-1.5 rounded-md transition-colors text-sm ${
-                currentLanguage.startsWith('en') 
-                  ? 'bg-blue-500 text-white' 
-                  : 'bg-blue-100 text-blue-800 hover:bg-blue-200'
-              }`}
+              className={`px-3 py-1.5 rounded-md transition-colors text-sm ${currentLanguage.startsWith('en')
+                ? 'bg-blue-500 text-white'
+                : 'bg-blue-100 text-blue-800 hover:bg-blue-200'
+                }`}
               onClick={() => handleLanguageChange('en')}
             >
               English
             </button>
             <button
-              className={`px-3 py-1.5 rounded-md transition-colors text-sm ${
-                currentLanguage.startsWith('zh') 
-                  ? 'bg-blue-500 text-white' 
-                  : 'bg-blue-100 text-blue-800 hover:bg-blue-200'
-              }`}
+              className={`px-3 py-1.5 rounded-md transition-colors text-sm ${currentLanguage.startsWith('zh')
+                ? 'bg-blue-500 text-white'
+                : 'bg-blue-100 text-blue-800 hover:bg-blue-200'
+                }`}
               onClick={() => handleLanguageChange('zh')}
             >
               中文
@@ -188,7 +186,7 @@ const SettingsPage: React.FC = () => {
                 </button>
               </div>
             </div>
-            
+
             <div className="p-3 bg-gray-50 rounded-md">
               <div className="mb-2">
                 <h3 className="font-medium text-gray-700">{t('settings.npmRegistry')}</h3>

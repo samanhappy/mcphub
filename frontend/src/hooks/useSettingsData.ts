@@ -67,7 +67,8 @@ export const useSettingsData = () => {
           enableGlobalRoute: data.data.systemConfig.routing.enableGlobalRoute ?? true,
           enableGroupNameRoute: data.data.systemConfig.routing.enableGroupNameRoute ?? true,
         });
-      }      if (data.success && data.data?.systemConfig?.install) {
+      }
+      if (data.success && data.data?.systemConfig?.install) {
         setInstallConfig({
           pythonIndexUrl: data.data.systemConfig.install.pythonIndexUrl || '',
           npmRegistry: data.data.systemConfig.install.npmRegistry || '',
