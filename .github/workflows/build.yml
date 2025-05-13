@@ -6,19 +6,6 @@ on:
   workflow_dispatch:
 
 jobs:
-  # 等待 npm 发布完成
-  wait-for-npm:
-    runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/')
-    steps:
-      - name: Wait for NPM publish
-        uses: lewagon/wait-on-check-action@v1.3.1
-        with:
-          ref: ${{ github.ref }}
-          check-name: 'publish-npm'
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          wait-interval: 10
-
   build:
     needs: wait-for-npm
     runs-on: ubuntu-latest
@@ -30,7 +17,6 @@ jobs:
         with:
           fetch-depth: 0
 
-      # 备份：更新版本号（以防 npm-publish 失败）
       - name: Update version from tag
         if: startsWith(github.ref, 'refs/tags/')
         run: |
