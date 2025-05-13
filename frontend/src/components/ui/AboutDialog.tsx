@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { X } from 'lucide-react';
+import { X, RefreshCw } from 'lucide-react';
+import { checkLatestVersion, compareVersions } from '@/utils/version';
 
 interface AboutDialogProps {
   isOpen: boolean;
@@ -12,30 +13,28 @@ const AboutDialog: React.FC<AboutDialogProps> = ({ isOpen, onClose, version }) =
   const { t } = useTranslation();
   const [hasNewVersion, setHasNewVersion] = useState(false);
   const [latestVersion, setLatestVersion] = useState("");
+  const [isChecking, setIsChecking] = useState(false);
 
-  // Check if there's a new version available
-  // In a real application, this would make an API call to check for updates
+  const checkForUpdates = async () => {
+    setIsChecking(true);
+    try {
+      const latest = await checkLatestVersion();
+      if (latest) {
+        setLatestVersion(latest);
+        setHasNewVersion(compareVersions(version, latest) > 0);
+      }
+    } catch (error) {
+      console.error('Failed to check for updates:', error);
+    } finally {
+      setIsChecking(false);
+    }
+  };
+
   useEffect(() => {
     if (isOpen) {
-      // Mock implementation - in real implementation, you would fetch from an API
-      const checkForUpdates = async () => {
-        try {
-          // This is a placeholder - in a real app you would call an API
-          // const response = await fetch('/api/check-updates');
-          // const data = await response.json();
-
-          // For demo purposes, we'll just pretend there's a new version
-          // TODO: Replace this placeholder logic with a real API call to check for updates
-          setHasNewVersion(false);
-          setLatestVersion("0.0.28"); // Just a higher version for demo
-        } catch (error) {
-          console.error('Failed to check for updates:', error);
-        }
-      };
-
       checkForUpdates();
     }
-  }, [isOpen]);
+  }, [isOpen, version]);
 
   if (!isOpen) return null;
 
@@ -66,7 +65,7 @@ const AboutDialog: React.FC<AboutDialogProps> = ({ isOpen, onClose, version }) =
               </span>
             </div>
 
-            {hasNewVersion && (
+            {hasNewVersion && latestVersion && (
               <div className="bg-blue-50 dark:bg-blue-900 p-3 rounded">
                 <div className="flex items-start">
                   <div className="flex-shrink-0">
@@ -74,14 +73,35 @@ const AboutDialog: React.FC<AboutDialogProps> = ({ isOpen, onClose, version }) =
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                   </div>
-                  <div className="ml-3">
-                    <p className="text-sm font-medium text-blue-800 dark:text-blue-200">
-                      {t('about.newVersion')} (v{latestVersion})
+                  <div className="ml-3 flex-1 text-sm text-blue-700 dark:text-blue-300">
+                    <p>{t('about.newVersionAvailable', { version: latestVersion })}</p>
+                    <p className="mt-1">
+                      <a
+                        href="https://github.com/samanhappy/mcphub"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-600 dark:text-blue-400 hover:underline"
+                      >
+                        {t('about.viewOnGitHub')}
+                      </a>
                     </p>
                   </div>
                 </div>
               </div>
             )}
+
+            <button
+              onClick={checkForUpdates}
+              disabled={isChecking}
+              className={`mt-4 inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium 
+                ${isChecking
+                  ? 'text-gray-400 dark:text-gray-500 bg-gray-100 dark:bg-gray-800'
+                  : 'text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600'
+                } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500`}
+            >
+              <RefreshCw className={`h-4 w-4 mr-2 ${isChecking ? 'animate-spin' : ''}`} />
+              {isChecking ? t('about.checking') : t('about.checkForUpdates')}
+            </button>
           </div>
         </div>
       </div>

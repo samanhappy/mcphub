@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { User, Settings, LogOut, Info } from 'lucide-react';
 import AboutDialog from './AboutDialog';
+import { checkLatestVersion, compareVersions } from '@/utils/version';
 
 interface UserProfileMenuProps {
   collapsed: boolean;
@@ -19,17 +20,21 @@ const UserProfileMenu: React.FC<UserProfileMenuProps> = ({ collapsed, version })
   const [showAboutDialog, setShowAboutDialog] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  // Check for new version - this could be replaced with a real API call
+  // Check for new version on login and component mount
   useEffect(() => {
-    // Mock implementation - in a real app, you would check against an API
     const checkForNewVersion = async () => {
-      // For demo purposes, we're just showing the notification
-      // In real implementation, you would compare current version with latest version
-      setShowNewVersionInfo(false);
+      try {
+        const latestVersion = await checkLatestVersion();
+        if (latestVersion) {
+          setShowNewVersionInfo(compareVersions(version, latestVersion) > 0);
+        }
+      } catch (error) {
+        console.error('Error checking for new version:', error);
+      }
     };
 
     checkForNewVersion();
-  }, []);
+  }, [version]);
 
   // Close the menu when clicking outside
   useEffect(() => {

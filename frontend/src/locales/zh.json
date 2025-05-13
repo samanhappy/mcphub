@@ -16,7 +16,11 @@
     "title": "关于",
     "versionInfo": "MCP Hub 版本: {{version}}",
     "newVersion": "有新版本可用！",
-    "currentVersion": "当前版本"
+    "currentVersion": "当前版本",
+    "newVersionAvailable": "新版本 {{version}} 已发布",
+    "viewOnGitHub": "在 GitHub 上查看",
+    "checkForUpdates": "检查更新",
+    "checking": "检查更新中..."
   },
   "profile": {
     "viewProfile": "查看个人中心",

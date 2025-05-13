@@ -16,7 +16,11 @@
     "title": "About",
     "versionInfo": "MCP Hub Version: {{version}}",
     "newVersion": "New version available!",
-    "currentVersion": "Current version"
+    "currentVersion": "Current version",
+    "newVersionAvailable": "New version {{version}} is available",
+    "viewOnGitHub": "View on GitHub",
+    "checkForUpdates": "Check for Updates",
+    "checking": "Checking for updates..."
   },
   "profile": {
     "viewProfile": "View profile",
