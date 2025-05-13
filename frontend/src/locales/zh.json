@@ -146,7 +146,7 @@
       "account": "账户设置",
       "password": "修改密码",
       "appearance": "外观",
-      "routeConfig": "路由配置",
+      "routeConfig": "安全配置",
       "installConfig": "安装配置"
     },
     "groups": {
@@ -245,6 +245,11 @@
     "enableGlobalRouteDescription": "允许不指定组 ID 就连接到 /sse 端点",
     "enableGroupNameRoute": "启用组名路由",
     "enableGroupNameRouteDescription": "允许使用组名而不仅仅是组 ID 连接到 /sse 端点",
+    "enableBearerAuth": "启用 Bearer 认证",
+    "enableBearerAuthDescription": "对 MCP 请求启用 Bearer 令牌认证",
+    "bearerAuthKey": "Bearer 认证密钥",
+    "bearerAuthKeyDescription": "Bearer 令牌中需要携带的认证密钥",
+    "bearerAuthKeyPlaceholder": "请输入 Bearer 认证密钥",
     "pythonIndexUrl": "Python 包仓库地址",
     "pythonIndexUrlDescription": "设置 UV_DEFAULT_INDEX 环境变量，用于 Python 包安装",
     "pythonIndexUrlPlaceholder": "例如: https://mirrors.aliyun.com/pypi/simple",

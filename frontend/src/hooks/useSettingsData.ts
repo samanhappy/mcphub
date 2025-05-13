@@ -7,6 +7,8 @@ import { useToast } from '@/contexts/ToastContext';
 interface RoutingConfig {
   enableGlobalRoute: boolean;
   enableGroupNameRoute: boolean;
+  enableBearerAuth: boolean;
+  bearerAuthKey: string;
 }
 
 interface InstallConfig {
@@ -21,6 +23,10 @@ interface SystemSettings {
   };
 }
 
+interface TempRoutingConfig {
+  bearerAuthKey: string;
+}
+
 export const useSettingsData = () => {
   const { t } = useTranslation();
   const { showToast } = useToast();
@@ -28,7 +34,14 @@ export const useSettingsData = () => {
   const [routingConfig, setRoutingConfig] = useState<RoutingConfig>({
     enableGlobalRoute: true,
     enableGroupNameRoute: true,
+    enableBearerAuth: false,
+    bearerAuthKey: '',
   });
+
+  const [tempRoutingConfig, setTempRoutingConfig] = useState<TempRoutingConfig>({
+    bearerAuthKey: '',
+  });
+
   const [installConfig, setInstallConfig] = useState<InstallConfig>({
     pythonIndexUrl: '',
     npmRegistry: '',
@@ -66,6 +79,8 @@ export const useSettingsData = () => {
         setRoutingConfig({
           enableGlobalRoute: data.data.systemConfig.routing.enableGlobalRoute ?? true,
           enableGroupNameRoute: data.data.systemConfig.routing.enableGroupNameRoute ?? true,
+          enableBearerAuth: data.data.systemConfig.routing.enableBearerAuth ?? false,
+          bearerAuthKey: data.data.systemConfig.routing.bearerAuthKey || '',
         });
       }
       if (data.success && data.data?.systemConfig?.install) {
@@ -84,7 +99,10 @@ export const useSettingsData = () => {
   }, [t, showToast]);
 
   // Update routing configuration
-  const updateRoutingConfig = async (key: keyof RoutingConfig, value: boolean) => {
+  const updateRoutingConfig = async <T extends keyof RoutingConfig>(
+    key: T,
+    value: RoutingConfig[T],
+  ) => {
     setLoading(true);
     setError(null);
 
@@ -117,13 +135,13 @@ export const useSettingsData = () => {
         showToast(t('settings.systemConfigUpdated'));
         return true;
       } else {
-        showToast(t('errors.failedToUpdateSystemConfig'));
+        showToast(t('errors.failedToUpdateRouteConfig'));
         return false;
       }
     } catch (error) {
-      console.error('Failed to update system config:', error);
-      setError(error instanceof Error ? error.message : 'Failed to update system config');
-      showToast(t('errors.failedToUpdateSystemConfig'));
+      console.error('Failed to update routing config:', error);
+      setError(error instanceof Error ? error.message : 'Failed to update routing config');
+      showToast(t('errors.failedToUpdateRouteConfig'));
       return false;
     } finally {
       setLoading(false);
@@ -182,8 +200,18 @@ export const useSettingsData = () => {
     fetchSettings();
   }, [fetchSettings, refreshKey]);
 
+  useEffect(() => {
+    if (routingConfig) {
+      setTempRoutingConfig({
+        bearerAuthKey: routingConfig.bearerAuthKey,
+      });
+    }
+  }, [routingConfig]);
+
   return {
     routingConfig,
+    tempRoutingConfig,
+    setTempRoutingConfig,
     installConfig,
     loading,
     error,

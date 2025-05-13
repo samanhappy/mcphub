@@ -5,6 +5,7 @@ import ChangePasswordForm from '@/components/ChangePasswordForm';
 import { Switch } from '@/components/ui/ToggleGroup';
 import { useSettingsData } from '@/hooks/useSettingsData';
 import { useToast } from '@/contexts/ToastContext';
+import { generateRandomKey } from '@/utils/key';
 
 const SettingsPage: React.FC = () => {
   const { t, i18n } = useTranslation();
@@ -16,6 +17,7 @@ const SettingsPage: React.FC = () => {
   useEffect(() => {
     setCurrentLanguage(i18n.language);
   }, [i18n.language]);
+
   const [installConfig, setInstallConfig] = useState<{
     pythonIndexUrl: string;
     npmRegistry: string;
@@ -26,6 +28,8 @@ const SettingsPage: React.FC = () => {
 
   const {
     routingConfig,
+    tempRoutingConfig,
+    setTempRoutingConfig,
     installConfig: savedInstallConfig,
     loading,
     updateRoutingConfig,
@@ -52,9 +56,30 @@ const SettingsPage: React.FC = () => {
     }));
   };
 
-  const handleRoutingConfigChange = async (key: 'enableGlobalRoute' | 'enableGroupNameRoute', value: boolean) => {
+  const handleRoutingConfigChange = async (key: 'enableGlobalRoute' | 'enableGroupNameRoute' | 'enableBearerAuth' | 'bearerAuthKey', value: boolean | string) => {
     await updateRoutingConfig(key, value);
+
+    // If enableBearerAuth is turned on and there's no key, generate one
+    if (key === 'enableBearerAuth' && value === true) {
+      if (!tempRoutingConfig.bearerAuthKey) {
+        const newKey = generateRandomKey();
+        handleBearerAuthKeyChange(newKey);
+        await updateRoutingConfig('bearerAuthKey', newKey);
+      }
+    }
   };
+
+  const handleBearerAuthKeyChange = (value: string) => {
+    setTempRoutingConfig(prev => ({
+      ...prev,
+      bearerAuthKey: value
+    }));
+  };
+
+  const saveBearerAuthKey = async () => {
+    await updateRoutingConfig('bearerAuthKey', tempRoutingConfig.bearerAuthKey);
+  };
+
   const handleInstallConfigChange = (key: 'pythonIndexUrl' | 'npmRegistry', value: string) => {
     setInstallConfig({
       ...installConfig,
@@ -124,6 +149,44 @@ const SettingsPage: React.FC = () => {
           <div className="space-y-4 mt-4">
             <div className="flex items-center justify-between p-3 bg-gray-50 rounded-md">
               <div>
+                <h3 className="font-medium text-gray-700">{t('settings.enableBearerAuth')}</h3>
+                <p className="text-sm text-gray-500">{t('settings.enableBearerAuthDescription')}</p>
+              </div>
+              <Switch
+                disabled={loading}
+                checked={routingConfig.enableBearerAuth}
+                onCheckedChange={(checked) => handleRoutingConfigChange('enableBearerAuth', checked)}
+              />
+            </div>
+
+            {routingConfig.enableBearerAuth && (
+              <div className="p-3 bg-gray-50 rounded-md">
+                <div className="mb-2">
+                  <h3 className="font-medium text-gray-700">{t('settings.bearerAuthKey')}</h3>
+                  <p className="text-sm text-gray-500">{t('settings.bearerAuthKeyDescription')}</p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="text"
+                    value={tempRoutingConfig.bearerAuthKey}
+                    onChange={(e) => handleBearerAuthKeyChange(e.target.value)}
+                    placeholder={t('settings.bearerAuthKeyPlaceholder')}
+                    className="flex-1 mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                    disabled={loading || !routingConfig.enableBearerAuth}
+                  />
+                  <button
+                    onClick={saveBearerAuthKey}
+                    disabled={loading || !routingConfig.enableBearerAuth}
+                    className="mt-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium disabled:opacity-50"
+                  >
+                    {t('common.save')}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-md">
+              <div>
                 <h3 className="font-medium text-gray-700">{t('settings.enableGlobalRoute')}</h3>
                 <p className="text-sm text-gray-500">{t('settings.enableGlobalRouteDescription')}</p>
               </div>
@@ -145,6 +208,7 @@ const SettingsPage: React.FC = () => {
                 onCheckedChange={(checked) => handleRoutingConfigChange('enableGroupNameRoute', checked)}
               />
             </div>
+
           </div>
         )}
       </div>

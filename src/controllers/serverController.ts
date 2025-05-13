@@ -288,7 +288,9 @@ export const updateSystemConfig = (req: Request, res: Response): void => {
     if (
       (!routing ||
         (typeof routing.enableGlobalRoute !== 'boolean' &&
-          typeof routing.enableGroupNameRoute !== 'boolean')) &&
+          typeof routing.enableGroupNameRoute !== 'boolean' &&
+          typeof routing.enableBearerAuth !== 'boolean' &&
+          typeof routing.bearerAuthKey !== 'string')) &&
       (!install ||
         (typeof install.pythonIndexUrl !== 'string' && typeof install.npmRegistry !== 'string'))
     ) {
@@ -305,9 +307,12 @@ export const updateSystemConfig = (req: Request, res: Response): void => {
         routing: {
           enableGlobalRoute: true,
           enableGroupNameRoute: true,
+          enableBearerAuth: false,
+          bearerAuthKey: '',
         },
         install: {
           pythonIndexUrl: '',
+          npmRegistry: '',
         },
       };
     }
@@ -316,6 +321,8 @@ export const updateSystemConfig = (req: Request, res: Response): void => {
       settings.systemConfig.routing = {
         enableGlobalRoute: true,
         enableGroupNameRoute: true,
+        enableBearerAuth: false,
+        bearerAuthKey: '',
       };
     }
 
@@ -334,7 +341,16 @@ export const updateSystemConfig = (req: Request, res: Response): void => {
       if (typeof routing.enableGroupNameRoute === 'boolean') {
         settings.systemConfig.routing.enableGroupNameRoute = routing.enableGroupNameRoute;
       }
+
+      if (typeof routing.enableBearerAuth === 'boolean') {
+        settings.systemConfig.routing.enableBearerAuth = routing.enableBearerAuth;
+      }
+
+      if (typeof routing.bearerAuthKey === 'string') {
+        settings.systemConfig.routing.bearerAuthKey = routing.bearerAuthKey;
+      }
     }
+
     if (install) {
       if (typeof install.pythonIndexUrl === 'string') {
         settings.systemConfig.install.pythonIndexUrl = install.pythonIndexUrl;

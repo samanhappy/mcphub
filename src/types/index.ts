@@ -83,6 +83,8 @@ export interface McpSettings {
     routing?: {
       enableGlobalRoute?: boolean; // Controls whether the /sse endpoint without group is enabled
       enableGroupNameRoute?: boolean; // Controls whether group routing by name is allowed
+      enableBearerAuth?: boolean; // Controls whether bearer auth is enabled for group routes
+      bearerAuthKey?: string; // The bearer auth key to validate against
     };
     install?: {
       pythonIndexUrl?: string; // Python package repository URL (UV_DEFAULT_INDEX)

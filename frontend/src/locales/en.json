@@ -148,7 +148,7 @@
       "account": "Account Settings",
       "password": "Change Password",
       "appearance": "Appearance",
-      "routeConfig": "Route Configuration",
+      "routeConfig": "Security Configuration",
       "installConfig": "Installation Configuration"
     },
     "market": {
@@ -244,6 +244,11 @@
     "enableGlobalRouteDescription": "Allow connections to /sse endpoint without specifying a group ID",
     "enableGroupNameRoute": "Enable Group Name Route",
     "enableGroupNameRouteDescription": "Allow connections to /sse endpoint using group names instead of just group IDs",
+    "enableBearerAuth": "Enable Bearer Authentication",
+    "enableBearerAuthDescription": "Require bearer token authentication for MCP requests",
+    "bearerAuthKey": "Bearer Authentication Key",
+    "bearerAuthKeyDescription": "The authentication key that will be required in the Bearer token",
+    "bearerAuthKeyPlaceholder": "Enter bearer authentication key",
     "pythonIndexUrl": "Python Package Repository URL",
     "pythonIndexUrlDescription": "Set UV_DEFAULT_INDEX environment variable for Python package installation",
     "pythonIndexUrlPlaceholder": "e.g. https://pypi.org/simple",

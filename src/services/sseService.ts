@@ -13,11 +13,42 @@ export const getGroup = (sessionId: string): string => {
   return transports[sessionId]?.group || '';
 };
 
-export const handleSseConnection = async (req: Request, res: Response): Promise<void> => {
+// Helper function to validate bearer auth
+const validateBearerAuth = (req: Request): boolean => {
   const settings = loadSettings();
   const routingConfig = settings.systemConfig?.routing || {
     enableGlobalRoute: true,
     enableGroupNameRoute: true,
+    enableBearerAuth: false,
+    bearerAuthKey: '',
+  };
+
+  if (routingConfig.enableBearerAuth) {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return false;
+    }
+
+    const token = authHeader.substring(7); // Remove "Bearer " prefix
+    return token === routingConfig.bearerAuthKey;
+  }
+
+  return true;
+};
+
+export const handleSseConnection = async (req: Request, res: Response): Promise<void> => {
+  // Check bearer auth
+  if (!validateBearerAuth(req)) {
+    res.status(401).send('Bearer authentication required or invalid token');
+    return;
+  }
+
+  const settings = loadSettings();
+  const routingConfig = settings.systemConfig?.routing || {
+    enableGlobalRoute: true,
+    enableGroupNameRoute: true,
+    enableBearerAuth: false,
+    bearerAuthKey: '',
   };
   const group = req.params.group;
 
@@ -43,6 +74,12 @@ export const handleSseConnection = async (req: Request, res: Response): Promise<
 };
 
 export const handleSseMessage = async (req: Request, res: Response): Promise<void> => {
+  // Check bearer auth
+  if (!validateBearerAuth(req)) {
+    res.status(401).send('Bearer authentication required or invalid token');
+    return;
+  }
+
   const sessionId = req.query.sessionId as string;
   const { transport, group } = transports[sessionId];
   req.params.group = group;
@@ -60,6 +97,12 @@ export const handleMcpPostRequest = async (req: Request, res: Response): Promise
   const sessionId = req.headers['mcp-session-id'] as string | undefined;
   const group = req.params.group;
   console.log(`Handling MCP post request for sessionId: ${sessionId} and group: ${group}`);
+  // Check bearer auth
+  if (!validateBearerAuth(req)) {
+    res.status(401).send('Bearer authentication required or invalid token');
+    return;
+  }
+
   const settings = loadSettings();
   const routingConfig = settings.systemConfig?.routing || {
     enableGlobalRoute: true,
@@ -110,6 +153,12 @@ export const handleMcpPostRequest = async (req: Request, res: Response): Promise
 
 export const handleMcpOtherRequest = async (req: Request, res: Response) => {
   console.log('Handling MCP other request');
+  // Check bearer auth
+  if (!validateBearerAuth(req)) {
+    res.status(401).send('Bearer authentication required or invalid token');
+    return;
+  }
+
   const sessionId = req.headers['mcp-session-id'] as string | undefined;
   if (!sessionId || !transports[sessionId]) {
     res.status(400).send('Invalid or missing session ID');
