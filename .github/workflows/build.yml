@@ -6,7 +6,21 @@ on:
   workflow_dispatch:
 
 jobs:
+  # 等待 npm 发布完成
+  wait-for-npm:
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - name: Wait for NPM publish
+        uses: lewagon/wait-on-check-action@v1.3.1
+        with:
+          ref: ${{ github.ref }}
+          check-name: 'publish-npm'
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          wait-interval: 10
+
   build:
+    needs: wait-for-npm
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -15,6 +29,17 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
+      # 备份：更新版本号（以防 npm-publish 失败）
+      - name: Update version from tag
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/v}
+          echo "Updating package.json version to $VERSION"
+          jq ".version = \"$VERSION\"" package.json > package.json.tmp
+          mv package.json.tmp package.json
+          echo "Updated version in package.json:"
+          grep -m 1 "version" package.json
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -36,7 +61,7 @@ jobs:
             type=raw,value=latest${{ matrix.variant == 'full' && '-full' || '' }},enable=${{ startsWith(github.ref, 'refs/tags/') }}
           flavor: |
             latest=false
-            
+
       - name: Build and Push Docker Image
         uses: docker/build-push-action@v5
         with:
