@@ -7,7 +7,6 @@ on:
 
 jobs:
   build:
-    needs: wait-for-npm
     runs-on: ubuntu-latest
     strategy:
       matrix:
