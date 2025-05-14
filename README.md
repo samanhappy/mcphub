@@ -1,3 +1,5 @@
+[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/samanhappy-mcphub-badge.png)](https://mseep.ai/app/samanhappy-mcphub)
+
 # MCPHub: Your Ultimate MCP Server Hub
 
 English | [中文版](README.zh.md)
