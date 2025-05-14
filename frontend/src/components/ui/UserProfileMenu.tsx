@@ -104,7 +104,6 @@ const UserProfileMenu: React.FC<UserProfileMenuProps> = ({ collapsed, version })
           >
             <Info className="h-4 w-4 mr-2" />
             {t('about.title')}
-            &nbsp;({version})
             {showNewVersionInfo && (
               <span className="absolute top-2 right-4 block w-2 h-2 bg-red-500 rounded-full"></span>
             )}

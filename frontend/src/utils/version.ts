@@ -16,6 +16,7 @@ export const checkLatestVersion = async (): Promise<string | null> => {
 };
 
 export const compareVersions = (current: string, latest: string): number => {
+  if (current === 'dev') return -1;
   const currentParts = current.split('.').map(Number);
   const latestParts = latest.split('.').map(Number);
 

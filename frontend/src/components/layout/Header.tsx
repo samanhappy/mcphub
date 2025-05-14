@@ -30,10 +30,10 @@ const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
           <h1 className="ml-4 text-xl font-bold text-gray-900 dark:text-white">{t('app.title')}</h1>
         </div>
 
-        {/* Theme Switch */}
+        {/* Theme Switch and Version */}
         <div className="flex items-center space-x-4">
+          <span className="text-sm text-gray-500 dark:text-gray-400">{import.meta.env.PACKAGE_VERSION}</span>
           <ThemeSwitch />
-
         </div>
       </div>
     </header>
