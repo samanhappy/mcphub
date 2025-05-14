@@ -26,6 +26,19 @@
     "viewProfile": "View profile",
     "userCenter": "User Center"
   },
+  "sponsor": {
+    "label": "Sponsor",
+    "title": "Support the Project",
+    "rewardAlt": "Reward QR Code",
+    "supportMessage": "Support the development of MCP Hub by buying me a coffee!",
+    "supportButton": "Support on Ko-fi"
+  },
+  "wechat": {
+    "label": "WeChat",
+    "title": "Connect via WeChat",
+    "qrCodeAlt": "WeChat QR Code",
+    "scanMessage": "Scan this QR code to connect with us on WeChat"
+  },
   "theme": {
     "title": "Theme",
     "light": "Light",

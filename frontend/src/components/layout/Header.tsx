@@ -1,15 +1,22 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/contexts/AuthContext';
 import ThemeSwitch from '@/components/ui/ThemeSwitch';
+import GitHubIcon from '@/components/icons/GitHubIcon';
+import SponsorIcon from '@/components/icons/SponsorIcon';
+import WeChatIcon from '@/components/icons/WeChatIcon';
+import SponsorDialog from '@/components/ui/SponsorDialog';
+import WeChatDialog from '@/components/ui/WeChatDialog';
 
 interface HeaderProps {
   onToggleSidebar: () => void;
 }
 
 const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { auth } = useAuth();
+  const [sponsorDialogOpen, setSponsorDialogOpen] = useState(false);
+  const [wechatDialogOpen, setWechatDialogOpen] = useState(false);
 
   return (
     <header className="bg-white dark:bg-gray-800 shadow-sm z-10">
@@ -33,9 +40,36 @@ const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
         {/* Theme Switch and Version */}
         <div className="flex items-center space-x-4">
           <span className="text-sm text-gray-500 dark:text-gray-400">{import.meta.env.PACKAGE_VERSION}</span>
+          <a
+            href="https://github.com/samanhappy/mcphub"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
+            aria-label="GitHub Repository"
+          >
+            <GitHubIcon className="h-5 w-5" />
+          </a>
+          {i18n.language === 'zh' && (
+            <button
+              onClick={() => setWechatDialogOpen(true)}
+              className="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 focus:outline-none"
+              aria-label={t('wechat.label')}
+            >
+              <WeChatIcon className="h-5 w-5" />
+            </button>
+          )}
+          <button
+            onClick={() => setSponsorDialogOpen(true)}
+            className="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 focus:outline-none"
+            aria-label={t('sponsor.label')}
+          >
+            <SponsorIcon className="h-5 w-5" />
+          </button>
           <ThemeSwitch />
         </div>
       </div>
+      <SponsorDialog open={sponsorDialogOpen} onOpenChange={setSponsorDialogOpen} />
+      <WeChatDialog open={wechatDialogOpen} onOpenChange={setWechatDialogOpen} />
     </header>
   );
 };

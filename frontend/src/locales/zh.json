@@ -26,6 +26,19 @@
     "viewProfile": "查看个人中心",
     "userCenter": "个人中心"
   },
+  "sponsor": {
+    "label": "赞助",
+    "title": "支持项目",
+    "rewardAlt": "赞赏码",
+    "supportMessage": "通过捐赠支持 MCP Hub 的开发！",
+    "supportButton": "在 Ko-fi 上支持"
+  },
+  "wechat": {
+    "label": "微信",
+    "title": "微信联系",
+    "qrCodeAlt": "微信二维码",
+    "scanMessage": "扫描二维码添加微信"
+  },
   "theme": {
     "title": "主题",
     "light": "浅色",
