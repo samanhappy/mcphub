@@ -39,6 +39,11 @@
     "qrCodeAlt": "WeChat QR Code",
     "scanMessage": "Scan this QR code to connect with us on WeChat"
   },
+  "discord": {
+    "label": "Discord",
+    "title": "Join our Discord server",
+    "community": "Join our growing community on Discord for support, discussions, and updates!"
+  },
   "theme": {
     "title": "Theme",
     "light": "Light",

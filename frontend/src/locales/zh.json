@@ -39,6 +39,11 @@
     "qrCodeAlt": "微信二维码",
     "scanMessage": "扫描二维码添加微信"
   },
+  "discord": {
+    "label": "Discord",
+    "title": "加入我们的 Discord 服务器",
+    "community": "加入我们不断壮大的 Discord 社区，获取支持、参与讨论并了解最新动态！"
+  },
   "theme": {
     "title": "主题",
     "light": "浅色",

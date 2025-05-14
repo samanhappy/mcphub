@@ -5,6 +5,7 @@ import ThemeSwitch from '@/components/ui/ThemeSwitch';
 import GitHubIcon from '@/components/icons/GitHubIcon';
 import SponsorIcon from '@/components/icons/SponsorIcon';
 import WeChatIcon from '@/components/icons/WeChatIcon';
+import DiscordIcon from '@/components/icons/DiscordIcon';
 import SponsorDialog from '@/components/ui/SponsorDialog';
 import WeChatDialog from '@/components/ui/WeChatDialog';
 
@@ -49,7 +50,7 @@ const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
           >
             <GitHubIcon className="h-5 w-5" />
           </a>
-          {i18n.language === 'zh' && (
+          {i18n.language === 'zh' ? (
             <button
               onClick={() => setWechatDialogOpen(true)}
               className="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 focus:outline-none"
@@ -57,6 +58,16 @@ const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
             >
               <WeChatIcon className="h-5 w-5" />
             </button>
+          ) : (
+            <a
+              href="https://discord.gg/qMKNsn5Q"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
+              aria-label={t('discord.label')}
+            >
+              <DiscordIcon className="h-5 w-5" />
+            </a>
           )}
           <button
             onClick={() => setSponsorDialogOpen(true)}
