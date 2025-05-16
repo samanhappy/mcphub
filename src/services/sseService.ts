@@ -126,6 +126,7 @@ export const handleMcpPostRequest = async (req: Request, res: Response): Promise
     });
 
     transport.onclose = () => {
+      console.log(`Transport closed: ${transport.sessionId}`);
       if (transport.sessionId) {
         delete transports[transport.sessionId];
         deleteMcpServer(transport.sessionId);
@@ -134,7 +135,7 @@ export const handleMcpPostRequest = async (req: Request, res: Response): Promise
     };
 
     console.log(`MCP connection established: ${transport.sessionId}`);
-    await getMcpServer(transport.sessionId || 'mcp').connect(transport);
+    await getMcpServer(transport.sessionId).connect(transport);
   } else {
     res.status(400).json({
       jsonrpc: '2.0',

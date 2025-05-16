@@ -16,10 +16,16 @@ export const initMcpServer = async (name: string, version: string): Promise<void
   await registerAllTools(true);
 };
 
-export const getMcpServer = (sessionId: string): Server => {
+export const getMcpServer = (sessionId?: string): Server => {
+  if (!sessionId) {
+    return createMcpServer(config.mcpHubName, config.mcpHubVersion);
+  }
+
   if (!servers[sessionId]) {
     const server = createMcpServer(config.mcpHubName, config.mcpHubVersion);
     servers[sessionId] = server;
+  } else {
+    console.log(`MCP server already exists for sessionId: ${sessionId}`);
   }
   return servers[sessionId];
 };
