@@ -48,10 +48,19 @@ const LogViewer: React.FC<LogViewerProps> = ({ logs, isLoading = false, error = 
   // Get badge color based on log type
   const getLogTypeColor = (type: string) => {
     switch (type) {
-      case 'error': return 'bg-red-500';
-      case 'warn': return 'bg-yellow-500';
-      case 'debug': return 'bg-purple-500';
-      default: return 'bg-blue-500';
+      case 'error': return 'bg-red-400';
+      case 'warn': return 'bg-yellow-400';
+      case 'debug': return 'bg-purple-400';
+      default: return 'bg-blue-400';
+    }
+  };
+
+  // Get badge color based on log source
+  const getSourceColor = (source: string) => {
+    switch (source) {
+      case 'main': return 'bg-green-400';
+      case 'child': return 'bg-orange-400';
+      default: return 'bg-gray-400';
     }
   };
 
@@ -96,7 +105,7 @@ const LogViewer: React.FC<LogViewerProps> = ({ logs, isLoading = false, error = 
               <Badge
                 key={source}
                 variant={sourceFilter.includes(source) ? 'default' : 'outline'}
-                className="cursor-pointer"
+                className={`cursor-pointer ${sourceFilter.includes(source) ? getSourceColor(source) : ''}`}
                 onClick={() => {
                   if (sourceFilter.includes(source)) {
                     setSourceFilter(prev => prev.filter(s => s !== source));
@@ -163,7 +172,10 @@ const LogViewer: React.FC<LogViewerProps> = ({ logs, isLoading = false, error = 
               <Badge className={`ml-2 mr-1 ${getLogTypeColor(log.type)}`}>
                 {log.type}
               </Badge>
-              <Badge variant="outline" className="mr-2">
+              <Badge 
+                variant="default" 
+                className={`mr-2 ${getSourceColor(log.source)}`}
+              >
                 {log.source === 'main' ? t('logs.main') : t('logs.child')}
                 {log.processId ? ` (${log.processId})` : ''}
               </Badge>
