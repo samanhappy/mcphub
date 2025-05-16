@@ -1,5 +1,3 @@
-[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/samanhappy-mcphub-badge.png)](https://mseep.ai/app/samanhappy-mcphub)
-
 # MCPHub: Your Ultimate MCP Server Hub
 
 English | [中文版](README.zh.md)
@@ -70,11 +68,13 @@ Create a `mcp_settings.json` file to customize your server settings:
 ### Docker Deployment
 
 **Recommended**: Mount your custom config:
+
 ```bash
 docker run -p 3000:3000 -v $(pwd)/mcp_settings.json:/app/mcp_settings.json samanhappy/mcphub
 ```
 
 or run with default settings:
+
 ```bash
 docker run -p 3000:3000 samanhappy/mcphub
 ```
@@ -82,22 +82,28 @@ docker run -p 3000:3000 samanhappy/mcphub
 ### Access the Dashboard
 
 Open `http://localhost:3000` and log in with your credentials.
+
 > **Note**: Default credentials are `admin` / `admin123`.
 
 **Dashboard Overview**:
+
 - Live status of all MCP servers
 - Enable/disable or reconfigure servers
 - Group management for organizing servers
 - User administration for access control
 
 ### Streamable HTTP Endpoint
+
 > As of now, support for streaming HTTP endpoints varies across different AI clients. If you encounter issues, you can use the SSE endpoint or wait for future updates.
 
 Connect AI clients (e.g., Claude Desktop, Cursor, DeepChat, etc.) via:
+
 ```
 http://localhost:3000/mcp
 ```
+
 This endpoint provides a unified streamable HTTP interface for all your MCP servers. It allows you to:
+
 - Send requests to any configured MCP server
 - Receive responses in real-time
 - Easily integrate with various AI clients and tools
@@ -108,20 +114,24 @@ This endpoint provides a unified streamable HTTP interface for all your MCP serv
 ![Group Management](assets/group.png)
 
 For targeted access to specific server groups, use the group-based HTTP endpoint:
+
 ```
 http://localhost:3000/mcp/{group}
 ```
 
 Where `{group}` is the ID or name of the group you created in the dashboard. This allows you to:
+
 - Connect to a specific subset of MCP servers organized by use case
 - Isolate different AI tools to access only relevant servers
 - Implement more granular access control for different environments or teams
 
 **Server-Specific Endpoints**:
 For direct access to individual servers, use the server-specific HTTP endpoint:
+
 ```
 http://localhost:3000/mcp/{server}
 ```
+
 Where `{server}` is the name of the server you want to connect to. This allows you to access a specific MCP server directly.
 
 > **Note**: If the server name and group name are the same, the group name will take precedence.
@@ -129,16 +139,19 @@ Where `{server}` is the name of the server you want to connect to. This allows y
 ### SSE Endpoint (Deprecated in Future)
 
 Connect AI clients (e.g., Claude Desktop, Cursor, DeepChat, etc.) via:
+
 ```
 http://localhost:3000/sse
 ```
 
 For targeted access to specific server groups, use the group-based SSE endpoint:
+
 ```
 http://localhost:3000/sse/{group}
 ```
 
 For direct access to individual servers, use the server-specific SSE endpoint:
+
 ```
 http://localhost:3000/sse/{server}
 ```
@@ -159,6 +172,7 @@ This starts both frontend and backend in development mode with hot-reloading.
 ## 🛠️ Common Issues
 
 ### Using Nginx as a Reverse Proxy
+
 If you are using Nginx to reverse proxy MCPHub, please make sure to add the following configuration in your Nginx setup:
 
 ```nginx
@@ -174,12 +188,14 @@ proxy_buffering off
 
 ## 👥 Contributing
 
-Contributions are welcome!
+Contributions of any kind are welcome!
 
 - New features & optimizations
 - Documentation improvements
 - Bug reports & fixes
 - Translations & suggestions
+
+Welcome to join our [Discord community](https://discord.gg/qMKNsn5Q) for discussions and support.
 
 ## ❤️ Sponsor
 
