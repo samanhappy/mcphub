@@ -172,8 +172,8 @@ const LogViewer: React.FC<LogViewerProps> = ({ logs, isLoading = false, error = 
               <Badge className={`ml-2 mr-1 ${getLogTypeColor(log.type)}`}>
                 {log.type}
               </Badge>
-              <Badge 
-                variant="default" 
+              <Badge
+                variant="default"
                 className={`mr-2 ${getSourceColor(log.source)}`}
               >
                 {log.source === 'main' ? t('logs.main') : t('logs.child')}
