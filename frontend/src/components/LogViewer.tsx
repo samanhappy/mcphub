@@ -17,7 +17,7 @@ const LogViewer: React.FC<LogViewerProps> = ({ logs, isLoading = false, error = 
   const [autoScroll, setAutoScroll] = useState(true);
   const [filter, setFilter] = useState<string>('');
   const [typeFilter, setTypeFilter] = useState<Array<'info' | 'error' | 'warn' | 'debug'>>(['info', 'error', 'warn', 'debug']);
-  const [sourceFilter, setSourceFilter] = useState<Array<'main' | 'child-process'>>(['main', 'child-process']);
+  const [sourceFilter, setSourceFilter] = useState<Array<'main' | 'child'>>(['main', 'child']);
 
   // Auto scroll to bottom when new logs come in if autoScroll is enabled
   useEffect(() => {
@@ -30,7 +30,7 @@ const LogViewer: React.FC<LogViewerProps> = ({ logs, isLoading = false, error = 
   const filteredLogs = logs.filter(log => {
     const matchesText = filter ? log.message.toLowerCase().includes(filter.toLowerCase()) : true;
     const matchesType = typeFilter.includes(log.type);
-    const matchesSource = sourceFilter.includes(log.source as 'main' | 'child-process');
+    const matchesSource = sourceFilter.includes(log.source as 'main' | 'child');
     return matchesText && matchesType && matchesSource;
   });
 
@@ -92,7 +92,7 @@ const LogViewer: React.FC<LogViewerProps> = ({ logs, isLoading = false, error = 
 
           {/* Log source filters */}
           <div className="flex gap-1 items-center ml-2">
-            {(['main', 'child-process'] as const).map(source => (
+            {(['main', 'child'] as const).map(source => (
               <Badge
                 key={source}
                 variant={sourceFilter.includes(source) ? 'default' : 'outline'}
@@ -156,7 +156,7 @@ const LogViewer: React.FC<LogViewerProps> = ({ logs, isLoading = false, error = 
             <div
               key={`${log.timestamp}-${index}`}
               className={`py-1 border-b border-gray-100 dark:border-gray-800 ${log.type === 'error' ? 'text-red-500' :
-                  log.type === 'warn' ? 'text-yellow-500' : ''
+                log.type === 'warn' ? 'text-yellow-500' : ''
                 }`}
             >
               <span className="text-gray-400">[{formatTimestamp(log.timestamp)}]</span>

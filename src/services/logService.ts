@@ -21,7 +21,7 @@ const colors = {
   blink: '\x1b[5m',
   reverse: '\x1b[7m',
   hidden: '\x1b[8m',
-  
+
   black: '\x1b[30m',
   red: '\x1b[31m',
   green: '\x1b[32m',
@@ -30,7 +30,7 @@ const colors = {
   magenta: '\x1b[35m',
   cyan: '\x1b[36m',
   white: '\x1b[37m',
-  
+
   bgBlack: '\x1b[40m',
   bgRed: '\x1b[41m',
   bgGreen: '\x1b[42m',
@@ -38,7 +38,7 @@ const colors = {
   bgBlue: '\x1b[44m',
   bgMagenta: '\x1b[45m',
   bgCyan: '\x1b[46m',
-  bgWhite: '\x1b[47m'
+  bgWhite: '\x1b[47m',
 };
 
 // Level colors for different log types
@@ -46,7 +46,7 @@ const levelColors = {
   info: colors.green,
   error: colors.red,
   warn: colors.yellow,
-  debug: colors.cyan
+  debug: colors.cyan,
 };
 
 // Maximum number of logs to keep in memory
@@ -55,7 +55,6 @@ const MAX_LOGS = 1000;
 class LogService {
   private logs: LogEntry[] = [];
   private logEmitter = new EventEmitter();
-  private childProcesses: { [id: string]: ChildProcess } = {};
   private mainProcessId: string;
   private hostname: string;
 
@@ -72,12 +71,17 @@ class LogService {
   }
 
   // Format a log message for console output
-  private formatLogMessage(type: 'info' | 'error' | 'warn' | 'debug', source: string, message: string, processId?: string): string {
+  private formatLogMessage(
+    type: 'info' | 'error' | 'warn' | 'debug',
+    source: string,
+    message: string,
+    processId?: string,
+  ): string {
     const timestamp = this.formatTimestamp(Date.now());
     const pid = processId || this.mainProcessId;
     const level = type.toUpperCase();
     const levelColor = levelColors[type];
-    
+
     return `${colors.dim}[${timestamp}]${colors.reset} ${levelColor}${colors.bright}[${level}]${colors.reset} ${colors.blue}[${pid}]${colors.reset} ${colors.magenta}[${source}]${colors.reset} ${message}`;
   }
 
@@ -88,95 +92,115 @@ class LogService {
     const originalConsoleWarn = console.warn;
     const originalConsoleDebug = console.debug;
 
+    // Helper method to handle common logic for all console methods
+    const handleConsoleMethod = (
+      type: 'info' | 'error' | 'warn' | 'debug',
+      originalMethod: (...args: any[]) => void,
+      ...args: any[]
+    ) => {
+      const firstArg = args.length > 0 ? this.formatArgument(args[0]) : { text: '' };
+      const remainingArgs = args.slice(1).map((arg) => this.formatArgument(arg).text);
+      const combinedMessage = [firstArg.text, ...remainingArgs].join(' ');
+      const source = firstArg.source || 'main';
+      const processId = firstArg.processId;
+      this.addLog(type, source, combinedMessage, processId);
+      originalMethod.apply(console, [
+        this.formatLogMessage(type, source, combinedMessage, processId),
+      ]);
+    };
+
     console.log = (...args: any[]) => {
-      const message = args.map(arg => this.formatArgument(arg)).join(' ');
-      this.addLog('info', 'main', message);
-      originalConsoleLog.apply(console, [this.formatLogMessage('info', 'main', message)]);
+      handleConsoleMethod('info', originalConsoleLog, ...args);
     };
 
     console.error = (...args: any[]) => {
-      const message = args.map(arg => this.formatArgument(arg)).join(' ');
-      this.addLog('error', 'main', message);
-      originalConsoleError.apply(console, [this.formatLogMessage('error', 'main', message)]);
+      handleConsoleMethod('error', originalConsoleError, ...args);
     };
 
     console.warn = (...args: any[]) => {
-      const message = args.map(arg => this.formatArgument(arg)).join(' ');
-      this.addLog('warn', 'main', message);
-      originalConsoleWarn.apply(console, [this.formatLogMessage('warn', 'main', message)]);
+      handleConsoleMethod('warn', originalConsoleWarn, ...args);
     };
 
     console.debug = (...args: any[]) => {
-      const message = args.map(arg => this.formatArgument(arg)).join(' ');
-      this.addLog('debug', 'main', message);
-      originalConsoleDebug.apply(console, [this.formatLogMessage('debug', 'main', message)]);
+      handleConsoleMethod('debug', originalConsoleDebug, ...args);
     };
   }
 
-  // Format an argument for logging
-  private formatArgument(arg: any): string {
-    if (arg === null) return 'null';
-    if (arg === undefined) return 'undefined';
+  // Format an argument for logging and extract structured information
+  private formatArgument(arg: any): { text: string; source?: string; processId?: string } {
+    // Handle null and undefined
+    if (arg === null) return { text: 'null' };
+    if (arg === undefined) return { text: 'undefined' };
+
+    // Handle objects
     if (typeof arg === 'object') {
       try {
-        return JSON.stringify(arg, null, 2);
+        return { text: JSON.stringify(arg, null, 2) };
       } catch (e) {
-        return String(arg);
+        return { text: String(arg) };
       }
     }
-    return String(arg);
+
+    // Handle strings with potential structured information
+    const argStr = String(arg);
+
+    // Check for patterns like [processId] [source] message or [processId] [source-processId] message
+    const structuredPattern = /^\s*\[([^\]]+)\]\s*\[([^\]]+)\]\s*(.*)/;
+    const match = argStr.match(structuredPattern);
+
+    if (match) {
+      const [_, firstBracket, secondBracket, remainingText] = match;
+
+      // Check if the second bracket has a format like 'source-processId'
+      const sourcePidPattern = /^([^-]+)-(.+)$/;
+      const sourcePidMatch = secondBracket.match(sourcePidPattern);
+
+      if (sourcePidMatch) {
+        // If we have a 'source-processId' format in the second bracket
+        const [_, source, extractedProcessId] = sourcePidMatch;
+        return {
+          text: remainingText.trim(),
+          source: source.trim(),
+          processId: firstBracket.trim(),
+        };
+      }
+
+      // Otherwise treat first bracket as processId and second as source
+      return {
+        text: remainingText.trim(),
+        source: secondBracket.trim(),
+        processId: firstBracket.trim(),
+      };
+    }
+
+    // Return original string if no structured format is detected
+    return { text: argStr };
   }
 
   // Add a log entry to the logs array
-  private addLog(type: 'info' | 'error' | 'warn' | 'debug', source: string, message: string, processId?: string) {
+  private addLog(
+    type: 'info' | 'error' | 'warn' | 'debug',
+    source: string,
+    message: string,
+    processId?: string,
+  ) {
     const log: LogEntry = {
       timestamp: Date.now(),
       type,
       source,
       message,
-      processId: processId || this.mainProcessId
+      processId: processId || this.mainProcessId,
     };
 
     this.logs.push(log);
-    
+
     // Limit the number of logs kept in memory
     if (this.logs.length > MAX_LOGS) {
       this.logs.shift();
     }
-    
+
     // Emit the log event for SSE subscribers
     this.logEmitter.emit('log', log);
-  }
-
-  // Capture output from a child process
-  public captureChildProcess(command: string, args: string[], processId: string): ChildProcess {
-    const childProcess = spawn(command, args);
-    this.childProcesses[processId] = childProcess;
-
-    childProcess.stdout.on('data', (data) => {
-      const output = data.toString().trim();
-      if (output) {
-        this.addLog('info', 'child-process', output, processId);
-        console.log(this.formatLogMessage('info', 'child-process', output, processId));
-      }
-    });
-
-    childProcess.stderr.on('data', (data) => {
-      const output = data.toString().trim();
-      if (output) {
-        this.addLog('error', 'child-process', output, processId);
-        console.error(this.formatLogMessage('error', 'child-process', output, processId));
-      }
-    });
-
-    childProcess.on('close', (code) => {
-      const message = `Process exited with code ${code}`;
-      this.addLog('info', 'child-process', message, processId);
-      console.log(this.formatLogMessage('info', 'child-process', message, processId));
-      delete this.childProcesses[processId];
-    });
-
-    return childProcess;
   }
 
   // Get all logs

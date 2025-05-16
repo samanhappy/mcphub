@@ -114,9 +114,10 @@ export const initializeClientsFromSettings = (isInit: boolean): ServerInfo[] => 
         command: conf.command,
         args: conf.args,
         env: env,
+        stderr: 'pipe',
       });
       transport.stderr?.on('data', (data) => {
-        console.error(`Error from server ${name}: ${data}`);
+        console.log(`[${name}] [child] ${data}`);
       });
     } else {
       console.warn(`Skipping server '${name}': missing required configuration`);
