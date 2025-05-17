@@ -40,7 +40,11 @@ const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
 
         {/* Theme Switch and Version */}
         <div className="flex items-center space-x-4">
-          <span className="text-sm text-gray-500 dark:text-gray-400">{import.meta.env.PACKAGE_VERSION}</span>
+          <span className="text-sm text-gray-500 dark:text-gray-400">
+            {import.meta.env.PACKAGE_VERSION === 'dev'
+              ? import.meta.env.PACKAGE_VERSION
+              : `v${import.meta.env.PACKAGE_VERSION}`}
+          </span>
           <a
             href="https://github.com/samanhappy/mcphub"
             target="_blank"

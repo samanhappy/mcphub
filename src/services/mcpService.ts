@@ -12,17 +12,18 @@ import { getServersInGroup } from './groupService.js';
 
 const servers: { [sessionId: string]: Server } = {};
 
-export const initMcpServer = async (name: string, version: string): Promise<void> => {
+export const initUpstreamServers = async (): Promise<void> => {
   await registerAllTools(true);
 };
 
-export const getMcpServer = (sessionId?: string): Server => {
+export const getMcpServer = (sessionId?: string, group?: string): Server => {
   if (!sessionId) {
-    return createMcpServer(config.mcpHubName, config.mcpHubVersion);
+    return createMcpServer(config.mcpHubName, config.mcpHubVersion, group);
   }
 
   if (!servers[sessionId]) {
-    const server = createMcpServer(config.mcpHubName, config.mcpHubVersion);
+    const serverGroup = group || getGroup(sessionId);
+    const server = createMcpServer(config.mcpHubName, config.mcpHubVersion, serverGroup);
     servers[sessionId] = server;
   } else {
     console.log(`MCP server already exists for sessionId: ${sessionId}`);
@@ -417,8 +418,24 @@ const handleCallToolRequest = async (request: any, extra: any) => {
 };
 
 // Create McpServer instance
-export const createMcpServer = (name: string, version: string): Server => {
-  const server = new Server({ name, version }, { capabilities: { tools: {} } });
+export const createMcpServer = (name: string, version: string, group?: string): Server => {
+  // Determine server name based on routing type
+  let serverName = name;
+
+  if (group) {
+    // Check if it's a group or a single server
+    const serversInGroup = getServersInGroup(group);
+    if (!serversInGroup || serversInGroup.length === 0) {
+      // Single server routing
+      serverName = `${name}_${group}`;
+    } else {
+      // Group routing
+      serverName = `${name}_${group}_group`;
+    }
+  }
+  // If no group, use default name (global routing)
+
+  const server = new Server({ name: serverName, version }, { capabilities: { tools: {} } });
   server.setRequestHandler(ListToolsRequestSchema, handleListToolsRequest);
   server.setRequestHandler(CallToolRequestSchema, handleCallToolRequest);
   return server;

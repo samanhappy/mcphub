@@ -3,7 +3,7 @@ import config from './config/index.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
-import { initMcpServer } from './services/mcpService.js';
+import { initUpstreamServers } from './services/mcpService.js';
 import { initMiddlewares } from './middlewares/index.js';
 import { initRoutes } from './routes/index.js';
 import {
@@ -37,7 +37,7 @@ export class AppServer {
       initRoutes(this.app);
       console.log('Server initialized successfully');
 
-      initMcpServer(config.mcpHubName, config.mcpHubVersion)
+      initUpstreamServers()
         .then(() => {
           console.log('MCP server initialized successfully');
           this.app.get('/sse/:group?', (req, res) => handleSseConnection(req, res));
