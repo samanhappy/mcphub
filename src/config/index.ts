@@ -2,6 +2,7 @@ import dotenv from 'dotenv';
 import fs from 'fs';
 import { McpSettings } from '../types/index.js';
 import { getConfigFilePath } from '../utils/path.js';
+import { getPackageVersion } from '../utils/version.js';
 
 dotenv.config();
 
@@ -10,7 +11,7 @@ const defaultConfig = {
   initTimeout: process.env.INIT_TIMEOUT || 300000,
   timeout: process.env.REQUEST_TIMEOUT || 60000,
   mcpHubName: 'mcphub',
-  mcpHubVersion: '0.0.1',
+  mcpHubVersion: getPackageVersion(),
 };
 
 export const getSettingsPath = (): string => {

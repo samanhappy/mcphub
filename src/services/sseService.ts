@@ -70,7 +70,7 @@ export const handleSseConnection = async (req: Request, res: Response): Promise<
   console.log(
     `New SSE connection established: ${transport.sessionId} with group: ${group || 'global'}`,
   );
-  await getMcpServer(transport.sessionId).connect(transport);
+  await getMcpServer(transport.sessionId, group).connect(transport);
 };
 
 export const handleSseMessage = async (req: Request, res: Response): Promise<void> => {
@@ -135,7 +135,7 @@ export const handleMcpPostRequest = async (req: Request, res: Response): Promise
     };
 
     console.log(`MCP connection established: ${transport.sessionId}`);
-    await getMcpServer(transport.sessionId).connect(transport);
+    await getMcpServer(transport.sessionId, group).connect(transport);
   } else {
     res.status(400).json({
       jsonrpc: '2.0',
