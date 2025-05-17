@@ -204,7 +204,12 @@ proxy_buffering off
 <img src="assets/reward.png" width="350">
 
 ## 致谢
+
 感谢以下人员的赞赏：小白、琛。你们的支持是我继续前进的动力！
+
+## 🌟 Star 历史趋势
+
+[![Star History Chart](https://api.star-history.com/svg?repos=samanhappy/mcphub&type=Date)](https://www.star-history.com/#samanhappy/mcphub&Date)
 
 ## 📄 许可证
 

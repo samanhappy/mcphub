@@ -203,6 +203,10 @@ If you like this project, maybe you can consider:
 
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/samanhappy)
 
+## 🌟 Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=samanhappy/mcphub&type=Date)](https://www.star-history.com/#samanhappy/mcphub&Date)
+
 ## 📄 License
 
 Licensed under the [Apache 2.0 License](LICENSE).
