@@ -7,7 +7,7 @@ import { getPackageVersion } from '../utils/version.js';
 dotenv.config();
 
 const defaultConfig = {
-  port: process.env.PORT || 3002,
+  port: process.env.PORT || 3000,
   initTimeout: process.env.INIT_TIMEOUT || 300000,
   timeout: process.env.REQUEST_TIMEOUT || 60000,
   mcpHubName: 'mcphub',
