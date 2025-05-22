@@ -59,7 +59,7 @@
     "@types/express": "^5.0.2",
     "@types/jest": "^29.5.5",
     "@types/jsonwebtoken": "^9.0.9",
-    "@types/node": "^20.8.2",
+    "@types/node": "^22.15.21",
     "@types/react": "^19.0.12",
     "@types/react-dom": "^19.0.4",
     "@types/uuid": "^10.0.0",
