@@ -1,14 +1,14 @@
-# MCPHub: Your Ultimate MCP Server Hub
+# MCPHub: The Unified Hub for Model Context Protocol (MCP) Servers
 
 English | [中文版](README.zh.md)
 
-MCPHub is a unified management platform that aggregates multiple MCP (Model Context Protocol) servers into separate Streamable HTTP (SSE) endpoints for different scenarios by group. It streamlines your AI tool integrations through an intuitive interface and robust protocol handling.
+MCPHub makes it easy to manage and scale multiple MCP (Model Context Protocol) servers by organizing them into flexible Streamable HTTP (SSE) endpoints—supporting access to all servers, individual servers, or logical server groups.
 
 ![Dashboard Preview](assets/dashboard.png)
 
 ## 🚀 Features
 
-- **Out-of-the-Box MCP Server Support**: Seamlessly integrate popular servers like `amap-maps`, `playwright`, `fetch`, `slack`, and more.
+- **Broadened MCP Server Support**: Seamlessly integrate any MCP server with minimal configuration.
 - **Centralized Dashboard**: Monitor real-time status and performance metrics from one sleek web UI.
 - **Flexible Protocol Handling**: Full compatibility with both stdio and SSE MCP protocols.
 - **Hot-Swappable Configuration**: Add, remove, or update MCP servers on the fly — no downtime required.
@@ -48,22 +48,9 @@ Create a `mcp_settings.json` file to customize your server settings:
         "SLACK_TEAM_ID": "your-team-id"
       }
     }
-  },
-  "users": [
-    {
-      "username": "admin",
-      "password": "$2b$10$Vt7krIvjNgyN67LXqly0uOcTpN0LI55cYRbcKC71pUDAP0nJ7RPa.",
-      "isAdmin": true
-    }
-  ]
+  }
 }
 ```
-
-> **Note**: Default credentials are `admin` / `admin123`. Passwords are securely hashed with bcrypt. Generate a new hash with:
->
-> ```bash
-> npx bcryptjs your-password
-> ```
 
 ### Docker Deployment
 
