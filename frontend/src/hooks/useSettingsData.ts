@@ -16,10 +16,19 @@ interface InstallConfig {
   npmRegistry: string;
 }
 
+interface SmartRoutingConfig {
+  enabled: boolean;
+  dbUrl: string;
+  openaiApiBaseUrl: string;
+  openaiApiKey: string;
+  openaiApiEmbeddingModel: string;
+}
+
 interface SystemSettings {
   systemConfig?: {
     routing?: RoutingConfig;
     install?: InstallConfig;
+    smartRouting?: SmartRoutingConfig;
   };
 }
 
@@ -45,6 +54,14 @@ export const useSettingsData = () => {
   const [installConfig, setInstallConfig] = useState<InstallConfig>({
     pythonIndexUrl: '',
     npmRegistry: '',
+  });
+
+  const [smartRoutingConfig, setSmartRoutingConfig] = useState<SmartRoutingConfig>({
+    enabled: false,
+    dbUrl: '',
+    openaiApiBaseUrl: '',
+    openaiApiKey: '',
+    openaiApiEmbeddingModel: '',
   });
 
   const [loading, setLoading] = useState(false);
@@ -89,14 +106,25 @@ export const useSettingsData = () => {
           npmRegistry: data.data.systemConfig.install.npmRegistry || '',
         });
       }
+      if (data.success && data.data?.systemConfig?.smartRouting) {
+        setSmartRoutingConfig({
+          enabled: data.data.systemConfig.smartRouting.enabled ?? false,
+          dbUrl: data.data.systemConfig.smartRouting.dbUrl || '',
+          openaiApiBaseUrl: data.data.systemConfig.smartRouting.openaiApiBaseUrl || '',
+          openaiApiKey: data.data.systemConfig.smartRouting.openaiApiKey || '',
+          openaiApiEmbeddingModel:
+            data.data.systemConfig.smartRouting.openaiApiEmbeddingModel || '',
+        });
+      }
     } catch (error) {
       console.error('Failed to fetch settings:', error);
       setError(error instanceof Error ? error.message : 'Failed to fetch settings');
+      // 使用一个稳定的 showToast 引用，避免将其加入依赖数组
       showToast(t('errors.failedToFetchSettings'));
     } finally {
       setLoading(false);
     }
-  }, [t, showToast]);
+  }, [t]); // 移除 showToast 依赖
 
   // Update routing configuration
   const updateRoutingConfig = async <T extends keyof RoutingConfig>(
@@ -195,6 +223,107 @@ export const useSettingsData = () => {
     }
   };
 
+  // Update smart routing configuration
+  const updateSmartRoutingConfig = async <T extends keyof SmartRoutingConfig>(
+    key: T,
+    value: SmartRoutingConfig[T],
+  ) => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const token = localStorage.getItem('mcphub_token');
+      const response = await fetch('/api/system-config', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-auth-token': token || '',
+        },
+        body: JSON.stringify({
+          smartRouting: {
+            [key]: value,
+          },
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || `HTTP error! Status: ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      if (data.success) {
+        setSmartRoutingConfig({
+          ...smartRoutingConfig,
+          [key]: value,
+        });
+        showToast(t('settings.systemConfigUpdated'));
+        return true;
+      } else {
+        showToast(data.message || t('errors.failedToUpdateSmartRoutingConfig'));
+        return false;
+      }
+    } catch (error) {
+      console.error('Failed to update smart routing config:', error);
+      const errorMessage =
+        error instanceof Error ? error.message : 'Failed to update smart routing config';
+      setError(errorMessage);
+      showToast(errorMessage);
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Update multiple smart routing configuration fields at once
+  const updateSmartRoutingConfigBatch = async (updates: Partial<SmartRoutingConfig>) => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const token = localStorage.getItem('mcphub_token');
+      const response = await fetch('/api/system-config', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-auth-token': token || '',
+        },
+        body: JSON.stringify({
+          smartRouting: updates,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || `HTTP error! Status: ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      if (data.success) {
+        setSmartRoutingConfig({
+          ...smartRoutingConfig,
+          ...updates,
+        });
+        showToast(t('settings.systemConfigUpdated'));
+        return true;
+      } else {
+        showToast(data.message || t('errors.failedToUpdateSmartRoutingConfig'));
+        return false;
+      }
+    } catch (error) {
+      console.error('Failed to update smart routing config:', error);
+      const errorMessage =
+        error instanceof Error ? error.message : 'Failed to update smart routing config';
+      setError(errorMessage);
+      showToast(errorMessage);
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Fetch settings when the component mounts or refreshKey changes
   useEffect(() => {
     fetchSettings();
@@ -213,6 +342,7 @@ export const useSettingsData = () => {
     tempRoutingConfig,
     setTempRoutingConfig,
     installConfig,
+    smartRoutingConfig,
     loading,
     error,
     setError,
@@ -220,5 +350,7 @@ export const useSettingsData = () => {
     fetchSettings,
     updateRoutingConfig,
     updateInstallConfig,
+    updateSmartRoutingConfig,
+    updateSmartRoutingConfigBatch,
   };
 };

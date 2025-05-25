@@ -42,11 +42,19 @@
   "license": "ISC",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.11.1",
+    "@types/pg": "^8.15.2",
     "bcryptjs": "^3.0.2",
     "dotenv": "^16.3.1",
+    "dotenv-expand": "^12.0.2",
     "express": "^4.21.2",
     "express-validator": "^7.2.1",
     "jsonwebtoken": "^9.0.2",
+    "openai": "^4.103.0",
+    "pg": "^8.16.0",
+    "pgvector": "^0.2.1",
+    "postgres": "^3.4.7",
+    "reflect-metadata": "^0.2.2",
+    "typeorm": "^0.3.24",
     "uuid": "^11.1.0"
   },
   "devDependencies": {

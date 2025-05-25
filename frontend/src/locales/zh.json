@@ -126,7 +126,8 @@
     "serverInstall": "安装服务器失败",
     "failedToFetchSettings": "获取设置失败",
     "failedToUpdateSystemConfig": "更新系统配置失败",
-    "failedToUpdateRouteConfig": "更新路由配置失败"
+    "failedToUpdateRouteConfig": "更新路由配置失败",
+    "failedToUpdateSmartRoutingConfig": "更新智能路由配置失败"
   },
   "common": {
     "processing": "处理中...",
@@ -169,7 +170,8 @@
       "password": "修改密码",
       "appearance": "外观",
       "routeConfig": "安全配置",
-      "installConfig": "安装配置"
+      "installConfig": "安装",
+      "smartRouting": "智能路由"
     },
     "groups": {
       "title": "分组管理"
@@ -279,6 +281,20 @@
     "npmRegistryDescription": "设置 npm_config_registry 环境变量，用于 NPM 包安装",
     "npmRegistryPlaceholder": "例如: https://registry.npmmirror.com/",
     "installConfig": "安装配置",
-    "systemConfigUpdated": "系统配置更新成功"
+    "systemConfigUpdated": "系统配置更新成功",
+    "enableSmartRouting": "启用智能路由",
+    "enableSmartRoutingDescription": "开启智能路由功能，根据输入自动搜索最合适的工具",
+    "dbUrl": "PostgreSQL 连接地址（支持 pgvector）",
+    "dbUrlPlaceholder": "例如: postgresql://user:password@localhost:5432/dbname",
+    "openaiApiBaseUrl": "OpenAI API 基础地址",
+    "openaiApiBaseUrlPlaceholder": "https://api.openai.com/v1",
+    "openaiApiKey": "OpenAI API 密钥",
+    "openaiApiKeyDescription": "用于访问 OpenAI API 的密钥",
+    "openaiApiKeyPlaceholder": "请输入 OpenAI API 密钥",
+    "openaiApiEmbeddingModel": "OpenAI 嵌入模型",
+    "openaiApiEmbeddingModelPlaceholder": "text-embedding-3-small",
+    "smartRoutingConfigUpdated": "智能路由配置更新成功",
+    "smartRoutingRequiredFields": "启用智能路由需要填写数据库连接地址和 OpenAI API 密钥",
+    "smartRoutingValidationError": "启用智能路由前请先填写必要字段：{{fields}}"
   }
 }

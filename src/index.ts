@@ -1,3 +1,4 @@
+import 'reflect-metadata';
 import AppServer from './server.js';
 
 const appServer = new AppServer();

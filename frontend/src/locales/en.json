@@ -125,7 +125,8 @@
     "initialStartup": "The server might be starting up. Please wait a moment as this process can take some time on first launch...",
     "serverInstall": "Failed to install server",
     "failedToFetchSettings": "Failed to fetch settings",
-    "failedToUpdateRouteConfig": "Failed to update route configuration"
+    "failedToUpdateRouteConfig": "Failed to update route configuration",
+    "failedToUpdateSmartRoutingConfig": "Failed to update smart routing configuration"
   },
   "common": {
     "processing": "Processing...",
@@ -170,8 +171,9 @@
       "account": "Account Settings",
       "password": "Change Password",
       "appearance": "Appearance",
-      "routeConfig": "Security Configuration",
-      "installConfig": "Installation Configuration"
+      "routeConfig": "Security",
+      "installConfig": "Installation",
+      "smartRouting": "Smart Routing"
     },
     "market": {
       "title": "Server Market - (Data from mcpm.sh)"
@@ -277,7 +279,20 @@
     "npmRegistry": "NPM Registry URL",
     "npmRegistryDescription": "Set npm_config_registry environment variable for NPM package installation",
     "npmRegistryPlaceholder": "e.g. https://registry.npmjs.org/",
-    "installConfig": "Installation Configuration",
-    "systemConfigUpdated": "System configuration updated successfully"
+    "installConfig": "Installation",
+    "systemConfigUpdated": "System configuration updated successfully",
+    "enableSmartRouting": "Enable Smart Routing",
+    "enableSmartRoutingDescription": "Enable smart routing feature to search the most suitable tool based on input (using $smart group name)",
+    "dbUrl": "PostgreSQL URL (with pgvector support)",
+    "dbUrlPlaceholder": "e.g. postgresql://user:password@localhost:5432/dbname",
+    "openaiApiBaseUrl": "OpenAI API Base URL",
+    "openaiApiBaseUrlPlaceholder": "https://api.openai.com/v1",
+    "openaiApiKey": "OpenAI API Key",
+    "openaiApiKeyPlaceholder": "Enter OpenAI API key",
+    "openaiApiEmbeddingModel": "OpenAI Embedding Model",
+    "openaiApiEmbeddingModelPlaceholder": "text-embedding-3-small",
+    "smartRoutingConfigUpdated": "Smart routing configuration updated successfully",
+    "smartRoutingRequiredFields": "Database URL and OpenAI API Key are required to enable smart routing",
+    "smartRoutingValidationError": "Please fill in the required fields before enabling Smart Routing: {{fields}}"
   }
 }

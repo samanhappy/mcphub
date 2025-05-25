@@ -90,6 +90,13 @@ export interface McpSettings {
       pythonIndexUrl?: string; // Python package repository URL (UV_DEFAULT_INDEX)
       npmRegistry?: string; // NPM registry URL (npm_config_registry)
     };
+    smartRouting?: {
+      enabled?: boolean; // Controls whether smart routing is enabled
+      dbUrl?: string; // Database URL for smart routing
+      openaiApiBaseUrl?: string; // OpenAI API base URL
+      openaiApiKey?: string; // OpenAI API key
+      openaiApiEmbeddingModel?: string; // OpenAI API embedding model
+    };
     // Add other system configuration sections here in the future
   };
 }

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useCallback } from 'react';
 import Toast, { ToastType } from '@/components/ui/Toast';
 
 interface ToastContextProps {
@@ -32,18 +32,18 @@ export const ToastProvider: React.FC<ToastProviderProps> = ({ children }) => {
     duration: 3000,
   });
 
-  const showToast = (message: string, type: ToastType = 'info', duration: number = 3000) => {
+  const showToast = useCallback((message: string, type: ToastType = 'info', duration: number = 3000) => {
     setToast({
       message,
       type,
       visible: true,
       duration,
     });
-  };
+  }, []);
 
-  const hideToast = () => {
+  const hideToast = useCallback(() => {
     setToast((prev) => ({ ...prev, visible: false }));
-  };
+  }, []);
 
   return (
     <ToastContext.Provider value={{ showToast }}>

@@ -9,6 +9,7 @@ import {
   toggleServerStatus,
 } from '../services/mcpService.js';
 import { loadSettings, saveSettings } from '../config/index.js';
+import { syncAllServerToolsEmbeddings } from '../services/vectorSearchService.js';
 
 export const getAllServers = (_: Request, res: Response): void => {
   try {
@@ -283,7 +284,7 @@ export const toggleServer = async (req: Request, res: Response): Promise<void> =
 
 export const updateSystemConfig = (req: Request, res: Response): void => {
   try {
-    const { routing, install } = req.body;
+    const { routing, install, smartRouting } = req.body;
 
     if (
       (!routing ||
@@ -292,7 +293,13 @@ export const updateSystemConfig = (req: Request, res: Response): void => {
           typeof routing.enableBearerAuth !== 'boolean' &&
           typeof routing.bearerAuthKey !== 'string')) &&
       (!install ||
-        (typeof install.pythonIndexUrl !== 'string' && typeof install.npmRegistry !== 'string'))
+        (typeof install.pythonIndexUrl !== 'string' && typeof install.npmRegistry !== 'string')) &&
+      (!smartRouting ||
+        (typeof smartRouting.enabled !== 'boolean' &&
+          typeof smartRouting.dbUrl !== 'string' &&
+          typeof smartRouting.openaiApiBaseUrl !== 'string' &&
+          typeof smartRouting.openaiApiKey !== 'string' &&
+          typeof smartRouting.openaiApiEmbeddingModel !== 'string'))
     ) {
       res.status(400).json({
         success: false,
@@ -314,6 +321,13 @@ export const updateSystemConfig = (req: Request, res: Response): void => {
           pythonIndexUrl: '',
           npmRegistry: '',
         },
+        smartRouting: {
+          enabled: false,
+          dbUrl: '',
+          openaiApiBaseUrl: '',
+          openaiApiKey: '',
+          openaiApiEmbeddingModel: '',
+        },
       };
     }
 
@@ -330,6 +344,16 @@ export const updateSystemConfig = (req: Request, res: Response): void => {
       settings.systemConfig.install = {
         pythonIndexUrl: '',
         npmRegistry: '',
+      };
+    }
+
+    if (!settings.systemConfig.smartRouting) {
+      settings.systemConfig.smartRouting = {
+        enabled: false,
+        dbUrl: '',
+        openaiApiBaseUrl: '',
+        openaiApiKey: '',
+        openaiApiEmbeddingModel: '',
       };
     }
 
@@ -360,12 +384,77 @@ export const updateSystemConfig = (req: Request, res: Response): void => {
       }
     }
 
+    // Track smartRouting state and configuration changes
+    const wasSmartRoutingEnabled = settings.systemConfig.smartRouting.enabled || false;
+    const previousSmartRoutingConfig = { ...settings.systemConfig.smartRouting };
+    let needsSync = false;
+
+    if (smartRouting) {
+      if (typeof smartRouting.enabled === 'boolean') {
+        // If enabling Smart Routing, validate required fields
+        if (smartRouting.enabled) {
+          const currentDbUrl = smartRouting.dbUrl || settings.systemConfig.smartRouting.dbUrl;
+          const currentOpenaiApiKey =
+            smartRouting.openaiApiKey || settings.systemConfig.smartRouting.openaiApiKey;
+
+          if (!currentDbUrl || !currentOpenaiApiKey) {
+            const missingFields = [];
+            if (!currentDbUrl) missingFields.push('Database URL');
+            if (!currentOpenaiApiKey) missingFields.push('OpenAI API Key');
+
+            res.status(400).json({
+              success: false,
+              message: `Smart Routing requires the following fields: ${missingFields.join(', ')}`,
+            });
+            return;
+          }
+        }
+        settings.systemConfig.smartRouting.enabled = smartRouting.enabled;
+      }
+      if (typeof smartRouting.dbUrl === 'string') {
+        settings.systemConfig.smartRouting.dbUrl = smartRouting.dbUrl;
+      }
+      if (typeof smartRouting.openaiApiBaseUrl === 'string') {
+        settings.systemConfig.smartRouting.openaiApiBaseUrl = smartRouting.openaiApiBaseUrl;
+      }
+      if (typeof smartRouting.openaiApiKey === 'string') {
+        settings.systemConfig.smartRouting.openaiApiKey = smartRouting.openaiApiKey;
+      }
+      if (typeof smartRouting.openaiApiEmbeddingModel === 'string') {
+        settings.systemConfig.smartRouting.openaiApiEmbeddingModel =
+          smartRouting.openaiApiEmbeddingModel;
+      }
+
+      // Check if we need to sync embeddings
+      const isNowEnabled = settings.systemConfig.smartRouting.enabled || false;
+      const hasConfigChanged =
+        previousSmartRoutingConfig.dbUrl !== settings.systemConfig.smartRouting.dbUrl ||
+        previousSmartRoutingConfig.openaiApiBaseUrl !==
+          settings.systemConfig.smartRouting.openaiApiBaseUrl ||
+        previousSmartRoutingConfig.openaiApiKey !==
+          settings.systemConfig.smartRouting.openaiApiKey ||
+        previousSmartRoutingConfig.openaiApiEmbeddingModel !==
+          settings.systemConfig.smartRouting.openaiApiEmbeddingModel;
+
+      // Sync if: first time enabling OR smart routing is enabled and any config changed
+      needsSync = (!wasSmartRoutingEnabled && isNowEnabled) || (isNowEnabled && hasConfigChanged);
+    }
+
     if (saveSettings(settings)) {
       res.json({
         success: true,
         data: settings.systemConfig,
         message: 'System configuration updated successfully',
       });
+
+      // If smart routing configuration changed, sync all existing server tools
+      if (needsSync) {
+        console.log('SmartRouting configuration changed - syncing all existing server tools...');
+        // Run sync asynchronously to avoid blocking the response
+        syncAllServerToolsEmbeddings().catch((error) => {
+          console.error('Failed to sync server tools embeddings:', error);
+        });
+      }
     } else {
       res.status(500).json({
         success: false,

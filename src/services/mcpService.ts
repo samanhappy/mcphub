@@ -9,6 +9,7 @@ import { loadSettings, saveSettings, expandEnvVars } from '../config/index.js';
 import config from '../config/index.js';
 import { getGroup } from './sseService.js';
 import { getServersInGroup } from './groupService.js';
+import { saveToolsAsVectorEmbeddings, searchToolsByVector } from './vectorSearchService.js';
 
 const servers: { [sessionId: string]: Server } = {};
 
@@ -99,14 +100,21 @@ export const initializeClientsFromSettings = (isInit: boolean): ServerInfo[] => 
 
       // Add UV_DEFAULT_INDEX from settings if available (for Python packages)
       const settings = loadSettings(); // Add UV_DEFAULT_INDEX from settings if available (for Python packages)
-      if (settings.systemConfig?.install?.pythonIndexUrl && conf.command === 'uvx') {
+      if (
+        settings.systemConfig?.install?.pythonIndexUrl &&
+        (conf.command === 'uvx' || conf.command === 'uv' || conf.command === 'python')
+      ) {
         env['UV_DEFAULT_INDEX'] = settings.systemConfig.install.pythonIndexUrl;
       }
 
       // Add npm_config_registry from settings if available (for NPM packages)
       if (
         settings.systemConfig?.install?.npmRegistry &&
-        (conf.command === 'npm' || conf.command === 'npx')
+        (conf.command === 'npm' ||
+          conf.command === 'npx' ||
+          conf.command === 'pnpm' ||
+          conf.command === 'yarn' ||
+          conf.command === 'node')
       ) {
         env['npm_config_registry'] = settings.systemConfig.install.npmRegistry;
       }
@@ -168,6 +176,22 @@ export const initializeClientsFromSettings = (isInit: boolean): ServerInfo[] => 
             }));
             serverInfo.status = 'connected';
             serverInfo.error = null;
+
+            // Save tools as vector embeddings for search (only when smart routing is enabled)
+            if (serverInfo.tools.length > 0) {
+              try {
+                const settings = loadSettings();
+                const smartRoutingEnabled = settings.systemConfig?.smartRouting?.enabled || false;
+                if (smartRoutingEnabled) {
+                  console.log(
+                    `Smart routing enabled - saving vector embeddings for server ${name}`,
+                  );
+                  saveToolsAsVectorEmbeddings(name, serverInfo.tools);
+                }
+              } catch (vectorError) {
+                console.warn(`Failed to save vector embeddings for server ${name}:`, vectorError);
+              }
+            }
           })
           .catch((error) => {
             console.error(
@@ -258,7 +282,6 @@ export const addServer = async (
       return { success: false, message: 'Failed to save settings' };
     }
 
-    registerAllTools(false);
     return { success: true, message: 'Server added successfully' };
   } catch (error) {
     console.error(`Failed to add server: ${name}`, error);
@@ -369,6 +392,74 @@ const handleListToolsRequest = async (_: any, extra: any) => {
   const sessionId = extra.sessionId || '';
   const group = getGroup(sessionId);
   console.log(`Handling ListToolsRequest for group: ${group}`);
+
+  // Special handling for $smart group to return special tools
+  if (group === '$smart') {
+    return {
+      tools: [
+        {
+          name: 'search_tools',
+          description: (() => {
+            // Get info about available servers
+            const availableServers = serverInfos.filter(
+              (server) => server.status === 'connected' && server.enabled !== false,
+            );
+            // Create simple server information with only server names
+            const serversList = availableServers
+              .map((server) => {
+                return `${server.name}`;
+              })
+              .join(', ');
+            return `STEP 1 of 2: Use this tool FIRST to discover and search for relevant tools across all available servers. This tool and call_tool work together as a two-step process: 1) search_tools to find what you need, 2) call_tool to execute it.
+
+For optimal results, use specific queries matching your exact needs. Call this tool multiple times with different queries for different parts of complex tasks. Example queries: "image generation tools", "code review tools", "data analysis", "translation capabilities", etc. Results are sorted by relevance using vector similarity.
+
+After finding relevant tools, you MUST use the call_tool to actually execute them. The search_tools only finds tools - it doesn't execute them.
+
+Available servers: ${serversList}`;
+          })(),
+          inputSchema: {
+            type: 'object',
+            properties: {
+              query: {
+                type: 'string',
+                description:
+                  'The search query to find relevant tools. Be specific and descriptive about the task you want to accomplish.',
+              },
+              limit: {
+                type: 'integer',
+                description:
+                  'Maximum number of results to return. Use higher values (20-30) for broad searches and lower values (5-10) for specific searches.',
+                default: 10,
+              },
+            },
+            required: ['query'],
+          },
+        },
+        {
+          name: 'call_tool',
+          description:
+            "STEP 2 of 2: Use this tool AFTER search_tools to actually execute/invoke any tool you found. This is the execution step - search_tools finds tools, call_tool runs them.\n\nWorkflow: search_tools → examine results → call_tool with the chosen tool name and required arguments.\n\nIMPORTANT: Always check the tool's inputSchema from search_tools results before invoking to ensure you provide the correct arguments. The search results will show you exactly what parameters each tool expects.",
+          inputSchema: {
+            type: 'object',
+            properties: {
+              toolName: {
+                type: 'string',
+                description: 'The exact name of the tool to invoke (from search_tools results)',
+              },
+              arguments: {
+                type: 'object',
+                description:
+                  'The arguments to pass to the tool based on its inputSchema (optional if tool requires no arguments)',
+              },
+            },
+            required: ['toolName'],
+          },
+        },
+      ],
+    };
+  }
+
   const allServerInfos = serverInfos.filter((serverInfo) => {
     if (serverInfo.enabled === false) return false;
     if (!group) return true;
@@ -392,6 +483,143 @@ const handleListToolsRequest = async (_: any, extra: any) => {
 const handleCallToolRequest = async (request: any, extra: any) => {
   console.log(`Handling CallToolRequest for tool: ${request.params.name}`);
   try {
+    // Special handling for agent group tools
+    if (request.params.name === 'search_tools') {
+      const { query, limit = 10 } = request.params.arguments || {};
+
+      if (!query || typeof query !== 'string') {
+        throw new Error('Query parameter is required and must be a string');
+      }
+
+      const limitNum = Math.min(Math.max(parseInt(String(limit)) || 10, 1), 100);
+
+      // Dynamically adjust threshold based on query characteristics
+      let thresholdNum = 0.3; // Default threshold
+
+      // For more general queries, use a lower threshold to get more diverse results
+      if (query.length < 10 || query.split(' ').length <= 2) {
+        thresholdNum = 0.2;
+      }
+
+      // For very specific queries, use a higher threshold for more precise results
+      if (query.length > 30 || query.includes('specific') || query.includes('exact')) {
+        thresholdNum = 0.4;
+      }
+
+      console.log(`Using similarity threshold: ${thresholdNum} for query: "${query}"`);
+      const servers = undefined; // No server filtering
+
+      const searchResults = await searchToolsByVector(query, limitNum, thresholdNum, servers);
+      console.log(`Search results: ${JSON.stringify(searchResults)}`);
+      // Find actual tool information from serverInfos by serverName and toolName
+      const tools = searchResults.map((result) => {
+        // Find the server in serverInfos
+        const server = serverInfos.find(
+          (serverInfo) =>
+            serverInfo.name === result.serverName &&
+            serverInfo.status === 'connected' &&
+            serverInfo.enabled !== false,
+        );
+        if (server && server.tools && server.tools.length > 0) {
+          // Find the tool in server.tools
+          const actualTool = server.tools.find((tool) => tool.name === result.toolName);
+          if (actualTool) {
+            // Return the actual tool info from serverInfos
+            return actualTool;
+          }
+        }
+
+        // Fallback to search result if server or tool not found
+        return {
+          name: result.toolName,
+          description: result.description || '',
+          inputSchema: result.inputSchema || {},
+        };
+      });
+
+      // Add usage guidance to the response
+      const response = {
+        tools,
+        metadata: {
+          query: query,
+          threshold: thresholdNum,
+          totalResults: tools.length,
+          guideline:
+            tools.length > 0
+              ? "Found relevant tools. If these tools don't match exactly what you need, try another search with more specific keywords."
+              : 'No tools found. Try broadening your search or using different keywords.',
+          nextSteps:
+            tools.length > 0
+              ? 'To use a tool, call call_tool with the toolName and required arguments.'
+              : 'Consider searching for related capabilities or more general terms.',
+        },
+      };
+
+      // Return in the same format as handleListToolsRequest
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify(response),
+          },
+        ],
+      };
+    }
+
+    // Special handling for call_tool
+    if (request.params.name === 'call_tool') {
+      const { toolName, arguments: toolArgs = {} } = request.params.arguments || {};
+
+      if (!toolName) {
+        throw new Error('toolName parameter is required');
+      }
+
+      // arguments parameter is now optional
+
+      let targetServerInfo: ServerInfo | undefined;
+
+      // Find the first server that has this tool
+      targetServerInfo = serverInfos.find(
+        (serverInfo) =>
+          serverInfo.status === 'connected' &&
+          serverInfo.enabled !== false &&
+          serverInfo.tools.some((tool) => tool.name === toolName),
+      );
+
+      if (!targetServerInfo) {
+        throw new Error(`No available servers found with tool: ${toolName}`);
+      }
+
+      // Check if the tool exists on the server
+      const toolExists = targetServerInfo.tools.some((tool) => tool.name === toolName);
+      if (!toolExists) {
+        throw new Error(`Tool '${toolName}' not found on server '${targetServerInfo.name}'`);
+      }
+
+      // Call the tool on the target server
+      const client = targetServerInfo.client;
+      if (!client) {
+        throw new Error(`Client not found for server: ${targetServerInfo.name}`);
+      }
+
+      // Use toolArgs if it has properties, otherwise fallback to request.params.arguments
+      const finalArgs =
+        toolArgs && Object.keys(toolArgs).length > 0 ? toolArgs : request.params.arguments || {};
+
+      console.log(
+        `Invoking tool '${toolName}' on server '${targetServerInfo.name}' with arguments: ${JSON.stringify(finalArgs)}`,
+      );
+
+      const result = await client.callTool({
+        name: toolName,
+        arguments: finalArgs,
+      });
+
+      console.log(`Tool invocation result: ${JSON.stringify(result)}`);
+      return result;
+    }
+
+    // Regular tool handling
     const serverInfo = getServerByTool(request.params.name);
     if (!serverInfo) {
       throw new Error(`Server not found: ${request.params.name}`);
