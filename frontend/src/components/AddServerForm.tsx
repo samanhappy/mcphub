@@ -68,7 +68,7 @@ const AddServerForm = ({ onAdd }: AddServerFormProps) => {
     <div>
       <button
         onClick={toggleModal}
-        className="w-full bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded"
+        className="w-full bg-blue-100 text-blue-800 rounded hover:bg-blue-200 py-2 px-4"
       >
         {t('server.addServer')}
       </button>
