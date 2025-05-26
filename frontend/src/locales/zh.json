@@ -154,10 +154,10 @@
   "pages": {
     "dashboard": {
       "title": "仪表盘",
-      "totalServers": "服务器总数",
-      "onlineServers": "在线服务器",
-      "offlineServers": "离线服务器",
-      "connectingServers": "连接中服务",
+      "totalServers": "总数",
+      "onlineServers": "在线",
+      "offlineServers": "离线",
+      "connectingServers": "连接中",
       "recentServers": "最近的服务器"
     },
     "servers": {
@@ -283,7 +283,7 @@
     "installConfig": "安装配置",
     "systemConfigUpdated": "系统配置更新成功",
     "enableSmartRouting": "启用智能路由",
-    "enableSmartRoutingDescription": "开启智能路由功能，根据输入自动搜索最合适的工具",
+    "enableSmartRoutingDescription": "开启智能路由功能，根据输入自动搜索最合适的工具（使用 $smart 分组）",
     "dbUrl": "PostgreSQL 连接地址（支持 pgvector）",
     "dbUrlPlaceholder": "例如: postgresql://user:password@localhost:5432/dbname",
     "openaiApiBaseUrl": "OpenAI API 基础地址",

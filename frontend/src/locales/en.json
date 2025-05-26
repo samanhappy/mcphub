@@ -153,10 +153,10 @@
   "pages": {
     "dashboard": {
       "title": "Dashboard",
-      "totalServers": "Total Servers",
-      "onlineServers": "Online Servers",
-      "offlineServers": "Offline Servers",
-      "connectingServers": "Connecting Servers",
+      "totalServers": "Total",
+      "onlineServers": "Online",
+      "offlineServers": "Offline",
+      "connectingServers": "Connecting",
       "recentServers": "Recent Servers"
     },
     "servers": {
