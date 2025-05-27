@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ApiResponse } from '@/types';
 import { useToast } from '@/contexts/ToastContext';
+import { getApiUrl } from '../utils/api';
 
 // Define types for the settings data
 interface RoutingConfig {
@@ -80,7 +81,7 @@ export const useSettingsData = () => {
 
     try {
       const token = localStorage.getItem('mcphub_token');
-      const response = await fetch('/api/settings', {
+      const response = await fetch(getApiUrl('/settings'), {
         headers: {
           'x-auth-token': token || '',
         },
@@ -136,7 +137,7 @@ export const useSettingsData = () => {
 
     try {
       const token = localStorage.getItem('mcphub_token');
-      const response = await fetch('/api/system-config', {
+      const response = await fetch(getApiUrl('/system-config'), {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -183,7 +184,7 @@ export const useSettingsData = () => {
 
     try {
       const token = localStorage.getItem('mcphub_token');
-      const response = await fetch('/api/system-config', {
+      const response = await fetch(getApiUrl('/system-config'), {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -233,7 +234,7 @@ export const useSettingsData = () => {
 
     try {
       const token = localStorage.getItem('mcphub_token');
-      const response = await fetch('/api/system-config', {
+      const response = await fetch(getApiUrl('/system-config'), {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -283,7 +284,7 @@ export const useSettingsData = () => {
 
     try {
       const token = localStorage.getItem('mcphub_token');
-      const response = await fetch('/api/system-config', {
+      const response = await fetch(getApiUrl('/system-config'), {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

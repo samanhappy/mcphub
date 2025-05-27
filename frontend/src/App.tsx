@@ -15,13 +15,16 @@ import LogsPage from './pages/LogsPage';
 
 // Get base path from environment variable or default to empty string
 const getBasePath = (): string => {
-  const basePath = import.meta.env.VITE_BASE_PATH || '';
-  return basePath.startsWith('/') ? basePath : '';
+  const basePath = import.meta.env.BASE_PATH || '';
+  // Ensure the path starts with / if it's not empty and doesn't already start with /
+  if (basePath && !basePath.startsWith('/')) {
+    return '/' + basePath;
+  }
+  return basePath;
 };
 
 function App() {
   const basename = getBasePath();
-
   return (
     <ThemeProvider>
       <AuthProvider>

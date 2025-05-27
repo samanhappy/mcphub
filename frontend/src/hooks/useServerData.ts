@@ -1,18 +1,19 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Server, ApiResponse } from '@/types';
+import { getApiUrl } from '../utils/api';
 
 // Configuration options
 const CONFIG = {
   // Initialization phase configuration
   startup: {
-    maxAttempts: 60,                // Maximum number of attempts during initialization
-    pollingInterval: 3000           // Polling interval during initialization (3 seconds)
+    maxAttempts: 60, // Maximum number of attempts during initialization
+    pollingInterval: 3000, // Polling interval during initialization (3 seconds)
   },
   // Normal operation phase configuration
   normal: {
-    pollingInterval: 10000          // Polling interval during normal operation (10 seconds)
-  }
+    pollingInterval: 10000, // Polling interval during normal operation (10 seconds)
+  },
 };
 
 export const useServerData = () => {
@@ -22,7 +23,7 @@ export const useServerData = () => {
   const [refreshKey, setRefreshKey] = useState(0);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [fetchAttempts, setFetchAttempts] = useState(0);
-  
+
   // Timer reference for polling
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   // Track current attempt count to avoid dependency cycles
@@ -40,17 +41,17 @@ export const useServerData = () => {
   const startNormalPolling = useCallback(() => {
     // Ensure no other timers are running
     clearTimer();
-    
+
     const fetchServers = async () => {
       try {
         const token = localStorage.getItem('mcphub_token');
-        const response = await fetch('/api/servers', {
+        const response = await fetch(getApiUrl('/servers'), {
           headers: {
-            'x-auth-token': token || ''
-          }
+            'x-auth-token': token || '',
+          },
         });
         const data = await response.json();
-        
+
         if (data && data.success && Array.isArray(data.data)) {
           setServers(data.data);
         } else if (data && Array.isArray(data)) {
@@ -59,29 +60,29 @@ export const useServerData = () => {
           console.error('Invalid server data format:', data);
           setServers([]);
         }
-        
+
         // Reset error state
         setError(null);
       } catch (err) {
         console.error('Error fetching servers during normal polling:', err);
-        
+
         // Use friendly error message
         if (!navigator.onLine) {
           setError(t('errors.network'));
-        } else if (err instanceof TypeError && (
-          err.message.includes('NetworkError') || 
-          err.message.includes('Failed to fetch')
-        )) {
+        } else if (
+          err instanceof TypeError &&
+          (err.message.includes('NetworkError') || err.message.includes('Failed to fetch'))
+        ) {
           setError(t('errors.serverConnection'));
         } else {
           setError(t('errors.serverFetch'));
         }
       }
     };
-    
+
     // Execute immediately
     fetchServers();
-    
+
     // Set up regular polling
     intervalRef.current = setInterval(fetchServers, CONFIG.normal.pollingInterval);
   }, [t]);
@@ -92,18 +93,18 @@ export const useServerData = () => {
       attemptsRef.current = 0;
       setFetchAttempts(0);
     }
-    
+
     // Initialization phase request function
     const fetchInitialData = async () => {
       try {
         const token = localStorage.getItem('mcphub_token');
-        const response = await fetch('/api/servers', {
+        const response = await fetch(getApiUrl('/servers'), {
           headers: {
-            'x-auth-token': token || ''
-          }
+            'x-auth-token': token || '',
+          },
         });
         const data = await response.json();
-        
+
         // Handle API response wrapper object, extract data field
         if (data && data.success && Array.isArray(data.data)) {
           setServers(data.data);
@@ -131,17 +132,17 @@ export const useServerData = () => {
         // Increment attempt count, use ref to avoid triggering effect rerun
         attemptsRef.current += 1;
         console.error(`Initial loading attempt ${attemptsRef.current} failed:`, err);
-        
+
         // Update state for display
         setFetchAttempts(attemptsRef.current);
-        
+
         // Set appropriate error message
         if (!navigator.onLine) {
           setError(t('errors.network'));
         } else {
           setError(t('errors.initialStartup'));
         }
-        
+
         // If maximum attempt count is exceeded, give up initialization and switch to normal polling
         if (attemptsRef.current >= CONFIG.startup.maxAttempts) {
           console.log('Maximum startup attempts reached, switching to normal polling');
@@ -151,19 +152,19 @@ export const useServerData = () => {
           // Switch to normal polling mode
           startNormalPolling();
         }
-        
+
         return false;
       }
     };
-    
+
     // On component mount, set appropriate polling based on current state
     if (isInitialLoading) {
       // Ensure no other timers are running
       clearTimer();
-      
+
       // Execute initial request immediately
       fetchInitialData();
-      
+
       // Set polling interval for initialization phase
       intervalRef.current = setInterval(fetchInitialData, CONFIG.startup.pollingInterval);
       console.log(`Started initial polling with interval: ${CONFIG.startup.pollingInterval}ms`);
@@ -171,7 +172,7 @@ export const useServerData = () => {
       // Initialization completed, start normal polling
       startNormalPolling();
     }
-    
+
     // Cleanup function
     return () => {
       clearTimer();
@@ -182,21 +183,21 @@ export const useServerData = () => {
   const triggerRefresh = () => {
     // Clear current timer
     clearTimer();
-    
+
     // If in initialization phase, reset initialization state
     if (isInitialLoading) {
       setIsInitialLoading(true);
       attemptsRef.current = 0;
       setFetchAttempts(0);
     }
-    
+
     // Change in refreshKey will trigger useEffect to run again
-    setRefreshKey(prevKey => prevKey + 1);
+    setRefreshKey((prevKey) => prevKey + 1);
   };
 
   // Server related operations
   const handleServerAdd = () => {
-    setRefreshKey(prevKey => prevKey + 1);
+    setRefreshKey((prevKey) => prevKey + 1);
   };
 
   const handleServerEdit = async (server: Server) => {
@@ -205,12 +206,12 @@ export const useServerData = () => {
       const token = localStorage.getItem('mcphub_token');
       const response = await fetch(`/api/settings`, {
         headers: {
-          'x-auth-token': token || ''
-        }
+          'x-auth-token': token || '',
+        },
       });
-      
+
       const settingsData: ApiResponse<{ mcpServers: Record<string, any> }> = await response.json();
-      
+
       if (
         settingsData &&
         settingsData.success &&
@@ -243,8 +244,8 @@ export const useServerData = () => {
       const response = await fetch(`/api/servers/${serverName}`, {
         method: 'DELETE',
         headers: {
-          'x-auth-token': token || ''
-        }
+          'x-auth-token': token || '',
+        },
       });
       const result = await response.json();
 
@@ -253,7 +254,7 @@ export const useServerData = () => {
         return false;
       }
 
-      setRefreshKey(prevKey => prevKey + 1);
+      setRefreshKey((prevKey) => prevKey + 1);
       return true;
     } catch (err) {
       setError(t('errors.general') + ': ' + (err instanceof Error ? err.message : String(err)));
@@ -268,7 +269,7 @@ export const useServerData = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-auth-token': token || ''
+          'x-auth-token': token || '',
         },
         body: JSON.stringify({ enabled }),
       });
@@ -282,7 +283,7 @@ export const useServerData = () => {
       }
 
       // Update the UI immediately to reflect the change
-      setRefreshKey(prevKey => prevKey + 1);
+      setRefreshKey((prevKey) => prevKey + 1);
       return true;
     } catch (err) {
       console.error('Error toggling server:', err);
@@ -301,6 +302,6 @@ export const useServerData = () => {
     handleServerAdd,
     handleServerEdit,
     handleServerRemove,
-    handleServerToggle
+    handleServerToggle,
   };
 };

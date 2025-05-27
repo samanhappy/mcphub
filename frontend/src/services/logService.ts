@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { getToken } from './authService'; // Import getToken function
+import { getApiUrl } from '../utils/api';
 
 export interface LogEntry {
   timestamp: number;
@@ -18,18 +19,18 @@ export const fetchLogs = async (): Promise<LogEntry[]> => {
       throw new Error('Authentication token not found. Please log in.');
     }
 
-    const response = await fetch('/api/logs', {
+    const response = await fetch(getApiUrl('/logs'), {
       headers: {
-        'x-auth-token': token
-      }
+        'x-auth-token': token,
+      },
     });
-    
+
     const result = await response.json();
-    
+
     if (!result.success) {
       throw new Error(result.error || 'Failed to fetch logs');
     }
-    
+
     return result.data;
   } catch (error) {
     console.error('Error fetching logs:', error);
@@ -46,15 +47,15 @@ export const clearLogs = async (): Promise<void> => {
       throw new Error('Authentication token not found. Please log in.');
     }
 
-    const response = await fetch('/api/logs', {
+    const response = await fetch(getApiUrl('/logs'), {
       method: 'DELETE',
       headers: {
-        'x-auth-token': token
-      }
+        'x-auth-token': token,
+      },
     });
-    
+
     const result = await response.json();
-    
+
     if (!result.success) {
       throw new Error(result.error || 'Failed to clear logs');
     }
@@ -90,19 +91,19 @@ export const useLogs = () => {
         }
 
         // Connect to SSE endpoint with auth token in URL
-        eventSource = new EventSource(`/api/logs/stream?token=${token}`);
+        eventSource = new EventSource(getApiUrl(`/logs/stream?token=${token}`));
 
         eventSource.onmessage = (event) => {
           if (!isMounted) return;
 
           try {
             const data = JSON.parse(event.data);
-            
+
             if (data.type === 'initial') {
               setLogs(data.logs);
               setLoading(false);
             } else if (data.type === 'log') {
-              setLogs(prevLogs => [...prevLogs, data.log]);
+              setLogs((prevLogs) => [...prevLogs, data.log]);
             }
           } catch (err) {
             console.error('Error parsing SSE message:', err);
@@ -111,13 +112,13 @@ export const useLogs = () => {
 
         eventSource.onerror = () => {
           if (!isMounted) return;
-          
+
           if (eventSource) {
             eventSource.close();
             // Attempt to reconnect after a delay
             setTimeout(connectToLogStream, 5000);
           }
-          
+
           setError(new Error('Connection to log stream lost, attempting to reconnect...'));
         };
       } catch (err) {

@@ -8,9 +8,12 @@ import { readFileSync } from 'fs';
 // Get package.json version
 const packageJson = JSON.parse(readFileSync(path.resolve(__dirname, '../package.json'), 'utf-8'));
 
+// Get base path from environment variable
+const basePath = process.env.BASE_PATH || '';
+
 // https://vitejs.dev/config/
 export default defineConfig({
-  base: './', // Use relative paths for assets
+  base: basePath || './', // Use base path or relative paths for assets
   plugins: [react(), tailwindcss()],
   resolve: {
     alias: {
@@ -18,19 +21,20 @@ export default defineConfig({
     },
   },
   define: {
-    // Make package version available as global variable
+    // Make package version and base path available as global variables
     'import.meta.env.PACKAGE_VERSION': JSON.stringify(packageJson.version),
+    'import.meta.env.BASE_PATH': JSON.stringify(basePath),
   },
   build: {
     sourcemap: true, // Enable source maps for production build
   },
   server: {
     proxy: {
-      '/api': {
+      [`${basePath}/api`]: {
         target: 'http://localhost:3000',
         changeOrigin: true,
       },
-      '/auth': {
+      [`${basePath}/auth`]: {
         target: 'http://localhost:3000',
         changeOrigin: true,
       },

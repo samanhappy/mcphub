@@ -5,6 +5,7 @@ import { dirname } from 'path';
 import fs from 'fs';
 import { auth } from './auth.js';
 import { initializeDefaultUser } from '../models/User.js';
+import config from '../config/index.js';
 
 // Create __dirname equivalent for ES modules
 const __filename = fileURLToPath(import.meta.url);
@@ -17,13 +18,13 @@ const findFrontendPath = (): string => {
   if (fs.existsSync(devPath)) {
     return path.join(dirname(__dirname), 'frontend', 'dist');
   }
-  
+
   // Try npm/npx installed path (remove /dist directory)
   const npmPath = path.join(dirname(dirname(__dirname)), 'frontend', 'dist', 'index.html');
   if (fs.existsSync(npmPath)) {
     return path.join(dirname(dirname(__dirname)), 'frontend', 'dist');
   }
-  
+
   // If none of the above paths exist, return the most reasonable default path and log a warning
   console.warn('Warning: Could not locate frontend files. Using default path.');
   return path.join(dirname(__dirname), 'frontend', 'dist');
@@ -32,10 +33,10 @@ const findFrontendPath = (): string => {
 const frontendPath = findFrontendPath();
 
 export const errorHandler = (
-  err: Error, 
-  _req: Request, 
-  res: Response, 
-  _next: NextFunction
+  err: Error,
+  _req: Request,
+  res: Response,
+  _next: NextFunction,
 ): void => {
   console.error('Unhandled error:', err);
   res.status(500).json({
@@ -46,10 +47,17 @@ export const errorHandler = (
 
 export const initMiddlewares = (app: express.Application): void => {
   // Serve static files from the dynamically determined frontend path
-  app.use(express.static(frontendPath));
+  // Note: Static files will be handled by the server directly, not here
 
   app.use((req, res, next) => {
-    if (req.path !== '/sse' && req.path !== '/messages') {
+    const basePath = config.basePath;
+    // Only apply JSON parsing for API and auth routes, not for SSE or message endpoints
+    if (
+      req.path !== `${basePath}/sse` &&
+      req.path !== `${basePath}/messages` &&
+      !req.path.startsWith(`${basePath}/sse/`) &&
+      !req.path.startsWith(`${basePath}/mcp/`)
+    ) {
       express.json()(req, res, next);
     } else {
       next();
@@ -57,16 +65,18 @@ export const initMiddlewares = (app: express.Application): void => {
   });
 
   // Initialize default admin user if no users exist
-  initializeDefaultUser().catch(err => {
+  initializeDefaultUser().catch((err) => {
     console.error('Error initializing default user:', err);
   });
 
-  // Protect all API routes with authentication middleware
-  app.use('/api', auth);
-
-  app.get('/', (_req: Request, res: Response) => {
-    // Serve the frontend application
-    res.sendFile(path.join(frontendPath, 'index.html'));
+  // Protect API routes with authentication middleware, but exclude auth endpoints
+  app.use(`${config.basePath}/api`, (req, res, next) => {
+    // Skip authentication for login and register endpoints
+    if (req.path === '/auth/login' || req.path === '/auth/register') {
+      next();
+    } else {
+      auth(req, res, next);
+    }
   });
 
   app.use(errorHandler);

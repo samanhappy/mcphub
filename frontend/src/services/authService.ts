@@ -1,7 +1,10 @@
-import { AuthResponse, LoginCredentials, RegisterCredentials, ChangePasswordCredentials } from '../types';
-
-// Base URL for API requests
-const API_URL = '';
+import {
+  AuthResponse,
+  LoginCredentials,
+  RegisterCredentials,
+  ChangePasswordCredentials,
+} from '../types';
+import { getApiUrl } from '../utils/api';
 
 // Token key in localStorage
 const TOKEN_KEY = 'mcphub_token';
@@ -24,7 +27,8 @@ export const removeToken = (): void => {
 // Login user
 export const login = async (credentials: LoginCredentials): Promise<AuthResponse> => {
   try {
-    const response = await fetch(`${API_URL}/auth/login`, {
+    console.log(getApiUrl('/auth/login'));
+    const response = await fetch(getApiUrl('/auth/login'), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -33,11 +37,11 @@ export const login = async (credentials: LoginCredentials): Promise<AuthResponse
     });
 
     const data: AuthResponse = await response.json();
-    
+
     if (data.success && data.token) {
       setToken(data.token);
     }
-    
+
     return data;
   } catch (error) {
     console.error('Login error:', error);
@@ -51,7 +55,7 @@ export const login = async (credentials: LoginCredentials): Promise<AuthResponse
 // Register user
 export const register = async (credentials: RegisterCredentials): Promise<AuthResponse> => {
   try {
-    const response = await fetch(`${API_URL}/auth/register`, {
+    const response = await fetch(getApiUrl('/auth/register'), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -60,11 +64,11 @@ export const register = async (credentials: RegisterCredentials): Promise<AuthRe
     });
 
     const data: AuthResponse = await response.json();
-    
+
     if (data.success && data.token) {
       setToken(data.token);
     }
-    
+
     return data;
   } catch (error) {
     console.error('Register error:', error);
@@ -78,16 +82,16 @@ export const register = async (credentials: RegisterCredentials): Promise<AuthRe
 // Get current user
 export const getCurrentUser = async (): Promise<AuthResponse> => {
   const token = getToken();
-  
+
   if (!token) {
     return {
       success: false,
       message: 'No authentication token',
     };
   }
-  
+
   try {
-    const response = await fetch(`${API_URL}/auth/user`, {
+    const response = await fetch(getApiUrl('/auth/user'), {
       method: 'GET',
       headers: {
         'x-auth-token': token,
@@ -105,18 +109,20 @@ export const getCurrentUser = async (): Promise<AuthResponse> => {
 };
 
 // Change password
-export const changePassword = async (credentials: ChangePasswordCredentials): Promise<AuthResponse> => {
+export const changePassword = async (
+  credentials: ChangePasswordCredentials,
+): Promise<AuthResponse> => {
   const token = getToken();
-  
+
   if (!token) {
     return {
       success: false,
       message: 'No authentication token',
     };
   }
-  
+
   try {
-    const response = await fetch(`${API_URL}/auth/change-password`, {
+    const response = await fetch(getApiUrl('/auth/change-password'), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

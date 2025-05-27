@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ServerForm from './ServerForm'
+import { getApiUrl } from '../utils/api'
 
 interface AddServerFormProps {
   onAdd: () => void
@@ -20,7 +21,7 @@ const AddServerForm = ({ onAdd }: AddServerFormProps) => {
     try {
       setError(null)
       const token = localStorage.getItem('mcphub_token');
-      const response = await fetch('/api/servers', {
+      const response = await fetch(getApiUrl('/servers'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

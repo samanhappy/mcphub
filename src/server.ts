@@ -22,10 +22,12 @@ export class AppServer {
   private app: express.Application;
   private port: number | string;
   private frontendPath: string | null = null;
+  private basePath: string;
 
   constructor() {
     this.app = express();
     this.port = config.port;
+    this.basePath = config.basePath;
   }
 
   async initialize(): Promise<void> {
@@ -40,11 +42,11 @@ export class AppServer {
       initUpstreamServers()
         .then(() => {
           console.log('MCP server initialized successfully');
-          this.app.get('/sse/:group?', (req, res) => handleSseConnection(req, res));
-          this.app.post('/messages', handleSseMessage);
-          this.app.post('/mcp/:group?', handleMcpPostRequest);
-          this.app.get('/mcp/:group?', handleMcpOtherRequest);
-          this.app.delete('/mcp/:group?', handleMcpOtherRequest);
+          this.app.get(`${this.basePath}/sse/:group?`, (req, res) => handleSseConnection(req, res));
+          this.app.post(`${this.basePath}/messages`, handleSseMessage);
+          this.app.post(`${this.basePath}/mcp/:group?`, handleMcpPostRequest);
+          this.app.get(`${this.basePath}/mcp/:group?`, handleMcpOtherRequest);
+          this.app.delete(`${this.basePath}/mcp/:group?`, handleMcpOtherRequest);
         })
         .catch((error) => {
           console.error('Error initializing MCP server:', error);
@@ -66,17 +68,26 @@ export class AppServer {
 
     if (this.frontendPath) {
       console.log(`Serving frontend from: ${this.frontendPath}`);
-      this.app.use(express.static(this.frontendPath));
+      // Serve static files with base path
+      this.app.use(this.basePath, express.static(this.frontendPath));
 
-      // Add the wildcard route for SPA
+      // Add the wildcard route for SPA with base path
       if (fs.existsSync(path.join(this.frontendPath, 'index.html'))) {
-        this.app.get('*', (_req, res) => {
+        this.app.get(`${this.basePath}/*`, (_req, res) => {
           res.sendFile(path.join(this.frontendPath!, 'index.html'));
         });
+
+        // Also handle root redirect if base path is set
+        if (this.basePath) {
+          this.app.get('/', (_req, res) => {
+            res.redirect(this.basePath);
+          });
+        }
       }
     } else {
       console.warn('Frontend dist directory not found. Server will run without frontend.');
-      this.app.get('/', (_req, res) => {
+      const rootPath = this.basePath || '/';
+      this.app.get(rootPath, (_req, res) => {
         res
           .status(404)
           .send('Frontend not found. MCPHub API is running, but the UI is not available.');
