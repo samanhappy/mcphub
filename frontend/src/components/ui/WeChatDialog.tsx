@@ -31,7 +31,7 @@ const WeChatDialog: React.FC<WeChatDialogProps> = ({ open, onOpenChange }) => {
 
           <div className="flex flex-col items-center justify-center py-4">
             <img
-              src="/assets/wexin.png"
+              src="./assets/wexin.png"
               alt={t('wechat.qrCodeAlt')}
               className="max-w-full h-auto"
               style={{ maxHeight: '400px' }}

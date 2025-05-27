@@ -32,7 +32,7 @@ const SponsorDialog: React.FC<SponsorDialogProps> = ({ open, onOpenChange }) => 
           <div className="flex flex-col items-center justify-center py-4">
             {i18n.language === 'zh' ? (
               <img
-                src="/assets/reward.png"
+                src="./assets/reward.png"
                 alt={t('sponsor.rewardAlt')}
                 className="max-w-full h-auto"
                 style={{ maxHeight: '400px' }}

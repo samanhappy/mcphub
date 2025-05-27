@@ -10,6 +10,7 @@ const packageJson = JSON.parse(readFileSync(path.resolve(__dirname, '../package.
 
 // https://vitejs.dev/config/
 export default defineConfig({
+  base: './', // Use relative paths for assets
   plugins: [react(), tailwindcss()],
   resolve: {
     alias: {
