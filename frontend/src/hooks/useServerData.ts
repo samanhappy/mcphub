@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Server, ApiResponse } from '@/types';
-import { getApiUrl } from '../utils/api';
+import { getApiUrl } from '../utils/runtime';
 
 // Configuration options
 const CONFIG = {
@@ -204,7 +204,7 @@ export const useServerData = () => {
     try {
       // Fetch settings to get the full server config before editing
       const token = localStorage.getItem('mcphub_token');
-      const response = await fetch(`/api/settings`, {
+      const response = await fetch(getApiUrl('/settings'), {
         headers: {
           'x-auth-token': token || '',
         },
@@ -241,7 +241,7 @@ export const useServerData = () => {
   const handleServerRemove = async (serverName: string) => {
     try {
       const token = localStorage.getItem('mcphub_token');
-      const response = await fetch(`/api/servers/${serverName}`, {
+      const response = await fetch(getApiUrl(`/servers/${serverName}`), {
         method: 'DELETE',
         headers: {
           'x-auth-token': token || '',
@@ -265,7 +265,7 @@ export const useServerData = () => {
   const handleServerToggle = async (server: Server, enabled: boolean) => {
     try {
       const token = localStorage.getItem('mcphub_token');
-      const response = await fetch(`/api/servers/${server.name}/toggle`, {
+      const response = await fetch(getApiUrl(`/servers/${server.name}/toggle`), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

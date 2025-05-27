@@ -8,12 +8,13 @@ import { readFileSync } from 'fs';
 // Get package.json version
 const packageJson = JSON.parse(readFileSync(path.resolve(__dirname, '../package.json'), 'utf-8'));
 
-// Get base path from environment variable
-const basePath = process.env.BASE_PATH || '';
+// For runtime configuration, we'll always use relative paths
+// BASE_PATH will be determined at runtime
+const basePath = '';
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  base: basePath || './', // Use base path or relative paths for assets
+  base: './', // Always use relative paths for runtime configuration
   plugins: [react(), tailwindcss()],
   resolve: {
     alias: {
@@ -21,9 +22,9 @@ export default defineConfig({
     },
   },
   define: {
-    // Make package version and base path available as global variables
+    // Make package version available as global variable
+    // BASE_PATH will be loaded at runtime
     'import.meta.env.PACKAGE_VERSION': JSON.stringify(packageJson.version),
-    'import.meta.env.BASE_PATH': JSON.stringify(basePath),
   },
   build: {
     sourcemap: true, // Enable source maps for production build

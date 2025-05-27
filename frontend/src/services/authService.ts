@@ -4,7 +4,7 @@ import {
   RegisterCredentials,
   ChangePasswordCredentials,
 } from '../types';
-import { getApiUrl } from '../utils/api';
+import { getApiUrl } from '../utils/runtime';
 
 // Token key in localStorage
 const TOKEN_KEY = 'mcphub_token';

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { MarketServer, ApiResponse } from '@/types';
-import { getApiUrl } from '../utils/api';
+import { getApiUrl } from '../utils/runtime';
 
 export const useMarketData = () => {
   const { t } = useTranslation();

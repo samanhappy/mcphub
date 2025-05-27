@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ServerForm from './ServerForm'
-import { getApiUrl } from '../utils/api'
+import { getApiUrl } from '../utils/runtime';
 
 interface AddServerFormProps {
   onAdd: () => void

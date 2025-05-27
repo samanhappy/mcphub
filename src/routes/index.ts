@@ -32,6 +32,7 @@ import {
 } from '../controllers/marketController.js';
 import { login, register, getCurrentUser, changePassword } from '../controllers/authController.js';
 import { getAllLogs, clearLogs, streamLogs } from '../controllers/logController.js';
+import { getRuntimeConfig } from '../controllers/configController.js';
 import { auth } from '../middlewares/auth.js';
 
 const router = express.Router();
@@ -103,6 +104,9 @@ export const initRoutes = (app: express.Application): void => {
     ],
     changePassword,
   );
+
+  // Runtime configuration endpoint (no auth required for frontend initialization)
+  app.get(`${config.basePath}/config`, getRuntimeConfig);
 
   app.use(`${config.basePath}/api`, router);
 };

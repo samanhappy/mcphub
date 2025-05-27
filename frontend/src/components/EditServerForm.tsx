@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Server } from '@/types'
+import { getApiUrl } from '../utils/runtime'
 import ServerForm from './ServerForm'
 
 interface EditServerFormProps {
@@ -17,7 +18,7 @@ const EditServerForm = ({ server, onEdit, onCancel }: EditServerFormProps) => {
     try {
       setError(null)
       const token = localStorage.getItem('mcphub_token');
-      const response = await fetch(`/api/servers/${server.name}`, {
+      const response = await fetch(getApiUrl(`/servers/${server.name}`), {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { getToken } from './authService'; // Import getToken function
-import { getApiUrl } from '../utils/api';
+import { getApiUrl } from '../utils/runtime';
 
 export interface LogEntry {
   timestamp: number;

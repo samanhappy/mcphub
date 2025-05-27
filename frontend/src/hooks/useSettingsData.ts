@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ApiResponse } from '@/types';
 import { useToast } from '@/contexts/ToastContext';
-import { getApiUrl } from '../utils/api';
+import { getApiUrl } from '../utils/runtime';
 
 // Define types for the settings data
 interface RoutingConfig {

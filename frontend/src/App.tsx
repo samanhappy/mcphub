@@ -12,16 +12,7 @@ import GroupsPage from './pages/GroupsPage';
 import SettingsPage from './pages/SettingsPage';
 import MarketPage from './pages/MarketPage';
 import LogsPage from './pages/LogsPage';
-
-// Get base path from environment variable or default to empty string
-const getBasePath = (): string => {
-  const basePath = import.meta.env.BASE_PATH || '';
-  // Ensure the path starts with / if it's not empty and doesn't already start with /
-  if (basePath && !basePath.startsWith('/')) {
-    return '/' + basePath;
-  }
-  return basePath;
-};
+import { getBasePath } from './utils/runtime';
 
 function App() {
   const basename = getBasePath();
