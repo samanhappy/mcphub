@@ -13,16 +13,24 @@ import SettingsPage from './pages/SettingsPage';
 import MarketPage from './pages/MarketPage';
 import LogsPage from './pages/LogsPage';
 
+// Get base path from environment variable or default to empty string
+const getBasePath = (): string => {
+  const basePath = import.meta.env.VITE_BASE_PATH || '';
+  return basePath.startsWith('/') ? basePath : '';
+};
+
 function App() {
+  const basename = getBasePath();
+
   return (
     <ThemeProvider>
       <AuthProvider>
         <ToastProvider>
-          <Router>
+          <Router basename={basename}>
             <Routes>
               {/* 公共路由 */}
               <Route path="/login" element={<LoginPage />} />
-              
+
               {/* 受保护的路由，使用 MainLayout 作为布局容器 */}
               <Route element={<ProtectedRoute />}>
                 <Route element={<MainLayout />}>
@@ -35,7 +43,7 @@ function App() {
                   <Route path="/settings" element={<SettingsPage />} />
                 </Route>
               </Route>
-              
+
               {/* 未匹配的路由重定向到首页 */}
               <Route path="*" element={<Navigate to="/" />} />
             </Routes>

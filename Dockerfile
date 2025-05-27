@@ -18,20 +18,23 @@ RUN npm install -g pnpm
 ARG REQUEST_TIMEOUT=60000
 ENV REQUEST_TIMEOUT=$REQUEST_TIMEOUT
 
+ARG VITE_BASE_PATH=""
+ENV VITE_BASE_PATH=$VITE_BASE_PATH
+
 ENV PNPM_HOME=/usr/local/share/pnpm
 ENV PATH=$PNPM_HOME:$PATH
 RUN mkdir -p $PNPM_HOME && \
-    pnpm add -g @amap/amap-maps-mcp-server @playwright/mcp@latest tavily-mcp@latest @modelcontextprotocol/server-github @modelcontextprotocol/server-slack
+  pnpm add -g @amap/amap-maps-mcp-server @playwright/mcp@latest tavily-mcp@latest @modelcontextprotocol/server-github @modelcontextprotocol/server-slack
 
 ARG INSTALL_EXT=false
 RUN if [ "$INSTALL_EXT" = "true" ]; then \
-    ARCH=$(uname -m); \
-    if [ "$ARCH" = "x86_64" ]; then \
-        npx -y playwright install --with-deps chrome; \
-    else \
-        echo "Skipping Chrome installation on non-amd64 architecture: $ARCH"; \
-    fi; \
-    fi
+  ARCH=$(uname -m); \
+  if [ "$ARCH" = "x86_64" ]; then \
+  npx -y playwright install --with-deps chrome; \
+  else \
+  echo "Skipping Chrome installation on non-amd64 architecture: $ARCH"; \
+  fi; \
+  fi
 
 RUN uv tool install mcp-server-fetch
 
