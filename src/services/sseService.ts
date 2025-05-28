@@ -92,7 +92,7 @@ export const handleSseMessage = async (req: Request, res: Response): Promise<voi
   // Check if transport exists before destructuring
   const transportData = transports[sessionId];
   if (!transportData) {
-    console.error(`No transport found for sessionId: ${sessionId}`);
+    console.warn(`No transport found for sessionId: ${sessionId}`);
     res.status(400).send('No transport found for sessionId');
     return;
   }
