@@ -54,9 +54,8 @@ export const initMiddlewares = (app: express.Application): void => {
     // Only apply JSON parsing for API and auth routes, not for SSE or message endpoints
     if (
       req.path !== `${basePath}/sse` &&
-      req.path !== `${basePath}/messages` &&
       !req.path.startsWith(`${basePath}/sse/`) &&
-      !req.path.startsWith(`${basePath}/mcp/`)
+      req.path !== `${basePath}/messages`
     ) {
       express.json()(req, res, next);
     } else {

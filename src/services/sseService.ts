@@ -129,7 +129,7 @@ export const handleMcpPostRequest = async (req: Request, res: Response): Promise
   if (sessionId && transports[sessionId]) {
     console.log(`Reusing existing transport for sessionId: ${sessionId}`);
     transport = transports[sessionId].transport as StreamableHTTPServerTransport;
-  } else if (!sessionId) {
+  } else if (!sessionId && isInitializeRequest(req.body)) {
     transport = new StreamableHTTPServerTransport({
       sessionIdGenerator: () => randomUUID(),
       onsessioninitialized: (sessionId) => {
