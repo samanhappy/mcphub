@@ -81,16 +81,28 @@ export const handleSseMessage = async (req: Request, res: Response): Promise<voi
   }
 
   const sessionId = req.query.sessionId as string;
-  const { transport, group } = transports[sessionId];
+
+  // Validate sessionId
+  if (!sessionId) {
+    console.error('Missing sessionId in query parameters');
+    res.status(400).send('Missing sessionId parameter');
+    return;
+  }
+
+  // Check if transport exists before destructuring
+  const transportData = transports[sessionId];
+  if (!transportData) {
+    console.error(`No transport found for sessionId: ${sessionId}`);
+    res.status(400).send('No transport found for sessionId');
+    return;
+  }
+
+  const { transport, group } = transportData;
   req.params.group = group;
   req.query.group = group;
   console.log(`Received message for sessionId: ${sessionId} in group: ${group}`);
-  if (transport) {
-    await (transport as SSEServerTransport).handlePostMessage(req, res);
-  } else {
-    console.error(`No transport found for sessionId: ${sessionId}`);
-    res.status(400).send('No transport found for sessionId');
-  }
+
+  await (transport as SSEServerTransport).handlePostMessage(req, res);
 };
 
 export const handleMcpPostRequest = async (req: Request, res: Response): Promise<void> => {
