@@ -18,7 +18,7 @@ MCPHub 通过将多个 MCP（Model Context Protocol）服务器组织为灵活�
 
 ## 🔧 快速开始
 
-### 可选配置
+### 配置
 
 通过创建 `mcp_settings.json` 自定义服务器设置：
 
@@ -96,6 +96,31 @@ http://localhost:3000/mcp
 - 轻松与各种 AI 客户端和工具集成
 - 对所有服务器使用相同的端点，简化集成过程
 
+**智能路由（实验性功能）**：
+
+智能路由是 MCPHub 的智能工具发现系统，使用向量语义搜索自动为任何给定任务找到最相关的工具。
+
+```
+http://localhost:3000/mcp/$smart
+```
+
+**工作原理：**
+
+1. **工具索引**：所有 MCP 工具自动转换为向量嵌入并存储在 PostgreSQL 与 pgvector 中
+2. **语义搜索**：用户查询转换为向量并使用余弦相似度与工具嵌入匹配
+3. **智能筛选**：动态阈值确保相关结果且无噪声
+4. **精确执行**：找到的工具可以直接执行并进行适当的参数验证
+
+**设置要求：**
+
+![智能路由](assets/smart-routing.zh.png)
+
+为了启用智能路由，您需要：
+
+- 支持 pgvector 扩展的 PostgreSQL
+- OpenAI API 密钥（或兼容的嵌入服务）
+- 在 MCPHub 设置中启用智能路由
+
 **基于分组的 HTTP 端点（推荐）**：
 ![分组](assets/group.zh.png)
 要针对特定服务器分组进行访问，请使用基于分组的 HTTP 端点：
@@ -129,6 +154,12 @@ http://localhost:3000/mcp/{server}
 
 ```
 http://localhost:3000/sse
+```
+
+要启用智能路由，请使用：
+
+```
+http://localhost:3000/sse/$smart
 ```
 
 要针对特定服务器分组进行访问，请使用基于分组的 SSE 端点：

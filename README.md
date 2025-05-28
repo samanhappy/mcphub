@@ -18,7 +18,7 @@ MCPHub makes it easy to manage and scale multiple MCP (Model Context Protocol) s
 
 ## 🔧 Quick Start
 
-### Optional Configuration
+### Configuration
 
 Create a `mcp_settings.json` file to customize your server settings:
 
@@ -96,6 +96,31 @@ This endpoint provides a unified streamable HTTP interface for all your MCP serv
 - Easily integrate with various AI clients and tools
 - Use the same endpoint for all servers, simplifying your integration process
 
+**Smart Routing (Experimental)**:
+
+Smart Routing is MCPHub's intelligent tool discovery system that uses vector semantic search to automatically find the most relevant tools for any given task.
+
+```
+http://localhost:3000/mcp/$smart
+```
+
+**How it Works:**
+
+1. **Tool Indexing**: All MCP tools are automatically converted to vector embeddings and stored in PostgreSQL with pgvector
+2. **Semantic Search**: User queries are converted to vectors and matched against tool embeddings using cosine similarity
+3. **Intelligent Filtering**: Dynamic thresholds ensure relevant results without noise
+4. **Precise Execution**: Found tools can be directly executed with proper parameter validation
+
+**Setup Requirements:**
+
+![Smart Routing](assets/smart-routing.png)
+
+To enable Smart Routing, you need:
+
+- PostgreSQL with pgvector extension
+- OpenAI API key (or compatible embedding service)
+- Enable Smart Routing in MCPHub settings
+
 **Group-Specific Endpoints (Recommended)**:
 
 ![Group Management](assets/group.png)
@@ -129,6 +154,12 @@ Connect AI clients (e.g., Claude Desktop, Cursor, DeepChat, etc.) via:
 
 ```
 http://localhost:3000/sse
+```
+
+For smart routing, use:
+
+```
+http://localhost:3000/sse/$smart
 ```
 
 For targeted access to specific server groups, use the group-based SSE endpoint:
