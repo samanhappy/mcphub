@@ -162,14 +162,12 @@ CREATE EXTENSION vector;
 
 ![查看网页](./assets/sr-web.png)
 
-可以看到，通过工具成功调用了工具，不过由于百度的 robots.txt 限制，无法获取到具体内容。
+可以看到，通过 mcphub 成功调用了工具，不过由于百度的 robots.txt 限制，无法获取到具体内容。
 
 ## 结语
 
 MCPHub 的智能路由功能是面向未来的 AI 工具发现基建。它不仅帮助 AI 更聪明地选择工具，也为多 Agent 协作提供了清晰、可控、可扩展的底层能力。
 
-随着工具生态不断扩张，智能路由将成为连接人类需求与工具执行之间的关键桥梁。
+> MCPHub 只是我一时兴起开发的小项目，没想到收获了这么多关注，非常感谢大家的支持！目前 MCPHub 还有不少地方需要优化和完善，我也专门建了个交流群，方便大家交流反馈。如果你也对这个项目感兴趣，欢迎一起参与建设！项目地址为：[https://github.com/samanhappy/mcphub](https://github.com/samanhappy/mcphub)。
 
-> 智能路由不是一个功能，而是一种全新的 AI 工具交互范式。
-
-项目开源地址：[https://github.com/samanhappy/mcphub](https://github.com/samanhappy/mcphub)
+![微信](../assets/wexin.png)
