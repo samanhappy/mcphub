@@ -90,20 +90,22 @@ export const initializeDatabase = async (): Promise<DataSource> => {
 
     if (!AppDataSource.isInitialized) {
       console.log('Initializing database connection...');
-      await AppDataSource.initialize();
-
-      // Register the vector type with TypeORM
+      await AppDataSource.initialize();      // Register the vector type with TypeORM
       registerPostgresVectorType(AppDataSource);
 
-      // Create pgvector extension if it doesn't exist
+      // Create required PostgreSQL extensions
+      await AppDataSource.query('CREATE EXTENSION IF NOT EXISTS "uuid-ossp";').catch((err) => {
+        console.warn('Failed to create uuid-ossp extension:', err.message);
+        console.warn('UUID generation functionality may not be available.');
+      });
+
       await AppDataSource.query('CREATE EXTENSION IF NOT EXISTS vector;').catch((err) => {
         console.warn('Failed to create vector extension:', err.message);
         console.warn('Vector functionality may not be available.');
-      });
-
-      // Set up vector column and index with a more direct approach
+      });      // Set up vector column and index with a more direct approach
       try {
-        // First, create the extension
+        // Create required extensions
+        await AppDataSource.query(`CREATE EXTENSION IF NOT EXISTS "uuid-ossp";`);
         await AppDataSource.query(`CREATE EXTENSION IF NOT EXISTS vector;`);
 
         // Check if table exists first
