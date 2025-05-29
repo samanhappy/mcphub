@@ -283,7 +283,7 @@
     "systemConfigUpdated": "System configuration updated successfully",
     "enableSmartRouting": "Enable Smart Routing",
     "enableSmartRoutingDescription": "Enable smart routing feature to search the most suitable tool based on input (using $smart group name)",
-    "dbUrl": "PostgreSQL URL (with pgvector support)",
+    "dbUrl": "PostgreSQL URL (requires pgvector support)",
     "dbUrlPlaceholder": "e.g. postgresql://user:password@localhost:5432/dbname",
     "openaiApiBaseUrl": "OpenAI API Base URL",
     "openaiApiBaseUrlPlaceholder": "https://api.openai.com/v1",
