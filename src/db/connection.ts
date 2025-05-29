@@ -109,7 +109,8 @@ export const initializeDatabase = async (): Promise<DataSource> => {
 
     if (!AppDataSource.isInitialized) {
       console.log('Initializing database connection...');
-      await AppDataSource.initialize();      // Register the vector type with TypeORM
+      // Register the vector type with TypeORM
+      await AppDataSource.initialize();
       registerPostgresVectorType(AppDataSource);
 
       // Create required PostgreSQL extensions
