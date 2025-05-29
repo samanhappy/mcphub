@@ -1,4 +1,4 @@
-# 无限工具，智能路由：MCPHub 实现 AI 工具使用新范式
+# 无限工具，智能路由：MCPHub 引领 AI 工具使用新范式
 
 ## 概述
 
@@ -54,7 +54,7 @@ docker run --name mcphub-postgres \
   -d pgvector/pgvector:pg17
 ```
 
-如果已经有现成的 PostgreSQL 数据库，可以直接在其中创建 `mcphub` 数据库，并安装 `pgvector` 扩展。
+如已部署 PostgreSQL，可直接创建数据库并启用 `pgvector` 扩展：
 
 ```sql
 CREATE DATABASE mcphub;
@@ -63,7 +63,7 @@ CREATE EXTENSION vector;
 
 ### 2. 获取 embedding 模型的 API Key
 
-前往 OpenAI 或其他提供商获取嵌入模型的 API Key。国内用户推荐使用硅基流动 `bge-m3` 免费模型，没有注册过的用户可以使用我的邀请链接：[https://cloud.siliconflow.cn/i/TQhVYBvA](https://cloud.siliconflow.cn/i/TQhVYBvA)，注册后即可获取 API Key。
+前往 OpenAI 或其他提供商获取嵌入模型的 API Key。国内用户推荐使用硅基流动 `bge-m3` 免费模型，没有注册过的用户可以使用我的邀请链接：[https://cloud.siliconflow.cn/i/TQhVYBvA](https://cloud.siliconflow.cn/i/TQhVYBvA)。
 
 ### 3. 控制台配置
 
@@ -82,9 +82,9 @@ CREATE EXTENSION vector;
 - 构建向量索引
 - 自动监听新增工具，更新索引
 
-## 工具示例
+## 工具定义
 
-### search_tools - 智能工具发现
+### search_tools - 工具搜索
 
 ```ts
 {
@@ -114,17 +114,19 @@ CREATE EXTENSION vector;
 
 ## 演示
 
-下面我将通过几个示例来展示智能路由的强大能力。
+下面我将通过几个示例来展示如何使用智能路由。
 
-开始演示前，我们现在 mcphub 添加几个不同类型的 MCP 服务器：`amap`、`time-map`、`fetch`。
+首先，我们需要在 mcphub 添加几个不同类型的 MCP 服务器：`amap`、`time-map`、`fetch`。
 
 ![添加服务器](./assets/sr-servers.png)
 
-然后我们需要选择一个支持 MCP 的客户端，这里选择国产的 DeepChat，聊天模型选择 `Qwen3-14B`，添加 mcphub 的智能路由。
+然后我们需要选择一个支持 MCP 的客户端，这里选择国产的 DeepChat，聊天模型选择 `Qwen3-14B`。
+
+接着，在 DeepChat 中添加 mcphub 的智能路由端点：
 
 ![添加智能路由](./assets/sr-dc.png)
 
-添加成功后，就可以在工具中看到 `search_tools` 和 `call_tool` 两个工具了。
+添加成功后，就可以在工具中看到 `search_tools` 和 `call_tool` 两个工具了：
 
 ![工具列表](./assets/sr-tools.png)
 
@@ -140,7 +142,7 @@ CREATE EXTENSION vector;
 
 ![搜索工具](./assets/sr-map-search.png)
 
-然后再调用 `call_tool` 查询具体的导航请求：
+然后再调用 `call_tool` 查询具体的导航信息：
 
 ![调用工具](./assets/sr-map-call.png)
 
@@ -152,7 +154,7 @@ CREATE EXTENSION vector;
 
 ![查询时间](./assets/sr-time.png)
 
-需要说明的是，由于不同的模型对工具调用的支持程度不同，可能会出现一些差异。比如在这个例子中，为了提高准确性，在输入中明确提到了“使用工具”。
+需要说明的是，由于不同的模型对工具调用的支持程度不同，可能会出现一些差异。比如在这个例子中，为了提高准确性，我在输入中明确提到了“使用工具”。
 
 ### 示例 3：查看网页
 
@@ -162,12 +164,14 @@ CREATE EXTENSION vector;
 
 ![查看网页](./assets/sr-web.png)
 
-可以看到，通过 mcphub 成功调用了工具，不过由于百度的 robots.txt 限制，无法获取到具体内容。
+可以看到，DeepChat 成功调用了工具，不过由于百度的 robots.txt 限制，无法获取到具体内容。
 
 ## 结语
 
-MCPHub 的智能路由功能是面向未来的 AI 工具发现基建。它不仅帮助 AI 更聪明地选择工具，也为多 Agent 协作提供了清晰、可控、可扩展的底层能力。
+借助 MCPHub 的智能路由功能，AI 助手能够更高效地处理复杂任务，显著减少不必要的 token 消耗，同时提升工具调用的准确性与灵活性。作为面向未来的 AI 工具发现与调用基础设施，智能路由不仅使 AI 更聪明地选择和组合工具，还为多 Agent 协同提供了清晰、可控且可扩展的底层能力支撑。
 
-> MCPHub 只是我一时兴起开发的小项目，没想到收获了这么多关注，非常感谢大家的支持！目前 MCPHub 还有不少地方需要优化和完善，我也专门建了个交流群，方便大家交流反馈。如果你也对这个项目感兴趣，欢迎一起参与建设！项目地址为：[https://github.com/samanhappy/mcphub](https://github.com/samanhappy/mcphub)。
+> MCPHub 只是我一时兴起开发的小项目，没想到收获了这么多关注，非常感谢大家的支持！目前 MCPHub 还有不少地方需要优化和完善，我也专门建了个交流群，感兴趣的可以添加下面的微信。
 
 ![微信](../assets/wexin.png)
+
+> 同时，欢迎大家一起参与建设！项目地址为：[https://github.com/samanhappy/mcphub](https://github.com/samanhappy/mcphub)。
