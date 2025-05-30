@@ -44,13 +44,24 @@ export const saveSettings = (settings: McpSettings): boolean => {
 export const replaceEnvVars = (env: Record<string, any>): Record<string, any> => {
   const res: Record<string, string> = {};
   for (const [key, value] of Object.entries(env)) {
-    res[key] = expandEnvVars(value);
+    if (typeof value === 'string') {
+      res[key] = expandEnvVars(value);
+    } else {
+      res[key] = String(value);
+    }
   }
   return res;
 };
 
 export const expandEnvVars = (value: string): string => {
-  return value.replace(/\$\{([^}]+)\}/g, (_, key) => process.env[key] || '');
+  if (typeof value !== 'string') {
+    return String(value);
+  }
+  // Replace ${VAR} format
+  let result = value.replace(/\$\{([^}]+)\}/g, (_, key) => process.env[key] || '');
+  // Also replace $VAR format (common on Unix-like systems)
+  result = result.replace(/\$([A-Z_][A-Z0-9_]*)/g, (_, key) => process.env[key] || '');
+  return result;
 };
 
 export default defaultConfig;

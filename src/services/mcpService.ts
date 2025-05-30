@@ -93,9 +93,11 @@ export const initializeClientsFromSettings = (isInit: boolean): ServerInfo[] => 
     } else if (conf.url) {
       // Default to SSE only when 'conf.type' is not specified and 'conf.url' is available
       transport = new SSEClientTransport(new URL(conf.url));
-    } else if (conf.command && conf.args) {
-      // If type is stdio or if command and args are provided without type
-      const env: Record<string, string> = replaceEnvVars(conf.env || {});
+    } else if (conf.command && conf.args) {      // If type is stdio or if command and args are provided without type
+      const env: Record<string, string> = {
+        ...(process.env as Record<string, string>), // Inherit all environment variables from parent process
+        ...replaceEnvVars(conf.env || {}), // Override with configured env vars
+      };
       env['PATH'] = expandEnvVars(process.env.PATH as string) || '';
 
       // Add UV_DEFAULT_INDEX from settings if available (for Python packages)
