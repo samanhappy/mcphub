@@ -93,6 +93,7 @@
     "command": "Command",
     "arguments": "Arguments",
     "envVars": "Environment Variables",
+    "headers": "HTTP Headers",
     "key": "key",
     "value": "value",
     "enabled": "Enabled",

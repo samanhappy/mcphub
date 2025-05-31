@@ -108,6 +108,7 @@ export interface ServerConfig {
   command?: string; // Command to execute for stdio-based servers
   args?: string[]; // Arguments for the command
   env?: Record<string, string>; // Environment variables
+  headers?: Record<string, string>; // HTTP headers for SSE/streamable-http servers
   enabled?: boolean; // Flag to enable/disable the server
 }
 

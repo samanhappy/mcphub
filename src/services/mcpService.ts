@@ -89,11 +89,27 @@ export const initializeClientsFromSettings = (isInit: boolean): ServerInfo[] => 
 
     let transport;
     if (conf.type === 'streamable-http') {
-      transport = new StreamableHTTPClientTransport(new URL(conf.url || ''));
+      const options: any = {};
+      if (conf.headers && Object.keys(conf.headers).length > 0) {
+        options.requestInit = {
+          headers: conf.headers,
+        };
+      }
+      transport = new StreamableHTTPClientTransport(new URL(conf.url || ''), options);
     } else if (conf.url) {
       // Default to SSE only when 'conf.type' is not specified and 'conf.url' is available
-      transport = new SSEClientTransport(new URL(conf.url));
-    } else if (conf.command && conf.args) {      // If type is stdio or if command and args are provided without type
+      const options: any = {};
+      if (conf.headers && Object.keys(conf.headers).length > 0) {
+        options.eventSourceInit = {
+          headers: conf.headers,
+        };
+        options.requestInit = {
+          headers: conf.headers,
+        };
+      }
+      transport = new SSEClientTransport(new URL(conf.url), options);
+    } else if (conf.command && conf.args) {
+      // If type is stdio or if command and args are provided without type
       const env: Record<string, string> = {
         ...(process.env as Record<string, string>), // Inherit all environment variables from parent process
         ...replaceEnvVars(conf.env || {}), // Override with configured env vars

@@ -88,6 +88,24 @@ export const createServer = async (req: Request, res: Response): Promise<void> =
       return;
     }
 
+    // Validate headers if provided
+    if (config.headers && typeof config.headers !== 'object') {
+      res.status(400).json({
+        success: false,
+        message: 'Headers must be an object',
+      });
+      return;
+    }
+
+    // Validate that headers are only used with sse and streamable-http types
+    if (config.headers && config.type === 'stdio') {
+      res.status(400).json({
+        success: false,
+        message: 'Headers are not supported for stdio server type',
+      });
+      return;
+    }
+
     const result = await addServer(name, config);
     if (result.success) {
       notifyToolChanged();
@@ -183,6 +201,24 @@ export const updateServer = async (req: Request, res: Response): Promise<void> =
       res.status(400).json({
         success: false,
         message: `URL is required for ${config.type} server type`,
+      });
+      return;
+    }
+
+    // Validate headers if provided
+    if (config.headers && typeof config.headers !== 'object') {
+      res.status(400).json({
+        success: false,
+        message: 'Headers must be an object',
+      });
+      return;
+    }
+
+    // Validate that headers are only used with sse and streamable-http types
+    if (config.headers && config.type === 'stdio') {
+      res.status(400).json({
+        success: false,
+        message: 'Headers are not supported for stdio server type',
       });
       return;
     }

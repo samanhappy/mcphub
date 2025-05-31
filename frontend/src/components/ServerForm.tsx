@@ -40,12 +40,19 @@ const ServerForm = ({ onSubmit, onCancel, initialData = null, modalTitle, formEr
         : '',
     args: (initialData && initialData.config && initialData.config.args) || [],
     type: getInitialServerType(), // Initialize the type field
-    env: []
+    env: [],
+    headers: []
   })
 
   const [envVars, setEnvVars] = useState<EnvVar[]>(
     initialData && initialData.config && initialData.config.env
       ? Object.entries(initialData.config.env).map(([key, value]) => ({ key, value }))
+      : [],
+  )
+
+  const [headerVars, setHeaderVars] = useState<EnvVar[]>(
+    initialData && initialData.config && initialData.config.headers
+      ? Object.entries(initialData.config.headers).map(([key, value]) => ({ key, value }))
       : [],
   )
 
@@ -84,6 +91,22 @@ const ServerForm = ({ onSubmit, onCancel, initialData = null, modalTitle, formEr
     setEnvVars(newEnvVars)
   }
 
+  const handleHeaderVarChange = (index: number, field: 'key' | 'value', value: string) => {
+    const newHeaderVars = [...headerVars]
+    newHeaderVars[index][field] = value
+    setHeaderVars(newHeaderVars)
+  }
+
+  const addHeaderVar = () => {
+    setHeaderVars([...headerVars, { key: '', value: '' }])
+  }
+
+  const removeHeaderVar = (index: number) => {
+    const newHeaderVars = [...headerVars]
+    newHeaderVars.splice(index, 1)
+    setHeaderVars(newHeaderVars)
+  }
+
   // Submit handler for server configuration
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -97,12 +120,22 @@ const ServerForm = ({ onSubmit, onCancel, initialData = null, modalTitle, formEr
         }
       })
 
+      const headers: Record<string, string> = {}
+      headerVars.forEach(({ key, value }) => {
+        if (key.trim()) {
+          headers[key.trim()] = value
+        }
+      })
+
       const payload = {
         name: formData.name,
         config: {
           type: serverType, // Always include the type
           ...(serverType === 'sse' || serverType === 'streamable-http'
-            ? { url: formData.url }
+            ? {
+              url: formData.url,
+              ...(Object.keys(headers).length > 0 ? { headers } : {})
+            }
             : {
               command: formData.command,
               args: formData.args,
@@ -194,21 +227,66 @@ const ServerForm = ({ onSubmit, onCancel, initialData = null, modalTitle, formEr
         </div>
 
         {serverType === 'sse' || serverType === 'streamable-http' ? (
-          <div className="mb-4">
-            <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="url">
-              {t('server.url')}
-            </label>
-            <input
-              type="url"
-              name="url"
-              id="url"
-              value={formData.url}
-              onChange={handleInputChange}
-              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-              placeholder={serverType === 'streamable-http' ? "e.g.: http://localhost:3000/mcp" : "e.g.: http://localhost:3000/sse"}
-              required={serverType === 'sse' || serverType === 'streamable-http'}
-            />
-          </div>
+          <>
+            <div className="mb-4">
+              <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="url">
+                {t('server.url')}
+              </label>
+              <input
+                type="url"
+                name="url"
+                id="url"
+                value={formData.url}
+                onChange={handleInputChange}
+                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                placeholder={serverType === 'streamable-http' ? "e.g.: http://localhost:3000/mcp" : "e.g.: http://localhost:3000/sse"}
+                required={serverType === 'sse' || serverType === 'streamable-http'}
+              />
+            </div>
+
+            <div className="mb-4">
+              <div className="flex justify-between items-center mb-2">
+                <label className="block text-gray-700 text-sm font-bold">
+                  {t('server.headers')}
+                </label>
+                <button
+                  type="button"
+                  onClick={addHeaderVar}
+                  className="bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-1 px-2 rounded text-sm flex items-center"
+                >
+                  + {t('server.add')}
+                </button>
+              </div>
+              {headerVars.map((headerVar, index) => (
+                <div key={index} className="flex items-center mb-2">
+                  <div className="flex items-center space-x-2 flex-grow">
+                    <input
+                      type="text"
+                      value={headerVar.key}
+                      onChange={(e) => handleHeaderVarChange(index, 'key', e.target.value)}
+                      className="shadow appearance-none border rounded py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline w-1/2"
+                      placeholder="Authorization"
+                    />
+                    <span className="flex items-center">:</span>
+                    <input
+                      type="text"
+                      value={headerVar.value}
+                      onChange={(e) => handleHeaderVarChange(index, 'value', e.target.value)}
+                      className="shadow appearance-none border rounded py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline w-1/2"
+                      placeholder="Bearer token..."
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => removeHeaderVar(index)}
+                    className="bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-1 px-2 rounded text-sm flex items-center justify-center min-w-[56px] ml-2"
+                  >
+                    - {t('server.remove')}
+                  </button>
+                </div>
+              ))}
+            </div>
+          </>
         ) : (
           <>
             <div className="mb-4">

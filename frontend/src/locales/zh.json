@@ -93,6 +93,7 @@
     "command": "命令",
     "arguments": "参数",
     "envVars": "环境变量",
+    "headers": "HTTP 请求头",
     "key": "键",
     "value": "值",
     "enabled": "已启用",

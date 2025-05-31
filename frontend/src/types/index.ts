@@ -76,6 +76,7 @@ export interface ServerConfig {
   command?: string;
   args?: string[];
   env?: Record<string, string>;
+  headers?: Record<string, string>;
   enabled?: boolean;
 }
 
@@ -112,6 +113,7 @@ export interface ServerFormData {
   args?: string[]; // Added explicit args field
   type?: 'stdio' | 'sse' | 'streamable-http'; // Added type field
   env: EnvVar[];
+  headers: EnvVar[];
 }
 
 // Group form data types
