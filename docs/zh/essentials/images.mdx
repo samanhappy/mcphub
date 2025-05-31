@@ -1,0 +1,134 @@
+---
+title: '图片和视频'
+description: '在您的文档中添加图片和视频'
+---
+
+## 图片
+
+### 使用 Markdown
+
+您可以使用标准的 Markdown 语法添加图片：
+
+![描述](/images/hero-light.png)
+
+```md
+![描述](/images/hero-light.png)
+```
+
+### 使用 HTML
+
+您也可以使用原始 HTML 获得更多自定义选项：
+
+<img height="200" src="/images/hero-light.png" />
+
+```html
+<img height="200" src="/images/hero-light.png" />
+```
+
+### 图片组件
+
+使用内置的 `<img>` 组件来显示响应式的明暗主题图片：
+
+<img className="block dark:hidden" src="/images/hero-light.png" alt="Hero Light" />
+<img className="hidden dark:block" src="/images/hero-dark.png" alt="Hero Dark" />
+
+```jsx
+<img
+  className="block dark:hidden"
+  src="/images/hero-light.png"
+  alt="Hero Light"
+/>
+<img
+  className="hidden dark:block"
+  src="/images/hero-dark.png"
+  alt="Hero Dark"
+/>
+```
+
+## 图片缩放
+
+您可以使图片在点击时可缩放（类似于中等缩放）使用 `zoom` 属性。
+
+<img src="/images/hero-light.png" alt="可缩放" zoom />
+
+```jsx
+<img src="/images/hero-light.png" alt="可缩放" zoom />
+```
+
+## 嵌入视频
+
+### YouTube
+
+<iframe
+  width="560"
+  height="315"
+  src="https://www.youtube.com/embed/4KzFe50RQkQ"
+  title="YouTube 视频播放器"
+  frameborder="0"
+  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+  allowfullscreen
+></iframe>
+
+```html
+<iframe
+  width="560"
+  height="315"
+  src="https://www.youtube.com/embed/4KzFe50RQkQ"
+  title="YouTube 视频播放器"
+  frameborder="0"
+  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+  allowfullscreen
+></iframe>
+```
+
+### Loom
+
+<iframe
+  src="https://www.loom.com/embed/9019ef5b27ae417798d65b41749227ac"
+  frameborder="0"
+  webkitallowfullscreen
+  mozallowfullscreen
+  allowfullscreen
+  style={{
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: '100%',
+    height: '100%',
+  }}
+></iframe>
+
+```html
+<iframe
+  src="https://www.loom.com/embed/9019ef5b27ae417798d65b41749227ac"
+  frameborder="0"
+  webkitallowfullscreen
+  mozallowfullscreen
+  allowfullscreen
+  style={{
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: '100%',
+    height: '100%',
+  }}
+></iframe>
+```
+
+## 图片最佳实践
+
+### 大小优化
+
+- 保持图片尺寸在合理范围内（通常不超过 1000px 宽度）
+- 使用适当的图片格式（PNG 用于图标，JPG 用于照片）
+- 考虑使用现代格式如 WebP 来减少文件大小
+
+### 无障碍性
+
+- 始终包含描述性的 `alt` 文本
+- 确保图片在各种屏幕尺寸下都能正常显示
+
+### 组织
+
+- 将图片存储在 `/images` 或 `/assets` 文件夹中
+- 使用描述性的文件名

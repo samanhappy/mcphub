@@ -1,0 +1,144 @@
+---
+title: '可重用代码片段'
+description: '学习如何创建和使用代码片段来保持文档的一致性'
+---
+
+## 什么是代码片段？
+
+代码片段允许您在文档的多个位置重用内容块。这有助于保持一致性并减少重复内容的维护工作。
+
+## 创建代码片段
+
+代码片段存储在 `snippets/` 文件夹中，使用 `.mdx` 扩展名。
+
+### 基本代码片段
+
+创建 `snippets/api-key-setup.mdx`：
+
+```md
+获取您的 API 密钥：
+
+1. 登录到您的仪表板
+2. 导航到 **设置** > **API 密钥**
+3. 点击 **生成新密钥**
+4. 复制密钥并安全地存储
+```
+
+### 带参数的代码片段
+
+您可以创建接受参数的动态代码片段。创建 `snippets/code-example.mdx`：
+
+````jsx
+<CodeGroup>
+
+```bash {props.packageManager}
+{props.packageManager} install {props.packageName}
+````
+
+</CodeGroup>
+```
+
+## 使用代码片段
+
+### 基本使用
+
+使用 `<Snippet>` 组件来包含代码片段：
+
+```jsx
+<Snippet file="api-key-setup.mdx" />
+```
+
+<Snippet file="snippet-intro.mdx" />
+
+### 带参数使用
+
+```jsx
+<Snippet file="code-example.mdx" packageManager="npm" packageName="mintlify" />
+```
+
+## 代码片段最佳实践
+
+### 文件组织
+
+```
+snippets/
+├── setup/
+│   ├── installation.mdx
+│   └── configuration.mdx
+├── examples/
+│   ├── basic-usage.mdx
+│   └── advanced-usage.mdx
+└── common/
+    ├── prerequisites.mdx
+    └── troubleshooting.mdx
+```
+
+### 命名约定
+
+- 使用描述性文件名
+- 使用连字符分隔单词
+- 按主题分组到子文件夹
+
+### 内容指导原则
+
+1. **保持简洁** - 代码片段应该是独立的内容块
+2. **避免硬编码** - 对可变内容使用参数
+3. **文档化参数** - 在代码片段中注释必需的参数
+
+### 参数文档
+
+在代码片段文件的顶部记录所需参数：
+
+```md
+<!--
+参数：
+- packageManager: 包管理器名称（npm, yarn, pnpm）
+- packageName: 要安装的包名称
+-->
+
+安装说明...
+```
+
+## 高级代码片段
+
+### 条件内容
+
+您可以使用条件逻辑来根据参数显示不同的内容：
+
+```jsx
+{
+  props.framework === 'react' && <div>React 特定的内容...</div>;
+}
+
+{
+  props.framework === 'vue' && <div>Vue 特定的内容...</div>;
+}
+```
+
+### 嵌套代码片段
+
+代码片段可以包含其他代码片段：
+
+```jsx
+<Snippet file="common/prerequisites.mdx" />
+
+## 安装步骤
+
+<Snippet file="setup/installation.mdx" framework={props.framework} />
+```
+
+## 维护代码片段
+
+### 版本控制
+
+当更新代码片段时：
+
+1. 考虑向后兼容性
+2. 更新所有使用该代码片段的页面
+3. 测试更改在所有上下文中的效果
+
+### 重构检查清单
+
+- [ ] 确认所有参数仍然有效
+- [ ] 验证代码片段在所有使用位置正确渲染
+- [ ] 更新相关文档

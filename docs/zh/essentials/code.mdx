@@ -1,0 +1,102 @@
+---
+title: '代码块'
+description: '如何在您的文档中编写代码块'
+---
+
+## 内联代码
+
+要表示内联代码块，请用反引号 `` ` `` 包围文本。
+
+```md
+在此文本中，`console.log('hello');` 是内联代码。
+```
+
+在此文本中，`console.log('hello');` 是内联代码。
+
+## 代码块
+
+您可以创建代码块以显示多行代码。这些代码块也支持语法高亮显示。
+
+```javascript
+console.log('Hello World');
+```
+
+### 使用三个反引号
+
+````md
+```javascript
+console.log('Hello World');
+```
+````
+
+### 语法高亮
+
+我们使用 [Prism](https://prismjs.com/) 来语法高亮显示。Prism 支持 [各种编程语言](https://prismjs.com/#supported-languages)。
+
+要添加语法高亮显示，请在代码块的第一行指定语言。
+
+````md
+```python
+def hello():
+    print("Hello World")
+```
+````
+
+```python
+def hello():
+    print("Hello World")
+```
+
+## 代码组
+
+<CodeGroup>
+
+```bash npm
+npm i mintlify
+```
+
+```bash yarn
+yarn add mintlify
+```
+
+```bash pnpm
+pnpm add mintlify
+```
+
+</CodeGroup>
+
+`CodeGroup` 允许您将多个代码块组合在一起，并为它们提供选项卡。
+
+````md
+<CodeGroup>
+
+```bash npm
+npm i mintlify
+```
+
+```bash yarn
+yarn add mintlify
+```
+
+```bash pnpm
+pnpm add mintlify
+```
+
+</CodeGroup>
+````
+
+### 代码标题
+
+您也可以为代码块设置标题：
+
+```javascript hello.js
+const hello = 'world';
+console.log(hello);
+```
+
+````md
+```javascript hello.js
+const hello = 'world';
+console.log(hello);
+```
+````

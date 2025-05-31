@@ -1,0 +1,83 @@
+---
+title: '快速开始'
+description: '开始构建出色的文档，只需几分钟'
+---
+
+## 设置您的编辑环境
+
+了解如何设置和编辑您的文档以进行本地开发和部署到生产环境。
+
+### 编辑和预览
+
+<AccordionGroup>
+  <Accordion icon="github" title="克隆您的文档存储库">
+    在本地克隆您的 GitHub 存储库，这样您就可以编辑文档文件。如果您是第一次克隆存储库，您需要运行 `mintlify install` 来安装依赖项。
+
+    <CodeGroup>
+
+    ```bash Terminal
+    mintlify install
+    ```
+
+    </CodeGroup>
+
+  </Accordion>
+
+  <Accordion icon="rectangle-terminal" title="预览更改">
+    在本地预览更改可确保您在将更改推送到 GitHub 之前看到它们的外观。要预览更改，请使用 `mintlify dev` 命令。
+
+    <CodeGroup>
+
+    ```bash Terminal
+    mintlify dev
+    ```
+
+    </CodeGroup>
+
+    ### 故障排除
+
+    这里有一些常见问题的快速解决方案：
+
+    <AccordionGroup>
+
+      <Accordion title="Mintlify dev 无法运行">
+        请检查您是否安装了最新版本的 Mintlify CLI，以及您的 Node 版本是否符合我们的[要求](/zh/development)。
+      </Accordion>
+
+      <Accordion title="页面加载为 404">
+        确保您在包含 `docs.json` 的文件夹中运行 `mintlify dev`。
+      </Accordion>
+
+    </AccordionGroup>
+
+  </Accordion>
+
+</AccordionGroup>
+
+### 部署您的更改
+
+<AccordionGroup>
+
+  <Accordion icon="message-bot" title="安装我们的 GitHub 应用">
+    我们的 GitHub 应用会自动将您存储库中的更改传播到您的部署中。更改将在推送到默认分支后自动部署到生产环境。
+
+    在您的[仪表板](https://dashboard.mintlify.com)上找到安装链接。
+
+  </Accordion>
+
+  <Accordion icon="rocket" title="推送到默认分支">
+    将更改推送到与您的项目关联的默认分支（通常是 `main`）以自动部署到生产环境。
+
+    <CodeGroup>
+
+    ```bash Terminal
+    git add .
+    git commit -m "更新文档"
+    git push origin main
+    ```
+
+    </CodeGroup>
+
+  </Accordion>
+
+</AccordionGroup>

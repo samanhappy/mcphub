@@ -1,0 +1,172 @@
+---
+title: '设置'
+description: '了解如何配置您的文档'
+---
+
+## 全局配置
+
+所有的全局配置都在项目根目录的 `docs.json` 文件中设置。
+
+### 名称
+
+在配置的顶层设置文档的名称。
+
+```json docs.json
+{
+  "name": "Mintlify 文档"
+}
+```
+
+### Logo
+
+您可以显示浅色和深色模式的 logo。
+
+```json docs.json
+{
+  "logo": {
+    "light": "/logo/light.svg",
+    "dark": "/logo/dark.svg"
+  }
+}
+```
+
+### Favicon
+
+```json docs.json
+{
+  "favicon": "/favicon.svg"
+}
+```
+
+### 颜色
+
+自定义文档的主色调以匹配您的品牌。
+
+```json docs.json
+{
+  "colors": {
+    "primary": "#9563FF",
+    "light": "#AE87FF",
+    "dark": "#9563FF"
+  }
+}
+```
+
+<Tip>设置一种颜色系统，通过仅更改主色调来协调您文档的配色方案。</Tip>
+
+### 导航
+
+您的侧边栏导航在 `navigation` 字段中设置。文档页面必须嵌套在组下，组必须嵌套在导航下。
+
+```json docs.json
+{
+  "navigation": [
+    {
+      "group": "开始使用",
+      "pages": ["introduction", "quickstart", "development"]
+    }
+  ]
+}
+```
+
+#### 标签
+
+您可以将页面分组为不同的标签。当您想要将概念或 API 参考组织到不同的部分时，这很有用。
+
+```json docs.json
+{
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "主要",
+        "groups": [
+          {
+            "group": "开始使用",
+            "pages": ["introduction"]
+          }
+        ]
+      },
+      {
+        "tab": "API 参考",
+        "groups": [
+          {
+            "group": "端点",
+            "pages": ["api-reference/users"]
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+### 页脚
+
+您可以在 `footer` 字段中配置页脚链接。
+
+```json docs.json
+{
+  "footer": {
+    "socials": {
+      "website": "https://mintlify.com",
+      "github": "https://github.com/mintlify",
+      "slack": "https://mintlify.com/community"
+    }
+  }
+}
+```
+
+### 搜索
+
+您可以通过多种方式配置搜索，包括替换默认搜索或添加搜索锚点。
+
+```json docs.json
+{
+  "search": {
+    "prompt": "搜索..."
+  }
+}
+```
+
+## 页面配置
+
+页面配置在每个 MDX 文件顶部的 frontmatter 中设置。
+
+### 标题和描述
+
+```md
+---
+title: '介绍'
+description: '欢迎来到我们的产品！'
+---
+```
+
+### 侧边栏标题
+
+```md
+---
+sidebarTitle: '主页'
+---
+```
+
+设置不同于页面标题的侧边栏标题。
+
+### 图标
+
+```md
+---
+icon: 'star'
+---
+```
+
+为侧边栏中的页面设置 [FontAwesome](https://fontawesome.com/search?s=solid&m=free) 图标。
+
+### 模式
+
+```md
+---
+mode: 'wide'
+---
+```
+
+设置页面的显示模式。选项包括 `"default"` 和 `"wide"`。

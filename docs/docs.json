@@ -1,7 +1,7 @@
 {
   "$schema": "https://mintlify.com/docs.json",
   "theme": "mint",
-  "name": "Mint Starter Kit",
+  "name": "MCPHub Documentation",
   "colors": {
     "primary": "#16A34A",
     "light": "#07C983",
@@ -11,7 +11,7 @@
   "navigation": {
     "tabs": [
       {
-        "tab": "Guides",
+        "tab": "English",
         "groups": [
           {
             "group": "Get Started",
@@ -30,6 +30,30 @@
               "essentials/settings",
               "essentials/navigation",
               "essentials/reusable-snippets"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "中文",
+        "groups": [
+          {
+            "group": "开始使用",
+            "pages": [
+              "zh/index",
+              "zh/quickstart",
+              "zh/development"
+            ]
+          },
+          {
+            "group": "基础功能",
+            "pages": [
+              "zh/essentials/markdown",
+              "zh/essentials/code",
+              "zh/essentials/images",
+              "zh/essentials/settings",
+              "zh/essentials/navigation",
+              "zh/essentials/reusable-snippets"
             ]
           }
         ]

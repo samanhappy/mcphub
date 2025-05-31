@@ -1,0 +1,185 @@
+---
+title: '导航'
+description: '了解如何构建您的文档导航'
+---
+
+## 基础导航
+
+导航在 `docs.json` 文件中配置。最基本的导航结构包含组和页面。
+
+```json docs.json
+{
+  "navigation": [
+    {
+      "group": "开始使用",
+      "pages": ["introduction", "quickstart"]
+    },
+    {
+      "group": "高级",
+      "pages": ["advanced/configuration", "advanced/deployment"]
+    }
+  ]
+}
+```
+
+## 标签导航
+
+当您的文档有多个主要部分时，可以使用标签来组织内容。
+
+```json docs.json
+{
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "指南",
+        "groups": [
+          {
+            "group": "基础",
+            "pages": ["basics/introduction"]
+          }
+        ]
+      },
+      {
+        "tab": "API 参考",
+        "groups": [
+          {
+            "group": "端点",
+            "pages": ["api/users", "api/products"]
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+## 页面引用
+
+### 文件路径引用
+
+最常见的方式是通过文件路径引用页面（不包含 `.mdx` 扩展名）：
+
+```json
+{
+  "pages": ["quickstart", "advanced/configuration"]
+}
+```
+
+### 外部链接
+
+您也可以在导航中包含外部链接：
+
+```json
+{
+  "pages": [
+    "introduction",
+    {
+      "page": "GitHub",
+      "href": "https://github.com"
+    }
+  ]
+}
+```
+
+## 分组
+
+### 基本分组
+
+每个组都有一个名称和页面列表：
+
+```json
+{
+  "group": "API 基础",
+  "pages": ["api/authentication", "api/errors", "api/rate-limits"]
+}
+```
+
+### 分组版本控制
+
+您可以为组指定版本：
+
+```json
+{
+  "group": "API v2",
+  "version": "v2.0",
+  "pages": ["api/v2/users"]
+}
+```
+
+## 全局导航元素
+
+### 锚点
+
+在所有页面上显示的持久链接：
+
+```json docs.json
+{
+  "navigation": {
+    "global": {
+      "anchors": [
+        {
+          "anchor": "API 参考",
+          "href": "/api-reference",
+          "icon": "square-terminal"
+        },
+        {
+          "anchor": "社区",
+          "href": "https://community.example.com",
+          "icon": "discord"
+        }
+      ]
+    }
+  }
+}
+```
+
+### 导航栏
+
+配置顶部导航栏的链接：
+
+```json docs.json
+{
+  "navbar": {
+    "links": [
+      {
+        "label": "支持",
+        "href": "mailto:support@example.com"
+      }
+    ],
+    "primary": {
+      "type": "button",
+      "label": "仪表板",
+      "href": "https://dashboard.example.com"
+    }
+  }
+}
+```
+
+## 导航最佳实践
+
+### 结构建议
+
+1. **保持浅层结构** - 避免超过 3 层的嵌套
+2. **逻辑分组** - 将相关页面组织在一起
+3. **清晰命名** - 使用描述性的组名
+
+### 排序
+
+页面按照在 `navigation` 数组中的顺序显示。考虑按以下顺序组织：
+
+1. 入门/介绍内容
+2. 核心概念
+3. 教程和指南
+4. API 参考
+5. 高级主题
+
+### 页面标题
+
+使用页面 frontmatter 中的 `sidebarTitle` 来自定义侧边栏中显示的文本：
+
+```md
+---
+title: '用户身份验证完整指南'
+sidebarTitle: '身份验证'
+---
+```
