@@ -1,0 +1,496 @@
+---
+title: '服务器管理'
+description: '通过热插拔配置集中管理多个 MCP 服务器'
+---
+
+## 概述
+
+MCPHub 的服务器管理系统允许您从单个仪表板集中配置、监控和控制多个 MCP（模型上下文协议）服务器。所有更改都会实时应用，无需重启服务器。
+
+## 添加 MCP 服务器
+
+### 通过仪表板
+
+1. **访问仪表板**: 导航到 `http://localhost:3000` 并登录
+2. **点击"添加服务器"**: 位于服务器部分
+3. **填写服务器详细信息**:
+   - **名称**: 服务器的唯一标识符
+   - **命令**: 可执行命令（例如 `npx`、`uvx`、`python`）
+   - **参数**: 命令参数数组
+   - **环境变量**: 环境设置的键值对
+   - **工作目录**: 命令的可选工作目录
+
+### 通过配置文件
+
+编辑您的 `mcp_settings.json` 文件：
+
+```json
+{
+  "mcpServers": {
+    "server-name": {
+      "command": "command-to-run",
+      "args": ["arg1", "arg2"],
+      "env": {
+        "API_KEY": "your-api-key",
+        "CONFIG_VALUE": "some-value"
+      },
+      "cwd": "/optional/working/directory"
+    }
+  }
+}
+```
+
+### 通过 API
+
+使用 REST API 以编程方式添加服务器：
+
+```bash
+curl -X POST http://localhost:3000/api/servers \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -d '{
+    "name": "my-server",
+    "command": "npx",
+    "args": ["-y", "@modelcontextprotocol/server-filesystem", "/path/to/files"],
+    "env": {
+      "NODE_ENV": "production"
+    },
+    "cwd": "/app"
+  }'
+```
+
+## 服务器配置
+
+### 通用配置选项
+
+```json
+{
+  "name": "filesystem-server",
+  "command": "npx",
+  "args": ["-y", "@modelcontextprotocol/server-filesystem", "/allowed/path"],
+  "env": {
+    "NODE_ENV": "production",
+    "DEBUG": "mcp:*",
+    "MAX_FILES": "1000"
+  },
+  "cwd": "/app/workspace",
+  "timeout": 30000,
+  "retries": 3,
+  "enabled": true
+}
+```
+
+### Python 服务器示例
+
+```json
+{
+  "name": "python-server",
+  "command": "python",
+  "args": ["-m", "mcp_server", "--config", "config.json"],
+  "env": {
+    "PYTHONPATH": "/app/python",
+    "API_KEY": "${API_KEY}",
+    "LOG_LEVEL": "INFO"
+  },
+  "cwd": "/app/python-server"
+}
+```
+
+### Node.js 服务器示例
+
+```json
+{
+  "name": "node-server",
+  "command": "node",
+  "args": ["server.js", "--port", "3001"],
+  "env": {
+    "NODE_ENV": "production",
+    "PORT": "3001",
+    "DATABASE_URL": "${DATABASE_URL}"
+  },
+  "cwd": "/app/node-server"
+}
+```
+
+## 服务器生命周期管理
+
+### 启动服务器
+
+```bash
+# 启动特定服务器
+curl -X POST http://localhost:3000/api/servers/my-server/start \
+  -H "Authorization: Bearer $TOKEN"
+
+# 启动所有服务器
+curl -X POST http://localhost:3000/api/servers/start-all \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+### 停止服务器
+
+```bash
+# 停止特定服务器
+curl -X POST http://localhost:3000/api/servers/my-server/stop \
+  -H "Authorization: Bearer $TOKEN"
+
+# 优雅停止（等待当前请求完成）
+curl -X POST http://localhost:3000/api/servers/my-server/stop \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{"graceful": true, "timeout": 30000}'
+```
+
+### 重启服务器
+
+```bash
+# 重启服务器
+curl -X POST http://localhost:3000/api/servers/my-server/restart \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+## 热配置重载
+
+### 更新服务器配置
+
+无需重启即可更新配置：
+
+```bash
+curl -X PUT http://localhost:3000/api/servers/my-server/config \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{
+    "env": {
+      "DEBUG": "mcp:verbose",
+      "NEW_SETTING": "value"
+    },
+    "args": ["--verbose", "--new-flag"]
+  }'
+```
+
+### 批量配置更新
+
+```bash
+curl -X PUT http://localhost:3000/api/servers/bulk-update \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{
+    "servers": ["server1", "server2"],
+    "config": {
+      "env": {
+        "LOG_LEVEL": "DEBUG"
+      }
+    }
+  }'
+```
+
+## 服务器状态监控
+
+### 检查服务器状态
+
+```bash
+# 获取所有服务器状态
+curl -X GET http://localhost:3000/api/servers/status \
+  -H "Authorization: Bearer $TOKEN"
+
+# 获取特定服务器状态
+curl -X GET http://localhost:3000/api/servers/my-server/status \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+响应示例：
+
+```json
+{
+  "name": "my-server",
+  "status": "running",
+  "pid": 12345,
+  "uptime": 3600000,
+  "memory": {
+    "rss": 123456789,
+    "heapTotal": 98765432,
+    "heapUsed": 87654321
+  },
+  "cpu": {
+    "user": 1000000,
+    "system": 500000
+  },
+  "lastRestart": "2024-01-01T12:00:00.000Z"
+}
+```
+
+### 健康检查
+
+配置自动健康检查：
+
+```json
+{
+  "name": "my-server",
+  "command": "node",
+  "args": ["server.js"],
+  "healthCheck": {
+    "enabled": true,
+    "interval": 30000,
+    "timeout": 5000,
+    "retries": 3,
+    "endpoint": "/health",
+    "expectedStatus": 200
+  }
+}
+```
+
+## 负载均衡
+
+### 配置多实例
+
+```json
+{
+  "name": "load-balanced-server",
+  "instances": 3,
+  "command": "node",
+  "args": ["server.js"],
+  "loadBalancer": {
+    "strategy": "round-robin",
+    "healthCheck": true,
+    "stickySession": false
+  },
+  "env": {
+    "PORT": "${PORT}"
+  }
+}
+```
+
+### 负载均衡策略
+
+- **round-robin**: 轮询分发请求
+- **least-connections**: 分发到连接数最少的实例
+- **weighted**: 基于权重分发
+- **ip-hash**: 基于客户端 IP 的一致性哈希
+
+## 资源限制
+
+### 设置资源限制
+
+```json
+{
+  "name": "resource-limited-server",
+  "command": "python",
+  "args": ["server.py"],
+  "resources": {
+    "memory": {
+      "limit": "512MB",
+      "warning": "400MB"
+    },
+    "cpu": {
+      "limit": "50%",
+      "priority": "normal"
+    },
+    "processes": {
+      "max": 10
+    }
+  }
+}
+```
+
+### 监控资源使用
+
+```bash
+# 获取资源使用统计
+curl -X GET http://localhost:3000/api/servers/my-server/resources \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+## 日志管理
+
+### 配置日志记录
+
+```json
+{
+  "name": "my-server",
+  "command": "node",
+  "args": ["server.js"],
+  "logging": {
+    "level": "info",
+    "file": "/var/log/mcphub/my-server.log",
+    "maxSize": "100MB",
+    "maxFiles": 5,
+    "rotate": true,
+    "format": "json"
+  }
+}
+```
+
+### 查看日志
+
+```bash
+# 获取实时日志
+curl -X GET http://localhost:3000/api/servers/my-server/logs \
+  -H "Authorization: Bearer $TOKEN"
+
+# 获取带过滤器的日志
+curl -X GET "http://localhost:3000/api/servers/my-server/logs?level=error&limit=100" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+## 环境变量管理
+
+### 动态环境变量
+
+```json
+{
+  "name": "dynamic-server",
+  "command": "python",
+  "args": ["server.py"],
+  "env": {
+    "API_KEY": "${secrets:api_key}",
+    "DATABASE_URL": "${vault:db_url}",
+    "CURRENT_TIME": "${time:iso}",
+    "SERVER_ID": "${server:id}",
+    "HOSTNAME": "${system:hostname}"
+  }
+}
+```
+
+### 环境变量模板
+
+支持的模板变量：
+
+- `${secrets:key}`: 从密钥存储获取
+- `${vault:path}`: 从 Vault 获取
+- `${env:VAR}`: 从系统环境变量获取
+- `${time:format}`: 当前时间戳
+- `${server:property}`: 服务器属性
+- `${system:property}`: 系统属性
+
+## 服务发现
+
+### 自动服务发现
+
+```json
+{
+  "serviceDiscovery": {
+    "enabled": true,
+    "provider": "consul",
+    "config": {
+      "host": "localhost",
+      "port": 8500,
+      "serviceName": "mcp-server",
+      "tags": ["mcp", "ai", "api"]
+    }
+  }
+}
+```
+
+### 注册服务
+
+```bash
+# 手动注册服务
+curl -X POST http://localhost:3000/api/servers/my-server/register \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{
+    "service": {
+      "name": "my-mcp-service",
+      "tags": ["mcp", "production"],
+      "port": 3001,
+      "check": {
+        "http": "http://localhost:3001/health",
+        "interval": "30s"
+      }
+    }
+  }'
+```
+
+## 故障排除
+
+### 常见问题
+
+1. **服务器启动失败**
+
+   ```bash
+   # 检查服务器日志
+   curl -X GET http://localhost:3000/api/servers/my-server/logs?level=error \
+     -H "Authorization: Bearer $TOKEN"
+   ```
+
+2. **配置无效**
+
+   ```bash
+   # 验证配置
+   curl -X POST http://localhost:3000/api/servers/validate \
+     -H "Content-Type: application/json" \
+     -H "Authorization: Bearer $TOKEN" \
+     -d @server-config.json
+   ```
+
+3. **性能问题**
+   ```bash
+   # 获取性能指标
+   curl -X GET http://localhost:3000/api/servers/my-server/metrics \
+     -H "Authorization: Bearer $TOKEN"
+   ```
+
+### 调试模式
+
+启用详细调试：
+
+```json
+{
+  "name": "debug-server",
+  "command": "node",
+  "args": ["--inspect=0.0.0.0:9229", "server.js"],
+  "env": {
+    "DEBUG": "*",
+    "LOG_LEVEL": "debug",
+    "NODE_ENV": "development"
+  },
+  "debugging": {
+    "enabled": true,
+    "port": 9229,
+    "breakOnStart": false
+  }
+}
+```
+
+## 高级配置
+
+### 自定义钩子
+
+```json
+{
+  "name": "hooked-server",
+  "command": "node",
+  "args": ["server.js"],
+  "hooks": {
+    "beforeStart": ["./scripts/setup.sh"],
+    "afterStart": ["./scripts/notify.sh"],
+    "beforeStop": ["./scripts/cleanup.sh"],
+    "onError": ["./scripts/alert.sh"]
+  }
+}
+```
+
+### 配置模板
+
+```json
+{
+  "templates": {
+    "python-server": {
+      "command": "python",
+      "args": ["-m", "mcp_server"],
+      "env": {
+        "PYTHONPATH": "/app/python",
+        "LOG_LEVEL": "INFO"
+      }
+    }
+  },
+  "servers": {
+    "my-python-server": {
+      "extends": "python-server",
+      "args": ["-m", "mcp_server", "--config", "custom.json"],
+      "env": {
+        "API_KEY": "custom-key"
+      }
+    }
+  }
+}
+```
+
+有关更多配置选项，请参阅 [MCP 设置配置](/zh/configuration/mcp-settings) 和 [环境变量](/zh/configuration/environment-variables) 文档。

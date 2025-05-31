@@ -1,0 +1,575 @@
+---
+title: 'Installation Guide'
+description: 'Detailed installation instructions for all platforms'
+---
+
+## Prerequisites
+
+Before installing MCPHub, ensure you have the following prerequisites:
+
+- **Node.js** 18+ (for local development)
+- **Docker** (recommended for production)
+- **pnpm** (for local development)
+
+Optional for Smart Routing:
+
+- **PostgreSQL** with pgvector extension
+- **OpenAI API Key** or compatible embedding service
+
+## Installation Methods
+
+<Tabs>
+  <Tab title="Docker (Recommended)">
+    ### Docker Installation
+
+    Docker is the recommended way to deploy MCPHub in production.
+
+    #### 1. Basic Installation
+
+    ```bash
+    # Pull the latest image
+    docker pull samanhappy/mcphub:latest
+
+    # Run with default settings
+    docker run -d \
+      --name mcphub \
+      -p 3000:3000 \
+      samanhappy/mcphub:latest
+    ```
+
+    #### 2. With Custom Configuration
+
+    ```bash
+    # Create your configuration file
+    cat > mcp_settings.json << 'EOF'
+    {
+      "mcpServers": {
+        "fetch": {
+          "command": "uvx",
+          "args": ["mcp-server-fetch"]
+        },
+        "playwright": {
+          "command": "npx",
+          "args": ["@playwright/mcp@latest", "--headless"]
+        }
+      }
+    }
+    EOF
+
+    # Run with mounted config
+    docker run -d \
+      --name mcphub \
+      -p 3000:3000 \
+      -v $(pwd)/mcp_settings.json:/app/mcp_settings.json \
+      samanhappy/mcphub:latest
+    ```
+
+    #### 3. With Environment Variables
+
+    ```bash
+    docker run -d \
+      --name mcphub \
+      -p 3000:3000 \
+      -e PORT=3000 \
+      -e BASE_PATH="" \
+      -e REQUEST_TIMEOUT=60000 \
+      samanhappy/mcphub:latest
+    ```
+
+    #### 4. Docker Compose
+
+    Create a `docker-compose.yml` file:
+
+    ```yaml
+    version: '3.8'
+    services:
+      mcphub:
+        image: samanhappy/mcphub:latest
+        ports:
+          - "3000:3000"
+        volumes:
+          - ./mcp_settings.json:/app/mcp_settings.json
+        environment:
+          - PORT=3000
+          - BASE_PATH=""
+          - REQUEST_TIMEOUT=60000
+        restart: unless-stopped
+
+      # Optional: PostgreSQL for Smart Routing
+      postgres:
+        image: pgvector/pgvector:pg16
+        environment:
+          POSTGRES_DB: mcphub
+          POSTGRES_USER: mcphub
+          POSTGRES_PASSWORD: mcphub_password
+        volumes:
+          - postgres_data:/var/lib/postgresql/data
+        ports:
+          - "5432:5432"
+
+    volumes:
+      postgres_data:
+    ```
+
+    Run with:
+    ```bash
+    docker-compose up -d
+    ```
+
+  </Tab>
+
+  <Tab title="npm Package">
+    ### npm Package Installation
+
+    Install MCPHub as a global npm package:
+
+    #### 1. Global Installation
+
+    ```bash
+    # Install globally
+    npm install -g @samanhappy/mcphub
+
+    # Or with yarn
+    yarn global add @samanhappy/mcphub
+
+    # Or with pnpm
+    pnpm add -g @samanhappy/mcphub
+    ```
+
+    #### 2. Running MCPHub
+
+    ```bash
+    # Run with default settings
+    mcphub
+
+    # Run with custom port
+    PORT=8080 mcphub
+
+    # Run with custom config path
+    MCP_SETTINGS_PATH=/path/to/mcp_settings.json mcphub
+    ```
+
+    #### 3. Local Installation
+
+    You can also install MCPHub locally in a project:
+
+    ```bash
+    # Create a new directory
+    mkdir my-mcphub
+    cd my-mcphub
+
+    # Initialize package.json
+    npm init -y
+
+    # Install MCPHub locally
+    npm install @samanhappy/mcphub
+
+    # Create a start script
+    echo '#!/bin/bash\nnpx mcphub' > start.sh
+    chmod +x start.sh
+
+    # Run MCPHub
+    ./start.sh
+    ```
+
+  </Tab>
+
+  <Tab title="Local Development">
+    ### Local Development Setup
+
+    For development, customization, or contribution:
+
+    #### 1. Clone Repository
+
+    ```bash
+    # Clone the repository
+    git clone https://github.com/samanhappy/mcphub.git
+    cd mcphub
+    ```
+
+    #### 2. Install Dependencies
+
+    ```bash
+    # Install dependencies with pnpm (recommended)
+    pnpm install
+
+    # Or with npm
+    npm install
+
+    # Or with yarn
+    yarn install
+    ```
+
+    #### 3. Development Mode
+
+    ```bash
+    # Start both backend and frontend in development mode
+    pnpm dev
+
+    # This will start:
+    # - Backend on http://localhost:3001
+    # - Frontend on http://localhost:5173
+    # - Frontend proxies API calls to backend
+    ```
+
+    #### 4. Build for Production
+
+    ```bash
+    # Build both backend and frontend
+    pnpm build
+
+    # Start production server
+    pnpm start
+    ```
+
+    #### 5. Development Scripts
+
+    ```bash
+    # Backend only (for API development)
+    pnpm backend:dev
+
+    # Frontend only (when backend is running separately)
+    pnpm frontend:dev
+
+    # Run tests
+    pnpm test
+
+    # Lint code
+    pnpm lint
+
+    # Format code
+    pnpm format
+    ```
+
+    <Note>
+      On Windows, you may need to run backend and frontend separately:
+      ```bash
+      # Terminal 1: Backend
+      pnpm backend:dev
+
+      # Terminal 2: Frontend
+      pnpm frontend:dev
+      ```
+    </Note>
+
+  </Tab>
+
+  <Tab title="Kubernetes">
+    ### Kubernetes Deployment
+
+    Deploy MCPHub on Kubernetes with these manifests:
+
+    #### 1. ConfigMap for Settings
+
+    ```yaml
+    apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: mcphub-config
+    data:
+      mcp_settings.json: |
+        {
+          "mcpServers": {
+            "fetch": {
+              "command": "uvx",
+              "args": ["mcp-server-fetch"]
+            },
+            "playwright": {
+              "command": "npx",
+              "args": ["@playwright/mcp@latest", "--headless"]
+            }
+          }
+        }
+    ```
+
+    #### 2. Deployment
+
+    ```yaml
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: mcphub
+    spec:
+      replicas: 1
+      selector:
+        matchLabels:
+          app: mcphub
+      template:
+        metadata:
+          labels:
+            app: mcphub
+        spec:
+          containers:
+          - name: mcphub
+            image: samanhappy/mcphub:latest
+            ports:
+            - containerPort: 3000
+            env:
+            - name: PORT
+              value: "3000"
+            volumeMounts:
+            - name: config
+              mountPath: /app/mcp_settings.json
+              subPath: mcp_settings.json
+          volumes:
+          - name: config
+            configMap:
+              name: mcphub-config
+    ```
+
+    #### 3. Service
+
+    ```yaml
+    apiVersion: v1
+    kind: Service
+    metadata:
+      name: mcphub-service
+    spec:
+      selector:
+        app: mcphub
+      ports:
+      - port: 80
+        targetPort: 3000
+      type: ClusterIP
+    ```
+
+    #### 4. Ingress (Optional)
+
+    ```yaml
+    apiVersion: networking.k8s.io/v1
+    kind: Ingress
+    metadata:
+      name: mcphub-ingress
+      annotations:
+        nginx.ingress.kubernetes.io/proxy-buffering: "off"
+    spec:
+      rules:
+      - host: mcphub.yourdomain.com
+        http:
+          paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: mcphub-service
+                port:
+                  number: 80
+    ```
+
+    Deploy with:
+    ```bash
+    kubectl apply -f mcphub-configmap.yaml
+    kubectl apply -f mcphub-deployment.yaml
+    kubectl apply -f mcphub-service.yaml
+    kubectl apply -f mcphub-ingress.yaml
+    ```
+
+  </Tab>
+</Tabs>
+
+## Smart Routing Setup (Optional)
+
+Smart Routing provides AI-powered tool discovery using vector semantic search.
+
+### Prerequisites
+
+1. **PostgreSQL with pgvector**
+2. **OpenAI API Key** (or compatible embedding service)
+
+### Database Setup
+
+<Tabs>
+  <Tab title="Docker PostgreSQL">
+    ```bash
+    # Run PostgreSQL with pgvector
+    docker run -d \
+      --name mcphub-postgres \
+      -e POSTGRES_DB=mcphub \
+      -e POSTGRES_USER=mcphub \
+      -e POSTGRES_PASSWORD=your_password \
+      -p 5432:5432 \
+      pgvector/pgvector:pg16
+    ```
+  </Tab>
+
+  <Tab title="Existing PostgreSQL">
+    If you have an existing PostgreSQL instance:
+
+    ```sql
+    -- Connect to your PostgreSQL instance
+    -- Create database
+    CREATE DATABASE mcphub;
+
+    -- Connect to the mcphub database
+    \c mcphub;
+
+    -- Enable pgvector extension
+    CREATE EXTENSION IF NOT EXISTS vector;
+    ```
+
+  </Tab>
+
+  <Tab title="Cloud PostgreSQL">
+    For cloud providers (AWS RDS, Google Cloud SQL, etc.):
+
+    1. Enable the pgvector extension in your cloud provider's console
+    2. Create a database named `mcphub`
+    3. Note down the connection details
+
+  </Tab>
+</Tabs>
+
+### Environment Configuration
+
+Set the following environment variables:
+
+```bash
+# Database connection
+DATABASE_URL=postgresql://mcphub:your_password@localhost:5432/mcphub
+
+# OpenAI API for embeddings
+OPENAI_API_KEY=your_openai_api_key
+
+# Optional: Custom embedding model
+EMBEDDING_MODEL=text-embedding-3-small
+
+# Optional: Enable smart routing
+ENABLE_SMART_ROUTING=true
+```
+
+## Verification
+
+After installation, verify MCPHub is working:
+
+### 1. Health Check
+
+```bash
+curl http://localhost:3000/api/health
+```
+
+Expected response:
+
+```json
+{
+  "status": "ok",
+  "version": "x.x.x",
+  "uptime": 123
+}
+```
+
+### 2. Dashboard Access
+
+Open your browser and navigate to:
+
+```
+http://localhost:3000
+```
+
+### 3. API Test
+
+```bash
+curl -X POST http://localhost:3000/mcp \
+  -H "Content-Type: application/json" \
+  -d '{
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "tools/list",
+    "params": {}
+  }'
+```
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Docker Issues">
+    **Port already in use:**
+    ```bash
+    # Check what's using port 3000
+    lsof -i :3000
+
+    # Use a different port
+    docker run -p 8080:3000 samanhappy/mcphub
+    ```
+
+    **Container won't start:**
+    ```bash
+    # Check container logs
+    docker logs mcphub
+
+    # Run interactively for debugging
+    docker run -it --rm samanhappy/mcphub /bin/bash
+    ```
+
+  </Accordion>
+
+  <Accordion title="npm Installation Issues">
+    **Permission errors:**
+    ```bash
+    # Use npx instead of global install
+    npx @samanhappy/mcphub
+
+    # Or fix npm permissions
+    npm config set prefix ~/.npm-global
+    export PATH=~/.npm-global/bin:$PATH
+    ```
+
+    **Node version issues:**
+    ```bash
+    # Check Node version
+    node --version
+
+    # Install Node 18+ using nvm
+    nvm install 18
+    nvm use 18
+    ```
+
+  </Accordion>
+
+  <Accordion title="Network Issues">
+    **Can't access dashboard:**
+    - Check if MCPHub is running: `ps aux | grep mcphub`
+    - Verify port binding: `netstat -tlnp | grep 3000`
+    - Check firewall settings
+    - Try accessing via `127.0.0.1:3000` instead of `localhost:3000`
+
+    **AI clients can't connect:**
+    - Ensure the endpoint URL is correct
+    - Check if MCPHub is behind a proxy
+    - Verify network policies in Kubernetes/Docker environments
+
+  </Accordion>
+
+  <Accordion title="Smart Routing Issues">
+    **Database connection failed:**
+    ```bash
+    # Test database connection
+    psql $DATABASE_URL -c "SELECT 1;"
+
+    # Check if pgvector is installed
+    psql $DATABASE_URL -c "CREATE EXTENSION IF NOT EXISTS vector;"
+    ```
+
+    **Embedding service errors:**
+    - Verify OpenAI API key is valid
+    - Check internet connectivity
+    - Monitor rate limits
+
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Configuration" icon="cog" href="/configuration/mcp-settings">
+    Configure your MCP servers and settings
+  </Card>
+  <Card title="Quick Start" icon="rocket" href="/quickstart">
+    Get up and running in 5 minutes
+  </Card>
+  <Card title="Server Management" icon="server" href="/features/server-management">
+    Learn how to manage your MCP servers
+  </Card>
+  <Card title="API Reference" icon="code" href="/api-reference/introduction">
+    Explore the complete API documentation
+  </Card>
+</CardGroup>

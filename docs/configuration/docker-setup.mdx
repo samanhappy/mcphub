@@ -1,0 +1,539 @@
+---
+title: 'Docker Setup'
+description: 'Deploy MCPHub using Docker and Docker Compose'
+---
+
+# Docker Setup
+
+This guide covers deploying MCPHub using Docker, including development and production configurations.
+
+## Quick Start with Docker
+
+### Using Pre-built Image
+
+```bash
+# Pull the latest image
+docker pull mcphub/mcphub:latest
+
+# Run with default configuration
+docker run -d \
+  --name mcphub \
+  -p 3000:3000 \
+  -v $(pwd)/mcp_settings.json:/app/mcp_settings.json \
+  mcphub/mcphub:latest
+```
+
+### Building from Source
+
+```bash
+# Clone the repository
+git clone https://github.com/your-username/mcphub.git
+cd mcphub
+
+# Build the Docker image
+docker build -t mcphub:local .
+
+# Run the container
+docker run -d \
+  --name mcphub \
+  -p 3000:3000 \
+  -v $(pwd)/mcp_settings.json:/app/mcp_settings.json \
+  mcphub:local
+```
+
+## Docker Compose Setup
+
+### Basic Configuration
+
+Create a `docker-compose.yml` file:
+
+```yaml
+version: '3.8'
+
+services:
+  mcphub:
+    image: mcphub/mcphub:latest
+    # For local development, use:
+    # build: .
+    container_name: mcphub
+    ports:
+      - '3000:3000'
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - JWT_SECRET=${JWT_SECRET:-your-jwt-secret}
+      - DATABASE_URL=postgresql://mcphub:password@postgres:5432/mcphub
+    volumes:
+      - ./mcp_settings.json:/app/mcp_settings.json:ro
+      - ./servers.json:/app/servers.json:ro
+      - mcphub_data:/app/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - mcphub-network
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: mcphub-postgres
+    environment:
+      - POSTGRES_DB=mcphub
+      - POSTGRES_USER=mcphub
+      - POSTGRES_PASSWORD=password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
+    ports:
+      - '5432:5432'
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U mcphub -d mcphub']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - mcphub-network
+
+volumes:
+  postgres_data:
+  mcphub_data:
+
+networks:
+  mcphub-network:
+    driver: bridge
+```
+
+### Production Configuration with Nginx
+
+```yaml
+version: '3.8'
+
+services:
+  nginx:
+    image: nginx:alpine
+    container_name: mcphub-nginx
+    ports:
+      - '80:80'
+      - '443:443'
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+      - nginx_logs:/var/log/nginx
+    depends_on:
+      - mcphub
+    restart: unless-stopped
+    networks:
+      - mcphub-network
+
+  mcphub:
+    image: mcphub/mcphub:latest
+    container_name: mcphub-app
+    expose:
+      - '3000'
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_EXPIRES_IN=${JWT_EXPIRES_IN:-24h}
+      - DATABASE_URL=postgresql://mcphub:${POSTGRES_PASSWORD}@postgres:5432/mcphub
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - REDIS_URL=redis://redis:6379
+    volumes:
+      - ./mcp_settings.json:/app/mcp_settings.json:ro
+      - ./servers.json:/app/servers.json:ro
+      - mcphub_data:/app/data
+      - mcphub_logs:/app/logs
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - mcphub-network
+    healthcheck:
+      test: ['CMD', 'wget', '--quiet', '--tries=1', '--spider', 'http://localhost:3000/health']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: mcphub-postgres
+    environment:
+      - POSTGRES_DB=mcphub
+      - POSTGRES_USER=mcphub
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backups:/backups
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U mcphub -d mcphub']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - mcphub-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: mcphub-redis
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - mcphub-network
+
+volumes:
+  postgres_data:
+  redis_data:
+  mcphub_data:
+  mcphub_logs:
+  nginx_logs:
+
+networks:
+  mcphub-network:
+    driver: bridge
+```
+
+### Environment Variables
+
+Create a `.env` file for Docker Compose:
+
+```env
+# Application
+NODE_ENV=production
+JWT_SECRET=your-super-secret-jwt-key-change-this
+JWT_EXPIRES_IN=24h
+
+# Database
+POSTGRES_PASSWORD=your-secure-database-password
+
+# Redis
+REDIS_PASSWORD=your-secure-redis-password
+
+# External APIs
+OPENAI_API_KEY=your-openai-api-key
+
+# Optional: Custom port
+# PORT=3000
+```
+
+## Development Setup
+
+### Development Docker Compose
+
+Create `docker-compose.dev.yml`:
+
+```yaml
+version: '3.8'
+
+services:
+  mcphub-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: mcphub-dev
+    ports:
+      - '3000:3000'
+      - '5173:5173' # Frontend dev server
+      - '9229:9229' # Debug port
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+      - DATABASE_URL=postgresql://mcphub:password@postgres:5432/mcphub
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/frontend/node_modules
+    depends_on:
+      - postgres
+    command: pnpm dev
+    networks:
+      - mcphub-dev
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: mcphub-postgres-dev
+    environment:
+      - POSTGRES_DB=mcphub
+      - POSTGRES_USER=mcphub
+      - POSTGRES_PASSWORD=password
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+    networks:
+      - mcphub-dev
+
+volumes:
+  postgres_dev_data:
+
+networks:
+  mcphub-dev:
+    driver: bridge
+```
+
+### Development Dockerfile
+
+Create `Dockerfile.dev`:
+
+```dockerfile
+FROM node:20-alpine
+
+# Install pnpm
+RUN npm install -g pnpm
+
+# Set working directory
+WORKDIR /app
+
+# Copy package files
+COPY package.json pnpm-lock.yaml ./
+COPY frontend/package.json ./frontend/
+
+# Install dependencies
+RUN pnpm install
+
+# Copy source code
+COPY . .
+
+# Expose ports
+EXPOSE 3000 5173 9229
+
+# Start development server
+CMD ["pnpm", "dev"]
+```
+
+## Running the Application
+
+### Development Mode
+
+```bash
+# Start development environment
+docker-compose -f docker-compose.dev.yml up -d
+
+# View logs
+docker-compose -f docker-compose.dev.yml logs -f mcphub-dev
+
+# Stop development environment
+docker-compose -f docker-compose.dev.yml down
+```
+
+### Production Mode
+
+```bash
+# Start production environment
+docker-compose up -d
+
+# View logs
+docker-compose logs -f mcphub
+
+# Stop production environment
+docker-compose down
+```
+
+## Configuration Management
+
+### MCP Settings Volume Mount
+
+Create your `mcp_settings.json`:
+
+```json
+{
+  "mcpServers": {
+    "fetch": {
+      "command": "uvx",
+      "args": ["mcp-server-fetch"]
+    },
+    "playwright": {
+      "command": "npx",
+      "args": ["@playwright/mcp@latest", "--headless"]
+    },
+    "amap": {
+      "command": "npx",
+      "args": ["-y", "@amap/amap-maps-mcp-server"],
+      "env": {
+        "AMAP_MAPS_API_KEY": "your-api-key"
+      }
+    }
+  }
+}
+```
+
+### Secrets Management
+
+For production, use Docker secrets:
+
+```yaml
+version: '3.8'
+
+services:
+  mcphub:
+    image: mcphub/mcphub:latest
+    environment:
+      - JWT_SECRET_FILE=/run/secrets/jwt_secret
+      - DATABASE_PASSWORD_FILE=/run/secrets/db_password
+    secrets:
+      - jwt_secret
+      - db_password
+
+secrets:
+  jwt_secret:
+    file: ./secrets/jwt_secret.txt
+  db_password:
+    file: ./secrets/db_password.txt
+```
+
+## Data Persistence
+
+### Database Backups
+
+Add backup service to your `docker-compose.yml`:
+
+```yaml
+services:
+  backup:
+    image: postgres:15-alpine
+    container_name: mcphub-backup
+    environment:
+      - PGPASSWORD=${POSTGRES_PASSWORD}
+    volumes:
+      - ./backups:/backups
+      - ./scripts/backup.sh:/backup.sh:ro
+    command: /bin/sh -c "chmod +x /backup.sh && /backup.sh"
+    depends_on:
+      - postgres
+    profiles:
+      - backup
+    networks:
+      - mcphub-network
+```
+
+Create `scripts/backup.sh`:
+
+```bash
+#!/bin/sh
+BACKUP_FILE="/backups/mcphub_$(date +%Y%m%d_%H%M%S).sql"
+pg_dump -h postgres -U mcphub -d mcphub > "$BACKUP_FILE"
+echo "Backup created: $BACKUP_FILE"
+
+# Keep only last 7 days of backups
+find /backups -name "mcphub_*.sql" -mtime +7 -delete
+```
+
+Run backup:
+
+```bash
+docker-compose --profile backup run --rm backup
+```
+
+## Monitoring and Health Checks
+
+### Health Check Endpoint
+
+Add to your application:
+
+```javascript
+// In your Express app
+app.get('/health', (req, res) => {
+  res.json({
+    status: 'healthy',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    memory: process.memoryUsage(),
+    version: process.env.npm_package_version,
+  });
+});
+```
+
+### Docker Health Checks
+
+```yaml
+services:
+  mcphub:
+    # ... other config
+    healthcheck:
+      test: ['CMD', 'wget', '--quiet', '--tries=1', '--spider', 'http://localhost:3000/health']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+```
+
+### Monitoring with Watchtower
+
+Add automatic updates:
+
+```yaml
+services:
+  watchtower:
+    image: containrrr/watchtower
+    container_name: mcphub-watchtower
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - WATCHTOWER_CLEANUP=true
+      - WATCHTOWER_POLL_INTERVAL=3600
+      - WATCHTOWER_INCLUDE_STOPPED=true
+    restart: unless-stopped
+```
+
+## Troubleshooting
+
+### Common Issues
+
+**Container fails to start**: Check logs with `docker-compose logs mcphub`
+
+**Database connection errors**: Ensure PostgreSQL is healthy and accessible
+
+**Port conflicts**: Check if ports 3000/5432 are already in use
+
+**Volume mount issues**: Verify file paths and permissions
+
+### Debug Commands
+
+```bash
+# Check container status
+docker-compose ps
+
+# View logs
+docker-compose logs -f [service_name]
+
+# Execute commands in container
+docker-compose exec mcphub sh
+
+# Check database connection
+docker-compose exec postgres psql -U mcphub -d mcphub
+
+# Restart specific service
+docker-compose restart mcphub
+
+# Rebuild and restart
+docker-compose up --build -d
+```
+
+### Performance Optimization
+
+```yaml
+services:
+  mcphub:
+    # ... other config
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+        reservations:
+          memory: 256M
+          cpus: '0.25'
+```
+
+This Docker setup provides a complete containerized environment for MCPHub with development and production configurations.

@@ -1,33 +1,121 @@
 ---
 title: '欢迎使用 MCPHub'
-description: 'MCPHub 是一个强大的 Model Context Protocol (MCP) 服务器管理平台'
+description: 'MCPHub 是一个强大的 Model Context Protocol (MCP) 服务器管理平台，提供智能路由、负载均衡和实时监控功能'
 ---
 
-<img className="block dark:hidden" src="/images/hero-light.png" alt="Hero Light" />
-<img className="hidden dark:block" src="/images/hero-dark.png" alt="Hero Dark" />
+<img className="block dark:hidden" src="/images/hero-light.png" alt="MCPHub Hero Light" />
+<img className="hidden dark:block" src="/images/hero-dark.png" alt="MCPHub Hero Dark" />
 
-## 设置您的开发环境
+## 什么是 MCPHub？
 
-了解如何更新您的文档，在本地预览更改，并部署到 Mintlify。
+MCPHub 是一个现代化的 Model Context Protocol (MCP) 服务器管理平台，旨在简化 AI 模型服务的部署、管理和监控。通过智能路由和负载均衡技术，MCPHub 帮助您构建高可用、可扩展的 AI 服务架构。
+
+### 核心功能
+
+- **🚀 智能路由** - 基于负载、延迟和健康状态的智能请求分发
+- **⚖️ 负载均衡** - 多种负载均衡策略，确保最优性能
+- **📊 实时监控** - 全面的性能指标和健康检查
+- **🔐 安全认证** - 企业级身份认证和访问控制
+- **🏗️ 服务器组管理** - 灵活的服务器分组和配置管理
+- **🔄 故障转移** - 自动故障检测和流量切换
+
+## 快速开始
+
+立即开始使用 MCPHub，只需几分钟即可部署您的第一个 MCP 服务器。
 
 <CardGroup cols={2}>
-  <Card title="编辑和预览" icon="pen-to-square" href="/zh/quickstart">
-    了解如何编辑您的文档并在部署前本地预览更改
+  <Card title="5 分钟快速部署" icon="rocket" href="/zh/quickstart">
+    跟随我们的快速开始指南，5 分钟内部署 MCPHub 并连接您的第一个 MCP 服务器
   </Card>
-  <Card title="开发" icon="code" href="/zh/development">
-    安装命令行工具并在本地运行您的文档
+  <Card title="开发环境搭建" icon="code" href="/zh/development/getting-started">
+    设置本地开发环境，了解 MCPHub 的架构和开发工作流
   </Card>
 </CardGroup>
 
-## 让您的文档生动起来
+## 核心概念
 
-更新您的文档以反映您的产品，然后添加自定义组件以增强用户体验。
+了解 MCPHub 的核心概念，为深入使用做好准备。
 
 <CardGroup cols={2}>
-  <Card title="自定义您的文档" icon="palette" href="/zh/essentials/settings">
-    自定义您的文档以匹配您的公司品牌和改善用户体验
+  <Card title="MCP 协议介绍" icon="network-wired" href="/zh/concepts/mcp-protocol">
+    深入了解 Model Context Protocol 的工作原理和最佳实践
   </Card>
-  <Card title="参考 API" icon="code" href="/api-reference">
-    自动从 API 端点生成，与您的代码同步
+  <Card title="智能路由机制" icon="route" href="/zh/features/smart-routing">
+    学习 MCPHub 的智能路由算法和配置策略
+  </Card>
+  <Card title="服务器管理" icon="server" href="/zh/features/server-management">
+    掌握 MCP 服务器的添加、配置和管理技巧
+  </Card>
+  <Card title="监控与分析" icon="chart-line" href="/zh/features/monitoring">
+    使用内置的监控工具跟踪性能和识别问题
+  </Card>
+</CardGroup>
+
+## 部署选项
+
+MCPHub 支持多种部署方式，满足不同规模和场景的需求。
+
+<CardGroup cols={3}>
+  <Card title="Docker 部署" icon="docker" href="/zh/configuration/docker-setup">
+    使用 Docker 容器快速部署，支持单机和集群模式
+  </Card>
+  <Card title="云服务部署" icon="cloud" href="/zh/deployment/cloud">
+    在 AWS、GCP、Azure 等云平台上部署 MCPHub
+  </Card>
+  <Card title="Kubernetes" icon="dharmachakra" href="/zh/deployment/kubernetes">
+    在 Kubernetes 集群中部署高可用的 MCPHub 服务
+  </Card>
+</CardGroup>
+
+## API 和集成
+
+MCPHub 提供完整的 RESTful API 和多语言 SDK，方便与现有系统集成。
+
+<CardGroup cols={2}>
+  <Card title="API 参考文档" icon="code" href="/zh/api-reference/introduction">
+    完整的 API 接口文档，包含详细的请求示例和响应格式
+  </Card>
+  <Card title="SDK 和工具" icon="toolbox" href="/zh/sdk">
+    官方 SDK 和命令行工具，加速开发集成
+  </Card>
+</CardGroup>
+
+## 社区和支持
+
+加入 MCPHub 社区，获取帮助和分享经验。
+
+<CardGroup cols={2}>
+  <Card title="GitHub 仓库" icon="github" href="https://github.com/mcphub/mcphub">
+    查看源代码、提交问题和贡献代码
+  </Card>
+  <Card title="Discord 社区" icon="discord" href="https://discord.gg/mcphub">
+    与其他开发者交流，获取实时帮助
+  </Card>
+  <Card title="问题反馈" icon="bug" href="/zh/support/issues">
+    报告 Bug 或请求新功能
+  </Card>
+  <Card title="贡献指南" icon="heart" href="/zh/contributing">
+    了解如何为 MCPHub 项目做出贡献
+  </Card>
+</CardGroup>
+
+---
+
+## 最新更新
+
+<Note>
+  **v2.1.0 已发布** - 新增 WebHook 支持、改进的监控界面和性能优化。查看 [更新日志](/zh/changelog)
+  了解详细信息。
+</Note>
+
+### 即将推出
+
+- 📈 **高级分析** - 更详细的性能分析和预测性监控
+- 🔒 **增强安全** - 支持 RBAC 和更多认证方式
+- 🌐 **多区域部署** - 跨区域的智能路由和故障转移
+- 🎯 **A/B 测试** - 内置的流量分割和实验功能
+
+准备好开始了吗？[立即部署 MCPHub](/zh/quickstart) 🚀
+
   </Card>
 </CardGroup>

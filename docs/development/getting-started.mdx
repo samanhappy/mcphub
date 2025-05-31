@@ -1,0 +1,244 @@
+---
+title: 'Getting Started with Development'
+description: 'Learn how to set up your development environment for MCPHub'
+---
+
+# Getting Started with Development
+
+This guide will help you set up your development environment for contributing to MCPHub.
+
+## Prerequisites
+
+Before you begin, ensure you have the following installed:
+
+- **Node.js** (version 18 or higher)
+- **pnpm** (recommended package manager)
+- **Git**
+- **Docker** (optional, for containerized development)
+
+## Setting Up the Development Environment
+
+### 1. Clone the Repository
+
+```bash
+git clone https://github.com/your-username/mcphub.git
+cd mcphub
+```
+
+### 2. Install Dependencies
+
+```bash
+pnpm install
+```
+
+### 3. Environment Configuration
+
+Create a `.env` file in the root directory:
+
+```bash
+cp .env.example .env
+```
+
+Configure the following environment variables:
+
+```env
+# Server Configuration
+PORT=3000
+NODE_ENV=development
+
+# Database Configuration
+DATABASE_URL=postgresql://username:password@localhost:5432/mcphub
+
+# JWT Configuration
+JWT_SECRET=your-secret-key
+JWT_EXPIRES_IN=24h
+
+# OpenAI Configuration (for smart routing)
+OPENAI_API_KEY=your-openai-api-key
+```
+
+### 4. Database Setup
+
+If using PostgreSQL, create a database:
+
+```bash
+createdb mcphub
+```
+
+### 5. MCP Server Configuration
+
+Create or modify `mcp_settings.json`:
+
+```json
+{
+  "mcpServers": {
+    "fetch": {
+      "command": "uvx",
+      "args": ["mcp-server-fetch"]
+    },
+    "playwright": {
+      "command": "npx",
+      "args": ["@playwright/mcp@latest", "--headless"]
+    }
+  }
+}
+```
+
+## Development Workflow
+
+### Running the Development Server
+
+Start both backend and frontend in development mode:
+
+```bash
+pnpm dev
+```
+
+This will start:
+
+- Backend server on `http://localhost:3000`
+- Frontend development server on `http://localhost:5173`
+
+### Running Backend Only
+
+```bash
+pnpm backend:dev
+```
+
+### Running Frontend Only
+
+```bash
+pnpm frontend:dev
+```
+
+### Building the Project
+
+Build both backend and frontend:
+
+```bash
+pnpm build
+```
+
+## Project Structure
+
+```
+mcphub/
+├── src/                    # Backend source code
+│   ├── controllers/        # Express controllers
+│   ├── routes/            # API routes
+│   ├── services/          # Business logic
+│   ├── models/            # Database models
+│   └── utils/             # Utility functions
+├── frontend/              # Frontend React application
+│   ├── src/
+│   │   ├── components/    # React components
+│   │   ├── pages/         # Page components
+│   │   ├── services/      # API services
+│   │   └── utils/         # Frontend utilities
+├── docs/                  # Documentation
+├── bin/                   # CLI scripts
+└── scripts/               # Build and utility scripts
+```
+
+## Development Tools
+
+### Linting and Formatting
+
+```bash
+# Run ESLint
+pnpm lint
+
+# Format code with Prettier
+pnpm format
+```
+
+### Testing
+
+```bash
+# Run tests
+pnpm test
+
+# Run tests in watch mode
+pnpm test --watch
+```
+
+### Debugging
+
+To debug the backend with Node.js inspector:
+
+```bash
+pnpm backend:debug
+```
+
+Then attach your debugger to `http://localhost:9229`.
+
+## Making Changes
+
+### Backend Development
+
+1. **Controllers**: Handle HTTP requests and responses
+2. **Services**: Implement business logic
+3. **Models**: Define database schemas
+4. **Routes**: Define API endpoints
+
+### Frontend Development
+
+1. **Components**: Reusable React components
+2. **Pages**: Route-specific components
+3. **Services**: API communication
+4. **Hooks**: Custom React hooks
+
+### Adding New MCP Servers
+
+1. Update `mcp_settings.json` with the new server configuration
+2. Test the server integration
+3. Update documentation if needed
+
+## Common Development Tasks
+
+### Adding a New API Endpoint
+
+1. Create a controller in `src/controllers/`
+2. Define the route in `src/routes/`
+3. Add any necessary middleware
+4. Write tests for the new endpoint
+
+### Adding a New Frontend Feature
+
+1. Create components in `frontend/src/components/`
+2. Add routes if needed
+3. Implement API integration
+4. Style with Tailwind CSS
+
+### Database Migrations
+
+When modifying database schemas:
+
+1. Update models in `src/models/`
+2. Create migration scripts if using TypeORM
+3. Test migrations locally
+
+## Troubleshooting
+
+### Common Issues
+
+**Port conflicts**: Ensure ports 3000 and 5173 are available
+
+**Database connection**: Verify PostgreSQL is running and credentials are correct
+
+**MCP server startup**: Check server configurations in `mcp_settings.json`
+
+**Permission issues**: Ensure MCP servers have necessary permissions
+
+### Getting Help
+
+- Check the [Contributing Guide](/development/contributing)
+- Review [Architecture Documentation](/development/architecture)
+- Open an issue on GitHub for bugs
+- Join our community discussions
+
+## Next Steps
+
+- Read the [Architecture Overview](/development/architecture)
+- Learn about [Contributing Guidelines](/development/contributing)
+- Explore [Configuration Options](/configuration/environment-variables)

@@ -1,0 +1,509 @@
+---
+title: 'Server Management'
+description: 'Centrally manage multiple MCP servers with hot-swappable configuration'
+---
+
+## Overview
+
+MCPHub's server management system allows you to centrally configure, monitor, and control multiple MCP (Model Context Protocol) servers from a single dashboard. All changes are applied in real-time without requiring server restarts.
+
+## Adding MCP Servers
+
+### Via Dashboard
+
+1. **Access the Dashboard**: Navigate to `http://localhost:3000` and log in
+2. **Click "Add Server"**: Located in the servers section
+3. **Fill Server Details**:
+   - **Name**: Unique identifier for the server
+   - **Command**: Executable command (e.g., `npx`, `uvx`, `python`)
+   - **Arguments**: Array of command arguments
+   - **Environment Variables**: Key-value pairs for environment setup
+   - **Working Directory**: Optional working directory for the command
+
+### Via Configuration File
+
+Edit your `mcp_settings.json` file:
+
+```json
+{
+  "mcpServers": {
+    "server-name": {
+      "command": "command-to-run",
+      "args": ["arg1", "arg2"],
+      "env": {
+        "API_KEY": "your-api-key",
+        "CONFIG_VALUE": "some-value"
+      },
+      "cwd": "/optional/working/directory"
+    }
+  }
+}
+```
+
+### Via API
+
+Use the REST API to add servers programmatically:
+
+```bash
+curl -X POST http://localhost:3000/api/servers \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -d '{
+    "name": "fetch-server",
+    "command": "uvx",
+    "args": ["mcp-server-fetch"],
+    "env": {}
+  }'
+```
+
+## Popular MCP Server Examples
+
+<AccordionGroup>
+  <Accordion title="Web Fetch Server">
+    Provides web scraping and HTTP request capabilities:
+
+    ```json
+    {
+      "fetch": {
+        "command": "uvx",
+        "args": ["mcp-server-fetch"]
+      }
+    }
+    ```
+
+    **Available Tools:**
+    - `fetch`: Make HTTP requests
+    - `fetch_html`: Scrape web pages
+    - `fetch_json`: Get JSON data from APIs
+
+  </Accordion>
+
+  <Accordion title="Playwright Browser Automation">
+    Browser automation for web interactions:
+
+    ```json
+    {
+      "playwright": {
+        "command": "npx",
+        "args": ["@playwright/mcp@latest", "--headless"]
+      }
+    }
+    ```
+
+    **Available Tools:**
+    - `playwright_navigate`: Navigate to web pages
+    - `playwright_screenshot`: Take screenshots
+    - `playwright_click`: Click elements
+    - `playwright_fill`: Fill forms
+
+  </Accordion>
+
+  <Accordion title="File System Operations">
+    File and directory management:
+
+    ```json
+    {
+      "filesystem": {
+        "command": "npx",
+        "args": ["-y", "@modelcontextprotocol/server-filesystem", "/allowed/path"]
+      }
+    }
+    ```
+
+    **Available Tools:**
+    - `read_file`: Read file contents
+    - `write_file`: Write to files
+    - `create_directory`: Create directories
+    - `list_directory`: List directory contents
+
+  </Accordion>
+
+  <Accordion title="SQLite Database">
+    Database operations:
+
+    ```json
+    {
+      "sqlite": {
+        "command": "npx",
+        "args": ["-y", "@modelcontextprotocol/server-sqlite", "/path/to/database.db"]
+      }
+    }
+    ```
+
+    **Available Tools:**
+    - `execute_query`: Execute SQL queries
+    - `describe_tables`: Get table schemas
+    - `create_table`: Create new tables
+
+  </Accordion>
+
+  <Accordion title="Slack Integration">
+    Slack workspace integration:
+
+    ```json
+    {
+      "slack": {
+        "command": "npx",
+        "args": ["-y", "@modelcontextprotocol/server-slack"],
+        "env": {
+          "SLACK_BOT_TOKEN": "xoxb-your-bot-token",
+          "SLACK_TEAM_ID": "T1234567890"
+        }
+      }
+    }
+    ```
+
+    **Available Tools:**
+    - `send_slack_message`: Send messages to channels
+    - `list_slack_channels`: List available channels
+    - `get_slack_thread`: Get thread messages
+
+  </Accordion>
+
+  <Accordion title="GitHub Integration">
+    GitHub repository operations:
+
+    ```json
+    {
+      "github": {
+        "command": "npx",
+        "args": ["-y", "@modelcontextprotocol/server-github"],
+        "env": {
+          "GITHUB_PERSONAL_ACCESS_TOKEN": "ghp_your_token"
+        }
+      }
+    }
+    ```
+
+    **Available Tools:**
+    - `create_or_update_file`: Create/update repository files
+    - `search_repositories`: Search GitHub repositories
+    - `create_issue`: Create issues
+    - `create_pull_request`: Create pull requests
+
+  </Accordion>
+
+  <Accordion title="Google Drive">
+    Google Drive file operations:
+
+    ```json
+    {
+      "gdrive": {
+        "command": "npx",
+        "args": ["-y", "@modelcontextprotocol/server-gdrive"],
+        "env": {
+          "GDRIVE_CLIENT_ID": "your-client-id",
+          "GDRIVE_CLIENT_SECRET": "your-client-secret",
+          "GDRIVE_REDIRECT_URI": "your-redirect-uri"
+        }
+      }
+    }
+    ```
+
+    **Available Tools:**
+    - `gdrive_search`: Search files and folders
+    - `gdrive_read`: Read file contents
+    - `gdrive_create`: Create new files
+
+  </Accordion>
+
+  <Accordion title="Amap Maps (China)">
+    Chinese mapping and location services:
+
+    ```json
+    {
+      "amap": {
+        "command": "npx",
+        "args": ["-y", "@amap/amap-maps-mcp-server"],
+        "env": {
+          "AMAP_MAPS_API_KEY": "your-api-key"
+        }
+      }
+    }
+    ```
+
+    **Available Tools:**
+    - `search_location`: Search for locations
+    - `get_directions`: Get route directions
+    - `reverse_geocode`: Convert coordinates to addresses
+
+  </Accordion>
+</AccordionGroup>
+
+## Server Lifecycle Management
+
+### Starting Servers
+
+Servers are automatically started when:
+
+- MCPHub boots up
+- A server is added via the dashboard or API
+- A server configuration is updated
+- A stopped server is manually restarted
+
+### Stopping Servers
+
+You can stop servers:
+
+- **Via Dashboard**: Toggle the server status switch
+- **Via API**: Send a POST request to `/api/servers/{name}/toggle`
+- **Automatically**: Servers stop if they crash or encounter errors
+
+### Restarting Servers
+
+Servers are automatically restarted:
+
+- When configuration changes are made
+- After environment variable updates
+- When manually triggered via dashboard or API
+
+## Server Status Monitoring
+
+### Status Indicators
+
+Each server displays a status indicator:
+
+- 🟢 **Running**: Server is active and responding
+- 🟡 **Starting**: Server is initializing
+- 🔴 **Stopped**: Server is not running
+- ⚠️ **Error**: Server encountered an error
+
+### Real-time Logs
+
+View server logs in real-time:
+
+1. **Dashboard Logs**: Click on a server to view its logs
+2. **API Logs**: Access logs via `/api/logs` endpoint
+3. **Streaming Logs**: Subscribe to log streams via WebSocket
+
+### Health Checks
+
+MCPHub automatically performs health checks:
+
+- **Initialization Check**: Verifies server starts successfully
+- **Tool Discovery**: Confirms available tools are detected
+- **Response Check**: Tests server responsiveness
+- **Resource Monitoring**: Tracks CPU and memory usage
+
+## Configuration Management
+
+### Environment Variables
+
+Servers can use environment variables for configuration:
+
+```json
+{
+  "server-name": {
+    "command": "python",
+    "args": ["server.py"],
+    "env": {
+      "API_KEY": "${YOUR_API_KEY}",
+      "DEBUG": "true",
+      "MAX_CONNECTIONS": "10"
+    }
+  }
+}
+```
+
+**Environment Variable Expansion:**
+
+- `${VAR_NAME}`: Expands to environment variable value
+- `${VAR_NAME:-default}`: Uses default if variable not set
+- `${VAR_NAME:+value}`: Uses value if variable is set
+
+### Working Directory
+
+Set the working directory for server execution:
+
+```json
+{
+  "server-name": {
+    "command": "./local-script.sh",
+    "args": [],
+    "cwd": "/path/to/server/directory"
+  }
+}
+```
+
+### Command Variations
+
+Different ways to specify server commands:
+
+<Tabs>
+  <Tab title="npm/npx">
+    ```json
+    {
+      "npm-server": {
+        "command": "npx",
+        "args": ["-y", "package-name", "--option", "value"]
+      }
+    }
+    ```
+  </Tab>
+
+  <Tab title="Python/uvx">
+    ```json
+    {
+      "python-server": {
+        "command": "uvx",
+        "args": ["package-name", "--config", "config.json"]
+      }
+    }
+    ```
+  </Tab>
+
+  <Tab title="Direct Python">
+    ```json
+    {
+      "direct-python": {
+        "command": "python",
+        "args": ["-m", "module_name", "--arg", "value"]
+      }
+    }
+    ```
+  </Tab>
+
+  <Tab title="Local Script">
+    ```json
+    {
+      "local-script": {
+        "command": "./server.sh",
+        "args": ["--port", "8080"],
+        "cwd": "/path/to/script"
+      }
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## Advanced Features
+
+### Hot Reloading
+
+MCPHub supports hot reloading of server configurations:
+
+1. **Config File Changes**: Automatically detects changes to `mcp_settings.json`
+2. **Dashboard Updates**: Immediately applies changes made through the web interface
+3. **API Updates**: Real-time updates via REST API calls
+4. **Zero Downtime**: Graceful server restarts without affecting other servers
+
+### Resource Limits
+
+Control server resource usage:
+
+```json
+{
+  "resource-limited-server": {
+    "command": "memory-intensive-server",
+    "args": [],
+    "limits": {
+      "memory": "512MB",
+      "cpu": "50%",
+      "timeout": "30s"
+    }
+  }
+}
+```
+
+### Dependency Management
+
+Handle server dependencies:
+
+<AccordionGroup>
+  <Accordion title="Auto-installation">
+    MCPHub can automatically install missing packages:
+
+    ```json
+    {
+      "auto-install-server": {
+        "command": "npx",
+        "args": ["-y", "package-that-might-not-exist"],
+        "autoInstall": true
+      }
+    }
+    ```
+
+  </Accordion>
+
+  <Accordion title="Pre-installation Scripts">
+    Run setup scripts before starting servers:
+
+    ```json
+    {
+      "setup-server": {
+        "preStart": ["npm install", "pip install -r requirements.txt"],
+        "command": "python",
+        "args": ["server.py"]
+      }
+    }
+    ```
+
+  </Accordion>
+</AccordionGroup>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Server Won't Start">
+    **Check the following:**
+    - Command is available in PATH
+    - All required environment variables are set
+    - Working directory exists and is accessible
+    - Network ports are not blocked
+    - Dependencies are installed
+
+    **Debug steps:**
+    1. Check server logs in the dashboard
+    2. Test command manually in terminal
+    3. Verify environment variable expansion
+    4. Check file permissions
+
+  </Accordion>
+
+  <Accordion title="Server Keeps Crashing">
+    **Common causes:**
+    - Invalid configuration parameters
+    - Missing API keys or credentials
+    - Resource limits exceeded
+    - Dependency conflicts
+
+    **Solutions:**
+    1. Review server logs for error messages
+    2. Test with minimal configuration
+    3. Verify all credentials and API keys
+    4. Check system resource availability
+
+  </Accordion>
+
+  <Accordion title="Tools Not Appearing">
+    **Possible issues:**
+    - Server not fully initialized
+    - Tool discovery timeout
+    - Communication protocol mismatch
+    - Server reporting errors
+
+    **Debug steps:**
+    1. Wait for server initialization to complete
+    2. Check server logs for tool registration messages
+    3. Test direct communication with server
+    4. Verify MCP protocol compatibility
+
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Group Management" icon="users" href="/features/group-management">
+    Organize servers into logical groups
+  </Card>
+  <Card title="Smart Routing" icon="route" href="/features/smart-routing">
+    Set up AI-powered tool discovery
+  </Card>
+  <Card title="API Reference" icon="code" href="/api-reference/servers">
+    Server management API documentation
+  </Card>
+  <Card title="Configuration Guide" icon="cog" href="/configuration/mcp-settings">
+    Detailed configuration options
+  </Card>
+</CardGroup>

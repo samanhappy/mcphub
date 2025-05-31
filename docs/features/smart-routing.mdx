@@ -1,0 +1,720 @@
+---
+title: 'Smart Routing'
+description: 'AI-powered tool discovery using vector semantic search'
+---
+
+## Overview
+
+Smart Routing is MCPHub's intelligent tool discovery system that uses vector semantic search to automatically find the most relevant tools for any given task. Instead of manually specifying which tools to use, AI clients can describe what they want to accomplish, and Smart Routing will identify and provide access to the most appropriate tools.
+
+## How Smart Routing Works
+
+### 1. Tool Indexing
+
+When servers start up, Smart Routing automatically:
+
+- Discovers all available tools from MCP servers
+- Extracts tool metadata (names, descriptions, parameters)
+- Converts tool information to vector embeddings
+- Stores embeddings in PostgreSQL with pgvector
+
+### 2. Semantic Search
+
+When a query is made:
+
+- User queries are converted to vector embeddings
+- Similarity search finds matching tools using cosine similarity
+- Dynamic thresholds filter out irrelevant results
+- Results are ranked by relevance score
+
+### 3. Intelligent Filtering
+
+Smart Routing applies several filters:
+
+- **Relevance Threshold**: Only returns tools above similarity threshold
+- **Context Awareness**: Considers conversation context
+- **Tool Availability**: Ensures tools are currently accessible
+- **Permission Filtering**: Respects user access permissions
+
+### 4. Tool Execution
+
+Found tools can be directly executed:
+
+- Parameter validation ensures correct tool usage
+- Error handling provides helpful feedback
+- Response formatting maintains consistency
+- Logging tracks tool usage for analytics
+
+## Prerequisites
+
+Smart Routing requires additional setup compared to basic MCPHub usage:
+
+### Required Components
+
+1. **PostgreSQL with pgvector**: Vector database for embeddings storage
+2. **Embedding Service**: OpenAI API or compatible service
+3. **Environment Configuration**: Proper configuration variables
+
+### Quick Setup
+
+<Tabs>
+  <Tab title="Docker Compose">
+    Use this `docker-compose.yml` for complete setup:
+
+    ```yaml
+    version: '3.8'
+    services:
+      mcphub:
+        image: samanhappy/mcphub:latest
+        ports:
+          - "3000:3000"
+        environment:
+          - DATABASE_URL=postgresql://mcphub:password@postgres:5432/mcphub
+          - OPENAI_API_KEY=your_openai_api_key
+          - ENABLE_SMART_ROUTING=true
+        depends_on:
+          - postgres
+        volumes:
+          - ./mcp_settings.json:/app/mcp_settings.json
+
+      postgres:
+        image: pgvector/pgvector:pg16
+        environment:
+          - POSTGRES_DB=mcphub
+          - POSTGRES_USER=mcphub
+          - POSTGRES_PASSWORD=password
+        volumes:
+          - postgres_data:/var/lib/postgresql/data
+        ports:
+          - "5432:5432"
+
+    volumes:
+      postgres_data:
+    ```
+
+    Start with:
+    ```bash
+    docker-compose up -d
+    ```
+
+  </Tab>
+
+  <Tab title="Manual Setup">
+    1. **Install PostgreSQL with pgvector**:
+    ```bash
+    # Using Docker
+    docker run -d \
+      --name mcphub-postgres \
+      -e POSTGRES_DB=mcphub \
+      -e POSTGRES_USER=mcphub \
+      -e POSTGRES_PASSWORD=your_password \
+      -p 5432:5432 \
+      pgvector/pgvector:pg16
+    ```
+
+    2. **Set Environment Variables**:
+    ```bash
+    export DATABASE_URL="postgresql://mcphub:your_password@localhost:5432/mcphub"
+    export OPENAI_API_KEY="your_openai_api_key"
+    export ENABLE_SMART_ROUTING="true"
+    ```
+
+    3. **Start MCPHub**:
+    ```bash
+    mcphub
+    ```
+
+  </Tab>
+
+  <Tab title="Kubernetes">
+    Deploy with these Kubernetes manifests:
+
+    ```yaml
+    # postgres-deployment.yaml
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: postgres
+    spec:
+      selector:
+        matchLabels:
+          app: postgres
+      template:
+        metadata:
+          labels:
+            app: postgres
+        spec:
+          containers:
+          - name: postgres
+            image: pgvector/pgvector:pg16
+            env:
+            - name: POSTGRES_DB
+              value: mcphub
+            - name: POSTGRES_USER
+              value: mcphub
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: password
+            ports:
+            - containerPort: 5432
+    ---
+    # mcphub-deployment.yaml
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: mcphub
+    spec:
+      selector:
+        matchLabels:
+          app: mcphub
+      template:
+        metadata:
+          labels:
+            app: mcphub
+        spec:
+          containers:
+          - name: mcphub
+            image: samanhappy/mcphub:latest
+            env:
+            - name: DATABASE_URL
+              value: "postgresql://mcphub:password@postgres:5432/mcphub"
+            - name: OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: openai-secret
+                  key: api-key
+            - name: ENABLE_SMART_ROUTING
+              value: "true"
+            ports:
+            - containerPort: 3000
+    ```
+
+  </Tab>
+</Tabs>
+
+## Configuration
+
+### Environment Variables
+
+Configure Smart Routing with these environment variables:
+
+```bash
+# Required
+DATABASE_URL=postgresql://user:password@host:5432/database
+OPENAI_API_KEY=your_openai_api_key
+
+# Optional
+ENABLE_SMART_ROUTING=true
+EMBEDDING_MODEL=text-embedding-3-small
+SIMILARITY_THRESHOLD=0.7
+MAX_TOOLS_RETURNED=10
+EMBEDDING_BATCH_SIZE=100
+```
+
+### Configuration Options
+
+<AccordionGroup>
+  <Accordion title="Database Configuration">
+    ```bash
+    # Full PostgreSQL connection string
+    DATABASE_URL=postgresql://username:password@host:port/database?schema=public
+
+    # SSL configuration for cloud databases
+    DATABASE_URL=postgresql://user:pass@host:5432/db?sslmode=require
+
+    # Connection pool settings
+    DATABASE_POOL_SIZE=20
+    DATABASE_TIMEOUT=30000
+    ```
+
+  </Accordion>
+
+  <Accordion title="Embedding Service">
+    ```bash
+    # OpenAI (default)
+    OPENAI_API_KEY=sk-your-api-key
+    EMBEDDING_MODEL=text-embedding-3-small
+
+    # Azure OpenAI
+    AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com
+    AZURE_OPENAI_API_KEY=your-api-key
+    AZURE_OPENAI_DEPLOYMENT=your-embedding-deployment
+
+    # Custom embedding service
+    EMBEDDING_SERVICE_URL=https://your-embedding-service.com
+    EMBEDDING_SERVICE_API_KEY=your-api-key
+    ```
+
+  </Accordion>
+
+  <Accordion title="Search Parameters">
+    ```bash
+    # Similarity threshold (0.0 to 1.0)
+    SIMILARITY_THRESHOLD=0.7
+
+    # Maximum tools to return
+    MAX_TOOLS_RETURNED=10
+
+    # Minimum query length for smart routing
+    MIN_QUERY_LENGTH=5
+
+    # Cache TTL for embeddings (seconds)
+    EMBEDDING_CACHE_TTL=3600
+    ```
+
+  </Accordion>
+</AccordionGroup>
+
+## Using Smart Routing
+
+### Smart Routing Endpoint
+
+Access Smart Routing through the special `$smart` endpoint:
+
+<Tabs>
+  <Tab title="HTTP MCP">
+    ```
+    http://localhost:3000/mcp/$smart
+    ```
+  </Tab>
+
+  <Tab title="SSE (Legacy)">
+    ```
+    http://localhost:3000/sse/$smart
+    ```
+  </Tab>
+</Tabs>
+
+### Basic Usage
+
+Connect your AI client to the Smart Routing endpoint and make natural language requests:
+
+```bash
+# Example: Find tools for web scraping
+curl -X POST http://localhost:3000/mcp/$smart \
+  -H "Content-Type: application/json" \
+  -d '{
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "tools/search",
+    "params": {
+      "query": "scrape website content and extract text"
+    }
+  }'
+```
+
+Response:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "result": {
+    "tools": [
+      {
+        "name": "fetch_html",
+        "server": "fetch",
+        "description": "Fetch and parse HTML content from a URL",
+        "relevanceScore": 0.92,
+        "parameters": { ... }
+      },
+      {
+        "name": "playwright_navigate",
+        "server": "playwright",
+        "description": "Navigate to a web page and extract content",
+        "relevanceScore": 0.87,
+        "parameters": { ... }
+      }
+    ]
+  }
+}
+```
+
+### Advanced Queries
+
+Smart Routing supports various query types:
+
+<AccordionGroup>
+  <Accordion title="Task-Based Queries">
+    ```bash
+    # What you want to accomplish
+    curl -X POST http://localhost:3000/mcp/$smart \
+      -H "Content-Type: application/json" \
+      -d '{
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "tools/search",
+        "params": {
+          "query": "send a message to a slack channel"
+        }
+      }'
+    ```
+  </Accordion>
+
+  <Accordion title="Domain-Specific Queries">
+    ```bash
+    # Specific domain or technology
+    curl -X POST http://localhost:3000/mcp/$smart \
+      -H "Content-Type: application/json" \
+      -d '{
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "tools/search",
+        "params": {
+          "query": "database operations SQL queries"
+        }
+      }'
+    ```
+  </Accordion>
+
+  <Accordion title="Action-Oriented Queries">
+    ```bash
+    # Specific actions
+    curl -X POST http://localhost:3000/mcp/$smart \
+      -H "Content-Type: application/json" \
+      -d '{
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "tools/search",
+        "params": {
+          "query": "create file upload to github repository"
+        }
+      }'
+    ```
+  </Accordion>
+
+  <Accordion title="Context-Aware Queries">
+    ```bash
+    # Include context for better results
+    curl -X POST http://localhost:3000/mcp/$smart \
+      -H "Content-Type: application/json" \
+      -d '{
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "tools/search",
+        "params": {
+          "query": "automated testing web application",
+          "context": {
+            "project": "e-commerce website",
+            "technologies": ["React", "Node.js"],
+            "environment": "staging"
+          }
+        }
+      }'
+    ```
+  </Accordion>
+</AccordionGroup>
+
+### Tool Execution
+
+Once Smart Routing finds relevant tools, you can execute them directly:
+
+```bash
+# Execute a found tool
+curl -X POST http://localhost:3000/mcp/$smart \
+  -H "Content-Type: application/json" \
+  -d '{
+    "jsonrpc": "2.0",
+    "id": 2,
+    "method": "tools/call",
+    "params": {
+      "name": "fetch_html",
+      "arguments": {
+        "url": "https://example.com"
+      }
+    }
+  }'
+```
+
+## Performance Optimization
+
+### Embedding Cache
+
+Smart Routing caches embeddings to improve performance:
+
+```bash
+# Configure cache settings
+EMBEDDING_CACHE_TTL=3600        # Cache for 1 hour
+EMBEDDING_CACHE_SIZE=10000      # Cache up to 10k embeddings
+EMBEDDING_CACHE_CLEANUP=300     # Cleanup every 5 minutes
+```
+
+### Batch Processing
+
+Tools are indexed in batches for efficiency:
+
+```bash
+# Batch size for embedding generation
+EMBEDDING_BATCH_SIZE=100
+
+# Concurrent embedding requests
+EMBEDDING_CONCURRENCY=5
+
+# Index update frequency
+INDEX_UPDATE_INTERVAL=3600      # Re-index every hour
+```
+
+### Database Optimization
+
+Optimize PostgreSQL for vector operations:
+
+```sql
+-- Create indexes for better performance
+CREATE INDEX ON tool_embeddings USING hnsw (embedding vector_cosine_ops);
+
+-- Adjust PostgreSQL settings
+ALTER SYSTEM SET shared_preload_libraries = 'vector';
+ALTER SYSTEM SET max_connections = 200;
+ALTER SYSTEM SET shared_buffers = '256MB';
+ALTER SYSTEM SET effective_cache_size = '1GB';
+```
+
+## Monitoring and Analytics
+
+### Smart Routing Metrics
+
+Monitor Smart Routing performance:
+
+```bash
+# Get Smart Routing statistics
+curl http://localhost:3000/api/smart-routing/stats \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+Response includes:
+
+- Query count and frequency
+- Average response time
+- Embedding cache hit rate
+- Most popular tools
+- Query patterns
+
+### Tool Usage Analytics
+
+Track which tools are found and used:
+
+```bash
+# Get tool usage analytics
+curl http://localhost:3000/api/smart-routing/analytics \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+Metrics include:
+
+- Tool discovery rates
+- Execution success rates
+- User satisfaction scores
+- Query-to-execution conversion
+
+### Performance Monitoring
+
+Monitor system performance:
+
+```bash
+# Database performance
+curl http://localhost:3000/api/smart-routing/db-stats \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+
+# Embedding service status
+curl http://localhost:3000/api/smart-routing/embedding-stats \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+## Advanced Features
+
+### Custom Embeddings
+
+Use custom embedding models:
+
+```bash
+# Hugging Face models
+EMBEDDING_SERVICE=huggingface
+HUGGINGFACE_MODEL=sentence-transformers/all-MiniLM-L6-v2
+HUGGINGFACE_API_KEY=your_api_key
+
+# Local embedding service
+EMBEDDING_SERVICE=local
+EMBEDDING_SERVICE_URL=http://localhost:8080/embeddings
+```
+
+### Query Enhancement
+
+Enhance queries for better results:
+
+```json
+{
+  "queryEnhancement": {
+    "enabled": true,
+    "expandAcronyms": true,
+    "addSynonyms": true,
+    "contextualExpansion": true
+  }
+}
+```
+
+### Result Filtering
+
+Filter results based on criteria:
+
+```json
+{
+  "resultFiltering": {
+    "minRelevanceScore": 0.7,
+    "maxResults": 10,
+    "preferredServers": ["fetch", "playwright"],
+    "excludeServers": ["deprecated-server"]
+  }
+}
+```
+
+### Feedback Learning
+
+Improve results based on user feedback:
+
+```bash
+# Provide feedback on search results
+curl -X POST http://localhost:3000/api/smart-routing/feedback \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -d '{
+    "queryId": "search-123",
+    "toolName": "fetch_html",
+    "rating": 5,
+    "successful": true,
+    "comments": "Perfect tool for the task"
+  }'
+```
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Database Connection Issues">
+    **Symptoms:**
+    - Smart Routing not available
+    - Database connection errors
+    - Embedding storage failures
+
+    **Solutions:**
+    1. Verify PostgreSQL is running
+    2. Check DATABASE_URL format
+    3. Ensure pgvector extension is installed
+    4. Test connection manually:
+    ```bash
+    psql $DATABASE_URL -c "SELECT 1;"
+    ```
+
+  </Accordion>
+
+  <Accordion title="Embedding Service Problems">
+    **Symptoms:**
+    - Tool indexing failures
+    - Query processing errors
+    - API rate limit errors
+
+    **Solutions:**
+    1. Verify API key validity
+    2. Check network connectivity
+    3. Monitor rate limits
+    4. Test embedding service:
+    ```bash
+    curl -X POST https://api.openai.com/v1/embeddings \
+      -H "Authorization: Bearer $OPENAI_API_KEY" \
+      -H "Content-Type: application/json" \
+      -d '{"input": "test", "model": "text-embedding-3-small"}'
+    ```
+
+  </Accordion>
+
+  <Accordion title="Poor Search Results">
+    **Symptoms:**
+    - Irrelevant tools returned
+    - Low relevance scores
+    - Missing expected tools
+
+    **Solutions:**
+    1. Adjust similarity threshold
+    2. Re-index tools with better descriptions
+    3. Use more specific queries
+    4. Check tool metadata quality
+    ```bash
+    # Re-index all tools
+    curl -X POST http://localhost:3000/api/smart-routing/reindex \
+      -H "Authorization: Bearer YOUR_JWT_TOKEN"
+    ```
+
+  </Accordion>
+
+  <Accordion title="Performance Issues">
+    **Symptoms:**
+    - Slow query responses
+    - High database load
+    - Memory usage spikes
+
+    **Solutions:**
+    1. Optimize database configuration
+    2. Increase cache sizes
+    3. Reduce batch sizes
+    4. Monitor system resources
+    ```bash
+    # Check system performance
+    curl http://localhost:3000/api/smart-routing/performance \
+      -H "Authorization: Bearer YOUR_JWT_TOKEN"
+    ```
+
+  </Accordion>
+</AccordionGroup>
+
+## Best Practices
+
+### Query Writing
+
+<Tip>
+  **Be Descriptive**: Use specific, descriptive language in queries for better tool matching.
+</Tip>
+
+<Tip>
+  **Include Context**: Provide relevant context about your task or domain for more accurate results.
+</Tip>
+
+<Tip>**Use Natural Language**: Write queries as you would describe the task to a human.</Tip>
+
+### Tool Descriptions
+
+<Warning>
+  **Quality Metadata**: Ensure MCP servers provide high-quality tool descriptions and metadata.
+</Warning>
+
+<Warning>**Regular Updates**: Keep tool descriptions current as functionality evolves.</Warning>
+
+<Warning>
+  **Consistent Naming**: Use consistent naming conventions across tools and servers.
+</Warning>
+
+### System Maintenance
+
+<Info>**Regular Re-indexing**: Periodically re-index tools to ensure embedding quality.</Info>
+
+<Info>**Monitor Performance**: Track query patterns and optimize based on usage.</Info>
+
+<Info>
+  **Update Models**: Consider updating to newer embedding models as they become available.
+</Info>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Authentication" icon="shield" href="/features/authentication">
+    User management and access control
+  </Card>
+  <Card title="Monitoring" icon="chart-line" href="/features/monitoring">
+    System monitoring and analytics
+  </Card>
+  <Card title="API Reference" icon="code" href="/api-reference/smart-routing">
+    Complete Smart Routing API documentation
+  </Card>
+  <Card title="Configuration" icon="cog" href="/configuration/environment-variables">
+    Advanced configuration options
+  </Card>
+</CardGroup>

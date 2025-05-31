@@ -1,0 +1,564 @@
+---
+title: 'MCP Settings Configuration'
+description: 'Configure MCP servers and their settings for MCPHub'
+---
+
+# MCP Settings Configuration
+
+This guide explains how to configure MCP servers in MCPHub using the `mcp_settings.json` file and related configurations.
+
+## Configuration Files Overview
+
+MCPHub uses several configuration files:
+
+- **`mcp_settings.json`**: Main MCP server configurations
+- **`servers.json`**: Server metadata and grouping
+- **`.env`**: Environment variables and secrets
+
+## Basic MCP Settings Structure
+
+### mcp_settings.json
+
+```json
+{
+  "mcpServers": {
+    "server-name": {
+      "command": "command-to-run",
+      "args": ["arg1", "arg2"],
+      "env": {
+        "ENV_VAR": "value"
+      },
+      "cwd": "/working/directory",
+      "timeout": 30000,
+      "restart": true
+    }
+  }
+}
+```
+
+### Example Configuration
+
+```json
+{
+  "mcpServers": {
+    "fetch": {
+      "command": "uvx",
+      "args": ["mcp-server-fetch"],
+      "env": {
+        "USER_AGENT": "MCPHub/1.0"
+      }
+    },
+    "playwright": {
+      "command": "npx",
+      "args": ["@playwright/mcp@latest", "--headless"],
+      "timeout": 60000
+    },
+    "slack": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-slack"],
+      "env": {
+        "SLACK_BOT_TOKEN": "${SLACK_BOT_TOKEN}",
+        "SLACK_TEAM_ID": "${SLACK_TEAM_ID}"
+      }
+    }
+  }
+}
+```
+
+## Server Configuration Options
+
+### Required Fields
+
+| Field     | Type   | Description                |
+| --------- | ------ | -------------------------- |
+| `command` | string | Executable command or path |
+| `args`    | array  | Command-line arguments     |
+
+### Optional Fields
+
+| Field          | Type    | Default         | Description                 |
+| -------------- | ------- | --------------- | --------------------------- |
+| `env`          | object  | `{}`            | Environment variables       |
+| `cwd`          | string  | `process.cwd()` | Working directory           |
+| `timeout`      | number  | `30000`         | Startup timeout (ms)        |
+| `restart`      | boolean | `true`          | Auto-restart on failure     |
+| `maxRestarts`  | number  | `5`             | Maximum restart attempts    |
+| `restartDelay` | number  | `5000`          | Delay between restarts (ms) |
+| `stdio`        | string  | `pipe`          | stdio configuration         |
+
+## Common MCP Server Examples
+
+### Web and API Servers
+
+#### Fetch Server
+
+```json
+{
+  "fetch": {
+    "command": "uvx",
+    "args": ["mcp-server-fetch"],
+    "env": {
+      "USER_AGENT": "MCPHub/1.0",
+      "MAX_REDIRECTS": "10"
+    }
+  }
+}
+```
+
+#### Web Scraping with Playwright
+
+```json
+{
+  "playwright": {
+    "command": "npx",
+    "args": ["@playwright/mcp@latest", "--headless"],
+    "timeout": 60000,
+    "env": {
+      "PLAYWRIGHT_BROWSERS_PATH": "/tmp/browsers"
+    }
+  }
+}
+```
+
+### File and System Servers
+
+#### Filesystem Server
+
+```json
+{
+  "filesystem": {
+    "command": "npx",
+    "args": ["-y", "@modelcontextprotocol/server-filesystem", "/allowed/path"],
+    "env": {
+      "ALLOWED_OPERATIONS": "read,write,list"
+    }
+  }
+}
+```
+
+#### SQLite Server
+
+```json
+{
+  "sqlite": {
+    "command": "uvx",
+    "args": ["mcp-server-sqlite", "--db-path", "/path/to/database.db"],
+    "env": {
+      "SQLITE_READONLY": "false"
+    }
+  }
+}
+```
+
+### Communication Servers
+
+#### Slack Server
+
+```json
+{
+  "slack": {
+    "command": "npx",
+    "args": ["-y", "@modelcontextprotocol/server-slack"],
+    "env": {
+      "SLACK_BOT_TOKEN": "${SLACK_BOT_TOKEN}",
+      "SLACK_TEAM_ID": "${SLACK_TEAM_ID}",
+      "SLACK_APP_TOKEN": "${SLACK_APP_TOKEN}"
+    }
+  }
+}
+```
+
+#### Email Server
+
+```json
+{
+  "email": {
+    "command": "python",
+    "args": ["-m", "mcp_server_email"],
+    "env": {
+      "SMTP_HOST": "smtp.gmail.com",
+      "SMTP_PORT": "587",
+      "EMAIL_USER": "${EMAIL_USER}",
+      "EMAIL_PASSWORD": "${EMAIL_PASSWORD}"
+    }
+  }
+}
+```
+
+### Development and API Servers
+
+#### GitHub Server
+
+```json
+{
+  "github": {
+    "command": "npx",
+    "args": ["-y", "@modelcontextprotocol/server-github"],
+    "env": {
+      "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_TOKEN}"
+    }
+  }
+}
+```
+
+#### Google Drive Server
+
+```json
+{
+  "gdrive": {
+    "command": "npx",
+    "args": ["-y", "@google/mcp-server-gdrive"],
+    "env": {
+      "GOOGLE_CLIENT_ID": "${GOOGLE_CLIENT_ID}",
+      "GOOGLE_CLIENT_SECRET": "${GOOGLE_CLIENT_SECRET}",
+      "GOOGLE_REFRESH_TOKEN": "${GOOGLE_REFRESH_TOKEN}"
+    }
+  }
+}
+```
+
+### Map and Location Services
+
+#### Amap (高德地图) Server
+
+```json
+{
+  "amap": {
+    "command": "npx",
+    "args": ["-y", "@amap/amap-maps-mcp-server"],
+    "env": {
+      "AMAP_MAPS_API_KEY": "${AMAP_API_KEY}",
+      "AMAP_LANGUAGE": "zh-cn"
+    }
+  }
+}
+```
+
+#### OpenStreetMap Server
+
+```json
+{
+  "osm": {
+    "command": "python",
+    "args": ["-m", "mcp_server_osm"],
+    "env": {
+      "OSM_USER_AGENT": "MCPHub/1.0"
+    }
+  }
+}
+```
+
+## Advanced Configuration
+
+### Environment Variable Substitution
+
+MCPHub supports environment variable substitution using `${VAR_NAME}` syntax:
+
+```json
+{
+  "mcpServers": {
+    "api-server": {
+      "command": "python",
+      "args": ["-m", "api_server"],
+      "env": {
+        "API_KEY": "${API_KEY}",
+        "API_URL": "${API_BASE_URL}/v1",
+        "DEBUG": "${NODE_ENV:development}"
+      }
+    }
+  }
+}
+```
+
+Default values can be specified with `${VAR_NAME:default}`:
+
+```json
+{
+  "timeout": "${MCP_TIMEOUT:30000}",
+  "maxRestarts": "${MCP_MAX_RESTARTS:5}"
+}
+```
+
+### Conditional Configuration
+
+Use different configurations based on environment:
+
+```json
+{
+  "mcpServers": {
+    "database": {
+      "command": "python",
+      "args": ["-m", "db_server"],
+      "env": {
+        "DB_URL": "${NODE_ENV:development == 'production' ? DATABASE_URL : DEV_DATABASE_URL}"
+      }
+    }
+  }
+}
+```
+
+### Custom Server Scripts
+
+#### Local Python Server
+
+```json
+{
+  "custom-python": {
+    "command": "python",
+    "args": ["./servers/custom_server.py"],
+    "cwd": "/app/custom-servers",
+    "env": {
+      "PYTHONPATH": "/app/custom-servers",
+      "CONFIG_FILE": "./config.json"
+    }
+  }
+}
+```
+
+#### Local Node.js Server
+
+```json
+{
+  "custom-node": {
+    "command": "node",
+    "args": ["./servers/custom-server.js"],
+    "cwd": "/app/custom-servers",
+    "env": {
+      "NODE_ENV": "production"
+    }
+  }
+}
+```
+
+## Server Metadata Configuration
+
+### servers.json
+
+Complement `mcp_settings.json` with server metadata:
+
+```json
+{
+  "servers": {
+    "fetch": {
+      "name": "Fetch Server",
+      "description": "HTTP client for web requests",
+      "category": "web",
+      "tags": ["http", "api", "web"],
+      "version": "1.0.0",
+      "author": "MCPHub Team",
+      "documentation": "https://docs.mcphub.com/servers/fetch",
+      "enabled": true
+    },
+    "playwright": {
+      "name": "Playwright Browser",
+      "description": "Web automation and scraping",
+      "category": "automation",
+      "tags": ["browser", "scraping", "automation"],
+      "version": "2.0.0",
+      "enabled": true
+    }
+  },
+  "groups": {
+    "web-tools": {
+      "name": "Web Tools",
+      "description": "Tools for web interaction",
+      "servers": ["fetch", "playwright"],
+      "access": "public"
+    },
+    "admin-tools": {
+      "name": "Admin Tools",
+      "description": "Administrative utilities",
+      "servers": ["filesystem", "database"],
+      "access": "admin"
+    }
+  }
+}
+```
+
+## Group Management
+
+### Group Configuration
+
+```json
+{
+  "groups": {
+    "production": {
+      "name": "Production Tools",
+      "description": "Stable production servers",
+      "servers": ["fetch", "slack", "github"],
+      "access": "authenticated",
+      "rateLimit": {
+        "requestsPerMinute": 100,
+        "burstLimit": 20
+      }
+    },
+    "experimental": {
+      "name": "Experimental Features",
+      "description": "Beta and experimental servers",
+      "servers": ["experimental-ai", "beta-search"],
+      "access": "admin",
+      "enabled": false
+    }
+  }
+}
+```
+
+### Access Control
+
+| Access Level    | Description                |
+| --------------- | -------------------------- |
+| `public`        | No authentication required |
+| `authenticated` | Valid JWT token required   |
+| `admin`         | Admin role required        |
+| `custom`        | Custom permission logic    |
+
+## Dynamic Configuration
+
+### Hot Reloading
+
+MCPHub supports hot reloading of configurations:
+
+```bash
+# Reload configurations without restart
+curl -X POST http://localhost:3000/api/admin/reload-config \
+  -H "Authorization: Bearer your-admin-token"
+```
+
+### Configuration Validation
+
+MCPHub validates configurations on startup and reload:
+
+```json
+{
+  "validation": {
+    "strict": true,
+    "allowUnknownServers": false,
+    "requireDocumentation": true
+  }
+}
+```
+
+## Best Practices
+
+### Security
+
+1. **Use environment variables** for sensitive data:
+
+   ```json
+   {
+     "env": {
+       "API_KEY": "${API_KEY}",
+       "DATABASE_PASSWORD": "${DB_PASSWORD}"
+     }
+   }
+   ```
+
+2. **Limit server permissions**:
+   ```json
+   {
+     "filesystem": {
+       "command": "npx",
+       "args": ["-y", "@modelcontextprotocol/server-filesystem", "/restricted/path"],
+       "env": {
+         "READONLY": "true"
+       }
+     }
+   }
+   ```
+
+### Performance
+
+1. **Set appropriate timeouts**:
+
+   ```json
+   {
+     "timeout": 30000,
+     "maxRestarts": 3,
+     "restartDelay": 5000
+   }
+   ```
+
+2. **Resource limits**:
+   ```json
+   {
+     "env": {
+       "NODE_OPTIONS": "--max-old-space-size=512",
+       "MEMORY_LIMIT": "512MB"
+     }
+   }
+   ```
+
+### Monitoring
+
+1. **Enable health checks**:
+
+   ```json
+   {
+     "healthCheck": {
+       "enabled": true,
+       "interval": 30000,
+       "timeout": 5000
+     }
+   }
+   ```
+
+2. **Logging configuration**:
+   ```json
+   {
+     "env": {
+       "LOG_LEVEL": "info",
+       "LOG_FORMAT": "json"
+     }
+   }
+   ```
+
+## Troubleshooting
+
+### Common Issues
+
+**Server won't start**: Check command and arguments
+
+```bash
+# Test command manually
+uvx mcp-server-fetch
+```
+
+**Environment variables not found**: Verify `.env` file
+
+```bash
+# Check environment
+printenv | grep API_KEY
+```
+
+**Permission errors**: Check file permissions and paths
+
+```bash
+# Verify executable permissions
+ls -la /path/to/server
+```
+
+### Debug Configuration
+
+Enable debug mode for detailed logging:
+
+```json
+{
+  "debug": {
+    "enabled": true,
+    "logLevel": "debug",
+    "includeEnv": false,
+    "logStartup": true
+  }
+}
+```
+
+### Validation Errors
+
+Common validation errors and solutions:
+
+1. **Missing required fields**: Add `command` and `args`
+2. **Invalid timeout**: Use number, not string
+3. **Environment variable not found**: Check `.env` file
+4. **Command not found**: Verify installation and PATH
+
+This comprehensive guide covers all aspects of configuring MCP servers in MCPHub for various use cases and environments.

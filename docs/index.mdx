@@ -1,71 +1,95 @@
 ---
-title: Introduction
-description: "Welcome to the home of your new documentation"
+title: MCPHub Documentation
+description: 'The Unified Hub for Model Context Protocol (MCP) Servers'
 ---
 
-<img
-  className="block dark:hidden"
-  src="/images/hero-light.png"
-  alt="Hero Light"
-/>
-<img
-  className="hidden dark:block"
-  src="/images/hero-dark.png"
-  alt="Hero Dark"
-/>
+<img className="block dark:hidden" src="/images/hero-light.png" alt="Hero Light" />
+<img className="hidden dark:block" src="/images/hero-dark.png" alt="Hero Dark" />
 
-## Setting up
+# Welcome to MCPHub
 
-The first step to world-class documentation is setting up your editing environments.
+MCPHub makes it easy to manage and scale multiple MCP (Model Context Protocol) servers by organizing them into flexible Streamable HTTP (SSE) endpoints—supporting access to all servers, individual servers, or logical server groups.
+
+## Key Features
 
 <CardGroup cols={2}>
-  <Card
-    title="Edit Your Docs"
-    icon="pen-to-square"
-    href="https://mintlify.com/docs/quickstart"
-  >
-    Get your docs set up locally for easy development
+  <Card title="Unified Management" icon="server" href="/features/server-management">
+    Centrally manage multiple MCP servers with hot-swappable configuration
   </Card>
-  <Card
-    title="Preview Changes"
-    icon="image"
-    href="https://mintlify.com/docs/development"
-  >
-    Preview your changes before you push to make sure they're perfect
+  <Card title="Smart Routing" icon="route" href="/features/smart-routing">
+    AI-powered tool discovery using vector semantic search
+  </Card>
+  <Card title="Group Management" icon="users" href="/features/group-management">
+    Organize servers into logical groups for streamlined access control
+  </Card>
+  <Card title="Real-time Monitoring" icon="chart-line" href="/features/monitoring">
+    Monitor server status and performance from a unified dashboard
   </Card>
 </CardGroup>
 
-## Make it yours
+## Quick Start
 
-Update your docs to your brand and add valuable content for the best user conversion.
+Get MCPHub running in minutes with Docker:
+
+```bash
+docker run -p 3000:3000 samanhappy/mcphub
+```
+
+Or with custom configuration:
+
+```bash
+docker run -p 3000:3000 -v $(pwd)/mcp_settings.json:/app/mcp_settings.json samanhappy/mcphub
+```
+
+Access the dashboard at `http://localhost:3000` with default credentials:
+
+- Username: `admin`
+- Password: `admin123`
+
+## Core Concepts
+
+### MCP Endpoints
+
+MCPHub provides multiple ways to access your MCP servers:
+
+- **Unified Access**: `http://localhost:3000/mcp` - Access all servers
+- **Group Access**: `http://localhost:3000/mcp/{group}` - Access specific groups
+- **Server Access**: `http://localhost:3000/mcp/{server}` - Access individual servers
+- **Smart Routing**: `http://localhost:3000/mcp/$smart` - AI-powered tool discovery
+
+### Protocol Support
+
+- **HTTP MCP**: Modern streamable HTTP interface (recommended)
+- **SSE**: Server-Sent Events for legacy compatibility
+- **stdio**: Native MCP protocol for server communication
+
+## Getting Started
 
 <CardGroup cols={2}>
-  <Card
-    title="Customize Style"
-    icon="palette"
-    href="https://mintlify.com/docs/settings/global"
-  >
-    Customize your docs to your company's colors and brands
+  <Card title="Quick Start Guide" icon="rocket" href="/quickstart">
+    Get MCPHub running in 5 minutes
   </Card>
-  <Card
-    title="Reference APIs"
-    icon="code"
-    href="https://mintlify.com/docs/api-playground/openapi"
-  >
-    Automatically generate endpoints from an OpenAPI spec
+  <Card title="Installation Guide" icon="download" href="/installation">
+    Detailed installation instructions for all platforms
   </Card>
-  <Card
-    title="Add Components"
-    icon="screwdriver-wrench"
-    href="https://mintlify.com/docs/content/components/accordions"
-  >
-    Build interactive features and designs to guide your users
+  <Card title="Configuration" icon="cog" href="/configuration/mcp-settings">
+    Learn how to configure your MCP servers
   </Card>
-  <Card
-    title="Get Inspiration"
-    icon="stars"
-    href="https://mintlify.com/customers"
-  >
-    Check out our showcase of our favorite documentation
+  <Card title="API Reference" icon="code" href="/api-reference/introduction">
+    Complete API documentation
+  </Card>
+</CardGroup>
+
+## Community & Support
+
+<CardGroup cols={3}>
+  <Card title="GitHub" icon="github" href="https://github.com/samanhappy/mcphub">
+    Source code and issue tracking
+  </Card>
+  <Card title="Discord" icon="discord" href="https://discord.gg/qMKNsn5Q">
+    Join our community discussions
+  </Card>
+  <Card title="Sponsor" icon="heart" href="https://ko-fi.com/samanhappy">
+    Support the project development
   </Card>
 </CardGroup>

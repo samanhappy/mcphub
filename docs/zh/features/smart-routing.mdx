@@ -1,0 +1,691 @@
+---
+title: '智能路由'
+description: '自动负载均衡和请求路由到最佳的 MCP 服务器实例'
+---
+
+## 概述
+
+MCPHub 的智能路由系统自动将传入请求路由到最适合的 MCP 服务器实例。系统考虑服务器负载、响应时间、功能可用性和业务规则来做出路由决策。
+
+## 路由策略
+
+### 轮询路由
+
+最简单的路由策略，按顺序分发请求：
+
+```json
+{
+  "routing": {
+    "strategy": "round-robin",
+    "targets": [
+      {
+        "serverId": "server-1",
+        "weight": 1,
+        "enabled": true
+      },
+      {
+        "serverId": "server-2",
+        "weight": 1,
+        "enabled": true
+      },
+      {
+        "serverId": "server-3",
+        "weight": 1,
+        "enabled": true
+      }
+    ]
+  }
+}
+```
+
+### 加权轮询
+
+基于服务器容量分配不同权重：
+
+```json
+{
+  "routing": {
+    "strategy": "weighted-round-robin",
+    "targets": [
+      {
+        "serverId": "high-performance-server",
+        "weight": 3,
+        "specs": {
+          "cpu": "8 cores",
+          "memory": "32GB"
+        }
+      },
+      {
+        "serverId": "standard-server-1",
+        "weight": 2,
+        "specs": {
+          "cpu": "4 cores",
+          "memory": "16GB"
+        }
+      },
+      {
+        "serverId": "standard-server-2",
+        "weight": 1,
+        "specs": {
+          "cpu": "2 cores",
+          "memory": "8GB"
+        }
+      }
+    ]
+  }
+}
+```
+
+### 最少连接数
+
+将请求路由到当前连接数最少的服务器：
+
+```json
+{
+  "routing": {
+    "strategy": "least-connections",
+    "balancingMode": "dynamic",
+    "healthCheck": {
+      "enabled": true,
+      "interval": 10000
+    }
+  }
+}
+```
+
+### 基于响应时间
+
+路由到响应时间最短的服务器：
+
+```json
+{
+  "routing": {
+    "strategy": "fastest-response",
+    "metrics": {
+      "measurementWindow": "5m",
+      "sampleSize": 100,
+      "excludeSlowRequests": true,
+      "slowRequestThreshold": "5s"
+    }
+  }
+}
+```
+
+## 基于功能的路由
+
+### 工具特定路由
+
+根据请求的工具类型路由到专门的服务器：
+
+```json
+{
+  "routing": {
+    "strategy": "capability-based",
+    "rules": [
+      {
+        "condition": {
+          "tool": "filesystem"
+        },
+        "targets": ["filesystem-server-1", "filesystem-server-2"],
+        "strategy": "least-connections"
+      },
+      {
+        "condition": {
+          "tool": "web-search"
+        },
+        "targets": ["search-server-1", "search-server-2"],
+        "strategy": "round-robin"
+      },
+      {
+        "condition": {
+          "tool": "database"
+        },
+        "targets": ["db-server"],
+        "strategy": "single"
+      }
+    ],
+    "fallback": {
+      "targets": ["general-server-1", "general-server-2"],
+      "strategy": "round-robin"
+    }
+  }
+}
+```
+
+### 内容感知路由
+
+基于请求内容进行智能路由：
+
+```json
+{
+  "routing": {
+    "strategy": "content-aware",
+    "rules": [
+      {
+        "condition": {
+          "content.language": "python"
+        },
+        "targets": ["python-specialized-server"],
+        "reason": "Python代码分析专用服务器"
+      },
+      {
+        "condition": {
+          "content.size": "> 1MB"
+        },
+        "targets": ["high-memory-server"],
+        "reason": "大文件处理专用服务器"
+      },
+      {
+        "condition": {
+          "content.type": "image"
+        },
+        "targets": ["image-processing-server"],
+        "reason": "图像处理专用服务器"
+      }
+    ]
+  }
+}
+```
+
+## 地理位置路由
+
+### 基于客户端位置
+
+根据客户端地理位置路由到最近的服务器：
+
+```json
+{
+  "routing": {
+    "strategy": "geo-location",
+    "regions": [
+      {
+        "name": "北美",
+        "countries": ["US", "CA", "MX"],
+        "servers": ["us-east-1", "us-west-1", "ca-central-1"],
+        "strategy": "least-latency"
+      },
+      {
+        "name": "欧洲",
+        "countries": ["DE", "FR", "UK", "NL"],
+        "servers": ["eu-west-1", "eu-central-1"],
+        "strategy": "round-robin"
+      },
+      {
+        "name": "亚太",
+        "countries": ["CN", "JP", "KR", "SG"],
+        "servers": ["ap-southeast-1", "ap-northeast-1"],
+        "strategy": "fastest-response"
+      }
+    ],
+    "fallback": {
+      "servers": ["global-server-1"],
+      "strategy": "single"
+    }
+  }
+}
+```
+
+### 延迟优化
+
+```bash
+# 配置延迟监控
+curl -X PUT http://localhost:3000/api/routing/latency-config \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{
+    "enabled": true,
+    "measurementInterval": 30000,
+    "regions": [
+      {"id": "us-east", "endpoint": "ping.us-east.example.com"},
+      {"id": "eu-west", "endpoint": "ping.eu-west.example.com"},
+      {"id": "ap-southeast", "endpoint": "ping.ap-southeast.example.com"}
+    ],
+    "routing": {
+      "preferLowLatency": true,
+      "maxLatencyThreshold": "200ms",
+      "fallbackOnTimeout": true
+    }
+  }'
+```
+
+## 负载感知路由
+
+### 实时负载监控
+
+```json
+{
+  "routing": {
+    "strategy": "load-aware",
+    "loadMetrics": {
+      "cpu": {
+        "threshold": 80,
+        "weight": 0.4
+      },
+      "memory": {
+        "threshold": 85,
+        "weight": 0.3
+      },
+      "connections": {
+        "threshold": 1000,
+        "weight": 0.2
+      },
+      "responseTime": {
+        "threshold": "2s",
+        "weight": 0.1
+      }
+    },
+    "adaptation": {
+      "enabled": true,
+      "adjustmentInterval": 60000,
+      "emergencyThreshold": 95
+    }
+  }
+}
+```
+
+### 预测性负载均衡
+
+```json
+{
+  "routing": {
+    "strategy": "predictive",
+    "prediction": {
+      "algorithm": "linear-regression",
+      "trainingWindow": "7d",
+      "predictionHorizon": "1h",
+      "factors": ["historical_load", "time_of_day", "day_of_week", "seasonal_patterns"]
+    },
+    "adaptation": {
+      "preemptiveScaling": true,
+      "scaleUpThreshold": 70,
+      "scaleDownThreshold": 30
+    }
+  }
+}
+```
+
+## 故障转移和恢复
+
+### 自动故障转移
+
+```json
+{
+  "routing": {
+    "strategy": "high-availability",
+    "failover": {
+      "enabled": true,
+      "detection": {
+        "healthCheckFailures": 3,
+        "timeoutThreshold": "10s",
+        "checkInterval": 5000
+      },
+      "recovery": {
+        "automaticRecovery": true,
+        "recoveryChecks": 5,
+        "recoveryInterval": 30000
+      }
+    },
+    "clusters": [
+      {
+        "name": "primary",
+        "servers": ["server-1", "server-2"],
+        "priority": 1
+      },
+      {
+        "name": "secondary",
+        "servers": ["backup-server-1", "backup-server-2"],
+        "priority": 2
+      }
+    ]
+  }
+}
+```
+
+### 断路器模式
+
+```json
+{
+  "routing": {
+    "circuitBreaker": {
+      "enabled": true,
+      "failureThreshold": 10,
+      "timeWindow": 60000,
+      "halfOpenRetries": 3,
+      "fallback": {
+        "type": "cached-response",
+        "ttl": 300000
+      }
+    }
+  }
+}
+```
+
+## 会话亲和性
+
+### 粘性会话
+
+保持用户会话与特定服务器的关联：
+
+```json
+{
+  "routing": {
+    "strategy": "session-affinity",
+    "affinity": {
+      "type": "cookie",
+      "cookieName": "mcphub-server-id",
+      "ttl": 3600000,
+      "fallbackOnUnavailable": true
+    },
+    "sessionStore": {
+      "type": "redis",
+      "config": {
+        "host": "localhost",
+        "port": 6379,
+        "db": 1
+      }
+    }
+  }
+}
+```
+
+### 基于用户 ID 的路由
+
+```json
+{
+  "routing": {
+    "strategy": "user-based",
+    "userRouting": {
+      "algorithm": "consistent-hashing",
+      "hashFunction": "sha256",
+      "virtualNodes": 100,
+      "replicationFactor": 2
+    }
+  }
+}
+```
+
+## 动态路由配置
+
+### 运行时配置更新
+
+```bash
+# 更新路由配置
+curl -X PUT http://localhost:3000/api/routing/config \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{
+    "strategy": "weighted-round-robin",
+    "weights": {
+      "server-1": 3,
+      "server-2": 2,
+      "server-3": 1
+    },
+    "applyImmediately": true
+  }'
+```
+
+### A/B 测试路由
+
+```json
+{
+  "routing": {
+    "strategy": "ab-testing",
+    "experiments": [
+      {
+        "name": "new-algorithm-test",
+        "enabled": true,
+        "trafficSplit": {
+          "control": 70,
+          "variant": 30
+        },
+        "rules": {
+          "control": {
+            "strategy": "round-robin",
+            "servers": ["stable-server-1", "stable-server-2"]
+          },
+          "variant": {
+            "strategy": "ai-optimized",
+            "servers": ["experimental-server-1"]
+          }
+        },
+        "metrics": ["response_time", "error_rate", "user_satisfaction"]
+      }
+    ]
+  }
+}
+```
+
+## 路由分析和监控
+
+### 实时路由指标
+
+```bash
+# 获取路由统计
+curl -X GET http://localhost:3000/api/routing/metrics \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+响应示例：
+
+```json
+{
+  "timestamp": "2024-01-01T12:00:00Z",
+  "totalRequests": 15420,
+  "routingDistribution": {
+    "server-1": { "requests": 6168, "percentage": 40 },
+    "server-2": { "requests": 4626, "percentage": 30 },
+    "server-3": { "requests": 3084, "percentage": 20 },
+    "backup-server": { "requests": 1542, "percentage": 10 }
+  },
+  "performance": {
+    "avgResponseTime": "245ms",
+    "p95ResponseTime": "580ms",
+    "errorRate": "0.3%"
+  },
+  "failovers": {
+    "total": 2,
+    "byServer": {
+      "server-2": 1,
+      "server-3": 1
+    }
+  }
+}
+```
+
+### 路由决策日志
+
+```bash
+# 启用路由决策日志
+curl -X PUT http://localhost:3000/api/routing/logging \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{
+    "enabled": true,
+    "level": "info",
+    "includeDecisionFactors": true,
+    "sampleRate": 0.1
+  }'
+```
+
+## 自定义路由规则
+
+### 基于业务逻辑的路由
+
+```json
+{
+  "routing": {
+    "strategy": "custom-rules",
+    "rules": [
+      {
+        "name": "premium-users",
+        "priority": 1,
+        "condition": "user.tier === 'premium'",
+        "action": {
+          "targetServers": ["premium-server-1", "premium-server-2"],
+          "strategy": "least-connections",
+          "qos": {
+            "maxResponseTime": "1s",
+            "priority": "high"
+          }
+        }
+      },
+      {
+        "name": "high-volume-requests",
+        "priority": 2,
+        "condition": "request.size > 10MB",
+        "action": {
+          "targetServers": ["high-capacity-server"],
+          "strategy": "single",
+          "timeout": "60s"
+        }
+      },
+      {
+        "name": "batch-processing",
+        "priority": 3,
+        "condition": "request.type === 'batch'",
+        "action": {
+          "targetServers": ["batch-server-1", "batch-server-2"],
+          "strategy": "queue-based",
+          "queueConfig": {
+            "maxSize": 1000,
+            "timeout": "5m"
+          }
+        }
+      }
+    ]
+  }
+}
+```
+
+### JavaScript 路由函数
+
+```javascript
+// 自定义路由函数
+function customRouting(request, servers, metrics) {
+  const { user, content, timestamp } = request;
+
+  // 工作时间优先使用高性能服务器
+  const isBusinessHours =
+    new Date(timestamp).getHours() >= 9 && new Date(timestamp).getHours() <= 17;
+
+  if (isBusinessHours && user.priority === 'high') {
+    return servers.filter((s) => s.tags.includes('high-performance'));
+  }
+
+  // 基于内容类型的特殊路由
+  if (content.type === 'code-analysis') {
+    return servers.filter((s) => s.capabilities.includes('code-analysis'));
+  }
+
+  // 默认负载均衡
+  return servers.sort((a, b) => a.currentLoad - b.currentLoad);
+}
+```
+
+## 路由优化
+
+### 机器学习优化
+
+```json
+{
+  "routing": {
+    "strategy": "ml-optimized",
+    "mlConfig": {
+      "algorithm": "reinforcement-learning",
+      "rewardFunction": "response_time_weighted",
+      "trainingData": {
+        "features": [
+          "server_load",
+          "response_time_history",
+          "request_complexity",
+          "user_pattern",
+          "time_of_day"
+        ],
+        "targetMetric": "overall_satisfaction"
+      },
+      "updateFrequency": "hourly",
+      "explorationRate": 0.1
+    }
+  }
+}
+```
+
+### 缓存感知路由
+
+```json
+{
+  "routing": {
+    "strategy": "cache-aware",
+    "caching": {
+      "enabled": true,
+      "levels": [
+        {
+          "type": "local",
+          "ttl": 300,
+          "maxSize": "100MB"
+        },
+        {
+          "type": "distributed",
+          "provider": "redis",
+          "ttl": 3600,
+          "maxSize": "1GB"
+        }
+      ],
+      "routing": {
+        "preferCachedServers": true,
+        "cacheHitBonus": 0.3,
+        "cacheMissThreshold": 0.8
+      }
+    }
+  }
+}
+```
+
+## 故障排除
+
+### 路由调试
+
+```bash
+# 调试特定请求的路由决策
+curl -X POST http://localhost:3000/api/routing/debug \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{
+    "request": {
+      "userId": "user123",
+      "tool": "filesystem",
+      "content": {"type": "read", "path": "/data/file.txt"}
+    },
+    "traceRoute": true
+  }'
+```
+
+### 路由性能分析
+
+```bash
+# 获取路由性能报告
+curl -X GET http://localhost:3000/api/routing/performance \
+  -H "Authorization: Bearer $TOKEN" \
+  -G -d "timeRange=1h" -d "detailed=true"
+```
+
+### 常见问题
+
+1. **不均匀的负载分布**
+
+   - 检查服务器权重配置
+   - 验证健康检查设置
+   - 分析请求模式
+
+2. **频繁的故障转移**
+
+   - 调整健康检查阈值
+   - 检查网络连接稳定性
+   - 优化服务器资源
+
+3. **路由延迟过高**
+   - 简化路由规则
+   - 优化路由算法
+   - 使用缓存加速决策
+
+有关更多信息，请参阅 [监控](/zh/features/monitoring) 和 [服务器管理](/zh/features/server-management) 文档。

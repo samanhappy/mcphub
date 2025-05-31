@@ -1,0 +1,338 @@
+---
+title: 'Authentication & Security'
+description: 'Configure authentication and security settings for MCPHub'
+---
+
+## Overview
+
+MCPHub provides flexible authentication mechanisms to secure your MCP server management platform. The system supports multiple authentication methods and role-based access control.
+
+## Authentication Methods
+
+### Environment-based Authentication
+
+Configure basic authentication using environment variables:
+
+```bash
+# Basic auth credentials
+AUTH_USERNAME=admin
+AUTH_PASSWORD=your-secure-password
+
+# JWT settings
+JWT_SECRET=your-jwt-secret-key
+JWT_EXPIRES_IN=24h
+```
+
+### Database Authentication
+
+For production deployments, enable database-backed user management:
+
+```json
+{
+  "auth": {
+    "provider": "database",
+    "database": {
+      "url": "postgresql://user:pass@localhost:5432/mcphub",
+      "userTable": "users"
+    }
+  }
+}
+```
+
+## User Management
+
+### Creating Users
+
+Create users via the admin interface or API:
+
+```bash
+# Via API
+curl -X POST http://localhost:3000/api/auth/users \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $ADMIN_TOKEN" \
+  -d '{
+    "username": "newuser",
+    "email": "user@example.com",
+    "password": "securepassword",
+    "role": "user"
+  }'
+```
+
+### User Roles
+
+MCPHub supports role-based access control:
+
+- **Admin**: Full system access, user management, server configuration
+- **Manager**: Server management, group management, monitoring
+- **User**: Basic server access within assigned groups
+- **Viewer**: Read-only access to assigned resources
+
+## Group-based Access Control
+
+### Assigning Users to Groups
+
+```bash
+# Add user to group
+curl -X POST http://localhost:3000/api/groups/{groupId}/users \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{"userId": "user123"}'
+```
+
+### Group Permissions
+
+Configure group-level permissions:
+
+```json
+{
+  "groupId": "dev-team",
+  "permissions": {
+    "servers": ["read", "write", "execute"],
+    "tools": ["read", "execute"],
+    "logs": ["read"],
+    "config": ["read"]
+  }
+}
+```
+
+## API Authentication
+
+### JWT Token Authentication
+
+```javascript
+// Login to get token
+const response = await fetch('/api/auth/login', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    username: 'your-username',
+    password: 'your-password',
+  }),
+});
+
+const { token } = await response.json();
+
+// Use token for authenticated requests
+const serversResponse = await fetch('/api/servers', {
+  headers: { Authorization: `Bearer ${token}` },
+});
+```
+
+### API Key Authentication
+
+For service-to-service communication:
+
+```bash
+# Generate API key
+curl -X POST http://localhost:3000/api/auth/api-keys \
+  -H "Authorization: Bearer $ADMIN_TOKEN" \
+  -d '{
+    "name": "my-service",
+    "permissions": ["servers:read", "tools:execute"]
+  }'
+
+# Use API key
+curl -H "X-API-Key: your-api-key" \
+  http://localhost:3000/api/servers
+```
+
+## Security Configuration
+
+### HTTPS Setup
+
+Configure HTTPS for production:
+
+```yaml
+# docker-compose.yml
+services:
+  mcphub:
+    environment:
+      - HTTPS_ENABLED=true
+      - SSL_CERT_PATH=/certs/cert.pem
+      - SSL_KEY_PATH=/certs/key.pem
+    volumes:
+      - ./certs:/certs:ro
+```
+
+### CORS Configuration
+
+Configure CORS for web applications:
+
+```json
+{
+  "cors": {
+    "origin": ["https://your-frontend.com"],
+    "credentials": true,
+    "methods": ["GET", "POST", "PUT", "DELETE"]
+  }
+}
+```
+
+### Rate Limiting
+
+Protect against abuse with rate limiting:
+
+```json
+{
+  "rateLimit": {
+    "windowMs": 900000,
+    "max": 100,
+    "message": "Too many requests from this IP"
+  }
+}
+```
+
+## Session Management
+
+### Session Configuration
+
+```json
+{
+  "session": {
+    "secret": "your-session-secret",
+    "cookie": {
+      "secure": true,
+      "httpOnly": true,
+      "maxAge": 86400000
+    },
+    "store": "redis",
+    "redis": {
+      "host": "localhost",
+      "port": 6379
+    }
+  }
+}
+```
+
+### Logout and Session Cleanup
+
+```javascript
+// Logout endpoint
+app.post('/api/auth/logout', (req, res) => {
+  req.session.destroy();
+  res.json({ message: 'Logged out successfully' });
+});
+```
+
+## Security Best Practices
+
+### Password Security
+
+- Use strong password requirements
+- Implement password hashing with bcrypt
+- Support password reset functionality
+- Enable two-factor authentication (2FA)
+
+### Token Security
+
+- Use secure JWT secrets
+- Implement token rotation
+- Set appropriate expiration times
+- Store tokens securely in httpOnly cookies
+
+### Network Security
+
+- Use HTTPS in production
+- Implement proper CORS policies
+- Enable request validation
+- Use security headers (helmet.js)
+
+### Monitoring Security Events
+
+```javascript
+// Log security events
+const auditLog = {
+  event: 'login_attempt',
+  user: username,
+  ip: req.ip,
+  userAgent: req.headers['user-agent'],
+  success: true,
+  timestamp: new Date(),
+};
+```
+
+## Troubleshooting
+
+### Common Authentication Issues
+
+**Invalid Credentials**
+
+```bash
+# Check user exists and password is correct
+curl -X POST http://localhost:3000/api/auth/verify \
+  -d '{"username": "user", "password": "pass"}'
+```
+
+**Token Expiration**
+
+```javascript
+// Handle token refresh
+if (response.status === 401) {
+  const newToken = await refreshToken();
+  // Retry request with new token
+}
+```
+
+**Permission Denied**
+
+```bash
+# Check user permissions
+curl -H "Authorization: Bearer $TOKEN" \
+  http://localhost:3000/api/auth/permissions
+```
+
+### Debug Authentication
+
+Enable authentication debugging:
+
+```bash
+DEBUG=mcphub:auth npm start
+```
+
+## Integration Examples
+
+### Frontend Integration
+
+```javascript
+// React authentication hook
+const useAuth = () => {
+  const [user, setUser] = useState(null);
+
+  const login = async (credentials) => {
+    const response = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(credentials),
+    });
+
+    if (response.ok) {
+      const userData = await response.json();
+      setUser(userData.user);
+      return true;
+    }
+    return false;
+  };
+
+  return { user, login };
+};
+```
+
+### Middleware Integration
+
+```javascript
+// Express middleware
+const authMiddleware = (req, res, next) => {
+  const token = req.headers.authorization?.split(' ')[1];
+
+  if (!token) {
+    return res.status(401).json({ error: 'No token provided' });
+  }
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    req.user = decoded;
+    next();
+  } catch (error) {
+    res.status(401).json({ error: 'Invalid token' });
+  }
+};
+```

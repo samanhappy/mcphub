@@ -1,0 +1,567 @@
+---
+title: '组管理'
+description: '组织用户和服务器为逻辑组，实现高效的访问控制'
+---
+
+## 概述
+
+MCPHub 的组管理系统允许您将用户和服务器组织成逻辑组，从而简化权限管理和访问控制。组提供了一种灵活的方式来管理大规模部署中的资源。
+
+## 创建组
+
+### 通过仪表板
+
+1. **导航到组部分**: 在主仪表板中点击"组"
+2. **点击"创建组"**: 开始组创建流程
+3. **填写组详细信息**:
+   - **组名**: 唯一的组标识符
+   - **显示名称**: 用户友好的组名称
+   - **描述**: 组的目的和范围
+   - **父组**: 可选的层次结构
+
+### 通过 API
+
+```bash
+curl -X POST http://localhost:3000/api/groups \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{
+    "name": "development-team",
+    "displayName": "开发团队",
+    "description": "前端和后端开发人员",
+    "parentGroup": null,
+    "settings": {
+      "autoAssign": false,
+      "maxMembers": 50,
+      "requireApproval": true
+    }
+  }'
+```
+
+### 通过配置文件
+
+在 `groups.json` 中定义组：
+
+```json
+{
+  "groups": {
+    "dev-team": {
+      "displayName": "开发团队",
+      "description": "应用程序开发人员",
+      "permissions": {
+        "servers": ["read", "write", "execute"],
+        "tools": ["read", "execute"],
+        "logs": ["read"]
+      },
+      "members": ["user1", "user2"],
+      "servers": ["dev-server-1", "dev-server-2"]
+    },
+    "qa-team": {
+      "displayName": "质量保证团队",
+      "description": "测试和质量保证",
+      "permissions": {
+        "servers": ["read", "execute"],
+        "tools": ["read", "execute"],
+        "logs": ["read"]
+      },
+      "members": ["qa1", "qa2"],
+      "servers": ["test-server", "staging-server"]
+    }
+  }
+}
+```
+
+## 组层次结构
+
+### 嵌套组
+
+创建组层次结构以实现更好的组织：
+
+```json
+{
+  "groups": {
+    "engineering": {
+      "displayName": "工程部",
+      "description": "所有工程团队",
+      "children": ["frontend", "backend", "devops"]
+    },
+    "frontend": {
+      "displayName": "前端团队",
+      "parent": "engineering",
+      "servers": ["frontend-dev", "frontend-staging"]
+    },
+    "backend": {
+      "displayName": "后端团队",
+      "parent": "engineering",
+      "servers": ["api-server", "database-server"]
+    },
+    "devops": {
+      "displayName": "运维团队",
+      "parent": "engineering",
+      "servers": ["monitoring", "deployment"]
+    }
+  }
+}
+```
+
+### 继承权限
+
+子组从父组继承权限：
+
+```bash
+# 检查继承的权限
+curl -X GET http://localhost:3000/api/groups/frontend/permissions?inherited=true \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+## 用户管理
+
+### 添加用户到组
+
+```bash
+# 添加单个用户
+curl -X POST http://localhost:3000/api/groups/dev-team/members \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{
+    "userId": "user123",
+    "role": "member"
+  }'
+
+# 批量添加用户
+curl -X POST http://localhost:3000/api/groups/dev-team/members/bulk \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{
+    "users": [
+      {"userId": "user1", "role": "member"},
+      {"userId": "user2", "role": "admin"},
+      {"userId": "user3", "role": "member"}
+    ]
+  }'
+```
+
+### 用户角色
+
+每个组内支持不同的用户角色：
+
+- **组管理员**: 完整的组管理权限
+- **成员**: 标准组访问权限
+- **查看者**: 只读访问权限
+- **访客**: 有限的临时访问权限
+
+### 移除用户
+
+```bash
+# 从组中移除用户
+curl -X DELETE http://localhost:3000/api/groups/dev-team/members/user123 \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+## 服务器分配
+
+### 分配服务器到组
+
+```bash
+# 分配单个服务器
+curl -X POST http://localhost:3000/api/groups/dev-team/servers \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{
+    "serverId": "my-server",
+    "permissions": ["read", "write", "execute"]
+  }'
+
+# 批量分配服务器
+curl -X POST http://localhost:3000/api/groups/dev-team/servers/bulk \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{
+    "servers": [
+      {
+        "serverId": "server1",
+        "permissions": ["read", "write"]
+      },
+      {
+        "serverId": "server2",
+        "permissions": ["read", "execute"]
+      }
+    ]
+  }'
+```
+
+### 服务器权限级别
+
+为每个组-服务器对定义细粒度权限：
+
+```json
+{
+  "serverId": "my-server",
+  "permissions": {
+    "execute": {
+      "allowed": true,
+      "tools": ["filesystem", "web-search"],
+      "restrictions": {
+        "maxRequests": 100,
+        "timeWindow": "1h"
+      }
+    },
+    "configure": {
+      "allowed": false
+    },
+    "logs": {
+      "allowed": true,
+      "level": ["info", "warn", "error"]
+    }
+  }
+}
+```
+
+## 权限管理
+
+### 组权限模型
+
+```json
+{
+  "groupId": "dev-team",
+  "permissions": {
+    "servers": {
+      "create": false,
+      "read": true,
+      "update": true,
+      "delete": false,
+      "execute": true
+    },
+    "tools": {
+      "filesystem": {
+        "read": true,
+        "write": true,
+        "paths": ["/app/data", "/tmp"]
+      },
+      "web-search": {
+        "enabled": true,
+        "maxQueries": 50
+      }
+    },
+    "monitoring": {
+      "viewLogs": true,
+      "viewMetrics": true,
+      "exportData": false
+    },
+    "administration": {
+      "manageUsers": false,
+      "manageServers": true,
+      "manageGroups": false
+    }
+  }
+}
+```
+
+### 动态权限
+
+基于条件的动态权限：
+
+```json
+{
+  "permissions": {
+    "servers": {
+      "execute": {
+        "condition": "time.hour >= 9 && time.hour <= 17",
+        "message": "服务器执行仅在工作时间内允许"
+      }
+    },
+    "tools": {
+      "filesystem": {
+        "write": {
+          "condition": "user.role === 'admin' || group.name === 'senior-devs'",
+          "message": "写入权限需要管理员或高级开发者角色"
+        }
+      }
+    }
+  }
+}
+```
+
+## 配额管理
+
+### 设置组配额
+
+```bash
+curl -X PUT http://localhost:3000/api/groups/dev-team/quotas \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{
+    "requests": {
+      "daily": 1000,
+      "monthly": 30000
+    },
+    "storage": {
+      "maxSize": "10GB",
+      "retention": "30d"
+    },
+    "compute": {
+      "maxConcurrentRequests": 10,
+      "maxExecutionTime": "5m"
+    }
+  }'
+```
+
+### 监控配额使用
+
+```bash
+# 获取当前配额使用情况
+curl -X GET http://localhost:3000/api/groups/dev-team/quotas/usage \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+响应示例：
+
+```json
+{
+  "groupId": "dev-team",
+  "period": "2024-01-01T00:00:00Z",
+  "usage": {
+    "requests": {
+      "used": 750,
+      "limit": 1000,
+      "remaining": 250
+    },
+    "storage": {
+      "used": "7.2GB",
+      "limit": "10GB",
+      "remaining": "2.8GB"
+    },
+    "compute": {
+      "currentConcurrent": 3,
+      "maxConcurrent": 10,
+      "avgExecutionTime": "2m 15s"
+    }
+  }
+}
+```
+
+## 组策略
+
+### 定义组策略
+
+```json
+{
+  "groupId": "dev-team",
+  "policies": {
+    "security": {
+      "requireMFA": false,
+      "sessionTimeout": "8h",
+      "ipWhitelist": ["192.168.1.0/24", "10.0.0.0/8"]
+    },
+    "usage": {
+      "allowWeekendAccess": true,
+      "restrictHolidays": false,
+      "maxSessionDuration": "12h"
+    },
+    "data": {
+      "encryptionRequired": true,
+      "dataRetention": "90d",
+      "exportAllowed": false
+    }
+  }
+}
+```
+
+### 策略继承
+
+```bash
+# 应用策略模板
+curl -X POST http://localhost:3000/api/groups/dev-team/policies/apply \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{
+    "template": "development-team-template",
+    "overrides": {
+      "security.sessionTimeout": "4h"
+    }
+  }'
+```
+
+## 自动化组管理
+
+### 自动用户分配
+
+基于属性自动分配用户：
+
+```json
+{
+  "autoAssignment": {
+    "enabled": true,
+    "rules": [
+      {
+        "condition": "user.department === '开发'",
+        "action": {
+          "addToGroup": "dev-team",
+          "role": "member"
+        }
+      },
+      {
+        "condition": "user.title.includes('高级')",
+        "action": {
+          "addToGroup": "senior-devs",
+          "role": "admin"
+        }
+      }
+    ]
+  }
+}
+```
+
+### 定时任务
+
+```bash
+# 创建定时清理任务
+curl -X POST http://localhost:3000/api/groups/dev-team/jobs \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{
+    "name": "cleanup-inactive-users",
+    "schedule": "0 2 * * *",
+    "action": "removeInactiveUsers",
+    "params": {
+      "inactiveDays": 30
+    }
+  }'
+```
+
+## 组通知
+
+### 配置通知
+
+```json
+{
+  "groupId": "dev-team",
+  "notifications": {
+    "channels": {
+      "email": {
+        "enabled": true,
+        "recipients": ["team-lead@company.com"]
+      },
+      "slack": {
+        "enabled": true,
+        "webhook": "https://hooks.slack.com/...",
+        "channel": "#dev-team"
+      }
+    },
+    "events": ["userJoined", "userLeft", "serverAdded", "quotaExceeded", "securityAlert"]
+  }
+}
+```
+
+### 发送组通知
+
+```bash
+curl -X POST http://localhost:3000/api/groups/dev-team/notifications \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{
+    "type": "announcement",
+    "title": "维护通知",
+    "message": "服务器将在今晚 10 点进行维护",
+    "priority": "high",
+    "channels": ["email", "slack"]
+  }'
+```
+
+## 组分析
+
+### 使用统计
+
+```bash
+# 获取组使用统计
+curl -X GET http://localhost:3000/api/groups/dev-team/analytics \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+响应示例：
+
+```json
+{
+  "groupId": "dev-team",
+  "period": "30d",
+  "stats": {
+    "activeUsers": 12,
+    "totalRequests": 15750,
+    "avgResponseTime": "250ms",
+    "errorRate": "0.5%",
+    "mostUsedTools": [
+      { "name": "filesystem", "usage": 8500 },
+      { "name": "web-search", "usage": 4200 },
+      { "name": "database", "usage": 3050 }
+    ],
+    "peakUsageHours": [9, 10, 14, 15, 16]
+  }
+}
+```
+
+### 生成报告
+
+```bash
+# 生成月度报告
+curl -X POST http://localhost:3000/api/groups/dev-team/reports \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{
+    "type": "monthly",
+    "format": "pdf",
+    "includeDetails": true,
+    "recipients": ["manager@company.com"]
+  }'
+```
+
+## 故障排除
+
+### 常见问题
+
+1. **用户无法访问组资源**
+
+   ```bash
+   # 检查用户组成员身份
+   curl -X GET http://localhost:3000/api/users/user123/groups \
+     -H "Authorization: Bearer $TOKEN"
+   ```
+
+2. **权限配置错误**
+
+   ```bash
+   # 验证权限设置
+   curl -X GET http://localhost:3000/api/groups/dev-team/permissions/validate \
+     -H "Authorization: Bearer $TOKEN"
+   ```
+
+3. **配额超限**
+   ```bash
+   # 检查配额状态
+   curl -X GET http://localhost:3000/api/groups/dev-team/quotas/status \
+     -H "Authorization: Bearer $TOKEN"
+   ```
+
+### 调试组权限
+
+启用权限调试：
+
+```bash
+# 调试用户权限
+curl -X GET http://localhost:3000/api/debug/permissions \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{
+    "userId": "user123",
+    "resource": "server:my-server",
+    "action": "execute"
+  }'
+```
+
+## 最佳实践
+
+1. **组织结构**: 使用层次化组结构镜像您的组织架构
+2. **权限最小化**: 只授予执行任务所需的最小权限
+3. **定期审核**: 定期审核组成员身份和权限
+4. **自动化**: 使用自动化规则减少手动管理开销
+5. **监控**: 设置监控和警报以跟踪组活动
+
+有关更多信息，请参阅 [身份认证与安全](/zh/features/authentication) 和 [监控](/zh/features/monitoring) 文档。

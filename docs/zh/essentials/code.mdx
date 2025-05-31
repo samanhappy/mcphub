@@ -1,33 +1,823 @@
 ---
 title: '代码块'
-description: '如何在您的文档中编写代码块'
+description: 'MCPHub 文档中代码块的编写和展示指南'
 ---
 
 ## 内联代码
 
-要表示内联代码块，请用反引号 `` ` `` 包围文本。
+在 MCPHub 文档中使用内联代码来标记命令、配置键、文件名或短代码片段：
 
 ```md
-在此文本中，`console.log('hello');` 是内联代码。
+使用 `mcphub start` 命令启动服务器，配置 `MCPHUB_PORT` 环境变量。
 ```
 
-在此文本中，`console.log('hello');` 是内联代码。
+使用 `mcphub start` 命令启动服务器，配置 `MCPHUB_PORT` 环境变量。
 
-## 代码块
+## 代码块语法
 
-您可以创建代码块以显示多行代码。这些代码块也支持语法高亮显示。
+### 基本代码块
+
+MCPHub 支持多种编程语言的语法高亮：
+
+````md
+```javascript
+// JavaScript 示例
+const mcpClient = new MCPClient({
+  endpoint: process.env.MCPHUB_ENDPOINT,
+  apiKey: process.env.MCPHUB_API_KEY,
+});
+```
+````
 
 ```javascript
-console.log('Hello World');
+// JavaScript 示例
+const mcpClient = new MCPClient({
+  endpoint: process.env.MCPHUB_ENDPOINT,
+  apiKey: process.env.MCPHUB_API_KEY,
+});
 ```
+
+### TypeScript 代码
+
+````md
+```typescript
+interface MCPServerConfig {
+  id: string;
+  name: string;
+  endpoint: string;
+  capabilities: string[];
+  metadata?: Record<string, any>;
+}
+
+class MCPServer implements MCPServerConfig {
+  constructor(
+    public id: string,
+    public name: string,
+    public endpoint: string,
+    public capabilities: string[],
+  ) {}
+}
+```
+````
+
+```typescript
+interface MCPServerConfig {
+  id: string;
+  name: string;
+  endpoint: string;
+  capabilities: string[];
+  metadata?: Record<string, any>;
+}
+
+class MCPServer implements MCPServerConfig {
+  constructor(
+    public id: string,
+    public name: string,
+    public endpoint: string,
+    public capabilities: string[],
+  ) {}
+}
+```
+
+### Python 代码
+
+````md
+```python
+import requests
+from typing import Dict, List, Optional
+
+class MCPHubClient:
+    def __init__(self, endpoint: str, api_key: str):
+        self.endpoint = endpoint
+        self.api_key = api_key
+        self.headers = {
+            'Authorization': f'Bearer {api_key}',
+            'Content-Type': 'application/json'
+        }
+
+    def create_server(self, config: Dict) -> Dict:
+        response = requests.post(
+            f'{self.endpoint}/api/servers',
+            json=config,
+            headers=self.headers
+        )
+        return response.json()
+```
+````
+
+```python
+import requests
+from typing import Dict, List, Optional
+
+class MCPHubClient:
+    def __init__(self, endpoint: str, api_key: str):
+        self.endpoint = endpoint
+        self.api_key = api_key
+        self.headers = {
+            'Authorization': f'Bearer {api_key}',
+            'Content-Type': 'application/json'
+        }
+
+    def create_server(self, config: Dict) -> Dict:
+        response = requests.post(
+            f'{self.endpoint}/api/servers',
+            json=config,
+            headers=self.headers
+        )
+        return response.json()
+```
+
+## 配置文件
+
+### YAML 配置
+
+````md
+```yaml title="mcphub.yml"
+server:
+  port: 3000
+  host: 0.0.0.0
+
+database:
+  type: postgresql
+  host: localhost
+  port: 5432
+  database: mcphub
+  username: mcphub_user
+  password: secure_password
+
+mcp:
+  servers:
+    - id: ai-assistant
+      name: AI Assistant Server
+      endpoint: https://ai.example.com
+      capabilities:
+        - chat
+        - completion
+    - id: data-processor
+      name: Data Processing Server
+      endpoint: https://data.example.com
+      capabilities:
+        - analysis
+        - transformation
+
+routing:
+  strategy: round_robin
+  health_check:
+    enabled: true
+    interval: 30s
+    timeout: 5s
+
+logging:
+  level: info
+  format: json
+  file: /var/log/mcphub/app.log
+```
+````
+
+```yaml title="mcphub.yml"
+server:
+  port: 3000
+  host: 0.0.0.0
+
+database:
+  type: postgresql
+  host: localhost
+  port: 5432
+  database: mcphub
+  username: mcphub_user
+  password: secure_password
+
+mcp:
+  servers:
+    - id: ai-assistant
+      name: AI Assistant Server
+      endpoint: https://ai.example.com
+      capabilities:
+        - chat
+        - completion
+    - id: data-processor
+      name: Data Processing Server
+      endpoint: https://data.example.com
+      capabilities:
+        - analysis
+        - transformation
+
+routing:
+  strategy: round_robin
+  health_check:
+    enabled: true
+    interval: 30s
+    timeout: 5s
+
+logging:
+  level: info
+  format: json
+  file: /var/log/mcphub/app.log
+```
+
+### JSON 配置
+
+````md
+```json title="package.json"
+{
+  "name": "@mcphub/server",
+  "version": "2.1.0",
+  "description": "Model Context Protocol Hub Server",
+  "main": "dist/index.js",
+  "scripts": {
+    "start": "node dist/index.js",
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "lint": "eslint src/**/*.ts",
+    "migrate": "prisma migrate deploy"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.7.0",
+    "express": "^4.18.2",
+    "helmet": "^7.1.0",
+    "cors": "^2.8.5",
+    "jsonwebtoken": "^9.0.2",
+    "bcryptjs": "^2.4.3",
+    "winston": "^3.11.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "@types/express": "^4.17.21",
+    "typescript": "^5.3.0",
+    "tsx": "^4.6.0",
+    "jest": "^29.7.0",
+    "eslint": "^8.55.0"
+  }
+}
+```
+````
+
+```json title="package.json"
+{
+  "name": "@mcphub/server",
+  "version": "2.1.0",
+  "description": "Model Context Protocol Hub Server",
+  "main": "dist/index.js",
+  "scripts": {
+    "start": "node dist/index.js",
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "lint": "eslint src/**/*.ts",
+    "migrate": "prisma migrate deploy"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.7.0",
+    "express": "^4.18.2",
+    "helmet": "^7.1.0",
+    "cors": "^2.8.5",
+    "jsonwebtoken": "^9.0.2",
+    "bcryptjs": "^2.4.3",
+    "winston": "^3.11.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "@types/express": "^4.17.21",
+    "typescript": "^5.3.0",
+    "tsx": "^4.6.0",
+    "jest": "^29.7.0",
+    "eslint": "^8.55.0"
+  }
+}
+```
+
+### Docker 配置
+
+````md
+```dockerfile title="Dockerfile"
+FROM node:18-alpine AS builder
+
+WORKDIR /app
+
+# 复制依赖文件
+COPY package*.json ./
+COPY tsconfig.json ./
+
+# 安装依赖
+RUN npm ci --only=production
+
+# 复制源码
+COPY src/ ./src/
+
+# 构建应用
+RUN npm run build
+
+# 生产环境镜像
+FROM node:18-alpine AS production
+
+WORKDIR /app
+
+# 创建非 root 用户
+RUN addgroup -g 1001 -S nodejs
+RUN adduser -S mcphub -u 1001
+
+# 复制构建产物
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/package*.json ./
+
+# 设置权限
+USER mcphub
+
+# 健康检查
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD node dist/health-check.js
+
+EXPOSE 3000
+
+CMD ["node", "dist/index.js"]
+```
+````
+
+```dockerfile title="Dockerfile"
+FROM node:18-alpine AS builder
+
+WORKDIR /app
+
+# 复制依赖文件
+COPY package*.json ./
+COPY tsconfig.json ./
+
+# 安装依赖
+RUN npm ci --only=production
+
+# 复制源码
+COPY src/ ./src/
+
+# 构建应用
+RUN npm run build
+
+# 生产环境镜像
+FROM node:18-alpine AS production
+
+WORKDIR /app
+
+# 创建非 root 用户
+RUN addgroup -g 1001 -S nodejs
+RUN adduser -S mcphub -u 1001
+
+# 复制构建产物
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/package*.json ./
+
+# 设置权限
+USER mcphub
+
+# 健康检查
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD node dist/health-check.js
+
+EXPOSE 3000
+
+CMD ["node", "dist/index.js"]
+```
+
+## 终端命令
+
+### Bash/Shell 命令
+
+````md
+```bash
+# 克隆 MCPHub 仓库
+git clone https://github.com/mcphub/mcphub.git
+cd mcphub
+
+# 安装依赖
+npm install
+
+# 复制环境变量文件
+cp .env.example .env
+
+# 设置数据库
+npm run db:setup
+
+# 启动开发服务器
+npm run dev
+
+# 构建生产版本
+npm run build
+
+# 启动生产服务器
+npm start
+```
+````
+
+```bash
+# 克隆 MCPHub 仓库
+git clone https://github.com/mcphub/mcphub.git
+cd mcphub
+
+# 安装依赖
+npm install
+
+# 复制环境变量文件
+cp .env.example .env
+
+# 设置数据库
+npm run db:setup
+
+# 启动开发服务器
+npm run dev
+
+# 构建生产版本
+npm run build
+
+# 启动生产服务器
+npm start
+```
+
+### PowerShell 命令
+
+````md
+```powershell
+# Windows PowerShell 安装步骤
+# 克隆仓库
+git clone https://github.com/mcphub/mcphub.git
+Set-Location mcphub
+
+# 安装 Node.js 依赖
+npm install
+
+# 复制环境变量文件
+Copy-Item .env.example .env
+
+# 启动开发服务器
+npm run dev
+```
+````
+
+```powershell
+# Windows PowerShell 安装步骤
+# 克隆仓库
+git clone https://github.com/mcphub/mcphub.git
+Set-Location mcphub
+
+# 安装 Node.js 依赖
+npm install
+
+# 复制环境变量文件
+Copy-Item .env.example .env
+
+# 启动开发服务器
+npm run dev
+```
+
+### Docker 命令
+
+````md
+```bash
+# 使用 Docker 运行 MCPHub
+docker run -d \
+  --name mcphub \
+  -p 3000:3000 \
+  -e NODE_ENV=production \
+  -e DATABASE_URL=postgresql://user:pass@host:5432/mcphub \
+  -e JWT_SECRET=your-secret-key \
+  mcphub/server:latest
+
+# 查看日志
+docker logs mcphub
+
+# 进入容器
+docker exec -it mcphub sh
+
+# 停止容器
+docker stop mcphub
+
+# 使用 Docker Compose
+docker-compose up -d
+```
+````
+
+```bash
+# 使用 Docker 运行 MCPHub
+docker run -d \
+  --name mcphub \
+  -p 3000:3000 \
+  -e NODE_ENV=production \
+  -e DATABASE_URL=postgresql://user:pass@host:5432/mcphub \
+  -e JWT_SECRET=your-secret-key \
+  mcphub/server:latest
+
+# 查看日志
+docker logs mcphub
+
+# 进入容器
+docker exec -it mcphub sh
+
+# 停止容器
+docker stop mcphub
+
+# 使用 Docker Compose
+docker-compose up -d
+```
+
+## API 请求示例
+
+### cURL 命令
+
+````md
+```bash
+# 创建新的 MCP 服务器
+curl -X POST https://api.mcphub.io/api/servers \
+  -H "Authorization: Bearer YOUR_API_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "AI Assistant Server",
+    "endpoint": "https://ai.example.com",
+    "capabilities": ["chat", "completion"],
+    "groupId": "production"
+  }'
+
+# 获取服务器列表
+curl -X GET "https://api.mcphub.io/api/servers?limit=10&active=true" \
+  -H "Authorization: Bearer YOUR_API_TOKEN"
+
+# 更新服务器配置
+curl -X PUT https://api.mcphub.io/api/servers/server-123 \
+  -H "Authorization: Bearer YOUR_API_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Updated AI Assistant",
+    "active": true
+  }'
+
+# 删除服务器
+curl -X DELETE https://api.mcphub.io/api/servers/server-123 \
+  -H "Authorization: Bearer YOUR_API_TOKEN"
+```
+````
+
+```bash
+# 创建新的 MCP 服务器
+curl -X POST https://api.mcphub.io/api/servers \
+  -H "Authorization: Bearer YOUR_API_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "AI Assistant Server",
+    "endpoint": "https://ai.example.com",
+    "capabilities": ["chat", "completion"],
+    "groupId": "production"
+  }'
+
+# 获取服务器列表
+curl -X GET "https://api.mcphub.io/api/servers?limit=10&active=true" \
+  -H "Authorization: Bearer YOUR_API_TOKEN"
+
+# 更新服务器配置
+curl -X PUT https://api.mcphub.io/api/servers/server-123 \
+  -H "Authorization: Bearer YOUR_API_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Updated AI Assistant",
+    "active": true
+  }'
+
+# 删除服务器
+curl -X DELETE https://api.mcphub.io/api/servers/server-123 \
+  -H "Authorization: Bearer YOUR_API_TOKEN"
+```
+
+### HTTP 请求示例
+
+````md
+```http
+POST /api/servers HTTP/1.1
+Host: api.mcphub.io
+Authorization: Bearer YOUR_API_TOKEN
+Content-Type: application/json
+
+{
+  "name": "AI Assistant Server",
+  "endpoint": "https://ai.example.com",
+  "capabilities": ["chat", "completion"],
+  "groupId": "production"
+}
+```
+````
+
+```http
+POST /api/servers HTTP/1.1
+Host: api.mcphub.io
+Authorization: Bearer YOUR_API_TOKEN
+Content-Type: application/json
+
+{
+  "name": "AI Assistant Server",
+  "endpoint": "https://ai.example.com",
+  "capabilities": ["chat", "completion"],
+  "groupId": "production"
+}
+```
+
+## 数据库查询
+
+### SQL 查询
+
+````md
+```sql
+-- 查询活跃的 MCP 服务器
+SELECT
+  id,
+  name,
+  endpoint,
+  status,
+  created_at
+FROM mcp_servers
+WHERE status = 'active'
+ORDER BY created_at DESC;
+
+-- 统计每个组的服务器数量
+SELECT
+  g.name as group_name,
+  COUNT(s.id) as server_count
+FROM server_groups g
+LEFT JOIN mcp_servers s ON g.id = s.group_id
+GROUP BY g.id, g.name
+ORDER BY server_count DESC;
+
+-- 查询最近的错误日志
+SELECT
+  timestamp,
+  level,
+  message,
+  metadata
+FROM logs
+WHERE level = 'error'
+  AND timestamp >= NOW() - INTERVAL '1 hour'
+ORDER BY timestamp DESC
+LIMIT 50;
+```
+````
+
+```sql
+-- 查询活跃的 MCP 服务器
+SELECT
+  id,
+  name,
+  endpoint,
+  status,
+  created_at
+FROM mcp_servers
+WHERE status = 'active'
+ORDER BY created_at DESC;
+
+-- 统计每个组的服务器数量
+SELECT
+  g.name as group_name,
+  COUNT(s.id) as server_count
+FROM server_groups g
+LEFT JOIN mcp_servers s ON g.id = s.group_id
+GROUP BY g.id, g.name
+ORDER BY server_count DESC;
+
+-- 查询最近的错误日志
+SELECT
+  timestamp,
+  level,
+  message,
+  metadata
+FROM logs
+WHERE level = 'error'
+  AND timestamp >= NOW() - INTERVAL '1 hour'
+ORDER BY timestamp DESC
+LIMIT 50;
+```
+
+## 代码块最佳实践
+
+### 1. 语言标识
+
+始终为代码块指定正确的语言：
+
+````md
+````javascript // ✅ 正确
+```js         // ✅ 也可以
+```; // ❌ 避免无语言标识
+````
+````
+
+### 2. 文件名标题
+
+为配置文件和示例添加文件名：
+
+````md
+```yaml title="docker-compose.yml"
+version: '3.8'
+services:
+  mcphub:
+    image: mcphub/server:latest
+```
+````
+
+### 3. 突出显示重要行
+
+使用行号高亮重要代码：
+
+````md
+```javascript {3,7-9}
+const express = require('express');
+const app = express();
+const port = process.env.PORT || 3000; // 重要：端口配置
+
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok' });
+});
+app.listen(port, () => {
+  // 重要：服务器启动
+  console.log(`Server running on port ${port}`);
+}); // 重要：结束
+```
+````
+
+### 4. 代码注释
+
+添加有意义的中文注释：
+
+```javascript
+// 初始化 MCPHub 客户端
+const client = new MCPHubClient({
+  endpoint: 'https://api.mcphub.io',
+  apiKey: process.env.API_KEY,
+  timeout: 30000, // 30 秒超时
+  retries: 3, // 重试 3 次
+});
+
+// 配置路由策略
+client.setRoutingStrategy({
+  type: 'weighted', // 加权轮询
+  healthCheck: true, // 启用健康检查
+  fallback: 'round_robin', // 降级策略
+});
+```
+
+### 5. 错误处理示例
+
+展示完整的错误处理：
+
+```javascript
+try {
+  const server = await mcpClient.createServer({
+    name: 'AI Assistant',
+    endpoint: 'https://ai.example.com',
+  });
+
+  console.log('服务器创建成功:', server.id);
+} catch (error) {
+  if (error.code === 'DUPLICATE_SERVER') {
+    console.log('服务器已存在，跳过创建');
+  } else if (error.code === 'INVALID_ENDPOINT') {
+    console.error('无效的端点地址:', error.message);
+  } else {
+    console.error('创建失败:', error.message);
+    throw error; // 重新抛出未知错误
+  }
+}
+```
+
+## 支持的语言
+
+MCPHub 文档支持以下编程语言的语法高亮：
+
+- **JavaScript/TypeScript**: `javascript`, `js`, `typescript`, `ts`
+- **Python**: `python`, `py`
+- **Shell/Bash**: `bash`, `shell`, `sh`
+- **PowerShell**: `powershell`, `ps1`
+- **SQL**: `sql`, `postgresql`, `mysql`
+- **YAML**: `yaml`, `yml`
+- **JSON**: `json`
+- **XML**: `xml`
+- **HTML**: `html`
+- **CSS**: `css`
+- **Dockerfile**: `dockerfile`
+- **Go**: `go`
+- **Rust**: `rust`
+- **Java**: `java`
+- **C#**: `csharp`, `cs`
+- **PHP**: `php`
+- **Ruby**: `ruby`
+- **HTTP**: `http`
+- **Markdown**: `markdown`, `md`
+
+`````
 
 ### 使用三个反引号
 
 ````md
 ```javascript
 console.log('Hello World');
-```
-````
+`````
+
+`````
 
 ### 语法高亮
 
@@ -40,7 +830,7 @@ console.log('Hello World');
 def hello():
     print("Hello World")
 ```
-````
+`````
 
 ```python
 def hello():

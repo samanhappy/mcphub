@@ -1,0 +1,597 @@
+---
+title: 'Contributing to MCPHub'
+description: 'Learn how to contribute to the MCPHub project'
+---
+
+## Welcome Contributors! 🎉
+
+Thank you for your interest in contributing to MCPHub! This guide will help you get started with contributing to the project, whether you're fixing bugs, adding features, improving documentation, or helping with testing.
+
+## Quick Start
+
+1. **Fork the repository** on GitHub
+2. **Clone your fork** locally
+3. **Create a branch** for your changes
+4. **Make your changes** following our guidelines
+5. **Test your changes** thoroughly
+6. **Submit a pull request**
+
+## Ways to Contribute
+
+### 🐛 Bug Reports
+
+Help us improve MCPHub by reporting bugs:
+
+- **Search existing issues** first to avoid duplicates
+- **Use the bug report template** when creating issues
+- **Provide detailed information** including steps to reproduce
+- **Include system information** (OS, Node.js version, etc.)
+
+```markdown
+## Bug Report Template
+
+**Description**
+A clear description of what the bug is.
+
+**Steps to Reproduce**
+
+1. Go to '...'
+2. Click on '....'
+3. Scroll down to '....'
+4. See error
+
+**Expected Behavior**
+What you expected to happen.
+
+**Actual Behavior**
+What actually happened.
+
+**Environment**
+
+- OS: [e.g. macOS 12.0]
+- Node.js: [e.g. 18.17.0]
+- MCPHub Version: [e.g. 1.2.3]
+- Browser: [e.g. Chrome 91.0]
+
+**Additional Context**
+Any other context about the problem.
+```
+
+### ✨ Feature Requests
+
+We welcome feature suggestions:
+
+- **Check existing feature requests** to avoid duplicates
+- **Use the feature request template**
+- **Explain the use case** and why it would be valuable
+- **Consider implementation complexity**
+
+### 🔧 Code Contributions
+
+Ready to write some code? Here's how:
+
+#### Setting Up Development Environment
+
+```bash
+# 1. Fork and clone the repository
+git clone https://github.com/YOUR_USERNAME/mcphub.git
+cd mcphub
+
+# 2. Add upstream remote
+git remote add upstream https://github.com/mcphub/mcphub.git
+
+# 3. Install dependencies
+pnpm install
+
+# 4. Set up environment
+cp .env.example .env.development
+
+# 5. Start development environment
+docker-compose -f docker-compose.dev.yml up -d
+pnpm run migrate
+pnpm run seed
+
+# 6. Start development server
+pnpm run dev
+```
+
+#### Branch Naming Convention
+
+Use descriptive branch names with prefixes:
+
+```bash
+# Features
+git checkout -b feature/smart-routing-improvements
+git checkout -b feature/user-authentication
+
+# Bug fixes
+git checkout -b fix/server-startup-error
+git checkout -b fix/memory-leak-in-cache
+
+# Documentation
+git checkout -b docs/api-reference-update
+git checkout -b docs/deployment-guide
+
+# Refactoring
+git checkout -b refactor/auth-service-cleanup
+git checkout -b refactor/database-queries
+```
+
+### 📚 Documentation
+
+Help improve our documentation:
+
+- **Fix typos and grammar**
+- **Improve existing guides**
+- **Add missing documentation**
+- **Create tutorials and examples**
+- **Translate documentation**
+
+## Development Guidelines
+
+### Code Style
+
+We use ESLint and Prettier to maintain code quality:
+
+```bash
+# Check code style
+pnpm run lint
+
+# Fix automatically fixable issues
+pnpm run lint:fix
+
+# Format code
+pnpm run format
+
+# Type check
+pnpm run type-check
+```
+
+#### TypeScript Best Practices
+
+```typescript
+// ✅ Good: Use proper types
+interface MCPServerConfig {
+  name: string;
+  command: string;
+  args: string[];
+  env?: Record<string, string>;
+}
+
+// ✅ Good: Use async/await
+async function startServer(config: MCPServerConfig): Promise<void> {
+  try {
+    await mcpService.start(config);
+  } catch (error) {
+    logger.error('Failed to start server', { error, config });
+    throw error;
+  }
+}
+
+// ❌ Bad: Using any type
+function processData(data: any): any {
+  return data.something();
+}
+
+// ❌ Bad: Not handling errors
+async function riskyOperation(): Promise<void> {
+  await dangerousFunction(); // Could throw
+}
+```
+
+#### React/Frontend Guidelines
+
+```tsx
+// ✅ Good: Functional components with proper typing
+interface ServerCardProps {
+  server: MCPServer;
+  onStart: (serverId: string) => void;
+  onStop: (serverId: string) => void;
+}
+
+const ServerCard: React.FC<ServerCardProps> = ({ server, onStart, onStop }) => {
+  const handleStart = useCallback(() => {
+    onStart(server.id);
+  }, [server.id, onStart]);
+
+  return (
+    <Card data-testid={`server-card-${server.id}`}>
+      <CardHeader>
+        <CardTitle>{server.name}</CardTitle>
+        <Badge variant={server.status === 'running' ? 'success' : 'secondary'}>
+          {server.status}
+        </Badge>
+      </CardHeader>
+      <CardContent>
+        <p>{server.description}</p>
+      </CardContent>
+      <CardActions>
+        {server.status === 'stopped' ? (
+          <Button onClick={handleStart}>Start</Button>
+        ) : (
+          <Button onClick={() => onStop(server.id)}>Stop</Button>
+        )}
+      </CardActions>
+    </Card>
+  );
+};
+```
+
+### Testing Requirements
+
+All contributions must include appropriate tests:
+
+#### Unit Tests
+
+```typescript
+// src/services/__tests__/mcpService.test.ts
+import { MCPService } from '../mcpService';
+import { mockLogger, mockDatabase } from '../../__mocks__';
+
+describe('MCPService', () => {
+  let service: MCPService;
+
+  beforeEach(() => {
+    service = new MCPService(mockLogger, mockDatabase);
+  });
+
+  describe('startServer', () => {
+    it('should start a server successfully', async () => {
+      const config = {
+        name: 'test-server',
+        command: 'node',
+        args: ['server.js'],
+      };
+
+      await service.startServer(config);
+
+      expect(service.getServerStatus('test-server')).toBe('running');
+    });
+
+    it('should handle server startup failures', async () => {
+      const invalidConfig = {
+        name: 'invalid-server',
+        command: 'invalid-command',
+        args: [],
+      };
+
+      await expect(service.startServer(invalidConfig)).rejects.toThrow(
+        'Failed to start server: Command not found',
+      );
+    });
+  });
+});
+```
+
+#### Integration Tests
+
+```typescript
+// src/__tests__/integration/server-api.test.ts
+import request from 'supertest';
+import { app } from '../../app';
+import { setupTestDatabase, teardownTestDatabase } from '../helpers/database';
+
+describe('Server API Integration', () => {
+  beforeAll(async () => {
+    await setupTestDatabase();
+  });
+
+  afterAll(async () => {
+    await teardownTestDatabase();
+  });
+
+  describe('POST /api/servers', () => {
+    it('should create a new server', async () => {
+      const serverData = {
+        name: 'test-server',
+        command: 'node',
+        args: ['server.js'],
+        group: 'development',
+      };
+
+      const response = await request(app).post('/api/servers').send(serverData).expect(201);
+
+      expect(response.body).toMatchObject({
+        name: 'test-server',
+        status: 'stopped',
+        group: 'development',
+      });
+    });
+  });
+});
+```
+
+#### End-to-End Tests
+
+```typescript
+// tests/e2e/server-management.spec.ts
+import { test, expect } from '@playwright/test';
+
+test.describe('Server Management', () => {
+  test('should create and manage MCP servers', async ({ page }) => {
+    await page.goto('/dashboard');
+
+    // Create new server
+    await page.click('[data-testid="add-server-button"]');
+    await page.fill('[data-testid="server-name-input"]', 'test-server');
+    await page.fill('[data-testid="server-command-input"]', 'node server.js');
+    await page.click('[data-testid="save-server-button"]');
+
+    // Verify server appears in list
+    await expect(page.locator('[data-testid="server-list"]')).toContainText('test-server');
+
+    // Start the server
+    await page.click('[data-testid="start-server-test-server"]');
+
+    // Verify server is running
+    await expect(page.locator('[data-testid="server-status-test-server"]')).toContainText(
+      'running',
+    );
+  });
+});
+```
+
+### Commit Guidelines
+
+We follow [Conventional Commits](https://www.conventionalcommits.org/):
+
+```bash
+# Format: <type>[optional scope]: <description>
+
+# Features
+git commit -m "feat(auth): add JWT token refresh functionality"
+git commit -m "feat(ui): implement server status dashboard"
+
+# Bug fixes
+git commit -m "fix(api): resolve memory leak in server manager"
+git commit -m "fix(db): handle connection timeout gracefully"
+
+# Documentation
+git commit -m "docs(api): add examples for server endpoints"
+git commit -m "docs(readme): update installation instructions"
+
+# Refactoring
+git commit -m "refactor(services): extract auth logic into separate module"
+
+# Tests
+git commit -m "test(api): add integration tests for server management"
+
+# Chores
+git commit -m "chore(deps): update dependencies to latest versions"
+```
+
+#### Commit Types
+
+- **feat**: New feature
+- **fix**: Bug fix
+- **docs**: Documentation changes
+- **style**: Code style changes (formatting, etc.)
+- **refactor**: Code refactoring
+- **test**: Adding or updating tests
+- **chore**: Maintenance tasks
+- **perf**: Performance improvements
+- **ci**: CI/CD changes
+
+### Pull Request Process
+
+#### Before Submitting
+
+```bash
+# 1. Sync with upstream
+git fetch upstream
+git checkout main
+git merge upstream/main
+
+# 2. Rebase your feature branch
+git checkout feature/your-feature
+git rebase main
+
+# 3. Run all checks
+pnpm run lint
+pnpm run type-check
+pnpm run test
+pnpm run build
+
+# 4. Update documentation if needed
+# 5. Add/update tests for your changes
+```
+
+#### Pull Request Template
+
+```markdown
+## Description
+
+Brief description of the changes and motivation.
+
+## Type of Change
+
+- [ ] Bug fix (non-breaking change which fixes an issue)
+- [ ] New feature (non-breaking change which adds functionality)
+- [ ] Breaking change (fix or feature that would cause existing functionality to not work as expected)
+- [ ] Documentation update
+
+## Testing
+
+- [ ] Unit tests pass
+- [ ] Integration tests pass
+- [ ] E2E tests pass (if applicable)
+- [ ] Manual testing completed
+
+## Documentation
+
+- [ ] Code is self-documenting
+- [ ] API documentation updated
+- [ ] User documentation updated
+- [ ] README updated (if needed)
+
+## Checklist
+
+- [ ] My code follows the project's style guidelines
+- [ ] I have performed a self-review of my code
+- [ ] I have commented my code, particularly in hard-to-understand areas
+- [ ] I have made corresponding changes to the documentation
+- [ ] My changes generate no new warnings
+- [ ] I have added tests that prove my fix is effective or that my feature works
+- [ ] New and existing unit tests pass locally with my changes
+
+## Screenshots (if applicable)
+
+Add screenshots to help explain your changes.
+
+## Additional Notes
+
+Any additional information that reviewers should know.
+```
+
+### Code Review Process
+
+#### For Contributors
+
+- **Be patient**: Reviews take time, and reviewers may have questions
+- **Be responsive**: Address feedback promptly and clearly
+- **Be open**: Accept constructive criticism and suggestions
+- **Ask questions**: If feedback is unclear, ask for clarification
+
+#### For Reviewers
+
+- **Be constructive**: Provide helpful suggestions, not just criticism
+- **Be specific**: Point out exact issues and suggest solutions
+- **Be timely**: Review PRs within a reasonable timeframe
+- **Be encouraging**: Recognize good work and improvements
+
+## Community Guidelines
+
+### Code of Conduct
+
+We are committed to providing a welcoming and inspiring community for all:
+
+- **Be respectful**: Treat everyone with respect and kindness
+- **Be inclusive**: Welcome people of all backgrounds and skill levels
+- **Be collaborative**: Work together towards common goals
+- **Be patient**: Help others learn and grow
+- **Be professional**: Maintain professional communication
+
+### Communication Channels
+
+- **GitHub Issues**: Bug reports and feature requests
+- **GitHub Discussions**: General questions and community chat
+- **Discord**: Real-time community chat (link in README)
+- **Email**: Security issues and private matters
+
+## Getting Help
+
+### Documentation
+
+- [Getting Started Guide](./getting-started.mdx)
+- [Architecture Overview](./architecture.mdx)
+- [API Reference](../api-reference/introduction.mdx)
+- [Configuration Guide](../configuration/mcp-settings.mdx)
+
+### Common Issues
+
+**Build Failures**
+
+```bash
+# Clear and reinstall dependencies
+rm -rf node_modules pnpm-lock.yaml
+pnpm install
+
+# Clear build cache
+rm -rf dist/
+pnpm run build
+```
+
+**Test Failures**
+
+```bash
+# Run tests with verbose output
+pnpm run test -- --verbose
+
+# Run specific test file
+pnpm test src/services/mcpService.test.ts
+
+# Debug tests
+pnpm run test:debug
+```
+
+**Database Issues**
+
+```bash
+# Reset database
+pnpm run db:reset
+
+# Run migrations
+pnpm run migrate
+
+# Seed development data
+pnpm run seed
+```
+
+### Getting Support
+
+If you need help:
+
+1. **Check the documentation** first
+2. **Search existing issues** on GitHub
+3. **Ask in GitHub Discussions** for general questions
+4. **Create an issue** if you found a bug
+5. **Join our Discord** for real-time help
+
+## Recognition
+
+Contributors will be recognized in several ways:
+
+- **Contributors file**: All contributors are listed in CONTRIBUTORS.md
+- **Release notes**: Significant contributions are mentioned in release notes
+- **GitHub badges**: Active contributors receive special recognition
+- **Community showcase**: Outstanding contributions are featured in our blog
+
+## Advanced Topics
+
+### Maintainer Guidelines
+
+For project maintainers:
+
+#### Release Process
+
+```bash
+# 1. Create release branch
+git checkout -b release/v1.2.0
+
+# 2. Update version
+npm version 1.2.0 --no-git-tag-version
+
+# 3. Update changelog
+# Edit CHANGELOG.md
+
+# 4. Commit changes
+git add .
+git commit -m "chore(release): prepare v1.2.0"
+
+# 5. Create PR for review
+# 6. After merge, tag release
+git tag v1.2.0
+git push origin v1.2.0
+```
+
+#### Security Handling
+
+For security issues:
+
+1. **Do not** create public issues
+2. **Email** security@mcphub.dev
+3. **Wait** for response before disclosure
+4. **Coordinate** with maintainers on fixes
+
+### Architectural Decisions
+
+When making significant changes:
+
+1. **Create an RFC** (Request for Comments) issue
+2. **Discuss** with the community
+3. **Get approval** from maintainers
+4. **Document** decisions in ADR (Architecture Decision Records)
+
+## Thank You! 🙏
+
+Thank you for taking the time to contribute to MCPHub! Every contribution, no matter how small, helps make the project better for everyone. We look forward to collaborating with you!

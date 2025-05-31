@@ -1,0 +1,330 @@
+---
+title: '身份认证与安全'
+description: '为 MCPHub 配置身份认证和安全设置'
+---
+
+## 概述
+
+MCPHub 提供灵活的身份认证机制来保护您的 MCP 服务器管理平台。系统支持多种身份认证方法和基于角色的访问控制。
+
+## 身份认证方法
+
+### 基于环境变量的认证
+
+使用环境变量配置基础认证：
+
+```bash
+# 基础认证凭据
+AUTH_USERNAME=admin
+AUTH_PASSWORD=your-secure-password
+
+# JWT 设置
+JWT_SECRET=your-jwt-secret-key
+JWT_EXPIRES_IN=24h
+```
+
+### 数据库认证
+
+对于生产环境部署，启用基于数据库的用户管理：
+
+```json
+{
+  "auth": {
+    "provider": "database",
+    "database": {
+      "url": "postgresql://user:pass@localhost:5432/mcphub",
+      "userTable": "users"
+    }
+  }
+}
+```
+
+## 用户管理
+
+### 创建用户
+
+通过管理界面或 API 创建用户：
+
+```bash
+# 通过 API
+curl -X POST http://localhost:3000/api/auth/users \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $ADMIN_TOKEN" \
+  -d '{
+    "username": "newuser",
+    "email": "user@example.com",
+    "password": "securepassword",
+    "role": "user"
+  }'
+```
+
+### 用户角色
+
+MCPHub 支持基于角色的访问控制：
+
+- **管理员**: 完整系统访问权限、用户管理、服务器配置
+- **管理者**: 服务器管理、组管理、监控
+- **用户**: 在分配组内的基本服务器访问权限
+- **查看者**: 对分配资源的只读访问权限
+
+## 基于组的访问控制
+
+### 将用户分配到组
+
+```bash
+# 添加用户到组
+curl -X POST http://localhost:3000/api/groups/{groupId}/users \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{"userId": "user123"}'
+```
+
+### 组权限
+
+配置组级别权限：
+
+```json
+{
+  "groupId": "dev-team",
+  "permissions": {
+    "servers": ["read", "write", "execute"],
+    "tools": ["read", "execute"],
+    "logs": ["read"],
+    "config": ["read"]
+  }
+}
+```
+
+## API 认证
+
+### JWT 令牌认证
+
+```javascript
+// 获取认证令牌
+const response = await fetch('/api/auth/login', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    username: 'your-username',
+    password: 'your-password',
+  }),
+});
+
+const { token } = await response.json();
+
+// 在后续请求中使用令牌
+const protectedResponse = await fetch('/api/servers', {
+  headers: {
+    Authorization: `Bearer ${token}`,
+  },
+});
+```
+
+### API 密钥认证
+
+为系统集成生成 API 密钥：
+
+```bash
+# 生成新的 API 密钥
+curl -X POST http://localhost:3000/api/auth/api-keys \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{
+    "name": "Integration Key",
+    "permissions": ["servers:read", "servers:write"],
+    "expiresAt": "2024-12-31T23:59:59.000Z"
+  }'
+```
+
+## 安全设置
+
+### HTTPS 配置
+
+为生产环境启用 HTTPS：
+
+```nginx
+server {
+    listen 443 ssl http2;
+    server_name mcphub.example.com;
+
+    ssl_certificate /path/to/certificate.crt;
+    ssl_certificate_key /path/to/private.key;
+
+    location / {
+        proxy_pass http://localhost:3000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+```
+
+### 会话安全
+
+配置安全的会话设置：
+
+```javascript
+// 会话配置
+{
+  "session": {
+    "secret": "your-session-secret",
+    "secure": true,  // 生产环境中需要 HTTPS
+    "httpOnly": true,
+    "maxAge": 86400000,  // 24 小时
+    "sameSite": "strict"
+  }
+}
+```
+
+### 速率限制
+
+实施 API 速率限制：
+
+```javascript
+{
+  "rateLimit": {
+    "windowMs": 900000,  // 15 分钟
+    "max": 100,  // 每个 IP 限制 100 个请求
+    "message": "请求过于频繁，请稍后再试",
+    "standardHeaders": true,
+    "legacyHeaders": false
+  }
+}
+```
+
+## 多因素认证 (MFA)
+
+### 启用 TOTP
+
+为管理员帐户启用基于时间的一次性密码：
+
+```bash
+# 启用 MFA
+curl -X POST http://localhost:3000/api/auth/mfa/enable \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{
+    "type": "totp",
+    "appName": "MCPHub"
+  }'
+```
+
+### 验证 MFA 代码
+
+```javascript
+// 登录时验证 MFA
+const loginResponse = await fetch('/api/auth/login', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    username: 'admin',
+    password: 'password',
+    mfaCode: '123456', // 来自认证器应用的 6 位数字
+  }),
+});
+```
+
+## 审计日志
+
+### 启用审计日志
+
+跟踪所有认证和授权事件：
+
+```json
+{
+  "audit": {
+    "enabled": true,
+    "logLevel": "info",
+    "events": [
+      "login",
+      "logout",
+      "password_change",
+      "role_change",
+      "permission_change",
+      "server_access",
+      "config_change"
+    ],
+    "storage": {
+      "type": "database",
+      "retention": "90d"
+    }
+  }
+}
+```
+
+### 查看审计日志
+
+```bash
+# 获取审计日志
+curl -X GET "http://localhost:3000/api/audit/logs?startDate=2024-01-01&endDate=2024-01-31" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+## 密码策略
+
+### 配置密码要求
+
+```json
+{
+  "passwordPolicy": {
+    "minLength": 12,
+    "requireUppercase": true,
+    "requireLowercase": true,
+    "requireNumbers": true,
+    "requireSpecialChars": true,
+    "preventCommonPasswords": true,
+    "preventReuse": 5, // 防止重复使用最近 5 个密码
+    "maxAge": 7776000 // 90 天后过期
+  }
+}
+```
+
+## 故障排除
+
+### 常见认证问题
+
+1. **JWT 令牌过期**
+
+   ```bash
+   # 检查令牌有效期
+   curl -X GET http://localhost:3000/api/auth/verify \
+     -H "Authorization: Bearer $TOKEN"
+   ```
+
+2. **权限被拒绝**
+
+   ```bash
+   # 检查用户权限
+   curl -X GET http://localhost:3000/api/auth/permissions \
+     -H "Authorization: Bearer $TOKEN"
+   ```
+
+3. **会话问题**
+   - 清除浏览器 cookies
+   - 检查会话配置
+   - 验证服务器时间同步
+
+### 调试认证流程
+
+启用调试日志：
+
+```bash
+# 设置环境变量
+export DEBUG=auth:*
+export LOG_LEVEL=debug
+
+# 启动服务器
+npm start
+```
+
+## 安全最佳实践
+
+1. **定期更新凭据**: 定期轮换 JWT 密钥和 API 密钥
+2. **最小权限原则**: 只授予用户执行其任务所需的最小权限
+3. **监控异常活动**: 设置警报以检测可疑的登录模式
+4. **备份配置**: 定期备份认证配置和用户数据
+5. **安全更新**: 保持 MCPHub 和依赖项的最新状态
+
+更多安全配置选项，请参阅 [环境变量配置](/zh/configuration/environment-variables) 和 [Docker 设置](/zh/configuration/docker-setup) 文档。

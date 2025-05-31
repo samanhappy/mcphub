@@ -2,6 +2,7 @@
   "$schema": "https://mintlify.com/docs.json",
   "theme": "mint",
   "name": "MCPHub Documentation",
+  "description": "The Unified Hub for Model Context Protocol (MCP) Servers",
   "colors": {
     "primary": "#16A34A",
     "light": "#07C983",
@@ -18,18 +19,34 @@
             "pages": [
               "index",
               "quickstart",
-              "development"
+              "installation"
             ]
           },
           {
-            "group": "Essentials",
+            "group": "Core Features",
             "pages": [
-              "essentials/markdown",
-              "essentials/code",
-              "essentials/images",
-              "essentials/settings",
-              "essentials/navigation",
-              "essentials/reusable-snippets"
+              "features/server-management",
+              "features/group-management",
+              "features/smart-routing",
+              "features/authentication",
+              "features/monitoring"
+            ]
+          },
+          {
+            "group": "Configuration",
+            "pages": [
+              "configuration/mcp-settings",
+              "configuration/environment-variables",
+              "configuration/docker-setup",
+              "configuration/nginx"
+            ]
+          },
+          {
+            "group": "Development",
+            "pages": [
+              "development/getting-started",
+              "development/architecture",
+              "development/contributing"
             ]
           }
         ]
@@ -42,18 +59,34 @@
             "pages": [
               "zh/index",
               "zh/quickstart",
-              "zh/development"
+              "zh/installation"
             ]
           },
           {
-            "group": "基础功能",
+            "group": "核心功能",
             "pages": [
-              "zh/essentials/markdown",
-              "zh/essentials/code",
-              "zh/essentials/images",
-              "zh/essentials/settings",
-              "zh/essentials/navigation",
-              "zh/essentials/reusable-snippets"
+              "zh/features/server-management",
+              "zh/features/group-management",
+              "zh/features/smart-routing",
+              "zh/features/authentication",
+              "zh/features/monitoring"
+            ]
+          },
+          {
+            "group": "配置指南",
+            "pages": [
+              "zh/configuration/mcp-settings",
+              "zh/configuration/environment-variables",
+              "zh/configuration/docker-setup",
+              "zh/configuration/nginx"
+            ]
+          },
+          {
+            "group": "开发指南",
+            "pages": [
+              "zh/development/getting-started",
+              "zh/development/architecture",
+              "zh/development/contributing"
             ]
           }
         ]
@@ -62,18 +95,22 @@
         "tab": "API Reference",
         "groups": [
           {
-            "group": "API Documentation",
+            "group": "MCP Endpoints",
             "pages": [
-              "api-reference/introduction"
+              "api-reference/introduction",
+              "api-reference/mcp-http",
+              "api-reference/mcp-sse",
+              "api-reference/smart-routing"
             ]
           },
           {
-            "group": "Endpoint Examples",
+            "group": "Management API",
             "pages": [
-              "api-reference/endpoint/get",
-              "api-reference/endpoint/create",
-              "api-reference/endpoint/delete",
-              "api-reference/endpoint/webhook"
+              "api-reference/servers",
+              "api-reference/groups",
+              "api-reference/auth",
+              "api-reference/logs",
+              "api-reference/config"
             ]
           }
         ]
@@ -82,19 +119,19 @@
     "global": {
       "anchors": [
         {
-          "anchor": "Documentation",
-          "href": "https://mintlify.com/docs",
-          "icon": "book-open-cover"
+          "anchor": "GitHub",
+          "href": "https://github.com/samanhappy/mcphub",
+          "icon": "github"
         },
         {
-          "anchor": "Community",
-          "href": "https://mintlify.com/community",
-          "icon": "slack"
+          "anchor": "Discord",
+          "href": "https://discord.gg/qMKNsn5Q",
+          "icon": "discord"
         },
         {
-          "anchor": "Blog",
-          "href": "https://mintlify.com/blog",
-          "icon": "newspaper"
+          "anchor": "Sponsor",
+          "href": "https://ko-fi.com/samanhappy",
+          "icon": "heart"
         }
       ]
     }
@@ -106,21 +143,20 @@
   "navbar": {
     "links": [
       {
-        "label": "Support",
-        "href": "mailto:hi@mintlify.com"
+        "label": "Demo",
+        "href": "http://localhost:3000"
       }
     ],
     "primary": {
       "type": "button",
-      "label": "Dashboard",
-      "href": "https://dashboard.mintlify.com"
+      "label": "Get Started",
+      "href": "/quickstart"
     }
   },
   "footer": {
     "socials": {
-      "x": "https://x.com/mintlify",
-      "github": "https://github.com/mintlify",
-      "linkedin": "https://linkedin.com/company/mintlify"
+      "github": "https://github.com/samanhappy/mcphub",
+      "discord": "https://discord.gg/qMKNsn5Q"
     }
   }
 }

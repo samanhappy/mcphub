@@ -1,0 +1,244 @@
+---
+title: '开发环境搭建'
+description: '学习如何为 MCPHub 搭建开发环境'
+---
+
+# 开发环境搭建
+
+本指南将帮助您搭建 MCPHub 的开发环境，为项目贡献代码。
+
+## 先决条件
+
+在开始之前，请确保您已安装以下软件：
+
+- **Node.js**（版本 18 或更高）
+- **pnpm**（推荐的包管理器）
+- **Git**
+- **Docker**（可选，用于容器化开发）
+
+## 搭建开发环境
+
+### 1. 克隆仓库
+
+```bash
+git clone https://github.com/your-username/mcphub.git
+cd mcphub
+```
+
+### 2. 安装依赖
+
+```bash
+pnpm install
+```
+
+### 3. 环境配置
+
+在根目录创建 `.env` 文件：
+
+```bash
+cp .env.example .env
+```
+
+配置以下环境变量：
+
+```env
+# 服务器配置
+PORT=3000
+NODE_ENV=development
+
+# 数据库配置
+DATABASE_URL=postgresql://username:password@localhost:5432/mcphub
+
+# JWT 配置
+JWT_SECRET=your-secret-key
+JWT_EXPIRES_IN=24h
+
+# OpenAI 配置（用于智能路由）
+OPENAI_API_KEY=your-openai-api-key
+```
+
+### 4. 数据库设置
+
+如果使用 PostgreSQL，创建数据库：
+
+```bash
+createdb mcphub
+```
+
+### 5. MCP 服务器配置
+
+创建或修改 `mcp_settings.json`：
+
+```json
+{
+  "mcpServers": {
+    "fetch": {
+      "command": "uvx",
+      "args": ["mcp-server-fetch"]
+    },
+    "playwright": {
+      "command": "npx",
+      "args": ["@playwright/mcp@latest", "--headless"]
+    }
+  }
+}
+```
+
+## 开发工作流
+
+### 运行开发服务器
+
+同时启动后端和前端开发模式：
+
+```bash
+pnpm dev
+```
+
+这将启动：
+
+- 后端服务器：`http://localhost:3000`
+- 前端开发服务器：`http://localhost:5173`
+
+### 仅运行后端
+
+```bash
+pnpm backend:dev
+```
+
+### 仅运行前端
+
+```bash
+pnpm frontend:dev
+```
+
+### 构建项目
+
+构建后端和前端：
+
+```bash
+pnpm build
+```
+
+## 项目结构
+
+```
+mcphub/
+├── src/                    # 后端源代码
+│   ├── controllers/        # Express 控制器
+│   ├── routes/            # API 路由
+│   ├── services/          # 业务逻辑
+│   ├── models/            # 数据库模型
+│   └── utils/             # 工具函数
+├── frontend/              # 前端 React 应用
+│   ├── src/
+│   │   ├── components/    # React 组件
+│   │   ├── pages/         # 页面组件
+│   │   ├── services/      # API 服务
+│   │   └── utils/         # 前端工具
+├── docs/                  # 文档
+├── bin/                   # CLI 脚本
+└── scripts/               # 构建和工具脚本
+```
+
+## 开发工具
+
+### 代码检查和格式化
+
+```bash
+# 运行 ESLint
+pnpm lint
+
+# 使用 Prettier 格式化代码
+pnpm format
+```
+
+### 测试
+
+```bash
+# 运行测试
+pnpm test
+
+# 监视模式运行测试
+pnpm test --watch
+```
+
+### 调试
+
+使用 Node.js 检查器调试后端：
+
+```bash
+pnpm backend:debug
+```
+
+然后将调试器连接到 `http://localhost:9229`。
+
+## 进行修改
+
+### 后端开发
+
+1. **控制器**：处理 HTTP 请求和响应
+2. **服务**：实现业务逻辑
+3. **模型**：定义数据库架构
+4. **路由**：定义 API 端点
+
+### 前端开发
+
+1. **组件**：可重用的 React 组件
+2. **页面**：特定路由的组件
+3. **服务**：API 通信
+4. **钩子**：自定义 React 钩子
+
+### 添加新的 MCP 服务器
+
+1. 使用新的服务器配置更新 `mcp_settings.json`
+2. 测试服务器集成
+3. 必要时更新文档
+
+## 常见开发任务
+
+### 添加新的 API 端点
+
+1. 在 `src/controllers/` 中创建控制器
+2. 在 `src/routes/` 中定义路由
+3. 添加必要的中间件
+4. 为新端点编写测试
+
+### 添加新的前端功能
+
+1. 在 `frontend/src/components/` 中创建组件
+2. 根据需要添加路由
+3. 实现 API 集成
+4. 使用 Tailwind CSS 进行样式设计
+
+### 数据库迁移
+
+修改数据库架构时：
+
+1. 更新 `src/models/` 中的模型
+2. 如果使用 TypeORM，创建迁移脚本
+3. 在本地测试迁移
+
+## 故障排除
+
+### 常见问题
+
+**端口冲突**：确保端口 3000 和 5173 可用
+
+**数据库连接**：验证 PostgreSQL 正在运行且凭据正确
+
+**MCP 服务器启动**：检查 `mcp_settings.json` 中的服务器配置
+
+**权限问题**：确保 MCP 服务器具有必要的权限
+
+### 获取帮助
+
+- 查看[贡献指南](/zh/development/contributing)
+- 阅读[架构文档](/zh/development/architecture)
+- 在 GitHub 上提交问题报告 bug
+- 加入我们的社区讨论
+
+## 下一步
+
+- 阅读[架构概述](/zh/development/architecture)
+- 了解[贡献指南](/zh/development/contributing)
+- 探索[配置选项](/zh/configuration/environment-variables)

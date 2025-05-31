@@ -1,0 +1,588 @@
+---
+title: 'Group Management'
+description: 'Organize servers into logical groups for streamlined access control'
+---
+
+## Overview
+
+Group Management in MCPHub allows you to organize your MCP servers into logical collections based on functionality, use case, or access requirements. This enables fine-grained control over which tools are available to different AI clients and users.
+
+## Core Concepts
+
+### What are Groups?
+
+Groups are named collections of MCP servers that can be accessed through dedicated endpoints. Instead of connecting to all servers at once, AI clients can connect to specific groups to access only relevant tools.
+
+### Benefits of Groups
+
+- **Focused Tool Access**: AI clients see only relevant tools for their use case
+- **Better Performance**: Reduced tool discovery overhead
+- **Enhanced Security**: Limit access to sensitive tools
+- **Improved Organization**: Logical separation of functionality
+- **Simplified Management**: Easier to manage related servers together
+
+## Creating Groups
+
+### Via Dashboard
+
+1. **Navigate to Groups Section**: Click "Groups" in the main navigation
+2. **Click "Create Group"**: Start the group creation process
+3. **Fill Group Details**:
+
+   - **Name**: Unique identifier for the group
+   - **Display Name**: Human-readable name
+   - **Description**: Purpose and contents of the group
+   - **Access Level**: Public, Private, or Restricted
+
+4. **Add Servers**: Select servers to include in the group
+
+### Via API
+
+Create groups programmatically:
+
+```bash
+curl -X POST http://localhost:3000/api/groups \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -d '{
+    "name": "web-automation",
+    "displayName": "Web Automation Tools",
+    "description": "Browser automation and web scraping tools",
+    "servers": ["playwright", "fetch"],
+    "accessLevel": "public"
+  }'
+```
+
+### Via Configuration File
+
+Define groups in your `mcp_settings.json`:
+
+```json
+{
+  "mcpServers": {
+    "fetch": { "command": "uvx", "args": ["mcp-server-fetch"] },
+    "playwright": { "command": "npx", "args": ["@playwright/mcp@latest"] },
+    "slack": { "command": "npx", "args": ["@modelcontextprotocol/server-slack"] }
+  },
+  "groups": {
+    "web-tools": {
+      "displayName": "Web Tools",
+      "description": "Web scraping and browser automation",
+      "servers": ["fetch", "playwright"],
+      "accessLevel": "public"
+    },
+    "communication": {
+      "displayName": "Communication Tools",
+      "description": "Messaging and collaboration tools",
+      "servers": ["slack"],
+      "accessLevel": "private"
+    }
+  }
+}
+```
+
+## Group Types and Use Cases
+
+<AccordionGroup>
+  <Accordion title="Web Automation Group">
+    **Purpose**: Browser automation and web scraping
+    
+    **Servers**:
+    - `playwright`: Browser automation
+    - `fetch`: HTTP requests and web scraping
+    - `selenium`: Alternative browser automation
+
+    **Use Cases**:
+    - Automated testing
+    - Data collection
+    - Web monitoring
+    - Content analysis
+
+    **Endpoint**: `http://localhost:3000/mcp/web-automation`
+
+  </Accordion>
+
+  <Accordion title="Data Processing Group">
+    **Purpose**: Data manipulation and analysis
+    
+    **Servers**:
+    - `sqlite`: Database operations
+    - `filesystem`: File operations
+    - `spreadsheet`: Excel/CSV processing
+
+    **Use Cases**:
+    - Data analysis
+    - Report generation
+    - File processing
+    - Database queries
+
+    **Endpoint**: `http://localhost:3000/mcp/data-processing`
+
+  </Accordion>
+
+  <Accordion title="Communication Group">
+    **Purpose**: Messaging and collaboration
+    
+    **Servers**:
+    - `slack`: Slack integration
+    - `discord`: Discord bot
+    - `email`: Email sending
+    - `sms`: SMS notifications
+
+    **Use Cases**:
+    - Team notifications
+    - Customer communication
+    - Alert systems
+    - Social media management
+
+    **Endpoint**: `http://localhost:3000/mcp/communication`
+
+  </Accordion>
+
+  <Accordion title="Development Group">
+    **Purpose**: Software development tools
+    
+    **Servers**:
+    - `github`: GitHub operations
+    - `gitlab`: GitLab integration
+    - `docker`: Container management
+    - `kubernetes`: K8s operations
+
+    **Use Cases**:
+    - Code deployment
+    - Repository management
+    - CI/CD operations
+    - Infrastructure management
+
+    **Endpoint**: `http://localhost:3000/mcp/development`
+
+  </Accordion>
+
+  <Accordion title="AI/ML Group">
+    **Purpose**: Machine learning and AI tools
+    
+    **Servers**:
+    - `openai`: OpenAI API integration
+    - `huggingface`: Hugging Face models
+    - `vector-db`: Vector database operations
+
+    **Use Cases**:
+    - Model inference
+    - Data embeddings
+    - Natural language processing
+    - Computer vision
+
+    **Endpoint**: `http://localhost:3000/mcp/ai-ml`
+
+  </Accordion>
+</AccordionGroup>
+
+## Group Access Control
+
+### Access Levels
+
+<Tabs>
+  <Tab title="Public">
+    **Public Groups**:
+    - Accessible to all authenticated users
+    - No additional permissions required
+    - Visible in group listings
+    - Default access level
+
+    ```json
+    {
+      "name": "public-tools",
+      "accessLevel": "public",
+      "servers": ["fetch", "calculator"]
+    }
+    ```
+
+  </Tab>
+
+  <Tab title="Private">
+    **Private Groups**:
+    - Only visible to group members
+    - Requires explicit user assignment
+    - Hidden from public listings
+    - Admin-controlled membership
+
+    ```json
+    {
+      "name": "internal-tools",
+      "accessLevel": "private",
+      "members": ["user1", "user2"],
+      "servers": ["internal-api", "database"]
+    }
+    ```
+
+  </Tab>
+
+  <Tab title="Restricted">
+    **Restricted Groups**:
+    - Role-based access control
+    - Requires specific permissions
+    - Audit logging enabled
+    - Time-limited access
+
+    ```json
+    {
+      "name": "admin-tools",
+      "accessLevel": "restricted",
+      "requiredRoles": ["admin", "operator"],
+      "servers": ["system-control", "user-management"]
+    }
+    ```
+
+  </Tab>
+</Tabs>
+
+### User Management
+
+Assign users to groups:
+
+```bash
+# Add user to group
+curl -X POST http://localhost:3000/api/groups/web-tools/members \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -d '{"userId": "user123"}'
+
+# Remove user from group
+curl -X DELETE http://localhost:3000/api/groups/web-tools/members/user123 \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+
+# List group members
+curl http://localhost:3000/api/groups/web-tools/members \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+## Group Endpoints
+
+### Accessing Groups
+
+Each group gets its own MCP endpoint:
+
+<Tabs>
+  <Tab title="HTTP MCP">
+    ```
+    http://localhost:3000/mcp/{group-name}
+    ```
+
+    Examples:
+    - `http://localhost:3000/mcp/web-tools`
+    - `http://localhost:3000/mcp/data-processing`
+    - `http://localhost:3000/mcp/communication`
+
+  </Tab>
+
+  <Tab title="SSE (Legacy)">
+    ```
+    http://localhost:3000/sse/{group-name}
+    ```
+
+    Examples:
+    - `http://localhost:3000/sse/web-tools`
+    - `http://localhost:3000/sse/data-processing`
+    - `http://localhost:3000/sse/communication`
+
+  </Tab>
+</Tabs>
+
+### Group Tool Discovery
+
+When connecting to a group endpoint, AI clients will only see tools from servers within that group:
+
+```bash
+# List tools in web-tools group
+curl -X POST http://localhost:3000/mcp/web-tools \
+  -H "Content-Type: application/json" \
+  -d '{
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "tools/list",
+    "params": {}
+  }'
+```
+
+Response will only include tools from `fetch` and `playwright` servers.
+
+## Dynamic Group Management
+
+### Adding Servers to Groups
+
+<Tabs>
+  <Tab title="Dashboard">
+    1. Navigate to the group in the dashboard
+    2. Click "Manage Servers"
+    3. Select additional servers to add
+    4. Click "Save Changes"
+  </Tab>
+
+  <Tab title="API">
+    ```bash
+    curl -X POST http://localhost:3000/api/groups/web-tools/servers \
+      -H "Content-Type: application/json" \
+      -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+      -d '{"serverId": "new-server"}'
+    ```
+  </Tab>
+</Tabs>
+
+### Removing Servers from Groups
+
+<Tabs>
+  <Tab title="Dashboard">
+    1. Navigate to the group in the dashboard
+    2. Click "Manage Servers"
+    3. Unselect servers to remove
+    4. Click "Save Changes"
+  </Tab>
+
+  <Tab title="API">
+    ```bash
+    curl -X DELETE http://localhost:3000/api/groups/web-tools/servers/server-name \
+      -H "Authorization: Bearer YOUR_JWT_TOKEN"
+    ```
+  </Tab>
+</Tabs>
+
+### Batch Server Updates
+
+Update multiple servers at once:
+
+```bash
+curl -X PUT http://localhost:3000/api/groups/web-tools/servers \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -d '{
+    "servers": ["fetch", "playwright", "selenium"]
+  }'
+```
+
+## Group Monitoring
+
+### Group Status
+
+Monitor group health and activity:
+
+```bash
+# Get group status
+curl http://localhost:3000/api/groups/web-tools/status \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+Response includes:
+
+- Number of active servers
+- Tool count
+- Active connections
+- Recent activity
+
+### Group Analytics
+
+Track group usage:
+
+```bash
+# Get group analytics
+curl http://localhost:3000/api/groups/web-tools/analytics \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+Metrics include:
+
+- Request count by tool
+- Response times
+- Error rates
+- User activity
+
+## Advanced Group Features
+
+### Nested Groups
+
+Create hierarchical group structures:
+
+```json
+{
+  "groups": {
+    "development": {
+      "displayName": "Development Tools",
+      "subGroups": ["frontend-dev", "backend-dev", "devops"]
+    },
+    "frontend-dev": {
+      "displayName": "Frontend Development",
+      "servers": ["playwright", "webpack-server"],
+      "parent": "development"
+    },
+    "backend-dev": {
+      "displayName": "Backend Development",
+      "servers": ["database", "api-server"],
+      "parent": "development"
+    }
+  }
+}
+```
+
+### Group Templates
+
+Use templates for quick group creation:
+
+```json
+{
+  "groupTemplates": {
+    "web-project": {
+      "description": "Standard web project toolset",
+      "servers": ["fetch", "playwright", "filesystem"],
+      "accessLevel": "public"
+    },
+    "data-science": {
+      "description": "Data science and ML tools",
+      "servers": ["python-tools", "jupyter", "vector-db"],
+      "accessLevel": "private"
+    }
+  }
+}
+```
+
+Apply template:
+
+```bash
+curl -X POST http://localhost:3000/api/groups/from-template \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -d '{
+    "name": "my-web-project",
+    "template": "web-project",
+    "displayName": "My Web Project Tools"
+  }'
+```
+
+### Group Policies
+
+Define policies for group behavior:
+
+```json
+{
+  "groupPolicies": {
+    "web-tools": {
+      "maxConcurrentConnections": 10,
+      "requestTimeout": 30000,
+      "rateLimiting": {
+        "requestsPerMinute": 100,
+        "burstLimit": 20
+      },
+      "allowedOrigins": ["localhost", "myapp.com"]
+    }
+  }
+}
+```
+
+## Best Practices
+
+### Group Organization
+
+<Tip>
+  **Organize by Use Case**: Group servers based on what users want to accomplish, not just technical
+  similarity.
+</Tip>
+
+<Tip>
+  **Keep Groups Focused**: Avoid creating groups with too many diverse tools. Smaller, focused
+  groups are more useful.
+</Tip>
+
+<Tip>
+  **Use Descriptive Names**: Choose names that clearly indicate the group's purpose and contents.
+</Tip>
+
+### Security Considerations
+
+<Warning>
+  **Principle of Least Privilege**: Only give users access to groups they actually need.
+</Warning>
+
+<Warning>
+  **Sensitive Tool Isolation**: Keep sensitive tools in restricted groups with proper access
+  controls.
+</Warning>
+
+<Warning>
+  **Regular Access Reviews**: Periodically review group memberships and remove unnecessary access.
+</Warning>
+
+### Performance Optimization
+
+<Info>
+  **Balance Group Size**: Very large groups may have slower tool discovery. Consider splitting into
+  smaller groups.
+</Info>
+
+<Info>
+  **Monitor Usage**: Use analytics to identify which groups are heavily used and optimize
+  accordingly.
+</Info>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Group Not Accessible">
+    **Check:**
+    - User has proper permissions
+    - Group exists and is active
+    - Servers in group are running
+    - Network connectivity
+
+    **Solutions:**
+    1. Verify user group membership
+    2. Check group configuration
+    3. Test individual server connections
+    4. Review access logs
+
+  </Accordion>
+
+  <Accordion title="Tools Missing from Group">
+    **Possible causes:**
+    - Server not properly added to group
+    - Server is not running
+    - Tool discovery failed
+    - Caching issues
+
+    **Debug steps:**
+    1. Verify server is in group configuration
+    2. Check server status
+    3. Force refresh tool discovery
+    4. Clear group cache
+
+  </Accordion>
+
+  <Accordion title="Group Performance Issues">
+    **Common issues:**
+    - Too many servers in group
+    - Slow server responses
+    - Network latency
+    - Resource constraints
+
+    **Optimizations:**
+    1. Split large groups
+    2. Monitor server performance
+    3. Implement request caching
+    4. Use connection pooling
+
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Smart Routing" icon="route" href="/features/smart-routing">
+    AI-powered tool discovery across groups
+  </Card>
+  <Card title="Authentication" icon="shield" href="/features/authentication">
+    User management and access control
+  </Card>
+  <Card title="API Reference" icon="code" href="/api-reference/groups">
+    Complete group management API
+  </Card>
+  <Card title="Configuration" icon="cog" href="/configuration/mcp-settings">
+    Advanced group configuration options
+  </Card>
+</CardGroup>

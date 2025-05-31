@@ -1,0 +1,526 @@
+---
+title: 'Monitoring & Logging'
+description: 'Monitor your MCP servers and analyze system logs with MCPHub'
+---
+
+## Overview
+
+MCPHub provides comprehensive monitoring and logging capabilities to help you track server performance, debug issues, and maintain system health.
+
+## Real-time Monitoring
+
+### Server Status Dashboard
+
+The MCPHub dashboard provides real-time monitoring of all registered MCP servers:
+
+- **Server Health**: Online/offline status with automatic health checks
+- **Response Times**: Average, min, max response times per server
+- **Request Volume**: Requests per second/minute/hour
+- **Error Rates**: Success/failure ratios and error trends
+- **Resource Usage**: Memory and CPU utilization (when available)
+
+### Health Check Configuration
+
+Configure health checks for your MCP servers:
+
+```json
+{
+  "healthCheck": {
+    "enabled": true,
+    "interval": 30000,
+    "timeout": 5000,
+    "retries": 3,
+    "endpoints": {
+      "ping": "/health",
+      "tools": "/tools/list"
+    }
+  }
+}
+```
+
+### Monitoring API
+
+Get monitoring data programmatically:
+
+```bash
+# Get server health status
+curl http://localhost:3000/api/monitoring/health
+
+# Get performance metrics
+curl http://localhost:3000/api/monitoring/metrics?server=my-server&range=1h
+
+# Get system overview
+curl http://localhost:3000/api/monitoring/overview
+```
+
+## Logging System
+
+### Log Levels
+
+MCPHub supports standard log levels:
+
+- **ERROR**: Critical errors requiring immediate attention
+- **WARN**: Warning conditions that should be monitored
+- **INFO**: General operational messages
+- **DEBUG**: Detailed debugging information
+- **TRACE**: Very detailed trace information
+
+### Log Configuration
+
+Configure logging in your environment:
+
+```bash
+# Set log level
+LOG_LEVEL=info
+
+# Enable structured logging
+LOG_FORMAT=json
+
+# Log file location
+LOG_FILE=/var/log/mcphub/app.log
+
+# Enable request logging
+ENABLE_REQUEST_LOGS=true
+```
+
+### Structured Logging
+
+MCPHub uses structured logging for better analysis:
+
+```json
+{
+  "timestamp": "2024-01-20T10:30:00Z",
+  "level": "info",
+  "message": "MCP server request completed",
+  "server": "github-mcp",
+  "tool": "search_repositories",
+  "duration": 245,
+  "status": "success",
+  "requestId": "req_123456",
+  "userId": "user_789"
+}
+```
+
+## Log Management
+
+### Log Storage Options
+
+#### File-based Logging
+
+```yaml
+# docker-compose.yml
+services:
+  mcphub:
+    volumes:
+      - ./logs:/app/logs
+    environment:
+      - LOG_FILE=/app/logs/mcphub.log
+      - LOG_ROTATION=daily
+      - LOG_MAX_SIZE=100MB
+      - LOG_MAX_FILES=7
+```
+
+#### Database Logging
+
+```json
+{
+  "logging": {
+    "database": {
+      "enabled": true,
+      "table": "logs",
+      "retention": "30d",
+      "indexes": ["timestamp", "level", "server"]
+    }
+  }
+}
+```
+
+#### External Log Services
+
+```bash
+# Syslog integration
+SYSLOG_ENABLED=true
+SYSLOG_HOST=localhost
+SYSLOG_PORT=514
+SYSLOG_FACILITY=local0
+
+# ELK Stack integration
+ELASTICSEARCH_URL=http://localhost:9200
+ELASTICSEARCH_INDEX=mcphub-logs
+```
+
+### Log Rotation
+
+Automatic log rotation configuration:
+
+```json
+{
+  "logRotation": {
+    "enabled": true,
+    "maxSize": "100MB",
+    "maxFiles": 10,
+    "compress": true,
+    "interval": "daily"
+  }
+}
+```
+
+## Metrics Collection
+
+### System Metrics
+
+MCPHub collects various system metrics:
+
+```javascript
+// Example metrics collected
+{
+  "timestamp": "2024-01-20T10:30:00Z",
+  "metrics": {
+    "requests": {
+      "total": 1547,
+      "success": 1523,
+      "errors": 24,
+      "rate": 12.5
+    },
+    "servers": {
+      "online": 8,
+      "offline": 2,
+      "total": 10
+    },
+    "performance": {
+      "avgResponseTime": 156,
+      "p95ResponseTime": 324,
+      "p99ResponseTime": 567
+    },
+    "system": {
+      "memoryUsage": "245MB",
+      "cpuUsage": "15%",
+      "uptime": "72h 35m"
+    }
+  }
+}
+```
+
+### Custom Metrics
+
+Add custom metrics for your use case:
+
+```javascript
+// Custom metric example
+const customMetric = {
+  name: 'tool_usage',
+  type: 'counter',
+  tags: {
+    server: 'github-mcp',
+    tool: 'search_repositories',
+    result: 'success',
+  },
+  value: 1,
+};
+
+// Send to metrics endpoint
+await fetch('/api/monitoring/metrics', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify(customMetric),
+});
+```
+
+## Alerting
+
+### Alert Configuration
+
+Set up alerts for critical conditions:
+
+```json
+{
+  "alerts": {
+    "serverDown": {
+      "condition": "server.status == 'offline'",
+      "duration": "5m",
+      "severity": "critical",
+      "channels": ["email", "slack"]
+    },
+    "highErrorRate": {
+      "condition": "errors.rate > 0.1",
+      "duration": "2m",
+      "severity": "warning",
+      "channels": ["slack"]
+    },
+    "slowResponse": {
+      "condition": "response.p95 > 1000",
+      "duration": "5m",
+      "severity": "warning",
+      "channels": ["email"]
+    }
+  }
+}
+```
+
+### Notification Channels
+
+#### Email Notifications
+
+```bash
+# Email configuration
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=alerts@yourcompany.com
+SMTP_PASS=your-app-password
+ALERT_EMAIL_TO=admin@yourcompany.com
+```
+
+#### Slack Integration
+
+```bash
+# Slack webhook
+SLACK_WEBHOOK_URL=https://hooks.slack.com/services/...
+SLACK_CHANNEL=#mcphub-alerts
+```
+
+#### Webhook Notifications
+
+```json
+{
+  "webhooks": [
+    {
+      "url": "https://your-service.com/webhooks/mcphub",
+      "events": ["server.down", "error.rate.high"],
+      "headers": {
+        "Authorization": "Bearer your-token"
+      }
+    }
+  ]
+}
+```
+
+## Log Analysis
+
+### Query Logs
+
+Use the logs API to query and analyze logs:
+
+```bash
+# Get recent errors
+curl "http://localhost:3000/api/logs?level=error&since=1h"
+
+# Search logs by server
+curl "http://localhost:3000/api/logs?server=github-mcp&limit=100"
+
+# Get logs for specific request
+curl "http://localhost:3000/api/logs?requestId=req_123456"
+
+# Filter by time range
+curl "http://localhost:3000/api/logs?from=2024-01-20T00:00:00Z&to=2024-01-20T23:59:59Z"
+```
+
+### Log Aggregation
+
+Aggregate logs for insights:
+
+```bash
+# Error summary by server
+curl "http://localhost:3000/api/logs/aggregate?groupBy=server&level=error&since=24h"
+
+# Request volume over time
+curl "http://localhost:3000/api/logs/aggregate?groupBy=hour&type=request&since=7d"
+```
+
+## Performance Monitoring
+
+### Response Time Tracking
+
+Monitor MCP server response times:
+
+```javascript
+// Response time metrics
+{
+  "server": "github-mcp",
+  "tool": "search_repositories",
+  "metrics": {
+    "calls": 156,
+    "avgTime": 234,
+    "minTime": 89,
+    "maxTime": 1205,
+    "p50": 201,
+    "p95": 567,
+    "p99": 892
+  }
+}
+```
+
+### Error Rate Monitoring
+
+Track error rates and patterns:
+
+```bash
+# Get error rates by server
+curl "http://localhost:3000/api/monitoring/errors?groupBy=server&since=1h"
+
+# Get error details
+curl "http://localhost:3000/api/monitoring/errors?server=github-mcp&details=true"
+```
+
+## Integration with External Tools
+
+### Prometheus Integration
+
+Export metrics to Prometheus:
+
+```yaml
+# prometheus.yml
+scrape_configs:
+  - job_name: 'mcphub'
+    static_configs:
+      - targets: ['localhost:3000']
+    metrics_path: '/api/monitoring/prometheus'
+    scrape_interval: 30s
+```
+
+### Grafana Dashboards
+
+Import MCPHub Grafana dashboard:
+
+```json
+{
+  "dashboard": {
+    "title": "MCPHub Monitoring",
+    "panels": [
+      {
+        "title": "Server Status",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "mcphub_servers_online",
+            "legendFormat": "Online"
+          }
+        ]
+      },
+      {
+        "title": "Request Rate",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(mcphub_requests_total[5m])",
+            "legendFormat": "Requests/sec"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+### ELK Stack Integration
+
+Configure Logstash for log processing:
+
+```ruby
+# logstash.conf
+input {
+  beats {
+    port => 5044
+  }
+}
+
+filter {
+  if [fields][service] == "mcphub" {
+    json {
+      source => "message"
+    }
+
+    date {
+      match => [ "timestamp", "ISO8601" ]
+    }
+  }
+}
+
+output {
+  elasticsearch {
+    hosts => ["localhost:9200"]
+    index => "mcphub-logs-%{+YYYY.MM.dd}"
+  }
+}
+```
+
+## Troubleshooting
+
+### Common Monitoring Issues
+
+**Missing Metrics**
+
+```bash
+# Check metrics endpoint
+curl http://localhost:3000/api/monitoring/health
+
+# Verify configuration
+grep -r "monitoring" /path/to/config/
+```
+
+**Log File Issues**
+
+```bash
+# Check log file permissions
+ls -la /var/log/mcphub/
+
+# Verify disk space
+df -h /var/log/
+
+# Check log rotation
+logrotate -d /etc/logrotate.d/mcphub
+```
+
+**Performance Issues**
+
+```bash
+# Monitor system resources
+top -p $(pgrep -f mcphub)
+
+# Check database connections
+curl http://localhost:3000/api/monitoring/database
+
+# Analyze slow queries
+curl http://localhost:3000/api/monitoring/slow-queries
+```
+
+### Debug Mode
+
+Enable debug logging for troubleshooting:
+
+```bash
+# Enable debug mode
+DEBUG=mcphub:* npm start
+
+# Or set environment variable
+export DEBUG=mcphub:monitoring,mcphub:logging
+```
+
+## Best Practices
+
+### Log Management
+
+- Use structured logging with consistent formats
+- Implement proper log levels and filtering
+- Set up log rotation and retention policies
+- Monitor log file sizes and disk usage
+
+### Monitoring Setup
+
+- Configure appropriate health check intervals
+- Set up alerts for critical conditions
+- Monitor both system and application metrics
+- Use dashboards for visual monitoring
+
+### Performance Optimization
+
+- Index log database tables appropriately
+- Use log sampling for high-volume scenarios
+- Implement proper caching for metrics
+- Regular cleanup of old logs and metrics
+
+### Security Considerations
+
+- Sanitize sensitive data in logs
+- Secure access to monitoring endpoints
+- Use authentication for external integrations
+- Encrypt log transmission when using external services
