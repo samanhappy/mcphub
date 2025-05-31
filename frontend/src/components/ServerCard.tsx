@@ -50,7 +50,7 @@ const ServerCard = ({ server, onRemove, onEdit, onToggle }: ServerCardProps) => 
   const handleToggle = async (e: React.MouseEvent) => {
     e.stopPropagation()
     if (isToggling || !onToggle) return
-    
+
     setIsToggling(true)
     try {
       await onToggle(server, !(server.enabled !== false))
@@ -112,26 +112,34 @@ const ServerCard = ({ server, onRemove, onEdit, onToggle }: ServerCardProps) => 
           <div className="flex items-center space-x-3">
             <h2 className={`text-xl font-semibold ${server.enabled === false ? 'text-gray-600' : 'text-gray-900'}`}>{server.name}</h2>
             <StatusBadge status={server.status} />
-            
+
+            {/* Tool count display */}
+            <div className="flex items-center px-2 py-1 bg-blue-50 text-blue-700 rounded-full text-sm">
+              <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clipRule="evenodd" />
+              </svg>
+              <span>{server.tools?.length || 0} {t('server.tools')}</span>
+            </div>
+
             {server.error && (
               <div className="relative">
-                <div 
-                  className="cursor-pointer" 
+                <div
+                  className="cursor-pointer"
                   onClick={handleErrorIconClick}
                   aria-label={t('server.viewErrorDetails')}
                 >
                   <AlertCircle className="text-red-500 hover:text-red-600" size={18} />
                 </div>
-                
+
                 {showErrorPopover && (
-                  <div 
+                  <div
                     ref={errorPopoverRef}
                     className="absolute z-10 mt-2 bg-white border border-gray-200 rounded-md shadow-lg p-0 w-120"
-                    style={{ 
-                      left: '-231px', 
-                      top: '24px', 
-                      maxHeight: '300px', 
-                      overflowY: 'auto', 
+                    style={{
+                      left: '-231px',
+                      top: '24px',
+                      maxHeight: '300px',
+                      overflowY: 'auto',
                       width: '480px',
                       transform: 'translateX(50%)'
                     }}
@@ -140,7 +148,7 @@ const ServerCard = ({ server, onRemove, onEdit, onToggle }: ServerCardProps) => 
                     <div className="flex justify-between items-center sticky top-0 bg-white py-2 px-4 border-b border-gray-200 z-20 shadow-sm">
                       <div className="flex items-center space-x-2">
                         <h4 className="text-sm font-medium text-red-600">{t('server.errorDetails')}</h4>
-                        <button 
+                        <button
                           onClick={copyToClipboard}
                           className="p-1 text-gray-400 hover:text-gray-600 transition-colors"
                           title={t('common.copy')}
@@ -148,7 +156,7 @@ const ServerCard = ({ server, onRemove, onEdit, onToggle }: ServerCardProps) => 
                           {copied ? <Check size={14} className="text-green-500" /> : <Copy size={14} />}
                         </button>
                       </div>
-                      <button 
+                      <button
                         onClick={(e) => {
                           e.stopPropagation()
                           setShowErrorPopover(false)
@@ -176,19 +184,18 @@ const ServerCard = ({ server, onRemove, onEdit, onToggle }: ServerCardProps) => 
             <div className="flex items-center">
               <button
                 onClick={handleToggle}
-                className={`px-3 py-1 text-sm rounded transition-colors ${
-                  isToggling 
-                    ? 'bg-gray-200 text-gray-500' 
-                    : server.enabled !== false
-                      ? 'bg-green-100 text-green-800 hover:bg-green-200'
-                      : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
-                }`}
+                className={`px-3 py-1 text-sm rounded transition-colors ${isToggling
+                  ? 'bg-gray-200 text-gray-500'
+                  : server.enabled !== false
+                    ? 'bg-green-100 text-green-800 hover:bg-green-200'
+                    : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
+                  }`}
                 disabled={isToggling}
               >
-                {isToggling 
+                {isToggling
                   ? t('common.processing')
-                  : server.enabled !== false 
-                    ? t('server.disable') 
+                  : server.enabled !== false
+                    ? t('server.disable')
                     : t('server.enable')
                 }
               </button>
@@ -207,10 +214,10 @@ const ServerCard = ({ server, onRemove, onEdit, onToggle }: ServerCardProps) => 
 
         {isExpanded && server.tools && (
           <div className="mt-6">
-            <h3 className={`text-lg font-medium ${server.enabled === false ? 'text-gray-600' : 'text-gray-900'} mb-4`}>{t('server.tools')}</h3>
+            <h6 className={`font-medium ${server.enabled === false ? 'text-gray-600' : 'text-gray-900'} mb-4`}>{t('server.tools')}</h6>
             <div className="space-y-4">
               {server.tools.map((tool, index) => (
-                <ToolCard key={index} tool={tool} />
+                <ToolCard key={index} server={server.name} tool={tool} />
               ))}
             </div>
           </div>

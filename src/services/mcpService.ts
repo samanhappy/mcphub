@@ -406,7 +406,7 @@ export const toggleServerStatus = async (
   }
 };
 
-const handleListToolsRequest = async (_: any, extra: any) => {
+export const handleListToolsRequest = async (_: any, extra: any) => {
   const sessionId = extra.sessionId || '';
   const group = getGroup(sessionId);
   console.log(`Handling ListToolsRequest for group: ${group}`);
@@ -498,7 +498,7 @@ Available servers: ${serversList}`;
   };
 };
 
-const handleCallToolRequest = async (request: any, extra: any) => {
+export const handleCallToolRequest = async (request: any, extra: any) => {
   console.log(`Handling CallToolRequest for tool: ${request.params.name}`);
   try {
     // Special handling for agent group tools
@@ -595,14 +595,17 @@ const handleCallToolRequest = async (request: any, extra: any) => {
       // arguments parameter is now optional
 
       let targetServerInfo: ServerInfo | undefined;
-
-      // Find the first server that has this tool
-      targetServerInfo = serverInfos.find(
-        (serverInfo) =>
-          serverInfo.status === 'connected' &&
-          serverInfo.enabled !== false &&
-          serverInfo.tools.some((tool) => tool.name === toolName),
-      );
+      if (extra && extra.server) {
+        targetServerInfo = getServerByName(extra.server);
+      } else {
+        // Find the first server that has this tool
+        targetServerInfo = serverInfos.find(
+          (serverInfo) =>
+            serverInfo.status === 'connected' &&
+            serverInfo.enabled !== false &&
+            serverInfo.tools.some((tool) => tool.name === toolName),
+        );
+      }
 
       if (!targetServerInfo) {
         throw new Error(`No available servers found with tool: ${toolName}`);

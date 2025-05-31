@@ -265,6 +265,28 @@
     "showing": "显示 {{from}}-{{to}}/{{total}} 个服务器",
     "perPage": "每页显示"
   },
+  "tool": {
+    "run": "运行",
+    "running": "运行中...",
+    "runTool": "运行工具",
+    "cancel": "取消",
+    "noDescription": "无描述信息",
+    "inputSchema": "输入模式：",
+    "runToolWithName": "运行工具：{{name}}",
+    "execution": "工具执行",
+    "successful": "成功",
+    "failed": "失败",
+    "result": "结果：",
+    "error": "错误",
+    "errorDetails": "错误详情：",
+    "noContent": "工具执行成功但未返回内容。",
+    "unknownError": "发生未知错误",
+    "jsonResponse": "JSON 响应：",
+    "toolResult": "工具结果",
+    "noParameters": "此工具不需要任何参数。",
+    "selectOption": "选择一个选项",
+    "enterValue": "输入{{type}}值"
+  },
   "settings": {
     "enableGlobalRoute": "启用全局路由",
     "enableGlobalRouteDescription": "允许不指定组 ID 就连接到 /sse 端点",

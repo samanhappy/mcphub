@@ -264,6 +264,28 @@
     "showing": "Showing {{from}}-{{to}} of {{total}} servers",
     "perPage": "Per page"
   },
+  "tool": {
+    "run": "Run",
+    "running": "Running...",
+    "runTool": "Run Tool",
+    "cancel": "Cancel",
+    "noDescription": "No description available",
+    "inputSchema": "Input Schema:",
+    "runToolWithName": "Run Tool: {{name}}",
+    "execution": "Tool Execution",
+    "successful": "Successful",
+    "failed": "Failed",
+    "result": "Result:",
+    "error": "Error",
+    "errorDetails": "Error Details:",
+    "noContent": "Tool executed successfully but returned no content.",
+    "unknownError": "Unknown error occurred",
+    "jsonResponse": "JSON Response:",
+    "toolResult": "Tool result",
+    "noParameters": "This tool does not require any parameters.",
+    "selectOption": "Select an option",
+    "enterValue": "Enter {{type}} value"
+  },
   "settings": {
     "enableGlobalRoute": "Enable Global Route",
     "enableGlobalRouteDescription": "Allow connections to /sse endpoint without specifying a group ID",

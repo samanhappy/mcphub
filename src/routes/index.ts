@@ -33,6 +33,7 @@ import {
 import { login, register, getCurrentUser, changePassword } from '../controllers/authController.js';
 import { getAllLogs, clearLogs, streamLogs } from '../controllers/logController.js';
 import { getRuntimeConfig } from '../controllers/configController.js';
+import { callTool } from '../controllers/toolController.js';
 import { auth } from '../middlewares/auth.js';
 
 const router = express.Router();
@@ -58,6 +59,9 @@ export const initRoutes = (app: express.Application): void => {
   router.get('/groups/:id/servers', getGroupServers);
   // New route for batch updating servers in a group
   router.put('/groups/:id/servers/batch', updateGroupServersBatch);
+
+  // Tool management routes
+  router.post('/tools/call/:server', callTool);
 
   // Market routes
   router.get('/market/servers', getAllMarketServers);
