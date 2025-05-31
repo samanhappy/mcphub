@@ -325,6 +325,51 @@ export const useSettingsData = () => {
     }
   };
 
+  // Update multiple routing configuration fields at once
+  const updateRoutingConfigBatch = async (updates: Partial<RoutingConfig>) => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const token = localStorage.getItem('mcphub_token');
+      const response = await fetch(getApiUrl('/system-config'), {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-auth-token': token || '',
+        },
+        body: JSON.stringify({
+          routing: updates,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      if (data.success) {
+        setRoutingConfig({
+          ...routingConfig,
+          ...updates,
+        });
+        showToast(t('settings.systemConfigUpdated'));
+        return true;
+      } else {
+        showToast(t('errors.failedToUpdateRouteConfig'));
+        return false;
+      }
+    } catch (error) {
+      console.error('Failed to update routing config:', error);
+      setError(error instanceof Error ? error.message : 'Failed to update routing config');
+      showToast(t('errors.failedToUpdateRouteConfig'));
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Fetch settings when the component mounts or refreshKey changes
   useEffect(() => {
     fetchSettings();
@@ -353,5 +398,6 @@ export const useSettingsData = () => {
     updateInstallConfig,
     updateSmartRoutingConfig,
     updateSmartRoutingConfigBatch,
+    updateRoutingConfigBatch,
   };
 };

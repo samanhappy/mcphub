@@ -46,6 +46,7 @@ const SettingsPage: React.FC = () => {
     smartRoutingConfig,
     loading,
     updateRoutingConfig,
+    updateRoutingConfigBatch,
     updateInstallConfig,
     updateSmartRoutingConfig,
     updateSmartRoutingConfigBatch
@@ -85,16 +86,30 @@ const SettingsPage: React.FC = () => {
   };
 
   const handleRoutingConfigChange = async (key: 'enableGlobalRoute' | 'enableGroupNameRoute' | 'enableBearerAuth' | 'bearerAuthKey', value: boolean | string) => {
-    await updateRoutingConfig(key, value);
-
-    // If enableBearerAuth is turned on and there's no key, generate one
+    // If enableBearerAuth is turned on and there's no key, generate one first
     if (key === 'enableBearerAuth' && value === true) {
-      if (!tempRoutingConfig.bearerAuthKey) {
+      if (!tempRoutingConfig.bearerAuthKey && !routingConfig.bearerAuthKey) {
         const newKey = generateRandomKey();
         handleBearerAuthKeyChange(newKey);
-        await updateRoutingConfig('bearerAuthKey', newKey);
+
+        // Update both enableBearerAuth and bearerAuthKey in a single call
+        const success = await updateRoutingConfigBatch({
+          enableBearerAuth: true,
+          bearerAuthKey: newKey
+        });
+
+        if (success) {
+          // Update tempRoutingConfig to reflect the saved values
+          setTempRoutingConfig(prev => ({
+            ...prev,
+            bearerAuthKey: newKey
+          }));
+        }
+        return;
       }
     }
+
+    await updateRoutingConfig(key, value);
   };
 
   const handleBearerAuthKeyChange = (value: string) => {
