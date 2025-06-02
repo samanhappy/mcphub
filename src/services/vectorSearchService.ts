@@ -2,45 +2,17 @@ import { getRepositoryFactory } from '../db/index.js';
 import { VectorEmbeddingRepository } from '../db/repositories/index.js';
 import { ToolInfo } from '../types/index.js';
 import { getAppDataSource, initializeDatabase } from '../db/connection.js';
-import { loadSettings } from '../config/index.js';
+import { getSmartRoutingConfig } from '../utils/smartRouting.js';
 import OpenAI from 'openai';
 
 // Get OpenAI configuration from smartRouting settings or fallback to environment variables
 const getOpenAIConfig = () => {
-  try {
-    const settings = loadSettings();
-    const smartRouting = settings.systemConfig?.smartRouting;
-
-    return {
-      apiKey: smartRouting?.openaiApiKey || process.env.OPENAI_API_KEY,
-      baseURL:
-        smartRouting?.openaiApiBaseUrl ||
-        process.env.OPENAI_API_BASE_URL ||
-        'https://api.openai.com/v1',
-      embeddingModel:
-        smartRouting?.openaiApiEmbeddingModel ||
-        process.env.OPENAI_API_EMBEDDING_MODEL ||
-        'text-embedding-3-small',
-    };
-  } catch (error) {
-    console.warn(
-      'Failed to load smartRouting settings, falling back to environment variables:',
-      error,
-    );
-    return {
-      apiKey: '',
-      baseURL: 'https://api.openai.com/v1',
-      embeddingModel: 'text-embedding-3-small',
-    };
-  }
-};
-
-// Environment variables for embedding configuration
-const EMBEDDING_ENV = {
-  // The embedding model to use - default to OpenAI but allow BAAI/BGE models
-  MODEL: process.env.EMBEDDING_MODEL || getOpenAIConfig().embeddingModel,
-  // Detect if using a BGE model from the environment variable
-  IS_BGE_MODEL: !!(process.env.EMBEDDING_MODEL && process.env.EMBEDDING_MODEL.includes('bge')),
+  const smartRoutingConfig = getSmartRoutingConfig();
+  return {
+    apiKey: smartRoutingConfig.openaiApiKey,
+    baseURL: smartRoutingConfig.openaiApiBaseUrl,
+    embeddingModel: smartRoutingConfig.openaiApiEmbeddingModel,
+  };
 };
 
 // Constants for embedding models

@@ -2,6 +2,7 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
+import { SmartRoutingConfig } from '../utils/smartRouting.js';
 
 // User interface
 export interface IUser {
@@ -90,13 +91,7 @@ export interface McpSettings {
       pythonIndexUrl?: string; // Python package repository URL (UV_DEFAULT_INDEX)
       npmRegistry?: string; // NPM registry URL (npm_config_registry)
     };
-    smartRouting?: {
-      enabled?: boolean; // Controls whether smart routing is enabled
-      dbUrl?: string; // Database URL for smart routing
-      openaiApiBaseUrl?: string; // OpenAI API base URL
-      openaiApiKey?: string; // OpenAI API key
-      openaiApiEmbeddingModel?: string; // OpenAI API embedding model
-    };
+    smartRouting?: SmartRoutingConfig;
     // Add other system configuration sections here in the future
   };
 }

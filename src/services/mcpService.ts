@@ -9,6 +9,7 @@ import { loadSettings, saveSettings, expandEnvVars, replaceEnvVars } from '../co
 import config from '../config/index.js';
 import { getGroup } from './sseService.js';
 import { getServersInGroup } from './groupService.js';
+import { getSmartRoutingConfig } from '../utils/smartRouting.js';
 import { saveToolsAsVectorEmbeddings, searchToolsByVector } from './vectorSearchService.js';
 
 const servers: { [sessionId: string]: Server } = {};
@@ -198,9 +199,8 @@ export const initializeClientsFromSettings = (isInit: boolean): ServerInfo[] => 
             // Save tools as vector embeddings for search (only when smart routing is enabled)
             if (serverInfo.tools.length > 0) {
               try {
-                const settings = loadSettings();
-                const smartRoutingEnabled = settings.systemConfig?.smartRouting?.enabled || false;
-                if (smartRoutingEnabled) {
+                const smartRoutingConfig = getSmartRoutingConfig();
+                if (smartRoutingConfig.enabled) {
                   console.log(
                     `Smart routing enabled - saving vector embeddings for server ${name}`,
                   );
