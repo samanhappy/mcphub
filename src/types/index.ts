@@ -105,6 +105,7 @@ export interface ServerConfig {
   env?: Record<string, string>; // Environment variables
   headers?: Record<string, string>; // HTTP headers for SSE/streamable-http servers
   enabled?: boolean; // Flag to enable/disable the server
+  tools?: Record<string, { enabled: boolean; description?: string }>; // Tool-specific configurations with enable/disable state and custom descriptions
 }
 
 // Information about a server's status and tools
@@ -124,6 +125,7 @@ export interface ToolInfo {
   name: string; // Name of the tool
   description: string; // Brief description of the tool
   inputSchema: Record<string, unknown>; // Input schema for the tool
+  enabled?: boolean; // Whether the tool is enabled (optional, defaults to true)
 }
 
 // Standardized API response structure

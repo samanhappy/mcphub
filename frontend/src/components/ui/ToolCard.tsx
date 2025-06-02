@@ -1,22 +1,48 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Tool } from '@/types'
-import { ChevronDown, ChevronRight, Play, Loader } from '@/components/icons/LucideIcons'
-import { callTool, ToolCallResult } from '@/services/toolService'
+import { ChevronDown, ChevronRight, Play, Loader, Edit, Check } from '@/components/icons/LucideIcons'
+import { callTool, ToolCallResult, updateToolDescription } from '@/services/toolService'
+import { Switch } from './ToggleGroup'
 import DynamicForm from './DynamicForm'
 import ToolResult from './ToolResult'
 
 interface ToolCardProps {
   server: string
   tool: Tool
+  onToggle?: (toolName: string, enabled: boolean) => void
+  onDescriptionUpdate?: (toolName: string, description: string) => void
 }
 
-const ToolCard = ({ tool, server }: ToolCardProps) => {
+const ToolCard = ({ tool, server, onToggle, onDescriptionUpdate }: ToolCardProps) => {
   const { t } = useTranslation()
   const [isExpanded, setIsExpanded] = useState(false)
   const [showRunForm, setShowRunForm] = useState(false)
   const [isRunning, setIsRunning] = useState(false)
   const [result, setResult] = useState<ToolCallResult | null>(null)
+  const [isEditingDescription, setIsEditingDescription] = useState(false)
+  const [customDescription, setCustomDescription] = useState(tool.description || '')
+  const descriptionInputRef = useRef<HTMLInputElement>(null)
+  const descriptionTextRef = useRef<HTMLSpanElement>(null)
+  const [textWidth, setTextWidth] = useState<number>(0)
+
+  // Focus the input when editing mode is activated
+  useEffect(() => {
+    if (isEditingDescription && descriptionInputRef.current) {
+      descriptionInputRef.current.focus()
+      // Set input width to match text width
+      if (textWidth > 0) {
+        descriptionInputRef.current.style.width = `${textWidth + 20}px` // Add some padding
+      }
+    }
+  }, [isEditingDescription, textWidth])
+
+  // Measure text width when not editing
+  useEffect(() => {
+    if (!isEditingDescription && descriptionTextRef.current) {
+      setTextWidth(descriptionTextRef.current.offsetWidth)
+    }
+  }, [isEditingDescription, customDescription])
 
   // Generate a unique key for localStorage based on tool name and server
   const getStorageKey = useCallback(() => {
@@ -27,6 +53,49 @@ const ToolCard = ({ tool, server }: ToolCardProps) => {
   const clearStoredFormData = useCallback(() => {
     localStorage.removeItem(getStorageKey())
   }, [getStorageKey])
+
+  const handleToggle = (enabled: boolean) => {
+    if (onToggle) {
+      onToggle(tool.name, enabled)
+    }
+  }
+
+  const handleDescriptionEdit = () => {
+    setIsEditingDescription(true)
+  }
+
+  const handleDescriptionSave = async () => {
+    try {
+      const result = await updateToolDescription(server, tool.name, customDescription)
+      if (result.success) {
+        setIsEditingDescription(false)
+        if (onDescriptionUpdate) {
+          onDescriptionUpdate(tool.name, customDescription)
+        }
+      } else {
+        // Revert on error
+        setCustomDescription(tool.description || '')
+        console.error('Failed to update tool description:', result.error)
+      }
+    } catch (error) {
+      console.error('Error updating tool description:', error)
+      setCustomDescription(tool.description || '')
+      setIsEditingDescription(false)
+    }
+  }
+
+  const handleDescriptionChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setCustomDescription(e.target.value)
+  }
+
+  const handleDescriptionKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      handleDescriptionSave()
+    } else if (e.key === 'Escape') {
+      setCustomDescription(tool.description || '')
+      setIsEditingDescription(false)
+    }
+  }
 
   const handleRunTool = async (arguments_: Record<string, any>) => {
     setIsRunning(true)
@@ -69,12 +138,60 @@ const ToolCard = ({ tool, server }: ToolCardProps) => {
         <div className="flex-1">
           <h3 className="text-lg font-medium text-gray-900">
             {tool.name}
-            <span className="ml-2 text-sm font-normal text-gray-600">
-              {tool.description || t('tool.noDescription')}
+            <span className="ml-2 text-sm font-normal text-gray-600 inline-flex items-center">
+              {isEditingDescription ? (
+                <>
+                  <input
+                    ref={descriptionInputRef}
+                    type="text"
+                    className="px-2 py-1 border border-blue-300 rounded bg-white text-sm"
+                    value={customDescription}
+                    onChange={handleDescriptionChange}
+                    onKeyDown={handleDescriptionKeyDown}
+                    onClick={(e) => e.stopPropagation()}
+                    style={{
+                      minWidth: '100px',
+                      width: textWidth > 0 ? `${textWidth + 20}px` : 'auto'
+                    }}
+                  />
+                  <button
+                    className="ml-2 p-1 text-green-600 hover:text-green-800"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      handleDescriptionSave()
+                    }}
+                  >
+                    <Check size={16} />
+                  </button>
+                </>
+              ) : (
+                <>
+                  <span ref={descriptionTextRef}>{customDescription || t('tool.noDescription')}</span>
+                  <button
+                    className="ml-2 p-1 text-gray-500 hover:text-blue-600 transition-colors"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      handleDescriptionEdit()
+                    }}
+                  >
+                    <Edit size={14} />
+                  </button>
+                </>
+              )}
             </span>
           </h3>
         </div>
         <div className="flex items-center space-x-2">
+          <div
+            className="flex items-center space-x-2"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <Switch
+              checked={tool.enabled ?? true}
+              onCheckedChange={handleToggle}
+              disabled={isRunning}
+            />
+          </div>
           <button
             onClick={(e) => {
               e.stopPropagation()
@@ -82,7 +199,7 @@ const ToolCard = ({ tool, server }: ToolCardProps) => {
               setShowRunForm(true)
             }}
             className="flex items-center space-x-1 px-3 py-1 text-sm text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-md transition-colors"
-            disabled={isRunning}
+            disabled={isRunning || !tool.enabled}
           >
             {isRunning ? (
               <Loader size={14} className="animate-spin" />

@@ -67,6 +67,7 @@ export interface Tool {
   name: string;
   description: string;
   inputSchema: ToolInputSchema;
+  enabled?: boolean;
 }
 
 // Server config types
@@ -78,6 +79,7 @@ export interface ServerConfig {
   env?: Record<string, string>;
   headers?: Record<string, string>;
   enabled?: boolean;
+  tools?: Record<string, { enabled: boolean; description?: string }>; // Tool-specific configurations with enable/disable state and custom descriptions
 }
 
 // Server types

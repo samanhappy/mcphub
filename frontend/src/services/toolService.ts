@@ -70,3 +70,90 @@ export const callTool = async (
     };
   }
 };
+
+/**
+ * Toggle a tool's enabled state for a specific server
+ */
+export const toggleTool = async (
+  serverName: string,
+  toolName: string,
+  enabled: boolean,
+): Promise<{ success: boolean; error?: string }> => {
+  try {
+    const token = getToken();
+    if (!token) {
+      throw new Error('Authentication token not found. Please log in.');
+    }
+
+    const response = await fetch(getApiUrl(`/servers/${serverName}/tools/${toolName}/toggle`), {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-auth-token': token,
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ enabled }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    return {
+      success: data.success,
+      error: data.success ? undefined : data.message,
+    };
+  } catch (error) {
+    console.error('Error toggling tool:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error occurred',
+    };
+  }
+};
+
+/**
+ * Update a tool's description for a specific server
+ */
+export const updateToolDescription = async (
+  serverName: string,
+  toolName: string,
+  description: string,
+): Promise<{ success: boolean; error?: string }> => {
+  try {
+    const token = getToken();
+    if (!token) {
+      throw new Error('Authentication token not found. Please log in.');
+    }
+
+    const response = await fetch(
+      getApiUrl(`/servers/${serverName}/tools/${toolName}/description`),
+      {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-auth-token': token,
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ description }),
+      },
+    );
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    return {
+      success: data.success,
+      error: data.success ? undefined : data.message,
+    };
+  } catch (error) {
+    console.error('Error updating tool description:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error occurred',
+    };
+  }
+};

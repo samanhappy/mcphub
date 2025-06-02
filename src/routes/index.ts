@@ -8,6 +8,8 @@ import {
   updateServer,
   deleteServer,
   toggleServer,
+  toggleTool,
+  updateToolDescription,
   updateSystemConfig,
 } from '../controllers/serverController.js';
 import {
@@ -46,6 +48,8 @@ export const initRoutes = (app: express.Application): void => {
   router.put('/servers/:name', updateServer);
   router.delete('/servers/:name', deleteServer);
   router.post('/servers/:name/toggle', toggleServer);
+  router.post('/servers/:serverName/tools/:toolName/toggle', toggleTool);
+  router.put('/servers/:serverName/tools/:toolName/description', updateToolDescription);
   router.put('/system-config', updateSystemConfig);
 
   // Group management routes

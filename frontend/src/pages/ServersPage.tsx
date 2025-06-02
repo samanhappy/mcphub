@@ -125,6 +125,7 @@ const ServersPage: React.FC = () => {
               onRemove={handleServerRemove}
               onEdit={handleEditClick}
               onToggle={handleServerToggle}
+              onRefresh={triggerRefresh}
             />
           ))}
         </div>

@@ -284,7 +284,11 @@
     "toolResult": "Tool result",
     "noParameters": "This tool does not require any parameters.",
     "selectOption": "Select an option",
-    "enterValue": "Enter {{type}} value"
+    "enterValue": "Enter {{type}} value",
+    "enabled": "Enabled",
+    "enableSuccess": "Tool {{name}} enabled successfully",
+    "disableSuccess": "Tool {{name}} disabled successfully",
+    "toggleFailed": "Failed to toggle tool status"
   },
   "settings": {
     "enableGlobalRoute": "Enable Global Route",

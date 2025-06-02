@@ -318,6 +318,134 @@ export const toggleServer = async (req: Request, res: Response): Promise<void> =
   }
 };
 
+// Toggle tool status for a specific server
+export const toggleTool = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { serverName, toolName } = req.params;
+    const { enabled } = req.body;
+
+    if (!serverName || !toolName) {
+      res.status(400).json({
+        success: false,
+        message: 'Server name and tool name are required',
+      });
+      return;
+    }
+
+    if (typeof enabled !== 'boolean') {
+      res.status(400).json({
+        success: false,
+        message: 'Enabled status must be a boolean',
+      });
+      return;
+    }
+
+    const settings = loadSettings();
+    if (!settings.mcpServers[serverName]) {
+      res.status(404).json({
+        success: false,
+        message: 'Server not found',
+      });
+      return;
+    }
+
+    // Initialize tools config if it doesn't exist
+    if (!settings.mcpServers[serverName].tools) {
+      settings.mcpServers[serverName].tools = {};
+    }
+
+    // Set the tool's enabled state
+    settings.mcpServers[serverName].tools![toolName] = { enabled };
+
+    if (!saveSettings(settings)) {
+      res.status(500).json({
+        success: false,
+        message: 'Failed to save settings',
+      });
+      return;
+    }
+
+    // Notify that tools have changed
+    notifyToolChanged();
+
+    res.json({
+      success: true,
+      message: `Tool ${toolName} ${enabled ? 'enabled' : 'disabled'} successfully`,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+    });
+  }
+};
+
+// Update tool description for a specific server
+export const updateToolDescription = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { serverName, toolName } = req.params;
+    const { description } = req.body;
+
+    if (!serverName || !toolName) {
+      res.status(400).json({
+        success: false,
+        message: 'Server name and tool name are required',
+      });
+      return;
+    }
+
+    if (typeof description !== 'string') {
+      res.status(400).json({
+        success: false,
+        message: 'Description must be a string',
+      });
+      return;
+    }
+
+    const settings = loadSettings();
+    if (!settings.mcpServers[serverName]) {
+      res.status(404).json({
+        success: false,
+        message: 'Server not found',
+      });
+      return;
+    }
+
+    // Initialize tools config if it doesn't exist
+    if (!settings.mcpServers[serverName].tools) {
+      settings.mcpServers[serverName].tools = {};
+    }
+
+    // Set the tool's description
+    if (!settings.mcpServers[serverName].tools![toolName]) {
+      settings.mcpServers[serverName].tools![toolName] = { enabled: true };
+    }
+
+    settings.mcpServers[serverName].tools![toolName].description = description;
+
+    if (!saveSettings(settings)) {
+      res.status(500).json({
+        success: false,
+        message: 'Failed to save settings',
+      });
+      return;
+    }
+
+    // Notify that tools have changed
+    notifyToolChanged();
+
+    res.json({
+      success: true,
+      message: `Tool ${toolName} description updated successfully`,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+    });
+  }
+};
+
 export const updateSystemConfig = (req: Request, res: Response): void => {
   try {
     const { routing, install, smartRouting } = req.body;

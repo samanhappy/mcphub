@@ -11,10 +11,11 @@ interface ServerCardProps {
   server: Server
   onRemove: (serverName: string) => void
   onEdit: (server: Server) => void
-  onToggle?: (server: Server, enabled: boolean) => void
+  onToggle?: (server: Server, enabled: boolean) => Promise<boolean>
+  onRefresh?: () => void
 }
 
-const ServerCard = ({ server, onRemove, onEdit, onToggle }: ServerCardProps) => {
+const ServerCard = ({ server, onRemove, onEdit, onToggle, onRefresh }: ServerCardProps) => {
   const { t } = useTranslation()
   const { showToast } = useToast()
   const [isExpanded, setIsExpanded] = useState(false)
@@ -100,6 +101,29 @@ const ServerCard = ({ server, onRemove, onEdit, onToggle }: ServerCardProps) => 
   const handleConfirmDelete = () => {
     onRemove(server.name)
     setShowDeleteDialog(false)
+  }
+
+  const handleToolToggle = async (toolName: string, enabled: boolean) => {
+    try {
+      const { toggleTool } = await import('@/services/toolService')
+      const result = await toggleTool(server.name, toolName, enabled)
+
+      if (result.success) {
+        showToast(
+          t(enabled ? 'tool.enableSuccess' : 'tool.disableSuccess', { name: toolName }),
+          'success'
+        )
+        // Trigger refresh to update the tool's state in the UI
+        if (onRefresh) {
+          onRefresh()
+        }
+      } else {
+        showToast(result.error || t('tool.toggleFailed'), 'error')
+      }
+    } catch (error) {
+      console.error('Error toggling tool:', error)
+      showToast(t('tool.toggleFailed'), 'error')
+    }
   }
 
   return (
@@ -217,7 +241,7 @@ const ServerCard = ({ server, onRemove, onEdit, onToggle }: ServerCardProps) => 
             <h6 className={`font-medium ${server.enabled === false ? 'text-gray-600' : 'text-gray-900'} mb-4`}>{t('server.tools')}</h6>
             <div className="space-y-4">
               {server.tools.map((tool, index) => (
-                <ToolCard key={index} server={server.name} tool={tool} />
+                <ToolCard key={index} server={server.name} tool={tool} onToggle={handleToolToggle} />
               ))}
             </div>
           </div>
