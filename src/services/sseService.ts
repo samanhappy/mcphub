@@ -93,7 +93,7 @@ export const handleSseMessage = async (req: Request, res: Response): Promise<voi
   const transportData = transports[sessionId];
   if (!transportData) {
     console.warn(`No transport found for sessionId: ${sessionId}`);
-    res.status(400).send('No transport found for sessionId');
+    res.status(404).send('No transport found for sessionId');
     return;
   }
 

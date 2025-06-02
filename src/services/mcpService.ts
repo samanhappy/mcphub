@@ -499,7 +499,7 @@ Available servers: ${serversList}`;
 };
 
 export const handleCallToolRequest = async (request: any, extra: any) => {
-  console.log(`Handling CallToolRequest for tool: ${request.params.name}`);
+  console.log(`Handling CallToolRequest for tool: ${JSON.stringify(request.params)}`);
   try {
     // Special handling for agent group tools
     if (request.params.name === 'search_tools') {
