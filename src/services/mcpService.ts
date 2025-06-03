@@ -9,7 +9,6 @@ import { loadSettings, saveSettings, expandEnvVars, replaceEnvVars } from '../co
 import config from '../config/index.js';
 import { getGroup } from './sseService.js';
 import { getServersInGroup } from './groupService.js';
-import { getSmartRoutingConfig } from '../utils/smartRouting.js';
 import { saveToolsAsVectorEmbeddings, searchToolsByVector } from './vectorSearchService.js';
 
 const servers: { [sessionId: string]: Server } = {};
@@ -204,7 +203,7 @@ export const initializeClientsFromSettings = (isInit: boolean): ServerInfo[] => 
             }
 
             serverInfo.tools = tools.tools.map((tool) => ({
-              name: tool.name,
+              name: name + '/' + tool.name,
               description: tool.description || '',
               inputSchema: tool.inputSchema || {},
             }));
@@ -655,7 +654,7 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
 
     // Special handling for call_tool
     if (request.params.name === 'call_tool') {
-      const { toolName, arguments: toolArgs = {} } = request.params.arguments || {};
+      let { toolName, arguments: toolArgs = {} } = request.params.arguments || {};
 
       if (!toolName) {
         throw new Error('toolName parameter is required');
@@ -700,6 +699,9 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
         `Invoking tool '${toolName}' on server '${targetServerInfo.name}' with arguments: ${JSON.stringify(finalArgs)}`,
       );
 
+      toolName = toolName.startsWith(`${targetServerInfo.name}/`)
+        ? toolName.replace(`${targetServerInfo.name}/`, '')
+        : toolName;
       const result = await client.callTool({
         name: toolName,
         arguments: finalArgs,
@@ -718,6 +720,10 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
     if (!client) {
       throw new Error(`Client not found for server: ${request.params.name}`);
     }
+
+    request.params.name = request.params.name.startsWith(`${serverInfo.name}/`)
+      ? request.params.name.replace(`${serverInfo.name}/`, '')
+      : request.params.name;
     const result = await client.callTool(request.params);
     console.log(`Tool call result: ${JSON.stringify(result)}`);
     return result;
