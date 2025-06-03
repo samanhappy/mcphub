@@ -51,6 +51,21 @@ export const notifyToolChanged = async () => {
   });
 };
 
+export const syncToolEmbedding = async (serverName: string, toolName: string) => {
+  const serverInfo = getServerByName(serverName);
+  if (!serverInfo) {
+    console.warn(`Server not found: ${serverName}`);
+    return;
+  }
+  const tool = serverInfo.tools.find((t) => t.name === toolName);
+  if (!tool) {
+    console.warn(`Tool not found: ${toolName} on server: ${serverName}`);
+    return;
+  }
+  // Save tool as vector embedding for search
+  saveToolsAsVectorEmbeddings(serverName, [tool]);
+};
+
 // Store all server information
 let serverInfos: ServerInfo[] = [];
 
@@ -196,20 +211,8 @@ export const initializeClientsFromSettings = (isInit: boolean): ServerInfo[] => 
             serverInfo.status = 'connected';
             serverInfo.error = null;
 
-            // Save tools as vector embeddings for search (only when smart routing is enabled)
-            if (serverInfo.tools.length > 0) {
-              try {
-                const smartRoutingConfig = getSmartRoutingConfig();
-                if (smartRoutingConfig.enabled) {
-                  console.log(
-                    `Smart routing enabled - saving vector embeddings for server ${name}`,
-                  );
-                  saveToolsAsVectorEmbeddings(name, serverInfo.tools);
-                }
-              } catch (vectorError) {
-                console.warn(`Failed to save vector embeddings for server ${name}:`, vectorError);
-              }
-            }
+            // Save tools as vector embeddings for search
+            saveToolsAsVectorEmbeddings(name, serverInfo.tools);
           })
           .catch((error) => {
             console.error(

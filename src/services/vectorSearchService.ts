@@ -193,6 +193,16 @@ export const saveToolsAsVectorEmbeddings = async (
   tools: ToolInfo[],
 ): Promise<void> => {
   try {
+    if (tools.length === 0) {
+      console.warn(`No tools to save for server: ${serverName}`);
+      return;
+    }
+
+    const smartRoutingConfig = getSmartRoutingConfig();
+    if (!smartRoutingConfig.enabled) {
+      return;
+    }
+
     const config = getOpenAIConfig();
     const vectorRepository = getRepositoryFactory(
       'vectorEmbeddings',

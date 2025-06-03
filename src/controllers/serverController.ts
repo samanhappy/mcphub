@@ -6,6 +6,7 @@ import {
   removeServer,
   updateMcpServer,
   notifyToolChanged,
+  syncToolEmbedding,
   toggleServerStatus,
 } from '../services/mcpService.js';
 import { loadSettings, saveSettings } from '../config/index.js';
@@ -433,6 +434,8 @@ export const updateToolDescription = async (req: Request, res: Response): Promis
 
     // Notify that tools have changed
     notifyToolChanged();
+
+    syncToolEmbedding(serverName, toolName);
 
     res.json({
       success: true,
