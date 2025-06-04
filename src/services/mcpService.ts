@@ -203,7 +203,7 @@ export const initializeClientsFromSettings = (isInit: boolean): ServerInfo[] => 
             }
 
             serverInfo.tools = tools.tools.map((tool) => ({
-              name: name + '/' + tool.name,
+              name: name + '-' + tool.name,
               description: tool.description || '',
               inputSchema: tool.inputSchema || {},
             }));
@@ -699,8 +699,8 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
         `Invoking tool '${toolName}' on server '${targetServerInfo.name}' with arguments: ${JSON.stringify(finalArgs)}`,
       );
 
-      toolName = toolName.startsWith(`${targetServerInfo.name}/`)
-        ? toolName.replace(`${targetServerInfo.name}/`, '')
+      toolName = toolName.startsWith(`${targetServerInfo.name}-`)
+        ? toolName.replace(`${targetServerInfo.name}-`, '')
         : toolName;
       const result = await client.callTool({
         name: toolName,
@@ -721,8 +721,8 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
       throw new Error(`Client not found for server: ${request.params.name}`);
     }
 
-    request.params.name = request.params.name.startsWith(`${serverInfo.name}/`)
-      ? request.params.name.replace(`${serverInfo.name}/`, '')
+    request.params.name = request.params.name.startsWith(`${serverInfo.name}-`)
+      ? request.params.name.replace(`${serverInfo.name}-`, '')
       : request.params.name;
     const result = await client.callTool(request.params);
     console.log(`Tool call result: ${JSON.stringify(result)}`);

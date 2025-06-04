@@ -137,7 +137,7 @@ const ToolCard = ({ tool, server, onToggle, onDescriptionUpdate }: ToolCardProps
       >
         <div className="flex-1">
           <h3 className="text-lg font-medium text-gray-900">
-            {tool.name.replace(server + '/', '')}
+            {tool.name.replace(server + '-', '')}
             <span className="ml-2 text-sm font-normal text-gray-600 inline-flex items-center">
               {isEditingDescription ? (
                 <>
@@ -229,7 +229,7 @@ const ToolCard = ({ tool, server, onToggle, onDescriptionUpdate }: ToolCardProps
           {/* Run Form */}
           {showRunForm && (
             <div className="border border-gray-300 rounded-lg p-4 bg-blue-50">
-              <h4 className="text-sm font-medium text-gray-900 mb-3">{t('tool.runToolWithName', { name: tool.name.replace(server + '/', '') })}</h4>
+              <h4 className="text-sm font-medium text-gray-900 mb-3">{t('tool.runToolWithName', { name: tool.name.replace(server + '-', '') })}</h4>
               <DynamicForm
                 schema={tool.inputSchema || { type: 'object' }}
                 onSubmit={handleRunTool}
