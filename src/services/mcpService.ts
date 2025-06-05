@@ -203,7 +203,7 @@ export const initializeClientsFromSettings = (isInit: boolean): ServerInfo[] => 
             }
 
             serverInfo.tools = tools.tools.map((tool) => ({
-              name: name + '-' + tool.name,
+              name: `${name}-${tool.name}`,
               description: tool.description || '',
               inputSchema: tool.inputSchema || {},
             }));
