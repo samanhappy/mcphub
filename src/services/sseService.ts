@@ -6,6 +6,7 @@ import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/
 import { isInitializeRequest } from '@modelcontextprotocol/sdk/types.js';
 import { deleteMcpServer, getMcpServer } from './mcpService.js';
 import { loadSettings } from '../config/index.js';
+import config from '../config/index.js';
 
 const transports: { [sessionId: string]: { transport: Transport; group: string } } = {};
 
@@ -58,7 +59,7 @@ export const handleSseConnection = async (req: Request, res: Response): Promise<
     return;
   }
 
-  const transport = new SSEServerTransport('/messages', res);
+  const transport = new SSEServerTransport(`${config.basePath}/messages`, res);
   transports[transport.sessionId] = { transport, group: group };
 
   res.on('close', () => {
