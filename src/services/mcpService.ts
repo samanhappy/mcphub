@@ -13,6 +13,38 @@ import { saveToolsAsVectorEmbeddings, searchToolsByVector } from './vectorSearch
 
 const servers: { [sessionId: string]: Server } = {};
 
+// Helper function to set up keep-alive ping for SSE connections
+const setupKeepAlive = (serverInfo: ServerInfo, serverConfig: ServerConfig): void => {
+  // Only set up keep-alive for SSE connections
+  if (!(serverInfo.transport instanceof SSEClientTransport)) {
+    return;
+  }
+
+  // Clear any existing interval first
+  if (serverInfo.keepAliveIntervalId) {
+    clearInterval(serverInfo.keepAliveIntervalId);
+  }
+
+  // Use configured interval or default to 60 seconds for SSE
+  const interval = serverConfig.keepAliveInterval || 60000;
+
+  serverInfo.keepAliveIntervalId = setInterval(async () => {
+    try {
+      if (serverInfo.client && serverInfo.status === 'connected') {
+        await serverInfo.client.ping();
+        console.log(`Keep-alive ping successful for server: ${serverInfo.name}`);
+      }
+    } catch (error) {
+      console.warn(`Keep-alive ping failed for server ${serverInfo.name}:`, error);
+      // TODO Consider handling reconnection logic here if needed
+    }
+  }, interval);
+
+  console.log(
+    `Keep-alive ping set up for server ${serverInfo.name} with interval ${interval / 1000} seconds`,
+  );
+};
+
 export const initUpstreamServers = async (): Promise<void> => {
   await registerAllTools(true);
 };
@@ -210,6 +242,9 @@ export const initializeClientsFromSettings = (isInit: boolean): ServerInfo[] => 
             serverInfo.status = 'connected';
             serverInfo.error = null;
 
+            // Set up keep-alive ping for SSE connections
+            setupKeepAlive(serverInfo, conf);
+
             // Save tools as vector embeddings for search
             saveToolsAsVectorEmbeddings(name, serverInfo.tools);
           })
@@ -389,6 +424,13 @@ export const updateMcpServer = async (
 function closeServer(name: string) {
   const serverInfo = serverInfos.find((serverInfo) => serverInfo.name === name);
   if (serverInfo && serverInfo.client && serverInfo.transport) {
+    // Clear keep-alive interval if exists
+    if (serverInfo.keepAliveIntervalId) {
+      clearInterval(serverInfo.keepAliveIntervalId);
+      serverInfo.keepAliveIntervalId = undefined;
+      console.log(`Cleared keep-alive interval for server: ${serverInfo.name}`);
+    }
+
     serverInfo.client.close();
     serverInfo.transport.close();
     console.log(`Closed client and transport for server: ${serverInfo.name}`);
@@ -650,9 +692,7 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
           },
         ],
       };
-    }
-
-    // Special handling for call_tool
+    } // Special handling for call_tool
     if (request.params.name === 'call_tool') {
       let { toolName, arguments: toolArgs = {} } = request.params.arguments || {};
 

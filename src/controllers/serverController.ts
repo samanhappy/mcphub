@@ -96,15 +96,18 @@ export const createServer = async (req: Request, res: Response): Promise<void> =
         message: 'Headers must be an object',
       });
       return;
-    }
-
-    // Validate that headers are only used with sse and streamable-http types
+    } // Validate that headers are only used with sse and streamable-http types
     if (config.headers && config.type === 'stdio') {
       res.status(400).json({
         success: false,
         message: 'Headers are not supported for stdio server type',
       });
       return;
+    }
+
+    // Set default keep-alive interval for SSE servers if not specified
+    if ((config.type === 'sse' || (!config.type && config.url)) && !config.keepAliveInterval) {
+      config.keepAliveInterval = 60000; // Default 60 seconds for SSE servers
     }
 
     const result = await addServer(name, config);
@@ -213,15 +216,18 @@ export const updateServer = async (req: Request, res: Response): Promise<void> =
         message: 'Headers must be an object',
       });
       return;
-    }
-
-    // Validate that headers are only used with sse and streamable-http types
+    } // Validate that headers are only used with sse and streamable-http types
     if (config.headers && config.type === 'stdio') {
       res.status(400).json({
         success: false,
         message: 'Headers are not supported for stdio server type',
       });
       return;
+    }
+
+    // Set default keep-alive interval for SSE servers if not specified
+    if ((config.type === 'sse' || (!config.type && config.url)) && !config.keepAliveInterval) {
+      config.keepAliveInterval = 60000; // Default 60 seconds for SSE servers
     }
 
     const result = await updateMcpServer(name, config);
