@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
-import { MarketServer } from '@/types';
+import { MarketServer, ServerConfig } from '@/types';
 import { useMarketData } from '@/hooks/useMarketData';
 import { useToast } from '@/contexts/ToastContext';
 import MarketServerCard from '@/components/MarketServerCard';
@@ -90,10 +90,11 @@ const MarketPage: React.FC = () => {
     navigate('/market');
   };
 
-  const handleInstall = async (server: MarketServer) => {
+  const handleInstall = async (server: MarketServer, config: ServerConfig) => {
     try {
       setInstalling(true);
-      const success = await installServer(server);
+      // Pass the server object and the config to the installServer function
+      const success = await installServer(server, config);
       if (success) {
         // Show success message using toast instead of alert
         showToast(t('market.installSuccess', { serverName: server.display_name }), 'success');

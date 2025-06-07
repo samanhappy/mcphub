@@ -3,10 +3,12 @@ import { useTranslation } from 'react-i18next';
 import { MarketServer, MarketServerInstallation } from '@/types';
 import ServerForm from './ServerForm';
 
+import { ServerConfig } from '@/types';
+
 interface MarketServerDetailProps {
   server: MarketServer;
   onBack: () => void;
-  onInstall: (server: MarketServer) => void;
+  onInstall: (server: MarketServer, config: ServerConfig) => void;
   installing?: boolean;
   isInstalled?: boolean;
 }
@@ -83,8 +85,8 @@ const MarketServerDetail: React.FC<MarketServerDetailProps> = ({
   const handleSubmit = async (payload: any) => {
     try {
       setError(null);
-      // Pass the server object to the parent component for installation
-      onInstall(server);
+      // Pass the server object and the payload (includes env changes) for installation
+      onInstall(server, payload.config);
       setModalVisible(false);
     } catch (err) {
       console.error('Error installing server:', err);

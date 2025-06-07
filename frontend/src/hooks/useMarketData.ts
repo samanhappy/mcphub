@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { MarketServer, ApiResponse } from '@/types';
+import { MarketServer, ApiResponse, ServerConfig } from '@/types';
 import { getApiUrl } from '../utils/runtime';
 
 export const useMarketData = () => {
@@ -347,7 +347,7 @@ export const useMarketData = () => {
 
   // Install server to the local environment
   const installServer = useCallback(
-    async (server: MarketServer) => {
+    async (server: MarketServer, customConfig: ServerConfig) => {
       try {
         const installType = server.installations?.npm
           ? 'npm'
@@ -362,13 +362,13 @@ export const useMarketData = () => {
 
         const installation = server.installations[installType];
 
-        // Prepare server configuration
+        // Prepare server configuration, merging with customConfig
         const serverConfig = {
           name: server.name,
           config: {
-            command: installation.command,
-            args: installation.args,
-            env: installation.env || {},
+            command: customConfig.command || installation.command || '',
+            args: customConfig.args || installation.args || [],
+            env: { ...installation.env, ...customConfig.env },
           },
         };
 
