@@ -108,7 +108,10 @@ export const handleSseMessage = async (req: Request, res: Response): Promise<voi
 export const handleMcpPostRequest = async (req: Request, res: Response): Promise<void> => {
   const sessionId = req.headers['mcp-session-id'] as string | undefined;
   const group = req.params.group;
-  console.log(`Handling MCP post request for sessionId: ${sessionId} and group: ${group}`);
+  const body = req.body;
+  console.log(
+    `Handling MCP post request for sessionId: ${sessionId} and group: ${group} with body: ${JSON.stringify(body)}`,
+  );
   // Check bearer auth
   if (!validateBearerAuth(req)) {
     res.status(401).send('Bearer authentication required or invalid token');
