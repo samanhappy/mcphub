@@ -36,6 +36,7 @@ export const loadSettings = (): McpSettings => {
     // Update cache
     settingsCache = settings;
 
+    console.log(`Loaded settings from ${settingsPath}:`, settings);
     return settings;
   } catch (error) {
     console.error(`Failed to load settings from ${settingsPath}:`, error);
