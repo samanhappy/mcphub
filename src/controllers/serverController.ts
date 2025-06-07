@@ -96,7 +96,9 @@ export const createServer = async (req: Request, res: Response): Promise<void> =
         message: 'Headers must be an object',
       });
       return;
-    } // Validate that headers are only used with sse and streamable-http types
+    }
+
+    // Validate that headers are only used with sse and streamable-http types
     if (config.headers && config.type === 'stdio') {
       res.status(400).json({
         success: false,
@@ -216,7 +218,9 @@ export const updateServer = async (req: Request, res: Response): Promise<void> =
         message: 'Headers must be an object',
       });
       return;
-    } // Validate that headers are only used with sse and streamable-http types
+    }
+
+    // Validate that headers are only used with sse and streamable-http types
     if (config.headers && config.type === 'stdio') {
       res.status(400).json({
         success: false,
