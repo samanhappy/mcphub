@@ -692,7 +692,9 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
           },
         ],
       };
-    } // Special handling for call_tool
+    }
+
+    // Special handling for call_tool
     if (request.params.name === 'call_tool') {
       let { toolName, arguments: toolArgs = {} } = request.params.arguments || {};
 
