@@ -2,6 +2,7 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
+import { RequestOptions } from '@modelcontextprotocol/sdk/shared/protocol.js';
 import { SmartRoutingConfig } from '../utils/smartRouting.js';
 
 // User interface
@@ -107,6 +108,7 @@ export interface ServerConfig {
   enabled?: boolean; // Flag to enable/disable the server
   keepAliveInterval?: number; // Keep-alive ping interval in milliseconds (default: 60000ms for SSE servers)
   tools?: Record<string, { enabled: boolean; description?: string }>; // Tool-specific configurations with enable/disable state and custom descriptions
+  options?: Partial<Pick<RequestOptions, 'timeout' | 'resetTimeoutOnProgress' | 'maxTotalTimeout'>>; // MCP request options configuration
 }
 
 // Information about a server's status and tools
@@ -117,6 +119,7 @@ export interface ServerInfo {
   tools: ToolInfo[]; // List of tools available on the server
   client?: Client; // Client instance for communication
   transport?: SSEClientTransport | StdioClientTransport | StreamableHTTPClientTransport; // Transport mechanism used
+  options?: RequestOptions; // Options for requests
   createTime: number; // Timestamp of when the server was created
   enabled?: boolean; // Flag to indicate if the server is enabled
   keepAliveIntervalId?: NodeJS.Timeout; // Timer ID for keep-alive ping interval

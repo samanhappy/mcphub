@@ -218,14 +218,27 @@ export const initializeClientsFromSettings = (isInit: boolean): ServerInfo[] => 
         },
       },
     );
-    const timeout = isInit ? Number(config.initTimeout) : Number(config.timeout);
+
+    const initRequestOptions = isInit
+      ? {
+          timeout: Number(config.initTimeout) || 60000,
+        }
+      : undefined;
+
+    // Get request options from server configuration, with fallbacks
+    const serverRequestOptions = conf.options || {};
+    const requestOptions = {
+      timeout: serverRequestOptions.timeout || 60000,
+      resetTimeoutOnProgress: serverRequestOptions.resetTimeoutOnProgress || false,
+      maxTotalTimeout: serverRequestOptions.maxTotalTimeout,
+    };
+
     client
-      .connect(transport, { timeout: timeout })
+      .connect(transport, initRequestOptions || requestOptions)
       .then(() => {
         console.log(`Successfully connected client for server: ${name}`);
-
         client
-          .listTools({}, { timeout: timeout })
+          .listTools({}, initRequestOptions || requestOptions)
           .then((tools) => {
             console.log(`Successfully listed ${tools.tools.length} tools for server: ${name}`);
             const serverInfo = getServerByName(name);
@@ -276,6 +289,7 @@ export const initializeClientsFromSettings = (isInit: boolean): ServerInfo[] => 
       tools: [],
       client,
       transport,
+      options: requestOptions,
       createTime: Date.now(),
     });
     console.log(`Initialized client for server: ${name}`);
@@ -696,14 +710,12 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
 
     // Special handling for call_tool
     if (request.params.name === 'call_tool') {
-      let { toolName, arguments: toolArgs = {} } = request.params.arguments || {};
-
+      let { toolName } = request.params.arguments || {};
       if (!toolName) {
         throw new Error('toolName parameter is required');
       }
 
-      // arguments parameter is now optional
-
+      const { arguments: toolArgs = {} } = request.params.arguments || {};
       let targetServerInfo: ServerInfo | undefined;
       if (extra && extra.server) {
         targetServerInfo = getServerByName(extra.server);
@@ -744,10 +756,14 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
       toolName = toolName.startsWith(`${targetServerInfo.name}-`)
         ? toolName.replace(`${targetServerInfo.name}-`, '')
         : toolName;
-      const result = await client.callTool({
-        name: toolName,
-        arguments: finalArgs,
-      });
+      const result = await client.callTool(
+        {
+          name: toolName,
+          arguments: finalArgs,
+        },
+        undefined,
+        targetServerInfo.options || {},
+      );
 
       console.log(`Tool invocation result: ${JSON.stringify(result)}`);
       return result;
@@ -766,7 +782,7 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
     request.params.name = request.params.name.startsWith(`${serverInfo.name}-`)
       ? request.params.name.replace(`${serverInfo.name}-`, '')
       : request.params.name;
-    const result = await client.callTool(request.params);
+    const result = await client.callTool(request.params, undefined, serverInfo.options || {});
     console.log(`Tool call result: ${JSON.stringify(result)}`);
     return result;
   } catch (error) {

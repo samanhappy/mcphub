@@ -41,7 +41,12 @@ const ServerForm = ({ onSubmit, onCancel, initialData = null, modalTitle, formEr
     args: (initialData && initialData.config && initialData.config.args) || [],
     type: getInitialServerType(), // Initialize the type field
     env: [],
-    headers: []
+    headers: [],
+    options: {
+      timeout: (initialData && initialData.config && initialData.config.options && initialData.config.options.timeout) || 60000,
+      resetTimeoutOnProgress: (initialData && initialData.config && initialData.config.options && initialData.config.options.resetTimeoutOnProgress) || false,
+      maxTotalTimeout: (initialData && initialData.config && initialData.config.options && initialData.config.options.maxTotalTimeout) || undefined,
+    }
   })
 
   const [envVars, setEnvVars] = useState<EnvVar[]>(
@@ -56,6 +61,7 @@ const ServerForm = ({ onSubmit, onCancel, initialData = null, modalTitle, formEr
       : [],
   )
 
+  const [isRequestOptionsExpanded, setIsRequestOptionsExpanded] = useState<boolean>(false)
   const [error, setError] = useState<string | null>(null)
   const isEdit = !!initialData
 
@@ -66,7 +72,7 @@ const ServerForm = ({ onSubmit, onCancel, initialData = null, modalTitle, formEr
 
   // Transform space-separated arguments string into array
   const handleArgsChange = (value: string) => {
-    let args = value.split(' ').filter((arg) => arg.trim() !== '')
+    const args = value.split(' ').filter((arg) => arg.trim() !== '')
     setFormData({ ...formData, arguments: value, args })
   }
 
@@ -107,6 +113,17 @@ const ServerForm = ({ onSubmit, onCancel, initialData = null, modalTitle, formEr
     setHeaderVars(newHeaderVars)
   }
 
+  // Handle options changes
+  const handleOptionsChange = (field: 'timeout' | 'resetTimeoutOnProgress' | 'maxTotalTimeout', value: number | boolean | undefined) => {
+    setFormData(prev => ({
+      ...prev,
+      options: {
+        ...prev.options,
+        [field]: value
+      }
+    }))
+  }
+
   // Submit handler for server configuration
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -127,6 +144,18 @@ const ServerForm = ({ onSubmit, onCancel, initialData = null, modalTitle, formEr
         }
       })
 
+      // Prepare options object, only include defined values
+      const options: any = {}
+      if (formData.options?.timeout && formData.options.timeout !== 60000) {
+        options.timeout = formData.options.timeout
+      }
+      if (formData.options?.resetTimeoutOnProgress) {
+        options.resetTimeoutOnProgress = formData.options.resetTimeoutOnProgress
+      }
+      if (formData.options?.maxTotalTimeout) {
+        options.maxTotalTimeout = formData.options.maxTotalTimeout
+      }
+
       const payload = {
         name: formData.name,
         config: {
@@ -141,7 +170,8 @@ const ServerForm = ({ onSubmit, onCancel, initialData = null, modalTitle, formEr
               args: formData.args,
               env: Object.keys(env).length > 0 ? env : undefined,
             }
-          )
+          ),
+          ...(Object.keys(options).length > 0 ? { options } : {})
         }
       }
 
@@ -364,6 +394,75 @@ const ServerForm = ({ onSubmit, onCancel, initialData = null, modalTitle, formEr
             </div>
           </>
         )}
+
+        {/* Request Options Configuration */}
+        <div className="mb-4">
+          <div
+            className="flex items-center justify-between cursor-pointer bg-gray-50 hover:bg-gray-100 p-3 rounded border"
+            onClick={() => setIsRequestOptionsExpanded(!isRequestOptionsExpanded)}
+          >
+            <label className="text-gray-700 text-sm font-bold">
+              {t('server.requestOptions')}
+            </label>
+            <span className="text-gray-500 text-sm">
+              {isRequestOptionsExpanded ? '▼' : '▶'}
+            </span>
+          </div>
+
+          {isRequestOptionsExpanded && (
+            <div className="border rounded-b p-4 bg-gray-50 border-t-0">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-gray-600 text-sm font-medium mb-1" htmlFor="timeout">
+                    {t('server.timeout')}
+                  </label>
+                  <input
+                    type="number"
+                    id="timeout"
+                    value={formData.options?.timeout || 60000}
+                    onChange={(e) => handleOptionsChange('timeout', parseInt(e.target.value) || 60000)}
+                    className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                    placeholder="30000"
+                    min="1000"
+                    max="300000"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">{t('server.timeoutDescription')}</p>
+                </div>
+
+                <div>
+                  <label className="block text-gray-600 text-sm font-medium mb-1" htmlFor="maxTotalTimeout">
+                    {t('server.maxTotalTimeout')}
+                  </label>
+                  <input
+                    type="number"
+                    id="maxTotalTimeout"
+                    value={formData.options?.maxTotalTimeout || ''}
+                    onChange={(e) => handleOptionsChange('maxTotalTimeout', e.target.value ? parseInt(e.target.value) : undefined)}
+                    className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                    placeholder="Optional"
+                    min="1000"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">{t('server.maxTotalTimeoutDescription')}</p>
+                </div>
+              </div>
+
+              <div className="mt-3">
+                <label className="flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={formData.options?.resetTimeoutOnProgress || false}
+                    onChange={(e) => handleOptionsChange('resetTimeoutOnProgress', e.target.checked)}
+                    className="mr-2"
+                  />
+                  <span className="text-gray-600 text-sm">{t('server.resetTimeoutOnProgress')}</span>
+                </label>
+                <p className="text-xs text-gray-500 mt-1 ml-6">
+                  {t('server.resetTimeoutOnProgressDescription')}
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
 
         <div className="flex justify-end mt-6">
           <button

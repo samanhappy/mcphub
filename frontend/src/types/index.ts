@@ -80,6 +80,11 @@ export interface ServerConfig {
   headers?: Record<string, string>;
   enabled?: boolean;
   tools?: Record<string, { enabled: boolean; description?: string }>; // Tool-specific configurations with enable/disable state and custom descriptions
+  options?: {
+    timeout?: number; // Request timeout in milliseconds
+    resetTimeoutOnProgress?: boolean; // Reset timeout on progress notifications
+    maxTotalTimeout?: number; // Maximum total timeout in milliseconds
+  }; // MCP request options configuration
 }
 
 // Server types
@@ -116,6 +121,11 @@ export interface ServerFormData {
   type?: 'stdio' | 'sse' | 'streamable-http'; // Added type field
   env: EnvVar[];
   headers: EnvVar[];
+  options?: {
+    timeout?: number;
+    resetTimeoutOnProgress?: boolean;
+    maxTotalTimeout?: number;
+  };
 }
 
 // Group form data types
