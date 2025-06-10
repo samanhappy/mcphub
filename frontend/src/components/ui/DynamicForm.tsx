@@ -198,7 +198,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({ schema, onSubmit, onCancel, l
     if (validateForm()) {
       onSubmit(formValues);
     }
-  };  const getNestedValue = (obj: any, path: string): any => {
+  }; const getNestedValue = (obj: any, path: string): any => {
     return path.split('.').reduce((current, key) => current?.[key], obj);
   };
 
@@ -278,7 +278,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({ schema, onSubmit, onCancel, l
     const error = errors[fullPath];    // Handle array type
     if (propSchema.type === 'array') {
       const arrayValue = getNestedValue(formValues, fullPath) || [];
-      
+
       return (
         <div key={fullPath} className="mb-6">
           <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -288,7 +288,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({ schema, onSubmit, onCancel, l
           {propSchema.description && (
             <p className="text-xs text-gray-500 mb-2">{propSchema.description}</p>
           )}
-          
+
           <div className="border border-gray-200 rounded-md p-3 bg-gray-50">
             {arrayValue.map((item: any, index: number) => (
               <div key={index} className="mb-3 p-3 bg-white border rounded-md">
@@ -306,7 +306,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({ schema, onSubmit, onCancel, l
                     Remove
                   </button>
                 </div>
-                
+
                 {propSchema.items?.type === 'string' && propSchema.items.enum ? (
                   <select
                     value={item || ''}
@@ -355,7 +355,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({ schema, onSubmit, onCancel, l
                 )}
               </div>
             ))}
-            
+
             <button
               type="button"
               onClick={() => {
@@ -367,7 +367,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({ schema, onSubmit, onCancel, l
               Add {key} item
             </button>
           </div>
-          
+
           {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
         </div>
       );
@@ -384,13 +384,13 @@ const DynamicForm: React.FC<DynamicFormProps> = ({ schema, onSubmit, onCancel, l
             {propSchema.description && (
               <p className="text-xs text-gray-500 mb-2">{propSchema.description}</p>
             )}
-            
+
             <div className="border border-gray-200 rounded-md p-4 bg-gray-50">
               {Object.entries(propSchema.properties).map(([objKey, objSchema]) => (
                 renderField(objKey, objSchema as JsonSchema, fullPath)
               ))}
             </div>
-            
+
             {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
           </div>
         );
@@ -425,7 +425,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({ schema, onSubmit, onCancel, l
           </div>
         );
       }
-    }    if (propSchema.type === 'string') {
+    } if (propSchema.type === 'string') {
       if (propSchema.enum) {
         return (
           <div key={fullPath} className="mb-4">
@@ -471,7 +471,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({ schema, onSubmit, onCancel, l
           </div>
         );
       }
-    }    if (propSchema.type === 'number' || propSchema.type === 'integer') {
+    } if (propSchema.type === 'number' || propSchema.type === 'integer') {
       return (
         <div key={fullPath} className="mb-4">
           <label className="block text-sm font-medium text-gray-700 mb-1">
