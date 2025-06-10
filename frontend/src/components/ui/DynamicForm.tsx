@@ -77,7 +77,13 @@ const DynamicForm: React.FC<DynamicFormProps> = ({ schema, onSubmit, onCancel, l
           } else if (propSchema.type === 'array') {
             values[key] = [];
           } else if (propSchema.type === 'object') {
-            values[key] = initializeValues(propSchema, fullPath);
+            // For objects with properties, recursively initialize
+            if (propSchema.properties) {
+              values[key] = initializeValues(propSchema, fullPath);
+            } else {
+              // For objects without properties, initialize as empty object
+              values[key] = {};
+            }
           }
         });
       }
@@ -366,26 +372,59 @@ const DynamicForm: React.FC<DynamicFormProps> = ({ schema, onSubmit, onCancel, l
         </div>
       );
     }    // Handle object type
-    if (propSchema.type === 'object' && propSchema.properties) {
-      return (
-        <div key={fullPath} className="mb-6">
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            {key}
-            {(path ? getNestedValue(jsonSchema, path)?.required?.includes(key) : jsonSchema.required?.includes(key)) && <span className="text-red-500 ml-1">*</span>}
-          </label>
-          {propSchema.description && (
-            <p className="text-xs text-gray-500 mb-2">{propSchema.description}</p>
-          )}
-          
-          <div className="border border-gray-200 rounded-md p-4 bg-gray-50">
-            {Object.entries(propSchema.properties).map(([objKey, objSchema]) => (
-              renderField(objKey, objSchema as JsonSchema, fullPath)
-            ))}
+    if (propSchema.type === 'object') {
+      if (propSchema.properties) {
+        // Object with defined properties - render as nested form
+        return (
+          <div key={fullPath} className="mb-6">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              {key}
+              {(path ? getNestedValue(jsonSchema, path)?.required?.includes(key) : jsonSchema.required?.includes(key)) && <span className="text-red-500 ml-1">*</span>}
+            </label>
+            {propSchema.description && (
+              <p className="text-xs text-gray-500 mb-2">{propSchema.description}</p>
+            )}
+            
+            <div className="border border-gray-200 rounded-md p-4 bg-gray-50">
+              {Object.entries(propSchema.properties).map(([objKey, objSchema]) => (
+                renderField(objKey, objSchema as JsonSchema, fullPath)
+              ))}
+            </div>
+            
+            {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
           </div>
-          
-          {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
-        </div>
-      );
+        );
+      } else {
+        // Object without defined properties - render as JSON textarea
+        return (
+          <div key={fullPath} className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              {key}
+              {(path ? getNestedValue(jsonSchema, path)?.required?.includes(key) : jsonSchema.required?.includes(key)) && <span className="text-red-500 ml-1">*</span>}
+              <span className="text-xs text-gray-500 ml-1">(JSON object)</span>
+            </label>
+            {propSchema.description && (
+              <p className="text-xs text-gray-500 mb-2">{propSchema.description}</p>
+            )}
+            <textarea
+              value={typeof value === 'object' ? JSON.stringify(value, null, 2) : value || '{}'}
+              onChange={(e) => {
+                try {
+                  const parsedValue = JSON.parse(e.target.value);
+                  handleInputChange(fullPath, parsedValue);
+                } catch (err) {
+                  // Keep the string value if it's not valid JSON yet
+                  handleInputChange(fullPath, e.target.value);
+                }
+              }}
+              placeholder={`{\n  "key": "value"\n}`}
+              className={`w-full border rounded-md px-3 py-2 font-mono text-sm ${error ? 'border-red-500' : 'border-gray-300'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+              rows={4}
+            />
+            {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
+          </div>
+        );
+      }
     }    if (propSchema.type === 'string') {
       if (propSchema.enum) {
         return (
