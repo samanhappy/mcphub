@@ -253,7 +253,9 @@ const DynamicForm: React.FC<DynamicFormProps> = ({ schema, onSubmit, onCancel, l
     if (validateForm()) {
       onSubmit(formValues);
     }
-  }; const getNestedValue = (obj: any, path: string): any => {
+  };
+
+  const getNestedValue = (obj: any, path: string): any => {
     return path.split('.').reduce((current, key) => current?.[key], obj);
   };
 
@@ -629,8 +631,8 @@ const DynamicForm: React.FC<DynamicFormProps> = ({ schema, onSubmit, onCancel, l
             type="button"
             onClick={switchToFormMode}
             className={`px-3 py-1 text-sm rounded-md transition-colors ${!isJsonMode
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              ? 'bg-blue-600 text-white'
+              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               }`}
           >
             {t('tool.formMode')}
@@ -639,8 +641,8 @@ const DynamicForm: React.FC<DynamicFormProps> = ({ schema, onSubmit, onCancel, l
             type="button"
             onClick={switchToJsonMode}
             className={`px-3 py-1 text-sm rounded-md transition-colors ${isJsonMode
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              ? 'bg-blue-600 text-white'
+              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               }`}
           >
             {t('tool.jsonMode')}
