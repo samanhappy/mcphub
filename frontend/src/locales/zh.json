@@ -138,6 +138,7 @@
     "create": "创建",
     "submitting": "提交中...",
     "delete": "删除",
+    "remove": "移除",
     "copy": "复制",
     "copySuccess": "已复制到剪贴板",
     "copyFailed": "复制失败",
@@ -289,7 +290,16 @@
     "enabled": "已启用",
     "enableSuccess": "工具 {{name}} 启用成功",
     "disableSuccess": "工具 {{name}} 禁用成功",
-    "toggleFailed": "切换工具状态失败"
+    "toggleFailed": "切换工具状态失败",
+    "parameters": "工具参数",
+    "formMode": "表单模式",
+    "jsonMode": "JSON 模式",
+    "jsonConfiguration": "JSON 配置",
+    "invalidJsonFormat": "无效的 JSON 格式",
+    "fixJsonBeforeSwitching": "请修复 JSON 格式后再切换到表单模式",
+    "item": "项目 {{index}}",
+    "addItem": "添加 {{key}} 项目",
+    "enterKey": "输入 {{key}}"
   },
   "settings": {
     "enableGlobalRoute": "启用全局路由",

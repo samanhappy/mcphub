@@ -137,6 +137,7 @@
     "create": "Create",
     "submitting": "Submitting...",
     "delete": "Delete",
+    "remove": "Remove",
     "copy": "Copy",
     "copySuccess": "Copied to clipboard",
     "copyFailed": "Copy failed",
@@ -288,7 +289,16 @@
     "enabled": "Enabled",
     "enableSuccess": "Tool {{name}} enabled successfully",
     "disableSuccess": "Tool {{name}} disabled successfully",
-    "toggleFailed": "Failed to toggle tool status"
+    "toggleFailed": "Failed to toggle tool status",
+    "parameters": "Tool Parameters",
+    "formMode": "Form Mode",
+    "jsonMode": "JSON Mode",
+    "jsonConfiguration": "JSON Configuration",
+    "invalidJsonFormat": "Invalid JSON format",
+    "fixJsonBeforeSwitching": "Please fix JSON format before switching to form mode",
+    "item": "Item {{index}}",
+    "addItem": "Add {{key}} item",
+    "enterKey": "Enter {{key}}"
   },
   "settings": {
     "enableGlobalRoute": "Enable Global Route",

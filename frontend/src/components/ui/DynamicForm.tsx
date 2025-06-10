@@ -24,6 +24,9 @@ const DynamicForm: React.FC<DynamicFormProps> = ({ schema, onSubmit, onCancel, l
   const { t } = useTranslation();
   const [formValues, setFormValues] = useState<Record<string, any>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isJsonMode, setIsJsonMode] = useState<boolean>(false);
+  const [jsonText, setJsonText] = useState<string>('');
+  const [jsonError, setJsonError] = useState<string>('');
 
   // Convert ToolInputSchema to JsonSchema - memoized to prevent infinite re-renders
   const jsonSchema = useMemo(() => {
@@ -109,6 +112,58 @@ const DynamicForm: React.FC<DynamicFormProps> = ({ schema, onSubmit, onCancel, l
 
     setFormValues(initialValues);
   }, [jsonSchema, storageKey]);
+
+  // Sync JSON text with form values when switching modes
+  useEffect(() => {
+    if (isJsonMode && Object.keys(formValues).length > 0) {
+      setJsonText(JSON.stringify(formValues, null, 2));
+      setJsonError('');
+    }
+  }, [isJsonMode, formValues]);
+
+  const handleJsonTextChange = (text: string) => {
+    setJsonText(text);
+    setJsonError('');
+
+    try {
+      const parsedJson = JSON.parse(text);
+      setFormValues(parsedJson);
+
+      // Save to localStorage if storageKey is provided
+      if (storageKey) {
+        try {
+          localStorage.setItem(storageKey, JSON.stringify(parsedJson));
+        } catch (error) {
+          console.warn('Failed to save form data to localStorage:', error);
+        }
+      }
+    } catch (error) {
+      setJsonError(t('tool.invalidJsonFormat'));
+    }
+  };
+
+  const switchToJsonMode = () => {
+    setJsonText(JSON.stringify(formValues, null, 2));
+    setJsonError('');
+    setIsJsonMode(true);
+  };
+
+  const switchToFormMode = () => {
+    // Validate JSON before switching
+    if (jsonText.trim()) {
+      try {
+        const parsedJson = JSON.parse(jsonText);
+        setFormValues(parsedJson);
+        setJsonError('');
+        setIsJsonMode(false);
+      } catch (error) {
+        setJsonError(t('tool.fixJsonBeforeSwitching'));
+        return;
+      }
+    } else {
+      setIsJsonMode(false);
+    }
+  };
 
   const handleInputChange = (path: string, value: any) => {
     setFormValues(prev => {
@@ -213,7 +268,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({ schema, onSubmit, onCancel, l
             onChange={(e) => onChange(e.target.value)}
             className="w-full border rounded-md px-2 py-1 text-sm border-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-500"
           >
-            <option value="">Select option</option>
+            <option value="">{t('tool.selectOption')}</option>
             {schema.enum.map((option: any, idx: number) => (
               <option key={idx} value={option}>
                 {option}
@@ -228,7 +283,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({ schema, onSubmit, onCancel, l
             value={value || ''}
             onChange={(e) => onChange(e.target.value)}
             className="w-full border rounded-md px-2 py-1 text-sm border-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-500"
-            placeholder={schema.description || `Enter ${key}`}
+            placeholder={schema.description || t('tool.enterKey', { key })}
           />
         );
       }
@@ -267,7 +322,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({ schema, onSubmit, onCancel, l
         value={value || ''}
         onChange={(e) => onChange(e.target.value)}
         className="w-full border rounded-md px-2 py-1 text-sm border-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-500"
-        placeholder={schema.description || `Enter ${key}`}
+        placeholder={schema.description || t('tool.enterKey', { key })}
       />
     );
   };
@@ -293,7 +348,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({ schema, onSubmit, onCancel, l
             {arrayValue.map((item: any, index: number) => (
               <div key={index} className="mb-3 p-3 bg-white border rounded-md">
                 <div className="flex justify-between items-center mb-2">
-                  <span className="text-sm font-medium text-gray-600">Item {index + 1}</span>
+                  <span className="text-sm font-medium text-gray-600">{t('tool.item', { index: index + 1 })}</span>
                   <button
                     type="button"
                     onClick={() => {
@@ -303,7 +358,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({ schema, onSubmit, onCancel, l
                     }}
                     className="text-red-500 hover:text-red-700 text-sm"
                   >
-                    Remove
+                    {t('common.remove')}
                   </button>
                 </div>
 
@@ -317,7 +372,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({ schema, onSubmit, onCancel, l
                     }}
                     className="w-full border rounded-md px-3 py-2 border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
-                    <option value="">Select option</option>
+                    <option value="">{t('tool.selectOption')}</option>
                     {propSchema.items.enum.map((option: any, idx: number) => (
                       <option key={idx} value={option}>
                         {option}
@@ -350,7 +405,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({ schema, onSubmit, onCancel, l
                       handleInputChange(fullPath, newArray);
                     }}
                     className="w-full border rounded-md px-3 py-2 border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder={`Enter ${propSchema.items?.type || 'value'}`}
+                    placeholder={t('tool.enterValue', { type: propSchema.items?.type || 'value' })}
                   />
                 )}
               </div>
@@ -364,7 +419,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({ schema, onSubmit, onCancel, l
               }}
               className="w-full mt-2 px-3 py-2 text-sm text-blue-600 border border-blue-300 rounded-md hover:bg-blue-50"
             >
-              Add {key} item
+              {t('tool.addItem', { key })}
             </button>
           </div>
 
@@ -565,28 +620,101 @@ const DynamicForm: React.FC<DynamicFormProps> = ({ schema, onSubmit, onCancel, l
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      {Object.entries(jsonSchema.properties || {}).map(([key, propSchema]) =>
-        renderField(key, propSchema)
-      )}
-
-      <div className="flex justify-end space-x-2 pt-4">
-        <button
-          type="button"
-          onClick={onCancel}
-          className="px-4 py-2 text-sm text-gray-600 bg-gray-100 rounded-md hover:bg-gray-200"
-        >
-          {t('tool.cancel')}
-        </button>
-        <button
-          type="submit"
-          disabled={loading}
-          className="px-4 py-2 text-sm text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50"
-        >
-          {loading ? t('tool.running') : t('tool.runTool')}
-        </button>
+    <div className="space-y-4">
+      {/* Mode Toggle */}
+      <div className="flex justify-between items-center border-b pb-3">
+        <h3 className="text-lg font-medium text-gray-900">{t('tool.parameters')}</h3>
+        <div className="flex space-x-2">
+          <button
+            type="button"
+            onClick={switchToFormMode}
+            className={`px-3 py-1 text-sm rounded-md transition-colors ${!isJsonMode
+                ? 'bg-blue-600 text-white'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+          >
+            {t('tool.formMode')}
+          </button>
+          <button
+            type="button"
+            onClick={switchToJsonMode}
+            className={`px-3 py-1 text-sm rounded-md transition-colors ${isJsonMode
+                ? 'bg-blue-600 text-white'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+          >
+            {t('tool.jsonMode')}
+          </button>
+        </div>
       </div>
-    </form>
+
+      {/* JSON Mode */}
+      {isJsonMode ? (
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              {t('tool.jsonConfiguration')}
+            </label>
+            <textarea
+              value={jsonText}
+              onChange={(e) => handleJsonTextChange(e.target.value)}
+              placeholder={`{\n  "key": "value"\n}`}
+              className={`w-full h-64 border rounded-md px-3 py-2 font-mono text-sm resize-y ${jsonError ? 'border-red-500' : 'border-gray-300'
+                } focus:outline-none focus:ring-2 focus:ring-blue-500`}
+            />
+            {jsonError && <p className="text-red-500 text-xs mt-1">{jsonError}</p>}
+          </div>
+
+          <div className="flex justify-end space-x-2 pt-4">
+            <button
+              type="button"
+              onClick={onCancel}
+              className="px-4 py-2 text-sm text-gray-600 bg-gray-100 rounded-md hover:bg-gray-200"
+            >
+              {t('tool.cancel')}
+            </button>
+            <button
+              onClick={() => {
+                try {
+                  const parsedJson = JSON.parse(jsonText);
+                  onSubmit(parsedJson);
+                } catch (error) {
+                  setJsonError(t('tool.invalidJsonFormat'));
+                }
+              }}
+              disabled={loading || !!jsonError}
+              className="px-4 py-2 text-sm text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50"
+            >
+              {loading ? t('tool.running') : t('tool.runTool')}
+            </button>
+          </div>
+        </div>
+      ) : (
+        /* Form Mode */
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {Object.entries(jsonSchema.properties || {}).map(([key, propSchema]) =>
+            renderField(key, propSchema)
+          )}
+
+          <div className="flex justify-end space-x-2 pt-4">
+            <button
+              type="button"
+              onClick={onCancel}
+              className="px-4 py-2 text-sm text-gray-600 bg-gray-100 rounded-md hover:bg-gray-200"
+            >
+              {t('tool.cancel')}
+            </button>
+            <button
+              type="submit"
+              disabled={loading}
+              className="px-4 py-2 text-sm text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50"
+            >
+              {loading ? t('tool.running') : t('tool.runTool')}
+            </button>
+          </div>
+        </form>
+      )}
+    </div>
   );
 };
 
