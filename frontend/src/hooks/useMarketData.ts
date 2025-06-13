@@ -365,11 +365,11 @@ export const useMarketData = () => {
         // Prepare server configuration, merging with customConfig
         const serverConfig = {
           name: server.name,
-          config: {
+          config: customConfig.type === 'stdio' ? {
             command: customConfig.command || installation.command || '',
             args: customConfig.args || installation.args || [],
             env: { ...installation.env, ...customConfig.env },
-          },
+          } : customConfig
         };
 
         // Call the createServer API
