@@ -122,7 +122,8 @@ export class OpenAPIClient {
 
       this.extractTools();
     } catch (error) {
-      throw new Error(`Failed to load OpenAPI specification: ${error}`);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      throw new Error(`Failed to load OpenAPI specification: ${errorMessage}`);
     }
   }
 
