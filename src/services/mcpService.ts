@@ -10,6 +10,7 @@ import config from '../config/index.js';
 import { getGroup } from './sseService.js';
 import { getServersInGroup } from './groupService.js';
 import { saveToolsAsVectorEmbeddings, searchToolsByVector } from './vectorSearchService.js';
+import { OpenAPIClient } from '../clients/openapi.js';
 
 const servers: { [sessionId: string]: Server } = {};
 
@@ -101,7 +102,7 @@ export const syncToolEmbedding = async (serverName: string, toolName: string) =>
 let serverInfos: ServerInfo[] = [];
 
 // Initialize MCP server clients
-export const initializeClientsFromSettings = (isInit: boolean): ServerInfo[] => {
+export const initializeClientsFromSettings = async (isInit: boolean): Promise<ServerInfo[]> => {
   const settings = loadSettings();
   const existingServerInfos = serverInfos;
   serverInfos = [];
@@ -135,7 +136,85 @@ export const initializeClientsFromSettings = (isInit: boolean): ServerInfo[] => 
     }
 
     let transport;
-    if (conf.type === 'streamable-http') {
+    let openApiClient;
+
+    if (conf.type === 'openapi') {
+      // Handle OpenAPI type servers
+      if (!conf.openapi?.url && !conf.openapi?.schema) {
+        console.warn(
+          `Skipping OpenAPI server '${name}': missing OpenAPI specification URL or schema`,
+        );
+        serverInfos.push({
+          name,
+          status: 'disconnected',
+          error: 'Missing OpenAPI specification URL or schema',
+          tools: [],
+          createTime: Date.now(),
+        });
+        continue;
+      }
+
+      try {
+        // Create OpenAPI client instance
+        openApiClient = new OpenAPIClient(conf);
+
+        // Add server with connecting status first
+        const serverInfo: ServerInfo = {
+          name,
+          status: 'connecting',
+          error: null,
+          tools: [],
+          createTime: Date.now(),
+          enabled: conf.enabled === undefined ? true : conf.enabled,
+        };
+        serverInfos.push(serverInfo);
+
+        console.log(`Initializing OpenAPI server: ${name}...`);
+
+        // Perform async initialization
+        await openApiClient.initialize();
+
+        // Convert OpenAPI tools to MCP tool format
+        const openApiTools = openApiClient.getTools();
+        const mcpTools: ToolInfo[] = openApiTools.map((tool) => ({
+          name: `${name}-${tool.name}`,
+          description: tool.description,
+          inputSchema: tool.inputSchema,
+        }));
+
+        // Update server info with successful initialization
+        serverInfo.status = 'connected';
+        serverInfo.tools = mcpTools;
+        serverInfo.openApiClient = openApiClient;
+
+        console.log(
+          `Successfully initialized OpenAPI server: ${name} with ${mcpTools.length} tools`,
+        );
+
+        // Save tools as vector embeddings for search
+        saveToolsAsVectorEmbeddings(name, mcpTools);
+        continue;
+      } catch (error) {
+        console.error(`Failed to initialize OpenAPI server ${name}:`, error);
+
+        // Find and update the server info if it was already added
+        const existingServerIndex = serverInfos.findIndex((s) => s.name === name);
+        if (existingServerIndex !== -1) {
+          serverInfos[existingServerIndex].status = 'disconnected';
+          serverInfos[existingServerIndex].error = `Failed to initialize OpenAPI server: ${error}`;
+        } else {
+          // Add new server info with error status
+          serverInfos.push({
+            name,
+            status: 'disconnected',
+            error: `Failed to initialize OpenAPI server: ${error}`,
+            tools: [],
+            createTime: Date.now(),
+          });
+        }
+        continue;
+      }
+    } else if (conf.type === 'streamable-http') {
       const options: any = {};
       if (conf.headers && Object.keys(conf.headers).length > 0) {
         options.requestInit = {
@@ -300,7 +379,7 @@ export const initializeClientsFromSettings = (isInit: boolean): ServerInfo[] => 
 
 // Register all MCP tools
 export const registerAllTools = async (isInit: boolean): Promise<void> => {
-  initializeClientsFromSettings(isInit);
+  await initializeClientsFromSettings(isInit);
 };
 
 // Get all server information
@@ -739,7 +818,38 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
         throw new Error(`Tool '${toolName}' not found on server '${targetServerInfo.name}'`);
       }
 
-      // Call the tool on the target server
+      // Handle OpenAPI servers differently
+      if (targetServerInfo.openApiClient) {
+        // For OpenAPI servers, use the OpenAPI client
+        const openApiClient = targetServerInfo.openApiClient;
+
+        // Use toolArgs if it has properties, otherwise fallback to request.params.arguments
+        const finalArgs =
+          toolArgs && Object.keys(toolArgs).length > 0 ? toolArgs : request.params.arguments || {};
+
+        console.log(
+          `Invoking OpenAPI tool '${toolName}' on server '${targetServerInfo.name}' with arguments: ${JSON.stringify(finalArgs)}`,
+        );
+
+        // Remove server prefix from tool name if present
+        const cleanToolName = toolName.startsWith(`${targetServerInfo.name}-`)
+          ? toolName.replace(`${targetServerInfo.name}-`, '')
+          : toolName;
+
+        const result = await openApiClient.callTool(cleanToolName, finalArgs);
+
+        console.log(`OpenAPI tool invocation result: ${JSON.stringify(result)}`);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(result),
+            },
+          ],
+        };
+      }
+
+      // Call the tool on the target server (MCP servers)
       const client = targetServerInfo.client;
       if (!client) {
         throw new Error(`Client not found for server: ${targetServerInfo.name}`);
@@ -774,9 +884,38 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
     if (!serverInfo) {
       throw new Error(`Server not found: ${request.params.name}`);
     }
+
+    // Handle OpenAPI servers differently
+    if (serverInfo.openApiClient) {
+      // For OpenAPI servers, use the OpenAPI client
+      const openApiClient = serverInfo.openApiClient;
+
+      // Remove server prefix from tool name if present
+      const cleanToolName = request.params.name.startsWith(`${serverInfo.name}-`)
+        ? request.params.name.replace(`${serverInfo.name}-`, '')
+        : request.params.name;
+
+      console.log(
+        `Invoking OpenAPI tool '${cleanToolName}' on server '${serverInfo.name}' with arguments: ${JSON.stringify(request.params.arguments)}`,
+      );
+
+      const result = await openApiClient.callTool(cleanToolName, request.params.arguments || {});
+
+      console.log(`OpenAPI tool invocation result: ${JSON.stringify(result)}`);
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify(result),
+          },
+        ],
+      };
+    }
+
+    // Handle MCP servers
     const client = serverInfo.client;
     if (!client) {
-      throw new Error(`Client not found for server: ${request.params.name}`);
+      throw new Error(`Client not found for server: ${serverInfo.name}`);
     }
 
     request.params.name = request.params.name.startsWith(`${serverInfo.name}-`)

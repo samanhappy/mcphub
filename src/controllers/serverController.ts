@@ -63,19 +63,25 @@ export const createServer = async (req: Request, res: Response): Promise<void> =
       return;
     }
 
-    if (!config.url && (!config.command || !config.args)) {
+    if (
+      !config.url &&
+      !config.openapi?.url &&
+      !config.openapi?.schema &&
+      (!config.command || !config.args)
+    ) {
       res.status(400).json({
         success: false,
-        message: 'Server configuration must include either a URL or command with arguments',
+        message:
+          'Server configuration must include either a URL, OpenAPI specification URL or schema, or command with arguments',
       });
       return;
     }
 
     // Validate the server type if specified
-    if (config.type && !['stdio', 'sse', 'streamable-http'].includes(config.type)) {
+    if (config.type && !['stdio', 'sse', 'streamable-http', 'openapi'].includes(config.type)) {
       res.status(400).json({
         success: false,
-        message: 'Server type must be one of: stdio, sse, streamable-http',
+        message: 'Server type must be one of: stdio, sse, streamable-http, openapi',
       });
       return;
     }
@@ -89,6 +95,15 @@ export const createServer = async (req: Request, res: Response): Promise<void> =
       return;
     }
 
+    // Validate that OpenAPI specification URL or schema is provided for openapi type
+    if (config.type === 'openapi' && !config.openapi?.url && !config.openapi?.schema) {
+      res.status(400).json({
+        success: false,
+        message: 'OpenAPI specification URL or schema is required for openapi server type',
+      });
+      return;
+    }
+
     // Validate headers if provided
     if (config.headers && typeof config.headers !== 'object') {
       res.status(400).json({
@@ -98,7 +113,7 @@ export const createServer = async (req: Request, res: Response): Promise<void> =
       return;
     }
 
-    // Validate that headers are only used with sse and streamable-http types
+    // Validate that headers are only used with sse, streamable-http, and openapi types
     if (config.headers && config.type === 'stdio') {
       res.status(400).json({
         success: false,
@@ -185,19 +200,25 @@ export const updateServer = async (req: Request, res: Response): Promise<void> =
       return;
     }
 
-    if (!config.url && (!config.command || !config.args)) {
+    if (
+      !config.url &&
+      !config.openapi?.url &&
+      !config.openapi?.schema &&
+      (!config.command || !config.args)
+    ) {
       res.status(400).json({
         success: false,
-        message: 'Server configuration must include either a URL or command with arguments',
+        message:
+          'Server configuration must include either a URL, OpenAPI specification URL or schema, or command with arguments',
       });
       return;
     }
 
     // Validate the server type if specified
-    if (config.type && !['stdio', 'sse', 'streamable-http'].includes(config.type)) {
+    if (config.type && !['stdio', 'sse', 'streamable-http', 'openapi'].includes(config.type)) {
       res.status(400).json({
         success: false,
-        message: 'Server type must be one of: stdio, sse, streamable-http',
+        message: 'Server type must be one of: stdio, sse, streamable-http, openapi',
       });
       return;
     }
@@ -211,6 +232,15 @@ export const updateServer = async (req: Request, res: Response): Promise<void> =
       return;
     }
 
+    // Validate that OpenAPI specification URL or schema is provided for openapi type
+    if (config.type === 'openapi' && !config.openapi?.url && !config.openapi?.schema) {
+      res.status(400).json({
+        success: false,
+        message: 'OpenAPI specification URL or schema is required for openapi server type',
+      });
+      return;
+    }
+
     // Validate headers if provided
     if (config.headers && typeof config.headers !== 'object') {
       res.status(400).json({
@@ -220,7 +250,7 @@ export const updateServer = async (req: Request, res: Response): Promise<void> =
       return;
     }
 
-    // Validate that headers are only used with sse and streamable-http types
+    // Validate that headers are only used with sse, streamable-http, and openapi types
     if (config.headers && config.type === 'stdio') {
       res.status(400).json({
         success: false,

@@ -99,16 +99,55 @@ export interface McpSettings {
 
 // Configuration details for an individual server
 export interface ServerConfig {
-  type?: 'stdio' | 'sse' | 'streamable-http'; // Type of server
+  type?: 'stdio' | 'sse' | 'streamable-http' | 'openapi'; // Type of server
   url?: string; // URL for SSE or streamable HTTP servers
   command?: string; // Command to execute for stdio-based servers
   args?: string[]; // Arguments for the command
   env?: Record<string, string>; // Environment variables
-  headers?: Record<string, string>; // HTTP headers for SSE/streamable-http servers
+  headers?: Record<string, string>; // HTTP headers for SSE/streamable-http/openapi servers
   enabled?: boolean; // Flag to enable/disable the server
   keepAliveInterval?: number; // Keep-alive ping interval in milliseconds (default: 60000ms for SSE servers)
   tools?: Record<string, { enabled: boolean; description?: string }>; // Tool-specific configurations with enable/disable state and custom descriptions
   options?: Partial<Pick<RequestOptions, 'timeout' | 'resetTimeoutOnProgress' | 'maxTotalTimeout'>>; // MCP request options configuration
+  // OpenAPI specific configuration
+  openapi?: {
+    url?: string; // OpenAPI specification URL
+    schema?: Record<string, any>; // Complete OpenAPI JSON schema
+    version?: string; // OpenAPI version (default: '3.1.0')
+    security?: OpenAPISecurityConfig; // Security configuration for API calls
+  };
+}
+
+// OpenAPI Security Configuration
+export interface OpenAPISecurityConfig {
+  type: 'none' | 'apiKey' | 'http' | 'oauth2' | 'openIdConnect';
+  // API Key authentication
+  apiKey?: {
+    name: string; // Header/query/cookie name
+    in: 'header' | 'query' | 'cookie';
+    value: string; // The API key value
+  };
+  // HTTP authentication (Basic, Bearer, etc.)
+  http?: {
+    scheme: 'basic' | 'bearer' | 'digest'; // HTTP auth scheme
+    bearerFormat?: string; // Bearer token format (e.g., JWT)
+    credentials?: string; // Base64 encoded credentials for basic auth or bearer token
+  };
+  // OAuth2 (simplified - mainly for bearer tokens)
+  oauth2?: {
+    tokenUrl?: string; // Token endpoint for client credentials flow
+    clientId?: string;
+    clientSecret?: string;
+    scopes?: string[]; // Required scopes
+    token?: string; // Pre-obtained access token
+  };
+  // OpenID Connect
+  openIdConnect?: {
+    url: string; // OpenID Connect discovery URL
+    clientId?: string;
+    clientSecret?: string;
+    token?: string; // Pre-obtained ID token
+  };
 }
 
 // Information about a server's status and tools
@@ -117,8 +156,9 @@ export interface ServerInfo {
   status: 'connected' | 'connecting' | 'disconnected'; // Current connection status
   error: string | null; // Error message if any
   tools: ToolInfo[]; // List of tools available on the server
-  client?: Client; // Client instance for communication
+  client?: Client; // Client instance for communication (MCP clients)
   transport?: SSEClientTransport | StdioClientTransport | StreamableHTTPClientTransport; // Transport mechanism used
+  openApiClient?: any; // OpenAPI client instance for openapi type servers
   options?: RequestOptions; // Options for requests
   createTime: number; // Timestamp of when the server was created
   enabled?: boolean; // Flag to indicate if the server is enabled

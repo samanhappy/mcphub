@@ -1,0 +1,256 @@
+{
+  "mcpServers": {
+    "example-api-url": {
+      "type": "openapi",
+      "openapi": {
+        "url": "https://api.example.com/openapi.json",
+        "version": "3.1.0",
+        "security": {
+          "type": "apiKey",
+          "apiKey": {
+            "name": "X-API-Key",
+            "in": "header",
+            "value": "your-api-key-here"
+          }
+        }
+      },
+      "headers": {
+        "User-Agent": "MCPHub/1.0"
+      },
+      "enabled": true
+    },
+    "example-api-schema": {
+      "type": "openapi",
+      "openapi": {
+        "schema": {
+          "openapi": "3.1.0",
+          "info": {
+            "title": "Example API",
+            "version": "1.0.0",
+            "description": "A sample API for demonstration"
+          },
+          "servers": [
+            {
+              "url": "https://api.example.com",
+              "description": "Production server"
+            }
+          ],
+          "paths": {
+            "/users": {
+              "get": {
+                "operationId": "listUsers",
+                "summary": "List all users",
+                "description": "Retrieve a list of all users in the system",
+                "parameters": [
+                  {
+                    "name": "limit",
+                    "in": "query",
+                    "description": "Maximum number of users to return",
+                    "required": false,
+                    "schema": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 100,
+                      "default": 10
+                    }
+                  },
+                  {
+                    "name": "offset",
+                    "in": "query",
+                    "description": "Number of users to skip",
+                    "required": false,
+                    "schema": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "default": 0
+                    }
+                  }
+                ],
+                "responses": {
+                  "200": {
+                    "description": "List of users",
+                    "content": {
+                      "application/json": {
+                        "schema": {
+                          "type": "object",
+                          "properties": {
+                            "users": {
+                              "type": "array",
+                              "items": {
+                                "$ref": "#/components/schemas/User"
+                              }
+                            },
+                            "total": {
+                              "type": "integer",
+                              "description": "Total number of users"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "post": {
+                "operationId": "createUser",
+                "summary": "Create a new user",
+                "description": "Create a new user in the system",
+                "requestBody": {
+                  "required": true,
+                  "content": {
+                    "application/json": {
+                      "schema": {
+                        "$ref": "#/components/schemas/CreateUserRequest"
+                      }
+                    }
+                  }
+                },
+                "responses": {
+                  "201": {
+                    "description": "User created successfully",
+                    "content": {
+                      "application/json": {
+                        "schema": {
+                          "$ref": "#/components/schemas/User"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "/users/{userId}": {
+              "get": {
+                "operationId": "getUserById",
+                "summary": "Get user by ID",
+                "description": "Retrieve a specific user by their ID",
+                "parameters": [
+                  {
+                    "name": "userId",
+                    "in": "path",
+                    "required": true,
+                    "description": "ID of the user to retrieve",
+                    "schema": {
+                      "type": "integer",
+                      "minimum": 1
+                    }
+                  }
+                ],
+                "responses": {
+                  "200": {
+                    "description": "User details",
+                    "content": {
+                      "application/json": {
+                        "schema": {
+                          "$ref": "#/components/schemas/User"
+                        }
+                      }
+                    }
+                  },
+                  "404": {
+                    "description": "User not found"
+                  }
+                }
+              }
+            }
+          },
+          "components": {
+            "schemas": {
+              "User": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "integer",
+                    "description": "Unique identifier for the user"
+                  },
+                  "name": {
+                    "type": "string",
+                    "description": "Full name of the user"
+                  },
+                  "email": {
+                    "type": "string",
+                    "format": "email",
+                    "description": "Email address of the user"
+                  },
+                  "createdAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "Timestamp when the user was created"
+                  },
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "active",
+                      "inactive",
+                      "suspended"
+                    ],
+                    "description": "Current status of the user"
+                  }
+                },
+                "required": [
+                  "id",
+                  "name",
+                  "email"
+                ]
+              },
+              "CreateUserRequest": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100,
+                    "description": "Full name of the user"
+                  },
+                  "email": {
+                    "type": "string",
+                    "format": "email",
+                    "description": "Email address of the user"
+                  },
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "active",
+                      "inactive"
+                    ],
+                    "default": "active",
+                    "description": "Initial status of the user"
+                  }
+                },
+                "required": [
+                  "name",
+                  "email"
+                ]
+              }
+            },
+            "securitySchemes": {
+              "ApiKeyAuth": {
+                "type": "apiKey",
+                "in": "header",
+                "name": "X-API-Key"
+              }
+            }
+          },
+          "security": [
+            {
+              "ApiKeyAuth": []
+            }
+          ]
+        },
+        "version": "3.1.0",
+        "security": {
+          "type": "apiKey",
+          "apiKey": {
+            "name": "X-API-Key",
+            "in": "header",
+            "value": "your-api-key-here"
+          }
+        }
+      },
+      "headers": {
+        "User-Agent": "MCPHub/1.0"
+      },
+      "enabled": true
+    }
+  }
+}
