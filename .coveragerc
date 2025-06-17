@@ -1,0 +1,16 @@
+# Test coverage configuration
+# This file tells Jest what to include/exclude from coverage reports
+
+# Coverage patterns
+- "src/**/*.{ts,tsx}"
+
+# Exclusions
+- "!src/**/*.d.ts"
+- "!src/index.ts"
+- "!src/**/__tests__/**"
+- "!src/**/*.test.{ts,tsx}"
+- "!src/**/*.spec.{ts,tsx}"
+- "!**/node_modules/**"
+- "!coverage/**"
+- "!dist/**"
+- "!build/**"
