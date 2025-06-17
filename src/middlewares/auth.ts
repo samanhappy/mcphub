@@ -1,11 +1,37 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
+import { loadSettings } from '../config/index.js';
 
 // Default secret key - in production, use an environment variable
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-this';
 
+const validateBearerAuth = (req: Request): boolean => {
+  const routingConfig = loadSettings().systemConfig?.routing || {
+    enableGlobalRoute: true,
+    enableGroupNameRoute: true,
+    enableBearerAuth: false,
+    bearerAuthKey: '',
+  };
+  if (!routingConfig.enableBearerAuth) {
+    return false;
+  }
+
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return false;
+  }
+
+  return authHeader.substring(7) === routingConfig.bearerAuthKey;
+};
+
 // Middleware to authenticate JWT token
 export const auth = (req: Request, res: Response, next: NextFunction): void => {
+  // Check if bearer auth is enabled and validate it
+  if (validateBearerAuth(req)) {
+    next();
+    return;
+  }
+
   // Get token from header or query parameter
   const headerToken = req.header('x-auth-token');
   const queryToken = req.query.token as string;
@@ -20,7 +46,7 @@ export const auth = (req: Request, res: Response, next: NextFunction): void => {
   // Verify token
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
-    
+
     // Add user from payload to request
     (req as any).user = (decoded as any).user;
     next();
