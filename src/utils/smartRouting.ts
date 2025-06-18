@@ -23,7 +23,7 @@ export interface SmartRoutingConfig {
  * @returns {SmartRoutingConfig} Complete smart routing configuration
  */
 export function getSmartRoutingConfig(): SmartRoutingConfig {
-  let settings = loadSettings();
+  const settings = loadSettings();
   const smartRoutingSettings: Partial<SmartRoutingConfig> =
     settings.systemConfig?.smartRouting || {};
 

@@ -1,5 +1,4 @@
 // filepath: /Users/sunmeng/code/github/mcphub/src/services/logService.ts
-import { spawn, ChildProcess } from 'child_process';
 import { EventEmitter } from 'events';
 import * as os from 'os';
 import * as process from 'process';
@@ -157,7 +156,7 @@ class LogService {
 
       if (sourcePidMatch) {
         // If we have a 'source-processId' format in the second bracket
-        const [_, source, extractedProcessId] = sourcePidMatch;
+        const [_, source, _extractedProcessId] = sourcePidMatch;
         return {
           text: remainingText.trim(),
           source: source.trim(),

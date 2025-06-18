@@ -476,7 +476,7 @@ export const getAllVectorizedTools = async (
  */
 export const removeServerToolEmbeddings = async (serverName: string): Promise<void> => {
   try {
-    const vectorRepository = getRepositoryFactory(
+    const _vectorRepository = getRepositoryFactory(
       'vectorEmbeddings',
     )() as VectorEmbeddingRepository;
 

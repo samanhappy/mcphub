@@ -56,7 +56,7 @@ export const loadRuntimeConfig = async (): Promise<RuntimeConfig> => {
     const currentPath = window.location.pathname;
     const possibleConfigPaths = [
       // If we're already on a subpath, try to use it
-      currentPath.replace(/\/[^\/]*$/, '') + '/config',
+      currentPath.replace(/\/[^/]*$/, '') + '/config',
       // Try root config
       '/config',
       // Try with potential base paths

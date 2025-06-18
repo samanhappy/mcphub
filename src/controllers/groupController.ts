@@ -9,7 +9,6 @@ import {
   deleteGroup,
   addServerToGroup,
   removeServerFromGroup,
-  getServersInGroup
 } from '../services/groupService.js';
 
 // Get all groups
@@ -154,7 +153,7 @@ export const updateGroupServersBatch = (req: Request, res: Response): void => {
   try {
     const { id } = req.params;
     const { servers } = req.body;
-    
+
     if (!id) {
       res.status(400).json({
         success: false,

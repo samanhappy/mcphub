@@ -1,7 +1,5 @@
-import fs from 'fs';
-import path from 'path';
 import bcrypt from 'bcryptjs';
-import { IUser, McpSettings } from '../types/index.js';
+import { IUser } from '../types/index.js';
 import { loadSettings, saveSettings } from '../config/index.js';
 
 // Get all users
@@ -29,38 +27,38 @@ const saveUsers = (users: IUser[]): void => {
 // Create a new user
 export const createUser = async (userData: IUser): Promise<IUser | null> => {
   const users = getUsers();
-  
+
   // Check if username already exists
-  if (users.some(user => user.username === userData.username)) {
+  if (users.some((user) => user.username === userData.username)) {
     return null;
   }
-  
+
   // Hash the password
   const salt = await bcrypt.genSalt(10);
   const hashedPassword = await bcrypt.hash(userData.password, salt);
-  
+
   const newUser = {
     username: userData.username,
     password: hashedPassword,
-    isAdmin: userData.isAdmin || false
+    isAdmin: userData.isAdmin || false,
   };
-  
+
   users.push(newUser);
   saveUsers(users);
-  
+
   return newUser;
 };
 
 // Find user by username
 export const findUserByUsername = (username: string): IUser | undefined => {
   const users = getUsers();
-  return users.find(user => user.username === username);
+  return users.find((user) => user.username === username);
 };
 
 // Verify user password
 export const verifyPassword = async (
-  plainPassword: string, 
-  hashedPassword: string
+  plainPassword: string,
+  hashedPassword: string,
 ): Promise<boolean> => {
   return await bcrypt.compare(plainPassword, hashedPassword);
 };
@@ -68,35 +66,35 @@ export const verifyPassword = async (
 // Update user password
 export const updateUserPassword = async (
   username: string,
-  newPassword: string
+  newPassword: string,
 ): Promise<boolean> => {
   const users = getUsers();
-  const userIndex = users.findIndex(user => user.username === username);
-  
+  const userIndex = users.findIndex((user) => user.username === username);
+
   if (userIndex === -1) {
     return false;
   }
-  
+
   // Hash the new password
   const salt = await bcrypt.genSalt(10);
   const hashedPassword = await bcrypt.hash(newPassword, salt);
-  
+
   // Update the user's password
   users[userIndex].password = hashedPassword;
   saveUsers(users);
-  
+
   return true;
 };
 
 // Initialize with default admin user if no users exist
 export const initializeDefaultUser = async (): Promise<void> => {
   const users = getUsers();
-  
+
   if (users.length === 0) {
     await createUser({
       username: 'admin',
       password: 'admin123',
-      isAdmin: true
+      isAdmin: true,
     });
     console.log('Default admin user created');
   }

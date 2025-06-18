@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
-import { IGroup, McpSettings } from '../types/index.js';
+import { IGroup } from '../types/index.js';
 import { loadSettings, saveSettings } from '../config/index.js';
 import { notifyToolChanged } from './mcpService.js';
 
