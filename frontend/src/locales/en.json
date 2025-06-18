@@ -343,6 +343,8 @@
     "bearerAuthKey": "Bearer Authentication Key",
     "bearerAuthKeyDescription": "The authentication key that will be required in the Bearer token",
     "bearerAuthKeyPlaceholder": "Enter bearer authentication key",
+    "skipAuth": "Skip Authentication",
+    "skipAuthDescription": "Bypass login requirement for frontend and API access (DEFAULT OFF for security)",
     "pythonIndexUrl": "Python Package Repository URL",
     "pythonIndexUrlDescription": "Set UV_DEFAULT_INDEX environment variable for Python package installation",
     "pythonIndexUrlPlaceholder": "e.g. https://pypi.org/simple",

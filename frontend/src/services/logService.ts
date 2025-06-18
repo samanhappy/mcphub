@@ -15,13 +15,9 @@ export const fetchLogs = async (): Promise<LogEntry[]> => {
   try {
     // Get authentication token
     const token = getToken();
-    if (!token) {
-      throw new Error('Authentication token not found. Please log in.');
-    }
-
     const response = await fetch(getApiUrl('/logs'), {
       headers: {
-        'x-auth-token': token,
+        'x-auth-token': token || '',
       },
     });
 
@@ -43,14 +39,10 @@ export const clearLogs = async (): Promise<void> => {
   try {
     // Get authentication token
     const token = getToken();
-    if (!token) {
-      throw new Error('Authentication token not found. Please log in.');
-    }
-
     const response = await fetch(getApiUrl('/logs'), {
       method: 'DELETE',
       headers: {
-        'x-auth-token': token,
+        'x-auth-token': token || '',
       },
     });
 
@@ -84,12 +76,6 @@ export const useLogs = () => {
 
         // Get the authentication token
         const token = getToken();
-        if (!token) {
-          setError(new Error('Authentication token not found. Please log in.'));
-          setLoading(false);
-          return;
-        }
-
         // Connect to SSE endpoint with auth token in URL
         eventSource = new EventSource(getApiUrl(`/logs/stream?token=${token}`));
 

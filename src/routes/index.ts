@@ -34,7 +34,7 @@ import {
 } from '../controllers/marketController.js';
 import { login, register, getCurrentUser, changePassword } from '../controllers/authController.js';
 import { getAllLogs, clearLogs, streamLogs } from '../controllers/logController.js';
-import { getRuntimeConfig } from '../controllers/configController.js';
+import { getRuntimeConfig, getPublicConfig } from '../controllers/configController.js';
 import { callTool } from '../controllers/toolController.js';
 import { auth } from '../middlewares/auth.js';
 
@@ -115,6 +115,9 @@ export const initRoutes = (app: express.Application): void => {
 
   // Runtime configuration endpoint (no auth required for frontend initialization)
   app.get(`${config.basePath}/config`, getRuntimeConfig);
+
+  // Public configuration endpoint (no auth required to check skipAuth setting)
+  app.get(`${config.basePath}/public-config`, getPublicConfig);
 
   app.use(`${config.basePath}/api`, router);
 };

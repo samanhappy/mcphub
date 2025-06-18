@@ -344,6 +344,8 @@
     "bearerAuthKey": "Bearer 认证密钥",
     "bearerAuthKeyDescription": "Bearer 令牌中需要携带的认证密钥",
     "bearerAuthKeyPlaceholder": "请输入 Bearer 认证密钥",
+    "skipAuth": "免登录开关",
+    "skipAuthDescription": "跳过前端和 API 访问的登录要求（默认关闭确保安全性）",
     "pythonIndexUrl": "Python 包仓库地址",
     "pythonIndexUrlDescription": "设置 UV_DEFAULT_INDEX 环境变量，用于 Python 包安装",
     "pythonIndexUrlPlaceholder": "例如: https://mirrors.aliyun.com/pypi/simple",

@@ -7,20 +7,20 @@ interface ProtectedRouteProps {
   redirectPath?: string;
 }
 
-const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ 
-  redirectPath = '/login' 
+const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
+  redirectPath = '/login'
 }) => {
   const { t } = useTranslation();
   const { auth } = useAuth();
-  
+
   if (auth.loading) {
     return <div className="flex items-center justify-center h-screen">{t('app.loading')}</div>;
   }
-  
+
   if (!auth.isAuthenticated) {
     return <Navigate to={redirectPath} replace />;
   }
-  
+
   return <Outlet />;
 };
 

@@ -26,10 +26,6 @@ export const callTool = async (
 ): Promise<ToolCallResult> => {
   try {
     const token = getToken();
-    if (!token) {
-      throw new Error('Authentication token not found. Please log in.');
-    }
-
     // Construct the URL with optional server parameter
     const url = server ? `/tools/call/${server}` : '/tools/call';
 
@@ -37,7 +33,7 @@ export const callTool = async (
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-auth-token': token,
+        'x-auth-token': token || '', // Include token for authentication
         Authorization: `Bearer ${token}`, // Add bearer auth for MCP routing
       },
       body: JSON.stringify({
@@ -81,15 +77,11 @@ export const toggleTool = async (
 ): Promise<{ success: boolean; error?: string }> => {
   try {
     const token = getToken();
-    if (!token) {
-      throw new Error('Authentication token not found. Please log in.');
-    }
-
     const response = await fetch(getApiUrl(`/servers/${serverName}/tools/${toolName}/toggle`), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-auth-token': token,
+        'x-auth-token': token || '',
         Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify({ enabled }),
@@ -123,18 +115,14 @@ export const updateToolDescription = async (
 ): Promise<{ success: boolean; error?: string }> => {
   try {
     const token = getToken();
-    if (!token) {
-      throw new Error('Authentication token not found. Please log in.');
-    }
-
     const response = await fetch(
       getApiUrl(`/servers/${serverName}/tools/${toolName}/description`),
       {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          'x-auth-token': token,
-          Authorization: `Bearer ${token}`,
+          'x-auth-token': token || '',
+          Authorization: `Bearer ${token || ''}`,
         },
         body: JSON.stringify({ description }),
       },

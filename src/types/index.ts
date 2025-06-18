@@ -87,6 +87,7 @@ export interface McpSettings {
       enableGroupNameRoute?: boolean; // Controls whether group routing by name is allowed
       enableBearerAuth?: boolean; // Controls whether bearer auth is enabled for group routes
       bearerAuthKey?: string; // The bearer auth key to validate against
+      skipAuth?: boolean; // Controls whether authentication is required for frontend and API access
     };
     install?: {
       pythonIndexUrl?: string; // Python package repository URL (UV_DEFAULT_INDEX)

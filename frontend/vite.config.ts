@@ -39,6 +39,14 @@ export default defineConfig({
         target: 'http://localhost:3000',
         changeOrigin: true,
       },
+      [`${basePath}/config`]: {
+        target: 'http://localhost:3000',
+        changeOrigin: true,
+      },
+      [`${basePath}/public-config`]: {
+        target: 'http://localhost:3000',
+        changeOrigin: true,
+      },
     },
   },
 });

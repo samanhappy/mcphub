@@ -1,10 +1,10 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { AuthState, IUser } from '../types';
+import { AuthState } from '../types';
 import * as authService from '../services/authService';
+import { shouldSkipAuth } from '../services/configService';
 
 // Initial auth state
 const initialState: AuthState = {
-  token: null,
   isAuthenticated: false,
   loading: true,
   user: null,
@@ -21,7 +21,7 @@ const AuthContext = createContext<{
   auth: initialState,
   login: async () => false,
   register: async () => false,
-  logout: () => {},
+  logout: () => { },
 });
 
 // Auth provider component
@@ -31,8 +31,26 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   // Load user if token exists
   useEffect(() => {
     const loadUser = async () => {
+      // First check if authentication should be skipped
+      const skipAuth = await shouldSkipAuth();
+
+      if (skipAuth) {
+        // If authentication is disabled, set user as authenticated with a dummy user
+        setAuth({
+          isAuthenticated: true,
+          loading: false,
+          user: {
+            username: 'guest',
+            isAdmin: true,
+          },
+          error: null,
+        });
+        return;
+      }
+
+      // Normal authentication flow
       const token = authService.getToken();
-      
+
       if (!token) {
         setAuth({
           ...initialState,
@@ -40,13 +58,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         });
         return;
       }
-      
+
       try {
         const response = await authService.getCurrentUser();
-        
+
         if (response.success && response.user) {
           setAuth({
-            token,
             isAuthenticated: true,
             loading: false,
             user: response.user,
@@ -67,7 +84,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         });
       }
     };
-    
+
     loadUser();
   }, []);
 
@@ -75,10 +92,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const login = async (username: string, password: string): Promise<boolean> => {
     try {
       const response = await authService.login({ username, password });
-      
+
       if (response.success && response.token && response.user) {
         setAuth({
-          token: response.token,
           isAuthenticated: true,
           loading: false,
           user: response.user,
@@ -105,16 +121,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   // Register function
   const register = async (
-    username: string, 
-    password: string, 
+    username: string,
+    password: string,
     isAdmin = false
   ): Promise<boolean> => {
     try {
       const response = await authService.register({ username, password, isAdmin });
-      
+
       if (response.success && response.token && response.user) {
         setAuth({
-          token: response.token,
           isAuthenticated: true,
           loading: false,
           user: response.user,

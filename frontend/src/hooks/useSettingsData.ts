@@ -10,6 +10,7 @@ interface RoutingConfig {
   enableGroupNameRoute: boolean;
   enableBearerAuth: boolean;
   bearerAuthKey: string;
+  skipAuth: boolean;
 }
 
 interface InstallConfig {
@@ -46,6 +47,7 @@ export const useSettingsData = () => {
     enableGroupNameRoute: true,
     enableBearerAuth: false,
     bearerAuthKey: '',
+    skipAuth: false,
   });
 
   const [tempRoutingConfig, setTempRoutingConfig] = useState<TempRoutingConfig>({
@@ -99,6 +101,7 @@ export const useSettingsData = () => {
           enableGroupNameRoute: data.data.systemConfig.routing.enableGroupNameRoute ?? true,
           enableBearerAuth: data.data.systemConfig.routing.enableBearerAuth ?? false,
           bearerAuthKey: data.data.systemConfig.routing.bearerAuthKey || '',
+          skipAuth: data.data.systemConfig.routing.skipAuth ?? false,
         });
       }
       if (data.success && data.data?.systemConfig?.install) {

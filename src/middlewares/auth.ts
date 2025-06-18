@@ -5,13 +5,7 @@ import { loadSettings } from '../config/index.js';
 // Default secret key - in production, use an environment variable
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-this';
 
-const validateBearerAuth = (req: Request): boolean => {
-  const routingConfig = loadSettings().systemConfig?.routing || {
-    enableGlobalRoute: true,
-    enableGroupNameRoute: true,
-    enableBearerAuth: false,
-    bearerAuthKey: '',
-  };
+const validateBearerAuth = (req: Request, routingConfig: any): boolean => {
   if (!routingConfig.enableBearerAuth) {
     return false;
   }
@@ -26,8 +20,22 @@ const validateBearerAuth = (req: Request): boolean => {
 
 // Middleware to authenticate JWT token
 export const auth = (req: Request, res: Response, next: NextFunction): void => {
+  // Check if authentication is disabled globally
+  const routingConfig = loadSettings().systemConfig?.routing || {
+    enableGlobalRoute: true,
+    enableGroupNameRoute: true,
+    enableBearerAuth: false,
+    bearerAuthKey: '',
+    skipAuth: false,
+  };
+
+  if (routingConfig.skipAuth) {
+    next();
+    return;
+  }
+
   // Check if bearer auth is enabled and validate it
-  if (validateBearerAuth(req)) {
+  if (validateBearerAuth(req, routingConfig)) {
     next();
     return;
   }
