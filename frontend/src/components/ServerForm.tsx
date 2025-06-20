@@ -615,6 +615,49 @@ const ServerForm = ({ onSubmit, onCancel, initialData = null, modalTitle, formEr
                 </div>
               </div>
             )}
+
+            <div className="mb-4">
+              <div className="flex justify-between items-center mb-2">
+                <label className="block text-gray-700 text-sm font-bold">
+                  {t('server.headers')}
+                </label>
+                <button
+                  type="button"
+                  onClick={addHeaderVar}
+                  className="bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-1 px-2 rounded text-sm flex items-center"
+                >
+                  + {t('server.add')}
+                </button>
+              </div>
+              {headerVars.map((headerVar, index) => (
+                <div key={index} className="flex items-center mb-2">
+                  <div className="flex items-center space-x-2 flex-grow">
+                    <input
+                      type="text"
+                      value={headerVar.key}
+                      onChange={(e) => handleHeaderVarChange(index, 'key', e.target.value)}
+                      className="shadow appearance-none border rounded py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline w-1/2"
+                      placeholder="Authorization"
+                    />
+                    <span className="flex items-center">:</span>
+                    <input
+                      type="text"
+                      value={headerVar.value}
+                      onChange={(e) => handleHeaderVarChange(index, 'value', e.target.value)}
+                      className="shadow appearance-none border rounded py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline w-1/2"
+                      placeholder="Bearer token..."
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => removeHeaderVar(index)}
+                    className="bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-1 px-2 rounded text-sm flex items-center justify-center min-w-[56px] ml-2"
+                  >
+                    - {t('server.remove')}
+                  </button>
+                </div>
+              ))}
+            </div>
           </>
         ) : serverType === 'sse' || serverType === 'streamable-http' ? (
           <>
