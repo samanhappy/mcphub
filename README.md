@@ -57,7 +57,7 @@ Create a `mcp_settings.json` file to customize your server settings:
 **Recommended**: Mount your custom config:
 
 ```bash
-docker run -p 3000:3000 -v $(pwd)/mcp_settings.json:/app/mcp_settings.json samanhappy/mcphub
+docker run -p 3000:3000 -v ./mcp_settings.json:/app/mcp_settings.json -v ./data:/app/data samanhappy/mcphub
 ```
 
 or run with default settings:

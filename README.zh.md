@@ -57,7 +57,7 @@ MCPHub 通过将多个 MCP（Model Context Protocol）服务器组织为灵活�
 **推荐**：挂载自定义配置：
 
 ```bash
-docker run -p 3000:3000 -v $(pwd)/mcp_settings.json:/app/mcp_settings.json samanhappy/mcphub
+docker run -p 3000:3000 -v ./mcp_settings.json:/app/mcp_settings.json -v ./data:/app/data samanhappy/mcphub
 ```
 
 或使用默认配置运行：
