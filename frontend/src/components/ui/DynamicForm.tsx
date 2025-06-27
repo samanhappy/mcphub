@@ -18,9 +18,10 @@ interface DynamicFormProps {
   onCancel: () => void;
   loading?: boolean;
   storageKey?: string; // Optional key for localStorage persistence
+  title?: string; // Optional title to display instead of default parameters title
 }
 
-const DynamicForm: React.FC<DynamicFormProps> = ({ schema, onSubmit, onCancel, loading = false, storageKey }) => {
+const DynamicForm: React.FC<DynamicFormProps> = ({ schema, onSubmit, onCancel, loading = false, storageKey, title }) => {
   const { t } = useTranslation();
   const [formValues, setFormValues] = useState<Record<string, any>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -624,15 +625,15 @@ const DynamicForm: React.FC<DynamicFormProps> = ({ schema, onSubmit, onCancel, l
   return (
     <div className="space-y-4">
       {/* Mode Toggle */}
-      <div className="flex justify-between items-center border-b pb-3">
-        <h3 className="text-lg font-medium text-gray-900">{t('tool.parameters')}</h3>
+      <div className="flex justify-between items-center pb-3">
+        <h6 className="text-md font-medium text-gray-900">{title}</h6>
         <div className="flex space-x-2">
           <button
             type="button"
             onClick={switchToFormMode}
             className={`px-3 py-1 text-sm rounded-md transition-colors ${!isJsonMode
               ? 'bg-blue-600 text-white'
-              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
               }`}
           >
             {t('tool.formMode')}
@@ -642,7 +643,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({ schema, onSubmit, onCancel, l
             onClick={switchToJsonMode}
             className={`px-3 py-1 text-sm rounded-md transition-colors ${isJsonMode
               ? 'bg-blue-600 text-white'
-              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
               }`}
           >
             {t('tool.jsonMode')}
@@ -671,7 +672,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({ schema, onSubmit, onCancel, l
             <button
               type="button"
               onClick={onCancel}
-              className="px-4 py-2 text-sm text-gray-600 bg-gray-100 rounded-md hover:bg-gray-200"
+              className="px-4 py-1 text-sm text-gray-600 bg-gray-200 rounded-md hover:bg-gray-300"
             >
               {t('tool.cancel')}
             </button>
@@ -685,7 +686,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({ schema, onSubmit, onCancel, l
                 }
               }}
               disabled={loading || !!jsonError}
-              className="px-4 py-2 text-sm text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50"
+              className="px-4 py-1 text-sm text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50"
             >
               {loading ? t('tool.running') : t('tool.runTool')}
             </button>
@@ -702,14 +703,14 @@ const DynamicForm: React.FC<DynamicFormProps> = ({ schema, onSubmit, onCancel, l
             <button
               type="button"
               onClick={onCancel}
-              className="px-4 py-2 text-sm text-gray-600 bg-gray-100 rounded-md hover:bg-gray-200"
+              className="px-4 py-1 text-sm text-gray-600 bg-gray-200 rounded-md hover:bg-gray-300"
             >
               {t('tool.cancel')}
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="px-4 py-2 text-sm text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50"
+              className="px-4 py-1 text-sm text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50"
             >
               {loading ? t('tool.running') : t('tool.runTool')}
             </button>

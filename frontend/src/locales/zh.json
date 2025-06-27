@@ -303,7 +303,7 @@
   "tool": {
     "run": "运行",
     "running": "运行中...",
-    "runTool": "运行工具",
+    "runTool": "运行",
     "cancel": "取消",
     "noDescription": "无描述信息",
     "inputSchema": "输入模式：",

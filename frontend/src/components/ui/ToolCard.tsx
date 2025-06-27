@@ -229,13 +229,13 @@ const ToolCard = ({ tool, server, onToggle, onDescriptionUpdate }: ToolCardProps
           {/* Run Form */}
           {showRunForm && (
             <div className="border border-gray-300 rounded-lg p-4 bg-blue-50">
-              <h4 className="text-sm font-medium text-gray-900 mb-3">{t('tool.runToolWithName', { name: tool.name.replace(server + '-', '') })}</h4>
               <DynamicForm
                 schema={tool.inputSchema || { type: 'object' }}
                 onSubmit={handleRunTool}
                 onCancel={handleCancelRun}
                 loading={isRunning}
                 storageKey={getStorageKey()}
+                title={t('tool.runToolWithName', { name: tool.name.replace(server + '-', '') })}
               />
               {/* Tool Result */}
               {result && (
