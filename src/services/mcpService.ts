@@ -154,20 +154,20 @@ export const initializeClientsFromSettings = async (isInit: boolean): Promise<Se
         continue;
       }
 
+      // Create server info first and keep reference to it
+      const serverInfo: ServerInfo = {
+        name,
+        status: 'connecting',
+        error: null,
+        tools: [],
+        createTime: Date.now(),
+        enabled: conf.enabled === undefined ? true : conf.enabled,
+      };
+      serverInfos.push(serverInfo);
+
       try {
         // Create OpenAPI client instance
         openApiClient = new OpenAPIClient(conf);
-
-        // Add server with connecting status first
-        const serverInfo: ServerInfo = {
-          name,
-          status: 'connecting',
-          error: null,
-          tools: [],
-          createTime: Date.now(),
-          enabled: conf.enabled === undefined ? true : conf.enabled,
-        };
-        serverInfos.push(serverInfo);
 
         console.log(`Initializing OpenAPI server: ${name}...`);
 
@@ -197,21 +197,9 @@ export const initializeClientsFromSettings = async (isInit: boolean): Promise<Se
       } catch (error) {
         console.error(`Failed to initialize OpenAPI server ${name}:`, error);
 
-        // Find and update the server info if it was already added
-        const existingServerIndex = serverInfos.findIndex((s) => s.name === name);
-        if (existingServerIndex !== -1) {
-          serverInfos[existingServerIndex].status = 'disconnected';
-          serverInfos[existingServerIndex].error = `Failed to initialize OpenAPI server: ${error}`;
-        } else {
-          // Add new server info with error status
-          serverInfos.push({
-            name,
-            status: 'disconnected',
-            error: `Failed to initialize OpenAPI server: ${error}`,
-            tools: [],
-            createTime: Date.now(),
-          });
-        }
+        // Update the already pushed server info with error status
+        serverInfo.status = 'disconnected';
+        serverInfo.error = `Failed to initialize OpenAPI server: ${error}`;
         continue;
       }
     } else if (conf.type === 'streamable-http') {
@@ -312,6 +300,19 @@ export const initializeClientsFromSettings = async (isInit: boolean): Promise<Se
       maxTotalTimeout: serverRequestOptions.maxTotalTimeout,
     };
 
+    // Create server info first and keep reference to it
+    const serverInfo: ServerInfo = {
+      name,
+      status: 'connecting',
+      error: null,
+      tools: [],
+      client,
+      transport,
+      options: requestOptions,
+      createTime: Date.now(),
+    };
+    serverInfos.push(serverInfo);
+
     client
       .connect(transport, initRequestOptions || requestOptions)
       .then(() => {
@@ -320,11 +321,6 @@ export const initializeClientsFromSettings = async (isInit: boolean): Promise<Se
           .listTools({}, initRequestOptions || requestOptions)
           .then((tools) => {
             console.log(`Successfully listed ${tools.tools.length} tools for server: ${name}`);
-            const serverInfo = getServerByName(name);
-            if (!serverInfo) {
-              console.warn(`Server info not found for server: ${name}`);
-              return;
-            }
 
             serverInfo.tools = tools.tools.map((tool) => ({
               name: `${name}-${tool.name}`,
@@ -344,33 +340,17 @@ export const initializeClientsFromSettings = async (isInit: boolean): Promise<Se
             console.error(
               `Failed to list tools for server ${name} by error: ${error} with stack: ${error.stack}`,
             );
-            const serverInfo = getServerByName(name);
-            if (serverInfo) {
-              serverInfo.status = 'disconnected';
-              serverInfo.error = `Failed to list tools: ${error.stack} `;
-            }
+            serverInfo.status = 'disconnected';
+            serverInfo.error = `Failed to list tools: ${error.stack} `;
           });
       })
       .catch((error) => {
         console.error(
           `Failed to connect client for server ${name} by error: ${error} with stack: ${error.stack}`,
         );
-        const serverInfo = getServerByName(name);
-        if (serverInfo) {
-          serverInfo.status = 'disconnected';
-          serverInfo.error = `Failed to connect: ${error.stack} `;
-        }
+        serverInfo.status = 'disconnected';
+        serverInfo.error = `Failed to connect: ${error.stack} `;
       });
-    serverInfos.push({
-      name,
-      status: 'connecting',
-      error: null,
-      tools: [],
-      client,
-      transport,
-      options: requestOptions,
-      createTime: Date.now(),
-    });
     console.log(`Initialized client for server: ${name}`);
   }
 
