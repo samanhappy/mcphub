@@ -3,8 +3,8 @@ import { ApiResponse, AddServerRequest } from '../types/index.js';
 import {
   getServersInfo,
   addServer,
+  addOrUpdateServer,
   removeServer,
-  updateMcpServer,
   notifyToolChanged,
   syncToolEmbedding,
   toggleServerStatus,
@@ -264,7 +264,7 @@ export const updateServer = async (req: Request, res: Response): Promise<void> =
       config.keepAliveInterval = 60000; // Default 60 seconds for SSE servers
     }
 
-    const result = await updateMcpServer(name, config);
+    const result = await addOrUpdateServer(name, config, true); // Allow override for updates
     if (result.success) {
       notifyToolChanged();
       res.json({

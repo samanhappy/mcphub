@@ -174,7 +174,8 @@
     "copy": "Copy",
     "copySuccess": "Copied to clipboard",
     "copyFailed": "Copy failed",
-    "close": "Close"
+    "close": "Close",
+    "confirm": "Confirm"
   },
   "nav": {
     "dashboard": "Dashboard",
@@ -366,5 +367,30 @@
     "smartRoutingConfigUpdated": "Smart routing configuration updated successfully",
     "smartRoutingRequiredFields": "Database URL and OpenAI API Key are required to enable smart routing",
     "smartRoutingValidationError": "Please fill in the required fields before enabling Smart Routing: {{fields}}"
+  },
+  "dxt": {
+    "upload": "Upload",
+    "uploadTitle": "Upload DXT Extension",
+    "dropFileHere": "Drop your .dxt file here",
+    "orClickToSelect": "or click to select from your computer",
+    "invalidFileType": "Please select a valid .dxt file",
+    "noFileSelected": "Please select a .dxt file to upload",
+    "uploading": "Uploading...",
+    "uploadFailed": "Failed to upload DXT file",
+    "installServer": "Install MCP Server from DXT",
+    "extensionInfo": "Extension Information",
+    "name": "Name",
+    "version": "Version",
+    "description": "Description",
+    "author": "Author",
+    "tools": "Tools",
+    "serverName": "Server Name",
+    "serverNamePlaceholder": "Enter a name for this server",
+    "install": "Install",
+    "installing": "Installing...",
+    "installFailed": "Failed to install server from DXT",
+    "serverExistsTitle": "Server Already Exists",
+    "serverExistsConfirm": "Server '{{serverName}}' already exists. Do you want to override it with the new version?",
+    "override": "Override"
   }
 }

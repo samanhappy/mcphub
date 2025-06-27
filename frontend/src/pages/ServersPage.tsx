@@ -6,6 +6,7 @@ import ServerCard from '@/components/ServerCard';
 import AddServerForm from '@/components/AddServerForm';
 import EditServerForm from '@/components/EditServerForm';
 import { useServerData } from '@/hooks/useServerData';
+import DxtUploadForm from '@/components/DxtUploadForm';
 
 const ServersPage: React.FC = () => {
   const { t } = useTranslation();
@@ -23,6 +24,7 @@ const ServersPage: React.FC = () => {
   } = useServerData();
   const [editingServer, setEditingServer] = useState<Server | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [showDxtUpload, setShowDxtUpload] = useState(false);
 
   const handleEditClick = async (server: Server) => {
     const fullServerData = await handleServerEdit(server);
@@ -47,6 +49,12 @@ const ServersPage: React.FC = () => {
     }
   };
 
+  const handleDxtUploadSuccess = (_serverConfig: any) => {
+    // Close upload dialog and refresh servers
+    setShowDxtUpload(false);
+    triggerRefresh();
+  };
+
   return (
     <div>
       <div className="flex justify-between items-center mb-8">
@@ -62,6 +70,15 @@ const ServersPage: React.FC = () => {
             {t('nav.market')}
           </button>
           <AddServerForm onAdd={handleServerAdd} />
+          <button
+            onClick={() => setShowDxtUpload(true)}
+            className="px-4 py-2 bg-blue-100 text-blue-800 rounded hover:bg-blue-200 flex items-center"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" viewBox="0 0 20 20" fill="currentColor">
+              <path d="M5.5 13a3.5 3.5 0 01-.369-6.98 4 4 0 117.753-1.977A4.5 4.5 0 1113.5 13H11V9.413l1.293 1.293a1 1 0 001.414-1.414l-3-3a1 1 0 00-1.414 0l-3 3a1 1 0 001.414 1.414L9 9.413V13H5.5z" />
+            </svg>
+            {t('dxt.upload')}
+          </button>
           <button
             onClick={handleRefresh}
             disabled={isRefreshing}
@@ -136,6 +153,13 @@ const ServersPage: React.FC = () => {
           server={editingServer}
           onEdit={handleEditComplete}
           onCancel={() => setEditingServer(null)}
+        />
+      )}
+
+      {showDxtUpload && (
+        <DxtUploadForm
+          onSuccess={handleDxtUploadSuccess}
+          onCancel={() => setShowDxtUpload(false)}
         />
       )}
     </div>

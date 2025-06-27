@@ -513,6 +513,42 @@ export const updateMcpServer = async (
   }
 };
 
+// Add or update server (supports overriding existing servers for DXT)
+export const addOrUpdateServer = async (
+  name: string,
+  config: ServerConfig,
+  allowOverride: boolean = false,
+): Promise<{ success: boolean; message?: string }> => {
+  try {
+    const settings = loadSettings();
+    const exists = !!settings.mcpServers[name];
+
+    if (exists && !allowOverride) {
+      return { success: false, message: 'Server name already exists' };
+    }
+
+    // If overriding and this is a DXT server (stdio type with file paths),
+    // we might want to clean up old files in the future
+    if (exists && config.type === 'stdio') {
+      // Close existing server connections
+      closeServer(name);
+      // Remove from server infos
+      serverInfos = serverInfos.filter((serverInfo) => serverInfo.name !== name);
+    }
+
+    settings.mcpServers[name] = config;
+    if (!saveSettings(settings)) {
+      return { success: false, message: 'Failed to save settings' };
+    }
+
+    const action = exists ? 'updated' : 'added';
+    return { success: true, message: `Server ${action} successfully` };
+  } catch (error) {
+    console.error(`Failed to add/update server: ${name}`, error);
+    return { success: false, message: 'Failed to add/update server' };
+  }
+};
+
 // Close server client and transport
 function closeServer(name: string) {
   const serverInfo = serverInfos.find((serverInfo) => serverInfo.name === name);

@@ -175,7 +175,8 @@
     "copy": "复制",
     "copySuccess": "已复制到剪贴板",
     "copyFailed": "复制失败",
-    "close": "关闭"
+    "close": "关闭",
+    "confirm": "确认"
   },
   "nav": {
     "dashboard": "仪表盘",
@@ -368,5 +369,30 @@
     "smartRoutingConfigUpdated": "智能路由配置更新成功",
     "smartRoutingRequiredFields": "启用智能路由需要填写数据库连接地址和 OpenAI API 密钥",
     "smartRoutingValidationError": "启用智能路由前请先填写必要字段：{{fields}}"
+  },
+  "dxt": {
+    "upload": "上传",
+    "uploadTitle": "上传 DXT 扩展",
+    "dropFileHere": "将 .dxt 文件拖拽到此处",
+    "orClickToSelect": "或点击从计算机选择",
+    "invalidFileType": "请选择有效的 .dxt 文件",
+    "noFileSelected": "请选择要上传的 .dxt 文件",
+    "uploading": "上传中...",
+    "uploadFailed": "上传 DXT 文件失败",
+    "installServer": "从 DXT 安装 MCP 服务器",
+    "extensionInfo": "扩展信息",
+    "name": "名称",
+    "version": "版本",
+    "description": "描述",
+    "author": "作者",
+    "tools": "工具",
+    "serverName": "服务器名称",
+    "serverNamePlaceholder": "为此服务器输入名称",
+    "install": "安装",
+    "installing": "安装中...",
+    "installFailed": "从 DXT 安装服务器失败",
+    "serverExistsTitle": "服务器已存在",
+    "serverExistsConfirm": "服务器 '{{serverName}}' 已存在。是否要用新版本覆盖它？",
+    "override": "覆盖"
   }
 }

@@ -36,6 +36,7 @@ import { login, register, getCurrentUser, changePassword } from '../controllers/
 import { getAllLogs, clearLogs, streamLogs } from '../controllers/logController.js';
 import { getRuntimeConfig, getPublicConfig } from '../controllers/configController.js';
 import { callTool } from '../controllers/toolController.js';
+import { uploadDxtFile, uploadMiddleware } from '../controllers/dxtController.js';
 import { auth } from '../middlewares/auth.js';
 
 const router = express.Router();
@@ -66,6 +67,9 @@ export const initRoutes = (app: express.Application): void => {
 
   // Tool management routes
   router.post('/tools/call/:server', callTool);
+
+  // DXT upload routes
+  router.post('/dxt/upload', uploadMiddleware, uploadDxtFile);
 
   // Market routes
   router.get('/market/servers', getAllMarketServers);
