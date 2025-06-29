@@ -48,25 +48,26 @@ const LogViewer: React.FC<LogViewerProps> = ({ logs, isLoading = false, error = 
   // Get badge color based on log type
   const getLogTypeColor = (type: string) => {
     switch (type) {
-      case 'error': return 'bg-red-400';
-      case 'warn': return 'bg-yellow-400';
-      case 'debug': return 'bg-purple-400';
-      default: return 'bg-blue-400';
+      case 'error': return 'bg-red-400/80 text-white';
+      case 'warn': return 'bg-yellow-400/80 text-gray-900';
+      case 'debug': return 'bg-purple-400/80 text-white';
+      case 'info': return 'bg-blue-400/80 text-white';
+      default: return 'bg-blue-400/80 text-white';
     }
   };
 
   // Get badge color based on log source
   const getSourceColor = (source: string) => {
     switch (source) {
-      case 'main': return 'bg-green-400';
-      case 'child': return 'bg-orange-400';
-      default: return 'bg-gray-400';
+      case 'main': return 'bg-green-400/80 text-white';
+      case 'child': return 'bg-orange-400/80 text-white';
+      default: return 'bg-gray-400/80 text-white';
     }
   };
 
   return (
     <div className="flex flex-col h-full">
-      <div className="bg-card p-3 rounded-t-md border-b flex flex-wrap items-center justify-between gap-2">
+      <div className="bg-card p-3 rounded-t-md flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap items-center gap-2">
           <span className="font-semibold text-sm">{t('logs.filters')}:</span>
 
@@ -74,14 +75,14 @@ const LogViewer: React.FC<LogViewerProps> = ({ logs, isLoading = false, error = 
           <input
             type="text"
             placeholder={t('logs.search')}
-            className="px-2 py-1 text-sm border rounded"
+            className="shadow appearance-none border border-gray-200 rounded py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline form-input"
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
           />
 
           {/* Log type filters */}
           <div className="flex gap-1 items-center">
-            {(['info', 'error', 'warn', 'debug'] as const).map(type => (
+            {(['debug', 'info', 'error', 'warn'] as const).map(type => (
               <Badge
                 key={type}
                 variant={typeFilter.includes(type) ? 'default' : 'outline'}
@@ -134,6 +135,7 @@ const LogViewer: React.FC<LogViewerProps> = ({ logs, isLoading = false, error = 
             variant="outline"
             size="sm"
             onClick={onClear}
+            className='btn-secondary'
             disabled={isLoading || logs.length === 0}
           >
             {t('logs.clearLogs')}
@@ -164,7 +166,7 @@ const LogViewer: React.FC<LogViewerProps> = ({ logs, isLoading = false, error = 
           filteredLogs.map((log, index) => (
             <div
               key={`${log.timestamp}-${index}`}
-              className={`py-1 border-b border-gray-100 dark:border-gray-800 ${log.type === 'error' ? 'text-red-500' :
+              className={`py-1 ${log.type === 'error' ? 'text-red-500' :
                 log.type === 'warn' ? 'text-yellow-500' : ''
                 }`}
             >

@@ -121,14 +121,14 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
           <div className="flex justify-end space-x-3 mt-6">
             <button
               onClick={onClose}
-              className="px-4 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors duration-150"
+              className="px-4 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors duration-150 btn-secondary"
               autoFocus
             >
               {cancelText || t('common.cancel')}
             </button>
             <button
               onClick={onConfirm}
-              className={`px-4 py-2 rounded-md transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-offset-2 ${confirmClass}`}
+              className={`px-4 py-2 rounded-md transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-offset-2 ${confirmClass} ${variant === 'danger' ? 'btn-danger' : variant === 'warning' ? 'btn-warning' : 'btn-primary'}`}
             >
               {confirmText || t('common.confirm')}
             </button>

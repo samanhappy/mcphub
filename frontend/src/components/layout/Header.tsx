@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useAuth } from '@/contexts/AuthContext';
 import ThemeSwitch from '@/components/ui/ThemeSwitch';
 import GitHubIcon from '@/components/icons/GitHubIcon';
 import SponsorIcon from '@/components/icons/SponsorIcon';
@@ -15,13 +14,12 @@ interface HeaderProps {
 
 const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
   const { t, i18n } = useTranslation();
-  const { auth } = useAuth();
   const [sponsorDialogOpen, setSponsorDialogOpen] = useState(false);
   const [wechatDialogOpen, setWechatDialogOpen] = useState(false);
 
   return (
     <header className="bg-white dark:bg-gray-800 shadow-sm z-10">
-      <div className="flex justify-between items-center px-4 py-3">
+      <div className="flex justify-between items-center px-3 py-3">
         <div className="flex items-center">
           {/* 侧边栏切换按钮 */}
           <button

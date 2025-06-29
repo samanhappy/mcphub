@@ -93,7 +93,7 @@ const AboutDialog: React.FC<AboutDialogProps> = ({ isOpen, onClose, version }) =
             <button
               onClick={checkForUpdates}
               disabled={isChecking}
-              className={`mt-4 inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium 
+              className={`mt-4 inline-flex items-center px-4 py-2 border border-gray-200 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium btn-secondary
                 ${isChecking
                   ? 'text-gray-400 dark:text-gray-500 bg-gray-100 dark:bg-gray-800'
                   : 'text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600'

@@ -65,7 +65,6 @@ const ToolResult: React.FC<ToolResultProps> = ({ result, onClose }) => {
 
       // For other structured content, try to parse as JSON
       try {
-        const jsonString = typeof item === 'string' ? item : JSON.stringify(item, null, 2);
         const parsed = typeof item === 'string' ? JSON.parse(item) : item;
 
         return (
@@ -97,9 +96,9 @@ const ToolResult: React.FC<ToolResultProps> = ({ result, onClose }) => {
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
             {result.success ? (
-              <CheckCircle size={20} className="text-green-500" />
+              <CheckCircle size={20} className="text-status-green" />
             ) : (
-              <XCircle size={20} className="text-red-500" />
+              <XCircle size={20} className="text-status-red" />
             )}
             <div>
               <h4 className="text-sm font-medium text-gray-900">

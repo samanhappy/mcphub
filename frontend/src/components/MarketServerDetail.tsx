@@ -40,7 +40,7 @@ const MarketServerDetail: React.FC<MarketServerDetailProps> = ({
       };
     } else {
       return {
-        className: "bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded text-sm font-medium text-white",
+        className: "bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded text-sm font-medium text-white btn-primary",
         disabled: false,
         text: t('market.install')
       };
@@ -72,13 +72,13 @@ const MarketServerDetail: React.FC<MarketServerDetailProps> = ({
     } else if (server.installations.default) {
       return server.installations.default;
     }
-    
+
     // If none of the preferred types are available, get the first available installation type
     const installTypes = Object.keys(server.installations);
     if (installTypes.length > 0) {
       return server.installations[installTypes[0]];
     }
-    
+
     return undefined;
   };
 
@@ -114,15 +114,15 @@ const MarketServerDetail: React.FC<MarketServerDetailProps> = ({
       <div className="flex justify-between items-start mb-4">
         <div>
           <h2 className="text-2xl font-bold text-gray-900 flex items-center flex-wrap">
-            {server.display_name} 
+            {server.display_name}
             <span className="text-sm font-normal text-gray-500 ml-2">({server.name})</span>
             <span className="text-sm font-normal text-gray-600 ml-4">
-              {t('market.author')}: {server.author.name} • {t('market.license')}: {server.license} • 
+              {t('market.author')}: {server.author.name} • {t('market.license')}: {server.license} •
               <a
                 href={server.repository.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-blue-600 hover:underline ml-1"
+                className="text-blue-500 hover:underline ml-1"
               >
                 {t('market.repository')}
               </a>
@@ -132,7 +132,7 @@ const MarketServerDetail: React.FC<MarketServerDetailProps> = ({
 
         <div className="flex items-center">
           {server.is_official && (
-            <span className="bg-blue-100 text-blue-800 text-sm font-medium px-4 py-2 rounded mr-2 flex items-center">
+            <span className="bg-blue-100 text-blue-800 text-sm font-normal px-4 py-2 rounded mr-2 flex items-center label-primary">
               {t('market.official')}
             </span>
           )}
@@ -169,7 +169,7 @@ const MarketServerDetail: React.FC<MarketServerDetailProps> = ({
           <h3 className="text-lg font-semibold mb-3">{t('market.arguments')}</h3>
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+              <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
                     {t('market.argumentName')}
@@ -198,7 +198,7 @@ const MarketServerDetail: React.FC<MarketServerDetailProps> = ({
                       {arg.required ? (
                         <span className="text-green-600">✓</span>
                       ) : (
-                        <span className="text-red-600">✗</span>
+                        <span className="text-gray-600">✗</span>
                       )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -228,7 +228,7 @@ const MarketServerDetail: React.FC<MarketServerDetailProps> = ({
                       element.classList.toggle('hidden');
                     }
                   }}
-                  className="text-sm text-blue-600 hover:underline focus:outline-none ml-2"
+                  className="text-sm text-blue-500 font-normal hover:underline focus:outline-none ml-2"
                 >
                   {t('market.viewSchema')}
                 </button>
@@ -281,12 +281,12 @@ const MarketServerDetail: React.FC<MarketServerDetailProps> = ({
             initialData={{
               name: server.name,
               status: 'disconnected',
-              config: preferredInstallation 
+              config: preferredInstallation
                 ? {
-                    command: preferredInstallation.command || '',
-                    args: preferredInstallation.args || [],
-                    env: preferredInstallation.env || {}
-                  }
+                  command: preferredInstallation.command || '',
+                  args: preferredInstallation.args || [],
+                  env: preferredInstallation.env || {}
+                }
                 : undefined
             }}
           />

@@ -50,7 +50,7 @@ const AddGroupForm = ({ onAdd, onCancel }: AddGroupFormProps) => {
       }
 
       const result = await createGroup(formData.name, formData.description, formData.servers)
-      
+
       if (!result) {
         setError(t('groups.createError'))
         setIsSubmitting(false)
@@ -69,7 +69,7 @@ const AddGroupForm = ({ onAdd, onCancel }: AddGroupFormProps) => {
       <div className="bg-white rounded-lg shadow-lg max-w-md w-full">
         <div className="p-6">
           <h2 className="text-xl font-semibold text-gray-800 mb-4">{t('groups.addNew')}</h2>
-          
+
           {error && (
             <div className="mb-4 p-3 bg-red-100 text-red-700 rounded">
               {error}
@@ -87,7 +87,7 @@ const AddGroupForm = ({ onAdd, onCancel }: AddGroupFormProps) => {
                 name="name"
                 value={formData.name}
                 onChange={handleChange}
-                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline form-input"
                 placeholder={t('groups.namePlaceholder')}
                 required
               />
@@ -109,14 +109,14 @@ const AddGroupForm = ({ onAdd, onCancel }: AddGroupFormProps) => {
               <button
                 type="button"
                 onClick={onCancel}
-                className="px-4 py-2 text-gray-600 hover:text-gray-800"
+                className="px-4 py-2 text-gray-600 hover:text-gray-800 btn-secondary"
                 disabled={isSubmitting}
               >
                 {t('common.cancel')}
               </button>
               <button
                 type="submit"
-                className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50"
+                className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50 btn-primary"
                 disabled={isSubmitting}
               >
                 {isSubmitting ? t('common.submitting') : t('common.create')}

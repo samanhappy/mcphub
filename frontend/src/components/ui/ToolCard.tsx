@@ -130,7 +130,7 @@ const ToolCard = ({ tool, server, onToggle, onDescriptionUpdate }: ToolCardProps
   }
 
   return (
-    <div className="bg-white border border-gray-300 shadow rounded-lg p-4 mb-4">
+    <div className="bg-white border border-gray-200 shadow rounded-lg p-4 mb-4">
       <div
         className="flex justify-between items-center cursor-pointer"
         onClick={() => setIsExpanded(!isExpanded)}
@@ -144,7 +144,7 @@ const ToolCard = ({ tool, server, onToggle, onDescriptionUpdate }: ToolCardProps
                   <input
                     ref={descriptionInputRef}
                     type="text"
-                    className="px-2 py-1 border border-blue-300 rounded bg-white text-sm"
+                    className="px-2 py-1 border border-blue-300 rounded bg-white text-sm focus:outline-none form-input"
                     value={customDescription}
                     onChange={handleDescriptionChange}
                     onKeyDown={handleDescriptionKeyDown}
@@ -155,7 +155,7 @@ const ToolCard = ({ tool, server, onToggle, onDescriptionUpdate }: ToolCardProps
                     }}
                   />
                   <button
-                    className="ml-2 p-1 text-green-600 hover:text-green-800"
+                    className="ml-2 p-1 text-green-600 hover:text-green-800 cursor-pointer transition-colors"
                     onClick={(e) => {
                       e.stopPropagation()
                       handleDescriptionSave()
@@ -168,7 +168,7 @@ const ToolCard = ({ tool, server, onToggle, onDescriptionUpdate }: ToolCardProps
                 <>
                   <span ref={descriptionTextRef}>{customDescription || t('tool.noDescription')}</span>
                   <button
-                    className="ml-2 p-1 text-gray-500 hover:text-blue-600 transition-colors"
+                    className="ml-2 p-1 text-gray-500 hover:text-blue-600 cursor-pointer transition-colors"
                     onClick={(e) => {
                       e.stopPropagation()
                       handleDescriptionEdit()
@@ -198,7 +198,7 @@ const ToolCard = ({ tool, server, onToggle, onDescriptionUpdate }: ToolCardProps
               setIsExpanded(true) // Ensure card is expanded when showing run form
               setShowRunForm(true)
             }}
-            className="flex items-center space-x-1 px-3 py-1 text-sm text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-md transition-colors"
+            className="flex items-center space-x-1 px-3 py-1 text-sm text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-md transition-colors btn-primary"
             disabled={isRunning || !tool.enabled}
           >
             {isRunning ? (
@@ -228,7 +228,7 @@ const ToolCard = ({ tool, server, onToggle, onDescriptionUpdate }: ToolCardProps
 
           {/* Run Form */}
           {showRunForm && (
-            <div className="border border-gray-300 rounded-lg p-4 bg-blue-50">
+            <div className="border border-gray-300 rounded-lg p-4">
               <DynamicForm
                 schema={tool.inputSchema || { type: 'object' }}
                 onSubmit={handleRunTool}

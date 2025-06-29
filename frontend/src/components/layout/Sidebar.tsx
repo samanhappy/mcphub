@@ -1,6 +1,6 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { NavLink, useLocation } from 'react-router-dom';
+import { NavLink } from 'react-router-dom';
 import UserProfileMenu from '@/components/ui/UserProfileMenu';
 
 interface SidebarProps {
@@ -15,11 +15,10 @@ interface MenuItem {
 
 const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
   const { t } = useTranslation();
-  const location = useLocation();
-  
+
   // Application version from package.json (accessed via Vite environment variables)
   const appVersion = import.meta.env.PACKAGE_VERSION as string;
-  
+
   // Menu item configuration
   const menuItems: MenuItem[] = [
     {
@@ -71,10 +70,9 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
   ];
 
   return (
-    <aside 
-      className={`bg-white dark:bg-gray-800 shadow-sm transition-all duration-300 ease-in-out flex flex-col h-full relative ${
-        collapsed ? 'w-16' : 'w-64'
-      }`}
+    <aside
+      className={`bg-white dark:bg-gray-800 shadow-sm transition-all duration-300 ease-in-out flex flex-col h-full relative ${collapsed ? 'w-16' : 'w-64'
+        }`}
     >
       {/* Scrollable navigation area */}
       <div className="overflow-y-auto flex-grow">
@@ -83,12 +81,11 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
             <NavLink
               key={item.path}
               to={item.path}
-              className={({ isActive }) => 
-                `flex items-center px-3 py-2 rounded-md transition-colors ${
-                  isActive 
-                    ? 'bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200' 
-                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                }`
+              className={({ isActive }) =>
+                `flex items-center px-2.5 py-2 rounded-lg transition-colors duration-200
+         ${isActive
+                  ? 'bg-blue-50 text-blue-700'
+                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-100'}`
               }
               end={item.path === '/'}
             >
@@ -98,7 +95,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
           ))}
         </nav>
       </div>
-      
+
       {/* User profile menu fixed at the bottom */}
       <div className="p-3 bg-white dark:bg-gray-800">
         <UserProfileMenu collapsed={collapsed} version={appVersion} />

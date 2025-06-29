@@ -31,17 +31,17 @@ const ChangePasswordForm: React.FC<ChangePasswordFormProps> = ({ onSuccess, onCa
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    
+
     // Validate passwords match
     if (formData.newPassword !== confirmPassword) {
       setError(t('auth.passwordsNotMatch'));
       return;
     }
-    
+
     setIsLoading(true);
     try {
       const response = await changePassword(formData);
-      
+
       if (response.success) {
         setSuccess(true);
         if (onSuccess) {
@@ -60,7 +60,7 @@ const ChangePasswordForm: React.FC<ChangePasswordFormProps> = ({ onSuccess, onCa
   return (
     <div className="p-6 bg-white rounded-lg shadow-md">
       <h2 className="text-xl font-bold mb-4">{t('auth.changePassword')}</h2>
-      
+
       {success ? (
         <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
           {t('auth.changePasswordSuccess')}
@@ -72,7 +72,7 @@ const ChangePasswordForm: React.FC<ChangePasswordFormProps> = ({ onSuccess, onCa
               {error}
             </div>
           )}
-          
+
           <div className="mb-4">
             <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="currentPassword">
               {t('auth.currentPassword')}
@@ -81,13 +81,13 @@ const ChangePasswordForm: React.FC<ChangePasswordFormProps> = ({ onSuccess, onCa
               type="password"
               id="currentPassword"
               name="currentPassword"
-              className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 form-input"
               value={formData.currentPassword}
               onChange={handleChange}
               required
             />
           </div>
-          
+
           <div className="mb-4">
             <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="newPassword">
               {t('auth.newPassword')}
@@ -96,14 +96,14 @@ const ChangePasswordForm: React.FC<ChangePasswordFormProps> = ({ onSuccess, onCa
               type="password"
               id="newPassword"
               name="newPassword"
-              className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 form-input"
               value={formData.newPassword}
               onChange={handleChange}
               required
               minLength={6}
             />
           </div>
-          
+
           <div className="mb-6">
             <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="confirmPassword">
               {t('auth.confirmPassword')}
@@ -112,14 +112,14 @@ const ChangePasswordForm: React.FC<ChangePasswordFormProps> = ({ onSuccess, onCa
               type="password"
               id="confirmPassword"
               name="confirmPassword"
-              className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 form-input"
               value={confirmPassword}
               onChange={handleChange}
               required
               minLength={6}
             />
           </div>
-          
+
           <div className="flex justify-end space-x-2">
             {onCancel && (
               <button
@@ -134,7 +134,7 @@ const ChangePasswordForm: React.FC<ChangePasswordFormProps> = ({ onSuccess, onCa
             <button
               type="submit"
               disabled={isLoading}
-              className="py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              className="py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 btn-primary"
             >
               {isLoading ? (
                 <span className="flex items-center">

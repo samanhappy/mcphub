@@ -1,7 +1,7 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '@/contexts/ThemeContext';
-import { Sun, Moon, Monitor } from 'lucide-react';
+import { Sun, Moon } from 'lucide-react';
 
 const ThemeSwitch: React.FC = () => {
   const { t } = useTranslation();
@@ -9,7 +9,7 @@ const ThemeSwitch: React.FC = () => {
 
   return (
     <div className="flex items-center space-x-2">
-      <div className="flex bg-gray-200 dark:bg-gray-700 rounded-lg p-1">
+      <div className="flex bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
         <button
           onClick={() => setTheme('light')}
           className={`flex items-center justify-center rounded-md p-1.5 ${theme === 'light'

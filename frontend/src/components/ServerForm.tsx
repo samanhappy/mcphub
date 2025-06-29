@@ -264,7 +264,7 @@ const ServerForm = ({ onSubmit, onCancel, initialData = null, modalTitle, formEr
     <div className="bg-white shadow rounded-lg p-6 w-full max-w-xl max-h-screen overflow-y-auto">
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-xl font-semibold text-gray-900">{modalTitle}</h2>
-        <button onClick={onCancel} className="text-gray-500 hover:text-gray-700">
+        <button onClick={onCancel} className="text-gray-500 hover:text-gray-700 btn-secondary">
           ✕
         </button>
       </div>
@@ -286,7 +286,7 @@ const ServerForm = ({ onSubmit, onCancel, initialData = null, modalTitle, formEr
             id="name"
             value={formData.name}
             onChange={handleInputChange}
-            className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+            className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline form-input"
             placeholder="e.g.: time-mcp"
             required
             disabled={isEdit}
@@ -403,7 +403,7 @@ const ServerForm = ({ onSubmit, onCancel, initialData = null, modalTitle, formEr
                     ...prev,
                     openapi: { ...prev.openapi!, url: e.target.value }
                   }))}
-                  className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                  className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline form-input"
                   placeholder="e.g.: https://api.example.com/openapi.json"
                   required={serverType === 'openapi' && formData.openapi?.inputMode === 'url'}
                 />
@@ -462,7 +462,7 @@ const ServerForm = ({ onSubmit, onCancel, initialData = null, modalTitle, formEr
                     url: prev.openapi?.url || ''
                   }
                 }))}
-                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline form-input"
               >
                 <option value="none">{t('server.openapi.securityNone')}</option>
                 <option value="apiKey">{t('server.openapi.securityApiKey')}</option>
@@ -474,7 +474,7 @@ const ServerForm = ({ onSubmit, onCancel, initialData = null, modalTitle, formEr
 
             {/* API Key Configuration */}
             {formData.openapi?.securityType === 'apiKey' && (
-              <div className="mb-4 p-4 border rounded bg-gray-50">
+              <div className="mb-4 p-4 border border-gray-200 rounded bg-gray-50">
                 <h4 className="text-sm font-medium text-gray-700 mb-3">{t('server.openapi.apiKeyConfig')}</h4>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                   <div>
@@ -486,7 +486,7 @@ const ServerForm = ({ onSubmit, onCancel, initialData = null, modalTitle, formEr
                         ...prev,
                         openapi: { ...prev.openapi, apiKeyName: e.target.value, url: prev.openapi?.url || '' }
                       }))}
-                      className="w-full border rounded px-2 py-1 text-sm"
+                      className="w-full border rounded px-2 py-1 text-sm form-input focus:outline-none"
                       placeholder="Authorization"
                     />
                   </div>
@@ -498,7 +498,7 @@ const ServerForm = ({ onSubmit, onCancel, initialData = null, modalTitle, formEr
                         ...prev,
                         openapi: { ...prev.openapi, apiKeyIn: e.target.value as any, url: prev.openapi?.url || '' }
                       }))}
-                      className="w-full border rounded px-2 py-1 text-sm"
+                      className="w-full border rounded px-2 py-1 text-sm focus:outline-none form-input"
                     >
                       <option value="header">Header</option>
                       <option value="query">Query</option>
@@ -514,7 +514,7 @@ const ServerForm = ({ onSubmit, onCancel, initialData = null, modalTitle, formEr
                         ...prev,
                         openapi: { ...prev.openapi, apiKeyValue: e.target.value, url: prev.openapi?.url || '' }
                       }))}
-                      className="w-full border rounded px-2 py-1 text-sm"
+                      className="w-full border rounded px-2 py-1 text-sm focus:outline-none form-input"
                       placeholder="your-api-key"
                     />
                   </div>
@@ -524,7 +524,7 @@ const ServerForm = ({ onSubmit, onCancel, initialData = null, modalTitle, formEr
 
             {/* HTTP Authentication Configuration */}
             {formData.openapi?.securityType === 'http' && (
-              <div className="mb-4 p-4 border rounded bg-gray-50">
+              <div className="mb-4 p-4 border border-gray-200 rounded bg-gray-50">
                 <h4 className="text-sm font-medium text-gray-700 mb-3">{t('server.openapi.httpAuthConfig')}</h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div>
@@ -535,7 +535,7 @@ const ServerForm = ({ onSubmit, onCancel, initialData = null, modalTitle, formEr
                         ...prev,
                         openapi: { ...prev.openapi, httpScheme: e.target.value as any, url: prev.openapi?.url || '' }
                       }))}
-                      className="w-full border rounded px-2 py-1 text-sm"
+                      className="w-full border rounded px-2 py-1 text-sm focus:outline-none form-input"
                     >
                       <option value="basic">Basic</option>
                       <option value="bearer">Bearer</option>
@@ -551,7 +551,7 @@ const ServerForm = ({ onSubmit, onCancel, initialData = null, modalTitle, formEr
                         ...prev,
                         openapi: { ...prev.openapi, httpCredentials: e.target.value, url: prev.openapi?.url || '' }
                       }))}
-                      className="w-full border rounded px-2 py-1 text-sm"
+                      className="w-full border rounded px-2 py-1 text-sm focus:outline-none form-input"
                       placeholder={formData.openapi?.httpScheme === 'basic' ? 'base64-encoded-credentials' : 'bearer-token'}
                     />
                   </div>
@@ -561,7 +561,7 @@ const ServerForm = ({ onSubmit, onCancel, initialData = null, modalTitle, formEr
 
             {/* OAuth2 Configuration */}
             {formData.openapi?.securityType === 'oauth2' && (
-              <div className="mb-4 p-4 border rounded bg-gray-50">
+              <div className="mb-4 p-4 border border-gray-200 rounded bg-gray-50">
                 <h4 className="text-sm font-medium text-gray-700 mb-3">{t('server.openapi.oauth2Config')}</h4>
                 <div className="grid grid-cols-1 gap-3">
                   <div>
@@ -573,7 +573,7 @@ const ServerForm = ({ onSubmit, onCancel, initialData = null, modalTitle, formEr
                         ...prev,
                         openapi: { ...prev.openapi, oauth2Token: e.target.value, url: prev.openapi?.url || '' }
                       }))}
-                      className="w-full border rounded px-2 py-1 text-sm"
+                      className="w-full border rounded px-2 py-1 text-sm focus:outline-none form-input"
                       placeholder="access-token"
                     />
                   </div>
@@ -583,7 +583,7 @@ const ServerForm = ({ onSubmit, onCancel, initialData = null, modalTitle, formEr
 
             {/* OpenID Connect Configuration */}
             {formData.openapi?.securityType === 'openIdConnect' && (
-              <div className="mb-4 p-4 border rounded bg-gray-50">
+              <div className="mb-4 p-4 border border-gray-200 rounded bg-gray-50">
                 <h4 className="text-sm font-medium text-gray-700 mb-3">{t('server.openapi.openIdConnectConfig')}</h4>
                 <div className="grid grid-cols-1 gap-3">
                   <div>
@@ -595,7 +595,7 @@ const ServerForm = ({ onSubmit, onCancel, initialData = null, modalTitle, formEr
                         ...prev,
                         openapi: { ...prev.openapi, openIdConnectUrl: e.target.value, url: prev.openapi?.url || '' }
                       }))}
-                      className="w-full border rounded px-2 py-1 text-sm"
+                      className="w-full border rounded px-2 py-1 text-sm focus:outline-none form-input"
                       placeholder="https://example.com/.well-known/openid_configuration"
                     />
                   </div>
@@ -608,7 +608,7 @@ const ServerForm = ({ onSubmit, onCancel, initialData = null, modalTitle, formEr
                         ...prev,
                         openapi: { ...prev.openapi, openIdConnectToken: e.target.value, url: prev.openapi?.url || '' }
                       }))}
-                      className="w-full border rounded px-2 py-1 text-sm"
+                      className="w-full border rounded px-2 py-1 text-sm focus:outline-none form-input"
                       placeholder="id-token"
                     />
                   </div>
@@ -624,7 +624,7 @@ const ServerForm = ({ onSubmit, onCancel, initialData = null, modalTitle, formEr
                 <button
                   type="button"
                   onClick={addHeaderVar}
-                  className="bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-1 px-2 rounded text-sm flex items-center"
+                  className="bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-1 px-2 rounded text-sm flex items-center btn-primary"
                 >
                   + {t('server.add')}
                 </button>
@@ -636,7 +636,7 @@ const ServerForm = ({ onSubmit, onCancel, initialData = null, modalTitle, formEr
                       type="text"
                       value={headerVar.key}
                       onChange={(e) => handleHeaderVarChange(index, 'key', e.target.value)}
-                      className="shadow appearance-none border rounded py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline w-1/2"
+                      className="shadow appearance-none border rounded py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline w-1/2 form-input"
                       placeholder="Authorization"
                     />
                     <span className="flex items-center">:</span>
@@ -644,14 +644,14 @@ const ServerForm = ({ onSubmit, onCancel, initialData = null, modalTitle, formEr
                       type="text"
                       value={headerVar.value}
                       onChange={(e) => handleHeaderVarChange(index, 'value', e.target.value)}
-                      className="shadow appearance-none border rounded py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline w-1/2"
+                      className="shadow appearance-none border rounded py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline w-1/2 form-input"
                       placeholder="Bearer token..."
                     />
                   </div>
                   <button
                     type="button"
                     onClick={() => removeHeaderVar(index)}
-                    className="bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-1 px-2 rounded text-sm flex items-center justify-center min-w-[56px] ml-2"
+                    className="bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-1 px-2 rounded text-sm flex items-center justify-center min-w-[56px] ml-2 btn-danger"
                   >
                     - {t('server.remove')}
                   </button>
@@ -671,7 +671,7 @@ const ServerForm = ({ onSubmit, onCancel, initialData = null, modalTitle, formEr
                 id="url"
                 value={formData.url}
                 onChange={handleInputChange}
-                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline form-input"
                 placeholder={serverType === 'streamable-http' ? "e.g.: http://localhost:3000/mcp" : "e.g.: http://localhost:3000/sse"}
                 required={serverType === 'sse' || serverType === 'streamable-http'}
               />
@@ -685,7 +685,7 @@ const ServerForm = ({ onSubmit, onCancel, initialData = null, modalTitle, formEr
                 <button
                   type="button"
                   onClick={addHeaderVar}
-                  className="bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-1 px-2 rounded text-sm flex items-center"
+                  className="bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-1 px-2 rounded text-sm flex items-center btn-primary"
                 >
                   + {t('server.add')}
                 </button>
@@ -697,7 +697,7 @@ const ServerForm = ({ onSubmit, onCancel, initialData = null, modalTitle, formEr
                       type="text"
                       value={headerVar.key}
                       onChange={(e) => handleHeaderVarChange(index, 'key', e.target.value)}
-                      className="shadow appearance-none border rounded py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline w-1/2"
+                      className="shadow appearance-none border rounded py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline w-1/2 form-input"
                       placeholder="Authorization"
                     />
                     <span className="flex items-center">:</span>
@@ -705,14 +705,14 @@ const ServerForm = ({ onSubmit, onCancel, initialData = null, modalTitle, formEr
                       type="text"
                       value={headerVar.value}
                       onChange={(e) => handleHeaderVarChange(index, 'value', e.target.value)}
-                      className="shadow appearance-none border rounded py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline w-1/2"
+                      className="shadow appearance-none border rounded py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline w-1/2 form-input"
                       placeholder="Bearer token..."
                     />
                   </div>
                   <button
                     type="button"
                     onClick={() => removeHeaderVar(index)}
-                    className="bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-1 px-2 rounded text-sm flex items-center justify-center min-w-[56px] ml-2"
+                    className="bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-1 px-2 rounded text-sm flex items-center justify-center min-w-[56px] ml-2 btn-danger"
                   >
                     - {t('server.remove')}
                   </button>
@@ -732,7 +732,7 @@ const ServerForm = ({ onSubmit, onCancel, initialData = null, modalTitle, formEr
                 id="command"
                 value={formData.command}
                 onChange={handleInputChange}
-                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline form-input"
                 placeholder="e.g.: npx"
                 required={serverType === 'stdio'}
               />
@@ -747,7 +747,7 @@ const ServerForm = ({ onSubmit, onCancel, initialData = null, modalTitle, formEr
                 id="arguments"
                 value={formData.arguments}
                 onChange={(e) => handleArgsChange(e.target.value)}
-                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline form-input"
                 placeholder="e.g.: -y time-mcp"
                 required={serverType === 'stdio'}
               />
@@ -761,7 +761,7 @@ const ServerForm = ({ onSubmit, onCancel, initialData = null, modalTitle, formEr
                 <button
                   type="button"
                   onClick={addEnvVar}
-                  className="bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-1 px-2 rounded text-sm flex items-center"
+                  className="bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-1 px-2 rounded text-sm flex items-center btn-primary"
                 >
                   + {t('server.add')}
                 </button>
@@ -773,7 +773,7 @@ const ServerForm = ({ onSubmit, onCancel, initialData = null, modalTitle, formEr
                       type="text"
                       value={envVar.key}
                       onChange={(e) => handleEnvVarChange(index, 'key', e.target.value)}
-                      className="shadow appearance-none border rounded py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline w-1/2"
+                      className="shadow appearance-none border rounded py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline w-1/2 form-input"
                       placeholder={t('server.key')}
                     />
                     <span className="flex items-center">:</span>
@@ -781,14 +781,14 @@ const ServerForm = ({ onSubmit, onCancel, initialData = null, modalTitle, formEr
                       type="text"
                       value={envVar.value}
                       onChange={(e) => handleEnvVarChange(index, 'value', e.target.value)}
-                      className="shadow appearance-none border rounded py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline w-1/2"
+                      className="shadow appearance-none border rounded py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline w-1/2 form-input"
                       placeholder={t('server.value')}
                     />
                   </div>
                   <button
                     type="button"
                     onClick={() => removeEnvVar(index)}
-                    className="bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-1 px-2 rounded text-sm flex items-center justify-center min-w-[56px] ml-2"
+                    className="bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-1 px-2 rounded text-sm flex items-center justify-center min-w-[56px] ml-2 btn-danger"
                   >
                     - {t('server.remove')}
                   </button>
@@ -802,7 +802,7 @@ const ServerForm = ({ onSubmit, onCancel, initialData = null, modalTitle, formEr
         {serverType !== 'openapi' && (
           <div className="mb-4">
             <div
-              className="flex items-center justify-between cursor-pointer bg-gray-50 hover:bg-gray-100 p-3 rounded border"
+              className="flex items-center justify-between cursor-pointer bg-gray-50 hover:bg-gray-100 p-3 rounded border border-gray-200"
               onClick={() => setIsRequestOptionsExpanded(!isRequestOptionsExpanded)}
             >
               <label className="text-gray-700 text-sm font-bold">
@@ -814,7 +814,7 @@ const ServerForm = ({ onSubmit, onCancel, initialData = null, modalTitle, formEr
             </div>
 
             {isRequestOptionsExpanded && (
-              <div className="border rounded-b p-4 bg-gray-50 border-t-0">
+              <div className="border border-gray-200 rounded-b p-4 bg-gray-50 border-t-0">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-gray-600 text-sm font-medium mb-1" htmlFor="timeout">
@@ -825,7 +825,7 @@ const ServerForm = ({ onSubmit, onCancel, initialData = null, modalTitle, formEr
                       id="timeout"
                       value={formData.options?.timeout || 60000}
                       onChange={(e) => handleOptionsChange('timeout', parseInt(e.target.value) || 60000)}
-                      className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                      className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline form-input"
                       placeholder="30000"
                       min="1000"
                       max="300000"
@@ -842,7 +842,7 @@ const ServerForm = ({ onSubmit, onCancel, initialData = null, modalTitle, formEr
                       id="maxTotalTimeout"
                       value={formData.options?.maxTotalTimeout || ''}
                       onChange={(e) => handleOptionsChange('maxTotalTimeout', e.target.value ? parseInt(e.target.value) : undefined)}
-                      className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                      className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline form-input"
                       placeholder="Optional"
                       min="1000"
                     />
@@ -873,13 +873,13 @@ const ServerForm = ({ onSubmit, onCancel, initialData = null, modalTitle, formEr
           <button
             type="button"
             onClick={onCancel}
-            className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-medium py-2 px-4 rounded mr-2"
+            className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-medium py-2 px-4 rounded mr-2 btn-secondary"
           >
             {t('server.cancel')}
           </button>
           <button
             type="submit"
-            className="bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded"
+            className="bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded btn-primary"
           >
             {isEdit ? t('server.save') : t('server.add')}
           </button>

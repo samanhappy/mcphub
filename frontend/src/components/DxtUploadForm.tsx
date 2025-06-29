@@ -280,7 +280,7 @@ const DxtUploadForm: React.FC<DxtUploadFormProps> = ({ onSuccess, onCancel }) =>
                   type="text"
                   id="serverName"
                   defaultValue={manifestData.name}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 form-input"
                   placeholder={t('dxt.serverNamePlaceholder')}
                 />
               </div>
@@ -290,7 +290,7 @@ const DxtUploadForm: React.FC<DxtUploadFormProps> = ({ onSuccess, onCancel }) =>
                 <button
                   onClick={onCancel}
                   disabled={isUploading}
-                  className="px-4 py-2 text-gray-700 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50"
+                  className="px-4 py-2 text-gray-700 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50 btn-secondary"
                 >
                   {t('common.cancel')}
                 </button>
@@ -301,7 +301,7 @@ const DxtUploadForm: React.FC<DxtUploadFormProps> = ({ onSuccess, onCancel }) =>
                     handleInstallServer(serverName);
                   }}
                   disabled={isUploading}
-                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 flex items-center"
+                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 flex items-center btn-primary"
                 >
                   {isUploading ? (
                     <>
@@ -344,7 +344,7 @@ const DxtUploadForm: React.FC<DxtUploadFormProps> = ({ onSuccess, onCancel }) =>
           className={`relative border-2 border-dashed rounded-lg p-8 text-center transition-colors ${isDragging
             ? 'border-blue-500 bg-blue-50'
             : selectedFile
-              ? 'border-green-500 bg-green-50'
+              ? 'border-gray-500 '
               : 'border-gray-300 hover:border-gray-400'
             }`}
           onDragOver={handleDragOver}
@@ -353,7 +353,7 @@ const DxtUploadForm: React.FC<DxtUploadFormProps> = ({ onSuccess, onCancel }) =>
         >
           {selectedFile ? (
             <div className="space-y-2">
-              <svg className="mx-auto h-12 w-12 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg className="mx-auto h-12 w-12 text-green-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               <p className="text-sm text-gray-900 font-medium">{selectedFile.name}</p>
@@ -383,14 +383,14 @@ const DxtUploadForm: React.FC<DxtUploadFormProps> = ({ onSuccess, onCancel }) =>
           <button
             onClick={onCancel}
             disabled={isUploading}
-            className="px-4 py-2 text-gray-700 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50"
+            className="px-4 py-2 text-gray-700 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50 btn-secondary"
           >
             {t('common.cancel')}
           </button>
           <button
             onClick={handleUpload}
             disabled={!selectedFile || isUploading}
-            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 flex items-center"
+            className="px-4 py-2 text-white rounded hover:bg-blue-700 disabled:opacity-50 flex items-center btn-primary"
           >
             {isUploading ? (
               <>

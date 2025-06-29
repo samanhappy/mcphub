@@ -9,7 +9,6 @@ interface ToggleGroupItemProps {
 }
 
 export const ToggleGroupItem: React.FC<ToggleGroupItemProps> = ({
-  value,
   isSelected,
   onClick,
   children
@@ -21,8 +20,8 @@ export const ToggleGroupItem: React.FC<ToggleGroupItemProps> = ({
       aria-checked={isSelected}
       className={cn(
         "flex w-full items-center justify-between p-2 rounded transition-colors cursor-pointer",
-        isSelected 
-          ? "bg-blue-50 text-blue-700 hover:bg-blue-100 border-l-4 border-blue-500" 
+        isSelected
+          ? "bg-blue-50 text-blue-700 hover:bg-blue-100 border-l-4 border-blue-500"
           : "hover:bg-gray-50 text-gray-700"
       )}
       onClick={onClick}
@@ -72,7 +71,7 @@ export const ToggleGroup: React.FC<ToggleGroupProps> = ({
       <label className="block text-gray-700 text-sm font-bold mb-2">
         {label}
       </label>
-      <div className="border rounded shadow max-h-60 overflow-y-auto">
+      <div className="border border-gray-200 rounded shadow max-h-60 overflow-y-auto">
         {options.length === 0 ? (
           <p className="text-gray-500 text-sm p-3">{noOptionsText}</p>
         ) : (
@@ -118,7 +117,7 @@ export const Switch: React.FC<SwitchProps> = ({
       disabled={disabled}
       className={cn(
         "relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500",
-        checked ? "bg-blue-600" : "bg-gray-200",
+        checked ? "bg-blue-200" : "bg-gray-100",
         disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
       )}
       onClick={() => !disabled && onCheckedChange(!checked)}

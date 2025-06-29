@@ -1,6 +1,5 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { ServerStatus } from '@/types';
 import { cn } from '../../utils/cn';
 
 type BadgeVariant = 'default' | 'secondary' | 'outline' | 'destructive';
@@ -19,11 +18,11 @@ const badgeVariants = {
   destructive: 'bg-red-500 text-white hover:bg-red-600',
 };
 
-export function Badge({ 
-  children, 
-  variant = 'default', 
-  className, 
-  onClick 
+export function Badge({
+  children,
+  variant = 'default',
+  className,
+  onClick
 }: BadgeProps) {
   return (
     <span
@@ -43,11 +42,11 @@ export function Badge({
 // For backward compatibility with existing code
 export const StatusBadge = ({ status }: { status: 'connected' | 'disconnected' | 'connecting' }) => {
   const { t } = useTranslation();
-  
+
   const colors = {
-    connecting: 'bg-yellow-100 text-yellow-800',
-    connected: 'bg-green-100 text-green-800',
-    disconnected: 'bg-red-100 text-red-800',
+    connecting: 'status-badge-connecting',
+    connected: 'status-badge-online',
+    disconnected: 'status-badge-offline',
   };
 
   // Map status to translation keys

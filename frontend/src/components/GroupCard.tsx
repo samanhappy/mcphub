@@ -68,7 +68,7 @@ const GroupCard = ({
   const groupServers = servers.filter(server => group.servers.includes(server.name))
 
   return (
-    <div className="bg-white shadow rounded-lg p-6">
+    <div className="bg-white shadow rounded-lg p-6 ">
       <div className="flex justify-between items-center mb-4">
         <div>
           <div className="flex items-center">
@@ -89,7 +89,7 @@ const GroupCard = ({
           )}
         </div>
         <div className="flex items-center space-x-3">
-          <div className="bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-sm">
+          <div className="bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-sm btn-secondary">
             {t('groups.serverCount', { count: group.servers.length })}
           </div>
           <button
@@ -121,7 +121,7 @@ const GroupCard = ({
               >
                 <span className="font-medium text-gray-700 text-sm">{server.name}</span>
                 <span className={`ml-2 inline-block h-2 w-2 rounded-full ${server.status === 'connected' ? 'bg-green-500' :
-                    server.status === 'connecting' ? 'bg-yellow-500' : 'bg-red-500'
+                  server.status === 'connecting' ? 'bg-yellow-500' : 'bg-red-500'
                   }`}></span>
               </div>
             ))}

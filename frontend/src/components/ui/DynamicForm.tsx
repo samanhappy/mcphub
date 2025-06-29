@@ -285,7 +285,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({ schema, onSubmit, onCancel, l
             type="text"
             value={value || ''}
             onChange={(e) => onChange(e.target.value)}
-            className="w-full border rounded-md px-2 py-1 text-sm border-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="w-full border rounded-md px-2 py-1 text-sm border-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-500 form-input"
             placeholder={schema.description || t('tool.enterKey', { key })}
           />
         );
@@ -302,7 +302,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({ schema, onSubmit, onCancel, l
             const val = e.target.value === '' ? '' : schema.type === 'integer' ? parseInt(e.target.value) : parseFloat(e.target.value);
             onChange(val);
           }}
-          className="w-full border rounded-md px-2 py-1 text-sm border-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          className="w-full border rounded-md px-2 py-1 text-sm border-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-500 form-input"
         />
       );
     }
@@ -324,7 +324,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({ schema, onSubmit, onCancel, l
         type="text"
         value={value || ''}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full border rounded-md px-2 py-1 text-sm border-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-500"
+        className="w-full border rounded-md px-2 py-1 text-sm border-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-500 form-input"
         placeholder={schema.description || t('tool.enterKey', { key })}
       />
     );
@@ -341,7 +341,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({ schema, onSubmit, onCancel, l
         <div key={fullPath} className="mb-6">
           <label className="block text-sm font-medium text-gray-700 mb-1">
             {key}
-            {(path ? getNestedValue(jsonSchema, path)?.required?.includes(key) : jsonSchema.required?.includes(key)) && <span className="text-red-500 ml-1">*</span>}
+            {(path ? getNestedValue(jsonSchema, path)?.required?.includes(key) : jsonSchema.required?.includes(key)) && <span className="text-status-red ml-1">*</span>}
           </label>
           {propSchema.description && (
             <p className="text-xs text-gray-500 mb-2">{propSchema.description}</p>
@@ -359,7 +359,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({ schema, onSubmit, onCancel, l
                       newArray.splice(index, 1);
                       handleInputChange(fullPath, newArray);
                     }}
-                    className="text-red-500 hover:text-red-700 text-sm"
+                    className="text-status-red hover:text-red-700 text-sm"
                   >
                     {t('common.remove')}
                   </button>
@@ -388,7 +388,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({ schema, onSubmit, onCancel, l
                       <div key={objKey}>
                         <label className="block text-xs font-medium text-gray-600 mb-1">
                           {objKey}
-                          {propSchema.items?.required?.includes(objKey) && <span className="text-red-500 ml-1">*</span>}
+                          {propSchema.items?.required?.includes(objKey) && <span className="text-status-red ml-1">*</span>}
                         </label>
                         {renderObjectField(objKey, objSchema as JsonSchema, item, (newValue) => {
                           const newArray = [...arrayValue];
@@ -407,7 +407,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({ schema, onSubmit, onCancel, l
                       newArray[index] = e.target.value;
                       handleInputChange(fullPath, newArray);
                     }}
-                    className="w-full border rounded-md px-3 py-2 border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full border rounded-md px-3 py-2 border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 form-input"
                     placeholder={t('tool.enterValue', { type: propSchema.items?.type || 'value' })}
                   />
                 )}
@@ -426,7 +426,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({ schema, onSubmit, onCancel, l
             </button>
           </div>
 
-          {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
+          {error && <p className="text-status-red text-xs mt-1">{error}</p>}
         </div>
       );
     }    // Handle object type
@@ -437,7 +437,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({ schema, onSubmit, onCancel, l
           <div key={fullPath} className="mb-6">
             <label className="block text-sm font-medium text-gray-700 mb-1">
               {key}
-              {(path ? getNestedValue(jsonSchema, path)?.required?.includes(key) : jsonSchema.required?.includes(key)) && <span className="text-red-500 ml-1">*</span>}
+              {(path ? getNestedValue(jsonSchema, path)?.required?.includes(key) : jsonSchema.required?.includes(key)) && <span className="text-status-red ml-1">*</span>}
             </label>
             {propSchema.description && (
               <p className="text-xs text-gray-500 mb-2">{propSchema.description}</p>
@@ -449,7 +449,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({ schema, onSubmit, onCancel, l
               ))}
             </div>
 
-            {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
+            {error && <p className="text-status-red text-xs mt-1">{error}</p>}
           </div>
         );
       } else {
@@ -458,7 +458,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({ schema, onSubmit, onCancel, l
           <div key={fullPath} className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-1">
               {key}
-              {(path ? getNestedValue(jsonSchema, path)?.required?.includes(key) : jsonSchema.required?.includes(key)) && <span className="text-red-500 ml-1">*</span>}
+              {(path ? getNestedValue(jsonSchema, path)?.required?.includes(key) : jsonSchema.required?.includes(key)) && <span className="text-status-red ml-1">*</span>}
               <span className="text-xs text-gray-500 ml-1">(JSON object)</span>
             </label>
             {propSchema.description && (
@@ -479,7 +479,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({ schema, onSubmit, onCancel, l
               className={`w-full border rounded-md px-3 py-2 font-mono text-sm ${error ? 'border-red-500' : 'border-gray-300'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
               rows={4}
             />
-            {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
+            {error && <p className="text-status-red text-xs mt-1">{error}</p>}
           </div>
         );
       }
@@ -489,7 +489,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({ schema, onSubmit, onCancel, l
           <div key={fullPath} className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-1">
               {key}
-              {(path ? false : jsonSchema.required?.includes(key)) && <span className="text-red-500 ml-1">*</span>}
+              {(path ? false : jsonSchema.required?.includes(key)) && <span className="text-status-red ml-1">*</span>}
             </label>
             {propSchema.description && (
               <p className="text-xs text-gray-500 mb-2">{propSchema.description}</p>
@@ -506,7 +506,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({ schema, onSubmit, onCancel, l
                 </option>
               ))}
             </select>
-            {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
+            {error && <p className="text-status-red text-xs mt-1">{error}</p>}
           </div>
         );
       } else {
@@ -514,7 +514,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({ schema, onSubmit, onCancel, l
           <div key={fullPath} className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-1">
               {key}
-              {(path ? false : jsonSchema.required?.includes(key)) && <span className="text-red-500 ml-1">*</span>}
+              {(path ? false : jsonSchema.required?.includes(key)) && <span className="text-status-red ml-1">*</span>}
             </label>
             {propSchema.description && (
               <p className="text-xs text-gray-500 mb-2">{propSchema.description}</p>
@@ -523,9 +523,9 @@ const DynamicForm: React.FC<DynamicFormProps> = ({ schema, onSubmit, onCancel, l
               type="text"
               value={value || ''}
               onChange={(e) => handleInputChange(fullPath, e.target.value)}
-              className={`w-full border rounded-md px-3 py-2 ${error ? 'border-red-500' : 'border-gray-300'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+              className={`w-full border rounded-md px-3 py-2 ${error ? 'border-red' : 'border-gray-200'} focus:outline-none form-input`}
             />
-            {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
+            {error && <p className="text-status-red text-xs mt-1">{error}</p>}
           </div>
         );
       }
@@ -534,7 +534,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({ schema, onSubmit, onCancel, l
         <div key={fullPath} className="mb-4">
           <label className="block text-sm font-medium text-gray-700 mb-1">
             {key}
-            {(path ? false : jsonSchema.required?.includes(key)) && <span className="text-red-500 ml-1">*</span>}
+            {(path ? false : jsonSchema.required?.includes(key)) && <span className="text-status-red ml-1">*</span>}
           </label>
           {propSchema.description && (
             <p className="text-xs text-gray-500 mb-2">{propSchema.description}</p>
@@ -547,9 +547,9 @@ const DynamicForm: React.FC<DynamicFormProps> = ({ schema, onSubmit, onCancel, l
               const val = e.target.value === '' ? '' : propSchema.type === 'integer' ? parseInt(e.target.value) : parseFloat(e.target.value);
               handleInputChange(fullPath, val);
             }}
-            className={`w-full border rounded-md px-3 py-2 ${error ? 'border-red-500' : 'border-gray-300'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+            className={`w-full border rounded-md px-3 py-2 form-input ${error ? 'border-red-500' : 'border-gray-300'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
           />
-          {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
+          {error && <p className="text-status-red text-xs mt-1">{error}</p>}
         </div>
       );
     }
@@ -566,13 +566,13 @@ const DynamicForm: React.FC<DynamicFormProps> = ({ schema, onSubmit, onCancel, l
             />
             <label className="ml-2 block text-sm text-gray-700">
               {key}
-              {(path ? false : jsonSchema.required?.includes(key)) && <span className="text-red-500 ml-1">*</span>}
+              {(path ? false : jsonSchema.required?.includes(key)) && <span className="text-status-red ml-1">*</span>}
             </label>
           </div>
           {propSchema.description && (
             <p className="text-xs text-gray-500 mt-1">{propSchema.description}</p>
           )}
-          {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
+          {error && <p className="text-status-red text-xs mt-1">{error}</p>}
         </div>
       );
     }    // For other types, show as text input with description
@@ -580,7 +580,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({ schema, onSubmit, onCancel, l
       <div key={fullPath} className="mb-4">
         <label className="block text-sm font-medium text-gray-700 mb-1">
           {key}
-          {(path ? false : jsonSchema.required?.includes(key)) && <span className="text-red-500 ml-1">*</span>}
+          {(path ? false : jsonSchema.required?.includes(key)) && <span className="text-status-red ml-1">*</span>}
           <span className="text-xs text-gray-500 ml-1">({propSchema.type})</span>
         </label>
         {propSchema.description && (
@@ -591,9 +591,9 @@ const DynamicForm: React.FC<DynamicFormProps> = ({ schema, onSubmit, onCancel, l
           value={value || ''}
           onChange={(e) => handleInputChange(fullPath, e.target.value)}
           placeholder={t('tool.enterValue', { type: propSchema.type })}
-          className={`w-full border rounded-md px-3 py-2 ${error ? 'border-red-500' : 'border-gray-300'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+          className={`w-full border rounded-md px-3 py-2 ${error ? 'border-red-500' : 'border-gray-300'} focus:outline-none focus:ring-2 focus:ring-blue-500 form-input`}
         />
-        {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
+        {error && <p className="text-status-red text-xs mt-1">{error}</p>}
       </div>
     );
   };
@@ -632,8 +632,8 @@ const DynamicForm: React.FC<DynamicFormProps> = ({ schema, onSubmit, onCancel, l
             type="button"
             onClick={switchToFormMode}
             className={`px-3 py-1 text-sm rounded-md transition-colors ${!isJsonMode
-              ? 'bg-blue-600 text-white'
-              : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+              ? 'bg-blue-100 text-blue-800 rounded hover:bg-blue-200 text-sm btn-primary'
+              : 'text-sm text-gray-600 bg-gray-200 rounded hover:bg-gray-300 btn-secondary'
               }`}
           >
             {t('tool.formMode')}
@@ -642,8 +642,8 @@ const DynamicForm: React.FC<DynamicFormProps> = ({ schema, onSubmit, onCancel, l
             type="button"
             onClick={switchToJsonMode}
             className={`px-3 py-1 text-sm rounded-md transition-colors ${isJsonMode
-              ? 'bg-blue-600 text-white'
-              : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+              ? 'px-4 py-1 bg-blue-100 text-blue-800 rounded hover:bg-blue-200 text-sm btn-primary'
+              : 'text-sm text-gray-600 bg-gray-200 rounded hover:bg-gray-300 btn-secondary'
               }`}
           >
             {t('tool.jsonMode')}
@@ -662,17 +662,17 @@ const DynamicForm: React.FC<DynamicFormProps> = ({ schema, onSubmit, onCancel, l
               value={jsonText}
               onChange={(e) => handleJsonTextChange(e.target.value)}
               placeholder={`{\n  "key": "value"\n}`}
-              className={`w-full h-64 border rounded-md px-3 py-2 font-mono text-sm resize-y ${jsonError ? 'border-red-500' : 'border-gray-300'
+              className={`w-full h-64 border rounded-md px-3 py-2 font-mono text-sm resize-y form-input ${jsonError ? 'border-red-500' : 'border-gray-300'
                 } focus:outline-none focus:ring-2 focus:ring-blue-500`}
             />
-            {jsonError && <p className="text-red-500 text-xs mt-1">{jsonError}</p>}
+            {jsonError && <p className="text-status-red text-xs mt-1">{jsonError}</p>}
           </div>
 
           <div className="flex justify-end space-x-2 pt-4">
             <button
               type="button"
               onClick={onCancel}
-              className="px-4 py-1 text-sm text-gray-600 bg-gray-200 rounded-md hover:bg-gray-300"
+              className="px-4 py-1 text-sm text-gray-600 bg-gray-200 rounded hover:bg-gray-300 btn-secondary"
             >
               {t('tool.cancel')}
             </button>
@@ -686,7 +686,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({ schema, onSubmit, onCancel, l
                 }
               }}
               disabled={loading || !!jsonError}
-              className="px-4 py-1 text-sm text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50"
+              className="px-4 py-1 bg-blue-100 text-blue-800 rounded hover:bg-blue-200 text-sm btn-primary"
             >
               {loading ? t('tool.running') : t('tool.runTool')}
             </button>
@@ -703,14 +703,14 @@ const DynamicForm: React.FC<DynamicFormProps> = ({ schema, onSubmit, onCancel, l
             <button
               type="button"
               onClick={onCancel}
-              className="px-4 py-1 text-sm text-gray-600 bg-gray-200 rounded-md hover:bg-gray-300"
+              className="px-4 py-1 text-sm text-gray-600 bg-gray-200 rounded hover:bg-gray-300 btn-secondary"
             >
               {t('tool.cancel')}
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="px-4 py-1 text-sm text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50"
+              className="px-4 py-1 bg-blue-100 text-blue-800 rounded hover:bg-blue-200 text-sm btn-primary"
             >
               {loading ? t('tool.running') : t('tool.runTool')}
             </button>

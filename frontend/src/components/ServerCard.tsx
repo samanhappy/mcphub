@@ -128,7 +128,7 @@ const ServerCard = ({ server, onRemove, onEdit, onToggle, onRefresh }: ServerCar
 
   return (
     <>
-      <div className={`bg-white shadow rounded-lg p-6 mb-6 ${server.enabled === false ? 'opacity-60' : ''}`}>
+      <div className={`bg-white shadow rounded-lg p-6 mb-6 page-card transition-all duration-200 ${server.enabled === false ? 'opacity-60' : ''}`}>
         <div
           className="flex justify-between items-center cursor-pointer"
           onClick={() => setIsExpanded(!isExpanded)}
@@ -138,7 +138,7 @@ const ServerCard = ({ server, onRemove, onEdit, onToggle, onRefresh }: ServerCar
             <StatusBadge status={server.status} />
 
             {/* Tool count display */}
-            <div className="flex items-center px-2 py-1 bg-blue-50 text-blue-700 rounded-full text-sm">
+            <div className="flex items-center px-2 py-1 bg-blue-50 text-blue-700 rounded-full text-sm btn-primary">
               <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clipRule="evenodd" />
               </svg>
@@ -174,7 +174,7 @@ const ServerCard = ({ server, onRemove, onEdit, onToggle, onRefresh }: ServerCar
                         <h4 className="text-sm font-medium text-red-600">{t('server.errorDetails')}</h4>
                         <button
                           onClick={copyToClipboard}
-                          className="p-1 text-gray-400 hover:text-gray-600 transition-colors"
+                          className="p-1 text-gray-400 hover:text-gray-600 transition-colors btn-secondary"
                           title={t('common.copy')}
                         >
                           {copied ? <Check size={14} className="text-green-500" /> : <Copy size={14} />}
@@ -201,7 +201,7 @@ const ServerCard = ({ server, onRemove, onEdit, onToggle, onRefresh }: ServerCar
           <div className="flex space-x-2">
             <button
               onClick={handleEdit}
-              className="px-3 py-1 bg-blue-100 text-blue-800 rounded hover:bg-blue-200 text-sm"
+              className="px-3 py-1 bg-blue-100 text-blue-800 rounded hover:bg-blue-200 text-sm btn-primary"
             >
               {t('server.edit')}
             </button>
@@ -211,8 +211,8 @@ const ServerCard = ({ server, onRemove, onEdit, onToggle, onRefresh }: ServerCar
                 className={`px-3 py-1 text-sm rounded transition-colors ${isToggling
                   ? 'bg-gray-200 text-gray-500'
                   : server.enabled !== false
-                    ? 'bg-green-100 text-green-800 hover:bg-green-200'
-                    : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
+                    ? 'bg-green-100 text-green-800 hover:bg-green-200 btn-secondary'
+                    : 'bg-gray-100 text-gray-800 hover:bg-gray-200 btn-primary'
                   }`}
                 disabled={isToggling}
               >
@@ -226,11 +226,11 @@ const ServerCard = ({ server, onRemove, onEdit, onToggle, onRefresh }: ServerCar
             </div>
             <button
               onClick={handleRemove}
-              className="px-3 py-1 bg-red-100 text-red-800 rounded hover:bg-red-200 text-sm"
+              className="px-3 py-1 bg-red-100 text-red-800 rounded hover:bg-red-200 text-sm btn-danger"
             >
               {t('server.delete')}
             </button>
-            <button className="text-gray-400 hover:text-gray-600">
+            <button className="text-gray-400 hover:text-gray-600 btn-secondary">
               {isExpanded ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
             </button>
           </div>

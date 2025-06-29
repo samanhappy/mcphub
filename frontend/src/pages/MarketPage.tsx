@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate, useParams, useLocation } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { MarketServer, ServerConfig } from '@/types';
 import { useMarketData } from '@/hooks/useMarketData';
 import { useToast } from '@/contexts/ToastContext';
@@ -11,15 +11,13 @@ import Pagination from '@/components/ui/Pagination';
 const MarketPage: React.FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const location = useLocation();
   const { serverName } = useParams<{ serverName?: string }>();
   const { showToast } = useToast();
-  
+
   const {
     servers,
     allServers,
     categories,
-    tags,
     loading,
     error,
     setError,
@@ -42,7 +40,6 @@ const MarketPage: React.FC = () => {
   const [selectedServer, setSelectedServer] = useState<MarketServer | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [installing, setInstalling] = useState(false);
-  const [showTags, setShowTags] = useState(false);
 
   // Load server details if a server name is in the URL
   useEffect(() => {
@@ -59,7 +56,7 @@ const MarketPage: React.FC = () => {
         setSelectedServer(null);
       }
     };
-    
+
     loadServerDetails();
   }, [serverName, fetchServerByName, navigate]);
 
@@ -70,10 +67,6 @@ const MarketPage: React.FC = () => {
 
   const handleCategoryClick = (category: string) => {
     filterByCategory(category);
-  };
-
-  const handleTagClick = (tag: string) => {
-    filterByTag(tag);
   };
 
   const handleClearFilters = () => {
@@ -115,10 +108,6 @@ const MarketPage: React.FC = () => {
     changeServersPerPage(newValue);
   };
 
-  const toggleTagsVisibility = () => {
-    setShowTags(!showTags);
-  };
-
   // Render detailed view if a server is selected
   if (selectedServer) {
     return (
@@ -144,12 +133,12 @@ const MarketPage: React.FC = () => {
       </div>
 
       {error && (
-        <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6">
+        <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6 error-box rounded-lg">
           <div className="flex items-center justify-between">
             <p>{error}</p>
             <button
               onClick={() => setError(null)}
-              className="text-red-700 hover:text-red-900"
+              className="text-red-700 hover:text-red-900 transition-colors duration-200"
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                 <path fillRule="evenodd" d="M4.293 4.293a1 1 011.414 0L10 8.586l4.293-4.293a1 1 01.414 1.414L11.414 10l4.293 4.293a1 1 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 01-1.414-1.414L8.586 10 4.293 5.707a1 1 010-1.414z" clipRule="evenodd" />
@@ -160,7 +149,7 @@ const MarketPage: React.FC = () => {
       )}
 
       {/* Search bar at the top */}
-      <div className="bg-white shadow rounded-lg p-6 mb-6">
+      <div className="bg-white shadow rounded-lg p-6 mb-6 page-card">
         <form onSubmit={handleSearch} className="flex space-x-4 mb-0">
           <div className="flex-grow">
             <input
@@ -168,12 +157,12 @@ const MarketPage: React.FC = () => {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder={t('market.searchPlaceholder')}
-              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+              className="shadow appearance-none border border-gray-200 rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline form-input"
             />
           </div>
           <button
             type="submit"
-            className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded"
+            className="px-4 py-2 bg-blue-100 text-blue-800 rounded hover:bg-blue-200 flex items-center btn-primary transition-all duration-200"
           >
             {t('market.search')}
           </button>
@@ -181,7 +170,7 @@ const MarketPage: React.FC = () => {
             <button
               type="button"
               onClick={handleClearFilters}
-              className="border border-gray-300 text-gray-700 font-medium py-2 px-4 rounded hover:bg-gray-50"
+              className="border border-gray-300 text-gray-700 font-medium py-2 px-4 rounded hover:bg-gray-50 btn-secondary transition-all duration-200"
             >
               {t('market.clearFilters')}
             </button>
@@ -192,14 +181,14 @@ const MarketPage: React.FC = () => {
       <div className="flex flex-col md:flex-row gap-6">
         {/* Left sidebar for filters (without search) */}
         <div className="md:w-48 flex-shrink-0">
-          <div className="bg-white shadow rounded-lg p-4 mb-6 sticky top-4">
+          <div className="bg-white shadow rounded-lg p-4 mb-6 sticky top-4 page-card">
             {/* Categories */}
             {categories.length > 0 ? (
               <div className="mb-6">
                 <div className="flex justify-between items-center mb-3">
                   <h3 className="font-medium text-gray-900">{t('market.categories')}</h3>
                   {selectedCategory && (
-                    <span className="text-xs text-blue-600 cursor-pointer hover:underline" onClick={() => filterByCategory('')}>
+                    <span className="text-xs text-blue-600 cursor-pointer hover:underline transition-colors duration-200" onClick={() => filterByCategory('')}>
                       {t('market.clearCategoryFilter')}
                     </span>
                   )}
@@ -209,9 +198,9 @@ const MarketPage: React.FC = () => {
                     <button
                       key={category}
                       onClick={() => handleCategoryClick(category)}
-                      className={`px-3 py-2 rounded text-sm text-left ${selectedCategory === category
-                        ? 'bg-blue-100 text-blue-800 font-medium'
-                        : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
+                      className={`px-3 py-2 rounded text-sm text-left transition-all duration-200 ${selectedCategory === category
+                        ? 'bg-blue-100 text-blue-800 font-medium btn-primary'
+                        : 'bg-gray-100 text-gray-800 hover:bg-gray-200 btn-secondary'
                         }`}
                     >
                       {category}
@@ -224,7 +213,7 @@ const MarketPage: React.FC = () => {
                 <div className="mb-3">
                   <h3 className="font-medium text-gray-900">{t('market.categories')}</h3>
                 </div>
-                <div className="flex flex-col gap-2 items-center py-4">
+                <div className="flex flex-col gap-2 items-center py-4 loading-container">
                   <svg className="animate-spin h-6 w-6 text-blue-500 mb-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
@@ -333,7 +322,7 @@ const MarketPage: React.FC = () => {
                     id="perPage"
                     value={serversPerPage}
                     onChange={handleChangeItemsPerPage}
-                    className="border rounded p-1 text-sm"
+                    className="border rounded p-1 text-sm btn-secondary outline-none"
                   >
                     <option value="6">6</option>
                     <option value="9">9</option>

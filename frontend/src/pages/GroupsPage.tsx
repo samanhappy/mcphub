@@ -9,16 +9,16 @@ import GroupCard from '@/components/GroupCard';
 
 const GroupsPage: React.FC = () => {
   const { t } = useTranslation();
-  const { 
-    groups, 
-    loading: groupsLoading, 
-    error: groupError, 
+  const {
+    groups,
+    loading: groupsLoading,
+    error: groupError,
     setError: setGroupError,
     deleteGroup,
     triggerRefresh
   } = useGroupData();
   const { servers } = useServerData();
-  
+
   const [editingGroup, setEditingGroup] = useState<Group | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
 
@@ -54,7 +54,7 @@ const GroupsPage: React.FC = () => {
         <div className="flex space-x-4">
           <button
             onClick={handleAddGroup}
-            className="px-4 py-2 bg-blue-100 text-blue-800 rounded hover:bg-blue-200 flex items-center"
+            className="px-4 py-2 bg-blue-100 text-blue-800 rounded hover:bg-blue-200 flex items-center btn-primary transition-all duration-200"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" viewBox="0 0 20 20" fill="currentColor">
               <path fillRule="evenodd" d="M10 3a1 1 0 00-1 1v5H4a1 1 0 100 2h5v5a1 1 0 102 0v-5h5a1 1 0 100-2h-5V4a1 1 0 00-1-1z" clipRule="evenodd" />
@@ -65,13 +65,13 @@ const GroupsPage: React.FC = () => {
       </div>
 
       {groupError && (
-        <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6">
+        <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6 error-box rounded-lg">
           <p>{groupError}</p>
         </div>
       )}
 
       {groupsLoading ? (
-        <div className="bg-white shadow rounded-lg p-6">
+        <div className="bg-white shadow rounded-lg p-6 loading-container">
           <div className="flex flex-col items-center justify-center">
             <svg className="animate-spin h-10 w-10 text-blue-500 mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
@@ -81,7 +81,7 @@ const GroupsPage: React.FC = () => {
           </div>
         </div>
       ) : groups.length === 0 ? (
-        <div className="bg-white shadow rounded-lg p-6">
+        <div className="bg-white shadow rounded-lg p-6 empty-state">
           <p className="text-gray-600">{t('groups.noGroups')}</p>
         </div>
       ) : (

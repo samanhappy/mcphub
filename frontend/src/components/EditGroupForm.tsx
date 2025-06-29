@@ -38,18 +38,6 @@ const EditGroupForm = ({ group, onEdit, onCancel }: EditGroupFormProps) => {
     }))
   }
 
-  const handleServerToggle = (serverName: string) => {
-    setFormData(prev => {
-      const isSelected = prev.servers.includes(serverName)
-      return {
-        ...prev,
-        servers: isSelected 
-          ? prev.servers.filter(name => name !== serverName)
-          : [...prev.servers, serverName]
-      }
-    })
-  }
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)
@@ -67,7 +55,7 @@ const EditGroupForm = ({ group, onEdit, onCancel }: EditGroupFormProps) => {
         description: formData.description,
         servers: formData.servers
       })
-      
+
       if (!result) {
         setError(t('groups.updateError'))
         setIsSubmitting(false)
@@ -86,7 +74,7 @@ const EditGroupForm = ({ group, onEdit, onCancel }: EditGroupFormProps) => {
       <div className="bg-white rounded-lg shadow-lg max-w-md w-full">
         <div className="p-6">
           <h2 className="text-xl font-semibold text-gray-800 mb-4">{t('groups.edit')}</h2>
-          
+
           {error && (
             <div className="mb-4 p-3 bg-red-100 text-red-700 rounded">
               {error}
@@ -104,7 +92,7 @@ const EditGroupForm = ({ group, onEdit, onCancel }: EditGroupFormProps) => {
                 name="name"
                 value={formData.name}
                 onChange={handleChange}
-                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline form-input"
                 placeholder={t('groups.namePlaceholder')}
                 required
               />
@@ -126,14 +114,14 @@ const EditGroupForm = ({ group, onEdit, onCancel }: EditGroupFormProps) => {
               <button
                 type="button"
                 onClick={onCancel}
-                className="px-4 py-2 text-gray-600 hover:text-gray-800"
+                className="px-4 py-2 text-gray-600 hover:text-gray-800 btn-secondary"
                 disabled={isSubmitting}
               >
                 {t('common.cancel')}
               </button>
               <button
                 type="submit"
-                className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50"
+                className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50 btn-primary"
                 disabled={isSubmitting}
               >
                 {isSubmitting ? t('common.submitting') : t('common.save')}

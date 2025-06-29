@@ -73,7 +73,7 @@ const UserProfileMenu: React.FC<UserProfileMenuProps> = ({ collapsed, version })
           }`}
       >
         <div className="flex-shrink-0 relative">
-          <div className="w-7 h-7 flex items-center justify-center rounded-full border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700">
+          <div className="w-5 h-5 flex items-center justify-center rounded-full border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700">
             <User className="h-4 w-4 text-gray-700 dark:text-gray-300" />
           </div>
           {showNewVersionInfo && (
@@ -90,7 +90,7 @@ const UserProfileMenu: React.FC<UserProfileMenuProps> = ({ collapsed, version })
       </button>
 
       {isOpen && (
-        <div className="absolute top-0 transform -translate-y-full left-0 w-48 bg-white dark:bg-gray-800 shadow-lg rounded-md py-1 z-50">
+        <div className="absolute top-0 transform -translate-y-full left-0 w-full min-w-max bg-white border border-gray-200 dark:bg-gray-800 py-1 z-50">
           <button
             onClick={handleSettingsClick}
             className="flex items-center w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
