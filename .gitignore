@@ -24,5 +24,6 @@ yarn-error.log*
 .vscode/
 *.log
 coverage/
+.plans/
 
 data/

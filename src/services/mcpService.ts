@@ -1,5 +1,5 @@
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
-import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
+import { CallToolRequestSchema, ListToolsRequestSchema, ListResourcesRequestSchema, ListResourceTemplatesRequestSchema, ReadResourceRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
@@ -11,6 +11,7 @@ import { getGroup } from './sseService.js';
 import { getServersInGroup } from './groupService.js';
 import { saveToolsAsVectorEmbeddings, searchToolsByVector } from './vectorSearchService.js';
 import { OpenAPIClient } from '../clients/openapi.js';
+import { handleListResourcesRequest, handleListResourceTemplatesRequest, handleReadResourceRequest } from './resourceService.js';
 
 const servers: { [sessionId: string]: Server } = {};
 
@@ -992,8 +993,11 @@ export const createMcpServer = (name: string, version: string, group?: string): 
   }
   // If no group, use default name (global routing)
 
-  const server = new Server({ name: serverName, version }, { capabilities: { tools: {} } });
+  const server = new Server({ name: serverName, version }, { capabilities: { tools: {}, resources: {} } });
   server.setRequestHandler(ListToolsRequestSchema, handleListToolsRequest);
   server.setRequestHandler(CallToolRequestSchema, handleCallToolRequest);
+  server.setRequestHandler(ListResourcesRequestSchema, (req, extra: any) => handleListResourcesRequest(serverInfos, req, extra));
+  server.setRequestHandler(ListResourceTemplatesRequestSchema, (req, extra: any) => handleListResourceTemplatesRequest(serverInfos, req, extra));
+  server.setRequestHandler(ReadResourceRequestSchema, (req, extra: any) => handleReadResourceRequest(serverInfos, req, extra));
   return server;
 };
