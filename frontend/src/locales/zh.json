@@ -117,6 +117,11 @@
     "argumentsPlaceholder": "请输入参数",
     "errorDetails": "错误详情",
     "viewErrorDetails": "查看错误详情",
+    "confirmVariables": "确认变量配置",
+    "variablesDetected": "检测到配置中包含变量，请确认这些变量是否已正确配置：",
+    "detectedVariables": "检测到的变量",
+    "confirmVariablesMessage": "请确保这些变量在运行环境中已正确定义。是否继续添加服务器？",
+    "confirmAndAdd": "确认并添加",
     "openapi": {
       "inputMode": "输入模式",
       "inputModeUrl": "规范 URL",
@@ -298,7 +303,9 @@
     "tagFilterError": "按标签筛选服务器失败",
     "noInstallationMethod": "该服务器没有可用的安装方法",
     "showing": "显示 {{from}}-{{to}}/{{total}} 个服务器",
-    "perPage": "每页显示"
+    "perPage": "每页显示",
+    "confirmVariablesMessage": "请确保这些变量在运行环境中已正确定义。是否继续安装服务器？",
+    "confirmAndInstall": "确认并安装"
   },
   "tool": {
     "run": "运行",

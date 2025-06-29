@@ -117,6 +117,11 @@
     "argumentsPlaceholder": "Enter arguments",
     "errorDetails": "Error Details",
     "viewErrorDetails": "View error details",
+    "confirmVariables": "Confirm Variable Configuration",
+    "variablesDetected": "Variables detected in configuration. Please confirm these variables are properly configured:",
+    "detectedVariables": "Detected Variables",
+    "confirmVariablesMessage": "Please ensure these variables are properly defined in your runtime environment. Continue adding server?",
+    "confirmAndAdd": "Confirm and Add",
     "openapi": {
       "inputMode": "Input Mode",
       "inputModeUrl": "Specification URL",
@@ -297,7 +302,9 @@
     "tagFilterError": "Error filtering servers by tag",
     "noInstallationMethod": "No installation method available for this server",
     "showing": "Showing {{from}}-{{to}} of {{total}} servers",
-    "perPage": "Per page"
+    "perPage": "Per page",
+    "confirmVariablesMessage": "Please ensure these variables are properly defined in your runtime environment. Continue installing server?",
+    "confirmAndInstall": "Confirm and Install"
   },
   "tool": {
     "run": "Run",

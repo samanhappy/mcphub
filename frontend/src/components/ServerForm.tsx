@@ -264,7 +264,7 @@ const ServerForm = ({ onSubmit, onCancel, initialData = null, modalTitle, formEr
     <div className="bg-white shadow rounded-lg p-6 w-full max-w-xl max-h-screen overflow-y-auto">
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-xl font-semibold text-gray-900">{modalTitle}</h2>
-        <button onClick={onCancel} className="text-gray-500 hover:text-gray-700 btn-secondary">
+        <button onClick={onCancel} className="text-gray-500 hover:text-gray-700">
           ✕
         </button>
       </div>
