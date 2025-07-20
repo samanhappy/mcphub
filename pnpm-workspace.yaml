@@ -1,0 +1,2 @@
+ignoredBuiltDependencies:
+  - '@swc/core'

@@ -173,6 +173,9 @@
     "cancel": "Cancel",
     "refresh": "Refresh",
     "create": "Create",
+    "creating": "Creating...",
+    "update": "Update",
+    "updating": "Updating...",
     "submitting": "Submitting...",
     "delete": "Delete",
     "remove": "Remove",
@@ -186,6 +189,7 @@
     "dashboard": "Dashboard",
     "servers": "Servers",
     "groups": "Groups",
+    "users": "Users",
     "settings": "Settings",
     "changePassword": "Change Password",
     "market": "Market",
@@ -205,6 +209,9 @@
     },
     "groups": {
       "title": "Group Management"
+    },
+    "users": {
+      "title": "User Management"
     },
     "settings": {
       "title": "Settings",
@@ -399,5 +406,41 @@
     "serverExistsTitle": "Server Already Exists",
     "serverExistsConfirm": "Server '{{serverName}}' already exists. Do you want to override it with the new version?",
     "override": "Override"
+  },
+  "users": {
+    "add": "Add User",
+    "addNew": "Add New User",
+    "edit": "Edit User",
+    "delete": "Delete User",
+    "create": "Create User",
+    "update": "Update User",
+    "username": "Username",
+    "password": "Password",
+    "newPassword": "New Password",
+    "confirmPassword": "Confirm Password",
+    "adminRole": "Administrator",
+    "admin": "Admin",
+    "user": "User",
+    "permissions": "Permissions",
+    "adminPermissions": "Full system access",
+    "userPermissions": "Limited access",
+    "currentUser": "You",
+    "noUsers": "No users found",
+    "adminRequired": "Administrator access required to manage users",
+    "usernameRequired": "Username is required",
+    "passwordRequired": "Password is required",
+    "passwordTooShort": "Password must be at least 6 characters long",
+    "passwordMismatch": "Passwords do not match",
+    "usernamePlaceholder": "Enter username",
+    "passwordPlaceholder": "Enter password",
+    "newPasswordPlaceholder": "Leave empty to keep current password",
+    "confirmPasswordPlaceholder": "Confirm new password",
+    "createError": "Failed to create user",
+    "updateError": "Failed to update user",
+    "deleteError": "Failed to delete user",
+    "statsError": "Failed to fetch user statistics",
+    "deleteConfirmation": "Are you sure you want to delete user '{{username}}'? This action cannot be undone.",
+    "confirmDelete": "Delete User",
+    "deleteWarning": "Are you sure you want to delete user '{{username}}'? This action cannot be undone."
   }
 }

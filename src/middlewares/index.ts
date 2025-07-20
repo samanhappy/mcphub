@@ -1,5 +1,6 @@
 import express, { Request, Response, NextFunction } from 'express';
 import { auth } from './auth.js';
+import { userContextMiddleware } from './userContext.js';
 import { initializeDefaultUser } from '../models/User.js';
 import config from '../config/index.js';
 
@@ -27,7 +28,13 @@ export const initMiddlewares = (app: express.Application): void => {
     if (
       req.path !== `${basePath}/sse` &&
       !req.path.startsWith(`${basePath}/sse/`) &&
-      req.path !== `${basePath}/messages`
+      req.path !== `${basePath}/messages` &&
+      !req.path.match(
+        new RegExp(`^${basePath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}/[^/]+/messages$`),
+      ) &&
+      !req.path.match(
+        new RegExp(`^${basePath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}/[^/]+/sse(/.*)?$`),
+      )
     ) {
       express.json()(req, res, next);
     } else {
@@ -46,7 +53,15 @@ export const initMiddlewares = (app: express.Application): void => {
     if (req.path === '/auth/login' || req.path === '/auth/register') {
       next();
     } else {
-      auth(req, res, next);
+      // Apply authentication middleware first
+      auth(req, res, (err) => {
+        if (err) {
+          next(err);
+        } else {
+          // Apply user context middleware after successful authentication
+          userContextMiddleware(req, res, next);
+        }
+      });
     }
   });
 

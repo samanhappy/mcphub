@@ -1,9 +1,8 @@
 import express from 'express';
 import config from './config/index.js';
 import path from 'path';
-import { fileURLToPath } from 'url';
 import fs from 'fs';
-import { initUpstreamServers } from './services/mcpService.js';
+import { initUpstreamServers, connected } from './services/mcpService.js';
 import { initMiddlewares } from './middlewares/index.js';
 import { initRoutes } from './routes/index.js';
 import {
@@ -13,10 +12,10 @@ import {
   handleMcpOtherRequest,
 } from './services/sseService.js';
 import { initializeDefaultUser } from './models/User.js';
+import { sseUserContextMiddleware } from './middlewares/userContext.js';
 
-// Get the directory name in ESM
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+// Get the current working directory (will be project root in most cases)
+const currentFileDir = process.cwd() + '/src';
 
 export class AppServer {
   private app: express.Application;
@@ -42,11 +41,52 @@ export class AppServer {
       initUpstreamServers()
         .then(() => {
           console.log('MCP server initialized successfully');
-          this.app.get(`${this.basePath}/sse/:group?`, (req, res) => handleSseConnection(req, res));
-          this.app.post(`${this.basePath}/messages`, handleSseMessage);
-          this.app.post(`${this.basePath}/mcp/:group?`, handleMcpPostRequest);
-          this.app.get(`${this.basePath}/mcp/:group?`, handleMcpOtherRequest);
-          this.app.delete(`${this.basePath}/mcp/:group?`, handleMcpOtherRequest);
+
+          // Original routes (global and group-based)
+          this.app.get(`${this.basePath}/sse/:group?`, sseUserContextMiddleware, (req, res) =>
+            handleSseConnection(req, res),
+          );
+          this.app.post(`${this.basePath}/messages`, sseUserContextMiddleware, handleSseMessage);
+          this.app.post(
+            `${this.basePath}/mcp/:group?`,
+            sseUserContextMiddleware,
+            handleMcpPostRequest,
+          );
+          this.app.get(
+            `${this.basePath}/mcp/:group?`,
+            sseUserContextMiddleware,
+            handleMcpOtherRequest,
+          );
+          this.app.delete(
+            `${this.basePath}/mcp/:group?`,
+            sseUserContextMiddleware,
+            handleMcpOtherRequest,
+          );
+
+          // User-scoped routes with user context middleware
+          this.app.get(`${this.basePath}/:user/sse/:group?`, sseUserContextMiddleware, (req, res) =>
+            handleSseConnection(req, res),
+          );
+          this.app.post(
+            `${this.basePath}/:user/messages`,
+            sseUserContextMiddleware,
+            handleSseMessage,
+          );
+          this.app.post(
+            `${this.basePath}/:user/mcp/:group?`,
+            sseUserContextMiddleware,
+            handleMcpPostRequest,
+          );
+          this.app.get(
+            `${this.basePath}/:user/mcp/:group?`,
+            sseUserContextMiddleware,
+            handleMcpOtherRequest,
+          );
+          this.app.delete(
+            `${this.basePath}/:user/mcp/:group?`,
+            sseUserContextMiddleware,
+            handleMcpOtherRequest,
+          );
         })
         .catch((error) => {
           console.error('Error initializing MCP server:', error);
@@ -108,6 +148,10 @@ export class AppServer {
     });
   }
 
+  connected(): boolean {
+    return connected();
+  }
+
   getApp(): express.Application {
     return this.app;
   }
@@ -119,7 +163,7 @@ export class AppServer {
 
     if (debug) {
       console.log('DEBUG: Current directory:', process.cwd());
-      console.log('DEBUG: Script directory:', __dirname);
+      console.log('DEBUG: Script directory:', currentFileDir);
     }
 
     // First, find the package root directory
@@ -159,13 +203,13 @@ export class AppServer {
     // Possible locations for package.json
     const possibleRoots = [
       // Standard npm package location
-      path.resolve(__dirname, '..', '..'),
+      path.resolve(currentFileDir, '..', '..'),
       // Current working directory
       process.cwd(),
       // When running from dist directory
-      path.resolve(__dirname, '..'),
+      path.resolve(currentFileDir, '..'),
       // When installed via npx
-      path.resolve(__dirname, '..', '..', '..'),
+      path.resolve(currentFileDir, '..', '..', '..'),
     ];
 
     // Special handling for npx

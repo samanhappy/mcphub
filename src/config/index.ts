@@ -3,6 +3,8 @@ import fs from 'fs';
 import { McpSettings } from '../types/index.js';
 import { getConfigFilePath } from '../utils/path.js';
 import { getPackageVersion } from '../utils/version.js';
+import { getDataService } from '../services/services.js';
+import { DataService } from '../services/dataService.js';
 
 dotenv.config();
 
@@ -15,6 +17,8 @@ const defaultConfig = {
   mcpHubVersion: getPackageVersion(),
 };
 
+const dataService: DataService = getDataService();
+
 // Settings cache
 let settingsCache: McpSettings | null = null;
 
@@ -22,7 +26,7 @@ export const getSettingsPath = (): string => {
   return getConfigFilePath('mcp_settings.json', 'Settings');
 };
 
-export const loadSettings = (): McpSettings => {
+export const loadOriginalSettings = (): McpSettings => {
   // If cache exists, return cached data directly
   if (settingsCache) {
     return settingsCache;
@@ -49,13 +53,18 @@ export const loadSettings = (): McpSettings => {
   }
 };
 
+export const loadSettings = (): McpSettings => {
+  return dataService.filterSettings!(loadOriginalSettings());
+};
+
 export const saveSettings = (settings: McpSettings): boolean => {
   const settingsPath = getSettingsPath();
   try {
-    fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2), 'utf8');
+    const mergedSettings = dataService.mergeSettings!(loadOriginalSettings(), settings);
+    fs.writeFileSync(settingsPath, JSON.stringify(mergedSettings, null, 2), 'utf8');
 
     // Update cache after successful save
-    settingsCache = settings;
+    settingsCache = mergedSettings;
 
     return true;
   } catch (error) {

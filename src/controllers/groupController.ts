@@ -75,7 +75,12 @@ export const createNewGroup = (req: Request, res: Response): void => {
     }
 
     const serverList = Array.isArray(servers) ? servers : [];
-    const newGroup = createGroup(name, description, serverList);
+
+    // Set owner property - use current user's username, default to 'admin'
+    const currentUser = (req as any).user;
+    const owner = currentUser?.username || 'admin';
+
+    const newGroup = createGroup(name, description, serverList, owner);
     if (!newGroup) {
       res.status(400).json({
         success: false,

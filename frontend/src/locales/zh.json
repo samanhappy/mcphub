@@ -174,6 +174,9 @@
     "cancel": "取消",
     "refresh": "刷新",
     "create": "创建",
+    "creating": "创建中...",
+    "update": "更新",
+    "updating": "更新中...",
     "submitting": "提交中...",
     "delete": "删除",
     "remove": "移除",
@@ -189,6 +192,7 @@
     "settings": "设置",
     "changePassword": "修改密码",
     "groups": "分组",
+    "users": "用户",
     "market": "市场",
     "logs": "日志"
   },
@@ -216,6 +220,9 @@
     },
     "groups": {
       "title": "分组管理"
+    },
+    "users": {
+      "title": "用户管理"
     },
     "market": {
       "title": "服务器市场 - （数据来源于 mcpm.sh）"
@@ -401,5 +408,41 @@
     "serverExistsTitle": "服务器已存在",
     "serverExistsConfirm": "服务器 '{{serverName}}' 已存在。是否要用新版本覆盖它？",
     "override": "覆盖"
+  },
+  "users": {
+    "add": "添加",
+    "addNew": "添加新用户",
+    "edit": "编辑用户",
+    "delete": "删除用户",
+    "create": "创建",
+    "update": "用户",
+    "username": "用户名",
+    "password": "密码",
+    "newPassword": "新密码",
+    "confirmPassword": "确认密码",
+    "adminRole": "管理员",
+    "admin": "管理员",
+    "user": "用户",
+    "permissions": "权限",
+    "adminPermissions": "完全系统访问权限",
+    "userPermissions": "受限访问权限",
+    "currentUser": "当前用户",
+    "noUsers": "没有找到用户",
+    "adminRequired": "需要管理员权限才能管理用户",
+    "usernameRequired": "用户名是必需的",
+    "passwordRequired": "密码是必需的",
+    "passwordTooShort": "密码至少需要6个字符",
+    "passwordMismatch": "密码不匹配",
+    "usernamePlaceholder": "输入用户名",
+    "passwordPlaceholder": "输入密码",
+    "newPasswordPlaceholder": "留空保持当前密码",
+    "confirmPasswordPlaceholder": "确认新密码",
+    "createError": "创建用户失败",
+    "updateError": "更新用户失败",
+    "deleteError": "删除用户失败",
+    "statsError": "获取用户统计失败",
+    "deleteConfirmation": "您确定要删除用户 '{{username}}' 吗？此操作无法撤消。",
+    "confirmDelete": "删除用户",
+    "deleteWarning": "您确定要删除用户 '{{username}}' 吗？此操作无法撤消。"
   }
 }

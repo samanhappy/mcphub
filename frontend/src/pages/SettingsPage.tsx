@@ -6,6 +6,8 @@ import { Switch } from '@/components/ui/ToggleGroup';
 import { useSettingsData } from '@/hooks/useSettingsData';
 import { useToast } from '@/contexts/ToastContext';
 import { generateRandomKey } from '@/utils/key';
+import { PermissionChecker } from '@/components/PermissionChecker';
+import { PERMISSIONS } from '@/constants/permissions';
 
 const SettingsPage: React.FC = () => {
   const { t, i18n } = useTranslation();
@@ -230,129 +232,131 @@ const SettingsPage: React.FC = () => {
       </div>
 
       {/* Smart Routing Configuration Settings */}
-      <div className="bg-white shadow rounded-lg py-4 px-6 mb-6 page-card">
-        <div
-          className="flex justify-between items-center cursor-pointer transition-colors duration-200 hover:text-blue-600"
-          onClick={() => toggleSection('smartRoutingConfig')}
-        >
-          <h2 className="font-semibold text-gray-800">{t('pages.settings.smartRouting')}</h2>
-          <span className="text-gray-500 transition-transform duration-200">
-            {sectionsVisible.smartRoutingConfig ? '▼' : '►'}
-          </span>
-        </div>
-
-        {sectionsVisible.smartRoutingConfig && (
-          <div className="space-y-4 mt-4">
-            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-md">
-              <div>
-                <h3 className="font-medium text-gray-700">{t('settings.enableSmartRouting')}</h3>
-                <p className="text-sm text-gray-500">{t('settings.enableSmartRoutingDescription')}</p>
-              </div>
-              <Switch
-                disabled={loading}
-                checked={smartRoutingConfig.enabled}
-                onCheckedChange={(checked) => handleSmartRoutingEnabledChange(checked)}
-              />
-            </div>
-
-            <div className="p-3 bg-gray-50 rounded-md">
-              <div className="mb-2">
-                <h3 className="font-medium text-gray-700">
-                  <span className="text-red-500 px-1">*</span>{t('settings.dbUrl')}
-                </h3>
-              </div>
-              <div className="flex items-center gap-3">
-                <input
-                  type="text"
-                  value={tempSmartRoutingConfig.dbUrl}
-                  onChange={(e) => handleSmartRoutingConfigChange('dbUrl', e.target.value)}
-                  placeholder={t('settings.dbUrlPlaceholder')}
-                  className="flex-1 mt-1 block w-full py-2 px-3 border rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm border-gray-300 form-input"
-                  disabled={loading}
-                />
-                <button
-                  onClick={() => saveSmartRoutingConfig('dbUrl')}
-                  disabled={loading}
-                  className="mt-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium disabled:opacity-50 btn-primary"
-                >
-                  {t('common.save')}
-                </button>
-              </div>
-            </div>
-
-            <div className="p-3 bg-gray-50 rounded-md">
-              <div className="mb-2">
-                <h3 className="font-medium text-gray-700">
-                  <span className="text-red-500 px-1">*</span>{t('settings.openaiApiKey')}
-                </h3>
-              </div>
-              <div className="flex items-center gap-3">
-                <input
-                  type="password"
-                  value={tempSmartRoutingConfig.openaiApiKey}
-                  onChange={(e) => handleSmartRoutingConfigChange('openaiApiKey', e.target.value)}
-                  placeholder={t('settings.openaiApiKeyPlaceholder')}
-                  className="flex-1 mt-1 block w-full py-2 px-3 border rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm border-gray-300"
-                  disabled={loading}
-                />
-                <button
-                  onClick={() => saveSmartRoutingConfig('openaiApiKey')}
-                  disabled={loading}
-                  className="mt-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium disabled:opacity-50 btn-primary"
-                >
-                  {t('common.save')}
-                </button>
-              </div>
-            </div>
-
-            <div className="p-3 bg-gray-50 rounded-md">
-              <div className="mb-2">
-                <h3 className="font-medium text-gray-700">{t('settings.openaiApiBaseUrl')}</h3>
-              </div>
-              <div className="flex items-center gap-3">
-                <input
-                  type="text"
-                  value={tempSmartRoutingConfig.openaiApiBaseUrl}
-                  onChange={(e) => handleSmartRoutingConfigChange('openaiApiBaseUrl', e.target.value)}
-                  placeholder={t('settings.openaiApiBaseUrlPlaceholder')}
-                  className="flex-1 mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm form-input"
-                  disabled={loading}
-                />
-                <button
-                  onClick={() => saveSmartRoutingConfig('openaiApiBaseUrl')}
-                  disabled={loading}
-                  className="mt-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium disabled:opacity-50 btn-primary"
-                >
-                  {t('common.save')}
-                </button>
-              </div>
-            </div>
-
-            <div className="p-3 bg-gray-50 rounded-md">
-              <div className="mb-2">
-                <h3 className="font-medium text-gray-700">{t('settings.openaiApiEmbeddingModel')}</h3>
-              </div>
-              <div className="flex items-center gap-3">
-                <input
-                  type="text"
-                  value={tempSmartRoutingConfig.openaiApiEmbeddingModel}
-                  onChange={(e) => handleSmartRoutingConfigChange('openaiApiEmbeddingModel', e.target.value)}
-                  placeholder={t('settings.openaiApiEmbeddingModelPlaceholder')}
-                  className="flex-1 mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm form-input"
-                  disabled={loading}
-                />
-                <button
-                  onClick={() => saveSmartRoutingConfig('openaiApiEmbeddingModel')}
-                  disabled={loading}
-                  className="mt-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium disabled:opacity-50 btn-primary"
-                >
-                  {t('common.save')}
-                </button>
-              </div>
-            </div>
+      <PermissionChecker permissions={PERMISSIONS.SETTINGS_SMART_ROUTING}>
+        <div className="bg-white shadow rounded-lg py-4 px-6 mb-6 page-card">
+          <div
+            className="flex justify-between items-center cursor-pointer transition-colors duration-200 hover:text-blue-600"
+            onClick={() => toggleSection('smartRoutingConfig')}
+          >
+            <h2 className="font-semibold text-gray-800">{t('pages.settings.smartRouting')}</h2>
+            <span className="text-gray-500 transition-transform duration-200">
+              {sectionsVisible.smartRoutingConfig ? '▼' : '►'}
+            </span>
           </div>
-        )}
-      </div>
+
+          {sectionsVisible.smartRoutingConfig && (
+            <div className="space-y-4 mt-4">
+              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-md">
+                <div>
+                  <h3 className="font-medium text-gray-700">{t('settings.enableSmartRouting')}</h3>
+                  <p className="text-sm text-gray-500">{t('settings.enableSmartRoutingDescription')}</p>
+                </div>
+                <Switch
+                  disabled={loading}
+                  checked={smartRoutingConfig.enabled}
+                  onCheckedChange={(checked) => handleSmartRoutingEnabledChange(checked)}
+                />
+              </div>
+
+              <div className="p-3 bg-gray-50 rounded-md">
+                <div className="mb-2">
+                  <h3 className="font-medium text-gray-700">
+                    <span className="text-red-500 px-1">*</span>{t('settings.dbUrl')}
+                  </h3>
+                </div>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="text"
+                    value={tempSmartRoutingConfig.dbUrl}
+                    onChange={(e) => handleSmartRoutingConfigChange('dbUrl', e.target.value)}
+                    placeholder={t('settings.dbUrlPlaceholder')}
+                    className="flex-1 mt-1 block w-full py-2 px-3 border rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm border-gray-300 form-input"
+                    disabled={loading}
+                  />
+                  <button
+                    onClick={() => saveSmartRoutingConfig('dbUrl')}
+                    disabled={loading}
+                    className="mt-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium disabled:opacity-50 btn-primary"
+                  >
+                    {t('common.save')}
+                  </button>
+                </div>
+              </div>
+
+              <div className="p-3 bg-gray-50 rounded-md">
+                <div className="mb-2">
+                  <h3 className="font-medium text-gray-700">
+                    <span className="text-red-500 px-1">*</span>{t('settings.openaiApiKey')}
+                  </h3>
+                </div>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="password"
+                    value={tempSmartRoutingConfig.openaiApiKey}
+                    onChange={(e) => handleSmartRoutingConfigChange('openaiApiKey', e.target.value)}
+                    placeholder={t('settings.openaiApiKeyPlaceholder')}
+                    className="flex-1 mt-1 block w-full py-2 px-3 border rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm border-gray-300"
+                    disabled={loading}
+                  />
+                  <button
+                    onClick={() => saveSmartRoutingConfig('openaiApiKey')}
+                    disabled={loading}
+                    className="mt-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium disabled:opacity-50 btn-primary"
+                  >
+                    {t('common.save')}
+                  </button>
+                </div>
+              </div>
+
+              <div className="p-3 bg-gray-50 rounded-md">
+                <div className="mb-2">
+                  <h3 className="font-medium text-gray-700">{t('settings.openaiApiBaseUrl')}</h3>
+                </div>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="text"
+                    value={tempSmartRoutingConfig.openaiApiBaseUrl}
+                    onChange={(e) => handleSmartRoutingConfigChange('openaiApiBaseUrl', e.target.value)}
+                    placeholder={t('settings.openaiApiBaseUrlPlaceholder')}
+                    className="flex-1 mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm form-input"
+                    disabled={loading}
+                  />
+                  <button
+                    onClick={() => saveSmartRoutingConfig('openaiApiBaseUrl')}
+                    disabled={loading}
+                    className="mt-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium disabled:opacity-50 btn-primary"
+                  >
+                    {t('common.save')}
+                  </button>
+                </div>
+              </div>
+
+              <div className="p-3 bg-gray-50 rounded-md">
+                <div className="mb-2">
+                  <h3 className="font-medium text-gray-700">{t('settings.openaiApiEmbeddingModel')}</h3>
+                </div>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="text"
+                    value={tempSmartRoutingConfig.openaiApiEmbeddingModel}
+                    onChange={(e) => handleSmartRoutingConfigChange('openaiApiEmbeddingModel', e.target.value)}
+                    placeholder={t('settings.openaiApiEmbeddingModelPlaceholder')}
+                    className="flex-1 mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm form-input"
+                    disabled={loading}
+                  />
+                  <button
+                    onClick={() => saveSmartRoutingConfig('openaiApiEmbeddingModel')}
+                    disabled={loading}
+                    className="mt-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium disabled:opacity-50 btn-primary"
+                  >
+                    {t('common.save')}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </PermissionChecker>
 
       {/* Route Configuration Settings */}
       <div className="bg-white shadow rounded-lg py-4 px-6 mb-6">
@@ -430,86 +434,90 @@ const SettingsPage: React.FC = () => {
               />
             </div>
 
-            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-md">
-              <div>
-                <h3 className="font-medium text-gray-700">{t('settings.skipAuth')}</h3>
-                <p className="text-sm text-gray-500">{t('settings.skipAuthDescription')}</p>
+            <PermissionChecker permissions={PERMISSIONS.SETTINGS_SKIP_AUTH}>
+              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-md">
+                <div>
+                  <h3 className="font-medium text-gray-700">{t('settings.skipAuth')}</h3>
+                  <p className="text-sm text-gray-500">{t('settings.skipAuthDescription')}</p>
+                </div>
+                <Switch
+                  disabled={loading}
+                  checked={routingConfig.skipAuth}
+                  onCheckedChange={(checked) => handleRoutingConfigChange('skipAuth', checked)}
+                />
               </div>
-              <Switch
-                disabled={loading}
-                checked={routingConfig.skipAuth}
-                onCheckedChange={(checked) => handleRoutingConfigChange('skipAuth', checked)}
-              />
-            </div>
+            </PermissionChecker>
 
           </div>
         )}
       </div>
 
       {/* Installation Configuration Settings */}
-      <div className="bg-white shadow rounded-lg py-4 px-6 mb-6">
-        <div
-          className="flex justify-between items-center cursor-pointer"
-          onClick={() => toggleSection('installConfig')}
-        >
-          <h2 className="font-semibold text-gray-800">{t('settings.installConfig')}</h2>
-          <span className="text-gray-500">
-            {sectionsVisible.installConfig ? '▼' : '►'}
-          </span>
-        </div>
-
-        {sectionsVisible.installConfig && (
-          <div className="space-y-4 mt-4">
-            <div className="p-3 bg-gray-50 rounded-md">
-              <div className="mb-2">
-                <h3 className="font-medium text-gray-700">{t('settings.pythonIndexUrl')}</h3>
-                <p className="text-sm text-gray-500">{t('settings.pythonIndexUrlDescription')}</p>
-              </div>
-              <div className="flex items-center gap-3">
-                <input
-                  type="text"
-                  value={installConfig.pythonIndexUrl}
-                  onChange={(e) => handleInstallConfigChange('pythonIndexUrl', e.target.value)}
-                  placeholder={t('settings.pythonIndexUrlPlaceholder')}
-                  className="flex-1 mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm form-input"
-                  disabled={loading}
-                />
-                <button
-                  onClick={() => saveInstallConfig('pythonIndexUrl')}
-                  disabled={loading}
-                  className="mt-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium disabled:opacity-50 btn-primary"
-                >
-                  {t('common.save')}
-                </button>
-              </div>
-            </div>
-
-            <div className="p-3 bg-gray-50 rounded-md">
-              <div className="mb-2">
-                <h3 className="font-medium text-gray-700">{t('settings.npmRegistry')}</h3>
-                <p className="text-sm text-gray-500">{t('settings.npmRegistryDescription')}</p>
-              </div>
-              <div className="flex items-center gap-3">
-                <input
-                  type="text"
-                  value={installConfig.npmRegistry}
-                  onChange={(e) => handleInstallConfigChange('npmRegistry', e.target.value)}
-                  placeholder={t('settings.npmRegistryPlaceholder')}
-                  className="flex-1 mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm form-input"
-                  disabled={loading}
-                />
-                <button
-                  onClick={() => saveInstallConfig('npmRegistry')}
-                  disabled={loading}
-                  className="mt-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium disabled:opacity-50 btn-primary"
-                >
-                  {t('common.save')}
-                </button>
-              </div>
-            </div>
+      <PermissionChecker permissions={PERMISSIONS.SETTINGS_INSTALL_CONFIG}>
+        <div className="bg-white shadow rounded-lg py-4 px-6 mb-6">
+          <div
+            className="flex justify-between items-center cursor-pointer"
+            onClick={() => toggleSection('installConfig')}
+          >
+            <h2 className="font-semibold text-gray-800">{t('settings.installConfig')}</h2>
+            <span className="text-gray-500">
+              {sectionsVisible.installConfig ? '▼' : '►'}
+            </span>
           </div>
-        )}
-      </div>
+
+          {sectionsVisible.installConfig && (
+            <div className="space-y-4 mt-4">
+              <div className="p-3 bg-gray-50 rounded-md">
+                <div className="mb-2">
+                  <h3 className="font-medium text-gray-700">{t('settings.pythonIndexUrl')}</h3>
+                  <p className="text-sm text-gray-500">{t('settings.pythonIndexUrlDescription')}</p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="text"
+                    value={installConfig.pythonIndexUrl}
+                    onChange={(e) => handleInstallConfigChange('pythonIndexUrl', e.target.value)}
+                    placeholder={t('settings.pythonIndexUrlPlaceholder')}
+                    className="flex-1 mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm form-input"
+                    disabled={loading}
+                  />
+                  <button
+                    onClick={() => saveInstallConfig('pythonIndexUrl')}
+                    disabled={loading}
+                    className="mt-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium disabled:opacity-50 btn-primary"
+                  >
+                    {t('common.save')}
+                  </button>
+                </div>
+              </div>
+
+              <div className="p-3 bg-gray-50 rounded-md">
+                <div className="mb-2">
+                  <h3 className="font-medium text-gray-700">{t('settings.npmRegistry')}</h3>
+                  <p className="text-sm text-gray-500">{t('settings.npmRegistryDescription')}</p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="text"
+                    value={installConfig.npmRegistry}
+                    onChange={(e) => handleInstallConfigChange('npmRegistry', e.target.value)}
+                    placeholder={t('settings.npmRegistryPlaceholder')}
+                    className="flex-1 mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm form-input"
+                    disabled={loading}
+                  />
+                  <button
+                    onClick={() => saveInstallConfig('npmRegistry')}
+                    disabled={loading}
+                    className="mt-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium disabled:opacity-50 btn-primary"
+                  >
+                    {t('common.save')}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </PermissionChecker>
 
       {/* Change Password */}
       <div className="bg-white shadow rounded-lg py-4 px-6 mb-6">

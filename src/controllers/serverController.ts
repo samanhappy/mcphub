@@ -11,16 +11,18 @@ import {
 } from '../services/mcpService.js';
 import { loadSettings, saveSettings } from '../config/index.js';
 import { syncAllServerToolsEmbeddings } from '../services/vectorSearchService.js';
+import { createSafeJSON } from '../utils/serialization.js';
 
 export const getAllServers = (_: Request, res: Response): void => {
   try {
     const serversInfo = getServersInfo();
     const response: ApiResponse = {
       success: true,
-      data: serversInfo,
+      data: createSafeJSON(serversInfo),
     };
     res.json(response);
   } catch (error) {
+    console.error('Failed to get servers information:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to get servers information',
@@ -33,7 +35,7 @@ export const getAllSettings = (_: Request, res: Response): void => {
     const settings = loadSettings();
     const response: ApiResponse = {
       success: true,
-      data: settings,
+      data: createSafeJSON(settings),
     };
     res.json(response);
   } catch (error) {
@@ -125,6 +127,12 @@ export const createServer = async (req: Request, res: Response): Promise<void> =
     // Set default keep-alive interval for SSE servers if not specified
     if ((config.type === 'sse' || (!config.type && config.url)) && !config.keepAliveInterval) {
       config.keepAliveInterval = 60000; // Default 60 seconds for SSE servers
+    }
+
+    // Set owner property - use current user's username, default to 'admin'
+    if (!config.owner) {
+      const currentUser = (req as any).user;
+      config.owner = currentUser?.username || 'admin';
     }
 
     const result = await addServer(name, config);
@@ -262,6 +270,12 @@ export const updateServer = async (req: Request, res: Response): Promise<void> =
     // Set default keep-alive interval for SSE servers if not specified
     if ((config.type === 'sse' || (!config.type && config.url)) && !config.keepAliveInterval) {
       config.keepAliveInterval = 60000; // Default 60 seconds for SSE servers
+    }
+
+    // Set owner property if not provided - use current user's username, default to 'admin'
+    if (!config.owner) {
+      const currentUser = (req as any).user;
+      config.owner = currentUser?.username || 'admin';
     }
 
     const result = await addOrUpdateServer(name, config, true); // Allow override for updates

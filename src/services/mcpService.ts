@@ -11,6 +11,7 @@ import { getGroup } from './sseService.js';
 import { getServersInGroup } from './groupService.js';
 import { saveToolsAsVectorEmbeddings, searchToolsByVector } from './vectorSearchService.js';
 import { OpenAPIClient } from '../clients/openapi.js';
+import { getDataService } from './services.js';
 
 const servers: { [sessionId: string]: Server } = {};
 
@@ -100,6 +101,33 @@ export const syncToolEmbedding = async (serverName: string, toolName: string) =>
 
 // Store all server information
 let serverInfos: ServerInfo[] = [];
+
+// Returns true if all servers are connected
+export const connected = (): boolean => {
+  return serverInfos.every((serverInfo) => serverInfo.status === 'connected');
+};
+
+// Global cleanup function to close all connections
+export const cleanupAllServers = (): void => {
+  for (const serverInfo of serverInfos) {
+    try {
+      if (serverInfo.client) {
+        serverInfo.client.close();
+      }
+      if (serverInfo.transport) {
+        serverInfo.transport.close();
+      }
+    } catch (error) {
+      console.warn(`Error closing server ${serverInfo.name}:`, error);
+    }
+  }
+  serverInfos = [];
+
+  // Clear session servers as well
+  Object.keys(servers).forEach((sessionId) => {
+    delete servers[sessionId];
+  });
+};
 
 // Helper function to create transport based on server configuration
 const createTransportFromConfig = (name: string, conf: ServerConfig): any => {
@@ -294,6 +322,7 @@ export const initializeClientsFromSettings = async (isInit: boolean): Promise<Se
       console.log(`Skipping disabled server: ${name}`);
       serverInfos.push({
         name,
+        owner: conf.owner,
         status: 'disconnected',
         error: null,
         tools: [],
@@ -327,6 +356,7 @@ export const initializeClientsFromSettings = async (isInit: boolean): Promise<Se
         );
         serverInfos.push({
           name,
+          owner: conf.owner,
           status: 'disconnected',
           error: 'Missing OpenAPI specification URL or schema',
           tools: [],
@@ -338,6 +368,7 @@ export const initializeClientsFromSettings = async (isInit: boolean): Promise<Se
       // Create server info first and keep reference to it
       const serverInfo: ServerInfo = {
         name,
+        owner: conf.owner,
         status: 'connecting',
         error: null,
         tools: [],
@@ -418,6 +449,7 @@ export const initializeClientsFromSettings = async (isInit: boolean): Promise<Se
     // Create server info first and keep reference to it
     const serverInfo: ServerInfo = {
       name,
+      owner: conf.owner,
       status: 'connecting',
       error: null,
       tools: [],
@@ -480,7 +512,11 @@ export const registerAllTools = async (isInit: boolean): Promise<void> => {
 // Get all server information
 export const getServersInfo = (): Omit<ServerInfo, 'client' | 'transport'>[] => {
   const settings = loadSettings();
-  const infos = serverInfos.map(({ name, status, tools, createTime, error }) => {
+  const dataService = getDataService();
+  const filterServerInfos: ServerInfo[] = dataService.filterData
+    ? dataService.filterData(serverInfos)
+    : serverInfos;
+  const infos = filterServerInfos.map(({ name, status, tools, createTime, error }) => {
     const serverConfig = settings.mcpServers[name];
     const enabled = serverConfig ? serverConfig.enabled !== false : true;
 
@@ -774,13 +810,15 @@ Available servers: ${serversList}`;
     };
   }
 
-  const allServerInfos = serverInfos.filter((serverInfo) => {
-    if (serverInfo.enabled === false) return false;
-    if (!group) return true;
-    const serversInGroup = getServersInGroup(group);
-    if (!serversInGroup || serversInGroup.length === 0) return serverInfo.name === group;
-    return serversInGroup.includes(serverInfo.name);
-  });
+  const allServerInfos = getDataService()
+    .filterData(serverInfos)
+    .filter((serverInfo) => {
+      if (serverInfo.enabled === false) return false;
+      if (!group) return true;
+      const serversInGroup = getServersInGroup(group);
+      if (!serversInGroup || serversInGroup.length === 0) return serverInfo.name === group;
+      return serversInGroup.includes(serverInfo.name);
+    });
 
   const allTools = [];
   for (const serverInfo of allServerInfos) {

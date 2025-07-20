@@ -24,6 +24,14 @@ import {
   updateGroupServersBatch,
 } from '../controllers/groupController.js';
 import {
+  getUsers,
+  getUser,
+  createUser,
+  updateExistingUser,
+  deleteExistingUser,
+  getUserStats,
+} from '../controllers/userController.js';
+import {
   getAllMarketServers,
   getMarketServer,
   getAllMarketCategories,
@@ -64,6 +72,14 @@ export const initRoutes = (app: express.Application): void => {
   router.get('/groups/:id/servers', getGroupServers);
   // New route for batch updating servers in a group
   router.put('/groups/:id/servers/batch', updateGroupServersBatch);
+
+  // User management routes (admin only)
+  router.get('/users', getUsers);
+  router.get('/users/:username', getUser);
+  router.post('/users', createUser);
+  router.put('/users/:username', updateExistingUser);
+  router.delete('/users/:username', deleteExistingUser);
+  router.get('/users-stats', getUserStats);
 
   // Tool management routes
   router.post('/tools/call/:server', callTool);

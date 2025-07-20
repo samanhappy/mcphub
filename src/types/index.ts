@@ -18,6 +18,7 @@ export interface IGroup {
   name: string; // Display name of the group
   description?: string; // Optional description of the group
   servers: string[]; // Array of server names that belong to this group
+  owner?: string; // Owner of the group, defaults to 'admin' user
 }
 
 // Market server types
@@ -74,6 +75,30 @@ export interface MarketServer {
   is_official?: boolean;
 }
 
+export interface SystemConfig {
+  routing?: {
+    enableGlobalRoute?: boolean; // Controls whether the /sse endpoint without group is enabled
+    enableGroupNameRoute?: boolean; // Controls whether group routing by name is allowed
+    enableBearerAuth?: boolean; // Controls whether bearer auth is enabled for group routes
+    bearerAuthKey?: string; // The bearer auth key to validate against
+    skipAuth?: boolean; // Controls whether authentication is required for frontend and API access
+  };
+  install?: {
+    pythonIndexUrl?: string; // Python package repository URL (UV_DEFAULT_INDEX)
+    npmRegistry?: string; // NPM registry URL (npm_config_registry)
+  };
+  smartRouting?: SmartRoutingConfig;
+}
+
+export interface UserConfig {
+  routing?: {
+    enableGlobalRoute?: boolean; // Controls whether the /sse endpoint without group is enabled
+    enableGroupNameRoute?: boolean; // Controls whether group routing by name is allowed
+    enableBearerAuth?: boolean; // Controls whether bearer auth is enabled for group routes
+    bearerAuthKey?: string; // The bearer auth key to validate against
+  };
+}
+
 // Represents the settings for MCP servers
 export interface McpSettings {
   users?: IUser[]; // Array of user credentials and permissions
@@ -81,21 +106,8 @@ export interface McpSettings {
     [key: string]: ServerConfig; // Key-value pairs of server names and their configurations
   };
   groups?: IGroup[]; // Array of server groups
-  systemConfig?: {
-    routing?: {
-      enableGlobalRoute?: boolean; // Controls whether the /sse endpoint without group is enabled
-      enableGroupNameRoute?: boolean; // Controls whether group routing by name is allowed
-      enableBearerAuth?: boolean; // Controls whether bearer auth is enabled for group routes
-      bearerAuthKey?: string; // The bearer auth key to validate against
-      skipAuth?: boolean; // Controls whether authentication is required for frontend and API access
-    };
-    install?: {
-      pythonIndexUrl?: string; // Python package repository URL (UV_DEFAULT_INDEX)
-      npmRegistry?: string; // NPM registry URL (npm_config_registry)
-    };
-    smartRouting?: SmartRoutingConfig;
-    // Add other system configuration sections here in the future
-  };
+  systemConfig?: SystemConfig; // System-wide configuration settings
+  userConfigs?: Record<string, UserConfig>; // User-specific configurations
 }
 
 // Configuration details for an individual server
@@ -107,6 +119,7 @@ export interface ServerConfig {
   env?: Record<string, string>; // Environment variables
   headers?: Record<string, string>; // HTTP headers for SSE/streamable-http/openapi servers
   enabled?: boolean; // Flag to enable/disable the server
+  owner?: string; // Owner of the server, defaults to 'admin' user
   keepAliveInterval?: number; // Keep-alive ping interval in milliseconds (default: 60000ms for SSE servers)
   tools?: Record<string, { enabled: boolean; description?: string }>; // Tool-specific configurations with enable/disable state and custom descriptions
   options?: Partial<Pick<RequestOptions, 'timeout' | 'resetTimeoutOnProgress' | 'maxTotalTimeout'>>; // MCP request options configuration
@@ -154,6 +167,7 @@ export interface OpenAPISecurityConfig {
 // Information about a server's status and tools
 export interface ServerInfo {
   name: string; // Unique name of the server
+  owner?: string; // Owner of the server, defaults to 'admin' user
   status: 'connected' | 'connecting' | 'disconnected'; // Current connection status
   error: string | null; // Error message if any
   tools: ToolInfo[]; // List of tools available on the server

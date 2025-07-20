@@ -2,11 +2,15 @@ import { v4 as uuidv4 } from 'uuid';
 import { IGroup } from '../types/index.js';
 import { loadSettings, saveSettings } from '../config/index.js';
 import { notifyToolChanged } from './mcpService.js';
+import { getDataService } from './services.js';
 
 // Get all groups
 export const getAllGroups = (): IGroup[] => {
   const settings = loadSettings();
-  return settings.groups || [];
+  const dataService = getDataService();
+  return dataService.filterData
+    ? dataService.filterData(settings.groups || [])
+    : settings.groups || [];
 };
 
 // Get group by ID or name
@@ -29,6 +33,7 @@ export const createGroup = (
   name: string,
   description?: string,
   servers: string[] = [],
+  owner?: string,
 ): IGroup | null => {
   try {
     const settings = loadSettings();
@@ -47,6 +52,7 @@ export const createGroup = (
       name,
       description,
       servers: validServers,
+      owner: owner || 'admin',
     };
 
     // Initialize groups array if it doesn't exist

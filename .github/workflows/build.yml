@@ -39,7 +39,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: samanhappy/mcphub
+          images: ${{ github.repository }}
           tags: |
             type=raw,value=edge${{ matrix.variant == 'full' && '-full' || '' }},enable=${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
             type=semver,pattern={{version}}${{ matrix.variant == 'full' && '-full' || '' }},enable=${{ startsWith(github.ref, 'refs/tags/') }}

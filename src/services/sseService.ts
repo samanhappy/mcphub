@@ -7,6 +7,7 @@ import { isInitializeRequest } from '@modelcontextprotocol/sdk/types.js';
 import { deleteMcpServer, getMcpServer } from './mcpService.js';
 import { loadSettings } from '../config/index.js';
 import config from '../config/index.js';
+import { UserContextService } from './userContextService.js';
 
 const transports: { [sessionId: string]: { transport: Transport; group: string } } = {};
 
@@ -38,8 +39,14 @@ const validateBearerAuth = (req: Request): boolean => {
 };
 
 export const handleSseConnection = async (req: Request, res: Response): Promise<void> => {
-  // Check bearer auth
+  // User context is now set by sseUserContextMiddleware
+  const userContextService = UserContextService.getInstance();
+  const currentUser = userContextService.getCurrentUser();
+  const username = currentUser?.username;
+  
+  // Check bearer auth using filtered settings
   if (!validateBearerAuth(req)) {
+    console.warn('Bearer authentication failed or not provided');
     res.status(401).send('Bearer authentication required or invalid token');
     return;
   }
@@ -55,11 +62,25 @@ export const handleSseConnection = async (req: Request, res: Response): Promise<
 
   // Check if this is a global route (no group) and if it's allowed
   if (!group && !routingConfig.enableGlobalRoute) {
+    console.warn('Global routes are disabled, group ID is required');
     res.status(403).send('Global routes are disabled. Please specify a group ID.');
     return;
   }
 
-  const transport = new SSEServerTransport(`${config.basePath}/messages`, res);
+  // For user-scoped routes, validate that the user has access to the requested group
+  if (username && group) {
+    // Additional validation can be added here to check if user has access to the group
+    console.log(`User ${username} accessing group: ${group}`);
+  }
+
+  // Construct the appropriate messages path based on user context
+  const messagesPath = username 
+    ? `${config.basePath}/${username}/messages`
+    : `${config.basePath}/messages`;
+
+  console.log(`Creating SSE transport with messages path: ${messagesPath}`);
+
+  const transport = new SSEServerTransport(messagesPath, res);
   transports[transport.sessionId] = { transport, group: group };
 
   res.on('close', () => {
@@ -69,13 +90,18 @@ export const handleSseConnection = async (req: Request, res: Response): Promise<
   });
 
   console.log(
-    `New SSE connection established: ${transport.sessionId} with group: ${group || 'global'}`,
+    `New SSE connection established: ${transport.sessionId} with group: ${group || 'global'}${username ? ` for user: ${username}` : ''}`,
   );
   await getMcpServer(transport.sessionId, group).connect(transport);
 };
 
 export const handleSseMessage = async (req: Request, res: Response): Promise<void> => {
-  // Check bearer auth
+  // User context is now set by sseUserContextMiddleware
+  const userContextService = UserContextService.getInstance();
+  const currentUser = userContextService.getCurrentUser();
+  const username = currentUser?.username;
+  
+  // Check bearer auth using filtered settings
   if (!validateBearerAuth(req)) {
     res.status(401).send('Bearer authentication required or invalid token');
     return;
@@ -101,24 +127,31 @@ export const handleSseMessage = async (req: Request, res: Response): Promise<voi
   const { transport, group } = transportData;
   req.params.group = group;
   req.query.group = group;
-  console.log(`Received message for sessionId: ${sessionId} in group: ${group}`);
+  console.log(`Received message for sessionId: ${sessionId} in group: ${group}${username ? ` for user: ${username}` : ''}`);
 
   await (transport as SSEServerTransport).handlePostMessage(req, res);
 };
 
 export const handleMcpPostRequest = async (req: Request, res: Response): Promise<void> => {
+  // User context is now set by sseUserContextMiddleware
+  const userContextService = UserContextService.getInstance();
+  const currentUser = userContextService.getCurrentUser();
+  const username = currentUser?.username;
+  
   const sessionId = req.headers['mcp-session-id'] as string | undefined;
   const group = req.params.group;
   const body = req.body;
   console.log(
-    `Handling MCP post request for sessionId: ${sessionId} and group: ${group} with body: ${JSON.stringify(body)}`,
+    `Handling MCP post request for sessionId: ${sessionId} and group: ${group}${username ? ` for user: ${username}` : ''} with body: ${JSON.stringify(body)}`,
   );
-  // Check bearer auth
+  
+  // Check bearer auth using filtered settings
   if (!validateBearerAuth(req)) {
     res.status(401).send('Bearer authentication required or invalid token');
     return;
   }
 
+  // Get filtered settings based on user context (after setting user context)
   const settings = loadSettings();
   const routingConfig = settings.systemConfig?.routing || {
     enableGlobalRoute: true,
@@ -150,7 +183,7 @@ export const handleMcpPostRequest = async (req: Request, res: Response): Promise
       }
     };
 
-    console.log(`MCP connection established: ${transport.sessionId}`);
+    console.log(`MCP connection established: ${transport.sessionId}${username ? ` for user: ${username}` : ''}`);
     await getMcpServer(transport.sessionId, group).connect(transport);
   } else {
     res.status(400).json({
@@ -169,8 +202,14 @@ export const handleMcpPostRequest = async (req: Request, res: Response): Promise
 };
 
 export const handleMcpOtherRequest = async (req: Request, res: Response) => {
-  console.log('Handling MCP other request');
-  // Check bearer auth
+  // User context is now set by sseUserContextMiddleware
+  const userContextService = UserContextService.getInstance();
+  const currentUser = userContextService.getCurrentUser();
+  const username = currentUser?.username;
+  
+  console.log(`Handling MCP other request${username ? ` for user: ${username}` : ''}`);
+  
+  // Check bearer auth using filtered settings
   if (!validateBearerAuth(req)) {
     res.status(401).send('Bearer authentication required or invalid token');
     return;

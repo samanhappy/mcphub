@@ -624,9 +624,9 @@ const ServerForm = ({ onSubmit, onCancel, initialData = null, modalTitle, formEr
                 <button
                   type="button"
                   onClick={addHeaderVar}
-                  className="bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-1 px-2 rounded text-sm flex items-center btn-primary"
+                  className="bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-1 px-2 rounded text-sm flex items-center justify-center min-w-[30px] min-h-[30px] btn-primary"
                 >
-                  + {t('server.add')}
+                  +
                 </button>
               </div>
               {headerVars.map((headerVar, index) => (
@@ -651,9 +651,9 @@ const ServerForm = ({ onSubmit, onCancel, initialData = null, modalTitle, formEr
                   <button
                     type="button"
                     onClick={() => removeHeaderVar(index)}
-                    className="bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-1 px-2 rounded text-sm flex items-center justify-center min-w-[56px] ml-2 btn-danger"
+                    className="bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-1 px-2 rounded text-sm flex items-center justify-center min-w-[30px] min-h-[30px] ml-2 btn-danger"
                   >
-                    - {t('server.remove')}
+                    -
                   </button>
                 </div>
               ))}
@@ -685,9 +685,9 @@ const ServerForm = ({ onSubmit, onCancel, initialData = null, modalTitle, formEr
                 <button
                   type="button"
                   onClick={addHeaderVar}
-                  className="bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-1 px-2 rounded text-sm flex items-center btn-primary"
+                  className="bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-1 px-2 rounded text-sm flex items-center justify-center min-w-[30px] min-h-[30px] btn-primary"
                 >
-                  + {t('server.add')}
+                  +
                 </button>
               </div>
               {headerVars.map((headerVar, index) => (
@@ -712,9 +712,9 @@ const ServerForm = ({ onSubmit, onCancel, initialData = null, modalTitle, formEr
                   <button
                     type="button"
                     onClick={() => removeHeaderVar(index)}
-                    className="bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-1 px-2 rounded text-sm flex items-center justify-center min-w-[56px] ml-2 btn-danger"
+                    className="bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-1 px-2 rounded text-sm flex items-center justify-center min-w-[30px] min-h-[30px] ml-2 btn-danger"
                   >
-                    - {t('server.remove')}
+                    -
                   </button>
                 </div>
               ))}
@@ -761,9 +761,9 @@ const ServerForm = ({ onSubmit, onCancel, initialData = null, modalTitle, formEr
                 <button
                   type="button"
                   onClick={addEnvVar}
-                  className="bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-1 px-2 rounded text-sm flex items-center btn-primary"
+                  className="bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-1 px-2 rounded text-sm flex items-center justify-center min-w-[30px] min-h-[30px] btn-primary"
                 >
-                  + {t('server.add')}
+                  +
                 </button>
               </div>
               {envVars.map((envVar, index) => (
@@ -788,9 +788,9 @@ const ServerForm = ({ onSubmit, onCancel, initialData = null, modalTitle, formEr
                   <button
                     type="button"
                     onClick={() => removeEnvVar(index)}
-                    className="bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-1 px-2 rounded text-sm flex items-center justify-center min-w-[56px] ml-2 btn-danger"
+                    className="bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-1 px-2 rounded text-sm flex items-center justify-center min-w-[30px] min-h-[30px] ml-2 btn-danger"
                   >
-                    - {t('server.remove')}
+                    -
                   </button>
                 </div>
               ))}

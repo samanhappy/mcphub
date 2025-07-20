@@ -210,6 +210,30 @@ export interface ApiResponse<T = any> {
 export interface IUser {
   username: string;
   isAdmin?: boolean;
+  permissions?: string[];
+}
+
+// User management types
+export interface User {
+  username: string;
+  isAdmin: boolean;
+}
+
+export interface UserFormData {
+  username: string;
+  password: string;
+  isAdmin: boolean;
+}
+
+export interface UserUpdateData {
+  isAdmin?: boolean;
+  newPassword?: string;
+}
+
+export interface UserStats {
+  totalUsers: number;
+  adminUsers: number;
+  regularUsers: number;
 }
 
 export interface AuthState {
