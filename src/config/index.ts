@@ -17,7 +17,14 @@ const defaultConfig = {
   mcpHubVersion: getPackageVersion(),
 };
 
-const dataService: DataService = getDataService();
+let dataService: DataService | null = null;
+
+const getDataServiceInstance = (): DataService => {
+  if (!dataService) {
+    dataService = getDataService();
+  }
+  return dataService;
+};
 
 // Settings cache
 let settingsCache: McpSettings | null = null;
@@ -54,13 +61,16 @@ export const loadOriginalSettings = (): McpSettings => {
 };
 
 export const loadSettings = (): McpSettings => {
-  return dataService.filterSettings!(loadOriginalSettings());
+  return getDataServiceInstance().filterSettings!(loadOriginalSettings());
 };
 
 export const saveSettings = (settings: McpSettings): boolean => {
   const settingsPath = getSettingsPath();
   try {
-    const mergedSettings = dataService.mergeSettings!(loadOriginalSettings(), settings);
+    const mergedSettings = getDataServiceInstance().mergeSettings!(
+      loadOriginalSettings(),
+      settings,
+    );
     fs.writeFileSync(settingsPath, JSON.stringify(mergedSettings, null, 2), 'utf8');
 
     // Update cache after successful save
@@ -78,6 +88,7 @@ export const saveSettings = (settings: McpSettings): boolean => {
  */
 export const clearSettingsCache = (): void => {
   settingsCache = null;
+  dataService = null; // Also clear the data service cache
 };
 
 /**

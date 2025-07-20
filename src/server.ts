@@ -13,6 +13,7 @@ import {
 } from './services/sseService.js';
 import { initializeDefaultUser } from './models/User.js';
 import { sseUserContextMiddleware } from './middlewares/userContext.js';
+import { initializeServices } from './services/services.js';
 
 // Get the current working directory (will be project root in most cases)
 const currentFileDir = process.cwd() + '/src';
@@ -31,6 +32,9 @@ export class AppServer {
 
   async initialize(): Promise<void> {
     try {
+      // Initialize services
+      await initializeServices();
+
       // Initialize default admin user if no users exist
       await initializeDefaultUser();
 

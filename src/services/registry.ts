@@ -8,10 +8,10 @@ interface Service<T> {
 const registry = new Map<string, Service<any>>();
 const instances = new Map<string, unknown>();
 
-export function registerService<T>(key: string, entry: Service<T>) {
+export async function registerService<T>(key: string, entry: Service<T>) {
   // Try to load override immediately during registration
   const overridePath = './' + key + 'x.js';
-  import(overridePath)
+  await import(overridePath)
     .then((mod) => {
       const override = mod[key.charAt(0).toUpperCase() + key.slice(1) + 'x'];
       if (typeof override === 'function') {
