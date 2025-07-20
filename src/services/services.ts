@@ -1,7 +1,7 @@
 import { registerService, getService } from './registry.js';
 import { DataService, DataServiceImpl } from './dataService.js';
 
-await registerService('dataService', {
+registerService('dataService', {
   defaultImpl: DataServiceImpl,
 });
 
