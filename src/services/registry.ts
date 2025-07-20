@@ -1,3 +1,6 @@
+import { createRequire } from 'module';
+import { join } from 'path';
+
 type Class<T> = new (...args: any[]) => T;
 
 interface Service<T> {
@@ -10,15 +13,17 @@ const instances = new Map<string, unknown>();
 
 export function registerService<T>(key: string, entry: Service<T>) {
   // Try to load override immediately during registration
-  const overridePath = './' + key + 'x.js';
-  import(overridePath)
-    .then((mod) => {
-      const override = mod[key.charAt(0).toUpperCase() + key.slice(1) + 'x'];
-      if (typeof override === 'function') {
-        entry.override = override;
-      }
-    })
-    .catch(() => {}); // Silently ignore if override doesn't exist
+  const overridePath = join(process.cwd(), 'src', 'services', key + 'x.ts');
+  try {
+    const require = createRequire(process.cwd());
+    const mod = require(overridePath);
+    const override = mod[key.charAt(0).toUpperCase() + key.slice(1) + 'x'];
+    if (typeof override === 'function') {
+      entry.override = override;
+    }
+  } catch (error) {
+    // Silently ignore if override doesn't exist
+  }
 
   registry.set(key, entry);
 }
