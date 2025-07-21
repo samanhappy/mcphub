@@ -48,6 +48,7 @@ jobs:
             latest=false
 
       - name: Build and Push Docker Image
+        if: endsWith(github.repository, 'mcphub')
         uses: docker/build-push-action@v5
         with:
           context: .
