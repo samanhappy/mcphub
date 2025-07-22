@@ -5,7 +5,13 @@ import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { ServerInfo, ServerConfig, ToolInfo } from '../types/index.js';
-import { loadSettings, saveSettings, expandEnvVars, replaceEnvVars } from '../config/index.js';
+import {
+  loadSettings,
+  saveSettings,
+  expandEnvVars,
+  replaceEnvVars,
+  replaceEnvVarsInArray,
+} from '../config/index.js';
 import config from '../config/index.js';
 import { getGroup } from './sseService.js';
 import { getServersInGroup } from './groupService.js';
@@ -183,7 +189,7 @@ const createTransportFromConfig = (name: string, conf: ServerConfig): any => {
 
     transport = new StdioClientTransport({
       command: conf.command,
-      args: conf.args,
+      args: replaceEnvVarsInArray(conf.args),
       env: env,
       stderr: 'pipe',
     });

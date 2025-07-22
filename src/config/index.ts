@@ -101,6 +101,13 @@ export const replaceEnvVars = (env: Record<string, any>): Record<string, any> =>
   return res;
 };
 
+export const replaceEnvVarsInArray = (arr: string[] | undefined): string[] => {
+  if (!arr || !Array.isArray(arr)) {
+    return [];
+  }
+  return arr.map((item) => expandEnvVars(item));
+};
+
 export const expandEnvVars = (value: string): string => {
   if (typeof value !== 'string') {
     return String(value);
