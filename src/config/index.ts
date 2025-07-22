@@ -89,24 +89,42 @@ export const getSettingsCacheInfo = (): { hasCache: boolean } => {
   };
 };
 
-export const replaceEnvVars = (env: Record<string, any>): Record<string, any> => {
-  const res: Record<string, string> = {};
-  for (const [key, value] of Object.entries(env)) {
-    if (typeof value === 'string') {
-      res[key] = expandEnvVars(value);
-    } else {
-      res[key] = String(value);
+export function replaceEnvVars(input: Record<string, any>): Record<string, any>;
+export function replaceEnvVars(input: string[] | undefined): string[];
+export function replaceEnvVars(input: string): string;
+export function replaceEnvVars(
+  input: Record<string, any> | string[] | string | undefined,
+): Record<string, any> | string[] | string {
+  // Handle object input
+  if (input && typeof input === 'object' && !Array.isArray(input)) {
+    const res: Record<string, string> = {};
+    for (const [key, value] of Object.entries(input)) {
+      if (typeof value === 'string') {
+        res[key] = expandEnvVars(value);
+      } else {
+        res[key] = String(value);
+      }
     }
+    return res;
   }
-  return res;
-};
 
-export const replaceEnvVarsInArray = (arr: string[] | undefined): string[] => {
-  if (!arr || !Array.isArray(arr)) {
+  // Handle array input
+  if (Array.isArray(input)) {
+    return input.map((item) => expandEnvVars(item));
+  }
+
+  // Handle string input
+  if (typeof input === 'string') {
+    return expandEnvVars(input);
+  }
+
+  // Handle undefined/null array input
+  if (input === undefined || input === null) {
     return [];
   }
-  return arr.map((item) => expandEnvVars(item));
-};
+
+  return input;
+}
 
 export const expandEnvVars = (value: string): string => {
   if (typeof value !== 'string') {
