@@ -59,12 +59,12 @@ describe('OpenAPIClient - Operation Name Generation', () => {
       const toolNames = tools.map((t) => t.name).sort();
       expect(toolNames).toEqual(
         [
-          'DeleteUsers',
-          'GetAdminSettings',
-          'GetRoot',
-          'GetUsers',
-          'PostUsers',
-          'GetUsers1', // Second GET /users/{id}, will add numeric suffix
+          'delete_users',
+          'get_admin_settings',
+          'get_root',
+          'get_users',
+          'post_users',
+          'get_users1', // Second GET /users/{id}, will add numeric suffix
         ].sort(),
       );
     });
@@ -84,7 +84,7 @@ describe('OpenAPIClient - Operation Name Generation', () => {
                   responses: { '200': { description: 'Success' } },
                 },
                 post: {
-                  // No operationId, should generate PostUsers
+                  // No operationId, should generate post_users
                   summary: 'Create user',
                   responses: { '201': { description: 'Created' } },
                 },
@@ -122,8 +122,8 @@ describe('OpenAPIClient - Operation Name Generation', () => {
       expect(toolsByName['getUserById'].operationId).toBe('getUserById');
 
       // Those without operationId should generate names
-      expect(toolsByName['PostUsers']).toBeDefined();
-      expect(toolsByName['PostUsers'].operationId).toBe('PostUsers');
+      expect(toolsByName['post_users']).toBeDefined();
+      expect(toolsByName['post_users'].operationId).toBe('post_users');
     });
 
     test('should handle duplicate generated names with counter', async () => {
@@ -158,7 +158,7 @@ describe('OpenAPIClient - Operation Name Generation', () => {
       expect(tools).toHaveLength(2);
 
       const toolNames = tools.map((t) => t.name).sort();
-      expect(toolNames).toEqual(['GetUsers', 'GetUsers1']);
+      expect(toolNames).toEqual(['get_users', 'get_users1']);
     });
 
     test('should handle complex paths with parameters and special characters', async () => {
@@ -193,8 +193,8 @@ describe('OpenAPIClient - Operation Name Generation', () => {
       expect(tools).toHaveLength(2);
 
       const toolNames = tools.map((t) => t.name);
-      expect(toolNames).toContain('GetApiV1UsersPosts'); // Path parameters removed, special characters cleaned
-      expect(toolNames).toContain('PostApiv2Userprofiles'); // Hyphens and underscores cleaned, first letter capitalized
+      expect(toolNames).toContain('get_api_v1_users_posts'); // Path parameters removed, special characters cleaned
+      expect(toolNames).toContain('post_apiv2_userprofiles'); // Hyphens and underscores cleaned, lowercase with underscores
     });
   });
 });

@@ -134,12 +134,12 @@ export class OpenAPIClient {
       .replace(/[^\w/]/g, '') // Remove special characters, keep alphanumeric and slashes
       .split('/')
       .filter((segment) => segment.length > 0) // Remove empty segments
-      .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1)) // Capitalize first letter
-      .join('');
+      .map((segment) => segment.toLowerCase()) // Convert to lowercase
+      .join('_'); // Join with underscores
 
-    // Combine method name and path
-    const methodName = method.charAt(0).toUpperCase() + method.slice(1).toLowerCase();
-    return `${methodName}${cleanPath || 'Root'}`;
+    // Convert method to lowercase and combine with path
+    const methodName = method.toLowerCase();
+    return `${methodName}_${cleanPath || 'root'}`;
   }
 
   private updateBaseUrlFromServers(): void {
