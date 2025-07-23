@@ -1,0 +1,200 @@
+import { OpenAPIClient } from '../openapi.js';
+import { ServerConfig } from '../../types/index.js';
+import { OpenAPIV3 } from 'openapi-types';
+
+describe('OpenAPIClient - Operation Name Generation', () => {
+  describe('generateOperationName', () => {
+    test('should generate operation name from method and path', async () => {
+      const config: ServerConfig = {
+        type: 'openapi',
+        openapi: {
+          schema: {
+            openapi: '3.0.0',
+            info: { title: 'Test API', version: '1.0.0' },
+            paths: {
+              '/users': {
+                get: {
+                  summary: 'Get users',
+                  responses: { '200': { description: 'Success' } },
+                },
+                post: {
+                  summary: 'Create user',
+                  responses: { '201': { description: 'Created' } },
+                },
+              },
+              '/users/{id}': {
+                get: {
+                  summary: 'Get user by ID',
+                  responses: { '200': { description: 'Success' } },
+                },
+                delete: {
+                  summary: 'Delete user',
+                  responses: { '204': { description: 'Deleted' } },
+                },
+              },
+              '/admin/settings': {
+                get: {
+                  summary: 'Get admin settings',
+                  responses: { '200': { description: 'Success' } },
+                },
+              },
+              '/': {
+                get: {
+                  summary: 'Root endpoint',
+                  responses: { '200': { description: 'Success' } },
+                },
+              },
+            },
+          } as OpenAPIV3.Document,
+        },
+      };
+
+      const testClient = new OpenAPIClient(config);
+      await testClient.initialize();
+      const tools = testClient.getTools();
+
+      // 验证生成的操作名称
+      expect(tools).toHaveLength(6);
+
+      const toolNames = tools.map((t) => t.name).sort();
+      expect(toolNames).toEqual(
+        [
+          'DeleteUsers',
+          'GetAdminSettings',
+          'GetRoot',
+          'GetUsers',
+          'PostUsers',
+          'GetUsers1', // 第二个 GET /users/{id}，会添加数字后缀
+        ].sort(),
+      );
+    });
+
+    test('should use operationId when available and generate name when missing', async () => {
+      const config: ServerConfig = {
+        type: 'openapi',
+        openapi: {
+          schema: {
+            openapi: '3.0.0',
+            info: { title: 'Test API', version: '1.0.0' },
+            paths: {
+              '/users': {
+                get: {
+                  operationId: 'listUsers',
+                  summary: 'Get users',
+                  responses: { '200': { description: 'Success' } },
+                },
+                post: {
+                  // 没有 operationId，应该生成 PostUsers
+                  summary: 'Create user',
+                  responses: { '201': { description: 'Created' } },
+                },
+              },
+              '/users/{id}': {
+                get: {
+                  operationId: 'getUserById',
+                  summary: 'Get user by ID',
+                  responses: { '200': { description: 'Success' } },
+                },
+              },
+            },
+          } as OpenAPIV3.Document,
+        },
+      };
+
+      const testClient = new OpenAPIClient(config);
+      await testClient.initialize();
+      const tools = testClient.getTools();
+
+      expect(tools).toHaveLength(3);
+
+      const toolsByName = tools.reduce(
+        (acc, tool) => {
+          acc[tool.name] = tool;
+          return acc;
+        },
+        {} as Record<string, any>,
+      );
+
+      // 有 operationId 的应该使用原 operationId
+      expect(toolsByName['listUsers']).toBeDefined();
+      expect(toolsByName['listUsers'].operationId).toBe('listUsers');
+      expect(toolsByName['getUserById']).toBeDefined();
+      expect(toolsByName['getUserById'].operationId).toBe('getUserById');
+
+      // 没有 operationId 的应该生成名称
+      expect(toolsByName['PostUsers']).toBeDefined();
+      expect(toolsByName['PostUsers'].operationId).toBe('PostUsers');
+    });
+
+    test('should handle duplicate generated names with counter', async () => {
+      const config: ServerConfig = {
+        type: 'openapi',
+        openapi: {
+          schema: {
+            openapi: '3.0.0',
+            info: { title: 'Test API', version: '1.0.0' },
+            paths: {
+              '/users': {
+                get: {
+                  summary: 'Get users',
+                  responses: { '200': { description: 'Success' } },
+                },
+              },
+              '/users/': {
+                get: {
+                  summary: 'Get users with trailing slash',
+                  responses: { '200': { description: 'Success' } },
+                },
+              },
+            },
+          } as OpenAPIV3.Document,
+        },
+      };
+
+      const testClient = new OpenAPIClient(config);
+      await testClient.initialize();
+      const tools = testClient.getTools();
+
+      expect(tools).toHaveLength(2);
+
+      const toolNames = tools.map((t) => t.name).sort();
+      expect(toolNames).toEqual(['GetUsers', 'GetUsers1']);
+    });
+
+    test('should handle complex paths with parameters and special characters', async () => {
+      const config: ServerConfig = {
+        type: 'openapi',
+        openapi: {
+          schema: {
+            openapi: '3.0.0',
+            info: { title: 'Test API', version: '1.0.0' },
+            paths: {
+              '/api/v1/users/{user-id}/posts/{post_id}': {
+                get: {
+                  summary: 'Get user post',
+                  responses: { '200': { description: 'Success' } },
+                },
+              },
+              '/api-v2/user-profiles': {
+                post: {
+                  summary: 'Create user profile',
+                  responses: { '201': { description: 'Created' } },
+                },
+              },
+            },
+          } as OpenAPIV3.Document,
+        },
+      };
+
+      const testClient = new OpenAPIClient(config);
+      await testClient.initialize();
+      const tools = testClient.getTools();
+
+      expect(tools).toHaveLength(2);
+
+      const toolNames = tools.map((t) => t.name);
+      expect(toolNames).toContain('GetApiV1UsersPosts'); // 路径参数被移除，特殊字符被清理
+      expect(toolNames).toContain('PostApiv2Userprofiles'); // 连字符和下划线被清理，首字母大写
+    });
+  });
+});

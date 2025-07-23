@@ -127,6 +127,21 @@ export class OpenAPIClient {
     }
   }
 
+  private generateOperationName(method: string, path: string): string {
+    // 清理路径，移除参数括号和特殊字符
+    const cleanPath = path
+      .replace(/\{[^}]+\}/g, '') // 移除 {param} 格式的参数
+      .replace(/[^\w/]/g, '') // 移除特殊字符，保留字母数字和斜杠
+      .split('/')
+      .filter((segment) => segment.length > 0) // 移除空段
+      .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1)) // 首字母大写
+      .join('');
+
+    // 组合方法名和路径
+    const methodName = method.charAt(0).toUpperCase() + method.slice(1).toLowerCase();
+    return `${methodName}${cleanPath || 'Root'}`;
+  }
+
   private updateBaseUrlFromServers(): void {
     if (!this.spec?.servers || this.spec.servers.length === 0) {
       return;
@@ -163,6 +178,7 @@ export class OpenAPIClient {
     }
 
     this.tools = [];
+    const generatedNames = new Set<string>(); // 用于确保生成的名称唯一
 
     for (const [path, pathItem] of Object.entries(this.spec.paths)) {
       if (!pathItem) continue;
@@ -180,14 +196,33 @@ export class OpenAPIClient {
 
       for (const method of methods) {
         const operation = pathItem[method] as OpenAPIV3.OperationObject | undefined;
-        if (!operation || !operation.operationId) continue;
+        if (!operation) continue;
+
+        // 生成操作名称：优先使用 operationId，否则生成唯一名称
+        let operationName: string;
+        if (operation.operationId) {
+          operationName = operation.operationId;
+        } else {
+          operationName = this.generateOperationName(method, path);
+
+          // 确保名称唯一，如果重复则添加数字后缀
+          let uniqueName = operationName;
+          let counter = 1;
+          while (generatedNames.has(uniqueName) || this.tools.some((t) => t.name === uniqueName)) {
+            uniqueName = `${operationName}${counter}`;
+            counter++;
+          }
+          operationName = uniqueName;
+        }
+
+        generatedNames.add(operationName);
 
         const tool: OpenAPIToolInfo = {
-          name: operation.operationId,
+          name: operationName,
           description:
             operation.summary || operation.description || `${method.toUpperCase()} ${path}`,
           inputSchema: this.generateInputSchema(operation, path, method as string),
-          operationId: operation.operationId,
+          operationId: operation.operationId || operationName,
           method: method as string,
           path,
           parameters: operation.parameters as OpenAPIV3.ParameterObject[],
