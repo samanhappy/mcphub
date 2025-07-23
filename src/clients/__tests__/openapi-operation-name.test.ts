@@ -53,7 +53,7 @@ describe('OpenAPIClient - Operation Name Generation', () => {
       await testClient.initialize();
       const tools = testClient.getTools();
 
-      // 验证生成的操作名称
+      // Verify generated operation names
       expect(tools).toHaveLength(6);
 
       const toolNames = tools.map((t) => t.name).sort();
@@ -64,7 +64,7 @@ describe('OpenAPIClient - Operation Name Generation', () => {
           'GetRoot',
           'GetUsers',
           'PostUsers',
-          'GetUsers1', // 第二个 GET /users/{id}，会添加数字后缀
+          'GetUsers1', // Second GET /users/{id}, will add numeric suffix
         ].sort(),
       );
     });
@@ -84,7 +84,7 @@ describe('OpenAPIClient - Operation Name Generation', () => {
                   responses: { '200': { description: 'Success' } },
                 },
                 post: {
-                  // 没有 operationId，应该生成 PostUsers
+                  // No operationId, should generate PostUsers
                   summary: 'Create user',
                   responses: { '201': { description: 'Created' } },
                 },
@@ -115,13 +115,13 @@ describe('OpenAPIClient - Operation Name Generation', () => {
         {} as Record<string, any>,
       );
 
-      // 有 operationId 的应该使用原 operationId
+      // Those with operationId should use the original operationId
       expect(toolsByName['listUsers']).toBeDefined();
       expect(toolsByName['listUsers'].operationId).toBe('listUsers');
       expect(toolsByName['getUserById']).toBeDefined();
       expect(toolsByName['getUserById'].operationId).toBe('getUserById');
 
-      // 没有 operationId 的应该生成名称
+      // Those without operationId should generate names
       expect(toolsByName['PostUsers']).toBeDefined();
       expect(toolsByName['PostUsers'].operationId).toBe('PostUsers');
     });
@@ -193,8 +193,8 @@ describe('OpenAPIClient - Operation Name Generation', () => {
       expect(tools).toHaveLength(2);
 
       const toolNames = tools.map((t) => t.name);
-      expect(toolNames).toContain('GetApiV1UsersPosts'); // 路径参数被移除，特殊字符被清理
-      expect(toolNames).toContain('PostApiv2Userprofiles'); // 连字符和下划线被清理，首字母大写
+      expect(toolNames).toContain('GetApiV1UsersPosts'); // Path parameters removed, special characters cleaned
+      expect(toolNames).toContain('PostApiv2Userprofiles'); // Hyphens and underscores cleaned, first letter capitalized
     });
   });
 });

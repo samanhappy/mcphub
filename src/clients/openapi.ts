@@ -27,7 +27,7 @@ export class OpenAPIClient {
       throw new Error('OpenAPI URL or schema is required');
     }
 
-    // 初始 baseUrl，将在 initialize() 中从 OpenAPI servers 字段更新
+    // Initial baseUrl, will be updated from OpenAPI servers field in initialize()
     this.baseUrl = config.openapi?.url ? this.extractBaseUrl(config.openapi.url) : '';
     this.securityConfig = config.openapi.security;
 
@@ -117,7 +117,7 @@ export class OpenAPIClient {
         throw new Error('Either OpenAPI URL or schema must be provided');
       }
 
-      // 从 OpenAPI servers 字段更新 baseUrl
+      // Update baseUrl from OpenAPI servers field
       this.updateBaseUrlFromServers();
 
       this.extractTools();
@@ -128,16 +128,16 @@ export class OpenAPIClient {
   }
 
   private generateOperationName(method: string, path: string): string {
-    // 清理路径，移除参数括号和特殊字符
+    // Clean path, remove parameter brackets and special characters
     const cleanPath = path
-      .replace(/\{[^}]+\}/g, '') // 移除 {param} 格式的参数
-      .replace(/[^\w/]/g, '') // 移除特殊字符，保留字母数字和斜杠
+      .replace(/\{[^}]+\}/g, '') // Remove {param} format parameters
+      .replace(/[^\w/]/g, '') // Remove special characters, keep alphanumeric and slashes
       .split('/')
-      .filter((segment) => segment.length > 0) // 移除空段
-      .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1)) // 首字母大写
+      .filter((segment) => segment.length > 0) // Remove empty segments
+      .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1)) // Capitalize first letter
       .join('');
 
-    // 组合方法名和路径
+    // Combine method name and path
     const methodName = method.charAt(0).toUpperCase() + method.slice(1).toLowerCase();
     return `${methodName}${cleanPath || 'Root'}`;
   }
@@ -147,28 +147,28 @@ export class OpenAPIClient {
       return;
     }
 
-    // 获取第一个 server 的 URL
+    // Get the first server's URL
     const serverUrl = this.spec.servers[0].url;
 
-    // 如果是相对路径，需要与原始 spec URL 结合
+    // If it's a relative path, combine with original spec URL
     if (serverUrl.startsWith('/')) {
-      // 相对路径，使用原始 spec URL 的协议和主机
+      // Relative path, use protocol and host from original spec URL
       if (this.config.openapi?.url) {
         const originalUrl = new URL(this.config.openapi.url);
         this.baseUrl = `${originalUrl.protocol}//${originalUrl.host}${serverUrl}`;
       }
     } else if (serverUrl.startsWith('http://') || serverUrl.startsWith('https://')) {
-      // 绝对路径
+      // Absolute path
       this.baseUrl = serverUrl;
     } else {
-      // 相对路径但不以 / 开头，可能是相对于当前路径
+      // Relative path but doesn't start with /, might be relative to current path
       if (this.config.openapi?.url) {
         const originalUrl = new URL(this.config.openapi.url);
         this.baseUrl = `${originalUrl.protocol}//${originalUrl.host}/${serverUrl}`;
       }
     }
 
-    // 更新 HTTP 客户端的 baseURL
+    // Update HTTP client's baseURL
     this.httpClient.defaults.baseURL = this.baseUrl;
   }
 
@@ -178,7 +178,7 @@ export class OpenAPIClient {
     }
 
     this.tools = [];
-    const generatedNames = new Set<string>(); // 用于确保生成的名称唯一
+    const generatedNames = new Set<string>(); // Used to ensure generated names are unique
 
     for (const [path, pathItem] of Object.entries(this.spec.paths)) {
       if (!pathItem) continue;
@@ -198,14 +198,14 @@ export class OpenAPIClient {
         const operation = pathItem[method] as OpenAPIV3.OperationObject | undefined;
         if (!operation) continue;
 
-        // 生成操作名称：优先使用 operationId，否则生成唯一名称
+        // Generate operation name: use operationId first, otherwise generate unique name
         let operationName: string;
         if (operation.operationId) {
           operationName = operation.operationId;
         } else {
           operationName = this.generateOperationName(method, path);
 
-          // 确保名称唯一，如果重复则添加数字后缀
+          // Ensure name uniqueness, add numeric suffix if duplicate
           let uniqueName = operationName;
           let counter = 1;
           while (generatedNames.has(uniqueName) || this.tools.some((t) => t.name === uniqueName)) {
