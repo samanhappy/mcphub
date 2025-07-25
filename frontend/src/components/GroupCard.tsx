@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Group, Server } from '@/types'
-import { Edit, Trash, Copy, Check } from '@/components/icons/LucideIcons'
+import { Edit, Trash, Copy, Check, Link, FileCode, DropdownIcon } from '@/components/icons/LucideIcons'
 import DeleteDialog from '@/components/ui/DeleteDialog'
 import { useToast } from '@/contexts/ToastContext'
 
@@ -22,6 +22,22 @@ const GroupCard = ({
   const { showToast } = useToast()
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [showCopyDropdown, setShowCopyDropdown] = useState(false)
+  const dropdownRef = useRef<HTMLDivElement>(null)
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowCopyDropdown(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [])
 
   const handleEdit = () => {
     onEdit(group)
@@ -36,16 +52,18 @@ const GroupCard = ({
     setShowDeleteDialog(false)
   }
 
-  const copyToClipboard = () => {
+  const copyToClipboard = (text: string) => {
     if (navigator.clipboard && window.isSecureContext) {
-      navigator.clipboard.writeText(group.id).then(() => {
+      navigator.clipboard.writeText(text).then(() => {
         setCopied(true)
+        setShowCopyDropdown(false)
+        showToast(t('common.copySuccess'), 'success')
         setTimeout(() => setCopied(false), 2000)
       })
     } else {
       // Fallback for HTTP or unsupported clipboard API
       const textArea = document.createElement('textarea')
-      textArea.value = group.id
+      textArea.value = text
       // Avoid scrolling to bottom
       textArea.style.position = 'fixed'
       textArea.style.left = '-9999px'
@@ -55,6 +73,8 @@ const GroupCard = ({
       try {
         document.execCommand('copy')
         setCopied(true)
+        setShowCopyDropdown(false)
+        showToast(t('common.copySuccess'), 'success')
         setTimeout(() => setCopied(false), 2000)
       } catch (err) {
         showToast(t('common.copyFailed') || 'Copy failed', 'error')
@@ -62,6 +82,28 @@ const GroupCard = ({
       }
       document.body.removeChild(textArea)
     }
+  }
+
+  const handleCopyId = () => {
+    copyToClipboard(group.id)
+  }
+
+  const handleCopyUrl = () => {
+    copyToClipboard(`http://localhost:3000/mcp/${group.id}`)
+  }
+
+  const handleCopyJson = () => {
+    const jsonConfig = {
+      mcpServers: {
+        mcphub: {
+          url: `http://localhost:3000/mcp/${group.id}`,
+          headers: {
+            Authorization: "Bearer your-token"
+          }
+        }
+      }
+    }
+    copyToClipboard(JSON.stringify(jsonConfig, null, 2))
   }
 
   // Get servers that belong to this group
@@ -75,13 +117,42 @@ const GroupCard = ({
             <h2 className="text-xl font-semibold text-gray-800">{group.name}</h2>
             <div className="flex items-center ml-3">
               <span className="text-xs text-gray-500 mr-1">{group.id}</span>
-              <button
-                onClick={copyToClipboard}
-                className="p-1 text-gray-400 hover:text-gray-600 transition-colors"
-                title={t('common.copy')}
-              >
-                {copied ? <Check size={14} className="text-green-500" /> : <Copy size={14} />}
-              </button>
+              <div className="relative" ref={dropdownRef}>
+                <button
+                  onClick={() => setShowCopyDropdown(!showCopyDropdown)}
+                  className="p-1 text-gray-400 hover:text-gray-600 transition-colors flex items-center"
+                  title={t('common.copy')}
+                >
+                  {copied ? <Check size={14} className="text-green-500" /> : <Copy size={14} />}
+                  <DropdownIcon size={12} className="ml-1" />
+                </button>
+
+                {showCopyDropdown && (
+                  <div className="absolute top-full left-0 mt-1 bg-white shadow-lg rounded-md border border-gray-200 py-1 z-10 min-w-[140px]">
+                    <button
+                      onClick={handleCopyId}
+                      className="w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center"
+                    >
+                      <Copy size={12} className="mr-2" />
+                      {t('common.copyId')}
+                    </button>
+                    <button
+                      onClick={handleCopyUrl}
+                      className="w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center"
+                    >
+                      <Link size={12} className="mr-2" />
+                      {t('common.copyUrl')}
+                    </button>
+                    <button
+                      onClick={handleCopyJson}
+                      className="w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center"
+                    >
+                      <FileCode size={12} className="mr-2" />
+                      {t('common.copyJson')}
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
           {group.description && (
