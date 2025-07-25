@@ -98,7 +98,7 @@ const GroupCard = ({
         mcphub: {
           url: `${BASE_URL}/mcp/${group.id}`,
           headers: {
-            Authorization: "Bearer your-token"
+            Authorization: "Bearer <your-access-token>"
           }
         }
       }
