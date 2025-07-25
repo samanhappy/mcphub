@@ -515,7 +515,9 @@ export const updateSystemConfig = (req: Request, res: Response): void => {
           typeof routing.bearerAuthKey !== 'string' &&
           typeof routing.skipAuth !== 'boolean')) &&
       (!install ||
-        (typeof install.pythonIndexUrl !== 'string' && typeof install.npmRegistry !== 'string')) &&
+        (typeof install.pythonIndexUrl !== 'string' &&
+          typeof install.npmRegistry !== 'string' &&
+          typeof install.baseUrl !== 'string')) &&
       (!smartRouting ||
         (typeof smartRouting.enabled !== 'boolean' &&
           typeof smartRouting.dbUrl !== 'string' &&
@@ -543,6 +545,7 @@ export const updateSystemConfig = (req: Request, res: Response): void => {
         install: {
           pythonIndexUrl: '',
           npmRegistry: '',
+          baseUrl: 'http://localhost:3000',
         },
         smartRouting: {
           enabled: false,
@@ -568,6 +571,7 @@ export const updateSystemConfig = (req: Request, res: Response): void => {
       settings.systemConfig.install = {
         pythonIndexUrl: '',
         npmRegistry: '',
+        baseUrl: 'http://localhost:3000',
       };
     }
 
@@ -609,6 +613,9 @@ export const updateSystemConfig = (req: Request, res: Response): void => {
       }
       if (typeof install.npmRegistry === 'string') {
         settings.systemConfig.install.npmRegistry = install.npmRegistry;
+      }
+      if (typeof install.baseUrl === 'string') {
+        settings.systemConfig.install.baseUrl = install.baseUrl;
       }
     }
 

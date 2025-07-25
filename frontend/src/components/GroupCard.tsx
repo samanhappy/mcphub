@@ -4,6 +4,7 @@ import { Group, Server } from '@/types'
 import { Edit, Trash, Copy, Check, Link, FileCode, DropdownIcon } from '@/components/icons/LucideIcons'
 import DeleteDialog from '@/components/ui/DeleteDialog'
 import { useToast } from '@/contexts/ToastContext'
+import { useSettingsData } from '@/hooks/useSettingsData'
 
 interface GroupCardProps {
   group: Group
@@ -20,6 +21,7 @@ const GroupCard = ({
 }: GroupCardProps) => {
   const { t } = useTranslation()
   const { showToast } = useToast()
+  const { installConfig } = useSettingsData()
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [copied, setCopied] = useState(false)
   const [showCopyDropdown, setShowCopyDropdown] = useState(false)
@@ -89,14 +91,14 @@ const GroupCard = ({
   }
 
   const handleCopyUrl = () => {
-    copyToClipboard(`${BASE_URL}/mcp/${group.id}`)
+    copyToClipboard(`${installConfig.baseUrl}/mcp/${group.id}`)
   }
 
   const handleCopyJson = () => {
     const jsonConfig = {
       mcpServers: {
         mcphub: {
-          url: `${BASE_URL}/mcp/${group.id}`,
+          url: `${installConfig.baseUrl}/mcp/${group.id}`,
           headers: {
             Authorization: "Bearer <your-access-token>"
           }

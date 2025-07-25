@@ -23,9 +23,11 @@ const SettingsPage: React.FC = () => {
   const [installConfig, setInstallConfig] = useState<{
     pythonIndexUrl: string;
     npmRegistry: string;
+    baseUrl: string;
   }>({
     pythonIndexUrl: '',
     npmRegistry: '',
+    baseUrl: 'http://localhost:3000',
   });
 
   const [tempSmartRoutingConfig, setTempSmartRoutingConfig] = useState<{
@@ -125,14 +127,14 @@ const SettingsPage: React.FC = () => {
     await updateRoutingConfig('bearerAuthKey', tempRoutingConfig.bearerAuthKey);
   };
 
-  const handleInstallConfigChange = (key: 'pythonIndexUrl' | 'npmRegistry', value: string) => {
+  const handleInstallConfigChange = (key: 'pythonIndexUrl' | 'npmRegistry' | 'baseUrl', value: string) => {
     setInstallConfig({
       ...installConfig,
       [key]: value
     });
   };
 
-  const saveInstallConfig = async (key: 'pythonIndexUrl' | 'npmRegistry') => {
+  const saveInstallConfig = async (key: 'pythonIndexUrl' | 'npmRegistry' | 'baseUrl') => {
     await updateInstallConfig(key, installConfig[key]);
   };
 
@@ -467,6 +469,30 @@ const SettingsPage: React.FC = () => {
 
           {sectionsVisible.installConfig && (
             <div className="space-y-4 mt-4">
+              <div className="p-3 bg-gray-50 rounded-md">
+                <div className="mb-2">
+                  <h3 className="font-medium text-gray-700">{t('settings.baseUrl')}</h3>
+                  <p className="text-sm text-gray-500">{t('settings.baseUrlDescription')}</p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="text"
+                    value={installConfig.baseUrl}
+                    onChange={(e) => handleInstallConfigChange('baseUrl', e.target.value)}
+                    placeholder={t('settings.baseUrlPlaceholder')}
+                    className="flex-1 mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm form-input"
+                    disabled={loading}
+                  />
+                  <button
+                    onClick={() => saveInstallConfig('baseUrl')}
+                    disabled={loading}
+                    className="mt-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium disabled:opacity-50 btn-primary"
+                  >
+                    {t('common.save')}
+                  </button>
+                </div>
+              </div>
+
               <div className="p-3 bg-gray-50 rounded-md">
                 <div className="mb-2">
                   <h3 className="font-medium text-gray-700">{t('settings.pythonIndexUrl')}</h3>

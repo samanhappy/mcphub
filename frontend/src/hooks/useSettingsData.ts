@@ -16,6 +16,7 @@ interface RoutingConfig {
 interface InstallConfig {
   pythonIndexUrl: string;
   npmRegistry: string;
+  baseUrl: string;
 }
 
 interface SmartRoutingConfig {
@@ -57,6 +58,7 @@ export const useSettingsData = () => {
   const [installConfig, setInstallConfig] = useState<InstallConfig>({
     pythonIndexUrl: '',
     npmRegistry: '',
+    baseUrl: 'http://localhost:3000',
   });
 
   const [smartRoutingConfig, setSmartRoutingConfig] = useState<SmartRoutingConfig>({
@@ -108,6 +110,7 @@ export const useSettingsData = () => {
         setInstallConfig({
           pythonIndexUrl: data.data.systemConfig.install.pythonIndexUrl || '',
           npmRegistry: data.data.systemConfig.install.npmRegistry || '',
+          baseUrl: data.data.systemConfig.install.baseUrl || 'http://localhost:3000',
         });
       }
       if (data.success && data.data?.systemConfig?.smartRouting) {

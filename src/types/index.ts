@@ -86,6 +86,7 @@ export interface SystemConfig {
   install?: {
     pythonIndexUrl?: string; // Python package repository URL (UV_DEFAULT_INDEX)
     npmRegistry?: string; // NPM registry URL (npm_config_registry)
+    baseUrl?: string; // Base URL for group card copy operations
   };
   smartRouting?: SmartRoutingConfig;
 }
