@@ -89,14 +89,14 @@ const GroupCard = ({
   }
 
   const handleCopyUrl = () => {
-    copyToClipboard(`http://localhost:3000/mcp/${group.id}`)
+    copyToClipboard(`${BASE_URL}/mcp/${group.id}`)
   }
 
   const handleCopyJson = () => {
     const jsonConfig = {
       mcpServers: {
         mcphub: {
-          url: `http://localhost:3000/mcp/${group.id}`,
+          url: `${BASE_URL}/mcp/${group.id}`,
           headers: {
             Authorization: "Bearer your-token"
           }
