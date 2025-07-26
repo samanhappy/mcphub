@@ -108,6 +108,7 @@ const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
           >
             <SponsorIcon className="h-5 w-5" />
           </button> */}
+          <ThemeSwitch />
           {/* Language Switcher */}
           <div className="relative language-dropdown">
             <button
@@ -119,7 +120,7 @@ const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
             </button>
 
             {languageDropdownOpen && (
-              <div className="absolute left-0 mt-2 w-24 bg-white dark:bg-gray-800 rounded-md shadow-lg border border-gray-200 dark:border-gray-700 z-50">
+              <div className="absolute right-0 mt-2 w-24 bg-white dark:bg-gray-800 rounded-md shadow-lg border border-gray-200 dark:border-gray-700 z-50">
                 <div className="py-1">
                   <button
                     onClick={() => handleLanguageChange('en')}
@@ -142,9 +143,6 @@ const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
                 </div>
               </div>
             )}
-          </div>
-          <div className="ml-2">
-            <ThemeSwitch />
           </div>
         </div>
       </div>
