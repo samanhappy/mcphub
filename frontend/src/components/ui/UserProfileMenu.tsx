@@ -107,7 +107,7 @@ const UserProfileMenu: React.FC<UserProfileMenuProps> = ({ collapsed, version })
       </button>
 
       {isOpen && (
-        <div className="absolute top-0 transform -translate-y-full left-0 w-full min-w-max bg-white border border-gray-200 dark:bg-gray-800 py-1 z-50">
+        <div className="absolute top-0 transform -translate-y-full left-0 w-full min-w-max bg-white border border-gray-200 dark:bg-gray-800 z-50">
           <button
             onClick={handleSponsorClick}
             className="flex items-center w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
@@ -154,7 +154,7 @@ const UserProfileMenu: React.FC<UserProfileMenuProps> = ({ collapsed, version })
             )}
           </button>
 
-          <div className="border-t border-gray-200 dark:border-gray-600 my-1"></div>
+          <div className="border-t border-gray-200 dark:border-gray-600"></div>
 
           <button
             onClick={handleLogoutClick}

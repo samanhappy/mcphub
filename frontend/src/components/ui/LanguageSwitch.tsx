@@ -7,13 +7,21 @@ const LanguageSwitch: React.FC = () => {
   const [languageDropdownOpen, setLanguageDropdownOpen] = useState(false);
   const [currentLanguage, setCurrentLanguage] = useState(i18n.language);
 
+  // Available languages
+  const availableLanguages = [
+    { code: 'en', label: 'English' },
+    { code: 'zh', label: '中文' }
+  ];
+
   // Update current language when it changes
   useEffect(() => {
     setCurrentLanguage(i18n.language);
   }, [i18n.language]);
 
-  // Close dropdown when clicking outside
+  // Close dropdown when clicking outside (only needed when more than 2 languages)
   useEffect(() => {
+    if (availableLanguages.length <= 2) return;
+
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as HTMLElement;
       if (!target.closest('.language-dropdown')) {
@@ -28,7 +36,7 @@ const LanguageSwitch: React.FC = () => {
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [languageDropdownOpen]);
+  }, [languageDropdownOpen, availableLanguages.length]);
 
   const handleLanguageChange = (lang: string) => {
     localStorage.setItem('i18nextLng', lang);
@@ -36,37 +44,48 @@ const LanguageSwitch: React.FC = () => {
     window.location.reload();
   };
 
+  // Toggle between languages when only two options are available
+  const handleLanguageToggle = () => {
+    if (availableLanguages.length === 2) {
+      // Direct toggle between two languages
+      const currentLangCode = currentLanguage.startsWith('zh') ? 'zh' : 'en';
+      const nextLang = availableLanguages.find(lang => lang.code !== currentLangCode);
+      if (nextLang) {
+        handleLanguageChange(nextLang.code);
+      }
+    } else {
+      // Show dropdown for multiple languages
+      setLanguageDropdownOpen(!languageDropdownOpen);
+    }
+  };
+
   return (
     <div className="relative language-dropdown">
       <button
-        onClick={() => setLanguageDropdownOpen(!languageDropdownOpen)}
+        onClick={handleLanguageToggle}
         className="p-2 rounded-md text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none"
         aria-label="Language Switcher"
       >
         <LanguageIcon className="h-5 w-5" />
       </button>
 
-      {languageDropdownOpen && (
+      {/* Only show dropdown if there are more than 2 languages or if explicitly opened */}
+      {languageDropdownOpen && availableLanguages.length > 2 && (
         <div className="absolute right-0 mt-2 w-24 bg-white dark:bg-gray-800 rounded-md shadow-lg border border-gray-200 dark:border-gray-700 z-50">
           <div>
-            <button
-              onClick={() => handleLanguageChange('en')}
-              className={`flex items-center w-full px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 ${currentLanguage.startsWith('en')
-                ? 'bg-blue-50 text-blue-700'
-                : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-100'
+            {availableLanguages.map((lang) => (
+              <button
+                key={lang.code}
+                onClick={() => handleLanguageChange(lang.code)}
+                className={`flex items-center w-full px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 ${
+                  currentLanguage.startsWith(lang.code)
+                    ? 'bg-blue-50 text-blue-700'
+                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-100'
                 }`}
-            >
-              English
-            </button>
-            <button
-              onClick={() => handleLanguageChange('zh')}
-              className={`flex items-center w-full px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 ${currentLanguage.startsWith('zh')
-                ? 'bg-blue-50 text-blue-700'
-                : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-100'
-                }`}
-            >
-              中文
-            </button>
+              >
+                {lang.label}
+              </button>
+            ))}
           </div>
         </div>
       )}
