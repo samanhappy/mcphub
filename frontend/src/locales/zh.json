@@ -187,7 +187,8 @@
     "copySuccess": "已复制到剪贴板",
     "copyFailed": "复制失败",
     "close": "关闭",
-    "confirm": "确认"
+    "confirm": "确认",
+    "language": "语言"
   },
   "nav": {
     "dashboard": "仪表盘",

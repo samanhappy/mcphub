@@ -186,7 +186,8 @@
     "copySuccess": "Copied to clipboard",
     "copyFailed": "Copy failed",
     "close": "Close",
-    "confirm": "Confirm"
+    "confirm": "Confirm",
+    "language": "Language"
   },
   "nav": {
     "dashboard": "Dashboard",
