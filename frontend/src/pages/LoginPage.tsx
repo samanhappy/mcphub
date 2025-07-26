@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../contexts/AuthContext';
 import ThemeSwitch from '@/components/ui/ThemeSwitch';
+import LanguageSwitch from '@/components/ui/LanguageSwitch';
 
 const LoginPage: React.FC = () => {
   const { t } = useTranslation();
@@ -41,8 +42,9 @@ const LoginPage: React.FC = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 py-12 px-4 sm:px-6 lg:px-8 login-container">
-      <div className="absolute top-4 right-4">
+      <div className="absolute top-4 right-4 w-full max-w-xs flex justify-end">
         <ThemeSwitch />
+        <LanguageSwitch />
       </div>
       <div className="max-w-md w-full space-y-8 login-card p-8">
         <div>
