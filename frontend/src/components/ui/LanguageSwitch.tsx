@@ -77,11 +77,10 @@ const LanguageSwitch: React.FC = () => {
               <button
                 key={lang.code}
                 onClick={() => handleLanguageChange(lang.code)}
-                className={`flex items-center w-full px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 ${
-                  currentLanguage.startsWith(lang.code)
+                className={`flex items-center w-full px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 ${currentLanguage.startsWith(lang.code)
                     ? 'bg-blue-50 text-blue-700'
                     : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-100'
-                }`}
+                  }`}
               >
                 {lang.label}
               </button>
