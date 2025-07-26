@@ -10,15 +10,9 @@ import { PermissionChecker } from '@/components/PermissionChecker';
 import { PERMISSIONS } from '@/constants/permissions';
 
 const SettingsPage: React.FC = () => {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { showToast } = useToast();
-  const [currentLanguage, setCurrentLanguage] = useState(i18n.language);
-
-  // Update current language when it changes
-  useEffect(() => {
-    setCurrentLanguage(i18n.language);
-  }, [i18n.language]);
 
   const [installConfig, setInstallConfig] = useState<{
     pythonIndexUrl: string;
@@ -197,41 +191,9 @@ const SettingsPage: React.FC = () => {
     }, 2000);
   };
 
-  const handleLanguageChange = (lang: string) => {
-    localStorage.setItem('i18nextLng', lang);
-    window.location.reload();
-  };
-
   return (
     <div className="container mx-auto">
       <h1 className="text-2xl font-bold text-gray-900 mb-8">{t('pages.settings.title')}</h1>
-
-      {/* Language Settings */}
-      <div className="bg-white shadow rounded-lg py-4 px-6 mb-6 page-card">
-        <div className="flex items-center justify-between">
-          <h2 className="font-semibold text-gray-800">{t('pages.settings.language')}</h2>
-          <div className="flex space-x-3">
-            <button
-              className={`px-3 py-1.5 rounded-md transition-all duration-200 text-sm ${currentLanguage.startsWith('en')
-                ? 'bg-blue-500 text-white btn-primary'
-                : 'bg-blue-100 text-blue-800 hover:bg-blue-200 btn-secondary'
-                }`}
-              onClick={() => handleLanguageChange('en')}
-            >
-              English
-            </button>
-            <button
-              className={`px-3 py-1.5 rounded-md transition-all duration-200 text-sm ${currentLanguage.startsWith('zh')
-                ? 'bg-blue-500 text-white btn-primary'
-                : 'bg-blue-100 text-blue-800 hover:bg-blue-200 btn-secondary'
-                }`}
-              onClick={() => handleLanguageChange('zh')}
-            >
-              中文
-            </button>
-          </div>
-        </div>
-      </div>
 
       {/* Smart Routing Configuration Settings */}
       <PermissionChecker permissions={PERMISSIONS.SETTINGS_SMART_ROUTING}>
