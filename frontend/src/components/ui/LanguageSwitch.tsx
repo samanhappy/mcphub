@@ -18,10 +18,8 @@ const LanguageSwitch: React.FC = () => {
     setCurrentLanguage(i18n.language);
   }, [i18n.language]);
 
-  // Close dropdown when clicking outside (only needed when more than 2 languages)
+  // Close dropdown when clicking outside
   useEffect(() => {
-    if (availableLanguages.length <= 2) return;
-
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as HTMLElement;
       if (!target.closest('.language-dropdown')) {
@@ -36,7 +34,7 @@ const LanguageSwitch: React.FC = () => {
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [languageDropdownOpen, availableLanguages.length]);
+  }, [languageDropdownOpen]);
 
   const handleLanguageChange = (lang: string) => {
     localStorage.setItem('i18nextLng', lang);
@@ -44,19 +42,9 @@ const LanguageSwitch: React.FC = () => {
     window.location.reload();
   };
 
-  // Toggle between languages when only two options are available
+  // Always show dropdown for language selection
   const handleLanguageToggle = () => {
-    if (availableLanguages.length === 2) {
-      // Direct toggle between two languages
-      const currentLangCode = currentLanguage.startsWith('zh') ? 'zh' : 'en';
-      const nextLang = availableLanguages.find(lang => lang.code !== currentLangCode);
-      if (nextLang) {
-        handleLanguageChange(nextLang.code);
-      }
-    } else {
-      // Show dropdown for multiple languages
-      setLanguageDropdownOpen(!languageDropdownOpen);
-    }
+    setLanguageDropdownOpen(!languageDropdownOpen);
   };
 
   return (
@@ -69,8 +57,8 @@ const LanguageSwitch: React.FC = () => {
         <LanguageIcon className="h-5 w-5" />
       </button>
 
-      {/* Only show dropdown if there are more than 2 languages or if explicitly opened */}
-      {languageDropdownOpen && availableLanguages.length > 2 && (
+      {/* Show dropdown when opened */}
+      {languageDropdownOpen && (
         <div className="absolute right-0 mt-2 w-24 bg-white dark:bg-gray-800 rounded-md shadow-lg border border-gray-200 dark:border-gray-700 z-50">
           <div>
             {availableLanguages.map((lang) => (
@@ -78,8 +66,8 @@ const LanguageSwitch: React.FC = () => {
                 key={lang.code}
                 onClick={() => handleLanguageChange(lang.code)}
                 className={`flex items-center w-full px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 ${currentLanguage.startsWith(lang.code)
-                    ? 'bg-blue-50 text-blue-700'
-                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-100'
+                  ? 'bg-blue-50 text-blue-700'
+                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-100'
                   }`}
               >
                 {lang.label}
