@@ -137,11 +137,17 @@ export interface Server {
 }
 
 // Group types
+// Group server configuration - supports tool selection
+export interface IGroupServerConfig {
+  name: string; // Server name
+  tools?: string[] | 'all'; // Array of specific tool names to include, or 'all' for all tools (default: 'all')
+}
+
 export interface Group {
   id: string;
   name: string;
   description?: string;
-  servers: string[];
+  servers: string[] | IGroupServerConfig[]; // Supports both old and new format
 }
 
 // Environment variable types
@@ -196,7 +202,7 @@ export interface ServerFormData {
 export interface GroupFormData {
   name: string;
   description: string;
-  servers: string[]; // Added servers array to include in form data
+  servers: string[] | IGroupServerConfig[]; // Updated to support new format
 }
 
 // API response types

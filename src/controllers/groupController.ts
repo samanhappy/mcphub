@@ -9,6 +9,9 @@ import {
   deleteGroup,
   addServerToGroup,
   removeServerFromGroup,
+  getServerConfigInGroup,
+  getServerConfigsInGroup,
+  updateServerToolsInGroup,
 } from '../services/groupService.js';
 
 // Get all groups
@@ -153,7 +156,7 @@ export const updateExistingGroup = (req: Request, res: Response): void => {
   }
 };
 
-// Update servers in a group (batch update)
+// Update servers in a group (batch update) - supports both string[] and server config format
 export const updateGroupServersBatch = (req: Request, res: Response): void => {
   try {
     const { id } = req.params;
@@ -170,9 +173,34 @@ export const updateGroupServersBatch = (req: Request, res: Response): void => {
     if (!Array.isArray(servers)) {
       res.status(400).json({
         success: false,
-        message: 'Servers must be an array of server names',
+        message: 'Servers must be an array of server names or server configurations',
       });
       return;
+    }
+
+    // Validate server configurations if provided in new format
+    for (const server of servers) {
+      if (typeof server === 'object' && server !== null) {
+        if (!server.name || typeof server.name !== 'string') {
+          res.status(400).json({
+            success: false,
+            message: 'Each server configuration must have a valid name',
+          });
+          return;
+        }
+        if (
+          server.tools &&
+          server.tools !== 'all' &&
+          (!Array.isArray(server.tools) ||
+            !server.tools.every((tool: any) => typeof tool === 'string'))
+        ) {
+          res.status(400).json({
+            success: false,
+            message: 'Tools must be "all" or an array of strings',
+          });
+          return;
+        }
+      }
     }
 
     const updatedGroup = updateGroupServers(id, servers);
@@ -340,6 +368,115 @@ export const getGroupServers = (req: Request, res: Response): void => {
     res.status(500).json({
       success: false,
       message: 'Failed to get group servers',
+    });
+  }
+};
+
+// Get server configurations in a group (including tool selections)
+export const getGroupServerConfigs = (req: Request, res: Response): void => {
+  try {
+    const { id } = req.params;
+    if (!id) {
+      res.status(400).json({
+        success: false,
+        message: 'Group ID is required',
+      });
+      return;
+    }
+
+    const serverConfigs = getServerConfigsInGroup(id);
+    const response: ApiResponse = {
+      success: true,
+      data: serverConfigs,
+    };
+    res.json(response);
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get group server configurations',
+    });
+  }
+};
+
+// Get specific server configuration in a group
+export const getGroupServerConfig = (req: Request, res: Response): void => {
+  try {
+    const { id, serverName } = req.params;
+    if (!id || !serverName) {
+      res.status(400).json({
+        success: false,
+        message: 'Group ID and server name are required',
+      });
+      return;
+    }
+
+    const serverConfig = getServerConfigInGroup(id, serverName);
+    if (!serverConfig) {
+      res.status(404).json({
+        success: false,
+        message: 'Server not found in group',
+      });
+      return;
+    }
+
+    const response: ApiResponse = {
+      success: true,
+      data: serverConfig,
+    };
+    res.json(response);
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get server configuration',
+    });
+  }
+};
+
+// Update tools for a specific server in a group
+export const updateGroupServerTools = (req: Request, res: Response): void => {
+  try {
+    const { id, serverName } = req.params;
+    const { tools } = req.body;
+
+    if (!id || !serverName) {
+      res.status(400).json({
+        success: false,
+        message: 'Group ID and server name are required',
+      });
+      return;
+    }
+
+    // Validate tools parameter
+    if (
+      tools !== 'all' &&
+      (!Array.isArray(tools) || !tools.every((tool) => typeof tool === 'string'))
+    ) {
+      res.status(400).json({
+        success: false,
+        message: 'Tools must be "all" or an array of strings',
+      });
+      return;
+    }
+
+    const updatedGroup = updateServerToolsInGroup(id, serverName, tools);
+    if (!updatedGroup) {
+      res.status(404).json({
+        success: false,
+        message: 'Group or server not found',
+      });
+      return;
+    }
+
+    const response: ApiResponse = {
+      success: true,
+      data: updatedGroup,
+      message: 'Server tools updated successfully',
+    };
+    res.json(response);
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
     });
   }
 };

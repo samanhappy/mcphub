@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Group, ApiResponse } from '@/types';
+import { Group, ApiResponse, IGroupServerConfig } from '@/types';
 import { getApiUrl } from '../utils/runtime';
 
 export const useGroupData = () => {
@@ -49,7 +49,11 @@ export const useGroupData = () => {
   }, []);
 
   // Create a new group with server associations
-  const createGroup = async (name: string, description?: string, servers: string[] = []) => {
+  const createGroup = async (
+    name: string,
+    description?: string,
+    servers: string[] | IGroupServerConfig[] = [],
+  ) => {
     try {
       const token = localStorage.getItem('mcphub_token');
       const response = await fetch(getApiUrl('/groups'), {
@@ -79,7 +83,7 @@ export const useGroupData = () => {
   // Update an existing group with server associations
   const updateGroup = async (
     id: string,
-    data: { name?: string; description?: string; servers?: string[] },
+    data: { name?: string; description?: string; servers?: string[] | IGroupServerConfig[] },
   ) => {
     try {
       const token = localStorage.getItem('mcphub_token');
@@ -108,7 +112,7 @@ export const useGroupData = () => {
   };
 
   // Update servers in a group (for batch updates)
-  const updateGroupServers = async (groupId: string, servers: string[]) => {
+  const updateGroupServers = async (groupId: string, servers: string[] | IGroupServerConfig[]) => {
     try {
       const token = localStorage.getItem('mcphub_token');
       const response = await fetch(getApiUrl(`/groups/${groupId}/servers/batch`), {

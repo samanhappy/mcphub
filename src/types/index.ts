@@ -17,8 +17,14 @@ export interface IGroup {
   id: string; // Unique UUID for the group
   name: string; // Display name of the group
   description?: string; // Optional description of the group
-  servers: string[]; // Array of server names that belong to this group
+  servers: string[] | IGroupServerConfig[]; // Array of server names or server configurations that belong to this group
   owner?: string; // Owner of the group, defaults to 'admin' user
+}
+
+// Server configuration within a group - supports tool selection
+export interface IGroupServerConfig {
+  name: string; // Server name
+  tools?: string[] | 'all'; // Array of specific tool names to include, or 'all' for all tools (default: 'all')
 }
 
 // Market server types

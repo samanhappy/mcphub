@@ -1,8 +1,20 @@
 import { v4 as uuidv4 } from 'uuid';
-import { IGroup } from '../types/index.js';
+import { IGroup, IGroupServerConfig } from '../types/index.js';
 import { loadSettings, saveSettings } from '../config/index.js';
 import { notifyToolChanged } from './mcpService.js';
 import { getDataService } from './services.js';
+
+// Helper function to normalize group servers configuration
+const normalizeGroupServers = (servers: string[] | IGroupServerConfig[]): IGroupServerConfig[] => {
+  return servers.map((server) => {
+    if (typeof server === 'string') {
+      // Backward compatibility: string format means all tools
+      return { name: server, tools: 'all' };
+    }
+    // New format: ensure tools defaults to 'all' if not specified
+    return { name: server.name, tools: server.tools || 'all' };
+  });
+};
 
 // Get all groups
 export const getAllGroups = (): IGroup[] => {
@@ -32,7 +44,7 @@ export const getGroupByIdOrName = (key: string): IGroup | undefined => {
 export const createGroup = (
   name: string,
   description?: string,
-  servers: string[] = [],
+  servers: string[] | IGroupServerConfig[] = [],
   owner?: string,
 ): IGroup | null => {
   try {
@@ -44,8 +56,11 @@ export const createGroup = (
       return null;
     }
 
-    // Filter out non-existent servers
-    const validServers = servers.filter((serverName) => settings.mcpServers[serverName]);
+    // Normalize servers configuration and filter out non-existent servers
+    const normalizedServers = normalizeGroupServers(servers);
+    const validServers: IGroupServerConfig[] = normalizedServers.filter(
+      (serverConfig) => settings.mcpServers[serverConfig.name],
+    );
 
     const newGroup: IGroup = {
       id: uuidv4(),
@@ -91,9 +106,12 @@ export const updateGroup = (id: string, data: Partial<IGroup>): IGroup | null =>
       return null;
     }
 
-    // If servers array is provided, validate server existence
+    // If servers array is provided, validate server existence and normalize format
     if (data.servers) {
-      data.servers = data.servers.filter((serverName) => settings.mcpServers[serverName]);
+      const normalizedServers = normalizeGroupServers(data.servers);
+      data.servers = normalizedServers.filter(
+        (serverConfig) => settings.mcpServers[serverConfig.name],
+      );
     }
 
     const updatedGroup = {
@@ -116,7 +134,11 @@ export const updateGroup = (id: string, data: Partial<IGroup>): IGroup | null =>
 };
 
 // Update servers in a group (batch update)
-export const updateGroupServers = (groupId: string, servers: string[]): IGroup | null => {
+// Update group servers (maintaining backward compatibility)
+export const updateGroupServers = (
+  groupId: string,
+  servers: string[] | IGroupServerConfig[],
+): IGroup | null => {
   try {
     const settings = loadSettings();
     if (!settings.groups) {
@@ -128,8 +150,11 @@ export const updateGroupServers = (groupId: string, servers: string[]): IGroup |
       return null;
     }
 
-    // Filter out non-existent servers
-    const validServers = servers.filter((serverName) => settings.mcpServers[serverName]);
+    // Normalize and filter out non-existent servers
+    const normalizedServers = normalizeGroupServers(servers);
+    const validServers = normalizedServers.filter(
+      (serverConfig) => settings.mcpServers[serverConfig.name],
+    );
 
     settings.groups[groupIndex].servers = validServers;
 
@@ -186,10 +211,12 @@ export const addServerToGroup = (groupId: string, serverName: string): IGroup | 
     }
 
     const group = settings.groups[groupIndex];
+    const normalizedServers = normalizeGroupServers(group.servers);
 
     // Add server to group if not already in it
-    if (!group.servers.includes(serverName)) {
-      group.servers.push(serverName);
+    if (!normalizedServers.some((server) => server.name === serverName)) {
+      normalizedServers.push({ name: serverName, tools: 'all' });
+      group.servers = normalizedServers;
 
       if (!saveSettings(settings)) {
         return null;
@@ -218,7 +245,8 @@ export const removeServerFromGroup = (groupId: string, serverName: string): IGro
     }
 
     const group = settings.groups[groupIndex];
-    group.servers = group.servers.filter((name) => name !== serverName);
+    const normalizedServers = normalizeGroupServers(group.servers);
+    group.servers = normalizedServers.filter((server) => server.name !== serverName);
 
     if (!saveSettings(settings)) {
       return null;
@@ -234,5 +262,71 @@ export const removeServerFromGroup = (groupId: string, serverName: string): IGro
 // Get all servers in a group
 export const getServersInGroup = (groupId: string): string[] => {
   const group = getGroupByIdOrName(groupId);
-  return group ? group.servers : [];
+  if (!group) return [];
+  const normalizedServers = normalizeGroupServers(group.servers);
+  return normalizedServers.map((server) => server.name);
+};
+
+// Get server configuration from group (including tool selection)
+export const getServerConfigInGroup = (
+  groupId: string,
+  serverName: string,
+): IGroupServerConfig | undefined => {
+  const group = getGroupByIdOrName(groupId);
+  if (!group) return undefined;
+  const normalizedServers = normalizeGroupServers(group.servers);
+  return normalizedServers.find((server) => server.name === serverName);
+};
+
+// Get all server configurations in a group
+export const getServerConfigsInGroup = (groupId: string): IGroupServerConfig[] => {
+  const group = getGroupByIdOrName(groupId);
+  if (!group) return [];
+  return normalizeGroupServers(group.servers);
+};
+
+// Update tools selection for a specific server in a group
+export const updateServerToolsInGroup = (
+  groupId: string,
+  serverName: string,
+  tools: string[] | 'all',
+): IGroup | null => {
+  try {
+    const settings = loadSettings();
+    if (!settings.groups) {
+      return null;
+    }
+
+    const groupIndex = settings.groups.findIndex((group) => group.id === groupId);
+    if (groupIndex === -1) {
+      return null;
+    }
+
+    // Verify server exists
+    if (!settings.mcpServers[serverName]) {
+      return null;
+    }
+
+    const group = settings.groups[groupIndex];
+    const normalizedServers = normalizeGroupServers(group.servers);
+
+    const serverIndex = normalizedServers.findIndex((server) => server.name === serverName);
+    if (serverIndex === -1) {
+      return null; // Server not in group
+    }
+
+    // Update the tools configuration for the server
+    normalizedServers[serverIndex].tools = tools;
+    group.servers = normalizedServers;
+
+    if (!saveSettings(settings)) {
+      return null;
+    }
+
+    notifyToolChanged();
+    return group;
+  } catch (error) {
+    console.error(`Failed to update tools for server ${serverName} in group ${groupId}:`, error);
+    return null;
+  }
 };

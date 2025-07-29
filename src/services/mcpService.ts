@@ -8,7 +8,7 @@ import { ServerInfo, ServerConfig, ToolInfo } from '../types/index.js';
 import { loadSettings, saveSettings, expandEnvVars, replaceEnvVars } from '../config/index.js';
 import config from '../config/index.js';
 import { getGroup } from './sseService.js';
-import { getServersInGroup } from './groupService.js';
+import { getServersInGroup, getServerConfigInGroup } from './groupService.js';
 import { saveToolsAsVectorEmbeddings, searchToolsByVector } from './vectorSearchService.js';
 import { OpenAPIClient } from '../clients/openapi.js';
 import { getDataService } from './services.js';
@@ -823,10 +823,22 @@ Available servers: ${serversList}`;
   const allTools = [];
   for (const serverInfo of allServerInfos) {
     if (serverInfo.tools && serverInfo.tools.length > 0) {
-      // Filter tools based on server configuration and apply custom descriptions
-      const enabledTools = filterToolsByConfig(serverInfo.name, serverInfo.tools);
+      // Filter tools based on server configuration
+      let enabledTools = filterToolsByConfig(serverInfo.name, serverInfo.tools);
 
-      // Apply custom descriptions from configuration
+      // If this is a group request, apply group-level tool filtering
+      if (group) {
+        const serverConfig = getServerConfigInGroup(group, serverInfo.name);
+        if (serverConfig && serverConfig.tools !== 'all' && Array.isArray(serverConfig.tools)) {
+          // Filter tools based on group configuration
+          const allowedToolNames = serverConfig.tools.map(
+            (toolName) => `${serverInfo.name}-${toolName}`,
+          );
+          enabledTools = enabledTools.filter((tool) => allowedToolNames.includes(tool.name));
+        }
+      }
+
+      // Apply custom descriptions from server configuration
       const settings = loadSettings();
       const serverConfig = settings.mcpServers[serverInfo.name];
       const toolsWithCustomDescriptions = enabledTools.map((tool) => {

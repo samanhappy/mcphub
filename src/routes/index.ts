@@ -22,6 +22,9 @@ import {
   removeServerFromExistingGroup,
   getGroupServers,
   updateGroupServersBatch,
+  getGroupServerConfigs,
+  getGroupServerConfig,
+  updateGroupServerTools,
 } from '../controllers/groupController.js';
 import {
   getUsers,
@@ -72,6 +75,10 @@ export const initRoutes = (app: express.Application): void => {
   router.get('/groups/:id/servers', getGroupServers);
   // New route for batch updating servers in a group
   router.put('/groups/:id/servers/batch', updateGroupServersBatch);
+  // New routes for server configurations and tool management in groups
+  router.get('/groups/:id/server-configs', getGroupServerConfigs);
+  router.get('/groups/:id/server-configs/:serverName', getGroupServerConfig);
+  router.put('/groups/:id/server-configs/:serverName/tools', updateGroupServerTools);
 
   // User management routes (admin only)
   router.get('/users', getUsers);

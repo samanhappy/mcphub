@@ -271,7 +271,14 @@
     "noGroups": "No groups available. Create a new group to get started.",
     "noServers": "No servers in this group.",
     "noServerOptions": "No servers available",
-    "serverCount": "{{count}} Servers"
+    "serverCount": "{{count}} Servers",
+    "toolSelection": "Tool Selection",
+    "toolsSelected": "Selected",
+    "allTools": "All",
+    "selectedTools": "Selected tools",
+    "selectAll": "Select All",
+    "selectNone": "Select None",
+    "configureTools": "Configure Tools"
   },
   "market": {
     "title": "Server Market",

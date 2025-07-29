@@ -272,7 +272,14 @@
     "noGroups": "暂无可用分组。创建一个新分组以开始使用。",
     "noServers": "此分组中没有服务器。",
     "noServerOptions": "没有可用的服务器",
-    "serverCount": "{{count}} 台服务器"
+    "serverCount": "{{count}} 台服务器",
+    "toolSelection": "工具选择",
+    "toolsSelected": "选择",
+    "allTools": "全部",
+    "selectedTools": "选中的工具",
+    "selectAll": "全选",
+    "selectNone": "全不选",
+    "configureTools": "配置工具"
   },
   "market": {
     "title": "服务器市场",
