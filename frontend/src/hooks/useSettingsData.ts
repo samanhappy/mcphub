@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ApiResponse } from '@/types';
 import { useToast } from '@/contexts/ToastContext';
-import { getApiUrl } from '../utils/runtime';
+import { apiGet, apiPut } from '../utils/fetchInterceptor';
 
 // Define types for the settings data
 interface RoutingConfig {
@@ -84,18 +84,7 @@ export const useSettingsData = () => {
     setError(null);
 
     try {
-      const token = localStorage.getItem('mcphub_token');
-      const response = await fetch(getApiUrl('/settings'), {
-        headers: {
-          'x-auth-token': token || '',
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! Status: ${response.status}`);
-      }
-
-      const data: ApiResponse<SystemSettings> = await response.json();
+      const data: ApiResponse<SystemSettings> = await apiGet('/settings');
 
       if (data.success && data.data?.systemConfig?.routing) {
         setRoutingConfig({
@@ -134,33 +123,16 @@ export const useSettingsData = () => {
   }, [t]); // 移除 showToast 依赖
 
   // Update routing configuration
-  const updateRoutingConfig = async <T extends keyof RoutingConfig>(
-    key: T,
-    value: RoutingConfig[T],
-  ) => {
+  const updateRoutingConfig = async (key: keyof RoutingConfig, value: any) => {
     setLoading(true);
     setError(null);
 
     try {
-      const token = localStorage.getItem('mcphub_token');
-      const response = await fetch(getApiUrl('/system-config'), {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-auth-token': token || '',
+      const data = await apiPut('/system-config', {
+        routing: {
+          [key]: value,
         },
-        body: JSON.stringify({
-          routing: {
-            [key]: value,
-          },
-        }),
       });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! Status: ${response.status}`);
-      }
-
-      const data = await response.json();
 
       if (data.success) {
         setRoutingConfig({
@@ -170,7 +142,7 @@ export const useSettingsData = () => {
         showToast(t('settings.systemConfigUpdated'));
         return true;
       } else {
-        showToast(t('errors.failedToUpdateRouteConfig'));
+        showToast(data.message || t('errors.failedToUpdateRouteConfig'));
         return false;
       }
     } catch (error) {
@@ -189,25 +161,11 @@ export const useSettingsData = () => {
     setError(null);
 
     try {
-      const token = localStorage.getItem('mcphub_token');
-      const response = await fetch(getApiUrl('/system-config'), {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-auth-token': token || '',
+      const data = await apiPut('/system-config', {
+        install: {
+          [key]: value,
         },
-        body: JSON.stringify({
-          install: {
-            [key]: value,
-          },
-        }),
       });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! Status: ${response.status}`);
-      }
-
-      const data = await response.json();
 
       if (data.success) {
         setInstallConfig({
@@ -217,7 +175,7 @@ export const useSettingsData = () => {
         showToast(t('settings.systemConfigUpdated'));
         return true;
       } else {
-        showToast(t('errors.failedToUpdateSystemConfig'));
+        showToast(data.message || t('errors.failedToUpdateSystemConfig'));
         return false;
       }
     } catch (error) {
@@ -239,26 +197,11 @@ export const useSettingsData = () => {
     setError(null);
 
     try {
-      const token = localStorage.getItem('mcphub_token');
-      const response = await fetch(getApiUrl('/system-config'), {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-auth-token': token || '',
+      const data = await apiPut('/system-config', {
+        smartRouting: {
+          [key]: value,
         },
-        body: JSON.stringify({
-          smartRouting: {
-            [key]: value,
-          },
-        }),
       });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || `HTTP error! Status: ${response.status}`);
-      }
-
-      const data = await response.json();
 
       if (data.success) {
         setSmartRoutingConfig({
@@ -289,24 +232,9 @@ export const useSettingsData = () => {
     setError(null);
 
     try {
-      const token = localStorage.getItem('mcphub_token');
-      const response = await fetch(getApiUrl('/system-config'), {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-auth-token': token || '',
-        },
-        body: JSON.stringify({
-          smartRouting: updates,
-        }),
+      const data = await apiPut('/system-config', {
+        smartRouting: updates,
       });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || `HTTP error! Status: ${response.status}`);
-      }
-
-      const data = await response.json();
 
       if (data.success) {
         setSmartRoutingConfig({
@@ -337,23 +265,9 @@ export const useSettingsData = () => {
     setError(null);
 
     try {
-      const token = localStorage.getItem('mcphub_token');
-      const response = await fetch(getApiUrl('/system-config'), {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-auth-token': token || '',
-        },
-        body: JSON.stringify({
-          routing: updates,
-        }),
+      const data = await apiPut('/system-config', {
+        routing: updates,
       });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! Status: ${response.status}`);
-      }
-
-      const data = await response.json();
 
       if (data.success) {
         setRoutingConfig({
@@ -363,7 +277,7 @@ export const useSettingsData = () => {
         showToast(t('settings.systemConfigUpdated'));
         return true;
       } else {
-        showToast(t('errors.failedToUpdateRouteConfig'));
+        showToast(data.message || t('errors.failedToUpdateRouteConfig'));
         return false;
       }
     } catch (error) {

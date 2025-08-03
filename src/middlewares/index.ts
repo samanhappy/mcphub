@@ -1,6 +1,7 @@
 import express, { Request, Response, NextFunction } from 'express';
 import { auth } from './auth.js';
 import { userContextMiddleware } from './userContext.js';
+import { i18nMiddleware } from './i18n.js';
 import { initializeDefaultUser } from '../models/User.js';
 import config from '../config/index.js';
 
@@ -18,6 +19,9 @@ export const errorHandler = (
 };
 
 export const initMiddlewares = (app: express.Application): void => {
+  // Apply i18n middleware first to detect language for all requests
+  app.use(i18nMiddleware);
+
   // Serve static files from the dynamically determined frontend path
   // Note: Static files will be handled by the server directly, not here
 

@@ -56,8 +56,8 @@ const EditGroupForm = ({ group, onEdit, onCancel }: EditGroupFormProps) => {
         servers: formData.servers
       })
 
-      if (!result) {
-        setError(t('groups.updateError'))
+      if (!result || !result.success) {
+        setError(result?.message || t('groups.updateError'))
         setIsSubmitting(false)
         return
       }

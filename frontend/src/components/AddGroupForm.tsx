@@ -50,9 +50,8 @@ const AddGroupForm = ({ onAdd, onCancel }: AddGroupFormProps) => {
       }
 
       const result = await createGroup(formData.name, formData.description, formData.servers)
-
-      if (!result) {
-        setError(t('groups.createError'))
+      if (!result || !result.success) {
+        setError(result?.message || t('groups.createError'))
         setIsSubmitting(false)
         return
       }

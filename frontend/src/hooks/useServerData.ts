@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Server, ApiResponse } from '@/types';
-import { getApiUrl } from '../utils/runtime';
+import { apiGet, apiPost, apiDelete } from '../utils/fetchInterceptor';
 
 // Configuration options
 const CONFIG = {
@@ -44,13 +44,7 @@ export const useServerData = () => {
 
     const fetchServers = async () => {
       try {
-        const token = localStorage.getItem('mcphub_token');
-        const response = await fetch(getApiUrl('/servers'), {
-          headers: {
-            'x-auth-token': token || '',
-          },
-        });
-        const data = await response.json();
+        const data = await apiGet('/servers');
 
         if (data && data.success && Array.isArray(data.data)) {
           setServers(data.data);
@@ -97,13 +91,7 @@ export const useServerData = () => {
     // Initialization phase request function
     const fetchInitialData = async () => {
       try {
-        const token = localStorage.getItem('mcphub_token');
-        const response = await fetch(getApiUrl('/servers'), {
-          headers: {
-            'x-auth-token': token || '',
-          },
-        });
-        const data = await response.json();
+        const data = await apiGet('/servers');
 
         // Handle API response wrapper object, extract data field
         if (data && data.success && Array.isArray(data.data)) {
@@ -203,14 +191,8 @@ export const useServerData = () => {
   const handleServerEdit = async (server: Server) => {
     try {
       // Fetch settings to get the full server config before editing
-      const token = localStorage.getItem('mcphub_token');
-      const response = await fetch(getApiUrl('/settings'), {
-        headers: {
-          'x-auth-token': token || '',
-        },
-      });
-
-      const settingsData: ApiResponse<{ mcpServers: Record<string, any> }> = await response.json();
+      const settingsData: ApiResponse<{ mcpServers: Record<string, any> }> =
+        await apiGet('/settings');
 
       if (
         settingsData &&
@@ -240,17 +222,10 @@ export const useServerData = () => {
 
   const handleServerRemove = async (serverName: string) => {
     try {
-      const token = localStorage.getItem('mcphub_token');
-      const response = await fetch(getApiUrl(`/servers/${serverName}`), {
-        method: 'DELETE',
-        headers: {
-          'x-auth-token': token || '',
-        },
-      });
-      const result = await response.json();
+      const result = await apiDelete(`/servers/${serverName}`);
 
-      if (!response.ok) {
-        setError(result.message || t('server.deleteError', { serverName }));
+      if (!result || !result.success) {
+        setError(result?.message || t('server.deleteError', { serverName }));
         return false;
       }
 
@@ -264,21 +239,11 @@ export const useServerData = () => {
 
   const handleServerToggle = async (server: Server, enabled: boolean) => {
     try {
-      const token = localStorage.getItem('mcphub_token');
-      const response = await fetch(getApiUrl(`/servers/${server.name}/toggle`), {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-auth-token': token || '',
-        },
-        body: JSON.stringify({ enabled }),
-      });
+      const result = await apiPost(`/servers/${server.name}/toggle`, { enabled });
 
-      const result = await response.json();
-
-      if (!response.ok) {
+      if (!result || !result.success) {
         console.error('Failed to toggle server:', result);
-        setError(t('server.toggleError', { serverName: server.name }));
+        setError(result?.message || t('server.toggleError', { serverName: server.name }));
         return false;
       }
 

@@ -103,7 +103,6 @@ const ServersPage: React.FC = () => {
         <div className="mb-6 bg-red-50 border-l-4 border-red-500 p-4 rounded shadow-sm error-box">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-red-600 text-lg font-medium">{t('app.error')}</h3>
               <p className="text-gray-600 mt-1">{error}</p>
             </div>
             <button

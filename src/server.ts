@@ -5,6 +5,7 @@ import fs from 'fs';
 import { initUpstreamServers, connected } from './services/mcpService.js';
 import { initMiddlewares } from './middlewares/index.js';
 import { initRoutes } from './routes/index.js';
+import { initI18n } from './utils/i18n.js';
 import {
   handleSseConnection,
   handleSseMessage,
@@ -31,6 +32,10 @@ export class AppServer {
 
   async initialize(): Promise<void> {
     try {
+      // Initialize i18n before other components
+      await initI18n();
+      console.log('i18n initialized successfully');
+
       // Initialize default admin user if no users exist
       await initializeDefaultUser();
 

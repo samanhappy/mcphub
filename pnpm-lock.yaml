@@ -44,6 +44,9 @@ importers:
       express-validator:
         specifier: ^7.2.1
         version: 7.2.1
+      i18next-fs-backend:
+        specifier: ^2.6.0
+        version: 2.6.0
       jsonwebtoken:
         specifier: ^9.0.2
         version: 9.0.2
@@ -2668,6 +2671,9 @@ packages:
 
   i18next-browser-languagedetector@8.2.0:
     resolution: {integrity: sha512-P+3zEKLnOF0qmiesW383vsLdtQVyKtCNA9cjSoKCppTKPQVfKd2W8hbVo5ZhNJKDqeM7BOcvNoKJOjpHh4Js9g==}
+
+  i18next-fs-backend@2.6.0:
+    resolution: {integrity: sha512-3ZlhNoF9yxnM8pa8bWp5120/Ob6t4lVl1l/tbLmkml/ei3ud8IWySCHt2lrY5xWRlSU5D9IV2sm5bEbGuTqwTw==}
 
   i18next@24.2.3:
     resolution: {integrity: sha512-lfbf80OzkocvX7nmZtu7nSTNbrTYR52sLWxPtlXX1zAhVw8WEnFk4puUkCR4B1dNQwbSpEHHHemcZu//7EcB7A==}
@@ -6901,6 +6907,8 @@ snapshots:
   i18next-browser-languagedetector@8.2.0:
     dependencies:
       '@babel/runtime': 7.27.0
+
+  i18next-fs-backend@2.6.0: {}
 
   i18next@24.2.3(typescript@5.8.3):
     dependencies:

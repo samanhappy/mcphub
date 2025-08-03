@@ -18,10 +18,17 @@ const TOKEN_EXPIRY = '24h';
 
 // Login user
 export const login = async (req: Request, res: Response): Promise<void> => {
+  // Get translation function from request
+  const t = (req as any).t;
+
   // Validate request
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    res.status(400).json({ success: false, errors: errors.array() });
+    res.status(400).json({
+      success: false,
+      message: t('api.errors.validation_failed'),
+      errors: errors.array(),
+    });
     return;
   }
 
@@ -32,7 +39,10 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     const user = findUserByUsername(username);
 
     if (!user) {
-      res.status(401).json({ success: false, message: 'Invalid credentials' });
+      res.status(401).json({
+        success: false,
+        message: t('api.errors.invalid_credentials'),
+      });
       return;
     }
 
@@ -40,7 +50,10 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     const isPasswordValid = await verifyPassword(password, user.password);
 
     if (!isPasswordValid) {
-      res.status(401).json({ success: false, message: 'Invalid credentials' });
+      res.status(401).json({
+        success: false,
+        message: t('api.errors.invalid_credentials'),
+      });
       return;
     }
 
@@ -56,6 +69,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       if (err) throw err;
       res.json({
         success: true,
+        message: t('api.success.login_successful'),
         token,
         user: {
           username: user.username,
@@ -66,16 +80,26 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     });
   } catch (error) {
     console.error('Login error:', error);
-    res.status(500).json({ success: false, message: 'Server error' });
+    res.status(500).json({
+      success: false,
+      message: t('api.errors.server_error'),
+    });
   }
 };
 
 // Register new user
 export const register = async (req: Request, res: Response): Promise<void> => {
+  // Get translation function from request
+  const t = (req as any).t;
+
   // Validate request
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    res.status(400).json({ success: false, errors: errors.array() });
+    res.status(400).json({
+      success: false,
+      message: t('api.errors.validation_failed'),
+      errors: errors.array(),
+    });
     return;
   }
 

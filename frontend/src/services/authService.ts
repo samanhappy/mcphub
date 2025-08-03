@@ -4,45 +4,27 @@ import {
   RegisterCredentials,
   ChangePasswordCredentials,
 } from '../types';
-import { getApiUrl } from '../utils/runtime';
+import { apiPost, apiGet } from '../utils/fetchInterceptor';
+import { getToken, setToken, removeToken } from '../utils/interceptors';
 
-// Token key in localStorage
-const TOKEN_KEY = 'mcphub_token';
-
-// Get token from localStorage
-export const getToken = (): string | null => {
-  return localStorage.getItem(TOKEN_KEY);
-};
-
-// Set token in localStorage
-export const setToken = (token: string): void => {
-  localStorage.setItem(TOKEN_KEY, token);
-};
-
-// Remove token from localStorage
-export const removeToken = (): void => {
-  localStorage.removeItem(TOKEN_KEY);
-};
+// Export token management functions
+export { getToken, setToken, removeToken };
 
 // Login user
 export const login = async (credentials: LoginCredentials): Promise<AuthResponse> => {
   try {
-    console.log(getApiUrl('/auth/login'));
-    const response = await fetch(getApiUrl('/auth/login'), {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(credentials),
-    });
+    const response = await apiPost<AuthResponse>('/auth/login', credentials);
 
-    const data: AuthResponse = await response.json();
-
-    if (data.success && data.token) {
-      setToken(data.token);
+    // The auth API returns data directly, not wrapped in a data field
+    if (response.success && response.token) {
+      setToken(response.token);
+      return response;
     }
 
-    return data;
+    return {
+      success: false,
+      message: response.message || 'Login failed',
+    };
   } catch (error) {
     console.error('Login error:', error);
     return {
@@ -55,21 +37,17 @@ export const login = async (credentials: LoginCredentials): Promise<AuthResponse
 // Register user
 export const register = async (credentials: RegisterCredentials): Promise<AuthResponse> => {
   try {
-    const response = await fetch(getApiUrl('/auth/register'), {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(credentials),
-    });
+    const response = await apiPost<AuthResponse>('/auth/register', credentials);
 
-    const data: AuthResponse = await response.json();
-
-    if (data.success && data.token) {
-      setToken(data.token);
+    if (response.success && response.token) {
+      setToken(response.token);
+      return response;
     }
 
-    return data;
+    return {
+      success: false,
+      message: response.message || 'Registration failed',
+    };
   } catch (error) {
     console.error('Register error:', error);
     return {
@@ -91,14 +69,8 @@ export const getCurrentUser = async (): Promise<AuthResponse> => {
   }
 
   try {
-    const response = await fetch(getApiUrl('/auth/user'), {
-      method: 'GET',
-      headers: {
-        'x-auth-token': token,
-      },
-    });
-
-    return await response.json();
+    const response = await apiGet<AuthResponse>('/auth/user');
+    return response;
   } catch (error) {
     console.error('Get current user error:', error);
     return {
@@ -122,16 +94,8 @@ export const changePassword = async (
   }
 
   try {
-    const response = await fetch(getApiUrl('/auth/change-password'), {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-auth-token': token,
-      },
-      body: JSON.stringify(credentials),
-    });
-
-    return await response.json();
+    const response = await apiPost<AuthResponse>('/auth/change-password', credentials);
+    return response;
   } catch (error) {
     console.error('Change password error:', error);
     return {

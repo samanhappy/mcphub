@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { MarketServer, ApiResponse, ServerConfig } from '@/types';
-import { getApiUrl } from '../utils/runtime';
+import { apiGet, apiPost } from '../utils/fetchInterceptor';
 
 export const useMarketData = () => {
   const { t } = useTranslation();
@@ -26,18 +26,7 @@ export const useMarketData = () => {
   const fetchMarketServers = useCallback(async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('mcphub_token');
-      const response = await fetch(getApiUrl('/market/servers'), {
-        headers: {
-          'x-auth-token': token || '',
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(`Status: ${response.status}`);
-      }
-
-      const data: ApiResponse<MarketServer[]> = await response.json();
+      const data: ApiResponse<MarketServer[]> = await apiGet('/market/servers');
 
       if (data && data.success && Array.isArray(data.data)) {
         setAllServers(data.data);
@@ -87,18 +76,7 @@ export const useMarketData = () => {
   // Fetch all categories
   const fetchCategories = useCallback(async () => {
     try {
-      const token = localStorage.getItem('mcphub_token');
-      const response = await fetch(getApiUrl('/market/categories'), {
-        headers: {
-          'x-auth-token': token || '',
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(`Status: ${response.status}`);
-      }
-
-      const data: ApiResponse<string[]> = await response.json();
+      const data: ApiResponse<string[]> = await apiGet('/market/categories');
 
       if (data && data.success && Array.isArray(data.data)) {
         setCategories(data.data);
@@ -113,18 +91,7 @@ export const useMarketData = () => {
   // Fetch all tags
   const fetchTags = useCallback(async () => {
     try {
-      const token = localStorage.getItem('mcphub_token');
-      const response = await fetch(getApiUrl('/market/tags'), {
-        headers: {
-          'x-auth-token': token || '',
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(`Status: ${response.status}`);
-      }
-
-      const data: ApiResponse<string[]> = await response.json();
+      const data: ApiResponse<string[]> = await apiGet('/market/tags');
 
       if (data && data.success && Array.isArray(data.data)) {
         setTags(data.data);
@@ -141,18 +108,7 @@ export const useMarketData = () => {
     async (name: string) => {
       try {
         setLoading(true);
-        const token = localStorage.getItem('mcphub_token');
-        const response = await fetch(getApiUrl(`/market/servers/${name}`), {
-          headers: {
-            'x-auth-token': token || '',
-          },
-        });
-
-        if (!response.ok) {
-          throw new Error(`Status: ${response.status}`);
-        }
-
-        const data: ApiResponse<MarketServer> = await response.json();
+        const data: ApiResponse<MarketServer> = await apiGet(`/market/servers/${name}`);
 
         if (data && data.success && data.data) {
           setCurrentServer(data.data);
@@ -186,21 +142,9 @@ export const useMarketData = () => {
           return;
         }
 
-        const token = localStorage.getItem('mcphub_token');
-        const response = await fetch(
-          getApiUrl(`/market/servers/search?query=${encodeURIComponent(query)}`),
-          {
-            headers: {
-              'x-auth-token': token || '',
-            },
-          },
+        const data: ApiResponse<MarketServer[]> = await apiGet(
+          `/market/servers/search?query=${encodeURIComponent(query)}`,
         );
-
-        if (!response.ok) {
-          throw new Error(`Status: ${response.status}`);
-        }
-
-        const data: ApiResponse<MarketServer[]> = await response.json();
 
         if (data && data.success && Array.isArray(data.data)) {
           setAllServers(data.data);
@@ -233,21 +177,9 @@ export const useMarketData = () => {
           return;
         }
 
-        const token = localStorage.getItem('mcphub_token');
-        const response = await fetch(
-          getApiUrl(`/market/categories/${encodeURIComponent(category)}`),
-          {
-            headers: {
-              'x-auth-token': token || '',
-            },
-          },
+        const data: ApiResponse<MarketServer[]> = await apiGet(
+          `/market/categories/${encodeURIComponent(category)}`,
         );
-
-        if (!response.ok) {
-          throw new Error(`Status: ${response.status}`);
-        }
-
-        const data: ApiResponse<MarketServer[]> = await response.json();
 
         if (data && data.success && Array.isArray(data.data)) {
           setAllServers(data.data);
@@ -280,18 +212,9 @@ export const useMarketData = () => {
           return;
         }
 
-        const token = localStorage.getItem('mcphub_token');
-        const response = await fetch(getApiUrl(`/market/tags/${encodeURIComponent(tag)}`), {
-          headers: {
-            'x-auth-token': token || '',
-          },
-        });
-
-        if (!response.ok) {
-          throw new Error(`Status: ${response.status}`);
-        }
-
-        const data: ApiResponse<MarketServer[]> = await response.json();
+        const data: ApiResponse<MarketServer[]> = await apiGet(
+          `/market/tags/${encodeURIComponent(tag)}`,
+        );
 
         if (data && data.success && Array.isArray(data.data)) {
           setAllServers(data.data);
@@ -314,18 +237,7 @@ export const useMarketData = () => {
   // Fetch installed servers
   const fetchInstalledServers = useCallback(async () => {
     try {
-      const token = localStorage.getItem('mcphub_token');
-      const response = await fetch(getApiUrl('/servers'), {
-        headers: {
-          'x-auth-token': token || '',
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(`Status: ${response.status}`);
-      }
-
-      const data = await response.json();
+      const data = await apiGet<{ success: boolean; data: any[] }>('/servers');
 
       if (data && data.success && Array.isArray(data.data)) {
         // Extract server names
@@ -365,27 +277,24 @@ export const useMarketData = () => {
         // Prepare server configuration, merging with customConfig
         const serverConfig = {
           name: server.name,
-          config: customConfig.type === 'stdio' ? {
-            command: customConfig.command || installation.command || '',
-            args: customConfig.args || installation.args || [],
-            env: { ...installation.env, ...customConfig.env },
-          } : customConfig
+          config:
+            customConfig.type === 'stdio'
+              ? {
+                  command: customConfig.command || installation.command || '',
+                  args: customConfig.args || installation.args || [],
+                  env: { ...installation.env, ...customConfig.env },
+                }
+              : customConfig,
         };
 
         // Call the createServer API
-        const token = localStorage.getItem('mcphub_token');
-        const response = await fetch(getApiUrl('/servers'), {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-auth-token': token || '',
-          },
-          body: JSON.stringify(serverConfig),
-        });
+        const result = await apiPost<{ success: boolean; message?: string }>(
+          '/servers',
+          serverConfig,
+        );
 
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.message || `Status: ${response.status}`);
+        if (!result.success) {
+          throw new Error(result.message || 'Failed to install server');
         }
 
         // Update installed servers list after successful installation

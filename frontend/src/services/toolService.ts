@@ -1,5 +1,4 @@
-import { getApiUrl } from '../utils/runtime';
-import { getToken } from './authService';
+import { apiPost, apiPut } from '../utils/fetchInterceptor';
 
 export interface ToolCallRequest {
   toolName: string;
@@ -25,38 +24,32 @@ export const callTool = async (
   server?: string,
 ): Promise<ToolCallResult> => {
   try {
-    const token = getToken();
     // Construct the URL with optional server parameter
     const url = server ? `/tools/call/${server}` : '/tools/call';
 
-    const response = await fetch(getApiUrl(url), {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-auth-token': token || '', // Include token for authentication
-        Authorization: `Bearer ${token}`, // Add bearer auth for MCP routing
-      },
-      body: JSON.stringify({
+    const response = await apiPost<any>(
+      url,
+      {
         toolName: request.toolName,
         arguments: request.arguments,
-      }),
-    });
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('mcphub_token')}`, // Add bearer auth for MCP routing
+        },
+      },
+    );
 
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-    }
-
-    const data = await response.json();
-    if (!data.success) {
+    if (!response.success) {
       return {
         success: false,
-        error: data.message || 'Tool call failed',
+        error: response.message || 'Tool call failed',
       };
     }
 
     return {
       success: true,
-      content: data.data.content || [],
+      content: response.data?.content || [],
     };
   } catch (error) {
     console.error('Error calling tool:', error);
@@ -76,25 +69,19 @@ export const toggleTool = async (
   enabled: boolean,
 ): Promise<{ success: boolean; error?: string }> => {
   try {
-    const token = getToken();
-    const response = await fetch(getApiUrl(`/servers/${serverName}/tools/${toolName}/toggle`), {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-auth-token': token || '',
-        Authorization: `Bearer ${token}`,
+    const response = await apiPost<any>(
+      `/servers/${serverName}/tools/${toolName}/toggle`,
+      { enabled },
+      {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('mcphub_token')}`,
+        },
       },
-      body: JSON.stringify({ enabled }),
-    });
+    );
 
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-    }
-
-    const data = await response.json();
     return {
-      success: data.success,
-      error: data.success ? undefined : data.message,
+      success: response.success,
+      error: response.success ? undefined : response.message,
     };
   } catch (error) {
     console.error('Error toggling tool:', error);
@@ -114,28 +101,19 @@ export const updateToolDescription = async (
   description: string,
 ): Promise<{ success: boolean; error?: string }> => {
   try {
-    const token = getToken();
-    const response = await fetch(
-      getApiUrl(`/servers/${serverName}/tools/${toolName}/description`),
+    const response = await apiPut<any>(
+      `/servers/${serverName}/tools/${toolName}/description`,
+      { description },
       {
-        method: 'PUT',
         headers: {
-          'Content-Type': 'application/json',
-          'x-auth-token': token || '',
-          Authorization: `Bearer ${token || ''}`,
+          Authorization: `Bearer ${localStorage.getItem('mcphub_token')}`,
         },
-        body: JSON.stringify({ description }),
       },
     );
 
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-    }
-
-    const data = await response.json();
     return {
-      success: data.success,
-      error: data.success ? undefined : data.message,
+      success: response.success,
+      error: response.success ? undefined : response.message,
     };
   } catch (error) {
     console.error('Error updating tool description:', error);

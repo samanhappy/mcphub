@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Server } from '@/types'
-import { getApiUrl } from '../utils/runtime'
+import { apiPut } from '../utils/fetchInterceptor'
 import ServerForm from './ServerForm'
 
 interface EditServerFormProps {
@@ -17,26 +17,12 @@ const EditServerForm = ({ server, onEdit, onCancel }: EditServerFormProps) => {
   const handleSubmit = async (payload: any) => {
     try {
       setError(null)
-      const token = localStorage.getItem('mcphub_token');
-      const response = await fetch(getApiUrl(`/servers/${server.name}`), {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-auth-token': token || ''
-        },
-        body: JSON.stringify(payload),
-      })
+      const result = await apiPut(`/servers/${server.name}`, payload)
 
-      const result = await response.json()
-
-      if (!response.ok) {
+      if (!result.success) {
         // Use specific error message from the response if available
         if (result && result.message) {
           setError(result.message)
-        } else if (response.status === 404) {
-          setError(t('server.notFound', { serverName: server.name }))
-        } else if (response.status === 400) {
-          setError(t('server.invalidData'))
         } else {
           setError(t('server.updateError', { serverName: server.name }))
         }

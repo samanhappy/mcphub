@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { loadSettings } from '../config/index.js';
+import defaultConfig from '../config/index.js';
 
 // Default secret key - in production, use an environment variable
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-this';
@@ -18,8 +19,30 @@ const validateBearerAuth = (req: Request, routingConfig: any): boolean => {
   return authHeader.substring(7) === routingConfig.bearerAuthKey;
 };
 
+const readonlyAllowPaths = ['/tools/call/'];
+
+const checkReadonly = (req: Request): boolean => {
+  if (!defaultConfig.readonly) {
+    return true;
+  }
+
+  for (const path of readonlyAllowPaths) {
+    if (req.path.startsWith(defaultConfig.basePath + path)) {
+      return true;
+    }
+  }
+
+  return req.method === 'GET';
+};
+
 // Middleware to authenticate JWT token
 export const auth = (req: Request, res: Response, next: NextFunction): void => {
+  const t = (req as any).t;
+  if (!checkReadonly(req)) {
+    res.status(403).json({ success: false, message: t('api.errors.readonly') });
+    return;
+  }
+
   // Check if authentication is disabled globally
   const routingConfig = loadSettings().systemConfig?.routing || {
     enableGlobalRoute: true,
