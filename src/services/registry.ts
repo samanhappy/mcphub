@@ -13,9 +13,14 @@ const instances = new Map<string, unknown>();
 
 export function registerService<T>(key: string, entry: Service<T>) {
   // Try to load override immediately during registration
-  const overridePath = join(process.cwd(), 'src', 'services', key + 'x.ts');
+  // Handle both development (.ts) and production (.js) environments
+  const isDev = process.env.NODE_ENV !== 'production';
+  const serviceDir = isDev ? 'src/services' : 'dist/services';
+  const fileExt = isDev ? '.ts' : '.js';
+  const overridePath = join(process.cwd(), serviceDir, key + 'x' + fileExt);
+
   try {
-    const require = createRequire(process.cwd());
+    const require = createRequire(import.meta.url);
     const mod = require(overridePath);
     const override = mod[key.charAt(0).toUpperCase() + key.slice(1) + 'x'];
     if (typeof override === 'function') {
@@ -25,6 +30,7 @@ export function registerService<T>(key: string, entry: Service<T>) {
     // Silently ignore if override doesn't exist
   }
 
+  console.log(`Service registered: ${key} with entry:`, entry);
   registry.set(key, entry);
 }
 
