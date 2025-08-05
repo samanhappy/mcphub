@@ -99,6 +99,18 @@ export const syncToolEmbedding = async (serverName: string, toolName: string) =>
   saveToolsAsVectorEmbeddings(serverName, [tool]);
 };
 
+// Helper function to clean $schema field from inputSchema
+const cleanInputSchema = (schema: any): any => {
+  if (!schema || typeof schema !== 'object') {
+    return schema;
+  }
+
+  const cleanedSchema = { ...schema };
+  delete cleanedSchema.$schema;
+
+  return cleanedSchema;
+};
+
 // Store all server information
 let serverInfos: ServerInfo[] = [];
 
@@ -272,7 +284,7 @@ const callToolWithReconnect = async (
             serverInfo.tools = tools.tools.map((tool) => ({
               name: `${serverInfo.name}-${tool.name}`,
               description: tool.description || '',
-              inputSchema: tool.inputSchema || {},
+              inputSchema: cleanInputSchema(tool.inputSchema || {}),
             }));
 
             // Save tools as vector embeddings for search
@@ -391,7 +403,7 @@ export const initializeClientsFromSettings = async (isInit: boolean): Promise<Se
         const mcpTools: ToolInfo[] = openApiTools.map((tool) => ({
           name: `${name}-${tool.name}`,
           description: tool.description,
-          inputSchema: tool.inputSchema,
+          inputSchema: cleanInputSchema(tool.inputSchema),
         }));
 
         // Update server info with successful initialization
@@ -472,7 +484,7 @@ export const initializeClientsFromSettings = async (isInit: boolean): Promise<Se
             serverInfo.tools = tools.tools.map((tool) => ({
               name: `${name}-${tool.name}`,
               description: tool.description || '',
-              inputSchema: tool.inputSchema || {},
+              inputSchema: cleanInputSchema(tool.inputSchema || {}),
             }));
             serverInfo.status = 'connected';
             serverInfo.error = null;
@@ -924,7 +936,7 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
           return {
             name: result.toolName,
             description: result.description || '',
-            inputSchema: result.inputSchema || {},
+            inputSchema: cleanInputSchema(result.inputSchema || {}),
           };
         })
         .filter((tool) => {
