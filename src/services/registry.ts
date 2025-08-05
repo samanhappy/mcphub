@@ -20,7 +20,8 @@ export function registerService<T>(key: string, entry: Service<T>) {
   const overridePath = join(process.cwd(), serviceDir, key + 'x' + fileExt);
 
   try {
-    const require = createRequire(import.meta.url);
+    // Use createRequire with a stable path reference
+    const require = createRequire(join(process.cwd(), 'package.json'));
     const mod = require(overridePath);
     const override = mod[key.charAt(0).toUpperCase() + key.slice(1) + 'x'];
     if (typeof override === 'function') {
