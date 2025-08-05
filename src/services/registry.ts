@@ -13,22 +13,34 @@ const instances = new Map<string, unknown>();
 
 export function registerService<T>(key: string, entry: Service<T>) {
   // Try to load override immediately during registration
-  // Handle both development (.ts) and production (.js) environments
-  const isDev = process.env.NODE_ENV !== 'production';
-  const serviceDir = isDev ? 'src/services' : 'dist/services';
-  const fileExt = isDev ? '.ts' : '.js';
-  const overridePath = join(process.cwd(), serviceDir, key + 'x' + fileExt);
+  // Try multiple paths and file extensions in order
+  const serviceDirs = ['src/services', 'dist/services'];
+  const fileExts = ['.ts', '.js'];
+  const overrideFileName = key + 'x';
 
-  try {
-    // Use createRequire with a stable path reference
-    const require = createRequire(join(process.cwd(), 'package.json'));
-    const mod = require(overridePath);
-    const override = mod[key.charAt(0).toUpperCase() + key.slice(1) + 'x'];
-    if (typeof override === 'function') {
-      entry.override = override;
+  for (const serviceDir of serviceDirs) {
+    for (const fileExt of fileExts) {
+      const overridePath = join(process.cwd(), serviceDir, overrideFileName + fileExt);
+
+      try {
+        // Use createRequire with a stable path reference
+        const require = createRequire(join(process.cwd(), 'package.json'));
+        const mod = require(overridePath);
+        const override = mod[key.charAt(0).toUpperCase() + key.slice(1) + 'x'];
+        if (typeof override === 'function') {
+          entry.override = override;
+          break; // Found override, exit both loops
+        }
+      } catch (error) {
+        // Continue trying next path/extension combination
+        continue;
+      }
     }
-  } catch (error) {
-    // Silently ignore if override doesn't exist
+
+    // If override was found, break out of outer loop too
+    if (entry.override) {
+      break;
+    }
   }
 
   console.log(`Service registered: ${key} with entry:`, entry);
