@@ -506,6 +506,7 @@ export const updateToolDescription = async (req: Request, res: Response): Promis
 export const updateSystemConfig = (req: Request, res: Response): void => {
   try {
     const { routing, install, smartRouting } = req.body;
+    const currentUser = (req as any).user;
 
     if (
       (!routing ||
@@ -675,7 +676,7 @@ export const updateSystemConfig = (req: Request, res: Response): void => {
       needsSync = (!wasSmartRoutingEnabled && isNowEnabled) || (isNowEnabled && hasConfigChanged);
     }
 
-    if (saveSettings(settings)) {
+    if (saveSettings(settings, currentUser)) {
       res.json({
         success: true,
         data: settings.systemConfig,

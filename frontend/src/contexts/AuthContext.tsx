@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { AuthState } from '../types';
 import * as authService from '../services/authService';
-import { shouldSkipAuth } from '../services/configService';
+import { getPublicConfig } from '../services/configService';
 
 // Initial auth state
 const initialState: AuthState = {
@@ -32,7 +32,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   useEffect(() => {
     const loadUser = async () => {
       // First check if authentication should be skipped
-      const skipAuth = await shouldSkipAuth();
+      const { skipAuth, permissions } = await getPublicConfig();
 
       if (skipAuth) {
         // If authentication is disabled, set user as authenticated with a dummy user
@@ -42,6 +42,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           user: {
             username: 'guest',
             isAdmin: true,
+            permissions,
           },
           error: null,
         });

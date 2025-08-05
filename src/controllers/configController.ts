@@ -1,6 +1,11 @@
 import { Request, Response } from 'express';
 import config from '../config/index.js';
 import { loadSettings } from '../config/index.js';
+import { getDataService } from '../services/services.js';
+import { DataService } from '../services/dataService.js';
+import { IUser } from '../types/index.js';
+
+const dataService: DataService = getDataService();
 
 /**
  * Get runtime configuration for frontend
@@ -38,6 +43,15 @@ export const getPublicConfig = (req: Request, res: Response): void => {
   try {
     const settings = loadSettings();
     const skipAuth = settings.systemConfig?.routing?.skipAuth || false;
+    let permissions = {};
+    if (skipAuth) {
+      const user: IUser = {
+        username: 'guest',
+        password: '',
+        isAdmin: true,
+      };
+      permissions = dataService.getPermissions(user);
+    }
 
     res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
     res.setHeader('Pragma', 'no-cache');
@@ -47,6 +61,7 @@ export const getPublicConfig = (req: Request, res: Response): void => {
       success: true,
       data: {
         skipAuth,
+        permissions,
       },
     });
   } catch (error) {

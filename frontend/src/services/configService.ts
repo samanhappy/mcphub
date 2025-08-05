@@ -26,6 +26,7 @@ export interface PublicConfigResponse {
   success: boolean;
   data?: {
     skipAuth?: boolean;
+    permissions?: any;
   };
   message?: string;
 }
@@ -41,7 +42,7 @@ export interface SystemConfigResponse {
 /**
  * Get public configuration (skipAuth setting) without authentication
  */
-export const getPublicConfig = async (): Promise<{ skipAuth: boolean }> => {
+export const getPublicConfig = async (): Promise<{ skipAuth: boolean; permissions?: any }> => {
   try {
     const basePath = getBasePath();
     const response = await fetchWithInterceptors(`${basePath}/public-config`, {
@@ -53,7 +54,7 @@ export const getPublicConfig = async (): Promise<{ skipAuth: boolean }> => {
 
     if (response.ok) {
       const data: PublicConfigResponse = await response.json();
-      return { skipAuth: data.data?.skipAuth === true };
+      return { skipAuth: data.data?.skipAuth === true, permissions: data.data?.permissions || {} };
     }
 
     return { skipAuth: false };
