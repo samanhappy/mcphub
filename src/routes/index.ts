@@ -43,6 +43,17 @@ import {
   getMarketServersByCategory,
   getMarketServersByTag,
 } from '../controllers/marketController.js';
+import {
+  getAllCloudServers,
+  getCloudServer,
+  getAllCloudCategories,
+  getAllCloudTags,
+  searchCloudServersByQuery,
+  getCloudServersByCategory,
+  getCloudServersByTag,
+  getCloudServerToolsList,
+  callCloudTool,
+} from '../controllers/cloudController.js';
 import { login, register, getCurrentUser, changePassword } from '../controllers/authController.js';
 import { getAllLogs, clearLogs, streamLogs } from '../controllers/logController.js';
 import { getRuntimeConfig, getPublicConfig } from '../controllers/configController.js';
@@ -102,6 +113,17 @@ export const initRoutes = (app: express.Application): void => {
   router.get('/market/categories/:category', getMarketServersByCategory);
   router.get('/market/tags', getAllMarketTags);
   router.get('/market/tags/:tag', getMarketServersByTag);
+
+  // Cloud Market routes
+  router.get('/cloud/servers', getAllCloudServers);
+  router.get('/cloud/servers/search', searchCloudServersByQuery);
+  router.get('/cloud/servers/:name', getCloudServer);
+  router.get('/cloud/categories', getAllCloudCategories);
+  router.get('/cloud/categories/:category', getCloudServersByCategory);
+  router.get('/cloud/tags', getAllCloudTags);
+  router.get('/cloud/tags/:tag', getCloudServersByTag);
+  router.get('/cloud/servers/:serverName/tools', getCloudServerToolsList);
+  router.post('/cloud/servers/:serverName/tools/:toolName/call', callCloudTool);
 
   // Log routes
   router.get('/logs', getAllLogs);

@@ -27,11 +27,19 @@ interface SmartRoutingConfig {
   openaiApiEmbeddingModel: string;
 }
 
+interface MCPRouterConfig {
+  apiKey: string;
+  referer: string;
+  title: string;
+  baseUrl: string;
+}
+
 interface SystemSettings {
   systemConfig?: {
     routing?: RoutingConfig;
     install?: InstallConfig;
     smartRouting?: SmartRoutingConfig;
+    mcpRouter?: MCPRouterConfig;
   };
 }
 
@@ -67,6 +75,13 @@ export const useSettingsData = () => {
     openaiApiBaseUrl: '',
     openaiApiKey: '',
     openaiApiEmbeddingModel: '',
+  });
+
+  const [mcpRouterConfig, setMCPRouterConfig] = useState<MCPRouterConfig>({
+    apiKey: '',
+    referer: 'https://mcphub.app',
+    title: 'MCPHub',
+    baseUrl: 'https://api.mcprouter.to/v1',
   });
 
   const [loading, setLoading] = useState(false);
@@ -110,6 +125,14 @@ export const useSettingsData = () => {
           openaiApiKey: data.data.systemConfig.smartRouting.openaiApiKey || '',
           openaiApiEmbeddingModel:
             data.data.systemConfig.smartRouting.openaiApiEmbeddingModel || '',
+        });
+      }
+      if (data.success && data.data?.systemConfig?.mcpRouter) {
+        setMCPRouterConfig({
+          apiKey: data.data.systemConfig.mcpRouter.apiKey || '',
+          referer: data.data.systemConfig.mcpRouter.referer || 'https://mcphub.app',
+          title: data.data.systemConfig.mcpRouter.title || 'MCPHub',
+          baseUrl: data.data.systemConfig.mcpRouter.baseUrl || 'https://api.mcprouter.to/v1',
         });
       }
     } catch (error) {
@@ -290,6 +313,77 @@ export const useSettingsData = () => {
     }
   };
 
+  // Update MCPRouter configuration
+  const updateMCPRouterConfig = async <T extends keyof MCPRouterConfig>(
+    key: T,
+    value: MCPRouterConfig[T],
+  ) => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const data = await apiPut('/system-config', {
+        mcpRouter: {
+          [key]: value,
+        },
+      });
+
+      if (data.success) {
+        setMCPRouterConfig({
+          ...mcpRouterConfig,
+          [key]: value,
+        });
+        showToast(t('settings.systemConfigUpdated'));
+        return true;
+      } else {
+        showToast(data.message || t('errors.failedToUpdateSystemConfig'));
+        return false;
+      }
+    } catch (error) {
+      console.error('Failed to update MCPRouter config:', error);
+      const errorMessage =
+        error instanceof Error ? error.message : 'Failed to update MCPRouter config';
+      setError(errorMessage);
+      showToast(errorMessage);
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Update multiple MCPRouter configuration fields at once
+  const updateMCPRouterConfigBatch = async (updates: Partial<MCPRouterConfig>) => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const data = await apiPut('/system-config', {
+        mcpRouter: updates,
+      });
+
+      if (data.success) {
+        setMCPRouterConfig({
+          ...mcpRouterConfig,
+          ...updates,
+        });
+        showToast(t('settings.systemConfigUpdated'));
+        return true;
+      } else {
+        showToast(data.message || t('errors.failedToUpdateSystemConfig'));
+        return false;
+      }
+    } catch (error) {
+      console.error('Failed to update MCPRouter config:', error);
+      const errorMessage =
+        error instanceof Error ? error.message : 'Failed to update MCPRouter config';
+      setError(errorMessage);
+      showToast(errorMessage);
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Fetch settings when the component mounts or refreshKey changes
   useEffect(() => {
     fetchSettings();
@@ -309,6 +403,7 @@ export const useSettingsData = () => {
     setTempRoutingConfig,
     installConfig,
     smartRoutingConfig,
+    mcpRouterConfig,
     loading,
     error,
     setError,
@@ -319,5 +414,7 @@ export const useSettingsData = () => {
     updateSmartRoutingConfig,
     updateSmartRoutingConfigBatch,
     updateRoutingConfigBatch,
+    updateMCPRouterConfig,
+    updateMCPRouterConfigBatch,
   };
 };

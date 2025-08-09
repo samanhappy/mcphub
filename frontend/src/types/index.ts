@@ -55,6 +55,27 @@ export interface MarketServer {
   is_official?: boolean;
 }
 
+// Cloud Server types (for MCPRouter API)
+export interface CloudServer {
+  created_at: string;
+  updated_at: string;
+  name: string;
+  author_name: string;
+  title: string;
+  description: string;
+  content: string;
+  server_key: string;
+  config_name: string;
+  server_url: string;
+  tools?: CloudServerTool[];
+}
+
+export interface CloudServerTool {
+  name: string;
+  description: string;
+  inputSchema: Record<string, any>;
+}
+
 // Tool input schema types
 export interface ToolInputSchema {
   type: string;

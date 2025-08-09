@@ -442,6 +442,30 @@ tbody tr:hover {
   color: rgba(239, 154, 154, 0.9) !important;
 }
 
+/* External link styles */
+.external-link {
+  color: #2563eb !important; /* Blue-600 for light mode */
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: all 0.2s ease-in-out;
+  cursor: pointer;
+}
+
+.external-link:hover {
+  color: #1d4ed8 !important; /* Blue-700 for light mode */
+  border-bottom-color: #1d4ed8;
+  text-decoration: none;
+}
+
+.dark .external-link {
+  color: #60a5fa !important; /* Blue-400 for dark mode */
+}
+
+.dark .external-link:hover {
+  color: #93c5fd !important; /* Blue-300 for dark mode */
+  border-bottom-color: #93c5fd;
+}
+
 .border-red {
   border-color: #937d7d; /* Tailwind red-800 for light mode */
 }

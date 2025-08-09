@@ -81,6 +81,49 @@ export interface MarketServer {
   is_official?: boolean;
 }
 
+// Cloud Market Server types (for MCPRouter API)
+export interface CloudServer {
+  created_at: string;
+  updated_at: string;
+  name: string;
+  author_name: string;
+  title: string;
+  description: string;
+  content: string;
+  server_key: string;
+  config_name: string;
+  tools?: CloudTool[];
+}
+
+export interface CloudTool {
+  name: string;
+  description: string;
+  inputSchema: Record<string, any>;
+}
+
+// MCPRouter API Response types
+export interface MCPRouterResponse<T = any> {
+  code: number;
+  message: string;
+  data: T;
+}
+
+export interface MCPRouterListServersResponse {
+  servers: CloudServer[];
+}
+
+export interface MCPRouterListToolsResponse {
+  tools: CloudTool[];
+}
+
+export interface MCPRouterCallToolResponse {
+  content: Array<{
+    type: string;
+    text: string;
+  }>;
+  isError: boolean;
+}
+
 export interface SystemConfig {
   routing?: {
     enableGlobalRoute?: boolean; // Controls whether the /sse endpoint without group is enabled
@@ -95,6 +138,12 @@ export interface SystemConfig {
     baseUrl?: string; // Base URL for group card copy operations
   };
   smartRouting?: SmartRoutingConfig;
+  mcpRouter?: {
+    apiKey?: string; // MCPRouter API key for authentication
+    referer?: string; // Referer header for MCPRouter API requests
+    title?: string; // Title header for MCPRouter API requests
+    baseUrl?: string; // Base URL for MCPRouter API (default: https://api.mcprouter.to/v1)
+  };
 }
 
 export interface UserConfig {

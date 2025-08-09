@@ -505,7 +505,7 @@ export const updateToolDescription = async (req: Request, res: Response): Promis
 
 export const updateSystemConfig = (req: Request, res: Response): void => {
   try {
-    const { routing, install, smartRouting } = req.body;
+    const { routing, install, smartRouting, mcpRouter } = req.body;
     const currentUser = (req as any).user;
 
     if (
@@ -524,7 +524,12 @@ export const updateSystemConfig = (req: Request, res: Response): void => {
           typeof smartRouting.dbUrl !== 'string' &&
           typeof smartRouting.openaiApiBaseUrl !== 'string' &&
           typeof smartRouting.openaiApiKey !== 'string' &&
-          typeof smartRouting.openaiApiEmbeddingModel !== 'string'))
+          typeof smartRouting.openaiApiEmbeddingModel !== 'string')) &&
+      (!mcpRouter ||
+        (typeof mcpRouter.apiKey !== 'string' &&
+          typeof mcpRouter.referer !== 'string' &&
+          typeof mcpRouter.title !== 'string' &&
+          typeof mcpRouter.baseUrl !== 'string'))
     ) {
       res.status(400).json({
         success: false,
@@ -555,6 +560,12 @@ export const updateSystemConfig = (req: Request, res: Response): void => {
           openaiApiKey: '',
           openaiApiEmbeddingModel: '',
         },
+        mcpRouter: {
+          apiKey: '',
+          referer: 'https://mcphub.app',
+          title: 'MCPHub',
+          baseUrl: 'https://api.mcprouter.to/v1',
+        },
       };
     }
 
@@ -583,6 +594,15 @@ export const updateSystemConfig = (req: Request, res: Response): void => {
         openaiApiBaseUrl: '',
         openaiApiKey: '',
         openaiApiEmbeddingModel: '',
+      };
+    }
+
+    if (!settings.systemConfig.mcpRouter) {
+      settings.systemConfig.mcpRouter = {
+        apiKey: '',
+        referer: 'https://mcphub.app',
+        title: 'MCPHub',
+        baseUrl: 'https://api.mcprouter.to/v1',
       };
     }
 
@@ -674,6 +694,21 @@ export const updateSystemConfig = (req: Request, res: Response): void => {
 
       // Sync if: first time enabling OR smart routing is enabled and any config changed
       needsSync = (!wasSmartRoutingEnabled && isNowEnabled) || (isNowEnabled && hasConfigChanged);
+    }
+
+    if (mcpRouter) {
+      if (typeof mcpRouter.apiKey === 'string') {
+        settings.systemConfig.mcpRouter.apiKey = mcpRouter.apiKey;
+      }
+      if (typeof mcpRouter.referer === 'string') {
+        settings.systemConfig.mcpRouter.referer = mcpRouter.referer;
+      }
+      if (typeof mcpRouter.title === 'string') {
+        settings.systemConfig.mcpRouter.title = mcpRouter.title;
+      }
+      if (typeof mcpRouter.baseUrl === 'string') {
+        settings.systemConfig.mcpRouter.baseUrl = mcpRouter.baseUrl;
+      }
     }
 
     if (saveSettings(settings, currentUser)) {
