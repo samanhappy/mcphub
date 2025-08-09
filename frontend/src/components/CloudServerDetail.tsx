@@ -328,7 +328,7 @@ const CloudServerDetail: React.FC<CloudServerDetailProps> = ({
                   <div className="text-xs text-gray-500">
                     {t('cloud.updated')}: {formatDate(server.updated_at)}
                   </div>
-                  {onInstall && !isMCPRouterApiKeyError(error || '') && (
+                  {onInstall && !isMCPRouterApiKeyError(error || '') && !toolsApiKeyError && (
                     <button
                       onClick={handleInstall}
                       disabled={getInstallButtonProps().disabled}

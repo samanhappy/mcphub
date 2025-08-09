@@ -61,6 +61,15 @@ const ServersPage: React.FC = () => {
         <h1 className="text-2xl font-bold text-gray-900">{t('pages.servers.title')}</h1>
         <div className="flex space-x-4">
           <button
+            onClick={() => navigate('/cloud')}
+            className="px-4 py-2 bg-green-100 text-green-800 rounded hover:bg-green-200 flex items-center btn-primary transition-all duration-200"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" viewBox="0 0 20 20" fill="currentColor">
+              <path d="M5.5 16a3.5 3.5 0 01-.369-6.98 4 4 0 117.753-1.977A4.5 4.5 0 1113.5 16H11v-3.586l.293.293a1 1 0 001.414-1.414l-2-2a1 1 0 00-1.414 0l-2 2a1 1 0 001.414 1.414L9 12.414V16H5.5z" />
+            </svg>
+            {t('nav.cloud')}
+          </button>
+          <button
             onClick={() => navigate('/market')}
             className="px-4 py-2 bg-blue-100 text-blue-800 rounded hover:bg-blue-200 flex items-center btn-primary transition-all duration-200"
           >

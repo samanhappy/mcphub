@@ -196,8 +196,8 @@
     "users": "Users",
     "settings": "Settings",
     "changePassword": "Change Password",
-    "market": "Market",
-    "cloud": "Cloud",
+    "market": "Local Market",
+    "cloud": "Cloud Market",
     "logs": "Logs"
   },
   "pages": {
@@ -282,7 +282,7 @@
     "configureTools": "Configure Tools"
   },
   "market": {
-    "title": "Server Market",
+    "title": "Local Market",
     "official": "Official",
     "by": "By",
     "unknown": "Unknown",
@@ -326,7 +326,7 @@
     "confirmAndInstall": "Confirm and Install"
   },
   "cloud": {
-    "title": "Cloud Servers",
+    "title": "Cloud Market",
     "subtitle": "Powered by MCPRouter",
     "by": "By",
     "server": "Server",

@@ -197,8 +197,8 @@
     "changePassword": "修改密码",
     "groups": "分组",
     "users": "用户",
-    "market": "市场",
-    "cloud": "云端",
+    "market": "本地市场",
+    "cloud": "云端市场",
     "logs": "日志"
   },
   "pages": {
@@ -230,7 +230,7 @@
       "title": "用户管理"
     },
     "market": {
-      "title": "服务器市场 - （数据来源于 mcpm.sh）"
+      "title": "本地市场 - （数据来源于 mcpm.sh）"
     },
     "logs": {
       "title": "系统日志"
@@ -283,7 +283,7 @@
     "configureTools": "配置工具"
   },
   "market": {
-    "title": "服务器市场",
+    "title": "本地市场",
     "official": "官方",
     "by": "作者",
     "unknown": "未知",
@@ -315,7 +315,7 @@
     "required": "必填",
     "example": "示例",
     "viewSchema": "查看结构",
-    "fetchError": "获取服务器市场数据失败",
+    "fetchError": "获取本地市场服务器数据失败",
     "serverNotFound": "未找到服务器",
     "searchError": "搜索服务器失败",
     "filterError": "按分类筛选服务器失败",
@@ -327,7 +327,7 @@
     "confirmAndInstall": "确认并安装"
   },
   "cloud": {
-    "title": "云端服务",
+    "title": "云端市场",
     "subtitle": "由 MCPRouter 提供支持",
     "by": "作者",
     "server": "服务器",
