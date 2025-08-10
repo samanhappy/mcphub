@@ -70,8 +70,8 @@ export const deleteMcpServer = (sessionId: string): void => {
   delete servers[sessionId];
 };
 
-export const notifyToolChanged = async () => {
-  await registerAllTools(false);
+export const notifyToolChanged = async (name?: string) => {
+  await registerAllTools(false, name);
   Object.values(servers).forEach((server) => {
     server
       .sendToolListChanged()
@@ -323,7 +323,10 @@ const callToolWithReconnect = async (
 };
 
 // Initialize MCP server clients
-export const initializeClientsFromSettings = async (isInit: boolean): Promise<ServerInfo[]> => {
+export const initializeClientsFromSettings = async (
+  isInit: boolean,
+  serverName?: string,
+): Promise<ServerInfo[]> => {
   const settings = loadSettings();
   const existingServerInfos = serverInfos;
   serverInfos = [];
@@ -348,7 +351,7 @@ export const initializeClientsFromSettings = async (isInit: boolean): Promise<Se
     const existingServer = existingServerInfos.find(
       (s) => s.name === name && s.status === 'connected',
     );
-    if (existingServer) {
+    if (existingServer && (!serverName || serverName !== name)) {
       serverInfos.push({
         ...existingServer,
         enabled: conf.enabled === undefined ? true : conf.enabled,
@@ -359,7 +362,6 @@ export const initializeClientsFromSettings = async (isInit: boolean): Promise<Se
 
     let transport;
     let openApiClient;
-
     if (conf.type === 'openapi') {
       // Handle OpenAPI type servers
       if (!conf.openapi?.url && !conf.openapi?.schema) {
@@ -517,8 +519,8 @@ export const initializeClientsFromSettings = async (isInit: boolean): Promise<Se
 };
 
 // Register all MCP tools
-export const registerAllTools = async (isInit: boolean): Promise<void> => {
-  await initializeClientsFromSettings(isInit);
+export const registerAllTools = async (isInit: boolean, serverName?: string): Promise<void> => {
+  await initializeClientsFromSettings(isInit, serverName);
 };
 
 // Get all server information

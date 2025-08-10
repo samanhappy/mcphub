@@ -280,7 +280,7 @@ export const updateServer = async (req: Request, res: Response): Promise<void> =
 
     const result = await addOrUpdateServer(name, config, true); // Allow override for updates
     if (result.success) {
-      notifyToolChanged();
+      notifyToolChanged(name);
       res.json({
         success: true,
         message: 'Server updated successfully',
