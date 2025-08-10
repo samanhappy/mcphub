@@ -30,9 +30,6 @@ Groups are named collections of MCP servers that can be accessed through dedicat
 3. **Fill Group Details**:
 
    - **Name**: Unique identifier for the group
-   - **Display Name**: Human-readable name
-   - **Description**: Purpose and contents of the group
-   - **Access Level**: Public, Private, or Restricted
 
 4. **Add Servers**: Select servers to include in the group
 
@@ -46,14 +43,11 @@ curl -X POST http://localhost:3000/api/groups \
   -H "Authorization: Bearer YOUR_JWT_TOKEN" \
   -d '{
     "name": "web-automation",
-    "displayName": "Web Automation Tools",
-    "description": "Browser automation and web scraping tools",
-    "servers": ["playwright", "fetch"],
-    "accessLevel": "public"
+    "servers": ["playwright", "fetch"]
   }'
 ```
 
-### Via Configuration File
+{/* ### Via Configuration File
 
 Define groups in your `mcp_settings.json`:
 
@@ -66,20 +60,16 @@ Define groups in your `mcp_settings.json`:
   },
   "groups": {
     "web-tools": {
-      "displayName": "Web Tools",
-      "description": "Web scraping and browser automation",
+      "name": "web",
       "servers": ["fetch", "playwright"],
-      "accessLevel": "public"
     },
     "communication": {
-      "displayName": "Communication Tools",
-      "description": "Messaging and collaboration tools",
+      "name": "communication",
       "servers": ["slack"],
-      "accessLevel": "private"
     }
   }
 }
-```
+``` */}
 
 ## Group Types and Use Cases
 
@@ -177,7 +167,7 @@ Define groups in your `mcp_settings.json`:
   </Accordion>
 </AccordionGroup>
 
-## Group Access Control
+{/* ## Group Access Control
 
 ### Access Levels
 
@@ -254,7 +244,7 @@ curl -X DELETE http://localhost:3000/api/groups/web-tools/members/user123 \
 # List group members
 curl http://localhost:3000/api/groups/web-tools/members \
   -H "Authorization: Bearer YOUR_JWT_TOKEN"
-```
+``` */}
 
 ## Group Endpoints
 
@@ -346,7 +336,7 @@ Response will only include tools from `fetch` and `playwright` servers.
   </Tab>
 </Tabs>
 
-### Batch Server Updates
+{/* ### Batch Server Updates
 
 Update multiple servers at once:
 
@@ -357,9 +347,9 @@ curl -X PUT http://localhost:3000/api/groups/web-tools/servers \
   -d '{
     "servers": ["fetch", "playwright", "selenium"]
   }'
-```
+``` */}
 
-## Group Monitoring
+{/* ## Group Monitoring
 
 ### Group Status
 
@@ -393,9 +383,9 @@ Metrics include:
 - Request count by tool
 - Response times
 - Error rates
-- User activity
+- User activity */}
 
-## Advanced Group Features
+{/* ## Advanced Group Features
 
 ### Nested Groups
 
@@ -474,7 +464,7 @@ Define policies for group behavior:
     }
   }
 }
-```
+``` */}
 
 ## Best Practices
 
@@ -494,7 +484,7 @@ Define policies for group behavior:
   **Use Descriptive Names**: Choose names that clearly indicate the group's purpose and contents.
 </Tip>
 
-### Security Considerations
+{/* ### Security Considerations
 
 <Warning>
   **Principle of Least Privilege**: Only give users access to groups they actually need.
@@ -507,7 +497,7 @@ Define policies for group behavior:
 
 <Warning>
   **Regular Access Reviews**: Periodically review group memberships and remove unnecessary access.
-</Warning>
+</Warning> */}
 
 ### Performance Optimization
 

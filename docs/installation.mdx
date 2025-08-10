@@ -72,7 +72,6 @@ Optional for Smart Routing:
       -p 3000:3000 \
       -e PORT=3000 \
       -e BASE_PATH="" \
-      -e REQUEST_TIMEOUT=60000 \
       samanhappy/mcphub:latest
     ```
 
@@ -144,12 +143,9 @@ Optional for Smart Routing:
 
     # Run with custom port
     PORT=8080 mcphub
-
-    # Run with custom config path
-    MCP_SETTINGS_PATH=/path/to/mcp_settings.json mcphub
     ```
 
-    #### 3. Local Installation
+    {/* #### 3. Local Installation
 
     You can also install MCPHub locally in a project:
 
@@ -170,8 +166,7 @@ Optional for Smart Routing:
 
     # Run MCPHub
     ./start.sh
-    ```
-
+    ``` */}
   </Tab>
 
   <Tab title="Local Development">
@@ -419,7 +414,7 @@ Smart Routing provides AI-powered tool discovery using vector semantic search.
   </Tab>
 </Tabs>
 
-### Environment Configuration
+{/* ### Environment Configuration
 
 Set the following environment variables:
 
@@ -435,13 +430,13 @@ EMBEDDING_MODEL=text-embedding-3-small
 
 # Optional: Enable smart routing
 ENABLE_SMART_ROUTING=true
-```
+``` */}
 
 ## Verification
 
 After installation, verify MCPHub is working:
 
-### 1. Health Check
+{/* ### 1. Health Check
 
 ```bash
 curl http://localhost:3000/api/health
@@ -455,9 +450,9 @@ Expected response:
   "version": "x.x.x",
   "uptime": 123
 }
-```
+``` */}
 
-### 2. Dashboard Access
+### Dashboard Access
 
 Open your browser and navigate to:
 
@@ -465,7 +460,7 @@ Open your browser and navigate to:
 http://localhost:3000
 ```
 
-### 3. API Test
+{/* ### 3. API Test
 
 ```bash
 curl -X POST http://localhost:3000/mcp \
@@ -476,7 +471,7 @@ curl -X POST http://localhost:3000/mcp \
     "method": "tools/list",
     "params": {}
   }'
-```
+``` */}
 
 ## Troubleshooting
 

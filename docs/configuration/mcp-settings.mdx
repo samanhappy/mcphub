@@ -27,10 +27,7 @@ MCPHub uses several configuration files:
       "args": ["arg1", "arg2"],
       "env": {
         "ENV_VAR": "value"
-      },
-      "cwd": "/working/directory",
-      "timeout": 30000,
-      "restart": true
+      }
     }
   }
 }
@@ -50,8 +47,7 @@ MCPHub uses several configuration files:
     },
     "playwright": {
       "command": "npx",
-      "args": ["@playwright/mcp@latest", "--headless"],
-      "timeout": 60000
+      "args": ["@playwright/mcp@latest", "--headless"]
     },
     "slack": {
       "command": "npx",
@@ -79,12 +75,6 @@ MCPHub uses several configuration files:
 | Field          | Type    | Default         | Description                 |
 | -------------- | ------- | --------------- | --------------------------- |
 | `env`          | object  | `{}`            | Environment variables       |
-| `cwd`          | string  | `process.cwd()` | Working directory           |
-| `timeout`      | number  | `30000`         | Startup timeout (ms)        |
-| `restart`      | boolean | `true`          | Auto-restart on failure     |
-| `maxRestarts`  | number  | `5`             | Maximum restart attempts    |
-| `restartDelay` | number  | `5000`          | Delay between restarts (ms) |
-| `stdio`        | string  | `pipe`          | stdio configuration         |
 
 ## Common MCP Server Examples
 
@@ -262,42 +252,14 @@ MCPHub supports environment variable substitution using `${VAR_NAME}` syntax:
       "args": ["-m", "api_server"],
       "env": {
         "API_KEY": "${API_KEY}",
-        "API_URL": "${API_BASE_URL}/v1",
-        "DEBUG": "${NODE_ENV:development}"
+        "API_URL": "${API_BASE_URL}/v1"
       }
     }
   }
 }
 ```
 
-Default values can be specified with `${VAR_NAME:default}`:
-
-```json
-{
-  "timeout": "${MCP_TIMEOUT:30000}",
-  "maxRestarts": "${MCP_MAX_RESTARTS:5}"
-}
-```
-
-### Conditional Configuration
-
-Use different configurations based on environment:
-
-```json
-{
-  "mcpServers": {
-    "database": {
-      "command": "python",
-      "args": ["-m", "db_server"],
-      "env": {
-        "DB_URL": "${NODE_ENV:development == 'production' ? DATABASE_URL : DEV_DATABASE_URL}"
-      }
-    }
-  }
-}
-```
-
-### Custom Server Scripts
+{/* ### Custom Server Scripts
 
 #### Local Python Server
 
@@ -373,7 +335,7 @@ Complement `mcp_settings.json` with server metadata:
     }
   }
 }
-```
+``` */}
 
 ## Group Management
 
@@ -385,25 +347,18 @@ Complement `mcp_settings.json` with server metadata:
     "production": {
       "name": "Production Tools",
       "description": "Stable production servers",
-      "servers": ["fetch", "slack", "github"],
-      "access": "authenticated",
-      "rateLimit": {
-        "requestsPerMinute": 100,
-        "burstLimit": 20
-      }
+      "servers": ["fetch", "slack", "github"]
     },
     "experimental": {
       "name": "Experimental Features",
       "description": "Beta and experimental servers",
-      "servers": ["experimental-ai", "beta-search"],
-      "access": "admin",
-      "enabled": false
+      "servers": ["experimental-ai", "beta-search"]
     }
   }
 }
 ```
 
-### Access Control
+{/* ### Access Control
 
 | Access Level    | Description                |
 | --------------- | -------------------------- |
@@ -422,9 +377,9 @@ MCPHub supports hot reloading of configurations:
 # Reload configurations without restart
 curl -X POST http://localhost:3000/api/admin/reload-config \
   -H "Authorization: Bearer your-admin-token"
-```
+``` */}
 
-### Configuration Validation
+{/* ### Configuration Validation
 
 MCPHub validates configurations on startup and reload:
 
@@ -436,7 +391,7 @@ MCPHub validates configurations on startup and reload:
     "requireDocumentation": true
   }
 }
-```
+``` */}
 
 ## Best Practices
 
@@ -453,7 +408,7 @@ MCPHub validates configurations on startup and reload:
    }
    ```
 
-2. **Limit server permissions**:
+{/* 2. **Limit server permissions**:
    ```json
    {
      "filesystem": {
@@ -464,9 +419,9 @@ MCPHub validates configurations on startup and reload:
        }
      }
    }
-   ```
+   ``` */}
 
-### Performance
+{/* ### Performance
 
 1. **Set appropriate timeouts**:
 
@@ -486,9 +441,9 @@ MCPHub validates configurations on startup and reload:
        "MEMORY_LIMIT": "512MB"
      }
    }
-   ```
+   ``` */}
 
-### Monitoring
+{/* ### Monitoring
 
 1. **Enable health checks**:
 
@@ -510,9 +465,9 @@ MCPHub validates configurations on startup and reload:
        "LOG_FORMAT": "json"
      }
    }
-   ```
+   ``` */}
 
-## Troubleshooting
+{/* ## Troubleshooting
 
 ### Common Issues
 
@@ -521,9 +476,9 @@ MCPHub validates configurations on startup and reload:
 ```bash
 # Test command manually
 uvx mcp-server-fetch
-```
+``` */}
 
-**Environment variables not found**: Verify `.env` file
+{/* **Environment variables not found**: Verify `.env` file
 
 ```bash
 # Check environment
@@ -535,9 +490,9 @@ printenv | grep API_KEY
 ```bash
 # Verify executable permissions
 ls -la /path/to/server
-```
+``` */}
 
-### Debug Configuration
+{/* ### Debug Configuration
 
 Enable debug mode for detailed logging:
 
@@ -550,8 +505,8 @@ Enable debug mode for detailed logging:
     "logStartup": true
   }
 }
-```
-
+``` */}
+{/* 
 ### Validation Errors
 
 Common validation errors and solutions:
@@ -559,6 +514,6 @@ Common validation errors and solutions:
 1. **Missing required fields**: Add `command` and `args`
 2. **Invalid timeout**: Use number, not string
 3. **Environment variable not found**: Check `.env` file
-4. **Command not found**: Verify installation and PATH
+4. **Command not found**: Verify installation and PATH */}
 
 This comprehensive guide covers all aspects of configuring MCP servers in MCPHub for various use cases and environments.

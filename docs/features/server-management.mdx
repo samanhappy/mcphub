@@ -311,7 +311,7 @@ Servers can use environment variables for configuration:
 - `${VAR_NAME:-default}`: Uses default if variable not set
 - `${VAR_NAME:+value}`: Uses value if variable is set
 
-### Working Directory
+{/* ### Working Directory
 
 Set the working directory for server execution:
 
@@ -323,7 +323,7 @@ Set the working directory for server execution:
     "cwd": "/path/to/server/directory"
   }
 }
-```
+``` */}
 
 ### Command Variations
 
@@ -352,7 +352,7 @@ Different ways to specify server commands:
     ```
   </Tab>
 
-  <Tab title="Direct Python">
+  {/* <Tab title="Direct Python">
     ```json
     {
       "direct-python": {
@@ -373,7 +373,7 @@ Different ways to specify server commands:
       }
     }
     ```
-  </Tab>
+  </Tab> */}
 </Tabs>
 
 ## Advanced Features
@@ -382,12 +382,12 @@ Different ways to specify server commands:
 
 MCPHub supports hot reloading of server configurations:
 
-1. **Config File Changes**: Automatically detects changes to `mcp_settings.json`
-2. **Dashboard Updates**: Immediately applies changes made through the web interface
-3. **API Updates**: Real-time updates via REST API calls
-4. **Zero Downtime**: Graceful server restarts without affecting other servers
+{/* 1. **Config File Changes**: Automatically detects changes to `mcp_settings.json` */}
+1. **Dashboard Updates**: Immediately applies changes made through the web interface
+2. **API Updates**: Real-time updates via REST API calls
+3. **Zero Downtime**: Graceful server restarts without affecting other servers
 
-### Resource Limits
+{/* ### Resource Limits
 
 Control server resource usage:
 
@@ -403,9 +403,9 @@ Control server resource usage:
     }
   }
 }
-```
+``` */}
 
-### Dependency Management
+{/* ### Dependency Management
 
 Handle server dependencies:
 
@@ -439,7 +439,7 @@ Handle server dependencies:
     ```
 
   </Accordion>
-</AccordionGroup>
+</AccordionGroup> */}
 
 ## Troubleshooting
 

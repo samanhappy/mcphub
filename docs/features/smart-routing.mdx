@@ -55,7 +55,7 @@ Smart Routing requires additional setup compared to basic MCPHub usage:
 2. **Embedding Service**: OpenAI API or compatible service
 3. **Environment Configuration**: Proper configuration variables
 
-### Quick Setup
+{/* ### Quick Setup
 
 <Tabs>
   <Tab title="Docker Compose">
@@ -265,7 +265,7 @@ EMBEDDING_BATCH_SIZE=100
     ```
 
   </Accordion>
-</AccordionGroup>
+</AccordionGroup> */}
 
 ## Using Smart Routing
 
@@ -287,7 +287,7 @@ Access Smart Routing through the special `$smart` endpoint:
   </Tab>
 </Tabs>
 
-### Basic Usage
+{/* ### Basic Usage
 
 Connect your AI client to the Smart Routing endpoint and make natural language requests:
 
@@ -330,9 +330,9 @@ Response:
     ]
   }
 }
-```
+``` */}
 
-### Advanced Queries
+{/* ### Advanced Queries
 
 Smart Routing supports various query types:
 
@@ -405,9 +405,9 @@ Smart Routing supports various query types:
       }'
     ```
   </Accordion>
-</AccordionGroup>
+</AccordionGroup> */}
 
-### Tool Execution
+{/* ### Tool Execution
 
 Once Smart Routing finds relevant tools, you can execute them directly:
 
@@ -426,9 +426,9 @@ curl -X POST http://localhost:3000/mcp/$smart \
       }
     }
   }'
-```
+``` */}
 
-## Performance Optimization
+{/* ## Performance Optimization
 
 ### Embedding Cache
 
@@ -585,7 +585,7 @@ curl -X POST http://localhost:3000/api/smart-routing/feedback \
     "successful": true,
     "comments": "Perfect tool for the task"
   }'
-```
+``` */}
 
 ## Troubleshooting
 

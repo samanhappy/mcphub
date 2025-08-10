@@ -27,26 +27,15 @@
             "pages": [
               "features/server-management",
               "features/group-management",
-              "features/smart-routing",
-              "features/authentication",
-              "features/monitoring"
+              "features/smart-routing"
             ]
           },
           {
             "group": "Configuration",
             "pages": [
               "configuration/mcp-settings",
-              "configuration/environment-variables",
               "configuration/docker-setup",
               "configuration/nginx"
-            ]
-          },
-          {
-            "group": "Development",
-            "pages": [
-              "development/getting-started",
-              "development/architecture",
-              "development/contributing"
             ]
           }
         ]
