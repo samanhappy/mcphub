@@ -297,7 +297,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({ schema, onSubmit, onCancel, l
         <input
           type="number"
           step={schema.type === 'integer' ? '1' : 'any'}
-          value={value !== undefined && value !== null ? value : ''}
+          value={value ?? ''}
           onChange={(e) => {
             const val = e.target.value === '' ? '' : schema.type === 'integer' ? parseInt(e.target.value) : parseFloat(e.target.value);
             onChange(val);
