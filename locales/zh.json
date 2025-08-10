@@ -197,7 +197,7 @@
     "changePassword": "修改密码",
     "groups": "分组",
     "users": "用户",
-    "market": "本地市场",
+    "market": "市场",
     "cloud": "云端市场",
     "logs": "日志"
   },
@@ -230,7 +230,7 @@
       "title": "用户管理"
     },
     "market": {
-      "title": "本地市场 - （数据来源于 mcpm.sh）"
+      "title": "市场中心 - 本地市场和云端市场"
     },
     "logs": {
       "title": "系统日志"
@@ -283,7 +283,7 @@
     "configureTools": "配置工具"
   },
   "market": {
-    "title": "本地市场",
+    "title": "本地安装",
     "official": "官方",
     "by": "作者",
     "unknown": "未知",
@@ -327,7 +327,7 @@
     "confirmAndInstall": "确认并安装"
   },
   "cloud": {
-    "title": "云端市场",
+    "title": "云端支持",
     "subtitle": "由 MCPRouter 提供支持",
     "by": "作者",
     "server": "服务器",

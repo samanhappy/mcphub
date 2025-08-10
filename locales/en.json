@@ -196,7 +196,7 @@
     "users": "Users",
     "settings": "Settings",
     "changePassword": "Change Password",
-    "market": "Local Market",
+    "market": "Market",
     "cloud": "Cloud Market",
     "logs": "Logs"
   },
@@ -229,7 +229,7 @@
       "smartRouting": "Smart Routing"
     },
     "market": {
-      "title": "Server Market - (Data from mcpm.sh)"
+      "title": "Market Hub - Local and Cloud Markets"
     },
     "logs": {
       "title": "System Logs"
@@ -282,7 +282,7 @@
     "configureTools": "Configure Tools"
   },
   "market": {
-    "title": "Local Market",
+    "title": "Local Installation",
     "official": "Official",
     "by": "By",
     "unknown": "Unknown",
@@ -326,7 +326,7 @@
     "confirmAndInstall": "Confirm and Install"
   },
   "cloud": {
-    "title": "Cloud Market",
+    "title": "Cloud Support",
     "subtitle": "Powered by MCPRouter",
     "by": "By",
     "server": "Server",
