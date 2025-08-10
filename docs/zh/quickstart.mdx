@@ -1,304 +1,212 @@
 ---
-title: '快速开始'
-description: '5 分钟内部署 MCPHub 并连接您的第一个 MCP 服务器'
+title: '快速开始指南'
+description: '5 分钟内运行 MCPHub'
 ---
 
-## 欢迎使用 MCPHub！
+## 安装
 
-本指南将帮助您在 5 分钟内完成 MCPHub 的部署和配置，并连接您的第一个 MCP 服务器。
-
-## 前提条件
-
-在开始之前，请确保您的系统满足以下要求：
-
-<AccordionGroup>
-  <Accordion icon="desktop" title="系统要求">
-    - **操作系统**: Linux、macOS 或 Windows
-    - **内存**: 最少 2GB RAM（推荐 4GB+）
-    - **存储**: 至少 1GB 可用空间
-    - **网络**: 稳定的互联网连接
-  </Accordion>
-
-  <Accordion icon="code" title="软件依赖">
-    - **Node.js**: 18.0+ 版本
-    - **Docker**: 最新版本（可选，用于容器化部署）
-    - **Git**: 用于代码管理
-    
-    检查版本：
-    ```bash
-    node --version  # 应该 >= 18.0.0
-    npm --version   # 应该 >= 8.0.0
-    docker --version # 可选
-    ```
-  </Accordion>
-</AccordionGroup>
-
-## 安装 MCPHub
-
-### 方式一：使用 npm（推荐）
-
-<AccordionGroup>
-  <Accordion icon="download" title="安装 MCPHub CLI">
-    首先安装 MCPHub 命令行工具：
+<Tabs>
+  <Tab title="Docker（推荐）">
+    使用 Docker 是最快的开始方式：
 
     ```bash
-    npm install -g @mcphub/cli
+    # 使用默认配置运行
+    docker run -p 3000:3000 samanhappy/mcphub
     ```
 
-    验证安装：
+    或者挂载自定义配置：
+
     ```bash
-    mcphub --version
+    # 使用自定义 MCP 设置运行
+    docker run -p 3000:3000 \
+      -v $(pwd)/mcp_settings.json:/app/mcp_settings.json \
+      samanhappy/mcphub
     ```
 
-  </Accordion>
-
-  <Accordion icon="folder-plus" title="创建新项目">
-    创建一个新的 MCPHub 项目：
+  </Tab>
+  <Tab title="本地开发">
+    用于开发或自定义：
 
     ```bash
-    # 创建项目
-    mcphub init my-mcphub-project
-    cd my-mcphub-project
+    # 克隆仓库
+    git clone https://github.com/samanhappy/mcphub.git
+    cd mcphub
 
     # 安装依赖
-    npm install
+    pnpm install
+
+    # 启动开发服务器
+    pnpm dev
     ```
 
-  </Accordion>
+    这会同时启动后端（端口 3001）和前端（端口 5173）的开发模式。
 
-  <Accordion icon="gear" title="配置环境">
-    复制并编辑环境变量文件：
+  </Tab>
+  <Tab title="npm 包">
+    将 MCPHub 安装为全局包：
 
     ```bash
-    cp .env.example .env
+    # 全局安装
+    npm install -g @samanhappy/mcphub
+
+    # 运行 MCPHub
+    mcphub
     ```
 
-    编辑 `.env` 文件，设置基本配置：
-    ```bash
-    # 服务器配置
-    PORT=3000
-    NODE_ENV=development
+  </Tab>
+</Tabs>
 
-    # 数据库配置（使用内置 SQLite）
-    DATABASE_URL=sqlite:./data/mcphub.db
+## 初始设置
 
-    # JWT 密钥（请更改为安全的随机字符串）
-    JWT_SECRET=your-super-secret-jwt-key-change-me
+### 1. 访问控制面板
 
-    # 管理员账户
-    ADMIN_EMAIL=admin@example.com
-    ADMIN_PASSWORD=admin123
-    ```
+打开浏览器并导航到：
 
-  </Accordion>
-</AccordionGroup>
-
-### 方式二：使用 Docker
-
-<AccordionGroup>
-  <Accordion icon="docker" title="Docker 快速部署">
-    使用 Docker Compose 一键部署：
-
-    ```bash
-    # 下载配置文件
-    curl -O https://raw.githubusercontent.com/mcphub/mcphub/main/docker-compose.yml
-
-    # 启动服务
-    docker-compose up -d
-    ```
-
-    或者直接运行 Docker 容器：
-    ```bash
-    docker run -d \
-      --name mcphub \
-      -p 3000:3000 \
-      -e NODE_ENV=production \
-      -e JWT_SECRET=your-secret-key \
-      mcphub/server:latest
-    ```
-
-  </Accordion>
-</AccordionGroup>
-
-## 启动 MCPHub
-
-### 开发模式启动
-
-```bash
-# 初始化数据库
-npm run db:setup
-
-# 启动开发服务器
-npm run dev
+```
+http://localhost:3000
 ```
 
-### 生产模式启动
+### 2. 登录
 
-```bash
-# 构建应用
-npm run build
+使用默认凭据：
 
-# 启动生产服务器
-npm start
-```
-
-<Note>开发模式下，MCPHub 会在 `http://localhost:3000` 启动，并具有热重载功能。</Note>
-
-## 首次访问和配置
-
-### 1. 访问管理界面
-
-打开浏览器，访问 `http://localhost:3000`，您将看到 MCPHub 的欢迎页面。
-
-### 2. 登录管理员账户
-
-使用您在 `.env` 文件中设置的管理员凭据登录：
-
-- **邮箱**: `admin@example.com`
+- **用户名**: `admin`
 - **密码**: `admin123`
 
-<Warning>首次登录后，请立即更改默认密码以确保安全！</Warning>
+<Warning>为了安全起见，请在首次登录后立即更改这些默认凭据。</Warning>
 
-### 3. 完成初始配置
+### 3. 配置您的第一个 MCP 服务器
 
-登录后，系统会引导您完成初始配置：
+1. 在控制面板中点击 **"添加服务器"**
+2. 输入服务器详细信息：
+   - **名称**: 唯一标识符（例如 `fetch`）
+   - **命令**: 可执行命令（`uvx`）
+   - **参数**: 命令参数（`["mcp-server-fetch"]`）
+   - **环境**: 任何所需的环境变量
 
-1. **更改管理员密码**
-2. **设置组织信息**
-3. **配置基本设置**
+fetch 服务器的示例配置：
 
-## 添加您的第一个 MCP 服务器
-
-### 1. 准备 MCP 服务器
-
-如果您还没有 MCP 服务器，可以使用我们的示例服务器进行测试：
-
-```bash
-# 克隆示例服务器
-git clone https://github.com/mcphub/example-mcp-server.git
-cd example-mcp-server
-
-# 安装依赖并启动
-npm install
-npm start
+```json
+{
+  "name": "fetch",
+  "command": "uvx",
+  "args": ["mcp-server-fetch"],
+  "env": {}
+}
 ```
 
-示例服务器将在 `http://localhost:3001` 启动。
+## 基本使用
 
-### 2. 在 MCPHub 中添加服务器
+### 连接 AI 客户端
 
-在 MCPHub 管理界面中：
+一旦配置了服务器，使用 MCPHub 端点连接您的 AI 客户端：
 
-1. 点击 **"添加服务器"** 按钮
-2. 填写服务器信息：
-   ```
-   名称: Example MCP Server
-   端点: http://localhost:3001
-   描述: 示例 MCP 服务器用于测试
-   ```
-3. 选择功能类型（如：chat、completion、analysis）
-4. 点击 **"测试连接"** 验证服务器可达性
-5. 点击 **"保存"** 完成添加
+<Tabs>
+  <Tab title="所有服务器">
+    访问所有已配置的 MCP 服务器：``` http://localhost:3000/mcp ```
+  </Tab>
+  <Tab title="特定组">
+    访问特定组中的服务器：``` http://localhost:3000/mcp/{groupName} ```
+  </Tab>
+  <Tab title="单个服务器">
+    访问单个服务器：``` http://localhost:3000/mcp/{serverName} ```
+  </Tab>
+  <Tab title="智能路由">
+    使用 AI 驱动的工具发现：``` http://localhost:3000/mcp/$smart ```
+    <Info>智能路由需要使用 pgvector 的 PostgreSQL 和 OpenAI API 密钥。</Info>
+  </Tab>
+</Tabs>
 
-### 3. 验证服务器状态
+### 示例：添加热门 MCP 服务器
 
-添加成功后，您应该能在服务器列表中看到新添加的服务器，状态显示为 **"活跃"**（绿色）。
+以下是一些您可以添加的热门 MCP 服务器：
 
-## 测试路由功能
-
-### 发送测试请求
-
-使用 cURL 或其他 HTTP 客户端测试路由功能：
-
-```bash
-# 发送聊天请求
-curl -X POST http://localhost:3000/api/chat \
-  -H "Content-Type: application/json" \
-  -d '{
-    "messages": [
-      {
-        "role": "user",
-        "content": "Hello, this is a test message!"
+<AccordionGroup>
+  <Accordion title="Web Fetch 服务器">
+    ```json
+    {
+      "name": "fetch",
+      "command": "uvx",
+      "args": ["mcp-server-fetch"]
+    }
+    ```
+  </Accordion>
+  
+  <Accordion title="Playwright 浏览器自动化">
+    ```json
+    {
+      "name": "playwright",
+      "command": "npx",
+      "args": ["@playwright/mcp@latest", "--headless"]
+    }
+    ```
+  </Accordion>
+  
+  <Accordion title="高德地图（需要 API 密钥）">
+    ```json
+    {
+      "name": "amap",
+      "command": "npx",
+      "args": ["-y", "@amap/amap-maps-mcp-server"],
+      "env": {
+        "AMAP_MAPS_API_KEY": "your-api-key-here"
       }
-    ]
-  }'
-```
-
-### 查看请求日志
-
-在 MCPHub 管理界面的 **"监控"** 页面中，您可以实时查看：
-
-- 请求数量和响应时间
-- 服务器健康状态
-- 错误日志和统计
+    }
+    ```
+  </Accordion>
+  
+  <Accordion title="Slack 集成">
+    ```json
+    {
+      "name": "slack",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-slack"],
+      "env": {
+        "SLACK_BOT_TOKEN": "your-bot-token",
+        "SLACK_TEAM_ID": "your-team-id"
+      }
+    }
+    ```
+  </Accordion>
+</AccordionGroup>
 
 ## 后续步骤
 
-恭喜！您已经成功部署了 MCPHub 并添加了第一个 MCP 服务器。接下来您可以：
-
 <CardGroup cols={2}>
-  <Card title="配置负载均衡" icon="balance-scale" href="/zh/features/smart-routing">
-    学习如何配置智能路由和负载均衡策略
+  <Card title="服务器管理" icon="server" href="/zh/features/server-management">
+    学习高级服务器配置和管理
   </Card>
-  <Card title="添加更多服务器" icon="plus" href="/zh/features/server-management">
-    了解服务器管理的高级功能
+  <Card title="组管理" icon="users" href="/zh/features/group-management">
+    将服务器组织成逻辑组
   </Card>
-  <Card title="设置监控告警" icon="bell" href="/zh/features/monitoring">
-    配置性能监控和告警通知
+  <Card title="智能路由" icon="route" href="/zh/features/smart-routing">
+    设置 AI 驱动的工具发现
   </Card>
-  <Card title="API 集成" icon="code" href="/zh/api-reference/introduction">
-    将 MCPHub 集成到您的应用程序中
+  <Card title="API 参考" icon="code" href="/zh/api-reference/introduction">
+    探索完整的 API 文档
   </Card>
 </CardGroup>
 
-## 常见问题
+## 故障排除
 
 <AccordionGroup>
-  <Accordion icon="question" title="无法连接到 MCP 服务器">
-    **可能原因**：
-    - 服务器地址错误或服务器未启动
-    - 防火墙阻止连接
-    - 网络配置问题
-
-    **解决方案**：
-    1. 验证服务器是否正在运行：`curl http://localhost:3001/health`
-    2. 检查防火墙设置
-    3. 确认网络连接正常
-
+  <Accordion title="服务器无法启动">
+    - 检查 MCP 服务器命令是否在您的 PATH 中可访问
+    - 验证环境变量是否正确设置
+    - 检查 MCPHub 日志以获取详细错误信息
   </Accordion>
 
-  <Accordion icon="question" title="服务器状态显示为离线">
-    **可能原因**：
-    - 健康检查失败
-    - 服务器响应超时
-    - 服务器崩溃或重启
-
-    **解决方案**：
-    1. 检查服务器日志
-    2. 调整健康检查间隔
-    3. 重启服务器进程
-
+  <Accordion title="无法从 AI 客户端连接">
+    - 确保 MCPHub 在正确的端口上运行
+    - 检查防火墙设置
+    - 验证端点 URL 格式
   </Accordion>
 
-  <Accordion icon="question" title="忘记管理员密码">
-    **解决方案**：
-    ```bash
-    # 重置管理员密码
-    npm run reset-admin-password
-    ```
-    或者删除数据库文件重新初始化：
-    ```bash
-    rm data/mcphub.db
-    npm run db:setup
-    ```
+  <Accordion title="身份验证问题">
+    - 验证凭据是否正确
+    - 检查 JWT 令牌是否有效
+    - 尝试清除浏览器缓存和 cookie
   </Accordion>
 </AccordionGroup>
 
-## 获取帮助
-
-如果您在设置过程中遇到问题：
-
-- 📖 查看 [完整文档](/zh/development/getting-started)
-- 🐛 在 [GitHub](https://github.com/mcphub/mcphub/issues) 上报告问题
-- 💬 加入 [Discord 社区](https://discord.gg/mcphub) 获取实时帮助
-- 📧 发送邮件至 support@mcphub.io
+需要更多帮助？加入我们的 [Discord 社区](https://discord.gg/qMKNsn5Q) 获取支持！

@@ -49,448 +49,369 @@ curl -X POST http://localhost:3000/api/servers \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer YOUR_JWT_TOKEN" \
   -d '{
-    "name": "my-server",
-    "command": "npx",
-    "args": ["-y", "@modelcontextprotocol/server-filesystem", "/path/to/files"],
-    "env": {
-      "NODE_ENV": "production"
-    },
-    "cwd": "/app"
+    "name": "fetch-server",
+    "command": "uvx",
+    "args": ["mcp-server-fetch"],
+    "env": {}
   }'
 ```
 
-## 服务器配置
+## 流行的 MCP 服务器示例
 
-### 通用配置选项
+<AccordionGroup>
+  <Accordion title="Web 抓取服务器">
+    提供网页抓取和 HTTP 请求功能：
 
-```json
-{
-  "name": "filesystem-server",
-  "command": "npx",
-  "args": ["-y", "@modelcontextprotocol/server-filesystem", "/allowed/path"],
-  "env": {
-    "NODE_ENV": "production",
-    "DEBUG": "mcp:*",
-    "MAX_FILES": "1000"
-  },
-  "cwd": "/app/workspace",
-  "timeout": 30000,
-  "retries": 3,
-  "enabled": true
-}
-```
+    ```json
+    {
+      "fetch": {
+        "command": "uvx",
+        "args": ["mcp-server-fetch"]
+      }
+    }
+    ```
 
-### Python 服务器示例
+    **可用工具:**
+    - `fetch`: 发起 HTTP 请求
+    - `fetch_html`: 抓取网页
+    - `fetch_json`: 从 API 获取 JSON 数据
 
-```json
-{
-  "name": "python-server",
-  "command": "python",
-  "args": ["-m", "mcp_server", "--config", "config.json"],
-  "env": {
-    "PYTHONPATH": "/app/python",
-    "API_KEY": "${API_KEY}",
-    "LOG_LEVEL": "INFO"
-  },
-  "cwd": "/app/python-server"
-}
-```
+  </Accordion>
 
-### Node.js 服务器示例
+  <Accordion title="Playwright 浏览器自动化">
+    用于网页交互的浏览器自动化：
 
-```json
-{
-  "name": "node-server",
-  "command": "node",
-  "args": ["server.js", "--port", "3001"],
-  "env": {
-    "NODE_ENV": "production",
-    "PORT": "3001",
-    "DATABASE_URL": "${DATABASE_URL}"
-  },
-  "cwd": "/app/node-server"
-}
-```
+    ```json
+    {
+      "playwright": {
+        "command": "npx",
+        "args": ["@playwright/mcp@latest", "--headless"]
+      }
+    }
+    ```
+
+    **可用工具:**
+    - `playwright_navigate`: 导航到网页
+    - `playwright_screenshot`: 截取屏幕截图
+    - `playwright_click`: 点击元素
+    - `playwright_fill`: 填写表单
+
+  </Accordion>
+
+  <Accordion title="文件系统操作">
+    文件和目录管理：
+
+    ```json
+    {
+      "filesystem": {
+        "command": "npx",
+        "args": ["-y", "@modelcontextprotocol/server-filesystem", "/allowed/path"]
+      }
+    }
+    ```
+
+    **可用工具:**
+    - `read_file`: 读取文件内容
+    - `write_file`: 写入文件
+    - `create_directory`: 创建目录
+    - `list_directory`: 列出目录内容
+
+  </Accordion>
+
+  <Accordion title="SQLite 数据库">
+    数据库操作：
+
+    ```json
+    {
+      "sqlite": {
+        "command": "npx",
+        "args": ["-y", "@modelcontextprotocol/server-sqlite", "/path/to/database.db"]
+      }
+    }
+    ```
+
+    **可用工具:**
+    - `execute_query`: 执行 SQL 查询
+    - `describe_tables`: 获取表结构
+    - `create_table`: 创建新表
+
+  </Accordion>
+
+  <Accordion title="Slack 集成">
+    Slack 工作空间集成：
+
+    ```json
+    {
+      "slack": {
+        "command": "npx",
+        "args": ["-y", "@modelcontextprotocol/server-slack"],
+        "env": {
+          "SLACK_BOT_TOKEN": "xoxb-your-bot-token",
+          "SLACK_TEAM_ID": "T1234567890"
+        }
+      }
+    }
+    ```
+
+    **可用工具:**
+    - `send_slack_message`: 发送消息到频道
+    - `list_slack_channels`: 列出可用频道
+    - `get_slack_thread`: 获取线程消息
+
+  </Accordion>
+
+  <Accordion title="GitHub 集成">
+    GitHub 仓库操作：
+
+    ```json
+    {
+      "github": {
+        "command": "npx",
+        "args": ["-y", "@modelcontextprotocol/server-github"],
+        "env": {
+          "GITHUB_PERSONAL_ACCESS_TOKEN": "ghp_your_token"
+        }
+      }
+    }
+    ```
+
+    **可用工具:**
+    - `create_or_update_file`: 创建/更新仓库文件
+    - `search_repositories`: 搜索 GitHub 仓库
+    - `create_issue`: 创建问题
+    - `create_pull_request`: 创建拉取请求
+
+  </Accordion>
+
+  <Accordion title="Google Drive">
+    Google Drive 文件操作：
+
+    ```json
+    {
+      "gdrive": {
+        "command": "npx",
+        "args": ["-y", "@modelcontextprotocol/server-gdrive"],
+        "env": {
+          "GDRIVE_CLIENT_ID": "your-client-id",
+          "GDRIVE_CLIENT_SECRET": "your-client-secret",
+          "GDRIVE_REDIRECT_URI": "your-redirect-uri"
+        }
+      }
+    }
+    ```
+
+    **可用工具:**
+    - `gdrive_search`: 搜索文件和文件夹
+    - `gdrive_read`: 读取文件内容
+    - `gdrive_create`: 创建新文件
+
+  </Accordion>
+
+  <Accordion title="高德地图（中国）">
+    中国地图和位置服务：
+
+    ```json
+    {
+      "amap": {
+        "command": "npx",
+        "args": ["-y", "@amap/amap-maps-mcp-server"],
+        "env": {
+          "AMAP_MAPS_API_KEY": "your-api-key"
+        }
+      }
+    }
+    ```
+
+    **可用工具:**
+    - `search_location`: 搜索位置
+    - `get_directions`: 获取路线指引
+    - `reverse_geocode`: 将坐标转换为地址
+
+  </Accordion>
+</AccordionGroup>
 
 ## 服务器生命周期管理
 
 ### 启动服务器
 
-```bash
-# 启动特定服务器
-curl -X POST http://localhost:3000/api/servers/my-server/start \
-  -H "Authorization: Bearer $TOKEN"
+服务器会在以下情况下自动启动：
 
-# 启动所有服务器
-curl -X POST http://localhost:3000/api/servers/start-all \
-  -H "Authorization: Bearer $TOKEN"
-```
+- MCPHub 启动时
+- 通过仪表板或 API 添加服务器时
+- 服务器配置更新时
+- 手动重启已停止的服务器时
 
 ### 停止服务器
 
-```bash
-# 停止特定服务器
-curl -X POST http://localhost:3000/api/servers/my-server/stop \
-  -H "Authorization: Bearer $TOKEN"
+您可以通过以下方式停止服务器：
 
-# 优雅停止（等待当前请求完成）
-curl -X POST http://localhost:3000/api/servers/my-server/stop \
-  -H "Authorization: Bearer $TOKEN" \
-  -d '{"graceful": true, "timeout": 30000}'
-```
+- **通过仪表板**: 切换服务器状态开关
+- **通过 API**: 发送 POST 请求到 `/api/servers/{name}/toggle`
+- **自动停止**: 服务器崩溃或遇到错误时会自动停止
 
 ### 重启服务器
 
-```bash
-# 重启服务器
-curl -X POST http://localhost:3000/api/servers/my-server/restart \
-  -H "Authorization: Bearer $TOKEN"
-```
+服务器会在以下情况下自动重启：
 
-## 热配置重载
-
-### 更新服务器配置
-
-无需重启即可更新配置：
-
-```bash
-curl -X PUT http://localhost:3000/api/servers/my-server/config \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer $TOKEN" \
-  -d '{
-    "env": {
-      "DEBUG": "mcp:verbose",
-      "NEW_SETTING": "value"
-    },
-    "args": ["--verbose", "--new-flag"]
-  }'
-```
-
-### 批量配置更新
-
-```bash
-curl -X PUT http://localhost:3000/api/servers/bulk-update \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer $TOKEN" \
-  -d '{
-    "servers": ["server1", "server2"],
-    "config": {
-      "env": {
-        "LOG_LEVEL": "DEBUG"
-      }
-    }
-  }'
-```
+- 配置更改时
+- 环境变量更新后
+- 通过仪表板或 API 手动触发时
 
 ## 服务器状态监控
 
-### 检查服务器状态
+### 状态指示器
 
-```bash
-# 获取所有服务器状态
-curl -X GET http://localhost:3000/api/servers/status \
-  -H "Authorization: Bearer $TOKEN"
+每个服务器都显示状态指示器：
 
-# 获取特定服务器状态
-curl -X GET http://localhost:3000/api/servers/my-server/status \
-  -H "Authorization: Bearer $TOKEN"
-```
+- 🟢 **运行中**: 服务器处于活动状态并响应
+- 🟡 **启动中**: 服务器正在初始化
+- 🔴 **已停止**: 服务器未运行
+- ⚠️ **错误**: 服务器遇到错误
 
-响应示例：
+### 实时日志
 
-```json
-{
-  "name": "my-server",
-  "status": "running",
-  "pid": 12345,
-  "uptime": 3600000,
-  "memory": {
-    "rss": 123456789,
-    "heapTotal": 98765432,
-    "heapUsed": 87654321
-  },
-  "cpu": {
-    "user": 1000000,
-    "system": 500000
-  },
-  "lastRestart": "2024-01-01T12:00:00.000Z"
-}
-```
+实时查看服务器日志：
+
+1. **仪表板日志**: 点击服务器查看其日志
+2. **API 日志**: 通过 `/api/logs` 端点访问日志
+3. **流式日志**: 通过 WebSocket 订阅日志流
 
 ### 健康检查
 
-配置自动健康检查：
+MCPHub 自动执行健康检查：
+
+- **初始化检查**: 验证服务器成功启动
+- **工具发现**: 确认检测到可用工具
+- **响应检查**: 测试服务器响应性
+- **资源监控**: 跟踪 CPU 和内存使用情况
+
+## 配置管理
+
+### 环境变量
+
+服务器可以使用环境变量进行配置：
 
 ```json
 {
-  "name": "my-server",
-  "command": "node",
-  "args": ["server.js"],
-  "healthCheck": {
-    "enabled": true,
-    "interval": 30000,
-    "timeout": 5000,
-    "retries": 3,
-    "endpoint": "/health",
-    "expectedStatus": 200
-  }
-}
-```
-
-## 负载均衡
-
-### 配置多实例
-
-```json
-{
-  "name": "load-balanced-server",
-  "instances": 3,
-  "command": "node",
-  "args": ["server.js"],
-  "loadBalancer": {
-    "strategy": "round-robin",
-    "healthCheck": true,
-    "stickySession": false
-  },
-  "env": {
-    "PORT": "${PORT}"
-  }
-}
-```
-
-### 负载均衡策略
-
-- **round-robin**: 轮询分发请求
-- **least-connections**: 分发到连接数最少的实例
-- **weighted**: 基于权重分发
-- **ip-hash**: 基于客户端 IP 的一致性哈希
-
-## 资源限制
-
-### 设置资源限制
-
-```json
-{
-  "name": "resource-limited-server",
-  "command": "python",
-  "args": ["server.py"],
-  "resources": {
-    "memory": {
-      "limit": "512MB",
-      "warning": "400MB"
-    },
-    "cpu": {
-      "limit": "50%",
-      "priority": "normal"
-    },
-    "processes": {
-      "max": 10
+  "server-name": {
+    "command": "python",
+    "args": ["server.py"],
+    "env": {
+      "API_KEY": "${YOUR_API_KEY}",
+      "DEBUG": "true",
+      "MAX_CONNECTIONS": "10"
     }
   }
 }
 ```
 
-### 监控资源使用
+**环境变量展开:**
 
-```bash
-# 获取资源使用统计
-curl -X GET http://localhost:3000/api/servers/my-server/resources \
-  -H "Authorization: Bearer $TOKEN"
-```
+- `${VAR_NAME}`: 展开为环境变量值
+- `${VAR_NAME:-default}`: 如果变量未设置则使用默认值
+- `${VAR_NAME:+value}`: 如果变量已设置则使用指定值
 
-## 日志管理
+### 命令变体
 
-### 配置日志记录
+指定服务器命令的不同方式：
 
-```json
-{
-  "name": "my-server",
-  "command": "node",
-  "args": ["server.js"],
-  "logging": {
-    "level": "info",
-    "file": "/var/log/mcphub/my-server.log",
-    "maxSize": "100MB",
-    "maxFiles": 5,
-    "rotate": true,
-    "format": "json"
-  }
-}
-```
-
-### 查看日志
-
-```bash
-# 获取实时日志
-curl -X GET http://localhost:3000/api/servers/my-server/logs \
-  -H "Authorization: Bearer $TOKEN"
-
-# 获取带过滤器的日志
-curl -X GET "http://localhost:3000/api/servers/my-server/logs?level=error&limit=100" \
-  -H "Authorization: Bearer $TOKEN"
-```
-
-## 环境变量管理
-
-### 动态环境变量
-
-```json
-{
-  "name": "dynamic-server",
-  "command": "python",
-  "args": ["server.py"],
-  "env": {
-    "API_KEY": "${secrets:api_key}",
-    "DATABASE_URL": "${vault:db_url}",
-    "CURRENT_TIME": "${time:iso}",
-    "SERVER_ID": "${server:id}",
-    "HOSTNAME": "${system:hostname}"
-  }
-}
-```
-
-### 环境变量模板
-
-支持的模板变量：
-
-- `${secrets:key}`: 从密钥存储获取
-- `${vault:path}`: 从 Vault 获取
-- `${env:VAR}`: 从系统环境变量获取
-- `${time:format}`: 当前时间戳
-- `${server:property}`: 服务器属性
-- `${system:property}`: 系统属性
-
-## 服务发现
-
-### 自动服务发现
-
-```json
-{
-  "serviceDiscovery": {
-    "enabled": true,
-    "provider": "consul",
-    "config": {
-      "host": "localhost",
-      "port": 8500,
-      "serviceName": "mcp-server",
-      "tags": ["mcp", "ai", "api"]
-    }
-  }
-}
-```
-
-### 注册服务
-
-```bash
-# 手动注册服务
-curl -X POST http://localhost:3000/api/servers/my-server/register \
-  -H "Authorization: Bearer $TOKEN" \
-  -d '{
-    "service": {
-      "name": "my-mcp-service",
-      "tags": ["mcp", "production"],
-      "port": 3001,
-      "check": {
-        "http": "http://localhost:3001/health",
-        "interval": "30s"
+<Tabs>
+  <Tab title="npm/npx">
+    ```json
+    {
+      "npm-server": {
+        "command": "npx",
+        "args": ["-y", "package-name", "--option", "value"]
       }
     }
-  }'
-```
+    ```
+  </Tab>
+
+  <Tab title="Python/uvx">
+    ```json
+    {
+      "python-server": {
+        "command": "uvx",
+        "args": ["package-name", "--config", "config.json"]
+      }
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## 高级功能
+
+### 热重载
+
+MCPHub 支持服务器配置的热重载：
+
+1. **仪表板更新**: 立即应用通过 Web 界面进行的更改
+2. **API 更新**: 通过 REST API 调用进行实时更新
+3. **零停机时间**: 优雅的服务器重启，不影响其他服务器
 
 ## 故障排除
 
-### 常见问题
+<AccordionGroup>
+  <Accordion title="服务器无法启动">
+    **检查以下项目:**
+    - 命令在 PATH 中可用
+    - 已设置所有必需的环境变量
+    - 工作目录存在且可访问
+    - 网络端口未被阻塞
+    - 依赖项已安装
 
-1. **服务器启动失败**
+    **调试步骤:**
+    1. 在仪表板中检查服务器日志
+    2. 在终端中手动测试命令
+    3. 验证环境变量展开
+    4. 检查文件权限
 
-   ```bash
-   # 检查服务器日志
-   curl -X GET http://localhost:3000/api/servers/my-server/logs?level=error \
-     -H "Authorization: Bearer $TOKEN"
-   ```
+  </Accordion>
 
-2. **配置无效**
+  <Accordion title="服务器持续崩溃">
+    **常见原因:**
+    - 无效的配置参数
+    - 缺少 API 密钥或凭据
+    - 超出资源限制
+    - 依赖项冲突
 
-   ```bash
-   # 验证配置
-   curl -X POST http://localhost:3000/api/servers/validate \
-     -H "Content-Type: application/json" \
-     -H "Authorization: Bearer $TOKEN" \
-     -d @server-config.json
-   ```
+    **解决方案:**
+    1. 查看服务器日志中的错误消息
+    2. 使用最小配置进行测试
+    3. 验证所有凭据和 API 密钥
+    4. 检查系统资源可用性
 
-3. **性能问题**
-   ```bash
-   # 获取性能指标
-   curl -X GET http://localhost:3000/api/servers/my-server/metrics \
-     -H "Authorization: Bearer $TOKEN"
-   ```
+  </Accordion>
 
-### 调试模式
+  <Accordion title="工具未显示">
+    **可能的问题:**
+    - 服务器未完全初始化
+    - 工具发现超时
+    - 通信协议不匹配
+    - 服务器报告错误
 
-启用详细调试：
+    **调试步骤:**
+    1. 等待服务器初始化完成
+    2. 检查服务器日志中的工具注册消息
+    3. 测试与服务器的直接通信
+    4. 验证 MCP 协议兼容性
 
-```json
-{
-  "name": "debug-server",
-  "command": "node",
-  "args": ["--inspect=0.0.0.0:9229", "server.js"],
-  "env": {
-    "DEBUG": "*",
-    "LOG_LEVEL": "debug",
-    "NODE_ENV": "development"
-  },
-  "debugging": {
-    "enabled": true,
-    "port": 9229,
-    "breakOnStart": false
-  }
-}
-```
+  </Accordion>
+</AccordionGroup>
 
-## 高级配置
+## 下一步
 
-### 自定义钩子
-
-```json
-{
-  "name": "hooked-server",
-  "command": "node",
-  "args": ["server.js"],
-  "hooks": {
-    "beforeStart": ["./scripts/setup.sh"],
-    "afterStart": ["./scripts/notify.sh"],
-    "beforeStop": ["./scripts/cleanup.sh"],
-    "onError": ["./scripts/alert.sh"]
-  }
-}
-```
-
-### 配置模板
-
-```json
-{
-  "templates": {
-    "python-server": {
-      "command": "python",
-      "args": ["-m", "mcp_server"],
-      "env": {
-        "PYTHONPATH": "/app/python",
-        "LOG_LEVEL": "INFO"
-      }
-    }
-  },
-  "servers": {
-    "my-python-server": {
-      "extends": "python-server",
-      "args": ["-m", "mcp_server", "--config", "custom.json"],
-      "env": {
-        "API_KEY": "custom-key"
-      }
-    }
-  }
-}
-```
-
-有关更多配置选项，请参阅 [MCP 设置配置](/zh/configuration/mcp-settings) 和 [环境变量](/zh/configuration/environment-variables) 文档。
+<CardGroup cols={2}>
+  <Card title="分组管理" icon="users" href="/zh/features/group-management">
+    将服务器组织成逻辑分组
+  </Card>
+  <Card title="智能路由" icon="route" href="/zh/features/smart-routing">
+    设置 AI 驱动的工具发现
+  </Card>
+  <Card title="API 参考" icon="code" href="/zh/api-reference/servers">
+    服务器管理 API 文档
+  </Card>
+  <Card title="配置指南" icon="cog" href="/zh/configuration/mcp-settings">
+    详细配置选项
+  </Card>
+</CardGroup>

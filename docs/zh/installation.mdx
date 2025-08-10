@@ -1,0 +1,570 @@
+---
+title: '安装指南'
+description: '各种平台的详细安装说明'
+---
+
+## 先决条件
+
+在安装 MCPHub 之前，请确保您具备以下先决条件：
+
+- **Node.js** 18+ (用于本地开发)
+- **Docker** (推荐用于生产环境)
+- **pnpm** (用于本地开发)
+
+智能路由的可选要求：
+
+- **PostgreSQL** 带 pgvector 扩展
+- **OpenAI API Key** 或兼容的嵌入服务
+
+## 安装方法
+
+<Tabs>
+  <Tab title="Docker (推荐)">
+    ### Docker 安装
+
+    Docker 是在生产环境中部署 MCPHub 的推荐方式。
+
+    #### 1. 基础安装
+
+    ```bash
+    # 拉取最新镜像
+    docker pull samanhappy/mcphub:latest
+
+    # 使用默认设置运行
+    docker run -d \
+      --name mcphub \
+      -p 3000:3000 \
+      samanhappy/mcphub:latest
+    ```
+
+    #### 2. 使用自定义配置
+
+    ```bash
+    # 创建您的配置文件
+    cat > mcp_settings.json << 'EOF'
+    {
+      "mcpServers": {
+        "fetch": {
+          "command": "uvx",
+          "args": ["mcp-server-fetch"]
+        },
+        "playwright": {
+          "command": "npx",
+          "args": ["@playwright/mcp@latest", "--headless"]
+        }
+      }
+    }
+    EOF
+
+    # 使用挂载的配置运行
+    docker run -d \
+      --name mcphub \
+      -p 3000:3000 \
+      -v $(pwd)/mcp_settings.json:/app/mcp_settings.json \
+      samanhappy/mcphub:latest
+    ```
+
+    #### 3. 使用环境变量
+
+    ```bash
+    docker run -d \
+      --name mcphub \
+      -p 3000:3000 \
+      -e PORT=3000 \
+      -e BASE_PATH="" \
+      samanhappy/mcphub:latest
+    ```
+
+    #### 4. Docker Compose
+
+    创建 `docker-compose.yml` 文件：
+
+    ```yaml
+    version: '3.8'
+    services:
+      mcphub:
+        image: samanhappy/mcphub:latest
+        ports:
+          - "3000:3000"
+        volumes:
+          - ./mcp_settings.json:/app/mcp_settings.json
+        environment:
+          - PORT=3000
+          - BASE_PATH=""
+          - REQUEST_TIMEOUT=60000
+        restart: unless-stopped
+
+      # 可选：用于智能路由的 PostgreSQL
+      postgres:
+        image: pgvector/pgvector:pg16
+        environment:
+          POSTGRES_DB: mcphub
+          POSTGRES_USER: mcphub
+          POSTGRES_PASSWORD: mcphub_password
+        volumes:
+          - postgres_data:/var/lib/postgresql/data
+        ports:
+          - "5432:5432"
+
+    volumes:
+      postgres_data:
+    ```
+
+    运行命令：
+    ```bash
+    docker-compose up -d
+    ```
+
+  </Tab>
+
+  <Tab title="npm 包">
+    ### npm 包安装
+
+    将 MCPHub 安装为全局 npm 包：
+
+    #### 1. 全局安装
+
+    ```bash
+    # 全局安装
+    npm install -g @samanhappy/mcphub
+
+    # 或使用 yarn
+    yarn global add @samanhappy/mcphub
+
+    # 或使用 pnpm
+    pnpm add -g @samanhappy/mcphub
+    ```
+
+    #### 2. 运行 MCPHub
+
+    ```bash
+    # 使用默认设置运行
+    mcphub
+
+    # 使用自定义端口运行
+    PORT=8080 mcphub
+    ```
+
+    {/* #### 3. 本地安装
+
+    您也可以在项目中本地安装 MCPHub：
+
+    ```bash
+    # 创建新目录
+    mkdir my-mcphub
+    cd my-mcphub
+
+    # 初始化 package.json
+    npm init -y
+
+    # 本地安装 MCPHub
+    npm install @samanhappy/mcphub
+
+    # 创建启动脚本
+    echo '#!/bin/bash\nnpx mcphub' > start.sh
+    chmod +x start.sh
+
+    # 运行 MCPHub
+    ./start.sh
+    ``` */}
+  </Tab>
+
+  <Tab title="本地开发">
+    ### 本地开发环境设置
+
+    用于开发、自定义或贡献：
+
+    #### 1. 克隆仓库
+
+    ```bash
+    # 克隆仓库
+    git clone https://github.com/samanhappy/mcphub.git
+    cd mcphub
+    ```
+
+    #### 2. 安装依赖
+
+    ```bash
+    # 使用 pnpm 安装依赖（推荐）
+    pnpm install
+
+    # 或使用 npm
+    npm install
+
+    # 或使用 yarn
+    yarn install
+    ```
+
+    #### 3. 开发模式
+
+    ```bash
+    # 在开发模式下同时启动后端和前端
+    pnpm dev
+
+    # 这将启动：
+    # - 后端在 http://localhost:3001
+    # - 前端在 http://localhost:5173
+    # - 前端代理 API 调用到后端
+    ```
+
+    #### 4. 生产构建
+
+    ```bash
+    # 构建后端和前端
+    pnpm build
+
+    # 启动生产服务器
+    pnpm start
+    ```
+
+    #### 5. 开发脚本
+
+    ```bash
+    # 仅后端（用于 API 开发）
+    pnpm backend:dev
+
+    # 仅前端（当后端单独运行时）
+    pnpm frontend:dev
+
+    # 运行测试
+    pnpm test
+
+    # 代码检查
+    pnpm lint
+
+    # 代码格式化
+    pnpm format
+    ```
+
+    <Note>
+      在 Windows 上，您可能需要分别运行后端和前端：
+      ```bash
+      # 终端 1：后端
+      pnpm backend:dev
+
+      # 终端 2：前端
+      pnpm frontend:dev
+      ```
+    </Note>
+
+  </Tab>
+
+  <Tab title="Kubernetes">
+    ### Kubernetes 部署
+
+    使用这些清单在 Kubernetes 上部署 MCPHub：
+
+    #### 1. 设置的 ConfigMap
+
+    ```yaml
+    apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: mcphub-config
+    data:
+      mcp_settings.json: |
+        {
+          "mcpServers": {
+            "fetch": {
+              "command": "uvx",
+              "args": ["mcp-server-fetch"]
+            },
+            "playwright": {
+              "command": "npx",
+              "args": ["@playwright/mcp@latest", "--headless"]
+            }
+          }
+        }
+    ```
+
+    #### 2. 部署
+
+    ```yaml
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: mcphub
+    spec:
+      replicas: 1
+      selector:
+        matchLabels:
+          app: mcphub
+      template:
+        metadata:
+          labels:
+            app: mcphub
+        spec:
+          containers:
+          - name: mcphub
+            image: samanhappy/mcphub:latest
+            ports:
+            - containerPort: 3000
+            env:
+            - name: PORT
+              value: "3000"
+            volumeMounts:
+            - name: config
+              mountPath: /app/mcp_settings.json
+              subPath: mcp_settings.json
+          volumes:
+          - name: config
+            configMap:
+              name: mcphub-config
+    ```
+
+    #### 3. 服务
+
+    ```yaml
+    apiVersion: v1
+    kind: Service
+    metadata:
+      name: mcphub-service
+    spec:
+      selector:
+        app: mcphub
+      ports:
+      - port: 80
+        targetPort: 3000
+      type: ClusterIP
+    ```
+
+    #### 4. Ingress (可选)
+
+    ```yaml
+    apiVersion: networking.k8s.io/v1
+    kind: Ingress
+    metadata:
+      name: mcphub-ingress
+      annotations:
+        nginx.ingress.kubernetes.io/proxy-buffering: "off"
+    spec:
+      rules:
+      - host: mcphub.yourdomain.com
+        http:
+          paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: mcphub-service
+                port:
+                  number: 80
+    ```
+
+    部署命令：
+    ```bash
+    kubectl apply -f mcphub-configmap.yaml
+    kubectl apply -f mcphub-deployment.yaml
+    kubectl apply -f mcphub-service.yaml
+    kubectl apply -f mcphub-ingress.yaml
+    ```
+
+  </Tab>
+</Tabs>
+
+## 智能路由设置 (可选)
+
+智能路由使用向量语义搜索提供 AI 驱动的工具发现。
+
+### 先决条件
+
+1. **PostgreSQL 带 pgvector 扩展**
+2. **OpenAI API Key** (或兼容的嵌入服务)
+
+### 数据库设置
+
+<Tabs>
+  <Tab title="Docker PostgreSQL">
+    ```bash
+    # 运行带 pgvector 的 PostgreSQL
+    docker run -d \
+      --name mcphub-postgres \
+      -e POSTGRES_DB=mcphub \
+      -e POSTGRES_USER=mcphub \
+      -e POSTGRES_PASSWORD=your_password \
+      -p 5432:5432 \
+      pgvector/pgvector:pg16
+    ```
+  </Tab>
+
+  <Tab title="现有 PostgreSQL">
+    如果您有现有的 PostgreSQL 实例：
+
+    ```sql
+    -- 连接到您的 PostgreSQL 实例
+    -- 创建数据库
+    CREATE DATABASE mcphub;
+
+    -- 连接到 mcphub 数据库
+    \c mcphub;
+
+    -- 启用 pgvector 扩展
+    CREATE EXTENSION IF NOT EXISTS vector;
+    ```
+
+  </Tab>
+
+  <Tab title="云 PostgreSQL">
+    对于云提供商（AWS RDS、Google Cloud SQL 等）：
+
+    1. 在您的云提供商控制台中启用 pgvector 扩展
+    2. 创建名为 `mcphub` 的数据库
+    3. 记下连接详细信息
+
+  </Tab>
+</Tabs>
+
+{/* ### 环境配置
+
+设置以下环境变量：
+
+```bash
+# 数据库连接
+DATABASE_URL=postgresql://mcphub:your_password@localhost:5432/mcphub
+
+# 用于嵌入的 OpenAI API
+OPENAI_API_KEY=your_openai_api_key
+
+# 可选：自定义嵌入模型
+EMBEDDING_MODEL=text-embedding-3-small
+
+# 可选：启用智能路由
+ENABLE_SMART_ROUTING=true
+``` */}
+
+## 验证
+
+安装后，验证 MCPHub 是否正常工作：
+
+{/* ### 1. 健康检查
+
+```bash
+curl http://localhost:3000/api/health
+```
+
+预期响应：
+
+```json
+{
+  "status": "ok",
+  "version": "x.x.x",
+  "uptime": 123
+}
+``` */}
+
+### 控制台访问
+
+打开浏览器并导航到：
+
+```
+http://localhost:3000
+```
+
+{/* ### 3. API 测试
+
+```bash
+curl -X POST http://localhost:3000/mcp \
+  -H "Content-Type: application/json" \
+  -d '{
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "tools/list",
+    "params": {}
+  }'
+``` */}
+
+## 故障排除
+
+<AccordionGroup>
+  <Accordion title="Docker 问题">
+    **端口已被使用：**
+    ```bash
+    # 检查是什么在使用端口 3000
+    lsof -i :3000
+
+    # 使用不同的端口
+    docker run -p 8080:3000 samanhappy/mcphub
+    ```
+
+    **容器无法启动：**
+    ```bash
+    # 检查容器日志
+    docker logs mcphub
+
+    # 交互式运行以进行调试
+    docker run -it --rm samanhappy/mcphub /bin/bash
+    ```
+
+  </Accordion>
+
+  <Accordion title="npm 安装问题">
+    **权限错误：**
+    ```bash
+    # 使用 npx 而不是全局安装
+    npx @samanhappy/mcphub
+
+    # 或修复 npm 权限
+    npm config set prefix ~/.npm-global
+    export PATH=~/.npm-global/bin:$PATH
+    ```
+
+    **Node 版本问题：**
+    ```bash
+    # 检查 Node 版本
+    node --version
+
+    # 使用 nvm 安装 Node 18+
+    nvm install 18
+    nvm use 18
+    ```
+
+  </Accordion>
+
+  <Accordion title="网络问题">
+    **无法访问控制台：**
+    - 检查 MCPHub 是否在运行：`ps aux | grep mcphub`
+    - 验证端口绑定：`netstat -tlnp | grep 3000`
+    - 检查防火墙设置
+    - 尝试通过 `127.0.0.1:3000` 而不是 `localhost:3000` 访问
+
+    **AI 客户端无法连接：**
+    - 确保端点 URL 正确
+    - 检查 MCPHub 是否在代理后面
+    - 验证 Kubernetes/Docker 环境中的网络策略
+
+  </Accordion>
+
+  <Accordion title="智能路由问题">
+    **数据库连接失败：**
+    ```bash
+    # 测试数据库连接
+    psql $DATABASE_URL -c "SELECT 1;"
+
+    # 检查是否安装了 pgvector
+    psql $DATABASE_URL -c "CREATE EXTENSION IF NOT EXISTS vector;"
+    ```
+
+    **嵌入服务错误：**
+    - 验证 OpenAI API 密钥是否有效
+    - 检查互联网连接
+    - 监控速率限制
+
+  </Accordion>
+</AccordionGroup>
+
+## 下一步
+
+<CardGroup cols={2}>
+  <Card title="配置" icon="cog" href="/zh/configuration/mcp-settings">
+    配置您的 MCP 服务器和设置
+  </Card>
+  <Card title="快速开始" icon="rocket" href="/zh/quickstart">
+    5分钟内启动并运行
+  </Card>
+  <Card title="服务器管理" icon="server" href="/zh/features/server-management">
+    了解如何管理您的 MCP 服务器
+  </Card>
+  <Card title="API 参考" icon="code" href="/zh/api-reference/introduction">
+    探索完整的 API 文档
+  </Card>
+</CardGroup>

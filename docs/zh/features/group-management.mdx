@@ -1,567 +1,573 @@
 ---
-title: '组管理'
-description: '组织用户和服务器为逻辑组，实现高效的访问控制'
+title: '分组管理'
+description: '将服务器组织成逻辑组以简化访问控制'
 ---
 
 ## 概述
 
-MCPHub 的组管理系统允许您将用户和服务器组织成逻辑组，从而简化权限管理和访问控制。组提供了一种灵活的方式来管理大规模部署中的资源。
+MCPHub 的分组管理功能允许您根据功能、用例或访问要求将 MCP 服务器组织成逻辑集合。这使您能够对不同的 AI 客户端和用户可用的工具进行精细控制。
 
-## 创建组
+## 核心概念
+
+### 什么是分组？
+
+分组是可通过专用端点访问的 MCP 服务器的命名集合。AI 客户端可以连接到特定分组以仅访问相关工具，而不是一次性连接到所有服务器。
+
+### 分组的优势
+
+- **聚焦工具访问**: AI 客户端只看到与其用例相关的工具
+- **更好的性能**: 减少工具发现开销
+- **增强安全性**: 限制对敏感工具的访问
+- **改进组织**: 功能的逻辑分离
+- **简化管理**: 更容易一起管理相关服务器
+
+## 创建分组
 
 ### 通过仪表板
 
-1. **导航到组部分**: 在主仪表板中点击"组"
-2. **点击"创建组"**: 开始组创建流程
-3. **填写组详细信息**:
-   - **组名**: 唯一的组标识符
-   - **显示名称**: 用户友好的组名称
-   - **描述**: 组的目的和范围
-   - **父组**: 可选的层次结构
+1. **导航到分组部分**: 在主导航中点击"分组"
+2. **点击"创建分组"**: 开始分组创建流程
+3. **填写分组详细信息**:
+
+   - **名称**: 分组的唯一标识符
+
+4. **添加服务器**: 选择要包含在分组中的服务器
 
 ### 通过 API
+
+以编程方式创建分组：
 
 ```bash
 curl -X POST http://localhost:3000/api/groups \
   -H "Content-Type: application/json" \
-  -H "Authorization: Bearer $TOKEN" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
   -d '{
-    "name": "development-team",
-    "displayName": "开发团队",
-    "description": "前端和后端开发人员",
-    "parentGroup": null,
-    "settings": {
-      "autoAssign": false,
-      "maxMembers": 50,
-      "requireApproval": true
-    }
+    "name": "web-automation",
+    "servers": ["playwright", "fetch"]
   }'
 ```
 
-### 通过配置文件
+{/* ### 通过配置文件
 
-在 `groups.json` 中定义组：
+在您的 `mcp_settings.json` 中定义分组：
 
 ```json
 {
+  "mcpServers": {
+    "fetch": { "command": "uvx", "args": ["mcp-server-fetch"] },
+    "playwright": { "command": "npx", "args": ["@playwright/mcp@latest"] },
+    "slack": { "command": "npx", "args": ["@modelcontextprotocol/server-slack"] }
+  },
   "groups": {
-    "dev-team": {
-      "displayName": "开发团队",
-      "description": "应用程序开发人员",
-      "permissions": {
-        "servers": ["read", "write", "execute"],
-        "tools": ["read", "execute"],
-        "logs": ["read"]
-      },
+    "web-tools": {
+      "name": "web",
+      "servers": ["fetch", "playwright"],
+    },
+    "communication": {
+      "name": "communication",
+      "servers": ["slack"],
+    }
+  }
+}
+``` */}
+
+## 分组类型和用例
+
+<AccordionGroup>
+  <Accordion title="Web 自动化分组">
+    **用途**: 浏览器自动化和网页抓取
+    
+    **服务器**:
+    - `playwright`: 浏览器自动化
+    - `fetch`: HTTP 请求和网页抓取
+    - `selenium`: 替代浏览器自动化
+
+    **用例**:
+    - 自动化测试
+    - 数据收集
+    - 网页监控
+    - 内容分析
+
+    **端点**: `http://localhost:3000/mcp/web-automation`
+
+  </Accordion>
+
+  <Accordion title="数据处理分组">
+    **用途**: 数据操作和分析
+    
+    **服务器**:
+    - `sqlite`: 数据库操作
+    - `filesystem`: 文件操作
+    - `spreadsheet`: Excel/CSV 处理
+
+    **用例**:
+    - 数据分析
+    - 报告生成
+    - 文件处理
+    - 数据库查询
+
+    **端点**: `http://localhost:3000/mcp/data-processing`
+
+  </Accordion>
+
+  <Accordion title="通信分组">
+    **用途**: 消息传递和协作
+    
+    **服务器**:
+    - `slack`: Slack 集成
+    - `discord`: Discord 机器人
+    - `email`: 邮件发送
+    - `sms`: 短信通知
+
+    **用例**:
+    - 团队通知
+    - 客户沟通
+    - 警报系统
+    - 社交媒体管理
+
+    **端点**: `http://localhost:3000/mcp/communication`
+
+  </Accordion>
+
+  <Accordion title="开发分组">
+    **用途**: 软件开发工具
+    
+    **服务器**:
+    - `github`: GitHub 操作
+    - `gitlab`: GitLab 集成
+    - `docker`: 容器管理
+    - `kubernetes`: K8s 操作
+
+    **用例**:
+    - 代码部署
+    - 仓库管理
+    - CI/CD 操作
+    - 基础设施管理
+
+    **端点**: `http://localhost:3000/mcp/development`
+
+  </Accordion>
+
+  <Accordion title="AI/ML 分组">
+    **用途**: 机器学习和 AI 工具
+    
+    **服务器**:
+    - `openai`: OpenAI API 集成
+    - `huggingface`: Hugging Face 模型
+    - `vector-db`: 向量数据库操作
+
+    **用例**:
+    - 模型推理
+    - 数据嵌入
+    - 自然语言处理
+    - 计算机视觉
+
+    **端点**: `http://localhost:3000/mcp/ai-ml`
+
+  </Accordion>
+</AccordionGroup>
+
+{/* ## 分组访问控制
+
+### 访问级别
+
+<Tabs>
+  <Tab title="公开">
+    **公开分组**:
+    - 所有认证用户都可访问
+    - 无需额外权限
+    - 在分组列表中可见
+    - 默认访问级别
+
+    ```json
+    {
+      "name": "public-tools",
+      "accessLevel": "public",
+      "servers": ["fetch", "calculator"]
+    }
+    ```
+
+  </Tab>
+
+  <Tab title="私有">
+    **私有分组**:
+    - 仅对分组成员可见
+    - 需要明确的用户分配
+    - 在公开列表中隐藏
+    - 管理员控制成员身份
+
+    ```json
+    {
+      "name": "internal-tools",
+      "accessLevel": "private",
       "members": ["user1", "user2"],
-      "servers": ["dev-server-1", "dev-server-2"]
-    },
-    "qa-team": {
-      "displayName": "质量保证团队",
-      "description": "测试和质量保证",
-      "permissions": {
-        "servers": ["read", "execute"],
-        "tools": ["read", "execute"],
-        "logs": ["read"]
-      },
-      "members": ["qa1", "qa2"],
-      "servers": ["test-server", "staging-server"]
+      "servers": ["internal-api", "database"]
     }
-  }
-}
+    ```
+
+  </Tab>
+
+  <Tab title="受限">
+    **受限分组**:
+    - 基于角色的访问控制
+    - 需要特定权限
+    - 启用审计日志
+    - 限时访问
+
+    ```json
+    {
+      "name": "admin-tools",
+      "accessLevel": "restricted",
+      "requiredRoles": ["admin", "operator"],
+      "servers": ["system-control", "user-management"]
+    }
+    ```
+
+  </Tab>
+</Tabs>
+
+### 用户管理
+
+将用户分配给分组：
+
+```bash
+# 添加用户到分组
+curl -X POST http://localhost:3000/api/groups/web-tools/members \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -d '{"userId": "user123"}'
+
+# 从分组中移除用户
+curl -X DELETE http://localhost:3000/api/groups/web-tools/members/user123 \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+
+# 列出分组成员
+curl http://localhost:3000/api/groups/web-tools/members \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+``` */}
+
+## 分组端点
+
+### 访问分组
+
+每个分组都有自己的 MCP 端点：
+
+<Tabs>
+  <Tab title="HTTP MCP">
+    ```
+    http://localhost:3000/mcp/{group-name}
+    ```
+
+    示例：
+    - `http://localhost:3000/mcp/web-tools`
+    - `http://localhost:3000/mcp/data-processing`
+    - `http://localhost:3000/mcp/communication`
+
+  </Tab>
+
+  <Tab title="SSE (旧版)">
+    ```
+    http://localhost:3000/sse/{group-name}
+    ```
+
+    示例：
+    - `http://localhost:3000/sse/web-tools`
+    - `http://localhost:3000/sse/data-processing`
+    - `http://localhost:3000/sse/communication`
+
+  </Tab>
+</Tabs>
+
+### 分组工具发现
+
+当连接到分组端点时，AI 客户端将只看到该分组内服务器的工具：
+
+```bash
+# 列出 web-tools 分组中的工具
+curl -X POST http://localhost:3000/mcp/web-tools \
+  -H "Content-Type: application/json" \
+  -d '{
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "tools/list",
+    "params": {}
+  }'
 ```
 
-## 组层次结构
+响应将只包含来自 `fetch` 和 `playwright` 服务器的工具。
 
-### 嵌套组
+## 动态分组管理
 
-创建组层次结构以实现更好的组织：
+### 向分组添加服务器
+
+<Tabs>
+  <Tab title="仪表板">
+    1. 在仪表板中导航到分组
+    2. 点击"管理服务器"
+    3. 选择要添加的其他服务器
+    4. 点击"保存更改"
+  </Tab>
+
+  <Tab title="API">
+    ```bash
+    curl -X POST http://localhost:3000/api/groups/web-tools/servers \
+      -H "Content-Type: application/json" \
+      -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+      -d '{"serverId": "new-server"}'
+    ```
+  </Tab>
+</Tabs>
+
+### 从分组中移除服务器
+
+<Tabs>
+  <Tab title="仪表板">
+    1. 在仪表板中导航到分组
+    2. 点击"管理服务器"
+    3. 取消选择要移除的服务器
+    4. 点击"保存更改"
+  </Tab>
+
+  <Tab title="API">
+    ```bash
+    curl -X DELETE http://localhost:3000/api/groups/web-tools/servers/server-name \
+      -H "Authorization: Bearer YOUR_JWT_TOKEN"
+    ```
+  </Tab>
+</Tabs>
+
+{/* ### 批量服务器更新
+
+一次更新多个服务器：
+
+```bash
+curl -X PUT http://localhost:3000/api/groups/web-tools/servers \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -d '{
+    "servers": ["fetch", "playwright", "selenium"]
+  }'
+``` */}
+
+{/* ## 分组监控
+
+### 分组状态
+
+监控分组健康状况和活动：
+
+```bash
+# 获取分组状态
+curl http://localhost:3000/api/groups/web-tools/status \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+响应包括：
+
+- 活跃服务器数量
+- 工具数量
+- 活跃连接
+- 最近活动
+
+### 分组分析
+
+跟踪分组使用情况：
+
+```bash
+# 获取分组分析
+curl http://localhost:3000/api/groups/web-tools/analytics \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+指标包括：
+
+- 按工具分类的请求计数
+- 响应时间
+- 错误率
+- 用户活动 */}
+
+{/* ## 高级分组功能
+
+### 嵌套分组
+
+创建层次化分组结构：
 
 ```json
 {
   "groups": {
-    "engineering": {
-      "displayName": "工程部",
-      "description": "所有工程团队",
-      "children": ["frontend", "backend", "devops"]
+    "development": {
+      "displayName": "开发工具",
+      "subGroups": ["frontend-dev", "backend-dev", "devops"]
     },
-    "frontend": {
-      "displayName": "前端团队",
-      "parent": "engineering",
-      "servers": ["frontend-dev", "frontend-staging"]
+    "frontend-dev": {
+      "displayName": "前端开发",
+      "servers": ["playwright", "webpack-server"],
+      "parent": "development"
     },
-    "backend": {
-      "displayName": "后端团队",
-      "parent": "engineering",
-      "servers": ["api-server", "database-server"]
-    },
-    "devops": {
-      "displayName": "运维团队",
-      "parent": "engineering",
-      "servers": ["monitoring", "deployment"]
+    "backend-dev": {
+      "displayName": "后端开发",
+      "servers": ["database", "api-server"],
+      "parent": "development"
     }
   }
 }
 ```
 
-### 继承权限
+### 分组模板
 
-子组从父组继承权限：
+使用模板快速创建分组：
 
-```bash
-# 检查继承的权限
-curl -X GET http://localhost:3000/api/groups/frontend/permissions?inherited=true \
-  -H "Authorization: Bearer $TOKEN"
+```json
+{
+  "groupTemplates": {
+    "web-project": {
+      "description": "标准 Web 项目工具集",
+      "servers": ["fetch", "playwright", "filesystem"],
+      "accessLevel": "public"
+    },
+    "data-science": {
+      "description": "数据科学和 ML 工具",
+      "servers": ["python-tools", "jupyter", "vector-db"],
+      "accessLevel": "private"
+    }
+  }
+}
 ```
 
-## 用户管理
-
-### 添加用户到组
+应用模板：
 
 ```bash
-# 添加单个用户
-curl -X POST http://localhost:3000/api/groups/dev-team/members \
+curl -X POST http://localhost:3000/api/groups/from-template \
   -H "Content-Type: application/json" \
-  -H "Authorization: Bearer $TOKEN" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
   -d '{
-    "userId": "user123",
-    "role": "member"
-  }'
-
-# 批量添加用户
-curl -X POST http://localhost:3000/api/groups/dev-team/members/bulk \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer $TOKEN" \
-  -d '{
-    "users": [
-      {"userId": "user1", "role": "member"},
-      {"userId": "user2", "role": "admin"},
-      {"userId": "user3", "role": "member"}
-    ]
+    "name": "my-web-project",
+    "template": "web-project",
+    "displayName": "我的 Web 项目工具"
   }'
 ```
 
-### 用户角色
+### 分组策略
 
-每个组内支持不同的用户角色：
+定义分组行为策略：
 
-- **组管理员**: 完整的组管理权限
-- **成员**: 标准组访问权限
-- **查看者**: 只读访问权限
-- **访客**: 有限的临时访问权限
-
-### 移除用户
-
-```bash
-# 从组中移除用户
-curl -X DELETE http://localhost:3000/api/groups/dev-team/members/user123 \
-  -H "Authorization: Bearer $TOKEN"
-```
-
-## 服务器分配
-
-### 分配服务器到组
-
-```bash
-# 分配单个服务器
-curl -X POST http://localhost:3000/api/groups/dev-team/servers \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer $TOKEN" \
-  -d '{
-    "serverId": "my-server",
-    "permissions": ["read", "write", "execute"]
-  }'
-
-# 批量分配服务器
-curl -X POST http://localhost:3000/api/groups/dev-team/servers/bulk \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer $TOKEN" \
-  -d '{
-    "servers": [
-      {
-        "serverId": "server1",
-        "permissions": ["read", "write"]
+```json
+{
+  "groupPolicies": {
+    "web-tools": {
+      "maxConcurrentConnections": 10,
+      "requestTimeout": 30000,
+      "rateLimiting": {
+        "requestsPerMinute": 100,
+        "burstLimit": 20
       },
-      {
-        "serverId": "server2",
-        "permissions": ["read", "execute"]
-      }
-    ]
-  }'
-```
-
-### 服务器权限级别
-
-为每个组-服务器对定义细粒度权限：
-
-```json
-{
-  "serverId": "my-server",
-  "permissions": {
-    "execute": {
-      "allowed": true,
-      "tools": ["filesystem", "web-search"],
-      "restrictions": {
-        "maxRequests": 100,
-        "timeWindow": "1h"
-      }
-    },
-    "configure": {
-      "allowed": false
-    },
-    "logs": {
-      "allowed": true,
-      "level": ["info", "warn", "error"]
+      "allowedOrigins": ["localhost", "myapp.com"]
     }
   }
 }
-```
-
-## 权限管理
-
-### 组权限模型
-
-```json
-{
-  "groupId": "dev-team",
-  "permissions": {
-    "servers": {
-      "create": false,
-      "read": true,
-      "update": true,
-      "delete": false,
-      "execute": true
-    },
-    "tools": {
-      "filesystem": {
-        "read": true,
-        "write": true,
-        "paths": ["/app/data", "/tmp"]
-      },
-      "web-search": {
-        "enabled": true,
-        "maxQueries": 50
-      }
-    },
-    "monitoring": {
-      "viewLogs": true,
-      "viewMetrics": true,
-      "exportData": false
-    },
-    "administration": {
-      "manageUsers": false,
-      "manageServers": true,
-      "manageGroups": false
-    }
-  }
-}
-```
-
-### 动态权限
-
-基于条件的动态权限：
-
-```json
-{
-  "permissions": {
-    "servers": {
-      "execute": {
-        "condition": "time.hour >= 9 && time.hour <= 17",
-        "message": "服务器执行仅在工作时间内允许"
-      }
-    },
-    "tools": {
-      "filesystem": {
-        "write": {
-          "condition": "user.role === 'admin' || group.name === 'senior-devs'",
-          "message": "写入权限需要管理员或高级开发者角色"
-        }
-      }
-    }
-  }
-}
-```
-
-## 配额管理
-
-### 设置组配额
-
-```bash
-curl -X PUT http://localhost:3000/api/groups/dev-team/quotas \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer $TOKEN" \
-  -d '{
-    "requests": {
-      "daily": 1000,
-      "monthly": 30000
-    },
-    "storage": {
-      "maxSize": "10GB",
-      "retention": "30d"
-    },
-    "compute": {
-      "maxConcurrentRequests": 10,
-      "maxExecutionTime": "5m"
-    }
-  }'
-```
-
-### 监控配额使用
-
-```bash
-# 获取当前配额使用情况
-curl -X GET http://localhost:3000/api/groups/dev-team/quotas/usage \
-  -H "Authorization: Bearer $TOKEN"
-```
-
-响应示例：
-
-```json
-{
-  "groupId": "dev-team",
-  "period": "2024-01-01T00:00:00Z",
-  "usage": {
-    "requests": {
-      "used": 750,
-      "limit": 1000,
-      "remaining": 250
-    },
-    "storage": {
-      "used": "7.2GB",
-      "limit": "10GB",
-      "remaining": "2.8GB"
-    },
-    "compute": {
-      "currentConcurrent": 3,
-      "maxConcurrent": 10,
-      "avgExecutionTime": "2m 15s"
-    }
-  }
-}
-```
-
-## 组策略
-
-### 定义组策略
-
-```json
-{
-  "groupId": "dev-team",
-  "policies": {
-    "security": {
-      "requireMFA": false,
-      "sessionTimeout": "8h",
-      "ipWhitelist": ["192.168.1.0/24", "10.0.0.0/8"]
-    },
-    "usage": {
-      "allowWeekendAccess": true,
-      "restrictHolidays": false,
-      "maxSessionDuration": "12h"
-    },
-    "data": {
-      "encryptionRequired": true,
-      "dataRetention": "90d",
-      "exportAllowed": false
-    }
-  }
-}
-```
-
-### 策略继承
-
-```bash
-# 应用策略模板
-curl -X POST http://localhost:3000/api/groups/dev-team/policies/apply \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer $TOKEN" \
-  -d '{
-    "template": "development-team-template",
-    "overrides": {
-      "security.sessionTimeout": "4h"
-    }
-  }'
-```
-
-## 自动化组管理
-
-### 自动用户分配
-
-基于属性自动分配用户：
-
-```json
-{
-  "autoAssignment": {
-    "enabled": true,
-    "rules": [
-      {
-        "condition": "user.department === '开发'",
-        "action": {
-          "addToGroup": "dev-team",
-          "role": "member"
-        }
-      },
-      {
-        "condition": "user.title.includes('高级')",
-        "action": {
-          "addToGroup": "senior-devs",
-          "role": "admin"
-        }
-      }
-    ]
-  }
-}
-```
-
-### 定时任务
-
-```bash
-# 创建定时清理任务
-curl -X POST http://localhost:3000/api/groups/dev-team/jobs \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer $TOKEN" \
-  -d '{
-    "name": "cleanup-inactive-users",
-    "schedule": "0 2 * * *",
-    "action": "removeInactiveUsers",
-    "params": {
-      "inactiveDays": 30
-    }
-  }'
-```
-
-## 组通知
-
-### 配置通知
-
-```json
-{
-  "groupId": "dev-team",
-  "notifications": {
-    "channels": {
-      "email": {
-        "enabled": true,
-        "recipients": ["team-lead@company.com"]
-      },
-      "slack": {
-        "enabled": true,
-        "webhook": "https://hooks.slack.com/...",
-        "channel": "#dev-team"
-      }
-    },
-    "events": ["userJoined", "userLeft", "serverAdded", "quotaExceeded", "securityAlert"]
-  }
-}
-```
-
-### 发送组通知
-
-```bash
-curl -X POST http://localhost:3000/api/groups/dev-team/notifications \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer $TOKEN" \
-  -d '{
-    "type": "announcement",
-    "title": "维护通知",
-    "message": "服务器将在今晚 10 点进行维护",
-    "priority": "high",
-    "channels": ["email", "slack"]
-  }'
-```
-
-## 组分析
-
-### 使用统计
-
-```bash
-# 获取组使用统计
-curl -X GET http://localhost:3000/api/groups/dev-team/analytics \
-  -H "Authorization: Bearer $TOKEN"
-```
-
-响应示例：
-
-```json
-{
-  "groupId": "dev-team",
-  "period": "30d",
-  "stats": {
-    "activeUsers": 12,
-    "totalRequests": 15750,
-    "avgResponseTime": "250ms",
-    "errorRate": "0.5%",
-    "mostUsedTools": [
-      { "name": "filesystem", "usage": 8500 },
-      { "name": "web-search", "usage": 4200 },
-      { "name": "database", "usage": 3050 }
-    ],
-    "peakUsageHours": [9, 10, 14, 15, 16]
-  }
-}
-```
-
-### 生成报告
-
-```bash
-# 生成月度报告
-curl -X POST http://localhost:3000/api/groups/dev-team/reports \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer $TOKEN" \
-  -d '{
-    "type": "monthly",
-    "format": "pdf",
-    "includeDetails": true,
-    "recipients": ["manager@company.com"]
-  }'
-```
-
-## 故障排除
-
-### 常见问题
-
-1. **用户无法访问组资源**
-
-   ```bash
-   # 检查用户组成员身份
-   curl -X GET http://localhost:3000/api/users/user123/groups \
-     -H "Authorization: Bearer $TOKEN"
-   ```
-
-2. **权限配置错误**
-
-   ```bash
-   # 验证权限设置
-   curl -X GET http://localhost:3000/api/groups/dev-team/permissions/validate \
-     -H "Authorization: Bearer $TOKEN"
-   ```
-
-3. **配额超限**
-   ```bash
-   # 检查配额状态
-   curl -X GET http://localhost:3000/api/groups/dev-team/quotas/status \
-     -H "Authorization: Bearer $TOKEN"
-   ```
-
-### 调试组权限
-
-启用权限调试：
-
-```bash
-# 调试用户权限
-curl -X GET http://localhost:3000/api/debug/permissions \
-  -H "Authorization: Bearer $TOKEN" \
-  -d '{
-    "userId": "user123",
-    "resource": "server:my-server",
-    "action": "execute"
-  }'
-```
+``` */}
 
 ## 最佳实践
 
-1. **组织结构**: 使用层次化组结构镜像您的组织架构
-2. **权限最小化**: 只授予执行任务所需的最小权限
-3. **定期审核**: 定期审核组成员身份和权限
-4. **自动化**: 使用自动化规则减少手动管理开销
-5. **监控**: 设置监控和警报以跟踪组活动
+### 分组组织
 
-有关更多信息，请参阅 [身份认证与安全](/zh/features/authentication) 和 [监控](/zh/features/monitoring) 文档。
+<Tip>
+  **按用例组织**: 根据用户想要完成的任务来组织服务器分组，而不仅仅是技术相似性。
+</Tip>
+
+<Tip>
+  **保持分组聚焦**: 避免创建包含太多不同工具的分组。更小、更聚焦的分组更有用。
+</Tip>
+
+<Tip>
+  **使用描述性名称**: 选择能清楚表明分组目的和内容的名称。
+</Tip>
+
+{/* ### 安全考虑
+
+<Warning>
+  **最小权限原则**: 只给用户访问他们实际需要的分组。
+</Warning>
+
+<Warning>
+  **敏感工具隔离**: 将敏感工具保存在具有适当访问控制的受限分组中。
+</Warning>
+
+<Warning>
+  **定期访问审查**: 定期审查分组成员身份并移除不必要的访问权限。
+</Warning> */}
+
+### 性能优化
+
+<Info>
+  **平衡分组大小**: 非常大的分组可能导致工具发现较慢。考虑拆分为更小的分组。
+</Info>
+
+<Info>
+  **监控使用情况**: 使用分析来识别哪些分组被大量使用并相应优化。
+</Info>
+
+## 故障排除
+
+<AccordionGroup>
+  <Accordion title="分组无法访问">
+    **检查：**
+    - 用户具有适当权限
+    - 分组存在且处于活跃状态
+    - 分组中的服务器正在运行
+    - 网络连接
+
+    **解决方案：**
+    1. 验证用户分组成员身份
+    2. 检查分组配置
+    3. 测试单个服务器连接
+    4. 查看访问日志
+
+  </Accordion>
+
+  <Accordion title="分组中缺少工具">
+    **可能原因：**
+    - 服务器未正确添加到分组
+    - 服务器未运行
+    - 工具发现失败
+    - 缓存问题
+
+    **调试步骤：**
+    1. 验证服务器在分组配置中
+    2. 检查服务器状态
+    3. 强制刷新工具发现
+    4. 清除分组缓存
+
+  </Accordion>
+
+  <Accordion title="分组性能问题">
+    **常见问题：**
+    - 分组中服务器过多
+    - 服务器响应慢
+    - 网络延迟
+    - 资源约束
+
+    **优化方案：**
+    1. 拆分大型分组
+    2. 监控服务器性能
+    3. 实施请求缓存
+    4. 使用连接池
+
+  </Accordion>
+</AccordionGroup>
+
+## 下一步
+
+<CardGroup cols={2}>
+  <Card title="智能路由" icon="route" href="/zh/features/smart-routing">
+    跨分组的 AI 驱动工具发现
+  </Card>
+  <Card title="身份认证" icon="shield" href="/zh/features/authentication">
+    用户管理和访问控制
+  </Card>
+  <Card title="API 参考" icon="code" href="/zh/api-reference/groups">
+    完整的分组管理 API
+  </Card>
+  <Card title="配置" icon="cog" href="/zh/configuration/mcp-settings">
+    高级分组配置选项
+  </Card>
+</CardGroup>

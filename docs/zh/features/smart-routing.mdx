@@ -1,691 +1,367 @@
 ---
 title: '智能路由'
-description: '自动负载均衡和请求路由到最佳的 MCP 服务器实例'
+description: '使用向量语义搜索的 AI 工具发现系统'
 ---
 
 ## 概述
 
-MCPHub 的智能路由系统自动将传入请求路由到最适合的 MCP 服务器实例。系统考虑服务器负载、响应时间、功能可用性和业务规则来做出路由决策。
+智能路由是 MCPHub 的智能工具发现系统，它使用向量语义搜索来自动找到与任何给定任务最相关的工具。AI 客户端无需手动指定使用哪些工具，只需描述他们想要完成的任务，智能路由就会识别并提供对最合适工具的访问。
 
-## 路由策略
+## 智能路由的工作原理
 
-### 轮询路由
+### 1. 工具索引
 
-最简单的路由策略，按顺序分发请求：
+当服务器启动时，智能路由会自动：
 
-```json
-{
-  "routing": {
-    "strategy": "round-robin",
-    "targets": [
-      {
-        "serverId": "server-1",
-        "weight": 1,
-        "enabled": true
-      },
-      {
-        "serverId": "server-2",
-        "weight": 1,
-        "enabled": true
-      },
-      {
-        "serverId": "server-3",
-        "weight": 1,
-        "enabled": true
-      }
-    ]
-  }
-}
-```
+- 从 MCP 服务器发现所有可用工具
+- 提取工具元数据（名称、描述、参数）
+- 将工具信息转换为向量嵌入
+- 使用 pgvector 将嵌入存储在 PostgreSQL 中
 
-### 加权轮询
+### 2. 语义搜索
 
-基于服务器容量分配不同权重：
+当进行查询时：
 
-```json
-{
-  "routing": {
-    "strategy": "weighted-round-robin",
-    "targets": [
-      {
-        "serverId": "high-performance-server",
-        "weight": 3,
-        "specs": {
-          "cpu": "8 cores",
-          "memory": "32GB"
-        }
-      },
-      {
-        "serverId": "standard-server-1",
-        "weight": 2,
-        "specs": {
-          "cpu": "4 cores",
-          "memory": "16GB"
-        }
-      },
-      {
-        "serverId": "standard-server-2",
-        "weight": 1,
-        "specs": {
-          "cpu": "2 cores",
-          "memory": "8GB"
-        }
-      }
-    ]
-  }
-}
-```
+- 用户查询被转换为向量嵌入
+- 相似性搜索使用余弦相似度找到匹配的工具
+- 动态阈值过滤掉不相关的结果
+- 结果按相关性得分排序
 
-### 最少连接数
+### 3. 智能过滤
 
-将请求路由到当前连接数最少的服务器：
+智能路由应用多个过滤器：
 
-```json
-{
-  "routing": {
-    "strategy": "least-connections",
-    "balancingMode": "dynamic",
-    "healthCheck": {
-      "enabled": true,
-      "interval": 10000
-    }
-  }
-}
-```
+- **相关性阈值**：只返回高于相似性阈值的工具
+- **上下文感知**：考虑对话上下文
+- **工具可用性**：确保工具当前可访问
+- **权限过滤**：尊重用户访问权限
 
-### 基于响应时间
+### 4. 工具执行
 
-路由到响应时间最短的服务器：
+找到的工具可以直接执行：
 
-```json
-{
-  "routing": {
-    "strategy": "fastest-response",
-    "metrics": {
-      "measurementWindow": "5m",
-      "sampleSize": 100,
-      "excludeSlowRequests": true,
-      "slowRequestThreshold": "5s"
-    }
-  }
-}
-```
+- 参数验证确保正确的工具使用
+- 错误处理提供有用的反馈
+- 响应格式保持一致性
+- 日志记录跟踪工具使用情况进行分析
 
-## 基于功能的路由
+## 前置条件
 
-### 工具特定路由
+智能路由需要比基础 MCPHub 使用更多的设置：
 
-根据请求的工具类型路由到专门的服务器：
+### 必需组件
 
-```json
-{
-  "routing": {
-    "strategy": "capability-based",
-    "rules": [
-      {
-        "condition": {
-          "tool": "filesystem"
-        },
-        "targets": ["filesystem-server-1", "filesystem-server-2"],
-        "strategy": "least-connections"
-      },
-      {
-        "condition": {
-          "tool": "web-search"
-        },
-        "targets": ["search-server-1", "search-server-2"],
-        "strategy": "round-robin"
-      },
-      {
-        "condition": {
-          "tool": "database"
-        },
-        "targets": ["db-server"],
-        "strategy": "single"
-      }
-    ],
-    "fallback": {
-      "targets": ["general-server-1", "general-server-2"],
-      "strategy": "round-robin"
-    }
-  }
-}
-```
+1. **带有 pgvector 的 PostgreSQL**：用于嵌入存储的向量数据库
+2. **嵌入服务**：OpenAI API 或兼容服务
+3. **环境配置**：正确的配置变量
 
-### 内容感知路由
+## 使用智能路由
 
-基于请求内容进行智能路由：
+### 智能路由端点
 
-```json
-{
-  "routing": {
-    "strategy": "content-aware",
-    "rules": [
-      {
-        "condition": {
-          "content.language": "python"
-        },
-        "targets": ["python-specialized-server"],
-        "reason": "Python代码分析专用服务器"
-      },
-      {
-        "condition": {
-          "content.size": "> 1MB"
-        },
-        "targets": ["high-memory-server"],
-        "reason": "大文件处理专用服务器"
-      },
-      {
-        "condition": {
-          "content.type": "image"
-        },
-        "targets": ["image-processing-server"],
-        "reason": "图像处理专用服务器"
-      }
-    ]
-  }
-}
-```
+通过特殊的 `$smart` 端点访问智能路由：
 
-## 地理位置路由
+<Tabs>
+  <Tab title="HTTP MCP">
+    ```
+    http://localhost:3000/mcp/$smart
+    ```
+  </Tab>
 
-### 基于客户端位置
+  <Tab title="SSE (Legacy)">
+    ```
+    http://localhost:3000/sse/$smart
+    ```
+  </Tab>
+</Tabs>
 
-根据客户端地理位置路由到最近的服务器：
+{/* ## 性能优化
 
-```json
-{
-  "routing": {
-    "strategy": "geo-location",
-    "regions": [
-      {
-        "name": "北美",
-        "countries": ["US", "CA", "MX"],
-        "servers": ["us-east-1", "us-west-1", "ca-central-1"],
-        "strategy": "least-latency"
-      },
-      {
-        "name": "欧洲",
-        "countries": ["DE", "FR", "UK", "NL"],
-        "servers": ["eu-west-1", "eu-central-1"],
-        "strategy": "round-robin"
-      },
-      {
-        "name": "亚太",
-        "countries": ["CN", "JP", "KR", "SG"],
-        "servers": ["ap-southeast-1", "ap-northeast-1"],
-        "strategy": "fastest-response"
-      }
-    ],
-    "fallback": {
-      "servers": ["global-server-1"],
-      "strategy": "single"
-    }
-  }
-}
-```
+### 嵌入缓存
 
-### 延迟优化
+智能路由缓存嵌入以提高性能：
 
 ```bash
-# 配置延迟监控
-curl -X PUT http://localhost:3000/api/routing/latency-config \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer $TOKEN" \
-  -d '{
+# 配置缓存设置
+EMBEDDING_CACHE_TTL=3600        # 缓存 1 小时
+EMBEDDING_CACHE_SIZE=10000      # 最多缓存 10k 个嵌入
+EMBEDDING_CACHE_CLEANUP=300     # 每 5 分钟清理一次
+```
+
+### 批处理
+
+工具批量索引以提高效率：
+
+```bash
+# 嵌入生成的批大小
+EMBEDDING_BATCH_SIZE=100
+
+# 并发嵌入请求
+EMBEDDING_CONCURRENCY=5
+
+# 索引更新频率
+INDEX_UPDATE_INTERVAL=3600      # 每小时重新索引
+```
+
+### 数据库优化
+
+为向量操作优化 PostgreSQL：
+
+```sql
+-- 创建索引以获得更好的性能
+CREATE INDEX ON tool_embeddings USING hnsw (embedding vector_cosine_ops);
+
+-- 调整 PostgreSQL 设置
+ALTER SYSTEM SET shared_preload_libraries = 'vector';
+ALTER SYSTEM SET max_connections = 200;
+ALTER SYSTEM SET shared_buffers = '256MB';
+ALTER SYSTEM SET effective_cache_size = '1GB';
+```
+
+## 监控和分析
+
+### 智能路由指标
+
+监控智能路由性能：
+
+```bash
+# 获取智能路由统计信息
+curl http://localhost:3000/api/smart-routing/stats \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+响应包括：
+
+- 查询计数和频率
+- 平均响应时间
+- 嵌入缓存命中率
+- 最受欢迎的工具
+- 查询模式
+
+### 工具使用分析
+
+跟踪哪些工具被发现和使用：
+
+```bash
+# 获取工具使用分析
+curl http://localhost:3000/api/smart-routing/analytics \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+指标包括：
+
+- 工具发现率
+- 执行成功率
+- 用户满意度评分
+- 查询到执行的转换率
+
+### 性能监控
+
+监控系统性能：
+
+```bash
+# 数据库性能
+curl http://localhost:3000/api/smart-routing/db-stats \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+
+# 嵌入服务状态
+curl http://localhost:3000/api/smart-routing/embedding-stats \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+## 高级功能
+
+### 自定义嵌入
+
+使用自定义嵌入模型：
+
+```bash
+# Hugging Face 模型
+EMBEDDING_SERVICE=huggingface
+HUGGINGFACE_MODEL=sentence-transformers/all-MiniLM-L6-v2
+HUGGINGFACE_API_KEY=your_api_key
+
+# 本地嵌入服务
+EMBEDDING_SERVICE=local
+EMBEDDING_SERVICE_URL=http://localhost:8080/embeddings
+```
+
+### 查询增强
+
+增强查询以获得更好的结果：
+
+```json
+{
+  "queryEnhancement": {
     "enabled": true,
-    "measurementInterval": 30000,
-    "regions": [
-      {"id": "us-east", "endpoint": "ping.us-east.example.com"},
-      {"id": "eu-west", "endpoint": "ping.eu-west.example.com"},
-      {"id": "ap-southeast", "endpoint": "ping.ap-southeast.example.com"}
-    ],
-    "routing": {
-      "preferLowLatency": true,
-      "maxLatencyThreshold": "200ms",
-      "fallbackOnTimeout": true
-    }
-  }'
-```
-
-## 负载感知路由
-
-### 实时负载监控
-
-```json
-{
-  "routing": {
-    "strategy": "load-aware",
-    "loadMetrics": {
-      "cpu": {
-        "threshold": 80,
-        "weight": 0.4
-      },
-      "memory": {
-        "threshold": 85,
-        "weight": 0.3
-      },
-      "connections": {
-        "threshold": 1000,
-        "weight": 0.2
-      },
-      "responseTime": {
-        "threshold": "2s",
-        "weight": 0.1
-      }
-    },
-    "adaptation": {
-      "enabled": true,
-      "adjustmentInterval": 60000,
-      "emergencyThreshold": 95
-    }
+    "expandAcronyms": true,
+    "addSynonyms": true,
+    "contextualExpansion": true
   }
 }
 ```
 
-### 预测性负载均衡
+### 结果过滤
+
+基于条件过滤结果：
 
 ```json
 {
-  "routing": {
-    "strategy": "predictive",
-    "prediction": {
-      "algorithm": "linear-regression",
-      "trainingWindow": "7d",
-      "predictionHorizon": "1h",
-      "factors": ["historical_load", "time_of_day", "day_of_week", "seasonal_patterns"]
-    },
-    "adaptation": {
-      "preemptiveScaling": true,
-      "scaleUpThreshold": 70,
-      "scaleDownThreshold": 30
-    }
+  "resultFiltering": {
+    "minRelevanceScore": 0.7,
+    "maxResults": 10,
+    "preferredServers": ["fetch", "playwright"],
+    "excludeServers": ["deprecated-server"]
   }
 }
 ```
 
-## 故障转移和恢复
+### 反馈学习
 
-### 自动故障转移
-
-```json
-{
-  "routing": {
-    "strategy": "high-availability",
-    "failover": {
-      "enabled": true,
-      "detection": {
-        "healthCheckFailures": 3,
-        "timeoutThreshold": "10s",
-        "checkInterval": 5000
-      },
-      "recovery": {
-        "automaticRecovery": true,
-        "recoveryChecks": 5,
-        "recoveryInterval": 30000
-      }
-    },
-    "clusters": [
-      {
-        "name": "primary",
-        "servers": ["server-1", "server-2"],
-        "priority": 1
-      },
-      {
-        "name": "secondary",
-        "servers": ["backup-server-1", "backup-server-2"],
-        "priority": 2
-      }
-    ]
-  }
-}
-```
-
-### 断路器模式
-
-```json
-{
-  "routing": {
-    "circuitBreaker": {
-      "enabled": true,
-      "failureThreshold": 10,
-      "timeWindow": 60000,
-      "halfOpenRetries": 3,
-      "fallback": {
-        "type": "cached-response",
-        "ttl": 300000
-      }
-    }
-  }
-}
-```
-
-## 会话亲和性
-
-### 粘性会话
-
-保持用户会话与特定服务器的关联：
-
-```json
-{
-  "routing": {
-    "strategy": "session-affinity",
-    "affinity": {
-      "type": "cookie",
-      "cookieName": "mcphub-server-id",
-      "ttl": 3600000,
-      "fallbackOnUnavailable": true
-    },
-    "sessionStore": {
-      "type": "redis",
-      "config": {
-        "host": "localhost",
-        "port": 6379,
-        "db": 1
-      }
-    }
-  }
-}
-```
-
-### 基于用户 ID 的路由
-
-```json
-{
-  "routing": {
-    "strategy": "user-based",
-    "userRouting": {
-      "algorithm": "consistent-hashing",
-      "hashFunction": "sha256",
-      "virtualNodes": 100,
-      "replicationFactor": 2
-    }
-  }
-}
-```
-
-## 动态路由配置
-
-### 运行时配置更新
+基于用户反馈改进结果：
 
 ```bash
-# 更新路由配置
-curl -X PUT http://localhost:3000/api/routing/config \
+# 对搜索结果提供反馈
+curl -X POST http://localhost:3000/api/smart-routing/feedback \
   -H "Content-Type: application/json" \
-  -H "Authorization: Bearer $TOKEN" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
   -d '{
-    "strategy": "weighted-round-robin",
-    "weights": {
-      "server-1": 3,
-      "server-2": 2,
-      "server-3": 1
-    },
-    "applyImmediately": true
+    "queryId": "search-123",
+    "toolName": "fetch_html",
+    "rating": 5,
+    "successful": true,
+    "comments": "完美适合这个任务的工具"
   }'
-```
-
-### A/B 测试路由
-
-```json
-{
-  "routing": {
-    "strategy": "ab-testing",
-    "experiments": [
-      {
-        "name": "new-algorithm-test",
-        "enabled": true,
-        "trafficSplit": {
-          "control": 70,
-          "variant": 30
-        },
-        "rules": {
-          "control": {
-            "strategy": "round-robin",
-            "servers": ["stable-server-1", "stable-server-2"]
-          },
-          "variant": {
-            "strategy": "ai-optimized",
-            "servers": ["experimental-server-1"]
-          }
-        },
-        "metrics": ["response_time", "error_rate", "user_satisfaction"]
-      }
-    ]
-  }
-}
-```
-
-## 路由分析和监控
-
-### 实时路由指标
-
-```bash
-# 获取路由统计
-curl -X GET http://localhost:3000/api/routing/metrics \
-  -H "Authorization: Bearer $TOKEN"
-```
-
-响应示例：
-
-```json
-{
-  "timestamp": "2024-01-01T12:00:00Z",
-  "totalRequests": 15420,
-  "routingDistribution": {
-    "server-1": { "requests": 6168, "percentage": 40 },
-    "server-2": { "requests": 4626, "percentage": 30 },
-    "server-3": { "requests": 3084, "percentage": 20 },
-    "backup-server": { "requests": 1542, "percentage": 10 }
-  },
-  "performance": {
-    "avgResponseTime": "245ms",
-    "p95ResponseTime": "580ms",
-    "errorRate": "0.3%"
-  },
-  "failovers": {
-    "total": 2,
-    "byServer": {
-      "server-2": 1,
-      "server-3": 1
-    }
-  }
-}
-```
-
-### 路由决策日志
-
-```bash
-# 启用路由决策日志
-curl -X PUT http://localhost:3000/api/routing/logging \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer $TOKEN" \
-  -d '{
-    "enabled": true,
-    "level": "info",
-    "includeDecisionFactors": true,
-    "sampleRate": 0.1
-  }'
-```
-
-## 自定义路由规则
-
-### 基于业务逻辑的路由
-
-```json
-{
-  "routing": {
-    "strategy": "custom-rules",
-    "rules": [
-      {
-        "name": "premium-users",
-        "priority": 1,
-        "condition": "user.tier === 'premium'",
-        "action": {
-          "targetServers": ["premium-server-1", "premium-server-2"],
-          "strategy": "least-connections",
-          "qos": {
-            "maxResponseTime": "1s",
-            "priority": "high"
-          }
-        }
-      },
-      {
-        "name": "high-volume-requests",
-        "priority": 2,
-        "condition": "request.size > 10MB",
-        "action": {
-          "targetServers": ["high-capacity-server"],
-          "strategy": "single",
-          "timeout": "60s"
-        }
-      },
-      {
-        "name": "batch-processing",
-        "priority": 3,
-        "condition": "request.type === 'batch'",
-        "action": {
-          "targetServers": ["batch-server-1", "batch-server-2"],
-          "strategy": "queue-based",
-          "queueConfig": {
-            "maxSize": 1000,
-            "timeout": "5m"
-          }
-        }
-      }
-    ]
-  }
-}
-```
-
-### JavaScript 路由函数
-
-```javascript
-// 自定义路由函数
-function customRouting(request, servers, metrics) {
-  const { user, content, timestamp } = request;
-
-  // 工作时间优先使用高性能服务器
-  const isBusinessHours =
-    new Date(timestamp).getHours() >= 9 && new Date(timestamp).getHours() <= 17;
-
-  if (isBusinessHours && user.priority === 'high') {
-    return servers.filter((s) => s.tags.includes('high-performance'));
-  }
-
-  // 基于内容类型的特殊路由
-  if (content.type === 'code-analysis') {
-    return servers.filter((s) => s.capabilities.includes('code-analysis'));
-  }
-
-  // 默认负载均衡
-  return servers.sort((a, b) => a.currentLoad - b.currentLoad);
-}
-```
-
-## 路由优化
-
-### 机器学习优化
-
-```json
-{
-  "routing": {
-    "strategy": "ml-optimized",
-    "mlConfig": {
-      "algorithm": "reinforcement-learning",
-      "rewardFunction": "response_time_weighted",
-      "trainingData": {
-        "features": [
-          "server_load",
-          "response_time_history",
-          "request_complexity",
-          "user_pattern",
-          "time_of_day"
-        ],
-        "targetMetric": "overall_satisfaction"
-      },
-      "updateFrequency": "hourly",
-      "explorationRate": 0.1
-    }
-  }
-}
-```
-
-### 缓存感知路由
-
-```json
-{
-  "routing": {
-    "strategy": "cache-aware",
-    "caching": {
-      "enabled": true,
-      "levels": [
-        {
-          "type": "local",
-          "ttl": 300,
-          "maxSize": "100MB"
-        },
-        {
-          "type": "distributed",
-          "provider": "redis",
-          "ttl": 3600,
-          "maxSize": "1GB"
-        }
-      ],
-      "routing": {
-        "preferCachedServers": true,
-        "cacheHitBonus": 0.3,
-        "cacheMissThreshold": 0.8
-      }
-    }
-  }
-}
-```
+``` */}
 
 ## 故障排除
 
-### 路由调试
+<AccordionGroup>
+  <Accordion title="数据库连接问题">
+    **症状：**
+    - 智能路由不可用
+    - 数据库连接错误
+    - 嵌入存储失败
 
-```bash
-# 调试特定请求的路由决策
-curl -X POST http://localhost:3000/api/routing/debug \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer $TOKEN" \
-  -d '{
-    "request": {
-      "userId": "user123",
-      "tool": "filesystem",
-      "content": {"type": "read", "path": "/data/file.txt"}
-    },
-    "traceRoute": true
-  }'
-```
+    **解决方案：**
+    1. 验证 PostgreSQL 是否正在运行
+    2. 检查 DATABASE_URL 格式
+    3. 确保安装了 pgvector 扩展
+    4. 手动测试连接：
+    ```bash
+    psql $DATABASE_URL -c "SELECT 1;"
+    ```
 
-### 路由性能分析
+  </Accordion>
 
-```bash
-# 获取路由性能报告
-curl -X GET http://localhost:3000/api/routing/performance \
-  -H "Authorization: Bearer $TOKEN" \
-  -G -d "timeRange=1h" -d "detailed=true"
-```
+  <Accordion title="嵌入服务问题">
+    **症状：**
+    - 工具索引失败
+    - 查询处理错误
+    - API 速率限制错误
 
-### 常见问题
+    **解决方案：**
+    1. 验证 API 密钥有效性
+    2. 检查网络连接
+    3. 监控速率限制
+    4. 测试嵌入服务：
+    ```bash
+    curl -X POST https://api.openai.com/v1/embeddings \
+      -H "Authorization: Bearer $OPENAI_API_KEY" \
+      -H "Content-Type: application/json" \
+      -d '{"input": "test", "model": "text-embedding-3-small"}'
+    ```
 
-1. **不均匀的负载分布**
+  </Accordion>
 
-   - 检查服务器权重配置
-   - 验证健康检查设置
-   - 分析请求模式
+  <Accordion title="搜索结果不佳">
+    **症状：**
+    - 返回不相关的工具
+    - 相关性得分低
+    - 缺少预期的工具
 
-2. **频繁的故障转移**
+    **解决方案：**
+    1. 调整相似性阈值
+    2. 使用更好的描述重新索引工具
+    3. 使用更具体的查询
+    4. 检查工具元数据质量
+    ```bash
+    # 重新索引所有工具
+    curl -X POST http://localhost:3000/api/smart-routing/reindex \
+      -H "Authorization: Bearer YOUR_JWT_TOKEN"
+    ```
 
-   - 调整健康检查阈值
-   - 检查网络连接稳定性
-   - 优化服务器资源
+  </Accordion>
 
-3. **路由延迟过高**
-   - 简化路由规则
-   - 优化路由算法
-   - 使用缓存加速决策
+  <Accordion title="性能问题">
+    **症状：**
+    - 查询响应缓慢
+    - 数据库负载高
+    - 内存使用激增
 
-有关更多信息，请参阅 [监控](/zh/features/monitoring) 和 [服务器管理](/zh/features/server-management) 文档。
+    **解决方案：**
+    1. 优化数据库配置
+    2. 增加缓存大小
+    3. 减少批处理大小
+    4. 监控系统资源
+    ```bash
+    # 检查系统性能
+    curl http://localhost:3000/api/smart-routing/performance \
+      -H "Authorization: Bearer YOUR_JWT_TOKEN"
+    ```
+
+  </Accordion>
+</AccordionGroup>
+
+## 最佳实践
+
+### 查询编写
+
+<Tip>
+  **要具体描述**：在查询中使用具体、描述性的语言以获得更好的工具匹配。
+</Tip>
+
+<Tip>
+  **包含上下文**：提供有关您的任务或领域的相关上下文以获得更准确的结果。
+</Tip>
+
+<Tip>**使用自然语言**：像向人类描述任务一样编写查询。</Tip>
+
+### 工具描述
+
+<Warning>
+  **质量元数据**：确保 MCP 服务器提供高质量的工具描述和元数据。
+</Warning>
+
+<Warning>**定期更新**：随着功能的发展保持工具描述的最新状态。</Warning>
+
+<Warning>
+  **一致的命名**：在工具和服务器中使用一致的命名约定。
+</Warning>
+
+### 系统维护
+
+<Info>**定期重新索引**：定期重新索引工具以确保嵌入质量。</Info>
+
+<Info>**监控性能**：跟踪查询模式并根据使用情况进行优化。</Info>
+
+<Info>
+  **更新模型**：随着新嵌入模型的出现，考虑更新到更新的模型。
+</Info>
+
+## 下一步
+
+<CardGroup cols={2}>
+  <Card title="身份验证" icon="shield" href="/zh/features/authentication">
+    用户管理和访问控制
+  </Card>
+  <Card title="监控" icon="chart-line" href="/zh/features/monitoring">
+    系统监控和分析
+  </Card>
+  <Card title="API 参考" icon="code" href="/zh/api-reference/smart-routing">
+    完整的智能路由 API 文档
+  </Card>
+  <Card title="配置" icon="cog" href="/zh/configuration/environment-variables">
+    高级配置选项
+  </Card>
+</CardGroup>
