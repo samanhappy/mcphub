@@ -59,11 +59,15 @@ import { getAllLogs, clearLogs, streamLogs } from '../controllers/logController.
 import { getRuntimeConfig, getPublicConfig } from '../controllers/configController.js';
 import { callTool } from '../controllers/toolController.js';
 import { uploadDxtFile, uploadMiddleware } from '../controllers/dxtController.js';
+import { healthCheck } from '../controllers/healthController.js';
 import { auth } from '../middlewares/auth.js';
 
 const router = express.Router();
 
 export const initRoutes = (app: express.Application): void => {
+  // Health check endpoint (no auth required, accessible at /health)
+  app.get('/health', healthCheck);
+
   // API routes protected by auth middleware in middlewares/index.ts
   router.get('/servers', getAllServers);
   router.get('/settings', getAllSettings);

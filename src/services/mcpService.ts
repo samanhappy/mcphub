@@ -114,9 +114,11 @@ const cleanInputSchema = (schema: any): any => {
 // Store all server information
 let serverInfos: ServerInfo[] = [];
 
-// Returns true if all servers are connected
+// Returns true if all enabled servers are connected
 export const connected = (): boolean => {
-  return serverInfos.every((serverInfo) => serverInfo.status === 'connected');
+  return serverInfos
+    .filter((serverInfo) => serverInfo.enabled !== false)
+    .every((serverInfo) => serverInfo.status === 'connected');
 };
 
 // Global cleanup function to close all connections
