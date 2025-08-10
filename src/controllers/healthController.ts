@@ -9,16 +9,15 @@ import { connected } from '../services/mcpService.js';
 export const healthCheck = (_req: Request, res: Response): void => {
   try {
     const allConnected = connected();
-
     if (allConnected) {
       res.status(200).json({
-        code: 0,
+        status: 'healthy',
         message: 'All enabled MCP servers are ready',
         timestamp: new Date().toISOString(),
       });
     } else {
       res.status(503).json({
-        code: 1,
+        status: 'unhealthy',
         message: 'Not all enabled MCP servers are ready',
         timestamp: new Date().toISOString(),
       });
@@ -26,7 +25,7 @@ export const healthCheck = (_req: Request, res: Response): void => {
   } catch (error) {
     console.error('Health check error:', error);
     res.status(500).json({
-      code: 1,
+      status: 'error',
       message: 'Internal server error during health check',
       timestamp: new Date().toISOString(),
     });
