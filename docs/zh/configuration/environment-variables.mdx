@@ -1,271 +1,44 @@
 ---
-title: '环境变量配置'
+title: '环境变量'
 description: '使用环境变量配置 MCPHub'
 ---
 
-# 环境变量配置
+# 环境变量
 
-MCPHub 使用环境变量进行配置。本指南涵盖所有可用变量及其用法。
+MCPHub 使用环境变量进行配置。本指南涵盖了所有可用的变量及其用法。
 
 ## 核心应用设置
 
 ### 服务器配置
 
-| 变量        | 默认值        | 描述                                            |
-| ----------- | ------------- | ----------------------------------------------- |
-| `PORT`      | `3000`        | HTTP 服务器端口号                               |
-| `HOST`      | `0.0.0.0`     | 服务器绑定的主机地址                            |
-| `NODE_ENV`  | `development` | 应用环境（`development`、`production`、`test`） |
-| `LOG_LEVEL` | `info`        | 日志级别（`error`、`warn`、`info`、`debug`）    |
+| 变量 | 默认值 | 描述 |
+| --- | --- | --- |
+| `PORT` | `3000` | HTTP 服务器的端口号 |
+| `INIT_TIMEOUT` | `300000` | 应用程序的初始超时时间 |
+| `BASE_PATH` | `''` | 应用程序的基本路径 |
+| `READONLY` | `false` | 设置为 `true` 以启用只读模式 |
+| `MCPHUB_SETTING_PATH` | | MCPHub 设置文件的路径 |
+| `NODE_ENV` | `development` | 应用程序环境 (`development`, `production`, `test`) |
 
 ```env
 PORT=3000
-HOST=0.0.0.0
+INIT_TIMEOUT=300000
+BASE_PATH=/api
+READONLY=true
+MCPHUB_SETTING_PATH=/path/to/settings
 NODE_ENV=production
-LOG_LEVEL=info
-```
-
-### 数据库配置
-
-| 变量           | 默认值      | 描述                  |
-| -------------- | ----------- | --------------------- |
-| `DATABASE_URL` | -           | PostgreSQL 连接字符串 |
-| `DB_HOST`      | `localhost` | 数据库主机            |
-| `DB_PORT`      | `5432`      | 数据库端口            |
-| `DB_NAME`      | `mcphub`    | 数据库名称            |
-| `DB_USER`      | `mcphub`    | 数据库用户名          |
-| `DB_PASSWORD`  | -           | 数据库密码            |
-| `DB_SSL`       | `false`     | 启用数据库 SSL 连接   |
-| `DB_POOL_MIN`  | `2`         | 最小数据库连接池大小  |
-| `DB_POOL_MAX`  | `10`        | 最大数据库连接池大小  |
-
-```env
-# 选项 1：完整连接字符串
-DATABASE_URL=postgresql://username:password@localhost:5432/mcphub
-
-# 选项 2：单独组件
-DB_HOST=localhost
-DB_PORT=5432
-DB_NAME=mcphub
-DB_USER=mcphub
-DB_PASSWORD=your-password
-DB_SSL=false
 ```
 
 ## 认证与安全
 
 ### JWT 配置
 
-| 变量                     | 默认值  | 描述                     |
-| ------------------------ | ------- | ------------------------ |
-| `JWT_SECRET`             | -       | JWT 令牌签名密钥（必需） |
-| `JWT_EXPIRES_IN`         | `24h`   | JWT 令牌过期时间         |
-| `JWT_REFRESH_EXPIRES_IN` | `7d`    | 刷新令牌过期时间         |
-| `JWT_ALGORITHM`          | `HS256` | JWT 签名算法             |
+| 变量 | 默认值 | 描述 |
+| --- | --- | --- |
+| `JWT_SECRET` | - | 用于 JWT 令牌签名的密钥 (必需) |
 
 ```env
 JWT_SECRET=your-super-secret-key-change-this-in-production
-JWT_EXPIRES_IN=24h
-JWT_REFRESH_EXPIRES_IN=7d
-```
-
-### 会话与安全
-
-| 变量                | 默认值 | 描述                 |
-| ------------------- | ------ | -------------------- |
-| `SESSION_SECRET`    | -      | 会话加密密钥         |
-| `BCRYPT_ROUNDS`     | `12`   | bcrypt 哈希轮数      |
-| `RATE_LIMIT_WINDOW` | `15`   | 速率限制窗口（分钟） |
-| `RATE_LIMIT_MAX`    | `100`  | 每个窗口最大请求数   |
-| `CORS_ORIGIN`       | `*`    | 允许的 CORS 来源     |
-
-```env
-SESSION_SECRET=your-session-secret
-BCRYPT_ROUNDS=12
-RATE_LIMIT_WINDOW=15
-RATE_LIMIT_MAX=100
-CORS_ORIGIN=https://your-domain.com,https://admin.your-domain.com
-```
-
-## 外部服务
-
-### OpenAI 配置
-
-| 变量                     | 默认值                   | 描述                            |
-| ------------------------ | ------------------------ | ------------------------------- |
-| `OPENAI_API_KEY`         | -                        | OpenAI API 密钥（用于智能路由） |
-| `OPENAI_MODEL`           | `gpt-3.5-turbo`          | OpenAI 嵌入模型                 |
-| `OPENAI_EMBEDDING_MODEL` | `text-embedding-ada-002` | 向量嵌入模型                    |
-| `OPENAI_MAX_TOKENS`      | `1000`                   | 每个请求最大令牌数              |
-| `OPENAI_TEMPERATURE`     | `0.1`                    | AI 响应温度                     |
-
-```env
-OPENAI_API_KEY=sk-your-openai-api-key
-OPENAI_MODEL=gpt-3.5-turbo
-OPENAI_EMBEDDING_MODEL=text-embedding-ada-002
-OPENAI_MAX_TOKENS=1000
-OPENAI_TEMPERATURE=0.1
-```
-
-### Redis 配置（可选）
-
-| 变量             | 默认值      | 描述             |
-| ---------------- | ----------- | ---------------- |
-| `REDIS_URL`      | -           | Redis 连接字符串 |
-| `REDIS_HOST`     | `localhost` | Redis 主机       |
-| `REDIS_PORT`     | `6379`      | Redis 端口       |
-| `REDIS_PASSWORD` | -           | Redis 密码       |
-| `REDIS_DB`       | `0`         | Redis 数据库编号 |
-| `REDIS_PREFIX`   | `mcphub:`   | Redis 键前缀     |
-
-```env
-# 选项 1：完整连接字符串
-REDIS_URL=redis://username:password@localhost:6379/0
-
-# 选项 2：单独组件
-REDIS_HOST=localhost
-REDIS_PORT=6379
-REDIS_PASSWORD=your-redis-password
-REDIS_DB=0
-REDIS_PREFIX=mcphub:
-```
-
-## MCP 服务器配置
-
-### 默认设置
-
-| 变量                | 默认值              | 描述                         |
-| ------------------- | ------------------- | ---------------------------- |
-| `MCP_SETTINGS_FILE` | `mcp_settings.json` | MCP 设置文件路径             |
-| `MCP_SERVERS_FILE`  | `servers.json`      | 服务器配置文件路径           |
-| `MCP_TIMEOUT`       | `30000`             | MCP 操作默认超时（毫秒）     |
-| `MCP_MAX_RETRIES`   | `3`                 | 失败操作最大重试次数         |
-| `MCP_RESTART_DELAY` | `5000`              | 重启失败服务器的延迟（毫秒） |
-
-```env
-MCP_SETTINGS_FILE=./config/mcp_settings.json
-MCP_SERVERS_FILE=./config/servers.json
-MCP_TIMEOUT=30000
-MCP_MAX_RETRIES=3
-MCP_RESTART_DELAY=5000
-```
-
-### 智能路由
-
-| 变量                        | 默认值 | 描述                   |
-| --------------------------- | ------ | ---------------------- |
-| `SMART_ROUTING_ENABLED`     | `true` | 启用 AI 驱动的智能路由 |
-| `SMART_ROUTING_THRESHOLD`   | `0.7`  | 路由相似度阈值         |
-| `SMART_ROUTING_MAX_RESULTS` | `5`    | 返回的最大工具数       |
-| `VECTOR_CACHE_TTL`          | `3600` | 向量缓存 TTL（秒）     |
-
-```env
-SMART_ROUTING_ENABLED=true
-SMART_ROUTING_THRESHOLD=0.7
-SMART_ROUTING_MAX_RESULTS=5
-VECTOR_CACHE_TTL=3600
-```
-
-## 文件存储与上传
-
-| 变量                 | 默认值           | 描述                             |
-| -------------------- | ---------------- | -------------------------------- |
-| `UPLOAD_DIR`         | `./uploads`      | 文件上传目录                     |
-| `MAX_FILE_SIZE`      | `10485760`       | 最大文件大小（字节，10MB）       |
-| `ALLOWED_FILE_TYPES` | `image/*,text/*` | 允许的 MIME 类型                 |
-| `STORAGE_TYPE`       | `local`          | 存储类型（`local`、`s3`、`gcs`） |
-
-```env
-UPLOAD_DIR=./data/uploads
-MAX_FILE_SIZE=10485760
-ALLOWED_FILE_TYPES=image/*,text/*,application/json
-STORAGE_TYPE=local
-```
-
-### S3 存储（可选）
-
-| 变量                   | 默认值      | 描述           |
-| ---------------------- | ----------- | -------------- |
-| `S3_BUCKET`            | -           | S3 存储桶名称  |
-| `S3_REGION`            | `us-east-1` | S3 区域        |
-| `S3_ACCESS_KEY_ID`     | -           | S3 访问密钥    |
-| `S3_SECRET_ACCESS_KEY` | -           | S3 密钥        |
-| `S3_ENDPOINT`          | -           | 自定义 S3 端点 |
-
-```env
-S3_BUCKET=mcphub-uploads
-S3_REGION=us-east-1
-S3_ACCESS_KEY_ID=your-access-key
-S3_SECRET_ACCESS_KEY=your-secret-key
-```
-
-## 监控与日志
-
-### 应用监控
-
-| 变量                     | 默认值  | 描述                 |
-| ------------------------ | ------- | -------------------- |
-| `METRICS_ENABLED`        | `true`  | 启用指标收集         |
-| `METRICS_PORT`           | `9090`  | 指标端点端口         |
-| `HEALTH_CHECK_INTERVAL`  | `30000` | 健康检查间隔（毫秒） |
-| `PERFORMANCE_MONITORING` | `false` | 启用性能监控         |
-
-```env
-METRICS_ENABLED=true
-METRICS_PORT=9090
-HEALTH_CHECK_INTERVAL=30000
-PERFORMANCE_MONITORING=true
-```
-
-### 日志配置
-
-| 变量               | 默认值       | 描述                             |
-| ------------------ | ------------ | -------------------------------- |
-| `LOG_FORMAT`       | `json`       | 日志格式（`json`、`text`）       |
-| `LOG_FILE`         | -            | 日志文件路径（如果启用文件日志） |
-| `LOG_MAX_SIZE`     | `10m`        | 最大日志文件大小                 |
-| `LOG_MAX_FILES`    | `5`          | 最大日志文件数                   |
-| `LOG_DATE_PATTERN` | `YYYY-MM-DD` | 日志轮换日期模式                 |
-
-```env
-LOG_FORMAT=json
-LOG_FILE=./logs/mcphub.log
-LOG_MAX_SIZE=10m
-LOG_MAX_FILES=5
-LOG_DATE_PATTERN=YYYY-MM-DD
-```
-
-## 开发与调试
-
-| 变量                     | 默认值  | 描述                            |
-| ------------------------ | ------- | ------------------------------- |
-| `DEBUG`                  | -       | 调试命名空间（例如 `mcphub:*`） |
-| `DEV_TOOLS_ENABLED`      | `false` | 启用开发工具                    |
-| `HOT_RELOAD`             | `true`  | 在开发中启用热重载              |
-| `MOCK_EXTERNAL_SERVICES` | `false` | 模拟外部 API 调用               |
-
-```env
-DEBUG=mcphub:*
-DEV_TOOLS_ENABLED=true
-HOT_RELOAD=true
-MOCK_EXTERNAL_SERVICES=false
-```
-
-## 生产优化
-
-| 变量               | 默认值  | 描述                   |
-| ------------------ | ------- | ---------------------- |
-| `CLUSTER_MODE`     | `false` | 启用集群模式           |
-| `WORKER_PROCESSES` | `0`     | 工作进程数（0 = 自动） |
-| `MEMORY_LIMIT`     | -       | 每个进程内存限制       |
-| `CPU_LIMIT`        | -       | 每个进程 CPU 限制      |
-| `GC_OPTIMIZE`      | `false` | 启用垃圾回收优化       |
-
-```env
-CLUSTER_MODE=true
-WORKER_PROCESSES=4
-MEMORY_LIMIT=512M
-GC_OPTIMIZE=true
 ```
 
 ## 配置示例
@@ -276,22 +49,9 @@ GC_OPTIMIZE=true
 # .env.development
 NODE_ENV=development
 PORT=3000
-LOG_LEVEL=debug
-
-# 数据库
-DATABASE_URL=postgresql://mcphub:password@localhost:5432/mcphub_dev
 
 # 认证
 JWT_SECRET=dev-secret-key
-JWT_EXPIRES_IN=24h
-
-# OpenAI（开发时可选）
-# OPENAI_API_KEY=your-dev-key
-
-# 调试
-DEBUG=mcphub:*
-DEV_TOOLS_ENABLED=true
-HOT_RELOAD=true
 ```
 
 ### 生产环境
@@ -300,30 +60,9 @@ HOT_RELOAD=true
 # .env.production
 NODE_ENV=production
 PORT=3000
-LOG_LEVEL=info
-LOG_FORMAT=json
-
-# 数据库
-DATABASE_URL=postgresql://mcphub:secure-password@db.example.com:5432/mcphub
-DB_SSL=true
-DB_POOL_MAX=20
 
 # 安全
 JWT_SECRET=your-super-secure-production-secret
-SESSION_SECRET=your-session-secret
-BCRYPT_ROUNDS=14
-
-# 外部服务
-OPENAI_API_KEY=your-production-openai-key
-REDIS_URL=redis://redis.example.com:6379
-
-# 监控
-METRICS_ENABLED=true
-PERFORMANCE_MONITORING=true
-
-# 优化
-CLUSTER_MODE=true
-GC_OPTIMIZE=true
 ```
 
 ### Docker 环境
@@ -331,21 +70,10 @@ GC_OPTIMIZE=true
 ```env
 # .env.docker
 NODE_ENV=production
-HOST=0.0.0.0
 PORT=3000
-
-# 使用 Docker 网络的服务名
-DATABASE_URL=postgresql://mcphub:password@postgres:5432/mcphub
-REDIS_URL=redis://redis:6379
 
 # 安全
 JWT_SECRET_FILE=/run/secrets/jwt_secret
-DB_PASSWORD_FILE=/run/secrets/db_password
-
-# 容器中的文件路径
-MCP_SETTINGS_FILE=/app/mcp_settings.json
-UPLOAD_DIR=/app/data/uploads
-LOG_FILE=/app/logs/mcphub.log
 ```
 
 ## 环境变量加载
@@ -353,8 +81,8 @@ LOG_FILE=/app/logs/mcphub.log
 MCPHub 按以下顺序加载环境变量：
 
 1. 系统环境变量
-2. `.env.local`（被 git 忽略）
-3. `.env.{NODE_ENV}`（例如 `.env.production`）
+2. `.env.local` (被 git 忽略)
+3. `.env.{NODE_ENV}` (例如, `.env.production`)
 4. `.env`
 
 ### 使用 dotenv-expand
@@ -364,26 +92,13 @@ MCPHub 支持变量扩展：
 ```env
 BASE_URL=https://api.example.com
 API_ENDPOINT=${BASE_URL}/v1
-DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}
 ```
 
 ## 安全最佳实践
 
-1. **永远不要提交密钥**到版本控制
-2. **为生产使用强唯一密钥**
+1. **永远不要将密钥提交**到版本控制
+2. **为生产环境使用强大、独特的密钥**
 3. **定期轮换密钥**
 4. **使用特定于环境的文件**
 5. **在启动时验证所有环境变量**
 6. **为容器部署使用 Docker 密钥**
-
-## 验证
-
-MCPHub 在启动时验证环境变量。无效配置将阻止应用程序启动并提供有用的错误消息。
-
-生产环境必需变量：
-
-- `JWT_SECRET`
-- `DATABASE_URL` 或单独的数据库组件
-- `OPENAI_API_KEY`（如果启用智能路由）
-
-这个全面的环境配置确保 MCPHub 可以为任何部署场景正确配置。

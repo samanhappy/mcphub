@@ -9,11 +9,10 @@ import {
 } from '../models/User.js';
 import { getDataService } from '../services/services.js';
 import { DataService } from '../services/dataService.js';
+import { JWT_SECRET } from '../config/jwt.js';
 
 const dataService: DataService = getDataService();
 
-// Default secret key - in production, use an environment variable
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-this';
 const TOKEN_EXPIRY = '24h';
 
 // Login user

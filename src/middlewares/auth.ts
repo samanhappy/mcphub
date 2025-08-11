@@ -2,9 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { loadSettings } from '../config/index.js';
 import defaultConfig from '../config/index.js';
-
-// Default secret key - in production, use an environment variable
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-this';
+import { JWT_SECRET } from '../config/jwt.js';
 
 const validateBearerAuth = (req: Request, routingConfig: any): boolean => {
   if (!routingConfig.enableBearerAuth) {

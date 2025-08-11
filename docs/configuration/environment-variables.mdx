@@ -11,261 +11,34 @@ MCPHub uses environment variables for configuration. This guide covers all avail
 
 ### Server Configuration
 
-| Variable    | Default       | Description                                                   |
-| ----------- | ------------- | ------------------------------------------------------------- |
-| `PORT`      | `3000`        | Port number for the HTTP server                               |
-| `HOST`      | `0.0.0.0`     | Host address to bind the server                               |
-| `NODE_ENV`  | `development` | Application environment (`development`, `production`, `test`) |
-| `LOG_LEVEL` | `info`        | Logging level (`error`, `warn`, `info`, `debug`)              |
+| Variable | Default | Description |
+| --- | --- | --- |
+| `PORT` | `3000` | Port number for the HTTP server |
+| `INIT_TIMEOUT` | `300000` | Initial timeout for the application |
+| `BASE_PATH` | `''` | The base path of the application |
+| `READONLY` | `false` | Set to `true` to enable readonly mode |
+| `MCPHUB_SETTING_PATH` | | Path to the MCPHub settings |
+| `NODE_ENV` | `development` | Application environment (`development`, `production`, `test`) |
 
 ```env
 PORT=3000
-HOST=0.0.0.0
+INIT_TIMEOUT=300000
+BASE_PATH=/api
+READONLY=true
+MCPHUB_SETTING_PATH=/path/to/settings
 NODE_ENV=production
-LOG_LEVEL=info
-```
-
-### Database Configuration
-
-| Variable       | Default     | Description                        |
-| -------------- | ----------- | ---------------------------------- |
-| `DATABASE_URL` | -           | PostgreSQL connection string       |
-| `DB_HOST`      | `localhost` | Database host                      |
-| `DB_PORT`      | `5432`      | Database port                      |
-| `DB_NAME`      | `mcphub`    | Database name                      |
-| `DB_USER`      | `mcphub`    | Database username                  |
-| `DB_PASSWORD`  | -           | Database password                  |
-| `DB_SSL`       | `false`     | Enable SSL for database connection |
-| `DB_POOL_MIN`  | `2`         | Minimum database pool size         |
-| `DB_POOL_MAX`  | `10`        | Maximum database pool size         |
-
-```env
-# Option 1: Full connection string
-DATABASE_URL=postgresql://username:password@localhost:5432/mcphub
-
-# Option 2: Individual components
-DB_HOST=localhost
-DB_PORT=5432
-DB_NAME=mcphub
-DB_USER=mcphub
-DB_PASSWORD=your-password
-DB_SSL=false
 ```
 
 ## Authentication & Security
 
 ### JWT Configuration
 
-| Variable                 | Default | Description                                 |
-| ------------------------ | ------- | ------------------------------------------- |
-| `JWT_SECRET`             | -       | Secret key for JWT token signing (required) |
-| `JWT_EXPIRES_IN`         | `24h`   | JWT token expiration time                   |
-| `JWT_REFRESH_EXPIRES_IN` | `7d`    | Refresh token expiration time               |
-| `JWT_ALGORITHM`          | `HS256` | JWT signing algorithm                       |
+| Variable | Default | Description |
+| --- | --- | --- |
+| `JWT_SECRET` | - | Secret key for JWT token signing (required) |
 
 ```env
 JWT_SECRET=your-super-secret-key-change-this-in-production
-JWT_EXPIRES_IN=24h
-JWT_REFRESH_EXPIRES_IN=7d
-```
-
-### Session & Security
-
-| Variable            | Default | Description                     |
-| ------------------- | ------- | ------------------------------- |
-| `SESSION_SECRET`    | -       | Session encryption secret       |
-| `BCRYPT_ROUNDS`     | `12`    | bcrypt hashing rounds           |
-| `RATE_LIMIT_WINDOW` | `15`    | Rate limiting window in minutes |
-| `RATE_LIMIT_MAX`    | `100`   | Maximum requests per window     |
-| `CORS_ORIGIN`       | `*`     | Allowed CORS origins            |
-
-```env
-SESSION_SECRET=your-session-secret
-BCRYPT_ROUNDS=12
-RATE_LIMIT_WINDOW=15
-RATE_LIMIT_MAX=100
-CORS_ORIGIN=https://your-domain.com,https://admin.your-domain.com
-```
-
-## External Services
-
-### OpenAI Configuration
-
-| Variable                 | Default                  | Description                      |
-| ------------------------ | ------------------------ | -------------------------------- |
-| `OPENAI_API_KEY`         | -                        | OpenAI API key for smart routing |
-| `OPENAI_MODEL`           | `gpt-3.5-turbo`          | OpenAI model for embeddings      |
-| `OPENAI_EMBEDDING_MODEL` | `text-embedding-ada-002` | Model for vector embeddings      |
-| `OPENAI_MAX_TOKENS`      | `1000`                   | Maximum tokens per request       |
-| `OPENAI_TEMPERATURE`     | `0.1`                    | Temperature for AI responses     |
-
-```env
-OPENAI_API_KEY=sk-your-openai-api-key
-OPENAI_MODEL=gpt-3.5-turbo
-OPENAI_EMBEDDING_MODEL=text-embedding-ada-002
-OPENAI_MAX_TOKENS=1000
-OPENAI_TEMPERATURE=0.1
-```
-
-### Redis Configuration (Optional)
-
-| Variable         | Default     | Description             |
-| ---------------- | ----------- | ----------------------- |
-| `REDIS_URL`      | -           | Redis connection string |
-| `REDIS_HOST`     | `localhost` | Redis host              |
-| `REDIS_PORT`     | `6379`      | Redis port              |
-| `REDIS_PASSWORD` | -           | Redis password          |
-| `REDIS_DB`       | `0`         | Redis database number   |
-| `REDIS_PREFIX`   | `mcphub:`   | Key prefix for Redis    |
-
-```env
-# Option 1: Full connection string
-REDIS_URL=redis://username:password@localhost:6379/0
-
-# Option 2: Individual components
-REDIS_HOST=localhost
-REDIS_PORT=6379
-REDIS_PASSWORD=your-redis-password
-REDIS_DB=0
-REDIS_PREFIX=mcphub:
-```
-
-## MCP Server Configuration
-
-### Default Settings
-
-| Variable            | Default             | Description                                  |
-| ------------------- | ------------------- | -------------------------------------------- |
-| `MCP_SETTINGS_FILE` | `mcp_settings.json` | Path to MCP settings file                    |
-| `MCP_SERVERS_FILE`  | `servers.json`      | Path to servers configuration                |
-| `MCP_TIMEOUT`       | `30000`             | Default timeout for MCP operations (ms)      |
-| `MCP_MAX_RETRIES`   | `3`                 | Maximum retry attempts for failed operations |
-| `MCP_RESTART_DELAY` | `5000`              | Delay before restarting failed servers (ms)  |
-
-```env
-MCP_SETTINGS_FILE=./config/mcp_settings.json
-MCP_SERVERS_FILE=./config/servers.json
-MCP_TIMEOUT=30000
-MCP_MAX_RETRIES=3
-MCP_RESTART_DELAY=5000
-```
-
-### Smart Routing
-
-| Variable                    | Default | Description                      |
-| --------------------------- | ------- | -------------------------------- |
-| `SMART_ROUTING_ENABLED`     | `true`  | Enable AI-powered smart routing  |
-| `SMART_ROUTING_THRESHOLD`   | `0.7`   | Similarity threshold for routing |
-| `SMART_ROUTING_MAX_RESULTS` | `5`     | Maximum tools to return          |
-| `VECTOR_CACHE_TTL`          | `3600`  | Vector cache TTL in seconds      |
-
-```env
-SMART_ROUTING_ENABLED=true
-SMART_ROUTING_THRESHOLD=0.7
-SMART_ROUTING_MAX_RESULTS=5
-VECTOR_CACHE_TTL=3600
-```
-
-## File Storage & Uploads
-
-| Variable             | Default          | Description                         |
-| -------------------- | ---------------- | ----------------------------------- |
-| `UPLOAD_DIR`         | `./uploads`      | Directory for file uploads          |
-| `MAX_FILE_SIZE`      | `10485760`       | Maximum file size in bytes (10MB)   |
-| `ALLOWED_FILE_TYPES` | `image/*,text/*` | Allowed MIME types                  |
-| `STORAGE_TYPE`       | `local`          | Storage type (`local`, `s3`, `gcs`) |
-
-```env
-UPLOAD_DIR=./data/uploads
-MAX_FILE_SIZE=10485760
-ALLOWED_FILE_TYPES=image/*,text/*,application/json
-STORAGE_TYPE=local
-```
-
-### S3 Storage (Optional)
-
-| Variable               | Default     | Description        |
-| ---------------------- | ----------- | ------------------ |
-| `S3_BUCKET`            | -           | S3 bucket name     |
-| `S3_REGION`            | `us-east-1` | S3 region          |
-| `S3_ACCESS_KEY_ID`     | -           | S3 access key      |
-| `S3_SECRET_ACCESS_KEY` | -           | S3 secret key      |
-| `S3_ENDPOINT`          | -           | Custom S3 endpoint |
-
-```env
-S3_BUCKET=mcphub-uploads
-S3_REGION=us-east-1
-S3_ACCESS_KEY_ID=your-access-key
-S3_SECRET_ACCESS_KEY=your-secret-key
-```
-
-## Monitoring & Logging
-
-### Application Monitoring
-
-| Variable                 | Default | Description                   |
-| ------------------------ | ------- | ----------------------------- |
-| `METRICS_ENABLED`        | `true`  | Enable metrics collection     |
-| `METRICS_PORT`           | `9090`  | Port for metrics endpoint     |
-| `HEALTH_CHECK_INTERVAL`  | `30000` | Health check interval (ms)    |
-| `PERFORMANCE_MONITORING` | `false` | Enable performance monitoring |
-
-```env
-METRICS_ENABLED=true
-METRICS_PORT=9090
-HEALTH_CHECK_INTERVAL=30000
-PERFORMANCE_MONITORING=true
-```
-
-### Logging Configuration
-
-| Variable           | Default      | Description                             |
-| ------------------ | ------------ | --------------------------------------- |
-| `LOG_FORMAT`       | `json`       | Log format (`json`, `text`)             |
-| `LOG_FILE`         | -            | Log file path (if file logging enabled) |
-| `LOG_MAX_SIZE`     | `10m`        | Maximum log file size                   |
-| `LOG_MAX_FILES`    | `5`          | Maximum number of log files             |
-| `LOG_DATE_PATTERN` | `YYYY-MM-DD` | Date pattern for log rotation           |
-
-```env
-LOG_FORMAT=json
-LOG_FILE=./logs/mcphub.log
-LOG_MAX_SIZE=10m
-LOG_MAX_FILES=5
-LOG_DATE_PATTERN=YYYY-MM-DD
-```
-
-## Development & Debug
-
-| Variable                 | Default | Description                         |
-| ------------------------ | ------- | ----------------------------------- |
-| `DEBUG`                  | -       | Debug namespaces (e.g., `mcphub:*`) |
-| `DEV_TOOLS_ENABLED`      | `false` | Enable development tools            |
-| `HOT_RELOAD`             | `true`  | Enable hot reload in development    |
-| `MOCK_EXTERNAL_SERVICES` | `false` | Mock external API calls             |
-
-```env
-DEBUG=mcphub:*
-DEV_TOOLS_ENABLED=true
-HOT_RELOAD=true
-MOCK_EXTERNAL_SERVICES=false
-```
-
-## Production Optimization
-
-| Variable           | Default | Description                            |
-| ------------------ | ------- | -------------------------------------- |
-| `CLUSTER_MODE`     | `false` | Enable cluster mode                    |
-| `WORKER_PROCESSES` | `0`     | Number of worker processes (0 = auto)  |
-| `MEMORY_LIMIT`     | -       | Memory limit per process               |
-| `CPU_LIMIT`        | -       | CPU limit per process                  |
-| `GC_OPTIMIZE`      | `false` | Enable garbage collection optimization |
-
-```env
-CLUSTER_MODE=true
-WORKER_PROCESSES=4
-MEMORY_LIMIT=512M
-GC_OPTIMIZE=true
 ```
 
 ## Configuration Examples
@@ -276,22 +49,9 @@ GC_OPTIMIZE=true
 # .env.development
 NODE_ENV=development
 PORT=3000
-LOG_LEVEL=debug
-
-# Database
-DATABASE_URL=postgresql://mcphub:password@localhost:5432/mcphub_dev
 
 # Auth
 JWT_SECRET=dev-secret-key
-JWT_EXPIRES_IN=24h
-
-# OpenAI (optional for development)
-# OPENAI_API_KEY=your-dev-key
-
-# Debug
-DEBUG=mcphub:*
-DEV_TOOLS_ENABLED=true
-HOT_RELOAD=true
 ```
 
 ### Production Environment
@@ -300,30 +60,9 @@ HOT_RELOAD=true
 # .env.production
 NODE_ENV=production
 PORT=3000
-LOG_LEVEL=info
-LOG_FORMAT=json
-
-# Database
-DATABASE_URL=postgresql://mcphub:secure-password@db.example.com:5432/mcphub
-DB_SSL=true
-DB_POOL_MAX=20
 
 # Security
 JWT_SECRET=your-super-secure-production-secret
-SESSION_SECRET=your-session-secret
-BCRYPT_ROUNDS=14
-
-# External Services
-OPENAI_API_KEY=your-production-openai-key
-REDIS_URL=redis://redis.example.com:6379
-
-# Monitoring
-METRICS_ENABLED=true
-PERFORMANCE_MONITORING=true
-
-# Optimization
-CLUSTER_MODE=true
-GC_OPTIMIZE=true
 ```
 
 ### Docker Environment
@@ -331,21 +70,10 @@ GC_OPTIMIZE=true
 ```env
 # .env.docker
 NODE_ENV=production
-HOST=0.0.0.0
 PORT=3000
-
-# Use service names for Docker networking
-DATABASE_URL=postgresql://mcphub:password@postgres:5432/mcphub
-REDIS_URL=redis://redis:6379
 
 # Security
 JWT_SECRET_FILE=/run/secrets/jwt_secret
-DB_PASSWORD_FILE=/run/secrets/db_password
-
-# File paths in container
-MCP_SETTINGS_FILE=/app/mcp_settings.json
-UPLOAD_DIR=/app/data/uploads
-LOG_FILE=/app/logs/mcphub.log
 ```
 
 ## Environment Variable Loading
@@ -364,7 +92,6 @@ MCPHub supports variable expansion:
 ```env
 BASE_URL=https://api.example.com
 API_ENDPOINT=${BASE_URL}/v1
-DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}
 ```
 
 ## Security Best Practices
@@ -375,15 +102,3 @@ DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_N
 4. **Use environment-specific files**
 5. **Validate all environment variables** at startup
 6. **Use Docker secrets** for container deployments
-
-## Validation
-
-MCPHub validates environment variables at startup. Invalid configurations will prevent the application from starting with helpful error messages.
-
-Required variables for production:
-
-- `JWT_SECRET`
-- `DATABASE_URL` or individual DB components
-- `OPENAI_API_KEY` (if smart routing is enabled)
-
-This comprehensive environment configuration ensures MCPHub can be properly configured for any deployment scenario.
