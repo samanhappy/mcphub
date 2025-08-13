@@ -53,8 +53,8 @@
   "auth": {
     "login": "Login",
     "loginTitle": "Login to MCPHub",
-  "slogan": "The Unified Hub for MCP Servers",
-  "subtitle": "Centralized management platform for Model Context Protocol servers. Organize, monitor, and scale multiple MCP servers with flexible routing strategies.",
+    "slogan": "The Unified Hub for MCP Servers",
+    "subtitle": "Centralized management platform for Model Context Protocol servers. Organize, monitor, and scale multiple MCP servers with flexible routing strategies.",
     "username": "Username",
     "password": "Password",
     "loggingIn": "Logging in...",
