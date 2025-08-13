@@ -88,11 +88,7 @@ const LoginPage: React.FC = () => {
             <span className="rounded-md border border-white/10 bg-white/5 px-2 py-1 backdrop-blur">MCP</span>
             <span className="rounded-md border border-white/10 bg-white/5 px-2 py-1 backdrop-blur">Group</span>
             <span className="rounded-md border border-white/10 bg-white/5 px-2 py-1 backdrop-blur">Market</span>
-            {['mcp', 'group', 'market', 'logging'].map(tagKey => (
-              <span key={tagKey} className="rounded-md border border-white/10 bg-white/5 px-2 py-1 backdrop-blur">
-                {t(`featureTags.${tagKey}`)}
-              </span>
-            ))}
+            <span className="rounded-md border border-white/10 bg-white/5 px-2 py-1 backdrop-blur">Logging</span>
           </div>
         </div>
 
