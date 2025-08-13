@@ -1,6 +1,6 @@
 {
   "app": {
-    "title": "MCP Hub Dashboard",
+    "title": "MCPHub Dashboard",
     "error": "Error",
     "closeButton": "Close",
     "noServers": "No MCP servers available",
@@ -10,11 +10,11 @@
     "changePassword": "Change Password",
     "toggleSidebar": "Toggle Sidebar",
     "welcomeUser": "Welcome, {{username}}",
-    "name": "MCP Hub"
+    "name": "MCPHub"
   },
   "about": {
     "title": "About",
-    "versionInfo": "MCP Hub Version: {{version}}",
+    "versionInfo": "MCPHub Version: {{version}}",
     "newVersion": "New version available!",
     "currentVersion": "Current version",
     "newVersionAvailable": "New version {{version}} is available",
@@ -30,7 +30,7 @@
     "label": "Sponsor",
     "title": "Support the Project",
     "rewardAlt": "Reward QR Code",
-    "supportMessage": "Support the development of MCP Hub by buying me a coffee!",
+    "supportMessage": "Support the development of MCPHub by buying me a coffee!",
     "supportButton": "Support on Ko-fi"
   },
   "wechat": {
@@ -52,7 +52,9 @@
   },
   "auth": {
     "login": "Login",
-    "loginTitle": "Login to MCP Hub",
+    "loginTitle": "Login to MCPHub",
+  "slogan": "The Unified Hub for MCP Servers",
+  "subtitle": "Centralized management platform for Model Context Protocol servers. Organize, monitor, and scale multiple MCP servers with flexible routing strategies.",
     "username": "Username",
     "password": "Password",
     "loggingIn": "Logging in...",

@@ -48,11 +48,11 @@ MCPHub 已内置多个常用 MCP 服务，如高德地图、GitHub、Slack、Fet
 
 ![配置高德地图](../assets/amap-edit.png)
 
-点击保存后，MCP Hub 将自动重启高德地图的 MCP 服务，使新配置生效。
+点击保存后，MCPHub 将自动重启高德地图的 MCP 服务，使新配置生效。
 
-### 配置 MCP Hub SSE
+### 配置 MCPHub SSE
 
-MCP Hub 提供了单一聚合的 MCP Server SSE 端点：`http://localhost:3000/sse`，可在任意支持 MCP 的客户端中配置使用。这里我们选择开源的 Cherry Studio 进行演示。
+MCPHub 提供了单一聚合的 MCP Server SSE 端点：`http://localhost:3000/sse`，可在任意支持 MCP 的客户端中配置使用。这里我们选择开源的 Cherry Studio 进行演示。
 
 ![配置 Cherry Studio](../assets/cherry-mcp.png)
 

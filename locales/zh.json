@@ -1,6 +1,6 @@
 {
   "app": {
-    "title": "MCP Hub 控制面板",
+    "title": "MCPHub 控制面板",
     "error": "错误",
     "closeButton": "关闭",
     "noServers": "没有可用的 MCP 服务器",
@@ -10,11 +10,11 @@
     "changePassword": "修改密码",
     "toggleSidebar": "切换侧边栏",
     "welcomeUser": "欢迎, {{username}}",
-    "name": "MCP Hub"
+    "name": "MCPHub"
   },
   "about": {
     "title": "关于",
-    "versionInfo": "MCP Hub 版本: {{version}}",
+    "versionInfo": "MCPHub 版本: {{version}}",
     "newVersion": "有新版本可用！",
     "currentVersion": "当前版本",
     "newVersionAvailable": "新版本 {{version}} 已发布",
@@ -30,7 +30,7 @@
     "label": "赞助",
     "title": "支持项目",
     "rewardAlt": "赞赏码",
-    "supportMessage": "通过捐赠支持 MCP Hub 的开发！",
+    "supportMessage": "通过捐赠支持 MCPHub 的开发！",
     "supportButton": "在 Ko-fi 上支持"
   },
   "wechat": {
@@ -52,7 +52,9 @@
   },
   "auth": {
     "login": "登录",
-    "loginTitle": "登录 MCP Hub",
+    "loginTitle": "登录 MCPHub",
+  "slogan": "统一的 MCP 服务器管理平台",
+  "subtitle": "模型上下文协议服务器的集中管理平台，通过灵活的路由策略组织、监控和扩展多个 MCP 服务器。",
     "username": "用户名",
     "password": "密码",
     "loggingIn": "登录中...",
