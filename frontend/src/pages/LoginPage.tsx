@@ -68,19 +68,19 @@ const LoginPage: React.FC = () => {
       </div>
 
       {/* Main content */}
-      <div className="relative mx-auto grid min-h-screen w-full max-w-7xl grid-cols-1 items-center gap-8 px-6 py-16 md:grid-cols-2 lg:gap-16">
+      <div className="relative mx-auto grid min-h-screen w-full max-w-7xl grid-cols-1 items-center gap-8 px-6 py-16 md:grid-cols-3 lg:gap-16">
         {/* Left: brand + slogan */}
-        <div className="order-2 space-y-6 md:order-1">
+        <div className="order-2 space-y-6 md:order-1 md:col-span-2">
           <div className="inline-flex items-center gap-2 rounded-full border border-indigo-500/20 bg-indigo-500/10 px-3 py-1 text-xs font-medium text-indigo-700 shadow-sm backdrop-blur dark:text-indigo-300">
             <span className="h-2 w-2 animate-pulse rounded-full bg-indigo-500" />
             {t('app.name')}
           </div>
-          <h1 className="text-4xl font-extrabold leading-tight tracking-tight text-gray-900 dark:text-white sm:text-5xl">
+          <h1 className="whitespace-nowrap text-4xl font-extrabold leading-tight tracking-tight text-gray-900 dark:text-white sm:text-5xl">
             <span className="bg-gradient-to-r from-indigo-400 via-cyan-400 to-emerald-400 bg-clip-text text-transparent">
               {t('auth.slogan')}
             </span>
           </h1>
-          <p className="max-w-xl text-base text-gray-600 dark:text-gray-300">
+          <p className="text-base text-gray-600 dark:text-gray-300">
             {t('auth.subtitle')}
           </p>
 
@@ -93,7 +93,7 @@ const LoginPage: React.FC = () => {
         </div>
 
         {/* Right: login card */}
-        <div className="order-1 md:order-2">
+        <div className="order-1 md:order-2 md:col-span-1">
           <div className="login-card relative w-full max-w-md rounded-2xl border border-white/10 bg-white/60 p-8 shadow-xl backdrop-blur-md transition dark:border-white/10 dark:bg-gray-900/60">
             <div className="absolute -top-24 right-12 h-40 w-40 -translate-y-6 rounded-full bg-indigo-500/30 blur-3xl" />
             <div className="absolute -bottom-24 -left-12 h-40 w-40 translate-y-6 rounded-full bg-cyan-500/20 blur-3xl" />
