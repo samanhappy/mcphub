@@ -46,7 +46,7 @@
   "license": "ISC",
   "dependencies": {
     "@apidevtools/swagger-parser": "^11.0.1",
-    "@modelcontextprotocol/sdk": "^1.12.1",
+    "@modelcontextprotocol/sdk": "^1.17.2",
     "@types/adm-zip": "^0.5.7",
     "@types/multer": "^1.4.13",
     "@types/pg": "^8.15.2",
