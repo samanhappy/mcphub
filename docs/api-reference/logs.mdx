@@ -1,0 +1,81 @@
+---
+title: "Logs"
+description: "Access and manage server logs."
+---
+
+import { Card, Cards } from 'mintlify';
+
+<Card
+  title="GET /api/logs"
+  href="#get-all-logs"
+>
+  Get all logs.
+</Card>
+
+<Card
+  title="DELETE /api/logs"
+  href="#clear-logs"
+>
+  Clear all logs.
+</Card>
+
+<Card
+  title="GET /api/logs/stream"
+  href="#stream-logs"
+>
+  Stream logs in real-time.
+</Card>
+
+---
+
+### Get All Logs
+
+Retrieves all stored logs.
+
+- **Endpoint**: `/api/logs`
+- **Method**: `GET`
+- **Success Response**:
+  ```json
+  {
+    "success": true,
+    "data": [
+      {
+        "timestamp": "2023-10-27T10:00:00.000Z",
+        "level": "info",
+        "message": "Server started successfully.",
+        "service": "system"
+      }
+    ]
+  }
+  ```
+
+---
+
+### Clear Logs
+
+Deletes all stored logs.
+
+- **Endpoint**: `/api/logs`
+- **Method**: `DELETE`
+- **Success Response**:
+  ```json
+  {
+    "success": true,
+    "message": "Logs cleared successfully"
+  }
+  ```
+
+---
+
+### Stream Logs
+
+Streams logs in real-time using Server-Sent Events (SSE). The connection will remain open, and new log entries will be sent as they occur.
+
+- **Endpoint**: `/api/logs/stream`
+- **Method**: `GET`
+- **Response Format**: The stream sends events with a `data` field containing a JSON object. The first event has `type: 'initial'` and contains all historical logs. Subsequent events have `type: 'log'` and contain a single new log entry.
+
+- **Example Event**:
+  ```
+  data: {"type":"log","log":{"timestamp":"2023-10-27T10:00:05.000Z","level":"debug","message":"Processing request for /api/some-endpoint","service":"mcp-server"}}
+  ```

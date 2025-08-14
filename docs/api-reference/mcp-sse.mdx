@@ -1,0 +1,25 @@
+---
+title: "MCP SSE Endpoints (Deprecated)"
+description: "Connect to your MCP servers using the SSE endpoint."
+---
+
+The SSE endpoint is deprecated and will be removed in a future version. Please use the [MCP HTTP Endpoints](/api-reference/mcp-http) instead.
+
+### Unified Endpoint
+
+- **Endpoint**: `http://localhost:3000/sse`
+- **Method**: `GET`
+
+### Group-Specific Endpoint
+
+- **Endpoint**: `http://localhost:3000/sse/{group}`
+- **Method**: `GET`
+- **Parameters**:
+  - `{group}`: The ID or name of the group.
+
+### Server-Specific Endpoint
+
+- **Endpoint**: `http://localhost:3000/sse/{server}`
+- **Method**: `GET`
+- **Parameters**:
+  - `{server}`: The name of the server.

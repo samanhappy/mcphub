@@ -1,0 +1,147 @@
+---
+title: "身份验证"
+description: "管理用户和身份验证。"
+---
+
+import { Card, Cards } from 'mintlify';
+
+<Card
+  title="POST /api/auth/login"
+  href="#login"
+>
+  登录以获取 JWT 令牌。
+</Card>
+
+<Card
+  title="POST /api/auth/register"
+  href="#register"
+>
+  注册一个新用户。
+</Card>
+
+<Card
+  title="GET /api/auth/user"
+  href="#get-current-user"
+>
+  获取当前已验证的用户。
+</Card>
+
+<Card
+  title="POST /api/auth/change-password"
+  href="#change-password"
+>
+  更改当前用户的密码。
+</Card>
+
+---
+
+### 登录
+
+验证用户身份并返回 JWT 令牌及用户详细信息。
+
+- **端点**: `/api/auth/login`
+- **方法**: `POST`
+- **正文**:
+  - `username` (string, 必填): 用户名。
+  - `password` (string, 必填): 用户密码。
+- **请求示例**:
+  ```json
+  {
+    "username": "admin",
+    "password": "admin123"
+  }
+  ```
+- **成功响应**:
+  ```json
+  {
+    "success": true,
+    "message": "登录成功",
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+    "user": {
+      "username": "admin",
+      "isAdmin": true,
+      "permissions": { ... }
+    }
+  }
+  ```
+
+---
+
+### 注册
+
+注册一个新用户并返回 JWT 令牌。
+
+- **端点**: `/api/auth/register`
+- **方法**: `POST`
+- **正文**:
+  - `username` (string, 必填): 新的用户名。
+  - `password` (string, 必填): 新的用户密码 (至少6个字符)。
+  - `isAdmin` (boolean, 可选): 用户是否应有管理员权限。
+- **请求示例**:
+  ```json
+  {
+    "username": "newuser",
+    "password": "password123",
+    "isAdmin": false
+  }
+  ```
+- **成功响应**:
+  ```json
+  {
+    "success": true,
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+    "user": {
+      "username": "newuser",
+      "isAdmin": false,
+      "permissions": { ... }
+    }
+  }
+  ```
+
+---
+
+### 获取当前用户
+
+检索当前通过身份验证的用户的个人资料。
+
+- **端点**: `/api/auth/user`
+- **方法**: `GET`
+- **身份验证**: 需要承载令牌 (Bearer Token)。
+- **成功响应**:
+  ```json
+  {
+    "success": true,
+    "user": {
+      "username": "admin",
+      "isAdmin": true,
+      "permissions": { ... }
+    }
+  }
+  ```
+
+---
+
+### 更改密码
+
+允许通过身份验证的用户更改其密码。
+
+- **端点**: `/api/auth/change-password`
+- **方法**: `POST`
+- **身份验证**: 需要承载令牌 (Bearer Token)。
+- **正文**:
+  - `currentPassword` (string, 必填): 用户的当前密码。
+  - `newPassword` (string, 必填): 新的密码 (至少6个字符)。
+- **请求示例**:
+  ```json
+  {
+    "currentPassword": "oldpassword",
+    "newPassword": "newpassword123"
+  }
+  ```
+- **成功响应**:
+  ```json
+  {
+    "success": true,
+    "message": "密码更新成功"
+  }
+  ```

@@ -1,0 +1,25 @@
+---
+title: "MCP SSE 端点 (已弃用)"
+description: "使用 SSE 端点连接到您的 MCP 服务器。"
+---
+
+SSE 端点已弃用，并将在未来版本中删除。请改用 [MCP HTTP 端点](/api-reference/mcp-http)。
+
+### 统一端点
+
+- **端点**: `http://localhost:3000/sse`
+- **方法**: `GET`
+
+### 特定群组的端点
+
+- **端点**: `http://localhost:3000/sse/{group}`
+- **方法**: `GET`
+- **参数**:
+  - `{group}`: 群组的 ID 或名称。
+
+### 特定服务器的端点
+
+- **端点**: `http://localhost:3000/sse/{server}`
+- **方法**: `GET`
+- **参数**:
+  - `{server}`: 服务器的名称。

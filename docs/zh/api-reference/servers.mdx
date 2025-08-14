@@ -1,0 +1,209 @@
+---
+title: "服务器"
+description: "管理您的 MCP 服务器。"
+---
+
+import { Card, Cards } from 'mintlify';
+
+<Card
+  title="GET /api/servers"
+  href="#get-all-servers"
+>
+  获取所有 MCP 服务器的列表。
+</Card>
+
+<Card
+  title="POST /api/servers"
+  href="#create-a-new-server"
+>
+  创建一个新的 MCP 服务器。
+</Card>
+
+<Card
+  title="PUT /api/servers/:name"
+  href="#update-a-server"
+>
+  更新现有的 MCP 服务器。
+</Card>
+
+<Card
+  title="DELETE /api/servers/:name"
+  href="#delete-a-server"
+>
+  删除一个 MCP 服务器。
+</Card>
+
+<Card
+  title="POST /api/servers/:name/toggle"
+  href="#toggle-a-server"
+>
+  切换服务器的启用状态。
+</Card>
+
+<Card
+  title="POST /api/servers/:serverName/tools/:toolName/toggle"
+  href="#toggle-a-tool"
+>
+  切换工具的启用状态。
+</Card>
+
+<Card
+  title="PUT /api/servers/:serverName/tools/:toolName/description"
+  href="#update-tool-description"
+>
+  更新工具的描述。
+</Card>
+
+---
+
+### 获取所有服务器
+
+检索所有已配置的 MCP 服务器的列表，包括其状态和可用工具。
+
+- **端点**: `/api/servers`
+- **方法**: `GET`
+- **响应**:
+  ```json
+  {
+    "success": true,
+    "data": [
+      {
+        "name": "example-server",
+        "status": "connected",
+        "tools": [
+          {
+            "name": "tool1",
+            "description": "工具1的描述"
+          }
+        ],
+        "config": {
+          "type": "stdio",
+          "command": "node",
+          "args": ["server.js"]
+        }
+      }
+    ]
+  }
+  ```
+
+---
+
+### 创建一个新服务器
+
+将一个新的 MCP 服务器添加到配置中。
+
+- **端点**: `/api/servers`
+- **方法**: `POST`
+- **正文**:
+  ```json
+  {
+    "name": "my-new-server",
+    "config": {
+      "type": "stdio",
+      "command": "python",
+      "args": ["-u", "my_script.py"],
+      "owner": "admin"
+    }
+  }
+  ```
+  - `name` (string, 必填): 服务器的唯一名称。
+  - `config` (object, 必填): 服务器配置对象。
+    - `type` (string): `stdio`、`sse`、`streamable-http` 或 `openapi`。
+    - `command` (string): `stdio` 类型要执行的命令。
+    - `args` (array of strings): 命令的参数。
+    - `url` (string): `sse`、`streamable-http` 或 `openapi` 类型的 URL。
+    - `openapi` (object): OpenAPI 配置。
+      - `url` (string): OpenAPI 模式的 URL。
+      - `schema` (object): OpenAPI 模式对象本身。
+    - `headers` (object): `sse`、`streamable-http` 和 `openapi` 类型请求要发送的标头。
+    - `keepAliveInterval` (number): `sse` 类型的保持活动间隔（毫秒）。默认为 60000。
+    - `owner` (string): 服务器的所有者。默认为当前用户或“admin”。
+
+---
+
+### 更新一个服务器
+
+更新现有 MCP 服务器的配置。
+
+- **端点**: `/api/servers/:name`
+- **方法**: `PUT`
+- **参数**:
+  - `:name` (string, 必填): 要更新的服务器的名称。
+- **正文**:
+  ```json
+  {
+    "config": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["new_server.js"]
+    }
+  }
+  ```
+  - `config` (object, 必填): 更新后的服务器配置对象。详情请参阅“创建一个新服务器”。
+
+---
+
+### 删除一个服务器
+
+从配置中删除一个 MCP 服务器。
+
+- **端点**: `/api/servers/:name`
+- **方法**: `DELETE`
+- **参数**:
+  - `:name` (string, 必填): 要删除的服务器的名称。
+
+---
+
+### 切换一个服务器
+
+启用或禁用一个 MCP 服务器。
+
+- **端点**: `/api/servers/:name/toggle`
+- **方法**: `POST`
+- **参数**:
+  - `:name` (string, 必填): 要切换的服务器的名称。
+- **正文**:
+  ```json
+  {
+    "enabled": true
+  }
+  ```
+  - `enabled` (boolean, 必填): `true` 启用服务器，`false` 禁用服务器。
+
+---
+
+### 切换一个工具
+
+启用或禁用服务器上的特定工具。
+
+- **端点**: `/api/servers/:serverName/tools/:toolName/toggle`
+- **方法**: `POST`
+- **参数**:
+  - `:serverName` (string, 必填): 服务器的名称。
+  - `:toolName` (string, 必填): 工具的名称。
+- **正文**:
+  ```json
+  {
+    "enabled": true
+  }
+  ```
+  - `enabled` (boolean, 必填): `true` 启用工具，`false` 禁用工具。
+
+---
+
+### 更新工具描述
+
+更新特定工具的描述。
+
+- **端点**: `/api/servers/:serverName/tools/:toolName/description`
+- **方法**: `PUT`
+- **参数**:
+  - `:serverName` (string, 必填): 服务器的名称。
+  - `:toolName` (string, 必填): 工具的名称。
+- **正文**:
+  ```json
+  {
+    "description": "新的工具描述"
+  }
+  ```
+  - `description` (string, 必填): 工具的新描述。

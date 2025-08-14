@@ -1,0 +1,81 @@
+---
+title: "日志"
+description: "访问和管理服务器日志。"
+---
+
+import { Card, Cards } from 'mintlify';
+
+<Card
+  title="GET /api/logs"
+  href="#get-all-logs"
+>
+  获取所有日志。
+</Card>
+
+<Card
+  title="DELETE /api/logs"
+  href="#clear-logs"
+>
+  清除所有日志。
+</Card>
+
+<Card
+  title="GET /api/logs/stream"
+  href="#stream-logs"
+>
+  实时流式传输日志。
+</Card>
+
+---
+
+### 获取所有日志
+
+检索所有存储的日志。
+
+- **端点**: `/api/logs`
+- **方法**: `GET`
+- **成功响应**:
+  ```json
+  {
+    "success": true,
+    "data": [
+      {
+        "timestamp": "2023-10-27T10:00:00.000Z",
+        "level": "info",
+        "message": "服务器成功启动。",
+        "service": "system"
+      }
+    ]
+  }
+  ```
+
+---
+
+### 清除日志
+
+删除所有存储的日志。
+
+- **端点**: `/api/logs`
+- **方法**: `DELETE`
+- **成功响应**:
+  ```json
+  {
+    "success": true,
+    "message": "日志清除成功"
+  }
+  ```
+
+---
+
+### 流式传输日志
+
+使用服务器发送事件 (SSE) 实时流式传输日志。连接将保持打开状态，新的日志条目将在发生时发送。
+
+- **端点**: `/api/logs/stream`
+- **方法**: `GET`
+- **响应格式**: 该流发送带有包含 JSON 对象的 `data` 字段的事件。第一个事件的 `type` 为 `initial`，包含所有历史日志。后续事件的 `type` 为 `log`，包含单个新日志条目。
+
+- **事件示例**:
+  ```
+  data: {"type":"log","log":{"timestamp":"2023-10-27T10:00:05.000Z","level":"debug","message":"正在处理 /api/some-endpoint 的请求","service":"mcp-server"}}
+  ```

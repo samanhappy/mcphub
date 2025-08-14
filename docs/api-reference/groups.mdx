@@ -1,0 +1,212 @@
+---
+title: "Groups"
+description: "Manage server groups to organize and route requests."
+---
+
+import { Card, Cards } from 'mintlify';
+
+<Card title="GET /api/groups" href="#get-all-groups">Get a list of all groups.</Card>
+<Card title="POST /api/groups" href="#create-a-new-group">Create a new group.</Card>
+<Card title="GET /api/groups/:id" href="#get-a-group">Get details of a specific group.</Card>
+<Card title="PUT /api/groups/:id" href="#update-a-group">Update an existing group.</Card>
+<Card title="DELETE /api/groups/:id" href="#delete-a-group">Delete a group.</Card>
+<Card title="POST /api/groups/:id/servers" href="#add-server-to-group">Add a server to a group.</Card>
+<Card title="DELETE /api/groups/:id/servers/:serverName" href="#remove-server-from-group">Remove a server from a group.</Card>
+<Card title="PUT /api/groups/:id/servers/batch" href="#batch-update-group-servers">Batch update servers in a group.</Card>
+<Card title="GET /api/groups/:id/server-configs" href="#get-group-server-configs">Get detailed server configurations in a group.</Card>
+<Card title="PUT /api/groups/:id/server-configs/:serverName/tools" href="#update-group-server-tools">Update tool selection for a server in a group.</Card>
+
+---
+
+### Get All Groups
+
+Retrieves a list of all server groups.
+
+- **Endpoint**: `/api/groups`
+- **Method**: `GET`
+- **Success Response**:
+  ```json
+  {
+    "success": true,
+    "data": [
+      {
+        "id": "group-1",
+        "name": "My Group",
+        "description": "A collection of servers.",
+        "servers": ["server1", "server2"],
+        "owner": "admin"
+      }
+    ]
+  }
+  ```
+
+---
+
+### Create a New Group
+
+Creates a new server group.
+
+- **Endpoint**: `/api/groups`
+- **Method**: `POST`
+- **Body**:
+  - `name` (string, required): The name of the group.
+  - `description` (string, optional): A description for the group.
+  - `servers` (array of strings, optional): A list of server names to include in the group.
+- **Request Example**:
+  ```json
+  {
+    "name": "My New Group",
+    "description": "A description for the new group",
+    "servers": ["server1", "server2"]
+  }
+  ```
+
+---
+
+### Get a Group
+
+Retrieves details for a specific group by its ID or name.
+
+- **Endpoint**: `/api/groups/:id`
+- **Method**: `GET`
+- **Parameters**:
+  - `:id` (string, required): The ID or name of the group.
+
+---
+
+### Update a Group
+
+Updates an existing group's name, description, or server list.
+
+- **Endpoint**: `/api/groups/:id`
+- **Method**: `PUT`
+- **Parameters**:
+  - `:id` (string, required): The ID or name of the group to update.
+- **Body**:
+  - `name` (string, optional): The new name for the group.
+  - `description` (string, optional): The new description for the group.
+  - `servers` (array, optional): The new list of servers for the group. See [Batch Update Group Servers](#batch-update-group-servers) for format.
+- **Request Example**:
+  ```json
+  {
+    "name": "Updated Group Name",
+    "description": "Updated description"
+  }
+  ```
+
+---
+
+### Delete a Group
+
+Deletes a group by its ID or name.
+
+- **Endpoint**: `/api/groups/:id`
+- **Method**: `DELETE`
+- **Parameters**:
+  - `:id` (string, required): The ID or name of the group to delete.
+
+---
+
+### Add Server to Group
+
+Adds a single server to a group.
+
+- **Endpoint**: `/api/groups/:id/servers`
+- **Method**: `POST`
+- **Parameters**:
+  - `:id` (string, required): The ID or name of the group.
+- **Body**:
+  - `serverName` (string, required): The name of the server to add.
+- **Request Example**:
+  ```json
+  {
+    "serverName": "my-server"
+  }
+  ```
+
+---
+
+### Remove Server from Group
+
+Removes a single server from a group.
+
+- **Endpoint**: `/api/groups/:id/servers/:serverName`
+- **Method**: `DELETE`
+- **Parameters**:
+  - `:id` (string, required): The ID or name of the group.
+  - `:serverName` (string, required): The name of the server to remove.
+
+---
+
+### Batch Update Group Servers
+
+Replaces all servers in a group with a new list. The list can be simple strings or detailed configuration objects.
+
+- **Endpoint**: `/api/groups/:id/servers/batch`
+- **Method**: `PUT`
+- **Parameters**:
+  - `:id` (string, required): The ID or name of the group.
+- **Body**:
+  - `servers` (array, required): An array of server names (strings) or server configuration objects.
+- **Request Example (Simple)**:
+  ```json
+  {
+    "servers": ["server1", "server2"]
+  }
+  ```
+- **Request Example (Detailed)**:
+  ```json
+  {
+    "servers": [
+      { "name": "server1", "tools": "all" },
+      { "name": "server2", "tools": ["toolA", "toolB"] }
+    ]
+  }
+  ```
+
+---
+
+### Get Group Server Configs
+
+Retrieves the detailed configuration for all servers within a group, including which tools are enabled.
+
+- **Endpoint**: `/api/groups/:id/server-configs`
+- **Method**: `GET`
+- **Parameters**:
+  - `:id` (string, required): The ID or name of the group.
+- **Success Response**:
+  ```json
+  {
+    "success": true,
+    "data": [
+      {
+        "name": "server1",
+        "tools": "all"
+      },
+      {
+        "name": "server2",
+        "tools": ["toolA", "toolB"]
+      }
+    ]
+  }
+  ```
+
+---
+
+### Update Group Server Tools
+
+Updates the tool selection for a specific server within a group.
+
+- **Endpoint**: `/api/groups/:id/server-configs/:serverName/tools`
+- **Method**: `PUT`
+- **Parameters**:
+  - `:id` (string, required): The ID or name of the group.
+  - `:serverName` (string, required): The name of the server to update.
+- **Body**:
+  - `tools` (string or array of strings, required): Either the string `"all"` to enable all tools, or an array of tool names to enable specifically.
+- **Request Example**:
+  ```json
+  {
+    "tools": ["toolA", "toolC"]
+  }
+  ```

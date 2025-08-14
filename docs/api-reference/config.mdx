@@ -1,0 +1,111 @@
+---
+title: "Config"
+description: "Manage and retrieve system-wide configurations."
+---
+
+import { Card, Cards } from 'mintlify';
+
+<Card title="PUT /api/system-config" href="#update-system-config">Update the main system configuration.</Card>
+<Card title="GET /api/settings" href="#get-all-settings">Get all system settings, including servers and groups.</Card>
+<Card title="GET /config" href="#get-runtime-config">Get public runtime configuration for the frontend.</Card>
+<Card title="GET /public-config" href="#get-public-config">Get public configuration to check for auth skip.</Card>
+
+---
+
+### Update System Config
+
+Updates various parts of the system configuration. You only need to provide the keys for the sections you want to update.
+
+- **Endpoint**: `/api/system-config`
+- **Method**: `PUT`
+- **Body**: A JSON object containing one or more of the following top-level keys: `routing`, `install`, `smartRouting`, `mcpRouter`.
+
+#### Routing Configuration (`routing`)
+
+- `enableGlobalRoute` (boolean): Enable or disable the global `/api/mcp` route.
+- `enableGroupNameRoute` (boolean): Enable or disable group-based routing (e.g., `/api/mcp/group/:groupName`).
+- `enableBearerAuth` (boolean): Enable bearer token authentication for MCP routes.
+- `bearerAuthKey` (string): The secret key to use for bearer authentication.
+- `skipAuth` (boolean): If true, skips all authentication, making the instance public.
+
+#### Install Configuration (`install`)
+
+- `pythonIndexUrl` (string): The base URL of the Python Package Index (PyPI) to use for installations.
+- `npmRegistry` (string): The URL of the npm registry to use for installations.
+- `baseUrl` (string): The public base URL of this MCPHub instance.
+
+#### Smart Routing Configuration (`smartRouting`)
+
+- `enabled` (boolean): Enable or disable the Smart Routing feature.
+- `dbUrl` (string): The database connection URL for storing embeddings.
+- `openaiApiBaseUrl` (string): The base URL for the OpenAI-compatible API for generating embeddings.
+- `openaiApiKey` (string): The API key for the embeddings service.
+- `openaiApiEmbeddingModel` (string): The name of the embedding model to use.
+
+#### MCP Router Configuration (`mcpRouter`)
+
+- `apiKey` (string): The API key for the MCP Router service.
+- `referer` (string): The referer header to use for MCP Router requests.
+- `title` (string): The title to display for this instance on MCP Router.
+- `baseUrl` (string): The base URL for the MCP Router API.
+
+- **Request Example**:
+  ```json
+  {
+    "routing": {
+      "skipAuth": true
+    },
+    "smartRouting": {
+      "enabled": true,
+      "dbUrl": "postgresql://user:pass@host:port/db"
+    }
+  }
+  ```
+
+---
+
+### Get All Settings
+
+Retrieves the entire settings object for the instance, including all server configurations, groups, and system settings. This is a comprehensive dump of the `mcp_settings.json` file.
+
+- **Endpoint**: `/api/settings`
+- **Method**: `GET`
+
+---
+
+### Get Runtime Config
+
+Retrieves the essential runtime configuration required for the frontend application. This endpoint does not require authentication.
+
+- **Endpoint**: `/config`
+- **Method**: `GET`
+- **Success Response**:
+  ```json
+  {
+    "success": true,
+    "data": {
+      "basePath": "",
+      "version": "1.0.0",
+      "name": "MCPHub"
+    }
+  }
+  ```
+
+---
+
+### Get Public Config
+
+Retrieves public configuration, primarily to check if authentication is skipped. This allows the frontend to adjust its behavior accordingly before a user has logged in. This endpoint does not require authentication.
+
+- **Endpoint**: `/public-config`
+- **Method**: `GET`
+- **Success Response**:
+  ```json
+  {
+    "success": true,
+    "data": {
+      "skipAuth": false,
+      "permissions": {}
+    }
+  }
+  ```

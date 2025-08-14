@@ -1,0 +1,212 @@
+---
+title: "群组"
+description: "管理服务器群组以组织和路由请求。"
+---
+
+import { Card, Cards } from 'mintlify';
+
+<Card title="GET /api/groups" href="#get-all-groups">获取所有群组的列表。</Card>
+<Card title="POST /api/groups" href="#create-a-new-group">创建一个新群组。</Card>
+<Card title="GET /api/groups/:id" href="#get-a-group">获取特定群组的详细信息。</Card>
+<Card title="PUT /api/groups/:id" href="#update-a-group">更新现有群组。</Card>
+<Card title="DELETE /api/groups/:id" href="#delete-a-group">删除一个群组。</Card>
+<Card title="POST /api/groups/:id/servers" href="#add-server-to-group">将服务器添加到群组。</Card>
+<Card title="DELETE /api/groups/:id/servers/:serverName" href="#remove-server-from-group">从群组中删除服务器。</Card>
+<Card title="PUT /api/groups/:id/servers/batch" href="#batch-update-group-servers">批量更新群组中的服务器。</Card>
+<Card title="GET /api/groups/:id/server-configs" href="#get-group-server-configs">获取群组中详细的服务器配置。</Card>
+<Card title="PUT /api/groups/:id/server-configs/:serverName/tools" href="#update-group-server-tools">更新群组中服务器的工具选择。</Card>
+
+---
+
+### 获取所有群组
+
+检索所有服务器群组的列表。
+
+- **端点**: `/api/groups`
+- **方法**: `GET`
+- **成功响应**:
+  ```json
+  {
+    "success": true,
+    "data": [
+      {
+        "id": "group-1",
+        "name": "我的群组",
+        "description": "服务器的集合。",
+        "servers": ["server1", "server2"],
+        "owner": "admin"
+      }
+    ]
+  }
+  ```
+
+---
+
+### 创建一个新群组
+
+创建一个新的服务器群组。
+
+- **端点**: `/api/groups`
+- **方法**: `POST`
+- **正文**:
+  - `name` (string, 必填): 群组的名称。
+  - `description` (string, 可选): 群组的描述。
+  - `servers` (array of strings, 可选): 要包含在群组中的服务器名称列表。
+- **请求示例**:
+  ```json
+  {
+    "name": "我的新群组",
+    "description": "新群组的描述",
+    "servers": ["server1", "server2"]
+  }
+  ```
+
+---
+
+### 获取一个群组
+
+通过 ID 或名称检索特定群组的详细信息。
+
+- **端点**: `/api/groups/:id`
+- **方法**: `GET`
+- **参数**:
+  - `:id` (string, 必填): 群组的 ID 或名称。
+
+---
+
+### 更新一个群组
+
+更新现有群组的名称、描述或服务器列表。
+
+- **端点**: `/api/groups/:id`
+- **方法**: `PUT`
+- **参数**:
+  - `:id` (string, 必填): 要更新的群组的 ID 或名称。
+- **正文**:
+  - `name` (string, 可选): 群组的新名称。
+  - `description` (string, 可选): 群组的新描述。
+  - `servers` (array, 可选): 群组的新服务器列表。格式请参阅 [批量更新群组服务器](#batch-update-group-servers)。
+- **请求示例**:
+  ```json
+  {
+    "name": "更新后的群组名称",
+    "description": "更新后的描述"
+  }
+  ```
+
+---
+
+### 删除一个群组
+
+通过 ID 或名称删除一个群组。
+
+- **端点**: `/api/groups/:id`
+- **方法**: `DELETE`
+- **参数**:
+  - `:id` (string, 必填): 要删除的群组的 ID 或名称。
+
+---
+
+### 将服务器添加到群组
+
+将单个服务器添加到群组。
+
+- **端点**: `/api/groups/:id/servers`
+- **方法**: `POST`
+- **参数**:
+  - `:id` (string, 必填): 群组的 ID 或名称。
+- **正文**:
+  - `serverName` (string, 必填): 要添加的服务器的名称。
+- **请求示例**:
+  ```json
+  {
+    "serverName": "my-server"
+  }
+  ```
+
+---
+
+### 从群组中删除服务器
+
+从群组中删除单个服务器。
+
+- **端点**: `/api/groups/:id/servers/:serverName`
+- **方法**: `DELETE`
+- **参数**:
+  - `:id` (string, 必填): 群组的 ID 或名称。
+  - `:serverName` (string, 必填): 要删除的服务器的名称。
+
+---
+
+### 批量更新群组服务器
+
+用新的列表替换群组中的所有服务器。该列表可以是简单的字符串或详细的配置对象。
+
+- **端点**: `/api/groups/:id/servers/batch`
+- **方法**: `PUT`
+- **参数**:
+  - `:id` (string, 必填): 群组的 ID 或名称。
+- **正文**:
+  - `servers` (array, 必填): 服务器名称（字符串）或服务器配置对象的数组。
+- **请求示例 (简单)**:
+  ```json
+  {
+    "servers": ["server1", "server2"]
+  }
+  ```
+- **请求示例 (详细)**:
+  ```json
+  {
+    "servers": [
+      { "name": "server1", "tools": "all" },
+      { "name": "server2", "tools": ["toolA", "toolB"] }
+    ]
+  }
+  ```
+
+---
+
+### 获取群组服务器配置
+
+检索群组内所有服务器的详细配置，包括启用了哪些工具。
+
+- **端点**: `/api/groups/:id/server-configs`
+- **方法**: `GET`
+- **参数**:
+  - `:id` (string, 必填): 群组的 ID 或名称。
+- **成功响应**:
+  ```json
+  {
+    "success": true,
+    "data": [
+      {
+        "name": "server1",
+        "tools": "all"
+      },
+      {
+        "name": "server2",
+        "tools": ["toolA", "toolB"]
+      }
+    ]
+  }
+  ```
+
+---
+
+### 更新群组服务器工具
+
+更新群组内特定服务器的工具选择。
+
+- **端点**: `/api/groups/:id/server-configs/:serverName/tools`
+- **方法**: `PUT`
+- **参数**:
+  - `:id` (string, 必填): 群组的 ID 或名称。
+  - `:serverName` (string, 必填): 要更新的服务器的名称。
+- **正文**:
+  - `tools` (string or array of strings, 必填): 字符串 `"all"` 表示启用所有工具，或一个工具名称数组以指定启用哪些工具。
+- **请求示例**:
+  ```json
+  {
+    "tools": ["toolA", "toolC"]
+  }
+  ```

@@ -1,0 +1,147 @@
+---
+title: "Authentication"
+description: "Manage users and authentication."
+---
+
+import { Card, Cards } from 'mintlify';
+
+<Card
+  title="POST /api/auth/login"
+  href="#login"
+>
+  Log in to get a JWT token.
+</Card>
+
+<Card
+  title="POST /api/auth/register"
+  href="#register"
+>
+  Register a new user.
+</Card>
+
+<Card
+  title="GET /api/auth/user"
+  href="#get-current-user"
+>
+  Get the currently authenticated user.
+</Card>
+
+<Card
+  title="POST /api/auth/change-password"
+  href="#change-password"
+>
+  Change the password for the current user.
+</Card>
+
+---
+
+### Login
+
+Authenticates a user and returns a JWT token along with user details.
+
+- **Endpoint**: `/api/auth/login`
+- **Method**: `POST`
+- **Body**:
+  - `username` (string, required): The user's username.
+  - `password` (string, required): The user's password.
+- **Request Example**:
+  ```json
+  {
+    "username": "admin",
+    "password": "admin123"
+  }
+  ```
+- **Success Response**:
+  ```json
+  {
+    "success": true,
+    "message": "Login successful",
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+    "user": {
+      "username": "admin",
+      "isAdmin": true,
+      "permissions": { ... }
+    }
+  }
+  ```
+
+---
+
+### Register
+
+Registers a new user and returns a JWT token.
+
+- **Endpoint**: `/api/auth/register`
+- **Method**: `POST`
+- **Body**:
+  - `username` (string, required): The desired username.
+  - `password` (string, required): The desired password (must be at least 6 characters).
+  - `isAdmin` (boolean, optional): Whether the user should have admin privileges.
+- **Request Example**:
+  ```json
+  {
+    "username": "newuser",
+    "password": "password123",
+    "isAdmin": false
+  }
+  ```
+- **Success Response**:
+  ```json
+  {
+    "success": true,
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+    "user": {
+      "username": "newuser",
+      "isAdmin": false,
+      "permissions": { ... }
+    }
+  }
+  ```
+
+---
+
+### Get Current User
+
+Retrieves the profile of the currently authenticated user.
+
+- **Endpoint**: `/api/auth/user`
+- **Method**: `GET`
+- **Authentication**: Bearer Token required.
+- **Success Response**:
+  ```json
+  {
+    "success": true,
+    "user": {
+      "username": "admin",
+      "isAdmin": true,
+      "permissions": { ... }
+    }
+  }
+  ```
+
+---
+
+### Change Password
+
+Allows the authenticated user to change their password.
+
+- **Endpoint**: `/api/auth/change-password`
+- **Method**: `POST`
+- **Authentication**: Bearer Token required.
+- **Body**:
+  - `currentPassword` (string, required): The user's current password.
+  - `newPassword` (string, required): The desired new password (must be at least 6 characters).
+- **Request Example**:
+  ```json
+  {
+    "currentPassword": "oldpassword",
+    "newPassword": "newpassword123"
+  }
+  ```
+- **Success Response**:
+  ```json
+  {
+    "success": true,
+    "message": "Password updated successfully"
+  }
+  ```

@@ -1,0 +1,33 @@
+---
+title: "MCP HTTP Endpoints"
+description: "Connect to your MCP servers using the unified HTTP endpoint."
+---
+
+MCPHub provides a unified streamable HTTP interface for all your MCP servers. This allows you to send requests to any configured MCP server and receive responses in real-time.
+
+### Unified Endpoint
+
+This endpoint provides access to all enabled MCP servers.
+
+- **Endpoint**: `http://localhost:3000/mcp`
+- **Method**: `POST`
+
+### Group-Specific Endpoint
+
+For targeted access to specific server groups, use the group-based HTTP endpoint.
+
+- **Endpoint**: `http://localhost:3000/mcp/{group}`
+- **Method**: `POST`
+- **Parameters**:
+  - `{group}`: The ID or name of the group.
+
+### Server-Specific Endpoint
+
+For direct access to individual servers, use the server-specific HTTP endpoint.
+
+- **Endpoint**: `http://localhost:3000/mcp/{server}`
+- **Method**: `POST`
+- **Parameters**:
+  - `{server}`: The name of the server.
+
+> **Note**: If a server name and group name are the same, the group will take precedence.

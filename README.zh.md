@@ -6,6 +6,11 @@ MCPHub 通过将多个 MCP（Model Context Protocol）服务器组织为灵活�
 
 ![控制面板预览](assets/dashboard.zh.png)
 
+## 🌐 在线文档与演示
+
+- **文档地址**: [docs.mcphubx.com](https://docs.mcphubx.com/)
+- **演示环境**: [demo.mcphubx.com](https://demo.mcphubx.com/)
+
 ## 🚀 功能亮点
 
 - **广泛的 MCP 服务器支持**：无缝集成任何 MCP 服务器，配置简单。

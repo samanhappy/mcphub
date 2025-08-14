@@ -6,6 +6,11 @@ MCPHub makes it easy to manage and scale multiple MCP (Model Context Protocol) s
 
 ![Dashboard Preview](assets/dashboard.png)
 
+## 🌐 Live Demo & Docs
+
+- **Documentation**: [docs.mcphubx.com](https://docs.mcphubx.com/)
+- **Demo Environment**: [demo.mcphubx.com](https://demo.mcphubx.com/)
+
 ## 🚀 Features
 
 - **Broadened MCP Server Support**: Seamlessly integrate any MCP server with minimal configuration.

@@ -70,26 +70,58 @@
             ]
           }
         ]
+      },
+      {
+        "tab": "API",
+        "groups": [
+          {
+            "group": "MCP Endpoints",
+            "pages": [
+              "api-reference/introduction",
+              "api-reference/mcp-http",
+              "api-reference/mcp-sse",
+              "api-reference/smart-routing"
+            ]
+          },
+          {
+            "group": "Management Endpoints",
+            "pages": [
+              "api-reference/servers",
+              "api-reference/groups",
+              "api-reference/auth",
+              "api-reference/logs",
+              "api-reference/config"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "接口",
+        "groups": [
+          {
+            "group": "MCP 端点",
+            "pages": [
+              "zh/api-reference/introduction",
+              "zh/api-reference/mcp-http",
+              "zh/api-reference/mcp-sse",
+              "zh/api-reference/smart-routing"
+            ]
+          },
+          {
+            "group": "管理端点",
+            "pages": [
+              "zh/api-reference/servers",
+              "zh/api-reference/groups",
+              "zh/api-reference/auth",
+              "zh/api-reference/logs",
+              "zh/api-reference/config"
+            ]
+          }
+        ]
       }
     ],
     "global": {
-      "anchors": [
-        {
-          "anchor": "GitHub",
-          "href": "https://github.com/samanhappy/mcphub",
-          "icon": "github"
-        },
-        {
-          "anchor": "Discord",
-          "href": "https://discord.gg/qMKNsn5Q",
-          "icon": "discord"
-        },
-        {
-          "anchor": "Sponsor",
-          "href": "https://ko-fi.com/samanhappy",
-          "icon": "heart"
-        }
-      ]
+      "anchors": []
     }
   },
   "logo": {

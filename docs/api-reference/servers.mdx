@@ -1,0 +1,209 @@
+---
+title: "Servers"
+description: "Manage your MCP servers."
+---
+
+import { Card, Cards } from 'mintlify';
+
+<Card
+  title="GET /api/servers"
+  href="#get-all-servers"
+>
+  Get a list of all MCP servers.
+</Card>
+
+<Card
+  title="POST /api/servers"
+  href="#create-a-new-server"
+>
+  Create a new MCP server.
+</Card>
+
+<Card
+  title="PUT /api/servers/:name"
+  href="#update-a-server"
+>
+  Update an existing MCP server.
+</Card>
+
+<Card
+  title="DELETE /api/servers/:name"
+  href="#delete-a-server"
+>
+  Delete an MCP server.
+</Card>
+
+<Card
+  title="POST /api/servers/:name/toggle"
+  href="#toggle-a-server"
+>
+  Toggle the enabled state of a server.
+</Card>
+
+<Card
+  title="POST /api/servers/:serverName/tools/:toolName/toggle"
+  href="#toggle-a-tool"
+>
+  Toggle the enabled state of a tool.
+</Card>
+
+<Card
+  title="PUT /api/servers/:serverName/tools/:toolName/description"
+  href="#update-tool-description"
+>
+  Update the description of a tool.
+</Card>
+
+---
+
+### Get All Servers
+
+Retrieves a list of all configured MCP servers, including their status and available tools.
+
+- **Endpoint**: `/api/servers`
+- **Method**: `GET`
+- **Response**:
+  ```json
+  {
+    "success": true,
+    "data": [
+      {
+        "name": "example-server",
+        "status": "connected",
+        "tools": [
+          {
+            "name": "tool1",
+            "description": "Description of tool 1"
+          }
+        ],
+        "config": {
+          "type": "stdio",
+          "command": "node",
+          "args": ["server.js"]
+        }
+      }
+    ]
+  }
+  ```
+
+---
+
+### Create a New Server
+
+Adds a new MCP server to the configuration.
+
+- **Endpoint**: `/api/servers`
+- **Method**: `POST`
+- **Body**:
+  ```json
+  {
+    "name": "my-new-server",
+    "config": {
+      "type": "stdio",
+      "command": "python",
+      "args": ["-u", "my_script.py"],
+      "owner": "admin"
+    }
+  }
+  ```
+  - `name` (string, required): The unique name for the server.
+  - `config` (object, required): The server configuration object.
+    - `type` (string): `stdio`, `sse`, `streamable-http`, or `openapi`.
+    - `command` (string): Command to execute for `stdio` type.
+    - `args` (array of strings): Arguments for the command.
+    - `url` (string): URL for `sse`, `streamable-http`, or `openapi` types.
+    - `openapi` (object): OpenAPI configuration.
+      - `url` (string): URL to the OpenAPI schema.
+      - `schema` (object): The OpenAPI schema object itself.
+    - `headers` (object): Headers to send with requests for `sse`, `streamable-http`, and `openapi` types.
+    - `keepAliveInterval` (number): Keep-alive interval in milliseconds for `sse` type. Defaults to 60000.
+    - `owner` (string): The owner of the server. Defaults to the current user or 'admin'.
+
+---
+
+### Update a Server
+
+Updates the configuration of an existing MCP server.
+
+- **Endpoint**: `/api/servers/:name`
+- **Method**: `PUT`
+- **Parameters**:
+  - `:name` (string, required): The name of the server to update.
+- **Body**:
+  ```json
+  {
+    "config": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["new_server.js"]
+    }
+  }
+  ```
+  - `config` (object, required): The updated server configuration object. See "Create a New Server" for details.
+
+---
+
+### Delete a Server
+
+Removes an MCP server from the configuration.
+
+- **Endpoint**: `/api/servers/:name`
+- **Method**: `DELETE`
+- **Parameters**:
+  - `:name` (string, required): The name of the server to delete.
+
+---
+
+### Toggle a Server
+
+Enables or disables an MCP server.
+
+- **Endpoint**: `/api/servers/:name/toggle`
+- **Method**: `POST`
+- **Parameters**:
+  - `:name` (string, required): The name of the server to toggle.
+- **Body**:
+  ```json
+  {
+    "enabled": true
+  }
+  ```
+  - `enabled` (boolean, required): `true` to enable the server, `false` to disable it.
+
+---
+
+### Toggle a Tool
+
+Enables or disables a specific tool on a server.
+
+- **Endpoint**: `/api/servers/:serverName/tools/:toolName/toggle`
+- **Method**: `POST`
+- **Parameters**:
+  - `:serverName` (string, required): The name of the server.
+  - `:toolName` (string, required): The name of the tool.
+- **Body**:
+  ```json
+  {
+    "enabled": true
+  }
+  ```
+  - `enabled` (boolean, required): `true` to enable the tool, `false` to disable it.
+
+---
+
+### Update Tool Description
+
+Updates the description of a specific tool.
+
+- **Endpoint**: `/api/servers/:serverName/tools/:toolName/description`
+- **Method**: `PUT`
+- **Parameters**:
+  - `:serverName` (string, required): The name of the server.
+  - `:toolName` (string, required): The name of the tool.
+- **Body**:
+  ```json
+  {
+    "description": "New tool description"
+  }
+  ```
+  - `description` (string, required): The new description for the tool.

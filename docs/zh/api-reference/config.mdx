@@ -1,0 +1,111 @@
+---
+title: "配置"
+description: "管理和检索系统级配置。"
+---
+
+import { Card, Cards } from 'mintlify';
+
+<Card title="PUT /api/system-config" href="#update-system-config">更新主系统配置。</Card>
+<Card title="GET /api/settings" href="#get-all-settings">获取所有系统设置，包括服务器和群组。</Card>
+<Card title="GET /config" href="#get-runtime-config">获取前端的公共运行时配置。</Card>
+<Card title="GET /public-config" href="#get-public-config">获取公共配置以检查是否跳过身份验证。</Card>
+
+---
+
+### 更新系统配置
+
+更新系统配置的各个部分。您只需提供要更新部分的键。
+
+- **端点**: `/api/system-config`
+- **方法**: `PUT`
+- **正文**: 一个 JSON 对象，包含以下一个或多个顶级键：`routing`、`install`、`smartRouting`、`mcpRouter`。
+
+#### 路由配置 (`routing`)
+
+- `enableGlobalRoute` (boolean): 启用或禁用全局 `/api/mcp` 路由。
+- `enableGroupNameRoute` (boolean): 启用或禁用基于群组的路由 (例如 `/api/mcp/group/:groupName`)。
+- `enableBearerAuth` (boolean): 为 MCP 路由启用承载令牌身份验证。
+- `bearerAuthKey` (string): 用于承载身份验证的密钥。
+- `skipAuth` (boolean): 如果为 true，则跳过所有身份验证，使实例公开。
+
+#### 安装配置 (`install`)
+
+- `pythonIndexUrl` (string): 用于安装的 Python 包索引 (PyPI) 的基础 URL。
+- `npmRegistry` (string): 用于安装的 npm 注册表 URL。
+- `baseUrl` (string): 此 MCPHub 实例的公共基础 URL。
+
+#### 智能路由配置 (`smartRouting`)
+
+- `enabled` (boolean): 启用或禁用智能路由功能。
+- `dbUrl` (string): 用于存储嵌入的数据库连接 URL。
+- `openaiApiBaseUrl` (string): 用于生成嵌入的 OpenAI 兼容 API 的基础 URL。
+- `openaiApiKey` (string): 嵌入服务的 API 密钥。
+- `openaiApiEmbeddingModel` (string): 要使用的嵌入模型的名称。
+
+#### MCP 路由器配置 (`mcpRouter`)
+
+- `apiKey` (string): MCP 路由器服务的 API 密钥。
+- `referer` (string): 用于 MCP 路由器请求的 referer 头。
+- `title` (string): 在 MCP 路由器上显示的此实例的标题。
+- `baseUrl` (string): MCP 路由器 API 的基础 URL。
+
+- **请求示例**:
+  ```json
+  {
+    "routing": {
+      "skipAuth": true
+    },
+    "smartRouting": {
+      "enabled": true,
+      "dbUrl": "postgresql://user:pass@host:port/db"
+    }
+  }
+  ```
+
+---
+
+### 获取所有设置
+
+检索实例的整个设置对象，包括所有服务器配置、群组和系统设置。这是 `mcp_settings.json` 文件的完整转储。
+
+- **端点**: `/api/settings`
+- **方法**: `GET`
+
+---
+
+### 获取运行时配置
+
+检索前端应用程序所需的基本运行时配置。此端点不需要身份验证。
+
+- **端点**: `/config`
+- **方法**: `GET`
+- **成功响应**:
+  ```json
+  {
+    "success": true,
+    "data": {
+      "basePath": "",
+      "version": "1.0.0",
+      "name": "MCPHub"
+    }
+  }
+  ```
+
+---
+
+### 获取公共配置
+
+检索公共配置，主要用于检查是否跳过身份验证。这允许前端在用户登录前相应地调整其行为。此端点不需要身份验证。
+
+- **端点**: `/public-config`
+- **方法**: `GET`
+- **成功响应**:
+  ```json
+  {
+    "success": true,
+    "data": {
+      "skipAuth": false,
+      "permissions": {}
+    }
+  }
+  ```

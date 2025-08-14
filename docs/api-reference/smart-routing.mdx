@@ -1,0 +1,29 @@
+---
+title: "Smart Routing"
+description: "Intelligent tool discovery using vector semantic search."
+---
+
+Smart Routing is MCPHub's intelligent tool discovery system that uses vector semantic search to automatically find the most relevant tools for any given task.
+
+### HTTP Endpoint
+
+- **Endpoint**: `http://localhost:3000/mcp/$smart`
+- **Method**: `POST`
+
+### SSE Endpoint (Deprecated)
+
+- **Endpoint**: `http://localhost:3000/sse/$smart`
+- **Method**: `GET`
+
+### How it Works
+
+1.  **Tool Indexing**: All MCP tools are automatically converted to vector embeddings and stored in PostgreSQL with pgvector.
+2.  **Semantic Search**: User queries are converted to vectors and matched against tool embeddings using cosine similarity.
+3.  **Intelligent Filtering**: Dynamic thresholds ensure relevant results without noise.
+4.  **Precise Execution**: Found tools can be directly executed with proper parameter validation.
+
+### Setup Requirements
+
+- PostgreSQL with pgvector extension
+- OpenAI API key (or compatible embedding service)
+- Enable Smart Routing in MCPHub settings
