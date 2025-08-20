@@ -546,6 +546,7 @@
   "api": {
     "errors": {
       "readonly": "Readonly for demo environment",
+      "invalid_credentials": "Invalid username or password",
       "serverNameRequired": "Server name is required",
       "serverConfigRequired": "Server configuration is required",
       "serverConfigInvalid": "Server configuration must include either a URL, OpenAPI specification URL or schema, or command with arguments",

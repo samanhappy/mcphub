@@ -548,6 +548,7 @@
   "api": {
     "errors": {
       "readonly": "演示环境无法修改数据",
+      "invalid_credentials": "用户名或密码错误",
       "serverNameRequired": "服务器名称是必需的",
       "serverConfigRequired": "服务器配置是必需的",
       "serverConfigInvalid": "服务器配置必须包含 URL、OpenAPI 规范 URL 或模式，或者带参数的命令",
