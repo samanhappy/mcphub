@@ -1,36 +1,27 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Tool } from '@/types'
+import { Prompt } from '@/types'
 import { ChevronDown, ChevronRight, Play, Loader, Edit, Check } from '@/components/icons/LucideIcons'
-import { callTool, ToolCallResult, updateToolDescription } from '@/services/toolService'
 import { Switch } from './ToggleGroup'
+import { getPrompt, PromptCallResult } from '@/services/promptService'
 import DynamicForm from './DynamicForm'
-import ToolResult from './ToolResult'
+import PromptResult from './PromptResult'
 
-interface ToolCardProps {
+interface PromptCardProps {
   server: string
-  tool: Tool
-  onToggle?: (toolName: string, enabled: boolean) => void
-  onDescriptionUpdate?: (toolName: string, description: string) => void
+  prompt: Prompt
+  onToggle?: (promptName: string, enabled: boolean) => void
+  onDescriptionUpdate?: (promptName: string, description: string) => void
 }
 
-// Helper to check for "empty" values
-function isEmptyValue(value: any): boolean {
-  if (value == null) return true; // null or undefined
-  if (typeof value === 'string') return value.trim() === '';
-  if (Array.isArray(value)) return value.length === 0;
-  if (typeof value === 'object') return Object.keys(value).length === 0;
-  return false;
-}
-
-const ToolCard = ({ tool, server, onToggle, onDescriptionUpdate }: ToolCardProps) => {
+const PromptCard = ({ prompt, server, onToggle, onDescriptionUpdate }: PromptCardProps) => {
   const { t } = useTranslation()
   const [isExpanded, setIsExpanded] = useState(false)
   const [showRunForm, setShowRunForm] = useState(false)
   const [isRunning, setIsRunning] = useState(false)
-  const [result, setResult] = useState<ToolCallResult | null>(null)
+  const [result, setResult] = useState<PromptCallResult | null>(null)
   const [isEditingDescription, setIsEditingDescription] = useState(false)
-  const [customDescription, setCustomDescription] = useState(tool.description || '')
+  const [customDescription, setCustomDescription] = useState(prompt.description || '')
   const descriptionInputRef = useRef<HTMLInputElement>(null)
   const descriptionTextRef = useRef<HTMLSpanElement>(null)
   const [textWidth, setTextWidth] = useState<number>(0)
@@ -53,10 +44,10 @@ const ToolCard = ({ tool, server, onToggle, onDescriptionUpdate }: ToolCardProps
     }
   }, [isEditingDescription, customDescription])
 
-  // Generate a unique key for localStorage based on tool name and server
+  // Generate a unique key for localStorage based on prompt name and server
   const getStorageKey = useCallback(() => {
-    return `mcphub_tool_form_${server ? `${server}_` : ''}${tool.name}`
-  }, [tool.name, server])
+    return `mcphub_prompt_form_${server ? `${server}_` : ''}${prompt.name}`
+  }, [prompt.name, server])
 
   // Clear form data from localStorage
   const clearStoredFormData = useCallback(() => {
@@ -65,7 +56,7 @@ const ToolCard = ({ tool, server, onToggle, onDescriptionUpdate }: ToolCardProps
 
   const handleToggle = (enabled: boolean) => {
     if (onToggle) {
-      onToggle(tool.name, enabled)
+      onToggle(prompt.name, enabled)
     }
   }
 
@@ -74,22 +65,11 @@ const ToolCard = ({ tool, server, onToggle, onDescriptionUpdate }: ToolCardProps
   }
 
   const handleDescriptionSave = async () => {
-    try {
-      const result = await updateToolDescription(server, tool.name, customDescription)
-      if (result.success) {
-        setIsEditingDescription(false)
-        if (onDescriptionUpdate) {
-          onDescriptionUpdate(tool.name, customDescription)
-        }
-      } else {
-        // Revert on error
-        setCustomDescription(tool.description || '')
-        console.error('Failed to update tool description:', result.error)
-      }
-    } catch (error) {
-      console.error('Error updating tool description:', error)
-      setCustomDescription(tool.description || '')
-      setIsEditingDescription(false)
+    // For now, we'll just update the local state
+    // In a real implementation, you would call an API to update the description
+    setIsEditingDescription(false)
+    if (onDescriptionUpdate) {
+      onDescriptionUpdate(prompt.name, customDescription)
     }
   }
 
@@ -101,22 +81,21 @@ const ToolCard = ({ tool, server, onToggle, onDescriptionUpdate }: ToolCardProps
     if (e.key === 'Enter') {
       handleDescriptionSave()
     } else if (e.key === 'Escape') {
-      setCustomDescription(tool.description || '')
+      setCustomDescription(prompt.description || '')
       setIsEditingDescription(false)
     }
   }
 
-  const handleRunTool = async (arguments_: Record<string, any>) => {
+  const handleGetPrompt = async (arguments_: Record<string, any>) => {
     setIsRunning(true)
     try {
-      // filter empty values
-      arguments_ = Object.fromEntries(Object.entries(arguments_).filter(([_, v]) => !isEmptyValue(v)))
-      const result = await callTool({
-        toolName: tool.name,
-        arguments: arguments_,
-      }, server)
-
-      setResult(result)
+      const result = await getPrompt({ promptName: prompt.name, arguments: arguments_ }, server)
+      console.log('GetPrompt result:', result)
+      setResult({
+        success: result.success,
+        data: result.data,
+        error: result.error
+      })
       // Clear form data on successful submission
       // clearStoredFormData()
     } catch (error) {
@@ -140,6 +119,33 @@ const ToolCard = ({ tool, server, onToggle, onDescriptionUpdate }: ToolCardProps
     setResult(null)
   }
 
+  // Convert prompt arguments to ToolInputSchema format for DynamicForm
+  const convertToSchema = () => {
+    if (!prompt.arguments || prompt.arguments.length === 0) {
+      return { type: 'object', properties: {}, required: [] }
+    }
+
+    const properties: Record<string, any> = {}
+    const required: string[] = []
+
+    prompt.arguments.forEach(arg => {
+      properties[arg.name] = {
+        type: 'string', // Default to string for prompts
+        description: arg.description || ''
+      }
+
+      if (arg.required) {
+        required.push(arg.name)
+      }
+    })
+
+    return {
+      type: 'object',
+      properties,
+      required
+    }
+  }
+
   return (
     <div className="bg-white border border-gray-200 shadow rounded-lg p-4 mb-4">
       <div
@@ -148,8 +154,13 @@ const ToolCard = ({ tool, server, onToggle, onDescriptionUpdate }: ToolCardProps
       >
         <div className="flex-1">
           <h3 className="text-lg font-medium text-gray-900">
-            {tool.name.replace(server + '-', '')}
-            <span className="ml-2 text-sm font-normal text-gray-600 inline-flex items-center">
+            {prompt.name.replace(server + '-', '')}
+            {prompt.title && (
+              <span className="ml-2 text-sm font-normal text-gray-600">
+                {prompt.title}
+              </span>
+            )}
+            <span className="ml-2 text-sm font-normal text-gray-500 inline-flex items-center">
               {isEditingDescription ? (
                 <>
                   <input
@@ -197,11 +208,13 @@ const ToolCard = ({ tool, server, onToggle, onDescriptionUpdate }: ToolCardProps
             className="flex items-center space-x-2"
             onClick={(e) => e.stopPropagation()}
           >
-            <Switch
-              checked={tool.enabled ?? true}
-              onCheckedChange={handleToggle}
-              disabled={isRunning}
-            />
+            {prompt.enabled !== undefined && (
+              <Switch
+                checked={prompt.enabled}
+                onCheckedChange={handleToggle}
+                disabled={isRunning}
+              />
+            )}
           </div>
           <button
             onClick={(e) => {
@@ -210,7 +223,7 @@ const ToolCard = ({ tool, server, onToggle, onDescriptionUpdate }: ToolCardProps
               setShowRunForm(true)
             }}
             className="flex items-center space-x-1 px-3 py-1 text-sm text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-md transition-colors btn-primary"
-            disabled={isRunning || !tool.enabled}
+            disabled={isRunning || !prompt.enabled}
           >
             {isRunning ? (
               <Loader size={14} className="animate-spin" />
@@ -227,41 +240,61 @@ const ToolCard = ({ tool, server, onToggle, onDescriptionUpdate }: ToolCardProps
 
       {isExpanded && (
         <div className="mt-4 space-y-4">
-          {/* Schema Display */}
-          {!showRunForm && (
-            <div className="bg-gray-50 rounded p-3 border border-gray-300">
-              <h4 className="text-sm font-medium text-gray-900 mb-2">{t('tool.inputSchema')}</h4>
-              <pre className="text-xs text-gray-600 overflow-auto">
-                {JSON.stringify(tool.inputSchema, null, 2)}
-              </pre>
-            </div>
-          )}
-
           {/* Run Form */}
           {showRunForm && (
             <div className="border border-gray-300 rounded-lg p-4">
               <DynamicForm
-                schema={tool.inputSchema || { type: 'object' }}
-                onSubmit={handleRunTool}
+                schema={convertToSchema()}
+                onSubmit={handleGetPrompt}
                 onCancel={handleCancelRun}
                 loading={isRunning}
                 storageKey={getStorageKey()}
-                title={t('tool.runToolWithName', { name: tool.name.replace(server + '-', '') })}
+                title={t('prompt.runPromptWithName', { name: prompt.name.replace(server + '-', '') })}
               />
-              {/* Tool Result */}
+              {/* Prompt Result */}
               {result && (
                 <div className="mt-4">
-                  <ToolResult result={result} onClose={handleCloseResult} />
+                  <PromptResult result={result} onClose={handleCloseResult} />
                 </div>
               )}
             </div>
           )}
 
+          {/* Arguments Display (when not showing form) */}
+          {!showRunForm && prompt.arguments && prompt.arguments.length > 0 && (
+            <div className="bg-gray-50 rounded p-3 border border-gray-300">
+              <h4 className="text-sm font-medium text-gray-900 mb-2">{t('tool.parameters')}</h4>
+              <div className="space-y-2">
+                {prompt.arguments.map((arg, index) => (
+                  <div key={index} className="flex items-start">
+                    <div className="flex-1">
+                      <div className="flex items-center">
+                        <span className="font-medium text-gray-700">{arg.name}</span>
+                        {arg.required && <span className="text-red-500 ml-1">*</span>}
+                      </div>
+                      {arg.description && (
+                        <p className="text-sm text-gray-600 mt-1">{arg.description}</p>
+                      )}
+                    </div>
+                    <div className="text-xs text-gray-500 ml-2">
+                      {arg.title || ''}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
+          {/* Result Display (when not showing form) */}
+          {!showRunForm && result && (
+            <div className="mt-4">
+              <PromptResult result={result} onClose={handleCloseResult} />
+            </div>
+          )}
         </div>
       )}
     </div>
   )
 }
 
-export default ToolCard
+export default PromptCard

@@ -80,6 +80,7 @@
     "deleteWarning": "删除服务器 '{{name}}' 将会移除该服务器及其所有数据。此操作无法撤销。",
     "status": "状态",
     "tools": "工具",
+    "prompts": "提示词",
     "name": "服务器名称",
     "url": "服务器 URL",
     "apiKey": "API 密钥",
@@ -414,6 +415,23 @@
     "item": "项目 {{index}}",
     "addItem": "添加 {{key}} 项目",
     "enterKey": "输入 {{key}}"
+  },
+  "prompt": {
+    "run": "获取",
+    "running": "获取中...",
+    "result": "提示词结果",
+    "error": "提示词错误",
+    "execution": "提示词执行",
+    "successful": "成功",
+    "failed": "失败",
+    "errorDetails": "错误详情：",
+    "noContent": "提示词执行成功但未返回内容。",
+    "unknownError": "发生未知错误",
+    "jsonResponse": "JSON 响应：",
+    "description": "描述",
+    "messages": "消息",
+    "noDescription": "无描述信息",
+    "runPromptWithName": "获取提示词: {{name}}"
   },
   "settings": {
     "enableGlobalRoute": "启用全局路由",

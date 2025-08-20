@@ -140,6 +140,9 @@ const DashboardPage: React.FC = () => {
                     {t('server.tools')}
                   </th>
                   <th scope="col" className="px-6 py-5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    {t('server.prompts')}
+                  </th>
+                  <th scope="col" className="px-6 py-5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     {t('server.enabled')}
                   </th>
                 </tr>
@@ -162,6 +165,9 @@ const DashboardPage: React.FC = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {server.tools?.length || 0}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {server.prompts?.length || 0}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {server.enabled !== false ? (

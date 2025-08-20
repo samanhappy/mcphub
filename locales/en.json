@@ -80,6 +80,7 @@
     "deleteWarning": "Deleting server '{{name}}' will remove it and all its data. This action cannot be undone.",
     "status": "Status",
     "tools": "Tools",
+    "prompts": "Prompts",
     "name": "Server Name",
     "url": "Server URL",
     "apiKey": "API Key",
@@ -413,6 +414,23 @@
     "item": "Item {{index}}",
     "addItem": "Add {{key}} item",
     "enterKey": "Enter {{key}}"
+  },
+  "prompt": {
+    "run": "Get",
+    "running": "Getting...",
+    "result": "Prompt Result",
+    "error": "Prompt Error",
+    "execution": "Prompt Execution",
+    "successful": "Successful",
+    "failed": "Failed",
+    "errorDetails": "Error Details:",
+    "noContent": "Prompt executed successfully but returned no content.",
+    "unknownError": "Unknown error occurred",
+    "jsonResponse": "JSON Response:",
+    "description": "Description",
+    "messages": "Messages",
+    "noDescription": "No description available",
+    "runPromptWithName": "Get Prompt: {{name}}"
   },
   "settings": {
     "enableGlobalRoute": "Enable Global Route",

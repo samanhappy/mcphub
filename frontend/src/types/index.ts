@@ -91,6 +91,20 @@ export interface Tool {
   enabled?: boolean;
 }
 
+// Prompt types
+export interface Prompt {
+  name: string;
+  title?: string;
+  description?: string;
+  arguments?: Array<{
+    name: string;
+    title?: string;
+    description?: string;
+    required?: boolean;
+  }>;
+  enabled?: boolean;
+}
+
 // Server config types
 export interface ServerConfig {
   type?: 'stdio' | 'sse' | 'streamable-http' | 'openapi';
@@ -101,6 +115,7 @@ export interface ServerConfig {
   headers?: Record<string, string>;
   enabled?: boolean;
   tools?: Record<string, { enabled: boolean; description?: string }>; // Tool-specific configurations with enable/disable state and custom descriptions
+  prompts?: Record<string, { enabled: boolean; description?: string }>; // Prompt-specific configurations with enable/disable state and custom descriptions
   options?: {
     timeout?: number; // Request timeout in milliseconds
     resetTimeoutOnProgress?: boolean; // Reset timeout on progress notifications
@@ -153,6 +168,7 @@ export interface Server {
   status: ServerStatus;
   error?: string;
   tools?: Tool[];
+  prompts?: Prompt[];
   config?: ServerConfig;
   enabled?: boolean;
 }
