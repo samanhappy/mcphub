@@ -522,7 +522,6 @@ export const initializeClientsFromSettings = async (
               console.log(
                 `Successfully listed ${prompts.prompts.length} prompts for server: ${name}`,
               );
-              console.log(`Prompt details: ${JSON.stringify(prompts.prompts, null, 2)}`);
               serverInfo.prompts = prompts.prompts.map((prompt) => ({
                 name: `${name}-${prompt.name}`,
                 title: prompt.title,
@@ -1193,10 +1192,7 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
 
 export const handleGetPromptRequest = async (request: any, extra: any) => {
   try {
-    console.log(`Handling GetPromptRequest with request: ${JSON.stringify(request, null, 2)}`);
     const { name, arguments: promptArgs } = request.params;
-    console.log(`Extracted prompt name: ${name}`);
-    console.log(`Extracted prompt arguments: ${JSON.stringify(promptArgs)}`);
     let server: ServerInfo | undefined;
     if (extra && extra.server) {
       server = getServerByName(extra.server);
