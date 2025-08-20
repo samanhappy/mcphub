@@ -69,10 +69,10 @@ const LoginPage: React.FC = () => {
 
       {/* Main content */}
       <div className="relative mx-auto flex min-h-screen w-full max-w-md items-center justify-center px-6 py-16">
-        <div className="w-full space-y-8">
+        <div className="w-full space-y-6">
           {/* Centered slogan */}
           <div className="flex justify-center w-full">
-            <h1 className="text-2xl font-extrabold leading-tight tracking-tight text-gray-900 dark:text-white sm:text-3xl whitespace-nowrap">
+            <h1 className="text-3xl font-extrabold leading-tight tracking-tight text-gray-900 dark:text-white sm:text-4xl whitespace-nowrap">
               <span className="bg-gradient-to-r from-indigo-400 via-cyan-400 to-emerald-400 bg-clip-text text-transparent">
                 {t('auth.slogan')}
               </span>
@@ -83,10 +83,7 @@ const LoginPage: React.FC = () => {
           <div className="login-card relative w-full rounded-2xl border border-white/10 bg-white/60 p-8 shadow-xl backdrop-blur-md transition dark:border-white/10 dark:bg-gray-900/60">
             <div className="absolute -top-24 right-12 h-40 w-40 -translate-y-6 rounded-full bg-indigo-500/30 blur-3xl" />
             <div className="absolute -bottom-24 -left-12 h-40 w-40 translate-y-6 rounded-full bg-cyan-500/20 blur-3xl" />
-            <h2 className="text-center text-2xl font-bold text-gray-900 dark:text-white">
-              {t('auth.loginTitle')}
-            </h2>
-            <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+            <form className="mt-4 space-y-4" onSubmit={handleSubmit}>
               <div className="space-y-4">
                 <div>
                   <label htmlFor="username" className="sr-only">
