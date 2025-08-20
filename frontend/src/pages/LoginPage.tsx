@@ -71,12 +71,8 @@ const LoginPage: React.FC = () => {
       <div className="relative mx-auto flex min-h-screen w-full max-w-md items-center justify-center px-6 py-16">
         <div className="w-full space-y-8">
           {/* Centered slogan */}
-          <div className="text-center space-y-4">
-            <div className="inline-flex items-center gap-2 rounded-full border border-indigo-500/20 bg-indigo-500/10 px-3 py-1 text-xs font-medium text-indigo-700 shadow-sm backdrop-blur dark:text-indigo-300">
-              <span className="h-2 w-2 animate-pulse rounded-full bg-indigo-500" />
-              {t('app.name')}
-            </div>
-            <h1 className="text-2xl font-extrabold leading-tight tracking-tight text-gray-900 dark:text-white sm:text-3xl">
+          <div className="flex justify-center w-full">
+            <h1 className="text-2xl font-extrabold leading-tight tracking-tight text-gray-900 dark:text-white sm:text-3xl whitespace-nowrap">
               <span className="bg-gradient-to-r from-indigo-400 via-cyan-400 to-emerald-400 bg-clip-text text-transparent">
                 {t('auth.slogan')}
               </span>
