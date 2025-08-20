@@ -4,6 +4,7 @@ import { Server } from '@/types'
 import { ChevronDown, ChevronRight, AlertCircle, Copy, Check } from 'lucide-react'
 import { StatusBadge } from '@/components/ui/Badge'
 import ToolCard from '@/components/ui/ToolCard'
+import PromptCard from '@/components/ui/PromptCard'
 import DeleteDialog from '@/components/ui/DeleteDialog'
 import { useToast } from '@/contexts/ToastContext'
 
@@ -107,7 +108,6 @@ const ServerCard = ({ server, onRemove, onEdit, onToggle, onRefresh }: ServerCar
     try {
       const { toggleTool } = await import('@/services/toolService')
       const result = await toggleTool(server.name, toolName, enabled)
-
       if (result.success) {
         showToast(
           t(enabled ? 'tool.enableSuccess' : 'tool.disableSuccess', { name: toolName }),
@@ -122,6 +122,28 @@ const ServerCard = ({ server, onRemove, onEdit, onToggle, onRefresh }: ServerCar
       }
     } catch (error) {
       console.error('Error toggling tool:', error)
+      showToast(t('tool.toggleFailed'), 'error')
+    }
+  }
+
+  const handlePromptToggle = async (promptName: string, enabled: boolean) => {
+    try {
+      const { togglePrompt } = await import('@/services/promptService')
+      const result = await togglePrompt(server.name, promptName, enabled)
+      if (result.success) {
+        showToast(
+          t(enabled ? 'tool.enableSuccess' : 'tool.disableSuccess', { name: promptName }),
+          'success'
+        )
+        // Trigger refresh to update the prompt's state in the UI
+        if (onRefresh) {
+          onRefresh()
+        }
+      } else {
+        showToast(result.error || t('tool.toggleFailed'), 'error')
+      }
+    } catch (error) {
+      console.error('Error toggling prompt:', error)
       showToast(t('tool.toggleFailed'), 'error')
     }
   }
@@ -143,6 +165,15 @@ const ServerCard = ({ server, onRemove, onEdit, onToggle, onRefresh }: ServerCar
                 <path fillRule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clipRule="evenodd" />
               </svg>
               <span>{server.tools?.length || 0} {t('server.tools')}</span>
+            </div>
+
+            {/* Prompt count display */}
+            <div className="flex items-center px-2 py-1 bg-purple-50 text-purple-700 rounded-full text-sm btn-primary">
+              <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M2 5a2 2 0 012-2h7a2 2 0 012 2v4a2 2 0 01-2 2H9l-3 3v-3H4a2 2 0 01-2-2V5z" />
+                <path d="M15 7v2a4 4 0 01-4 4H9.828l-1.766 1.767c.28.149.599.233.938.233h2l3 3v-3h2a2 2 0 002-2V9a2 2 0 00-2-2h-1z" />
+              </svg>
+              <span>{server.prompts?.length || 0} {t('server.prompts')}</span>
             </div>
 
             {server.error && (
@@ -236,15 +267,35 @@ const ServerCard = ({ server, onRemove, onEdit, onToggle, onRefresh }: ServerCar
           </div>
         </div>
 
-        {isExpanded && server.tools && (
-          <div className="mt-6">
-            <h6 className={`font-medium ${server.enabled === false ? 'text-gray-600' : 'text-gray-900'} mb-4`}>{t('server.tools')}</h6>
-            <div className="space-y-4">
-              {server.tools.map((tool, index) => (
-                <ToolCard key={index} server={server.name} tool={tool} onToggle={handleToolToggle} />
-              ))}
-            </div>
-          </div>
+        {isExpanded && (
+          <>
+            {server.tools && (
+              <div className="mt-6">
+                <h6 className={`font-medium ${server.enabled === false ? 'text-gray-600' : 'text-gray-900'} mb-4`}>{t('server.tools')}</h6>
+                <div className="space-y-4">
+                  {server.tools.map((tool, index) => (
+                    <ToolCard key={index} server={server.name} tool={tool} onToggle={handleToolToggle} />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {server.prompts && (
+              <div className="mt-6">
+                <h6 className={`font-medium ${server.enabled === false ? 'text-gray-600' : 'text-gray-900'} mb-4`}>{t('server.prompts')}</h6>
+                <div className="space-y-4">
+                  {server.prompts.map((prompt, index) => (
+                    <PromptCard 
+                      key={index} 
+                      server={server.name} 
+                      prompt={prompt} 
+                      onToggle={handlePromptToggle} 
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
 

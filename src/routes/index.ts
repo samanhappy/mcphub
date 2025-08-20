@@ -10,6 +10,8 @@ import {
   toggleServer,
   toggleTool,
   updateToolDescription,
+  togglePrompt,
+  updatePromptDescription,
   updateSystemConfig,
 } from '../controllers/serverController.js';
 import {
@@ -58,6 +60,7 @@ import { login, register, getCurrentUser, changePassword } from '../controllers/
 import { getAllLogs, clearLogs, streamLogs } from '../controllers/logController.js';
 import { getRuntimeConfig, getPublicConfig } from '../controllers/configController.js';
 import { callTool } from '../controllers/toolController.js';
+import { getPrompt } from '../controllers/promptController.js';
 import { uploadDxtFile, uploadMiddleware } from '../controllers/dxtController.js';
 import { healthCheck } from '../controllers/healthController.js';
 import { auth } from '../middlewares/auth.js';
@@ -77,6 +80,8 @@ export const initRoutes = (app: express.Application): void => {
   router.post('/servers/:name/toggle', toggleServer);
   router.post('/servers/:serverName/tools/:toolName/toggle', toggleTool);
   router.put('/servers/:serverName/tools/:toolName/description', updateToolDescription);
+  router.post('/servers/:serverName/prompts/:promptName/toggle', togglePrompt);
+  router.put('/servers/:serverName/prompts/:promptName/description', updatePromptDescription);
   router.put('/system-config', updateSystemConfig);
 
   // Group management routes
@@ -105,6 +110,9 @@ export const initRoutes = (app: express.Application): void => {
 
   // Tool management routes
   router.post('/tools/call/:server', callTool);
+
+  // Prompt management routes
+  router.post('/mcp/:serverName/prompts/:promptName', getPrompt);
 
   // DXT upload routes
   router.post('/dxt/upload', uploadMiddleware, uploadDxtFile);
