@@ -46,11 +46,6 @@ export const initMiddlewares = (app: express.Application): void => {
     }
   });
 
-  // Initialize default admin user if no users exist
-  initializeDefaultUser().catch((err) => {
-    console.error('Error initializing default user:', err);
-  });
-
   // Protect API routes with authentication middleware, but exclude auth endpoints
   app.use(`${config.basePath}/api`, (req, res, next) => {
     // Skip authentication for login endpoint

@@ -685,32 +685,6 @@ export const removeServer = (name: string): { success: boolean; message?: string
   }
 };
 
-// Update existing server
-export const updateMcpServer = async (
-  name: string,
-  config: ServerConfig,
-): Promise<{ success: boolean; message?: string }> => {
-  try {
-    const settings = loadSettings();
-    if (!settings.mcpServers[name]) {
-      return { success: false, message: 'Server not found' };
-    }
-
-    settings.mcpServers[name] = config;
-    if (!saveSettings(settings)) {
-      return { success: false, message: 'Failed to save settings' };
-    }
-
-    closeServer(name);
-
-    serverInfos = serverInfos.filter((serverInfo) => serverInfo.name !== name);
-    return { success: true, message: 'Server updated successfully' };
-  } catch (error) {
-    console.error(`Failed to update server: ${name}`, error);
-    return { success: false, message: 'Failed to update server' };
-  }
-};
-
 // Add or update server (supports overriding existing servers for DXT)
 export const addOrUpdateServer = async (
   name: string,
