@@ -19,7 +19,7 @@ const getMCPRouterConfig = () => {
 
   return {
     apiKey: mcpRouterConfig?.apiKey || process.env.MCPROUTER_API_KEY || '',
-    referer: mcpRouterConfig?.referer || process.env.MCPROUTER_REFERER || 'https://mcphub.app',
+    referer: mcpRouterConfig?.referer || process.env.MCPROUTER_REFERER || 'https://www.mcphubx.com',
     title: mcpRouterConfig?.title || process.env.MCPROUTER_TITLE || 'MCPHub',
     baseUrl:
       mcpRouterConfig?.baseUrl || process.env.MCPROUTER_API_BASE || DEFAULT_MCPROUTER_API_BASE,
@@ -33,7 +33,7 @@ const getAxiosConfig = (): AxiosRequestConfig => {
   return {
     headers: {
       Authorization: mcpRouterConfig.apiKey ? `Bearer ${mcpRouterConfig.apiKey}` : '',
-      'HTTP-Referer': mcpRouterConfig.referer || 'https://mcphub.app',
+      'HTTP-Referer': mcpRouterConfig.referer || 'https://www.mcphubx.com',
       'X-Title': mcpRouterConfig.title || 'MCPHub',
       'Content-Type': 'application/json',
     },

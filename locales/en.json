@@ -474,7 +474,7 @@
     "mcpRouterApiKeyPlaceholder": "Enter MCPRouter API key",
     "mcpRouterReferer": "Referer",
     "mcpRouterRefererDescription": "Referer header for MCPRouter API requests",
-    "mcpRouterRefererPlaceholder": "https://mcphub.app",
+    "mcpRouterRefererPlaceholder": "https://www.mcphubx.com",
     "mcpRouterTitle": "Title",
     "mcpRouterTitleDescription": "Title header for MCPRouter API requests",
     "mcpRouterTitlePlaceholder": "MCPHub",

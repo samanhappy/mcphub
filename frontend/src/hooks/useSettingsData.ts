@@ -79,7 +79,7 @@ export const useSettingsData = () => {
 
   const [mcpRouterConfig, setMCPRouterConfig] = useState<MCPRouterConfig>({
     apiKey: '',
-    referer: 'https://mcphub.app',
+    referer: 'https://www.mcphubx.com',
     title: 'MCPHub',
     baseUrl: 'https://api.mcprouter.to/v1',
   });
@@ -130,7 +130,7 @@ export const useSettingsData = () => {
       if (data.success && data.data?.systemConfig?.mcpRouter) {
         setMCPRouterConfig({
           apiKey: data.data.systemConfig.mcpRouter.apiKey || '',
-          referer: data.data.systemConfig.mcpRouter.referer || 'https://mcphub.app',
+          referer: data.data.systemConfig.mcpRouter.referer || 'https://www.mcphubx.com',
           title: data.data.systemConfig.mcpRouter.title || 'MCPHub',
           baseUrl: data.data.systemConfig.mcpRouter.baseUrl || 'https://api.mcprouter.to/v1',
         });

@@ -43,7 +43,7 @@ const SettingsPage: React.FC = () => {
     baseUrl: string;
   }>({
     apiKey: '',
-    referer: 'https://mcphub.app',
+    referer: 'https://www.mcphubx.com',
     title: 'MCPHub',
     baseUrl: 'https://api.mcprouter.to/v1',
   });
@@ -88,7 +88,7 @@ const SettingsPage: React.FC = () => {
     if (mcpRouterConfig) {
       setTempMCPRouterConfig({
         apiKey: mcpRouterConfig.apiKey || '',
-        referer: mcpRouterConfig.referer || 'https://mcphub.app',
+        referer: mcpRouterConfig.referer || 'https://www.mcphubx.com',
         title: mcpRouterConfig.title || 'MCPHub',
         baseUrl: mcpRouterConfig.baseUrl || 'https://api.mcprouter.to/v1',
       });
