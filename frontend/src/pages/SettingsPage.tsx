@@ -401,54 +401,6 @@ const SettingsPage: React.FC = () => {
 
               <div className="p-3 bg-gray-50 rounded-md">
                 <div className="mb-2">
-                  <h3 className="font-medium text-gray-700">{t('settings.mcpRouterReferer')}</h3>
-                  <p className="text-sm text-gray-500">{t('settings.mcpRouterRefererDescription')}</p>
-                </div>
-                <div className="flex items-center gap-3">
-                  <input
-                    type="text"
-                    value={tempMCPRouterConfig.referer}
-                    onChange={(e) => handleMCPRouterConfigChange('referer', e.target.value)}
-                    placeholder={t('settings.mcpRouterRefererPlaceholder')}
-                    className="flex-1 mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm form-input"
-                    disabled={loading}
-                  />
-                  <button
-                    onClick={() => saveMCPRouterConfig('referer')}
-                    disabled={loading}
-                    className="mt-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium disabled:opacity-50 btn-primary"
-                  >
-                    {t('common.save')}
-                  </button>
-                </div>
-              </div>
-
-              <div className="p-3 bg-gray-50 rounded-md">
-                <div className="mb-2">
-                  <h3 className="font-medium text-gray-700">{t('settings.mcpRouterTitle')}</h3>
-                  <p className="text-sm text-gray-500">{t('settings.mcpRouterTitleDescription')}</p>
-                </div>
-                <div className="flex items-center gap-3">
-                  <input
-                    type="text"
-                    value={tempMCPRouterConfig.title}
-                    onChange={(e) => handleMCPRouterConfigChange('title', e.target.value)}
-                    placeholder={t('settings.mcpRouterTitlePlaceholder')}
-                    className="flex-1 mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm form-input"
-                    disabled={loading}
-                  />
-                  <button
-                    onClick={() => saveMCPRouterConfig('title')}
-                    disabled={loading}
-                    className="mt-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium disabled:opacity-50 btn-primary"
-                  >
-                    {t('common.save')}
-                  </button>
-                </div>
-              </div>
-
-              <div className="p-3 bg-gray-50 rounded-md">
-                <div className="mb-2">
                   <h3 className="font-medium text-gray-700">{t('settings.mcpRouterBaseUrl')}</h3>
                   <p className="text-sm text-gray-500">{t('settings.mcpRouterBaseUrlDescription')}</p>
                 </div>
