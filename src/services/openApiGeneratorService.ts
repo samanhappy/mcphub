@@ -2,6 +2,7 @@ import { OpenAPIV3 } from 'openapi-types';
 import { Tool } from '../types/index.js';
 import { getServersInfo } from './mcpService.js';
 import config from '../config/index.js';
+import { loadSettings } from '../config/index.js';
 
 /**
  * Service for generating OpenAPI 3.x specifications from MCP tools
@@ -198,8 +199,12 @@ export function generateOpenAPISpec(options: OpenAPIGenerationOptions = {}): Ope
     paths[pathName][method] = operation;
   }
 
+  const settings = loadSettings();
   // Get server URL
-  const baseUrl = options.serverUrl || `http://localhost:${config.port}`;
+  const baseUrl =
+    options.serverUrl ||
+    settings.systemConfig?.install?.baseUrl ||
+    `http://localhost:${config.port}`;
   const serverUrl = `${baseUrl}${config.basePath}/api`;
 
   // Generate OpenAPI document
