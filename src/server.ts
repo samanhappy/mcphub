@@ -1,4 +1,5 @@
 import express from 'express';
+import cors from 'cors';
 import config from './config/index.js';
 import path from 'path';
 import fs from 'fs';
@@ -26,6 +27,7 @@ export class AppServer {
 
   constructor() {
     this.app = express();
+    this.app.use(cors());
     this.port = config.port;
     this.basePath = config.basePath;
   }

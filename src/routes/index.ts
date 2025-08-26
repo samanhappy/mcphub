@@ -63,6 +63,12 @@ import { callTool } from '../controllers/toolController.js';
 import { getPrompt } from '../controllers/promptController.js';
 import { uploadDxtFile, uploadMiddleware } from '../controllers/dxtController.js';
 import { healthCheck } from '../controllers/healthController.js';
+import {
+  getOpenAPISpec,
+  getOpenAPIServers,
+  getOpenAPIStats,
+  executeToolViaOpenAPI,
+} from '../controllers/openApiController.js';
 import { auth } from '../middlewares/auth.js';
 
 const router = express.Router();
@@ -179,6 +185,15 @@ export const initRoutes = (app: express.Application): void => {
 
   // Public configuration endpoint (no auth required to check skipAuth setting)
   app.get(`${config.basePath}/public-config`, getPublicConfig);
+
+  // OpenAPI generation endpoints (no auth required for OpenWebUI integration)
+  app.get(`${config.basePath}/api/openapi.json`, getOpenAPISpec);
+  app.get(`${config.basePath}/api/openapi/servers`, getOpenAPIServers);
+  app.get(`${config.basePath}/api/openapi/stats`, getOpenAPIStats);
+
+  // OpenAPI-compatible tool execution endpoints (no auth required for OpenWebUI integration)
+  app.get(`${config.basePath}/api/tools/:serverName/:toolName`, executeToolViaOpenAPI);
+  app.post(`${config.basePath}/api/tools/:serverName/:toolName`, executeToolViaOpenAPI);
 
   app.use(`${config.basePath}/api`, router);
 };
