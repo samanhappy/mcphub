@@ -84,6 +84,12 @@
             ]
           },
           {
+            "group": "OpenAPI Endpoints",
+            "pages": [
+              "api-reference/openapi"
+            ]
+          },
+          {
             "group": "Management Endpoints",
             "pages": [
               "api-reference/servers",
@@ -105,6 +111,12 @@
               "zh/api-reference/mcp-http",
               "zh/api-reference/mcp-sse",
               "zh/api-reference/smart-routing"
+            ]
+          },
+          {
+            "group": "OpenAPI 端点",
+            "pages": [
+              "zh/api-reference/openapi"
             ]
           },
           {

@@ -1,0 +1,250 @@
+---
+title: "OpenAPI Integration"
+description: "Generate OpenAPI specifications from MCP tools for seamless integration with OpenWebUI and other systems"
+---
+
+# OpenAPI Generation for OpenWebUI Integration
+
+MCPHub now supports generating OpenAPI 3.0.3 specifications from MCP tools, enabling seamless integration with OpenWebUI and other OpenAPI-compatible systems without requiring MCPO as an intermediary proxy.
+
+## Features
+
+- ✅ **Automatic OpenAPI Generation**: Converts MCP tools to OpenAPI 3.0.3 specification
+- ✅ **OpenWebUI Compatible**: Direct integration without MCPO proxy
+- ✅ **Real-time Tool Discovery**: Dynamically includes tools from connected MCP servers
+- ✅ **Dual Parameter Support**: Supports both GET (query params) and POST (JSON body) for tool execution
+- ✅ **No Authentication Required**: OpenAPI endpoints are public for easy integration
+- ✅ **Comprehensive Metadata**: Full OpenAPI specification with proper schemas and documentation
+
+## API Endpoints
+
+### OpenAPI Specification
+
+<CodeGroup>
+
+```bash GET /api/openapi.json
+curl "http://localhost:3000/api/openapi.json"
+```
+
+```bash With Parameters
+curl "http://localhost:3000/api/openapi.json?title=My MCP API&version=2.0.0"
+```
+
+</CodeGroup>
+
+Generates and returns the complete OpenAPI 3.0.3 specification for all connected MCP tools.
+
+**Query Parameters:**
+
+<ParamField query="title" type="string" optional>
+  Custom API title
+</ParamField>
+
+<ParamField query="description" type="string" optional>
+  Custom API description
+</ParamField>
+
+<ParamField query="version" type="string" optional>
+  Custom API version
+</ParamField>
+
+<ParamField query="serverUrl" type="string" optional>
+  Custom server URL
+</ParamField>
+
+<ParamField query="includeDisabled" type="boolean" optional default="false">
+  Include disabled tools
+</ParamField>
+
+<ParamField query="servers" type="string" optional>
+  Comma-separated list of server names to include
+</ParamField>
+
+### Available Servers
+
+<CodeGroup>
+
+```bash GET /api/openapi/servers
+curl "http://localhost:3000/api/openapi/servers"
+```
+
+</CodeGroup>
+
+Returns a list of connected MCP server names.
+
+<ResponseExample>
+
+```json Example Response
+{
+  "success": true,
+  "data": ["amap", "playwright", "slack"]
+}
+```
+
+</ResponseExample>
+
+### Tool Statistics
+
+<CodeGroup>
+
+```bash GET /api/openapi/stats
+curl "http://localhost:3000/api/openapi/stats"
+```
+
+</CodeGroup>
+
+Returns statistics about available tools and servers.
+
+<ResponseExample>
+
+```json Example Response
+{
+  "success": true,
+  "data": {
+    "totalServers": 3,
+    "totalTools": 41,
+    "serverBreakdown": [
+      {"name": "amap", "toolCount": 12, "status": "connected"},
+      {"name": "playwright", "toolCount": 21, "status": "connected"},
+      {"name": "slack", "toolCount": 8, "status": "connected"}
+    ]
+  }
+}
+```
+
+</ResponseExample>
+
+### Tool Execution
+
+<CodeGroup>
+
+```bash GET /api/tools/{serverName}/{toolName}
+curl "http://localhost:3000/api/tools/amap/amap-maps_weather?city=Beijing"
+```
+
+```bash POST /api/tools/{serverName}/{toolName}
+curl -X POST "http://localhost:3000/api/tools/playwright/playwright-browser_navigate" \
+  -H "Content-Type: application/json" \
+  -d '{"url": "https://example.com"}'
+```
+
+</CodeGroup>
+
+Execute MCP tools via OpenAPI-compatible endpoints.
+
+**Path Parameters:**
+
+<ParamField path="serverName" type="string" required>
+  The name of the MCP server
+</ParamField>
+
+<ParamField path="toolName" type="string" required>
+  The name of the tool to execute
+</ParamField>
+
+## OpenWebUI Integration
+
+To integrate MCPHub with OpenWebUI:
+
+<Steps>
+  <Step title="Start MCPHub">
+    Ensure MCPHub is running with your MCP servers configured
+  </Step>
+  <Step title="Get OpenAPI Specification">
+    ```bash
+    curl http://localhost:3000/api/openapi.json > mcphub-api.json
+    ```
+  </Step>
+  <Step title="Add to OpenWebUI">
+    Import the OpenAPI specification file or point to the URL directly in OpenWebUI
+  </Step>
+</Steps>
+
+### Configuration Example
+
+In OpenWebUI, you can add MCPHub as an OpenAPI tool by using:
+
+<CardGroup cols={2}>
+  <Card title="OpenAPI URL" icon="link">
+    `http://localhost:3000/api/openapi.json`
+  </Card>
+  <Card title="Base URL" icon="server">
+    `http://localhost:3000/api`
+  </Card>
+</CardGroup>
+
+## Generated OpenAPI Structure
+
+The generated OpenAPI specification includes:
+
+### Tool Conversion Logic
+
+- **Simple tools** (≤10 primitive parameters) → GET endpoints with query parameters
+- **Complex tools** (objects, arrays, or >10 parameters) → POST endpoints with JSON request body
+- **All tools** include comprehensive response schemas and error handling
+
+### Example Generated Operation
+
+```yaml
+/tools/amap/amap-maps_weather:
+  get:
+    summary: "根据城市名称或者标准adcode查询指定城市的天气"
+    operationId: "amap_amap-maps_weather"
+    tags: ["amap"]
+    parameters:
+      - name: city
+        in: query
+        required: true
+        description: "城市名称或者adcode"
+        schema:
+          type: string
+    responses:
+      '200':
+        description: "Successful tool execution"
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ToolResponse'
+```
+
+### Security
+
+- Bearer authentication is defined but not enforced for tool execution endpoints
+- Enables flexible integration with various OpenAPI-compatible systems
+
+## Benefits over MCPO
+
+<CardGroup cols={2}>
+  <Card title="Direct Integration" icon="plug">
+    No need for intermediate proxy
+  </Card>
+  <Card title="Real-time Updates" icon="refresh">
+    OpenAPI spec updates automatically as MCP servers connect/disconnect
+  </Card>
+  <Card title="Better Performance" icon="bolt">
+    Direct tool execution without proxy overhead
+  </Card>
+  <Card title="Simplified Architecture" icon="layer-group">
+    One less component to manage
+  </Card>
+</CardGroup>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="OpenAPI spec shows no tools">
+    Ensure MCP servers are connected. Check `/api/openapi/stats` for server status.
+  </Accordion>
+  
+  <Accordion title="Tool execution fails">
+    Verify the tool name and parameters match the OpenAPI specification. Check server logs for details.
+  </Accordion>
+  
+  <Accordion title="OpenWebUI can't connect">
+    Ensure MCPHub is accessible from OpenWebUI and the OpenAPI URL is correct.
+  </Accordion>
+  
+  <Accordion title="Missing tools in specification">
+    Check if tools are enabled in your MCP server configuration. Use `includeDisabled=true` to see all tools.
+  </Accordion>
+</AccordionGroup>

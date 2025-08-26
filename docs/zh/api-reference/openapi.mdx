@@ -1,0 +1,250 @@
+---
+title: "OpenAPI 集成"
+description: "从 MCP 工具生成 OpenAPI 规范，与 OpenWebUI 和其他系统无缝集成"
+---
+
+# OpenWebUI 集成的 OpenAPI 生成
+
+MCPHub 现在支持从 MCP 工具生成 OpenAPI 3.0.3 规范，实现与 OpenWebUI 和其他 OpenAPI 兼容系统的无缝集成，无需 MCPO 作为中间代理。
+
+## 功能特性
+
+- ✅ **自动 OpenAPI 生成**：将 MCP 工具转换为 OpenAPI 3.0.3 规范
+- ✅ **OpenWebUI 兼容**：无需 MCPO 代理的直接集成
+- ✅ **实时工具发现**：动态包含已连接 MCP 服务器的工具
+- ✅ **双参数支持**：支持 GET（查询参数）和 POST（JSON 正文）进行工具执行
+- ✅ **无需身份验证**：OpenAPI 端点公开，便于集成
+- ✅ **完整元数据**：具有适当模式和文档的完整 OpenAPI 规范
+
+## API 端点
+
+### OpenAPI 规范
+
+<CodeGroup>
+
+```bash GET /api/openapi.json
+curl "http://localhost:3000/api/openapi.json"
+```
+
+```bash 带参数
+curl "http://localhost:3000/api/openapi.json?title=我的 MCP API&version=2.0.0"
+```
+
+</CodeGroup>
+
+生成并返回所有已连接 MCP 工具的完整 OpenAPI 3.0.3 规范。
+
+**查询参数：**
+
+<ParamField query="title" type="string" optional>
+  自定义 API 标题
+</ParamField>
+
+<ParamField query="description" type="string" optional>
+  自定义 API 描述
+</ParamField>
+
+<ParamField query="version" type="string" optional>
+  自定义 API 版本
+</ParamField>
+
+<ParamField query="serverUrl" type="string" optional>
+  自定义服务器 URL
+</ParamField>
+
+<ParamField query="includeDisabled" type="boolean" optional default="false">
+  包含禁用的工具
+</ParamField>
+
+<ParamField query="servers" type="string" optional>
+  要包含的服务器名称列表（逗号分隔）
+</ParamField>
+
+### 可用服务器
+
+<CodeGroup>
+
+```bash GET /api/openapi/servers
+curl "http://localhost:3000/api/openapi/servers"
+```
+
+</CodeGroup>
+
+返回已连接的 MCP 服务器名称列表。
+
+<ResponseExample>
+
+```json 示例响应
+{
+  "success": true,
+  "data": ["amap", "playwright", "slack"]
+}
+```
+
+</ResponseExample>
+
+### 工具统计
+
+<CodeGroup>
+
+```bash GET /api/openapi/stats
+curl "http://localhost:3000/api/openapi/stats"
+```
+
+</CodeGroup>
+
+返回有关可用工具和服务器的统计信息。
+
+<ResponseExample>
+
+```json 示例响应
+{
+  "success": true,
+  "data": {
+    "totalServers": 3,
+    "totalTools": 41,
+    "serverBreakdown": [
+      {"name": "amap", "toolCount": 12, "status": "connected"},
+      {"name": "playwright", "toolCount": 21, "status": "connected"},
+      {"name": "slack", "toolCount": 8, "status": "connected"}
+    ]
+  }
+}
+```
+
+</ResponseExample>
+
+### 工具执行
+
+<CodeGroup>
+
+```bash GET /api/tools/{serverName}/{toolName}
+curl "http://localhost:3000/api/tools/amap/amap-maps_weather?city=Beijing"
+```
+
+```bash POST /api/tools/{serverName}/{toolName}
+curl -X POST "http://localhost:3000/api/tools/playwright/playwright-browser_navigate" \
+  -H "Content-Type: application/json" \
+  -d '{"url": "https://example.com"}'
+```
+
+</CodeGroup>
+
+通过 OpenAPI 兼容端点执行 MCP 工具。
+
+**路径参数：**
+
+<ParamField path="serverName" type="string" required>
+  MCP 服务器的名称
+</ParamField>
+
+<ParamField path="toolName" type="string" required>
+  要执行的工具名称
+</ParamField>
+
+## OpenWebUI 集成
+
+要将 MCPHub 与 OpenWebUI 集成：
+
+<Steps>
+  <Step title="启动 MCPHub">
+    确保 MCPHub 正在运行，并且已配置 MCP 服务器
+  </Step>
+  <Step title="获取 OpenAPI 规范">
+    ```bash
+    curl http://localhost:3000/api/openapi.json > mcphub-api.json
+    ```
+  </Step>
+  <Step title="添加到 OpenWebUI">
+    在 OpenWebUI 中导入 OpenAPI 规范文件或直接指向 URL
+  </Step>
+</Steps>
+
+### 配置示例
+
+在 OpenWebUI 中，您可以通过以下方式将 MCPHub 添加为 OpenAPI 工具：
+
+<CardGroup cols={2}>
+  <Card title="OpenAPI URL" icon="link">
+    `http://localhost:3000/api/openapi.json`
+  </Card>
+  <Card title="基础 URL" icon="server">
+    `http://localhost:3000/api`
+  </Card>
+</CardGroup>
+
+## 生成的 OpenAPI 结构
+
+生成的 OpenAPI 规范包括：
+
+### 工具转换逻辑
+
+- **简单工具**（≤10 个原始参数）→ 带查询参数的 GET 端点
+- **复杂工具**（对象、数组或 >10 个参数）→ 带 JSON 请求正文的 POST 端点
+- **所有工具**都包含完整的响应模式和错误处理
+
+### 生成操作示例
+
+```yaml
+/tools/amap/amap-maps_weather:
+  get:
+    summary: "根据城市名称或者标准adcode查询指定城市的天气"
+    operationId: "amap_amap-maps_weather"
+    tags: ["amap"]
+    parameters:
+      - name: city
+        in: query
+        required: true
+        description: "城市名称或者adcode"
+        schema:
+          type: string
+    responses:
+      '200':
+        description: "Successful tool execution"
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ToolResponse'
+```
+
+### 安全性
+
+- 定义了 Bearer 身份验证但不对工具执行端点强制执行
+- 支持与各种 OpenAPI 兼容系统的灵活集成
+
+## 相比 MCPO 的优势
+
+<CardGroup cols={2}>
+  <Card title="直接集成" icon="plug">
+    无需中间代理
+  </Card>
+  <Card title="实时更新" icon="refresh">
+    OpenAPI 规范随着 MCP 服务器连接/断开自动更新
+  </Card>
+  <Card title="更好的性能" icon="bolt">
+    直接工具执行，无代理开销
+  </Card>
+  <Card title="简化架构" icon="layer-group">
+    减少一个需要管理的组件
+  </Card>
+</CardGroup>
+
+## 故障排除
+
+<AccordionGroup>
+  <Accordion title="OpenAPI 规范显示没有工具">
+    确保 MCP 服务器已连接。检查 `/api/openapi/stats` 查看服务器状态。
+  </Accordion>
+  
+  <Accordion title="工具执行失败">
+    验证工具名称和参数是否与 OpenAPI 规范匹配。检查服务器日志以获取详细信息。
+  </Accordion>
+  
+  <Accordion title="OpenWebUI 无法连接">
+    确保 MCPHub 可从 OpenWebUI 访问，并且 OpenAPI URL 正确。
+  </Accordion>
+  
+  <Accordion title="规范中缺少工具">
+    检查您的 MCP 服务器配置中是否启用了工具。使用 `includeDisabled=true` 查看所有工具。
+  </Accordion>
+</AccordionGroup>
