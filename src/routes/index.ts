@@ -186,12 +186,12 @@ export const initRoutes = (app: express.Application): void => {
   // Public configuration endpoint (no auth required to check skipAuth setting)
   app.get(`${config.basePath}/public-config`, getPublicConfig);
 
-  // OpenAPI generation endpoints (no auth required for OpenWebUI integration)
+  // OpenAPI generation endpoints
   app.get(`${config.basePath}/api/openapi.json`, getOpenAPISpec);
   app.get(`${config.basePath}/api/openapi/servers`, getOpenAPIServers);
   app.get(`${config.basePath}/api/openapi/stats`, getOpenAPIStats);
 
-  // OpenAPI-compatible tool execution endpoints (no auth required for OpenWebUI integration)
+  // OpenAPI-compatible tool execution endpoints
   app.get(`${config.basePath}/api/tools/:serverName/:toolName`, executeToolViaOpenAPI);
   app.post(`${config.basePath}/api/tools/:serverName/:toolName`, executeToolViaOpenAPI);
 

@@ -25,22 +25,15 @@ export const callTool = async (
 ): Promise<ToolCallResult> => {
   try {
     // Construct the URL with optional server parameter
-    const url = server ? `/tools/call/${server}` : '/tools/call';
+    const url = server ? `/tools/${server}/${request.toolName}` : '/tools/call';
 
-    const response = await apiPost<any>(
-      url,
-      {
-        toolName: request.toolName,
-        arguments: request.arguments,
+    const response = await apiPost<any>(url, request.arguments, {
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem('mcphub_token')}`, // Add bearer auth for MCP routing
       },
-      {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('mcphub_token')}`, // Add bearer auth for MCP routing
-        },
-      },
-    );
+    });
 
-    if (!response.success) {
+    if (response.success === false) {
       return {
         success: false,
         error: response.message || 'Tool call failed',
@@ -49,7 +42,7 @@ export const callTool = async (
 
     return {
       success: true,
-      content: response.data?.content || [],
+      content: response?.content || [],
     };
   } catch (error) {
     console.error('Error calling tool:', error);

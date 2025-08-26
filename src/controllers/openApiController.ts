@@ -1,9 +1,9 @@
 import { Request, Response } from 'express';
-import { 
-  generateOpenAPISpec, 
-  getAvailableServers, 
+import {
+  generateOpenAPISpec,
+  getAvailableServers,
   getToolStats,
-  OpenAPIGenerationOptions 
+  OpenAPIGenerationOptions,
 } from '../services/openApiGeneratorService.js';
 
 /**
@@ -24,22 +24,22 @@ export const getOpenAPISpec = (req: Request, res: Response): void => {
       serverUrl: req.query.serverUrl as string,
       includeDisabledTools: req.query.includeDisabled === 'true',
       groupFilter: req.query.group as string,
-      serverFilter: req.query.servers ? (req.query.servers as string).split(',') : undefined
+      serverFilter: req.query.servers ? (req.query.servers as string).split(',') : undefined,
     };
 
     const openApiSpec = generateOpenAPISpec(options);
-    
+
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-    
+
     res.json(openApiSpec);
   } catch (error) {
     console.error('Error generating OpenAPI specification:', error);
     res.status(500).json({
       error: 'Failed to generate OpenAPI specification',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 };
@@ -53,14 +53,14 @@ export const getOpenAPIServers = (req: Request, res: Response): void => {
     const servers = getAvailableServers();
     res.json({
       success: true,
-      data: servers
+      data: servers,
     });
   } catch (error) {
     console.error('Error getting available servers:', error);
     res.status(500).json({
       success: false,
       error: 'Failed to get available servers',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 };
@@ -74,14 +74,14 @@ export const getOpenAPIStats = (req: Request, res: Response): void => {
     const stats = getToolStats();
     res.json({
       success: true,
-      data: stats
+      data: stats,
     });
   } catch (error) {
     console.error('Error getting tool statistics:', error);
     res.status(500).json({
       success: false,
       error: 'Failed to get tool statistics',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 };
@@ -95,15 +95,13 @@ export const getOpenAPIStats = (req: Request, res: Response): void => {
 export const executeToolViaOpenAPI = async (req: Request, res: Response): Promise<void> => {
   try {
     const { serverName, toolName } = req.params;
-    
+
     // Import handleCallToolRequest function
     const { handleCallToolRequest } = await import('../services/mcpService.js');
-    
+
     // Prepare arguments from query params (GET) or body (POST)
-    const args = req.method === 'GET' 
-      ? req.query 
-      : req.body || {};
-    
+    const args = req.method === 'GET' ? req.query : req.body || {};
+
     // Create a mock request structure that matches what handleCallToolRequest expects
     const mockRequest = {
       params: {
@@ -111,24 +109,21 @@ export const executeToolViaOpenAPI = async (req: Request, res: Response): Promis
         arguments: args,
       },
     };
-    
+
     const extra = {
-      sessionId: req.headers['x-session-id'] as string || 'openapi-session',
+      sessionId: (req.headers['x-session-id'] as string) || 'openapi-session',
       server: serverName,
     };
 
-    console.log(`OpenAPI tool execution: ${serverName}/${toolName} with args:`, args);
-    
     const result = await handleCallToolRequest(mockRequest, extra);
-    
+
     // Return the result in OpenAPI format (matching MCP tool response structure)
     res.json(result);
-    
   } catch (error) {
     console.error('Error executing tool via OpenAPI:', error);
     res.status(500).json({
       error: 'Failed to execute tool',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 };
