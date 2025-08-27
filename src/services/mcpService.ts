@@ -614,7 +614,7 @@ export const getServersInfo = (): Omit<ServerInfo, 'client' | 'transport'>[] => 
 };
 
 // Get server by name
-const getServerByName = (name: string): ServerInfo | undefined => {
+export const getServerByName = (name: string): ServerInfo | undefined => {
   return serverInfos.find((serverInfo) => serverInfo.name === name);
 };
 
