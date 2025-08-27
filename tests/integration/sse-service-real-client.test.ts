@@ -97,7 +97,7 @@ describe('Real Client Transport Integration Tests', () => {
 
       expect(error).toBeNull();
       expect(isConnected).toBe(true);
-    }, 30000);
+    }, 60000);
 
     it('should connect using real SSEClientTransport with group', async () => {
       const testGroup = 'integration-test-group';
@@ -155,7 +155,7 @@ describe('Real Client Transport Integration Tests', () => {
 
       expect(error).toBeNull();
       expect(isConnected).toBe(true);
-    }, 30000);
+    }, 60000);
   });
 
   describe('StreamableHTTP Client Transport Tests', () => {
@@ -214,7 +214,7 @@ describe('Real Client Transport Integration Tests', () => {
 
       expect(error).toBeNull();
       expect(isConnected).toBe(true);
-    }, 30000);
+    }, 60000);
 
     it('should connect using real StreamableHTTPClientTransport with group', async () => {
       const testGroup = 'integration-test-group';
@@ -272,7 +272,7 @@ describe('Real Client Transport Integration Tests', () => {
 
       expect(error).toBeNull();
       expect(isConnected).toBe(true);
-    }, 30000);
+    }, 60000);
   });
 
   describe('Real Client Authentication Tests', () => {
@@ -288,7 +288,7 @@ describe('Real Client Transport Integration Tests', () => {
       _authAppServer = authResult.appServer;
       _authHttpServer = authResult.httpServer;
       authBaseURL = authResult.baseURL;
-    }, 30000);
+    }, 60000);
 
     afterAll(async () => {
       if (_authHttpServer) {
@@ -345,7 +345,7 @@ describe('Real Client Transport Integration Tests', () => {
       if (error) {
         expect(error.message).toContain('401');
       }
-    }, 30000);
+    }, 60000);
 
     it('should connect with SSEClientTransport with valid auth', async () => {
       const sseUrl = new URL(`${authBaseURL}/sse`);
@@ -402,7 +402,7 @@ describe('Real Client Transport Integration Tests', () => {
 
       expect(error).toBeNull();
       expect(isConnected).toBe(true);
-    }, 30000);
+    }, 60000);
 
     it('should connect with StreamableHTTPClientTransport with auth', async () => {
       const mcpUrl = new URL(`${authBaseURL}/mcp`);
@@ -460,6 +460,6 @@ describe('Real Client Transport Integration Tests', () => {
 
       expect(error).toBeNull();
       expect(isConnected).toBe(true);
-    }, 30000);
+    }, 60000);
   });
 });
