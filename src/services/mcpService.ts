@@ -1,3 +1,4 @@
+import os from 'os';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import {
   CallToolRequestSchema,
@@ -205,6 +206,7 @@ const createTransportFromConfig = (name: string, conf: ServerConfig): any => {
     }
 
     transport = new StdioClientTransport({
+      cwd: os.homedir(),
       command: conf.command,
       args: replaceEnvVars(conf.args) as string[],
       env: env,
