@@ -1,16 +1,16 @@
 import { McpSettings, IUser, ServerConfig } from '../types/index.js';
-import { 
-  UserDao, 
-  ServerDao, 
-  GroupDao, 
-  SystemConfigDao, 
+import {
+  UserDao,
+  ServerDao,
+  GroupDao,
+  SystemConfigDao,
   UserConfigDao,
   ServerConfigWithName,
   UserDaoImpl,
   ServerDaoImpl,
   GroupDaoImpl,
   SystemConfigDaoImpl,
-  UserConfigDaoImpl
+  UserConfigDaoImpl,
 } from '../dao/index.js';
 
 /**
@@ -22,7 +22,7 @@ export class DaoConfigService {
     private serverDao: ServerDao,
     private groupDao: GroupDao,
     private systemConfigDao: SystemConfigDao,
-    private userConfigDao: UserConfigDao
+    private userConfigDao: UserConfigDao,
   ) {}
 
   /**
@@ -34,7 +34,7 @@ export class DaoConfigService {
       this.serverDao.findAll(),
       this.groupDao.findAll(),
       this.systemConfigDao.get(),
-      this.userConfigDao.getAll()
+      this.userConfigDao.getAll(),
     ]);
 
     // Convert servers back to the original format
@@ -49,7 +49,7 @@ export class DaoConfigService {
       mcpServers,
       groups,
       systemConfig,
-      userConfigs
+      userConfigs,
     };
 
     // Apply user-specific filtering if needed
@@ -96,7 +96,7 @@ export class DaoConfigService {
       if (settings.mcpServers) {
         const currentServers = await this.serverDao.findAll();
         const currentServerNames = new Set(currentServers.map((s: ServerConfigWithName) => s.name));
-        
+
         for (const [name, config] of Object.entries(settings.mcpServers)) {
           const serverWithName: ServerConfigWithName = { name, ...config };
           if (currentServerNames.has(name)) {
@@ -118,7 +118,7 @@ export class DaoConfigService {
       if (settings.groups) {
         const currentGroups = await this.groupDao.findAll();
         const currentGroupIds = new Set(currentGroups.map((g: any) => g.id));
-        
+
         for (const group of settings.groups) {
           if (group.id && currentGroupIds.has(group.id)) {
             promises.push(this.groupDao.update(group.id, group));
@@ -128,7 +128,7 @@ export class DaoConfigService {
         }
 
         // Remove groups that are no longer in the settings
-        const newGroupIds = new Set(settings.groups.map(g => g.id).filter(Boolean));
+        const newGroupIds = new Set(settings.groups.map((g) => g.id).filter(Boolean));
         for (const existingGroup of currentGroups) {
           if (!newGroupIds.has(existingGroup.id)) {
             promises.push(this.groupDao.delete(existingGroup.id));
@@ -173,7 +173,7 @@ export class DaoConfigService {
     }
 
     const filteredGroups = (settings.groups || []).filter(
-      group => group.owner === user.username || group.owner === undefined
+      (group) => group.owner === user.username || group.owner === undefined,
     );
 
     return {
@@ -182,7 +182,7 @@ export class DaoConfigService {
       groups: filteredGroups,
       users: [], // Non-admin users can't see user list
       systemConfig: {}, // Non-admin users can't see system config
-      userConfigs: { [user.username]: settings.userConfigs?.[user.username] || {} }
+      userConfigs: { [user.username]: settings.userConfigs?.[user.username] || {} },
     };
   }
 
@@ -190,9 +190,9 @@ export class DaoConfigService {
    * Merge settings for non-admin users
    */
   private mergeSettingsForUser(
-    currentSettings: McpSettings, 
-    newSettings: McpSettings, 
-    user: IUser
+    currentSettings: McpSettings,
+    newSettings: McpSettings,
+    user: IUser,
   ): McpSettings {
     if (user.isAdmin) {
       return newSettings;
@@ -214,14 +214,14 @@ export class DaoConfigService {
 
     // Merge groups (only user's own groups)
     if (newSettings.groups) {
-      const userGroups = newSettings.groups.filter(
-        group => !group.owner || group.owner === user.username
-      ).map(group => ({ ...group, owner: user.username }));
-      
+      const userGroups = newSettings.groups
+        .filter((group) => !group.owner || group.owner === user.username)
+        .map((group) => ({ ...group, owner: user.username }));
+
       const otherGroups = (currentSettings.groups || []).filter(
-        group => group.owner !== user.username
+        (group) => group.owner !== user.username,
       );
-      
+
       mergedSettings.groups = [...otherGroups, ...userGroups];
     }
 
@@ -260,6 +260,6 @@ export function createDaoConfigService(): DaoConfigService {
     new ServerDaoImpl(),
     new GroupDaoImpl(),
     new SystemConfigDaoImpl(),
-    new UserConfigDaoImpl()
+    new UserConfigDaoImpl(),
   );
 }

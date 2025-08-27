@@ -38,12 +38,19 @@ export interface UserConfigDao {
   /**
    * Get specific configuration section for user
    */
-  getSection<K extends keyof UserConfig>(username: string, section: K): Promise<UserConfig[K] | undefined>;
+  getSection<K extends keyof UserConfig>(
+    username: string,
+    section: K,
+  ): Promise<UserConfig[K] | undefined>;
 
   /**
    * Update specific configuration section for user
    */
-  updateSection<K extends keyof UserConfig>(username: string, section: K, value: UserConfig[K]): Promise<boolean>;
+  updateSection<K extends keyof UserConfig>(
+    username: string,
+    section: K,
+    value: UserConfig[K],
+  ): Promise<boolean>;
 }
 
 /**
@@ -62,28 +69,28 @@ export class UserConfigDaoImpl extends JsonFileBaseDao implements UserConfigDao 
 
   async update(username: string, config: Partial<UserConfig>): Promise<UserConfig> {
     const settings = await this.loadSettings();
-    
+
     if (!settings.userConfigs) {
       settings.userConfigs = {};
     }
-    
+
     const currentConfig = settings.userConfigs[username] || {};
-    
+
     // Deep merge configuration
     const updatedConfig = this.deepMerge(currentConfig, config);
     settings.userConfigs[username] = updatedConfig;
-    
+
     await this.saveSettings(settings);
     return updatedConfig;
   }
 
   async delete(username: string): Promise<boolean> {
     const settings = await this.loadSettings();
-    
+
     if (!settings.userConfigs || !settings.userConfigs[username]) {
       return false;
     }
-    
+
     delete settings.userConfigs[username];
     await this.saveSettings(settings);
     return true;
@@ -99,12 +106,19 @@ export class UserConfigDaoImpl extends JsonFileBaseDao implements UserConfigDao 
     return this.update(username, defaultConfig);
   }
 
-  async getSection<K extends keyof UserConfig>(username: string, section: K): Promise<UserConfig[K] | undefined> {
+  async getSection<K extends keyof UserConfig>(
+    username: string,
+    section: K,
+  ): Promise<UserConfig[K] | undefined> {
     const config = await this.get(username);
     return config?.[section];
   }
 
-  async updateSection<K extends keyof UserConfig>(username: string, section: K, value: UserConfig[K]): Promise<boolean> {
+  async updateSection<K extends keyof UserConfig>(
+    username: string,
+    section: K,
+    value: UserConfig[K],
+  ): Promise<boolean> {
     try {
       await this.update(username, { [section]: value } as Partial<UserConfig>);
       return true;
@@ -118,7 +132,7 @@ export class UserConfigDaoImpl extends JsonFileBaseDao implements UserConfigDao 
    */
   private deepMerge(target: any, source: any): any {
     const result = { ...target };
-    
+
     for (const key in source) {
       if (source[key] && typeof source[key] === 'object' && !Array.isArray(source[key])) {
         result[key] = this.deepMerge(target[key] || {}, source[key]);
@@ -126,7 +140,7 @@ export class UserConfigDaoImpl extends JsonFileBaseDao implements UserConfigDao 
         result[key] = source[key];
       }
     }
-    
+
     return result;
   }
 }

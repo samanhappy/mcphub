@@ -54,38 +54,38 @@ export abstract class BaseDaoImpl<T, K = string> implements BaseDao<T, K> {
 
   async findById(id: K): Promise<T | null> {
     const entities = await this.getAll();
-    return entities.find(entity => this.getEntityId(entity) === id) || null;
+    return entities.find((entity) => this.getEntityId(entity) === id) || null;
   }
 
   async create(data: Omit<T, 'id'>): Promise<T> {
     const entities = await this.getAll();
     const newEntity = this.createEntity(data);
-    
+
     entities.push(newEntity);
     await this.saveAll(entities);
-    
+
     return newEntity;
   }
 
   async update(id: K, updates: Partial<T>): Promise<T | null> {
     const entities = await this.getAll();
-    const index = entities.findIndex(entity => this.getEntityId(entity) === id);
-    
+    const index = entities.findIndex((entity) => this.getEntityId(entity) === id);
+
     if (index === -1) {
       return null;
     }
 
     const updatedEntity = this.updateEntity(entities[index], updates);
     entities[index] = updatedEntity;
-    
+
     await this.saveAll(entities);
     return updatedEntity;
   }
 
   async delete(id: K): Promise<boolean> {
     const entities = await this.getAll();
-    const index = entities.findIndex(entity => this.getEntityId(entity) === id);
-    
+    const index = entities.findIndex((entity) => this.getEntityId(entity) === id);
+
     if (index === -1) {
       return false;
     }

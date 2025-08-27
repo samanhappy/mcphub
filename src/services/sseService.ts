@@ -43,7 +43,7 @@ export const handleSseConnection = async (req: Request, res: Response): Promise<
   const userContextService = UserContextService.getInstance();
   const currentUser = userContextService.getCurrentUser();
   const username = currentUser?.username;
-  
+
   // Check bearer auth using filtered settings
   if (!validateBearerAuth(req)) {
     console.warn('Bearer authentication failed or not provided');
@@ -74,7 +74,7 @@ export const handleSseConnection = async (req: Request, res: Response): Promise<
   }
 
   // Construct the appropriate messages path based on user context
-  const messagesPath = username 
+  const messagesPath = username
     ? `${config.basePath}/${username}/messages`
     : `${config.basePath}/messages`;
 
@@ -100,7 +100,7 @@ export const handleSseMessage = async (req: Request, res: Response): Promise<voi
   const userContextService = UserContextService.getInstance();
   const currentUser = userContextService.getCurrentUser();
   const username = currentUser?.username;
-  
+
   // Check bearer auth using filtered settings
   if (!validateBearerAuth(req)) {
     res.status(401).send('Bearer authentication required or invalid token');
@@ -127,7 +127,9 @@ export const handleSseMessage = async (req: Request, res: Response): Promise<voi
   const { transport, group } = transportData;
   req.params.group = group;
   req.query.group = group;
-  console.log(`Received message for sessionId: ${sessionId} in group: ${group}${username ? ` for user: ${username}` : ''}`);
+  console.log(
+    `Received message for sessionId: ${sessionId} in group: ${group}${username ? ` for user: ${username}` : ''}`,
+  );
 
   await (transport as SSEServerTransport).handlePostMessage(req, res);
 };
@@ -137,14 +139,14 @@ export const handleMcpPostRequest = async (req: Request, res: Response): Promise
   const userContextService = UserContextService.getInstance();
   const currentUser = userContextService.getCurrentUser();
   const username = currentUser?.username;
-  
+
   const sessionId = req.headers['mcp-session-id'] as string | undefined;
   const group = req.params.group;
   const body = req.body;
   console.log(
     `Handling MCP post request for sessionId: ${sessionId} and group: ${group}${username ? ` for user: ${username}` : ''} with body: ${JSON.stringify(body)}`,
   );
-  
+
   // Check bearer auth using filtered settings
   if (!validateBearerAuth(req)) {
     res.status(401).send('Bearer authentication required or invalid token');
@@ -183,7 +185,9 @@ export const handleMcpPostRequest = async (req: Request, res: Response): Promise
       }
     };
 
-    console.log(`MCP connection established: ${transport.sessionId}${username ? ` for user: ${username}` : ''}`);
+    console.log(
+      `MCP connection established: ${transport.sessionId}${username ? ` for user: ${username}` : ''}`,
+    );
     await getMcpServer(transport.sessionId, group).connect(transport);
   } else {
     res.status(400).json({
@@ -206,9 +210,9 @@ export const handleMcpOtherRequest = async (req: Request, res: Response) => {
   const userContextService = UserContextService.getInstance();
   const currentUser = userContextService.getCurrentUser();
   const username = currentUser?.username;
-  
+
   console.log(`Handling MCP other request${username ? ` for user: ${username}` : ''}`);
-  
+
   // Check bearer auth using filtered settings
   if (!validateBearerAuth(req)) {
     res.status(401).send('Bearer authentication required or invalid token');

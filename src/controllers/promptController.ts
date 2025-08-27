@@ -17,7 +17,7 @@ export const getPrompt = async (req: Request, res: Response): Promise<void> => {
     }
 
     const promptArgs = {
-      params: req.body as { [key: string]: any }
+      params: req.body as { [key: string]: any },
     };
     const result = await handleGetPromptRequest(promptArgs, serverName);
     if (result.isError) {

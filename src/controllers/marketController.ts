@@ -7,7 +7,7 @@ import {
   getMarketTags,
   searchMarketServers,
   filterMarketServersByCategory,
-  filterMarketServersByTag
+  filterMarketServersByTag,
 } from '../services/marketService.js';
 
 // Get all market servers
@@ -100,7 +100,7 @@ export const searchMarketServersByQuery = (req: Request, res: Response): void =>
   try {
     const { query } = req.query;
     const searchQuery = typeof query === 'string' ? query : '';
-    
+
     const servers = searchMarketServers(searchQuery);
     const response: ApiResponse = {
       success: true,
@@ -119,7 +119,7 @@ export const searchMarketServersByQuery = (req: Request, res: Response): void =>
 export const getMarketServersByCategory = (req: Request, res: Response): void => {
   try {
     const { category } = req.params;
-    
+
     const servers = filterMarketServersByCategory(category);
     const response: ApiResponse = {
       success: true,
@@ -138,7 +138,7 @@ export const getMarketServersByCategory = (req: Request, res: Response): void =>
 export const getMarketServersByTag = (req: Request, res: Response): void => {
   try {
     const { tag } = req.params;
-    
+
     const servers = filterMarketServersByTag(tag);
     const response: ApiResponse = {
       success: true,

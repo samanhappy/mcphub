@@ -31,7 +31,7 @@ export const streamLogs = (req: Request, res: Response): void => {
     res.writeHead(200, {
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache',
-      'Connection': 'keep-alive'
+      Connection: 'keep-alive',
     });
 
     // Send initial data

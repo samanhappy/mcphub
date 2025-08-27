@@ -4,7 +4,11 @@ import { getPackageVersion } from '../utils/version.js';
 import { getDataService } from '../services/services.js';
 import { DataService } from '../services/dataService.js';
 import { DaoConfigService, createDaoConfigService } from './DaoConfigService.js';
-import { loadOriginalSettings as legacyLoadSettings, saveSettings as legacySaveSettings, clearSettingsCache as legacyClearCache } from './index.js';
+import {
+  loadOriginalSettings as legacyLoadSettings,
+  saveSettings as legacySaveSettings,
+  clearSettingsCache as legacyClearCache,
+} from './index.js';
 
 dotenv.config();
 
@@ -71,12 +75,12 @@ export const getSettingsCacheInfo = (): { hasCache: boolean; usingDao: boolean }
     const daoInfo = daoConfigService.getCacheInfo();
     return {
       ...daoInfo,
-      usingDao: true
+      usingDao: true,
     };
   } else {
     return {
       hasCache: false, // Legacy method doesn't expose cache info here
-      usingDao: false
+      usingDao: false,
     };
   }
 };
@@ -108,14 +112,14 @@ export const getDaoConfigService = (): DaoConfigService => {
 export const migrateToDao = async (): Promise<boolean> => {
   try {
     console.log('Starting migration from legacy format to DAO layer...');
-    
+
     // Load data using legacy method
     const legacySettings = legacyLoadSettings();
-    
+
     // Save using DAO layer
     switchToDao();
     const success = await saveSettings(legacySettings);
-    
+
     if (success) {
       console.log('Migration completed successfully');
       return true;

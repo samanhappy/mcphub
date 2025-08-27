@@ -20,7 +20,7 @@ export interface DaoFactory {
  */
 export class JsonFileDaoFactory implements DaoFactory {
   private static instance: JsonFileDaoFactory;
-  
+
   private userDao: UserDao | null = null;
   private serverDao: ServerDao | null = null;
   private groupDao: GroupDao | null = null;

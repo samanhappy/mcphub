@@ -1,18 +1,18 @@
 /**
  * Data access layer example and test utilities
- * 
+ *
  * This file demonstrates how to use the DAO layer for managing different types of data
  * in the MCPHub application.
  */
 
-import { 
-  getUserDao, 
-  getServerDao, 
-  getGroupDao, 
-  getSystemConfigDao, 
+import {
+  getUserDao,
+  getServerDao,
+  getGroupDao,
+  getSystemConfigDao,
   getUserConfigDao,
   JsonFileDaoFactory,
-  setDaoFactory
+  setDaoFactory,
 } from './DaoFactory.js';
 
 /**
@@ -39,7 +39,10 @@ export async function exampleUserOperations() {
 
   // Find all admin users
   const admins = await userDao.findAdmins();
-  console.log('Admin users:', admins.map(u => u.username));
+  console.log(
+    'Admin users:',
+    admins.map((u) => u.username),
+  );
 
   // Delete user
   await userDao.delete('testuser');
@@ -58,21 +61,27 @@ export async function exampleServerOperations() {
     command: 'node',
     args: ['server.js'],
     enabled: true,
-    owner: 'admin'
+    owner: 'admin',
   });
   console.log('Created server:', newServer.name);
 
   // Find servers by owner
   const userServers = await serverDao.findByOwner('admin');
-  console.log('Servers owned by admin:', userServers.map(s => s.name));
+  console.log(
+    'Servers owned by admin:',
+    userServers.map((s) => s.name),
+  );
 
   // Find enabled servers
   const enabledServers = await serverDao.findEnabled();
-  console.log('Enabled servers:', enabledServers.map(s => s.name));
+  console.log(
+    'Enabled servers:',
+    enabledServers.map((s) => s.name),
+  );
 
   // Update server tools
   await serverDao.updateTools('test-server', {
-    'tool1': { enabled: true, description: 'Test tool' }
+    tool1: { enabled: true, description: 'Test tool' },
   });
   console.log('Updated server tools');
 
@@ -92,13 +101,16 @@ export async function exampleGroupOperations() {
     name: 'test-group',
     description: 'Test group for development',
     servers: ['server1', 'server2'],
-    owner: 'admin'
+    owner: 'admin',
   });
   console.log('Created group:', newGroup.name, 'with ID:', newGroup.id);
 
   // Find groups by owner
   const userGroups = await groupDao.findByOwner('admin');
-  console.log('Groups owned by admin:', userGroups.map(g => g.name));
+  console.log(
+    'Groups owned by admin:',
+    userGroups.map((g) => g.name),
+  );
 
   // Add server to group
   await groupDao.addServerToGroup(newGroup.id, 'server3');
@@ -106,7 +118,10 @@ export async function exampleGroupOperations() {
 
   // Find groups containing specific server
   const groupsWithServer = await groupDao.findByServer('server1');
-  console.log('Groups containing server1:', groupsWithServer.map(g => g.name));
+  console.log(
+    'Groups containing server1:',
+    groupsWithServer.map((g) => g.name),
+  );
 
   // Remove server from group
   await groupDao.removeServerFromGroup(newGroup.id, 'server2');
@@ -131,7 +146,7 @@ export async function exampleSystemConfigOperations() {
   await systemConfigDao.updateSection('routing', {
     enableGlobalRoute: true,
     enableGroupNameRoute: true,
-    enableBearerAuth: false
+    enableBearerAuth: false,
   });
   console.log('Updated routing configuration');
 
@@ -139,7 +154,7 @@ export async function exampleSystemConfigOperations() {
   await systemConfigDao.updateSection('install', {
     pythonIndexUrl: 'https://pypi.org/simple/',
     npmRegistry: 'https://registry.npmjs.org/',
-    baseUrl: 'https://mcphub.local'
+    baseUrl: 'https://mcphub.local',
   });
   console.log('Updated install configuration');
 
@@ -158,8 +173,8 @@ export async function exampleUserConfigOperations() {
   await userConfigDao.update('admin', {
     routing: {
       enableGlobalRoute: false,
-      enableGroupNameRoute: true
-    }
+      enableGroupNameRoute: true,
+    },
   });
   console.log('Updated admin user config');
 
@@ -186,22 +201,22 @@ export async function exampleUserConfigOperations() {
 export async function testAllDaoOperations() {
   try {
     console.log('=== Testing DAO Layer ===');
-    
+
     console.log('\n--- User Operations ---');
     await exampleUserOperations();
-    
+
     console.log('\n--- Server Operations ---');
     await exampleServerOperations();
-    
+
     console.log('\n--- Group Operations ---');
     await exampleGroupOperations();
-    
+
     console.log('\n--- System Config Operations ---');
     await exampleSystemConfigOperations();
-    
+
     console.log('\n--- User Config Operations ---');
     await exampleUserConfigOperations();
-    
+
     console.log('\n=== DAO Layer Test Complete ===');
   } catch (error) {
     console.error('Error during DAO testing:', error);

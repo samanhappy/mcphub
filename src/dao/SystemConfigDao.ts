@@ -43,11 +43,11 @@ export class SystemConfigDaoImpl extends JsonFileBaseDao implements SystemConfig
   async update(config: Partial<SystemConfig>): Promise<SystemConfig> {
     const settings = await this.loadSettings();
     const currentConfig = settings.systemConfig || {};
-    
+
     // Deep merge configuration
     const updatedConfig = this.deepMerge(currentConfig, config);
     settings.systemConfig = updatedConfig;
-    
+
     await this.saveSettings(settings);
     return updatedConfig;
   }
@@ -55,10 +55,10 @@ export class SystemConfigDaoImpl extends JsonFileBaseDao implements SystemConfig
   async reset(): Promise<SystemConfig> {
     const settings = await this.loadSettings();
     const defaultConfig: SystemConfig = {};
-    
+
     settings.systemConfig = defaultConfig;
     await this.saveSettings(settings);
-    
+
     return defaultConfig;
   }
 
@@ -67,7 +67,10 @@ export class SystemConfigDaoImpl extends JsonFileBaseDao implements SystemConfig
     return config[section];
   }
 
-  async updateSection<K extends keyof SystemConfig>(section: K, value: SystemConfig[K]): Promise<boolean> {
+  async updateSection<K extends keyof SystemConfig>(
+    section: K,
+    value: SystemConfig[K],
+  ): Promise<boolean> {
     try {
       await this.update({ [section]: value } as Partial<SystemConfig>);
       return true;
@@ -81,7 +84,7 @@ export class SystemConfigDaoImpl extends JsonFileBaseDao implements SystemConfig
    */
   private deepMerge(target: any, source: any): any {
     const result = { ...target };
-    
+
     for (const key in source) {
       if (source[key] && typeof source[key] === 'object' && !Array.isArray(source[key])) {
         result[key] = this.deepMerge(target[key] || {}, source[key]);
@@ -89,7 +92,7 @@ export class SystemConfigDaoImpl extends JsonFileBaseDao implements SystemConfig
         result[key] = source[key];
       }
     }
-    
+
     return result;
   }
 }
