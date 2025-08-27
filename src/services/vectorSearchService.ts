@@ -499,7 +499,7 @@ export const syncAllServerToolsEmbeddings = async (): Promise<void> => {
     // Import getServersInfo to get all server information
     const { getServersInfo } = await import('./mcpService.js');
 
-    const servers = getServersInfo();
+    const servers = await getServersInfo();
     let totalToolsSynced = 0;
     let serversSynced = 0;
 
