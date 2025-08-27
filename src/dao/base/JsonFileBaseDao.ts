@@ -38,12 +38,12 @@ export abstract class JsonFileBaseDao {
       return settings;
     } catch (error) {
       console.error(`Failed to load settings from ${this.settingsPath}:`, error);
-      const defaultSettings: McpSettings = { 
+      const defaultSettings: McpSettings = {
         mcpServers: {},
         users: [],
         groups: [],
         systemConfig: {},
-        userConfigs: {}
+        userConfigs: {},
       };
 
       // Cache default settings
@@ -90,7 +90,7 @@ export abstract class JsonFileBaseDao {
   protected getCacheInfo(): { hasCache: boolean; lastModified: number } {
     return {
       hasCache: this.settingsCache !== null,
-      lastModified: this.lastModified
+      lastModified: this.lastModified,
     };
   }
 }

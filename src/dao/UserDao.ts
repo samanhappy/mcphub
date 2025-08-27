@@ -1,7 +1,7 @@
 import { IUser } from '../types/index.js';
 import { BaseDao } from './base/BaseDao.js';
 import { JsonFileBaseDao } from './base/JsonFileBaseDao.js';
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 
 /**
  * User DAO interface with user-specific operations
@@ -61,7 +61,7 @@ export class UserDaoImpl extends JsonFileBaseDao implements UserDao {
     return {
       ...existing,
       ...updates,
-      username: existing.username // Username should not be updated
+      username: existing.username, // Username should not be updated
     };
   }
 
@@ -75,18 +75,22 @@ export class UserDaoImpl extends JsonFileBaseDao implements UserDao {
 
   async findByUsername(username: string): Promise<IUser | null> {
     const users = await this.getAll();
-    return users.find(user => user.username === username) || null;
+    return users.find((user) => user.username === username) || null;
   }
 
   async create(_data: Omit<IUser, 'username'>): Promise<IUser> {
     throw new Error('Use createWithHashedPassword instead');
   }
 
-  async createWithHashedPassword(username: string, password: string, isAdmin: boolean = false): Promise<IUser> {
+  async createWithHashedPassword(
+    username: string,
+    password: string,
+    isAdmin: boolean = false,
+  ): Promise<IUser> {
     const users = await this.getAll();
-    
+
     // Check if user already exists
-    if (users.find(user => user.username === username)) {
+    if (users.find((user) => user.username === username)) {
       throw new Error(`User ${username} already exists`);
     }
 
@@ -94,7 +98,7 @@ export class UserDaoImpl extends JsonFileBaseDao implements UserDao {
     const newUser: IUser = {
       username,
       password: hashedPassword,
-      isAdmin
+      isAdmin,
     };
 
     users.push(newUser);
@@ -105,8 +109,8 @@ export class UserDaoImpl extends JsonFileBaseDao implements UserDao {
 
   async update(username: string, updates: Partial<IUser>): Promise<IUser | null> {
     const users = await this.getAll();
-    const index = users.findIndex(user => user.username === username);
-    
+    const index = users.findIndex((user) => user.username === username);
+
     if (index === -1) {
       return null;
     }
@@ -115,7 +119,7 @@ export class UserDaoImpl extends JsonFileBaseDao implements UserDao {
     const { username: _, ...allowedUpdates } = updates;
     const updatedUser = this.updateEntity(users[index], allowedUpdates);
     users[index] = updatedUser;
-    
+
     await this.saveAll(users);
     return updatedUser;
   }
@@ -128,8 +132,8 @@ export class UserDaoImpl extends JsonFileBaseDao implements UserDao {
 
   async delete(username: string): Promise<boolean> {
     const users = await this.getAll();
-    const index = users.findIndex(user => user.username === username);
-    
+    const index = users.findIndex((user) => user.username === username);
+
     if (index === -1) {
       return false;
     }
@@ -160,6 +164,6 @@ export class UserDaoImpl extends JsonFileBaseDao implements UserDao {
 
   async findAdmins(): Promise<IUser[]> {
     const users = await this.getAll();
-    return users.filter(user => user.isAdmin === true);
+    return users.filter((user) => user.isAdmin === true);
   }
 }

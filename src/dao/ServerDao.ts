@@ -29,12 +29,18 @@ export interface ServerDao extends BaseDao<ServerConfigWithName, string> {
   /**
    * Update server tools configuration
    */
-  updateTools(name: string, tools: Record<string, { enabled: boolean; description?: string }>): Promise<boolean>;
+  updateTools(
+    name: string,
+    tools: Record<string, { enabled: boolean; description?: string }>,
+  ): Promise<boolean>;
 
   /**
    * Update server prompts configuration
    */
-  updatePrompts(name: string, prompts: Record<string, { enabled: boolean; description?: string }>): Promise<boolean>;
+  updatePrompts(
+    name: string,
+    prompts: Record<string, { enabled: boolean; description?: string }>,
+  ): Promise<boolean>;
 }
 
 /**
@@ -51,26 +57,26 @@ export class ServerDaoImpl extends JsonFileBaseDao implements ServerDao {
   protected async getAll(): Promise<ServerConfigWithName[]> {
     const settings = await this.loadSettings();
     const servers: ServerConfigWithName[] = [];
-    
+
     for (const [name, config] of Object.entries(settings.mcpServers || {})) {
       servers.push({
         name,
-        ...config
+        ...config,
       });
     }
-    
+
     return servers;
   }
 
   protected async saveAll(servers: ServerConfigWithName[]): Promise<void> {
     const settings = await this.loadSettings();
     settings.mcpServers = {};
-    
+
     for (const server of servers) {
       const { name, ...config } = server;
       settings.mcpServers[name] = config;
     }
-    
+
     await this.saveSettings(settings);
   }
 
@@ -82,11 +88,14 @@ export class ServerDaoImpl extends JsonFileBaseDao implements ServerDao {
     throw new Error('Server name must be provided');
   }
 
-  protected updateEntity(existing: ServerConfigWithName, updates: Partial<ServerConfigWithName>): ServerConfigWithName {
+  protected updateEntity(
+    existing: ServerConfigWithName,
+    updates: Partial<ServerConfigWithName>,
+  ): ServerConfigWithName {
     return {
       ...existing,
       ...updates,
-      name: existing.name // Name should not be updated
+      name: existing.name, // Name should not be updated
     };
   }
 
@@ -96,21 +105,23 @@ export class ServerDaoImpl extends JsonFileBaseDao implements ServerDao {
 
   async findById(name: string): Promise<ServerConfigWithName | null> {
     const servers = await this.getAll();
-    return servers.find(server => server.name === name) || null;
+    return servers.find((server) => server.name === name) || null;
   }
 
-  async create(data: Omit<ServerConfigWithName, 'name'> & { name: string }): Promise<ServerConfigWithName> {
+  async create(
+    data: Omit<ServerConfigWithName, 'name'> & { name: string },
+  ): Promise<ServerConfigWithName> {
     const servers = await this.getAll();
-    
+
     // Check if server already exists
-    if (servers.find(server => server.name === data.name)) {
+    if (servers.find((server) => server.name === data.name)) {
       throw new Error(`Server ${data.name} already exists`);
     }
 
     const newServer: ServerConfigWithName = {
       enabled: true, // Default to enabled
       owner: 'admin', // Default owner
-      ...data
+      ...data,
     };
 
     servers.push(newServer);
@@ -119,10 +130,13 @@ export class ServerDaoImpl extends JsonFileBaseDao implements ServerDao {
     return newServer;
   }
 
-  async update(name: string, updates: Partial<ServerConfigWithName>): Promise<ServerConfigWithName | null> {
+  async update(
+    name: string,
+    updates: Partial<ServerConfigWithName>,
+  ): Promise<ServerConfigWithName | null> {
     const servers = await this.getAll();
-    const index = servers.findIndex(server => server.name === name);
-    
+    const index = servers.findIndex((server) => server.name === name);
+
     if (index === -1) {
       return null;
     }
@@ -131,15 +145,14 @@ export class ServerDaoImpl extends JsonFileBaseDao implements ServerDao {
     const { name: _, ...allowedUpdates } = updates;
     const updatedServer = this.updateEntity(servers[index], allowedUpdates);
     servers[index] = updatedServer;
-    
+
     await this.saveAll(servers);
     return updatedServer;
   }
 
   async delete(name: string): Promise<boolean> {
     const servers = await this.getAll();
-    const index = servers.findIndex(server => server.name === name);
-    
+    const index = servers.findIndex((server) => server.name === name);
     if (index === -1) {
       return false;
     }
@@ -161,17 +174,17 @@ export class ServerDaoImpl extends JsonFileBaseDao implements ServerDao {
 
   async findByOwner(owner: string): Promise<ServerConfigWithName[]> {
     const servers = await this.getAll();
-    return servers.filter(server => server.owner === owner);
+    return servers.filter((server) => server.owner === owner);
   }
 
   async findEnabled(): Promise<ServerConfigWithName[]> {
     const servers = await this.getAll();
-    return servers.filter(server => server.enabled !== false);
+    return servers.filter((server) => server.enabled !== false);
   }
 
   async findByType(type: string): Promise<ServerConfigWithName[]> {
     const servers = await this.getAll();
-    return servers.filter(server => server.type === type);
+    return servers.filter((server) => server.type === type);
   }
 
   async setEnabled(name: string, enabled: boolean): Promise<boolean> {
@@ -179,12 +192,18 @@ export class ServerDaoImpl extends JsonFileBaseDao implements ServerDao {
     return result !== null;
   }
 
-  async updateTools(name: string, tools: Record<string, { enabled: boolean; description?: string }>): Promise<boolean> {
+  async updateTools(
+    name: string,
+    tools: Record<string, { enabled: boolean; description?: string }>,
+  ): Promise<boolean> {
     const result = await this.update(name, { tools });
     return result !== null;
   }
 
-  async updatePrompts(name: string, prompts: Record<string, { enabled: boolean; description?: string }>): Promise<boolean> {
+  async updatePrompts(
+    name: string,
+    prompts: Record<string, { enabled: boolean; description?: string }>,
+  ): Promise<boolean> {
     const result = await this.update(name, { prompts });
     return result !== null;
   }
