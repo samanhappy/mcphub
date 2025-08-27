@@ -2,24 +2,24 @@
 
 /**
  * MCPHub DAO Layer Demo Script
- * 
+ *
  * This script demonstrates how to use the new DAO layer for managing
  * MCPHub configuration data.
  */
 
-import { 
-  loadSettings, 
-  switchToDao, 
+import {
+  loadSettings,
+  switchToDao,
   switchToLegacy,
-  getDaoConfigService
+  getDaoConfigService,
 } from '../config/configManager.js';
 
-import { 
+import {
   performMigration,
   validateMigration,
   testDaoOperations,
   performanceComparison,
-  generateMigrationReport
+  generateMigrationReport,
 } from '../config/migrationUtils.js';
 
 async function main() {
@@ -27,52 +27,68 @@ async function main() {
   const command = args[0];
 
   switch (command) {
-    case 'migrate': {
-      console.log('🚀 Starting migration to DAO layer...');
-      const success = await performMigration();
-      process.exit(success ? 0 : 1);
-    }
+    case 'migrate':
+      {
+        console.log('🚀 Starting migration to DAO layer...');
+        const success = await performMigration();
+        process.exit(success ? 0 : 1);
+      }
+      break;
 
-    case 'validate': {
-      console.log('🔍 Validating migration...');
-      const isValid = await validateMigration();
-      process.exit(isValid ? 0 : 1);
-    }
+    case 'validate':
+      {
+        console.log('🔍 Validating migration...');
+        const isValid = await validateMigration();
+        process.exit(isValid ? 0 : 1);
+      }
+      break;
 
-    case 'test': {
-      console.log('🧪 Testing DAO operations...');
-      const testSuccess = await testDaoOperations();
-      process.exit(testSuccess ? 0 : 1);
-    }
+    case 'test':
+      {
+        console.log('🧪 Testing DAO operations...');
+        const testSuccess = await testDaoOperations();
+        process.exit(testSuccess ? 0 : 1);
+      }
+      break;
 
-    case 'compare': {
-      console.log('⚡ Comparing performance...');
-      await performanceComparison();
-      process.exit(0);
-    }
+    case 'compare':
+      {
+        console.log('⚡ Comparing performance...');
+        await performanceComparison();
+        process.exit(0);
+      }
+      break;
 
-    case 'report': {
-      console.log('📊 Generating migration report...');
-      await generateMigrationReport();
-      process.exit(0);
-    }
+    case 'report':
+      {
+        console.log('📊 Generating migration report...');
+        await generateMigrationReport();
+        process.exit(0);
+      }
+      break;
 
-    case 'demo': {
-      await runDemo();
-      process.exit(0);
-    }
+    case 'demo':
+      {
+        await runDemo();
+        process.exit(0);
+      }
+      break;
 
-    case 'switch-dao': {
-      switchToDao();
-      console.log('✅ Switched to DAO layer');
-      process.exit(0);
-    }
+    case 'switch-dao':
+      {
+        switchToDao();
+        console.log('✅ Switched to DAO layer');
+        process.exit(0);
+      }
+      break;
 
-    case 'switch-legacy': {
-      switchToLegacy();
-      console.log('✅ Switched to legacy file-based approach');
-      process.exit(0);
-    }
+    case 'switch-legacy':
+      {
+        switchToLegacy();
+        console.log('✅ Switched to legacy file-based approach');
+        process.exit(0);
+      }
+      break;
 
     default: {
       printHelp();
@@ -125,7 +141,7 @@ async function runDemo() {
     console.log('🔄 Step 2: Switching to DAO layer...');
     switchToDao();
     const daoService = getDaoConfigService();
-    
+
     const daoSettings = await daoService.loadSettings();
     console.log(`DAO layer data:
 - Users: ${daoSettings.users?.length || 0}
@@ -137,7 +153,7 @@ async function runDemo() {
 
     // Step 3: Demonstrate CRUD operations
     console.log('🛠️ Step 3: Demonstrating CRUD operations...');
-    
+
     // Test user creation (if not exists)
     try {
       // Add demo data if needed
@@ -146,11 +162,13 @@ async function runDemo() {
         // Note: In practice, you'd use the UserDao directly for password hashing
         const demoSettings = {
           ...daoSettings,
-          users: [{
-            username: 'demo-user',
-            password: 'hashed-password',
-            isAdmin: false
-          }]
+          users: [
+            {
+              username: 'demo-user',
+              password: 'hashed-password',
+              isAdmin: false,
+            },
+          ],
         };
         await daoService.saveSettings(demoSettings);
         console.log('✅ Demo user created');
@@ -166,9 +184,9 @@ async function runDemo() {
               command: 'echo',
               args: ['hello'],
               enabled: true,
-              owner: 'admin'
-            }
-          }
+              owner: 'admin',
+            },
+          },
         };
         await daoService.saveSettings(demoSettings);
         console.log('✅ Demo server created');
@@ -179,18 +197,19 @@ async function runDemo() {
         console.log('Creating demo group...');
         const demoSettings = {
           ...daoSettings,
-          groups: [{
-            id: 'demo-group-1',
-            name: 'Demo Group',
-            description: 'A demo group for testing',
-            servers: ['demo-server'],
-            owner: 'admin'
-          }]
+          groups: [
+            {
+              id: 'demo-group-1',
+              name: 'Demo Group',
+              description: 'A demo group for testing',
+              servers: ['demo-server'],
+              owner: 'admin',
+            },
+          ],
         };
         await daoService.saveSettings(demoSettings);
         console.log('✅ Demo group created');
       }
-
     } catch (error) {
       console.log('⚠️ Some demo operations failed (this is expected for password hashing)');
       console.log('In production, you would use individual DAO methods for proper handling');
@@ -229,7 +248,6 @@ async function runDemo() {
 `);
 
     console.log('✅ Demo completed successfully!');
-
   } catch (error) {
     console.error('❌ Demo failed:', error);
   }

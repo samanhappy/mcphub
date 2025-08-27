@@ -1,4 +1,4 @@
-import { IGroup, IGroupServerConfig } from '../types/index.js';
+import { IGroup } from '../types/index.js';
 import { BaseDao } from './base/BaseDao.js';
 import { JsonFileBaseDao } from './base/JsonFileBaseDao.js';
 import { v4 as uuidv4 } from 'uuid';
@@ -62,7 +62,7 @@ export class GroupDaoImpl extends JsonFileBaseDao implements GroupDao {
       id: uuidv4(),
       owner: 'admin', // Default owner
       ...data,
-      servers: data.servers || []
+      servers: data.servers || [],
     };
   }
 
@@ -70,7 +70,7 @@ export class GroupDaoImpl extends JsonFileBaseDao implements GroupDao {
     return {
       ...existing,
       ...updates,
-      id: existing.id // ID should not be updated
+      id: existing.id, // ID should not be updated
     };
   }
 
@@ -80,14 +80,14 @@ export class GroupDaoImpl extends JsonFileBaseDao implements GroupDao {
 
   async findById(id: string): Promise<IGroup | null> {
     const groups = await this.getAll();
-    return groups.find(group => group.id === id) || null;
+    return groups.find((group) => group.id === id) || null;
   }
 
   async create(data: Omit<IGroup, 'id'>): Promise<IGroup> {
     const groups = await this.getAll();
-    
+
     // Check if group name already exists
-    if (groups.find(group => group.name === data.name)) {
+    if (groups.find((group) => group.name === data.name)) {
       throw new Error(`Group with name ${data.name} already exists`);
     }
 
@@ -100,15 +100,15 @@ export class GroupDaoImpl extends JsonFileBaseDao implements GroupDao {
 
   async update(id: string, updates: Partial<IGroup>): Promise<IGroup | null> {
     const groups = await this.getAll();
-    const index = groups.findIndex(group => group.id === id);
-    
+    const index = groups.findIndex((group) => group.id === id);
+
     if (index === -1) {
       return null;
     }
 
     // Check if name update would cause conflict
     if (updates.name && updates.name !== groups[index].name) {
-      const existingGroup = groups.find(group => group.name === updates.name && group.id !== id);
+      const existingGroup = groups.find((group) => group.name === updates.name && group.id !== id);
       if (existingGroup) {
         throw new Error(`Group with name ${updates.name} already exists`);
       }
@@ -118,15 +118,15 @@ export class GroupDaoImpl extends JsonFileBaseDao implements GroupDao {
     const { id: _, ...allowedUpdates } = updates;
     const updatedGroup = this.updateEntity(groups[index], allowedUpdates);
     groups[index] = updatedGroup;
-    
+
     await this.saveAll(groups);
     return updatedGroup;
   }
 
   async delete(id: string): Promise<boolean> {
     const groups = await this.getAll();
-    const index = groups.findIndex(group => group.id === id);
-    
+    const index = groups.findIndex((group) => group.id === id);
+
     if (index === -1) {
       return false;
     }
@@ -148,14 +148,14 @@ export class GroupDaoImpl extends JsonFileBaseDao implements GroupDao {
 
   async findByOwner(owner: string): Promise<IGroup[]> {
     const groups = await this.getAll();
-    return groups.filter(group => group.owner === owner);
+    return groups.filter((group) => group.owner === owner);
   }
 
   async findByServer(serverName: string): Promise<IGroup[]> {
     const groups = await this.getAll();
-    return groups.filter(group => {
+    return groups.filter((group) => {
       if (Array.isArray(group.servers)) {
-        return group.servers.some(server => {
+        return group.servers.some((server) => {
           if (typeof server === 'string') {
             return server === serverName;
           } else {
@@ -174,7 +174,7 @@ export class GroupDaoImpl extends JsonFileBaseDao implements GroupDao {
     }
 
     // Check if server already exists in group
-    const serverExists = group.servers.some(server => {
+    const serverExists = group.servers.some((server) => {
       if (typeof server === 'string') {
         return server === serverName;
       } else {
@@ -197,7 +197,7 @@ export class GroupDaoImpl extends JsonFileBaseDao implements GroupDao {
       return false;
     }
 
-    const updatedServers = group.servers.filter(server => {
+    const updatedServers = group.servers.filter((server) => {
       if (typeof server === 'string') {
         return server !== serverName;
       } else {
@@ -216,6 +216,6 @@ export class GroupDaoImpl extends JsonFileBaseDao implements GroupDao {
 
   async findByName(name: string): Promise<IGroup | null> {
     const groups = await this.getAll();
-    return groups.find(group => group.name === name) || null;
+    return groups.find((group) => group.name === name) || null;
   }
 }
