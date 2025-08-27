@@ -164,11 +164,36 @@ export async function generateOpenAPISpec(
   const serverInfos = await getServersInfo();
 
   // Filter servers based on options
-  const filteredServers = serverInfos.filter(
+  let filteredServers = serverInfos.filter(
     (server) =>
       server.status === 'connected' &&
       (!options.serverFilter || options.serverFilter.includes(server.name)),
   );
+
+  // Apply group filter if specified
+  const groupConfig: Map<string, string[] | 'all'> = new Map();
+  if (options.groupFilter) {
+    const { getGroupByIdOrName } = await import('./groupService.js');
+    const group = getGroupByIdOrName(options.groupFilter);
+    if (group) {
+      // Extract server names and their tool configurations from group
+      const groupServerNames: string[] = [];
+      for (const server of group.servers) {
+        if (typeof server === 'string') {
+          groupServerNames.push(server);
+          groupConfig.set(server, 'all');
+        } else {
+          groupServerNames.push(server.name);
+          groupConfig.set(server.name, server.tools || 'all');
+        }
+      }
+      // Filter to only servers in the group
+      filteredServers = filteredServers.filter((server) => groupServerNames.includes(server.name));
+    } else {
+      // Group not found, return empty specification
+      filteredServers = [];
+    }
+  }
 
   // Collect all tools from filtered servers
   const allTools: Array<{ tool: Tool; serverName: string }> = [];
@@ -178,7 +203,21 @@ export async function generateOpenAPISpec(
       ? serverInfo.tools
       : serverInfo.tools.filter((tool) => tool.enabled !== false);
 
-    for (const tool of tools) {
+    // Apply group-specific tool filtering if group filter is specified
+    let filteredTools = tools;
+    if (options.groupFilter && groupConfig.has(serverInfo.name)) {
+      const allowedTools = groupConfig.get(serverInfo.name);
+      if (allowedTools !== 'all') {
+        // Filter tools to only include those specified in the group configuration
+        filteredTools = tools.filter(
+          (tool) =>
+            Array.isArray(allowedTools) &&
+            allowedTools.includes(tool.name.replace(serverInfo.name + '-', '')),
+        );
+      }
+    }
+
+    for (const tool of filteredTools) {
       allTools.push({ tool, serverName: serverInfo.name });
     }
   }

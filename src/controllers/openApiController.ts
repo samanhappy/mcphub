@@ -6,6 +6,7 @@ import {
   OpenAPIGenerationOptions,
 } from '../services/openApiGeneratorService.js';
 import { getServerByName } from '../services/mcpService.js';
+import { getGroupByIdOrName } from '../services/groupService.js';
 
 /**
  * Controller for OpenAPI generation endpoints
@@ -86,7 +87,7 @@ function convertQueryParametersToTypes(
  * Generate and return OpenAPI specification
  * GET /api/openapi.json
  */
-export const getOpenAPISpec = (req: Request, res: Response): void => {
+export const getOpenAPISpec = async (req: Request, res: Response): Promise<void> => {
   try {
     const options: OpenAPIGenerationOptions = {
       title: req.query.title as string,
@@ -98,7 +99,7 @@ export const getOpenAPISpec = (req: Request, res: Response): void => {
       serverFilter: req.query.servers ? (req.query.servers as string).split(',') : undefined,
     };
 
-    const openApiSpec = generateOpenAPISpec(options);
+    const openApiSpec = await generateOpenAPISpec(options);
 
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -119,9 +120,9 @@ export const getOpenAPISpec = (req: Request, res: Response): void => {
  * Get available servers for filtering
  * GET /api/openapi/servers
  */
-export const getOpenAPIServers = (req: Request, res: Response): void => {
+export const getOpenAPIServers = async (req: Request, res: Response): Promise<void> => {
   try {
-    const servers = getAvailableServers();
+    const servers = await getAvailableServers();
     res.json({
       success: true,
       data: servers,
@@ -140,9 +141,9 @@ export const getOpenAPIServers = (req: Request, res: Response): void => {
  * Get tool statistics
  * GET /api/openapi/stats
  */
-export const getOpenAPIStats = (req: Request, res: Response): void => {
+export const getOpenAPIStats = async (req: Request, res: Response): Promise<void> => {
   try {
-    const stats = getToolStats();
+    const stats = await getToolStats();
     res.json({
       success: true,
       data: stats,
@@ -210,6 +211,93 @@ export const executeToolViaOpenAPI = async (req: Request, res: Response): Promis
     console.error('Error executing tool via OpenAPI:', error);
     res.status(500).json({
       error: 'Failed to execute tool',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+};
+
+/**
+ * Generate and return OpenAPI specification for a specific server
+ * GET /api/openapi/:name.json
+ */
+export const getServerOpenAPISpec = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { name } = req.params;
+
+    // Check if server exists
+    const availableServers = await getAvailableServers();
+    if (!availableServers.includes(name)) {
+      res.status(404).json({
+        error: 'Server not found',
+        message: `Server '${name}' is not connected or does not exist`,
+      });
+      return;
+    }
+
+    const options: OpenAPIGenerationOptions = {
+      title: (req.query.title as string) || `${name} MCP API`,
+      description:
+        (req.query.description as string) || `OpenAPI specification for ${name} MCP server tools`,
+      version: req.query.version as string,
+      serverUrl: req.query.serverUrl as string,
+      includeDisabledTools: req.query.includeDisabled === 'true',
+      serverFilter: [name], // Filter to only this server
+    };
+
+    const openApiSpec = await generateOpenAPISpec(options);
+
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+    res.json(openApiSpec);
+  } catch (error) {
+    console.error('Error generating server OpenAPI specification:', error);
+    res.status(500).json({
+      error: 'Failed to generate server OpenAPI specification',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+};
+
+/**
+ * Generate and return OpenAPI specification for a specific group
+ * GET /api/openapi/group/:groupName.json
+ */
+export const getGroupOpenAPISpec = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { name } = req.params;
+
+    // Check if group exists
+    const group = getGroupByIdOrName(name);
+    if (!group) {
+      getServerOpenAPISpec(req, res);
+      return;
+    }
+
+    const options: OpenAPIGenerationOptions = {
+      title: (req.query.title as string) || `${group.name} Group MCP API`,
+      description:
+        (req.query.description as string) || `OpenAPI specification for ${group.name} group tools`,
+      version: req.query.version as string,
+      serverUrl: req.query.serverUrl as string,
+      includeDisabledTools: req.query.includeDisabled === 'true',
+      groupFilter: name, // Use existing group filter functionality
+    };
+
+    const openApiSpec = await generateOpenAPISpec(options);
+
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+    res.json(openApiSpec);
+  } catch (error) {
+    console.error('Error generating group OpenAPI specification:', error);
+    res.status(500).json({
+      error: 'Failed to generate group OpenAPI specification',
       message: error instanceof Error ? error.message : 'Unknown error',
     });
   }

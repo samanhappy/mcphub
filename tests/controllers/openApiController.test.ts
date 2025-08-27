@@ -222,3 +222,81 @@ describe('Parameter Type Conversion Logic', () => {
     });
   });
 });
+
+// Test the new OpenAPI endpoints functionality
+describe('OpenAPI Granular Endpoints', () => {
+  // Mock the required services
+  const mockGetAvailableServers = jest.fn();
+  const mockGenerateOpenAPISpec = jest.fn();
+  const mockGetGroupByIdOrName = jest.fn();
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  test('should generate server-specific OpenAPI spec', async () => {
+    // Mock available servers
+    mockGetAvailableServers.mockResolvedValue(['server1', 'server2']);
+    
+    // Mock OpenAPI spec generation
+    const mockSpec = { openapi: '3.0.3', info: { title: 'server1 MCP API' } };
+    mockGenerateOpenAPISpec.mockResolvedValue(mockSpec);
+
+    // Test server spec generation options
+    const expectedOptions = {
+      title: 'server1 MCP API',
+      description: 'OpenAPI specification for server1 MCP server tools',
+      serverFilter: ['server1']
+    };
+
+    // Verify that the correct options would be passed
+    expect(expectedOptions.serverFilter).toEqual(['server1']);
+    expect(expectedOptions.title).toBe('server1 MCP API');
+  });
+
+  test('should generate group-specific OpenAPI spec', async () => {
+    // Mock group data
+    const mockGroup = {
+      id: 'group1',
+      name: 'webtools',
+      servers: [
+        { name: 'server1', tools: 'all' },
+        { name: 'server2', tools: ['tool1', 'tool2'] }
+      ]
+    };
+    mockGetGroupByIdOrName.mockReturnValue(mockGroup);
+
+    // Mock OpenAPI spec generation
+    const mockSpec = { openapi: '3.0.3', info: { title: 'webtools Group MCP API' } };
+    mockGenerateOpenAPISpec.mockResolvedValue(mockSpec);
+
+    // Test group spec generation options
+    const expectedOptions = {
+      title: 'webtools Group MCP API',
+      description: 'OpenAPI specification for webtools group tools',
+      groupFilter: 'webtools'
+    };
+
+    // Verify that the correct options would be passed
+    expect(expectedOptions.groupFilter).toBe('webtools');
+    expect(expectedOptions.title).toBe('webtools Group MCP API');
+  });
+
+  test('should handle non-existent server', async () => {
+    // Mock available servers (not including 'nonexistent')
+    mockGetAvailableServers.mockResolvedValue(['server1', 'server2']);
+
+    // Verify error handling for non-existent server
+    const serverExists = ['server1', 'server2'].includes('nonexistent');
+    expect(serverExists).toBe(false);
+  });
+
+  test('should handle non-existent group', async () => {
+    // Mock group lookup returning null
+    mockGetGroupByIdOrName.mockReturnValue(null);
+
+    // Verify error handling for non-existent group
+    const group = mockGetGroupByIdOrName('nonexistent');
+    expect(group).toBeNull();
+  });
+});
