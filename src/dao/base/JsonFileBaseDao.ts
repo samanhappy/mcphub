@@ -7,20 +7,16 @@ import { getSettingsPath } from '../../config/index.js';
  * Abstract base class for JSON file-based DAO implementations
  */
 export abstract class JsonFileBaseDao {
-  protected settingsPath: string;
   private settingsCache: McpSettings | null = null;
   private lastModified: number = 0;
-
-  constructor() {
-    this.settingsPath = getSettingsPath();
-  }
 
   /**
    * Load settings from JSON file with caching
    */
   protected async loadSettings(): Promise<McpSettings> {
     try {
-      const stats = fs.statSync(this.settingsPath);
+      const settingsPath = getSettingsPath();
+      const stats = fs.statSync(settingsPath);
       const fileModified = stats.mtime.getTime();
 
       // Check if cache is still valid
@@ -28,7 +24,7 @@ export abstract class JsonFileBaseDao {
         return this.settingsCache;
       }
 
-      const settingsData = fs.readFileSync(this.settingsPath, 'utf8');
+      const settingsData = fs.readFileSync(settingsPath, 'utf8');
       const settings = JSON.parse(settingsData) as McpSettings;
 
       // Update cache
@@ -37,7 +33,7 @@ export abstract class JsonFileBaseDao {
 
       return settings;
     } catch (error) {
-      console.error(`Failed to load settings from ${this.settingsPath}:`, error);
+      console.error(`Failed to load settings:`, error);
       const defaultSettings: McpSettings = {
         mcpServers: {},
         users: [],
@@ -60,18 +56,19 @@ export abstract class JsonFileBaseDao {
   protected async saveSettings(settings: McpSettings): Promise<void> {
     try {
       // Ensure directory exists
-      const dir = path.dirname(this.settingsPath);
+      const settingsPath = getSettingsPath();
+      const dir = path.dirname(settingsPath);
       if (!fs.existsSync(dir)) {
         fs.mkdirSync(dir, { recursive: true });
       }
 
-      fs.writeFileSync(this.settingsPath, JSON.stringify(settings, null, 2), 'utf8');
+      fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2), 'utf8');
 
       // Update cache
       this.settingsCache = settings;
       this.lastModified = Date.now();
     } catch (error) {
-      console.error(`Failed to save settings to ${this.settingsPath}:`, error);
+      console.error(`Failed to save settings:`, error);
       throw error;
     }
   }
