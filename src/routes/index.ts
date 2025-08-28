@@ -196,6 +196,8 @@ export const initRoutes = (app: express.Application): void => {
   // OpenAPI-compatible tool execution endpoints
   app.get(`${config.basePath}/api/tools/:serverName/:toolName`, executeToolViaOpenAPI);
   app.post(`${config.basePath}/api/tools/:serverName/:toolName`, executeToolViaOpenAPI);
+  app.get(`${config.basePath}/api/:name/tools/:serverName/:toolName`, executeToolViaOpenAPI);
+  app.post(`${config.basePath}/api/:name/tools/:serverName/:toolName`, executeToolViaOpenAPI);
 
   app.use(`${config.basePath}/api`, router);
 };
