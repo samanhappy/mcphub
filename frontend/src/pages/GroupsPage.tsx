@@ -49,14 +49,14 @@ const GroupsPage: React.FC = () => {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex justify-between items-center mb-8">
         <h1 className="text-2xl font-bold text-gray-900">{t('pages.groups.title')}</h1>
         <div className="flex space-x-4">
           <button
             onClick={handleAddGroup}
-            className="flex items-center px-4 py-2 text-blue-800 transition-all duration-200 bg-blue-100 rounded hover:bg-blue-200 btn-primary"
+            className="px-4 py-2 bg-blue-100 text-blue-800 rounded hover:bg-blue-200 flex items-center btn-primary transition-all duration-200"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 mr-2" viewBox="0 0 20 20" fill="currentColor">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" viewBox="0 0 20 20" fill="currentColor">
               <path fillRule="evenodd" d="M10 3a1 1 0 00-1 1v5H4a1 1 0 100 2h5v5a1 1 0 102 0v-5h5a1 1 0 100-2h-5V4a1 1 0 00-1-1z" clipRule="evenodd" />
             </svg>
             {t('groups.add')}
@@ -65,15 +65,15 @@ const GroupsPage: React.FC = () => {
       </div>
 
       {groupError && (
-        <div className="p-4 mb-6 text-red-700 bg-red-100 border-l-4 border-red-500 rounded-lg error-box">
+        <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6 error-box rounded-lg">
           <p>{groupError}</p>
         </div>
       )}
 
       {groupsLoading ? (
-        <div className="p-6 bg-white rounded-lg shadow loading-container">
+        <div className="bg-white shadow rounded-lg p-6 loading-container">
           <div className="flex flex-col items-center justify-center">
-            <svg className="w-10 h-10 mb-4 text-blue-500 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <svg className="animate-spin h-10 w-10 text-blue-500 mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
             </svg>
@@ -81,7 +81,7 @@ const GroupsPage: React.FC = () => {
           </div>
         </div>
       ) : groups.length === 0 ? (
-        <div className="p-6 bg-white rounded-lg shadow empty-state">
+        <div className="bg-white shadow rounded-lg p-6 empty-state">
           <p className="text-gray-600">{t('groups.noGroups')}</p>
         </div>
       ) : (
