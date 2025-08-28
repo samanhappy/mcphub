@@ -1,10 +1,10 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { useServerData } from '@/hooks/useServerData';
+import { useServerDataWithRefresh } from '@/hooks/useServerData';
 
 const DashboardPage: React.FC = () => {
   const { t } = useTranslation();
-  const { servers, error, setError, isLoading } = useServerData();
+  const { servers, error, setError, isLoading } = useServerDataWithRefresh();
 
   // Calculate server statistics
   const serverStats = {

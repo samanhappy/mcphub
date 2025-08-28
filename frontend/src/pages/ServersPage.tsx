@@ -5,7 +5,7 @@ import { Server } from '@/types';
 import ServerCard from '@/components/ServerCard';
 import AddServerForm from '@/components/AddServerForm';
 import EditServerForm from '@/components/EditServerForm';
-import { useServerData } from '@/hooks/useServerData';
+import { useServerDataWithRefresh } from '@/hooks/useServerData';
 import DxtUploadForm from '@/components/DxtUploadForm';
 
 const ServersPage: React.FC = () => {
@@ -21,7 +21,7 @@ const ServersPage: React.FC = () => {
     handleServerRemove,
     handleServerToggle,
     triggerRefresh
-  } = useServerData();
+  } = useServerDataWithRefresh();
   const [editingServer, setEditingServer] = useState<Server | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showDxtUpload, setShowDxtUpload] = useState(false);

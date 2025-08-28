@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Group } from '@/types';
 import { useGroupData } from '@/hooks/useGroupData';
-import { useServerData } from '@/hooks/useServerData';
+import { useServerDataWithRefresh } from '@/hooks/useServerData';
 import AddGroupForm from '@/components/AddGroupForm';
 import EditGroupForm from '@/components/EditGroupForm';
 import GroupCard from '@/components/GroupCard';
@@ -17,7 +17,7 @@ const GroupsPage: React.FC = () => {
     deleteGroup,
     triggerRefresh
   } = useGroupData();
-  const { servers } = useServerData();
+  const { servers } = useServerDataWithRefresh();
 
   const [editingGroup, setEditingGroup] = useState<Group | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
