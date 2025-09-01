@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { McpSettings } from '../../types/index.js';
-import { getSettingsPath } from '../../config/index.js';
+import { getSettingsPath, clearSettingsCache } from '../../config/index.js';
 
 /**
  * Abstract base class for JSON file-based DAO implementations
@@ -67,6 +67,8 @@ export abstract class JsonFileBaseDao {
       // Update cache
       this.settingsCache = settings;
       this.lastModified = Date.now();
+
+      clearSettingsCache();
     } catch (error) {
       console.error(`Failed to save settings:`, error);
       throw error;
@@ -79,6 +81,7 @@ export abstract class JsonFileBaseDao {
   protected clearCache(): void {
     this.settingsCache = null;
     this.lastModified = 0;
+    clearSettingsCache();
   }
 
   /**
