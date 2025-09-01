@@ -20,7 +20,7 @@ const defaultConfig = {
 const dataService: DataService = getDataService();
 
 // Settings cache
-// let settingsCache: McpSettings | null = null;
+let settingsCache: McpSettings | null = null;
 
 export const getSettingsPath = (): string => {
   return getConfigFilePath('mcp_settings.json', 'Settings');
@@ -28,9 +28,9 @@ export const getSettingsPath = (): string => {
 
 export const loadOriginalSettings = (): McpSettings => {
   // If cache exists, return cached data directly
-  // if (settingsCache) {
-  //   return settingsCache;
-  // }
+  if (settingsCache) {
+    return settingsCache;
+  }
 
   const settingsPath = getSettingsPath();
   try {
@@ -38,7 +38,7 @@ export const loadOriginalSettings = (): McpSettings => {
     const settings = JSON.parse(settingsData);
 
     // Update cache
-    // settingsCache = settings;
+    settingsCache = settings;
 
     console.log(`Loaded settings from ${settingsPath}`);
     return settings;
@@ -47,7 +47,7 @@ export const loadOriginalSettings = (): McpSettings => {
     const defaultSettings = { mcpServers: {}, users: [] };
 
     // Cache default settings
-    // settingsCache = defaultSettings;
+    settingsCache = defaultSettings;
 
     return defaultSettings;
   }
@@ -64,7 +64,7 @@ export const saveSettings = (settings: McpSettings, user?: IUser): boolean => {
     fs.writeFileSync(settingsPath, JSON.stringify(mergedSettings, null, 2), 'utf8');
 
     // Update cache after successful save
-    // settingsCache = mergedSettings;
+    settingsCache = mergedSettings;
 
     return true;
   } catch (error) {
@@ -77,17 +77,17 @@ export const saveSettings = (settings: McpSettings, user?: IUser): boolean => {
  * Clear settings cache, force next loadSettings call to re-read from file
  */
 export const clearSettingsCache = (): void => {
-  // settingsCache = null;
+  settingsCache = null;
 };
 
 /**
  * Get current cache status (for debugging)
  */
-// export const getSettingsCacheInfo = (): { hasCache: boolean } => {
-//   return {
-//     hasCache: settingsCache !== null,
-//   };
-// };
+export const getSettingsCacheInfo = (): { hasCache: boolean } => {
+  return {
+    hasCache: settingsCache !== null,
+  };
+};
 
 export function replaceEnvVars(input: Record<string, any>): Record<string, any>;
 export function replaceEnvVars(input: string[] | undefined): string[];
