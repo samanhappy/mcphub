@@ -93,6 +93,10 @@
     "updateError": "Failed to update server",
     "editTitle": "Edit Server: {{serverName}}",
     "type": "Server Type",
+    "typeStdio": "STDIO",
+    "typeSse": "SSE",
+    "typeStreamableHttp": "Streamable HTTP",
+    "typeOpenapi": "OpenAPI",
     "command": "Command",
     "arguments": "Arguments",
     "envVars": "Environment Variables",
@@ -145,11 +149,17 @@
       "httpAuthConfig": "HTTP Authentication Configuration",
       "httpScheme": "Authentication Scheme",
       "httpCredentials": "Credentials",
+      "httpSchemeBasic": "Basic",
+      "httpSchemeBearer": "Bearer",
+      "httpSchemeDigest": "Digest",
       "oauth2Config": "OAuth 2.0 Configuration",
       "oauth2Token": "Access Token",
       "openIdConnectConfig": "OpenID Connect Configuration",
       "openIdConnectUrl": "Discovery URL",
-      "openIdConnectToken": "ID Token"
+      "openIdConnectToken": "ID Token",
+      "apiKeyInHeader": "Header",
+      "apiKeyInQuery": "Query",
+      "apiKeyInCookie": "Cookie"
     }
   },
   "status": {
@@ -190,7 +200,13 @@
     "copyFailed": "Copy failed",
     "close": "Close",
     "confirm": "Confirm",
-    "language": "Language"
+    "language": "Language",
+    "true": "True",
+    "false": "False",
+    "dismiss": "Dismiss",
+    "github": "GitHub",
+    "wechat": "WeChat",
+    "discord": "Discord"
   },
   "nav": {
     "dashboard": "Dashboard",

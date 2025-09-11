@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Check, X } from 'lucide-react';
 import { cn } from '@/utils/cn';
 
@@ -19,6 +20,8 @@ const Toast: React.FC<ToastProps> = ({
   onClose,
   visible
 }) => {
+  const { t } = useTranslation();
+
   useEffect(() => {
     if (visible) {
       const timer = setTimeout(() => {
@@ -83,7 +86,7 @@ const Toast: React.FC<ToastProps> = ({
                 `hover:bg-${type}-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-${type}-500`
               )}
             >
-              <span className="sr-only">Dismiss</span>
+              <span className="sr-only">{t('common.dismiss')}</span>
               <X className="h-5 w-5" />
             </button>
           </div>

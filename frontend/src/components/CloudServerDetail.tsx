@@ -231,8 +231,8 @@ const CloudServerDetail: React.FC<CloudServerDetailProps> = ({
           className="w-full border rounded-md px-3 py-2 border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 form-input"
         >
           <option value=""></option>
-          <option value="true">True</option>
-          <option value="false">False</option>
+          <option value="true">{t('common.true')}</option>
+          <option value="false">{t('common.false')}</option>
         </select>
       );
     } else if (propSchema.type === 'number' || propSchema.type === 'integer') {

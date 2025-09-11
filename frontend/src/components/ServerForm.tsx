@@ -306,7 +306,7 @@ const ServerForm = ({ onSubmit, onCancel, initialData = null, modalTitle, formEr
                 onChange={() => updateServerType('stdio')}
                 className="mr-1"
               />
-              <label htmlFor="command">STDIO</label>
+              <label htmlFor="command">{t('server.typeStdio')}</label>
             </div>
             <div>
               <input
@@ -318,7 +318,7 @@ const ServerForm = ({ onSubmit, onCancel, initialData = null, modalTitle, formEr
                 onChange={() => updateServerType('sse')}
                 className="mr-1"
               />
-              <label htmlFor="url">SSE</label>
+              <label htmlFor="url">{t('server.typeSse')}</label>
             </div>
             <div>
               <input
@@ -330,7 +330,7 @@ const ServerForm = ({ onSubmit, onCancel, initialData = null, modalTitle, formEr
                 onChange={() => updateServerType('streamable-http')}
                 className="mr-1"
               />
-              <label htmlFor="streamable-http">Streamable HTTP</label>
+              <label htmlFor="streamable-http">{t('server.typeStreamableHttp')}</label>
             </div>
             <div>
               <input
@@ -342,7 +342,7 @@ const ServerForm = ({ onSubmit, onCancel, initialData = null, modalTitle, formEr
                 onChange={() => updateServerType('openapi')}
                 className="mr-1"
               />
-              <label htmlFor="openapi">OpenAPI</label>
+              <label htmlFor="openapi">{t('server.typeOpenapi')}</label>
             </div>
           </div>
         </div>
@@ -500,9 +500,9 @@ const ServerForm = ({ onSubmit, onCancel, initialData = null, modalTitle, formEr
                       }))}
                       className="w-full border rounded px-2 py-1 text-sm focus:outline-none form-input"
                     >
-                      <option value="header">Header</option>
-                      <option value="query">Query</option>
-                      <option value="cookie">Cookie</option>
+                      <option value="header">{t('server.openapi.apiKeyInHeader')}</option>
+                      <option value="query">{t('server.openapi.apiKeyInQuery')}</option>
+                      <option value="cookie">{t('server.openapi.apiKeyInCookie')}</option>
                     </select>
                   </div>
                   <div>
@@ -537,9 +537,9 @@ const ServerForm = ({ onSubmit, onCancel, initialData = null, modalTitle, formEr
                       }))}
                       className="w-full border rounded px-2 py-1 text-sm focus:outline-none form-input"
                     >
-                      <option value="basic">Basic</option>
-                      <option value="bearer">Bearer</option>
-                      <option value="digest">Digest</option>
+                      <option value="basic">{t('server.openapi.httpSchemeBasic')}</option>
+                      <option value="bearer">{t('server.openapi.httpSchemeBearer')}</option>
+                      <option value="digest">{t('server.openapi.httpSchemeDigest')}</option>
                     </select>
                   </div>
                   <div>

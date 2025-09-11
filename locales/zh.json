@@ -93,6 +93,10 @@
     "updateError": "更新服务器失败",
     "editTitle": "编辑服务器: {{serverName}}",
     "type": "服务器类型",
+    "typeStdio": "STDIO",
+    "typeSse": "SSE",
+    "typeStreamableHttp": "流式 HTTP",
+    "typeOpenapi": "OpenAPI",
     "command": "命令",
     "arguments": "参数",
     "envVars": "环境变量",
@@ -145,11 +149,17 @@
       "httpAuthConfig": "HTTP 认证配置",
       "httpScheme": "认证方案",
       "httpCredentials": "凭据",
+      "httpSchemeBasic": "Basic",
+      "httpSchemeBearer": "Bearer",
+      "httpSchemeDigest": "Digest",
       "oauth2Config": "OAuth 2.0 配置",
       "oauth2Token": "访问令牌",
       "openIdConnectConfig": "OpenID Connect 配置",
       "openIdConnectUrl": "发现 URL",
-      "openIdConnectToken": "ID 令牌"
+      "openIdConnectToken": "ID 令牌",
+      "apiKeyInHeader": "请求头",
+      "apiKeyInQuery": "查询",
+      "apiKeyInCookie": "Cookie"
     }
   },
   "status": {
@@ -191,7 +201,13 @@
     "copyFailed": "复制失败",
     "close": "关闭",
     "confirm": "确认",
-    "language": "语言"
+    "language": "语言",
+    "true": "是",
+    "false": "否",
+    "dismiss": "忽略",
+    "github": "GitHub",
+    "wechat": "微信",
+    "discord": "Discord"
   },
   "nav": {
     "dashboard": "仪表盘",
