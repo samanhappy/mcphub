@@ -1,0 +1,64 @@
+FROM python:3.13-slim-bookworm AS base
+
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y curl gnupg git \
+  && curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
+  && apt-get install -y nodejs \
+  && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+RUN npm install -g pnpm
+
+# Environment variables for Hugging Face Spaces
+ARG REQUEST_TIMEOUT=60000
+ENV REQUEST_TIMEOUT=$REQUEST_TIMEOUT
+
+ARG BASE_PATH=""
+ENV BASE_PATH=$BASE_PATH
+
+# Set up pnpm
+ENV PNPM_HOME=/usr/local/share/pnpm
+ENV PATH=$PNPM_HOME:$PATH
+RUN mkdir -p $PNPM_HOME && \
+  pnpm add -g @amap/amap-maps-mcp-server tavily-mcp@latest @modelcontextprotocol/server-github @modelcontextprotocol/server-slack @upstash/context7-mcp@latest
+
+# Skip Playwright for Hugging Face Spaces to reduce image size
+# Only install essential MCP tools
+RUN uv tool install mcp-server-fetch
+
+# Create non-root user for Hugging Face Spaces (required)
+RUN useradd -m -u 1000 user
+USER user
+
+# Set working directory to user's home
+WORKDIR /home/user/app
+
+# Update PATH for user
+ENV PATH="/home/user/.local/bin:${PATH}"
+
+# Copy package files with correct ownership
+COPY --chown=user:user package.json pnpm-lock.yaml ./
+RUN pnpm install
+
+# Copy application files with correct ownership
+COPY --chown=user:user . .
+
+# Download the latest servers.json from mcpm.sh and replace the existing file
+RUN curl -s -f --connect-timeout 10 https://mcpm.sh/api/servers.json -o servers.json || echo "Failed to download servers.json, using bundled version"
+
+# Build the application
+RUN pnpm frontend:build && pnpm build
+
+# Copy entrypoint script with correct ownership
+COPY --chown=user:user entrypoint.sh /home/user/entrypoint.sh
+RUN chmod +x /home/user/entrypoint.sh
+
+# Expose port 7860 (required for Hugging Face Spaces)
+EXPOSE 7860
+
+# Set environment variable to ensure app listens on 7860
+ENV PORT=7860
+
+ENTRYPOINT ["/home/user/entrypoint.sh"]
+CMD ["pnpm", "start"]
