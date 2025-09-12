@@ -1,6 +1,6 @@
 # MCPHub: The Unified Hub for Model Context Protocol (MCP) Servers
 
-English | [中文版](README.zh.md)
+English | [Français](README.fr.md) | [中文版](README.zh.md)
 
 MCPHub makes it easy to manage and scale multiple MCP (Model Context Protocol) servers by organizing them into flexible Streamable HTTP (SSE) endpoints—supporting access to all servers, individual servers, or logical server groups.
 

@@ -1,6 +1,6 @@
 # MCPHub：一站式 MCP 服务器聚合平台
 
-[English Version](README.md) | 中文版
+[English](README.md) | [Français](README.fr.md) | 中文版
 
 MCPHub 通过将多个 MCP（Model Context Protocol）服务器组织为灵活的流式 HTTP（SSE）端点，简化了管理与扩展工作。系统支持按需访问全部服务器、单个服务器或按场景分组的服务器集合。
 
