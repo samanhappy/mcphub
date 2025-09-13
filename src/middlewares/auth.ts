@@ -61,10 +61,26 @@ export const auth = (req: Request, res: Response, next: NextFunction): void => {
     return;
   }
 
-  // Get token from header or query parameter
-  const headerToken = req.header('x-auth-token');
+  // Get token from various sources
+  // 1. Standard Authorization header: "Authorization: Bearer <token>"
+  const authHeader = req.headers.authorization;
+  let authToken = '';
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    authToken = authHeader.substring(7);
+  }
+  
+  // 2. Custom x-auth-token header (with or without "Bearer " prefix)
+  const xAuthToken = req.header('x-auth-token');
+  let headerToken = '';
+  if (xAuthToken) {
+    headerToken = xAuthToken.startsWith('Bearer ') ? xAuthToken.substring(7) : xAuthToken;
+  }
+  
+  // 3. Query parameter
   const queryToken = req.query.token as string;
-  const token = headerToken || queryToken;
+  
+  // Use first available token
+  const token = authToken || headerToken || queryToken;
 
   // Check if no token
   if (!token) {
