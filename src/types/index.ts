@@ -186,6 +186,7 @@ export interface ServerConfig {
     schema?: Record<string, any>; // Complete OpenAPI JSON schema
     version?: string; // OpenAPI version (default: '3.1.0')
     security?: OpenAPISecurityConfig; // Security configuration for API calls
+    passthroughHeaders?: string[]; // Header names to pass through from tool call requests to upstream OpenAPI endpoints
   };
 }
 
@@ -236,6 +237,7 @@ export interface ServerInfo {
   createTime: number; // Timestamp of when the server was created
   enabled?: boolean; // Flag to indicate if the server is enabled
   keepAliveIntervalId?: NodeJS.Timeout; // Timer ID for keep-alive ping interval
+  config?: ServerConfig; // Reference to the original server configuration for OpenAPI passthrough headers
 }
 
 // Details about a tool available on the server

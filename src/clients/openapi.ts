@@ -299,7 +299,11 @@ export class OpenAPIClient {
     return schema;
   }
 
-  async callTool(toolName: string, args: Record<string, unknown>): Promise<unknown> {
+  async callTool(
+    toolName: string,
+    args: Record<string, unknown>,
+    passthroughHeaders?: Record<string, string>,
+  ): Promise<unknown> {
     const tool = this.tools.find((t) => t.name === toolName);
     if (!tool) {
       throw new Error(`Tool '${toolName}' not found`);
@@ -340,16 +344,30 @@ export class OpenAPIClient {
         requestConfig.data = args.body;
       }
 
+      // Collect all headers to be sent
+      const allHeaders: Record<string, string> = {};
+
       // Add headers if any header parameters are defined
       const headerParams = tool.parameters?.filter((p) => p.in === 'header') || [];
-      if (headerParams.length > 0) {
-        requestConfig.headers = {};
-        for (const param of headerParams) {
-          const value = args[param.name];
-          if (value !== undefined) {
-            requestConfig.headers[param.name] = String(value);
+      for (const param of headerParams) {
+        const value = args[param.name];
+        if (value !== undefined) {
+          allHeaders[param.name] = String(value);
+        }
+      }
+
+      // Add passthrough headers based on configuration
+      if (passthroughHeaders && this.config.openapi?.passthroughHeaders) {
+        for (const headerName of this.config.openapi.passthroughHeaders) {
+          if (passthroughHeaders[headerName]) {
+            allHeaders[headerName] = passthroughHeaders[headerName];
           }
         }
+      }
+
+      // Set headers if any were collected
+      if (Object.keys(allHeaders).length > 0) {
+        requestConfig.headers = allHeaders;
       }
 
       const response = await this.httpClient.request(requestConfig);

@@ -65,13 +65,16 @@ const ServerForm = ({ onSubmit, onCancel, initialData = null, modalTitle, formEr
       oauth2Token: initialData.config.openapi.security?.oauth2?.token || '',
       // OpenID Connect initialization
       openIdConnectUrl: initialData.config.openapi.security?.openIdConnect?.url || '',
-      openIdConnectToken: initialData.config.openapi.security?.openIdConnect?.token || ''
+      openIdConnectToken: initialData.config.openapi.security?.openIdConnect?.token || '',
+      // Passthrough headers initialization
+      passthroughHeaders: initialData.config.openapi.passthroughHeaders ? initialData.config.openapi.passthroughHeaders.join(', ') : '',
     } : {
       inputMode: 'url',
       url: '',
       schema: '',
       version: '3.1.0',
-      securityType: 'none'
+      securityType: 'none',
+      passthroughHeaders: '',
     }
   })
 
@@ -233,6 +236,14 @@ const ServerForm = ({ onSubmit, onCancel, initialData = null, modalTitle, formEr
                       }
                     })
                   };
+                }
+
+                // Add passthrough headers if provided
+                if (formData.openapi?.passthroughHeaders && formData.openapi.passthroughHeaders.trim()) {
+                  openapi.passthroughHeaders = formData.openapi.passthroughHeaders
+                    .split(',')
+                    .map(header => header.trim())
+                    .filter(header => header.length > 0);
                 }
 
                 return openapi;
@@ -615,6 +626,24 @@ const ServerForm = ({ onSubmit, onCancel, initialData = null, modalTitle, formEr
                 </div>
               </div>
             )}
+
+            {/* Passthrough Headers Configuration */}
+            <div className="mb-4">
+              <label className="block text-gray-700 text-sm font-bold mb-2">
+                {t('server.openapi.passthroughHeaders')}
+              </label>
+              <input
+                type="text"
+                value={formData.openapi?.passthroughHeaders || ''}
+                onChange={(e) => setFormData(prev => ({
+                  ...prev,
+                  openapi: { ...prev.openapi, passthroughHeaders: e.target.value, url: prev.openapi?.url || '' }
+                }))}
+                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline form-input"
+                placeholder="Authorization, X-API-Key, X-Custom-Header"
+              />
+              <p className="text-xs text-gray-500 mt-1">{t('server.openapi.passthroughHeadersHelp')}</p>
+            </div>
 
             <div className="mb-4">
               <div className="flex justify-between items-center mb-2">

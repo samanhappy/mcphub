@@ -18,6 +18,7 @@ import { getGroup } from './sseService.js';
 import { getServersInGroup, getServerConfigInGroup } from './groupService.js';
 import { saveToolsAsVectorEmbeddings, searchToolsByVector } from './vectorSearchService.js';
 import { OpenAPIClient } from '../clients/openapi.js';
+import { RequestContextService } from './requestContextService.js';
 import { getDataService } from './services.js';
 import { getServerDao, ServerConfigWithName } from '../dao/index.js';
 
@@ -403,6 +404,7 @@ export const initializeClientsFromSettings = async (
         prompts: [],
         createTime: Date.now(),
         enabled: conf.enabled === undefined ? true : conf.enabled,
+        config: conf, // Store reference to original config for OpenAPI passthrough headers
       };
       serverInfos.push(serverInfo);
 
@@ -487,6 +489,7 @@ export const initializeClientsFromSettings = async (
       transport,
       options: requestOptions,
       createTime: Date.now(),
+      config: conf, // Store reference to original config
     };
     serverInfos.push(serverInfo);
 
@@ -1036,7 +1039,34 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
           ? toolName.replace(`${targetServerInfo.name}-`, '')
           : toolName;
 
-        const result = await openApiClient.callTool(cleanToolName, finalArgs);
+        // Extract passthrough headers from extra or request context
+        let passthroughHeaders: Record<string, string> | undefined;
+        let requestHeaders: Record<string, string | string[] | undefined> | null = null;
+
+        // Try to get headers from extra parameter first (if available)
+        if (extra?.headers) {
+          requestHeaders = extra.headers;
+        } else {
+          // Fallback to request context service
+          const requestContextService = RequestContextService.getInstance();
+          requestHeaders = requestContextService.getHeaders();
+        }
+
+        if (requestHeaders && targetServerInfo.config?.openapi?.passthroughHeaders) {
+          passthroughHeaders = {};
+          for (const headerName of targetServerInfo.config.openapi.passthroughHeaders) {
+            // Handle different header name cases (Express normalizes headers to lowercase)
+            const headerValue =
+              requestHeaders[headerName] || requestHeaders[headerName.toLowerCase()];
+            if (headerValue) {
+              passthroughHeaders[headerName] = Array.isArray(headerValue)
+                ? headerValue[0]
+                : String(headerValue);
+            }
+          }
+        }
+
+        const result = await openApiClient.callTool(cleanToolName, finalArgs, passthroughHeaders);
 
         console.log(`OpenAPI tool invocation result: ${JSON.stringify(result)}`);
         return {
@@ -1099,7 +1129,38 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
         `Invoking OpenAPI tool '${cleanToolName}' on server '${serverInfo.name}' with arguments: ${JSON.stringify(request.params.arguments)}`,
       );
 
-      const result = await openApiClient.callTool(cleanToolName, request.params.arguments || {});
+      // Extract passthrough headers from extra or request context
+      let passthroughHeaders: Record<string, string> | undefined;
+      let requestHeaders: Record<string, string | string[] | undefined> | null = null;
+
+      // Try to get headers from extra parameter first (if available)
+      if (extra?.headers) {
+        requestHeaders = extra.headers;
+      } else {
+        // Fallback to request context service
+        const requestContextService = RequestContextService.getInstance();
+        requestHeaders = requestContextService.getHeaders();
+      }
+
+      if (requestHeaders && serverInfo.config?.openapi?.passthroughHeaders) {
+        passthroughHeaders = {};
+        for (const headerName of serverInfo.config.openapi.passthroughHeaders) {
+          // Handle different header name cases (Express normalizes headers to lowercase)
+          const headerValue =
+            requestHeaders[headerName] || requestHeaders[headerName.toLowerCase()];
+          if (headerValue) {
+            passthroughHeaders[headerName] = Array.isArray(headerValue)
+              ? headerValue[0]
+              : String(headerValue);
+          }
+        }
+      }
+
+      const result = await openApiClient.callTool(
+        cleanToolName,
+        request.params.arguments || {},
+        passthroughHeaders,
+      );
 
       console.log(`OpenAPI tool invocation result: ${JSON.stringify(result)}`);
       return {

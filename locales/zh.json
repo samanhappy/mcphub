@@ -159,7 +159,9 @@
       "openIdConnectToken": "ID 令牌",
       "apiKeyInHeader": "请求头",
       "apiKeyInQuery": "查询",
-      "apiKeyInCookie": "Cookie"
+      "apiKeyInCookie": "Cookie",
+      "passthroughHeaders": "透传请求头",
+      "passthroughHeadersHelp": "要从工具调用请求透传到上游OpenAPI接口的请求头名称列表，用逗号分隔（如：Authorization, X-API-Key）"
     }
   },
   "status": {

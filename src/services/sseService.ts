@@ -8,6 +8,7 @@ import { deleteMcpServer, getMcpServer } from './mcpService.js';
 import { loadSettings } from '../config/index.js';
 import config from '../config/index.js';
 import { UserContextService } from './userContextService.js';
+import { RequestContextService } from './requestContextService.js';
 
 const transports: { [sessionId: string]: { transport: Transport; group: string } } = {};
 
@@ -131,7 +132,16 @@ export const handleSseMessage = async (req: Request, res: Response): Promise<voi
     `Received message for sessionId: ${sessionId} in group: ${group}${username ? ` for user: ${username}` : ''}`,
   );
 
-  await (transport as SSEServerTransport).handlePostMessage(req, res);
+  // Set request context for MCP handlers to access HTTP headers
+  const requestContextService = RequestContextService.getInstance();
+  requestContextService.setRequestContext(req);
+
+  try {
+    await (transport as SSEServerTransport).handlePostMessage(req, res);
+  } finally {
+    // Clean up request context after handling
+    requestContextService.clearRequestContext();
+  }
 };
 
 export const handleMcpPostRequest = async (req: Request, res: Response): Promise<void> => {
@@ -202,7 +212,17 @@ export const handleMcpPostRequest = async (req: Request, res: Response): Promise
   }
 
   console.log(`Handling request using transport with type ${transport.constructor.name}`);
-  await transport.handleRequest(req, res, req.body);
+
+  // Set request context for MCP handlers to access HTTP headers
+  const requestContextService = RequestContextService.getInstance();
+  requestContextService.setRequestContext(req);
+
+  try {
+    await transport.handleRequest(req, res, req.body);
+  } finally {
+    // Clean up request context after handling
+    requestContextService.clearRequestContext();
+  }
 };
 
 export const handleMcpOtherRequest = async (req: Request, res: Response) => {

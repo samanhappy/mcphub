@@ -201,6 +201,7 @@ export const executeToolViaOpenAPI = async (req: Request, res: Response): Promis
     const extra = {
       sessionId: (req.headers['x-session-id'] as string) || 'openapi-session',
       server: serverName,
+      headers: req.headers, // Pass all request headers for potential passthrough
     };
 
     const result = await handleCallToolRequest(mockRequest, extra);

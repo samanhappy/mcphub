@@ -127,6 +127,7 @@ export interface ServerConfig {
     schema?: Record<string, any>; // Complete OpenAPI JSON schema
     version?: string; // OpenAPI version (default: '3.1.0')
     security?: OpenAPISecurityConfig; // Security configuration for API calls
+    passthroughHeaders?: string[]; // Header names to pass through from tool call requests to upstream OpenAPI endpoints
   };
 }
 
@@ -232,6 +233,8 @@ export interface ServerFormData {
     openIdConnectClientId?: string;
     openIdConnectClientSecret?: string;
     openIdConnectToken?: string;
+    // Passthrough headers
+    passthroughHeaders?: string; // Comma-separated list of header names
   };
 }
 

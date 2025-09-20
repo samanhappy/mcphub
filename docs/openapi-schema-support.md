@@ -121,6 +121,66 @@ See the `examples/openapi-schema-config.json` file for complete configuration ex
 - **Validation**: Enhanced validation logic in server controllers
 - **Type Safety**: Updated TypeScript interfaces for both input modes
 
+## Header Passthrough Support
+
+MCPHub supports passing through specific headers from tool call requests to upstream OpenAPI endpoints. This is useful for authentication tokens, API keys, and other request-specific headers.
+
+### Configuration
+
+Add `passthroughHeaders` to your OpenAPI configuration:
+
+```json
+{
+  "type": "openapi",
+  "openapi": {
+    "url": "https://api.example.com/openapi.json",
+    "version": "3.1.0",
+    "passthroughHeaders": ["Authorization", "X-API-Key", "X-Custom-Header"],
+    "security": {
+      "type": "apiKey",
+      "apiKey": {
+        "name": "X-API-Key",
+        "in": "header",
+        "value": "your-api-key"
+      }
+    }
+  }
+}
+```
+
+### How It Works
+
+1. **Configuration**: List header names in the `passthroughHeaders` array
+2. **Tool Calls**: When calling tools via HTTP API, include headers in the request
+3. **Passthrough**: Only configured headers are forwarded to the upstream API
+4. **Case Insensitive**: Header matching is case-insensitive for flexibility
+
+### Example Usage
+
+```bash
+# Call an OpenAPI tool with passthrough headers
+curl -X POST "http://localhost:3000/api/tools/myapi/createUser" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer your-token" \
+  -H "X-API-Key: your-api-key" \
+  -H "X-Custom-Header: custom-value" \
+  -d '{"name": "John Doe", "email": "john@example.com"}'
+```
+
+In this example:
+
+- If `passthroughHeaders` includes `["Authorization", "X-API-Key"]`
+- Only `Authorization` and `X-API-Key` headers will be forwarded
+- `X-Custom-Header` will be ignored (not in passthrough list)
+- `Content-Type` is handled by the OpenAPI operation definition
+
+### Security Considerations
+
+- **Whitelist Only**: Only explicitly configured headers are passed through
+- **Sensitive Data**: Be careful with headers containing sensitive information
+- **Validation**: Upstream APIs should validate all received headers
+- **Logging**: Headers may appear in logs - consider this for sensitive data
+
 ## Security Considerations
 
 When using JSON schemas:

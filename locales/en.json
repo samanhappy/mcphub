@@ -159,7 +159,9 @@
       "openIdConnectToken": "ID Token",
       "apiKeyInHeader": "Header",
       "apiKeyInQuery": "Query",
-      "apiKeyInCookie": "Cookie"
+      "apiKeyInCookie": "Cookie",
+      "passthroughHeaders": "Passthrough Headers",
+      "passthroughHeadersHelp": "Comma-separated list of header names to pass through from tool call requests to upstream OpenAPI endpoints (e.g., Authorization, X-API-Key)"
     }
   },
   "status": {
