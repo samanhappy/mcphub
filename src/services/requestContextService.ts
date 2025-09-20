@@ -35,7 +35,7 @@ export class RequestContextService {
       headers: req.headers,
       sessionId: (req.headers['mcp-session-id'] as string) || undefined,
       userAgent: req.headers['user-agent'] as string,
-      remoteAddress: req.ip || req.connection.remoteAddress,
+      remoteAddress: req.ip || req.socket?.remoteAddress,
     };
   }
 
