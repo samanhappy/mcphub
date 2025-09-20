@@ -69,10 +69,10 @@ const LoginPage: React.FC = () => {
 
       {/* Main content */}
       <div className="relative mx-auto flex min-h-screen w-full max-w-md items-center justify-center px-6 py-16">
-        <div className="w-full space-y-6">
+        <div className="w-full space-y-16">
           {/* Centered slogan */}
           <div className="flex justify-center w-full">
-            <h1 className="text-3xl font-extrabold leading-tight tracking-tight text-gray-900 dark:text-white sm:text-4xl whitespace-nowrap">
+            <h1 className="text-5xl sm:text-5xl font-extrabold leading-tight tracking-tight text-gray-900 dark:text-white whitespace-nowrap">
               <span className="bg-gradient-to-r from-indigo-400 via-cyan-400 to-emerald-400 bg-clip-text text-transparent">
                 {t('auth.slogan')}
               </span>
