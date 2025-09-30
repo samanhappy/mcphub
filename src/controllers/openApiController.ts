@@ -7,6 +7,7 @@ import {
 } from '../services/openApiGeneratorService.js';
 import { getServerByName } from '../services/mcpService.js';
 import { getGroupByIdOrName } from '../services/groupService.js';
+import { getNameSeparator } from '../config/index.js';
 
 /**
  * Controller for OpenAPI generation endpoints
@@ -177,7 +178,7 @@ export const executeToolViaOpenAPI = async (req: Request, res: Response): Promis
 
     if (serverInfo) {
       // Find the tool in the server's tools list
-      const fullToolName = `${serverName}-${toolName}`;
+      const fullToolName = `${serverName}${getNameSeparator()}${toolName}`;
       const tool = serverInfo.tools.find(
         (t: any) => t.name === fullToolName || t.name === toolName,
       );

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { IGroupServerConfig, Server, Tool } from '@/types';
 import { cn } from '@/utils/cn';
+import { useSettingsData } from '@/hooks/useSettingsData';
 
 interface ServerToolConfigProps {
   servers: Server[];
@@ -17,6 +18,7 @@ export const ServerToolConfig: React.FC<ServerToolConfigProps> = ({
   className
 }) => {
   const { t } = useTranslation();
+  const { nameSeparator } = useSettingsData();
   const [expandedServers, setExpandedServers] = useState<Set<string>>(new Set());
 
   // Normalize current value to IGroupServerConfig[] format
@@ -116,7 +118,7 @@ export const ServerToolConfig: React.FC<ServerToolConfigProps> = ({
     const server = availableServers.find(s => s.name === serverName);
     if (!server) return;
 
-    const allToolNames = server.tools?.map(tool => tool.name.replace(`${serverName}-`, '')) || [];
+    const allToolNames = server.tools?.map(tool => tool.name.replace(`${serverName}${nameSeparator}`, '')) || [];
     const serverConfig = normalizedValue.find(config => config.name === serverName);
 
     if (!serverConfig) {
@@ -279,7 +281,7 @@ export const ServerToolConfig: React.FC<ServerToolConfigProps> = ({
 
                   <div className="grid grid-cols-1 gap-2 max-h-32 overflow-y-auto">
                     {serverTools.map(tool => {
-                      const toolName = tool.name.replace(`${server.name}-`, '');
+                      const toolName = tool.name.replace(`${server.name}${nameSeparator}`, '');
                       const isToolChecked = isToolSelected(server.name, toolName);
 
                       return (

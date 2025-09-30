@@ -4,6 +4,7 @@ import { Prompt } from '@/types'
 import { ChevronDown, ChevronRight, Play, Loader, Edit, Check } from '@/components/icons/LucideIcons'
 import { Switch } from './ToggleGroup'
 import { getPrompt, PromptCallResult } from '@/services/promptService'
+import { useSettingsData } from '@/hooks/useSettingsData'
 import DynamicForm from './DynamicForm'
 import PromptResult from './PromptResult'
 
@@ -16,6 +17,7 @@ interface PromptCardProps {
 
 const PromptCard = ({ prompt, server, onToggle, onDescriptionUpdate }: PromptCardProps) => {
   const { t } = useTranslation()
+  const { nameSeparator } = useSettingsData()
   const [isExpanded, setIsExpanded] = useState(false)
   const [showRunForm, setShowRunForm] = useState(false)
   const [isRunning, setIsRunning] = useState(false)
@@ -154,7 +156,7 @@ const PromptCard = ({ prompt, server, onToggle, onDescriptionUpdate }: PromptCar
       >
         <div className="flex-1">
           <h3 className="text-lg font-medium text-gray-900">
-            {prompt.name.replace(server + '-', '')}
+            {prompt.name.replace(server + nameSeparator, '')}
             {prompt.title && (
               <span className="ml-2 text-sm font-normal text-gray-600">
                 {prompt.title}
@@ -249,7 +251,7 @@ const PromptCard = ({ prompt, server, onToggle, onDescriptionUpdate }: PromptCar
                 onCancel={handleCancelRun}
                 loading={isRunning}
                 storageKey={getStorageKey()}
-                title={t('prompt.runPromptWithName', { name: prompt.name.replace(server + '-', '') })}
+                title={t('prompt.runPromptWithName', { name: prompt.name.replace(server + nameSeparator, '') })}
               />
               {/* Prompt Result */}
               {result && (

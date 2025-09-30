@@ -138,3 +138,8 @@ export const expandEnvVars = (value: string): string => {
 };
 
 export default defaultConfig;
+
+export function getNameSeparator(): string {
+  const settings = loadSettings();
+  return settings.systemConfig?.nameSeparator || '-';
+}

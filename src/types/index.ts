@@ -144,6 +144,7 @@ export interface SystemConfig {
     title?: string; // Title header for MCPRouter API requests
     baseUrl?: string; // Base URL for MCPRouter API (default: https://api.mcprouter.to/v1)
   };
+  nameSeparator?: string; // Separator used between server name and tool/prompt name (default: '-')
 }
 
 export interface UserConfig {

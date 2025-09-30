@@ -2,7 +2,7 @@ import { OpenAPIV3 } from 'openapi-types';
 import { Tool } from '../types/index.js';
 import { getServersInfo } from './mcpService.js';
 import config from '../config/index.js';
-import { loadSettings } from '../config/index.js';
+import { loadSettings, getNameSeparator } from '../config/index.js';
 
 /**
  * Service for generating OpenAPI 3.x specifications from MCP tools
@@ -209,10 +209,11 @@ export async function generateOpenAPISpec(
       const allowedTools = groupConfig.get(serverInfo.name);
       if (allowedTools !== 'all') {
         // Filter tools to only include those specified in the group configuration
+        const separator = getNameSeparator();
         filteredTools = tools.filter(
           (tool) =>
             Array.isArray(allowedTools) &&
-            allowedTools.includes(tool.name.replace(serverInfo.name + '-', '')),
+            allowedTools.includes(tool.name.replace(serverInfo.name + separator, '')),
         );
       }
     }

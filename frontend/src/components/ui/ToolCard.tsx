@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { Tool } from '@/types'
 import { ChevronDown, ChevronRight, Play, Loader, Edit, Check } from '@/components/icons/LucideIcons'
 import { callTool, ToolCallResult, updateToolDescription } from '@/services/toolService'
+import { useSettingsData } from '@/hooks/useSettingsData'
 import { Switch } from './ToggleGroup'
 import DynamicForm from './DynamicForm'
 import ToolResult from './ToolResult'
@@ -25,6 +26,7 @@ function isEmptyValue(value: any): boolean {
 
 const ToolCard = ({ tool, server, onToggle, onDescriptionUpdate }: ToolCardProps) => {
   const { t } = useTranslation()
+  const { nameSeparator } = useSettingsData()
   const [isExpanded, setIsExpanded] = useState(false)
   const [showRunForm, setShowRunForm] = useState(false)
   const [isRunning, setIsRunning] = useState(false)
@@ -148,7 +150,7 @@ const ToolCard = ({ tool, server, onToggle, onDescriptionUpdate }: ToolCardProps
       >
         <div className="flex-1">
           <h3 className="text-lg font-medium text-gray-900">
-            {tool.name.replace(server + '-', '')}
+            {tool.name.replace(server + nameSeparator, '')}
             <span className="ml-2 text-sm font-normal text-gray-600 inline-flex items-center">
               {isEditingDescription ? (
                 <>
@@ -246,7 +248,7 @@ const ToolCard = ({ tool, server, onToggle, onDescriptionUpdate }: ToolCardProps
                 onCancel={handleCancelRun}
                 loading={isRunning}
                 storageKey={getStorageKey()}
-                title={t('tool.runToolWithName', { name: tool.name.replace(server + '-', '') })}
+                title={t('tool.runToolWithName', { name: tool.name.replace(server + nameSeparator, '') })}
               />
               {/* Tool Result */}
               {result && (

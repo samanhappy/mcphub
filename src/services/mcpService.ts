@@ -12,7 +12,7 @@ import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { ServerInfo, ServerConfig, Tool } from '../types/index.js';
-import { loadSettings, expandEnvVars, replaceEnvVars } from '../config/index.js';
+import { loadSettings, expandEnvVars, replaceEnvVars, getNameSeparator } from '../config/index.js';
 import config from '../config/index.js';
 import { getGroup } from './sseService.js';
 import { getServersInGroup, getServerConfigInGroup } from './groupService.js';
@@ -294,7 +294,7 @@ const callToolWithReconnect = async (
           try {
             const tools = await client.listTools({}, serverInfo.options || {});
             serverInfo.tools = tools.tools.map((tool) => ({
-              name: `${serverInfo.name}-${tool.name}`,
+              name: `${serverInfo.name}${getNameSeparator()}${tool.name}`,
               description: tool.description || '',
               inputSchema: cleanInputSchema(tool.inputSchema || {}),
             }));
@@ -420,7 +420,7 @@ export const initializeClientsFromSettings = async (
         // Convert OpenAPI tools to MCP tool format
         const openApiTools = openApiClient.getTools();
         const mcpTools: Tool[] = openApiTools.map((tool) => ({
-          name: `${name}-${tool.name}`,
+          name: `${name}${getNameSeparator()}${tool.name}`,
           description: tool.description,
           inputSchema: cleanInputSchema(tool.inputSchema),
         }));
@@ -507,7 +507,7 @@ export const initializeClientsFromSettings = async (
             .then((tools) => {
               console.log(`Successfully listed ${tools.tools.length} tools for server: ${name}`);
               serverInfo.tools = tools.tools.map((tool) => ({
-                name: `${name}-${tool.name}`,
+                name: `${name}${getNameSeparator()}${tool.name}`,
                 description: tool.description || '',
                 inputSchema: cleanInputSchema(tool.inputSchema || {}),
               }));
@@ -530,7 +530,7 @@ export const initializeClientsFromSettings = async (
                 `Successfully listed ${prompts.prompts.length} prompts for server: ${name}`,
               );
               serverInfo.prompts = prompts.prompts.map((prompt) => ({
-                name: `${name}-${prompt.name}`,
+                name: `${name}${getNameSeparator()}${prompt.name}`,
                 title: prompt.title,
                 description: prompt.description,
                 arguments: prompt.arguments,
@@ -848,7 +848,7 @@ Available servers: ${serversList}`;
         if (serverConfig && serverConfig.tools !== 'all' && Array.isArray(serverConfig.tools)) {
           // Filter tools based on group configuration
           const allowedToolNames = serverConfig.tools.map(
-            (toolName) => `${serverInfo.name}-${toolName}`,
+            (toolName) => `${serverInfo.name}${getNameSeparator()}${toolName}`,
           );
           enabledTools = enabledTools.filter((tool) => allowedToolNames.includes(tool.name));
         }
@@ -1035,8 +1035,10 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
         );
 
         // Remove server prefix from tool name if present
-        const cleanToolName = toolName.startsWith(`${targetServerInfo.name}-`)
-          ? toolName.replace(`${targetServerInfo.name}-`, '')
+        const separator = getNameSeparator();
+        const prefix = `${targetServerInfo.name}${separator}`;
+        const cleanToolName = toolName.startsWith(prefix)
+          ? toolName.substring(prefix.length)
           : toolName;
 
         // Extract passthrough headers from extra or request context
@@ -1093,8 +1095,10 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
         `Invoking tool '${toolName}' on server '${targetServerInfo.name}' with arguments: ${JSON.stringify(finalArgs)}`,
       );
 
-      toolName = toolName.startsWith(`${targetServerInfo.name}-`)
-        ? toolName.replace(`${targetServerInfo.name}-`, '')
+      const separator = getNameSeparator();
+      const prefix = `${targetServerInfo.name}${separator}`;
+      toolName = toolName.startsWith(prefix)
+        ? toolName.substring(prefix.length)
         : toolName;
       const result = await callToolWithReconnect(
         targetServerInfo,
@@ -1121,8 +1125,10 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
       const openApiClient = serverInfo.openApiClient;
 
       // Remove server prefix from tool name if present
-      const cleanToolName = request.params.name.startsWith(`${serverInfo.name}-`)
-        ? request.params.name.replace(`${serverInfo.name}-`, '')
+      const separator = getNameSeparator();
+      const prefix = `${serverInfo.name}${separator}`;
+      const cleanToolName = request.params.name.startsWith(prefix)
+        ? request.params.name.substring(prefix.length)
         : request.params.name;
 
       console.log(
@@ -1179,8 +1185,10 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
       throw new Error(`Client not found for server: ${serverInfo.name}`);
     }
 
-    request.params.name = request.params.name.startsWith(`${serverInfo.name}-`)
-      ? request.params.name.replace(`${serverInfo.name}-`, '')
+    const separator = getNameSeparator();
+    const prefix = `${serverInfo.name}${separator}`;
+    request.params.name = request.params.name.startsWith(prefix)
+      ? request.params.name.substring(prefix.length)
       : request.params.name;
     const result = await callToolWithReconnect(
       serverInfo,
@@ -1223,8 +1231,10 @@ export const handleGetPromptRequest = async (request: any, extra: any) => {
     }
 
     // Remove server prefix from prompt name if present
-    const cleanPromptName = name.startsWith(`${server.name}-`)
-      ? name.replace(`${server.name}-`, '')
+    const separator = getNameSeparator();
+    const prefix = `${server.name}${separator}`;
+    const cleanPromptName = name.startsWith(prefix)
+      ? name.substring(prefix.length)
       : name;
 
     const promptParams = {

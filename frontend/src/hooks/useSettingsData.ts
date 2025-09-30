@@ -40,6 +40,7 @@ interface SystemSettings {
     install?: InstallConfig;
     smartRouting?: SmartRoutingConfig;
     mcpRouter?: MCPRouterConfig;
+    nameSeparator?: string;
   };
 }
 
@@ -83,6 +84,8 @@ export const useSettingsData = () => {
     title: 'MCPHub',
     baseUrl: 'https://api.mcprouter.to/v1',
   });
+
+  const [nameSeparator, setNameSeparator] = useState<string>('-');
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -134,6 +137,9 @@ export const useSettingsData = () => {
           title: data.data.systemConfig.mcpRouter.title || 'MCPHub',
           baseUrl: data.data.systemConfig.mcpRouter.baseUrl || 'https://api.mcprouter.to/v1',
         });
+      }
+      if (data.success && data.data?.systemConfig?.nameSeparator !== undefined) {
+        setNameSeparator(data.data.systemConfig.nameSeparator);
       }
     } catch (error) {
       console.error('Failed to fetch settings:', error);
@@ -404,6 +410,7 @@ export const useSettingsData = () => {
     installConfig,
     smartRoutingConfig,
     mcpRouterConfig,
+    nameSeparator,
     loading,
     error,
     setError,

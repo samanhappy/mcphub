@@ -20,6 +20,7 @@ export interface SystemConfig {
     openaiApiKey?: string;
     openaiApiEmbeddingModel?: string;
   };
+  nameSeparator?: string;
 }
 
 export interface PublicConfigResponse {
@@ -96,3 +97,5 @@ export const shouldSkipAuth = async (): Promise<boolean> => {
     return false;
   }
 };
+
+
