@@ -48,6 +48,8 @@ const SettingsPage: React.FC = () => {
     baseUrl: 'https://api.mcprouter.to/v1',
   });
 
+  const [tempNameSeparator, setTempNameSeparator] = useState<string>('-');
+
   const {
     routingConfig,
     tempRoutingConfig,
@@ -55,13 +57,15 @@ const SettingsPage: React.FC = () => {
     installConfig: savedInstallConfig,
     smartRoutingConfig,
     mcpRouterConfig,
+    nameSeparator,
     loading,
     updateRoutingConfig,
     updateRoutingConfigBatch,
     updateInstallConfig,
     updateSmartRoutingConfig,
     updateSmartRoutingConfigBatch,
-    updateMCPRouterConfig
+    updateMCPRouterConfig,
+    updateNameSeparator,
   } = useSettingsData();
 
   // Update local installConfig when savedInstallConfig changes
@@ -95,15 +99,21 @@ const SettingsPage: React.FC = () => {
     }
   }, [mcpRouterConfig]);
 
+  // Update local tempNameSeparator when nameSeparator changes
+  useEffect(() => {
+    setTempNameSeparator(nameSeparator);
+  }, [nameSeparator]);
+
   const [sectionsVisible, setSectionsVisible] = useState({
     routingConfig: false,
     installConfig: false,
     smartRoutingConfig: false,
     mcpRouterConfig: false,
+    nameSeparator: false,
     password: false
   });
 
-  const toggleSection = (section: 'routingConfig' | 'installConfig' | 'smartRoutingConfig' | 'mcpRouterConfig' | 'password') => {
+  const toggleSection = (section: 'routingConfig' | 'installConfig' | 'smartRoutingConfig' | 'mcpRouterConfig' | 'nameSeparator' | 'password') => {
     setSectionsVisible(prev => ({
       ...prev,
       [section]: !prev[section]
@@ -179,6 +189,10 @@ const SettingsPage: React.FC = () => {
 
   const saveMCPRouterConfig = async (key: 'apiKey' | 'referer' | 'title' | 'baseUrl') => {
     await updateMCPRouterConfig(key, tempMCPRouterConfig[key]);
+  };
+
+  const saveNameSeparator = async () => {
+    await updateNameSeparator(tempNameSeparator);
   };
 
   const handleSmartRoutingEnabledChange = async (value: boolean) => {
@@ -426,6 +440,48 @@ const SettingsPage: React.FC = () => {
           )}
         </div>
       </PermissionChecker>
+
+      {/* System Settings */}
+      <div className="bg-white shadow rounded-lg py-4 px-6 mb-6 dashboard-card">
+        <div
+          className="flex justify-between items-center cursor-pointer"
+          onClick={() => toggleSection('nameSeparator')}
+        >
+          <h2 className="font-semibold text-gray-800">{t('settings.systemSettings')}</h2>
+          <span className="text-gray-500">
+            {sectionsVisible.nameSeparator ? '▼' : '►'}
+          </span>
+        </div>
+
+        {sectionsVisible.nameSeparator && (
+          <div className="space-y-4 mt-4">
+            <div className="p-3 bg-gray-50 rounded-md">
+              <div className="mb-2">
+                <h3 className="font-medium text-gray-700">{t('settings.nameSeparatorLabel')}</h3>
+                <p className="text-sm text-gray-500">{t('settings.nameSeparatorDescription')}</p>
+              </div>
+              <div className="flex items-center gap-3">
+                <input
+                  type="text"
+                  value={tempNameSeparator}
+                  onChange={(e) => setTempNameSeparator(e.target.value)}
+                  placeholder="-"
+                  className="flex-1 mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm form-input"
+                  disabled={loading}
+                  maxLength={5}
+                />
+                <button
+                  onClick={saveNameSeparator}
+                  disabled={loading}
+                  className="mt-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium disabled:opacity-50 btn-primary"
+                >
+                  {t('common.save')}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* Route Configuration Settings */}
       <div className="bg-white shadow rounded-lg py-4 px-6 mb-6 dashboard-card">

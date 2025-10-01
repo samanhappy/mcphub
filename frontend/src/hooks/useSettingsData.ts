@@ -390,6 +390,36 @@ export const useSettingsData = () => {
     }
   };
 
+  // Update name separator
+  const updateNameSeparator = async (value: string) => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const data = await apiPut('/system-config', {
+        nameSeparator: value,
+      });
+
+      if (data.success) {
+        setNameSeparator(value);
+        showToast(t('settings.restartRequired'), 'info');
+        return true;
+      } else {
+        showToast(data.message || t('errors.failedToUpdateSystemConfig'));
+        return false;
+      }
+    } catch (error) {
+      console.error('Failed to update name separator:', error);
+      const errorMessage =
+        error instanceof Error ? error.message : 'Failed to update name separator';
+      setError(errorMessage);
+      showToast(errorMessage);
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Fetch settings when the component mounts or refreshKey changes
   useEffect(() => {
     fetchSettings();
@@ -423,5 +453,6 @@ export const useSettingsData = () => {
     updateRoutingConfigBatch,
     updateMCPRouterConfig,
     updateMCPRouterConfigBatch,
+    updateNameSeparator,
   };
 };

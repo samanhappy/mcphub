@@ -498,7 +498,11 @@
     "mcpRouterTitlePlaceholder": "MCPHub",
     "mcpRouterBaseUrl": "Base URL",
     "mcpRouterBaseUrlDescription": "Base URL for MCPRouter API",
-    "mcpRouterBaseUrlPlaceholder": "https://api.mcprouter.to/v1"
+    "mcpRouterBaseUrlPlaceholder": "https://api.mcprouter.to/v1",
+    "systemSettings": "System Settings",
+    "nameSeparatorLabel": "Name Separator",
+    "nameSeparatorDescription": "Character used to separate server name and tool/prompt name (default: -)",
+    "restartRequired": "Configuration saved. It is recommended to restart the application to ensure all services load the new settings correctly."
   },
   "dxt": {
     "upload": "Upload",
