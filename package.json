@@ -70,7 +70,7 @@
     "postgres": "^3.4.7",
     "reflect-metadata": "^0.2.2",
     "typeorm": "^0.3.26",
-    "uuid": "^11.1.0"
+    "uuid": "^13.0.0"
   },
   "devDependencies": {
     "@radix-ui/react-accordion": "^1.2.12",
