@@ -86,7 +86,7 @@
     "@types/express": "^4.17.23",
     "@types/jest": "^30.0.0",
     "@types/jsonwebtoken": "^9.0.10",
-    "@types/node": "^22.17.2",
+    "@types/node": "^24.6.2",
     "@types/react": "^19.1.11",
     "@types/react-dom": "^19.1.7",
     "@types/supertest": "^6.0.3",
