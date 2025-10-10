@@ -13,14 +13,19 @@ const rootDir = process.cwd();
  */
 export const getConfigFilePath = (filename: string, description = 'Configuration'): string => {
   const envPath = process.env.MCPHUB_SETTING_PATH;
+  if (envPath) {
+    return path.resolve(envPath, filename);
+  }
+
   const potentialPaths = [
-    ...(envPath ? [envPath] : []),
-    // Prioritize process.cwd() as the first location to check
-    path.resolve(process.cwd(), filename),
-    // Use path relative to the root directory
-    path.join(rootDir, filename),
-    // If installed with npx, may need to look one level up
-    path.join(dirname(rootDir), filename),
+    ...[
+      // Prioritize process.cwd() as the first location to check
+      path.resolve(process.cwd(), filename),
+      // Use path relative to the root directory
+      path.join(rootDir, filename),
+      // If installed with npx, may need to look one level up
+      path.join(dirname(rootDir), filename),
+    ],
   ];
 
   for (const filePath of potentialPaths) {
