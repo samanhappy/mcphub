@@ -39,6 +39,7 @@ export class DataServicex implements DataService {
       const result = { ...all };
       result.users = newSettings.users;
       result.systemConfig = newSettings.systemConfig;
+      result.groups = newSettings.groups;
       return result;
     } else {
       const result = JSON.parse(JSON.stringify(all));
