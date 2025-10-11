@@ -12,9 +12,17 @@ const rootDir = process.cwd();
  * @returns The path to the file
  */
 export const getConfigFilePath = (filename: string, description = 'Configuration'): string => {
-  const envPath = process.env.MCPHUB_SETTING_PATH;
-  if (envPath) {
-    return path.resolve(envPath, filename);
+  if (filename === 'mcp_settings.json') {
+    const envPath = process.env.MCPHUB_SETTING_PATH;
+    if (envPath) {
+      // check envPath is file or directory
+      const stats = fs.statSync(envPath);
+      if (stats.isFile()) {
+        return envPath;
+      }
+      // if directory, return path under that directory
+      return path.resolve(envPath, filename);
+    }
   }
 
   const potentialPaths = [

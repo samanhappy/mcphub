@@ -43,7 +43,6 @@ export function registerService<T>(key: string, entry: Service<T>) {
     }
   }
 
-  console.log(`Service registered: ${key} with entry:`, entry);
   registry.set(key, entry);
 }
 
