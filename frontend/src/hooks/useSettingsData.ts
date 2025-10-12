@@ -420,6 +420,21 @@ export const useSettingsData = () => {
     }
   };
 
+  const exportMCPSettings = async (serverName?: string) => {
+    setLoading(true);
+    setError(null);
+    try {
+      return await apiGet(`/mcp-settings/export?serverName=${serverName}`);
+    } catch (error) {
+      console.error('Failed to export MCP settings:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to export MCP settings';
+      setError(errorMessage);
+      showToast(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Fetch settings when the component mounts or refreshKey changes
   useEffect(() => {
     fetchSettings();
@@ -454,5 +469,6 @@ export const useSettingsData = () => {
     updateMCPRouterConfig,
     updateMCPRouterConfigBatch,
     updateNameSeparator,
+    exportMCPSettings,
   };
 };
