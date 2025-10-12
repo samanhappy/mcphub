@@ -26,3 +26,4 @@ yarn-error.log*
 coverage/
 
 data/
+temp-test-config/
