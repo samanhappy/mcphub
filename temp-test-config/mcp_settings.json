@@ -1,0 +1,40 @@
+{
+  "mcpServers": {
+    "test-server-1": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "time-mcp"
+      ],
+      "env": {},
+      "enabled": true,
+      "keepAliveInterval": 30000,
+      "type": "stdio"
+    }
+  },
+  "groups": [
+    {
+      "name": "integration-test-group",
+      "servers": [
+        "test-server-1"
+      ],
+      "description": "Test group for integration tests",
+      "owner": "admin"
+    }
+  ],
+  "systemConfig": {
+    "routing": {
+      "enableGlobalRoute": true,
+      "enableGroupNameRoute": true,
+      "enableBearerAuth": true,
+      "bearerAuthKey": "test-auth-token-123"
+    }
+  },
+  "users": [
+    {
+      "username": "testuser",
+      "password": "testpass",
+      "isAdmin": false
+    }
+  ]
+}
