@@ -42,8 +42,9 @@ export const loadOriginalSettings = (): McpSettings => {
 
     console.log(`Loaded settings from ${settingsPath}`);
     return settings;
-  } catch (error) {
-    console.error(`Failed to load settings from ${settingsPath}:`, error);
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.warn(`Failed to load settings from ${settingsPath}:`, errorMessage);
     const defaultSettings = { mcpServers: {}, users: [] };
 
     // Cache default settings

@@ -5,6 +5,13 @@ import { dirname } from 'path';
 // Project root directory - use process.cwd() as a simpler alternative
 const rootDir = process.cwd();
 
+function getParentPath(p: string, filename: string): string {
+  if (p.endsWith(filename)) {
+    p = p.slice(0, -filename.length);
+  }
+  return path.resolve(p);
+}
+
 /**
  * Find the path to a configuration file by checking multiple potential locations.
  * @param filename The name of the file to locate (e.g., 'servers.json', 'mcp_settings.json')
@@ -15,11 +22,18 @@ export const getConfigFilePath = (filename: string, description = 'Configuration
   if (filename === 'mcp_settings.json') {
     const envPath = process.env.MCPHUB_SETTING_PATH;
     if (envPath) {
-      // check envPath is file or directory
-      const stats = fs.statSync(envPath);
-      if (stats.isFile()) {
+      // Ensure directory exists
+      const dir = getParentPath(envPath, filename);
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+        console.log(`Created directory for settings at ${dir}`);
+      }
+
+      // if full path, return as is
+      if (envPath?.endsWith(filename)) {
         return envPath;
       }
+
       // if directory, return path under that directory
       return path.resolve(envPath, filename);
     }
