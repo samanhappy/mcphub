@@ -106,5 +106,26 @@ describe('CLI Path Handling', () => {
       expect(fileUrl).toContain('file.js');
       expect(() => new URL(fileUrl)).not.toThrow();
     });
+
+    it('should produce URL compatible with dynamic import()', () => {
+      // This test verifies the exact pattern used in bin/cli.js
+      const projectRoot = process.cwd();
+      const entryPath = path.join(projectRoot, 'dist', 'index.js');
+      const entryUrl = pathToFileURL(entryPath).href;
+      
+      // The URL should be valid for import()
+      expect(entryUrl).toMatch(/^file:\/\//);
+      expect(typeof entryUrl).toBe('string');
+      
+      // Verify the URL format is valid
+      const urlObj = new URL(entryUrl);
+      expect(urlObj.protocol).toBe('file:');
+      expect(urlObj.href).toBe(entryUrl);
+      
+      // On Windows, pathToFileURL converts 'C:\path' to 'file:///C:/path'
+      // On Unix, it converts '/path' to 'file:///path'
+      // Both formats are valid for dynamic import()
+      expect(entryUrl).toContain('index.js');
+    });
   });
 });
