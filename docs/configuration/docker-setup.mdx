@@ -41,6 +41,38 @@ docker run -d \
   mcphub:local
 ```
 
+### Building with Extended Features
+
+The Docker image supports an `INSTALL_EXT` build argument to include additional tools:
+
+```bash
+# Build with extended features (includes Docker CLI, Chrome/Playwright)
+docker build --build-arg INSTALL_EXT=true -t mcphub:extended .
+
+# Run the container with Docker socket mounted (for Docker-in-Docker workflows)
+docker run -d \
+  --name mcphub \
+  -p 3000:3000 \
+  -v $(pwd)/mcp_settings.json:/app/mcp_settings.json \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  mcphub:extended
+
+# Verify Docker CLI is available
+docker exec mcphub docker --version
+```
+
+<Note>
+  **What's included with INSTALL_EXT=true:**
+  - **Docker CLI**: For container management and Docker-based workflows
+  - **Chrome/Playwright** (amd64 only): For browser automation tasks
+  
+  The extended image is larger but provides additional capabilities for advanced use cases.
+</Note>
+
+<Warning>
+  When mounting the Docker socket (`/var/run/docker.sock`), the container gains access to the host's Docker daemon. Only use this in trusted environments.
+</Warning>
+
 ## Docker Compose Setup
 
 ### Basic Configuration
