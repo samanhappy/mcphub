@@ -124,6 +124,7 @@
     "argumentsPlaceholder": "Entrez les arguments",
     "errorDetails": "Détails de l'erreur",
     "viewErrorDetails": "Voir les détails de l'erreur",
+    "copyConfig": "Copier la configuration",
     "confirmVariables": "Confirmer la configuration des variables",
     "variablesDetected": "Variables détectées dans la configuration. Veuillez confirmer que ces variables sont correctement configurées :",
     "detectedVariables": "Variables détectées",
@@ -200,6 +201,7 @@
     "copyJson": "Copier le JSON",
     "copySuccess": "Copié dans le presse-papiers",
     "copyFailed": "Échec de la copie",
+    "copied": "Copié",
     "close": "Fermer",
     "confirm": "Confirmer",
     "language": "Langue",
@@ -502,7 +504,14 @@
     "systemSettings": "Paramètres système",
     "nameSeparatorLabel": "Séparateur de noms",
     "nameSeparatorDescription": "Caractère utilisé pour séparer le nom du serveur et le nom de l'outil/prompt (par défaut : -)",
-    "restartRequired": "Configuration enregistrée. Il est recommandé de redémarrer l'application pour s'assurer que tous les services chargent correctement les nouveaux paramètres."
+    "restartRequired": "Configuration enregistrée. Il est recommandé de redémarrer l'application pour s'assurer que tous les services chargent correctement les nouveaux paramètres.",
+    "exportMcpSettings": "Exporter les paramètres MCP",
+    "mcpSettingsJson": "JSON des paramètres MCP",
+    "mcpSettingsJsonDescription": "Afficher, copier ou télécharger votre configuration mcp_settings.json actuelle pour la sauvegarde ou la migration vers d'autres outils",
+    "copyToClipboard": "Copier dans le presse-papiers",
+    "downloadJson": "Télécharger JSON",
+    "exportSuccess": "Paramètres exportés avec succès",
+    "exportError": "Échec de la récupération des paramètres"
   },
   "dxt": {
     "upload": "Télécharger",

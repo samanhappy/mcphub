@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import config from '../config/index.js';
-import { loadSettings } from '../config/index.js';
+import { loadSettings, loadOriginalSettings } from '../config/index.js';
 import { getDataService } from '../services/services.js';
 import { DataService } from '../services/dataService.js';
 import { IUser } from '../types/index.js';
@@ -69,6 +69,60 @@ export const getPublicConfig = (req: Request, res: Response): void => {
     res.status(500).json({
       success: false,
       message: 'Failed to get public configuration',
+    });
+  }
+};
+
+/**
+ * Get MCP settings in JSON format for export/copy
+ * Supports both full settings and individual server configuration
+ */
+export const getMcpSettingsJson = (req: Request, res: Response): void => {
+  try {
+    const { serverName } = req.query;
+    const settings = loadOriginalSettings();
+
+    // Remove sensitive user information (passwords)
+    const sanitizedSettings = {
+      ...settings,
+      users: settings.users?.map((user) => ({
+        username: user.username,
+        isAdmin: user.isAdmin,
+        // Omit password field
+      })),
+    };
+
+    if (serverName && typeof serverName === 'string') {
+      // Return individual server configuration
+      const serverConfig = sanitizedSettings.mcpServers[serverName];
+      if (!serverConfig) {
+        res.status(404).json({
+          success: false,
+          message: `Server '${serverName}' not found`,
+        });
+        return;
+      }
+
+      res.json({
+        success: true,
+        data: {
+          mcpServers: {
+            [serverName]: serverConfig,
+          },
+        },
+      });
+    } else {
+      // Return full settings
+      res.json({
+        success: true,
+        data: sanitizedSettings,
+      });
+    }
+  } catch (error) {
+    console.error('Error getting MCP settings JSON:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get MCP settings',
     });
   }
 };

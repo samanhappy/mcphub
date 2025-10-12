@@ -24,6 +24,7 @@ const ServerCard = ({ server, onRemove, onEdit, onToggle, onRefresh }: ServerCar
   const [isToggling, setIsToggling] = useState(false)
   const [showErrorPopover, setShowErrorPopover] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [copiedConfig, setCopiedConfig] = useState(false)
   const errorPopoverRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -96,6 +97,53 @@ const ServerCard = ({ server, onRemove, onEdit, onToggle, onRefresh }: ServerCar
         console.error('Copy to clipboard failed:', err)
       }
       document.body.removeChild(textArea)
+    }
+  }
+
+  const handleCopyServerConfig = async (e: React.MouseEvent) => {
+    e.stopPropagation()
+    try {
+      const response = await fetch(`/api/mcp-settings/export?serverName=${encodeURIComponent(server.name)}`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+      })
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch server configuration')
+      }
+
+      const result = await response.json()
+      const configJson = JSON.stringify(result.data, null, 2)
+
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(configJson)
+        setCopiedConfig(true)
+        showToast(t('common.copySuccess') || 'Copied to clipboard', 'success')
+        setTimeout(() => setCopiedConfig(false), 2000)
+      } else {
+        // Fallback for HTTP or unsupported clipboard API
+        const textArea = document.createElement('textarea')
+        textArea.value = configJson
+        textArea.style.position = 'fixed'
+        textArea.style.left = '-9999px'
+        document.body.appendChild(textArea)
+        textArea.focus()
+        textArea.select()
+        try {
+          document.execCommand('copy')
+          setCopiedConfig(true)
+          showToast(t('common.copySuccess') || 'Copied to clipboard', 'success')
+          setTimeout(() => setCopiedConfig(false), 2000)
+        } catch (err) {
+          showToast(t('common.copyFailed') || 'Copy failed', 'error')
+          console.error('Copy to clipboard failed:', err)
+        }
+        document.body.removeChild(textArea)
+      }
+    } catch (error) {
+      console.error('Error copying server configuration:', error)
+      showToast(t('common.copyFailed') || 'Copy failed', 'error')
     }
   }
 
@@ -230,6 +278,13 @@ const ServerCard = ({ server, onRemove, onEdit, onToggle, onRefresh }: ServerCar
             )}
           </div>
           <div className="flex space-x-2">
+            <button
+              onClick={handleCopyServerConfig}
+              className="p-1 text-gray-400 hover:text-gray-600 transition-colors btn-secondary"
+              title={t('server.copyConfig')}
+            >
+              {copiedConfig ? <Check size={18} className="text-green-500" /> : <Copy size={18} />}
+            </button>
             <button
               onClick={handleEdit}
               className="px-3 py-1 bg-blue-100 text-blue-800 rounded hover:bg-blue-200 text-sm btn-primary"

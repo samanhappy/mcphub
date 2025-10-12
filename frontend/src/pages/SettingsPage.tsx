@@ -8,6 +8,7 @@ import { useToast } from '@/contexts/ToastContext';
 import { generateRandomKey } from '@/utils/key';
 import { PermissionChecker } from '@/components/PermissionChecker';
 import { PERMISSIONS } from '@/constants/permissions';
+import { Copy, Check, Download } from 'lucide-react';
 
 const SettingsPage: React.FC = () => {
   const { t } = useTranslation();
@@ -110,10 +111,11 @@ const SettingsPage: React.FC = () => {
     smartRoutingConfig: false,
     mcpRouterConfig: false,
     nameSeparator: false,
-    password: false
+    password: false,
+    exportConfig: false
   });
 
-  const toggleSection = (section: 'routingConfig' | 'installConfig' | 'smartRoutingConfig' | 'mcpRouterConfig' | 'nameSeparator' | 'password') => {
+  const toggleSection = (section: 'routingConfig' | 'installConfig' | 'smartRoutingConfig' | 'mcpRouterConfig' | 'nameSeparator' | 'password' | 'exportConfig') => {
     setSectionsVisible(prev => ({
       ...prev,
       [section]: !prev[section]
@@ -241,6 +243,86 @@ const SettingsPage: React.FC = () => {
     setTimeout(() => {
       navigate('/');
     }, 2000);
+  };
+
+  const [copiedConfig, setCopiedConfig] = useState(false);
+  const [mcpSettingsJson, setMcpSettingsJson] = useState<string>('');
+
+  const fetchMcpSettings = async () => {
+    try {
+      const response = await fetch('/api/mcp-settings/export', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch MCP settings');
+      }
+
+      const result = await response.json();
+      const configJson = JSON.stringify(result.data, null, 2);
+      setMcpSettingsJson(configJson);
+    } catch (error) {
+      console.error('Error fetching MCP settings:', error);
+      showToast(t('settings.exportError') || 'Failed to fetch settings', 'error');
+    }
+  };
+
+  useEffect(() => {
+    if (sectionsVisible.exportConfig && !mcpSettingsJson) {
+      fetchMcpSettings();
+    }
+  }, [sectionsVisible.exportConfig]);
+
+  const handleCopyConfig = async () => {
+    if (!mcpSettingsJson) return;
+
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(mcpSettingsJson);
+        setCopiedConfig(true);
+        showToast(t('common.copySuccess') || 'Copied to clipboard', 'success');
+        setTimeout(() => setCopiedConfig(false), 2000);
+      } else {
+        // Fallback for HTTP or unsupported clipboard API
+        const textArea = document.createElement('textarea');
+        textArea.value = mcpSettingsJson;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-9999px';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        try {
+          document.execCommand('copy');
+          setCopiedConfig(true);
+          showToast(t('common.copySuccess') || 'Copied to clipboard', 'success');
+          setTimeout(() => setCopiedConfig(false), 2000);
+        } catch (err) {
+          showToast(t('common.copyFailed') || 'Copy failed', 'error');
+          console.error('Copy to clipboard failed:', err);
+        }
+        document.body.removeChild(textArea);
+      }
+    } catch (error) {
+      console.error('Error copying configuration:', error);
+      showToast(t('common.copyFailed') || 'Copy failed', 'error');
+    }
+  };
+
+  const handleDownloadConfig = () => {
+    if (!mcpSettingsJson) return;
+
+    const blob = new Blob([mcpSettingsJson], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'mcp_settings.json';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    showToast(t('settings.exportSuccess') || 'Settings exported successfully', 'success');
   };
 
   return (
@@ -477,6 +559,57 @@ const SettingsPage: React.FC = () => {
                 >
                   {t('common.save')}
                 </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Export MCP Settings */}
+      <div className="bg-white shadow rounded-lg py-4 px-6 mb-6 dashboard-card">
+        <div
+          className="flex justify-between items-center cursor-pointer"
+          onClick={() => toggleSection('exportConfig')}
+        >
+          <h2 className="font-semibold text-gray-800">{t('settings.exportMcpSettings')}</h2>
+          <span className="text-gray-500">
+            {sectionsVisible.exportConfig ? '▼' : '►'}
+          </span>
+        </div>
+
+        {sectionsVisible.exportConfig && (
+          <div className="space-y-4 mt-4">
+            <div className="p-3 bg-gray-50 rounded-md">
+              <div className="mb-4">
+                <h3 className="font-medium text-gray-700">{t('settings.mcpSettingsJson')}</h3>
+                <p className="text-sm text-gray-500">{t('settings.mcpSettingsJsonDescription')}</p>
+              </div>
+              <div className="space-y-3">
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={handleCopyConfig}
+                    disabled={!mcpSettingsJson}
+                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium disabled:opacity-50 btn-primary"
+                  >
+                    {copiedConfig ? <Check size={16} /> : <Copy size={16} />}
+                    {copiedConfig ? t('common.copied') : t('settings.copyToClipboard')}
+                  </button>
+                  <button
+                    onClick={handleDownloadConfig}
+                    disabled={!mcpSettingsJson}
+                    className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md text-sm font-medium disabled:opacity-50 btn-primary"
+                  >
+                    <Download size={16} />
+                    {t('settings.downloadJson')}
+                  </button>
+                </div>
+                {mcpSettingsJson && (
+                  <div className="mt-3">
+                    <pre className="bg-gray-900 text-gray-100 p-4 rounded-md overflow-x-auto text-xs max-h-96">
+                      {mcpSettingsJson}
+                    </pre>
+                  </div>
+                )}
               </div>
             </div>
           </div>

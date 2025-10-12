@@ -124,6 +124,7 @@
     "argumentsPlaceholder": "Enter arguments",
     "errorDetails": "Error Details",
     "viewErrorDetails": "View error details",
+    "copyConfig": "Copy Configuration",
     "confirmVariables": "Confirm Variable Configuration",
     "variablesDetected": "Variables detected in configuration. Please confirm these variables are properly configured:",
     "detectedVariables": "Detected Variables",
@@ -200,6 +201,7 @@
     "copyJson": "Copy JSON",
     "copySuccess": "Copied to clipboard",
     "copyFailed": "Copy failed",
+    "copied": "Copied",
     "close": "Close",
     "confirm": "Confirm",
     "language": "Language",
@@ -502,7 +504,14 @@
     "systemSettings": "System Settings",
     "nameSeparatorLabel": "Name Separator",
     "nameSeparatorDescription": "Character used to separate server name and tool/prompt name (default: -)",
-    "restartRequired": "Configuration saved. It is recommended to restart the application to ensure all services load the new settings correctly."
+    "restartRequired": "Configuration saved. It is recommended to restart the application to ensure all services load the new settings correctly.",
+    "exportMcpSettings": "Export MCP Settings",
+    "mcpSettingsJson": "MCP Settings JSON",
+    "mcpSettingsJsonDescription": "View, copy, or download your current mcp_settings.json configuration for backup or migration to other tools",
+    "copyToClipboard": "Copy to Clipboard",
+    "downloadJson": "Download JSON",
+    "exportSuccess": "Settings exported successfully",
+    "exportError": "Failed to fetch settings"
   },
   "dxt": {
     "upload": "Upload",

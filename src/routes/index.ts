@@ -58,7 +58,7 @@ import {
 } from '../controllers/cloudController.js';
 import { login, register, getCurrentUser, changePassword } from '../controllers/authController.js';
 import { getAllLogs, clearLogs, streamLogs } from '../controllers/logController.js';
-import { getRuntimeConfig, getPublicConfig } from '../controllers/configController.js';
+import { getRuntimeConfig, getPublicConfig, getMcpSettingsJson } from '../controllers/configController.js';
 import { callTool } from '../controllers/toolController.js';
 import { getPrompt } from '../controllers/promptController.js';
 import { uploadDxtFile, uploadMiddleware } from '../controllers/dxtController.js';
@@ -148,6 +148,9 @@ export const initRoutes = (app: express.Application): void => {
   router.get('/logs', getAllLogs);
   router.delete('/logs', clearLogs);
   router.get('/logs/stream', streamLogs);
+
+  // MCP settings export route
+  router.get('/mcp-settings/export', getMcpSettingsJson);
 
   // Auth routes - move to router instead of app directly
   router.post(

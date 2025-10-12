@@ -124,6 +124,7 @@
     "argumentsPlaceholder": "请输入参数",
     "errorDetails": "错误详情",
     "viewErrorDetails": "查看错误详情",
+    "copyConfig": "复制配置",
     "confirmVariables": "确认变量配置",
     "variablesDetected": "检测到配置中包含变量，请确认这些变量是否已正确配置：",
     "detectedVariables": "检测到的变量",
@@ -201,6 +202,7 @@
     "copyJson": "复制JSON",
     "copySuccess": "已复制到剪贴板",
     "copyFailed": "复制失败",
+    "copied": "已复制",
     "close": "关闭",
     "confirm": "确认",
     "language": "语言",
@@ -504,7 +506,14 @@
     "systemSettings": "系统设置",
     "nameSeparatorLabel": "名称分隔符",
     "nameSeparatorDescription": "用于分隔服务器名称和工具/提示名称（默认：-）",
-    "restartRequired": "配置已保存。为确保所有服务正确加载新设置，建议重启应用。"
+    "restartRequired": "配置已保存。为确保所有服务正确加载新设置，建议重启应用。",
+    "exportMcpSettings": "导出 MCP 配置",
+    "mcpSettingsJson": "MCP 配置 JSON",
+    "mcpSettingsJsonDescription": "查看、复制或下载当前的 mcp_settings.json 配置，可用于备份或迁移到其他工具",
+    "copyToClipboard": "复制到剪贴板",
+    "downloadJson": "下载 JSON",
+    "exportSuccess": "配置导出成功",
+    "exportError": "获取配置失败"
   },
   "dxt": {
     "upload": "上传",
