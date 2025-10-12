@@ -252,7 +252,7 @@ const SettingsPage: React.FC = () => {
     try {
       const response = await fetch('/api/mcp-settings/export', {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'x-auth-token': localStorage.getItem('token') || '',
         },
       });
 

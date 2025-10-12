@@ -105,7 +105,7 @@ const ServerCard = ({ server, onRemove, onEdit, onToggle, onRefresh }: ServerCar
     try {
       const response = await fetch(`/api/mcp-settings/export?serverName=${encodeURIComponent(server.name)}`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'x-auth-token': localStorage.getItem('token') || '',
         },
       })
       
