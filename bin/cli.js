@@ -2,7 +2,6 @@
 
 import path from 'path';
 import { fileURLToPath, pathToFileURL } from 'url';
-import { execSync } from 'child_process';
 import fs from 'fs';
 
 // Enable debug logging if needed
