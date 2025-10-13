@@ -46,10 +46,18 @@ docker run -d \
 Docker 镜像支持 `INSTALL_EXT` 构建参数以包含额外工具：
 
 ```bash
-# 构建扩展功能版本（包含 Docker CLI、Chrome/Playwright）
+# 构建扩展功能版本（包含 Docker 引擎、Chrome/Playwright）
 docker build --build-arg INSTALL_EXT=true -t mcphub:extended .
 
-# 运行容器并挂载 Docker socket（用于 Docker-in-Docker 工作流）
+# 方式 1: 使用自动 Docker-in-Docker（需要特权模式）
+docker run -d \
+  --name mcphub \
+  --privileged \
+  -p 3000:3000 \
+  -v $(pwd)/mcp_settings.json:/app/mcp_settings.json \
+  mcphub:extended
+
+# 方式 2: 挂载 Docker socket（使用宿主机的 Docker 守护进程）
 docker run -d \
   --name mcphub \
   -p 3000:3000 \
@@ -57,20 +65,24 @@ docker run -d \
   -v /var/run/docker.sock:/var/run/docker.sock \
   mcphub:extended
 
-# 验证 Docker CLI 可用
+# 验证 Docker 可用
 docker exec mcphub docker --version
+docker exec mcphub docker ps
 ```
 
 <Note>
   **INSTALL_EXT=true 包含的功能：**
-  - **Docker CLI**：用于容器管理和基于 Docker 的工作流
+  - **Docker 引擎**：完整的 Docker 守护进程和 CLI，用于容器管理。在特权模式下运行时，守护进程会自动启动。
   - **Chrome/Playwright**（仅 amd64）：用于浏览器自动化任务
   
   扩展镜像较大，但为高级用例提供了额外功能。
 </Note>
 
 <Warning>
-  挂载 Docker socket（`/var/run/docker.sock`）时，容器将获得访问主机 Docker 守护进程的权限。仅在可信环境中使用此功能。
+  **Docker-in-Docker 安全注意事项：**
+  - **特权模式**（`--privileged`）：容器内启动 Docker 守护进程需要此权限。这会授予容器在宿主机上的提升权限。
+  - **Docker socket 挂载**（`/var/run/docker.sock`）：使容器可以访问宿主机的 Docker 守护进程。两种方式都应仅在可信环境中使用。
+  - 生产环境建议使用 Docker socket 挂载而非特权模式，以提高安全性。
 </Warning>
 
 ## Docker Compose 设置

@@ -46,10 +46,18 @@ docker run -d \
 The Docker image supports an `INSTALL_EXT` build argument to include additional tools:
 
 ```bash
-# Build with extended features (includes Docker CLI, Chrome/Playwright)
+# Build with extended features (includes Docker Engine, Chrome/Playwright)
 docker build --build-arg INSTALL_EXT=true -t mcphub:extended .
 
-# Run the container with Docker socket mounted (for Docker-in-Docker workflows)
+# Option 1: Run with automatic Docker-in-Docker (requires privileged mode)
+docker run -d \
+  --name mcphub \
+  --privileged \
+  -p 3000:3000 \
+  -v $(pwd)/mcp_settings.json:/app/mcp_settings.json \
+  mcphub:extended
+
+# Option 2: Run with Docker socket mounted (use host's Docker daemon)
 docker run -d \
   --name mcphub \
   -p 3000:3000 \
@@ -57,20 +65,24 @@ docker run -d \
   -v /var/run/docker.sock:/var/run/docker.sock \
   mcphub:extended
 
-# Verify Docker CLI is available
+# Verify Docker is available
 docker exec mcphub docker --version
+docker exec mcphub docker ps
 ```
 
 <Note>
   **What's included with INSTALL_EXT=true:**
-  - **Docker CLI**: For container management and Docker-based workflows
+  - **Docker Engine**: Full Docker daemon with CLI for container management. The daemon auto-starts when the container runs in privileged mode.
   - **Chrome/Playwright** (amd64 only): For browser automation tasks
   
   The extended image is larger but provides additional capabilities for advanced use cases.
 </Note>
 
 <Warning>
-  When mounting the Docker socket (`/var/run/docker.sock`), the container gains access to the host's Docker daemon. Only use this in trusted environments.
+  **Docker-in-Docker Security Considerations:**
+  - **Privileged mode** (`--privileged`): Required for the Docker daemon to start inside the container. This gives the container elevated permissions on the host.
+  - **Docker socket mounting** (`/var/run/docker.sock`): Gives the container access to the host's Docker daemon. Both approaches should only be used in trusted environments.
+  - For production, consider using Docker socket mounting instead of privileged mode for better security.
 </Warning>
 
 ## Docker Compose Setup
