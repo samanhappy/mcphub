@@ -2458,7 +2458,7 @@
       }
     ]
   },
-  "playwright-mcp": {
+  "mcp-playwright": {
     "name": "mcp-playwright",
     "display_name": "Playwright",
     "description": "This MCP Server will help you run browser automation and webscraping using Playwright",
