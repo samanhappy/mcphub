@@ -181,8 +181,7 @@ const ServerCard = ({ server, onRemove, onEdit, onToggle, onRefresh }: ServerCar
   return (
     <>
       <div
-        className={`bg-white shadow rounded-lg p-6 mb-6 page-card transition-all duration-200 ${server.enabled === false ? 'opacity-60' : ''}`}
-      >
+        className={`bg-white shadow rounded-lg p-6 mb-6 page-card transition-all duration-200 ${server.enabled === false ? 'opacity-60' : ''}`}>
         <div className="flex justify-between items-center cursor-pointer" onClick={() => setIsExpanded(!isExpanded)}>
           <div className="flex items-center space-x-3">
             <h2 className={`text-xl font-semibold ${server.enabled === false ? 'text-gray-600' : 'text-gray-900'}`}>
@@ -220,8 +219,7 @@ const ServerCard = ({ server, onRemove, onEdit, onToggle, onRefresh }: ServerCar
                 <div
                   className="cursor-pointer"
                   onClick={handleErrorIconClick}
-                  aria-label={t('server.viewErrorDetails')}
-                >
+                  aria-label={t('server.viewErrorDetails')}>
                   <AlertCircle className="text-red-500 hover:text-red-600" size={18} />
                 </div>
 
@@ -237,16 +235,14 @@ const ServerCard = ({ server, onRemove, onEdit, onToggle, onRefresh }: ServerCar
                       width: '480px',
                       transform: 'translateX(50%)'
                     }}
-                    onClick={(e) => e.stopPropagation()}
-                  >
+                    onClick={(e) => e.stopPropagation()}>
                     <div className="flex justify-between items-center sticky top-0 bg-white py-2 px-4 border-b border-gray-200 z-20 shadow-sm">
                       <div className="flex items-center space-x-2">
                         <h4 className="text-sm font-medium text-red-600">{t('server.errorDetails')}</h4>
                         <button
                           onClick={copyToClipboard}
                           className="p-1 text-gray-400 hover:text-gray-600 transition-colors btn-secondary"
-                          title={t('common.copy')}
-                        >
+                          title={t('common.copy')}>
                           {copied ? <Check size={14} className="text-green-500" /> : <Copy size={14} />}
                         </button>
                       </div>
@@ -255,8 +251,7 @@ const ServerCard = ({ server, onRemove, onEdit, onToggle, onRefresh }: ServerCar
                           e.stopPropagation()
                           setShowErrorPopover(false)
                         }}
-                        className="text-gray-400 hover:text-gray-600"
-                      >
+                        className="text-gray-400 hover:text-gray-600">
                         ✕
                       </button>
                     </div>
@@ -274,8 +269,7 @@ const ServerCard = ({ server, onRemove, onEdit, onToggle, onRefresh }: ServerCar
             </button>
             <button
               onClick={handleEdit}
-              className="px-3 py-1 bg-blue-100 text-blue-800 rounded hover:bg-blue-200 text-sm btn-primary"
-            >
+              className="px-3 py-1 bg-blue-100 text-blue-800 rounded hover:bg-blue-200 text-sm btn-primary">
               {t('server.edit')}
             </button>
             <div className="flex items-center">
@@ -288,8 +282,7 @@ const ServerCard = ({ server, onRemove, onEdit, onToggle, onRefresh }: ServerCar
                       ? 'bg-green-100 text-green-800 hover:bg-green-200 btn-secondary'
                       : 'bg-gray-100 text-gray-800 hover:bg-gray-200 btn-primary'
                 }`}
-                disabled={isToggling}
-              >
+                disabled={isToggling}>
                 {isToggling
                   ? t('common.processing')
                   : server.enabled !== false
@@ -299,8 +292,7 @@ const ServerCard = ({ server, onRemove, onEdit, onToggle, onRefresh }: ServerCar
             </div>
             <button
               onClick={handleRemove}
-              className="px-3 py-1 bg-red-100 text-red-800 rounded hover:bg-red-200 text-sm btn-danger"
-            >
+              className="px-3 py-1 bg-red-100 text-red-800 rounded hover:bg-red-200 text-sm btn-danger">
               {t('server.delete')}
             </button>
             <button className="text-gray-400 hover:text-gray-600 btn-secondary">

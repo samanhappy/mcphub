@@ -345,8 +345,7 @@ const SettingsPage: React.FC = () => {
         <div className="bg-white shadow rounded-lg py-4 px-6 mb-6 page-card dashboard-card">
           <div
             className="flex justify-between items-center cursor-pointer transition-colors duration-200 hover:text-blue-600"
-            onClick={() => toggleSection('smartRoutingConfig')}
-          >
+            onClick={() => toggleSection('smartRoutingConfig')}>
             <h2 className="font-semibold text-gray-800">{t('pages.settings.smartRouting')}</h2>
             <span className="text-gray-500 transition-transform duration-200">
               {sectionsVisible.smartRoutingConfig ? '▼' : '►'}
@@ -386,8 +385,7 @@ const SettingsPage: React.FC = () => {
                   <button
                     onClick={() => saveSmartRoutingConfig('dbUrl')}
                     disabled={loading}
-                    className="mt-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium disabled:opacity-50 btn-primary"
-                  >
+                    className="mt-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium disabled:opacity-50 btn-primary">
                     {t('common.save')}
                   </button>
                 </div>
@@ -412,8 +410,7 @@ const SettingsPage: React.FC = () => {
                   <button
                     onClick={() => saveSmartRoutingConfig('openaiApiKey')}
                     disabled={loading}
-                    className="mt-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium disabled:opacity-50 btn-primary"
-                  >
+                    className="mt-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium disabled:opacity-50 btn-primary">
                     {t('common.save')}
                   </button>
                 </div>
@@ -435,8 +432,7 @@ const SettingsPage: React.FC = () => {
                   <button
                     onClick={() => saveSmartRoutingConfig('openaiApiBaseUrl')}
                     disabled={loading}
-                    className="mt-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium disabled:opacity-50 btn-primary"
-                  >
+                    className="mt-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium disabled:opacity-50 btn-primary">
                     {t('common.save')}
                   </button>
                 </div>
@@ -458,8 +454,7 @@ const SettingsPage: React.FC = () => {
                   <button
                     onClick={() => saveSmartRoutingConfig('openaiApiEmbeddingModel')}
                     disabled={loading}
-                    className="mt-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium disabled:opacity-50 btn-primary"
-                  >
+                    className="mt-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium disabled:opacity-50 btn-primary">
                     {t('common.save')}
                   </button>
                 </div>
@@ -474,8 +469,7 @@ const SettingsPage: React.FC = () => {
         <div className="bg-white shadow rounded-lg py-4 px-6 mb-6 page-card dashboard-card">
           <div
             className="flex justify-between items-center cursor-pointer transition-colors duration-200 hover:text-blue-600"
-            onClick={() => toggleSection('mcpRouterConfig')}
-          >
+            onClick={() => toggleSection('mcpRouterConfig')}>
             <h2 className="font-semibold text-gray-800">{t('settings.mcpRouterConfig')}</h2>
             <span className="text-gray-500 transition-transform duration-200">
               {sectionsVisible.mcpRouterConfig ? '▼' : '►'}
@@ -501,8 +495,7 @@ const SettingsPage: React.FC = () => {
                   <button
                     onClick={() => saveMCPRouterConfig('apiKey')}
                     disabled={loading}
-                    className="mt-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium disabled:opacity-50 btn-primary"
-                  >
+                    className="mt-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium disabled:opacity-50 btn-primary">
                     {t('common.save')}
                   </button>
                 </div>
@@ -525,8 +518,7 @@ const SettingsPage: React.FC = () => {
                   <button
                     onClick={() => saveMCPRouterConfig('baseUrl')}
                     disabled={loading}
-                    className="mt-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium disabled:opacity-50 btn-primary"
-                  >
+                    className="mt-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium disabled:opacity-50 btn-primary">
                     {t('common.save')}
                   </button>
                 </div>
@@ -540,8 +532,7 @@ const SettingsPage: React.FC = () => {
       <div className="bg-white shadow rounded-lg py-4 px-6 mb-6 dashboard-card">
         <div
           className="flex justify-between items-center cursor-pointer"
-          onClick={() => toggleSection('nameSeparator')}
-        >
+          onClick={() => toggleSection('nameSeparator')}>
           <h2 className="font-semibold text-gray-800">{t('settings.systemSettings')}</h2>
           <span className="text-gray-500">{sectionsVisible.nameSeparator ? '▼' : '►'}</span>
         </div>
@@ -566,8 +557,7 @@ const SettingsPage: React.FC = () => {
                 <button
                   onClick={saveNameSeparator}
                   disabled={loading}
-                  className="mt-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium disabled:opacity-50 btn-primary"
-                >
+                  className="mt-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium disabled:opacity-50 btn-primary">
                   {t('common.save')}
                 </button>
               </div>
@@ -580,8 +570,7 @@ const SettingsPage: React.FC = () => {
       <div className="bg-white shadow rounded-lg py-4 px-6 mb-6 dashboard-card">
         <div
           className="flex justify-between items-center cursor-pointer"
-          onClick={() => toggleSection('routingConfig')}
-        >
+          onClick={() => toggleSection('routingConfig')}>
           <h2 className="font-semibold text-gray-800">{t('pages.settings.routeConfig')}</h2>
           <span className="text-gray-500">{sectionsVisible.routingConfig ? '▼' : '►'}</span>
         </div>
@@ -618,8 +607,7 @@ const SettingsPage: React.FC = () => {
                   <button
                     onClick={saveBearerAuthKey}
                     disabled={loading || !routingConfig.enableBearerAuth}
-                    className="mt-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium disabled:opacity-50 btn-primary"
-                  >
+                    className="mt-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium disabled:opacity-50 btn-primary">
                     {t('common.save')}
                   </button>
                 </div>
@@ -672,8 +660,7 @@ const SettingsPage: React.FC = () => {
         <div className="bg-white shadow rounded-lg py-4 px-6 mb-6 dashboard-card">
           <div
             className="flex justify-between items-center cursor-pointer"
-            onClick={() => toggleSection('installConfig')}
-          >
+            onClick={() => toggleSection('installConfig')}>
             <h2 className="font-semibold text-gray-800">{t('settings.installConfig')}</h2>
             <span className="text-gray-500">{sectionsVisible.installConfig ? '▼' : '►'}</span>
           </div>
@@ -697,8 +684,7 @@ const SettingsPage: React.FC = () => {
                   <button
                     onClick={() => saveInstallConfig('baseUrl')}
                     disabled={loading}
-                    className="mt-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium disabled:opacity-50 btn-primary"
-                  >
+                    className="mt-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium disabled:opacity-50 btn-primary">
                     {t('common.save')}
                   </button>
                 </div>
@@ -721,8 +707,7 @@ const SettingsPage: React.FC = () => {
                   <button
                     onClick={() => saveInstallConfig('pythonIndexUrl')}
                     disabled={loading}
-                    className="mt-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium disabled:opacity-50 btn-primary"
-                  >
+                    className="mt-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium disabled:opacity-50 btn-primary">
                     {t('common.save')}
                   </button>
                 </div>
@@ -745,8 +730,7 @@ const SettingsPage: React.FC = () => {
                   <button
                     onClick={() => saveInstallConfig('npmRegistry')}
                     disabled={loading}
-                    className="mt-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium disabled:opacity-50 btn-primary"
-                  >
+                    className="mt-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium disabled:opacity-50 btn-primary">
                     {t('common.save')}
                   </button>
                 </div>
@@ -775,8 +759,7 @@ const SettingsPage: React.FC = () => {
         <div className="bg-white shadow rounded-lg py-4 px-6 mb-6 dashboard-card">
           <div
             className="flex justify-between items-center cursor-pointer"
-            onClick={() => toggleSection('exportConfig')}
-          >
+            onClick={() => toggleSection('exportConfig')}>
             <h2 className="font-semibold text-gray-800">{t('settings.exportMcpSettings')}</h2>
             <span className="text-gray-500">{sectionsVisible.exportConfig ? '▼' : '►'}</span>
           </div>
@@ -793,16 +776,14 @@ const SettingsPage: React.FC = () => {
                     <button
                       onClick={handleCopyConfig}
                       disabled={!mcpSettingsJson}
-                      className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium disabled:opacity-50 btn-primary"
-                    >
+                      className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium disabled:opacity-50 btn-primary">
                       {copiedConfig ? <Check size={16} /> : <Copy size={16} />}
                       {copiedConfig ? t('common.copied') : t('settings.copyToClipboard')}
                     </button>
                     <button
                       onClick={handleDownloadConfig}
                       disabled={!mcpSettingsJson}
-                      className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md text-sm font-medium disabled:opacity-50 btn-primary"
-                    >
+                      className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md text-sm font-medium disabled:opacity-50 btn-primary">
                       <Download size={16} />
                       {t('settings.downloadJson')}
                     </button>
