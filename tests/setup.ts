@@ -8,6 +8,11 @@ Object.assign(process.env, {
   DATABASE_URL: 'sqlite::memory:',
 });
 
+// Mock moduleDir to avoid import.meta parsing issues in Jest
+jest.mock('../src/utils/moduleDir.js', () => ({
+  getCurrentModuleDir: jest.fn(() => process.cwd()),
+}));
+
 // Global test utilities
 declare global {
   // eslint-disable-next-line @typescript-eslint/no-namespace

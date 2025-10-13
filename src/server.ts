@@ -3,7 +3,6 @@ import cors from 'cors';
 import config from './config/index.js';
 import path from 'path';
 import fs from 'fs';
-import { fileURLToPath } from 'url';
 import { initUpstreamServers, connected } from './services/mcpService.js';
 import { initMiddlewares } from './middlewares/index.js';
 import { initRoutes } from './routes/index.js';
@@ -17,18 +16,22 @@ import {
 import { initializeDefaultUser } from './models/User.js';
 import { sseUserContextMiddleware } from './middlewares/userContext.js';
 import { findPackageRoot } from './utils/path.js';
+import { getCurrentModuleDir } from './utils/moduleDir.js';
 
 /**
  * Get the directory of the current module
- * This is wrapped in a function to avoid Jest parsing issues with import.meta
+ * This is wrapped in a function to allow easy mocking in test environments
  */
 function getCurrentFileDir(): string {
+  // In test environments, use process.cwd() to avoid import.meta issues
+  if (process.env.NODE_ENV === 'test' || process.env.JEST_WORKER_ID !== undefined) {
+    return process.cwd();
+  }
+  
   try {
-    // This will only execute at runtime, not during Jest's static analysis
-    const currentModuleFile = fileURLToPath(import.meta.url);
-    return path.dirname(currentModuleFile);
+    return getCurrentModuleDir();
   } catch {
-    // Fallback for test environments where import.meta might not be available
+    // Fallback for environments where import.meta might not be available
     return process.cwd();
   }
 }

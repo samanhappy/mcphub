@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { dirname } from 'path';
-import { fileURLToPath } from 'url';
+import { getCurrentModuleDir } from './moduleDir.js';
 
 // Project root directory - use process.cwd() as a simpler alternative
 const rootDir = process.cwd();
@@ -10,14 +10,18 @@ const rootDir = process.cwd();
 let cachedPackageRoot: string | null | undefined = undefined;
 
 /**
- * Initialize package root by trying to find it using import.meta.url
+ * Initialize package root by trying to find it using the module directory
  * This should be called when the module is first loaded
  */
 function initializePackageRoot(): void {
+  // Skip initialization in test environments
+  if (process.env.NODE_ENV === 'test' || process.env.JEST_WORKER_ID !== undefined) {
+    return;
+  }
+  
   try {
-    // Try to get the current module's file path
-    const currentModuleFile = fileURLToPath(import.meta.url);
-    const currentModuleDir = path.dirname(currentModuleFile);
+    // Try to get the current module's directory
+    const currentModuleDir = getCurrentModuleDir();
     
     // This file is in src/utils/path.ts (or dist/utils/path.js when compiled)
     // So package.json should be 2 levels up
@@ -46,7 +50,7 @@ function initializePackageRoot(): void {
   }
 }
 
-// Initialize on module load
+// Initialize on module load (unless in test environment)
 initializePackageRoot();
 
 /**
