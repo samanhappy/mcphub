@@ -145,10 +145,7 @@ const ServerCard = ({ server, onRemove, onEdit, onToggle, onRefresh }: ServerCar
       const { toggleTool } = await import('@/services/toolService')
       const result = await toggleTool(server.name, toolName, enabled)
       if (result.success) {
-        showToast(
-          t(enabled ? 'tool.enableSuccess' : 'tool.disableSuccess', { name: toolName }),
-          'success',
-        )
+        showToast(t(enabled ? 'tool.enableSuccess' : 'tool.disableSuccess', { name: toolName }), 'success')
         // Trigger refresh to update the tool's state in the UI
         if (onRefresh) {
           onRefresh()
@@ -167,10 +164,7 @@ const ServerCard = ({ server, onRemove, onEdit, onToggle, onRefresh }: ServerCar
       const { togglePrompt } = await import('@/services/promptService')
       const result = await togglePrompt(server.name, promptName, enabled)
       if (result.success) {
-        showToast(
-          t(enabled ? 'tool.enableSuccess' : 'tool.disableSuccess', { name: promptName }),
-          'success',
-        )
+        showToast(t(enabled ? 'tool.enableSuccess' : 'tool.disableSuccess', { name: promptName }), 'success')
         // Trigger refresh to update the prompt's state in the UI
         if (onRefresh) {
           onRefresh()
@@ -246,25 +240,19 @@ const ServerCard = ({ server, onRemove, onEdit, onToggle, onRefresh }: ServerCar
                       maxHeight: '300px',
                       overflowY: 'auto',
                       width: '480px',
-                      transform: 'translateX(50%)',
+                      transform: 'translateX(50%)'
                     }}
                     onClick={(e) => e.stopPropagation()}
                   >
                     <div className="flex justify-between items-center sticky top-0 bg-white py-2 px-4 border-b border-gray-200 z-20 shadow-sm">
                       <div className="flex items-center space-x-2">
-                        <h4 className="text-sm font-medium text-red-600">
-                          {t('server.errorDetails')}
-                        </h4>
+                        <h4 className="text-sm font-medium text-red-600">{t('server.errorDetails')}</h4>
                         <button
                           onClick={copyToClipboard}
                           className="p-1 text-gray-400 hover:text-gray-600 transition-colors btn-secondary"
                           title={t('common.copy')}
                         >
-                          {copied ? (
-                            <Check size={14} className="text-green-500" />
-                          ) : (
-                            <Copy size={14} />
-                          )}
+                          {copied ? <Check size={14} className="text-green-500" /> : <Copy size={14} />}
                         </button>
                       </div>
                       <button
@@ -339,12 +327,7 @@ const ServerCard = ({ server, onRemove, onEdit, onToggle, onRefresh }: ServerCar
                 </h6>
                 <div className="space-y-4">
                   {server.tools.map((tool, index) => (
-                    <ToolCard
-                      key={index}
-                      server={server.name}
-                      tool={tool}
-                      onToggle={handleToolToggle}
-                    />
+                    <ToolCard key={index} server={server.name} tool={tool} onToggle={handleToolToggle} />
                   ))}
                 </div>
               </div>
