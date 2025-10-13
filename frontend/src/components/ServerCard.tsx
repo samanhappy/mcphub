@@ -183,14 +183,9 @@ const ServerCard = ({ server, onRemove, onEdit, onToggle, onRefresh }: ServerCar
       <div
         className={`bg-white shadow rounded-lg p-6 mb-6 page-card transition-all duration-200 ${server.enabled === false ? 'opacity-60' : ''}`}
       >
-        <div
-          className="flex justify-between items-center cursor-pointer"
-          onClick={() => setIsExpanded(!isExpanded)}
-        >
+        <div className="flex justify-between items-center cursor-pointer" onClick={() => setIsExpanded(!isExpanded)}>
           <div className="flex items-center space-x-3">
-            <h2
-              className={`text-xl font-semibold ${server.enabled === false ? 'text-gray-600' : 'text-gray-900'}`}
-            >
+            <h2 className={`text-xl font-semibold ${server.enabled === false ? 'text-gray-600' : 'text-gray-900'}`}>
               {server.name}
             </h2>
             <StatusBadge status={server.status} />
@@ -266,9 +261,7 @@ const ServerCard = ({ server, onRemove, onEdit, onToggle, onRefresh }: ServerCar
                       </button>
                     </div>
                     <div className="p-4 pt-2">
-                      <pre className="text-sm text-gray-700 break-words whitespace-pre-wrap">
-                        {server.error}
-                      </pre>
+                      <pre className="text-sm text-gray-700 break-words whitespace-pre-wrap">{server.error}</pre>
                     </div>
                   </div>
                 )}
@@ -320,9 +313,7 @@ const ServerCard = ({ server, onRemove, onEdit, onToggle, onRefresh }: ServerCar
           <>
             {server.tools && (
               <div className="mt-6">
-                <h6
-                  className={`font-medium ${server.enabled === false ? 'text-gray-600' : 'text-gray-900'} mb-4`}
-                >
+                <h6 className={`font-medium ${server.enabled === false ? 'text-gray-600' : 'text-gray-900'} mb-4`}>
                   {t('server.tools')}
                 </h6>
                 <div className="space-y-4">
@@ -335,19 +326,12 @@ const ServerCard = ({ server, onRemove, onEdit, onToggle, onRefresh }: ServerCar
 
             {server.prompts && (
               <div className="mt-6">
-                <h6
-                  className={`font-medium ${server.enabled === false ? 'text-gray-600' : 'text-gray-900'} mb-4`}
-                >
+                <h6 className={`font-medium ${server.enabled === false ? 'text-gray-600' : 'text-gray-900'} mb-4`}>
                   {t('server.prompts')}
                 </h6>
                 <div className="space-y-4">
                   {server.prompts.map((prompt, index) => (
-                    <PromptCard
-                      key={index}
-                      server={server.name}
-                      prompt={prompt}
-                      onToggle={handlePromptToggle}
-                    />
+                    <PromptCard key={index} server={server.name} prompt={prompt} onToggle={handlePromptToggle} />
                   ))}
                 </div>
               </div>

@@ -450,9 +450,7 @@ const SettingsPage: React.FC = () => {
                   <input
                     type="text"
                     value={tempSmartRoutingConfig.openaiApiEmbeddingModel}
-                    onChange={(e) =>
-                      handleSmartRoutingConfigChange('openaiApiEmbeddingModel', e.target.value)
-                    }
+                    onChange={(e) => handleSmartRoutingConfigChange('openaiApiEmbeddingModel', e.target.value)}
                     placeholder={t('settings.openaiApiEmbeddingModelPlaceholder')}
                     className="flex-1 mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm form-input"
                     disabled={loading}
@@ -760,10 +758,7 @@ const SettingsPage: React.FC = () => {
 
       {/* Change Password */}
       <div className="bg-white shadow rounded-lg py-4 px-6 mb-6 dashboard-card">
-        <div
-          className="flex justify-between items-center cursor-pointer"
-          onClick={() => toggleSection('password')}
-        >
+        <div className="flex justify-between items-center cursor-pointer" onClick={() => toggleSection('password')}>
           <h2 className="font-semibold text-gray-800">{t('auth.changePassword')}</h2>
           <span className="text-gray-500">{sectionsVisible.password ? '▼' : '►'}</span>
         </div>
