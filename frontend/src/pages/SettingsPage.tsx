@@ -603,55 +603,6 @@ const SettingsPage: React.FC = () => {
         )}
       </div>
 
-      {/* Export MCP Settings */}
-      <div className="bg-white shadow rounded-lg py-4 px-6 mb-6 dashboard-card">
-        <div
-          className="flex justify-between items-center cursor-pointer"
-          onClick={() => toggleSection('exportConfig')}
-        >
-          <h2 className="font-semibold text-gray-800">{t('settings.exportMcpSettings')}</h2>
-          <span className="text-gray-500">{sectionsVisible.exportConfig ? '▼' : '►'}</span>
-        </div>
-
-        {sectionsVisible.exportConfig && (
-          <div className="space-y-4 mt-4">
-            <div className="p-3 bg-gray-50 rounded-md">
-              <div className="mb-4">
-                <h3 className="font-medium text-gray-700">{t('settings.mcpSettingsJson')}</h3>
-                <p className="text-sm text-gray-500">{t('settings.mcpSettingsJsonDescription')}</p>
-              </div>
-              <div className="space-y-3">
-                <div className="flex items-center gap-3">
-                  <button
-                    onClick={handleCopyConfig}
-                    disabled={!mcpSettingsJson}
-                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium disabled:opacity-50 btn-primary"
-                  >
-                    {copiedConfig ? <Check size={16} /> : <Copy size={16} />}
-                    {copiedConfig ? t('common.copied') : t('settings.copyToClipboard')}
-                  </button>
-                  <button
-                    onClick={handleDownloadConfig}
-                    disabled={!mcpSettingsJson}
-                    className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md text-sm font-medium disabled:opacity-50 btn-primary"
-                  >
-                    <Download size={16} />
-                    {t('settings.downloadJson')}
-                  </button>
-                </div>
-                {mcpSettingsJson && (
-                  <div className="mt-3">
-                    <pre className="bg-gray-900 text-gray-100 p-4 rounded-md overflow-x-auto text-xs max-h-96">
-                      {mcpSettingsJson}
-                    </pre>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-
       {/* Route Configuration Settings */}
       <div className="bg-white shadow rounded-lg py-4 px-6 mb-6 dashboard-card">
         <div
@@ -858,6 +809,59 @@ const SettingsPage: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Export MCP Settings */}
+      <PermissionChecker permissions={PERMISSIONS.SETTINGS_EXPORT_CONFIG}>
+        <div className="bg-white shadow rounded-lg py-4 px-6 mb-6 dashboard-card">
+          <div
+            className="flex justify-between items-center cursor-pointer"
+            onClick={() => toggleSection('exportConfig')}
+          >
+            <h2 className="font-semibold text-gray-800">{t('settings.exportMcpSettings')}</h2>
+            <span className="text-gray-500">{sectionsVisible.exportConfig ? '▼' : '►'}</span>
+          </div>
+
+          {sectionsVisible.exportConfig && (
+            <div className="space-y-4 mt-4">
+              <div className="p-3 bg-gray-50 rounded-md">
+                <div className="mb-4">
+                  <h3 className="font-medium text-gray-700">{t('settings.mcpSettingsJson')}</h3>
+                  <p className="text-sm text-gray-500">
+                    {t('settings.mcpSettingsJsonDescription')}
+                  </p>
+                </div>
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={handleCopyConfig}
+                      disabled={!mcpSettingsJson}
+                      className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium disabled:opacity-50 btn-primary"
+                    >
+                      {copiedConfig ? <Check size={16} /> : <Copy size={16} />}
+                      {copiedConfig ? t('common.copied') : t('settings.copyToClipboard')}
+                    </button>
+                    <button
+                      onClick={handleDownloadConfig}
+                      disabled={!mcpSettingsJson}
+                      className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md text-sm font-medium disabled:opacity-50 btn-primary"
+                    >
+                      <Download size={16} />
+                      {t('settings.downloadJson')}
+                    </button>
+                  </div>
+                  {mcpSettingsJson && (
+                    <div className="mt-3">
+                      <pre className="bg-gray-900 text-gray-100 p-4 rounded-md overflow-x-auto text-xs max-h-96">
+                        {mcpSettingsJson}
+                      </pre>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </PermissionChecker>
     </div>
   );
 };

@@ -81,20 +81,9 @@ export const getMcpSettingsJson = (req: Request, res: Response): void => {
   try {
     const { serverName } = req.query;
     const settings = loadOriginalSettings();
-
-    // Remove sensitive user information (passwords)
-    const sanitizedSettings = {
-      ...settings,
-      users: settings.users?.map((user) => ({
-        username: user.username,
-        isAdmin: user.isAdmin,
-        // Omit password field
-      })),
-    };
-
     if (serverName && typeof serverName === 'string') {
       // Return individual server configuration
-      const serverConfig = sanitizedSettings.mcpServers[serverName];
+      const serverConfig = settings.mcpServers[serverName];
       if (!serverConfig) {
         res.status(404).json({
           success: false,
@@ -115,7 +104,7 @@ export const getMcpSettingsJson = (req: Request, res: Response): void => {
       // Return full settings
       res.json({
         success: true,
-        data: sanitizedSettings,
+        data: settings,
       });
     }
   } catch (error) {

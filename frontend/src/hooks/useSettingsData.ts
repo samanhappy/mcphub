@@ -424,7 +424,7 @@ export const useSettingsData = () => {
     setLoading(true);
     setError(null);
     try {
-      return await apiGet(`/mcp-settings/export?serverName=${serverName}`);
+      return await apiGet(`/mcp-settings/export?serverName=${serverName ? serverName : ''}`);
     } catch (error) {
       console.error('Failed to export MCP settings:', error);
       const errorMessage = error instanceof Error ? error.message : 'Failed to export MCP settings';

@@ -25,7 +25,6 @@ const ServerCard = ({ server, onRemove, onEdit, onToggle, onRefresh }: ServerCar
   const [isToggling, setIsToggling] = useState(false);
   const [showErrorPopover, setShowErrorPopover] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [copiedConfig, setCopiedConfig] = useState(false);
   const errorPopoverRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -111,9 +110,7 @@ const ServerCard = ({ server, onRemove, onEdit, onToggle, onRefresh }: ServerCar
 
       if (navigator.clipboard && window.isSecureContext) {
         await navigator.clipboard.writeText(configJson);
-        setCopiedConfig(true);
         showToast(t('common.copySuccess') || 'Copied to clipboard', 'success');
-        setTimeout(() => setCopiedConfig(false), 2000);
       } else {
         // Fallback for HTTP or unsupported clipboard API
         const textArea = document.createElement('textarea');
@@ -125,9 +122,7 @@ const ServerCard = ({ server, onRemove, onEdit, onToggle, onRefresh }: ServerCar
         textArea.select();
         try {
           document.execCommand('copy');
-          setCopiedConfig(true);
           showToast(t('common.copySuccess') || 'Copied to clipboard', 'success');
-          setTimeout(() => setCopiedConfig(false), 2000);
         } catch (err) {
           showToast(t('common.copyFailed') || 'Copy failed', 'error');
           console.error('Copy to clipboard failed:', err);
@@ -293,12 +288,8 @@ const ServerCard = ({ server, onRemove, onEdit, onToggle, onRefresh }: ServerCar
             )}
           </div>
           <div className="flex space-x-2">
-            <button
-              onClick={handleCopyServerConfig}
-              className="p-1 text-gray-400 hover:text-gray-600 transition-colors btn-secondary"
-              title={t('server.copyConfig')}
-            >
-              {copiedConfig ? <Check size={18} className="text-green-500" /> : <Copy size={18} />}
+            <button onClick={handleCopyServerConfig} className={`px-3 py-1 btn-secondary`}>
+              {t('server.copy')}
             </button>
             <button
               onClick={handleEdit}
