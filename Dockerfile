@@ -22,15 +22,15 @@ RUN if [ "$INSTALL_EXT" = "true" ]; then \
   else \
   echo "Skipping Chrome installation on non-amd64 architecture: $ARCH"; \
   fi; \
-  # Install Docker CLI \
+  # Install Docker Engine (includes CLI and daemon) \
   apt-get update && \
-  apt-get install -y ca-certificates curl && \
+  apt-get install -y ca-certificates curl iptables && \
   install -m 0755 -d /etc/apt/keyrings && \
   curl -fsSL https://download.docker.com/linux/debian/gpg -o /etc/apt/keyrings/docker.asc && \
   chmod a+r /etc/apt/keyrings/docker.asc && \
   echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/debian bookworm stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null && \
   apt-get update && \
-  apt-get install -y docker-ce-cli && \
+  apt-get install -y docker-ce docker-ce-cli containerd.io && \
   apt-get clean && rm -rf /var/lib/apt/lists/*; \
   fi
 
