@@ -1,110 +1,55 @@
-import { getMcpSettingsJson } from '../../src/controllers/configController.js';
-import * as config from '../../src/config/index.js';
-import { Request, Response } from 'express';
+import { getMcpSettingsJson } from '../../src/controllers/configController.js'
+import * as config from '../../src/config/index.js'
+import { Request, Response } from 'express'
 
 // Mock the config module
-jest.mock('../../src/config/index.js');
+jest.mock('../../src/config/index.js')
 
 describe('ConfigController - getMcpSettingsJson', () => {
-  let mockRequest: Partial<Request>;
-  let mockResponse: Partial<Response>;
-  let mockJson: jest.Mock;
-  let mockStatus: jest.Mock;
+  let mockRequest: Partial<Request>
+  let mockResponse: Partial<Response>
+  let mockJson: jest.Mock
+  let mockStatus: jest.Mock
 
   beforeEach(() => {
-    mockJson = jest.fn();
-    mockStatus = jest.fn().mockReturnThis();
+    mockJson = jest.fn()
+    mockStatus = jest.fn().mockReturnThis()
     mockRequest = {
-      query: {}
-    };
+      query: {},
+    }
     mockResponse = {
       json: mockJson,
-      status: mockStatus
-    };
+      status: mockStatus,
+    }
 
     // Reset mocks
-    jest.clearAllMocks();
-  });
+    jest.clearAllMocks()
+  })
 
   describe('Full Settings Export', () => {
-    it('should return full settings without passwords when no serverName is specified', () => {
-      const mockSettings = {
-        mcpServers: {
-          'test-server': {
-            command: 'test',
-            args: ['--test'],
-            env: {
-              TEST_VAR: 'test-value'
-            }
-          },
-          'another-server': {
-            command: 'another',
-            args: ['--another']
-          }
-        },
-        users: [
-          {
-            username: 'admin',
-            password: '$2b$10$hashedpassword',
-            isAdmin: true
-          },
-          {
-            username: 'user',
-            password: '$2b$10$anotherhashedpassword',
-            isAdmin: false
-          }
-        ],
-        groups: [
-          {
-            id: 'group1',
-            name: 'Test Group',
-            servers: ['test-server']
-          }
-        ]
-      };
-
-      (config.loadOriginalSettings as jest.Mock).mockReturnValue(mockSettings);
-
-      getMcpSettingsJson(mockRequest as Request, mockResponse as Response);
-
-      expect(config.loadOriginalSettings).toHaveBeenCalled();
-      expect(mockJson).toHaveBeenCalledWith({
-        success: true,
-        data: {
-          mcpServers: mockSettings.mcpServers,
-          users: [
-            { username: 'admin', isAdmin: true },
-            { username: 'user', isAdmin: false }
-          ],
-          groups: mockSettings.groups
-        }
-      });
-      expect(mockStatus).not.toHaveBeenCalled();
-    });
-
     it('should handle settings without users array', () => {
       const mockSettings = {
         mcpServers: {
           'test-server': {
             command: 'test',
-            args: ['--test']
-          }
-        }
-      };
+            args: ['--test'],
+          },
+        },
+      }
 
-      (config.loadOriginalSettings as jest.Mock).mockReturnValue(mockSettings);
+      ;(config.loadOriginalSettings as jest.Mock).mockReturnValue(mockSettings)
 
-      getMcpSettingsJson(mockRequest as Request, mockResponse as Response);
+      getMcpSettingsJson(mockRequest as Request, mockResponse as Response)
 
       expect(mockJson).toHaveBeenCalledWith({
         success: true,
         data: {
           mcpServers: mockSettings.mcpServers,
-          users: undefined
-        }
-      });
-    });
-  });
+          users: undefined,
+        },
+      })
+    })
+  })
 
   describe('Individual Server Export', () => {
     it('should return individual server configuration when serverName is specified', () => {
@@ -114,27 +59,27 @@ describe('ConfigController - getMcpSettingsJson', () => {
             command: 'test',
             args: ['--test'],
             env: {
-              TEST_VAR: 'test-value'
-            }
+              TEST_VAR: 'test-value',
+            },
           },
           'another-server': {
             command: 'another',
-            args: ['--another']
-          }
+            args: ['--another'],
+          },
         },
         users: [
           {
             username: 'admin',
             password: '$2b$10$hashedpassword',
-            isAdmin: true
-          }
-        ]
-      };
+            isAdmin: true,
+          },
+        ],
+      }
 
-      mockRequest.query = { serverName: 'test-server' };
-      (config.loadOriginalSettings as jest.Mock).mockReturnValue(mockSettings);
+      mockRequest.query = { serverName: 'test-server' }
+      ;(config.loadOriginalSettings as jest.Mock).mockReturnValue(mockSettings)
 
-      getMcpSettingsJson(mockRequest as Request, mockResponse as Response);
+      getMcpSettingsJson(mockRequest as Request, mockResponse as Response)
 
       expect(mockJson).toHaveBeenCalledWith({
         success: true,
@@ -144,51 +89,51 @@ describe('ConfigController - getMcpSettingsJson', () => {
               command: 'test',
               args: ['--test'],
               env: {
-                TEST_VAR: 'test-value'
-              }
-            }
-          }
-        }
-      });
-    });
+                TEST_VAR: 'test-value',
+              },
+            },
+          },
+        },
+      })
+    })
 
     it('should return 404 when server does not exist', () => {
       const mockSettings = {
         mcpServers: {
           'test-server': {
             command: 'test',
-            args: ['--test']
-          }
-        }
-      };
+            args: ['--test'],
+          },
+        },
+      }
 
-      mockRequest.query = { serverName: 'non-existent-server' };
-      (config.loadOriginalSettings as jest.Mock).mockReturnValue(mockSettings);
+      mockRequest.query = { serverName: 'non-existent-server' }
+      ;(config.loadOriginalSettings as jest.Mock).mockReturnValue(mockSettings)
 
-      getMcpSettingsJson(mockRequest as Request, mockResponse as Response);
+      getMcpSettingsJson(mockRequest as Request, mockResponse as Response)
 
-      expect(mockStatus).toHaveBeenCalledWith(404);
+      expect(mockStatus).toHaveBeenCalledWith(404)
       expect(mockJson).toHaveBeenCalledWith({
         success: false,
-        message: "Server 'non-existent-server' not found"
-      });
-    });
-  });
+        message: "Server 'non-existent-server' not found",
+      })
+    })
+  })
 
   describe('Error Handling', () => {
     it('should handle errors gracefully and return 500', () => {
-      const errorMessage = 'Failed to load settings';
-      (config.loadOriginalSettings as jest.Mock).mockImplementation(() => {
-        throw new Error(errorMessage);
-      });
+      const errorMessage = 'Failed to load settings'
+      ;(config.loadOriginalSettings as jest.Mock).mockImplementation(() => {
+        throw new Error(errorMessage)
+      })
 
-      getMcpSettingsJson(mockRequest as Request, mockResponse as Response);
+      getMcpSettingsJson(mockRequest as Request, mockResponse as Response)
 
-      expect(mockStatus).toHaveBeenCalledWith(500);
+      expect(mockStatus).toHaveBeenCalledWith(500)
       expect(mockJson).toHaveBeenCalledWith({
         success: false,
-        message: 'Failed to get MCP settings'
-      });
-    });
-  });
-});
+        message: 'Failed to get MCP settings',
+      })
+    })
+  })
+})

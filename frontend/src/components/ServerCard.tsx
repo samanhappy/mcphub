@@ -147,7 +147,7 @@ const ServerCard = ({ server, onRemove, onEdit, onToggle, onRefresh }: ServerCar
       if (result.success) {
         showToast(
           t(enabled ? 'tool.enableSuccess' : 'tool.disableSuccess', { name: toolName }),
-          'success'
+          'success',
         )
         // Trigger refresh to update the tool's state in the UI
         if (onRefresh) {
@@ -169,7 +169,7 @@ const ServerCard = ({ server, onRemove, onEdit, onToggle, onRefresh }: ServerCar
       if (result.success) {
         showToast(
           t(enabled ? 'tool.enableSuccess' : 'tool.disableSuccess', { name: promptName }),
-          'success'
+          'success',
         )
         // Trigger refresh to update the prompt's state in the UI
         if (onRefresh) {

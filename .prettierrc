@@ -1,9 +1,7 @@
 {
   "semi": false,
-  "trailingComma": "es5",
+  "trailingComma": "all",
   "singleQuote": true,
-  "bracketSameLine": false,
   "printWidth": 100,
-  "tabWidth": 2,
-  "arrowParens": "always"
+  "tabWidth": 2
 }

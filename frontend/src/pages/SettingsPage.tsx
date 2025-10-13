@@ -124,7 +124,7 @@ const SettingsPage: React.FC = () => {
       | 'mcpRouterConfig'
       | 'nameSeparator'
       | 'password'
-      | 'exportConfig'
+      | 'exportConfig',
   ) => {
     setSectionsVisible((prev) => ({
       ...prev,
@@ -139,7 +139,7 @@ const SettingsPage: React.FC = () => {
       | 'enableBearerAuth'
       | 'bearerAuthKey'
       | 'skipAuth',
-    value: boolean | string
+    value: boolean | string,
   ) => {
     // If enableBearerAuth is turned on and there's no key, generate one first
     if (key === 'enableBearerAuth' && value === true) {
@@ -180,7 +180,7 @@ const SettingsPage: React.FC = () => {
 
   const handleInstallConfigChange = (
     key: 'pythonIndexUrl' | 'npmRegistry' | 'baseUrl',
-    value: string
+    value: string,
   ) => {
     setInstallConfig({
       ...installConfig,
@@ -194,7 +194,7 @@ const SettingsPage: React.FC = () => {
 
   const handleSmartRoutingConfigChange = (
     key: 'dbUrl' | 'openaiApiBaseUrl' | 'openaiApiKey' | 'openaiApiEmbeddingModel',
-    value: string
+    value: string,
   ) => {
     setTempSmartRoutingConfig({
       ...tempSmartRoutingConfig,
@@ -203,14 +203,14 @@ const SettingsPage: React.FC = () => {
   }
 
   const saveSmartRoutingConfig = async (
-    key: 'dbUrl' | 'openaiApiBaseUrl' | 'openaiApiKey' | 'openaiApiEmbeddingModel'
+    key: 'dbUrl' | 'openaiApiBaseUrl' | 'openaiApiKey' | 'openaiApiEmbeddingModel',
   ) => {
     await updateSmartRoutingConfig(key, tempSmartRoutingConfig[key])
   }
 
   const handleMCPRouterConfigChange = (
     key: 'apiKey' | 'referer' | 'title' | 'baseUrl',
-    value: string
+    value: string,
   ) => {
     setTempMCPRouterConfig({
       ...tempMCPRouterConfig,
@@ -241,7 +241,7 @@ const SettingsPage: React.FC = () => {
         showToast(
           t('settings.smartRoutingValidationError', {
             fields: missingFields.join(', '),
-          })
+          }),
         )
         return
       }
