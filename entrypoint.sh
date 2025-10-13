@@ -27,11 +27,11 @@ if command -v dockerd >/dev/null 2>&1; then
   mkdir -p /var/lib/docker
   
   # Start dockerd in the background
-  dockerd --host=unix:///var/run/docker.sock --storage-driver=overlay2 > /var/log/dockerd.log 2>&1 &
+  dockerd --host=unix:///var/run/docker.sock --storage-driver=vfs > /var/log/dockerd.log 2>&1 &
   
   # Wait for Docker daemon to be ready
   echo "Waiting for Docker daemon to be ready..."
-  TIMEOUT=30
+  TIMEOUT=15
   ELAPSED=0
   while ! docker info >/dev/null 2>&1; do
     if [ $ELAPSED -ge $TIMEOUT ]; then
