@@ -14,6 +14,11 @@ export const getMarketServers = (): Record<string, MarketServer> => {
     const data = fs.readFileSync(serversJsonPath, 'utf8');
     const serversObj = JSON.parse(data) as Record<string, MarketServer>;
 
+    // use key as name field
+    Object.entries(serversObj).forEach(([key, server]) => {
+      server.name = key;
+    });
+
     const sortedEntries = Object.entries(serversObj).sort(([, serverA], [, serverB]) => {
       if (serverA.is_official && !serverB.is_official) return -1;
       if (!serverA.is_official && serverB.is_official) return 1;
