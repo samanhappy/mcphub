@@ -287,7 +287,7 @@ const SettingsPage: React.FC = () => {
     try {
       const result = await exportMCPSettings()
       console.log('Fetched MCP settings:', result)
-      const configJson = JSON.stringify(result, null, 2)
+      const configJson = JSON.stringify(result.data, null, 2)
       setMcpSettingsJson(configJson)
     } catch (error) {
       console.error('Error fetching MCP settings:', error)
