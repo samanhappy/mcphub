@@ -161,7 +161,7 @@ const RegistryServerDetail: React.FC<RegistryServerDetailProps> = ({
       const headers: Record<string, string> = {};
       if (remote.headers) {
         remote.headers.forEach((header) => {
-          headers[header.name] = header.default || '';
+          headers[header.name] = header.default || header.value || '';
         });
       }
 
@@ -297,6 +297,45 @@ const RegistryServerDetail: React.FC<RegistryServerDetailProps> = ({
                 : t('registry.install')}
           </button>
         </div>
+
+        {/* Headers */}
+        {remote.headers && remote.headers.length > 0 && (
+          <div className="mt-3 border-t border-gray-200 pt-3">
+            <h5 className="text-sm font-medium text-gray-700 mb-2">{t('registry.headers')}:</h5>
+            <div className="space-y-2">
+              {remote.headers.map((header, headerIndex) => (
+                <div key={headerIndex} className="text-sm">
+                  <div className="flex items-start">
+                    <span className="font-mono text-gray-900 font-medium">{header.name}</span>
+                    {header.isRequired && (
+                      <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">
+                        {t('common.required')}
+                      </span>
+                    )}
+                    {header.isSecret && (
+                      <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">
+                        {t('common.secret')}
+                      </span>
+                    )}
+                  </div>
+                  {header.description && <p className="text-gray-600 mt-1">{header.description}</p>}
+                  {header.value && (
+                    <p className="text-gray-500 mt-1">
+                      <span className="font-medium">{t('common.value')}:</span>{' '}
+                      <span className="font-mono">{header.value}</span>
+                    </p>
+                  )}
+                  {header.default && (
+                    <p className="text-gray-500 mt-1">
+                      <span className="font-medium">{t('common.default')}:</span>{' '}
+                      <span className="font-mono">{header.default}</span>
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     );
   };
