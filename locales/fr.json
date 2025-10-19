@@ -214,7 +214,12 @@
     "discord": "Discord",
     "required": "Requis",
     "secret": "Secret",
-    "default": "Défaut"
+    "default": "Défaut",
+    "value": "Valeur",
+    "type": "Type",
+    "repeated": "Répété",
+    "valueHint": "Indice de valeur",
+    "choices": "Choix"
   },
   "nav": {
     "dashboard": "Tableau de bord",

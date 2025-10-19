@@ -264,6 +264,70 @@ const RegistryServerDetail: React.FC<RegistryServerDetailProps> = ({
             </div>
           </div>
         )}
+
+        {/* Package Arguments */}
+        {pkg.packageArguments && pkg.packageArguments.length > 0 && (
+          <div className="mt-3 border-t border-gray-200 pt-3">
+            <h5 className="text-sm font-medium text-gray-700 mb-2">
+              {t('registry.packageArguments')}:
+            </h5>
+            <div className="space-y-2">
+              {pkg.packageArguments.map((arg, argIndex) => (
+                <div key={argIndex} className="text-sm">
+                  <div className="flex items-start">
+                    <span className="font-mono text-gray-900 font-medium">{arg.name}</span>
+                    {arg.isRequired && (
+                      <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">
+                        {t('common.required')}
+                      </span>
+                    )}
+                    {arg.isSecret && (
+                      <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">
+                        {t('common.secret')}
+                      </span>
+                    )}
+                    {arg.isRepeated && (
+                      <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800">
+                        {t('common.repeated')}
+                      </span>
+                    )}
+                  </div>
+                  {arg.description && <p className="text-gray-600 mt-1">{arg.description}</p>}
+                  {arg.type && (
+                    <p className="text-gray-500 mt-1">
+                      <span className="font-medium">{t('common.type')}:</span>{' '}
+                      <span className="font-mono">{arg.type}</span>
+                    </p>
+                  )}
+                  {arg.default && (
+                    <p className="text-gray-500 mt-1">
+                      <span className="font-medium">{t('common.default')}:</span>{' '}
+                      <span className="font-mono">{arg.default}</span>
+                    </p>
+                  )}
+                  {arg.value && (
+                    <p className="text-gray-500 mt-1">
+                      <span className="font-medium">{t('common.value')}:</span>{' '}
+                      <span className="font-mono">{arg.value}</span>
+                    </p>
+                  )}
+                  {arg.valueHint && (
+                    <p className="text-gray-500 mt-1">
+                      <span className="font-medium">{t('common.valueHint')}:</span>{' '}
+                      <span className="font-mono">{arg.valueHint}</span>
+                    </p>
+                  )}
+                  {arg.choices && arg.choices.length > 0 && (
+                    <p className="text-gray-500 mt-1">
+                      <span className="font-medium">{t('common.choices')}:</span>{' '}
+                      <span className="font-mono">{arg.choices.join(', ')}</span>
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     );
   };
@@ -593,14 +657,29 @@ function getCommand(registryType: string): string {
 // Helper function to get appropriate args based on command type and package identifier
 function getArgs(command: string, pkg: RegistryPackage): string[] {
   const identifier = [pkg.identifier + (pkg.version ? `@${pkg.version}` : '')];
+
+  // Build package arguments if available
+  const packageArgs: string[] = [];
+  if (pkg.packageArguments && pkg.packageArguments.length > 0) {
+    pkg.packageArguments.forEach((arg) => {
+      // Add required arguments or arguments with default values
+      if (arg.isRequired || arg.default || arg.value) {
+        const argName = `--${arg.name}`;
+        // Priority: value > default > placeholder
+        const argValue = arg.value || arg.default || `\${${arg.name.toUpperCase()}}`;
+        packageArgs.push(argName, argValue);
+      }
+    });
+  }
+
   // Map commands to appropriate argument patterns
   switch (command.toLowerCase()) {
     case 'uvx':
-      // For Python packages: uvx package-name
-      return identifier;
+      // For Python packages: uvx package-name --arg1 value1 --arg2 value2
+      return [...identifier, ...packageArgs];
     case 'npx':
-      // For Node.js packages: npx package-name
-      return identifier;
+      // For Node.js packages: npx package-name --arg1 value1 --arg2 value2
+      return [...identifier, ...packageArgs];
     case 'docker': {
       // add envs from environment variables if available
       const envs: string[] = [];
@@ -609,11 +688,11 @@ function getArgs(command: string, pkg: RegistryPackage): string[] {
           envs.push('-e', `${env.name}`);
         });
       }
-      // For Docker images: docker run -i package-name
-      return ['run', '-i', '--rm', ...envs, ...identifier];
+      // For Docker images: docker run -i package-name --arg1 value1 --arg2 value2
+      return ['run', '-i', '--rm', ...envs, ...identifier, ...packageArgs];
     }
     default:
-      // If no specific pattern is defined, just return the identifier
-      return identifier;
+      // If no specific pattern is defined, return identifier with package args
+      return [...identifier, ...packageArgs];
   }
 }

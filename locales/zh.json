@@ -215,7 +215,12 @@
     "discord": "Discord",
     "required": "必填",
     "secret": "敏感",
-    "default": "默认值"
+    "default": "默认值",
+    "value": "值",
+    "type": "类型",
+    "repeated": "可重复",
+    "valueHint": "值提示",
+    "choices": "可选值"
   },
   "nav": {
     "dashboard": "仪表盘",
