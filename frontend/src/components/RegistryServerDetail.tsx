@@ -131,6 +131,7 @@ const RegistryServerDetail: React.FC<RegistryServerDetailProps> = ({
   // Build initial data for ServerForm
   const getInitialFormData = () => {
     if (!selectedOption || !selectedInstallType) return null;
+    console.log('Building initial form data for:', selectedOption);
 
     if (selectedInstallType === 'package' && 'identifier' in selectedOption) {
       const pkg = selectedOption as RegistryPackage;
