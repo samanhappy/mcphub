@@ -309,3 +309,148 @@ export interface AuthResponse {
   user?: IUser;
   message?: string;
 }
+
+// Official Registry types (from registry.modelcontextprotocol.io)
+export interface RegistryVariable {
+  choices?: string[];
+  default?: string;
+  description?: string;
+  format?: string;
+  isRequired?: boolean;
+  isSecret?: boolean;
+  value?: string;
+}
+
+export interface RegistryVariables {
+  [key: string]: RegistryVariable;
+}
+
+export interface RegistryEnvironmentVariable {
+  choices?: string[];
+  default?: string;
+  description?: string;
+  format?: string;
+  isRequired?: boolean;
+  isSecret?: boolean;
+  name: string;
+  value?: string;
+  variables?: RegistryVariables;
+}
+
+export interface RegistryPackageArgument {
+  choices?: string[];
+  default?: string;
+  description?: string;
+  format?: string;
+  isRepeated?: boolean;
+  isRequired?: boolean;
+  isSecret?: boolean;
+  name: string;
+  type?: string;
+  value?: string;
+  valueHint?: string;
+  variables?: RegistryVariables;
+}
+
+export interface RegistryTransportHeader {
+  choices?: string[];
+  default?: string;
+  description?: string;
+  format?: string;
+  isRequired?: boolean;
+  isSecret?: boolean;
+  name: string;
+  value?: string;
+  variables?: RegistryVariables;
+}
+
+export interface RegistryTransport {
+  headers?: RegistryTransportHeader[];
+  type: string;
+  url?: string;
+}
+
+export interface RegistryPackage {
+  environmentVariables?: RegistryEnvironmentVariable[];
+  fileSha256?: string;
+  identifier: string;
+  packageArguments?: RegistryPackageArgument[];
+  registryBaseUrl?: string;
+  registryType: string;
+  runtimeArguments?: RegistryPackageArgument[];
+  runtimeHint?: string;
+  transport?: RegistryTransport;
+  version?: string;
+}
+
+export interface RegistryRemote {
+  headers?: RegistryTransportHeader[];
+  type: string;
+  url: string;
+}
+
+export interface RegistryRepository {
+  id?: string;
+  source?: string;
+  subfolder?: string;
+  url?: string;
+}
+
+export interface RegistryIcon {
+  mimeType: string;
+  sizes?: string[];
+  src: string;
+  theme?: string;
+}
+
+export interface RegistryServerData {
+  $schema?: string;
+  _meta?: {
+    'io.modelcontextprotocol.registry/publisher-provided'?: Record<string, any>;
+  };
+  description: string;
+  icons?: RegistryIcon[];
+  name: string;
+  packages?: RegistryPackage[];
+  remotes?: RegistryRemote[];
+  repository?: RegistryRepository;
+  title: string;
+  version: string;
+  websiteUrl?: string;
+}
+
+export interface RegistryOfficialMeta {
+  isLatest?: boolean;
+  publishedAt?: string;
+  status?: string;
+  updatedAt?: string;
+}
+
+export interface RegistryServerEntry {
+  _meta?: {
+    'io.modelcontextprotocol.registry/official'?: RegistryOfficialMeta;
+  };
+  server: RegistryServerData;
+}
+
+export interface RegistryMetadata {
+  count: number;
+  nextCursor?: string;
+}
+
+export interface RegistryServersResponse {
+  metadata: RegistryMetadata;
+  servers: RegistryServerEntry[];
+}
+
+export interface RegistryServerVersionsResponse {
+  metadata: RegistryMetadata;
+  servers: RegistryServerEntry[];
+}
+
+export interface RegistryServerVersionResponse {
+  _meta?: {
+    'io.modelcontextprotocol.registry/official'?: RegistryOfficialMeta;
+  };
+  server: RegistryServerData;
+}

@@ -56,9 +56,18 @@ import {
   getCloudServerToolsList,
   callCloudTool,
 } from '../controllers/cloudController.js';
+import {
+  getAllRegistryServers,
+  getRegistryServerVersions,
+  getRegistryServerVersion,
+} from '../controllers/registryController.js';
 import { login, register, getCurrentUser, changePassword } from '../controllers/authController.js';
 import { getAllLogs, clearLogs, streamLogs } from '../controllers/logController.js';
-import { getRuntimeConfig, getPublicConfig, getMcpSettingsJson } from '../controllers/configController.js';
+import {
+  getRuntimeConfig,
+  getPublicConfig,
+  getMcpSettingsJson,
+} from '../controllers/configController.js';
 import { callTool } from '../controllers/toolController.js';
 import { getPrompt } from '../controllers/promptController.js';
 import { uploadDxtFile, uploadMiddleware } from '../controllers/dxtController.js';
@@ -143,6 +152,11 @@ export const initRoutes = (app: express.Application): void => {
   router.get('/cloud/tags/:tag', getCloudServersByTag);
   router.get('/cloud/servers/:serverName/tools', getCloudServerToolsList);
   router.post('/cloud/servers/:serverName/tools/:toolName/call', callCloudTool);
+
+  // Registry routes (proxy to official MCP registry)
+  router.get('/registry/servers', getAllRegistryServers);
+  router.get('/registry/servers/:serverName/versions', getRegistryServerVersions);
+  router.get('/registry/servers/:serverName/versions/:version', getRegistryServerVersion);
 
   // Log routes
   router.get('/logs', getAllLogs);

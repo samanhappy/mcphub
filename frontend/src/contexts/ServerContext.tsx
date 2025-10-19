@@ -63,55 +63,58 @@ export const ServerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   };
 
   // Start normal polling
-  const startNormalPolling = useCallback((options?: { immediate?: boolean }) => {
-    const immediate = options?.immediate ?? true;
-    // Ensure no other timers are running
-    clearTimer();
+  const startNormalPolling = useCallback(
+    (options?: { immediate?: boolean }) => {
+      const immediate = options?.immediate ?? true;
+      // Ensure no other timers are running
+      clearTimer();
 
-    const fetchServers = async () => {
-      try {
-        console.log('[ServerContext] Fetching servers from API...');
-        const data = await apiGet('/servers');
-        
-        // Update last fetch time
-        lastFetchTimeRef.current = Date.now();
+      const fetchServers = async () => {
+        try {
+          console.log('[ServerContext] Fetching servers from API...');
+          const data = await apiGet('/servers');
 
-        if (data && data.success && Array.isArray(data.data)) {
-          setServers(data.data);
-        } else if (data && Array.isArray(data)) {
-          setServers(data);
-        } else {
-          console.error('Invalid server data format:', data);
-          setServers([]);
+          // Update last fetch time
+          lastFetchTimeRef.current = Date.now();
+
+          if (data && data.success && Array.isArray(data.data)) {
+            setServers(data.data);
+          } else if (data && Array.isArray(data)) {
+            setServers(data);
+          } else {
+            console.error('Invalid server data format:', data);
+            setServers([]);
+          }
+
+          // Reset error state
+          setError(null);
+        } catch (err) {
+          console.error('Error fetching servers during normal polling:', err);
+
+          // Use friendly error message
+          if (!navigator.onLine) {
+            setError(t('errors.network'));
+          } else if (
+            err instanceof TypeError &&
+            (err.message.includes('NetworkError') || err.message.includes('Failed to fetch'))
+          ) {
+            setError(t('errors.serverConnection'));
+          } else {
+            setError(t('errors.serverFetch'));
+          }
         }
+      };
 
-        // Reset error state
-        setError(null);
-      } catch (err) {
-        console.error('Error fetching servers during normal polling:', err);
-
-        // Use friendly error message
-        if (!navigator.onLine) {
-          setError(t('errors.network'));
-        } else if (
-          err instanceof TypeError &&
-          (err.message.includes('NetworkError') || err.message.includes('Failed to fetch'))
-        ) {
-          setError(t('errors.serverConnection'));
-        } else {
-          setError(t('errors.serverFetch'));
-        }
+      // Execute immediately unless explicitly skipped
+      if (immediate) {
+        fetchServers();
       }
-    };
 
-    // Execute immediately unless explicitly skipped
-    if (immediate) {
-      fetchServers();
-    }
-
-    // Set up regular polling
-    intervalRef.current = setInterval(fetchServers, CONFIG.normal.pollingInterval);
-  }, [t]);
+      // Set up regular polling
+      intervalRef.current = setInterval(fetchServers, CONFIG.normal.pollingInterval);
+    },
+    [t],
+  );
 
   // Watch for authentication status changes
   useEffect(() => {
@@ -147,7 +150,7 @@ export const ServerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       try {
         console.log('[ServerContext] Initial fetch - attempt', attemptsRef.current + 1);
         const data = await apiGet('/servers');
-        
+
         // Update last fetch time
         lastFetchTimeRef.current = Date.now();
 
@@ -245,16 +248,30 @@ export const ServerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const refreshIfNeeded = useCallback(() => {
     const now = Date.now();
     const timeSinceLastFetch = now - lastFetchTimeRef.current;
-    
+
     // Log who is calling this
-    console.log('[ServerContext] refreshIfNeeded called, time since last fetch:', timeSinceLastFetch, 'ms');
-    
+    console.log(
+      '[ServerContext] refreshIfNeeded called, time since last fetch:',
+      timeSinceLastFetch,
+      'ms',
+    );
+
     // Only refresh if enough time has passed since last fetch
     if (timeSinceLastFetch >= MIN_REFRESH_INTERVAL) {
-      console.log('[ServerContext] Triggering refresh (exceeded MIN_REFRESH_INTERVAL:', MIN_REFRESH_INTERVAL, 'ms)');
+      console.log(
+        '[ServerContext] Triggering refresh (exceeded MIN_REFRESH_INTERVAL:',
+        MIN_REFRESH_INTERVAL,
+        'ms)',
+      );
       triggerRefresh();
     } else {
-      console.log('[ServerContext] Skipping refresh (MIN_REFRESH_INTERVAL:', MIN_REFRESH_INTERVAL, 'ms, time since last:', timeSinceLastFetch, 'ms)');
+      console.log(
+        '[ServerContext] Skipping refresh (MIN_REFRESH_INTERVAL:',
+        MIN_REFRESH_INTERVAL,
+        'ms, time since last:',
+        timeSinceLastFetch,
+        'ms)',
+      );
     }
   }, [triggerRefresh]);
 
@@ -263,74 +280,85 @@ export const ServerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     setRefreshKey((prevKey) => prevKey + 1);
   }, []);
 
-  const handleServerEdit = useCallback(async (server: Server) => {
-    try {
-      // Fetch settings to get the full server config before editing
-      const settingsData: ApiResponse<{ mcpServers: Record<string, any> }> =
-        await apiGet('/settings');
+  const handleServerEdit = useCallback(
+    async (server: Server) => {
+      try {
+        // Fetch settings to get the full server config before editing
+        const settingsData: ApiResponse<{ mcpServers: Record<string, any> }> =
+          await apiGet('/settings');
 
-      if (
-        settingsData &&
-        settingsData.success &&
-        settingsData.data &&
-        settingsData.data.mcpServers &&
-        settingsData.data.mcpServers[server.name]
-      ) {
-        const serverConfig = settingsData.data.mcpServers[server.name];
-        return {
-          name: server.name,
-          status: server.status,
-          tools: server.tools || [],
-          config: serverConfig,
-        };
-      } else {
-        console.error('Failed to get server config from settings:', settingsData);
-        setError(t('server.invalidConfig', { serverName: server.name }));
+        if (
+          settingsData &&
+          settingsData.success &&
+          settingsData.data &&
+          settingsData.data.mcpServers &&
+          settingsData.data.mcpServers[server.name]
+        ) {
+          const serverConfig = settingsData.data.mcpServers[server.name];
+          return {
+            name: server.name,
+            status: server.status,
+            tools: server.tools || [],
+            config: serverConfig,
+          };
+        } else {
+          console.error('Failed to get server config from settings:', settingsData);
+          setError(t('server.invalidConfig', { serverName: server.name }));
+          return null;
+        }
+      } catch (err) {
+        console.error('Error fetching server settings:', err);
+        setError(err instanceof Error ? err.message : String(err));
         return null;
       }
-    } catch (err) {
-      console.error('Error fetching server settings:', err);
-      setError(err instanceof Error ? err.message : String(err));
-      return null;
-    }
-  }, [t]);
+    },
+    [t],
+  );
 
-  const handleServerRemove = useCallback(async (serverName: string) => {
-    try {
-      const result = await apiDelete(`/servers/${serverName}`);
+  const handleServerRemove = useCallback(
+    async (serverName: string) => {
+      try {
+        const encodedServerName = encodeURIComponent(serverName);
+        const result = await apiDelete(`/servers/${encodedServerName}`);
 
-      if (!result || !result.success) {
-        setError(result?.message || t('server.deleteError', { serverName }));
+        if (!result || !result.success) {
+          setError(result?.message || t('server.deleteError', { serverName }));
+          return false;
+        }
+
+        setRefreshKey((prevKey) => prevKey + 1);
+        return true;
+      } catch (err) {
+        setError(t('errors.general') + ': ' + (err instanceof Error ? err.message : String(err)));
         return false;
       }
+    },
+    [t],
+  );
 
-      setRefreshKey((prevKey) => prevKey + 1);
-      return true;
-    } catch (err) {
-      setError(t('errors.general') + ': ' + (err instanceof Error ? err.message : String(err)));
-      return false;
-    }
-  }, [t]);
+  const handleServerToggle = useCallback(
+    async (server: Server, enabled: boolean) => {
+      try {
+        const encodedServerName = encodeURIComponent(server.name);
+        const result = await apiPost(`/servers/${encodedServerName}/toggle`, { enabled });
 
-  const handleServerToggle = useCallback(async (server: Server, enabled: boolean) => {
-    try {
-      const result = await apiPost(`/servers/${server.name}/toggle`, { enabled });
+        if (!result || !result.success) {
+          console.error('Failed to toggle server:', result);
+          setError(result?.message || t('server.toggleError', { serverName: server.name }));
+          return false;
+        }
 
-      if (!result || !result.success) {
-        console.error('Failed to toggle server:', result);
-        setError(result?.message || t('server.toggleError', { serverName: server.name }));
+        // Update the UI immediately to reflect the change
+        setRefreshKey((prevKey) => prevKey + 1);
+        return true;
+      } catch (err) {
+        console.error('Error toggling server:', err);
+        setError(err instanceof Error ? err.message : String(err));
         return false;
       }
-
-      // Update the UI immediately to reflect the change
-      setRefreshKey((prevKey) => prevKey + 1);
-      return true;
-    } catch (err) {
-      console.error('Error toggling server:', err);
-      setError(err instanceof Error ? err.message : String(err));
-      return false;
-    }
-  }, [t]);
+    },
+    [t],
+  );
 
   const value: ServerContextType = {
     servers,
