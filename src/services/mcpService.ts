@@ -243,10 +243,14 @@ const callToolWithReconnect = async (
       const isHttp40xError = error?.message?.startsWith?.('Error POSTing to endpoint (HTTP 40');
       // Only retry for StreamableHTTPClientTransport
       const isStreamableHttp = serverInfo.transport instanceof StreamableHTTPClientTransport;
-
-      if (isHttp40xError && attempt < maxRetries && serverInfo.transport && isStreamableHttp) {
+      const isSSE = serverInfo.transport instanceof SSEClientTransport;
+      if (
+        attempt < maxRetries &&
+        serverInfo.transport &&
+        ((isStreamableHttp && isHttp40xError) || isSSE)
+      ) {
         console.warn(
-          `HTTP 40x error detected for StreamableHTTP server ${serverInfo.name}, attempting reconnection (attempt ${attempt + 1}/${maxRetries + 1})`,
+          `${isHttp40xError ? 'HTTP 40x error' : 'error'} detected for ${isStreamableHttp ? 'StreamableHTTP' : 'SSE'} server ${serverInfo.name}, attempting reconnection (attempt ${attempt + 1}/${maxRetries + 1})`,
         );
 
         try {
@@ -1097,9 +1101,7 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
 
       const separator = getNameSeparator();
       const prefix = `${targetServerInfo.name}${separator}`;
-      toolName = toolName.startsWith(prefix)
-        ? toolName.substring(prefix.length)
-        : toolName;
+      toolName = toolName.startsWith(prefix) ? toolName.substring(prefix.length) : toolName;
       const result = await callToolWithReconnect(
         targetServerInfo,
         {
@@ -1233,9 +1235,7 @@ export const handleGetPromptRequest = async (request: any, extra: any) => {
     // Remove server prefix from prompt name if present
     const separator = getNameSeparator();
     const prefix = `${server.name}${separator}`;
-    const cleanPromptName = name.startsWith(prefix)
-      ? name.substring(prefix.length)
-      : name;
+    const cleanPromptName = name.startsWith(prefix) ? name.substring(prefix.length) : name;
 
     const promptParams = {
       name: cleanPromptName || '',
