@@ -162,7 +162,7 @@ const createTransportFromConfig = (name: string, conf: ServerConfig): any => {
     const options: any = {};
     if (conf.headers && Object.keys(conf.headers).length > 0) {
       options.requestInit = {
-        headers: conf.headers,
+        headers: replaceEnvVars(conf.headers),
       };
     }
     transport = new StreamableHTTPClientTransport(new URL(conf.url || ''), options);
@@ -171,10 +171,10 @@ const createTransportFromConfig = (name: string, conf: ServerConfig): any => {
     const options: any = {};
     if (conf.headers && Object.keys(conf.headers).length > 0) {
       options.eventSourceInit = {
-        headers: conf.headers,
+        headers: replaceEnvVars(conf.headers),
       };
       options.requestInit = {
-        headers: conf.headers,
+        headers: replaceEnvVars(conf.headers),
       };
     }
     transport = new SSEClientTransport(new URL(conf.url), options);
