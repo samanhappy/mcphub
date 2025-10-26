@@ -107,7 +107,7 @@
     "enabled": "已启用",
     "enable": "启用",
     "disable": "禁用",
-    "requestOptions": "配置",
+    "requestOptions": "连接配置",
     "timeout": "请求超时",
     "timeoutDescription": "请求超时时间（毫秒）",
     "maxTotalTimeout": "最大总超时",
@@ -164,12 +164,28 @@
       "apiKeyInCookie": "Cookie",
       "passthroughHeaders": "透传请求头",
       "passthroughHeadersHelp": "要从工具调用请求透传到上游OpenAPI接口的请求头名称列表，用逗号分隔（如：Authorization, X-API-Key）"
+    },
+    "oauth": {
+      "sectionTitle": "OAuth 配置",
+      "sectionDescription": "为需要 OAuth 的服务器配置客户端凭据（可选）。",
+      "clientId": "客户端 ID",
+      "clientSecret": "客户端密钥",
+      "authorizationEndpoint": "授权端点",
+      "tokenEndpoint": "令牌端点",
+      "scopes": "权限范围（Scopes）",
+      "scopesPlaceholder": "scope1 scope2",
+      "resource": "资源 / 受众",
+      "accessToken": "访问令牌",
+      "refreshToken": "刷新令牌"
     }
   },
   "status": {
     "online": "在线",
     "offline": "离线",
-    "connecting": "连接中"
+    "connecting": "连接中",
+    "oauthRequired": "需要OAuth授权",
+    "clickToAuthorize": "点击进行OAuth授权",
+    "oauthWindowOpened": "OAuth授权窗口已打开，请完成授权。"
   },
   "errors": {
     "general": "发生错误",
@@ -678,5 +694,31 @@
       "serverRemovedFromGroup": "服务器从分组移除成功",
       "serverToolsUpdated": "服务器工具更新成功"
     }
+  },
+  "oauthCallback": {
+    "authorizationFailed": "授权失败",
+    "authorizationFailedError": "错误",
+    "authorizationFailedDetails": "详情",
+    "invalidRequest": "无效请求",
+    "missingStateParameter": "缺少必需的 OAuth 状态参数。",
+    "missingCodeParameter": "缺少必需的授权码参数。",
+    "serverNotFound": "服务器未找到",
+    "serverNotFoundMessage": "无法找到与此授权请求关联的服务器。",
+    "sessionExpiredMessage": "授权会话可能已过期。请重新进行授权。",
+    "authorizationSuccessful": "授权成功",
+    "server": "服务器",
+    "status": "状态",
+    "connected": "已连接",
+    "successMessage": "服务器已成功授权并连接。",
+    "autoCloseMessage": "此窗口将在 3 秒后自动关闭...",
+    "closeNow": "立即关闭",
+    "connectionError": "连接错误",
+    "connectionErrorMessage": "授权成功，但连接服务器失败。",
+    "reconnectMessage": "请尝试从控制面板重新连接。",
+    "configurationError": "配置错误",
+    "configurationErrorMessage": "服务器传输不支持 OAuth finishAuth()。请确保服务器配置为 streamable-http 传输。",
+    "internalError": "内部错误",
+    "internalErrorMessage": "处理 OAuth 回调时发生意外错误。",
+    "closeWindow": "关闭窗口"
   }
 }

@@ -1,5 +1,5 @@
 // Server status types
-export type ServerStatus = 'connecting' | 'connected' | 'disconnected';
+export type ServerStatus = 'connecting' | 'connected' | 'disconnected' | 'oauth_required';
 
 // Market server types
 export interface MarketServerRepository {
@@ -121,6 +121,43 @@ export interface ServerConfig {
     resetTimeoutOnProgress?: boolean; // Reset timeout on progress notifications
     maxTotalTimeout?: number; // Maximum total timeout in milliseconds
   }; // MCP request options configuration
+  // OAuth authentication for upstream MCP servers
+  oauth?: {
+    clientId?: string; // OAuth client ID
+    clientSecret?: string; // OAuth client secret
+    scopes?: string[]; // Required OAuth scopes
+    accessToken?: string; // Pre-obtained access token (if available)
+    refreshToken?: string; // Refresh token for renewing access
+    dynamicRegistration?: {
+      enabled?: boolean; // Enable/disable dynamic registration
+      issuer?: string; // OAuth issuer URL for discovery
+      registrationEndpoint?: string; // Direct registration endpoint URL
+      metadata?: {
+        client_name?: string;
+        client_uri?: string;
+        logo_uri?: string;
+        scope?: string;
+        redirect_uris?: string[];
+        grant_types?: string[];
+        response_types?: string[];
+        token_endpoint_auth_method?: string;
+        contacts?: string[];
+        software_id?: string;
+        software_version?: string;
+        [key: string]: any;
+      };
+      initialAccessToken?: string;
+    };
+    resource?: string; // OAuth resource parameter (RFC8707)
+    authorizationEndpoint?: string; // Authorization endpoint (authorization code flow)
+    tokenEndpoint?: string; // Token endpoint for exchanging authorization codes for tokens
+    pendingAuthorization?: {
+      authorizationUrl?: string;
+      state?: string;
+      codeVerifier?: string;
+      createdAt?: number;
+    };
+  };
   // OpenAPI specific configuration
   openapi?: {
     url?: string; // OpenAPI specification URL
@@ -172,6 +209,10 @@ export interface Server {
   prompts?: Prompt[];
   config?: ServerConfig;
   enabled?: boolean;
+  oauth?: {
+    authorizationUrl?: string;
+    state?: string;
+  };
 }
 
 // Group types
@@ -208,6 +249,16 @@ export interface ServerFormData {
     timeout?: number;
     resetTimeoutOnProgress?: boolean;
     maxTotalTimeout?: number;
+  };
+  oauth?: {
+    clientId?: string;
+    clientSecret?: string;
+    scopes?: string;
+    accessToken?: string;
+    refreshToken?: string;
+    authorizationEndpoint?: string;
+    tokenEndpoint?: string;
+    resource?: string;
   };
   // OpenAPI specific fields
   openapi?: {

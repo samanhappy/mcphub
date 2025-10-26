@@ -10,7 +10,10 @@ import {
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
-import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
+import {
+  StreamableHTTPClientTransport,
+  StreamableHTTPClientTransportOptions,
+} from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { ServerInfo, ServerConfig, Tool } from '../types/index.js';
 import { loadSettings, expandEnvVars, replaceEnvVars, getNameSeparator } from '../config/index.js';
 import config from '../config/index.js';
@@ -21,6 +24,8 @@ import { OpenAPIClient } from '../clients/openapi.js';
 import { RequestContextService } from './requestContextService.js';
 import { getDataService } from './services.js';
 import { getServerDao, ServerConfigWithName } from '../dao/index.js';
+import { initializeAllOAuthClients } from './oauthService.js';
+import { createOAuthProvider } from './mcpOAuthProvider.js';
 
 const servers: { [sessionId: string]: Server } = {};
 
@@ -59,6 +64,10 @@ const setupKeepAlive = (serverInfo: ServerInfo, serverConfig: ServerConfig): voi
 };
 
 export const initUpstreamServers = async (): Promise<void> => {
+  // Initialize OAuth clients for servers with dynamic registration
+  await initializeAllOAuthClients();
+
+  // Register all tools from upstream servers
   await registerAllTools(true);
 };
 
@@ -155,28 +164,48 @@ export const cleanupAllServers = (): void => {
 };
 
 // Helper function to create transport based on server configuration
-const createTransportFromConfig = (name: string, conf: ServerConfig): any => {
+export const createTransportFromConfig = async (name: string, conf: ServerConfig): Promise<any> => {
   let transport;
 
   if (conf.type === 'streamable-http') {
-    const options: any = {};
-    if (conf.headers && Object.keys(conf.headers).length > 0) {
+    const options: StreamableHTTPClientTransportOptions = {};
+    const headers = conf.headers ? replaceEnvVars(conf.headers) : {};
+
+    if (Object.keys(headers).length > 0) {
       options.requestInit = {
-        headers: replaceEnvVars(conf.headers),
+        headers,
       };
     }
+
+    // Create OAuth provider if configured - SDK will handle authentication automatically
+    const authProvider = await createOAuthProvider(name, conf);
+    if (authProvider) {
+      options.authProvider = authProvider;
+      console.log(`OAuth provider configured for server: ${name}`);
+    }
+
     transport = new StreamableHTTPClientTransport(new URL(conf.url || ''), options);
   } else if (conf.url) {
     // SSE transport
     const options: any = {};
-    if (conf.headers && Object.keys(conf.headers).length > 0) {
+    const headers = conf.headers ? replaceEnvVars(conf.headers) : {};
+
+    if (Object.keys(headers).length > 0) {
       options.eventSourceInit = {
-        headers: replaceEnvVars(conf.headers),
+        headers,
       };
       options.requestInit = {
-        headers: replaceEnvVars(conf.headers),
+        headers,
       };
     }
+
+    // Create OAuth provider if configured - SDK will handle authentication automatically
+    const authProvider = await createOAuthProvider(name, conf);
+    if (authProvider) {
+      options.authProvider = authProvider;
+      console.log(`OAuth provider configured for server: ${name}`);
+    }
+
     transport = new SSEClientTransport(new URL(conf.url), options);
   } else if (conf.command && conf.args) {
     // Stdio transport
@@ -269,7 +298,7 @@ const callToolWithReconnect = async (
           }
 
           // Recreate transport using helper function
-          const newTransport = createTransportFromConfig(serverInfo.name, server);
+          const newTransport = await createTransportFromConfig(serverInfo.name, server);
 
           // Create new client
           const client = new Client(
@@ -450,7 +479,7 @@ export const initializeClientsFromSettings = async (
         continue;
       }
     } else {
-      transport = createTransportFromConfig(name, conf);
+      transport = await createTransportFromConfig(name, conf);
     }
 
     const client = new Client(
@@ -495,6 +524,17 @@ export const initializeClientsFromSettings = async (
       createTime: Date.now(),
       config: conf, // Store reference to original config
     };
+
+    const pendingAuth = conf.oauth?.pendingAuthorization;
+    if (pendingAuth) {
+      serverInfo.status = 'oauth_required';
+      serverInfo.error = null;
+      serverInfo.oauth = {
+        authorizationUrl: pendingAuth.authorizationUrl,
+        state: pendingAuth.state,
+        codeVerifier: pendingAuth.codeVerifier,
+      };
+    }
     serverInfos.push(serverInfo);
 
     client
@@ -559,12 +599,31 @@ export const initializeClientsFromSettings = async (
           serverInfo.error = `Failed to list data: ${dataError} `;
         }
       })
-      .catch((error) => {
-        console.error(
-          `Failed to connect client for server ${name} by error: ${error} with stack: ${error.stack}`,
-        );
-        serverInfo.status = 'disconnected';
-        serverInfo.error = `Failed to connect: ${error.stack} `;
+      .catch(async (error) => {
+        // Check if this is an OAuth authorization error
+        const isOAuthError =
+          error?.message?.includes('OAuth authorization required') ||
+          error?.message?.includes('Authorization required');
+
+        if (isOAuthError) {
+          // OAuth provider should have already set the status to 'oauth_required'
+          // and stored the authorization URL in serverInfo.oauth
+          console.log(
+            `OAuth authorization required for server ${name}. Status should be set to 'oauth_required'.`,
+          );
+          // Make sure status is set correctly
+          if (serverInfo.status !== 'oauth_required') {
+            serverInfo.status = 'oauth_required';
+          }
+          serverInfo.error = null;
+        } else {
+          console.error(
+            `Failed to connect client for server ${name} by error: ${error} with stack: ${error.stack}`,
+          );
+          // Other connection errors
+          serverInfo.status = 'disconnected';
+          serverInfo.error = `Failed to connect: ${error.stack} `;
+        }
       });
     console.log(`Initialized client for server: ${name}`);
   }
@@ -584,39 +643,48 @@ export const getServersInfo = async (): Promise<Omit<ServerInfo, 'client' | 'tra
   const filterServerInfos: ServerInfo[] = dataService.filterData
     ? dataService.filterData(serverInfos)
     : serverInfos;
-  const infos = filterServerInfos.map(({ name, status, tools, prompts, createTime, error }) => {
-    const serverConfig = allServers.find((server) => server.name === name);
-    const enabled = serverConfig ? serverConfig.enabled !== false : true;
+  const infos = filterServerInfos.map(
+    ({ name, status, tools, prompts, createTime, error, oauth }) => {
+      const serverConfig = allServers.find((server) => server.name === name);
+      const enabled = serverConfig ? serverConfig.enabled !== false : true;
 
-    // Add enabled status and custom description to each tool
-    const toolsWithEnabled = tools.map((tool) => {
-      const toolConfig = serverConfig?.tools?.[tool.name];
+      // Add enabled status and custom description to each tool
+      const toolsWithEnabled = tools.map((tool) => {
+        const toolConfig = serverConfig?.tools?.[tool.name];
+        return {
+          ...tool,
+          description: toolConfig?.description || tool.description, // Use custom description if available
+          enabled: toolConfig?.enabled !== false, // Default to true if not explicitly disabled
+        };
+      });
+
+      const promptsWithEnabled = prompts.map((prompt) => {
+        const promptConfig = serverConfig?.prompts?.[prompt.name];
+        return {
+          ...prompt,
+          description: promptConfig?.description || prompt.description, // Use custom description if available
+          enabled: promptConfig?.enabled !== false, // Default to true if not explicitly disabled
+        };
+      });
+
       return {
-        ...tool,
-        description: toolConfig?.description || tool.description, // Use custom description if available
-        enabled: toolConfig?.enabled !== false, // Default to true if not explicitly disabled
+        name,
+        status,
+        error,
+        tools: toolsWithEnabled,
+        prompts: promptsWithEnabled,
+        createTime,
+        enabled,
+        oauth: oauth
+          ? {
+              authorizationUrl: oauth.authorizationUrl,
+              state: oauth.state,
+              // Don't expose codeVerifier to frontend for security
+            }
+          : undefined,
       };
-    });
-
-    const promptsWithEnabled = prompts.map((prompt) => {
-      const promptConfig = serverConfig?.prompts?.[prompt.name];
-      return {
-        ...prompt,
-        description: promptConfig?.description || prompt.description, // Use custom description if available
-        enabled: promptConfig?.enabled !== false, // Default to true if not explicitly disabled
-      };
-    });
-
-    return {
-      name,
-      status,
-      error,
-      tools: toolsWithEnabled,
-      prompts: promptsWithEnabled,
-      createTime,
-      enabled,
-    };
-  });
+    },
+  );
   infos.sort((a, b) => {
     if (a.enabled === b.enabled) return 0;
     return a.enabled ? -1 : 1;
@@ -627,6 +695,51 @@ export const getServersInfo = async (): Promise<Omit<ServerInfo, 'client' | 'tra
 // Get server by name
 export const getServerByName = (name: string): ServerInfo | undefined => {
   return serverInfos.find((serverInfo) => serverInfo.name === name);
+};
+
+// Get server by OAuth state parameter
+export const getServerByOAuthState = (state: string): ServerInfo | undefined => {
+  return serverInfos.find((serverInfo) => serverInfo.oauth?.state === state);
+};
+
+/**
+ * Reconnect a server after OAuth authorization or configuration change
+ * This will close the existing connection and reinitialize the server
+ */
+export const reconnectServer = async (serverName: string): Promise<void> => {
+  console.log(`Reconnecting server: ${serverName}`);
+
+  const serverInfo = getServerByName(serverName);
+  if (!serverInfo) {
+    throw new Error(`Server not found: ${serverName}`);
+  }
+
+  // Close existing connection if any
+  if (serverInfo.client) {
+    try {
+      serverInfo.client.close();
+    } catch (error) {
+      console.warn(`Error closing client for server ${serverName}:`, error);
+    }
+  }
+
+  if (serverInfo.transport) {
+    try {
+      serverInfo.transport.close();
+    } catch (error) {
+      console.warn(`Error closing transport for server ${serverName}:`, error);
+    }
+  }
+
+  if (serverInfo.keepAliveIntervalId) {
+    clearInterval(serverInfo.keepAliveIntervalId);
+    serverInfo.keepAliveIntervalId = undefined;
+  }
+
+  // Reinitialize the server
+  await initializeClientsFromSettings(false, serverName);
+
+  console.log(`Successfully reconnected server: ${serverName}`);
 };
 
 // Filter tools by server configuration

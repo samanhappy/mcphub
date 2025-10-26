@@ -27,7 +27,8 @@
             "pages": [
               "features/server-management",
               "features/group-management",
-              "features/smart-routing"
+              "features/smart-routing",
+              "features/oauth"
             ]
           },
           {
@@ -57,7 +58,8 @@
             "pages": [
               "zh/features/server-management",
               "zh/features/group-management",
-              "zh/features/smart-routing"
+              "zh/features/smart-routing",
+              "zh/features/oauth"
             ]
           },
           {

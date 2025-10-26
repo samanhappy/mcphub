@@ -144,6 +144,18 @@ body {
   border: 1px solid rgba(255, 193, 7, 0.3);
 }
 
+.status-badge-oauth-required {
+  background-color: white !important;
+  color: rgba(156, 39, 176, 0.9) !important;
+  border: 1px solid #ba68c8;
+}
+
+.dark .status-badge-oauth-required {
+  background-color: rgba(156, 39, 176, 0.15) !important;
+  color: rgba(186, 104, 200, 0.9) !important;
+  border: 1px solid rgba(156, 39, 176, 0.3);
+}
+
 /* Enhanced status icons for dark theme */
 .dark .status-icon-blue {
   background-color: rgba(59, 130, 246, 0.15) !important;

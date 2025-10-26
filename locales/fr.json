@@ -107,7 +107,7 @@
     "enabled": "Activé",
     "enable": "Activer",
     "disable": "Désactiver",
-    "requestOptions": "Configuration",
+    "requestOptions": "Configuration de la connexion",
     "timeout": "Délai d'attente de la requête",
     "timeoutDescription": "Délai d'attente pour les requêtes vers le serveur MCP (ms)",
     "maxTotalTimeout": "Délai d'attente total maximum",
@@ -164,12 +164,28 @@
       "apiKeyInCookie": "Cookie",
       "passthroughHeaders": "En-têtes de transmission",
       "passthroughHeadersHelp": "Liste séparée par des virgules des noms d'en-têtes à transmettre des requêtes d'appel d'outils vers les points de terminaison OpenAPI en amont (par ex. : Authorization, X-API-Key)"
+    },
+    "oauth": {
+      "sectionTitle": "Configuration OAuth",
+      "sectionDescription": "Configurez les identifiants client pour les serveurs protégés par OAuth (optionnel).",
+      "clientId": "Identifiant client",
+      "clientSecret": "Secret client",
+      "authorizationEndpoint": "Point de terminaison d'autorisation",
+      "tokenEndpoint": "Point de terminaison de jeton",
+      "scopes": "Scopes",
+      "scopesPlaceholder": "scope1 scope2",
+      "resource": "Ressource / Audience",
+      "accessToken": "Jeton d'accès",
+      "refreshToken": "Jeton d'actualisation"
     }
   },
   "status": {
     "online": "En ligne",
     "offline": "Hors ligne",
-    "connecting": "Connexion en cours"
+    "connecting": "Connexion en cours",
+    "oauthRequired": "OAuth requis",
+    "clickToAuthorize": "Cliquez pour autoriser avec OAuth",
+    "oauthWindowOpened": "Fenêtre d'autorisation OAuth ouverte. Veuillez compléter l'autorisation."
   },
   "errors": {
     "general": "Une erreur est survenue",
@@ -676,5 +692,31 @@
       "serverRemovedFromGroup": "Serveur supprimé du groupe avec succès",
       "serverToolsUpdated": "Outils du serveur mis à jour avec succès"
     }
+  },
+  "oauthCallback": {
+    "authorizationFailed": "Échec de l'autorisation",
+    "authorizationFailedError": "Erreur",
+    "authorizationFailedDetails": "Détails",
+    "invalidRequest": "Requête invalide",
+    "missingStateParameter": "Paramètre d'état OAuth requis manquant.",
+    "missingCodeParameter": "Paramètre de code d'autorisation requis manquant.",
+    "serverNotFound": "Serveur introuvable",
+    "serverNotFoundMessage": "Impossible de trouver le serveur associé à cette demande d'autorisation.",
+    "sessionExpiredMessage": "La session d'autorisation a peut-être expiré. Veuillez réessayer l'autorisation.",
+    "authorizationSuccessful": "Autorisation réussie",
+    "server": "Serveur",
+    "status": "État",
+    "connected": "Connecté",
+    "successMessage": "Le serveur a été autorisé et connecté avec succès.",
+    "autoCloseMessage": "Cette fenêtre se fermera automatiquement dans 3 secondes...",
+    "closeNow": "Fermer maintenant",
+    "connectionError": "Erreur de connexion",
+    "connectionErrorMessage": "L'autorisation a réussi, mais la connexion au serveur a échoué.",
+    "reconnectMessage": "Veuillez essayer de vous reconnecter à partir du tableau de bord.",
+    "configurationError": "Erreur de configuration",
+    "configurationErrorMessage": "Le transport du serveur ne prend pas en charge OAuth finishAuth(). Veuillez vous assurer que le serveur est configuré avec le transport streamable-http.",
+    "internalError": "Erreur interne",
+    "internalErrorMessage": "Une erreur inattendue s'est produite lors du traitement du callback OAuth.",
+    "closeWindow": "Fermer la fenêtre"
   }
 }

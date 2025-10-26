@@ -57,6 +57,45 @@ MCPHub 通过将多个 MCP（Model Context Protocol）服务器组织为灵活�
 }
 ```
 
+#### OAuth 配置（可选）
+
+MCPHub 支持通过 OAuth 2.0 访问上游 MCP 服务器。完整说明请参阅[《OAuth 功能指南》](docs/zh/features/oauth.mdx)。实际使用中通常会遇到两类配置：
+
+- **支持动态注册的服务器**（如 Vercel、Linear）：会公开全部元数据，MCPHub 可自动注册并完成授权，仅需声明服务器地址。
+- **需要手动配置客户端的服务器**（如 GitHub Copilot）：需要在提供商后台创建 OAuth 应用，并将获得的 Client ID/Secret 写入 MCPHub。
+
+动态注册示例：
+
+```json
+{
+  "mcpServers": {
+    "vercel": {
+      "type": "sse",
+      "url": "https://mcp.vercel.com"
+    }
+  }
+}
+```
+
+手动注册示例：
+
+```json
+{
+  "mcpServers": {
+    "github": {
+      "type": "sse",
+      "url": "https://api.githubcopilot.com/mcp/",
+      "oauth": {
+        "clientId": "${GITHUB_OAUTH_APP_ID}",
+        "clientSecret": "${GITHUB_OAUTH_APP_SECRET}"
+      }
+    }
+  }
+}
+```
+
+对于需要手动注册的提供商，请先在上游控制台创建 OAuth 应用，将回调地址设置为 `http://localhost:3000/oauth/callback`（或你的部署域名），然后在控制台或配置文件中填写凭据。
+
 ### Docker 部署
 
 **推荐**：挂载自定义配置：

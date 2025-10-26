@@ -17,6 +17,7 @@ import { initializeDefaultUser } from './models/User.js';
 import { sseUserContextMiddleware } from './middlewares/userContext.js';
 import { findPackageRoot } from './utils/path.js';
 import { getCurrentModuleDir } from './utils/moduleDir.js';
+import { initOAuthProvider, getOAuthRouter } from './services/oauthService.js';
 
 /**
  * Get the directory of the current module
@@ -57,6 +58,16 @@ export class AppServer {
 
       // Initialize default admin user if no users exist
       await initializeDefaultUser();
+
+      // Initialize OAuth provider if configured
+      initOAuthProvider();
+      const oauthRouter = getOAuthRouter();
+      if (oauthRouter) {
+        // Mount OAuth router at the root level (before other routes)
+        // This must be at root level as per MCP OAuth specification
+        this.app.use(oauthRouter);
+        console.log('OAuth router mounted successfully');
+      }
 
       initMiddlewares(this.app);
       initRoutes(this.app);

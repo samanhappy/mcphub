@@ -40,7 +40,7 @@ module.exports = {
     '^@/(.*)$': '<rootDir>/src/$1',
     '^(\\.{1,2}/.*)\\.js$': '$1',
   },
-  transformIgnorePatterns: ['node_modules/(?!(@modelcontextprotocol|other-esm-packages)/)'],
+  transformIgnorePatterns: ['node_modules/(?!(@modelcontextprotocol|openid-client|oauth4webapi)/)'],
   extensionsToTreatAsEsm: ['.ts'],
   testTimeout: 30000,
   verbose: true,

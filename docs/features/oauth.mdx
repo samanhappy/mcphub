@@ -1,0 +1,141 @@
+# OAuth Support
+
+## At a Glance
+- Covers end-to-end OAuth 2.0 Authorization Code with PKCE for upstream MCP servers.
+- Supports automatic discovery from `WWW-Authenticate` responses and RFC 8414 metadata.
+- Implements dynamic client registration (RFC 7591) and resource indicators (RFC 8707).
+- Persists client credentials and tokens to `mcp_settings.json` for reconnects.
+
+## When MCPHub Switches to OAuth
+1. MCPHub calls an MCP server that requires authorization and receives `401 Unauthorized`.
+2. The response exposes a `WWW-Authenticate` header pointing to protected resource metadata (`authorization_server` or `as_uri`).
+3. MCPHub discovers the authorization server metadata, registers (if needed), and opens the browser so the user can authorize once.
+4. After the callback is handled, MCPHub reconnects with fresh tokens and resumes requests transparently.
+
+> MCPHub logs each stage (discovery, registration, authorization URL, token exchange) in the server detail view and the backend logs.
+
+## Quick Start by Server Type
+
+### Servers with Dynamic Registration Support
+Some servers expose complete OAuth metadata and allow dynamic client registration. For example, Vercel and Linear MCP servers only need their SSE endpoint configured:
+
+```json
+{
+  "mcpServers": {
+    "vercel": {
+      "type": "sse",
+      "url": "https://mcp.vercel.com"
+    },
+    "linear": {
+      "type": "sse",
+      "url": "https://mcp.linear.app/mcp"
+    }
+  }
+}
+```
+
+- MCPHub discovers the authorization server, registers the client, and handles PKCE automatically.
+- Tokens are stored in `mcp_settings.json`; no additional dashboard configuration is needed.
+
+### Servers Requiring Manual Client Provisioning
+Other providers do not support dynamic registration. GitHub’s MCP endpoint (`https://api.githubcopilot.com/mcp/`) is one example. To connect:
+
+1. Create an OAuth App in the provider’s console (for GitHub, go to **Settings → Developer settings → OAuth Apps**).
+2. Set the callback/redirect URL to `http://localhost:3000/oauth/callback` (or your deployed dashboard domain).
+3. Copy the issued client ID and client secret.
+4. Supply the credentials through the MCPHub dashboard or by editing `mcp_settings.json` as shown below.
+
+```json
+{
+  "mcpServers": {
+    "github": {
+      "type": "sse",
+      "url": "https://api.githubcopilot.com/mcp/",
+      "oauth": {
+        "clientId": "${GITHUB_OAUTH_APP_ID}",
+        "clientSecret": "${GITHUB_OAUTH_APP_SECRET}",
+        "scopes": ["replace-with-provider-scope"],
+        "resource": "https://api.githubcopilot.com"
+      }
+    }
+  }
+}
+```
+
+- MCPHub skips dynamic registration and uses the credentials you provide to complete the OAuth exchange.
+- Update the dashboard or configuration file whenever you rotate secrets.
+- Replace `scopes` with the exact scope strings required by the provider.
+
+## Configuration Options
+You can rely on auto-detection for most servers or declare OAuth settings explicitly in `mcp_settings.json`. Only populate the fields you need.
+
+### Basic Auto Detection (Minimal Config)
+```json
+{
+  "mcpServers": {
+    "secured-sse": {
+      "type": "sse",
+      "url": "https://mcp.example.com/sse",
+      "oauth": {
+        "scopes": ["mcp.tools", "mcp.prompts"],
+        "resource": "https://mcp.example.com"
+      }
+    }
+  }
+}
+```
+- MCPHub will discover the authorization server from challenge headers and walk the user through authorization automatically.
+- Tokens (including refresh tokens) are stored on disk and reused on restart.
+
+### Static Client Credentials (Bring Your Own Client)
+```json
+{
+  "oauth": {
+    "clientId": "mcphub-client",
+    "clientSecret": "replace-me-if-required",
+    "authorizationEndpoint": "https://auth.example.com/oauth/authorize",
+    "tokenEndpoint": "https://auth.example.com/oauth/token",
+    "redirectUri": "http://localhost:3000/oauth/callback"
+  }
+}
+```
+- Use this when the authorization server requires manual client provisioning.
+- `redirectUri` defaults to `http://localhost:3000/oauth/callback`; override it when running behind a custom domain.
+
+### Dynamic Client Registration (RFC 7591)
+```json
+{
+  "oauth": {
+    "dynamicRegistration": {
+      "enabled": true,
+      "issuer": "https://auth.example.com",
+      "metadata": {
+        "client_name": "MCPHub",
+        "redirect_uris": [
+          "http://localhost:3000/oauth/callback",
+          "https://mcphub.example.com/oauth/callback"
+        ],
+        "scope": "mcp.tools mcp.prompts",
+        "grant_types": ["authorization_code", "refresh_token"]
+      },
+      "initialAccessToken": "optional-token-if-required"
+    },
+    "scopes": ["mcp.tools", "mcp.prompts"],
+    "resource": "https://mcp.example.com"
+  }
+}
+```
+- MCPHub discovers endpoints via `issuer`, registers itself, and persists the issued `client_id`/`client_secret`.
+- Provide `initialAccessToken` only when the registration endpoint is protected.
+
+## Authorization Flow
+1. **Initialization** – On startup MCPHub processes every server entry, discovers metadata, and registers the client if `dynamicRegistration.enabled` is true.
+2. **User Authorization** – Initiating a connection launches the system browser to the server’s authorize page with PKCE parameters.
+3. **Callback Handling** – The built-in route (`/oauth/callback`) verifies the `state`, completes the token exchange, and saves the tokens via the MCP SDK.
+4. **Token Lifecycle** – Access and refresh tokens are cached in memory, refreshed automatically, and written back to `mcp_settings.json`.
+
+## Tips & Troubleshooting
+- Confirm that the redirect URI used during authorization exactly matches one of the `redirect_uris` registered with the authorization server.
+- When running behind HTTPS, expose the callback URL publicly or configure a reverse proxy at `/oauth/callback`.
+- If discovery fails, supply `authorizationEndpoint` and `tokenEndpoint` explicitly to bypass metadata lookup.
+- Remove stale tokens from `mcp_settings.json` if an authorization server revokes access—MCPHub will prompt for a fresh login on the next request.

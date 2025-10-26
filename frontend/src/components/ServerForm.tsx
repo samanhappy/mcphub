@@ -42,6 +42,20 @@ const ServerForm = ({
     }));
   };
 
+  const getInitialOAuthConfig = (data: Server | null): ServerFormData['oauth'] => {
+    const oauth = data?.config?.oauth;
+    return {
+      clientId: oauth?.clientId || '',
+      clientSecret: oauth?.clientSecret || '',
+      scopes: oauth?.scopes ? oauth.scopes.join(' ') : '',
+      accessToken: oauth?.accessToken || '',
+      refreshToken: oauth?.refreshToken || '',
+      authorizationEndpoint: oauth?.authorizationEndpoint || '',
+      tokenEndpoint: oauth?.tokenEndpoint || '',
+      resource: oauth?.resource || '',
+    };
+  };
+
   const [serverType, setServerType] = useState<'stdio' | 'sse' | 'streamable-http' | 'openapi'>(
     getInitialServerType(),
   );
@@ -80,6 +94,7 @@ const ServerForm = ({
           initialData.config.options.maxTotalTimeout) ||
         undefined,
     },
+    oauth: getInitialOAuthConfig(initialData),
     // OpenAPI configuration initialization
     openapi:
       initialData && initialData.config && initialData.config.openapi
@@ -135,6 +150,7 @@ const ServerForm = ({
   );
 
   const [isRequestOptionsExpanded, setIsRequestOptionsExpanded] = useState<boolean>(false);
+  const [isOAuthSectionExpanded, setIsOAuthSectionExpanded] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const isEdit = !!initialData;
 
@@ -186,6 +202,19 @@ const ServerForm = ({
     setHeaderVars(newHeaderVars);
   };
 
+  const handleOAuthChange = <K extends keyof NonNullable<ServerFormData['oauth']>>(
+    field: K,
+    value: string,
+  ) => {
+    setFormData((prev) => ({
+      ...prev,
+      oauth: {
+        ...(prev.oauth || {}),
+        [field]: value,
+      },
+    }));
+  };
+
   // Handle options changes
   const handleOptionsChange = (
     field: 'timeout' | 'resetTimeoutOnProgress' | 'maxTotalTimeout',
@@ -231,6 +260,42 @@ const ServerForm = ({
       if (formData.options?.maxTotalTimeout) {
         options.maxTotalTimeout = formData.options.maxTotalTimeout;
       }
+
+      const oauthConfig = (() => {
+        if (!formData.oauth) return undefined;
+        const {
+          clientId,
+          clientSecret,
+          scopes,
+          accessToken,
+          refreshToken,
+          authorizationEndpoint,
+          tokenEndpoint,
+          resource,
+        } = formData.oauth;
+
+        const oauth: Record<string, unknown> = {};
+        if (clientId && clientId.trim()) oauth.clientId = clientId.trim();
+        if (clientSecret && clientSecret.trim()) oauth.clientSecret = clientSecret.trim();
+        if (scopes && scopes.trim()) {
+          const parsedScopes = scopes
+            .split(/[\s,]+/)
+            .map((scope) => scope.trim())
+            .filter((scope) => scope.length > 0);
+          if (parsedScopes.length > 0) {
+            oauth.scopes = parsedScopes;
+          }
+        }
+        if (accessToken && accessToken.trim()) oauth.accessToken = accessToken.trim();
+        if (refreshToken && refreshToken.trim()) oauth.refreshToken = refreshToken.trim();
+        if (authorizationEndpoint && authorizationEndpoint.trim()) {
+          oauth.authorizationEndpoint = authorizationEndpoint.trim();
+        }
+        if (tokenEndpoint && tokenEndpoint.trim()) oauth.tokenEndpoint = tokenEndpoint.trim();
+        if (resource && resource.trim()) oauth.resource = resource.trim();
+
+        return Object.keys(oauth).length > 0 ? oauth : undefined;
+      })();
 
       const payload = {
         name: formData.name,
@@ -304,6 +369,7 @@ const ServerForm = ({
               ? {
                   url: formData.url,
                   ...(Object.keys(headers).length > 0 ? { headers } : {}),
+                  ...(oauthConfig ? { oauth: oauthConfig } : {}),
                 }
               : {
                   command: formData.command,
@@ -895,6 +961,132 @@ const ServerForm = ({
                   </button>
                 </div>
               ))}
+            </div>
+
+            <div className="mb-4">
+              <div
+                className="flex items-center justify-between cursor-pointer bg-gray-50 hover:bg-gray-100 p-3 rounded border border-gray-200"
+                onClick={() => setIsOAuthSectionExpanded(!isOAuthSectionExpanded)}
+              >
+                <label className="text-gray-700 text-sm font-bold">
+                  {t('server.oauth.sectionTitle')}
+                </label>
+                <span className="text-gray-500 text-sm">{isOAuthSectionExpanded ? '▼' : '▶'}</span>
+              </div>
+
+              {isOAuthSectionExpanded && (
+                <div className="border border-gray-200 rounded-b p-4 bg-gray-50 border-t-0">
+                  <p className="text-xs text-gray-500 mb-3">
+                    {t('server.oauth.sectionDescription')}
+                  </p>
+                  <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                    <div>
+                      <label className="block text-xs text-gray-600 mb-1">
+                        {t('server.oauth.clientId')}
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.oauth?.clientId || ''}
+                        onChange={(e) => handleOAuthChange('clientId', e.target.value)}
+                        className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline form-input"
+                        placeholder="client id"
+                        autoComplete="off"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-600 mb-1">
+                        {t('server.oauth.clientSecret')}
+                      </label>
+                      <input
+                        type="password"
+                        value={formData.oauth?.clientSecret || ''}
+                        onChange={(e) => handleOAuthChange('clientSecret', e.target.value)}
+                        className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline form-input"
+                        placeholder="client secret"
+                        autoComplete="off"
+                      />
+                    </div>
+                    {/* 
+                    <div>
+                      <label className="block text-xs text-gray-600 mb-1">
+                        {t('server.oauth.authorizationEndpoint')}
+                      </label>
+                      <input
+                        type="url"
+                        value={formData.oauth?.authorizationEndpoint || ''}
+                        onChange={(e) => handleOAuthChange('authorizationEndpoint', e.target.value)}
+                        className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline form-input"
+                        placeholder="https://auth.example.com/authorize"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-600 mb-1">
+                        {t('server.oauth.tokenEndpoint')}
+                      </label>
+                      <input
+                        type="url"
+                        value={formData.oauth?.tokenEndpoint || ''}
+                        onChange={(e) => handleOAuthChange('tokenEndpoint', e.target.value)}
+                        className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline form-input"
+                        placeholder="https://auth.example.com/token"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-600 mb-1">
+                        {t('server.oauth.scopes')}
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.oauth?.scopes || ''}
+                        onChange={(e) => handleOAuthChange('scopes', e.target.value)}
+                        className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline form-input"
+                        placeholder={t('server.oauth.scopesPlaceholder')}
+                        autoComplete="off"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-600 mb-1">
+                        {t('server.oauth.resource')}
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.oauth?.resource || ''}
+                        onChange={(e) => handleOAuthChange('resource', e.target.value)}
+                        className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline form-input"
+                        placeholder="https://mcp.example.com/mcp"
+                        autoComplete="off"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-600 mb-1">
+                        {t('server.oauth.accessToken')}
+                      </label>
+                      <input
+                        type="password"
+                        value={formData.oauth?.accessToken || ''}
+                        onChange={(e) => handleOAuthChange('accessToken', e.target.value)}
+                        className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline form-input"
+                        placeholder="access-token"
+                        autoComplete="off"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-600 mb-1">
+                        {t('server.oauth.refreshToken')}
+                      </label>
+                      <input
+                        type="password"
+                        value={formData.oauth?.refreshToken || ''}
+                        onChange={(e) => handleOAuthChange('refreshToken', e.target.value)}
+                        className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline form-input"
+                        placeholder="refresh-token"
+                        autoComplete="off"
+                      />
+                    </div>
+                    */}
+                  </div>
+                </div>
+              )}
             </div>
           </>
         ) : (

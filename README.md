@@ -19,6 +19,7 @@ MCPHub makes it easy to manage and scale multiple MCP (Model Context Protocol) s
 - **Hot-Swappable Configuration**: Add, remove, or update MCP servers on the fly — no downtime required.
 - **Group-Based Access Control**: Organize servers into customizable groups for streamlined permissions management.
 - **Secure Authentication**: Built-in user management with role-based access powered by JWT and bcrypt.
+- **OAuth 2.0 Support**: Full OAuth support for upstream MCP servers with proxy authorization capabilities.
 - **Docker-Ready**: Deploy instantly with our containerized setup.
 
 ## 🔧 Quick Start
@@ -56,6 +57,45 @@ Create a `mcp_settings.json` file to customize your server settings:
   }
 }
 ```
+
+#### OAuth Configuration (Optional)
+
+MCPHub supports OAuth 2.0 for authenticating with upstream MCP servers. See the [OAuth feature guide](docs/features/oauth.mdx) for a full walkthrough. In practice you will run into two configuration patterns:
+
+- **Dynamic registration servers** (e.g., Vercel, Linear) publish all metadata and allow MCPHub to self-register. Simply declare the server URL and MCPHub handles the rest.
+- **Manually provisioned servers** (e.g., GitHub Copilot) require you to create an OAuth App and provide the issued client ID/secret to MCPHub.
+
+Dynamic registration example:
+
+```json
+{
+  "mcpServers": {
+    "vercel": {
+      "type": "sse",
+      "url": "https://mcp.vercel.com"
+    }
+  }
+}
+```
+
+Manual registration example:
+
+```json
+{
+  "mcpServers": {
+    "github": {
+      "type": "sse",
+      "url": "https://api.githubcopilot.com/mcp/",
+      "oauth": {
+        "clientId": "${GITHUB_OAUTH_APP_ID}",
+        "clientSecret": "${GITHUB_OAUTH_APP_SECRET}"
+      }
+    }
+  }
+}
+```
+
+For manual providers, create the OAuth App in the upstream console, set the redirect URI to `http://localhost:3000/oauth/callback` (or your deployed domain), and then plug the credentials into the dashboard or config file.
 
 ### Docker Deployment
 

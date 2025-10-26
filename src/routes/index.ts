@@ -79,6 +79,7 @@ import {
   executeToolViaOpenAPI,
   getGroupOpenAPISpec,
 } from '../controllers/openApiController.js';
+import { handleOAuthCallback } from '../controllers/oauthCallbackController.js';
 import { auth } from '../middlewares/auth.js';
 
 const router = express.Router();
@@ -86,6 +87,9 @@ const router = express.Router();
 export const initRoutes = (app: express.Application): void => {
   // Health check endpoint (no auth required, accessible at /health)
   app.get('/health', healthCheck);
+
+  // OAuth callback endpoint (no auth required, public callback URL)
+  app.get('/oauth/callback', handleOAuthCallback);
 
   // API routes protected by auth middleware in middlewares/index.ts
   router.get('/servers', getAllServers);

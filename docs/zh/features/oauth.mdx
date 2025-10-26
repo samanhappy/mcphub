@@ -1,0 +1,141 @@
+# OAuth 支持
+
+## 核心亮点
+- 覆盖上游 MCP 服务器的 OAuth 2.0 授权码（PKCE）全流程。
+- 支持从 `WWW-Authenticate` 响应和 RFC 8414 元数据自动发现。
+- 实现动态客户端注册（RFC 7591）以及资源指示（RFC 8707）。
+- 会将客户端凭据与令牌持久化到 `mcp_settings.json`，重启后直接复用。
+
+## MCPHub 何时启用 OAuth
+1. MCPHub 调用需要授权的 MCP 服务器并收到 `401 Unauthorized`。
+2. 响应通过 `WWW-Authenticate` header 暴露受保护资源的元数据（`authorization_server` 或 `as_uri`）。
+3. MCPHub 自动发现授权服务器、按需注册客户端，并引导用户完成一次授权。
+4. 回调处理完成后，MCPHub 使用新令牌重新连接并继续请求。
+
+> MCPHub 会在服务器详情视图和后端日志中记录发现、注册、授权链接、换取令牌等关键步骤。
+
+## 按服务器类型快速上手
+
+### 支持动态注册的服务器
+部分服务器会公开完整的 OAuth 元数据，并允许客户端动态注册。例如 Vercel 与 Linear 的 MCP 服务器只需配置 SSE 地址即可：
+
+```json
+{
+  "mcpServers": {
+    "vercel": {
+      "type": "sse",
+      "url": "https://mcp.vercel.com"
+    },
+    "linear": {
+      "type": "sse",
+      "url": "https://mcp.linear.app/mcp"
+    }
+  }
+}
+```
+
+- MCPHub 会自动发现授权服务器、完成注册，并处理整个 PKCE 流程。
+- 所有凭据与令牌会写入 `mcp_settings.json`，无须在控制台额外配置。
+
+### 需要手动配置客户端的服务器
+另有一些服务端并不支持动态注册。GitHub 的 MCP 端点（`https://api.githubcopilot.com/mcp/`）就是典型例子，接入步骤如下：
+
+1. 在服务提供商控制台创建 OAuth 应用（GitHub 路径为 **Settings → Developer settings → OAuth Apps**）。
+2. 将回调/重定向地址设置为 `http://localhost:3000/oauth/callback`（或你的部署域名）。
+3. 复制生成的 Client ID 与 Client Secret。
+4. 通过 MCPHub 控制台或直接编辑 `mcp_settings.json` 写入如下配置。
+
+```json
+{
+  "mcpServers": {
+    "github": {
+      "type": "sse",
+      "url": "https://api.githubcopilot.com/mcp/",
+      "oauth": {
+        "clientId": "${GITHUB_OAUTH_APP_ID}",
+        "clientSecret": "${GITHUB_OAUTH_APP_SECRET}",
+        "scopes": ["replace-with-provider-scope"],
+        "resource": "https://api.githubcopilot.com"
+      }
+    }
+  }
+}
+```
+
+- MCPHub 会跳过动态注册，直接使用你提供的凭据完成授权流程。
+- 凭据轮换时需要同步更新控制台或配置文件。
+- 将 `scopes` 替换为服务端要求的具体 Scope。
+
+## 配置方式
+大多数场景可依赖自动检测，也可以在 `mcp_settings.json` 中显式声明 OAuth 配置。只填写确实需要的字段。
+
+### 自动检测（最小配置）
+```json
+{
+  "mcpServers": {
+    "secured-sse": {
+      "type": "sse",
+      "url": "https://mcp.example.com/sse",
+      "oauth": {
+        "scopes": ["mcp.tools", "mcp.prompts"],
+        "resource": "https://mcp.example.com"
+      }
+    }
+  }
+}
+```
+- MCPHub 会根据挑战头自动发现授权服务器，并引导用户完成授权。
+- 令牌（包含刷新令牌）会写入磁盘，重启后自动复用。
+
+### 静态客户端凭据（自带 Client）
+```json
+{
+  "oauth": {
+    "clientId": "mcphub-client",
+    "clientSecret": "replace-me-if-required",
+    "authorizationEndpoint": "https://auth.example.com/oauth/authorize",
+    "tokenEndpoint": "https://auth.example.com/oauth/token",
+    "redirectUri": "http://localhost:3000/oauth/callback"
+  }
+}
+```
+- 适用于需要手动注册客户端的授权服务器。
+- `redirectUri` 默认是 `http://localhost:3000/oauth/callback`，如在自定义域部署请同步更新。
+
+### 动态客户端注册（RFC 7591）
+```json
+{
+  "oauth": {
+    "dynamicRegistration": {
+      "enabled": true,
+      "issuer": "https://auth.example.com",
+      "metadata": {
+        "client_name": "MCPHub",
+        "redirect_uris": [
+          "http://localhost:3000/oauth/callback",
+          "https://mcphub.example.com/oauth/callback"
+        ],
+        "scope": "mcp.tools mcp.prompts",
+        "grant_types": ["authorization_code", "refresh_token"]
+      },
+      "initialAccessToken": "optional-token-if-required"
+    },
+    "scopes": ["mcp.tools", "mcp.prompts"],
+    "resource": "https://mcp.example.com"
+  }
+}
+```
+- MCPHub 会通过 `issuer` 发现端点、完成注册，并持久化下发的 `client_id`/`client_secret`。
+- 只有当注册端点受保护时才需要提供 `initialAccessToken`。
+
+## 授权流程
+1. **初始化**：启动时遍历服务器配置，发现元数据并在启用 `dynamicRegistration` 时注册客户端。
+2. **用户授权**：建立连接时自动打开系统浏览器，携带 PKCE 参数访问授权页。
+3. **回调处理**：内置路径 `/oauth/callback` 校验 `state`、完成换取令牌，并通过 MCP SDK 保存结果。
+4. **令牌生命周期**：访问令牌与刷新令牌会缓存于内存，自动刷新，并写回 `mcp_settings.json`。
+
+## 提示与排障
+- 确保授权过程中使用的回调地址与已注册的 `redirect_uris` 完全一致。
+- 若部署在 HTTPS 域名下，请对外暴露 `/oauth/callback` 或通过反向代理转发。
+- 如无法完成自动发现，可显式提供 `authorizationEndpoint` 与 `tokenEndpoint`。
+- 授权服务器吊销令牌后，可手动清理 `mcp_settings.json` 中的旧令牌，MCPHub 会在下一次请求时重新触发授权。

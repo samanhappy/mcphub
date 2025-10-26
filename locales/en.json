@@ -107,7 +107,7 @@
     "enabled": "Enabled",
     "enable": "Enable",
     "disable": "Disable",
-    "requestOptions": "Configuration",
+    "requestOptions": "Connection Configuration",
     "timeout": "Request Timeout",
     "timeoutDescription": "Timeout for requests to the MCP server (ms)",
     "maxTotalTimeout": "Maximum Total Timeout",
@@ -164,12 +164,28 @@
       "apiKeyInCookie": "Cookie",
       "passthroughHeaders": "Passthrough Headers",
       "passthroughHeadersHelp": "Comma-separated list of header names to pass through from tool call requests to upstream OpenAPI endpoints (e.g., Authorization, X-API-Key)"
+    },
+    "oauth": {
+      "sectionTitle": "OAuth Configuration",
+      "sectionDescription": "Configure client credentials for OAuth-protected servers (optional).",
+      "clientId": "Client ID",
+      "clientSecret": "Client Secret",
+      "authorizationEndpoint": "Authorization Endpoint",
+      "tokenEndpoint": "Token Endpoint",
+      "scopes": "Scopes",
+      "scopesPlaceholder": "scope1 scope2",
+      "resource": "Resource / Audience",
+      "accessToken": "Access Token",
+      "refreshToken": "Refresh Token"
     }
   },
   "status": {
     "online": "Online",
     "offline": "Offline",
-    "connecting": "Connecting"
+    "connecting": "Connecting",
+    "oauthRequired": "OAuth Required",
+    "clickToAuthorize": "Click to authorize with OAuth",
+    "oauthWindowOpened": "OAuth authorization window opened. Please complete the authorization."
   },
   "errors": {
     "general": "Something went wrong",
@@ -676,5 +692,31 @@
       "serverRemovedFromGroup": "Server removed from group successfully",
       "serverToolsUpdated": "Server tools updated successfully"
     }
+  },
+  "oauthCallback": {
+    "authorizationFailed": "Authorization Failed",
+    "authorizationFailedError": "Error",
+    "authorizationFailedDetails": "Details",
+    "invalidRequest": "Invalid Request",
+    "missingStateParameter": "Missing required OAuth state parameter.",
+    "missingCodeParameter": "Missing required authorization code parameter.",
+    "serverNotFound": "Server Not Found",
+    "serverNotFoundMessage": "Could not find server associated with this authorization request.",
+    "sessionExpiredMessage": "The authorization session may have expired. Please try authorizing again.",
+    "authorizationSuccessful": "Authorization Successful",
+    "server": "Server",
+    "status": "Status",
+    "connected": "Connected",
+    "successMessage": "The server has been successfully authorized and connected.",
+    "autoCloseMessage": "This window will close automatically in 3 seconds...",
+    "closeNow": "Close Now",
+    "connectionError": "Connection Error",
+    "connectionErrorMessage": "Authorization was successful, but failed to connect to the server.",
+    "reconnectMessage": "Please try reconnecting from the dashboard.",
+    "configurationError": "Configuration Error",
+    "configurationErrorMessage": "Server transport does not support OAuth finishAuth(). Please ensure the server is configured with streamable-http transport.",
+    "internalError": "Internal Error",
+    "internalErrorMessage": "An unexpected error occurred while processing the OAuth callback.",
+    "closeWindow": "Close Window"
   }
 }

@@ -124,6 +124,31 @@ export interface MCPRouterCallToolResponse {
   isError: boolean;
 }
 
+// OAuth Provider Configuration for MCP Authorization Server
+export interface OAuthProviderConfig {
+  enabled?: boolean; // Enable/disable OAuth provider
+  issuerUrl: string; // Authorization server's issuer identifier (e.g., 'http://auth.external.com')
+  baseUrl?: string; // Base URL for the authorization server metadata endpoints (defaults to issuerUrl)
+  serviceDocumentationUrl?: string; // URL for human-readable OAuth documentation
+  scopesSupported?: string[]; // List of OAuth scopes supported
+  endpoints: {
+    authorizationUrl: string; // External OAuth authorization endpoint
+    tokenUrl: string; // External OAuth token endpoint
+    revocationUrl?: string; // External OAuth revocation endpoint (optional)
+  };
+  // Token verification function details
+  verifyAccessToken?: {
+    endpoint?: string; // Optional: External endpoint to verify access tokens
+    headers?: Record<string, string>; // Optional: Headers for token verification requests
+  };
+  // Client management
+  clients?: Array<{
+    client_id: string; // Client identifier
+    redirect_uris: string[]; // Allowed redirect URIs for this client
+    scopes?: string[]; // Scopes this client can request
+  }>;
+}
+
 export interface SystemConfig {
   routing?: {
     enableGlobalRoute?: boolean; // Controls whether the /sse endpoint without group is enabled
@@ -145,6 +170,7 @@ export interface SystemConfig {
     baseUrl?: string; // Base URL for MCPRouter API (default: https://api.mcprouter.to/v1)
   };
   nameSeparator?: string; // Separator used between server name and tool/prompt name (default: '-')
+  oauth?: OAuthProviderConfig; // OAuth provider configuration for upstream MCP servers
 }
 
 export interface UserConfig {
@@ -181,6 +207,55 @@ export interface ServerConfig {
   tools?: Record<string, { enabled: boolean; description?: string }>; // Tool-specific configurations with enable/disable state and custom descriptions
   prompts?: Record<string, { enabled: boolean; description?: string }>; // Prompt-specific configurations with enable/disable state and custom descriptions
   options?: Partial<Pick<RequestOptions, 'timeout' | 'resetTimeoutOnProgress' | 'maxTotalTimeout'>>; // MCP request options configuration
+  // OAuth authentication for upstream MCP servers
+  oauth?: {
+    // Static client configuration (traditional OAuth flow)
+    clientId?: string; // OAuth client ID
+    clientSecret?: string; // OAuth client secret
+    scopes?: string[]; // Required OAuth scopes
+    accessToken?: string; // Pre-obtained access token (if available)
+    refreshToken?: string; // Refresh token for renewing access
+
+    // Dynamic client registration (RFC7591)
+    // If not explicitly configured, will auto-detect via WWW-Authenticate header on 401 responses
+    dynamicRegistration?: {
+      enabled?: boolean; // Enable/disable dynamic registration (default: auto-detect on 401)
+      issuer?: string; // OAuth issuer URL for discovery (e.g., 'https://auth.example.com')
+      registrationEndpoint?: string; // Direct registration endpoint URL (if discovery is not used)
+      metadata?: {
+        // Client metadata for registration (RFC7591 section 2)
+        client_name?: string; // Human-readable client name
+        client_uri?: string; // URL of client's home page
+        logo_uri?: string; // URL of client's logo
+        scope?: string; // Space-separated list of scope values
+        redirect_uris?: string[]; // Array of redirect URIs
+        grant_types?: string[]; // Array of OAuth 2.0 grant types (e.g., ['authorization_code', 'refresh_token'])
+        response_types?: string[]; // Array of OAuth 2.0 response types (e.g., ['code'])
+        token_endpoint_auth_method?: string; // Token endpoint authentication method (e.g., 'client_secret_basic', 'none')
+        contacts?: string[]; // Array of contact email addresses
+        software_id?: string; // Unique identifier for the client software
+        software_version?: string; // Version of the client software
+        [key: string]: any; // Additional metadata fields
+      };
+      // Optional: Initial access token for protected registration endpoints
+      initialAccessToken?: string;
+    };
+
+    // MCP resource parameter (RFC8707) - the canonical URI of the MCP server
+    resource?: string; // e.g., 'https://mcp.example.com/mcp'
+
+    // Authorization endpoint for user authorization (for authorization code flow)
+    authorizationEndpoint?: string;
+    // Token endpoint for exchanging authorization codes for tokens
+    tokenEndpoint?: string;
+    // Pending OAuth session metadata for PKCE/state recovery between restarts
+    pendingAuthorization?: {
+      authorizationUrl?: string;
+      state?: string;
+      codeVerifier?: string;
+      createdAt?: number;
+    };
+  };
   // OpenAPI specific configuration
   openapi?: {
     url?: string; // OpenAPI specification URL
@@ -227,7 +302,7 @@ export interface OpenAPISecurityConfig {
 export interface ServerInfo {
   name: string; // Unique name of the server
   owner?: string; // Owner of the server, defaults to 'admin' user
-  status: 'connected' | 'connecting' | 'disconnected'; // Current connection status
+  status: 'connected' | 'connecting' | 'disconnected' | 'oauth_required'; // Current connection status
   error: string | null; // Error message if any
   tools: Tool[]; // List of tools available on the server
   prompts: Prompt[]; // List of prompts available on the server
@@ -239,6 +314,12 @@ export interface ServerInfo {
   enabled?: boolean; // Flag to indicate if the server is enabled
   keepAliveIntervalId?: NodeJS.Timeout; // Timer ID for keep-alive ping interval
   config?: ServerConfig; // Reference to the original server configuration for OpenAPI passthrough headers
+  oauth?: {
+    // OAuth authorization state
+    authorizationUrl?: string; // OAuth authorization URL for user to visit
+    state?: string; // OAuth state parameter for CSRF protection
+    codeVerifier?: string; // PKCE code verifier
+  };
 }
 
 // Details about a tool available on the server

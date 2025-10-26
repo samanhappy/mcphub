@@ -1,3 +1,17 @@
+// Mock openid-client before importing services
+jest.mock('openid-client', () => ({
+  discovery: jest.fn(),
+  dynamicClientRegistration: jest.fn(),
+  ClientSecretPost: jest.fn(() => jest.fn()),
+  ClientSecretBasic: jest.fn(() => jest.fn()),
+  None: jest.fn(() => jest.fn()),
+  calculatePKCECodeChallenge: jest.fn(),
+  randomPKCECodeVerifier: jest.fn(),
+  buildAuthorizationUrl: jest.fn(),
+  authorizationCodeGrant: jest.fn(),
+  refreshTokenGrant: jest.fn(),
+}));
+
 import { Server } from 'http';
 import { AppServer } from '../../src/server.js';
 import { TestServerHelper } from '../utils/testServerHelper.js';

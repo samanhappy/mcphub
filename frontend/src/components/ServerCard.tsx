@@ -1,188 +1,207 @@
-import { useState, useRef, useEffect } from 'react'
-import { useTranslation } from 'react-i18next'
-import { Server } from '@/types'
-import { ChevronDown, ChevronRight, AlertCircle, Copy, Check } from 'lucide-react'
-import { StatusBadge } from '@/components/ui/Badge'
-import ToolCard from '@/components/ui/ToolCard'
-import PromptCard from '@/components/ui/PromptCard'
-import DeleteDialog from '@/components/ui/DeleteDialog'
-import { useToast } from '@/contexts/ToastContext'
-import { useSettingsData } from '@/hooks/useSettingsData'
+import { useState, useRef, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
+import { Server } from '@/types';
+import { ChevronDown, ChevronRight, AlertCircle, Copy, Check } from 'lucide-react';
+import { StatusBadge } from '@/components/ui/Badge';
+import ToolCard from '@/components/ui/ToolCard';
+import PromptCard from '@/components/ui/PromptCard';
+import DeleteDialog from '@/components/ui/DeleteDialog';
+import { useToast } from '@/contexts/ToastContext';
+import { useSettingsData } from '@/hooks/useSettingsData';
 
 interface ServerCardProps {
-  server: Server
-  onRemove: (serverName: string) => void
-  onEdit: (server: Server) => void
-  onToggle?: (server: Server, enabled: boolean) => Promise<boolean>
-  onRefresh?: () => void
+  server: Server;
+  onRemove: (serverName: string) => void;
+  onEdit: (server: Server) => void;
+  onToggle?: (server: Server, enabled: boolean) => Promise<boolean>;
+  onRefresh?: () => void;
 }
 
 const ServerCard = ({ server, onRemove, onEdit, onToggle, onRefresh }: ServerCardProps) => {
-  const { t } = useTranslation()
-  const { showToast } = useToast()
-  const [isExpanded, setIsExpanded] = useState(false)
-  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
-  const [isToggling, setIsToggling] = useState(false)
-  const [showErrorPopover, setShowErrorPopover] = useState(false)
-  const [copied, setCopied] = useState(false)
-  const errorPopoverRef = useRef<HTMLDivElement>(null)
+  const { t } = useTranslation();
+  const { showToast } = useToast();
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [isToggling, setIsToggling] = useState(false);
+  const [showErrorPopover, setShowErrorPopover] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const errorPopoverRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (errorPopoverRef.current && !errorPopoverRef.current.contains(event.target as Node)) {
-        setShowErrorPopover(false)
+        setShowErrorPopover(false);
       }
-    }
+    };
 
-    document.addEventListener('mousedown', handleClickOutside)
+    document.addEventListener('mousedown', handleClickOutside);
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside)
-    }
-  }, [])
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
-  const { exportMCPSettings } = useSettingsData()
+  const { exportMCPSettings } = useSettingsData();
 
   const handleRemove = (e: React.MouseEvent) => {
-    e.stopPropagation()
-    setShowDeleteDialog(true)
-  }
+    e.stopPropagation();
+    setShowDeleteDialog(true);
+  };
 
   const handleEdit = (e: React.MouseEvent) => {
-    e.stopPropagation()
-    onEdit(server)
-  }
+    e.stopPropagation();
+    onEdit(server);
+  };
 
   const handleToggle = async (e: React.MouseEvent) => {
-    e.stopPropagation()
-    if (isToggling || !onToggle) return
+    e.stopPropagation();
+    if (isToggling || !onToggle) return;
 
-    setIsToggling(true)
+    setIsToggling(true);
     try {
-      await onToggle(server, !(server.enabled !== false))
+      await onToggle(server, !(server.enabled !== false));
     } finally {
-      setIsToggling(false)
+      setIsToggling(false);
     }
-  }
+  };
 
   const handleErrorIconClick = (e: React.MouseEvent) => {
-    e.stopPropagation()
-    setShowErrorPopover(!showErrorPopover)
-  }
+    e.stopPropagation();
+    setShowErrorPopover(!showErrorPopover);
+  };
 
   const copyToClipboard = (e: React.MouseEvent) => {
-    e.stopPropagation()
-    if (!server.error) return
+    e.stopPropagation();
+    if (!server.error) return;
 
     if (navigator.clipboard && window.isSecureContext) {
       navigator.clipboard.writeText(server.error).then(() => {
-        setCopied(true)
-        showToast(t('common.copySuccess') || 'Copied to clipboard', 'success')
-        setTimeout(() => setCopied(false), 2000)
-      })
+        setCopied(true);
+        showToast(t('common.copySuccess') || 'Copied to clipboard', 'success');
+        setTimeout(() => setCopied(false), 2000);
+      });
     } else {
       // Fallback for HTTP or unsupported clipboard API
-      const textArea = document.createElement('textarea')
-      textArea.value = server.error
+      const textArea = document.createElement('textarea');
+      textArea.value = server.error;
       // Avoid scrolling to bottom
-      textArea.style.position = 'fixed'
-      textArea.style.left = '-9999px'
-      document.body.appendChild(textArea)
-      textArea.focus()
-      textArea.select()
+      textArea.style.position = 'fixed';
+      textArea.style.left = '-9999px';
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
       try {
-        document.execCommand('copy')
-        setCopied(true)
-        showToast(t('common.copySuccess') || 'Copied to clipboard', 'success')
-        setTimeout(() => setCopied(false), 2000)
+        document.execCommand('copy');
+        setCopied(true);
+        showToast(t('common.copySuccess') || 'Copied to clipboard', 'success');
+        setTimeout(() => setCopied(false), 2000);
       } catch (err) {
-        showToast(t('common.copyFailed') || 'Copy failed', 'error')
-        console.error('Copy to clipboard failed:', err)
+        showToast(t('common.copyFailed') || 'Copy failed', 'error');
+        console.error('Copy to clipboard failed:', err);
       }
-      document.body.removeChild(textArea)
+      document.body.removeChild(textArea);
     }
-  }
+  };
 
   const handleCopyServerConfig = async (e: React.MouseEvent) => {
-    e.stopPropagation()
+    e.stopPropagation();
     try {
-      const result = await exportMCPSettings(server.name)
-      const configJson = JSON.stringify(result.data, null, 2)
+      const result = await exportMCPSettings(server.name);
+      const configJson = JSON.stringify(result.data, null, 2);
 
       if (navigator.clipboard && window.isSecureContext) {
-        await navigator.clipboard.writeText(configJson)
-        showToast(t('common.copySuccess') || 'Copied to clipboard', 'success')
+        await navigator.clipboard.writeText(configJson);
+        showToast(t('common.copySuccess') || 'Copied to clipboard', 'success');
       } else {
         // Fallback for HTTP or unsupported clipboard API
-        const textArea = document.createElement('textarea')
-        textArea.value = configJson
-        textArea.style.position = 'fixed'
-        textArea.style.left = '-9999px'
-        document.body.appendChild(textArea)
-        textArea.focus()
-        textArea.select()
+        const textArea = document.createElement('textarea');
+        textArea.value = configJson;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-9999px';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
         try {
-          document.execCommand('copy')
-          showToast(t('common.copySuccess') || 'Copied to clipboard', 'success')
+          document.execCommand('copy');
+          showToast(t('common.copySuccess') || 'Copied to clipboard', 'success');
         } catch (err) {
-          showToast(t('common.copyFailed') || 'Copy failed', 'error')
-          console.error('Copy to clipboard failed:', err)
+          showToast(t('common.copyFailed') || 'Copy failed', 'error');
+          console.error('Copy to clipboard failed:', err);
         }
-        document.body.removeChild(textArea)
+        document.body.removeChild(textArea);
       }
     } catch (error) {
-      console.error('Error copying server configuration:', error)
-      showToast(t('common.copyFailed') || 'Copy failed', 'error')
+      console.error('Error copying server configuration:', error);
+      showToast(t('common.copyFailed') || 'Copy failed', 'error');
     }
-  }
+  };
 
   const handleConfirmDelete = () => {
-    onRemove(server.name)
-    setShowDeleteDialog(false)
-  }
+    onRemove(server.name);
+    setShowDeleteDialog(false);
+  };
 
   const handleToolToggle = async (toolName: string, enabled: boolean) => {
     try {
-      const { toggleTool } = await import('@/services/toolService')
-      const result = await toggleTool(server.name, toolName, enabled)
+      const { toggleTool } = await import('@/services/toolService');
+      const result = await toggleTool(server.name, toolName, enabled);
       if (result.success) {
         showToast(
           t(enabled ? 'tool.enableSuccess' : 'tool.disableSuccess', { name: toolName }),
           'success',
-        )
+        );
         // Trigger refresh to update the tool's state in the UI
         if (onRefresh) {
-          onRefresh()
+          onRefresh();
         }
       } else {
-        showToast(result.error || t('tool.toggleFailed'), 'error')
+        showToast(result.error || t('tool.toggleFailed'), 'error');
       }
     } catch (error) {
-      console.error('Error toggling tool:', error)
-      showToast(t('tool.toggleFailed'), 'error')
+      console.error('Error toggling tool:', error);
+      showToast(t('tool.toggleFailed'), 'error');
     }
-  }
+  };
 
   const handlePromptToggle = async (promptName: string, enabled: boolean) => {
     try {
-      const { togglePrompt } = await import('@/services/promptService')
-      const result = await togglePrompt(server.name, promptName, enabled)
+      const { togglePrompt } = await import('@/services/promptService');
+      const result = await togglePrompt(server.name, promptName, enabled);
       if (result.success) {
         showToast(
           t(enabled ? 'tool.enableSuccess' : 'tool.disableSuccess', { name: promptName }),
           'success',
-        )
+        );
         // Trigger refresh to update the prompt's state in the UI
         if (onRefresh) {
-          onRefresh()
+          onRefresh();
         }
       } else {
-        showToast(result.error || t('tool.toggleFailed'), 'error')
+        showToast(result.error || t('tool.toggleFailed'), 'error');
       }
     } catch (error) {
-      console.error('Error toggling prompt:', error)
-      showToast(t('tool.toggleFailed'), 'error')
+      console.error('Error toggling prompt:', error);
+      showToast(t('tool.toggleFailed'), 'error');
     }
-  }
+  };
+
+  const handleOAuthAuthorization = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    // Open the OAuth authorization URL in a new window
+    if (server.oauth?.authorizationUrl) {
+      const width = 600;
+      const height = 700;
+      const left = window.screen.width / 2 - width / 2;
+      const top = window.screen.height / 2 - height / 2;
+
+      window.open(
+        server.oauth.authorizationUrl,
+        'OAuth Authorization',
+        `width=${width},height=${height},left=${left},top=${top}`,
+      );
+
+      showToast(t('status.oauthWindowOpened'), 'info');
+    }
+  };
 
   return (
     <>
@@ -199,7 +218,7 @@ const ServerCard = ({ server, onRemove, onEdit, onToggle, onRefresh }: ServerCar
             >
               {server.name}
             </h2>
-            <StatusBadge status={server.status} />
+            <StatusBadge status={server.status} onAuthClick={handleOAuthAuthorization} />
 
             {/* Tool count display */}
             <div className="flex items-center px-2 py-1 bg-blue-50 text-blue-700 rounded-full text-sm btn-primary">
@@ -269,8 +288,8 @@ const ServerCard = ({ server, onRemove, onEdit, onToggle, onRefresh }: ServerCar
                       </div>
                       <button
                         onClick={(e) => {
-                          e.stopPropagation()
-                          setShowErrorPopover(false)
+                          e.stopPropagation();
+                          setShowErrorPopover(false);
                         }}
                         className="text-gray-400 hover:text-gray-600"
                       >
@@ -380,7 +399,7 @@ const ServerCard = ({ server, onRemove, onEdit, onToggle, onRefresh }: ServerCar
         serverName={server.name}
       />
     </>
-  )
-}
+  );
+};
 
-export default ServerCard
+export default ServerCard;
