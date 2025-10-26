@@ -204,6 +204,7 @@
     "processing": "Processing...",
     "save": "Save",
     "cancel": "Cancel",
+    "back": "Back",
     "refresh": "Refresh",
     "create": "Create",
     "creating": "Creating...",
@@ -597,6 +598,21 @@
     "serverExistsTitle": "Server Already Exists",
     "serverExistsConfirm": "Server '{{serverName}}' already exists. Do you want to override it with the new version?",
     "override": "Override"
+  },
+  "jsonImport": {
+    "button": "Import JSON",
+    "title": "Import Servers from JSON",
+    "inputLabel": "Server Configuration JSON",
+    "inputHelp": "Paste your server configuration JSON. Supports STDIO, SSE, and HTTP (streamableHttp) server types.",
+    "preview": "Preview",
+    "previewTitle": "Preview Servers to Import",
+    "import": "Import",
+    "importing": "Importing...",
+    "invalidFormat": "Invalid JSON format. The JSON must contain an 'mcpServers' object.",
+    "parseError": "Failed to parse JSON. Please check the format and try again.",
+    "addFailed": "Failed to add server",
+    "importFailed": "Failed to import servers",
+    "partialSuccess": "Imported {{count}} of {{total}} servers successfully. Some servers failed:"
   },
   "users": {
     "add": "Add User",

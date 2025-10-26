@@ -204,6 +204,7 @@
     "processing": "En cours de traitement...",
     "save": "Enregistrer",
     "cancel": "Annuler",
+    "back": "Retour",
     "refresh": "Actualiser",
     "create": "Créer",
     "creating": "Création en cours...",
@@ -597,6 +598,21 @@
     "serverExistsTitle": "Le serveur existe déjà",
     "serverExistsConfirm": "Le serveur '{{serverName}}' existe déjà. Voulez-vous le remplacer par la nouvelle version ?",
     "override": "Remplacer"
+  },
+  "jsonImport": {
+    "button": "Importer JSON",
+    "title": "Importer des serveurs depuis JSON",
+    "inputLabel": "Configuration JSON du serveur",
+    "inputHelp": "Collez votre configuration JSON de serveur. Prend en charge les types de serveurs STDIO, SSE et HTTP (streamableHttp).",
+    "preview": "Aperçu",
+    "previewTitle": "Aperçu des serveurs à importer",
+    "import": "Importer",
+    "importing": "Importation en cours...",
+    "invalidFormat": "Format JSON invalide. Le JSON doit contenir un objet 'mcpServers'.",
+    "parseError": "Échec de l'analyse du JSON. Veuillez vérifier le format et réessayer.",
+    "addFailed": "Échec de l'ajout du serveur",
+    "importFailed": "Échec de l'importation des serveurs",
+    "partialSuccess": "{{count}} serveur(s) sur {{total}} importé(s) avec succès. Certains serveurs ont échoué :"
   },
   "users": {
     "add": "Ajouter un utilisateur",

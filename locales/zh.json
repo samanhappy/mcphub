@@ -205,6 +205,7 @@
     "processing": "处理中...",
     "save": "保存",
     "cancel": "取消",
+    "back": "返回",
     "refresh": "刷新",
     "create": "创建",
     "creating": "创建中...",
@@ -599,6 +600,21 @@
     "serverExistsTitle": "服务器已存在",
     "serverExistsConfirm": "服务器 '{{serverName}}' 已存在。是否要用新版本覆盖它？",
     "override": "覆盖"
+  },
+  "jsonImport": {
+    "button": "导入 JSON",
+    "title": "从 JSON 导入服务器",
+    "inputLabel": "服务器配置 JSON",
+    "inputHelp": "粘贴您的服务器配置 JSON。支持 STDIO、SSE 和 HTTP (streamableHttp) 服务器类型。",
+    "preview": "预览",
+    "previewTitle": "预览要导入的服务器",
+    "import": "导入",
+    "importing": "导入中...",
+    "invalidFormat": "无效的 JSON 格式。JSON 必须包含 'mcpServers' 对象。",
+    "parseError": "解析 JSON 失败。请检查格式后重试。",
+    "addFailed": "添加服务器失败",
+    "importFailed": "导入服务器失败",
+    "partialSuccess": "成功导入 {{count}} / {{total}} 个服务器。部分服务器失败："
   },
   "users": {
     "add": "添加",

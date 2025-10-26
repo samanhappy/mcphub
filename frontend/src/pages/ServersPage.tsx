@@ -7,6 +7,7 @@ import AddServerForm from '@/components/AddServerForm';
 import EditServerForm from '@/components/EditServerForm';
 import { useServerData } from '@/hooks/useServerData';
 import DxtUploadForm from '@/components/DxtUploadForm';
+import JSONImportForm from '@/components/JSONImportForm';
 
 const ServersPage: React.FC = () => {
   const { t } = useTranslation();
@@ -25,6 +26,7 @@ const ServersPage: React.FC = () => {
   const [editingServer, setEditingServer] = useState<Server | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showDxtUpload, setShowDxtUpload] = useState(false);
+  const [showJsonImport, setShowJsonImport] = useState(false);
 
   const handleEditClick = async (server: Server) => {
     const fullServerData = await handleServerEdit(server);
@@ -55,6 +57,12 @@ const ServersPage: React.FC = () => {
     triggerRefresh();
   };
 
+  const handleJsonImportSuccess = () => {
+    // Close import dialog and refresh servers
+    setShowJsonImport(false);
+    triggerRefresh();
+  };
+
   return (
     <div>
       <div className="flex justify-between items-center mb-8">
@@ -70,6 +78,15 @@ const ServersPage: React.FC = () => {
             {t('nav.market')}
           </button>
           <AddServerForm onAdd={handleServerAdd} />
+          <button
+            onClick={() => setShowJsonImport(true)}
+            className="px-4 py-2 bg-blue-100 text-blue-800 rounded hover:bg-blue-200 flex items-center btn-primary transition-all duration-200"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 5.414V13a1 1 0 11-2 0V5.414L7.707 6.707a1 1 0 01-1.414 0z" clipRule="evenodd" />
+            </svg>
+            {t('jsonImport.button')}
+          </button>
           <button
             onClick={() => setShowDxtUpload(true)}
             className="px-4 py-2 bg-blue-100 text-blue-800 rounded hover:bg-blue-200 flex items-center btn-primary transition-all duration-200"
@@ -159,6 +176,13 @@ const ServersPage: React.FC = () => {
         <DxtUploadForm
           onSuccess={handleDxtUploadSuccess}
           onCancel={() => setShowDxtUpload(false)}
+        />
+      )}
+
+      {showJsonImport && (
+        <JSONImportForm
+          onSuccess={handleJsonImportSuccess}
+          onCancel={() => setShowJsonImport(false)}
         />
       )}
     </div>
