@@ -99,22 +99,33 @@ export function replaceEnvVars(input: string): string
 export function replaceEnvVars(
   input: Record<string, any> | string[] | string | undefined,
 ): Record<string, any> | string[] | string {
-  // Handle object input
+  // Handle object input - recursively expand all nested values
   if (input && typeof input === 'object' && !Array.isArray(input)) {
-    const res: Record<string, string> = {}
+    const res: Record<string, any> = {}
     for (const [key, value] of Object.entries(input)) {
       if (typeof value === 'string') {
         res[key] = expandEnvVars(value)
+      } else if (typeof value === 'object' && value !== null) {
+        // Recursively handle nested objects and arrays
+        res[key] = replaceEnvVars(value as any)
       } else {
-        res[key] = String(value)
+        // Preserve non-string, non-object values (numbers, booleans, etc.)
+        res[key] = value
       }
     }
     return res
   }
 
-  // Handle array input
+  // Handle array input - recursively expand all elements
   if (Array.isArray(input)) {
-    return input.map((item) => expandEnvVars(item))
+    return input.map((item) => {
+      if (typeof item === 'string') {
+        return expandEnvVars(item)
+      } else if (typeof item === 'object' && item !== null) {
+        return replaceEnvVars(item as any)
+      }
+      return item
+    })
   }
 
   // Handle string input

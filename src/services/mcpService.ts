@@ -235,6 +235,7 @@ export const createTransportFromConfig = async (name: string, conf: ServerConfig
       env['npm_config_registry'] = settings.systemConfig.install.npmRegistry;
     }
 
+    // Expand environment variables in command
     transport = new StdioClientTransport({
       cwd: os.homedir(),
       command: conf.command,
@@ -379,12 +380,16 @@ export const initializeClientsFromSettings = async (
   try {
     for (const conf of allServers) {
       const { name } = conf;
+      
+      // Expand environment variables in all configuration values
+      const expandedConf = replaceEnvVars(conf as any) as ServerConfigWithName;
+      
       // Skip disabled servers
-      if (conf.enabled === false) {
+      if (expandedConf.enabled === false) {
         console.log(`Skipping disabled server: ${name}`);
         nextServerInfos.push({
           name,
-          owner: conf.owner,
+          owner: expandedConf.owner,
           status: 'disconnected',
           error: null,
           tools: [],
@@ -402,7 +407,7 @@ export const initializeClientsFromSettings = async (
       if (existingServer && (!serverName || serverName !== name)) {
         nextServerInfos.push({
           ...existingServer,
-          enabled: conf.enabled === undefined ? true : conf.enabled,
+          enabled: expandedConf.enabled === undefined ? true : expandedConf.enabled,
         });
         console.log(`Server '${name}' is already connected.`);
         continue;
@@ -410,15 +415,15 @@ export const initializeClientsFromSettings = async (
 
       let transport;
       let openApiClient;
-      if (conf.type === 'openapi') {
+      if (expandedConf.type === 'openapi') {
         // Handle OpenAPI type servers
-        if (!conf.openapi?.url && !conf.openapi?.schema) {
+        if (!expandedConf.openapi?.url && !expandedConf.openapi?.schema) {
           console.warn(
             `Skipping OpenAPI server '${name}': missing OpenAPI specification URL or schema`,
           );
           nextServerInfos.push({
             name,
-            owner: conf.owner,
+            owner: expandedConf.owner,
             status: 'disconnected',
             error: 'Missing OpenAPI specification URL or schema',
             tools: [],
@@ -431,20 +436,20 @@ export const initializeClientsFromSettings = async (
         // Create server info first and keep reference to it
         const serverInfo: ServerInfo = {
           name,
-          owner: conf.owner,
+          owner: expandedConf.owner,
           status: 'connecting',
           error: null,
           tools: [],
           prompts: [],
           createTime: Date.now(),
-          enabled: conf.enabled === undefined ? true : conf.enabled,
-          config: conf, // Store reference to original config for OpenAPI passthrough headers
+          enabled: expandedConf.enabled === undefined ? true : expandedConf.enabled,
+          config: expandedConf, // Store reference to expanded config for OpenAPI passthrough headers
         };
         nextServerInfos.push(serverInfo);
 
         try {
           // Create OpenAPI client instance
-          openApiClient = new OpenAPIClient(conf);
+          openApiClient = new OpenAPIClient(expandedConf);
 
           console.log(`Initializing OpenAPI server: ${name}...`);
 
@@ -480,7 +485,7 @@ export const initializeClientsFromSettings = async (
           continue;
         }
       } else {
-        transport = await createTransportFromConfig(name, conf);
+        transport = await createTransportFromConfig(name, expandedConf);
       }
 
       const client = new Client(
@@ -504,7 +509,7 @@ export const initializeClientsFromSettings = async (
         : undefined;
 
       // Get request options from server configuration, with fallbacks
-      const serverRequestOptions = conf.options || {};
+      const serverRequestOptions = expandedConf.options || {};
       const requestOptions = {
         timeout: serverRequestOptions.timeout || 60000,
         resetTimeoutOnProgress: serverRequestOptions.resetTimeoutOnProgress || false,
@@ -514,7 +519,7 @@ export const initializeClientsFromSettings = async (
       // Create server info first and keep reference to it
       const serverInfo: ServerInfo = {
         name,
-        owner: conf.owner,
+        owner: expandedConf.owner,
         status: 'connecting',
         error: null,
         tools: [],
@@ -523,10 +528,10 @@ export const initializeClientsFromSettings = async (
         transport,
         options: requestOptions,
         createTime: Date.now(),
-        config: conf, // Store reference to original config
+        config: expandedConf, // Store reference to expanded config
       };
 
-      const pendingAuth = conf.oauth?.pendingAuthorization;
+      const pendingAuth = expandedConf.oauth?.pendingAuthorization;
       if (pendingAuth) {
         serverInfo.status = 'oauth_required';
         serverInfo.error = null;
@@ -594,7 +599,7 @@ export const initializeClientsFromSettings = async (
             serverInfo.error = null;
 
             // Set up keep-alive ping for SSE connections
-            setupKeepAlive(serverInfo, conf);
+            setupKeepAlive(serverInfo, expandedConf);
           } else {
             serverInfo.status = 'disconnected';
             serverInfo.error = `Failed to list data: ${dataError} `;
