@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ChangePasswordCredentials } from '../types';
 import { changePassword } from '../services/authService';
+import { validatePasswordStrength } from '../utils/passwordValidation';
 
 interface ChangePasswordFormProps {
   onSuccess?: () => void;
@@ -18,6 +19,7 @@ const ChangePasswordForm: React.FC<ChangePasswordFormProps> = ({ onSuccess, onCa
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [passwordErrors, setPasswordErrors] = useState<string[]>([]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -25,12 +27,26 @@ const ChangePasswordForm: React.FC<ChangePasswordFormProps> = ({ onSuccess, onCa
       setConfirmPassword(value);
     } else {
       setFormData(prev => ({ ...prev, [name]: value }));
+      
+      // Validate password strength on change for new password
+      if (name === 'newPassword') {
+        const validation = validatePasswordStrength(value);
+        setPasswordErrors(validation.errors);
+      }
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+
+    // Validate password strength
+    const validation = validatePasswordStrength(formData.newPassword);
+    if (!validation.isValid) {
+      setError(t('auth.passwordStrengthError'));
+      setPasswordErrors(validation.errors);
+      return;
+    }
 
     // Validate passwords match
     if (formData.newPassword !== confirmPassword) {
@@ -100,8 +116,24 @@ const ChangePasswordForm: React.FC<ChangePasswordFormProps> = ({ onSuccess, onCa
               value={formData.newPassword}
               onChange={handleChange}
               required
-              minLength={6}
+              minLength={8}
             />
+            {/* Password strength hints */}
+            {formData.newPassword && passwordErrors.length > 0 && (
+              <div className="mt-2 text-sm text-gray-600">
+                <p className="font-semibold mb-1">{t('auth.passwordStrengthHint')}</p>
+                <ul className="list-disc list-inside space-y-1">
+                  {passwordErrors.map((errorKey) => (
+                    <li key={errorKey} className="text-red-600">
+                      {t(`auth.${errorKey}`)}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {formData.newPassword && passwordErrors.length === 0 && (
+              <p className="mt-2 text-sm text-green-600">✓ {t('auth.passwordStrengthHint')}</p>
+            )}
           </div>
 
           <div className="mb-6">

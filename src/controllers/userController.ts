@@ -10,6 +10,7 @@ import {
   getAdminCount,
 } from '../services/userService.js';
 import { loadSettings } from '../config/index.js';
+import { validatePasswordStrength } from '../utils/passwordValidation.js';
 
 // Admin permission check middleware function
 const requireAdmin = (req: Request, res: Response): boolean => {
@@ -100,6 +101,17 @@ export const createUser = async (req: Request, res: Response): Promise<void> => 
       return;
     }
 
+    // Validate password strength
+    const validationResult = validatePasswordStrength(password);
+    if (!validationResult.isValid) {
+      res.status(400).json({
+        success: false,
+        message: 'Password does not meet security requirements',
+        errors: validationResult.errors,
+      });
+      return;
+    }
+
     const newUser = await createNewUser(username, password, isAdmin || false);
     if (!newUser) {
       res.status(400).json({
@@ -163,7 +175,19 @@ export const updateExistingUser = async (req: Request, res: Response): Promise<v
 
     const updateData: any = {};
     if (isAdmin !== undefined) updateData.isAdmin = isAdmin;
-    if (newPassword) updateData.newPassword = newPassword;
+    if (newPassword) {
+      // Validate new password strength
+      const validationResult = validatePasswordStrength(newPassword);
+      if (!validationResult.isValid) {
+        res.status(400).json({
+          success: false,
+          message: 'Password does not meet security requirements',
+          errors: validationResult.errors,
+        });
+        return;
+      }
+      updateData.newPassword = newPassword;
+    }
 
     if (Object.keys(updateData).length === 0) {
       res.status(400).json({

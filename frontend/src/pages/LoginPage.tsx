@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { useAuth } from '../contexts/AuthContext';
 import ThemeSwitch from '@/components/ui/ThemeSwitch';
 import LanguageSwitch from '@/components/ui/LanguageSwitch';
+import DefaultPasswordWarningModal from '@/components/ui/DefaultPasswordWarningModal';
 
 const LoginPage: React.FC = () => {
   const { t } = useTranslation();
@@ -11,6 +12,7 @@ const LoginPage: React.FC = () => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [showDefaultPasswordWarning, setShowDefaultPasswordWarning] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
 
@@ -26,10 +28,15 @@ const LoginPage: React.FC = () => {
         return;
       }
 
-      const success = await login(username, password);
+      const result = await login(username, password);
 
-      if (success) {
-        navigate('/');
+      if (result.success) {
+        if (result.isUsingDefaultPassword) {
+          // Show warning modal instead of navigating immediately
+          setShowDefaultPasswordWarning(true);
+        } else {
+          navigate('/');
+        }
       } else {
         setError(t('auth.loginFailed'));
       }
@@ -38,6 +45,11 @@ const LoginPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleCloseWarning = () => {
+    setShowDefaultPasswordWarning(false);
+    navigate('/');
   };
 
   return (
@@ -138,6 +150,12 @@ const LoginPage: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Default Password Warning Modal */}
+      <DefaultPasswordWarningModal
+        isOpen={showDefaultPasswordWarning}
+        onClose={handleCloseWarning}
+      />
     </div>
   );
 };

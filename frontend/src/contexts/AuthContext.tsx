@@ -14,12 +14,12 @@ const initialState: AuthState = {
 // Create auth context
 const AuthContext = createContext<{
   auth: AuthState;
-  login: (username: string, password: string) => Promise<boolean>;
+  login: (username: string, password: string) => Promise<{ success: boolean; isUsingDefaultPassword?: boolean }>;
   register: (username: string, password: string, isAdmin?: boolean) => Promise<boolean>;
   logout: () => void;
 }>({
   auth: initialState,
-  login: async () => false,
+  login: async () => ({ success: false }),
   register: async () => false,
   logout: () => { },
 });
@@ -90,7 +90,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   }, []);
 
   // Login function
-  const login = async (username: string, password: string): Promise<boolean> => {
+  const login = async (username: string, password: string): Promise<{ success: boolean; isUsingDefaultPassword?: boolean }> => {
     try {
       const response = await authService.login({ username, password });
 
@@ -101,14 +101,17 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           user: response.user,
           error: null,
         });
-        return true;
+        return {
+          success: true,
+          isUsingDefaultPassword: response.isUsingDefaultPassword,
+        };
       } else {
         setAuth({
           ...initialState,
           loading: false,
           error: response.message || 'Authentication failed',
         });
-        return false;
+        return { success: false };
       }
     } catch (error) {
       setAuth({
@@ -116,7 +119,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         loading: false,
         error: 'Authentication failed',
       });
-      return false;
+      return { success: false };
     }
   };
 

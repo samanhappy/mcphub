@@ -794,10 +794,11 @@ const SettingsPage: React.FC = () => {
       </PermissionChecker>
 
       {/* Change Password */}
-      <div className="bg-white shadow rounded-lg py-4 px-6 mb-6 dashboard-card">
+      <div className="bg-white shadow rounded-lg py-4 px-6 mb-6 dashboard-card" data-section="password">
         <div
           className="flex justify-between items-center cursor-pointer"
           onClick={() => toggleSection('password')}
+          role="button"
         >
           <h2 className="font-semibold text-gray-800">{t('auth.changePassword')}</h2>
           <span className="text-gray-500">{sectionsVisible.password ? '▼' : '►'}</span>

@@ -10,6 +10,8 @@ import {
 import { getDataService } from '../services/services.js';
 import { DataService } from '../services/dataService.js';
 import { JWT_SECRET } from '../config/jwt.js';
+import { validatePasswordStrength, isDefaultPassword } from '../utils/passwordValidation.js';
+import { getPackageVersion } from '../utils/version.js';
 
 const dataService: DataService = getDataService();
 
@@ -64,6 +66,14 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       },
     };
 
+    // Check if user is admin with default password
+    const version = getPackageVersion();
+    const isUsingDefaultPassword =
+      user.username === 'admin' &&
+      user.isAdmin &&
+      isDefaultPassword(password) &&
+      version !== 'dev';
+
     jwt.sign(payload, JWT_SECRET, { expiresIn: TOKEN_EXPIRY }, (err, token) => {
       if (err) throw err;
       res.json({
@@ -75,6 +85,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
           isAdmin: user.isAdmin,
           permissions: dataService.getPermissions(user),
         },
+        isUsingDefaultPassword,
       });
     });
   } catch (error) {
@@ -172,6 +183,17 @@ export const changePassword = async (req: Request, res: Response): Promise<void>
   const username = (req as any).user.username;
 
   try {
+    // Validate new password strength
+    const validationResult = validatePasswordStrength(newPassword);
+    if (!validationResult.isValid) {
+      res.status(400).json({
+        success: false,
+        message: 'Password does not meet security requirements',
+        errors: validationResult.errors,
+      });
+      return;
+    }
+
     // Find user by username
     const user = findUserByUsername(username);
 

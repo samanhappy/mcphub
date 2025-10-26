@@ -69,7 +69,16 @@
     "changePasswordError": "修改密码失败",
     "changePassword": "修改密码",
     "passwordChanged": "密码修改成功",
-    "passwordChangeError": "修改密码失败"
+    "passwordChangeError": "修改密码失败",
+    "defaultPasswordWarning": "默认密码安全警告",
+    "defaultPasswordMessage": "您正在使用默认密码（admin123），这存在安全风险。为了保护您的账户安全，请立即修改密码。",
+    "goToSettings": "前往修改",
+    "passwordStrengthError": "密码不符合安全要求",
+    "passwordMinLength": "密码长度至少为 8 个字符",
+    "passwordRequireLetter": "密码必须包含至少一个字母",
+    "passwordRequireNumber": "密码必须包含至少一个数字",
+    "passwordRequireSpecial": "密码必须包含至少一个特殊字符",
+    "passwordStrengthHint": "密码必须至少 8 个字符，且包含字母、数字和特殊字符"
   },
   "server": {
     "addServer": "添加服务器",

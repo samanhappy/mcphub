@@ -359,6 +359,7 @@ export interface AuthResponse {
   token?: string;
   user?: IUser;
   message?: string;
+  isUsingDefaultPassword?: boolean;
 }
 
 // Official Registry types (from registry.modelcontextprotocol.io)

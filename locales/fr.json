@@ -69,7 +69,16 @@
     "changePasswordError": "Échec du changement de mot de passe",
     "changePassword": "Changer le mot de passe",
     "passwordChanged": "Mot de passe changé avec succès",
-    "passwordChangeError": "Échec du changement de mot de passe"
+    "passwordChangeError": "Échec du changement de mot de passe",
+    "defaultPasswordWarning": "Avertissement de sécurité du mot de passe par défaut",
+    "defaultPasswordMessage": "Vous utilisez le mot de passe par défaut (admin123), ce qui présente un risque de sécurité. Veuillez changer votre mot de passe immédiatement pour protéger votre compte.",
+    "goToSettings": "Aller aux paramètres",
+    "passwordStrengthError": "Le mot de passe ne répond pas aux exigences de sécurité",
+    "passwordMinLength": "Le mot de passe doit contenir au moins 8 caractères",
+    "passwordRequireLetter": "Le mot de passe doit contenir au moins une lettre",
+    "passwordRequireNumber": "Le mot de passe doit contenir au moins un chiffre",
+    "passwordRequireSpecial": "Le mot de passe doit contenir au moins un caractère spécial",
+    "passwordStrengthHint": "Le mot de passe doit contenir au moins 8 caractères et inclure des lettres, des chiffres et des caractères spéciaux"
   },
   "server": {
     "addServer": "Ajouter un serveur",

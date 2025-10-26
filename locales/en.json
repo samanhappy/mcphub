@@ -69,7 +69,16 @@
     "changePasswordError": "Failed to change password",
     "changePassword": "Change Password",
     "passwordChanged": "Password changed successfully",
-    "passwordChangeError": "Failed to change password"
+    "passwordChangeError": "Failed to change password",
+    "defaultPasswordWarning": "Default Password Security Warning",
+    "defaultPasswordMessage": "You are using the default password (admin123), which poses a security risk. Please change your password immediately to protect your account.",
+    "goToSettings": "Go to Settings",
+    "passwordStrengthError": "Password does not meet security requirements",
+    "passwordMinLength": "Password must be at least 8 characters long",
+    "passwordRequireLetter": "Password must contain at least one letter",
+    "passwordRequireNumber": "Password must contain at least one number",
+    "passwordRequireSpecial": "Password must contain at least one special character",
+    "passwordStrengthHint": "Password must be at least 8 characters and contain letters, numbers, and special characters"
   },
   "server": {
     "addServer": "Add Server",
