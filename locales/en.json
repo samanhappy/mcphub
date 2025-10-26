@@ -600,7 +600,7 @@
     "override": "Override"
   },
   "jsonImport": {
-    "button": "Import JSON",
+    "button": "Import",
     "title": "Import Servers from JSON",
     "inputLabel": "Server Configuration JSON",
     "inputHelp": "Paste your server configuration JSON. Supports STDIO, SSE, and HTTP (streamableHttp) server types.",

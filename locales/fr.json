@@ -600,7 +600,7 @@
     "override": "Remplacer"
   },
   "jsonImport": {
-    "button": "Importer JSON",
+    "button": "Importer",
     "title": "Importer des serveurs depuis JSON",
     "inputLabel": "Configuration JSON du serveur",
     "inputHelp": "Collez votre configuration JSON de serveur. Prend en charge les types de serveurs STDIO, SSE et HTTP (streamableHttp).",

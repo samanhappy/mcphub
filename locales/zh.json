@@ -602,7 +602,7 @@
     "override": "覆盖"
   },
   "jsonImport": {
-    "button": "导入 JSON",
+    "button": "导入",
     "title": "从 JSON 导入服务器",
     "inputLabel": "服务器配置 JSON",
     "inputHelp": "粘贴您的服务器配置 JSON。支持 STDIO、SSE 和 HTTP (streamableHttp) 服务器类型。",
