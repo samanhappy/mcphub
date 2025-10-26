@@ -27,7 +27,7 @@ const JSONImportForm: React.FC<JSONImportFormProps> = ({ onSuccess, onCancel }) 
   const [isImporting, setIsImporting] = useState(false);
   const [previewServers, setPreviewServers] = useState<Array<{ name: string; config: any }> | null>(null);
 
-  const examplePlaceholder = `// STDIO example:
+  const examplePlaceholder = `STDIO example:
 {
   "mcpServers": {
     "stdio-server-example": {
@@ -37,7 +37,7 @@ const JSONImportForm: React.FC<JSONImportFormProps> = ({ onSuccess, onCancel }) 
   }
 }
 
-// SSE example:
+SSE example:
 {
   "mcpServers": {
     "sse-server-example": {
@@ -47,7 +47,7 @@ const JSONImportForm: React.FC<JSONImportFormProps> = ({ onSuccess, onCancel }) 
   }
 }
 
-// HTTP example:
+HTTP example:
 {
   "mcpServers": {
     "http-server-example": {
@@ -63,9 +63,7 @@ const JSONImportForm: React.FC<JSONImportFormProps> = ({ onSuccess, onCancel }) 
 
   const parseAndValidateJson = (input: string): ImportJsonFormat | null => {
     try {
-      // Remove comments from JSON
-      const cleanedInput = input.replace(/\/\/.*$/gm, '').trim();
-      const parsed = JSON.parse(cleanedInput);
+      const parsed = JSON.parse(input.trim());
 
       // Validate structure
       if (!parsed.mcpServers || typeof parsed.mcpServers !== 'object') {
