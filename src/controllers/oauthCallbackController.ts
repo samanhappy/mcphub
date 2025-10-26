@@ -126,21 +126,19 @@ export const handleOAuthCallback = async (req: Request, res: Response) => {
     // Check for authorization errors
     if (error) {
       console.error(`OAuth authorization failed: ${error} - ${error_description || ''}`);
-      return res
-        .status(400)
-        .send(
-          generateHtmlResponse('error', t('oauthCallback.authorizationFailed'), '', [
-            { label: t('oauthCallback.authorizationFailedError'), value: String(error) },
-            ...(error_description
-              ? [
-                  {
-                    label: t('oauthCallback.authorizationFailedDetails'),
-                    value: String(error_description),
-                  },
-                ]
-              : []),
-          ]),
-        );
+      return res.status(400).send(
+        generateHtmlResponse('error', t('oauthCallback.authorizationFailed'), '', [
+          { label: t('oauthCallback.authorizationFailedError'), value: String(error) },
+          ...(error_description
+            ? [
+                {
+                  label: t('oauthCallback.authorizationFailedDetails'),
+                  value: String(error_description),
+                },
+              ]
+            : []),
+        ]),
+      );
     }
 
     // Validate required parameters

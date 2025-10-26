@@ -380,10 +380,10 @@ export const initializeClientsFromSettings = async (
   try {
     for (const conf of allServers) {
       const { name } = conf;
-      
+
       // Expand environment variables in all configuration values
       const expandedConf = replaceEnvVars(conf as any) as ServerConfigWithName;
-      
+
       // Skip disabled servers
       if (expandedConf.enabled === false) {
         console.log(`Skipping disabled server: ${name}`);

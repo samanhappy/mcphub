@@ -529,7 +529,7 @@ export const updateSystemConfig = (req: Request, res: Response): void => {
           typeof mcpRouter.referer !== 'string' &&
           typeof mcpRouter.title !== 'string' &&
           typeof mcpRouter.baseUrl !== 'string')) &&
-      (typeof nameSeparator !== 'string')
+      typeof nameSeparator !== 'string'
     ) {
       res.status(400).json({
         success: false,

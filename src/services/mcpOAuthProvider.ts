@@ -333,7 +333,7 @@ export class MCPHubOAuthProvider implements OAuthClientProvider {
 
     const updatedConfig = await persistTokens(this.serverName, {
       accessToken: tokens.access_token,
-      refreshToken: refreshTokenProvided ? tokens.refresh_token ?? null : undefined,
+      refreshToken: refreshTokenProvided ? (tokens.refresh_token ?? null) : undefined,
       clearPendingAuthorization: hadPending,
     });
 
@@ -421,7 +421,9 @@ export class MCPHubOAuthProvider implements OAuthClientProvider {
   async saveCodeVerifier(verifier: string): Promise<void> {
     this._codeVerifier = verifier;
     try {
-      const updatedConfig = await updatePendingAuthorization(this.serverName, { codeVerifier: verifier });
+      const updatedConfig = await updatePendingAuthorization(this.serverName, {
+        codeVerifier: verifier,
+      });
       if (updatedConfig) {
         this.serverConfig = updatedConfig;
       }
@@ -490,7 +492,10 @@ export class MCPHubOAuthProvider implements OAuthClientProvider {
     if (scope === 'client' || scope === 'all') {
       const supportsDynamicClient = currentConfig.oauth.dynamicRegistration?.enabled === true;
 
-      if (supportsDynamicClient && (currentConfig.oauth.clientId || currentConfig.oauth.clientSecret)) {
+      if (
+        supportsDynamicClient &&
+        (currentConfig.oauth.clientId || currentConfig.oauth.clientSecret)
+      ) {
         removeRegisteredClient(this.serverName);
         const updated = await clearOAuthData(this.serverName, 'client');
         assignUpdatedConfig(updated);

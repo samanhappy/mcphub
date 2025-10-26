@@ -18,18 +18,18 @@ function initializePackageRoot(): void {
   if (process.env.NODE_ENV === 'test' || process.env.JEST_WORKER_ID !== undefined) {
     return;
   }
-  
+
   try {
     // Try to get the current module's directory
     const currentModuleDir = getCurrentModuleDir();
-    
+
     // This file is in src/utils/path.ts (or dist/utils/path.js when compiled)
     // So package.json should be 2 levels up
     const possibleRoots = [
       path.resolve(currentModuleDir, '..', '..'), // dist -> package root
       path.resolve(currentModuleDir, '..'), // dist/utils -> dist -> package root
     ];
-    
+
     for (const root of possibleRoots) {
       const packageJsonPath = path.join(root, 'package.json');
       if (fs.existsSync(packageJsonPath)) {
@@ -66,10 +66,10 @@ export const findPackageRoot = (startPath?: string): string | null => {
   }
 
   const debug = process.env.DEBUG === 'true';
-  
+
   // Possible locations for package.json relative to the search path
   const possibleRoots: string[] = [];
-  
+
   if (startPath) {
     // When start path is provided (from fileURLToPath(import.meta.url))
     possibleRoots.push(
@@ -78,25 +78,30 @@ export const findPackageRoot = (startPath?: string): string | null => {
       // When in dist/ (compiled code) - go up 1 level
       path.resolve(startPath, '..'),
       // Direct parent directories
-      path.resolve(startPath)
+      path.resolve(startPath),
     );
   }
-  
+
   // Try to use require.resolve to find the module location (works in CommonJS and ESM with createRequire)
   try {
     // In ESM, we can use import.meta.resolve, but it's async in some versions
     // So we'll try to find the module by checking the node_modules structure
-    
+
     // Check if this file is in a node_modules installation
     const currentFile = new Error().stack?.split('\n')[2]?.match(/\((.+?):\d+:\d+\)$/)?.[1];
     if (currentFile) {
       const nodeModulesIndex = currentFile.indexOf('node_modules');
       if (nodeModulesIndex !== -1) {
         // Extract the package path from node_modules
-        const afterNodeModules = currentFile.substring(nodeModulesIndex + 'node_modules'.length + 1);
+        const afterNodeModules = currentFile.substring(
+          nodeModulesIndex + 'node_modules'.length + 1,
+        );
         const packageNameEnd = afterNodeModules.indexOf(path.sep);
         if (packageNameEnd !== -1) {
-          const packagePath = currentFile.substring(0, nodeModulesIndex + 'node_modules'.length + 1 + packageNameEnd);
+          const packagePath = currentFile.substring(
+            0,
+            nodeModulesIndex + 'node_modules'.length + 1 + packageNameEnd,
+          );
           possibleRoots.push(packagePath);
         }
       }
@@ -108,18 +113,15 @@ export const findPackageRoot = (startPath?: string): string | null => {
   // Check module.filename location (works in Node.js when available)
   if (typeof __filename !== 'undefined') {
     const moduleDir = path.dirname(__filename);
-    possibleRoots.push(
-      path.resolve(moduleDir, '..', '..'),
-      path.resolve(moduleDir, '..')
-    );
+    possibleRoots.push(path.resolve(moduleDir, '..', '..'), path.resolve(moduleDir, '..'));
   }
-  
+
   // Check common installation locations
   possibleRoots.push(
     // Current working directory (for development/tests)
     process.cwd(),
     // Parent of cwd
-    path.resolve(process.cwd(), '..')
+    path.resolve(process.cwd(), '..'),
   );
 
   if (debug) {
@@ -157,12 +159,12 @@ export const findPackageRoot = (startPath?: string): string | null => {
   if (debug) {
     console.warn('DEBUG: Could not find package root directory');
   }
-  
+
   // Cache null result as well to avoid repeated searches
   if (!startPath) {
     cachedPackageRoot = null;
   }
-  
+
   return null;
 };
 

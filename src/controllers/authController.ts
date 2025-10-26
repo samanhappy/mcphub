@@ -69,10 +69,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     // Check if user is admin with default password
     const version = getPackageVersion();
     const isUsingDefaultPassword =
-      user.username === 'admin' &&
-      user.isAdmin &&
-      isDefaultPassword(password) &&
-      version !== 'dev';
+      user.username === 'admin' && user.isAdmin && isDefaultPassword(password) && version !== 'dev';
 
     jwt.sign(payload, JWT_SECRET, { expiresIn: TOKEN_EXPIRY }, (err, token) => {
       if (err) throw err;
