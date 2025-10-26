@@ -148,7 +148,7 @@ const ChangePasswordForm: React.FC<ChangePasswordFormProps> = ({ onSuccess, onCa
               value={confirmPassword}
               onChange={handleChange}
               required
-              minLength={6}
+              minLength={8}
             />
           </div>
 
