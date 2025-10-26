@@ -9,7 +9,7 @@ MCPHub now supports comprehensive environment variable expansion throughout the 
 MCPHub supports two environment variable formats:
 
 1. **${VAR}** - Standard format (recommended)
-2. **$VAR** - Unix-style format (variable name must start with uppercase letter or underscore)
+2. **$VAR** - Unix-style format (variable name must start with an uppercase letter or underscore, followed by uppercase letters, numbers, or underscores)
 
 ## What Can Be Expanded
 
