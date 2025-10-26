@@ -889,30 +889,48 @@ export const handleListToolsRequest = async (_: any, extra: any) => {
   console.log(`Handling ListToolsRequest for group: ${group}`);
 
   // Special handling for $smart group to return special tools
-  if (group === '$smart') {
+  // Support both $smart and $smart/{group} patterns
+  if (group === '$smart' || group?.startsWith('$smart/')) {
+    // Extract target group if pattern is $smart/{group}
+    const targetGroup = group?.startsWith('$smart/') ? group.substring(7) : undefined;
+    
+    // Get info about available servers, filtered by target group if specified
+    let availableServers = serverInfos.filter(
+      (server) => server.status === 'connected' && server.enabled !== false,
+    );
+    
+    // If a target group is specified, filter servers to only those in the group
+    if (targetGroup) {
+      const serversInGroup = getServersInGroup(targetGroup);
+      if (serversInGroup && serversInGroup.length > 0) {
+        availableServers = availableServers.filter((server) =>
+          serversInGroup.includes(server.name),
+        );
+      }
+    }
+    
+    // Create simple server information with only server names
+    const serversList = availableServers
+      .map((server) => {
+        return `${server.name}`;
+      })
+      .join(', ');
+    
+    const scopeDescription = targetGroup
+      ? `servers in the "${targetGroup}" group`
+      : 'all available servers';
+    
     return {
       tools: [
         {
           name: 'search_tools',
-          description: (() => {
-            // Get info about available servers
-            const availableServers = serverInfos.filter(
-              (server) => server.status === 'connected' && server.enabled !== false,
-            );
-            // Create simple server information with only server names
-            const serversList = availableServers
-              .map((server) => {
-                return `${server.name}`;
-              })
-              .join(', ');
-            return `STEP 1 of 2: Use this tool FIRST to discover and search for relevant tools across all available servers. This tool and call_tool work together as a two-step process: 1) search_tools to find what you need, 2) call_tool to execute it.
+          description: `STEP 1 of 2: Use this tool FIRST to discover and search for relevant tools across ${scopeDescription}. This tool and call_tool work together as a two-step process: 1) search_tools to find what you need, 2) call_tool to execute it.
 
 For optimal results, use specific queries matching your exact needs. Call this tool multiple times with different queries for different parts of complex tasks. Example queries: "image generation tools", "code review tools", "data analysis", "translation capabilities", etc. Results are sorted by relevance using vector similarity.
 
 After finding relevant tools, you MUST use the call_tool to actually execute them. The search_tools only finds tools - it doesn't execute them.
 
-Available servers: ${serversList}`;
-          })(),
+Available servers: ${serversList}`,
           inputSchema: {
             type: 'object',
             properties: {
@@ -1029,7 +1047,25 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
       }
 
       console.log(`Using similarity threshold: ${thresholdNum} for query: "${query}"`);
-      const servers = undefined; // No server filtering
+      
+      // Determine server filtering based on group
+      const sessionId = extra.sessionId || '';
+      const group = getGroup(sessionId);
+      let servers: string[] | undefined = undefined; // No server filtering by default
+      
+      // If group is in format $smart/{group}, filter servers to that group
+      if (group?.startsWith('$smart/')) {
+        const targetGroup = group.substring(7);
+        const serversInGroup = getServersInGroup(targetGroup);
+        if (serversInGroup !== undefined && serversInGroup !== null) {
+          servers = serversInGroup;
+          if (servers.length > 0) {
+            console.log(`Filtering search to servers in group "${targetGroup}": ${servers.join(', ')}`);
+          } else {
+            console.log(`Group "${targetGroup}" has no servers, search will return no results`);
+          }
+        }
+      }
 
       const searchResults = await searchToolsByVector(query, limitNum, thresholdNum, servers);
       console.log(`Search results: ${JSON.stringify(searchResults)}`);
