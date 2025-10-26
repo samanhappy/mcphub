@@ -1,0 +1,80 @@
+{
+  "mcpServers": {
+    "example-sse-server": {
+      "type": "sse",
+      "url": "${MCP_SERVER_URL}",
+      "headers": {
+        "Authorization": "Bearer ${API_TOKEN}",
+        "X-Custom-Header": "${CUSTOM_HEADER_VALUE}"
+      },
+      "enabled": true
+    },
+    "example-streamable-http": {
+      "type": "streamable-http",
+      "url": "https://${SERVER_HOST}/mcp",
+      "headers": {
+        "API-Key": "${API_KEY}"
+      }
+    },
+    "example-stdio-server": {
+      "type": "stdio",
+      "command": "${PYTHON_PATH}",
+      "args": [
+        "-m",
+        "${MODULE_NAME}",
+        "--config",
+        "${CONFIG_PATH}"
+      ],
+      "env": {
+        "API_KEY": "${MY_API_KEY}",
+        "DEBUG": "${DEBUG_MODE}",
+        "DATABASE_URL": "${DATABASE_URL}"
+      }
+    },
+    "example-openapi-server": {
+      "type": "openapi",
+      "openapi": {
+        "url": "${OPENAPI_SPEC_URL}",
+        "security": {
+          "type": "apiKey",
+          "apiKey": {
+            "name": "X-API-Key",
+            "in": "header",
+            "value": "${OPENAPI_API_KEY}"
+          }
+        }
+      },
+      "headers": {
+        "User-Agent": "MCPHub/${VERSION}"
+      }
+    },
+    "example-oauth-server": {
+      "type": "sse",
+      "url": "${OAUTH_SERVER_URL}",
+      "oauth": {
+        "clientId": "${OAUTH_CLIENT_ID}",
+        "clientSecret": "${OAUTH_CLIENT_SECRET}",
+        "accessToken": "${OAUTH_ACCESS_TOKEN}",
+        "scopes": ["read", "write"]
+      }
+    }
+  },
+  "users": [
+    {
+      "username": "admin",
+      "password": "$2b$10$Vt7krIvjNgyN67LXqly0uOcTpN0LI55cYRbcKC71pUDAP0nJ7RPa.",
+      "isAdmin": true
+    }
+  ],
+  "systemConfig": {
+    "install": {
+      "pythonIndexUrl": "${PYTHON_INDEX_URL}",
+      "npmRegistry": "${NPM_REGISTRY}"
+    },
+    "mcpRouter": {
+      "apiKey": "${MCPROUTER_API_KEY}",
+      "referer": "${MCPROUTER_REFERER}",
+      "baseUrl": "${MCPROUTER_BASE_URL}"
+    }
+  }
+}
