@@ -1,4 +1,6 @@
+import fs from 'fs';
 import os from 'os';
+import path from 'path';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import {
   CallToolRequestSchema,
@@ -30,6 +32,77 @@ import { createOAuthProvider } from './mcpOAuthProvider.js';
 const servers: { [sessionId: string]: Server } = {};
 
 const serverDao = getServerDao();
+
+const ensureDirExists = (dir: string | undefined): string => {
+  if (!dir) {
+    throw new Error('Directory path is undefined');
+  }
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+  return dir;
+};
+
+const getDataRootDir = (): string => {
+  return ensureDirExists(process.env.MCP_DATA_DIR || path.join(process.cwd(), 'data'));
+};
+
+const getServersStorageRoot = (): string => {
+  return ensureDirExists(process.env.MCP_SERVERS_DIR || path.join(getDataRootDir(), 'servers'));
+};
+
+const getNpmBaseDir = (): string => {
+  return ensureDirExists(process.env.MCP_NPM_DIR || path.join(getServersStorageRoot(), 'npm'));
+};
+
+const getPythonBaseDir = (): string => {
+  return ensureDirExists(
+    process.env.MCP_PYTHON_DIR || path.join(getServersStorageRoot(), 'python'),
+  );
+};
+
+const getNpmCacheDir = (): string => {
+  return ensureDirExists(process.env.NPM_CONFIG_CACHE || path.join(getDataRootDir(), 'npm-cache'));
+};
+
+const getNpmPrefixDir = (): string => {
+  const dir = ensureDirExists(
+    process.env.NPM_CONFIG_PREFIX || path.join(getDataRootDir(), 'npm-global'),
+  );
+  ensureDirExists(path.join(dir, 'bin'));
+  ensureDirExists(path.join(dir, 'lib', 'node_modules'));
+  return dir;
+};
+
+const getUvCacheDir = (): string => {
+  return ensureDirExists(process.env.UV_CACHE_DIR || path.join(getDataRootDir(), 'uv', 'cache'));
+};
+
+const getUvToolDir = (): string => {
+  const dir = ensureDirExists(process.env.UV_TOOL_DIR || path.join(getDataRootDir(), 'uv', 'tools'));
+  ensureDirExists(path.join(dir, 'bin'));
+  return dir;
+};
+
+const getServerInstallDir = (serverName: string, kind: 'npm' | 'python'): string => {
+  const baseDir = kind === 'npm' ? getNpmBaseDir() : getPythonBaseDir();
+  return ensureDirExists(path.join(baseDir, serverName));
+};
+
+const prependToPath = (currentPath: string, dir: string): string => {
+  if (!dir) {
+    return currentPath;
+  }
+  const delimiter = path.delimiter;
+  const segments = currentPath ? currentPath.split(delimiter) : [];
+  if (segments.includes(dir)) {
+    return currentPath;
+  }
+  return currentPath ? `${dir}${delimiter}${currentPath}` : dir;
+};
+
+const NODE_COMMANDS = new Set(['npm', 'npx', 'pnpm', 'yarn', 'node', 'bun', 'bunx']);
+const PYTHON_COMMANDS = new Set(['uv', 'uvx', 'python', 'pip', 'pip3', 'pipx']);
 
 // Helper function to set up keep-alive ping for SSE connections
 const setupKeepAlive = (serverInfo: ServerInfo, serverConfig: ServerConfig): void => {
@@ -213,7 +286,7 @@ export const createTransportFromConfig = async (name: string, conf: ServerConfig
       ...(process.env as Record<string, string>),
       ...replaceEnvVars(conf.env || {}),
     };
-    env['PATH'] = expandEnvVars(process.env.PATH as string) || '';
+    env['PATH'] = expandEnvVars(env['PATH'] || process.env.PATH || '');
 
     const settings = loadSettings();
     // Add UV_DEFAULT_INDEX and npm_config_registry if needed
@@ -235,9 +308,52 @@ export const createTransportFromConfig = async (name: string, conf: ServerConfig
       env['npm_config_registry'] = settings.systemConfig.install.npmRegistry;
     }
 
+    // Ensure stdio servers use persistent directories under /app/data (or configured override)
+    let workingDirectory = os.homedir();
+    const commandLower = conf.command.toLowerCase();
+
+    if (NODE_COMMANDS.has(commandLower)) {
+      const serverDir = getServerInstallDir(name, 'npm');
+      workingDirectory = serverDir;
+
+      const npmCacheDir = getNpmCacheDir();
+      const npmPrefixDir = getNpmPrefixDir();
+
+      if (!env['npm_config_cache']) {
+        env['npm_config_cache'] = npmCacheDir;
+      }
+      if (!env['NPM_CONFIG_CACHE']) {
+        env['NPM_CONFIG_CACHE'] = env['npm_config_cache'];
+      }
+
+      if (!env['npm_config_prefix']) {
+        env['npm_config_prefix'] = npmPrefixDir;
+      }
+      if (!env['NPM_CONFIG_PREFIX']) {
+        env['NPM_CONFIG_PREFIX'] = env['npm_config_prefix'];
+      }
+
+      env['PATH'] = prependToPath(env['PATH'], path.join(env['npm_config_prefix'], 'bin'));
+    } else if (PYTHON_COMMANDS.has(commandLower)) {
+      const serverDir = getServerInstallDir(name, 'python');
+      workingDirectory = serverDir;
+
+      const uvCacheDir = getUvCacheDir();
+      const uvToolDir = getUvToolDir();
+
+      if (!env['UV_CACHE_DIR']) {
+        env['UV_CACHE_DIR'] = uvCacheDir;
+      }
+      if (!env['UV_TOOL_DIR']) {
+        env['UV_TOOL_DIR'] = uvToolDir;
+      }
+
+      env['PATH'] = prependToPath(env['PATH'], path.join(env['UV_TOOL_DIR'], 'bin'));
+    }
+
     // Expand environment variables in command
     transport = new StdioClientTransport({
-      cwd: os.homedir(),
+      cwd: workingDirectory,
       command: conf.command,
       args: replaceEnvVars(conf.args) as string[],
       env: env,

@@ -1,5 +1,27 @@
 #!/bin/bash
 
+DATA_DIR=${MCP_DATA_DIR:-/app/data}
+SERVERS_DIR=${MCP_SERVERS_DIR:-$DATA_DIR/servers}
+NPM_SERVER_DIR=${MCP_NPM_DIR:-$SERVERS_DIR/npm}
+PYTHON_SERVER_DIR=${MCP_PYTHON_DIR:-$SERVERS_DIR/python}
+PNPM_HOME=${PNPM_HOME:-$DATA_DIR/pnpm}
+NPM_CONFIG_PREFIX=${NPM_CONFIG_PREFIX:-$DATA_DIR/npm-global}
+NPM_CONFIG_CACHE=${NPM_CONFIG_CACHE:-$DATA_DIR/npm-cache}
+UV_TOOL_DIR=${UV_TOOL_DIR:-$DATA_DIR/uv/tools}
+UV_CACHE_DIR=${UV_CACHE_DIR:-$DATA_DIR/uv/cache}
+
+mkdir -p \
+  "$PNPM_HOME" \
+  "$NPM_CONFIG_PREFIX/bin" \
+  "$NPM_CONFIG_PREFIX/lib/node_modules" \
+  "$NPM_CONFIG_CACHE" \
+  "$UV_TOOL_DIR" \
+  "$UV_CACHE_DIR" \
+  "$NPM_SERVER_DIR" \
+  "$PYTHON_SERVER_DIR"
+
+export PATH="$PNPM_HOME:$NPM_CONFIG_PREFIX/bin:$UV_TOOL_DIR/bin:$PATH"
+
 NPM_REGISTRY=${NPM_REGISTRY:-https://registry.npmjs.org/}
 echo "Setting npm registry to ${NPM_REGISTRY}"
 npm config set registry "$NPM_REGISTRY"

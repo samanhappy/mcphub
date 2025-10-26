@@ -9,9 +9,25 @@ RUN apt-get update && apt-get install -y curl gnupg git \
 
 RUN npm install -g pnpm
 
-ENV PNPM_HOME=/usr/local/share/pnpm
-ENV PATH=$PNPM_HOME:$PATH
-RUN mkdir -p $PNPM_HOME && \
+ENV MCP_DATA_DIR=/app/data
+ENV MCP_SERVERS_DIR=$MCP_DATA_DIR/servers
+ENV MCP_NPM_DIR=$MCP_SERVERS_DIR/npm
+ENV MCP_PYTHON_DIR=$MCP_SERVERS_DIR/python
+ENV PNPM_HOME=$MCP_DATA_DIR/pnpm
+ENV NPM_CONFIG_PREFIX=$MCP_DATA_DIR/npm-global
+ENV NPM_CONFIG_CACHE=$MCP_DATA_DIR/npm-cache
+ENV UV_TOOL_DIR=$MCP_DATA_DIR/uv/tools
+ENV UV_CACHE_DIR=$MCP_DATA_DIR/uv/cache
+ENV PATH=$PNPM_HOME:$NPM_CONFIG_PREFIX/bin:$UV_TOOL_DIR/bin:$PATH
+RUN mkdir -p \
+  $PNPM_HOME \
+  $NPM_CONFIG_PREFIX/bin \
+  $NPM_CONFIG_PREFIX/lib/node_modules \
+  $NPM_CONFIG_CACHE \
+  $UV_TOOL_DIR \
+  $UV_CACHE_DIR \
+  $MCP_NPM_DIR \
+  $MCP_PYTHON_DIR && \
   pnpm add -g @amap/amap-maps-mcp-server @playwright/mcp@latest tavily-mcp@latest @modelcontextprotocol/server-github @modelcontextprotocol/server-slack
 
 ARG INSTALL_EXT=false
