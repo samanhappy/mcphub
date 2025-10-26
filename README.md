@@ -147,7 +147,11 @@ This endpoint provides a unified streamable HTTP interface for all your MCP serv
 Smart Routing is MCPHub's intelligent tool discovery system that uses vector semantic search to automatically find the most relevant tools for any given task.
 
 ```
+# Search across all servers
 http://localhost:3000/mcp/$smart
+
+# Search within a specific group
+http://localhost:3000/mcp/$smart/{group}
 ```
 
 **How it Works:**
@@ -156,6 +160,7 @@ http://localhost:3000/mcp/$smart
 2. **Semantic Search**: User queries are converted to vectors and matched against tool embeddings using cosine similarity
 3. **Intelligent Filtering**: Dynamic thresholds ensure relevant results without noise
 4. **Precise Execution**: Found tools can be directly executed with proper parameter validation
+5. **Group Scoping**: Optionally limit searches to servers within a specific group for focused results
 
 **Setup Requirements:**
 
@@ -166,6 +171,23 @@ To enable Smart Routing, you need:
 - PostgreSQL with pgvector extension
 - OpenAI API key (or compatible embedding service)
 - Enable Smart Routing in MCPHub settings
+
+**Group-Scoped Smart Routing**:
+
+You can combine Smart Routing with group filtering to search only within specific server groups:
+
+```
+# Search only within production servers
+http://localhost:3000/mcp/$smart/production
+
+# Search only within development servers
+http://localhost:3000/mcp/$smart/development
+```
+
+This enables:
+- **Focused Discovery**: Find tools only from relevant servers
+- **Environment Isolation**: Separate tool discovery by environment (dev, staging, prod)
+- **Team-Based Access**: Limit tool search to team-specific server groups
 
 **Group-Specific Endpoints (Recommended)**:
 
@@ -205,7 +227,11 @@ http://localhost:3000/sse
 For smart routing, use:
 
 ```
+# Search across all servers
 http://localhost:3000/sse/$smart
+
+# Search within a specific group
+http://localhost:3000/sse/$smart/{group}
 ```
 
 For targeted access to specific server groups, use the group-based SSE endpoint:

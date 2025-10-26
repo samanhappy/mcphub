@@ -276,16 +276,91 @@ Access Smart Routing through the special `$smart` endpoint:
 <Tabs>
   <Tab title="HTTP MCP">
     ```
+    # Search across all servers
     http://localhost:3000/mcp/$smart
+    
+    # Search within a specific group
+    http://localhost:3000/mcp/$smart/{group}
     ```
   </Tab>
 
   <Tab title="SSE (Legacy)">
     ```
+    # Search across all servers
     http://localhost:3000/sse/$smart
+    
+    # Search within a specific group
+    http://localhost:3000/sse/$smart/{group}
     ```
   </Tab>
 </Tabs>
+
+### Group-Scoped Smart Routing
+
+Smart Routing now supports group-scoped searches, allowing you to limit tool discovery to servers within a specific group:
+
+<AccordionGroup>
+  <Accordion title="Using Group-Scoped Smart Routing">
+    Connect your AI client to a group-specific Smart Routing endpoint:
+    
+    ```
+    http://localhost:3000/mcp/$smart/production
+    ```
+    
+    This endpoint will only search for tools within servers that belong to the "production" group.
+    
+    **Benefits:**
+    - **Focused Results**: Only tools from relevant servers are returned
+    - **Better Performance**: Reduced search space for faster queries
+    - **Environment Isolation**: Keep development, staging, and production tools separate
+    - **Access Control**: Limit tool discovery based on user permissions
+  </Accordion>
+
+  <Accordion title="Example: Environment-Based Groups">
+    Create groups for different environments:
+    
+    ```bash
+    # Development environment
+    http://localhost:3000/mcp/$smart/development
+    
+    # Staging environment
+    http://localhost:3000/mcp/$smart/staging
+    
+    # Production environment
+    http://localhost:3000/mcp/$smart/production
+    ```
+    
+    Each endpoint will only return tools from servers in that specific environment group.
+  </Accordion>
+
+  <Accordion title="Example: Team-Based Groups">
+    Organize tools by team or department:
+    
+    ```bash
+    # Backend team tools
+    http://localhost:3000/mcp/$smart/backend-team
+    
+    # Frontend team tools
+    http://localhost:3000/mcp/$smart/frontend-team
+    
+    # DevOps team tools
+    http://localhost:3000/mcp/$smart/devops-team
+    ```
+    
+    This enables teams to have focused access to their relevant toolsets.
+  </Accordion>
+
+  <Accordion title="How It Works">
+    When using `$smart/{group}`:
+    
+    1. The system identifies the specified group
+    2. Retrieves all servers belonging to that group
+    3. Filters the tool search to only those servers
+    4. Returns results scoped to the group's servers
+    
+    If the group doesn't exist or has no servers, the search will return no results.
+  </Accordion>
+</AccordionGroup>
 
 {/* ### Basic Usage
 
