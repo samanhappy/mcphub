@@ -605,7 +605,7 @@
     "button": "导入",
     "title": "从 JSON 导入服务器",
     "inputLabel": "服务器配置 JSON",
-    "inputHelp": "粘贴您的服务器配置 JSON。支持 STDIO、SSE 和 HTTP (streamableHttp) 服务器类型。",
+    "inputHelp": "粘贴您的服务器配置 JSON。支持 STDIO、SSE 和 HTTP (streamable-http) 服务器类型。",
     "preview": "预览",
     "previewTitle": "预览要导入的服务器",
     "import": "导入",

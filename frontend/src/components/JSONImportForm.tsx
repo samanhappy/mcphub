@@ -25,7 +25,9 @@ const JSONImportForm: React.FC<JSONImportFormProps> = ({ onSuccess, onCancel }) 
   const [jsonInput, setJsonInput] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isImporting, setIsImporting] = useState(false);
-  const [previewServers, setPreviewServers] = useState<Array<{ name: string; config: any }> | null>(null);
+  const [previewServers, setPreviewServers] = useState<Array<{ name: string; config: any }> | null>(
+    null,
+  );
 
   const examplePlaceholder = `STDIO example:
 {
@@ -51,7 +53,7 @@ HTTP example:
 {
   "mcpServers": {
     "http-server-example": {
-      "type": "streamableHttp",
+      "type": "streamable-http",
       "url": "http://localhost:3001",
       "headers": {
         "Content-Type": "application/json",
@@ -87,7 +89,7 @@ HTTP example:
       // Normalize config to MCPHub format
       const normalizedConfig: any = {};
 
-      if (config.type === 'sse' || config.type === 'streamableHttp') {
+      if (config.type === 'sse' || config.type === 'streamable-http') {
         normalizedConfig.type = config.type;
         normalizedConfig.url = config.url;
         if (config.headers) {
@@ -132,12 +134,18 @@ HTTP example:
             errors.push(`${server.name}: ${result.message || t('jsonImport.addFailed')}`);
           }
         } catch (err) {
-          errors.push(`${server.name}: ${err instanceof Error ? err.message : t('jsonImport.addFailed')}`);
+          errors.push(
+            `${server.name}: ${err instanceof Error ? err.message : t('jsonImport.addFailed')}`,
+          );
         }
       }
 
       if (errors.length > 0) {
-        setError(t('jsonImport.partialSuccess', { count: successCount, total: previewServers.length }) + '\n' + errors.join('\n'));
+        setError(
+          t('jsonImport.partialSuccess', { count: successCount, total: previewServers.length }) +
+            '\n' +
+            errors.join('\n'),
+        );
       }
 
       if (successCount > 0) {
@@ -201,7 +209,9 @@ HTTP example:
         ) : (
           <div>
             <div className="mb-4">
-              <h3 className="text-lg font-medium text-gray-900 mb-3">{t('jsonImport.previewTitle')}</h3>
+              <h3 className="text-lg font-medium text-gray-900 mb-3">
+                {t('jsonImport.previewTitle')}
+              </h3>
               <div className="space-y-3">
                 {previewServers.map((server, index) => (
                   <div key={index} className="bg-gray-50 p-4 rounded-lg border border-gray-200">
@@ -209,22 +219,38 @@ HTTP example:
                       <div className="flex-1">
                         <h4 className="font-medium text-gray-900">{server.name}</h4>
                         <div className="mt-2 space-y-1 text-sm text-gray-600">
-                          <div><strong>{t('server.type')}:</strong> {server.config.type || 'stdio'}</div>
+                          <div>
+                            <strong>{t('server.type')}:</strong> {server.config.type || 'stdio'}
+                          </div>
                           {server.config.command && (
-                            <div><strong>{t('server.command')}:</strong> {server.config.command}</div>
+                            <div>
+                              <strong>{t('server.command')}:</strong> {server.config.command}
+                            </div>
                           )}
                           {server.config.args && server.config.args.length > 0 && (
-                            <div><strong>{t('server.arguments')}:</strong> {server.config.args.join(' ')}</div>
+                            <div>
+                              <strong>{t('server.arguments')}:</strong>{' '}
+                              {server.config.args.join(' ')}
+                            </div>
                           )}
                           {server.config.url && (
-                            <div><strong>{t('server.url')}:</strong> {server.config.url}</div>
+                            <div>
+                              <strong>{t('server.url')}:</strong> {server.config.url}
+                            </div>
                           )}
                           {server.config.env && Object.keys(server.config.env).length > 0 && (
-                            <div><strong>{t('server.envVars')}:</strong> {Object.keys(server.config.env).join(', ')}</div>
+                            <div>
+                              <strong>{t('server.envVars')}:</strong>{' '}
+                              {Object.keys(server.config.env).join(', ')}
+                            </div>
                           )}
-                          {server.config.headers && Object.keys(server.config.headers).length > 0 && (
-                            <div><strong>{t('server.headers')}:</strong> {Object.keys(server.config.headers).join(', ')}</div>
-                          )}
+                          {server.config.headers &&
+                            Object.keys(server.config.headers).length > 0 && (
+                              <div>
+                                <strong>{t('server.headers')}:</strong>{' '}
+                                {Object.keys(server.config.headers).join(', ')}
+                              </div>
+                            )}
                         </div>
                       </div>
                     </div>
@@ -248,9 +274,25 @@ HTTP example:
               >
                 {isImporting ? (
                   <>
-                    <svg className="animate-spin h-4 w-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    <svg
+                      className="animate-spin h-4 w-4 mr-2"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      ></circle>
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      ></path>
                     </svg>
                     {t('jsonImport.importing')}
                   </>
