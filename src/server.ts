@@ -78,28 +78,28 @@ export class AppServer {
           console.log('MCP server initialized successfully');
 
           // Original routes (global and group-based)
-          this.app.get(`${this.basePath}/sse/:group?`, sseUserContextMiddleware, (req, res) =>
+          this.app.get(`${this.basePath}/sse/:group(.*)?`, sseUserContextMiddleware, (req, res) =>
             handleSseConnection(req, res),
           );
           this.app.post(`${this.basePath}/messages`, sseUserContextMiddleware, handleSseMessage);
           this.app.post(
-            `${this.basePath}/mcp/:group?`,
+            `${this.basePath}/mcp/:group(.*)?`,
             sseUserContextMiddleware,
             handleMcpPostRequest,
           );
           this.app.get(
-            `${this.basePath}/mcp/:group?`,
+            `${this.basePath}/mcp/:group(.*)?`,
             sseUserContextMiddleware,
             handleMcpOtherRequest,
           );
           this.app.delete(
-            `${this.basePath}/mcp/:group?`,
+            `${this.basePath}/mcp/:group(.*)?`,
             sseUserContextMiddleware,
             handleMcpOtherRequest,
           );
 
           // User-scoped routes with user context middleware
-          this.app.get(`${this.basePath}/:user/sse/:group?`, sseUserContextMiddleware, (req, res) =>
+          this.app.get(`${this.basePath}/:user/sse/:group(.*)?`, sseUserContextMiddleware, (req, res) =>
             handleSseConnection(req, res),
           );
           this.app.post(
@@ -108,17 +108,17 @@ export class AppServer {
             handleSseMessage,
           );
           this.app.post(
-            `${this.basePath}/:user/mcp/:group?`,
+            `${this.basePath}/:user/mcp/:group(.*)?`,
             sseUserContextMiddleware,
             handleMcpPostRequest,
           );
           this.app.get(
-            `${this.basePath}/:user/mcp/:group?`,
+            `${this.basePath}/:user/mcp/:group(.*)?`,
             sseUserContextMiddleware,
             handleMcpOtherRequest,
           );
           this.app.delete(
-            `${this.basePath}/:user/mcp/:group?`,
+            `${this.basePath}/:user/mcp/:group(.*)?`,
             sseUserContextMiddleware,
             handleMcpOtherRequest,
           );
