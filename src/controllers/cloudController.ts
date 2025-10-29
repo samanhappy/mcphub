@@ -207,7 +207,8 @@ export const getCloudServersByTag = async (req: Request, res: Response): Promise
 // Get tools for a specific cloud server
 export const getCloudServerToolsList = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { serverName } = req.params;
+    // Decode URL-encoded parameter to handle slashes in server name
+    const serverName = decodeURIComponent(req.params.serverName);
     if (!serverName) {
       res.status(400).json({
         success: false,
@@ -236,7 +237,9 @@ export const getCloudServerToolsList = async (req: Request, res: Response): Prom
 // Call a tool on a cloud server
 export const callCloudTool = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { serverName, toolName } = req.params;
+    // Decode URL-encoded parameters to handle slashes in server/tool names
+    const serverName = decodeURIComponent(req.params.serverName);
+    const toolName = decodeURIComponent(req.params.toolName);
     const { arguments: args } = req.body;
 
     if (!serverName) {

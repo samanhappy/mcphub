@@ -7,7 +7,9 @@ import { handleGetPromptRequest } from '../services/mcpService.js';
  */
 export const getPrompt = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { serverName, promptName } = req.params;
+    // Decode URL-encoded parameters to handle slashes in server/prompt names
+    const serverName = decodeURIComponent(req.params.serverName);
+    const promptName = decodeURIComponent(req.params.promptName);
     if (!serverName || !promptName) {
       res.status(400).json({
         success: false,

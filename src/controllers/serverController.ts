@@ -375,7 +375,9 @@ export const toggleServer = async (req: Request, res: Response): Promise<void> =
 // Toggle tool status for a specific server
 export const toggleTool = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { serverName, toolName } = req.params;
+    // Decode URL-encoded parameters to handle slashes in server/tool names
+    const serverName = decodeURIComponent(req.params.serverName);
+    const toolName = decodeURIComponent(req.params.toolName);
     const { enabled } = req.body;
 
     if (!serverName || !toolName) {
@@ -437,7 +439,9 @@ export const toggleTool = async (req: Request, res: Response): Promise<void> => 
 // Update tool description for a specific server
 export const updateToolDescription = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { serverName, toolName } = req.params;
+    // Decode URL-encoded parameters to handle slashes in server/tool names
+    const serverName = decodeURIComponent(req.params.serverName);
+    const toolName = decodeURIComponent(req.params.toolName);
     const { description } = req.body;
 
     if (!serverName || !toolName) {
@@ -747,7 +751,9 @@ export const updateSystemConfig = (req: Request, res: Response): void => {
 // Toggle prompt status for a specific server
 export const togglePrompt = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { serverName, promptName } = req.params;
+    // Decode URL-encoded parameters to handle slashes in server/prompt names
+    const serverName = decodeURIComponent(req.params.serverName);
+    const promptName = decodeURIComponent(req.params.promptName);
     const { enabled } = req.body;
 
     if (!serverName || !promptName) {
@@ -809,7 +815,9 @@ export const togglePrompt = async (req: Request, res: Response): Promise<void> =
 // Update prompt description for a specific server
 export const updatePromptDescription = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { serverName, promptName } = req.params;
+    // Decode URL-encoded parameters to handle slashes in server/prompt names
+    const serverName = decodeURIComponent(req.params.serverName);
+    const promptName = decodeURIComponent(req.params.promptName);
     const { description } = req.body;
 
     if (!serverName || !promptName) {

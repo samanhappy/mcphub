@@ -25,7 +25,10 @@ export const callTool = async (
 ): Promise<ToolCallResult> => {
   try {
     // Construct the URL with optional server parameter
-    const url = server ? `/tools/${server}/${request.toolName}` : '/tools/call';
+    // URL-encode server and tool names to handle slashes in names (e.g., "com.atlassian/atlassian-mcp-server")
+    const url = server
+      ? `/tools/${encodeURIComponent(server)}/${encodeURIComponent(request.toolName)}`
+      : '/tools/call';
 
     const response = await apiPost<any>(url, request.arguments, {
       headers: {
@@ -62,8 +65,9 @@ export const toggleTool = async (
   enabled: boolean,
 ): Promise<{ success: boolean; error?: string }> => {
   try {
+    // URL-encode server and tool names to handle slashes (e.g., "com.atlassian/atlassian-mcp-server")
     const response = await apiPost<any>(
-      `/servers/${serverName}/tools/${toolName}/toggle`,
+      `/servers/${encodeURIComponent(serverName)}/tools/${encodeURIComponent(toolName)}/toggle`,
       { enabled },
       {
         headers: {
@@ -94,8 +98,9 @@ export const updateToolDescription = async (
   description: string,
 ): Promise<{ success: boolean; error?: string }> => {
   try {
+    // URL-encode server and tool names to handle slashes (e.g., "com.atlassian/atlassian-mcp-server")
     const response = await apiPut<any>(
-      `/servers/${serverName}/tools/${toolName}/description`,
+      `/servers/${encodeURIComponent(serverName)}/tools/${encodeURIComponent(toolName)}/description`,
       { description },
       {
         headers: {

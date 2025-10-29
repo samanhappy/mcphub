@@ -287,9 +287,13 @@ export const useCloudData = () => {
   const callServerTool = useCallback(
     async (serverName: string, toolName: string, args: Record<string, any>) => {
       try {
-        const data = await apiPost(`/cloud/servers/${serverName}/tools/${toolName}/call`, {
-          arguments: args,
-        });
+        // URL-encode server and tool names to handle slashes (e.g., "com.atlassian/atlassian-mcp-server")
+        const data = await apiPost(
+          `/cloud/servers/${encodeURIComponent(serverName)}/tools/${encodeURIComponent(toolName)}/call`,
+          {
+            arguments: args,
+          },
+        );
 
         if (data && data.success) {
           return data.data;

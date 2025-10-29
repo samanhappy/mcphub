@@ -59,8 +59,9 @@ export const getPrompt = async (
   server?: string,
 ): Promise<GetPromptResult> => {
   try {
+    // URL-encode server and prompt names to handle slashes (e.g., "com.atlassian/atlassian-mcp-server")
     const response = await apiPost(
-      `/mcp/${server}/prompts/${encodeURIComponent(request.promptName)}`,
+      `/mcp/${encodeURIComponent(server || '')}/prompts/${encodeURIComponent(request.promptName)}`,
       {
         name: request.promptName,
         arguments: request.arguments,
@@ -94,9 +95,13 @@ export const togglePrompt = async (
   enabled: boolean,
 ): Promise<{ success: boolean; error?: string }> => {
   try {
-    const response = await apiPost<any>(`/servers/${serverName}/prompts/${promptName}/toggle`, {
-      enabled,
-    });
+    // URL-encode server and prompt names to handle slashes (e.g., "com.atlassian/atlassian-mcp-server")
+    const response = await apiPost<any>(
+      `/servers/${encodeURIComponent(serverName)}/prompts/${encodeURIComponent(promptName)}/toggle`,
+      {
+        enabled,
+      },
+    );
 
     return {
       success: response.success,
@@ -120,8 +125,9 @@ export const updatePromptDescription = async (
   description: string,
 ): Promise<{ success: boolean; error?: string }> => {
   try {
+    // URL-encode server and prompt names to handle slashes (e.g., "com.atlassian/atlassian-mcp-server")
     const response = await apiPut<any>(
-      `/servers/${serverName}/prompts/${promptName}/description`,
+      `/servers/${encodeURIComponent(serverName)}/prompts/${encodeURIComponent(promptName)}/description`,
       { description },
       {
         headers: {
