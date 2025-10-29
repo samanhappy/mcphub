@@ -1,7 +1,7 @@
 import { convertParametersToTypes } from '../../src/utils/parameterConversion.js';
 
-// Simple unit test to validate the type conversion logic
-describe('Parameter Type Conversion Logic', () => {
+// Integration tests for OpenAPI controller's parameter type conversion
+describe('OpenAPI Controller - Parameter Type Conversion Integration', () => {
   test('should convert integer parameters correctly', () => {
     const queryParams = {
       limit: '5',
