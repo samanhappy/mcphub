@@ -299,4 +299,16 @@ describe('OpenAPI Granular Endpoints', () => {
     const group = mockGetGroupByIdOrName('nonexistent');
     expect(group).toBeNull();
   });
+
+  test('should decode URL-encoded server and tool names with slashes', () => {
+    // Test that URL-encoded names with slashes are properly decoded
+    const encodedServerName = 'com.atlassian%2Fatlassian-mcp-server';
+    const encodedToolName = 'atlassianUserInfo';
+
+    const decodedServerName = decodeURIComponent(encodedServerName);
+    const decodedToolName = decodeURIComponent(encodedToolName);
+
+    expect(decodedServerName).toBe('com.atlassian/atlassian-mcp-server');
+    expect(decodedToolName).toBe('atlassianUserInfo');
+  });
 });

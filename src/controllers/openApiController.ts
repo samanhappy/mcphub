@@ -167,7 +167,9 @@ export const getOpenAPIStats = async (req: Request, res: Response): Promise<void
  */
 export const executeToolViaOpenAPI = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { serverName, toolName } = req.params;
+    // Decode URL-encoded parameters to handle slashes in server/tool names
+    const serverName = decodeURIComponent(req.params.serverName);
+    const toolName = decodeURIComponent(req.params.toolName);
 
     // Import handleCallToolRequest function
     const { handleCallToolRequest } = await import('../services/mcpService.js');

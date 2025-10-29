@@ -65,6 +65,27 @@ describe('OpenAPI Generator Service', () => {
       expect(spec).toHaveProperty('paths');
       expect(typeof spec.paths).toBe('object');
     });
+
+    it('should URL-encode server and tool names with slashes in paths', async () => {
+      const spec = await generateOpenAPISpec();
+
+      // Check if any paths contain URL-encoded values
+      // Paths with slashes in server/tool names should be encoded
+      const paths = Object.keys(spec.paths);
+
+      // If there are any servers with slashes, verify encoding
+      // e.g., "com.atlassian/atlassian-mcp-server" should become "com.atlassian%2Fatlassian-mcp-server"
+      for (const path of paths) {
+        // Path should not have unencoded slashes in the middle segments
+        // Valid format: /tools/{encoded-server}/{encoded-tool}
+        const pathSegments = path.split('/').filter((s) => s.length > 0);
+        if (pathSegments[0] === 'tools' && pathSegments.length >= 3) {
+          // The server name (segment 1) and tool name (segment 2+) should not create extra segments
+          // If properly encoded, there should be exactly 3 segments: ['tools', serverName, toolName]
+          expect(pathSegments.length).toBe(3);
+        }
+      }
+    });
   });
 
   describe('getToolStats', () => {
