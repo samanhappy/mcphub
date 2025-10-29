@@ -1,6 +1,8 @@
 import { Request, Response } from 'express';
 import { ApiResponse } from '../types/index.js';
-import { handleCallToolRequest } from '../services/mcpService.js';
+import { handleCallToolRequest, getServerByName } from '../services/mcpService.js';
+import { convertParametersToTypes } from '../utils/parameterConversion.js';
+import { getNameSeparator } from '../config/index.js';
 
 /**
  * Interface for tool call request
@@ -47,13 +49,31 @@ export const callTool = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
+    // Get the server info to access the tool's input schema
+    const serverInfo = getServerByName(server);
+    let inputSchema: Record<string, any> = {};
+
+    if (serverInfo) {
+      // Find the tool in the server's tools list
+      const fullToolName = `${server}${getNameSeparator()}${toolName}`;
+      const tool = serverInfo.tools.find(
+        (t: any) => t.name === fullToolName || t.name === toolName,
+      );
+      if (tool && tool.inputSchema) {
+        inputSchema = tool.inputSchema as Record<string, any>;
+      }
+    }
+
+    // Convert parameters to proper types based on the tool's input schema
+    const convertedArgs = convertParametersToTypes(toolArgs, inputSchema);
+
     // Create a mock request structure for handleCallToolRequest
     const mockRequest = {
       params: {
         name: 'call_tool',
         arguments: {
           toolName,
-          arguments: toolArgs,
+          arguments: convertedArgs,
         },
       },
     };
@@ -71,7 +91,7 @@ export const callTool = async (req: Request, res: Response): Promise<void> => {
       data: {
         content: result.content || [],
         toolName,
-        arguments: toolArgs,
+        arguments: convertedArgs,
       },
     };
 
