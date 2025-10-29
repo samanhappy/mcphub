@@ -19,7 +19,7 @@ const MarketServerDetail: React.FC<MarketServerDetailProps> = ({
   onBack,
   onInstall,
   installing = false,
-  isInstalled = false
+  isInstalled = false,
 }) => {
   const { t } = useTranslation();
   const [modalVisible, setModalVisible] = useState(false);
@@ -32,21 +32,23 @@ const MarketServerDetail: React.FC<MarketServerDetailProps> = ({
   const getButtonProps = () => {
     if (isInstalled) {
       return {
-        className: "bg-green-600 cursor-default px-4 py-2 rounded text-sm font-medium text-white",
+        className: 'bg-green-600 cursor-default px-4 py-2 rounded text-sm font-medium text-white',
         disabled: true,
-        text: t('market.installed')
+        text: t('market.installed'),
       };
     } else if (installing) {
       return {
-        className: "bg-gray-400 cursor-not-allowed px-4 py-2 rounded text-sm font-medium text-white",
+        className:
+          'bg-gray-400 cursor-not-allowed px-4 py-2 rounded text-sm font-medium text-white',
         disabled: true,
-        text: t('market.installing')
+        text: t('market.installing'),
       };
     } else {
       return {
-        className: "bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded text-sm font-medium text-white btn-primary",
+        className:
+          'bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded text-sm font-medium text-white btn-primary',
         disabled: false,
-        text: t('market.install')
+        text: t('market.install'),
       };
     }
   };
@@ -133,12 +135,18 @@ const MarketServerDetail: React.FC<MarketServerDetailProps> = ({
   return (
     <div className="bg-white rounded-lg shadow-md p-6">
       <div className="mb-4">
-        <button
-          onClick={onBack}
-          className="text-gray-600 hover:text-gray-900 flex items-center"
-        >
-          <svg className="h-5 w-5 mr-1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-            <path fillRule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clipRule="evenodd" />
+        <button onClick={onBack} className="text-gray-600 hover:text-gray-900 flex items-center">
+          <svg
+            className="h-5 w-5 mr-1"
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 20 20"
+            fill="currentColor"
+          >
+            <path
+              fillRule="evenodd"
+              d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z"
+              clipRule="evenodd"
+            />
           </svg>
           {t('market.backToList')}
         </button>
@@ -150,7 +158,8 @@ const MarketServerDetail: React.FC<MarketServerDetailProps> = ({
             {server.display_name}
             <span className="text-sm font-normal text-gray-500 ml-2">({server.name})</span>
             <span className="text-sm font-normal text-gray-600 ml-4">
-              {t('market.author')}: {server.author.name} • {t('market.license')}: {server.license} •
+              {t('market.author')}: {server.author?.name || t('market.unknown')} •{' '}
+              {t('market.license')}: {server.license} •
               <a
                 href={server.repository.url}
                 target="_blank"
@@ -182,18 +191,24 @@ const MarketServerDetail: React.FC<MarketServerDetailProps> = ({
       <p className="text-gray-700 mb-6">{server.description}</p>
 
       <div className="mb-6">
-        <h3 className="text-lg font-semibold mb-3">{t('market.categories')} & {t('market.tags')}</h3>
+        <h3 className="text-lg font-semibold mb-3">
+          {t('market.categories')} & {t('market.tags')}
+        </h3>
         <div className="flex flex-wrap gap-2">
           {server.categories?.map((category, index) => (
             <span key={`cat-${index}`} className="bg-gray-100 text-gray-800 px-3 py-1 rounded">
               {category}
             </span>
           ))}
-          {server.tags && server.tags.map((tag, index) => (
-            <span key={`tag-${index}`} className="bg-gray-100 text-green-700 px-2 py-1 rounded text-sm">
-              #{tag}
-            </span>
-          ))}
+          {server.tags &&
+            server.tags.map((tag, index) => (
+              <span
+                key={`tag-${index}`}
+                className="bg-gray-100 text-green-700 px-2 py-1 rounded text-sm"
+              >
+                #{tag}
+              </span>
+            ))}
         </div>
       </div>
 
@@ -224,9 +239,7 @@ const MarketServerDetail: React.FC<MarketServerDetailProps> = ({
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                       {name}
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-500">
-                      {arg.description}
-                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-500">{arg.description}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {arg.required ? (
                         <span className="text-green-600">✓</span>
@@ -268,7 +281,10 @@ const MarketServerDetail: React.FC<MarketServerDetailProps> = ({
               </h4>
               <p className="text-gray-600 mb-2">{tool.description}</p>
               <div className="mt-2">
-                <pre id={`schema-${index}`} className="hidden bg-gray-50 p-3 rounded text-sm overflow-auto mt-2">
+                <pre
+                  id={`schema-${index}`}
+                  className="hidden bg-gray-50 p-3 rounded text-sm overflow-auto mt-2"
+                >
                   {JSON.stringify(tool.inputSchema, null, 2)}
                 </pre>
               </div>
@@ -285,9 +301,7 @@ const MarketServerDetail: React.FC<MarketServerDetailProps> = ({
               <div key={index} className="border border-gray-200 rounded p-4">
                 <h4 className="font-medium mb-2">{example.title}</h4>
                 <p className="text-gray-600 mb-2">{example.description}</p>
-                <pre className="bg-gray-50 p-3 rounded text-sm overflow-auto">
-                  {example.prompt}
-                </pre>
+                <pre className="bg-gray-50 p-3 rounded text-sm overflow-auto">{example.prompt}</pre>
               </div>
             ))}
           </div>
@@ -316,11 +330,11 @@ const MarketServerDetail: React.FC<MarketServerDetailProps> = ({
               status: 'disconnected',
               config: preferredInstallation
                 ? {
-                  command: preferredInstallation.command || '',
-                  args: preferredInstallation.args || [],
-                  env: preferredInstallation.env || {}
-                }
-                : undefined
+                    command: preferredInstallation.command || '',
+                    args: preferredInstallation.args || [],
+                    env: preferredInstallation.env || {},
+                  }
+                : undefined,
             }}
           />
         </div>
@@ -332,14 +346,16 @@ const MarketServerDetail: React.FC<MarketServerDetailProps> = ({
             <h3 className="text-lg font-semibold text-gray-900 mb-4">
               {t('server.confirmVariables')}
             </h3>
-            <p className="text-gray-600 mb-4">
-              {t('server.variablesDetected')}
-            </p>
+            <p className="text-gray-600 mb-4">{t('server.variablesDetected')}</p>
             <div className="bg-yellow-50 border border-yellow-200 rounded p-3 mb-4">
               <div className="flex items-start">
                 <div className="flex-shrink-0">
                   <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    <path
+                      fillRule="evenodd"
+                      d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                      clipRule="evenodd"
+                    />
                   </svg>
                 </div>
                 <div className="ml-3">
@@ -356,14 +372,12 @@ const MarketServerDetail: React.FC<MarketServerDetailProps> = ({
                 </div>
               </div>
             </div>
-            <p className="text-gray-600 text-sm mb-6">
-              {t('market.confirmVariablesMessage')}
-            </p>
+            <p className="text-gray-600 text-sm mb-6">{t('market.confirmVariablesMessage')}</p>
             <div className="flex justify-end space-x-3">
               <button
                 onClick={() => {
-                  setConfirmationVisible(false)
-                  setPendingPayload(null)
+                  setConfirmationVisible(false);
+                  setPendingPayload(null);
                 }}
                 className="px-4 py-2 text-gray-600 border border-gray-300 rounded hover:bg-gray-50 btn-secondary"
               >
