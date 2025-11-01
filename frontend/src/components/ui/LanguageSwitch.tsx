@@ -11,7 +11,8 @@ const LanguageSwitch: React.FC = () => {
   const availableLanguages = [
     { code: 'en', label: 'English' },
     { code: 'zh', label: '中文' },
-    { code: 'fr', label: 'Français' }
+    { code: 'fr', label: 'Français' },
+    { code: 'tr', label: 'Türkçe' }
   ];
 
   // Update current language when it changes

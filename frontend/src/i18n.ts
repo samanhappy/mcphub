@@ -6,6 +6,7 @@ import LanguageDetector from 'i18next-browser-languagedetector';
 import enTranslation from '../../locales/en.json';
 import zhTranslation from '../../locales/zh.json';
 import frTranslation from '../../locales/fr.json';
+import trTranslation from '../../locales/tr.json';
 
 i18n
   // Detect user language
@@ -23,6 +24,9 @@ i18n
       },
       fr: {
         translation: frTranslation,
+      },
+      tr: {
+        translation: trTranslation,
       },
     },
     fallbackLng: 'en',
