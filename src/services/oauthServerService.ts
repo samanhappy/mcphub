@@ -297,7 +297,8 @@ export const initOAuthServer = (): void => {
       refreshTokenLifetime: oauthConfig.refreshTokenLifetime || 1209600,
       authorizationCodeLifetime: oauthConfig.authorizationCodeLifetime || 300,
       allowBearerTokensInQueryString: false,
-      requireClientAuthentication: oauthConfig.requireClientSecret !== false
+      // When requireClientSecret is false, allow PKCE without client secret
+      requireClientAuthentication: oauthConfig.requireClientSecret 
         ? { authorization_code: true, refresh_token: true }
         : { authorization_code: false, refresh_token: false },
     });

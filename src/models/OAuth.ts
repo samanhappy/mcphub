@@ -246,6 +246,19 @@ export const cleanupExpired = (): void => {
 };
 
 // Run cleanup every 5 minutes in production
+let cleanupIntervalId: NodeJS.Timeout | null = null;
 if (process.env.NODE_ENV !== 'test') {
-  setInterval(cleanupExpired, 5 * 60 * 1000);
+  cleanupIntervalId = setInterval(cleanupExpired, 5 * 60 * 1000);
+  // Allow the interval to not keep the process alive
+  cleanupIntervalId.unref();
 }
+
+/**
+ * Stop the cleanup interval (for graceful shutdown)
+ */
+export const stopCleanup = (): void => {
+  if (cleanupIntervalId) {
+    clearInterval(cleanupIntervalId);
+    cleanupIntervalId = null;
+  }
+};

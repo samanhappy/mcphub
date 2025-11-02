@@ -72,9 +72,6 @@ importers:
       multer:
         specifier: ^2.0.2
         version: 2.0.2
-      oauth2-server:
-        specifier: link:@types/node-oauth/oauth2-server
-        version: link:@types/node-oauth/oauth2-server
       openai:
         specifier: ^6.7.0
         version: 6.7.0(zod@3.25.76)

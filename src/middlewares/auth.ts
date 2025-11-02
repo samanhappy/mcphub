@@ -36,7 +36,7 @@ const checkReadonly = (req: Request): boolean => {
 };
 
 // Middleware to authenticate JWT token
-export const auth = (req: Request, res: Response, next: NextFunction): void => {
+export const auth = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   const t = (req as any).t;
   if (!checkReadonly(req)) {
     res.status(403).json({ success: false, message: t('api.errors.readonly') });
@@ -70,10 +70,14 @@ export const auth = (req: Request, res: Response, next: NextFunction): void => {
     const oauthToken = getToken(accessToken);
 
     if (oauthToken && oauthToken.accessToken === accessToken) {
-      // Valid OAuth token - set user context
+      // Valid OAuth token - look up user to get admin status
+      const { findUserByUsername } = await import('../models/User.js');
+      const user = findUserByUsername(oauthToken.username);
+      
+      // Set user context with proper admin status
       (req as any).user = {
         username: oauthToken.username,
-        isAdmin: false, // OAuth tokens don't carry admin flag by default
+        isAdmin: user?.isAdmin || false,
       };
       (req as any).oauthToken = oauthToken;
       next();

@@ -11,6 +11,31 @@ import OAuth2Server from '@node-oauth/oauth2-server';
 const { Request: OAuth2Request, Response: OAuth2Response } = OAuth2Server;
 
 /**
+ * Helper function to escape HTML
+ */
+function escapeHtml(unsafe: string): string {
+  return unsafe
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+/**
+ * Helper function to validate query parameters
+ */
+function validateQueryParam(value: any, name: string, pattern?: RegExp): string {
+  if (typeof value !== 'string') {
+    throw new Error(`${name} must be a string`);
+  }
+  if (pattern && !pattern.test(value)) {
+    throw new Error(`${name} has invalid format`);
+  }
+  return value;
+}
+
+/**
  * GET /oauth/authorize
  * Display authorization page or handle authorization
  */
@@ -22,8 +47,14 @@ export const getAuthorize = async (req: Request, res: Response): Promise<void> =
       return;
     }
 
-    // Get query parameters
-    const { client_id, redirect_uri, response_type, scope, state, code_challenge, code_challenge_method } = req.query;
+    // Get and validate query parameters
+    const client_id = validateQueryParam(req.query.client_id, 'client_id', /^[a-zA-Z0-9_-]+$/);
+    const redirect_uri = validateQueryParam(req.query.redirect_uri, 'redirect_uri');
+    const response_type = validateQueryParam(req.query.response_type, 'response_type', /^code$/);
+    const scope = req.query.scope ? validateQueryParam(req.query.scope, 'scope', /^[a-zA-Z0-9_ ]+$/) : undefined;
+    const state = req.query.state ? validateQueryParam(req.query.state, 'state', /^[a-zA-Z0-9_-]+$/) : undefined;
+    const code_challenge = req.query.code_challenge ? validateQueryParam(req.query.code_challenge, 'code_challenge', /^[a-zA-Z0-9_-]+$/) : undefined;
+    const code_challenge_method = req.query.code_challenge_method ? validateQueryParam(req.query.code_challenge_method, 'code_challenge_method', /^(S256|plain)$/) : undefined;
 
     // Validate required parameters
     if (!client_id || !redirect_uri || !response_type) {
@@ -126,28 +157,28 @@ export const getAuthorize = async (req: Request, res: Response): Promise<void> =
             </div>
             <div class="scopes">
               <h3>This application will be able to:</h3>
-              ${(scope as string || 'read write').split(' ').map(s => `
+              ${(scope || 'read write').split(' ').map(s => `
                 <div class="scope-item">
-                  <strong>${s}</strong> - ${getScopeDescription(s)}
+                  <strong>${escapeHtml(s)}</strong> - ${escapeHtml(getScopeDescription(s))}
                 </div>
               `).join('')}
             </div>
             <div class="buttons">
               <form method="POST" action="/oauth/authorize" style="flex: 1;">
-                <input type="hidden" name="client_id" value="${client_id}">
-                <input type="hidden" name="redirect_uri" value="${redirect_uri}">
-                <input type="hidden" name="response_type" value="${response_type}">
-                <input type="hidden" name="scope" value="${scope || ''}">
-                <input type="hidden" name="state" value="${state || ''}">
-                ${code_challenge ? `<input type="hidden" name="code_challenge" value="${code_challenge}">` : ''}
-                ${code_challenge_method ? `<input type="hidden" name="code_challenge_method" value="${code_challenge_method}">` : ''}
+                <input type="hidden" name="client_id" value="${escapeHtml(client_id)}">
+                <input type="hidden" name="redirect_uri" value="${escapeHtml(redirect_uri)}">
+                <input type="hidden" name="response_type" value="${escapeHtml(response_type)}">
+                <input type="hidden" name="scope" value="${escapeHtml(scope || '')}">
+                <input type="hidden" name="state" value="${escapeHtml(state || '')}">
+                ${code_challenge ? `<input type="hidden" name="code_challenge" value="${escapeHtml(code_challenge)}">` : ''}
+                ${code_challenge_method ? `<input type="hidden" name="code_challenge_method" value="${escapeHtml(code_challenge_method)}">` : ''}
                 <input type="hidden" name="allow" value="true">
                 <button type="submit" class="approve">Approve</button>
               </form>
               <form method="POST" action="/oauth/authorize" style="flex: 1;">
-                <input type="hidden" name="client_id" value="${client_id}">
-                <input type="hidden" name="redirect_uri" value="${redirect_uri}">
-                <input type="hidden" name="state" value="${state || ''}">
+                <input type="hidden" name="client_id" value="${escapeHtml(client_id)}">
+                <input type="hidden" name="redirect_uri" value="${escapeHtml(redirect_uri)}">
+                <input type="hidden" name="state" value="${escapeHtml(state || '')}">
                 <input type="hidden" name="allow" value="false">
                 <button type="submit" class="deny">Deny</button>
               </form>
