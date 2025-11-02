@@ -334,6 +334,9 @@ To integrate MCPHub with ChatGPT Web:
 6. **Redirect URI Validation**: Always validate redirect URIs strictly
 7. **State Parameter**: Always use the state parameter to prevent CSRF attacks
 8. **PKCE**: Use PKCE for public clients (strongly recommended)
+9. **Rate Limiting**: For production deployments, implement rate limiting on OAuth endpoints to prevent brute force attacks. Consider using middleware like `express-rate-limit`
+10. **Input Validation**: All OAuth parameters are validated, but additional application-level validation may be beneficial
+11. **XSS Protection**: The authorization page escapes all user input to prevent XSS attacks
 
 ## Troubleshooting
 
