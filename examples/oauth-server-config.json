@@ -1,0 +1,76 @@
+{
+  "mcpServers": {
+    "playwright": {
+      "command": "npx",
+      "args": [
+        "@playwright/mcp@latest",
+        "--headless"
+      ]
+    },
+    "fetch": {
+      "command": "uvx",
+      "args": [
+        "mcp-server-fetch"
+      ]
+    }
+  },
+  "users": [
+    {
+      "username": "admin",
+      "password": "$2b$10$Vt7krIvjNgyN67LXqly0uOcTpN0LI55cYRbcKC71pUDAP0nJ7RPa.",
+      "isAdmin": true
+    }
+  ],
+  "systemConfig": {
+    "oauthServer": {
+      "enabled": true,
+      "accessTokenLifetime": 3600,
+      "refreshTokenLifetime": 1209600,
+      "authorizationCodeLifetime": 300,
+      "requireClientSecret": false,
+      "allowedScopes": [
+        "read",
+        "write"
+      ]
+    },
+    "routing": {
+      "skipAuth": false
+    }
+  },
+  "oauthClients": [
+    {
+      "clientId": "chatgpt-web-client",
+      "name": "ChatGPT Web Integration",
+      "redirectUris": [
+        "https://chatgpt.com/oauth/callback",
+        "https://chat.openai.com/oauth/callback"
+      ],
+      "grants": [
+        "authorization_code",
+        "refresh_token"
+      ],
+      "scopes": [
+        "read",
+        "write"
+      ],
+      "owner": "admin"
+    },
+    {
+      "clientId": "example-public-app",
+      "name": "Example Public Application",
+      "redirectUris": [
+        "http://localhost:8080/callback",
+        "http://localhost:3001/callback"
+      ],
+      "grants": [
+        "authorization_code",
+        "refresh_token"
+      ],
+      "scopes": [
+        "read",
+        "write"
+      ],
+      "owner": "admin"
+    }
+  ]
+}
