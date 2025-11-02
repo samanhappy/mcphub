@@ -18,6 +18,7 @@ import { sseUserContextMiddleware } from './middlewares/userContext.js';
 import { findPackageRoot } from './utils/path.js';
 import { getCurrentModuleDir } from './utils/moduleDir.js';
 import { initOAuthProvider, getOAuthRouter } from './services/oauthService.js';
+import { initOAuthServer } from './services/oauthServerService.js';
 
 /**
  * Get the directory of the current module
@@ -59,7 +60,7 @@ export class AppServer {
       // Initialize default admin user if no users exist
       await initializeDefaultUser();
 
-      // Initialize OAuth provider if configured
+      // Initialize OAuth provider if configured (for proxying upstream MCP OAuth)
       initOAuthProvider();
       const oauthRouter = getOAuthRouter();
       if (oauthRouter) {
@@ -68,6 +69,9 @@ export class AppServer {
         this.app.use(oauthRouter);
         console.log('OAuth router mounted successfully');
       }
+
+      // Initialize OAuth authorization server (for MCPHub's own OAuth)
+      initOAuthServer();
 
       initMiddlewares(this.app);
       initRoutes(this.app);

@@ -80,6 +80,21 @@ import {
   getGroupOpenAPISpec,
 } from '../controllers/openApiController.js';
 import { handleOAuthCallback } from '../controllers/oauthCallbackController.js';
+import {
+  getAuthorize,
+  postAuthorize,
+  postToken,
+  getUserInfo,
+  getMetadata,
+} from '../controllers/oauthServerController.js';
+import {
+  getAllClients,
+  getClient,
+  createClient,
+  updateClient,
+  deleteClient,
+  regenerateSecret,
+} from '../controllers/oauthClientController.js';
 import { auth } from '../middlewares/auth.js';
 
 const router = express.Router();
@@ -90,6 +105,13 @@ export const initRoutes = (app: express.Application): void => {
 
   // OAuth callback endpoint (no auth required, public callback URL)
   app.get('/oauth/callback', handleOAuthCallback);
+
+  // OAuth Authorization Server endpoints (no auth required for OAuth flow)
+  app.get('/oauth/authorize', auth, getAuthorize); // User must be authenticated
+  app.post('/oauth/authorize', auth, postAuthorize); // User must be authenticated
+  app.post('/oauth/token', postToken); // Public endpoint for token exchange
+  app.get('/oauth/userinfo', getUserInfo); // Validates OAuth token
+  app.get('/.well-known/oauth-authorization-server', getMetadata); // Public metadata endpoint
 
   // API routes protected by auth middleware in middlewares/index.ts
   router.get('/servers', getAllServers);
@@ -127,6 +149,21 @@ export const initRoutes = (app: express.Application): void => {
   router.put('/users/:username', updateExistingUser);
   router.delete('/users/:username', deleteExistingUser);
   router.get('/users-stats', getUserStats);
+
+  // OAuth Client management routes (admin only)
+  router.get('/oauth/clients', getAllClients);
+  router.get('/oauth/clients/:clientId', getClient);
+  router.post(
+    '/oauth/clients',
+    [
+      check('name', 'Client name is required').not().isEmpty(),
+      check('redirectUris', 'At least one redirect URI is required').isArray({ min: 1 }),
+    ],
+    createClient,
+  );
+  router.put('/oauth/clients/:clientId', updateClient);
+  router.delete('/oauth/clients/:clientId', deleteClient);
+  router.post('/oauth/clients/:clientId/regenerate-secret', regenerateSecret);
 
   // Tool management routes
   router.post('/tools/call/:server', callTool);
