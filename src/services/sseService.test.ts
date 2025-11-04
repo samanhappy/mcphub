@@ -74,24 +74,77 @@ import { UserContextService } from './userContextService.js';
 import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 
+type MockResponse = Response & {
+  status: jest.Mock;
+  send: jest.Mock;
+  json: jest.Mock;
+  setHeader: jest.Mock;
+  headersStore: Record<string, string>;
+};
+
+const EXPECTED_METADATA_URL =
+  'http://localhost:3000/.well-known/oauth-protected-resource/test';
+
 // Mock Express Request and Response
-const createMockRequest = (overrides: Partial<Request> = {}): Request =>
-  ({
-    headers: {},
+const createMockRequest = (overrides: Partial<Request> = {}): Request => {
+  const { headers: overrideHeaders, ...restOverrides } = overrides;
+
+  const headers = {
+    host: 'localhost:3000',
+    ...(overrideHeaders as Record<string, unknown>),
+  };
+
+  const req = {
+    headers,
     params: {},
     query: {},
     body: {},
-    ...overrides,
-  }) as Request;
+    protocol: 'http',
+    originalUrl: '/test/sse',
+    ...restOverrides,
+  } as Request;
 
-const createMockResponse = (): Response => {
+  req.params = req.params || {};
+  req.query = req.query || {};
+  req.body = req.body || {};
+  req.protocol = req.protocol || 'http';
+  req.originalUrl = req.originalUrl || '/test/sse';
+
+  return req;
+};
+
+const createMockResponse = (): MockResponse => {
+  const headers: Record<string, string> = {};
+
   const res = {
     status: jest.fn().mockReturnThis(),
     send: jest.fn().mockReturnThis(),
     json: jest.fn().mockReturnThis(),
+    setHeader: jest.fn((key: string, value: string) => {
+      headers[key] = value;
+      return res;
+    }),
     on: jest.fn(),
-  } as unknown as Response;
+    headersStore: headers,
+  } as unknown as MockResponse;
+
   return res;
+};
+
+const expectBearerUnauthorized = (
+  res: MockResponse,
+  description: 'No authorization provided' | 'Invalid bearer token',
+): void => {
+  expect(res.status).toHaveBeenCalledWith(401);
+  expect(res.json).toHaveBeenCalledWith({
+    error: 'invalid_token',
+    error_description: description,
+    resource_metadata: EXPECTED_METADATA_URL,
+  });
+  expect(res.setHeader).toHaveBeenCalledWith(
+    'WWW-Authenticate',
+    `Bearer error="invalid_token", error_description="${description}", resource_metadata="${EXPECTED_METADATA_URL}"`,
+  );
 };
 
 describe('sseService', () => {
@@ -143,8 +196,7 @@ describe('sseService', () => {
 
       await handleSseConnection(req, res);
 
-      expect(res.status).toHaveBeenCalledWith(401);
-      expect(res.send).toHaveBeenCalledWith('Bearer authentication required or invalid token');
+      expectBearerUnauthorized(res, 'No authorization provided');
     });
 
     it('should return 401 when bearer auth is enabled with invalid token', async () => {
@@ -167,8 +219,7 @@ describe('sseService', () => {
 
       await handleSseConnection(req, res);
 
-      expect(res.status).toHaveBeenCalledWith(401);
-      expect(res.send).toHaveBeenCalledWith('Bearer authentication required or invalid token');
+      expectBearerUnauthorized(res, 'Invalid bearer token');
     });
 
     it('should pass when bearer auth is enabled with valid token', async () => {
@@ -337,8 +388,7 @@ describe('sseService', () => {
 
       await handleSseMessage(req, res);
 
-      expect(res.status).toHaveBeenCalledWith(401);
-      expect(res.send).toHaveBeenCalledWith('Bearer authentication required or invalid token');
+      expectBearerUnauthorized(res, 'No authorization provided');
     });
   });
 
@@ -425,8 +475,7 @@ describe('sseService', () => {
 
       await handleMcpPostRequest(req, res);
 
-      expect(res.status).toHaveBeenCalledWith(401);
-      expect(res.send).toHaveBeenCalledWith('Bearer authentication required or invalid token');
+      expectBearerUnauthorized(res, 'No authorization provided');
     });
   });
 
@@ -475,8 +524,7 @@ describe('sseService', () => {
 
       await handleMcpOtherRequest(req, res);
 
-      expect(res.status).toHaveBeenCalledWith(401);
-      expect(res.send).toHaveBeenCalledWith('Bearer authentication required or invalid token');
+      expectBearerUnauthorized(res, 'No authorization provided');
     });
   });
 });

@@ -41,5 +41,59 @@
       "password": "$2b$10$Vt7krIvjNgyN67LXqly0uOcTpN0LI55cYRbcKC71pUDAP0nJ7RPa.",
       "isAdmin": true
     }
+  ],
+  "systemConfig": {
+    "oauthServer": {
+      "enabled": true,
+      "accessTokenLifetime": 3600,
+      "refreshTokenLifetime": 1209600,
+      "requireClientSecret": false,
+      "allowedScopes": [
+        "read",
+        "write"
+      ]
+    },
+    "routing": {
+      "enableGlobalRoute": true,
+      "enableGroupNameRoute": true,
+      "enableBearerAuth": true,
+      "bearerAuthKey": "t3QTQVcF4HWtF7v3IOSygxlV0RgSGuwk",
+      "skipAuth": false
+    },
+    "install": {
+      "pythonIndexUrl": "",
+      "npmRegistry": "",
+      "baseUrl": "http://localhost:3000"
+    },
+    "smartRouting": {
+      "enabled": false,
+      "dbUrl": "",
+      "openaiApiBaseUrl": "",
+      "openaiApiKey": "",
+      "openaiApiEmbeddingModel": ""
+    },
+    "mcpRouter": {
+      "apiKey": "",
+      "referer": "https://www.mcphubx.com",
+      "title": "MCPHub",
+      "baseUrl": "https://api.mcprouter.to/v1"
+    }
+  },
+  "oauthClients": [
+    {
+      "clientId": "chatgpt-web",
+      "name": "ChatGPT Web",
+      "redirectUris": [
+        "https://chatgpt.com/oauth/callback"
+      ],
+      "grants": [
+        "authorization_code",
+        "refresh_token"
+      ],
+      "scopes": [
+        "read",
+        "write"
+      ]
+    }
   ]
 }
