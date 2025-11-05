@@ -86,6 +86,7 @@ import {
   postToken,
   getUserInfo,
   getMetadata,
+  getProtectedResourceMetadata,
 } from '../controllers/oauthServerController.js';
 import {
   getAllClients,
@@ -112,6 +113,7 @@ export const initRoutes = (app: express.Application): void => {
   app.post('/oauth/token', postToken); // Public endpoint for token exchange
   app.get('/oauth/userinfo', getUserInfo); // Validates OAuth token
   app.get('/.well-known/oauth-authorization-server', getMetadata); // Public metadata endpoint
+  app.get('/.well-known/oauth-protected-resource', getProtectedResourceMetadata); // Public protected resource metadata
 
   // API routes protected by auth middleware in middlewares/index.ts
   router.get('/servers', getAllServers);

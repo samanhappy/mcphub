@@ -366,6 +366,37 @@ export const getMetadata = async (req: Request, res: Response): Promise<void> =>
 };
 
 /**
+ * GET /.well-known/oauth-protected-resource
+ * OAuth 2.0 Protected Resource Metadata (RFC 9728)
+ * Provides information about authorization servers that protect this resource
+ */
+export const getProtectedResourceMetadata = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const settings = loadSettings();
+    const oauthConfig = settings.systemConfig?.oauthServer;
+    
+    if (!oauthConfig || !oauthConfig.enabled) {
+      res.status(404).json({ error: 'OAuth server not configured' });
+      return;
+    }
+
+    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    const allowedScopes = oauthConfig.allowedScopes || ['read', 'write'];
+
+    // Return protected resource metadata according to RFC 9728
+    res.json({
+      resource: baseUrl,
+      authorization_servers: [baseUrl],
+      scopes_supported: allowedScopes,
+      bearer_methods_supported: ['header'],
+    });
+  } catch (error) {
+    console.error('Protected resource metadata error:', error);
+    res.status(500).json({ error: 'server_error' });
+  }
+};
+
+/**
  * Helper function to get scope description
  */
 function getScopeDescription(scope: string): string {
