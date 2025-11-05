@@ -269,6 +269,123 @@ MCPHub supports the following default scopes:
 
 You can customize allowed scopes in the `oauthServer.allowedScopes` configuration.
 
+## Dynamic Client Registration (RFC 7591)
+
+MCPHub supports RFC 7591 Dynamic Client Registration, allowing OAuth clients to register themselves programmatically without manual configuration.
+
+### Enable Dynamic Registration
+
+Add to your `mcp_settings.json`:
+
+```json
+{
+  "systemConfig": {
+    "oauthServer": {
+      "enabled": true,
+      "dynamicRegistration": {
+        "enabled": true,
+        "allowedGrantTypes": ["authorization_code", "refresh_token"],
+        "requiresAuthentication": false
+      }
+    }
+  }
+}
+```
+
+### Register a New Client
+
+**POST /oauth/register**
+
+```bash
+curl -X POST http://localhost:3000/oauth/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "client_name": "My Application",
+    "redirect_uris": ["https://example.com/callback"],
+    "grant_types": ["authorization_code", "refresh_token"],
+    "response_types": ["code"],
+    "scope": "read write",
+    "token_endpoint_auth_method": "none"
+  }'
+```
+
+Response:
+```json
+{
+  "client_id": "a1b2c3d4e5f6g7h8",
+  "client_name": "My Application",
+  "redirect_uris": ["https://example.com/callback"],
+  "grant_types": ["authorization_code", "refresh_token"],
+  "response_types": ["code"],
+  "scope": "read write",
+  "token_endpoint_auth_method": "none",
+  "registration_access_token": "reg_token_xyz123",
+  "registration_client_uri": "http://localhost:3000/oauth/register/a1b2c3d4e5f6g7h8",
+  "client_id_issued_at": 1699200000
+}
+```
+
+**Important:** Save the `registration_access_token` - it's required to read, update, or delete the client registration.
+
+### Read Client Configuration
+
+**GET /oauth/register/:clientId**
+
+```bash
+curl http://localhost:3000/oauth/register/CLIENT_ID \
+  -H "Authorization: Bearer REGISTRATION_ACCESS_TOKEN"
+```
+
+### Update Client Configuration
+
+**PUT /oauth/register/:clientId**
+
+```bash
+curl -X PUT http://localhost:3000/oauth/register/CLIENT_ID \
+  -H "Authorization: Bearer REGISTRATION_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "client_name": "Updated Application Name",
+    "redirect_uris": ["https://example.com/callback", "https://example.com/callback2"]
+  }'
+```
+
+### Delete Client Registration
+
+**DELETE /oauth/register/:clientId**
+
+```bash
+curl -X DELETE http://localhost:3000/oauth/register/CLIENT_ID \
+  -H "Authorization: Bearer REGISTRATION_ACCESS_TOKEN"
+```
+
+### Optional Client Metadata
+
+When registering a client, you can include additional metadata:
+
+- `application_type`: `"web"` or `"native"` (default: `"web"`)
+- `contacts`: Array of email addresses
+- `logo_uri`: URL of client logo
+- `client_uri`: URL of client homepage
+- `policy_uri`: URL of privacy policy
+- `tos_uri`: URL of terms of service
+- `jwks_uri`: URL of JSON Web Key Set
+- `jwks`: Inline JSON Web Key Set
+
+Example:
+```json
+{
+  "client_name": "My Application",
+  "redirect_uris": ["https://example.com/callback"],
+  "application_type": "web",
+  "contacts": ["admin@example.com"],
+  "logo_uri": "https://example.com/logo.png",
+  "client_uri": "https://example.com",
+  "policy_uri": "https://example.com/privacy",
+  "tos_uri": "https://example.com/terms"
+}
+```
+
 ## Server Metadata
 
 MCPHub provides OAuth 2.0 Authorization Server Metadata (RFC 8414) at:
@@ -277,17 +394,18 @@ MCPHub provides OAuth 2.0 Authorization Server Metadata (RFC 8414) at:
 GET /.well-known/oauth-authorization-server
 ```
 
-Response:
+Response (with dynamic registration enabled):
 ```json
 {
   "issuer": "http://localhost:3000",
   "authorization_endpoint": "http://localhost:3000/oauth/authorize",
   "token_endpoint": "http://localhost:3000/oauth/token",
   "userinfo_endpoint": "http://localhost:3000/oauth/userinfo",
+  "registration_endpoint": "http://localhost:3000/oauth/register",
   "scopes_supported": ["read", "write"],
   "response_types_supported": ["code"],
   "grant_types_supported": ["authorization_code", "refresh_token"],
-  "token_endpoint_auth_methods_supported": ["none"],
+  "token_endpoint_auth_methods_supported": ["none", "client_secret_basic", "client_secret_post"],
   "code_challenge_methods_supported": ["S256", "plain"]
 }
 ```

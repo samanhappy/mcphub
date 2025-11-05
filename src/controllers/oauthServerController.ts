@@ -346,7 +346,7 @@ export const getMetadata = async (req: Request, res: Response): Promise<void> =>
     const baseUrl = `${req.protocol}://${req.get('host')}`;
     const allowedScopes = oauthConfig.allowedScopes || ['read', 'write'];
 
-    res.json({
+    const metadata: any = {
       issuer: baseUrl,
       authorization_endpoint: `${baseUrl}/oauth/authorize`,
       token_endpoint: `${baseUrl}/oauth/token`,
@@ -355,10 +355,17 @@ export const getMetadata = async (req: Request, res: Response): Promise<void> =>
       response_types_supported: ['code'],
       grant_types_supported: ['authorization_code', 'refresh_token'],
       token_endpoint_auth_methods_supported: oauthConfig.requireClientSecret !== false 
-        ? ['client_secret_basic', 'client_secret_post']
+        ? ['client_secret_basic', 'client_secret_post', 'none']
         : ['none'],
       code_challenge_methods_supported: ['S256', 'plain'],
-    });
+    };
+
+    // Add dynamic registration endpoint if enabled
+    if (oauthConfig.dynamicRegistration?.enabled) {
+      metadata.registration_endpoint = `${baseUrl}/oauth/register`;
+    }
+
+    res.json(metadata);
   } catch (error) {
     console.error('Metadata error:', error);
     res.status(500).json({ error: 'server_error' });

@@ -192,6 +192,19 @@ export interface IOAuthClient {
   grants: string[]; // Allowed grant types (e.g., ['authorization_code', 'refresh_token'])
   scopes?: string[]; // Allowed scopes for this client
   owner?: string; // Owner of the OAuth client, defaults to 'admin' user
+  metadata?: {
+    // RFC 7591 Client Metadata
+    application_type?: 'web' | 'native'; // Application type
+    response_types?: string[]; // OAuth response types
+    token_endpoint_auth_method?: string; // Token endpoint authentication method
+    contacts?: string[]; // Array of contact emails
+    logo_uri?: string; // URL of the client logo
+    client_uri?: string; // URL of the client's homepage
+    policy_uri?: string; // URL of the client's policy document
+    tos_uri?: string; // URL of the client's terms of service
+    jwks_uri?: string; // URL of the client's JSON Web Key Set
+    jwks?: object; // Client's JSON Web Key Set
+  };
 }
 
 // OAuth Authorization Code (for MCPHub's authorization server)
@@ -225,6 +238,11 @@ export interface OAuthServerConfig {
   authorizationCodeLifetime?: number; // Authorization code lifetime in seconds (default: 300 = 5 minutes)
   requireClientSecret?: boolean; // Whether client secret is required (default: false for PKCE support)
   allowedScopes?: string[]; // List of allowed OAuth scopes (default: ['read', 'write'])
+  dynamicRegistration?: {
+    enabled?: boolean; // Enable/disable RFC 7591 dynamic client registration
+    allowedGrantTypes?: string[]; // Allowed grant types for dynamic registration (default: ['authorization_code', 'refresh_token'])
+    requiresAuthentication?: boolean; // Whether initial registration requires authentication (default: false for public registration)
+  };
 }
 
 // Represents the settings for MCP servers

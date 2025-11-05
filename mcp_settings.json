@@ -45,6 +45,14 @@
   "systemConfig": {
     "oauthServer": {
       "enabled": true,
+      "dynamicRegistration": {
+        "enabled": true,
+        "allowedGrantTypes": [
+          "authorization_code",
+          "refresh_token"
+        ],
+        "requiresAuthentication": false
+      },
       "accessTokenLifetime": 3600,
       "refreshTokenLifetime": 1209600,
       "requireClientSecret": false,
@@ -94,6 +102,30 @@
         "read",
         "write"
       ]
+    },
+    {
+      "clientId": "86ad60b9bacaea6342378b474d90980f",
+      "name": "Cherry Studio",
+      "redirectUris": [
+        "http://127.0.0.1:12346/oauth/callback"
+      ],
+      "grants": [
+        "authorization_code",
+        "refresh_token"
+      ],
+      "scopes": [
+        "read",
+        "write"
+      ],
+      "owner": "dynamic-registration",
+      "metadata": {
+        "application_type": "web",
+        "client_uri": "https://github.com/CherryHQ/cherry-studio",
+        "token_endpoint_auth_method": "none",
+        "response_types": [
+          "code"
+        ]
+      }
     }
   ]
 }

@@ -1,0 +1,25 @@
+{
+  "systemConfig": {
+    "oauthServer": {
+      "enabled": true,
+      "accessTokenLifetime": 3600,
+      "refreshTokenLifetime": 1209600,
+      "authorizationCodeLifetime": 300,
+      "requireClientSecret": false,
+      "allowedScopes": ["read", "write"],
+      "dynamicRegistration": {
+        "enabled": true,
+        "allowedGrantTypes": ["authorization_code", "refresh_token"],
+        "requiresAuthentication": false
+      }
+    }
+  },
+  "mcpServers": {},
+  "users": [
+    {
+      "username": "admin",
+      "password": "$2b$10$abcdefghijklmnopqrstuv",
+      "isAdmin": true
+    }
+  ]
+}

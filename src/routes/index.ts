@@ -96,6 +96,12 @@ import {
   deleteClient,
   regenerateSecret,
 } from '../controllers/oauthClientController.js';
+import {
+  registerClient,
+  getClientConfiguration,
+  updateClientConfiguration,
+  deleteClientRegistration,
+} from '../controllers/oauthDynamicRegistrationController.js';
 import { auth } from '../middlewares/auth.js';
 
 const router = express.Router();
@@ -114,6 +120,12 @@ export const initRoutes = (app: express.Application): void => {
   app.get('/oauth/userinfo', getUserInfo); // Validates OAuth token
   app.get('/.well-known/oauth-authorization-server', getMetadata); // Public metadata endpoint
   app.get('/.well-known/oauth-protected-resource', getProtectedResourceMetadata); // Public protected resource metadata
+
+  // RFC 7591 Dynamic Client Registration endpoints (public for registration)
+  app.post('/oauth/register', registerClient); // Register new OAuth client
+  app.get('/oauth/register/:clientId', getClientConfiguration); // Read client configuration
+  app.put('/oauth/register/:clientId', updateClientConfiguration); // Update client configuration
+  app.delete('/oauth/register/:clientId', deleteClientRegistration); // Delete client registration
 
   // API routes protected by auth middleware in middlewares/index.ts
   router.get('/servers', getAllServers);
