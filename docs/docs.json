@@ -101,7 +101,8 @@
               "api-reference/prompts",
               "api-reference/auth",
               "api-reference/logs",
-              "api-reference/config"
+              "api-reference/config",
+              "api-reference/system"
             ]
           }
         ]
@@ -134,7 +135,8 @@
               "zh/api-reference/prompts",
               "zh/api-reference/auth",
               "zh/api-reference/logs",
-              "zh/api-reference/config"
+              "zh/api-reference/config",
+              "zh/api-reference/system"
             ]
           }
         ]
