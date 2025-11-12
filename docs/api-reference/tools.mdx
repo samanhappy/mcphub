@@ -1,0 +1,86 @@
+---
+title: "Tools"
+description: "Execute MCP tools programmatically."
+---
+
+import { Card, Cards } from 'mintlify';
+
+<Card
+  title="POST /api/tools/call/:server"
+  href="#call-a-tool"
+>
+  Call a specific tool on an MCP server.
+</Card>
+
+---
+
+### Call a Tool
+
+Execute a specific tool on an MCP server with given arguments.
+
+- **Endpoint**: `/api/tools/call/:server`
+- **Method**: `POST`
+- **Parameters**:
+  - `:server` (string, required): The name of the MCP server.
+- **Body**:
+  ```json
+  {
+    "toolName": "tool-name",
+    "arguments": {
+      "param1": "value1",
+      "param2": "value2"
+    }
+  }
+  ```
+  - `toolName` (string, required): The name of the tool to execute.
+  - `arguments` (object, optional): The arguments to pass to the tool. Defaults to an empty object.
+
+- **Response**:
+  ```json
+  {
+    "success": true,
+    "data": {
+      "content": [
+        {
+          "type": "text",
+          "text": "Tool execution result"
+        }
+      ],
+      "toolName": "tool-name",
+      "arguments": {
+        "param1": "value1",
+        "param2": "value2"
+      }
+    }
+  }
+  ```
+
+**Example Request:**
+
+```bash
+curl -X POST "http://localhost:3000/api/tools/call/amap" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -d '{
+    "toolName": "amap-maps_weather",
+    "arguments": {
+      "city": "Beijing"
+    }
+  }'
+```
+
+**Notes:**
+- The tool arguments are automatically converted to the proper types based on the tool's input schema.
+- Use the `x-session-id` header to maintain session state across multiple tool calls if needed.
+- This endpoint requires authentication.
+
+---
+
+### Alternative: OpenAPI Tool Execution
+
+For OpenAPI-compatible tool execution without authentication, see the [OpenAPI Integration](/api-reference/openapi#tool-execution) documentation. The OpenAPI endpoints provide:
+
+- **GET** `/api/tools/:serverName/:toolName` - For simple tools with query parameters
+- **POST** `/api/tools/:serverName/:toolName` - For complex tools with JSON body
+
+These endpoints are designed for integration with OpenWebUI and other OpenAPI-compatible systems.

@@ -1,0 +1,86 @@
+---
+title: "工具"
+description: "以编程方式执行 MCP 工具。"
+---
+
+import { Card, Cards } from 'mintlify';
+
+<Card
+  title="POST /api/tools/call/:server"
+  href="#call-a-tool"
+>
+  在 MCP 服务器上调用特定工具。
+</Card>
+
+---
+
+### 调用工具
+
+使用给定参数在 MCP 服务器上执行特定工具。
+
+- **端点**: `/api/tools/call/:server`
+- **方法**: `POST`
+- **参数**:
+  - `:server` (字符串, 必需): MCP 服务器的名称。
+- **请求正文**:
+  ```json
+  {
+    "toolName": "tool-name",
+    "arguments": {
+      "param1": "value1",
+      "param2": "value2"
+    }
+  }
+  ```
+  - `toolName` (字符串, 必需): 要执行的工具名称。
+  - `arguments` (对象, 可选): 传递给工具的参数。默认为空对象。
+
+- **响应**:
+  ```json
+  {
+    "success": true,
+    "data": {
+      "content": [
+        {
+          "type": "text",
+          "text": "工具执行结果"
+        }
+      ],
+      "toolName": "tool-name",
+      "arguments": {
+        "param1": "value1",
+        "param2": "value2"
+      }
+    }
+  }
+  ```
+
+**请求示例：**
+
+```bash
+curl -X POST "http://localhost:3000/api/tools/call/amap" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -d '{
+    "toolName": "amap-maps_weather",
+    "arguments": {
+      "city": "Beijing"
+    }
+  }'
+```
+
+**注意事项：**
+- 工具参数会根据工具的输入模式自动转换为适当的类型。
+- 如果需要，可以使用 `x-session-id` 请求头在多个工具调用之间维护会话状态。
+- 此端点需要身份验证。
+
+---
+
+### 替代方案：OpenAPI 工具执行
+
+有关无需身份验证的 OpenAPI 兼容工具执行，请参阅 [OpenAPI 集成](/api-reference/openapi#tool-execution) 文档。OpenAPI 端点提供：
+
+- **GET** `/api/tools/:serverName/:toolName` - 用于带查询参数的简单工具
+- **POST** `/api/tools/:serverName/:toolName` - 用于带 JSON 正文的复杂工具
+
+这些端点专为与 OpenWebUI 和其他 OpenAPI 兼容系统集成而设计。

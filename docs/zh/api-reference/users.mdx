@@ -1,0 +1,195 @@
+---
+title: "用户"
+description: "在 MCPHub 中管理用户。"
+---
+
+import { Card, Cards } from 'mintlify';
+
+<Card
+  title="GET /api/users"
+  href="#get-all-users"
+>
+  获取所有用户的列表。
+</Card>
+
+<Card
+  title="GET /api/users/:username"
+  href="#get-a-user"
+>
+  获取特定用户的详细信息。
+</Card>
+
+<Card
+  title="POST /api/users"
+  href="#create-a-user"
+>
+  创建新用户。
+</Card>
+
+<Card
+  title="PUT /api/users/:username"
+  href="#update-a-user"
+>
+  更新现有用户。
+</Card>
+
+<Card
+  title="DELETE /api/users/:username"
+  href="#delete-a-user"
+>
+  删除用户。
+</Card>
+
+<Card
+  title="GET /api/users-stats"
+  href="#get-user-statistics"
+>
+  获取有关用户及其服务器访问权限的统计信息。
+</Card>
+
+---
+
+### 获取所有用户
+
+检索系统中所有用户的列表。
+
+- **端点**: `/api/users`
+- **方法**: `GET`
+- **身份验证**: 必需（仅管理员）
+- **响应**:
+  ```json
+  {
+    "success": true,
+    "data": [
+      {
+        "username": "admin",
+        "role": "admin",
+        "servers": ["server1", "server2"],
+        "groups": ["group1"]
+      },
+      {
+        "username": "user1",
+        "role": "user",
+        "servers": ["server1"],
+        "groups": []
+      }
+    ]
+  }
+  ```
+
+---
+
+### 获取用户
+
+检索特定用户的详细信息。
+
+- **端点**: `/api/users/:username`
+- **方法**: `GET`
+- **身份验证**: 必需（仅管理员）
+- **参数**:
+  - `:username` (字符串, 必需): 用户的用户名。
+- **响应**:
+  ```json
+  {
+    "success": true,
+    "data": {
+      "username": "user1",
+      "role": "user",
+      "servers": ["server1", "server2"],
+      "groups": ["group1"]
+    }
+  }
+  ```
+
+---
+
+### 创建用户
+
+在系统中创建新用户。
+
+- **端点**: `/api/users`
+- **方法**: `POST`
+- **身份验证**: 必需（仅管理员）
+- **请求正文**:
+  ```json
+  {
+    "username": "newuser",
+    "password": "securepassword",
+    "role": "user",
+    "servers": ["server1"],
+    "groups": ["group1"]
+  }
+  ```
+  - `username` (字符串, 必需): 新用户的用户名。
+  - `password` (字符串, 必需): 新用户的密码。至少 6 个字符。
+  - `role` (字符串, 可选): 用户的角色。可以是 `"admin"` 或 `"user"`。默认为 `"user"`。
+  - `servers` (字符串数组, 可选): 用户可以访问的服务器名称列表。
+  - `groups` (字符串数组, 可选): 用户所属的组 ID 列表。
+
+---
+
+### 更新用户
+
+更新现有用户的信息。
+
+- **端点**: `/api/users/:username`
+- **方法**: `PUT`
+- **身份验证**: 必需（仅管理员）
+- **参数**:
+  - `:username` (字符串, 必需): 要更新的用户的用户名。
+- **请求正文**:
+  ```json
+  {
+    "password": "newpassword",
+    "role": "admin",
+    "servers": ["server1", "server2", "server3"],
+    "groups": ["group1", "group2"]
+  }
+  ```
+  - `password` (字符串, 可选): 用户的新密码。
+  - `role` (字符串, 可选): 用户的新角色。
+  - `servers` (字符串数组, 可选): 更新的可访问服务器列表。
+  - `groups` (字符串数组, 可选): 更新的组列表。
+
+---
+
+### 删除用户
+
+从系统中删除用户。
+
+- **端点**: `/api/users/:username`
+- **方法**: `DELETE`
+- **身份验证**: 必需（仅管理员）
+- **参数**:
+  - `:username` (字符串, 必需): 要删除的用户的用户名。
+
+---
+
+### 获取用户统计信息
+
+检索有关用户及其对服务器和组的访问权限的统计信息。
+
+- **端点**: `/api/users-stats`
+- **方法**: `GET`
+- **身份验证**: 必需（仅管理员）
+- **响应**:
+  ```json
+  {
+    "success": true,
+    "data": {
+      "totalUsers": 5,
+      "adminUsers": 1,
+      "regularUsers": 4,
+      "usersPerServer": {
+        "server1": 3,
+        "server2": 2
+      },
+      "usersPerGroup": {
+        "group1": 2,
+        "group2": 1
+      }
+    }
+  }
+  ```
+
+**注意**: 所有用户管理端点都需要管理员身份验证。
