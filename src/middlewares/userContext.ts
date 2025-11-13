@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { UserContextService } from '../services/userContextService.js';
 import { IUser } from '../types/index.js';
+import { resolveOAuthUserFromAuthHeader } from '../utils/oauthBearer.js';
 
 /**
  * User context middleware
@@ -45,6 +46,18 @@ export const sseUserContextMiddleware = async (
   try {
     const userContextService = UserContextService.getInstance();
     const username = req.params.user;
+    let cleanedUp = false;
+    const cleanup = () => {
+      if (cleanedUp) {
+        return;
+      }
+      cleanedUp = true;
+      userContextService.clearCurrentUser();
+    };
+    const attachCleanupHandlers = () => {
+      res.on('finish', cleanup);
+      res.on('close', cleanup);
+    };
 
     if (username) {
       // For user-scoped routes, set the user context
@@ -57,22 +70,22 @@ export const sseUserContextMiddleware = async (
       };
 
       userContextService.setCurrentUser(user);
-
-      // Clean up user context when response ends
-      res.on('finish', () => {
-        userContextService.clearCurrentUser();
-      });
-
-      // Also clean up on connection close for SSE
-      res.on('close', () => {
-        userContextService.clearCurrentUser();
-      });
-
+      attachCleanupHandlers();
       console.log(`User context set for SSE/MCP endpoint: ${username}`);
     } else {
-      // For global routes, clear user context (admin access)
-      userContextService.clearCurrentUser();
-      console.log('Global SSE/MCP endpoint access - no user context');
+      const rawAuthHeader = Array.isArray(req.headers.authorization)
+        ? req.headers.authorization[0]
+        : req.headers.authorization;
+      const bearerUser = resolveOAuthUserFromAuthHeader(rawAuthHeader);
+
+      if (bearerUser) {
+        userContextService.setCurrentUser(bearerUser);
+        attachCleanupHandlers();
+        console.log(`OAuth user context set for SSE/MCP endpoint: ${bearerUser.username}`);
+      } else {
+        cleanup();
+        console.log('Global SSE/MCP endpoint access - no user context');
+      }
     }
 
     next();

@@ -9,6 +9,8 @@ import { loadSettings } from '../config/index.js';
 import config from '../config/index.js';
 import { UserContextService } from './userContextService.js';
 import { RequestContextService } from './requestContextService.js';
+import { IUser } from '../types/index.js';
+import { resolveOAuthUserFromToken } from '../utils/oauthBearer.js';
 
 const transports: { [sessionId: string]: { transport: Transport; group: string } } = {};
 
@@ -17,7 +19,7 @@ export const getGroup = (sessionId: string): string => {
 };
 
 type BearerAuthResult =
-  | { valid: true }
+  | { valid: true; user?: IUser }
   | {
       valid: false;
       reason: 'missing' | 'invalid';
@@ -47,10 +49,40 @@ const validateBearerAuth = (req: Request): BearerAuthResult => {
       return { valid: true };
     }
 
+    const oauthUser = resolveOAuthUserFromToken(token);
+    if (oauthUser) {
+      return { valid: true, user: oauthUser };
+    }
+
     return { valid: false, reason: 'invalid' };
   }
 
   return { valid: true };
+};
+
+const attachUserContextFromBearer = (result: BearerAuthResult, res: Response): void => {
+  if (!result.valid || !result.user) {
+    return;
+  }
+
+  const userContextService = UserContextService.getInstance();
+  if (userContextService.hasUser()) {
+    return;
+  }
+
+  userContextService.setCurrentUser(result.user);
+
+  let cleanedUp = false;
+  const cleanup = () => {
+    if (cleanedUp) {
+      return;
+    }
+    cleanedUp = true;
+    userContextService.clearCurrentUser();
+  };
+
+  res.on('finish', cleanup);
+  res.on('close', cleanup);
 };
 
 const escapeHeaderValue = (value: string): string => {
@@ -131,8 +163,6 @@ const sendBearerAuthError = (req: Request, res: Response, reason: 'missing' | 'i
 export const handleSseConnection = async (req: Request, res: Response): Promise<void> => {
   // User context is now set by sseUserContextMiddleware
   const userContextService = UserContextService.getInstance();
-  const currentUser = userContextService.getCurrentUser();
-  const username = currentUser?.username;
 
   // Check bearer auth using filtered settings
   const bearerAuthResult = validateBearerAuth(req);
@@ -140,6 +170,11 @@ export const handleSseConnection = async (req: Request, res: Response): Promise<
     sendBearerAuthError(req, res, bearerAuthResult.reason);
     return;
   }
+
+  attachUserContextFromBearer(bearerAuthResult, res);
+
+  const currentUser = userContextService.getCurrentUser();
+  const username = currentUser?.username;
 
   const settings = loadSettings();
   const routingConfig = settings.systemConfig?.routing || {
@@ -188,8 +223,6 @@ export const handleSseConnection = async (req: Request, res: Response): Promise<
 export const handleSseMessage = async (req: Request, res: Response): Promise<void> => {
   // User context is now set by sseUserContextMiddleware
   const userContextService = UserContextService.getInstance();
-  const currentUser = userContextService.getCurrentUser();
-  const username = currentUser?.username;
 
   // Check bearer auth using filtered settings
   const bearerAuthResult = validateBearerAuth(req);
@@ -197,6 +230,11 @@ export const handleSseMessage = async (req: Request, res: Response): Promise<voi
     sendBearerAuthError(req, res, bearerAuthResult.reason);
     return;
   }
+
+  attachUserContextFromBearer(bearerAuthResult, res);
+
+  const currentUser = userContextService.getCurrentUser();
+  const username = currentUser?.username;
 
   const sessionId = req.query.sessionId as string;
 
@@ -237,6 +275,16 @@ export const handleSseMessage = async (req: Request, res: Response): Promise<voi
 export const handleMcpPostRequest = async (req: Request, res: Response): Promise<void> => {
   // User context is now set by sseUserContextMiddleware
   const userContextService = UserContextService.getInstance();
+
+  // Check bearer auth using filtered settings
+  const bearerAuthResult = validateBearerAuth(req);
+  if (!bearerAuthResult.valid) {
+    sendBearerAuthError(req, res, bearerAuthResult.reason);
+    return;
+  }
+
+  attachUserContextFromBearer(bearerAuthResult, res);
+
   const currentUser = userContextService.getCurrentUser();
   const username = currentUser?.username;
 
@@ -246,13 +294,6 @@ export const handleMcpPostRequest = async (req: Request, res: Response): Promise
   console.log(
     `Handling MCP post request for sessionId: ${sessionId} and group: ${group}${username ? ` for user: ${username}` : ''} with body: ${JSON.stringify(body)}`,
   );
-
-  // Check bearer auth using filtered settings
-  const bearerAuthResult = validateBearerAuth(req);
-  if (!bearerAuthResult.valid) {
-    sendBearerAuthError(req, res, bearerAuthResult.reason);
-    return;
-  }
 
   // Get filtered settings based on user context (after setting user context)
   const settings = loadSettings();
@@ -319,10 +360,6 @@ export const handleMcpPostRequest = async (req: Request, res: Response): Promise
 export const handleMcpOtherRequest = async (req: Request, res: Response) => {
   // User context is now set by sseUserContextMiddleware
   const userContextService = UserContextService.getInstance();
-  const currentUser = userContextService.getCurrentUser();
-  const username = currentUser?.username;
-
-  console.log(`Handling MCP other request${username ? ` for user: ${username}` : ''}`);
 
   // Check bearer auth using filtered settings
   const bearerAuthResult = validateBearerAuth(req);
@@ -330,6 +367,13 @@ export const handleMcpOtherRequest = async (req: Request, res: Response) => {
     sendBearerAuthError(req, res, bearerAuthResult.reason);
     return;
   }
+
+  attachUserContextFromBearer(bearerAuthResult, res);
+
+  const currentUser = userContextService.getCurrentUser();
+  const username = currentUser?.username;
+
+  console.log(`Handling MCP other request${username ? ` for user: ${username}` : ''}`);
 
   const sessionId = req.headers['mcp-session-id'] as string | undefined;
   if (!sessionId || !transports[sessionId]) {
