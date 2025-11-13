@@ -683,7 +683,7 @@
       "groupIdRequired": "L'ID de groupe est requis",
       "groupNameRequired": "Le nom du groupe est requis",
       "groupNotFound": "Groupe non trouvé",
-      "groupIdAndServerNameRequired": "L'ID de groupe和le nom du serveur sont requis",
+      "groupIdAndServerNameRequired": "L'ID de groupe et le nom du serveur sont requis",
       "groupOrServerNotFound": "Groupe ou serveur non trouvé",
       "toolsMustBeAllOrArray": "Les outils doivent être \"all\" ou un tableau de chaînes de caractères",
       "serverNameAndToolNameRequired": "Le nom du serveur et le nom de l'outil sont requis",
