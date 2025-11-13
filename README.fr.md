@@ -6,6 +6,23 @@ MCPHub facilite la gestion et la mise à l'échelle de plusieurs serveurs MCP (M
 
 ![Aperçu du tableau de bord](assets/dashboard.zh.png)
 
+## ⚠️ AVERTISSEMENT DE SÉCURITÉ
+
+**IMPORTANT** : Avant de déployer MCPHub en production, vous **DEVEZ** configurer les paramètres de sécurité pour empêcher les accès non autorisés.
+
+🔒 **Actions requises** :
+1. **Activer l'authentification Bearer** dans Paramètres → Configuration des Routes
+2. **Changer le mot de passe admin par défaut** (`admin`/`admin123`)
+3. **Désactiver l'option `skipAuth`**
+4. **Déployer derrière un reverse proxy** (Nginx, Traefik, etc.)
+5. **Ne jamais exposer directement sur Internet** sans authentification appropriée
+
+📖 **Lire l'analyse de sécurité complète** : [SECURITY.md](SECURITY.md)
+
+⚡ **TL;DR** : Par défaut, les endpoints MCP ne sont PAS authentifiés sauf si vous activez explicitement Bearer Auth. Toute personne connaissant le nom de votre serveur peut accéder à vos serveurs MCP sans authentification.
+
+---
+
 ## 🌐 Démo en direct et Documentation
 
 - **Documentation** : [docs.mcphubx.com](https://docs.mcphubx.com/)

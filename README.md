@@ -6,6 +6,23 @@ MCPHub makes it easy to manage and scale multiple MCP (Model Context Protocol) s
 
 ![Dashboard Preview](assets/dashboard.png)
 
+## ⚠️ SECURITY WARNING
+
+**IMPORTANT**: Before deploying MCPHub to production, you **MUST** configure security settings to prevent unauthorized access.
+
+🔒 **Required Actions**:
+1. **Enable Bearer Authentication** in Settings → Route Configuration
+2. **Change the default admin password** (`admin`/`admin123`)
+3. **Disable `skipAuth`** option
+4. **Deploy behind a reverse proxy** (Nginx, Traefik, etc.)
+5. **Never expose directly to the Internet** without proper authentication
+
+📖 **Read the full security analysis**: [SECURITY.md](SECURITY.md)
+
+⚡ **TL;DR**: By default, MCP endpoints are NOT authenticated unless you explicitly enable Bearer Auth. Anyone who knows your server name can access your MCP servers without authentication.
+
+---
+
 ## 🌐 Live Demo & Docs
 
 - **Documentation**: [docs.mcphubx.com](https://docs.mcphubx.com/)

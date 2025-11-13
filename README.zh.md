@@ -6,6 +6,23 @@ MCPHub 通过将多个 MCP（Model Context Protocol）服务器组织为灵活�
 
 ![控制面板预览](assets/dashboard.zh.png)
 
+## ⚠️ 安全警告
+
+**重要提示**：在将 MCPHub 部署到生产环境之前，您**必须**配置安全设置以防止未经授权的访问。
+
+🔒 **必需操作**：
+1. **启用 Bearer 身份验证**：设置 → 路由配置
+2. **更改默认管理员密码**（`admin`/`admin123`）
+3. **禁用 `skipAuth` 选项**
+4. **部署在反向代理后面**（Nginx、Traefik 等）
+5. **切勿直接暴露到互联网**，必须配置适当的身份验证
+
+📖 **阅读完整安全分析**：[SECURITY.md](SECURITY.md)
+
+⚡ **简要说明**：默认情况下，除非您明确启用 Bearer Auth，否则 MCP 端点不会进行身份验证。任何知道您服务器名称的人都可以在没有身份验证的情况下访问您的 MCP 服务器。
+
+---
+
 ## 🌐 在线文档与演示
 
 - **文档地址**: [docs.mcphubx.com](https://docs.mcphubx.com/)
