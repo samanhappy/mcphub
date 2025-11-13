@@ -284,6 +284,7 @@ let oauth: OAuth2Server | null = null;
 export const initOAuthServer = (): void => {
   const settings = loadSettings();
   const oauthConfig = settings.systemConfig?.oauthServer;
+  const requireState = oauthConfig?.requireState === true;
 
   if (!oauthConfig || !oauthConfig.enabled) {
     console.log('OAuth authorization server is disabled or not configured');
@@ -296,9 +297,10 @@ export const initOAuthServer = (): void => {
       accessTokenLifetime: oauthConfig.accessTokenLifetime || 3600,
       refreshTokenLifetime: oauthConfig.refreshTokenLifetime || 1209600,
       authorizationCodeLifetime: oauthConfig.authorizationCodeLifetime || 300,
+      allowEmptyState: !requireState,
       allowBearerTokensInQueryString: false,
       // When requireClientSecret is false, allow PKCE without client secret
-      requireClientAuthentication: oauthConfig.requireClientSecret 
+      requireClientAuthentication: oauthConfig.requireClientSecret
         ? { authorization_code: true, refresh_token: true }
         : { authorization_code: false, refresh_token: false },
     });

@@ -26,7 +26,8 @@ Add the following configuration to your `mcp_settings.json`:
       "refreshTokenLifetime": 1209600,
       "authorizationCodeLifetime": 300,
       "requireClientSecret": false,
-      "allowedScopes": ["read", "write"]
+      "allowedScopes": ["read", "write"],
+      "requireState": false
     }
   }
 }
@@ -42,6 +43,7 @@ Add the following configuration to your `mcp_settings.json`:
 | `authorizationCodeLifetime` | number | `300` | Authorization code lifetime in seconds (5 minutes) |
 | `requireClientSecret` | boolean | `false` | Whether client secret is required (set to false for PKCE) |
 | `allowedScopes` | string[] | `["read", "write"]` | List of allowed OAuth scopes |
+| `requireState` | boolean | `false` | When `true`, rejects authorization requests that omit the `state` parameter |
 
 ## OAuth Clients
 

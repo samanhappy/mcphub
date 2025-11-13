@@ -7,8 +7,43 @@ import {
 import { findOAuthClientById } from '../models/OAuth.js';
 import { loadSettings } from '../config/index.js';
 import OAuth2Server from '@node-oauth/oauth2-server';
+import jwt from 'jsonwebtoken';
+import { JWT_SECRET } from '../config/jwt.js';
 
 const { Request: OAuth2Request, Response: OAuth2Response } = OAuth2Server;
+
+type AuthenticatedUser = {
+  username: string;
+  isAdmin?: boolean;
+};
+
+/**
+ * Attempt to attach a user to the request based on a JWT token present in header, query, or body.
+ */
+function resolveUserFromRequest(req: Request): AuthenticatedUser | null {
+  const headerToken = req.header('x-auth-token');
+  const queryToken = typeof req.query.token === 'string' ? req.query.token : undefined;
+  const bodyToken =
+    req.body && typeof (req.body as Record<string, unknown>).token === 'string'
+      ? ((req.body as Record<string, string>).token as string)
+      : undefined;
+  const token = headerToken || queryToken || bodyToken;
+
+  if (!token) {
+    return null;
+  }
+
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET) as { user?: AuthenticatedUser };
+    if (decoded?.user) {
+      return decoded.user;
+    }
+  } catch (error) {
+    console.warn('Invalid JWT supplied to OAuth authorize endpoint:', error);
+  }
+
+  return null;
+}
 
 /**
  * Helper function to escape HTML
@@ -75,14 +110,27 @@ export const getAuthorize = async (req: Request, res: Response): Promise<void> =
       return;
     }
 
-    // Check if user is authenticated
-    const user = (req as any).user;
+    // Check if user is authenticated (including via JWT token)
+    let user = (req as any).user;
+    if (!user) {
+      const tokenUser = resolveUserFromRequest(req);
+      if (tokenUser) {
+        (req as any).user = tokenUser;
+        user = tokenUser;
+      }
+    }
+
     if (!user) {
       // Redirect to login page with return URL
       const returnUrl = encodeURIComponent(req.originalUrl);
       res.redirect(`/login?returnUrl=${returnUrl}`);
       return;
     }
+
+    const requestToken = typeof req.query.token === 'string' ? req.query.token : '';
+    const tokenField = requestToken
+      ? `<input type="hidden" name="token" value="${escapeHtml(requestToken)}">`
+      : '';
 
     // Render authorization consent page
     res.send(`
@@ -172,6 +220,7 @@ export const getAuthorize = async (req: Request, res: Response): Promise<void> =
                 <input type="hidden" name="state" value="${escapeHtml(state || '')}">
                 ${code_challenge ? `<input type="hidden" name="code_challenge" value="${escapeHtml(code_challenge)}">` : ''}
                 ${code_challenge_method ? `<input type="hidden" name="code_challenge_method" value="${escapeHtml(code_challenge_method)}">` : ''}
+                ${tokenField}
                 <input type="hidden" name="allow" value="true">
                 <button type="submit" class="approve">Approve</button>
               </form>
@@ -179,6 +228,7 @@ export const getAuthorize = async (req: Request, res: Response): Promise<void> =
                 <input type="hidden" name="client_id" value="${escapeHtml(client_id)}">
                 <input type="hidden" name="redirect_uri" value="${escapeHtml(redirect_uri)}">
                 <input type="hidden" name="state" value="${escapeHtml(state || '')}">
+                ${tokenField}
                 <input type="hidden" name="allow" value="false">
                 <button type="submit" class="deny">Deny</button>
               </form>
@@ -218,8 +268,16 @@ export const postAuthorize = async (req: Request, res: Response): Promise<void> 
       return;
     }
 
-    // Get authenticated user
-    const user = (req as any).user;
+    // Get authenticated user (JWT support for browser form submissions)
+    let user = (req as any).user;
+    if (!user) {
+      const tokenUser = resolveUserFromRequest(req);
+      if (tokenUser) {
+        (req as any).user = tokenUser;
+        user = tokenUser;
+      }
+    }
+
     if (!user) {
       res.status(401).json({ error: 'unauthorized', error_description: 'User not authenticated' });
       return;

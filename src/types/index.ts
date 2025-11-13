@@ -238,6 +238,7 @@ export interface OAuthServerConfig {
   authorizationCodeLifetime?: number; // Authorization code lifetime in seconds (default: 300 = 5 minutes)
   requireClientSecret?: boolean; // Whether client secret is required (default: false for PKCE support)
   allowedScopes?: string[]; // List of allowed OAuth scopes (default: ['read', 'write'])
+  requireState?: boolean; // Whether the state parameter is required during authorization (default: false)
   dynamicRegistration?: {
     enabled?: boolean; // Enable/disable RFC 7591 dynamic client registration
     allowedGrantTypes?: string[]; // Allowed grant types for dynamic registration (default: ['authorization_code', 'refresh_token'])
