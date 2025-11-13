@@ -10,6 +10,7 @@ export interface IUser {
   username: string;
   password: string;
   isAdmin?: boolean;
+  allowedGroups?: string[]; // Array of group IDs this user can access (empty = all groups if admin, none if regular user)
 }
 
 // Group interface for server grouping

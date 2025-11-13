@@ -9,6 +9,7 @@ import { loadSettings } from '../config/index.js';
 import config from '../config/index.js';
 import { UserContextService } from './userContextService.js';
 import { RequestContextService } from './requestContextService.js';
+import { AccessControlService } from './accessControlService.js';
 
 const transports: { [sessionId: string]: { transport: Transport; group: string } } = {};
 
@@ -68,10 +69,28 @@ export const handleSseConnection = async (req: Request, res: Response): Promise<
     return;
   }
 
-  // For user-scoped routes, validate that the user has access to the requested group
-  if (username && group) {
-    // Additional validation can be added here to check if user has access to the group
-    console.log(`User ${username} accessing group: ${group}`);
+  // SECURITY: Validate user access to the requested group or global route
+  const accessControlService = AccessControlService.getInstance();
+
+  // Check access to global routes
+  if (!group) {
+    if (!accessControlService.canAccessGlobalRoute(currentUser)) {
+      console.warn(
+        `Access denied: User '${username || 'anonymous'}' attempted to access global route without permission`,
+      );
+      res.status(403).send('Access denied. Only administrators can access global routes.');
+      return;
+    }
+  }
+
+  // Check access to specific groups
+  if (group && currentUser) {
+    if (!accessControlService.canAccessGroup(currentUser, group)) {
+      console.warn(`Access denied: User '${username}' attempted to access group '${group}' without permission`);
+      res.status(403).send(`Access denied. You do not have permission to access group '${group}'.`);
+      return;
+    }
+    console.log(`User ${username} accessing group: ${group} (access validated)`);
   }
 
   // Construct the appropriate messages path based on user context
@@ -174,6 +193,44 @@ export const handleMcpPostRequest = async (req: Request, res: Response): Promise
     return;
   }
 
+  // SECURITY: Validate user access to the requested group or global route
+  const accessControlService = AccessControlService.getInstance();
+
+  // Check access to global routes
+  if (!group) {
+    if (!accessControlService.canAccessGlobalRoute(currentUser)) {
+      console.warn(
+        `Access denied: User '${username || 'anonymous'}' attempted to access global route without permission`,
+      );
+      res.status(403).json({
+        jsonrpc: '2.0',
+        error: {
+          code: -32000,
+          message: 'Access denied. Only administrators can access global routes.',
+        },
+        id: null,
+      });
+      return;
+    }
+  }
+
+  // Check access to specific groups
+  if (group && currentUser) {
+    if (!accessControlService.canAccessGroup(currentUser, group)) {
+      console.warn(`Access denied: User '${username}' attempted to access group '${group}' without permission`);
+      res.status(403).json({
+        jsonrpc: '2.0',
+        error: {
+          code: -32000,
+          message: `Access denied. You do not have permission to access group '${group}'.`,
+        },
+        id: null,
+      });
+      return;
+    }
+    console.log(`User ${username} accessing group: ${group} (access validated)`);
+  }
+
   let transport: StreamableHTTPServerTransport;
   if (sessionId && transports[sessionId]) {
     console.log(`Reusing existing transport for sessionId: ${sessionId}`);
@@ -245,7 +302,32 @@ export const handleMcpOtherRequest = async (req: Request, res: Response) => {
     return;
   }
 
-  const { transport } = transports[sessionId];
+  // SECURITY: Validate user access to the group associated with this session
+  const { transport, group } = transports[sessionId];
+  const accessControlService = AccessControlService.getInstance();
+
+  // Check access to global routes
+  if (!group) {
+    if (!accessControlService.canAccessGlobalRoute(currentUser)) {
+      console.warn(
+        `Access denied: User '${username || 'anonymous'}' attempted to use global session without permission`,
+      );
+      res.status(403).send('Access denied. Only administrators can access global routes.');
+      return;
+    }
+  }
+
+  // Check access to specific groups
+  if (group && currentUser) {
+    if (!accessControlService.canAccessGroup(currentUser, group)) {
+      console.warn(
+        `Access denied: User '${username}' attempted to use session for group '${group}' without permission`,
+      );
+      res.status(403).send(`Access denied. You do not have permission to access group '${group}'.`);
+      return;
+    }
+  }
+
   await (transport as StreamableHTTPServerTransport).handleRequest(req, res);
 };
 

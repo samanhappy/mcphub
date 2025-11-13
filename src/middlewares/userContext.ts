@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { UserContextService } from '../services/userContextService.js';
+import { AccessControlService } from '../services/accessControlService.js';
 import { IUser } from '../types/index.js';
 
 /**
@@ -35,7 +36,9 @@ export const userContextMiddleware = async (
 
 /**
  * User context middleware for SSE/MCP endpoints
- * Extracts user from URL path parameter and sets user context
+ * Extracts user from URL path parameter and validates user exists
+ *
+ * SECURITY: This middleware now properly validates users instead of creating fake user objects
  */
 export const sseUserContextMiddleware = async (
   req: Request,
@@ -44,18 +47,23 @@ export const sseUserContextMiddleware = async (
 ): Promise<void> => {
   try {
     const userContextService = UserContextService.getInstance();
+    const accessControlService = AccessControlService.getInstance();
     const username = req.params.user;
 
     if (username) {
-      // For user-scoped routes, set the user context
-      // Note: In a real implementation, you should validate the user exists
-      // and has proper permissions
-      const user: IUser = {
-        username,
-        password: '',
-        isAdmin: false, // TODO: Should be retrieved from user database
-      };
+      // SECURITY FIX: Validate that the user actually exists in the database
+      const user = accessControlService.getUserByUsername(username);
 
+      if (!user) {
+        console.warn(`SSE/MCP access denied: User '${username}' does not exist`);
+        res.status(401).json({
+          success: false,
+          message: 'User not found or invalid credentials',
+        });
+        return;
+      }
+
+      // Set the validated user context
       userContextService.setCurrentUser(user);
 
       // Clean up user context when response ends
@@ -68,9 +76,10 @@ export const sseUserContextMiddleware = async (
         userContextService.clearCurrentUser();
       });
 
-      console.log(`User context set for SSE/MCP endpoint: ${username}`);
+      console.log(`User context set for SSE/MCP endpoint: ${username} (validated)`);
     } else {
-      // For global routes, clear user context (admin access)
+      // For global routes, clear user context
+      // Note: Access control for global routes is handled in sseService.ts
       userContextService.clearCurrentUser();
       console.log('Global SSE/MCP endpoint access - no user context');
     }
@@ -78,7 +87,10 @@ export const sseUserContextMiddleware = async (
     next();
   } catch (error) {
     console.error('Error in SSE user context middleware:', error);
-    next(error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+    });
   }
 };
 
