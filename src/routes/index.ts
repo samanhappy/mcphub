@@ -114,8 +114,8 @@ export const initRoutes = (app: express.Application): void => {
   app.get('/oauth/callback', handleOAuthCallback);
 
   // OAuth Authorization Server endpoints (no auth required for OAuth flow)
-  app.get('/oauth/authorize', auth, getAuthorize); // User must be authenticated
-  app.post('/oauth/authorize', auth, postAuthorize); // User must be authenticated
+  app.get('/oauth/authorize', getAuthorize);
+  app.post('/oauth/authorize', postAuthorize);
   app.post('/oauth/token', postToken); // Public endpoint for token exchange
   app.get('/oauth/userinfo', getUserInfo); // Validates OAuth token
   app.get('/.well-known/oauth-authorization-server', getMetadata); // Public metadata endpoint
