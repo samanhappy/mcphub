@@ -12,6 +12,7 @@ import {
 import { loadSettings, saveSettings } from '../config/index.js';
 import { syncAllServerToolsEmbeddings } from '../services/vectorSearchService.js';
 import { createSafeJSON } from '../utils/serialization.js';
+import { cloneDefaultOAuthServerConfig } from '../constants/oauthServerDefaults.js';
 
 export const getAllServers = async (_: Request, res: Response): Promise<void> => {
   try {
@@ -599,20 +600,7 @@ export const updateSystemConfig = (req: Request, res: Response): void => {
           title: 'MCPHub',
           baseUrl: 'https://api.mcprouter.to/v1',
         },
-        oauthServer: {
-          enabled: false,
-          accessTokenLifetime: 3600,
-          refreshTokenLifetime: 1209600,
-          authorizationCodeLifetime: 300,
-          requireClientSecret: false,
-          allowedScopes: ['read', 'write'],
-          requireState: false,
-          dynamicRegistration: {
-            enabled: false,
-            allowedGrantTypes: ['authorization_code', 'refresh_token'],
-            requiresAuthentication: false,
-          },
-        },
+        oauthServer: cloneDefaultOAuthServerConfig(),
       };
     }
 
@@ -654,27 +642,24 @@ export const updateSystemConfig = (req: Request, res: Response): void => {
     }
 
     if (!settings.systemConfig.oauthServer) {
-      settings.systemConfig.oauthServer = {
-        enabled: false,
-        accessTokenLifetime: 3600,
-        refreshTokenLifetime: 1209600,
-        authorizationCodeLifetime: 300,
-        requireClientSecret: false,
-        allowedScopes: ['read', 'write'],
-        requireState: false,
-        dynamicRegistration: {
-          enabled: false,
-          allowedGrantTypes: ['authorization_code', 'refresh_token'],
-          requiresAuthentication: false,
-        },
-      };
+      settings.systemConfig.oauthServer = cloneDefaultOAuthServerConfig();
     }
 
     if (!settings.systemConfig.oauthServer.dynamicRegistration) {
-      settings.systemConfig.oauthServer.dynamicRegistration = {
+      const defaultConfig = cloneDefaultOAuthServerConfig();
+      const defaultDynamic = defaultConfig.dynamicRegistration ?? {
         enabled: false,
-        allowedGrantTypes: ['authorization_code', 'refresh_token'],
+        allowedGrantTypes: [],
         requiresAuthentication: false,
+      };
+      settings.systemConfig.oauthServer.dynamicRegistration = {
+        enabled: defaultDynamic.enabled ?? false,
+        allowedGrantTypes: [
+          ...(Array.isArray(defaultDynamic.allowedGrantTypes)
+            ? defaultDynamic.allowedGrantTypes
+            : []),
+        ],
+        requiresAuthentication: defaultDynamic.requiresAuthentication ?? false,
       };
     }
 

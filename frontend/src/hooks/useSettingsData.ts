@@ -65,7 +65,7 @@ interface TempRoutingConfig {
 }
 
 const getDefaultOAuthServerConfig = (): OAuthServerConfig => ({
-  enabled: false,
+  enabled: true,
   accessTokenLifetime: 3600,
   refreshTokenLifetime: 1209600,
   authorizationCodeLifetime: 300,
@@ -73,7 +73,7 @@ const getDefaultOAuthServerConfig = (): OAuthServerConfig => ({
   allowedScopes: ['read', 'write'],
   requireState: false,
   dynamicRegistration: {
-    enabled: false,
+    enabled: true,
     allowedGrantTypes: ['authorization_code', 'refresh_token'],
     requiresAuthentication: false,
   },

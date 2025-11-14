@@ -5,6 +5,7 @@ import { getConfigFilePath } from '../utils/path.js';
 import { getPackageVersion } from '../utils/version.js';
 import { getDataService } from '../services/services.js';
 import { DataService } from '../services/dataService.js';
+import { cloneDefaultOAuthServerConfig } from '../constants/oauthServerDefaults.js';
 
 dotenv.config();
 
@@ -18,6 +19,22 @@ const defaultConfig = {
 };
 
 const dataService: DataService = getDataService();
+
+const ensureOAuthServerDefaults = (settings: McpSettings): boolean => {
+  if (!settings.systemConfig) {
+    settings.systemConfig = {
+      oauthServer: cloneDefaultOAuthServerConfig(),
+    };
+    return true;
+  }
+
+  if (!settings.systemConfig.oauthServer) {
+    settings.systemConfig.oauthServer = cloneDefaultOAuthServerConfig();
+    return true;
+  }
+
+  return false;
+};
 
 // Settings cache
 let settingsCache: McpSettings | null = null;
@@ -36,7 +53,8 @@ export const loadOriginalSettings = (): McpSettings => {
   // check if file exists
   if (!fs.existsSync(settingsPath)) {
     console.warn(`Settings file not found at ${settingsPath}, using default settings.`);
-    const defaultSettings = { mcpServers: {}, users: [] };
+    const defaultSettings: McpSettings = { mcpServers: {}, users: [] };
+    ensureOAuthServerDefaults(defaultSettings);
     // Cache default settings
     settingsCache = defaultSettings;
     return defaultSettings;
@@ -46,6 +64,14 @@ export const loadOriginalSettings = (): McpSettings => {
     // Read and parse settings file
     const settingsData = fs.readFileSync(settingsPath, 'utf8');
     const settings = JSON.parse(settingsData);
+    const initialized = ensureOAuthServerDefaults(settings);
+    if (initialized) {
+      try {
+        fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2), 'utf8');
+      } catch (writeError) {
+        console.error('Failed to persist default OAuth server configuration:', writeError);
+      }
+    }
 
     // Update cache
     settingsCache = settings;
