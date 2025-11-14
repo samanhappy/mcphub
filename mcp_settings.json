@@ -126,6 +126,29 @@
           "code"
         ]
       }
+    },
+    {
+      "clientId": "c83b7e4a47c25ac834ffc59d4439c75c",
+      "clientSecret": "e977d26c265977fc553ba9aecab42a84a911ac293373e3673d94d3164427e862",
+      "name": "ChatWise",
+      "redirectUris": [
+        "http://localhost:59735/callback/e5btzxb2e3"
+      ],
+      "grants": [
+        "authorization_code"
+      ],
+      "scopes": [
+        "read",
+        "write"
+      ],
+      "owner": "dynamic-registration",
+      "metadata": {
+        "application_type": "web",
+        "token_endpoint_auth_method": "client_secret_basic",
+        "response_types": [
+          "code"
+        ]
+      }
     }
   ]
 }

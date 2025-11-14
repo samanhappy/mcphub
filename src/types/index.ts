@@ -256,6 +256,7 @@ export interface McpSettings {
   systemConfig?: SystemConfig; // System-wide configuration settings
   userConfigs?: Record<string, UserConfig>; // User-specific configurations
   oauthClients?: IOAuthClient[]; // OAuth clients for MCPHub's authorization server
+  oauthTokens?: IOAuthToken[]; // Persisted OAuth tokens (access + refresh) for authorization server
 }
 
 // Configuration details for an individual server

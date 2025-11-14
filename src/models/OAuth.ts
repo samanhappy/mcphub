@@ -3,9 +3,34 @@ import { loadSettings, saveSettings } from '../config/index.js';
 import { IOAuthClient, IOAuthAuthorizationCode, IOAuthToken } from '../types/index.js';
 
 // In-memory storage for authorization codes and tokens
-// In production, these should be stored in a database
+// Authorization codes are short-lived and kept in memory only.
+// Tokens are mirrored to settings (mcp_settings.json) for persistence.
 const authorizationCodes = new Map<string, IOAuthAuthorizationCode>();
 const tokens = new Map<string, IOAuthToken>();
+
+// Initialize token store from settings on first import
+(() => {
+  try {
+    const settings = loadSettings();
+    if (Array.isArray(settings.oauthTokens)) {
+      for (const stored of settings.oauthTokens) {
+        const token: IOAuthToken = {
+          ...stored,
+          accessTokenExpiresAt: new Date(stored.accessTokenExpiresAt),
+          refreshTokenExpiresAt: stored.refreshTokenExpiresAt
+            ? new Date(stored.refreshTokenExpiresAt)
+            : undefined,
+        };
+        tokens.set(token.accessToken, token);
+        if (token.refreshToken) {
+          tokens.set(token.refreshToken, token);
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Failed to initialize OAuth tokens from settings:', error);
+  }
+})();
 
 /**
  * Get all OAuth clients from configuration
@@ -167,6 +192,27 @@ export const saveToken = (
     tokens.set(refreshToken, token);
   }
 
+  // Persist tokens to settings
+  try {
+    const settings = loadSettings();
+    const existing = settings.oauthTokens || [];
+    const filtered = existing.filter(
+      (t) => t.accessToken !== token.accessToken && t.refreshToken !== token.refreshToken,
+    );
+    const updated = [
+      ...filtered,
+      {
+        ...token,
+        accessTokenExpiresAt: token.accessTokenExpiresAt,
+        refreshTokenExpiresAt: token.refreshTokenExpiresAt,
+      },
+    ];
+    settings.oauthTokens = updated;
+    saveSettings(settings);
+  } catch (error) {
+    console.error('Failed to persist OAuth token to settings:', error);
+  }
+
   return token;
 };
 
@@ -206,6 +252,20 @@ export const revokeToken = (token: string): void => {
     if (tokenData.refreshToken) {
       tokens.delete(tokenData.refreshToken);
     }
+
+    // Also remove from persisted settings
+    try {
+      const settings = loadSettings();
+      if (Array.isArray(settings.oauthTokens)) {
+        settings.oauthTokens = settings.oauthTokens.filter(
+          (t) =>
+            t.accessToken !== tokenData.accessToken && t.refreshToken !== tokenData.refreshToken,
+        );
+        saveSettings(settings);
+      }
+    } catch (error) {
+      console.error('Failed to remove OAuth token from settings:', error);
+    }
   }
 };
 
@@ -232,8 +292,7 @@ export const cleanupExpired = (): void => {
     processedTokens.add(token.accessToken);
 
     const accessExpired = token.accessTokenExpiresAt < now;
-    const refreshExpired =
-      token.refreshTokenExpiresAt && token.refreshTokenExpiresAt < now;
+    const refreshExpired = token.refreshTokenExpiresAt && token.refreshTokenExpiresAt < now;
 
     // If both are expired, remove the token
     if (accessExpired && (!token.refreshToken || refreshExpired)) {
@@ -242,6 +301,30 @@ export const cleanupExpired = (): void => {
         tokens.delete(token.refreshToken);
       }
     }
+  }
+
+  // Sync persisted tokens: keep only non-expired ones
+  try {
+    const settings = loadSettings();
+    if (Array.isArray(settings.oauthTokens)) {
+      const validTokens: IOAuthToken[] = [];
+      for (const stored of settings.oauthTokens) {
+        const accessExpiresAt = new Date(stored.accessTokenExpiresAt);
+        const refreshExpiresAt = stored.refreshTokenExpiresAt
+          ? new Date(stored.refreshTokenExpiresAt)
+          : undefined;
+        const accessExpired = accessExpiresAt < now;
+        const refreshExpired = refreshExpiresAt && refreshExpiresAt < now;
+
+        if (!accessExpired || (stored.refreshToken && !refreshExpired)) {
+          validTokens.push(stored);
+        }
+      }
+      settings.oauthTokens = validTokens;
+      saveSettings(settings);
+    }
+  } catch (error) {
+    console.error('Failed to cleanup persisted OAuth tokens:', error);
   }
 };
 
