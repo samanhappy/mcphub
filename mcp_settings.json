@@ -104,7 +104,7 @@
       ]
     },
     {
-      "clientId": "86ad60b9bacaea6342378b474d90980f",
+      "clientId": "6377bc3d11e7a3da74373d961eda4fff",
       "name": "Cherry Studio",
       "redirectUris": [
         "http://127.0.0.1:12346/oauth/callback"
