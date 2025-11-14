@@ -383,6 +383,16 @@
     "confirmVariablesMessage": "Veuillez vous assurer que ces variables sont correctement définies dans votre environnement d'exécution. Continuer l'installation du serveur ?",
     "confirmAndInstall": "Confirmer et installer"
   },
+  "oauthServer": {
+    "authorizeTitle": "Autoriser l'application",
+    "authorizeSubtitle": "Autorisez cette application à accéder à votre compte MCPHub.",
+    "buttons": {
+      "approve": "Autoriser l'accès",
+      "deny": "Refuser",
+      "approveSubtitle": "Recommandé si vous faites confiance à cette application.",
+      "denySubtitle": "Vous pourrez toujours accorder l'accès plus tard."
+    }
+  },
   "cloud": {
     "title": "Support Cloud",
     "subtitle": "Propulsé par MCPRouter",

@@ -383,6 +383,16 @@
     "confirmVariablesMessage": "Please ensure these variables are properly defined in your runtime environment. Continue installing server?",
     "confirmAndInstall": "Confirm and Install"
   },
+  "oauthServer": {
+    "authorizeTitle": "Authorize Application",
+    "authorizeSubtitle": "Allow this application to access your MCPHub account.",
+    "buttons": {
+      "approve": "Allow access",
+      "deny": "Deny",
+      "approveSubtitle": "Recommended if you trust this application.",
+      "denySubtitle": "You can always grant access later."
+    }
+  },
   "cloud": {
     "title": "Cloud Support",
     "subtitle": "Powered by MCPRouter",

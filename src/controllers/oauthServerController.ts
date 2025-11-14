@@ -50,11 +50,11 @@ function resolveUserFromRequest(req: Request): AuthenticatedUser | null {
  */
 function escapeHtml(unsafe: string): string {
   return unsafe
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
 }
 
 /**
@@ -69,6 +69,106 @@ function validateQueryParam(value: any, name: string, pattern?: RegExp): string 
   }
   return value;
 }
+
+/**
+ * Generate OAuth authorization consent HTML page with i18n support
+ * (keeps visual style consistent with OAuth callback pages)
+ */
+const generateAuthorizeHtml = (
+  title: string,
+  message: string,
+  options: {
+    clientName: string;
+    scopes: { name: string; description: string }[];
+    approveLabel: string;
+    denyLabel: string;
+    approveButtonLabel: string;
+    denyButtonLabel: string;
+    formFields: string;
+  },
+): string => {
+  const backgroundColor = '#eef5ff';
+  const borderColor = '#c3d4ff';
+  const titleColor = '#23408f';
+  const approveColor = '#2563eb';
+  const denyColor = '#ef4444';
+
+  return `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta charset="utf-8" />
+        <title>${escapeHtml(title)}</title>
+        <style>
+          body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 640px; margin: 40px auto; padding: 24px; background: #f3f4f6; }
+          .container { background-color: ${backgroundColor}; border: 1px solid ${borderColor}; padding: 24px 28px; border-radius: 12px; box-shadow: 0 10px 25px rgba(15, 23, 42, 0.12); }
+          h1 { color: ${titleColor}; margin-top: 0; font-size: 22px; display: flex; align-items: center; gap: 8px; }
+          h1 span.icon { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 999px; background: white; border: 1px solid ${borderColor}; font-size: 16px; }
+          p.subtitle { margin-top: 8px; margin-bottom: 20px; color: #4b5563; font-size: 14px; }
+          .client-box { margin: 16px 0 20px; padding: 14px 16px; background: #eef2ff; border-radius: 10px; border: 1px solid #e5e7eb; display: flex; flex-direction: column; gap: 4px; }
+          .client-box-label { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: #6b7280; }
+          .client-box-name { font-weight: 600; color: #111827; }
+          .scopes { margin: 22px 0 16px; }
+          .scopes-title { font-size: 13px; font-weight: 600; color: #374151; margin-bottom: 8px; }
+          .scope-item { padding: 8px 0; border-bottom: 1px solid #e5e7eb; display: flex; flex-direction: column; gap: 2px; }
+          .scope-item:last-child { border-bottom: none; }
+          .scope-name { font-weight: 600; font-size: 13px; color: #111827; }
+          .scope-description { font-size: 12px; color: #4b5563; }
+          .buttons { margin-top: 26px; display: flex; gap: 12px; }
+          .buttons form { flex: 1; }
+          button { width: 100%; padding: 10px 14px; border-radius: 999px; cursor: pointer; font-size: 14px; font-weight: 500; border-width: 1px; border-style: solid; transition: background-color 120ms ease, box-shadow 120ms ease, transform 60ms ease; }
+          button.approve { background: ${approveColor}; color: white; border-color: ${approveColor}; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35); }
+          button.approve:hover { background: #1d4ed8; box-shadow: 0 6px 16px rgba(37, 99, 235, 0.45); transform: translateY(-1px); }
+          button.deny { background: white; color: ${denyColor}; border-color: ${denyColor}; }
+          button.deny:hover { background: #fef2f2; }
+          .button-label { display: block; }
+          .button-sub { display: block; font-size: 11px; opacity: 0.85; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <h1><span class="icon">🔐</span>${escapeHtml(title)}</h1>
+          <p class="subtitle">${escapeHtml(message)}</p>
+          <div class="client-box">
+            <span class="client-box-label">${escapeHtml(options.clientName ? 'Application' : 'Client')}</span>
+            <span class="client-box-name">${escapeHtml(options.clientName || '')}</span>
+          </div>
+          <div class="scopes">
+            <div class="scopes-title">${escapeHtml('This application will be able to:')}</div>
+            ${options.scopes
+              .map(
+                (s) => `
+                  <div class="scope-item">
+                    <span class="scope-name">${escapeHtml(s.name)}</span>
+                    <span class="scope-description">${escapeHtml(s.description)}</span>
+                  </div>
+                `,
+              )
+              .join('')}
+          </div>
+          <div class="buttons">
+            <form method="POST" action="/oauth/authorize">
+              ${options.formFields}
+              <input type="hidden" name="allow" value="true" />
+              <button type="submit" class="approve">
+                <span class="button-label">${escapeHtml(options.approveLabel)}</span>
+                <span class="button-sub">${escapeHtml(options.approveButtonLabel)}</span>
+              </button>
+            </form>
+            <form method="POST" action="/oauth/authorize">
+              ${options.formFields}
+              <input type="hidden" name="allow" value="false" />
+              <button type="submit" class="deny">
+                <span class="button-label">${escapeHtml(options.denyLabel)}</span>
+                <span class="button-sub">${escapeHtml(options.denyButtonLabel)}</span>
+              </button>
+            </form>
+          </div>
+        </div>
+      </body>
+    </html>
+  `;
+};
 
 /**
  * GET /oauth/authorize
@@ -86,14 +186,28 @@ export const getAuthorize = async (req: Request, res: Response): Promise<void> =
     const client_id = validateQueryParam(req.query.client_id, 'client_id', /^[a-zA-Z0-9_-]+$/);
     const redirect_uri = validateQueryParam(req.query.redirect_uri, 'redirect_uri');
     const response_type = validateQueryParam(req.query.response_type, 'response_type', /^code$/);
-    const scope = req.query.scope ? validateQueryParam(req.query.scope, 'scope', /^[a-zA-Z0-9_ ]+$/) : undefined;
-    const state = req.query.state ? validateQueryParam(req.query.state, 'state', /^[a-zA-Z0-9_-]+$/) : undefined;
-    const code_challenge = req.query.code_challenge ? validateQueryParam(req.query.code_challenge, 'code_challenge', /^[a-zA-Z0-9_-]+$/) : undefined;
-    const code_challenge_method = req.query.code_challenge_method ? validateQueryParam(req.query.code_challenge_method, 'code_challenge_method', /^(S256|plain)$/) : undefined;
+    const scope = req.query.scope
+      ? validateQueryParam(req.query.scope, 'scope', /^[a-zA-Z0-9_ ]+$/)
+      : undefined;
+    const state = req.query.state
+      ? validateQueryParam(req.query.state, 'state', /^[a-zA-Z0-9_-]+$/)
+      : undefined;
+    const code_challenge = req.query.code_challenge
+      ? validateQueryParam(req.query.code_challenge, 'code_challenge', /^[a-zA-Z0-9_-]+$/)
+      : undefined;
+    const code_challenge_method = req.query.code_challenge_method
+      ? validateQueryParam(
+          req.query.code_challenge_method,
+          'code_challenge_method',
+          /^(S256|plain)$/,
+        )
+      : undefined;
 
     // Validate required parameters
     if (!client_id || !redirect_uri || !response_type) {
-      res.status(400).json({ error: 'invalid_request', error_description: 'Missing required parameters' });
+      res
+        .status(400)
+        .json({ error: 'invalid_request', error_description: 'Missing required parameters' });
       return;
     }
 
@@ -132,111 +246,45 @@ export const getAuthorize = async (req: Request, res: Response): Promise<void> =
       ? `<input type="hidden" name="token" value="${escapeHtml(requestToken)}">`
       : '';
 
-    // Render authorization consent page
-    res.send(`
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <title>Authorize Application</title>
-          <style>
-            body {
-              font-family: Arial, sans-serif;
-              max-width: 500px;
-              margin: 50px auto;
-              padding: 20px;
-            }
-            .consent-box {
-              border: 1px solid #ddd;
-              border-radius: 8px;
-              padding: 30px;
-              background: #f9f9f9;
-            }
-            h2 {
-              color: #333;
-              margin-top: 0;
-            }
-            .client-info {
-              margin: 20px 0;
-              padding: 15px;
-              background: white;
-              border-radius: 4px;
-            }
-            .scopes {
-              margin: 20px 0;
-            }
-            .scope-item {
-              padding: 8px 0;
-              border-bottom: 1px solid #eee;
-            }
-            .buttons {
-              margin-top: 30px;
-              display: flex;
-              gap: 10px;
-            }
-            button {
-              flex: 1;
-              padding: 12px;
-              border: none;
-              border-radius: 4px;
-              cursor: pointer;
-              font-size: 16px;
-            }
-            .approve {
-              background: #4CAF50;
-              color: white;
-            }
-            .deny {
-              background: #f44336;
-              color: white;
-            }
-            .approve:hover {
-              background: #45a049;
-            }
-            .deny:hover {
-              background: #da190b;
-            }
-          </style>
-        </head>
-        <body>
-          <div class="consent-box">
-            <h2>Authorize Application</h2>
-            <div class="client-info">
-              <strong>${client.name}</strong> is requesting access to your MCPHub account.
-            </div>
-            <div class="scopes">
-              <h3>This application will be able to:</h3>
-              ${(scope || 'read write').split(' ').map(s => `
-                <div class="scope-item">
-                  <strong>${escapeHtml(s)}</strong> - ${escapeHtml(getScopeDescription(s))}
-                </div>
-              `).join('')}
-            </div>
-            <div class="buttons">
-              <form method="POST" action="/oauth/authorize" style="flex: 1;">
-                <input type="hidden" name="client_id" value="${escapeHtml(client_id)}">
-                <input type="hidden" name="redirect_uri" value="${escapeHtml(redirect_uri)}">
-                <input type="hidden" name="response_type" value="${escapeHtml(response_type)}">
-                <input type="hidden" name="scope" value="${escapeHtml(scope || '')}">
-                <input type="hidden" name="state" value="${escapeHtml(state || '')}">
-                ${code_challenge ? `<input type="hidden" name="code_challenge" value="${escapeHtml(code_challenge)}">` : ''}
-                ${code_challenge_method ? `<input type="hidden" name="code_challenge_method" value="${escapeHtml(code_challenge_method)}">` : ''}
-                ${tokenField}
-                <input type="hidden" name="allow" value="true">
-                <button type="submit" class="approve">Approve</button>
-              </form>
-              <form method="POST" action="/oauth/authorize" style="flex: 1;">
-                <input type="hidden" name="client_id" value="${escapeHtml(client_id)}">
-                <input type="hidden" name="redirect_uri" value="${escapeHtml(redirect_uri)}">
-                <input type="hidden" name="state" value="${escapeHtml(state || '')}">
-                ${tokenField}
-                <input type="hidden" name="allow" value="false">
-                <button type="submit" class="deny">Deny</button>
-              </form>
-            </div>
-          </div>
-        </body>
-      </html>
-    `);
+    // Get translation function from request (set by i18n middleware)
+    const t = (req as any).t || ((key: string) => key);
+
+    const scopes = (scope || 'read write')
+      .split(' ')
+      .filter((s) => s)
+      .map((s) => ({ name: s, description: getScopeDescription(s) }));
+
+    const formFields = `
+      <input type="hidden" name="client_id" value="${escapeHtml(client_id)}" />
+      <input type="hidden" name="redirect_uri" value="${escapeHtml(redirect_uri)}" />
+      <input type="hidden" name="response_type" value="${escapeHtml(response_type)}" />
+      <input type="hidden" name="scope" value="${escapeHtml(scope || '')}" />
+      <input type="hidden" name="state" value="${escapeHtml(state || '')}" />
+      ${code_challenge ? `<input type="hidden" name="code_challenge" value="${escapeHtml(code_challenge)}" />` : ''}
+      ${code_challenge_method ? `<input type="hidden" name="code_challenge_method" value="${escapeHtml(code_challenge_method)}" />` : ''}
+      ${tokenField}
+    `;
+
+    // Render authorization consent page with consistent, localized styling
+    res.send(
+      generateAuthorizeHtml(
+        t('oauthServer.authorizeTitle') || 'Authorize Application',
+        t('oauthServer.authorizeSubtitle') ||
+          'Allow this application to access your MCPHub account.',
+        {
+          clientName: client.name,
+          scopes,
+          approveLabel: t('oauthServer.buttons.approve') || 'Allow access',
+          denyLabel: t('oauthServer.buttons.deny') || 'Deny',
+          approveButtonLabel:
+            t('oauthServer.buttons.approveSubtitle') ||
+            'Recommended if you trust this application.',
+          denyButtonLabel:
+            t('oauthServer.buttons.denySubtitle') || 'You can always grant access later.',
+          formFields,
+        },
+      ),
+    );
   } catch (error) {
     console.error('Authorization error:', error);
     res.status(500).json({ error: 'server_error', error_description: 'Internal server error' });
@@ -304,13 +352,13 @@ export const postAuthorize = async (req: Request, res: Response): Promise<void> 
     res.redirect(redirectUrl.toString());
   } catch (error) {
     console.error('Authorization error:', error);
-    
+
     // Handle OAuth errors
     if (error instanceof Error && 'code' in error) {
       const oauthError = error as any;
       const redirect_uri = req.body.redirect_uri;
       const state = req.body.state;
-      
+
       if (redirect_uri) {
         const redirectUrl = new URL(redirect_uri);
         redirectUrl.searchParams.set('error', oauthError.name || 'server_error');
@@ -322,9 +370,9 @@ export const postAuthorize = async (req: Request, res: Response): Promise<void> 
         }
         res.redirect(redirectUrl.toString());
       } else {
-        res.status(400).json({ 
+        res.status(400).json({
           error: oauthError.name || 'server_error',
-          error_description: oauthError.message || 'Internal server error'
+          error_description: oauthError.message || 'Internal server error',
         });
       }
     } else {
@@ -349,7 +397,7 @@ export const postToken = async (req: Request, res: Response): Promise<void> => {
     });
   } catch (error) {
     console.error('Token error:', error);
-    
+
     if (error instanceof Error && 'code' in error) {
       const oauthError = error as any;
       res.status(oauthError.code || 400).json({
@@ -372,7 +420,7 @@ export const postToken = async (req: Request, res: Response): Promise<void> => {
 export const getUserInfo = async (req: Request, res: Response): Promise<void> => {
   try {
     const token = await handleAuthenticateRequest(req, res);
-    
+
     res.json({
       sub: token.user.username,
       username: token.user.username,
@@ -395,7 +443,7 @@ export const getMetadata = async (req: Request, res: Response): Promise<void> =>
   try {
     const settings = loadSettings();
     const oauthConfig = settings.systemConfig?.oauthServer;
-    
+
     if (!oauthConfig || !oauthConfig.enabled) {
       res.status(404).json({ error: 'OAuth server not configured' });
       return;
@@ -412,9 +460,10 @@ export const getMetadata = async (req: Request, res: Response): Promise<void> =>
       scopes_supported: allowedScopes,
       response_types_supported: ['code'],
       grant_types_supported: ['authorization_code', 'refresh_token'],
-      token_endpoint_auth_methods_supported: oauthConfig.requireClientSecret !== false 
-        ? ['client_secret_basic', 'client_secret_post', 'none']
-        : ['none'],
+      token_endpoint_auth_methods_supported:
+        oauthConfig.requireClientSecret !== false
+          ? ['client_secret_basic', 'client_secret_post', 'none']
+          : ['none'],
       code_challenge_methods_supported: ['S256', 'plain'],
     };
 
@@ -439,7 +488,7 @@ export const getProtectedResourceMetadata = async (req: Request, res: Response):
   try {
     const settings = loadSettings();
     const oauthConfig = settings.systemConfig?.oauthServer;
-    
+
     if (!oauthConfig || !oauthConfig.enabled) {
       res.status(404).json({ error: 'OAuth server not configured' });
       return;

@@ -384,6 +384,16 @@
     "confirmVariablesMessage": "请确保这些变量在运行环境中已正确定义。是否继续安装服务器？",
     "confirmAndInstall": "确认并安装"
   },
+  "oauthServer": {
+    "authorizeTitle": "授权应用",
+    "authorizeSubtitle": "允许此应用访问您的 MCPHub 账号。",
+    "buttons": {
+      "approve": "允许访问",
+      "deny": "拒绝",
+      "approveSubtitle": "如果您信任此应用，建议选择允许。",
+      "denySubtitle": "您可以在之后随时再次授权。"
+    }
+  },
   "cloud": {
     "title": "云端支持",
     "subtitle": "由 MCPRouter 提供支持",

@@ -383,6 +383,16 @@
     "confirmVariablesMessage": "Lütfen bu değişkenlerin çalışma ortamınızda düzgün tanımlandığından emin olun. Sunucu yüklemeye devam edilsin mi?",
     "confirmAndInstall": "Onayla ve Yükle"
   },
+  "oauthServer": {
+    "authorizeTitle": "Uygulamayı Yetkilendir",
+    "authorizeSubtitle": "Bu uygulamanın MCPHub hesabınıza erişmesine izin verin.",
+    "buttons": {
+      "approve": "Erişime izin ver",
+      "deny": "Reddet",
+      "approveSubtitle": "Bu uygulamaya güveniyorsanız izin vermeniz önerilir.",
+      "denySubtitle": "İstediğiniz zaman daha sonra erişim verebilirsiniz."
+    }
+  },
   "cloud": {
     "title": "Bulut Desteği",
     "subtitle": "MCPRouter tarafından desteklenmektedir",
