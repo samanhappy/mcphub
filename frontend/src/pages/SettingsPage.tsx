@@ -49,6 +49,20 @@ const SettingsPage: React.FC = () => {
     baseUrl: 'https://api.mcprouter.to/v1',
   })
 
+  const [tempOAuthServerConfig, setTempOAuthServerConfig] = useState<{
+    accessTokenLifetime: string
+    refreshTokenLifetime: string
+    authorizationCodeLifetime: string
+    allowedScopes: string
+    dynamicRegistrationAllowedGrantTypes: string
+  }>({
+    accessTokenLifetime: '3600',
+    refreshTokenLifetime: '1209600',
+    authorizationCodeLifetime: '300',
+    allowedScopes: 'read, write',
+    dynamicRegistrationAllowedGrantTypes: 'authorization_code, refresh_token',
+  })
+
   const [tempNameSeparator, setTempNameSeparator] = useState<string>('-')
 
   const {
@@ -58,6 +72,7 @@ const SettingsPage: React.FC = () => {
     installConfig: savedInstallConfig,
     smartRoutingConfig,
     mcpRouterConfig,
+    oauthServerConfig,
     nameSeparator,
     loading,
     updateRoutingConfig,
@@ -66,6 +81,7 @@ const SettingsPage: React.FC = () => {
     updateSmartRoutingConfig,
     updateSmartRoutingConfigBatch,
     updateMCPRouterConfig,
+    updateOAuthServerConfig,
     updateNameSeparator,
     exportMCPSettings,
   } = useSettingsData()
@@ -101,6 +117,33 @@ const SettingsPage: React.FC = () => {
     }
   }, [mcpRouterConfig])
 
+  useEffect(() => {
+    if (oauthServerConfig) {
+      setTempOAuthServerConfig({
+        accessTokenLifetime:
+          oauthServerConfig.accessTokenLifetime !== undefined
+            ? String(oauthServerConfig.accessTokenLifetime)
+            : '',
+        refreshTokenLifetime:
+          oauthServerConfig.refreshTokenLifetime !== undefined
+            ? String(oauthServerConfig.refreshTokenLifetime)
+            : '',
+        authorizationCodeLifetime:
+          oauthServerConfig.authorizationCodeLifetime !== undefined
+            ? String(oauthServerConfig.authorizationCodeLifetime)
+            : '',
+        allowedScopes:
+          oauthServerConfig.allowedScopes && oauthServerConfig.allowedScopes.length > 0
+            ? oauthServerConfig.allowedScopes.join(', ')
+            : '',
+        dynamicRegistrationAllowedGrantTypes:
+          oauthServerConfig.dynamicRegistration?.allowedGrantTypes?.length
+            ? oauthServerConfig.dynamicRegistration.allowedGrantTypes.join(', ')
+            : '',
+      })
+    }
+  }, [oauthServerConfig])
+
   // Update local tempNameSeparator when nameSeparator changes
   useEffect(() => {
     setTempNameSeparator(nameSeparator)
@@ -110,6 +153,7 @@ const SettingsPage: React.FC = () => {
     routingConfig: false,
     installConfig: false,
     smartRoutingConfig: false,
+    oauthServerConfig: false,
     mcpRouterConfig: false,
     nameSeparator: false,
     password: false,
@@ -121,6 +165,7 @@ const SettingsPage: React.FC = () => {
       | 'routingConfig'
       | 'installConfig'
       | 'smartRoutingConfig'
+      | 'oauthServerConfig'
       | 'mcpRouterConfig'
       | 'nameSeparator'
       | 'password'
@@ -220,6 +265,81 @@ const SettingsPage: React.FC = () => {
 
   const saveMCPRouterConfig = async (key: 'apiKey' | 'referer' | 'title' | 'baseUrl') => {
     await updateMCPRouterConfig(key, tempMCPRouterConfig[key])
+  }
+
+  type OAuthServerNumberField =
+    | 'accessTokenLifetime'
+    | 'refreshTokenLifetime'
+    | 'authorizationCodeLifetime'
+
+  const handleOAuthServerNumberChange = (key: OAuthServerNumberField, value: string) => {
+    setTempOAuthServerConfig((prev) => ({
+      ...prev,
+      [key]: value,
+    }))
+  }
+
+  const handleOAuthServerTextChange = (
+    key: 'allowedScopes' | 'dynamicRegistrationAllowedGrantTypes',
+    value: string,
+  ) => {
+    setTempOAuthServerConfig((prev) => ({
+      ...prev,
+      [key]: value,
+    }))
+  }
+
+  const saveOAuthServerNumberConfig = async (key: OAuthServerNumberField) => {
+    const rawValue = tempOAuthServerConfig[key]
+    if (!rawValue || rawValue.trim() === '') {
+      showToast(t('settings.invalidNumberInput') || 'Please enter a valid number', 'error')
+      return
+    }
+
+    const parsedValue = Number(rawValue)
+    if (Number.isNaN(parsedValue) || parsedValue < 0) {
+      showToast(t('settings.invalidNumberInput') || 'Please enter a valid number', 'error')
+      return
+    }
+
+    await updateOAuthServerConfig(key, parsedValue)
+  }
+
+  const saveOAuthServerAllowedScopes = async () => {
+    const scopes = tempOAuthServerConfig.allowedScopes
+      .split(',')
+      .map((scope) => scope.trim())
+      .filter((scope) => scope.length > 0)
+
+    await updateOAuthServerConfig('allowedScopes', scopes)
+  }
+
+  const saveOAuthServerGrantTypes = async () => {
+    const grantTypes = tempOAuthServerConfig.dynamicRegistrationAllowedGrantTypes
+      .split(',')
+      .map((grant) => grant.trim())
+      .filter((grant) => grant.length > 0)
+
+    await updateOAuthServerConfig('dynamicRegistration', {
+      ...oauthServerConfig.dynamicRegistration,
+      allowedGrantTypes: grantTypes,
+    })
+  }
+
+  const handleOAuthServerToggle = async (
+    key: 'enabled' | 'requireClientSecret' | 'requireState',
+    value: boolean,
+  ) => {
+    await updateOAuthServerConfig(key, value)
+  }
+
+  const handleDynamicRegistrationToggle = async (
+    updates: Partial<typeof oauthServerConfig.dynamicRegistration>,
+  ) => {
+    await updateOAuthServerConfig('dynamicRegistration', {
+      ...oauthServerConfig.dynamicRegistration,
+      ...updates,
+    })
   }
 
   const saveNameSeparator = async () => {
@@ -485,6 +605,266 @@ const SettingsPage: React.FC = () => {
                   >
                     {t('common.save')}
                   </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </PermissionChecker>
+
+      {/* OAuth Server Configuration Settings */}
+      <PermissionChecker permissions={PERMISSIONS.SETTINGS_OAUTH_SERVER}>
+        <div className="bg-white shadow rounded-lg py-4 px-6 mb-6 dashboard-card">
+          <div
+            className="flex justify-between items-center cursor-pointer"
+            onClick={() => toggleSection('oauthServerConfig')}
+          >
+            <h2 className="font-semibold text-gray-800">{t('pages.settings.oauthServer')}</h2>
+            <span className="text-gray-500">{sectionsVisible.oauthServerConfig ? '▼' : '►'}</span>
+          </div>
+
+          {sectionsVisible.oauthServerConfig && (
+            <div className="space-y-4 mt-4">
+              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-md">
+                <div>
+                  <h3 className="font-medium text-gray-700">{t('settings.enableOauthServer')}</h3>
+                  <p className="text-sm text-gray-500">
+                    {t('settings.enableOauthServerDescription')}
+                  </p>
+                </div>
+                <Switch
+                  disabled={loading}
+                  checked={oauthServerConfig.enabled}
+                  onCheckedChange={(checked) => handleOAuthServerToggle('enabled', checked)}
+                />
+              </div>
+
+              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-md">
+                <div>
+                  <h3 className="font-medium text-gray-700">
+                    {t('settings.requireClientSecret')}
+                  </h3>
+                  <p className="text-sm text-gray-500">
+                    {t('settings.requireClientSecretDescription')}
+                  </p>
+                </div>
+                <Switch
+                  disabled={loading || !oauthServerConfig.enabled}
+                  checked={oauthServerConfig.requireClientSecret}
+                  onCheckedChange={(checked) =>
+                    handleOAuthServerToggle('requireClientSecret', checked)
+                  }
+                />
+              </div>
+
+              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-md">
+                <div>
+                  <h3 className="font-medium text-gray-700">{t('settings.requireState')}</h3>
+                  <p className="text-sm text-gray-500">{t('settings.requireStateDescription')}</p>
+                </div>
+                <Switch
+                  disabled={loading || !oauthServerConfig.enabled}
+                  checked={oauthServerConfig.requireState}
+                  onCheckedChange={(checked) => handleOAuthServerToggle('requireState', checked)}
+                />
+              </div>
+
+              <div className="p-3 bg-gray-50 rounded-md">
+                <div className="mb-2">
+                  <h3 className="font-medium text-gray-700">
+                    {t('settings.accessTokenLifetime')}
+                  </h3>
+                  <p className="text-sm text-gray-500">
+                    {t('settings.accessTokenLifetimeDescription')}
+                  </p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="number"
+                    value={tempOAuthServerConfig.accessTokenLifetime}
+                    onChange={(e) =>
+                      handleOAuthServerNumberChange('accessTokenLifetime', e.target.value)
+                    }
+                    placeholder={t('settings.accessTokenLifetimePlaceholder')}
+                    className="flex-1 mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm form-input"
+                    disabled={loading}
+                  />
+                  <button
+                    onClick={() => saveOAuthServerNumberConfig('accessTokenLifetime')}
+                    disabled={loading}
+                    className="mt-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium disabled:opacity-50 btn-primary"
+                  >
+                    {t('common.save')}
+                  </button>
+                </div>
+              </div>
+
+              <div className="p-3 bg-gray-50 rounded-md">
+                <div className="mb-2">
+                  <h3 className="font-medium text-gray-700">
+                    {t('settings.refreshTokenLifetime')}
+                  </h3>
+                  <p className="text-sm text-gray-500">
+                    {t('settings.refreshTokenLifetimeDescription')}
+                  </p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="number"
+                    value={tempOAuthServerConfig.refreshTokenLifetime}
+                    onChange={(e) =>
+                      handleOAuthServerNumberChange('refreshTokenLifetime', e.target.value)
+                    }
+                    placeholder={t('settings.refreshTokenLifetimePlaceholder')}
+                    className="flex-1 mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm form-input"
+                    disabled={loading}
+                  />
+                  <button
+                    onClick={() => saveOAuthServerNumberConfig('refreshTokenLifetime')}
+                    disabled={loading}
+                    className="mt-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium disabled:opacity-50 btn-primary"
+                  >
+                    {t('common.save')}
+                  </button>
+                </div>
+              </div>
+
+              <div className="p-3 bg-gray-50 rounded-md">
+                <div className="mb-2">
+                  <h3 className="font-medium text-gray-700">
+                    {t('settings.authorizationCodeLifetime')}
+                  </h3>
+                  <p className="text-sm text-gray-500">
+                    {t('settings.authorizationCodeLifetimeDescription')}
+                  </p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="number"
+                    value={tempOAuthServerConfig.authorizationCodeLifetime}
+                    onChange={(e) =>
+                      handleOAuthServerNumberChange('authorizationCodeLifetime', e.target.value)
+                    }
+                    placeholder={t('settings.authorizationCodeLifetimePlaceholder')}
+                    className="flex-1 mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm form-input"
+                    disabled={loading}
+                  />
+                  <button
+                    onClick={() => saveOAuthServerNumberConfig('authorizationCodeLifetime')}
+                    disabled={loading}
+                    className="mt-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium disabled:opacity-50 btn-primary"
+                  >
+                    {t('common.save')}
+                  </button>
+                </div>
+              </div>
+
+              <div className="p-3 bg-gray-50 rounded-md">
+                <div className="mb-2">
+                  <h3 className="font-medium text-gray-700">{t('settings.allowedScopes')}</h3>
+                  <p className="text-sm text-gray-500">
+                    {t('settings.allowedScopesDescription')}
+                  </p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="text"
+                    value={tempOAuthServerConfig.allowedScopes}
+                    onChange={(e) => handleOAuthServerTextChange('allowedScopes', e.target.value)}
+                    placeholder={t('settings.allowedScopesPlaceholder')}
+                    className="flex-1 mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm form-input"
+                    disabled={loading}
+                  />
+                  <button
+                    onClick={saveOAuthServerAllowedScopes}
+                    disabled={loading}
+                    className="mt-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium disabled:opacity-50 btn-primary"
+                  >
+                    {t('common.save')}
+                  </button>
+                </div>
+              </div>
+
+              <div className="p-3 bg-gray-50 rounded-md space-y-4">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <h3 className="font-medium text-gray-700">
+                      {t('settings.enableDynamicRegistration')}
+                    </h3>
+                    <p className="text-sm text-gray-500">
+                      {t('settings.dynamicRegistrationDescription')}
+                    </p>
+                  </div>
+                  <Switch
+                    disabled={loading || !oauthServerConfig.enabled}
+                    checked={oauthServerConfig.dynamicRegistration.enabled}
+                    onCheckedChange={(checked) =>
+                      handleDynamicRegistrationToggle({ enabled: checked })
+                    }
+                  />
+                </div>
+
+                <div>
+                  <div className="mb-2">
+                    <h3 className="font-medium text-gray-700">
+                      {t('settings.dynamicRegistrationAllowedGrantTypes')}
+                    </h3>
+                    <p className="text-sm text-gray-500">
+                      {t('settings.dynamicRegistrationAllowedGrantTypesDescription')}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="text"
+                      value={tempOAuthServerConfig.dynamicRegistrationAllowedGrantTypes}
+                      onChange={(e) =>
+                        handleOAuthServerTextChange(
+                          'dynamicRegistrationAllowedGrantTypes',
+                          e.target.value,
+                        )
+                      }
+                      placeholder={t('settings.dynamicRegistrationAllowedGrantTypesPlaceholder')}
+                      className="flex-1 mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm form-input"
+                      disabled={
+                        loading ||
+                        !oauthServerConfig.enabled ||
+                        !oauthServerConfig.dynamicRegistration.enabled
+                      }
+                    />
+                    <button
+                      onClick={saveOAuthServerGrantTypes}
+                      disabled={
+                        loading ||
+                        !oauthServerConfig.enabled ||
+                        !oauthServerConfig.dynamicRegistration.enabled
+                      }
+                      className="mt-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium disabled:opacity-50 btn-primary"
+                    >
+                      {t('common.save')}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-medium text-gray-700">
+                      {t('settings.dynamicRegistrationAuth')}
+                    </h3>
+                    <p className="text-sm text-gray-500">
+                      {t('settings.dynamicRegistrationAuthDescription')}
+                    </p>
+                  </div>
+                  <Switch
+                    disabled={
+                      loading ||
+                      !oauthServerConfig.enabled ||
+                      !oauthServerConfig.dynamicRegistration.enabled
+                    }
+                    checked={oauthServerConfig.dynamicRegistration.requiresAuthentication}
+                    onCheckedChange={(checked) =>
+                      handleDynamicRegistrationToggle({ requiresAuthentication: checked })
+                    }
+                  />
                 </div>
               </div>
             </div>

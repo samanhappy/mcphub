@@ -284,7 +284,8 @@
       "appearance": "Appearance",
       "routeConfig": "Security",
       "installConfig": "Installation",
-      "smartRouting": "Smart Routing"
+      "smartRouting": "Smart Routing",
+      "oauthServer": "OAuth Server"
     },
     "market": {
       "title": "Market Hub - Local and Cloud Markets"
@@ -591,7 +592,33 @@
     "copyToClipboard": "Copy to Clipboard",
     "downloadJson": "Download JSON",
     "exportSuccess": "Settings exported successfully",
-    "exportError": "Failed to fetch settings"
+    "exportError": "Failed to fetch settings",
+    "enableOauthServer": "Enable OAuth Server",
+    "enableOauthServerDescription": "Allow MCPHub to issue OAuth tokens for external clients",
+    "requireClientSecret": "Require Client Secret",
+    "requireClientSecretDescription": "When enabled, confidential clients must present a client secret (disable for PKCE-only clients)",
+    "requireState": "Require State Parameter",
+    "requireStateDescription": "Reject authorization requests that omit the OAuth state parameter",
+    "accessTokenLifetime": "Access Token Lifetime (seconds)",
+    "accessTokenLifetimeDescription": "How long issued access tokens remain valid",
+    "accessTokenLifetimePlaceholder": "e.g. 3600",
+    "refreshTokenLifetime": "Refresh Token Lifetime (seconds)",
+    "refreshTokenLifetimeDescription": "How long refresh tokens remain valid",
+    "refreshTokenLifetimePlaceholder": "e.g. 1209600",
+    "authorizationCodeLifetime": "Authorization Code Lifetime (seconds)",
+    "authorizationCodeLifetimeDescription": "How long authorization codes remain valid before they can be exchanged",
+    "authorizationCodeLifetimePlaceholder": "e.g. 300",
+    "allowedScopes": "Allowed Scopes",
+    "allowedScopesDescription": "Comma-separated list of scopes users can approve during authorization",
+    "allowedScopesPlaceholder": "e.g. read, write",
+    "enableDynamicRegistration": "Enable Dynamic Client Registration",
+    "dynamicRegistrationDescription": "Allow RFC 7591 compliant clients to self-register using the public endpoint",
+    "dynamicRegistrationAllowedGrantTypes": "Allowed Grant Types",
+    "dynamicRegistrationAllowedGrantTypesDescription": "Comma-separated list of grants permitted for dynamically registered clients",
+    "dynamicRegistrationAllowedGrantTypesPlaceholder": "e.g. authorization_code, refresh_token",
+    "dynamicRegistrationAuth": "Require Authentication",
+    "dynamicRegistrationAuthDescription": "Protect the registration endpoint so only authenticated requests can register clients",
+    "invalidNumberInput": "Please enter a valid non-negative number"
   },
   "dxt": {
     "upload": "Upload",

@@ -279,7 +279,8 @@
       "appearance": "外观",
       "routeConfig": "安全配置",
       "installConfig": "安装",
-      "smartRouting": "智能路由"
+      "smartRouting": "智能路由",
+      "oauthServer": "OAuth 服务器"
     },
     "groups": {
       "title": "分组管理"
@@ -593,7 +594,33 @@
     "copyToClipboard": "复制到剪贴板",
     "downloadJson": "下载 JSON",
     "exportSuccess": "配置导出成功",
-    "exportError": "获取配置失败"
+    "exportError": "获取配置失败",
+    "enableOauthServer": "启用 OAuth 服务器",
+    "enableOauthServerDescription": "允许 MCPHub 作为 OAuth 2.0 授权服务器向外部客户端签发令牌",
+    "requireClientSecret": "需要客户端密钥",
+    "requireClientSecretDescription": "开启后，保密客户端必须携带 client secret（如需仅使用 PKCE 的公共客户端可关闭）",
+    "requireState": "要求 state 参数",
+    "requireStateDescription": "拒绝未携带 state 参数的授权请求",
+    "accessTokenLifetime": "访问令牌有效期（秒）",
+    "accessTokenLifetimeDescription": "控制访问令牌可使用的时长",
+    "accessTokenLifetimePlaceholder": "例如：3600",
+    "refreshTokenLifetime": "刷新令牌有效期（秒）",
+    "refreshTokenLifetimeDescription": "控制刷新令牌的过期时间",
+    "refreshTokenLifetimePlaceholder": "例如：1209600",
+    "authorizationCodeLifetime": "授权码有效期（秒）",
+    "authorizationCodeLifetimeDescription": "授权码在被兑换前可保持有效的时间",
+    "authorizationCodeLifetimePlaceholder": "例如：300",
+    "allowedScopes": "允许的作用域",
+    "allowedScopesDescription": "使用逗号分隔的作用域列表，在授权时展示给用户",
+    "allowedScopesPlaceholder": "例如：read, write",
+    "enableDynamicRegistration": "启用动态客户端注册",
+    "dynamicRegistrationDescription": "允许遵循 RFC 7591 的客户端通过公共端点自行注册",
+    "dynamicRegistrationAllowedGrantTypes": "允许的授权类型",
+    "dynamicRegistrationAllowedGrantTypesDescription": "使用逗号分隔动态注册客户端可以使用的授权类型",
+    "dynamicRegistrationAllowedGrantTypesPlaceholder": "例如：authorization_code, refresh_token",
+    "dynamicRegistrationAuth": "注册需要认证",
+    "dynamicRegistrationAuthDescription": "开启后，注册端点需要认证请求才能创建客户端",
+    "invalidNumberInput": "请输入合法的非负数字"
   },
   "dxt": {
     "upload": "上传",

@@ -284,7 +284,8 @@
       "appearance": "Apparence",
       "routeConfig": "Sécurité",
       "installConfig": "Installation",
-      "smartRouting": "Routage intelligent"
+      "smartRouting": "Routage intelligent",
+      "oauthServer": "Serveur OAuth"
     },
     "market": {
       "title": "Marché Hub - Marchés locaux et Cloud"
@@ -591,7 +592,33 @@
     "copyToClipboard": "Copier dans le presse-papiers",
     "downloadJson": "Télécharger JSON",
     "exportSuccess": "Paramètres exportés avec succès",
-    "exportError": "Échec de la récupération des paramètres"
+    "exportError": "Échec de la récupération des paramètres",
+    "enableOauthServer": "Activer le serveur OAuth",
+    "enableOauthServerDescription": "Permet à MCPHub d'émettre des jetons OAuth pour les clients externes",
+    "requireClientSecret": "Exiger un secret client",
+    "requireClientSecretDescription": "Lorsque activé, les clients confidentiels doivent présenter un client secret (désactivez-le pour les clients PKCE publics)",
+    "requireState": "Exiger le paramètre state",
+    "requireStateDescription": "Refuser les demandes d'autorisation qui n'incluent pas le paramètre state",
+    "accessTokenLifetime": "Durée de vie du jeton d'accès (secondes)",
+    "accessTokenLifetimeDescription": "Durée pendant laquelle les jetons d'accès émis restent valides",
+    "accessTokenLifetimePlaceholder": "ex. 3600",
+    "refreshTokenLifetime": "Durée de vie du jeton d'actualisation (secondes)",
+    "refreshTokenLifetimeDescription": "Durée pendant laquelle les jetons d'actualisation restent valides",
+    "refreshTokenLifetimePlaceholder": "ex. 1209600",
+    "authorizationCodeLifetime": "Durée de vie du code d'autorisation (secondes)",
+    "authorizationCodeLifetimeDescription": "Temps pendant lequel les codes d'autorisation peuvent être échangés",
+    "authorizationCodeLifetimePlaceholder": "ex. 300",
+    "allowedScopes": "Scopes autorisés",
+    "allowedScopesDescription": "Liste séparée par des virgules des scopes que les utilisateurs peuvent approuver",
+    "allowedScopesPlaceholder": "ex. read, write",
+    "enableDynamicRegistration": "Activer l'enregistrement dynamique",
+    "dynamicRegistrationDescription": "Autoriser les clients conformes RFC 7591 à s'enregistrer via l'endpoint public",
+    "dynamicRegistrationAllowedGrantTypes": "Types de flux autorisés",
+    "dynamicRegistrationAllowedGrantTypesDescription": "Liste séparée par des virgules des types de flux disponibles pour les clients enregistrés dynamiquement",
+    "dynamicRegistrationAllowedGrantTypesPlaceholder": "ex. authorization_code, refresh_token",
+    "dynamicRegistrationAuth": "Exiger une authentification",
+    "dynamicRegistrationAuthDescription": "Protège l'endpoint d'enregistrement afin que seules les requêtes authentifiées puissent créer des clients",
+    "invalidNumberInput": "Veuillez saisir un nombre valide supérieur ou égal à zéro"
   },
   "dxt": {
     "upload": "Télécharger",

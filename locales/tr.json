@@ -284,7 +284,8 @@
       "appearance": "Görünüm",
       "routeConfig": "Güvenlik",
       "installConfig": "Kurulum",
-      "smartRouting": "Akıllı Yönlendirme"
+      "smartRouting": "Akıllı Yönlendirme",
+      "oauthServer": "OAuth Sunucusu"
     },
     "market": {
       "title": "Market Yönetimi - Yerel ve Bulut Marketler"
@@ -591,7 +592,33 @@
     "copyToClipboard": "Panoya Kopyala",
     "downloadJson": "JSON Olarak İndir",
     "exportSuccess": "Ayarlar başarıyla dışa aktarıldı",
-    "exportError": "Ayarlar getirilemedi"
+    "exportError": "Ayarlar getirilemedi",
+    "enableOauthServer": "OAuth Sunucusunu Etkinleştir",
+    "enableOauthServerDescription": "MCPHub'ın harici istemciler için OAuth jetonları vermesine izin ver",
+    "requireClientSecret": "İstemci Sırrı Zorunlu",
+    "requireClientSecretDescription": "Etkin olduğunda gizli istemciler client secret sunmalıdır (yalnızca PKCE kullanan istemciler için kapatabilirsiniz)",
+    "requireState": "State parametresi zorunlu",
+    "requireStateDescription": "State parametresi olmayan yetkilendirme isteklerini reddeder",
+    "accessTokenLifetime": "Erişim jetonu süresi (saniye)",
+    "accessTokenLifetimeDescription": "Verilen erişim jetonlarının geçerli kalacağı süre",
+    "accessTokenLifetimePlaceholder": "örn. 3600",
+    "refreshTokenLifetime": "Yenileme jetonu süresi (saniye)",
+    "refreshTokenLifetimeDescription": "Yenileme jetonlarının geçerli kalacağı süre",
+    "refreshTokenLifetimePlaceholder": "örn. 1209600",
+    "authorizationCodeLifetime": "Yetkilendirme kodu süresi (saniye)",
+    "authorizationCodeLifetimeDescription": "Yetkilendirme kodlarının takas edilebileceği süre",
+    "authorizationCodeLifetimePlaceholder": "örn. 300",
+    "allowedScopes": "İzin verilen kapsamlar",
+    "allowedScopesDescription": "Kullanıcıların onaylayabileceği kapsamların virgülle ayrılmış listesi",
+    "allowedScopesPlaceholder": "örn. read, write",
+    "enableDynamicRegistration": "Dinamik istemci kaydını etkinleştir",
+    "dynamicRegistrationDescription": "RFC 7591 uyumlu istemcilerin herkese açık uç nokta üzerinden kayıt olmasına izin ver",
+    "dynamicRegistrationAllowedGrantTypes": "İzin verilen grant türleri",
+    "dynamicRegistrationAllowedGrantTypesDescription": "Dinamik olarak kaydedilen istemciler için kullanılabilecek grant türlerinin virgülle ayrılmış listesi",
+    "dynamicRegistrationAllowedGrantTypesPlaceholder": "örn. authorization_code, refresh_token",
+    "dynamicRegistrationAuth": "Kayıt için kimlik doğrulaması iste",
+    "dynamicRegistrationAuthDescription": "Kayıt uç noktasını korur, yalnızca kimliği doğrulanmış istekler yeni istemci oluşturabilir",
+    "invalidNumberInput": "Lütfen sıfırdan küçük olmayan geçerli bir sayı girin"
   },
   "dxt": {
     "upload": "Yükle",
