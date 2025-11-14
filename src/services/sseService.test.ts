@@ -55,12 +55,7 @@ jest.mock('@modelcontextprotocol/sdk/server/sse.js', () => ({
 }));
 
 jest.mock('@modelcontextprotocol/sdk/server/streamableHttp.js', () => ({
-  StreamableHTTPServerTransport: jest.fn().mockImplementation(() => ({
-    sessionId: 'test-session-id',
-    connect: jest.fn(),
-    handleRequest: jest.fn(),
-    onclose: null,
-  })),
+  StreamableHTTPServerTransport: jest.fn().mockImplementation(() => mockStreamableHTTPServerTransport),
 }));
 
 jest.mock('@modelcontextprotocol/sdk/types.js', () => ({
@@ -73,6 +68,14 @@ import { loadSettings } from '../config/index.js';
 import { UserContextService } from './userContextService.js';
 import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
+
+// Create mock instances for testing
+const mockStreamableHTTPServerTransport = {
+  sessionId: 'test-session-id',
+  connect: jest.fn(),
+  handleRequest: jest.fn(),
+  onclose: null,
+};
 
 // Mock Express Request and Response
 const createMockRequest = (overrides: Partial<Request> = {}): Request =>
@@ -383,7 +386,7 @@ describe('sseService', () => {
       expect(getMcpServer).toHaveBeenCalled();
     });
 
-    it('should return error for invalid session', async () => {
+    it('should transparently rebuild invalid session', async () => {
       const req = createMockRequest({
         params: { group: 'test-group' },
         headers: { 'mcp-session-id': 'invalid-session' },
@@ -393,15 +396,12 @@ describe('sseService', () => {
 
       await handleMcpPostRequest(req, res);
 
-      expect(res.status).toHaveBeenCalledWith(400);
-      expect(res.json).toHaveBeenCalledWith({
-        jsonrpc: '2.0',
-        error: {
-          code: -32000,
-          message: 'Bad Request: No valid session ID provided',
-        },
-        id: null,
-      });
+      // With the new session rebuild feature, invalid sessions are now transparently rebuilt
+      // instead of returning an error. The request should be handled successfully.
+      // Check that StreamableHTTPServerTransport was called and handleRequest was called
+      expect(StreamableHTTPServerTransport).toHaveBeenCalled();
+      const mockInstance = (StreamableHTTPServerTransport as jest.MockedClass<typeof StreamableHTTPServerTransport>).mock.results[0].value;
+      expect(mockInstance.handleRequest).toHaveBeenCalledWith(req, res, req.body);
     });
 
     it('should return 401 when bearer auth fails', async () => {
@@ -442,18 +442,37 @@ describe('sseService', () => {
       expect(res.status).toHaveBeenCalledWith(400);
       expect(res.send).toHaveBeenCalledWith('Invalid or missing session ID');
     });
+it('should transparently rebuild invalid session in handleMcpOtherRequest', async () => {
+  // Enable bearer auth for this test
+  (loadSettings as jest.MockedFunction<typeof loadSettings>).mockReturnValue({
+    mcpServers: {},
+    systemConfig: {
+      routing: {
+        enableGlobalRoute: true,
+        enableGroupNameRoute: true,
+        enableBearerAuth: true,
+        bearerAuthKey: 'test-key',
+      },
+    },
+  });
 
-    it('should return 400 for invalid session ID', async () => {
-      const req = createMockRequest({
-        headers: { 'mcp-session-id': 'invalid-session' },
-      });
-      const res = createMockResponse();
+  const req = createMockRequest({
+    headers: {
+      'mcp-session-id': 'invalid-session',
+      'authorization': 'Bearer test-key'
+    },
+  });
+  const res = createMockResponse();
 
-      await handleMcpOtherRequest(req, res);
+  await handleMcpOtherRequest(req, res);
 
-      expect(res.status).toHaveBeenCalledWith(400);
-      expect(res.send).toHaveBeenCalledWith('Invalid or missing session ID');
-    });
+  // Should not return 400 error, but instead transparently rebuild the session
+  expect(res.status).not.toHaveBeenCalledWith(400);
+  expect(res.send).not.toHaveBeenCalledWith('Invalid or missing session ID');
+  
+  // Should attempt to handle the request (session was rebuilt)
+  expect(mockStreamableHTTPServerTransport.handleRequest).toHaveBeenCalled();
+});
 
     it('should return 401 when bearer auth fails', async () => {
       (loadSettings as jest.MockedFunction<typeof loadSettings>).mockReturnValue({

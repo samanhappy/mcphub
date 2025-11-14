@@ -438,12 +438,35 @@ export const handleMcpOtherRequest = async (req: Request, res: Response) => {
   }
 
   const sessionId = req.headers['mcp-session-id'] as string | undefined;
-  if (!sessionId || !transports[sessionId]) {
+  if (!sessionId) {
     res.status(400).send('Invalid or missing session ID');
     return;
   }
 
-  const { transport } = transports[sessionId];
+  let transportEntry = transports[sessionId];
+  
+  // If session doesn't exist, attempt transparent rebuild
+  if (!transportEntry) {
+    console.log(`[SESSION AUTO-REBUILD] Session ${sessionId} not found in handleMcpOtherRequest, initiating transparent rebuild`);
+    
+    try {
+      // Create session with same ID using existing function
+      const rebuiltSession = await createSessionWithId(sessionId, currentUser, getGroupFromQuery(req));
+      if (rebuiltSession) {
+        console.log(`[SESSION AUTO-REBUILD] Successfully transparently rebuilt session: ${sessionId}`);
+        transportEntry = transports[sessionId];
+      }
+    } catch (error) {
+      console.error(`[SESSION AUTO-REBUILD] Failed to rebuild session ${sessionId}:`, error);
+    }
+  }
+
+  if (!transportEntry) {
+    res.status(400).send('Invalid or missing session ID');
+    return;
+  }
+
+  const { transport } = transportEntry;
   await (transport as StreamableHTTPServerTransport).handleRequest(req, res);
 };
 
