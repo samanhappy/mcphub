@@ -450,8 +450,15 @@ export const handleMcpOtherRequest = async (req: Request, res: Response) => {
     console.log(`[SESSION AUTO-REBUILD] Session ${sessionId} not found in handleMcpOtherRequest, initiating transparent rebuild`);
     
     try {
+      // Check if user context exists
+      if (!currentUser) {
+        res.status(401).send('User context not found');
+        return;
+      }
+      
       // Create session with same ID using existing function
-      const rebuiltSession = await createSessionWithId(sessionId, currentUser, getGroupFromQuery(req));
+      const group = req.params.group;
+      const rebuiltSession = await createSessionWithId(sessionId, group, currentUser.username);
       if (rebuiltSession) {
         console.log(`[SESSION AUTO-REBUILD] Successfully transparently rebuilt session: ${sessionId}`);
         transportEntry = transports[sessionId];
