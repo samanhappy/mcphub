@@ -10,7 +10,7 @@ import config from '../config/index.js';
 import { UserContextService } from './userContextService.js';
 import { RequestContextService } from './requestContextService.js';
 
-const transports: { [sessionId: string]: { transport: Transport; group: string; needsInitialization?: boolean } } = {};
+export const transports: { [sessionId: string]: { transport: Transport; group: string; needsInitialization?: boolean } } = {};
 
 // Session creation locks to prevent concurrent session creation conflicts
 const sessionCreationLocks: { [sessionId: string]: Promise<StreamableHTTPServerTransport> } = {};
@@ -259,27 +259,44 @@ export const handleMcpPostRequest = async (req: Request, res: Response): Promise
     console.log(`[SESSION REUSE] Reusing existing session: ${sessionId}${username ? ` for user: ${username}` : ''}`);
     transport = transportInfo.transport as StreamableHTTPServerTransport;
   } else if (sessionId) {
-    // Case 2: SessionId exists but transport is missing (server restart), recreate it
-    console.log(`[SESSION AUTO-REBUILD] Session ${sessionId} not found, initiating transparent rebuild${username ? ` for user: ${username}` : ''}`);
-    // Prevent concurrent session creation
-    if (sessionCreationLocks[sessionId] !== undefined) {
-      console.log(`[SESSION AUTO-REBUILD] Session creation in progress for ${sessionId}, waiting...`);
-      transport = await sessionCreationLocks[sessionId];
-    } else {
-      sessionCreationLocks[sessionId] = createSessionWithId(sessionId, group, username);
-      try {
+    // Case 2: SessionId exists but transport is missing (server restart), check if session rebuild is enabled
+    const settings = loadSettings();
+    const enableSessionRebuild = settings.systemConfig?.enableSessionRebuild || false;
+    
+    if (enableSessionRebuild) {
+      console.log(`[SESSION AUTO-REBUILD] Session ${sessionId} not found, initiating transparent rebuild${username ? ` for user: ${username}` : ''}`);
+      // Prevent concurrent session creation
+      if (sessionCreationLocks[sessionId] !== undefined) {
+        console.log(`[SESSION AUTO-REBUILD] Session creation in progress for ${sessionId}, waiting...`);
         transport = await sessionCreationLocks[sessionId];
-        console.log(`[SESSION AUTO-REBUILD] Successfully transparently rebuilt session: ${sessionId}`);
-      } catch (error) {
-        console.error(`[SESSION AUTO-REBUILD] Failed to rebuild session ${sessionId}:`, error);
-        throw error;
-      } finally {
-        delete sessionCreationLocks[sessionId];
+      } else {
+        sessionCreationLocks[sessionId] = createSessionWithId(sessionId, group, username);
+        try {
+          transport = await sessionCreationLocks[sessionId];
+          console.log(`[SESSION AUTO-REBUILD] Successfully transparently rebuilt session: ${sessionId}`);
+        } catch (error) {
+          console.error(`[SESSION AUTO-REBUILD] Failed to rebuild session ${sessionId}:`, error);
+          throw error;
+        } finally {
+          delete sessionCreationLocks[sessionId];
+        }
       }
-    }
-    // Get the updated transport info after rebuild
-    if (sessionId) {
-      transportInfo = transports[sessionId];
+      // Get the updated transport info after rebuild
+      if (sessionId) {
+        transportInfo = transports[sessionId];
+      }
+    } else {
+      // Session rebuild is disabled, return error
+      console.warn(`[SESSION ERROR] Session ${sessionId} not found and session rebuild is disabled${username ? ` for user: ${username}` : ''}`);
+      res.status(400).json({
+        jsonrpc: '2.0',
+        error: {
+          code: -32000,
+          message: 'Bad Request: No valid session ID provided',
+        },
+        id: null,
+      });
+      return;
     }
   } else if (isInitializeRequest(req.body)) {
     // Case 3: No sessionId and this is an initialize request, create new session
@@ -445,26 +462,35 @@ export const handleMcpOtherRequest = async (req: Request, res: Response) => {
 
   let transportEntry = transports[sessionId];
   
-  // If session doesn't exist, attempt transparent rebuild
+  // If session doesn't exist, attempt transparent rebuild if enabled
   if (!transportEntry) {
-    console.log(`[SESSION AUTO-REBUILD] Session ${sessionId} not found in handleMcpOtherRequest, initiating transparent rebuild`);
+    const settings = loadSettings();
+    const enableSessionRebuild = settings.systemConfig?.enableSessionRebuild || false;
     
-    try {
-      // Check if user context exists
-      if (!currentUser) {
-        res.status(401).send('User context not found');
-        return;
-      }
+    if (enableSessionRebuild) {
+      console.log(`[SESSION AUTO-REBUILD] Session ${sessionId} not found in handleMcpOtherRequest, initiating transparent rebuild`);
       
-      // Create session with same ID using existing function
-      const group = req.params.group;
-      const rebuiltSession = await createSessionWithId(sessionId, group, currentUser.username);
-      if (rebuiltSession) {
-        console.log(`[SESSION AUTO-REBUILD] Successfully transparently rebuilt session: ${sessionId}`);
-        transportEntry = transports[sessionId];
+      try {
+        // Check if user context exists
+        if (!currentUser) {
+          res.status(401).send('User context not found');
+          return;
+        }
+        
+        // Create session with same ID using existing function
+        const group = req.params.group;
+        const rebuiltSession = await createSessionWithId(sessionId, group, currentUser.username);
+        if (rebuiltSession) {
+          console.log(`[SESSION AUTO-REBUILD] Successfully transparently rebuilt session: ${sessionId}`);
+          transportEntry = transports[sessionId];
+        }
+      } catch (error) {
+        console.error(`[SESSION AUTO-REBUILD] Failed to rebuild session ${sessionId}:`, error);
       }
-    } catch (error) {
-      console.error(`[SESSION AUTO-REBUILD] Failed to rebuild session ${sessionId}:`, error);
+    } else {
+      console.warn(`[SESSION ERROR] Session ${sessionId} not found and session rebuild is disabled in handleMcpOtherRequest`);
+      res.status(400).send('Invalid or missing session ID');
+      return;
     }
   }
 

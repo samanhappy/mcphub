@@ -41,6 +41,7 @@ interface SystemSettings {
     smartRouting?: SmartRoutingConfig;
     mcpRouter?: MCPRouterConfig;
     nameSeparator?: string;
+    enableSessionRebuild?: boolean;
   };
 }
 
@@ -86,6 +87,7 @@ export const useSettingsData = () => {
   });
 
   const [nameSeparator, setNameSeparator] = useState<string>('-');
+  const [enableSessionRebuild, setEnableSessionRebuild] = useState<boolean>(false);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -140,6 +142,9 @@ export const useSettingsData = () => {
       }
       if (data.success && data.data?.systemConfig?.nameSeparator !== undefined) {
         setNameSeparator(data.data.systemConfig.nameSeparator);
+      }
+      if (data.success && data.data?.systemConfig?.enableSessionRebuild !== undefined) {
+        setEnableSessionRebuild(data.data.systemConfig.enableSessionRebuild);
       }
     } catch (error) {
       console.error('Failed to fetch settings:', error);
@@ -420,6 +425,36 @@ export const useSettingsData = () => {
     }
   };
 
+  // Update session rebuild setting
+  const updateSessionRebuild = async (value: boolean) => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const data = await apiPut('/system-config', {
+        enableSessionRebuild: value,
+      });
+
+      if (data.success) {
+        setEnableSessionRebuild(value);
+        showToast(t('settings.restartRequired'), 'info');
+        return true;
+      } else {
+        showToast(data.message || t('errors.failedToUpdateSystemConfig'));
+        return false;
+      }
+    } catch (error) {
+      console.error('Failed to update session rebuild setting:', error);
+      const errorMessage =
+        error instanceof Error ? error.message : 'Failed to update session rebuild setting';
+      setError(errorMessage);
+      showToast(errorMessage);
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const exportMCPSettings = async (serverName?: string) => {
     setLoading(true);
     setError(null);
@@ -456,6 +491,7 @@ export const useSettingsData = () => {
     smartRoutingConfig,
     mcpRouterConfig,
     nameSeparator,
+    enableSessionRebuild,
     loading,
     error,
     setError,
@@ -469,6 +505,7 @@ export const useSettingsData = () => {
     updateMCPRouterConfig,
     updateMCPRouterConfigBatch,
     updateNameSeparator,
+    updateSessionRebuild,
     exportMCPSettings,
   };
 };

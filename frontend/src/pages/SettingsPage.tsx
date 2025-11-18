@@ -59,6 +59,7 @@ const SettingsPage: React.FC = () => {
     smartRoutingConfig,
     mcpRouterConfig,
     nameSeparator,
+    enableSessionRebuild,
     loading,
     updateRoutingConfig,
     updateRoutingConfigBatch,
@@ -67,6 +68,7 @@ const SettingsPage: React.FC = () => {
     updateSmartRoutingConfigBatch,
     updateMCPRouterConfig,
     updateNameSeparator,
+    updateSessionRebuild,
     exportMCPSettings,
   } = useSettingsData()
 
@@ -598,6 +600,18 @@ const SettingsPage: React.FC = () => {
                   {t('common.save')}
                 </button>
               </div>
+            </div>
+            
+            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-md">
+              <div>
+                <h3 className="font-medium text-gray-700">{t('settings.enableSessionRebuild')}</h3>
+                <p className="text-sm text-gray-500">{t('settings.enableSessionRebuildDescription')}</p>
+              </div>
+              <Switch
+                disabled={loading}
+                checked={enableSessionRebuild}
+                onCheckedChange={(checked) => updateSessionRebuild(checked)}
+              />
             </div>
           </div>
         )}

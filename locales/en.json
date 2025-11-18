@@ -574,6 +574,8 @@
     "systemSettings": "System Settings",
     "nameSeparatorLabel": "Name Separator",
     "nameSeparatorDescription": "Character used to separate server name and tool/prompt name (default: -)",
+    "enableSessionRebuild": "Enable Server Session Rebuild",
+    "enableSessionRebuildDescription": "When enabled, applies the improved server session rebuild code for better session management experience",
     "restartRequired": "Configuration saved. It is recommended to restart the application to ensure all services load the new settings correctly.",
     "exportMcpSettings": "Export Settings",
     "mcpSettingsJson": "MCP Settings JSON",

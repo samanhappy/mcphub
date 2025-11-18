@@ -171,6 +171,7 @@ export interface SystemConfig {
   };
   nameSeparator?: string; // Separator used between server name and tool/prompt name (default: '-')
   oauth?: OAuthProviderConfig; // OAuth provider configuration for upstream MCP servers
+  enableSessionRebuild?: boolean; // Controls whether server session rebuild is enabled
 }
 
 export interface UserConfig {

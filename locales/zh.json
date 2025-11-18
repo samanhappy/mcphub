@@ -576,6 +576,8 @@
     "systemSettings": "系统设置",
     "nameSeparatorLabel": "名称分隔符",
     "nameSeparatorDescription": "用于分隔服务器名称和工具/提示名称（默认：-）",
+    "enableSessionRebuild": "启用服务端会话重建",
+    "enableSessionRebuildDescription": "开启后会应用服务端会话重建的改进代码，提供更好的会话管理体验",
     "restartRequired": "配置已保存。为确保所有服务正确加载新设置，建议重启应用。",
     "exportMcpSettings": "导出配置",
     "mcpSettingsJson": "MCP 配置 JSON",
