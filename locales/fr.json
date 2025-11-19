@@ -574,6 +574,8 @@
     "systemSettings": "Paramètres système",
     "nameSeparatorLabel": "Séparateur de noms",
     "nameSeparatorDescription": "Caractère utilisé pour séparer le nom du serveur et le nom de l'outil/prompt (par défaut : -)",
+    "enableSessionRebuild": "Activer la reconstruction de session serveur",
+    "enableSessionRebuildDescription": "Lorsqu'il est activé, applique le code de reconstruction de session serveur amélioré pour une meilleure expérience de gestion de session",
     "restartRequired": "Configuration enregistrée. Il est recommandé de redémarrer l'application pour s'assurer que tous les services chargent correctement les nouveaux paramètres.",
     "exportMcpSettings": "Exporter les paramètres",
     "mcpSettingsJson": "JSON des paramètres MCP",

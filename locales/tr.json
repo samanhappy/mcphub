@@ -574,6 +574,8 @@
     "systemSettings": "Sistem Ayarları",
     "nameSeparatorLabel": "İsim Ayırıcı",
     "nameSeparatorDescription": "Sunucu adı ile araç/istek adını ayırmak için kullanılan karakter (varsayılan: -)",
+    "enableSessionRebuild": "Sunucu Oturum Yeniden Oluşturmayı Etkinleştir",
+    "enableSessionRebuildDescription": "Etkinleştirildiğinde, daha iyi oturum yönetimi deneyimi için geliştirilmiş sunucu oturum yeniden oluşturma kodunu uygular",
     "restartRequired": "Yapılandırma kaydedildi. Tüm hizmetlerin yeni ayarları doğru şekilde yüklemesini sağlamak için uygulamayı yeniden başlatmanız önerilir.",
     "exportMcpSettings": "Ayarları Dışa Aktar",
     "mcpSettingsJson": "MCP Ayarları JSON",
