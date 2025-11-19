@@ -1,0 +1,195 @@
+---
+title: "Users"
+description: "Manage users in MCPHub."
+---
+
+import { Card, Cards } from 'mintlify';
+
+<Card
+  title="GET /api/users"
+  href="#get-all-users"
+>
+  Get a list of all users.
+</Card>
+
+<Card
+  title="GET /api/users/:username"
+  href="#get-a-user"
+>
+  Get details of a specific user.
+</Card>
+
+<Card
+  title="POST /api/users"
+  href="#create-a-user"
+>
+  Create a new user.
+</Card>
+
+<Card
+  title="PUT /api/users/:username"
+  href="#update-a-user"
+>
+  Update an existing user.
+</Card>
+
+<Card
+  title="DELETE /api/users/:username"
+  href="#delete-a-user"
+>
+  Delete a user.
+</Card>
+
+<Card
+  title="GET /api/users-stats"
+  href="#get-user-statistics"
+>
+  Get statistics about users and their server access.
+</Card>
+
+---
+
+### Get All Users
+
+Retrieves a list of all users in the system.
+
+- **Endpoint**: `/api/users`
+- **Method**: `GET`
+- **Authentication**: Required (Admin only)
+- **Response**:
+  ```json
+  {
+    "success": true,
+    "data": [
+      {
+        "username": "admin",
+        "role": "admin",
+        "servers": ["server1", "server2"],
+        "groups": ["group1"]
+      },
+      {
+        "username": "user1",
+        "role": "user",
+        "servers": ["server1"],
+        "groups": []
+      }
+    ]
+  }
+  ```
+
+---
+
+### Get a User
+
+Retrieves details of a specific user.
+
+- **Endpoint**: `/api/users/:username`
+- **Method**: `GET`
+- **Authentication**: Required (Admin only)
+- **Parameters**:
+  - `:username` (string, required): The username of the user.
+- **Response**:
+  ```json
+  {
+    "success": true,
+    "data": {
+      "username": "user1",
+      "role": "user",
+      "servers": ["server1", "server2"],
+      "groups": ["group1"]
+    }
+  }
+  ```
+
+---
+
+### Create a User
+
+Creates a new user in the system.
+
+- **Endpoint**: `/api/users`
+- **Method**: `POST`
+- **Authentication**: Required (Admin only)
+- **Body**:
+  ```json
+  {
+    "username": "newuser",
+    "password": "securepassword",
+    "role": "user",
+    "servers": ["server1"],
+    "groups": ["group1"]
+  }
+  ```
+  - `username` (string, required): The username for the new user.
+  - `password` (string, required): The password for the new user. Must be at least 6 characters.
+  - `role` (string, optional): The role of the user. Either `"admin"` or `"user"`. Defaults to `"user"`.
+  - `servers` (array of strings, optional): List of server names the user has access to.
+  - `groups` (array of strings, optional): List of group IDs the user belongs to.
+
+---
+
+### Update a User
+
+Updates an existing user's information.
+
+- **Endpoint**: `/api/users/:username`
+- **Method**: `PUT`
+- **Authentication**: Required (Admin only)
+- **Parameters**:
+  - `:username` (string, required): The username of the user to update.
+- **Body**:
+  ```json
+  {
+    "password": "newpassword",
+    "role": "admin",
+    "servers": ["server1", "server2", "server3"],
+    "groups": ["group1", "group2"]
+  }
+  ```
+  - `password` (string, optional): New password for the user.
+  - `role` (string, optional): New role for the user.
+  - `servers` (array of strings, optional): Updated list of accessible servers.
+  - `groups` (array of strings, optional): Updated list of groups.
+
+---
+
+### Delete a User
+
+Removes a user from the system.
+
+- **Endpoint**: `/api/users/:username`
+- **Method**: `DELETE`
+- **Authentication**: Required (Admin only)
+- **Parameters**:
+  - `:username` (string, required): The username of the user to delete.
+
+---
+
+### Get User Statistics
+
+Retrieves statistics about users and their access to servers and groups.
+
+- **Endpoint**: `/api/users-stats`
+- **Method**: `GET`
+- **Authentication**: Required (Admin only)
+- **Response**:
+  ```json
+  {
+    "success": true,
+    "data": {
+      "totalUsers": 5,
+      "adminUsers": 1,
+      "regularUsers": 4,
+      "usersPerServer": {
+        "server1": 3,
+        "server2": 2
+      },
+      "usersPerGroup": {
+        "group1": 2,
+        "group2": 1
+      }
+    }
+  }
+  ```
+
+**Note**: All user management endpoints require admin authentication.

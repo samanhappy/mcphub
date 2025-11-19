@@ -1,0 +1,142 @@
+---
+title: "提示词"
+description: "管理和执行 MCP 提示词。"
+---
+
+import { Card, Cards } from 'mintlify';
+
+<Card
+  title="POST /api/mcp/:serverName/prompts/:promptName"
+  href="#get-a-prompt"
+>
+  在 MCP 服务器上执行提示词。
+</Card>
+
+<Card
+  title="POST /api/servers/:serverName/prompts/:promptName/toggle"
+  href="#toggle-a-prompt"
+>
+  启用或禁用提示词。
+</Card>
+
+<Card
+  title="PUT /api/servers/:serverName/prompts/:promptName/description"
+  href="#update-prompt-description"
+>
+  更新提示词的描述。
+</Card>
+
+---
+
+### 获取提示词
+
+在 MCP 服务器上执行提示词并获取结果。
+
+- **端点**: `/api/mcp/:serverName/prompts/:promptName`
+- **方法**: `POST`
+- **身份验证**: 必需
+- **参数**:
+  - `:serverName` (字符串, 必需): MCP 服务器的名称。
+  - `:promptName` (字符串, 必需): 提示词的名称。
+- **请求正文**:
+  ```json
+  {
+    "arguments": {
+      "arg1": "value1",
+      "arg2": "value2"
+    }
+  }
+  ```
+  - `arguments` (对象, 可选): 传递给提示词的参数。
+
+- **响应**:
+  ```json
+  {
+    "success": true,
+    "data": {
+      "messages": [
+        {
+          "role": "user",
+          "content": {
+            "type": "text",
+            "text": "提示词内容"
+          }
+        }
+      ]
+    }
+  }
+  ```
+
+**请求示例：**
+
+```bash
+curl -X POST "http://localhost:3000/api/mcp/myserver/prompts/code-review" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -d '{
+    "arguments": {
+      "language": "typescript",
+      "code": "const x = 1;"
+    }
+  }'
+```
+
+---
+
+### 切换提示词
+
+启用或禁用服务器上的特定提示词。
+
+- **端点**: `/api/servers/:serverName/prompts/:promptName/toggle`
+- **方法**: `POST`
+- **身份验证**: 必需
+- **参数**:
+  - `:serverName` (字符串, 必需): 服务器的名称。
+  - `:promptName` (字符串, 必需): 提示词的名称。
+- **请求正文**:
+  ```json
+  {
+    "enabled": true
+  }
+  ```
+  - `enabled` (布尔值, 必需): `true` 启用提示词, `false` 禁用提示词。
+
+**请求示例：**
+
+```bash
+curl -X POST "http://localhost:3000/api/servers/myserver/prompts/code-review/toggle" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -d '{"enabled": false}'
+```
+
+---
+
+### 更新提示词描述
+
+更新特定提示词的描述。
+
+- **端点**: `/api/servers/:serverName/prompts/:promptName/description`
+- **方法**: `PUT`
+- **身份验证**: 必需
+- **参数**:
+  - `:serverName` (字符串, 必需): 服务器的名称。
+  - `:promptName` (字符串, 必需): 提示词的名称。
+- **请求正文**:
+  ```json
+  {
+    "description": "新的提示词描述"
+  }
+  ```
+  - `description` (字符串, 必需): 提示词的新描述。
+
+**请求示例：**
+
+```bash
+curl -X PUT "http://localhost:3000/api/servers/myserver/prompts/code-review/description" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -d '{"description": "审查代码的最佳实践和潜在问题"}'
+```
+
+**注意**: 提示词是可用于生成标准化请求到 MCP 服务器的模板。它们由 MCP 服务器定义，并且可以具有在执行提示词时填充的参数。

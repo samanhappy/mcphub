@@ -45,6 +45,7 @@ describe('OAuth Service', () => {
               tokenUrl: 'http://auth.example.com/token',
             },
           },
+          enableSessionRebuild: false,
         },
       });
 
@@ -55,7 +56,9 @@ describe('OAuth Service', () => {
     it('should not initialize OAuth when not configured', () => {
       mockLoadSettings.mockReturnValue({
         mcpServers: {},
-        systemConfig: {},
+        systemConfig: {
+          enableSessionRebuild: false,
+        },
       });
 
       initOAuthProvider();
@@ -80,6 +83,7 @@ describe('OAuth Service', () => {
               },
             ],
           },
+          enableSessionRebuild: false,
         },
       });
 

@@ -509,7 +509,7 @@ export const updateToolDescription = async (req: Request, res: Response): Promis
 
 export const updateSystemConfig = (req: Request, res: Response): void => {
   try {
-    const { routing, install, smartRouting, mcpRouter, nameSeparator, oauthServer } = req.body;
+    const { routing, install, smartRouting, mcpRouter, nameSeparator, enableSessionRebuild, oauthServer } = req.body;
     const currentUser = (req as any).user;
 
     const hasRoutingUpdate =
@@ -542,6 +542,8 @@ export const updateSystemConfig = (req: Request, res: Response): void => {
         typeof mcpRouter.baseUrl === 'string');
 
     const hasNameSeparatorUpdate = typeof nameSeparator === 'string';
+    
+    const hasSessionRebuildUpdate = typeof enableSessionRebuild !== 'boolean';
 
     const hasOAuthServerUpdate =
       oauthServer &&
@@ -563,6 +565,7 @@ export const updateSystemConfig = (req: Request, res: Response): void => {
       !hasSmartRoutingUpdate &&
       !hasMcpRouterUpdate &&
       !hasNameSeparatorUpdate &&
+      !hasSessionRebuildUpdate &&
       !hasOAuthServerUpdate
     ) {
       res.status(400).json({
@@ -824,6 +827,10 @@ export const updateSystemConfig = (req: Request, res: Response): void => {
 
     if (typeof nameSeparator === 'string') {
       settings.systemConfig.nameSeparator = nameSeparator;
+    }
+
+    if (typeof enableSessionRebuild === 'boolean') {
+      settings.systemConfig.enableSessionRebuild = enableSessionRebuild;
     }
 
     if (saveSettings(settings, currentUser)) {

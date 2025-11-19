@@ -1,0 +1,113 @@
+---
+title: "系统"
+description: "系统和实用程序端点。"
+---
+
+import { Card, Cards } from 'mintlify';
+
+<Card
+  title="GET /health"
+  href="#health-check"
+>
+  检查 MCPHub 服务器的健康状态。
+</Card>
+
+<Card
+  title="GET /oauth/callback"
+  href="#oauth-callback"
+>
+  用于身份验证流程的 OAuth 回调端点。
+</Card>
+
+<Card
+  title="POST /api/dxt/upload"
+  href="#upload-dxt-file"
+>
+  上传 DXT 配置文件。
+</Card>
+
+<Card
+  title="GET /api/mcp-settings/export"
+  href="#export-mcp-settings"
+>
+  将 MCP 设置导出为 JSON。
+</Card>
+
+---
+
+### 健康检查
+
+检查 MCPHub 服务器的健康状态。
+
+- **端点**: `/health`
+- **方法**: `GET`
+- **身份验证**: 不需要
+- **响应**:
+  ```json
+  {
+    "status": "ok",
+    "timestamp": "2024-11-12T01:30:00.000Z",
+    "uptime": 12345
+  }
+  ```
+
+**请求示例：**
+
+```bash
+curl "http://localhost:3000/health"
+```
+
+---
+
+### OAuth 回调
+
+用于处理 OAuth 身份验证流程的 OAuth 回调端点。此端点在用户授权后由 OAuth 提供商自动调用。
+
+- **端点**: `/oauth/callback`
+- **方法**: `GET`
+- **身份验证**: 不需要（公共回调 URL）
+- **查询参数**: 因 OAuth 提供商而异（通常包括 `code`、`state` 等）
+
+**注意**: 此端点由 MCPHub 的 OAuth 集成内部使用，客户端不应直接调用。
+
+---
+
+### 上传 DXT 文件
+
+上传 DXT（桌面扩展）配置文件以导入服务器配置。
+
+- **端点**: `/api/dxt/upload`
+- **方法**: `POST`
+- **身份验证**: 必需
+- **Content-Type**: `multipart/form-data`
+- **正文**:
+  - `file` (文件, 必需): 要上传的 DXT 配置文件。
+
+**请求示例：**
+
+```bash
+curl -X POST "http://localhost:3000/api/dxt/upload" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -F "file=@config.dxt"
+```
+
+---
+
+### 导出 MCP 设置
+
+将当前 MCP 设置配置导出为 JSON 文件。
+
+- **端点**: `/api/mcp-settings/export`
+- **方法**: `GET`
+- **身份验证**: 必需
+- **响应**: 返回 `mcp_settings.json` 配置文件。
+
+**请求示例：**
+
+```bash
+curl "http://localhost:3000/api/mcp-settings/export" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -o mcp_settings.json
+```
+
+**注意**: 此端点允许您下载 MCP 设置的备份，可用于恢复或迁移您的配置。

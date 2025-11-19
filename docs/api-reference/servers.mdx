@@ -54,6 +54,20 @@ import { Card, Cards } from 'mintlify';
   Update the description of a tool.
 </Card>
 
+<Card
+  title="PUT /api/system-config"
+  href="#update-system-config"
+>
+  Update system configuration settings.
+</Card>
+
+<Card
+  title="GET /api/settings"
+  href="#get-settings"
+>
+  Get all server settings and configurations.
+</Card>
+
 ---
 
 ### Get All Servers
@@ -207,3 +221,45 @@ Updates the description of a specific tool.
   }
   ```
   - `description` (string, required): The new description for the tool.
+
+---
+
+### Update System Config
+
+Updates the system-wide configuration settings.
+
+- **Endpoint**: `/api/system-config`
+- **Method**: `PUT`
+- **Body**:
+  ```json
+  {
+    "openaiApiKey": "sk-...",
+    "openaiBaseUrl": "https://api.openai.com/v1",
+    "modelName": "gpt-4",
+    "temperature": 0.7,
+    "maxTokens": 2048
+  }
+  ```
+  - All fields are optional. Only provided fields will be updated.
+
+---
+
+### Get Settings
+
+Retrieves all server settings and configurations.
+
+- **Endpoint**: `/api/settings`
+- **Method**: `GET`
+- **Response**:
+  ```json
+  {
+    "success": true,
+    "data": {
+      "servers": [...],
+      "groups": [...],
+      "systemConfig": {...}
+    }
+  }
+  ```
+
+**Note**: For detailed prompt management, see the [Prompts API](/api-reference/prompts) documentation.

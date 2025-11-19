@@ -60,6 +60,32 @@ Generates and returns the complete OpenAPI 3.0.3 specification for all connected
   Comma-separated list of server names to include
 </ParamField>
 
+### Group/Server-Specific OpenAPI Specification
+
+<CodeGroup>
+
+```bash GET /api/:name/openapi.json
+curl "http://localhost:3000/api/mygroup/openapi.json"
+```
+
+```bash With Parameters
+curl "http://localhost:3000/api/myserver/openapi.json?title=My Server API&version=1.0.0"
+```
+
+</CodeGroup>
+
+Generates and returns the OpenAPI 3.0.3 specification for a specific group or server. If a group with the given name exists, it returns the specification for all servers in that group. Otherwise, it treats the name as a server name and returns the specification for that server only.
+
+**Path Parameters:**
+
+<ParamField path="name" type="string" required>
+  Group ID/name or server name
+</ParamField>
+
+**Query Parameters:**
+
+Same as the main OpenAPI specification endpoint (title, description, version, serverUrl, includeDisabled).
+
 ### Available Servers
 
 <CodeGroup>

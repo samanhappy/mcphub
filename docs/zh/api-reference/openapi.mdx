@@ -60,6 +60,32 @@ curl "http://localhost:3000/api/openapi.json?title=我的 MCP API&version=2.0.0"
   要包含的服务器名称列表（逗号分隔）
 </ParamField>
 
+### 组/服务器特定的 OpenAPI 规范
+
+<CodeGroup>
+
+```bash GET /api/:name/openapi.json
+curl "http://localhost:3000/api/mygroup/openapi.json"
+```
+
+```bash 带参数
+curl "http://localhost:3000/api/myserver/openapi.json?title=我的服务器 API&version=1.0.0"
+```
+
+</CodeGroup>
+
+为特定组或服务器生成并返回 OpenAPI 3.0.3 规范。如果存在具有给定名称的组，则返回该组中所有服务器的规范。否则，将名称视为服务器名称并仅返回该服务器的规范。
+
+**路径参数：**
+
+<ParamField path="name" type="string" required>
+  组 ID/名称或服务器名称
+</ParamField>
+
+**查询参数：**
+
+与主 OpenAPI 规范端点相同（title、description、version、serverUrl、includeDisabled）。
+
 ### 可用服务器
 
 <CodeGroup>

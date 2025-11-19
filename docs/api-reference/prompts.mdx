@@ -1,0 +1,142 @@
+---
+title: "Prompts"
+description: "Manage and execute MCP prompts."
+---
+
+import { Card, Cards } from 'mintlify';
+
+<Card
+  title="POST /api/mcp/:serverName/prompts/:promptName"
+  href="#get-a-prompt"
+>
+  Execute a prompt on an MCP server.
+</Card>
+
+<Card
+  title="POST /api/servers/:serverName/prompts/:promptName/toggle"
+  href="#toggle-a-prompt"
+>
+  Enable or disable a prompt.
+</Card>
+
+<Card
+  title="PUT /api/servers/:serverName/prompts/:promptName/description"
+  href="#update-prompt-description"
+>
+  Update the description of a prompt.
+</Card>
+
+---
+
+### Get a Prompt
+
+Execute a prompt on an MCP server and get the result.
+
+- **Endpoint**: `/api/mcp/:serverName/prompts/:promptName`
+- **Method**: `POST`
+- **Authentication**: Required
+- **Parameters**:
+  - `:serverName` (string, required): The name of the MCP server.
+  - `:promptName` (string, required): The name of the prompt.
+- **Body**:
+  ```json
+  {
+    "arguments": {
+      "arg1": "value1",
+      "arg2": "value2"
+    }
+  }
+  ```
+  - `arguments` (object, optional): Arguments to pass to the prompt.
+
+- **Response**:
+  ```json
+  {
+    "success": true,
+    "data": {
+      "messages": [
+        {
+          "role": "user",
+          "content": {
+            "type": "text",
+            "text": "Prompt content"
+          }
+        }
+      ]
+    }
+  }
+  ```
+
+**Example Request:**
+
+```bash
+curl -X POST "http://localhost:3000/api/mcp/myserver/prompts/code-review" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -d '{
+    "arguments": {
+      "language": "typescript",
+      "code": "const x = 1;"
+    }
+  }'
+```
+
+---
+
+### Toggle a Prompt
+
+Enable or disable a specific prompt on a server.
+
+- **Endpoint**: `/api/servers/:serverName/prompts/:promptName/toggle`
+- **Method**: `POST`
+- **Authentication**: Required
+- **Parameters**:
+  - `:serverName` (string, required): The name of the server.
+  - `:promptName` (string, required): The name of the prompt.
+- **Body**:
+  ```json
+  {
+    "enabled": true
+  }
+  ```
+  - `enabled` (boolean, required): `true` to enable the prompt, `false` to disable it.
+
+**Example Request:**
+
+```bash
+curl -X POST "http://localhost:3000/api/servers/myserver/prompts/code-review/toggle" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -d '{"enabled": false}'
+```
+
+---
+
+### Update Prompt Description
+
+Update the description of a specific prompt.
+
+- **Endpoint**: `/api/servers/:serverName/prompts/:promptName/description`
+- **Method**: `PUT`
+- **Authentication**: Required
+- **Parameters**:
+  - `:serverName` (string, required): The name of the server.
+  - `:promptName` (string, required): The name of the prompt.
+- **Body**:
+  ```json
+  {
+    "description": "New prompt description"
+  }
+  ```
+  - `description` (string, required): The new description for the prompt.
+
+**Example Request:**
+
+```bash
+curl -X PUT "http://localhost:3000/api/servers/myserver/prompts/code-review/description" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -d '{"description": "Review code for best practices and potential issues"}'
+```
+
+**Note**: Prompts are templates that can be used to generate standardized requests to MCP servers. They are defined by the MCP server and can have arguments that are filled in when the prompt is executed.

@@ -54,6 +54,20 @@ import { Card, Cards } from 'mintlify';
   更新工具的描述。
 </Card>
 
+<Card
+  title="PUT /api/system-config"
+  href="#update-system-config"
+>
+  更新系统配置设置。
+</Card>
+
+<Card
+  title="GET /api/settings"
+  href="#get-settings"
+>
+  获取所有服务器设置和配置。
+</Card>
+
 ---
 
 ### 获取所有服务器
@@ -207,3 +221,45 @@ import { Card, Cards } from 'mintlify';
   }
   ```
   - `description` (string, 必填): 工具的新描述。
+
+---
+
+### 更新系统配置
+
+更新系统范围的配置设置。
+
+- **端点**: `/api/system-config`
+- **方法**: `PUT`
+- **正文**:
+  ```json
+  {
+    "openaiApiKey": "sk-...",
+    "openaiBaseUrl": "https://api.openai.com/v1",
+    "modelName": "gpt-4",
+    "temperature": 0.7,
+    "maxTokens": 2048
+  }
+  ```
+  - 所有字段都是可选的。只有提供的字段会被更新。
+
+---
+
+### 获取设置
+
+检索所有服务器设置和配置。
+
+- **端点**: `/api/settings`
+- **方法**: `GET`
+- **响应**:
+  ```json
+  {
+    "success": true,
+    "data": {
+      "servers": [...],
+      "groups": [...],
+      "systemConfig": {...}
+    }
+  }
+  ```
+
+**注意**: 有关详细的提示词管理，请参阅 [提示词 API](/zh/api-reference/prompts) 文档。

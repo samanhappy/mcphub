@@ -96,9 +96,13 @@
             "pages": [
               "api-reference/servers",
               "api-reference/groups",
+              "api-reference/users",
+              "api-reference/tools",
+              "api-reference/prompts",
               "api-reference/auth",
               "api-reference/logs",
-              "api-reference/config"
+              "api-reference/config",
+              "api-reference/system"
             ]
           }
         ]
@@ -126,9 +130,13 @@
             "pages": [
               "zh/api-reference/servers",
               "zh/api-reference/groups",
+              "zh/api-reference/users",
+              "zh/api-reference/tools",
+              "zh/api-reference/prompts",
               "zh/api-reference/auth",
               "zh/api-reference/logs",
-              "zh/api-reference/config"
+              "zh/api-reference/config",
+              "zh/api-reference/system"
             ]
           }
         ]

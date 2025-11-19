@@ -1,9 +1,10 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Tool } from '@/types'
-import { ChevronDown, ChevronRight, Play, Loader, Edit, Check } from '@/components/icons/LucideIcons'
+import { ChevronDown, ChevronRight, Play, Loader, Edit, Check, Copy } from '@/components/icons/LucideIcons'
 import { callTool, ToolCallResult, updateToolDescription } from '@/services/toolService'
 import { useSettingsData } from '@/hooks/useSettingsData'
+import { useToast } from '@/contexts/ToastContext'
 import { Switch } from './ToggleGroup'
 import DynamicForm from './DynamicForm'
 import ToolResult from './ToolResult'
@@ -26,6 +27,7 @@ function isEmptyValue(value: any): boolean {
 
 const ToolCard = ({ tool, server, onToggle, onDescriptionUpdate }: ToolCardProps) => {
   const { t } = useTranslation()
+  const { showToast } = useToast()
   const { nameSeparator } = useSettingsData()
   const [isExpanded, setIsExpanded] = useState(false)
   const [showRunForm, setShowRunForm] = useState(false)
@@ -36,6 +38,7 @@ const ToolCard = ({ tool, server, onToggle, onDescriptionUpdate }: ToolCardProps
   const descriptionInputRef = useRef<HTMLInputElement>(null)
   const descriptionTextRef = useRef<HTMLSpanElement>(null)
   const [textWidth, setTextWidth] = useState<number>(0)
+  const [copiedToolName, setCopiedToolName] = useState(false)
 
   // Focus the input when editing mode is activated
   useEffect(() => {
@@ -108,6 +111,41 @@ const ToolCard = ({ tool, server, onToggle, onDescriptionUpdate }: ToolCardProps
     }
   }
 
+  const handleCopyToolName = async (e: React.MouseEvent) => {
+    e.stopPropagation()
+    
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(tool.name)
+        setCopiedToolName(true)
+        showToast(t('common.copySuccess'), 'success')
+        setTimeout(() => setCopiedToolName(false), 2000)
+      } else {
+        // Fallback for HTTP or unsupported clipboard API
+        const textArea = document.createElement('textarea')
+        textArea.value = tool.name
+        textArea.style.position = 'fixed'
+        textArea.style.left = '-9999px'
+        document.body.appendChild(textArea)
+        textArea.focus()
+        textArea.select()
+        try {
+          document.execCommand('copy')
+          setCopiedToolName(true)
+          showToast(t('common.copySuccess'), 'success')
+          setTimeout(() => setCopiedToolName(false), 2000)
+        } catch (err) {
+          showToast(t('common.copyFailed'), 'error')
+          console.error('Copy to clipboard failed:', err)
+        }
+        document.body.removeChild(textArea)
+      }
+    } catch (error) {
+      showToast(t('common.copyFailed'), 'error')
+      console.error('Copy to clipboard failed:', error)
+    }
+  }
+
   const handleRunTool = async (arguments_: Record<string, any>) => {
     setIsRunning(true)
     try {
@@ -149,8 +187,19 @@ const ToolCard = ({ tool, server, onToggle, onDescriptionUpdate }: ToolCardProps
         onClick={() => setIsExpanded(!isExpanded)}
       >
         <div className="flex-1">
-          <h3 className="text-lg font-medium text-gray-900">
+          <h3 className="text-lg font-medium text-gray-900 inline-flex items-center">
             {tool.name.replace(server + nameSeparator, '')}
+            <button
+              className="ml-2 p-1 text-gray-500 hover:text-blue-600 cursor-pointer transition-colors"
+              onClick={handleCopyToolName}
+              title={t('common.copy')}
+            >
+              {copiedToolName ? (
+                <Check size={16} className="text-green-500" />
+              ) : (
+                <Copy size={16} />
+              )}
+            </button>
             <span className="ml-2 text-sm font-normal text-gray-600 inline-flex items-center">
               {isEditingDescription ? (
                 <>

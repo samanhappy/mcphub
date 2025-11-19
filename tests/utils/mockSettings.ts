@@ -32,6 +32,7 @@ export const createMockSettings = (overrides: Partial<McpSettings> = {}): McpSet
         enableBearerAuth: true,
         bearerAuthKey: 'test-auth-token-123',
       },
+      enableSessionRebuild: false,
     } as SystemConfig,
     users: [
       {

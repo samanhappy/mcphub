@@ -1,0 +1,113 @@
+---
+title: "System"
+description: "System and utility endpoints."
+---
+
+import { Card, Cards } from 'mintlify';
+
+<Card
+  title="GET /health"
+  href="#health-check"
+>
+  Check the health status of the MCPHub server.
+</Card>
+
+<Card
+  title="GET /oauth/callback"
+  href="#oauth-callback"
+>
+  OAuth callback endpoint for authentication flows.
+</Card>
+
+<Card
+  title="POST /api/dxt/upload"
+  href="#upload-dxt-file"
+>
+  Upload a DXT configuration file.
+</Card>
+
+<Card
+  title="GET /api/mcp-settings/export"
+  href="#export-mcp-settings"
+>
+  Export MCP settings as JSON.
+</Card>
+
+---
+
+### Health Check
+
+Check the health status of the MCPHub server.
+
+- **Endpoint**: `/health`
+- **Method**: `GET`
+- **Authentication**: Not required
+- **Response**:
+  ```json
+  {
+    "status": "ok",
+    "timestamp": "2024-11-12T01:30:00.000Z",
+    "uptime": 12345
+  }
+  ```
+
+**Example Request:**
+
+```bash
+curl "http://localhost:3000/health"
+```
+
+---
+
+### OAuth Callback
+
+OAuth callback endpoint for handling OAuth authentication flows. This endpoint is automatically called by OAuth providers after user authorization.
+
+- **Endpoint**: `/oauth/callback`
+- **Method**: `GET`
+- **Authentication**: Not required (public callback URL)
+- **Query Parameters**: Varies by OAuth provider (typically includes `code`, `state`, etc.)
+
+**Note**: This endpoint is used internally by MCPHub's OAuth integration and should not be called directly by clients.
+
+---
+
+### Upload DXT File
+
+Upload a DXT (Desktop Extension) configuration file to import server configurations.
+
+- **Endpoint**: `/api/dxt/upload`
+- **Method**: `POST`
+- **Authentication**: Required
+- **Content-Type**: `multipart/form-data`
+- **Body**:
+  - `file` (file, required): The DXT configuration file to upload.
+
+**Example Request:**
+
+```bash
+curl -X POST "http://localhost:3000/api/dxt/upload" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -F "file=@config.dxt"
+```
+
+---
+
+### Export MCP Settings
+
+Export the current MCP settings configuration as a JSON file.
+
+- **Endpoint**: `/api/mcp-settings/export`
+- **Method**: `GET`
+- **Authentication**: Required
+- **Response**: Returns the `mcp_settings.json` configuration file.
+
+**Example Request:**
+
+```bash
+curl "http://localhost:3000/api/mcp-settings/export" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -o mcp_settings.json
+```
+
+**Note**: This endpoint allows you to download a backup of your MCP settings, which can be used to restore or migrate your configuration.
