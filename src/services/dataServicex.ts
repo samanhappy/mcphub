@@ -37,9 +37,12 @@ export class DataServicex implements DataService {
     const currentUser = user || UserContextService.getInstance().getCurrentUser();
     if (!currentUser || currentUser.isAdmin) {
       const result = { ...all };
+      result.mcpServers = newSettings.mcpServers;
       result.users = newSettings.users;
       result.systemConfig = newSettings.systemConfig;
       result.groups = newSettings.groups;
+      result.oauthClients = newSettings.oauthClients;
+      result.oauthTokens = newSettings.oauthTokens;
       return result;
     } else {
       const result = JSON.parse(JSON.stringify(all));
