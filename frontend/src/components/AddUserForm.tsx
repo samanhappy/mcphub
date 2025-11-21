@@ -64,21 +64,21 @@ const AddUserForm = ({ onAdd, onCancel }: AddUserFormProps) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center z-50">
-      <div className="bg-white p-8 rounded-lg shadow-xl max-w-md w-full mx-4">
+    <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center z-50 backdrop-blur-sm">
+      <div className="bg-white p-8 rounded-xl shadow-2xl max-w-md w-full mx-4 border border-gray-100">
         <form onSubmit={handleSubmit}>
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">{t('users.addNew')}</h2>
+          <h2 className="text-xl font-bold text-gray-900 mb-6">{t('users.addNew')}</h2>
 
           {error && (
-            <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-3 mb-4">
-              <p className="text-sm">{error}</p>
+            <div className="bg-red-50 border-l-4 border-red-500 text-red-700 p-4 mb-6 rounded-md">
+              <p className="text-sm font-medium">{error}</p>
             </div>
           )}
 
-          <div className="space-y-4">
+          <div className="space-y-5">
             <div>
               <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
-                {t('users.username')} *
+                {t('users.username')} <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
@@ -87,7 +87,7 @@ const AddUserForm = ({ onAdd, onCancel }: AddUserFormProps) => {
                 value={formData.username}
                 onChange={handleInputChange}
                 placeholder={t('users.usernamePlaceholder')}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent form-input transition-all duration-200"
                 required
                 disabled={isSubmitting}
               />
@@ -95,7 +95,7 @@ const AddUserForm = ({ onAdd, onCancel }: AddUserFormProps) => {
 
             <div>
               <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
-                {t('users.password')} *
+                {t('users.password')} <span className="text-red-500">*</span>
               </label>
               <input
                 type="password"
@@ -104,43 +104,49 @@ const AddUserForm = ({ onAdd, onCancel }: AddUserFormProps) => {
                 value={formData.password}
                 onChange={handleInputChange}
                 placeholder={t('users.passwordPlaceholder')}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent form-input transition-all duration-200"
                 required
                 disabled={isSubmitting}
                 minLength={6}
               />
             </div>
 
-            <div className="flex items-center">
+            <div className="flex items-center pt-2">
               <input
                 type="checkbox"
                 id="isAdmin"
                 name="isAdmin"
                 checked={formData.isAdmin}
                 onChange={handleInputChange}
-                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                className="h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded transition-colors duration-200"
                 disabled={isSubmitting}
               />
-              <label htmlFor="isAdmin" className="ml-2 block text-sm text-gray-700">
+              <label htmlFor="isAdmin" className="ml-3 block text-sm font-medium text-gray-700 cursor-pointer select-none">
                 {t('users.adminRole')}
               </label>
             </div>
           </div>
 
-          <div className="flex justify-end space-x-3 mt-6">
+          <div className="flex justify-end space-x-3 mt-8">
             <button
               type="button"
               onClick={onCancel}
-              className="px-4 py-2 text-gray-700 bg-gray-200 rounded hover:bg-gray-300 transition-colors duration-200"
+              className="px-5 py-2.5 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-all duration-200 font-medium btn-secondary shadow-sm"
               disabled={isSubmitting}
             >
               {t('common.cancel')}
             </button>
             <button
               type="submit"
-              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all duration-200 font-medium btn-primary shadow-md disabled:opacity-70 disabled:cursor-not-allowed flex items-center"
               disabled={isSubmitting}
             >
+              {isSubmitting && (
+                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+              )}
               {isSubmitting ? t('common.creating') : t('users.create')}
             </button>
           </div>
