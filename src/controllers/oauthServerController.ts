@@ -449,7 +449,8 @@ export const getMetadata = async (req: Request, res: Response): Promise<void> =>
       return;
     }
 
-    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    const baseUrl =
+      settings.systemConfig?.install?.baseUrl || `${req.protocol}://${req.get('host')}`;
     const allowedScopes = oauthConfig.allowedScopes || ['read', 'write'];
 
     const metadata: any = {
@@ -494,7 +495,8 @@ export const getProtectedResourceMetadata = async (req: Request, res: Response):
       return;
     }
 
-    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    const baseUrl =
+      settings.systemConfig?.install?.baseUrl || `${req.protocol}://${req.get('host')}`;
     const allowedScopes = oauthConfig.allowedScopes || ['read', 'write'];
 
     // Return protected resource metadata according to RFC 9728

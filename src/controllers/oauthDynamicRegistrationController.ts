@@ -32,14 +32,14 @@ const verifyRegistrationToken = (token: string): string | null => {
   if (!data) {
     return null;
   }
-  
+
   // Token expires after 30 days
   const expiresAt = new Date(data.createdAt.getTime() + 30 * 24 * 60 * 60 * 1000);
   if (new Date() > expiresAt) {
     registrationTokens.delete(token);
     return null;
   }
-  
+
   return data.clientId;
 };
 
@@ -115,7 +115,7 @@ export const registerClient = (req: Request, res: Response): void => {
 
     // Generate client credentials
     const clientId = crypto.randomBytes(16).toString('hex');
-    
+
     // Determine if client secret is needed based on token_endpoint_auth_method
     const authMethod = token_endpoint_auth_method || 'client_secret_basic';
     const needsSecret = authMethod !== 'none';
@@ -155,7 +155,9 @@ export const registerClient = (req: Request, res: Response): void => {
 
     // Generate registration access token
     const registrationAccessToken = generateRegistrationToken(clientId);
-    const registrationClientUri = `${req.protocol}://${req.get('host')}/oauth/register/${clientId}`;
+    const baseUrl =
+      settings.systemConfig?.install?.baseUrl || `${req.protocol}://${req.get('host')}`;
+    const registrationClientUri = `${baseUrl}/oauth/register/${clientId}`;
 
     // Create OAuth client
     const client: IOAuthClient = {
@@ -216,7 +218,7 @@ export const registerClient = (req: Request, res: Response): void => {
     res.status(201).json(response);
   } catch (error) {
     console.error('Dynamic client registration error:', error);
-    
+
     if (error instanceof Error && error.message.includes('already exists')) {
       res.status(400).json({
         error: 'invalid_client_metadata',
@@ -277,12 +279,14 @@ export const getClientConfiguration = (req: Request, res: Response): void => {
       grant_types: client.grants,
       response_types: client.metadata?.response_types || ['code'],
       scope: (client.scopes || []).join(' '),
-      token_endpoint_auth_method: client.metadata?.token_endpoint_auth_method || 'client_secret_basic',
+      token_endpoint_auth_method:
+        client.metadata?.token_endpoint_auth_method || 'client_secret_basic',
     };
 
     // Include optional metadata
     if (client.metadata) {
-      if (client.metadata.application_type) response.application_type = client.metadata.application_type;
+      if (client.metadata.application_type)
+        response.application_type = client.metadata.application_type;
       if (client.metadata.contacts) response.contacts = client.metadata.contacts;
       if (client.metadata.logo_uri) response.logo_uri = client.metadata.logo_uri;
       if (client.metadata.client_uri) response.client_uri = client.metadata.client_uri;
@@ -457,16 +461,20 @@ export const updateClientConfiguration = (req: Request, res: Response): void => 
       grant_types: updatedClient.grants,
       response_types: updatedClient.metadata?.response_types || ['code'],
       scope: (updatedClient.scopes || []).join(' '),
-      token_endpoint_auth_method: updatedClient.metadata?.token_endpoint_auth_method || 'client_secret_basic',
+      token_endpoint_auth_method:
+        updatedClient.metadata?.token_endpoint_auth_method || 'client_secret_basic',
     };
 
     // Include optional metadata
     if (updatedClient.metadata) {
-      if (updatedClient.metadata.application_type) response.application_type = updatedClient.metadata.application_type;
+      if (updatedClient.metadata.application_type)
+        response.application_type = updatedClient.metadata.application_type;
       if (updatedClient.metadata.contacts) response.contacts = updatedClient.metadata.contacts;
       if (updatedClient.metadata.logo_uri) response.logo_uri = updatedClient.metadata.logo_uri;
-      if (updatedClient.metadata.client_uri) response.client_uri = updatedClient.metadata.client_uri;
-      if (updatedClient.metadata.policy_uri) response.policy_uri = updatedClient.metadata.policy_uri;
+      if (updatedClient.metadata.client_uri)
+        response.client_uri = updatedClient.metadata.client_uri;
+      if (updatedClient.metadata.policy_uri)
+        response.policy_uri = updatedClient.metadata.policy_uri;
       if (updatedClient.metadata.tos_uri) response.tos_uri = updatedClient.metadata.tos_uri;
       if (updatedClient.metadata.jwks_uri) response.jwks_uri = updatedClient.metadata.jwks_uri;
       if (updatedClient.metadata.jwks) response.jwks = updatedClient.metadata.jwks;
