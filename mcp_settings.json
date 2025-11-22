@@ -43,31 +43,6 @@
     }
   ],
   "systemConfig": {
-    "routing": {
-      "enableGlobalRoute": true,
-      "enableGroupNameRoute": true,
-      "enableBearerAuth": true,
-      "bearerAuthKey": "t3QTQVcF4HWtF7v3IOSygxlV0RgSGuwk",
-      "skipAuth": false
-    },
-    "install": {
-      "pythonIndexUrl": "",
-      "npmRegistry": "",
-      "baseUrl": "http://localhost:3000"
-    },
-    "smartRouting": {
-      "enabled": false,
-      "dbUrl": "",
-      "openaiApiBaseUrl": "",
-      "openaiApiKey": "",
-      "openaiApiEmbeddingModel": ""
-    },
-    "mcpRouter": {
-      "apiKey": "",
-      "referer": "https://www.mcphubx.com",
-      "title": "MCPHub",
-      "baseUrl": "https://api.mcprouter.to/v1"
-    },
     "oauthServer": {
       "enabled": true,
       "accessTokenLifetime": 3600,
@@ -88,69 +63,5 @@
         "requiresAuthentication": false
       }
     }
-  },
-  "oauthClients": [
-    {
-      "clientId": "chatgpt-web",
-      "name": "ChatGPT Web",
-      "redirectUris": [
-        "https://chatgpt.com/oauth/callback"
-      ],
-      "grants": [
-        "authorization_code",
-        "refresh_token"
-      ],
-      "scopes": [
-        "read",
-        "write"
-      ]
-    },
-    {
-      "clientId": "6377bc3d11e7a3da74373d961eda4fff",
-      "name": "Cherry Studio",
-      "redirectUris": [
-        "http://127.0.0.1:12346/oauth/callback"
-      ],
-      "grants": [
-        "authorization_code",
-        "refresh_token"
-      ],
-      "scopes": [
-        "read",
-        "write"
-      ],
-      "owner": "dynamic-registration",
-      "metadata": {
-        "application_type": "web",
-        "client_uri": "https://github.com/CherryHQ/cherry-studio",
-        "token_endpoint_auth_method": "none",
-        "response_types": [
-          "code"
-        ]
-      }
-    },
-    {
-      "clientId": "c83b7e4a47c25ac834ffc59d4439c75c",
-      "clientSecret": "e977d26c265977fc553ba9aecab42a84a911ac293373e3673d94d3164427e862",
-      "name": "ChatWise",
-      "redirectUris": [
-        "http://localhost:59735/callback/e5btzxb2e3"
-      ],
-      "grants": [
-        "authorization_code"
-      ],
-      "scopes": [
-        "read",
-        "write"
-      ],
-      "owner": "dynamic-registration",
-      "metadata": {
-        "application_type": "web",
-        "token_endpoint_auth_method": "client_secret_basic",
-        "response_types": [
-          "code"
-        ]
-      }
-    }
-  ]
+  }
 }
