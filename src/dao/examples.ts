@@ -187,7 +187,7 @@ export async function exampleUserConfigOperations() {
   console.log('All user configs:', Object.keys(allUserConfigs));
 
   // Get specific section for user
-  const userRoutingConfig = await userConfigDao.getSection('admin', 'routing');
+  const userRoutingConfig = await userConfigDao.getSection('admin', 'routing' as never);
   console.log('Admin routing config:', userRoutingConfig);
 
   // Delete user configuration
