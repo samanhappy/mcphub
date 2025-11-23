@@ -1,69 +1,69 @@
-import React, { useState, useEffect } from 'react'
-import { useTranslation } from 'react-i18next'
-import { useNavigate } from 'react-router-dom'
-import ChangePasswordForm from '@/components/ChangePasswordForm'
-import { Switch } from '@/components/ui/ToggleGroup'
-import { useSettingsData } from '@/hooks/useSettingsData'
-import { useToast } from '@/contexts/ToastContext'
-import { generateRandomKey } from '@/utils/key'
-import { PermissionChecker } from '@/components/PermissionChecker'
-import { PERMISSIONS } from '@/constants/permissions'
-import { Copy, Check, Download } from 'lucide-react'
+import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
+import ChangePasswordForm from '@/components/ChangePasswordForm';
+import { Switch } from '@/components/ui/ToggleGroup';
+import { useSettingsData } from '@/hooks/useSettingsData';
+import { useToast } from '@/contexts/ToastContext';
+import { generateRandomKey } from '@/utils/key';
+import { PermissionChecker } from '@/components/PermissionChecker';
+import { PERMISSIONS } from '@/constants/permissions';
+import { Copy, Check, Download } from 'lucide-react';
 
 const SettingsPage: React.FC = () => {
-  const { t } = useTranslation()
-  const navigate = useNavigate()
-  const { showToast } = useToast()
+  const { t } = useTranslation();
+  const navigate = useNavigate();
+  const { showToast } = useToast();
 
   const [installConfig, setInstallConfig] = useState<{
-    pythonIndexUrl: string
-    npmRegistry: string
-    baseUrl: string
+    pythonIndexUrl: string;
+    npmRegistry: string;
+    baseUrl: string;
   }>({
     pythonIndexUrl: '',
     npmRegistry: '',
     baseUrl: 'http://localhost:3000',
-  })
+  });
 
   const [tempSmartRoutingConfig, setTempSmartRoutingConfig] = useState<{
-    dbUrl: string
-    openaiApiBaseUrl: string
-    openaiApiKey: string
-    openaiApiEmbeddingModel: string
+    dbUrl: string;
+    openaiApiBaseUrl: string;
+    openaiApiKey: string;
+    openaiApiEmbeddingModel: string;
   }>({
     dbUrl: '',
     openaiApiBaseUrl: '',
     openaiApiKey: '',
     openaiApiEmbeddingModel: '',
-  })
+  });
 
   const [tempMCPRouterConfig, setTempMCPRouterConfig] = useState<{
-    apiKey: string
-    referer: string
-    title: string
-    baseUrl: string
+    apiKey: string;
+    referer: string;
+    title: string;
+    baseUrl: string;
   }>({
     apiKey: '',
     referer: 'https://www.mcphubx.com',
     title: 'MCPHub',
     baseUrl: 'https://api.mcprouter.to/v1',
-  })
+  });
 
   const [tempOAuthServerConfig, setTempOAuthServerConfig] = useState<{
-    accessTokenLifetime: string
-    refreshTokenLifetime: string
-    authorizationCodeLifetime: string
-    allowedScopes: string
-    dynamicRegistrationAllowedGrantTypes: string
+    accessTokenLifetime: string;
+    refreshTokenLifetime: string;
+    authorizationCodeLifetime: string;
+    allowedScopes: string;
+    dynamicRegistrationAllowedGrantTypes: string;
   }>({
     accessTokenLifetime: '3600',
     refreshTokenLifetime: '1209600',
     authorizationCodeLifetime: '300',
     allowedScopes: 'read, write',
     dynamicRegistrationAllowedGrantTypes: 'authorization_code, refresh_token',
-  })
+  });
 
-  const [tempNameSeparator, setTempNameSeparator] = useState<string>('-')
+  const [tempNameSeparator, setTempNameSeparator] = useState<string>('-');
 
   const {
     routingConfig,
@@ -86,14 +86,14 @@ const SettingsPage: React.FC = () => {
     updateNameSeparator,
     updateSessionRebuild,
     exportMCPSettings,
-  } = useSettingsData()
+  } = useSettingsData();
 
   // Update local installConfig when savedInstallConfig changes
   useEffect(() => {
     if (savedInstallConfig) {
-      setInstallConfig(savedInstallConfig)
+      setInstallConfig(savedInstallConfig);
     }
-  }, [savedInstallConfig])
+  }, [savedInstallConfig]);
 
   // Update local tempSmartRoutingConfig when smartRoutingConfig changes
   useEffect(() => {
@@ -103,9 +103,9 @@ const SettingsPage: React.FC = () => {
         openaiApiBaseUrl: smartRoutingConfig.openaiApiBaseUrl || '',
         openaiApiKey: smartRoutingConfig.openaiApiKey || '',
         openaiApiEmbeddingModel: smartRoutingConfig.openaiApiEmbeddingModel || '',
-      })
+      });
     }
-  }, [smartRoutingConfig])
+  }, [smartRoutingConfig]);
 
   // Update local tempMCPRouterConfig when mcpRouterConfig changes
   useEffect(() => {
@@ -115,9 +115,9 @@ const SettingsPage: React.FC = () => {
         referer: mcpRouterConfig.referer || 'https://www.mcphubx.com',
         title: mcpRouterConfig.title || 'MCPHub',
         baseUrl: mcpRouterConfig.baseUrl || 'https://api.mcprouter.to/v1',
-      })
+      });
     }
-  }, [mcpRouterConfig])
+  }, [mcpRouterConfig]);
 
   useEffect(() => {
     if (oauthServerConfig) {
@@ -138,18 +138,18 @@ const SettingsPage: React.FC = () => {
           oauthServerConfig.allowedScopes && oauthServerConfig.allowedScopes.length > 0
             ? oauthServerConfig.allowedScopes.join(', ')
             : '',
-        dynamicRegistrationAllowedGrantTypes:
-          oauthServerConfig.dynamicRegistration?.allowedGrantTypes?.length
-            ? oauthServerConfig.dynamicRegistration.allowedGrantTypes.join(', ')
-            : '',
-      })
+        dynamicRegistrationAllowedGrantTypes: oauthServerConfig.dynamicRegistration
+          ?.allowedGrantTypes?.length
+          ? oauthServerConfig.dynamicRegistration.allowedGrantTypes.join(', ')
+          : '',
+      });
     }
-  }, [oauthServerConfig])
+  }, [oauthServerConfig]);
 
   // Update local tempNameSeparator when nameSeparator changes
   useEffect(() => {
-    setTempNameSeparator(nameSeparator)
-  }, [nameSeparator])
+    setTempNameSeparator(nameSeparator);
+  }, [nameSeparator]);
 
   const [sectionsVisible, setSectionsVisible] = useState({
     routingConfig: false,
@@ -160,7 +160,7 @@ const SettingsPage: React.FC = () => {
     nameSeparator: false,
     password: false,
     exportConfig: false,
-  })
+  });
 
   const toggleSection = (
     section:
@@ -176,8 +176,8 @@ const SettingsPage: React.FC = () => {
     setSectionsVisible((prev) => ({
       ...prev,
       [section]: !prev[section],
-    }))
-  }
+    }));
+  };
 
   const handleRoutingConfigChange = async (
     key:
@@ -191,39 +191,39 @@ const SettingsPage: React.FC = () => {
     // If enableBearerAuth is turned on and there's no key, generate one first
     if (key === 'enableBearerAuth' && value === true) {
       if (!tempRoutingConfig.bearerAuthKey && !routingConfig.bearerAuthKey) {
-        const newKey = generateRandomKey()
-        handleBearerAuthKeyChange(newKey)
+        const newKey = generateRandomKey();
+        handleBearerAuthKeyChange(newKey);
 
         // Update both enableBearerAuth and bearerAuthKey in a single call
         const success = await updateRoutingConfigBatch({
           enableBearerAuth: true,
           bearerAuthKey: newKey,
-        })
+        });
 
         if (success) {
           // Update tempRoutingConfig to reflect the saved values
           setTempRoutingConfig((prev) => ({
             ...prev,
             bearerAuthKey: newKey,
-          }))
+          }));
         }
-        return
+        return;
       }
     }
 
-    await updateRoutingConfig(key, value)
-  }
+    await updateRoutingConfig(key, value);
+  };
 
   const handleBearerAuthKeyChange = (value: string) => {
     setTempRoutingConfig((prev) => ({
       ...prev,
       bearerAuthKey: value,
-    }))
-  }
+    }));
+  };
 
   const saveBearerAuthKey = async () => {
-    await updateRoutingConfig('bearerAuthKey', tempRoutingConfig.bearerAuthKey)
-  }
+    await updateRoutingConfig('bearerAuthKey', tempRoutingConfig.bearerAuthKey);
+  };
 
   const handleInstallConfigChange = (
     key: 'pythonIndexUrl' | 'npmRegistry' | 'baseUrl',
@@ -232,12 +232,12 @@ const SettingsPage: React.FC = () => {
     setInstallConfig({
       ...installConfig,
       [key]: value,
-    })
-  }
+    });
+  };
 
   const saveInstallConfig = async (key: 'pythonIndexUrl' | 'npmRegistry' | 'baseUrl') => {
-    await updateInstallConfig(key, installConfig[key])
-  }
+    await updateInstallConfig(key, installConfig[key]);
+  };
 
   const handleSmartRoutingConfigChange = (
     key: 'dbUrl' | 'openaiApiBaseUrl' | 'openaiApiKey' | 'openaiApiEmbeddingModel',
@@ -246,14 +246,14 @@ const SettingsPage: React.FC = () => {
     setTempSmartRoutingConfig({
       ...tempSmartRoutingConfig,
       [key]: value,
-    })
-  }
+    });
+  };
 
   const saveSmartRoutingConfig = async (
     key: 'dbUrl' | 'openaiApiBaseUrl' | 'openaiApiKey' | 'openaiApiEmbeddingModel',
   ) => {
-    await updateSmartRoutingConfig(key, tempSmartRoutingConfig[key])
-  }
+    await updateSmartRoutingConfig(key, tempSmartRoutingConfig[key]);
+  };
 
   const handleMCPRouterConfigChange = (
     key: 'apiKey' | 'referer' | 'title' | 'baseUrl',
@@ -262,24 +262,24 @@ const SettingsPage: React.FC = () => {
     setTempMCPRouterConfig({
       ...tempMCPRouterConfig,
       [key]: value,
-    })
-  }
+    });
+  };
 
   const saveMCPRouterConfig = async (key: 'apiKey' | 'referer' | 'title' | 'baseUrl') => {
-    await updateMCPRouterConfig(key, tempMCPRouterConfig[key])
-  }
+    await updateMCPRouterConfig(key, tempMCPRouterConfig[key]);
+  };
 
   type OAuthServerNumberField =
     | 'accessTokenLifetime'
     | 'refreshTokenLifetime'
-    | 'authorizationCodeLifetime'
+    | 'authorizationCodeLifetime';
 
   const handleOAuthServerNumberChange = (key: OAuthServerNumberField, value: string) => {
     setTempOAuthServerConfig((prev) => ({
       ...prev,
       [key]: value,
-    }))
-  }
+    }));
+  };
 
   const handleOAuthServerTextChange = (
     key: 'allowedScopes' | 'dynamicRegistrationAllowedGrantTypes',
@@ -288,52 +288,52 @@ const SettingsPage: React.FC = () => {
     setTempOAuthServerConfig((prev) => ({
       ...prev,
       [key]: value,
-    }))
-  }
+    }));
+  };
 
   const saveOAuthServerNumberConfig = async (key: OAuthServerNumberField) => {
-    const rawValue = tempOAuthServerConfig[key]
+    const rawValue = tempOAuthServerConfig[key];
     if (!rawValue || rawValue.trim() === '') {
-      showToast(t('settings.invalidNumberInput') || 'Please enter a valid number', 'error')
-      return
+      showToast(t('settings.invalidNumberInput') || 'Please enter a valid number', 'error');
+      return;
     }
 
-    const parsedValue = Number(rawValue)
+    const parsedValue = Number(rawValue);
     if (Number.isNaN(parsedValue) || parsedValue < 0) {
-      showToast(t('settings.invalidNumberInput') || 'Please enter a valid number', 'error')
-      return
+      showToast(t('settings.invalidNumberInput') || 'Please enter a valid number', 'error');
+      return;
     }
 
-    await updateOAuthServerConfig(key, parsedValue)
-  }
+    await updateOAuthServerConfig(key, parsedValue);
+  };
 
   const saveOAuthServerAllowedScopes = async () => {
     const scopes = tempOAuthServerConfig.allowedScopes
       .split(',')
       .map((scope) => scope.trim())
-      .filter((scope) => scope.length > 0)
+      .filter((scope) => scope.length > 0);
 
-    await updateOAuthServerConfig('allowedScopes', scopes)
-  }
+    await updateOAuthServerConfig('allowedScopes', scopes);
+  };
 
   const saveOAuthServerGrantTypes = async () => {
     const grantTypes = tempOAuthServerConfig.dynamicRegistrationAllowedGrantTypes
       .split(',')
       .map((grant) => grant.trim())
-      .filter((grant) => grant.length > 0)
+      .filter((grant) => grant.length > 0);
 
     await updateOAuthServerConfig('dynamicRegistration', {
       ...oauthServerConfig.dynamicRegistration,
       allowedGrantTypes: grantTypes,
-    })
-  }
+    });
+  };
 
   const handleOAuthServerToggle = async (
     key: 'enabled' | 'requireClientSecret' | 'requireState',
     value: boolean,
   ) => {
-    await updateOAuthServerConfig(key, value)
-  }
+    await updateOAuthServerConfig(key, value);
+  };
 
   const handleDynamicRegistrationToggle = async (
     updates: Partial<typeof oauthServerConfig.dynamicRegistration>,
@@ -341,137 +341,137 @@ const SettingsPage: React.FC = () => {
     await updateOAuthServerConfig('dynamicRegistration', {
       ...oauthServerConfig.dynamicRegistration,
       ...updates,
-    })
-  }
+    });
+  };
 
   const saveNameSeparator = async () => {
-    await updateNameSeparator(tempNameSeparator)
-  }
+    await updateNameSeparator(tempNameSeparator);
+  };
 
   const handleSmartRoutingEnabledChange = async (value: boolean) => {
     // If enabling Smart Routing, validate required fields and save any unsaved changes
     if (value) {
-      const currentDbUrl = tempSmartRoutingConfig.dbUrl || smartRoutingConfig.dbUrl
+      const currentDbUrl = tempSmartRoutingConfig.dbUrl || smartRoutingConfig.dbUrl;
       const currentOpenaiApiKey =
-        tempSmartRoutingConfig.openaiApiKey || smartRoutingConfig.openaiApiKey
+        tempSmartRoutingConfig.openaiApiKey || smartRoutingConfig.openaiApiKey;
 
       if (!currentDbUrl || !currentOpenaiApiKey) {
-        const missingFields = []
-        if (!currentDbUrl) missingFields.push(t('settings.dbUrl'))
-        if (!currentOpenaiApiKey) missingFields.push(t('settings.openaiApiKey'))
+        const missingFields = [];
+        if (!currentDbUrl) missingFields.push(t('settings.dbUrl'));
+        if (!currentOpenaiApiKey) missingFields.push(t('settings.openaiApiKey'));
 
         showToast(
           t('settings.smartRoutingValidationError', {
             fields: missingFields.join(', '),
           }),
-        )
-        return
+        );
+        return;
       }
 
       // Prepare updates object with unsaved changes and enabled status
-      const updates: any = { enabled: value }
+      const updates: any = { enabled: value };
 
       // Check for unsaved changes and include them in the batch update
       if (tempSmartRoutingConfig.dbUrl !== smartRoutingConfig.dbUrl) {
-        updates.dbUrl = tempSmartRoutingConfig.dbUrl
+        updates.dbUrl = tempSmartRoutingConfig.dbUrl;
       }
       if (tempSmartRoutingConfig.openaiApiBaseUrl !== smartRoutingConfig.openaiApiBaseUrl) {
-        updates.openaiApiBaseUrl = tempSmartRoutingConfig.openaiApiBaseUrl
+        updates.openaiApiBaseUrl = tempSmartRoutingConfig.openaiApiBaseUrl;
       }
       if (tempSmartRoutingConfig.openaiApiKey !== smartRoutingConfig.openaiApiKey) {
-        updates.openaiApiKey = tempSmartRoutingConfig.openaiApiKey
+        updates.openaiApiKey = tempSmartRoutingConfig.openaiApiKey;
       }
       if (
         tempSmartRoutingConfig.openaiApiEmbeddingModel !==
         smartRoutingConfig.openaiApiEmbeddingModel
       ) {
-        updates.openaiApiEmbeddingModel = tempSmartRoutingConfig.openaiApiEmbeddingModel
+        updates.openaiApiEmbeddingModel = tempSmartRoutingConfig.openaiApiEmbeddingModel;
       }
 
       // Save all changes in a single batch update
-      await updateSmartRoutingConfigBatch(updates)
+      await updateSmartRoutingConfigBatch(updates);
     } else {
       // If disabling, just update the enabled status
-      await updateSmartRoutingConfig('enabled', value)
+      await updateSmartRoutingConfig('enabled', value);
     }
-  }
+  };
 
   const handlePasswordChangeSuccess = () => {
     setTimeout(() => {
-      navigate('/')
-    }, 2000)
-  }
+      navigate('/');
+    }, 2000);
+  };
 
-  const [copiedConfig, setCopiedConfig] = useState(false)
-  const [mcpSettingsJson, setMcpSettingsJson] = useState<string>('')
+  const [copiedConfig, setCopiedConfig] = useState(false);
+  const [mcpSettingsJson, setMcpSettingsJson] = useState<string>('');
 
   const fetchMcpSettings = async () => {
     try {
-      const result = await exportMCPSettings()
-      console.log('Fetched MCP settings:', result)
-      const configJson = JSON.stringify(result.data, null, 2)
-      setMcpSettingsJson(configJson)
+      const result = await exportMCPSettings();
+      console.log('Fetched MCP settings:', result);
+      const configJson = JSON.stringify(result.data, null, 2);
+      setMcpSettingsJson(configJson);
     } catch (error) {
-      console.error('Error fetching MCP settings:', error)
-      showToast(t('settings.exportError') || 'Failed to fetch settings', 'error')
+      console.error('Error fetching MCP settings:', error);
+      showToast(t('settings.exportError') || 'Failed to fetch settings', 'error');
     }
-  }
+  };
 
   useEffect(() => {
     if (sectionsVisible.exportConfig && !mcpSettingsJson) {
-      fetchMcpSettings()
+      fetchMcpSettings();
     }
-  }, [sectionsVisible.exportConfig])
+  }, [sectionsVisible.exportConfig]);
 
   const handleCopyConfig = async () => {
-    if (!mcpSettingsJson) return
+    if (!mcpSettingsJson) return;
 
     try {
       if (navigator.clipboard && window.isSecureContext) {
-        await navigator.clipboard.writeText(mcpSettingsJson)
-        setCopiedConfig(true)
-        showToast(t('common.copySuccess') || 'Copied to clipboard', 'success')
-        setTimeout(() => setCopiedConfig(false), 2000)
+        await navigator.clipboard.writeText(mcpSettingsJson);
+        setCopiedConfig(true);
+        showToast(t('common.copySuccess') || 'Copied to clipboard', 'success');
+        setTimeout(() => setCopiedConfig(false), 2000);
       } else {
         // Fallback for HTTP or unsupported clipboard API
-        const textArea = document.createElement('textarea')
-        textArea.value = mcpSettingsJson
-        textArea.style.position = 'fixed'
-        textArea.style.left = '-9999px'
-        document.body.appendChild(textArea)
-        textArea.focus()
-        textArea.select()
+        const textArea = document.createElement('textarea');
+        textArea.value = mcpSettingsJson;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-9999px';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
         try {
-          document.execCommand('copy')
-          setCopiedConfig(true)
-          showToast(t('common.copySuccess') || 'Copied to clipboard', 'success')
-          setTimeout(() => setCopiedConfig(false), 2000)
+          document.execCommand('copy');
+          setCopiedConfig(true);
+          showToast(t('common.copySuccess') || 'Copied to clipboard', 'success');
+          setTimeout(() => setCopiedConfig(false), 2000);
         } catch (err) {
-          showToast(t('common.copyFailed') || 'Copy failed', 'error')
-          console.error('Copy to clipboard failed:', err)
+          showToast(t('common.copyFailed') || 'Copy failed', 'error');
+          console.error('Copy to clipboard failed:', err);
         }
-        document.body.removeChild(textArea)
+        document.body.removeChild(textArea);
       }
     } catch (error) {
-      console.error('Error copying configuration:', error)
-      showToast(t('common.copyFailed') || 'Copy failed', 'error')
+      console.error('Error copying configuration:', error);
+      showToast(t('common.copyFailed') || 'Copy failed', 'error');
     }
-  }
+  };
 
   const handleDownloadConfig = () => {
-    if (!mcpSettingsJson) return
+    if (!mcpSettingsJson) return;
 
-    const blob = new Blob([mcpSettingsJson], { type: 'application/json' })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = 'mcp_settings.json'
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    URL.revokeObjectURL(url)
-    showToast(t('settings.exportSuccess') || 'Settings exported successfully', 'success')
-  }
+    const blob = new Blob([mcpSettingsJson], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'mcp_settings.json';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    showToast(t('settings.exportSuccess') || 'Settings exported successfully', 'success');
+  };
 
   return (
     <div className="container mx-auto">
@@ -643,9 +643,7 @@ const SettingsPage: React.FC = () => {
 
               <div className="flex items-center justify-between p-3 bg-gray-50 rounded-md">
                 <div>
-                  <h3 className="font-medium text-gray-700">
-                    {t('settings.requireClientSecret')}
-                  </h3>
+                  <h3 className="font-medium text-gray-700">{t('settings.requireClientSecret')}</h3>
                   <p className="text-sm text-gray-500">
                     {t('settings.requireClientSecretDescription')}
                   </p>
@@ -673,9 +671,7 @@ const SettingsPage: React.FC = () => {
 
               <div className="p-3 bg-gray-50 rounded-md">
                 <div className="mb-2">
-                  <h3 className="font-medium text-gray-700">
-                    {t('settings.accessTokenLifetime')}
-                  </h3>
+                  <h3 className="font-medium text-gray-700">{t('settings.accessTokenLifetime')}</h3>
                   <p className="text-sm text-gray-500">
                     {t('settings.accessTokenLifetimeDescription')}
                   </p>
@@ -764,9 +760,7 @@ const SettingsPage: React.FC = () => {
               <div className="p-3 bg-gray-50 rounded-md">
                 <div className="mb-2">
                   <h3 className="font-medium text-gray-700">{t('settings.allowedScopes')}</h3>
-                  <p className="text-sm text-gray-500">
-                    {t('settings.allowedScopesDescription')}
-                  </p>
+                  <p className="text-sm text-gray-500">{t('settings.allowedScopesDescription')}</p>
                 </div>
                 <div className="flex items-center gap-3">
                   <input
@@ -946,142 +940,154 @@ const SettingsPage: React.FC = () => {
       </PermissionChecker>
 
       {/* System Settings */}
-      <div className="bg-white shadow rounded-lg py-4 px-6 mb-6 dashboard-card">
-        <div
-          className="flex justify-between items-center cursor-pointer"
-          onClick={() => toggleSection('nameSeparator')}
-        >
-          <h2 className="font-semibold text-gray-800">{t('settings.systemSettings')}</h2>
-          <span className="text-gray-500">{sectionsVisible.nameSeparator ? '▼' : '►'}</span>
-        </div>
-
-        {sectionsVisible.nameSeparator && (
-          <div className="space-y-4 mt-4">
-            <div className="p-3 bg-gray-50 rounded-md">
-              <div className="mb-2">
-                <h3 className="font-medium text-gray-700">{t('settings.nameSeparatorLabel')}</h3>
-                <p className="text-sm text-gray-500">{t('settings.nameSeparatorDescription')}</p>
-              </div>
-              <div className="flex items-center gap-3">
-                <input
-                  type="text"
-                  value={tempNameSeparator}
-                  onChange={(e) => setTempNameSeparator(e.target.value)}
-                  placeholder="-"
-                  className="flex-1 mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm form-input"
-                  disabled={loading}
-                  maxLength={5}
-                />
-                <button
-                  onClick={saveNameSeparator}
-                  disabled={loading}
-                  className="mt-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium disabled:opacity-50 btn-primary"
-                >
-                  {t('common.save')}
-                </button>
-              </div>
-            </div>
-            
-            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-md">
-              <div>
-                <h3 className="font-medium text-gray-700">{t('settings.enableSessionRebuild')}</h3>
-                <p className="text-sm text-gray-500">{t('settings.enableSessionRebuildDescription')}</p>
-              </div>
-              <Switch
-                disabled={loading}
-                checked={enableSessionRebuild}
-                onCheckedChange={(checked) => updateSessionRebuild(checked)}
-              />
-            </div>
+      <PermissionChecker permissions={PERMISSIONS.SETTINGS_SYSTEM_CONFIG}>
+        <div className="bg-white shadow rounded-lg py-4 px-6 mb-6 dashboard-card">
+          <div
+            className="flex justify-between items-center cursor-pointer"
+            onClick={() => toggleSection('nameSeparator')}
+          >
+            <h2 className="font-semibold text-gray-800">{t('settings.systemSettings')}</h2>
+            <span className="text-gray-500">{sectionsVisible.nameSeparator ? '▼' : '►'}</span>
           </div>
-        )}
-      </div>
 
-      {/* Route Configuration Settings */}
-      <div className="bg-white shadow rounded-lg py-4 px-6 mb-6 dashboard-card">
-        <div
-          className="flex justify-between items-center cursor-pointer"
-          onClick={() => toggleSection('routingConfig')}
-        >
-          <h2 className="font-semibold text-gray-800">{t('pages.settings.routeConfig')}</h2>
-          <span className="text-gray-500">{sectionsVisible.routingConfig ? '▼' : '►'}</span>
-        </div>
-
-        {sectionsVisible.routingConfig && (
-          <div className="space-y-4 mt-4">
-            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-md">
-              <div>
-                <h3 className="font-medium text-gray-700">{t('settings.enableBearerAuth')}</h3>
-                <p className="text-sm text-gray-500">{t('settings.enableBearerAuthDescription')}</p>
-              </div>
-              <Switch
-                disabled={loading}
-                checked={routingConfig.enableBearerAuth}
-                onCheckedChange={(checked) =>
-                  handleRoutingConfigChange('enableBearerAuth', checked)
-                }
-              />
-            </div>
-
-            {routingConfig.enableBearerAuth && (
+          {sectionsVisible.nameSeparator && (
+            <div className="space-y-4 mt-4">
               <div className="p-3 bg-gray-50 rounded-md">
                 <div className="mb-2">
-                  <h3 className="font-medium text-gray-700">{t('settings.bearerAuthKey')}</h3>
-                  <p className="text-sm text-gray-500">{t('settings.bearerAuthKeyDescription')}</p>
+                  <h3 className="font-medium text-gray-700">{t('settings.nameSeparatorLabel')}</h3>
+                  <p className="text-sm text-gray-500">{t('settings.nameSeparatorDescription')}</p>
                 </div>
                 <div className="flex items-center gap-3">
                   <input
                     type="text"
-                    value={tempRoutingConfig.bearerAuthKey}
-                    onChange={(e) => handleBearerAuthKeyChange(e.target.value)}
-                    placeholder={t('settings.bearerAuthKeyPlaceholder')}
+                    value={tempNameSeparator}
+                    onChange={(e) => setTempNameSeparator(e.target.value)}
+                    placeholder="-"
                     className="flex-1 mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm form-input"
-                    disabled={loading || !routingConfig.enableBearerAuth}
+                    disabled={loading}
+                    maxLength={5}
                   />
                   <button
-                    onClick={saveBearerAuthKey}
-                    disabled={loading || !routingConfig.enableBearerAuth}
+                    onClick={saveNameSeparator}
+                    disabled={loading}
                     className="mt-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium disabled:opacity-50 btn-primary"
                   >
                     {t('common.save')}
                   </button>
                 </div>
               </div>
-            )}
 
-            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-md">
-              <div>
-                <h3 className="font-medium text-gray-700">{t('settings.enableGlobalRoute')}</h3>
-                <p className="text-sm text-gray-500">
-                  {t('settings.enableGlobalRouteDescription')}
-                </p>
+              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-md">
+                <div>
+                  <h3 className="font-medium text-gray-700">
+                    {t('settings.enableSessionRebuild')}
+                  </h3>
+                  <p className="text-sm text-gray-500">
+                    {t('settings.enableSessionRebuildDescription')}
+                  </p>
+                </div>
+                <Switch
+                  disabled={loading}
+                  checked={enableSessionRebuild}
+                  onCheckedChange={(checked) => updateSessionRebuild(checked)}
+                />
               </div>
-              <Switch
-                disabled={loading}
-                checked={routingConfig.enableGlobalRoute}
-                onCheckedChange={(checked) =>
-                  handleRoutingConfigChange('enableGlobalRoute', checked)
-                }
-              />
             </div>
+          )}
+        </div>
+      </PermissionChecker>
 
-            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-md">
-              <div>
-                <h3 className="font-medium text-gray-700">{t('settings.enableGroupNameRoute')}</h3>
-                <p className="text-sm text-gray-500">
-                  {t('settings.enableGroupNameRouteDescription')}
-                </p>
+      {/* Route Configuration Settings */}
+      <PermissionChecker permissions={PERMISSIONS.SETTINGS_ROUTE_CONFIG}>
+        <div className="bg-white shadow rounded-lg py-4 px-6 mb-6 dashboard-card">
+          <div
+            className="flex justify-between items-center cursor-pointer"
+            onClick={() => toggleSection('routingConfig')}
+          >
+            <h2 className="font-semibold text-gray-800">{t('pages.settings.routeConfig')}</h2>
+            <span className="text-gray-500">{sectionsVisible.routingConfig ? '▼' : '►'}</span>
+          </div>
+
+          {sectionsVisible.routingConfig && (
+            <div className="space-y-4 mt-4">
+              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-md">
+                <div>
+                  <h3 className="font-medium text-gray-700">{t('settings.enableBearerAuth')}</h3>
+                  <p className="text-sm text-gray-500">
+                    {t('settings.enableBearerAuthDescription')}
+                  </p>
+                </div>
+                <Switch
+                  disabled={loading}
+                  checked={routingConfig.enableBearerAuth}
+                  onCheckedChange={(checked) =>
+                    handleRoutingConfigChange('enableBearerAuth', checked)
+                  }
+                />
               </div>
-              <Switch
-                disabled={loading}
-                checked={routingConfig.enableGroupNameRoute}
-                onCheckedChange={(checked) =>
-                  handleRoutingConfigChange('enableGroupNameRoute', checked)
-                }
-              />
-            </div>
 
-            <PermissionChecker permissions={PERMISSIONS.SETTINGS_SKIP_AUTH}>
+              {routingConfig.enableBearerAuth && (
+                <div className="p-3 bg-gray-50 rounded-md">
+                  <div className="mb-2">
+                    <h3 className="font-medium text-gray-700">{t('settings.bearerAuthKey')}</h3>
+                    <p className="text-sm text-gray-500">
+                      {t('settings.bearerAuthKeyDescription')}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="text"
+                      value={tempRoutingConfig.bearerAuthKey}
+                      onChange={(e) => handleBearerAuthKeyChange(e.target.value)}
+                      placeholder={t('settings.bearerAuthKeyPlaceholder')}
+                      className="flex-1 mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm form-input"
+                      disabled={loading || !routingConfig.enableBearerAuth}
+                    />
+                    <button
+                      onClick={saveBearerAuthKey}
+                      disabled={loading || !routingConfig.enableBearerAuth}
+                      className="mt-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium disabled:opacity-50 btn-primary"
+                    >
+                      {t('common.save')}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-md">
+                <div>
+                  <h3 className="font-medium text-gray-700">{t('settings.enableGlobalRoute')}</h3>
+                  <p className="text-sm text-gray-500">
+                    {t('settings.enableGlobalRouteDescription')}
+                  </p>
+                </div>
+                <Switch
+                  disabled={loading}
+                  checked={routingConfig.enableGlobalRoute}
+                  onCheckedChange={(checked) =>
+                    handleRoutingConfigChange('enableGlobalRoute', checked)
+                  }
+                />
+              </div>
+
+              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-md">
+                <div>
+                  <h3 className="font-medium text-gray-700">
+                    {t('settings.enableGroupNameRoute')}
+                  </h3>
+                  <p className="text-sm text-gray-500">
+                    {t('settings.enableGroupNameRouteDescription')}
+                  </p>
+                </div>
+                <Switch
+                  disabled={loading}
+                  checked={routingConfig.enableGroupNameRoute}
+                  onCheckedChange={(checked) =>
+                    handleRoutingConfigChange('enableGroupNameRoute', checked)
+                  }
+                />
+              </div>
+
               <div className="flex items-center justify-between p-3 bg-gray-50 rounded-md">
                 <div>
                   <h3 className="font-medium text-gray-700">{t('settings.skipAuth')}</h3>
@@ -1093,10 +1099,10 @@ const SettingsPage: React.FC = () => {
                   onCheckedChange={(checked) => handleRoutingConfigChange('skipAuth', checked)}
                 />
               </div>
-            </PermissionChecker>
-          </div>
-        )}
-      </div>
+            </div>
+          )}
+        </div>
+      </PermissionChecker>
 
       {/* Installation Configuration Settings */}
       <PermissionChecker permissions={PERMISSIONS.SETTINGS_INSTALL_CONFIG}>
@@ -1188,7 +1194,10 @@ const SettingsPage: React.FC = () => {
       </PermissionChecker>
 
       {/* Change Password */}
-      <div className="bg-white shadow rounded-lg py-4 px-6 mb-6 dashboard-card" data-section="password">
+      <div
+        className="bg-white shadow rounded-lg py-4 px-6 mb-6 dashboard-card"
+        data-section="password"
+      >
         <div
           className="flex justify-between items-center cursor-pointer"
           onClick={() => toggleSection('password')}
@@ -1258,7 +1267,7 @@ const SettingsPage: React.FC = () => {
         </div>
       </PermissionChecker>
     </div>
-  )
-}
+  );
+};
 
-export default SettingsPage
+export default SettingsPage;

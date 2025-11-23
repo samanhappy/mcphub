@@ -1,5 +1,5 @@
-import { createRequire } from 'module';
 import { join } from 'path';
+import { pathToFileURL } from 'url';
 
 type Class<T> = new (...args: any[]) => T;
 
@@ -11,7 +11,24 @@ interface Service<T> {
 const registry = new Map<string, Service<any>>();
 const instances = new Map<string, unknown>();
 
-export function registerService<T>(key: string, entry: Service<T>) {
+async function tryLoadOverride<T>(key: string, overridePath: string): Promise<Class<T> | undefined> {
+  try {
+    const moduleUrl = pathToFileURL(overridePath).href;
+    const mod = await import(moduleUrl);
+    const override = mod[key.charAt(0).toUpperCase() + key.slice(1) + 'x'];
+    if (typeof override === 'function') {
+      return override as Class<T>;
+    }
+  } catch (error: any) {
+    // Ignore not-found errors and keep trying other paths; surface other errors for visibility
+    if (error?.code !== 'ERR_MODULE_NOT_FOUND' && error?.code !== 'MODULE_NOT_FOUND') {
+      console.warn(`Failed to load service override from ${overridePath}:`, error);
+    }
+  }
+  return undefined;
+}
+
+export async function registerService<T>(key: string, entry: Service<T>) {
   // Try to load override immediately during registration
   // Try multiple paths and file extensions in order
   const serviceDirs = ['src/services', 'dist/services'];
@@ -22,18 +39,10 @@ export function registerService<T>(key: string, entry: Service<T>) {
     for (const fileExt of fileExts) {
       const overridePath = join(process.cwd(), serviceDir, overrideFileName + fileExt);
 
-      try {
-        // Use createRequire with a stable path reference
-        const require = createRequire(join(process.cwd(), 'package.json'));
-        const mod = require(overridePath);
-        const override = mod[key.charAt(0).toUpperCase() + key.slice(1) + 'x'];
-        if (typeof override === 'function') {
-          entry.override = override;
-          break; // Found override, exit both loops
-        }
-      } catch (error) {
-        // Continue trying next path/extension combination
-        continue;
+      const override = await tryLoadOverride<T>(key, overridePath);
+      if (override) {
+        entry.override = override;
+        break; // Found override, exit both loops
       }
     }
 

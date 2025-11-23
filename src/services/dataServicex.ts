@@ -26,7 +26,8 @@ export class DataServicex implements DataService {
       return result;
     } else {
       const result = { ...settings };
-      result.systemConfig = settings.userConfigs?.[currentUser?.username || ''] || {};
+      // TODO: apply userConfig to filter settings as needed
+      // const userConfig = settings.userConfigs?.[currentUser?.username || ''];
       delete result.userConfigs;
       return result;
     }
@@ -53,10 +54,7 @@ export class DataServicex implements DataService {
       const userConfig: UserConfig = {
         routing: systemConfig.routing
           ? {
-              enableGlobalRoute: systemConfig.routing.enableGlobalRoute,
-              enableGroupNameRoute: systemConfig.routing.enableGroupNameRoute,
-              enableBearerAuth: systemConfig.routing.enableBearerAuth,
-              bearerAuthKey: systemConfig.routing.bearerAuthKey,
+              // TODO: only allow modifying certain fields based on userConfig permissions
             }
           : undefined,
       };

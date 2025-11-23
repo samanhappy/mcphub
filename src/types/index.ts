@@ -175,14 +175,7 @@ export interface SystemConfig {
   enableSessionRebuild?: boolean; // Controls whether server session rebuild is enabled
 }
 
-export interface UserConfig {
-  routing?: {
-    enableGlobalRoute?: boolean; // Controls whether the /sse endpoint without group is enabled
-    enableGroupNameRoute?: boolean; // Controls whether group routing by name is allowed
-    enableBearerAuth?: boolean; // Controls whether bearer auth is enabled for group routes
-    bearerAuthKey?: string; // The bearer auth key to validate against
-  };
-}
+export interface UserConfig {}
 
 // OAuth Client for MCPHub's own authorization server
 export interface IOAuthClient {
