@@ -1,10 +1,5 @@
-import { registerService, getService } from './registry.js';
-import { DataService, DataServiceImpl } from './dataService.js';
-
-await registerService('dataService', {
-  defaultImpl: DataServiceImpl,
-});
+import { DataService } from './dataService.js';
 
 export function getDataService(): DataService {
-  return getService<DataService>('dataService');
+  return new DataService();
 }
