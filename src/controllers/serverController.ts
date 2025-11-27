@@ -543,7 +543,7 @@ export const updateSystemConfig = (req: Request, res: Response): void => {
 
     const hasNameSeparatorUpdate = typeof nameSeparator === 'string';
     
-    const hasSessionRebuildUpdate = typeof enableSessionRebuild !== 'boolean';
+    const hasSessionRebuildUpdate = typeof enableSessionRebuild === 'boolean';
 
     const hasOAuthServerUpdate =
       oauthServer &&
