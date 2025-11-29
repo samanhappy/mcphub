@@ -6,11 +6,11 @@ import {
   SystemConfigDao,
   UserConfigDao,
   ServerConfigWithName,
-  UserDaoImpl,
-  ServerDaoImpl,
-  GroupDaoImpl,
-  SystemConfigDaoImpl,
-  UserConfigDaoImpl,
+  getUserDao,
+  getServerDao,
+  getGroupDao,
+  getSystemConfigDao,
+  getUserConfigDao,
 } from '../dao/index.js';
 
 /**
@@ -252,14 +252,14 @@ export class DaoConfigService {
 }
 
 /**
- * Create a DaoConfigService with default DAO implementations
+ * Create a DaoConfigService with DAO implementations from factory
  */
 export function createDaoConfigService(): DaoConfigService {
   return new DaoConfigService(
-    new UserDaoImpl(),
-    new ServerDaoImpl(),
-    new GroupDaoImpl(),
-    new SystemConfigDaoImpl(),
-    new UserConfigDaoImpl(),
+    getUserDao(),
+    getServerDao(),
+    getGroupDao(),
+    getSystemConfigDao(),
+    getUserConfigDao(),
   );
 }

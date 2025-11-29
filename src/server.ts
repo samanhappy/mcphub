@@ -61,7 +61,7 @@ export class AppServer {
       await initializeDefaultUser();
 
       // Initialize OAuth provider if configured (for proxying upstream MCP OAuth)
-      initOAuthProvider();
+      await initOAuthProvider();
       const oauthRouter = getOAuthRouter();
       if (oauthRouter) {
         // Mount OAuth router at the root level (before other routes)
@@ -71,7 +71,7 @@ export class AppServer {
       }
 
       // Initialize OAuth authorization server (for MCPHub's own OAuth)
-      initOAuthServer();
+      await initOAuthServer();
 
       initMiddlewares(this.app);
       initRoutes(this.app);
@@ -103,8 +103,10 @@ export class AppServer {
           );
 
           // User-scoped routes with user context middleware
-          this.app.get(`${this.basePath}/:user/sse/:group(.*)?`, sseUserContextMiddleware, (req, res) =>
-            handleSseConnection(req, res),
+          this.app.get(
+            `${this.basePath}/:user/sse/:group(.*)?`,
+            sseUserContextMiddleware,
+            (req, res) => handleSseConnection(req, res),
           );
           this.app.post(
             `${this.basePath}/:user/messages`,

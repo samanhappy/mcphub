@@ -9,13 +9,14 @@ import {
   getUserCount,
   getAdminCount,
 } from '../services/userService.js';
-import { loadSettings } from '../config/index.js';
+import { getSystemConfigDao } from '../dao/index.js';
 import { validatePasswordStrength } from '../utils/passwordValidation.js';
 
 // Admin permission check middleware function
-const requireAdmin = (req: Request, res: Response): boolean => {
-  const settings = loadSettings();
-  if (settings.systemConfig?.routing?.skipAuth) {
+const requireAdmin = async (req: Request, res: Response): Promise<boolean> => {
+  const systemConfigDao = getSystemConfigDao();
+  const systemConfig = await systemConfigDao.get();
+  if (systemConfig?.routing?.skipAuth) {
     return true;
   }
 
@@ -31,11 +32,11 @@ const requireAdmin = (req: Request, res: Response): boolean => {
 };
 
 // Get all users (admin only)
-export const getUsers = (req: Request, res: Response): void => {
-  if (!requireAdmin(req, res)) return;
+export const getUsers = async (req: Request, res: Response): Promise<void> => {
+  if (!(await requireAdmin(req, res))) return;
 
   try {
-    const users = getAllUsers().map(({ password: _, ...user }) => user); // Remove password from response
+    const users = (await getAllUsers()).map(({ password: _, ...user }) => user); // Remove password from response
     const response: ApiResponse = {
       success: true,
       data: users,
@@ -50,8 +51,8 @@ export const getUsers = (req: Request, res: Response): void => {
 };
 
 // Get a specific user by username (admin only)
-export const getUser = (req: Request, res: Response): void => {
-  if (!requireAdmin(req, res)) return;
+export const getUser = async (req: Request, res: Response): Promise<void> => {
+  if (!(await requireAdmin(req, res))) return;
 
   try {
     const { username } = req.params;
@@ -63,7 +64,7 @@ export const getUser = (req: Request, res: Response): void => {
       return;
     }
 
-    const user = getUserByUsername(username);
+    const user = await getUserByUsername(username);
     if (!user) {
       res.status(404).json({
         success: false,
@@ -88,7 +89,7 @@ export const getUser = (req: Request, res: Response): void => {
 
 // Create a new user (admin only)
 export const createUser = async (req: Request, res: Response): Promise<void> => {
-  if (!requireAdmin(req, res)) return;
+  if (!(await requireAdmin(req, res))) return;
 
   try {
     const { username, password, isAdmin } = req.body;
@@ -138,7 +139,7 @@ export const createUser = async (req: Request, res: Response): Promise<void> => 
 
 // Update an existing user (admin only)
 export const updateExistingUser = async (req: Request, res: Response): Promise<void> => {
-  if (!requireAdmin(req, res)) return;
+  if (!(await requireAdmin(req, res))) return;
 
   try {
     const { username } = req.params;
@@ -154,7 +155,7 @@ export const updateExistingUser = async (req: Request, res: Response): Promise<v
 
     // Check if trying to change admin status
     if (isAdmin !== undefined) {
-      const currentUser = getUserByUsername(username);
+      const currentUser = await getUserByUsername(username);
       if (!currentUser) {
         res.status(404).json({
           success: false,
@@ -164,7 +165,7 @@ export const updateExistingUser = async (req: Request, res: Response): Promise<v
       }
 
       // Prevent removing admin status from the last admin
-      if (currentUser.isAdmin && !isAdmin && getAdminCount() === 1) {
+      if (currentUser.isAdmin && !isAdmin && (await getAdminCount()) === 1) {
         res.status(400).json({
           success: false,
           message: 'Cannot remove admin status from the last admin user',
@@ -222,8 +223,8 @@ export const updateExistingUser = async (req: Request, res: Response): Promise<v
 };
 
 // Delete a user (admin only)
-export const deleteExistingUser = (req: Request, res: Response): void => {
-  if (!requireAdmin(req, res)) return;
+export const deleteExistingUser = async (req: Request, res: Response): Promise<void> => {
+  if (!(await requireAdmin(req, res))) return;
 
   try {
     const { username } = req.params;
@@ -245,7 +246,7 @@ export const deleteExistingUser = (req: Request, res: Response): void => {
       return;
     }
 
-    const success = deleteUser(username);
+    const success = await deleteUser(username);
     if (!success) {
       res.status(400).json({
         success: false,
@@ -267,12 +268,12 @@ export const deleteExistingUser = (req: Request, res: Response): void => {
 };
 
 // Get user statistics (admin only)
-export const getUserStats = (req: Request, res: Response): void => {
-  if (!requireAdmin(req, res)) return;
+export const getUserStats = async (req: Request, res: Response): Promise<void> => {
+  if (!(await requireAdmin(req, res))) return;
 
   try {
-    const totalUsers = getUserCount();
-    const adminUsers = getAdminCount();
+    const totalUsers = await getUserCount();
+    const adminUsers = await getAdminCount();
     const regularUsers = totalUsers - adminUsers;
 
     const response: ApiResponse = {

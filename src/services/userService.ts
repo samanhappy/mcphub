@@ -1,16 +1,17 @@
 import { IUser } from '../types/index.js';
-import { getUsers, createUser, findUserByUsername } from '../models/User.js';
-import { saveSettings, loadSettings } from '../config/index.js';
-import bcrypt from 'bcryptjs';
+import { getUserDao } from '../dao/index.js';
 
 // Get all users
-export const getAllUsers = (): IUser[] => {
-  return getUsers();
+export const getAllUsers = async (): Promise<IUser[]> => {
+  const userDao = getUserDao();
+  return await userDao.findAll();
 };
 
 // Get user by username
-export const getUserByUsername = (username: string): IUser | undefined => {
-  return findUserByUsername(username);
+export const getUserByUsername = async (username: string): Promise<IUser | undefined> => {
+  const userDao = getUserDao();
+  const user = await userDao.findByUsername(username);
+  return user || undefined;
 };
 
 // Create a new user
@@ -20,18 +21,13 @@ export const createNewUser = async (
   isAdmin: boolean = false,
 ): Promise<IUser | null> => {
   try {
-    const existingUser = findUserByUsername(username);
+    const userDao = getUserDao();
+    const existingUser = await userDao.findByUsername(username);
     if (existingUser) {
       return null; // User already exists
     }
 
-    const userData: IUser = {
-      username,
-      password,
-      isAdmin,
-    };
-
-    return await createUser(userData);
+    return await userDao.createWithHashedPassword(username, password, isAdmin);
   } catch (error) {
     console.error('Failed to create user:', error);
     return null;
@@ -44,36 +40,31 @@ export const updateUser = async (
   data: { isAdmin?: boolean; newPassword?: string },
 ): Promise<IUser | null> => {
   try {
-    const users = getUsers();
-    const userIndex = users.findIndex((user) => user.username === username);
+    const userDao = getUserDao();
+    const user = await userDao.findByUsername(username);
 
-    if (userIndex === -1) {
+    if (!user) {
       return null;
     }
 
-    const user = users[userIndex];
-
     // Update admin status if provided
     if (data.isAdmin !== undefined) {
-      user.isAdmin = data.isAdmin;
+      const result = await userDao.update(username, { isAdmin: data.isAdmin });
+      if (!result) {
+        return null;
+      }
     }
 
     // Update password if provided
     if (data.newPassword) {
-      const salt = await bcrypt.genSalt(10);
-      user.password = await bcrypt.hash(data.newPassword, salt);
+      const success = await userDao.updatePassword(username, data.newPassword);
+      if (!success) {
+        return null;
+      }
     }
 
-    // Save users array back to settings
-    const { saveSettings, loadSettings } = await import('../config/index.js');
-    const settings = loadSettings();
-    settings.users = users;
-
-    if (!saveSettings(settings)) {
-      return null;
-    }
-
-    return user;
+    // Return updated user
+    return await userDao.findByUsername(username);
   } catch (error) {
     console.error('Failed to update user:', error);
     return null;
@@ -81,10 +72,12 @@ export const updateUser = async (
 };
 
 // Delete a user
-export const deleteUser = (username: string): boolean => {
+export const deleteUser = async (username: string): Promise<boolean> => {
   try {
+    const userDao = getUserDao();
+
     // Cannot delete the last admin user
-    const users = getUsers();
+    const users = await userDao.findAll();
     const adminUsers = users.filter((user) => user.isAdmin);
     const userToDelete = users.find((user) => user.username === username);
 
@@ -92,17 +85,7 @@ export const deleteUser = (username: string): boolean => {
       return false; // Cannot delete the last admin
     }
 
-    const filteredUsers = users.filter((user) => user.username !== username);
-
-    if (filteredUsers.length === users.length) {
-      return false; // User not found
-    }
-
-    // Save filtered users back to settings
-    const settings = loadSettings();
-    settings.users = filteredUsers;
-
-    return saveSettings(settings);
+    return await userDao.delete(username);
   } catch (error) {
     console.error('Failed to delete user:', error);
     return false;
@@ -110,17 +93,21 @@ export const deleteUser = (username: string): boolean => {
 };
 
 // Check if user has admin permissions
-export const isUserAdmin = (username: string): boolean => {
-  const user = findUserByUsername(username);
+export const isUserAdmin = async (username: string): Promise<boolean> => {
+  const userDao = getUserDao();
+  const user = await userDao.findByUsername(username);
   return user?.isAdmin || false;
 };
 
 // Get user count
-export const getUserCount = (): number => {
-  return getUsers().length;
+export const getUserCount = async (): Promise<number> => {
+  const userDao = getUserDao();
+  return await userDao.count();
 };
 
 // Get admin count
-export const getAdminCount = (): number => {
-  return getUsers().filter((user) => user.isAdmin).length;
+export const getAdminCount = async (): Promise<number> => {
+  const userDao = getUserDao();
+  const admins = await userDao.findAdmins();
+  return admins.length;
 };

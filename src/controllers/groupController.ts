@@ -15,9 +15,9 @@ import {
 } from '../services/groupService.js';
 
 // Get all groups
-export const getGroups = (_: Request, res: Response): void => {
+export const getGroups = async (_: Request, res: Response): Promise<void> => {
   try {
-    const groups = getAllGroups();
+    const groups = await getAllGroups();
     const response: ApiResponse = {
       success: true,
       data: groups,
@@ -32,7 +32,7 @@ export const getGroups = (_: Request, res: Response): void => {
 };
 
 // Get a specific group by ID
-export const getGroup = (req: Request, res: Response): void => {
+export const getGroup = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
     if (!id) {
@@ -43,7 +43,7 @@ export const getGroup = (req: Request, res: Response): void => {
       return;
     }
 
-    const group = getGroupByIdOrName(id);
+    const group = await getGroupByIdOrName(id);
     if (!group) {
       res.status(404).json({
         success: false,
@@ -66,7 +66,7 @@ export const getGroup = (req: Request, res: Response): void => {
 };
 
 // Create a new group
-export const createNewGroup = (req: Request, res: Response): void => {
+export const createNewGroup = async (req: Request, res: Response): Promise<void> => {
   try {
     const { name, description, servers } = req.body;
     if (!name) {
@@ -83,7 +83,7 @@ export const createNewGroup = (req: Request, res: Response): void => {
     const currentUser = (req as any).user;
     const owner = currentUser?.username || 'admin';
 
-    const newGroup = createGroup(name, description, serverList, owner);
+    const newGroup = await createGroup(name, description, serverList, owner);
     if (!newGroup) {
       res.status(400).json({
         success: false,
@@ -107,7 +107,7 @@ export const createNewGroup = (req: Request, res: Response): void => {
 };
 
 // Update an existing group
-export const updateExistingGroup = (req: Request, res: Response): void => {
+export const updateExistingGroup = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
     const { name, description, servers } = req.body;
@@ -133,7 +133,7 @@ export const updateExistingGroup = (req: Request, res: Response): void => {
       return;
     }
 
-    const updatedGroup = updateGroup(id, updateData);
+    const updatedGroup = await updateGroup(id, updateData);
     if (!updatedGroup) {
       res.status(404).json({
         success: false,
@@ -157,7 +157,7 @@ export const updateExistingGroup = (req: Request, res: Response): void => {
 };
 
 // Update servers in a group (batch update) - supports both string[] and server config format
-export const updateGroupServersBatch = (req: Request, res: Response): void => {
+export const updateGroupServersBatch = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
     const { servers } = req.body;
@@ -203,7 +203,7 @@ export const updateGroupServersBatch = (req: Request, res: Response): void => {
       }
     }
 
-    const updatedGroup = updateGroupServers(id, servers);
+    const updatedGroup = await updateGroupServers(id, servers);
     if (!updatedGroup) {
       res.status(404).json({
         success: false,
@@ -227,7 +227,7 @@ export const updateGroupServersBatch = (req: Request, res: Response): void => {
 };
 
 // Delete a group
-export const deleteExistingGroup = (req: Request, res: Response): void => {
+export const deleteExistingGroup = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
     if (!id) {
@@ -238,7 +238,7 @@ export const deleteExistingGroup = (req: Request, res: Response): void => {
       return;
     }
 
-    const success = deleteGroup(id);
+    const success = await deleteGroup(id);
     if (!success) {
       res.status(404).json({
         success: false,
@@ -260,7 +260,7 @@ export const deleteExistingGroup = (req: Request, res: Response): void => {
 };
 
 // Add server to a group
-export const addServerToExistingGroup = (req: Request, res: Response): void => {
+export const addServerToExistingGroup = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
     const { serverName } = req.body;
@@ -280,7 +280,7 @@ export const addServerToExistingGroup = (req: Request, res: Response): void => {
       return;
     }
 
-    const updatedGroup = addServerToGroup(id, serverName);
+    const updatedGroup = await addServerToGroup(id, serverName);
     if (!updatedGroup) {
       res.status(404).json({
         success: false,
@@ -304,7 +304,7 @@ export const addServerToExistingGroup = (req: Request, res: Response): void => {
 };
 
 // Remove server from a group
-export const removeServerFromExistingGroup = (req: Request, res: Response): void => {
+export const removeServerFromExistingGroup = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id, serverName } = req.params;
     if (!id || !serverName) {
@@ -315,7 +315,7 @@ export const removeServerFromExistingGroup = (req: Request, res: Response): void
       return;
     }
 
-    const updatedGroup = removeServerFromGroup(id, serverName);
+    const updatedGroup = await removeServerFromGroup(id, serverName);
     if (!updatedGroup) {
       res.status(404).json({
         success: false,
@@ -339,7 +339,7 @@ export const removeServerFromExistingGroup = (req: Request, res: Response): void
 };
 
 // Get servers in a group
-export const getGroupServers = (req: Request, res: Response): void => {
+export const getGroupServers = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
     if (!id) {
@@ -350,7 +350,7 @@ export const getGroupServers = (req: Request, res: Response): void => {
       return;
     }
 
-    const group = getGroupByIdOrName(id);
+    const group = await getGroupByIdOrName(id);
     if (!group) {
       res.status(404).json({
         success: false,
@@ -373,7 +373,7 @@ export const getGroupServers = (req: Request, res: Response): void => {
 };
 
 // Get server configurations in a group (including tool selections)
-export const getGroupServerConfigs = (req: Request, res: Response): void => {
+export const getGroupServerConfigs = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
     if (!id) {
@@ -384,7 +384,7 @@ export const getGroupServerConfigs = (req: Request, res: Response): void => {
       return;
     }
 
-    const serverConfigs = getServerConfigsInGroup(id);
+    const serverConfigs = await getServerConfigsInGroup(id);
     const response: ApiResponse = {
       success: true,
       data: serverConfigs,
@@ -399,7 +399,7 @@ export const getGroupServerConfigs = (req: Request, res: Response): void => {
 };
 
 // Get specific server configuration in a group
-export const getGroupServerConfig = (req: Request, res: Response): void => {
+export const getGroupServerConfig = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id, serverName } = req.params;
     if (!id || !serverName) {
@@ -410,7 +410,7 @@ export const getGroupServerConfig = (req: Request, res: Response): void => {
       return;
     }
 
-    const serverConfig = getServerConfigInGroup(id, serverName);
+    const serverConfig = await getServerConfigInGroup(id, serverName);
     if (!serverConfig) {
       res.status(404).json({
         success: false,
@@ -433,7 +433,7 @@ export const getGroupServerConfig = (req: Request, res: Response): void => {
 };
 
 // Update tools for a specific server in a group
-export const updateGroupServerTools = (req: Request, res: Response): void => {
+export const updateGroupServerTools = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id, serverName } = req.params;
     const { tools } = req.body;
@@ -458,7 +458,7 @@ export const updateGroupServerTools = (req: Request, res: Response): void => {
       return;
     }
 
-    const updatedGroup = updateServerToolsInGroup(id, serverName, tools);
+    const updatedGroup = await updateServerToolsInGroup(id, serverName, tools);
     if (!updatedGroup) {
       res.status(404).json({
         success: false,

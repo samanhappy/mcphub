@@ -6,7 +6,7 @@ import { IUser } from '../types/index.js';
 /**
  * Resolve an MCPHub user from a raw OAuth bearer token.
  */
-export const resolveOAuthUserFromToken = (token?: string): IUser | null => {
+export const resolveOAuthUserFromToken = async (token?: string): Promise<IUser | null> => {
   if (!token || !isOAuthServerEnabled()) {
     return null;
   }
@@ -16,7 +16,7 @@ export const resolveOAuthUserFromToken = (token?: string): IUser | null => {
     return null;
   }
 
-  const dbUser = findUserByUsername(oauthToken.username);
+  const dbUser = await findUserByUsername(oauthToken.username);
 
   return {
     username: oauthToken.username,
@@ -28,7 +28,9 @@ export const resolveOAuthUserFromToken = (token?: string): IUser | null => {
 /**
  * Resolve an MCPHub user from an Authorization header.
  */
-export const resolveOAuthUserFromAuthHeader = (authHeader?: string): IUser | null => {
+export const resolveOAuthUserFromAuthHeader = async (
+  authHeader?: string,
+): Promise<IUser | null> => {
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return null;
   }

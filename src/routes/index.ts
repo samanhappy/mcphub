@@ -4,6 +4,7 @@ import config from '../config/index.js';
 import {
   getAllServers,
   getAllSettings,
+  getServerConfig,
   createServer,
   updateServer,
   deleteServer,
@@ -129,6 +130,7 @@ export const initRoutes = (app: express.Application): void => {
 
   // API routes protected by auth middleware in middlewares/index.ts
   router.get('/servers', getAllServers);
+  router.get('/servers/:name', getServerConfig);
   router.get('/settings', getAllSettings);
   router.post('/servers', createServer);
   router.put('/servers/:name', updateServer);

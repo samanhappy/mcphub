@@ -5,8 +5,8 @@ import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { isInitializeRequest } from '@modelcontextprotocol/sdk/types.js';
 import { deleteMcpServer, getMcpServer } from './mcpService.js';
-import { loadSettings } from '../config/index.js';
 import config from '../config/index.js';
+import { getSystemConfigDao } from '../dao/index.js';
 import { UserContextService } from './userContextService.js';
 import { RequestContextService } from './requestContextService.js';
 import { IUser } from '../types/index.js';
@@ -30,9 +30,10 @@ type BearerAuthResult =
       reason: 'missing' | 'invalid';
     };
 
-const validateBearerAuth = (req: Request): BearerAuthResult => {
-  const settings = loadSettings();
-  const routingConfig = settings.systemConfig?.routing || {
+const validateBearerAuth = async (req: Request): Promise<BearerAuthResult> => {
+  const systemConfigDao = getSystemConfigDao();
+  const systemConfig = await systemConfigDao.get();
+  const routingConfig = systemConfig?.routing || {
     enableGlobalRoute: true,
     enableGroupNameRoute: true,
     enableBearerAuth: false,
@@ -54,7 +55,7 @@ const validateBearerAuth = (req: Request): BearerAuthResult => {
       return { valid: true };
     }
 
-    const oauthUser = resolveOAuthUserFromToken(token);
+    const oauthUser = await resolveOAuthUserFromToken(token);
     if (oauthUser) {
       return { valid: true, user: oauthUser };
     }
@@ -170,7 +171,7 @@ export const handleSseConnection = async (req: Request, res: Response): Promise<
   const userContextService = UserContextService.getInstance();
 
   // Check bearer auth using filtered settings
-  const bearerAuthResult = validateBearerAuth(req);
+  const bearerAuthResult = await validateBearerAuth(req);
   if (!bearerAuthResult.valid) {
     sendBearerAuthError(req, res, bearerAuthResult.reason);
     return;
@@ -181,8 +182,9 @@ export const handleSseConnection = async (req: Request, res: Response): Promise<
   const currentUser = userContextService.getCurrentUser();
   const username = currentUser?.username;
 
-  const settings = loadSettings();
-  const routingConfig = settings.systemConfig?.routing || {
+  const systemConfigDao = getSystemConfigDao();
+  const systemConfig = await systemConfigDao.get();
+  const routingConfig = systemConfig?.routing || {
     enableGlobalRoute: true,
     enableGroupNameRoute: true,
     enableBearerAuth: false,
@@ -248,7 +250,7 @@ export const handleSseMessage = async (req: Request, res: Response): Promise<voi
   const userContextService = UserContextService.getInstance();
 
   // Check bearer auth using filtered settings
-  const bearerAuthResult = validateBearerAuth(req);
+  const bearerAuthResult = await validateBearerAuth(req);
   if (!bearerAuthResult.valid) {
     sendBearerAuthError(req, res, bearerAuthResult.reason);
     return;
@@ -429,7 +431,7 @@ export const handleMcpPostRequest = async (req: Request, res: Response): Promise
   const userContextService = UserContextService.getInstance();
 
   // Check bearer auth using filtered settings
-  const bearerAuthResult = validateBearerAuth(req);
+  const bearerAuthResult = await validateBearerAuth(req);
   if (!bearerAuthResult.valid) {
     sendBearerAuthError(req, res, bearerAuthResult.reason);
     return;
@@ -448,8 +450,9 @@ export const handleMcpPostRequest = async (req: Request, res: Response): Promise
   );
 
   // Get filtered settings based on user context (after setting user context)
-  const settings = loadSettings();
-  const routingConfig = settings.systemConfig?.routing || {
+  const systemConfigDao = getSystemConfigDao();
+  const systemConfig = await systemConfigDao.get();
+  const routingConfig = systemConfig?.routing || {
     enableGlobalRoute: true,
     enableGroupNameRoute: true,
   };
@@ -473,8 +476,7 @@ export const handleMcpPostRequest = async (req: Request, res: Response): Promise
     transport = transportInfo.transport as StreamableHTTPServerTransport;
   } else if (sessionId) {
     // Case 2: SessionId exists but transport is missing (server restart), check if session rebuild is enabled
-    const settings = loadSettings();
-    const enableSessionRebuild = settings.systemConfig?.enableSessionRebuild || false;
+    const enableSessionRebuild = systemConfig?.enableSessionRebuild || false;
 
     if (enableSessionRebuild) {
       console.log(
@@ -680,7 +682,7 @@ export const handleMcpOtherRequest = async (req: Request, res: Response) => {
   const userContextService = UserContextService.getInstance();
 
   // Check bearer auth using filtered settings
-  const bearerAuthResult = validateBearerAuth(req);
+  const bearerAuthResult = await validateBearerAuth(req);
   if (!bearerAuthResult.valid) {
     sendBearerAuthError(req, res, bearerAuthResult.reason);
     return;
@@ -703,8 +705,9 @@ export const handleMcpOtherRequest = async (req: Request, res: Response) => {
 
   // If session doesn't exist, attempt transparent rebuild if enabled
   if (!transportEntry) {
-    const settings = loadSettings();
-    const enableSessionRebuild = settings.systemConfig?.enableSessionRebuild || false;
+    const systemConfigDao = getSystemConfigDao();
+    const systemConfig = await systemConfigDao.get();
+    const enableSessionRebuild = systemConfig?.enableSessionRebuild || false;
 
     if (enableSessionRebuild) {
       console.log(

@@ -1,53 +1,58 @@
-import { loadSettings, saveSettings } from '../config/index.js';
-import { McpSettings, ServerConfig } from '../types/index.js';
+import { getServerDao } from '../dao/index.js';
+import { ServerConfig } from '../types/index.js';
 
 type OAuthConfig = NonNullable<ServerConfig['oauth']>;
 export type ServerConfigWithOAuth = ServerConfig & { oauth: OAuthConfig };
 
 export interface OAuthSettingsContext {
-  settings: McpSettings;
   serverConfig: ServerConfig;
   oauth: OAuthConfig;
 }
 
 /**
- * Load the latest server configuration from disk.
+ * Load the latest server configuration from DAO.
  */
-export const loadServerConfig = (serverName: string): ServerConfig | undefined => {
-  const settings = loadSettings();
-  return settings.mcpServers?.[serverName];
+export const loadServerConfig = async (serverName: string): Promise<ServerConfig | undefined> => {
+  const serverDao = getServerDao();
+  const server = await serverDao.findById(serverName);
+  if (!server) {
+    return undefined;
+  }
+  const { name: _, ...config } = server;
+  return config;
 };
 
 /**
  * Mutate OAuth configuration for a server and persist the updated settings.
- * The mutator receives the shared settings object to allow related updates when needed.
+ * The mutator receives the server config to allow related updates when needed.
  */
 export const mutateOAuthSettings = async (
   serverName: string,
   mutator: (context: OAuthSettingsContext) => void,
 ): Promise<ServerConfigWithOAuth | undefined> => {
-  const settings = loadSettings();
-  const serverConfig = settings.mcpServers?.[serverName];
+  const serverDao = getServerDao();
+  const server = await serverDao.findById(serverName);
 
-  if (!serverConfig) {
+  if (!server) {
     console.warn(`Server ${serverName} not found while updating OAuth settings`);
     return undefined;
   }
+
+  const { name: _, ...serverConfig } = server;
 
   if (!serverConfig.oauth) {
     serverConfig.oauth = {};
   }
 
   const context: OAuthSettingsContext = {
-    settings,
     serverConfig,
     oauth: serverConfig.oauth,
   };
 
   mutator(context);
 
-  const saved = saveSettings(settings);
-  if (!saved) {
+  const updated = await serverDao.update(serverName, { oauth: serverConfig.oauth });
+  if (!updated) {
     throw new Error(`Failed to persist OAuth settings for server ${serverName}`);
   }
 

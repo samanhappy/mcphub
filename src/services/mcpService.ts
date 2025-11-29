@@ -15,7 +15,7 @@ import {
   StreamableHTTPClientTransportOptions,
 } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { ServerInfo, ServerConfig, Tool } from '../types/index.js';
-import { loadSettings, expandEnvVars, replaceEnvVars, getNameSeparator } from '../config/index.js';
+import { expandEnvVars, replaceEnvVars, getNameSeparator } from '../config/index.js';
 import config from '../config/index.js';
 import { getGroup } from './sseService.js';
 import { getServersInGroup, getServerConfigInGroup } from './groupService.js';
@@ -23,13 +23,11 @@ import { saveToolsAsVectorEmbeddings, searchToolsByVector } from './vectorSearch
 import { OpenAPIClient } from '../clients/openapi.js';
 import { RequestContextService } from './requestContextService.js';
 import { getDataService } from './services.js';
-import { getServerDao, ServerConfigWithName } from '../dao/index.js';
+import { getServerDao, getSystemConfigDao, ServerConfigWithName } from '../dao/index.js';
 import { initializeAllOAuthClients } from './oauthService.js';
 import { createOAuthProvider } from './mcpOAuthProvider.js';
 
 const servers: { [sessionId: string]: Server } = {};
-
-const serverDao = getServerDao();
 
 // Helper function to set up keep-alive ping for SSE connections
 const setupKeepAlive = (serverInfo: ServerInfo, serverConfig: ServerConfig): void => {
@@ -215,24 +213,25 @@ export const createTransportFromConfig = async (name: string, conf: ServerConfig
     };
     env['PATH'] = expandEnvVars(process.env.PATH as string) || '';
 
-    const settings = loadSettings();
+    const systemConfigDao = getSystemConfigDao();
+    const systemConfig = await systemConfigDao.get();
     // Add UV_DEFAULT_INDEX and npm_config_registry if needed
     if (
-      settings.systemConfig?.install?.pythonIndexUrl &&
+      systemConfig?.install?.pythonIndexUrl &&
       (conf.command === 'uvx' || conf.command === 'uv' || conf.command === 'python')
     ) {
-      env['UV_DEFAULT_INDEX'] = settings.systemConfig.install.pythonIndexUrl;
+      env['UV_DEFAULT_INDEX'] = systemConfig.install.pythonIndexUrl;
     }
 
     if (
-      settings.systemConfig?.install?.npmRegistry &&
+      systemConfig?.install?.npmRegistry &&
       (conf.command === 'npm' ||
         conf.command === 'npx' ||
         conf.command === 'pnpm' ||
         conf.command === 'yarn' ||
         conf.command === 'node')
     ) {
-      env['npm_config_registry'] = settings.systemConfig.install.npmRegistry;
+      env['npm_config_registry'] = systemConfig.install.npmRegistry;
     }
 
     // Expand environment variables in command
@@ -293,7 +292,7 @@ const callToolWithReconnect = async (
           serverInfo.client.close();
           serverInfo.transport.close();
 
-          const server = await serverDao.findById(serverInfo.name);
+          const server = await getServerDao().findById(serverInfo.name);
           if (!server) {
             throw new Error(`Server configuration not found for: ${serverInfo.name}`);
           }
@@ -373,7 +372,7 @@ export const initializeClientsFromSettings = async (
   isInit: boolean,
   serverName?: string,
 ): Promise<ServerInfo[]> => {
-  const allServers: ServerConfigWithName[] = await serverDao.findAll();
+  const allServers: ServerConfigWithName[] = await getServerDao().findAll();
   const existingServerInfos = serverInfos;
   const nextServerInfos: ServerInfo[] = [];
 
@@ -650,7 +649,7 @@ export const registerAllTools = async (isInit: boolean, serverName?: string): Pr
 
 // Get all server information
 export const getServersInfo = async (): Promise<Omit<ServerInfo, 'client' | 'transport'>[]> => {
-  const allServers: ServerConfigWithName[] = await serverDao.findAll();
+  const allServers: ServerConfigWithName[] = await getServerDao().findAll();
   const dataService = getDataService();
   const filterServerInfos: ServerInfo[] = dataService.filterData
     ? dataService.filterData(serverInfos)
@@ -756,7 +755,7 @@ export const reconnectServer = async (serverName: string): Promise<void> => {
 
 // Filter tools by server configuration
 const filterToolsByConfig = async (serverName: string, tools: Tool[]): Promise<Tool[]> => {
-  const serverConfig = await serverDao.findById(serverName);
+  const serverConfig = await getServerDao().findById(serverName);
   if (!serverConfig || !serverConfig.tools) {
     // If no tool configuration exists, all tools are enabled by default
     return tools;
@@ -780,7 +779,7 @@ export const addServer = async (
   config: ServerConfig,
 ): Promise<{ success: boolean; message?: string }> => {
   const server: ServerConfigWithName = { name, ...config };
-  const result = await serverDao.create(server);
+  const result = await getServerDao().create(server);
   if (result) {
     return { success: true, message: 'Server added successfully' };
   } else {
@@ -792,7 +791,7 @@ export const addServer = async (
 export const removeServer = async (
   name: string,
 ): Promise<{ success: boolean; message?: string }> => {
-  const result = await serverDao.delete(name);
+  const result = await getServerDao().delete(name);
   if (!result) {
     return { success: false, message: 'Failed to remove server' };
   }
@@ -808,7 +807,7 @@ export const addOrUpdateServer = async (
   allowOverride: boolean = false,
 ): Promise<{ success: boolean; message?: string }> => {
   try {
-    const exists = await serverDao.exists(name);
+    const exists = await getServerDao().exists(name);
     if (exists && !allowOverride) {
       return { success: false, message: 'Server name already exists' };
     }
@@ -823,9 +822,9 @@ export const addOrUpdateServer = async (
     }
 
     if (exists) {
-      await serverDao.update(name, config);
+      await getServerDao().update(name, config);
     } else {
-      await serverDao.create({ name, ...config });
+      await getServerDao().create({ name, ...config });
     }
 
     const action = exists ? 'updated' : 'added';
@@ -860,7 +859,7 @@ export const toggleServerStatus = async (
   enabled: boolean,
 ): Promise<{ success: boolean; message?: string }> => {
   try {
-    await serverDao.setEnabled(name, enabled);
+    await getServerDao().setEnabled(name, enabled);
     // If disabling, disconnect the server and remove from active servers
     if (!enabled) {
       closeServer(name);
@@ -893,33 +892,33 @@ export const handleListToolsRequest = async (_: any, extra: any) => {
   if (group === '$smart' || group?.startsWith('$smart/')) {
     // Extract target group if pattern is $smart/{group}
     const targetGroup = group?.startsWith('$smart/') ? group.substring(7) : undefined;
-    
+
     // Get info about available servers, filtered by target group if specified
     let availableServers = serverInfos.filter(
       (server) => server.status === 'connected' && server.enabled !== false,
     );
-    
+
     // If a target group is specified, filter servers to only those in the group
     if (targetGroup) {
-      const serversInGroup = getServersInGroup(targetGroup);
+      const serversInGroup = await getServersInGroup(targetGroup);
       if (serversInGroup && serversInGroup.length > 0) {
         availableServers = availableServers.filter((server) =>
           serversInGroup.includes(server.name),
         );
       }
     }
-    
+
     // Create simple server information with only server names
     const serversList = availableServers
       .map((server) => {
         return `${server.name}`;
       })
       .join(', ');
-    
+
     const scopeDescription = targetGroup
       ? `servers in the "${targetGroup}" group`
       : 'all available servers';
-    
+
     return {
       tools: [
         {
@@ -973,36 +972,44 @@ Available servers: ${serversList}`,
     };
   }
 
-  const allServerInfos = getDataService()
-    .filterData(serverInfos)
-    .filter((serverInfo) => {
-      if (serverInfo.enabled === false) return false;
-      if (!group) return true;
-      const serversInGroup = getServersInGroup(group);
-      if (!serversInGroup || serversInGroup.length === 0) return serverInfo.name === group;
-      return serversInGroup.includes(serverInfo.name);
-    });
+  // Need to filter servers based on group asynchronously
+  const filteredServerInfos = [];
+  for (const serverInfo of getDataService().filterData(serverInfos)) {
+    if (serverInfo.enabled === false) continue;
+    if (!group) {
+      filteredServerInfos.push(serverInfo);
+      continue;
+    }
+    const serversInGroup = await getServersInGroup(group);
+    if (!serversInGroup || serversInGroup.length === 0) {
+      if (serverInfo.name === group) filteredServerInfos.push(serverInfo);
+      continue;
+    }
+    if (serversInGroup.includes(serverInfo.name)) {
+      filteredServerInfos.push(serverInfo);
+    }
+  }
 
   const allTools = [];
-  for (const serverInfo of allServerInfos) {
+  for (const serverInfo of filteredServerInfos) {
     if (serverInfo.tools && serverInfo.tools.length > 0) {
       // Filter tools based on server configuration
       let enabledTools = await filterToolsByConfig(serverInfo.name, serverInfo.tools);
 
       // If this is a group request, apply group-level tool filtering
       if (group) {
-        const serverConfig = getServerConfigInGroup(group, serverInfo.name);
+        const serverConfig = await getServerConfigInGroup(group, serverInfo.name);
         if (serverConfig && serverConfig.tools !== 'all' && Array.isArray(serverConfig.tools)) {
           // Filter tools based on group configuration
           const allowedToolNames = serverConfig.tools.map(
-            (toolName) => `${serverInfo.name}${getNameSeparator()}${toolName}`,
+            (toolName: string) => `${serverInfo.name}${getNameSeparator()}${toolName}`,
           );
           enabledTools = enabledTools.filter((tool) => allowedToolNames.includes(tool.name));
         }
       }
 
       // Apply custom descriptions from server configuration
-      const serverConfig = await serverDao.findById(serverInfo.name);
+      const serverConfig = await getServerDao().findById(serverInfo.name);
       const toolsWithCustomDescriptions = enabledTools.map((tool) => {
         const toolConfig = serverConfig?.tools?.[tool.name];
         return {
@@ -1047,20 +1054,22 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
       }
 
       console.log(`Using similarity threshold: ${thresholdNum} for query: "${query}"`);
-      
+
       // Determine server filtering based on group
       const sessionId = extra.sessionId || '';
       const group = getGroup(sessionId);
       let servers: string[] | undefined = undefined; // No server filtering by default
-      
+
       // If group is in format $smart/{group}, filter servers to that group
       if (group?.startsWith('$smart/')) {
         const targetGroup = group.substring(7);
-        const serversInGroup = getServersInGroup(targetGroup);
+        const serversInGroup = await getServersInGroup(targetGroup);
         if (serversInGroup !== undefined && serversInGroup !== null) {
           servers = serversInGroup;
-          if (servers.length > 0) {
-            console.log(`Filtering search to servers in group "${targetGroup}": ${servers.join(', ')}`);
+          if (servers && servers.length > 0) {
+            console.log(
+              `Filtering search to servers in group "${targetGroup}": ${servers.join(', ')}`,
+            );
           } else {
             console.log(`Group "${targetGroup}" has no servers, search will return no results`);
           }
@@ -1088,7 +1097,7 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
               const enabledTools = await filterToolsByConfig(server.name, [actualTool]);
               if (enabledTools.length > 0) {
                 // Apply custom description from configuration
-                const serverConfig = await serverDao.findById(server.name);
+                const serverConfig = await getServerDao().findById(server.name);
                 const toolConfig = serverConfig?.tools?.[actualTool.name];
 
                 // Return the actual tool info from serverInfos with custom description
@@ -1430,21 +1439,29 @@ export const handleListPromptsRequest = async (_: any, extra: any) => {
   const group = getGroup(sessionId);
   console.log(`Handling ListPromptsRequest for group: ${group}`);
 
-  const allServerInfos = getDataService()
-    .filterData(serverInfos)
-    .filter((serverInfo) => {
-      if (serverInfo.enabled === false) return false;
-      if (!group) return true;
-      const serversInGroup = getServersInGroup(group);
-      if (!serversInGroup || serversInGroup.length === 0) return serverInfo.name === group;
-      return serversInGroup.includes(serverInfo.name);
-    });
+  // Need to filter servers based on group asynchronously
+  const filteredServerInfos = [];
+  for (const serverInfo of getDataService().filterData(serverInfos)) {
+    if (serverInfo.enabled === false) continue;
+    if (!group) {
+      filteredServerInfos.push(serverInfo);
+      continue;
+    }
+    const serversInGroup = await getServersInGroup(group);
+    if (!serversInGroup || serversInGroup.length === 0) {
+      if (serverInfo.name === group) filteredServerInfos.push(serverInfo);
+      continue;
+    }
+    if (serversInGroup.includes(serverInfo.name)) {
+      filteredServerInfos.push(serverInfo);
+    }
+  }
 
   const allPrompts: any[] = [];
-  for (const serverInfo of allServerInfos) {
+  for (const serverInfo of filteredServerInfos) {
     if (serverInfo.prompts && serverInfo.prompts.length > 0) {
       // Filter prompts based on server configuration
-      const serverConfig = await serverDao.findById(serverInfo.name);
+      const serverConfig = await getServerDao().findById(serverInfo.name);
 
       let enabledPrompts = serverInfo.prompts;
       if (serverConfig && serverConfig.prompts) {
@@ -1457,7 +1474,7 @@ export const handleListPromptsRequest = async (_: any, extra: any) => {
 
       // If this is a group request, apply group-level prompt filtering
       if (group) {
-        const serverConfigInGroup = getServerConfigInGroup(group, serverInfo.name);
+        const serverConfigInGroup = await getServerConfigInGroup(group, serverInfo.name);
         if (
           serverConfigInGroup &&
           serverConfigInGroup.tools !== 'all' &&
@@ -1492,15 +1509,9 @@ export const createMcpServer = (name: string, version: string, group?: string): 
   let serverName = name;
 
   if (group) {
-    // Check if it's a group or a single server
-    const serversInGroup = getServersInGroup(group);
-    if (!serversInGroup || serversInGroup.length === 0) {
-      // Single server routing
-      serverName = `${name}_${group}`;
-    } else {
-      // Group routing
-      serverName = `${name}_${group}_group`;
-    }
+    // For createMcpServer we use sync approach since it's called synchronously
+    // The actual group validation happens at request time
+    serverName = `${name}_${group}_group`;
   }
   // If no group, use default name (global routing)
 

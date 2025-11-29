@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { ApiResponse, AddServerRequest } from '../types/index.js';
+import { ApiResponse, AddServerRequest, McpSettings } from '../types/index.js';
 import {
   getServersInfo,
   addServer,
@@ -13,6 +13,7 @@ import { loadSettings, saveSettings } from '../config/index.js';
 import { syncAllServerToolsEmbeddings } from '../services/vectorSearchService.js';
 import { createSafeJSON } from '../utils/serialization.js';
 import { cloneDefaultOAuthServerConfig } from '../constants/oauthServerDefaults.js';
+import { getServerDao, getGroupDao, getSystemConfigDao } from '../dao/DaoFactory.js';
 
 export const getAllServers = async (_: Request, res: Response): Promise<void> => {
   try {
@@ -31,15 +32,45 @@ export const getAllServers = async (_: Request, res: Response): Promise<void> =>
   }
 };
 
-export const getAllSettings = (_: Request, res: Response): void => {
+export const getAllSettings = async (_: Request, res: Response): Promise<void> => {
   try {
-    const settings = loadSettings();
+    // Get base settings from file (for OAuth clients, tokens, users, etc.)
+    const fileSettings = loadSettings();
+
+    // Get servers from DAO (supports both file and database modes)
+    const serverDao = getServerDao();
+    const servers = await serverDao.findAll();
+
+    // Convert servers array to mcpServers map format
+    const mcpServers: McpSettings['mcpServers'] = {};
+    for (const server of servers) {
+      const { name, ...config } = server;
+      mcpServers[name] = config;
+    }
+
+    // Get groups from DAO
+    const groupDao = getGroupDao();
+    const groups = await groupDao.findAll();
+
+    // Get system config from DAO
+    const systemConfigDao = getSystemConfigDao();
+    const systemConfig = await systemConfigDao.get();
+
+    // Merge all data into settings object
+    const settings: McpSettings = {
+      ...fileSettings,
+      mcpServers,
+      groups,
+      systemConfig,
+    };
+
     const response: ApiResponse = {
       success: true,
       data: createSafeJSON(settings),
     };
     res.json(response);
   } catch (error) {
+    console.error('Failed to get server settings:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to get server settings',
@@ -303,9 +334,12 @@ export const updateServer = async (req: Request, res: Response): Promise<void> =
 export const getServerConfig = async (req: Request, res: Response): Promise<void> => {
   try {
     const { name } = req.params;
-    const allServers = await getServersInfo();
-    const serverInfo = allServers.find((s) => s.name === name);
-    if (!serverInfo) {
+
+    // Get server configuration from DAO (supports both file and database modes)
+    const serverDao = getServerDao();
+    const serverConfig = await serverDao.findById(name);
+
+    if (!serverConfig) {
       res.status(404).json({
         success: false,
         message: 'Server not found',
@@ -313,18 +347,26 @@ export const getServerConfig = async (req: Request, res: Response): Promise<void
       return;
     }
 
+    // Get runtime info (status, tools) from getServersInfo
+    const allServers = await getServersInfo();
+    const serverInfo = allServers.find((s) => s.name === name);
+
+    // Extract config without the name field
+    const { name: serverName, ...config } = serverConfig;
+
     const response: ApiResponse = {
       success: true,
       data: {
-        name,
-        status: serverInfo ? serverInfo.status : 'disconnected',
-        tools: serverInfo ? serverInfo.tools : [],
-        config: serverInfo,
+        name: serverName,
+        status: serverInfo?.status || 'disconnected',
+        tools: serverInfo?.tools || [],
+        config,
       },
     };
 
     res.json(response);
   } catch (error) {
+    console.error('Failed to get server configuration:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to get server configuration',
@@ -507,10 +549,17 @@ export const updateToolDescription = async (req: Request, res: Response): Promis
   }
 };
 
-export const updateSystemConfig = (req: Request, res: Response): void => {
+export const updateSystemConfig = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { routing, install, smartRouting, mcpRouter, nameSeparator, enableSessionRebuild, oauthServer } = req.body;
-    const currentUser = (req as any).user;
+    const {
+      routing,
+      install,
+      smartRouting,
+      mcpRouter,
+      nameSeparator,
+      enableSessionRebuild,
+      oauthServer,
+    } = req.body;
 
     const hasRoutingUpdate =
       routing &&
@@ -542,7 +591,7 @@ export const updateSystemConfig = (req: Request, res: Response): void => {
         typeof mcpRouter.baseUrl === 'string');
 
     const hasNameSeparatorUpdate = typeof nameSeparator === 'string';
-    
+
     const hasSessionRebuildUpdate = typeof enableSessionRebuild === 'boolean';
 
     const hasOAuthServerUpdate =
@@ -575,9 +624,12 @@ export const updateSystemConfig = (req: Request, res: Response): void => {
       return;
     }
 
-    const settings = loadSettings();
-    if (!settings.systemConfig) {
-      settings.systemConfig = {
+    // Get system config from DAO (supports both file and database modes)
+    const systemConfigDao = getSystemConfigDao();
+    let systemConfig = await systemConfigDao.get();
+
+    if (!systemConfig) {
+      systemConfig = {
         routing: {
           enableGlobalRoute: true,
           enableGroupNameRoute: true,
@@ -607,8 +659,8 @@ export const updateSystemConfig = (req: Request, res: Response): void => {
       };
     }
 
-    if (!settings.systemConfig.routing) {
-      settings.systemConfig.routing = {
+    if (!systemConfig.routing) {
+      systemConfig.routing = {
         enableGlobalRoute: true,
         enableGroupNameRoute: true,
         enableBearerAuth: false,
@@ -617,16 +669,16 @@ export const updateSystemConfig = (req: Request, res: Response): void => {
       };
     }
 
-    if (!settings.systemConfig.install) {
-      settings.systemConfig.install = {
+    if (!systemConfig.install) {
+      systemConfig.install = {
         pythonIndexUrl: '',
         npmRegistry: '',
         baseUrl: 'http://localhost:3000',
       };
     }
 
-    if (!settings.systemConfig.smartRouting) {
-      settings.systemConfig.smartRouting = {
+    if (!systemConfig.smartRouting) {
+      systemConfig.smartRouting = {
         enabled: false,
         dbUrl: '',
         openaiApiBaseUrl: '',
@@ -635,8 +687,8 @@ export const updateSystemConfig = (req: Request, res: Response): void => {
       };
     }
 
-    if (!settings.systemConfig.mcpRouter) {
-      settings.systemConfig.mcpRouter = {
+    if (!systemConfig.mcpRouter) {
+      systemConfig.mcpRouter = {
         apiKey: '',
         referer: 'https://www.mcphubx.com',
         title: 'MCPHub',
@@ -644,18 +696,18 @@ export const updateSystemConfig = (req: Request, res: Response): void => {
       };
     }
 
-    if (!settings.systemConfig.oauthServer) {
-      settings.systemConfig.oauthServer = cloneDefaultOAuthServerConfig();
+    if (!systemConfig.oauthServer) {
+      systemConfig.oauthServer = cloneDefaultOAuthServerConfig();
     }
 
-    if (!settings.systemConfig.oauthServer.dynamicRegistration) {
+    if (!systemConfig.oauthServer.dynamicRegistration) {
       const defaultConfig = cloneDefaultOAuthServerConfig();
       const defaultDynamic = defaultConfig.dynamicRegistration ?? {
         enabled: false,
         allowedGrantTypes: [],
         requiresAuthentication: false,
       };
-      settings.systemConfig.oauthServer.dynamicRegistration = {
+      systemConfig.oauthServer.dynamicRegistration = {
         enabled: defaultDynamic.enabled ?? false,
         allowedGrantTypes: [
           ...(Array.isArray(defaultDynamic.allowedGrantTypes)
@@ -668,50 +720,50 @@ export const updateSystemConfig = (req: Request, res: Response): void => {
 
     if (routing) {
       if (typeof routing.enableGlobalRoute === 'boolean') {
-        settings.systemConfig.routing.enableGlobalRoute = routing.enableGlobalRoute;
+        systemConfig.routing.enableGlobalRoute = routing.enableGlobalRoute;
       }
 
       if (typeof routing.enableGroupNameRoute === 'boolean') {
-        settings.systemConfig.routing.enableGroupNameRoute = routing.enableGroupNameRoute;
+        systemConfig.routing.enableGroupNameRoute = routing.enableGroupNameRoute;
       }
 
       if (typeof routing.enableBearerAuth === 'boolean') {
-        settings.systemConfig.routing.enableBearerAuth = routing.enableBearerAuth;
+        systemConfig.routing.enableBearerAuth = routing.enableBearerAuth;
       }
 
       if (typeof routing.bearerAuthKey === 'string') {
-        settings.systemConfig.routing.bearerAuthKey = routing.bearerAuthKey;
+        systemConfig.routing.bearerAuthKey = routing.bearerAuthKey;
       }
 
       if (typeof routing.skipAuth === 'boolean') {
-        settings.systemConfig.routing.skipAuth = routing.skipAuth;
+        systemConfig.routing.skipAuth = routing.skipAuth;
       }
     }
 
     if (install) {
       if (typeof install.pythonIndexUrl === 'string') {
-        settings.systemConfig.install.pythonIndexUrl = install.pythonIndexUrl;
+        systemConfig.install.pythonIndexUrl = install.pythonIndexUrl;
       }
       if (typeof install.npmRegistry === 'string') {
-        settings.systemConfig.install.npmRegistry = install.npmRegistry;
+        systemConfig.install.npmRegistry = install.npmRegistry;
       }
       if (typeof install.baseUrl === 'string') {
-        settings.systemConfig.install.baseUrl = install.baseUrl;
+        systemConfig.install.baseUrl = install.baseUrl;
       }
     }
 
     // Track smartRouting state and configuration changes
-    const wasSmartRoutingEnabled = settings.systemConfig.smartRouting.enabled || false;
-    const previousSmartRoutingConfig = { ...settings.systemConfig.smartRouting };
+    const wasSmartRoutingEnabled = systemConfig.smartRouting.enabled || false;
+    const previousSmartRoutingConfig = { ...systemConfig.smartRouting };
     let needsSync = false;
 
     if (smartRouting) {
       if (typeof smartRouting.enabled === 'boolean') {
         // If enabling Smart Routing, validate required fields
         if (smartRouting.enabled) {
-          const currentDbUrl = smartRouting.dbUrl || settings.systemConfig.smartRouting.dbUrl;
+          const currentDbUrl = smartRouting.dbUrl || systemConfig.smartRouting.dbUrl;
           const currentOpenaiApiKey =
-            smartRouting.openaiApiKey || settings.systemConfig.smartRouting.openaiApiKey;
+            smartRouting.openaiApiKey || systemConfig.smartRouting.openaiApiKey;
 
           if (!currentDbUrl || !currentOpenaiApiKey) {
             const missingFields = [];
@@ -725,32 +777,30 @@ export const updateSystemConfig = (req: Request, res: Response): void => {
             return;
           }
         }
-        settings.systemConfig.smartRouting.enabled = smartRouting.enabled;
+        systemConfig.smartRouting.enabled = smartRouting.enabled;
       }
       if (typeof smartRouting.dbUrl === 'string') {
-        settings.systemConfig.smartRouting.dbUrl = smartRouting.dbUrl;
+        systemConfig.smartRouting.dbUrl = smartRouting.dbUrl;
       }
       if (typeof smartRouting.openaiApiBaseUrl === 'string') {
-        settings.systemConfig.smartRouting.openaiApiBaseUrl = smartRouting.openaiApiBaseUrl;
+        systemConfig.smartRouting.openaiApiBaseUrl = smartRouting.openaiApiBaseUrl;
       }
       if (typeof smartRouting.openaiApiKey === 'string') {
-        settings.systemConfig.smartRouting.openaiApiKey = smartRouting.openaiApiKey;
+        systemConfig.smartRouting.openaiApiKey = smartRouting.openaiApiKey;
       }
       if (typeof smartRouting.openaiApiEmbeddingModel === 'string') {
-        settings.systemConfig.smartRouting.openaiApiEmbeddingModel =
-          smartRouting.openaiApiEmbeddingModel;
+        systemConfig.smartRouting.openaiApiEmbeddingModel = smartRouting.openaiApiEmbeddingModel;
       }
 
       // Check if we need to sync embeddings
-      const isNowEnabled = settings.systemConfig.smartRouting.enabled || false;
+      const isNowEnabled = systemConfig.smartRouting.enabled || false;
       const hasConfigChanged =
-        previousSmartRoutingConfig.dbUrl !== settings.systemConfig.smartRouting.dbUrl ||
+        previousSmartRoutingConfig.dbUrl !== systemConfig.smartRouting.dbUrl ||
         previousSmartRoutingConfig.openaiApiBaseUrl !==
-          settings.systemConfig.smartRouting.openaiApiBaseUrl ||
-        previousSmartRoutingConfig.openaiApiKey !==
-          settings.systemConfig.smartRouting.openaiApiKey ||
+          systemConfig.smartRouting.openaiApiBaseUrl ||
+        previousSmartRoutingConfig.openaiApiKey !== systemConfig.smartRouting.openaiApiKey ||
         previousSmartRoutingConfig.openaiApiEmbeddingModel !==
-          settings.systemConfig.smartRouting.openaiApiEmbeddingModel;
+          systemConfig.smartRouting.openaiApiEmbeddingModel;
 
       // Sync if: first time enabling OR smart routing is enabled and any config changed
       needsSync = (!wasSmartRoutingEnabled && isNowEnabled) || (isNowEnabled && hasConfigChanged);
@@ -758,21 +808,21 @@ export const updateSystemConfig = (req: Request, res: Response): void => {
 
     if (mcpRouter) {
       if (typeof mcpRouter.apiKey === 'string') {
-        settings.systemConfig.mcpRouter.apiKey = mcpRouter.apiKey;
+        systemConfig.mcpRouter.apiKey = mcpRouter.apiKey;
       }
       if (typeof mcpRouter.referer === 'string') {
-        settings.systemConfig.mcpRouter.referer = mcpRouter.referer;
+        systemConfig.mcpRouter.referer = mcpRouter.referer;
       }
       if (typeof mcpRouter.title === 'string') {
-        settings.systemConfig.mcpRouter.title = mcpRouter.title;
+        systemConfig.mcpRouter.title = mcpRouter.title;
       }
       if (typeof mcpRouter.baseUrl === 'string') {
-        settings.systemConfig.mcpRouter.baseUrl = mcpRouter.baseUrl;
+        systemConfig.mcpRouter.baseUrl = mcpRouter.baseUrl;
       }
     }
 
     if (oauthServer) {
-      const target = settings.systemConfig.oauthServer;
+      const target = systemConfig.oauthServer;
       if (typeof oauthServer.enabled === 'boolean') {
         target.enabled = oauthServer.enabled;
       }
@@ -826,17 +876,19 @@ export const updateSystemConfig = (req: Request, res: Response): void => {
     }
 
     if (typeof nameSeparator === 'string') {
-      settings.systemConfig.nameSeparator = nameSeparator;
+      systemConfig.nameSeparator = nameSeparator;
     }
 
     if (typeof enableSessionRebuild === 'boolean') {
-      settings.systemConfig.enableSessionRebuild = enableSessionRebuild;
+      systemConfig.enableSessionRebuild = enableSessionRebuild;
     }
 
-    if (saveSettings(settings, currentUser)) {
+    // Save using DAO (supports both file and database modes)
+    try {
+      await systemConfigDao.update(systemConfig);
       res.json({
         success: true,
-        data: settings.systemConfig,
+        data: systemConfig,
         message: 'System configuration updated successfully',
       });
 
@@ -848,7 +900,8 @@ export const updateSystemConfig = (req: Request, res: Response): void => {
           console.error('Failed to sync server tools embeddings:', error);
         });
       }
-    } else {
+    } catch (saveError) {
+      console.error('Failed to save system configuration:', saveError);
       res.status(500).json({
         success: false,
         message: 'Failed to save system configuration',

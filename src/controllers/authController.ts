@@ -37,7 +37,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
 
   try {
     // Find user by username
-    const user = findUserByUsername(username);
+    const user = await findUserByUsername(username);
 
     if (!user) {
       res.status(401).json({
@@ -192,7 +192,7 @@ export const changePassword = async (req: Request, res: Response): Promise<void>
     }
 
     // Find user by username
-    const user = findUserByUsername(username);
+    const user = await findUserByUsername(username);
 
     if (!user) {
       res.status(404).json({ success: false, message: 'User not found' });

@@ -1,8 +1,8 @@
 import { OpenAPIV3 } from 'openapi-types';
 import { Tool } from '../types/index.js';
 import { getServersInfo } from './mcpService.js';
-import config from '../config/index.js';
-import { loadSettings, getNameSeparator } from '../config/index.js';
+import config, { getNameSeparator } from '../config/index.js';
+import { getSystemConfigDao } from '../dao/index.js';
 
 /**
  * Service for generating OpenAPI 3.x specifications from MCP tools
@@ -174,7 +174,7 @@ export async function generateOpenAPISpec(
   const groupConfig: Map<string, string[] | 'all'> = new Map();
   if (options.groupFilter) {
     const { getGroupByIdOrName } = await import('./groupService.js');
-    const group = getGroupByIdOrName(options.groupFilter);
+    const group = await getGroupByIdOrName(options.groupFilter);
     if (group) {
       // Extract server names and their tool configurations from group
       const groupServerNames: string[] = [];
@@ -250,12 +250,11 @@ export async function generateOpenAPISpec(
     paths[pathName][method] = operation;
   }
 
-  const settings = loadSettings();
+  const systemConfigDao = getSystemConfigDao();
+  const systemConfig = await systemConfigDao.get();
   // Get server URL
   const baseUrl =
-    options.serverUrl ||
-    settings.systemConfig?.install?.baseUrl ||
-    `http://localhost:${config.port}`;
+    options.serverUrl || systemConfig?.install?.baseUrl || `http://localhost:${config.port}`;
   const serverUrl = `${baseUrl}${config.basePath}/api`;
 
   // Generate OpenAPI document

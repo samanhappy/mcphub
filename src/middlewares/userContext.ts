@@ -76,7 +76,7 @@ export const sseUserContextMiddleware = async (
       const rawAuthHeader = Array.isArray(req.headers.authorization)
         ? req.headers.authorization[0]
         : req.headers.authorization;
-      const bearerUser = resolveOAuthUserFromAuthHeader(rawAuthHeader);
+      const bearerUser = await resolveOAuthUserFromAuthHeader(rawAuthHeader);
 
       if (bearerUser) {
         userContextService.setCurrentUser(bearerUser);

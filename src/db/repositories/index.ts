@@ -1,4 +1,16 @@
 import VectorEmbeddingRepository from './VectorEmbeddingRepository.js';
+import { UserRepository } from './UserRepository.js';
+import { ServerRepository } from './ServerRepository.js';
+import { GroupRepository } from './GroupRepository.js';
+import { SystemConfigRepository } from './SystemConfigRepository.js';
+import { UserConfigRepository } from './UserConfigRepository.js';
 
 // Export all repositories
-export { VectorEmbeddingRepository };
+export {
+  VectorEmbeddingRepository,
+  UserRepository,
+  ServerRepository,
+  GroupRepository,
+  SystemConfigRepository,
+  UserConfigRepository,
+};

@@ -1,0 +1,194 @@
+import { loadOriginalSettings } from '../config/index.js';
+import { initializeDatabase } from '../db/connection.js';
+import { setDaoFactory } from '../dao/DaoFactory.js';
+import { DatabaseDaoFactory } from '../dao/DatabaseDaoFactory.js';
+import { UserRepository } from '../db/repositories/UserRepository.js';
+import { ServerRepository } from '../db/repositories/ServerRepository.js';
+import { GroupRepository } from '../db/repositories/GroupRepository.js';
+import { SystemConfigRepository } from '../db/repositories/SystemConfigRepository.js';
+import { UserConfigRepository } from '../db/repositories/UserConfigRepository.js';
+
+/**
+ * Migrate from file-based configuration to database
+ */
+export async function migrateToDatabase(): Promise<boolean> {
+  try {
+    console.log('Starting migration from file to database...');
+
+    // Initialize database connection
+    await initializeDatabase();
+    console.log('Database connection established');
+
+    // Load current settings from file
+    const settings = loadOriginalSettings();
+    console.log('Loaded settings from file');
+
+    // Create repositories
+    const userRepo = new UserRepository();
+    const serverRepo = new ServerRepository();
+    const groupRepo = new GroupRepository();
+    const systemConfigRepo = new SystemConfigRepository();
+    const userConfigRepo = new UserConfigRepository();
+
+    // Migrate users
+    if (settings.users && settings.users.length > 0) {
+      console.log(`Migrating ${settings.users.length} users...`);
+      for (const user of settings.users) {
+        const exists = await userRepo.exists(user.username);
+        if (!exists) {
+          await userRepo.create({
+            username: user.username,
+            password: user.password,
+            isAdmin: user.isAdmin || false,
+          });
+          console.log(`  - Created user: ${user.username}`);
+        } else {
+          console.log(`  - User already exists: ${user.username}`);
+        }
+      }
+    }
+
+    // Migrate servers
+    if (settings.mcpServers) {
+      const serverNames = Object.keys(settings.mcpServers);
+      console.log(`Migrating ${serverNames.length} servers...`);
+      for (const [name, config] of Object.entries(settings.mcpServers)) {
+        const exists = await serverRepo.exists(name);
+        if (!exists) {
+          await serverRepo.create({
+            name,
+            type: config.type,
+            url: config.url,
+            command: config.command,
+            args: config.args,
+            env: config.env,
+            headers: config.headers,
+            enabled: config.enabled !== undefined ? config.enabled : true,
+            owner: config.owner,
+            keepAliveInterval: config.keepAliveInterval,
+            tools: config.tools,
+            prompts: config.prompts,
+            options: config.options,
+            oauth: config.oauth,
+          });
+          console.log(`  - Created server: ${name}`);
+        } else {
+          console.log(`  - Server already exists: ${name}`);
+        }
+      }
+    }
+
+    // Migrate groups
+    if (settings.groups && settings.groups.length > 0) {
+      console.log(`Migrating ${settings.groups.length} groups...`);
+      for (const group of settings.groups) {
+        const exists = await groupRepo.existsByName(group.name);
+        if (!exists) {
+          await groupRepo.create({
+            name: group.name,
+            description: group.description,
+            servers: Array.isArray(group.servers) ? group.servers : [],
+            owner: group.owner,
+          });
+          console.log(`  - Created group: ${group.name}`);
+        } else {
+          console.log(`  - Group already exists: ${group.name}`);
+        }
+      }
+    }
+
+    // Migrate system config
+    if (settings.systemConfig) {
+      console.log('Migrating system configuration...');
+      const systemConfig = {
+        routing: settings.systemConfig.routing || {},
+        install: settings.systemConfig.install || {},
+        smartRouting: settings.systemConfig.smartRouting || {},
+        mcpRouter: settings.systemConfig.mcpRouter || {},
+        nameSeparator: settings.systemConfig.nameSeparator,
+        oauth: settings.systemConfig.oauth || {},
+        oauthServer: settings.systemConfig.oauthServer || {},
+        enableSessionRebuild: settings.systemConfig.enableSessionRebuild,
+      };
+      await systemConfigRepo.update(systemConfig);
+      console.log('  - System configuration updated');
+    }
+
+    // Migrate user configs
+    if (settings.userConfigs) {
+      const usernames = Object.keys(settings.userConfigs);
+      console.log(`Migrating ${usernames.length} user configurations...`);
+      for (const [username, config] of Object.entries(settings.userConfigs)) {
+        const userConfig = {
+          routing: config.routing || {},
+          additionalConfig: config,
+        };
+        await userConfigRepo.update(username, userConfig);
+        console.log(`  - Updated configuration for user: ${username}`);
+      }
+    }
+
+    console.log('✅ Migration completed successfully');
+    return true;
+  } catch (error) {
+    console.error('❌ Migration failed:', error);
+    return false;
+  }
+}
+
+/**
+ * Initialize database mode
+ * This function should be called during application startup when USE_DB=true
+ */
+export async function initializeDatabaseMode(): Promise<boolean> {
+  try {
+    console.log('Initializing database mode...');
+
+    // Initialize database connection
+    await initializeDatabase();
+    console.log('Database connection established');
+
+    // Switch to database factory
+    setDaoFactory(DatabaseDaoFactory.getInstance());
+    console.log('Switched to database-backed DAO implementations');
+
+    // Check if migration is needed
+    const userRepo = new UserRepository();
+    const userCount = await userRepo.count();
+
+    if (userCount === 0) {
+      console.log('No users found in database, running migration...');
+      const migrated = await migrateToDatabase();
+      if (!migrated) {
+        throw new Error('Migration failed');
+      }
+    } else {
+      console.log(`Database already contains ${userCount} users, skipping migration`);
+    }
+
+    console.log('✅ Database mode initialized successfully');
+    return true;
+  } catch (error) {
+    console.error('❌ Failed to initialize database mode:', error);
+    return false;
+  }
+}
+
+/**
+ * CLI tool for migration
+ */
+export async function runMigrationCli(): Promise<void> {
+  console.log('MCPHub Configuration Migration Tool');
+  console.log('====================================\n');
+
+  const success = await migrateToDatabase();
+
+  if (success) {
+    console.log('\n✅ Migration completed successfully!');
+    console.log('You can now set USE_DB=true to use database-backed configuration');
+    process.exit(0);
+  } else {
+    console.log('\n❌ Migration failed!');
+    process.exit(1);
+  }
+}

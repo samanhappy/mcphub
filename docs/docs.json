@@ -37,7 +37,8 @@
               "configuration/mcp-settings",
               "configuration/environment-variables",
               "configuration/docker-setup",
-              "configuration/nginx"
+              "configuration/nginx",
+              "configuration/database-configuration"
             ]
           }
         ]
@@ -68,7 +69,8 @@
               "zh/configuration/mcp-settings",
               "zh/configuration/environment-variables",
               "zh/configuration/docker-setup",
-              "zh/configuration/nginx"
+              "zh/configuration/nginx",
+              "zh/configuration/database-configuration"
             ]
           }
         ]

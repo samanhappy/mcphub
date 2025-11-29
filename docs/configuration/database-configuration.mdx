@@ -1,0 +1,328 @@
+# Database Configuration for MCPHub
+
+## Overview
+
+MCPHub supports storing configuration data in a PostgreSQL database as an alternative to the `mcp_settings.json` file. Database mode provides enhanced persistence and scalability for production environments and enterprise deployments.
+
+## Why Use Database Configuration?
+
+**Core Benefits:**
+- ✅ **Better Persistence** - Configuration stored in a professional database with transaction support and data integrity
+- ✅ **High Availability** - Leverage database replication and failover capabilities
+- ✅ **Enterprise Ready** - Meets enterprise data management and compliance requirements
+- ✅ **Backup & Recovery** - Use mature database backup tools and strategies
+
+## Environment Variables
+
+### Required for Database Mode
+
+```bash
+# Database connection URL (PostgreSQL)
+# Simply setting DB_URL will automatically enable database mode
+DB_URL=postgresql://user:password@localhost:5432/mcphub
+
+# Or explicitly control with USE_DB (overrides auto-detection)
+# USE_DB=true
+
+# Alternative: Use separate components
+# DB_HOST=localhost
+# DB_PORT=5432
+# DB_NAME=mcphub
+# DB_USER=user
+# DB_PASSWORD=password
+```
+
+<Note>
+**Simplified Configuration**: You only need to set `DB_URL` to enable database mode. MCPHub will automatically detect and enable database mode when `DB_URL` is present. Use `USE_DB=false` to explicitly disable database mode even when `DB_URL` is set.
+</Note>
+
+### Optional Settings
+
+```bash
+# Automatic migration on startup (default: true)
+AUTO_MIGRATE=true
+
+# Keep file-based config as fallback (default: false)
+KEEP_FILE_CONFIG=false
+```
+
+## Setup Instructions
+
+### 1. Using Docker
+
+#### Option A: Using PostgreSQL as a separate service
+
+Create a `docker-compose.yml`:
+
+```yaml
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: mcphub
+      POSTGRES_USER: mcphub
+      POSTGRES_PASSWORD: your_secure_password
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  mcphub:
+    image: samanhappy/mcphub:latest
+    environment:
+      USE_DB: "true"
+      DB_URL: "postgresql://mcphub:your_secure_password@postgres:5432/mcphub"
+      PORT: 3000
+    ports:
+      - "3000:3000"
+    depends_on:
+      - postgres
+
+volumes:
+  pgdata:
+```
+
+Run with:
+```bash
+docker-compose up -d
+```
+
+#### Option B: Using External Database
+
+If you already have a PostgreSQL database:
+
+```bash
+docker run -d \
+  -p 3000:3000 \
+  -e USE_DB=true \
+  -e DB_URL="postgresql://user:password@your-db-host:5432/mcphub" \
+  samanhappy/mcphub:latest
+```
+
+### 2. Manual Setup
+
+#### Step 1: Setup PostgreSQL Database
+
+```bash
+# Install PostgreSQL (if not already installed)
+sudo apt-get install postgresql postgresql-contrib
+
+# Create database and user
+sudo -u postgres psql <<EOF
+CREATE DATABASE mcphub;
+CREATE USER mcphub WITH ENCRYPTED PASSWORD 'your_password';
+GRANT ALL PRIVILEGES ON DATABASE mcphub TO mcphub;
+EOF
+```
+
+#### Step 2: Install MCPHub
+
+```bash
+npm install -g @samanhappy/mcphub
+```
+
+#### Step 3: Set Environment Variables
+
+Create a `.env` file:
+
+```bash
+# Simply set DB_URL to enable database mode (USE_DB is auto-detected)
+DB_URL=postgresql://mcphub:your_password@localhost:5432/mcphub
+PORT=3000
+```
+
+#### Step 4: Run Migration (Optional)
+
+If you have an existing `mcp_settings.json` file, migrate it:
+
+```bash
+# Run migration script
+npx tsx src/scripts/migrate-to-database.ts
+```
+
+Or let MCPHub auto-migrate on first startup.
+
+#### Step 5: Start MCPHub
+
+```bash
+mcphub
+```
+
+## Migration from File-Based to Database
+
+MCPHub provides automatic migration on first startup when database mode is enabled. However, you can also run the migration manually.
+
+### Automatic Migration
+
+When you start MCPHub with `USE_DB=true` for the first time:
+
+1. MCPHub connects to the database
+2. Checks if any users exist in the database
+3. If no users found, automatically migrates from `mcp_settings.json`
+4. Creates all tables and imports all data
+
+### Manual Migration
+
+Run the migration script:
+
+```bash
+# Using npx
+npx tsx src/scripts/migrate-to-database.ts
+
+# Or using Node
+node dist/scripts/migrate-to-database.js
+```
+
+The migration will:
+- ✅ Create database tables if they don't exist
+- ✅ Import all users with hashed passwords
+- ✅ Import all MCP server configurations
+- ✅ Import all groups
+- ✅ Import system configuration
+- ✅ Import user-specific configurations
+- ✅ Skip existing records (safe to run multiple times)
+
+## Configuration After Migration
+
+Once running in database mode, all configuration changes are stored in the database:
+
+- User management via `/api/users`
+- Server management via `/api/servers`
+- Group management via `/api/groups`
+- System settings via `/api/system/config`
+
+The web dashboard works exactly the same way, but now stores changes in the database instead of the file.
+
+## Database Schema
+
+MCPHub creates the following tables:
+
+- **users** - User accounts and authentication
+- **servers** - MCP server configurations
+- **groups** - Server groups
+- **system_config** - System-wide settings
+- **user_configs** - User-specific settings
+- **vector_embeddings** - Vector search data (for smart routing)
+
+## Backup and Restore
+
+### Backup
+
+```bash
+# PostgreSQL backup
+pg_dump -U mcphub mcphub > mcphub_backup.sql
+
+# Or using Docker
+docker exec postgres pg_dump -U mcphub mcphub > mcphub_backup.sql
+```
+
+### Restore
+
+```bash
+# PostgreSQL restore
+psql -U mcphub mcphub < mcphub_backup.sql
+
+# Or using Docker
+docker exec -i postgres psql -U mcphub mcphub < mcphub_backup.sql
+```
+
+## Switching Back to File-Based Config
+
+If you need to switch back to file-based configuration:
+
+1. Set `USE_DB=false` or remove the environment variable
+2. Restart MCPHub
+3. MCPHub will use `mcp_settings.json` again
+
+Note: Changes made in database mode won't be reflected in the file unless you manually export them.
+
+## Troubleshooting
+
+### Connection Refused
+
+```
+Error: connect ECONNREFUSED 127.0.0.1:5432
+```
+
+**Solution:** Check that PostgreSQL is running and accessible:
+```bash
+# Check PostgreSQL status
+sudo systemctl status postgresql
+
+# Or for Docker
+docker ps | grep postgres
+```
+
+### Authentication Failed
+
+```
+Error: password authentication failed for user "mcphub"
+```
+
+**Solution:** Verify database credentials in `DB_URL` environment variable.
+
+### Migration Failed
+
+```
+❌ Migration failed: ...
+```
+
+**Solution:** 
+1. Check that `mcp_settings.json` exists and is valid JSON
+2. Verify database connection
+3. Check logs for specific error messages
+4. Ensure database user has CREATE TABLE permissions
+
+### Tables Already Exist
+
+Database tables are automatically created if they don't exist. If you get errors about existing tables, check:
+1. Whether a previous migration partially completed
+2. Manual table creation conflicts
+3. Run with `synchronize: false` in database config if needed
+
+## Environment Variables Reference
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `DB_URL` | Yes* | - | Full PostgreSQL connection URL. Setting this automatically enables database mode |
+| `USE_DB` | No | auto | Explicitly enable/disable database mode. If not set, auto-detected based on `DB_URL` presence |
+| `DB_HOST` | No | `localhost` | Database host (if not using DB_URL) |
+| `DB_PORT` | No | `5432` | Database port (if not using DB_URL) |
+| `DB_NAME` | No | `mcphub` | Database name (if not using DB_URL) |
+| `DB_USER` | No | `mcphub` | Database user (if not using DB_URL) |
+| `DB_PASSWORD` | No | - | Database password (if not using DB_URL) |
+| `AUTO_MIGRATE` | No | `true` | Auto-migrate from file on first start |
+| `MCPHUB_SETTING_PATH` | No | - | Path to mcp_settings.json (for migration) |
+
+*Required for database mode. Simply setting `DB_URL` enables database mode automatically
+
+## Security Considerations
+
+1. **Database Credentials:** Store database credentials securely, use environment variables or secrets management
+2. **Network Access:** Restrict database access to MCPHub instances only
+3. **Encryption:** Use SSL/TLS for database connections in production:
+   ```bash
+   DB_URL=postgresql://user:password@host:5432/mcphub?sslmode=require
+   ```
+4. **Backup:** Regularly backup your database
+5. **Access Control:** Use strong database passwords and limit user permissions
+
+## Performance
+
+Database mode offers better performance for:
+- Multiple concurrent users
+- Frequent configuration changes
+- Large number of servers/groups
+
+File mode may be faster for:
+- Single user setups
+- Read-heavy workloads with infrequent changes
+- Development/testing environments
+
+## Support
+
+For issues or questions:
+- GitHub Issues: https://github.com/samanhappy/mcphub/issues
+- Documentation: https://mcphub.io/docs

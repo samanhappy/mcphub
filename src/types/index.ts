@@ -175,7 +175,10 @@ export interface SystemConfig {
   enableSessionRebuild?: boolean; // Controls whether server session rebuild is enabled
 }
 
-export interface UserConfig {}
+export interface UserConfig {
+  routing?: Record<string, any>; // User-specific routing configuration
+  [key: string]: any; // Allow additional dynamic properties
+}
 
 // OAuth Client for MCPHub's own authorization server
 export interface IOAuthClient {

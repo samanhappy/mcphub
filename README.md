@@ -19,7 +19,7 @@ MCPHub makes it easy to manage and scale multiple MCP (Model Context Protocol) s
 - **Hot-Swappable Configuration**: Add, remove, or update MCP servers on the fly — no downtime required.
 - **Group-Based Access Control**: Organize servers into customizable groups for streamlined permissions management.
 - **Secure Authentication**: Built-in user management with role-based access powered by JWT and bcrypt.
-- **OAuth 2.0 Support**: 
+- **OAuth 2.0 Support**:
   - Full OAuth support for upstream MCP servers with proxy authorization capabilities
   - **NEW**: Act as OAuth 2.0 authorization server for external clients (ChatGPT Web, custom apps)
 - **Environment Variable Expansion**: Use environment variables anywhere in your configuration for secure credential management. See [Environment Variables Guide](docs/environment-variables.md).
@@ -129,12 +129,43 @@ MCPHub can now act as an OAuth 2.0 authorization server, allowing external appli
 ```
 
 **Key Features:**
+
 - Standard OAuth 2.0 authorization code flow
 - PKCE support for enhanced security
 - Token refresh capabilities
 - Compatible with ChatGPT Web and other OAuth clients
 
 For detailed setup instructions, see the [OAuth Server Documentation](docs/oauth-server.md).
+
+### Database Mode (NEW)
+
+MCPHub supports storing configuration in a PostgreSQL database as an alternative to `mcp_settings.json`. Database mode provides enhanced persistence and scalability for production environments and enterprise deployments.
+
+**Core Benefits:**
+
+- ✅ **Better Persistence** - Configuration stored in a professional database with transaction support and data integrity
+- ✅ **High Availability** - Leverage database replication and failover capabilities
+- ✅ **Enterprise Ready** - Meets enterprise data management and compliance requirements
+- ✅ **Backup & Recovery** - Use mature database backup tools and strategies
+
+**Environment Variables:**
+
+```bash
+# Simply set DB_URL to enable database mode (auto-detected)
+DB_URL=postgresql://user:password@host:5432/mcphub
+
+# Or explicitly control with USE_DB (optional, overrides auto-detection)
+# USE_DB=true
+```
+
+> **Note**: You only need to set `DB_URL` to enable database mode. MCPHub will automatically detect and enable database mode when `DB_URL` is present. Use `USE_DB=false` to explicitly disable database mode even when `DB_URL` is set.
+
+📖 See the complete [Database Configuration Guide](docs/configuration/database-configuration.mdx) for:
+
+- Detailed setup instructions
+- Migration from file-based config
+- Backup and restore procedures
+- Troubleshooting tips
 
 ### Docker Deployment
 
@@ -223,6 +254,7 @@ http://localhost:3000/mcp/$smart/development
 ```
 
 This enables:
+
 - **Focused Discovery**: Find tools only from relevant servers
 - **Environment Isolation**: Separate tool discovery by environment (dev, staging, prod)
 - **Team-Based Access**: Limit tool search to team-specific server groups

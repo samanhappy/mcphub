@@ -208,7 +208,7 @@ export const getGroupOpenAPISpec = async (req: Request, res: Response): Promise<
     const { name } = req.params;
 
     // Check if group exists
-    const group = getGroupByIdOrName(name);
+    const group = await getGroupByIdOrName(name);
     if (!group) {
       getServerOpenAPISpec(req, res);
       return;

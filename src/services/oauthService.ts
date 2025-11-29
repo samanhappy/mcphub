@@ -1,7 +1,7 @@
 import { ProxyOAuthServerProvider } from '@modelcontextprotocol/sdk/server/auth/providers/proxyProvider.js';
 import { mcpAuthRouter } from '@modelcontextprotocol/sdk/server/auth/router.js';
 import { RequestHandler } from 'express';
-import { loadSettings } from '../config/index.js';
+import { getServerDao, getSystemConfigDao } from '../dao/index.js';
 import { initializeOAuthForServer, refreshAccessToken } from './oauthClientRegistration.js';
 
 // Re-export for external use
@@ -22,9 +22,10 @@ let oauthRouter: RequestHandler | null = null;
 /**
  * Initialize OAuth provider from system configuration
  */
-export const initOAuthProvider = (): void => {
-  const settings = loadSettings();
-  const oauthConfig = settings.systemConfig?.oauth;
+export const initOAuthProvider = async (): Promise<void> => {
+  const systemConfigDao = getSystemConfigDao();
+  const systemConfig = await systemConfigDao.get();
+  const oauthConfig = systemConfig?.oauth;
 
   if (!oauthConfig || !oauthConfig.enabled) {
     console.log('OAuth provider is disabled or not configured');
@@ -140,8 +141,8 @@ export const isOAuthEnabled = (): boolean => {
  * Handles both static tokens and dynamic OAuth flows with automatic token refresh
  */
 export const getServerOAuthToken = async (serverName: string): Promise<string | undefined> => {
-  const settings = loadSettings();
-  const serverConfig = settings.mcpServers[serverName];
+  const serverDao = getServerDao();
+  const serverConfig = await serverDao.findById(serverName);
 
   if (!serverConfig?.oauth) {
     return undefined;
@@ -227,15 +228,15 @@ export const addOAuthHeader = async (
  * Call this at application startup to pre-register known OAuth servers
  */
 export const initializeAllOAuthClients = async (): Promise<void> => {
-  const settings = loadSettings();
+  const serverDao = getServerDao();
+  const allServers = await serverDao.findAll();
 
   console.log('Initializing OAuth clients for explicitly configured servers...');
 
-  const serverNames = Object.keys(settings.mcpServers);
   const registrationPromises: Promise<void>[] = [];
 
-  for (const serverName of serverNames) {
-    const serverConfig = settings.mcpServers[serverName];
+  for (const serverConfig of allServers) {
+    const serverName = serverConfig.name;
 
     // Only initialize servers with explicitly enabled dynamic registration
     // Others will be auto-detected and registered on first 401 response

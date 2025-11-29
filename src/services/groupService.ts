@@ -1,8 +1,8 @@
 import { v4 as uuidv4 } from 'uuid';
 import { IGroup, IGroupServerConfig } from '../types/index.js';
-import { loadSettings, saveSettings } from '../config/index.js';
 import { notifyToolChanged } from './mcpService.js';
 import { getDataService } from './services.js';
+import { getGroupDao, getServerDao, getSystemConfigDao } from '../dao/index.js';
 
 // Helper function to normalize group servers configuration
 const normalizeGroupServers = (servers: string[] | IGroupServerConfig[]): IGroupServerConfig[] => {
@@ -17,22 +17,24 @@ const normalizeGroupServers = (servers: string[] | IGroupServerConfig[]): IGroup
 };
 
 // Get all groups
-export const getAllGroups = (): IGroup[] => {
-  const settings = loadSettings();
+export const getAllGroups = async (): Promise<IGroup[]> => {
+  const groupDao = getGroupDao();
+  const groups = await groupDao.findAll();
   const dataService = getDataService();
-  return dataService.filterData
-    ? dataService.filterData(settings.groups || [])
-    : settings.groups || [];
+  return dataService.filterData ? dataService.filterData(groups) : groups;
 };
 
 // Get group by ID or name
-export const getGroupByIdOrName = (key: string): IGroup | undefined => {
-  const settings = loadSettings();
-  const routingConfig = settings.systemConfig?.routing || {
+export const getGroupByIdOrName = async (key: string): Promise<IGroup | undefined> => {
+  const systemConfigDao = getSystemConfigDao();
+
+  const systemConfig = await systemConfigDao.get();
+  const routingConfig = systemConfig?.routing || {
     enableGlobalRoute: true,
     enableGroupNameRoute: true,
   };
-  const groups = getAllGroups();
+
+  const groups = await getAllGroups();
   return (
     groups.find(
       (group) => group.id === key || (group.name === key && routingConfig.enableGroupNameRoute),
@@ -41,25 +43,28 @@ export const getGroupByIdOrName = (key: string): IGroup | undefined => {
 };
 
 // Create a new group
-export const createGroup = (
+export const createGroup = async (
   name: string,
   description?: string,
   servers: string[] | IGroupServerConfig[] = [],
   owner?: string,
-): IGroup | null => {
+): Promise<IGroup | null> => {
   try {
-    const settings = loadSettings();
-    const groups = settings.groups || [];
+    const groupDao = getGroupDao();
+    const serverDao = getServerDao();
 
     // Check if group with same name already exists
-    if (groups.some((group) => group.name === name)) {
+    const existingGroup = await groupDao.findByName(name);
+    if (existingGroup) {
       return null;
     }
 
     // Normalize servers configuration and filter out non-existent servers
     const normalizedServers = normalizeGroupServers(servers);
-    const validServers: IGroupServerConfig[] = normalizedServers.filter(
-      (serverConfig) => settings.mcpServers[serverConfig.name],
+    const allServers = await serverDao.findAll();
+    const serverNames = new Set(allServers.map((s) => s.name));
+    const validServers: IGroupServerConfig[] = normalizedServers.filter((serverConfig) =>
+      serverNames.has(serverConfig.name),
     );
 
     const newGroup: IGroup = {
@@ -70,18 +75,8 @@ export const createGroup = (
       owner: owner || 'admin',
     };
 
-    // Initialize groups array if it doesn't exist
-    if (!settings.groups) {
-      settings.groups = [];
-    }
-
-    settings.groups.push(newGroup);
-
-    if (!saveSettings(settings)) {
-      return null;
-    }
-
-    return newGroup;
+    const createdGroup = await groupDao.create(newGroup);
+    return createdGroup;
   } catch (error) {
     console.error('Failed to create group:', error);
     return null;
@@ -89,43 +84,38 @@ export const createGroup = (
 };
 
 // Update an existing group
-export const updateGroup = (id: string, data: Partial<IGroup>): IGroup | null => {
+export const updateGroup = async (id: string, data: Partial<IGroup>): Promise<IGroup | null> => {
   try {
-    const settings = loadSettings();
-    if (!settings.groups) {
-      return null;
-    }
+    const groupDao = getGroupDao();
+    const serverDao = getServerDao();
 
-    const groupIndex = settings.groups.findIndex((group) => group.id === id);
-    if (groupIndex === -1) {
+    const existingGroup = await groupDao.findById(id);
+    if (!existingGroup) {
       return null;
     }
 
     // Check for name uniqueness if name is being updated
-    if (data.name && settings.groups.some((g) => g.name === data.name && g.id !== id)) {
-      return null;
+    if (data.name && data.name !== existingGroup.name) {
+      const groupWithName = await groupDao.findByName(data.name);
+      if (groupWithName) {
+        return null;
+      }
     }
 
     // If servers array is provided, validate server existence and normalize format
     if (data.servers) {
       const normalizedServers = normalizeGroupServers(data.servers);
-      data.servers = normalizedServers.filter(
-        (serverConfig) => settings.mcpServers[serverConfig.name],
-      );
+      const allServers = await serverDao.findAll();
+      const serverNames = new Set(allServers.map((s) => s.name));
+      data.servers = normalizedServers.filter((serverConfig) => serverNames.has(serverConfig.name));
     }
 
-    const updatedGroup = {
-      ...settings.groups[groupIndex],
-      ...data,
-    };
+    const updatedGroup = await groupDao.update(id, data);
 
-    settings.groups[groupIndex] = updatedGroup;
-
-    if (!saveSettings(settings)) {
-      return null;
+    if (updatedGroup) {
+      notifyToolChanged();
     }
 
-    notifyToolChanged();
     return updatedGroup;
   } catch (error) {
     console.error(`Failed to update group ${id}:`, error);
@@ -135,35 +125,34 @@ export const updateGroup = (id: string, data: Partial<IGroup>): IGroup | null =>
 
 // Update servers in a group (batch update)
 // Update group servers (maintaining backward compatibility)
-export const updateGroupServers = (
+export const updateGroupServers = async (
   groupId: string,
   servers: string[] | IGroupServerConfig[],
-): IGroup | null => {
+): Promise<IGroup | null> => {
   try {
-    const settings = loadSettings();
-    if (!settings.groups) {
-      return null;
-    }
+    const groupDao = getGroupDao();
+    const serverDao = getServerDao();
 
-    const groupIndex = settings.groups.findIndex((group) => group.id === groupId);
-    if (groupIndex === -1) {
+    const existingGroup = await groupDao.findById(groupId);
+    if (!existingGroup) {
       return null;
     }
 
     // Normalize and filter out non-existent servers
     const normalizedServers = normalizeGroupServers(servers);
-    const validServers = normalizedServers.filter(
-      (serverConfig) => settings.mcpServers[serverConfig.name],
+    const allServers = await serverDao.findAll();
+    const serverNames = new Set(allServers.map((s) => s.name));
+    const validServers = normalizedServers.filter((serverConfig) =>
+      serverNames.has(serverConfig.name),
     );
 
-    settings.groups[groupIndex].servers = validServers;
+    const updatedGroup = await groupDao.update(groupId, { servers: validServers });
 
-    if (!saveSettings(settings)) {
-      return null;
+    if (updatedGroup) {
+      notifyToolChanged();
     }
 
-    notifyToolChanged();
-    return settings.groups[groupIndex];
+    return updatedGroup;
   } catch (error) {
     console.error(`Failed to update servers for group ${groupId}:`, error);
     return null;
@@ -171,21 +160,10 @@ export const updateGroupServers = (
 };
 
 // Delete a group
-export const deleteGroup = (id: string): boolean => {
+export const deleteGroup = async (id: string): Promise<boolean> => {
   try {
-    const settings = loadSettings();
-    if (!settings.groups) {
-      return false;
-    }
-
-    const initialLength = settings.groups.length;
-    settings.groups = settings.groups.filter((group) => group.id !== id);
-
-    if (settings.groups.length === initialLength) {
-      return false;
-    }
-
-    return saveSettings(settings);
+    const groupDao = getGroupDao();
+    return await groupDao.delete(id);
   } catch (error) {
     console.error(`Failed to delete group ${id}:`, error);
     return false;
@@ -193,34 +171,37 @@ export const deleteGroup = (id: string): boolean => {
 };
 
 // Add server to group
-export const addServerToGroup = (groupId: string, serverName: string): IGroup | null => {
+export const addServerToGroup = async (
+  groupId: string,
+  serverName: string,
+): Promise<IGroup | null> => {
   try {
-    const settings = loadSettings();
-    if (!settings.groups) {
-      return null;
-    }
+    const groupDao = getGroupDao();
+    const serverDao = getServerDao();
 
     // Verify server exists
-    if (!settings.mcpServers[serverName]) {
+    const server = await serverDao.findById(serverName);
+    if (!server) {
       return null;
     }
 
-    const groupIndex = settings.groups.findIndex((group) => group.id === groupId);
-    if (groupIndex === -1) {
+    const group = await groupDao.findById(groupId);
+    if (!group) {
       return null;
     }
 
-    const group = settings.groups[groupIndex];
     const normalizedServers = normalizeGroupServers(group.servers);
 
     // Add server to group if not already in it
-    if (!normalizedServers.some((server) => server.name === serverName)) {
+    if (!normalizedServers.some((s) => s.name === serverName)) {
       normalizedServers.push({ name: serverName, tools: 'all' });
-      group.servers = normalizedServers;
+      const updatedGroup = await groupDao.update(groupId, { servers: normalizedServers });
 
-      if (!saveSettings(settings)) {
-        return null;
+      if (updatedGroup) {
+        notifyToolChanged();
       }
+
+      return updatedGroup;
     }
 
     notifyToolChanged();
@@ -232,27 +213,22 @@ export const addServerToGroup = (groupId: string, serverName: string): IGroup | 
 };
 
 // Remove server from group
-export const removeServerFromGroup = (groupId: string, serverName: string): IGroup | null => {
+export const removeServerFromGroup = async (
+  groupId: string,
+  serverName: string,
+): Promise<IGroup | null> => {
   try {
-    const settings = loadSettings();
-    if (!settings.groups) {
+    const groupDao = getGroupDao();
+
+    const group = await groupDao.findById(groupId);
+    if (!group) {
       return null;
     }
 
-    const groupIndex = settings.groups.findIndex((group) => group.id === groupId);
-    if (groupIndex === -1) {
-      return null;
-    }
-
-    const group = settings.groups[groupIndex];
     const normalizedServers = normalizeGroupServers(group.servers);
-    group.servers = normalizedServers.filter((server) => server.name !== serverName);
+    const filteredServers = normalizedServers.filter((server) => server.name !== serverName);
 
-    if (!saveSettings(settings)) {
-      return null;
-    }
-
-    return group;
+    return await groupDao.update(groupId, { servers: filteredServers });
   } catch (error) {
     console.error(`Failed to remove server ${serverName} from group ${groupId}:`, error);
     return null;
@@ -260,71 +236,69 @@ export const removeServerFromGroup = (groupId: string, serverName: string): IGro
 };
 
 // Get all servers in a group
-export const getServersInGroup = (groupId: string): string[] => {
-  const group = getGroupByIdOrName(groupId);
+export const getServersInGroup = async (groupId: string): Promise<string[]> => {
+  const group = await getGroupByIdOrName(groupId);
   if (!group) return [];
   const normalizedServers = normalizeGroupServers(group.servers);
   return normalizedServers.map((server) => server.name);
 };
 
 // Get server configuration from group (including tool selection)
-export const getServerConfigInGroup = (
+export const getServerConfigInGroup = async (
   groupId: string,
   serverName: string,
-): IGroupServerConfig | undefined => {
-  const group = getGroupByIdOrName(groupId);
+): Promise<IGroupServerConfig | undefined> => {
+  const group = await getGroupByIdOrName(groupId);
   if (!group) return undefined;
   const normalizedServers = normalizeGroupServers(group.servers);
   return normalizedServers.find((server) => server.name === serverName);
 };
 
 // Get all server configurations in a group
-export const getServerConfigsInGroup = (groupId: string): IGroupServerConfig[] => {
-  const group = getGroupByIdOrName(groupId);
+export const getServerConfigsInGroup = async (groupId: string): Promise<IGroupServerConfig[]> => {
+  const group = await getGroupByIdOrName(groupId);
   if (!group) return [];
   return normalizeGroupServers(group.servers);
 };
 
 // Update tools selection for a specific server in a group
-export const updateServerToolsInGroup = (
+export const updateServerToolsInGroup = async (
   groupId: string,
   serverName: string,
   tools: string[] | 'all',
-): IGroup | null => {
+): Promise<IGroup | null> => {
   try {
-    const settings = loadSettings();
-    if (!settings.groups) {
-      return null;
-    }
+    const groupDao = getGroupDao();
+    const serverDao = getServerDao();
 
-    const groupIndex = settings.groups.findIndex((group) => group.id === groupId);
-    if (groupIndex === -1) {
+    const group = await groupDao.findById(groupId);
+    if (!group) {
       return null;
     }
 
     // Verify server exists
-    if (!settings.mcpServers[serverName]) {
+    const server = await serverDao.findById(serverName);
+    if (!server) {
       return null;
     }
 
-    const group = settings.groups[groupIndex];
     const normalizedServers = normalizeGroupServers(group.servers);
 
-    const serverIndex = normalizedServers.findIndex((server) => server.name === serverName);
+    const serverIndex = normalizedServers.findIndex((s) => s.name === serverName);
     if (serverIndex === -1) {
       return null; // Server not in group
     }
 
     // Update the tools configuration for the server
     normalizedServers[serverIndex].tools = tools;
-    group.servers = normalizedServers;
 
-    if (!saveSettings(settings)) {
-      return null;
+    const updatedGroup = await groupDao.update(groupId, { servers: normalizedServers });
+
+    if (updatedGroup) {
+      notifyToolChanged();
     }
 
-    notifyToolChanged();
-    return group;
+    return updatedGroup;
   } catch (error) {
     console.error(`Failed to update tools for server ${serverName} in group ${groupId}:`, error);
     return null;

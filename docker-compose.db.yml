@@ -1,0 +1,60 @@
+version: "3.8"
+
+services:
+  # PostgreSQL database for MCPHub configuration
+  postgres:
+    image: postgres:16-alpine
+    container_name: mcphub-postgres
+    environment:
+      POSTGRES_DB: mcphub
+      POSTGRES_USER: mcphub
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-mcphub_password}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mcphub"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - mcphub-network
+
+  # MCPHub application
+  mcphub:
+    image: samanhappy/mcphub:latest
+    container_name: mcphub
+    environment:
+      # Database connection (setting DB_URL automatically enables database mode)
+      DB_URL: "postgresql://mcphub:${DB_PASSWORD:-mcphub_password}@postgres:5432/mcphub"
+
+      # Optional: Explicitly control database mode (overrides auto-detection)
+      # USE_DB: "true"
+
+      # Application settings
+      PORT: 3000
+      NODE_ENV: production
+
+      # Optional: Custom npm registry
+      # NPM_REGISTRY: https://registry.npmjs.org/
+
+      # Optional: Proxy settings
+      # HTTP_PROXY: http://proxy:8080
+      # HTTPS_PROXY: http://proxy:8080
+    ports:
+      - "${MCPHUB_PORT:-3000}:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - mcphub-network
+
+volumes:
+  pgdata:
+    driver: local
+
+networks:
+  mcphub-network:
+    driver: bridge

@@ -1,58 +1,43 @@
 import bcrypt from 'bcryptjs';
 import { IUser } from '../types/index.js';
-import { loadSettings, saveSettings } from '../config/index.js';
+import { getUserDao } from '../dao/index.js';
 
 // Get all users
-export const getUsers = (): IUser[] => {
+export const getUsers = async (): Promise<IUser[]> => {
   try {
-    const settings = loadSettings();
-    return settings.users || [];
+    const userDao = getUserDao();
+    return await userDao.findAll();
   } catch (error) {
-    console.error('Error reading users from settings:', error);
+    console.error('Error reading users:', error);
     return [];
-  }
-};
-
-// Save users to settings
-const saveUsers = (users: IUser[]): void => {
-  try {
-    const settings = loadSettings();
-    settings.users = users;
-    saveSettings(settings);
-  } catch (error) {
-    console.error('Error saving users to settings:', error);
   }
 };
 
 // Create a new user
 export const createUser = async (userData: IUser): Promise<IUser | null> => {
-  const users = getUsers();
-
-  // Check if username already exists
-  if (users.some((user) => user.username === userData.username)) {
+  try {
+    const userDao = getUserDao();
+    return await userDao.createWithHashedPassword(
+      userData.username,
+      userData.password,
+      userData.isAdmin,
+    );
+  } catch (error) {
+    console.error('Error creating user:', error);
     return null;
   }
-
-  // Hash the password
-  const salt = await bcrypt.genSalt(10);
-  const hashedPassword = await bcrypt.hash(userData.password, salt);
-
-  const newUser = {
-    username: userData.username,
-    password: hashedPassword,
-    isAdmin: userData.isAdmin || false,
-  };
-
-  users.push(newUser);
-  saveUsers(users);
-
-  return newUser;
 };
 
 // Find user by username
-export const findUserByUsername = (username: string): IUser | undefined => {
-  const users = getUsers();
-  return users.find((user) => user.username === username);
+export const findUserByUsername = async (username: string): Promise<IUser | undefined> => {
+  try {
+    const userDao = getUserDao();
+    const user = await userDao.findByUsername(username);
+    return user || undefined;
+  } catch (error) {
+    console.error('Error finding user:', error);
+    return undefined;
+  }
 };
 
 // Verify user password
@@ -68,34 +53,22 @@ export const updateUserPassword = async (
   username: string,
   newPassword: string,
 ): Promise<boolean> => {
-  const users = getUsers();
-  const userIndex = users.findIndex((user) => user.username === username);
-
-  if (userIndex === -1) {
+  try {
+    const userDao = getUserDao();
+    return await userDao.updatePassword(username, newPassword);
+  } catch (error) {
+    console.error('Error updating password:', error);
     return false;
   }
-
-  // Hash the new password
-  const salt = await bcrypt.genSalt(10);
-  const hashedPassword = await bcrypt.hash(newPassword, salt);
-
-  // Update the user's password
-  users[userIndex].password = hashedPassword;
-  saveUsers(users);
-
-  return true;
 };
 
 // Initialize with default admin user if no users exist
 export const initializeDefaultUser = async (): Promise<void> => {
-  const users = getUsers();
+  const userDao = getUserDao();
+  const users = await userDao.findAll();
 
   if (users.length === 0) {
-    await createUser({
-      username: 'admin',
-      password: 'admin123',
-      isAdmin: true,
-    });
+    await userDao.createWithHashedPassword('admin', 'admin123', true);
     console.log('Default admin user created');
   }
 };

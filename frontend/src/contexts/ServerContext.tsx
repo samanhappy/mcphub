@@ -283,31 +283,29 @@ export const ServerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const handleServerEdit = useCallback(
     async (server: Server) => {
       try {
-        // Fetch settings to get the full server config before editing
-        const settingsData: ApiResponse<{ mcpServers: Record<string, any> }> =
-          await apiGet('/settings');
+        // Fetch single server config instead of all settings
+        const encodedServerName = encodeURIComponent(server.name);
+        const serverData: ApiResponse<{
+          name: string;
+          status: string;
+          tools: any[];
+          config: Record<string, any>;
+        }> = await apiGet(`/servers/${encodedServerName}`);
 
-        if (
-          settingsData &&
-          settingsData.success &&
-          settingsData.data &&
-          settingsData.data.mcpServers &&
-          settingsData.data.mcpServers[server.name]
-        ) {
-          const serverConfig = settingsData.data.mcpServers[server.name];
+        if (serverData && serverData.success && serverData.data) {
           return {
-            name: server.name,
-            status: server.status,
-            tools: server.tools || [],
-            config: serverConfig,
+            name: serverData.data.name,
+            status: serverData.data.status,
+            tools: serverData.data.tools || [],
+            config: serverData.data.config,
           };
         } else {
-          console.error('Failed to get server config from settings:', settingsData);
+          console.error('Failed to get server config:', serverData);
           setError(t('server.invalidConfig', { serverName: server.name }));
           return null;
         }
       } catch (err) {
-        console.error('Error fetching server settings:', err);
+        console.error('Error fetching server config:', err);
         setError(err instanceof Error ? err.message : String(err));
         return null;
       }

@@ -57,6 +57,36 @@ Créez un fichier `mcp_settings.json` pour personnaliser les paramètres de votr
 }
 ```
 
+### Mode Base de données (NOUVEAU)
+
+MCPHub prend en charge le stockage de la configuration dans une base de données PostgreSQL comme alternative au fichier `mcp_settings.json`. Le mode base de données offre une persistance et une évolutivité améliorées pour les environnements de production et les déploiements d'entreprise.
+
+**Avantages principaux :**
+
+- ✅ **Meilleure persistance** - Configuration stockée dans une base de données professionnelle avec support des transactions et intégrité des données
+- ✅ **Haute disponibilité** - Profitez des capacités de réplication et de basculement de la base de données
+- ✅ **Prêt pour l'entreprise** - Répond aux exigences de gestion des données et de conformité d'entreprise
+- ✅ **Sauvegarde et récupération** - Utilisez des outils et stratégies de sauvegarde de base de données matures
+
+**Variables d'environnement :**
+
+```bash
+# Définissez simplement DB_URL pour activer automatiquement le mode base de données
+DB_URL=postgresql://user:password@host:5432/mcphub
+
+# Ou contrôlez explicitement avec USE_DB (optionnel, remplace la détection automatique)
+# USE_DB=true
+```
+
+> **Note** : Vous n'avez qu'à définir `DB_URL` pour activer le mode base de données. MCPHub détectera automatiquement et activera le mode base de données lorsque `DB_URL` est présent. Utilisez `USE_DB=false` pour désactiver explicitement le mode base de données même lorsque `DB_URL` est défini.
+
+📖 Consultez le [Guide de configuration de la base de données](docs/configuration/database-configuration.mdx) complet pour :
+
+- Instructions de configuration détaillées
+- Migration depuis la configuration basée sur fichiers
+- Procédures de sauvegarde et de restauration
+- Conseils de dépannage
+
 ### Déploiement avec Docker
 
 **Recommandé** : Montez votre configuration personnalisée :

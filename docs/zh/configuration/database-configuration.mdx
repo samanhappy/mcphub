@@ -1,0 +1,328 @@
+# MCPHub 数据库配置
+
+## 概述
+
+MCPHub 支持将配置数据存储在 PostgreSQL 数据库中，作为 `mcp_settings.json` 文件配置的替代方案。数据库模式为生产环境和企业级部署提供了更强大的持久化和扩展能力。
+
+## 为什么使用数据库配置？
+
+**核心优势：**
+- ✅ **更好的持久化** - 配置数据存储在专业数据库中，支持事务和数据完整性
+- ✅ **高可用性** - 利用数据库复制和故障转移能力
+- ✅ **企业级支持** - 符合企业数据管理和合规要求
+- ✅ **备份恢复** - 使用成熟的数据库备份工具和策略
+
+## 环境变量
+
+### 数据库模式必需变量
+
+```bash
+# 数据库连接 URL（PostgreSQL）
+# 只需设置 DB_URL 即可自动启用数据库模式
+DB_URL=postgresql://user:password@localhost:5432/mcphub
+
+# 或显式控制 USE_DB（覆盖自动检测）
+# USE_DB=true
+
+# 替代方案：使用单独的配置项
+# DB_HOST=localhost
+# DB_PORT=5432
+# DB_NAME=mcphub
+# DB_USER=user
+# DB_PASSWORD=password
+```
+
+<Note>
+**简化配置**：您只需设置 `DB_URL` 即可启用数据库模式。MCPHub 会自动检测 `DB_URL` 是否存在并启用数据库模式。如果需要在设置了 `DB_URL` 的情况下禁用数据库模式，可以显式设置 `USE_DB=false`。
+</Note>
+
+### 可选设置
+
+```bash
+# 启动时自动迁移（默认：true）
+AUTO_MIGRATE=true
+
+# 保留基于文件的配置作为后备（默认：false）
+KEEP_FILE_CONFIG=false
+```
+
+## 设置说明
+
+### 1. 使用 Docker
+
+#### 方案 A：将 PostgreSQL 作为独立服务
+
+创建 `docker-compose.yml` 文件：
+
+```yaml
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: mcphub
+      POSTGRES_USER: mcphub
+      POSTGRES_PASSWORD: your_secure_password
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  mcphub:
+    image: samanhappy/mcphub:latest
+    environment:
+      USE_DB: "true"
+      DB_URL: "postgresql://mcphub:your_secure_password@postgres:5432/mcphub"
+      PORT: 3000
+    ports:
+      - "3000:3000"
+    depends_on:
+      - postgres
+
+volumes:
+  pgdata:
+```
+
+运行：
+```bash
+docker-compose up -d
+```
+
+#### 方案 B：使用外部数据库
+
+如果您已有 PostgreSQL 数据库：
+
+```bash
+docker run -d \
+  -p 3000:3000 \
+  -e USE_DB=true \
+  -e DB_URL="postgresql://user:password@your-db-host:5432/mcphub" \
+  samanhappy/mcphub:latest
+```
+
+### 2. 手动设置
+
+#### 步骤 1：设置 PostgreSQL 数据库
+
+```bash
+# 安装 PostgreSQL（如果尚未安装）
+sudo apt-get install postgresql postgresql-contrib
+
+# 创建数据库和用户
+sudo -u postgres psql <<EOF
+CREATE DATABASE mcphub;
+CREATE USER mcphub WITH ENCRYPTED PASSWORD 'your_password';
+GRANT ALL PRIVILEGES ON DATABASE mcphub TO mcphub;
+EOF
+```
+
+#### 步骤 2：安装 MCPHub
+
+```bash
+npm install -g @samanhappy/mcphub
+```
+
+#### 步骤 3：设置环境变量
+
+创建 `.env` 文件：
+
+```bash
+# 只需设置 DB_URL 即可启用数据库模式（USE_DB 会自动检测）
+DB_URL=postgresql://mcphub:your_password@localhost:5432/mcphub
+PORT=3000
+```
+
+#### 步骤 4：运行迁移（可选）
+
+如果您有现有的 `mcp_settings.json` 文件，可以进行迁移：
+
+```bash
+# 运行迁移脚本
+npx tsx src/scripts/migrate-to-database.ts
+```
+
+或者让 MCPHub 在首次启动时自动迁移。
+
+#### 步骤 5：启动 MCPHub
+
+```bash
+mcphub
+```
+
+## 从基于文件迁移到数据库
+
+MCPHub 在启用数据库模式首次启动时提供自动迁移功能。您也可以手动运行迁移。
+
+### 自动迁移
+
+当您首次使用 `USE_DB=true` 启动 MCPHub 时：
+
+1. MCPHub 连接到数据库
+2. 检查数据库中是否存在任何用户
+3. 如果未找到用户，自动从 `mcp_settings.json` 迁移
+4. 创建所有表并导入所有数据
+
+### 手动迁移
+
+运行迁移脚本：
+
+```bash
+# 使用 npx
+npx tsx src/scripts/migrate-to-database.ts
+
+# 或使用 Node
+node dist/scripts/migrate-to-database.js
+```
+
+迁移将：
+- ✅ 如果不存在则创建数据库表
+- ✅ 导入所有用户（包含哈希密码）
+- ✅ 导入所有 MCP 服务器配置
+- ✅ 导入所有分组
+- ✅ 导入系统配置
+- ✅ 导入用户特定配置
+- ✅ 跳过已存在的记录（可安全多次运行）
+
+## 迁移后的配置
+
+在数据库模式下运行时，所有配置更改都存储在数据库中：
+
+- 通过 `/api/users` 进行用户管理
+- 通过 `/api/servers` 进行服务器管理
+- 通过 `/api/groups` 进行分组管理
+- 通过 `/api/system/config` 进行系统设置
+
+Web 仪表板的工作方式完全相同，但现在将更改存储在数据库中而不是文件中。
+
+## 数据库架构
+
+MCPHub 创建以下表：
+
+- **users** - 用户账户和认证
+- **servers** - MCP 服务器配置
+- **groups** - 服务器分组
+- **system_config** - 系统级设置
+- **user_configs** - 用户特定设置
+- **vector_embeddings** - 向量搜索数据（用于智能路由）
+
+## 备份和恢复
+
+### 备份
+
+```bash
+# PostgreSQL 备份
+pg_dump -U mcphub mcphub > mcphub_backup.sql
+
+# 或使用 Docker
+docker exec postgres pg_dump -U mcphub mcphub > mcphub_backup.sql
+```
+
+### 恢复
+
+```bash
+# PostgreSQL 恢复
+psql -U mcphub mcphub < mcphub_backup.sql
+
+# 或使用 Docker
+docker exec -i postgres psql -U mcphub mcphub < mcphub_backup.sql
+```
+
+## 切换回基于文件的配置
+
+如果您需要切换回基于文件的配置：
+
+1. 设置 `USE_DB=false` 或删除该环境变量
+2. 重启 MCPHub
+3. MCPHub 将再次使用 `mcp_settings.json`
+
+注意：在数据库模式下所做的更改不会反映到文件中，除非您手动导出。
+
+## 故障排除
+
+### 连接被拒绝
+
+```
+Error: connect ECONNREFUSED 127.0.0.1:5432
+```
+
+**解决方案：** 检查 PostgreSQL 是否正在运行并可访问：
+```bash
+# 检查 PostgreSQL 状态
+sudo systemctl status postgresql
+
+# 或对于 Docker
+docker ps | grep postgres
+```
+
+### 认证失败
+
+```
+Error: password authentication failed for user "mcphub"
+```
+
+**解决方案：** 验证 `DB_URL` 环境变量中的数据库凭据。
+
+### 迁移失败
+
+```
+❌ Migration failed: ...
+```
+
+**解决方案：**
+1. 检查 `mcp_settings.json` 是否存在且为有效的 JSON
+2. 验证数据库连接
+3. 检查日志获取具体错误信息
+4. 确保数据库用户具有 CREATE TABLE 权限
+
+### 表已存在
+
+如果数据库表不存在，会自动创建。如果遇到关于已存在表的错误，请检查：
+1. 之前的迁移是否部分完成
+2. 手动创建表的冲突
+3. 如果需要，在数据库配置中使用 `synchronize: false` 运行
+
+## 环境变量参考
+
+| 变量 | 必需 | 默认值 | 描述 |
+|------|------|--------|------|
+| `DB_URL` | 是* | - | 完整的 PostgreSQL 连接 URL。设置此变量会自动启用数据库模式 |
+| `USE_DB` | 否 | 自动 | 显式启用/禁用数据库模式。如果未设置，根据 `DB_URL` 是否存在自动检测 |
+| `DB_HOST` | 否 | `localhost` | 数据库主机（如果不使用 DB_URL） |
+| `DB_PORT` | 否 | `5432` | 数据库端口（如果不使用 DB_URL） |
+| `DB_NAME` | 否 | `mcphub` | 数据库名称（如果不使用 DB_URL） |
+| `DB_USER` | 否 | `mcphub` | 数据库用户（如果不使用 DB_URL） |
+| `DB_PASSWORD` | 否 | - | 数据库密码（如果不使用 DB_URL） |
+| `AUTO_MIGRATE` | 否 | `true` | 首次启动时自动从文件迁移 |
+| `MCPHUB_SETTING_PATH` | 否 | - | mcp_settings.json 的路径（用于迁移） |
+
+*数据库模式必需。只需设置 `DB_URL` 即可自动启用数据库模式
+
+## 安全注意事项
+
+1. **数据库凭据：** 安全存储数据库凭据，使用环境变量或密钥管理
+2. **网络访问：** 仅限 MCPHub 实例访问数据库
+3. **加密：** 在生产环境中使用 SSL/TLS 进行数据库连接：
+   ```bash
+   DB_URL=postgresql://user:password@host:5432/mcphub?sslmode=require
+   ```
+4. **备份：** 定期备份您的数据库
+5. **访问控制：** 使用强密码并限制用户权限
+
+## 性能
+
+数据库模式在以下场景提供更好的性能：
+- 多个并发用户
+- 频繁的配置更改
+- 大量服务器/分组
+
+文件模式可能更快的场景：
+- 单用户设置
+- 读取密集型工作负载且更改不频繁
+- 开发/测试环境
+
+## 支持
+
+如有问题或疑问：
+- GitHub Issues: https://github.com/samanhappy/mcphub/issues
+- 文档: https://mcphub.io/docs

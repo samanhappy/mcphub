@@ -20,7 +20,7 @@ import type {
   OAuthTokens,
 } from '@modelcontextprotocol/sdk/shared/auth.js';
 import { ServerConfig } from '../types/index.js';
-import { loadSettings } from '../config/index.js';
+import { getSystemConfigDao } from '../dao/index.js';
 import {
   initializeOAuthForServer,
   getRegisteredClient,
@@ -52,15 +52,29 @@ export class MCPHubOAuthProvider implements OAuthClientProvider {
   private serverConfig: ServerConfig;
   private _codeVerifier?: string;
   private _currentState?: string;
+  private _systemInstallBaseUrl?: string;
 
-  constructor(serverName: string, serverConfig: ServerConfig) {
+  constructor(serverName: string, serverConfig: ServerConfig, systemInstallBaseUrl?: string) {
     this.serverName = serverName;
     this.serverConfig = serverConfig;
+    this._systemInstallBaseUrl = systemInstallBaseUrl;
+  }
+
+  /**
+   * Factory method to create an MCPHubOAuthProvider with async config loading
+   */
+  static async create(
+    serverName: string,
+    serverConfig: ServerConfig,
+  ): Promise<MCPHubOAuthProvider> {
+    const systemConfigDao = getSystemConfigDao();
+    const systemConfig = await systemConfigDao.get();
+    const systemInstallBaseUrl = systemConfig?.install?.baseUrl;
+    return new MCPHubOAuthProvider(serverName, serverConfig, systemInstallBaseUrl);
   }
 
   private getSystemInstallBaseUrl(): string | undefined {
-    const settings = loadSettings();
-    return settings.systemConfig?.install?.baseUrl;
+    return this._systemInstallBaseUrl;
   }
 
   private sanitizeRedirectUri(input?: string): string | null {
@@ -219,18 +233,9 @@ export class MCPHubOAuthProvider implements OAuthClientProvider {
     const clientInfo = getRegisteredClient(this.serverName);
 
     if (!clientInfo) {
-      // Try to use static client configuration from cached serverConfig first
-      let serverConfig = this.serverConfig;
-
-      // If cached config doesn't have clientId, reload from settings
-      if (!serverConfig?.oauth?.clientId) {
-        const storedConfig = loadServerConfig(this.serverName);
-
-        if (storedConfig) {
-          this.serverConfig = storedConfig;
-          serverConfig = storedConfig;
-        }
-      }
+      // Try to use static client configuration from cached serverConfig
+      // Note: we only use cache here since this is a sync method
+      const serverConfig = this.serverConfig;
 
       // Try to use static client configuration from serverConfig
       if (serverConfig?.oauth?.clientId) {
@@ -288,17 +293,8 @@ export class MCPHubOAuthProvider implements OAuthClientProvider {
    * Get stored OAuth tokens
    */
   tokens(): OAuthTokens | undefined {
-    // Use cached config first, but reload if needed
-    let serverConfig = this.serverConfig;
-
-    // If cached config doesn't have tokens, try reloading
-    if (!serverConfig?.oauth?.accessToken) {
-      const storedConfig = loadServerConfig(this.serverName);
-      if (storedConfig) {
-        this.serverConfig = storedConfig;
-        serverConfig = storedConfig;
-      }
-    }
+    // Use cached config only (tokens are updated via saveTokens which updates cache)
+    const serverConfig = this.serverConfig;
 
     if (!serverConfig?.oauth?.accessToken) {
       return undefined;
@@ -441,7 +437,7 @@ export class MCPHubOAuthProvider implements OAuthClientProvider {
       return this._codeVerifier;
     }
 
-    const storedConfig = loadServerConfig(this.serverName);
+    const storedConfig = await loadServerConfig(this.serverName);
     const storedVerifier = storedConfig?.oauth?.pendingAuthorization?.codeVerifier;
 
     if (storedVerifier) {
@@ -458,7 +454,7 @@ export class MCPHubOAuthProvider implements OAuthClientProvider {
    * This keeps stored configuration in sync and forces a fresh authorization flow.
    */
   async invalidateCredentials(scope: 'all' | 'client' | 'tokens' | 'verifier'): Promise<void> {
-    const storedConfig = loadServerConfig(this.serverName);
+    const storedConfig = await loadServerConfig(this.serverName);
 
     if (!storedConfig?.oauth) {
       if (scope === 'verifier' || scope === 'all') {
@@ -585,8 +581,8 @@ export const createOAuthProvider = async (
     // Continue anyway - the SDK might be able to handle it
   }
 
-  // Create and return the provider
-  const provider = new MCPHubOAuthProvider(serverName, serverConfig);
+  // Create and return the provider using the factory method
+  const provider = await MCPHubOAuthProvider.create(serverName, serverConfig);
 
   console.log(`Created OAuth provider for server: ${serverName}`);
   return provider;
