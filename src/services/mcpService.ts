@@ -783,10 +783,9 @@ export const addOrUpdateServer = async (
       return { success: false, message: 'Server name already exists' };
     }
 
-    // If overriding and this is a DXT server (stdio type with file paths),
-    // we might want to clean up old files in the future
-    if (exists && config.type === 'stdio') {
-      // Close existing server connections
+    // If overriding an existing server, close connections and clear keep-alive timers
+    if (exists) {
+      // Close existing server connections (clears keep-alive intervals as well)
       closeServer(name);
       // Remove from server infos
       serverInfos = serverInfos.filter((serverInfo) => serverInfo.name !== name);

@@ -384,11 +384,12 @@ const ServerForm = ({
                 }),
           ...(Object.keys(options).length > 0 ? { options } : {}),
           // KeepAlive configuration (only for SSE/streamable-http types)
-          ...(formData.keepAlive?.enabled &&
-          (serverType === 'sse' || serverType === 'streamable-http')
+          ...(serverType === 'sse' || serverType === 'streamable-http'
             ? {
-                enableKeepAlive: true,
-                keepAliveInterval: formData.keepAlive.interval || 60000,
+                enableKeepAlive: formData.keepAlive?.enabled || false,
+                ...(formData.keepAlive?.enabled
+                  ? { keepAliveInterval: formData.keepAlive.interval || 60000 }
+                  : {}),
               }
             : {}),
         },
