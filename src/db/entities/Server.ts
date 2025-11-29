@@ -41,6 +41,9 @@ export class Server {
   @Column({ type: 'varchar', length: 255, nullable: true })
   owner?: string;
 
+  @Column({ type: 'boolean', default: false })
+  enableKeepAlive?: boolean;
+
   @Column({ type: 'int', nullable: true })
   keepAliveInterval?: number;
 

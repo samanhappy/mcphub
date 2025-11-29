@@ -215,25 +215,7 @@ export const handleSseConnection = async (req: Request, res: Response): Promise<
   const transport = new SSEServerTransport(messagesPath, res);
   transports[transport.sessionId] = { transport, group: group };
 
-  // Send keepalive ping every 30 seconds to prevent client from closing connection
-  const keepAlive = setInterval(() => {
-    try {
-      // Send a ping notification to keep the connection alive
-      transport.send({ jsonrpc: '2.0', method: 'ping' });
-      console.log(`Sent keepalive ping for SSE session: ${transport.sessionId}`);
-    } catch (e) {
-      // If sending a ping fails, the connection is likely broken.
-      // Log the error and clear the interval to prevent further attempts.
-      console.warn(
-        `Failed to send keepalive ping for SSE session ${transport.sessionId}, cleaning up interval:`,
-        e,
-      );
-      clearInterval(keepAlive);
-    }
-  }, 30000); // Send ping every 30 seconds
-
   res.on('close', () => {
-    clearInterval(keepAlive);
     delete transports[transport.sessionId];
     deleteMcpServer(transport.sessionId);
     console.log(`SSE connection closed: ${transport.sessionId}`);
@@ -329,26 +311,8 @@ async function createSessionWithId(
     },
   });
 
-  // Send keepalive ping every 30 seconds to prevent client from closing connection
-  const keepAlive = setInterval(() => {
-    try {
-      // Send a ping notification to keep the connection alive
-      transport.send({ jsonrpc: '2.0', method: 'ping' });
-      console.log(`Sent keepalive ping for StreamableHTTP session: ${sessionId}`);
-    } catch (e) {
-      // If sending a ping fails, the connection is likely broken.
-      // Log the error and clear the interval to prevent further attempts.
-      console.warn(
-        `Failed to send keepalive ping for StreamableHTTP session ${sessionId}, cleaning up interval:`,
-        e,
-      );
-      clearInterval(keepAlive);
-    }
-  }, 30000); // Send ping every 30 seconds
-
   transport.onclose = () => {
     console.log(`[SESSION REBUILD] Transport closed: ${sessionId}`);
-    clearInterval(keepAlive);
     delete transports[sessionId];
     deleteMcpServer(sessionId);
   };
@@ -397,26 +361,8 @@ async function createNewSession(
     },
   });
 
-  // Send keepalive ping every 30 seconds to prevent client from closing connection
-  const keepAlive = setInterval(() => {
-    try {
-      // Send a ping notification to keep the connection alive
-      transport.send({ jsonrpc: '2.0', method: 'ping' });
-      console.log(`Sent keepalive ping for StreamableHTTP session: ${newSessionId}`);
-    } catch (e) {
-      // If sending a ping fails, the connection is likely broken.
-      // Log the error and clear the interval to prevent further attempts.
-      console.warn(
-        `Failed to send keepalive ping for StreamableHTTP session ${newSessionId}, cleaning up interval:`,
-        e,
-      );
-      clearInterval(keepAlive);
-    }
-  }, 30000); // Send ping every 30 seconds
-
   transport.onclose = () => {
     console.log(`[SESSION NEW] Transport closed: ${newSessionId}`);
-    clearInterval(keepAlive);
     delete transports[newSessionId];
     deleteMcpServer(newSessionId);
   };

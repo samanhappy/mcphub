@@ -32,6 +32,7 @@ export class ServerDaoDbImpl implements ServerDao {
       headers: entity.headers,
       enabled: entity.enabled !== undefined ? entity.enabled : true,
       owner: entity.owner,
+      enableKeepAlive: entity.enableKeepAlive,
       keepAliveInterval: entity.keepAliveInterval,
       tools: entity.tools,
       prompts: entity.prompts,
@@ -41,7 +42,10 @@ export class ServerDaoDbImpl implements ServerDao {
     return this.mapToServerConfig(server);
   }
 
-  async update(name: string, entity: Partial<ServerConfigWithName>): Promise<ServerConfigWithName | null> {
+  async update(
+    name: string,
+    entity: Partial<ServerConfigWithName>,
+  ): Promise<ServerConfigWithName | null> {
     const server = await this.repository.update(name, {
       type: entity.type,
       url: entity.url,
@@ -51,6 +55,7 @@ export class ServerDaoDbImpl implements ServerDao {
       headers: entity.headers,
       enabled: entity.enabled,
       owner: entity.owner,
+      enableKeepAlive: entity.enableKeepAlive,
       keepAliveInterval: entity.keepAliveInterval,
       tools: entity.tools,
       prompts: entity.prompts,
@@ -118,6 +123,7 @@ export class ServerDaoDbImpl implements ServerDao {
     headers?: Record<string, string>;
     enabled: boolean;
     owner?: string;
+    enableKeepAlive?: boolean;
     keepAliveInterval?: number;
     tools?: Record<string, { enabled: boolean; description?: string }>;
     prompts?: Record<string, { enabled: boolean; description?: string }>;
@@ -134,6 +140,7 @@ export class ServerDaoDbImpl implements ServerDao {
       headers: server.headers,
       enabled: server.enabled,
       owner: server.owner,
+      enableKeepAlive: server.enableKeepAlive,
       keepAliveInterval: server.keepAliveInterval,
       tools: server.tools,
       prompts: server.prompts,

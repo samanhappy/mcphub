@@ -65,6 +65,7 @@ export async function migrateToDatabase(): Promise<boolean> {
             headers: config.headers,
             enabled: config.enabled !== undefined ? config.enabled : true,
             owner: config.owner,
+            enableKeepAlive: config.enableKeepAlive,
             keepAliveInterval: config.keepAliveInterval,
             tools: config.tools,
             prompts: config.prompts,

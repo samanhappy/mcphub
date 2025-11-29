@@ -29,37 +29,7 @@ import { createOAuthProvider } from './mcpOAuthProvider.js';
 
 const servers: { [sessionId: string]: Server } = {};
 
-// Helper function to set up keep-alive ping for SSE connections
-const setupKeepAlive = (serverInfo: ServerInfo, serverConfig: ServerConfig): void => {
-  // Only set up keep-alive for SSE connections
-  if (!(serverInfo.transport instanceof SSEClientTransport)) {
-    return;
-  }
-
-  // Clear any existing interval first
-  if (serverInfo.keepAliveIntervalId) {
-    clearInterval(serverInfo.keepAliveIntervalId);
-  }
-
-  // Use configured interval or default to 60 seconds for SSE
-  const interval = serverConfig.keepAliveInterval || 60000;
-
-  serverInfo.keepAliveIntervalId = setInterval(async () => {
-    try {
-      if (serverInfo.client && serverInfo.status === 'connected') {
-        await serverInfo.client.ping();
-        console.log(`Keep-alive ping successful for server: ${serverInfo.name}`);
-      }
-    } catch (error) {
-      console.warn(`Keep-alive ping failed for server ${serverInfo.name}:`, error);
-      // TODO Consider handling reconnection logic here if needed
-    }
-  }, interval);
-
-  console.log(
-    `Keep-alive ping set up for server ${serverInfo.name} with interval ${interval / 1000} seconds`,
-  );
-};
+import { setupClientKeepAlive } from './keepAliveService.js';
 
 export const initUpstreamServers = async (): Promise<void> => {
   // Initialize OAuth clients for servers with dynamic registration
@@ -596,9 +566,10 @@ export const initializeClientsFromSettings = async (
           if (!dataError) {
             serverInfo.status = 'connected';
             serverInfo.error = null;
-
-            // Set up keep-alive ping for SSE connections
-            setupKeepAlive(serverInfo, expandedConf);
+            // Set up keep-alive ping for SSE connections via shared service
+            setupClientKeepAlive(serverInfo, expandedConf).catch((e) =>
+              console.warn(`Keepalive setup failed for ${name}:`, e),
+            );
           } else {
             serverInfo.status = 'disconnected';
             serverInfo.error = `Failed to list data: ${dataError} `;

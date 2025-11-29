@@ -95,6 +95,11 @@ const ServerForm = ({
         undefined,
     },
     oauth: getInitialOAuthConfig(initialData),
+    // KeepAlive configuration initialization
+    keepAlive: {
+      enabled: initialData?.config?.enableKeepAlive || false,
+      interval: initialData?.config?.keepAliveInterval || 60000,
+    },
     // OpenAPI configuration initialization
     openapi:
       initialData && initialData.config && initialData.config.openapi
@@ -377,6 +382,14 @@ const ServerForm = ({
                   env: Object.keys(env).length > 0 ? env : undefined,
                 }),
           ...(Object.keys(options).length > 0 ? { options } : {}),
+          // KeepAlive configuration (only for SSE/streamable-http types)
+          ...(formData.keepAlive?.enabled &&
+          (serverType === 'sse' || serverType === 'streamable-http')
+            ? {
+                enableKeepAlive: true,
+                keepAliveInterval: formData.keepAlive.interval || 60000,
+              }
+            : {}),
         },
       };
 
@@ -1250,6 +1263,75 @@ const ServerForm = ({
                     {t('server.resetTimeoutOnProgressDescription')}
                   </p>
                 </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* KeepAlive Configuration - only for SSE/Streamable HTTP */}
+        {(serverType === 'sse' || serverType === 'streamable-http') && (
+          <div className="mb-4 border border-gray-200 rounded p-4 bg-gray-50">
+            <label className="text-gray-700 text-sm font-bold mb-3 block">
+              {t('server.keepAlive', 'Keep-Alive')}
+            </label>
+            <div className="flex items-center mb-3">
+              <input
+                type="checkbox"
+                id="enableKeepAlive"
+                checked={formData.keepAlive?.enabled || false}
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    keepAlive: {
+                      ...prev.keepAlive,
+                      enabled: e.target.checked,
+                    },
+                  }))
+                }
+                className="mr-2"
+              />
+              <label htmlFor="enableKeepAlive" className="text-gray-600 text-sm">
+                {t('server.enableKeepAlive', 'Enable Keep-Alive')}
+              </label>
+            </div>
+            <p className="text-xs text-gray-500 mb-3">
+              {t(
+                'server.keepAliveDescription',
+                'Send periodic ping requests to maintain the connection. Useful for long-running connections that may timeout.',
+              )}
+            </p>
+            {formData.keepAlive?.enabled && (
+              <div>
+                <label
+                  className="block text-gray-600 text-sm font-medium mb-1"
+                  htmlFor="keepAliveInterval"
+                >
+                  {t('server.keepAliveInterval', 'Interval (ms)')}
+                </label>
+                <input
+                  type="number"
+                  id="keepAliveInterval"
+                  value={formData.keepAlive?.interval || 60000}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      keepAlive: {
+                        ...prev.keepAlive,
+                        interval: parseInt(e.target.value) || 60000,
+                      },
+                    }))
+                  }
+                  className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline form-input"
+                  placeholder="60000"
+                  min="5000"
+                  max="300000"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  {t(
+                    'server.keepAliveIntervalDescription',
+                    'Time between keep-alive pings in milliseconds (default: 60000ms = 1 minute)',
+                  )}
+                </p>
               </div>
             )}
           </div>

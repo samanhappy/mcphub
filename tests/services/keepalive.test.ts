@@ -171,100 +171,37 @@ describe('Keepalive Functionality', () => {
     jest.clearAllMocks();
   });
 
-  describe('SSE Connection Keepalive', () => {
-    it('should create a keepalive interval when establishing SSE connection', async () => {
+  describe('SSE Connection (No Server-Side Keepalive)', () => {
+    // Server-side keepalive was removed - keepalive is now only for upstream MCP server connections (client-side)
+    // These tests verify that SSE connections work without server-side keepalive
+
+    it('should establish SSE connection without keepalive interval', async () => {
       await handleSseConnection(mockReq as Request, mockRes as Response);
 
-      // Verify setInterval was called with 30000ms (30 seconds)
-      expect(global.setInterval).toHaveBeenCalledWith(expect.any(Function), 30000);
+      // Verify no keepalive interval was created for server-side SSE
+      expect(global.setInterval).not.toHaveBeenCalled();
     });
 
-    it('should send ping messages via transport', async () => {
-      jest.useFakeTimers();
-
+    it('should register close event handler for cleanup', async () => {
       await handleSseConnection(mockReq as Request, mockRes as Response);
 
-      // Fast-forward time by 30 seconds
-      jest.advanceTimersByTime(30000);
-
-      // Verify ping was sent using mockTransportInstance
-      expect(mockTransportInstance.send).toHaveBeenCalledWith({
-        jsonrpc: '2.0',
-        method: 'ping',
-      });
-
-      jest.useRealTimers();
+      // Verify close event handler was registered
+      expect(mockRes.on).toHaveBeenCalledWith('close', expect.any(Function));
     });
 
-    it('should send multiple pings at 30-second intervals', async () => {
-      jest.useFakeTimers();
-
+    it('should clean up transport on connection close', async () => {
       await handleSseConnection(mockReq as Request, mockRes as Response);
 
-      // Fast-forward time by 90 seconds (3 intervals)
-      jest.advanceTimersByTime(90000);
-
-      // Verify ping was sent 3 times using mockTransportInstance
-      expect(mockTransportInstance.send).toHaveBeenCalledTimes(3);
-      expect(mockTransportInstance.send).toHaveBeenCalledWith({
-        jsonrpc: '2.0',
-        method: 'ping',
-      });
-
-      jest.useRealTimers();
-    });
-
-    it('should clear keepalive interval when connection closes', async () => {
-      await handleSseConnection(mockReq as Request, mockRes as Response);
-
-      // Verify interval was created
-      expect(global.setInterval).toHaveBeenCalled();
-      const intervalsBefore = intervals.length;
-      expect(intervalsBefore).toBeGreaterThan(0);
+      // Verify transport was registered
+      expect(transports['test-session-id']).toBeDefined();
 
       // Simulate connection close
       if (eventListeners['close']) {
         eventListeners['close']();
       }
 
-      // Verify clearInterval was called
-      expect(global.clearInterval).toHaveBeenCalled();
-      expect(intervals.length).toBeLessThan(intervalsBefore);
-    });
-
-    it('should handle ping send errors gracefully', async () => {
-      jest.useFakeTimers();
-
-      await handleSseConnection(mockReq as Request, mockRes as Response);
-
-      const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation();
-
-      // Make transport.send throw an error on the first call
-      let callCount = 0;
-      mockTransportInstance.send.mockImplementation(() => {
-        callCount++;
-        throw new Error('Connection broken');
-      });
-
-      // Fast-forward time by 30 seconds (first ping)
-      jest.advanceTimersByTime(30000);
-
-      // Verify error was logged for the first ping
-      expect(consoleWarnSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Failed to send keepalive ping'),
-        expect.any(Error),
-      );
-
-      const firstCallCount = callCount;
-
-      // Fast-forward time by another 30 seconds
-      jest.advanceTimersByTime(30000);
-
-      // Verify no additional attempts were made after the error (interval was cleared)
-      expect(callCount).toBe(firstCallCount);
-
-      consoleWarnSpy.mockRestore();
-      jest.useRealTimers();
+      // Verify transport was removed
+      expect(transports['test-session-id']).toBeUndefined();
     });
 
     it('should not send pings after connection is closed', async () => {
