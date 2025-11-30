@@ -1313,40 +1313,38 @@ const ServerForm = ({
                     'Send periodic ping requests to maintain the connection. Useful for long-running connections that may timeout.',
                   )}
                 </p>
-                {formData.keepAlive?.enabled && (
-                  <div>
-                    <label
-                      className="block text-gray-600 text-sm font-medium mb-1"
-                      htmlFor="keepAliveInterval"
-                    >
-                      {t('server.keepAliveInterval', 'Interval (ms)')}
-                    </label>
-                    <input
-                      type="number"
-                      id="keepAliveInterval"
-                      value={formData.keepAlive?.interval || 60000}
-                      onChange={(e) =>
-                        setFormData((prev) => ({
-                          ...prev,
-                          keepAlive: {
-                            ...prev.keepAlive,
-                            interval: parseInt(e.target.value) || 60000,
-                          },
-                        }))
-                      }
-                      className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline form-input"
-                      placeholder="60000"
-                      min="5000"
-                      max="300000"
-                    />
-                    <p className="text-xs text-gray-500 mt-1">
-                      {t(
-                        'server.keepAliveIntervalDescription',
-                        'Time between keep-alive pings in milliseconds (default: 60000ms = 1 minute)',
-                      )}
-                    </p>
-                  </div>
-                )}
+                <div>
+                  <label
+                    className="block text-gray-600 text-sm font-medium mb-1"
+                    htmlFor="keepAliveInterval"
+                  >
+                    {t('server.keepAliveInterval', 'Interval (ms)')}
+                  </label>
+                  <input
+                    type="number"
+                    id="keepAliveInterval"
+                    value={formData.keepAlive?.interval || 60000}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        keepAlive: {
+                          ...prev.keepAlive,
+                          interval: parseInt(e.target.value) || 60000,
+                        },
+                      }))
+                    }
+                    className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline form-input"
+                    placeholder="60000"
+                    min="5000"
+                    max="300000"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    {t(
+                      'server.keepAliveIntervalDescription',
+                      'Time between keep-alive pings in milliseconds (default: 60000ms = 1 minute)',
+                    )}
+                  </p>
+                </div>
               </div>
             )}
           </div>

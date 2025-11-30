@@ -123,7 +123,7 @@
     "maxTotalTimeoutDescription": "Délai d'attente total maximum pour les requêtes envoyées au serveur MCP (ms) (à utiliser avec les notifications de progression)",
     "resetTimeoutOnProgress": "Réinitialiser le délai d'attente en cas de progression",
     "resetTimeoutOnProgressDescription": "Réinitialiser le délai d'attente lors des notifications de progression",
-    "keepAlive": "Maintien de connexion",
+    "keepAlive": "Configuration du maintien de connexion",
     "enableKeepAlive": "Activer le maintien de connexion",
     "keepAliveDescription": "Envoyer des requêtes ping périodiques pour maintenir la connexion. Utile pour les connexions de longue durée qui peuvent expirer.",
     "keepAliveInterval": "Intervalle (ms)",
