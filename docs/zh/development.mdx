@@ -123,42 +123,6 @@ nano .env
 NODE_ENV=development
 PORT=3000
 HOST=localhost
-
-# 数据库配置
-DATABASE_URL=sqlite:./data/dev.db
-
-# JWT 配置
-JWT_SECRET=dev-jwt-secret-key
-JWT_EXPIRES_IN=7d
-
-# 日志配置
-LOG_LEVEL=debug
-LOG_FORMAT=dev
-
-# CORS 配置
-CORS_ORIGIN=http://localhost:3000,http://localhost:3001
-
-# 管理员账户
-ADMIN_EMAIL=dev@mcphub.io
-ADMIN_PASSWORD=dev123
-
-# 开发功能开关
-ENABLE_DEBUG_ROUTES=true
-ENABLE_SWAGGER=true
-ENABLE_HOT_RELOAD=true
-```
-
-### 数据库初始化
-
-```bash
-# 生成 Prisma 客户端
-npx prisma generate
-
-# 运行数据库迁移
-npx prisma migrate dev --name init
-
-# 填充测试数据
-npm run db:seed
 ```
 
 ## 启动开发服务器

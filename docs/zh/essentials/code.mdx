@@ -528,7 +528,7 @@ docker-compose up -d
 ````md
 ```bash
 # 创建新的 MCP 服务器
-curl -X POST https://api.mcphub.io/api/servers \
+curl -X POST http://localhost:3000/api/servers \
   -H "Authorization: Bearer YOUR_API_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -539,11 +539,11 @@ curl -X POST https://api.mcphub.io/api/servers \
   }'
 
 # 获取服务器列表
-curl -X GET "https://api.mcphub.io/api/servers?limit=10&active=true" \
+curl -X GET "http://localhost:3000/api/servers?limit=10&active=true" \
   -H "Authorization: Bearer YOUR_API_TOKEN"
 
 # 更新服务器配置
-curl -X PUT https://api.mcphub.io/api/servers/server-123 \
+curl -X PUT http://localhost:3000/api/servers/server-123 \
   -H "Authorization: Bearer YOUR_API_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -552,14 +552,14 @@ curl -X PUT https://api.mcphub.io/api/servers/server-123 \
   }'
 
 # 删除服务器
-curl -X DELETE https://api.mcphub.io/api/servers/server-123 \
+curl -X DELETE http://localhost:3000/api/servers/server-123 \
   -H "Authorization: Bearer YOUR_API_TOKEN"
 ```
 ````
 
 ```bash
 # 创建新的 MCP 服务器
-curl -X POST https://api.mcphub.io/api/servers \
+curl -X POST http://localhost:3000/api/servers \
   -H "Authorization: Bearer YOUR_API_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -570,11 +570,11 @@ curl -X POST https://api.mcphub.io/api/servers \
   }'
 
 # 获取服务器列表
-curl -X GET "https://api.mcphub.io/api/servers?limit=10&active=true" \
+curl -X GET "http://localhost:3000/api/servers?limit=10&active=true" \
   -H "Authorization: Bearer YOUR_API_TOKEN"
 
 # 更新服务器配置
-curl -X PUT https://api.mcphub.io/api/servers/server-123 \
+curl -X PUT http://localhost:3000/api/servers/server-123 \
   -H "Authorization: Bearer YOUR_API_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -583,7 +583,7 @@ curl -X PUT https://api.mcphub.io/api/servers/server-123 \
   }'
 
 # 删除服务器
-curl -X DELETE https://api.mcphub.io/api/servers/server-123 \
+curl -X DELETE http://localhost:3000/api/servers/server-123 \
   -H "Authorization: Bearer YOUR_API_TOKEN"
 ```
 
@@ -592,7 +592,7 @@ curl -X DELETE https://api.mcphub.io/api/servers/server-123 \
 ````md
 ```http
 POST /api/servers HTTP/1.1
-Host: api.mcphub.io
+Host: localhost:3000
 Authorization: Bearer YOUR_API_TOKEN
 Content-Type: application/json
 
@@ -607,7 +607,7 @@ Content-Type: application/json
 
 ```http
 POST /api/servers HTTP/1.1
-Host: api.mcphub.io
+Host: localhost:3000
 Authorization: Bearer YOUR_API_TOKEN
 Content-Type: application/json
 
@@ -746,7 +746,7 @@ app.listen(port, () => {
 ```javascript
 // 初始化 MCPHub 客户端
 const client = new MCPHubClient({
-  endpoint: 'https://api.mcphub.io',
+  endpoint: 'http://localhost:3000',
   apiKey: process.env.API_KEY,
   timeout: 30000, // 30 秒超时
   retries: 3, // 重试 3 次

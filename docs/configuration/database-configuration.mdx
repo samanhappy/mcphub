@@ -23,34 +23,29 @@ DB_URL=postgresql://user:password@localhost:5432/mcphub
 
 # Or explicitly control with USE_DB (overrides auto-detection)
 # USE_DB=true
-
-# Alternative: Use separate components
-# DB_HOST=localhost
-# DB_PORT=5432
-# DB_NAME=mcphub
-# DB_USER=user
-# DB_PASSWORD=password
 ```
 
 <Note>
 **Simplified Configuration**: You only need to set `DB_URL` to enable database mode. MCPHub will automatically detect and enable database mode when `DB_URL` is present. Use `USE_DB=false` to explicitly disable database mode even when `DB_URL` is set.
 </Note>
 
-### Optional Settings
-
-```bash
-# Automatic migration on startup (default: true)
-AUTO_MIGRATE=true
-
-# Keep file-based config as fallback (default: false)
-KEEP_FILE_CONFIG=false
-```
-
 ## Setup Instructions
 
 ### 1. Using Docker
 
-#### Option A: Using PostgreSQL as a separate service
+#### Option A: Using External Database
+
+If you already have a PostgreSQL database:
+
+```bash
+docker run -d \
+  -p 3000:3000 \
+  -v ./mcp_settings.json:/app/mcp_settings.json \
+  -e DB_URL="postgresql://user:password@your-db-host:5432/mcphub" \
+  samanhappy/mcphub
+```
+
+#### Option B: Using PostgreSQL as a separate service
 
 Create a `docker-compose.yml`:
 
@@ -87,18 +82,6 @@ volumes:
 Run with:
 ```bash
 docker-compose up -d
-```
-
-#### Option B: Using External Database
-
-If you already have a PostgreSQL database:
-
-```bash
-docker run -d \
-  -p 3000:3000 \
-  -e USE_DB=true \
-  -e DB_URL="postgresql://user:password@your-db-host:5432/mcphub" \
-  samanhappy/mcphub:latest
 ```
 
 ### 2. Manual Setup
@@ -232,7 +215,7 @@ docker exec -i postgres psql -U mcphub mcphub < mcphub_backup.sql
 
 If you need to switch back to file-based configuration:
 
-1. Set `USE_DB=false` or remove the environment variable
+1. Set `USE_DB=false` or remove `DB_URL` and `USE_DB` environment variables
 2. Restart MCPHub
 3. MCPHub will use `mcp_settings.json` again
 
@@ -288,12 +271,6 @@ Database tables are automatically created if they don't exist. If you get errors
 |----------|----------|---------|-------------|
 | `DB_URL` | Yes* | - | Full PostgreSQL connection URL. Setting this automatically enables database mode |
 | `USE_DB` | No | auto | Explicitly enable/disable database mode. If not set, auto-detected based on `DB_URL` presence |
-| `DB_HOST` | No | `localhost` | Database host (if not using DB_URL) |
-| `DB_PORT` | No | `5432` | Database port (if not using DB_URL) |
-| `DB_NAME` | No | `mcphub` | Database name (if not using DB_URL) |
-| `DB_USER` | No | `mcphub` | Database user (if not using DB_URL) |
-| `DB_PASSWORD` | No | - | Database password (if not using DB_URL) |
-| `AUTO_MIGRATE` | No | `true` | Auto-migrate from file on first start |
 | `MCPHUB_SETTING_PATH` | No | - | Path to mcp_settings.json (for migration) |
 
 *Required for database mode. Simply setting `DB_URL` enables database mode automatically
@@ -320,9 +297,3 @@ File mode may be faster for:
 - Single user setups
 - Read-heavy workloads with infrequent changes
 - Development/testing environments
-
-## Support
-
-For issues or questions:
-- GitHub Issues: https://github.com/samanhappy/mcphub/issues
-- Documentation: https://mcphub.io/docs

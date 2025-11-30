@@ -23,34 +23,29 @@ DB_URL=postgresql://user:password@localhost:5432/mcphub
 
 # 或显式控制 USE_DB（覆盖自动检测）
 # USE_DB=true
-
-# 替代方案：使用单独的配置项
-# DB_HOST=localhost
-# DB_PORT=5432
-# DB_NAME=mcphub
-# DB_USER=user
-# DB_PASSWORD=password
 ```
 
 <Note>
 **简化配置**：您只需设置 `DB_URL` 即可启用数据库模式。MCPHub 会自动检测 `DB_URL` 是否存在并启用数据库模式。如果需要在设置了 `DB_URL` 的情况下禁用数据库模式，可以显式设置 `USE_DB=false`。
 </Note>
 
-### 可选设置
-
-```bash
-# 启动时自动迁移（默认：true）
-AUTO_MIGRATE=true
-
-# 保留基于文件的配置作为后备（默认：false）
-KEEP_FILE_CONFIG=false
-```
-
 ## 设置说明
 
 ### 1. 使用 Docker
 
-#### 方案 A：将 PostgreSQL 作为独立服务
+#### 方案 A：使用外部数据库
+
+如果您已有 PostgreSQL 数据库：
+
+```bash
+docker run -d \
+  -p 3000:3000 \
+  -v ./mcp_settings.json:/app/mcp_settings.json \
+  -e DB_URL="postgresql://user:password@your-db-host:5432/mcphub" \
+  samanhappy/mcphub
+```
+
+#### 方案 B：将 PostgreSQL 作为独立服务
 
 创建 `docker-compose.yml` 文件：
 
@@ -87,18 +82,6 @@ volumes:
 运行：
 ```bash
 docker-compose up -d
-```
-
-#### 方案 B：使用外部数据库
-
-如果您已有 PostgreSQL 数据库：
-
-```bash
-docker run -d \
-  -p 3000:3000 \
-  -e USE_DB=true \
-  -e DB_URL="postgresql://user:password@your-db-host:5432/mcphub" \
-  samanhappy/mcphub:latest
 ```
 
 ### 2. 手动设置
@@ -232,7 +215,7 @@ docker exec -i postgres psql -U mcphub mcphub < mcphub_backup.sql
 
 如果您需要切换回基于文件的配置：
 
-1. 设置 `USE_DB=false` 或删除该环境变量
+1. 设置 `USE_DB=false` 或删除 `DB_URL` 和 `USE_DB` 环境变量
 2. 重启 MCPHub
 3. MCPHub 将再次使用 `mcp_settings.json`
 
@@ -288,12 +271,6 @@ Error: password authentication failed for user "mcphub"
 |------|------|--------|------|
 | `DB_URL` | 是* | - | 完整的 PostgreSQL 连接 URL。设置此变量会自动启用数据库模式 |
 | `USE_DB` | 否 | 自动 | 显式启用/禁用数据库模式。如果未设置，根据 `DB_URL` 是否存在自动检测 |
-| `DB_HOST` | 否 | `localhost` | 数据库主机（如果不使用 DB_URL） |
-| `DB_PORT` | 否 | `5432` | 数据库端口（如果不使用 DB_URL） |
-| `DB_NAME` | 否 | `mcphub` | 数据库名称（如果不使用 DB_URL） |
-| `DB_USER` | 否 | `mcphub` | 数据库用户（如果不使用 DB_URL） |
-| `DB_PASSWORD` | 否 | - | 数据库密码（如果不使用 DB_URL） |
-| `AUTO_MIGRATE` | 否 | `true` | 首次启动时自动从文件迁移 |
 | `MCPHUB_SETTING_PATH` | 否 | - | mcp_settings.json 的路径（用于迁移） |
 
 *数据库模式必需。只需设置 `DB_URL` 即可自动启用数据库模式
@@ -320,9 +297,3 @@ Error: password authentication failed for user "mcphub"
 - 单用户设置
 - 读取密集型工作负载且更改不频繁
 - 开发/测试环境
-
-## 支持
-
-如有问题或疑问：
-- GitHub Issues: https://github.com/samanhappy/mcphub/issues
-- 文档: https://mcphub.io/docs
