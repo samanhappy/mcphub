@@ -13,308 +13,74 @@ MCPHub makes it easy to manage and scale multiple MCP (Model Context Protocol) s
 
 ## 🚀 Features
 
-- **Broadened MCP Server Support**: Seamlessly integrate any MCP server with minimal configuration.
-- **Centralized Dashboard**: Monitor real-time status and performance metrics from one sleek web UI.
-- **Flexible Protocol Handling**: Full compatibility with both stdio and SSE MCP protocols.
-- **Hot-Swappable Configuration**: Add, remove, or update MCP servers on the fly — no downtime required.
-- **Group-Based Access Control**: Organize servers into customizable groups for streamlined permissions management.
-- **Secure Authentication**: Built-in user management with role-based access powered by JWT and bcrypt.
-- **OAuth 2.0 Support**:
-  - Full OAuth support for upstream MCP servers with proxy authorization capabilities
-  - **NEW**: Act as OAuth 2.0 authorization server for external clients (ChatGPT Web, custom apps)
-- **Environment Variable Expansion**: Use environment variables anywhere in your configuration for secure credential management. See [Environment Variables Guide](docs/environment-variables.md).
-- **Docker-Ready**: Deploy instantly with our containerized setup.
+- **Centralized Management** - Monitor and control all MCP servers from a unified dashboard
+- **Flexible Routing** - Access all servers, specific groups, or individual servers via HTTP/SSE
+- **Smart Routing** - AI-powered tool discovery using vector semantic search ([Learn more](https://docs.mcphubx.com/features/smart-routing))
+- **Hot-Swappable Config** - Add, remove, or update servers without downtime
+- **OAuth 2.0 Support** - Both client and server modes for secure authentication ([Learn more](https://docs.mcphubx.com/features/oauth))
+- **Database Mode** - Store configuration in PostgreSQL for production environments ([Learn more](https://docs.mcphubx.com/configuration/database-configuration))
+- **Docker-Ready** - Deploy instantly with containerized setup
 
 ## 🔧 Quick Start
 
 ### Configuration
 
-Create a `mcp_settings.json` file to customize your server settings:
+Create a `mcp_settings.json` file:
 
 ```json
 {
   "mcpServers": {
-    "amap": {
+    "time": {
       "command": "npx",
-      "args": ["-y", "@amap/amap-maps-mcp-server"],
-      "env": {
-        "AMAP_MAPS_API_KEY": "your-api-key"
-      }
-    },
-    "playwright": {
-      "command": "npx",
-      "args": ["@playwright/mcp@latest", "--headless"]
+      "args": ["-y", "time-mcp"]
     },
     "fetch": {
       "command": "uvx",
       "args": ["mcp-server-fetch"]
-    },
-    "slack": {
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-slack"],
-      "env": {
-        "SLACK_BOT_TOKEN": "your-bot-token",
-        "SLACK_TEAM_ID": "your-team-id"
-      }
     }
   }
 }
 ```
 
-#### OAuth Configuration (Optional)
-
-MCPHub supports OAuth 2.0 for authenticating with upstream MCP servers. See the [OAuth feature guide](docs/features/oauth.mdx) for a full walkthrough. In practice you will run into two configuration patterns:
-
-- **Dynamic registration servers** (e.g., Vercel, Linear) publish all metadata and allow MCPHub to self-register. Simply declare the server URL and MCPHub handles the rest.
-- **Manually provisioned servers** (e.g., GitHub Copilot) require you to create an OAuth App and provide the issued client ID/secret to MCPHub.
-
-Dynamic registration example:
-
-```json
-{
-  "mcpServers": {
-    "vercel": {
-      "type": "sse",
-      "url": "https://mcp.vercel.com"
-    }
-  }
-}
-```
-
-Manual registration example:
-
-```json
-{
-  "mcpServers": {
-    "github": {
-      "type": "sse",
-      "url": "https://api.githubcopilot.com/mcp/",
-      "oauth": {
-        "clientId": "${GITHUB_OAUTH_APP_ID}",
-        "clientSecret": "${GITHUB_OAUTH_APP_SECRET}"
-      }
-    }
-  }
-}
-```
-
-For manual providers, create the OAuth App in the upstream console, set the redirect URI to `http://localhost:3000/oauth/callback` (or your deployed domain), and then plug the credentials into the dashboard or config file.
-
-#### OAuth Authorization Server (NEW)
-
-MCPHub can now act as an OAuth 2.0 authorization server, allowing external applications to securely access your MCP servers using standard OAuth flows. This is particularly useful for integrating with ChatGPT Web and other services that require OAuth authentication.
-
-**Enable OAuth Server:**
-
-```json
-{
-  "systemConfig": {
-    "oauthServer": {
-      "enabled": true,
-      "accessTokenLifetime": 3600,
-      "refreshTokenLifetime": 1209600,
-      "allowedScopes": ["read", "write"]
-    }
-  },
-  "oauthClients": [
-    {
-      "clientId": "your-client-id",
-      "name": "ChatGPT Web",
-      "redirectUris": ["https://chatgpt.com/oauth/callback"],
-      "grants": ["authorization_code", "refresh_token"],
-      "scopes": ["read", "write"]
-    }
-  ]
-}
-```
-
-**Key Features:**
-
-- Standard OAuth 2.0 authorization code flow
-- PKCE support for enhanced security
-- Token refresh capabilities
-- Compatible with ChatGPT Web and other OAuth clients
-
-For detailed setup instructions, see the [OAuth Server Documentation](docs/oauth-server.md).
-
-### Database Mode (NEW)
-
-MCPHub supports storing configuration in a PostgreSQL database as an alternative to `mcp_settings.json`. Database mode provides enhanced persistence and scalability for production environments and enterprise deployments.
-
-**Core Benefits:**
-
-- ✅ **Better Persistence** - Configuration stored in a professional database with transaction support and data integrity
-- ✅ **High Availability** - Leverage database replication and failover capabilities
-- ✅ **Enterprise Ready** - Meets enterprise data management and compliance requirements
-- ✅ **Backup & Recovery** - Use mature database backup tools and strategies
-
-**Environment Variables:**
-
-```bash
-# Simply set DB_URL to enable database mode (auto-detected)
-DB_URL=postgresql://user:password@host:5432/mcphub
-
-# Or explicitly control with USE_DB (optional, overrides auto-detection)
-# USE_DB=true
-```
-
-> **Note**: You only need to set `DB_URL` to enable database mode. MCPHub will automatically detect and enable database mode when `DB_URL` is present. Use `USE_DB=false` to explicitly disable database mode even when `DB_URL` is set.
-
-📖 See the complete [Database Configuration Guide](docs/configuration/database-configuration.mdx) for:
-
-- Detailed setup instructions
-- Migration from file-based config
-- Backup and restore procedures
-- Troubleshooting tips
+📖 See [Configuration Guide](https://docs.mcphubx.com/configuration/mcp-settings) for full options including OAuth, environment variables, and more.
 
 ### Docker Deployment
 
-**Recommended**: Mount your custom config:
-
 ```bash
+# Run with custom config (recommended)
 docker run -p 3000:3000 -v ./mcp_settings.json:/app/mcp_settings.json -v ./data:/app/data samanhappy/mcphub
-```
 
-or run with default settings:
-
-```bash
+# Or run with default settings
 docker run -p 3000:3000 samanhappy/mcphub
 ```
 
-### Access the Dashboard
+### Access Dashboard
 
-Open `http://localhost:3000` and log in with your credentials.
+Open `http://localhost:3000` and log in with default credentials: `admin` / `admin123`
 
-> **Note**: Default credentials are `admin` / `admin123`.
+### Connect AI Clients
 
-**Dashboard Overview**:
-
-- Live status of all MCP servers
-- Enable/disable or reconfigure servers
-- Group management for organizing servers
-- User administration for access control
-
-### Streamable HTTP Endpoint
-
-> As of now, support for streaming HTTP endpoints varies across different AI clients. If you encounter issues, you can use the SSE endpoint or wait for future updates.
-
-Connect AI clients (e.g., Claude Desktop, Cursor, DeepChat, etc.) via:
+Connect AI clients (Claude Desktop, Cursor, etc.) via:
 
 ```
-http://localhost:3000/mcp
+http://localhost:3000/mcp           # All servers
+http://localhost:3000/mcp/{group}   # Specific group
+http://localhost:3000/mcp/{server}  # Specific server
+http://localhost:3000/mcp/$smart    # Smart routing
 ```
 
-This endpoint provides a unified streamable HTTP interface for all your MCP servers. It allows you to:
+📖 See [API Reference](https://docs.mcphubx.com/api-reference) for detailed endpoint documentation.
 
-- Send requests to any configured MCP server
-- Receive responses in real-time
-- Easily integrate with various AI clients and tools
-- Use the same endpoint for all servers, simplifying your integration process
+## 📚 Documentation
 
-**Smart Routing (Experimental)**:
-
-Smart Routing is MCPHub's intelligent tool discovery system that uses vector semantic search to automatically find the most relevant tools for any given task.
-
-```
-# Search across all servers
-http://localhost:3000/mcp/$smart
-
-# Search within a specific group
-http://localhost:3000/mcp/$smart/{group}
-```
-
-**How it Works:**
-
-1. **Tool Indexing**: All MCP tools are automatically converted to vector embeddings and stored in PostgreSQL with pgvector
-2. **Semantic Search**: User queries are converted to vectors and matched against tool embeddings using cosine similarity
-3. **Intelligent Filtering**: Dynamic thresholds ensure relevant results without noise
-4. **Precise Execution**: Found tools can be directly executed with proper parameter validation
-5. **Group Scoping**: Optionally limit searches to servers within a specific group for focused results
-
-**Setup Requirements:**
-
-![Smart Routing](assets/smart-routing.png)
-
-To enable Smart Routing, you need:
-
-- PostgreSQL with pgvector extension
-- OpenAI API key (or compatible embedding service)
-- Enable Smart Routing in MCPHub settings
-
-**Group-Scoped Smart Routing**:
-
-You can combine Smart Routing with group filtering to search only within specific server groups:
-
-```
-# Search only within production servers
-http://localhost:3000/mcp/$smart/production
-
-# Search only within development servers
-http://localhost:3000/mcp/$smart/development
-```
-
-This enables:
-
-- **Focused Discovery**: Find tools only from relevant servers
-- **Environment Isolation**: Separate tool discovery by environment (dev, staging, prod)
-- **Team-Based Access**: Limit tool search to team-specific server groups
-
-**Group-Specific Endpoints (Recommended)**:
-
-![Group Management](assets/group.png)
-
-For targeted access to specific server groups, use the group-based HTTP endpoint:
-
-```
-http://localhost:3000/mcp/{group}
-```
-
-Where `{group}` is the ID or name of the group you created in the dashboard. This allows you to:
-
-- Connect to a specific subset of MCP servers organized by use case
-- Isolate different AI tools to access only relevant servers
-- Implement more granular access control for different environments or teams
-
-**Server-Specific Endpoints**:
-For direct access to individual servers, use the server-specific HTTP endpoint:
-
-```
-http://localhost:3000/mcp/{server}
-```
-
-Where `{server}` is the name of the server you want to connect to. This allows you to access a specific MCP server directly.
-
-> **Note**: If the server name and group name are the same, the group name will take precedence.
-
-### SSE Endpoint (Deprecated in Future)
-
-Connect AI clients (e.g., Claude Desktop, Cursor, DeepChat, etc.) via:
-
-```
-http://localhost:3000/sse
-```
-
-For smart routing, use:
-
-```
-# Search across all servers
-http://localhost:3000/sse/$smart
-
-# Search within a specific group
-http://localhost:3000/sse/$smart/{group}
-```
-
-For targeted access to specific server groups, use the group-based SSE endpoint:
-
-```
-http://localhost:3000/sse/{group}
-```
-
-For direct access to individual servers, use the server-specific SSE endpoint:
-
-```
-http://localhost:3000/sse/{server}
-```
+| Topic                                                                          | Description                       |
+| ------------------------------------------------------------------------------ | --------------------------------- |
+| [Quick Start](https://docs.mcphubx.com/quickstart)                             | Get started in 5 minutes          |
+| [Configuration](https://docs.mcphubx.com/configuration/mcp-settings)           | MCP server configuration options  |
+| [Database Mode](https://docs.mcphubx.com/configuration/database-configuration) | PostgreSQL setup for production   |
+| [OAuth](https://docs.mcphubx.com/features/oauth)                               | OAuth 2.0 client and server setup |
+| [Smart Routing](https://docs.mcphubx.com/features/smart-routing)               | AI-powered tool discovery         |
+| [Docker Setup](https://docs.mcphubx.com/configuration/docker-setup)            | Docker deployment guide           |
 
 ## 🧑‍💻 Local Development
 
@@ -325,19 +91,9 @@ pnpm install
 pnpm dev
 ```
 
-This starts both frontend and backend in development mode with hot-reloading.
+> For Windows users, start backend and frontend separately: `pnpm backend:dev`, `pnpm frontend:dev`
 
-> For windows users, you may need to start the backend server and frontend separately: `pnpm backend:dev`, `pnpm frontend:dev`.
-
-## 🛠️ Common Issues
-
-### Using Nginx as a Reverse Proxy
-
-If you are using Nginx to reverse proxy MCPHub, please make sure to add the following configuration in your Nginx setup:
-
-```nginx
-proxy_buffering off
-```
+📖 See [Development Guide](https://docs.mcphubx.com/development) for detailed setup instructions.
 
 ## 🔍 Tech Stack
 
@@ -348,18 +104,9 @@ proxy_buffering off
 
 ## 👥 Contributing
 
-Contributions of any kind are welcome!
-
-- New features & optimizations
-- Documentation improvements
-- Bug reports & fixes
-- Translations & suggestions
-
-Welcome to join our [Discord community](https://discord.gg/qMKNsn5Q) for discussions and support.
+Contributions welcome! See our [Discord community](https://discord.gg/qMKNsn5Q) for discussions and support.
 
 ## ❤️ Sponsor
-
-If you like this project, maybe you can consider:
 
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/samanhappy)
 
