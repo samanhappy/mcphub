@@ -137,8 +137,17 @@ node scripts/verify-dist.js
 - `src/config/index.ts` - Configuration management
 - `src/routes/` - HTTP route definitions
 - `src/controllers/` - HTTP request handlers
-- `src/dao/` - Data access layer for users, groups, servers
+- `src/dao/` - Data access layer (supports JSON file & PostgreSQL)
+- `src/db/` - TypeORM entities & repositories (for PostgreSQL mode)
 - `src/types/index.ts` - TypeScript type definitions
+
+### DAO Layer (Dual Data Source)
+
+MCPHub supports **JSON file** (default) and **PostgreSQL** storage:
+
+- Set `USE_DB=true` + `DB_URL=postgresql://...` to use database
+- When modifying data structures, update: `src/types/`, `src/dao/`, `src/db/entities/`, `src/db/repositories/`, `src/utils/migration.ts`
+- See `AGENTS.md` for detailed DAO modification checklist
 
 ### Critical Frontend Files
 
