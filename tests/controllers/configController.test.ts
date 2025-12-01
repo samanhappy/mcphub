@@ -1,33 +1,43 @@
-import { getMcpSettingsJson } from '../../src/controllers/configController.js'
-import * as config from '../../src/config/index.js'
-import { Request, Response } from 'express'
+import { getMcpSettingsJson } from '../../src/controllers/configController.js';
+import * as config from '../../src/config/index.js';
+import * as DaoFactory from '../../src/dao/DaoFactory.js';
+import { Request, Response } from 'express';
 
 // Mock the config module
-jest.mock('../../src/config/index.js')
+jest.mock('../../src/config/index.js');
+// Mock the DaoFactory module
+jest.mock('../../src/dao/DaoFactory.js');
 
 describe('ConfigController - getMcpSettingsJson', () => {
-  let mockRequest: Partial<Request>
-  let mockResponse: Partial<Response>
-  let mockJson: jest.Mock
-  let mockStatus: jest.Mock
+  let mockRequest: Partial<Request>;
+  let mockResponse: Partial<Response>;
+  let mockJson: jest.Mock;
+  let mockStatus: jest.Mock;
+  let mockServerDao: { findById: jest.Mock };
 
   beforeEach(() => {
-    mockJson = jest.fn()
-    mockStatus = jest.fn().mockReturnThis()
+    mockJson = jest.fn();
+    mockStatus = jest.fn().mockReturnThis();
     mockRequest = {
       query: {},
-    }
+    };
     mockResponse = {
       json: mockJson,
       status: mockStatus,
-    }
+    };
+    mockServerDao = {
+      findById: jest.fn(),
+    };
+
+    // Setup ServerDao mock
+    (DaoFactory.getServerDao as jest.Mock).mockReturnValue(mockServerDao);
 
     // Reset mocks
-    jest.clearAllMocks()
-  })
+    jest.clearAllMocks();
+  });
 
   describe('Full Settings Export', () => {
-    it('should handle settings without users array', () => {
+    it('should handle settings without users array', async () => {
       const mockSettings = {
         mcpServers: {
           'test-server': {
@@ -35,11 +45,11 @@ describe('ConfigController - getMcpSettingsJson', () => {
             args: ['--test'],
           },
         },
-      }
+      };
 
-      ;(config.loadOriginalSettings as jest.Mock).mockReturnValue(mockSettings)
+      (config.loadOriginalSettings as jest.Mock).mockReturnValue(mockSettings);
 
-      getMcpSettingsJson(mockRequest as Request, mockResponse as Response)
+      await getMcpSettingsJson(mockRequest as Request, mockResponse as Response);
 
       expect(mockJson).toHaveBeenCalledWith({
         success: true,
@@ -47,40 +57,27 @@ describe('ConfigController - getMcpSettingsJson', () => {
           mcpServers: mockSettings.mcpServers,
           users: undefined,
         },
-      })
-    })
-  })
+      });
+    });
+  });
 
   describe('Individual Server Export', () => {
-    it('should return individual server configuration when serverName is specified', () => {
-      const mockSettings = {
-        mcpServers: {
-          'test-server': {
-            command: 'test',
-            args: ['--test'],
-            env: {
-              TEST_VAR: 'test-value',
-            },
-          },
-          'another-server': {
-            command: 'another',
-            args: ['--another'],
-          },
+    it('should return individual server configuration when serverName is specified', async () => {
+      const serverConfig = {
+        name: 'test-server',
+        command: 'test',
+        args: ['--test'],
+        env: {
+          TEST_VAR: 'test-value',
         },
-        users: [
-          {
-            username: 'admin',
-            password: '$2b$10$hashedpassword',
-            isAdmin: true,
-          },
-        ],
-      }
+      };
 
-      mockRequest.query = { serverName: 'test-server' }
-      ;(config.loadOriginalSettings as jest.Mock).mockReturnValue(mockSettings)
+      mockRequest.query = { serverName: 'test-server' };
+      mockServerDao.findById.mockResolvedValue(serverConfig);
 
-      getMcpSettingsJson(mockRequest as Request, mockResponse as Response)
+      await getMcpSettingsJson(mockRequest as Request, mockResponse as Response);
 
+      expect(mockServerDao.findById).toHaveBeenCalledWith('test-server');
       expect(mockJson).toHaveBeenCalledWith({
         success: true,
         data: {
@@ -94,46 +91,38 @@ describe('ConfigController - getMcpSettingsJson', () => {
             },
           },
         },
-      })
-    })
+      });
+    });
 
-    it('should return 404 when server does not exist', () => {
-      const mockSettings = {
-        mcpServers: {
-          'test-server': {
-            command: 'test',
-            args: ['--test'],
-          },
-        },
-      }
+    it('should return 404 when server does not exist', async () => {
+      mockRequest.query = { serverName: 'non-existent-server' };
+      mockServerDao.findById.mockResolvedValue(null);
 
-      mockRequest.query = { serverName: 'non-existent-server' }
-      ;(config.loadOriginalSettings as jest.Mock).mockReturnValue(mockSettings)
+      await getMcpSettingsJson(mockRequest as Request, mockResponse as Response);
 
-      getMcpSettingsJson(mockRequest as Request, mockResponse as Response)
-
-      expect(mockStatus).toHaveBeenCalledWith(404)
+      expect(mockServerDao.findById).toHaveBeenCalledWith('non-existent-server');
+      expect(mockStatus).toHaveBeenCalledWith(404);
       expect(mockJson).toHaveBeenCalledWith({
         success: false,
         message: "Server 'non-existent-server' not found",
-      })
-    })
-  })
+      });
+    });
+  });
 
   describe('Error Handling', () => {
-    it('should handle errors gracefully and return 500', () => {
-      const errorMessage = 'Failed to load settings'
-      ;(config.loadOriginalSettings as jest.Mock).mockImplementation(() => {
-        throw new Error(errorMessage)
-      })
+    it('should handle errors gracefully and return 500', async () => {
+      const errorMessage = 'Failed to load settings';
+      (config.loadOriginalSettings as jest.Mock).mockImplementation(() => {
+        throw new Error(errorMessage);
+      });
 
-      getMcpSettingsJson(mockRequest as Request, mockResponse as Response)
+      await getMcpSettingsJson(mockRequest as Request, mockResponse as Response);
 
-      expect(mockStatus).toHaveBeenCalledWith(500)
+      expect(mockStatus).toHaveBeenCalledWith(500);
       expect(mockJson).toHaveBeenCalledWith({
         success: false,
         message: 'Failed to get MCP settings',
-      })
-    })
-  })
-})
+      });
+    });
+  });
+});

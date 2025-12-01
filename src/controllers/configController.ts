@@ -4,6 +4,7 @@ import { loadSettings, loadOriginalSettings } from '../config/index.js';
 import { getDataService } from '../services/services.js';
 import { DataService } from '../services/dataService.js';
 import { IUser } from '../types/index.js';
+import { getServerDao } from '../dao/DaoFactory.js';
 
 const dataService: DataService = getDataService();
 
@@ -77,13 +78,13 @@ export const getPublicConfig = (req: Request, res: Response): void => {
  * Get MCP settings in JSON format for export/copy
  * Supports both full settings and individual server configuration
  */
-export const getMcpSettingsJson = (req: Request, res: Response): void => {
+export const getMcpSettingsJson = async (req: Request, res: Response): Promise<void> => {
   try {
     const { serverName } = req.query;
-    const settings = loadOriginalSettings();
     if (serverName && typeof serverName === 'string') {
-      // Return individual server configuration
-      const serverConfig = settings.mcpServers[serverName];
+      // Return individual server configuration using DAO
+      const serverDao = getServerDao();
+      const serverConfig = await serverDao.findById(serverName);
       if (!serverConfig) {
         res.status(404).json({
           success: false,
@@ -92,16 +93,19 @@ export const getMcpSettingsJson = (req: Request, res: Response): void => {
         return;
       }
 
+      // Remove the 'name' field from config as it's used as the key
+      const { name, ...configWithoutName } = serverConfig;
       res.json({
         success: true,
         data: {
           mcpServers: {
-            [serverName]: serverConfig,
+            [name]: configWithoutName,
           },
         },
       });
     } else {
       // Return full settings
+      const settings = loadOriginalSettings();
       res.json({
         success: true,
         data: settings,

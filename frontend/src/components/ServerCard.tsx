@@ -106,6 +106,10 @@ const ServerCard = ({ server, onRemove, onEdit, onToggle, onRefresh }: ServerCar
     e.stopPropagation();
     try {
       const result = await exportMCPSettings(server.name);
+      if (!result || !result.success || !result.data) {
+        showToast(result?.message || t('common.copyFailed') || 'Copy failed', 'error');
+        return;
+      }
       const configJson = JSON.stringify(result.data, null, 2);
 
       if (navigator.clipboard && window.isSecureContext) {
