@@ -7,6 +7,8 @@ import { ServerRepository } from '../db/repositories/ServerRepository.js';
 import { GroupRepository } from '../db/repositories/GroupRepository.js';
 import { SystemConfigRepository } from '../db/repositories/SystemConfigRepository.js';
 import { UserConfigRepository } from '../db/repositories/UserConfigRepository.js';
+import { OAuthClientRepository } from '../db/repositories/OAuthClientRepository.js';
+import { OAuthTokenRepository } from '../db/repositories/OAuthTokenRepository.js';
 
 /**
  * Migrate from file-based configuration to database
@@ -29,6 +31,8 @@ export async function migrateToDatabase(): Promise<boolean> {
     const groupRepo = new GroupRepository();
     const systemConfigRepo = new SystemConfigRepository();
     const userConfigRepo = new UserConfigRepository();
+    const oauthClientRepo = new OAuthClientRepository();
+    const oauthTokenRepo = new OAuthTokenRepository();
 
     // Migrate users
     if (settings.users && settings.users.length > 0) {
@@ -126,6 +130,53 @@ export async function migrateToDatabase(): Promise<boolean> {
         };
         await userConfigRepo.update(username, userConfig);
         console.log(`  - Updated configuration for user: ${username}`);
+      }
+    }
+
+    // Migrate OAuth clients
+    if (settings.oauthClients && settings.oauthClients.length > 0) {
+      console.log(`Migrating ${settings.oauthClients.length} OAuth clients...`);
+      for (const client of settings.oauthClients) {
+        const exists = await oauthClientRepo.exists(client.clientId);
+        if (!exists) {
+          await oauthClientRepo.create({
+            clientId: client.clientId,
+            clientSecret: client.clientSecret,
+            name: client.name,
+            redirectUris: client.redirectUris,
+            grants: client.grants,
+            scopes: client.scopes,
+            owner: client.owner,
+            metadata: client.metadata,
+          });
+          console.log(`  - Created OAuth client: ${client.clientId}`);
+        } else {
+          console.log(`  - OAuth client already exists: ${client.clientId}`);
+        }
+      }
+    }
+
+    // Migrate OAuth tokens
+    if (settings.oauthTokens && settings.oauthTokens.length > 0) {
+      console.log(`Migrating ${settings.oauthTokens.length} OAuth tokens...`);
+      for (const token of settings.oauthTokens) {
+        const exists = await oauthTokenRepo.exists(token.accessToken);
+        if (!exists) {
+          await oauthTokenRepo.create({
+            accessToken: token.accessToken,
+            refreshToken: token.refreshToken,
+            accessTokenExpiresAt: new Date(token.accessTokenExpiresAt),
+            refreshTokenExpiresAt: token.refreshTokenExpiresAt
+              ? new Date(token.refreshTokenExpiresAt)
+              : undefined,
+            scope: token.scope,
+            clientId: token.clientId,
+            username: token.username,
+          });
+          console.log(`  - Created OAuth token for client: ${token.clientId}`);
+        } else {
+          console.log(`  - OAuth token already exists: ${token.accessToken.substring(0, 8)}...`);
+        }
       }
     }
 

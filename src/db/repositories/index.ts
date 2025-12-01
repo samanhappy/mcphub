@@ -4,6 +4,8 @@ import { ServerRepository } from './ServerRepository.js';
 import { GroupRepository } from './GroupRepository.js';
 import { SystemConfigRepository } from './SystemConfigRepository.js';
 import { UserConfigRepository } from './UserConfigRepository.js';
+import { OAuthClientRepository } from './OAuthClientRepository.js';
+import { OAuthTokenRepository } from './OAuthTokenRepository.js';
 
 // Export all repositories
 export {
@@ -13,4 +15,6 @@ export {
   GroupRepository,
   SystemConfigRepository,
   UserConfigRepository,
+  OAuthClientRepository,
+  OAuthTokenRepository,
 };

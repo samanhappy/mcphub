@@ -21,7 +21,7 @@ const oauthModel: OAuth2Server.AuthorizationCodeModel & OAuth2Server.RefreshToke
    * Get client by client ID
    */
   getClient: async (clientId: string, clientSecret?: string) => {
-    const client = findOAuthClientById(clientId);
+    const client = await findOAuthClientById(clientId);
     if (!client) {
       return false;
     }
@@ -92,7 +92,7 @@ const oauthModel: OAuth2Server.AuthorizationCodeModel & OAuth2Server.RefreshToke
       return false;
     }
 
-    const client = findOAuthClientById(code.clientId);
+    const client = await findOAuthClientById(code.clientId);
     if (!client) {
       return false;
     }
@@ -143,7 +143,7 @@ const oauthModel: OAuth2Server.AuthorizationCodeModel & OAuth2Server.RefreshToke
 
     const scopeString = Array.isArray(token.scope) ? token.scope.join(' ') : token.scope;
 
-    const savedToken = saveToken(
+    const savedToken = await saveToken(
       {
         scope: scopeString,
         clientId: client.id,
@@ -172,12 +172,12 @@ const oauthModel: OAuth2Server.AuthorizationCodeModel & OAuth2Server.RefreshToke
    * Get access token
    */
   getAccessToken: async (accessToken: string) => {
-    const token = getToken(accessToken);
+    const token = await getToken(accessToken);
     if (!token) {
       return false;
     }
 
-    const client = findOAuthClientById(token.clientId);
+    const client = await findOAuthClientById(token.clientId);
     if (!client) {
       return false;
     }
@@ -205,12 +205,12 @@ const oauthModel: OAuth2Server.AuthorizationCodeModel & OAuth2Server.RefreshToke
    * Get refresh token
    */
   getRefreshToken: async (refreshToken: string) => {
-    const token = getToken(refreshToken);
+    const token = await getToken(refreshToken);
     if (!token || token.refreshToken !== refreshToken) {
       return false;
     }
 
-    const client = findOAuthClientById(token.clientId);
+    const client = await findOAuthClientById(token.clientId);
     if (!client) {
       return false;
     }
@@ -240,7 +240,7 @@ const oauthModel: OAuth2Server.AuthorizationCodeModel & OAuth2Server.RefreshToke
   revokeToken: async (token: OAuth2Server.Token | OAuth2Server.RefreshToken) => {
     const refreshToken = 'refreshToken' in token ? token.refreshToken : undefined;
     if (refreshToken) {
-      revokeToken(refreshToken);
+      await revokeToken(refreshToken);
     }
     return true;
   },

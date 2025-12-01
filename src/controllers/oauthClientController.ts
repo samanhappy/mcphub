@@ -14,10 +14,10 @@ import { IOAuthClient } from '../types/index.js';
  * GET /api/oauth/clients
  * Get all OAuth clients
  */
-export const getAllClients = (req: Request, res: Response): void => {
+export const getAllClients = async (req: Request, res: Response): Promise<void> => {
   try {
-    const clients = getOAuthClients();
-    
+    const clients = await getOAuthClients();
+
     // Don't expose client secrets in the list
     const sanitizedClients = clients.map((client) => ({
       clientId: client.clientId,
@@ -45,10 +45,10 @@ export const getAllClients = (req: Request, res: Response): void => {
  * GET /api/oauth/clients/:clientId
  * Get a specific OAuth client
  */
-export const getClient = (req: Request, res: Response): void => {
+export const getClient = async (req: Request, res: Response): Promise<void> => {
   try {
     const { clientId } = req.params;
-    const client = findOAuthClientById(clientId);
+    const client = await findOAuthClientById(clientId);
 
     if (!client) {
       res.status(404).json({
@@ -85,7 +85,7 @@ export const getClient = (req: Request, res: Response): void => {
  * POST /api/oauth/clients
  * Create a new OAuth client
  */
-export const createClient = (req: Request, res: Response): void => {
+export const createClient = async (req: Request, res: Response): Promise<void> => {
   try {
     // Validate request
     const errors = validationResult(req);
@@ -105,7 +105,8 @@ export const createClient = (req: Request, res: Response): void => {
     const clientId = crypto.randomBytes(16).toString('hex');
 
     // Generate client secret if required
-    const clientSecret = requireSecret !== false ? crypto.randomBytes(32).toString('hex') : undefined;
+    const clientSecret =
+      requireSecret !== false ? crypto.randomBytes(32).toString('hex') : undefined;
 
     // Create client
     const client: IOAuthClient = {
@@ -118,7 +119,7 @@ export const createClient = (req: Request, res: Response): void => {
       owner: user?.username || 'admin',
     };
 
-    const createdClient = createOAuthClient(client);
+    const createdClient = await createOAuthClient(client);
 
     // Return client with secret (only shown once)
     res.status(201).json({
@@ -139,7 +140,7 @@ export const createClient = (req: Request, res: Response): void => {
     });
   } catch (error) {
     console.error('Create OAuth client error:', error);
-    
+
     if (error instanceof Error && error.message.includes('already exists')) {
       res.status(409).json({
         success: false,
@@ -158,18 +159,19 @@ export const createClient = (req: Request, res: Response): void => {
  * PUT /api/oauth/clients/:clientId
  * Update an OAuth client
  */
-export const updateClient = (req: Request, res: Response): void => {
+export const updateClient = async (req: Request, res: Response): Promise<void> => {
   try {
     const { clientId } = req.params;
     const { name, redirectUris, grants, scopes } = req.body;
 
     const updates: Partial<IOAuthClient> = {};
     if (name) updates.name = name;
-    if (redirectUris) updates.redirectUris = Array.isArray(redirectUris) ? redirectUris : [redirectUris];
+    if (redirectUris)
+      updates.redirectUris = Array.isArray(redirectUris) ? redirectUris : [redirectUris];
     if (grants) updates.grants = grants;
     if (scopes) updates.scopes = scopes;
 
-    const updatedClient = updateOAuthClient(clientId, updates);
+    const updatedClient = await updateOAuthClient(clientId, updates);
 
     if (!updatedClient) {
       res.status(404).json({
@@ -205,10 +207,10 @@ export const updateClient = (req: Request, res: Response): void => {
  * DELETE /api/oauth/clients/:clientId
  * Delete an OAuth client
  */
-export const deleteClient = (req: Request, res: Response): void => {
+export const deleteClient = async (req: Request, res: Response): Promise<void> => {
   try {
     const { clientId } = req.params;
-    const deleted = deleteOAuthClient(clientId);
+    const deleted = await deleteOAuthClient(clientId);
 
     if (!deleted) {
       res.status(404).json({
@@ -235,10 +237,10 @@ export const deleteClient = (req: Request, res: Response): void => {
  * POST /api/oauth/clients/:clientId/regenerate-secret
  * Regenerate client secret
  */
-export const regenerateSecret = (req: Request, res: Response): void => {
+export const regenerateSecret = async (req: Request, res: Response): Promise<void> => {
   try {
     const { clientId } = req.params;
-    const client = findOAuthClientById(clientId);
+    const client = await findOAuthClientById(clientId);
 
     if (!client) {
       res.status(404).json({
@@ -250,7 +252,7 @@ export const regenerateSecret = (req: Request, res: Response): void => {
 
     // Generate new secret
     const newSecret = crypto.randomBytes(32).toString('hex');
-    const updatedClient = updateOAuthClient(clientId, { clientSecret: newSecret });
+    const updatedClient = await updateOAuthClient(clientId, { clientSecret: newSecret });
 
     if (!updatedClient) {
       res.status(500).json({

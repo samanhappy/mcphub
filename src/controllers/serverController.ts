@@ -9,7 +9,7 @@ import {
   syncToolEmbedding,
   toggleServerStatus,
 } from '../services/mcpService.js';
-import { loadSettings, saveSettings } from '../config/index.js';
+import { loadSettings } from '../config/index.js';
 import { syncAllServerToolsEmbeddings } from '../services/vectorSearchService.js';
 import { createSafeJSON } from '../utils/serialization.js';
 import { cloneDefaultOAuthServerConfig } from '../constants/oauthServerDefaults.js';
@@ -439,8 +439,10 @@ export const toggleTool = async (req: Request, res: Response): Promise<void> => 
       return;
     }
 
-    const settings = loadSettings();
-    if (!settings.mcpServers[serverName]) {
+    const serverDao = getServerDao();
+    const server = await serverDao.findById(serverName);
+
+    if (!server) {
       res.status(404).json({
         success: false,
         message: 'Server not found',
@@ -449,14 +451,15 @@ export const toggleTool = async (req: Request, res: Response): Promise<void> => 
     }
 
     // Initialize tools config if it doesn't exist
-    if (!settings.mcpServers[serverName].tools) {
-      settings.mcpServers[serverName].tools = {};
-    }
+    const tools = server.tools || {};
 
-    // Set the tool's enabled state
-    settings.mcpServers[serverName].tools![toolName] = { enabled };
+    // Set the tool's enabled state (preserve existing description if any)
+    tools[toolName] = { ...tools[toolName], enabled };
 
-    if (!saveSettings(settings)) {
+    // Update via DAO (supports both file and database modes)
+    const result = await serverDao.updateTools(serverName, tools);
+
+    if (!result) {
       res.status(500).json({
         success: false,
         message: 'Failed to save settings',
@@ -503,8 +506,10 @@ export const updateToolDescription = async (req: Request, res: Response): Promis
       return;
     }
 
-    const settings = loadSettings();
-    if (!settings.mcpServers[serverName]) {
+    const serverDao = getServerDao();
+    const server = await serverDao.findById(serverName);
+
+    if (!server) {
       res.status(404).json({
         success: false,
         message: 'Server not found',
@@ -513,18 +518,18 @@ export const updateToolDescription = async (req: Request, res: Response): Promis
     }
 
     // Initialize tools config if it doesn't exist
-    if (!settings.mcpServers[serverName].tools) {
-      settings.mcpServers[serverName].tools = {};
-    }
+    const tools = server.tools || {};
 
     // Set the tool's description
-    if (!settings.mcpServers[serverName].tools![toolName]) {
-      settings.mcpServers[serverName].tools![toolName] = { enabled: true };
+    if (!tools[toolName]) {
+      tools[toolName] = { enabled: true };
     }
+    tools[toolName].description = description;
 
-    settings.mcpServers[serverName].tools![toolName].description = description;
+    // Update via DAO (supports both file and database modes)
+    const result = await serverDao.updateTools(serverName, tools);
 
-    if (!saveSettings(settings)) {
+    if (!result) {
       res.status(500).json({
         success: false,
         message: 'Failed to save settings',
@@ -939,8 +944,10 @@ export const togglePrompt = async (req: Request, res: Response): Promise<void> =
       return;
     }
 
-    const settings = loadSettings();
-    if (!settings.mcpServers[serverName]) {
+    const serverDao = getServerDao();
+    const server = await serverDao.findById(serverName);
+
+    if (!server) {
       res.status(404).json({
         success: false,
         message: 'Server not found',
@@ -949,14 +956,15 @@ export const togglePrompt = async (req: Request, res: Response): Promise<void> =
     }
 
     // Initialize prompts config if it doesn't exist
-    if (!settings.mcpServers[serverName].prompts) {
-      settings.mcpServers[serverName].prompts = {};
-    }
+    const prompts = server.prompts || {};
 
-    // Set the prompt's enabled state
-    settings.mcpServers[serverName].prompts![promptName] = { enabled };
+    // Set the prompt's enabled state (preserve existing description if any)
+    prompts[promptName] = { ...prompts[promptName], enabled };
 
-    if (!saveSettings(settings)) {
+    // Update via DAO (supports both file and database modes)
+    const result = await serverDao.updatePrompts(serverName, prompts);
+
+    if (!result) {
       res.status(500).json({
         success: false,
         message: 'Failed to save settings',
@@ -1003,8 +1011,10 @@ export const updatePromptDescription = async (req: Request, res: Response): Prom
       return;
     }
 
-    const settings = loadSettings();
-    if (!settings.mcpServers[serverName]) {
+    const serverDao = getServerDao();
+    const server = await serverDao.findById(serverName);
+
+    if (!server) {
       res.status(404).json({
         success: false,
         message: 'Server not found',
@@ -1013,18 +1023,18 @@ export const updatePromptDescription = async (req: Request, res: Response): Prom
     }
 
     // Initialize prompts config if it doesn't exist
-    if (!settings.mcpServers[serverName].prompts) {
-      settings.mcpServers[serverName].prompts = {};
-    }
+    const prompts = server.prompts || {};
 
     // Set the prompt's description
-    if (!settings.mcpServers[serverName].prompts![promptName]) {
-      settings.mcpServers[serverName].prompts![promptName] = { enabled: true };
+    if (!prompts[promptName]) {
+      prompts[promptName] = { enabled: true };
     }
+    prompts[promptName].description = description;
 
-    settings.mcpServers[serverName].prompts![promptName].description = description;
+    // Update via DAO (supports both file and database modes)
+    const result = await serverDao.updatePrompts(serverName, prompts);
 
-    if (!saveSettings(settings)) {
+    if (!result) {
       res.status(500).json({
         success: false,
         message: 'Failed to save settings',

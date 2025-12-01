@@ -3,6 +3,8 @@ import { ServerDao, ServerDaoImpl } from './ServerDao.js';
 import { GroupDao, GroupDaoImpl } from './GroupDao.js';
 import { SystemConfigDao, SystemConfigDaoImpl } from './SystemConfigDao.js';
 import { UserConfigDao, UserConfigDaoImpl } from './UserConfigDao.js';
+import { OAuthClientDao, OAuthClientDaoImpl } from './OAuthClientDao.js';
+import { OAuthTokenDao, OAuthTokenDaoImpl } from './OAuthTokenDao.js';
 
 /**
  * DAO Factory interface for creating DAO instances
@@ -13,6 +15,8 @@ export interface DaoFactory {
   getGroupDao(): GroupDao;
   getSystemConfigDao(): SystemConfigDao;
   getUserConfigDao(): UserConfigDao;
+  getOAuthClientDao(): OAuthClientDao;
+  getOAuthTokenDao(): OAuthTokenDao;
 }
 
 /**
@@ -26,6 +30,8 @@ export class JsonFileDaoFactory implements DaoFactory {
   private groupDao: GroupDao | null = null;
   private systemConfigDao: SystemConfigDao | null = null;
   private userConfigDao: UserConfigDao | null = null;
+  private oauthClientDao: OAuthClientDao | null = null;
+  private oauthTokenDao: OAuthTokenDao | null = null;
 
   /**
    * Get singleton instance
@@ -76,6 +82,20 @@ export class JsonFileDaoFactory implements DaoFactory {
     return this.userConfigDao;
   }
 
+  getOAuthClientDao(): OAuthClientDao {
+    if (!this.oauthClientDao) {
+      this.oauthClientDao = new OAuthClientDaoImpl();
+    }
+    return this.oauthClientDao;
+  }
+
+  getOAuthTokenDao(): OAuthTokenDao {
+    if (!this.oauthTokenDao) {
+      this.oauthTokenDao = new OAuthTokenDaoImpl();
+    }
+    return this.oauthTokenDao;
+  }
+
   /**
    * Reset all cached DAO instances (useful for testing)
    */
@@ -85,6 +105,8 @@ export class JsonFileDaoFactory implements DaoFactory {
     this.groupDao = null;
     this.systemConfigDao = null;
     this.userConfigDao = null;
+    this.oauthClientDao = null;
+    this.oauthTokenDao = null;
   }
 }
 
@@ -148,4 +170,12 @@ export function getSystemConfigDao(): SystemConfigDao {
 
 export function getUserConfigDao(): UserConfigDao {
   return getDaoFactory().getUserConfigDao();
+}
+
+export function getOAuthClientDao(): OAuthClientDao {
+  return getDaoFactory().getOAuthClientDao();
+}
+
+export function getOAuthTokenDao(): OAuthTokenDao {
+  return getDaoFactory().getOAuthTokenDao();
 }

@@ -10,29 +10,86 @@ import {
   getToken,
   revokeToken,
 } from '../../src/models/OAuth.js';
+import { IOAuthClient, IOAuthToken } from '../../src/types/index.js';
 
-// Mock the config module to use in-memory storage for tests
-let mockSettings = { mcpServers: {}, users: [], oauthClients: [] };
+// Mock in-memory storage for OAuth clients and tokens
+let mockOAuthClients: IOAuthClient[] = [];
+let mockOAuthTokens: IOAuthToken[] = [];
 
-jest.mock('../../src/config/index.js', () => ({
-  loadSettings: jest.fn(() => ({ ...mockSettings })),
-  saveSettings: jest.fn((settings: any) => {
-    mockSettings = { ...settings };
-    return true;
-  }),
-  loadOriginalSettings: jest.fn(() => ({ ...mockSettings })),
-}));
+// Mock the DAO factory to use in-memory storage for tests
+jest.mock('../../src/dao/index.js', () => {
+  const originalModule = jest.requireActual('../../src/dao/index.js');
+
+  return {
+    ...originalModule,
+    getOAuthClientDao: jest.fn(() => ({
+      findAll: jest.fn(async () => [...mockOAuthClients]),
+      findByClientId: jest.fn(
+        async (clientId: string) => mockOAuthClients.find((c) => c.clientId === clientId) || null,
+      ),
+      create: jest.fn(async (client: IOAuthClient) => {
+        mockOAuthClients.push(client);
+        return client;
+      }),
+      update: jest.fn(async (clientId: string, updates: Partial<IOAuthClient>) => {
+        const index = mockOAuthClients.findIndex((c) => c.clientId === clientId);
+        if (index === -1) return null;
+        mockOAuthClients[index] = { ...mockOAuthClients[index], ...updates };
+        return mockOAuthClients[index];
+      }),
+      delete: jest.fn(async (clientId: string) => {
+        const index = mockOAuthClients.findIndex((c) => c.clientId === clientId);
+        if (index === -1) return false;
+        mockOAuthClients.splice(index, 1);
+        return true;
+      }),
+    })),
+    getOAuthTokenDao: jest.fn(() => ({
+      findAll: jest.fn(async () => [...mockOAuthTokens]),
+      findByAccessToken: jest.fn(
+        async (accessToken: string) =>
+          mockOAuthTokens.find((t) => t.accessToken === accessToken) || null,
+      ),
+      findByRefreshToken: jest.fn(
+        async (refreshToken: string) =>
+          mockOAuthTokens.find((t) => t.refreshToken === refreshToken) || null,
+      ),
+      create: jest.fn(async (token: IOAuthToken) => {
+        mockOAuthTokens.push(token);
+        return token;
+      }),
+      revokeToken: jest.fn(async (token: string) => {
+        const index = mockOAuthTokens.findIndex(
+          (t) => t.accessToken === token || t.refreshToken === token,
+        );
+        if (index === -1) return false;
+        mockOAuthTokens.splice(index, 1);
+        return true;
+      }),
+      cleanupExpired: jest.fn(async () => {
+        const now = new Date();
+        mockOAuthTokens = mockOAuthTokens.filter((t) => {
+          const accessExpired = t.accessTokenExpiresAt < now;
+          const refreshExpired =
+            !t.refreshToken || (t.refreshTokenExpiresAt && t.refreshTokenExpiresAt < now);
+          return !accessExpired || !refreshExpired;
+        });
+      }),
+    })),
+  };
+});
 
 describe('OAuth Model', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    // Reset mock settings before each test
-    mockSettings = { mcpServers: {}, users: [], oauthClients: [] };
+    // Reset mock storage before each test
+    mockOAuthClients = [];
+    mockOAuthTokens = [];
   });
 
   describe('OAuth Client Management', () => {
-    test('should create a new OAuth client', () => {
-      const client = {
+    test('should create a new OAuth client', async () => {
+      const client: IOAuthClient = {
         clientId: 'test-client',
         clientSecret: 'test-secret',
         name: 'Test Client',
@@ -41,15 +98,15 @@ describe('OAuth Model', () => {
         scopes: ['read', 'write'],
       };
 
-      const created = createOAuthClient(client);
+      const created = await createOAuthClient(client);
       expect(created).toEqual(client);
 
-      const found = findOAuthClientById('test-client');
+      const found = await findOAuthClientById('test-client');
       expect(found).toEqual(client);
     });
 
-    test('should not create duplicate OAuth client', () => {
-      const client = {
+    test('should not create duplicate OAuth client', async () => {
+      const client: IOAuthClient = {
         clientId: 'test-client',
         clientSecret: 'test-secret',
         name: 'Test Client',
@@ -58,12 +115,12 @@ describe('OAuth Model', () => {
         scopes: ['read'],
       };
 
-      createOAuthClient(client);
-      expect(() => createOAuthClient(client)).toThrow();
+      await createOAuthClient(client);
+      await expect(createOAuthClient(client)).rejects.toThrow();
     });
 
-    test('should update an OAuth client', () => {
-      const client = {
+    test('should update an OAuth client', async () => {
+      const client: IOAuthClient = {
         clientId: 'test-client',
         clientSecret: 'test-secret',
         name: 'Test Client',
@@ -72,9 +129,9 @@ describe('OAuth Model', () => {
         scopes: ['read'],
       };
 
-      createOAuthClient(client);
+      await createOAuthClient(client);
 
-      const updated = updateOAuthClient('test-client', {
+      const updated = await updateOAuthClient('test-client', {
         name: 'Updated Client',
         scopes: ['read', 'write'],
       });
@@ -83,8 +140,8 @@ describe('OAuth Model', () => {
       expect(updated?.scopes).toEqual(['read', 'write']);
     });
 
-    test('should delete an OAuth client', () => {
-      const client = {
+    test('should delete an OAuth client', async () => {
+      const client: IOAuthClient = {
         clientId: 'test-client',
         clientSecret: 'test-secret',
         name: 'Test Client',
@@ -93,12 +150,12 @@ describe('OAuth Model', () => {
         scopes: ['read'],
       };
 
-      createOAuthClient(client);
-      expect(findOAuthClientById('test-client')).toBeDefined();
+      await createOAuthClient(client);
+      expect(await findOAuthClientById('test-client')).toBeDefined();
 
-      const deleted = deleteOAuthClient('test-client');
+      const deleted = await deleteOAuthClient('test-client');
       expect(deleted).toBe(true);
-      expect(findOAuthClientById('test-client')).toBeUndefined();
+      expect(await findOAuthClientById('test-client')).toBeUndefined();
     });
   });
 
@@ -157,8 +214,8 @@ describe('OAuth Model', () => {
   });
 
   describe('Token Management', () => {
-    test('should save and retrieve token', () => {
-      const token = saveToken(
+    test('should save and retrieve token', async () => {
+      const token = await saveToken(
         {
           scope: 'read write',
           clientId: 'test-client',
@@ -172,14 +229,14 @@ describe('OAuth Model', () => {
       expect(token.refreshToken).toBeDefined();
       expect(token.accessTokenExpiresAt).toBeInstanceOf(Date);
 
-      const retrieved = getToken(token.accessToken);
+      const retrieved = await getToken(token.accessToken);
       expect(retrieved).toBeDefined();
       expect(retrieved?.clientId).toBe('test-client');
       expect(retrieved?.username).toBe('testuser');
     });
 
-    test('should retrieve token by refresh token', () => {
-      const token = saveToken(
+    test('should retrieve token by refresh token', async () => {
+      const token = await saveToken(
         {
           scope: 'read',
           clientId: 'test-client',
@@ -191,13 +248,13 @@ describe('OAuth Model', () => {
 
       expect(token.refreshToken).toBeDefined();
 
-      const retrieved = getToken(token.refreshToken!);
+      const retrieved = await getToken(token.refreshToken!);
       expect(retrieved).toBeDefined();
       expect(retrieved?.accessToken).toBe(token.accessToken);
     });
 
     test('should not retrieve expired access token', async () => {
-      const token = saveToken(
+      const token = await saveToken(
         {
           scope: 'read',
           clientId: 'test-client',
@@ -208,12 +265,12 @@ describe('OAuth Model', () => {
 
       await new Promise((resolve) => setTimeout(resolve, 100));
 
-      const retrieved = getToken(token.accessToken);
+      const retrieved = await getToken(token.accessToken);
       expect(retrieved).toBeUndefined();
     });
 
-    test('should revoke token', () => {
-      const token = saveToken(
+    test('should revoke token', async () => {
+      const token = await saveToken(
         {
           scope: 'read',
           clientId: 'test-client',
@@ -223,13 +280,13 @@ describe('OAuth Model', () => {
         86400,
       );
 
-      expect(getToken(token.accessToken)).toBeDefined();
+      expect(await getToken(token.accessToken)).toBeDefined();
 
-      revokeToken(token.accessToken);
-      expect(getToken(token.accessToken)).toBeUndefined();
+      await revokeToken(token.accessToken);
+      expect(await getToken(token.accessToken)).toBeUndefined();
 
       if (token.refreshToken) {
-        expect(getToken(token.refreshToken)).toBeUndefined();
+        expect(await getToken(token.refreshToken)).toBeUndefined();
       }
     });
   });

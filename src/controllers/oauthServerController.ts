@@ -212,7 +212,7 @@ export const getAuthorize = async (req: Request, res: Response): Promise<void> =
     }
 
     // Verify client
-    const client = findOAuthClientById(client_id as string);
+    const client = await findOAuthClientById(client_id as string);
     if (!client) {
       res.status(400).json({ error: 'invalid_client', error_description: 'Client not found' });
       return;

@@ -1,112 +1,89 @@
 import crypto from 'crypto';
-import { loadSettings, saveSettings } from '../config/index.js';
+import { getOAuthClientDao, getOAuthTokenDao } from '../dao/index.js';
 import { IOAuthClient, IOAuthAuthorizationCode, IOAuthToken } from '../types/index.js';
 
-// In-memory storage for authorization codes and tokens
-// Authorization codes are short-lived and kept in memory only.
-// Tokens are mirrored to settings (mcp_settings.json) for persistence.
+// In-memory storage for authorization codes (short-lived, no persistence needed)
 const authorizationCodes = new Map<string, IOAuthAuthorizationCode>();
-const tokens = new Map<string, IOAuthToken>();
 
-// Initialize token store from settings on first import
-(() => {
+// In-memory cache for tokens (also persisted via DAO)
+const tokensCache = new Map<string, IOAuthToken>();
+
+// Flag to track if we've initialized from DAO
+let initialized = false;
+
+/**
+ * Initialize token cache from DAO (async)
+ */
+const initializeTokenCache = async (): Promise<void> => {
+  if (initialized) return;
+  initialized = true;
+
   try {
-    const settings = loadSettings();
-    if (Array.isArray(settings.oauthTokens)) {
-      for (const stored of settings.oauthTokens) {
-        const token: IOAuthToken = {
-          ...stored,
-          accessTokenExpiresAt: new Date(stored.accessTokenExpiresAt),
-          refreshTokenExpiresAt: stored.refreshTokenExpiresAt
-            ? new Date(stored.refreshTokenExpiresAt)
-            : undefined,
-        };
-        tokens.set(token.accessToken, token);
-        if (token.refreshToken) {
-          tokens.set(token.refreshToken, token);
-        }
+    const tokenDao = getOAuthTokenDao();
+    const allTokens = await tokenDao.findAll();
+    for (const token of allTokens) {
+      tokensCache.set(token.accessToken, token);
+      if (token.refreshToken) {
+        tokensCache.set(token.refreshToken, token);
       }
     }
   } catch (error) {
-    console.error('Failed to initialize OAuth tokens from settings:', error);
+    console.error('Failed to initialize OAuth tokens from DAO:', error);
   }
-})();
+};
+
+// Initialize on module load (fire and forget for backward compatibility)
+initializeTokenCache().catch(console.error);
 
 /**
  * Get all OAuth clients from configuration
  */
-export const getOAuthClients = (): IOAuthClient[] => {
-  const settings = loadSettings();
-  return settings.oauthClients || [];
+export const getOAuthClients = async (): Promise<IOAuthClient[]> => {
+  const clientDao = getOAuthClientDao();
+  return clientDao.findAll();
 };
 
 /**
  * Find OAuth client by client ID
  */
-export const findOAuthClientById = (clientId: string): IOAuthClient | undefined => {
-  const clients = getOAuthClients();
-  return clients.find((c) => c.clientId === clientId);
+export const findOAuthClientById = async (clientId: string): Promise<IOAuthClient | undefined> => {
+  const clientDao = getOAuthClientDao();
+  const client = await clientDao.findByClientId(clientId);
+  return client || undefined;
 };
 
 /**
  * Create a new OAuth client
  */
-export const createOAuthClient = (client: IOAuthClient): IOAuthClient => {
-  const settings = loadSettings();
-  if (!settings.oauthClients) {
-    settings.oauthClients = [];
-  }
+export const createOAuthClient = async (client: IOAuthClient): Promise<IOAuthClient> => {
+  const clientDao = getOAuthClientDao();
 
   // Check if client already exists
-  const existing = settings.oauthClients.find((c) => c.clientId === client.clientId);
+  const existing = await clientDao.findByClientId(client.clientId);
   if (existing) {
     throw new Error(`OAuth client with ID ${client.clientId} already exists`);
   }
 
-  settings.oauthClients.push(client);
-  saveSettings(settings);
-  return client;
+  return clientDao.create(client);
 };
 
 /**
  * Update an existing OAuth client
  */
-export const updateOAuthClient = (
+export const updateOAuthClient = async (
   clientId: string,
   updates: Partial<IOAuthClient>,
-): IOAuthClient | null => {
-  const settings = loadSettings();
-  if (!settings.oauthClients) {
-    return null;
-  }
-
-  const index = settings.oauthClients.findIndex((c) => c.clientId === clientId);
-  if (index === -1) {
-    return null;
-  }
-
-  settings.oauthClients[index] = { ...settings.oauthClients[index], ...updates };
-  saveSettings(settings);
-  return settings.oauthClients[index];
+): Promise<IOAuthClient | null> => {
+  const clientDao = getOAuthClientDao();
+  return clientDao.update(clientId, updates);
 };
 
 /**
  * Delete an OAuth client
  */
-export const deleteOAuthClient = (clientId: string): boolean => {
-  const settings = loadSettings();
-  if (!settings.oauthClients) {
-    return false;
-  }
-
-  const index = settings.oauthClients.findIndex((c) => c.clientId === clientId);
-  if (index === -1) {
-    return false;
-  }
-
-  settings.oauthClients.splice(index, 1);
-  saveSettings(settings);
-  return true;
+export const deleteOAuthClient = async (clientId: string): Promise<boolean> => {
+  const clientDao = getOAuthClientDao();
+  return clientDao.delete(clientId);
 };
 
 /**
@@ -163,11 +140,11 @@ export const revokeAuthorizationCode = (code: string): void => {
 /**
  * Save access token and optionally refresh token
  */
-export const saveToken = (
+export const saveToken = async (
   tokenData: Omit<IOAuthToken, 'accessToken' | 'accessTokenExpiresAt'>,
   accessTokenLifetime: number = 3600,
   refreshTokenLifetime?: number,
-): IOAuthToken => {
+): Promise<IOAuthToken> => {
   const accessToken = generateToken();
   const accessTokenExpiresAt = new Date(Date.now() + accessTokenLifetime * 1000);
 
@@ -187,30 +164,18 @@ export const saveToken = (
     ...tokenData,
   };
 
-  tokens.set(accessToken, token);
+  // Update cache
+  tokensCache.set(accessToken, token);
   if (refreshToken) {
-    tokens.set(refreshToken, token);
+    tokensCache.set(refreshToken, token);
   }
 
-  // Persist tokens to settings
+  // Persist to DAO
   try {
-    const settings = loadSettings();
-    const existing = settings.oauthTokens || [];
-    const filtered = existing.filter(
-      (t) => t.accessToken !== token.accessToken && t.refreshToken !== token.refreshToken,
-    );
-    const updated = [
-      ...filtered,
-      {
-        ...token,
-        accessTokenExpiresAt: token.accessTokenExpiresAt,
-        refreshTokenExpiresAt: token.refreshTokenExpiresAt,
-      },
-    ];
-    settings.oauthTokens = updated;
-    saveSettings(settings);
+    const tokenDao = getOAuthTokenDao();
+    await tokenDao.create(token);
   } catch (error) {
-    console.error('Failed to persist OAuth token to settings:', error);
+    console.error('Failed to persist OAuth token to DAO:', error);
   }
 
   return token;
@@ -219,8 +184,27 @@ export const saveToken = (
 /**
  * Get token by access token or refresh token
  */
-export const getToken = (token: string): IOAuthToken | undefined => {
-  const tokenData = tokens.get(token);
+export const getToken = async (token: string): Promise<IOAuthToken | undefined> => {
+  // First check cache
+  let tokenData = tokensCache.get(token);
+
+  // If not in cache, try DAO
+  if (!tokenData) {
+    const tokenDao = getOAuthTokenDao();
+    tokenData =
+      (await tokenDao.findByAccessToken(token)) ||
+      (await tokenDao.findByRefreshToken(token)) ||
+      undefined;
+
+    // Update cache if found
+    if (tokenData) {
+      tokensCache.set(tokenData.accessToken, tokenData);
+      if (tokenData.refreshToken) {
+        tokensCache.set(tokenData.refreshToken, tokenData);
+      }
+    }
+  }
+
   if (!tokenData) {
     return undefined;
   }
@@ -245,34 +229,28 @@ export const getToken = (token: string): IOAuthToken | undefined => {
 /**
  * Revoke token (both access and refresh tokens)
  */
-export const revokeToken = (token: string): void => {
-  const tokenData = tokens.get(token);
+export const revokeToken = async (token: string): Promise<void> => {
+  const tokenData = tokensCache.get(token);
   if (tokenData) {
-    tokens.delete(tokenData.accessToken);
+    tokensCache.delete(tokenData.accessToken);
     if (tokenData.refreshToken) {
-      tokens.delete(tokenData.refreshToken);
+      tokensCache.delete(tokenData.refreshToken);
     }
+  }
 
-    // Also remove from persisted settings
-    try {
-      const settings = loadSettings();
-      if (Array.isArray(settings.oauthTokens)) {
-        settings.oauthTokens = settings.oauthTokens.filter(
-          (t) =>
-            t.accessToken !== tokenData.accessToken && t.refreshToken !== tokenData.refreshToken,
-        );
-        saveSettings(settings);
-      }
-    } catch (error) {
-      console.error('Failed to remove OAuth token from settings:', error);
-    }
+  // Also remove from DAO
+  try {
+    const tokenDao = getOAuthTokenDao();
+    await tokenDao.revokeToken(token);
+  } catch (error) {
+    console.error('Failed to remove OAuth token from DAO:', error);
   }
 };
 
 /**
  * Clean up expired codes and tokens (should be called periodically)
  */
-export const cleanupExpired = (): void => {
+export const cleanupExpired = async (): Promise<void> => {
   const now = new Date();
 
   // Clean up expired authorization codes
@@ -282,9 +260,9 @@ export const cleanupExpired = (): void => {
     }
   }
 
-  // Clean up expired tokens
+  // Clean up expired tokens from cache
   const processedTokens = new Set<string>();
-  for (const [_key, token] of tokens.entries()) {
+  for (const [_key, token] of tokensCache.entries()) {
     // Skip if we've already processed this token
     if (processedTokens.has(token.accessToken)) {
       continue;
@@ -294,35 +272,19 @@ export const cleanupExpired = (): void => {
     const accessExpired = token.accessTokenExpiresAt < now;
     const refreshExpired = token.refreshTokenExpiresAt && token.refreshTokenExpiresAt < now;
 
-    // If both are expired, remove the token
+    // If both are expired, remove from cache
     if (accessExpired && (!token.refreshToken || refreshExpired)) {
-      tokens.delete(token.accessToken);
+      tokensCache.delete(token.accessToken);
       if (token.refreshToken) {
-        tokens.delete(token.refreshToken);
+        tokensCache.delete(token.refreshToken);
       }
     }
   }
 
-  // Sync persisted tokens: keep only non-expired ones
+  // Clean up expired tokens from DAO
   try {
-    const settings = loadSettings();
-    if (Array.isArray(settings.oauthTokens)) {
-      const validTokens: IOAuthToken[] = [];
-      for (const stored of settings.oauthTokens) {
-        const accessExpiresAt = new Date(stored.accessTokenExpiresAt);
-        const refreshExpiresAt = stored.refreshTokenExpiresAt
-          ? new Date(stored.refreshTokenExpiresAt)
-          : undefined;
-        const accessExpired = accessExpiresAt < now;
-        const refreshExpired = refreshExpiresAt && refreshExpiresAt < now;
-
-        if (!accessExpired || (stored.refreshToken && !refreshExpired)) {
-          validTokens.push(stored);
-        }
-      }
-      settings.oauthTokens = validTokens;
-      saveSettings(settings);
-    }
+    const tokenDao = getOAuthTokenDao();
+    await tokenDao.cleanupExpired();
   } catch (error) {
     console.error('Failed to cleanup persisted OAuth tokens:', error);
   }
@@ -331,7 +293,12 @@ export const cleanupExpired = (): void => {
 // Run cleanup every 5 minutes in production
 let cleanupIntervalId: NodeJS.Timeout | null = null;
 if (process.env.NODE_ENV !== 'test') {
-  cleanupIntervalId = setInterval(cleanupExpired, 5 * 60 * 1000);
+  cleanupIntervalId = setInterval(
+    () => {
+      cleanupExpired().catch(console.error);
+    },
+    5 * 60 * 1000,
+  );
   // Allow the interval to not keep the process alive
   cleanupIntervalId.unref();
 }

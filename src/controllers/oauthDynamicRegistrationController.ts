@@ -48,7 +48,7 @@ const verifyRegistrationToken = (token: string): string | null => {
  * RFC 7591 Dynamic Client Registration
  * Public endpoint for registering new OAuth clients
  */
-export const registerClient = (req: Request, res: Response): void => {
+export const registerClient = async (req: Request, res: Response): Promise<void> => {
   try {
     const settings = loadSettings();
     const oauthConfig = settings.systemConfig?.oauthServer;
@@ -183,7 +183,7 @@ export const registerClient = (req: Request, res: Response): void => {
       },
     };
 
-    const createdClient = createOAuthClient(client);
+    const createdClient = await createOAuthClient(client);
 
     // Build response according to RFC 7591
     const response: any = {
@@ -238,7 +238,7 @@ export const registerClient = (req: Request, res: Response): void => {
  * RFC 7591 Client Configuration Endpoint
  * Read client configuration
  */
-export const getClientConfiguration = (req: Request, res: Response): void => {
+export const getClientConfiguration = async (req: Request, res: Response): Promise<void> => {
   try {
     const { clientId } = req.params;
     const authHeader = req.headers.authorization;
@@ -262,7 +262,7 @@ export const getClientConfiguration = (req: Request, res: Response): void => {
       return;
     }
 
-    const client = findOAuthClientById(clientId);
+    const client = await findOAuthClientById(clientId);
     if (!client) {
       res.status(404).json({
         error: 'invalid_client',
@@ -311,7 +311,7 @@ export const getClientConfiguration = (req: Request, res: Response): void => {
  * RFC 7591 Client Update Endpoint
  * Update client configuration
  */
-export const updateClientConfiguration = (req: Request, res: Response): void => {
+export const updateClientConfiguration = async (req: Request, res: Response): Promise<void> => {
   try {
     const { clientId } = req.params;
     const authHeader = req.headers.authorization;
@@ -335,7 +335,7 @@ export const updateClientConfiguration = (req: Request, res: Response): void => 
       return;
     }
 
-    const client = findOAuthClientById(clientId);
+    const client = await findOAuthClientById(clientId);
     if (!client) {
       res.status(404).json({
         error: 'invalid_client',
@@ -443,7 +443,7 @@ export const updateClientConfiguration = (req: Request, res: Response): void => 
       };
     }
 
-    const updatedClient = updateOAuthClient(clientId, updates);
+    const updatedClient = await updateOAuthClient(clientId, updates);
 
     if (!updatedClient) {
       res.status(500).json({
@@ -495,7 +495,7 @@ export const updateClientConfiguration = (req: Request, res: Response): void => 
  * RFC 7591 Client Delete Endpoint
  * Delete client registration
  */
-export const deleteClientRegistration = (req: Request, res: Response): void => {
+export const deleteClientRegistration = async (req: Request, res: Response): Promise<void> => {
   try {
     const { clientId } = req.params;
     const authHeader = req.headers.authorization;
@@ -519,7 +519,7 @@ export const deleteClientRegistration = (req: Request, res: Response): void => {
       return;
     }
 
-    const deleted = deleteOAuthClient(clientId);
+    const deleted = await deleteOAuthClient(clientId);
 
     if (!deleted) {
       res.status(404).json({

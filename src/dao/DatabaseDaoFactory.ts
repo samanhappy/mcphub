@@ -1,9 +1,20 @@
-import { DaoFactory, UserDao, ServerDao, GroupDao, SystemConfigDao, UserConfigDao } from './index.js';
+import {
+  DaoFactory,
+  UserDao,
+  ServerDao,
+  GroupDao,
+  SystemConfigDao,
+  UserConfigDao,
+  OAuthClientDao,
+  OAuthTokenDao,
+} from './index.js';
 import { UserDaoDbImpl } from './UserDaoDbImpl.js';
 import { ServerDaoDbImpl } from './ServerDaoDbImpl.js';
 import { GroupDaoDbImpl } from './GroupDaoDbImpl.js';
 import { SystemConfigDaoDbImpl } from './SystemConfigDaoDbImpl.js';
 import { UserConfigDaoDbImpl } from './UserConfigDaoDbImpl.js';
+import { OAuthClientDaoDbImpl } from './OAuthClientDaoDbImpl.js';
+import { OAuthTokenDaoDbImpl } from './OAuthTokenDaoDbImpl.js';
 
 /**
  * Database-backed DAO factory implementation
@@ -16,6 +27,8 @@ export class DatabaseDaoFactory implements DaoFactory {
   private groupDao: GroupDao | null = null;
   private systemConfigDao: SystemConfigDao | null = null;
   private userConfigDao: UserConfigDao | null = null;
+  private oauthClientDao: OAuthClientDao | null = null;
+  private oauthTokenDao: OAuthTokenDao | null = null;
 
   /**
    * Get singleton instance
@@ -66,6 +79,20 @@ export class DatabaseDaoFactory implements DaoFactory {
     return this.userConfigDao!;
   }
 
+  getOAuthClientDao(): OAuthClientDao {
+    if (!this.oauthClientDao) {
+      this.oauthClientDao = new OAuthClientDaoDbImpl();
+    }
+    return this.oauthClientDao!;
+  }
+
+  getOAuthTokenDao(): OAuthTokenDao {
+    if (!this.oauthTokenDao) {
+      this.oauthTokenDao = new OAuthTokenDaoDbImpl();
+    }
+    return this.oauthTokenDao!;
+  }
+
   /**
    * Reset all cached DAO instances (useful for testing)
    */
@@ -75,5 +102,7 @@ export class DatabaseDaoFactory implements DaoFactory {
     this.groupDao = null;
     this.systemConfigDao = null;
     this.userConfigDao = null;
+    this.oauthClientDao = null;
+    this.oauthTokenDao = null;
   }
 }

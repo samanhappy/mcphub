@@ -11,7 +11,7 @@ export const resolveOAuthUserFromToken = async (token?: string): Promise<IUser |
     return null;
   }
 
-  const oauthToken = getOAuthStoredToken(token);
+  const oauthToken = await getOAuthStoredToken(token);
   if (!oauthToken || oauthToken.accessToken !== token) {
     return null;
   }
