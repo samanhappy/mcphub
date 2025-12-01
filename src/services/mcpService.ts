@@ -277,11 +277,7 @@ const callToolWithReconnect = async (
               version: '1.0.0',
             },
             {
-              capabilities: {
-                prompts: {},
-                resources: {},
-                tools: {},
-              },
+              capabilities: {},
             },
           );
 
@@ -463,11 +459,7 @@ export const initializeClientsFromSettings = async (
           version: '1.0.0',
         },
         {
-          capabilities: {
-            prompts: {},
-            resources: {},
-            tools: {},
-          },
+          capabilities: {},
         },
       );
 
