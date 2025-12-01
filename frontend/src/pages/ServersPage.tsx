@@ -21,6 +21,7 @@ const ServersPage: React.FC = () => {
     handleServerEdit,
     handleServerRemove,
     handleServerToggle,
+    handleServerReload,
     triggerRefresh
   } = useServerData({ refreshOnMount: true });
   const [editingServer, setEditingServer] = useState<Server | null>(null);
@@ -159,6 +160,7 @@ const ServersPage: React.FC = () => {
               onEdit={handleEditClick}
               onToggle={handleServerToggle}
               onRefresh={triggerRefresh}
+              onReload={handleServerReload}
             />
           ))}
         </div>

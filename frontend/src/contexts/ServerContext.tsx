@@ -30,6 +30,7 @@ interface ServerContextType {
   handleServerEdit: (server: Server) => Promise<any>;
   handleServerRemove: (serverName: string) => Promise<boolean>;
   handleServerToggle: (server: Server, enabled: boolean) => Promise<boolean>;
+  handleServerReload: (server: Server) => Promise<boolean>;
 }
 
 // Create Context
@@ -358,6 +359,30 @@ export const ServerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     [t],
   );
 
+  const handleServerReload = useCallback(
+    async (server: Server) => {
+      try {
+        const encodedServerName = encodeURIComponent(server.name);
+        const result = await apiPost(`/servers/${encodedServerName}/reload`, {});
+
+        if (!result || !result.success) {
+          console.error('Failed to reload server:', result);
+          setError(t('server.reloadError', { serverName: server.name }));
+          return false;
+        }
+
+        // Refresh server list after successful reload
+        triggerRefresh();
+        return true;
+      } catch (err) {
+        console.error('Error reloading server:', err);
+        setError(err instanceof Error ? err.message : String(err));
+        return false;
+      }
+    },
+    [t, triggerRefresh],
+  );
+
   const value: ServerContextType = {
     servers,
     error,
@@ -370,6 +395,7 @@ export const ServerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     handleServerEdit,
     handleServerRemove,
     handleServerToggle,
+    handleServerReload,
   };
 
   return <ServerContext.Provider value={value}>{children}</ServerContext.Provider>;

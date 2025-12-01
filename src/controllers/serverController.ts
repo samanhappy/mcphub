@@ -8,6 +8,7 @@ import {
   notifyToolChanged,
   syncToolEmbedding,
   toggleServerStatus,
+  reconnectServer,
 } from '../services/mcpService.js';
 import { loadSettings } from '../config/index.js';
 import { syncAllServerToolsEmbeddings } from '../services/vectorSearchService.js';
@@ -411,6 +412,32 @@ export const toggleServer = async (req: Request, res: Response): Promise<void> =
     res.status(500).json({
       success: false,
       message: 'Internal server error',
+    });
+  }
+};
+
+export const reloadServer = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { name } = req.params;
+    if (!name) {
+      res.status(400).json({
+        success: false,
+        message: 'Server name is required',
+      });
+      return;
+    }
+
+    await reconnectServer(name);
+
+    res.json({
+      success: true,
+      message: `Server ${name} reloaded successfully`,
+    });
+  } catch (error) {
+    console.error('Failed to reload server:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to reload server',
     });
   }
 };

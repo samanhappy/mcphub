@@ -15,14 +15,16 @@ interface ServerCardProps {
   onEdit: (server: Server) => void;
   onToggle?: (server: Server, enabled: boolean) => Promise<boolean>;
   onRefresh?: () => void;
+  onReload?: (server: Server) => Promise<boolean>;
 }
 
-const ServerCard = ({ server, onRemove, onEdit, onToggle, onRefresh }: ServerCardProps) => {
+const ServerCard = ({ server, onRemove, onEdit, onToggle, onRefresh, onReload }: ServerCardProps) => {
   const { t } = useTranslation();
   const { showToast } = useToast();
   const [isExpanded, setIsExpanded] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isToggling, setIsToggling] = useState(false);
+  const [isReloading, setIsReloading] = useState(false);
   const [showErrorPopover, setShowErrorPopover] = useState(false);
   const [copied, setCopied] = useState(false);
   const errorPopoverRef = useRef<HTMLDivElement>(null);
@@ -61,6 +63,26 @@ const ServerCard = ({ server, onRemove, onEdit, onToggle, onRefresh }: ServerCar
       await onToggle(server, !(server.enabled !== false));
     } finally {
       setIsToggling(false);
+    }
+  };
+
+  const handleReload = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (isReloading || !onReload) return;
+
+    setIsReloading(true);
+    try {
+      const success = await onReload(server);
+      if (success) {
+        showToast(t('server.reloadSuccess') || 'Server reloaded successfully', 'success');
+      } else {
+        showToast(
+          t('server.reloadError', { serverName: server.name }) || 'Failed to reload server',
+          'error',
+        );
+      }
+    } finally {
+      setIsReloading(false);
     }
   };
 
@@ -330,7 +352,7 @@ const ServerCard = ({ server, onRemove, onEdit, onToggle, onRefresh }: ServerCar
                       ? 'bg-green-100 text-green-800 hover:bg-green-200 btn-secondary'
                       : 'bg-gray-100 text-gray-800 hover:bg-gray-200 btn-primary'
                 }`}
-                disabled={isToggling}
+                disabled={isToggling || isReloading}
               >
                 {isToggling
                   ? t('common.processing')
@@ -339,6 +361,15 @@ const ServerCard = ({ server, onRemove, onEdit, onToggle, onRefresh }: ServerCar
                     : t('server.enable')}
               </button>
             </div>
+            {server.enabled !== false && onReload && (
+              <button
+                onClick={handleReload}
+                className="px-3 py-1 bg-purple-100 text-purple-800 rounded hover:bg-purple-200 text-sm btn-secondary disabled:opacity-70 disabled:cursor-not-allowed"
+                disabled={isReloading || isToggling}
+              >
+                {isReloading ? t('common.processing') : t('server.reload')}
+              </button>
+            )}
             <button
               onClick={handleRemove}
               className="px-3 py-1 bg-red-100 text-red-800 rounded hover:bg-red-200 text-sm btn-danger"
