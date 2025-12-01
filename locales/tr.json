@@ -536,7 +536,9 @@
     "description": "Açıklama",
     "messages": "Mesajlar",
     "noDescription": "Kullanılabilir açıklama yok",
-    "runPromptWithName": "İsteği Getir: {{name}}"
+    "runPromptWithName": "İsteği Getir: {{name}}",
+    "descriptionUpdateSuccess": "İstek açıklaması başarıyla güncellendi",
+    "descriptionUpdateFailed": "İstek açıklaması güncellenemedi"
   },
   "settings": {
     "enableGlobalRoute": "Global Yönlendirmeyi Etkinleştir",

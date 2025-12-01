@@ -536,7 +536,9 @@
     "description": "Description",
     "messages": "Messages",
     "noDescription": "Aucune description disponible",
-    "runPromptWithName": "Obtenir l'invite : {{name}}"
+    "runPromptWithName": "Obtenir l'invite : {{name}}",
+    "descriptionUpdateSuccess": "Description de l'invite mise à jour avec succès",
+    "descriptionUpdateFailed": "Échec de la mise à jour de la description de l'invite"
   },
   "settings": {
     "enableGlobalRoute": "Activer la route globale",

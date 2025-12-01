@@ -537,7 +537,9 @@
     "description": "描述",
     "messages": "消息",
     "noDescription": "无描述信息",
-    "runPromptWithName": "获取提示词: {{name}}"
+    "runPromptWithName": "获取提示词: {{name}}",
+    "descriptionUpdateSuccess": "提示词描述更新成功",
+    "descriptionUpdateFailed": "更新提示词描述失败"
   },
   "settings": {
     "enableGlobalRoute": "启用全局路由",

@@ -536,7 +536,9 @@
     "description": "Description",
     "messages": "Messages",
     "noDescription": "No description available",
-    "runPromptWithName": "Get Prompt: {{name}}"
+    "runPromptWithName": "Get Prompt: {{name}}",
+    "descriptionUpdateSuccess": "Prompt description updated successfully",
+    "descriptionUpdateFailed": "Failed to update prompt description"
   },
   "settings": {
     "enableGlobalRoute": "Enable Global Route",
