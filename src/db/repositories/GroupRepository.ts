@@ -16,7 +16,7 @@ export class GroupRepository {
    * Find all groups
    */
   async findAll(): Promise<Group[]> {
-    return await this.repository.find();
+    return await this.repository.find({ order: { createdAt: 'ASC' } });
   }
 
   /**
@@ -88,7 +88,7 @@ export class GroupRepository {
    * Find groups by owner
    */
   async findByOwner(owner: string): Promise<Group[]> {
-    return await this.repository.find({ where: { owner } });
+    return await this.repository.find({ where: { owner }, order: { createdAt: 'ASC' } });
   }
 }
 

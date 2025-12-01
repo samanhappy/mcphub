@@ -16,7 +16,7 @@ export class UserRepository {
    * Find all users
    */
   async findAll(): Promise<User[]> {
-    return await this.repository.find();
+    return await this.repository.find({ order: { createdAt: 'ASC' } });
   }
 
   /**
@@ -73,7 +73,7 @@ export class UserRepository {
    * Find all admin users
    */
   async findAdmins(): Promise<User[]> {
-    return await this.repository.find({ where: { isAdmin: true } });
+    return await this.repository.find({ where: { isAdmin: true }, order: { createdAt: 'ASC' } });
   }
 }
 

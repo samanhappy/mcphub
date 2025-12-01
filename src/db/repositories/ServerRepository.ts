@@ -16,7 +16,7 @@ export class ServerRepository {
    * Find all servers
    */
   async findAll(): Promise<Server[]> {
-    return await this.repository.find();
+    return await this.repository.find({ order: { createdAt: 'ASC' } });
   }
 
   /**
@@ -73,14 +73,14 @@ export class ServerRepository {
    * Find servers by owner
    */
   async findByOwner(owner: string): Promise<Server[]> {
-    return await this.repository.find({ where: { owner } });
+    return await this.repository.find({ where: { owner }, order: { createdAt: 'ASC' } });
   }
 
   /**
    * Find enabled servers
    */
   async findEnabled(): Promise<Server[]> {
-    return await this.repository.find({ where: { enabled: true } });
+    return await this.repository.find({ where: { enabled: true }, order: { createdAt: 'ASC' } });
   }
 
   /**
