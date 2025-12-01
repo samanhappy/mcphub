@@ -107,6 +107,41 @@ describe('ConfigController - getMcpSettingsJson', () => {
         message: "Server 'non-existent-server' not found",
       });
     });
+
+    it('should remove null values from server configuration', async () => {
+      const serverConfig = {
+        name: 'test-server',
+        command: 'test',
+        args: ['--test'],
+        url: null,
+        env: null,
+        headers: null,
+        options: {
+          timeout: 30,
+          retries: null,
+        },
+      };
+
+      mockRequest.query = { serverName: 'test-server' };
+      mockServerDao.findById.mockResolvedValue(serverConfig);
+
+      await getMcpSettingsJson(mockRequest as Request, mockResponse as Response);
+
+      expect(mockJson).toHaveBeenCalledWith({
+        success: true,
+        data: {
+          mcpServers: {
+            'test-server': {
+              command: 'test',
+              args: ['--test'],
+              options: {
+                timeout: 30,
+              },
+            },
+          },
+        },
+      });
+    });
   });
 
   describe('Error Handling', () => {

@@ -75,6 +75,28 @@ export const getPublicConfig = (req: Request, res: Response): void => {
 };
 
 /**
+ * Recursively remove null values from an object
+ */
+const removeNullValues = <T>(obj: T): T => {
+  if (obj === null || obj === undefined) {
+    return obj;
+  }
+  if (Array.isArray(obj)) {
+    return obj.map((item) => removeNullValues(item)) as T;
+  }
+  if (typeof obj === 'object') {
+    const result: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(obj)) {
+      if (value !== null) {
+        result[key] = removeNullValues(value);
+      }
+    }
+    return result as T;
+  }
+  return obj;
+};
+
+/**
  * Get MCP settings in JSON format for export/copy
  * Supports both full settings and individual server configuration
  */
@@ -95,11 +117,13 @@ export const getMcpSettingsJson = async (req: Request, res: Response): Promise<v
 
       // Remove the 'name' field from config as it's used as the key
       const { name, ...configWithoutName } = serverConfig;
+      // Remove null values from the config
+      const cleanedConfig = removeNullValues(configWithoutName);
       res.json({
         success: true,
         data: {
           mcpServers: {
-            [name]: configWithoutName,
+            [name]: cleanedConfig,
           },
         },
       });
