@@ -44,7 +44,7 @@ importers:
         version: 6.0.0
       bcryptjs:
         specifier: ^3.0.2
-        version: 3.0.2
+        version: 3.0.3
       cors:
         specifier: ^2.8.5
         version: 2.8.5
@@ -2208,8 +2208,8 @@ packages:
     resolution: {integrity: sha512-cU8v/EGSrnH+HnxV2z0J7/blxH8gq7Xh2JFT6Aroax7UohdmiJJlxApMxtKfuI7z68NvvVcmR78k2LbT6efhRg==}
     engines: {node: '>= 18'}
 
-  bcryptjs@3.0.2:
-    resolution: {integrity: sha512-k38b3XOZKv60C4E2hVsXTolJWfkGRMbILBIe2IBITXciy5bOsTKot5kDrf3ZfufQtQOUN5mXceUEpU1rTl9Uog==}
+  bcryptjs@3.0.3:
+    resolution: {integrity: sha512-GlF5wPWnSa/X5LKM1o0wz0suXIINz1iHRLvTS+sLyi7XPbe5ycmYI3DlZqVGZZtDgl4DmasFg7gOB3JYbphV5g==}
     hasBin: true
 
   binary-extensions@2.3.0:
@@ -6159,7 +6159,7 @@ snapshots:
 
   '@types/bcryptjs@3.0.0':
     dependencies:
-      bcryptjs: 3.0.2
+      bcryptjs: 3.0.3
 
   '@types/body-parser@1.19.6':
     dependencies:
@@ -6645,7 +6645,7 @@ snapshots:
       node-addon-api: 8.5.0
       node-gyp-build: 4.8.4
 
-  bcryptjs@3.0.2: {}
+  bcryptjs@3.0.3: {}
 
   binary-extensions@2.3.0: {}
 
