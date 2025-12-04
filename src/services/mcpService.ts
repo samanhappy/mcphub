@@ -956,23 +956,14 @@ Available servers: ${serversList}`,
   for (const serverInfo of filteredServerInfos) {
     if (serverInfo.tools && serverInfo.tools.length > 0) {
       // Filter tools based on server configuration
-      let enabledTools = await filterToolsByConfig(serverInfo.name, serverInfo.tools);
+      let tools = await filterToolsByConfig(serverInfo.name, serverInfo.tools);
 
       // If this is a group request, apply group-level tool filtering
-      if (group) {
-        const serverConfig = await getServerConfigInGroup(group, serverInfo.name);
-        if (serverConfig && serverConfig.tools !== 'all' && Array.isArray(serverConfig.tools)) {
-          // Filter tools based on group configuration
-          const allowedToolNames = serverConfig.tools.map(
-            (toolName: string) => `${serverInfo.name}${getNameSeparator()}${toolName}`,
-          );
-          enabledTools = enabledTools.filter((tool) => allowedToolNames.includes(tool.name));
-        }
-      }
+      tools = await filterToolsByGroup(group, serverInfo.name, tools);
 
       // Apply custom descriptions from server configuration
       const serverConfig = await getServerDao().findById(serverInfo.name);
-      const toolsWithCustomDescriptions = enabledTools.map((tool) => {
+      const toolsWithCustomDescriptions = tools.map((tool) => {
         const toolConfig = serverConfig?.tools?.[tool.name];
         return {
           ...tool,
@@ -1019,12 +1010,15 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
 
       // Determine server filtering based on group
       const sessionId = extra.sessionId || '';
-      const group = getGroup(sessionId);
+      let group = getGroup(sessionId);
       let servers: string[] | undefined = undefined; // No server filtering by default
 
       // If group is in format $smart/{group}, filter servers to that group
       if (group?.startsWith('$smart/')) {
         const targetGroup = group.substring(7);
+        if (targetGroup) {
+          group = targetGroup;
+        }
         const serversInGroup = await getServersInGroup(targetGroup);
         if (serversInGroup !== undefined && serversInGroup !== null) {
           servers = serversInGroup;
@@ -1056,8 +1050,8 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
             const actualTool = server.tools.find((tool) => tool.name === result.toolName);
             if (actualTool) {
               // Check if the tool is enabled in configuration
-              const enabledTools = await filterToolsByConfig(server.name, [actualTool]);
-              if (enabledTools.length > 0) {
+              const tools = await filterToolsByConfig(server.name, [actualTool]);
+              if (tools.length > 0) {
                 // Apply custom description from configuration
                 const serverConfig = await getServerDao().findById(server.name);
                 const toolConfig = serverConfig?.tools?.[actualTool.name];
@@ -1083,19 +1077,24 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
       );
 
       // Now filter the resolved tools
-      const tools = await Promise.all(
-        resolvedTools.filter(async (tool) => {
-          // Additional filter to remove tools that are disabled
+      const filterResults = await Promise.all(
+        resolvedTools.map(async (tool) => {
           if (tool.name) {
             const serverName = tool.serverName;
             if (serverName) {
-              const enabledTools = await filterToolsByConfig(serverName, [tool as Tool]);
-              return enabledTools.length > 0;
+              let tools = await filterToolsByConfig(serverName, [tool as Tool]);
+              if (tools.length === 0) {
+                return false;
+              }
+
+              tools = await filterToolsByGroup(group, serverName, tools);
+              return tools.length > 0;
             }
           }
-          return true; // Keep fallback results
+          return true;
         }),
       );
+      const tools = resolvedTools.filter((_, i) => filterResults[i]);
 
       // Add usage guidance to the response
       const response = {
@@ -1487,3 +1486,18 @@ export const createMcpServer = (name: string, version: string, group?: string): 
   server.setRequestHandler(ListPromptsRequestSchema, handleListPromptsRequest);
   return server;
 };
+
+// Filter tools based on group configuration
+async function filterToolsByGroup(group: string, serverName: string, tools: Tool[]) {
+  if (group) {
+    const serverConfig = await getServerConfigInGroup(group, serverName);
+    if (serverConfig && serverConfig.tools !== 'all' && Array.isArray(serverConfig.tools)) {
+      // Filter tools based on group configuration
+      const allowedToolNames = serverConfig.tools.map(
+        (toolName: string) => `${serverName}${getNameSeparator()}${toolName}`,
+      );
+      tools = tools.filter((tool) => allowedToolNames.includes(tool.name));
+    }
+  }
+  return tools;
+}
