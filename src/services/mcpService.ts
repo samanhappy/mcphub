@@ -1488,7 +1488,7 @@ export const createMcpServer = (name: string, version: string, group?: string): 
 };
 
 // Filter tools based on group configuration
-async function filterToolsByGroup(group: string, serverName: string, tools: Tool[]) {
+async function filterToolsByGroup(group: string | undefined, serverName: string, tools: Tool[]) {
   if (group) {
     const serverConfig = await getServerConfigInGroup(group, serverName);
     if (serverConfig && serverConfig.tools !== 'all' && Array.isArray(serverConfig.tools)) {
