@@ -42,7 +42,7 @@ function convertToolSchemaToOpenAPI(tool: Tool): {
       (prop: any) =>
         prop.type === 'object' ||
         prop.type === 'array' ||
-        (prop.type === 'string' && prop.enum && prop.enum.length > 10),
+        prop.type === 'string',
     );
 
     if (!hasComplexTypes && Object.keys(properties).length <= 10) {
@@ -93,7 +93,7 @@ function generateOperationFromTool(tool: Tool, serverName: string): OpenAPIV3.Op
   const operation: OpenAPIV3.OperationObject = {
     summary: tool.description || `Execute ${tool.name} tool`,
     description: tool.description || `Execute the ${tool.name} tool from ${serverName} server`,
-    operationId: `${serverName}_${tool.name}`,
+    operationId: `${tool.name}`,
     tags: [serverName],
     ...(parameters && parameters.length > 0 && { parameters }),
     ...(requestBody && { requestBody }),
