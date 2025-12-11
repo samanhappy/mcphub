@@ -209,10 +209,10 @@ const DynamicForm: React.FC<DynamicFormProps> = ({ schema, onSubmit, onCancel, l
       if (schema.type === 'object' && schema.properties) {
         Object.entries(schema.properties).forEach(([key, propSchema]) => {
           const fullPath = path ? `${path}.${key}` : key;
-          const value = getNestedValue(values, fullPath);
+          const value = values?.[key];
 
           // Check required fields
-          if (schema.required?.includes(key) && (value === undefined || value === null || value === '')) {
+          if (schema.required?.includes(key) && (value === undefined || value === null || value === '' || (Array.isArray(value) && value.length === 0))) {
             newErrors[fullPath] = `${key} is required`;
             return;
           }
