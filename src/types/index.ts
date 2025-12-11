@@ -420,3 +420,23 @@ export interface AddServerRequest {
   name: string; // Name of the server to add
   config: ServerConfig; // Configuration details for the server
 }
+
+// Request payload for batch creating servers
+export interface BatchCreateServersRequest {
+  servers: AddServerRequest[]; // Array of servers to create
+}
+
+// Result for a single server in batch operation
+export interface BatchServerResult {
+  name: string; // Server name
+  success: boolean; // Whether the operation succeeded
+  message?: string; // Error message if failed
+}
+
+// Response for batch create servers operation
+export interface BatchCreateServersResponse {
+  success: boolean; // Overall operation success (true if at least one server succeeded)
+  successCount: number; // Number of servers successfully created
+  failureCount: number; // Number of servers that failed
+  results: BatchServerResult[]; // Detailed results for each server
+}

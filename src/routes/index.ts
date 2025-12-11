@@ -6,6 +6,7 @@ import {
   getAllSettings,
   getServerConfig,
   createServer,
+  batchCreateServers,
   updateServer,
   deleteServer,
   toggleServer,
@@ -134,6 +135,7 @@ export const initRoutes = (app: express.Application): void => {
   router.get('/servers/:name', getServerConfig);
   router.get('/settings', getAllSettings);
   router.post('/servers', createServer);
+  router.post('/servers/batch', batchCreateServers);
   router.put('/servers/:name', updateServer);
   router.delete('/servers/:name', deleteServer);
   router.post('/servers/:name/toggle', toggleServer);

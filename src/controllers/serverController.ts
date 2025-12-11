@@ -1,5 +1,13 @@
 import { Request, Response } from 'express';
-import { ApiResponse, AddServerRequest, McpSettings } from '../types/index.js';
+import {
+  ApiResponse,
+  AddServerRequest,
+  McpSettings,
+  BatchCreateServersRequest,
+  BatchCreateServersResponse,
+  BatchServerResult,
+  ServerConfig,
+} from '../types/index.js';
 import {
   getServersInfo,
   addServer,
@@ -182,6 +190,177 @@ export const createServer = async (req: Request, res: Response): Promise<void> =
       });
     }
   } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+    });
+  }
+};
+
+// Batch create servers - validates and creates multiple servers in one request
+export const batchCreateServers = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { servers } = req.body as BatchCreateServersRequest;
+
+    // Validate request body
+    if (!servers || !Array.isArray(servers)) {
+      res.status(400).json({
+        success: false,
+        message: 'Request body must contain a "servers" array',
+      });
+      return;
+    }
+
+    if (servers.length === 0) {
+      res.status(400).json({
+        success: false,
+        message: 'Servers array cannot be empty',
+      });
+      return;
+    }
+
+    // Helper function to validate a single server configuration
+    const validateServerConfig = (
+      name: string,
+      config: ServerConfig,
+    ): { valid: boolean; message?: string } => {
+      if (!name || typeof name !== 'string') {
+        return { valid: false, message: 'Server name is required and must be a string' };
+      }
+
+      if (!config || typeof config !== 'object') {
+        return { valid: false, message: 'Server configuration is required and must be an object' };
+      }
+
+      if (
+        !config.url &&
+        !config.openapi?.url &&
+        !config.openapi?.schema &&
+        (!config.command || !config.args)
+      ) {
+        return {
+          valid: false,
+          message:
+            'Server configuration must include either a URL, OpenAPI specification URL or schema, or command with arguments',
+        };
+      }
+
+      // Validate server type if specified
+      if (config.type && !['stdio', 'sse', 'streamable-http', 'openapi'].includes(config.type)) {
+        return {
+          valid: false,
+          message: 'Server type must be one of: stdio, sse, streamable-http, openapi',
+        };
+      }
+
+      // Validate URL is provided for sse and streamable-http types
+      if ((config.type === 'sse' || config.type === 'streamable-http') && !config.url) {
+        return { valid: false, message: `URL is required for ${config.type} server type` };
+      }
+
+      // Validate OpenAPI specification URL or schema is provided for openapi type
+      if (config.type === 'openapi' && !config.openapi?.url && !config.openapi?.schema) {
+        return {
+          valid: false,
+          message: 'OpenAPI specification URL or schema is required for openapi server type',
+        };
+      }
+
+      // Validate headers if provided
+      if (config.headers && typeof config.headers !== 'object') {
+        return { valid: false, message: 'Headers must be an object' };
+      }
+
+      // Validate that headers are only used with sse, streamable-http, and openapi types
+      if (config.headers && config.type === 'stdio') {
+        return { valid: false, message: 'Headers are not supported for stdio server type' };
+      }
+
+      return { valid: true };
+    };
+
+    // Process each server
+    const results: BatchServerResult[] = [];
+    let successCount = 0;
+    let failureCount = 0;
+
+    // Get current user for owner field
+    const currentUser = (req as any).user;
+    const defaultOwner = currentUser?.username || 'admin';
+
+    for (const server of servers) {
+      const { name, config } = server;
+
+      // Validate server configuration
+      const validation = validateServerConfig(name, config);
+      if (!validation.valid) {
+        results.push({
+          name: name || 'unknown',
+          success: false,
+          message: validation.message,
+        });
+        failureCount++;
+        continue;
+      }
+
+      try {
+        // Set default keep-alive interval for SSE servers if not specified
+        if ((config.type === 'sse' || (!config.type && config.url)) && !config.keepAliveInterval) {
+          config.keepAliveInterval = 60000; // Default 60 seconds for SSE servers
+        }
+
+        // Set owner property if not provided
+        if (!config.owner) {
+          config.owner = defaultOwner;
+        }
+
+        // Attempt to add server
+        const result = await addServer(name, config);
+        if (result.success) {
+          results.push({
+            name,
+            success: true,
+          });
+          successCount++;
+        } else {
+          results.push({
+            name,
+            success: false,
+            message: result.message || 'Failed to add server',
+          });
+          failureCount++;
+        }
+      } catch (error) {
+        results.push({
+          name,
+          success: false,
+          message: error instanceof Error ? error.message : 'Internal server error',
+        });
+        failureCount++;
+      }
+    }
+
+    // Notify tool changes if any server was added successfully
+    if (successCount > 0) {
+      notifyToolChanged();
+    }
+
+    // Prepare response
+    const response: ApiResponse<BatchCreateServersResponse> = {
+      success: successCount > 0, // Success if at least one server was created
+      data: {
+        success: successCount > 0,
+        successCount,
+        failureCount,
+        results,
+      },
+    };
+
+    // Return 207 Multi-Status if there were partial failures, 200 if all succeeded, 400 if all failed
+    const statusCode = failureCount === 0 ? 200 : successCount === 0 ? 400 : 207;
+    res.status(statusCode).json(response);
+  } catch (error) {
+    console.error('Batch create servers error:', error);
     res.status(500).json({
       success: false,
       message: 'Internal server error',
