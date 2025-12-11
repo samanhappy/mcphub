@@ -59,6 +59,9 @@ export class Server {
   @Column({ type: 'simple-json', nullable: true })
   oauth?: Record<string, any>;
 
+  @Column({ type: 'simple-json', nullable: true })
+  openapi?: Record<string, any>;
+
   @CreateDateColumn({ name: 'created_at', type: 'timestamp' })
   createdAt: Date;
 
