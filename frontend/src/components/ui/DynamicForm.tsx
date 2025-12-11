@@ -21,7 +21,14 @@ interface DynamicFormProps {
   title?: string; // Optional title to display instead of default parameters title
 }
 
-const DynamicForm: React.FC<DynamicFormProps> = ({ schema, onSubmit, onCancel, loading = false, storageKey, title }) => {
+const DynamicForm: React.FC<DynamicFormProps> = ({
+  schema,
+  onSubmit,
+  onCancel,
+  loading = false,
+  storageKey,
+  title,
+}) => {
   const { t } = useTranslation();
   const [formValues, setFormValues] = useState<Record<string, any>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -40,9 +47,14 @@ const DynamicForm: React.FC<DynamicFormProps> = ({ schema, onSubmit, onCancel, l
             description: obj.description,
             enum: obj.enum,
             default: obj.default,
-            properties: obj.properties ? Object.fromEntries(
-              Object.entries(obj.properties).map(([key, value]) => [key, convertProperty(value)])
-            ) : undefined,
+            properties: obj.properties
+              ? Object.fromEntries(
+                  Object.entries(obj.properties).map(([key, value]) => [
+                    key,
+                    convertProperty(value),
+                  ]),
+                )
+              : undefined,
             required: obj.required,
             items: obj.items ? convertProperty(obj.items) : undefined,
           };
@@ -52,9 +64,14 @@ const DynamicForm: React.FC<DynamicFormProps> = ({ schema, onSubmit, onCancel, l
 
       return {
         type: schema.type,
-        properties: schema.properties ? Object.fromEntries(
-          Object.entries(schema.properties).map(([key, value]) => [key, convertProperty(value)])
-        ) : undefined,
+        properties: schema.properties
+          ? Object.fromEntries(
+              Object.entries(schema.properties).map(([key, value]) => [
+                key,
+                convertProperty(value),
+              ]),
+            )
+          : undefined,
         required: schema.required,
       };
     };
@@ -167,7 +184,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({ schema, onSubmit, onCancel, l
   };
 
   const handleInputChange = (path: string, value: any) => {
-    setFormValues(prev => {
+    setFormValues((prev) => {
       const newValues = { ...prev };
       const keys = path.split('.');
       let current = newValues;
@@ -195,7 +212,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({ schema, onSubmit, onCancel, l
 
     // Clear error for this field
     if (errors[path]) {
-      setErrors(prev => {
+      setErrors((prev) => {
         const newErrors = { ...prev };
         delete newErrors[path];
         return newErrors;
@@ -212,7 +229,13 @@ const DynamicForm: React.FC<DynamicFormProps> = ({ schema, onSubmit, onCancel, l
           const value = values?.[key];
 
           // Check required fields
-          if (schema.required?.includes(key) && (value === undefined || value === null || value === '' || (Array.isArray(value) && value.length === 0))) {
+          if (
+            schema.required?.includes(key) &&
+            (value === undefined ||
+              value === null ||
+              value === '' ||
+              (Array.isArray(value) && value.length === 0))
+          ) {
             newErrors[fullPath] = `${key} is required`;
             return;
           }
@@ -223,7 +246,10 @@ const DynamicForm: React.FC<DynamicFormProps> = ({ schema, onSubmit, onCancel, l
               newErrors[fullPath] = `${key} must be a string`;
             } else if (propSchema.type === 'number' && typeof value !== 'number') {
               newErrors[fullPath] = `${key} must be a number`;
-            } else if (propSchema.type === 'integer' && (!Number.isInteger(value) || typeof value !== 'number')) {
+            } else if (
+              propSchema.type === 'integer' &&
+              (!Number.isInteger(value) || typeof value !== 'number')
+            ) {
               newErrors[fullPath] = `${key} must be an integer`;
             } else if (propSchema.type === 'boolean' && typeof value !== 'boolean') {
               newErrors[fullPath] = `${key} must be a boolean`;
@@ -260,7 +286,12 @@ const DynamicForm: React.FC<DynamicFormProps> = ({ schema, onSubmit, onCancel, l
     return path.split('.').reduce((current, key) => current?.[key], obj);
   };
 
-  const renderObjectField = (key: string, schema: JsonSchema, currentValue: any, onChange: (value: any) => void): React.ReactNode => {
+  const renderObjectField = (
+    key: string,
+    schema: JsonSchema,
+    currentValue: any,
+    onChange: (value: any) => void,
+  ): React.ReactNode => {
     const value = currentValue?.[key];
 
     if (schema.type === 'string') {
@@ -299,7 +330,12 @@ const DynamicForm: React.FC<DynamicFormProps> = ({ schema, onSubmit, onCancel, l
           step={schema.type === 'integer' ? '1' : 'any'}
           value={value ?? ''}
           onChange={(e) => {
-            const val = e.target.value === '' ? '' : schema.type === 'integer' ? parseInt(e.target.value) : parseFloat(e.target.value);
+            const val =
+              e.target.value === ''
+                ? ''
+                : schema.type === 'integer'
+                  ? parseInt(e.target.value)
+                  : parseFloat(e.target.value);
             onChange(val);
           }}
           className="w-full border rounded-md px-2 py-1 text-sm border-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-500 form-input"
@@ -333,7 +369,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({ schema, onSubmit, onCancel, l
   const renderField = (key: string, propSchema: JsonSchema, path: string = ''): React.ReactNode => {
     const fullPath = path ? `${path}.${key}` : key;
     const value = getNestedValue(formValues, fullPath);
-    const error = errors[fullPath];    // Handle array type
+    const error = errors[fullPath]; // Handle array type
     if (propSchema.type === 'array') {
       const arrayValue = getNestedValue(formValues, fullPath) || [];
 
@@ -341,7 +377,11 @@ const DynamicForm: React.FC<DynamicFormProps> = ({ schema, onSubmit, onCancel, l
         <div key={fullPath} className="mb-6">
           <label className="block text-sm font-medium text-gray-700 mb-1">
             {key}
-            {(path ? getNestedValue(jsonSchema, path)?.required?.includes(key) : jsonSchema.required?.includes(key)) && <span className="text-status-red ml-1">*</span>}
+            {(path
+              ? getNestedValue(jsonSchema, path)?.required?.includes(key)
+              : jsonSchema.required?.includes(key)) && (
+              <span className="text-status-red ml-1">*</span>
+            )}
           </label>
           {propSchema.description && (
             <p className="text-xs text-gray-500 mb-2">{propSchema.description}</p>
@@ -349,9 +389,11 @@ const DynamicForm: React.FC<DynamicFormProps> = ({ schema, onSubmit, onCancel, l
 
           <div className="border border-gray-200 rounded-md p-3 bg-gray-50">
             {arrayValue.map((item: any, index: number) => (
-              <div key={index} className="mb-3 p-3 bg-white border rounded-md">
+              <div key={index} className="mb-3 p-3 bg-white border border-gray-200 rounded-md">
                 <div className="flex justify-between items-center mb-2">
-                  <span className="text-sm font-medium text-gray-600">{t('tool.item', { index: index + 1 })}</span>
+                  <span className="text-sm font-medium text-gray-600">
+                    {t('tool.item', { index: index + 1 })}
+                  </span>
                   <button
                     type="button"
                     onClick={() => {
@@ -388,7 +430,9 @@ const DynamicForm: React.FC<DynamicFormProps> = ({ schema, onSubmit, onCancel, l
                       <div key={objKey}>
                         <label className="block text-xs font-medium text-gray-600 mb-1">
                           {objKey}
-                          {propSchema.items?.required?.includes(objKey) && <span className="text-status-red ml-1">*</span>}
+                          {propSchema.items?.required?.includes(objKey) && (
+                            <span className="text-status-red ml-1">*</span>
+                          )}
                         </label>
                         {renderObjectField(objKey, objSchema as JsonSchema, item, (newValue) => {
                           const newArray = [...arrayValue];
@@ -429,7 +473,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({ schema, onSubmit, onCancel, l
           {error && <p className="text-status-red text-xs mt-1">{error}</p>}
         </div>
       );
-    }    // Handle object type
+    } // Handle object type
     if (propSchema.type === 'object') {
       if (propSchema.properties) {
         // Object with defined properties - render as nested form
@@ -437,16 +481,20 @@ const DynamicForm: React.FC<DynamicFormProps> = ({ schema, onSubmit, onCancel, l
           <div key={fullPath} className="mb-6">
             <label className="block text-sm font-medium text-gray-700 mb-1">
               {key}
-              {(path ? getNestedValue(jsonSchema, path)?.required?.includes(key) : jsonSchema.required?.includes(key)) && <span className="text-status-red ml-1">*</span>}
+              {(path
+                ? getNestedValue(jsonSchema, path)?.required?.includes(key)
+                : jsonSchema.required?.includes(key)) && (
+                <span className="text-status-red ml-1">*</span>
+              )}
             </label>
             {propSchema.description && (
               <p className="text-xs text-gray-500 mb-2">{propSchema.description}</p>
             )}
 
             <div className="border border-gray-200 rounded-md p-4 bg-gray-50">
-              {Object.entries(propSchema.properties).map(([objKey, objSchema]) => (
-                renderField(objKey, objSchema as JsonSchema, fullPath)
-              ))}
+              {Object.entries(propSchema.properties).map(([objKey, objSchema]) =>
+                renderField(objKey, objSchema as JsonSchema, fullPath),
+              )}
             </div>
 
             {error && <p className="text-status-red text-xs mt-1">{error}</p>}
@@ -458,7 +506,11 @@ const DynamicForm: React.FC<DynamicFormProps> = ({ schema, onSubmit, onCancel, l
           <div key={fullPath} className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-1">
               {key}
-              {(path ? getNestedValue(jsonSchema, path)?.required?.includes(key) : jsonSchema.required?.includes(key)) && <span className="text-status-red ml-1">*</span>}
+              {(path
+                ? getNestedValue(jsonSchema, path)?.required?.includes(key)
+                : jsonSchema.required?.includes(key)) && (
+                <span className="text-status-red ml-1">*</span>
+              )}
               <span className="text-xs text-gray-500 ml-1">(JSON object)</span>
             </label>
             {propSchema.description && (
@@ -483,13 +535,16 @@ const DynamicForm: React.FC<DynamicFormProps> = ({ schema, onSubmit, onCancel, l
           </div>
         );
       }
-    } if (propSchema.type === 'string') {
+    }
+    if (propSchema.type === 'string') {
       if (propSchema.enum) {
         return (
           <div key={fullPath} className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-1">
               {key}
-              {(path ? false : jsonSchema.required?.includes(key)) && <span className="text-status-red ml-1">*</span>}
+              {(path ? false : jsonSchema.required?.includes(key)) && (
+                <span className="text-status-red ml-1">*</span>
+              )}
             </label>
             {propSchema.description && (
               <p className="text-xs text-gray-500 mb-2">{propSchema.description}</p>
@@ -514,7 +569,9 @@ const DynamicForm: React.FC<DynamicFormProps> = ({ schema, onSubmit, onCancel, l
           <div key={fullPath} className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-1">
               {key}
-              {(path ? false : jsonSchema.required?.includes(key)) && <span className="text-status-red ml-1">*</span>}
+              {(path ? false : jsonSchema.required?.includes(key)) && (
+                <span className="text-status-red ml-1">*</span>
+              )}
             </label>
             {propSchema.description && (
               <p className="text-xs text-gray-500 mb-2">{propSchema.description}</p>
@@ -529,12 +586,15 @@ const DynamicForm: React.FC<DynamicFormProps> = ({ schema, onSubmit, onCancel, l
           </div>
         );
       }
-    } if (propSchema.type === 'number' || propSchema.type === 'integer') {
+    }
+    if (propSchema.type === 'number' || propSchema.type === 'integer') {
       return (
         <div key={fullPath} className="mb-4">
           <label className="block text-sm font-medium text-gray-700 mb-1">
             {key}
-            {(path ? false : jsonSchema.required?.includes(key)) && <span className="text-status-red ml-1">*</span>}
+            {(path ? false : jsonSchema.required?.includes(key)) && (
+              <span className="text-status-red ml-1">*</span>
+            )}
           </label>
           {propSchema.description && (
             <p className="text-xs text-gray-500 mb-2">{propSchema.description}</p>
@@ -544,7 +604,12 @@ const DynamicForm: React.FC<DynamicFormProps> = ({ schema, onSubmit, onCancel, l
             step={propSchema.type === 'integer' ? '1' : 'any'}
             value={value !== undefined && value !== null ? value : ''}
             onChange={(e) => {
-              const val = e.target.value === '' ? '' : propSchema.type === 'integer' ? parseInt(e.target.value) : parseFloat(e.target.value);
+              const val =
+                e.target.value === ''
+                  ? ''
+                  : propSchema.type === 'integer'
+                    ? parseInt(e.target.value)
+                    : parseFloat(e.target.value);
               handleInputChange(fullPath, val);
             }}
             className={`w-full border rounded-md px-3 py-2 form-input ${error ? 'border-red-500' : 'border-gray-300'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
@@ -566,7 +631,9 @@ const DynamicForm: React.FC<DynamicFormProps> = ({ schema, onSubmit, onCancel, l
             />
             <label className="ml-2 block text-sm text-gray-700">
               {key}
-              {(path ? false : jsonSchema.required?.includes(key)) && <span className="text-status-red ml-1">*</span>}
+              {(path ? false : jsonSchema.required?.includes(key)) && (
+                <span className="text-status-red ml-1">*</span>
+              )}
             </label>
           </div>
           {propSchema.description && (
@@ -575,12 +642,14 @@ const DynamicForm: React.FC<DynamicFormProps> = ({ schema, onSubmit, onCancel, l
           {error && <p className="text-status-red text-xs mt-1">{error}</p>}
         </div>
       );
-    }    // For other types, show as text input with description
+    } // For other types, show as text input with description
     return (
       <div key={fullPath} className="mb-4">
         <label className="block text-sm font-medium text-gray-700 mb-1">
           {key}
-          {(path ? false : jsonSchema.required?.includes(key)) && <span className="text-status-red ml-1">*</span>}
+          {(path ? false : jsonSchema.required?.includes(key)) && (
+            <span className="text-status-red ml-1">*</span>
+          )}
           <span className="text-xs text-gray-500 ml-1">({propSchema.type})</span>
         </label>
         {propSchema.description && (
@@ -631,20 +700,22 @@ const DynamicForm: React.FC<DynamicFormProps> = ({ schema, onSubmit, onCancel, l
           <button
             type="button"
             onClick={switchToFormMode}
-            className={`px-3 py-1 text-sm rounded-md transition-colors ${!isJsonMode
-              ? 'bg-blue-100 text-blue-800 rounded hover:bg-blue-200 text-sm btn-primary'
-              : 'text-sm text-gray-600 bg-gray-200 rounded hover:bg-gray-300 btn-secondary'
-              }`}
+            className={`px-3 py-1 text-sm rounded-md transition-colors ${
+              !isJsonMode
+                ? 'bg-blue-100 text-blue-800 rounded hover:bg-blue-200 text-sm btn-primary'
+                : 'text-sm text-gray-600 bg-gray-200 rounded hover:bg-gray-300 btn-secondary'
+            }`}
           >
             {t('tool.formMode')}
           </button>
           <button
             type="button"
             onClick={switchToJsonMode}
-            className={`px-3 py-1 text-sm rounded-md transition-colors ${isJsonMode
-              ? 'px-4 py-1 bg-blue-100 text-blue-800 rounded hover:bg-blue-200 text-sm btn-primary'
-              : 'text-sm text-gray-600 bg-gray-200 rounded hover:bg-gray-300 btn-secondary'
-              }`}
+            className={`px-3 py-1 text-sm rounded-md transition-colors ${
+              isJsonMode
+                ? 'px-4 py-1 bg-blue-100 text-blue-800 rounded hover:bg-blue-200 text-sm btn-primary'
+                : 'text-sm text-gray-600 bg-gray-200 rounded hover:bg-gray-300 btn-secondary'
+            }`}
           >
             {t('tool.jsonMode')}
           </button>
@@ -662,8 +733,9 @@ const DynamicForm: React.FC<DynamicFormProps> = ({ schema, onSubmit, onCancel, l
               value={jsonText}
               onChange={(e) => handleJsonTextChange(e.target.value)}
               placeholder={`{\n  "key": "value"\n}`}
-              className={`w-full h-64 border rounded-md px-3 py-2 font-mono text-sm resize-y form-input ${jsonError ? 'border-red-500' : 'border-gray-300'
-                } focus:outline-none focus:ring-2 focus:ring-blue-500`}
+              className={`w-full h-64 border rounded-md px-3 py-2 font-mono text-sm resize-y form-input ${
+                jsonError ? 'border-red-500' : 'border-gray-300'
+              } focus:outline-none focus:ring-2 focus:ring-blue-500`}
             />
             {jsonError && <p className="text-status-red text-xs mt-1">{jsonError}</p>}
           </div>
@@ -696,7 +768,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({ schema, onSubmit, onCancel, l
         /* Form Mode */
         <form onSubmit={handleSubmit} className="space-y-4">
           {Object.entries(jsonSchema.properties || {}).map(([key, propSchema]) =>
-            renderField(key, propSchema)
+            renderField(key, propSchema),
           )}
 
           <div className="flex justify-end space-x-2 pt-4">
