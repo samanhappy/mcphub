@@ -673,6 +673,22 @@
     "importFailed": "Sunucular içe aktarılamadı",
     "partialSuccess": "{{total}} sunucudan {{count}} tanesi başarıyla içe aktarıldı. Bazı sunucular başarısız oldu:"
   },
+  "groupImport": {
+    "button": "İçe Aktar",
+    "title": "JSON'dan Grupları İçe Aktar",
+    "inputLabel": "Grup Yapılandırma JSON",
+    "inputHelp": "Grup yapılandırma JSON'unuzu yapıştırın. Her grup bir sunucu listesi içerebilir.",
+    "preview": "Önizle",
+    "previewTitle": "İçe Aktarılacak Grupları Önizle",
+    "import": "İçe Aktar",
+    "importing": "İçe aktarılıyor...",
+    "invalidFormat": "Geçersiz JSON formatı. JSON bir 'groups' dizisi içermelidir.",
+    "missingName": "Her grubun bir 'name' alanı olmalıdır.",
+    "parseError": "JSON ayrıştırılamadı. Lütfen formatı kontrol edip tekrar deneyin.",
+    "addFailed": "Grup eklenemedi",
+    "importFailed": "Gruplar içe aktarılamadı",
+    "partialSuccess": "{{total}} gruptan {{count}} tanesi başarıyla içe aktarıldı. Bazı gruplar başarısız oldu:"
+  },
   "users": {
     "add": "Kullanıcı Ekle",
     "addNew": "Yeni Kullanıcı Ekle",

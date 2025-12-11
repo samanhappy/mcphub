@@ -672,6 +672,22 @@
     "importFailed": "Failed to import servers",
     "partialSuccess": "Imported {{count}} of {{total}} servers successfully. Some servers failed:"
   },
+  "groupImport": {
+    "button": "Import",
+    "title": "Import Groups from JSON",
+    "inputLabel": "Group Configuration JSON",
+    "inputHelp": "Paste your group configuration JSON. Each group can contain a list of servers.",
+    "preview": "Preview",
+    "previewTitle": "Preview Groups to Import",
+    "import": "Import",
+    "importing": "Importing...",
+    "invalidFormat": "Invalid JSON format. The JSON must contain a 'groups' array.",
+    "missingName": "Each group must have a 'name' field.",
+    "parseError": "Failed to parse JSON. Please check the format and try again.",
+    "addFailed": "Failed to add group",
+    "importFailed": "Failed to import groups",
+    "partialSuccess": "Imported {{count}} of {{total}} groups successfully. Some groups failed:"
+  },
   "users": {
     "add": "Add User",
     "addNew": "Add New User",

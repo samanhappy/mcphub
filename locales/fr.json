@@ -673,6 +673,22 @@
     "importFailed": "Échec de l'importation des serveurs",
     "partialSuccess": "{{count}} serveur(s) sur {{total}} importé(s) avec succès. Certains serveurs ont échoué :"
   },
+  "groupImport": {
+    "button": "Importer",
+    "title": "Importer des groupes depuis JSON",
+    "inputLabel": "Configuration JSON des groupes",
+    "inputHelp": "Collez votre configuration JSON de groupes. Chaque groupe peut contenir une liste de serveurs.",
+    "preview": "Aperçu",
+    "previewTitle": "Aperçu des groupes à importer",
+    "import": "Importer",
+    "importing": "Importation en cours...",
+    "invalidFormat": "Format JSON invalide. Le JSON doit contenir un tableau 'groups'.",
+    "missingName": "Chaque groupe doit avoir un champ 'name'.",
+    "parseError": "Échec de l'analyse du JSON. Veuillez vérifier le format et réessayer.",
+    "addFailed": "Échec de l'ajout du groupe",
+    "importFailed": "Échec de l'importation des groupes",
+    "partialSuccess": "{{count}} groupe(s) sur {{total}} importé(s) avec succès. Certains groupes ont échoué :"
+  },
   "users": {
     "add": "Ajouter un utilisateur",
     "addNew": "Ajouter un nouvel utilisateur",

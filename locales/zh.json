@@ -675,6 +675,22 @@
     "importFailed": "导入服务器失败",
     "partialSuccess": "成功导入 {{count}} / {{total}} 个服务器。部分服务器失败："
   },
+  "groupImport": {
+    "button": "导入",
+    "title": "从 JSON 导入分组",
+    "inputLabel": "分组配置 JSON",
+    "inputHelp": "粘贴您的分组配置 JSON。每个分组可以包含一个服务器列表。",
+    "preview": "预览",
+    "previewTitle": "预览要导入的分组",
+    "import": "导入",
+    "importing": "导入中...",
+    "invalidFormat": "无效的 JSON 格式。JSON 必须包含 'groups' 数组。",
+    "missingName": "每个分组必须有 'name' 字段。",
+    "parseError": "解析 JSON 失败。请检查格式后重试。",
+    "addFailed": "添加分组失败",
+    "importFailed": "导入分组失败",
+    "partialSuccess": "成功导入 {{count}} / {{total}} 个分组。部分分组失败："
+  },
   "users": {
     "add": "添加",
     "addNew": "添加新用户",
