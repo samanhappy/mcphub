@@ -14,6 +14,10 @@ interface McpServerConfig {
   type?: string;
   url?: string;
   headers?: Record<string, string>;
+  openapi?: {
+    version: string;
+    url: string;
+  };
 }
 
 interface ImportJsonFormat {
@@ -45,6 +49,12 @@ const JSONImportForm: React.FC<JSONImportFormProps> = ({ onSuccess, onCancel }) 
       "headers": {
         "Content-Type": "application/json",
         "Authorization": "Bearer your-token"
+      }
+    },
+    "openapi-server-example": {
+      "type": "openapi",
+      "openapi": {
+        "url": "https://petstore.swagger.io/v2/swagger.json"
       }
     }
   }
@@ -85,6 +95,9 @@ All servers will be imported in a single efficient batch operation.`;
         if (config.headers) {
           normalizedConfig.headers = config.headers;
         }
+      } else if (config.type === 'openapi') {
+        normalizedConfig.type = 'openapi';
+        normalizedConfig.openapi = config.openapi;
       } else {
         // Default to stdio
         normalizedConfig.type = 'stdio';
