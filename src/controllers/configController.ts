@@ -1,10 +1,18 @@
 import { Request, Response } from 'express';
 import config from '../config/index.js';
-import { loadSettings, loadOriginalSettings } from '../config/index.js';
+import { loadSettings } from '../config/index.js';
 import { getDataService } from '../services/services.js';
 import { DataService } from '../services/dataService.js';
 import { IUser } from '../types/index.js';
-import { getServerDao } from '../dao/DaoFactory.js';
+import {
+  getGroupDao,
+  getOAuthClientDao,
+  getOAuthTokenDao,
+  getServerDao,
+  getSystemConfigDao,
+  getUserConfigDao,
+  getUserDao,
+} from '../dao/DaoFactory.js';
 
 const dataService: DataService = getDataService();
 
@@ -128,8 +136,33 @@ export const getMcpSettingsJson = async (req: Request, res: Response): Promise<v
         },
       });
     } else {
-      // Return full settings
-      const settings = loadOriginalSettings();
+      // Return full settings via DAO layer (supports both file and database modes)
+      const [servers, users, groups, systemConfig, userConfigs, oauthClients, oauthTokens] =
+        await Promise.all([
+          getServerDao().findAll(),
+          getUserDao().findAll(),
+          getGroupDao().findAll(),
+          getSystemConfigDao().get(),
+          getUserConfigDao().getAll(),
+          getOAuthClientDao().findAll(),
+          getOAuthTokenDao().findAll(),
+        ]);
+
+      const mcpServers: Record<string, any> = {};
+      for (const { name: serverConfigName, ...config } of servers) {
+        mcpServers[serverConfigName] = removeNullValues(config);
+      }
+
+      const settings = {
+        mcpServers,
+        users,
+        groups,
+        systemConfig,
+        userConfigs,
+        oauthClients,
+        oauthTokens,
+      };
+
       res.json({
         success: true,
         data: settings,
