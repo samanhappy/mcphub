@@ -614,9 +614,37 @@ export const registerAllTools = async (isInit: boolean, serverName?: string): Pr
 export const getServersInfo = async (): Promise<Omit<ServerInfo, 'client' | 'transport'>[]> => {
   const allServers: ServerConfigWithName[] = await getServerDao().findAll();
   const dataService = getDataService();
+
+  // Ensure that servers recently added via DAO but not yet initialized in serverInfos
+  // are still visible in the servers list. This avoids a race condition where
+  // a POST /api/servers immediately followed by GET /api/servers would not
+  // return the newly created server until background initialization completes.
+  const combinedServerInfos: ServerInfo[] = [...serverInfos];
+  const existingNames = new Set(combinedServerInfos.map((s) => s.name));
+
+  for (const server of allServers) {
+    if (!existingNames.has(server.name)) {
+      const isEnabled = server.enabled === undefined ? true : server.enabled;
+      combinedServerInfos.push({
+        name: server.name,
+        owner: server.owner,
+        // Newly created servers that are enabled should appear as "connecting"
+        // until the MCP client initialization completes. Disabled servers remain
+        // in the "disconnected" state.
+        status: isEnabled ? 'connecting' : 'disconnected',
+        error: null,
+        tools: [],
+        prompts: [],
+        createTime: Date.now(),
+        enabled: isEnabled,
+      });
+    }
+  }
+
   const filterServerInfos: ServerInfo[] = dataService.filterData
-    ? dataService.filterData(serverInfos)
-    : serverInfos;
+    ? dataService.filterData(combinedServerInfos)
+    : combinedServerInfos;
+
   const infos = filterServerInfos.map(
     ({ name, status, tools, prompts, createTime, error, oauth }) => {
       const serverConfig = allServers.find((server) => server.name === name);
