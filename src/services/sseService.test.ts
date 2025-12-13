@@ -47,6 +47,30 @@ jest.mock('../dao/index.js', () => ({
   getSystemConfigDao: jest.fn(() => ({
     get: jest.fn().mockImplementation(() => Promise.resolve(currentSystemConfig)),
   })),
+  getBearerKeyDao: jest.fn(() => ({
+    // Keep these unit tests aligned with legacy routing semantics:
+    // enableBearerAuth + bearerAuthKey -> one enabled key (token=bearerAuthKey)
+    // otherwise -> no enabled keys (bearer auth effectively disabled)
+    findEnabled: jest.fn().mockImplementation(async () => {
+      const routing = (currentSystemConfig as any)?.routing || {};
+      const enabled = !!routing.enableBearerAuth;
+      const token = String(routing.bearerAuthKey || '').trim();
+      if (!enabled || !token) {
+        return [];
+      }
+      return [
+        {
+          id: 'test-key-id',
+          name: 'default',
+          token,
+          enabled: true,
+          accessType: 'all',
+          allowedGroups: [],
+          allowedServers: [],
+        },
+      ];
+    }),
+  })),
 }));
 
 // Mock oauthBearer

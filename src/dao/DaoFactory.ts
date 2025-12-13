@@ -5,6 +5,7 @@ import { SystemConfigDao, SystemConfigDaoImpl } from './SystemConfigDao.js';
 import { UserConfigDao, UserConfigDaoImpl } from './UserConfigDao.js';
 import { OAuthClientDao, OAuthClientDaoImpl } from './OAuthClientDao.js';
 import { OAuthTokenDao, OAuthTokenDaoImpl } from './OAuthTokenDao.js';
+import { BearerKeyDao, BearerKeyDaoImpl } from './BearerKeyDao.js';
 
 /**
  * DAO Factory interface for creating DAO instances
@@ -17,6 +18,7 @@ export interface DaoFactory {
   getUserConfigDao(): UserConfigDao;
   getOAuthClientDao(): OAuthClientDao;
   getOAuthTokenDao(): OAuthTokenDao;
+  getBearerKeyDao(): BearerKeyDao;
 }
 
 /**
@@ -32,6 +34,7 @@ export class JsonFileDaoFactory implements DaoFactory {
   private userConfigDao: UserConfigDao | null = null;
   private oauthClientDao: OAuthClientDao | null = null;
   private oauthTokenDao: OAuthTokenDao | null = null;
+  private bearerKeyDao: BearerKeyDao | null = null;
 
   /**
    * Get singleton instance
@@ -96,6 +99,13 @@ export class JsonFileDaoFactory implements DaoFactory {
     return this.oauthTokenDao;
   }
 
+  getBearerKeyDao(): BearerKeyDao {
+    if (!this.bearerKeyDao) {
+      this.bearerKeyDao = new BearerKeyDaoImpl();
+    }
+    return this.bearerKeyDao;
+  }
+
   /**
    * Reset all cached DAO instances (useful for testing)
    */
@@ -107,6 +117,7 @@ export class JsonFileDaoFactory implements DaoFactory {
     this.userConfigDao = null;
     this.oauthClientDao = null;
     this.oauthTokenDao = null;
+    this.bearerKeyDao = null;
   }
 }
 
@@ -178,4 +189,8 @@ export function getOAuthClientDao(): OAuthClientDao {
 
 export function getOAuthTokenDao(): OAuthTokenDao {
   return getDaoFactory().getOAuthTokenDao();
+}
+
+export function getBearerKeyDao(): BearerKeyDao {
+  return getDaoFactory().getBearerKeyDao();
 }

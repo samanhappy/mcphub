@@ -243,6 +243,19 @@ export interface OAuthServerConfig {
   };
 }
 
+// Bearer authentication key configuration
+export type BearerKeyAccessType = 'all' | 'groups' | 'servers';
+
+export interface BearerKey {
+  id: string; // Unique identifier for the key
+  name: string; // Human readable key name
+  token: string; // Bearer token value
+  enabled: boolean; // Whether this key is enabled
+  accessType: BearerKeyAccessType; // Access scope type
+  allowedGroups?: string[]; // Allowed group names when accessType === 'groups'
+  allowedServers?: string[]; // Allowed server names when accessType === 'servers'
+}
+
 // Represents the settings for MCP servers
 export interface McpSettings {
   users?: IUser[]; // Array of user credentials and permissions
@@ -254,6 +267,7 @@ export interface McpSettings {
   userConfigs?: Record<string, UserConfig>; // User-specific configurations
   oauthClients?: IOAuthClient[]; // OAuth clients for MCPHub's authorization server
   oauthTokens?: IOAuthToken[]; // Persisted OAuth tokens (access + refresh) for authorization server
+  bearerKeys?: BearerKey[]; // Bearer authentication keys (multi-key configuration)
 }
 
 // Configuration details for an individual server

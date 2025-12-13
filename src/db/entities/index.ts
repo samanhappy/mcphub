@@ -6,6 +6,7 @@ import SystemConfig from './SystemConfig.js';
 import UserConfig from './UserConfig.js';
 import OAuthClient from './OAuthClient.js';
 import OAuthToken from './OAuthToken.js';
+import BearerKey from './BearerKey.js';
 
 // Export all entities
 export default [
@@ -17,7 +18,18 @@ export default [
   UserConfig,
   OAuthClient,
   OAuthToken,
+  BearerKey,
 ];
 
 // Export individual entities for direct use
-export { VectorEmbedding, User, Server, Group, SystemConfig, UserConfig, OAuthClient, OAuthToken };
+export {
+  VectorEmbedding,
+  User,
+  Server,
+  Group,
+  SystemConfig,
+  UserConfig,
+  OAuthClient,
+  OAuthToken,
+  BearerKey,
+};

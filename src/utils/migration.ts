@@ -9,6 +9,7 @@ import { SystemConfigRepository } from '../db/repositories/SystemConfigRepositor
 import { UserConfigRepository } from '../db/repositories/UserConfigRepository.js';
 import { OAuthClientRepository } from '../db/repositories/OAuthClientRepository.js';
 import { OAuthTokenRepository } from '../db/repositories/OAuthTokenRepository.js';
+import { BearerKeyRepository } from '../db/repositories/BearerKeyRepository.js';
 
 /**
  * Migrate from file-based configuration to database
@@ -33,6 +34,7 @@ export async function migrateToDatabase(): Promise<boolean> {
     const userConfigRepo = new UserConfigRepository();
     const oauthClientRepo = new OAuthClientRepository();
     const oauthTokenRepo = new OAuthTokenRepository();
+    const bearerKeyRepo = new BearerKeyRepository();
 
     // Migrate users
     if (settings.users && settings.users.length > 0) {
@@ -118,6 +120,52 @@ export async function migrateToDatabase(): Promise<boolean> {
       };
       await systemConfigRepo.update(systemConfig);
       console.log('  - System configuration updated');
+    }
+
+    // Migrate bearer auth keys
+    console.log('Migrating bearer authentication keys...');
+
+    // Prefer explicit bearerKeys if present in settings
+    if (Array.isArray(settings.bearerKeys) && settings.bearerKeys.length > 0) {
+      for (const key of settings.bearerKeys) {
+        await bearerKeyRepo.create({
+          name: key.name,
+          token: key.token,
+          enabled: key.enabled,
+          accessType: key.accessType,
+          allowedGroups: key.allowedGroups ?? [],
+          allowedServers: key.allowedServers ?? [],
+        } as any);
+        console.log(`  - Migrated bearer key: ${key.name} (${key.id ?? 'no-id'})`);
+      }
+    } else if (settings.systemConfig?.routing) {
+      // Fallback to legacy routing.enableBearerAuth / bearerAuthKey
+      const routing = settings.systemConfig.routing as any;
+      const enableBearerAuth: boolean = !!routing.enableBearerAuth;
+      const rawKey: string = (routing.bearerAuthKey || '').trim();
+
+      // Migration rules:
+      // 1) enable=false, key empty   -> no keys
+      // 2) enable=false, key present -> one disabled key (name=default)
+      // 3) enable=true, key present  -> one enabled key (name=default)
+      // 4) enable=true, key empty    -> no keys
+      if (rawKey) {
+        await bearerKeyRepo.create({
+          name: 'default',
+          token: rawKey,
+          enabled: enableBearerAuth,
+          accessType: 'all',
+          allowedGroups: [],
+          allowedServers: [],
+        } as any);
+        console.log(
+          `  - Migrated legacy bearer auth config to key: default (enabled=${enableBearerAuth})`,
+        );
+      } else {
+        console.log('  - No legacy bearer auth key found, skipping bearer key migration');
+      }
+    } else {
+      console.log('  - No bearer auth configuration found, skipping bearer key migration');
     }
 
     // Migrate user configs
@@ -207,6 +255,9 @@ export async function initializeDatabaseMode(): Promise<boolean> {
 
     // Check if migration is needed
     const userRepo = new UserRepository();
+    const bearerKeyRepo = new BearerKeyRepository();
+    const systemConfigRepo = new SystemConfigRepository();
+
     const userCount = await userRepo.count();
 
     if (userCount === 0) {
@@ -217,6 +268,36 @@ export async function initializeDatabaseMode(): Promise<boolean> {
       }
     } else {
       console.log(`Database already contains ${userCount} users, skipping migration`);
+
+      // One-time migration for legacy bearer auth config stored inside DB routing settings.
+      // If bearerKeys table already has data, do nothing.
+      const bearerKeyCount = await bearerKeyRepo.count();
+      if (bearerKeyCount > 0) {
+        console.log(
+          `Bearer keys table already contains ${bearerKeyCount} keys, skipping legacy bearer auth migration`,
+        );
+      } else {
+        const systemConfig = await systemConfigRepo.get();
+        const routing = (systemConfig as any)?.routing || {};
+        const enableBearerAuth: boolean = !!routing.enableBearerAuth;
+        const rawKey: string = (routing.bearerAuthKey || '').trim();
+
+        if (rawKey) {
+          await bearerKeyRepo.create({
+            name: 'default',
+            token: rawKey,
+            enabled: enableBearerAuth,
+            accessType: 'all',
+            allowedGroups: [],
+            allowedServers: [],
+          } as any);
+          console.log(
+            `  - Migrated legacy DB routing bearer auth config to key: default (enabled=${enableBearerAuth})`,
+          );
+        } else {
+          console.log('No legacy DB routing bearer auth key found, skipping bearer key migration');
+        }
+      }
     }
 
     console.log('✅ Database mode initialized successfully');

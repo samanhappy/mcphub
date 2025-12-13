@@ -309,6 +309,19 @@ export interface ApiResponse<T = any> {
   data?: T;
 }
 
+// Bearer authentication key configuration (frontend view model)
+export type BearerKeyAccessType = 'all' | 'groups' | 'servers';
+
+export interface BearerKey {
+  id: string;
+  name: string;
+  token: string;
+  enabled: boolean;
+  accessType: BearerKeyAccessType;
+  allowedGroups?: string[];
+  allowedServers?: string[];
+}
+
 // Auth types
 export interface IUser {
   username: string;

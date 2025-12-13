@@ -29,9 +29,9 @@ export const getGroupByIdOrName = async (key: string): Promise<IGroup | undefine
   const systemConfigDao = getSystemConfigDao();
 
   const systemConfig = await systemConfigDao.get();
-  const routingConfig = systemConfig?.routing || {
-    enableGlobalRoute: true,
-    enableGroupNameRoute: true,
+  const routingConfig = {
+    enableGlobalRoute: systemConfig?.routing?.enableGlobalRoute ?? true,
+    enableGroupNameRoute: systemConfig?.routing?.enableGroupNameRoute ?? true,
   };
 
   const groups = await getAllGroups();

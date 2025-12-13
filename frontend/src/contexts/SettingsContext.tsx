@@ -7,9 +7,9 @@ import React, {
   ReactNode,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ApiResponse } from '@/types';
+import { ApiResponse, BearerKey } from '@/types';
 import { useToast } from '@/contexts/ToastContext';
-import { apiGet, apiPut } from '@/utils/fetchInterceptor';
+import { apiGet, apiPut, apiPost, apiDelete } from '@/utils/fetchInterceptor';
 
 // Define types for the settings data
 interface RoutingConfig {
@@ -66,6 +66,7 @@ interface SystemSettings {
     oauthServer?: OAuthServerConfig;
     enableSessionRebuild?: boolean;
   };
+  bearerKeys?: BearerKey[];
 }
 
 interface TempRoutingConfig {
@@ -82,6 +83,7 @@ interface SettingsContextValue {
   oauthServerConfig: OAuthServerConfig;
   nameSeparator: string;
   enableSessionRebuild: boolean;
+  bearerKeys: BearerKey[];
   loading: boolean;
   error: string | null;
   setError: React.Dispatch<React.SetStateAction<string | null>>;
@@ -109,6 +111,14 @@ interface SettingsContextValue {
   updateNameSeparator: (value: string) => Promise<boolean | undefined>;
   updateSessionRebuild: (value: boolean) => Promise<boolean | undefined>;
   exportMCPSettings: (serverName?: string) => Promise<any>;
+  // Bearer key management
+  refreshBearerKeys: () => Promise<void>;
+  createBearerKey: (payload: Omit<BearerKey, 'id'>) => Promise<BearerKey | null>;
+  updateBearerKey: (
+    id: string,
+    updates: Partial<Omit<BearerKey, 'id'>>,
+  ) => Promise<BearerKey | null>;
+  deleteBearerKey: (id: string) => Promise<boolean>;
 }
 
 const getDefaultOAuthServerConfig = (): OAuthServerConfig => ({
@@ -183,6 +193,7 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
 
   const [nameSeparator, setNameSeparator] = useState<string>('-');
   const [enableSessionRebuild, setEnableSessionRebuild] = useState<boolean>(false);
+  const [bearerKeys, setBearerKeys] = useState<BearerKey[]>([]);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -278,6 +289,10 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
       }
       if (data.success && data.data?.systemConfig?.enableSessionRebuild !== undefined) {
         setEnableSessionRebuild(data.data.systemConfig.enableSessionRebuild);
+      }
+
+      if (data.success && Array.isArray(data.data?.bearerKeys)) {
+        setBearerKeys(data.data.bearerKeys);
       }
     } catch (error) {
       console.error('Failed to fetch settings:', error);
@@ -659,6 +674,73 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
     }
   };
 
+  // Bearer key management helpers
+  const refreshBearerKeys = async () => {
+    try {
+      const data: ApiResponse<BearerKey[]> = await apiGet('/auth/keys');
+      if (data.success && Array.isArray(data.data)) {
+        setBearerKeys(data.data);
+      }
+    } catch (error) {
+      console.error('Failed to refresh bearer keys:', error);
+      showToast(t('errors.failedToFetchSettings'));
+    }
+  };
+
+  const createBearerKey = async (payload: Omit<BearerKey, 'id'>): Promise<BearerKey | null> => {
+    try {
+      const data: ApiResponse<BearerKey> = await apiPost('/auth/keys', payload as any);
+      if (data.success && data.data) {
+        await refreshBearerKeys();
+        showToast(t('settings.systemConfigUpdated'));
+        return data.data;
+      }
+      showToast(data.message || t('errors.failedToUpdateRoutingConfig'));
+      return null;
+    } catch (error) {
+      console.error('Failed to create bearer key:', error);
+      showToast(t('errors.failedToUpdateRoutingConfig'));
+      return null;
+    }
+  };
+
+  const updateBearerKey = async (
+    id: string,
+    updates: Partial<Omit<BearerKey, 'id'>>,
+  ): Promise<BearerKey | null> => {
+    try {
+      const data: ApiResponse<BearerKey> = await apiPut(`/auth/keys/${id}`, updates as any);
+      if (data.success && data.data) {
+        await refreshBearerKeys();
+        showToast(t('settings.systemConfigUpdated'));
+        return data.data;
+      }
+      showToast(data.message || t('errors.failedToUpdateRoutingConfig'));
+      return null;
+    } catch (error) {
+      console.error('Failed to update bearer key:', error);
+      showToast(t('errors.failedToUpdateRoutingConfig'));
+      return null;
+    }
+  };
+
+  const deleteBearerKey = async (id: string): Promise<boolean> => {
+    try {
+      const data: ApiResponse = await apiDelete(`/auth/keys/${id}`);
+      if (data.success) {
+        await refreshBearerKeys();
+        showToast(t('settings.systemConfigUpdated'));
+        return true;
+      }
+      showToast(data.message || t('errors.failedToUpdateRoutingConfig'));
+      return false;
+    } catch (error) {
+      console.error('Failed to delete bearer key:', error);
+      showToast(t('errors.failedToUpdateRoutingConfig'));
+      return false;
+    }
+  };
+
   // Fetch settings when the component mounts or refreshKey changes
   useEffect(() => {
     fetchSettings();
@@ -682,6 +764,7 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
     oauthServerConfig,
     nameSeparator,
     enableSessionRebuild,
+    bearerKeys,
     loading,
     error,
     setError,
@@ -699,6 +782,10 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
     updateNameSeparator,
     updateSessionRebuild,
     exportMCPSettings,
+    refreshBearerKeys,
+    createBearerKey,
+    updateBearerKey,
+    deleteBearerKey,
   };
 
   return <SettingsContext.Provider value={value}>{children}</SettingsContext.Provider>;

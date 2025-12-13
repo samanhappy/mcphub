@@ -106,6 +106,12 @@ import {
   updateClientConfiguration,
   deleteClientRegistration,
 } from '../controllers/oauthDynamicRegistrationController.js';
+import {
+  getBearerKeys,
+  createBearerKey,
+  updateBearerKey,
+  deleteBearerKey,
+} from '../controllers/bearerKeyController.js';
 import { auth } from '../middlewares/auth.js';
 
 const router = express.Router();
@@ -186,6 +192,12 @@ export const initRoutes = (app: express.Application): void => {
   router.put('/oauth/clients/:clientId', updateClient);
   router.delete('/oauth/clients/:clientId', deleteClient);
   router.post('/oauth/clients/:clientId/regenerate-secret', regenerateSecret);
+
+  // Bearer authentication key management (admin only)
+  router.get('/auth/keys', getBearerKeys);
+  router.post('/auth/keys', createBearerKey);
+  router.put('/auth/keys/:id', updateBearerKey);
+  router.delete('/auth/keys/:id', deleteBearerKey);
 
   // Tool management routes
   router.post('/tools/call/:server', callTool);

@@ -23,6 +23,7 @@ import { syncAllServerToolsEmbeddings } from '../services/vectorSearchService.js
 import { createSafeJSON } from '../utils/serialization.js';
 import { cloneDefaultOAuthServerConfig } from '../constants/oauthServerDefaults.js';
 import { getServerDao, getGroupDao, getSystemConfigDao } from '../dao/DaoFactory.js';
+import { getBearerKeyDao } from '../dao/DaoFactory.js';
 
 export const getAllServers = async (_: Request, res: Response): Promise<void> => {
   try {
@@ -65,12 +66,17 @@ export const getAllSettings = async (_: Request, res: Response): Promise<void> =
     const systemConfigDao = getSystemConfigDao();
     const systemConfig = await systemConfigDao.get();
 
+    // Get bearer auth keys from DAO
+    const bearerKeyDao = getBearerKeyDao();
+    const bearerKeys = await bearerKeyDao.findAll();
+
     // Merge all data into settings object
     const settings: McpSettings = {
       ...fileSettings,
       mcpServers,
       groups,
       systemConfig,
+      bearerKeys,
     };
 
     const response: ApiResponse = {

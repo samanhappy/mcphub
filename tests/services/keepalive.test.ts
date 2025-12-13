@@ -31,14 +31,28 @@ jest.mock('../../src/utils/oauthBearer.js', () => ({
   resolveOAuthUserFromToken: jest.fn(),
 }));
 
+// Mock DAO accessors used by sseService (avoid file-based DAOs and migrations)
+jest.mock('../../src/dao/index.js', () => ({
+  getBearerKeyDao: jest.fn(),
+  getGroupDao: jest.fn(),
+  getSystemConfigDao: jest.fn(),
+}));
+
+// Mock config module default export used by sseService
+jest.mock('../../src/config/index.js', () => ({
+  __esModule: true,
+  default: { basePath: '' },
+  loadSettings: jest.fn(),
+}));
+
 import { Request, Response } from 'express';
 import { handleSseConnection, transports } from '../../src/services/sseService.js';
 import * as mcpService from '../../src/services/mcpService.js';
 import * as configModule from '../../src/config/index.js';
+import * as daoIndex from '../../src/dao/index.js';
 
 // Mock remaining dependencies
 jest.mock('../../src/services/mcpService.js');
-jest.mock('../../src/config/index.js');
 
 // Mock UserContextService with getInstance pattern
 const mockUserContextService = {
@@ -140,6 +154,24 @@ describe('Keepalive Functionality', () => {
       connect: jest.fn().mockResolvedValue(undefined),
     };
     (mcpService.getMcpServer as jest.Mock).mockReturnValue(mockMcpServer);
+
+    // Mock bearer key + system config DAOs used by sseService
+    const mockBearerKeyDao = {
+      findEnabled: jest.fn().mockResolvedValue([]),
+    };
+    (daoIndex.getBearerKeyDao as unknown as jest.Mock).mockReturnValue(mockBearerKeyDao);
+
+    const mockSystemConfigDao = {
+      get: jest.fn().mockResolvedValue({
+        routing: {
+          enableGlobalRoute: true,
+          enableGroupNameRoute: true,
+          enableBearerAuth: false,
+          bearerAuthKey: '',
+        },
+      }),
+    };
+    (daoIndex.getSystemConfigDao as unknown as jest.Mock).mockReturnValue(mockSystemConfigDao);
 
     // Mock loadSettings
     (configModule.loadSettings as jest.Mock).mockReturnValue({

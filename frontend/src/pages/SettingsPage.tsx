@@ -3,17 +3,317 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import ChangePasswordForm from '@/components/ChangePasswordForm';
 import { Switch } from '@/components/ui/ToggleGroup';
+import { MultiSelect } from '@/components/ui/MultiSelect';
 import { useSettingsData } from '@/hooks/useSettingsData';
 import { useToast } from '@/contexts/ToastContext';
 import { generateRandomKey } from '@/utils/key';
 import { PermissionChecker } from '@/components/PermissionChecker';
 import { PERMISSIONS } from '@/constants/permissions';
-import { Copy, Check, Download } from 'lucide-react';
+import { Copy, Check, Download, Edit, Trash2 } from 'lucide-react';
+import type { BearerKey } from '@/types';
+import { useServerContext } from '@/contexts/ServerContext';
+import { useGroupData } from '@/hooks/useGroupData';
+
+interface BearerKeyRowProps {
+  keyData: BearerKey;
+  loading: boolean;
+  availableServers: { value: string; label: string }[];
+  availableGroups: { value: string; label: string }[];
+  onSave: (
+    id: string,
+    payload: {
+      name: string;
+      token: string;
+      enabled: boolean;
+      accessType: 'all' | 'groups' | 'servers';
+      allowedGroups: string;
+      allowedServers: string;
+    },
+  ) => Promise<void>;
+  onDelete: (id: string) => Promise<void>;
+}
+
+const BearerKeyRow: React.FC<BearerKeyRowProps> = ({
+  keyData,
+  loading,
+  availableServers,
+  availableGroups,
+  onSave,
+  onDelete,
+}) => {
+  const { t } = useTranslation();
+  const { showToast } = useToast();
+  const [isEditing, setIsEditing] = useState(false);
+  const [name, setName] = useState(keyData.name);
+  const [token, setToken] = useState(keyData.token);
+  const [enabled, setEnabled] = useState<boolean>(keyData.enabled);
+  const [accessType, setAccessType] = useState<'all' | 'groups' | 'servers'>(
+    keyData.accessType || 'all',
+  );
+  const [selectedGroups, setSelectedGroups] = useState<string[]>(keyData.allowedGroups || []);
+  const [selectedServers, setSelectedServers] = useState<string[]>(keyData.allowedServers || []);
+  const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  useEffect(() => {
+    if (!isEditing) {
+      setName(keyData.name);
+      setToken(keyData.token);
+      setEnabled(keyData.enabled);
+      setAccessType(keyData.accessType || 'all');
+      setSelectedGroups(keyData.allowedGroups || []);
+      setSelectedServers(keyData.allowedServers || []);
+    }
+  }, [keyData, isEditing]);
+
+  const handleCopyToken = async () => {
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(keyData.token);
+        showToast(t('common.copySuccess') || 'Copied to clipboard', 'success');
+      } else {
+        const textArea = document.createElement('textarea');
+        textArea.value = keyData.token;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-9999px';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        try {
+          document.execCommand('copy');
+          showToast(t('common.copySuccess') || 'Copied to clipboard', 'success');
+        } catch (err) {
+          showToast(t('common.copyFailed') || 'Copy failed', 'error');
+        }
+        document.body.removeChild(textArea);
+      }
+    } catch (error) {
+      console.error('Failed to copy', error);
+      showToast(t('common.copyFailed') || 'Copy failed', 'error');
+    }
+  };
+
+  const handleSave = async () => {
+    if (accessType === 'groups' && selectedGroups.length === 0) {
+      showToast(t('settings.selectAtLeastOneGroup') || 'Please select at least one group', 'error');
+      return;
+    }
+    if (accessType === 'servers' && selectedServers.length === 0) {
+      showToast(
+        t('settings.selectAtLeastOneServer') || 'Please select at least one server',
+        'error',
+      );
+      return;
+    }
+
+    setSaving(true);
+    try {
+      await onSave(keyData.id, {
+        name,
+        token,
+        enabled,
+        accessType,
+        allowedGroups: selectedGroups.join(', '),
+        allowedServers: selectedServers.join(', '),
+      });
+      setIsEditing(false);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!window.confirm(t('settings.deleteBearerKeyConfirm') || 'Delete this key?')) {
+      return;
+    }
+    setDeleting(true);
+    try {
+      await onDelete(keyData.id);
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const isGroupsMode = accessType === 'groups';
+
+  if (isEditing) {
+    return (
+      <tr>
+        <td colSpan={5} className="p-0 border-b border-gray-200">
+          <div className="bg-gray-50 p-5">
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-4 mb-4">
+              <div className="md:col-span-3">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  {t('settings.bearerKeyName') || 'Name'}
+                </label>
+                <input
+                  type="text"
+                  className="block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm form-input transition-shadow duration-200"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  disabled={loading}
+                />
+              </div>
+              <div className="md:col-span-9">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  {t('settings.bearerKeyToken') || 'Token'}
+                </label>
+                <input
+                  type="text"
+                  className="block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm form-input transition-shadow duration-200"
+                  value={token}
+                  onChange={(e) => setToken(e.target.value)}
+                  disabled={loading}
+                />
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-end gap-4">
+              <div className="w-40">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  {t('settings.bearerKeyEnabled') || 'Status'}
+                </label>
+                <div className="flex items-center h-[38px] px-3 bg-white border border-gray-300 rounded-md">
+                  <span
+                    className={`text-sm mr-3 ${enabled ? 'text-green-600 font-medium' : 'text-gray-500'}`}
+                  >
+                    {enabled ? 'Active' : 'Inactive'}
+                  </span>
+                  <Switch
+                    disabled={loading}
+                    checked={enabled}
+                    onCheckedChange={(checked) => setEnabled(checked)}
+                  />
+                </div>
+              </div>
+
+              <div className="w-48">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  {t('settings.bearerKeyAccessType') || 'Access scope'}
+                </label>
+                <select
+                  className="block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm form-select transition-shadow duration-200"
+                  value={accessType}
+                  onChange={(e) => setAccessType(e.target.value as 'all' | 'groups' | 'servers')}
+                  disabled={loading}
+                >
+                  <option value="all">{t('settings.bearerKeyAccessAll') || 'All Resources'}</option>
+                  <option value="groups">
+                    {t('settings.bearerKeyAccessGroups') || 'Specific Groups'}
+                  </option>
+                  <option value="servers">
+                    {t('settings.bearerKeyAccessServers') || 'Specific Servers'}
+                  </option>
+                </select>
+              </div>
+
+              <div className="flex-1 min-w-[200px]">
+                <label
+                  className={`block text-sm font-medium mb-1 ${accessType === 'all' ? 'text-gray-400' : 'text-gray-700'}`}
+                >
+                  {isGroupsMode
+                    ? t('settings.bearerKeyAllowedGroups') || 'Allowed groups'
+                    : t('settings.bearerKeyAllowedServers') || 'Allowed servers'}
+                </label>
+                <MultiSelect
+                  options={isGroupsMode ? availableGroups : availableServers}
+                  selected={isGroupsMode ? selectedGroups : selectedServers}
+                  onChange={isGroupsMode ? setSelectedGroups : setSelectedServers}
+                  placeholder={
+                    isGroupsMode
+                      ? t('settings.selectGroups') || 'Select groups...'
+                      : t('settings.selectServers') || 'Select servers...'
+                  }
+                  disabled={loading || accessType === 'all'}
+                />
+              </div>
+
+              <div className="flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsEditing(false)}
+                  className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-md text-sm font-medium hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 h-[38px]"
+                >
+                  {t('common.cancel') || 'Cancel'}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSave}
+                  disabled={loading || saving}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium disabled:opacity-50 btn-primary h-[38px]"
+                >
+                  {saving ? t('common.saving') || 'Saving...' : t('common.save') || 'Save'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </td>
+      </tr>
+    );
+  }
+
+  return (
+    <tr className="hover:bg-gray-50">
+      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+        {keyData.name}
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-mono">
+        <div className="flex items-center gap-2">
+          <span>
+            {keyData.token.length > 12
+              ? `${keyData.token.substring(0, 8)}...${keyData.token.substring(keyData.token.length - 4)}`
+              : keyData.token}
+          </span>
+          <button
+            onClick={handleCopyToken}
+            className="text-gray-400 hover:text-gray-600 transition-colors"
+            title={t('common.copy') || 'Copy'}
+          >
+            <Copy className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+        <span
+          className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${keyData.enabled ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}
+        >
+          {keyData.enabled ? t('common.active') || 'Active' : t('common.inactive') || 'Inactive'}
+        </span>
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+        {keyData.accessType === 'all'
+          ? t('settings.bearerKeyAccessAll') || 'All Resources'
+          : keyData.accessType === 'groups'
+            ? `${t('settings.bearerKeyAccessGroups') || 'Groups'}: ${keyData.allowedGroups}`
+            : `${t('settings.bearerKeyAccessServers') || 'Servers'}: ${keyData.allowedServers}`}
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+        <button
+          onClick={() => setIsEditing(true)}
+          className="text-blue-600 hover:text-blue-900 mr-4 inline-flex items-center"
+          title={t('common.edit') || 'Edit'}
+        >
+          <Edit className="h-4 w-4" />
+        </button>
+        <button
+          onClick={handleDelete}
+          disabled={deleting}
+          className="text-red-600 hover:text-red-900 inline-flex items-center"
+          title={t('common.delete') || 'Delete'}
+        >
+          <Trash2 className="h-4 w-4" />
+        </button>
+      </td>
+    </tr>
+  );
+};
 
 const SettingsPage: React.FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { showToast } = useToast();
+  const { servers } = useServerContext();
+  const { groups } = useGroupData();
 
   const [installConfig, setInstallConfig] = useState<{
     pythonIndexUrl: string;
@@ -64,6 +364,7 @@ const SettingsPage: React.FC = () => {
   });
 
   const [tempNameSeparator, setTempNameSeparator] = useState<string>('-');
+  const [showAddBearerKeyForm, setShowAddBearerKeyForm] = useState(false);
 
   const {
     routingConfig,
@@ -76,6 +377,7 @@ const SettingsPage: React.FC = () => {
     nameSeparator,
     enableSessionRebuild,
     loading,
+    bearerKeys,
     updateRoutingConfig,
     updateRoutingConfigBatch,
     updateInstallConfig,
@@ -86,6 +388,10 @@ const SettingsPage: React.FC = () => {
     updateNameSeparator,
     updateSessionRebuild,
     exportMCPSettings,
+    createBearerKey,
+    updateBearerKey,
+    deleteBearerKey,
+    refreshBearerKeys,
   } = useSettingsData();
 
   // Update local installConfig when savedInstallConfig changes
@@ -151,6 +457,11 @@ const SettingsPage: React.FC = () => {
     setTempNameSeparator(nameSeparator);
   }, [nameSeparator]);
 
+  // Refresh bearer keys when component mounts
+  useEffect(() => {
+    refreshBearerKeys();
+  }, []);
+
   const [sectionsVisible, setSectionsVisible] = useState({
     routingConfig: false,
     installConfig: false,
@@ -160,6 +471,7 @@ const SettingsPage: React.FC = () => {
     nameSeparator: false,
     password: false,
     exportConfig: false,
+    bearerKeys: false,
   });
 
   const toggleSection = (
@@ -171,7 +483,8 @@ const SettingsPage: React.FC = () => {
       | 'mcpRouterConfig'
       | 'nameSeparator'
       | 'password'
-      | 'exportConfig',
+      | 'exportConfig'
+      | 'bearerKeys',
   ) => {
     setSectionsVisible((prev) => ({
       ...prev,
@@ -219,10 +532,6 @@ const SettingsPage: React.FC = () => {
       ...prev,
       bearerAuthKey: value,
     }));
-  };
-
-  const saveBearerAuthKey = async () => {
-    await updateRoutingConfig('bearerAuthKey', tempRoutingConfig.bearerAuthKey);
   };
 
   const handleInstallConfigChange = (
@@ -405,6 +714,46 @@ const SettingsPage: React.FC = () => {
   const [copiedConfig, setCopiedConfig] = useState(false);
   const [mcpSettingsJson, setMcpSettingsJson] = useState<string>('');
 
+  const [newBearerKey, setNewBearerKey] = useState<{
+    name: string;
+    token: string;
+    enabled: boolean;
+    accessType: 'all' | 'groups' | 'servers';
+    allowedGroups: string;
+    allowedServers: string;
+  }>({
+    name: '',
+    token: '',
+    enabled: true,
+    accessType: 'all',
+    allowedGroups: '',
+    allowedServers: '',
+  });
+
+  const [newSelectedGroups, setNewSelectedGroups] = useState<string[]>([]);
+  const [newSelectedServers, setNewSelectedServers] = useState<string[]>([]);
+
+  // Prepare options for MultiSelect
+  const availableServers = servers.map((server) => ({
+    value: server.name,
+    label: server.name,
+  }));
+
+  const availableGroups = groups.map((group) => ({
+    value: group.name,
+    label: group.name,
+  }));
+
+  // Reset selected arrays when accessType changes
+  useEffect(() => {
+    if (newBearerKey.accessType !== 'groups') {
+      setNewSelectedGroups([]);
+    }
+    if (newBearerKey.accessType !== 'servers') {
+      setNewSelectedServers([]);
+    }
+  }, [newBearerKey.accessType]);
+
   const fetchMcpSettings = async () => {
     try {
       const result = await exportMCPSettings();
@@ -473,15 +822,374 @@ const SettingsPage: React.FC = () => {
     showToast(t('settings.exportSuccess') || 'Settings exported successfully', 'success');
   };
 
+  const parseCommaSeparated = (value: string): string[] | undefined => {
+    const parts = value
+      .split(',')
+      .map((item) => item.trim())
+      .filter((item) => item.length > 0);
+    return parts.length > 0 ? parts : undefined;
+  };
+
+  const handleCreateBearerKey = async () => {
+    if (!newBearerKey.name || !newBearerKey.token) {
+      showToast(t('settings.bearerKeyRequired') || 'Name and token are required', 'error');
+      return;
+    }
+
+    if (newBearerKey.accessType === 'groups' && newSelectedGroups.length === 0) {
+      showToast(t('settings.selectAtLeastOneGroup') || 'Please select at least one group', 'error');
+      return;
+    }
+    if (newBearerKey.accessType === 'servers' && newSelectedServers.length === 0) {
+      showToast(
+        t('settings.selectAtLeastOneServer') || 'Please select at least one server',
+        'error',
+      );
+      return;
+    }
+
+    await createBearerKey({
+      name: newBearerKey.name,
+      token: newBearerKey.token,
+      enabled: newBearerKey.enabled,
+      accessType: newBearerKey.accessType,
+      allowedGroups:
+        newBearerKey.accessType === 'groups' && newSelectedGroups.length > 0
+          ? newSelectedGroups
+          : undefined,
+      allowedServers:
+        newBearerKey.accessType === 'servers' && newSelectedServers.length > 0
+          ? newSelectedServers
+          : undefined,
+    } as any);
+
+    setNewBearerKey({
+      name: '',
+      token: '',
+      enabled: true,
+      accessType: 'all',
+      allowedGroups: '',
+      allowedServers: '',
+    });
+    setNewSelectedGroups([]);
+    setNewSelectedServers([]);
+    await refreshBearerKeys();
+  };
+
+  const handleSaveExistingBearerKey = async (
+    id: string,
+    payload: {
+      name: string;
+      token: string;
+      enabled: boolean;
+      accessType: 'all' | 'groups' | 'servers';
+      allowedGroups: string;
+      allowedServers: string;
+    },
+  ) => {
+    await updateBearerKey(id, {
+      name: payload.name,
+      token: payload.token,
+      enabled: payload.enabled,
+      accessType: payload.accessType,
+      allowedGroups: parseCommaSeparated(payload.allowedGroups),
+      allowedServers: parseCommaSeparated(payload.allowedServers),
+    } as any);
+    await refreshBearerKeys();
+  };
+
+  const handleDeleteExistingBearerKey = async (id: string) => {
+    await deleteBearerKey(id);
+    await refreshBearerKeys();
+  };
+
   return (
     <div className="container mx-auto">
       <h1 className="text-2xl font-bold text-gray-900 mb-8">{t('pages.settings.title')}</h1>
 
+      {/* Bearer Keys Settings */}
+      <PermissionChecker permissions={PERMISSIONS.SETTINGS_ROUTE_CONFIG}>
+        <div className="bg-white shadow rounded-lg mb-6 page-card dashboard-card">
+          <div
+            className="flex justify-between items-center cursor-pointer transition-colors duration-200 hover:text-blue-600 py-4 px-6"
+            onClick={() => toggleSection('bearerKeys')}
+          >
+            <h2 className="font-semibold text-gray-800">
+              {t('settings.bearerKeysSectionTitle') || 'Bearer authentication keys'}
+            </h2>
+            <span className="text-gray-500 transition-transform duration-200">
+              {sectionsVisible.bearerKeys ? '▼' : '►'}
+            </span>
+          </div>
+
+          {sectionsVisible.bearerKeys && (
+            <div className="space-y-4 pb-4 px-6">
+              <div className="flex justify-between items-center">
+                <p className="text-sm text-gray-600">
+                  {t('settings.bearerKeysSectionDescription') ||
+                    'Manage multiple bearer authentication keys with different access scopes.'}
+                </p>
+                {!showAddBearerKeyForm && (
+                  <button
+                    type="button"
+                    onClick={() => setShowAddBearerKeyForm(true)}
+                    className="flex items-center text-blue-600 hover:text-blue-800 font-medium transition-colors duration-200"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-5 w-5 mr-1"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                    {t('settings.addBearerKey') || 'Add bearer key'}
+                  </button>
+                )}
+              </div>
+
+              {/* Existing keys */}
+              {bearerKeys.length === 0 ? (
+                <p className="text-sm text-gray-500">
+                  {t('settings.noBearerKeys') || 'No bearer keys configured yet.'}
+                </p>
+              ) : (
+                <div className="mt-2 overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200 border border-gray-200 rounded-lg">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th
+                          scope="col"
+                          className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                        >
+                          {t('settings.bearerKeyName') || 'Name'}
+                        </th>
+                        <th
+                          scope="col"
+                          className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                        >
+                          {t('settings.bearerKeyToken') || 'Token'}
+                        </th>
+                        <th
+                          scope="col"
+                          className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                        >
+                          {t('settings.bearerKeyEnabled') || 'Status'}
+                        </th>
+                        <th
+                          scope="col"
+                          className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                        >
+                          {t('settings.bearerKeyAccessType') || 'Access Scope'}
+                        </th>
+                        <th
+                          scope="col"
+                          className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
+                        >
+                          {t('common.actions') || 'Actions'}
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {bearerKeys.map((key) => (
+                        <BearerKeyRow
+                          key={key.id}
+                          keyData={key}
+                          loading={loading}
+                          availableServers={availableServers}
+                          availableGroups={availableGroups}
+                          onSave={handleSaveExistingBearerKey}
+                          onDelete={handleDeleteExistingBearerKey}
+                        />
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {/* New key form */}
+              {showAddBearerKeyForm && (
+                <div className="mt-6 border-t border-gray-200 pt-6">
+                  <div className="bg-gray-50 rounded-lg p-5 border border-gray-200">
+                    <h3 className="font-medium text-gray-900 mb-4 flex items-center gap-2">
+                      <span className="bg-blue-100 text-blue-600 p-1 rounded">
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          className="h-4 w-4"
+                          viewBox="0 0 20 20"
+                          fill="currentColor"
+                        >
+                          <path
+                            fillRule="evenodd"
+                            d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"
+                            clipRule="evenodd"
+                          />
+                        </svg>
+                      </span>
+                      {t('settings.addBearerKey') || 'Add bearer key'}
+                    </h3>
+
+                    <div className="grid grid-cols-1 md:grid-cols-12 gap-4 mb-4">
+                      <div className="md:col-span-3">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          {t('settings.bearerKeyName') || 'Name'}
+                        </label>
+                        <input
+                          type="text"
+                          className="block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm form-input transition-shadow duration-200"
+                          placeholder="e.g. My API Key"
+                          value={newBearerKey.name}
+                          onChange={(e) =>
+                            setNewBearerKey((prev) => ({ ...prev, name: e.target.value }))
+                          }
+                          disabled={loading}
+                        />
+                      </div>
+                      <div className="md:col-span-9">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          {t('settings.bearerKeyToken') || 'Token'}
+                        </label>
+                        <div className="flex rounded-md shadow-sm">
+                          <input
+                            type="text"
+                            className="flex-1 block w-full py-2 px-3 border border-gray-300 rounded-l-md rounded-r-none border-r-0 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm form-input transition-shadow duration-200"
+                            placeholder="sk-..."
+                            value={newBearerKey.token}
+                            onChange={(e) =>
+                              setNewBearerKey((prev) => ({ ...prev, token: e.target.value }))
+                            }
+                            disabled={loading}
+                          />
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setNewBearerKey((prev) => ({ ...prev, token: generateRandomKey() }))
+                            }
+                            disabled={loading}
+                            className="relative -ml-[5px] inline-flex items-center px-4 py-2 border border-gray-300 bg-gray-100 text-gray-700 text-sm font-medium rounded-r-md rounded-l-none hover:bg-gray-200 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200 z-10"
+                          >
+                            {t('settings.generate') || 'Generate'}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap items-end gap-4 mb-2">
+                      <div className="w-40">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          {t('settings.bearerKeyEnabled') || 'Status'}
+                        </label>
+                        <div className="flex items-center h-[38px] px-3 bg-white border border-gray-300 rounded-md">
+                          <span
+                            className={`text-sm mr-3 ${newBearerKey.enabled ? 'text-green-600 font-medium' : 'text-gray-500'}`}
+                          >
+                            {newBearerKey.enabled ? 'Active' : 'Inactive'}
+                          </span>
+                          <Switch
+                            disabled={loading}
+                            checked={newBearerKey.enabled}
+                            onCheckedChange={(checked) =>
+                              setNewBearerKey((prev) => ({ ...prev, enabled: checked }))
+                            }
+                          />
+                        </div>
+                      </div>
+
+                      <div className="w-48">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          {t('settings.bearerKeyAccessType') || 'Access scope'}
+                        </label>
+                        <select
+                          className="block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm form-select transition-shadow duration-200"
+                          value={newBearerKey.accessType}
+                          onChange={(e) =>
+                            setNewBearerKey((prev) => ({
+                              ...prev,
+                              accessType: e.target.value as 'all' | 'groups' | 'servers',
+                            }))
+                          }
+                          disabled={loading}
+                        >
+                          <option value="all">
+                            {t('settings.bearerKeyAccessAll') || 'All Resources'}
+                          </option>
+                          <option value="groups">
+                            {t('settings.bearerKeyAccessGroups') || 'Specific Groups'}
+                          </option>
+                          <option value="servers">
+                            {t('settings.bearerKeyAccessServers') || 'Specific Servers'}
+                          </option>
+                        </select>
+                      </div>
+
+                      <div className="flex-1 min-w-[200px]">
+                        <label
+                          className={`block text-sm font-medium mb-1 ${newBearerKey.accessType === 'all' ? 'text-gray-400' : 'text-gray-700'}`}
+                        >
+                          {newBearerKey.accessType === 'groups'
+                            ? t('settings.bearerKeyAllowedGroups') || 'Allowed groups'
+                            : t('settings.bearerKeyAllowedServers') || 'Allowed servers'}
+                        </label>
+                        <MultiSelect
+                          options={
+                            newBearerKey.accessType === 'groups'
+                              ? availableGroups
+                              : availableServers
+                          }
+                          selected={
+                            newBearerKey.accessType === 'groups'
+                              ? newSelectedGroups
+                              : newSelectedServers
+                          }
+                          onChange={
+                            newBearerKey.accessType === 'groups'
+                              ? setNewSelectedGroups
+                              : setNewSelectedServers
+                          }
+                          placeholder={
+                            newBearerKey.accessType === 'groups'
+                              ? t('settings.selectGroups') || 'Select groups...'
+                              : t('settings.selectServers') || 'Select servers...'
+                          }
+                          disabled={loading || newBearerKey.accessType === 'all'}
+                        />
+                      </div>
+
+                      <div className="flex justify-end gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setShowAddBearerKeyForm(false)}
+                          className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-md text-sm font-medium hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 h-[38px]"
+                        >
+                          {t('common.cancel') || 'Cancel'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleCreateBearerKey}
+                          disabled={loading}
+                          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium disabled:opacity-50 btn-primary h-[38px]"
+                        >
+                          {t('settings.addBearerKeyButton') || 'Create Key'}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </PermissionChecker>
+
       {/* Smart Routing Configuration Settings */}
       <PermissionChecker permissions={PERMISSIONS.SETTINGS_SMART_ROUTING}>
-        <div className="bg-white shadow rounded-lg py-4 px-6 mb-6 page-card dashboard-card">
+        <div className="bg-white shadow rounded-lg mb-6 page-card dashboard-card">
           <div
-            className="flex justify-between items-center cursor-pointer transition-colors duration-200 hover:text-blue-600"
+            className="flex justify-between items-center cursor-pointer transition-colors duration-200 hover:text-blue-600 py-4 px-6"
             onClick={() => toggleSection('smartRoutingConfig')}
           >
             <h2 className="font-semibold text-gray-800">{t('pages.settings.smartRouting')}</h2>
@@ -491,7 +1199,7 @@ const SettingsPage: React.FC = () => {
           </div>
 
           {sectionsVisible.smartRoutingConfig && (
-            <div className="space-y-4 mt-4">
+            <div className="space-y-4 pb-4 px-6">
               <div className="flex items-center justify-between p-3 bg-gray-50 rounded-md">
                 <div>
                   <h3 className="font-medium text-gray-700">{t('settings.enableSmartRouting')}</h3>
@@ -616,9 +1324,9 @@ const SettingsPage: React.FC = () => {
 
       {/* OAuth Server Configuration Settings */}
       <PermissionChecker permissions={PERMISSIONS.SETTINGS_OAUTH_SERVER}>
-        <div className="bg-white shadow rounded-lg py-4 px-6 mb-6 dashboard-card">
+        <div className="bg-white shadow rounded-lg mb-6 dashboard-card">
           <div
-            className="flex justify-between items-center cursor-pointer"
+            className="flex justify-between items-center cursor-pointer transition-colors duration-200 hover:text-blue-600 py-4 px-6"
             onClick={() => toggleSection('oauthServerConfig')}
           >
             <h2 className="font-semibold text-gray-800">{t('pages.settings.oauthServer')}</h2>
@@ -626,7 +1334,7 @@ const SettingsPage: React.FC = () => {
           </div>
 
           {sectionsVisible.oauthServerConfig && (
-            <div className="space-y-4 mt-4">
+            <div className="space-y-4 pb-4 px-6">
               <div className="flex items-center justify-between p-3 bg-gray-50 rounded-md">
                 <div>
                   <h3 className="font-medium text-gray-700">{t('settings.enableOauthServer')}</h3>
@@ -870,9 +1578,9 @@ const SettingsPage: React.FC = () => {
 
       {/* MCPRouter Configuration Settings */}
       <PermissionChecker permissions={PERMISSIONS.SETTINGS_INSTALL_CONFIG}>
-        <div className="bg-white shadow rounded-lg py-4 px-6 mb-6 page-card dashboard-card">
+        <div className="bg-white shadow rounded-lg mb-6 page-card dashboard-card">
           <div
-            className="flex justify-between items-center cursor-pointer transition-colors duration-200 hover:text-blue-600"
+            className="flex justify-between items-center cursor-pointer transition-colors duration-200 hover:text-blue-600 py-4 px-6"
             onClick={() => toggleSection('mcpRouterConfig')}
           >
             <h2 className="font-semibold text-gray-800">{t('settings.mcpRouterConfig')}</h2>
@@ -882,7 +1590,7 @@ const SettingsPage: React.FC = () => {
           </div>
 
           {sectionsVisible.mcpRouterConfig && (
-            <div className="space-y-4 mt-4">
+            <div className="space-y-4 pb-4 px-6">
               <div className="p-3 bg-gray-50 rounded-md">
                 <div className="mb-2">
                   <h3 className="font-medium text-gray-700">{t('settings.mcpRouterApiKey')}</h3>
@@ -941,9 +1649,9 @@ const SettingsPage: React.FC = () => {
 
       {/* System Settings */}
       <PermissionChecker permissions={PERMISSIONS.SETTINGS_SYSTEM_CONFIG}>
-        <div className="bg-white shadow rounded-lg py-4 px-6 mb-6 dashboard-card">
+        <div className="bg-white shadow rounded-lg mb-6 dashboard-card">
           <div
-            className="flex justify-between items-center cursor-pointer"
+            className="flex justify-between items-center cursor-pointer transition-colors duration-200 hover:text-blue-600 py-4 px-6"
             onClick={() => toggleSection('nameSeparator')}
           >
             <h2 className="font-semibold text-gray-800">{t('settings.systemSettings')}</h2>
@@ -951,7 +1659,7 @@ const SettingsPage: React.FC = () => {
           </div>
 
           {sectionsVisible.nameSeparator && (
-            <div className="space-y-4 mt-4">
+            <div className="space-y-4 pb-4 px-6">
               <div className="p-3 bg-gray-50 rounded-md">
                 <div className="mb-2">
                   <h3 className="font-medium text-gray-700">{t('settings.nameSeparatorLabel')}</h3>
@@ -999,9 +1707,9 @@ const SettingsPage: React.FC = () => {
 
       {/* Route Configuration Settings */}
       <PermissionChecker permissions={PERMISSIONS.SETTINGS_ROUTE_CONFIG}>
-        <div className="bg-white shadow rounded-lg py-4 px-6 mb-6 dashboard-card">
+        <div className="bg-white shadow rounded-lg mb-6 dashboard-card">
           <div
-            className="flex justify-between items-center cursor-pointer"
+            className="flex justify-between items-center cursor-pointer transition-colors duration-200 hover:text-blue-600 py-4 px-6"
             onClick={() => toggleSection('routingConfig')}
           >
             <h2 className="font-semibold text-gray-800">{t('pages.settings.routeConfig')}</h2>
@@ -1009,51 +1717,7 @@ const SettingsPage: React.FC = () => {
           </div>
 
           {sectionsVisible.routingConfig && (
-            <div className="space-y-4 mt-4">
-              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-md">
-                <div>
-                  <h3 className="font-medium text-gray-700">{t('settings.enableBearerAuth')}</h3>
-                  <p className="text-sm text-gray-500">
-                    {t('settings.enableBearerAuthDescription')}
-                  </p>
-                </div>
-                <Switch
-                  disabled={loading}
-                  checked={routingConfig.enableBearerAuth}
-                  onCheckedChange={(checked) =>
-                    handleRoutingConfigChange('enableBearerAuth', checked)
-                  }
-                />
-              </div>
-
-              {routingConfig.enableBearerAuth && (
-                <div className="p-3 bg-gray-50 rounded-md">
-                  <div className="mb-2">
-                    <h3 className="font-medium text-gray-700">{t('settings.bearerAuthKey')}</h3>
-                    <p className="text-sm text-gray-500">
-                      {t('settings.bearerAuthKeyDescription')}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <input
-                      type="text"
-                      value={tempRoutingConfig.bearerAuthKey}
-                      onChange={(e) => handleBearerAuthKeyChange(e.target.value)}
-                      placeholder={t('settings.bearerAuthKeyPlaceholder')}
-                      className="flex-1 mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm form-input"
-                      disabled={loading || !routingConfig.enableBearerAuth}
-                    />
-                    <button
-                      onClick={saveBearerAuthKey}
-                      disabled={loading || !routingConfig.enableBearerAuth}
-                      className="mt-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium disabled:opacity-50 btn-primary"
-                    >
-                      {t('common.save')}
-                    </button>
-                  </div>
-                </div>
-              )}
-
+            <div className="space-y-4 pb-4 px-6">
               <div className="flex items-center justify-between p-3 bg-gray-50 rounded-md">
                 <div>
                   <h3 className="font-medium text-gray-700">{t('settings.enableGlobalRoute')}</h3>
@@ -1106,9 +1770,9 @@ const SettingsPage: React.FC = () => {
 
       {/* Installation Configuration Settings */}
       <PermissionChecker permissions={PERMISSIONS.SETTINGS_INSTALL_CONFIG}>
-        <div className="bg-white shadow rounded-lg py-4 px-6 mb-6 dashboard-card">
+        <div className="bg-white shadow rounded-lg mb-6 dashboard-card">
           <div
-            className="flex justify-between items-center cursor-pointer"
+            className="flex justify-between items-center cursor-pointer transition-colors duration-200 hover:text-blue-600 py-4 px-6"
             onClick={() => toggleSection('installConfig')}
           >
             <h2 className="font-semibold text-gray-800">{t('settings.installConfig')}</h2>
@@ -1116,7 +1780,7 @@ const SettingsPage: React.FC = () => {
           </div>
 
           {sectionsVisible.installConfig && (
-            <div className="space-y-4 mt-4">
+            <div className="space-y-4 pb-4 px-6">
               <div className="p-3 bg-gray-50 rounded-md">
                 <div className="mb-2">
                   <h3 className="font-medium text-gray-700">{t('settings.baseUrl')}</h3>
@@ -1194,12 +1858,9 @@ const SettingsPage: React.FC = () => {
       </PermissionChecker>
 
       {/* Change Password */}
-      <div
-        className="bg-white shadow rounded-lg py-4 px-6 mb-6 dashboard-card"
-        data-section="password"
-      >
+      <div className="bg-white shadow rounded-lg mb-6 dashboard-card" data-section="password">
         <div
-          className="flex justify-between items-center cursor-pointer"
+          className="flex justify-between items-center cursor-pointer transition-colors duration-200 hover:text-blue-600 py-4 px-6"
           onClick={() => toggleSection('password')}
           role="button"
         >
@@ -1208,7 +1869,7 @@ const SettingsPage: React.FC = () => {
         </div>
 
         {sectionsVisible.password && (
-          <div className="max-w-lg mt-4">
+          <div className="max-w-lg pb-4 px-6">
             <ChangePasswordForm onSuccess={handlePasswordChangeSuccess} />
           </div>
         )}
@@ -1216,9 +1877,9 @@ const SettingsPage: React.FC = () => {
 
       {/* Export MCP Settings */}
       <PermissionChecker permissions={PERMISSIONS.SETTINGS_EXPORT_CONFIG}>
-        <div className="bg-white shadow rounded-lg py-4 px-6 mb-6 dashboard-card">
+        <div className="bg-white shadow rounded-lg mb-6 dashboard-card">
           <div
-            className="flex justify-between items-center cursor-pointer"
+            className="flex justify-between items-center cursor-pointer transition-colors duration-200 hover:text-blue-600 py-4 px-6"
             onClick={() => toggleSection('exportConfig')}
           >
             <h2 className="font-semibold text-gray-800">{t('settings.exportMcpSettings')}</h2>
@@ -1226,7 +1887,7 @@ const SettingsPage: React.FC = () => {
           </div>
 
           {sectionsVisible.exportConfig && (
-            <div className="space-y-4 mt-4">
+            <div className="space-y-4 pb-4 px-6">
               <div className="p-3 bg-gray-50 rounded-md">
                 <div className="mb-4">
                   <h3 className="font-medium text-gray-700">{t('settings.mcpSettingsJson')}</h3>

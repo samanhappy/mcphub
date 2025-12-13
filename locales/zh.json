@@ -255,7 +255,11 @@
     "type": "类型",
     "repeated": "可重复",
     "valueHint": "值提示",
-    "choices": "可选值"
+    "choices": "可选值",
+    "actions": "操作",
+    "saving": "保存中...",
+    "active": "已激活",
+    "inactive": "未激活"
   },
   "nav": {
     "dashboard": "仪表盘",
@@ -289,7 +293,7 @@
       "routeConfig": "安全配置",
       "installConfig": "安装",
       "smartRouting": "智能路由",
-      "oauthServer": "OAuth 服务器"
+      "oauthServer": "OAuth"
     },
     "groups": {
       "title": "分组管理"
@@ -555,6 +559,27 @@
     "bearerAuthKey": "Bearer 认证密钥",
     "bearerAuthKeyDescription": "Bearer 令牌中需要携带的认证密钥",
     "bearerAuthKeyPlaceholder": "请输入 Bearer 认证密钥",
+    "bearerKeysSectionTitle": "密钥",
+    "bearerKeysSectionDescription": "管理多条密钥，并为不同密钥配置不同的访问范围。",
+    "noBearerKeys": "当前还没有配置任何密钥。",
+    "bearerKeyName": "名称",
+    "bearerKeyToken": "密钥值",
+    "bearerKeyEnabled": "启用",
+    "bearerKeyAccessType": "访问范围",
+    "bearerKeyAccessAll": "全部",
+    "bearerKeyAccessGroups": "指定分组",
+    "bearerKeyAccessServers": "指定服务器",
+    "bearerKeyAllowedGroups": "允许访问的分组",
+    "bearerKeyAllowedServers": "允许访问的服务器",
+    "addBearerKey": "新增密钥",
+    "addBearerKeyButton": "创建",
+    "bearerKeyRequired": "名称和密钥值为必填项",
+    "deleteBearerKeyConfirm": "确定要删除这条密钥吗？",
+    "generate": "生成",
+    "selectGroups": "选择分组",
+    "selectServers": "选择服务器",
+    "selectAtLeastOneGroup": "请至少选择一个分组",
+    "selectAtLeastOneServer": "请至少选择一个服务",
     "skipAuth": "免登录开关",
     "skipAuthDescription": "跳过前端和 API 访问的登录要求（默认关闭确保安全性）",
     "pythonIndexUrl": "Python 包仓库地址",

@@ -6,10 +6,10 @@ import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/
 import { isInitializeRequest } from '@modelcontextprotocol/sdk/types.js';
 import { deleteMcpServer, getMcpServer } from './mcpService.js';
 import config from '../config/index.js';
-import { getSystemConfigDao } from '../dao/index.js';
+import { getBearerKeyDao, getGroupDao, getServerDao, getSystemConfigDao } from '../dao/index.js';
 import { UserContextService } from './userContextService.js';
 import { RequestContextService } from './requestContextService.js';
-import { IUser } from '../types/index.js';
+import { IUser, BearerKey } from '../types/index.js';
 import { resolveOAuthUserFromToken } from '../utils/oauthBearer.js';
 
 export const transports: {
@@ -30,40 +30,164 @@ type BearerAuthResult =
       reason: 'missing' | 'invalid';
     };
 
+/**
+ * Check if a string is a valid UUID v4 format
+ */
+const isValidUUID = (str: string): boolean => {
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  return uuidRegex.test(str);
+};
+
+const isBearerKeyAllowedForRequest = async (req: Request, key: BearerKey): Promise<boolean> => {
+  const paramValue = (req.params as any)?.group as string | undefined;
+
+  // accessType 'all' allows all requests
+  if (key.accessType === 'all') {
+    return true;
+  }
+
+  // No parameter value means global route
+  if (!paramValue) {
+    // Only accessType 'all' allows global routes
+    return false;
+  }
+
+  try {
+    const groupDao = getGroupDao();
+    const serverDao = getServerDao();
+
+    // Step 1: Try to match as a group (by name or id), since group has higher priority
+    let matchedGroup = await groupDao.findByName(paramValue);
+    if (!matchedGroup && isValidUUID(paramValue)) {
+      // Only try findById if the parameter is a valid UUID
+      matchedGroup = await groupDao.findById(paramValue);
+    }
+
+    if (matchedGroup) {
+      // Matched as a group
+      if (key.accessType === 'groups') {
+        // For group-scoped keys, check if the matched group is in allowedGroups
+        const allowedGroups = key.allowedGroups || [];
+        return allowedGroups.includes(matchedGroup.name) || allowedGroups.includes(matchedGroup.id);
+      }
+
+      if (key.accessType === 'servers') {
+        // For server-scoped keys, check if any server in the group is allowed
+        const allowedServers = key.allowedServers || [];
+        if (allowedServers.length === 0) {
+          return false;
+        }
+
+        if (!Array.isArray(matchedGroup.servers)) {
+          return false;
+        }
+
+        const groupServerNames = matchedGroup.servers.map((server) =>
+          typeof server === 'string' ? server : server.name,
+        );
+        return groupServerNames.some((name) => allowedServers.includes(name));
+      }
+
+      // Unknown accessType with matched group
+      return false;
+    }
+
+    // Step 2: Not a group, try to match as a server name
+    const matchedServer = await serverDao.findById(paramValue);
+
+    if (matchedServer) {
+      // Matched as a server
+      if (key.accessType === 'groups') {
+        // For group-scoped keys, server access is not allowed
+        return false;
+      }
+
+      if (key.accessType === 'servers') {
+        // For server-scoped keys, check if the server is in allowedServers
+        const allowedServers = key.allowedServers || [];
+        return allowedServers.includes(matchedServer.name);
+      }
+
+      // Unknown accessType with matched server
+      return false;
+    }
+
+    // Step 3: Not a valid group or server, deny access
+    console.warn(
+      `Bearer key access denied: parameter '${paramValue}' does not match any group or server`,
+    );
+    return false;
+  } catch (error) {
+    console.error('Error checking bearer key request access:', error);
+    return false;
+  }
+};
+
 const validateBearerAuth = async (req: Request): Promise<BearerAuthResult> => {
-  const systemConfigDao = getSystemConfigDao();
-  const systemConfig = await systemConfigDao.get();
-  const routingConfig = systemConfig?.routing || {
-    enableGlobalRoute: true,
-    enableGroupNameRoute: true,
-    enableBearerAuth: false,
-    bearerAuthKey: '',
-  };
+  const bearerKeyDao = getBearerKeyDao();
+  const enabledKeys = await bearerKeyDao.findEnabled();
 
-  if (routingConfig.enableBearerAuth) {
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return { valid: false, reason: 'missing' };
+  const authHeader = req.headers.authorization;
+  const hasBearerHeader = !!authHeader && authHeader.startsWith('Bearer ');
+
+  // If no enabled keys are configured, bearer auth is effectively disabled.
+  // We still allow OAuth bearer tokens to attach user context in this case.
+  if (enabledKeys.length === 0) {
+    if (!hasBearerHeader) {
+      return { valid: true };
     }
 
-    const token = authHeader.substring(7); // Remove "Bearer " prefix
-    if (token.trim().length === 0) {
-      return { valid: false, reason: 'missing' };
-    }
-
-    if (token === routingConfig.bearerAuthKey) {
+    const token = authHeader!.substring(7).trim();
+    if (!token) {
       return { valid: true };
     }
 
     const oauthUser = await resolveOAuthUserFromToken(token);
     if (oauthUser) {
+      console.log('Authenticated request using OAuth bearer token without configured keys');
       return { valid: true, user: oauthUser };
     }
 
-    return { valid: false, reason: 'invalid' };
+    // When there are no keys, a non-OAuth bearer token should not block access
+    return { valid: true };
   }
 
-  return { valid: true };
+  // When keys exist, bearer header is required
+  if (!hasBearerHeader) {
+    return { valid: false, reason: 'missing' };
+  }
+
+  const token = authHeader!.substring(7).trim();
+  if (!token) {
+    return { valid: false, reason: 'missing' };
+  }
+
+  // First, try to match a configured bearer key
+  const matchingKey = enabledKeys.find((key) => key.token === token);
+  if (matchingKey) {
+    const allowed = await isBearerKeyAllowedForRequest(req, matchingKey);
+    if (!allowed) {
+      console.warn(
+        `Bearer key rejected due to scope restrictions: id=${matchingKey.id}, name=${matchingKey.name}, accessType=${matchingKey.accessType}`,
+      );
+      return { valid: false, reason: 'invalid' };
+    }
+
+    console.log(
+      `Bearer key authenticated: id=${matchingKey.id}, name=${matchingKey.name}, accessType=${matchingKey.accessType}`,
+    );
+    return { valid: true };
+  }
+
+  // Fallback: treat token as potential OAuth access token
+  const oauthUser = await resolveOAuthUserFromToken(token);
+  if (oauthUser) {
+    console.log('Authenticated request using OAuth bearer token (no matching static key)');
+    return { valid: true, user: oauthUser };
+  }
+
+  console.warn('Bearer authentication failed: token did not match any key or OAuth user');
+  return { valid: false, reason: 'invalid' };
 };
 
 const attachUserContextFromBearer = (result: BearerAuthResult, res: Response): void => {
@@ -398,9 +522,9 @@ export const handleMcpPostRequest = async (req: Request, res: Response): Promise
   // Get filtered settings based on user context (after setting user context)
   const systemConfigDao = getSystemConfigDao();
   const systemConfig = await systemConfigDao.get();
-  const routingConfig = systemConfig?.routing || {
-    enableGlobalRoute: true,
-    enableGroupNameRoute: true,
+  const routingConfig = {
+    enableGlobalRoute: systemConfig?.routing?.enableGlobalRoute ?? true,
+    enableGroupNameRoute: systemConfig?.routing?.enableGroupNameRoute ?? true,
   };
   if (!group && !routingConfig.enableGlobalRoute) {
     res.status(403).send('Global routes are disabled. Please specify a group ID.');

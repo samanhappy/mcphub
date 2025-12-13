@@ -6,6 +6,7 @@ import { SystemConfigRepository } from './SystemConfigRepository.js';
 import { UserConfigRepository } from './UserConfigRepository.js';
 import { OAuthClientRepository } from './OAuthClientRepository.js';
 import { OAuthTokenRepository } from './OAuthTokenRepository.js';
+import { BearerKeyRepository } from './BearerKeyRepository.js';
 
 // Export all repositories
 export {
@@ -17,4 +18,5 @@ export {
   UserConfigRepository,
   OAuthClientRepository,
   OAuthTokenRepository,
+  BearerKeyRepository,
 };

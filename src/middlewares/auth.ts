@@ -5,9 +5,15 @@ import defaultConfig from '../config/index.js';
 import { JWT_SECRET } from '../config/jwt.js';
 import { getToken } from '../models/OAuth.js';
 import { isOAuthServerEnabled } from '../services/oauthServerService.js';
+import { getBearerKeyDao } from '../dao/index.js';
+import { BearerKey } from '../types/index.js';
 
-const validateBearerAuth = (req: Request, routingConfig: any): boolean => {
-  if (!routingConfig.enableBearerAuth) {
+const validateBearerAuth = async (req: Request): Promise<boolean> => {
+  const bearerKeyDao = getBearerKeyDao();
+  const enabledKeys = await bearerKeyDao.findEnabled();
+
+  // If there are no enabled keys, bearer auth via static keys is disabled
+  if (enabledKeys.length === 0) {
     return false;
   }
 
@@ -16,7 +22,21 @@ const validateBearerAuth = (req: Request, routingConfig: any): boolean => {
     return false;
   }
 
-  return authHeader.substring(7) === routingConfig.bearerAuthKey;
+  const token = authHeader.substring(7).trim();
+  if (!token) {
+    return false;
+  }
+
+  const matchingKey: BearerKey | undefined = enabledKeys.find((key) => key.token === token);
+  if (!matchingKey) {
+    console.warn('Bearer auth failed: token did not match any configured bearer key');
+    return false;
+  }
+
+  console.log(
+    `Bearer auth succeeded with key id=${matchingKey.id}, name=${matchingKey.name}, accessType=${matchingKey.accessType}`,
+  );
+  return true;
 };
 
 const readonlyAllowPaths = ['/tools/call/'];
@@ -47,8 +67,6 @@ export const auth = async (req: Request, res: Response, next: NextFunction): Pro
   const routingConfig = loadSettings().systemConfig?.routing || {
     enableGlobalRoute: true,
     enableGroupNameRoute: true,
-    enableBearerAuth: false,
-    bearerAuthKey: '',
     skipAuth: false,
   };
 
@@ -57,8 +75,8 @@ export const auth = async (req: Request, res: Response, next: NextFunction): Pro
     return;
   }
 
-  // Check if bearer auth is enabled and validate it
-  if (validateBearerAuth(req, routingConfig)) {
+  // Check if bearer auth via configured keys can validate this request
+  if (await validateBearerAuth(req)) {
     next();
     return;
   }

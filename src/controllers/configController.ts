@@ -12,6 +12,7 @@ import {
   getSystemConfigDao,
   getUserConfigDao,
   getUserDao,
+  getBearerKeyDao,
 } from '../dao/DaoFactory.js';
 
 const dataService: DataService = getDataService();
@@ -137,16 +138,25 @@ export const getMcpSettingsJson = async (req: Request, res: Response): Promise<v
       });
     } else {
       // Return full settings via DAO layer (supports both file and database modes)
-      const [servers, users, groups, systemConfig, userConfigs, oauthClients, oauthTokens] =
-        await Promise.all([
-          getServerDao().findAll(),
-          getUserDao().findAll(),
-          getGroupDao().findAll(),
-          getSystemConfigDao().get(),
-          getUserConfigDao().getAll(),
-          getOAuthClientDao().findAll(),
-          getOAuthTokenDao().findAll(),
-        ]);
+      const [
+        servers,
+        users,
+        groups,
+        systemConfig,
+        userConfigs,
+        oauthClients,
+        oauthTokens,
+        bearerKeys,
+      ] = await Promise.all([
+        getServerDao().findAll(),
+        getUserDao().findAll(),
+        getGroupDao().findAll(),
+        getSystemConfigDao().get(),
+        getUserConfigDao().getAll(),
+        getOAuthClientDao().findAll(),
+        getOAuthTokenDao().findAll(),
+        getBearerKeyDao().findAll(),
+      ]);
 
       const mcpServers: Record<string, any> = {};
       for (const { name: serverConfigName, ...config } of servers) {
@@ -161,6 +171,7 @@ export const getMcpSettingsJson = async (req: Request, res: Response): Promise<v
         userConfigs,
         oauthClients,
         oauthTokens,
+        bearerKeys,
       };
 
       res.json({
