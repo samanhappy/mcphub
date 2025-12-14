@@ -375,6 +375,7 @@ const ServerForm = ({
               ? {
                   url: formData.url,
                   ...(Object.keys(headers).length > 0 ? { headers } : {}),
+                  ...(Object.keys(env).length > 0 ? { env } : {}),
                   ...(oauthConfig ? { oauth: oauthConfig } : {}),
                 }
               : {

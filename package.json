@@ -73,6 +73,7 @@
     "postgres": "^3.4.7",
     "reflect-metadata": "^0.2.2",
     "typeorm": "^0.3.26",
+    "undici": "^7.16.0",
     "uuid": "^11.1.0"
   },
   "devDependencies": {
