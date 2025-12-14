@@ -24,7 +24,10 @@ export class BearerKeyDaoImpl extends JsonFileBaseDao implements BearerKeyDao {
   private async loadKeysWithMigration(): Promise<BearerKey[]> {
     const settings = await this.loadSettings();
 
-    if (Array.isArray(settings.bearerKeys) && settings.bearerKeys.length > 0) {
+    // Treat an existing array (including an empty array) as already migrated.
+    // Otherwise, when there are no configured keys, we'd rewrite mcp_settings.json
+    // on every request, which also clears the global settings cache.
+    if (Array.isArray(settings.bearerKeys)) {
       return settings.bearerKeys;
     }
 
