@@ -979,6 +979,49 @@ const ServerForm = ({
             </div>
 
             <div className="mb-4">
+              <div className="flex justify-between items-center mb-2">
+                <label className="block text-gray-700 text-sm font-bold">
+                  {t('server.envVars')}
+                </label>
+                <button
+                  type="button"
+                  onClick={addEnvVar}
+                  className="bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-1 px-2 rounded text-sm flex items-center justify-center min-w-[30px] min-h-[30px] btn-primary"
+                >
+                  +
+                </button>
+              </div>
+              {envVars.map((envVar, index) => (
+                <div key={index} className="flex items-center mb-2">
+                  <div className="flex items-center space-x-2 flex-grow">
+                    <input
+                      type="text"
+                      value={envVar.key}
+                      onChange={(e) => handleEnvVarChange(index, 'key', e.target.value)}
+                      className="shadow appearance-none border rounded py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline w-1/2 form-input"
+                      placeholder={t('server.key')}
+                    />
+                    <span className="flex items-center">:</span>
+                    <input
+                      type="text"
+                      value={envVar.value}
+                      onChange={(e) => handleEnvVarChange(index, 'value', e.target.value)}
+                      className="shadow appearance-none border rounded py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline w-1/2 form-input"
+                      placeholder={t('server.value')}
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => removeEnvVar(index)}
+                    className="bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-1 px-2 rounded text-sm flex items-center justify-center min-w-[30px] min-h-[30px] ml-2 btn-danger"
+                  >
+                    -
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            <div className="mb-4">
               <div
                 className="flex items-center justify-between cursor-pointer bg-gray-50 hover:bg-gray-100 p-3 rounded border border-gray-200"
                 onClick={() => setIsOAuthSectionExpanded(!isOAuthSectionExpanded)}

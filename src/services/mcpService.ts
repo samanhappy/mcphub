@@ -14,6 +14,7 @@ import {
   StreamableHTTPClientTransport,
   StreamableHTTPClientTransportOptions,
 } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
+import { createFetchWithProxy, getProxyConfigFromEnv } from './proxy.js';
 import { ServerInfo, ServerConfig, Tool } from '../types/index.js';
 import { expandEnvVars, replaceEnvVars, getNameSeparator } from '../config/index.js';
 import config from '../config/index.js';
@@ -134,6 +135,10 @@ export const cleanupAllServers = (): void => {
 // Helper function to create transport based on server configuration
 export const createTransportFromConfig = async (name: string, conf: ServerConfig): Promise<any> => {
   let transport;
+  const env: Record<string, string> = {
+    ...(process.env as Record<string, string>),
+    ...replaceEnvVars(conf.env || {}),
+  };
 
   if (conf.type === 'streamable-http') {
     const options: StreamableHTTPClientTransportOptions = {};
@@ -151,6 +156,8 @@ export const createTransportFromConfig = async (name: string, conf: ServerConfig
       options.authProvider = authProvider;
       console.log(`OAuth provider configured for server: ${name}`);
     }
+
+    options.fetch = createFetchWithProxy(getProxyConfigFromEnv(env));
 
     transport = new StreamableHTTPClientTransport(new URL(conf.url || ''), options);
   } else if (conf.url) {
@@ -174,13 +181,11 @@ export const createTransportFromConfig = async (name: string, conf: ServerConfig
       console.log(`OAuth provider configured for server: ${name}`);
     }
 
+    options.fetch = createFetchWithProxy(getProxyConfigFromEnv(env));
+
     transport = new SSEClientTransport(new URL(conf.url), options);
   } else if (conf.command && conf.args) {
     // Stdio transport
-    const env: Record<string, string> = {
-      ...(process.env as Record<string, string>),
-      ...replaceEnvVars(conf.env || {}),
-    };
     env['PATH'] = expandEnvVars(process.env.PATH as string) || '';
 
     const systemConfigDao = getSystemConfigDao();
