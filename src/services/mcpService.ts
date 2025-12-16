@@ -241,6 +241,8 @@ const callToolWithReconnect = async (
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
       const result = await serverInfo.client.callTool(toolParams, undefined, options || {});
+      // Check auth error
+      checkAuthError(result);
       return result;
     } catch (error: any) {
       // Check if error message starts with "Error POSTing to endpoint (HTTP 40"
@@ -829,6 +831,25 @@ export const addOrUpdateServer = async (
     return { success: false, message: 'Failed to add/update server' };
   }
 };
+
+// Check for authentication error in tool call result
+function checkAuthError(result: any) {
+  if (Array.isArray(result.content) && result.content.length > 0) {
+    const text = result.content[0]?.text;
+    if (typeof text === 'string') {
+      let errorContent;
+      try {
+        errorContent = JSON.parse(text);
+      } catch (e) {
+        // Ignore JSON parse errors and continue
+        return;
+      }
+      if (errorContent.code === 401) {
+        throw new Error('Error POSTing to endpoint (HTTP 401 Unauthorized)');
+      }
+    }
+  }
+}
 
 // Close server client and transport
 function closeServer(name: string) {

@@ -325,7 +325,7 @@ export class MCPHubOAuthProvider implements OAuthClientProvider {
       return;
     }
 
-    console.log(`Saving OAuth tokens for server: ${this.serverName}`);
+    console.log(`Saving OAuth tokens: ${JSON.stringify(tokens)} for server: ${this.serverName}`);
 
     const updatedConfig = await persistTokens(this.serverName, {
       accessToken: tokens.access_token,
