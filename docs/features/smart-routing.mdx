@@ -78,7 +78,7 @@ Smart Routing requires additional setup compared to basic MCPHub usage:
           - ./mcp_settings.json:/app/mcp_settings.json
 
       postgres:
-        image: pgvector/pgvector:pg16
+        image: pgvector/pgvector:pg17
         environment:
           - POSTGRES_DB=mcphub
           - POSTGRES_USER=mcphub
@@ -146,7 +146,7 @@ Smart Routing requires additional setup compared to basic MCPHub usage:
         spec:
           containers:
           - name: postgres
-            image: pgvector/pgvector:pg16
+            image: pgvector/pgvector:pg17
             env:
             - name: POSTGRES_DB
               value: mcphub

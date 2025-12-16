@@ -119,7 +119,7 @@ services:
       - mcphub-network
 
   postgres:
-    image: postgres:15-alpine
+    image: pgvector/pgvector:pg17
     container_name: mcphub-postgres
     environment:
       - POSTGRES_DB=mcphub
@@ -203,7 +203,7 @@ services:
       retries: 3
 
   postgres:
-    image: postgres:15-alpine
+    image: pgvector/pgvector:pg17
     container_name: mcphub-postgres
     environment:
       - POSTGRES_DB=mcphub
@@ -305,7 +305,7 @@ services:
       - mcphub-dev
 
   postgres:
-    image: postgres:15-alpine
+    image: pgvector/pgvector:pg17
     container_name: mcphub-postgres-dev
     environment:
       - POSTGRES_DB=mcphub
@@ -445,7 +445,7 @@ secrets:
 ```yaml
 services:
   backup:
-    image: postgres:15-alpine
+    image: pgvector/pgvector:pg17
     container_name: mcphub-backup
     environment:
       - PGPASSWORD=${POSTGRES_PASSWORD}
