@@ -558,12 +558,6 @@ const SettingsPage: React.FC = () => {
     });
   };
 
-  const saveSmartRoutingConfig = async (
-    key: 'dbUrl' | 'openaiApiBaseUrl' | 'openaiApiKey' | 'openaiApiEmbeddingModel',
-  ) => {
-    await updateSmartRoutingConfig(key, tempSmartRoutingConfig[key]);
-  };
-
   const handleMCPRouterConfigChange = (
     key: 'apiKey' | 'referer' | 'title' | 'baseUrl',
     value: string,
@@ -702,6 +696,31 @@ const SettingsPage: React.FC = () => {
     } else {
       // If disabling, just update the enabled status
       await updateSmartRoutingConfig('enabled', value);
+    }
+  };
+
+  const handleSaveSmartRoutingConfig = async () => {
+    const updates: any = {};
+
+    if (tempSmartRoutingConfig.dbUrl !== smartRoutingConfig.dbUrl) {
+      updates.dbUrl = tempSmartRoutingConfig.dbUrl;
+    }
+    if (tempSmartRoutingConfig.openaiApiBaseUrl !== smartRoutingConfig.openaiApiBaseUrl) {
+      updates.openaiApiBaseUrl = tempSmartRoutingConfig.openaiApiBaseUrl;
+    }
+    if (tempSmartRoutingConfig.openaiApiKey !== smartRoutingConfig.openaiApiKey) {
+      updates.openaiApiKey = tempSmartRoutingConfig.openaiApiKey;
+    }
+    if (
+      tempSmartRoutingConfig.openaiApiEmbeddingModel !== smartRoutingConfig.openaiApiEmbeddingModel
+    ) {
+      updates.openaiApiEmbeddingModel = tempSmartRoutingConfig.openaiApiEmbeddingModel;
+    }
+
+    if (Object.keys(updates).length > 0) {
+      await updateSmartRoutingConfigBatch(updates);
+    } else {
+      showToast(t('settings.noChanges') || 'No changes to save', 'info');
     }
   };
 
@@ -1230,13 +1249,6 @@ const SettingsPage: React.FC = () => {
                     className="flex-1 mt-1 block w-full py-2 px-3 border rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm border-gray-300 form-input"
                     disabled={loading}
                   />
-                  <button
-                    onClick={() => saveSmartRoutingConfig('dbUrl')}
-                    disabled={loading}
-                    className="mt-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium disabled:opacity-50 btn-primary"
-                  >
-                    {t('common.save')}
-                  </button>
                 </div>
               </div>
 
@@ -1256,13 +1268,6 @@ const SettingsPage: React.FC = () => {
                     className="flex-1 mt-1 block w-full py-2 px-3 border rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm border-gray-300"
                     disabled={loading}
                   />
-                  <button
-                    onClick={() => saveSmartRoutingConfig('openaiApiKey')}
-                    disabled={loading}
-                    className="mt-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium disabled:opacity-50 btn-primary"
-                  >
-                    {t('common.save')}
-                  </button>
                 </div>
               </div>
 
@@ -1281,13 +1286,6 @@ const SettingsPage: React.FC = () => {
                     className="flex-1 mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm form-input"
                     disabled={loading}
                   />
-                  <button
-                    onClick={() => saveSmartRoutingConfig('openaiApiBaseUrl')}
-                    disabled={loading}
-                    className="mt-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium disabled:opacity-50 btn-primary"
-                  >
-                    {t('common.save')}
-                  </button>
                 </div>
               </div>
 
@@ -1308,14 +1306,17 @@ const SettingsPage: React.FC = () => {
                     className="flex-1 mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm form-input"
                     disabled={loading}
                   />
-                  <button
-                    onClick={() => saveSmartRoutingConfig('openaiApiEmbeddingModel')}
-                    disabled={loading}
-                    className="mt-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium disabled:opacity-50 btn-primary"
-                  >
-                    {t('common.save')}
-                  </button>
                 </div>
+              </div>
+
+              <div className="flex justify-end pt-2">
+                <button
+                  onClick={handleSaveSmartRoutingConfig}
+                  disabled={loading}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium disabled:opacity-50 btn-primary"
+                >
+                  {t('common.save')}
+                </button>
               </div>
             </div>
           )}
