@@ -9,6 +9,7 @@ import React, {
 import { useTranslation } from 'react-i18next';
 import { ApiResponse, BearerKey } from '@/types';
 import { useToast } from '@/contexts/ToastContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { apiGet, apiPut, apiPost, apiDelete } from '@/utils/fetchInterceptor';
 
 // Define types for the settings data
@@ -153,6 +154,7 @@ interface SettingsProviderProps {
 export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) => {
   const { t } = useTranslation();
   const { showToast } = useToast();
+  const { auth } = useAuth();
 
   const [routingConfig, setRoutingConfig] = useState<RoutingConfig>({
     enableGlobalRoute: true,
@@ -745,6 +747,15 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
   useEffect(() => {
     fetchSettings();
   }, [fetchSettings, refreshKey]);
+
+  // Watch for authentication status changes - refetch settings after login
+  useEffect(() => {
+    if (auth.isAuthenticated) {
+      console.log('[SettingsContext] User authenticated, triggering settings refresh');
+      // When user logs in, trigger a refresh to load settings
+      triggerRefresh();
+    }
+  }, [auth.isAuthenticated, triggerRefresh]);
 
   useEffect(() => {
     if (routingConfig) {
