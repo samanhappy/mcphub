@@ -61,6 +61,7 @@
     "emptyFields": "Kullanıcı adı ve şifre boş olamaz",
     "loginFailed": "Giriş başarısız, lütfen kullanıcı adınızı ve şifrenizi kontrol edin",
     "loginError": "Giriş sırasında bir hata oluştu",
+    "serverUnavailable": "Sunucuya bağlanılamıyor. Lütfen ağ bağlantınızı kontrol edin veya daha sonra tekrar deneyin",
     "currentPassword": "Mevcut Şifre",
     "newPassword": "Yeni Şifre",
     "confirmPassword": "Şifreyi Onayla",

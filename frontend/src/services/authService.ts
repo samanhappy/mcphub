@@ -29,7 +29,7 @@ export const login = async (credentials: LoginCredentials): Promise<AuthResponse
     console.error('Login error:', error);
     return {
       success: false,
-      message: 'An error occurred during login',
+      message: error instanceof Error ? error.message : 'An error occurred during login',
     };
   }
 };

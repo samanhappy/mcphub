@@ -44,6 +44,24 @@ const LoginPage: React.FC = () => {
     return sanitizeReturnUrl(params.get('returnUrl'));
   }, [location.search]);
 
+  const isServerUnavailableError = useCallback((message?: string) => {
+    if (!message) return false;
+    const normalized = message.toLowerCase();
+
+    return (
+      normalized.includes('failed to fetch') ||
+      normalized.includes('networkerror') ||
+      normalized.includes('network error') ||
+      normalized.includes('connection refused') ||
+      normalized.includes('unable to connect') ||
+      normalized.includes('fetch error') ||
+      normalized.includes('econnrefused') ||
+      normalized.includes('http 500') ||
+      normalized.includes('internal server error') ||
+      normalized.includes('proxy error')
+    );
+  }, []);
+
   const buildRedirectTarget = useCallback(() => {
     if (!returnUrl) {
       return '/';
@@ -100,10 +118,20 @@ const LoginPage: React.FC = () => {
           redirectAfterLogin();
         }
       } else {
-        setError(t('auth.loginFailed'));
+        const message = result.message;
+        if (isServerUnavailableError(message)) {
+          setError(t('auth.serverUnavailable'));
+        } else {
+          setError(t('auth.loginFailed'));
+        }
       }
     } catch (err) {
-      setError(t('auth.loginError'));
+      const message = err instanceof Error ? err.message : undefined;
+      if (isServerUnavailableError(message)) {
+        setError(t('auth.serverUnavailable'));
+      } else {
+        setError(t('auth.loginError'));
+      }
     } finally {
       setLoading(false);
     }
@@ -131,13 +159,21 @@ const LoginPage: React.FC = () => {
         }}
       />
       <div className="pointer-events-none absolute inset-0 -z-10">
-        <svg className="h-full w-full opacity-[0.08] dark:opacity-[0.12]" xmlns="http://www.w3.org/2000/svg">
+        <svg
+          className="h-full w-full opacity-[0.08] dark:opacity-[0.12]"
+          xmlns="http://www.w3.org/2000/svg"
+        >
           <defs>
             <pattern id="grid" width="32" height="32" patternUnits="userSpaceOnUse">
               <path d="M 32 0 L 0 0 0 32" fill="none" stroke="currentColor" strokeWidth="0.5" />
             </pattern>
           </defs>
-          <rect width="100%" height="100%" fill="url(#grid)" className="text-gray-400 dark:text-gray-300" />
+          <rect
+            width="100%"
+            height="100%"
+            fill="url(#grid)"
+            className="text-gray-400 dark:text-gray-300"
+          />
         </svg>
       </div>
 

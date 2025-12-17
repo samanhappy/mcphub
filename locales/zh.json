@@ -61,6 +61,7 @@
     "emptyFields": "用户名和密码不能为空",
     "loginFailed": "登录失败，请检查用户名和密码",
     "loginError": "登录过程中出现错误",
+    "serverUnavailable": "无法连接到服务器，请检查网络连接或稍后再试",
     "currentPassword": "当前密码",
     "newPassword": "新密码",
     "confirmPassword": "确认密码",

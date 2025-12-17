@@ -14,14 +14,17 @@ const initialState: AuthState = {
 // Create auth context
 const AuthContext = createContext<{
   auth: AuthState;
-  login: (username: string, password: string) => Promise<{ success: boolean; isUsingDefaultPassword?: boolean }>;
+  login: (
+    username: string,
+    password: string,
+  ) => Promise<{ success: boolean; isUsingDefaultPassword?: boolean; message?: string }>;
   register: (username: string, password: string, isAdmin?: boolean) => Promise<boolean>;
   logout: () => void;
 }>({
   auth: initialState,
   login: async () => ({ success: false }),
   register: async () => false,
-  logout: () => { },
+  logout: () => {},
 });
 
 // Auth provider component
@@ -90,7 +93,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   }, []);
 
   // Login function
-  const login = async (username: string, password: string): Promise<{ success: boolean; isUsingDefaultPassword?: boolean }> => {
+  const login = async (
+    username: string,
+    password: string,
+  ): Promise<{ success: boolean; isUsingDefaultPassword?: boolean; message?: string }> => {
     try {
       const response = await authService.login({ username, password });
 
@@ -111,7 +117,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           loading: false,
           error: response.message || 'Authentication failed',
         });
-        return { success: false };
+        return { success: false, message: response.message };
       }
     } catch (error) {
       setAuth({
@@ -119,7 +125,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         loading: false,
         error: 'Authentication failed',
       });
-      return { success: false };
+      return { success: false, message: error instanceof Error ? error.message : undefined };
     }
   };
 
@@ -127,7 +133,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const register = async (
     username: string,
     password: string,
-    isAdmin = false
+    isAdmin = false,
   ): Promise<boolean> => {
     try {
       const response = await authService.register({ username, password, isAdmin });

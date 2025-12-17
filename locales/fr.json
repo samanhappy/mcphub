@@ -61,6 +61,7 @@
     "emptyFields": "Le nom d'utilisateur et le mot de passe ne peuvent pas être vides",
     "loginFailed": "Échec de la connexion, veuillez vérifier votre nom d'utilisateur et votre mot de passe",
     "loginError": "Une erreur est survenue lors de la connexion",
+    "serverUnavailable": "Impossible de se connecter au serveur. Veuillez vérifier votre connexion réseau ou réessayer plus tard",
     "currentPassword": "Mot de passe actuel",
     "newPassword": "Nouveau mot de passe",
     "confirmPassword": "Confirmer le mot de passe",
