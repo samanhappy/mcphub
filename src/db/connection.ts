@@ -29,35 +29,40 @@ const getDatabaseUrl = async (): Promise<string> => {
   return (await getSmartRoutingConfig()).dbUrl;
 };
 
-// Default database configuration
-const defaultConfig: DataSourceOptions = {
-  type: 'postgres',
-  url: await getDatabaseUrl(),
-  synchronize: true,
-  entities: entities,
-  subscribers: [VectorEmbeddingSubscriber],
+// Default database configuration (without URL - will be set during initialization)
+const getDefaultConfig = async (): Promise<DataSourceOptions> => {
+  return {
+    type: 'postgres',
+    url: await getDatabaseUrl(),
+    synchronize: true,
+    entities: entities,
+    subscribers: [VectorEmbeddingSubscriber],
+  };
 };
 
-// AppDataSource is the TypeORM data source
-let appDataSource = new DataSource(defaultConfig);
+// AppDataSource is the TypeORM data source (initialized with empty config, will be updated)
+let appDataSource: DataSource | null = null;
 
 // Global promise to track initialization status
 let initializationPromise: Promise<DataSource> | null = null;
 
 // Function to create a new DataSource with updated configuration
 export const updateDataSourceConfig = async (): Promise<DataSource> => {
-  const newConfig: DataSourceOptions = {
-    ...defaultConfig,
-    url: await getDatabaseUrl(),
-  };
+  const newConfig = await getDefaultConfig();
 
   // If the configuration has changed, we need to create a new DataSource
-  const currentUrl = (appDataSource.options as any).url;
-  if (currentUrl !== newConfig.url) {
-    console.log('Database URL configuration changed, updating DataSource...');
+  if (appDataSource) {
+    const currentUrl = (appDataSource.options as any).url;
+    const newUrl = (newConfig as any).url;
+    if (currentUrl !== newUrl) {
+      console.log('Database URL configuration changed, updating DataSource...');
+      appDataSource = new DataSource(newConfig);
+      // Reset initialization promise when configuration changes
+      initializationPromise = null;
+    }
+  } else {
+    // First time initialization
     appDataSource = new DataSource(newConfig);
-    // Reset initialization promise when configuration changes
-    initializationPromise = null;
   }
 
   return appDataSource;
@@ -65,6 +70,9 @@ export const updateDataSourceConfig = async (): Promise<DataSource> => {
 
 // Get the current AppDataSource instance
 export const getAppDataSource = (): DataSource => {
+  if (!appDataSource) {
+    throw new Error('Database not initialized. Call initializeDatabase() first.');
+  }
   return appDataSource;
 };
 
@@ -72,7 +80,7 @@ export const getAppDataSource = (): DataSource => {
 export const reconnectDatabase = async (): Promise<DataSource> => {
   try {
     // Close existing connection if it exists
-    if (appDataSource.isInitialized) {
+    if (appDataSource && appDataSource.isInitialized) {
       console.log('Closing existing database connection...');
       await appDataSource.destroy();
     }
@@ -98,7 +106,7 @@ export const initializeDatabase = async (): Promise<DataSource> => {
   }
 
   // If already initialized, return the existing instance
-  if (appDataSource.isInitialized) {
+  if (appDataSource && appDataSource.isInitialized) {
     console.log('Database already initialized, returning existing instance');
     return Promise.resolve(appDataSource);
   }
@@ -250,7 +258,8 @@ const performDatabaseInitialization = async (): Promise<DataSource> => {
       console.log('Database connection established successfully.');
 
       // Run one final setup check after schema synchronization is done
-      if (defaultConfig.synchronize) {
+      const config = await getDefaultConfig();
+      if (config.synchronize) {
         try {
           console.log('Running final vector configuration check...');
 
@@ -325,12 +334,12 @@ const performDatabaseInitialization = async (): Promise<DataSource> => {
 
 // Get database connection status
 export const isDatabaseConnected = (): boolean => {
-  return appDataSource.isInitialized;
+  return appDataSource ? appDataSource.isInitialized : false;
 };
 
 // Close database connection
 export const closeDatabase = async (): Promise<void> => {
-  if (appDataSource.isInitialized) {
+  if (appDataSource && appDataSource.isInitialized) {
     await appDataSource.destroy();
     console.log('Database connection closed.');
   }
