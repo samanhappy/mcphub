@@ -66,6 +66,20 @@ export const getAllSettings = async (_: Request, res: Response): Promise<void> =
     const systemConfigDao = getSystemConfigDao();
     const systemConfig = await systemConfigDao.get();
 
+    // Ensure smart routing config has DB URL set if environment variable is present
+    const dbUrlEnv = process.env.DB_URL || '';
+    if (!systemConfig.smartRouting) {
+      systemConfig.smartRouting = {
+        enabled: false,
+        dbUrl: dbUrlEnv ? '${DB_URL}' : '',
+        openaiApiBaseUrl: '',
+        openaiApiKey: '',
+        openaiApiEmbeddingModel: '',
+      };
+    } else if (!systemConfig.smartRouting.dbUrl) {
+      systemConfig.smartRouting.dbUrl = dbUrlEnv ? '${DB_URL}' : '';
+    }
+
     // Get bearer auth keys from DAO
     const bearerKeyDao = getBearerKeyDao();
     const bearerKeys = await bearerKeyDao.findAll();
@@ -978,7 +992,8 @@ export const updateSystemConfig = async (req: Request, res: Response): Promise<v
       if (typeof smartRouting.enabled === 'boolean') {
         // If enabling Smart Routing, validate required fields
         if (smartRouting.enabled) {
-          const currentDbUrl = smartRouting.dbUrl || systemConfig.smartRouting.dbUrl;
+          const currentDbUrl =
+            process.env.DB_URL || smartRouting.dbUrl || systemConfig.smartRouting.dbUrl;
           const currentOpenaiApiKey =
             smartRouting.openaiApiKey || systemConfig.smartRouting.openaiApiKey;
 

@@ -1233,24 +1233,27 @@ const SettingsPage: React.FC = () => {
                 />
               </div>
 
-              <div className="p-3 bg-gray-50 rounded-md">
-                <div className="mb-2">
-                  <h3 className="font-medium text-gray-700">
-                    <span className="text-red-500 px-1">*</span>
-                    {t('settings.dbUrl')}
-                  </h3>
+              {/* hide when DB_URL env is set */}
+              {smartRoutingConfig.dbUrl !== '${DB_URL}' && (
+                <div className="p-3 bg-gray-50 rounded-md">
+                  <div className="mb-2">
+                    <h3 className="font-medium text-gray-700">
+                      <span className="text-red-500 px-1">*</span>
+                      {t('settings.dbUrl')}
+                    </h3>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="text"
+                      value={tempSmartRoutingConfig.dbUrl}
+                      onChange={(e) => handleSmartRoutingConfigChange('dbUrl', e.target.value)}
+                      placeholder={t('settings.dbUrlPlaceholder')}
+                      className="flex-1 mt-1 block w-full py-2 px-3 border rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm border-gray-300 form-input"
+                      disabled={loading}
+                    />
+                  </div>
                 </div>
-                <div className="flex items-center gap-3">
-                  <input
-                    type="text"
-                    value={tempSmartRoutingConfig.dbUrl}
-                    onChange={(e) => handleSmartRoutingConfigChange('dbUrl', e.target.value)}
-                    placeholder={t('settings.dbUrlPlaceholder')}
-                    className="flex-1 mt-1 block w-full py-2 px-3 border rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm border-gray-300 form-input"
-                    disabled={loading}
-                  />
-                </div>
-              </div>
+              )}
 
               <div className="p-3 bg-gray-50 rounded-md">
                 <div className="mb-2">
