@@ -6,8 +6,8 @@ import { getSmartRoutingConfig } from '../utils/smartRouting.js';
 import OpenAI from 'openai';
 
 // Get OpenAI configuration from smartRouting settings or fallback to environment variables
-const getOpenAIConfig = () => {
-  const smartRoutingConfig = getSmartRoutingConfig();
+const getOpenAIConfig = async () => {
+  const smartRoutingConfig = await getSmartRoutingConfig();
   return {
     apiKey: smartRoutingConfig.openaiApiKey,
     baseURL: smartRoutingConfig.openaiApiBaseUrl,
@@ -34,8 +34,8 @@ const getDimensionsForModel = (model: string): number => {
 };
 
 // Initialize the OpenAI client with smartRouting configuration
-const getOpenAIClient = () => {
-  const config = getOpenAIConfig();
+const getOpenAIClient = async () => {
+  const config = await getOpenAIConfig();
   return new OpenAI({
     apiKey: config.apiKey, // Get API key from smartRouting settings or environment variables
     baseURL: config.baseURL, // Get base URL from smartRouting settings or fallback to default
@@ -53,32 +53,26 @@ const getOpenAIClient = () => {
  * @returns Promise with vector embedding as number array
  */
 async function generateEmbedding(text: string): Promise<number[]> {
-  try {
-    const config = getOpenAIConfig();
-    const openai = getOpenAIClient();
+  const config = await getOpenAIConfig();
+  const openai = await getOpenAIClient();
 
-    // Check if API key is configured
-    if (!openai.apiKey) {
-      console.warn('OpenAI API key is not configured. Using fallback embedding method.');
-      return generateFallbackEmbedding(text);
-    }
-
-    // Truncate text if it's too long (OpenAI has token limits)
-    const truncatedText = text.length > 8000 ? text.substring(0, 8000) : text;
-
-    // Call OpenAI's embeddings API
-    const response = await openai.embeddings.create({
-      model: config.embeddingModel, // Modern model with better performance
-      input: truncatedText,
-    });
-
-    // Return the embedding
-    return response.data[0].embedding;
-  } catch (error) {
-    console.error('Error generating embedding:', error);
-    console.warn('Falling back to simple embedding method');
+  // Check if API key is configured
+  if (!openai.apiKey) {
+    console.warn('OpenAI API key is not configured. Using fallback embedding method.');
     return generateFallbackEmbedding(text);
   }
+
+  // Truncate text if it's too long (OpenAI has token limits)
+  const truncatedText = text.length > 8000 ? text.substring(0, 8000) : text;
+
+  // Call OpenAI's embeddings API
+  const response = await openai.embeddings.create({
+    model: config.embeddingModel, // Modern model with better performance
+    input: truncatedText,
+  });
+
+  // Return the embedding
+  return response.data[0].embedding;
 }
 
 /**
@@ -198,12 +192,12 @@ export const saveToolsAsVectorEmbeddings = async (
       return;
     }
 
-    const smartRoutingConfig = getSmartRoutingConfig();
+    const smartRoutingConfig = await getSmartRoutingConfig();
     if (!smartRoutingConfig.enabled) {
       return;
     }
 
-    const config = getOpenAIConfig();
+    const config = await getOpenAIConfig();
     const vectorRepository = getRepositoryFactory(
       'vectorEmbeddings',
     )() as VectorEmbeddingRepository;
@@ -227,31 +221,26 @@ export const saveToolsAsVectorEmbeddings = async (
         .filter(Boolean)
         .join(' ');
 
-      try {
-        // Generate embedding
-        const embedding = await generateEmbedding(searchableText);
+      // Generate embedding
+      const embedding = await generateEmbedding(searchableText);
 
-        // Check database compatibility before saving
-        await checkDatabaseVectorDimensions(embedding.length);
+      // Check database compatibility before saving
+      await checkDatabaseVectorDimensions(embedding.length);
 
-        // Save embedding
-        await vectorRepository.saveEmbedding(
-          'tool',
-          `${serverName}:${tool.name}`,
-          searchableText,
-          embedding,
-          {
-            serverName,
-            toolName: tool.name,
-            description: tool.description,
-            inputSchema: tool.inputSchema,
-          },
-          config.embeddingModel, // Store the model used for this embedding
-        );
-      } catch (toolError) {
-        console.error(`Error processing tool ${tool.name} for server ${serverName}:`, toolError);
-        // Continue with the next tool rather than failing the whole batch
-      }
+      // Save embedding
+      await vectorRepository.saveEmbedding(
+        'tool',
+        `${serverName}:${tool.name}`,
+        searchableText,
+        embedding,
+        {
+          serverName,
+          toolName: tool.name,
+          description: tool.description,
+          inputSchema: tool.inputSchema,
+        },
+        config.embeddingModel, // Store the model used for this embedding
+      );
     }
 
     console.log(`Saved ${tools.length} tool embeddings for server: ${serverName}`);
@@ -381,7 +370,7 @@ export const getAllVectorizedTools = async (
   }>
 > => {
   try {
-    const config = getOpenAIConfig();
+    const config = await getOpenAIConfig();
     const vectorRepository = getRepositoryFactory(
       'vectorEmbeddings',
     )() as VectorEmbeddingRepository;

@@ -1,4 +1,5 @@
-import { loadSettings, expandEnvVars } from '../config/index.js';
+import { expandEnvVars } from '../config/index.js';
+import { getSystemConfigDao } from '../dao/DaoFactory.js';
 
 /**
  * Smart routing configuration interface
@@ -22,10 +23,11 @@ export interface SmartRoutingConfig {
  *
  * @returns {SmartRoutingConfig} Complete smart routing configuration
  */
-export function getSmartRoutingConfig(): SmartRoutingConfig {
-  const settings = loadSettings();
-  const smartRoutingSettings: Partial<SmartRoutingConfig> =
-    settings.systemConfig?.smartRouting || {};
+export async function getSmartRoutingConfig(): Promise<SmartRoutingConfig> {
+  // Get system config from DAO
+  const systemConfigDao = getSystemConfigDao();
+  const systemConfig = await systemConfigDao.get();
+  const smartRoutingSettings: Partial<SmartRoutingConfig> = systemConfig.smartRouting || {};
 
   return {
     // Enabled status - check multiple environment variables

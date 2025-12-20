@@ -25,14 +25,14 @@ const createRequiredExtensions = async (dataSource: DataSource): Promise<void> =
 };
 
 // Get database URL from smart routing config or fallback to environment variable
-const getDatabaseUrl = (): string => {
-  return getSmartRoutingConfig().dbUrl;
+const getDatabaseUrl = async (): Promise<string> => {
+  return (await getSmartRoutingConfig()).dbUrl;
 };
 
 // Default database configuration
 const defaultConfig: DataSourceOptions = {
   type: 'postgres',
-  url: getDatabaseUrl(),
+  url: await getDatabaseUrl(),
   synchronize: true,
   entities: entities,
   subscribers: [VectorEmbeddingSubscriber],
@@ -45,10 +45,10 @@ let appDataSource = new DataSource(defaultConfig);
 let initializationPromise: Promise<DataSource> | null = null;
 
 // Function to create a new DataSource with updated configuration
-export const updateDataSourceConfig = (): DataSource => {
+export const updateDataSourceConfig = async (): Promise<DataSource> => {
   const newConfig: DataSourceOptions = {
     ...defaultConfig,
-    url: getDatabaseUrl(),
+    url: await getDatabaseUrl(),
   };
 
   // If the configuration has changed, we need to create a new DataSource
@@ -81,7 +81,7 @@ export const reconnectDatabase = async (): Promise<DataSource> => {
     initializationPromise = null;
 
     // Update configuration and reconnect
-    appDataSource = updateDataSourceConfig();
+    appDataSource = await updateDataSourceConfig();
     return await initializeDatabase();
   } catch (error) {
     console.error('Error during database reconnection:', error);
@@ -122,7 +122,7 @@ export const initializeDatabase = async (): Promise<DataSource> => {
 const performDatabaseInitialization = async (): Promise<DataSource> => {
   try {
     // Update configuration before initializing
-    appDataSource = updateDataSourceConfig();
+    appDataSource = await updateDataSourceConfig();
 
     if (!appDataSource.isInitialized) {
       console.log('Initializing database connection...');
