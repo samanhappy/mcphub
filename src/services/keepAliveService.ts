@@ -48,7 +48,9 @@ export const setupClientKeepAlive = async (
           await (serverInfo.client as any).ping();
           console.log(`Keep-alive ping successful for server: ${serverInfo.name}`);
         } else {
-          await serverInfo.client.listTools({ timeout: 5000 }).catch(() => void 0);
+          await serverInfo.client
+            .listTools({}, { ...(serverInfo.options || {}), timeout: 5000 })
+            .catch(() => void 0);
         }
       }
     } catch (error) {
