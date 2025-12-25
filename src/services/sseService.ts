@@ -909,7 +909,7 @@ export const handleMcpOtherRequest = async (req: Request, res: Response) => {
         // an SSE stream with the new `mcp-session-id`.
 
         const group = req.params.group || '';
-        const { sessionId: newSessionId, transport: newTransport } = await createNewSession(group, username);
+        const { sessionId: newSessionId } = await createNewSession(group, username);
         if (!newSessionId) {
           res.status(500).send('Failed to create a new MCP session');
           return;
