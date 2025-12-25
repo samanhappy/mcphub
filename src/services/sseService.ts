@@ -561,7 +561,7 @@ export const handleMcpPostRequest = async (req: Request, res: Response): Promise
 
     res.on('finish', () => {
       console.log(
-        `[MCP RES] ${req.method} ${req.originalUrl || req.url} status=${res.statusCode} session=${sessionIdLog} accept="${accept}"`,
+        `[MCP RES] ${req.method} ${req.originalUrl || req.url} status=${res.statusCode} session=${sessionIdLog} accept="${accept}"`, 
       );
       if (res.statusCode >= 400) {
         try {

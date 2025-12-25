@@ -120,6 +120,8 @@ type MockResponse = Response & {
   send: jest.Mock;
   json: jest.Mock;
   setHeader: jest.Mock;
+  write: jest.Mock;
+  end: jest.Mock;
   headersStore: Record<string, string>;
 };
 
@@ -172,6 +174,8 @@ const createMockResponse = (): MockResponse => {
       headers[key] = value;
       return res;
     }),
+    write: jest.fn().mockReturnThis(),
+    end: jest.fn().mockReturnThis(),
     on: jest.fn(),
     headersStore: headers,
   } as unknown as MockResponse;
