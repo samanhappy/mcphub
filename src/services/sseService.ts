@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { randomUUID } from 'node:crypto';
+import { EventEmitter } from 'node:events';
 import { Transport } from '@modelcontextprotocol/sdk/shared/transport.js';
 import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
@@ -409,12 +410,13 @@ async function createSessionWithId(
   group: string,
   username?: string,
 ): Promise<StreamableHTTPServerTransport> {
+  const normalizedGroup = group || '';
   console.log(
     `[SESSION REBUILD] Starting session rebuild for ID: ${sessionId}${username ? ` for user: ${username}` : ''}`,
   );
 
   // Create a new server instance to ensure clean state
-  const server = getMcpServer(sessionId, group);
+  const server = getMcpServer(sessionId, normalizedGroup);
 
   const transport = new StreamableHTTPServerTransport({
     sessionIdGenerator: () => sessionId, // Use the specified sessionId
@@ -423,7 +425,7 @@ async function createSessionWithId(
         `[SESSION REBUILD] onsessioninitialized triggered for ID: ${initializedSessionId}`,
       ); // New log
       if (initializedSessionId === sessionId) {
-        transports[sessionId] = { transport, group };
+        transports[sessionId] = { transport, group: normalizedGroup };
         console.log(
           `[SESSION REBUILD] Session ${sessionId} initialized successfully${username ? ` for user: ${username}` : ''}`,
         );
@@ -452,7 +454,7 @@ async function createSessionWithId(
     console.warn(
       `[SESSION REBUILD] Transport not found in transports after initialization, forcing registration`,
     );
-    transports[sessionId] = { transport, group, needsInitialization: true };
+    transports[sessionId] = { transport, group: normalizedGroup, needsInitialization: true };
   } else {
     // Mark the session as needing initialization
     transports[sessionId].needsInitialization = true;
@@ -462,15 +464,16 @@ async function createSessionWithId(
     `[SESSION REBUILD] Session ${sessionId} created but not yet initialized. It will be initialized on first use.`,
   );
 
-  console.log(`[SESSION REBUILD] Successfully rebuilt session ${sessionId} in group: ${group}`);
+  console.log(`[SESSION REBUILD] Successfully rebuilt session ${sessionId} in group: ${normalizedGroup}`);
   return transport;
 }
 // Helper function to create a completely new session
 async function createNewSession(
-  group: string,
+  group: string | undefined,
   username?: string,
-): Promise<StreamableHTTPServerTransport> {
+): Promise<{ sessionId: string; transport: StreamableHTTPServerTransport }> {
   const newSessionId = randomUUID();
+  const normalizedGroup = group || '';
   console.log(
     `[SESSION NEW] Creating new session with ID: ${newSessionId}${username ? ` for user: ${username}` : ''}`,
   );
@@ -478,12 +481,16 @@ async function createNewSession(
   const transport = new StreamableHTTPServerTransport({
     sessionIdGenerator: () => newSessionId,
     onsessioninitialized: (sessionId) => {
-      transports[sessionId] = { transport, group };
+      transports[sessionId] = { transport, group: normalizedGroup };
       console.log(
         `[SESSION NEW] New session ${sessionId} initialized successfully${username ? ` for user: ${username}` : ''}`,
       );
     },
   });
+
+  // Register immediately so that a just-created session can be used right away (before
+  // `onsessioninitialized` fires), e.g. for GET /mcp handshake recovery flows.
+  transports[newSessionId] = { transport, group: normalizedGroup, needsInitialization: true };
 
   transport.onclose = () => {
     console.log(`[SESSION NEW] Transport closed: ${newSessionId}`);
@@ -491,9 +498,9 @@ async function createNewSession(
     deleteMcpServer(newSessionId);
   };
 
-  await getMcpServer(newSessionId, group).connect(transport);
-  console.log(`[SESSION NEW] Successfully created new session ${newSessionId} in group: ${group}`);
-  return transport;
+  await getMcpServer(newSessionId, normalizedGroup).connect(transport);
+  console.log(`[SESSION NEW] Successfully created new session ${newSessionId} in group: ${normalizedGroup}`);
+  return { sessionId: newSessionId, transport };
 }
 
 export const handleMcpPostRequest = async (req: Request, res: Response): Promise<void> => {
@@ -522,6 +529,50 @@ export const handleMcpPostRequest = async (req: Request, res: Response): Promise
   // Get filtered settings based on user context (after setting user context)
   const systemConfigDao = getSystemConfigDao();
   const systemConfig = await systemConfigDao.get();
+
+  if (systemConfig?.enableSessionRebuild) {
+    const accept = String(req.headers.accept || '');
+    const sessionIdLog = String((req.headers['mcp-session-id'] as string | undefined) || '');
+
+    // Capture a small preview of error responses to diagnose client compatibility issues.
+    const previewChunks: Buffer[] = [];
+    const origWrite = res.write.bind(res);
+    const origEnd = res.end.bind(res);
+    (res as any).write = (chunk: any, ...args: any[]) => {
+      try {
+        if (chunk && previewChunks.reduce((n, b) => n + b.length, 0) < 2048) {
+          previewChunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(String(chunk)));
+        }
+      } catch {
+        // ignore
+      }
+      return origWrite(chunk, ...args);
+    };
+    (res as any).end = (chunk?: any, ...args: any[]) => {
+      try {
+        if (chunk && previewChunks.reduce((n, b) => n + b.length, 0) < 2048) {
+          previewChunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(String(chunk)));
+        }
+      } catch {
+        // ignore
+      }
+      return origEnd(chunk as any, ...args);
+    };
+
+    res.on('finish', () => {
+      console.log(
+        `[MCP RES] ${req.method} ${req.originalUrl || req.url} status=${res.statusCode} session=${sessionIdLog} accept="${accept}"`,
+      );
+      if (res.statusCode >= 400) {
+        try {
+          const preview = Buffer.concat(previewChunks).toString('utf8');
+          console.log(`[MCP RES BODY] status=${res.statusCode} body0..2048=${JSON.stringify(preview)}`);
+        } catch {
+          // ignore
+        }
+      }
+    });
+  }
   const routingConfig = {
     enableGlobalRoute: systemConfig?.routing?.enableGlobalRoute ?? true,
     enableGroupNameRoute: systemConfig?.routing?.enableGroupNameRoute ?? true,
@@ -596,21 +647,36 @@ export const handleMcpPostRequest = async (req: Request, res: Response): Promise
     console.log(
       `[SESSION CREATE] No session ID provided for initialize request, creating new session${username ? ` for user: ${username}` : ''}`,
     );
-    transport = await createNewSession(group, username);
+    ({ transport } = await createNewSession(group || '', username));
   } else {
-    // Case 4: No sessionId and not an initialize request, return error
-    console.warn(
-      `[SESSION ERROR] No session ID provided for non-initialize request (method: ${req.body?.method})${username ? ` for user: ${username}` : ''}`,
+    // Case 4: No sessionId and not an initialize request
+    const enableSessionRebuild = systemConfig?.enableSessionRebuild || false;
+    if (!enableSessionRebuild) {
+      console.warn(
+        `[SESSION ERROR] No session ID provided for non-initialize request (method: ${req.body?.method})${username ? ` for user: ${username}` : ''}`,
+      );
+      res.status(400).json({
+        jsonrpc: '2.0',
+        error: {
+          code: -32000,
+          message: 'Bad Request: No valid session ID provided',
+        },
+        id: null,
+      });
+      return;
+    }
+
+    // When session rebuild is enabled, be tolerant of clients that skip the initial GET handshake
+    // and directly POST with no `mcp-session-id`. Create a new session and continue.
+    console.log(
+      `[SESSION AUTO-REBUILD] No session ID provided for non-initialize request (method: ${req.body?.method}). Creating a new session${username ? ` for user: ${username}` : ''}`,
     );
-    res.status(400).json({
-      jsonrpc: '2.0',
-      error: {
-        code: -32000,
-        message: 'Bad Request: No valid session ID provided',
-      },
-      id: null,
-    });
-    return;
+
+    const created = await createNewSession(group || '', username);
+    transport = created.transport;
+    const newSessionId = created.sessionId;
+    res.setHeader('mcp-session-id', newSessionId);
+    (req.headers as any)['mcp-session-id'] = newSessionId;
   }
 
   console.log(`Handling request using transport with type ${transport.constructor.name}`);
@@ -626,15 +692,55 @@ export const handleMcpPostRequest = async (req: Request, res: Response): Promise
     );
 
     try {
-      // Create a mock response object that doesn't actually send headers
-      const mockRes = {
-        writeHead: () => {},
-        end: () => {},
-        json: () => {},
-        status: () => mockRes,
-        send: () => {},
-        headersSent: false,
-      } as any;
+      // Create a mock response object that captures headers/body without writing to the real client.
+      // StreamableHTTPServerTransport depends on response APIs like setHeader/writeHead/end.
+      const mockRes = (() => {
+        const emitter = new EventEmitter();
+        const headers: Record<string, any> = {};
+        let statusCode = 200;
+        let headersSent = false;
+
+        const resLike: any = emitter;
+        resLike.statusCode = statusCode;
+        resLike.headersSent = headersSent;
+        resLike.setHeader = (name: string, value: any) => {
+          headers[String(name).toLowerCase()] = value;
+        };
+        resLike.getHeader = (name: string) => headers[String(name).toLowerCase()];
+        resLike.writeHead = (code: number, hdrs?: Record<string, any>) => {
+          statusCode = code;
+          resLike.statusCode = statusCode;
+          if (hdrs) {
+            for (const [k, v] of Object.entries(hdrs)) resLike.setHeader(k, v);
+          }
+          headersSent = true;
+          resLike.headersSent = true;
+        };
+        resLike.status = (code: number) => {
+          statusCode = code;
+          resLike.statusCode = statusCode;
+          return resLike;
+        };
+        resLike.write = () => true;
+        resLike.flushHeaders = () => {
+          headersSent = true;
+          resLike.headersSent = true;
+        };
+        resLike.json = () => {
+          headersSent = true;
+          resLike.headersSent = true;
+        };
+        resLike.send = () => {
+          headersSent = true;
+          resLike.headersSent = true;
+        };
+        resLike.end = () => {
+          headersSent = true;
+          resLike.headersSent = true;
+          emitter.emit('finish');
+        };
+        return resLike;
+      })();
 
       // First, send the initialize request
       const initializeRequest = {
@@ -738,8 +844,20 @@ export const handleMcpPostRequest = async (req: Request, res: Response): Promise
         }
       }
     } else {
-      // If it's a different error, just re-throw it
-      throw error;
+      // If it's a different error, do not bubble up to Express error handler (which may return
+      // a non-200 HTTP status and break some MCP clients). Return a JSON-RPC error payload with 200.
+      console.error('[MCP] Request handling error:', error);
+      if (!res.headersSent) {
+        res.status(200).json({
+          jsonrpc: '2.0',
+          error: {
+            code: -32000,
+            message: String(error?.message || error),
+          },
+          id: req.body?.id ?? null,
+        });
+      }
+      return;
     }
   } finally {
     // Clean up request context after handling
@@ -763,10 +881,73 @@ export const handleMcpOtherRequest = async (req: Request, res: Response) => {
   const currentUser = userContextService.getCurrentUser();
   const username = currentUser?.username;
 
+  const systemConfigDao = getSystemConfigDao();
+  const systemConfig = await systemConfigDao.get();
+  if (systemConfig?.enableSessionRebuild) {
+    const accept = String(req.headers.accept || '');
+    const sessionIdLog = String((req.headers['mcp-session-id'] as string | undefined) || '');
+    res.on('finish', () => {
+      console.log(
+        `[MCP RES] ${req.method} ${req.originalUrl || req.url} status=${res.statusCode} session=${sessionIdLog} accept="${accept}"`,
+      );
+    });
+  }
+
   console.log(`Handling MCP other request${username ? ` for user: ${username}` : ''}`);
 
   const sessionId = req.headers['mcp-session-id'] as string | undefined;
   if (!sessionId) {
+    // Streamable HTTP transport uses GET to establish the SSE stream. Some clients may lose the
+    // session header (e.g., stale/expired session) and retry a GET without `mcp-session-id`.
+    // Instead of returning a hard 400 (which makes those clients unrecoverable without a restart),
+    // create a fresh session transparently when this is an SSE GET request.
+    if (req.method === 'GET') {
+      const enableSessionRebuild = systemConfig?.enableSessionRebuild || false;
+      if (enableSessionRebuild) {
+        // When session rebuild is enabled, be максимально tolerant: some embedded clients may send
+        // unexpected Accept headers (or none). For recovery, always create a new session and return
+        // an SSE stream with the new `mcp-session-id`.
+
+        const group = req.params.group || '';
+        const { sessionId: newSessionId, transport: newTransport } = await createNewSession(group, username);
+        if (!newSessionId) {
+          res.status(500).send('Failed to create a new MCP session');
+          return;
+        }
+
+        // Expose the new session ID to the client and also inject it for downstream handlers.
+        res.setHeader('mcp-session-id', newSessionId);
+        (req.headers as any)['mcp-session-id'] = newSessionId;
+
+        // For some clients, the initial GET handshake does not include an SSE Accept header, and
+        // StreamableHTTPServerTransport will reject it with 406. To keep recovery robust, serve a
+        // minimal SSE stream ourselves here. The client can then use the returned mcp-session-id
+        // for subsequent POST requests.
+        res.status(200);
+        res.setHeader('content-type', 'text/event-stream');
+        res.setHeader('cache-control', 'no-cache');
+        res.setHeader('connection', 'keep-alive');
+        // A comment line keeps some proxies/buffers happy.
+        res.write(':\n\n');
+
+        const keepAlive = setInterval(() => {
+          try {
+            res.write(':\n\n');
+          } catch {
+            // ignore
+          }
+        }, 15000);
+
+        res.on('close', () => {
+          clearInterval(keepAlive);
+        });
+        return;
+      } else {
+        res.status(400).send('Invalid or missing session ID');
+        return;
+      }
+    }
+
     res.status(400).send('Invalid or missing session ID');
     return;
   }
