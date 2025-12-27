@@ -25,7 +25,7 @@ interface BearerKeyRowProps {
       name: string;
       token: string;
       enabled: boolean;
-      accessType: 'all' | 'groups' | 'servers';
+      accessType: 'all' | 'groups' | 'servers' | 'custom';
       allowedGroups: string;
       allowedServers: string;
     },
@@ -47,7 +47,7 @@ const BearerKeyRow: React.FC<BearerKeyRowProps> = ({
   const [name, setName] = useState(keyData.name);
   const [token, setToken] = useState(keyData.token);
   const [enabled, setEnabled] = useState<boolean>(keyData.enabled);
-  const [accessType, setAccessType] = useState<'all' | 'groups' | 'servers'>(
+  const [accessType, setAccessType] = useState<'all' | 'groups' | 'servers' | 'custom'>(
     keyData.accessType || 'all',
   );
   const [selectedGroups, setSelectedGroups] = useState<string[]>(keyData.allowedGroups || []);
@@ -105,6 +105,13 @@ const BearerKeyRow: React.FC<BearerKeyRowProps> = ({
       );
       return;
     }
+    if (accessType === 'custom' && selectedGroups.length === 0 && selectedServers.length === 0) {
+      showToast(
+        t('settings.selectAtLeastOneGroupOrServer') || 'Please select at least one group or server',
+        'error',
+      );
+      return;
+    }
 
     setSaving(true);
     try {
@@ -135,6 +142,31 @@ const BearerKeyRow: React.FC<BearerKeyRowProps> = ({
   };
 
   const isGroupsMode = accessType === 'groups';
+  const isCustomMode = accessType === 'custom';
+
+  // Helper function to format access type display text
+  const formatAccessTypeDisplay = (key: BearerKey): string => {
+    if (key.accessType === 'all') {
+      return t('settings.bearerKeyAccessAll') || 'All Resources';
+    }
+    if (key.accessType === 'groups') {
+      return `${t('settings.bearerKeyAccessGroups') || 'Groups'}: ${key.allowedGroups}`;
+    }
+    if (key.accessType === 'servers') {
+      return `${t('settings.bearerKeyAccessServers') || 'Servers'}: ${key.allowedServers}`;
+    }
+    if (key.accessType === 'custom') {
+      const parts: string[] = [];
+      if (key.allowedGroups && key.allowedGroups.length > 0) {
+        parts.push(`${t('settings.bearerKeyAccessGroups') || 'Groups'}: ${key.allowedGroups}`);
+      }
+      if (key.allowedServers && key.allowedServers.length > 0) {
+        parts.push(`${t('settings.bearerKeyAccessServers') || 'Servers'}: ${key.allowedServers}`);
+      }
+      return `${t('settings.bearerKeyAccessCustom') || 'Custom'}: ${parts.join('; ')}`;
+    }
+    return '';
+  };
 
   if (isEditing) {
     return (
@@ -194,7 +226,9 @@ const BearerKeyRow: React.FC<BearerKeyRowProps> = ({
                 <select
                   className="block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm form-select transition-shadow duration-200"
                   value={accessType}
-                  onChange={(e) => setAccessType(e.target.value as 'all' | 'groups' | 'servers')}
+                  onChange={(e) =>
+                    setAccessType(e.target.value as 'all' | 'groups' | 'servers' | 'custom')
+                  }
                   disabled={loading}
                 >
                   <option value="all">{t('settings.bearerKeyAccessAll') || 'All Resources'}</option>
@@ -204,29 +238,65 @@ const BearerKeyRow: React.FC<BearerKeyRowProps> = ({
                   <option value="servers">
                     {t('settings.bearerKeyAccessServers') || 'Specific Servers'}
                   </option>
+                  <option value="custom">
+                    {t('settings.bearerKeyAccessCustom') || 'Custom (Groups & Servers)'}
+                  </option>
                 </select>
               </div>
 
-              <div className="flex-1 min-w-[200px]">
-                <label
-                  className={`block text-sm font-medium mb-1 ${accessType === 'all' ? 'text-gray-400' : 'text-gray-700'}`}
-                >
-                  {isGroupsMode
-                    ? t('settings.bearerKeyAllowedGroups') || 'Allowed groups'
-                    : t('settings.bearerKeyAllowedServers') || 'Allowed servers'}
-                </label>
-                <MultiSelect
-                  options={isGroupsMode ? availableGroups : availableServers}
-                  selected={isGroupsMode ? selectedGroups : selectedServers}
-                  onChange={isGroupsMode ? setSelectedGroups : setSelectedServers}
-                  placeholder={
-                    isGroupsMode
-                      ? t('settings.selectGroups') || 'Select groups...'
-                      : t('settings.selectServers') || 'Select servers...'
-                  }
-                  disabled={loading || accessType === 'all'}
-                />
-              </div>
+              {/* Show single selector for groups or servers mode */}
+              {!isCustomMode && (
+                <div className="flex-1 min-w-[200px]">
+                  <label
+                    className={`block text-sm font-medium mb-1 ${accessType === 'all' ? 'text-gray-400' : 'text-gray-700'}`}
+                  >
+                    {isGroupsMode
+                      ? t('settings.bearerKeyAllowedGroups') || 'Allowed groups'
+                      : t('settings.bearerKeyAllowedServers') || 'Allowed servers'}
+                  </label>
+                  <MultiSelect
+                    options={isGroupsMode ? availableGroups : availableServers}
+                    selected={isGroupsMode ? selectedGroups : selectedServers}
+                    onChange={isGroupsMode ? setSelectedGroups : setSelectedServers}
+                    placeholder={
+                      isGroupsMode
+                        ? t('settings.selectGroups') || 'Select groups...'
+                        : t('settings.selectServers') || 'Select servers...'
+                    }
+                    disabled={loading || accessType === 'all'}
+                  />
+                </div>
+              )}
+
+              {/* Show both selectors for custom mode */}
+              {isCustomMode && (
+                <>
+                  <div className="flex-1 min-w-[200px]">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      {t('settings.bearerKeyAllowedGroups') || 'Allowed groups'}
+                    </label>
+                    <MultiSelect
+                      options={availableGroups}
+                      selected={selectedGroups}
+                      onChange={setSelectedGroups}
+                      placeholder={t('settings.selectGroups') || 'Select groups...'}
+                      disabled={loading}
+                    />
+                  </div>
+                  <div className="flex-1 min-w-[200px]">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      {t('settings.bearerKeyAllowedServers') || 'Allowed servers'}
+                    </label>
+                    <MultiSelect
+                      options={availableServers}
+                      selected={selectedServers}
+                      onChange={setSelectedServers}
+                      placeholder={t('settings.selectServers') || 'Select servers...'}
+                      disabled={loading}
+                    />
+                  </div>
+                </>
+              )}
 
               <div className="flex justify-end gap-2">
                 <button
@@ -281,11 +351,7 @@ const BearerKeyRow: React.FC<BearerKeyRowProps> = ({
         </span>
       </td>
       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-        {keyData.accessType === 'all'
-          ? t('settings.bearerKeyAccessAll') || 'All Resources'
-          : keyData.accessType === 'groups'
-            ? `${t('settings.bearerKeyAccessGroups') || 'Groups'}: ${keyData.allowedGroups}`
-            : `${t('settings.bearerKeyAccessServers') || 'Servers'}: ${keyData.allowedServers}`}
+        {formatAccessTypeDisplay(keyData)}
       </td>
       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
         <button
@@ -737,7 +803,7 @@ const SettingsPage: React.FC = () => {
     name: string;
     token: string;
     enabled: boolean;
-    accessType: 'all' | 'groups' | 'servers';
+    accessType: 'all' | 'groups' | 'servers' | 'custom';
     allowedGroups: string;
     allowedServers: string;
   }>({
@@ -765,10 +831,10 @@ const SettingsPage: React.FC = () => {
 
   // Reset selected arrays when accessType changes
   useEffect(() => {
-    if (newBearerKey.accessType !== 'groups') {
+    if (newBearerKey.accessType !== 'groups' && newBearerKey.accessType !== 'custom') {
       setNewSelectedGroups([]);
     }
-    if (newBearerKey.accessType !== 'servers') {
+    if (newBearerKey.accessType !== 'servers' && newBearerKey.accessType !== 'custom') {
       setNewSelectedServers([]);
     }
   }, [newBearerKey.accessType]);
@@ -866,6 +932,17 @@ const SettingsPage: React.FC = () => {
       );
       return;
     }
+    if (
+      newBearerKey.accessType === 'custom' &&
+      newSelectedGroups.length === 0 &&
+      newSelectedServers.length === 0
+    ) {
+      showToast(
+        t('settings.selectAtLeastOneGroupOrServer') || 'Please select at least one group or server',
+        'error',
+      );
+      return;
+    }
 
     await createBearerKey({
       name: newBearerKey.name,
@@ -873,11 +950,13 @@ const SettingsPage: React.FC = () => {
       enabled: newBearerKey.enabled,
       accessType: newBearerKey.accessType,
       allowedGroups:
-        newBearerKey.accessType === 'groups' && newSelectedGroups.length > 0
+        (newBearerKey.accessType === 'groups' || newBearerKey.accessType === 'custom') &&
+        newSelectedGroups.length > 0
           ? newSelectedGroups
           : undefined,
       allowedServers:
-        newBearerKey.accessType === 'servers' && newSelectedServers.length > 0
+        (newBearerKey.accessType === 'servers' || newBearerKey.accessType === 'custom') &&
+        newSelectedServers.length > 0
           ? newSelectedServers
           : undefined,
     } as any);
@@ -901,7 +980,7 @@ const SettingsPage: React.FC = () => {
       name: string;
       token: string;
       enabled: boolean;
-      accessType: 'all' | 'groups' | 'servers';
+      accessType: 'all' | 'groups' | 'servers' | 'custom';
       allowedGroups: string;
       allowedServers: string;
     },
@@ -1128,7 +1207,7 @@ const SettingsPage: React.FC = () => {
                           onChange={(e) =>
                             setNewBearerKey((prev) => ({
                               ...prev,
-                              accessType: e.target.value as 'all' | 'groups' | 'servers',
+                              accessType: e.target.value as 'all' | 'groups' | 'servers' | 'custom',
                             }))
                           }
                           disabled={loading}
@@ -1142,41 +1221,75 @@ const SettingsPage: React.FC = () => {
                           <option value="servers">
                             {t('settings.bearerKeyAccessServers') || 'Specific Servers'}
                           </option>
+                          <option value="custom">
+                            {t('settings.bearerKeyAccessCustom') || 'Custom (Groups & Servers)'}
+                          </option>
                         </select>
                       </div>
 
-                      <div className="flex-1 min-w-[200px]">
-                        <label
-                          className={`block text-sm font-medium mb-1 ${newBearerKey.accessType === 'all' ? 'text-gray-400' : 'text-gray-700'}`}
-                        >
-                          {newBearerKey.accessType === 'groups'
-                            ? t('settings.bearerKeyAllowedGroups') || 'Allowed groups'
-                            : t('settings.bearerKeyAllowedServers') || 'Allowed servers'}
-                        </label>
-                        <MultiSelect
-                          options={
-                            newBearerKey.accessType === 'groups'
-                              ? availableGroups
-                              : availableServers
-                          }
-                          selected={
-                            newBearerKey.accessType === 'groups'
-                              ? newSelectedGroups
-                              : newSelectedServers
-                          }
-                          onChange={
-                            newBearerKey.accessType === 'groups'
-                              ? setNewSelectedGroups
-                              : setNewSelectedServers
-                          }
-                          placeholder={
-                            newBearerKey.accessType === 'groups'
-                              ? t('settings.selectGroups') || 'Select groups...'
-                              : t('settings.selectServers') || 'Select servers...'
-                          }
-                          disabled={loading || newBearerKey.accessType === 'all'}
-                        />
-                      </div>
+                      {newBearerKey.accessType !== 'custom' && (
+                        <div className="flex-1 min-w-[200px]">
+                          <label
+                            className={`block text-sm font-medium mb-1 ${newBearerKey.accessType === 'all' ? 'text-gray-400' : 'text-gray-700'}`}
+                          >
+                            {newBearerKey.accessType === 'groups'
+                              ? t('settings.bearerKeyAllowedGroups') || 'Allowed groups'
+                              : t('settings.bearerKeyAllowedServers') || 'Allowed servers'}
+                          </label>
+                          <MultiSelect
+                            options={
+                              newBearerKey.accessType === 'groups'
+                                ? availableGroups
+                                : availableServers
+                            }
+                            selected={
+                              newBearerKey.accessType === 'groups'
+                                ? newSelectedGroups
+                                : newSelectedServers
+                            }
+                            onChange={
+                              newBearerKey.accessType === 'groups'
+                                ? setNewSelectedGroups
+                                : setNewSelectedServers
+                            }
+                            placeholder={
+                              newBearerKey.accessType === 'groups'
+                                ? t('settings.selectGroups') || 'Select groups...'
+                                : t('settings.selectServers') || 'Select servers...'
+                            }
+                            disabled={loading || newBearerKey.accessType === 'all'}
+                          />
+                        </div>
+                      )}
+
+                      {newBearerKey.accessType === 'custom' && (
+                        <>
+                          <div className="flex-1 min-w-[200px]">
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              {t('settings.bearerKeyAllowedGroups') || 'Allowed groups'}
+                            </label>
+                            <MultiSelect
+                              options={availableGroups}
+                              selected={newSelectedGroups}
+                              onChange={setNewSelectedGroups}
+                              placeholder={t('settings.selectGroups') || 'Select groups...'}
+                              disabled={loading}
+                            />
+                          </div>
+                          <div className="flex-1 min-w-[200px]">
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              {t('settings.bearerKeyAllowedServers') || 'Allowed servers'}
+                            </label>
+                            <MultiSelect
+                              options={availableServers}
+                              selected={newSelectedServers}
+                              onChange={setNewSelectedServers}
+                              placeholder={t('settings.selectServers') || 'Select servers...'}
+                              disabled={loading}
+                            />
+                          </div>
+                        </>
+                      )}
 
                       <div className="flex justify-end gap-2">
                         <button

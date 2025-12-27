@@ -569,6 +569,7 @@
     "bearerKeyAccessAll": "Tümü",
     "bearerKeyAccessGroups": "Gruplar",
     "bearerKeyAccessServers": "Sunucular",
+    "bearerKeyAccessCustom": "Özel",
     "bearerKeyAllowedGroups": "İzin verilen gruplar",
     "bearerKeyAllowedServers": "İzin verilen sunucular",
     "addBearerKey": "Anahtar ekle",

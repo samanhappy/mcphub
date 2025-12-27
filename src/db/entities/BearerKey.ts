@@ -25,7 +25,7 @@ export class BearerKey {
   enabled: boolean;
 
   @Column({ type: 'varchar', length: 20, default: 'all' })
-  accessType: 'all' | 'groups' | 'servers';
+  accessType: 'all' | 'groups' | 'servers' | 'custom';
 
   @Column({ type: 'simple-json', nullable: true })
   allowedGroups?: string[];

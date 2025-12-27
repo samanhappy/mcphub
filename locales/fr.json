@@ -569,6 +569,7 @@
     "bearerKeyAccessAll": "Toutes",
     "bearerKeyAccessGroups": "Groupes",
     "bearerKeyAccessServers": "Serveurs",
+    "bearerKeyAccessCustom": "Personnalisée",
     "bearerKeyAllowedGroups": "Groupes autorisés",
     "bearerKeyAllowedServers": "Serveurs autorisés",
     "addBearerKey": "Ajouter une clé",

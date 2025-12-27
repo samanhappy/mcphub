@@ -568,6 +568,7 @@
     "bearerKeyAccessAll": "All",
     "bearerKeyAccessGroups": "Groups",
     "bearerKeyAccessServers": "Servers",
+    "bearerKeyAccessCustom": "Custom",
     "bearerKeyAllowedGroups": "Allowed groups",
     "bearerKeyAllowedServers": "Allowed servers",
     "addBearerKey": "Add key",

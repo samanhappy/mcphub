@@ -310,7 +310,7 @@ export interface ApiResponse<T = any> {
 }
 
 // Bearer authentication key configuration (frontend view model)
-export type BearerKeyAccessType = 'all' | 'groups' | 'servers';
+export type BearerKeyAccessType = 'all' | 'groups' | 'servers' | 'custom';
 
 export interface BearerKey {
   id: string;

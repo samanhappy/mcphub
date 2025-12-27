@@ -88,6 +88,29 @@ const isBearerKeyAllowedForRequest = async (req: Request, key: BearerKey): Promi
         return groupServerNames.some((name) => allowedServers.includes(name));
       }
 
+      if (key.accessType === 'custom') {
+        // For custom-scoped keys, check if the group is allowed OR if any server in the group is allowed
+        const allowedGroups = key.allowedGroups || [];
+        const allowedServers = key.allowedServers || [];
+
+        // Check if the group itself is allowed
+        const groupAllowed =
+          allowedGroups.includes(matchedGroup.name) || allowedGroups.includes(matchedGroup.id);
+        if (groupAllowed) {
+          return true;
+        }
+
+        // Check if any server in the group is allowed
+        if (allowedServers.length > 0 && Array.isArray(matchedGroup.servers)) {
+          const groupServerNames = matchedGroup.servers.map((server) =>
+            typeof server === 'string' ? server : server.name,
+          );
+          return groupServerNames.some((name) => allowedServers.includes(name));
+        }
+
+        return false;
+      }
+
       // Unknown accessType with matched group
       return false;
     }
@@ -102,8 +125,8 @@ const isBearerKeyAllowedForRequest = async (req: Request, key: BearerKey): Promi
         return false;
       }
 
-      if (key.accessType === 'servers') {
-        // For server-scoped keys, check if the server is in allowedServers
+      if (key.accessType === 'servers' || key.accessType === 'custom') {
+        // For server-scoped or custom-scoped keys, check if the server is in allowedServers
         const allowedServers = key.allowedServers || [];
         return allowedServers.includes(matchedServer.name);
       }

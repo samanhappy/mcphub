@@ -57,7 +57,7 @@ export const createBearerKey = async (req: Request, res: Response): Promise<void
       return;
     }
 
-    if (!accessType || !['all', 'groups', 'servers'].includes(accessType)) {
+    if (!accessType || !['all', 'groups', 'servers', 'custom'].includes(accessType)) {
       res.status(400).json({ success: false, message: 'Invalid accessType' });
       return;
     }
@@ -104,7 +104,7 @@ export const updateBearerKey = async (req: Request, res: Response): Promise<void
     if (token !== undefined) updates.token = token;
     if (enabled !== undefined) updates.enabled = enabled;
     if (accessType !== undefined) {
-      if (!['all', 'groups', 'servers'].includes(accessType)) {
+      if (!['all', 'groups', 'servers', 'custom'].includes(accessType)) {
         res.status(400).json({ success: false, message: 'Invalid accessType' });
         return;
       }

@@ -570,6 +570,7 @@
     "bearerKeyAccessAll": "全部",
     "bearerKeyAccessGroups": "指定分组",
     "bearerKeyAccessServers": "指定服务器",
+    "bearerKeyAccessCustom": "自定义",
     "bearerKeyAllowedGroups": "允许访问的分组",
     "bearerKeyAllowedServers": "允许访问的服务器",
     "addBearerKey": "新增密钥",

@@ -244,7 +244,7 @@ export interface OAuthServerConfig {
 }
 
 // Bearer authentication key configuration
-export type BearerKeyAccessType = 'all' | 'groups' | 'servers';
+export type BearerKeyAccessType = 'all' | 'groups' | 'servers' | 'custom';
 
 export interface BearerKey {
   id: string; // Unique identifier for the key
@@ -252,8 +252,8 @@ export interface BearerKey {
   token: string; // Bearer token value
   enabled: boolean; // Whether this key is enabled
   accessType: BearerKeyAccessType; // Access scope type
-  allowedGroups?: string[]; // Allowed group names when accessType === 'groups'
-  allowedServers?: string[]; // Allowed server names when accessType === 'servers'
+  allowedGroups?: string[]; // Allowed group names when accessType === 'groups' or 'custom'
+  allowedServers?: string[]; // Allowed server names when accessType === 'servers' or 'custom'
 }
 
 // Represents the settings for MCP servers
