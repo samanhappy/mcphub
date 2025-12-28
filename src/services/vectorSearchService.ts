@@ -1,7 +1,7 @@
 import { getRepositoryFactory } from '../db/index.js';
 import { VectorEmbeddingRepository } from '../db/repositories/index.js';
 import { Tool } from '../types/index.js';
-import { getAppDataSource, initializeDatabase } from '../db/connection.js';
+import { getAppDataSource, isDatabaseConnected, initializeDatabase } from '../db/connection.js';
 import { getSmartRoutingConfig } from '../utils/smartRouting.js';
 import OpenAI from 'openai';
 
@@ -197,6 +197,12 @@ export const saveToolsAsVectorEmbeddings = async (
       return;
     }
 
+    // Ensure database is initialized before using repository
+    if (!isDatabaseConnected()) {
+      console.info('Database not initialized, initializing...');
+      await initializeDatabase();
+    }
+
     const config = await getOpenAIConfig();
     const vectorRepository = getRepositoryFactory(
       'vectorEmbeddings',
@@ -245,7 +251,7 @@ export const saveToolsAsVectorEmbeddings = async (
 
     console.log(`Saved ${tools.length} tool embeddings for server: ${serverName}`);
   } catch (error) {
-    console.error(`Error saving tool embeddings for server ${serverName}:`, error);
+    console.error(`Error saving tool embeddings for server ${serverName}:${error}`);
   }
 };
 
