@@ -423,7 +423,7 @@ export const deleteServer = async (req: Request, res: Response): Promise<void> =
 export const updateServer = async (req: Request, res: Response): Promise<void> => {
   try {
     const { name } = req.params;
-    const { config } = req.body;
+    const { config, newName } = req.body;
     if (!name) {
       res.status(400).json({
         success: false,
@@ -510,12 +510,52 @@ export const updateServer = async (req: Request, res: Response): Promise<void> =
       config.owner = currentUser?.username || 'admin';
     }
 
-    const result = await addOrUpdateServer(name, config, true); // Allow override for updates
+    // Check if server name is being changed
+    const isRenaming = newName && newName !== name;
+
+    // If renaming, validate the new name and update references
+    if (isRenaming) {
+      const serverDao = getServerDao();
+
+      // Check if new name already exists
+      if (await serverDao.exists(newName)) {
+        res.status(400).json({
+          success: false,
+          message: `Server name '${newName}' already exists`,
+        });
+        return;
+      }
+
+      // Rename the server
+      const renamed = await serverDao.rename(name, newName);
+      if (!renamed) {
+        res.status(404).json({
+          success: false,
+          message: 'Server not found',
+        });
+        return;
+      }
+
+      // Update references in groups
+      const groupDao = getGroupDao();
+      await groupDao.updateServerName(name, newName);
+
+      // Update references in bearer keys
+      const bearerKeyDao = getBearerKeyDao();
+      await bearerKeyDao.updateServerName(name, newName);
+    }
+
+    // Use the final server name (new name if renaming, otherwise original name)
+    const finalName = isRenaming ? newName : name;
+
+    const result = await addOrUpdateServer(finalName, config, true); // Allow override for updates
     if (result.success) {
-      notifyToolChanged(name);
+      notifyToolChanged(finalName);
       res.json({
         success: true,
-        message: 'Server updated successfully',
+        message: isRenaming
+          ? `Server renamed and updated successfully`
+          : 'Server updated successfully',
       });
     } else {
       res.status(404).json({
@@ -524,9 +564,10 @@ export const updateServer = async (req: Request, res: Response): Promise<void> =
       });
     }
   } catch (error) {
+    console.error('Failed to update server:', error);
     res.status(500).json({
       success: false,
-      message: 'Internal server error',
+      message: error instanceof Error ? error.message : 'Internal server error',
     });
   }
 };

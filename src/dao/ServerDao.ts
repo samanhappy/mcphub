@@ -41,6 +41,11 @@ export interface ServerDao extends BaseDao<ServerConfigWithName, string> {
     name: string,
     prompts: Record<string, { enabled: boolean; description?: string }>,
   ): Promise<boolean>;
+
+  /**
+   * Rename a server (change its name/key)
+   */
+  rename(oldName: string, newName: string): Promise<boolean>;
 }
 
 /**
@@ -95,7 +100,8 @@ export class ServerDaoImpl extends JsonFileBaseDao implements ServerDao {
     return {
       ...existing,
       ...updates,
-      name: existing.name, // Name should not be updated
+      // Keep the existing name unless explicitly updating via rename
+      name: updates.name ?? existing.name,
     };
   }
 
@@ -141,9 +147,7 @@ export class ServerDaoImpl extends JsonFileBaseDao implements ServerDao {
       return null;
     }
 
-    // Don't allow name changes
-    const { name: _, ...allowedUpdates } = updates;
-    const updatedServer = this.updateEntity(servers[index], allowedUpdates);
+    const updatedServer = this.updateEntity(servers[index], updates);
     servers[index] = updatedServer;
 
     await this.saveAll(servers);
@@ -206,5 +210,23 @@ export class ServerDaoImpl extends JsonFileBaseDao implements ServerDao {
   ): Promise<boolean> {
     const result = await this.update(name, { prompts });
     return result !== null;
+  }
+
+  async rename(oldName: string, newName: string): Promise<boolean> {
+    const servers = await this.getAll();
+    const index = servers.findIndex((server) => server.name === oldName);
+
+    if (index === -1) {
+      return false;
+    }
+
+    // Check if newName already exists
+    if (servers.find((server) => server.name === newName)) {
+      throw new Error(`Server ${newName} already exists`);
+    }
+
+    servers[index] = { ...servers[index], name: newName };
+    await this.saveAll(servers);
+    return true;
   }
 }

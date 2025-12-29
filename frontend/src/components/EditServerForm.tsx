@@ -18,7 +18,17 @@ const EditServerForm = ({ server, onEdit, onCancel }: EditServerFormProps) => {
     try {
       setError(null);
       const encodedServerName = encodeURIComponent(server.name);
-      const result = await apiPut(`/servers/${encodedServerName}`, payload);
+
+      // Check if name is being changed
+      const isRenaming = payload.name && payload.name !== server.name;
+
+      // Build the request body
+      const requestBody = {
+        config: payload.config,
+        ...(isRenaming ? { newName: payload.name } : {}),
+      };
+
+      const result = await apiPut(`/servers/${encodedServerName}`, requestBody);
 
       if (!result.success) {
         // Use specific error message from the response if available

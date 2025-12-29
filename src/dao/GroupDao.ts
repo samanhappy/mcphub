@@ -36,6 +36,11 @@ export interface GroupDao extends BaseDao<IGroup, string> {
    * Find group by name
    */
   findByName(name: string): Promise<IGroup | null>;
+
+  /**
+   * Update server name in all groups (when server is renamed)
+   */
+  updateServerName(oldName: string, newName: string): Promise<number>;
 }
 
 /**
@@ -217,5 +222,40 @@ export class GroupDaoImpl extends JsonFileBaseDao implements GroupDao {
   async findByName(name: string): Promise<IGroup | null> {
     const groups = await this.getAll();
     return groups.find((group) => group.name === name) || null;
+  }
+
+  async updateServerName(oldName: string, newName: string): Promise<number> {
+    const groups = await this.getAll();
+    let updatedCount = 0;
+
+    for (const group of groups) {
+      let updated = false;
+      const newServers = group.servers.map((server) => {
+        if (typeof server === 'string') {
+          if (server === oldName) {
+            updated = true;
+            return newName;
+          }
+          return server;
+        } else {
+          if (server.name === oldName) {
+            updated = true;
+            return { ...server, name: newName };
+          }
+          return server;
+        }
+      }) as IGroup['servers'];
+
+      if (updated) {
+        group.servers = newServers;
+        updatedCount++;
+      }
+    }
+
+    if (updatedCount > 0) {
+      await this.saveAll(groups);
+    }
+
+    return updatedCount;
   }
 }

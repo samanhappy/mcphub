@@ -74,4 +74,30 @@ export class BearerKeyDaoDbImpl implements BearerKeyDao {
   async delete(id: string): Promise<boolean> {
     return await this.repository.delete(id);
   }
+
+  async updateServerName(oldName: string, newName: string): Promise<number> {
+    const allKeys = await this.repository.findAll();
+    let updatedCount = 0;
+
+    for (const key of allKeys) {
+      let updated = false;
+
+      if (key.allowedServers && key.allowedServers.length > 0) {
+        const newServers = key.allowedServers.map((server) => {
+          if (server === oldName) {
+            updated = true;
+            return newName;
+          }
+          return server;
+        });
+
+        if (updated) {
+          await this.repository.update(key.id, { allowedServers: newServers });
+          updatedCount++;
+        }
+      }
+    }
+
+    return updatedCount;
+  }
 }

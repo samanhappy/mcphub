@@ -151,4 +151,35 @@ export class GroupDaoDbImpl implements GroupDao {
       owner: group.owner,
     };
   }
+
+  async updateServerName(oldName: string, newName: string): Promise<number> {
+    const allGroups = await this.repository.findAll();
+    let updatedCount = 0;
+
+    for (const group of allGroups) {
+      let updated = false;
+      const newServers = group.servers.map((server) => {
+        if (typeof server === 'string') {
+          if (server === oldName) {
+            updated = true;
+            return newName;
+          }
+          return server;
+        } else {
+          if (server.name === oldName) {
+            updated = true;
+            return { ...server, name: newName };
+          }
+          return server;
+        }
+      });
+
+      if (updated) {
+        await this.update(group.id, { servers: newServers as any });
+        updatedCount++;
+      }
+    }
+
+    return updatedCount;
+  }
 }

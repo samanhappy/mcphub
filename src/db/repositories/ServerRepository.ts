@@ -89,6 +89,19 @@ export class ServerRepository {
   async setEnabled(name: string, enabled: boolean): Promise<Server | null> {
     return await this.update(name, { enabled });
   }
+
+  /**
+   * Rename a server
+   */
+  async rename(oldName: string, newName: string): Promise<boolean> {
+    const server = await this.findByName(oldName);
+    if (!server) {
+      return false;
+    }
+    server.name = newName;
+    await this.repository.save(server);
+    return true;
+  }
 }
 
 export default ServerRepository;

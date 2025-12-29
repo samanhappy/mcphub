@@ -115,6 +115,15 @@ export class ServerDaoDbImpl implements ServerDao {
     return result !== null;
   }
 
+  async rename(oldName: string, newName: string): Promise<boolean> {
+    // Check if newName already exists
+    if (await this.repository.exists(newName)) {
+      throw new Error(`Server ${newName} already exists`);
+    }
+
+    return await this.repository.rename(oldName, newName);
+  }
+
   private mapToServerConfig(server: {
     name: string;
     type?: string;

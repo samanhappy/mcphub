@@ -13,6 +13,10 @@ export interface BearerKeyDao {
   create(data: Omit<BearerKey, 'id'>): Promise<BearerKey>;
   update(id: string, data: Partial<Omit<BearerKey, 'id'>>): Promise<BearerKey | null>;
   delete(id: string): Promise<boolean>;
+  /**
+   * Update server name in all bearer keys (when server is renamed)
+   */
+  updateServerName(oldName: string, newName: string): Promise<number>;
 }
 
 /**
@@ -121,5 +125,35 @@ export class BearerKeyDaoImpl extends JsonFileBaseDao implements BearerKeyDao {
     }
     await this.saveKeys(next);
     return true;
+  }
+
+  async updateServerName(oldName: string, newName: string): Promise<number> {
+    const keys = await this.loadKeysWithMigration();
+    let updatedCount = 0;
+
+    for (const key of keys) {
+      let updated = false;
+
+      if (key.allowedServers && key.allowedServers.length > 0) {
+        const newServers = key.allowedServers.map((server) => {
+          if (server === oldName) {
+            updated = true;
+            return newName;
+          }
+          return server;
+        });
+
+        if (updated) {
+          key.allowedServers = newServers;
+          updatedCount++;
+        }
+      }
+    }
+
+    if (updatedCount > 0) {
+      await this.saveKeys(keys);
+    }
+
+    return updatedCount;
   }
 }
