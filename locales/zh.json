@@ -248,6 +248,8 @@
     "dismiss": "忽略",
     "github": "GitHub",
     "wechat": "微信",
+    "itemsPerPage": "每页显示",
+    "showing": "显示第 {{start}}-{{end}} 条，共 {{total}} 条",
     "discord": "Discord",
     "required": "必填",
     "secret": "敏感",

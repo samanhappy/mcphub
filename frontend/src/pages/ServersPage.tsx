@@ -8,6 +8,7 @@ import EditServerForm from '@/components/EditServerForm';
 import { useServerData } from '@/hooks/useServerData';
 import DxtUploadForm from '@/components/DxtUploadForm';
 import JSONImportForm from '@/components/JSONImportForm';
+import Pagination from '@/components/ui/Pagination';
 
 const ServersPage: React.FC = () => {
   const { t } = useTranslation();
@@ -17,6 +18,11 @@ const ServersPage: React.FC = () => {
     error,
     setError,
     isLoading,
+    pagination,
+    currentPage,
+    serversPerPage,
+    setCurrentPage,
+    setServersPerPage,
     handleServerAdd,
     handleServerEdit,
     handleServerRemove,
@@ -151,19 +157,64 @@ const ServersPage: React.FC = () => {
           <p className="text-gray-600">{t('app.noServers')}</p>
         </div>
       ) : (
-        <div className="space-y-6">
-          {servers.map((server, index) => (
-            <ServerCard
-              key={index}
-              server={server}
-              onRemove={handleServerRemove}
-              onEdit={handleEditClick}
-              onToggle={handleServerToggle}
-              onRefresh={triggerRefresh}
-              onReload={handleServerReload}
-            />
-          ))}
-        </div>
+        <>
+          <div className="space-y-6">
+            {servers.map((server, index) => (
+              <ServerCard
+                key={index}
+                server={server}
+                onRemove={handleServerRemove}
+                onEdit={handleEditClick}
+                onToggle={handleServerToggle}
+                onRefresh={triggerRefresh}
+                onReload={handleServerReload}
+              />
+            ))}
+          </div>
+
+          <div className="flex items-center mb-4">
+            <div className="flex-[2] text-sm text-gray-500">
+              {pagination ? (
+                t('common.showing', {
+                  start: (pagination.page - 1) * pagination.limit + 1,
+                  end: Math.min(pagination.page * pagination.limit, pagination.total),
+                  total: pagination.total
+                })
+              ) : (
+                t('common.showing', {
+                  start: 1,
+                  end: servers.length,
+                  total: servers.length
+                })
+              )}
+            </div>
+            <div className="flex-[4] flex justify-center">
+              {pagination && pagination.totalPages > 1 && (
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={pagination.totalPages}
+                  onPageChange={setCurrentPage}
+                />
+              )}
+            </div>
+            <div className="flex-[2] flex items-center justify-end space-x-2">
+              <label htmlFor="perPage" className="text-sm text-gray-600">
+                {t('common.itemsPerPage')}:
+              </label>
+              <select
+                id="perPage"
+                value={serversPerPage}
+                onChange={(e) => setServersPerPage(Number(e.target.value))}
+                className="border rounded p-1 text-sm btn-secondary outline-none"
+              >
+                <option value={5}>5</option>
+                <option value={10}>10</option>
+                <option value={20}>20</option>
+                <option value={50}>50</option>
+              </select>
+            </div>
+          </div>
+        </>
       )}
 
       {editingServer && (

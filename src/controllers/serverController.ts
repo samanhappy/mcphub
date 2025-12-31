@@ -25,12 +25,57 @@ import { cloneDefaultOAuthServerConfig } from '../constants/oauthServerDefaults.
 import { getServerDao, getGroupDao, getSystemConfigDao } from '../dao/DaoFactory.js';
 import { getBearerKeyDao } from '../dao/DaoFactory.js';
 
-export const getAllServers = async (_: Request, res: Response): Promise<void> => {
+export const getAllServers = async (req: Request, res: Response): Promise<void> => {
   try {
-    const serversInfo = await getServersInfo();
+    // Parse pagination parameters from query string
+    const page = req.query.page ? parseInt(req.query.page as string, 10) : 1;
+    const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : undefined;
+
+    // Validate pagination parameters
+    if (page < 1) {
+      res.status(400).json({
+        success: false,
+        message: 'Page number must be greater than 0',
+      });
+      return;
+    }
+
+    if (limit !== undefined && (limit < 1 || limit > 1000)) {
+      res.status(400).json({
+        success: false,
+        message: 'Limit must be between 1 and 1000',
+      });
+      return;
+    }
+
+    // Get all servers info
+    const allServersInfo = await getServersInfo();
+    const total = allServersInfo.length;
+
+    // Apply pagination if limit is specified
+    let serversInfo = allServersInfo;
+    let pagination = undefined;
+
+    if (limit !== undefined) {
+      const startIndex = (page - 1) * limit;
+      const endIndex = startIndex + limit;
+      serversInfo = allServersInfo.slice(startIndex, endIndex);
+      const totalPages = Math.ceil(total / limit);
+
+      pagination = {
+        page,
+        limit,
+        total,
+        totalPages,
+        hasNextPage: page < totalPages,
+        hasPrevPage: page > 1,
+      };
+    }
+
     const response: ApiResponse = {
       success: true,
       data: createSafeJSON(serversInfo),
+      ...(pagination && { pagination }),
     };
     res.json(response);
   } catch (error) {

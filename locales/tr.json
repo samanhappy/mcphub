@@ -248,6 +248,8 @@
     "github": "GitHub",
     "wechat": "WeChat",
     "discord": "Discord",
+    "itemsPerPage": "Sayfa başına öğe",
+    "showing": "{{total}} öğeden {{start}}-{{end}} gösteriliyor",
     "required": "Gerekli",
     "secret": "Gizli",
     "default": "Varsayılan",

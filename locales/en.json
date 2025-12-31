@@ -248,6 +248,8 @@
     "wechat": "WeChat",
     "discord": "Discord",
     "required": "Required",
+    "itemsPerPage": "Items per page",
+    "showing": "Showing {{start}}-{{end}} of {{total}}",
     "secret": "Secret",
     "default": "Default",
     "value": "Value",

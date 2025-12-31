@@ -17,6 +17,16 @@ const CONFIG = {
   },
 };
 
+// Pagination info type
+interface PaginationInfo {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+  hasNextPage: boolean;
+  hasPrevPage: boolean;
+}
+
 // Context type definition
 interface ServerContextType {
   servers: Server[];
@@ -24,6 +34,11 @@ interface ServerContextType {
   setError: (error: string | null) => void;
   isLoading: boolean;
   fetchAttempts: number;
+  pagination: PaginationInfo | null;
+  currentPage: number;
+  serversPerPage: number;
+  setCurrentPage: (page: number) => void;
+  setServersPerPage: (limit: number) => void;
   triggerRefresh: () => void;
   refreshIfNeeded: () => void; // Smart refresh with debounce
   handleServerAdd: () => void;
@@ -45,6 +60,9 @@ export const ServerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [refreshKey, setRefreshKey] = useState(0);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [fetchAttempts, setFetchAttempts] = useState(0);
+  const [pagination, setPagination] = useState<PaginationInfo | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [serversPerPage, setServersPerPage] = useState(10);
 
   // Timer reference for polling
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -73,18 +91,31 @@ export const ServerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       const fetchServers = async () => {
         try {
           console.log('[ServerContext] Fetching servers from API...');
-          const data = await apiGet('/servers');
+          // Build query parameters for pagination
+          const params = new URLSearchParams();
+          params.append('page', currentPage.toString());
+          params.append('limit', serversPerPage.toString());
+          const data = await apiGet(`/servers?${params.toString()}`);
 
           // Update last fetch time
           lastFetchTimeRef.current = Date.now();
 
           if (data && data.success && Array.isArray(data.data)) {
             setServers(data.data);
+            // Update pagination info if available
+            if (data.pagination) {
+              setPagination(data.pagination);
+            } else {
+              setPagination(null);
+            }
           } else if (data && Array.isArray(data)) {
+            // Compatibility handling for non-paginated responses
             setServers(data);
+            setPagination(null);
           } else {
             console.error('Invalid server data format:', data);
             setServers([]);
+            setPagination(null);
           }
 
           // Reset error state
@@ -114,7 +145,7 @@ export const ServerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       // Set up regular polling
       intervalRef.current = setInterval(fetchServers, CONFIG.normal.pollingInterval);
     },
-    [t],
+    [t, currentPage, serversPerPage],
   );
 
   // Watch for authentication status changes
@@ -150,7 +181,11 @@ export const ServerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     const fetchInitialData = async () => {
       try {
         console.log('[ServerContext] Initial fetch - attempt', attemptsRef.current + 1);
-        const data = await apiGet('/servers');
+        // Build query parameters for pagination
+        const params = new URLSearchParams();
+        params.append('page', currentPage.toString());
+        params.append('limit', serversPerPage.toString());
+        const data = await apiGet(`/servers?${params.toString()}`);
 
         // Update last fetch time
         lastFetchTimeRef.current = Date.now();
@@ -158,6 +193,12 @@ export const ServerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         // Handle API response wrapper object, extract data field
         if (data && data.success && Array.isArray(data.data)) {
           setServers(data.data);
+          // Update pagination info if available
+          if (data.pagination) {
+            setPagination(data.pagination);
+          } else {
+            setPagination(null);
+          }
           setIsInitialLoading(false);
           // Initialization successful, start normal polling (skip immediate to avoid duplicate fetch)
           startNormalPolling({ immediate: false });
@@ -165,6 +206,7 @@ export const ServerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         } else if (data && Array.isArray(data)) {
           // Compatibility handling, if API directly returns array
           setServers(data);
+          setPagination(null);
           setIsInitialLoading(false);
           // Initialization successful, start normal polling (skip immediate to avoid duplicate fetch)
           startNormalPolling({ immediate: false });
@@ -173,6 +215,7 @@ export const ServerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           // If data format is not as expected, set to empty array
           console.error('Invalid server data format:', data);
           setServers([]);
+          setPagination(null);
           setIsInitialLoading(false);
           // Initialization successful but data is empty, start normal polling (skip immediate)
           startNormalPolling({ immediate: false });
@@ -227,7 +270,7 @@ export const ServerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     return () => {
       clearTimer();
     };
-  }, [refreshKey, t, isInitialLoading, startNormalPolling]);
+  }, [refreshKey, t, isInitialLoading, startNormalPolling, currentPage, serversPerPage]);
 
   // Manually trigger refresh (always refreshes)
   const triggerRefresh = useCallback(() => {
@@ -383,12 +426,28 @@ export const ServerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     [t, triggerRefresh],
   );
 
+  // Handle page change
+  const handlePageChange = useCallback((page: number) => {
+    setCurrentPage(page);
+  }, []);
+
+  // Handle servers per page change
+  const handleServersPerPageChange = useCallback((limit: number) => {
+    setServersPerPage(limit);
+    setCurrentPage(1); // Reset to first page when changing page size
+  }, []);
+
   const value: ServerContextType = {
     servers,
     error,
     setError,
     isLoading: isInitialLoading,
     fetchAttempts,
+    pagination,
+    currentPage,
+    serversPerPage,
+    setCurrentPage: handlePageChange,
+    setServersPerPage: handleServersPerPageChange,
     triggerRefresh,
     refreshIfNeeded,
     handleServerAdd,

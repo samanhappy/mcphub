@@ -248,6 +248,8 @@
     "github": "GitHub",
     "wechat": "WeChat",
     "discord": "Discord",
+    "itemsPerPage": "Éléments par page",
+    "showing": "Affichage de {{start}}-{{end}} sur {{total}}",
     "required": "Requis",
     "secret": "Secret",
     "default": "Défaut",
