@@ -618,8 +618,14 @@ export const registerAllTools = async (isInit: boolean, serverName?: string): Pr
 };
 
 // Get all server information
-export const getServersInfo = async (): Promise<Omit<ServerInfo, 'client' | 'transport'>[]> => {
-  const allServers: ServerConfigWithName[] = await getServerDao().findAll();
+export const getServersInfo = async (
+  page?: number,
+  limit?: number,
+): Promise<Omit<ServerInfo, 'client' | 'transport'>[]> => {
+  // Get paginated or all server configurations from DAO
+  const allServers: ServerConfigWithName[] = limit !== undefined && page !== undefined
+    ? (await getServerDao().findAllPaginated(page, limit)).data
+    : await getServerDao().findAll();
   const dataService = getDataService();
 
   // Ensure that servers recently added via DAO but not yet initialized in serverInfos
@@ -629,10 +635,19 @@ export const getServersInfo = async (): Promise<Omit<ServerInfo, 'client' | 'tra
   const combinedServerInfos: ServerInfo[] = [...serverInfos];
   const existingNames = new Set(combinedServerInfos.map((s) => s.name));
 
+  // Create a set of server names we're interested in (for pagination)
+  const requestedServerNames = new Set(allServers.map((s) => s.name));
+
+  // Filter serverInfos to only include requested servers if pagination is used
+  const filteredServerInfos = limit !== undefined && page !== undefined
+    ? combinedServerInfos.filter((s) => requestedServerNames.has(s.name))
+    : combinedServerInfos;
+
+  // Add servers from DAO that don't have runtime info yet
   for (const server of allServers) {
     if (!existingNames.has(server.name)) {
       const isEnabled = server.enabled === undefined ? true : server.enabled;
-      combinedServerInfos.push({
+      filteredServerInfos.push({
         name: server.name,
         owner: server.owner,
         // Newly created servers that are enabled should appear as "connecting"
@@ -649,11 +664,12 @@ export const getServersInfo = async (): Promise<Omit<ServerInfo, 'client' | 'tra
   }
 
   const filterServerInfos: ServerInfo[] = dataService.filterData
-    ? dataService.filterData(combinedServerInfos)
-    : combinedServerInfos;
+    ? dataService.filterData(filteredServerInfos)
+    : filteredServerInfos;
 
-  const infos = filterServerInfos.map(
-    ({ name, status, tools, prompts, createTime, error, oauth }) => {
+  const infos = filterServerInfos
+    .filter((info) => requestedServerNames.has(info.name)) // Only include requested servers
+    .map(({ name, status, tools, prompts, createTime, error, oauth }) => {
       const serverConfig = allServers.find((server) => server.name === name);
       const enabled = serverConfig ? serverConfig.enabled !== false : true;
 
@@ -692,8 +708,7 @@ export const getServersInfo = async (): Promise<Omit<ServerInfo, 'client' | 'tra
             }
           : undefined,
       };
-    },
-  );
+    });
   infos.sort((a, b) => {
     if (a.enabled === b.enabled) return 0;
     return a.enabled ? -1 : 1;

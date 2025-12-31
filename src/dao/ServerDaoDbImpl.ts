@@ -1,4 +1,4 @@
-import { ServerDao, ServerConfigWithName } from './index.js';
+import { ServerDao, ServerConfigWithName, PaginatedResult } from './index.js';
 import { ServerRepository } from '../db/repositories/ServerRepository.js';
 
 /**
@@ -14,6 +14,19 @@ export class ServerDaoDbImpl implements ServerDao {
   async findAll(): Promise<ServerConfigWithName[]> {
     const servers = await this.repository.findAll();
     return servers.map((s) => this.mapToServerConfig(s));
+  }
+
+  async findAllPaginated(page: number, limit: number): Promise<PaginatedResult<ServerConfigWithName>> {
+    const { data, total } = await this.repository.findAllPaginated(page, limit);
+    const totalPages = Math.ceil(total / limit);
+
+    return {
+      data: data.map((s) => this.mapToServerConfig(s)),
+      total,
+      page,
+      limit,
+      totalPages,
+    };
   }
 
   async findById(name: string): Promise<ServerConfigWithName | null> {

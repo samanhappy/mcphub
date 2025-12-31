@@ -3,9 +3,25 @@ import { BaseDao } from './base/BaseDao.js';
 import { JsonFileBaseDao } from './base/JsonFileBaseDao.js';
 
 /**
+ * Pagination result interface
+ */
+export interface PaginatedResult<T> {
+  data: T[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+/**
  * Server DAO interface with server-specific operations
  */
 export interface ServerDao extends BaseDao<ServerConfigWithName, string> {
+  /**
+   * Find all servers with pagination
+   */
+  findAllPaginated(page: number, limit: number): Promise<PaginatedResult<ServerConfigWithName>>;
+
   /**
    * Find servers by owner
    */
@@ -174,6 +190,23 @@ export class ServerDaoImpl extends JsonFileBaseDao implements ServerDao {
   async count(): Promise<number> {
     const servers = await this.getAll();
     return servers.length;
+  }
+
+  async findAllPaginated(page: number, limit: number): Promise<PaginatedResult<ServerConfigWithName>> {
+    const allServers = await this.getAll();
+    const total = allServers.length;
+    const totalPages = Math.ceil(total / limit);
+    const startIndex = (page - 1) * limit;
+    const endIndex = startIndex + limit;
+    const data = allServers.slice(startIndex, endIndex);
+
+    return {
+      data,
+      total,
+      page,
+      limit,
+      totalPages,
+    };
   }
 
   async findByOwner(owner: string): Promise<ServerConfigWithName[]> {
