@@ -38,6 +38,7 @@ export class ServerDaoDbImpl implements ServerDao {
       prompts: entity.prompts,
       options: entity.options,
       oauth: entity.oauth,
+      proxy: entity.proxy,
       openapi: entity.openapi,
     });
     return this.mapToServerConfig(server);
@@ -62,6 +63,7 @@ export class ServerDaoDbImpl implements ServerDao {
       prompts: entity.prompts,
       options: entity.options,
       oauth: entity.oauth,
+      proxy: entity.proxy,
       openapi: entity.openapi,
     });
     return server ? this.mapToServerConfig(server) : null;
@@ -140,6 +142,7 @@ export class ServerDaoDbImpl implements ServerDao {
     prompts?: Record<string, { enabled: boolean; description?: string }>;
     options?: Record<string, any>;
     oauth?: Record<string, any>;
+    proxy?: Record<string, any>;
     openapi?: Record<string, any>;
   }): ServerConfigWithName {
     return {
@@ -158,6 +161,7 @@ export class ServerDaoDbImpl implements ServerDao {
       prompts: server.prompts,
       options: server.options,
       oauth: server.oauth,
+      proxy: server.proxy,
       openapi: server.openapi,
     };
   }

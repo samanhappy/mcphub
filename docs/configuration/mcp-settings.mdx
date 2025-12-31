@@ -259,6 +259,92 @@ MCPHub supports environment variable substitution using `${VAR_NAME}` syntax:
 }
 ```
 
+### Proxy Configuration (proxychains4)
+
+MCPHub supports routing STDIO server network traffic through a proxy using **proxychains4**. This feature is available on **Linux and macOS only** (Windows is not supported).
+
+<Note>
+To use this feature, you must have `proxychains4` installed on your system:
+- **Debian/Ubuntu**: `apt install proxychains4`
+- **macOS**: `brew install proxychains-ng`
+- **Arch Linux**: `pacman -S proxychains-ng`
+</Note>
+
+#### Basic Proxy Configuration
+
+```json
+{
+  "mcpServers": {
+    "fetch-via-proxy": {
+      "command": "uvx",
+      "args": ["mcp-server-fetch"],
+      "proxy": {
+        "enabled": true,
+        "type": "socks5",
+        "host": "127.0.0.1",
+        "port": 1080
+      }
+    }
+  }
+}
+```
+
+#### Proxy Configuration Options
+
+| Field        | Type    | Default   | Description                                      |
+| ------------ | ------- | --------- | ------------------------------------------------ |
+| `enabled`    | boolean | `false`   | Enable/disable proxy routing                     |
+| `type`       | string  | `socks5`  | Proxy protocol: `socks4`, `socks5`, or `http`    |
+| `host`       | string  | -         | Proxy server hostname or IP address              |
+| `port`       | number  | -         | Proxy server port                                |
+| `username`   | string  | -         | Proxy authentication username (optional)         |
+| `password`   | string  | -         | Proxy authentication password (optional)         |
+| `configPath` | string  | -         | Path to custom proxychains4 config file          |
+
+#### Proxy with Authentication
+
+```json
+{
+  "mcpServers": {
+    "secure-server": {
+      "command": "npx",
+      "args": ["-y", "@example/mcp-server"],
+      "proxy": {
+        "enabled": true,
+        "type": "http",
+        "host": "proxy.example.com",
+        "port": 8080,
+        "username": "${PROXY_USER}",
+        "password": "${PROXY_PASSWORD}"
+      }
+    }
+  }
+}
+```
+
+#### Using Custom proxychains4 Configuration
+
+For advanced use cases, you can provide your own proxychains4 configuration file:
+
+```json
+{
+  "mcpServers": {
+    "custom-proxy-server": {
+      "command": "python",
+      "args": ["-m", "custom_mcp_server"],
+      "proxy": {
+        "enabled": true,
+        "configPath": "/etc/proxychains4/custom.conf"
+      }
+    }
+  }
+}
+```
+
+<Tip>
+When `configPath` is specified, all other proxy settings (`type`, `host`, `port`, etc.) are ignored, and the custom configuration file is used directly.
+</Tip>
+
 {/* ### Custom Server Scripts
 
 #### Local Python Server

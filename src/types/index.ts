@@ -270,6 +270,17 @@ export interface McpSettings {
   bearerKeys?: BearerKey[]; // Bearer authentication keys (multi-key configuration)
 }
 
+// Proxychains4 configuration for STDIO servers (Linux/macOS only)
+export interface ProxychainsConfig {
+  enabled?: boolean; // Enable/disable proxychains4 proxy routing
+  type?: 'socks4' | 'socks5' | 'http'; // Proxy protocol type
+  host?: string; // Proxy server hostname or IP address
+  port?: number; // Proxy server port
+  username?: string; // Proxy authentication username (optional)
+  password?: string; // Proxy authentication password (optional)
+  configPath?: string; // Path to custom proxychains4 configuration file (optional, overrides above settings)
+}
+
 // Configuration details for an individual server
 export interface ServerConfig {
   type?: 'stdio' | 'sse' | 'streamable-http' | 'openapi'; // Type of server
@@ -285,6 +296,8 @@ export interface ServerConfig {
   tools?: Record<string, { enabled: boolean; description?: string }>; // Tool-specific configurations with enable/disable state and custom descriptions
   prompts?: Record<string, { enabled: boolean; description?: string }>; // Prompt-specific configurations with enable/disable state and custom descriptions
   options?: Partial<Pick<RequestOptions, 'timeout' | 'resetTimeoutOnProgress' | 'maxTotalTimeout'>>; // MCP request options configuration
+  // Proxychains4 proxy configuration for STDIO servers (Linux/macOS only, Windows not supported)
+  proxy?: ProxychainsConfig;
   // OAuth authentication for upstream MCP servers
   oauth?: {
     // Static client configuration (traditional OAuth flow)

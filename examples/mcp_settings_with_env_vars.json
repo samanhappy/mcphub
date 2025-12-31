@@ -31,6 +31,47 @@
         "DATABASE_URL": "${DATABASE_URL}"
       }
     },
+    "example-stdio-with-proxy": {
+      "type": "stdio",
+      "command": "uvx",
+      "args": [
+        "mcp-server-fetch"
+      ],
+      "proxy": {
+        "enabled": true,
+        "type": "socks5",
+        "host": "${PROXY_HOST}",
+        "port": 1080
+      }
+    },
+    "example-stdio-with-auth-proxy": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@example/mcp-server"
+      ],
+      "proxy": {
+        "enabled": true,
+        "type": "http",
+        "host": "${HTTP_PROXY_HOST}",
+        "port": 8080,
+        "username": "${PROXY_USERNAME}",
+        "password": "${PROXY_PASSWORD}"
+      }
+    },
+    "example-stdio-with-custom-proxy-config": {
+      "type": "stdio",
+      "command": "python",
+      "args": [
+        "-m",
+        "custom_mcp_server"
+      ],
+      "proxy": {
+        "enabled": true,
+        "configPath": "/etc/proxychains4/custom.conf"
+      }
+    },
     "example-openapi-server": {
       "type": "openapi",
       "openapi": {

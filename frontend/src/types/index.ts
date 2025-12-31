@@ -105,6 +105,17 @@ export interface Prompt {
   enabled?: boolean;
 }
 
+// Proxychains4 configuration for STDIO servers (Linux/macOS only)
+export interface ProxychainsConfig {
+  enabled?: boolean; // Enable/disable proxychains4 proxy routing
+  type?: 'socks4' | 'socks5' | 'http'; // Proxy protocol type
+  host?: string; // Proxy server hostname or IP address
+  port?: number; // Proxy server port
+  username?: string; // Proxy authentication username (optional)
+  password?: string; // Proxy authentication password (optional)
+  configPath?: string; // Path to custom proxychains4 configuration file (optional)
+}
+
 // Server config types
 export interface ServerConfig {
   type?: 'stdio' | 'sse' | 'streamable-http' | 'openapi';
@@ -123,6 +134,8 @@ export interface ServerConfig {
     resetTimeoutOnProgress?: boolean; // Reset timeout on progress notifications
     maxTotalTimeout?: number; // Maximum total timeout in milliseconds
   }; // MCP request options configuration
+  // Proxychains4 proxy configuration for STDIO servers (Linux/macOS only, Windows not supported)
+  proxy?: ProxychainsConfig;
   // OAuth authentication for upstream MCP servers
   oauth?: {
     clientId?: string; // OAuth client ID
