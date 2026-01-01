@@ -5,7 +5,7 @@ import 'reflect-metadata';
 Object.assign(process.env, {
   NODE_ENV: 'test',
   JWT_SECRET: 'test-jwt-secret-key',
-  DATABASE_URL: 'sqlite::memory:',
+  DB_URL: 'sqlite::memory:',
 });
 
 // Mock moduleDir to avoid import.meta parsing issues in Jest
@@ -40,7 +40,7 @@ expect.extend({
       };
     }
   },
-  
+
   toBeValidUUID(received: any) {
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
     const pass = typeof received === 'string' && uuidRegex.test(received);

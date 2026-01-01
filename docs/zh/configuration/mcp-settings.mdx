@@ -290,7 +290,7 @@ MCPHub 支持使用 `${VAR_NAME}` 语法进行环境变量替换：
       "command": "python",
       "args": ["-m", "db_server"],
       "env": {
-        "DB_URL": "${NODE_ENV:development == 'production' ? DATABASE_URL : DEV_DATABASE_URL}"
+        "DB_URL": "${NODE_ENV:development == 'production' ? DB_URL : DEV_DB_URL}"
       }
     }
   }

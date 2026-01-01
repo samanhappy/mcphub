@@ -69,7 +69,7 @@ Smart Routing requires additional setup compared to basic MCPHub usage:
         ports:
           - "3000:3000"
         environment:
-          - DATABASE_URL=postgresql://mcphub:password@postgres:5432/mcphub
+          - DB_URL=postgresql://mcphub:password@postgres:5432/mcphub
           - OPENAI_API_KEY=your_openai_api_key
           - ENABLE_SMART_ROUTING=true
         depends_on:
@@ -114,7 +114,7 @@ Smart Routing requires additional setup compared to basic MCPHub usage:
 
     2. **Set Environment Variables**:
     ```bash
-    export DATABASE_URL="postgresql://mcphub:your_password@localhost:5432/mcphub"
+    export DB_URL="postgresql://mcphub:your_password@localhost:5432/mcphub"
     export OPENAI_API_KEY="your_openai_api_key"
     export ENABLE_SMART_ROUTING="true"
     ```
@@ -178,7 +178,7 @@ Smart Routing requires additional setup compared to basic MCPHub usage:
           - name: mcphub
             image: samanhappy/mcphub:latest
             env:
-            - name: DATABASE_URL
+            - name: DB_URL
               value: "postgresql://mcphub:password@postgres:5432/mcphub"
             - name: OPENAI_API_KEY
               valueFrom:
@@ -202,7 +202,7 @@ Configure Smart Routing with these environment variables:
 
 ```bash
 # Required
-DATABASE_URL=postgresql://user:password@host:5432/database
+DB_URL=postgresql://user:password@host:5432/database
 OPENAI_API_KEY=your_openai_api_key
 
 # Optional
@@ -219,10 +219,10 @@ EMBEDDING_BATCH_SIZE=100
   <Accordion title="Database Configuration">
     ```bash
     # Full PostgreSQL connection string
-    DATABASE_URL=postgresql://username:password@host:port/database?schema=public
+    DB_URL=postgresql://username:password@host:port/database?schema=public
 
     # SSL configuration for cloud databases
-    DATABASE_URL=postgresql://user:pass@host:5432/db?sslmode=require
+    DB_URL=postgresql://user:pass@host:5432/db?sslmode=require
 
     # Connection pool settings
     DATABASE_POOL_SIZE=20
@@ -673,11 +673,11 @@ curl -X POST http://localhost:3000/api/smart-routing/feedback \
 
     **Solutions:**
     1. Verify PostgreSQL is running
-    2. Check DATABASE_URL format
+    2. Check DB_URL format
     3. Ensure pgvector extension is installed
     4. Test connection manually:
     ```bash
-    psql $DATABASE_URL -c "SELECT 1;"
+    psql $DB_URL -c "SELECT 1;"
     ```
 
   </Accordion>

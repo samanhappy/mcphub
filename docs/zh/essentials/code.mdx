@@ -480,7 +480,7 @@ docker run -d \
   --name mcphub \
   -p 3000:3000 \
   -e NODE_ENV=production \
-  -e DATABASE_URL=postgresql://user:pass@host:5432/mcphub \
+  -e DB_URL=postgresql://user:pass@host:5432/mcphub \
   -e JWT_SECRET=your-secret-key \
   mcphub/server:latest
 
@@ -504,7 +504,7 @@ docker run -d \
   --name mcphub \
   -p 3000:3000 \
   -e NODE_ENV=production \
-  -e DATABASE_URL=postgresql://user:pass@host:5432/mcphub \
+  -e DB_URL=postgresql://user:pass@host:5432/mcphub \
   -e JWT_SECRET=your-secret-key \
   mcphub/server:latest
 

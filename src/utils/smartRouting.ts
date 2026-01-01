@@ -17,7 +17,7 @@ export interface SmartRoutingConfig {
  *
  * Priority order for each setting:
  * 1. Specific environment variables (ENABLE_SMART_ROUTING, SMART_ROUTING_ENABLED, etc.)
- * 2. Generic environment variables (OPENAI_API_KEY, DATABASE_URL, etc.)
+ * 2. Generic environment variables (OPENAI_API_KEY, DB_URL, etc.)
  * 3. Settings configuration (systemConfig.smartRouting)
  * 4. Default values
  *

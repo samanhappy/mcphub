@@ -106,7 +106,7 @@ services:
       - NODE_ENV=production
       - PORT=3000
       - JWT_SECRET=${JWT_SECRET:-your-jwt-secret}
-      - DATABASE_URL=postgresql://mcphub:password@postgres:5432/mcphub
+      - DB_URL=postgresql://mcphub:password@postgres:5432/mcphub
     volumes:
       - ./mcp_settings.json:/app/mcp_settings.json:ro
       - ./servers.json:/app/servers.json:ro
@@ -180,7 +180,7 @@ services:
       - PORT=3000
       - JWT_SECRET=${JWT_SECRET}
       - JWT_EXPIRES_IN=${JWT_EXPIRES_IN:-24h}
-      - DATABASE_URL=postgresql://mcphub:${POSTGRES_PASSWORD}@postgres:5432/mcphub
+      - DB_URL=postgresql://mcphub:${POSTGRES_PASSWORD}@postgres:5432/mcphub
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - REDIS_URL=redis://redis:6379
     volumes:
@@ -293,7 +293,7 @@ services:
     environment:
       - NODE_ENV=development
       - PORT=3000
-      - DATABASE_URL=postgresql://mcphub:password@postgres:5432/mcphub
+      - DB_URL=postgresql://mcphub:password@postgres:5432/mcphub
     volumes:
       - .:/app
       - /app/node_modules

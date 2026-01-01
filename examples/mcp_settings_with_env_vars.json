@@ -28,7 +28,7 @@
       "env": {
         "API_KEY": "${MY_API_KEY}",
         "DEBUG": "${DEBUG_MODE}",
-        "DATABASE_URL": "${DATABASE_URL}"
+        "DB_URL": "${DB_URL}"
       }
     },
     "example-stdio-with-proxy": {
@@ -96,7 +96,10 @@
         "clientId": "${OAUTH_CLIENT_ID}",
         "clientSecret": "${OAUTH_CLIENT_SECRET}",
         "accessToken": "${OAUTH_ACCESS_TOKEN}",
-        "scopes": ["read", "write"]
+        "scopes": [
+          "read",
+          "write"
+        ]
       }
     }
   },

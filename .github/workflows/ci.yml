@@ -106,7 +106,7 @@ jobs:
 
   #     - name: Run integration tests
   #       run: |
-  #         export DATABASE_URL="postgresql://postgres:postgres@localhost:5432/mcphub_test"
+  #         export DB_URL="postgresql://postgres:postgres@localhost:5432/mcphub_test"
   #         node test-integration.ts
   #       env:
   #         NODE_ENV: test

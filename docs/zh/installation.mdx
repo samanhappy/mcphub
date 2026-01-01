@@ -420,7 +420,7 @@ description: '各种平台的详细安装说明'
 
 ```bash
 # 数据库连接
-DATABASE_URL=postgresql://mcphub:your_password@localhost:5432/mcphub
+DB_URL=postgresql://mcphub:your_password@localhost:5432/mcphub
 
 # 用于嵌入的 OpenAI API
 OPENAI_API_KEY=your_openai_api_key
@@ -538,10 +538,10 @@ curl -X POST http://localhost:3000/mcp \
     **数据库连接失败：**
     ```bash
     # 测试数据库连接
-    psql $DATABASE_URL -c "SELECT 1;"
+    psql $DB_URL -c "SELECT 1;"
 
     # 检查是否安装了 pgvector
-    psql $DATABASE_URL -c "CREATE EXTENSION IF NOT EXISTS vector;"
+    psql $DB_URL -c "CREATE EXTENSION IF NOT EXISTS vector;"
     ```
 
     **嵌入服务错误：**

@@ -245,11 +245,11 @@ curl -X POST http://localhost:3000/api/smart-routing/feedback \
 
     **解决方案：**
     1. 验证 PostgreSQL 是否正在运行
-    2. 检查 DATABASE_URL 格式
+    2. 检查 DB_URL 格式
     3. 确保安装了 pgvector 扩展
     4. 手动测试连接：
     ```bash
-    psql $DATABASE_URL -c "SELECT 1;"
+    psql $DB_URL -c "SELECT 1;"
     ```
 
   </Accordion>

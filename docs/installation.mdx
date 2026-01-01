@@ -445,7 +445,7 @@ Set the following environment variables:
 
 ```bash
 # Database connection
-DATABASE_URL=postgresql://mcphub:your_password@localhost:5432/mcphub
+DB_URL=postgresql://mcphub:your_password@localhost:5432/mcphub
 
 # OpenAI API for embeddings
 OPENAI_API_KEY=your_openai_api_key
@@ -563,10 +563,10 @@ curl -X POST http://localhost:3000/mcp \
     **Database connection failed:**
     ```bash
     # Test database connection
-    psql $DATABASE_URL -c "SELECT 1;"
+    psql $DB_URL -c "SELECT 1;"
 
     # Check if pgvector is installed
-    psql $DATABASE_URL -c "CREATE EXTENSION IF NOT EXISTS vector;"
+    psql $DB_URL -c "CREATE EXTENSION IF NOT EXISTS vector;"
     ```
 
     **Embedding service errors:**
