@@ -1,99 +1,103 @@
-import { useState, useRef, useEffect } from 'react'
-import { useTranslation } from 'react-i18next'
-import { Group, Server, IGroupServerConfig } from '@/types'
-import { Edit, Trash, Copy, Check, Link, FileCode, DropdownIcon, Wrench } from '@/components/icons/LucideIcons'
-import DeleteDialog from '@/components/ui/DeleteDialog'
-import { useToast } from '@/contexts/ToastContext'
-import { useSettingsData } from '@/hooks/useSettingsData'
+import { useState, useRef, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
+import { Group, Server, IGroupServerConfig } from '@/types';
+import {
+  Edit,
+  Trash,
+  Copy,
+  Check,
+  Link,
+  FileCode,
+  DropdownIcon,
+  Wrench,
+} from '@/components/icons/LucideIcons';
+import DeleteDialog from '@/components/ui/DeleteDialog';
+import { useToast } from '@/contexts/ToastContext';
+import { useSettingsData } from '@/hooks/useSettingsData';
 
 interface GroupCardProps {
-  group: Group
-  servers: Server[]
-  onEdit: (group: Group) => void
-  onDelete: (groupId: string) => void
+  group: Group;
+  servers: Server[];
+  onEdit: (group: Group) => void;
+  onDelete: (groupId: string) => void;
 }
 
-const GroupCard = ({
-  group,
-  servers,
-  onEdit,
-  onDelete
-}: GroupCardProps) => {
-  const { t } = useTranslation()
-  const { showToast } = useToast()
-  const { installConfig } = useSettingsData()
-  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
-  const [copied, setCopied] = useState(false)
-  const [showCopyDropdown, setShowCopyDropdown] = useState(false)
-  const [expandedServer, setExpandedServer] = useState<string | null>(null)
-  const dropdownRef = useRef<HTMLDivElement>(null)
+const GroupCard = ({ group, servers, onEdit, onDelete }: GroupCardProps) => {
+  const { t } = useTranslation();
+  const { showToast } = useToast();
+  const { installConfig } = useSettingsData();
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [showCopyDropdown, setShowCopyDropdown] = useState(false);
+  const [expandedServer, setExpandedServer] = useState<string | null>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setShowCopyDropdown(false)
+        setShowCopyDropdown(false);
       }
-    }
+    };
 
-    document.addEventListener('mousedown', handleClickOutside)
+    document.addEventListener('mousedown', handleClickOutside);
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside)
-    }
-  }, [])
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   const handleEdit = () => {
-    onEdit(group)
-  }
+    onEdit(group);
+  };
 
   const handleDelete = () => {
-    setShowDeleteDialog(true)
-  }
+    setShowDeleteDialog(true);
+  };
 
   const handleConfirmDelete = () => {
-    onDelete(group.id)
-    setShowDeleteDialog(false)
-  }
+    onDelete(group.id);
+    setShowDeleteDialog(false);
+  };
 
   const copyToClipboard = (text: string) => {
     if (navigator.clipboard && window.isSecureContext) {
       navigator.clipboard.writeText(text).then(() => {
-        setCopied(true)
-        setShowCopyDropdown(false)
-        showToast(t('common.copySuccess'), 'success')
-        setTimeout(() => setCopied(false), 2000)
-      })
+        setCopied(true);
+        setShowCopyDropdown(false);
+        showToast(t('common.copySuccess'), 'success');
+        setTimeout(() => setCopied(false), 2000);
+      });
     } else {
       // Fallback for HTTP or unsupported clipboard API
-      const textArea = document.createElement('textarea')
-      textArea.value = text
+      const textArea = document.createElement('textarea');
+      textArea.value = text;
       // Avoid scrolling to bottom
-      textArea.style.position = 'fixed'
-      textArea.style.left = '-9999px'
-      document.body.appendChild(textArea)
-      textArea.focus()
-      textArea.select()
+      textArea.style.position = 'fixed';
+      textArea.style.left = '-9999px';
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
       try {
-        document.execCommand('copy')
-        setCopied(true)
-        setShowCopyDropdown(false)
-        showToast(t('common.copySuccess'), 'success')
-        setTimeout(() => setCopied(false), 2000)
+        document.execCommand('copy');
+        setCopied(true);
+        setShowCopyDropdown(false);
+        showToast(t('common.copySuccess'), 'success');
+        setTimeout(() => setCopied(false), 2000);
       } catch (err) {
-        showToast(t('common.copyFailed') || 'Copy failed', 'error')
-        console.error('Copy to clipboard failed:', err)
+        showToast(t('common.copyFailed') || 'Copy failed', 'error');
+        console.error('Copy to clipboard failed:', err);
       }
-      document.body.removeChild(textArea)
+      document.body.removeChild(textArea);
     }
-  }
+  };
 
   const handleCopyId = () => {
-    copyToClipboard(group.id)
-  }
+    copyToClipboard(group.id);
+  };
 
   const handleCopyUrl = () => {
-    copyToClipboard(`${installConfig.baseUrl}/mcp/${group.id}`)
-  }
+    copyToClipboard(`${installConfig.baseUrl}/mcp/${group.id}`);
+  };
 
   const handleCopyJson = () => {
     const jsonConfig = {
@@ -101,23 +105,23 @@ const GroupCard = ({
         mcphub: {
           url: `${installConfig.baseUrl}/mcp/${group.id}`,
           headers: {
-            Authorization: "Bearer <your-access-token>"
-          }
-        }
-      }
-    }
-    copyToClipboard(JSON.stringify(jsonConfig, null, 2))
-  }
+            Authorization: 'Bearer <your-access-token>',
+          },
+        },
+      },
+    };
+    copyToClipboard(JSON.stringify(jsonConfig, null, 2));
+  };
 
   // Helper function to normalize group servers to get server names
   const getServerNames = (servers: string[] | IGroupServerConfig[]): string[] => {
-    return servers.map(server => typeof server === 'string' ? server : server.name);
+    return servers.map((server) => (typeof server === 'string' ? server : server.name));
   };
 
   // Helper function to get server configuration
   const getServerConfig = (serverName: string): IGroupServerConfig | undefined => {
-    const server = group.servers.find(s =>
-      typeof s === 'string' ? s === serverName : s.name === serverName
+    const server = group.servers.find((s) =>
+      typeof s === 'string' ? s === serverName : s.name === serverName,
     );
     if (typeof server === 'string') {
       return { name: server, tools: 'all' };
@@ -127,11 +131,11 @@ const GroupCard = ({
 
   // Get servers that belong to this group
   const serverNames = getServerNames(group.servers);
-  const groupServers = servers.filter(server => serverNames.includes(server.name));
+  const groupServers = servers.filter((server) => serverNames.includes(server.name));
 
   return (
-    <div className="bg-white shadow rounded-lg p-6 ">
-      <div className="flex justify-between items-center mb-4">
+    <div className="bg-white shadow rounded-lg p-4">
+      <div className="flex justify-between items-center">
         <div>
           <div className="flex items-center">
             <h2 className="text-xl font-semibold text-gray-800">{group.name}</h2>
@@ -175,9 +179,7 @@ const GroupCard = ({
               </div>
             </div>
           </div>
-          {group.description && (
-            <p className="text-gray-600 text-sm mt-1">{group.description}</p>
-          )}
+          {group.description && <p className="text-gray-600 text-sm mt-1">{group.description}</p>}
         </div>
         <div className="flex items-center space-x-3">
           <div className="bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-sm btn-secondary">
@@ -200,17 +202,19 @@ const GroupCard = ({
         </div>
       </div>
 
-      <div className="mt-4">
+      <div className="">
         {groupServers.length === 0 ? (
           <p className="text-gray-500 italic">{t('groups.noServers')}</p>
         ) : (
           <div className="flex flex-wrap gap-2">
-            {groupServers.map(server => {
+            {groupServers.map((server) => {
               const serverConfig = getServerConfig(server.name);
-              const hasToolRestrictions = serverConfig && serverConfig.tools !== 'all' && Array.isArray(serverConfig.tools);
-              const toolCount = hasToolRestrictions && Array.isArray(serverConfig?.tools)
-                ? serverConfig.tools.length
-                : (server.tools?.length || 0); // Show total tool count when all tools are selected
+              const hasToolRestrictions =
+                serverConfig && serverConfig.tools !== 'all' && Array.isArray(serverConfig.tools);
+              const toolCount =
+                hasToolRestrictions && Array.isArray(serverConfig?.tools)
+                  ? serverConfig.tools.length
+                  : server.tools?.length || 0; // Show total tool count when all tools are selected
 
               const isExpanded = expandedServer === server.name;
 
@@ -219,7 +223,7 @@ const GroupCard = ({
                 if (hasToolRestrictions && Array.isArray(serverConfig?.tools)) {
                   return serverConfig.tools;
                 } else if (server.tools && server.tools.length > 0) {
-                  return server.tools.map(tool => tool.name);
+                  return server.tools.map((tool) => tool.name);
                 }
                 return [];
               };
@@ -235,9 +239,15 @@ const GroupCard = ({
                     onClick={handleServerClick}
                   >
                     <span className="font-medium text-gray-700 text-sm">{server.name}</span>
-                    <span className={`inline-block h-2 w-2 rounded-full ${server.status === 'connected' ? 'bg-green-500' :
-                      server.status === 'connecting' ? 'bg-yellow-500' : 'bg-red-500'
-                      }`}></span>
+                    <span
+                      className={`inline-block h-2 w-2 rounded-full ${
+                        server.status === 'connected'
+                          ? 'bg-green-500'
+                          : server.status === 'connecting'
+                            ? 'bg-yellow-500'
+                            : 'bg-red-500'
+                      }`}
+                    ></span>
                     {toolCount > 0 && (
                       <span className="text-xs text-blue-600 bg-blue-100 px-2 py-0.5 rounded flex items-center gap-1">
                         <Wrench size={12} />
@@ -278,7 +288,7 @@ const GroupCard = ({
         isGroup={true}
       />
     </div>
-  )
-}
+  );
+};
 
-export default GroupCard
+export default GroupCard;

@@ -171,9 +171,9 @@ const PromptCard = ({ prompt, server, onToggle, onDescriptionUpdate }: PromptCar
   };
 
   return (
-    <div className="bg-white border border-gray-200 shadow rounded-lg p-4 mb-4">
+    <div className="bg-white border border-gray-200 shadow rounded-lg mb-4">
       <div
-        className="flex justify-between items-center cursor-pointer"
+        className="flex justify-between items-center p-2 cursor-pointer"
         onClick={() => setIsExpanded(!isExpanded)}
       >
         <div className="flex-1">

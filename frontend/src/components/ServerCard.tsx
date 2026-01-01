@@ -18,7 +18,14 @@ interface ServerCardProps {
   onReload?: (server: Server) => Promise<boolean>;
 }
 
-const ServerCard = ({ server, onRemove, onEdit, onToggle, onRefresh, onReload }: ServerCardProps) => {
+const ServerCard = ({
+  server,
+  onRemove,
+  onEdit,
+  onToggle,
+  onRefresh,
+  onReload,
+}: ServerCardProps) => {
   const { t } = useTranslation();
   const { showToast } = useToast();
   const [isExpanded, setIsExpanded] = useState(false);
@@ -232,10 +239,10 @@ const ServerCard = ({ server, onRemove, onEdit, onToggle, onRefresh, onReload }:
   return (
     <>
       <div
-        className={`bg-white shadow rounded-lg p-6 mb-6 page-card transition-all duration-200 ${server.enabled === false ? 'opacity-60' : ''}`}
+        className={`bg-white shadow rounded-lg mb-6 page-card transition-all duration-200 ${server.enabled === false ? 'opacity-60' : ''}`}
       >
         <div
-          className="flex justify-between items-center cursor-pointer"
+          className="flex justify-between items-center cursor-pointer p-4"
           onClick={() => setIsExpanded(!isExpanded)}
         >
           <div className="flex items-center space-x-3">
@@ -385,9 +392,9 @@ const ServerCard = ({ server, onRemove, onEdit, onToggle, onRefresh, onReload }:
         {isExpanded && (
           <>
             {server.tools && (
-              <div className="mt-6">
+              <div className="px-4">
                 <h6
-                  className={`font-medium ${server.enabled === false ? 'text-gray-600' : 'text-gray-900'} mb-4`}
+                  className={`font-medium ${server.enabled === false ? 'text-gray-600' : 'text-gray-900'} mb-2`}
                 >
                   {t('server.tools')}
                 </h6>
@@ -405,9 +412,9 @@ const ServerCard = ({ server, onRemove, onEdit, onToggle, onRefresh, onReload }:
             )}
 
             {server.prompts && (
-              <div className="mt-6">
+              <div className="px-4 pb-2">
                 <h6
-                  className={`font-medium ${server.enabled === false ? 'text-gray-600' : 'text-gray-900'} mb-4`}
+                  className={`font-medium ${server.enabled === false ? 'text-gray-600' : 'text-gray-900'}`}
                 >
                   {t('server.prompts')}
                 </h6>
