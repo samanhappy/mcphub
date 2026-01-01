@@ -57,7 +57,7 @@
     "bcrypt": "^6.0.0",
     "bcryptjs": "^3.0.2",
     "cors": "^2.8.5",
-    "dotenv": "^16.6.1",
+    "dotenv": "^17.2.3",
     "dotenv-expand": "^12.0.2",
     "express": "^4.21.2",
     "express-validator": "^7.3.1",
