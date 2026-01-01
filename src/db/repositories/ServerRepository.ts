@@ -75,7 +75,28 @@ export class ServerRepository {
   async findAllPaginated(page: number, limit: number): Promise<{ data: Server[]; total: number }> {
     const skip = (page - 1) * limit;
     const [data, total] = await this.repository.findAndCount({
-      order: { createdAt: 'ASC' },
+      order: { 
+        enabled: 'DESC',  // Enabled servers first
+        createdAt: 'ASC'  // Then by creation time
+      },
+      skip,
+      take: limit,
+    });
+
+    return { data, total };
+  }
+
+  /**
+   * Find servers by owner with pagination
+   */
+  async findByOwnerPaginated(owner: string, page: number, limit: number): Promise<{ data: Server[]; total: number }> {
+    const skip = (page - 1) * limit;
+    const [data, total] = await this.repository.findAndCount({
+      where: { owner },
+      order: { 
+        enabled: 'DESC',  // Enabled servers first
+        createdAt: 'ASC'  // Then by creation time
+      },
       skip,
       take: limit,
     });

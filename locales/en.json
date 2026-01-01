@@ -250,6 +250,8 @@
     "required": "Required",
     "itemsPerPage": "Items per page",
     "showing": "Showing {{start}}-{{end}} of {{total}}",
+    "previous": "Previous",
+    "next": "Next",
     "secret": "Secret",
     "default": "Default",
     "value": "Value",

@@ -23,6 +23,11 @@ export interface ServerDao extends BaseDao<ServerConfigWithName, string> {
   findAllPaginated(page: number, limit: number): Promise<PaginatedResult<ServerConfigWithName>>;
 
   /**
+   * Find servers by owner with pagination
+   */
+  findByOwnerPaginated(owner: string, page: number, limit: number): Promise<PaginatedResult<ServerConfigWithName>>;
+
+  /**
    * Find servers by owner
    */
   findByOwner(owner: string): Promise<ServerConfigWithName[]>;
@@ -194,11 +199,49 @@ export class ServerDaoImpl extends JsonFileBaseDao implements ServerDao {
 
   async findAllPaginated(page: number, limit: number): Promise<PaginatedResult<ServerConfigWithName>> {
     const allServers = await this.getAll();
-    const total = allServers.length;
+    // Sort: enabled servers first, then by creation time
+    const sortedServers = allServers.sort((a, b) => {
+      const aEnabled = a.enabled !== false;
+      const bEnabled = b.enabled !== false;
+      if (aEnabled !== bEnabled) {
+        return aEnabled ? -1 : 1;
+      }
+      return 0; // Keep original order for same enabled status
+    });
+    
+    const total = sortedServers.length;
     const totalPages = Math.ceil(total / limit);
     const startIndex = (page - 1) * limit;
     const endIndex = startIndex + limit;
-    const data = allServers.slice(startIndex, endIndex);
+    const data = sortedServers.slice(startIndex, endIndex);
+
+    return {
+      data,
+      total,
+      page,
+      limit,
+      totalPages,
+    };
+  }
+
+  async findByOwnerPaginated(owner: string, page: number, limit: number): Promise<PaginatedResult<ServerConfigWithName>> {
+    const allServers = await this.getAll();
+    const filteredServers = allServers.filter((server) => server.owner === owner);
+    // Sort: enabled servers first, then by creation time
+    const sortedServers = filteredServers.sort((a, b) => {
+      const aEnabled = a.enabled !== false;
+      const bEnabled = b.enabled !== false;
+      if (aEnabled !== bEnabled) {
+        return aEnabled ? -1 : 1;
+      }
+      return 0; // Keep original order for same enabled status
+    });
+    
+    const total = sortedServers.length;
+    const totalPages = Math.ceil(total / limit);
+    const startIndex = (page - 1) * limit;
+    const endIndex = startIndex + limit;
+    const data = sortedServers.slice(startIndex, endIndex);
 
     return {
       data,

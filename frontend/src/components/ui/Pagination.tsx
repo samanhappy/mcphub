@@ -1,16 +1,20 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 
 interface PaginationProps {
   currentPage: number;
   totalPages: number;
   onPageChange: (page: number) => void;
+  disabled?: boolean;
 }
 
 const Pagination: React.FC<PaginationProps> = ({
   currentPage,
   totalPages,
-  onPageChange
+  onPageChange,
+  disabled = false
 }) => {
+  const { t } = useTranslation();
   // Generate page buttons
   const getPageButtons = () => {
     const buttons = [];
@@ -95,26 +99,26 @@ const Pagination: React.FC<PaginationProps> = ({
     <div className="flex justify-center items-center my-6">
       <button
         onClick={() => onPageChange(Math.max(1, currentPage - 1))}
-        disabled={currentPage === 1}
-        className={`px-3 py-1 rounded mr-2 ${currentPage === 1
+        disabled={disabled || currentPage === 1}
+        className={`px-3 py-1 rounded mr-2 ${disabled || currentPage === 1
           ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
           : 'bg-gray-200 hover:bg-gray-300 text-gray-700 btn-secondary'
           }`}
       >
-        &laquo; Prev
+        &laquo; {t('common.previous')}
       </button>
 
       <div className="flex">{getPageButtons()}</div>
 
       <button
         onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
-        disabled={currentPage === totalPages}
-        className={`px-3 py-1 rounded ml-2 ${currentPage === totalPages
+        disabled={disabled || currentPage === totalPages}
+        className={`px-3 py-1 rounded ml-2 ${disabled || currentPage === totalPages
           ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
           : 'bg-gray-200 hover:bg-gray-300 text-gray-700 btn-secondary'
           }`}
       >
-        Next &raquo;
+        {t('common.next')} &raquo;
       </button>
     </div>
   );

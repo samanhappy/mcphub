@@ -621,12 +621,16 @@ export const registerAllTools = async (isInit: boolean, serverName?: string): Pr
 export const getServersInfo = async (
   page?: number,
   limit?: number,
+  user?: any,
 ): Promise<Omit<ServerInfo, 'client' | 'transport'>[]> => {
+  const dataService = getDataService();
+  
   // Get paginated or all server configurations from DAO
-  const allServers: ServerConfigWithName[] = limit !== undefined && page !== undefined
+  // If pagination is used with a non-admin user, filtering is already done at DAO level
+  const isPaginated = limit !== undefined && page !== undefined;
+  const allServers: ServerConfigWithName[] = isPaginated
     ? (await getServerDao().findAllPaginated(page, limit)).data
     : await getServerDao().findAll();
-  const dataService = getDataService();
 
   // Ensure that servers recently added via DAO but not yet initialized in serverInfos
   // are still visible in the servers list. This avoids a race condition where
@@ -639,7 +643,7 @@ export const getServersInfo = async (
   const requestedServerNames = new Set(allServers.map((s) => s.name));
 
   // Filter serverInfos to only include requested servers if pagination is used
-  const filteredServerInfos = limit !== undefined && page !== undefined
+  const filteredServerInfos = isPaginated
     ? combinedServerInfos.filter((s) => requestedServerNames.has(s.name))
     : combinedServerInfos;
 
@@ -663,8 +667,11 @@ export const getServersInfo = async (
     }
   }
 
-  const filterServerInfos: ServerInfo[] = dataService.filterData
-    ? dataService.filterData(filteredServerInfos)
+  // Apply user filtering only when NOT using pagination (pagination already filtered at DAO level)
+  // Or when no pagination parameters provided (backward compatibility)
+  const shouldApplyUserFilter = !isPaginated;
+  const filterServerInfos: ServerInfo[] = shouldApplyUserFilter && dataService.filterData
+    ? dataService.filterData(filteredServerInfos, user)
     : filteredServerInfos;
 
   const infos = filterServerInfos
@@ -709,10 +716,7 @@ export const getServersInfo = async (
           : undefined,
       };
     });
-  infos.sort((a, b) => {
-    if (a.enabled === b.enabled) return 0;
-    return a.enabled ? -1 : 1;
-  });
+  // Sorting is now handled at DAO layer for consistent pagination results
   return infos;
 };
 

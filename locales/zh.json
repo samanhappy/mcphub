@@ -250,6 +250,8 @@
     "wechat": "微信",
     "itemsPerPage": "每页显示",
     "showing": "显示第 {{start}}-{{end}} 条，共 {{total}} 条",
+    "previous": "上一页",
+    "next": "下一页",
     "discord": "Discord",
     "required": "必填",
     "secret": "敏感",

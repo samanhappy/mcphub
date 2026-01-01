@@ -250,6 +250,8 @@
     "discord": "Discord",
     "itemsPerPage": "Sayfa başına öğe",
     "showing": "{{total}} öğeden {{start}}-{{end}} gösteriliyor",
+    "previous": "Önceki",
+    "next": "Sonraki",
     "required": "Gerekli",
     "secret": "Gizli",
     "default": "Varsayılan",

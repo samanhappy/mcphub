@@ -250,6 +250,8 @@
     "discord": "Discord",
     "itemsPerPage": "Éléments par page",
     "showing": "Affichage de {{start}}-{{end}} sur {{total}}",
+    "previous": "Précédent",
+    "next": "Suivant",
     "required": "Requis",
     "secret": "Secret",
     "default": "Défaut",

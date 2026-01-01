@@ -194,6 +194,7 @@ const ServersPage: React.FC = () => {
                   currentPage={currentPage}
                   totalPages={pagination.totalPages}
                   onPageChange={setCurrentPage}
+                  disabled={isLoading}
                 />
               )}
             </div>
@@ -205,7 +206,8 @@ const ServersPage: React.FC = () => {
                 id="perPage"
                 value={serversPerPage}
                 onChange={(e) => setServersPerPage(Number(e.target.value))}
-                className="border rounded p-1 text-sm btn-secondary outline-none"
+                disabled={isLoading}
+                className="border rounded p-1 text-sm btn-secondary outline-none disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <option value={5}>5</option>
                 <option value={10}>10</option>

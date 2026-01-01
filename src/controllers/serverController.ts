@@ -25,6 +25,7 @@ import { createSafeJSON } from '../utils/serialization.js';
 import { cloneDefaultOAuthServerConfig } from '../constants/oauthServerDefaults.js';
 import { getServerDao, getGroupDao, getSystemConfigDao } from '../dao/DaoFactory.js';
 import { getBearerKeyDao } from '../dao/DaoFactory.js';
+import { UserContextService } from '../services/userContextService.js';
 
 export const getAllServers = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -49,17 +50,23 @@ export const getAllServers = async (req: Request, res: Response): Promise<void> 
       return;
     }
 
+    // Get current user for filtering
+    const currentUser = UserContextService.getInstance().getCurrentUser();
+    const isAdmin = !currentUser || currentUser.isAdmin;
+
     // Get servers info with pagination if limit is specified
     let serversInfo: Omit<ServerInfo, 'client' | 'transport'>[];
     let pagination = undefined;
 
     if (limit !== undefined) {
-      // Use DAO layer pagination for true database pagination
+      // Use DAO layer pagination with proper filtering
       const serverDao = getServerDao();
-      const paginatedResult = await serverDao.findAllPaginated(page, limit);
+      const paginatedResult = isAdmin
+        ? await serverDao.findAllPaginated(page, limit)
+        : await serverDao.findByOwnerPaginated(currentUser!.username, page, limit);
       
       // Get runtime info for paginated servers
-      serversInfo = await getServersInfo(page, limit);
+      serversInfo = await getServersInfo(page, limit, currentUser);
       
       pagination = {
         page: paginatedResult.page,
@@ -70,7 +77,7 @@ export const getAllServers = async (req: Request, res: Response): Promise<void> 
         hasPrevPage: paginatedResult.page > 1,
       };
     } else {
-      // No pagination, get all servers
+      // No pagination, get all servers (will be filtered by mcpService)
       serversInfo = await getServersInfo();
     }
 
