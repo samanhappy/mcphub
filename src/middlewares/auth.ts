@@ -39,7 +39,7 @@ const validateBearerAuth = async (req: Request): Promise<boolean> => {
   return true;
 };
 
-const readonlyAllowPaths = ['/tools/call/'];
+const readonlyAllowPaths = ['/tools/'];
 
 const checkReadonly = (req: Request): boolean => {
   if (!defaultConfig.readonly) {
