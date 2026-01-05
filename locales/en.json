@@ -607,6 +607,8 @@
     "openaiApiKeyPlaceholder": "Enter OpenAI API key",
     "openaiApiEmbeddingModel": "OpenAI Embedding Model",
     "openaiApiEmbeddingModelPlaceholder": "text-embedding-3-small",
+    "progressiveDisclosure": "Progressive Disclosure",
+    "progressiveDisclosureDescription": "When enabled, search_tools returns only tool names and descriptions. Use describe_tool to get full parameter schema, reducing token usage.",
     "smartRoutingConfigUpdated": "Smart routing configuration updated successfully",
     "smartRoutingRequiredFields": "Database URL and OpenAI API Key are required to enable smart routing",
     "smartRoutingValidationError": "Please fill in the required fields before enabling Smart Routing: {{fields}}",

@@ -22,13 +22,20 @@ import { expandEnvVars, replaceEnvVars, getNameSeparator } from '../config/index
 import config from '../config/index.js';
 import { getGroup } from './sseService.js';
 import { getServersInGroup, getServerConfigInGroup } from './groupService.js';
-import { saveToolsAsVectorEmbeddings, searchToolsByVector } from './vectorSearchService.js';
+import { saveToolsAsVectorEmbeddings } from './vectorSearchService.js';
 import { OpenAPIClient } from '../clients/openapi.js';
 import { RequestContextService } from './requestContextService.js';
 import { getDataService } from './services.js';
 import { getServerDao, getSystemConfigDao, ServerConfigWithName } from '../dao/index.js';
 import { initializeAllOAuthClients } from './oauthService.js';
 import { createOAuthProvider } from './mcpOAuthProvider.js';
+import {
+  initSmartRoutingService,
+  getSmartRoutingTools,
+  handleSearchToolsRequest,
+  handleDescribeToolRequest,
+  isSmartRoutingGroup,
+} from './smartRoutingService.js';
 
 const servers: { [sessionId: string]: Server } = {};
 
@@ -188,6 +195,9 @@ export const initUpstreamServers = async (): Promise<void> => {
 
   // Register all tools from upstream servers
   await registerAllTools(true);
+
+  // Initialize smart routing service with references to mcpService functions
+  initSmartRoutingService(() => serverInfos, filterToolsByConfig, filterToolsByGroup);
 };
 
 export const getMcpServer = (sessionId?: string, group?: string): Server => {
@@ -1081,97 +1091,10 @@ export const handleListToolsRequest = async (_: any, extra: any) => {
   const group = getGroup(sessionId);
   console.log(`Handling ListToolsRequest for group: ${group}`);
 
-  // Special handling for $smart group to return special tools
+  // Special handling for $smart group to return smart routing tools
   // Support both $smart and $smart/{group} patterns
-  if (group === '$smart' || group?.startsWith('$smart/')) {
-    // Extract target group if pattern is $smart/{group}
-    const targetGroup = group?.startsWith('$smart/') ? group.substring(7) : undefined;
-
-    // Get info about available servers, filtered by target group if specified
-    let availableServers = serverInfos.filter(
-      (server) => server.status === 'connected' && server.enabled !== false,
-    );
-
-    // If a target group is specified, filter servers to only those in the group
-    if (targetGroup) {
-      const serversInGroup = await getServersInGroup(targetGroup);
-      if (serversInGroup && serversInGroup.length > 0) {
-        availableServers = availableServers.filter((server) =>
-          serversInGroup.includes(server.name),
-        );
-      }
-    }
-
-    // Create simple server information with only server names
-    const serversList = availableServers
-      .map((server) => {
-        return `${server.name}`;
-      })
-      .join(', ');
-
-    const scopeDescription = targetGroup
-      ? `servers in the "${targetGroup}" group`
-      : 'all available servers';
-
-    return {
-      tools: [
-        {
-          name: 'search_tools',
-          description: `STEP 1 of 2: Use this tool FIRST to discover and search for relevant tools across ${scopeDescription}. This tool and call_tool work together as a two-step process: 1) search_tools to find what you need, 2) call_tool to execute it.
-
-For optimal results, use specific queries matching your exact needs. Call this tool multiple times with different queries for different parts of complex tasks. Example queries: "image generation tools", "code review tools", "data analysis", "translation capabilities", etc. Results are sorted by relevance using vector similarity.
-
-After finding relevant tools, you MUST use the call_tool to actually execute them. The search_tools only finds tools - it doesn't execute them.
-
-Available servers: ${serversList}`,
-          inputSchema: {
-            type: 'object',
-            properties: {
-              query: {
-                type: 'string',
-                description:
-                  'The search query to find relevant tools. Be specific and descriptive about the task you want to accomplish.',
-              },
-              limit: {
-                type: 'integer',
-                description:
-                  'Maximum number of results to return. Use higher values (20-30) for broad searches and lower values (5-10) for specific searches.',
-                default: 10,
-              },
-            },
-            required: ['query'],
-          },
-          annotations: {
-            title: 'Search Tools',
-            readOnlyHint: true,
-          },
-        },
-        {
-          name: 'call_tool',
-          description:
-            "STEP 2 of 2: Use this tool AFTER search_tools to actually execute/invoke any tool you found. This is the execution step - search_tools finds tools, call_tool runs them.\n\nWorkflow: search_tools → examine results → call_tool with the chosen tool name and required arguments.\n\nIMPORTANT: Always check the tool's inputSchema from search_tools results before invoking to ensure you provide the correct arguments. The search results will show you exactly what parameters each tool expects.",
-          inputSchema: {
-            type: 'object',
-            properties: {
-              toolName: {
-                type: 'string',
-                description: 'The exact name of the tool to invoke (from search_tools results)',
-              },
-              arguments: {
-                type: 'object',
-                description:
-                  'The arguments to pass to the tool based on its inputSchema (optional if tool requires no arguments)',
-              },
-            },
-            required: ['toolName'],
-          },
-          annotations: {
-            title: 'Call Tool',
-            openWorldHint: true,
-          },
-        },
-      ],
-    };
+  if (isSmartRoutingGroup(group)) {
+    return getSmartRoutingTools(group);
   }
 
   // Need to filter servers based on group asynchronously
@@ -1223,146 +1146,18 @@ Available servers: ${serversList}`,
 export const handleCallToolRequest = async (request: any, extra: any) => {
   console.log(`Handling CallToolRequest for tool: ${JSON.stringify(request.params)}`);
   try {
-    // Special handling for agent group tools
+    // Special handling for smart routing tools
     if (request.params.name === 'search_tools') {
       const { query, limit = 10 } = request.params.arguments || {};
-
-      if (!query || typeof query !== 'string') {
-        throw new Error('Query parameter is required and must be a string');
-      }
-
-      const limitNum = Math.min(Math.max(parseInt(String(limit)) || 10, 1), 100);
-
-      // Dynamically adjust threshold based on query characteristics
-      let thresholdNum = 0.3; // Default threshold
-
-      // For more general queries, use a lower threshold to get more diverse results
-      if (query.length < 10 || query.split(' ').length <= 2) {
-        thresholdNum = 0.2;
-      }
-
-      // For very specific queries, use a higher threshold for more precise results
-      if (query.length > 30 || query.includes('specific') || query.includes('exact')) {
-        thresholdNum = 0.4;
-      }
-
-      console.log(`Using similarity threshold: ${thresholdNum} for query: "${query}"`);
-
-      // Determine server filtering based on group
       const sessionId = extra.sessionId || '';
-      let group = getGroup(sessionId);
-      let servers: string[] | undefined = undefined; // No server filtering by default
+      return await handleSearchToolsRequest(query, limit, sessionId);
+    }
 
-      // If group is in format $smart/{group}, filter servers to that group
-      if (group?.startsWith('$smart/')) {
-        const targetGroup = group.substring(7);
-        if (targetGroup) {
-          group = targetGroup;
-        }
-        const serversInGroup = await getServersInGroup(targetGroup);
-        if (serversInGroup !== undefined && serversInGroup !== null) {
-          servers = serversInGroup;
-          if (servers && servers.length > 0) {
-            console.log(
-              `Filtering search to servers in group "${targetGroup}": ${servers.join(', ')}`,
-            );
-          } else {
-            console.log(`Group "${targetGroup}" has no servers, search will return no results`);
-          }
-        }
-      }
-
-      const searchResults = await searchToolsByVector(query, limitNum, thresholdNum, servers);
-      console.log(`Search results: ${JSON.stringify(searchResults)}`);
-      // Find actual tool information from serverInfos by serverName and toolName
-      // First resolve all tool promises
-      const resolvedTools = await Promise.all(
-        searchResults.map(async (result) => {
-          // Find the server in serverInfos
-          const server = serverInfos.find(
-            (serverInfo) =>
-              serverInfo.name === result.serverName &&
-              serverInfo.status === 'connected' &&
-              serverInfo.enabled !== false,
-          );
-          if (server && server.tools && server.tools.length > 0) {
-            // Find the tool in server.tools
-            const actualTool = server.tools.find((tool) => tool.name === result.toolName);
-            if (actualTool) {
-              // Check if the tool is enabled in configuration
-              const tools = await filterToolsByConfig(server.name, [actualTool]);
-              if (tools.length > 0) {
-                // Apply custom description from configuration
-                const serverConfig = await getServerDao().findById(server.name);
-                const toolConfig = serverConfig?.tools?.[actualTool.name];
-
-                // Return the actual tool info from serverInfos with custom description
-                return {
-                  ...actualTool,
-                  description: toolConfig?.description || actualTool.description,
-                  serverName: result.serverName, // Add serverName for filtering
-                };
-              }
-            }
-          }
-
-          // Fallback to search result if server or tool not found or disabled
-          return {
-            name: result.toolName,
-            description: result.description || '',
-            inputSchema: cleanInputSchema(result.inputSchema || {}),
-            serverName: result.serverName, // Add serverName for filtering
-          };
-        }),
-      );
-
-      // Now filter the resolved tools
-      const filterResults = await Promise.all(
-        resolvedTools.map(async (tool) => {
-          if (tool.name) {
-            const serverName = tool.serverName;
-            if (serverName) {
-              let tools = await filterToolsByConfig(serverName, [tool as Tool]);
-              if (tools.length === 0) {
-                return false;
-              }
-
-              tools = await filterToolsByGroup(group, serverName, tools);
-              return tools.length > 0;
-            }
-          }
-          return true;
-        }),
-      );
-      const tools = resolvedTools.filter((_, i) => filterResults[i]);
-
-      // Add usage guidance to the response
-      const response = {
-        tools,
-        metadata: {
-          query: query,
-          threshold: thresholdNum,
-          totalResults: tools.length,
-          guideline:
-            tools.length > 0
-              ? "Found relevant tools. If these tools don't match exactly what you need, try another search with more specific keywords."
-              : 'No tools found. Try broadening your search or using different keywords.',
-          nextSteps:
-            tools.length > 0
-              ? 'To use a tool, call call_tool with the toolName and required arguments.'
-              : 'Consider searching for related capabilities or more general terms.',
-        },
-      };
-
-      // Return in the same format as handleListToolsRequest
-      return {
-        content: [
-          {
-            type: 'text',
-            text: JSON.stringify(response),
-          },
-        ],
-      };
+    // Special handling for describe_tool (progressive disclosure mode)
+    if (request.params.name === 'describe_tool') {
+      const { toolName } = request.params.arguments || {};
+      const sessionId = extra.sessionId || '';
+      return await handleDescribeToolRequest(toolName, sessionId);
     }
 
     // Special handling for call_tool

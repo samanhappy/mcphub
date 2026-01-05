@@ -33,6 +33,7 @@ interface SmartRoutingConfig {
   openaiApiBaseUrl: string;
   openaiApiKey: string;
   openaiApiEmbeddingModel: string;
+  progressiveDisclosure: boolean;
 }
 
 interface MCPRouterConfig {
@@ -180,6 +181,7 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
     openaiApiBaseUrl: '',
     openaiApiKey: '',
     openaiApiEmbeddingModel: '',
+    progressiveDisclosure: false,
   });
 
   const [mcpRouterConfig, setMCPRouterConfig] = useState<MCPRouterConfig>({
@@ -238,6 +240,7 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
           openaiApiKey: data.data.systemConfig.smartRouting.openaiApiKey || '',
           openaiApiEmbeddingModel:
             data.data.systemConfig.smartRouting.openaiApiEmbeddingModel || '',
+          progressiveDisclosure: data.data.systemConfig.smartRouting.progressiveDisclosure ?? false,
         });
       }
       if (data.success && data.data?.systemConfig?.mcpRouter) {

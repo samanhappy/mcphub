@@ -48,6 +48,44 @@ jest.mock('../../src/services/services.js', () => ({
   })),
 }));
 
+// Mock smartRoutingService to initialize with test functions
+const mockHandleSearchToolsRequest = jest.fn();
+jest.mock('../../src/services/smartRoutingService.js', () => ({
+  initSmartRoutingService: jest.fn(),
+  handleSearchToolsRequest: mockHandleSearchToolsRequest,
+  handleDescribeToolRequest: jest.fn(),
+  isSmartRoutingGroup: jest.fn((group: string) => group?.startsWith('$smart')),
+  getSmartRoutingTools: jest.fn(async (group: string) => {
+    const targetGroup = group?.startsWith('$smart/') ? group.substring(7) : undefined;
+    const scopeDescription = targetGroup
+      ? `servers in the "${targetGroup}" group`
+      : 'all available servers';
+
+    return {
+      tools: [
+        {
+          name: 'search_tools',
+          description: `Search for relevant tools across ${scopeDescription}.`,
+          inputSchema: {
+            type: 'object',
+            properties: { query: { type: 'string' }, limit: { type: 'integer' } },
+            required: ['query'],
+          },
+        },
+        {
+          name: 'call_tool',
+          description: 'Execute a tool by name',
+          inputSchema: {
+            type: 'object',
+            properties: { toolName: { type: 'string' } },
+            required: ['toolName'],
+          },
+        },
+      ],
+    };
+  }),
+}));
+
 jest.mock('../../src/services/vectorSearchService.js', () => ({
   searchToolsByVector: jest.fn(),
   saveToolsAsVectorEmbeddings: jest.fn(),
@@ -66,13 +104,21 @@ jest.mock('../../src/config/index.js', () => ({
 
 // Import after mocks are set up
 import { handleListToolsRequest, handleCallToolRequest } from '../../src/services/mcpService.js';
-import { getServersInGroup } from '../../src/services/groupService.js';
 import { getGroup } from '../../src/services/sseService.js';
-import { searchToolsByVector } from '../../src/services/vectorSearchService.js';
+import { handleSearchToolsRequest } from '../../src/services/smartRoutingService.js';
 
 describe('MCP Service - Smart Routing with Group Support', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    // Setup mock return for handleSearchToolsRequest
+    mockHandleSearchToolsRequest.mockResolvedValue({
+      content: [
+        {
+          type: 'text',
+          text: JSON.stringify({ tools: [], guideline: 'test', nextSteps: 'test' }),
+        },
+      ],
+    });
   });
 
   describe('handleListToolsRequest', () => {
@@ -89,7 +135,7 @@ describe('MCP Service - Smart Routing with Group Support', () => {
       const result = await handleListToolsRequest({}, { sessionId: 'session-smart-group' });
 
       expect(getGroup).toHaveBeenCalledWith('session-smart-group');
-      expect(getServersInGroup).toHaveBeenCalledWith('test-group');
+      // Note: getServersInGroup is now called inside the mocked getSmartRoutingTools
 
       expect(result.tools).toHaveLength(2);
       expect(result.tools[0].name).toBe('search_tools');
@@ -101,7 +147,7 @@ describe('MCP Service - Smart Routing with Group Support', () => {
       const result = await handleListToolsRequest({}, { sessionId: 'session-smart-empty' });
 
       expect(getGroup).toHaveBeenCalledWith('session-smart-empty');
-      expect(getServersInGroup).toHaveBeenCalledWith('empty-group');
+      // Note: getServersInGroup is now called inside the mocked getSmartRoutingTools
 
       expect(result.tools).toHaveLength(2);
       expect(result.tools[0].name).toBe('search_tools');
@@ -113,16 +159,6 @@ describe('MCP Service - Smart Routing with Group Support', () => {
 
   describe('handleCallToolRequest - search_tools', () => {
     it('should search across all servers when using $smart', async () => {
-      const mockSearchResults = [
-        {
-          serverName: 'server1',
-          toolName: 'server1::tool1',
-          description: 'Test tool 1',
-          inputSchema: {},
-        },
-      ];
-      (searchToolsByVector as jest.Mock).mockResolvedValue(mockSearchResults);
-
       const request = {
         params: {
           name: 'search_tools',
@@ -135,25 +171,11 @@ describe('MCP Service - Smart Routing with Group Support', () => {
 
       await handleCallToolRequest(request, { sessionId: 'session-smart' });
 
-      expect(searchToolsByVector).toHaveBeenCalledWith(
-        'test query',
-        10,
-        expect.any(Number),
-        undefined, // No server filtering
-      );
+      // handleSearchToolsRequest should be called with the query, limit, and sessionId
+      expect(handleSearchToolsRequest).toHaveBeenCalledWith('test query', 10, 'session-smart');
     });
 
     it('should filter servers when using $smart/{group}', async () => {
-      const mockSearchResults = [
-        {
-          serverName: 'server1',
-          toolName: 'server1::tool1',
-          description: 'Test tool 1',
-          inputSchema: {},
-        },
-      ];
-      (searchToolsByVector as jest.Mock).mockResolvedValue(mockSearchResults);
-
       const request = {
         params: {
           name: 'search_tools',
@@ -166,20 +188,16 @@ describe('MCP Service - Smart Routing with Group Support', () => {
 
       await handleCallToolRequest(request, { sessionId: 'session-smart-group' });
 
-      expect(getGroup).toHaveBeenCalledWith('session-smart-group');
-      expect(getServersInGroup).toHaveBeenCalledWith('test-group');
-      expect(searchToolsByVector).toHaveBeenCalledWith(
+      // handleSearchToolsRequest should be called with the sessionId that contains group info
+      // The group filtering happens inside handleSearchToolsRequest, not in handleCallToolRequest
+      expect(handleSearchToolsRequest).toHaveBeenCalledWith(
         'test query',
         10,
-        expect.any(Number),
-        ['server1', 'server2'], // Filtered to group servers
+        'session-smart-group',
       );
     });
 
     it('should handle empty group in $smart/{group}', async () => {
-      const mockSearchResults: any[] = [];
-      (searchToolsByVector as jest.Mock).mockResolvedValue(mockSearchResults);
-
       const request = {
         params: {
           name: 'search_tools',
@@ -192,18 +210,19 @@ describe('MCP Service - Smart Routing with Group Support', () => {
 
       await handleCallToolRequest(request, { sessionId: 'session-smart-empty' });
 
-      expect(getGroup).toHaveBeenCalledWith('session-smart-empty');
-      expect(getServersInGroup).toHaveBeenCalledWith('empty-group');
-      // Empty group returns empty array, which should still be passed to search
-      expect(searchToolsByVector).toHaveBeenCalledWith(
+      expect(handleSearchToolsRequest).toHaveBeenCalledWith(
         'test query',
         10,
-        expect.any(Number),
-        [], // Empty group
+        'session-smart-empty',
       );
     });
 
     it('should validate query parameter', async () => {
+      // Mock handleSearchToolsRequest to return an error result when query is missing
+      mockHandleSearchToolsRequest.mockImplementationOnce(() => {
+        return Promise.reject(new Error('Query parameter is required and must be a string'));
+      });
+
       const request = {
         params: {
           name: 'search_tools',

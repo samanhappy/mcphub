@@ -64,10 +64,10 @@ export const getAllServers = async (req: Request, res: Response): Promise<void> 
       const paginatedResult = isAdmin
         ? await serverDao.findAllPaginated(page, limit)
         : await serverDao.findByOwnerPaginated(currentUser!.username, page, limit);
-      
+
       // Get runtime info for paginated servers
       serversInfo = await getServersInfo(page, limit, currentUser);
-      
+
       pagination = {
         page: paginatedResult.page,
         limit: paginatedResult.limit,
@@ -906,7 +906,8 @@ export const updateSystemConfig = async (req: Request, res: Response): Promise<v
         typeof smartRouting.dbUrl === 'string' ||
         typeof smartRouting.openaiApiBaseUrl === 'string' ||
         typeof smartRouting.openaiApiKey === 'string' ||
-        typeof smartRouting.openaiApiEmbeddingModel === 'string');
+        typeof smartRouting.openaiApiEmbeddingModel === 'string' ||
+        typeof smartRouting.progressiveDisclosure === 'boolean');
 
     const hasMcpRouterUpdate =
       mcpRouter &&
@@ -1116,6 +1117,9 @@ export const updateSystemConfig = async (req: Request, res: Response): Promise<v
       }
       if (typeof smartRouting.openaiApiEmbeddingModel === 'string') {
         systemConfig.smartRouting.openaiApiEmbeddingModel = smartRouting.openaiApiEmbeddingModel;
+      }
+      if (typeof smartRouting.progressiveDisclosure === 'boolean') {
+        systemConfig.smartRouting.progressiveDisclosure = smartRouting.progressiveDisclosure;
       }
 
       // Check if we need to sync embeddings

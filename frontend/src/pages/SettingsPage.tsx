@@ -1425,6 +1425,24 @@ const SettingsPage: React.FC = () => {
                 </div>
               </div>
 
+              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-md">
+                <div>
+                  <h3 className="font-medium text-gray-700">
+                    {t('settings.progressiveDisclosure')}
+                  </h3>
+                  <p className="text-sm text-gray-500">
+                    {t('settings.progressiveDisclosureDescription')}
+                  </p>
+                </div>
+                <Switch
+                  disabled={loading || !smartRoutingConfig.enabled}
+                  checked={smartRoutingConfig.progressiveDisclosure}
+                  onCheckedChange={(checked) =>
+                    updateSmartRoutingConfig('progressiveDisclosure', checked)
+                  }
+                />
+              </div>
+
               <div className="flex justify-end pt-2">
                 <button
                   onClick={handleSaveSmartRoutingConfig}

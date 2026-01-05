@@ -10,6 +10,13 @@ export interface SmartRoutingConfig {
   openaiApiBaseUrl: string;
   openaiApiKey: string;
   openaiApiEmbeddingModel: string;
+  /**
+   * When enabled, search_tools returns only tool name and description (without full inputSchema).
+   * A new describe_tool endpoint is provided to get the full tool schema on demand.
+   * This reduces token usage for AI clients that don't need all tool parameters upfront.
+   * Default: false (returns full tool schemas in search_tools for backward compatibility)
+   */
+  progressiveDisclosure?: boolean;
 }
 
 /**
@@ -61,6 +68,15 @@ export async function getSmartRoutingConfig(): Promise<SmartRoutingConfig> {
       smartRoutingSettings.openaiApiEmbeddingModel,
       'text-embedding-3-small',
       expandEnvVars,
+    ),
+
+    // Progressive disclosure - when enabled, search_tools returns minimal info
+    // and describe_tool is used to get full schema
+    progressiveDisclosure: getConfigValue(
+      [process.env.SMART_ROUTING_PROGRESSIVE_DISCLOSURE],
+      smartRoutingSettings.progressiveDisclosure,
+      false,
+      parseBooleanEnvVar,
     ),
   };
 }

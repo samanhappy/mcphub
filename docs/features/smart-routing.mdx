@@ -362,6 +362,129 @@ Smart Routing now supports group-scoped searches, allowing you to limit tool dis
   </Accordion>
 </AccordionGroup>
 
+### Progressive Disclosure Mode
+
+Progressive Disclosure is an optimization feature that reduces token usage when working with Smart Routing. When enabled, the tool discovery workflow changes from a 2-step to a 3-step process.
+
+<AccordionGroup>
+  <Accordion title="What is Progressive Disclosure?">
+    By default, Smart Routing returns full tool information including complete parameter schemas in `search_tools` results. This can consume significant tokens when dealing with tools that have complex input schemas.
+    
+    **Progressive Disclosure** changes this behavior:
+    - `search_tools` returns only tool names and descriptions (minimal info)
+    - A new `describe_tool` endpoint provides full parameter schema on demand
+    - `call_tool` executes the tool as before
+    
+    This approach is particularly useful when:
+    - Working with many tools with complex schemas
+    - Token usage optimization is important
+    - AI clients need to browse many tools before selecting one
+  </Accordion>
+
+  <Accordion title="Enabling Progressive Disclosure">
+    Enable Progressive Disclosure through the Settings page or environment variable:
+    
+    **Via Settings UI:**
+    1. Navigate to Settings → Smart Routing
+    2. Enable the "Progressive Disclosure" toggle
+    3. The change takes effect immediately
+    
+    **Via Environment Variable:**
+    ```bash
+    SMART_ROUTING_PROGRESSIVE_DISCLOSURE=true
+    ```
+  </Accordion>
+
+  <Accordion title="Standard Mode (Default)">
+    When Progressive Disclosure is **disabled** (default), Smart Routing provides two tools:
+    
+    **Workflow:** `search_tools` → `call_tool`
+    
+    | Tool | Purpose |
+    |------|---------|
+    | `search_tools` | Find tools by query, returns full tool info including `inputSchema` |
+    | `call_tool` | Execute a tool with the provided arguments |
+    
+    This mode is simpler but uses more tokens due to full schemas in search results.
+  </Accordion>
+
+  <Accordion title="Progressive Disclosure Mode">
+    When Progressive Disclosure is **enabled**, Smart Routing provides three tools:
+    
+    **Workflow:** `search_tools` → `describe_tool` → `call_tool`
+    
+    | Tool | Purpose |
+    |------|---------|
+    | `search_tools` | Find tools by query, returns only name and description |
+    | `describe_tool` | Get full schema for a specific tool (new) |
+    | `call_tool` | Execute a tool with the provided arguments |
+    
+    **Example workflow:**
+    1. AI calls `search_tools` with query "file operations"
+    2. Results show tool names and descriptions (minimal tokens)
+    3. AI calls `describe_tool` for a specific tool to get full `inputSchema`
+    4. AI calls `call_tool` with the correct arguments
+    
+    This mode reduces token usage by only fetching full schemas when needed.
+  </Accordion>
+
+  <Accordion title="Response Format Comparison">
+    **Standard Mode search_tools response:**
+    ```json
+    {
+      "tools": [
+        {
+          "name": "read_file",
+          "description": "Read contents of a file",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "path": { "type": "string", "description": "File path to read" },
+              "encoding": { "type": "string", "default": "utf-8" }
+            },
+            "required": ["path"]
+          }
+        }
+      ]
+    }
+    ```
+    
+    **Progressive Disclosure Mode search_tools response:**
+    ```json
+    {
+      "tools": [
+        {
+          "name": "read_file",
+          "description": "Read contents of a file"
+        }
+      ],
+      "metadata": {
+        "progressiveDisclosure": true,
+        "guideline": "Use describe_tool to get the full parameter schema before calling."
+      }
+    }
+    ```
+    
+    **describe_tool response:**
+    ```json
+    {
+      "tool": {
+        "name": "read_file",
+        "description": "Read contents of a file",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "path": { "type": "string", "description": "File path to read" },
+            "encoding": { "type": "string", "default": "utf-8" }
+          },
+          "required": ["path"]
+        }
+      }
+    }
+    ```
+  </Accordion>
+</AccordionGroup>
+
 {/* ### Basic Usage
 
 Connect your AI client to the Smart Routing endpoint and make natural language requests:
