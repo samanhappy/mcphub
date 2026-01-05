@@ -14,6 +14,7 @@ import { getGroup } from './sseService.js';
 
 // Reference to serverInfos from mcpService - will be set via init
 let serverInfosRef: ServerInfo[] = [];
+let getServerInfosFn: () => ServerInfo[] = () => serverInfosRef;
 let filterToolsByConfigFn: (serverName: string, tools: Tool[]) => Promise<Tool[]>;
 let filterToolsByGroupFn: (
   group: string | undefined,
@@ -33,11 +34,8 @@ export const initSmartRoutingService = (
     tools: Tool[],
   ) => Promise<Tool[]>,
 ) => {
-  // Store a getter function instead of direct reference
-  Object.defineProperty(module.exports, 'serverInfosRef', {
-    get: getServerInfos,
-    configurable: true,
-  });
+  // Store the getter to avoid stale references while staying ESM-safe
+  getServerInfosFn = getServerInfos;
   serverInfosRef = getServerInfos();
   filterToolsByConfigFn = filterToolsByConfig;
   filterToolsByGroupFn = filterToolsByGroup;
@@ -47,7 +45,7 @@ export const initSmartRoutingService = (
  * Get current server infos (refreshed each call)
  */
 const getServerInfos = (): ServerInfo[] => {
-  return serverInfosRef;
+  return getServerInfosFn();
 };
 
 /**
