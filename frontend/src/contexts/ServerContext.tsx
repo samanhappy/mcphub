@@ -30,6 +30,7 @@ interface PaginationInfo {
 // Context type definition
 interface ServerContextType {
   servers: Server[];
+  allServers: Server[]; // All servers without pagination, for Dashboard, Groups, Settings
   error: string | null;
   setError: (error: string | null) => void;
   isLoading: boolean;
@@ -56,6 +57,7 @@ export const ServerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const { t } = useTranslation();
   const { auth } = useAuth();
   const [servers, setServers] = useState<Server[]>([]);
+  const [allServers, setAllServers] = useState<Server[]>([]); // All servers without pagination
   const [error, setError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
@@ -95,27 +97,42 @@ export const ServerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           const params = new URLSearchParams();
           params.append('page', currentPage.toString());
           params.append('limit', serversPerPage.toString());
-          const data = await apiGet(`/servers?${params.toString()}`);
+
+          // Fetch both paginated servers and all servers in parallel
+          const [paginatedData, allData] = await Promise.all([
+            apiGet(`/servers?${params.toString()}`),
+            apiGet('/servers'), // Fetch all servers without pagination
+          ]);
 
           // Update last fetch time
           lastFetchTimeRef.current = Date.now();
 
-          if (data && data.success && Array.isArray(data.data)) {
-            setServers(data.data);
+          // Handle paginated response
+          if (paginatedData && paginatedData.success && Array.isArray(paginatedData.data)) {
+            setServers(paginatedData.data);
             // Update pagination info if available
-            if (data.pagination) {
-              setPagination(data.pagination);
+            if (paginatedData.pagination) {
+              setPagination(paginatedData.pagination);
             } else {
               setPagination(null);
             }
-          } else if (data && Array.isArray(data)) {
+          } else if (paginatedData && Array.isArray(paginatedData)) {
             // Compatibility handling for non-paginated responses
-            setServers(data);
+            setServers(paginatedData);
             setPagination(null);
           } else {
-            console.error('Invalid server data format:', data);
+            console.error('Invalid server data format:', paginatedData);
             setServers([]);
             setPagination(null);
+          }
+
+          // Handle all servers response
+          if (allData && allData.success && Array.isArray(allData.data)) {
+            setAllServers(allData.data);
+          } else if (allData && Array.isArray(allData)) {
+            setAllServers(allData);
+          } else {
+            setAllServers([]);
           }
 
           // Reset error state
@@ -159,6 +176,7 @@ export const ServerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       // When user logs out, clear data and stop polling
       clearTimer();
       setServers([]);
+      setAllServers([]);
       setIsInitialLoading(false);
       setError(null);
     }
@@ -185,42 +203,49 @@ export const ServerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         const params = new URLSearchParams();
         params.append('page', currentPage.toString());
         params.append('limit', serversPerPage.toString());
-        const data = await apiGet(`/servers?${params.toString()}`);
+
+        // Fetch both paginated servers and all servers in parallel
+        const [paginatedData, allData] = await Promise.all([
+          apiGet(`/servers?${params.toString()}`),
+          apiGet('/servers'), // Fetch all servers without pagination
+        ]);
 
         // Update last fetch time
         lastFetchTimeRef.current = Date.now();
 
-        // Handle API response wrapper object, extract data field
-        if (data && data.success && Array.isArray(data.data)) {
-          setServers(data.data);
+        // Handle paginated API response wrapper object, extract data field
+        if (paginatedData && paginatedData.success && Array.isArray(paginatedData.data)) {
+          setServers(paginatedData.data);
           // Update pagination info if available
-          if (data.pagination) {
-            setPagination(data.pagination);
+          if (paginatedData.pagination) {
+            setPagination(paginatedData.pagination);
           } else {
             setPagination(null);
           }
-          setIsInitialLoading(false);
-          // Initialization successful, start normal polling (skip immediate to avoid duplicate fetch)
-          startNormalPolling({ immediate: false });
-          return true;
-        } else if (data && Array.isArray(data)) {
+        } else if (paginatedData && Array.isArray(paginatedData)) {
           // Compatibility handling, if API directly returns array
-          setServers(data);
+          setServers(paginatedData);
           setPagination(null);
-          setIsInitialLoading(false);
-          // Initialization successful, start normal polling (skip immediate to avoid duplicate fetch)
-          startNormalPolling({ immediate: false });
-          return true;
         } else {
           // If data format is not as expected, set to empty array
-          console.error('Invalid server data format:', data);
+          console.error('Invalid server data format:', paginatedData);
           setServers([]);
           setPagination(null);
-          setIsInitialLoading(false);
-          // Initialization successful but data is empty, start normal polling (skip immediate)
-          startNormalPolling({ immediate: false });
-          return true;
         }
+
+        // Handle all servers response
+        if (allData && allData.success && Array.isArray(allData.data)) {
+          setAllServers(allData.data);
+        } else if (allData && Array.isArray(allData)) {
+          setAllServers(allData);
+        } else {
+          setAllServers([]);
+        }
+
+        setIsInitialLoading(false);
+        // Initialization successful, start normal polling (skip immediate to avoid duplicate fetch)
+        startNormalPolling({ immediate: false });
+        return true;
       } catch (err) {
         // Increment attempt count, use ref to avoid triggering effect rerun
         attemptsRef.current += 1;
@@ -439,6 +464,7 @@ export const ServerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const value: ServerContextType = {
     servers,
+    allServers,
     error,
     setError,
     isLoading: isInitialLoading,

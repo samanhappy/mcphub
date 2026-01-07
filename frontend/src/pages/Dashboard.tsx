@@ -5,15 +5,15 @@ import { Server } from '@/types';
 
 const DashboardPage: React.FC = () => {
   const { t } = useTranslation();
-  const { servers, error, setError, isLoading } = useServerData({ refreshOnMount: true });
+  const { allServers, error, setError, isLoading } = useServerData({ refreshOnMount: true });
 
-  // Calculate server statistics
+  // Calculate server statistics using allServers (not paginated)
   const serverStats = {
-    total: servers.length,
-    online: servers.filter((server: Server) => server.status === 'connected').length,
-    offline: servers.filter((server: Server) => server.status === 'disconnected').length,
-    connecting: servers.filter((server: Server) => server.status === 'connecting').length,
-    oauthRequired: servers.filter((server: Server) => server.status === 'oauth_required').length,
+    total: allServers.length,
+    online: allServers.filter((server: Server) => server.status === 'connected').length,
+    offline: allServers.filter((server: Server) => server.status === 'disconnected').length,
+    connecting: allServers.filter((server: Server) => server.status === 'connecting').length,
+    oauthRequired: allServers.filter((server: Server) => server.status === 'oauth_required').length,
   };
 
   // Map status to translation keys
@@ -202,7 +202,7 @@ const DashboardPage: React.FC = () => {
       )}
 
       {/* Recent activity list */}
-      {servers.length > 0 && !isLoading && (
+      {allServers.length > 0 && !isLoading && (
         <div className="mt-8">
           <h2 className="text-xl font-semibold text-gray-900 mb-4">
             {t('pages.dashboard.recentServers')}
@@ -244,7 +244,7 @@ const DashboardPage: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {servers.slice(0, 5).map((server, index) => (
+                {allServers.slice(0, 5).map((server, index) => (
                   <tr key={index}>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                       {server.name}

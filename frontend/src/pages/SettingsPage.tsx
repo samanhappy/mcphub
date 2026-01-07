@@ -378,7 +378,7 @@ const SettingsPage: React.FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { showToast } = useToast();
-  const { servers } = useServerContext();
+  const { allServers: servers } = useServerContext(); // Use allServers for settings (not paginated)
   const { groups } = useGroupData();
 
   const [installConfig, setInstallConfig] = useState<{

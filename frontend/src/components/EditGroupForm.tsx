@@ -1,73 +1,73 @@
-import { useState, useEffect } from 'react'
-import { useTranslation } from 'react-i18next'
-import { Group, GroupFormData, Server, IGroupServerConfig } from '@/types'
-import { useGroupData } from '@/hooks/useGroupData'
-import { useServerData } from '@/hooks/useServerData'
-import { ServerToolConfig } from './ServerToolConfig'
+import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
+import { Group, GroupFormData, Server, IGroupServerConfig } from '@/types';
+import { useGroupData } from '@/hooks/useGroupData';
+import { useServerData } from '@/hooks/useServerData';
+import { ServerToolConfig } from './ServerToolConfig';
 
 interface EditGroupFormProps {
-  group: Group
-  onEdit: () => void
-  onCancel: () => void
+  group: Group;
+  onEdit: () => void;
+  onCancel: () => void;
 }
 
 const EditGroupForm = ({ group, onEdit, onCancel }: EditGroupFormProps) => {
-  const { t } = useTranslation()
-  const { updateGroup } = useGroupData()
-  const { servers } = useServerData()
-  const [availableServers, setAvailableServers] = useState<Server[]>([])
-  const [error, setError] = useState<string | null>(null)
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  const { t } = useTranslation();
+  const { updateGroup } = useGroupData();
+  const { allServers } = useServerData();
+  const [availableServers, setAvailableServers] = useState<Server[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [formData, setFormData] = useState<GroupFormData>({
     name: group.name,
     description: group.description || '',
-    servers: group.servers || []
-  })
+    servers: group.servers || [],
+  });
 
   useEffect(() => {
     // Filter available servers (enabled only)
-    setAvailableServers(servers.filter(server => server.enabled !== false))
-  }, [servers])
+    setAvailableServers(allServers.filter((server) => server.enabled !== false));
+  }, [allServers]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target
-    setFormData(prev => ({
+    const { name, value } = e.target;
+    setFormData((prev) => ({
       ...prev,
-      [name]: value
-    }))
-  }
+      [name]: value,
+    }));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsSubmitting(true)
-    setError(null)
+    e.preventDefault();
+    setIsSubmitting(true);
+    setError(null);
 
     try {
       if (!formData.name.trim()) {
-        setError(t('groups.nameRequired'))
-        setIsSubmitting(false)
-        return
+        setError(t('groups.nameRequired'));
+        setIsSubmitting(false);
+        return;
       }
 
       const result = await updateGroup(group.id, {
         name: formData.name,
         description: formData.description,
-        servers: formData.servers
-      })
+        servers: formData.servers,
+      });
 
       if (!result || !result.success) {
-        setError(result?.message || t('groups.updateError'))
-        setIsSubmitting(false)
-        return
+        setError(result?.message || t('groups.updateError'));
+        setIsSubmitting(false);
+        return;
       }
 
-      onEdit()
+      onEdit();
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err))
-      setIsSubmitting(false)
+      setError(err instanceof Error ? err.message : String(err));
+      setIsSubmitting(false);
     }
-  }
+  };
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
@@ -108,7 +108,7 @@ const EditGroupForm = ({ group, onEdit, onCancel }: EditGroupFormProps) => {
                 <ServerToolConfig
                   servers={availableServers}
                   value={formData.servers as IGroupServerConfig[]}
-                  onChange={(servers) => setFormData(prev => ({ ...prev, servers }))}
+                  onChange={(servers) => setFormData((prev) => ({ ...prev, servers }))}
                   className="border border-gray-200 rounded-lg p-4 bg-gray-50"
                 />
               </div>
@@ -135,7 +135,7 @@ const EditGroupForm = ({ group, onEdit, onCancel }: EditGroupFormProps) => {
         </form>
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default EditGroupForm
+export default EditGroupForm;

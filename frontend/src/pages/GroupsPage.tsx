@@ -18,7 +18,7 @@ const GroupsPage: React.FC = () => {
     deleteGroup,
     triggerRefresh,
   } = useGroupData();
-  const { servers } = useServerData({ refreshOnMount: true });
+  const { allServers } = useServerData({ refreshOnMount: true });
 
   const [editingGroup, setEditingGroup] = useState<Group | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -140,7 +140,7 @@ const GroupsPage: React.FC = () => {
             <GroupCard
               key={group.id}
               group={group}
-              servers={servers}
+              servers={allServers}
               onEdit={handleEditClick}
               onDelete={handleDeleteGroup}
             />
