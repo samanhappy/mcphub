@@ -538,3 +538,44 @@ export interface RegistryServerVersionResponse {
   };
   server: RegistryServerData;
 }
+
+// Activity types for tool call tracking
+export type ActivityStatus = 'success' | 'error';
+
+export interface Activity {
+  id: string;
+  timestamp: string;
+  server: string;
+  tool: string;
+  duration: number;
+  status: ActivityStatus;
+  input?: string;
+  output?: string;
+  group?: string;
+  keyId?: string;
+  keyName?: string;
+  errorMessage?: string;
+}
+
+export interface ActivityStats {
+  totalCalls: number;
+  successCount: number;
+  errorCount: number;
+  avgDuration: number;
+}
+
+export interface ActivityFilter {
+  server?: string;
+  tool?: string;
+  status?: ActivityStatus;
+  group?: string;
+  keyId?: string;
+  startDate?: string;
+  endDate?: string;
+}
+
+export interface ActivityFilterOptions {
+  servers: string[];
+  tools: string[];
+  groups: string[];
+}

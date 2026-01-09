@@ -6,6 +6,7 @@ import { UserConfigDao, UserConfigDaoImpl } from './UserConfigDao.js';
 import { OAuthClientDao, OAuthClientDaoImpl } from './OAuthClientDao.js';
 import { OAuthTokenDao, OAuthTokenDaoImpl } from './OAuthTokenDao.js';
 import { BearerKeyDao, BearerKeyDaoImpl } from './BearerKeyDao.js';
+import { ActivityDao } from './ActivityDao.js';
 
 /**
  * DAO Factory interface for creating DAO instances
@@ -19,6 +20,7 @@ export interface DaoFactory {
   getOAuthClientDao(): OAuthClientDao;
   getOAuthTokenDao(): OAuthTokenDao;
   getBearerKeyDao(): BearerKeyDao;
+  getActivityDao?(): ActivityDao; // Optional - only available in database mode
 }
 
 /**
@@ -193,4 +195,15 @@ export function getOAuthTokenDao(): OAuthTokenDao {
 
 export function getBearerKeyDao(): BearerKeyDao {
   return getDaoFactory().getBearerKeyDao();
+}
+
+export function getActivityDao(): ActivityDao | undefined {
+  return getDaoFactory().getActivityDao?.();
+}
+
+/**
+ * Check if activity logging is available (database mode only)
+ */
+export function isActivityLoggingEnabled(): boolean {
+  return typeof getDaoFactory().getActivityDao === 'function';
 }

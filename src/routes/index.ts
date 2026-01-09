@@ -112,6 +112,14 @@ import {
   updateBearerKey,
   deleteBearerKey,
 } from '../controllers/bearerKeyController.js';
+import {
+  checkActivityAvailable,
+  getActivities,
+  getActivityById,
+  getActivityStats,
+  getActivityFilterOptions,
+  deleteOldActivities,
+} from '../controllers/activityController.js';
 import { auth } from '../middlewares/auth.js';
 
 const router = express.Router();
@@ -198,6 +206,14 @@ export const initRoutes = (app: express.Application): void => {
   router.post('/auth/keys', createBearerKey);
   router.put('/auth/keys/:id', updateBearerKey);
   router.delete('/auth/keys/:id', deleteBearerKey);
+
+  // Activity routes (database mode only)
+  router.get('/activities/available', checkActivityAvailable);
+  router.get('/activities', getActivities);
+  router.get('/activities/stats', getActivityStats);
+  router.get('/activities/filters', getActivityFilterOptions);
+  router.get('/activities/:id', getActivityById);
+  router.delete('/activities/cleanup', deleteOldActivities);
 
   // Tool management routes
   router.post('/tools/call/:server', callTool);

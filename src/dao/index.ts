@@ -9,6 +9,7 @@ export * from './UserConfigDao.js';
 export * from './OAuthClientDao.js';
 export * from './OAuthTokenDao.js';
 export * from './BearerKeyDao.js';
+export * from './ActivityDao.js';
 
 // Export database implementations
 export * from './UserDaoDbImpl.js';

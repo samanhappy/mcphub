@@ -17,6 +17,7 @@ import { UserConfigDaoDbImpl } from './UserConfigDaoDbImpl.js';
 import { OAuthClientDaoDbImpl } from './OAuthClientDaoDbImpl.js';
 import { OAuthTokenDaoDbImpl } from './OAuthTokenDaoDbImpl.js';
 import { BearerKeyDaoDbImpl } from './BearerKeyDaoDbImpl.js';
+import { ActivityDao, ActivityDaoDbImpl } from './ActivityDao.js';
 
 /**
  * Database-backed DAO factory implementation
@@ -32,6 +33,7 @@ export class DatabaseDaoFactory implements DaoFactory {
   private oauthClientDao: OAuthClientDao | null = null;
   private oauthTokenDao: OAuthTokenDao | null = null;
   private bearerKeyDao: BearerKeyDao | null = null;
+  private activityDao: ActivityDao | null = null;
 
   /**
    * Get singleton instance
@@ -103,6 +105,13 @@ export class DatabaseDaoFactory implements DaoFactory {
     return this.bearerKeyDao!;
   }
 
+  getActivityDao(): ActivityDao {
+    if (!this.activityDao) {
+      this.activityDao = new ActivityDaoDbImpl();
+    }
+    return this.activityDao!;
+  }
+
   /**
    * Reset all cached DAO instances (useful for testing)
    */
@@ -115,5 +124,6 @@ export class DatabaseDaoFactory implements DaoFactory {
     this.oauthClientDao = null;
     this.oauthTokenDao = null;
     this.bearerKeyDao = null;
+    this.activityDao = null;
   }
 }

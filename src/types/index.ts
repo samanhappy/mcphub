@@ -494,3 +494,41 @@ export interface BatchCreateGroupsResponse {
   failureCount: number; // Number of groups that failed
   results: BatchGroupResult[]; // Detailed results for each group
 }
+
+// Activity status types
+export type ActivityStatus = 'success' | 'error';
+
+// Activity interface for tracking tool calls
+export interface IActivity {
+  id?: string; // Unique identifier (auto-generated for DB)
+  timestamp: Date; // When the tool was called
+  server: string; // Server name that handled the call
+  tool: string; // Tool name that was called
+  duration: number; // Duration in milliseconds
+  status: ActivityStatus; // Call status
+  input?: string; // JSON stringified input arguments
+  output?: string; // JSON stringified output result
+  group?: string; // Group name if called via group route
+  keyId?: string; // Bearer key ID if authenticated with bearer token
+  keyName?: string; // Bearer key name for display purposes
+  errorMessage?: string; // Error message if status is 'error'
+}
+
+// Activity statistics interface
+export interface IActivityStats {
+  totalCalls: number;
+  successCount: number;
+  errorCount: number;
+  avgDuration: number; // Average duration in milliseconds
+}
+
+// Activity search/filter parameters
+export interface IActivityFilter {
+  server?: string;
+  tool?: string;
+  status?: ActivityStatus;
+  group?: string;
+  keyId?: string;
+  startDate?: Date;
+  endDate?: Date;
+}

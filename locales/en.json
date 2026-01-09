@@ -273,7 +273,8 @@
     "changePassword": "Change Password",
     "market": "Market",
     "cloud": "Cloud Market",
-    "logs": "Logs"
+    "logs": "Logs",
+    "activity": "Activity"
   },
   "pages": {
     "dashboard": {
@@ -846,5 +847,36 @@
     "internalError": "Internal Error",
     "internalErrorMessage": "An unexpected error occurred while processing the OAuth callback.",
     "closeWindow": "Close Window"
+  },
+  "activity": {
+    "title": "Activity",
+    "totalCalls": "Total Calls",
+    "successCount": "Successful",
+    "errorCount": "Failed",
+    "avgDuration": "Avg Duration",
+    "timestamp": "Timestamp",
+    "server": "Server",
+    "tool": "Tool",
+    "duration": "Duration",
+    "status": "Status",
+    "group": "Group",
+    "key": "API Key",
+    "input": "Input",
+    "output": "Output",
+    "details": "Activity Details",
+    "errorMessage": "Error Message",
+    "searchServer": "Search server...",
+    "searchTool": "Search tool...",
+    "searchGroup": "Search group...",
+    "allStatus": "All Status",
+    "statusSuccess": "Success",
+    "statusError": "Error",
+    "noData": "No activity data available",
+    "fetchError": "Failed to load activity data",
+    "cleanup": "Cleanup",
+    "confirmCleanup": "Are you sure you want to delete activities older than 30 days?",
+    "cleanupSuccess": "Deleted {{count}} old activities",
+    "cleanupError": "Failed to cleanup old activities",
+    "notAvailable": "Activity tracking is only available in database mode"
   }
 }
