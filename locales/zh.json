@@ -226,6 +226,9 @@
     "cancel": "取消",
     "back": "返回",
     "refresh": "刷新",
+    "search": "搜索",
+    "clear": "清除",
+    "view": "查看",
     "create": "创建",
     "creating": "创建中...",
     "update": "更新",
@@ -265,6 +268,10 @@
     "saving": "保存中...",
     "active": "已激活",
     "inactive": "未激活"
+  },
+  "pagination": {
+    "rowsPerPage": "每页行数",
+    "showing": "显示第 {{from}}-{{to}} 条，共 {{total}} 条"
   },
   "nav": {
     "dashboard": "仪表盘",

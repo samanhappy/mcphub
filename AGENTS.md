@@ -186,6 +186,9 @@ pnpm test:coverage          # With coverage report
 # Code quality
 pnpm lint                   # ESLint - ~3 seconds
 pnpm format                 # Prettier formatting - ~3 seconds
+
+# Security audit
+pnpm audit                  # Check for vulnerabilities
 ```
 
 **CRITICAL**: All tests MUST pass before committing. Do not modify tests to make them pass unless specifically required for your changes.

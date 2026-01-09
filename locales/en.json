@@ -224,6 +224,9 @@
     "cancel": "Cancel",
     "back": "Back",
     "refresh": "Refresh",
+    "search": "Search",
+    "clear": "Clear",
+    "view": "View",
     "create": "Create",
     "creating": "Creating...",
     "update": "Update",
@@ -263,6 +266,10 @@
     "saving": "Saving...",
     "active": "Active",
     "inactive": "Inactive"
+  },
+  "pagination": {
+    "rowsPerPage": "Rows per page",
+    "showing": "Showing {{from}}-{{to}} of {{total}}"
   },
   "nav": {
     "dashboard": "Dashboard",

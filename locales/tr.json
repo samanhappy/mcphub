@@ -225,6 +225,9 @@
     "cancel": "İptal",
     "back": "Geri",
     "refresh": "Yenile",
+    "search": "Ara",
+    "clear": "Temizle",
+    "view": "Görüntüle",
     "create": "Oluştur",
     "creating": "Oluşturuluyor...",
     "update": "Güncelle",
@@ -265,6 +268,10 @@
     "active": "Aktif",
     "inactive": "Pasif"
   },
+  "pagination": {
+    "rowsPerPage": "Sayfa başına satır",
+    "showing": "Toplam {{total}} öğeden {{from}}-{{to}} gösteriliyor"
+  },
   "nav": {
     "dashboard": "Kontrol Paneli",
     "servers": "Sunucular",
@@ -274,7 +281,8 @@
     "changePassword": "Şifre Değiştir",
     "market": "Market",
     "cloud": "Bulut Market",
-    "logs": "Günlükler"
+    "logs": "Günlükler",
+    "activity": "Etkinlik"
   },
   "pages": {
     "dashboard": {
@@ -844,5 +852,36 @@
     "internalError": "İçsel Hata",
     "internalErrorMessage": "OAuth geri araması işlenirken beklenmeyen bir hata oluştu.",
     "closeWindow": "Pencereyi Kapat"
+  },
+  "activity": {
+    "title": "Etkinlik",
+    "totalCalls": "Toplam çağrı",
+    "successCount": "Başarılı",
+    "errorCount": "Başarısız",
+    "avgDuration": "Ort. süre",
+    "timestamp": "Zaman damgası",
+    "server": "Sunucu",
+    "tool": "Araç",
+    "duration": "Süre",
+    "status": "Durum",
+    "group": "Grup",
+    "key": "API Anahtarı",
+    "input": "Girdi",
+    "output": "Çıktı",
+    "details": "Etkinlik detayları",
+    "errorMessage": "Hata mesajı",
+    "searchServer": "Sunucu ara...",
+    "searchTool": "Araç ara...",
+    "searchGroup": "Grup ara...",
+    "allStatus": "Tüm durumlar",
+    "statusSuccess": "Başarılı",
+    "statusError": "Hata",
+    "noData": "Kullanılabilir etkinlik verisi yok",
+    "fetchError": "Etkinlik verileri yüklenemedi",
+    "cleanup": "Temizle",
+    "confirmCleanup": "30 günden eski etkinlikleri silmek istediğinizden emin misiniz?",
+    "cleanupSuccess": "{{count}} eski etkinlik silindi",
+    "cleanupError": "Eski etkinlikler temizlenemedi",
+    "notAvailable": "Etkinlik takibi yalnızca veritabanı modunda kullanılabilir"
   }
 }
