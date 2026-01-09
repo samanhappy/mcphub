@@ -7,15 +7,15 @@ import {
   MCPRouterListToolsResponse,
   MCPRouterCallToolResponse,
 } from '../types/index.js';
-import { loadOriginalSettings } from '../config/index.js';
-
+import { getSystemConfigDao } from '../dao/index.js';
 // MCPRouter API default base URL
 const DEFAULT_MCPROUTER_API_BASE = 'https://api.mcprouter.to/v1';
 
 // Get MCPRouter API config from system configuration
-const getMCPRouterConfig = () => {
-  const settings = loadOriginalSettings();
-  const mcpRouterConfig = settings.systemConfig?.mcpRouter;
+const getMCPRouterConfig = async () => {
+  const systemConfigDao = getSystemConfigDao();
+  const systemConfig = await systemConfigDao.get();
+  const mcpRouterConfig = systemConfig?.mcpRouter;
 
   return {
     apiKey: mcpRouterConfig?.apiKey || process.env.MCPROUTER_API_KEY || '',
@@ -27,8 +27,8 @@ const getMCPRouterConfig = () => {
 };
 
 // Get axios config with MCPRouter headers
-const getAxiosConfig = (): AxiosRequestConfig => {
-  const mcpRouterConfig = getMCPRouterConfig();
+const getAxiosConfig = async (): Promise<AxiosRequestConfig> => {
+  const mcpRouterConfig = await getMCPRouterConfig();
 
   return {
     headers: {
@@ -43,8 +43,8 @@ const getAxiosConfig = (): AxiosRequestConfig => {
 // List all available cloud servers
 export const getCloudServers = async (): Promise<CloudServer[]> => {
   try {
-    const axiosConfig = getAxiosConfig();
-    const mcpRouterConfig = getMCPRouterConfig();
+    const axiosConfig = await getAxiosConfig();
+    const mcpRouterConfig = await getMCPRouterConfig();
 
     const response = await axios.post<MCPRouterResponse<MCPRouterListServersResponse>>(
       `${mcpRouterConfig.baseUrl}/list-servers`,
@@ -79,8 +79,8 @@ export const getCloudServerByName = async (name: string): Promise<CloudServer | 
 // List tools for a specific cloud server
 export const getCloudServerTools = async (serverKey: string): Promise<CloudTool[]> => {
   try {
-    const axiosConfig = getAxiosConfig();
-    const mcpRouterConfig = getMCPRouterConfig();
+    const axiosConfig = await getAxiosConfig();
+    const mcpRouterConfig = await getMCPRouterConfig();
 
     if (
       !axiosConfig.headers?.['Authorization'] ||
@@ -116,8 +116,8 @@ export const callCloudServerTool = async (
   args: Record<string, any>,
 ): Promise<MCPRouterCallToolResponse> => {
   try {
-    const axiosConfig = getAxiosConfig();
-    const mcpRouterConfig = getMCPRouterConfig();
+    const axiosConfig = await getAxiosConfig();
+    const mcpRouterConfig = await getMCPRouterConfig();
 
     if (
       !axiosConfig.headers?.['Authorization'] ||
