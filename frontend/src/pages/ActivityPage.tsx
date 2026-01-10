@@ -29,7 +29,7 @@ const ActivityPage: React.FC = () => {
   const [filterOptions, setFilterOptions] = useState<ActivityFilterOptions | null>(null);
   const [pagination, setPagination] = useState<PaginationInfo | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(20);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null);
@@ -164,27 +164,35 @@ const ActivityPage: React.FC = () => {
     if (!stats) return null;
 
     return (
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
-          <div className="text-sm text-gray-500 dark:text-gray-400">{t('activity.totalCalls')}</div>
-          <div className="text-2xl font-bold text-gray-900 dark:text-white">{stats.totalCalls}</div>
-        </div>
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
-          <div className="text-sm text-gray-500 dark:text-gray-400">
-            {t('activity.successCount')}
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm px-4 py-3 mb-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="flex items-baseline justify-between md:flex-col md:items-start">
+            <div className="text-xs text-gray-500 dark:text-gray-400">
+              {t('activity.totalCalls')}
+            </div>
+            <div className="text-lg font-semibold text-gray-900 dark:text-white">
+              {stats.totalCalls}
+            </div>
           </div>
-          <div className="text-2xl font-bold text-green-600">{stats.successCount}</div>
-        </div>
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
-          <div className="text-sm text-gray-500 dark:text-gray-400">{t('activity.errorCount')}</div>
-          <div className="text-2xl font-bold text-red-600">{stats.errorCount}</div>
-        </div>
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
-          <div className="text-sm text-gray-500 dark:text-gray-400">
-            {t('activity.avgDuration')}
+          <div className="flex items-baseline justify-between md:flex-col md:items-start">
+            <div className="text-xs text-gray-500 dark:text-gray-400">
+              {t('activity.successCount')}
+            </div>
+            <div className="text-lg font-semibold text-green-600">{stats.successCount}</div>
           </div>
-          <div className="text-2xl font-bold text-blue-600">
-            {formatDuration(stats.avgDuration)}
+          <div className="flex items-baseline justify-between md:flex-col md:items-start">
+            <div className="text-xs text-gray-500 dark:text-gray-400">
+              {t('activity.errorCount')}
+            </div>
+            <div className="text-lg font-semibold text-red-600">{stats.errorCount}</div>
+          </div>
+          <div className="flex items-baseline justify-between md:flex-col md:items-start">
+            <div className="text-xs text-gray-500 dark:text-gray-400">
+              {t('activity.avgDuration')}
+            </div>
+            <div className="text-lg font-semibold text-blue-600">
+              {formatDuration(stats.avgDuration)}
+            </div>
           </div>
         </div>
       </div>
@@ -194,26 +202,28 @@ const ActivityPage: React.FC = () => {
   // Render filters
   const renderFilters = () => {
     return (
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm px-4 py-3 mb-4">
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
+          <div className="md:col-span-3">
+            <label className="sr-only" htmlFor="activity-server">
               {t('activity.server')}
             </label>
             <div className="relative">
               <input
+                id="activity-server"
                 type="text"
                 value={searchServer}
                 onChange={(e) => setSearchServer(e.target.value)}
                 placeholder={t('activity.searchServer')}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white pr-8"
+                className="w-full h-10 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white pr-9"
                 list="server-options"
               />
               {searchServer && (
                 <button
                   onClick={() => setSearchServer('')}
-                  className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                  className="absolute inset-y-0 right-2 flex items-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
                   aria-label={t('common.clear')}
+                  type="button"
                 >
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
@@ -238,24 +248,26 @@ const ActivityPage: React.FC = () => {
               </datalist>
             )}
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+          <div className="md:col-span-3">
+            <label className="sr-only" htmlFor="activity-tool">
               {t('activity.tool')}
             </label>
             <div className="relative">
               <input
+                id="activity-tool"
                 type="text"
                 value={searchTool}
                 onChange={(e) => setSearchTool(e.target.value)}
                 placeholder={t('activity.searchTool')}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white pr-8"
+                className="w-full h-10 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white pr-9"
                 list="tool-options"
               />
               {searchTool && (
                 <button
                   onClick={() => setSearchTool('')}
-                  className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                  className="absolute inset-y-0 right-2 flex items-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
                   aria-label={t('common.clear')}
+                  type="button"
                 >
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
@@ -280,38 +292,41 @@ const ActivityPage: React.FC = () => {
               </datalist>
             )}
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+          <div className="md:col-span-2">
+            <label className="sr-only" htmlFor="activity-status">
               {t('activity.status')}
             </label>
             <select
+              id="activity-status"
               value={searchStatus}
               onChange={(e) => setSearchStatus(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+              className="w-full h-10 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
             >
               <option value="">{t('activity.allStatus')}</option>
               <option value="success">{t('activity.statusSuccess')}</option>
               <option value="error">{t('activity.statusError')}</option>
             </select>
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+          <div className="md:col-span-2">
+            <label className="sr-only" htmlFor="activity-group">
               {t('activity.group')}
             </label>
             <div className="relative">
               <input
+                id="activity-group"
                 type="text"
                 value={searchGroup}
                 onChange={(e) => setSearchGroup(e.target.value)}
                 placeholder={t('activity.searchGroup')}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white pr-8"
+                className="w-full h-10 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white pr-9"
                 list="group-options"
               />
               {searchGroup && (
                 <button
                   onClick={() => setSearchGroup('')}
-                  className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                  className="absolute inset-y-0 right-2 flex items-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
                   aria-label={t('common.clear')}
+                  type="button"
                 >
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
@@ -336,10 +351,10 @@ const ActivityPage: React.FC = () => {
               </datalist>
             )}
           </div>
-          <div className="flex items-end space-x-2">
+          <div className="md:col-span-2 flex items-center justify-end gap-2">
             <button
               onClick={handleSearch}
-              className="px-4 py-2 bg-blue-100 text-blue-800 rounded hover:bg-blue-200 flex items-center btn-primary transition-all duration-200"
+              className="h-10 px-3 bg-blue-100 text-blue-800 rounded hover:bg-blue-200 flex items-center btn-primary transition-all duration-200"
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -357,7 +372,7 @@ const ActivityPage: React.FC = () => {
             </button>
             <button
               onClick={handleClearFilters}
-              className="px-4 py-2 bg-gray-100 text-gray-800 rounded hover:bg-gray-200 flex items-center btn-secondary transition-all duration-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
+              className="h-10 px-3 bg-gray-100 text-gray-800 rounded hover:bg-gray-200 flex items-center btn-secondary transition-all duration-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
