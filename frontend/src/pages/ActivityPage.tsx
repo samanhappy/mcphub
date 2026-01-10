@@ -36,7 +36,7 @@ const ActivityPage: React.FC = () => {
   const [showDetailModal, setShowDetailModal] = useState(false);
 
   // Filter state
-  const [filter, setFilter] = useState<ActivityFilter>({});
+  const [appliedFilters, setAppliedFilters] = useState<ActivityFilter>({});
   const [searchServer, setSearchServer] = useState('');
   const [searchTool, setSearchTool] = useState('');
   const [searchStatus, setSearchStatus] = useState<string>('');
@@ -48,16 +48,8 @@ const ActivityPage: React.FC = () => {
     setError(null);
 
     try {
-      // Build filter from search inputs
-      const currentFilter: ActivityFilter = {};
-      if (searchServer) currentFilter.server = searchServer;
-      if (searchTool) currentFilter.tool = searchTool;
-      if (searchStatus && (searchStatus === 'success' || searchStatus === 'error')) {
-        currentFilter.status = searchStatus;
-      }
-      if (searchGroup) currentFilter.group = searchGroup;
-
-      setFilter(currentFilter);
+      // Use appliedFilters directly for fetching
+      const currentFilter = { ...appliedFilters };
 
       // Fetch activities, stats, and filter options in parallel
       const [activitiesRes, statsRes, optionsRes] = await Promise.all([
@@ -86,7 +78,7 @@ const ActivityPage: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [currentPage, itemsPerPage, searchServer, searchTool, searchStatus, searchGroup, t]);
+  }, [currentPage, itemsPerPage, appliedFilters, t]);
 
   useEffect(() => {
     fetchData();
@@ -125,8 +117,14 @@ const ActivityPage: React.FC = () => {
 
   // Handle search
   const handleSearch = () => {
+    const filters: ActivityFilter = {};
+    if (searchServer) filters.server = searchServer;
+    if (searchTool) filters.tool = searchTool;
+    if (searchStatus) filters.status = searchStatus as 'success' | 'error';
+    if (searchGroup) filters.group = searchGroup;
+
+    setAppliedFilters(filters);
     setCurrentPage(1);
-    fetchData();
   };
 
   // Handle clear filters
@@ -135,6 +133,7 @@ const ActivityPage: React.FC = () => {
     setSearchTool('');
     setSearchStatus('');
     setSearchGroup('');
+    setAppliedFilters({});
     setCurrentPage(1);
   };
 
@@ -201,14 +200,36 @@ const ActivityPage: React.FC = () => {
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               {t('activity.server')}
             </label>
-            <input
-              type="text"
-              value={searchServer}
-              onChange={(e) => setSearchServer(e.target.value)}
-              placeholder={t('activity.searchServer')}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-              list="server-options"
-            />
+            <div className="relative">
+              <input
+                type="text"
+                value={searchServer}
+                onChange={(e) => setSearchServer(e.target.value)}
+                placeholder={t('activity.searchServer')}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white pr-8"
+                list="server-options"
+              />
+              {searchServer && (
+                <button
+                  onClick={() => setSearchServer('')}
+                  className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                  aria-label={t('common.clear')}
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-4 w-4"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                </button>
+              )}
+            </div>
             {filterOptions?.servers && (
               <datalist id="server-options">
                 {filterOptions.servers.map((s) => (
@@ -221,14 +242,36 @@ const ActivityPage: React.FC = () => {
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               {t('activity.tool')}
             </label>
-            <input
-              type="text"
-              value={searchTool}
-              onChange={(e) => setSearchTool(e.target.value)}
-              placeholder={t('activity.searchTool')}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-              list="tool-options"
-            />
+            <div className="relative">
+              <input
+                type="text"
+                value={searchTool}
+                onChange={(e) => setSearchTool(e.target.value)}
+                placeholder={t('activity.searchTool')}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white pr-8"
+                list="tool-options"
+              />
+              {searchTool && (
+                <button
+                  onClick={() => setSearchTool('')}
+                  className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                  aria-label={t('common.clear')}
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-4 w-4"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                </button>
+              )}
+            </div>
             {filterOptions?.tools && (
               <datalist id="tool-options">
                 {filterOptions.tools.map((t) => (
@@ -255,14 +298,36 @@ const ActivityPage: React.FC = () => {
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               {t('activity.group')}
             </label>
-            <input
-              type="text"
-              value={searchGroup}
-              onChange={(e) => setSearchGroup(e.target.value)}
-              placeholder={t('activity.searchGroup')}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-              list="group-options"
-            />
+            <div className="relative">
+              <input
+                type="text"
+                value={searchGroup}
+                onChange={(e) => setSearchGroup(e.target.value)}
+                placeholder={t('activity.searchGroup')}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white pr-8"
+                list="group-options"
+              />
+              {searchGroup && (
+                <button
+                  onClick={() => setSearchGroup('')}
+                  className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                  aria-label={t('common.clear')}
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-4 w-4"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                </button>
+              )}
+            </div>
             {filterOptions?.groups && (
               <datalist id="group-options">
                 {filterOptions.groups.map((g) => (
@@ -274,14 +339,38 @@ const ActivityPage: React.FC = () => {
           <div className="flex items-end space-x-2">
             <button
               onClick={handleSearch}
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="px-4 py-2 bg-blue-100 text-blue-800 rounded hover:bg-blue-200 flex items-center btn-primary transition-all duration-200"
             >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-4 w-4 mr-2"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z"
+                  clipRule="evenodd"
+                />
+              </svg>
               {t('common.search')}
             </button>
             <button
               onClick={handleClearFilters}
-              className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500 dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500"
+              className="px-4 py-2 bg-gray-100 text-gray-800 rounded hover:bg-gray-200 flex items-center btn-secondary transition-all duration-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
             >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-4 w-4 mr-2"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 111.414 1.414L11.414 10l4.293 4.293a1 1 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 01-1.414-1.414L8.586 10 4.293 5.707a1 1 010-1.414z"
+                  clipRule="evenodd"
+                />
+              </svg>
               {t('common.clear')}
             </button>
           </div>
@@ -525,7 +614,7 @@ const ActivityPage: React.FC = () => {
           <button
             onClick={fetchData}
             disabled={isLoading}
-            className={`px-4 py-2 bg-blue-100 text-blue-800 rounded hover:bg-blue-200 flex items-center transition-all duration-200 ${
+            className={`px-4 py-2 bg-blue-100 text-blue-800 rounded hover:bg-blue-200 flex items-center btn-primary transition-all duration-200 ${
               isLoading ? 'opacity-70 cursor-not-allowed' : ''
             }`}
           >
@@ -645,41 +734,46 @@ const ActivityPage: React.FC = () => {
           {renderActivityTable()}
 
           {/* Pagination */}
-          {pagination && pagination.totalPages > 1 && (
-            <div className="mt-6 flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
-              <div className="flex items-center space-x-2">
-                <span className="text-sm text-gray-500 dark:text-gray-400">
-                  {t('pagination.rowsPerPage')}:
-                </span>
-                <select
-                  value={itemsPerPage}
-                  onChange={(e) => {
-                    setItemsPerPage(Number(e.target.value));
-                    setCurrentPage(1);
-                  }}
-                  className="border border-gray-300 dark:border-gray-600 rounded px-2 py-1 text-sm dark:bg-gray-700 dark:text-white"
-                >
-                  <option value={10}>10</option>
-                  <option value={20}>20</option>
-                  <option value={50}>50</option>
-                  <option value={100}>100</option>
-                </select>
-                <span className="text-sm text-gray-500 dark:text-gray-400">
-                  {t('pagination.showing', {
-                    from: (pagination.page - 1) * pagination.limit + 1,
-                    to: Math.min(pagination.page * pagination.limit, pagination.total),
-                    total: pagination.total,
-                  })}
-                </span>
-              </div>
-              <Pagination
-                currentPage={currentPage}
-                totalPages={pagination.totalPages}
-                onPageChange={setCurrentPage}
-                disabled={isLoading}
-              />
+          <div className="flex items-center mt-6">
+            <div className="flex-[2] text-sm text-gray-500 dark:text-gray-400">
+              {pagination &&
+                t('common.showing', {
+                  start: (pagination.page - 1) * pagination.limit + 1,
+                  end: Math.min(pagination.page * pagination.limit, pagination.total),
+                  total: pagination.total,
+                })}
             </div>
-          )}
+            <div className="flex-[4] flex justify-center">
+              {pagination && pagination.totalPages > 1 && (
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={pagination.totalPages}
+                  onPageChange={setCurrentPage}
+                  disabled={isLoading}
+                />
+              )}
+            </div>
+            <div className="flex-[2] flex items-center justify-end space-x-2">
+              <label htmlFor="perPage" className="text-sm text-gray-500 dark:text-gray-400">
+                {t('common.itemsPerPage')}:
+              </label>
+              <select
+                id="perPage"
+                value={itemsPerPage}
+                onChange={(e) => {
+                  setItemsPerPage(Number(e.target.value));
+                  setCurrentPage(1);
+                }}
+                disabled={isLoading}
+                className="border border-gray-300 dark:border-gray-600 rounded p-1 text-sm dark:bg-gray-700 dark:text-white outline-none disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <option value={10}>10</option>
+                <option value={20}>20</option>
+                <option value={50}>50</option>
+                <option value={100}>100</option>
+              </select>
+            </div>
+          </div>
         </>
       )}
 

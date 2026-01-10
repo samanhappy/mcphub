@@ -64,7 +64,7 @@ export const ServerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [fetchAttempts, setFetchAttempts] = useState(0);
   const [pagination, setPagination] = useState<PaginationInfo | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [serversPerPage, setServersPerPage] = useState(10);
+  const [serversPerPage, setServersPerPage] = useState(5);
 
   // Timer reference for polling
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
