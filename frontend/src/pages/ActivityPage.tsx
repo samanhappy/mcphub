@@ -169,28 +169,28 @@ const ActivityPage: React.FC = () => {
     return (
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm px-4 py-3 mb-4">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <div className="flex items-baseline justify-between md:flex-col md:items-start">
-            <div className="text-xs text-gray-500 dark:text-gray-400">
+          <div className="flex items-center gap-2">
+            <div className="text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap">
               {t('activity.totalCalls')}
             </div>
             <div className="text-lg font-semibold text-gray-900 dark:text-white">
               {stats.totalCalls}
             </div>
           </div>
-          <div className="flex items-baseline justify-between md:flex-col md:items-start">
-            <div className="text-xs text-gray-500 dark:text-gray-400">
+          <div className="flex items-center gap-2">
+            <div className="text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap">
               {t('activity.successCount')}
             </div>
             <div className="text-lg font-semibold text-green-600">{stats.successCount}</div>
           </div>
-          <div className="flex items-baseline justify-between md:flex-col md:items-start">
-            <div className="text-xs text-gray-500 dark:text-gray-400">
+          <div className="flex items-center gap-2">
+            <div className="text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap">
               {t('activity.errorCount')}
             </div>
             <div className="text-lg font-semibold text-red-600">{stats.errorCount}</div>
           </div>
-          <div className="flex items-baseline justify-between md:flex-col md:items-start">
-            <div className="text-xs text-gray-500 dark:text-gray-400">
+          <div className="flex items-center gap-2">
+            <div className="text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap">
               {t('activity.avgDuration')}
             </div>
             <div className="text-lg font-semibold text-blue-600">
