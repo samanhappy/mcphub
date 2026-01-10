@@ -346,13 +346,7 @@ const ActivityPage: React.FC = () => {
             </div>
             <datalist id="activity-status-options">
               {STATUS_OPTIONS.map((status) => (
-                <option
-                  key={status}
-                  value={status}
-                  label={
-                    status === 'success' ? t('activity.statusSuccess') : t('activity.statusError')
-                  }
-                />
+                <option key={status} value={status} />
               ))}
             </datalist>
           </div>
