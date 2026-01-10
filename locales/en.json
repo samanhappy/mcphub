@@ -874,6 +874,7 @@
     "errorMessage": "Error Message",
     "searchServer": "Search server...",
     "searchTool": "Search tool...",
+    "searchStatus": "Search status...",
     "searchGroup": "Search group...",
     "searchKeyName": "Search API key...",
     "keyName": "API Key Name",

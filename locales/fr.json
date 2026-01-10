@@ -872,6 +872,7 @@
     "errorMessage": "Message d’erreur",
     "searchServer": "Rechercher un serveur...",
     "searchTool": "Rechercher un outil...",
+    "searchStatus": "Rechercher un statut...",
     "searchGroup": "Rechercher un groupe...",
     "searchKeyName": "Rechercher une clé API...",
     "keyName": "Nom de la clé API",

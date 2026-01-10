@@ -1,6 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Activity, ActivityStats, ActivityFilter, ActivityFilterOptions } from '@/types';
+import {
+  Activity,
+  ActivityStats,
+  ActivityFilter,
+  ActivityFilterOptions,
+  ActivityStatus,
+} from '@/types';
 import {
   getActivities,
   getActivityById,
@@ -19,6 +25,11 @@ interface PaginationInfo {
   hasNextPage: boolean;
   hasPrevPage: boolean;
 }
+
+const STATUS_OPTIONS: ActivityStatus[] = ['success', 'error'];
+
+const isValidStatus = (value: string): value is ActivityStatus =>
+  STATUS_OPTIONS.includes(value as ActivityStatus);
 
 const ActivityPage: React.FC = () => {
   const { t } = useTranslation();
@@ -121,7 +132,9 @@ const ActivityPage: React.FC = () => {
     const filters: ActivityFilter = {};
     if (searchServer) filters.server = searchServer;
     if (searchTool) filters.tool = searchTool;
-    if (searchStatus) filters.status = searchStatus as 'success' | 'error';
+    if (searchStatus && isValidStatus(searchStatus)) {
+      filters.status = searchStatus;
+    }
     if (searchGroup) filters.group = searchGroup;
     if (searchKeyName) filters.keyName = searchKeyName;
 
@@ -299,16 +312,49 @@ const ActivityPage: React.FC = () => {
             <label className="sr-only" htmlFor="activity-status">
               {t('activity.status')}
             </label>
-            <select
-              id="activity-status"
-              value={searchStatus}
-              onChange={(e) => setSearchStatus(e.target.value)}
-              className="w-full h-10 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-            >
-              <option value="">{t('activity.allStatus')}</option>
-              <option value="success">{t('activity.statusSuccess')}</option>
-              <option value="error">{t('activity.statusError')}</option>
-            </select>
+            <div className="relative">
+              <input
+                id="activity-status"
+                type="text"
+                value={searchStatus}
+                onChange={(e) => setSearchStatus(e.target.value.toLowerCase())}
+                placeholder={t('activity.searchStatus')}
+                className="w-full h-10 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white pr-9"
+                list="activity-status-options"
+              />
+              {searchStatus && (
+                <button
+                  onClick={() => setSearchStatus('')}
+                  className="absolute inset-y-0 right-2 flex items-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                  aria-label={t('common.clear')}
+                  type="button"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-4 w-4"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                </button>
+              )}
+            </div>
+            <datalist id="activity-status-options">
+              {STATUS_OPTIONS.map((status) => (
+                <option
+                  key={status}
+                  value={status}
+                  label={
+                    status === 'success' ? t('activity.statusSuccess') : t('activity.statusError')
+                  }
+                />
+              ))}
+            </datalist>
           </div>
           <div className="md:col-span-2">
             <label className="sr-only" htmlFor="activity-group">

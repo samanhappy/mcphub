@@ -872,6 +872,7 @@
     "errorMessage": "Hata mesajı",
     "searchServer": "Sunucu ara...",
     "searchTool": "Araç ara...",
+    "searchStatus": "Durum ara...",
     "searchGroup": "Grup ara...",
     "searchKeyName": "API anahtarı ara...",
     "keyName": "API Anahtarı Adı",
