@@ -858,7 +858,7 @@
     "closeWindow": "关闭窗口"
   },
   "activity": {
-    "title": "调用活动",
+    "title": "活动",
     "totalCalls": "总调用次数",
     "successCount": "成功次数",
     "errorCount": "失败次数",
