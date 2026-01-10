@@ -219,8 +219,8 @@ const ActivityPage: React.FC = () => {
   const renderFilters = () => {
     return (
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm px-4 py-3 mb-4">
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
-          <div className="md:col-span-2">
+        <div className="flex flex-wrap gap-3 items-end">
+          <div className="flex-1 min-w-[140px]">
             <label className="sr-only" htmlFor="activity-server">
               {t('activity.server')}
             </label>
@@ -264,7 +264,7 @@ const ActivityPage: React.FC = () => {
               </datalist>
             )}
           </div>
-          <div className="md:col-span-2">
+          <div className="flex-1 min-w-[140px]">
             <label className="sr-only" htmlFor="activity-tool">
               {t('activity.tool')}
             </label>
@@ -308,7 +308,7 @@ const ActivityPage: React.FC = () => {
               </datalist>
             )}
           </div>
-          <div className="md:col-span-2">
+          <div className="flex-1 min-w-[140px]">
             <label className="sr-only" htmlFor="activity-status">
               {t('activity.status')}
             </label>
@@ -350,7 +350,7 @@ const ActivityPage: React.FC = () => {
               ))}
             </datalist>
           </div>
-          <div className="md:col-span-2">
+          <div className="flex-1 min-w-[140px]">
             <label className="sr-only" htmlFor="activity-group">
               {t('activity.group')}
             </label>
@@ -394,7 +394,7 @@ const ActivityPage: React.FC = () => {
               </datalist>
             )}
           </div>
-          <div className="md:col-span-2">
+          <div className="flex-1 min-w-[140px]">
             <label className="sr-only" htmlFor="activity-keyname">
               {t('activity.keyName')}
             </label>
@@ -438,10 +438,10 @@ const ActivityPage: React.FC = () => {
               </datalist>
             )}
           </div>
-          <div className="md:col-span-2 flex items-center justify-end gap-2">
+          <div className="flex-shrink-0 flex items-center gap-2">
             <button
               onClick={handleSearch}
-              className="h-10 px-3 bg-blue-100 text-blue-800 rounded hover:bg-blue-200 flex items-center btn-primary transition-all duration-200"
+              className="h-10 px-3 bg-blue-100 text-blue-800 rounded hover:bg-blue-200 flex items-center btn-primary transition-all duration-200 whitespace-nowrap"
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -459,7 +459,7 @@ const ActivityPage: React.FC = () => {
             </button>
             <button
               onClick={handleClearFilters}
-              className="h-10 px-3 bg-gray-100 text-gray-800 rounded hover:bg-gray-200 flex items-center btn-secondary transition-all duration-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
+              className="h-10 px-3 bg-gray-100 text-gray-800 rounded hover:bg-gray-200 flex items-center btn-secondary transition-all duration-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600 whitespace-nowrap"
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
