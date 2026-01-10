@@ -873,6 +873,8 @@
     "searchServer": "Sunucu ara...",
     "searchTool": "Araç ara...",
     "searchGroup": "Grup ara...",
+    "searchKeyName": "API anahtarı ara...",
+    "keyName": "API Anahtarı Adı",
     "allStatus": "Tüm durumlar",
     "statusSuccess": "Başarılı",
     "statusError": "Hata",

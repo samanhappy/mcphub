@@ -8,6 +8,9 @@ export interface RequestContext {
   sessionId?: string;
   userAgent?: string;
   remoteAddress?: string;
+  group?: string;
+  keyId?: string;
+  keyName?: string;
 }
 
 /**
@@ -101,5 +104,41 @@ export class RequestContextService {
    */
   public getSessionId(): string | undefined {
     return this.requestContext?.sessionId;
+  }
+
+  /**
+   * Set bearer key context for activity logging
+   */
+  public setBearerKeyContext(keyId?: string, keyName?: string): void {
+    if (this.requestContext) {
+      this.requestContext.keyId = keyId;
+      this.requestContext.keyName = keyName;
+    }
+  }
+
+  /**
+   * Set group context for activity logging
+   */
+  public setGroupContext(group?: string): void {
+    if (this.requestContext) {
+      this.requestContext.group = group;
+    }
+  }
+
+  /**
+   * Get bearer key context
+   */
+  public getBearerKeyContext(): { keyId?: string; keyName?: string } {
+    return {
+      keyId: this.requestContext?.keyId,
+      keyName: this.requestContext?.keyName,
+    };
+  }
+
+  /**
+   * Get group context
+   */
+  public getGroupContext(): string | undefined {
+    return this.requestContext?.group;
   }
 }

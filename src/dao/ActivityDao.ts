@@ -18,6 +18,7 @@ export interface ActivityDao {
   getDistinctServers(): Promise<string[]>;
   getDistinctTools(): Promise<string[]>;
   getDistinctGroups(): Promise<string[]>;
+  getDistinctKeyNames(): Promise<string[]>;
 }
 
 /**
@@ -89,6 +90,10 @@ export class ActivityDaoDbImpl implements ActivityDao {
 
   async getDistinctGroups(): Promise<string[]> {
     return await this.repository.getDistinctGroups();
+  }
+
+  async getDistinctKeyNames(): Promise<string[]> {
+    return await this.repository.getDistinctKeyNames();
   }
 
   private mapToActivity(entity: any): IActivity {

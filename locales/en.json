@@ -875,6 +875,8 @@
     "searchServer": "Search server...",
     "searchTool": "Search tool...",
     "searchGroup": "Search group...",
+    "searchKeyName": "Search API key...",
+    "keyName": "API Key Name",
     "allStatus": "All Status",
     "statusSuccess": "Success",
     "statusError": "Error",

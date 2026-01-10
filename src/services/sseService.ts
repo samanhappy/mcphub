@@ -12,8 +12,16 @@ import { RequestContextService } from './requestContextService.js';
 import { IUser, BearerKey } from '../types/index.js';
 import { resolveOAuthUserFromToken } from '../utils/oauthBearer.js';
 
+export interface SessionContext {
+  transport: Transport;
+  group: string;
+  needsInitialization?: boolean;
+  keyId?: string;
+  keyName?: string;
+}
+
 export const transports: {
-  [sessionId: string]: { transport: Transport; group: string; needsInitialization?: boolean };
+  [sessionId: string]: SessionContext;
 } = {};
 
 // Session creation locks to prevent concurrent session creation conflicts
@@ -23,8 +31,19 @@ export const getGroup = (sessionId: string): string => {
   return transports[sessionId]?.group || '';
 };
 
+export const getSessionContext = (
+  sessionId: string,
+): { group: string; keyId?: string; keyName?: string } => {
+  const session = transports[sessionId];
+  return {
+    group: session?.group || '',
+    keyId: session?.keyId,
+    keyName: session?.keyName,
+  };
+};
+
 type BearerAuthResult =
-  | { valid: true; user?: IUser }
+  | { valid: true; user?: IUser; keyId?: string; keyName?: string }
   | {
       valid: false;
       reason: 'missing' | 'invalid';
@@ -199,7 +218,7 @@ const validateBearerAuth = async (req: Request): Promise<BearerAuthResult> => {
     console.log(
       `Bearer key authenticated: id=${matchingKey.id}, name=${matchingKey.name}, accessType=${matchingKey.accessType}`,
     );
-    return { valid: true };
+    return { valid: true, keyId: matchingKey.id, keyName: matchingKey.name };
   }
 
   // Fallback: treat token as potential OAuth access token
@@ -360,7 +379,12 @@ export const handleSseConnection = async (req: Request, res: Response): Promise<
   console.log(`Creating SSE transport with messages path: ${messagesPath}`);
 
   const transport = new SSEServerTransport(messagesPath, res);
-  transports[transport.sessionId] = { transport, group: group };
+  transports[transport.sessionId] = {
+    transport,
+    group: group,
+    keyId: bearerAuthResult.keyId,
+    keyName: bearerAuthResult.keyName,
+  };
 
   res.on('close', () => {
     delete transports[transport.sessionId];
@@ -407,7 +431,7 @@ export const handleSseMessage = async (req: Request, res: Response): Promise<voi
     return;
   }
 
-  const { transport, group } = transportData;
+  const { transport, group, keyId, keyName } = transportData;
   req.params.group = group;
   req.query.group = group;
   console.log(
@@ -417,6 +441,11 @@ export const handleSseMessage = async (req: Request, res: Response): Promise<voi
   // Set request context for MCP handlers to access HTTP headers
   const requestContextService = RequestContextService.getInstance();
   requestContextService.setRequestContext(req);
+  // Set bearer key and group context for activity logging (from session or current request)
+  const currentKeyId = bearerAuthResult.keyId || keyId;
+  const currentKeyName = bearerAuthResult.keyName || keyName;
+  requestContextService.setBearerKeyContext(currentKeyId, currentKeyName);
+  requestContextService.setGroupContext(group);
 
   try {
     await (transport as SSEServerTransport).handlePostMessage(req, res);
@@ -641,6 +670,9 @@ export const handleMcpPostRequest = async (req: Request, res: Response): Promise
   // Set request context for MCP handlers to access HTTP headers
   const requestContextService = RequestContextService.getInstance();
   requestContextService.setRequestContext(req);
+  // Set bearer key and group context for activity logging
+  requestContextService.setBearerKeyContext(bearerAuthResult.keyId, bearerAuthResult.keyName);
+  requestContextService.setGroupContext(group);
 
   // Check if the session needs initialization (for rebuilt sessions)
   if (transportInfo && transportInfo.needsInitialization) {

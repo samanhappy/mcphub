@@ -873,6 +873,8 @@
     "searchServer": "Rechercher un serveur...",
     "searchTool": "Rechercher un outil...",
     "searchGroup": "Rechercher un groupe...",
+    "searchKeyName": "Rechercher une clé API...",
+    "keyName": "Nom de la clé API",
     "allStatus": "Tous les statuts",
     "statusSuccess": "Succès",
     "statusError": "Erreur",

@@ -570,6 +570,7 @@ export interface ActivityFilter {
   status?: ActivityStatus;
   group?: string;
   keyId?: string;
+  keyName?: string;
   startDate?: string;
   endDate?: string;
 }
@@ -578,4 +579,5 @@ export interface ActivityFilterOptions {
   servers: string[];
   tools: string[];
   groups: string[];
+  keyNames: string[];
 }

@@ -66,6 +66,9 @@ export const getActivities = async (req: Request, res: Response): Promise<void> 
     if (req.query.keyId) {
       filter.keyId = req.query.keyId as string;
     }
+    if (req.query.keyName) {
+      filter.keyName = req.query.keyName as string;
+    }
     if (req.query.startDate) {
       filter.startDate = new Date(req.query.startDate as string);
     }
@@ -165,6 +168,9 @@ export const getActivityStats = async (req: Request, res: Response): Promise<voi
     if (req.query.keyId) {
       filter.keyId = req.query.keyId as string;
     }
+    if (req.query.keyName) {
+      filter.keyName = req.query.keyName as string;
+    }
     if (req.query.startDate) {
       filter.startDate = new Date(req.query.startDate as string);
     }
@@ -201,10 +207,11 @@ export const getActivityFilterOptions = async (req: Request, res: Response): Pro
       return;
     }
 
-    const [servers, tools, groups] = await Promise.all([
+    const [servers, tools, groups, keyNames] = await Promise.all([
       activityDao.getDistinctServers(),
       activityDao.getDistinctTools(),
       activityDao.getDistinctGroups(),
+      activityDao.getDistinctKeyNames(),
     ]);
 
     res.json({
@@ -213,6 +220,7 @@ export const getActivityFilterOptions = async (req: Request, res: Response): Pro
         servers,
         tools,
         groups,
+        keyNames,
       },
     });
   } catch (error) {

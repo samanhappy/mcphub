@@ -529,6 +529,7 @@ export interface IActivityFilter {
   status?: ActivityStatus;
   group?: string;
   keyId?: string;
+  keyName?: string;
   startDate?: Date;
   endDate?: Date;
 }

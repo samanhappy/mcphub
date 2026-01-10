@@ -41,6 +41,7 @@ const ActivityPage: React.FC = () => {
   const [searchTool, setSearchTool] = useState('');
   const [searchStatus, setSearchStatus] = useState<string>('');
   const [searchGroup, setSearchGroup] = useState('');
+  const [searchKeyName, setSearchKeyName] = useState('');
 
   // Fetch data
   const fetchData = useCallback(async () => {
@@ -122,6 +123,7 @@ const ActivityPage: React.FC = () => {
     if (searchTool) filters.tool = searchTool;
     if (searchStatus) filters.status = searchStatus as 'success' | 'error';
     if (searchGroup) filters.group = searchGroup;
+    if (searchKeyName) filters.keyName = searchKeyName;
 
     setAppliedFilters(filters);
     setCurrentPage(1);
@@ -133,6 +135,7 @@ const ActivityPage: React.FC = () => {
     setSearchTool('');
     setSearchStatus('');
     setSearchGroup('');
+    setSearchKeyName('');
     setAppliedFilters({});
     setCurrentPage(1);
   };
@@ -204,7 +207,7 @@ const ActivityPage: React.FC = () => {
     return (
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm px-4 py-3 mb-4">
         <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
-          <div className="md:col-span-3">
+          <div className="md:col-span-2">
             <label className="sr-only" htmlFor="activity-server">
               {t('activity.server')}
             </label>
@@ -248,7 +251,7 @@ const ActivityPage: React.FC = () => {
               </datalist>
             )}
           </div>
-          <div className="md:col-span-3">
+          <div className="md:col-span-2">
             <label className="sr-only" htmlFor="activity-tool">
               {t('activity.tool')}
             </label>
@@ -347,6 +350,50 @@ const ActivityPage: React.FC = () => {
               <datalist id="group-options">
                 {filterOptions.groups.map((g) => (
                   <option key={g} value={g} />
+                ))}
+              </datalist>
+            )}
+          </div>
+          <div className="md:col-span-2">
+            <label className="sr-only" htmlFor="activity-keyname">
+              {t('activity.keyName')}
+            </label>
+            <div className="relative">
+              <input
+                id="activity-keyname"
+                type="text"
+                value={searchKeyName}
+                onChange={(e) => setSearchKeyName(e.target.value)}
+                placeholder={t('activity.searchKeyName')}
+                className="w-full h-10 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white pr-9"
+                list="keyname-options"
+              />
+              {searchKeyName && (
+                <button
+                  onClick={() => setSearchKeyName('')}
+                  className="absolute inset-y-0 right-2 flex items-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                  aria-label={t('common.clear')}
+                  type="button"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-4 w-4"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                </button>
+              )}
+            </div>
+            {filterOptions?.keyNames && (
+              <datalist id="keyname-options">
+                {filterOptions.keyNames.map((k) => (
+                  <option key={k} value={k} />
                 ))}
               </datalist>
             )}

@@ -43,6 +43,9 @@ const buildQueryString = (page: number, limit: number, filter?: ActivityFilter):
   if (filter?.keyId) {
     params.append('keyId', filter.keyId);
   }
+  if (filter?.keyName) {
+    params.append('keyName', filter.keyName);
+  }
   if (filter?.startDate) {
     params.append('startDate', filter.startDate);
   }
@@ -94,6 +97,9 @@ export const getActivityStats = async (
   }
   if (filter?.keyId) {
     params.append('keyId', filter.keyId);
+  }
+  if (filter?.keyName) {
+    params.append('keyName', filter.keyName);
   }
   if (filter?.startDate) {
     params.append('startDate', filter.startDate);

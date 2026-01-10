@@ -1149,23 +1149,28 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
   const startTime = Date.now();
   const activityLogger = getActivityLoggingService();
 
-  // Extract group and key info from extra for activity logging
-  const group = extra?.group || undefined;
-  const keyId = extra?.keyId || undefined;
-  const keyName = extra?.keyName || undefined;
+  // Get request context for activity logging
+  const requestContextService = RequestContextService.getInstance();
+  const bearerKeyContext = requestContextService.getBearerKeyContext();
+  const sessionId = extra.sessionId || '';
+
+  // Extract group and key info from request context (set by SSE/HTTP handlers)
+  // Fallback to extra for backward compatibility (e.g., direct API calls)
+  const group =
+    requestContextService.getGroupContext() || extra?.group || getGroup(sessionId) || undefined;
+  const keyId = bearerKeyContext.keyId || extra?.keyId || undefined;
+  const keyName = bearerKeyContext.keyName || extra?.keyName || undefined;
 
   try {
     // Special handling for smart routing tools
     if (request.params.name === 'search_tools') {
       const { query, limit = 10 } = request.params.arguments || {};
-      const sessionId = extra.sessionId || '';
       return await handleSearchToolsRequest(query, limit, sessionId);
     }
 
     // Special handling for describe_tool (progressive disclosure mode)
     if (request.params.name === 'describe_tool') {
       const { toolName } = request.params.arguments || {};
-      const sessionId = extra.sessionId || '';
       return await handleDescribeToolRequest(toolName, sessionId);
     }
 

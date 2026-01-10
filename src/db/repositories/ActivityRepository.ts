@@ -49,6 +49,9 @@ export class ActivityRepository {
     if (filter?.keyId) {
       where.keyId = filter.keyId;
     }
+    if (filter?.keyName) {
+      where.keyName = Like(`%${filter.keyName}%`);
+    }
     if (filter?.startDate && filter?.endDate) {
       where.timestamp = Between(filter.startDate, filter.endDate);
     }
@@ -115,6 +118,9 @@ export class ActivityRepository {
       if (filter?.keyId) {
         qb.andWhere('activity.key_id = :keyId', { keyId: filter.keyId });
       }
+      if (filter?.keyName) {
+        qb.andWhere('activity.key_name LIKE :keyName', { keyName: `%${filter.keyName}%` });
+      }
       if (filter?.startDate && filter?.endDate) {
         qb.andWhere('activity.timestamp BETWEEN :startDate AND :endDate', {
           startDate: filter.startDate,
@@ -180,6 +186,17 @@ export class ActivityRepository {
       .getRawMany();
 
     return result.map((r) => r.group);
+  }
+
+  async getDistinctKeyNames(): Promise<string[]> {
+    const result = await this.repository
+      .createQueryBuilder('activity')
+      .select('DISTINCT activity.key_name', 'keyName')
+      .where('activity.key_name IS NOT NULL')
+      .orderBy('activity.key_name', 'ASC')
+      .getRawMany();
+
+    return result.map((r) => r.keyName);
   }
 }
 

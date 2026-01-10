@@ -877,6 +877,8 @@
     "searchServer": "搜索服务器...",
     "searchTool": "搜索工具...",
     "searchGroup": "搜索分组...",
+    "searchKeyName": "搜索API密钥...",
+    "keyName": "API密钥名称",
     "allStatus": "全部状态",
     "statusSuccess": "成功",
     "statusError": "失败",
