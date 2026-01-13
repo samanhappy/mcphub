@@ -16,10 +16,118 @@ interface ToolResultProps {
   onClose: () => void;
 }
 
+type ImagePayload = {
+  data: string;
+  mimeType?: string;
+};
+
 const ToolResult: React.FC<ToolResultProps> = ({ result, onClose }) => {
   const { t } = useTranslation();
   // Extract content from data.content
   const content = result.content;
+
+  const normalizeMimeType = (value?: string) => {
+    if (!value) return 'image/png';
+    return value.startsWith('image/') ? value : `image/${value}`;
+  };
+
+  const collectImagesFromValue = (value: any): ImagePayload[] => {
+    if (!value) return [];
+
+    if (Array.isArray(value)) {
+      return value.flatMap((item) => collectImagesFromValue(item));
+    }
+
+    if (typeof value !== 'object') return [];
+
+    const images: ImagePayload[] = [];
+
+    if (value.type === 'image' && value.data) {
+      images.push({
+        data: String(value.data),
+        mimeType: normalizeMimeType(value.mimeType || value.mime_type),
+      });
+    }
+
+    const base64 =
+      value.image_base64 ||
+      value.imageBase64 ||
+      value.image_data ||
+      value.imageData ||
+      value.base64;
+    if (base64) {
+      images.push({
+        data: String(base64),
+        mimeType: normalizeMimeType(
+          value.image_mimeType || value.image_mime_type || value.mimeType || value.mime_type,
+        ),
+      });
+    }
+
+    if (value.image && typeof value.image === 'object') {
+      images.push(...collectImagesFromValue(value.image));
+    }
+
+    if (Array.isArray(value.images)) {
+      images.push(...collectImagesFromValue(value.images));
+    }
+
+    if (Array.isArray(value.content)) {
+      images.push(...collectImagesFromValue(value.content));
+    }
+
+    return images;
+  };
+
+  const extractImagesFromText = (text: string): ImagePayload[] => {
+    const images: ImagePayload[] = [];
+
+    try {
+      const parsed = JSON.parse(text);
+      images.push(...collectImagesFromValue(parsed));
+      if (images.length > 0) {
+        return images;
+      }
+    } catch {
+      // Not JSON, continue to data URI scan
+    }
+
+    const dataUriRegex = /data:image\/(png|jpe?g|gif|webp);base64,([A-Za-z0-9+/=]+)/g;
+    let match: RegExpExecArray | null;
+    while ((match = dataUriRegex.exec(text)) !== null) {
+      const mimeType = `image/${match[1] === 'jpg' ? 'jpeg' : match[1]}`;
+      images.push({ data: match[2], mimeType });
+    }
+
+    return images;
+  };
+
+  const sanitizeTextForDisplay = (text: string): string => {
+    try {
+      const parsed = JSON.parse(text);
+      const scrub = (value: any): any => {
+        if (Array.isArray(value)) return value.map(scrub);
+        if (value && typeof value === 'object') {
+          const next: Record<string, any> = {};
+          for (const [key, val] of Object.entries(value)) {
+            if (typeof val === 'string' && key.toLowerCase().includes('base64')) {
+              next[key] = '[base64 omitted]';
+            } else {
+              next[key] = scrub(val);
+            }
+          }
+          return next;
+        }
+        return value;
+      };
+      return JSON.stringify(scrub(parsed), null, 2);
+    } catch {
+      return text.replace(
+        /data:image\/(png|jpe?g|gif|webp);base64,[A-Za-z0-9+/=]+/g,
+        '[image data omitted]',
+      );
+    }
+  };
 
   const renderContent = (content: any): React.ReactNode => {
     if (Array.isArray(content)) {
@@ -35,18 +143,50 @@ const ToolResult: React.FC<ToolResultProps> = ({ result, onClose }) => {
 
   const renderContentItem = (item: any): React.ReactNode => {
     if (typeof item === 'string') {
+      const extractedImages = extractImagesFromText(item);
+      const sanitizedText = sanitizeTextForDisplay(item);
       return (
         <div className="bg-gray-50 rounded-md p-3">
-          <pre className="whitespace-pre-wrap text-sm text-gray-800 font-mono">{item}</pre>
+          {extractedImages.length > 0 && (
+            <div className="mb-3 space-y-3">
+              {extractedImages.map((image, idx) => (
+                <img
+                  key={idx}
+                  src={`data:${image.mimeType || 'image/png'};base64,${image.data}`}
+                  alt={t('tool.toolResult')}
+                  className="max-w-full h-auto rounded-md"
+                />
+              ))}
+            </div>
+          )}
+          <pre className="whitespace-pre-wrap text-sm text-gray-800 font-mono">
+            {sanitizedText}
+          </pre>
         </div>
       );
     }
 
     if (typeof item === 'object' && item !== null) {
       if (item.type === 'text' && item.text) {
+        const extractedImages = extractImagesFromText(item.text);
+        const sanitizedText = sanitizeTextForDisplay(item.text);
         return (
           <div className="bg-gray-50 rounded-md p-3">
-            <pre className="whitespace-pre-wrap text-sm text-gray-800 font-mono">{item.text}</pre>
+            {extractedImages.length > 0 && (
+              <div className="mb-3 space-y-3">
+                {extractedImages.map((image, idx) => (
+                  <img
+                    key={idx}
+                    src={`data:${image.mimeType || 'image/png'};base64,${image.data}`}
+                    alt={t('tool.toolResult')}
+                    className="max-w-full h-auto rounded-md"
+                  />
+                ))}
+              </div>
+            )}
+            <pre className="whitespace-pre-wrap text-sm text-gray-800 font-mono">
+              {sanitizedText}
+            </pre>
           </div>
         );
       }
