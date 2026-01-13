@@ -339,31 +339,42 @@ curl http://localhost:3000/api/smart-routing/embedding-stats \
 
 不同的嵌入模型产生不同的向量维度。根据您的性能和精度需求选择：
 
-| 模型 | 维度 | 索引支持 | 说明 |
+| 模型 | 维度 | 索引类型 | 说明 |
 |------|------|----------|------|
-| `text-embedding-3-small` | 1536 | IVFFlat, HNSW | **推荐** - 质量和性能的良好平衡 |
-| `text-embedding-3-large` | 3072 | HNSW (pgvector ≥ 0.6.0) | 更高质量，需要较新的 pgvector |
-| `bge-m3` | 1024 | IVFFlat, HNSW | 开源替代方案 |
+| `text-embedding-3-small` | 1536 | HNSW | **推荐** - 质量和性能的最佳平衡 |
+| `text-embedding-3-large` | 3072 | HNSW (halfvec) | 更高质量，需要 pgvector ≥ 0.7.0 |
+| `bge-m3` | 1024 | HNSW | 开源替代方案 |
+
+<Info>
+  **HNSW 是推荐的索引类型**
+  
+  MCPHub 默认使用 HNSW 索引，因为：
+  - 比 IVFFlat 有更好的查询性能
+  - 可以在没有数据的情况下立即创建
+  - 随着数据分布变化更加稳健
+</Info>
 
 <Warning>
-  **高维嵌入（> 2000 维）**
+  **向量维度限制（pgvector 0.7.0+）**
   
-  如果使用 `text-embedding-3-large` 或其他高维模型：
-  - **IVFFlat 索引**：不支持（最大 2000 维）
-  - **HNSW 索引**：需要 pgvector ≥ 0.6.0（支持最高 16000 维）
-  - 较旧的 pgvector 版本（< 0.6.0）所有索引类型的维度限制为 2000
+  - `vector` 类型：最多 **2,000 维**（HNSW 或 IVFFlat）
+  - `halfvec` 类型：最多 **4,000 维**（自动用于高维嵌入）
+  
+  对于 `text-embedding-3-large`（3072 维）：
+  - 需要 pgvector ≥ 0.7.0 以支持 halfvec
+  - MCPHub 自动使用 halfvec 类型转换以获得最佳索引
+  - 旧版 pgvector 仍可工作，但没有索引优化
   
   **建议：**
-  1. 升级到 pgvector 0.6.0+ 以支持高维嵌入
+  1. 升级到 pgvector 0.7.0+ 以获得最佳高维嵌入支持
   2. 或使用 `text-embedding-3-small`（1536 维）以获得更广泛的兼容性
-  3. 没有索引的向量搜索仍然可以工作，但对于大型数据集可能会较慢
 </Warning>
 
 ```bash
 # 大多数部署的推荐配置
 EMBEDDING_MODEL=text-embedding-3-small
 
-# 更高质量（需要 pgvector >= 0.6.0）
+# 更高质量（需要 pgvector >= 0.7.0 以获得最佳索引）
 EMBEDDING_MODEL=text-embedding-3-large
 ```
 
