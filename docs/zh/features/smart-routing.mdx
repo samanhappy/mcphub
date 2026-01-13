@@ -335,6 +335,38 @@ curl http://localhost:3000/api/smart-routing/embedding-stats \
 
 ## 高级功能
 
+### 嵌入模型选择
+
+不同的嵌入模型产生不同的向量维度。根据您的性能和精度需求选择：
+
+| 模型 | 维度 | 索引支持 | 说明 |
+|------|------|----------|------|
+| `text-embedding-3-small` | 1536 | IVFFlat, HNSW | **推荐** - 质量和性能的良好平衡 |
+| `text-embedding-3-large` | 3072 | HNSW (pgvector ≥ 0.6.0) | 更高质量，需要较新的 pgvector |
+| `bge-m3` | 1024 | IVFFlat, HNSW | 开源替代方案 |
+
+<Warning>
+  **高维嵌入（> 2000 维）**
+  
+  如果使用 `text-embedding-3-large` 或其他高维模型：
+  - **IVFFlat 索引**：不支持（最大 2000 维）
+  - **HNSW 索引**：需要 pgvector ≥ 0.6.0（支持最高 16000 维）
+  - 较旧的 pgvector 版本（< 0.6.0）所有索引类型的维度限制为 2000
+  
+  **建议：**
+  1. 升级到 pgvector 0.6.0+ 以支持高维嵌入
+  2. 或使用 `text-embedding-3-small`（1536 维）以获得更广泛的兼容性
+  3. 没有索引的向量搜索仍然可以工作，但对于大型数据集可能会较慢
+</Warning>
+
+```bash
+# 大多数部署的推荐配置
+EMBEDDING_MODEL=text-embedding-3-small
+
+# 更高质量（需要 pgvector >= 0.6.0）
+EMBEDDING_MODEL=text-embedding-3-large
+```
+
 ### 自定义嵌入
 
 使用自定义嵌入模型：

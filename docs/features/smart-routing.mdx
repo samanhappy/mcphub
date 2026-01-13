@@ -249,6 +249,39 @@ EMBEDDING_BATCH_SIZE=100
 
   </Accordion>
 
+  <Accordion title="Embedding Model Selection">
+    Different embedding models produce different vector dimensions. Choose based on your performance and accuracy needs:
+
+    | Model | Dimensions | Index Support | Notes |
+    |-------|------------|---------------|-------|
+    | `text-embedding-3-small` | 1536 | IVFFlat, HNSW | **Recommended** - Good balance of quality and performance |
+    | `text-embedding-3-large` | 3072 | HNSW (pgvector ≥ 0.6.0) | Higher quality, requires newer pgvector |
+    | `bge-m3` | 1024 | IVFFlat, HNSW | Open-source alternative |
+
+    <Warning>
+      **High-Dimensional Embeddings (> 2000 dimensions)**
+      
+      If using `text-embedding-3-large` or other high-dimensional models:
+      - **IVFFlat index**: Not supported (max 2000 dimensions)
+      - **HNSW index**: Requires pgvector ≥ 0.6.0 (supports up to 16000 dimensions)
+      - Older pgvector versions (< 0.6.0) have a 2000 dimension limit for all index types
+      
+      **Recommendations:**
+      1. Upgrade to pgvector 0.6.0+ for high-dimensional embedding support
+      2. Or use `text-embedding-3-small` (1536 dimensions) for broader compatibility
+      3. Vector search will still work without an index, but may be slower for large datasets
+    </Warning>
+
+    ```bash
+    # Recommended for most deployments
+    EMBEDDING_MODEL=text-embedding-3-small
+
+    # Higher quality (requires pgvector >= 0.6.0)
+    EMBEDDING_MODEL=text-embedding-3-large
+    ```
+
+  </Accordion>
+
   <Accordion title="Search Parameters">
     ```bash
     # Similarity threshold (0.0 to 1.0)

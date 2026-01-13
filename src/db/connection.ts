@@ -4,6 +4,7 @@ import entities from './entities/index.js';
 import { registerPostgresVectorType } from './types/postgresVectorType.js';
 import { VectorEmbeddingSubscriber } from './subscribers/VectorEmbeddingSubscriber.js';
 import { getSmartRoutingConfig } from '../utils/smartRouting.js';
+import { createVectorIndex } from '../services/vectorSearchService.js';
 
 // Helper function to create required PostgreSQL extensions
 const createRequiredExtensions = async (dataSource: DataSource): Promise<void> => {
@@ -206,44 +207,19 @@ const performDatabaseInitialization = async (): Promise<DataSource> => {
                 ALTER COLUMN embedding TYPE vector(${dimensions});
               `);
 
-              // Now try to create the index
-              await appDataSource.query(`
-                CREATE INDEX IF NOT EXISTS idx_vector_embeddings_embedding 
-                ON vector_embeddings USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100);
-              `);
-              console.log('Created IVFFlat index for vector similarity search.');
+              // Create appropriate vector index using the helper function
+              const result = await createVectorIndex(appDataSource, dimensions);
+              if (!result.success) {
+                console.log('Continuing without optimized vector index...');
+              }
             } else {
               console.log(
                 'No existing vector data found, skipping index creation - will be handled by vector service.',
               );
             }
           } catch (indexError: any) {
-            console.warn('IVFFlat index creation failed:', indexError.message);
-            console.warn('Trying alternative index type...');
-
-            try {
-              // Try HNSW index instead
-              await appDataSource.query(`
-                CREATE INDEX IF NOT EXISTS idx_vector_embeddings_embedding 
-                ON vector_embeddings USING hnsw (embedding vector_cosine_ops);
-              `);
-              console.log('Created HNSW index for vector similarity search.');
-            } catch (hnswError: any) {
-              // Final fallback to simpler index type
-              console.warn('HNSW index creation failed too. Using simple L2 distance index.');
-
-              try {
-                // Create a basic GIN index as last resort
-                await appDataSource.query(`
-                  CREATE INDEX IF NOT EXISTS idx_vector_embeddings_embedding 
-                  ON vector_embeddings USING gin (embedding);
-                `);
-                console.log('Created GIN index for basic vector lookups.');
-              } catch (ginError: any) {
-                console.warn('All index creation attempts failed:', ginError.message);
-                console.warn('Vector search will be slower without an optimized index.');
-              }
-            }
+            console.warn('Vector index creation failed:', indexError.message);
+            console.warn('Vector search will work but may be slower without an optimized index.');
           }
         } else {
           console.log(
@@ -294,22 +270,10 @@ const performDatabaseInitialization = async (): Promise<DataSource> => {
                   `);
                 console.log('Vector embedding column type updated in final check.');
 
-                // One more attempt at creating the index with dimensions
-                try {
-                  // Drop existing index if any
-                  await appDataSource.query(`
-                      DROP INDEX IF EXISTS idx_vector_embeddings_embedding;
-                    `);
-
-                  // Create new index with proper dimensions
-                  await appDataSource.query(`
-                      CREATE INDEX idx_vector_embeddings_embedding 
-                      ON vector_embeddings USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100);
-                    `);
-                  console.log('Created IVFFlat index in final check.');
-                } catch (indexError: any) {
-                  console.warn('Final index creation attempt did not succeed:', indexError.message);
-                  console.warn('Using basic lookup without vector index.');
+                // Create appropriate vector index using the helper function
+                const result = await createVectorIndex(appDataSource, dimensions);
+                if (!result.success) {
+                  console.log('Continuing without optimized vector index...');
                 }
               } else {
                 console.log(
