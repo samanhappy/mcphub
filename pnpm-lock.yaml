@@ -102,7 +102,7 @@ importers:
         version: 0.3.27(pg@8.16.3)(reflect-metadata@0.2.2)(ts-node@10.9.2(@swc/core@1.15.3)(@types/node@24.6.2)(typescript@5.9.2))
       undici:
         specifier: ^7.16.0
-        version: 7.16.0
+        version: 7.18.2
       uuid:
         specifier: ^11.1.0
         version: 11.1.0
@@ -4456,8 +4456,8 @@ packages:
   undici-types@7.13.0:
     resolution: {integrity: sha512-Ov2Rr9Sx+fRgagJ5AX0qvItZG/JKKoBRAVITs1zk7IqZGTJUwgUr7qoYBpWwakpWilTZFM98rG/AFRocu10iIQ==}
 
-  undici@7.16.0:
-    resolution: {integrity: sha512-QEg3HPMll0o3t2ourKwOeUAZ159Kn9mx5pnzHRQO8+Wixmh88YdZRiIwat0iNzNNXn0yoEtXJqFpyW7eM8BV7g==}
+  undici@7.18.2:
+    resolution: {integrity: sha512-y+8YjDFzWdQlSE9N5nzKMT3g4a5UBX1HKowfdXh0uvAnTaqqwqB92Jt4UXBAeKekDs5IaDKyJFR4X1gYVCgXcw==}
     engines: {node: '>=20.18.1'}
 
   universalify@2.0.1:
@@ -8991,7 +8991,7 @@ snapshots:
 
   undici-types@7.13.0: {}
 
-  undici@7.16.0: {}
+  undici@7.18.2: {}
 
   universalify@2.0.1: {}
 
