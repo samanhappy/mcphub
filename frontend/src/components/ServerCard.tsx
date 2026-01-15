@@ -253,6 +253,21 @@ const ServerCard = ({
             </h2>
             <StatusBadge status={server.status} onAuthClick={handleOAuthAuthorization} />
 
+            {/* Server type badge */}
+            {server.config?.type && (
+              <div className="flex items-center px-2 py-1 bg-gray-100 text-gray-700 rounded-full text-sm">
+                <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M2 5a2 2 0 012-2h12a2 2 0 012 2v10a2 2 0 01-2 2H4a2 2 0 01-2-2V5zm3.293 1.293a1 1 0 011.414 0l3 3a1 1 0 010 1.414l-3 3a1 1 0 01-1.414-1.414L7.586 10 5.293 7.707a1 1 0 010-1.414zM11 12a1 1 0 100 2h3a1 1 0 100-2h-3z" clipRule="evenodd" />
+                </svg>
+                <span>
+                  {server.config.type === 'stdio' && t('server.typeStdio')}
+                  {server.config.type === 'sse' && t('server.typeSse')}
+                  {server.config.type === 'streamable-http' && t('server.typeStreamableHttp')}
+                  {server.config.type === 'openapi' && t('server.typeOpenapi')}
+                </span>
+              </div>
+            )}
+
             {/* Tool count display */}
             <div className="flex items-center px-2 py-1 bg-blue-50 text-blue-700 rounded-full text-sm btn-primary">
               <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
