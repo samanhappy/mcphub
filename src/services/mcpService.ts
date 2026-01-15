@@ -264,6 +264,41 @@ const cleanInputSchema = (schema: any): any => {
 // Store all server information
 let serverInfos: ServerInfo[] = [];
 
+// Normalize and infer server type for safe client display
+const normalizeServerType = (
+  type?: string,
+): 'stdio' | 'sse' | 'streamable-http' | 'openapi' | undefined => {
+  if (!type) return undefined;
+  const allowed = ['stdio', 'sse', 'streamable-http', 'openapi'];
+  return allowed.includes(type) ? (type as any) : undefined;
+};
+
+const inferServerType = (
+  conf?: ServerConfig,
+): 'stdio' | 'sse' | 'streamable-http' | 'openapi' | undefined => {
+  if (!conf) return undefined;
+
+  const normalized = normalizeServerType(conf.type);
+  if (normalized) return normalized;
+
+  // OpenAPI configs should be treated as openapi even when type is omitted
+  if (conf.openapi?.url || conf.openapi?.schema) {
+    return 'openapi';
+  }
+
+  // Streamable HTTP must be explicit; otherwise, fall back to SSE when URL is present
+  if (conf.url) {
+    return conf.type === 'streamable-http' ? 'streamable-http' : 'sse';
+  }
+
+  // Command-based servers default to stdio
+  if (conf.command || (conf.args && conf.args.length > 0)) {
+    return 'stdio';
+  }
+
+  return undefined;
+};
+
 // Returns true if all enabled servers are connected
 export const connected = (): boolean => {
   return serverInfos
@@ -849,6 +884,7 @@ export const getServersInfo = async (
     .map(({ name, status, tools, prompts, createTime, error, oauth }) => {
       const serverConfig = allServers.find((server) => server.name === name);
       const enabled = serverConfig ? serverConfig.enabled !== false : true;
+      const resolvedType = inferServerType(serverConfig);
 
       // Add enabled status and custom description to each tool
       const toolsWithEnabled = tools.map((tool) => {
@@ -884,6 +920,7 @@ export const getServersInfo = async (
               // Don't expose codeVerifier to frontend for security
             }
           : undefined,
+        config: resolvedType ? { type: resolvedType } : undefined,
       };
     });
   // Sorting is now handled at DAO layer for consistent pagination results
