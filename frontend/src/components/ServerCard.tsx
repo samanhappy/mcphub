@@ -255,12 +255,7 @@ const ServerCard = ({
 
             {/* Server type badge */}
             {server.config?.type && (
-              <div className="flex items-center px-2 py-1 bg-gray-100 text-gray-700 rounded-full text-sm">
-                <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                  <path d="M3 6.5A2.5 2.5 0 015.5 4h9A2.5 2.5 0 0117 6.5v1A2.5 2.5 0 0114.5 10h-9A2.5 2.5 0 013 7.5v-1Z" />
-                  <path d="M3 13.5A2.5 2.5 0 015.5 11h9a2.5 2.5 0 012.5 2.5v1A2.5 2.5 0 0114.5 17h-9A2.5 2.5 0 013 14.5v-1Z" />
-                  <path d="M6.75 6.75a.75.75 0 011.5 0 .75.75 0 01-1.5 0Zm0 7a.75.75 0 111.5 0 .75.75 0 01-1.5 0Zm4-7a.75.75 0 111.5 0 .75.75 0 01-1.5 0Zm0 7a.75.75 0 111.5 0 .75.75 0 01-1.5 0Z" />
-                </svg>
+              <div className="flex items-center px-2 py-1 bg-gray-100 text-gray-700 rounded-full text-xs">
                 <span>
                   {server.config.type === 'stdio' && t('server.typeStdio')}
                   {server.config.type === 'sse' && t('server.typeSse')}
