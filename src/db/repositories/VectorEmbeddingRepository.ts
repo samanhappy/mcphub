@@ -173,6 +173,28 @@ export class VectorEmbeddingRepository extends BaseRepository<VectorEmbedding> {
   }
 
   /**
+   * Delete tool embeddings for a specific server
+   * @param serverName Server name
+   * @returns Number of deleted embeddings
+   */
+  async deleteByServerName(serverName: string): Promise<number> {
+    try {
+      const result = await this.repository
+        .createQueryBuilder()
+        .delete()
+        .from(VectorEmbedding)
+        .where('content_type = :contentType', { contentType: 'tool' })
+        .andWhere('content_id LIKE :prefix', { prefix: `${serverName}:%` })
+        .execute();
+
+      return result.affected || 0;
+    } catch (error) {
+      console.error(`Error deleting embeddings for server ${serverName}:`, error);
+      return 0;
+    }
+  }
+
+  /**
    * Map raw database result to entity
    * @param raw Raw database result
    */

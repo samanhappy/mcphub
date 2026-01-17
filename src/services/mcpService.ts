@@ -22,7 +22,7 @@ import { expandEnvVars, replaceEnvVars, getNameSeparator } from '../config/index
 import config from '../config/index.js';
 import { getGroup } from './sseService.js';
 import { getServersInGroup, getServerConfigInGroup } from './groupService.js';
-import { saveToolsAsVectorEmbeddings } from './vectorSearchService.js';
+import { removeServerToolEmbeddings, saveToolsAsVectorEmbeddings } from './vectorSearchService.js';
 import { OpenAPIClient } from '../clients/openapi.js';
 import { RequestContextService } from './requestContextService.js';
 import { getDataService } from './services.js';
@@ -1018,6 +1018,12 @@ export const removeServer = async (
   const result = await getServerDao().delete(name);
   if (!result) {
     return { success: false, message: 'Failed to remove server' };
+  }
+
+  try {
+    await removeServerToolEmbeddings(name);
+  } catch (error) {
+    console.warn(`Failed to remove embeddings for server ${name}:`, error);
   }
 
   serverInfos = serverInfos.filter((serverInfo) => serverInfo.name !== name);

@@ -644,13 +644,24 @@ export const getAllVectorizedTools = async (
  */
 export const removeServerToolEmbeddings = async (serverName: string): Promise<void> => {
   try {
-    const _vectorRepository = getRepositoryFactory(
+    const smartRoutingConfig = await getSmartRoutingConfig();
+    if (!smartRoutingConfig.dbUrl && !process.env.DB_URL) {
+      console.warn(`Skipping embedding cleanup for ${serverName}: DB URL not configured`);
+      return;
+    }
+
+    // Ensure database is initialized before using repository
+    if (!isDatabaseConnected()) {
+      console.info('Database not initialized, initializing...');
+      await initializeDatabase();
+    }
+
+    const vectorRepository = getRepositoryFactory(
       'vectorEmbeddings',
     )() as VectorEmbeddingRepository;
 
-    // Note: This would require adding a delete method to VectorEmbeddingRepository
-    // For now, we'll log that this functionality needs to be implemented
-    console.log(`TODO: Remove tool embeddings for server: ${serverName}`);
+    const removedCount = await vectorRepository.deleteByServerName(serverName);
+    console.log(`Removed ${removedCount} tool embeddings for server: ${serverName}`);
   } catch (error) {
     console.error(`Error removing tool embeddings for server ${serverName}:`, error);
   }
