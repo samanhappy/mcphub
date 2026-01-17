@@ -41,7 +41,7 @@ Some servers expose complete OAuth metadata and allow dynamic client registratio
 Other providers do not support dynamic registration. GitHub’s MCP endpoint (`https://api.githubcopilot.com/mcp/`) is one example. To connect:
 
 1. Create an OAuth App in the provider’s console (for GitHub, go to **Settings → Developer settings → OAuth Apps**).
-2. Set the callback/redirect URL to `http://localhost:3000/oauth/callback` (or your deployed dashboard domain).
+2. Set the callback/redirect URL to `http://localhost:3000/oauth/callback` (or your deployed dashboard domain). Ensure **Settings → Installation → Base URL** matches this domain so MCP requests and OAuth callbacks resolve correctly.
 3. Copy the issued client ID and client secret.
 4. Supply the credentials through the MCPHub dashboard or by editing `mcp_settings.json` as shown below.
 
@@ -101,6 +101,7 @@ You can rely on auto-detection for most servers or declare OAuth settings explic
 ```
 - Use this when the authorization server requires manual client provisioning.
 - `redirectUri` defaults to `http://localhost:3000/oauth/callback`; override it when running behind a custom domain.
+- Keep **Settings → Installation → Base URL** aligned with your deployed domain so the default callback URL is correct.
 
 ### Dynamic Client Registration (RFC 7591)
 ```json

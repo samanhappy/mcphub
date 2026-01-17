@@ -603,7 +603,7 @@
     "npmRegistryDescription": "设置 npm_config_registry 环境变量，用于 NPM 包安装",
     "npmRegistryPlaceholder": "例如: https://registry.npmmirror.com/",
     "baseUrl": "基础地址",
-    "baseUrlDescription": "用于 MCP 请求的基础地址",
+    "baseUrlDescription": "用于 MCP 请求与 OAuth 回调的基础地址",
     "baseUrlPlaceholder": "例如: http://localhost:3000",
     "installConfig": "安装配置",
     "systemConfigUpdated": "系统配置更新成功",

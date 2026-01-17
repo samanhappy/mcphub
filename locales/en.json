@@ -601,7 +601,7 @@
     "npmRegistryDescription": "Set npm_config_registry environment variable for NPM package installation",
     "npmRegistryPlaceholder": "e.g. https://registry.npmjs.org/",
     "baseUrl": "Base URL",
-    "baseUrlDescription": "Base URL for MCP requests",
+    "baseUrlDescription": "Base URL for MCP requests and OAuth callbacks",
     "baseUrlPlaceholder": "e.g. http://localhost:3000",
     "installConfig": "Installation",
     "systemConfigUpdated": "System configuration updated successfully",

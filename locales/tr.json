@@ -602,7 +602,7 @@
     "npmRegistryDescription": "NPM paket kurulumu için npm_config_registry ortam değişkenini ayarla",
     "npmRegistryPlaceholder": "örn. https://registry.npmjs.org/",
     "baseUrl": "Temel URL",
-    "baseUrlDescription": "MCP istekleri için temel URL",
+    "baseUrlDescription": "MCP istekleri ve OAuth geri çağrıları için temel URL",
     "baseUrlPlaceholder": "örn. http://localhost:3000",
     "installConfig": "Kurulum",
     "systemConfigUpdated": "Sistem yapılandırması başarıyla güncellendi",

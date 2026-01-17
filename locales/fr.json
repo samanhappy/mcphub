@@ -602,7 +602,7 @@
     "npmRegistryDescription": "Définir la variable d'environnement npm_config_registry pour l'installation de paquets NPM",
     "npmRegistryPlaceholder": "ex. https://registry.npmjs.org/",
     "baseUrl": "URL de base",
-    "baseUrlDescription": "URL de base pour les requêtes MCP",
+    "baseUrlDescription": "URL de base pour les requêtes MCP et les callbacks OAuth",
     "baseUrlPlaceholder": "ex. http://localhost:3000",
     "installConfig": "Installation",
     "systemConfigUpdated": "Configuration système mise à jour avec succès",

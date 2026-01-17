@@ -41,7 +41,7 @@
 另有一些服务端并不支持动态注册。GitHub 的 MCP 端点（`https://api.githubcopilot.com/mcp/`）就是典型例子，接入步骤如下：
 
 1. 在服务提供商控制台创建 OAuth 应用（GitHub 路径为 **Settings → Developer settings → OAuth Apps**）。
-2. 将回调/重定向地址设置为 `http://localhost:3000/oauth/callback`（或你的部署域名）。
+2. 将回调/重定向地址设置为 `http://localhost:3000/oauth/callback`（或你的部署域名）。同时请确保 **设置 → 安装 → 基础地址** 与该域名一致，用于 MCP 请求与 OAuth 回调。
 3. 复制生成的 Client ID 与 Client Secret。
 4. 通过 MCPHub 控制台或直接编辑 `mcp_settings.json` 写入如下配置。
 
@@ -101,6 +101,7 @@
 ```
 - 适用于需要手动注册客户端的授权服务器。
 - `redirectUri` 默认是 `http://localhost:3000/oauth/callback`，如在自定义域部署请同步更新。
+- 同时确保 **设置 → 安装 → 基础地址** 与部署域名一致，以保证默认回调地址正确。
 
 ### 动态客户端注册（RFC 7591）
 ```json
