@@ -35,6 +35,7 @@ export const authInterceptor: FetchInterceptor = {
       config: {
         ...config,
         headers,
+        credentials: config.credentials ?? 'include',
       },
     };
   },

@@ -6,6 +6,7 @@ import {
 } from '../types';
 import { apiPost, apiGet } from '../utils/fetchInterceptor';
 import { getToken, setToken, removeToken } from '../utils/interceptors';
+import { authClient } from './betterAuthClient';
 
 // Export token management functions
 export { getToken, setToken, removeToken };
@@ -80,6 +81,20 @@ export const getCurrentUser = async (): Promise<AuthResponse> => {
   }
 };
 
+// Get current user via Better Auth session
+export const getBetterAuthUser = async (): Promise<AuthResponse> => {
+  try {
+    const response = await apiGet<AuthResponse>('/better-auth/user');
+    return response;
+  } catch (error) {
+    console.error('Get Better Auth user error:', error);
+    return {
+      success: false,
+      message: 'An error occurred while fetching user data',
+    };
+  }
+};
+
 // Change password
 export const changePassword = async (
   credentials: ChangePasswordCredentials,
@@ -108,4 +123,7 @@ export const changePassword = async (
 // Logout user
 export const logout = (): void => {
   removeToken();
+  authClient.signOut().catch((error) => {
+    console.debug('Better Auth sign out failed:', error);
+  });
 };

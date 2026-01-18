@@ -7,6 +7,21 @@ import { getToken } from '../models/OAuth.js';
 import { isOAuthServerEnabled } from '../services/oauthServerService.js';
 import { getBearerKeyDao } from '../dao/index.js';
 import { BearerKey } from '../types/index.js';
+import { getBetterAuthRuntimeConfig } from '../services/betterAuthConfig.js';
+
+const isTestEnv =
+  process.env.NODE_ENV === 'test' ||
+  process.env.JEST_WORKER_ID !== undefined ||
+  process.env.VITEST_WORKER_ID !== undefined;
+
+const resolveBetterAuthUserSafe = async (req: Request) => {
+  if (isTestEnv) {
+    return null;
+  }
+
+  const module = await import('../services/betterAuthSession.js');
+  return module.resolveBetterAuthUser(req);
+};
 
 const validateBearerAuth = async (req: Request): Promise<boolean> => {
   const bearerKeyDao = getBearerKeyDao();
@@ -98,6 +113,19 @@ export const auth = async (req: Request, res: Response, next: NextFunction): Pro
         isAdmin: user?.isAdmin || false,
       };
       (req as any).oauthToken = oauthToken;
+      next();
+      return;
+    }
+  }
+
+  const betterAuthConfig = getBetterAuthRuntimeConfig();
+  if (betterAuthConfig.enabled) {
+    const betterAuthUser = await resolveBetterAuthUserSafe(req);
+    if (betterAuthUser) {
+      (req as any).user = {
+        username: betterAuthUser.username,
+        isAdmin: betterAuthUser.isAdmin || false,
+      };
       next();
       return;
     }

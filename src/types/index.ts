@@ -149,6 +149,19 @@ export interface OAuthProviderConfig {
   }>;
 }
 
+export interface BetterAuthProviderToggle {
+  enabled?: boolean; // Enable/disable the provider
+}
+
+export interface BetterAuthConfig {
+  enabled?: boolean; // Enable/disable Better Auth integration
+  basePath?: string; // Base path to mount Better Auth handler
+  providers?: {
+    google?: BetterAuthProviderToggle;
+    github?: BetterAuthProviderToggle;
+  };
+}
+
 export interface SystemConfig {
   routing?: {
     enableGlobalRoute?: boolean; // Controls whether the /sse endpoint without group is enabled
@@ -173,6 +186,9 @@ export interface SystemConfig {
   oauth?: OAuthProviderConfig; // OAuth provider configuration for upstream MCP servers
   oauthServer?: OAuthServerConfig; // OAuth authorization server configuration for MCPHub itself
   enableSessionRebuild?: boolean; // Controls whether server session rebuild is enabled
+  auth?: {
+    betterAuth?: BetterAuthConfig; // Better Auth integration configuration
+  };
 }
 
 export interface UserConfig {

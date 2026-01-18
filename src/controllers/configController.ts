@@ -14,6 +14,7 @@ import {
   getUserDao,
   getBearerKeyDao,
 } from '../dao/DaoFactory.js';
+import { getBetterAuthRuntimeConfig } from '../services/betterAuthConfig.js';
 
 const dataService: DataService = getDataService();
 
@@ -72,6 +73,7 @@ export const getPublicConfig = (req: Request, res: Response): void => {
       data: {
         skipAuth,
         permissions,
+        betterAuth: getBetterAuthRuntimeConfig(),
       },
     });
   } catch (error) {

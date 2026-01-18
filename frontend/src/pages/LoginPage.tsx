@@ -1,8 +1,11 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../contexts/AuthContext';
 import { getToken } from '../services/authService';
+import { getPublicConfig } from '../services/configService';
+import { createBetterAuthClient } from '../services/betterAuthClient';
+import { getBasePath } from '../utils/runtime';
 import ThemeSwitch from '@/components/ui/ThemeSwitch';
 import LanguageSwitch from '@/components/ui/LanguageSwitch';
 import DefaultPasswordWarningModal from '@/components/ui/DefaultPasswordWarningModal';
@@ -35,8 +38,15 @@ const LoginPage: React.FC = () => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [socialLoading, setSocialLoading] = useState<'google' | 'github' | null>(null);
+  const [socialError, setSocialError] = useState<string | null>(null);
+  const [betterAuthBasePath, setBetterAuthBasePath] = useState<string | undefined>(undefined);
+  const [socialProviders, setSocialProviders] = useState({
+    google: false,
+    github: false,
+  });
   const [showDefaultPasswordWarning, setShowDefaultPasswordWarning] = useState(false);
-  const { login } = useAuth();
+  const { login, auth } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const returnUrl = useMemo(() => {
@@ -96,9 +106,35 @@ const LoginPage: React.FC = () => {
     }
   }, [buildRedirectTarget, navigate, returnUrl]);
 
+  useEffect(() => {
+    if (!auth.loading && auth.isAuthenticated) {
+      redirectAfterLogin();
+    }
+  }, [auth.isAuthenticated, auth.loading, redirectAfterLogin]);
+
+  useEffect(() => {
+    const loadAuthProviders = async () => {
+      const publicConfig = await getPublicConfig();
+      const betterAuth = publicConfig.betterAuth;
+      if (!betterAuth?.enabled) {
+        setSocialProviders({ google: false, github: false });
+        return;
+      }
+
+      setBetterAuthBasePath(betterAuth.basePath);
+      setSocialProviders({
+        google: betterAuth.providers?.google?.enabled === true,
+        github: betterAuth.providers?.github?.enabled === true,
+      });
+    };
+
+    loadAuthProviders();
+  }, []);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setSocialError(null);
     setLoading(true);
 
     try {
@@ -134,6 +170,23 @@ const LoginPage: React.FC = () => {
       }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSocialLogin = async (provider: 'google' | 'github') => {
+    setSocialError(null);
+    setSocialLoading(provider);
+    try {
+      const client = createBetterAuthClient(betterAuthBasePath);
+      await client.signIn.social({
+        provider,
+        callbackURL: returnUrl || '/',
+        errorCallbackURL: `${getBasePath()}/login`,
+      });
+    } catch (err) {
+      console.error('Social login error:', err);
+      setSocialError(t('auth.socialLoginFailed'));
+      setSocialLoading(null);
     }
   };
 
@@ -245,6 +298,47 @@ const LoginPage: React.FC = () => {
                 </button>
               </div>
             </form>
+
+            {(socialProviders.google || socialProviders.github) && (
+              <div className="mt-6 space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className="h-px flex-1 bg-gray-200/80 dark:bg-gray-700/80" />
+                  <span className="text-xs uppercase tracking-widest text-gray-500 dark:text-gray-400">
+                    {t('auth.orContinue')}
+                  </span>
+                  <div className="h-px flex-1 bg-gray-200/80 dark:bg-gray-700/80" />
+                </div>
+
+                {socialError && (
+                  <div className="error-box rounded border border-red-500/20 bg-red-500/10 p-2 text-center text-sm text-red-600 dark:text-red-400">
+                    {socialError}
+                  </div>
+                )}
+
+                <div className="space-y-3">
+                  {socialProviders.google && (
+                    <button
+                      type="button"
+                      onClick={() => handleSocialLogin('google')}
+                      disabled={socialLoading !== null}
+                      className="flex w-full items-center justify-center gap-2 rounded-md border border-gray-200 bg-white/80 px-4 py-2 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-70 dark:border-gray-700 dark:bg-gray-900/70 dark:text-gray-200"
+                    >
+                      {socialLoading === 'google' ? t('auth.loggingIn') : t('auth.loginWithGoogle')}
+                    </button>
+                  )}
+                  {socialProviders.github && (
+                    <button
+                      type="button"
+                      onClick={() => handleSocialLogin('github')}
+                      disabled={socialLoading !== null}
+                      className="flex w-full items-center justify-center gap-2 rounded-md border border-gray-200 bg-gray-900 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-70 dark:border-gray-700"
+                    >
+                      {socialLoading === 'github' ? t('auth.loggingIn') : t('auth.loginWithGithub')}
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

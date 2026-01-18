@@ -31,6 +31,7 @@ export class SystemConfigRepository {
         nameSeparator: '-',
         oauth: {},
         oauthServer: {},
+        auth: {},
         enableSessionRebuild: false,
       });
       config = await this.repository.save(config);

@@ -116,6 +116,7 @@ export async function migrateToDatabase(): Promise<boolean> {
         nameSeparator: settings.systemConfig.nameSeparator,
         oauth: settings.systemConfig.oauth || {},
         oauthServer: settings.systemConfig.oauthServer || {},
+        auth: settings.systemConfig.auth || {},
         enableSessionRebuild: settings.systemConfig.enableSessionRebuild,
       };
       await systemConfigRepo.update(systemConfig);

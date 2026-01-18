@@ -46,7 +46,12 @@ export class AppServer {
 
   constructor() {
     this.app = express();
-    this.app.use(cors());
+    this.app.use(
+      cors({
+        origin: true,
+        credentials: true,
+      }),
+    );
     this.port = config.port;
     this.basePath = config.basePath;
   }
@@ -74,7 +79,7 @@ export class AppServer {
       await initOAuthServer();
 
       initMiddlewares(this.app);
-      initRoutes(this.app);
+      await initRoutes(this.app);
       console.log('Server initialized successfully');
 
       initUpstreamServers()

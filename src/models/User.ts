@@ -2,6 +2,30 @@ import bcrypt from 'bcryptjs';
 import { IUser } from '../types/index.js';
 import { getUserDao } from '../dao/index.js';
 
+const isDuplicateUserError = (error: unknown): boolean => {
+  if (!error || typeof error !== 'object') {
+    return false;
+  }
+
+  const err = error as {
+    code?: string;
+    message?: string;
+    driverError?: { code?: string; detail?: string; message?: string };
+  };
+
+  if (err.code === '23505' || err.driverError?.code === '23505') {
+    return true;
+  }
+
+  const message = `${err.message || ''} ${err.driverError?.message || ''} ${
+    err.driverError?.detail || ''
+  }`
+    .toLowerCase()
+    .trim();
+
+  return message.includes('already exists') || message.includes('duplicate');
+};
+
 // Get all users
 export const getUsers = async (): Promise<IUser[]> => {
   try {
@@ -23,7 +47,9 @@ export const createUser = async (userData: IUser): Promise<IUser | null> => {
       userData.isAdmin,
     );
   } catch (error) {
-    console.error('Error creating user:', error);
+    if (!isDuplicateUserError(error)) {
+      console.error('Error creating user:', error);
+    }
     return null;
   }
 };

@@ -30,6 +30,9 @@ export class SystemConfig {
   @Column({ type: 'simple-json', nullable: true })
   oauthServer?: Record<string, any>;
 
+  @Column({ type: 'simple-json', nullable: true })
+  auth?: Record<string, any>;
+
   @Column({ type: 'boolean', nullable: true })
   enableSessionRebuild?: boolean;
 

@@ -76,6 +76,7 @@ import { callTool } from '../controllers/toolController.js';
 import { getPrompt } from '../controllers/promptController.js';
 import { uploadDxtFile, uploadMiddleware } from '../controllers/dxtController.js';
 import { healthCheck } from '../controllers/healthController.js';
+import { getBetterAuthUser } from '../controllers/betterAuthController.js';
 import {
   getOpenAPISpec,
   getOpenAPIServers,
@@ -121,10 +122,28 @@ import {
   deleteOldActivities,
 } from '../controllers/activityController.js';
 import { auth } from '../middlewares/auth.js';
+import { getBetterAuthRuntimeConfig } from '../services/betterAuthConfig.js';
 
 const router = express.Router();
 
-export const initRoutes = (app: express.Application): void => {
+export const initRoutes = async (app: express.Application): Promise<void> => {
+  const isTestEnv =
+    process.env.NODE_ENV === 'test' ||
+    process.env.JEST_WORKER_ID !== undefined ||
+    process.env.VITEST_WORKER_ID !== undefined;
+  const betterAuthConfig = getBetterAuthRuntimeConfig();
+
+  if (betterAuthConfig.enabled && !isTestEnv) {
+    const [{ auth: betterAuth, ensureBetterAuthSchema }, { toNodeHandler }] = await Promise.all([
+      import('../betterAuth.js'),
+      import('better-auth/node'),
+    ]);
+    await ensureBetterAuthSchema();
+    const betterAuthPath = `${config.basePath}${betterAuthConfig.basePath}`;
+    app.all(`${betterAuthPath}`, toNodeHandler(betterAuth));
+    app.all(`${betterAuthPath}/*`, toNodeHandler(betterAuth));
+  }
+
   // Health check endpoint (no auth required, accessible at /health)
   app.get('/health', healthCheck);
 
@@ -258,6 +277,8 @@ export const initRoutes = (app: express.Application): void => {
   router.get('/mcp-settings/export', getMcpSettingsJson);
 
   // Auth routes - move to router instead of app directly
+  router.get('/better-auth/user', getBetterAuthUser);
+
   router.post(
     '/auth/login',
     [

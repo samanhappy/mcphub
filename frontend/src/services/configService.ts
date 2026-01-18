@@ -21,6 +21,33 @@ export interface SystemConfig {
     openaiApiEmbeddingModel?: string;
   };
   nameSeparator?: string;
+  auth?: {
+    betterAuth?: {
+      enabled?: boolean;
+      basePath?: string;
+      providers?: {
+        google?: {
+          enabled?: boolean;
+        };
+        github?: {
+          enabled?: boolean;
+        };
+      };
+    };
+  };
+}
+
+interface BetterAuthConfig {
+  enabled?: boolean;
+  basePath?: string;
+  providers?: {
+    google?: {
+      enabled?: boolean;
+    };
+    github?: {
+      enabled?: boolean;
+    };
+  };
 }
 
 export interface PublicConfigResponse {
@@ -28,6 +55,7 @@ export interface PublicConfigResponse {
   data?: {
     skipAuth?: boolean;
     permissions?: any;
+    betterAuth?: BetterAuthConfig;
   };
   message?: string;
 }
@@ -43,7 +71,11 @@ export interface SystemConfigResponse {
 /**
  * Get public configuration (skipAuth setting) without authentication
  */
-export const getPublicConfig = async (): Promise<{ skipAuth: boolean; permissions?: any }> => {
+export const getPublicConfig = async (): Promise<{
+  skipAuth: boolean;
+  permissions?: any;
+  betterAuth?: BetterAuthConfig;
+}> => {
   try {
     const basePath = getBasePath();
     const response = await fetchWithInterceptors(`${basePath}/public-config`, {
@@ -55,7 +87,11 @@ export const getPublicConfig = async (): Promise<{ skipAuth: boolean; permission
 
     if (response.ok) {
       const data: PublicConfigResponse = await response.json();
-      return { skipAuth: data.data?.skipAuth === true, permissions: data.data?.permissions || {} };
+      return {
+        skipAuth: data.data?.skipAuth === true,
+        permissions: data.data?.permissions || {},
+        betterAuth: data.data?.betterAuth,
+      };
     }
 
     return { skipAuth: false };
@@ -97,5 +133,3 @@ export const shouldSkipAuth = async (): Promise<boolean> => {
     return false;
   }
 };
-
-

@@ -22,6 +22,7 @@ export class SystemConfigDaoDbImpl implements SystemConfigDao {
       nameSeparator: config.nameSeparator,
       oauth: config.oauth as any,
       oauthServer: config.oauthServer as any,
+      auth: config.auth as any,
       enableSessionRebuild: config.enableSessionRebuild,
     };
   }
@@ -36,6 +37,7 @@ export class SystemConfigDaoDbImpl implements SystemConfigDao {
       nameSeparator: updated.nameSeparator,
       oauth: updated.oauth as any,
       oauthServer: updated.oauthServer as any,
+      auth: updated.auth as any,
       enableSessionRebuild: updated.enableSessionRebuild,
     };
   }
@@ -50,6 +52,7 @@ export class SystemConfigDaoDbImpl implements SystemConfigDao {
       nameSeparator: config.nameSeparator,
       oauth: config.oauth as any,
       oauthServer: config.oauthServer as any,
+      auth: config.auth as any,
       enableSessionRebuild: config.enableSessionRebuild,
     };
   }

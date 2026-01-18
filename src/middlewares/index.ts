@@ -3,6 +3,7 @@ import { auth } from './auth.js';
 import { userContextMiddleware } from './userContext.js';
 import { i18nMiddleware } from './i18n.js';
 import config from '../config/index.js';
+import { getBetterAuthRuntimeConfig } from '../services/betterAuthConfig.js';
 
 export const errorHandler = (
   err: Error,
@@ -26,9 +27,11 @@ export const initMiddlewares = (app: express.Application): void => {
 
   app.use((req, res, next) => {
     const basePath = config.basePath;
+    const betterAuthPath = `${basePath}${getBetterAuthRuntimeConfig().basePath}`;
     // Only apply JSON parsing for API and auth routes, not for SSE or message endpoints
     // TODO exclude sse responses by mcp endpoint
     if (
+      !req.path.startsWith(betterAuthPath) &&
       req.path !== `${basePath}/sse` &&
       !req.path.startsWith(`${basePath}/sse/`) &&
       req.path !== `${basePath}/messages` &&
@@ -48,7 +51,11 @@ export const initMiddlewares = (app: express.Application): void => {
   // Protect API routes with authentication middleware, but exclude auth endpoints
   app.use(`${config.basePath}/api`, (req, res, next) => {
     // Skip authentication for login endpoint
-    if (req.path === '/auth/login') {
+    if (
+      req.path === '/auth/login' ||
+      req.path.startsWith('/auth/better') ||
+      req.path.startsWith('/better-auth')
+    ) {
       next();
     } else {
       // Apply authentication middleware first

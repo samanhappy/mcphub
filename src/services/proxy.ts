@@ -45,21 +45,36 @@ export interface ProxyConfig {
  * @returns A fetch-compatible function configured to use the specified proxies
  *
  */
-export function createFetchWithProxy(config: ProxyConfig): FetchLike {
+export function createFetchWithProxy(
+  config: ProxyConfig,
+  baseFetch: typeof fetch = fetch,
+): FetchLike {
   // If no proxy is configured, return the default fetch
   if (!config.httpProxy && !config.httpsProxy) {
-    return fetch;
+    return baseFetch as FetchLike;
   }
 
   // Parse no_proxy list
   const noProxyList = parseNoProxy(config.noProxy);
 
-  return async (url: string | URL, init?: RequestInit): Promise<Response> => {
-    const targetUrl = typeof url === 'string' ? new URL(url) : url;
+  return (async (url: string | URL | Request, init?: RequestInit): Promise<Response> => {
+    let targetUrl: URL;
+    let fetchInput: string | URL | Request;
+
+    if (url instanceof Request) {
+      targetUrl = new URL(url.url);
+      fetchInput = url;
+    } else if (typeof url === 'string') {
+      targetUrl = new URL(url);
+      fetchInput = url;
+    } else {
+      targetUrl = url;
+      fetchInput = url;
+    }
 
     // Check if host should bypass proxy
     if (shouldBypassProxy(targetUrl.hostname, noProxyList)) {
-      return fetch(url, init);
+      return baseFetch(fetchInput, init);
     }
 
     // Determine which proxy to use based on protocol
@@ -67,7 +82,7 @@ export function createFetchWithProxy(config: ProxyConfig): FetchLike {
 
     if (!proxyUrl) {
       // No proxy configured for this protocol
-      return fetch(url, init);
+      return baseFetch(fetchInput, init);
     }
 
     // Use undici for proxy support if available
@@ -79,7 +94,7 @@ export function createFetchWithProxy(config: ProxyConfig): FetchLike {
       const ProxyAgent = (undici as any).ProxyAgent;
       const dispatcher = new ProxyAgent(proxyUrl);
 
-      return fetch(url, {
+      return baseFetch(fetchInput, {
         ...init,
         // @ts-expect-error - dispatcher is undici-specific
         dispatcher,
@@ -92,7 +107,7 @@ export function createFetchWithProxy(config: ProxyConfig): FetchLike {
           `Original error: ${error instanceof Error ? error.message : String(error)}`,
       );
     }
-  };
+  }) as FetchLike;
 }
 
 /**
