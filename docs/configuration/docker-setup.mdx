@@ -13,14 +13,14 @@ This guide covers deploying MCPHub using Docker, including development and produ
 
 ```bash
 # Pull the latest image
-docker pull mcphub/mcphub:latest
+docker pull samanhappy/mcphub:latest
 
 # Run with default configuration
 docker run -d \
   --name mcphub \
   -p 3000:3000 \
   -v $(pwd)/mcp_settings.json:/app/mcp_settings.json \
-  mcphub/mcphub:latest
+  samanhappy/mcphub:latest
 ```
 
 ### Building from Source
@@ -96,7 +96,7 @@ version: '3.8'
 
 services:
   mcphub:
-    image: mcphub/mcphub:latest
+    image: samanhappy/mcphub:latest
     # For local development, use:
     # build: .
     container_name: mcphub
@@ -171,7 +171,7 @@ services:
       - mcphub-network
 
   mcphub:
-    image: mcphub/mcphub:latest
+    image: samanhappy/mcphub:latest
     container_name: mcphub-app
     expose:
       - '3000'
@@ -421,7 +421,7 @@ version: '3.8'
 
 services:
   mcphub:
-    image: mcphub/mcphub:latest
+    image: samanhappy/mcphub:latest
     environment:
       - JWT_SECRET_FILE=/run/secrets/jwt_secret
       - DATABASE_PASSWORD_FILE=/run/secrets/db_password

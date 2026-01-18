@@ -13,14 +13,14 @@ description: '使用 Docker 和 Docker Compose 部署 MCPHub'
 
 ```bash
 # 拉取最新镜像
-docker pull mcphub/mcphub:latest
+docker pull samanhappy/mcphub:latest
 
 # 使用默认配置运行
 docker run -d \
   --name mcphub \
   -p 3000:3000 \
   -v $(pwd)/mcp_settings.json:/app/mcp_settings.json \
-  mcphub/mcphub:latest
+  samanhappy/mcphub:latest
 ```
 
 ### 从源码构建
@@ -96,7 +96,7 @@ version: '3.8'
 
 services:
   mcphub:
-    image: mcphub/mcphub:latest
+    image: samanhappy/mcphub:latest
     # 本地开发时使用：
     # build: .
     container_name: mcphub
@@ -171,7 +171,7 @@ services:
       - mcphub-network
 
   mcphub:
-    image: mcphub/mcphub:latest
+    image: samanhappy/mcphub:latest
     container_name: mcphub-app
     expose:
       - '3000'
@@ -421,7 +421,7 @@ version: '3.8'
 
 services:
   mcphub:
-    image: mcphub/mcphub:latest
+    image: samanhappy/mcphub:latest
     environment:
       - JWT_SECRET_FILE=/run/secrets/jwt_secret
       - DATABASE_PASSWORD_FILE=/run/secrets/db_password
