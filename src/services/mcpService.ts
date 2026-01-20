@@ -1224,7 +1224,7 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
         throw new Error('toolName parameter is required');
       }
 
-      const { arguments: toolArgs = {} } = request.params.arguments || {};
+      const { arguments: toolArgs } = request.params.arguments || {};
       let targetServerInfo: ServerInfo | undefined;
       if (extra && extra.server) {
         targetServerInfo = getServerByName(extra.server);
@@ -1254,8 +1254,7 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
         const openApiClient = targetServerInfo.openApiClient;
 
         // Use toolArgs if it has properties, otherwise fallback to request.params.arguments
-        const finalArgs =
-          toolArgs && Object.keys(toolArgs).length > 0 ? toolArgs : request.params.arguments || {};
+        const finalArgs = toolArgs && typeof toolArgs === 'object' ? toolArgs : {};
 
         console.log(
           `Invoking OpenAPI tool '${toolName}' on server '${targetServerInfo.name}' with arguments: ${JSON.stringify(finalArgs)}`,
@@ -1330,8 +1329,7 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
       }
 
       // Use toolArgs if it has properties, otherwise fallback to request.params.arguments
-      const finalArgs =
-        toolArgs && Object.keys(toolArgs).length > 0 ? toolArgs : request.params.arguments || {};
+      const finalArgs = toolArgs && typeof toolArgs === 'object' ? toolArgs : {};
 
       console.log(
         `Invoking tool '${toolName}' on server '${targetServerInfo.name}' with arguments: ${JSON.stringify(finalArgs)}`,
