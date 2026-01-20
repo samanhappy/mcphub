@@ -1,5 +1,3 @@
-import { describe, it, expect, jest, beforeEach } from '@jest/globals';
-
 // Mock dependencies before importing mcpService
 jest.mock('../../src/services/oauthService.js', () => ({
   initializeAllOAuthClients: jest.fn(),
