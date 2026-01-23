@@ -18,6 +18,7 @@ MCPHub facilite la gestion et la mise à l'échelle de plusieurs serveurs MCP (M
 - **Routage intelligent** - Découverte d'outils propulsée par IA utilisant la recherche sémantique vectorielle ([En savoir plus](https://docs.mcphubx.com/features/smart-routing))
 - **Configuration à chaud** - Ajoutez, supprimez ou mettez à jour les serveurs sans temps d'arrêt
 - **Support OAuth 2.0** - Modes client et serveur pour une authentification sécurisée ([En savoir plus](https://docs.mcphubx.com/features/oauth))
+- **Connexion Sociale** - Support de connexion GitHub et Google via Better Auth (nécessite le mode Base de données)
 - **Mode Base de données** - Stockez la configuration dans PostgreSQL pour les environnements de production ([En savoir plus](https://docs.mcphubx.com/configuration/database-configuration))
 - **Prêt pour Docker** - Déployez instantanément avec la configuration conteneurisée
 

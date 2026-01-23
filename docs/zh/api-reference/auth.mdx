@@ -145,3 +145,29 @@ import { Card, Cards } from 'mintlify';
     "message": "密码更新成功"
   }
   ```
+
+---
+
+### 社交登录 (Better Auth)
+
+MCPHub 通过集成 [Better Auth](https://www.better-auth.com/) 支持社交登录功能（GitHub, Google 等）。
+
+**前提条件**:
+1.  **数据库模式**: 必须配置 `DB_URL` 环境变量（Better Auth 需要 PostgreSQL 进行数据持久化）。
+2.  **提供商配置**:
+    *   **GitHub**: 设置 `GITHUB_CLIENT_ID` 和 `GITHUB_CLIENT_SECRET`。
+    *   **Google**: 设置 `GOOGLE_CLIENT_ID` 和 `GOOGLE_CLIENT_SECRET`。
+
+**端点**:
+Better Auth API 挂载在 `/api/auth/better`。主要端点包括：
+
+- **发起登录**:
+  - `GET /api/auth/better/signIn/social?provider=github`
+  - `GET /api/auth/better/signIn/social?provider=google`
+
+- **会话管理**:
+  - `GET /api/auth/better/session` (获取当前会话)
+  - `POST /api/auth/better/signOut` (登出)
+
+如需完整的端点列表和使用详情，请参阅 [Better Auth API 文档](https://www.better-auth.com/docs)。
+

@@ -145,3 +145,29 @@ Allows the authenticated user to change their password.
     "message": "Password updated successfully"
   }
   ```
+
+---
+
+### Social Login (Better Auth)
+
+MCPHub integrates [Better Auth](https://www.better-auth.com/) to provide seamless social login capabilities (GitHub, Google, etc.).
+
+**Prerequisites**:
+1.  **Database Mode**: `DB_URL` environment variable must be configured (PostgreSQL is required for Better Auth persistence).
+2.  **Provider Configuration**:
+    *   **GitHub**: Set `GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET`.
+    *   **Google**: Set `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`.
+
+**Endpoints**:
+The Better Auth API is mounted at `/api/auth/better`. Key endpoints include:
+
+- **Initiate Login**:
+  - `GET /api/auth/better/signIn/social?provider=github`
+  - `GET /api/auth/better/signIn/social?provider=google`
+
+- **Session Management**:
+  - `GET /api/auth/better/session` (Get current session)
+  - `POST /api/auth/better/signOut` (Sign out)
+
+For a complete list of endpoints and usage details, refer to the [Better Auth API Documentation](https://www.better-auth.com/docs).
+
