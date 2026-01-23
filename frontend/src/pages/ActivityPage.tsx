@@ -96,6 +96,17 @@ const ActivityPage: React.FC = () => {
     fetchData();
   }, [fetchData]);
 
+  useEffect(() => {
+    if (!pagination) {
+      return;
+    }
+
+    const totalPages = Math.max(1, pagination.totalPages || 1);
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [pagination, currentPage]);
+
   // Handle view activity details
   const handleViewDetails = async (activity: Activity) => {
     try {

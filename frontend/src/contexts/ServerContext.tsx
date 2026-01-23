@@ -297,6 +297,17 @@ export const ServerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     };
   }, [refreshKey, t, isInitialLoading, startNormalPolling, currentPage, serversPerPage]);
 
+  useEffect(() => {
+    if (!pagination) {
+      return;
+    }
+
+    const totalPages = Math.max(1, pagination.totalPages || 1);
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [pagination, currentPage]);
+
   // Manually trigger refresh (always refreshes)
   const triggerRefresh = useCallback(() => {
     // Clear current timer
