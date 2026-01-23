@@ -59,10 +59,12 @@ if (!databaseUrl) {
   throw new Error('DB_URL is required for Better Auth PostgreSQL storage.');
 }
 
+const pool = new Pool({
+  connectionString: databaseUrl,
+});
+
 const database = new PostgresDialect({
-  pool: new Pool({
-    connectionString: databaseUrl,
-  }),
+  pool,
 });
 
 const authOptions: BetterAuthOptions = {
@@ -84,6 +86,46 @@ const authOptions: BetterAuthOptions = {
 
 export const auth = betterAuth(authOptions);
 
+const extractMigrationTableName = (entry: unknown): string | null => {
+  if (typeof entry === 'string') {
+    return entry;
+  }
+  if (!entry || typeof entry !== 'object') {
+    return null;
+  }
+  const record = entry as Record<string, unknown>;
+  const candidate = record.tableName ?? record.table ?? record.name;
+  return typeof candidate === 'string' ? candidate : null;
+};
+
+const resolveCurrentSchema = async (): Promise<string> => {
+  try {
+    const result = await pool.query<{ schema: string }>('select current_schema() as schema');
+    return result.rows[0]?.schema || 'public';
+  } catch {
+    return 'public';
+  }
+};
+
+const listExistingTables = async (schema: string, tableNames: string[]): Promise<Set<string>> => {
+  if (!tableNames.length) {
+    return new Set();
+  }
+  const result = await pool.query<{ table_name: string }>(
+    'select table_name from information_schema.tables where table_schema = $1 and table_name = any($2)',
+    [schema, tableNames],
+  );
+  return new Set(result.rows.map((row) => row.table_name));
+};
+
+const isRelationAlreadyExistsError = (error: unknown): boolean => {
+  if (!error || typeof error !== 'object') {
+    return false;
+  }
+  const message = String((error as { message?: string }).message ?? '');
+  return /relation\s+".*"\s+already\s+exists/i.test(message);
+};
+
 export const ensureBetterAuthSchema = async (): Promise<void> => {
   if (!getBetterAuthRuntimeConfig().enabled) {
     return;
@@ -92,8 +134,35 @@ export const ensureBetterAuthSchema = async (): Promise<void> => {
   const { getMigrations } = await import('better-auth/db');
   const { toBeCreated, toBeAdded, runMigrations } = await getMigrations(authOptions);
 
-  if (toBeCreated.length || toBeAdded.length) {
+  if (!toBeCreated.length && !toBeAdded.length) {
+    return;
+  }
+
+  if (toBeCreated.length) {
+    const tableNames = toBeCreated
+      .map((entry) => extractMigrationTableName(entry))
+      .filter((tableName): tableName is string => Boolean(tableName));
+    if (tableNames.length === toBeCreated.length) {
+      const schema = await resolveCurrentSchema();
+      const existingTables = await listExistingTables(schema, tableNames);
+      const allTablesExist = tableNames.every((tableName) => existingTables.has(tableName));
+      if (allTablesExist && !toBeAdded.length) {
+        console.warn(
+          `[better-auth] Detected existing tables in schema "${schema}"; skipping migrations.`,
+        );
+        return;
+      }
+    }
+  }
+
+  try {
     await runMigrations();
+  } catch (error) {
+    if (isRelationAlreadyExistsError(error)) {
+      console.warn('[better-auth] Migration skipped due to existing relations.', error);
+      return;
+    }
+    throw error;
   }
 };
 export { betterAuthRuntimeConfig };
