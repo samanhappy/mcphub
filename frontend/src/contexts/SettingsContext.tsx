@@ -30,9 +30,14 @@ interface InstallConfig {
 interface SmartRoutingConfig {
   enabled: boolean;
   dbUrl: string;
+  embeddingProvider?: 'openai' | 'azure_openai';
   openaiApiBaseUrl: string;
   openaiApiKey: string;
   openaiApiEmbeddingModel: string;
+  azureOpenaiEndpoint?: string;
+  azureOpenaiApiKey?: string;
+  azureOpenaiApiVersion?: string;
+  azureOpenaiEmbeddingDeployment?: string;
   progressiveDisclosure: boolean;
 }
 
@@ -178,9 +183,14 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
   const [smartRoutingConfig, setSmartRoutingConfig] = useState<SmartRoutingConfig>({
     enabled: false,
     dbUrl: '',
+    embeddingProvider: 'openai',
     openaiApiBaseUrl: '',
     openaiApiKey: '',
     openaiApiEmbeddingModel: '',
+    azureOpenaiEndpoint: '',
+    azureOpenaiApiKey: '',
+    azureOpenaiApiVersion: '',
+    azureOpenaiEmbeddingDeployment: '',
     progressiveDisclosure: false,
   });
 
@@ -236,10 +246,19 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
         setSmartRoutingConfig({
           enabled: data.data.systemConfig.smartRouting.enabled ?? false,
           dbUrl: data.data.systemConfig.smartRouting.dbUrl || '',
+          embeddingProvider:
+            data.data.systemConfig.smartRouting.embeddingProvider === 'azure_openai'
+              ? 'azure_openai'
+              : 'openai',
           openaiApiBaseUrl: data.data.systemConfig.smartRouting.openaiApiBaseUrl || '',
           openaiApiKey: data.data.systemConfig.smartRouting.openaiApiKey || '',
           openaiApiEmbeddingModel:
             data.data.systemConfig.smartRouting.openaiApiEmbeddingModel || '',
+          azureOpenaiEndpoint: data.data.systemConfig.smartRouting.azureOpenaiEndpoint || '',
+          azureOpenaiApiKey: data.data.systemConfig.smartRouting.azureOpenaiApiKey || '',
+          azureOpenaiApiVersion: data.data.systemConfig.smartRouting.azureOpenaiApiVersion || '',
+          azureOpenaiEmbeddingDeployment:
+            data.data.systemConfig.smartRouting.azureOpenaiEmbeddingDeployment || '',
           progressiveDisclosure: data.data.systemConfig.smartRouting.progressiveDisclosure ?? false,
         });
       }

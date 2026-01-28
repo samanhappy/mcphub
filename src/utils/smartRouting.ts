@@ -7,9 +7,14 @@ import { getSystemConfigDao } from '../dao/DaoFactory.js';
 export interface SmartRoutingConfig {
   enabled: boolean;
   dbUrl: string;
+  embeddingProvider?: 'openai' | 'azure_openai';
   openaiApiBaseUrl: string;
   openaiApiKey: string;
   openaiApiEmbeddingModel: string;
+  azureOpenaiEndpoint?: string;
+  azureOpenaiApiKey?: string;
+  azureOpenaiApiVersion?: string;
+  azureOpenaiEmbeddingDeployment?: string;
   /**
    * When enabled, search_tools returns only tool name and description (without full inputSchema).
    * A new describe_tool endpoint is provided to get the full tool schema on demand.
@@ -48,6 +53,21 @@ export async function getSmartRoutingConfig(): Promise<SmartRoutingConfig> {
     // Database configuration
     dbUrl: getConfigValue([process.env.DB_URL], smartRoutingSettings.dbUrl, '', expandEnvVars),
 
+    embeddingProvider: getConfigValue(
+      [process.env.SMART_ROUTING_EMBEDDING_PROVIDER],
+      smartRoutingSettings.embeddingProvider,
+      'openai',
+      (value: any) => {
+        const normalized = String(value || '')
+          .trim()
+          .toLowerCase();
+        if (normalized === 'azure' || normalized === 'azure_openai') {
+          return 'azure_openai';
+        }
+        return 'openai';
+      },
+    ),
+
     // OpenAI API configuration
     openaiApiBaseUrl: getConfigValue(
       [process.env.OPENAI_API_BASE_URL],
@@ -67,6 +87,34 @@ export async function getSmartRoutingConfig(): Promise<SmartRoutingConfig> {
       [process.env.OPENAI_API_EMBEDDING_MODEL],
       smartRoutingSettings.openaiApiEmbeddingModel,
       'text-embedding-3-small',
+      expandEnvVars,
+    ),
+
+    azureOpenaiEndpoint: getConfigValue(
+      [process.env.AZURE_OPENAI_ENDPOINT],
+      smartRoutingSettings.azureOpenaiEndpoint,
+      '',
+      expandEnvVars,
+    ),
+
+    azureOpenaiApiKey: getConfigValue(
+      [process.env.AZURE_OPENAI_API_KEY],
+      smartRoutingSettings.azureOpenaiApiKey,
+      '',
+      expandEnvVars,
+    ),
+
+    azureOpenaiApiVersion: getConfigValue(
+      [process.env.AZURE_OPENAI_API_VERSION],
+      smartRoutingSettings.azureOpenaiApiVersion,
+      '2024-02-15-preview',
+      expandEnvVars,
+    ),
+
+    azureOpenaiEmbeddingDeployment: getConfigValue(
+      [process.env.AZURE_OPENAI_EMBEDDING_DEPLOYMENT],
+      smartRoutingSettings.azureOpenaiEmbeddingDeployment,
+      '',
       expandEnvVars,
     ),
 

@@ -16,9 +16,14 @@ export interface SystemConfig {
   smartRouting?: {
     enabled?: boolean;
     dbUrl?: string;
+    embeddingProvider?: 'openai' | 'azure_openai';
     openaiApiBaseUrl?: string;
     openaiApiKey?: string;
     openaiApiEmbeddingModel?: string;
+    azureOpenaiEndpoint?: string;
+    azureOpenaiApiKey?: string;
+    azureOpenaiApiVersion?: string;
+    azureOpenaiEmbeddingDeployment?: string;
   };
   nameSeparator?: string;
   auth?: {
