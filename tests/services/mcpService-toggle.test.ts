@@ -25,7 +25,7 @@ jest.mock('../../src/services/sseService.js', () => ({
 
 const mockServerDao = {
   findById: jest.fn(),
-  findAll: jest.fn(() => Promise.resolve([])),
+  findAll: jest.fn(() => Promise.resolve([] as any[])),
   setEnabled: jest.fn().mockResolvedValue(true),
 };
 
