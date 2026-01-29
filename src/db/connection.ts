@@ -5,6 +5,29 @@ import { registerPostgresVectorType } from './types/postgresVectorType.js';
 import { VectorEmbeddingSubscriber } from './subscribers/VectorEmbeddingSubscriber.js';
 import { getSmartRoutingConfig } from '../utils/smartRouting.js';
 import { createVectorIndex } from '../services/vectorSearchService.js';
+import { isRetryableDbError } from '../utils/dbRetry.js';
+
+// Connection pool and retry configuration
+const CONNECTION_CONFIG = {
+  // Connection pool settings
+  poolSize: parseInt(process.env.DB_POOL_SIZE || '10', 10),
+  poolIdleTimeout: parseInt(process.env.DB_POOL_IDLE_TIMEOUT || '30000', 10), // 30 seconds
+  connectionTimeout: parseInt(process.env.DB_CONNECTION_TIMEOUT || '60000', 10), // 60 seconds
+
+  // Retry settings for initial connection
+  maxConnectionRetries: parseInt(process.env.DB_MAX_CONNECTION_RETRIES || '5', 10),
+  connectionRetryDelayMs: parseInt(process.env.DB_CONNECTION_RETRY_DELAY || '3000', 10),
+
+  // Health check settings
+  healthCheckIntervalMs: parseInt(process.env.DB_HEALTH_CHECK_INTERVAL || '30000', 10), // 30 seconds
+  enableHealthCheck: process.env.DB_ENABLE_HEALTH_CHECK !== 'false',
+};
+
+// Health check state
+let healthCheckInterval: NodeJS.Timeout | null = null;
+let isHealthy = false;
+let lastHealthCheckError: Error | null = null;
+let reconnectionInProgress = false;
 
 // Helper function to create required PostgreSQL extensions
 const createRequiredExtensions = async (dataSource: DataSource): Promise<void> => {
@@ -30,7 +53,7 @@ const getDatabaseUrl = async (): Promise<string> => {
   return (await getSmartRoutingConfig()).dbUrl;
 };
 
-// Default database configuration (without URL - will be set during initialization)
+// Default database configuration with connection pooling
 const getDefaultConfig = async (): Promise<DataSourceOptions> => {
   return {
     type: 'postgres',
@@ -38,6 +61,18 @@ const getDefaultConfig = async (): Promise<DataSourceOptions> => {
     synchronize: true,
     entities: entities,
     subscribers: [VectorEmbeddingSubscriber],
+    // Connection pool configuration for better resilience
+    extra: {
+      // Maximum number of clients in the pool
+      max: CONNECTION_CONFIG.poolSize,
+      // Close idle connections after this many milliseconds
+      idleTimeoutMillis: CONNECTION_CONFIG.poolIdleTimeout,
+      // Connection timeout
+      connectionTimeoutMillis: CONNECTION_CONFIG.connectionTimeout,
+      // Keep-alive settings to detect dead connections faster
+      keepAlive: true,
+      keepAliveInitialDelayMillis: 10000,
+    },
   };
 };
 
@@ -118,6 +153,11 @@ export const initializeDatabase = async (): Promise<DataSource> => {
   try {
     const result = await initializationPromise;
     console.log('Database initialization completed successfully');
+
+    // Start health check after successful initialization
+    isHealthy = true;
+    startHealthCheck();
+
     return result;
   } catch (error) {
     // Reset the promise on error so initialization can be retried
@@ -301,12 +341,150 @@ export const isDatabaseConnected = (): boolean => {
   return appDataSource ? appDataSource.isInitialized : false;
 };
 
+// Get database health status
+export const getDatabaseHealth = (): {
+  connected: boolean;
+  healthy: boolean;
+  lastError: string | null;
+  reconnecting: boolean;
+} => {
+  return {
+    connected: isDatabaseConnected(),
+    healthy: isHealthy,
+    lastError: lastHealthCheckError?.message || null,
+    reconnecting: reconnectionInProgress,
+  };
+};
+
+// Perform a health check on the database connection
+export const checkDatabaseHealth = async (): Promise<boolean> => {
+  if (!appDataSource || !appDataSource.isInitialized) {
+    isHealthy = false;
+    lastHealthCheckError = new Error('Database not initialized');
+    return false;
+  }
+
+  try {
+    // Simple query to check connection
+    await appDataSource.query('SELECT 1');
+    isHealthy = true;
+    lastHealthCheckError = null;
+    return true;
+  } catch (error) {
+    isHealthy = false;
+    lastHealthCheckError = error instanceof Error ? error : new Error(String(error));
+    console.warn('[DB Health] Health check failed:', lastHealthCheckError.message);
+
+    // If it's a retryable error, attempt reconnection
+    if (isRetryableDbError(error) && !reconnectionInProgress) {
+      console.log('[DB Health] Detected connection issue, attempting reconnection...');
+      attemptReconnection().catch((err) => {
+        console.error('[DB Health] Reconnection attempt failed:', err.message);
+      });
+    }
+
+    return false;
+  }
+};
+
+// Start the health check interval
+export const startHealthCheck = (): void => {
+  if (!CONNECTION_CONFIG.enableHealthCheck || healthCheckInterval) {
+    return;
+  }
+
+  console.log(
+    `[DB Health] Starting health check (interval: ${CONNECTION_CONFIG.healthCheckIntervalMs}ms)`,
+  );
+
+  healthCheckInterval = setInterval(async () => {
+    await checkDatabaseHealth();
+  }, CONNECTION_CONFIG.healthCheckIntervalMs);
+
+  // Unref the interval so it doesn't prevent process exit
+  healthCheckInterval.unref();
+};
+
+// Stop the health check interval
+export const stopHealthCheck = (): void => {
+  if (healthCheckInterval) {
+    clearInterval(healthCheckInterval);
+    healthCheckInterval = null;
+    console.log('[DB Health] Health check stopped');
+  }
+};
+
+// Attempt to reconnect to the database with retries
+const attemptReconnection = async (): Promise<void> => {
+  if (reconnectionInProgress) {
+    console.log('[DB Reconnect] Reconnection already in progress, skipping...');
+    return;
+  }
+
+  reconnectionInProgress = true;
+  console.log('[DB Reconnect] Starting reconnection attempt...');
+
+  try {
+    // Close existing connection if it exists
+    if (appDataSource && appDataSource.isInitialized) {
+      try {
+        console.log('[DB Reconnect] Closing existing connection...');
+        await appDataSource.destroy();
+      } catch (closeError: any) {
+        console.warn('[DB Reconnect] Error closing connection:', closeError.message);
+      }
+    }
+
+    // Reset state
+    initializationPromise = null;
+
+    // Retry connection with exponential backoff
+    let lastError: Error | null = null;
+    for (let attempt = 1; attempt <= CONNECTION_CONFIG.maxConnectionRetries; attempt++) {
+      try {
+        console.log(
+          `[DB Reconnect] Connection attempt ${attempt}/${CONNECTION_CONFIG.maxConnectionRetries}...`,
+        );
+
+        appDataSource = await updateDataSourceConfig();
+        await performDatabaseInitialization();
+
+        console.log('[DB Reconnect] Successfully reconnected to database');
+        isHealthy = true;
+        lastHealthCheckError = null;
+        return;
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error(String(error));
+        console.warn(`[DB Reconnect] Attempt ${attempt} failed: ${lastError.message}`);
+
+        if (attempt < CONNECTION_CONFIG.maxConnectionRetries) {
+          const delay = CONNECTION_CONFIG.connectionRetryDelayMs * Math.pow(2, attempt - 1);
+          console.log(`[DB Reconnect] Waiting ${delay}ms before next attempt...`);
+          await new Promise((resolve) => setTimeout(resolve, delay));
+        }
+      }
+    }
+
+    // All retries exhausted
+    console.error(
+      `[DB Reconnect] Failed to reconnect after ${CONNECTION_CONFIG.maxConnectionRetries} attempts`,
+    );
+    lastHealthCheckError = lastError;
+  } finally {
+    reconnectionInProgress = false;
+  }
+};
+
 // Close database connection
 export const closeDatabase = async (): Promise<void> => {
+  // Stop health checks first
+  stopHealthCheck();
+
   if (appDataSource && appDataSource.isInitialized) {
     await appDataSource.destroy();
     console.log('Database connection closed.');
   }
+  isHealthy = false;
 };
 
 // Export AppDataSource for backward compatibility

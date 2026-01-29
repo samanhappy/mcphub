@@ -3,7 +3,7 @@ import cors from 'cors';
 import config from './config/index.js';
 import path from 'path';
 import fs from 'fs';
-import { initUpstreamServers, connected } from './services/mcpService.js';
+import { initUpstreamServers, connected, cleanupAllServers } from './services/mcpService.js';
 import { initMiddlewares } from './middlewares/index.js';
 import { initRoutes } from './routes/index.js';
 import { initI18n } from './utils/i18n.js';
@@ -19,6 +19,7 @@ import { findPackageRoot } from './utils/path.js';
 import { getCurrentModuleDir } from './utils/moduleDir.js';
 import { initOAuthProvider, getOAuthRouter } from './services/oauthService.js';
 import { initOAuthServer } from './services/oauthServerService.js';
+import http from 'http';
 
 /**
  * Get the directory of the current module
@@ -40,6 +41,7 @@ function getCurrentFileDir(): string {
 
 export class AppServer {
   private app: express.Application;
+  private server: http.Server | null = null;
   private port: number | string;
   private frontendPath: string | null = null;
   private basePath: string;
@@ -182,7 +184,7 @@ export class AppServer {
   }
 
   start(): void {
-    this.app.listen(this.port, () => {
+    this.server = this.app.listen(this.port, () => {
       console.log(`Server is running on port ${this.port}`);
       if (this.frontendPath) {
         console.log(`Open http://localhost:${this.port} in your browser to access MCPHub UI`);
@@ -192,6 +194,46 @@ export class AppServer {
         );
       }
     });
+  }
+
+  /**
+   * Gracefully shutdown the server
+   */
+  async shutdown(): Promise<void> {
+    console.log('[SHUTDOWN] Starting graceful shutdown...');
+
+    // Close HTTP server first (stop accepting new connections)
+    if (this.server) {
+      await new Promise<void>((resolve) => {
+        this.server!.close(() => {
+          console.log('[SHUTDOWN] HTTP server closed');
+          resolve();
+        });
+      });
+    }
+
+    // Close all MCP clients
+    try {
+      cleanupAllServers();
+      console.log('[SHUTDOWN] MCP clients closed');
+    } catch (error) {
+      console.error('[SHUTDOWN] Error closing MCP clients:', error);
+    }
+
+    // Close database connection if in database mode
+    const useDatabase =
+      process.env.USE_DB !== undefined ? process.env.USE_DB === 'true' : !!process.env.DB_URL;
+    if (useDatabase) {
+      try {
+        const { closeDatabase } = await import('./db/connection.js');
+        await closeDatabase();
+        console.log('[SHUTDOWN] Database connection closed');
+      } catch (error) {
+        console.error('[SHUTDOWN] Error closing database:', error);
+      }
+    }
+
+    console.log('[SHUTDOWN] Graceful shutdown completed');
   }
 
   connected(): boolean {

@@ -2,8 +2,106 @@ import 'reflect-metadata';
 import AppServer from './server.js';
 import { initializeDatabaseMode } from './utils/migration.js';
 import { createFetchWithProxy, getProxyConfigFromEnv } from './services/proxy.js';
+import { isRetryableDbError } from './utils/dbRetry.js';
 
 const appServer = new AppServer();
+
+// Track consecutive fatal errors for circuit breaker pattern
+let consecutiveFatalErrors = 0;
+const MAX_CONSECUTIVE_FATAL_ERRORS = 5;
+const FATAL_ERROR_WINDOW_MS = 60000; // 1 minute
+let lastFatalErrorTime = 0;
+
+/**
+ * Handle uncaught exceptions - log and determine if recovery is possible
+ */
+const handleUncaughtException = (error: Error): void => {
+  console.error('[FATAL] Uncaught exception:', error);
+
+  // Check if this is a retryable database error
+  if (isRetryableDbError(error)) {
+    console.warn('[RECOVERY] Database connection error detected, attempting to continue...');
+    // For database errors, we don't crash - the retry logic should handle it
+    return;
+  }
+
+  // Track consecutive fatal errors
+  const now = Date.now();
+  if (now - lastFatalErrorTime < FATAL_ERROR_WINDOW_MS) {
+    consecutiveFatalErrors++;
+  } else {
+    consecutiveFatalErrors = 1;
+  }
+  lastFatalErrorTime = now;
+
+  // Circuit breaker: if too many consecutive errors, exit
+  if (consecutiveFatalErrors >= MAX_CONSECUTIVE_FATAL_ERRORS) {
+    console.error(
+      `[FATAL] Too many consecutive fatal errors (${consecutiveFatalErrors}), exiting...`,
+    );
+    process.exit(1);
+  }
+
+  console.warn(
+    `[RECOVERY] Non-fatal error, continuing... (error count: ${consecutiveFatalErrors})`,
+  );
+};
+
+/**
+ * Handle unhandled promise rejections - log and determine if recovery is possible
+ */
+const handleUnhandledRejection = (reason: unknown, promise: Promise<unknown>): void => {
+  const error = reason instanceof Error ? reason : new Error(String(reason));
+  console.error('[FATAL] Unhandled promise rejection:', error);
+  console.error('[FATAL] Promise:', promise);
+
+  // Check if this is a retryable database error
+  if (isRetryableDbError(error)) {
+    console.warn(
+      '[RECOVERY] Database connection error detected in promise, attempting to continue...',
+    );
+    // For database errors, we don't crash - the retry logic should handle it
+    return;
+  }
+
+  // Track consecutive fatal errors
+  const now = Date.now();
+  if (now - lastFatalErrorTime < FATAL_ERROR_WINDOW_MS) {
+    consecutiveFatalErrors++;
+  } else {
+    consecutiveFatalErrors = 1;
+  }
+  lastFatalErrorTime = now;
+
+  // Circuit breaker: if too many consecutive errors, exit
+  if (consecutiveFatalErrors >= MAX_CONSECUTIVE_FATAL_ERRORS) {
+    console.error(
+      `[FATAL] Too many consecutive fatal errors (${consecutiveFatalErrors}), exiting...`,
+    );
+    process.exit(1);
+  }
+
+  console.warn(
+    `[RECOVERY] Non-fatal error, continuing... (error count: ${consecutiveFatalErrors})`,
+  );
+};
+
+// Set up global error handlers
+process.on('uncaughtException', handleUncaughtException);
+process.on('unhandledRejection', handleUnhandledRejection);
+
+// Handle graceful shutdown
+process.on('SIGTERM', async () => {
+  console.log('[SHUTDOWN] Received SIGTERM, shutting down gracefully...');
+  await appServer.shutdown();
+  process.exit(0);
+});
+
+process.on('SIGINT', async () => {
+  console.log('[SHUTDOWN] Received SIGINT, shutting down gracefully...');
+  await appServer.shutdown();
+  process.exit(0);
+});
 
 const maskProxyUrl = (value?: string): string | undefined => {
   if (!value) {
