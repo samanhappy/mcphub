@@ -1121,6 +1121,22 @@ export const toggleServerStatus = async (
           enabled: false,
         };
       }
+
+      // Remove tool embeddings when server is disabled (for smart routing consistency)
+      try {
+        await removeServerToolEmbeddings(name);
+        console.log(`Removed tool embeddings for disabled server: ${name}`);
+      } catch (embeddingError) {
+        console.warn(`Failed to remove embeddings for server ${name}:`, embeddingError);
+      }
+    } else {
+      // If enabling, reconnect the server to restore connection and sync tool embeddings
+      try {
+        await initializeClientsFromSettings(false, name);
+        console.log(`Re-enabled server ${name} and triggered tool embedding sync`);
+      } catch (reconnectError) {
+        console.warn(`Failed to reconnect server ${name} during enable:`, reconnectError);
+      }
     }
 
     return { success: true, message: `Server ${enabled ? 'enabled' : 'disabled'} successfully` };
