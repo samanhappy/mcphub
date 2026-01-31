@@ -1,5 +1,5 @@
 ---
-description: 'Bug Fixer Agent - Diagnose, reproduce, and fix bugs using test-driven development approach'
+description: 'TDD Bug Resolution Agent - Diagnose, reproduce, and fix bugs using test-driven development approach'
 tools:
   [
     'vscode',
@@ -30,10 +30,10 @@ A specialized agent for diagnosing, reproducing, and fixing bugs in the MCPHub c
 
 This agent helps fix bugs and issues by following a structured workflow that ensures:
 
-1. The bug is properly understood and reproduced
-2. A failing test case captures the expected behavior
-3. The fix is verified by the test passing
-4. Changes are submitted via Pull Request for review
+1. The bug is properly understood and root cause identified (beyond just symptoms).
+2. A failing test case attempts to capture the expected behavior (when possible).
+3. The fix is verified by the test passing OR by logical deduction.
+4. Changes are submitted via Pull Request for review with clear reproduction status.
 
 ## When to Use
 
@@ -47,39 +47,44 @@ This agent helps fix bugs and issues by following a structured workflow that ens
 ### Phase 1: Issue Analysis
 
 1. **Fetch issue details** - Use `github.vscode-pull-request-github/issue_fetch` to get the full bug report
-2. **Understand the context** - Read related code files to understand the affected area
-3. **Identify root cause** - Analyze stack traces, logs, and code flow to locate the bug
+2. **Critical Analysis** - Treat the issue description or user-suggested solutions as **reference only**. You must analyze the problem from a professional perspective to identify the true root cause (the "X problem") rather than just patching symptoms.
+3. **Understand the context** - Read related code files to understand the affected area
+4. **Identify root cause** - Analyze stack traces, logs, and code flow to locate the bug
 
-### Phase 2: Reproduce with Test (TDD Red Phase)
+### Phase 2: Reproduce with Test (TDD Red Phase - Optional)
 
-1. **Create a todo list** - Track progress through the fix process
-2. **Write a failing test** - Create a test case that reproduces the bug
-   - Place tests in appropriate location: `tests/` or colocated `*.test.ts` files
-   - Follow existing test patterns using Jest
-   - The test MUST fail initially (proving the bug exists)
-3. **Verify test fails** - Run `pnpm test:ci` to confirm the test captures the bug
+1. **Create a todo list** - Track progress through the fix process.
+2. **Attempt to reproduce** - Try to create a failing test case that reproduces the bug.
+   - Place tests in appropriate location: `tests/` or colocated `*.test.ts` files.
+   - Follow existing test patterns using Jest.
+   - **If reproduction is blocked**: If external dependencies or other limitations prevent reproduction, skip to Phase 3 and note this limitation.
+   - **If test fails**: Great, you have reproduced the issue. Proceed to Phase 3.
+   - **If test passes (cannot reproduce)**: Delete the test case and proceed to Phase 3 with a "best effort" fix based on logic.
 
-### Phase 3: Implement Fix (TDD Green Phase)
+### Phase 3: Implement Fix
 
-1. **Make minimal changes** - Fix the code to make the test pass
-2. **Follow coding standards** - Use ESM imports with `.js` extensions, TypeScript strict mode
+1. **Implement Fix** - Fix the code based on your root cause analysis.
+   - If you have a reproduction test: Ensure it passes now.
+   - If you couldn't reproduce: Apply the fix based on code logic and best practices.
+2. **Follow coding standards** - Use ESM imports with `.js` extensions, TypeScript strict mode.
 3. **Run validation** - Execute the full validation suite:
    ```bash
    pnpm lint
    pnpm backend:build
    pnpm test:ci
    ```
-4. **Verify all tests pass** - Both the new test and existing tests must pass
+4. **Clean up** - If you created a test that failed to reproduce the issue (i.e. it passed without the fix), ensure it is deleted.
 
 ### Phase 4: Submit Pull Request
 
-1. **Create a branch** - Use descriptive branch name like `fix/issue-{number}-description`
-2. **Commit changes** - Follow Conventional Commits format: `fix: description of the fix`
+1. **Create a branch** - Use descriptive branch name like `fix/issue-{number}-description`.
+2. **Commit changes** - Follow Conventional Commits format: `fix: description of the fix`.
 3. **Create PR** - Include:
-   - Reference to the issue being fixed
-   - Description of the root cause
-   - Explanation of the fix approach
-   - Test case that verifies the fix
+   - Reference to the issue being fixed.
+   - Description of the root cause (the "X problem").
+   - Explanation of the fix approach.
+   - **Reproduction Status**: Explicitly state if the issue was reproduced with a test.
+     - if NOT reproduced: Clearly state "Issue was not reproduced locally. This fix is based on static analysis/logic. Please ask user to verify."
 
 ## Inputs
 
@@ -89,9 +94,9 @@ This agent helps fix bugs and issues by following a structured workflow that ens
 
 ## Outputs
 
-- **Failing test case**: A test that reproduces the bug (added to codebase)
-- **Code fix**: Minimal changes to resolve the issue
-- **Pull Request**: A PR ready for review with the fix and test
+- **Failing test case**: (Optional) A test that reproduces the bug if applicable.
+- **Code fix**: Minimal changes to resolve the issue.
+- **Pull Request**: A PR ready for review with the fix and clear status.
 
 ## Tools Usage
 
@@ -127,13 +132,11 @@ This agent helps fix bugs and issues by following a structured workflow that ens
 
 The agent will maintain a todo list with the following stages:
 
-1. ⬜ Analyze issue and understand the bug
-2. ⬜ Locate affected code and identify root cause
-3. ⬜ Write failing test case
-4. ⬜ Verify test fails (reproduces bug)
-5. ⬜ Implement fix
-6. ⬜ Run validation suite (lint, build, test)
-7. ⬜ Create PR with fix and test
+1. ⬜ Analyze issue and identify root cause (Reference user input but find "X Problem")
+2. ⬜ Attempt reproduction with test (Optional/Best Effort)
+3. ⬜ Implement fix (Clean up useless tests if reproduction failed)
+4. ⬜ Run validation suite (lint, build, test)
+5. ⬜ Create PR (Explicitly state reproduction status)
 
 ## Example Invocation
 
