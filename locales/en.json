@@ -686,16 +686,16 @@
     "dynamicRegistrationAuthDescription": "Protect the registration endpoint so only authenticated requests can register clients",
     "invalidNumberInput": "Please enter a valid non-negative number"
   },
-  "dxt": {
+  "mcpb": {
     "upload": "Upload",
-    "uploadTitle": "Upload DXT Extension",
-    "dropFileHere": "Drop your .dxt file here",
+    "uploadTitle": "Upload MCPB Bundle",
+    "dropFileHere": "Drop your .mcpb file here",
     "orClickToSelect": "or click to select from your computer",
-    "invalidFileType": "Please select a valid .dxt file",
-    "noFileSelected": "Please select a .dxt file to upload",
+    "invalidFileType": "Please select a valid .mcpb file",
+    "noFileSelected": "Please select a .mcpb file to upload",
     "uploading": "Uploading...",
-    "uploadFailed": "Failed to upload DXT file",
-    "installServer": "Install MCP Server from DXT",
+    "uploadFailed": "Failed to upload MCPB file",
+    "installServer": "Install MCP Server from MCPB",
     "extensionInfo": "Extension Information",
     "name": "Name",
     "version": "Version",
@@ -706,7 +706,7 @@
     "serverNamePlaceholder": "Enter a name for this server",
     "install": "Install",
     "installing": "Installing...",
-    "installFailed": "Failed to install server from DXT",
+    "installFailed": "Failed to install server from MCPB",
     "serverExistsTitle": "Server Already Exists",
     "serverExistsConfirm": "Server '{{serverName}}' already exists. Do you want to override it with the new version?",
     "override": "Override"
@@ -824,7 +824,7 @@
       "failedToGetMarketTags": "Failed to get market tags",
       "failedToSearchMarketServers": "Failed to search market servers",
       "failedToFilterMarketServers": "Failed to filter market servers",
-      "failedToProcessDxtFile": "Failed to process DXT file"
+      "failedToProcessMcpbFile": "Failed to process MCPB file"
     },
     "success": {
       "serverCreated": "Server created successfully",

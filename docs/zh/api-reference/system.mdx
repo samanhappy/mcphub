@@ -20,10 +20,10 @@ import { Card, Cards } from 'mintlify';
 </Card>
 
 <Card
-  title="POST /api/dxt/upload"
-  href="#upload-dxt-file"
+  title="POST /api/mcpb/upload"
+  href="#upload-mcpb-file"
 >
-  上传 DXT 配置文件。
+  上传 MCPB 文件。
 </Card>
 
 <Card
@@ -72,23 +72,23 @@ curl "http://localhost:3000/health"
 
 ---
 
-### 上传 DXT 文件
+### 上传 MCPB 文件
 
-上传 DXT（桌面扩展）配置文件以导入服务器配置。
+上传 MCPB（MCP Bundle）文件以导入服务器配置。
 
-- **端点**: `/api/dxt/upload`
+- **端点**: `/api/mcpb/upload`
 - **方法**: `POST`
 - **身份验证**: 必需
 - **Content-Type**: `multipart/form-data`
 - **正文**:
-  - `file` (文件, 必需): 要上传的 DXT 配置文件。
+  - `mcpbFile` (文件, 必需): 要上传的 MCPB 文件。
 
 **请求示例：**
 
 ```bash
-curl -X POST "http://localhost:3000/api/dxt/upload" \
+curl -X POST "http://localhost:3000/api/mcpb/upload" \
   -H "Authorization: Bearer YOUR_TOKEN" \
-  -F "file=@config.dxt"
+  -F "mcpbFile=@bundle.mcpb"
 ```
 
 ---

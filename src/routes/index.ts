@@ -74,7 +74,7 @@ import {
 } from '../controllers/configController.js';
 import { callTool } from '../controllers/toolController.js';
 import { getPrompt } from '../controllers/promptController.js';
-import { uploadDxtFile, uploadMiddleware } from '../controllers/dxtController.js';
+import { uploadMcpbFile, uploadMiddleware } from '../controllers/mcpbController.js';
 import { healthCheck } from '../controllers/healthController.js';
 import { getBetterAuthUser } from '../controllers/betterAuthController.js';
 import {
@@ -240,8 +240,8 @@ export const initRoutes = async (app: express.Application): Promise<void> => {
   // Prompt management routes
   router.post('/mcp/:serverName/prompts/:promptName', getPrompt);
 
-  // DXT upload routes
-  router.post('/dxt/upload', uploadMiddleware, uploadDxtFile);
+  // MCPB upload routes
+  router.post('/mcpb/upload', uploadMiddleware, uploadMcpbFile);
 
   // Market routes
   router.get('/market/servers', getAllMarketServers);

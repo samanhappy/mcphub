@@ -685,16 +685,16 @@
     "dynamicRegistrationAuthDescription": "Kayıt uç noktasını korur, yalnızca kimliği doğrulanmış istekler yeni istemci oluşturabilir",
     "invalidNumberInput": "Lütfen sıfırdan küçük olmayan geçerli bir sayı girin"
   },
-  "dxt": {
+  "mcpb": {
     "upload": "Yükle",
-    "uploadTitle": "DXT Uzantısı Yükle",
-    "dropFileHere": ".dxt dosyanızı buraya bırakın",
+    "uploadTitle": "MCPB Paketi Yükle",
+    "dropFileHere": ".mcpb dosyanızı buraya bırakın",
     "orClickToSelect": "veya bilgisayarınızdan seçmek için tıklayın",
-    "invalidFileType": "Lütfen geçerli bir .dxt dosyası seçin",
-    "noFileSelected": "Lütfen yüklemek için bir .dxt dosyası seçin",
+    "invalidFileType": "Lütfen geçerli bir .mcpb dosyası seçin",
+    "noFileSelected": "Lütfen yüklemek için bir .mcpb dosyası seçin",
     "uploading": "Yükleniyor...",
-    "uploadFailed": "DXT dosyası yüklenemedi",
-    "installServer": "DXT'den MCP Sunucusu Yükle",
+    "uploadFailed": "MCPB dosyası yüklenemedi",
+    "installServer": "MCPB'den MCP Sunucusu Yükle",
     "extensionInfo": "Uzantı Bilgisi",
     "name": "Ad",
     "version": "Sürüm",
@@ -705,7 +705,7 @@
     "serverNamePlaceholder": "Bu sunucu için bir ad girin",
     "install": "Yükle",
     "installing": "Yükleniyor...",
-    "installFailed": "DXT'den sunucu yüklenemedi",
+    "installFailed": "MCPB'den sunucu yüklenemedi",
     "serverExistsTitle": "Sunucu Zaten Mevcut",
     "serverExistsConfirm": "'{{serverName}}' sunucusu zaten mevcut. Yeni sürümle geçersiz kılmak istiyor musunuz?",
     "override": "Geçersiz Kıl"
@@ -822,7 +822,7 @@
       "failedToGetMarketTags": "Market etiketleri alınamadı",
       "failedToSearchMarketServers": "Market sunucuları aranamadı",
       "failedToFilterMarketServers": "Market sunucuları filtrelenemedi",
-      "failedToProcessDxtFile": "DXT dosyası işlenemedi"
+      "failedToProcessMcpbFile": "MCPB dosyası işlenemedi"
     },
     "success": {
       "serverCreated": "Sunucu başarıyla oluşturuldu",

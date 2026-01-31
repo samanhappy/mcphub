@@ -1030,7 +1030,7 @@ export const removeServer = async (
   return { success: true, message: 'Server removed successfully' };
 };
 
-// Add or update server (supports overriding existing servers for DXT)
+// Add or update server (supports overriding existing servers for MCPB)
 export const addOrUpdateServer = async (
   name: string,
   config: ServerConfig,

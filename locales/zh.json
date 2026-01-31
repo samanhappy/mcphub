@@ -689,16 +689,16 @@
     "dynamicRegistrationAuthDescription": "开启后，注册端点需要认证请求才能创建客户端",
     "invalidNumberInput": "请输入合法的非负数字"
   },
-  "dxt": {
+  "mcpb": {
     "upload": "上传",
-    "uploadTitle": "上传 DXT 扩展",
-    "dropFileHere": "将 .dxt 文件拖拽到此处",
+    "uploadTitle": "上传 MCPB 文件",
+    "dropFileHere": "将 .mcpb 文件拖拽到此处",
     "orClickToSelect": "或点击从计算机选择",
-    "invalidFileType": "请选择有效的 .dxt 文件",
-    "noFileSelected": "请选择要上传的 .dxt 文件",
+    "invalidFileType": "请选择有效的 .mcpb 文件",
+    "noFileSelected": "请选择要上传的 .mcpb 文件",
     "uploading": "上传中...",
-    "uploadFailed": "上传 DXT 文件失败",
-    "installServer": "从 DXT 安装 MCP 服务器",
+    "uploadFailed": "上传 MCPB 文件失败",
+    "installServer": "从 MCPB 安装 MCP 服务器",
     "extensionInfo": "扩展信息",
     "name": "名称",
     "version": "版本",
@@ -709,7 +709,7 @@
     "serverNamePlaceholder": "为此服务器输入名称",
     "install": "安装",
     "installing": "安装中...",
-    "installFailed": "从 DXT 安装服务器失败",
+    "installFailed": "从 MCPB 安装服务器失败",
     "serverExistsTitle": "服务器已存在",
     "serverExistsConfirm": "服务器 '{{serverName}}' 已存在。是否要用新版本覆盖它？",
     "override": "覆盖"
@@ -826,7 +826,7 @@
       "failedToGetMarketTags": "获取市场标签失败",
       "failedToSearchMarketServers": "搜索市场服务器失败",
       "failedToFilterMarketServers": "过滤市场服务器失败",
-      "failedToProcessDxtFile": "处理 DXT 文件失败"
+      "failedToProcessMcpbFile": "处理 MCPB 文件失败"
     },
     "success": {
       "serverCreated": "服务器创建成功",

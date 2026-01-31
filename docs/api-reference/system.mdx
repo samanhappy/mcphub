@@ -20,10 +20,10 @@ import { Card, Cards } from 'mintlify';
 </Card>
 
 <Card
-  title="POST /api/dxt/upload"
-  href="#upload-dxt-file"
+  title="POST /api/mcpb/upload"
+  href="#upload-mcpb-file"
 >
-  Upload a DXT configuration file.
+  Upload a MCPB bundle file.
 </Card>
 
 <Card
@@ -72,23 +72,23 @@ OAuth callback endpoint for handling OAuth authentication flows. This endpoint i
 
 ---
 
-### Upload DXT File
+### Upload MCPB File
 
-Upload a DXT (Desktop Extension) configuration file to import server configurations.
+Upload a MCPB (MCP Bundle) file to import server configurations.
 
-- **Endpoint**: `/api/dxt/upload`
+- **Endpoint**: `/api/mcpb/upload`
 - **Method**: `POST`
 - **Authentication**: Required
 - **Content-Type**: `multipart/form-data`
 - **Body**:
-  - `file` (file, required): The DXT configuration file to upload.
+  - `mcpbFile` (file, required): The MCPB bundle file to upload.
 
 **Example Request:**
 
 ```bash
-curl -X POST "http://localhost:3000/api/dxt/upload" \
+curl -X POST "http://localhost:3000/api/mcpb/upload" \
   -H "Authorization: Bearer YOUR_TOKEN" \
-  -F "file=@config.dxt"
+  -F "mcpbFile=@bundle.mcpb"
 ```
 
 ---

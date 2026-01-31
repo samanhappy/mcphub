@@ -685,16 +685,16 @@
     "dynamicRegistrationAuthDescription": "Protège l'endpoint d'enregistrement afin que seules les requêtes authentifiées puissent créer des clients",
     "invalidNumberInput": "Veuillez saisir un nombre valide supérieur ou égal à zéro"
   },
-  "dxt": {
+  "mcpb": {
     "upload": "Télécharger",
-    "uploadTitle": "Télécharger l'extension DXT",
-    "dropFileHere": "Déposez votre fichier .dxt ici",
+    "uploadTitle": "Télécharger le bundle MCPB",
+    "dropFileHere": "Déposez votre fichier .mcpb ici",
     "orClickToSelect": "ou cliquez pour sélectionner depuis votre ordinateur",
-    "invalidFileType": "Veuillez sélectionner un fichier .dxt valide",
-    "noFileSelected": "Veuillez sélectionner un fichier .dxt à télécharger",
+    "invalidFileType": "Veuillez sélectionner un fichier .mcpb valide",
+    "noFileSelected": "Veuillez sélectionner un fichier .mcpb à télécharger",
     "uploading": "Téléchargement en cours...",
-    "uploadFailed": "Échec du téléchargement du fichier DXT",
-    "installServer": "Installer le serveur MCP depuis DXT",
+    "uploadFailed": "Échec du téléchargement du fichier MCPB",
+    "installServer": "Installer le serveur MCP depuis MCPB",
     "extensionInfo": "Informations sur l'extension",
     "name": "Nom",
     "version": "Version",
@@ -705,7 +705,7 @@
     "serverNamePlaceholder": "Entrez un nom pour ce serveur",
     "install": "Installer",
     "installing": "Installation en cours...",
-    "installFailed": "Échec de l'installation du serveur depuis DXT",
+    "installFailed": "Échec de l'installation du serveur depuis MCPB",
     "serverExistsTitle": "Le serveur existe déjà",
     "serverExistsConfirm": "Le serveur '{{serverName}}' existe déjà. Voulez-vous le remplacer par la nouvelle version ?",
     "override": "Remplacer"
@@ -822,7 +822,7 @@
       "failedToGetMarketTags": "Échec de la récupération des tags du marché",
       "failedToSearchMarketServers": "Échec de la recherche des serveurs du marché",
       "failedToFilterMarketServers": "Échec du filtrage des serveurs du marché",
-      "failedToProcessDxtFile": "Échec du traitement du fichier DXT"
+      "failedToProcessMcpbFile": "Échec du traitement du fichier MCPB"
     },
     "success": {
       "serverCreated": "Serveur créé avec succès",
