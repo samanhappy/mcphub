@@ -3,6 +3,7 @@ import { VectorEmbeddingRepository } from '../db/repositories/index.js';
 import { Tool } from '../types/index.js';
 import { getAppDataSource, isDatabaseConnected, initializeDatabase } from '../db/connection.js';
 import { getSmartRoutingConfig, type SmartRoutingConfig } from '../utils/smartRouting.js';
+import { toFloat32Array } from '../utils/base64.js';
 import OpenAI from 'openai';
 import axios from 'axios';
 
@@ -79,6 +80,7 @@ const FALLBACK_DIMENSIONS = 100; // Fallback implementation uses 100 dimensions
 const BASE64_EMBEDDING_SUPPORTED_PROVIDERS = [
   'https://api.openai.com',
   'https://api.siliconflow.cn',
+  'https://openrouter.ai',
 ];
 
 // pgvector index limits (as of pgvector 0.7.0+)
@@ -347,6 +349,11 @@ async function generateEmbedding(text: string): Promise<number[]> {
       encoding_format: encodingFormat,
       input: truncatedText,
     });
+
+    if (encodingFormat === 'base64' && typeof response.data[0].embedding === 'string') {
+      const embeddingBase64Str = response.data[0].embedding as unknown as string;
+      return toFloat32Array(embeddingBase64Str);
+    }
 
     // Return the embedding
     return response.data[0].embedding;
