@@ -1205,6 +1205,8 @@ export const updateSystemConfig = async (req: Request, res: Response): Promise<v
         previousSmartRoutingConfig.dbUrl !== systemConfig.smartRouting.dbUrl ||
         previousSmartRoutingConfig.embeddingProvider !==
           systemConfig.smartRouting.embeddingProvider ||
+        previousSmartRoutingConfig.embeddingEncodingFormat !==
+          systemConfig.smartRouting.embeddingEncodingFormat ||
         previousSmartRoutingConfig.openaiApiBaseUrl !==
           systemConfig.smartRouting.openaiApiBaseUrl ||
         previousSmartRoutingConfig.openaiApiKey !== systemConfig.smartRouting.openaiApiKey ||
