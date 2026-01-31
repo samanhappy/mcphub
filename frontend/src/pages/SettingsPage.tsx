@@ -394,6 +394,7 @@ const SettingsPage: React.FC = () => {
   const [tempSmartRoutingConfig, setTempSmartRoutingConfig] = useState<{
     dbUrl: string;
     embeddingProvider: 'openai' | 'azure_openai';
+    embeddingEncodingFormat: 'auto' | 'base64' | 'float';
     openaiApiBaseUrl: string;
     openaiApiKey: string;
     openaiApiEmbeddingModel: string;
@@ -404,6 +405,7 @@ const SettingsPage: React.FC = () => {
   }>({
     dbUrl: '',
     embeddingProvider: 'openai',
+    embeddingEncodingFormat: 'auto',
     openaiApiBaseUrl: '',
     openaiApiKey: '',
     openaiApiEmbeddingModel: '',
@@ -481,6 +483,12 @@ const SettingsPage: React.FC = () => {
         dbUrl: smartRoutingConfig.dbUrl || '',
         embeddingProvider:
           smartRoutingConfig.embeddingProvider === 'azure_openai' ? 'azure_openai' : 'openai',
+        embeddingEncodingFormat:
+          smartRoutingConfig.embeddingEncodingFormat === 'base64'
+            ? 'base64'
+            : smartRoutingConfig.embeddingEncodingFormat === 'float'
+              ? 'float'
+              : 'auto',
         openaiApiBaseUrl: smartRoutingConfig.openaiApiBaseUrl || '',
         openaiApiKey: smartRoutingConfig.openaiApiKey || '',
         openaiApiEmbeddingModel: smartRoutingConfig.openaiApiEmbeddingModel || '',
@@ -601,6 +609,7 @@ const SettingsPage: React.FC = () => {
     key:
       | 'dbUrl'
       | 'embeddingProvider'
+      | 'embeddingEncodingFormat'
       | 'openaiApiBaseUrl'
       | 'openaiApiKey'
       | 'openaiApiEmbeddingModel'
@@ -762,6 +771,12 @@ const SettingsPage: React.FC = () => {
       if (tempSmartRoutingConfig.embeddingProvider !== smartRoutingConfig.embeddingProvider) {
         updates.embeddingProvider = tempSmartRoutingConfig.embeddingProvider;
       }
+      if (
+        tempSmartRoutingConfig.embeddingEncodingFormat !==
+        smartRoutingConfig.embeddingEncodingFormat
+      ) {
+        updates.embeddingEncodingFormat = tempSmartRoutingConfig.embeddingEncodingFormat;
+      }
       if (tempSmartRoutingConfig.openaiApiBaseUrl !== smartRoutingConfig.openaiApiBaseUrl) {
         updates.openaiApiBaseUrl = tempSmartRoutingConfig.openaiApiBaseUrl;
       }
@@ -810,6 +825,11 @@ const SettingsPage: React.FC = () => {
     }
     if (tempSmartRoutingConfig.embeddingProvider !== smartRoutingConfig.embeddingProvider) {
       updates.embeddingProvider = tempSmartRoutingConfig.embeddingProvider;
+    }
+    if (
+      tempSmartRoutingConfig.embeddingEncodingFormat !== smartRoutingConfig.embeddingEncodingFormat
+    ) {
+      updates.embeddingEncodingFormat = tempSmartRoutingConfig.embeddingEncodingFormat;
     }
     if (tempSmartRoutingConfig.openaiApiBaseUrl !== smartRoutingConfig.openaiApiBaseUrl) {
       updates.openaiApiBaseUrl = tempSmartRoutingConfig.openaiApiBaseUrl;
@@ -1527,6 +1547,36 @@ const SettingsPage: React.FC = () => {
                         className="flex-1 mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm form-input"
                         disabled={loading}
                       />
+                    </div>
+                  </div>
+
+                  <div className="p-3 bg-gray-50 rounded-md">
+                    <div className="mb-2">
+                      <h3 className="font-medium text-gray-700">
+                        {t('settings.embeddingEncodingFormat')}
+                      </h3>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {t('settings.embeddingEncodingFormatDescription')}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <select
+                        value={tempSmartRoutingConfig.embeddingEncodingFormat}
+                        onChange={(e) =>
+                          handleSmartRoutingConfigChange(
+                            'embeddingEncodingFormat',
+                            e.target.value as 'auto' | 'base64' | 'float',
+                          )
+                        }
+                        className="flex-1 mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm form-select"
+                        disabled={loading}
+                      >
+                        <option value="auto">
+                          {t('settings.embeddingEncodingFormatAuto') || 'Auto'}
+                        </option>
+                        <option value="base64">Base64</option>
+                        <option value="float">Float</option>
+                      </select>
                     </div>
                   </div>
                 </>

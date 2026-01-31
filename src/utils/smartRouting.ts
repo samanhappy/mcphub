@@ -8,6 +8,7 @@ export interface SmartRoutingConfig {
   enabled: boolean;
   dbUrl: string;
   embeddingProvider?: 'openai' | 'azure_openai';
+  embeddingEncodingFormat?: 'auto' | 'base64' | 'float';
   openaiApiBaseUrl: string;
   openaiApiKey: string;
   openaiApiEmbeddingModel: string;
@@ -65,6 +66,21 @@ export async function getSmartRoutingConfig(): Promise<SmartRoutingConfig> {
           return 'azure_openai';
         }
         return 'openai';
+      },
+    ),
+
+    embeddingEncodingFormat: getConfigValue(
+      [process.env.SMART_ROUTING_EMBEDDING_ENCODING_FORMAT],
+      smartRoutingSettings.embeddingEncodingFormat,
+      'auto',
+      (value: any) => {
+        const normalized = String(value || '')
+          .trim()
+          .toLowerCase();
+        if (normalized === 'base64' || normalized === 'float') {
+          return normalized;
+        }
+        return 'auto';
       },
     ),
 

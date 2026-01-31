@@ -329,13 +329,22 @@ async function generateEmbedding(text: string): Promise<number[]> {
 
   // Truncate text if it's too long (OpenAI has token limits)
   const truncatedText = text.length > 8000 ? text.substring(0, 8000) : text;
-  const canUseBase64 = await supportBase64Embeddings(config.baseURL || '');
+
+  // Determine encoding format based on configuration
+  const encodingFormatSetting = smartRoutingConfig.embeddingEncodingFormat || 'auto';
+  let encodingFormat: 'base64' | 'float';
+  if (encodingFormatSetting === 'auto') {
+    const canUseBase64 = await supportBase64Embeddings(config.baseURL || '');
+    encodingFormat = canUseBase64 ? 'base64' : 'float';
+  } else {
+    encodingFormat = encodingFormatSetting;
+  }
 
   try {
     // Call OpenAI's embeddings API
     const response = await openai.embeddings.create({
       model: config.embeddingModel, // Modern model with better performance
-      encoding_format: canUseBase64 ? 'base64' : 'float',
+      encoding_format: encodingFormat,
       input: truncatedText,
     });
 

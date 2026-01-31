@@ -17,6 +17,7 @@ export interface SystemConfig {
     enabled?: boolean;
     dbUrl?: string;
     embeddingProvider?: 'openai' | 'azure_openai';
+    embeddingEncodingFormat?: 'auto' | 'base64' | 'float';
     openaiApiBaseUrl?: string;
     openaiApiKey?: string;
     openaiApiEmbeddingModel?: string;

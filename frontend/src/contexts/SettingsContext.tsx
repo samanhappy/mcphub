@@ -31,6 +31,7 @@ interface SmartRoutingConfig {
   enabled: boolean;
   dbUrl: string;
   embeddingProvider?: 'openai' | 'azure_openai';
+  embeddingEncodingFormat?: 'auto' | 'base64' | 'float';
   openaiApiBaseUrl: string;
   openaiApiKey: string;
   openaiApiEmbeddingModel: string;
@@ -184,6 +185,7 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
     enabled: false,
     dbUrl: '',
     embeddingProvider: 'openai',
+    embeddingEncodingFormat: 'auto',
     openaiApiBaseUrl: '',
     openaiApiKey: '',
     openaiApiEmbeddingModel: '',
@@ -250,6 +252,12 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
             data.data.systemConfig.smartRouting.embeddingProvider === 'azure_openai'
               ? 'azure_openai'
               : 'openai',
+          embeddingEncodingFormat:
+            data.data.systemConfig.smartRouting.embeddingEncodingFormat === 'base64'
+              ? 'base64'
+              : data.data.systemConfig.smartRouting.embeddingEncodingFormat === 'float'
+                ? 'float'
+                : 'auto',
           openaiApiBaseUrl: data.data.systemConfig.smartRouting.openaiApiBaseUrl || '',
           openaiApiKey: data.data.systemConfig.smartRouting.openaiApiKey || '',
           openaiApiEmbeddingModel:
