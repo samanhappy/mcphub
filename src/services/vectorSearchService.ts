@@ -75,6 +75,12 @@ const EMBEDDING_DIMENSIONS_LARGE = 3072; // OpenAI's text-embedding-3-large outp
 const BGE_DIMENSIONS = 1024; // BAAI/bge-m3 outputs 1024 dimensions
 const FALLBACK_DIMENSIONS = 100; // Fallback implementation uses 100 dimensions
 
+// List of base URLs that support base64 embeddings
+const BASE64_EMBEDDING_SUPPORTED_PROVIDERS = [
+  'https://api.openai.com',
+  'https://api.siliconflow.cn',
+];
+
 // pgvector index limits (as of pgvector 0.7.0+)
 // - vector type: up to 2,000 dimensions for both HNSW and IVFFlat
 // - halfvec type: up to 4,000 dimensions (can be used for higher dimensional vectors via casting)
@@ -269,6 +275,11 @@ const getOpenAIClient = async () => {
   });
 };
 
+// Check if the provider supports base64 embeddings
+const supportBase64Embeddings = async (baseURL: string): Promise<boolean> => {
+  return !baseURL || BASE64_EMBEDDING_SUPPORTED_PROVIDERS.some((url) => baseURL.startsWith(url));
+};
+
 /**
  * Generate text embedding using OpenAI's embedding model
  *
@@ -318,11 +329,13 @@ async function generateEmbedding(text: string): Promise<number[]> {
 
   // Truncate text if it's too long (OpenAI has token limits)
   const truncatedText = text.length > 8000 ? text.substring(0, 8000) : text;
+  const canUseBase64 = await supportBase64Embeddings(config.baseURL || '');
 
   try {
     // Call OpenAI's embeddings API
     const response = await openai.embeddings.create({
       model: config.embeddingModel, // Modern model with better performance
+      encoding_format: canUseBase64 ? 'base64' : 'float',
       input: truncatedText,
     });
 
