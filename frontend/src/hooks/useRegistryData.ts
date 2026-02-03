@@ -254,7 +254,6 @@ export const useRegistryData = () => {
   useEffect(() => {
     fetchRegistryServers(undefined, searchQuery);
     // Only run on mount
-    // eslint-disable-next-line
   }, []);
 
   return {

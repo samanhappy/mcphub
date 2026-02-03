@@ -1,4 +1,3 @@
-import { defineConfig } from "eslint/config";
 import globals from "globals";
 import tsParser from "@typescript-eslint/parser";
 import path from "node:path";
@@ -14,9 +13,17 @@ const compat = new FlatCompat({
     allConfig: js.configs.all
 });
 
-export default defineConfig([{
-    extends: compat.extends("eslint:recommended", "plugin:@typescript-eslint/recommended"),
-
+export default [
+    {
+        ignores: [
+            "coverage/**",
+            "dist/**",
+            "frontend/dist/**",
+            "data/**",
+        ],
+    },
+    ...compat.extends("eslint:recommended", "plugin:@typescript-eslint/recommended"),
+    {
     languageOptions: {
         globals: {
             ...globals.node,
@@ -39,4 +46,5 @@ export default defineConfig([{
         "@typescript-eslint/no-explicit-any": "off",
         "no-undef": "off",
     },
-}]);
+    },
+];

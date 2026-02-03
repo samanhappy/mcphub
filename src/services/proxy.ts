@@ -88,9 +88,7 @@ export function createFetchWithProxy(
     // Use undici for proxy support if available
     try {
       // Dynamic import - undici is an optional peer dependency
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const undici = await import('undici' as any);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const ProxyAgent = (undici as any).ProxyAgent;
       const dispatcher = new ProxyAgent(proxyUrl);
 
