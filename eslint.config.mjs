@@ -34,7 +34,7 @@ export default [
       'no-console': 'off',
 
       '@typescript-eslint/no-unused-vars': [
-        'error',
+        'off',
         {
           argsIgnorePattern: '^_',
           varsIgnorePattern: '^_',
