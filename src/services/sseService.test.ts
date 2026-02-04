@@ -17,6 +17,7 @@ const defaultSystemConfig = {
     enableGroupNameRoute: true,
     enableBearerAuth: false,
     bearerAuthKey: 'test-key',
+    skipAuth: false,
   },
   enableSessionRebuild: false,
 };
@@ -206,13 +207,36 @@ describe('sseService', () => {
         enableGroupNameRoute: true,
         enableBearerAuth: false,
         bearerAuthKey: 'test-key',
+        skipAuth: false,
       },
       enableSessionRebuild: false, // Default to false for tests
     });
   });
 
   describe('bearer authentication', () => {
-    it('should pass when bearer auth is disabled', async () => {
+    it('should return 401 when skipAuth is false and no authorization header', async () => {
+      const req = createMockRequest({
+        params: { group: 'test-group' },
+      });
+      const res = createMockResponse();
+
+      await handleSseConnection(req, res);
+
+      expectBearerUnauthorized(res, 'No authorization provided');
+    });
+
+    it('should pass when skipAuth is enabled', async () => {
+      setMockSystemConfig({
+        routing: {
+          enableGlobalRoute: true,
+          enableGroupNameRoute: true,
+          enableBearerAuth: false,
+          bearerAuthKey: 'test-key',
+          skipAuth: true,
+        },
+        enableSessionRebuild: false,
+      });
+
       const req = createMockRequest({
         params: { group: 'test-group' },
       });
@@ -231,6 +255,7 @@ describe('sseService', () => {
           enableGroupNameRoute: true,
           enableBearerAuth: true,
           bearerAuthKey: 'test-key',
+          skipAuth: false,
         },
       });
 
@@ -249,6 +274,7 @@ describe('sseService', () => {
           enableGroupNameRoute: true,
           enableBearerAuth: true,
           bearerAuthKey: 'test-key',
+          skipAuth: false,
         },
       });
 
@@ -269,6 +295,7 @@ describe('sseService', () => {
           enableGroupNameRoute: true,
           enableBearerAuth: true,
           bearerAuthKey: 'test-key',
+          skipAuth: false,
         },
       });
 
@@ -316,6 +343,7 @@ describe('sseService', () => {
           enableGroupNameRoute: true,
           enableBearerAuth: false,
           bearerAuthKey: '',
+          skipAuth: true,
         },
       });
 
@@ -331,6 +359,17 @@ describe('sseService', () => {
     });
 
     it('should create SSE transport for valid request', async () => {
+      setMockSystemConfig({
+        routing: {
+          enableGlobalRoute: true,
+          enableGroupNameRoute: true,
+          enableBearerAuth: false,
+          bearerAuthKey: 'test-key',
+          skipAuth: true,
+        },
+        enableSessionRebuild: false,
+      });
+
       const req = createMockRequest({
         params: { group: 'test-group' },
       });
@@ -343,6 +382,17 @@ describe('sseService', () => {
     });
 
     it('should handle user context correctly', async () => {
+      setMockSystemConfig({
+        routing: {
+          enableGlobalRoute: true,
+          enableGroupNameRoute: true,
+          enableBearerAuth: false,
+          bearerAuthKey: 'test-key',
+          skipAuth: true,
+        },
+        enableSessionRebuild: false,
+      });
+
       const mockGetCurrentUser = jest.fn(() => ({ username: 'testuser2' }));
       (UserContextService.getInstance as jest.MockedFunction<any>).mockReturnValue({
         getCurrentUser: mockGetCurrentUser,
@@ -360,6 +410,17 @@ describe('sseService', () => {
     });
 
     it('should handle anonymous user correctly', async () => {
+      setMockSystemConfig({
+        routing: {
+          enableGlobalRoute: true,
+          enableGroupNameRoute: true,
+          enableBearerAuth: false,
+          bearerAuthKey: 'test-key',
+          skipAuth: true,
+        },
+        enableSessionRebuild: false,
+      });
+
       const mockGetCurrentUser = jest.fn(() => null);
       (UserContextService.getInstance as jest.MockedFunction<any>).mockReturnValue({
         getCurrentUser: mockGetCurrentUser,
@@ -379,6 +440,17 @@ describe('sseService', () => {
 
   describe('handleSseMessage', () => {
     it('should return 400 when sessionId is missing', async () => {
+      setMockSystemConfig({
+        routing: {
+          enableGlobalRoute: true,
+          enableGroupNameRoute: true,
+          enableBearerAuth: false,
+          bearerAuthKey: 'test-key',
+          skipAuth: true,
+        },
+        enableSessionRebuild: false,
+      });
+
       const req = createMockRequest({
         query: {}, // No sessionId
       });
@@ -391,6 +463,17 @@ describe('sseService', () => {
     });
 
     it('should return 404 when transport not found', async () => {
+      setMockSystemConfig({
+        routing: {
+          enableGlobalRoute: true,
+          enableGroupNameRoute: true,
+          enableBearerAuth: false,
+          bearerAuthKey: 'test-key',
+          skipAuth: true,
+        },
+        enableSessionRebuild: false,
+      });
+
       const req = createMockRequest({
         query: { sessionId: 'non-existent-session' },
       });
@@ -409,6 +492,7 @@ describe('sseService', () => {
           enableGroupNameRoute: true,
           enableBearerAuth: true,
           bearerAuthKey: 'test-key',
+          skipAuth: false,
         },
       });
 
@@ -431,6 +515,7 @@ describe('sseService', () => {
           enableGroupNameRoute: true,
           enableBearerAuth: false,
           bearerAuthKey: '',
+          skipAuth: true,
         },
       });
 
@@ -449,6 +534,17 @@ describe('sseService', () => {
     });
 
     it('should create new transport for initialize request without sessionId', async () => {
+      setMockSystemConfig({
+        routing: {
+          enableGlobalRoute: true,
+          enableGroupNameRoute: true,
+          enableBearerAuth: false,
+          bearerAuthKey: 'test-key',
+          skipAuth: true,
+        },
+        enableSessionRebuild: false,
+      });
+
       const req = createMockRequest({
         params: { group: 'test-group' },
         body: { method: 'initialize' },
@@ -462,6 +558,17 @@ describe('sseService', () => {
     });
 
     it('should return error when session rebuild is disabled and session is invalid', async () => {
+      setMockSystemConfig({
+        routing: {
+          enableGlobalRoute: true,
+          enableGroupNameRoute: true,
+          enableBearerAuth: false,
+          bearerAuthKey: 'test-key',
+          skipAuth: true,
+        },
+        enableSessionRebuild: false,
+      });
+
       const req = createMockRequest({
         params: { group: 'test-group' },
         headers: { 'mcp-session-id': 'invalid-session' },
@@ -491,6 +598,7 @@ describe('sseService', () => {
           enableGroupNameRoute: true,
           enableBearerAuth: false,
           bearerAuthKey: 'test-key',
+          skipAuth: true,
         },
         enableSessionRebuild: true, // Enable session rebuild
       });
@@ -519,6 +627,7 @@ describe('sseService', () => {
           enableGroupNameRoute: true,
           enableBearerAuth: true,
           bearerAuthKey: 'test-key',
+          skipAuth: false,
         },
       });
 
@@ -536,6 +645,17 @@ describe('sseService', () => {
 
   describe('handleMcpOtherRequest', () => {
     it('should return 400 for missing session ID', async () => {
+      setMockSystemConfig({
+        routing: {
+          enableGlobalRoute: true,
+          enableGroupNameRoute: true,
+          enableBearerAuth: false,
+          bearerAuthKey: 'test-key',
+          skipAuth: true,
+        },
+        enableSessionRebuild: false,
+      });
+
       const req = createMockRequest({
         headers: {}, // No mcp-session-id
       });
@@ -557,6 +677,7 @@ describe('sseService', () => {
           enableGroupNameRoute: true,
           enableBearerAuth: true,
           bearerAuthKey: 'test-key',
+          skipAuth: false,
         },
         enableSessionRebuild: false, // Disable session rebuild
       });
@@ -591,6 +712,7 @@ describe('sseService', () => {
           enableGroupNameRoute: true,
           enableBearerAuth: true,
           bearerAuthKey: 'test-key',
+          skipAuth: false,
         },
         enableSessionRebuild: true, // Enable session rebuild
       });
@@ -620,6 +742,7 @@ describe('sseService', () => {
           enableGroupNameRoute: true,
           enableBearerAuth: true,
           bearerAuthKey: 'test-key',
+          skipAuth: false,
         },
       });
 

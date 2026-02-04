@@ -26,7 +26,7 @@ import { Card, Cards } from 'mintlify';
 - `enableGroupNameRoute` (boolean): 启用或禁用基于群组的路由 (例如 `/api/mcp/group/:groupName`)。
 - `enableBearerAuth` (boolean): 为 MCP 路由启用承载令牌身份验证。
 - `bearerAuthKey` (string): 用于承载身份验证的密钥。
-- `skipAuth` (boolean): 如果为 true，则跳过所有身份验证，使实例公开。
+- `skipAuth` (boolean): 如果为 true，则跳过所有身份验证（包括 MCP 端点），使实例公开。默认值为 `false`，用于保护 MCP 端点；仅建议在受信任环境中开启。
 
 #### 安装配置 (`install`)
 

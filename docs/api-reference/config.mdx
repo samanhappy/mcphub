@@ -26,7 +26,7 @@ Updates various parts of the system configuration. You only need to provide the 
 - `enableGroupNameRoute` (boolean): Enable or disable group-based routing (e.g., `/api/mcp/group/:groupName`).
 - `enableBearerAuth` (boolean): Enable bearer token authentication for MCP routes.
 - `bearerAuthKey` (string): The secret key to use for bearer authentication.
-- `skipAuth` (boolean): If true, skips all authentication, making the instance public.
+- `skipAuth` (boolean): If true, skips all authentication (including MCP endpoints), making the instance public. Default is `false` to protect MCP endpoints; enable only for trusted environments.
 
 #### Install Configuration (`install`)
 
