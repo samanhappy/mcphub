@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { BookOpen } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { getToken } from '../services/authService';
 import { getPublicConfig } from '../services/configService';
@@ -199,6 +200,15 @@ const LoginPage: React.FC = () => {
     <div className="relative min-h-screen w-full overflow-hidden bg-gray-50 dark:bg-gray-950">
       {/* Top-right controls */}
       <div className="absolute top-4 right-4 z-20 flex items-center gap-2">
+        <a
+          href="https://docs.mcphubx.com/"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="rounded-md p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-200"
+          aria-label="Documentation"
+        >
+          <BookOpen className="h-5 w-5" />
+        </a>
         <ThemeSwitch />
         <LanguageSwitch />
       </div>
