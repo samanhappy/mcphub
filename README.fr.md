@@ -71,7 +71,7 @@ http://localhost:3000/mcp/$smart    # Routage intelligent
 http://localhost:3000/mcp/$smart/{group}  # Routage intelligent dans un groupe
 ```
 
-> **Note de sécurité** : Dans la nouvelle version, les points de terminaison MCP nécessitent une authentification par défaut pour éviter l'exposition accidentelle des serveurs connectés. Pour permettre un accès non authentifié, activez explicitement **Skip Authentication** dans les paramètres de sécurité. Utilisez cela uniquement dans des environnements de confiance.
+> ⚠️**Note de sécurité** : Dans la nouvelle version, les points de terminaison MCP nécessitent une authentification par défaut pour éviter l'exposition accidentelle des serveurs connectés. Pour permettre un accès non authentifié, activez explicitement **Skip Authentication** dans les paramètres de sécurité. Utilisez cela uniquement dans des environnements de confiance.
 
 📖 Consultez la [Référence API](https://docs.mcphubx.com/api-reference) pour la documentation détaillée des points de terminaison.
 

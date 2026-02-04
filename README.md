@@ -71,7 +71,7 @@ http://localhost:3000/mcp/$smart    # Smart routing
 http://localhost:3000/mcp/$smart/{group}  # Smart routing within group
 ```
 
-> **Security note**: In the new version, MCP endpoints require authentication by default to prevent accidental exposure of connected servers. To allow unauthenticated access, explicitly enable **Skip Authentication** in the security settings. Use this only for trusted environments.
+> ⚠️**Security note**: In the new version, MCP endpoints require authentication by default to prevent accidental exposure of connected servers. To allow unauthenticated access, explicitly enable **Skip Authentication** in the security settings. Use this only for trusted environments.
 
 📖 See [API Reference](https://docs.mcphubx.com/api-reference) for detailed endpoint documentation.
 
