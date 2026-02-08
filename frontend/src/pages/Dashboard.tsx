@@ -7,6 +7,27 @@ const DashboardPage: React.FC = () => {
   const { t } = useTranslation();
   const { allServers, error, setError, isLoading } = useServerData({ refreshOnMount: true });
 
+  const [hasLoaded, setHasLoaded] = React.useState(false);
+  const loadingStartedRef = React.useRef(false);
+
+  React.useEffect(() => {
+    if (isLoading) {
+      loadingStartedRef.current = true;
+      return;
+    }
+
+    if (loadingStartedRef.current) {
+      setHasLoaded(true);
+      return;
+    }
+
+    if (allServers.length > 0 || error) {
+      setHasLoaded(true);
+    }
+  }, [isLoading, allServers.length, error]);
+
+  const showSkeleton = !hasLoaded;
+
   // Calculate server statistics using allServers (not paginated)
   const serverStats = {
     total: allServers.length,
@@ -57,35 +78,47 @@ const DashboardPage: React.FC = () => {
         </div>
       )}
 
-      {isLoading && (
-        <div className="bg-white shadow rounded-lg p-6 flex items-center justify-center loading-container">
-          <div className="flex flex-col items-center">
-            <svg
-              className="animate-spin h-10 w-10 text-blue-500 mb-4"
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-            >
-              <circle
-                className="opacity-25"
-                cx="12"
-                cy="12"
-                r="10"
-                stroke="currentColor"
-                strokeWidth="4"
-              ></circle>
-              <path
-                className="opacity-75"
-                fill="currentColor"
-                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-              ></path>
-            </svg>
-            <p className="text-gray-600">{t('app.loading')}</p>
+      {showSkeleton && (
+        <div className="space-y-8" aria-busy="true" aria-live="polite">
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
+            {Array.from({ length: 4 }).map((_, index) => (
+              <div
+                key={`stats-skeleton-${index}`}
+                className="bg-white rounded-lg shadow p-6 dashboard-card"
+              >
+                <div className="flex items-center">
+                  <div className="h-14 w-14 rounded-full bg-gray-200 animate-pulse" />
+                  <div className="ml-4 flex-1 space-y-3">
+                    <div className="h-4 w-32 rounded bg-gray-200 animate-pulse" />
+                    <div className="h-8 w-20 rounded bg-gray-200 animate-pulse" />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div>
+            <div className="h-6 w-40 rounded bg-gray-200 animate-pulse mb-4" />
+            <div className="bg-white shadow rounded-lg overflow-hidden table-container">
+              <div className="divide-y divide-gray-200">
+                {Array.from({ length: 5 }).map((_, index) => (
+                  <div key={`row-skeleton-${index}`} className="px-6 py-4">
+                    <div className="grid grid-cols-5 gap-6">
+                      <div className="h-4 w-28 rounded bg-gray-200 animate-pulse" />
+                      <div className="h-4 w-24 rounded bg-gray-200 animate-pulse" />
+                      <div className="h-4 w-12 rounded bg-gray-200 animate-pulse" />
+                      <div className="h-4 w-12 rounded bg-gray-200 animate-pulse" />
+                      <div className="h-4 w-10 rounded bg-gray-200 animate-pulse" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       )}
 
-      {!isLoading && (
+      {!showSkeleton && (
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
           {/* Total servers */}
           <div className="bg-white rounded-lg shadow p-6 dashboard-card">
@@ -202,7 +235,7 @@ const DashboardPage: React.FC = () => {
       )}
 
       {/* Recent activity list */}
-      {allServers.length > 0 && !isLoading && (
+      {allServers.length > 0 && !showSkeleton && (
         <div className="mt-8">
           <h2 className="text-xl font-semibold text-gray-900 mb-4">
             {t('pages.dashboard.recentServers')}
