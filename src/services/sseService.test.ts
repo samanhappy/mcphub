@@ -15,7 +15,7 @@ const defaultSystemConfig = {
   routing: {
     enableGlobalRoute: true,
     enableGroupNameRoute: true,
-    enableBearerAuth: false,
+    enableBearerAuth: true,
     bearerAuthKey: 'test-key',
     skipAuth: false,
   },
@@ -205,7 +205,7 @@ describe('sseService', () => {
       routing: {
         enableGlobalRoute: true,
         enableGroupNameRoute: true,
-        enableBearerAuth: false,
+        enableBearerAuth: true,
         bearerAuthKey: 'test-key',
         skipAuth: false,
       },
@@ -214,7 +214,7 @@ describe('sseService', () => {
   });
 
   describe('bearer authentication', () => {
-    it('should return 401 when skipAuth is false and no authorization header', async () => {
+    it('should return 401 when bearer auth is enabled and no authorization header', async () => {
       const req = createMockRequest({
         params: { group: 'test-group' },
       });
@@ -225,14 +225,14 @@ describe('sseService', () => {
       expectBearerUnauthorized(res, 'No authorization provided');
     });
 
-    it('should pass when skipAuth is enabled', async () => {
+    it('should pass when bearer auth is disabled', async () => {
       setMockSystemConfig({
         routing: {
           enableGlobalRoute: true,
           enableGroupNameRoute: true,
           enableBearerAuth: false,
           bearerAuthKey: 'test-key',
-          skipAuth: true,
+          skipAuth: false,
         },
         enableSessionRebuild: false,
       });
@@ -343,7 +343,7 @@ describe('sseService', () => {
           enableGroupNameRoute: true,
           enableBearerAuth: false,
           bearerAuthKey: '',
-          skipAuth: true,
+          skipAuth: false,
         },
       });
 
@@ -365,7 +365,7 @@ describe('sseService', () => {
           enableGroupNameRoute: true,
           enableBearerAuth: false,
           bearerAuthKey: 'test-key',
-          skipAuth: true,
+          skipAuth: false,
         },
         enableSessionRebuild: false,
       });
@@ -388,7 +388,7 @@ describe('sseService', () => {
           enableGroupNameRoute: true,
           enableBearerAuth: false,
           bearerAuthKey: 'test-key',
-          skipAuth: true,
+          skipAuth: false,
         },
         enableSessionRebuild: false,
       });
@@ -416,7 +416,7 @@ describe('sseService', () => {
           enableGroupNameRoute: true,
           enableBearerAuth: false,
           bearerAuthKey: 'test-key',
-          skipAuth: true,
+          skipAuth: false,
         },
         enableSessionRebuild: false,
       });
@@ -446,7 +446,7 @@ describe('sseService', () => {
           enableGroupNameRoute: true,
           enableBearerAuth: false,
           bearerAuthKey: 'test-key',
-          skipAuth: true,
+          skipAuth: false,
         },
         enableSessionRebuild: false,
       });
@@ -469,7 +469,7 @@ describe('sseService', () => {
           enableGroupNameRoute: true,
           enableBearerAuth: false,
           bearerAuthKey: 'test-key',
-          skipAuth: true,
+          skipAuth: false,
         },
         enableSessionRebuild: false,
       });
@@ -515,7 +515,7 @@ describe('sseService', () => {
           enableGroupNameRoute: true,
           enableBearerAuth: false,
           bearerAuthKey: '',
-          skipAuth: true,
+          skipAuth: false,
         },
       });
 
@@ -540,7 +540,7 @@ describe('sseService', () => {
           enableGroupNameRoute: true,
           enableBearerAuth: false,
           bearerAuthKey: 'test-key',
-          skipAuth: true,
+          skipAuth: false,
         },
         enableSessionRebuild: false,
       });
@@ -564,7 +564,7 @@ describe('sseService', () => {
           enableGroupNameRoute: true,
           enableBearerAuth: false,
           bearerAuthKey: 'test-key',
-          skipAuth: true,
+          skipAuth: false,
         },
         enableSessionRebuild: false,
       });
@@ -598,7 +598,7 @@ describe('sseService', () => {
           enableGroupNameRoute: true,
           enableBearerAuth: false,
           bearerAuthKey: 'test-key',
-          skipAuth: true,
+          skipAuth: false,
         },
         enableSessionRebuild: true, // Enable session rebuild
       });
@@ -651,7 +651,7 @@ describe('sseService', () => {
           enableGroupNameRoute: true,
           enableBearerAuth: false,
           bearerAuthKey: 'test-key',
-          skipAuth: true,
+          skipAuth: false,
         },
         enableSessionRebuild: false,
       });

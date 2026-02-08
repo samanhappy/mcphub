@@ -964,7 +964,7 @@ export const updateSystemConfig = async (req: Request, res: Response): Promise<v
         routing: {
           enableGlobalRoute: true,
           enableGroupNameRoute: true,
-          enableBearerAuth: false,
+          enableBearerAuth: true,
           bearerAuthKey: '',
           skipAuth: false,
         },
@@ -999,7 +999,7 @@ export const updateSystemConfig = async (req: Request, res: Response): Promise<v
       systemConfig.routing = {
         enableGlobalRoute: true,
         enableGroupNameRoute: true,
-        enableBearerAuth: false,
+        enableBearerAuth: true,
         bearerAuthKey: '',
         skipAuth: false,
       };
@@ -1113,7 +1113,8 @@ export const updateSystemConfig = async (req: Request, res: Response): Promise<v
 
           if (!currentDbUrl) {
             res.status(400).json({
-              message: 'Smart routing cannot be enabled without Database URL. Please provide DB URL.',
+              message:
+                'Smart routing cannot be enabled without Database URL. Please provide DB URL.',
             });
             return;
           }
@@ -1134,7 +1135,12 @@ export const updateSystemConfig = async (req: Request, res: Response): Promise<v
             const currentAzureApiVersion =
               smartRouting.azureOpenaiApiVersion || systemConfig.smartRouting.azureOpenaiApiVersion;
 
-            if (!currentAzureEndpoint || !currentAzureKey || !currentAzureApiVersion || !currentAzureDeployment) {
+            if (
+              !currentAzureEndpoint ||
+              !currentAzureKey ||
+              !currentAzureApiVersion ||
+              !currentAzureDeployment
+            ) {
               res.status(400).json({
                 message:
                   'Smart routing cannot be enabled without Azure OpenAI configuration. Please provide endpoint, API key, embedding deployment, and API version.',
@@ -1142,7 +1148,8 @@ export const updateSystemConfig = async (req: Request, res: Response): Promise<v
               return;
             }
           } else {
-            const currentOpenAiKey = smartRouting.openaiApiKey || systemConfig.smartRouting.openaiApiKey;
+            const currentOpenAiKey =
+              smartRouting.openaiApiKey || systemConfig.smartRouting.openaiApiKey;
             if (!currentOpenAiKey) {
               res.status(400).json({
                 message:
@@ -1189,7 +1196,8 @@ export const updateSystemConfig = async (req: Request, res: Response): Promise<v
       const isNowEnabled = systemConfig.smartRouting.enabled || false;
       const hasConfigChanged =
         previousSmartRoutingConfig.dbUrl !== systemConfig.smartRouting.dbUrl ||
-        previousSmartRoutingConfig.embeddingProvider !== systemConfig.smartRouting.embeddingProvider ||
+        previousSmartRoutingConfig.embeddingProvider !==
+          systemConfig.smartRouting.embeddingProvider ||
         previousSmartRoutingConfig.openaiApiBaseUrl !==
           systemConfig.smartRouting.openaiApiBaseUrl ||
         previousSmartRoutingConfig.openaiApiKey !== systemConfig.smartRouting.openaiApiKey ||
@@ -1197,7 +1205,8 @@ export const updateSystemConfig = async (req: Request, res: Response): Promise<v
           systemConfig.smartRouting.openaiApiEmbeddingModel ||
         previousSmartRoutingConfig.azureOpenaiEndpoint !==
           systemConfig.smartRouting.azureOpenaiEndpoint ||
-        previousSmartRoutingConfig.azureOpenaiApiKey !== systemConfig.smartRouting.azureOpenaiApiKey ||
+        previousSmartRoutingConfig.azureOpenaiApiKey !==
+          systemConfig.smartRouting.azureOpenaiApiKey ||
         previousSmartRoutingConfig.azureOpenaiApiVersion !==
           systemConfig.smartRouting.azureOpenaiApiVersion ||
         previousSmartRoutingConfig.azureOpenaiEmbeddingDeployment !==

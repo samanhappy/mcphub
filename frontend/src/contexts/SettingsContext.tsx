@@ -165,7 +165,7 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
   const [routingConfig, setRoutingConfig] = useState<RoutingConfig>({
     enableGlobalRoute: true,
     enableGroupNameRoute: true,
-    enableBearerAuth: false,
+    enableBearerAuth: true,
     bearerAuthKey: '',
     skipAuth: false,
   });
@@ -230,7 +230,7 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
         setRoutingConfig({
           enableGlobalRoute: data.data.systemConfig.routing.enableGlobalRoute ?? true,
           enableGroupNameRoute: data.data.systemConfig.routing.enableGroupNameRoute ?? true,
-          enableBearerAuth: data.data.systemConfig.routing.enableBearerAuth ?? false,
+          enableBearerAuth: data.data.systemConfig.routing.enableBearerAuth ?? true,
           bearerAuthKey: data.data.systemConfig.routing.bearerAuthKey || '',
           skipAuth: data.data.systemConfig.routing.skipAuth ?? false,
         });

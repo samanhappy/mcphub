@@ -168,7 +168,7 @@ describe('Keepalive Functionality', () => {
           enableGroupNameRoute: true,
           enableBearerAuth: false,
           bearerAuthKey: '',
-          skipAuth: true,
+          skipAuth: false,
         },
       }),
     };
@@ -182,7 +182,7 @@ describe('Keepalive Functionality', () => {
           enableGroupNameRoute: true,
           enableBearerAuth: false,
           bearerAuthKey: '',
-          skipAuth: true,
+          skipAuth: false,
         },
       },
       mcpServers: {},

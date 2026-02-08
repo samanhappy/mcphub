@@ -127,7 +127,7 @@ export const getSystemConfigPublic = async (): Promise<SystemConfig | null> => {
 };
 
 /**
- * Check if authentication should be skipped based on system configuration
+ * Check if dashboard login should be skipped based on system configuration
  */
 export const shouldSkipAuth = async (): Promise<boolean> => {
   try {

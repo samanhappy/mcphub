@@ -48,7 +48,7 @@ export const getRuntimeConfig = (req: Request, res: Response): void => {
 
 /**
  * Get public system configuration (only skipAuth setting)
- * This endpoint doesn't require authentication to allow checking if auth should be skipped
+ * This endpoint doesn't require authentication to allow checking if dashboard login should be skipped
  */
 export const getPublicConfig = (req: Request, res: Response): void => {
   try {

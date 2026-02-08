@@ -444,8 +444,6 @@ const SettingsPage: React.FC = () => {
 
   const {
     routingConfig,
-    tempRoutingConfig,
-    setTempRoutingConfig,
     installConfig: savedInstallConfig,
     smartRoutingConfig,
     mcpRouterConfig,
@@ -455,7 +453,6 @@ const SettingsPage: React.FC = () => {
     loading,
     bearerKeys,
     updateRoutingConfig,
-    updateRoutingConfigBatch,
     updateInstallConfig,
     updateSmartRoutingConfig,
     updateSmartRoutingConfigBatch,
@@ -583,37 +580,7 @@ const SettingsPage: React.FC = () => {
       | 'skipAuth',
     value: boolean | string,
   ) => {
-    // If enableBearerAuth is turned on and there's no key, generate one first
-    if (key === 'enableBearerAuth' && value === true) {
-      if (!tempRoutingConfig.bearerAuthKey && !routingConfig.bearerAuthKey) {
-        const newKey = generateRandomKey();
-        handleBearerAuthKeyChange(newKey);
-
-        // Update both enableBearerAuth and bearerAuthKey in a single call
-        const success = await updateRoutingConfigBatch({
-          enableBearerAuth: true,
-          bearerAuthKey: newKey,
-        });
-
-        if (success) {
-          // Update tempRoutingConfig to reflect the saved values
-          setTempRoutingConfig((prev) => ({
-            ...prev,
-            bearerAuthKey: newKey,
-          }));
-        }
-        return;
-      }
-    }
-
     await updateRoutingConfig(key, value);
-  };
-
-  const handleBearerAuthKeyChange = (value: string) => {
-    setTempRoutingConfig((prev) => ({
-      ...prev,
-      bearerAuthKey: value,
-    }));
   };
 
   const handleInstallConfigChange = (
@@ -823,7 +790,8 @@ const SettingsPage: React.FC = () => {
         tempSmartRoutingConfig.azureOpenaiEmbeddingDeployment !==
         smartRoutingConfig.azureOpenaiEmbeddingDeployment
       ) {
-        updates.azureOpenaiEmbeddingDeployment = tempSmartRoutingConfig.azureOpenaiEmbeddingDeployment;
+        updates.azureOpenaiEmbeddingDeployment =
+          tempSmartRoutingConfig.azureOpenaiEmbeddingDeployment;
       }
 
       // Save all changes in a single batch update
@@ -868,7 +836,8 @@ const SettingsPage: React.FC = () => {
       tempSmartRoutingConfig.azureOpenaiEmbeddingDeployment !==
       smartRoutingConfig.azureOpenaiEmbeddingDeployment
     ) {
-      updates.azureOpenaiEmbeddingDeployment = tempSmartRoutingConfig.azureOpenaiEmbeddingDeployment;
+      updates.azureOpenaiEmbeddingDeployment =
+        tempSmartRoutingConfig.azureOpenaiEmbeddingDeployment;
     }
 
     if (Object.keys(updates).length > 0) {
@@ -1110,6 +1079,24 @@ const SettingsPage: React.FC = () => {
 
           {sectionsVisible.bearerKeys && (
             <div className="space-y-4 pb-4 px-6">
+              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-md">
+                <div>
+                  <h3 className="font-medium text-gray-700">
+                    {t('settings.enableBearerAuth') || 'Enable Bearer Authentication'}
+                  </h3>
+                  <p className="text-sm text-gray-500">
+                    {t('settings.enableBearerAuthDescription') ||
+                      'Require bearer token authentication for MCP requests'}
+                  </p>
+                </div>
+                <Switch
+                  disabled={loading}
+                  checked={routingConfig.enableBearerAuth}
+                  onCheckedChange={(checked) =>
+                    handleRoutingConfigChange('enableBearerAuth', checked)
+                  }
+                />
+              </div>
               <div className="flex justify-between items-center">
                 <p className="text-sm text-gray-600">
                   {t('settings.bearerKeysSectionDescription') ||
@@ -1505,7 +1492,9 @@ const SettingsPage: React.FC = () => {
 
                   <div className="p-3 bg-gray-50 rounded-md">
                     <div className="mb-2">
-                      <h3 className="font-medium text-gray-700">{t('settings.openaiApiBaseUrl')}</h3>
+                      <h3 className="font-medium text-gray-700">
+                        {t('settings.openaiApiBaseUrl')}
+                      </h3>
                     </div>
                     <div className="flex items-center gap-3">
                       <input
@@ -1602,7 +1591,9 @@ const SettingsPage: React.FC = () => {
                         onChange={(e) =>
                           handleSmartRoutingConfigChange('azureOpenaiApiVersion', e.target.value)
                         }
-                        placeholder={t('settings.azureOpenaiApiVersionPlaceholder') || '2024-02-15-preview'}
+                        placeholder={
+                          t('settings.azureOpenaiApiVersionPlaceholder') || '2024-02-15-preview'
+                        }
                         className="flex-1 mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm form-input"
                         disabled={loading}
                       />
@@ -1613,7 +1604,8 @@ const SettingsPage: React.FC = () => {
                     <div className="mb-2">
                       <h3 className="font-medium text-gray-700">
                         <span className="text-red-500 px-1">*</span>
-                        {t('settings.azureOpenaiEmbeddingDeployment') || 'Azure Embedding Deployment'}
+                        {t('settings.azureOpenaiEmbeddingDeployment') ||
+                          'Azure Embedding Deployment'}
                       </h3>
                     </div>
                     <div className="flex items-center gap-3">

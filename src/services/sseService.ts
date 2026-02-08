@@ -168,7 +168,7 @@ const isBearerKeyAllowedForRequest = async (req: Request, key: BearerKey): Promi
 const validateBearerAuth = async (req: Request): Promise<BearerAuthResult> => {
   const systemConfigDao = getSystemConfigDao();
   const systemConfig = await systemConfigDao.get();
-  const skipAuth = systemConfig?.routing?.skipAuth ?? false;
+  const enableBearerAuth = systemConfig?.routing?.enableBearerAuth ?? true;
 
   const bearerKeyDao = getBearerKeyDao();
   const enabledKeys = await bearerKeyDao.findEnabled();
@@ -176,7 +176,7 @@ const validateBearerAuth = async (req: Request): Promise<BearerAuthResult> => {
   const authHeader = req.headers.authorization;
   const hasBearerHeader = !!authHeader && authHeader.startsWith('Bearer ');
 
-  if (skipAuth) {
+  if (!enableBearerAuth) {
     if (!hasBearerHeader) {
       return { valid: true };
     }
@@ -191,20 +191,20 @@ const validateBearerAuth = async (req: Request): Promise<BearerAuthResult> => {
       const allowed = await isBearerKeyAllowedForRequest(req, matchingKey);
       if (allowed) {
         console.log(
-          `Bearer key authenticated (skipAuth): id=${matchingKey.id}, name=${matchingKey.name}, accessType=${matchingKey.accessType}`,
+          `Bearer key recognized (auth disabled): id=${matchingKey.id}, name=${matchingKey.name}, accessType=${matchingKey.accessType}`,
         );
         return { valid: true, keyId: matchingKey.id, keyName: matchingKey.name };
       }
 
       console.warn(
-        `Bearer key matched but rejected due to scope restrictions (skipAuth): id=${matchingKey.id}, name=${matchingKey.name}, accessType=${matchingKey.accessType}`,
+        `Bearer key matched but rejected due to scope restrictions (auth disabled): id=${matchingKey.id}, name=${matchingKey.name}, accessType=${matchingKey.accessType}`,
       );
       return { valid: true };
     }
 
     const oauthUser = await resolveOAuthUserFromToken(token);
     if (oauthUser) {
-      console.log('Authenticated request using OAuth bearer token (skipAuth)');
+      console.log('Recognized OAuth bearer token (auth disabled)');
       return { valid: true, user: oauthUser };
     }
 
@@ -380,7 +380,7 @@ export const handleSseConnection = async (req: Request, res: Response): Promise<
   const routingConfig = systemConfig?.routing || {
     enableGlobalRoute: true,
     enableGroupNameRoute: true,
-    enableBearerAuth: false,
+    enableBearerAuth: true,
     bearerAuthKey: '',
   };
   const group = req.params.group;

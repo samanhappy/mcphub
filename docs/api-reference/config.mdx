@@ -24,9 +24,9 @@ Updates various parts of the system configuration. You only need to provide the 
 
 - `enableGlobalRoute` (boolean): Enable or disable the global `/api/mcp` route.
 - `enableGroupNameRoute` (boolean): Enable or disable group-based routing (e.g., `/api/mcp/group/:groupName`).
-- `enableBearerAuth` (boolean): Enable bearer token authentication for MCP routes.
-- `bearerAuthKey` (string): The secret key to use for bearer authentication.
-- `skipAuth` (boolean): If true, skips all authentication (including MCP endpoints), making the instance public. Default is `false` to protect MCP endpoints; enable only for trusted environments.
+- `enableBearerAuth` (boolean): Require bearer token authentication for MCP endpoints (default: `true`).
+- `bearerAuthKey` (string): Legacy bearer key (used only for one-time migration).
+- `skipAuth` (boolean): If true, skips dashboard login requirements. This does **not** disable MCP endpoint authentication.
 
 #### Install Configuration (`install`)
 
@@ -53,6 +53,7 @@ Updates various parts of the system configuration. You only need to provide the 
   ```json
   {
     "routing": {
+      "enableBearerAuth": false,
       "skipAuth": true
     },
     "smartRouting": {

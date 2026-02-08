@@ -146,7 +146,7 @@ export async function exampleSystemConfigOperations() {
   await systemConfigDao.updateSection('routing', {
     enableGlobalRoute: true,
     enableGroupNameRoute: true,
-    enableBearerAuth: false,
+    enableBearerAuth: true,
   });
   console.log('Updated routing configuration');
 
