@@ -240,9 +240,7 @@ const ServerCard = ({
 
   return (
     <>
-      <div
-        className="bg-white shadow rounded-lg mb-6 page-card transition-all duration-200"
-      >
+      <div className="bg-white shadow rounded-lg mb-6 page-card transition-all duration-200">
         <div
           className="flex justify-between items-center cursor-pointer p-4"
           onClick={() => setIsExpanded(!isExpanded)}
