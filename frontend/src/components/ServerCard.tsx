@@ -50,6 +50,8 @@ const ServerCard = ({
   }, []);
 
   const { exportMCPSettings } = useSettingsData();
+  const totalTools = server.tools?.length || 0;
+  const enabledTools = server.tools?.filter((tool) => tool.enabled !== false).length || 0;
 
   const handleRemove = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -239,7 +241,7 @@ const ServerCard = ({
   return (
     <>
       <div
-        className={`bg-white shadow rounded-lg mb-6 page-card transition-all duration-200 ${server.enabled === false ? 'opacity-60' : ''}`}
+        className="bg-white shadow rounded-lg mb-6 page-card transition-all duration-200"
       >
         <div
           className="flex justify-between items-center cursor-pointer p-4"
@@ -251,6 +253,9 @@ const ServerCard = ({
             >
               {server.name}
             </h2>
+            {server.config?.description && (
+              <span className="text-sm text-gray-500">- {server.config.description}</span>
+            )}
             <StatusBadge status={server.status} onAuthClick={handleOAuthAuthorization} />
 
             {/* Server type badge */}
@@ -275,7 +280,7 @@ const ServerCard = ({
                 />
               </svg>
               <span>
-                {server.tools?.length || 0} {t('server.tools')}
+                {enabledTools}/{totalTools} {t('server.tools')}
               </span>
             </div>
 
@@ -369,7 +374,7 @@ const ServerCard = ({
                     ? 'bg-gray-200 text-gray-500'
                     : server.enabled !== false
                       ? 'bg-green-100 text-green-800 hover:bg-green-200 btn-secondary'
-                      : 'bg-gray-100 text-gray-800 hover:bg-gray-200 btn-primary'
+                      : 'bg-blue-100 text-blue-800 hover:bg-blue-200 btn-primary'
                 }`}
                 disabled={isToggling || isReloading}
               >

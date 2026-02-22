@@ -97,6 +97,8 @@
     "tools": "Araçlar",
     "prompts": "İstekler",
     "name": "Sunucu Adı",
+    "description": "Sunucu Notu",
+    "descriptionPlaceholder": "İsteğe bağlı: Bu sunucunun ne işe yaradığını yazın",
     "url": "Sunucu URL'si",
     "apiKey": "API Anahtarı",
     "save": "Kaydet",

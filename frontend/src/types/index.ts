@@ -119,6 +119,7 @@ export interface ProxychainsConfig {
 // Server config types
 export interface ServerConfig {
   type?: 'stdio' | 'sse' | 'streamable-http' | 'openapi';
+  description?: string;
   url?: string;
   command?: string;
   args?: string[];
@@ -253,6 +254,7 @@ export interface EnvVar {
 // Form data types
 export interface ServerFormData {
   name: string;
+  description?: string;
   url: string;
   command: string;
   arguments: string;

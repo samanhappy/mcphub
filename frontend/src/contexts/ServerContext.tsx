@@ -4,6 +4,24 @@ import { Server, ApiResponse } from '@/types';
 import { apiGet, apiPost, apiDelete } from '../utils/fetchInterceptor';
 import { useAuth } from './AuthContext';
 
+const SERVERS_PER_PAGE_KEY = 'mcphub_servers_per_page';
+const DEFAULT_SERVERS_PER_PAGE = 5;
+const VALID_PAGE_SIZES = new Set([5, 10, 20, 50]);
+
+const getInitialServersPerPage = (): number => {
+  if (typeof window === 'undefined') {
+    return DEFAULT_SERVERS_PER_PAGE;
+  }
+
+  const saved = window.localStorage.getItem(SERVERS_PER_PAGE_KEY);
+  if (!saved) {
+    return DEFAULT_SERVERS_PER_PAGE;
+  }
+
+  const parsed = Number(saved);
+  return VALID_PAGE_SIZES.has(parsed) ? parsed : DEFAULT_SERVERS_PER_PAGE;
+};
+
 // Configuration options
 const CONFIG = {
   // Initialization phase configuration
@@ -64,7 +82,7 @@ export const ServerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [fetchAttempts, setFetchAttempts] = useState(0);
   const [pagination, setPagination] = useState<PaginationInfo | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [serversPerPage, setServersPerPage] = useState(5);
+  const [serversPerPage, setServersPerPage] = useState(getInitialServersPerPage);
 
   // Timer reference for polling
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -469,7 +487,13 @@ export const ServerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   // Handle servers per page change
   const handleServersPerPageChange = useCallback((limit: number) => {
-    setServersPerPage(limit);
+    const normalizedLimit = VALID_PAGE_SIZES.has(limit) ? limit : DEFAULT_SERVERS_PER_PAGE;
+
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(SERVERS_PER_PAGE_KEY, String(normalizedLimit));
+    }
+
+    setServersPerPage(normalizedLimit);
     setCurrentPage(1); // Reset to first page when changing page size
   }, []);
 

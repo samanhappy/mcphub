@@ -97,6 +97,8 @@
     "tools": "Outils",
     "prompts": "Invites",
     "name": "Nom du serveur",
+    "description": "Note du serveur",
+    "descriptionPlaceholder": "Optionnel : décrivez l'utilité de ce serveur",
     "url": "URL du serveur",
     "apiKey": "Clé API",
     "save": "Enregistrer",

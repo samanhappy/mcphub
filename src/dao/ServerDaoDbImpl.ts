@@ -51,6 +51,7 @@ export class ServerDaoDbImpl implements ServerDao {
     const server = await this.repository.create({
       name: entity.name,
       type: entity.type,
+      description: entity.description,
       url: entity.url,
       command: entity.command,
       args: entity.args,
@@ -76,6 +77,7 @@ export class ServerDaoDbImpl implements ServerDao {
   ): Promise<ServerConfigWithName | null> {
     const server = await this.repository.update(name, {
       type: entity.type,
+      description: entity.description,
       url: entity.url,
       command: entity.command,
       args: entity.args,
@@ -155,6 +157,7 @@ export class ServerDaoDbImpl implements ServerDao {
   private mapToServerConfig(server: {
     name: string;
     type?: string;
+    description?: string;
     url?: string;
     command?: string;
     args?: string[];
@@ -174,6 +177,7 @@ export class ServerDaoDbImpl implements ServerDao {
     return {
       name: server.name,
       type: server.type as 'stdio' | 'sse' | 'streamable-http' | 'openapi' | undefined,
+      description: server.description,
       url: server.url,
       command: server.command,
       args: server.args,

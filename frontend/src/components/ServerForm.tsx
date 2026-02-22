@@ -62,6 +62,7 @@ const ServerForm = ({
 
   const [formData, setFormData] = useState<ServerFormData>({
     name: (initialData && initialData.name) || '',
+    description: (initialData && initialData.config && initialData.config.description) || '',
     url: (initialData && initialData.config && initialData.config.url) || '',
     command: (initialData && initialData.config && initialData.config.command) || '',
     arguments:
@@ -307,6 +308,7 @@ const ServerForm = ({
         name: formData.name,
         config: {
           type: serverType, // Always include the type
+          description: formData.description?.trim() || undefined,
           ...(serverType === 'openapi'
             ? {
                 openapi: (() => {
@@ -429,6 +431,21 @@ const ServerForm = ({
             className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline form-input"
             placeholder="e.g.: time-mcp"
             required
+          />
+        </div>
+
+        <div className="mb-4">
+          <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="description">
+            {t('server.description')}
+          </label>
+          <input
+            type="text"
+            name="description"
+            id="description"
+            value={formData.description || ''}
+            onChange={handleInputChange}
+            className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline form-input"
+            placeholder={t('server.descriptionPlaceholder')}
           />
         </div>
 

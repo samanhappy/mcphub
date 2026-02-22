@@ -64,6 +64,7 @@ export async function migrateToDatabase(): Promise<boolean> {
           await serverRepo.create({
             name,
             type: config.type,
+            description: config.description,
             url: config.url,
             command: config.command,
             args: config.args,

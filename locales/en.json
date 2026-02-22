@@ -97,6 +97,8 @@
     "tools": "Tools",
     "prompts": "Prompts",
     "name": "Server Name",
+    "description": "Server Note",
+    "descriptionPlaceholder": "Optional note to describe this server",
     "url": "Server URL",
     "apiKey": "API Key",
     "save": "Save",

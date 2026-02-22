@@ -920,7 +920,13 @@ export const getServersInfo = async (
               // Don't expose codeVerifier to frontend for security
             }
           : undefined,
-        config: resolvedType ? { type: resolvedType } : undefined,
+        config:
+          resolvedType || serverConfig?.description
+            ? {
+                ...(resolvedType ? { type: resolvedType } : {}),
+                ...(serverConfig?.description ? { description: serverConfig.description } : {}),
+              }
+            : undefined,
       };
     });
   // Sorting is now handled at DAO layer for consistent pagination results

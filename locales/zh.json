@@ -97,6 +97,8 @@
     "tools": "工具",
     "prompts": "提示词",
     "name": "服务器名称",
+    "description": "服务器注释",
+    "descriptionPlaceholder": "可选：记录这个服务器的用途说明",
     "url": "服务器 URL",
     "apiKey": "API 密钥",
     "save": "保存",
