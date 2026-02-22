@@ -383,11 +383,11 @@ const ServerCard = ({
                     : t('server.enable')}
               </button>
             </div>
-            {server.enabled !== false && onReload && (
+            {onReload && (
               <button
                 onClick={handleReload}
                 className="px-3 py-1 bg-purple-100 text-purple-800 rounded hover:bg-purple-200 text-sm btn-secondary disabled:opacity-70 disabled:cursor-not-allowed"
-                disabled={isReloading || isToggling}
+                disabled={isReloading || isToggling || server.enabled === false}
               >
                 {isReloading ? t('common.processing') : t('server.reload')}
               </button>
