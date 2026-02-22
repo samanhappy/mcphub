@@ -294,6 +294,7 @@
       "title": "仪表盘",
       "totalServers": "总数",
       "onlineServers": "在线",
+      "disabledServers": "禁用",
       "offlineServers": "离线",
       "connectingServers": "连接中",
       "recentServers": "最近的服务器"

@@ -293,6 +293,7 @@
       "title": "Tableau de bord",
       "totalServers": "Total",
       "onlineServers": "En ligne",
+      "disabledServers": "Désactivés",
       "offlineServers": "Hors ligne",
       "connectingServers": "En connexion",
       "recentServers": "Serveurs récents"

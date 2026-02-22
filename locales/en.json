@@ -292,6 +292,7 @@
       "title": "Dashboard",
       "totalServers": "Total",
       "onlineServers": "Online",
+      "disabledServers": "Disabled",
       "offlineServers": "Offline",
       "connectingServers": "Connecting",
       "recentServers": "Recent Servers"

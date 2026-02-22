@@ -32,7 +32,10 @@ const DashboardPage: React.FC = () => {
   const serverStats = {
     total: allServers.length,
     online: allServers.filter((server: Server) => server.status === 'connected').length,
-    offline: allServers.filter((server: Server) => server.status === 'disconnected').length,
+    disabled: allServers.filter((server: Server) => server.enabled === false).length,
+    offline: allServers.filter(
+      (server: Server) => server.status === 'disconnected' && server.enabled !== false,
+    ).length,
     connecting: allServers.filter((server: Server) => server.status === 'connecting').length,
     oauthRequired: allServers.filter((server: Server) => server.status === 'oauth_required').length,
   };
@@ -80,8 +83,8 @@ const DashboardPage: React.FC = () => {
 
       {showSkeleton && (
         <div className="space-y-8" aria-busy="true" aria-live="polite">
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
-            {Array.from({ length: 4 }).map((_, index) => (
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-5">
+            {Array.from({ length: 5 }).map((_, index) => (
               <div
                 key={`stats-skeleton-${index}`}
                 className="bg-white rounded-lg shadow p-6 dashboard-card"
@@ -119,7 +122,7 @@ const DashboardPage: React.FC = () => {
       )}
 
       {!showSkeleton && (
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-5">
           {/* Total servers */}
           <div className="bg-white rounded-lg shadow p-6 dashboard-card">
             <div className="flex items-center">
@@ -172,6 +175,34 @@ const DashboardPage: React.FC = () => {
                   {t('pages.dashboard.onlineServers')}
                 </h2>
                 <p className="text-3xl font-bold text-gray-900">{serverStats.online}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Disabled servers */}
+          <div className="bg-white rounded-lg shadow p-6 dashboard-card">
+            <div className="flex items-center">
+              <div className="p-3 rounded-full bg-gray-100 text-gray-700 icon-container">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-8 w-8"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M18.364 5.636l-12.728 12.728M5.636 5.636l12.728 12.728"
+                  />
+                </svg>
+              </div>
+              <div className="ml-4">
+                <h2 className="text-xl font-semibold text-gray-700">
+                  {t('pages.dashboard.disabledServers')}
+                </h2>
+                <p className="text-3xl font-bold text-gray-900">{serverStats.disabled}</p>
               </div>
             </div>
           </div>
