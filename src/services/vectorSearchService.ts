@@ -278,7 +278,7 @@ const getOpenAIClient = async () => {
 };
 
 // Check if the provider supports base64 embeddings
-const supportBase64Embeddings = async (baseURL: string): Promise<boolean> => {
+const supportBase64Embeddings = async (baseURL: string = ''): Promise<boolean> => {
   return !baseURL || BASE64_EMBEDDING_SUPPORTED_PROVIDERS.some((url) => baseURL.startsWith(url));
 };
 
@@ -336,7 +336,7 @@ async function generateEmbedding(text: string): Promise<number[]> {
   const encodingFormatSetting = smartRoutingConfig.embeddingEncodingFormat || 'auto';
   let encodingFormat: 'base64' | 'float';
   if (encodingFormatSetting === 'auto') {
-    const canUseBase64 = await supportBase64Embeddings(config.baseURL || '');
+    const canUseBase64 = await supportBase64Embeddings(config.baseURL);
     encodingFormat = canUseBase64 ? 'base64' : 'float';
   } else {
     encodingFormat = encodingFormatSetting;
