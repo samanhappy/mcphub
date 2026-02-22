@@ -194,7 +194,7 @@ const DashboardPage: React.FC = () => {
                     strokeLinecap="round"
                     strokeLinejoin="round"
                     strokeWidth={2}
-                    d="M18.364 5.636l-12.728 12.728M5.636 5.636l12.728 12.728"
+                    d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"
                   />
                 </svg>
               </div>
@@ -339,7 +339,9 @@ const DashboardPage: React.FC = () => {
                       {server.enabled !== false ? (
                         <span className="text-green-600">✓</span>
                       ) : (
-                        <span className="text-status-red">✗</span>
+                        <span className="text-gray-500" aria-label={t('pages.dashboard.disabledServers')}>
+                          ⏸
+                        </span>
                       )}
                     </td>
                   </tr>
