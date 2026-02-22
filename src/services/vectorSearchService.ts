@@ -932,9 +932,13 @@ async function checkDatabaseVectorDimensions(dimensionsNeeded: number): Promise<
       }
 
       // Alter the column type with the new dimensions
+      // Use halfvec for dimensions > 2000, vector otherwise
+      const vectorType = dimensionsNeeded <= VECTOR_MAX_DIMENSIONS ? 'vector' : 'halfvec';
+      console.log(`Using ${vectorType} type for ${dimensionsNeeded} dimensions`);
+
       await getAppDataSource().query(`
         ALTER TABLE vector_embeddings 
-        ALTER COLUMN embedding TYPE vector(${dimensionsNeeded});
+        ALTER COLUMN embedding TYPE ${vectorType}(${dimensionsNeeded});
       `);
 
       // Create appropriate vector index using the helper function
