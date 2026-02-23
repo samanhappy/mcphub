@@ -76,7 +76,7 @@ jest.mock('../dao/index.js', () => ({
 
 // Mock oauthBearer
 jest.mock('../utils/oauthBearer.js', () => ({
-  resolveOAuthUserFromToken: jest.fn().mockResolvedValue(null),
+  resolveOAuthUserFromToken: jest.fn<() => Promise<unknown>>().mockResolvedValue(undefined),
 }));
 
 jest.mock('./userContextService.js', () => ({
@@ -110,16 +110,25 @@ import { getMcpServer } from './mcpService.js';
 import { UserContextService } from './userContextService.js';
 import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
+import { isInitializeRequest } from '@modelcontextprotocol/sdk/types.js';
 
 // Helper function to update the mock system config
-const setMockSystemConfig = (config: typeof defaultSystemConfig) => {
-  currentSystemConfig = config;
+const setMockSystemConfig = (config: Partial<typeof defaultSystemConfig>) => {
+  currentSystemConfig = {
+    ...defaultSystemConfig,
+    ...config,
+    routing: {
+      ...defaultSystemConfig.routing,
+      ...(config.routing || {}),
+    },
+  };
 };
 
 type MockResponse = Response & {
   status: jest.Mock;
   send: jest.Mock;
   json: jest.Mock;
+  end: jest.Mock;
   setHeader: jest.Mock;
   headersStore: Record<string, string>;
 };
@@ -156,8 +165,6 @@ const createMockRequest = (overrides: Partial<Request> = {}): Request => {
   req.params = req.params || {};
   req.query = req.query || {};
   req.body = req.body || {};
-  req.protocol = req.protocol || 'http';
-  req.originalUrl = req.originalUrl || '/test/sse';
 
   return req;
 };
@@ -169,6 +176,7 @@ const createMockResponse = (): MockResponse => {
     status: jest.fn().mockReturnThis(),
     send: jest.fn().mockReturnThis(),
     json: jest.fn().mockReturnThis(),
+    end: jest.fn().mockReturnThis(),
     setHeader: jest.fn((key: string, value: string) => {
       headers[key] = value;
       return res;
@@ -616,7 +624,7 @@ describe('sseService', () => {
       expect(StreamableHTTPServerTransport).toHaveBeenCalled();
       const mockInstance = (
         StreamableHTTPServerTransport as jest.MockedClass<typeof StreamableHTTPServerTransport>
-      ).mock.results[0].value;
+      ).mock.results[0].value as typeof mockStreamableHTTPServerTransport;
       expect(mockInstance.handleRequest).toHaveBeenCalledWith(req, res, req.body);
     });
 
@@ -640,6 +648,33 @@ describe('sseService', () => {
       await handleMcpPostRequest(req, res);
 
       expectBearerUnauthorized(res, 'No authorization provided');
+    });
+
+    it('should acknowledge session-less notification requests without returning 400', async () => {
+      setMockSystemConfig({
+        routing: {
+          enableGlobalRoute: true,
+          enableGroupNameRoute: true,
+          enableBearerAuth: false,
+          bearerAuthKey: 'test-key',
+          skipAuth: false,
+        },
+        enableSessionRebuild: false,
+      });
+
+      (isInitializeRequest as jest.MockedFunction<any>).mockReturnValue(false);
+
+      const req = createMockRequest({
+        params: { group: 'test-group' },
+        body: { method: 'notifications/roots/list_changed' },
+      });
+      const res = createMockResponse();
+
+      await handleMcpPostRequest(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.end).toHaveBeenCalled();
+      expect(StreamableHTTPServerTransport).not.toHaveBeenCalled();
     });
   });
 

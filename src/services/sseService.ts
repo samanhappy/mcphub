@@ -676,8 +676,19 @@ export const handleMcpPostRequest = async (req: Request, res: Response): Promise
       `[SESSION CREATE] No session ID provided for initialize request, creating new session${username ? ` for user: ${username}` : ''}`,
     );
     transport = await createNewSession(group, username);
+  } else if (
+    req.body &&
+    typeof req.body.method === 'string' &&
+    req.body.method.startsWith('notifications/')
+  ) {
+    // Case 4: Session-less notification requests should be acknowledged and ignored
+    console.log(
+      `[SESSION SKIP] Ignoring session-less notification request (method: ${req.body.method})${username ? ` for user: ${username}` : ''}`,
+    );
+    res.status(200).end();
+    return;
   } else {
-    // Case 4: No sessionId and not an initialize request, return error
+    // Case 5: No sessionId and not an initialize/notification request, return error
     console.warn(
       `[SESSION ERROR] No session ID provided for non-initialize request (method: ${req.body?.method})${username ? ` for user: ${username}` : ''}`,
     );
