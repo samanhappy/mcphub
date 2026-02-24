@@ -245,14 +245,14 @@ const ServerCard = ({
           className="flex justify-between items-center cursor-pointer p-4"
           onClick={() => setIsExpanded(!isExpanded)}
         >
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-2">
             <h2
               className={`text-xl font-semibold ${server.enabled === false ? 'text-gray-600' : 'text-gray-900'}`}
             >
               {server.name}
             </h2>
             {server.config?.description && (
-              <span className="text-sm text-gray-500">- {server.config.description}</span>
+              <span className="text-sm text-gray-500">({server.config.description})</span>
             )}
             <StatusBadge status={server.status} onAuthClick={handleOAuthAuthorization} />
 
