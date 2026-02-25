@@ -25,7 +25,7 @@ interface GroupCardProps {
 const GroupCard = ({ group, servers, onEdit, onDelete }: GroupCardProps) => {
   const { t } = useTranslation();
   const { showToast } = useToast();
-  const { installConfig } = useSettingsData();
+  const { installConfig, nameSeparator } = useSettingsData();
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [copied, setCopied] = useState(false);
   const [showCopyDropdown, setShowCopyDropdown] = useState(false);
@@ -211,19 +211,28 @@ const GroupCard = ({ group, servers, onEdit, onDelete }: GroupCardProps) => {
               const serverConfig = getServerConfig(server.name);
               const hasToolRestrictions =
                 serverConfig && serverConfig.tools !== 'all' && Array.isArray(serverConfig.tools);
+
+              const enabledServerTools = (server.tools || []).filter((tool) => tool.enabled !== false);
+              const normalizeToolName = (toolName: string): string => {
+                const prefix = `${server.name}${nameSeparator}`;
+                return toolName.startsWith(prefix) ? toolName.slice(prefix.length) : toolName;
+              };
+              const enabledToolNames = enabledServerTools.map((tool) => normalizeToolName(tool.name));
+              const enabledToolNameSet = new Set(enabledToolNames);
+
               const toolCount =
                 hasToolRestrictions && Array.isArray(serverConfig?.tools)
-                  ? serverConfig.tools.length
-                  : server.tools?.length || 0; // Show total tool count when all tools are selected
+                  ? serverConfig.tools.filter((toolName) => enabledToolNameSet.has(toolName)).length
+                  : enabledToolNames.length;
 
               const isExpanded = expandedServer === server.name;
 
               // Get tools list for display
               const getToolsList = () => {
                 if (hasToolRestrictions && Array.isArray(serverConfig?.tools)) {
-                  return serverConfig.tools;
-                } else if (server.tools && server.tools.length > 0) {
-                  return server.tools.map((tool) => tool.name);
+                  return serverConfig.tools.filter((toolName) => enabledToolNameSet.has(toolName));
+                } else if (enabledToolNames.length > 0) {
+                  return enabledToolNames;
                 }
                 return [];
               };
