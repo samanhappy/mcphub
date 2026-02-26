@@ -284,6 +284,8 @@ export interface McpSettings {
   oauthClients?: IOAuthClient[]; // OAuth clients for MCPHub's authorization server
   oauthTokens?: IOAuthToken[]; // Persisted OAuth tokens (access + refresh) for authorization server
   bearerKeys?: BearerKey[]; // Bearer authentication keys (multi-key configuration)
+  prompts?: BuiltinPrompt[]; // Built-in configuration-driven prompt templates
+  resources?: BuiltinResource[]; // Built-in configuration-driven static resources
 }
 
 // Proxychains4 configuration for STDIO servers (Linux/macOS only)
@@ -312,6 +314,7 @@ export interface ServerConfig {
   keepAliveInterval?: number; // Keep-alive ping interval in milliseconds (default: 60000ms for SSE servers)
   tools?: Record<string, { enabled: boolean; description?: string }>; // Tool-specific configurations with enable/disable state and custom descriptions
   prompts?: Record<string, { enabled: boolean; description?: string }>; // Prompt-specific configurations with enable/disable state and custom descriptions
+  resources?: Record<string, { enabled: boolean; description?: string }>; // Resource-specific configurations with enable/disable state and custom descriptions
   options?: Partial<Pick<RequestOptions, 'timeout' | 'resetTimeoutOnProgress' | 'maxTotalTimeout'>>; // MCP request options configuration
   // Proxychains4 proxy configuration for STDIO servers (Linux/macOS only, Windows not supported)
   proxy?: ProxychainsConfig;
@@ -414,6 +417,7 @@ export interface ServerInfo {
   error: string | null; // Error message if any
   tools: Tool[]; // List of tools available on the server
   prompts: Prompt[]; // List of prompts available on the server
+  resources: Resource[]; // List of resources available on the server
   client?: Client; // Client instance for communication (MCP clients)
   transport?: SSEClientTransport | StdioClientTransport | StreamableHTTPClientTransport; // Transport mechanism used
   openApiClient?: any; // OpenAPI client instance for openapi type servers
@@ -450,6 +454,36 @@ export interface PromptArgument {
   title?: string; // Title of the argument
   description?: string; // Brief description of the argument
   required?: boolean; // Whether the argument is required
+}
+
+// Resource exposed by a connected MCP server
+export interface Resource {
+  uri: string; // Unique URI of the resource (e.g., 'file:///path' or custom scheme)
+  name?: string; // Human-readable name
+  description?: string; // Brief description of the resource
+  mimeType?: string; // MIME type of the resource content
+}
+
+// Built-in prompt defined via configuration
+export interface BuiltinPrompt {
+  id: string; // Unique identifier (UUID)
+  name: string; // Prompt name used in MCP protocol
+  title?: string; // Human-readable title
+  description?: string; // Brief description
+  template: string; // Template body with {{parameter}} placeholders
+  arguments?: PromptArgument[]; // Argument definitions matching placeholders
+  enabled?: boolean; // Whether this prompt is active (default: true)
+}
+
+// Built-in resource defined via configuration
+export interface BuiltinResource {
+  id: string; // Unique identifier (UUID)
+  uri: string; // Resource URI (e.g., 'resource://docs/guide')
+  name?: string; // Human-readable name
+  description?: string; // Brief description
+  mimeType?: string; // MIME type (default: 'text/plain')
+  content: string; // Static content of the resource
+  enabled?: boolean; // Whether this resource is active (default: true)
 }
 
 // Standardized API response structure

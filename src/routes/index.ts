@@ -74,6 +74,21 @@ import {
 } from '../controllers/configController.js';
 import { callTool } from '../controllers/toolController.js';
 import { getPrompt } from '../controllers/promptController.js';
+import {
+  listBuiltinPrompts,
+  getBuiltinPrompt,
+  createBuiltinPrompt,
+  updateBuiltinPrompt,
+  deleteBuiltinPrompt,
+} from '../controllers/builtinPromptController.js';
+import {
+  listBuiltinResources,
+  getBuiltinResource,
+  createBuiltinResource,
+  updateBuiltinResource,
+  deleteBuiltinResource,
+  readResource,
+} from '../controllers/builtinResourceController.js';
 import { uploadMcpbFile, uploadMiddleware } from '../controllers/mcpbController.js';
 import { healthCheck } from '../controllers/healthController.js';
 import { getBetterAuthUser } from '../controllers/betterAuthController.js';
@@ -239,6 +254,21 @@ export const initRoutes = async (app: express.Application): Promise<void> => {
 
   // Prompt management routes
   router.post('/mcp/:serverName/prompts/:promptName', getPrompt);
+
+  // Built-in prompt management routes
+  router.get('/prompts', listBuiltinPrompts);
+  router.get('/prompts/:id', getBuiltinPrompt);
+  router.post('/prompts', createBuiltinPrompt);
+  router.put('/prompts/:id', updateBuiltinPrompt);
+  router.delete('/prompts/:id', deleteBuiltinPrompt);
+
+  // Built-in resource management routes
+  router.get('/resources', listBuiltinResources);
+  router.get('/resources/:id', getBuiltinResource);
+  router.post('/resources', createBuiltinResource);
+  router.put('/resources/:id', updateBuiltinResource);
+  router.delete('/resources/:id', deleteBuiltinResource);
+  router.post('/resources/read', readResource);
 
   // MCPB upload routes
   router.post('/mcpb/upload', uploadMiddleware, uploadMcpbFile);

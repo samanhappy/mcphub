@@ -64,6 +64,14 @@ export interface ServerDao extends BaseDao<ServerConfigWithName, string> {
   ): Promise<boolean>;
 
   /**
+   * Update server resources configuration
+   */
+  updateResources(
+    name: string,
+    resources: Record<string, { enabled: boolean; description?: string }>,
+  ): Promise<boolean>;
+
+  /**
    * Rename a server (change its name/key)
    */
   rename(oldName: string, newName: string): Promise<boolean>;
@@ -285,6 +293,14 @@ export class ServerDaoImpl extends JsonFileBaseDao implements ServerDao {
     prompts: Record<string, { enabled: boolean; description?: string }>,
   ): Promise<boolean> {
     const result = await this.update(name, { prompts });
+    return result !== null;
+  }
+
+  async updateResources(
+    name: string,
+    resources: Record<string, { enabled: boolean; description?: string }>,
+  ): Promise<boolean> {
+    const result = await this.update(name, { resources });
     return result !== null;
   }
 

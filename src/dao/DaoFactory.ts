@@ -7,6 +7,8 @@ import { OAuthClientDao, OAuthClientDaoImpl } from './OAuthClientDao.js';
 import { OAuthTokenDao, OAuthTokenDaoImpl } from './OAuthTokenDao.js';
 import { BearerKeyDao, BearerKeyDaoImpl } from './BearerKeyDao.js';
 import { ActivityDao } from './ActivityDao.js';
+import { BuiltinPromptDao, BuiltinPromptDaoImpl } from './BuiltinPromptDao.js';
+import { BuiltinResourceDao, BuiltinResourceDaoImpl } from './BuiltinResourceDao.js';
 
 /**
  * DAO Factory interface for creating DAO instances
@@ -20,6 +22,8 @@ export interface DaoFactory {
   getOAuthClientDao(): OAuthClientDao;
   getOAuthTokenDao(): OAuthTokenDao;
   getBearerKeyDao(): BearerKeyDao;
+  getBuiltinPromptDao(): BuiltinPromptDao;
+  getBuiltinResourceDao(): BuiltinResourceDao;
   getActivityDao?(): ActivityDao; // Optional - only available in database mode
 }
 
@@ -37,6 +41,8 @@ export class JsonFileDaoFactory implements DaoFactory {
   private oauthClientDao: OAuthClientDao | null = null;
   private oauthTokenDao: OAuthTokenDao | null = null;
   private bearerKeyDao: BearerKeyDao | null = null;
+  private builtinPromptDao: BuiltinPromptDao | null = null;
+  private builtinResourceDao: BuiltinResourceDao | null = null;
 
   /**
    * Get singleton instance
@@ -108,6 +114,20 @@ export class JsonFileDaoFactory implements DaoFactory {
     return this.bearerKeyDao;
   }
 
+  getBuiltinPromptDao(): BuiltinPromptDao {
+    if (!this.builtinPromptDao) {
+      this.builtinPromptDao = new BuiltinPromptDaoImpl();
+    }
+    return this.builtinPromptDao;
+  }
+
+  getBuiltinResourceDao(): BuiltinResourceDao {
+    if (!this.builtinResourceDao) {
+      this.builtinResourceDao = new BuiltinResourceDaoImpl();
+    }
+    return this.builtinResourceDao;
+  }
+
   /**
    * Reset all cached DAO instances (useful for testing)
    */
@@ -120,6 +140,8 @@ export class JsonFileDaoFactory implements DaoFactory {
     this.oauthClientDao = null;
     this.oauthTokenDao = null;
     this.bearerKeyDao = null;
+    this.builtinPromptDao = null;
+    this.builtinResourceDao = null;
   }
 }
 
@@ -194,6 +216,14 @@ export function getOAuthTokenDao(): OAuthTokenDao {
 
 export function getBearerKeyDao(): BearerKeyDao {
   return getDaoFactory().getBearerKeyDao();
+}
+
+export function getBuiltinPromptDao(): BuiltinPromptDao {
+  return getDaoFactory().getBuiltinPromptDao();
+}
+
+export function getBuiltinResourceDao(): BuiltinResourceDao {
+  return getDaoFactory().getBuiltinResourceDao();
 }
 
 export function getActivityDao(): ActivityDao | undefined {

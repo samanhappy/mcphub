@@ -70,6 +70,7 @@ export class ServerDaoDbImpl implements ServerDao {
       keepAliveInterval: entity.keepAliveInterval,
       tools: entity.tools,
       prompts: entity.prompts,
+      resources: entity.resources,
       options: entity.options,
       oauth: entity.oauth,
       proxy: entity.proxy,
@@ -96,6 +97,7 @@ export class ServerDaoDbImpl implements ServerDao {
       keepAliveInterval: entity.keepAliveInterval,
       tools: entity.tools,
       prompts: entity.prompts,
+      resources: entity.resources,
       options: entity.options,
       oauth: entity.oauth,
       proxy: entity.proxy,
@@ -152,6 +154,14 @@ export class ServerDaoDbImpl implements ServerDao {
     return result !== null;
   }
 
+  async updateResources(
+    name: string,
+    resources: Record<string, { enabled: boolean; description?: string }>,
+  ): Promise<boolean> {
+    const result = await this.update(name, { resources });
+    return result !== null;
+  }
+
   async rename(oldName: string, newName: string): Promise<boolean> {
     // Check if newName already exists
     if (await this.repository.exists(newName)) {
@@ -176,6 +186,7 @@ export class ServerDaoDbImpl implements ServerDao {
     keepAliveInterval?: number;
     tools?: Record<string, { enabled: boolean; description?: string }>;
     prompts?: Record<string, { enabled: boolean; description?: string }>;
+    resources?: Record<string, { enabled: boolean; description?: string }>;
     options?: Record<string, any>;
     oauth?: Record<string, any>;
     proxy?: Record<string, any>;
@@ -196,6 +207,7 @@ export class ServerDaoDbImpl implements ServerDao {
       keepAliveInterval: server.keepAliveInterval,
       tools: server.tools,
       prompts: server.prompts,
+      resources: server.resources,
       options: server.options,
       oauth: server.oauth,
       proxy: server.proxy,

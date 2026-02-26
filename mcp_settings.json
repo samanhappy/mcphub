@@ -64,5 +64,7 @@
       }
     }
   },
-  "bearerKeys": []
+  "bearerKeys": [],
+  "prompts": [],
+  "resources": []
 }

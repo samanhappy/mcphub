@@ -8,6 +8,8 @@ import {
   OAuthClientDao,
   OAuthTokenDao,
   BearerKeyDao,
+  BuiltinPromptDao,
+  BuiltinResourceDao,
 } from './index.js';
 import { UserDaoDbImpl } from './UserDaoDbImpl.js';
 import { ServerDaoDbImpl } from './ServerDaoDbImpl.js';
@@ -17,6 +19,8 @@ import { UserConfigDaoDbImpl } from './UserConfigDaoDbImpl.js';
 import { OAuthClientDaoDbImpl } from './OAuthClientDaoDbImpl.js';
 import { OAuthTokenDaoDbImpl } from './OAuthTokenDaoDbImpl.js';
 import { BearerKeyDaoDbImpl } from './BearerKeyDaoDbImpl.js';
+import { BuiltinPromptDaoDbImpl } from './BuiltinPromptDaoDbImpl.js';
+import { BuiltinResourceDaoDbImpl } from './BuiltinResourceDaoDbImpl.js';
 import { ActivityDao, ActivityDaoDbImpl } from './ActivityDao.js';
 
 /**
@@ -33,6 +37,8 @@ export class DatabaseDaoFactory implements DaoFactory {
   private oauthClientDao: OAuthClientDao | null = null;
   private oauthTokenDao: OAuthTokenDao | null = null;
   private bearerKeyDao: BearerKeyDao | null = null;
+  private builtinPromptDao: BuiltinPromptDao | null = null;
+  private builtinResourceDao: BuiltinResourceDao | null = null;
   private activityDao: ActivityDao | null = null;
 
   /**
@@ -105,6 +111,20 @@ export class DatabaseDaoFactory implements DaoFactory {
     return this.bearerKeyDao!;
   }
 
+  getBuiltinPromptDao(): BuiltinPromptDao {
+    if (!this.builtinPromptDao) {
+      this.builtinPromptDao = new BuiltinPromptDaoDbImpl();
+    }
+    return this.builtinPromptDao!;
+  }
+
+  getBuiltinResourceDao(): BuiltinResourceDao {
+    if (!this.builtinResourceDao) {
+      this.builtinResourceDao = new BuiltinResourceDaoDbImpl();
+    }
+    return this.builtinResourceDao!;
+  }
+
   getActivityDao(): ActivityDao {
     if (!this.activityDao) {
       this.activityDao = new ActivityDaoDbImpl();
@@ -124,6 +144,8 @@ export class DatabaseDaoFactory implements DaoFactory {
     this.oauthClientDao = null;
     this.oauthTokenDao = null;
     this.bearerKeyDao = null;
+    this.builtinPromptDao = null;
+    this.builtinResourceDao = null;
     this.activityDao = null;
   }
 }

@@ -16,6 +16,8 @@ import SettingsPage from './pages/SettingsPage';
 import MarketPage from './pages/MarketPage';
 import LogsPage from './pages/LogsPage';
 import ActivityPage from './pages/ActivityPage';
+import PromptsPage from './pages/PromptsPage';
+import ResourcesPage from './pages/ResourcesPage';
 import { getBasePath } from './utils/runtime';
 
 // Helper component to redirect cloud server routes to market
@@ -43,6 +45,8 @@ function App() {
                       <Route path="/" element={<DashboardPage />} />
                       <Route path="/servers" element={<ServersPage />} />
                       <Route path="/groups" element={<GroupsPage />} />
+                      <Route path="/prompts" element={<PromptsPage />} />
+                      <Route path="/resources" element={<ResourcesPage />} />
                       <Route path="/users" element={<UsersPage />} />
                       <Route path="/market" element={<MarketPage />} />
                       <Route path="/market/:serverName" element={<MarketPage />} />

@@ -105,6 +105,36 @@ export interface Prompt {
   enabled?: boolean;
 }
 
+// Built-in prompt argument definition
+export interface PromptArgument {
+  name: string;
+  title?: string;
+  description?: string;
+  required?: boolean;
+}
+
+// Built-in prompt defined via configuration
+export interface BuiltinPrompt {
+  id: string;
+  name: string;
+  title?: string;
+  description?: string;
+  template: string;
+  arguments?: PromptArgument[];
+  enabled?: boolean;
+}
+
+// Built-in resource defined via configuration
+export interface BuiltinResource {
+  id: string;
+  uri: string;
+  name?: string;
+  description?: string;
+  mimeType?: string;
+  content: string;
+  enabled?: boolean;
+}
+
 // Proxychains4 configuration for STDIO servers (Linux/macOS only)
 export interface ProxychainsConfig {
   enabled?: boolean; // Enable/disable proxychains4 proxy routing

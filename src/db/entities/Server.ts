@@ -57,6 +57,9 @@ export class Server {
   prompts?: Record<string, { enabled: boolean; description?: string }>;
 
   @Column({ type: 'simple-json', nullable: true })
+  resources?: Record<string, { enabled: boolean; description?: string }>;
+
+  @Column({ type: 'simple-json', nullable: true })
   options?: Record<string, any>;
 
   @Column({ type: 'simple-json', nullable: true })
