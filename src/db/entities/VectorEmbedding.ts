@@ -27,6 +27,7 @@ export class VectorEmbedding {
     type: 'float',
     array: true,
     nullable: true,
+    synchronize: false,
   })
   embedding: number[]; // The vector embedding - will be converted to vector type after table creation
 

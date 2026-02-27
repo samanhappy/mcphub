@@ -53,6 +53,35 @@ const getDatabaseUrl = async (): Promise<string> => {
   return (await getSmartRoutingConfig()).dbUrl;
 };
 
+const ensureEmbeddingColumnIsVector = async (dataSource: DataSource): Promise<void> => {
+  const columnType = await dataSource.query(`
+    SELECT data_type, udt_name
+    FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'vector_embeddings'
+    AND column_name = 'embedding';
+  `);
+
+  if (columnType.length === 0) {
+    await dataSource.query(`
+      ALTER TABLE vector_embeddings
+      ADD COLUMN embedding vector;
+    `);
+    console.log('Created missing embedding column with vector type.');
+    return;
+  }
+
+  const isVectorType = columnType[0].udt_name === 'vector' || columnType[0].data_type === 'vector';
+  if (isVectorType) {
+    return;
+  }
+
+  await dataSource.query(`
+    ALTER TABLE vector_embeddings
+    ALTER COLUMN embedding TYPE vector USING embedding::vector;
+  `);
+  console.log('Vector embedding column type updated successfully.');
+};
+
 // Default database configuration with connection pooling
 const getDefaultConfig = async (): Promise<DataSourceOptions> => {
   return {
@@ -204,22 +233,9 @@ const performDatabaseInitialization = async (): Promise<DataSource> => {
             console.warn('Note: Could not drop existing index:', dropError.message);
           }
 
-          // Step 2: Alter column type to vector (if it's not already)
+          // Step 2: Ensure embedding column exists and uses vector type
           try {
-            // Check column type first
-            const columnType = await appDataSource.query(`
-              SELECT data_type FROM information_schema.columns
-              WHERE table_schema = 'public' AND table_name = 'vector_embeddings'
-              AND column_name = 'embedding';
-            `);
-
-            if (columnType.length > 0 && columnType[0].data_type !== 'vector') {
-              await appDataSource.query(`
-                ALTER TABLE vector_embeddings 
-                ALTER COLUMN embedding TYPE vector USING embedding::vector;
-              `);
-              console.log('Vector embedding column type updated successfully.');
-            }
+            await ensureEmbeddingColumnIsVector(appDataSource);
           } catch (alterError: any) {
             console.warn('Could not alter embedding column type:', alterError.message);
             console.warn('Will try to recreate the table later.');
@@ -290,6 +306,12 @@ const performDatabaseInitialization = async (): Promise<DataSource> => {
 
           if (tableExists[0].exists) {
             console.log('Vector embeddings table found, checking configuration...');
+
+            try {
+              await ensureEmbeddingColumnIsVector(appDataSource);
+            } catch (alterError: any) {
+              console.warn('Could not ensure embedding column type in final check:', alterError.message);
+            }
 
             // Get the dimension size first
             try {
