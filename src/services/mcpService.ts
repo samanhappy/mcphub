@@ -28,7 +28,13 @@ import { removeServerToolEmbeddings, saveToolsAsVectorEmbeddings } from './vecto
 import { OpenAPIClient } from '../clients/openapi.js';
 import { RequestContextService } from './requestContextService.js';
 import { getDataService } from './services.js';
-import { getServerDao, getSystemConfigDao, getBuiltinPromptDao, getBuiltinResourceDao, ServerConfigWithName } from '../dao/index.js';
+import {
+  getServerDao,
+  getSystemConfigDao,
+  getBuiltinPromptDao,
+  getBuiltinResourceDao,
+  ServerConfigWithName,
+} from '../dao/index.js';
 import { initializeAllOAuthClients } from './oauthService.js';
 import { createOAuthProvider } from './mcpOAuthProvider.js';
 import {
@@ -261,6 +267,36 @@ const cleanInputSchema = (schema: any): any => {
   delete cleanedSchema.$schema;
 
   return cleanedSchema;
+};
+
+// Normalize prompt payload to satisfy MCP ListPrompts response schema
+const normalizePromptForList = (prompt: {
+  name: string;
+  title?: string;
+  description?: string;
+  arguments?: any[];
+}) => {
+  return {
+    name: prompt.name,
+    title: prompt.title || prompt.name,
+    description: prompt.description || '',
+    arguments: Array.isArray(prompt.arguments) ? prompt.arguments : [],
+  };
+};
+
+// Normalize resource payload to avoid nullable DB fields violating MCP schema
+const normalizeResourceForList = (resource: {
+  uri: string;
+  name?: string | null;
+  description?: string | null;
+  mimeType?: string | null;
+}) => {
+  return {
+    uri: resource.uri,
+    name: resource.name || '',
+    description: resource.description || '',
+    mimeType: resource.mimeType || '',
+  };
 };
 
 // Store all server information
@@ -757,12 +793,14 @@ export const initializeClientsFromSettings = async (
                 console.log(
                   `Successfully listed ${prompts.prompts.length} prompts for server: ${name}`,
                 );
-                serverInfo.prompts = prompts.prompts.map((prompt) => ({
-                  name: `${name}${getNameSeparator()}${prompt.name}`,
-                  title: prompt.title,
-                  description: prompt.description,
-                  arguments: prompt.arguments,
-                }));
+                serverInfo.prompts = prompts.prompts.map((prompt) =>
+                  normalizePromptForList({
+                    name: `${name}${getNameSeparator()}${prompt.name}`,
+                    title: prompt.title,
+                    description: prompt.description,
+                    arguments: prompt.arguments,
+                  }),
+                );
               })
               .catch((error) => {
                 console.error(
@@ -779,12 +817,14 @@ export const initializeClientsFromSettings = async (
                 console.log(
                   `Successfully listed ${resources.resources.length} resources for server: ${name}`,
                 );
-                serverInfo.resources = resources.resources.map((resource) => ({
-                  uri: resource.uri,
-                  name: resource.name,
-                  description: resource.description,
-                  mimeType: resource.mimeType,
-                }));
+                serverInfo.resources = resources.resources.map((resource) =>
+                  normalizeResourceForList({
+                    uri: resource.uri,
+                    name: resource.name,
+                    description: resource.description,
+                    mimeType: resource.mimeType,
+                  }),
+                );
               })
               .catch((error) => {
                 console.error(
@@ -1651,12 +1691,14 @@ export const handleListPromptsRequest = async (_: any, extra: any) => {
 
   // Start with built-in prompts (only enabled ones)
   const builtinPrompts = await getBuiltinPromptDao().findEnabled();
-  const allPrompts: any[] = builtinPrompts.map((bp) => ({
-    name: bp.name,
-    title: bp.title,
-    description: bp.description,
-    arguments: bp.arguments,
-  }));
+  const allPrompts: any[] = builtinPrompts.map((bp) =>
+    normalizePromptForList({
+      name: bp.name,
+      title: bp.title,
+      description: bp.description,
+      arguments: bp.arguments,
+    }),
+  );
 
   // Need to filter servers based on group asynchronously
   const filteredServerInfos = [];
@@ -1706,10 +1748,10 @@ export const handleListPromptsRequest = async (_: any, extra: any) => {
       // Apply custom descriptions from server configuration
       const promptsWithCustomDescriptions = enabledPrompts.map((prompt: any) => {
         const promptConfig = serverConfig?.prompts?.[prompt.name];
-        return {
+        return normalizePromptForList({
           ...prompt,
           description: promptConfig?.description || prompt.description, // Use custom description if available
-        };
+        });
       });
 
       allPrompts.push(...promptsWithCustomDescriptions);
@@ -1728,12 +1770,14 @@ export const handleListResourcesRequest = async (_: any, extra: any) => {
 
   // Start with built-in resources (only enabled ones)
   const builtinResources = await getBuiltinResourceDao().findEnabled();
-  const allResources: any[] = builtinResources.map((br) => ({
-    uri: br.uri,
-    name: br.name,
-    description: br.description,
-    mimeType: br.mimeType,
-  }));
+  const allResources: any[] = builtinResources.map((br) =>
+    normalizeResourceForList({
+      uri: br.uri,
+      name: br.name,
+      description: br.description,
+      mimeType: br.mimeType,
+    }),
+  );
 
   // Add resources from connected MCP servers
   const filteredServerInfos = [];
@@ -1769,10 +1813,10 @@ export const handleListResourcesRequest = async (_: any, extra: any) => {
       // Apply custom descriptions from server configuration
       const resourcesWithCustomDescriptions = enabledResources.map((resource: any) => {
         const resourceConfig = serverConfig?.resources?.[resource.uri];
-        return {
+        return normalizeResourceForList({
           ...resource,
           description: resourceConfig?.description || resource.description,
-        };
+        });
       });
 
       allResources.push(...resourcesWithCustomDescriptions);
