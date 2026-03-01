@@ -1,0 +1,20 @@
+services:
+  mcphub:
+    build: .
+    image: mcphub:local
+    container_name: mcphub
+    environment:
+      PORT: 3000
+      NODE_ENV: production
+      # Optional: Custom npm registry
+      # NPM_REGISTRY: https://registry.npmjs.org/
+      # Optional: Proxy settings
+      # HTTP_PROXY: http://proxy:8080
+      # HTTPS_PROXY: http://proxy:8080
+    volumes:
+      - ./mcp_settings.json:/app/mcp_settings.json
+      - ./data:/app/data
+      - ./downloads:/root/Downloads
+    ports:
+      - "${MCPHUB_PORT:-3000}:3000"
+    restart: unless-stopped

@@ -34,7 +34,8 @@ RUN if [ "$INSTALL_EXT" = "true" ]; then \
   apt-get clean && rm -rf /var/lib/apt/lists/*; \
   fi
 
-RUN uv tool install mcp-server-fetch
+RUN uv tool install mcp-server-fetch && uv tool install yt-dlp
+ENV PATH="/root/.local/bin:$PATH"
 
 WORKDIR /app
 
