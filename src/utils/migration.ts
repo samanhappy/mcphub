@@ -10,6 +10,8 @@ import { UserConfigRepository } from '../db/repositories/UserConfigRepository.js
 import { OAuthClientRepository } from '../db/repositories/OAuthClientRepository.js';
 import { OAuthTokenRepository } from '../db/repositories/OAuthTokenRepository.js';
 import { BearerKeyRepository } from '../db/repositories/BearerKeyRepository.js';
+import { BuiltinPromptRepository } from '../db/repositories/BuiltinPromptRepository.js';
+import { BuiltinResourceRepository } from '../db/repositories/BuiltinResourceRepository.js';
 
 /**
  * Migrate from file-based configuration to database
@@ -35,6 +37,8 @@ export async function migrateToDatabase(): Promise<boolean> {
     const oauthClientRepo = new OAuthClientRepository();
     const oauthTokenRepo = new OAuthTokenRepository();
     const bearerKeyRepo = new BearerKeyRepository();
+    const builtinPromptRepo = new BuiltinPromptRepository();
+    const builtinResourceRepo = new BuiltinResourceRepository();
 
     // Migrate users
     if (settings.users && settings.users.length > 0) {
@@ -76,6 +80,7 @@ export async function migrateToDatabase(): Promise<boolean> {
             keepAliveInterval: config.keepAliveInterval,
             tools: config.tools,
             prompts: config.prompts,
+            resources: config.resources,
             options: config.options,
             oauth: config.oauth,
             openapi: config.openapi,
@@ -227,6 +232,48 @@ export async function migrateToDatabase(): Promise<boolean> {
           console.log(`  - Created OAuth token for client: ${token.clientId}`);
         } else {
           console.log(`  - OAuth token already exists: ${token.accessToken.substring(0, 8)}...`);
+        }
+      }
+    }
+
+    // Migrate built-in prompts
+    if (settings.prompts && settings.prompts.length > 0) {
+      console.log(`Migrating ${settings.prompts.length} built-in prompts...`);
+      for (const prompt of settings.prompts) {
+        const exists = await builtinPromptRepo.findByName(prompt.name);
+        if (!exists) {
+          await builtinPromptRepo.create({
+            name: prompt.name,
+            title: prompt.title,
+            description: prompt.description,
+            template: prompt.template,
+            arguments: prompt.arguments,
+            enabled: prompt.enabled !== false,
+          } as any);
+          console.log(`  - Created built-in prompt: ${prompt.name}`);
+        } else {
+          console.log(`  - Built-in prompt already exists: ${prompt.name}`);
+        }
+      }
+    }
+
+    // Migrate built-in resources
+    if (settings.resources && settings.resources.length > 0) {
+      console.log(`Migrating ${settings.resources.length} built-in resources...`);
+      for (const resource of settings.resources) {
+        const exists = await builtinResourceRepo.findByUri(resource.uri);
+        if (!exists) {
+          await builtinResourceRepo.create({
+            uri: resource.uri,
+            name: resource.name,
+            description: resource.description,
+            mimeType: resource.mimeType,
+            content: resource.content,
+            enabled: resource.enabled !== false,
+          } as any);
+          console.log(`  - Created built-in resource: ${resource.uri}`);
+        } else {
+          console.log(`  - Built-in resource already exists: ${resource.uri}`);
         }
       }
     }

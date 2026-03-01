@@ -8,6 +8,8 @@ import OAuthClient from './OAuthClient.js';
 import OAuthToken from './OAuthToken.js';
 import BearerKey from './BearerKey.js';
 import Activity from './Activity.js';
+import BuiltinPrompt from './BuiltinPrompt.js';
+import BuiltinResource from './BuiltinResource.js';
 
 // Export all entities
 export default [
@@ -21,6 +23,8 @@ export default [
   OAuthToken,
   BearerKey,
   Activity,
+  BuiltinPrompt,
+  BuiltinResource,
 ];
 
 // Export individual entities for direct use
@@ -35,4 +39,6 @@ export {
   OAuthToken,
   BearerKey,
   Activity,
+  BuiltinPrompt,
+  BuiltinResource,
 };

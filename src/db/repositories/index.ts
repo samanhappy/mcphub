@@ -8,6 +8,8 @@ import { OAuthClientRepository } from './OAuthClientRepository.js';
 import { OAuthTokenRepository } from './OAuthTokenRepository.js';
 import { BearerKeyRepository } from './BearerKeyRepository.js';
 import { ActivityRepository } from './ActivityRepository.js';
+import { BuiltinPromptRepository } from './BuiltinPromptRepository.js';
+import { BuiltinResourceRepository } from './BuiltinResourceRepository.js';
 
 // Export all repositories
 export {
@@ -21,4 +23,6 @@ export {
   OAuthTokenRepository,
   BearerKeyRepository,
   ActivityRepository,
+  BuiltinPromptRepository,
+  BuiltinResourceRepository,
 };

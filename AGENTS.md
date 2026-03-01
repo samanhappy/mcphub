@@ -328,16 +328,18 @@ When adding/changing fields, update **ALL** these files:
 
 ### Data Type Mapping
 
-| Model          | DAO               | DB Entity      | JSON Path                 |
-| -------------- | ----------------- | -------------- | ------------------------- |
-| `IUser`        | `UserDao`         | `User`         | `settings.users[]`        |
-| `ServerConfig` | `ServerDao`       | `Server`       | `settings.mcpServers{}`   |
-| `IGroup`       | `GroupDao`        | `Group`        | `settings.groups[]`       |
-| `SystemConfig` | `SystemConfigDao` | `SystemConfig` | `settings.systemConfig`   |
-| `UserConfig`   | `UserConfigDao`   | `UserConfig`   | `settings.userConfigs{}`  |
-| `BearerKey`    | `BearerKeyDao`    | `BearerKey`    | `settings.bearerKeys[]`   |
-| `IOAuthClient` | `OAuthClientDao`  | `OAuthClient`  | `settings.oauthClients[]` |
-| `IOAuthToken`  | `OAuthTokenDao`   | `OAuthToken`   | `settings.oauthTokens[]`  |
+| Model             | DAO                  | DB Entity         | JSON Path                 |
+| ----------------- | -------------------- | ----------------- | ------------------------- |
+| `IUser`           | `UserDao`            | `User`            | `settings.users[]`        |
+| `ServerConfig`    | `ServerDao`          | `Server`          | `settings.mcpServers{}`   |
+| `IGroup`          | `GroupDao`           | `Group`           | `settings.groups[]`       |
+| `SystemConfig`    | `SystemConfigDao`    | `SystemConfig`    | `settings.systemConfig`   |
+| `UserConfig`      | `UserConfigDao`      | `UserConfig`      | `settings.userConfigs{}`  |
+| `BearerKey`       | `BearerKeyDao`       | `BearerKey`       | `settings.bearerKeys[]`   |
+| `IOAuthClient`    | `OAuthClientDao`     | `OAuthClient`     | `settings.oauthClients[]` |
+| `IOAuthToken`     | `OAuthTokenDao`      | `OAuthToken`      | `settings.oauthTokens[]`  |
+| `BuiltinPrompt`   | `BuiltinPromptDao`   | `BuiltinPrompt`   | `settings.prompts[]`      |
+| `BuiltinResource` | `BuiltinResourceDao` | `BuiltinResource` | `settings.resources[]`    |
 
 ### Common Pitfalls
 
