@@ -143,7 +143,7 @@ const DashboardPage: React.FC = () => {
                 </svg>
               </div>
               <div className="ml-4">
-                <h2 className="text-xl font-semibold text-gray-700">
+                <h2 className="text-lg font-semibold text-gray-700">
                   {t('pages.dashboard.totalServers')}
                 </h2>
                 <p className="text-3xl font-bold text-gray-900">{serverStats.total}</p>
@@ -171,7 +171,7 @@ const DashboardPage: React.FC = () => {
                 </svg>
               </div>
               <div className="ml-4">
-                <h2 className="text-xl font-semibold text-gray-700">
+                <h2 className="text-lg font-semibold text-gray-700">
                   {t('pages.dashboard.onlineServers')}
                 </h2>
                 <p className="text-3xl font-bold text-gray-900">{serverStats.online}</p>
@@ -199,7 +199,7 @@ const DashboardPage: React.FC = () => {
                 </svg>
               </div>
               <div className="ml-4">
-                <h2 className="text-xl font-semibold text-gray-700">
+                <h2 className="text-lg font-semibold text-gray-700">
                   {t('pages.dashboard.disabledServers')}
                 </h2>
                 <p className="text-3xl font-bold text-gray-900">{serverStats.disabled}</p>
@@ -227,7 +227,7 @@ const DashboardPage: React.FC = () => {
                 </svg>
               </div>
               <div className="ml-4">
-                <h2 className="text-xl font-semibold text-gray-700">
+                <h2 className="text-lg font-semibold text-gray-700">
                   {t('pages.dashboard.offlineServers')}
                 </h2>
                 <p className="text-3xl font-bold text-gray-900">{serverStats.offline}</p>
@@ -255,7 +255,7 @@ const DashboardPage: React.FC = () => {
                 </svg>
               </div>
               <div className="ml-4">
-                <h2 className="text-xl font-semibold text-gray-700">
+                <h2 className="text-lg font-semibold text-gray-700">
                   {t('pages.dashboard.connectingServers')}
                 </h2>
                 <p className="text-3xl font-bold text-gray-900">{serverStats.connecting}</p>
@@ -339,7 +339,10 @@ const DashboardPage: React.FC = () => {
                       {server.enabled !== false ? (
                         <span className="text-green-600">✓</span>
                       ) : (
-                        <span className="text-gray-500" aria-label={t('pages.dashboard.disabledServers')}>
+                        <span
+                          className="text-gray-500"
+                          aria-label={t('pages.dashboard.disabledServers')}
+                        >
                           ⏸
                         </span>
                       )}
