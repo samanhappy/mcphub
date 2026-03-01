@@ -106,9 +106,10 @@ const DashboardPage: React.FC = () => {
               <div className="divide-y divide-gray-200">
                 {Array.from({ length: 5 }).map((_, index) => (
                   <div key={`row-skeleton-${index}`} className="px-6 py-4">
-                    <div className="grid grid-cols-5 gap-6">
+                    <div className="grid grid-cols-6 gap-6">
                       <div className="h-4 w-28 rounded bg-gray-200 animate-pulse" />
                       <div className="h-4 w-24 rounded bg-gray-200 animate-pulse" />
+                      <div className="h-4 w-12 rounded bg-gray-200 animate-pulse" />
                       <div className="h-4 w-12 rounded bg-gray-200 animate-pulse" />
                       <div className="h-4 w-12 rounded bg-gray-200 animate-pulse" />
                       <div className="h-4 w-10 rounded bg-gray-200 animate-pulse" />
@@ -303,6 +304,12 @@ const DashboardPage: React.FC = () => {
                     scope="col"
                     className="px-6 py-5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                   >
+                    {t('nav.resources')}
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-6 py-5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  >
                     {t('server.enabled')}
                   </th>
                 </tr>
@@ -336,10 +343,16 @@ const DashboardPage: React.FC = () => {
                       {server.prompts?.length || 0}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {server.resources?.length || 0}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {server.enabled !== false ? (
                         <span className="text-green-600">✓</span>
                       ) : (
-                        <span className="text-gray-500" aria-label={t('pages.dashboard.disabledServers')}>
+                        <span
+                          className="text-gray-500"
+                          aria-label={t('pages.dashboard.disabledServers')}
+                        >
                           ⏸
                         </span>
                       )}

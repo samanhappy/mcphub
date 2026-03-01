@@ -15,6 +15,8 @@ import {
   updateToolDescription,
   togglePrompt,
   updatePromptDescription,
+  toggleResource,
+  updateResourceDescription,
   updateSystemConfig,
 } from '../controllers/serverController.js';
 import {
@@ -193,6 +195,8 @@ export const initRoutes = async (app: express.Application): Promise<void> => {
   router.put('/servers/:serverName/tools/:toolName/description', updateToolDescription);
   router.post('/servers/:serverName/prompts/:promptName/toggle', togglePrompt);
   router.put('/servers/:serverName/prompts/:promptName/description', updatePromptDescription);
+  router.post('/servers/:serverName/resources/:resourceUri/toggle', toggleResource);
+  router.put('/servers/:serverName/resources/:resourceUri/description', updateResourceDescription);
   router.put('/system-config', updateSystemConfig);
 
   // Group management routes

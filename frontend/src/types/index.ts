@@ -105,6 +105,15 @@ export interface Prompt {
   enabled?: boolean;
 }
 
+// Resource types
+export interface Resource {
+  uri: string;
+  name?: string;
+  description?: string;
+  mimeType?: string;
+  enabled?: boolean;
+}
+
 // Built-in prompt argument definition
 export interface PromptArgument {
   name: string;
@@ -253,6 +262,7 @@ export interface Server {
   error?: string;
   tools?: Tool[];
   prompts?: Prompt[];
+  resources?: Resource[];
   config?: ServerConfig;
   enabled?: boolean;
   oauth?: {

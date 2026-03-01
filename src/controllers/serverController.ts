@@ -1470,3 +1470,140 @@ export const updatePromptDescription = async (req: Request, res: Response): Prom
     });
   }
 };
+
+// Toggle resource status for a specific server
+export const toggleResource = async (req: Request, res: Response): Promise<void> => {
+  try {
+    // Decode URL-encoded parameters to handle slashes in server/resource names
+    const serverName = decodeURIComponent(req.params.serverName);
+    const resourceUri = decodeURIComponent(req.params.resourceUri);
+    const { enabled } = req.body;
+
+    if (!serverName || !resourceUri) {
+      res.status(400).json({
+        success: false,
+        message: 'Server name and resource URI are required',
+      });
+      return;
+    }
+
+    if (typeof enabled !== 'boolean') {
+      res.status(400).json({
+        success: false,
+        message: 'Enabled status must be a boolean',
+      });
+      return;
+    }
+
+    const serverDao = getServerDao();
+    const server = await serverDao.findById(serverName);
+
+    if (!server) {
+      res.status(404).json({
+        success: false,
+        message: 'Server not found',
+      });
+      return;
+    }
+
+    // Initialize resources config if it doesn't exist
+    const resources = server.resources || {};
+
+    // Set the resource's enabled state (preserve existing description if any)
+    resources[resourceUri] = { ...resources[resourceUri], enabled };
+
+    // Update via DAO (supports both file and database modes)
+    const result = await serverDao.updateResources(serverName, resources);
+
+    if (!result) {
+      res.status(500).json({
+        success: false,
+        message: 'Failed to save settings',
+      });
+      return;
+    }
+
+    // Notify that tools/resources metadata has changed
+    notifyToolChanged();
+
+    res.json({
+      success: true,
+      message: `Resource ${resourceUri} ${enabled ? 'enabled' : 'disabled'} successfully`,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+    });
+  }
+};
+
+// Update resource description for a specific server
+export const updateResourceDescription = async (req: Request, res: Response): Promise<void> => {
+  try {
+    // Decode URL-encoded parameters to handle slashes in server/resource names
+    const serverName = decodeURIComponent(req.params.serverName);
+    const resourceUri = decodeURIComponent(req.params.resourceUri);
+    const { description } = req.body;
+
+    if (!serverName || !resourceUri) {
+      res.status(400).json({
+        success: false,
+        message: 'Server name and resource URI are required',
+      });
+      return;
+    }
+
+    if (typeof description !== 'string') {
+      res.status(400).json({
+        success: false,
+        message: 'Description must be a string',
+      });
+      return;
+    }
+
+    const serverDao = getServerDao();
+    const server = await serverDao.findById(serverName);
+
+    if (!server) {
+      res.status(404).json({
+        success: false,
+        message: 'Server not found',
+      });
+      return;
+    }
+
+    // Initialize resources config if it doesn't exist
+    const resources = server.resources || {};
+
+    // Set the resource's description
+    if (!resources[resourceUri]) {
+      resources[resourceUri] = { enabled: true };
+    }
+    resources[resourceUri].description = description;
+
+    // Update via DAO (supports both file and database modes)
+    const result = await serverDao.updateResources(serverName, resources);
+
+    if (!result) {
+      res.status(500).json({
+        success: false,
+        message: 'Failed to save settings',
+      });
+      return;
+    }
+
+    // Notify that tools/resources metadata has changed
+    notifyToolChanged();
+
+    res.json({
+      success: true,
+      message: `Resource ${resourceUri} description updated successfully`,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+    });
+  }
+};

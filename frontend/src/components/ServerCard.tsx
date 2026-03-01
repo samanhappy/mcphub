@@ -5,6 +5,7 @@ import { ChevronDown, ChevronRight, AlertCircle, Copy, Check } from 'lucide-reac
 import { StatusBadge } from '@/components/ui/Badge';
 import ToolCard from '@/components/ui/ToolCard';
 import PromptCard from '@/components/ui/PromptCard';
+import ResourceCard from '@/components/ui/ResourceCard';
 import DeleteDialog from '@/components/ui/DeleteDialog';
 import { useToast } from '@/contexts/ToastContext';
 import { useSettingsData } from '@/hooks/useSettingsData';
@@ -52,6 +53,9 @@ const ServerCard = ({
   const { exportMCPSettings } = useSettingsData();
   const totalTools = server.tools?.length || 0;
   const enabledTools = server.tools?.filter((tool) => tool.enabled !== false).length || 0;
+  const totalResources = server.resources?.length || 0;
+  const enabledResources =
+    server.resources?.filter((resource) => resource.enabled !== false).length || 0;
 
   const handleRemove = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -238,6 +242,45 @@ const ServerCard = ({
     }
   };
 
+  const handleResourceToggle = async (resourceUri: string, enabled: boolean) => {
+    try {
+      const { toggleResource } = await import('@/services/resourceService');
+      const result = await toggleResource(server.name, resourceUri, enabled);
+      if (result.success) {
+        showToast(
+          t(enabled ? 'tool.enableSuccess' : 'tool.disableSuccess', { name: resourceUri }),
+          'success',
+        );
+        if (onRefresh) {
+          onRefresh();
+        }
+      } else {
+        showToast(result.error || t('tool.toggleFailed'), 'error');
+      }
+    } catch (error) {
+      console.error('Error toggling resource:', error);
+      showToast(t('tool.toggleFailed'), 'error');
+    }
+  };
+
+  const handleResourceDescriptionUpdate = async (resourceUri: string, description: string) => {
+    try {
+      const { updateResourceDescription } = await import('@/services/resourceService');
+      const result = await updateResourceDescription(server.name, resourceUri, description);
+      if (result.success) {
+        showToast(t('prompt.descriptionUpdateSuccess'), 'success');
+        if (onRefresh) {
+          onRefresh();
+        }
+      } else {
+        showToast(result.error || t('prompt.descriptionUpdateFailed'), 'error');
+      }
+    } catch (error) {
+      console.error('Error updating resource description:', error);
+      showToast(t('prompt.descriptionUpdateFailed'), 'error');
+    }
+  };
+
   return (
     <>
       <div className="bg-white shadow rounded-lg mb-6 page-card transition-all duration-200">
@@ -290,6 +333,16 @@ const ServerCard = ({
               </svg>
               <span>
                 {server.prompts?.length || 0} {t('server.prompts')}
+              </span>
+            </div>
+
+            {/* Resource count display */}
+            <div className="flex items-center px-2 py-1 bg-emerald-50 text-emerald-700 rounded-full text-sm btn-primary">
+              <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M4 3a2 2 0 00-2 2v8a2 2 0 002 2h3l3 2 3-2h3a2 2 0 002-2V5a2 2 0 00-2-2H4z" />
+              </svg>
+              <span>
+                {enabledResources}/{totalResources} {t('nav.resources')}
               </span>
             </div>
 
@@ -443,6 +496,32 @@ const ServerCard = ({
                     />
                   ))}
                 </div>
+              </div>
+            )}
+
+            {server.resources && (
+              <div className="px-4 pb-2">
+                <h6
+                  className={`font-medium ${server.enabled === false ? 'text-gray-600' : 'text-gray-900'}`}
+                >
+                  {t('nav.resources')}
+                </h6>
+                {server.resources.length === 0 ? (
+                  <div className="text-sm text-gray-500 py-2">
+                    {t('builtinResources.noResources')}
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {server.resources.map((resource, index) => (
+                      <ResourceCard
+                        key={`${resource.uri}-${index}`}
+                        resource={resource}
+                        onToggle={handleResourceToggle}
+                        onDescriptionUpdate={handleResourceDescriptionUpdate}
+                      />
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </>
