@@ -91,3 +91,43 @@ export function convertParametersToTypes(
 
   return convertedParams;
 }
+
+/**
+ * Sanitize tool arguments by removing keys that are not defined in the tool's input schema.
+ * This prevents upstream MCP clients from injecting internal-only keys (e.g., `_placeholder`)
+ * that downstream MCP servers may reject due to strict schema validation.
+ *
+ * @param args - The arguments to sanitize
+ * @param inputSchema - The tool's JSON Schema definition for input
+ * @returns Sanitized arguments with only schema-defined keys
+ */
+export function sanitizeToolArguments(
+  args: Record<string, any> | undefined,
+  inputSchema?: Record<string, any>,
+): Record<string, any> {
+  if (!args || typeof args !== 'object') {
+    return {};
+  }
+
+  // If no schema or no properties defined, pass through as-is
+  if (!inputSchema || typeof inputSchema !== 'object' || !inputSchema.properties) {
+    return args;
+  }
+
+  // If schema explicitly allows additional properties, pass through as-is
+  if (inputSchema.additionalProperties === true) {
+    return args;
+  }
+
+  // Filter to only keys defined in schema properties
+  const sanitized: Record<string, any> = {};
+  const properties = inputSchema.properties;
+
+  for (const [key, value] of Object.entries(args)) {
+    if (key in properties) {
+      sanitized[key] = value;
+    }
+  }
+
+  return sanitized;
+}
