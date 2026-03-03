@@ -72,6 +72,13 @@ jest.mock('../dao/index.js', () => ({
       ];
     }),
   })),
+  getGroupDao: jest.fn(() => ({
+    findByName: jest.fn().mockResolvedValue(null),
+    findById: jest.fn().mockResolvedValue(null),
+  })),
+  getServerDao: jest.fn(() => ({
+    findById: jest.fn().mockResolvedValue(null),
+  })),
 }));
 
 // Mock oauthBearer
@@ -111,6 +118,7 @@ import { UserContextService } from './userContextService.js';
 import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { isInitializeRequest } from '@modelcontextprotocol/sdk/types.js';
+import { getBearerKeyDao, getGroupDao } from '../dao/index.js';
 
 // Helper function to update the mock system config
 const setMockSystemConfig = (config: Partial<typeof defaultSystemConfig>) => {
@@ -512,6 +520,78 @@ describe('sseService', () => {
       await handleSseMessage(req, res);
 
       expectBearerUnauthorized(res, 'No authorization provided');
+    });
+
+    it('should allow group-scoped bearer key on global /messages when session has group context (issue #656)', async () => {
+      // Regression test: a group-scoped bearer token must NOT receive 401 when the
+      // client posts to the global /messages endpoint after connecting via /sse/:group.
+      // Before the fix, req.params.group was empty on the global route so
+      // isBearerKeyAllowedForRequest returned false → 401.
+      setMockSystemConfig({
+        routing: {
+          enableGlobalRoute: true,
+          enableGroupNameRoute: true,
+          enableBearerAuth: true,
+          bearerAuthKey: 'group-token',
+          skipAuth: false,
+        },
+        enableSessionRebuild: false,
+      });
+
+      // Override bearer key DAO to return a groups-scoped key for this test only
+      (getBearerKeyDao as jest.MockedFunction<any>).mockReturnValueOnce({
+        findEnabled: jest.fn().mockResolvedValue([
+          {
+            id: 'group-key-id',
+            name: 'group-key',
+            token: 'group-token',
+            enabled: true,
+            accessType: 'groups',
+            allowedGroups: ['my-group'],
+            allowedServers: [],
+          },
+        ]),
+      });
+
+      // Override group DAO so isBearerKeyAllowedForRequest can find the group for this test only
+      (getGroupDao as jest.MockedFunction<any>).mockReturnValueOnce({
+        findByName: jest.fn().mockImplementation((name: string) =>
+          name === 'my-group'
+            ? Promise.resolve({ id: 'group-uuid', name: 'my-group', servers: [] })
+            : Promise.resolve(null),
+        ),
+        findById: jest.fn().mockResolvedValue(null),
+      });
+
+      // Pre-populate transports as if /sse/my-group had already been connected
+      const mockSSETransport = {
+        sessionId: 'group-session-id',
+        handlePostMessage: jest.fn().mockResolvedValue(undefined),
+      };
+      transports['group-session-id'] = {
+        transport: mockSSETransport as any,
+        group: 'my-group',
+        keyId: 'group-key-id',
+        keyName: 'group-key',
+      };
+
+      const req = createMockRequest({
+        // Global /messages route – no group in params (the bug scenario)
+        params: {},
+        query: { sessionId: 'group-session-id' },
+        headers: { authorization: 'Bearer group-token' },
+      });
+      const res = createMockResponse();
+
+      await handleSseMessage(req, res);
+
+      // Must NOT return 401
+      expect(res.status).not.toHaveBeenCalledWith(401);
+      // Transport's handlePostMessage should have been invoked
+      expect(mockSSETransport.handlePostMessage).toHaveBeenCalledWith(req, res);
+
+      // Cleanup
+      delete transports['group-session-id'];
     });
   });
 

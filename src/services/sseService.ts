@@ -429,6 +429,20 @@ export const handleSseMessage = async (req: Request, res: Response): Promise<voi
   // User context is now set by sseUserContextMiddleware
   const userContextService = UserContextService.getInstance();
 
+  // Pre-populate group from session context BEFORE auth validation.
+  // When a group-scoped bearer key is used to connect via /sse/:group, the session
+  // stores the group. Subsequent /messages requests arrive on the global route
+  // (no :group param), so isBearerKeyAllowedForRequest would see an empty paramValue
+  // and reject the key with 401. Injecting the group here lets the validator use
+  // the correct scope from the already-authenticated session.
+  const preSessionId = req.query.sessionId as string;
+  if (preSessionId && transports[preSessionId] && !req.params.group) {
+    const sessionGroup = transports[preSessionId].group;
+    if (sessionGroup) {
+      req.params.group = sessionGroup;
+    }
+  }
+
   // Check bearer auth using filtered settings
   const bearerAuthResult = await validateBearerAuth(req);
   if (!bearerAuthResult.valid) {
