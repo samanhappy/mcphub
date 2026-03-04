@@ -20,6 +20,7 @@ import {
 } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { createFetchWithProxy, getProxyConfigFromEnv } from './proxy.js';
 import { ServerInfo, ServerConfig, Tool, ProxychainsConfig } from '../types/index.js';
+import { sanitizeToolArguments } from '../utils/parameterConversion.js';
 import { expandEnvVars, replaceEnvVars, getNameSeparator } from '../config/index.js';
 import config from '../config/index.js';
 import { getGroup } from './sseService.js';
@@ -1359,6 +1360,10 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
           ? toolName.substring(prefix.length)
           : toolName;
 
+        // Sanitize arguments to remove keys not defined in the tool's schema
+        const toolDef = targetServerInfo.tools.find((t) => t.name === cleanToolName);
+        const sanitizedArgs = sanitizeToolArguments(finalArgs, toolDef?.inputSchema);
+
         // Extract passthrough headers from extra or request context
         let passthroughHeaders: Record<string, string> | undefined;
         let requestHeaders: Record<string, string | string[] | undefined> | null = null;
@@ -1386,7 +1391,11 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
           }
         }
 
-        const result = await openApiClient.callTool(cleanToolName, finalArgs, passthroughHeaders);
+        const result = await openApiClient.callTool(
+          cleanToolName,
+          sanitizedArgs,
+          passthroughHeaders,
+        );
 
         console.log(`OpenAPI tool invocation result: ${JSON.stringify(result)}`);
 
@@ -1432,11 +1441,15 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
       const cleanToolName = toolName.startsWith(prefix)
         ? toolName.substring(prefix.length)
         : toolName;
+
+      // Sanitize arguments to remove keys not defined in the tool's schema
+      const toolDef = targetServerInfo.tools.find((t) => t.name === cleanToolName);
+      const sanitizedArgs = sanitizeToolArguments(finalArgs, toolDef?.inputSchema);
       const result = await callToolWithReconnect(
         targetServerInfo,
         {
           name: cleanToolName,
-          arguments: finalArgs,
+          arguments: sanitizedArgs,
         },
         targetServerInfo.options || {},
       );
@@ -1512,9 +1525,14 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
         }
       }
 
+      const toolDef = serverInfo.tools.find((t) => t.name === cleanToolName);
+      const sanitizedArgs = sanitizeToolArguments(
+        request.params.arguments || {},
+        toolDef?.inputSchema,
+      );
       const result = await openApiClient.callTool(
         cleanToolName,
-        request.params.arguments || {},
+        sanitizedArgs,
         passthroughHeaders,
       );
 
@@ -1555,9 +1573,11 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
     const cleanToolName = request.params.name.startsWith(prefix)
       ? request.params.name.substring(prefix.length)
       : request.params.name;
+    const toolDef = serverInfo.tools.find((t) => t.name === cleanToolName);
+    const sanitizedArgs = sanitizeToolArguments(request.params.arguments, toolDef?.inputSchema);
     const result = await callToolWithReconnect(
       serverInfo,
-      { ...request.params, name: cleanToolName },
+      { ...request.params, name: cleanToolName, arguments: sanitizedArgs },
       serverInfo.options || {},
     );
     console.log(`Tool call result: ${JSON.stringify(result)}`);

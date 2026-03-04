@@ -1,4 +1,4 @@
-import { convertParametersToTypes } from '../../src/utils/parameterConversion.js';
+import { convertParametersToTypes, sanitizeToolArguments } from '../../src/utils/parameterConversion.js';
 
 describe('Parameter Conversion Utilities', () => {
   describe('convertParametersToTypes', () => {
@@ -255,5 +255,80 @@ describe('Parameter Conversion Utilities', () => {
 
       expect(result.config).toEqual({ key: 'value' });
     });
+  });
+});
+
+describe('sanitizeToolArguments', () => {
+  it('should return empty object for undefined args', () => {
+    expect(sanitizeToolArguments(undefined)).toEqual({});
+  });
+
+  it('should return empty object for null args', () => {
+    expect(sanitizeToolArguments(null as any)).toEqual({});
+  });
+
+  it('should pass through args when no schema provided', () => {
+    const args = { _placeholder: true, key: 'value' };
+    expect(sanitizeToolArguments(args)).toEqual(args);
+  });
+
+  it('should pass through args when schema has no properties', () => {
+    const args = { _placeholder: true, key: 'value' };
+    expect(sanitizeToolArguments(args, { type: 'object' })).toEqual(args);
+  });
+
+  it('should pass through args when additionalProperties is true', () => {
+    const args = { _placeholder: true, key: 'value' };
+    const schema = {
+      type: 'object',
+      properties: { key: { type: 'string' } },
+      additionalProperties: true,
+    };
+    expect(sanitizeToolArguments(args, schema)).toEqual(args);
+  });
+
+  it('should strip _placeholder from no-arg tool calls', () => {
+    const args = { _placeholder: true };
+    const schema = {
+      type: 'object',
+      properties: {},
+    };
+    expect(sanitizeToolArguments(args, schema)).toEqual({});
+  });
+
+  it('should strip unknown keys while keeping defined ones', () => {
+    const args = { _placeholder: true, query: 'test', unknown: 'value' };
+    const schema = {
+      type: 'object',
+      properties: {
+        query: { type: 'string' },
+      },
+    };
+    expect(sanitizeToolArguments(args, schema)).toEqual({ query: 'test' });
+  });
+
+  it('should keep all args when all are in schema', () => {
+    const args = { name: 'test', value: 42 };
+    const schema = {
+      type: 'object',
+      properties: {
+        name: { type: 'string' },
+        value: { type: 'number' },
+      },
+    };
+    expect(sanitizeToolArguments(args, schema)).toEqual(args);
+  });
+
+  it('should handle empty args object', () => {
+    const schema = {
+      type: 'object',
+      properties: { key: { type: 'string' } },
+    };
+    expect(sanitizeToolArguments({}, schema)).toEqual({});
+  });
+
+  it('should handle non-object schema gracefully', () => {
+    const args = { _placeholder: true };
+    expect(sanitizeToolArguments(args, 'not-an-object' as any)).toEqual(args);
   });
 });
