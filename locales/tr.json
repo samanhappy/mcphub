@@ -26,24 +26,6 @@
     "viewProfile": "Profili görüntüle",
     "userCenter": "Kullanıcı Merkezi"
   },
-  "sponsor": {
-    "label": "Sponsor",
-    "title": "Projeyi Destekle",
-    "rewardAlt": "Ödül QR Kodu",
-    "supportMessage": "Bana bir kahve ısmarlayarak MCPHub'ın geliştirilmesini destekleyin!",
-    "supportButton": "Ko-fi'de Destek Ol"
-  },
-  "wechat": {
-    "label": "WeChat",
-    "title": "WeChat ile Bağlan",
-    "qrCodeAlt": "WeChat QR Kodu",
-    "scanMessage": "WeChat'te bizimle bağlantı kurmak için bu QR kodunu tarayın"
-  },
-  "discord": {
-    "label": "Discord",
-    "title": "Discord sunucumuza katılın",
-    "community": "Destek, tartışmalar ve güncellemeler için büyüyen Discord topluluğumuza katılın!"
-  },
   "theme": {
     "title": "Tema",
     "light": "Açık",
@@ -255,8 +237,6 @@
     "false": "Yanlış",
     "dismiss": "Anımsatma",
     "github": "GitHub",
-    "wechat": "WeChat",
-    "discord": "Discord",
     "itemsPerPage": "Sayfa başına öğe",
     "showing": "{{total}} öğeden {{start}}-{{end}} gösteriliyor",
     "previous": "Önceki",

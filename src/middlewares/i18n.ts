@@ -25,7 +25,7 @@ export const i18nMiddleware = (req: Request, res: Response, next: NextFunction) 
   }
 
   // Normalize language code (ensure we support it)
-  const supportedLanguages = ['en', 'zh'];
+  const supportedLanguages = ['en', 'tr'];
   if (!supportedLanguages.includes(detectedLanguage)) {
     detectedLanguage = 'en'; // fallback to English
   }

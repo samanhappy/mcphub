@@ -1,13 +1,13 @@
-import React from 'react';
+import type { FC } from 'react';
 import { useTranslation } from 'react-i18next';
-import { CloudServer } from '@/types';
+import type { CloudServer } from '@/types';
 
 interface CloudServerCardProps {
   server: CloudServer;
   onClick: (server: CloudServer) => void;
 }
 
-const CloudServerCard: React.FC<CloudServerCardProps> = ({ server, onClick }) => {
+const CloudServerCard: FC<CloudServerCardProps> = ({ server, onClick }) => {
   const { t } = useTranslation();
 
   const handleClick = () => {
@@ -22,7 +22,7 @@ const CloudServerCard: React.FC<CloudServerCardProps> = ({ server, onClick }) =>
 
     // Try to extract a summary from content
     if (server.content) {
-      const lines = server.content.split('\n').filter(line => line.trim());
+      const lines = server.content.split('\n').filter((line) => line.trim());
       for (const line of lines) {
         if (line.length > 50 && line.length <= 150) {
           return line;
@@ -30,9 +30,7 @@ const CloudServerCard: React.FC<CloudServerCardProps> = ({ server, onClick }) =>
       }
     }
 
-    return server.description ?
-      server.description.slice(0, 150) + '...' :
-      t('cloud.noDescription');
+    return server.description ? `${server.description.slice(0, 150)}...` : t('cloud.noDescription');
   };
 
   // Format date for display
@@ -52,15 +50,16 @@ const CloudServerCard: React.FC<CloudServerCardProps> = ({ server, onClick }) =>
   const getAuthorInitials = (name: string) => {
     return name
       .split(' ')
-      .map(word => word.charAt(0))
+      .map((word) => word.charAt(0))
       .join('')
       .toUpperCase()
       .slice(0, 2);
   };
 
   return (
-    <div
-      className="bg-white border border-gray-200 rounded-xl p-4 hover:shadow-lg hover:border-blue-400 hover:-translate-y-1 transition-all duration-300 cursor-pointer group relative overflow-hidden h-full flex flex-col"
+    <button
+      type="button"
+      className="bg-white border border-gray-200 rounded-xl p-4 hover:shadow-lg hover:border-blue-400 hover:-translate-y-1 transition-all duration-300 cursor-pointer group relative overflow-hidden h-full flex flex-col w-full text-left"
       onClick={handleClick}
     >
       {/* Background gradient overlay on hover */}
@@ -109,35 +108,63 @@ const CloudServerCard: React.FC<CloudServerCardProps> = ({ server, onClick }) =>
         {server.tools && server.tools.length > 0 && (
           <div className="mb-3">
             <div className="flex items-center space-x-2">
-              <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              <svg
+                className="w-4 h-4 text-gray-500"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <title>Tools</title>
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+                />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                />
               </svg>
               <span className="text-sm text-gray-600 font-medium">
-                {server.tools.length} {server.tools.length === 1 ? t('cloud.tool') : t('cloud.tools')}
+                {server.tools.length}{' '}
+                {server.tools.length === 1 ? t('cloud.tool') : t('cloud.tools')}
               </span>
             </div>
           </div>
         )}
 
-        {/* Footer - 固定在底部 */}
+        {/* Footer - pinned to the bottom */}
         <div className="flex items-center justify-between pt-3 border-t border-gray-100 mt-auto">
           <div className="flex items-center space-x-2 text-xs text-gray-500">
             <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd" />
+              <title>Created date</title>
+              <path
+                fillRule="evenodd"
+                d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z"
+                clipRule="evenodd"
+              />
             </svg>
             <span>{formatDate(server.created_at)}</span>
           </div>
 
           <div className="flex items-center text-blue-600 text-sm font-medium group-hover:text-blue-700 transition-colors">
             <span>{t('cloud.viewDetails')}</span>
-            <svg className="w-4 h-4 ml-1 transform group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg
+              className="w-4 h-4 ml-1 transform group-hover:translate-x-1 transition-transform"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <title>View details</title>
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
             </svg>
           </div>
         </div>
       </div>
-    </div>
+    </button>
   );
 };
 

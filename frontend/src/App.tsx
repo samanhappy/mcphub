@@ -1,27 +1,26 @@
-import React from 'react';
-import { BrowserRouter as Router, Route, Routes, Navigate, useParams } from 'react-router-dom';
+import { Navigate, Route, BrowserRouter as Router, Routes, useParams } from 'react-router-dom';
+import ProtectedRoute from './components/ProtectedRoute';
 import { AuthProvider } from './contexts/AuthContext';
-import { ToastProvider } from './contexts/ToastContext';
-import { ThemeProvider } from './contexts/ThemeContext';
 import { ServerProvider } from './contexts/ServerContext';
 import { SettingsProvider } from './contexts/SettingsContext';
+import { ThemeProvider } from './contexts/ThemeContext';
+import { ToastProvider } from './contexts/ToastContext';
 import MainLayout from './layouts/MainLayout';
-import ProtectedRoute from './components/ProtectedRoute';
-import LoginPage from './pages/LoginPage';
-import DashboardPage from './pages/Dashboard';
-import ServersPage from './pages/ServersPage';
-import GroupsPage from './pages/GroupsPage';
-import UsersPage from './pages/UsersPage';
-import SettingsPage from './pages/SettingsPage';
-import MarketPage from './pages/MarketPage';
-import LogsPage from './pages/LogsPage';
 import ActivityPage from './pages/ActivityPage';
+import DashboardPage from './pages/Dashboard';
+import GroupsPage from './pages/GroupsPage';
+import LoginPage from './pages/LoginPage';
+import LogsPage from './pages/LogsPage';
+import MarketPage from './pages/MarketPage';
 import PromptsPage from './pages/PromptsPage';
 import ResourcesPage from './pages/ResourcesPage';
+import ServersPage from './pages/ServersPage';
+import SettingsPage from './pages/SettingsPage';
+import UsersPage from './pages/UsersPage';
 import { getBasePath } from './utils/runtime';
 
 // Helper component to redirect cloud server routes to market
-const CloudRedirect: React.FC = () => {
+const CloudRedirect = () => {
   const { serverName } = useParams<{ serverName: string }>();
   return <Navigate to={`/market/${serverName}?tab=cloud`} replace />;
 };
@@ -36,10 +35,10 @@ function App() {
             <SettingsProvider>
               <Router basename={basename}>
                 <Routes>
-                  {/* 公共路由 */}
+                  {/* Public routes */}
                   <Route path="/login" element={<LoginPage />} />
 
-                  {/* 受保护的路由，使用 MainLayout 作为布局容器 */}
+                  {/* Protected routes using MainLayout as the layout container */}
                   <Route element={<ProtectedRoute />}>
                     <Route element={<MainLayout />}>
                       <Route path="/" element={<DashboardPage />} />
@@ -59,7 +58,7 @@ function App() {
                     </Route>
                   </Route>
 
-                  {/* 未匹配的路由重定向到首页 */}
+                  {/* Unmatched routes redirect to home */}
                   <Route path="*" element={<Navigate to="/" />} />
                 </Routes>
               </Router>

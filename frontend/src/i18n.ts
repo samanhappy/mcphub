@@ -4,8 +4,6 @@ import LanguageDetector from 'i18next-browser-languagedetector';
 
 // Import shared translations from root locales directory
 import enTranslation from '../../locales/en.json';
-import zhTranslation from '../../locales/zh.json';
-import frTranslation from '../../locales/fr.json';
 import trTranslation from '../../locales/tr.json';
 
 i18n
@@ -18,12 +16,6 @@ i18n
     resources: {
       en: {
         translation: enTranslation,
-      },
-      zh: {
-        translation: zhTranslation,
-      },
-      fr: {
-        translation: frTranslation,
       },
       tr: {
         translation: trTranslation,

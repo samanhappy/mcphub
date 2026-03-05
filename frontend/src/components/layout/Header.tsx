@@ -1,23 +1,24 @@
-import React from 'react';
-import { useTranslation } from 'react-i18next';
 import { BookOpen } from 'lucide-react';
-import ThemeSwitch from '@/components/ui/ThemeSwitch';
-import LanguageSwitch from '@/components/ui/LanguageSwitch';
+import type { FC } from 'react';
+import { useTranslation } from 'react-i18next';
 import GitHubIcon from '@/components/icons/GitHubIcon';
+import LanguageSwitch from '@/components/ui/LanguageSwitch';
+import ThemeSwitch from '@/components/ui/ThemeSwitch';
 
 interface HeaderProps {
   onToggleSidebar: () => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
+const Header: FC<HeaderProps> = ({ onToggleSidebar }) => {
   const { t } = useTranslation();
 
   return (
     <header className="bg-white dark:bg-gray-800 shadow-sm z-10">
       <div className="flex justify-between items-center px-3 py-3">
         <div className="flex items-center">
-          {/* 侧边栏切换按钮 */}
+          {/* Sidebar toggle button */}
           <button
+            type="button"
             onClick={onToggleSidebar}
             className="p-2 rounded-md text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none"
             aria-label={t('app.toggleSidebar')}
@@ -29,6 +30,7 @@ const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
               viewBox="0 0 24 24"
               stroke="currentColor"
             >
+              <title>{t('app.toggleSidebar')}</title>
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -38,7 +40,7 @@ const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
             </svg>
           </button>
 
-          {/* 应用标题 */}
+          {/* App title */}
           <h1 className="ml-4 text-xl font-bold text-gray-900 dark:text-white">{t('app.title')}</h1>
         </div>
 

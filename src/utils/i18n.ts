@@ -21,7 +21,7 @@ const initI18n = async () => {
     debug: false,
 
     // Preload languages
-    preload: ['en', 'zh'],
+    preload: ['en', 'tr'],
 
     // Use sync mode for server
     initImmediate: false,
