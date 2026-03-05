@@ -1,5 +1,5 @@
 const NPM_REGISTRY = 'https://registry.npmjs.org';
-const PACKAGE_NAME = '@samanhappy/mcphub';
+const PACKAGE_NAME = '@vaur94/mcphub';
 
 export const checkLatestVersion = async (): Promise<string | null> => {
   try {

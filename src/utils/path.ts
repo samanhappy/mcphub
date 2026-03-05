@@ -35,7 +35,7 @@ function initializePackageRoot(): void {
       if (fs.existsSync(packageJsonPath)) {
         try {
           const pkg = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
-          if (pkg.name === 'mcphub' || pkg.name === '@samanhappy/mcphub') {
+          if (pkg.name === 'mcphub' || pkg.name === '@vaur94/mcphub') {
             cachedPackageRoot = root;
             return;
           }
@@ -137,7 +137,7 @@ export const findPackageRoot = (startPath?: string): string | null => {
     if (fs.existsSync(packageJsonPath)) {
       try {
         const pkg = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
-        if (pkg.name === 'mcphub' || pkg.name === '@samanhappy/mcphub') {
+        if (pkg.name === 'mcphub' || pkg.name === '@vaur94/mcphub') {
           if (debug) {
             console.log(`DEBUG: Found package.json at ${packageJsonPath}`);
           }

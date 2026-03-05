@@ -51,7 +51,7 @@ const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
           </span>
 
           <a
-            href="https://github.com/samanhappy/mcphub"
+            href="https://github.com/vaur94/mcphub"
             target="_blank"
             rel="noopener noreferrer"
             className="p-2 rounded-md text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"

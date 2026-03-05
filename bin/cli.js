@@ -15,7 +15,7 @@ console.log('📋 MCPHub CLI');
 console.log(`📁 CLI script location: ${__dirname}`);
 
 // The npm package directory structure when installed is:
-// node_modules/@samanhappy/mcphub/
+// node_modules/@vaur94/mcphub/
 //   - dist/
 //   - bin/
 //   - frontend/dist/
@@ -47,7 +47,7 @@ function findPackageRoot() {
     if (fs.existsSync(packageJsonPath)) {
       try {
         const pkg = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
-        if (pkg.name === 'mcphub' || pkg.name === '@samanhappy/mcphub') {
+        if (pkg.name === 'mcphub' || pkg.name === '@vaur94/mcphub') {
           if (isDebug) {
             console.log(`DEBUG: Found package.json at ${packageJsonPath}`);
           }

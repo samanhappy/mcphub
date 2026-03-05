@@ -23,7 +23,7 @@ services:
 
   # MCPHub application
   mcphub:
-    image: samanhappy/mcphub:latest
+    image: ghcr.io/vaur94/mcphub:latest
     container_name: mcphub
     environment:
       # Database connection (setting DB_URL automatically enables database mode)

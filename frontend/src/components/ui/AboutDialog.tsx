@@ -77,7 +77,7 @@ const AboutDialog: React.FC<AboutDialogProps> = ({ isOpen, onClose, version }) =
                     <p>{t('about.newVersionAvailable', { version: latestVersion })}</p>
                     <p className="mt-1">
                       <a
-                        href="https://github.com/samanhappy/mcphub"
+                        href="https://github.com/vaur94/mcphub"
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-blue-600 dark:text-blue-400 hover:underline"
