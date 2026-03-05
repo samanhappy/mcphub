@@ -988,7 +988,7 @@ export const updateSystemConfig = async (req: Request, res: Response): Promise<v
         },
         mcpRouter: {
           apiKey: '',
-          referer: 'https://www.mcphubx.com',
+          referer: 'https://github.com/vaur94/mcphub',
           title: 'MCPHub',
           baseUrl: 'https://api.mcprouter.to/v1',
         },
@@ -1032,7 +1032,7 @@ export const updateSystemConfig = async (req: Request, res: Response): Promise<v
     if (!systemConfig.mcpRouter) {
       systemConfig.mcpRouter = {
         apiKey: '',
-        referer: 'https://www.mcphubx.com',
+        referer: 'https://github.com/vaur94/mcphub',
         title: 'MCPHub',
         baseUrl: 'https://api.mcprouter.to/v1',
       };
@@ -1189,7 +1189,8 @@ export const updateSystemConfig = async (req: Request, res: Response): Promise<v
         systemConfig.smartRouting.azureOpenaiApiKey = smartRouting.azureOpenaiApiKey?.trim();
       }
       if (typeof smartRouting.azureOpenaiApiVersion === 'string') {
-        systemConfig.smartRouting.azureOpenaiApiVersion = smartRouting.azureOpenaiApiVersion?.trim();
+        systemConfig.smartRouting.azureOpenaiApiVersion =
+          smartRouting.azureOpenaiApiVersion?.trim();
       }
       if (typeof smartRouting.azureOpenaiEmbeddingDeployment === 'string') {
         systemConfig.smartRouting.azureOpenaiEmbeddingDeployment =

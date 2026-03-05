@@ -198,7 +198,7 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
 
   const [mcpRouterConfig, setMCPRouterConfig] = useState<MCPRouterConfig>({
     apiKey: '',
-    referer: 'https://www.mcphubx.com',
+    referer: 'https://github.com/vaur94/mcphub',
     title: 'MCPHub',
     baseUrl: 'https://api.mcprouter.to/v1',
   });
@@ -273,7 +273,7 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
       if (data.success && data.data?.systemConfig?.mcpRouter) {
         setMCPRouterConfig({
           apiKey: data.data.systemConfig.mcpRouter.apiKey || '',
-          referer: data.data.systemConfig.mcpRouter.referer || 'https://www.mcphubx.com',
+          referer: data.data.systemConfig.mcpRouter.referer || 'https://github.com/vaur94/mcphub',
           title: data.data.systemConfig.mcpRouter.title || 'MCPHub',
           baseUrl: data.data.systemConfig.mcpRouter.baseUrl || 'https://api.mcprouter.to/v1',
         });

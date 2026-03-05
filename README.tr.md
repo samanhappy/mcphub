@@ -6,20 +6,19 @@ MCPHub, birden fazla MCP (Model Context Protocol) sunucusunu yonetmeyi ve olcekl
 
 ![Dashboard Preview](assets/dashboard.png)
 
-## 🌐 Canli Demo ve Dokumantasyon
+## 🌐 Dokumantasyon
 
-- **Dokumantasyon**: [docs.mcphubx.com](https://docs.mcphubx.com/)
-- **Demo Ortami**: [demo.mcphubx.com](https://demo.mcphubx.com/)
+- **GitHub**: [github.com/vaur94/mcphub](https://github.com/vaur94/mcphub)
 
 ## 🚀 Ozellikler
 
 - **Merkezi Yonetim** - Tum MCP sunucularini tek bir panelden izleyin ve yonetin
 - **Esnek Yonlendirme** - HTTP/SSE ile tum sunuculara, gruplara veya tekil sunuculara erisin
-- **Akilli Yonlendirme** - Vektor semantik arama ile AI destekli arac kesfi ([Detaylar](https://docs.mcphubx.com/features/smart-routing))
+- **Akilli Yonlendirme** - Vektor semantik arama ile AI destekli arac kesfi
 - **Canli Yapilandirma** - Sunuculari kesinti olmadan ekleyin/kaldirin/guncelleyin
-- **OAuth 2.0 Destegi** - Guvenli kimlik dogrulama icin hem istemci hem sunucu modu ([Detaylar](https://docs.mcphubx.com/features/oauth))
+- **OAuth 2.0 Destegi** - Guvenli kimlik dogrulama icin hem istemci hem sunucu modu
 - **Sosyal Giris** - Better Auth entegrasyonu ile GitHub ve Google girisi (Database Mode gerektirir)
-- **Database Mode** - Uretim ortamlarinda ayarlari PostgreSQL'de saklayin ([Detaylar](https://docs.mcphubx.com/configuration/database-configuration))
+- **Database Mode** - Uretim ortamlarinda ayarlari PostgreSQL'de saklayin
 - **Docker Uyumlu** - Konteyner ile hizlica kurulum ve dagitim
 
 ## 🔧 Hizli Baslangic
@@ -43,7 +42,7 @@ Bir `mcp_settings.json` dosyasi olusturun:
 }
 ```
 
-📖 OAuth, ortam degiskenleri ve daha fazlasi icin [Yapilandirma Rehberi](https://docs.mcphubx.com/configuration/mcp-settings) sayfasina bakin.
+📖 OAuth, ortam degiskenleri ve daha fazlasi icin [Yapilandirma Rehberi](https://github.com/vaur94/mcphub) sayfasina bakin.
 
 ### Docker ile Dagitim
 
@@ -73,18 +72,18 @@ http://localhost:3000/mcp/$smart/{group}   # Grup icinde akilli yonlendirme
 
 > **Guvenlik notu**: MCP endpoint'leri varsayilan olarak kimlik dogrulama ister. Yanlislikla disari acilmayi engellemek icin bu davranis varsayilandir. Kimlik dogrulamasiz MCP erisimi icin Keys bolumunden **Enable Bearer Authentication** secenegini kapatin. **Skip Authentication** yalnizca dashboard girisini etkiler. Bunlari sadece guvenilir ortamlarda kullanin.
 
-📖 Detayli endpoint dokumani icin [API Reference](https://docs.mcphubx.com/api-reference) sayfasina bakin.
+📖 Detayli endpoint dokumani icin [API Reference](https://github.com/vaur94/mcphub) sayfasina bakin.
 
 ## 📚 Dokumantasyon
 
 | Konu                                                                           | Aciklama                          |
 | ------------------------------------------------------------------------------ | --------------------------------- |
-| [Quick Start](https://docs.mcphubx.com/quickstart)                             | 5 dakikada baslayin               |
-| [Configuration](https://docs.mcphubx.com/configuration/mcp-settings)           | MCP sunucu ayarlari               |
-| [Database Mode](https://docs.mcphubx.com/configuration/database-configuration) | Uretim icin PostgreSQL kurulumu   |
-| [OAuth](https://docs.mcphubx.com/features/oauth)                               | OAuth 2.0 istemci ve sunucu ayari |
-| [Smart Routing](https://docs.mcphubx.com/features/smart-routing)               | AI destekli arac kesfi            |
-| [Docker Setup](https://docs.mcphubx.com/configuration/docker-setup)            | Docker dagitim rehberi            |
+| [Quick Start](https://github.com/vaur94/mcphub)                             | 5 dakikada baslayin               |
+| [Configuration](https://github.com/vaur94/mcphub)                           | MCP sunucu ayarlari               |
+| [Database Mode](https://github.com/vaur94/mcphub)                           | Uretim icin PostgreSQL kurulumu   |
+| [OAuth](https://github.com/vaur94/mcphub)                                   | OAuth 2.0 istemci ve sunucu ayari |
+| [Smart Routing](https://github.com/vaur94/mcphub)                           | AI destekli arac kesfi            |
+| [Docker Setup](https://github.com/vaur94/mcphub)                            | Docker dagitim rehberi            |
 
 ## 🧑‍💻 Yerel Gelistirme
 
@@ -97,7 +96,7 @@ pnpm dev
 
 > Windows kullanicilari icin: backend ve frontend'i ayri ayri baslatin: `pnpm backend:dev`, `pnpm frontend:dev`
 
-📖 Ayrintili kurulum icin [Development Guide](https://docs.mcphubx.com/development) sayfasina bakin.
+📖 Ayrintili kurulum icin [Development Guide](https://github.com/vaur94/mcphub) sayfasina bakin.
 
 ## 🔍 Teknoloji Yigini
 

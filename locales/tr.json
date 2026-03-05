@@ -632,7 +632,7 @@
     "mcpRouterApiKeyPlaceholder": "MCPRouter API anahtarını girin",
     "mcpRouterReferer": "Yönlendiren",
     "mcpRouterRefererDescription": "MCPRouter API istekleri için Referer başlığı",
-    "mcpRouterRefererPlaceholder": "https://www.mcphubx.com",
+    "mcpRouterRefererPlaceholder": "https://github.com/vaur94/mcphub",
     "mcpRouterTitle": "Başlık",
     "mcpRouterTitleDescription": "MCPRouter API istekleri için Başlık başlığı",
     "mcpRouterTitlePlaceholder": "MCPHub",
