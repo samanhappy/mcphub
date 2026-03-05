@@ -2,7 +2,7 @@
 
 **ALWAYS follow these instructions first and only fallback to additional search and context gathering if the information here is incomplete or found to be in error.**
 
-This document serves as the primary reference for all contributors and AI agents working on `@samanhappy/mcphub`. It provides comprehensive guidance on code organization, development workflow, and project conventions.
+This document serves as the primary reference for all contributors and AI agents working on `@vaur94/mcphub`. It provides comprehensive guidance on code organization, development workflow, and project conventions.
 
 ## Project Overview
 
@@ -126,7 +126,7 @@ node scripts/verify-dist.js
 
 ### Localization
 
-- Translations sit in `locales/` (en.json, fr.json, tr.json, zh.json)
+- Translations sit in `locales/` (en.json, tr.json)
 - Frontend uses react-i18next
 
 ### Docker and Deployment

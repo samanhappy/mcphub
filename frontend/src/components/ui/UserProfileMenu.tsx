@@ -1,30 +1,24 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { Info, LogOut, Settings, User } from 'lucide-react';
+import type { FC } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { User, Settings, LogOut, Info } from 'lucide-react';
-import AboutDialog from './AboutDialog';
-import SponsorDialog from './SponsorDialog';
-import WeChatDialog from './WeChatDialog';
-import WeChatIcon from '@/components/icons/WeChatIcon';
-import DiscordIcon from '@/components/icons/DiscordIcon';
-import SponsorIcon from '@/components/icons/SponsorIcon';
 import { checkLatestVersion, compareVersions } from '@/utils/version';
+import AboutDialog from './AboutDialog';
 
 interface UserProfileMenuProps {
   collapsed: boolean;
   version: string;
 }
 
-const UserProfileMenu: React.FC<UserProfileMenuProps> = ({ collapsed, version }) => {
-  const { t, i18n } = useTranslation();
+const UserProfileMenu: FC<UserProfileMenuProps> = ({ collapsed, version }) => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { auth, logout } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [showNewVersionInfo, setShowNewVersionInfo] = useState(false);
   const [showAboutDialog, setShowAboutDialog] = useState(false);
-  const [sponsorDialogOpen, setSponsorDialogOpen] = useState(false);
-  const [wechatDialogOpen, setWechatDialogOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   // Check for new version on login and component mount
@@ -72,22 +66,14 @@ const UserProfileMenu: React.FC<UserProfileMenuProps> = ({ collapsed, version })
     setIsOpen(false);
   };
 
-  const handleSponsorClick = () => {
-    setSponsorDialogOpen(true);
-    setIsOpen(false);
-  };
-
-  const handleWeChatClick = () => {
-    setWechatDialogOpen(true);
-    setIsOpen(false);
-  };
-
   return (
     <div ref={menuRef} className="relative">
       <button
+        type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className={`flex ${collapsed ? 'justify-center' : 'items-center'} w-full p-2 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors rounded-md ${isOpen ? 'bg-gray-100 dark:bg-gray-700' : ''
-          }`}
+        className={`flex ${collapsed ? 'justify-center' : 'items-center'} w-full p-2 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors rounded-md ${
+          isOpen ? 'bg-gray-100 dark:bg-gray-700' : ''
+        }`}
       >
         <div className="flex-shrink-0 relative">
           <div className="w-5 h-5 flex items-center justify-center rounded-full border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700">
@@ -109,34 +95,7 @@ const UserProfileMenu: React.FC<UserProfileMenuProps> = ({ collapsed, version })
       {isOpen && (
         <div className="absolute top-0 transform -translate-y-full left-0 w-full min-w-max bg-white border border-gray-200 dark:bg-gray-800 z-50">
           <button
-            onClick={handleSponsorClick}
-            className="flex items-center w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-          >
-            <SponsorIcon className="h-4 w-4 mr-2" />
-            {t('sponsor.label')}
-          </button>
-
-          {i18n.language === 'zh' ? (
-            <button
-              onClick={handleWeChatClick}
-              className="flex items-center w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-            >
-              <WeChatIcon className="h-4 w-4 mr-2" />
-              {t('wechat.label')}
-            </button>
-          ) : (
-            <a
-              href="https://discord.gg/qMKNsn5Q"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-            >
-              <DiscordIcon className="h-4 w-4 mr-2" />
-              {t('discord.label')}
-            </a>
-          )}
-
-          <button
+            type="button"
             onClick={handleSettingsClick}
             className="flex items-center w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
           >
@@ -144,6 +103,7 @@ const UserProfileMenu: React.FC<UserProfileMenuProps> = ({ collapsed, version })
             {t('nav.settings')}
           </button>
           <button
+            type="button"
             onClick={handleAboutClick}
             className="flex items-center w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 relative"
           >
@@ -157,6 +117,7 @@ const UserProfileMenu: React.FC<UserProfileMenuProps> = ({ collapsed, version })
           <div className="border-t border-gray-200 dark:border-gray-600"></div>
 
           <button
+            type="button"
             onClick={handleLogoutClick}
             className="flex items-center w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
           >
@@ -172,12 +133,6 @@ const UserProfileMenu: React.FC<UserProfileMenuProps> = ({ collapsed, version })
         onClose={() => setShowAboutDialog(false)}
         version={version}
       />
-
-      {/* Sponsor dialog */}
-      <SponsorDialog open={sponsorDialogOpen} onOpenChange={setSponsorDialogOpen} />
-
-      {/* WeChat dialog */}
-      <WeChatDialog open={wechatDialogOpen} onOpenChange={setWechatDialogOpen} />
     </div>
   );
 };
