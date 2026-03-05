@@ -7,7 +7,6 @@ on:
 jobs:
   publish-npm:
     runs-on: ubuntu-latest
-    if: endsWith(github.repository, 'mcphub')
     steps:
       - name: Checkout
         uses: actions/checkout@v4
