@@ -11,7 +11,7 @@ description: 'Get MCPHub running in 5 minutes'
 
     ```bash
     # Run with default configuration
-    docker run -p 3000:3000 samanhappy/mcphub
+    docker run -p 3000:3000 vaur94/mcphub
     ```
 
     Or mount your custom configuration:
@@ -20,7 +20,7 @@ description: 'Get MCPHub running in 5 minutes'
     # Run with custom MCP settings
     docker run -p 3000:3000 \
       -v $(pwd)/mcp_settings.json:/app/mcp_settings.json \
-      samanhappy/mcphub
+      vaur94/mcphub
     ```
 
   </Tab>
@@ -29,7 +29,7 @@ description: 'Get MCPHub running in 5 minutes'
 
     ```bash
     # Clone the repository
-    git clone https://github.com/samanhappy/mcphub.git
+    git clone https://github.com/vaur94/mcphub.git
     cd mcphub
 
     # Install dependencies
@@ -47,7 +47,7 @@ description: 'Get MCPHub running in 5 minutes'
 
     ```bash
     # Install globally
-    npm install -g @samanhappy/mcphub
+    npm install -g @vaur94/mcphub
 
     # Run MCPHub
     mcphub
@@ -113,7 +113,10 @@ Once your servers are configured, connect your AI clients using MCPHub endpoints
   </Tab>
   <Tab title="Smart Routing">
     Use AI-powered tool discovery: ``` http://localhost:3000/mcp/$smart ```
-    <Info>Smart routing requires PostgreSQL with pgvector and an LLM provider (OpenAI or compatible) API key.</Info>
+    <Info>
+      Smart routing requires PostgreSQL with pgvector and an LLM provider (OpenAI or compatible) API
+      key.
+    </Info>
   </Tab>
 </Tabs>
 
@@ -170,7 +173,7 @@ Here are some popular MCP servers you can add:
   </Accordion>
 </AccordionGroup>
 
-{/* ## Verification
+{/\* ## Verification
 
 Test your setup by making a simple request:
 
@@ -185,7 +188,7 @@ curl -X POST http://localhost:3000/mcp \
   }'
 ```
 
-You should receive a list of available tools from your configured MCP servers. */}
+You should receive a list of available tools from your configured MCP servers. \*/}
 
 ## Next Steps
 
@@ -212,10 +215,10 @@ You should receive a list of available tools from your configured MCP servers. *
     correctly set - Check MCPHub logs for detailed error messages
   </Accordion>
 
-  <Accordion title="Can't connect from AI client">
-    - Ensure MCPHub is running on the correct port - Check firewall settings - Verify the endpoint
-    URL format
-  </Accordion>
+<Accordion title="Can't connect from AI client">
+  - Ensure MCPHub is running on the correct port - Check firewall settings - Verify the endpoint URL
+  format
+</Accordion>
 
   <Accordion title="Authentication issues">
     - Verify credentials are correct - Check if JWT token is valid - Try clearing browser cache and
@@ -223,4 +226,4 @@ You should receive a list of available tools from your configured MCP servers. *
   </Accordion>
 </AccordionGroup>
 
-Need more help? Join our [Discord community](https://discord.gg/qMKNsn5Q) for support!
+Need more help? Open an issue on GitHub: https://github.com/vaur94/mcphub/issues

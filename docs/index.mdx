@@ -3,7 +3,8 @@ title: MCPHub
 description: 'The Unified Hub for Model Context Protocol (MCP) Servers'
 ---
 
-{/* <img className="block dark:hidden" src="/images/hero-light.png" alt="Hero Light" />
+{/\* <img className="block dark:hidden" src="/images/hero-light.png" alt="Hero Light" />
+
 <img className="hidden dark:block" src="/images/hero-dark.png" alt="Hero Dark" /> */}
 
 # Welcome to MCPHub
@@ -32,13 +33,13 @@ MCPHub makes it easy to manage and scale multiple MCP (Model Context Protocol) s
 Get MCPHub running in minutes with Docker:
 
 ```bash
-docker run -p 3000:3000 samanhappy/mcphub
+docker run -p 3000:3000 vaur94/mcphub
 ```
 
 Or with custom configuration:
 
 ```bash
-docker run -p 3000:3000 -v $(pwd)/mcp_settings.json:/app/mcp_settings.json samanhappy/mcphub
+docker run -p 3000:3000 -v $(pwd)/mcp_settings.json:/app/mcp_settings.json vaur94/mcphub
 ```
 
 Access the dashboard at `http://localhost:3000` with default credentials:
@@ -82,14 +83,8 @@ MCPHub provides multiple ways to access your MCP servers:
 
 ## Community & Support
 
-<CardGroup cols={3}>
-  <Card title="GitHub" icon="github" href="https://github.com/samanhappy/mcphub">
+<CardGroup cols={1}>
+  <Card title="GitHub" icon="github" href="https://github.com/vaur94/mcphub">
     Source code and issue tracking
-  </Card>
-  <Card title="Discord" icon="discord" href="https://discord.gg/qMKNsn5Q">
-    Join our community discussions
-  </Card>
-  <Card title="Sponsor" icon="heart" href="https://ko-fi.com/samanhappy">
-    Support the project development
   </Card>
 </CardGroup>

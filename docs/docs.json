@@ -16,11 +16,7 @@
         "groups": [
           {
             "group": "Get Started",
-            "pages": [
-              "index",
-              "quickstart",
-              "installation"
-            ]
+            "pages": ["index", "quickstart", "installation"]
           },
           {
             "group": "Core Features",
@@ -44,34 +40,11 @@
         ]
       },
       {
-        "tab": "中文",
+        "tab": "Türkçe",
         "groups": [
           {
-            "group": "开始使用",
-            "pages": [
-              "zh/index",
-              "zh/quickstart",
-              "zh/installation"
-            ]
-          },
-          {
-            "group": "核心功能",
-            "pages": [
-              "zh/features/server-management",
-              "zh/features/group-management",
-              "zh/features/smart-routing",
-              "zh/features/oauth"
-            ]
-          },
-          {
-            "group": "配置指南",
-            "pages": [
-              "zh/configuration/mcp-settings",
-              "zh/configuration/environment-variables",
-              "zh/configuration/docker-setup",
-              "zh/configuration/nginx",
-              "zh/configuration/database-configuration"
-            ]
+            "group": "Başlarken",
+            "pages": ["tr/index", "tr/quickstart", "tr/installation"]
           }
         ]
       },
@@ -89,9 +62,7 @@
           },
           {
             "group": "OpenAPI Endpoints",
-            "pages": [
-              "api-reference/openapi"
-            ]
+            "pages": ["api-reference/openapi"]
           },
           {
             "group": "Management Endpoints",
@@ -108,40 +79,6 @@
             ]
           }
         ]
-      },
-      {
-        "tab": "接口",
-        "groups": [
-          {
-            "group": "MCP 端点",
-            "pages": [
-              "zh/api-reference/introduction",
-              "zh/api-reference/mcp-http",
-              "zh/api-reference/mcp-sse",
-              "zh/api-reference/smart-routing"
-            ]
-          },
-          {
-            "group": "OpenAPI 端点",
-            "pages": [
-              "zh/api-reference/openapi"
-            ]
-          },
-          {
-            "group": "管理端点",
-            "pages": [
-              "zh/api-reference/servers",
-              "zh/api-reference/groups",
-              "zh/api-reference/users",
-              "zh/api-reference/tools",
-              "zh/api-reference/prompts",
-              "zh/api-reference/auth",
-              "zh/api-reference/logs",
-              "zh/api-reference/config",
-              "zh/api-reference/system"
-            ]
-          }
-        ]
       }
     ],
     "global": {
@@ -153,22 +90,17 @@
     "dark": "/logo/dark.svg"
   },
   "navbar": {
-    "links": [
-      {
-        "label": "Demo",
-        "href": "https://demo.mcphubx.com"
-      }
-    ],
+  "navbar": {
+    "links": [],
     "primary": {
       "type": "button",
-      "label": "Get Started",
-      "href": "https://docs.mcphubx.com/quickstart"
+      "label": "GitHub",
+      "href": "https://github.com/vaur94/mcphub"
     }
   },
   "footer": {
     "socials": {
-      "github": "https://github.com/samanhappy/mcphub",
-      "discord": "https://discord.gg/qMKNsn5Q"
+      "github": "https://github.com/vaur94/mcphub"
     }
   }
 }

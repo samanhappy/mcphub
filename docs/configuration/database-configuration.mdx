@@ -12,6 +12,7 @@ MCPHub supports storing configuration data in a PostgreSQL database as an altern
 ## Why Use Database Configuration?
 
 **Core Benefits:**
+
 - ✅ **Better Persistence** - Configuration stored in a professional database with transaction support and data integrity
 - ✅ **High Availability** - Leverage database replication and failover capabilities
 - ✅ **Enterprise Ready** - Meets enterprise data management and compliance requirements
@@ -31,7 +32,9 @@ DB_URL=postgresql://user:password@localhost:5432/mcphub
 ```
 
 <Note>
-**Simplified Configuration**: You only need to set `DB_URL` to enable database mode. MCPHub will automatically detect and enable database mode when `DB_URL` is present. Use `USE_DB=false` to explicitly disable database mode even when `DB_URL` is set.
+  **Simplified Configuration**: You only need to set `DB_URL` to enable database mode. MCPHub will
+  automatically detect and enable database mode when `DB_URL` is present. Use `USE_DB=false` to
+  explicitly disable database mode even when `DB_URL` is set.
 </Note>
 
 ## Setup Instructions
@@ -47,7 +50,7 @@ docker run -d \
   -p 3000:3000 \
   -v ./mcp_settings.json:/app/mcp_settings.json \
   -e DB_URL="postgresql://user:password@your-db-host:5432/mcphub" \
-  samanhappy/mcphub
+  vaur94/mcphub
 ```
 
 #### Option B: Using PostgreSQL as a separate service
@@ -67,16 +70,16 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
     ports:
-      - "5432:5432"
+      - '5432:5432'
 
   mcphub:
-    image: samanhappy/mcphub:latest
+    image: vaur94/mcphub:latest
     environment:
-      USE_DB: "true"
-      DB_URL: "postgresql://mcphub:your_secure_password@postgres:5432/mcphub"
+      USE_DB: 'true'
+      DB_URL: 'postgresql://mcphub:your_secure_password@postgres:5432/mcphub'
       PORT: 3000
     ports:
-      - "3000:3000"
+      - '3000:3000'
     depends_on:
       - postgres
 
@@ -85,6 +88,7 @@ volumes:
 ```
 
 Run with:
+
 ```bash
 docker-compose up -d
 ```
@@ -108,7 +112,7 @@ EOF
 #### Step 2: Install MCPHub
 
 ```bash
-npm install -g @samanhappy/mcphub
+npm install -g @vaur94/mcphub
 ```
 
 #### Step 3: Set Environment Variables
@@ -164,6 +168,7 @@ node dist/scripts/migrate-to-database.js
 ```
 
 The migration will:
+
 - ✅ Create database tables if they don't exist
 - ✅ Import all users with hashed passwords
 - ✅ Import all MCP server configurations
@@ -235,6 +240,7 @@ Error: connect ECONNREFUSED 127.0.0.1:5432
 ```
 
 **Solution:** Check that PostgreSQL is running and accessible:
+
 ```bash
 # Check PostgreSQL status
 sudo systemctl status postgresql
@@ -257,7 +263,8 @@ Error: password authentication failed for user "mcphub"
 ❌ Migration failed: ...
 ```
 
-**Solution:** 
+**Solution:**
+
 1. Check that `mcp_settings.json` exists and is valid JSON
 2. Verify database connection
 3. Check logs for specific error messages
@@ -266,19 +273,20 @@ Error: password authentication failed for user "mcphub"
 ### Tables Already Exist
 
 Database tables are automatically created if they don't exist. If you get errors about existing tables, check:
+
 1. Whether a previous migration partially completed
 2. Manual table creation conflicts
 3. Run with `synchronize: false` in database config if needed
 
 ## Environment Variables Reference
 
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `DB_URL` | Yes* | - | Full PostgreSQL connection URL. Setting this automatically enables database mode |
-| `USE_DB` | No | auto | Explicitly enable/disable database mode. If not set, auto-detected based on `DB_URL` presence |
-| `MCPHUB_SETTING_PATH` | No | - | Path to mcp_settings.json (for migration) |
+| Variable              | Required | Default | Description                                                                                   |
+| --------------------- | -------- | ------- | --------------------------------------------------------------------------------------------- |
+| `DB_URL`              | Yes\*    | -       | Full PostgreSQL connection URL. Setting this automatically enables database mode              |
+| `USE_DB`              | No       | auto    | Explicitly enable/disable database mode. If not set, auto-detected based on `DB_URL` presence |
+| `MCPHUB_SETTING_PATH` | No       | -       | Path to mcp_settings.json (for migration)                                                     |
 
-*Required for database mode. Simply setting `DB_URL` enables database mode automatically
+\*Required for database mode. Simply setting `DB_URL` enables database mode automatically
 
 ## Security Considerations
 
@@ -294,11 +302,13 @@ Database tables are automatically created if they don't exist. If you get errors
 ## Performance
 
 Database mode offers better performance for:
+
 - Multiple concurrent users
 - Frequent configuration changes
 - Large number of servers/groups
 
 File mode may be faster for:
+
 - Single user setups
 - Read-heavy workloads with infrequent changes
 - Development/testing environments

@@ -1,6 +1,6 @@
 # MCPHub: The Unified Hub for Model Context Protocol (MCP) Servers
 
-English | [Français](README.fr.md) | [中文版](README.zh.md)
+English | [Türkçe](README.tr.md)
 
 MCPHub makes it easy to manage and scale multiple MCP (Model Context Protocol) servers by organizing them into flexible Streamable HTTP (SSE) endpoints—supporting access to all servers, individual servers, or logical server groups.
 
@@ -49,10 +49,10 @@ Create a `mcp_settings.json` file:
 
 ```bash
 # Run with custom config (recommended)
-docker run -p 3000:3000 -v ./mcp_settings.json:/app/mcp_settings.json -v ./data:/app/data samanhappy/mcphub
+docker run -p 3000:3000 -v ./mcp_settings.json:/app/mcp_settings.json -v ./data:/app/data ghcr.io/vaur94/mcphub
 
 # Or run with default settings
-docker run -p 3000:3000 samanhappy/mcphub
+docker run -p 3000:3000 ghcr.io/vaur94/mcphub
 ```
 
 ### Access Dashboard
@@ -89,7 +89,7 @@ http://localhost:3000/mcp/$smart/{group}  # Smart routing within group
 ## 🧑‍💻 Local Development
 
 ```bash
-git clone https://github.com/samanhappy/mcphub.git
+git clone https://github.com/vaur94/mcphub.git
 cd mcphub
 pnpm install
 pnpm dev
@@ -108,15 +108,7 @@ pnpm dev
 
 ## 👥 Contributing
 
-Contributions welcome! See our [Discord community](https://discord.gg/qMKNsn5Q) for discussions and support.
-
-## ❤️ Sponsor
-
-[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/samanhappy)
-
-## 🌟 Star History
-
-[![Star History Chart](https://api.star-history.com/svg?repos=samanhappy/mcphub&type=Date)](https://www.star-history.com/#samanhappy/mcphub&Date)
+Contributions welcome! Please open an issue or a pull request.
 
 ## 📄 License
 

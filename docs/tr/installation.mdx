@@ -1,43 +1,43 @@
 ---
-title: 'Installation Guide'
-description: 'Detailed installation instructions for all platforms'
+title: 'Kurulum Rehberi'
+description: 'Tum platformlar icin ayrintili kurulum adimlari'
 ---
 
-## Prerequisites
+## On Kosullar
 
-Before installing MCPHub, ensure you have the following prerequisites:
+MCPHub'i kurmadan once su gereksinimlerin mevcut oldugundan emin olun:
 
-- **Node.js** 18+ (for local development)
-- **Docker** (recommended for production)
-- **pnpm** (for local development)
+- **Node.js** 18+ (yerel gelistirme icin)
+- **Docker** (production icin onerilir)
+- **pnpm** (yerel gelistirme icin)
 
-Optional for Smart Routing:
+Akilli Yonlendirme icin (opsiyonel):
 
-- **PostgreSQL** with pgvector extension
-- **LLM Provider (OpenAI or compatible) API Key**
+- **pgvector eklentili PostgreSQL**
+- **LLM Saglayicisi (OpenAI veya uyumlu) API Key**
 
-## Installation Methods
+## Kurulum Yontemleri
 
 <Tabs>
-  <Tab title="Docker (Recommended)">
-    ### Docker Installation
+  <Tab title="Docker (Onerilen)">
+    ### Docker ile Kurulum
 
-    Docker is the recommended way to deploy MCPHub in production.
+    Docker, MCPHub'i production ortaminda yayinlamanin onerilen yoludur.
 
-    #### 1. Basic Installation
+    #### 1. Temel Kurulum
 
     ```bash
     # Pull the latest image
-    docker pull vaur94/mcphub:latest
+    docker pull ghcr.io/vaur94/mcphub:latest
 
     # Run with default settings
     docker run -d \
       --name mcphub \
       -p 3000:3000 \
-      vaur94/mcphub:latest
+      ghcr.io/vaur94/mcphub:latest
     ```
 
-    #### 2. With Custom Configuration
+    #### 2. Ozel Yapilandirma ile
 
     ```bash
     # Create your configuration file
@@ -61,10 +61,10 @@ Optional for Smart Routing:
       --name mcphub \
       -p 3000:3000 \
       -v $(pwd)/mcp_settings.json:/app/mcp_settings.json \
-      vaur94/mcphub:latest
+      ghcr.io/vaur94/mcphub:latest
     ```
 
-    #### 3. With Environment Variables
+    #### 3. Ortam Degiskenleri ile
 
     ```bash
     docker run -d \
@@ -72,18 +72,18 @@ Optional for Smart Routing:
       -p 3000:3000 \
       -e PORT=3000 \
       -e BASE_PATH="" \
-      vaur94/mcphub:latest
+      ghcr.io/vaur94/mcphub:latest
     ```
 
     #### 4. Docker Compose
 
-    Create a `docker-compose.yml` file:
+    Bir `docker-compose.yml` dosyasi olusturun:
 
     ```yaml
     version: '3.8'
     services:
       mcphub:
-        image: vaur94/mcphub:latest
+        image: ghcr.io/vaur94/mcphub:latest
         ports:
           - "3000:3000"
         volumes:
@@ -110,19 +110,20 @@ Optional for Smart Routing:
       postgres_data:
     ```
 
-    Run with:
+    Su komutla calistirin:
+
     ```bash
     docker-compose up -d
     ```
 
   </Tab>
 
-  <Tab title="npm Package">
-    ### npm Package Installation
+  <Tab title="npm Paketi">
+    ### npm Paketi ile Kurulum
 
-    Install MCPHub as a global npm package:
+    MCPHub'i global bir npm paketi olarak kurun:
 
-    #### 1. Global Installation
+    #### 1. Global Kurulum
 
     ```bash
     # Install globally
@@ -135,7 +136,7 @@ Optional for Smart Routing:
     pnpm add -g @vaur94/mcphub
     ```
 
-    #### 2. Running MCPHub
+    #### 2. MCPHub'i Calistirma
 
     ```bash
     # Run with default settings
@@ -145,37 +146,14 @@ Optional for Smart Routing:
     PORT=8080 mcphub
     ```
 
-    {/* #### 3. Local Installation
-
-    You can also install MCPHub locally in a project:
-
-    ```bash
-    # Create a new directory
-    mkdir my-mcphub
-    cd my-mcphub
-
-    # Initialize package.json
-    npm init -y
-
-    # Install MCPHub locally
-    npm install @vaur94/mcphub
-
-    # Create a start script
-    echo '#!/bin/bash\nnpx mcphub' > start.sh
-    chmod +x start.sh
-
-    # Run MCPHub
-    ./start.sh
-    ``` */}
-
   </Tab>
 
-  <Tab title="Local Development">
-    ### Local Development Setup
+  <Tab title="Yerel Gelistirme">
+    ### Yerel Gelistirme Kurulumu
 
-    For development, customization, or contribution:
+    Gelistirme, ozellestirme veya katkida bulunmak icin:
 
-    #### 1. Clone Repository
+    #### 1. Depoyu Klonlayin
 
     ```bash
     # Clone the repository
@@ -183,7 +161,7 @@ Optional for Smart Routing:
     cd mcphub
     ```
 
-    #### 2. Install Dependencies
+    #### 2. Bagimliliklari Kurun
 
     ```bash
     # Install dependencies with pnpm (recommended)
@@ -196,7 +174,7 @@ Optional for Smart Routing:
     yarn install
     ```
 
-    #### 3. Development Mode
+    #### 3. Gelistirme Modu
 
     ```bash
     # Start both backend and frontend in development mode
@@ -208,7 +186,7 @@ Optional for Smart Routing:
     # - Frontend proxies API calls to backend
     ```
 
-    #### 4. Build for Production
+    #### 4. Production Icin Build
 
     ```bash
     # Build both backend and frontend
@@ -218,7 +196,7 @@ Optional for Smart Routing:
     pnpm start
     ```
 
-    #### 5. Development Scripts
+    #### 5. Gelistirme Scriptleri
 
     ```bash
     # Backend only (for API development)
@@ -238,7 +216,7 @@ Optional for Smart Routing:
     ```
 
     <Note>
-      On Windows, you may need to run backend and frontend separately:
+      Windows'ta backend ve frontend'i ayri ayri calistirmaniz gerekebilir:
       ```bash
       # Terminal 1: Backend
       pnpm backend:dev
@@ -251,11 +229,11 @@ Optional for Smart Routing:
   </Tab>
 
   <Tab title="Kubernetes">
-    ### Kubernetes Deployment
+    ### Kubernetes ile Yayinlama
 
-    Deploy MCPHub on Kubernetes with these manifests:
+    MCPHub'i Kubernetes uzerinde bu manifestlerle yayinlayin:
 
-    #### 1. ConfigMap for Settings
+    #### 1. Settings icin ConfigMap
 
     ```yaml
     apiVersion: v1
@@ -312,7 +290,7 @@ Optional for Smart Routing:
                   mountPath: /etc/mcphub
           containers:
             - name: mcphub
-              image: vaur94/mcphub:latest
+              image: ghcr.io/vaur94/mcphub:latest
               ports:
                 - containerPort: 3000
               resources:
@@ -354,7 +332,7 @@ Optional for Smart Routing:
       type: ClusterIP
     ```
 
-    #### 4. Ingress (Optional)
+    #### 4. Ingress (Opsiyonel)
 
     ```yaml
     apiVersion: networking.k8s.io/v1
@@ -377,7 +355,8 @@ Optional for Smart Routing:
                   number: 80
     ```
 
-    Deploy with:
+    Su komutlarla yayinlayin:
+
     ```bash
     kubectl apply -f mcphub-configmap.yaml
     kubectl apply -f mcphub-deployment.yaml
@@ -388,16 +367,16 @@ Optional for Smart Routing:
   </Tab>
 </Tabs>
 
-## Smart Routing Setup (Optional)
+## Akilli Yonlendirme Kurulumu (Opsiyonel)
 
-Smart Routing provides AI-powered tool discovery using vector semantic search.
+Akilli Yonlendirme, vektor semantik arama ile AI destekli arac kesfi saglar.
 
-### Prerequisites
+### Gereksinimler
 
-1. **PostgreSQL with pgvector**
-2. **LLM Provider (OpenAI or compatible) API Key**
+1. **pgvector eklentili PostgreSQL**
+2. **LLM Saglayicisi (OpenAI veya uyumlu) API Key**
 
-### Database Setup
+### Veritabani Kurulumu
 
 <Tabs>
   <Tab title="Docker PostgreSQL">
@@ -413,8 +392,8 @@ Smart Routing provides AI-powered tool discovery using vector semantic search.
     ```
   </Tab>
 
-  <Tab title="Existing PostgreSQL">
-    If you have an existing PostgreSQL instance:
+  <Tab title="Mevcut PostgreSQL">
+    Mevcut bir PostgreSQL orneginiz varsa:
 
     ```sql
     -- Connect to your PostgreSQL instance
@@ -430,88 +409,39 @@ Smart Routing provides AI-powered tool discovery using vector semantic search.
 
   </Tab>
 
-  <Tab title="Cloud PostgreSQL">
-    For cloud providers (AWS RDS, Google Cloud SQL, etc.):
+  <Tab title="Bulut PostgreSQL">
+    Bulut saglayicilari (AWS RDS, Google Cloud SQL, vb.) icin:
 
-    1. Enable the pgvector extension in your cloud provider's console
-    2. Create a database named `mcphub`
-    3. Note down the connection details
+    1. Bulut konsolunda pgvector eklentisini etkinlestirin
+    2. `mcphub` isimli bir veritabani olusturun
+    3. Baglanti bilgilerini not alin
 
   </Tab>
 </Tabs>
 
-{/\* ### Environment Configuration
+## Dogrulama
 
-Set the following environment variables:
+Kurulumdan sonra MCPHub'in calistigini dogrulayin:
 
-````bash
-# Database connection
-DB_URL=postgresql://mcphub:your_password@localhost:5432/mcphub
+### Pano Erisimi
 
-# OpenAI API for embeddings
-OPENAI_API_KEY=your_openai_api_key
+Tarayicinizda su adrese gidin:
 
-# Optional: Custom embedding model
-EMBEDDING_MODEL=text-embedding-3-small
-
-# Optional: Enable smart routing
-ENABLE_SMART_ROUTING=true
-``` */}
-
-## Verification
-
-After installation, verify MCPHub is working:
-
-{/* ### 1. Health Check
-
-```bash
-curl http://localhost:3000/api/health
-````
-
-Expected response:
-
-````json
-{
-  "status": "ok",
-  "version": "x.x.x",
-  "uptime": 123
-}
-``` */}
-
-### Dashboard Access
-
-Open your browser and navigate to:
-
-````
-
+```
 http://localhost:3000
+```
 
-````
-
-{/* ### 3. API Test
-
-```bash
-curl -X POST http://localhost:3000/mcp \
-  -H "Content-Type: application/json" \
-  -d '{
-    "jsonrpc": "2.0",
-    "id": 1,
-    "method": "tools/list",
-    "params": {}
-  }'
-``` */}
-
-## Troubleshooting
+## Sorun Giderme
 
 <AccordionGroup>
-  <Accordion title="Docker Issues">
+  <Accordion title="Docker Sorunlari">
     **Port already in use:**
     ```bash
     # Check what's using port 3000
     lsof -i :3000
 
     # Use a different port
-    docker run -p 8080:3000 vaur94/mcphub
+    docker run -p 8080:3000 ghcr.io/vaur94/mcphub
     ```
 
     **Container won't start:**
@@ -520,12 +450,12 @@ curl -X POST http://localhost:3000/mcp \
     docker logs mcphub
 
     # Run interactively for debugging
-    docker run -it --rm vaur94/mcphub /bin/bash
+    docker run -it --rm ghcr.io/vaur94/mcphub /bin/bash
     ```
 
   </Accordion>
 
-  <Accordion title="npm Installation Issues">
+  <Accordion title="npm Kurulum Sorunlari">
     **Permission errors:**
     ```bash
     # Use npx instead of global install
@@ -548,21 +478,21 @@ curl -X POST http://localhost:3000/mcp \
 
   </Accordion>
 
-  <Accordion title="Network Issues">
-    **Can't access dashboard:**
-    - Check if MCPHub is running: `ps aux | grep mcphub`
-    - Verify port binding: `netstat -tlnp | grep 3000`
-    - Check firewall settings
-    - Try accessing via `127.0.0.1:3000` instead of `localhost:3000`
+  <Accordion title="Ag Sorunlari">
+    **Pano'ya erisemiyorum:**
+    - MCPHub'in calistigini kontrol edin: `ps aux | grep mcphub`
+    - Port baglantisini dogrulayin: `netstat -tlnp | grep 3000`
+    - Guvenlik duvari ayarlarini kontrol edin
+    - `localhost:3000` yerine `127.0.0.1:3000` deneyin
 
-    **AI clients can't connect:**
-    - Ensure the endpoint URL is correct
-    - Check if MCPHub is behind a proxy
-    - Verify network policies in Kubernetes/Docker environments
+    **AI istemcileri baglanamiyor:**
+    - Uc nokta URL'sinin dogru oldugundan emin olun
+    - MCPHub'in bir proxy arkasinda olup olmadigini kontrol edin
+    - Kubernetes/Docker ortaminda ag politikalarini dogrulayin
 
   </Accordion>
 
-  <Accordion title="Smart Routing Issues">
+  <Accordion title="Akilli Yonlendirme Sorunlari">
     **Database connection failed:**
     ```bash
     # Test database connection
@@ -573,27 +503,26 @@ curl -X POST http://localhost:3000/mcp \
     ```
 
     **Embedding service errors:**
-    - Verify LLM provider API key is valid
-    - Check internet connectivity
-    - Monitor rate limits
+    - LLM saglayicisi API key'in gecerli oldugunu dogrulayin
+    - Internet baglantisini kontrol edin
+    - Rate limit'leri izleyin
 
   </Accordion>
 </AccordionGroup>
 
-## Next Steps
+## Sonraki Adimlar
 
 <CardGroup cols={2}>
-  <Card title="Configuration" icon="cog" href="/configuration/mcp-settings">
-    Configure your MCP servers and settings
+  <Card title="Yapilandirma" icon="cog" href="/configuration/mcp-settings">
+    MCP sunucularinizi ve ayarlarinizi yapilandirin
   </Card>
-  <Card title="Quick Start" icon="rocket" href="/quickstart">
-    Get up and running in 5 minutes
+  <Card title="Hizli Baslangic" icon="rocket" href="/quickstart">
+    5 dakikada calismaya baslayin
   </Card>
-  <Card title="Server Management" icon="server" href="/features/server-management">
-    Learn how to manage your MCP servers
+  <Card title="Sunucu Yonetimi" icon="server" href="/features/server-management">
+    MCP sunucularinizi nasil yoneteceginizi ogrenin
   </Card>
-  <Card title="API Reference" icon="code" href="/api-reference/introduction">
-    Explore the complete API documentation
+  <Card title="API Referansi" icon="code" href="/api-reference/introduction">
+    Detayli endpoint dokumantasyonunu inceleyin
   </Card>
 </CardGroup>
-````

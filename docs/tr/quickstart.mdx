@@ -1,0 +1,212 @@
+---
+title: 'Hizli Baslangic Rehberi'
+description: 'MCPHub'i 5 dakikada calistirin'
+---
+
+## Kurulum
+
+<Tabs>
+  <Tab title="Docker (Onerilen)">
+    MCPHub ile baslamanin en hizli yolu Docker kullanmaktir:
+
+    ```bash
+    # Run with default configuration
+    docker run -p 3000:3000 ghcr.io/vaur94/mcphub
+    ```
+
+    Veya kendi yapilandirmanizi baglayin:
+
+    ```bash
+    # Run with custom MCP settings
+    docker run -p 3000:3000 \
+      -v $(pwd)/mcp_settings.json:/app/mcp_settings.json \
+      ghcr.io/vaur94/mcphub
+    ```
+
+  </Tab>
+  <Tab title="Yerel Gelistirme">
+    Gelistirme veya ozellestirme icin:
+
+    ```bash
+    # Clone the repository
+    git clone https://github.com/vaur94/mcphub.git
+    cd mcphub
+
+    # Install dependencies
+    pnpm install
+
+    # Start development servers
+    pnpm dev
+    ```
+
+    Bu, gelistirme modunda hem backend'i (port 3001) hem de frontend'i (port 5173) baslatir.
+
+  </Tab>
+  <Tab title="npm Paketi">
+    MCPHub'i global paket olarak yukleyin:
+
+    ```bash
+    # Install globally
+    npm install -g @vaur94/mcphub
+
+    # Run MCPHub
+    mcphub
+    ```
+
+  </Tab>
+</Tabs>
+
+## Ilk Kurulum
+
+### 1. Panoya Erisin
+
+Tarayicinizda su adrese gidin:
+
+```
+http://localhost:3000
+```
+
+### 2. Giris Yapin
+
+Varsayilan bilgileri kullanin:
+
+- **Username**: `admin`
+- **Password**: `admin123`
+
+<Warning>Guvenlik icin ilk giristen sonra bu varsayilan bilgileri mutlaka degistirin.</Warning>
+
+### 3. Ilk MCP Sunucunuzu Yapilandirin
+
+1. Panoda **"Add Server"** butonuna tiklayin
+2. Sunucu bilgilerini girin:
+   - **Name**: Benzersiz bir tanimlayici (ornegin `fetch`)
+   - **Command**: Calistirilacak komut (`uvx`)
+   - **Args**: Komut argumanlari (`["mcp-server-fetch"]`)
+   - **Environment**: Gerekli ortam degiskenleri
+
+Fetch sunucusu icin ornek yapilandirma:
+
+```json
+{
+  "name": "fetch",
+  "command": "uvx",
+  "args": ["mcp-server-fetch"],
+  "env": {}
+}
+```
+
+## Temel Kullanim
+
+### AI Istemcilerini Baglama
+
+Sunucularinizi yapilandirdiktan sonra, AI istemcilerinizi MCPHub uclari ile baglayin:
+
+<Tabs>
+  <Tab title="Tum Sunucular">
+    Tum yapilandirilmis MCP sunucularina erisin: ``` http://localhost:3000/mcp ```
+  </Tab>
+  <Tab title="Belirli Grup">
+    Belirli bir gruptaki sunuculara erisin: ``` http://localhost:3000/mcp/{groupName} ```
+  </Tab>
+  <Tab title="Tekil Sunucu">
+    Tek bir sunucuya erisin: ``` http://localhost:3000/mcp/{serverName} ```
+  </Tab>
+  <Tab title="Akilli Yonlendirme">
+    AI destekli arac kesfini kullanin: ``` http://localhost:3000/mcp/$smart ```
+    <Info>
+      Akilli yonlendirme icin pgvector'lu PostgreSQL ve bir LLM saglayicisi (OpenAI veya uyumlu) API
+      anahtari gerekir.
+    </Info>
+  </Tab>
+</Tabs>
+
+### Ornek: Populer MCP Sunuculari Eklemek
+
+Ekleyebileceginiz bazi populer MCP sunuculari:
+
+<AccordionGroup>
+  <Accordion title="Web Fetch Sunucusu">
+    ```json
+    {
+      "name": "fetch",
+      "command": "uvx",
+      "args": ["mcp-server-fetch"]
+    }
+    ```
+  </Accordion>
+  
+  <Accordion title="Playwright Tarayici Otomasyonu">
+    ```json
+    {
+      "name": "playwright",
+      "command": "npx",
+      "args": ["@playwright/mcp@latest", "--headless"]
+    }
+    ```
+  </Accordion>
+  
+  <Accordion title="Amap Maps (API key ile)">
+    ```json
+    {
+      "name": "amap",
+      "command": "npx",
+      "args": ["-y", "@amap/amap-maps-mcp-server"],
+      "env": {
+        "AMAP_MAPS_API_KEY": "your-api-key-here"
+      }
+    }
+    ```
+  </Accordion>
+  
+  <Accordion title="Slack Entegrasyonu">
+    ```json
+    {
+      "name": "slack",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-slack"],
+      "env": {
+        "SLACK_BOT_TOKEN": "your-bot-token",
+        "SLACK_TEAM_ID": "your-team-id"
+      }
+    }
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Sonraki Adimlar
+
+<CardGroup cols={2}>
+  <Card title="Sunucu Yonetimi" icon="server" href="/features/server-management">
+    Gelismis sunucu yapilandirmasi ve yonetimi
+  </Card>
+  <Card title="Grup Yonetimi" icon="users" href="/features/group-management">
+    Sunuculari mantiksal gruplar altinda organize edin
+  </Card>
+  <Card title="Akilli Yonlendirme" icon="route" href="/features/smart-routing">
+    AI destekli arac kesfini kurun
+  </Card>
+  <Card title="API Referansi" icon="code" href="/api-reference/introduction">
+    Tum API dokumantasyonunu inceleyin
+  </Card>
+</CardGroup>
+
+## Sorun Giderme
+
+<AccordionGroup>
+  <Accordion title="Sunucu baslamiyor">
+    - MCP sunucu komutunun PATH uzerinden erisilebilir oldugunu kontrol edin - Ortam degiskenlerinin dogru
+    sekilde ayarlandigini dogrulayin - Ayrintilar icin MCPHub loglarini kontrol edin
+  </Accordion>
+
+<Accordion title="AI istemcisinden baglanamiyorum">
+  - MCPHub'in dogru portta calistigindan emin olun - Guvenlik duvari ayarlarini kontrol edin - Uc
+  nokta URL formatini dogrulayin
+</Accordion>
+
+  <Accordion title="Kimlik dogrulama sorunlari">
+    - Bilgilerin dogru oldugunu dogrulayin - JWT token'in gecerli oldugunu kontrol edin - Tarayici
+    onbellegini ve cookie'leri temizlemeyi deneyin
+  </Accordion>
+</AccordionGroup>
+
+Daha fazla yardim icin GitHub uzerinden bir issue acabilirsiniz: https://github.com/vaur94/mcphub/issues

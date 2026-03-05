@@ -1,0 +1,90 @@
+---
+title: MCPHub
+description: 'Model Context Protocol (MCP) Sunuculari icin Birlesik Merkez'
+---
+
+# MCPHub'a Hos Geldiniz
+
+MCPHub, birden fazla MCP (Model Context Protocol) sunucusunu esnek Streamable HTTP (SSE) uclari altinda organize ederek yonetmeyi ve olceklendirmeyi kolaylastirir; tum sunuculara, tekil sunuculara veya mantiksal sunucu gruplarina erisimi destekler.
+
+## One Cikan Ozellikler
+
+<CardGroup cols={2}>
+  <Card title="Birlesik Yonetim" icon="server" href="/features/server-management">
+    Yapilandirmayi sicak degistirme (hot-swap) destegiyle birden fazla MCP sunucusunu merkezi olarak
+    yonetin
+  </Card>
+  <Card title="Grup Yonetimi" icon="users" href="/features/group-management">
+    Sunuculari erisim kontrolunu kolaylastiran mantiksal gruplar altinda organize edin
+  </Card>
+  <Card title="Akilli Yonlendirme" icon="route" href="/features/smart-routing">
+    Vektor semantik arama ile AI destekli arac kesfi
+  </Card>
+  <Card title="Gercek Zamanli Izleme" icon="chart-line" href="/features/monitoring">
+    Sunucu durumunu ve performansini tek bir panodan izleyin
+  </Card>
+</CardGroup>
+
+## Hizli Baslangic
+
+Docker ile MCPHub'i dakikalar icinde calistirin:
+
+```bash
+docker run -p 3000:3000 ghcr.io/vaur94/mcphub
+```
+
+Veya ozel yapilandirma ile:
+
+```bash
+docker run -p 3000:3000 -v $(pwd)/mcp_settings.json:/app/mcp_settings.json ghcr.io/vaur94/mcphub
+```
+
+Panoya `http://localhost:3000` adresinden erisin ve varsayilan bilgilerle giris yapin:
+
+- Username: `admin`
+- Password: `admin123`
+
+## Temel Kavramlar
+
+### MCP Uclari
+
+MCPHub, MCP sunuculariniza erismek icin birden fazla yol saglar:
+
+- **Birlesik Erisim**: `http://localhost:3000/mcp` - Tum sunuculara erisim
+- **Grup Erisimi**: `http://localhost:3000/mcp/{group}` - Belirli gruplara erisim
+- **Sunucu Erisimi**: `http://localhost:3000/mcp/{server}` - Tekil sunuculara erisim
+- **Akilli Yonlendirme**: `http://localhost:3000/mcp/$smart` - AI destekli arac kesfi
+
+### Protokol Destegi
+
+- **HTTP MCP**: Modern streamable HTTP arayuzu (onerilen)
+- **SSE**: Geriye donuk uyumluluk icin Server-Sent Events
+- **stdio**: Sunucu iletisiminde yerel MCP protokolu
+
+## Baslarken
+
+<CardGroup cols={2}>
+  <Card title="Hizli Baslangic" icon="rocket" href="/quickstart">
+    MCPHub'i 5 dakikada calistirin
+  </Card>
+  <Card title="Kurulum" icon="download" href="/installation">
+    Tum platformlar icin ayrintili kurulum adimlari
+  </Card>
+  <Card title="Yapilandirma" icon="cog" href="/configuration/mcp-settings">
+    MCP sunucularinizi nasil ayarlayacaginizi ogrenin
+  </Card>
+  <Card title="API Referansi" icon="code" href="/api-reference/introduction">
+    Eksiksiz API dokumantasyonu
+  </Card>
+</CardGroup>
+
+## Destek
+
+<CardGroup cols={2}>
+  <Card title="GitHub" icon="github" href="https://github.com/vaur94/mcphub">
+    Kaynak kodu ve issue takibi
+  </Card>
+  <Card title="Issue Ac" icon="bug" href="https://github.com/vaur94/mcphub/issues">
+    Sorun bildirimi ve ozellik talepleri
+  </Card>
+</CardGroup>
