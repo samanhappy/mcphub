@@ -152,23 +152,6 @@ Allows the authenticated user to change their password.
 
 MCPHub integrates [Better Auth](https://www.better-auth.com/) to provide seamless social login capabilities (GitHub, Google, etc.).
 
-**Note**: By default, Better Auth is **automatically disabled** unless you have configured at least one social provider (like GitHub or Google) and set the `DB_URL` environment variable.
-
-**Configuration**:
-You can explicitly enable or disable Better Auth in your `mcp_settings.json` file:
-
-```json
-{
-  "systemConfig": {
-    "auth": {
-      "betterAuth": {
-        "enabled": false
-      }
-    }
-  }
-}
-```
-
 **Prerequisites**:
 1.  **Database Mode**: `DB_URL` environment variable must be configured (PostgreSQL is required for Better Auth persistence).
 2.  **Provider Configuration**:

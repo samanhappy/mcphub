@@ -13,6 +13,9 @@ export const getBetterAuthRuntimeConfig = () => {
   const settings = loadSettings();
   const betterAuthSettings = settings.systemConfig?.auth?.betterAuth || {};
   const databaseUrlConfigured = Boolean(process.env.DB_URL);
+  const enabled = Boolean(betterAuthSettings.enabled ?? true) && databaseUrlConfigured;
+  const basePath = normalizePath(betterAuthSettings.basePath || DEFAULT_BETTER_AUTH_BASE_PATH);
+  const providerSettings = betterAuthSettings.providers || {};
 
   const googleEnvConfigured = Boolean(
     process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET,
@@ -20,12 +23,6 @@ export const getBetterAuthRuntimeConfig = () => {
   const githubEnvConfigured = Boolean(
     process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET,
   );
-  const anyProviderConfigured = googleEnvConfigured || githubEnvConfigured;
-
-  const enabled =
-    Boolean(betterAuthSettings.enabled ?? anyProviderConfigured) && databaseUrlConfigured;
-  const basePath = normalizePath(betterAuthSettings.basePath || DEFAULT_BETTER_AUTH_BASE_PATH);
-  const providerSettings = betterAuthSettings.providers || {};
 
   const googleEnabled =
     enabled && Boolean(providerSettings.google?.enabled ?? true) && googleEnvConfigured;

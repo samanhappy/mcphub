@@ -61,30 +61,6 @@ MCPHub uses several configuration files:
 }
 ```
 
-## System Configuration
-
-You can also include a `systemConfig` object in `mcp_settings.json` to configure global system behavior:
-
-```json
-{
-  "systemConfig": {
-    "auth": {
-      "betterAuth": {
-        "enabled": false
-      }
-    },
-    "nameSeparator": "-"
-  }
-}
-```
-
-### System Configuration Options
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `auth.betterAuth.enabled` | boolean | Enable or disable Better Auth integration (defaults to true if `DB_URL` is set and social providers are configured) |
-| `nameSeparator` | string | Separator between server name and tool/prompt name (default: `-`) |
-
 ## Server Configuration Options
 
 ### Required Fields

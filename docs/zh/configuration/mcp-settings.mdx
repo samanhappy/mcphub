@@ -65,30 +65,6 @@ MCPHub 使用几个配置文件：
 }
 ```
 
-## 系统配置
-
-你还可以在 `mcp_settings.json` 中包含 `systemConfig` 对象来配置全局系统行为：
-
-```json
-{
-  "systemConfig": {
-    "auth": {
-      "betterAuth": {
-        "enabled": false
-      }
-    },
-    "nameSeparator": "-"
-  }
-}
-```
-
-### 系统配置选项
-
-| 字段 | 类型 | 描述 |
-|-------|------|-------------|
-| `auth.betterAuth.enabled` | boolean | 启用或禁用 Better Auth 集成（如果设置了 `DB_URL` 并配置了社交登录提供商，则默认为 true） |
-| `nameSeparator` | string | 服务器名称与工具/提示名称之间的分隔符（默认为 `-`） |
-
 ## 服务器配置选项
 
 ### 必需字段
