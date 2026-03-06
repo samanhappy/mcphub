@@ -1441,6 +1441,13 @@ const SettingsPage: React.FC = () => {
                 />
               </div>
 
+              {/* Smart Routing Required Fields Information */}
+              <div className="p-3 bg-blue-50 border border-blue-200 rounded-md">
+                <p className="text-sm text-blue-800">
+                  {t('settings.smartRoutingRequiredFields')}
+                </p>
+              </div>
+
               {/* hide when DB_URL env is set */}
               {smartRoutingConfig.dbUrl !== '${DB_URL}' && (
                 <div className="p-3 bg-gray-50 rounded-md">
