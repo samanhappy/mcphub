@@ -29,8 +29,10 @@ export const getBetterAuthRuntimeConfig = () => {
   const githubEnabled =
     enabled && Boolean(providerSettings.github?.enabled ?? true) && githubEnvConfigured;
 
+  const anyProviderEnabled = googleEnabled || githubEnabled;
+
   return {
-    enabled,
+    enabled: anyProviderEnabled,
     basePath,
     providers: {
       google: {
