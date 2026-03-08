@@ -46,7 +46,7 @@ docker run -d \
 The Docker image supports an `INSTALL_EXT` build argument to include additional tools:
 
 ```bash
-# Build with extended features (includes Docker Engine, Chrome/Playwright)
+# Build with extended features (includes Docker Engine, Chrome + Firefox for Playwright)
 docker build --build-arg INSTALL_EXT=true -t mcphub:extended .
 
 # Option 1: Run with automatic Docker-in-Docker (requires privileged mode)
@@ -73,7 +73,7 @@ docker exec mcphub docker ps
 <Note>
   **What's included with INSTALL_EXT=true:**
   - **Docker Engine**: Full Docker daemon with CLI for container management. The daemon auto-starts when the container runs in privileged mode.
-  - **Chrome/Playwright** (amd64 only): For browser automation tasks
+  - **Chrome + Firefox for Playwright** (amd64 only): For browser automation tasks
   
   The extended image is larger but provides additional capabilities for advanced use cases.
 </Note>

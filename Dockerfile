@@ -18,9 +18,9 @@ ARG INSTALL_EXT=false
 RUN if [ "$INSTALL_EXT" = "true" ]; then \
   ARCH=$(uname -m); \
   if [ "$ARCH" = "x86_64" ]; then \
-  npx -y playwright install --with-deps chrome; \
+  npx -y playwright install --with-deps chrome firefox; \
   else \
-  echo "Skipping Chrome installation on non-amd64 architecture: $ARCH"; \
+  echo "Skipping Chrome and Firefox installation on non-amd64 architecture: $ARCH"; \
   fi; \
   # Install Docker Engine (includes CLI and daemon) \
   apt-get update && \

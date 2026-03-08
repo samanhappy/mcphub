@@ -110,8 +110,8 @@ docker build --build-arg INSTALL_EXT=true --platform linux/arm64 -t mcphub:exten
 
 **Expected Result**: 
 - Both builds should succeed
-- AMD64 includes Chrome/Playwright + Docker Engine
-- ARM64 includes Docker Engine only (Chrome installation is skipped)
+- AMD64 includes Chrome + Firefox for Playwright + Docker Engine
+- ARM64 includes Docker Engine only (browser installation is skipped)
 
 ## Notes
 
