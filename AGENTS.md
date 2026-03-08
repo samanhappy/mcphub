@@ -50,7 +50,7 @@ pnpm build                  # ~10 seconds total - NEVER CANCEL. Set timeout to 6
 pnpm dev
 
 # Verify backend responds (in another terminal)
-curl http://localhost:3000/api/health
+curl http://localhost:3000/health
 # Expected: Should return health status
 
 # Verify frontend serves
@@ -141,7 +141,7 @@ node scripts/verify-dist.js
 
 ```bash
 # Start both backend and frontend (recommended for most development)
-pnpm dev                    # Backend on :3001, Frontend on :5173
+pnpm dev                    # Backend on :3000 (or PORT env var), Frontend on :5173
 
 # OR start separately (required on Windows, optional on Linux/macOS)
 # Terminal 1: Backend only

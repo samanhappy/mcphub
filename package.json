@@ -140,15 +140,22 @@
   "packageManager": "pnpm@10.12.4+sha256.cadfd9e6c9fcc2cb76fe7c0779a5250b632898aea5f53d833a73690c77a778d9",
   "pnpm": {
     "overrides": {
+      "@hono/node-server": "1.19.11",
       "brace-expansion@1.1.11": "1.1.12",
       "brace-expansion@2.0.1": "2.0.2",
       "diff": "4.0.4",
+      "express-rate-limit": "8.3.0",
       "glob@10.4.5": "10.5.0",
       "hono": "4.12.4",
+      "ajv@6.12.6": "6.14.0",
+      "ajv@8.17.1": "8.18.0",
       "js-yaml": "4.1.1",
       "jws@3.2.2": "4.0.1",
       "lodash": "4.17.23",
-      "qs": "6.14.1"
+      "minimatch@3.1.2": "3.1.4",
+      "minimatch@9.0.5": "9.0.7",
+      "qs": "6.14.2",
+      "rollup": "4.59.0"
     },
     "ignoredBuiltDependencies": [
       "@swc/core",
