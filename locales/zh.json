@@ -187,7 +187,7 @@
       "apiKeyInQuery": "查询",
       "apiKeyInCookie": "Cookie",
       "passthroughHeaders": "透传请求头",
-      "passthroughHeadersHelp": "要从工具调用请求透传到上游OpenAPI接口的请求头名称列表，用逗号分隔（如：Authorization, X-API-Key）"
+      "passthroughHeadersHelp": "要从传入的 MCP 请求透传到上游服务器请求的请求头名称列表，用逗号分隔（如：Authorization, X-API-Key）"
     },
     "oauth": {
       "sectionTitle": "OAuth 配置",

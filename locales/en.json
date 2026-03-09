@@ -187,7 +187,7 @@
       "apiKeyInQuery": "Query",
       "apiKeyInCookie": "Cookie",
       "passthroughHeaders": "Passthrough Headers",
-      "passthroughHeadersHelp": "Comma-separated list of header names to pass through from tool call requests to upstream OpenAPI endpoints (e.g., Authorization, X-API-Key)"
+      "passthroughHeadersHelp": "Comma-separated list of header names to pass through from incoming MCP requests to upstream server requests (e.g., Authorization, X-API-Key)"
     },
     "oauth": {
       "sectionTitle": "OAuth Configuration",

@@ -18,6 +18,7 @@ import {
   StreamableHTTPClientTransport,
   StreamableHTTPClientTransportOptions,
 } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
+import { normalizeHeaders } from '@modelcontextprotocol/sdk/shared/transport.js';
 import { createFetchWithProxy, getProxyConfigFromEnv } from './proxy.js';
 import { ServerInfo, ServerConfig, Tool, ProxychainsConfig } from '../types/index.js';
 import { expandEnvVars, replaceEnvVars, getNameSeparator } from '../config/index.js';
@@ -49,6 +50,8 @@ import { getActivityLoggingService } from './activityLoggingService.js';
 const servers: { [sessionId: string]: Server } = {};
 
 import { setupClientKeepAlive } from './keepAliveService.js';
+
+type FetchLike = (url: string | URL, init?: RequestInit) => Promise<Response>;
 
 /**
  * Check if proxychains4 is available on the system (Linux/macOS only).
@@ -366,6 +369,71 @@ export const cleanupAllServers = (): void => {
   });
 };
 
+const headerValueToString = (value: string | string[] | undefined): string | undefined => {
+  if (Array.isArray(value)) {
+    return value[0];
+  }
+
+  return typeof value === 'string' ? value : undefined;
+};
+
+export const collectPassthroughHeaders = (
+  requestHeaders: Record<string, string | string[] | undefined> | null,
+  passthroughHeaderNames?: string[],
+): Record<string, string> => {
+  if (!requestHeaders || !Array.isArray(passthroughHeaderNames) || passthroughHeaderNames.length === 0) {
+    return {};
+  }
+
+  const requestContextService = RequestContextService.getInstance();
+  const passthroughHeaders: Record<string, string> = {};
+
+  for (const headerName of passthroughHeaderNames) {
+    const normalizedHeaderName = headerName.trim();
+    if (!normalizedHeaderName) {
+      continue;
+    }
+
+    const headerValue = headerValueToString(
+      requestContextService.getHeader(normalizedHeaderName) ||
+        requestHeaders[normalizedHeaderName] ||
+        requestHeaders[normalizedHeaderName.toLowerCase()],
+    );
+
+    if (headerValue !== undefined) {
+      passthroughHeaders[normalizedHeaderName] = headerValue;
+    }
+  }
+
+  return passthroughHeaders;
+};
+
+export const createRequestContextAwareFetch = (
+  baseFetch: FetchLike,
+  passthroughHeaderNames?: string[],
+): FetchLike => {
+  if (!Array.isArray(passthroughHeaderNames) || passthroughHeaderNames.length === 0) {
+    return baseFetch;
+  }
+
+  return async (url: string | URL, init?: RequestInit) => {
+    const requestHeaders = RequestContextService.getInstance().getHeaders();
+    const passthroughHeaders = collectPassthroughHeaders(requestHeaders, passthroughHeaderNames);
+
+    if (Object.keys(passthroughHeaders).length === 0) {
+      return baseFetch(url, init);
+    }
+
+    return baseFetch(url, {
+      ...init,
+      headers: {
+        ...normalizeHeaders(init?.headers),
+        ...passthroughHeaders,
+      },
+    });
+  };
+};
+
 // Helper function to create transport based on server configuration
 export const createTransportFromConfig = async (name: string, conf: ServerConfig): Promise<any> => {
   let transport;
@@ -377,6 +445,8 @@ export const createTransportFromConfig = async (name: string, conf: ServerConfig
   if (conf.type === 'streamable-http') {
     const options: StreamableHTTPClientTransportOptions = {};
     const headers = conf.headers ? replaceEnvVars(conf.headers) : {};
+    const baseFetch = createFetchWithProxy(getProxyConfigFromEnv(env));
+    const requestAwareFetch = createRequestContextAwareFetch(baseFetch, conf.passthroughHeaders);
 
     if (Object.keys(headers).length > 0) {
       options.requestInit = {
@@ -391,20 +461,27 @@ export const createTransportFromConfig = async (name: string, conf: ServerConfig
       console.log(`OAuth provider configured for server: ${name}`);
     }
 
-    options.fetch = createFetchWithProxy(getProxyConfigFromEnv(env));
+    options.fetch = requestAwareFetch;
 
     transport = new StreamableHTTPClientTransport(new URL(conf.url || ''), options);
   } else if (conf.url) {
     // SSE transport
     const options: any = {};
     const headers = conf.headers ? replaceEnvVars(conf.headers) : {};
+    const baseFetch = createFetchWithProxy(getProxyConfigFromEnv(env));
+    const requestAwareFetch = createRequestContextAwareFetch(baseFetch, conf.passthroughHeaders);
 
     if (Object.keys(headers).length > 0) {
       options.eventSourceInit = {
         headers,
+        fetch: requestAwareFetch,
       };
       options.requestInit = {
         headers,
+      };
+    } else {
+      options.eventSourceInit = {
+        fetch: requestAwareFetch,
       };
     }
 
@@ -415,7 +492,7 @@ export const createTransportFromConfig = async (name: string, conf: ServerConfig
       console.log(`OAuth provider configured for server: ${name}`);
     }
 
-    options.fetch = createFetchWithProxy(getProxyConfigFromEnv(env));
+    options.fetch = requestAwareFetch;
 
     transport = new SSEClientTransport(new URL(conf.url), options);
   } else if (conf.command && conf.args) {

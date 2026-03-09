@@ -75,6 +75,8 @@ const ServerForm = ({
     type: getInitialServerType(), // Initialize the type field
     env: getInitialServerEnvVars(initialData),
     headers: [],
+    passthroughHeaders:
+      initialData?.config?.passthroughHeaders?.join(', ') || '',
     options: {
       timeout:
         (initialData &&
@@ -375,6 +377,14 @@ const ServerForm = ({
               }
             : serverType === 'sse' || serverType === 'streamable-http'
               ? {
+                  ...(formData.passthroughHeaders && formData.passthroughHeaders.trim()
+                    ? {
+                        passthroughHeaders: formData.passthroughHeaders
+                          .split(',')
+                          .map((header) => header.trim())
+                          .filter((header) => header.length > 0),
+                      }
+                    : {}),
                   url: formData.url,
                   ...(Object.keys(headers).length > 0 ? { headers } : {}),
                   ...(Object.keys(env).length > 0 ? { env } : {}),
@@ -993,6 +1003,27 @@ const ServerForm = ({
                   </button>
                 </div>
               ))}
+            </div>
+
+            <div className="mb-4">
+              <label className="block text-gray-700 text-sm font-bold mb-2">
+                {t('server.openapi.passthroughHeaders')}
+              </label>
+              <input
+                type="text"
+                value={formData.passthroughHeaders || ''}
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    passthroughHeaders: e.target.value,
+                  }))
+                }
+                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline form-input"
+                placeholder="Authorization, X-Custom-User-Id"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                {t('server.openapi.passthroughHeadersHelp')}
+              </p>
             </div>
 
             <div className="mb-4">

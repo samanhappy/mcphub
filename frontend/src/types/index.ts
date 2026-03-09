@@ -164,6 +164,7 @@ export interface ServerConfig {
   args?: string[];
   env?: Record<string, string>;
   headers?: Record<string, string>;
+  passthroughHeaders?: string[];
   enabled?: boolean;
   enableKeepAlive?: boolean; // Enable keep-alive for this server (requires global enable as well)
   keepAliveInterval?: number; // Keep-alive ping interval in milliseconds (default: 60000ms)
@@ -302,6 +303,7 @@ export interface ServerFormData {
   type?: 'stdio' | 'sse' | 'streamable-http' | 'openapi'; // Added type field with openapi support
   env: EnvVar[];
   headers: EnvVar[];
+  passthroughHeaders?: string;
   options?: {
     timeout?: number;
     resetTimeoutOnProgress?: boolean;

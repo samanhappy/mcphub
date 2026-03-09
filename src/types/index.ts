@@ -308,6 +308,7 @@ export interface ServerConfig {
   args?: string[]; // Arguments for the command
   env?: Record<string, string>; // Environment variables
   headers?: Record<string, string>; // HTTP headers for SSE/streamable-http/openapi servers
+  passthroughHeaders?: string[]; // Header names to pass through from MCP requests to upstream SSE/streamable-http servers
   enabled?: boolean; // Flag to enable/disable the server
   owner?: string; // Owner of the server, defaults to 'admin' user
   enableKeepAlive?: boolean; // Enable keep-alive for this server (requires global enable as well)

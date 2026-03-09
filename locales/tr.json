@@ -187,7 +187,7 @@
       "apiKeyInQuery": "Sorgu",
       "apiKeyInCookie": "Çerez",
       "passthroughHeaders": "Geçiş Başlıkları",
-      "passthroughHeadersHelp": "Araç çağrısı isteklerinden yukarı akış OpenAPI uç noktalarına geçirilecek başlık adlarının virgülle ayrılmış listesi (örn. Authorization, X-API-Key)"
+      "passthroughHeadersHelp": "Gelen MCP isteklerinden yukarı akış sunucu isteklerine geçirilecek başlık adlarının virgülle ayrılmış listesi (örn. Authorization, X-API-Key)"
     },
     "oauth": {
       "sectionTitle": "OAuth Yapılandırması",
