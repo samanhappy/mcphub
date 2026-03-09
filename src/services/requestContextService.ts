@@ -1,3 +1,4 @@
+import { AsyncLocalStorage } from 'node:async_hooks';
 import { Request } from 'express';
 
 /**
@@ -19,7 +20,7 @@ export interface RequestContext {
  */
 export class RequestContextService {
   private static instance: RequestContextService;
-  private requestContext: RequestContext | null = null;
+  private readonly asyncLocalStorage = new AsyncLocalStorage<RequestContext | null>();
 
   private constructor() {}
 
@@ -30,11 +31,8 @@ export class RequestContextService {
     return RequestContextService.instance;
   }
 
-  /**
-   * Set the current request context from Express request
-   */
-  public setRequestContext(req: Request): void {
-    this.requestContext = {
+  private createRequestContext(req: Request): RequestContext {
+    return {
       headers: req.headers,
       sessionId: (req.headers['mcp-session-id'] as string) || undefined,
       userAgent: req.headers['user-agent'] as string,
@@ -42,48 +40,78 @@ export class RequestContextService {
     };
   }
 
+  private cloneRequestContext(context: RequestContext): RequestContext {
+    return {
+      ...context,
+      headers: { ...context.headers },
+    };
+  }
+
+  public runWithRequestContext<T>(req: Request, callback: () => T): T;
+  public runWithRequestContext<T>(req: Request, callback: () => Promise<T>): Promise<T>;
+  public runWithRequestContext<T>(req: Request, callback: () => T | Promise<T>): T | Promise<T> {
+    return this.asyncLocalStorage.run(this.createRequestContext(req), callback);
+  }
+
+  public runWithCustomRequestContext<T>(context: RequestContext, callback: () => T): T;
+  public runWithCustomRequestContext<T>(context: RequestContext, callback: () => Promise<T>): Promise<T>;
+  public runWithCustomRequestContext<T>(
+    context: RequestContext,
+    callback: () => T | Promise<T>,
+  ): T | Promise<T> {
+    return this.asyncLocalStorage.run(this.cloneRequestContext(context), callback);
+  }
+
+  /**
+   * Set the current request context from Express request
+   */
+  public setRequestContext(req: Request): void {
+    this.asyncLocalStorage.enterWith(this.createRequestContext(req));
+  }
+
   /**
    * Set request context from custom data
    */
   public setCustomRequestContext(context: RequestContext): void {
-    this.requestContext = context;
+    this.asyncLocalStorage.enterWith(this.cloneRequestContext(context));
   }
 
   /**
    * Get the current request context
    */
   public getRequestContext(): RequestContext | null {
-    return this.requestContext;
+    return this.asyncLocalStorage.getStore() ?? null;
   }
 
   /**
    * Get headers from the current request context
    */
   public getHeaders(): Record<string, string | string[] | undefined> | null {
-    return this.requestContext?.headers || null;
+    return this.getRequestContext()?.headers || null;
   }
 
   /**
    * Get a specific header value (case-insensitive)
    */
   public getHeader(name: string): string | string[] | undefined {
-    if (!this.requestContext?.headers) {
+    const requestContext = this.getRequestContext();
+    if (!requestContext?.headers) {
       return undefined;
     }
 
     // Try exact match first
-    if (this.requestContext.headers[name]) {
-      return this.requestContext.headers[name];
+    if (requestContext.headers[name]) {
+      return requestContext.headers[name];
     }
 
     // Try lowercase match (Express normalizes headers to lowercase)
     const lowerName = name.toLowerCase();
-    if (this.requestContext.headers[lowerName]) {
-      return this.requestContext.headers[lowerName];
+    if (requestContext.headers[lowerName]) {
+      return requestContext.headers[lowerName];
     }
 
     // Try case-insensitive search
-    for (const [key, value] of Object.entries(this.requestContext.headers)) {
+    for (const [key, value] of Object.entries(requestContext.headers)) {
       if (key.toLowerCase() === lowerName) {
         return value;
       }
@@ -96,23 +124,24 @@ export class RequestContextService {
    * Clear the current request context
    */
   public clearRequestContext(): void {
-    this.requestContext = null;
+    this.asyncLocalStorage.enterWith(null);
   }
 
   /**
    * Get session ID from current request context
    */
   public getSessionId(): string | undefined {
-    return this.requestContext?.sessionId;
+    return this.getRequestContext()?.sessionId;
   }
 
   /**
    * Set bearer key context for activity logging
    */
   public setBearerKeyContext(keyId?: string, keyName?: string): void {
-    if (this.requestContext) {
-      this.requestContext.keyId = keyId;
-      this.requestContext.keyName = keyName;
+    const requestContext = this.getRequestContext();
+    if (requestContext) {
+      requestContext.keyId = keyId;
+      requestContext.keyName = keyName;
     }
   }
 
@@ -120,8 +149,9 @@ export class RequestContextService {
    * Set group context for activity logging
    */
   public setGroupContext(group?: string): void {
-    if (this.requestContext) {
-      this.requestContext.group = group;
+    const requestContext = this.getRequestContext();
+    if (requestContext) {
+      requestContext.group = group;
     }
   }
 
@@ -129,9 +159,10 @@ export class RequestContextService {
    * Get bearer key context
    */
   public getBearerKeyContext(): { keyId?: string; keyName?: string } {
+    const requestContext = this.getRequestContext();
     return {
-      keyId: this.requestContext?.keyId,
-      keyName: this.requestContext?.keyName,
+      keyId: requestContext?.keyId,
+      keyName: requestContext?.keyName,
     };
   }
 
@@ -139,6 +170,6 @@ export class RequestContextService {
    * Get group context
    */
   public getGroupContext(): string | undefined {
-    return this.requestContext?.group;
+    return this.getRequestContext()?.group;
   }
 }

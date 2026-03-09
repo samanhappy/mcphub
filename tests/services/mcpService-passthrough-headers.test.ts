@@ -131,21 +131,24 @@ describe('MCP Service - passthrough headers for upstream MCP transports', () => 
 
     const options = (StreamableHTTPClientTransport as jest.Mock).mock.calls[0][1];
 
-    RequestContextService.getInstance().setCustomRequestContext({
-      headers: {
-        authorization: 'Bearer user-token',
-        'x-custom-user-id': 'user-42',
+    await RequestContextService.getInstance().runWithCustomRequestContext(
+      {
+        headers: {
+          authorization: 'Bearer user-token',
+          'x-custom-user-id': 'user-42',
+        },
       },
-    });
-
-    await options.fetch('https://example.com/mcp', {
-      method: 'POST',
-      headers: {
-        Authorization: 'Bearer static-token',
-        'X-Static': 'static-value',
-        'Content-Type': 'application/json',
+      async () => {
+        await options.fetch('https://example.com/mcp', {
+          method: 'POST',
+          headers: {
+            Authorization: 'Bearer static-token',
+            'X-Static': 'static-value',
+            'Content-Type': 'application/json',
+          },
+        });
       },
-    });
+    );
 
     expect(mockBaseFetch).toHaveBeenCalledWith(
       'https://example.com/mcp',
@@ -173,27 +176,30 @@ describe('MCP Service - passthrough headers for upstream MCP transports', () => 
 
     const options = (SSEClientTransport as jest.Mock).mock.calls[0][1];
 
-    RequestContextService.getInstance().setCustomRequestContext({
-      headers: {
-        authorization: 'Bearer user-token',
-        'x-custom-user-id': 'user-99',
+    await RequestContextService.getInstance().runWithCustomRequestContext(
+      {
+        headers: {
+          authorization: 'Bearer user-token',
+          'x-custom-user-id': 'user-99',
+        },
       },
-    });
+      async () => {
+        await options.eventSourceInit.fetch('https://example.com/sse', {
+          method: 'GET',
+          headers: {
+            Accept: 'text/event-stream',
+            'X-Static': 'static-value',
+          },
+        });
 
-    await options.eventSourceInit.fetch('https://example.com/sse', {
-      method: 'GET',
-      headers: {
-        Accept: 'text/event-stream',
-        'X-Static': 'static-value',
+        await options.fetch('https://example.com/messages', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
       },
-    });
-
-    await options.fetch('https://example.com/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
+    );
 
     expect(mockBaseFetch).toHaveBeenNthCalledWith(
       1,

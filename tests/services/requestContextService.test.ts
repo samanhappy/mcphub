@@ -138,4 +138,59 @@ describe('RequestContextService', () => {
     service.clearRequestContext();
     expect(service.getRequestContext()).toBeNull();
   });
+
+  it('should isolate concurrent async request contexts', async () => {
+    const results = await Promise.all([
+      service.runWithCustomRequestContext(
+        {
+          headers: {
+            authorization: 'Bearer alpha',
+          },
+          sessionId: 'session-alpha',
+        },
+        async () => {
+          await new Promise((resolve) => setTimeout(resolve, 10));
+          service.setGroupContext('group-alpha');
+
+          return {
+            authorization: service.getHeader('authorization'),
+            sessionId: service.getSessionId(),
+            group: service.getGroupContext(),
+          };
+        },
+      ),
+      service.runWithCustomRequestContext(
+        {
+          headers: {
+            authorization: 'Bearer beta',
+          },
+          sessionId: 'session-beta',
+        },
+        async () => {
+          await new Promise((resolve) => setTimeout(resolve, 0));
+          service.setGroupContext('group-beta');
+
+          return {
+            authorization: service.getHeader('authorization'),
+            sessionId: service.getSessionId(),
+            group: service.getGroupContext(),
+          };
+        },
+      ),
+    ]);
+
+    expect(results).toEqual([
+      {
+        authorization: 'Bearer alpha',
+        sessionId: 'session-alpha',
+        group: 'group-alpha',
+      },
+      {
+        authorization: 'Bearer beta',
+        sessionId: 'session-beta',
+        group: 'group-beta',
+      },
+    ]);
+    expect(service.getRequestContext()).toBeNull();
+  });
 });

@@ -377,6 +377,28 @@ const headerValueToString = (value: string | string[] | undefined): string | und
   return typeof value === 'string' ? value : undefined;
 };
 
+const getHeaderValue = (
+  headers: Record<string, string | string[] | undefined>,
+  name: string,
+): string | string[] | undefined => {
+  if (headers[name]) {
+    return headers[name];
+  }
+
+  const lowerName = name.toLowerCase();
+  if (headers[lowerName]) {
+    return headers[lowerName];
+  }
+
+  for (const [key, value] of Object.entries(headers)) {
+    if (key.toLowerCase() === lowerName) {
+      return value;
+    }
+  }
+
+  return undefined;
+};
+
 export const collectPassthroughHeaders = (
   requestHeaders: Record<string, string | string[] | undefined> | null,
   passthroughHeaderNames?: string[],
@@ -385,7 +407,6 @@ export const collectPassthroughHeaders = (
     return {};
   }
 
-  const requestContextService = RequestContextService.getInstance();
   const passthroughHeaders: Record<string, string> = {};
 
   for (const headerName of passthroughHeaderNames) {
@@ -394,11 +415,7 @@ export const collectPassthroughHeaders = (
       continue;
     }
 
-    const headerValue = headerValueToString(
-      requestContextService.getHeader(normalizedHeaderName) ||
-        requestHeaders[normalizedHeaderName] ||
-        requestHeaders[normalizedHeaderName.toLowerCase()],
-    );
+    const headerValue = headerValueToString(getHeaderValue(requestHeaders, normalizedHeaderName));
 
     if (headerValue !== undefined) {
       passthroughHeaders[normalizedHeaderName] = headerValue;

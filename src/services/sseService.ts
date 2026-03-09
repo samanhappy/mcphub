@@ -479,21 +479,17 @@ export const handleSseMessage = async (req: Request, res: Response): Promise<voi
     `Received message for sessionId: ${sessionId} in group: ${group}${username ? ` for user: ${username}` : ''}`,
   );
 
-  // Set request context for MCP handlers to access HTTP headers
   const requestContextService = RequestContextService.getInstance();
-  requestContextService.setRequestContext(req);
-  // Set bearer key and group context for activity logging (from session or current request)
   const currentKeyId = bearerAuthResult.keyId || keyId;
   const currentKeyName = bearerAuthResult.keyName || keyName;
-  requestContextService.setBearerKeyContext(currentKeyId, currentKeyName);
-  requestContextService.setGroupContext(group);
 
-  try {
+  await requestContextService.runWithRequestContext(req, async () => {
+    // Set bearer key and group context for activity logging (from session or current request)
+    requestContextService.setBearerKeyContext(currentKeyId, currentKeyName);
+    requestContextService.setGroupContext(group);
+
     await (transport as SSEServerTransport).handlePostMessage(req, res);
-  } finally {
-    // Clean up request context after handling
-    requestContextService.clearRequestContext();
-  }
+  });
 };
 
 // Helper function to create a session with a specific sessionId
@@ -719,85 +715,30 @@ export const handleMcpPostRequest = async (req: Request, res: Response): Promise
 
   console.log(`Handling request using transport with type ${transport.constructor.name}`);
 
-  // Set request context for MCP handlers to access HTTP headers
   const requestContextService = RequestContextService.getInstance();
-  requestContextService.setRequestContext(req);
-  // Set bearer key and group context for activity logging
-  requestContextService.setBearerKeyContext(bearerAuthResult.keyId, bearerAuthResult.keyName);
-  requestContextService.setGroupContext(group);
+  await requestContextService.runWithRequestContext(req, async () => {
+    // Set bearer key and group context for activity logging
+    requestContextService.setBearerKeyContext(bearerAuthResult.keyId, bearerAuthResult.keyName);
+    requestContextService.setGroupContext(group);
 
-  // Check if the session needs initialization (for rebuilt sessions)
-  if (transportInfo && transportInfo.needsInitialization) {
-    console.log(
-      `[MCP] Session ${sessionId} needs initialization, performing proactive initialization`,
-    );
-
-    try {
-      // Create a mock response object that doesn't actually send headers
-      const mockRes = {
-        writeHead: () => {},
-        end: () => {},
-        json: () => {},
-        status: () => mockRes,
-        send: () => {},
-        headersSent: false,
-      } as any;
-
-      // First, send the initialize request
-      const initializeRequest = {
-        method: 'initialize',
-        params: {
-          protocolVersion: '2025-03-26',
-          capabilities: {},
-          clientInfo: {
-            name: 'MCPHub-Client',
-            version: '1.0.0',
-          },
-        },
-        jsonrpc: '2.0',
-        id: `init-${sessionId}-${Date.now()}`,
-      };
-
-      console.log(`[MCP] Sending initialize request for session ${sessionId}`);
-      // Use mock response to avoid sending actual HTTP response
-      await transport.handleRequest(req, mockRes, initializeRequest);
-
-      // Then send the initialized notification
-      const initializedNotification = {
-        method: 'notifications/initialized',
-        jsonrpc: '2.0',
-      };
-
-      console.log(`[MCP] Sending initialized notification for session ${sessionId}`);
-      await transport.handleRequest(req, mockRes, initializedNotification);
-
-      // Mark the session as initialized
-      transportInfo.needsInitialization = false;
-      console.log(`[MCP] Session ${sessionId} successfully initialized`);
-    } catch (initError) {
-      console.error(`[MCP] Failed to initialize session ${sessionId}:`, initError);
-      console.error(`[MCP] Initialization error details:`, initError);
-      // Don't return here, continue with the original request
-    }
-  }
-
-  try {
-    await transport.handleRequest(req, res, req.body);
-  } catch (error: any) {
-    // Check if this is a "Server not initialized" error for a newly rebuilt session
-    if (sessionId && error.message && error.message.includes('Server not initialized')) {
+    // Check if the session needs initialization (for rebuilt sessions)
+    if (transportInfo && transportInfo.needsInitialization) {
       console.log(
-        `[SESSION AUTO-REBUILD] Server not initialized for ${sessionId}. Attempting to initialize with the current request.`,
+        `[MCP] Session ${sessionId} needs initialization, performing proactive initialization`,
       );
 
-      // Check if the current request is an 'initialize' request
-      if (isInitializeRequest(req.body)) {
-        // If it is, we can just retry it. The transport should now be in the transports map.
-        console.log(`[SESSION AUTO-REBUILD] Retrying initialize request for ${sessionId}.`);
-        await transport.handleRequest(req, res, req.body);
-      } else {
-        // If not, we need to send an initialize request first.
-        // We construct a mock initialize request, but use the REAL req/res objects.
+      try {
+        // Create a mock response object that doesn't actually send headers
+        const mockRes = {
+          writeHead: () => {},
+          end: () => {},
+          json: () => {},
+          status: () => mockRes,
+          send: () => {},
+          headersSent: false,
+        } as any;
+
+        // First, send the initialize request
         const initializeRequest = {
           method: 'initialize',
           params: {
@@ -812,46 +753,98 @@ export const handleMcpPostRequest = async (req: Request, res: Response): Promise
           id: `init-${sessionId}-${Date.now()}`,
         };
 
-        console.log(
-          `[SESSION AUTO-REBUILD] Sending initialize request for ${sessionId} before handling the actual request.`,
-        );
-        try {
-          // Temporarily replace the body to send the initialize request
-          const originalBody = req.body;
-          req.body = initializeRequest;
-          await transport.handleRequest(req, res, req.body);
+        console.log(`[MCP] Sending initialize request for session ${sessionId}`);
+        // Use mock response to avoid sending actual HTTP response
+        await transport.handleRequest(req, mockRes, initializeRequest);
 
-          // Now, send the notifications/initialized
-          const initializedNotification = {
-            method: 'notifications/initialized',
-            jsonrpc: '2.0',
-          };
-          req.body = initializedNotification;
-          await transport.handleRequest(req, res, req.body);
+        // Then send the initialized notification
+        const initializedNotification = {
+          method: 'notifications/initialized',
+          jsonrpc: '2.0',
+        };
 
-          // Restore the original body and retry the original request
-          req.body = originalBody;
-          console.log(
-            `[SESSION AUTO-REBUILD] Initialization complete for ${sessionId}. Retrying original request.`,
-          );
-          await transport.handleRequest(req, res, req.body);
-        } catch (initError) {
-          console.error(
-            `[SESSION AUTO-REBUILD] Failed to initialize session ${sessionId} on-the-fly:`,
-            initError,
-          );
-          // Re-throw the original error if initialization fails
-          throw error;
-        }
+        console.log(`[MCP] Sending initialized notification for session ${sessionId}`);
+        await transport.handleRequest(req, mockRes, initializedNotification);
+
+        // Mark the session as initialized
+        transportInfo.needsInitialization = false;
+        console.log(`[MCP] Session ${sessionId} successfully initialized`);
+      } catch (initError) {
+        console.error(`[MCP] Failed to initialize session ${sessionId}:`, initError);
+        console.error(`[MCP] Initialization error details:`, initError);
+        // Don't return here, continue with the original request
       }
-    } else {
-      // If it's a different error, just re-throw it
-      throw error;
     }
-  } finally {
-    // Clean up request context after handling
-    requestContextService.clearRequestContext();
-  }
+
+    try {
+      await transport.handleRequest(req, res, req.body);
+    } catch (error: any) {
+      // Check if this is a "Server not initialized" error for a newly rebuilt session
+      if (sessionId && error.message && error.message.includes('Server not initialized')) {
+        console.log(
+          `[SESSION AUTO-REBUILD] Server not initialized for ${sessionId}. Attempting to initialize with the current request.`,
+        );
+
+        // Check if the current request is an 'initialize' request
+        if (isInitializeRequest(req.body)) {
+          // If it is, we can just retry it. The transport should now be in the transports map.
+          console.log(`[SESSION AUTO-REBUILD] Retrying initialize request for ${sessionId}.`);
+          await transport.handleRequest(req, res, req.body);
+        } else {
+          // If not, we need to send an initialize request first.
+          // We construct a mock initialize request, but use the REAL req/res objects.
+          const initializeRequest = {
+            method: 'initialize',
+            params: {
+              protocolVersion: '2025-03-26',
+              capabilities: {},
+              clientInfo: {
+                name: 'MCPHub-Client',
+                version: '1.0.0',
+              },
+            },
+            jsonrpc: '2.0',
+            id: `init-${sessionId}-${Date.now()}`,
+          };
+
+          console.log(
+            `[SESSION AUTO-REBUILD] Sending initialize request for ${sessionId} before handling the actual request.`,
+          );
+          try {
+            // Temporarily replace the body to send the initialize request
+            const originalBody = req.body;
+            req.body = initializeRequest;
+            await transport.handleRequest(req, res, req.body);
+
+            // Now, send the notifications/initialized
+            const initializedNotification = {
+              method: 'notifications/initialized',
+              jsonrpc: '2.0',
+            };
+            req.body = initializedNotification;
+            await transport.handleRequest(req, res, req.body);
+
+            // Restore the original body and retry the original request
+            req.body = originalBody;
+            console.log(
+              `[SESSION AUTO-REBUILD] Initialization complete for ${sessionId}. Retrying original request.`,
+            );
+            await transport.handleRequest(req, res, req.body);
+          } catch (initError) {
+            console.error(
+              `[SESSION AUTO-REBUILD] Failed to initialize session ${sessionId} on-the-fly:`,
+              initError,
+            );
+            // Re-throw the original error if initialization fails
+            throw error;
+          }
+        }
+      } else {
+        // If it's a different error, just re-throw it
+        throw error;
+      }
+    }
+  });
 };
 
 export const handleMcpOtherRequest = async (req: Request, res: Response) => {
