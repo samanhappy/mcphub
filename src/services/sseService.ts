@@ -655,7 +655,10 @@ export const handleMcpPostRequest = async (req: Request, res: Response): Promise
             `[SESSION AUTO-REBUILD] Successfully transparently rebuilt session: ${sessionId}`,
           );
         } catch (error) {
-          console.error(`[SESSION AUTO-REBUILD] Failed to rebuild session ${sessionId}:`, error);
+          console.error('[SESSION AUTO-REBUILD] Failed to rebuild session', {
+            sessionId,
+            error,
+          });
           throw error;
         } finally {
           delete sessionCreationLocks[sessionId];
@@ -770,8 +773,14 @@ export const handleMcpPostRequest = async (req: Request, res: Response): Promise
         transportInfo.needsInitialization = false;
         console.log(`[MCP] Session ${sessionId} successfully initialized`);
       } catch (initError) {
-        console.error(`[MCP] Failed to initialize session ${sessionId}:`, initError);
-        console.error(`[MCP] Initialization error details:`, initError);
+        console.error('[MCP] Failed to initialize session', {
+          sessionId,
+          error: initError,
+        });
+        console.error('[MCP] Initialization error details', {
+          sessionId,
+          error: initError,
+        });
         // Don't return here, continue with the original request
       }
     }
@@ -831,10 +840,10 @@ export const handleMcpPostRequest = async (req: Request, res: Response): Promise
             );
             await transport.handleRequest(req, res, req.body);
           } catch (initError) {
-            console.error(
-              `[SESSION AUTO-REBUILD] Failed to initialize session ${sessionId} on-the-fly:`,
-              initError,
-            );
+            console.error('[SESSION AUTO-REBUILD] Failed to initialize session on-the-fly', {
+              sessionId,
+              error: initError,
+            });
             // Re-throw the original error if initialization fails
             throw error;
           }
@@ -901,7 +910,10 @@ export const handleMcpOtherRequest = async (req: Request, res: Response) => {
           transportEntry = transports[sessionId];
         }
       } catch (error) {
-        console.error(`[SESSION AUTO-REBUILD] Failed to rebuild session ${sessionId}:`, error);
+        console.error('[SESSION AUTO-REBUILD] Failed to rebuild session', {
+          sessionId,
+          error,
+        });
       }
     } else {
       console.warn(
