@@ -25,6 +25,17 @@ import { getNameSeparator, loadSettings } from '../config/index.js';
 import type { ServerInfo } from '../types/index.js';
 
 /**
+ * Basic HTML escaping helper to prevent XSS in generated pages.
+ */
+const escapeHtml = (value: string): string =>
+  value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+
+/**
  * Generate HTML response page with i18n support
  */
 const generateHtmlResponse = (
@@ -39,11 +50,14 @@ const generateHtmlResponse = (
   const titleColor = type === 'error' ? '#c33' : '#3c3';
   const buttonColor = type === 'error' ? '#c33' : '#3c3';
 
+  const safeTitle = escapeHtml(title);
+  const safeMessage = escapeHtml(message);
+
   return `
     <!DOCTYPE html>
     <html>
       <head>
-        <title>${title}</title>
+        <title>${safeTitle}</title>
         <style>
           body { font-family: Arial, sans-serif; max-width: 600px; margin: 50px auto; padding: 20px; }
           .container { background-color: ${backgroundColor}; border: 1px solid ${borderColor}; padding: 20px; border-radius: 8px; }
@@ -55,9 +69,18 @@ const generateHtmlResponse = (
       </head>
       <body>
         <div class="container">
-          <h1>${type === 'success' ? '✓ ' : ''}${title}</h1>
-          ${details ? details.map((d) => `<div class="detail"><strong>${d.label}:</strong> ${d.value}</div>`).join('') : ''}
-          <p>${message}</p>
+          <h1>${type === 'success' ? '✓ ' : ''}${safeTitle}</h1>
+          ${
+            details
+              ? details
+                  .map(
+                    (d) =>
+                      `<div class="detail"><strong>${escapeHtml(d.label)}:</strong> ${escapeHtml(d.value)}</div>`,
+                  )
+                  .join('')
+              : ''
+          }
+          <p>${safeMessage}</p>
           ${autoClose ? '<p>This window will close automatically in 3 seconds...</p>' : ''}
           <button class="close-btn" onclick="window.close()">${autoClose ? 'Close Now' : 'Close Window'}</button>
         </div>
