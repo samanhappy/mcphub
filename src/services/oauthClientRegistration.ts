@@ -276,7 +276,6 @@ export const registerClient = async (
     console.log('Registering OAuth client', {
       serverName,
       serverUrl: serverUrl.toString(),
-      clientMetadata,
     });
 
     // Step 3: Perform dynamic client registration
