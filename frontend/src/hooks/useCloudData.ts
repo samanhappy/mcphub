@@ -32,11 +32,11 @@ export const useCloudData = () => {
         // Apply pagination to the fetched data
         applyPagination(data.data, currentPage);
       } else {
-        console.error('Invalid cloud market servers data format:', data);
+        console.error('Invalid cloud market servers data format', { data });
         setError(t('cloud.fetchError'));
       }
     } catch (err) {
-      console.error('Error fetching cloud market servers:', err);
+      console.error('Error fetching cloud market servers', { err });
       const errorMessage = err instanceof Error ? err.message : String(err);
       // Keep the original error message for API key errors
       if (
@@ -89,10 +89,10 @@ export const useCloudData = () => {
       if (data && data.success && Array.isArray(data.data)) {
         setCategories(data.data);
       } else {
-        console.error('Invalid cloud market categories data format:', data);
+        console.error('Invalid cloud market categories data format', { data });
       }
     } catch (err) {
-      console.error('Error fetching cloud market categories:', err);
+      console.error('Error fetching cloud market categories', { err });
     }
   }, []);
 
@@ -104,10 +104,10 @@ export const useCloudData = () => {
       if (data && data.success && Array.isArray(data.data)) {
         setTags(data.data);
       } else {
-        console.error('Invalid cloud market tags data format:', data);
+        console.error('Invalid cloud market tags data format', { data });
       }
     } catch (err) {
-      console.error('Error fetching cloud market tags:', err);
+      console.error('Error fetching cloud market tags', { err });
     }
   }, []);
 
@@ -122,12 +122,12 @@ export const useCloudData = () => {
           setCurrentServer(data.data);
           return data.data;
         } else {
-          console.error('Invalid cloud server data format:', data);
+          console.error('Invalid cloud server data format', { name, data });
           setError(t('cloud.serverNotFound'));
           return null;
         }
       } catch (err) {
-        console.error(`Error fetching cloud server ${name}:`, err);
+        console.error('Error fetching cloud server', { name, err });
         const errorMessage = err instanceof Error ? err.message : String(err);
         // Keep the original error message for API key errors
         if (
@@ -168,11 +168,11 @@ export const useCloudData = () => {
           setCurrentPage(1);
           applyPagination(data.data, 1);
         } else {
-          console.error('Invalid cloud search results format:', data);
+          console.error('Invalid cloud search results format', { query, data });
           setError(t('cloud.searchError'));
         }
       } catch (err) {
-        console.error('Error searching cloud servers:', err);
+        console.error('Error searching cloud servers', { query, err });
         setError(err instanceof Error ? err.message : String(err));
       } finally {
         setLoading(false);
@@ -203,11 +203,11 @@ export const useCloudData = () => {
           setCurrentPage(1);
           applyPagination(data.data, 1);
         } else {
-          console.error('Invalid cloud category filter results format:', data);
+          console.error('Invalid cloud category filter results format', { category, data });
           setError(t('cloud.filterError'));
         }
       } catch (err) {
-        console.error('Error filtering cloud servers by category:', err);
+        console.error('Error filtering cloud servers by category', { category, err });
         setError(err instanceof Error ? err.message : String(err));
       } finally {
         setLoading(false);
@@ -238,11 +238,11 @@ export const useCloudData = () => {
           setCurrentPage(1);
           applyPagination(data.data, 1);
         } else {
-          console.error('Invalid cloud tag filter results format:', data);
+          console.error('Invalid cloud tag filter results format', { tag, data });
           setError(t('cloud.tagFilterError'));
         }
       } catch (err) {
-        console.error('Error filtering cloud servers by tag:', err);
+        console.error('Error filtering cloud servers by tag', { tag, err });
         setError(err instanceof Error ? err.message : String(err));
       } finally {
         setLoading(false);
@@ -259,18 +259,18 @@ export const useCloudData = () => {
       );
 
       if (!data.success) {
-        console.error('Failed to fetch cloud server tools:', data);
+        console.error('Failed to fetch cloud server tools', { serverName, data });
         throw new Error(data.message || 'Failed to fetch cloud server tools');
       }
 
       if (data && data.success && Array.isArray(data.data)) {
         return data.data;
       } else {
-        console.error('Invalid cloud server tools data format:', data);
+        console.error('Invalid cloud server tools data format', { serverName, data });
         return [];
       }
     } catch (err) {
-      console.error(`Error fetching tools for cloud server ${serverName}:`, err);
+      console.error('Error fetching tools for cloud server', { serverName, err });
       const errorMessage = err instanceof Error ? err.message : String(err);
       // Re-throw API key errors so they can be handled by the component
       if (
@@ -301,7 +301,7 @@ export const useCloudData = () => {
           throw new Error(data.message || 'Failed to call tool');
         }
       } catch (err) {
-        console.error(`Error calling tool ${toolName} on cloud server ${serverName}:`, err);
+        console.error('Error calling tool on cloud server', { serverName, toolName, err });
         throw err;
       }
     },

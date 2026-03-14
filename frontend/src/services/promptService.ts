@@ -46,7 +46,7 @@ export const callPrompt = async (
       data: response.data,
     };
   } catch (error) {
-    console.error('Error calling prompt:', error);
+    console.error('Error calling prompt', { promptName: request.promptName, server, error });
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error occurred',
@@ -67,18 +67,18 @@ export const getPrompt = async (
         arguments: request.arguments,
       },
     );
-    
+
     // apiPost already returns parsed data, not a Response object
     if (!response.success) {
       throw new Error(`Failed to get prompt: ${response.message || 'Unknown error'}`);
     }
-    
+
     return {
       success: true,
       data: response.data,
     };
   } catch (error) {
-    console.error('Error getting prompt:', error);
+    console.error('Error getting prompt', { promptName: request.promptName, server, error });
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error occurred',
@@ -108,7 +108,7 @@ export const togglePrompt = async (
       error: response.success ? undefined : response.message,
     };
   } catch (error) {
-    console.error('Error toggling prompt:', error);
+    console.error('Error toggling prompt', { serverName, promptName, enabled, error });
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error occurred',
@@ -141,7 +141,7 @@ export const updatePromptDescription = async (
       error: response.success ? undefined : response.message,
     };
   } catch (error) {
-    console.error('Error updating prompt description:', error);
+    console.error('Error updating prompt description', { serverName, promptName, error });
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error occurred',
@@ -169,7 +169,7 @@ export const resetPromptDescription = async (
       description: response.data?.description,
     };
   } catch (error) {
-    console.error('Error resetting prompt description:', error);
+    console.error('Error resetting prompt description', { serverName, promptName, error });
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error occurred',

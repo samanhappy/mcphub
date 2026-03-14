@@ -62,14 +62,14 @@ export const useRegistryData = () => {
               setAllServers((prev) => [...prev, ...data.servers]);
             }
           } else {
-            console.error('Invalid registry servers data format:', data);
+            console.error('Invalid registry servers data format', { data });
             setError(t('registry.fetchError'));
           }
         } else {
           setError(t('registry.fetchError'));
         }
       } catch (err) {
-        console.error('Error fetching registry servers:', err);
+          console.error('Error fetching registry servers', { cursor, search, err });
         const errorMessage = err instanceof Error ? err.message : String(err);
         setError(errorMessage);
       } finally {
@@ -150,7 +150,7 @@ export const useRegistryData = () => {
             // Return the first server entry (should be the latest or specified version)
             return data.servers[0];
           } else {
-            console.error('Invalid registry server data format:', data);
+            console.error('Invalid registry server data format', { serverName, data });
             setError(t('registry.serverNotFound'));
             return null;
           }
@@ -159,7 +159,7 @@ export const useRegistryData = () => {
           return null;
         }
       } catch (err) {
-        console.error(`Error fetching registry server ${serverName}:`, err);
+        console.error('Error fetching registry server', { serverName, err });
         const errorMessage = err instanceof Error ? err.message : String(err);
         setError(errorMessage);
         return null;
@@ -184,14 +184,14 @@ export const useRegistryData = () => {
         if (data.servers && Array.isArray(data.servers)) {
           return data.servers;
         } else {
-          console.error('Invalid registry server versions data format:', data);
+          console.error('Invalid registry server versions data format', { serverName, data });
           return [];
         }
       } else {
         return [];
       }
     } catch (err) {
-      console.error(`Error fetching versions for server ${serverName}:`, err);
+      console.error('Error fetching versions for registry server', { serverName, err });
       const errorMessage = err instanceof Error ? err.message : String(err);
       setError(errorMessage);
       return [];
@@ -213,14 +213,14 @@ export const useRegistryData = () => {
         if (data && data.server) {
           return data;
         } else {
-          console.error('Invalid registry server version data format:', data);
+          console.error('Invalid registry server version data format', { serverName, version, data });
           return null;
         }
       } else {
         return null;
       }
     } catch (err) {
-      console.error(`Error fetching version ${version} for server ${serverName}:`, err);
+      console.error('Error fetching specific registry server version', { serverName, version, err });
       const errorMessage = err instanceof Error ? err.message : String(err);
       setError(errorMessage);
       return null;
@@ -230,7 +230,7 @@ export const useRegistryData = () => {
   // Search servers by query (client-side filtering on loaded data)
   const searchServers = useCallback(
     async (query: string) => {
-      console.log('Searching registry servers with query:', query);
+      console.log('Searching registry servers', { query });
       setSearchQuery(query);
       setCurrentPage(1);
       setCursorHistory([]);

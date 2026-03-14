@@ -48,7 +48,7 @@ export const callTool = async (
       content: response?.content || [],
     };
   } catch (error) {
-    console.error('Error calling tool:', error);
+    console.error('Error calling tool', { toolName: request.toolName, server, error });
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error occurred',
@@ -81,7 +81,7 @@ export const toggleTool = async (
       error: response.success ? undefined : response.message,
     };
   } catch (error) {
-    console.error('Error toggling tool:', error);
+    console.error('Error toggling tool', { serverName, toolName, enabled, error });
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error occurred',
@@ -114,7 +114,7 @@ export const updateToolDescription = async (
       error: response.success ? undefined : response.message,
     };
   } catch (error) {
-    console.error('Error updating tool description:', error);
+    console.error('Error updating tool description', { serverName, toolName, error });
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error occurred',
@@ -145,7 +145,7 @@ export const resetToolDescription = async (
       description: response.data?.description,
     };
   } catch (error) {
-    console.error('Error resetting tool description:', error);
+    console.error('Error resetting tool description', { serverName, toolName, error });
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error occurred',

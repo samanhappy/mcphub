@@ -22,7 +22,7 @@ async function tryLoadOverride<T>(key: string, overridePath: string): Promise<Cl
   } catch (error: any) {
     // Ignore not-found errors and keep trying other paths; surface other errors for visibility
     if (error?.code !== 'ERR_MODULE_NOT_FOUND' && error?.code !== 'MODULE_NOT_FOUND') {
-      console.warn(`Failed to load service override from ${overridePath}:`, error);
+      console.warn('Failed to load service override', { overridePath, error });
     }
   }
   return undefined;

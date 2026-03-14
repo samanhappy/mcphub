@@ -330,7 +330,7 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
         setBearerKeys(data.data.bearerKeys);
       }
     } catch (error) {
-      console.error('Failed to fetch settings:', error);
+      console.error('Failed to fetch settings', { error });
       setError(error instanceof Error ? error.message : 'Failed to fetch settings');
       showToast(t('errors.failedToFetchSettings'));
     } finally {
@@ -363,7 +363,7 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
         return false;
       }
     } catch (error) {
-      console.error('Failed to update routing config:', error);
+      console.error('Failed to update routing config', { key, value, error });
       setError(error instanceof Error ? error.message : 'Failed to update routing config');
       showToast(t('errors.failedToUpdateRoutingConfig'));
       return false;
@@ -397,7 +397,7 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
         return false;
       }
     } catch (error) {
-      console.error('Failed to update install config:', error);
+      console.error('Failed to update install config', { key, value, error });
       setError(error instanceof Error ? error.message : 'Failed to update install config');
       showToast(t('errors.failedToUpdateInstallConfig'));
       return false;
@@ -431,7 +431,7 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
         return false;
       }
     } catch (error) {
-      console.error('Failed to update smart routing config:', error);
+      console.error('Failed to update smart routing config', { key, value, error });
       setError(error instanceof Error ? error.message : 'Failed to update smart routing config');
       showToast(t('errors.failedToUpdateSmartRoutingConfig'));
       return false;
@@ -463,7 +463,7 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
         return false;
       }
     } catch (error) {
-      console.error('Failed to update smart routing config:', error);
+      console.error('Failed to batch update smart routing config', { updates, error });
       setError(error instanceof Error ? error.message : 'Failed to update smart routing config');
       showToast(t('errors.failedToUpdateSmartRoutingConfig'));
       return false;
@@ -495,7 +495,7 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
         return false;
       }
     } catch (error) {
-      console.error('Failed to update routing config:', error);
+      console.error('Failed to batch update routing config', { updates, error });
       setError(error instanceof Error ? error.message : 'Failed to update routing config');
       showToast(t('errors.failedToUpdateRoutingConfig'));
       return false;
@@ -529,7 +529,7 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
         return false;
       }
     } catch (error) {
-      console.error('Failed to update MCP Router config:', error);
+      console.error('Failed to update MCP Router config', { key, value, error });
       setError(error instanceof Error ? error.message : 'Failed to update MCP Router config');
       showToast(t('errors.failedToUpdateMCPRouterConfig'));
       return false;
@@ -561,7 +561,7 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
         return false;
       }
     } catch (error) {
-      console.error('Failed to update MCP Router config:', error);
+      console.error('Failed to batch update MCP Router config', { updates, error });
       setError(error instanceof Error ? error.message : 'Failed to update MCP Router config');
       showToast(t('errors.failedToUpdateMCPRouterConfig'));
       return false;
@@ -595,7 +595,7 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
         return false;
       }
     } catch (error) {
-      console.error('Failed to update OAuth server config:', error);
+      console.error('Failed to update OAuth server config', { key, value, error });
       setError(error instanceof Error ? error.message : 'Failed to update OAuth server config');
       showToast(t('errors.failedToUpdateOAuthServerConfig'));
       return false;
@@ -627,7 +627,7 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
         return false;
       }
     } catch (error) {
-      console.error('Failed to update OAuth server config:', error);
+      console.error('Failed to batch update OAuth server config', { updates, error });
       setError(error instanceof Error ? error.message : 'Failed to update OAuth server config');
       showToast(t('errors.failedToUpdateOAuthServerConfig'));
       return false;
@@ -656,7 +656,7 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
         return false;
       }
     } catch (error) {
-      console.error('Failed to update name separator:', error);
+      console.error('Failed to update name separator', { value, error });
       setError(error instanceof Error ? error.message : 'Failed to update name separator');
       showToast(t('errors.failedToUpdateNameSeparator'));
       return false;
@@ -685,7 +685,7 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
         return false;
       }
     } catch (error) {
-      console.error('Failed to update session rebuild setting:', error);
+      console.error('Failed to update session rebuild setting', { value, error });
       setError(error instanceof Error ? error.message : 'Failed to update session rebuild setting');
       showToast(t('errors.failedToUpdateSessionRebuild'));
       return false;
@@ -700,7 +700,7 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
     try {
       return await apiGet(`/mcp-settings/export?serverName=${serverName ? serverName : ''}`);
     } catch (error) {
-      console.error('Failed to export MCP settings:', error);
+      console.error('Failed to export MCP settings', { serverName, error });
       const errorMessage = error instanceof Error ? error.message : 'Failed to export MCP settings';
       setError(errorMessage);
       showToast(errorMessage);
@@ -717,7 +717,7 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
         setBearerKeys(data.data);
       }
     } catch (error) {
-      console.error('Failed to refresh bearer keys:', error);
+      console.error('Failed to refresh bearer keys', { error });
       showToast(t('errors.failedToFetchSettings'));
     }
   };
@@ -733,7 +733,7 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
       showToast(data.message || t('errors.failedToUpdateRoutingConfig'));
       return null;
     } catch (error) {
-      console.error('Failed to create bearer key:', error);
+      console.error('Failed to create bearer key', { error });
       showToast(t('errors.failedToUpdateRoutingConfig'));
       return null;
     }
@@ -753,7 +753,7 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
       showToast(data.message || t('errors.failedToUpdateRoutingConfig'));
       return null;
     } catch (error) {
-      console.error('Failed to update bearer key:', error);
+      console.error('Failed to update bearer key', { id, error });
       showToast(t('errors.failedToUpdateRoutingConfig'));
       return null;
     }
@@ -770,7 +770,7 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
       showToast(data.message || t('errors.failedToUpdateRoutingConfig'));
       return false;
     } catch (error) {
-      console.error('Failed to delete bearer key:', error);
+      console.error('Failed to delete bearer key', { id, error });
       showToast(t('errors.failedToUpdateRoutingConfig'));
       return false;
     }

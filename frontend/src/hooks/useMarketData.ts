@@ -33,11 +33,11 @@ export const useMarketData = () => {
         // Apply pagination to the fetched data
         applyPagination(data.data, currentPage);
       } else {
-        console.error('Invalid market servers data format:', data);
+        console.error('Invalid market servers data format', { data });
         setError(t('market.fetchError'));
       }
     } catch (err) {
-      console.error('Error fetching market servers:', err);
+      console.error('Error fetching market servers', { err });
       setError(err instanceof Error ? err.message : String(err));
     } finally {
       setLoading(false);
@@ -81,10 +81,10 @@ export const useMarketData = () => {
       if (data && data.success && Array.isArray(data.data)) {
         setCategories(data.data);
       } else {
-        console.error('Invalid categories data format:', data);
+        console.error('Invalid categories data format', { data });
       }
     } catch (err) {
-      console.error('Error fetching categories:', err);
+      console.error('Error fetching categories', { err });
     }
   }, []);
 
@@ -96,10 +96,10 @@ export const useMarketData = () => {
       if (data && data.success && Array.isArray(data.data)) {
         setTags(data.data);
       } else {
-        console.error('Invalid tags data format:', data);
+        console.error('Invalid tags data format', { data });
       }
     } catch (err) {
-      console.error('Error fetching tags:', err);
+      console.error('Error fetching tags', { err });
     }
   }, []);
 
@@ -114,12 +114,12 @@ export const useMarketData = () => {
           setCurrentServer(data.data);
           return data.data;
         } else {
-          console.error('Invalid server data format:', data);
+          console.error('Invalid market server data format', { name, data });
           setError(t('market.serverNotFound'));
           return null;
         }
       } catch (err) {
-        console.error(`Error fetching server ${name}:`, err);
+        console.error('Error fetching market server', { name, err });
         setError(err instanceof Error ? err.message : String(err));
         return null;
       } finally {
@@ -151,11 +151,11 @@ export const useMarketData = () => {
           setCurrentPage(1);
           applyPagination(data.data, 1);
         } else {
-          console.error('Invalid search results format:', data);
+          console.error('Invalid market search results format', { query, data });
           setError(t('market.searchError'));
         }
       } catch (err) {
-        console.error('Error searching servers:', err);
+        console.error('Error searching market servers', { query, err });
         setError(err instanceof Error ? err.message : String(err));
       } finally {
         setLoading(false);
@@ -186,11 +186,11 @@ export const useMarketData = () => {
           setCurrentPage(1);
           applyPagination(data.data, 1);
         } else {
-          console.error('Invalid category filter results format:', data);
+          console.error('Invalid market category filter results format', { category, data });
           setError(t('market.filterError'));
         }
       } catch (err) {
-        console.error('Error filtering servers by category:', err);
+        console.error('Error filtering market servers by category', { category, err });
         setError(err instanceof Error ? err.message : String(err));
       } finally {
         setLoading(false);
@@ -221,11 +221,11 @@ export const useMarketData = () => {
           setCurrentPage(1);
           applyPagination(data.data, 1);
         } else {
-          console.error('Invalid tag filter results format:', data);
+          console.error('Invalid market tag filter results format', { tag, data });
           setError(t('market.tagFilterError'));
         }
       } catch (err) {
-        console.error('Error filtering servers by tag:', err);
+        console.error('Error filtering market servers by tag', { tag, err });
         setError(err instanceof Error ? err.message : String(err));
       } finally {
         setLoading(false);
@@ -245,7 +245,7 @@ export const useMarketData = () => {
         setInstalledServers(installedServerNames);
       }
     } catch (err) {
-      console.error('Error fetching installed servers:', err);
+      console.error('Error fetching installed servers', { err });
     }
   }, []);
 
@@ -301,7 +301,7 @@ export const useMarketData = () => {
         await fetchInstalledServers();
         return true;
       } catch (err) {
-        console.error('Error installing server:', err);
+        console.error('Error installing market server', { serverName: server.name, err });
         setError(err instanceof Error ? err.message : String(err));
         return false;
       }

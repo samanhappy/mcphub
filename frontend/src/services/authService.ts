@@ -27,7 +27,7 @@ export const login = async (credentials: LoginCredentials): Promise<AuthResponse
       message: response.message || 'Login failed',
     };
   } catch (error) {
-    console.error('Login error:', error);
+    console.error('Login error', { error });
     return {
       success: false,
       message: error instanceof Error ? error.message : 'An error occurred during login',
@@ -50,7 +50,7 @@ export const register = async (credentials: RegisterCredentials): Promise<AuthRe
       message: response.message || 'Registration failed',
     };
   } catch (error) {
-    console.error('Register error:', error);
+    console.error('Register error', { error });
     return {
       success: false,
       message: 'An error occurred during registration',
@@ -73,7 +73,7 @@ export const getCurrentUser = async (): Promise<AuthResponse> => {
     const response = await apiGet<AuthResponse>('/auth/user');
     return response;
   } catch (error) {
-    console.error('Get current user error:', error);
+    console.error('Get current user error', { error });
     return {
       success: false,
       message: 'An error occurred while fetching user data',
@@ -87,7 +87,7 @@ export const getBetterAuthUser = async (): Promise<AuthResponse> => {
     const response = await apiGet<AuthResponse>('/better-auth/user');
     return response;
   } catch (error) {
-    console.error('Get Better Auth user error:', error);
+    console.error('Get Better Auth user error', { error });
     return {
       success: false,
       message: 'An error occurred while fetching user data',
@@ -112,7 +112,7 @@ export const changePassword = async (
     const response = await apiPost<AuthResponse>('/auth/change-password', credentials);
     return response;
   } catch (error) {
-    console.error('Change password error:', error);
+    console.error('Change password error', { error });
     return {
       success: false,
       message: 'An error occurred while changing password',
@@ -124,6 +124,6 @@ export const changePassword = async (
 export const logout = (): void => {
   removeToken();
   authClient.signOut().catch((error) => {
-    console.debug('Better Auth sign out failed:', error);
+    console.debug('Better Auth sign out failed', { error });
   });
 };

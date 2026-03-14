@@ -69,7 +69,10 @@ export const loadOriginalSettings = (): McpSettings => {
       try {
         fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2), 'utf8');
       } catch (writeError) {
-        console.error('Failed to persist default OAuth server configuration:', writeError);
+        console.error('Failed to persist default OAuth server configuration', {
+          writeError,
+          settingsPath,
+        });
       }
     }
 
@@ -98,7 +101,7 @@ export const saveSettings = (settings: McpSettings, user?: IUser): boolean => {
 
     return true;
   } catch (error) {
-    console.error(`Failed to save settings to ${settingsPath}:`, error);
+    console.error('Failed to save settings', { settingsPath, error });
     return false;
   }
 };

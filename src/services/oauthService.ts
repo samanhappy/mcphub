@@ -109,7 +109,7 @@ export const initOAuthProvider = async (): Promise<void> => {
         (oauthConfig.endpoints.revocationUrl ? ', revocation' : ''),
     );
   } catch (error) {
-    console.error('Failed to initialize OAuth provider:', error);
+    console.error('Failed to initialize OAuth provider', { error });
     oauthProvider = null;
     oauthRouter = null;
   }
@@ -162,7 +162,7 @@ export const getServerOAuthToken = async (serverName: string): Promise<string | 
       const clientInfo = await initializeOAuthForServer(serverName, serverConfig);
 
       if (!clientInfo) {
-        console.warn(`Failed to initialize OAuth for server: ${serverName}`);
+        console.warn('Failed to initialize OAuth for server', { serverName });
         return undefined;
       }
 
@@ -177,7 +177,7 @@ export const getServerOAuthToken = async (serverName: string): Promise<string | 
           );
           return tokens.accessToken;
         } catch (error) {
-          console.error(`Failed to refresh token for server ${serverName}:`, error);
+          console.error('Failed to refresh OAuth token for server', { serverName, error });
           // Token refresh failed - user needs to re-authorize
           // In a production system, you would trigger a new authorization flow here
           return undefined;
@@ -187,10 +187,10 @@ export const getServerOAuthToken = async (serverName: string): Promise<string | 
       // No access token and no refresh token available
       // User needs to go through the authorization flow
       // This would typically be triggered by an API endpoint that initiates the OAuth flow
-      console.log(`Server ${serverName} requires user authorization via OAuth flow`);
+      console.log('Server requires user authorization via OAuth flow', { serverName });
       return undefined;
     } catch (error) {
-      console.error(`Failed to get OAuth token for server ${serverName}:`, error);
+      console.error('Failed to get OAuth token for server', { serverName, error });
       return undefined;
     }
   }
@@ -245,16 +245,16 @@ export const initializeAllOAuthClients = async (): Promise<void> => {
         initializeOAuthForServer(serverName, serverConfig)
           .then((clientInfo) => {
             if (clientInfo) {
-              console.log(`✓ OAuth client pre-registered for server: ${serverName}`);
+              console.log('OAuth client pre-registered for server', { serverName });
             } else {
-              console.warn(`✗ Failed to pre-register OAuth client for server: ${serverName}`);
+              console.warn('Failed to pre-register OAuth client for server', { serverName });
             }
           })
           .catch((error) => {
-            console.error(
-              `✗ Error pre-registering OAuth client for server ${serverName}:`,
-              error.message,
-            );
+            console.error('Error pre-registering OAuth client for server', {
+              serverName,
+              error: error.message,
+            });
           }),
       );
     }

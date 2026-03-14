@@ -22,7 +22,7 @@ export const fetchLogs = async (): Promise<LogEntry[]> => {
 
     return response.data;
   } catch (error) {
-    console.error('Error fetching logs:', error);
+    console.error('Error fetching logs', { error });
     throw error;
   }
 };
@@ -36,7 +36,7 @@ export const clearLogs = async (): Promise<void> => {
       throw new Error(response.error || 'Failed to clear logs');
     }
   } catch (error) {
-    console.error('Error clearing logs:', error);
+    console.error('Error clearing logs', { error });
     throw error;
   }
 };
@@ -76,7 +76,7 @@ export const useLogs = () => {
               setLogs((prevLogs) => [...prevLogs, data.log]);
             }
           } catch (err) {
-            console.error('Error parsing SSE message:', err);
+              console.error('Error parsing SSE message', { err });
           }
         };
 

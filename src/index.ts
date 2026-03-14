@@ -16,7 +16,7 @@ let lastFatalErrorTime = 0;
  * Handle uncaught exceptions - log and determine if recovery is possible
  */
 const handleUncaughtException = (error: Error): void => {
-  console.error('[FATAL] Uncaught exception:', error);
+  console.error('[FATAL] Uncaught exception', { error });
 
   // Check if this is a retryable database error
   if (isRetryableDbError(error)) {
@@ -36,15 +36,13 @@ const handleUncaughtException = (error: Error): void => {
 
   // Circuit breaker: if too many consecutive errors, exit
   if (consecutiveFatalErrors >= MAX_CONSECUTIVE_FATAL_ERRORS) {
-    console.error(
-      `[FATAL] Too many consecutive fatal errors (${consecutiveFatalErrors}), exiting...`,
-    );
+    console.error('[FATAL] Too many consecutive fatal errors, exiting', {
+      consecutiveFatalErrors,
+    });
     process.exit(1);
   }
 
-  console.warn(
-    `[RECOVERY] Non-fatal error, continuing... (error count: ${consecutiveFatalErrors})`,
-  );
+  console.warn('[RECOVERY] Non-fatal error, continuing', { consecutiveFatalErrors });
 };
 
 /**
@@ -52,8 +50,8 @@ const handleUncaughtException = (error: Error): void => {
  */
 const handleUnhandledRejection = (reason: unknown, promise: Promise<unknown>): void => {
   const error = reason instanceof Error ? reason : new Error(String(reason));
-  console.error('[FATAL] Unhandled promise rejection:', error);
-  console.error('[FATAL] Promise:', promise);
+  console.error('[FATAL] Unhandled promise rejection', { error });
+  console.error('[FATAL] Promise associated with unhandled rejection', { promise });
 
   // Check if this is a retryable database error
   if (isRetryableDbError(error)) {
@@ -75,15 +73,13 @@ const handleUnhandledRejection = (reason: unknown, promise: Promise<unknown>): v
 
   // Circuit breaker: if too many consecutive errors, exit
   if (consecutiveFatalErrors >= MAX_CONSECUTIVE_FATAL_ERRORS) {
-    console.error(
-      `[FATAL] Too many consecutive fatal errors (${consecutiveFatalErrors}), exiting...`,
-    );
+    console.error('[FATAL] Too many consecutive fatal errors, exiting', {
+      consecutiveFatalErrors,
+    });
     process.exit(1);
   }
 
-  console.warn(
-    `[RECOVERY] Non-fatal error, continuing... (error count: ${consecutiveFatalErrors})`,
-  );
+  console.warn('[RECOVERY] Non-fatal error, continuing', { consecutiveFatalErrors });
 };
 
 // Set up global error handlers
@@ -178,7 +174,7 @@ async function boot() {
     await appServer.initialize();
     appServer.start();
   } catch (error) {
-    console.error('Failed to start application:', error);
+    console.error('Failed to start application', { error });
     process.exit(1);
   }
 }

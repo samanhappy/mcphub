@@ -24,7 +24,7 @@ export const toggleResource = async (
       error: response.success ? undefined : response.message,
     };
   } catch (error) {
-    console.error('Error toggling resource:', error);
+    console.error('Error toggling resource', { serverName, resourceUri, enabled, error });
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error occurred',
@@ -56,7 +56,7 @@ export const updateResourceDescription = async (
       error: response.success ? undefined : response.message,
     };
   } catch (error) {
-    console.error('Error updating resource description:', error);
+    console.error('Error updating resource description', { serverName, resourceUri, error });
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error occurred',
@@ -84,7 +84,7 @@ export const resetResourceDescription = async (
       description: response.data?.description,
     };
   } catch (error) {
-    console.error('Error resetting resource description:', error);
+    console.error('Error resetting resource description', { serverName, resourceUri, error });
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error occurred',

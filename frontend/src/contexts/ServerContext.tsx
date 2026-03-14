@@ -139,7 +139,7 @@ export const ServerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             setServers(paginatedData);
             setPagination(null);
           } else {
-            console.error('Invalid server data format:', paginatedData);
+            console.error('Invalid server data format', { paginatedData });
             setServers([]);
             setPagination(null);
           }
@@ -156,7 +156,7 @@ export const ServerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           // Reset error state
           setError(null);
         } catch (err) {
-          console.error('Error fetching servers during normal polling:', err);
+          console.error('Error fetching servers during normal polling', { err });
 
           // Use friendly error message
           if (!navigator.onLine) {
@@ -246,7 +246,7 @@ export const ServerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           setPagination(null);
         } else {
           // If data format is not as expected, set to empty array
-          console.error('Invalid server data format:', paginatedData);
+          console.error('Invalid server data format', { paginatedData });
           setServers([]);
           setPagination(null);
         }
@@ -267,7 +267,10 @@ export const ServerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       } catch (err) {
         // Increment attempt count, use ref to avoid triggering effect rerun
         attemptsRef.current += 1;
-        console.error(`Initial loading attempt ${attemptsRef.current} failed:`, err);
+        console.error('Initial loading attempt failed', {
+          attempt: attemptsRef.current,
+          err,
+        });
 
         // Update state for display
         setFetchAttempts(attemptsRef.current);
@@ -348,28 +351,19 @@ export const ServerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     const timeSinceLastFetch = now - lastFetchTimeRef.current;
 
     // Log who is calling this
-    console.log(
-      '[ServerContext] refreshIfNeeded called, time since last fetch:',
-      timeSinceLastFetch,
-      'ms',
-    );
+    console.log('[ServerContext] refreshIfNeeded called', { timeSinceLastFetch });
 
     // Only refresh if enough time has passed since last fetch
     if (timeSinceLastFetch >= MIN_REFRESH_INTERVAL) {
-      console.log(
-        '[ServerContext] Triggering refresh (exceeded MIN_REFRESH_INTERVAL:',
-        MIN_REFRESH_INTERVAL,
-        'ms)',
-      );
+      console.log('[ServerContext] Triggering refresh after minimum interval', {
+        minRefreshInterval: MIN_REFRESH_INTERVAL,
+      });
       triggerRefresh();
     } else {
-      console.log(
-        '[ServerContext] Skipping refresh (MIN_REFRESH_INTERVAL:',
-        MIN_REFRESH_INTERVAL,
-        'ms, time since last:',
+      console.log('[ServerContext] Skipping refresh because minimum interval not reached', {
+        minRefreshInterval: MIN_REFRESH_INTERVAL,
         timeSinceLastFetch,
-        'ms)',
-      );
+      });
     }
   }, [triggerRefresh]);
 
@@ -398,12 +392,12 @@ export const ServerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             config: serverData.data.config,
           };
         } else {
-          console.error('Failed to get server config:', serverData);
+          console.error('Failed to get server config', { serverName: server.name, serverData });
           setError(t('server.invalidConfig', { serverName: server.name }));
           return null;
         }
       } catch (err) {
-        console.error('Error fetching server config:', err);
+        console.error('Error fetching server config', { serverName: server.name, err });
         setError(err instanceof Error ? err.message : String(err));
         return null;
       }
@@ -439,7 +433,7 @@ export const ServerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         const result = await apiPost(`/servers/${encodedServerName}/toggle`, { enabled });
 
         if (!result || !result.success) {
-          console.error('Failed to toggle server:', result);
+          console.error('Failed to toggle server', { serverName: server.name, result });
           setError(result?.message || t('server.toggleError', { serverName: server.name }));
           return false;
         }
@@ -448,7 +442,7 @@ export const ServerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         setRefreshKey((prevKey) => prevKey + 1);
         return true;
       } catch (err) {
-        console.error('Error toggling server:', err);
+        console.error('Error toggling server', { serverName: server.name, err });
         setError(err instanceof Error ? err.message : String(err));
         return false;
       }
@@ -463,7 +457,7 @@ export const ServerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         const result = await apiPost(`/servers/${encodedServerName}/reload`, {});
 
         if (!result || !result.success) {
-          console.error('Failed to reload server:', result);
+          console.error('Failed to reload server', { serverName: server.name, result });
           setError(t('server.reloadError', { serverName: server.name }));
           return false;
         }
@@ -472,7 +466,7 @@ export const ServerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         triggerRefresh();
         return true;
       } catch (err) {
-        console.error('Error reloading server:', err);
+        console.error('Error reloading server', { serverName: server.name, err });
         setError(err instanceof Error ? err.message : String(err));
         return false;
       }

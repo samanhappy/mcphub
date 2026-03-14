@@ -46,7 +46,7 @@ export const setupClientKeepAlive = async (
         // Use client.ping() if available, otherwise fallback to listTools
         if (typeof (serverInfo.client as any).ping === 'function') {
           await (serverInfo.client as any).ping();
-          console.log(`Keep-alive ping successful for server: ${serverInfo.name}`);
+          console.log('Keep-alive ping successful', { serverName: serverInfo.name });
         } else {
           await serverInfo.client
             .listTools({}, { ...(serverInfo.options || {}), timeout: 5000 })
@@ -54,13 +54,14 @@ export const setupClientKeepAlive = async (
         }
       }
     } catch (error) {
-      console.warn(`Keep-alive ping failed for server ${serverInfo.name}:`, error);
+      console.warn('Keep-alive ping failed', { serverName: serverInfo.name, error });
     }
   }, interval);
 
-  console.log(
-    `Keep-alive enabled for server ${serverInfo.name} at ${Math.round(interval / 1000)}s interval`,
-  );
+  console.log('Keep-alive enabled for server', {
+    serverName: serverInfo.name,
+    intervalSeconds: Math.round(interval / 1000),
+  });
 };
 
 /**
@@ -70,6 +71,6 @@ export const clearClientKeepAlive = (serverInfo: ServerInfo): void => {
   if (serverInfo.keepAliveIntervalId) {
     clearInterval(serverInfo.keepAliveIntervalId as NodeJS.Timeout);
     serverInfo.keepAliveIntervalId = undefined;
-    console.log(`Cleared keep-alive interval for server: ${serverInfo.name}`);
+    console.log('Cleared keep-alive interval', { serverName: serverInfo.name });
   }
 };

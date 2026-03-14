@@ -527,7 +527,7 @@ export const saveToolsAsVectorEmbeddings = async (
 ): Promise<void> => {
   try {
     if (tools.length === 0) {
-      console.warn(`No tools to save for server: ${serverName}`);
+      console.warn('No tools to save as vector embeddings', { serverName });
       return;
     }
 
@@ -588,9 +588,9 @@ export const saveToolsAsVectorEmbeddings = async (
       );
     }
 
-    console.log(`Saved ${tools.length} tool embeddings for server: ${serverName}`);
+    console.log('Saved tool embeddings', { serverName, toolCount: tools.length });
   } catch (error) {
-    console.error(`Error saving tool embeddings for server ${serverName}:`, error);
+    console.error('Error saving tool embeddings', { serverName, error });
   }
 };
 
@@ -666,7 +666,7 @@ export const searchToolsByVector = async (
             };
           }
         } catch (error) {
-          console.error('Error parsing metadata string:', error);
+          console.error('Error parsing vector embedding metadata string', { error });
           // Fall through to the extraction logic below
         }
       }
@@ -695,7 +695,7 @@ export const searchToolsByVector = async (
       };
     });
   } catch (error) {
-    console.error('Error searching tools by vector:', error);
+    console.error('Error searching tools by vector', { query, limit, threshold, error });
     return [];
   }
 };
@@ -743,7 +743,9 @@ export const getAllVectorizedTools = async (
         }
       }
     } catch (error: any) {
-      console.warn('Could not determine vector dimensions from database:', error?.message);
+      console.warn('Could not determine vector dimensions from database', {
+        error: error?.message,
+      });
     }
 
     // Get all tool embeddings
@@ -782,7 +784,7 @@ export const getAllVectorizedTools = async (
             inputSchema: parsedMetadata.inputSchema,
           };
         } catch (error) {
-          console.error('Error parsing metadata string:', error);
+          console.error('Error parsing vector embedding metadata string', { error });
           return {
             serverName: 'unknown',
             toolName: 'unknown',
@@ -799,7 +801,7 @@ export const getAllVectorizedTools = async (
       };
     });
   } catch (error) {
-    console.error('Error getting all vectorized tools:', error);
+    console.error('Error getting all vectorized tools', { error, serverNames });
     return [];
   }
 };
@@ -812,7 +814,9 @@ export const removeServerToolEmbeddings = async (serverName: string): Promise<vo
   try {
     const smartRoutingConfig = await getSmartRoutingConfig();
     if (!smartRoutingConfig.dbUrl && !process.env.DB_URL) {
-      console.warn(`Skipping embedding cleanup for ${serverName}: DB URL not configured`);
+      console.warn('Skipping embedding cleanup because DB URL is not configured', {
+        serverName,
+      });
       return;
     }
 
@@ -827,9 +831,9 @@ export const removeServerToolEmbeddings = async (serverName: string): Promise<vo
     )() as VectorEmbeddingRepository;
 
     const removedCount = await vectorRepository.deleteByServerName(serverName);
-    console.log(`Removed ${removedCount} tool embeddings for server: ${serverName}`);
+    console.log('Removed tool embeddings', { serverName, removedCount });
   } catch (error) {
-    console.error(`Error removing tool embeddings for server ${serverName}:`, error);
+    console.error('Error removing tool embeddings', { serverName, error });
   }
 };
 
@@ -839,7 +843,7 @@ export const removeServerToolEmbeddings = async (serverName: string): Promise<vo
  */
 export const syncAllServerToolsEmbeddings = async (): Promise<void> => {
   try {
-    console.log('Starting synchronization of all server tools embeddings...');
+    console.log('Starting synchronization of all server tool embeddings');
 
     // Import getServersInfo to get all server information
     const { getServersInfo } = await import('./mcpService.js');
@@ -851,25 +855,35 @@ export const syncAllServerToolsEmbeddings = async (): Promise<void> => {
     for (const server of servers) {
       if (server.status === 'connected' && server.tools && server.tools.length > 0) {
         try {
-          console.log(`Syncing tools for server: ${server.name} (${server.tools.length} tools)`);
+          console.log('Syncing tool embeddings for server', {
+            serverName: server.name,
+            toolCount: server.tools.length,
+          });
           await saveToolsAsVectorEmbeddings(server.name, server.tools);
           totalToolsSynced += server.tools.length;
           serversSynced++;
         } catch (error) {
-          console.error(`Failed to sync tools for server ${server.name}:`, error);
+          console.error('Failed to sync tool embeddings for server', {
+            serverName: server.name,
+            error,
+          });
         }
       } else if (server.status === 'connected' && (!server.tools || server.tools.length === 0)) {
-        console.log(`Server ${server.name} is connected but has no tools to sync`);
+        console.log('Connected server has no tools to sync', { serverName: server.name });
       } else {
-        console.log(`Skipping server ${server.name} (status: ${server.status})`);
+        console.log('Skipping server during tool embedding sync', {
+          serverName: server.name,
+          status: server.status,
+        });
       }
     }
 
-    console.log(
-      `Smart routing tools sync completed: synced ${totalToolsSynced} tools from ${serversSynced} servers`,
-    );
+    console.log('Completed smart routing tool embedding sync', {
+      totalToolsSynced,
+      serversSynced,
+    });
   } catch (error) {
-    console.error('Error during smart routing tools synchronization:', error);
+    console.error('Error during smart routing tool embedding synchronization', { error });
     throw error;
   }
 };
@@ -954,14 +968,15 @@ async function checkDatabaseVectorDimensions(dimensionsNeeded: number): Promise<
         }
       }
     } catch (error) {
-      console.warn('Could not check dimensions from actual records:', error);
+      console.warn('Could not check vector dimensions from actual records', { error });
     }
 
     // If no dimensions are set or they don't match what we need, handle the mismatch
     if (currentDimensions === 0 || currentDimensions !== dimensionsNeeded) {
-      console.log(
-        `Vector dimensions mismatch: database=${currentDimensions}, needed=${dimensionsNeeded}`,
-      );
+      console.log('Vector dimensions mismatch detected', {
+        currentDimensions,
+        dimensionsNeeded,
+      });
 
       if (currentDimensions === 0) {
         console.log('Setting up vector dimensions for the first time...');
@@ -984,13 +999,18 @@ async function checkDatabaseVectorDimensions(dimensionsNeeded: number): Promise<
           `DROP INDEX IF EXISTS idx_vector_embeddings_embedding;`,
         );
       } catch (dropError: any) {
-        console.warn('Could not drop existing vector index before ALTER:', dropError?.message);
+        console.warn('Could not drop existing vector index before ALTER', {
+          error: dropError?.message,
+        });
       }
 
       // Alter the column type with the new dimensions
       // Use halfvec for dimensions > 2000, vector otherwise
       const vectorType = dimensionsNeeded <= VECTOR_MAX_DIMENSIONS ? 'vector' : 'halfvec';
-      console.log(`Using ${vectorType} type for ${dimensionsNeeded} dimensions`);
+      console.log('Using vector storage type for configured dimensions', {
+        vectorType,
+        dimensionsNeeded,
+      });
 
       await getAppDataSource().query(`
         ALTER TABLE vector_embeddings 
@@ -1003,10 +1023,10 @@ async function checkDatabaseVectorDimensions(dimensionsNeeded: number): Promise<
         console.log('Continuing without optimized vector index...');
       }
 
-      console.log(`Successfully configured vector dimensions to ${dimensionsNeeded}`);
+      console.log('Successfully configured vector dimensions', { dimensionsNeeded });
     }
   } catch (error: any) {
-    console.error('Error checking/updating vector dimensions:', error);
+    console.error('Error checking or updating vector dimensions', { error });
     throw new Error(`Vector dimension check failed: ${error?.message || 'Unknown error'}`);
   }
 }
