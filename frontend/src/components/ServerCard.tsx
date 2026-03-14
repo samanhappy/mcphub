@@ -237,6 +237,20 @@ const ServerCard = ({
     }
   };
 
+  const handlePromptDescriptionUpdate = (
+    _promptName: string,
+    _description: string,
+    options?: { restored?: boolean },
+  ) => {
+    showToast(
+      options?.restored ? t('prompt.restoreDefaultSuccess') : t('prompt.descriptionUpdateSuccess'),
+      'success',
+    );
+    if (onRefresh) {
+      onRefresh();
+    }
+  };
+
   const handleOAuthAuthorization = (e: React.MouseEvent) => {
     e.stopPropagation();
     // Open the OAuth authorization URL in a new window
@@ -277,21 +291,45 @@ const ServerCard = ({
     }
   };
 
-  const handleResourceDescriptionUpdate = async (resourceUri: string, description: string) => {
+  const handleResourceDescriptionUpdate = async (
+    resourceUri: string,
+    description: string,
+    options?: { restored?: boolean },
+  ) => {
     try {
-      const { updateResourceDescription } = await import('@/services/resourceService');
-      const result = await updateResourceDescription(server.name, resourceUri, description);
+      const { updateResourceDescription, resetResourceDescription } = await import(
+        '@/services/resourceService'
+      );
+      const result = options?.restored
+        ? await resetResourceDescription(server.name, resourceUri)
+        : await updateResourceDescription(server.name, resourceUri, description);
       if (result.success) {
-        showToast(t('prompt.descriptionUpdateSuccess'), 'success');
+        showToast(
+          options?.restored
+            ? t('builtinResources.restoreDefaultSuccess')
+            : t('builtinResources.descriptionUpdateSuccess'),
+          'success',
+        );
         if (onRefresh) {
           onRefresh();
         }
       } else {
-        showToast(result.error || t('prompt.descriptionUpdateFailed'), 'error');
+        showToast(
+          result.error ||
+            (options?.restored
+              ? t('builtinResources.restoreDefaultFailed')
+              : t('builtinResources.descriptionUpdateFailed')),
+          'error',
+        );
       }
     } catch (error) {
       console.error('Error updating resource description:', error);
-      showToast(t('prompt.descriptionUpdateFailed'), 'error');
+      showToast(
+        options?.restored
+          ? t('builtinResources.restoreDefaultFailed')
+          : t('builtinResources.descriptionUpdateFailed'),
+        'error',
+      );
     }
   };
 
@@ -508,6 +546,7 @@ const ServerCard = ({
                       server={server.name}
                       prompt={prompt}
                       onToggle={handlePromptToggle}
+                      onDescriptionUpdate={handlePromptDescriptionUpdate}
                     />
                   ))}
                 </div>

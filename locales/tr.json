@@ -579,7 +579,10 @@
     "noDescription": "Kullanılabilir açıklama yok",
     "runPromptWithName": "İsteği Getir: {{name}}",
     "descriptionUpdateSuccess": "İstek açıklaması başarıyla güncellendi",
-    "descriptionUpdateFailed": "İstek açıklaması güncellenemedi"
+    "descriptionUpdateFailed": "İstek açıklaması güncellenemedi",
+    "restoreDefault": "Varsayılana dön",
+    "restoreDefaultSuccess": "İstek açıklaması varsayılan değere döndürüldü",
+    "restoreDefaultFailed": "Varsayılan istek açıklamasına dönülemedi"
   },
   "settings": {
     "enableGlobalRoute": "Global Yönlendirmeyi Etkinleştir",
@@ -948,6 +951,11 @@
     "enabled": "Etkin",
     "active": "Aktif",
     "inactive": "İnaktif",
+    "descriptionUpdateSuccess": "Kaynak açıklaması başarıyla güncellendi",
+    "descriptionUpdateFailed": "Kaynak açıklaması güncellenemedi",
+    "restoreDefault": "Varsayılana dön",
+    "restoreDefaultSuccess": "Kaynak açıklaması varsayılan değere döndürüldü",
+    "restoreDefaultFailed": "Varsayılan kaynak açıklamasına dönülemedi",
     "uriRequired": "URI zorunludur",
     "contentRequired": "İçerik zorunludur",
     "fetchError": "Yerleşik kaynaklar yüklenemedi",

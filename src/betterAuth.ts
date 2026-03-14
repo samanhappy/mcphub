@@ -79,7 +79,7 @@ const authOptions: BetterAuthOptions = {
     disableColors: false,
     level: 'info',
     log: (level, message, ...args) => {
-      console.log(`[better-auth] [${level}] ${message}`, ...args);
+      console.log('[better-auth]', { level, message }, ...args);
     },
   },
 };

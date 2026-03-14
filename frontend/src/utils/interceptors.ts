@@ -72,7 +72,7 @@ export const uninstallAuthInterceptor = (): void => {
 // Logging interceptor for development
 export const loggingInterceptor: FetchInterceptor = {
   request: async (url: string, config: RequestInit) => {
-    console.log(`🚀 [${config.method || 'GET'}] ${url}`, config);
+    console.log('🚀 Request', { method: config.method || 'GET', url, config });
     return { url, config };
   },
 
@@ -82,7 +82,7 @@ export const loggingInterceptor: FetchInterceptor = {
   },
 
   error: async (error: Error) => {
-    console.error(`❌ Fetch error:`, error);
+    console.error('❌ Fetch error', { error });
     return error;
   },
 };

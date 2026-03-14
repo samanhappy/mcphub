@@ -578,7 +578,10 @@
     "noDescription": "No description available",
     "runPromptWithName": "Get Prompt: {{name}}",
     "descriptionUpdateSuccess": "Prompt description updated successfully",
-    "descriptionUpdateFailed": "Failed to update prompt description"
+    "descriptionUpdateFailed": "Failed to update prompt description",
+    "restoreDefault": "Restore default",
+    "restoreDefaultSuccess": "Prompt description restored to default",
+    "restoreDefaultFailed": "Failed to restore the default prompt description"
   },
   "settings": {
     "enableGlobalRoute": "Enable Global Route",
@@ -948,6 +951,11 @@
     "enabled": "Enabled",
     "active": "Active",
     "inactive": "Inactive",
+    "descriptionUpdateSuccess": "Resource description updated successfully",
+    "descriptionUpdateFailed": "Failed to update resource description",
+    "restoreDefault": "Restore default",
+    "restoreDefaultSuccess": "Resource description restored to default",
+    "restoreDefaultFailed": "Failed to restore the default resource description",
     "uriRequired": "URI is required",
     "contentRequired": "Content is required",
     "fetchError": "Failed to load built-in resources",

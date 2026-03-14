@@ -3,6 +3,8 @@ import { Request, Response } from 'express';
 const mockServerDao = {
   findById: jest.fn(),
   updateTools: jest.fn(),
+  updatePrompts: jest.fn(),
+  updateResources: jest.fn(),
 };
 
 const mockNotifyToolChanged = jest.fn();
@@ -28,7 +30,11 @@ jest.mock('../../src/services/mcpService.js', () => ({
   reconnectServer: jest.fn(),
 }));
 
-import { resetToolDescription } from '../../src/controllers/serverController.js';
+import {
+  resetPromptDescription,
+  resetResourceDescription,
+  resetToolDescription,
+} from '../../src/controllers/serverController.js';
 
 describe('serverController - resetToolDescription', () => {
   let mockRequest: Partial<Request>;
@@ -118,6 +124,118 @@ describe('serverController - resetToolDescription', () => {
     expect(mockJson).toHaveBeenCalledWith({
       success: false,
       message: 'Server not found',
+    });
+  });
+});
+
+describe('serverController - resetPromptDescription', () => {
+  let mockRequest: Partial<Request>;
+  let mockResponse: Partial<Response>;
+  let mockJson: jest.Mock;
+  let mockStatus: jest.Mock;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+
+    mockJson = jest.fn();
+    mockStatus = jest.fn().mockReturnThis();
+    mockRequest = {
+      params: {
+        serverName: 'test-server',
+        promptName: 'test-server::prompt',
+      },
+    };
+    mockResponse = {
+      json: mockJson,
+      status: mockStatus,
+    };
+
+    mockServerDao.findById.mockResolvedValue({
+      name: 'test-server',
+      prompts: {
+        'test-server::prompt': {
+          enabled: true,
+          description: 'Custom prompt description',
+        },
+      },
+    });
+    mockServerDao.updatePrompts.mockResolvedValue(true);
+    mockGetServerByName.mockReturnValue({
+      prompts: [
+        {
+          name: 'test-server::prompt',
+          description: 'Default prompt description',
+        },
+      ],
+    });
+  });
+
+  it('removes the prompt description override and returns the upstream default description', async () => {
+    await resetPromptDescription(mockRequest as Request, mockResponse as Response);
+
+    expect(mockServerDao.updatePrompts).toHaveBeenCalledWith('test-server', {});
+    expect(mockJson).toHaveBeenCalledWith({
+      success: true,
+      message: 'Prompt test-server::prompt description reset successfully',
+      data: {
+        description: 'Default prompt description',
+      },
+    });
+  });
+});
+
+describe('serverController - resetResourceDescription', () => {
+  let mockRequest: Partial<Request>;
+  let mockResponse: Partial<Response>;
+  let mockJson: jest.Mock;
+  let mockStatus: jest.Mock;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+
+    mockJson = jest.fn();
+    mockStatus = jest.fn().mockReturnThis();
+    mockRequest = {
+      params: {
+        serverName: 'test-server',
+        resourceUri: 'resource://test',
+      },
+    };
+    mockResponse = {
+      json: mockJson,
+      status: mockStatus,
+    };
+
+    mockServerDao.findById.mockResolvedValue({
+      name: 'test-server',
+      resources: {
+        'resource://test': {
+          enabled: true,
+          description: 'Custom resource description',
+        },
+      },
+    });
+    mockServerDao.updateResources.mockResolvedValue(true);
+    mockGetServerByName.mockReturnValue({
+      resources: [
+        {
+          uri: 'resource://test',
+          description: 'Default resource description',
+        },
+      ],
+    });
+  });
+
+  it('removes the resource description override and returns the upstream default description', async () => {
+    await resetResourceDescription(mockRequest as Request, mockResponse as Response);
+
+    expect(mockServerDao.updateResources).toHaveBeenCalledWith('test-server', {});
+    expect(mockJson).toHaveBeenCalledWith({
+      success: true,
+      message: 'Resource resource://test description reset successfully',
+      data: {
+        description: 'Default resource description',
+      },
     });
   });
 });

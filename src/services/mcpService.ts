@@ -358,7 +358,7 @@ export const cleanupAllServers = (): void => {
         serverInfo.transport.close();
       }
     } catch (error) {
-      console.warn(`Error closing server ${serverInfo.name}:`, error);
+      console.warn('Error closing server', { serverName: serverInfo.name, error });
     }
   }
   serverInfos = [];
@@ -656,7 +656,10 @@ const callToolWithReconnect = async (
           // Continue to next attempt
           continue;
         } catch (reconnectError) {
-          console.error(`Failed to reconnect to server ${serverInfo.name}:`, reconnectError);
+          console.error('Failed to reconnect to server', {
+            serverName: serverInfo.name,
+            error: reconnectError,
+          });
           serverInfo.status = 'disconnected';
           serverInfo.error = `Failed to reconnect: ${reconnectError}`;
 
@@ -788,7 +791,7 @@ export const initializeClientsFromSettings = async (
           saveToolsAsVectorEmbeddings(name, mcpTools);
           continue;
         } catch (error) {
-          console.error(`Failed to initialize OpenAPI server ${name}:`, error);
+          console.error('Failed to initialize OpenAPI server', { serverName: name, error });
 
           // Update the already pushed server info with error status
           serverInfo.status = 'disconnected';
@@ -933,7 +936,7 @@ export const initializeClientsFromSettings = async (
             serverInfo.error = null;
             // Set up keep-alive ping for SSE connections via shared service
             setupClientKeepAlive(serverInfo, expandedConf).catch((e) =>
-              console.warn(`Keepalive setup failed for ${name}:`, e),
+              console.warn('Keepalive setup failed', { serverName: name, error: e }),
             );
           } else {
             serverInfo.status = 'disconnected';
@@ -1124,7 +1127,7 @@ export const reconnectServer = async (serverName: string): Promise<void> => {
     try {
       serverInfo.client.close();
     } catch (error) {
-      console.warn(`Error closing client for server ${serverName}:`, error);
+      console.warn('Error closing client for server', { serverName, error });
     }
   }
 
@@ -1132,7 +1135,7 @@ export const reconnectServer = async (serverName: string): Promise<void> => {
     try {
       serverInfo.transport.close();
     } catch (error) {
-      console.warn(`Error closing transport for server ${serverName}:`, error);
+      console.warn('Error closing transport for server', { serverName, error });
     }
   }
 
@@ -1193,7 +1196,7 @@ export const removeServer = async (
   try {
     await removeServerToolEmbeddings(name);
   } catch (error) {
-    console.warn(`Failed to remove embeddings for server ${name}:`, error);
+    console.warn('Failed to remove embeddings for server', { serverName: name, error });
   }
 
   serverInfos = serverInfos.filter((serverInfo) => serverInfo.name !== name);
@@ -1229,7 +1232,7 @@ export const addOrUpdateServer = async (
     const action = exists ? 'updated' : 'added';
     return { success: true, message: `Server ${action} successfully` };
   } catch (error) {
-    console.error(`Failed to add/update server: ${name}`, error);
+    console.error('Failed to add/update server', { serverName: name, error });
     return { success: false, message: 'Failed to add/update server' };
   }
 };
@@ -1297,7 +1300,10 @@ export const toggleServerStatus = async (
         await removeServerToolEmbeddings(name);
         console.log(`Removed tool embeddings for disabled server: ${name}`);
       } catch (embeddingError) {
-        console.warn(`Failed to remove embeddings for server ${name}:`, embeddingError);
+        console.warn('Failed to remove embeddings for server', {
+          serverName: name,
+          error: embeddingError,
+        });
       }
     } else {
       // If enabling, reconnect the server to restore connection and sync tool embeddings
@@ -1305,13 +1311,16 @@ export const toggleServerStatus = async (
         await initializeClientsFromSettings(false, name);
         console.log(`Re-enabled server ${name} and triggered tool embedding sync`);
       } catch (reconnectError) {
-        console.warn(`Failed to reconnect server ${name} during enable:`, reconnectError);
+        console.warn('Failed to reconnect server during enable', {
+          serverName: name,
+          error: reconnectError,
+        });
       }
     }
 
     return { success: true, message: `Server ${enabled ? 'enabled' : 'disabled'} successfully` };
   } catch (error) {
-    console.error(`Failed to toggle server status: ${name}`, error);
+    console.error('Failed to toggle server status', { serverName: name, error });
     return { success: false, message: 'Failed to toggle server status' };
   }
 };

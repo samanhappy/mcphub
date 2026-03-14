@@ -579,7 +579,10 @@
     "noDescription": "Aucune description disponible",
     "runPromptWithName": "Obtenir l'invite : {{name}}",
     "descriptionUpdateSuccess": "Description de l'invite mise à jour avec succès",
-    "descriptionUpdateFailed": "Échec de la mise à jour de la description de l'invite"
+    "descriptionUpdateFailed": "Échec de la mise à jour de la description de l'invite",
+    "restoreDefault": "Restaurer par défaut",
+    "restoreDefaultSuccess": "La description de l'invite a été restaurée à sa valeur par défaut",
+    "restoreDefaultFailed": "Échec de la restauration de la description par défaut de l'invite"
   },
   "settings": {
     "enableGlobalRoute": "Activer la route globale",
@@ -948,6 +951,11 @@
     "enabled": "Activé",
     "active": "Actif",
     "inactive": "Inactif",
+    "descriptionUpdateSuccess": "Description de la ressource mise à jour avec succès",
+    "descriptionUpdateFailed": "Échec de la mise à jour de la description de la ressource",
+    "restoreDefault": "Restaurer par défaut",
+    "restoreDefaultSuccess": "La description de la ressource a été restaurée à sa valeur par défaut",
+    "restoreDefaultFailed": "Échec de la restauration de la description par défaut de la ressource",
     "uriRequired": "L'URI est requis",
     "contentRequired": "Le contenu est requis",
     "fetchError": "Échec du chargement des ressources intégrées",

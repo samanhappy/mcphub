@@ -21,6 +21,7 @@ import { useToast } from '@/contexts/ToastContext';
 import { Switch } from './ToggleGroup';
 import DynamicForm from './DynamicForm';
 import ToolResult from './ToolResult';
+import ResetDescriptionButton from './ResetDescriptionButton';
 
 interface ToolCardProps {
   server: string;
@@ -273,16 +274,15 @@ const ToolCard = ({ tool, server, onToggle, onDescriptionUpdate }: ToolCardProps
                   >
                     <Check size={16} />
                   </button>
-                  <button
-                    className="ml-2 px-2 py-1 text-xs text-amber-700 bg-amber-50 hover:bg-amber-100 rounded transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                  <ResetDescriptionButton
+                    title={t('tool.restoreDefault')}
                     onClick={(e) => {
                       e.stopPropagation();
                       handleDescriptionReset();
                     }}
                     disabled={isResettingDescription}
-                  >
-                    {isResettingDescription ? t('common.processing') : t('tool.restoreDefault')}
-                  </button>
+                    loading={isResettingDescription}
+                  />
                 </>
               ) : (
                 <>
@@ -298,16 +298,15 @@ const ToolCard = ({ tool, server, onToggle, onDescriptionUpdate }: ToolCardProps
                   >
                     <Edit size={14} />
                   </button>
-                  <button
-                    className="ml-2 px-2 py-1 text-xs text-amber-700 bg-amber-50 hover:bg-amber-100 rounded transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                  <ResetDescriptionButton
+                    title={t('tool.restoreDefault')}
                     onClick={(e) => {
                       e.stopPropagation();
                       handleDescriptionReset();
                     }}
                     disabled={isResettingDescription}
-                  >
-                    {isResettingDescription ? t('common.processing') : t('tool.restoreDefault')}
-                  </button>
+                    loading={isResettingDescription}
+                  />
                 </>
               )}
             </span>

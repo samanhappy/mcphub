@@ -580,7 +580,10 @@
     "noDescription": "无描述信息",
     "runPromptWithName": "获取提示词: {{name}}",
     "descriptionUpdateSuccess": "提示词描述更新成功",
-    "descriptionUpdateFailed": "更新提示词描述失败"
+    "descriptionUpdateFailed": "更新提示词描述失败",
+    "restoreDefault": "恢复默认值",
+    "restoreDefaultSuccess": "提示词描述已恢复为默认值",
+    "restoreDefaultFailed": "恢复默认提示词描述失败"
   },
   "settings": {
     "enableGlobalRoute": "启用全局路由",
@@ -950,6 +953,11 @@
     "enabled": "启用",
     "active": "已启用",
     "inactive": "已禁用",
+    "descriptionUpdateSuccess": "资源描述更新成功",
+    "descriptionUpdateFailed": "更新资源描述失败",
+    "restoreDefault": "恢复默认值",
+    "restoreDefaultSuccess": "资源描述已恢复为默认值",
+    "restoreDefaultFailed": "恢复默认资源描述失败",
     "uriRequired": "URI 为必填项",
     "contentRequired": "内容为必填项",
     "fetchError": "加载内置资源失败",

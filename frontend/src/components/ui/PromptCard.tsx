@@ -10,17 +10,27 @@ import {
   Check,
 } from '@/components/icons/LucideIcons';
 import { Switch } from './ToggleGroup';
-import { getPrompt, updatePromptDescription, PromptCallResult } from '@/services/promptService';
+import {
+  getPrompt,
+  updatePromptDescription,
+  resetPromptDescription,
+  PromptCallResult,
+} from '@/services/promptService';
 import { useSettingsData } from '@/hooks/useSettingsData';
 import DynamicForm from './DynamicForm';
 import PromptResult from './PromptResult';
 import { useToast } from '@/contexts/ToastContext';
+import ResetDescriptionButton from './ResetDescriptionButton';
 
 interface PromptCardProps {
   server: string;
   prompt: Prompt;
   onToggle?: (promptName: string, enabled: boolean) => void;
-  onDescriptionUpdate?: (promptName: string, description: string) => void;
+  onDescriptionUpdate?: (
+    promptName: string,
+    description: string,
+    options?: { restored?: boolean },
+  ) => void;
 }
 
 const PromptCard = ({ prompt, server, onToggle, onDescriptionUpdate }: PromptCardProps) => {
@@ -32,6 +42,7 @@ const PromptCard = ({ prompt, server, onToggle, onDescriptionUpdate }: PromptCar
   const [isRunning, setIsRunning] = useState(false);
   const [result, setResult] = useState<PromptCallResult | null>(null);
   const [isEditingDescription, setIsEditingDescription] = useState(false);
+  const [isResettingDescription, setIsResettingDescription] = useState(false);
   const [customDescription, setCustomDescription] = useState(prompt.description || '');
   const descriptionInputRef = useRef<HTMLInputElement>(null);
   const descriptionTextRef = useRef<HTMLSpanElement>(null);
@@ -54,6 +65,10 @@ const PromptCard = ({ prompt, server, onToggle, onDescriptionUpdate }: PromptCar
       setTextWidth(descriptionTextRef.current.offsetWidth);
     }
   }, [isEditingDescription, customDescription]);
+
+  useEffect(() => {
+    setCustomDescription(prompt.description || '');
+  }, [prompt.description]);
 
   // Generate a unique key for localStorage based on prompt name and server
   const getStorageKey = useCallback(() => {
@@ -80,7 +95,6 @@ const PromptCard = ({ prompt, server, onToggle, onDescriptionUpdate }: PromptCar
     try {
       const result = await updatePromptDescription(server, prompt.name, customDescription);
       if (result.success) {
-        showToast(t('prompt.descriptionUpdateSuccess'), 'success');
         if (onDescriptionUpdate) {
           onDescriptionUpdate(prompt.name, customDescription);
         }
@@ -94,6 +108,27 @@ const PromptCard = ({ prompt, server, onToggle, onDescriptionUpdate }: PromptCar
       showToast(t('prompt.descriptionUpdateFailed'), 'error');
       // Revert to original description on failure
       setCustomDescription(prompt.description || '');
+    }
+  };
+
+  const handleDescriptionReset = async () => {
+    setIsResettingDescription(true);
+
+    try {
+      const result = await resetPromptDescription(server, prompt.name);
+      if (result.success) {
+        const restoredDescription = result.description || '';
+        setCustomDescription(restoredDescription);
+        setIsEditingDescription(false);
+        onDescriptionUpdate?.(prompt.name, restoredDescription, { restored: true });
+      } else {
+        showToast(result.error || t('prompt.restoreDefaultFailed'), 'error');
+      }
+    } catch (error) {
+      console.error('Error resetting prompt description:', error);
+      showToast(t('prompt.restoreDefaultFailed'), 'error');
+    } finally {
+      setIsResettingDescription(false);
     }
   };
 
@@ -204,9 +239,19 @@ const PromptCard = ({ prompt, server, onToggle, onDescriptionUpdate }: PromptCar
                       e.stopPropagation();
                       handleDescriptionSave();
                     }}
+                    disabled={isResettingDescription}
                   >
                     <Check size={16} />
                   </button>
+                  <ResetDescriptionButton
+                    title={t('prompt.restoreDefault')}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDescriptionReset();
+                    }}
+                    disabled={isResettingDescription}
+                    loading={isResettingDescription}
+                  />
                 </>
               ) : (
                 <>
@@ -222,6 +267,15 @@ const PromptCard = ({ prompt, server, onToggle, onDescriptionUpdate }: PromptCar
                   >
                     <Edit size={14} />
                   </button>
+                  <ResetDescriptionButton
+                    title={t('prompt.restoreDefault')}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDescriptionReset();
+                    }}
+                    disabled={isResettingDescription}
+                    loading={isResettingDescription}
+                  />
                 </>
               )}
             </span>

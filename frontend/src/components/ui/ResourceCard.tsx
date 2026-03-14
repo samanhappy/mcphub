@@ -3,17 +3,23 @@ import { useTranslation } from 'react-i18next';
 import { Check, ChevronDown, ChevronRight, Edit } from '@/components/icons/LucideIcons';
 import { Resource } from '@/types';
 import { Switch } from './ToggleGroup';
+import ResetDescriptionButton from './ResetDescriptionButton';
 
 interface ResourceCardProps {
   resource: Resource;
   onToggle?: (resourceUri: string, enabled: boolean) => void;
-  onDescriptionUpdate?: (resourceUri: string, description: string) => Promise<void> | void;
+  onDescriptionUpdate?: (
+    resourceUri: string,
+    description: string,
+    options?: { restored?: boolean },
+  ) => Promise<void> | void;
 }
 
 const ResourceCard = ({ resource, onToggle, onDescriptionUpdate }: ResourceCardProps) => {
   const { t } = useTranslation();
   const [isExpanded, setIsExpanded] = useState(false);
   const [isEditingDescription, setIsEditingDescription] = useState(false);
+  const [isResettingDescription, setIsResettingDescription] = useState(false);
   const [customDescription, setCustomDescription] = useState(resource.description || '');
   const descriptionInputRef = useRef<HTMLInputElement>(null);
   const descriptionTextRef = useRef<HTMLSpanElement>(null);
@@ -48,6 +54,16 @@ const ResourceCard = ({ resource, onToggle, onDescriptionUpdate }: ResourceCardP
     setIsEditingDescription(false);
     if (onDescriptionUpdate) {
       await onDescriptionUpdate(resource.uri, customDescription);
+    }
+  };
+
+  const handleDescriptionReset = async () => {
+    setIsResettingDescription(true);
+    try {
+      await onDescriptionUpdate?.(resource.uri, '', { restored: true });
+      setIsEditingDescription(false);
+    } finally {
+      setIsResettingDescription(false);
     }
   };
 
@@ -93,9 +109,19 @@ const ResourceCard = ({ resource, onToggle, onDescriptionUpdate }: ResourceCardP
                     e.stopPropagation();
                     handleDescriptionSave();
                   }}
+                  disabled={isResettingDescription}
                 >
                   <Check size={16} />
                 </button>
+                <ResetDescriptionButton
+                  title={t('builtinResources.restoreDefault')}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDescriptionReset();
+                  }}
+                  disabled={isResettingDescription}
+                  loading={isResettingDescription}
+                />
               </>
             ) : (
               <>
@@ -109,6 +135,15 @@ const ResourceCard = ({ resource, onToggle, onDescriptionUpdate }: ResourceCardP
                 >
                   <Edit size={14} />
                 </button>
+                <ResetDescriptionButton
+                  title={t('builtinResources.restoreDefault')}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDescriptionReset();
+                  }}
+                  disabled={isResettingDescription}
+                  loading={isResettingDescription}
+                />
               </>
             )}
           </span>
