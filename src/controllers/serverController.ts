@@ -14,6 +14,7 @@ import {
   addServer,
   addOrUpdateServer,
   removeServer,
+  getServerByName,
   notifyToolChanged,
   syncToolEmbedding,
   toggleServerStatus,
@@ -865,6 +866,75 @@ export const updateToolDescription = async (req: Request, res: Response): Promis
     res.json({
       success: true,
       message: `Tool ${toolName} description updated successfully`,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+    });
+  }
+};
+
+// Reset tool description override for a specific server back to the upstream default
+export const resetToolDescription = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const serverName = decodeURIComponent(req.params.serverName);
+    const toolName = decodeURIComponent(req.params.toolName);
+
+    if (!serverName || !toolName) {
+      res.status(400).json({
+        success: false,
+        message: 'Server name and tool name are required',
+      });
+      return;
+    }
+
+    const serverDao = getServerDao();
+    const server = await serverDao.findById(serverName);
+
+    if (!server) {
+      res.status(404).json({
+        success: false,
+        message: 'Server not found',
+      });
+      return;
+    }
+
+    const tools = { ...(server.tools || {}) };
+    const toolConfig = tools[toolName];
+
+    if (toolConfig) {
+      const { description: _description, ...remainingConfig } = toolConfig;
+
+      if (remainingConfig.enabled === false) {
+        tools[toolName] = { enabled: false };
+      } else {
+        delete tools[toolName];
+      }
+    }
+
+    const result = await serverDao.updateTools(serverName, tools);
+
+    if (!result) {
+      res.status(500).json({
+        success: false,
+        message: 'Failed to save settings',
+      });
+      return;
+    }
+
+    notifyToolChanged();
+    syncToolEmbedding(serverName, toolName);
+
+    const defaultDescription =
+      getServerByName(serverName)?.tools.find((tool) => tool.name === toolName)?.description || '';
+
+    res.json({
+      success: true,
+      message: `Tool ${toolName} description reset successfully`,
+      data: {
+        description: defaultDescription,
+      },
     });
   } catch (error) {
     res.status(500).json({

@@ -1,4 +1,4 @@
-import { apiPost, apiPut } from '../utils/fetchInterceptor';
+import { apiDelete, apiPost, apiPut } from '../utils/fetchInterceptor';
 
 export interface ToolCallRequest {
   toolName: string;
@@ -115,6 +115,37 @@ export const updateToolDescription = async (
     };
   } catch (error) {
     console.error('Error updating tool description:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error occurred',
+    };
+  }
+};
+
+/**
+ * Reset a tool's description override for a specific server
+ */
+export const resetToolDescription = async (
+  serverName: string,
+  toolName: string,
+): Promise<{ success: boolean; error?: string; description?: string }> => {
+  try {
+    const response = await apiDelete<any>(
+      `/servers/${encodeURIComponent(serverName)}/tools/${encodeURIComponent(toolName)}/description`,
+      {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('mcphub_token')}`,
+        },
+      },
+    );
+
+    return {
+      success: response.success,
+      error: response.success ? undefined : response.message,
+      description: response.data?.description,
+    };
+  } catch (error) {
+    console.error('Error resetting tool description:', error);
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error occurred',

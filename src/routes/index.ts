@@ -13,6 +13,7 @@ import {
   reloadServer,
   toggleTool,
   updateToolDescription,
+  resetToolDescription,
   togglePrompt,
   updatePromptDescription,
   toggleResource,
@@ -193,6 +194,7 @@ export const initRoutes = async (app: express.Application): Promise<void> => {
   router.post('/servers/:name/reload', reloadServer);
   router.post('/servers/:serverName/tools/:toolName/toggle', toggleTool);
   router.put('/servers/:serverName/tools/:toolName/description', updateToolDescription);
+  router.delete('/servers/:serverName/tools/:toolName/description', resetToolDescription);
   router.post('/servers/:serverName/prompts/:promptName/toggle', togglePrompt);
   router.put('/servers/:serverName/prompts/:promptName/description', updatePromptDescription);
   router.post('/servers/:serverName/resources/:resourceUri/toggle', toggleResource);

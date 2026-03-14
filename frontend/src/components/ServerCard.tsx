@@ -223,6 +223,20 @@ const ServerCard = ({
     }
   };
 
+  const handleToolDescriptionUpdate = (
+    _toolName: string,
+    _description: string,
+    options?: { restored?: boolean },
+  ) => {
+    showToast(
+      options?.restored ? t('tool.restoreDefaultSuccess') : t('tool.descriptionUpdateSuccess'),
+      'success',
+    );
+    if (onRefresh) {
+      onRefresh();
+    }
+  };
+
   const handleOAuthAuthorization = (e: React.MouseEvent) => {
     e.stopPropagation();
     // Open the OAuth authorization URL in a new window
@@ -473,6 +487,7 @@ const ServerCard = ({
                       server={server.name}
                       tool={tool}
                       onToggle={handleToolToggle}
+                      onDescriptionUpdate={handleToolDescriptionUpdate}
                     />
                   ))}
                 </div>

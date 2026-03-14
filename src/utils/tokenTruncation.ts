@@ -65,6 +65,11 @@ function isBgeM3Model(model: string): boolean {
   return model.toLowerCase().includes('bge-m3');
 }
 
+function truncateWithHeuristic(text: string, maxTokens: number): string {
+  const maxChars = maxTokens * 3;
+  return text.length <= maxChars ? text : text.substring(0, maxChars);
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Branch 1 — OpenAI / Azure: BPE cl100k_base via gpt-tokenizer
 // ─────────────────────────────────────────────────────────────────────────────
@@ -155,18 +160,28 @@ async function truncateWithHFTokenizer(
   maxTokens: number,
   model: string,
 ): Promise<string> {
-  const modelId = getHFModelId(model);
-  const tokenizer = await getHFTokenizer(modelId);
-  // Tokenize without automatic truncation so we can apply the exact limit
-  const encoded = await tokenizer(text, { padding: false, truncation: false });
-  // input_ids.data is BigInt64Array or Int32Array depending on the model/environment
-  const rawIds: ArrayLike<number | bigint> = (encoded.input_ids as { data: ArrayLike<number | bigint> }).data;
-  const ids = Array.from(rawIds as ArrayLike<number>).map(Number);
-  if (ids.length <= maxTokens) {
-    return text;
+  try {
+    const modelId = getHFModelId(model);
+    const tokenizer = await getHFTokenizer(modelId);
+    // Tokenize without automatic truncation so we can apply the exact limit
+    const encoded = await tokenizer(text, { padding: false, truncation: false });
+    // input_ids.data is BigInt64Array or Int32Array depending on the model/environment
+    const rawIds: ArrayLike<number | bigint> = (encoded.input_ids as {
+      data: ArrayLike<number | bigint>;
+    }).data;
+    const ids = Array.from(rawIds as ArrayLike<number>).map(Number);
+    if (ids.length <= maxTokens) {
+      return text;
+    }
+    const truncatedIds = ids.slice(0, maxTokens);
+    return (await tokenizer.decode(truncatedIds, { skip_special_tokens: true })) as string;
+  } catch (error) {
+    console.warn(
+      `Failed to load or use HuggingFace tokenizer for model '${model}', falling back to heuristic truncation:`,
+      error,
+    );
+    return truncateWithHeuristic(text, maxTokens);
   }
-  const truncatedIds = ids.slice(0, maxTokens);
-  return (await tokenizer.decode(truncatedIds, { skip_special_tokens: true })) as string;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -202,8 +217,7 @@ async function truncateWithGeminiAPI(
   const finalApiKey = apiKey || '';
   if (!finalApiKey) {
     // No Google Gemini API key configured (OPENAI_API_KEY) — fall back to conservative heuristic
-    const maxChars = maxTokens * 3;
-    return text.length <= maxChars ? text : text.substring(0, maxChars);
+    return truncateWithHeuristic(text, maxTokens);
   }
 
   const { GoogleGenAI } = await import('@google/genai');
@@ -274,6 +288,5 @@ export async function truncateToTokenLimit(
   }
   // Fallback heuristic: ~3 chars per token (conservative for CJK/multilingual).
   // Ratio is safe for English (~4 chars/token) and CJK (~2 chars/token).
-  const maxChars = maxTokens * 3;
-  return text.length <= maxChars ? text : text.substring(0, maxChars);
+  return truncateWithHeuristic(text, maxTokens);
 }
