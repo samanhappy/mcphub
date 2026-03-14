@@ -232,8 +232,9 @@ export const handleOAuthCallback = async (req: Request, res: Response) => {
     if (serverInfo.oauth?.state && serverInfo.oauth.state !== stateParam) {
       console.warn('OAuth state mismatch detected', {
         serverName: serverInfo.name,
-        expectedState: serverInfo.oauth.state,
-        receivedState: stateParam,
+        // State values are considered sensitive and are not logged
+        expectedState: '<redacted>',
+        receivedState: '<redacted>',
       });
       // Note: We log a warning but don't fail the request since we have server name as primary identifier
     }
