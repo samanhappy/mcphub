@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { BearerKey } from '../types/index.js';
 import { JsonFileBaseDao } from './base/JsonFileBaseDao.js';
+import { safeCompare } from '../utils/safeCompare.js';
 
 /**
  * DAO interface for bearer authentication keys
@@ -86,7 +87,7 @@ export class BearerKeyDaoImpl extends JsonFileBaseDao implements BearerKeyDao {
 
   async findByToken(token: string): Promise<BearerKey | undefined> {
     const keys = await this.loadKeysWithMigration();
-    return keys.find((key) => key.token === token);
+    return keys.find((key) => safeCompare(key.token, token));
   }
 
   async create(data: Omit<BearerKey, 'id'>): Promise<BearerKey> {

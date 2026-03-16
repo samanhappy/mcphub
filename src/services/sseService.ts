@@ -11,6 +11,7 @@ import { UserContextService } from './userContextService.js';
 import { RequestContextService } from './requestContextService.js';
 import { IUser, BearerKey } from '../types/index.js';
 import { resolveOAuthUserFromToken } from '../utils/oauthBearer.js';
+import { safeCompare } from '../utils/safeCompare.js';
 
 export interface SessionContext {
   transport: Transport;
@@ -186,7 +187,7 @@ const validateBearerAuth = async (req: Request): Promise<BearerAuthResult> => {
       return { valid: true };
     }
 
-    const matchingKey = enabledKeys.find((key) => key.token === token);
+    const matchingKey = enabledKeys.find((key) => safeCompare(key.token, token));
     if (matchingKey) {
       const allowed = await isBearerKeyAllowedForRequest(req, matchingKey);
       if (allowed) {
@@ -233,7 +234,7 @@ const validateBearerAuth = async (req: Request): Promise<BearerAuthResult> => {
     return { valid: false, reason: 'invalid' };
   }
 
-  const matchingKey = enabledKeys.find((key) => key.token === token);
+  const matchingKey = enabledKeys.find((key) => safeCompare(key.token, token));
   if (matchingKey) {
     const allowed = await isBearerKeyAllowedForRequest(req, matchingKey);
     if (!allowed) {

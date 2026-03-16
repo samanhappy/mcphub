@@ -12,6 +12,7 @@ import {
   revokeToken,
 } from '../models/OAuth.js';
 import crypto from 'crypto';
+import { safeCompare } from '../utils/safeCompare.js';
 
 const { Request, Response } = OAuth2Server;
 
@@ -28,7 +29,7 @@ const oauthModel: OAuth2Server.AuthorizationCodeModel & OAuth2Server.RefreshToke
 
     // If client secret is provided, verify it
     if (clientSecret && client.clientSecret) {
-      if (client.clientSecret !== clientSecret) {
+      if (!safeCompare(client.clientSecret, clientSecret)) {
         return false;
       }
     }
@@ -206,7 +207,7 @@ const oauthModel: OAuth2Server.AuthorizationCodeModel & OAuth2Server.RefreshToke
    */
   getRefreshToken: async (refreshToken: string) => {
     const token = await getToken(refreshToken);
-    if (!token || token.refreshToken !== refreshToken) {
+    if (!token || !safeCompare(token.refreshToken, refreshToken)) {
       return false;
     }
 

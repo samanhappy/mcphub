@@ -2,6 +2,7 @@ import { isOAuthServerEnabled } from '../services/oauthServerService.js';
 import { getToken as getOAuthStoredToken } from '../models/OAuth.js';
 import { findUserByUsername } from '../models/User.js';
 import { IUser } from '../types/index.js';
+import { safeCompare } from './safeCompare.js';
 
 /**
  * Resolve an MCPHub user from a raw OAuth bearer token.
@@ -12,7 +13,7 @@ export const resolveOAuthUserFromToken = async (token?: string): Promise<IUser |
   }
 
   const oauthToken = await getOAuthStoredToken(token);
-  if (!oauthToken || oauthToken.accessToken !== token) {
+  if (!oauthToken || !safeCompare(oauthToken.accessToken, token)) {
     return null;
   }
 
