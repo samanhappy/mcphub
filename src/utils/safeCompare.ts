@@ -5,10 +5,15 @@ import { timingSafeEqual } from 'crypto';
  * Returns true if both strings are equal.
  */
 export function safeCompare(a: string, b: string): boolean {
-  if (a.length !== b.length) {
-    // Still do a comparison to avoid leaking length info via early return timing
-    timingSafeEqual(Buffer.from(a), Buffer.from(a));
-    return false;
-  }
-  return timingSafeEqual(Buffer.from(a), Buffer.from(b));
+  const bufA = Buffer.from(a);
+  const bufB = Buffer.from(b);
+
+  const areSameLength = bufA.length === bufB.length;
+  // If lengths differ, compare bufA with itself so timingSafeEqual always
+  // runs in time proportional to the secret's length, preventing length leakage.
+  const bufToCompare = areSameLength ? bufB : bufA;
+
+  const result = timingSafeEqual(bufA, bufToCompare);
+
+  return areSameLength && result;
 }
