@@ -11,8 +11,6 @@ const serializeError = (error: Error): Record<string, unknown> => {
   });
 
   serialized.name = serialized.name ?? error.name;
-  serialized.message = serialized.message ?? error.message;
-  serialized.stack = serialized.stack ?? error.stack;
 
   return serialized;
 };
