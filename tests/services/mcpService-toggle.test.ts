@@ -1,6 +1,27 @@
 // Mock dependencies before importing mcpService
 const mockRemoveServerToolEmbeddings = jest.fn().mockResolvedValue(undefined);
 const mockSaveToolsAsVectorEmbeddings = jest.fn().mockResolvedValue(undefined);
+const mockClientConnect = jest.fn().mockResolvedValue(undefined);
+const mockClientClose = jest.fn();
+const mockListTools = jest.fn().mockResolvedValue({ tools: [] });
+
+jest.mock('@modelcontextprotocol/sdk/client/index.js', () => ({
+  Client: jest.fn().mockImplementation(() => ({
+    connect: mockClientConnect,
+    close: mockClientClose,
+    getServerCapabilities: jest.fn(() => ({})),
+    listTools: mockListTools,
+  })),
+}));
+
+jest.mock('@modelcontextprotocol/sdk/client/stdio.js', () => ({
+  StdioClientTransport: jest.fn().mockImplementation(() => ({
+    close: jest.fn(),
+    stderr: {
+      on: jest.fn(),
+    },
+  })),
+}));
 
 jest.mock('../../src/services/oauthService.js', () => ({
   initializeAllOAuthClients: jest.fn(),
@@ -78,7 +99,7 @@ jest.mock('../../src/services/activityLoggingService.js', () => ({
 }));
 
 // Import after mocks
-import { toggleServerStatus } from '../../src/services/mcpService.js';
+import { summarizeServerConnections, toggleServerStatus } from '../../src/services/mcpService.js';
 
 describe('mcpService toggleServerStatus', () => {
   beforeEach(() => {
@@ -143,6 +164,35 @@ describe('mcpService toggleServerStatus', () => {
 
       expect(result.success).toBe(false);
       expect(result.message).toBe('Failed to toggle server status');
+    });
+  });
+});
+
+describe('mcpService summarizeServerConnections', () => {
+  it('excludes disabled servers from the health calculation', () => {
+    expect(
+      summarizeServerConnections([
+        { status: 'connected', enabled: true } as any,
+        { status: 'disconnected', enabled: false } as any,
+        { status: 'oauth_required', enabled: true } as any,
+      ]),
+    ).toEqual({
+      total: 2,
+      connected: 1,
+      disconnected: 1,
+    });
+  });
+
+  it('treats zero enabled servers as healthy by reporting zero disconnected servers', () => {
+    expect(
+      summarizeServerConnections([
+        { status: 'disconnected', enabled: false } as any,
+        { status: 'connecting', enabled: false } as any,
+      ]),
+    ).toEqual({
+      total: 0,
+      connected: 0,
+      disconnected: 0,
     });
   });
 });

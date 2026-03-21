@@ -305,6 +305,12 @@ const normalizeResourceForList = (resource: {
 // Store all server information
 let serverInfos: ServerInfo[] = [];
 
+export interface ServerConnectionStats {
+  total: number;
+  connected: number;
+  disconnected: number;
+}
+
 // Normalize and infer server type for safe client display
 const normalizeServerType = (
   type?: string,
@@ -340,11 +346,27 @@ const inferServerType = (
   return undefined;
 };
 
+export const summarizeServerConnections = (
+  infos: Pick<ServerInfo, 'status' | 'enabled'>[],
+): ServerConnectionStats => {
+  const enabledServers = infos.filter((serverInfo) => serverInfo.enabled !== false);
+  const connectedServers = enabledServers.filter((serverInfo) => serverInfo.status === 'connected');
+
+  return {
+    total: enabledServers.length,
+    connected: connectedServers.length,
+    disconnected: enabledServers.length - connectedServers.length,
+  };
+};
+
+export const getServerConnectionStats = (): ServerConnectionStats => {
+  return summarizeServerConnections(serverInfos);
+};
+
 // Returns true if all enabled servers are connected
 export const connected = (): boolean => {
-  return serverInfos
-    .filter((serverInfo) => serverInfo.enabled !== false)
-    .every((serverInfo) => serverInfo.status === 'connected');
+  const { total, connected: connectedServers } = getServerConnectionStats();
+  return total === connectedServers;
 };
 
 // Global cleanup function to close all connections
