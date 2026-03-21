@@ -150,4 +150,21 @@ describe('healthController', () => {
       }),
     );
   });
+
+  it('returns unhealthy on internal error', () => {
+    mockGetServerConnectionStats.mockImplementation(() => {
+      throw new Error('Internal test error');
+    });
+
+    healthCheck(mockRequest as Request, mockResponse as Response);
+
+    expect(mockStatus).toHaveBeenCalledWith(503);
+    expect(mockJson).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: 'unhealthy',
+        message: 'Internal server error during health check',
+        timestamp: expect.any(String),
+      }),
+    );
+  });
 });
