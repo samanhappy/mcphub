@@ -19,6 +19,7 @@ import { findPackageRoot } from './utils/path.js';
 import { getCurrentModuleDir } from './utils/moduleDir.js';
 import { initOAuthProvider, getOAuthRouter } from './services/oauthService.js';
 import { initOAuthServer } from './services/oauthServerService.js';
+import { safeStringify } from './utils/serialization.js';
 import http from 'http';
 
 /**
@@ -137,7 +138,7 @@ export class AppServer {
           );
         })
         .catch((error) => {
-          console.error('Error initializing MCP server', JSON.stringify({ error }));
+          console.error('Error initializing MCP server', safeStringify({ error }));
           throw error;
         })
         .finally(() => {
@@ -145,7 +146,7 @@ export class AppServer {
           this.findAndServeFrontend();
         });
     } catch (error) {
-      console.error('Error initializing server', JSON.stringify({ error }));
+      console.error('Error initializing server', safeStringify({ error }));
       throw error;
     }
   }
@@ -217,7 +218,7 @@ export class AppServer {
       cleanupAllServers();
       console.log('[SHUTDOWN] MCP clients closed');
     } catch (error) {
-      console.error('[SHUTDOWN] Error closing MCP clients', JSON.stringify({ error }));
+      console.error('[SHUTDOWN] Error closing MCP clients', safeStringify({ error }));
     }
 
     // Close database connection if in database mode
@@ -229,7 +230,7 @@ export class AppServer {
         await closeDatabase();
         console.log('[SHUTDOWN] Database connection closed');
       } catch (error) {
-        console.error('[SHUTDOWN] Error closing database', JSON.stringify({ error }));
+        console.error('[SHUTDOWN] Error closing database', safeStringify({ error }));
       }
     }
 

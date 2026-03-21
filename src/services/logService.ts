@@ -2,6 +2,7 @@
 import { EventEmitter } from 'events';
 import * as os from 'os';
 import * as process from 'process';
+import { safeStringify } from '../utils/serialization.js';
 
 interface LogEntry {
   timestamp: number;
@@ -141,7 +142,7 @@ class LogService {
         return { text: arg.stack ?? `${arg.name}: ${arg.message}` };
       }
       try {
-        return { text: JSON.stringify(arg, null, 2) };
+        return { text: safeStringify(arg, 2) };
       } catch (e) {
         return { text: String(arg) };
       }

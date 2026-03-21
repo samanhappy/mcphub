@@ -1,5 +1,6 @@
 import { getActivityDao, isActivityLoggingEnabled } from '../dao/DaoFactory.js';
 import { IActivity, ActivityStatus } from '../types/index.js';
+import { safeStringify as safeJsonStringify } from '../utils/serialization.js';
 
 /**
  * Service for logging tool call activities
@@ -78,7 +79,7 @@ export class ActivityLoggingService {
   private safeStringify(obj: any): string {
     try {
       // Limit the size of the stringified data
-      const str = JSON.stringify(obj, this.getCircularReplacer(), 2);
+      const str = safeJsonStringify(obj, 2);
       // Limit to 100KB
       if (str.length > 100000) {
         return JSON.stringify({
@@ -94,22 +95,6 @@ export class ActivityLoggingService {
         _type: typeof obj,
       });
     }
-  }
-
-  /**
-   * Create a replacer function that handles circular references
-   */
-  private getCircularReplacer(): (key: string, value: any) => any {
-    const seen = new WeakSet();
-    return (key: string, value: any) => {
-      if (typeof value === 'object' && value !== null) {
-        if (seen.has(value)) {
-          return '[Circular]';
-        }
-        seen.add(value);
-      }
-      return value;
-    };
   }
 }
 

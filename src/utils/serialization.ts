@@ -3,6 +3,40 @@
  * Handles circular references and provides type-safe serialization
  */
 
+const serializeError = (error: Error): Record<string, unknown> => {
+  const serialized: Record<string, unknown> = {};
+
+  Object.getOwnPropertyNames(error).forEach((propertyName) => {
+    serialized[propertyName] = Reflect.get(error, propertyName) as unknown;
+  });
+
+  serialized.name = serialized.name ?? error.name;
+  serialized.message = serialized.message ?? error.message;
+  serialized.stack = serialized.stack ?? error.stack;
+
+  return serialized;
+};
+
+const createSafeJsonReplacer = () => {
+  const seen = new WeakSet<object>();
+
+  return (_key: string, value: unknown): unknown => {
+    if (typeof value === 'object' && value !== null) {
+      if (seen.has(value)) {
+        return '[Circular Reference]';
+      }
+
+      seen.add(value);
+
+      if (value instanceof Error) {
+        return serializeError(value);
+      }
+    }
+
+    return value;
+  };
+};
+
 /**
  * Creates a JSON-safe copy of an object by removing circular references
  * Uses a replacer function with WeakSet to efficiently track visited objects
@@ -11,19 +45,7 @@
  * @returns A new object that can be safely serialized to JSON
  */
 export const createSafeJSON = <T>(obj: T): T => {
-  const seen = new WeakSet();
-
-  return JSON.parse(
-    JSON.stringify(obj, (key, value) => {
-      if (typeof value === 'object' && value !== null) {
-        if (seen.has(value)) {
-          return '[Circular Reference]';
-        }
-        seen.add(value);
-      }
-      return value;
-    }),
-  );
+  return JSON.parse(JSON.stringify(obj, createSafeJsonReplacer()));
 };
 
 /**
@@ -35,21 +57,7 @@ export const createSafeJSON = <T>(obj: T): T => {
  * @returns JSON string representation of the object
  */
 export const safeStringify = (obj: any, space?: number): string => {
-  const seen = new WeakSet();
-
-  return JSON.stringify(
-    obj,
-    (key, value) => {
-      if (typeof value === 'object' && value !== null) {
-        if (seen.has(value)) {
-          return '[Circular Reference]';
-        }
-        seen.add(value);
-      }
-      return value;
-    },
-    space,
-  );
+  return JSON.stringify(obj, createSafeJsonReplacer(), space);
 };
 
 /**
