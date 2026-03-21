@@ -601,9 +601,9 @@ export const saveToolsAsVectorEmbeddings = async (
       );
     }
 
-    console.log('Saved tool embeddings', { serverName, toolCount: tools.length });
+    console.log('Saved tool embeddings', JSON.stringify({ serverName, toolCount: tools.length }));
   } catch (error) {
-    console.error('Error saving tool embeddings', { serverName, error });
+    console.error('Error saving tool embeddings', JSON.stringify({ serverName, error }));
   }
 };
 
@@ -679,7 +679,7 @@ export const searchToolsByVector = async (
             };
           }
         } catch (error) {
-          console.error('Error parsing vector embedding metadata string', { error });
+          console.error('Error parsing vector embedding metadata string', JSON.stringify({ error }));
           // Fall through to the extraction logic below
         }
       }
@@ -708,7 +708,7 @@ export const searchToolsByVector = async (
       };
     });
   } catch (error) {
-    console.error('Error searching tools by vector', { query, limit, threshold, error });
+    console.error('Error searching tools by vector', JSON.stringify({ query, limit, threshold, error }));
     return [];
   }
 };
@@ -797,7 +797,7 @@ export const getAllVectorizedTools = async (
             inputSchema: parsedMetadata.inputSchema,
           };
         } catch (error) {
-          console.error('Error parsing vector embedding metadata string', { error });
+          console.error('Error parsing vector embedding metadata string', JSON.stringify({ error }));
           return {
             serverName: 'unknown',
             toolName: 'unknown',
@@ -814,7 +814,7 @@ export const getAllVectorizedTools = async (
       };
     });
   } catch (error) {
-    console.error('Error getting all vectorized tools', { error, serverNames });
+    console.error('Error getting all vectorized tools', JSON.stringify({ error, serverNames }));
     return [];
   }
 };
@@ -844,9 +844,9 @@ export const removeServerToolEmbeddings = async (serverName: string): Promise<vo
     )() as VectorEmbeddingRepository;
 
     const removedCount = await vectorRepository.deleteByServerName(serverName);
-    console.log('Removed tool embeddings', { serverName, removedCount });
+    console.log('Removed tool embeddings', JSON.stringify({ serverName, removedCount }));
   } catch (error) {
-    console.error('Error removing tool embeddings', { serverName, error });
+    console.error('Error removing tool embeddings', JSON.stringify({ serverName, error }));
   }
 };
 
@@ -876,13 +876,13 @@ export const syncAllServerToolsEmbeddings = async (): Promise<void> => {
           totalToolsSynced += server.tools.length;
           serversSynced++;
         } catch (error) {
-          console.error('Failed to sync tool embeddings for server', {
+          console.error('Failed to sync tool embeddings for server', JSON.stringify({
             serverName: server.name,
             error,
-          });
+          }));
         }
       } else if (server.status === 'connected' && (!server.tools || server.tools.length === 0)) {
-        console.log('Connected server has no tools to sync', { serverName: server.name });
+        console.log('Connected server has no tools to sync', JSON.stringify({ serverName: server.name }));
       } else {
         console.log('Skipping server during tool embedding sync', {
           serverName: server.name,

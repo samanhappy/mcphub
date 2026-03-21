@@ -137,7 +137,7 @@ export class AppServer {
           );
         })
         .catch((error) => {
-          console.error('Error initializing MCP server', { error });
+          console.error('Error initializing MCP server', JSON.stringify({ error }));
           throw error;
         })
         .finally(() => {
@@ -145,7 +145,7 @@ export class AppServer {
           this.findAndServeFrontend();
         });
     } catch (error) {
-      console.error('Error initializing server', { error });
+      console.error('Error initializing server', JSON.stringify({ error }));
       throw error;
     }
   }
@@ -155,7 +155,7 @@ export class AppServer {
     this.frontendPath = this.findFrontendDistPath();
 
     if (this.frontendPath) {
-      console.log('Serving frontend', { frontendPath: this.frontendPath });
+      console.log('Serving frontend', JSON.stringify({ frontendPath: this.frontendPath }));
       // Serve static files with base path
       this.app.use(this.basePath, express.static(this.frontendPath));
 
@@ -217,7 +217,7 @@ export class AppServer {
       cleanupAllServers();
       console.log('[SHUTDOWN] MCP clients closed');
     } catch (error) {
-      console.error('[SHUTDOWN] Error closing MCP clients', { error });
+      console.error('[SHUTDOWN] Error closing MCP clients', JSON.stringify({ error }));
     }
 
     // Close database connection if in database mode
@@ -229,7 +229,7 @@ export class AppServer {
         await closeDatabase();
         console.log('[SHUTDOWN] Database connection closed');
       } catch (error) {
-        console.error('[SHUTDOWN] Error closing database', { error });
+        console.error('[SHUTDOWN] Error closing database', JSON.stringify({ error }));
       }
     }
 
