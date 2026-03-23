@@ -186,14 +186,17 @@ export const getAuthorize = async (req: Request, res: Response): Promise<void> =
     const client_id = validateQueryParam(req.query.client_id, 'client_id', /^[a-zA-Z0-9_-]+$/);
     const redirect_uri = validateQueryParam(req.query.redirect_uri, 'redirect_uri');
     const response_type = validateQueryParam(req.query.response_type, 'response_type', /^code$/);
+    // RFC 6749 §3.3: scope tokens are printable ASCII (!#-[]-~) excluding " and \, space-delimited
     const scope = req.query.scope
-      ? validateQueryParam(req.query.scope, 'scope', /^[a-zA-Z0-9_ ]+$/)
+      ? validateQueryParam(req.query.scope, 'scope', /^[\x21\x23-\x5B\x5D-\x7E ]+$/)
       : undefined;
+    // State is an opaque string; allow all printable ASCII (space through ~)
     const state = req.query.state
-      ? validateQueryParam(req.query.state, 'state', /^[a-zA-Z0-9_-]+$/)
+      ? validateQueryParam(req.query.state, 'state', /^[\x20-\x7E]+$/)
       : undefined;
+    // RFC 7636: code_challenge is base64url-encoded, may include = padding
     const code_challenge = req.query.code_challenge
-      ? validateQueryParam(req.query.code_challenge, 'code_challenge', /^[a-zA-Z0-9_-]+$/)
+      ? validateQueryParam(req.query.code_challenge, 'code_challenge', /^[a-zA-Z0-9_\-=]+$/)
       : undefined;
     const code_challenge_method = req.query.code_challenge_method
       ? validateQueryParam(
