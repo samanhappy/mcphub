@@ -49,6 +49,7 @@ export class AppServer {
 
   constructor() {
     this.app = express();
+    this.app.set('trust proxy', true);
     this.app.use(
       cors({
         origin: true,
