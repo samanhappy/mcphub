@@ -103,11 +103,12 @@ export const initializeDefaultUser = async (): Promise<void> => {
   const users = await userDao.findAll();
 
   if (users.length === 0) {
-    const password = process.env.ADMIN_PASSWORD || generateRandomPassword();
+    const adminPasswordFromEnv = process.env.ADMIN_PASSWORD;
+    const password = adminPasswordFromEnv || generateRandomPassword();
     await userDao.createWithHashedPassword('admin', password, true);
     console.log('Default admin user created');
 
-    if (!process.env.ADMIN_PASSWORD) {
+    if (!adminPasswordFromEnv) {
       console.log('========================================');
       console.log('  Generated admin password: ' + password);
       console.log('  Please change this password after first login.');
