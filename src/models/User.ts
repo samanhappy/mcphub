@@ -1,4 +1,5 @@
 import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
 import { IUser } from '../types/index.js';
 import { getUserDao } from '../dao/index.js';
 
@@ -88,13 +89,29 @@ export const updateUserPassword = async (
   }
 };
 
+/**
+ * Generate a cryptographically random password.
+ * The result is a 24-character base64url string (≈ 144 bits of entropy).
+ */
+const generateRandomPassword = (): string => {
+  return crypto.randomBytes(18).toString('base64url');
+};
+
 // Initialize with default admin user if no users exist
 export const initializeDefaultUser = async (): Promise<void> => {
   const userDao = getUserDao();
   const users = await userDao.findAll();
 
   if (users.length === 0) {
-    await userDao.createWithHashedPassword('admin', 'admin123', true);
+    const password = process.env.ADMIN_PASSWORD || generateRandomPassword();
+    await userDao.createWithHashedPassword('admin', password, true);
     console.log('Default admin user created');
+
+    if (!process.env.ADMIN_PASSWORD) {
+      console.log('========================================');
+      console.log('  Generated admin password: ' + password);
+      console.log('  Please change this password after first login.');
+      console.log('========================================');
+    }
   }
 };
