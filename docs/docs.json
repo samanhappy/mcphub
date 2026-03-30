@@ -156,13 +156,13 @@
     "links": [
       {
         "label": "Demo",
-        "href": "https://demo.mcphubx.com"
+        "href": "https://demo.mcphub.app"
       }
     ],
     "primary": {
       "type": "button",
       "label": "Get Started",
-      "href": "https://docs.mcphubx.com/quickstart"
+      "href": "https://docs.mcphub.app/quickstart"
     }
   },
   "footer": {

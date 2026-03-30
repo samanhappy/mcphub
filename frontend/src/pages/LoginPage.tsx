@@ -201,7 +201,7 @@ const LoginPage: React.FC = () => {
       {/* Top-right controls */}
       <div className="absolute top-4 right-4 z-20 flex items-center gap-2">
         <a
-          href="https://docs.mcphubx.com"
+          href="https://docs.mcphub.app"
           target="_blank"
           rel="noopener noreferrer"
           className="rounded-md p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-200"

@@ -1087,7 +1087,7 @@ export const updateSystemConfig = async (req: Request, res: Response): Promise<v
         },
         mcpRouter: {
           apiKey: '',
-          referer: 'https://www.mcphubx.com',
+          referer: 'https://www.mcphub.app',
           title: 'MCPHub',
           baseUrl: 'https://api.mcprouter.to/v1',
         },
@@ -1132,7 +1132,7 @@ export const updateSystemConfig = async (req: Request, res: Response): Promise<v
     if (!systemConfig.mcpRouter) {
       systemConfig.mcpRouter = {
         apiKey: '',
-        referer: 'https://www.mcphubx.com',
+        referer: 'https://www.mcphub.app',
         title: 'MCPHub',
         baseUrl: 'https://api.mcprouter.to/v1',
       };
