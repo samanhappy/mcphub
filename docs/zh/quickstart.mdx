@@ -68,12 +68,16 @@ http://localhost:3000
 
 ### 2. 登录
 
-使用默认凭据：
+默认用户名为 `admin`。首次启动时，如果未设置 `ADMIN_PASSWORD` 环境变量，系统将自动生成随机密码并输出到服务器日志中。
 
-- **用户名**: `admin`
-- **密码**: `admin123`
+可以通过环境变量预先设置管理员密码：
 
-<Warning>为了安全起见，请在首次登录后立即更改这些默认凭据。</Warning>
+```bash
+# 通过环境变量设置管理员密码
+ADMIN_PASSWORD=your-secure-password docker run -p 3000:3000 samanhappy/mcphub
+```
+
+<Warning>首次登录后请及时修改管理员密码以确保安全。</Warning>
 
 ### 3. 配置您的第一个 MCP 服务器
 

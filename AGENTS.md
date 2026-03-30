@@ -225,7 +225,7 @@ pnpm audit                  # Check for vulnerabilities
 - **Endpoints**: `/mcp/{group|server}` and `/mcp/$smart` for routing
 - **i18n**: Frontend uses react-i18next with files in `locales/` folder
 - **Authentication**: JWT tokens with bcrypt password hashing
-- **Default credentials**: admin/admin123 (configured in mcp_settings.json)
+- **Default credentials**: admin user with random password (or set via ADMIN_PASSWORD env var)
 
 ## Development Entry Points
 

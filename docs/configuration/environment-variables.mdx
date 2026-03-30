@@ -31,6 +31,16 @@ NODE_ENV=production
 
 ## Authentication & Security
 
+### Admin Password
+
+| Variable | Default | Description |
+| --- | --- | --- |
+| `ADMIN_PASSWORD` | *(random)* | Password for the default `admin` user. If not set, a cryptographically random 24-character password is generated on first launch and printed to the server logs. |
+
+```env
+ADMIN_PASSWORD=your-secure-admin-password
+```
+
 ### JWT Configuration
 
 | Variable | Default | Description |

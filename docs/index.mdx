@@ -41,10 +41,7 @@ Or with custom configuration:
 docker run -p 3000:3000 -v $(pwd)/mcp_settings.json:/app/mcp_settings.json samanhappy/mcphub
 ```
 
-Access the dashboard at `http://localhost:3000` with default credentials:
-
-- Username: `admin`
-- Password: `admin123`
+Access the dashboard at `http://localhost:3000` with username `admin`. On first launch, a random password is generated and printed to the server logs. Set `ADMIN_PASSWORD` env var to use a custom password.
 
 ## Core Concepts
 

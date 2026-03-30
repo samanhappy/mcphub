@@ -57,7 +57,14 @@ docker run -p 3000:3000 samanhappy/mcphub
 
 ### 访问控制台
 
-打开 `http://localhost:3000`，使用默认账号登录：`admin` / `admin123`
+打开 `http://localhost:3000`，使用用户名 `admin` 登录。首次启动时，如果未设置 `ADMIN_PASSWORD` 环境变量，系统将自动生成随机密码并输出到服务器日志中。也可以预先设置密码：
+
+```bash
+# Docker：通过环境变量设置管理员密码
+docker run -p 3000:3000 -e ADMIN_PASSWORD=your-secure-password samanhappy/mcphub
+```
+
+> **提示：** 首次登录后请及时修改管理员密码以确保安全。
 
 ### 连接 AI 客户端
 

@@ -68,12 +68,16 @@ http://localhost:3000
 
 ### 2. Login
 
-Use the default credentials:
+The default username is `admin`. On first launch, if no `ADMIN_PASSWORD` environment variable is set, a random password is generated and printed to the server logs.
 
-- **Username**: `admin`
-- **Password**: `admin123`
+To pre-set the admin password:
 
-<Warning>Change these default credentials immediately after first login for security.</Warning>
+```bash
+# Via environment variable
+ADMIN_PASSWORD=your-secure-password docker run -p 3000:3000 samanhappy/mcphub
+```
+
+<Warning>Change the admin password after first login for security.</Warning>
 
 ### 3. Configure Your First MCP Server
 

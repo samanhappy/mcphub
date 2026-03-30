@@ -57,7 +57,14 @@ docker run -p 3000:3000 samanhappy/mcphub
 
 ### Access Dashboard
 
-Open `http://localhost:3000` and log in with default credentials: `admin` / `admin123`
+Open `http://localhost:3000` and log in with username `admin`. On first launch, if no `ADMIN_PASSWORD` environment variable is set, a random password is generated and printed to the server logs. You can also pre-set the password:
+
+```bash
+# Docker: set admin password via environment variable
+docker run -p 3000:3000 -e ADMIN_PASSWORD=your-secure-password samanhappy/mcphub
+```
+
+> **Tip:** Change the admin password after first login for security.
 
 ### Connect AI Clients
 

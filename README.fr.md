@@ -57,7 +57,14 @@ docker run -p 3000:3000 samanhappy/mcphub
 
 ### Accéder au tableau de bord
 
-Ouvrez `http://localhost:3000` et connectez-vous avec les identifiants par défaut : `admin` / `admin123`
+Ouvrez `http://localhost:3000` et connectez-vous avec le nom d'utilisateur `admin`. Au premier lancement, si la variable d'environnement `ADMIN_PASSWORD` n'est pas définie, un mot de passe aléatoire est généré et affiché dans les logs du serveur. Vous pouvez également prédéfinir le mot de passe :
+
+```bash
+# Docker : définir le mot de passe admin via une variable d'environnement
+docker run -p 3000:3000 -e ADMIN_PASSWORD=your-secure-password samanhappy/mcphub
+```
+
+> **Conseil :** Changez le mot de passe admin après la première connexion pour plus de sécurité.
 
 ### Connecter les clients IA
 
