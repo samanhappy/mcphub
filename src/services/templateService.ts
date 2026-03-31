@@ -1,0 +1,335 @@
+import {
+  ConfigTemplate,
+  TemplateServerConfig,
+  TemplateGroup,
+  TemplateExportOptions,
+  TemplateImportResult,
+  TemplateImportDetail,
+  IGroupServerConfig,
+  ServerConfig,
+} from '../types/index.js';
+import { getServerDao, getGroupDao } from '../dao/index.js';
+import { createGroup } from './groupService.js';
+import { addServer } from './mcpService.js';
+
+const TEMPLATE_VERSION = '1.0';
+
+// Env var placeholder pattern: ${VAR_NAME}
+const ENV_PLACEHOLDER_RE = /^\$\{[A-Za-z_][A-Za-z0-9_]*\}$/;
+
+// Fields that commonly contain secrets and should be replaced with placeholders
+const SECRET_ENV_KEYS = new Set([
+  'api_key', 'apikey', 'secret', 'token', 'password', 'passwd',
+  'access_key', 'secret_key', 'private_key', 'auth',
+]);
+
+function isSecretKey(key: string): boolean {
+  const lower = key.toLowerCase();
+  return SECRET_ENV_KEYS.has(lower) ||
+    lower.includes('secret') ||
+    lower.includes('token') ||
+    lower.includes('password') ||
+    lower.includes('api_key') ||
+    lower.includes('apikey') ||
+    lower.includes('auth_key');
+}
+
+/**
+ * Strip secrets from a server config's env vars.
+ * Values that are already ${PLACEHOLDER} are kept as-is.
+ * Values for keys that look like secrets are replaced with ${KEY_NAME}.
+ */
+function stripEnvSecrets(env: Record<string, string>): {
+  sanitized: Record<string, string>;
+  placeholders: string[];
+} {
+  const sanitized: Record<string, string> = {};
+  const placeholders: string[] = [];
+
+  for (const [key, value] of Object.entries(env)) {
+    if (ENV_PLACEHOLDER_RE.test(value)) {
+      // Already a placeholder — keep as-is
+      sanitized[key] = value;
+      const match = value.match(/^\$\{(.+)\}$/);
+      if (match) placeholders.push(match[1]);
+    } else if (isSecretKey(key)) {
+      // Replace with placeholder
+      sanitized[key] = `\${${key}}`;
+      placeholders.push(key);
+    } else {
+      sanitized[key] = value;
+    }
+  }
+
+  return { sanitized, placeholders };
+}
+
+/**
+ * Strip secrets from header values.
+ */
+function stripHeaderSecrets(headers: Record<string, string>): {
+  sanitized: Record<string, string>;
+  placeholders: string[];
+} {
+  const sanitized: Record<string, string> = {};
+  const placeholders: string[] = [];
+
+  for (const [key, value] of Object.entries(headers)) {
+    const lower = key.toLowerCase();
+    if (lower === 'authorization' || lower.includes('token') || lower.includes('auth')) {
+      const placeholder = key.toUpperCase().replace(/-/g, '_');
+      sanitized[key] = `\${${placeholder}}`;
+      placeholders.push(placeholder);
+    } else if (ENV_PLACEHOLDER_RE.test(value)) {
+      sanitized[key] = value;
+      const match = value.match(/^\$\{(.+)\}$/);
+      if (match) placeholders.push(match[1]);
+    } else {
+      sanitized[key] = value;
+    }
+  }
+
+  return { sanitized, placeholders };
+}
+
+/**
+ * Convert a full ServerConfig to a TemplateServerConfig with secrets stripped.
+ */
+function serverConfigToTemplate(config: ServerConfig): {
+  templateConfig: TemplateServerConfig;
+  envVars: string[];
+} {
+  const envVars: string[] = [];
+  const templateConfig: TemplateServerConfig = {};
+
+  if (config.type) templateConfig.type = config.type;
+  if (config.description) templateConfig.description = config.description;
+  if (config.url) templateConfig.url = config.url;
+  if (config.command) templateConfig.command = config.command;
+  if (config.args) templateConfig.args = [...config.args];
+  if (config.passthroughHeaders) templateConfig.passthroughHeaders = [...config.passthroughHeaders];
+  if (config.enabled !== undefined) templateConfig.enabled = config.enabled;
+
+  if (config.env) {
+    const { sanitized, placeholders } = stripEnvSecrets(config.env);
+    templateConfig.env = sanitized;
+    envVars.push(...placeholders);
+  }
+
+  if (config.headers) {
+    const { sanitized, placeholders } = stripHeaderSecrets(config.headers);
+    templateConfig.headers = sanitized;
+    envVars.push(...placeholders);
+  }
+
+  if (config.tools) templateConfig.tools = { ...config.tools };
+  if (config.prompts) templateConfig.prompts = { ...config.prompts };
+  if (config.resources) templateConfig.resources = { ...config.resources };
+  if (config.options) templateConfig.options = { ...config.options };
+
+  if (config.openapi) {
+    templateConfig.openapi = {};
+    if (config.openapi.url) templateConfig.openapi.url = config.openapi.url;
+    if (config.openapi.version) templateConfig.openapi.version = config.openapi.version;
+    // Intentionally omit schema (too large) and security (contains secrets)
+  }
+
+  return { templateConfig, envVars };
+}
+
+/**
+ * Export configuration as a shareable template.
+ */
+export async function exportTemplate(options: TemplateExportOptions): Promise<ConfigTemplate> {
+  const serverDao = getServerDao();
+  const groupDao = getGroupDao();
+
+  const allServers = await serverDao.findAll();
+  const allGroups = await groupDao.findAll();
+
+  // Determine which groups to include
+  const selectedGroups = options.groupIds?.length
+    ? allGroups.filter((g) => options.groupIds!.includes(g.id))
+    : allGroups;
+
+  // Collect server names referenced by selected groups
+  const referencedServerNames = new Set<string>();
+  const templateGroups: TemplateGroup[] = [];
+
+  for (const group of selectedGroups) {
+    const normalizedServers: IGroupServerConfig[] = group.servers.map((s) =>
+      typeof s === 'string' ? { name: s, tools: 'all' as const } : { name: s.name, tools: s.tools || 'all' },
+    );
+
+    for (const sc of normalizedServers) {
+      referencedServerNames.add(sc.name);
+    }
+
+    templateGroups.push({
+      name: group.name,
+      description: group.description,
+      servers: normalizedServers,
+    });
+  }
+
+  // Build server configs for template
+  const templateServers: Record<string, TemplateServerConfig> = {};
+  const allEnvVars: string[] = [];
+
+  for (const server of allServers) {
+    if (!referencedServerNames.has(server.name)) continue;
+    if (!options.includeDisabledServers && server.enabled === false) continue;
+
+    const { templateConfig, envVars } = serverConfigToTemplate(server);
+    templateServers[server.name] = templateConfig;
+    allEnvVars.push(...envVars);
+  }
+
+  // De-duplicate env vars
+  const requiredEnvVars = [...new Set(allEnvVars)].sort();
+
+  return {
+    version: TEMPLATE_VERSION,
+    name: options.name,
+    description: options.description,
+    createdAt: new Date().toISOString(),
+    servers: templateServers,
+    groups: templateGroups,
+    requiredEnvVars,
+  };
+}
+
+/**
+ * Export a single group as a template.
+ */
+export async function exportGroupTemplate(
+  groupId: string,
+  name?: string,
+): Promise<ConfigTemplate | null> {
+  const groupDao = getGroupDao();
+  const group = await groupDao.findById(groupId);
+  if (!group) return null;
+
+  return exportTemplate({
+    name: name || `${group.name} Template`,
+    description: `Template exported from group "${group.name}"`,
+    groupIds: [groupId],
+    includeDisabledServers: false,
+  });
+}
+
+/**
+ * Validate a template structure before import.
+ */
+function validateTemplate(data: unknown): data is ConfigTemplate {
+  if (!data || typeof data !== 'object') return false;
+  const t = data as Record<string, unknown>;
+  if (typeof t.version !== 'string') return false;
+  if (typeof t.name !== 'string') return false;
+  if (!t.servers || typeof t.servers !== 'object') return false;
+  if (!Array.isArray(t.groups)) return false;
+  return true;
+}
+
+/**
+ * Import a configuration template.
+ * Creates servers and groups that don't already exist.
+ */
+export async function importTemplate(
+  template: unknown,
+  owner?: string,
+): Promise<TemplateImportResult> {
+  if (!validateTemplate(template)) {
+    return {
+      success: false,
+      serversCreated: 0,
+      serversSkipped: 0,
+      groupsCreated: 0,
+      groupsSkipped: 0,
+      requiredEnvVars: [],
+      details: [{ type: 'server', name: '', action: 'failed', message: 'Invalid template format' }],
+    };
+  }
+
+  const serverDao = getServerDao();
+  const groupDao = getGroupDao();
+
+  const existingServers = await serverDao.findAll();
+  const existingServerNames = new Set(existingServers.map((s) => s.name));
+
+  const details: TemplateImportDetail[] = [];
+  let serversCreated = 0;
+  let serversSkipped = 0;
+
+  // Import servers
+  for (const [name, config] of Object.entries(template.servers)) {
+    if (existingServerNames.has(name)) {
+      details.push({ type: 'server', name, action: 'skipped', message: 'Server already exists' });
+      serversSkipped++;
+      continue;
+    }
+
+    try {
+      const serverConfig: ServerConfig = {
+        ...config,
+        enabled: config.enabled ?? true,
+        owner: owner || 'admin',
+      };
+      await addServer(name, serverConfig);
+      details.push({ type: 'server', name, action: 'created' });
+      serversCreated++;
+    } catch (error) {
+      details.push({
+        type: 'server',
+        name,
+        action: 'failed',
+        message: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  }
+
+  // Import groups
+  let groupsCreated = 0;
+  let groupsSkipped = 0;
+
+  for (const groupDef of template.groups) {
+    const existingGroup = await groupDao.findByName(groupDef.name);
+    if (existingGroup) {
+      details.push({ type: 'group', name: groupDef.name, action: 'skipped', message: 'Group already exists' });
+      groupsSkipped++;
+      continue;
+    }
+
+    try {
+      const result = await createGroup(
+        groupDef.name,
+        groupDef.description,
+        groupDef.servers,
+        owner || 'admin',
+      );
+      if (result) {
+        details.push({ type: 'group', name: groupDef.name, action: 'created' });
+        groupsCreated++;
+      } else {
+        details.push({ type: 'group', name: groupDef.name, action: 'failed', message: 'Failed to create group' });
+      }
+    } catch (error) {
+      details.push({
+        type: 'group',
+        name: groupDef.name,
+        action: 'failed',
+        message: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  }
+
+  return {
+    success: serversCreated > 0 || groupsCreated > 0,
+    serversCreated,
+    serversSkipped,
+    groupsCreated,
+    groupsSkipped,
+    requiredEnvVars: template.requiredEnvVars || [],
+    details,
+  };
+}

@@ -141,6 +141,11 @@ import {
   getActivityFilterOptions,
   deleteOldActivities,
 } from '../controllers/activityController.js';
+import {
+  exportConfigTemplate,
+  exportGroupAsTemplate,
+  importConfigTemplate,
+} from '../controllers/templateController.js';
 import { auth } from '../middlewares/auth.js';
 import { getBetterAuthRuntimeConfig } from '../services/betterAuthConfig.js';
 
@@ -261,6 +266,11 @@ export const initRoutes = async (app: express.Application): Promise<void> => {
   router.get('/activities/filters', getActivityFilterOptions);
   router.get('/activities/:id', getActivityById);
   router.delete('/activities/cleanup', deleteOldActivities);
+
+  // Configuration template routes
+  router.post('/templates/export', exportConfigTemplate);
+  router.get('/templates/export/groups/:id', exportGroupAsTemplate);
+  router.post('/templates/import', importConfigTemplate);
 
   // Tool management routes
   router.post('/tools/call/:server', callTool);

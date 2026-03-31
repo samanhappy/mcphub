@@ -585,3 +585,69 @@ export interface IActivityFilter {
   startDate?: Date;
   endDate?: Date;
 }
+
+// Configuration template for team sharing
+export interface ConfigTemplate {
+  version: string; // Template format version
+  name: string; // Template name
+  description?: string; // Template description
+  createdAt: string; // ISO date string
+  servers: Record<string, TemplateServerConfig>; // Server definitions with secrets stripped
+  groups: TemplateGroup[]; // Group definitions
+  requiredEnvVars: string[]; // List of environment variable placeholders that need user values
+}
+
+// Server config within a template - secrets replaced with placeholders
+export interface TemplateServerConfig {
+  type?: ServerConfig['type'];
+  description?: string;
+  url?: string;
+  command?: string;
+  args?: string[];
+  env?: Record<string, string>; // Values are either literal or ${PLACEHOLDER}
+  headers?: Record<string, string>;
+  passthroughHeaders?: string[];
+  enabled?: boolean;
+  tools?: Record<string, { enabled: boolean; description?: string }>;
+  prompts?: Record<string, { enabled: boolean; description?: string }>;
+  resources?: Record<string, { enabled: boolean; description?: string }>;
+  options?: Partial<Pick<RequestOptions, 'timeout' | 'resetTimeoutOnProgress' | 'maxTotalTimeout'>>;
+  openapi?: {
+    url?: string;
+    version?: string;
+  };
+}
+
+// Group within a template
+export interface TemplateGroup {
+  name: string;
+  description?: string;
+  servers: IGroupServerConfig[];
+}
+
+// Options for exporting a template
+export interface TemplateExportOptions {
+  name: string; // Template name
+  description?: string; // Template description
+  groupIds?: string[]; // Specific group IDs to export (empty = all)
+  includeDisabledServers?: boolean; // Include disabled servers (default: false)
+}
+
+// Result of importing a template
+export interface TemplateImportResult {
+  success: boolean;
+  serversCreated: number;
+  serversSkipped: number; // Already exist
+  groupsCreated: number;
+  groupsSkipped: number; // Already exist
+  requiredEnvVars: string[]; // Env vars that need to be supplied
+  details: TemplateImportDetail[];
+}
+
+// Detail for a single import item
+export interface TemplateImportDetail {
+  type: 'server' | 'group';
+  name: string;
+  action: 'created' | 'skipped' | 'failed';
+  message?: string;
+}

@@ -625,3 +625,48 @@ export interface ActivityFilterOptions {
   groups: string[];
   keyNames: string[];
 }
+
+// Configuration template types for team sharing
+export interface ConfigTemplate {
+  version: string;
+  name: string;
+  description?: string;
+  createdAt: string;
+  servers: Record<string, TemplateServerConfig>;
+  groups: TemplateGroup[];
+  requiredEnvVars: string[];
+}
+
+export interface TemplateServerConfig {
+  type?: ServerConfig['type'];
+  description?: string;
+  url?: string;
+  command?: string;
+  args?: string[];
+  env?: Record<string, string>;
+  headers?: Record<string, string>;
+  enabled?: boolean;
+}
+
+export interface TemplateGroup {
+  name: string;
+  description?: string;
+  servers: IGroupServerConfig[];
+}
+
+export interface TemplateImportResult {
+  success: boolean;
+  serversCreated: number;
+  serversSkipped: number;
+  groupsCreated: number;
+  groupsSkipped: number;
+  requiredEnvVars: string[];
+  details: TemplateImportDetail[];
+}
+
+export interface TemplateImportDetail {
+  type: 'server' | 'group';
+  name: string;
+  action: 'created' | 'skipped' | 'failed';
+  message?: string;
+}

@@ -7,6 +7,8 @@ import AddGroupForm from '@/components/AddGroupForm';
 import EditGroupForm from '@/components/EditGroupForm';
 import GroupCard from '@/components/GroupCard';
 import GroupImportForm from '@/components/GroupImportForm';
+import TemplateExportForm from '@/components/TemplateExportForm';
+import TemplateImportForm from '@/components/TemplateImportForm';
 
 const GroupsPage: React.FC = () => {
   const { t } = useTranslation();
@@ -23,6 +25,8 @@ const GroupsPage: React.FC = () => {
   const [editingGroup, setEditingGroup] = useState<Group | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
   const [showImportForm, setShowImportForm] = useState(false);
+  const [showTemplateExport, setShowTemplateExport] = useState(false);
+  const [showTemplateImport, setShowTemplateImport] = useState(false);
 
   const handleEditClick = (group: Group) => {
     setEditingGroup(group);
@@ -52,6 +56,11 @@ const GroupsPage: React.FC = () => {
   const handleImportSuccess = () => {
     setShowImportForm(false);
     triggerRefresh(); // Refresh the groups list after import
+  };
+
+  const handleTemplateImportSuccess = () => {
+    setShowTemplateImport(false);
+    triggerRefresh();
   };
 
   return (
@@ -94,6 +103,42 @@ const GroupsPage: React.FC = () => {
               />
             </svg>
             {t('groupImport.button')}
+          </button>
+          <button
+            onClick={() => setShowTemplateExport(true)}
+            className="px-4 py-2 bg-green-100 text-green-800 rounded hover:bg-green-200 flex items-center btn-primary transition-all duration-200"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-4 w-4 mr-2"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+            >
+              <path
+                fillRule="evenodd"
+                d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 5.414V13a1 1 0 11-2 0V5.414L7.707 6.707a1 1 0 01-1.414 0z"
+                clipRule="evenodd"
+              />
+            </svg>
+            {t('template.exportButton')}
+          </button>
+          <button
+            onClick={() => setShowTemplateImport(true)}
+            className="px-4 py-2 bg-green-100 text-green-800 rounded hover:bg-green-200 flex items-center btn-primary transition-all duration-200"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-4 w-4 mr-2"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+            >
+              <path
+                fillRule="evenodd"
+                d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z"
+                clipRule="evenodd"
+              />
+            </svg>
+            {t('template.importButton')}
           </button>
         </div>
       </div>
@@ -162,6 +207,20 @@ const GroupsPage: React.FC = () => {
           group={editingGroup}
           onEdit={handleEditComplete}
           onCancel={() => setEditingGroup(null)}
+        />
+      )}
+
+      {showTemplateExport && (
+        <TemplateExportForm
+          groups={groups}
+          onCancel={() => setShowTemplateExport(false)}
+        />
+      )}
+
+      {showTemplateImport && (
+        <TemplateImportForm
+          onSuccess={handleTemplateImportSuccess}
+          onCancel={() => setShowTemplateImport(false)}
         />
       )}
     </div>
