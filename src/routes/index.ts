@@ -268,9 +268,9 @@ export const initRoutes = async (app: express.Application): Promise<void> => {
   router.delete('/activities/cleanup', deleteOldActivities);
 
   // Configuration template routes
-  router.post('/templates/export', exportConfigTemplate);
-  router.get('/templates/export/groups/:id', exportGroupAsTemplate);
-  router.post('/templates/import', importConfigTemplate);
+  router.post('/templates/export', auth, exportConfigTemplate);
+  router.get('/templates/export/groups/:id', auth, exportGroupAsTemplate);
+  router.post('/templates/import', auth, importConfigTemplate);
 
   // Tool management routes
   router.post('/tools/call/:server', callTool);
