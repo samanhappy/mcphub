@@ -84,6 +84,7 @@ export async function migrateToDatabase(): Promise<boolean> {
             options: config.options,
             oauth: config.oauth,
             openapi: config.openapi,
+            passthroughHeaders: config.passthroughHeaders,
           });
           console.log(`  - Created server: ${name}`);
         } else {

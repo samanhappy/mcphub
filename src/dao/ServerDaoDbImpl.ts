@@ -75,6 +75,7 @@ export class ServerDaoDbImpl implements ServerDao {
       oauth: entity.oauth,
       proxy: entity.proxy,
       openapi: entity.openapi,
+      passthroughHeaders: entity.passthroughHeaders,
     });
     return this.mapToServerConfig(server);
   }
@@ -102,6 +103,7 @@ export class ServerDaoDbImpl implements ServerDao {
       oauth: entity.oauth,
       proxy: entity.proxy,
       openapi: entity.openapi,
+      passthroughHeaders: entity.passthroughHeaders,
     });
     return server ? this.mapToServerConfig(server) : null;
   }
@@ -191,6 +193,7 @@ export class ServerDaoDbImpl implements ServerDao {
     oauth?: Record<string, any>;
     proxy?: Record<string, any>;
     openapi?: Record<string, any>;
+    passthroughHeaders?: string[];
   }): ServerConfigWithName {
     return {
       name: server.name,
@@ -212,6 +215,7 @@ export class ServerDaoDbImpl implements ServerDao {
       oauth: server.oauth,
       proxy: server.proxy,
       openapi: server.openapi,
+      passthroughHeaders: server.passthroughHeaders,
     };
   }
 }

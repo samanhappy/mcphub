@@ -71,6 +71,9 @@ export class Server {
   @Column({ type: 'simple-json', nullable: true })
   openapi?: Record<string, any>;
 
+  @Column({ type: 'simple-json', nullable: true })
+  passthroughHeaders?: string[];
+
   @CreateDateColumn({ name: 'created_at', type: 'timestamp' })
   createdAt: Date;
 

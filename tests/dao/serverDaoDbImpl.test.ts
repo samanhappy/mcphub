@@ -53,4 +53,59 @@ describe('ServerDaoDbImpl', () => {
 
     expect(result.description).toBe('my server note');
   });
+
+  it('should persist and map passthroughHeaders field', async () => {
+    const dao = new ServerDaoDbImpl();
+    const headers = ['Authorization', 'X-Custom-User-Id'];
+
+    mockRepository.create.mockResolvedValue({
+      name: 'sse-server',
+      type: 'sse',
+      url: 'http://localhost:8080/sse',
+      enabled: true,
+      passthroughHeaders: headers,
+    });
+
+    const result = await dao.create({
+      name: 'sse-server',
+      type: 'sse',
+      url: 'http://localhost:8080/sse',
+      passthroughHeaders: headers,
+    });
+
+    expect(mockRepository.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'sse-server',
+        passthroughHeaders: headers,
+      }),
+    );
+
+    expect(result.passthroughHeaders).toEqual(headers);
+  });
+
+  it('should persist passthroughHeaders on update', async () => {
+    const dao = new ServerDaoDbImpl();
+    const headers = ['Authorization'];
+
+    mockRepository.update.mockResolvedValue({
+      name: 'sse-server',
+      type: 'sse',
+      url: 'http://localhost:8080/sse',
+      enabled: true,
+      passthroughHeaders: headers,
+    });
+
+    const result = await dao.update('sse-server', {
+      passthroughHeaders: headers,
+    });
+
+    expect(mockRepository.update).toHaveBeenCalledWith(
+      'sse-server',
+      expect.objectContaining({
+        passthroughHeaders: headers,
+      }),
+    );
+
+    expect(result?.passthroughHeaders).toEqual(headers);
+  });
 });
