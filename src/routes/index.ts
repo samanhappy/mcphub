@@ -1,4 +1,5 @@
 import express from 'express';
+import rateLimit from 'express-rate-limit';
 import { check } from 'express-validator';
 import config from '../config/index.js';
 import {
@@ -151,6 +152,17 @@ import { getBetterAuthRuntimeConfig } from '../services/betterAuthConfig.js';
 
 const router = express.Router();
 
+const templateRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: () =>
+    process.env.NODE_ENV === 'test' ||
+    process.env.JEST_WORKER_ID !== undefined ||
+    process.env.VITEST_WORKER_ID !== undefined,
+});
+
 export const initRoutes = async (app: express.Application): Promise<void> => {
   const isTestEnv =
     process.env.NODE_ENV === 'test' ||
@@ -268,9 +280,9 @@ export const initRoutes = async (app: express.Application): Promise<void> => {
   router.delete('/activities/cleanup', deleteOldActivities);
 
   // Configuration template routes
-  router.post('/templates/export', auth, exportConfigTemplate);
-  router.get('/templates/export/groups/:id', auth, exportGroupAsTemplate);
-  router.post('/templates/import', auth, importConfigTemplate);
+  router.post('/templates/export', templateRateLimiter, auth, exportConfigTemplate);
+  router.get('/templates/export/groups/:id', templateRateLimiter, auth, exportGroupAsTemplate);
+  router.post('/templates/import', templateRateLimiter, auth, importConfigTemplate);
 
   // Tool management routes
   router.post('/tools/call/:server', callTool);

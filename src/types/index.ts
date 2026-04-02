@@ -598,24 +598,10 @@ export interface ConfigTemplate {
 }
 
 // Server config within a template - secrets replaced with placeholders
-export interface TemplateServerConfig {
-  type?: ServerConfig['type'];
-  description?: string;
-  url?: string;
-  command?: string;
-  args?: string[];
+export interface TemplateServerConfig extends Omit<ServerConfig, 'owner' | 'oauth'> {
   env?: Record<string, string>; // Values are either literal or ${PLACEHOLDER}
   headers?: Record<string, string>;
-  passthroughHeaders?: string[];
-  enabled?: boolean;
-  tools?: Record<string, { enabled: boolean; description?: string }>;
-  prompts?: Record<string, { enabled: boolean; description?: string }>;
-  resources?: Record<string, { enabled: boolean; description?: string }>;
-  options?: Partial<Pick<RequestOptions, 'timeout' | 'resetTimeoutOnProgress' | 'maxTotalTimeout'>>;
-  openapi?: {
-    url?: string;
-    version?: string;
-  };
+  oauth?: Omit<NonNullable<ServerConfig['oauth']>, 'pendingAuthorization'>;
 }
 
 // Group within a template

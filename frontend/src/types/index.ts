@@ -645,7 +645,52 @@ export interface TemplateServerConfig {
   args?: string[];
   env?: Record<string, string>;
   headers?: Record<string, string>;
+  passthroughHeaders?: string[];
   enabled?: boolean;
+  enableKeepAlive?: boolean;
+  keepAliveInterval?: number;
+  tools?: Record<string, { enabled: boolean; description?: string }>;
+  prompts?: Record<string, { enabled: boolean; description?: string }>;
+  resources?: Record<string, { enabled: boolean; description?: string }>;
+  options?: ServerConfig['options'];
+  proxy?: ProxychainsConfig;
+  oauth?: {
+    clientId?: string;
+    clientSecret?: string;
+    scopes?: string[];
+    accessToken?: string;
+    refreshToken?: string;
+    dynamicRegistration?: {
+      enabled?: boolean;
+      issuer?: string;
+      registrationEndpoint?: string;
+      metadata?: {
+        client_name?: string;
+        client_uri?: string;
+        logo_uri?: string;
+        scope?: string;
+        redirect_uris?: string[];
+        grant_types?: string[];
+        response_types?: string[];
+        token_endpoint_auth_method?: string;
+        contacts?: string[];
+        software_id?: string;
+        software_version?: string;
+        [key: string]: any;
+      };
+      initialAccessToken?: string;
+    };
+    resource?: string;
+    authorizationEndpoint?: string;
+    tokenEndpoint?: string;
+  };
+  openapi?: {
+    url?: string;
+    schema?: Record<string, any>;
+    version?: string;
+    security?: OpenAPISecurityConfig;
+    passthroughHeaders?: string[];
+  };
 }
 
 export interface TemplateGroup {

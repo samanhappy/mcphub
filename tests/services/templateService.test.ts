@@ -73,7 +73,7 @@ describe('templateService', () => {
       expect(template.servers['server2']).toBeUndefined();
     });
 
-    it('should skip disabled servers when includeDisabledServers is false', async () => {
+    it('should skip disabled servers and remove dangling group references when includeDisabledServers is false', async () => {
       mockServerDao.findAll.mockResolvedValue([
         { name: 'active', command: 'npx', enabled: true },
         { name: 'disabled', command: 'node', enabled: false },
@@ -86,6 +86,7 @@ describe('templateService', () => {
 
       expect(template.servers['active']).toBeDefined();
       expect(template.servers['disabled']).toBeUndefined();
+      expect(template.groups[0].servers).toEqual([{ name: 'active', tools: 'all' }]);
     });
 
     it('should preserve existing ${PLACEHOLDER} patterns', async () => {
@@ -116,6 +117,130 @@ describe('templateService', () => {
       expect(template.servers['s1'].headers?.Authorization).toBe('${AUTHORIZATION}');
       expect(template.servers['s1'].headers?.['Content-Type']).toBe('application/json');
       expect(template.requiredEnvVars).toContain('AUTHORIZATION');
+    });
+
+    it('should preserve non-secret proxy and oauth metadata and inline OpenAPI schema', async () => {
+      const schema = {
+        openapi: '3.1.0',
+        info: {
+          title: 'Inline API',
+          version: '1.0.0',
+        },
+      };
+
+      mockServerDao.findAll.mockResolvedValue([
+        {
+          name: 'openapi-server',
+          type: 'openapi',
+          enableKeepAlive: true,
+          keepAliveInterval: 30000,
+          proxy: {
+            enabled: true,
+            type: 'socks5',
+            host: 'proxy.local',
+            port: 1080,
+            username: 'alice',
+            password: 'proxy-secret',
+          },
+          oauth: {
+            clientId: 'client-id',
+            clientSecret: 'client-secret',
+            scopes: ['read', 'write'],
+            accessToken: 'access-token',
+            refreshToken: 'refresh-token',
+            resource: 'https://api.example.com',
+            authorizationEndpoint: 'https://auth.example.com/authorize',
+            tokenEndpoint: 'https://auth.example.com/token',
+            dynamicRegistration: {
+              enabled: true,
+              issuer: 'https://auth.example.com',
+              registrationEndpoint: 'https://auth.example.com/register',
+              metadata: {
+                client_name: 'MCPHub',
+              },
+              initialAccessToken: 'initial-token',
+            },
+            pendingAuthorization: {
+              state: 'ignore-me',
+            },
+          },
+          openapi: {
+            version: '3.1.0',
+            schema,
+            passthroughHeaders: ['x-request-id'],
+            security: {
+              type: 'apiKey',
+              apiKey: {
+                name: 'X-API-Key',
+                in: 'header',
+                value: 'api-key-secret',
+              },
+            },
+          },
+        },
+      ]);
+      mockGroupDao.findAll.mockResolvedValue([
+        { id: 'g1', name: 'G', servers: [{ name: 'openapi-server', tools: 'all' }] },
+      ]);
+
+      const template = await exportTemplate({ name: 'Test' });
+      const config = template.servers['openapi-server'];
+
+      expect(config.enableKeepAlive).toBe(true);
+      expect(config.keepAliveInterval).toBe(30000);
+      expect(config.proxy).toEqual(
+        expect.objectContaining({
+          host: 'proxy.local',
+          username: 'alice',
+          password: '${PROXY_PASSWORD}',
+        }),
+      );
+      expect(config.oauth).toEqual(
+        expect.objectContaining({
+          clientId: 'client-id',
+          scopes: ['read', 'write'],
+          resource: 'https://api.example.com',
+          authorizationEndpoint: 'https://auth.example.com/authorize',
+          tokenEndpoint: 'https://auth.example.com/token',
+          clientSecret: '${OAUTH_CLIENT_SECRET}',
+          accessToken: '${OAUTH_ACCESS_TOKEN}',
+          refreshToken: '${OAUTH_REFRESH_TOKEN}',
+        }),
+      );
+      expect(config.oauth?.dynamicRegistration).toEqual(
+        expect.objectContaining({
+          enabled: true,
+          issuer: 'https://auth.example.com',
+          registrationEndpoint: 'https://auth.example.com/register',
+          metadata: { client_name: 'MCPHub' },
+          initialAccessToken: '${OAUTH_INITIAL_ACCESS_TOKEN}',
+        }),
+      );
+      expect(config.openapi).toEqual(
+        expect.objectContaining({
+          version: '3.1.0',
+          schema,
+          passthroughHeaders: ['x-request-id'],
+          security: {
+            type: 'apiKey',
+            apiKey: {
+              name: 'X-API-Key',
+              in: 'header',
+              value: '${X_API_KEY}',
+            },
+          },
+        }),
+      );
+      expect(template.requiredEnvVars).toEqual(
+        expect.arrayContaining([
+          'PROXY_PASSWORD',
+          'OAUTH_CLIENT_SECRET',
+          'OAUTH_ACCESS_TOKEN',
+          'OAUTH_REFRESH_TOKEN',
+          'OAUTH_INITIAL_ACCESS_TOKEN',
+          'X_API_KEY',
+        ]),
+      );
     });
   });
 
@@ -224,6 +349,67 @@ describe('templateService', () => {
       const result = await importTemplate(template, 'admin');
 
       expect(result.requiredEnvVars).toContain('API_KEY');
+    });
+
+    it('should import expanded template server fields', async () => {
+      mockServerDao.findAll.mockResolvedValue([]);
+      mockGroupDao.findByName.mockResolvedValue(null);
+      mockAddServer.mockResolvedValue(undefined);
+      mockCreateGroup.mockResolvedValue({ id: 'g1', name: 'G' });
+
+      const template = {
+        version: '1.0',
+        name: 'Expanded',
+        createdAt: new Date().toISOString(),
+        servers: {
+          s1: {
+            type: 'openapi',
+            enableKeepAlive: true,
+            keepAliveInterval: 30000,
+            proxy: {
+              enabled: true,
+              type: 'http',
+              host: 'proxy.local',
+              port: 8080,
+              password: '${PROXY_PASSWORD}',
+            },
+            oauth: {
+              clientId: 'client-id',
+              clientSecret: '${OAUTH_CLIENT_SECRET}',
+              authorizationEndpoint: 'https://auth.example.com/authorize',
+              tokenEndpoint: 'https://auth.example.com/token',
+            },
+            openapi: {
+              version: '3.1.0',
+              schema: { openapi: '3.1.0', info: { title: 'Inline API', version: '1.0.0' } },
+            },
+          },
+        },
+        groups: [{ name: 'G', servers: [{ name: 's1', tools: 'all' }] }],
+        requiredEnvVars: ['PROXY_PASSWORD', 'OAUTH_CLIENT_SECRET'],
+      };
+
+      const result = await importTemplate(template, 'admin');
+
+      expect(result.success).toBe(true);
+      expect(mockAddServer).toHaveBeenCalledWith(
+        's1',
+        expect.objectContaining({
+          enableKeepAlive: true,
+          keepAliveInterval: 30000,
+          proxy: expect.objectContaining({
+            host: 'proxy.local',
+            password: '${PROXY_PASSWORD}',
+          }),
+          oauth: expect.objectContaining({
+            clientId: 'client-id',
+            clientSecret: '${OAUTH_CLIENT_SECRET}',
+          }),
+          openapi: expect.objectContaining({
+            schema: expect.objectContaining({ openapi: '3.1.0' }),
+          }),
+        }),
+      );
     });
   });
 });

@@ -17,11 +17,47 @@ const TEMPLATE_VERSION = '1.0';
 // Env var placeholder pattern: ${VAR_NAME}
 const ENV_PLACEHOLDER_RE = /^\$\{[A-Za-z_][A-Za-z0-9_]*\}$/;
 
+type TemplateOAuthConfig = NonNullable<TemplateServerConfig['oauth']>;
+type TemplateOpenApiConfig = NonNullable<TemplateServerConfig['openapi']>;
+type TemplateOpenApiSecurityConfig = NonNullable<TemplateOpenApiConfig['security']>;
+
 // Fields that commonly contain secrets and should be replaced with placeholders
 const SECRET_ENV_KEYS = new Set([
   'api_key', 'apikey', 'secret', 'token', 'password', 'passwd',
   'access_key', 'secret_key', 'private_key', 'auth',
 ]);
+
+function extractPlaceholderName(value: string): string | null {
+  const match = value.match(/^\$\{(.+)\}$/);
+  return match ? match[1] : null;
+}
+
+function toPlaceholderName(value: string, fallback: string): string {
+  const normalized = value.toUpperCase().replace(/[^A-Z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+  return normalized || fallback;
+}
+
+function sanitizeSecretValue(value: string, placeholder: string): {
+  sanitizedValue: string;
+  placeholder: string;
+} {
+  const existingPlaceholder = extractPlaceholderName(value);
+  if (existingPlaceholder) {
+    return {
+      sanitizedValue: value,
+      placeholder: existingPlaceholder,
+    };
+  }
+
+  return {
+    sanitizedValue: `\${${placeholder}}`,
+    placeholder,
+  };
+}
+
+function cloneJsonObject<T>(value: T): T {
+  return JSON.parse(JSON.stringify(value)) as T;
+}
 
 function isSecretKey(key: string): boolean {
   const lower = key.toLowerCase();
@@ -47,15 +83,17 @@ function stripEnvSecrets(env: Record<string, string>): {
   const placeholders: string[] = [];
 
   for (const [key, value] of Object.entries(env)) {
-    if (ENV_PLACEHOLDER_RE.test(value)) {
+    const existingPlaceholder = extractPlaceholderName(value);
+
+    if (existingPlaceholder) {
       // Already a placeholder — keep as-is
       sanitized[key] = value;
-      const match = value.match(/^\$\{(.+)\}$/);
-      if (match) placeholders.push(match[1]);
+      placeholders.push(existingPlaceholder);
     } else if (isSecretKey(key)) {
       // Replace with placeholder
-      sanitized[key] = `\${${key}}`;
-      placeholders.push(key);
+      const { sanitizedValue, placeholder } = sanitizeSecretValue(value, key);
+      sanitized[key] = sanitizedValue;
+      placeholders.push(placeholder);
     } else {
       sanitized[key] = value;
     }
@@ -77,15 +115,195 @@ function stripHeaderSecrets(headers: Record<string, string>): {
   for (const [key, value] of Object.entries(headers)) {
     const lower = key.toLowerCase();
     if (lower === 'authorization' || lower.includes('token') || lower.includes('auth')) {
-      const placeholder = key.toUpperCase().replace(/-/g, '_');
-      sanitized[key] = `\${${placeholder}}`;
-      placeholders.push(placeholder);
+      const placeholder = toPlaceholderName(key, 'HEADER_SECRET');
+      const { sanitizedValue, placeholder: placeholderName } = sanitizeSecretValue(value, placeholder);
+      sanitized[key] = sanitizedValue;
+      placeholders.push(placeholderName);
     } else if (ENV_PLACEHOLDER_RE.test(value)) {
       sanitized[key] = value;
-      const match = value.match(/^\$\{(.+)\}$/);
-      if (match) placeholders.push(match[1]);
+      const existingPlaceholder = extractPlaceholderName(value);
+      if (existingPlaceholder) placeholders.push(existingPlaceholder);
     } else {
       sanitized[key] = value;
+    }
+  }
+
+  return { sanitized, placeholders };
+}
+
+function stripProxySecrets(proxy: NonNullable<ServerConfig['proxy']>): {
+  sanitized: NonNullable<TemplateServerConfig['proxy']>;
+  placeholders: string[];
+} {
+  const sanitized: NonNullable<TemplateServerConfig['proxy']> = { ...proxy };
+  const placeholders: string[] = [];
+
+  if (proxy.password) {
+    const { sanitizedValue, placeholder } = sanitizeSecretValue(proxy.password, 'PROXY_PASSWORD');
+    sanitized.password = sanitizedValue;
+    placeholders.push(placeholder);
+  }
+
+  return { sanitized, placeholders };
+}
+
+function stripOAuthSecrets(oauth: NonNullable<ServerConfig['oauth']>): {
+  sanitized: TemplateOAuthConfig;
+  placeholders: string[];
+} {
+  const sanitized: TemplateOAuthConfig = {};
+  const placeholders: string[] = [];
+
+  if (oauth.clientId) sanitized.clientId = oauth.clientId;
+  if (oauth.scopes) sanitized.scopes = [...oauth.scopes];
+  if (oauth.resource) sanitized.resource = oauth.resource;
+  if (oauth.authorizationEndpoint) sanitized.authorizationEndpoint = oauth.authorizationEndpoint;
+  if (oauth.tokenEndpoint) sanitized.tokenEndpoint = oauth.tokenEndpoint;
+
+  if (oauth.clientSecret) {
+    const { sanitizedValue, placeholder } = sanitizeSecretValue(
+      oauth.clientSecret,
+      'OAUTH_CLIENT_SECRET',
+    );
+    sanitized.clientSecret = sanitizedValue;
+    placeholders.push(placeholder);
+  }
+
+  if (oauth.accessToken) {
+    const { sanitizedValue, placeholder } = sanitizeSecretValue(
+      oauth.accessToken,
+      'OAUTH_ACCESS_TOKEN',
+    );
+    sanitized.accessToken = sanitizedValue;
+    placeholders.push(placeholder);
+  }
+
+  if (oauth.refreshToken) {
+    const { sanitizedValue, placeholder } = sanitizeSecretValue(
+      oauth.refreshToken,
+      'OAUTH_REFRESH_TOKEN',
+    );
+    sanitized.refreshToken = sanitizedValue;
+    placeholders.push(placeholder);
+  }
+
+  if (oauth.dynamicRegistration) {
+    sanitized.dynamicRegistration = {};
+    if (oauth.dynamicRegistration.enabled !== undefined) {
+      sanitized.dynamicRegistration.enabled = oauth.dynamicRegistration.enabled;
+    }
+    if (oauth.dynamicRegistration.issuer) {
+      sanitized.dynamicRegistration.issuer = oauth.dynamicRegistration.issuer;
+    }
+    if (oauth.dynamicRegistration.registrationEndpoint) {
+      sanitized.dynamicRegistration.registrationEndpoint =
+        oauth.dynamicRegistration.registrationEndpoint;
+    }
+    if (oauth.dynamicRegistration.metadata) {
+      sanitized.dynamicRegistration.metadata = cloneJsonObject(oauth.dynamicRegistration.metadata);
+    }
+    if (oauth.dynamicRegistration.initialAccessToken) {
+      const { sanitizedValue, placeholder } = sanitizeSecretValue(
+        oauth.dynamicRegistration.initialAccessToken,
+        'OAUTH_INITIAL_ACCESS_TOKEN',
+      );
+      sanitized.dynamicRegistration.initialAccessToken = sanitizedValue;
+      placeholders.push(placeholder);
+    }
+  }
+
+  return { sanitized, placeholders };
+}
+
+function stripOpenApiSecuritySecrets(
+  security: NonNullable<NonNullable<ServerConfig['openapi']>['security']>,
+): {
+  sanitized: TemplateOpenApiSecurityConfig;
+  placeholders: string[];
+} {
+  const sanitized: TemplateOpenApiSecurityConfig = { type: security.type };
+  const placeholders: string[] = [];
+
+  if (security.apiKey) {
+    sanitized.apiKey = {
+      name: security.apiKey.name,
+      in: security.apiKey.in,
+      value: security.apiKey.value,
+    };
+    if (security.apiKey.value) {
+      const { sanitizedValue, placeholder } = sanitizeSecretValue(
+        security.apiKey.value,
+        toPlaceholderName(security.apiKey.name, 'OPENAPI_API_KEY'),
+      );
+      sanitized.apiKey.value = sanitizedValue;
+      placeholders.push(placeholder);
+    }
+  }
+
+  if (security.http) {
+    sanitized.http = {
+      scheme: security.http.scheme,
+    };
+    if (security.http.bearerFormat) {
+      sanitized.http.bearerFormat = security.http.bearerFormat;
+    }
+    if (security.http.credentials) {
+      const { sanitizedValue, placeholder } = sanitizeSecretValue(
+        security.http.credentials,
+        'OPENAPI_HTTP_CREDENTIALS',
+      );
+      sanitized.http.credentials = sanitizedValue;
+      placeholders.push(placeholder);
+    }
+  }
+
+  if (security.oauth2) {
+    sanitized.oauth2 = {};
+    if (security.oauth2.tokenUrl) sanitized.oauth2.tokenUrl = security.oauth2.tokenUrl;
+    if (security.oauth2.clientId) sanitized.oauth2.clientId = security.oauth2.clientId;
+    if (security.oauth2.scopes) sanitized.oauth2.scopes = [...security.oauth2.scopes];
+
+    if (security.oauth2.clientSecret) {
+      const { sanitizedValue, placeholder } = sanitizeSecretValue(
+        security.oauth2.clientSecret,
+        'OPENAPI_OAUTH2_CLIENT_SECRET',
+      );
+      sanitized.oauth2.clientSecret = sanitizedValue;
+      placeholders.push(placeholder);
+    }
+
+    if (security.oauth2.token) {
+      const { sanitizedValue, placeholder } = sanitizeSecretValue(
+        security.oauth2.token,
+        'OPENAPI_OAUTH2_TOKEN',
+      );
+      sanitized.oauth2.token = sanitizedValue;
+      placeholders.push(placeholder);
+    }
+  }
+
+  if (security.openIdConnect) {
+    sanitized.openIdConnect = {
+      url: security.openIdConnect.url,
+    };
+    if (security.openIdConnect.clientId) {
+      sanitized.openIdConnect.clientId = security.openIdConnect.clientId;
+    }
+    if (security.openIdConnect.clientSecret) {
+      const { sanitizedValue, placeholder } = sanitizeSecretValue(
+        security.openIdConnect.clientSecret,
+        'OPENAPI_OPENID_CLIENT_SECRET',
+      );
+      sanitized.openIdConnect.clientSecret = sanitizedValue;
+      placeholders.push(placeholder);
+    }
+    if (security.openIdConnect.token) {
+      const { sanitizedValue, placeholder } = sanitizeSecretValue(
+        security.openIdConnect.token,
+        'OPENAPI_OPENID_TOKEN',
+      );
+      sanitized.openIdConnect.token = sanitizedValue;
+      placeholders.push(placeholder);
     }
   }
 
@@ -109,6 +327,10 @@ function serverConfigToTemplate(config: ServerConfig): {
   if (config.args) templateConfig.args = [...config.args];
   if (config.passthroughHeaders) templateConfig.passthroughHeaders = [...config.passthroughHeaders];
   if (config.enabled !== undefined) templateConfig.enabled = config.enabled;
+  if (config.enableKeepAlive !== undefined) templateConfig.enableKeepAlive = config.enableKeepAlive;
+  if (config.keepAliveInterval !== undefined) {
+    templateConfig.keepAliveInterval = config.keepAliveInterval;
+  }
 
   if (config.env) {
     const { sanitized, placeholders } = stripEnvSecrets(config.env);
@@ -126,12 +348,30 @@ function serverConfigToTemplate(config: ServerConfig): {
   if (config.prompts) templateConfig.prompts = { ...config.prompts };
   if (config.resources) templateConfig.resources = { ...config.resources };
   if (config.options) templateConfig.options = { ...config.options };
+  if (config.proxy) {
+    const { sanitized, placeholders } = stripProxySecrets(config.proxy);
+    templateConfig.proxy = sanitized;
+    envVars.push(...placeholders);
+  }
+  if (config.oauth) {
+    const { sanitized, placeholders } = stripOAuthSecrets(config.oauth);
+    templateConfig.oauth = sanitized;
+    envVars.push(...placeholders);
+  }
 
   if (config.openapi) {
     templateConfig.openapi = {};
     if (config.openapi.url) templateConfig.openapi.url = config.openapi.url;
+    if (config.openapi.schema) templateConfig.openapi.schema = cloneJsonObject(config.openapi.schema);
     if (config.openapi.version) templateConfig.openapi.version = config.openapi.version;
-    // Intentionally omit schema (too large) and security (contains secrets)
+    if (config.openapi.passthroughHeaders) {
+      templateConfig.openapi.passthroughHeaders = [...config.openapi.passthroughHeaders];
+    }
+    if (config.openapi.security) {
+      const { sanitized, placeholders } = stripOpenApiSecuritySecrets(config.openapi.security);
+      templateConfig.openapi.security = sanitized;
+      envVars.push(...placeholders);
+    }
   }
 
   return { templateConfig, envVars };
@@ -154,27 +394,24 @@ export async function exportTemplate(options: TemplateExportOptions): Promise<Co
 
   // Collect server names referenced by selected groups
   const referencedServerNames = new Set<string>();
-  const templateGroups: TemplateGroup[] = [];
-
-  for (const group of selectedGroups) {
-    const normalizedServers: IGroupServerConfig[] = group.servers.map((s) =>
+  const normalizedGroups = selectedGroups.map((group) => ({
+    name: group.name,
+    description: group.description,
+    servers: group.servers.map((s) =>
       typeof s === 'string' ? { name: s, tools: 'all' as const } : { name: s.name, tools: s.tools || 'all' },
-    );
+    ),
+  }));
 
-    for (const sc of normalizedServers) {
+  for (const group of normalizedGroups) {
+    for (const sc of group.servers) {
       referencedServerNames.add(sc.name);
     }
-
-    templateGroups.push({
-      name: group.name,
-      description: group.description,
-      servers: normalizedServers,
-    });
   }
 
   // Build server configs for template
   const templateServers: Record<string, TemplateServerConfig> = {};
   const allEnvVars: string[] = [];
+  const includedServerNames = new Set<string>();
 
   for (const server of allServers) {
     if (!referencedServerNames.has(server.name)) continue;
@@ -182,8 +419,14 @@ export async function exportTemplate(options: TemplateExportOptions): Promise<Co
 
     const { templateConfig, envVars } = serverConfigToTemplate(server);
     templateServers[server.name] = templateConfig;
+    includedServerNames.add(server.name);
     allEnvVars.push(...envVars);
   }
+
+  const templateGroups: TemplateGroup[] = normalizedGroups.map((group) => ({
+    ...group,
+    servers: group.servers.filter((server) => includedServerNames.has(server.name)),
+  }));
 
   // De-duplicate env vars
   const requiredEnvVars = [...new Set(allEnvVars)].sort();
