@@ -1357,13 +1357,16 @@ export const searchToolsByVector = async (
         const parsedMetadata = parseEmbeddingMetadata(result.embedding?.metadata);
 
         if (parsedMetadata?.serverName && parsedMetadata?.toolName) {
-          const serverSimilarityBoost = serverScoreMap.get(parsedMetadata.serverName) ?? 0;
+          const serverSimilarityBoost = serverScoreMap.get(parsedMetadata.serverName);
           return {
             serverName: parsedMetadata.serverName,
             toolName: parsedMetadata.toolName,
             description: parsedMetadata.description || '',
             inputSchema: parsedMetadata.inputSchema || {},
-            similarity: result.similarity * 0.8 + serverSimilarityBoost * 0.2,
+            similarity:
+              serverSimilarityBoost !== undefined
+                ? result.similarity * 0.8 + serverSimilarityBoost * 0.2
+                : result.similarity,
             searchableText: result.embedding.text_content,
           };
         }
@@ -1381,14 +1384,17 @@ export const searchToolsByVector = async (
 
         // Extract description (everything after the first word)
         const description = textContent.replace(/^\S+\s*/, '').trim();
-        const serverSimilarityBoost = serverScoreMap.get(serverName) ?? 0;
+        const serverSimilarityBoost = serverScoreMap.get(serverName);
 
         return {
           serverName,
           toolName,
           description,
           inputSchema: {},
-          similarity: result.similarity * 0.8 + serverSimilarityBoost * 0.2,
+          similarity:
+            serverSimilarityBoost !== undefined
+              ? result.similarity * 0.8 + serverSimilarityBoost * 0.2
+              : result.similarity,
           searchableText: textContent,
         };
       })

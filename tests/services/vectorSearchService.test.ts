@@ -207,6 +207,36 @@ describe('vectorSearchService', () => {
     );
   });
 
+  it('preserves the original tool similarity when no server score is available', async () => {
+    mockVectorRepository.searchSimilar.mockImplementation(
+      async (_embedding: number[], _limit: number, _threshold: number, contentTypes?: string[]) => {
+        if (contentTypes?.includes('tool')) {
+          return [
+            {
+              embedding: {
+                metadata: JSON.stringify({
+                  serverName: 'redis',
+                  toolName: 'redis-set',
+                  description: 'Set a cache value',
+                  inputSchema: {},
+                }),
+                text_content: 'redis-set Set a cache value',
+              },
+              similarity: 0.82,
+            },
+          ];
+        }
+
+        return [];
+      },
+    );
+
+    const results = await searchToolsByVector('缓存操作', 10, 0.7);
+
+    expect(results).toHaveLength(1);
+    expect(results[0].similarity).toBeCloseTo(0.82);
+  });
+
   it('saves a server embedding alongside tool embeddings', async () => {
     mockVectorRepository.countByServerNameAndModel.mockResolvedValue(0);
     mockVectorRepository.saveEmbedding.mockResolvedValue({});
