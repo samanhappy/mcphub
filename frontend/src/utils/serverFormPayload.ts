@@ -1,6 +1,6 @@
-import type { EnvVar, ServerFormData } from '../types';
+import type { EnvVar, ServerConfig, ServerFormData } from '../types';
 
-type ServerType = 'stdio' | 'sse' | 'streamable-http' | 'openapi';
+type ServerType = NonNullable<ServerConfig['type']>;
 
 interface BuildServerPayloadInput {
   formData: ServerFormData;
@@ -51,12 +51,14 @@ const buildOptions = (options?: ServerFormData['options']) => {
   return nextOptions;
 };
 
-const buildOAuthConfig = (oauth?: ServerFormData['oauth']): Record<string, unknown> => {
+const buildOAuthConfig = (
+  oauth?: ServerFormData['oauth'],
+): Partial<NonNullable<ServerConfig['oauth']>> => {
   if (!oauth) {
     return {};
   }
 
-  const nextOAuth: Record<string, unknown> = {};
+  const nextOAuth: Partial<NonNullable<ServerConfig['oauth']>> = {};
   const clientId = oauth.clientId?.trim();
   const clientSecret = oauth.clientSecret?.trim();
   const scopes = oauth.scopes?.trim();
@@ -87,8 +89,8 @@ const buildOAuthConfig = (oauth?: ServerFormData['oauth']): Record<string, unkno
   return nextOAuth;
 };
 
-const buildOpenApiConfig = (formData: ServerFormData): Record<string, unknown> => {
-  const openapi: Record<string, unknown> = {
+const buildOpenApiConfig = (formData: ServerFormData): NonNullable<ServerConfig['openapi']> => {
+  const openapi: NonNullable<ServerConfig['openapi']> = {
     version: formData.openapi?.version || '3.1.0',
     passthroughHeaders: parseCommaSeparatedList(formData.openapi?.passthroughHeaders),
   };
@@ -145,29 +147,19 @@ export const buildServerPayload = ({
   const env = buildKeyValueRecord(envVars);
   const headers = buildKeyValueRecord(headerVars);
   const options = buildOptions(formData.options);
-  const description = formData.description?.trim() || undefined;
+  const description = formData.description?.trim() || '';
 
-  const config: Record<string, unknown> = {
+  const config: Partial<ServerConfig> = {
     type: serverType,
     description,
-    url: undefined,
-    command: undefined,
-    args: undefined,
-    env: {},
-    headers: {},
-    passthroughHeaders: [],
-    enableKeepAlive: undefined,
-    keepAliveInterval: undefined,
     options,
-    oauth: {},
-    openapi: undefined,
   };
 
   if (serverType === 'openapi') {
     config.headers = headers;
     config.openapi = buildOpenApiConfig(formData);
   } else if (serverType === 'sse' || serverType === 'streamable-http') {
-    config.url = formData.url;
+    config.url = formData.url.trim();
     config.env = env;
     config.headers = headers;
     config.passthroughHeaders = parseCommaSeparatedList(formData.passthroughHeaders);
@@ -177,13 +169,13 @@ export const buildServerPayload = ({
       ? formData.keepAlive.interval || 60000
       : undefined;
   } else {
-    config.command = formData.command;
+    config.command = formData.command.trim();
     config.args = formData.args;
     config.env = env;
   }
 
   return {
-    name: formData.name,
+    name: formData.name.trim(),
     config,
   };
 };

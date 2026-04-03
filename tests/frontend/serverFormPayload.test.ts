@@ -56,6 +56,7 @@ describe('buildServerPayload', () => {
       oauth: {},
       options: {},
       enableKeepAlive: false,
+      description: '',
     });
     expect(payload.config).toHaveProperty('keepAliveInterval', undefined);
   });
@@ -63,7 +64,7 @@ describe('buildServerPayload', () => {
   it('clears remote-only fields when switching to stdio', () => {
     const payload = buildServerPayload({
       formData: {
-        name: 'stdio-server',
+        name: '  stdio-server  ',
         description: 'local command server',
         url: 'https://example.com/previous-sse',
         command: 'npx',
@@ -105,20 +106,19 @@ describe('buildServerPayload', () => {
       headerVars: [],
     });
 
+    expect(payload.name).toBe('stdio-server');
     expect(payload.config).toMatchObject({
       type: 'stdio',
       description: 'local command server',
       command: 'npx',
       args: ['-y', 'demo-server'],
       env: {},
-      headers: {},
-      passthroughHeaders: [],
-      oauth: {},
       options: {},
     });
-    expect(payload.config).toHaveProperty('url', undefined);
-    expect(payload.config).toHaveProperty('openapi', undefined);
-    expect(payload.config).toHaveProperty('enableKeepAlive', undefined);
-    expect(payload.config).toHaveProperty('keepAliveInterval', undefined);
+    expect(payload.config).not.toHaveProperty('url');
+    expect(payload.config).not.toHaveProperty('openapi');
+    expect(payload.config).not.toHaveProperty('headers');
+    expect(payload.config).not.toHaveProperty('passthroughHeaders');
+    expect(payload.config).not.toHaveProperty('oauth');
   });
 });

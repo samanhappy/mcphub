@@ -27,6 +27,7 @@ import { cloneDefaultOAuthServerConfig } from '../constants/oauthServerDefaults.
 import { getServerDao, getGroupDao, getSystemConfigDao } from '../dao/DaoFactory.js';
 import { getBearerKeyDao } from '../dao/DaoFactory.js';
 import { UserContextService } from '../services/userContextService.js';
+import { normalizeServerConfigForPersistence } from '../utils/serverConfigPersistence.js';
 
 type DescribableConfig = Record<string, { enabled: boolean; description?: string }>;
 
@@ -205,11 +206,13 @@ export const createServer = async (req: Request, res: Response): Promise<void> =
       return;
     }
 
+    const normalizedConfig = normalizeServerConfigForPersistence(config);
+
     if (
-      !config.url &&
-      !config.openapi?.url &&
-      !config.openapi?.schema &&
-      (!config.command || !config.args)
+      !normalizedConfig.url &&
+      !normalizedConfig.openapi?.url &&
+      !normalizedConfig.openapi?.schema &&
+      (!normalizedConfig.command || !normalizedConfig.args)
     ) {
       res.status(400).json({
         success: false,
@@ -220,7 +223,10 @@ export const createServer = async (req: Request, res: Response): Promise<void> =
     }
 
     // Validate the server type if specified
-    if (config.type && !['stdio', 'sse', 'streamable-http', 'openapi'].includes(config.type)) {
+    if (
+      normalizedConfig.type &&
+      !['stdio', 'sse', 'streamable-http', 'openapi'].includes(normalizedConfig.type)
+    ) {
       res.status(400).json({
         success: false,
         message: 'Server type must be one of: stdio, sse, streamable-http, openapi',
@@ -229,16 +235,23 @@ export const createServer = async (req: Request, res: Response): Promise<void> =
     }
 
     // Validate that URL is provided for sse and streamable-http types
-    if ((config.type === 'sse' || config.type === 'streamable-http') && !config.url) {
+    if (
+      (normalizedConfig.type === 'sse' || normalizedConfig.type === 'streamable-http') &&
+      !normalizedConfig.url
+    ) {
       res.status(400).json({
         success: false,
-        message: `URL is required for ${config.type} server type`,
+        message: `URL is required for ${normalizedConfig.type} server type`,
       });
       return;
     }
 
     // Validate that OpenAPI specification URL or schema is provided for openapi type
-    if (config.type === 'openapi' && !config.openapi?.url && !config.openapi?.schema) {
+    if (
+      normalizedConfig.type === 'openapi' &&
+      !normalizedConfig.openapi?.url &&
+      !normalizedConfig.openapi?.schema
+    ) {
       res.status(400).json({
         success: false,
         message: 'OpenAPI specification URL or schema is required for openapi server type',
@@ -247,7 +260,7 @@ export const createServer = async (req: Request, res: Response): Promise<void> =
     }
 
     // Validate headers if provided
-    if (config.headers && typeof config.headers !== 'object') {
+    if (normalizedConfig.headers && typeof normalizedConfig.headers !== 'object') {
       res.status(400).json({
         success: false,
         message: 'Headers must be an object',
@@ -256,7 +269,7 @@ export const createServer = async (req: Request, res: Response): Promise<void> =
     }
 
     // Validate that headers are only used with sse, streamable-http, and openapi types
-    if (config.headers && config.type === 'stdio') {
+    if (normalizedConfig.headers && normalizedConfig.type === 'stdio') {
       res.status(400).json({
         success: false,
         message: 'Headers are not supported for stdio server type',
@@ -265,17 +278,21 @@ export const createServer = async (req: Request, res: Response): Promise<void> =
     }
 
     // Set default keep-alive interval for SSE servers if not specified
-    if ((config.type === 'sse' || (!config.type && config.url)) && !config.keepAliveInterval) {
-      config.keepAliveInterval = 60000; // Default 60 seconds for SSE servers
+    if (
+      (normalizedConfig.type === 'sse' ||
+        (!normalizedConfig.type && normalizedConfig.url)) &&
+      !normalizedConfig.keepAliveInterval
+    ) {
+      normalizedConfig.keepAliveInterval = 60000; // Default 60 seconds for SSE servers
     }
 
     // Set owner property - use current user's username, default to 'admin'
-    if (!config.owner) {
+    if (!normalizedConfig.owner) {
       const currentUser = (req as any).user;
-      config.owner = currentUser?.username || 'admin';
+      normalizedConfig.owner = currentUser?.username || 'admin';
     }
 
-    const result = await addServer(name, config);
+    const result = await addServer(name, normalizedConfig);
     if (result.success) {
       res.json({
         success: true,
@@ -333,11 +350,13 @@ export const batchCreateServers = async (req: Request, res: Response): Promise<v
         return { valid: false, message: 'Server configuration is required and must be an object' };
       }
 
+      const normalizedConfig = normalizeServerConfigForPersistence(config);
+
       if (
-        !config.url &&
-        !config.openapi?.url &&
-        !config.openapi?.schema &&
-        (!config.command || !config.args)
+        !normalizedConfig.url &&
+        !normalizedConfig.openapi?.url &&
+        !normalizedConfig.openapi?.schema &&
+        (!normalizedConfig.command || !normalizedConfig.args)
       ) {
         return {
           valid: false,
@@ -347,7 +366,10 @@ export const batchCreateServers = async (req: Request, res: Response): Promise<v
       }
 
       // Validate server type if specified
-      if (config.type && !['stdio', 'sse', 'streamable-http', 'openapi'].includes(config.type)) {
+      if (
+        normalizedConfig.type &&
+        !['stdio', 'sse', 'streamable-http', 'openapi'].includes(normalizedConfig.type)
+      ) {
         return {
           valid: false,
           message: 'Server type must be one of: stdio, sse, streamable-http, openapi',
@@ -355,12 +377,22 @@ export const batchCreateServers = async (req: Request, res: Response): Promise<v
       }
 
       // Validate URL is provided for sse and streamable-http types
-      if ((config.type === 'sse' || config.type === 'streamable-http') && !config.url) {
-        return { valid: false, message: `URL is required for ${config.type} server type` };
+      if (
+        (normalizedConfig.type === 'sse' || normalizedConfig.type === 'streamable-http') &&
+        !normalizedConfig.url
+      ) {
+        return {
+          valid: false,
+          message: `URL is required for ${normalizedConfig.type} server type`,
+        };
       }
 
       // Validate OpenAPI specification URL or schema is provided for openapi type
-      if (config.type === 'openapi' && !config.openapi?.url && !config.openapi?.schema) {
+      if (
+        normalizedConfig.type === 'openapi' &&
+        !normalizedConfig.openapi?.url &&
+        !normalizedConfig.openapi?.schema
+      ) {
         return {
           valid: false,
           message: 'OpenAPI specification URL or schema is required for openapi server type',
@@ -368,12 +400,12 @@ export const batchCreateServers = async (req: Request, res: Response): Promise<v
       }
 
       // Validate headers if provided
-      if (config.headers && typeof config.headers !== 'object') {
+      if (normalizedConfig.headers && typeof normalizedConfig.headers !== 'object') {
         return { valid: false, message: 'Headers must be an object' };
       }
 
       // Validate that headers are only used with sse, streamable-http, and openapi types
-      if (config.headers && config.type === 'stdio') {
+      if (normalizedConfig.headers && normalizedConfig.type === 'stdio') {
         return { valid: false, message: 'Headers are not supported for stdio server type' };
       }
 
@@ -406,17 +438,23 @@ export const batchCreateServers = async (req: Request, res: Response): Promise<v
 
       try {
         // Set default keep-alive interval for SSE servers if not specified
-        if ((config.type === 'sse' || (!config.type && config.url)) && !config.keepAliveInterval) {
-          config.keepAliveInterval = 60000; // Default 60 seconds for SSE servers
+        const normalizedConfig = normalizeServerConfigForPersistence(config);
+
+        if (
+          (normalizedConfig.type === 'sse' ||
+            (!normalizedConfig.type && normalizedConfig.url)) &&
+          !normalizedConfig.keepAliveInterval
+        ) {
+          normalizedConfig.keepAliveInterval = 60000; // Default 60 seconds for SSE servers
         }
 
         // Set owner property if not provided
-        if (!config.owner) {
-          config.owner = defaultOwner;
+        if (!normalizedConfig.owner) {
+          normalizedConfig.owner = defaultOwner;
         }
 
         // Attempt to add server
-        const result = await addServer(name, config);
+        const result = await addServer(name, normalizedConfig);
         if (result.success) {
           results.push({
             name,
@@ -530,11 +568,13 @@ export const updateServer = async (req: Request, res: Response): Promise<void> =
       return;
     }
 
+    const normalizedConfig = normalizeServerConfigForPersistence(config);
+
     if (
-      !config.url &&
-      !config.openapi?.url &&
-      !config.openapi?.schema &&
-      (!config.command || !config.args)
+      !normalizedConfig.url &&
+      !normalizedConfig.openapi?.url &&
+      !normalizedConfig.openapi?.schema &&
+      (!normalizedConfig.command || !normalizedConfig.args)
     ) {
       res.status(400).json({
         success: false,
@@ -545,7 +585,10 @@ export const updateServer = async (req: Request, res: Response): Promise<void> =
     }
 
     // Validate the server type if specified
-    if (config.type && !['stdio', 'sse', 'streamable-http', 'openapi'].includes(config.type)) {
+    if (
+      normalizedConfig.type &&
+      !['stdio', 'sse', 'streamable-http', 'openapi'].includes(normalizedConfig.type)
+    ) {
       res.status(400).json({
         success: false,
         message: 'Server type must be one of: stdio, sse, streamable-http, openapi',
@@ -554,16 +597,23 @@ export const updateServer = async (req: Request, res: Response): Promise<void> =
     }
 
     // Validate that URL is provided for sse and streamable-http types
-    if ((config.type === 'sse' || config.type === 'streamable-http') && !config.url) {
+    if (
+      (normalizedConfig.type === 'sse' || normalizedConfig.type === 'streamable-http') &&
+      !normalizedConfig.url
+    ) {
       res.status(400).json({
         success: false,
-        message: `URL is required for ${config.type} server type`,
+        message: `URL is required for ${normalizedConfig.type} server type`,
       });
       return;
     }
 
     // Validate that OpenAPI specification URL or schema is provided for openapi type
-    if (config.type === 'openapi' && !config.openapi?.url && !config.openapi?.schema) {
+    if (
+      normalizedConfig.type === 'openapi' &&
+      !normalizedConfig.openapi?.url &&
+      !normalizedConfig.openapi?.schema
+    ) {
       res.status(400).json({
         success: false,
         message: 'OpenAPI specification URL or schema is required for openapi server type',
@@ -572,7 +622,7 @@ export const updateServer = async (req: Request, res: Response): Promise<void> =
     }
 
     // Validate headers if provided
-    if (config.headers && typeof config.headers !== 'object') {
+    if (normalizedConfig.headers && typeof normalizedConfig.headers !== 'object') {
       res.status(400).json({
         success: false,
         message: 'Headers must be an object',
@@ -581,7 +631,7 @@ export const updateServer = async (req: Request, res: Response): Promise<void> =
     }
 
     // Validate that headers are only used with sse, streamable-http, and openapi types
-    if (config.headers && config.type === 'stdio') {
+    if (normalizedConfig.headers && normalizedConfig.type === 'stdio') {
       res.status(400).json({
         success: false,
         message: 'Headers are not supported for stdio server type',
@@ -590,14 +640,18 @@ export const updateServer = async (req: Request, res: Response): Promise<void> =
     }
 
     // Set default keep-alive interval for SSE servers if not specified
-    if ((config.type === 'sse' || (!config.type && config.url)) && !config.keepAliveInterval) {
-      config.keepAliveInterval = 60000; // Default 60 seconds for SSE servers
+    if (
+      (normalizedConfig.type === 'sse' ||
+        (!normalizedConfig.type && normalizedConfig.url)) &&
+      !normalizedConfig.keepAliveInterval
+    ) {
+      normalizedConfig.keepAliveInterval = 60000; // Default 60 seconds for SSE servers
     }
 
     // Set owner property if not provided - use current user's username, default to 'admin'
-    if (!config.owner) {
+    if (!normalizedConfig.owner) {
       const currentUser = (req as any).user;
-      config.owner = currentUser?.username || 'admin';
+      normalizedConfig.owner = currentUser?.username || 'admin';
     }
 
     // Check if server name is being changed
@@ -638,7 +692,7 @@ export const updateServer = async (req: Request, res: Response): Promise<void> =
     // Use the final server name (new name if renaming, otherwise original name)
     const finalName = isRenaming ? newName : name;
 
-    const result = await addOrUpdateServer(finalName, config, true); // Allow override for updates
+    const result = await addOrUpdateServer(finalName, normalizedConfig, true); // Allow override for updates
     if (result.success) {
       notifyToolChanged(finalName);
       res.json({
