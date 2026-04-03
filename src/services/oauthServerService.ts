@@ -207,7 +207,7 @@ const oauthModel: OAuth2Server.AuthorizationCodeModel & OAuth2Server.RefreshToke
    */
   getRefreshToken: async (refreshToken: string) => {
     const token = await getToken(refreshToken);
-    if (!token || !safeCompare(token.refreshToken, refreshToken)) {
+    if (!token || !token.refreshToken || !safeCompare(token.refreshToken, refreshToken)) {
       return false;
     }
 
