@@ -84,27 +84,49 @@ export class ServerDaoDbImpl implements ServerDao {
     name: string,
     entity: Partial<ServerConfigWithName>,
   ): Promise<ServerConfigWithName | null> {
-    const server = await this.repository.update(name, {
-      type: entity.type,
-      description: entity.description,
-      url: entity.url,
-      command: entity.command,
-      args: entity.args,
-      env: entity.env,
-      headers: entity.headers,
-      enabled: entity.enabled,
-      owner: entity.owner,
-      enableKeepAlive: entity.enableKeepAlive,
-      keepAliveInterval: entity.keepAliveInterval,
-      tools: entity.tools,
-      prompts: entity.prompts,
-      resources: entity.resources,
-      options: entity.options,
-      oauth: entity.oauth,
-      proxy: entity.proxy,
-      openapi: entity.openapi,
-      passthroughHeaders: entity.passthroughHeaders,
-    });
+    const updateData: Record<string, unknown> = {};
+    const hasOwn = <K extends keyof ServerConfigWithName>(key: K) =>
+      Object.prototype.hasOwnProperty.call(entity, key);
+
+    const assignNullable = <K extends keyof ServerConfigWithName>(key: K) => {
+      if (!hasOwn(key)) {
+        return;
+      }
+
+      updateData[key] = entity[key] === undefined ? null : entity[key];
+    };
+
+    const assign = <K extends keyof ServerConfigWithName>(key: K) => {
+      if (!hasOwn(key)) {
+        return;
+      }
+
+      updateData[key] = entity[key];
+    };
+
+    assignNullable('type');
+    assignNullable('description');
+    assignNullable('url');
+    assignNullable('command');
+    assignNullable('args');
+    assignNullable('env');
+    assignNullable('headers');
+    assign('enabled');
+    assignNullable('owner');
+    if (hasOwn('enableKeepAlive')) {
+      updateData.enableKeepAlive = entity.enableKeepAlive ?? false;
+    }
+    assignNullable('keepAliveInterval');
+    assignNullable('tools');
+    assignNullable('prompts');
+    assignNullable('resources');
+    assignNullable('options');
+    assignNullable('oauth');
+    assignNullable('proxy');
+    assignNullable('openapi');
+    assignNullable('passthroughHeaders');
+
+    const server = await this.repository.update(name, updateData as any);
     return server ? this.mapToServerConfig(server) : null;
   }
 

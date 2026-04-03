@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Server, EnvVar, ServerFormData } from '@/types';
+import { buildServerPayload } from '../utils/serverFormPayload';
 
 interface ServerFormProps {
   onSubmit: (payload: any) => void;
@@ -244,169 +245,12 @@ const ServerForm = ({
     setError(null);
 
     try {
-      const env: Record<string, string> = {};
-      envVars.forEach(({ key, value }) => {
-        if (key.trim()) {
-          env[key.trim()] = value;
-        }
+      const payload = buildServerPayload({
+        formData,
+        serverType,
+        envVars,
+        headerVars,
       });
-
-      const headers: Record<string, string> = {};
-      headerVars.forEach(({ key, value }) => {
-        if (key.trim()) {
-          headers[key.trim()] = value;
-        }
-      });
-
-      // Prepare options object, only include defined values
-      const options: any = {};
-      if (formData.options?.timeout && formData.options.timeout !== 60000) {
-        options.timeout = formData.options.timeout;
-      }
-      if (formData.options?.resetTimeoutOnProgress) {
-        options.resetTimeoutOnProgress = formData.options.resetTimeoutOnProgress;
-      }
-      if (formData.options?.maxTotalTimeout) {
-        options.maxTotalTimeout = formData.options.maxTotalTimeout;
-      }
-
-      const oauthConfig = (() => {
-        if (!formData.oauth) return undefined;
-        const {
-          clientId,
-          clientSecret,
-          scopes,
-          accessToken,
-          refreshToken,
-          authorizationEndpoint,
-          tokenEndpoint,
-          resource,
-        } = formData.oauth;
-
-        const oauth: Record<string, unknown> = {};
-        if (clientId && clientId.trim()) oauth.clientId = clientId.trim();
-        if (clientSecret && clientSecret.trim()) oauth.clientSecret = clientSecret.trim();
-        if (scopes && scopes.trim()) {
-          const parsedScopes = scopes
-            .split(/[\s,]+/)
-            .map((scope) => scope.trim())
-            .filter((scope) => scope.length > 0);
-          if (parsedScopes.length > 0) {
-            oauth.scopes = parsedScopes;
-          }
-        }
-        if (accessToken && accessToken.trim()) oauth.accessToken = accessToken.trim();
-        if (refreshToken && refreshToken.trim()) oauth.refreshToken = refreshToken.trim();
-        if (authorizationEndpoint && authorizationEndpoint.trim()) {
-          oauth.authorizationEndpoint = authorizationEndpoint.trim();
-        }
-        if (tokenEndpoint && tokenEndpoint.trim()) oauth.tokenEndpoint = tokenEndpoint.trim();
-        if (resource && resource.trim()) oauth.resource = resource.trim();
-
-        return Object.keys(oauth).length > 0 ? oauth : undefined;
-      })();
-
-      const payload = {
-        name: formData.name,
-        config: {
-          type: serverType, // Always include the type
-          description: formData.description?.trim() || undefined,
-          ...(serverType === 'openapi'
-            ? {
-                openapi: (() => {
-                  const openapi: any = {
-                    version: formData.openapi?.version || '3.1.0',
-                  };
-
-                  // Add URL or schema based on input mode
-                  if (formData.openapi?.inputMode === 'url') {
-                    openapi.url = formData.openapi?.url || '';
-                  } else if (formData.openapi?.inputMode === 'schema' && formData.openapi?.schema) {
-                    try {
-                      openapi.schema = JSON.parse(formData.openapi.schema);
-                    } catch (e) {
-                      throw new Error('Invalid JSON schema format');
-                    }
-                  }
-
-                  // Add security configuration if provided
-                  if (formData.openapi?.securityType && formData.openapi.securityType !== 'none') {
-                    openapi.security = {
-                      type: formData.openapi.securityType,
-                      ...(formData.openapi.securityType === 'apiKey' && {
-                        apiKey: {
-                          name: formData.openapi.apiKeyName || '',
-                          in: formData.openapi.apiKeyIn || 'header',
-                          value: formData.openapi.apiKeyValue || '',
-                        },
-                      }),
-                      ...(formData.openapi.securityType === 'http' && {
-                        http: {
-                          scheme: formData.openapi.httpScheme || 'bearer',
-                          credentials: formData.openapi.httpCredentials || '',
-                        },
-                      }),
-                      ...(formData.openapi.securityType === 'oauth2' && {
-                        oauth2: {
-                          token: formData.openapi.oauth2Token || '',
-                        },
-                      }),
-                      ...(formData.openapi.securityType === 'openIdConnect' && {
-                        openIdConnect: {
-                          url: formData.openapi.openIdConnectUrl || '',
-                          token: formData.openapi.openIdConnectToken || '',
-                        },
-                      }),
-                    };
-                  }
-
-                  // Add passthrough headers if provided
-                  if (
-                    formData.openapi?.passthroughHeaders &&
-                    formData.openapi.passthroughHeaders.trim()
-                  ) {
-                    openapi.passthroughHeaders = formData.openapi.passthroughHeaders
-                      .split(',')
-                      .map((header) => header.trim())
-                      .filter((header) => header.length > 0);
-                  }
-
-                  return openapi;
-                })(),
-                ...(Object.keys(headers).length > 0 ? { headers } : {}),
-              }
-            : serverType === 'sse' || serverType === 'streamable-http'
-              ? {
-                  ...(formData.passthroughHeaders && formData.passthroughHeaders.trim()
-                    ? {
-                        passthroughHeaders: formData.passthroughHeaders
-                          .split(',')
-                          .map((header) => header.trim())
-                          .filter((header) => header.length > 0),
-                      }
-                    : {}),
-                  url: formData.url,
-                  ...(Object.keys(headers).length > 0 ? { headers } : {}),
-                  ...(Object.keys(env).length > 0 ? { env } : {}),
-                  ...(oauthConfig ? { oauth: oauthConfig } : {}),
-                }
-              : {
-                  command: formData.command,
-                  args: formData.args,
-                  env: Object.keys(env).length > 0 ? env : undefined,
-                }),
-          ...(Object.keys(options).length > 0 ? { options } : {}),
-          // KeepAlive configuration (only for SSE/streamable-http types)
-          ...(serverType === 'sse' || serverType === 'streamable-http'
-            ? {
-                enableKeepAlive: formData.keepAlive?.enabled || false,
-                ...(formData.keepAlive?.enabled
-                  ? { keepAliveInterval: formData.keepAlive.interval || 60000 }
-                  : {}),
-              }
-            : {}),
-        },
-      };
 
       onSubmit(payload);
     } catch (err) {

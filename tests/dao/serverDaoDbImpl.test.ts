@@ -108,4 +108,53 @@ describe('ServerDaoDbImpl', () => {
 
     expect(result?.passthroughHeaders).toEqual(headers);
   });
+
+  it('should convert explicit undefined updates into null for nullable DB fields', async () => {
+    const dao = new ServerDaoDbImpl();
+
+    mockRepository.update.mockResolvedValue({
+      name: 'sse-server',
+      type: 'sse',
+      url: null,
+      description: null,
+      headers: {},
+      env: {},
+      keepAliveInterval: null,
+      enabled: true,
+    });
+
+    await dao.update('sse-server', {
+      description: undefined,
+      url: undefined,
+      headers: {},
+      env: {},
+      keepAliveInterval: undefined,
+    });
+
+    expect(mockRepository.update).toHaveBeenCalledWith('sse-server', {
+      description: null,
+      url: null,
+      headers: {},
+      env: {},
+      keepAliveInterval: null,
+    });
+  });
+
+  it('should not wipe unrelated fields during partial updates', async () => {
+    const dao = new ServerDaoDbImpl();
+
+    mockRepository.update.mockResolvedValue({
+      name: 'sse-server',
+      enabled: true,
+      tools: {},
+    });
+
+    await dao.update('sse-server', {
+      tools: {},
+    });
+
+    expect(mockRepository.update).toHaveBeenCalledWith('sse-server', {
+      tools: {},
+    });
+  });
 });
