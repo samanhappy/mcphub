@@ -10,7 +10,7 @@ import {
   truncateWithHeuristic,
   getModelDefaultTokenLimit,
 } from '../utils/tokenTruncation.js';
-import { safeStringify } from '../utils/serialization.js';
+import { safeStringify, summarizeErrorForLogging } from '../utils/serialization.js';
 import logService from './logService.js';
 import { createHash } from 'node:crypto';
 import OpenAI from 'openai';
@@ -1183,7 +1183,7 @@ export const saveToolsAsVectorEmbeddings = async (
           serverName,
           toolName: tool.name,
           status: status ?? 'unknown',
-          error,
+          error: summarizeErrorForLogging(error),
         });
         emitProgress(_toolIdx, 'error');
         throw error;
@@ -1198,7 +1198,7 @@ export const saveToolsAsVectorEmbeddings = async (
       console.warn('[EMBED_SYNC_ERROR] Failed while embedding server metadata', {
         serverName,
         status: status ?? 'unknown',
-        error,
+        error: summarizeErrorForLogging(error),
       });
       emitProgress(toolEmbeddings.length, 'error');
       throw error;

@@ -1,4 +1,9 @@
-import { createSafeJSON, safeStringify } from '../../src/utils/serialization.js';
+import {
+  createSafeJSON,
+  formatErrorForLogging,
+  safeStringify,
+  summarizeErrorForLogging,
+} from '../../src/utils/serialization.js';
 
 describe('serialization utilities', () => {
   it('safeStringify redacts OAuth tokens and remote HTTP error details from logs', () => {
@@ -70,5 +75,36 @@ describe('serialization utilities', () => {
     );
     expect(typeof safePayload.error.stack).toBe('string');
     expect(safePayload.self).toBe('[Circular Reference]');
+  });
+
+  it('summarizeErrorForLogging and formatErrorForLogging omit remote response details', () => {
+    const error = Object.assign(new Error('oauth response: {"access_token":"top-secret"}'), {
+      code: 'ERR_BAD_REQUEST',
+      response: {
+        status: 401,
+        data: {
+          access_token: 'top-secret',
+        },
+        headers: {
+          'x-request-id': 'req-456',
+        },
+      },
+    });
+
+    const summary = summarizeErrorForLogging(error);
+    const formatted = formatErrorForLogging(error);
+
+    expect(summary).toEqual(
+      expect.objectContaining({
+        message: '[Remote request failed; response details omitted]',
+        status: 401,
+        code: 'ERR_BAD_REQUEST',
+        requestId: 'req-456',
+      }),
+    );
+    expect(JSON.stringify(summary)).not.toContain('top-secret');
+    expect(formatted).toContain('[Remote request failed; response details omitted]');
+    expect(formatted).toContain('status=401');
+    expect(formatted).not.toContain('top-secret');
   });
 });

@@ -46,6 +46,11 @@ import {
   isSmartRoutingGroup,
 } from './smartRoutingService.js';
 import { getActivityLoggingService } from './activityLoggingService.js';
+import {
+  formatErrorForLogging,
+  sanitizeStringForLogging,
+  summarizeErrorForLogging,
+} from '../utils/serialization.js';
 
 const servers: { [sessionId: string]: Server } = {};
 
@@ -429,6 +434,153 @@ const getHeaderValue = (
   return undefined;
 };
 
+const LOG_SUMMARY_LIMIT = 8;
+
+const getValueTypeForLogging = (value: unknown): string => {
+  if (Array.isArray(value)) {
+    return `array(${value.length})`;
+  }
+  if (value === null) {
+    return 'null';
+  }
+  if (value && typeof value === 'object') {
+    return `object(${Object.keys(value as Record<string, unknown>).length} keys)`;
+  }
+  return typeof value;
+};
+
+const summarizeObjectShapeForLogging = (
+  value: Record<string, unknown>,
+): Record<string, unknown> => {
+  const entries = Object.entries(value);
+  return {
+    keyCount: entries.length,
+    keys: entries.slice(0, LOG_SUMMARY_LIMIT).map(([key]) => key),
+    valueTypes: Object.fromEntries(
+      entries
+        .slice(0, LOG_SUMMARY_LIMIT)
+        .map(([key, entryValue]) => [key, getValueTypeForLogging(entryValue)]),
+    ),
+    truncated: entries.length > LOG_SUMMARY_LIMIT || undefined,
+  };
+};
+
+export const summarizeArgumentsForLogging = (value: unknown): Record<string, unknown> => {
+  if (value === undefined) {
+    return { present: false };
+  }
+
+  if (Array.isArray(value)) {
+    return {
+      present: true,
+      type: 'array',
+      length: value.length,
+      itemTypes: Array.from(new Set(value.slice(0, LOG_SUMMARY_LIMIT).map(getValueTypeForLogging))),
+      truncated: value.length > LOG_SUMMARY_LIMIT || undefined,
+    };
+  }
+
+  if (value && typeof value === 'object') {
+    return {
+      present: true,
+      type: 'object',
+      ...summarizeObjectShapeForLogging(value as Record<string, unknown>),
+    };
+  }
+
+  return {
+    present: true,
+    type: getValueTypeForLogging(value),
+  };
+};
+
+const summarizeTextPayloadForLogging = (text: string): Record<string, unknown> => ({
+  textLength: text.length,
+  looksLikeJson: /^[[{]/.test(text.trim()) || undefined,
+  wasSanitized: sanitizeStringForLogging(text) !== text || undefined,
+});
+
+const summarizeContentItemForLogging = (item: unknown): Record<string, unknown> => {
+  if (!item || typeof item !== 'object') {
+    return { type: getValueTypeForLogging(item) };
+  }
+
+  const record = item as Record<string, unknown>;
+  return {
+    type: typeof record.type === 'string' ? record.type : 'object',
+    keys: Object.keys(record).slice(0, LOG_SUMMARY_LIMIT),
+    text:
+      typeof record.text === 'string' ? summarizeTextPayloadForLogging(record.text) : undefined,
+    truncated: Object.keys(record).length > LOG_SUMMARY_LIMIT || undefined,
+  };
+};
+
+export const summarizeToolResultForLogging = (value: unknown): Record<string, unknown> => {
+  if (!value || typeof value !== 'object') {
+    return { type: getValueTypeForLogging(value) };
+  }
+
+  const record = value as Record<string, unknown>;
+  const summary: Record<string, unknown> = {
+    type: 'object',
+    ...summarizeObjectShapeForLogging(record),
+  };
+
+  if (typeof record.isError === 'boolean') {
+    summary.isError = record.isError;
+  }
+
+  if (Array.isArray(record.content)) {
+    summary.contentCount = record.content.length;
+    summary.content = record.content
+      .slice(0, LOG_SUMMARY_LIMIT)
+      .map((item) => summarizeContentItemForLogging(item));
+    summary.contentTruncated = record.content.length > LOG_SUMMARY_LIMIT || undefined;
+  }
+
+  return summary;
+};
+
+const summarizeToolRequestForLogging = (params: any): Record<string, unknown> => ({
+  name: typeof params?.name === 'string' ? params.name : 'unknown',
+  arguments: summarizeArgumentsForLogging(params?.arguments),
+});
+
+const summarizePromptForLogging = (prompt: unknown): Record<string, unknown> => {
+  if (!prompt || typeof prompt !== 'object') {
+    return { type: getValueTypeForLogging(prompt) };
+  }
+
+  const record = prompt as Record<string, unknown>;
+  const summary: Record<string, unknown> = {
+    type: 'object',
+    ...summarizeObjectShapeForLogging(record),
+  };
+
+  if (Array.isArray(record.messages)) {
+    const messages = record.messages as Array<Record<string, unknown>>;
+    summary.messageCount = messages.length;
+    summary.messages = messages.slice(0, LOG_SUMMARY_LIMIT).map((message) => ({
+      role: typeof message.role === 'string' ? message.role : undefined,
+      contentType:
+        message.content && typeof message.content === 'object'
+          ? (message.content as Record<string, unknown>).type
+          : getValueTypeForLogging(message.content),
+      text:
+        message.content &&
+        typeof message.content === 'object' &&
+        typeof (message.content as Record<string, unknown>).text === 'string'
+          ? summarizeTextPayloadForLogging(
+              String((message.content as Record<string, unknown>).text),
+            )
+          : undefined,
+    }));
+    summary.messagesTruncated = messages.length > LOG_SUMMARY_LIMIT || undefined;
+  }
+
+  return summary;
+};
+
 export const collectPassthroughHeaders = (
   requestHeaders: Record<string, string | string[] | undefined> | null,
   passthroughHeaderNames?: string[],
@@ -678,14 +830,14 @@ const callToolWithReconnect = async (
               );
               console.error('Error syncing tool embeddings after reconnect', {
                 serverName: serverInfo.name,
-                error,
+                error: summarizeErrorForLogging(error),
               });
             });
           } catch (listToolsError) {
-            console.warn(
-              `Failed to reload tools after reconnection for server ${serverInfo.name}:`,
-              listToolsError,
-            );
+            console.warn('Failed to reload tools after reconnection', {
+              serverName: serverInfo.name,
+              error: summarizeErrorForLogging(listToolsError),
+            });
             // Continue anyway, as the connection might still work for the current tool
           }
 
@@ -696,10 +848,10 @@ const callToolWithReconnect = async (
         } catch (reconnectError) {
           console.error('Failed to reconnect to server', {
             serverName: serverInfo.name,
-            error: reconnectError,
+            error: summarizeErrorForLogging(reconnectError),
           });
           serverInfo.status = 'disconnected';
-          serverInfo.error = `Failed to reconnect: ${reconnectError}`;
+          serverInfo.error = `Failed to reconnect: ${formatErrorForLogging(reconnectError)}`;
 
           // If this was the last attempt, throw the original error
           if (attempt === maxRetries) {
@@ -831,15 +983,21 @@ export const initializeClientsFromSettings = async (
             reportProgress: options?.reportEmbeddingProgress === true && serverName === name,
           }).catch((error) => {
             console.warn(`[EMBED_SYNC_ERROR] Failed to sync OpenAPI embeddings for server "${name}"`);
-            console.error('Error syncing OpenAPI tool embeddings', { serverName: name, error });
+            console.error('Error syncing OpenAPI tool embeddings', {
+              serverName: name,
+              error: summarizeErrorForLogging(error),
+            });
           });
           continue;
         } catch (error) {
-          console.error('Failed to initialize OpenAPI server', { serverName: name, error });
+          console.error('Failed to initialize OpenAPI server', {
+            serverName: name,
+            error: summarizeErrorForLogging(error),
+          });
 
           // Update the already pushed server info with error status
           serverInfo.status = 'disconnected';
-          serverInfo.error = `Failed to initialize OpenAPI server: ${error}`;
+          serverInfo.error = `Failed to initialize OpenAPI server: ${formatErrorForLogging(error)}`;
           continue;
         }
       } else {
@@ -925,14 +1083,15 @@ export const initializeClientsFromSettings = async (
                   );
                   console.error('Error syncing tool embeddings for connected server', {
                     serverName: name,
-                    error: embeddingError,
+                    error: summarizeErrorForLogging(embeddingError),
                   });
                 });
               })
               .catch((error) => {
-                console.error(
-                  `Failed to list tools for server ${name} by error: ${error} with stack: ${error.stack}`,
-                );
+                console.error('Failed to list tools for server', {
+                  serverName: name,
+                  error: summarizeErrorForLogging(error),
+                });
                 dataError = error;
               });
           }
@@ -954,9 +1113,10 @@ export const initializeClientsFromSettings = async (
                 );
               })
               .catch((error) => {
-                console.error(
-                  `Failed to list prompts for server ${name} by error: ${error} with stack: ${error.stack}`,
-                );
+                console.error('Failed to list prompts for server', {
+                  serverName: name,
+                  error: summarizeErrorForLogging(error),
+                });
                 dataError = error;
               });
           }
@@ -978,9 +1138,10 @@ export const initializeClientsFromSettings = async (
                 );
               })
               .catch((error) => {
-                console.error(
-                  `Failed to list resources for server ${name} by error: ${error} with stack: ${error.stack}`,
-                );
+                console.error('Failed to list resources for server', {
+                  serverName: name,
+                  error: summarizeErrorForLogging(error),
+                });
                 dataError = error;
               });
           }
@@ -990,11 +1151,14 @@ export const initializeClientsFromSettings = async (
             serverInfo.error = null;
             // Set up keep-alive ping for SSE connections via shared service
             setupClientKeepAlive(serverInfo, expandedConf).catch((e) =>
-              console.warn('Keepalive setup failed', { serverName: name, error: e }),
+              console.warn('Keepalive setup failed', {
+                serverName: name,
+                error: summarizeErrorForLogging(e),
+              }),
             );
           } else {
             serverInfo.status = 'disconnected';
-            serverInfo.error = `Failed to list data: ${dataError} `;
+            serverInfo.error = `Failed to list data: ${formatErrorForLogging(dataError)}`;
           }
         })
         .catch(async (error) => {
@@ -1015,12 +1179,13 @@ export const initializeClientsFromSettings = async (
             }
             serverInfo.error = null;
           } else {
-            console.error(
-              `Failed to connect client for server ${name} by error: ${error} with stack: ${error.stack}`,
-            );
+            console.error('Failed to connect client for server', {
+              serverName: name,
+              error: summarizeErrorForLogging(error),
+            });
             // Other connection errors
             serverInfo.status = 'disconnected';
-            serverInfo.error = `Failed to connect: ${error.stack} `;
+            serverInfo.error = `Failed to connect: ${formatErrorForLogging(error)}`;
           }
         });
       console.log(`Initialized client for server: ${name}`);
@@ -1360,7 +1525,7 @@ export const toggleServerStatus = async (
       } catch (embeddingError) {
         console.warn('Failed to remove embeddings for server', {
           serverName: name,
-          error: embeddingError,
+          error: summarizeErrorForLogging(embeddingError),
         });
       }
     } else {
@@ -1371,7 +1536,7 @@ export const toggleServerStatus = async (
       } catch (reconnectError) {
         console.warn('Failed to reconnect server during enable', {
           serverName: name,
-          error: reconnectError,
+          error: summarizeErrorForLogging(reconnectError),
         });
       }
     }
@@ -1441,7 +1606,7 @@ export const handleListToolsRequest = async (_: any, extra: any) => {
 };
 
 export const handleCallToolRequest = async (request: any, extra: any) => {
-  console.log('Handling CallToolRequest for tool', request.params);
+  console.log('Handling CallToolRequest for tool', summarizeToolRequestForLogging(request.params));
   const startTime = Date.now();
   const activityLogger = getActivityLoggingService();
 
@@ -1512,7 +1677,7 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
         console.log('Invoking OpenAPI tool', {
           toolName,
           serverName: targetServerInfo.name,
-          arguments: finalArgs,
+          arguments: summarizeArgumentsForLogging(finalArgs),
         });
 
         // Remove server prefix from tool name if present
@@ -1554,7 +1719,7 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
         console.log('OpenAPI tool invocation result', {
           serverName: targetServerInfo.name,
           toolName: cleanToolName,
-          result,
+          result: summarizeToolResultForLogging(result),
         });
 
         // Log successful activity
@@ -1564,8 +1729,8 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
           tool: cleanToolName,
           duration,
           status: 'success',
-          input: finalArgs,
-          output: result,
+          input: summarizeArgumentsForLogging(finalArgs),
+          output: summarizeToolResultForLogging(result),
           group,
           keyId,
           keyName,
@@ -1593,7 +1758,7 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
       console.log('Invoking tool', {
         toolName,
         serverName: targetServerInfo.name,
-        arguments: finalArgs,
+        arguments: summarizeArgumentsForLogging(finalArgs),
       });
 
       const separator = getNameSeparator();
@@ -1613,7 +1778,7 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
       console.log('Tool invocation result', {
         serverName: targetServerInfo.name,
         toolName: cleanToolName,
-        result,
+        result: summarizeToolResultForLogging(result),
       });
 
       // Log successful activity
@@ -1623,14 +1788,12 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
         tool: cleanToolName,
         duration,
         status: result.isError ? 'error' : 'success',
-        input: finalArgs,
-        output: result,
+        input: summarizeArgumentsForLogging(finalArgs),
+        output: summarizeToolResultForLogging(result),
         group,
         keyId,
         keyName,
-        errorMessage: result.isError
-          ? String(result.content?.[0]?.text || 'Unknown error')
-          : undefined,
+        errorMessage: result.isError ? 'Tool returned error response' : undefined,
       });
 
       return result;
@@ -1657,7 +1820,7 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
       console.log('Invoking OpenAPI tool', {
         toolName: cleanToolName,
         serverName: serverInfo.name,
-        arguments: request.params.arguments,
+        arguments: summarizeArgumentsForLogging(request.params.arguments),
       });
 
       // Extract passthrough headers from extra or request context
@@ -1696,7 +1859,7 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
       console.log('OpenAPI tool invocation result', {
         serverName: serverInfo.name,
         toolName: cleanToolName,
-        result,
+        result: summarizeToolResultForLogging(result),
       });
 
       // Log successful activity
@@ -1706,8 +1869,8 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
         tool: cleanToolName,
         duration,
         status: 'success',
-        input: request.params.arguments,
-        output: result,
+        input: summarizeArgumentsForLogging(request.params.arguments),
+        output: summarizeToolResultForLogging(result),
         group,
         keyId,
         keyName,
@@ -1742,7 +1905,7 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
     console.log('Tool call result', {
       serverName: serverInfo.name,
       toolName: cleanToolName,
-      result,
+        result: summarizeToolResultForLogging(result),
     });
 
     // Log successful activity
@@ -1752,19 +1915,17 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
       tool: cleanToolName,
       duration,
       status: result.isError ? 'error' : 'success',
-      input: request.params.arguments,
-      output: result,
+        input: summarizeArgumentsForLogging(request.params.arguments),
+        output: summarizeToolResultForLogging(result),
       group,
       keyId,
       keyName,
-      errorMessage: result.isError
-        ? String(result.content?.[0]?.text || 'Unknown error')
-        : undefined,
+        errorMessage: result.isError ? 'Tool returned error response' : undefined,
     });
 
     return result;
   } catch (error) {
-    console.error(`Error handling CallToolRequest: ${error}`);
+    console.error('Error handling CallToolRequest', summarizeErrorForLogging(error));
 
     // Log error activity
     const duration = Date.now() - startTime;
@@ -1776,18 +1937,20 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
       tool: toolName,
       duration,
       status: 'error',
-      input: request.params?.arguments,
+      input: summarizeArgumentsForLogging(request.params?.arguments),
       group,
       keyId,
       keyName,
-      errorMessage: String(error),
+      errorMessage: formatErrorForLogging(error),
     });
+
+    const safeErrorText = formatErrorForLogging(error);
 
     return {
       content: [
         {
           type: 'text',
-          text: `Error: ${error}`,
+          text: `Error: ${safeErrorText}`,
         },
       ],
       isError: true,
@@ -1845,21 +2008,25 @@ export const handleGetPromptRequest = async (request: any, extra: any) => {
       arguments: promptArgs,
     };
     // Log the final promptParams
-    console.log('Calling getPrompt with params', promptParams);
+    console.log('Calling getPrompt with params', {
+      name: cleanPromptName || '',
+      arguments: summarizeArgumentsForLogging(promptArgs),
+    });
     const prompt = await server.client?.getPrompt(promptParams);
-    console.log('Received prompt', prompt);
+    console.log('Received prompt', summarizePromptForLogging(prompt));
     if (!prompt) {
       throw new Error(`Prompt not found: ${cleanPromptName}`);
     }
 
     return prompt;
   } catch (error) {
-    console.error(`Error handling GetPromptRequest: ${error}`);
+    console.error('Error handling GetPromptRequest', summarizeErrorForLogging(error));
+    const safeErrorText = formatErrorForLogging(error);
     return {
       content: [
         {
           type: 'text',
-          text: `Error: ${error}`,
+          text: `Error: ${safeErrorText}`,
         },
       ],
       isError: true,
@@ -2048,13 +2215,14 @@ export const handleReadResourceRequest = async (request: any, _extra: any) => {
 
     return result;
   } catch (error) {
-    console.error(`Error handling ReadResourceRequest: ${error}`);
+    console.error('Error handling ReadResourceRequest', summarizeErrorForLogging(error));
+    const safeErrorText = formatErrorForLogging(error);
     return {
       contents: [
         {
           uri: request.params?.uri || '',
           mimeType: 'text/plain',
-          text: `Error: ${error}`,
+          text: `Error: ${safeErrorText}`,
         },
       ],
     };

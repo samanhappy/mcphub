@@ -1,6 +1,9 @@
 import { getActivityDao, isActivityLoggingEnabled } from '../dao/DaoFactory.js';
 import { IActivity, ActivityStatus } from '../types/index.js';
-import { safeStringify as safeJsonStringify } from '../utils/serialization.js';
+import {
+  safeStringify as safeJsonStringify,
+  sanitizeStringForLogging,
+} from '../utils/serialization.js';
 
 /**
  * Service for logging tool call activities
@@ -63,7 +66,9 @@ export class ActivityLoggingService {
         group: params.group,
         keyId: params.keyId,
         keyName: params.keyName,
-        errorMessage: params.errorMessage,
+        errorMessage: params.errorMessage
+          ? sanitizeStringForLogging(params.errorMessage)
+          : undefined,
       };
 
       await activityDao.create(activity);

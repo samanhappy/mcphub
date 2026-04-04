@@ -44,7 +44,7 @@ const isSensitiveLogKey = (key: string): boolean => {
   );
 };
 
-const sanitizeStringForLogging = (value: string): string => {
+export const sanitizeStringForLogging = (value: string): string => {
   let sanitized = value;
 
   sanitized = sanitized.replace(
@@ -125,6 +125,84 @@ const serializeError = (error: Error): Record<string, unknown> => {
   serialized.name = serialized.name ?? error.name;
 
   return serialized;
+};
+
+export const summarizeErrorForLogging = (error: unknown): Record<string, unknown> => {
+  if (error instanceof Error) {
+    return serializeError(error);
+  }
+
+  if (typeof error === 'string') {
+    return { message: sanitizeStringForLogging(error) };
+  }
+
+  if (error && typeof error === 'object') {
+    const record = error as Record<string, unknown>;
+    const summary: Record<string, unknown> = {};
+
+    if (typeof record.name === 'string') {
+      summary.name = sanitizeStringForLogging(record.name);
+    }
+    if (typeof record.message === 'string') {
+      summary.message = sanitizeStringForLogging(record.message);
+    }
+    if (typeof record.code === 'string') {
+      summary.code = sanitizeStringForLogging(record.code);
+    }
+    if (typeof record.status === 'number') {
+      summary.status = record.status;
+    }
+    if (typeof record.requestId === 'string') {
+      summary.requestId = sanitizeStringForLogging(record.requestId);
+    }
+
+    if (Object.keys(summary).length > 0) {
+      return summary;
+    }
+
+    const keys = Object.keys(record);
+    return {
+      type: 'object',
+      keyCount: keys.length,
+      keys: keys.slice(0, 10),
+      truncated: keys.length > 10 || undefined,
+    };
+  }
+
+  if (error === undefined) {
+    return { message: 'undefined' };
+  }
+
+  if (error === null) {
+    return { message: 'null' };
+  }
+
+  return {
+    message: sanitizeStringForLogging(String(error)),
+  };
+};
+
+export const formatErrorForLogging = (error: unknown): string => {
+  const summary = summarizeErrorForLogging(error);
+  const parts: string[] = [];
+
+  if (typeof summary.name === 'string') {
+    parts.push(summary.name);
+  }
+  if (typeof summary.message === 'string') {
+    parts.push(summary.message);
+  }
+  if (summary.status !== undefined) {
+    parts.push(`status=${summary.status}`);
+  }
+  if (typeof summary.code === 'string') {
+    parts.push(`code=${summary.code}`);
+  }
+  if (typeof summary.requestId === 'string') {
+    parts.push(`requestId=${summary.requestId}`);
+  }
+
+  return parts.join(' | ') || 'Unknown error';
 };
 
 const createSafeJsonReplacer = () => {

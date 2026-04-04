@@ -284,4 +284,47 @@ describe('MCP Service - Smart Routing with Group Support', () => {
       getServerByNameSpy.mockRestore();
     });
   });
+
+  describe('safe logging summaries', () => {
+    it('summarizeArgumentsForLogging keeps only shape information', () => {
+      const summary = mcpService.summarizeArgumentsForLogging({
+        access_token: 'secret-value',
+        nested: { refreshToken: 'secret-refresh' },
+        count: 1,
+        enabled: true,
+      });
+
+      const serialized = JSON.stringify(summary);
+      expect(serialized).not.toContain('secret-value');
+      expect(serialized).not.toContain('secret-refresh');
+      expect(summary).toEqual(
+        expect.objectContaining({
+          present: true,
+          type: 'object',
+          keyCount: 4,
+        }),
+      );
+    });
+
+    it('summarizeToolResultForLogging keeps metadata without leaking content text', () => {
+      const summary = mcpService.summarizeToolResultForLogging({
+        isError: true,
+        content: [
+          {
+            type: 'text',
+            text: '{"access_token":"secret-token"}',
+          },
+        ],
+      });
+
+      const serialized = JSON.stringify(summary);
+      expect(serialized).not.toContain('secret-token');
+      expect(summary).toEqual(
+        expect.objectContaining({
+          isError: true,
+          contentCount: 1,
+        }),
+      );
+    });
+  });
 });
