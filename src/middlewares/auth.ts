@@ -26,6 +26,11 @@ const resolveBetterAuthUserSafe = async (req: Request) => {
 };
 
 const validateBearerAuth = async (req: Request, systemConfig?: SystemConfig | null): Promise<boolean> => {
+  const enableBearerAuth = systemConfig?.routing?.enableBearerAuth ?? true;
+  if (!enableBearerAuth) {
+    return false;
+  }
+
   const bearerKeyDao = getBearerKeyDao();
   const enabledKeys = await bearerKeyDao.findEnabled();
 

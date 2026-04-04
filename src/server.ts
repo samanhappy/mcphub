@@ -21,6 +21,7 @@ import { initOAuthProvider, getOAuthRouter } from './services/oauthService.js';
 import { initOAuthServer } from './services/oauthServerService.js';
 import { safeStringify } from './utils/serialization.js';
 import http from 'http';
+import { mcpConnectionRateLimiter } from './utils/rateLimit.js';
 
 /**
  * Get the directory of the current module
@@ -95,22 +96,34 @@ export class AppServer {
           console.log('MCP server initialized successfully');
 
           // Original routes (global and group-based)
-          this.app.get(`${this.basePath}/sse/:group(.*)?`, sseUserContextMiddleware, (req, res) =>
+          this.app.get(
+            `${this.basePath}/sse/:group(.*)?`,
+            mcpConnectionRateLimiter,
+            sseUserContextMiddleware,
+            (req, res) =>
             handleSseConnection(req, res),
           );
-          this.app.post(`${this.basePath}/messages`, sseUserContextMiddleware, handleSseMessage);
+          this.app.post(
+            `${this.basePath}/messages`,
+            mcpConnectionRateLimiter,
+            sseUserContextMiddleware,
+            handleSseMessage,
+          );
           this.app.post(
             `${this.basePath}/mcp/:group(.*)?`,
+            mcpConnectionRateLimiter,
             sseUserContextMiddleware,
             handleMcpPostRequest,
           );
           this.app.get(
             `${this.basePath}/mcp/:group(.*)?`,
+            mcpConnectionRateLimiter,
             sseUserContextMiddleware,
             handleMcpOtherRequest,
           );
           this.app.delete(
             `${this.basePath}/mcp/:group(.*)?`,
+            mcpConnectionRateLimiter,
             sseUserContextMiddleware,
             handleMcpOtherRequest,
           );
@@ -118,26 +131,31 @@ export class AppServer {
           // User-scoped routes with user context middleware
           this.app.get(
             `${this.basePath}/:user/sse/:group(.*)?`,
+            mcpConnectionRateLimiter,
             sseUserContextMiddleware,
             (req, res) => handleSseConnection(req, res),
           );
           this.app.post(
             `${this.basePath}/:user/messages`,
+            mcpConnectionRateLimiter,
             sseUserContextMiddleware,
             handleSseMessage,
           );
           this.app.post(
             `${this.basePath}/:user/mcp/:group(.*)?`,
+            mcpConnectionRateLimiter,
             sseUserContextMiddleware,
             handleMcpPostRequest,
           );
           this.app.get(
             `${this.basePath}/:user/mcp/:group(.*)?`,
+            mcpConnectionRateLimiter,
             sseUserContextMiddleware,
             handleMcpOtherRequest,
           );
           this.app.delete(
             `${this.basePath}/:user/mcp/:group(.*)?`,
+            mcpConnectionRateLimiter,
             sseUserContextMiddleware,
             handleMcpOtherRequest,
           );

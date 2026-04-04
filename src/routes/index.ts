@@ -1,5 +1,4 @@
 import express from 'express';
-import rateLimit from 'express-rate-limit';
 import { check } from 'express-validator';
 import config from '../config/index.js';
 import {
@@ -149,19 +148,9 @@ import {
 } from '../controllers/templateController.js';
 import { auth } from '../middlewares/auth.js';
 import { getBetterAuthRuntimeConfig } from '../services/betterAuthConfig.js';
+import { authenticatedRouteRateLimiter, templateRateLimiter } from '../utils/rateLimit.js';
 
 const router = express.Router();
-
-const templateRateLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 100,
-  standardHeaders: true,
-  legacyHeaders: false,
-  skip: () =>
-    process.env.NODE_ENV === 'test' ||
-    process.env.JEST_WORKER_ID !== undefined ||
-    process.env.VITEST_WORKER_ID !== undefined,
-});
 
 export const initRoutes = async (app: express.Application): Promise<void> => {
   const isTestEnv =
@@ -362,11 +351,12 @@ export const initRoutes = async (app: express.Application): Promise<void> => {
     register,
   );
 
-  router.get('/auth/user', auth, getCurrentUser);
+  router.get('/auth/user', authenticatedRouteRateLimiter, auth, getCurrentUser);
 
   // Add change password route
   router.post(
     '/auth/change-password',
+    authenticatedRouteRateLimiter,
     [
       auth,
       check('currentPassword', 'Current password is required').not().isEmpty(),
