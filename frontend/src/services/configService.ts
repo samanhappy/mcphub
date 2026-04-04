@@ -7,6 +7,8 @@ export interface SystemConfig {
     enableGroupNameRoute?: boolean;
     enableBearerAuth?: boolean;
     bearerAuthKey?: string;
+    bearerAuthHeaderName?: string;
+    jsonBodyLimit?: string;
     skipAuth?: boolean;
   };
   install?: {

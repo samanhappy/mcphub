@@ -26,6 +26,8 @@ Updates various parts of the system configuration. You only need to provide the 
 - `enableGroupNameRoute` (boolean): Enable or disable group-based routing (e.g., `/api/mcp/group/:groupName`).
 - `enableBearerAuth` (boolean): Require bearer token authentication for MCP endpoints (default: `true`).
 - `bearerAuthKey` (string): Legacy bearer key (used only for one-time migration).
+- `bearerAuthHeaderName` (string): Header name used to receive MCP bearer credentials (default: `Authorization`). Change this when upstream passthrough headers also use `Authorization`.
+- `jsonBodyLimit` (string): Express JSON body size limit (default: `1mb`). This applies to large inline OpenAPI schema uploads too.
 - `skipAuth` (boolean): If true, skips dashboard login requirements. This does **not** disable MCP endpoint authentication.
 
 #### Install Configuration (`install`)
@@ -54,6 +56,8 @@ Updates various parts of the system configuration. You only need to provide the 
   {
     "routing": {
       "enableBearerAuth": true,
+      "bearerAuthHeaderName": "X-MCP-Authorization",
+      "jsonBodyLimit": "5mb",
       "skipAuth": false
     },
     "smartRouting": {

@@ -479,6 +479,27 @@ MCPHub validates configurations on startup and reload:
 }
 ``` */}
 
+## System Routing Settings
+
+You can also configure runtime routing and authentication behavior under `systemConfig.routing` in `mcp_settings.json`:
+
+```json
+{
+  "systemConfig": {
+    "routing": {
+      "enableBearerAuth": true,
+      "bearerAuthHeaderName": "X-MCP-Authorization",
+      "jsonBodyLimit": "5mb",
+      "skipAuth": false
+    }
+  }
+}
+```
+
+- `bearerAuthHeaderName` defaults to `Authorization` and controls which incoming header MCPHub reads for Bearer authentication.
+- Use a custom header such as `X-MCP-Authorization` when an upstream MCP/OpenAPI server also needs to passthrough `Authorization`.
+- `jsonBodyLimit` defaults to `1mb` and controls the Express JSON parser limit for API requests, including large inline OpenAPI schema uploads.
+
 ## Best Practices
 
 ### Security

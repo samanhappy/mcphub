@@ -1,7 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
+import { getSystemConfigDao } from '../dao/index.js';
 import { UserContextService } from '../services/userContextService.js';
 import { IUser } from '../types/index.js';
-import { resolveOAuthUserFromAuthHeader } from '../utils/oauthBearer.js';
+import { resolveOAuthUserFromHeaders } from '../utils/oauthBearer.js';
 
 /**
  * User context middleware
@@ -73,10 +74,8 @@ export const sseUserContextMiddleware = async (
       attachCleanupHandlers();
       console.log(`User context set for SSE/MCP endpoint: ${username}`);
     } else {
-      const rawAuthHeader = Array.isArray(req.headers.authorization)
-        ? req.headers.authorization[0]
-        : req.headers.authorization;
-      const bearerUser = await resolveOAuthUserFromAuthHeader(rawAuthHeader);
+      const systemConfig = await getSystemConfigDao().get();
+      const bearerUser = await resolveOAuthUserFromHeaders(req.headers, systemConfig);
 
       if (bearerUser) {
         userContextService.setCurrentUser(bearerUser);

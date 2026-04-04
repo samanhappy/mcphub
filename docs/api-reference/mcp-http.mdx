@@ -5,7 +5,7 @@ description: "Connect to your MCP servers using the unified HTTP endpoint."
 
 MCPHub provides a unified streamable HTTP interface for all your MCP servers. This allows you to send requests to any configured MCP server and receive responses in real-time.
 
-**Security note**: MCP endpoints require authentication by default to avoid exposing connected tools and data. If you intentionally want public MCP access, disable **Enable Bearer Authentication** in the Keys settings. **Skip Authentication** only affects dashboard login.
+**Security note**: MCP endpoints require authentication by default to avoid exposing connected tools and data. If you intentionally want public MCP access, disable **Enable Bearer Authentication** in the Keys settings. **Skip Authentication** only affects dashboard login. By default MCPHub reads Bearer credentials from the `Authorization` header, but this is configurable via **Bearer Auth Header Name** if upstream passthrough headers would otherwise conflict.
 
 ### Unified Endpoint
 

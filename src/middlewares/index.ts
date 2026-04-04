@@ -3,7 +3,9 @@ import { auth } from './auth.js';
 import { userContextMiddleware } from './userContext.js';
 import { i18nMiddleware } from './i18n.js';
 import config from '../config/index.js';
+import { getSystemConfigDao } from '../dao/index.js';
 import { getBetterAuthRuntimeConfig } from '../services/betterAuthConfig.js';
+import { resolveJsonBodyLimit } from '../utils/bearerAuth.js';
 
 export const errorHandler = (
   err: Error,
@@ -25,7 +27,7 @@ export const initMiddlewares = (app: express.Application): void => {
   // Serve static files from the dynamically determined frontend path
   // Note: Static files will be handled by the server directly, not here
 
-  app.use((req, res, next) => {
+  app.use(async (req, res, next) => {
     const basePath = config.basePath;
     const betterAuthPath = `${basePath}${getBetterAuthRuntimeConfig().basePath}`;
     // Only apply JSON parsing for API and auth routes, not for SSE or message endpoints
@@ -42,7 +44,13 @@ export const initMiddlewares = (app: express.Application): void => {
         new RegExp(`^${basePath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}/[^/]+/sse(/.*)?$`),
       )
     ) {
-      express.json()(req, res, next);
+      try {
+        const systemConfig = await getSystemConfigDao().get();
+        const jsonBodyLimit = resolveJsonBodyLimit(systemConfig);
+        express.json({ limit: jsonBodyLimit })(req, res, next);
+      } catch (error) {
+        next(error as Error);
+      }
     } else {
       next();
     }

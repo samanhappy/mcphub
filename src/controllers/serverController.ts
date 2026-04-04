@@ -1040,6 +1040,8 @@ export const updateSystemConfig = async (req: Request, res: Response): Promise<v
         typeof routing.enableGroupNameRoute === 'boolean' ||
         typeof routing.enableBearerAuth === 'boolean' ||
         typeof routing.bearerAuthKey === 'string' ||
+        typeof routing.bearerAuthHeaderName === 'string' ||
+        typeof routing.jsonBodyLimit === 'string' ||
         typeof routing.skipAuth === 'boolean');
 
     const hasInstallUpdate =
@@ -1119,6 +1121,8 @@ export const updateSystemConfig = async (req: Request, res: Response): Promise<v
           enableGroupNameRoute: true,
           enableBearerAuth: true,
           bearerAuthKey: '',
+          bearerAuthHeaderName: 'Authorization',
+          jsonBodyLimit: '1mb',
           skipAuth: false,
         },
         install: {
@@ -1155,6 +1159,8 @@ export const updateSystemConfig = async (req: Request, res: Response): Promise<v
         enableGroupNameRoute: true,
         enableBearerAuth: true,
         bearerAuthKey: '',
+        bearerAuthHeaderName: 'Authorization',
+        jsonBodyLimit: '1mb',
         skipAuth: false,
       };
     }
@@ -1229,6 +1235,14 @@ export const updateSystemConfig = async (req: Request, res: Response): Promise<v
 
       if (typeof routing.bearerAuthKey === 'string') {
         systemConfig.routing.bearerAuthKey = routing.bearerAuthKey;
+      }
+
+      if (typeof routing.bearerAuthHeaderName === 'string') {
+        systemConfig.routing.bearerAuthHeaderName = routing.bearerAuthHeaderName.trim();
+      }
+
+      if (typeof routing.jsonBodyLimit === 'string') {
+        systemConfig.routing.jsonBodyLimit = routing.jsonBodyLimit.trim();
       }
 
       if (typeof routing.skipAuth === 'boolean') {

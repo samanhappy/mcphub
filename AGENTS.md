@@ -346,6 +346,7 @@ When adding/changing fields, update **ALL** these files:
 - Forgetting migration script → fields won't migrate to DB
 - Optional fields need `nullable: true` in entity
 - Complex objects need `simple-json` column type
+- Runtime-updated system settings (especially `systemConfig.routing` auth/body-limit flags) should be read via `SystemConfigDao`, not `loadSettings()`. In DB-backed or mixed DAO/file flows, `loadSettings()` can return stale values for settings changed from the dashboard/API.
 
 ## Auto-Evolution Guidelines for AI Agents
 

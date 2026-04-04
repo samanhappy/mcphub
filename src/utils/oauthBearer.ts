@@ -1,8 +1,9 @@
 import { isOAuthServerEnabled } from '../services/oauthServerService.js';
 import { getToken as getOAuthStoredToken } from '../models/OAuth.js';
 import { findUserByUsername } from '../models/User.js';
-import { IUser } from '../types/index.js';
+import { IUser, SystemConfig } from '../types/index.js';
 import { safeCompare } from './safeCompare.js';
+import { getBearerTokenFromHeaders } from './bearerAuth.js';
 
 /**
  * Resolve an MCPHub user from a raw OAuth bearer token.
@@ -27,7 +28,7 @@ export const resolveOAuthUserFromToken = async (token?: string): Promise<IUser |
 };
 
 /**
- * Resolve an MCPHub user from an Authorization header.
+ * Resolve an MCPHub user from the configured bearer auth header.
  */
 export const resolveOAuthUserFromAuthHeader = async (
   authHeader?: string,
@@ -42,4 +43,15 @@ export const resolveOAuthUserFromAuthHeader = async (
   }
 
   return resolveOAuthUserFromToken(token);
+};
+
+/**
+ * Resolve an MCPHub user from request headers using the configured bearer auth header name.
+ */
+export const resolveOAuthUserFromHeaders = async (
+  headers: Record<string, string | string[] | undefined>,
+  systemConfig?: SystemConfig | null,
+): Promise<IUser | null> => {
+  const token = getBearerTokenFromHeaders(headers, systemConfig);
+  return resolveOAuthUserFromToken(token || undefined);
 };

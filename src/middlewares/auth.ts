@@ -5,10 +5,11 @@ import defaultConfig from '../config/index.js';
 import { JWT_SECRET } from '../config/jwt.js';
 import { getToken } from '../models/OAuth.js';
 import { isOAuthServerEnabled } from '../services/oauthServerService.js';
-import { getBearerKeyDao } from '../dao/index.js';
-import { BearerKey } from '../types/index.js';
+import { getBearerKeyDao, getSystemConfigDao } from '../dao/index.js';
+import { BearerKey, SystemConfig } from '../types/index.js';
 import { getBetterAuthRuntimeConfig } from '../services/betterAuthConfig.js';
 import { safeCompare } from '../utils/safeCompare.js';
+import { getBearerTokenFromHeaders } from '../utils/bearerAuth.js';
 
 const isTestEnv =
   process.env.NODE_ENV === 'test' ||
@@ -24,7 +25,7 @@ const resolveBetterAuthUserSafe = async (req: Request) => {
   return module.resolveBetterAuthUser(req);
 };
 
-const validateBearerAuth = async (req: Request): Promise<boolean> => {
+const validateBearerAuth = async (req: Request, systemConfig?: SystemConfig | null): Promise<boolean> => {
   const bearerKeyDao = getBearerKeyDao();
   const enabledKeys = await bearerKeyDao.findEnabled();
 
@@ -33,12 +34,7 @@ const validateBearerAuth = async (req: Request): Promise<boolean> => {
     return false;
   }
 
-  const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return false;
-  }
-
-  const token = authHeader.substring(7).trim();
+  const token = getBearerTokenFromHeaders(req.headers, systemConfig);
   if (!token) {
     return false;
   }
@@ -80,7 +76,8 @@ export const auth = async (req: Request, res: Response, next: NextFunction): Pro
   }
 
   // Check if authentication is disabled globally
-  const routingConfig = loadSettings().systemConfig?.routing || {
+  const systemConfig = await getSystemConfigDao().get();
+  const routingConfig = systemConfig?.routing || loadSettings().systemConfig?.routing || {
     enableGlobalRoute: true,
     enableGroupNameRoute: true,
     skipAuth: false,
@@ -92,15 +89,14 @@ export const auth = async (req: Request, res: Response, next: NextFunction): Pro
   }
 
   // Check if bearer auth via configured keys can validate this request
-  if (await validateBearerAuth(req)) {
+  if (await validateBearerAuth(req, systemConfig)) {
     next();
     return;
   }
 
-  // Check for OAuth access token in Authorization header
-  const authHeader = req.headers.authorization;
-  if (authHeader && authHeader.startsWith('Bearer ') && isOAuthServerEnabled()) {
-    const accessToken = authHeader.substring(7);
+  // Check for OAuth access token in the configured bearer auth header
+  const accessToken = getBearerTokenFromHeaders(req.headers, systemConfig);
+  if (accessToken && isOAuthServerEnabled()) {
     const oauthToken = await getToken(accessToken);
 
     if (oauthToken && oauthToken.accessToken === accessToken) {

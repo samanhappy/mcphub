@@ -12,6 +12,7 @@ import { RequestContextService } from './requestContextService.js';
 import { IUser, BearerKey } from '../types/index.js';
 import { resolveOAuthUserFromToken } from '../utils/oauthBearer.js';
 import { safeCompare } from '../utils/safeCompare.js';
+import { getBearerAuthHeaderValue, getBearerTokenFromHeaders } from '../utils/bearerAuth.js';
 
 export interface SessionContext {
   transport: Transport;
@@ -174,7 +175,7 @@ const validateBearerAuth = async (req: Request): Promise<BearerAuthResult> => {
   const bearerKeyDao = getBearerKeyDao();
   const enabledKeys = await bearerKeyDao.findEnabled();
 
-  const authHeader = req.headers.authorization;
+  const authHeader = getBearerAuthHeaderValue(req.headers, systemConfig);
   const hasBearerHeader = !!authHeader && authHeader.startsWith('Bearer ');
 
   if (!enableBearerAuth) {
@@ -182,7 +183,7 @@ const validateBearerAuth = async (req: Request): Promise<BearerAuthResult> => {
       return { valid: true };
     }
 
-    const token = authHeader!.substring(7).trim();
+    const token = getBearerTokenFromHeaders(req.headers, systemConfig);
     if (!token) {
       return { valid: true };
     }
@@ -216,7 +217,7 @@ const validateBearerAuth = async (req: Request): Promise<BearerAuthResult> => {
     return { valid: false, reason: 'missing' };
   }
 
-  const token = authHeader!.substring(7).trim();
+  const token = getBearerTokenFromHeaders(req.headers, systemConfig);
   if (!token) {
     return { valid: false, reason: 'missing' };
   }

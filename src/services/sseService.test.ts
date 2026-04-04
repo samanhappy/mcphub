@@ -17,6 +17,8 @@ const defaultSystemConfig = {
     enableGroupNameRoute: true,
     enableBearerAuth: true,
     bearerAuthKey: 'test-key',
+    bearerAuthHeaderName: 'Authorization',
+    jsonBodyLimit: '1mb',
     skipAuth: false,
   },
   enableSessionRebuild: false,
@@ -317,6 +319,30 @@ describe('sseService', () => {
 
       const req = createMockRequest({
         headers: { authorization: 'Bearer test-key' },
+        params: { group: 'test-group' },
+      });
+      const res = createMockResponse();
+
+      await handleSseConnection(req, res);
+
+      expect(res.status).not.toHaveBeenCalledWith(401);
+      expect(SSEServerTransport).toHaveBeenCalled();
+    });
+
+    it('should accept a configurable bearer auth header name', async () => {
+      setMockSystemConfig({
+        routing: {
+          enableGlobalRoute: true,
+          enableGroupNameRoute: true,
+          enableBearerAuth: true,
+          bearerAuthKey: 'test-key',
+          bearerAuthHeaderName: 'X-MCP-Authorization',
+          skipAuth: false,
+        },
+      });
+
+      const req = createMockRequest({
+        headers: { 'x-mcp-authorization': 'Bearer test-key' },
         params: { group: 'test-group' },
       });
       const res = createMockResponse();

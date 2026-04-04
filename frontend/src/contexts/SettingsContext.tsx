@@ -18,6 +18,8 @@ interface RoutingConfig {
   enableGroupNameRoute: boolean;
   enableBearerAuth: boolean;
   bearerAuthKey: string;
+  bearerAuthHeaderName: string;
+  jsonBodyLimit: string;
   skipAuth: boolean;
 }
 
@@ -81,6 +83,8 @@ interface SystemSettings {
 
 interface TempRoutingConfig {
   bearerAuthKey: string;
+  bearerAuthHeaderName: string;
+  jsonBodyLimit: string;
 }
 
 interface SettingsContextValue {
@@ -170,11 +174,15 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
     enableGroupNameRoute: true,
     enableBearerAuth: true,
     bearerAuthKey: '',
+    bearerAuthHeaderName: 'Authorization',
+    jsonBodyLimit: '1mb',
     skipAuth: false,
   });
 
   const [tempRoutingConfig, setTempRoutingConfig] = useState<TempRoutingConfig>({
     bearerAuthKey: '',
+    bearerAuthHeaderName: 'Authorization',
+    jsonBodyLimit: '1mb',
   });
 
   const [installConfig, setInstallConfig] = useState<InstallConfig>({
@@ -238,6 +246,9 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
           enableGroupNameRoute: data.data.systemConfig.routing.enableGroupNameRoute ?? true,
           enableBearerAuth: data.data.systemConfig.routing.enableBearerAuth ?? true,
           bearerAuthKey: data.data.systemConfig.routing.bearerAuthKey || '',
+          bearerAuthHeaderName:
+            data.data.systemConfig.routing.bearerAuthHeaderName || 'Authorization',
+          jsonBodyLimit: data.data.systemConfig.routing.jsonBodyLimit || '1mb',
           skipAuth: data.data.systemConfig.routing.skipAuth ?? false,
         });
       }
@@ -797,6 +808,8 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
     if (routingConfig) {
       setTempRoutingConfig({
         bearerAuthKey: routingConfig.bearerAuthKey,
+        bearerAuthHeaderName: routingConfig.bearerAuthHeaderName,
+        jsonBodyLimit: routingConfig.jsonBodyLimit,
       });
     }
   }, [routingConfig]);

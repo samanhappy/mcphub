@@ -503,6 +503,8 @@ const SettingsPage: React.FC = () => {
 
   const {
     routingConfig,
+    tempRoutingConfig,
+    setTempRoutingConfig,
     installConfig: savedInstallConfig,
     smartRoutingConfig,
     mcpRouterConfig,
@@ -651,10 +653,22 @@ const SettingsPage: React.FC = () => {
       | 'enableGroupNameRoute'
       | 'enableBearerAuth'
       | 'bearerAuthKey'
+      | 'bearerAuthHeaderName'
+      | 'jsonBodyLimit'
       | 'skipAuth',
     value: boolean | string,
   ) => {
     await updateRoutingConfig(key, value);
+  };
+
+  const handleTempRoutingConfigChange = (
+    key: 'bearerAuthHeaderName' | 'jsonBodyLimit',
+    value: string,
+  ) => {
+    setTempRoutingConfig((prev) => ({
+      ...prev,
+      [key]: value,
+    }));
   };
 
   const handleInstallConfigChange = (
@@ -1248,6 +1262,42 @@ const SettingsPage: React.FC = () => {
                   }
                 />
               </div>
+
+              <div className="p-3 bg-gray-50 rounded-md">
+                <div className="mb-2">
+                  <h3 className="font-medium text-gray-700">
+                    {t('settings.bearerAuthHeaderName')}
+                  </h3>
+                  <p className="text-sm text-gray-500">
+                    {t('settings.bearerAuthHeaderNameDescription')}
+                  </p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="text"
+                    value={tempRoutingConfig.bearerAuthHeaderName}
+                    onChange={(e) =>
+                      handleTempRoutingConfigChange('bearerAuthHeaderName', e.target.value)
+                    }
+                    placeholder={t('settings.bearerAuthHeaderNamePlaceholder')}
+                    className="flex-1 mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm form-input"
+                    disabled={loading}
+                  />
+                  <button
+                    onClick={() =>
+                      handleRoutingConfigChange(
+                        'bearerAuthHeaderName',
+                        tempRoutingConfig.bearerAuthHeaderName,
+                      )
+                    }
+                    disabled={loading}
+                    className="mt-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium disabled:opacity-50 btn-primary"
+                  >
+                    {t('common.save')}
+                  </button>
+                </div>
+              </div>
+
               <div className="flex justify-between items-center">
                 <p className="text-sm text-gray-600">
                   {t('settings.bearerKeysSectionDescription') ||
@@ -2411,6 +2461,30 @@ const SettingsPage: React.FC = () => {
                   checked={routingConfig.skipAuth}
                   onCheckedChange={(checked) => handleRoutingConfigChange('skipAuth', checked)}
                 />
+              </div>
+
+              <div className="p-3 bg-gray-50 rounded-md">
+                <div className="mb-2">
+                  <h3 className="font-medium text-gray-700">{t('settings.jsonBodyLimit')}</h3>
+                  <p className="text-sm text-gray-500">{t('settings.jsonBodyLimitDescription')}</p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="text"
+                    value={tempRoutingConfig.jsonBodyLimit}
+                    onChange={(e) => handleTempRoutingConfigChange('jsonBodyLimit', e.target.value)}
+                    placeholder={t('settings.jsonBodyLimitPlaceholder')}
+                    className="flex-1 mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm form-input"
+                    disabled={loading}
+                  />
+                  <button
+                    onClick={() => handleRoutingConfigChange('jsonBodyLimit', tempRoutingConfig.jsonBodyLimit)}
+                    disabled={loading}
+                    className="mt-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium disabled:opacity-50 btn-primary"
+                  >
+                    {t('common.save')}
+                  </button>
+                </div>
               </div>
             </div>
           )}

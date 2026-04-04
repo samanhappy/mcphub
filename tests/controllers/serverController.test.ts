@@ -7,6 +7,11 @@ const mockServerDao = {
   updateResources: jest.fn(),
 };
 
+const mockSystemConfigDao = {
+  get: jest.fn(),
+  update: jest.fn(),
+};
+
 const mockNotifyToolChanged = jest.fn();
 const mockSyncToolEmbedding = jest.fn();
 const mockGetServerByName = jest.fn();
@@ -14,7 +19,7 @@ const mockGetServerByName = jest.fn();
 jest.mock('../../src/dao/DaoFactory.js', () => ({
   getServerDao: jest.fn(() => mockServerDao),
   getGroupDao: jest.fn(),
-  getSystemConfigDao: jest.fn(),
+  getSystemConfigDao: jest.fn(() => mockSystemConfigDao),
   getBearerKeyDao: jest.fn(),
 }));
 
@@ -34,7 +39,74 @@ import {
   resetPromptDescription,
   resetResourceDescription,
   resetToolDescription,
+  updateSystemConfig,
 } from '../../src/controllers/serverController.js';
+
+describe('serverController - updateSystemConfig', () => {
+  let mockRequest: Partial<Request>;
+  let mockResponse: Partial<Response>;
+  let mockJson: jest.Mock;
+  let mockStatus: jest.Mock;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+
+    mockJson = jest.fn();
+    mockStatus = jest.fn().mockReturnThis();
+
+    mockRequest = {
+      body: {
+        routing: {
+          bearerAuthHeaderName: 'X-MCP-Authorization',
+          jsonBodyLimit: '2mb',
+        },
+      },
+    };
+
+    mockResponse = {
+      json: mockJson,
+      status: mockStatus,
+    };
+
+    mockSystemConfigDao.get.mockResolvedValue({
+      routing: {
+        enableGlobalRoute: true,
+        enableGroupNameRoute: true,
+        enableBearerAuth: true,
+        bearerAuthKey: '',
+        bearerAuthHeaderName: 'Authorization',
+        jsonBodyLimit: '1mb',
+        skipAuth: false,
+      },
+    });
+    mockSystemConfigDao.update.mockResolvedValue(true);
+  });
+
+  it('persists bearer auth header name and JSON body limit routing settings', async () => {
+    await updateSystemConfig(mockRequest as Request, mockResponse as Response);
+
+    expect(mockSystemConfigDao.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        routing: expect.objectContaining({
+          bearerAuthHeaderName: 'X-MCP-Authorization',
+          jsonBodyLimit: '2mb',
+        }),
+      }),
+    );
+
+    expect(mockJson).toHaveBeenCalledWith(
+      expect.objectContaining({
+        success: true,
+        data: expect.objectContaining({
+          routing: expect.objectContaining({
+            bearerAuthHeaderName: 'X-MCP-Authorization',
+            jsonBodyLimit: '2mb',
+          }),
+        }),
+      }),
+    );
+  });
+});
 
 describe('serverController - resetToolDescription', () => {
   let mockRequest: Partial<Request>;

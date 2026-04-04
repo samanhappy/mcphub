@@ -168,6 +168,8 @@ export interface SystemConfig {
     enableGroupNameRoute?: boolean; // Controls whether group routing by name is allowed
     enableBearerAuth?: boolean; // Controls whether MCP endpoints require bearer authentication
     bearerAuthKey?: string; // Legacy bearer auth key (used for one-time migration)
+    bearerAuthHeaderName?: string; // Header name used to receive bearer credentials for MCP/API requests (default: 'Authorization')
+    jsonBodyLimit?: string; // JSON request body size limit used by Express parser (default: '1mb'), including OpenAPI schema uploads
     skipAuth?: boolean; // Controls whether the dashboard requires login
   };
   install?: {
