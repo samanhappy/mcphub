@@ -3,7 +3,119 @@
  * Handles circular references and provides type-safe serialization
  */
 
+const REDACTED_VALUE = '[REDACTED]';
+const REMOTE_ERROR_REDACTED_MESSAGE = '[Remote request failed; response details omitted]';
+
+const SENSITIVE_LOG_KEY_NAMES = new Set([
+  'authorization',
+  'proxyauthorization',
+  'cookie',
+  'setcookie',
+  'accesstoken',
+  'refreshtoken',
+  'idtoken',
+  'token',
+  'clientsecret',
+  'secret',
+  'password',
+  'apikey',
+  'xapikey',
+  'initialaccesstoken',
+  'registrationaccesstoken',
+  'privatekey',
+  'assertion',
+]);
+
+const normalizeKey = (key: string): string => key.replace(/[^a-z0-9]/gi, '').toLowerCase();
+
+const isSensitiveLogKey = (key: string): boolean => {
+  if (!key) {
+    return false;
+  }
+
+  const normalizedKey = normalizeKey(key);
+  return (
+    SENSITIVE_LOG_KEY_NAMES.has(normalizedKey) ||
+    normalizedKey.endsWith('token') ||
+    normalizedKey.endsWith('secret') ||
+    normalizedKey.endsWith('password') ||
+    normalizedKey.endsWith('authorization') ||
+    normalizedKey.endsWith('cookie')
+  );
+};
+
+const sanitizeStringForLogging = (value: string): string => {
+  let sanitized = value;
+
+  sanitized = sanitized.replace(
+    /((?:authorization|proxy-authorization)\s*[:=]\s*(?:bearer|basic)\s+)[^\s",;]+/gi,
+    `$1${REDACTED_VALUE}`,
+  );
+  sanitized = sanitized.replace(/\b(Bearer|Basic)\s+[A-Za-z0-9\-._~+/]+=*/gi, `$1 ${REDACTED_VALUE}`);
+  sanitized = sanitized.replace(
+    /([?&](?:access_token|refresh_token|id_token|client_secret|api_key|token|password|authorization)=)[^&#\s"]+/gi,
+    `$1${REDACTED_VALUE}`,
+  );
+  sanitized = sanitized.replace(
+    /("(?:access_token|refresh_token|id_token|client_secret|api_key|authorization|token|password|secret)"\s*:\s*")([^"]*)(")/gi,
+    `$1${REDACTED_VALUE}$3`,
+  );
+  sanitized = sanitized.replace(
+    /('(?:access_token|refresh_token|id_token|client_secret|api_key|authorization|token|password|secret)'\s*:\s*')([^']*)(')/gi,
+    `$1${REDACTED_VALUE}$3`,
+  );
+
+  return sanitized;
+};
+
+const isRemoteHttpError = (error: Error): boolean => {
+  const candidate = error as Error & {
+    status?: number;
+    response?: { status?: number };
+    request?: unknown;
+    config?: unknown;
+  };
+
+  return (
+    typeof candidate.status === 'number' ||
+    typeof candidate.response?.status === 'number' ||
+    candidate.request !== undefined ||
+    candidate.config !== undefined
+  );
+};
+
+const serializeRemoteError = (error: Error): Record<string, unknown> => {
+  const candidate = error as Error & {
+    code?: string;
+    status?: number;
+    response?: {
+      status?: number;
+      data?: unknown;
+      headers?: Record<string, unknown>;
+    };
+  };
+  const requestId =
+    candidate.response?.headers?.['x-request-id'] ??
+    candidate.response?.headers?.['request-id'] ??
+    candidate.response?.headers?.['x-ms-request-id'] ??
+    candidate.response?.headers?.['x-correlation-id'];
+
+  return {
+    name: error.name,
+    message: REMOTE_ERROR_REDACTED_MESSAGE,
+    code: candidate.code,
+    status:
+      typeof candidate.status === 'number' ? candidate.status : candidate.response?.status,
+    requestId: typeof requestId === 'string' ? requestId : undefined,
+    hasResponseBody: candidate.response?.data !== undefined,
+  };
+};
+
 const serializeError = (error: Error): Record<string, unknown> => {
+  if (isRemoteHttpError(error)) {
+    return serializeRemoteError(error);
+  }
+
   const serialized: Record<string, unknown> = {};
 
   Object.getOwnPropertyNames(error).forEach((propertyName) => {
@@ -19,6 +131,34 @@ const createSafeJsonReplacer = () => {
   const seen = new WeakSet<object>();
 
   return (_key: string, value: unknown): unknown => {
+    if (typeof value === 'object' && value !== null) {
+      if (seen.has(value)) {
+        return '[Circular Reference]';
+      }
+
+      seen.add(value);
+
+      if (value instanceof Error) {
+        return serializeError(value);
+      }
+    }
+
+    return value;
+  };
+};
+
+const createSafeLogReplacer = () => {
+  const seen = new WeakSet<object>();
+
+  return (key: string, value: unknown): unknown => {
+    if (isSensitiveLogKey(key)) {
+      return REDACTED_VALUE;
+    }
+
+    if (typeof value === 'string') {
+      return sanitizeStringForLogging(value);
+    }
+
     if (typeof value === 'object' && value !== null) {
       if (seen.has(value)) {
         return '[Circular Reference]';
@@ -55,7 +195,7 @@ export const createSafeJSON = <T>(obj: T): T => {
  * @returns JSON string representation of the object
  */
 export const safeStringify = (obj: any, space?: number): string => {
-  return JSON.stringify(obj, createSafeJsonReplacer(), space);
+  return JSON.stringify(obj, createSafeLogReplacer(), space);
 };
 
 /**

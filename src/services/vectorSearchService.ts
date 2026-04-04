@@ -706,14 +706,16 @@ async function generateEmbedding(text: string): Promise<number[]> {
       );
     } catch (error: any) {
       const status = extractErrorStatus(error);
-      const message = error instanceof Error ? error.message : String(error);
       console.warn(
-        `Azure OpenAI embeddings request failed after retries (status=${status ?? 'unknown'}).`,
+        'Azure OpenAI embeddings request failed after retries',
+        {
+          status: status ?? 'unknown',
+          endpoint: azureConfig.endpoint || 'missing',
+          deployment: azureConfig.embeddingDeployment || 'missing',
+          apiVersion: azureConfig.apiVersion || 'missing',
+          error,
+        },
       );
-      console.warn(
-        `Azure embedding config: endpoint=${azureConfig.endpoint || 'missing'}, deployment=${azureConfig.embeddingDeployment || 'missing'}, apiVersion=${azureConfig.apiVersion || 'missing'}`,
-      );
-      console.warn(`Embedding error: ${message}`);
       throw error;
     }
   }
@@ -830,28 +832,13 @@ async function generateEmbedding(text: string): Promise<number[]> {
     return response.data[0].embedding;
   } catch (error: any) {
     const status = extractErrorStatus(error);
-    const message = error instanceof Error ? error.message : String(error);
-
-    console.warn(
-      `OpenAI-compatible embeddings request failed after retries (status=${status ?? 'unknown'}).`,
-    );
-    console.warn(
-      `Embedding config: baseURL=${config.baseURL || 'default'}, model=${config.embeddingModel || 'default'}`,
-    );
-    console.warn(`Embedding error: ${message}`);
-    console.warn(`[Embedding] Request took ${Date.now() - _requestStart}ms before failure`);
-    const errorDetails = {
-      name: (error as any)?.name,
-      message,
-      status,
-      code: (error as any)?.code,
-      responseStatus: (error as any)?.response?.status,
-      responseErrorMessage: (error as any)?.response?.data?.error?.message,
-      requestId:
-        (error as any)?.response?.headers?.['x-request-id'] ??
-        (error as any)?.response?.headers?.['request-id'],
-    };
-    console.warn(`[Embedding] Error details: ${safeStringify(errorDetails)}`);
+    console.warn('OpenAI-compatible embeddings request failed after retries', {
+      status: status ?? 'unknown',
+      baseURL: config.baseURL || 'default',
+      model: config.embeddingModel || 'default',
+      requestDurationMs: Date.now() - _requestStart,
+      error,
+    });
 
     throw error;
   }
@@ -1192,11 +1179,12 @@ export const saveToolsAsVectorEmbeddings = async (
         emitProgress(_toolIdx + 1, 'in_progress');
       } catch (error: any) {
         const status = extractErrorStatus(error);
-        const message = error instanceof Error ? error.message : String(error);
-
-        console.warn(
-          `[EMBED_SYNC_ERROR] Server "${serverName}" failed while embedding tool "${tool.name}" (status=${status ?? 'unknown'}): ${message}`,
-        );
+        console.warn('[EMBED_SYNC_ERROR] Failed while embedding tool', {
+          serverName,
+          toolName: tool.name,
+          status: status ?? 'unknown',
+          error,
+        });
         emitProgress(_toolIdx, 'error');
         throw error;
       }
@@ -1207,11 +1195,11 @@ export const saveToolsAsVectorEmbeddings = async (
       serverEmbedding = await generateEmbedding(serverSearchableText);
     } catch (error: any) {
       const status = extractErrorStatus(error);
-      const message = error instanceof Error ? error.message : String(error);
-
-      console.warn(
-        `[EMBED_SYNC_ERROR] Server "${serverName}" failed while embedding server metadata (status=${status ?? 'unknown'}): ${message}`,
-      );
+      console.warn('[EMBED_SYNC_ERROR] Failed while embedding server metadata', {
+        serverName,
+        status: status ?? 'unknown',
+        error,
+      });
       emitProgress(toolEmbeddings.length, 'error');
       throw error;
     }

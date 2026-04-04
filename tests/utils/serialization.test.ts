@@ -1,6 +1,40 @@
 import { createSafeJSON, safeStringify } from '../../src/utils/serialization.js';
 
 describe('serialization utilities', () => {
+  it('safeStringify redacts OAuth tokens and remote HTTP error details from logs', () => {
+    const remoteError = Object.assign(new Error('access_token=super-secret'), {
+      code: 'ERR_BAD_REQUEST',
+      response: {
+        status: 401,
+        data: {
+          access_token: 'super-secret',
+          refresh_token: 'even-more-secret',
+        },
+        headers: {
+          'x-request-id': 'req-123',
+        },
+      },
+    });
+
+    const result = safeStringify({
+      accessToken: 'abc123',
+      authorization: 'Bearer abc123',
+      nested: {
+        clientSecret: 'shhh',
+      },
+      error: remoteError,
+    });
+
+    expect(result).toContain('"accessToken":"[REDACTED]"');
+    expect(result).toContain('"authorization":"[REDACTED]"');
+    expect(result).toContain('"clientSecret":"[REDACTED]"');
+    expect(result).toContain('"message":"[Remote request failed; response details omitted]"');
+    expect(result).toContain('"status":401');
+    expect(result).toContain('"requestId":"req-123"');
+    expect(result).not.toContain('super-secret');
+    expect(result).not.toContain('even-more-secret');
+  });
+
   it('safeStringify preserves nested Error details instead of serializing them as empty objects', () => {
     const error = new Error('boom');
     (error as Error & { code?: string }).code = 'E_BANG';

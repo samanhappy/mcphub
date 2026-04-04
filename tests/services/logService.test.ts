@@ -26,4 +26,30 @@ describe('logService error serialization', () => {
     expect(lastLog?.message).toContain('E_STRUCTURED');
     expect(lastLog?.message).not.toContain('"error": {}');
   });
+
+  it('redacts direct remote HTTP errors when logging Error instances', () => {
+    const error = Object.assign(new Error('oauth access_token=top-secret'), {
+      code: 'ERR_BAD_REQUEST',
+      response: {
+        status: 400,
+        data: {
+          access_token: 'top-secret',
+        },
+        headers: {
+          'x-request-id': 'req-remote',
+        },
+      },
+    });
+
+    console.error('OAuth exchange failed:', error);
+
+    const lastLog = logService.getLogs().at(-1);
+
+    expect(lastLog).toBeDefined();
+    expect(lastLog?.message).toContain('OAuth exchange failed:');
+    expect(lastLog?.message).toContain('[Remote request failed; response details omitted]');
+    expect(lastLog?.message).toContain('"status": 400');
+    expect(lastLog?.message).toContain('"requestId": "req-remote"');
+    expect(lastLog?.message).not.toContain('top-secret');
+  });
 });

@@ -903,7 +903,7 @@ export const initializeClientsFromSettings = async (
         .then(() => {
           console.log(`Successfully connected client for server: ${name}`);
           const capabilities: ServerCapabilities | undefined = client.getServerCapabilities();
-          console.log(`Server capabilities: ${JSON.stringify(capabilities)}`);
+          console.log('Server capabilities', capabilities);
 
           let dataError: Error | null = null;
           if (capabilities?.tools) {
@@ -1441,7 +1441,7 @@ export const handleListToolsRequest = async (_: any, extra: any) => {
 };
 
 export const handleCallToolRequest = async (request: any, extra: any) => {
-  console.log(`Handling CallToolRequest for tool: ${JSON.stringify(request.params)}`);
+  console.log('Handling CallToolRequest for tool', request.params);
   const startTime = Date.now();
   const activityLogger = getActivityLoggingService();
 
@@ -1509,9 +1509,11 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
         // Use toolArgs if it has properties, otherwise fallback to request.params.arguments
         const finalArgs = toolArgs && typeof toolArgs === 'object' ? toolArgs : {};
 
-        console.log(
-          `Invoking OpenAPI tool '${toolName}' on server '${targetServerInfo.name}' with arguments: ${JSON.stringify(finalArgs)}`,
-        );
+        console.log('Invoking OpenAPI tool', {
+          toolName,
+          serverName: targetServerInfo.name,
+          arguments: finalArgs,
+        });
 
         // Remove server prefix from tool name if present
         const separator = getNameSeparator();
@@ -1549,7 +1551,11 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
 
         const result = await openApiClient.callTool(cleanToolName, finalArgs, passthroughHeaders);
 
-        console.log(`OpenAPI tool invocation result: ${JSON.stringify(result)}`);
+        console.log('OpenAPI tool invocation result', {
+          serverName: targetServerInfo.name,
+          toolName: cleanToolName,
+          result,
+        });
 
         // Log successful activity
         const duration = Date.now() - startTime;
@@ -1584,9 +1590,11 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
       // Use toolArgs if it has properties, otherwise fallback to request.params.arguments
       const finalArgs = toolArgs && typeof toolArgs === 'object' ? toolArgs : {};
 
-      console.log(
-        `Invoking tool '${toolName}' on server '${targetServerInfo.name}' with arguments: ${JSON.stringify(finalArgs)}`,
-      );
+      console.log('Invoking tool', {
+        toolName,
+        serverName: targetServerInfo.name,
+        arguments: finalArgs,
+      });
 
       const separator = getNameSeparator();
       const prefix = `${targetServerInfo.name}${separator}`;
@@ -1602,7 +1610,11 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
         targetServerInfo.options || {},
       );
 
-      console.log(`Tool invocation result: ${JSON.stringify(result)}`);
+      console.log('Tool invocation result', {
+        serverName: targetServerInfo.name,
+        toolName: cleanToolName,
+        result,
+      });
 
       // Log successful activity
       const duration = Date.now() - startTime;
@@ -1642,9 +1654,11 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
         ? request.params.name.substring(prefix.length)
         : request.params.name;
 
-      console.log(
-        `Invoking OpenAPI tool '${cleanToolName}' on server '${serverInfo.name}' with arguments: ${JSON.stringify(request.params.arguments)}`,
-      );
+      console.log('Invoking OpenAPI tool', {
+        toolName: cleanToolName,
+        serverName: serverInfo.name,
+        arguments: request.params.arguments,
+      });
 
       // Extract passthrough headers from extra or request context
       let passthroughHeaders: Record<string, string> | undefined;
@@ -1679,7 +1693,11 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
         passthroughHeaders,
       );
 
-      console.log(`OpenAPI tool invocation result: ${JSON.stringify(result)}`);
+      console.log('OpenAPI tool invocation result', {
+        serverName: serverInfo.name,
+        toolName: cleanToolName,
+        result,
+      });
 
       // Log successful activity
       const duration = Date.now() - startTime;
@@ -1721,7 +1739,11 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
       { ...request.params, name: cleanToolName },
       serverInfo.options || {},
     );
-    console.log(`Tool call result: ${JSON.stringify(result)}`);
+    console.log('Tool call result', {
+      serverName: serverInfo.name,
+      toolName: cleanToolName,
+      result,
+    });
 
     // Log successful activity
     const duration = Date.now() - startTime;
@@ -1823,9 +1845,9 @@ export const handleGetPromptRequest = async (request: any, extra: any) => {
       arguments: promptArgs,
     };
     // Log the final promptParams
-    console.log(`Calling getPrompt with params: ${JSON.stringify(promptParams)}`);
+    console.log('Calling getPrompt with params', promptParams);
     const prompt = await server.client?.getPrompt(promptParams);
-    console.log(`Received prompt: ${JSON.stringify(prompt)}`);
+    console.log('Received prompt', prompt);
     if (!prompt) {
       throw new Error(`Prompt not found: ${cleanPromptName}`);
     }
