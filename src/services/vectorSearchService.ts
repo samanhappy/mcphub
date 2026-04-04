@@ -1113,7 +1113,7 @@ export const saveToolsAsVectorEmbeddings = async (
           const existingServerEmbedding = await skipCheckRepo.findByContentIdentity('server', serverName);
           const hasCurrentServerEmbedding =
             existingServerEmbedding?.model === persistedEmbeddingModel &&
-            existingServerEmbedding.text_content === serverSearchableText;
+            existingServerEmbedding.text_content === serverSearchableText && existingServerEmbedding.embedding != null;
 
           if (hasExactContentIds && hasMatchingToolSetHash && hasCurrentServerEmbedding) {
             console.log(

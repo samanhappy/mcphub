@@ -211,6 +211,7 @@ export class VectorEmbeddingRepository extends BaseRepository<VectorEmbedding> {
       .where('ve.content_type = :ct', { ct: 'tool' })
       .andWhere("ve.content_id LIKE :prefix ESCAPE '\\'", { prefix })
       .andWhere('ve.model = :model', { model })
+      .andWhere('ve.embedding IS NOT NULL')
       .getMany();
 
     return rows.map((row) => ({
