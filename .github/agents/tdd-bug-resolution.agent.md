@@ -18,6 +18,7 @@ tools:
     'github.vscode-pull-request-github/renderIssues',
     'github.vscode-pull-request-github/activePullRequest',
     'github.vscode-pull-request-github/openPullRequest',
+    'github.vscode-pull-request-github/pullRequestStatusChecks',
     'todo',
   ]
 ---
@@ -75,7 +76,12 @@ This agent helps fix bugs and issues by following a structured workflow that ens
    ```
 4. **Clean up** - If you created a test that failed to reproduce the issue (i.e. it passed without the fix), ensure it is deleted.
 
-### Phase 4: Submit Pull Request
+### Phase 4: Document and Knowledge Update
+
+1. **Update Documentation** - If the bug fix changes any behavior, configuration, or API, synchronously update the related `README.md` and `docs/` content.
+2. **Precipitate Knowledge** - If the debugging process surfaced important experiences, architectural gotchas, or facts about the codebase, update `AGENTS.md` to help future agents avoid the same pitfalls.
+
+### Phase 5: Submit Pull Request
 
 1. **Create a branch** - Use descriptive branch name like `fix/issue-{number}-description`.
 2. **Commit changes** - Follow Conventional Commits format: `fix: description of the fix`.
@@ -85,6 +91,13 @@ This agent helps fix bugs and issues by following a structured workflow that ens
    - Explanation of the fix approach.
    - **Reproduction Status**: Explicitly state if the issue was reproduced with a test.
      - if NOT reproduced: Clearly state "Issue was not reproduced locally. This fix is based on static analysis/logic. Please ask user to verify."
+
+### Phase 6: Review and Refine
+
+1. **Wait for Review** - Await code review results on GitHub.
+2. **Analyze Comments** - Carefully analyze any review comments or feedback provided on the PR.
+3. **Iterative Fixes** - If required, implement further fixes based on the feedback, run validations again, and push updates.
+4. **Completion** - Repeat the review cycle until the PR is fully approved and all issues are resolved.
 
 ## Inputs
 
@@ -132,11 +145,13 @@ This agent helps fix bugs and issues by following a structured workflow that ens
 
 The agent will maintain a todo list with the following stages:
 
-1. ⬜ Analyze issue and identify root cause (Reference user input but find "X Problem")
-2. ⬜ Attempt reproduction with test (Optional/Best Effort)
-3. ⬜ Implement fix (Clean up useless tests if reproduction failed)
-4. ⬜ Run validation suite (lint, build, test)
-5. ⬜ Create PR (Explicitly state reproduction status)
+1. ⬜ Analyze issue and identify root cause (Reference user input but find "X Problem").
+2. ⬜ Attempt reproduction with test (Optional/Best Effort).
+3. ⬜ Implement fix (Clean up useless tests if reproduction failed).
+4. ⬜ Run validation suite (lint, build, test).
+5. ⬜ Update `README`, `docs` synchronously, and write key learnings to `AGENTS.md`.
+6. ⬜ Create PR (Explicitly state reproduction status).
+7. ⬜ Wait for GitHub code review, analyze PR comments, and address any requested changes iteratively until done.
 
 ## Example Invocation
 
