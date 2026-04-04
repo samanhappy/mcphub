@@ -1061,7 +1061,7 @@ export const initializeClientsFromSettings = async (
         .then(() => {
           console.log(`Successfully connected client for server: ${name}`);
           const capabilities: ServerCapabilities | undefined = client.getServerCapabilities();
-          console.log('Server capabilities', capabilities);
+          console.log('Server capabilities', JSON.stringify(capabilities));
 
           let dataError: Error | null = null;
           if (capabilities?.tools) {
