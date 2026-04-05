@@ -8,6 +8,7 @@ import {
   ListPromptsRequestSchema,
   GetPromptRequestSchema,
   ListResourcesRequestSchema,
+  ListResourceTemplatesRequestSchema,
   ReadResourceRequestSchema,
   ServerCapabilities,
 } from '@modelcontextprotocol/sdk/types.js';
@@ -2082,18 +2083,7 @@ export const handleListPromptsRequest = async (_: any, extra: any) => {
         });
       }
 
-      // If this is a group request, apply group-level prompt filtering
-      if (group) {
-        const serverConfigInGroup = await getServerConfigInGroup(group, serverInfo.name);
-        if (
-          serverConfigInGroup &&
-          serverConfigInGroup.tools !== 'all' &&
-          Array.isArray(serverConfigInGroup.tools)
-        ) {
-          // Note: Group config uses 'tools' field but we're filtering prompts here
-          // This might be a design decision to control access at the server level
-        }
-      }
+      enabledPrompts = await filterPromptsByGroup(group, serverInfo.name, enabledPrompts);
 
       // Apply custom descriptions from server configuration
       const promptsWithCustomDescriptions = enabledPrompts.map((prompt: any) => {
@@ -2160,6 +2150,8 @@ export const handleListResourcesRequest = async (_: any, extra: any) => {
         });
       }
 
+      enabledResources = await filterResourcesByGroup(group, serverInfo.name, enabledResources);
+
       // Apply custom descriptions from server configuration
       const resourcesWithCustomDescriptions = enabledResources.map((resource: any) => {
         const resourceConfig = serverConfig?.resources?.[resource.uri];
@@ -2175,6 +2167,46 @@ export const handleListResourcesRequest = async (_: any, extra: any) => {
 
   return {
     resources: allResources,
+  };
+};
+
+export const handleListResourceTemplatesRequest = async (_: any, extra: any) => {
+  const sessionId = extra.sessionId || '';
+  const group = getGroup(sessionId);
+  console.log(`Handling ListResourceTemplatesRequest for group: ${group}`);
+
+  const filteredServerInfos = [];
+  for (const serverInfo of getDataService().filterData(serverInfos)) {
+    if (serverInfo.enabled === false || !serverInfo.client) continue;
+    if (!group) {
+      filteredServerInfos.push(serverInfo);
+      continue;
+    }
+    const serversInGroup = await getServersInGroup(group);
+    if (!serversInGroup || serversInGroup.length === 0) {
+      if (serverInfo.name === group) filteredServerInfos.push(serverInfo);
+      continue;
+    }
+    if (serversInGroup.includes(serverInfo.name)) {
+      filteredServerInfos.push(serverInfo);
+    }
+  }
+
+  const results = await Promise.allSettled(
+    filteredServerInfos.map(async (serverInfo) => {
+      if (!serverInfo.client?.listResourceTemplates) {
+        return [];
+      }
+
+      const templates = await serverInfo.client.listResourceTemplates({}, serverInfo.options || {});
+      return templates.resourceTemplates || [];
+    }),
+  );
+
+  return {
+    resourceTemplates: results.flatMap((result) =>
+      result.status === 'fulfilled' ? result.value : [],
+    ),
   };
 };
 
@@ -2250,6 +2282,7 @@ export const createMcpServer = (name: string, version: string, group?: string): 
   server.setRequestHandler(GetPromptRequestSchema, handleGetPromptRequest);
   server.setRequestHandler(ListPromptsRequestSchema, handleListPromptsRequest);
   server.setRequestHandler(ListResourcesRequestSchema, handleListResourcesRequest);
+  server.setRequestHandler(ListResourceTemplatesRequestSchema, handleListResourceTemplatesRequest);
   server.setRequestHandler(ReadResourceRequestSchema, handleReadResourceRequest);
   return server;
 };
@@ -2267,4 +2300,43 @@ async function filterToolsByGroup(group: string | undefined, serverName: string,
     }
   }
   return tools;
+}
+
+const normalizePromptNameForGroup = (serverName: string, promptName: string) => {
+  const prefix = `${serverName}${getNameSeparator()}`;
+  return promptName.startsWith(prefix) ? promptName.substring(prefix.length) : promptName;
+};
+
+export async function filterPromptsByGroup(
+  group: string | undefined,
+  serverName: string,
+  prompts: Array<{ name: string }>,
+) {
+  if (group) {
+    const serverConfig = await getServerConfigInGroup(group, serverName);
+    if (serverConfig && serverConfig.prompts !== 'all' && Array.isArray(serverConfig.prompts)) {
+      const allowedPromptNames = new Set(serverConfig.prompts);
+      return prompts.filter((prompt) =>
+        allowedPromptNames.has(normalizePromptNameForGroup(serverName, prompt.name)),
+      );
+    }
+  }
+
+  return prompts;
+}
+
+export async function filterResourcesByGroup(
+  group: string | undefined,
+  serverName: string,
+  resources: Array<{ uri: string }>,
+) {
+  if (group) {
+    const serverConfig = await getServerConfigInGroup(group, serverName);
+    if (serverConfig && serverConfig.resources !== 'all' && Array.isArray(serverConfig.resources)) {
+      const allowedResources = new Set(serverConfig.resources);
+      return resources.filter((resource) => allowedResources.has(resource.uri));
+    }
+  }
+
+  return resources;
 }

@@ -376,12 +376,21 @@
     "noServerOptions": "Aucun serveur disponible",
     "serverCount": "{{count}} serveurs",
     "toolSelection": "Sélection d'outils",
+    "promptSelection": "Sélection des prompts",
+    "resourceSelection": "Sélection des ressources",
     "toolsSelected": "Sélectionné",
+    "promptsSelected": "Sélectionné",
+    "resourcesSelected": "Sélectionné",
     "allTools": "Tous",
+    "allPrompts": "Tous les prompts",
+    "allResources": "Toutes les ressources",
     "selectedTools": "Outils sélectionnés",
+    "selectedPrompts": "Prompts sélectionnés",
+    "selectedResources": "Ressources sélectionnées",
     "selectAll": "Tout sélectionner",
     "selectNone": "Ne rien sélectionner",
-    "configureTools": "Configurer les outils"
+    "configureTools": "Configurer les outils",
+    "configureCapabilities": "Configurer les outils, prompts et ressources"
   },
   "market": {
     "title": "Installation locale",

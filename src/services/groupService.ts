@@ -9,10 +9,15 @@ const normalizeGroupServers = (servers: string[] | IGroupServerConfig[]): IGroup
   return servers.map((server) => {
     if (typeof server === 'string') {
       // Backward compatibility: string format means all tools
-      return { name: server, tools: 'all' };
+      return { name: server, tools: 'all', prompts: 'all', resources: 'all' };
     }
-    // New format: ensure tools defaults to 'all' if not specified
-    return { name: server.name, tools: server.tools || 'all' };
+    // New format: ensure capability selections default to 'all' if not specified
+    return {
+      name: server.name,
+      tools: server.tools || 'all',
+      prompts: server.prompts || 'all',
+      resources: server.resources || 'all',
+    };
   });
 };
 
@@ -194,7 +199,7 @@ export const addServerToGroup = async (
 
     // Add server to group if not already in it
     if (!normalizedServers.some((s) => s.name === serverName)) {
-      normalizedServers.push({ name: serverName, tools: 'all' });
+      normalizedServers.push({ name: serverName, tools: 'all', prompts: 'all', resources: 'all' });
       const updatedGroup = await groupDao.update(groupId, { servers: normalizedServers });
 
       if (updatedGroup) {

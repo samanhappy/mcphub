@@ -124,7 +124,7 @@ const GroupCard = ({ group, servers, onEdit, onDelete }: GroupCardProps) => {
       typeof s === 'string' ? s === serverName : s.name === serverName,
     );
     if (typeof server === 'string') {
-      return { name: server, tools: 'all' };
+      return { name: server, tools: 'all', prompts: 'all', resources: 'all' };
     }
     return server;
   };
@@ -211,30 +211,73 @@ const GroupCard = ({ group, servers, onEdit, onDelete }: GroupCardProps) => {
               const serverConfig = getServerConfig(server.name);
               const hasToolRestrictions =
                 serverConfig && serverConfig.tools !== 'all' && Array.isArray(serverConfig.tools);
+              const hasPromptRestrictions =
+                serverConfig && serverConfig.prompts !== 'all' && Array.isArray(serverConfig.prompts);
+              const hasResourceRestrictions =
+                serverConfig && serverConfig.resources !== 'all' && Array.isArray(serverConfig.resources);
 
               const enabledServerTools = (server.tools || []).filter((tool) => tool.enabled !== false);
+              const enabledServerPrompts = (server.prompts || []).filter(
+                (prompt) => prompt.enabled !== false,
+              );
+              const enabledServerResources = (server.resources || []).filter(
+                (resource) => resource.enabled !== false,
+              );
               const normalizeToolName = (toolName: string): string => {
                 const prefix = `${server.name}${nameSeparator}`;
                 return toolName.startsWith(prefix) ? toolName.slice(prefix.length) : toolName;
               };
+              const normalizePromptName = (promptName: string): string => {
+                const prefix = `${server.name}${nameSeparator}`;
+                return promptName.startsWith(prefix) ? promptName.slice(prefix.length) : promptName;
+              };
               const enabledToolNames = enabledServerTools.map((tool) => normalizeToolName(tool.name));
+              const enabledPromptNames = enabledServerPrompts.map((prompt) =>
+                normalizePromptName(prompt.name),
+              );
+              const enabledResourceUris = enabledServerResources.map((resource) => resource.uri);
               const enabledToolNameSet = new Set(enabledToolNames);
+              const enabledPromptNameSet = new Set(enabledPromptNames);
+              const enabledResourceUriSet = new Set(enabledResourceUris);
 
               const toolCount =
                 hasToolRestrictions && Array.isArray(serverConfig?.tools)
                   ? serverConfig.tools.filter((toolName) => enabledToolNameSet.has(toolName)).length
                   : enabledToolNames.length;
+              const promptCount =
+                hasPromptRestrictions && Array.isArray(serverConfig?.prompts)
+                  ? serverConfig.prompts.filter((promptName) => enabledPromptNameSet.has(promptName))
+                      .length
+                  : enabledPromptNames.length;
+              const resourceCount =
+                hasResourceRestrictions && Array.isArray(serverConfig?.resources)
+                  ? serverConfig.resources.filter((resourceUri) => enabledResourceUriSet.has(resourceUri))
+                      .length
+                  : enabledResourceUris.length;
 
               const isExpanded = expandedServer === server.name;
 
-              // Get tools list for display
-              const getToolsList = () => {
-                if (hasToolRestrictions && Array.isArray(serverConfig?.tools)) {
-                  return serverConfig.tools.filter((toolName) => enabledToolNameSet.has(toolName));
-                } else if (enabledToolNames.length > 0) {
+              const getCapabilityList = (
+                capability: 'tools' | 'prompts' | 'resources',
+              ): string[] => {
+                if (capability === 'tools') {
+                  if (hasToolRestrictions && Array.isArray(serverConfig?.tools)) {
+                    return serverConfig.tools.filter((toolName) => enabledToolNameSet.has(toolName));
+                  }
                   return enabledToolNames;
                 }
-                return [];
+
+                if (capability === 'prompts') {
+                  if (hasPromptRestrictions && Array.isArray(serverConfig?.prompts)) {
+                    return serverConfig.prompts.filter((promptName) => enabledPromptNameSet.has(promptName));
+                  }
+                  return enabledPromptNames;
+                }
+
+                if (hasResourceRestrictions && Array.isArray(serverConfig?.resources)) {
+                  return serverConfig.resources.filter((resourceUri) => enabledResourceUriSet.has(resourceUri));
+                }
+                return enabledResourceUris;
               };
 
               const handleServerClick = () => {
@@ -263,22 +306,74 @@ const GroupCard = ({ group, servers, onEdit, onDelete }: GroupCardProps) => {
                         {toolCount}
                       </span>
                     )}
+                    {promptCount > 0 && (
+                      <span className="text-xs text-purple-600 bg-purple-100 px-2 py-0.5 rounded">
+                        P {promptCount}
+                      </span>
+                    )}
+                    {resourceCount > 0 && (
+                      <span className="text-xs text-emerald-600 bg-emerald-100 px-2 py-0.5 rounded">
+                        R {resourceCount}
+                      </span>
+                    )}
                   </div>
 
                   {isExpanded && (
                     <div className="absolute top-full left-0 mt-1 bg-white shadow-lg rounded-md border border-gray-200 p-3 z-10 min-w-[300px] max-w-[400px]">
-                      <div className="text-gray-600 text-xs mb-2">
-                        {hasToolRestrictions ? t('groups.selectedTools') : t('groups.allTools')}:
-                      </div>
-                      <div className="flex flex-wrap gap-1">
-                        {getToolsList().map((toolName, index) => (
-                          <span
-                            key={index}
-                            className="inline-block bg-gray-100 text-gray-700 px-2 py-1 rounded text-xs"
-                          >
-                            {toolName}
-                          </span>
-                        ))}
+                      <div className="space-y-3">
+                        {toolCount > 0 && (
+                          <div>
+                            <div className="text-gray-600 text-xs mb-2">
+                              {hasToolRestrictions ? t('groups.selectedTools') : t('groups.allTools')}:
+                            </div>
+                            <div className="flex flex-wrap gap-1">
+                              {getCapabilityList('tools').map((toolName, index) => (
+                                <span
+                                  key={`tool-${index}`}
+                                  className="inline-block bg-gray-100 text-gray-700 px-2 py-1 rounded text-xs"
+                                >
+                                  {toolName}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {promptCount > 0 && (
+                          <div>
+                            <div className="text-gray-600 text-xs mb-2">
+                              {hasPromptRestrictions ? t('groups.selectedPrompts') : t('groups.allPrompts')}:
+                            </div>
+                            <div className="flex flex-wrap gap-1">
+                              {getCapabilityList('prompts').map((promptName, index) => (
+                                <span
+                                  key={`prompt-${index}`}
+                                  className="inline-block bg-purple-50 text-purple-700 px-2 py-1 rounded text-xs"
+                                >
+                                  {promptName}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {resourceCount > 0 && (
+                          <div>
+                            <div className="text-gray-600 text-xs mb-2">
+                              {hasResourceRestrictions ? t('groups.selectedResources') : t('groups.allResources')}:
+                            </div>
+                            <div className="flex flex-wrap gap-1">
+                              {getCapabilityList('resources').map((resourceUri, index) => (
+                                <span
+                                  key={`resource-${index}`}
+                                  className="inline-block bg-emerald-50 text-emerald-700 px-2 py-1 rounded text-xs break-all"
+                                >
+                                  {resourceUri}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
                   )}

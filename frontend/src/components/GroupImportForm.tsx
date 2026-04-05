@@ -10,7 +10,12 @@ interface GroupImportFormProps {
 interface ImportGroupConfig {
   name: string;
   description?: string;
-  servers?: string[] | Array<{ name: string; tools?: string[] | 'all' }>;
+  servers?: string[] | Array<{
+    name: string;
+    tools?: string[] | 'all';
+    prompts?: string[] | 'all';
+    resources?: string[] | 'all';
+  }>;
 }
 
 interface ImportJsonFormat {
@@ -35,11 +40,15 @@ const GroupImportForm: React.FC<GroupImportFormProps> = ({ onSuccess, onCancel }
       "servers": [
         {
           "name": "github-server",
-          "tools": ["create_issue", "list_repos"]
+          "tools": ["create_issue", "list_repos"],
+          "prompts": ["triage_prompt"],
+          "resources": ["resource://docs/repo-guide"]
         },
         {
           "name": "gitlab-server",
-          "tools": "all"
+          "tools": "all",
+          "prompts": "all",
+          "resources": "all"
         }
       ]
     }
@@ -48,7 +57,7 @@ const GroupImportForm: React.FC<GroupImportFormProps> = ({ onSuccess, onCancel }
 
 Supports:
 - Simple server list: ["server1", "server2"]
-- Advanced server config: [{"name": "server1", "tools": ["tool1", "tool2"]}]
+- Advanced server config: [{"name": "server1", "tools": ["tool1"], "prompts": ["prompt1"], "resources": ["resource://docs/guide"]}]
 - All groups will be imported in a single efficient batch operation.`;
 
   const parseAndValidateJson = (input: string): ImportJsonFormat | null => {
@@ -126,7 +135,12 @@ Supports:
   };
 
   const renderServerList = (
-    servers?: string[] | Array<{ name: string; tools?: string[] | 'all' }>,
+    servers?: string[] | Array<{
+      name: string;
+      tools?: string[] | 'all';
+      prompts?: string[] | 'all';
+      resources?: string[] | 'all';
+    }>,
   ) => {
     if (!servers || servers.length === 0) {
       return <span className="text-gray-500">{t('groups.noServers')}</span>;
@@ -151,6 +165,18 @@ Supports:
                   </span>
                 )}
                 {server.tools === 'all' && <span className="text-gray-500 ml-2">(all tools)</span>}
+                {server.prompts && server.prompts !== 'all' && (
+                  <span className="text-gray-500 ml-2">
+                    [prompts: {Array.isArray(server.prompts) ? server.prompts.join(', ') : server.prompts}]
+                  </span>
+                )}
+                {server.prompts === 'all' && <span className="text-gray-500 ml-2">(all prompts)</span>}
+                {server.resources && server.resources !== 'all' && (
+                  <span className="text-gray-500 ml-2">
+                    [resources: {Array.isArray(server.resources) ? server.resources.join(', ') : server.resources}]
+                  </span>
+                )}
+                {server.resources === 'all' && <span className="text-gray-500 ml-2">(all resources)</span>}
               </div>
             );
           }

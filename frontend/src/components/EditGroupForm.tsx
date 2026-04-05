@@ -103,7 +103,7 @@ const EditGroupForm = ({ group, onEdit, onCancel }: EditGroupFormProps) => {
 
               <div>
                 <label className="block text-gray-700 text-sm font-bold mb-2">
-                  {t('groups.configureTools')}
+                  {t('groups.configureCapabilities')}
                 </label>
                 <ServerToolConfig
                   servers={availableServers}

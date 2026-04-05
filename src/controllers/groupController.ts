@@ -20,6 +20,10 @@ import {
   updateServerToolsInGroup,
 } from '../services/groupService.js';
 
+const isValidCapabilitySelection = (value: unknown): boolean => {
+  return value === undefined || value === 'all' || (Array.isArray(value) && value.every((item) => typeof item === 'string'));
+};
+
 // Get all groups
 export const getGroups = async (_: Request, res: Response): Promise<void> => {
   try {
@@ -160,13 +164,14 @@ export const batchCreateGroups = async (req: Request, res: Response): Promise<vo
             }
 
             if (
-              server.tools !== undefined &&
-              server.tools !== 'all' &&
-              !Array.isArray(server.tools)
+              !isValidCapabilitySelection(server.tools) ||
+              !isValidCapabilitySelection(server.prompts) ||
+              !isValidCapabilitySelection(server.resources)
             ) {
               return {
                 valid: false,
-                message: 'Server tools must be "all" or an array of tool names',
+                message:
+                  'Server tools, prompts, and resources must each be "all" or an array of names',
               };
             }
           }
@@ -332,14 +337,13 @@ export const updateGroupServersBatch = async (req: Request, res: Response): Prom
           return;
         }
         if (
-          server.tools &&
-          server.tools !== 'all' &&
-          (!Array.isArray(server.tools) ||
-            !server.tools.every((tool: any) => typeof tool === 'string'))
+          !isValidCapabilitySelection(server.tools) ||
+          !isValidCapabilitySelection(server.prompts) ||
+          !isValidCapabilitySelection(server.resources)
         ) {
           res.status(400).json({
             success: false,
-            message: 'Tools must be "all" or an array of strings',
+            message: 'Tools, prompts, and resources must each be "all" or an array of strings',
           });
           return;
         }

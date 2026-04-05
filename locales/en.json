@@ -375,12 +375,21 @@
     "noServerOptions": "No servers available",
     "serverCount": "{{count}} Servers",
     "toolSelection": "Tool Selection",
+    "promptSelection": "Prompt Selection",
+    "resourceSelection": "Resource Selection",
     "toolsSelected": "Selected",
+    "promptsSelected": "Selected",
+    "resourcesSelected": "Selected",
     "allTools": "All",
+    "allPrompts": "All prompts",
+    "allResources": "All resources",
     "selectedTools": "Selected tools",
+    "selectedPrompts": "Selected prompts",
+    "selectedResources": "Selected resources",
     "selectAll": "Select All",
     "selectNone": "Select None",
-    "configureTools": "Configure Tools"
+    "configureTools": "Configure Tools",
+    "configureCapabilities": "Configure Tools, Prompts, and Resources"
   },
   "market": {
     "title": "Local Installation",

@@ -1,8 +1,22 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { IGroupServerConfig, Server, Tool } from '@/types';
+import { IGroupServerConfig, Prompt, Resource, Server, Tool } from '@/types';
 import { cn } from '@/utils/cn';
 import { useSettingsData } from '@/hooks/useSettingsData';
+
+type CapabilityKey = 'tools' | 'prompts' | 'resources';
+
+const EMPTY_SELECTIONS: Pick<IGroupServerConfig, CapabilityKey> = {
+  tools: [],
+  prompts: [],
+  resources: [],
+};
+
+const FULL_SELECTIONS: Pick<IGroupServerConfig, CapabilityKey> = {
+  tools: 'all',
+  prompts: 'all',
+  resources: 'all',
+};
 
 interface ServerToolConfigProps {
   servers: Server[];
@@ -25,9 +39,14 @@ export const ServerToolConfig: React.FC<ServerToolConfigProps> = ({
   const normalizedValue: IGroupServerConfig[] = React.useMemo(() => {
     return value.map(item => {
       if (typeof item === 'string') {
-        return { name: item, tools: 'all' as const };
+        return { name: item, ...FULL_SELECTIONS };
       }
-      return { ...item, tools: item.tools || 'all' as const };
+      return {
+        ...item,
+        tools: item.tools || 'all',
+        prompts: item.prompts || 'all',
+        resources: item.resources || 'all',
+      };
     });
   }, [value]);
 
@@ -59,15 +78,13 @@ export const ServerToolConfig: React.FC<ServerToolConfigProps> = ({
     const existingIndex = normalizedValue.findIndex(config => config.name === serverName);
 
     if (existingIndex >= 0) {
-      // Remove server - this will also remove all its tools
+      // Remove server - this also removes all capability selections
       const newValue = normalizedValue.filter(config => config.name !== serverName);
       onChange(newValue);
-      // Don't auto-collapse the server when it's unchecked - let user control expansion manually
     } else {
-      // Add server with all tools by default
-      const newValue = [...normalizedValue, { name: serverName, tools: 'all' as const }];
+      // Add server with all capabilities by default
+      const newValue = [...normalizedValue, { name: serverName, ...FULL_SELECTIONS }];
       onChange(newValue);
-      // Don't auto-expand the server when it's checked - let user control expansion manually
     }
   };
 
@@ -83,12 +100,31 @@ export const ServerToolConfig: React.FC<ServerToolConfigProps> = ({
     });
   };
 
-  const updateServerTools = (serverName: string, tools: string[] | 'all', keepExpanded = false) => {
-    if (Array.isArray(tools) && tools.length === 0) {
-      // If no tools are selected, remove the server entirely
+  const hasAnyCapabilitySelection = (config: IGroupServerConfig) => {
+    return (['tools', 'prompts', 'resources'] as CapabilityKey[]).some((capability) => {
+      const selection = config[capability];
+      return selection === 'all' || (Array.isArray(selection) && selection.length > 0);
+    });
+  };
+
+  const updateServerCapability = (
+    serverName: string,
+    capability: CapabilityKey,
+    selection: string[] | 'all',
+    keepExpanded = false,
+  ) => {
+    const existingServer = normalizedValue.find(config => config.name === serverName);
+    const baseConfig: IGroupServerConfig = existingServer
+      ? { ...existingServer }
+      : { name: serverName, ...EMPTY_SELECTIONS };
+    const nextConfig: IGroupServerConfig = {
+      ...baseConfig,
+      [capability]: selection,
+    };
+
+    if (!hasAnyCapabilitySelection(nextConfig)) {
       const newValue = normalizedValue.filter(config => config.name !== serverName);
       onChange(newValue);
-      // Only collapse the server if not explicitly asked to keep it expanded
       if (!keepExpanded) {
         setExpandedServers(prev => {
           const newSet = new Set(prev);
@@ -96,95 +132,134 @@ export const ServerToolConfig: React.FC<ServerToolConfigProps> = ({
           return newSet;
         });
       }
-    } else {
-      // Update server tools or add server if it doesn't exist
-      const existingServerIndex = normalizedValue.findIndex(config => config.name === serverName);
-
-      if (existingServerIndex >= 0) {
-        // Update existing server
-        const newValue = normalizedValue.map(config =>
-          config.name === serverName ? { ...config, tools } : config
-        );
-        onChange(newValue);
-      } else {
-        // Add new server with specified tools
-        const newValue = [...normalizedValue, { name: serverName, tools }];
-        onChange(newValue);
-      }
-    }
-  };
-
-  const toggleTool = (serverName: string, toolName: string) => {
-    const server = availableServers.find(s => s.name === serverName);
-    if (!server) return;
-
-    const allToolNames = server.tools?.map(tool => tool.name.replace(`${serverName}${nameSeparator}`, '')) || [];
-    const serverConfig = normalizedValue.find(config => config.name === serverName);
-
-    if (!serverConfig) {
-      // Server not selected yet, add it with only this tool
-      const newValue = [...normalizedValue, { name: serverName, tools: [toolName] }];
-      onChange(newValue);
-      // Don't auto-expand - let user control expansion manually
       return;
     }
 
-    if (serverConfig.tools === 'all') {
-      // Switch from 'all' to specific tools, excluding the toggled tool
-      const newTools = allToolNames.filter(name => name !== toolName);
-      updateServerTools(serverName, newTools);
-      // If all tools are deselected, the server will be removed and collapsed in updateServerTools
-    } else if (Array.isArray(serverConfig.tools)) {
-      const currentTools = serverConfig.tools;
-      if (currentTools.includes(toolName)) {
-        // Remove tool
-        const newTools = currentTools.filter(name => name !== toolName);
-        updateServerTools(serverName, newTools);
-        // If all tools are deselected, the server will be removed and collapsed in updateServerTools
-      } else {
-        // Add tool
-        const newTools = [...currentTools, toolName];
-
-        // If all tools are selected, switch to 'all'
-        if (newTools.length === allToolNames.length) {
-          updateServerTools(serverName, 'all');
-        } else {
-          updateServerTools(serverName, newTools);
-        }
-      }
+    if (existingServer) {
+      onChange(normalizedValue.map(config => (config.name === serverName ? nextConfig : config)));
+      return;
     }
+
+    onChange([...normalizedValue, nextConfig]);
+  };
+
+  const normalizeNamedCapability = (serverName: string, name: string) => {
+    return name.replace(`${serverName}${nameSeparator}`, '');
+  };
+
+  const getCapabilityItems = (server: Server, capability: CapabilityKey) => {
+    if (capability === 'tools') {
+      return (server.tools || []).filter(tool => tool.enabled !== false).map((tool: Tool) => ({
+        key: tool.name,
+        value: normalizeNamedCapability(server.name, tool.name),
+        description: tool.description,
+      }));
+    }
+
+    if (capability === 'prompts') {
+      return (server.prompts || []).filter(prompt => prompt.enabled !== false).map((prompt: Prompt) => ({
+        key: prompt.name,
+        value: normalizeNamedCapability(server.name, prompt.name),
+        description: prompt.description,
+      }));
+    }
+
+    return (server.resources || []).filter(resource => resource.enabled !== false).map((resource: Resource) => ({
+      key: resource.uri,
+      value: resource.uri,
+      description: resource.description,
+    }));
+  };
+
+  const toggleCapabilityItem = (serverName: string, capability: CapabilityKey, itemValue: string) => {
+    const server = availableServers.find(s => s.name === serverName);
+    if (!server) return;
+
+    const allItems = getCapabilityItems(server, capability).map(item => item.value);
+    const serverConfig = normalizedValue.find(config => config.name === serverName);
+
+    if (!serverConfig) {
+      updateServerCapability(serverName, capability, [itemValue]);
+      return;
+    }
+
+    const currentSelection = serverConfig[capability];
+    if (currentSelection === 'all') {
+      const nextSelection = allItems.filter(value => value !== itemValue);
+      updateServerCapability(serverName, capability, nextSelection);
+      return;
+    }
+
+    if (Array.isArray(currentSelection)) {
+      if (currentSelection.includes(itemValue)) {
+        updateServerCapability(
+          serverName,
+          capability,
+          currentSelection.filter(value => value !== itemValue),
+        );
+        return;
+      }
+
+      const nextSelection = [...currentSelection, itemValue];
+      updateServerCapability(
+        serverName,
+        capability,
+        nextSelection.length === allItems.length ? 'all' : nextSelection,
+      );
+      return;
+    }
+
+    updateServerCapability(serverName, capability, [itemValue]);
   };
 
   const isServerSelected = (serverName: string) => {
     const serverConfig = normalizedValue.find(config => config.name === serverName);
-    if (!serverConfig) return false;
-
-    // Server is considered "fully selected" if tools is 'all'
-    return serverConfig.tools === 'all';
+    return Boolean(serverConfig && hasAnyCapabilitySelection(serverConfig));
   };
 
   const isServerPartiallySelected = (serverName: string) => {
     const serverConfig = normalizedValue.find(config => config.name === serverName);
     if (!serverConfig) return false;
 
-    // Server is partially selected if it has specific tools selected (not 'all' and not empty)
-    return Array.isArray(serverConfig.tools) && serverConfig.tools.length > 0;
+    return (['tools', 'prompts', 'resources'] as CapabilityKey[]).some((capability) => {
+      const selection = serverConfig[capability];
+      return Array.isArray(selection) && selection.length > 0;
+    });
   };
 
-  const isToolSelected = (serverName: string, toolName: string) => {
+  const isCapabilityItemSelected = (serverName: string, capability: CapabilityKey, itemValue: string) => {
     const serverConfig = normalizedValue.find(config => config.name === serverName);
     if (!serverConfig) return false;
 
-    if (serverConfig.tools === 'all') return true;
-    if (Array.isArray(serverConfig.tools)) {
-      return serverConfig.tools.includes(toolName);
-    }
-    return false;
+    const selection = serverConfig[capability];
+    if (selection === 'all') return true;
+    return Array.isArray(selection) ? selection.includes(itemValue) : false;
   };
 
-  const getServerTools = (serverName: string): Tool[] => {
-    const server = availableServers.find(s => s.name === serverName);
-    return server?.tools || [];
+  const getSelectedCapabilityCount = (server: Server, capability: CapabilityKey) => {
+    const serverConfig = normalizedValue.find(config => config.name === server.name);
+    if (!serverConfig) return 0;
+
+    const items = getCapabilityItems(server, capability);
+    const selection = serverConfig[capability];
+    if (selection === 'all') return items.length;
+    if (Array.isArray(selection)) {
+      const itemSet = new Set(items.map(item => item.value));
+      return selection.filter(item => itemSet.has(item)).length;
+    }
+    return 0;
+  };
+
+  const capabilityConfigs: Array<{ key: CapabilityKey; titleKey: string; countKey: string; allKey: string }> = [
+    { key: 'tools', titleKey: 'groups.toolSelection', countKey: 'groups.toolsSelected', allKey: 'groups.allTools' },
+    { key: 'prompts', titleKey: 'groups.promptSelection', countKey: 'groups.promptsSelected', allKey: 'groups.allPrompts' },
+    { key: 'resources', titleKey: 'groups.resourceSelection', countKey: 'groups.resourcesSelected', allKey: 'groups.allResources' },
+  ];
+
+  const getServerSummaryBadges = (server: Server) => {
+    return capabilityConfigs
+      .map(({ key }) => ({ key, count: getSelectedCapabilityCount(server, key) }))
+      .filter((entry) => entry.count > 0);
   };
 
   return (
@@ -194,8 +269,9 @@ export const ServerToolConfig: React.FC<ServerToolConfigProps> = ({
           const isSelected = isServerSelected(server.name);
           const isPartiallySelected = isServerPartiallySelected(server.name);
           const isExpanded = expandedServers.has(server.name);
-          const serverTools = getServerTools(server.name);
           const serverConfig = normalizedValue.find(config => config.name === server.name);
+          const summaryBadges = getServerSummaryBadges(server);
+          const serverCapabilities = capabilityConfigs.filter(({ key }) => getCapabilityItems(server, key).length > 0);
 
           return (
             <div key={server.name} className="border border-gray-200 rounded-lg hover:border-gray-300 hover:bg-gray-50 transition-colors">
@@ -222,18 +298,13 @@ export const ServerToolConfig: React.FC<ServerToolConfigProps> = ({
                 </div>
 
                 <div className="flex items-center space-x-3">
-                  {serverConfig && serverConfig.tools !== 'all' && Array.isArray(serverConfig.tools) && (
-                    <span className="text-sm text-green-600">
-                      ({t('groups.toolsSelected')} {serverConfig.tools.length}/{serverTools.length})
+                  {summaryBadges.map(({ key, count }) => (
+                    <span key={key} className="text-sm text-green-600">
+                      {key === 'tools' ? 'T' : key === 'prompts' ? 'P' : 'R'} {count}
                     </span>
-                  )}
-                  {serverConfig && serverConfig.tools === 'all' && (
-                    <span className="text-sm text-green-600">
-                      ({t('groups.allTools')} {serverTools.length}/{serverTools.length})
-                    </span>
-                  )}
+                  ))}
 
-                  {serverTools.length > 0 && (
+                  {serverCapabilities.length > 0 && (
                     <button
                       type="button"
                       className="p-1 text-gray-400 hover:text-gray-600 transition-colors"
@@ -251,56 +322,70 @@ export const ServerToolConfig: React.FC<ServerToolConfigProps> = ({
                 </div>
               </div>
 
-              {isExpanded && serverTools.length > 0 && (
+              {isExpanded && serverCapabilities.length > 0 && (
                 <div className="border-t border-gray-200 bg-gray-50 p-3">
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-sm font-medium text-gray-700">
-                      {t('groups.toolSelection')}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const isAllSelected = serverConfig?.tools === 'all';
-                        if (isAllSelected || (Array.isArray(serverConfig?.tools) && serverConfig.tools.length === serverTools.length)) {
-                          // If all tools are selected, deselect all (remove server) but keep expanded
-                          updateServerTools(server.name, [], true);
-                        } else {
-                          // Select all tools (add server if not present)
-                          updateServerTools(server.name, 'all');
-                          // Don't auto-expand - let user control expansion manually
-                        }
-                      }}
-                      className="text-sm text-blue-600 hover:text-blue-800 transition-colors"
-                    >
-                      {(serverConfig?.tools === 'all' ||
-                        (Array.isArray(serverConfig?.tools) && serverConfig.tools.length === serverTools.length))
-                        ? t('groups.selectNone')
-                        : t('groups.selectAll')}
-                    </button>
-                  </div>
-
-                  <div className="grid grid-cols-1 gap-2 max-h-32 overflow-y-auto">
-                    {serverTools.map(tool => {
-                      const toolName = tool.name.replace(`${server.name}${nameSeparator}`, '');
-                      const isToolChecked = isToolSelected(server.name, toolName);
+                  <div className="space-y-4">
+                    {serverCapabilities.map(({ key, titleKey, countKey, allKey }) => {
+                      const items = getCapabilityItems(server, key);
+                      const selectedCount = getSelectedCapabilityCount(server, key);
+                      const allSelected = serverConfig?.[key] === 'all' || selectedCount === items.length;
 
                       return (
-                        <label key={tool.name} className="flex items-center space-x-2 text-sm">
-                          <input
-                            type="checkbox"
-                            checked={isToolChecked}
-                            onChange={() => toggleTool(server.name, toolName)}
-                            className="w-3 h-3 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
-                          />
-                          <span className="text-gray-700">
-                            {toolName}
-                          </span>
-                          {tool.description && (
-                            <span className="text-gray-400 text-xs truncate">
-                              {tool.description}
+                        <div key={key}>
+                          <div className="flex items-center justify-between mb-3">
+                            <span className="text-sm font-medium text-gray-700">
+                              {t(titleKey)}
                             </span>
-                          )}
-                        </label>
+                            <div className="flex items-center gap-3">
+                              {serverConfig && (
+                                <span className="text-xs text-green-600">
+                                  {allSelected
+                                    ? `(${t(allKey)} ${items.length}/${items.length})`
+                                    : `(${t(countKey)} ${selectedCount}/${items.length})`}
+                                </span>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  updateServerCapability(
+                                    server.name,
+                                    key,
+                                    allSelected ? [] : 'all',
+                                    true,
+                                  );
+                                }}
+                                className="text-sm text-blue-600 hover:text-blue-800 transition-colors"
+                              >
+                                {allSelected ? t('groups.selectNone') : t('groups.selectAll')}
+                              </button>
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-1 gap-2 max-h-32 overflow-y-auto">
+                            {items.map(item => {
+                              const isChecked = isCapabilityItemSelected(server.name, key, item.value);
+
+                              return (
+                                <label key={item.key} className="flex items-center space-x-2 text-sm">
+                                  <input
+                                    type="checkbox"
+                                    checked={isChecked}
+                                    onChange={() => toggleCapabilityItem(server.name, key, item.value)}
+                                    className="w-3 h-3 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+                                  />
+                                  <span className="text-gray-700 break-all">
+                                    {item.value}
+                                  </span>
+                                  {item.description && (
+                                    <span className="text-gray-400 text-xs truncate">
+                                      {item.description}
+                                    </span>
+                                  )}
+                                </label>
+                              );
+                            })}
+                          </div>
+                        </div>
                       );
                     })}
                   </div>

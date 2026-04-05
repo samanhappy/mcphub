@@ -398,7 +398,14 @@ export async function exportTemplate(options: TemplateExportOptions): Promise<Co
     name: group.name,
     description: group.description,
     servers: group.servers.map((s) =>
-      typeof s === 'string' ? { name: s, tools: 'all' as const } : { name: s.name, tools: s.tools || 'all' },
+      typeof s === 'string'
+        ? { name: s, tools: 'all' as const, prompts: 'all' as const, resources: 'all' as const }
+        : {
+            name: s.name,
+            tools: s.tools || 'all',
+            prompts: s.prompts || 'all',
+            resources: s.resources || 'all',
+          },
     ),
   }));
 

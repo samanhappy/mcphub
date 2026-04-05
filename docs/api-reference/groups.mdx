@@ -51,13 +51,21 @@ Creates a new server group.
 - **Body**:
   - `name` (string, required): The name of the group.
   - `description` (string, optional): A description for the group.
-  - `servers` (array of strings, optional): A list of server names to include in the group.
+  - `servers` (array, optional): A list of server names or capability-scoped server configuration objects.
 - **Request Example**:
   ```json
   {
     "name": "My New Group",
     "description": "A description for the new group",
-    "servers": ["server1", "server2"]
+    "servers": [
+      "server1",
+      {
+        "name": "server2",
+        "tools": ["toolA", "toolB"],
+        "prompts": ["draft_prompt"],
+        "resources": ["resource://docs/guide"]
+      }
+    ]
   }
   ```
 
@@ -158,17 +166,33 @@ Replaces all servers in a group with a new list. The list can be simple strings 
   ```json
   {
     "servers": [
-      { "name": "server1", "tools": "all" },
-      { "name": "server2", "tools": ["toolA", "toolB"] }
+      {
+        "name": "server1",
+        "tools": "all",
+        "prompts": "all",
+        "resources": "all"
+      },
+      {
+        "name": "server2",
+        "tools": ["toolA", "toolB"],
+        "prompts": ["draft_prompt"],
+        "resources": ["resource://docs/guide"]
+      }
     ]
   }
   ```
+
+Each detailed server object accepts these optional capability selectors:
+
+- `tools`: `"all"` or an array of tool names.
+- `prompts`: `"all"` or an array of prompt names.
+- `resources`: `"all"` or an array of resource URIs.
 
 ---
 
 ### Get Group Server Configs
 
-Retrieves the detailed configuration for all servers within a group, including which tools are enabled.
+Retrieves the detailed configuration for all servers within a group, including which tools, prompts, and resources are enabled.
 
 - **Endpoint**: `/api/groups/:id/server-configs`
 - **Method**: `GET`
@@ -181,11 +205,15 @@ Retrieves the detailed configuration for all servers within a group, including w
     "data": [
       {
         "name": "server1",
-        "tools": "all"
+        "tools": "all",
+        "prompts": "all",
+        "resources": "all"
       },
       {
         "name": "server2",
-        "tools": ["toolA", "toolB"]
+        "tools": ["toolA", "toolB"],
+        "prompts": ["draft_prompt"],
+        "resources": ["resource://docs/guide"]
       }
     ]
   }

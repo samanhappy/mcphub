@@ -71,6 +71,9 @@ jest.mock('../../src/config/index.js', () => ({
 }));
 
 import {
+  createMcpServer,
+  filterPromptsByGroup,
+  filterResourcesByGroup,
   handleListPromptsRequest,
   handleListResourcesRequest,
 } from '../../src/services/mcpService.js';
@@ -135,5 +138,43 @@ describe('mcpService handleListPromptsRequest', () => {
     expect(typeof result.resources[0].name).toBe('string');
     expect(typeof result.resources[0].description).toBe('string');
     expect(typeof result.resources[0].mimeType).toBe('string');
+  });
+
+  it('should register the listResourceTemplates MCP handler', () => {
+    const server = createMcpServer('test-hub', '1.0.0');
+
+    expect((server as any)._requestHandlers.has('resources/templates/list')).toBe(true);
+  });
+
+  it('should filter prompts by group capability selection', async () => {
+    const mockGetServerConfigInGroup = jest.requireMock('../../src/services/groupService.js')
+      .getServerConfigInGroup as jest.Mock;
+    mockGetServerConfigInGroup.mockResolvedValue({
+      name: 'server-a',
+      prompts: ['draft_prompt'],
+    });
+
+    const result = await filterPromptsByGroup('team-a', 'server-a', [
+      { name: 'server-a::draft_prompt', description: 'allowed' },
+      { name: 'server-a::review_prompt', description: 'blocked' },
+    ] as any);
+
+    expect(result).toEqual([{ name: 'server-a::draft_prompt', description: 'allowed' }]);
+  });
+
+  it('should filter resources by group capability selection', async () => {
+    const mockGetServerConfigInGroup = jest.requireMock('../../src/services/groupService.js')
+      .getServerConfigInGroup as jest.Mock;
+    mockGetServerConfigInGroup.mockResolvedValue({
+      name: 'server-a',
+      resources: ['resource://docs/guide'],
+    });
+
+    const result = await filterResourcesByGroup('team-a', 'server-a', [
+      { uri: 'resource://docs/guide', name: 'Guide' },
+      { uri: 'resource://docs/private', name: 'Private' },
+    ] as any);
+
+    expect(result).toEqual([{ uri: 'resource://docs/guide', name: 'Guide' }]);
   });
 });

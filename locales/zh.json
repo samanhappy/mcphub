@@ -377,12 +377,21 @@
     "noServerOptions": "没有可用的服务器",
     "serverCount": "{{count}} 台服务器",
     "toolSelection": "工具选择",
+    "promptSelection": "提示词选择",
+    "resourceSelection": "资源选择",
     "toolsSelected": "选择",
+    "promptsSelected": "选择",
+    "resourcesSelected": "选择",
     "allTools": "全部",
+    "allPrompts": "全部提示词",
+    "allResources": "全部资源",
     "selectedTools": "选中的工具",
+    "selectedPrompts": "选中的提示词",
+    "selectedResources": "选中的资源",
     "selectAll": "全选",
     "selectNone": "全不选",
-    "configureTools": "配置工具"
+    "configureTools": "配置工具",
+    "configureCapabilities": "配置工具、提示词和资源"
   },
   "market": {
     "title": "本地安装",

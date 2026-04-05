@@ -86,7 +86,38 @@ describe('templateService', () => {
 
       expect(template.servers['active']).toBeDefined();
       expect(template.servers['disabled']).toBeUndefined();
-      expect(template.groups[0].servers).toEqual([{ name: 'active', tools: 'all' }]);
+      expect(template.groups[0].servers).toEqual([
+        { name: 'active', tools: 'all', prompts: 'all', resources: 'all' },
+      ]);
+    });
+
+    it('should preserve prompt and resource selections in exported group configs', async () => {
+      mockServerDao.findAll.mockResolvedValue([{ name: 'server1', command: 'npx', enabled: true }]);
+      mockGroupDao.findAll.mockResolvedValue([
+        {
+          id: 'g1',
+          name: 'Group',
+          servers: [
+            {
+              name: 'server1',
+              tools: ['search'],
+              prompts: ['draft_prompt'],
+              resources: ['resource://docs/guide'],
+            },
+          ],
+        },
+      ]);
+
+      const template = await exportTemplate({ name: 'Test' });
+
+      expect(template.groups[0].servers).toEqual([
+        {
+          name: 'server1',
+          tools: ['search'],
+          prompts: ['draft_prompt'],
+          resources: ['resource://docs/guide'],
+        },
+      ]);
     });
 
     it('should preserve existing ${PLACEHOLDER} patterns', async () => {
@@ -299,6 +330,52 @@ describe('templateService', () => {
       expect(result.groupsCreated).toBe(1);
       expect(mockAddServer).toHaveBeenCalledWith('server1', expect.objectContaining({ command: 'npx' }));
       expect(mockCreateGroup).toHaveBeenCalledWith('Group A', undefined, [{ name: 'server1', tools: 'all' }], 'admin');
+    });
+
+    it('should import prompt and resource selections for group server configs', async () => {
+      mockServerDao.findAll.mockResolvedValue([]);
+      mockGroupDao.findByName.mockResolvedValue(null);
+      mockAddServer.mockResolvedValue(undefined);
+      mockCreateGroup.mockResolvedValue({ id: 'new-g1', name: 'Group A' });
+
+      const template = {
+        version: '1.0',
+        name: 'Test Template',
+        createdAt: new Date().toISOString(),
+        servers: {
+          server1: { command: 'npx', args: ['-y', 'mcp-server'] },
+        },
+        groups: [
+          {
+            name: 'Group A',
+            servers: [
+              {
+                name: 'server1',
+                tools: ['search'],
+                prompts: ['draft_prompt'],
+                resources: ['resource://docs/guide'],
+              },
+            ],
+          },
+        ],
+        requiredEnvVars: [],
+      };
+
+      await importTemplate(template, 'admin');
+
+      expect(mockCreateGroup).toHaveBeenCalledWith(
+        'Group A',
+        undefined,
+        [
+          {
+            name: 'server1',
+            tools: ['search'],
+            prompts: ['draft_prompt'],
+            resources: ['resource://docs/guide'],
+          },
+        ],
+        'admin',
+      );
     });
 
     it('should skip existing servers and groups', async () => {

@@ -376,12 +376,21 @@
     "noServerOptions": "Kullanılabilir sunucu yok",
     "serverCount": "{{count}} Sunucu",
     "toolSelection": "Araç Seçimi",
+    "promptSelection": "İstem Seçimi",
+    "resourceSelection": "Kaynak Seçimi",
     "toolsSelected": "Seçildi",
+    "promptsSelected": "Seçildi",
+    "resourcesSelected": "Seçildi",
     "allTools": "Tümü",
+    "allPrompts": "Tüm istemler",
+    "allResources": "Tüm kaynaklar",
     "selectedTools": "Seçili araçlar",
+    "selectedPrompts": "Seçili istemler",
+    "selectedResources": "Seçili kaynaklar",
     "selectAll": "Tümünü Seç",
     "selectNone": "Hiçbirini Seçme",
-    "configureTools": "Araçları Yapılandır"
+    "configureTools": "Araçları Yapılandır",
+    "configureCapabilities": "Araçları, istemleri ve kaynakları yapılandır"
   },
   "market": {
     "title": "Yerel Kurulum",
