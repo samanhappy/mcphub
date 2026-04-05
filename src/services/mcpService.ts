@@ -21,11 +21,17 @@ import {
 } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { normalizeHeaders } from '@modelcontextprotocol/sdk/shared/transport.js';
 import { createFetchWithProxy, getProxyConfigFromEnv } from './proxy.js';
-import { ServerInfo, ServerConfig, Tool, ProxychainsConfig } from '../types/index.js';
+import {
+  ServerInfo,
+  ServerConfig,
+  Tool,
+  ProxychainsConfig,
+  IGroupServerConfig,
+} from '../types/index.js';
 import { expandEnvVars, replaceEnvVars, getNameSeparator } from '../config/index.js';
 import config from '../config/index.js';
 import { getGroup } from './sseService.js';
-import { getServersInGroup, getServerConfigInGroup } from './groupService.js';
+import { getServerConfigsInGroup, getServerConfigInGroup } from './groupService.js';
 import { removeServerToolEmbeddings, saveToolsAsVectorEmbeddings } from './vectorSearchService.js';
 import { OpenAPIClient } from '../clients/openapi.js';
 import { RequestContextService } from './requestContextService.js';
@@ -1560,23 +1566,7 @@ export const handleListToolsRequest = async (_: any, extra: any) => {
     return getSmartRoutingTools(group);
   }
 
-  // Need to filter servers based on group asynchronously
-  const filteredServerInfos = [];
-  for (const serverInfo of getDataService().filterData(serverInfos)) {
-    if (serverInfo.enabled === false) continue;
-    if (!group) {
-      filteredServerInfos.push(serverInfo);
-      continue;
-    }
-    const serversInGroup = await getServersInGroup(group);
-    if (!serversInGroup || serversInGroup.length === 0) {
-      if (serverInfo.name === group) filteredServerInfos.push(serverInfo);
-      continue;
-    }
-    if (serversInGroup.includes(serverInfo.name)) {
-      filteredServerInfos.push(serverInfo);
-    }
-  }
+  const { filteredServerInfos, serverConfigsByName } = await getFilteredServerInfosForGroup(group);
 
   const allTools = [];
   for (const serverInfo of filteredServerInfos) {
@@ -1585,7 +1575,12 @@ export const handleListToolsRequest = async (_: any, extra: any) => {
       let tools = await filterToolsByConfig(serverInfo.name, serverInfo.tools);
 
       // If this is a group request, apply group-level tool filtering
-      tools = await filterToolsByGroup(group, serverInfo.name, tools);
+      tools = await filterToolsByGroup(
+        group,
+        serverInfo.name,
+        tools,
+        serverConfigsByName.get(serverInfo.name),
+      );
 
       // Apply custom descriptions from server configuration
       const serverConfig = await getServerDao().findById(serverInfo.name);
@@ -2051,23 +2046,7 @@ export const handleListPromptsRequest = async (_: any, extra: any) => {
     }),
   );
 
-  // Need to filter servers based on group asynchronously
-  const filteredServerInfos = [];
-  for (const serverInfo of getDataService().filterData(serverInfos)) {
-    if (serverInfo.enabled === false) continue;
-    if (!group) {
-      filteredServerInfos.push(serverInfo);
-      continue;
-    }
-    const serversInGroup = await getServersInGroup(group);
-    if (!serversInGroup || serversInGroup.length === 0) {
-      if (serverInfo.name === group) filteredServerInfos.push(serverInfo);
-      continue;
-    }
-    if (serversInGroup.includes(serverInfo.name)) {
-      filteredServerInfos.push(serverInfo);
-    }
-  }
+  const { filteredServerInfos, serverConfigsByName } = await getFilteredServerInfosForGroup(group);
 
   for (const serverInfo of filteredServerInfos) {
     if (serverInfo.prompts && serverInfo.prompts.length > 0) {
@@ -2083,7 +2062,12 @@ export const handleListPromptsRequest = async (_: any, extra: any) => {
         });
       }
 
-      enabledPrompts = await filterPromptsByGroup(group, serverInfo.name, enabledPrompts);
+      enabledPrompts = await filterPromptsByGroup(
+        group,
+        serverInfo.name,
+        enabledPrompts,
+        serverConfigsByName.get(serverInfo.name),
+      );
 
       // Apply custom descriptions from server configuration
       const promptsWithCustomDescriptions = enabledPrompts.map((prompt: any) => {
@@ -2119,23 +2103,7 @@ export const handleListResourcesRequest = async (_: any, extra: any) => {
     }),
   );
 
-  // Add resources from connected MCP servers
-  const filteredServerInfos = [];
-  for (const serverInfo of getDataService().filterData(serverInfos)) {
-    if (serverInfo.enabled === false) continue;
-    if (!group) {
-      filteredServerInfos.push(serverInfo);
-      continue;
-    }
-    const serversInGroup = await getServersInGroup(group);
-    if (!serversInGroup || serversInGroup.length === 0) {
-      if (serverInfo.name === group) filteredServerInfos.push(serverInfo);
-      continue;
-    }
-    if (serversInGroup.includes(serverInfo.name)) {
-      filteredServerInfos.push(serverInfo);
-    }
-  }
+  const { filteredServerInfos, serverConfigsByName } = await getFilteredServerInfosForGroup(group);
 
   for (const serverInfo of filteredServerInfos) {
     if (serverInfo.resources && serverInfo.resources.length > 0) {
@@ -2150,7 +2118,12 @@ export const handleListResourcesRequest = async (_: any, extra: any) => {
         });
       }
 
-      enabledResources = await filterResourcesByGroup(group, serverInfo.name, enabledResources);
+      enabledResources = await filterResourcesByGroup(
+        group,
+        serverInfo.name,
+        enabledResources,
+        serverConfigsByName.get(serverInfo.name),
+      );
 
       // Apply custom descriptions from server configuration
       const resourcesWithCustomDescriptions = enabledResources.map((resource: any) => {
@@ -2175,22 +2148,9 @@ export const handleListResourceTemplatesRequest = async (_: any, extra: any) => 
   const group = getGroup(sessionId);
   console.log(`Handling ListResourceTemplatesRequest for group: ${group}`);
 
-  const filteredServerInfos = [];
-  for (const serverInfo of getDataService().filterData(serverInfos)) {
-    if (serverInfo.enabled === false || !serverInfo.client) continue;
-    if (!group) {
-      filteredServerInfos.push(serverInfo);
-      continue;
-    }
-    const serversInGroup = await getServersInGroup(group);
-    if (!serversInGroup || serversInGroup.length === 0) {
-      if (serverInfo.name === group) filteredServerInfos.push(serverInfo);
-      continue;
-    }
-    if (serversInGroup.includes(serverInfo.name)) {
-      filteredServerInfos.push(serverInfo);
-    }
-  }
+  const { filteredServerInfos, serverConfigsByName } = await getFilteredServerInfosForGroup(group, {
+    requireClient: true,
+  });
 
   const results = await Promise.allSettled(
     filteredServerInfos.map(async (serverInfo) => {
@@ -2199,7 +2159,12 @@ export const handleListResourceTemplatesRequest = async (_: any, extra: any) => 
       }
 
       const templates = await serverInfo.client.listResourceTemplates({}, serverInfo.options || {});
-      return templates.resourceTemplates || [];
+      return filterResourceTemplatesByGroup(
+        group,
+        serverInfo.name,
+        templates.resourceTemplates || [],
+        serverConfigsByName.get(serverInfo.name),
+      );
     }),
   );
 
@@ -2287,13 +2252,74 @@ export const createMcpServer = (name: string, version: string, group?: string): 
   return server;
 };
 
+type FilteredGroupServersResult = {
+  filteredServerInfos: ServerInfo[];
+  serverConfigsByName: Map<string, IGroupServerConfig>;
+};
+
+const getFilteredServerInfosForGroup = async (
+  group: string | undefined,
+  options?: { requireClient?: boolean },
+): Promise<FilteredGroupServersResult> => {
+  const serverConfigs = group ? await getServerConfigsInGroup(group) : [];
+  const serverNamesInGroup = new Set(serverConfigs.map((serverConfig) => serverConfig.name));
+  const serverConfigsByName = new Map(
+    serverConfigs.map((serverConfig) => [serverConfig.name, serverConfig] as const),
+  );
+
+  const filteredServerInfos: ServerInfo[] = [];
+  for (const serverInfo of getDataService().filterData(serverInfos)) {
+    if (serverInfo.enabled === false) continue;
+    if (options?.requireClient && !serverInfo.client) continue;
+
+    if (!group) {
+      filteredServerInfos.push(serverInfo);
+      continue;
+    }
+
+    if (serverNamesInGroup.size === 0) {
+      if (serverInfo.name === group) {
+        filteredServerInfos.push(serverInfo);
+      }
+      continue;
+    }
+
+    if (serverNamesInGroup.has(serverInfo.name)) {
+      filteredServerInfos.push(serverInfo);
+    }
+  }
+
+  return { filteredServerInfos, serverConfigsByName };
+};
+
+const getGroupServerConfig = async (
+  group: string | undefined,
+  serverName: string,
+  serverConfig?: IGroupServerConfig,
+) => {
+  if (!group) {
+    return undefined;
+  }
+
+  return serverConfig ?? getServerConfigInGroup(group, serverName);
+};
+
 // Filter tools based on group configuration
-async function filterToolsByGroup(group: string | undefined, serverName: string, tools: Tool[]) {
+async function filterToolsByGroup(
+  group: string | undefined,
+  serverName: string,
+  tools: Tool[],
+  serverConfig?: IGroupServerConfig,
+) {
   if (group) {
-    const serverConfig = await getServerConfigInGroup(group, serverName);
-    if (serverConfig && serverConfig.tools !== 'all' && Array.isArray(serverConfig.tools)) {
+    const resolvedServerConfig = await getGroupServerConfig(group, serverName, serverConfig);
+    if (
+      resolvedServerConfig &&
+      resolvedServerConfig.tools !== 'all' &&
+      Array.isArray(resolvedServerConfig.tools)
+    ) {
       // Filter tools based on group configuration
-      const allowedToolNames = serverConfig.tools.map(
+      const allowedToolNames = resolvedServerConfig.tools.map(
         (toolName: string) => `${serverName}${getNameSeparator()}${toolName}`,
       );
       tools = tools.filter((tool) => allowedToolNames.includes(tool.name));
@@ -2311,11 +2337,16 @@ export async function filterPromptsByGroup(
   group: string | undefined,
   serverName: string,
   prompts: Array<{ name: string }>,
+  serverConfig?: IGroupServerConfig,
 ) {
   if (group) {
-    const serverConfig = await getServerConfigInGroup(group, serverName);
-    if (serverConfig && serverConfig.prompts !== 'all' && Array.isArray(serverConfig.prompts)) {
-      const allowedPromptNames = new Set(serverConfig.prompts);
+    const resolvedServerConfig = await getGroupServerConfig(group, serverName, serverConfig);
+    if (
+      resolvedServerConfig &&
+      resolvedServerConfig.prompts !== 'all' &&
+      Array.isArray(resolvedServerConfig.prompts)
+    ) {
+      const allowedPromptNames = new Set(resolvedServerConfig.prompts);
       return prompts.filter((prompt) =>
         allowedPromptNames.has(normalizePromptNameForGroup(serverName, prompt.name)),
       );
@@ -2329,14 +2360,74 @@ export async function filterResourcesByGroup(
   group: string | undefined,
   serverName: string,
   resources: Array<{ uri: string }>,
+  serverConfig?: IGroupServerConfig,
 ) {
   if (group) {
-    const serverConfig = await getServerConfigInGroup(group, serverName);
-    if (serverConfig && serverConfig.resources !== 'all' && Array.isArray(serverConfig.resources)) {
-      const allowedResources = new Set(serverConfig.resources);
+    const resolvedServerConfig = await getGroupServerConfig(group, serverName, serverConfig);
+    if (
+      resolvedServerConfig &&
+      resolvedServerConfig.resources !== 'all' &&
+      Array.isArray(resolvedServerConfig.resources)
+    ) {
+      const allowedResources = new Set(resolvedServerConfig.resources);
       return resources.filter((resource) => allowedResources.has(resource.uri));
     }
   }
 
   return resources;
+}
+
+const resourceTemplateMatchesSelection = (uriTemplate: string, allowedResources: Set<string>) => {
+  if (allowedResources.has(uriTemplate)) {
+    return true;
+  }
+
+  const dynamicSegmentIndex = uriTemplate.search(/[{*]/);
+  if (dynamicSegmentIndex === -1) {
+    return false;
+  }
+
+  const staticPrefix = uriTemplate.slice(0, dynamicSegmentIndex);
+  if (!staticPrefix) {
+    return false;
+  }
+
+  for (const resourceUri of allowedResources) {
+    if (resourceUri.startsWith(staticPrefix)) {
+      return true;
+    }
+  }
+
+  return false;
+};
+
+export async function filterResourceTemplatesByGroup(
+  group: string | undefined,
+  serverName: string,
+  resourceTemplates: Array<{ uriTemplate?: string }>,
+  serverConfig?: IGroupServerConfig,
+) {
+  if (group) {
+    const resolvedServerConfig = await getGroupServerConfig(group, serverName, serverConfig);
+    if (
+      resolvedServerConfig &&
+      resolvedServerConfig.resources !== 'all' &&
+      Array.isArray(resolvedServerConfig.resources)
+    ) {
+      if (resolvedServerConfig.resources.length === 0) {
+        return [];
+      }
+
+      const allowedResources = new Set(resolvedServerConfig.resources);
+      return resourceTemplates.filter((resourceTemplate) => {
+        if (typeof resourceTemplate.uriTemplate !== 'string') {
+          return false;
+        }
+
+        return resourceTemplateMatchesSelection(resourceTemplate.uriTemplate, allowedResources);
+      });
+    }
+  }
+
+  return resourceTemplates;
 }

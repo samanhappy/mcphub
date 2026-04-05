@@ -73,6 +73,7 @@ jest.mock('../../src/config/index.js', () => ({
 import {
   createMcpServer,
   filterPromptsByGroup,
+  filterResourceTemplatesByGroup,
   filterResourcesByGroup,
   handleListPromptsRequest,
   handleListResourcesRequest,
@@ -176,5 +177,20 @@ describe('mcpService handleListPromptsRequest', () => {
     ] as any);
 
     expect(result).toEqual([{ uri: 'resource://docs/guide', name: 'Guide' }]);
+  });
+
+  it('should hide resource templates when group resources are explicitly empty', async () => {
+    const mockGetServerConfigInGroup = jest.requireMock('../../src/services/groupService.js')
+      .getServerConfigInGroup as jest.Mock;
+    mockGetServerConfigInGroup.mockResolvedValue({
+      name: 'server-a',
+      resources: [],
+    });
+
+    const result = await filterResourceTemplatesByGroup('team-a', 'server-a', [
+      { uriTemplate: 'resource://docs/{slug}', name: 'Docs by slug' },
+    ] as any);
+
+    expect(result).toEqual([]);
   });
 });

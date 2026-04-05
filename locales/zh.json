@@ -391,7 +391,12 @@
     "selectAll": "全选",
     "selectNone": "全不选",
     "configureTools": "配置工具",
-    "configureCapabilities": "配置工具、提示词和资源"
+    "configureCapabilities": "配置工具、提示词和资源",
+    "previewPrompts": "[提示词: {{items}}]",
+    "previewResources": "[资源: {{items}}]",
+    "previewAllTools": "（全部工具）",
+    "previewAllPrompts": "（全部提示词）",
+    "previewAllResources": "（全部资源）"
   },
   "market": {
     "title": "本地安装",

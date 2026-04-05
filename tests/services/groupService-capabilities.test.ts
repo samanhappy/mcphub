@@ -59,4 +59,29 @@ describe('groupService capability selections', () => {
       },
     ]);
   });
+
+  it('should preserve empty capability selections when creating groups', async () => {
+    const result = await createGroup(
+      'Team Empty',
+      'No capabilities selected yet',
+      [
+        {
+          name: 'server1',
+          tools: [],
+          prompts: [],
+          resources: [],
+        },
+      ],
+      'admin',
+    );
+
+    expect(result?.servers).toEqual([
+      {
+        name: 'server1',
+        tools: [],
+        prompts: [],
+        resources: [],
+      },
+    ]);
+  });
 });

@@ -389,7 +389,12 @@
     "selectAll": "Select All",
     "selectNone": "Select None",
     "configureTools": "Configure Tools",
-    "configureCapabilities": "Configure Tools, Prompts, and Resources"
+    "configureCapabilities": "Configure Tools, Prompts, and Resources",
+    "previewPrompts": "[prompts: {{items}}]",
+    "previewResources": "[resources: {{items}}]",
+    "previewAllTools": "(all tools)",
+    "previewAllPrompts": "(all prompts)",
+    "previewAllResources": "(all resources)"
   },
   "market": {
     "title": "Local Installation",

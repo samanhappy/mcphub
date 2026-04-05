@@ -120,6 +120,35 @@ describe('templateService', () => {
       ]);
     });
 
+    it('should preserve empty capability selections in exported group configs', async () => {
+      mockServerDao.findAll.mockResolvedValue([{ name: 'server1', command: 'npx', enabled: true }]);
+      mockGroupDao.findAll.mockResolvedValue([
+        {
+          id: 'g1',
+          name: 'Group',
+          servers: [
+            {
+              name: 'server1',
+              tools: [],
+              prompts: [],
+              resources: [],
+            },
+          ],
+        },
+      ]);
+
+      const template = await exportTemplate({ name: 'Test' });
+
+      expect(template.groups[0].servers).toEqual([
+        {
+          name: 'server1',
+          tools: [],
+          prompts: [],
+          resources: [],
+        },
+      ]);
+    });
+
     it('should preserve existing ${PLACEHOLDER} patterns', async () => {
       mockServerDao.findAll.mockResolvedValue([
         { name: 's1', command: 'npx', env: { TOKEN: '${MY_TOKEN}', REGION: 'us-east-1' } },

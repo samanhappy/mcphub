@@ -144,7 +144,8 @@ export const ServerToolConfig: React.FC<ServerToolConfigProps> = ({
   };
 
   const normalizeNamedCapability = (serverName: string, name: string) => {
-    return name.replace(`${serverName}${nameSeparator}`, '');
+    const prefix = `${serverName}${nameSeparator}`;
+    return name.startsWith(prefix) ? name.slice(prefix.length) : name;
   };
 
   const getCapabilityItems = (server: Server, capability: CapabilityKey) => {

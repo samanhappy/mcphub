@@ -134,6 +134,22 @@ Supports:
     }
   };
 
+  const renderAllCapabilitiesLabel = (
+    key: 'previewAllTools' | 'previewAllPrompts' | 'previewAllResources',
+  ) => <span className="text-gray-500 ml-2">{t(`groups.${key}`)}</span>;
+
+  const renderCapabilityPreview = (
+    key: 'previewPrompts' | 'previewResources',
+    value: string[] | 'all' | undefined,
+  ) => {
+    if (!value || value === 'all') {
+      return null;
+    }
+
+    const items = Array.isArray(value) ? value.join(', ') : value;
+    return <span className="text-gray-500 ml-2">{t(`groups.${key}`, { items })}</span>;
+  };
+
   const renderServerList = (
     servers?: string[] | Array<{
       name: string;
@@ -164,19 +180,11 @@ Supports:
                     ({Array.isArray(server.tools) ? server.tools.join(', ') : server.tools})
                   </span>
                 )}
-                {server.tools === 'all' && <span className="text-gray-500 ml-2">(all tools)</span>}
-                {server.prompts && server.prompts !== 'all' && (
-                  <span className="text-gray-500 ml-2">
-                    [prompts: {Array.isArray(server.prompts) ? server.prompts.join(', ') : server.prompts}]
-                  </span>
-                )}
-                {server.prompts === 'all' && <span className="text-gray-500 ml-2">(all prompts)</span>}
-                {server.resources && server.resources !== 'all' && (
-                  <span className="text-gray-500 ml-2">
-                    [resources: {Array.isArray(server.resources) ? server.resources.join(', ') : server.resources}]
-                  </span>
-                )}
-                {server.resources === 'all' && <span className="text-gray-500 ml-2">(all resources)</span>}
+                {server.tools === 'all' && renderAllCapabilitiesLabel('previewAllTools')}
+                {renderCapabilityPreview('previewPrompts', server.prompts)}
+                {server.prompts === 'all' && renderAllCapabilitiesLabel('previewAllPrompts')}
+                {renderCapabilityPreview('previewResources', server.resources)}
+                {server.resources === 'all' && renderAllCapabilitiesLabel('previewAllResources')}
               </div>
             );
           }

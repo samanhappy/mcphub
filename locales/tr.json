@@ -390,7 +390,12 @@
     "selectAll": "Tümünü Seç",
     "selectNone": "Hiçbirini Seçme",
     "configureTools": "Araçları Yapılandır",
-    "configureCapabilities": "Araçları, istemleri ve kaynakları yapılandır"
+    "configureCapabilities": "Araçları, istemleri ve kaynakları yapılandır",
+    "previewPrompts": "[istemler: {{items}}]",
+    "previewResources": "[kaynaklar: {{items}}]",
+    "previewAllTools": "(tüm araçlar)",
+    "previewAllPrompts": "(tüm istemler)",
+    "previewAllResources": "(tüm kaynaklar)"
   },
   "market": {
     "title": "Yerel Kurulum",
