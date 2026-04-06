@@ -18,6 +18,8 @@ import {
   FileCode,
   ChevronDown as DropdownIcon,
   Wrench,
+  MessageSquare,
+  FileText,
   RotateCcw
 } from 'lucide-react'
 
@@ -41,6 +43,8 @@ export {
   FileCode,
   DropdownIcon,
   Wrench,
+  MessageSquare,
+  FileText,
   RotateCcw
 }
 

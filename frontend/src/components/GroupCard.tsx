@@ -10,6 +10,8 @@ import {
   FileCode,
   DropdownIcon,
   Wrench,
+  MessageSquare,
+  FileText,
 } from '@/components/icons/LucideIcons';
 import DeleteDialog from '@/components/ui/DeleteDialog';
 import { useToast } from '@/contexts/ToastContext';
@@ -307,13 +309,15 @@ const GroupCard = ({ group, servers, onEdit, onDelete }: GroupCardProps) => {
                       </span>
                     )}
                     {promptCount > 0 && (
-                      <span className="text-xs text-purple-600 bg-purple-100 px-2 py-0.5 rounded">
-                        P {promptCount}
+                      <span className="text-xs text-purple-600 bg-purple-100 px-2 py-0.5 rounded flex items-center gap-1">
+                        <MessageSquare size={12} />
+                        {promptCount}
                       </span>
                     )}
                     {resourceCount > 0 && (
-                      <span className="text-xs text-emerald-600 bg-emerald-100 px-2 py-0.5 rounded">
-                        R {resourceCount}
+                      <span className="text-xs text-emerald-600 bg-emerald-100 px-2 py-0.5 rounded flex items-center gap-1">
+                        <FileText size={12} />
+                        {resourceCount}
                       </span>
                     )}
                   </div>

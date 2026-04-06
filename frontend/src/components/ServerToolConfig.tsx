@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { IGroupServerConfig, Prompt, Resource, Server, Tool } from '@/types';
+import { Wrench, MessageSquare, FileText } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { useSettingsData } from '@/hooks/useSettingsData';
 
@@ -300,8 +301,8 @@ export const ServerToolConfig: React.FC<ServerToolConfigProps> = ({
 
                 <div className="flex items-center space-x-3">
                   {summaryBadges.map(({ key, count }) => (
-                    <span key={key} className="text-sm text-green-600">
-                      {key === 'tools' ? 'T' : key === 'prompts' ? 'P' : 'R'} {count}
+                    <span key={key} className="text-sm text-green-600 flex items-center gap-1">
+                      {key === 'tools' ? <Wrench size={14} /> : key === 'prompts' ? <MessageSquare size={14} /> : <FileText size={14} />} {count}
                     </span>
                   ))}
 
@@ -374,7 +375,7 @@ export const ServerToolConfig: React.FC<ServerToolConfigProps> = ({
                                     onChange={() => toggleCapabilityItem(server.name, key, item.value)}
                                     className="w-3 h-3 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
                                   />
-                                  <span className="text-gray-700 break-all">
+                                  <span className="text-gray-700 break-all whitespace-nowrap">
                                     {item.value}
                                   </span>
                                   {item.description && (

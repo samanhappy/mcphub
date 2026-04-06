@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Server } from '@/types';
-import { ChevronDown, ChevronRight, AlertCircle, Copy, Check } from 'lucide-react';
+import { ChevronDown, ChevronRight, AlertCircle, Copy, Check, Wrench, MessageSquare, FileText } from 'lucide-react';
 import { StatusBadge } from '@/components/ui/Badge';
 import ToolCard from '@/components/ui/ToolCard';
 import PromptCard from '@/components/ui/PromptCard';
@@ -365,13 +365,7 @@ const ServerCard = ({
 
             {/* Tool count display */}
             <div className="flex items-center px-2 py-1 bg-blue-50 text-blue-700 rounded-full text-sm btn-primary">
-              <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                <path
-                  fillRule="evenodd"
-                  d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z"
-                  clipRule="evenodd"
-                />
-              </svg>
+              <Wrench className="w-4 h-4 mr-1" />
               <span>
                 {enabledTools}/{totalTools} {t('server.tools')}
               </span>
@@ -379,10 +373,7 @@ const ServerCard = ({
 
             {/* Prompt count display */}
             <div className="flex items-center px-2 py-1 bg-purple-50 text-purple-700 rounded-full text-sm btn-primary">
-              <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                <path d="M2 5a2 2 0 012-2h7a2 2 0 012 2v4a2 2 0 01-2 2H9l-3 3v-3H4a2 2 0 01-2-2V5z" />
-                <path d="M15 7v2a4 4 0 01-4 4H9.828l-1.766 1.767c.28.149.599.233.938.233h2l3 3v-3h2a2 2 0 002-2V9a2 2 0 00-2-2h-1z" />
-              </svg>
+              <MessageSquare className="w-4 h-4 mr-1" />
               <span>
                 {server.prompts?.length || 0} {t('server.prompts')}
               </span>
@@ -390,9 +381,7 @@ const ServerCard = ({
 
             {/* Resource count display */}
             <div className="flex items-center px-2 py-1 bg-emerald-50 text-emerald-700 rounded-full text-sm btn-primary">
-              <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                <path d="M4 3a2 2 0 00-2 2v8a2 2 0 002 2h3l3 2 3-2h3a2 2 0 002-2V5a2 2 0 00-2-2H4z" />
-              </svg>
+              <FileText className="w-4 h-4 mr-1" />
               <span>
                 {enabledResources}/{totalResources} {t('nav.resources')}
               </span>

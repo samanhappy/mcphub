@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { usePermissionCheck } from '../PermissionChecker';
 import UserProfileMenu from '@/components/ui/UserProfileMenu';
 import { checkActivityAvailable } from '@/services/activityService';
+import { MessageSquare, FileText } from 'lucide-react';
 
 interface SidebarProps {
   collapsed: boolean;
@@ -83,38 +84,12 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
     {
       path: '/prompts',
       label: t('nav.prompts'),
-      icon: (
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          className="h-5 w-5"
-          viewBox="0 0 20 20"
-          fill="currentColor"
-        >
-          <path
-            fillRule="evenodd"
-            d="M18 13V5a2 2 0 00-2-2H4a2 2 0 00-2 2v8a2 2 0 002 2h3l3 3 3-3h3a2 2 0 002-2zM5 7a1 1 0 011-1h8a1 1 0 110 2H6a1 1 0 01-1-1zm1 3a1 1 0 100 2h3a1 1 0 100-2H6z"
-            clipRule="evenodd"
-          />
-        </svg>
-      ),
+      icon: <MessageSquare className="h-4 w-4" />,
     },
     {
       path: '/resources',
       label: t('nav.resources'),
-      icon: (
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          className="h-5 w-5"
-          viewBox="0 0 20 20"
-          fill="currentColor"
-        >
-          <path
-            fillRule="evenodd"
-            d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z"
-            clipRule="evenodd"
-          />
-        </svg>
-      ),
+      icon: <FileText className="h-5 w-5" />,
     },
     {
       path: '/market',
