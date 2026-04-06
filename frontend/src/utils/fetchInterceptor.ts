@@ -21,7 +21,7 @@ const interceptors: FetchInterceptor[] = [];
 // --- Global UI Tracking for Network Requests ---
 let lastClickedButton: HTMLButtonElement | null = null;
 let clickTimeoutId: ReturnType<typeof setTimeout> | null = null;
-const activeRequests = new Map<HTMLButtonElement, number>();
+const activeRequests = new WeakMap<HTMLButtonElement, number>();
 
 if (typeof document !== 'undefined') {
   document.addEventListener('click', (e) => {
