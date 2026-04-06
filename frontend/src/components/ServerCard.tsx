@@ -29,7 +29,7 @@ const ServerCard = ({
 }: ServerCardProps) => {
   const { t } = useTranslation();
   const { showToast } = useToast();
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [expandedTab, setExpandedTab] = useState<'tools' | 'prompts' | 'resources' | null>(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isToggling, setIsToggling] = useState(false);
   const [isReloading, setIsReloading] = useState(false);
@@ -53,6 +53,8 @@ const ServerCard = ({
   const { exportMCPSettings } = useSettingsData();
   const totalTools = server.tools?.length || 0;
   const enabledTools = server.tools?.filter((tool) => tool.enabled !== false).length || 0;
+  const totalPrompts = server.prompts?.length || 0;
+  const enabledPrompts = server.prompts?.filter((prompt) => prompt.enabled !== false).length || 0;
   const totalResources = server.resources?.length || 0;
   const enabledResources =
     server.resources?.filter((resource) => resource.enabled !== false).length || 0;
@@ -337,8 +339,7 @@ const ServerCard = ({
     <>
       <div className="bg-white shadow rounded-lg mb-6 page-card transition-all duration-200">
         <div
-          className="flex justify-between items-center cursor-pointer p-4"
-          onClick={() => setIsExpanded(!isExpanded)}
+          className="flex justify-between items-center p-4"
         >
           <div className="flex items-center space-x-2">
             <h2
@@ -364,26 +365,44 @@ const ServerCard = ({
             )}
 
             {/* Tool count display */}
-            <div className="flex items-center px-2 py-1 bg-blue-50 text-blue-700 rounded-full text-sm btn-primary">
+            <div 
+              className={`flex items-center px-2 py-1 rounded-full text-sm cursor-pointer transition-colors ${expandedTab === 'tools' ? 'bg-blue-100 text-blue-800' : 'bg-blue-50 text-blue-700 hover:bg-blue-100'}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                setExpandedTab(prev => prev === 'tools' ? null : 'tools');
+              }}
+            >
               <Wrench className="w-4 h-4 mr-1" />
               <span>
-                {enabledTools}/{totalTools} {t('server.tools')}
+                {totalTools === 0 ? '0' : `${enabledTools}/${totalTools}`} {t('server.tools')}
               </span>
             </div>
 
             {/* Prompt count display */}
-            <div className="flex items-center px-2 py-1 bg-purple-50 text-purple-700 rounded-full text-sm btn-primary">
+            <div 
+              className={`flex items-center px-2 py-1 rounded-full text-sm cursor-pointer transition-colors ${expandedTab === 'prompts' ? 'bg-purple-100 text-purple-800' : 'bg-purple-50 text-purple-700 hover:bg-purple-100'}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                setExpandedTab(prev => prev === 'prompts' ? null : 'prompts');
+              }}
+            >
               <MessageSquare className="w-4 h-4 mr-1" />
               <span>
-                {server.prompts?.length || 0} {t('server.prompts')}
+                {totalPrompts === 0 ? '0' : `${enabledPrompts}/${totalPrompts}`} {t('server.prompts')}
               </span>
             </div>
 
             {/* Resource count display */}
-            <div className="flex items-center px-2 py-1 bg-emerald-50 text-emerald-700 rounded-full text-sm btn-primary">
+            <div 
+              className={`flex items-center px-2 py-1 rounded-full text-sm cursor-pointer transition-colors ${expandedTab === 'resources' ? 'bg-emerald-100 text-emerald-800' : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                setExpandedTab(prev => prev === 'resources' ? null : 'resources');
+              }}
+            >
               <FileText className="w-4 h-4 mr-1" />
               <span>
-                {enabledResources}/{totalResources} {t('nav.resources')}
+                {totalResources === 0 ? '0' : `${enabledResources}/${totalResources}`} {t('nav.resources')}
               </span>
             </div>
 
@@ -493,81 +512,77 @@ const ServerCard = ({
               {t('server.delete')}
             </button>
             <button className="text-gray-400 hover:text-gray-600 btn-secondary">
-              {isExpanded ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
+              {expandedTab ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
             </button>
           </div>
         </div>
 
-        {isExpanded && (
-          <>
-            {server.tools && (
-              <div className="px-4">
-                <h6
-                  className={`font-medium ${server.enabled === false ? 'text-gray-600' : 'text-gray-900'} mb-2`}
-                >
-                  {t('server.tools')}
-                </h6>
-                <div className="space-y-4">
-                  {server.tools.map((tool, index) => (
-                    <ToolCard
-                      key={index}
-                      server={server.name}
-                      tool={tool}
-                      onToggle={handleToolToggle}
-                      onDescriptionUpdate={handleToolDescriptionUpdate}
-                    />
-                  ))}
-                </div>
-              </div>
-            )}
+        {expandedTab === 'tools' && server.tools && (
+          <div className="px-4">
+            <h6
+              className={`font-medium ${server.enabled === false ? 'text-gray-600' : 'text-gray-900'} mb-2`}
+            >
+              {t('server.tools')}
+            </h6>
+            <div className="space-y-4">
+              {server.tools.map((tool, index) => (
+                <ToolCard
+                  key={index}
+                  server={server.name}
+                  tool={tool}
+                  onToggle={handleToolToggle}
+                  onDescriptionUpdate={handleToolDescriptionUpdate}
+                />
+              ))}
+            </div>
+          </div>
+        )}
 
-            {server.prompts && (
-              <div className="px-4 pb-2">
-                <h6
-                  className={`font-medium ${server.enabled === false ? 'text-gray-600' : 'text-gray-900'}`}
-                >
-                  {t('server.prompts')}
-                </h6>
-                <div className="space-y-4">
-                  {server.prompts.map((prompt, index) => (
-                    <PromptCard
-                      key={index}
-                      server={server.name}
-                      prompt={prompt}
-                      onToggle={handlePromptToggle}
-                      onDescriptionUpdate={handlePromptDescriptionUpdate}
-                    />
-                  ))}
-                </div>
-              </div>
-            )}
+        {expandedTab === 'prompts' && server.prompts && (
+          <div className="px-4 pb-2">
+            <h6
+              className={`font-medium ${server.enabled === false ? 'text-gray-600' : 'text-gray-900'}`}
+            >
+              {t('server.prompts')}
+            </h6>
+            <div className="space-y-4">
+              {server.prompts.map((prompt, index) => (
+                <PromptCard
+                  key={index}
+                  server={server.name}
+                  prompt={prompt}
+                  onToggle={handlePromptToggle}
+                  onDescriptionUpdate={handlePromptDescriptionUpdate}
+                />
+              ))}
+            </div>
+          </div>
+        )}
 
-            {server.resources && (
-              <div className="px-4 pb-2">
-                <h6
-                  className={`font-medium ${server.enabled === false ? 'text-gray-600' : 'text-gray-900'}`}
-                >
-                  {t('nav.resources')}
-                </h6>
-                {server.resources.length === 0 ? (
-                  <div className="text-sm text-gray-500 py-2">
-                    {t('builtinResources.noResources')}
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {server.resources.map((resource, index) => (
-                      <ResourceCard
-                        key={`${resource.uri}-${index}`}
-                        resource={resource}
-                        onToggle={handleResourceToggle}
-                        onDescriptionUpdate={handleResourceDescriptionUpdate}
-                      />
-                    ))}
-                  </div>
-                )}
+        {expandedTab === 'resources' && server.resources && (
+          <div className="px-4 pb-2">
+            <h6
+              className={`font-medium ${server.enabled === false ? 'text-gray-600' : 'text-gray-900'}`}
+            >
+              {t('nav.resources')}
+            </h6>
+            {server.resources.length === 0 ? (
+              <div className="text-sm text-gray-500 py-2">
+                {t('builtinResources.noResources')}
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {server.resources.map((resource, index) => (
+                  <ResourceCard
+                    key={`${resource.uri}-${index}`}
+                    resource={resource}
+                    onToggle={handleResourceToggle}
+                    onDescriptionUpdate={handleResourceDescriptionUpdate}
+                  />
+                ))}
               </div>
             )}
-          </>
+          </div>
         )}
       </div>
 
