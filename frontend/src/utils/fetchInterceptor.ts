@@ -18,6 +18,27 @@ export interface ApiResponse<T = any> {
 // Global interceptors store
 const interceptors: FetchInterceptor[] = [];
 
+// --- Global UI Tracking for Network Requests ---
+let lastClickedButton: HTMLButtonElement | null = null;
+let clickTimeoutId: ReturnType<typeof setTimeout> | null = null;
+const activeRequests = new Map<HTMLButtonElement, number>();
+
+if (typeof document !== 'undefined') {
+  document.addEventListener('click', (e) => {
+    const target = e.target as HTMLElement;
+    const btn = target?.closest('button');
+    if (btn) {
+      lastClickedButton = btn as HTMLButtonElement;
+      if (clickTimeoutId) clearTimeout(clickTimeoutId);
+      // Give enough time for synchronous event handlers to initiate a fetch
+      clickTimeoutId = setTimeout(() => {
+        lastClickedButton = null;
+      }, 100);
+    }
+  }, true);
+}
+// -----------------------------------------------
+
 // Add an interceptor
 export const addInterceptor = (interceptor: FetchInterceptor): void => {
   interceptors.push(interceptor);
@@ -43,6 +64,14 @@ export const fetchWithInterceptors = async (
 ): Promise<Response> => {
   let url = input.toString();
   let config = { ...init };
+
+  // Capture button for UI feedback before any await suspends execution
+  const btn = lastClickedButton;
+  if (btn) {
+    const count = activeRequests.get(btn) || 0;
+    activeRequests.set(btn, count + 1);
+    btn.classList.add('is-loading');
+  }
 
   try {
     // Apply request interceptors
@@ -76,6 +105,17 @@ export const fetchWithInterceptors = async (
     }
 
     throw processedError;
+  } finally {
+    // UI feedback cleanup
+    if (btn) {
+      const count = activeRequests.get(btn) || 0;
+      if (count <= 1) {
+        activeRequests.delete(btn);
+        btn.classList.remove('is-loading');
+      } else {
+        activeRequests.set(btn, count - 1);
+      }
+    }
   }
 };
 

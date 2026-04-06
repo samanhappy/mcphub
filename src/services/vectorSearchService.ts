@@ -757,7 +757,7 @@ async function generateEmbedding(text: string): Promise<number[]> {
     // to prevent oversized text from causing a failure in the embedding API call.
     truncatedText = truncateWithHeuristic(text, maxTokens);
   }
-  console.log(
+  console.debug(
     `[Embedding] Truncation: ${text.length} → ${truncatedText.length} chars (${Date.now() - _truncateStart}ms, maxTokens=${maxTokens})`,
   );
 
@@ -800,7 +800,7 @@ async function generateEmbedding(text: string): Promise<number[]> {
     );
   }
 
-  console.log(
+  console.debug(
     `[Embedding] API request → model=${config.embeddingModel}, encoding_format=${encodingFormat}, input_length=${truncatedText.length} chars | input_preview: "${truncatedText.substring(0, 200).replace(/\s+/g, ' ')}"`,
   );
   const _requestStart = Date.now();
@@ -821,7 +821,7 @@ async function generateEmbedding(text: string): Promise<number[]> {
         },
       ),
     );
-    console.log(`[Embedding] API response OK in ${Date.now() - _requestStart}ms`);
+    console.debug(`[Embedding] API response OK in ${Date.now() - _requestStart}ms`);
 
     if (encodingFormat === 'base64' && typeof response.data[0].embedding === 'string') {
       const embeddingBase64Str = response.data[0].embedding as unknown as string;
@@ -1169,7 +1169,7 @@ export const saveToolsAsVectorEmbeddings = async (
         .filter(Boolean)
         .join(' ');
 
-      console.log(
+      console.debug(
         `[Embedding] [${serverName}] Tool ${_toolIdx + 1}/${tools.length}: "${tool.name}" | raw text: ${searchableText.length} chars | preview: "${searchableText.substring(0, 200).replace(/\s+/g, ' ')}"`,
       );
 

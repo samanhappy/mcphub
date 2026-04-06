@@ -520,3 +520,53 @@ tbody tr:hover {
     0 4px 12px rgba(0, 0, 0, 0.15);
   border-radius: 12px;
 }
+
+
+/* --- Unified Button Click & Loading Feedback --- */
+button {
+  transition: transform 0.15s ease, opacity 0.15s ease;
+}
+
+button:not(:disabled):active {
+  transform: scale(0.96);
+}
+
+button.is-loading {
+  position: relative !important;
+  color: transparent !important;
+  pointer-events: none !important;
+}
+
+button.is-loading > * {
+  opacity: 0 !important;
+}
+
+button.is-loading::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 1.2rem;
+  height: 1.2rem;
+  margin-left: -0.6rem;
+  margin-top: -0.6rem;
+  border: 2px solid rgba(128, 128, 128, 0.4);
+  border-radius: 50%;
+  border-top-color: #666;
+  animation: button-spinner 0.6s linear infinite;
+  visibility: visible !important;
+}
+
+button.bg-blue-600.is-loading::after,
+button.bg-blue-500.is-loading::after,
+button.bg-red-500.is-loading::after,
+button.bg-red-600.is-loading::after,
+button.btn-primary.is-loading::after,
+button.text-white.is-loading::after {
+  border: 2px solid rgba(255, 255, 255, 0.3) !important;
+  border-top-color: #fff !important;
+}
+
+@keyframes button-spinner {
+  to { transform: rotate(360deg); }
+}
