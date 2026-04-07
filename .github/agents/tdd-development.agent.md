@@ -188,9 +188,9 @@ All checks must pass.
 
 If the change affects:
 
-- behavior
-- configuration
-- APIs
+* behavior
+* configuration
+* APIs
 
 update the documentation.
 
