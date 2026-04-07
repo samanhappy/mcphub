@@ -196,8 +196,8 @@ update the documentation.
 
 Guidelines:
 
-- **README.md + README.fr.md + README.zh.md**: only update the core and most important points. Keep it concise.
-- **docs/**: add detailed explanations, examples, and extended documentation.
+* **README.md + README.fr.md + README.zh.md**: only update the core and most important points. Keep it concise.
+* **docs/**: add detailed explanations, examples, and extended documentation.
 
 If debugging revealed architectural insights, update:
 
