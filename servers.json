@@ -74718,5 +74718,140 @@
     "prompts": [],
     "resources": [],
     "is_official": true
+  },
+  "mcp-us-business-data": {
+    "name": "mcp-us-business-data",
+    "display_name": "US Business & Government Data",
+    "description": "Search Secretary of State business registrations across 17 US states, YellowPages local business leads, and building permits in 400+ cities",
+    "repository": {
+      "type": "git",
+      "url": "https://github.com/avabuildsdata/mcp-us-business-data"
+    },
+    "homepage": "https://github.com/avabuildsdata/mcp-us-business-data",
+    "author": {
+      "name": "avabuildsdata"
+    },
+    "license": "MIT",
+    "categories": [
+      "Data & Analytics"
+    ],
+    "tags": [
+      "business",
+      "government",
+      "leads",
+      "secretary-of-state",
+      "yellow-pages",
+      "building-permits",
+      "scraping",
+      "data"
+    ],
+    "examples": [
+      {
+        "title": "Search Business Entities",
+        "description": "Look up a company across state registrations",
+        "prompt": "search_business_entity with query \"Goldman Sachs\" and state \"NY\""
+      },
+      {
+        "title": "Find Local Business Leads",
+        "description": "Search YellowPages for businesses by type and location",
+        "prompt": "search_yellow_pages with searchTerm \"plumber\" and location \"Chicago, IL\""
+      },
+      {
+        "title": "Search Building Permits",
+        "description": "Find construction permits and contractor leads",
+        "prompt": "search_building_permits with query \"solar\" and city \"Los Angeles\""
+      }
+    ],
+    "installations": {
+      "sse": {
+        "type": "sse",
+        "url": "https://mcp.apify.com/sse",
+        "headers": {
+          "Authorization": "Bearer ${APIFY_TOKEN}"
+        }
+      }
+    },
+    "arguments": {
+      "APIFY_TOKEN": {
+        "description": "Apify API token. Get a free token at https://apify.com/sign-up",
+        "required": true,
+        "example": "apify_api_YOUR_TOKEN"
+      }
+    },
+    "tools": [
+      {
+        "name": "search_business_entity",
+        "description": "Search Secretary of State business entity registrations across 17 US states. Returns company name, status, filing date, entity type, and registered agent.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "string",
+              "description": "Business name or keyword"
+            },
+            "state": {
+              "type": "string",
+              "description": "Two-letter state code (e.g. NY, TX, CA)"
+            },
+            "maxResults": {
+              "type": "number",
+              "description": "Maximum results (default: 25)"
+            }
+          },
+          "required": [
+            "query"
+          ]
+        }
+      },
+      {
+        "name": "search_yellow_pages",
+        "description": "Search YellowPages.com for local business leads with name, phone, address, website, rating.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "searchTerm": {
+              "type": "string",
+              "description": "Business type (e.g. plumber, restaurant)"
+            },
+            "location": {
+              "type": "string",
+              "description": "City/state or zip code"
+            },
+            "maxResults": {
+              "type": "number",
+              "description": "Maximum results (default: 25)"
+            }
+          },
+          "required": [
+            "searchTerm",
+            "location"
+          ]
+        }
+      },
+      {
+        "name": "search_building_permits",
+        "description": "Search building permits across 400+ US cities. Returns permit details, contractor info, and project descriptions.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "string",
+              "description": "Search term (e.g. solar, roof, commercial)"
+            },
+            "city": {
+              "type": "string",
+              "description": "City name"
+            },
+            "maxResults": {
+              "type": "number",
+              "description": "Maximum results (default: 25)"
+            }
+          },
+          "required": [
+            "query"
+          ]
+        }
+      }
+    ]
   }
 }
