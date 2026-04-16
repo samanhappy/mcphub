@@ -103,6 +103,7 @@ async function truncateWithGptTokenizer(text: string, maxTokens: number): Promis
 // The mirror is used as a fallback for regions where huggingface.co is blocked (e.g. China).
 const HF_OFFICIAL_HOST = 'https://huggingface.co/';
 const HF_MIRROR_HOST = 'https://hf-mirror.com/';
+const HF_FETCH_TIMEOUT_MS = 10_000;
 
 // Cache key includes the remote host so a failed attempt from one endpoint
 // does not prevent a successful download from the other.
@@ -174,7 +175,9 @@ function buildHFTokenizerFileUrl(modelId: string, remoteHost: string, filename: 
 }
 
 async function fetchHFJson(url: string): Promise<unknown> {
-  const response = await fetch(url);
+  const response = await fetch(url, {
+    signal: AbortSignal.timeout(HF_FETCH_TIMEOUT_MS),
+  });
   if (!response.ok) {
     throw new Error(`Failed to fetch ${url}: ${response.status} ${response.statusText}`);
   }
