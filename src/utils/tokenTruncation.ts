@@ -6,7 +6,7 @@
  *
  * Model families and strategies:
  * - OpenAI / Azure (text-embedding-*):  BPE cl100k_base via gpt-tokenizer (exact)
- * - BAAI/BGE and HuggingFace models:    AutoTokenizer via @huggingface/transformers (exact)
+ * - BAAI/BGE and HuggingFace models:    Tokenizer via @huggingface/tokenizers (exact)
  * - Google Gemini (gemini-embedding-*): countTokens API via @google/genai (exact)
  * - Unknown models:                     heuristic maxTokens * 3 chars (approximate)
  */
@@ -96,7 +96,7 @@ async function truncateWithGptTokenizer(text: string, maxTokens: number): Promis
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Branch 2 — HuggingFace / BGE: AutoTokenizer (no ONNX, pure JS tokenisation)
+// Branch 2 — HuggingFace / BGE: Tokenizer (no ONNX, pure JS tokenisation)
 // ─────────────────────────────────────────────────────────────────────────────
 
 // Primary and mirror endpoints for tokenizer downloads.
@@ -106,17 +106,20 @@ const HF_MIRROR_HOST = 'https://hf-mirror.com/';
 
 // Cache key includes the remote host so a failed attempt from one endpoint
 // does not prevent a successful download from the other.
-const tokenizerCache = new Map<string, ReturnType<typeof import('@huggingface/transformers')['AutoTokenizer']['from_pretrained']> extends Promise<infer T> ? T : never>();
+interface HFTokenizerEncodeResult {
+  ids: ArrayLike<number | bigint>;
+}
+
+interface HFTokenizer {
+  encode(text: string): HFTokenizerEncodeResult;
+  decode(ids: ArrayLike<number | bigint>, options?: { skip_special_tokens?: boolean }): string;
+}
+
+const tokenizerCache = new Map<string, HFTokenizer>();
 
 // In-flight download promises: deduplicates concurrent requests for the same key,
 // ensuring only one download attempt is made even when multiple callers arrive simultaneously.
-const tokenizerInFlight = new Map<string, Promise<any>>();
-
-// Serial lock protecting the env.remoteHost mutation window.
-// Since env.remoteHost is a module-level global shared by all AutoTokenizer calls,
-// concurrent downloads targeting different hosts would overwrite each other's setting.
-// Serialising through this lock ensures only one download mutates the global at a time.
-let envLock: Promise<void> = Promise.resolve();
+const tokenizerInFlight = new Map<string, Promise<HFTokenizer>>();
 
 // Host health state: tracks hosts that have recently failed so that downstream
 // callers skip them during the TTL window instead of re-attempting and logging noise.
@@ -152,21 +155,53 @@ function markHostHealthy(host: string): void {
 
 /**
  * Fetches or retrieves a cached HuggingFace tokenizer for a given model,
- * downloading it from the specified remote host.
+ * downloading tokenizer files from the specified remote host.
  *
  * Models like BAAI/bge-m3 are public and do not require authentication.
  * The tokenizer is cached per (modelId, remoteHost) pair to allow independent
  * retries against the official host and the mirror without cross-contamination.
  *
  * Concurrent calls for the same (modelId, remoteHost) pair share a single in-flight
- * promise so the tokenizer is downloaded exactly once. The env.remoteHost mutation
- * is protected by a serial lock to prevent concurrent downloads from interfering.
+ * promise so the tokenizer is downloaded exactly once.
  *
  * @param modelId     The fully-qualified HuggingFace Hub model ID (e.g., "BAAI/bge-m3").
  * @param remoteHost  The base URL of the host to download from.
  * @returns           The cached or freshly-downloaded tokenizer instance.
  */
-async function getHFTokenizer(modelId: string, remoteHost: string): Promise<any> {
+function buildHFTokenizerFileUrl(modelId: string, remoteHost: string, filename: string): string {
+  const normalizedHost = remoteHost.replace(/\/+$/, '');
+  return `${normalizedHost}/${modelId}/resolve/main/${filename}`;
+}
+
+async function fetchHFJson(url: string): Promise<unknown> {
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch ${url}: ${response.status} ${response.statusText}`);
+  }
+  return response.json();
+}
+
+async function fetchOptionalHFJson(url: string): Promise<unknown> {
+  try {
+    return await fetchHFJson(url);
+  } catch {
+    return {};
+  }
+}
+
+async function loadHFTokenizer(modelId: string, remoteHost: string): Promise<HFTokenizer> {
+  const { Tokenizer } = await import('@huggingface/tokenizers');
+  const [tokenizerJson, tokenizerConfig] = await Promise.all([
+    fetchHFJson(buildHFTokenizerFileUrl(modelId, remoteHost, 'tokenizer.json')),
+    fetchOptionalHFJson(buildHFTokenizerFileUrl(modelId, remoteHost, 'tokenizer_config.json')),
+  ]);
+  return new Tokenizer(
+    tokenizerJson as Record<string, unknown>,
+    tokenizerConfig as Record<string, unknown>,
+  ) as unknown as HFTokenizer;
+}
+
+async function getHFTokenizer(modelId: string, remoteHost: string): Promise<HFTokenizer> {
   const cacheKey = `${modelId}@${remoteHost}`;
 
   // Fast path: cached tokenizer is available
@@ -179,26 +214,12 @@ async function getHFTokenizer(modelId: string, remoteHost: string): Promise<any>
     return tokenizerInFlight.get(cacheKey)!;
   }
 
-  // Serialize the env.remoteHost mutation through a module-level lock so that
-  // concurrent downloads for different hosts do not overwrite each other's host setting.
   const downloadPromise = (async () => {
-    const prevLock = envLock;
-    let releaseLock!: () => void;
-    envLock = new Promise<void>((resolve) => {
-      releaseLock = resolve;
-    });
-    await prevLock;
-
-    const { AutoTokenizer, env } = await import('@huggingface/transformers');
-    const previousHost = env.remoteHost;
     try {
-      env.remoteHost = remoteHost;
-      const tokenizer = await AutoTokenizer.from_pretrained(modelId);
+      const tokenizer = await loadHFTokenizer(modelId, remoteHost);
       tokenizerCache.set(cacheKey, tokenizer);
       return tokenizer;
     } finally {
-      env.remoteHost = previousHost;
-      releaseLock();
       tokenizerInFlight.delete(cacheKey);
     }
   })();
@@ -228,12 +249,13 @@ function getHFModelId(model: string): string {
 }
 
 /**
- * Truncates text using a HuggingFace AutoTokenizer (BAAI/BGE and other transformer models).
+ * Truncates text using a HuggingFace tokenizer (BAAI/BGE and other transformer models).
  *
- * Tries to leverage the @huggingface/transformers library to tokenize input text using
- * the model's own SentencePiece or WordPiece tokenizer, then decodes a truncated
- * token sequence back to text. This provides exact tokenization matching the model's
- * vocabulary and behavior, with tokenizer instances cached to avoid repeated downloads.
+ * Downloads tokenizer files from the Hugging Face Hub (or mirror) and uses the
+ * lightweight @huggingface/tokenizers package to tokenize input text with the
+ * model's own vocabulary, then decodes a truncated token sequence back to text.
+ * This provides exact tokenization matching the model's behavior, with tokenizer
+ * instances cached to avoid repeated downloads.
  * 
  * Uses a three-tier fallback strategy to ensure robustness across all deployment environments:
  *   1. Official HuggingFace Hub (huggingface.co)
@@ -253,19 +275,15 @@ async function truncateWithHFTokenizer(
   const modelId = getHFModelId(model);
 
   // Helper: apply token-level truncation using a downloaded tokenizer instance.
-  const tokenizeAndTruncate = async (tokenizer: any): Promise<string> => {
-    // Tokenize without automatic truncation so we can apply the exact limit
-    const encoded = await tokenizer(text, { padding: false, truncation: false });
-    // input_ids.data is BigInt64Array or Int32Array depending on the model/environment
-    const rawIds: ArrayLike<number | bigint> = (encoded.input_ids as {
-      data: ArrayLike<number | bigint>;
-    }).data;
+  const tokenizeAndTruncate = (tokenizer: HFTokenizer): string => {
+    const encoded = tokenizer.encode(text);
+    const rawIds: ArrayLike<number | bigint> = encoded.ids;
     const ids = Array.from(rawIds as ArrayLike<number>).map(Number);
     if (ids.length <= maxTokens) {
       return text;
     }
     const truncatedIds = ids.slice(0, maxTokens);
-    return (await tokenizer.decode(truncatedIds, { skip_special_tokens: true })) as string;
+    return tokenizer.decode(truncatedIds, { skip_special_tokens: true });
   };
 
   // Tier 1: Official HuggingFace Hub — skipped when marked unhealthy (TTL active) to avoid

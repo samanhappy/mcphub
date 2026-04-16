@@ -3,7 +3,7 @@
  *
  * Test cases:
  *  (a) OpenAI model: precise truncation with gpt-tokenizer
- *  (b) BAAI/bge-m3: exact truncation via @huggingface/transformers with CJK text
+ *  (b) BAAI/bge-m3: exact truncation via @huggingface/tokenizers with CJK text
  *  (c) Gemini model: countTokens API mocked; pre-filter and binary-search paths
  *  (d) Short text: never modified in any branch
  *  (e) Unknown model: heuristic fallback (chars ≤ maxTokens * 3)
@@ -28,6 +28,52 @@ function makeEnglishText(words: number): string {
 function makeCJKText(chars: number): string {
   return '你好世界'.repeat(Math.ceil(chars / 4)).slice(0, chars);
 }
+
+const originalFetch = global.fetch;
+
+function createFetchResponse(
+  body: unknown,
+  init: { ok?: boolean; status?: number; statusText?: string } = {},
+): Response {
+  return {
+    ok: init.ok ?? true,
+    status: init.status ?? 200,
+    statusText: init.statusText ?? 'OK',
+    json: jest.fn().mockResolvedValue(body),
+  } as unknown as Response;
+}
+
+function mockTokenizerModule(options?: {
+  encode?: (text: string) => { ids: ArrayLike<number | bigint> };
+  decode?: (ids: ArrayLike<number | bigint>) => string;
+}) {
+  const encodeMock = jest.fn(
+    options?.encode ??
+      ((text: string) => ({
+        ids: new Int32Array(Array.from({ length: text.length }, (_, i) => i + 1)),
+      })),
+  );
+  const decodeMock = jest.fn(
+    options?.decode ??
+      ((ids: ArrayLike<number | bigint>) => 'x'.repeat(Array.from(ids).length)),
+  );
+  const TokenizerMock = jest.fn().mockImplementation(() => ({
+    encode: encodeMock,
+    decode: decodeMock,
+  }));
+
+  jest.doMock('@huggingface/tokenizers', () => ({
+    Tokenizer: TokenizerMock,
+  }));
+
+  return { TokenizerMock, encodeMock, decodeMock };
+}
+
+afterEach(() => {
+  jest.restoreAllMocks();
+  jest.resetModules();
+  global.fetch = originalFetch;
+});
 
 // ─────────────────────────────────────────────────────────────────────────────
 // getModelDefaultTokenLimit
@@ -391,31 +437,18 @@ describe('truncateToTokenLimit – large text handling', () => {
 });
 
 describe('truncateToTokenLimit – HuggingFace tokenizer error handling', () => {
-  const skipIfNoNetwork = process.env.CI_NO_NETWORK === 'true' ? it.skip : it;
+  it('gracefully handles tokenizer module load errors by using fallback', async () => {
+    jest.doMock('@huggingface/tokenizers', () => {
+      throw new Error('Module load failed');
+    });
+    global.fetch = jest.fn() as typeof global.fetch;
 
-  skipIfNoNetwork(
-    'gracefully handles tokenizer download errors by using fallback',
-    async () => {
-      // Mock the transformers module to simulate download error
-      jest.doMock('@huggingface/transformers', () => {
-        throw new Error('Network error: unable to download tokenizer');
-      });
+    const { truncateToTokenLimit: truncate } = await import('../../src/utils/tokenTruncation.js');
+    const largeText = 'a'.repeat(1000);
+    const result = await truncate(largeText, 100, 'bge-m3-custom');
 
-      try {
-        const largeText = 'a'.repeat(1000);
-        const result = await truncateToTokenLimit(largeText, 100, 'bge-m3-custom');
-
-        // Should fall back to heuristic instead of crashing
-        expect(result.length).toBeLessThanOrEqual(100 * 3);
-      } catch (e) {
-        // If it throws, should be a clear error, not a silent failure
-        expect(e).toBeInstanceOf(Error);
-      } finally {
-        jest.resetModules();
-      }
-    },
-    30000,
-  );
+    expect(result.length).toBeLessThanOrEqual(100 * 3);
+  });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -423,37 +456,16 @@ describe('truncateToTokenLimit – HuggingFace tokenizer error handling', () => 
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe('truncateToTokenLimit – HuggingFace three-tier fallback', () => {
-  afterEach(() => {
-    jest.resetModules();
-    jest.restoreAllMocks();
-  });
-
   it('falls back to hf-mirror.com when official HuggingFace Hub fails', async () => {
-    // Shared env object: its remoteHost is mutated by getHFTokenizer before each download attempt
-    const mockEnv = { remoteHost: 'https://huggingface.co/' };
-
-    // Minimal mock tokenizer: callable as function + has decode method
-    const mockDecode = jest.fn().mockImplementation(async (ids: number[]) => 'x'.repeat(ids.length));
-    const mockTokenizerFn = jest.fn().mockImplementation(async (text: string) => ({
-      input_ids: { data: new Int32Array(Array.from({ length: text.length }, (_, i) => i + 1)) },
-    }));
-    (mockTokenizerFn as any).decode = mockDecode;
-
-    jest.doMock('@huggingface/transformers', () => ({
-      env: mockEnv,
-      AutoTokenizer: {
-        from_pretrained: jest.fn().mockImplementation(async () => {
-          // Fail only for the official host; succeed for hf-mirror.com
-          if (mockEnv.remoteHost.includes('huggingface.co')) {
-            throw new Error('Connection refused: huggingface.co is blocked');
-          }
-          return mockTokenizerFn;
-        }),
-      },
-    }));
-
+    mockTokenizerModule();
+    global.fetch = jest.fn(async (input: string | URL) => {
+      const url = String(input);
+      if (url.includes('https://huggingface.co/')) {
+        return createFetchResponse({}, { ok: false, status: 503, statusText: 'Blocked' });
+      }
+      return createFetchResponse({});
+    }) as typeof global.fetch;
     const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
-
     const maxTokens = 5;
     const text = 'a'.repeat(20); // 20 chars > maxTokens * 3 = 15
 
@@ -479,17 +491,11 @@ describe('truncateToTokenLimit – HuggingFace three-tier fallback', () => {
   });
 
   it('falls back to heuristic when both HuggingFace Hub and hf-mirror.com fail', async () => {
-    const mockEnv = { remoteHost: 'https://huggingface.co/' };
-
-    jest.doMock('@huggingface/transformers', () => ({
-      env: mockEnv,
-      AutoTokenizer: {
-        from_pretrained: jest.fn().mockRejectedValue(new Error('All hosts unreachable')),
-      },
-    }));
-
+    mockTokenizerModule();
+    global.fetch = jest.fn(async () =>
+      createFetchResponse({}, { ok: false, status: 503, statusText: 'Unavailable' }),
+    ) as typeof global.fetch;
     const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
-
     const maxTokens = 10;
     const longText = 'a'.repeat(100); // 100 chars > maxTokens * 3 = 30
 
@@ -516,16 +522,10 @@ describe('truncateToTokenLimit – HuggingFace three-tier fallback', () => {
   });
 
   it('short text is returned unchanged even when all tokenizer hosts fail', async () => {
-    const mockEnv = { remoteHost: 'https://huggingface.co/' };
-
-    jest.doMock('@huggingface/transformers', () => ({
-      env: mockEnv,
-      AutoTokenizer: {
-        from_pretrained: jest.fn().mockRejectedValue(new Error('Network unavailable')),
-      },
-    }));
-
-    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    mockTokenizerModule();
+    global.fetch = jest.fn(async () =>
+      createFetchResponse({}, { ok: false, status: 503, statusText: 'Unavailable' }),
+    ) as typeof global.fetch;
 
     const maxTokens = 100;
     const shortText = 'hello world'; // 11 chars, well under maxTokens * 3 = 300
@@ -538,23 +538,11 @@ describe('truncateToTokenLimit – HuggingFace three-tier fallback', () => {
   });
 
   it('concurrent calls for the same model/host trigger only one download', async () => {
-    let downloadCount = 0;
-    const mockEnv = { remoteHost: '' };
-    const mockDecode = jest.fn().mockResolvedValue('xxx');
-    const mockTokenizerFn = jest.fn().mockImplementation(async () => ({
-      input_ids: { data: new Int32Array([1, 2, 3]) },
-    }));
-    (mockTokenizerFn as any).decode = mockDecode;
-
-    jest.doMock('@huggingface/transformers', () => ({
-      env: mockEnv,
-      AutoTokenizer: {
-        from_pretrained: jest.fn().mockImplementation(async () => {
-          downloadCount++;
-          return mockTokenizerFn;
-        }),
-      },
-    }));
+    const { TokenizerMock } = mockTokenizerModule({
+      encode: () => ({ ids: new Int32Array([1, 2, 3]) }),
+      decode: () => 'xxx',
+    });
+    global.fetch = jest.fn(async () => createFetchResponse({})) as typeof global.fetch;
 
     const { truncateToTokenLimit: truncate } = await import('../../src/utils/tokenTruncation.js');
 
@@ -564,35 +552,28 @@ describe('truncateToTokenLimit – HuggingFace three-tier fallback', () => {
       truncate('hello world', 100, 'BAAI/bge-m3'),
     ]);
 
-    expect(downloadCount).toBe(1);
+    expect(TokenizerMock).toHaveBeenCalledTimes(1);
+    expect((global.fetch as jest.Mock).mock.calls).toHaveLength(2);
   }, 30000);
 
   it('skips unhealthy official host within TTL and goes directly to mirror', async () => {
     const networkError = new Error('Connection refused: huggingface.co is blocked');
-    const mockEnv = { remoteHost: '' };
-    const mockDecode = jest.fn().mockResolvedValue('x'.repeat(5));
-    const mockTokenizerFn = jest.fn().mockImplementation(async (text: string) => ({
-      input_ids: { data: new Int32Array(Array.from({ length: text.length }, (_, i) => i + 1)) },
-    }));
-    (mockTokenizerFn as any).decode = mockDecode;
-
-    const fromPretrainedMock = jest.fn().mockImplementation(async () => {
-      if (mockEnv.remoteHost.includes('huggingface.co')) throw networkError;
-      return mockTokenizerFn;
+    mockTokenizerModule();
+    const fetchMock = jest.fn(async (input: string | URL) => {
+      const url = String(input);
+      if (url.includes('https://huggingface.co/')) {
+        throw networkError;
+      }
+      return createFetchResponse({});
     });
-
-    jest.doMock('@huggingface/transformers', () => ({
-      env: mockEnv,
-      AutoTokenizer: { from_pretrained: fromPretrainedMock },
-    }));
-
+    global.fetch = fetchMock as typeof global.fetch;
     const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
     const { truncateToTokenLimit: truncate } = await import('../../src/utils/tokenTruncation.js');
 
     // Call 1: official fails → marked unhealthy; mirror succeeds
     await truncate('hello world test', 5, 'BAAI/bge-m3');
     warnSpy.mockClear();
-    fromPretrainedMock.mockClear();
+    fetchMock.mockClear();
 
     // Call 2 (within TTL): official should be skipped
     await truncate('hello world test', 5, 'BAAI/bge-m3');
@@ -600,40 +581,35 @@ describe('truncateToTokenLimit – HuggingFace three-tier fallback', () => {
     expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('Skipping HuggingFace Hub'));
     expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('TTL active'));
     // Mirror tokenizer is cached from call 1 — no new download needed
-    expect(fromPretrainedMock).not.toHaveBeenCalled();
+    expect(fetchMock).not.toHaveBeenCalled();
   }, 30000);
 
   it('retries HuggingFace Hub after TTL expires', async () => {
-    const mockEnv = { remoteHost: '' };
-    const mockDecode = jest.fn().mockResolvedValue('x'.repeat(3));
-    const mockTokenizerFn = jest.fn().mockImplementation(async () => ({
-      input_ids: { data: new Int32Array([1, 2, 3]) },
-    }));
-    (mockTokenizerFn as any).decode = mockDecode;
-
-    const fromPretrainedMock = jest.fn().mockImplementation(async () => {
-      if (mockEnv.remoteHost.includes('huggingface.co')) throw new Error('Connection refused');
-      return mockTokenizerFn;
+    mockTokenizerModule({
+      encode: () => ({ ids: new Int32Array([1, 2, 3]) }),
+      decode: () => 'xxx',
     });
-
-    jest.doMock('@huggingface/transformers', () => ({
-      env: mockEnv,
-      AutoTokenizer: { from_pretrained: fromPretrainedMock },
-    }));
-
+    const fetchMock = jest.fn(async (input: string | URL) => {
+      const url = String(input);
+      if (url.includes('https://huggingface.co/')) {
+        throw new Error('Connection refused');
+      }
+      return createFetchResponse({});
+    });
+    global.fetch = fetchMock as typeof global.fetch;
     const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
     const { truncateToTokenLimit: truncate } = await import('../../src/utils/tokenTruncation.js');
     const realNow = Date.now();
 
     // Call 1: official fails → marked unhealthy (TTL = realNow + 7 days); mirror succeeds
     await truncate('hello', 5, 'BAAI/bge-m3');
-    fromPretrainedMock.mockClear();
+    fetchMock.mockClear();
     warnSpy.mockClear();
 
     // Call 2 (within TTL): official is skipped
     await truncate('hello', 5, 'BAAI/bge-m3');
     expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('Skipping HuggingFace Hub'));
-    fromPretrainedMock.mockClear();
+    fetchMock.mockClear();
     warnSpy.mockClear();
 
     // Advance clock beyond TTL (8 days)
@@ -648,26 +624,23 @@ describe('truncateToTokenLimit – HuggingFace three-tier fallback', () => {
       expect.any(Error),
     );
     expect(warnSpy).not.toHaveBeenCalledWith(expect.stringContaining('Skipping HuggingFace Hub'));
-    // from_pretrained was called exactly once (for the official host retry)
-    expect(fromPretrainedMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock.mock.calls.some((call) => String(call[0]).includes('https://huggingface.co/'))).toBe(true);
   }, 30000);
 
   it('includes the original error object as second argument in tier warnings', async () => {
     const tier1Error = new Error('tier1: Connection refused');
     const tier2Error = new Error('tier2: mirror also blocked');
-    const mockEnv = { remoteHost: '' };
-    let callCount = 0;
-
-    jest.doMock('@huggingface/transformers', () => ({
-      env: mockEnv,
-      AutoTokenizer: {
-        from_pretrained: jest.fn().mockImplementation(async () => {
-          callCount++;
-          throw callCount === 1 ? tier1Error : tier2Error;
-        }),
-      },
-    }));
-
+    mockTokenizerModule();
+    global.fetch = jest.fn(async (input: string | URL) => {
+      const url = String(input);
+      if (url.includes('tokenizer_config.json')) {
+        return createFetchResponse({});
+      }
+      if (url.includes('https://huggingface.co/')) {
+        throw tier1Error;
+      }
+      throw tier2Error;
+    }) as typeof global.fetch;
     const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
     const { truncateToTokenLimit: truncate } = await import('../../src/utils/tokenTruncation.js');
 

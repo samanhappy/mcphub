@@ -47,7 +47,7 @@
   "dependencies": {
     "@apidevtools/swagger-parser": "^12.0.0",
     "@google/genai": "^1.44.0",
-    "@huggingface/transformers": "^3.8.1",
+    "@huggingface/tokenizers": "^0.1.3",
     "@modelcontextprotocol/sdk": "^1.25.3",
     "@node-oauth/oauth2-server": "^5.2.1",
     "@types/adm-zip": "^0.5.7",
