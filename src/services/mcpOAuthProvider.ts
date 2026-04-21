@@ -22,6 +22,12 @@ import type {
 import { ServerConfig } from '../types/index.js';
 import { getSystemConfigDao } from '../dao/index.js';
 import {
+  buildRedirectUriFromBase,
+  DEFAULT_OAUTH_REDIRECT_URI,
+  getConfiguredRedirectUris,
+  resolvePreferredRedirectUris,
+} from '../utils/oauthRedirectUri.js';
+import {
   initializeOAuthForServer,
   getRegisteredClient,
   removeRegisteredClient,
@@ -77,72 +83,14 @@ export class MCPHubOAuthProvider implements OAuthClientProvider {
     return this._systemInstallBaseUrl;
   }
 
-  private sanitizeRedirectUri(input?: string): string | null {
-    if (!input) {
-      return null;
-    }
-
-    try {
-      const url = new URL(input);
-      url.searchParams.delete('server');
-      const params = url.searchParams.toString();
-      url.search = params ? `?${params}` : '';
-      return url.toString();
-    } catch {
-      return null;
-    }
-  }
-
-  private buildRedirectUriFromBase(baseUrl?: string): string | null {
-    if (!baseUrl) {
-      return null;
-    }
-
-    const trimmed = baseUrl.trim();
-    if (!trimmed) {
-      return null;
-    }
-
-    try {
-      const normalizedBase = trimmed.endsWith('/') ? trimmed : `${trimmed}/`;
-      const redirect = new URL('oauth/callback', normalizedBase);
-      return this.sanitizeRedirectUri(redirect.toString());
-    } catch {
-      return null;
-    }
-  }
-
-  private getConfiguredRedirectUris(): string[] {
-    const explicitRedirectUri = this.sanitizeRedirectUri(this.serverConfig.oauth?.redirectUri);
-    const metadataRedirectUris =
-      this.serverConfig.oauth?.dynamicRegistration?.metadata?.redirect_uris
-        ?.map((uri) => this.sanitizeRedirectUri(uri))
-        .filter((uri): uri is string => Boolean(uri)) || [];
-
-    const redirectUris: string[] = [];
-
-    if (explicitRedirectUri) {
-      redirectUris.push(explicitRedirectUri);
-    }
-
-    for (const uri of metadataRedirectUris) {
-      if (!redirectUris.includes(uri)) {
-        redirectUris.push(uri);
-      }
-    }
-
-    return redirectUris;
-  }
-
   /**
    * Get redirect URL for OAuth callback
    */
   get redirectUrl(): string {
-    const fallback = 'http://localhost:3000/oauth/callback';
-    const configuredRedirectUris = this.getConfiguredRedirectUris();
-    const systemConfigured = this.buildRedirectUriFromBase(this.getSystemInstallBaseUrl());
-
-    return configuredRedirectUris[0] ?? systemConfigured ?? fallback;
+    return (
+      resolvePreferredRedirectUris(this.serverConfig, this.getSystemInstallBaseUrl())[0] ??
+      DEFAULT_OAUTH_REDIRECT_URI
+    );
   }
 
   /**
@@ -154,27 +102,10 @@ export class MCPHubOAuthProvider implements OAuthClientProvider {
 
     // Use redirectUrl getter to ensure consistent callback URL
     const redirectUri = this.redirectUrl;
-    const configuredRedirectUris = this.getConfiguredRedirectUris();
-    const systemConfigured = this.buildRedirectUriFromBase(this.getSystemInstallBaseUrl());
-    const redirectUris: string[] = [];
-
-    if (redirectUri) {
-      redirectUris.push(redirectUri);
-    }
-
-    for (const uri of configuredRedirectUris) {
-      if (!redirectUris.includes(uri)) {
-        redirectUris.push(uri);
-      }
-    }
-
-    if (systemConfigured && !redirectUris.includes(systemConfigured)) {
-      redirectUris.push(systemConfigured);
-    }
-
-    if (!redirectUris.includes(redirectUri)) {
-      redirectUris.push(redirectUri);
-    }
+    const redirectUris = resolvePreferredRedirectUris(
+      this.serverConfig,
+      this.getSystemInstallBaseUrl(),
+    );
 
     const tokenEndpointAuthMethod =
       metadata.token_endpoint_auth_method && metadata.token_endpoint_auth_method !== ''
