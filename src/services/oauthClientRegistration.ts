@@ -10,6 +10,7 @@
  */
 
 import * as client from 'openid-client';
+import { getSystemConfigDao } from '../dao/index.js';
 import { ServerConfig } from '../types/index.js';
 import {
   mutateOAuthSettings,
@@ -29,6 +30,70 @@ interface RegisteredClientInfo {
 
 // Cache for registered clients to avoid re-registering on every restart
 const registeredClients = new Map<string, RegisteredClientInfo>();
+
+const sanitizeRedirectUri = (input?: string): string | null => {
+  if (!input) {
+    return null;
+  }
+
+  try {
+    const url = new URL(input);
+    url.searchParams.delete('server');
+    const params = url.searchParams.toString();
+    url.search = params ? `?${params}` : '';
+    return url.toString();
+  } catch {
+    return null;
+  }
+};
+
+const buildRedirectUriFromBase = (baseUrl?: string): string | null => {
+  if (!baseUrl) {
+    return null;
+  }
+
+  const trimmed = baseUrl.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  try {
+    const normalizedBase = trimmed.endsWith('/') ? trimmed : `${trimmed}/`;
+    const redirect = new URL('oauth/callback', normalizedBase);
+    return sanitizeRedirectUri(redirect.toString());
+  } catch {
+    return null;
+  }
+};
+
+const resolvePreferredRedirectUris = (
+  serverConfig: ServerConfig,
+  systemInstallBaseUrl?: string,
+): string[] => {
+  const explicitRedirectUri = sanitizeRedirectUri(serverConfig.oauth?.redirectUri);
+  const metadataRedirectUris =
+    serverConfig.oauth?.dynamicRegistration?.metadata?.redirect_uris
+      ?.map((uri) => sanitizeRedirectUri(uri))
+      .filter((uri): uri is string => Boolean(uri)) || [];
+  const systemConfigured = buildRedirectUriFromBase(systemInstallBaseUrl);
+  const fallback = 'http://localhost:3000/oauth/callback';
+  const preferredRedirectUri =
+    explicitRedirectUri ?? metadataRedirectUris[0] ?? systemConfigured ?? fallback;
+
+  const redirectUris: string[] = [preferredRedirectUri];
+
+  for (const uri of metadataRedirectUris) {
+    if (!redirectUris.includes(uri)) {
+      redirectUris.push(uri);
+    }
+  }
+
+  if (systemConfigured && !redirectUris.includes(systemConfigured)) {
+    redirectUris.push(systemConfigured);
+  }
+
+  return redirectUris;
+};
 
 export const removeRegisteredClient = (serverName: string): void => {
   registeredClients.delete(serverName);
@@ -250,6 +315,8 @@ export const registerClient = async (
 
     // Step 2: Prepare client metadata for registration
     const metadata = dynamicConfig?.metadata || {};
+    const systemConfig = await getSystemConfigDao().get();
+    const redirectUris = resolvePreferredRedirectUris(serverConfig, systemConfig?.install?.baseUrl);
 
     // Determine scopes: priority is metadata.scope > autoDetectedScopes > configured scopes > 'openid'
     let scopeValue: string;
@@ -265,7 +332,7 @@ export const registerClient = async (
 
     const clientMetadata: Partial<client.ClientMetadata> = {
       client_name: metadata.client_name || `MCPHub - ${serverName}`,
-      redirect_uris: metadata.redirect_uris || ['http://localhost:3000/oauth/callback'],
+      redirect_uris: redirectUris,
       grant_types: metadata.grant_types || ['authorization_code', 'refresh_token'],
       response_types: metadata.response_types || ['code'],
       token_endpoint_auth_method: metadata.token_endpoint_auth_method || 'client_secret_post',

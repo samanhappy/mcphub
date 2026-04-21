@@ -328,6 +328,7 @@ export interface ServerConfig {
     // Static client configuration (traditional OAuth flow)
     clientId?: string; // OAuth client ID
     clientSecret?: string; // OAuth client secret
+    redirectUri?: string; // Preferred redirect URI for authorization requests and registration
     scopes?: string[]; // Required OAuth scopes
     accessToken?: string; // Pre-obtained access token (if available)
     refreshToken?: string; // Refresh token for renewing access

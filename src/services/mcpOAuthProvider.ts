@@ -112,17 +112,37 @@ export class MCPHubOAuthProvider implements OAuthClientProvider {
     }
   }
 
+  private getConfiguredRedirectUris(): string[] {
+    const explicitRedirectUri = this.sanitizeRedirectUri(this.serverConfig.oauth?.redirectUri);
+    const metadataRedirectUris =
+      this.serverConfig.oauth?.dynamicRegistration?.metadata?.redirect_uris
+        ?.map((uri) => this.sanitizeRedirectUri(uri))
+        .filter((uri): uri is string => Boolean(uri)) || [];
+
+    const redirectUris: string[] = [];
+
+    if (explicitRedirectUri) {
+      redirectUris.push(explicitRedirectUri);
+    }
+
+    for (const uri of metadataRedirectUris) {
+      if (!redirectUris.includes(uri)) {
+        redirectUris.push(uri);
+      }
+    }
+
+    return redirectUris;
+  }
+
   /**
    * Get redirect URL for OAuth callback
    */
   get redirectUrl(): string {
-    const dynamicConfig = this.serverConfig.oauth?.dynamicRegistration;
-    const metadata = dynamicConfig?.metadata || {};
     const fallback = 'http://localhost:3000/oauth/callback';
+    const configuredRedirectUris = this.getConfiguredRedirectUris();
     const systemConfigured = this.buildRedirectUriFromBase(this.getSystemInstallBaseUrl());
-    const metadataConfigured = this.sanitizeRedirectUri(metadata.redirect_uris?.[0]);
 
-    return systemConfigured ?? metadataConfigured ?? fallback;
+    return configuredRedirectUris[0] ?? systemConfigured ?? fallback;
   }
 
   /**
@@ -134,23 +154,22 @@ export class MCPHubOAuthProvider implements OAuthClientProvider {
 
     // Use redirectUrl getter to ensure consistent callback URL
     const redirectUri = this.redirectUrl;
+    const configuredRedirectUris = this.getConfiguredRedirectUris();
     const systemConfigured = this.buildRedirectUriFromBase(this.getSystemInstallBaseUrl());
-    const metadataRedirects =
-      metadata.redirect_uris && metadata.redirect_uris.length > 0
-        ? metadata.redirect_uris
-            .map((uri) => this.sanitizeRedirectUri(uri))
-            .filter((uri): uri is string => Boolean(uri))
-        : [];
     const redirectUris: string[] = [];
 
-    if (systemConfigured) {
-      redirectUris.push(systemConfigured);
+    if (redirectUri) {
+      redirectUris.push(redirectUri);
     }
 
-    for (const uri of metadataRedirects) {
+    for (const uri of configuredRedirectUris) {
       if (!redirectUris.includes(uri)) {
         redirectUris.push(uri);
       }
+    }
+
+    if (systemConfigured && !redirectUris.includes(systemConfigured)) {
+      redirectUris.push(systemConfigured);
     }
 
     if (!redirectUris.includes(redirectUri)) {

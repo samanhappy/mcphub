@@ -100,7 +100,8 @@ You can rely on auto-detection for most servers or declare OAuth settings explic
 }
 ```
 - Use this when the authorization server requires manual client provisioning.
-- `redirectUri` defaults to `http://localhost:3000/oauth/callback`; override it when running behind a custom domain.
+- `redirectUri` overrides the callback derived from **Settings → Installation → Base URL** for that server.
+- If `redirectUri` is omitted, MCPHub falls back to `${Base URL}/oauth/callback`, then to `http://localhost:3000/oauth/callback`.
 - Keep **Settings → Installation → Base URL** aligned with your deployed domain so the default callback URL is correct.
 
 ### Dynamic Client Registration (RFC 7591)
@@ -127,6 +128,7 @@ You can rely on auto-detection for most servers or declare OAuth settings explic
 }
 ```
 - MCPHub discovers endpoints via `issuer`, registers itself, and persists the issued `client_id`/`client_secret`.
+- If `oauth.redirectUri` is provided, MCPHub uses it as the preferred callback URI and includes it in the dynamically registered `redirect_uris`.
 - Provide `initialAccessToken` only when the registration endpoint is protected.
 
 ## Authorization Flow

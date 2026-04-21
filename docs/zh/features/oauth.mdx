@@ -100,7 +100,8 @@
 }
 ```
 - 适用于需要手动注册客户端的授权服务器。
-- `redirectUri` 默认是 `http://localhost:3000/oauth/callback`，如在自定义域部署请同步更新。
+- `redirectUri` 会覆盖该服务器从 **设置 → 安装 → 基础地址** 推导出的回调地址。
+- 如果未配置 `redirectUri`，MCPHub 会依次回退到 `${Base URL}/oauth/callback`，再回退到 `http://localhost:3000/oauth/callback`。
 - 同时确保 **设置 → 安装 → 基础地址** 与部署域名一致，以保证默认回调地址正确。
 
 ### 动态客户端注册（RFC 7591）
@@ -127,6 +128,7 @@
 }
 ```
 - MCPHub 会通过 `issuer` 发现端点、完成注册，并持久化下发的 `client_id`/`client_secret`。
+- 如果配置了 `oauth.redirectUri`，MCPHub 会优先使用它作为回调地址，并把它加入动态注册的 `redirect_uris`。
 - 只有当注册端点受保护时才需要提供 `initialAccessToken`。
 
 ## 授权流程
