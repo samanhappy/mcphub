@@ -1,3 +1,5 @@
+/// <reference types="jest" />
+
 const mockReconnectClient = {
   connect: jest.fn().mockResolvedValue(undefined),
   close: jest.fn(),
@@ -150,16 +152,10 @@ describe('mcpService streamable-http reconnect', () => {
     jest.clearAllMocks();
   });
 
-  it('reconnects when streamable-http tool calls fail with HTTP 404 session errors', async () => {
-    const initialCallTool = jest.fn().mockRejectedValue({
-      message:
-        'Streamable HTTP error: Error POSTing to endpoint: {"jsonrpc":"2.0","id":"server-error","error":{"code":-32600,"message":"Session not found"}}',
-      code: 404,
-      name: 'Error',
-    });
+  const createServerInfo = (initialCallTool: jest.Mock, transport?: any) => {
     const initialClientClose = jest.fn();
-    const initialTransport = new StreamableHTTPClientTransport(new URL('https://example.com/mcp'));
-    const serverInfo = {
+
+    return {
       name: 'clock-server',
       status: 'connected',
       enabled: true,
@@ -168,9 +164,22 @@ describe('mcpService streamable-http reconnect', () => {
         callTool: initialCallTool,
         close: initialClientClose,
       },
-      transport: initialTransport,
+      transport:
+        transport ?? new StreamableHTTPClientTransport(new URL('https://example.com/mcp')),
       options: {},
-    } as any;
+      initialClientClose,
+    };
+  };
+
+  it('reconnects when streamable-http tool calls fail with HTTP 404 session errors', async () => {
+    const initialCallTool = jest.fn().mockRejectedValue({
+      message:
+        'Streamable HTTP error: Error POSTing to endpoint: {"jsonrpc":"2.0","id":"server-error","error":{"code":-32600,"message":"Session not found"}}',
+      code: 404,
+      name: 'Error',
+    });
+    const initialTransport = new StreamableHTTPClientTransport(new URL('https://example.com/mcp'));
+    const serverInfo = createServerInfo(initialCallTool, initialTransport) as any;
 
     const getServerByNameSpy = jest
       .spyOn(mcpService, 'getServerByName')
@@ -197,7 +206,7 @@ describe('mcpService streamable-http reconnect', () => {
       isError: false,
     });
     expect(initialCallTool).toHaveBeenCalledTimes(1);
-    expect(initialClientClose).toHaveBeenCalledTimes(1);
+    expect(serverInfo.initialClientClose).toHaveBeenCalledTimes(1);
     expect(initialTransport.close).toHaveBeenCalledTimes(1);
     expect(mockReconnectClient.connect).toHaveBeenCalledTimes(1);
     expect(mockReconnectClient.listTools).toHaveBeenCalledTimes(1);
@@ -206,6 +215,77 @@ describe('mcpService streamable-http reconnect', () => {
       undefined,
       {},
     );
+
+    getServerByNameSpy.mockRestore();
+  });
+
+  it('reconnects when the HTTP status is exposed via error.status', async () => {
+    const initialCallTool = jest.fn().mockRejectedValue({
+      message: 'Streamable HTTP error: upstream session expired',
+      status: 404,
+      name: 'Error',
+    });
+    const serverInfo = createServerInfo(initialCallTool) as any;
+
+    const getServerByNameSpy = jest
+      .spyOn(mcpService, 'getServerByName')
+      .mockReturnValue(serverInfo);
+
+    const result = await mcpService.handleCallToolRequest(
+      {
+        params: {
+          name: 'call_tool',
+          arguments: {
+            toolName: 'clock-server::get_current_time',
+            arguments: {},
+          },
+        },
+      },
+      {
+        sessionId: 'session-1',
+        server: 'clock-server',
+      },
+    );
+
+    expect(result.isError).toBe(false);
+    expect(serverInfo.initialClientClose).toHaveBeenCalledTimes(1);
+    expect(mockReconnectClient.connect).toHaveBeenCalledTimes(1);
+
+    getServerByNameSpy.mockRestore();
+  });
+
+  it('does not reconnect for non-recoverable HTTP 400 errors', async () => {
+    const initialCallTool = jest.fn().mockRejectedValue({
+      message: 'Error POSTing to endpoint (HTTP 400 Bad Request)',
+      status: 400,
+      name: 'Error',
+    });
+    const serverInfo = createServerInfo(initialCallTool) as any;
+
+    const getServerByNameSpy = jest
+      .spyOn(mcpService, 'getServerByName')
+      .mockReturnValue(serverInfo);
+
+    const result = await mcpService.handleCallToolRequest(
+      {
+        params: {
+          name: 'call_tool',
+          arguments: {
+            toolName: 'clock-server::get_current_time',
+            arguments: {},
+          },
+        },
+      },
+      {
+        sessionId: 'session-1',
+        server: 'clock-server',
+      },
+    );
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toContain('HTTP 400 Bad Request');
+    expect(serverInfo.initialClientClose).not.toHaveBeenCalled();
+    expect(mockReconnectClient.connect).not.toHaveBeenCalled();
 
     getServerByNameSpy.mockRestore();
   });

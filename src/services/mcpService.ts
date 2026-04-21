@@ -512,7 +512,12 @@ const getHttpErrorStatusCode = (error: unknown): number | undefined => {
     return undefined;
   }
 
-  const code = (error as { code?: unknown }).code;
+  const err = error as {
+    code?: unknown;
+    status?: unknown;
+    response?: { status?: unknown };
+  };
+  const code = err.status ?? err.response?.status ?? err.code;
   if (typeof code === 'number' && Number.isFinite(code)) {
     return code;
   }
@@ -528,14 +533,14 @@ const getHttpErrorStatusCode = (error: unknown): number | undefined => {
 const isRecoverableHttp4xxError = (error: unknown): boolean => {
   const statusCode = getHttpErrorStatusCode(error);
   if (statusCode !== undefined) {
-    return statusCode >= 400 && statusCode < 500;
+    return statusCode === 401 || statusCode === 404;
   }
 
   const message = typeof (error as { message?: unknown })?.message === 'string'
     ? (error as { message: string }).message
     : '';
 
-  return /Error POSTing to endpoint \(HTTP 4\d{2}/.test(message);
+  return /Error POSTing to endpoint \(HTTP 40[14]/.test(message);
 };
 
 const summarizeContentItemForLogging = (item: unknown): Record<string, unknown> => {
