@@ -772,7 +772,7 @@ export const createTransportFromConfig = async (name: string, conf: ServerConfig
 
     // Create STDIO transport with potentially wrapped command
     transport = new StdioClientTransport({
-      cwd: os.homedir(),
+      cwd: process.cwd(),
       command: finalCommand,
       args: finalArgs,
       env: env,
