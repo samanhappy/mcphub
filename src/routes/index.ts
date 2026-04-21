@@ -319,8 +319,8 @@ export const initRoutes = async (app: express.Application): Promise<void> => {
 
   // Registry routes (proxy to official MCP registry)
   router.get('/registry/servers', getAllRegistryServers);
-  router.get('/registry/servers/:serverName/versions', getRegistryServerVersions);
-  router.get('/registry/servers/:serverName/versions/:version', getRegistryServerVersion);
+  router.get('/registry/servers/versions', getRegistryServerVersions);
+  router.get('/registry/servers/version', getRegistryServerVersion);
 
   // Log routes
   router.get('/logs', getAllLogs);
