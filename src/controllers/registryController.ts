@@ -71,7 +71,7 @@ export const getRegistryServerVersions = async (req: Request, res: Response): Pr
       });
       return;
     }
-
+    // URL encode the server name
     const encodedName = encodeURIComponent(serverName);
     const response = await fetch(`${REGISTRY_BASE_URL}/servers/${encodedName}/versions`, {
       headers: {
@@ -115,7 +115,7 @@ export const getRegistryServerVersions = async (req: Request, res: Response): Pr
  */
 export const getRegistryServerVersion = async (req: Request, res: Response): Promise<void> => {
   try {
-    const serverName = req.query.name as string;
+    const serverName = req.query.serverName as string;
     const version = req.query.version as string;
 
     if (!serverName || !version) {
@@ -125,7 +125,7 @@ export const getRegistryServerVersion = async (req: Request, res: Response): Pro
       });
       return;
     }
-
+    // URL encode the server name and version
     const encodedName = encodeURIComponent(serverName);
     const encodedVersion = encodeURIComponent(version);
     const response = await fetch(

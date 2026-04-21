@@ -140,6 +140,7 @@ export const useRegistryData = () => {
         setLoading(true);
         setError(null);
 
+        // URL encode the server name
         const encodedName = encodeURIComponent(serverName);
         const response = await apiGet(`/registry/servers/versions?serverName=${encodedName}`);
 
@@ -174,8 +175,9 @@ export const useRegistryData = () => {
     try {
       setError(null);
 
+      // URL encode the server name
       const encodedName = encodeURIComponent(serverName);
-      const response = await apiGet(`/registry/servers/versions?name=${encodedName}`);
+      const response = await apiGet(`/registry/servers/versions?serverName=${encodedName}`);
 
       if (response && response.success && response.data) {
         const data: RegistryServerVersionsResponse = response.data;
@@ -201,9 +203,10 @@ export const useRegistryData = () => {
     try {
       setError(null);
 
+      // URL encode the server name and version
       const encodedName = encodeURIComponent(serverName);
       const encodedVersion = encodeURIComponent(version);
-      const response = await apiGet(`/registry/servers/version?name=${encodedName}&version=${encodedVersion}`);
+      const response = await apiGet(`/registry/servers/version?serverName=${encodedName}&version=${encodedVersion}`);
 
       if (response && response.success && response.data) {
         const data: RegistryServerVersionResponse = response.data;
