@@ -110,7 +110,7 @@ importers:
         version: 25.6.0(typescript@5.9.2)
       i18next-fs-backend:
         specifier: ^2.6.0
-        version: 2.6.3
+        version: 2.6.4
       jsonwebtoken:
         specifier: ^9.0.2
         version: 9.0.2
@@ -3297,8 +3297,8 @@ packages:
   i18next-browser-languagedetector@8.2.0:
     resolution: {integrity: sha512-P+3zEKLnOF0qmiesW383vsLdtQVyKtCNA9cjSoKCppTKPQVfKd2W8hbVo5ZhNJKDqeM7BOcvNoKJOjpHh4Js9g==}
 
-  i18next-fs-backend@2.6.3:
-    resolution: {integrity: sha512-/5aW996nbolGh/qVU9urjAJ2QiXpiyGuhG8x/ZvvZQ3bMlrK+ouUdD6whS4e+sU9CCdUIzl7x/heEjsBh/3xtw==}
+  i18next-fs-backend@2.6.4:
+    resolution: {integrity: sha512-lzbUnowXYd5RFO8flpQhd9khYWNgrzwtxHw1kktJCiTRBaAEiLB2t9EPSXRj8qlC7WcEgFDIsmBUixyludcznw==}
 
   i18next@25.6.0:
     resolution: {integrity: sha512-tTn8fLrwBYtnclpL5aPXK/tAYBLWVvoHM1zdfXoRNLcI+RvtMsoZRV98ePlaW3khHYKuNh/Q65W/+NVFUeIwVw==}
@@ -8171,7 +8171,7 @@ snapshots:
     dependencies:
       '@babel/runtime': 7.28.3
 
-  i18next-fs-backend@2.6.3: {}
+  i18next-fs-backend@2.6.4: {}
 
   i18next@25.6.0(typescript@5.9.2):
     dependencies:
