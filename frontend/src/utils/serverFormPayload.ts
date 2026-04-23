@@ -40,7 +40,7 @@ const buildOptions = (options?: ServerFormData['options']) => {
     nextOptions.timeout = options.timeout;
   }
 
-  if (options?.resetTimeoutOnProgress) {
+  if (typeof options?.resetTimeoutOnProgress === 'boolean') {
     nextOptions.resetTimeoutOnProgress = options.resetTimeoutOnProgress;
   }
 

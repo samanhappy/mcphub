@@ -54,7 +54,9 @@ describe('buildServerPayload', () => {
       headers: {},
       passthroughHeaders: [],
       oauth: {},
-      options: {},
+      options: {
+        resetTimeoutOnProgress: false,
+      },
       enableKeepAlive: false,
       description: '',
     });

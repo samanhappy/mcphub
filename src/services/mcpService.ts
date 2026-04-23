@@ -1056,12 +1056,6 @@ export const initializeClientsFromSettings = async (
         },
       );
 
-      const initRequestOptions = isInit
-        ? {
-            timeout: Number(config.initTimeout) || 60000,
-          }
-        : undefined;
-
       // Get request options from server configuration, with fallbacks
       const serverRequestOptions = expandedConf.options || {};
       const requestOptions = {
@@ -1069,6 +1063,12 @@ export const initializeClientsFromSettings = async (
         resetTimeoutOnProgress: serverRequestOptions.resetTimeoutOnProgress ?? true,
         maxTotalTimeout: serverRequestOptions.maxTotalTimeout,
       };
+      const initRequestOptions = isInit
+        ? {
+            ...requestOptions,
+            timeout: Number(config.initTimeout) || 60000,
+          }
+        : undefined;
 
       // Create server info first and keep reference to it
       const serverInfo: ServerInfo = {

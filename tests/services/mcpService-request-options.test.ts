@@ -139,6 +139,20 @@ describe('mcpService request options defaults', () => {
       resetTimeoutOnProgress: true,
       maxTotalTimeout: undefined,
     });
+    expect(mockClient.connect).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        timeout: 60000,
+        resetTimeoutOnProgress: true,
+      }),
+    );
+    expect(mockClient.listTools).toHaveBeenCalledWith(
+      {},
+      expect.objectContaining({
+        timeout: 60000,
+        resetTimeoutOnProgress: true,
+      }),
+    );
   });
 
   it('preserves an explicit resetTimeoutOnProgress=false override', async () => {
