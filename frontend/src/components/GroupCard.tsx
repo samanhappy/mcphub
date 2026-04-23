@@ -157,21 +157,21 @@ const GroupCard = ({ group, servers, onEdit, onDelete }: GroupCardProps) => {
                   <div className="absolute top-full left-0 mt-1 bg-white dark:bg-gray-800 shadow-lg rounded-md border border-gray-200 dark:border-gray-700 py-1 z-10 min-w-[140px]">
                     <button
                       onClick={handleCopyId}
-                      className="w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 dark:bg-gray-800 flex items-center"
+                      className="w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center"
                     >
                       <Copy size={12} className="mr-2" />
                       {t('common.copyId')}
                     </button>
                     <button
                       onClick={handleCopyUrl}
-                      className="w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 dark:bg-gray-800 flex items-center"
+                      className="w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center"
                     >
                       <Link size={12} className="mr-2" />
                       {t('common.copyUrl')}
                     </button>
                     <button
                       onClick={handleCopyJson}
-                      className="w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 dark:bg-gray-800 flex items-center"
+                      className="w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center"
                     >
                       <FileCode size={12} className="mr-2" />
                       {t('common.copyJson')}

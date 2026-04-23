@@ -283,12 +283,12 @@ const CloudServerDetail: React.FC<CloudServerDetailProps> = ({
         </div>
       ) : error && !isMCPRouterApiKeyError(error) ? (
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <div className="bg-red-50 border border-red-200 dark:bg-red-900/20 dark:border-red-900/50 rounded-lg p-4">
             <div className="flex items-center">
-              <svg className="h-5 w-5 text-red-400 mr-3" fill="currentColor" viewBox="0 0 20 20">
+              <svg className="h-5 w-5 text-red-400 dark:text-red-500 mr-3" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
               </svg>
-              <p className="text-red-700">{error}</p>
+              <p className="text-red-700 dark:text-red-400">{error}</p>
             </div>
           </div>
         </div>
@@ -305,14 +305,14 @@ const CloudServerDetail: React.FC<CloudServerDetailProps> = ({
         <div className="space-y-6">
           {/* Server Header Card */}
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm overflow-hidden">
-            <div className="bg-gradient-to-r from-gray-100 to-gray-200 px-6 py-4">
+            <div className="bg-gradient-to-r from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-700 px-6 py-4">
               <div className="flex justify-between items-end">
                 <div className="flex-1">
                   <h1 className="text-2xl font-bold text-gray-800 mb-2">
                     {server.title || server.name}
                   </h1>
                   <div className="flex flex-wrap items-center gap-4 text-gray-600">
-                    <span className="text-sm bg-white dark:bg-gray-800/60 text-gray-700 px-3 py-1 rounded-full">
+                    <span className="text-sm bg-white/60 dark:bg-gray-800/60 text-gray-700 px-3 py-1 rounded-full">
                       {server.name}
                     </span>
                     <div className="flex items-center">
@@ -509,8 +509,8 @@ const CloudServerDetail: React.FC<CloudServerDetailProps> = ({
                                   </svg>
                                   {t('cloud.error')}
                                 </h4>
-                                <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                                  <pre className="text-sm text-red-800 whitespace-pre-wrap overflow-auto">
+                                <div className="bg-red-50 border border-red-200 dark:bg-red-900/20 dark:border-red-900/50 rounded-lg p-4">
+                                  <pre className="text-sm text-red-800 dark:text-red-300 whitespace-pre-wrap overflow-auto">
                                     {toolCallResults[tool.name].error}
                                   </pre>
                                 </div>

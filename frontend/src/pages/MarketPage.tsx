@@ -499,12 +499,12 @@ const MarketPage: React.FC = () => {
           {!isLocalTab && isMCPRouterApiKeyError(error) ? (
             <MCPRouterApiKeyError />
           ) : (
-            <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6 error-box rounded-lg">
+            <div className="bg-red-100 border-l-4 border-red-500 text-red-700 dark:text-red-400 p-4 mb-6 error-box rounded-lg">
               <div className="flex items-center justify-between">
                 <p>{error}</p>
                 <button
                   onClick={() => setError(null)}
-                  className="text-red-700 hover:text-red-900 transition-colors duration-200"
+                  className="text-red-700 dark:text-red-400 hover:text-red-900 transition-colors duration-200"
                 >
                   <svg
                     xmlns="http://www.w3.org/2000/svg"

@@ -66,7 +66,7 @@ const RegistryServerCard: React.FC<RegistryServerCardProps> = ({ serverEntry, on
       onClick={handleClick}
     >
       {/* Background gradient overlay on hover */}
-      <div className="absolute inset-0 bg-gradient-to-br from-blue-50/0 to-purple-50/0 group-hover:from-blue-50/30 group-hover:to-purple-50/30 transition-all duration-300 pointer-events-none" />
+      <div className="absolute inset-0 bg-gradient-to-br from-blue-50/0 to-purple-50/0 group-hover:from-blue-50/30 group-hover:to-purple-50/30 dark:group-hover:from-blue-900/30 dark:group-hover:to-purple-900/30 transition-all duration-300 pointer-events-none" />
 
       {/* Server Header */}
       <div className="relative z-10 flex-1 flex flex-col">

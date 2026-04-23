@@ -365,7 +365,7 @@ const PromptsPage: React.FC = () => {
                 className="bg-white dark:bg-gray-800 shadow rounded-lg overflow-hidden dashboard-card"
               >
                 <div
-                  className="flex items-center justify-between px-6 py-4 cursor-pointer hover:bg-gray-50 dark:bg-gray-800 dark:hover:bg-gray-700 dark:hover:bg-gray-750"
+                  className="flex items-center justify-between px-6 py-4 cursor-pointer hover:bg-gray-50 dark:bg-gray-800 dark:hover:bg-gray-700"
                   onClick={() => toggleExpand(prompt.id)}
                 >
                   <div className="flex items-center flex-1 min-w-0">
