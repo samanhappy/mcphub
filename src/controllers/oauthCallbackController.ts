@@ -272,7 +272,7 @@ export const handleOAuthCallback = async (req: Request, res: Response) => {
           const requestConfig = effectiveConfig.options || {};
           serverInfo.options = {
             timeout: requestConfig.timeout || 60000,
-            resetTimeoutOnProgress: requestConfig.resetTimeoutOnProgress || false,
+            resetTimeoutOnProgress: requestConfig.resetTimeoutOnProgress ?? true,
             maxTotalTimeout: requestConfig.maxTotalTimeout,
           };
         }

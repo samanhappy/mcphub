@@ -1066,7 +1066,7 @@ export const initializeClientsFromSettings = async (
       const serverRequestOptions = expandedConf.options || {};
       const requestOptions = {
         timeout: serverRequestOptions.timeout || 60000,
-        resetTimeoutOnProgress: serverRequestOptions.resetTimeoutOnProgress || false,
+        resetTimeoutOnProgress: serverRequestOptions.resetTimeoutOnProgress ?? true,
         maxTotalTimeout: serverRequestOptions.maxTotalTimeout,
       };
 

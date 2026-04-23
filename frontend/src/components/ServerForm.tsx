@@ -86,11 +86,7 @@ const ServerForm = ({
           initialData.config.options.timeout) ||
         60000,
       resetTimeoutOnProgress:
-        (initialData &&
-          initialData.config &&
-          initialData.config.options &&
-          initialData.config.options.resetTimeoutOnProgress) ||
-        false,
+        initialData?.config?.options?.resetTimeoutOnProgress ?? true,
       maxTotalTimeout:
         (initialData &&
           initialData.config &&
@@ -1186,7 +1182,7 @@ const ServerForm = ({
                   <label className="flex items-center">
                     <input
                       type="checkbox"
-                      checked={formData.options?.resetTimeoutOnProgress || false}
+                      checked={formData.options?.resetTimeoutOnProgress ?? true}
                       onChange={(e) =>
                         handleOptionsChange('resetTimeoutOnProgress', e.target.checked)
                       }

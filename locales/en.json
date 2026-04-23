@@ -134,7 +134,7 @@
     "maxTotalTimeout": "Maximum Total Timeout",
     "maxTotalTimeoutDescription": "Maximum total timeout for requests sent to the MCP server (ms) (Use with progress notifications)",
     "resetTimeoutOnProgress": "Reset Timeout on Progress",
-    "resetTimeoutOnProgressDescription": "Reset timeout on progress notifications",
+    "resetTimeoutOnProgressDescription": "Reset timeout on progress notifications (enabled by default)",
     "keepAlive": "Keep-Alive Configuration",
     "enableKeepAlive": "Enable Keep-Alive",
     "keepAliveDescription": "Send periodic ping requests to maintain the connection. Useful for long-running connections that may timeout.",

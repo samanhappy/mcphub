@@ -134,7 +134,7 @@
     "maxTotalTimeout": "最大总超时",
     "maxTotalTimeoutDescription": "无论是否有进度通知的最大总超时时间（毫秒）",
     "resetTimeoutOnProgress": "收到进度通知时重置超时",
-    "resetTimeoutOnProgressDescription": "适用于发送周期性进度更新的长时间运行操作",
+    "resetTimeoutOnProgressDescription": "适用于发送周期性进度更新的长时间运行操作（默认开启）",
     "keepAlive": "保活配置",
     "enableKeepAlive": "启用保活",
     "keepAliveDescription": "定期发送 ping 请求以维持连接。适用于可能超时的长期连接。",

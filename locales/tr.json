@@ -134,7 +134,7 @@
     "maxTotalTimeout": "Maksimum Toplam Zaman Aşımı",
     "maxTotalTimeoutDescription": "MCP sunucusuna gönderilen istekler için maksimum toplam zaman aşımı (ms) (İlerleme bildirimleriyle kullanın)",
     "resetTimeoutOnProgress": "İlerlemede Zaman Aşımını Sıfırla",
-    "resetTimeoutOnProgressDescription": "İlerleme bildirimlerinde zaman aşımını sıfırla",
+    "resetTimeoutOnProgressDescription": "İlerleme bildirimlerinde zaman aşımını sıfırla (varsayılan olarak etkin)",
     "keepAlive": "Bağlantı Canlı Tutma Yapılandırması",
     "enableKeepAlive": "Bağlantı Canlı Tutmayı Etkinleştir",
     "keepAliveDescription": "Bağlantıyı korumak için periyodik ping istekleri gönderin. Zaman aşımına uğrayabilecek uzun süreli bağlantılar için yararlıdır.",
