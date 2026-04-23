@@ -188,7 +188,7 @@ const RegistryServerDetail: React.FC<RegistryServerDetailProps> = ({
     return (
       <div
         key={index}
-        className="border border-gray-200 rounded-lg p-4 mb-3 hover:border-blue-400 transition-colors"
+        className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 mb-3 hover:border-blue-400 transition-colors"
       >
         <div className="flex items-start justify-between mb-3">
           <div className="flex-1">
@@ -232,7 +232,7 @@ const RegistryServerDetail: React.FC<RegistryServerDetailProps> = ({
 
         {/* Environment Variables */}
         {pkg.environmentVariables && pkg.environmentVariables.length > 0 && (
-          <div className="mt-3 border-t border-gray-200 pt-3">
+          <div className="mt-3 border-t border-gray-200 dark:border-gray-700 pt-3">
             <h5 className="text-sm font-medium text-gray-700 mb-2">
               {t('registry.environmentVariables')}:
             </h5>
@@ -267,7 +267,7 @@ const RegistryServerDetail: React.FC<RegistryServerDetailProps> = ({
 
         {/* Package Arguments */}
         {pkg.packageArguments && pkg.packageArguments.length > 0 && (
-          <div className="mt-3 border-t border-gray-200 pt-3">
+          <div className="mt-3 border-t border-gray-200 dark:border-gray-700 pt-3">
             <h5 className="text-sm font-medium text-gray-700 mb-2">
               {t('registry.packageArguments')}:
             </h5>
@@ -287,7 +287,7 @@ const RegistryServerDetail: React.FC<RegistryServerDetailProps> = ({
                       </span>
                     )}
                     {arg.isRepeated && (
-                      <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800">
+                      <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300">
                         {t('common.repeated')}
                       </span>
                     )}
@@ -337,7 +337,7 @@ const RegistryServerDetail: React.FC<RegistryServerDetailProps> = ({
     return (
       <div
         key={index}
-        className="border border-gray-200 rounded-lg p-4 mb-3 hover:border-blue-400 transition-colors"
+        className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 mb-3 hover:border-blue-400 transition-colors"
       >
         <div className="flex items-start justify-between mb-3">
           <div className="flex-1">
@@ -365,7 +365,7 @@ const RegistryServerDetail: React.FC<RegistryServerDetailProps> = ({
 
         {/* Headers */}
         {remote.headers && remote.headers.length > 0 && (
-          <div className="mt-3 border-t border-gray-200 pt-3">
+          <div className="mt-3 border-t border-gray-200 dark:border-gray-700 pt-3">
             <h5 className="text-sm font-medium text-gray-700 mb-2">{t('registry.headers')}:</h5>
             <div className="space-y-2">
               {remote.headers.map((header, headerIndex) => (
@@ -406,7 +406,7 @@ const RegistryServerDetail: React.FC<RegistryServerDetailProps> = ({
   };
 
   return (
-    <div className="bg-white shadow rounded-lg p-6">
+    <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
       {/* Header */}
       <div className="mb-6">
         <button
@@ -451,11 +451,11 @@ const RegistryServerDetail: React.FC<RegistryServerDetailProps> = ({
                   {t('registry.latest')}
                 </span>
               )}
-              <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
+              <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300">
                 v{server.version}
               </span>
               {officialMeta?.status && (
-                <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-800">
+                <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 dark:bg-gray-800 text-gray-800">
                   {officialMeta.status}
                 </span>
               )}
@@ -583,7 +583,7 @@ const RegistryServerDetail: React.FC<RegistryServerDetailProps> = ({
             </svg>
           </button>
           {expandedSections.repository && (
-            <div className="border border-gray-200 rounded-lg p-4">
+            <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
               {server.repository.url && (
                 <div className="mb-2">
                   <span className="font-medium text-gray-700">URL:</span>{' '}

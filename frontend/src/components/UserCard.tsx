@@ -28,7 +28,7 @@ const UserCard: React.FC<UserCardProps> = ({ user, currentUser, onEdit, onDelete
   const canDelete = !isCurrentUser; // Can't delete own account
 
   return (
-    <div className="bg-white shadow rounded-lg p-6">
+    <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
       <div className="flex justify-between items-start">
         <div className="flex-1">
           <div className="flex items-center space-x-3 mb-2">

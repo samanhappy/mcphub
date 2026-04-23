@@ -276,7 +276,7 @@ export const ServerToolConfig: React.FC<ServerToolConfigProps> = ({
           const serverCapabilities = capabilityConfigs.filter(({ key }) => getCapabilityItems(server, key).length > 0);
 
           return (
-            <div key={server.name} className="border border-gray-200 rounded-lg hover:border-gray-300 hover:bg-gray-50 transition-colors">
+            <div key={server.name} className="border border-gray-200 dark:border-gray-700 rounded-lg hover:border-gray-300 hover:bg-gray-50 dark:bg-gray-800 dark:hover:bg-gray-700 transition-colors">
               <div
                 className="flex items-center justify-between p-3 cursor-pointer rounded-lg transition-colors"
                 onClick={() => toggleServerExpanded(server.name)}
@@ -292,7 +292,7 @@ export const ServerToolConfig: React.FC<ServerToolConfigProps> = ({
                     type="checkbox"
                     checked={isSelected || isPartiallySelected}
                     onChange={() => toggleServer(server.name)}
-                    className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+                    className="w-4 h-4 text-blue-600 bg-gray-100 dark:bg-gray-800 border-gray-300 rounded focus:ring-blue-500"
                   />
                   <span className="font-medium text-gray-900 cursor-pointer select-none">
                     {server.name}
@@ -325,7 +325,7 @@ export const ServerToolConfig: React.FC<ServerToolConfigProps> = ({
               </div>
 
               {isExpanded && serverCapabilities.length > 0 && (
-                <div className="border-t border-gray-200 bg-gray-50 p-3">
+                <div className="border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 p-3">
                   <div className="space-y-4">
                     {serverCapabilities.map(({ key, titleKey, countKey, allKey }) => {
                       const items = getCapabilityItems(server, key);
@@ -373,7 +373,7 @@ export const ServerToolConfig: React.FC<ServerToolConfigProps> = ({
                                     type="checkbox"
                                     checked={isChecked}
                                     onChange={() => toggleCapabilityItem(server.name, key, item.value)}
-                                    className="w-3 h-3 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+                                    className="w-3 h-3 text-blue-600 bg-gray-100 dark:bg-gray-800 border-gray-300 rounded focus:ring-blue-500"
                                   />
                                   <span className="text-gray-700 break-all whitespace-nowrap">
                                     {item.value}

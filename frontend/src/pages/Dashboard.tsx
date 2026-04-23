@@ -87,7 +87,7 @@ const DashboardPage: React.FC = () => {
             {Array.from({ length: 5 }).map((_, index) => (
               <div
                 key={`stats-skeleton-${index}`}
-                className="bg-white rounded-lg shadow p-6 dashboard-card"
+                className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 dashboard-card"
               >
                 <div className="flex items-center">
                   <div className="h-14 w-14 rounded-full bg-gray-200 animate-pulse" />
@@ -102,8 +102,8 @@ const DashboardPage: React.FC = () => {
 
           <div>
             <div className="h-6 w-40 rounded bg-gray-200 animate-pulse mb-4" />
-            <div className="bg-white shadow rounded-lg overflow-hidden table-container">
-              <div className="divide-y divide-gray-200">
+            <div className="bg-white dark:bg-gray-800 shadow rounded-lg overflow-hidden table-container">
+              <div className="divide-y divide-gray-200 dark:divide-gray-700">
                 {Array.from({ length: 5 }).map((_, index) => (
                   <div key={`row-skeleton-${index}`} className="px-6 py-4">
                     <div className="grid grid-cols-6 gap-6">
@@ -125,7 +125,7 @@ const DashboardPage: React.FC = () => {
       {!showSkeleton && (
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-5">
           {/* Total servers */}
-          <div className="bg-white rounded-lg shadow p-6 dashboard-card">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 dashboard-card">
             <div className="flex items-center">
               <div className="p-3 rounded-full bg-blue-100 text-blue-800 icon-container status-icon-blue">
                 <svg
@@ -153,7 +153,7 @@ const DashboardPage: React.FC = () => {
           </div>
 
           {/* Online servers */}
-          <div className="bg-white rounded-lg shadow p-6 dashboard-card">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 dashboard-card">
             <div className="flex items-center">
               <div className="p-3 rounded-full bg-green-100 text-green-800 icon-container status-icon-green">
                 <svg
@@ -181,9 +181,9 @@ const DashboardPage: React.FC = () => {
           </div>
 
           {/* Disabled servers */}
-          <div className="bg-white rounded-lg shadow p-6 dashboard-card">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 dashboard-card">
             <div className="flex items-center">
-              <div className="p-3 rounded-full bg-gray-100 text-gray-700 icon-container">
+              <div className="p-3 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-700 icon-container">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
                   className="h-8 w-8"
@@ -209,7 +209,7 @@ const DashboardPage: React.FC = () => {
           </div>
 
           {/* Offline servers */}
-          <div className="bg-white rounded-lg shadow p-6 dashboard-card">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 dashboard-card">
             <div className="flex items-center">
               <div className="p-3 rounded-full bg-red-100 text-red-800 icon-container status-icon-red">
                 <svg
@@ -237,7 +237,7 @@ const DashboardPage: React.FC = () => {
           </div>
 
           {/* Connecting servers */}
-          <div className="bg-white rounded-lg shadow p-6 dashboard-card">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 dashboard-card">
             <div className="flex items-center">
               <div className="p-3 rounded-full bg-yellow-100 text-yellow-800 icon-container status-icon-yellow">
                 <svg
@@ -272,9 +272,9 @@ const DashboardPage: React.FC = () => {
           <h2 className="text-xl font-semibold text-gray-900 mb-4">
             {t('pages.dashboard.recentServers')}
           </h2>
-          <div className="bg-white shadow rounded-lg overflow-hidden table-container">
+          <div className="bg-white dark:bg-gray-800 shadow rounded-lg overflow-hidden table-container">
             <table className="min-w-full">
-              <thead className="bg-gray-50 border-b border-gray-200">
+              <thead className="bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
                 <tr>
                   <th
                     scope="col"
@@ -314,7 +314,7 @@ const DashboardPage: React.FC = () => {
                   </th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                 {allServers.slice(0, 5).map((server, index) => (
                   <tr key={index}>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">

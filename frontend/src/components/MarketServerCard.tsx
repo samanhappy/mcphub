@@ -90,7 +90,7 @@ const MarketServerCard: React.FC<MarketServerCardProps> = ({ server, onClick }) 
 
   return (
     <div
-      className="bg-white border border-gray-200 rounded-xl p-4 hover:shadow-lg hover:border-blue-400 hover:-translate-y-1 transition-all duration-300 cursor-pointer group relative overflow-hidden h-full flex flex-col"
+      className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4 hover:shadow-lg hover:border-blue-400 hover:-translate-y-1 transition-all duration-300 cursor-pointer group relative overflow-hidden h-full flex flex-col"
       onClick={() => onClick(server)}
     >
       {/* Background gradient overlay on hover */}
@@ -118,7 +118,7 @@ const MarketServerCard: React.FC<MarketServerCardProps> = ({ server, onClick }) 
           {/* Server Type Badge */}
           <div className="flex flex-col items-end space-y-2">
             {server.is_official && (
-              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300">
                 {t('market.official')}
               </span>
             )}
@@ -139,7 +139,7 @@ const MarketServerCard: React.FC<MarketServerCardProps> = ({ server, onClick }) 
               server.categories.map((category, index) => (
                 <span
                   key={index}
-                  className="bg-gray-100 text-gray-800 text-xs px-2 py-1 rounded whitespace-nowrap"
+                  className="bg-gray-100 dark:bg-gray-800 text-gray-800 text-xs px-2 py-1 rounded whitespace-nowrap"
                 >
                   {category}
                 </span>
@@ -164,7 +164,7 @@ const MarketServerCard: React.FC<MarketServerCardProps> = ({ server, onClick }) 
                   </span>
                 ))}
                 {hasMore && (
-                  <span className="bg-gray-100 text-gray-600 text-xs px-1.5 py-1 rounded flex-shrink-0">
+                  <span className="bg-gray-100 dark:bg-gray-800 text-gray-600 text-xs px-1.5 py-1 rounded flex-shrink-0">
                     +{moreCount} {t('market.moreTags')}
                   </span>
                 )}

@@ -62,7 +62,7 @@ const RegistryServerCard: React.FC<RegistryServerCardProps> = ({ serverEntry, on
 
   return (
     <div
-      className="bg-white border border-gray-200 rounded-xl p-4 hover:shadow-lg hover:border-blue-400 hover:-translate-y-1 transition-all duration-300 cursor-pointer group relative overflow-hidden h-full flex flex-col"
+      className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4 hover:shadow-lg hover:border-blue-400 hover:-translate-y-1 transition-all duration-300 cursor-pointer group relative overflow-hidden h-full flex flex-col"
       onClick={handleClick}
     >
       {/* Background gradient overlay on hover */}
@@ -99,7 +99,7 @@ const RegistryServerCard: React.FC<RegistryServerCardProps> = ({ serverEntry, on
                     {t('registry.latest')}
                   </span>
                 )}
-                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300">
                   v{server.version}
                 </span>
               </div>
@@ -169,7 +169,7 @@ const RegistryServerCard: React.FC<RegistryServerCardProps> = ({ serverEntry, on
         )}
 
         {/* Footer - fixed at bottom */}
-        <div className="flex items-center justify-between pt-3 border-t border-gray-100 mt-auto">
+        <div className="flex items-center justify-between pt-3 border-t border-gray-100 dark:border-gray-700 mt-auto">
           <div className="flex items-center space-x-2 text-xs text-gray-500">
             {(publishedAt || updatedAt) && (
               <>

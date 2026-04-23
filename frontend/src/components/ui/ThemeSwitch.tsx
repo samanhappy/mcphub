@@ -14,7 +14,7 @@ const ThemeSwitch: React.FC = () => {
   return (
     <button
       onClick={toggleTheme}
-      className="p-2 rounded-md text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none"
+      className="p-2 rounded-md text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-100 dark:bg-gray-800 dark:hover:bg-gray-700 focus:outline-none"
       title={theme === 'light' ? t('theme.dark') : t('theme.light')}
       aria-label={theme === 'light' ? t('theme.dark') : t('theme.light')}
     >

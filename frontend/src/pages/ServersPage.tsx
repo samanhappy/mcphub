@@ -196,7 +196,7 @@ const ServersPage: React.FC = () => {
       )}
 
       {isLoading ? (
-        <div className="bg-white shadow rounded-lg p-6 flex items-center justify-center loading-container">
+        <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6 flex items-center justify-center loading-container">
           <div className="flex flex-col items-center">
             <svg
               className="animate-spin h-10 w-10 text-blue-500 mb-4"
@@ -222,7 +222,7 @@ const ServersPage: React.FC = () => {
           </div>
         </div>
       ) : servers.length === 0 ? (
-        <div className="bg-white shadow rounded-lg p-6 empty-state">
+        <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6 empty-state">
           <p className="text-gray-600">{t('app.noServers')}</p>
         </div>
       ) : (

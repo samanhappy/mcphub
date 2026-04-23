@@ -150,7 +150,7 @@ const GroupsPage: React.FC = () => {
       )}
 
       {groupsLoading ? (
-        <div className="bg-white shadow rounded-lg p-6 loading-container">
+        <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6 loading-container">
           <div className="flex flex-col items-center justify-center">
             <svg
               className="animate-spin h-10 w-10 text-blue-500 mb-4"
@@ -176,7 +176,7 @@ const GroupsPage: React.FC = () => {
           </div>
         </div>
       ) : groups.length === 0 ? (
-        <div className="bg-white shadow rounded-lg p-6 empty-state">
+        <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6 empty-state">
           <p className="text-gray-600">{t('groups.noGroups')}</p>
         </div>
       ) : (

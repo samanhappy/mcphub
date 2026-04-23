@@ -182,8 +182,8 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
                 `flex items-center px-2.5 py-2 rounded-lg transition-colors duration-200
          ${
            isActive
-             ? 'bg-blue-50 text-blue-700'
-             : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-100'
+             ? 'bg-blue-50 text-blue-700 dark:bg-gray-600 dark:text-white'
+             : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
          }`
               }
               end={item.path === '/'}

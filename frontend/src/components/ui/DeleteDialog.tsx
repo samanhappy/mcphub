@@ -16,7 +16,7 @@ const DeleteDialog = ({ isOpen, onClose, onConfirm, serverName, isGroup = false,
 
   return (
     <div className="fixed inset-0 bg-black/50 bg-opacity-30 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-lg shadow-lg max-w-md w-full">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg max-w-md w-full">
         <div className="p-6">
           <h3 className="text-lg font-medium text-gray-900 mb-3">
             {isUser

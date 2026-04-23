@@ -110,7 +110,7 @@ const AddServerForm = ({ onAdd }: AddServerFormProps) => {
 
       {confirmationVisible && (
         <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">
               {t('server.confirmVariables')}
             </h3>
@@ -147,7 +147,7 @@ const AddServerForm = ({ onAdd }: AddServerFormProps) => {
                   setConfirmationVisible(false)
                   setPendingPayload(null)
                 }}
-                className="px-4 py-2 text-gray-600 border border-gray-300 rounded hover:bg-gray-50 btn-secondary"
+                className="px-4 py-2 text-gray-600 border border-gray-300 rounded hover:bg-gray-50 dark:bg-gray-800 dark:hover:bg-gray-700 btn-secondary"
               >
                 {t('common.cancel')}
               </button>

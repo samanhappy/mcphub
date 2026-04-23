@@ -88,7 +88,7 @@ export const MultiSelect: React.FC<MultiSelectProps> = ({
             {getSelectedLabels().map((label, index) => (
               <span
                 key={selected[index]}
-                className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800"
+                className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300"
               >
                 {label}
                 {!disabled && (
@@ -114,9 +114,9 @@ export const MultiSelect: React.FC<MultiSelectProps> = ({
 
       {/* Dropdown menu */}
       {isOpen && !disabled && (
-        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-hidden">
+        <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-300 rounded-md shadow-lg max-h-60 overflow-hidden">
           {/* Search input */}
-          <div className="p-2 border-b border-gray-200">
+          <div className="p-2 border-b border-gray-200 dark:border-gray-700">
             <input
               ref={inputRef}
               type="text"
@@ -140,7 +140,7 @@ export const MultiSelect: React.FC<MultiSelectProps> = ({
                     className={`
                       px-3 py-2 cursor-pointer flex items-center justify-between
                       transition-colors duration-150
-                      ${isSelected ? 'bg-blue-50 text-blue-700' : 'hover:bg-gray-100'}
+                      ${isSelected ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300' : 'hover:bg-gray-100 dark:hover:bg-gray-700'}
                     `}
                   >
                     <span className="text-sm">{option.label}</span>

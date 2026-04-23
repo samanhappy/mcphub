@@ -204,7 +204,7 @@ const LoginPage: React.FC = () => {
           href="https://docs.mcphub.app"
           target="_blank"
           rel="noopener noreferrer"
-          className="rounded-md p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-200"
+          className="rounded-md p-2 text-gray-500 hover:bg-gray-100 dark:bg-gray-800 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-200"
           aria-label="Documentation"
         >
           <BookOpen className="h-5 w-5" />
@@ -331,7 +331,7 @@ const LoginPage: React.FC = () => {
                       type="button"
                       onClick={() => handleSocialLogin('google')}
                       disabled={socialLoading !== null}
-                      className="flex w-full items-center justify-center gap-2 rounded-md border border-gray-200 bg-white/80 px-4 py-2 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-70 dark:border-gray-700 dark:bg-gray-900/70 dark:text-gray-200"
+                      className="flex w-full items-center justify-center gap-2 rounded-md border border-gray-200 bg-white/80 px-4 py-2 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50 dark:hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-70 dark:border-gray-700 dark:bg-gray-900/70 dark:text-gray-200"
                     >
                       {socialLoading === 'google' ? t('auth.loggingIn') : t('auth.loginWithGoogle')}
                     </button>

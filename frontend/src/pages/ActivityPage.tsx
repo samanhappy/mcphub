@@ -535,7 +535,7 @@ const ActivityPage: React.FC = () => {
             </thead>
             <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
               {activities.map((activity) => (
-                <tr key={activity.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                <tr key={activity.id} className="hover:bg-gray-50 dark:bg-gray-800 dark:hover:bg-gray-700">
                   <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-200 whitespace-nowrap">
                     {formatTimestamp(activity.timestamp)}
                   </td>

@@ -28,7 +28,7 @@ const UsersPage: React.FC = () => {
   // Check if current user is admin
   if (!currentUser?.isAdmin) {
     return (
-      <div className="bg-white shadow rounded-lg p-6 dashboard-card">
+      <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6 dashboard-card">
         <p className="text-red-600">{t('users.adminRequired')}</p>
       </div>
     );
@@ -100,7 +100,7 @@ const UsersPage: React.FC = () => {
       )}
 
       {usersLoading ? (
-        <div className="bg-white shadow rounded-lg p-6 loading-container flex justify-center items-center h-64">
+        <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6 loading-container flex justify-center items-center h-64">
           <div className="flex flex-col items-center justify-center">
             <svg className="animate-spin h-10 w-10 text-blue-500 mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
@@ -110,9 +110,9 @@ const UsersPage: React.FC = () => {
           </div>
         </div>
       ) : users.length === 0 ? (
-        <div className="bg-white shadow rounded-lg p-6 empty-state dashboard-card">
+        <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6 empty-state dashboard-card">
           <div className="flex flex-col items-center justify-center py-12">
-            <div className="p-4 bg-gray-100 rounded-full mb-4">
+            <div className="p-4 bg-gray-100 dark:bg-gray-800 rounded-full mb-4">
               <UserIcon className="h-8 w-8 text-gray-400" />
             </div>
             <p className="text-gray-600 text-lg font-medium">{t('users.noUsers')}</p>
@@ -125,9 +125,9 @@ const UsersPage: React.FC = () => {
           </div>
         </div>
       ) : (
-        <div className="bg-white shadow rounded-lg overflow-hidden table-container dashboard-card">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+        <div className="bg-white dark:bg-gray-800 shadow rounded-lg overflow-hidden table-container dashboard-card">
+          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+            <thead className="bg-gray-50 dark:bg-gray-800">
               <tr>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   {t('users.username')}
@@ -140,15 +140,15 @@ const UsersPage: React.FC = () => {
                 </th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
               {users.map((user) => {
                 const isCurrentUser = currentUser?.username === user.username;
                 return (
-                  <tr key={user.username} className="hover:bg-gray-50 transition-colors duration-150">
+                  <tr key={user.username} className="hover:bg-gray-50 dark:bg-gray-800 dark:hover:bg-gray-700 transition-colors duration-150">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
                         <div className="flex-shrink-0 h-10 w-10">
-                          <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-lg">
+                          <div className="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center text-blue-600 dark:text-blue-300 font-bold text-lg">
                             {user.username.charAt(0).toUpperCase()}
                           </div>
                         </div>
@@ -156,7 +156,7 @@ const UsersPage: React.FC = () => {
                           <div className="text-sm font-medium text-gray-900 flex items-center">
                             {user.username}
                             {isCurrentUser && (
-                              <span className="ml-2 px-2 py-0.5 text-xs bg-blue-100 text-blue-800 rounded-full border border-blue-200">
+                              <span className="ml-2 px-2 py-0.5 text-xs bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 rounded-full border border-blue-200 dark:border-blue-800">
                                 {t('users.currentUser')}
                               </span>
                             )}
@@ -166,8 +166,8 @@ const UsersPage: React.FC = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${user.isAdmin
-                          ? 'bg-purple-100 text-purple-800 border border-purple-200'
-                          : 'bg-gray-100 text-gray-800 border border-gray-200'
+                          ? 'bg-purple-100 text-purple-800 border border-purple-200 dark:bg-purple-900/40 dark:text-purple-300 dark:border-purple-800'
+                          : 'bg-gray-100 text-gray-800 border border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700'
                         }`}>
                         {user.isAdmin ? t('users.admin') : t('users.user')}
                       </span>
@@ -176,7 +176,7 @@ const UsersPage: React.FC = () => {
                       <div className="flex justify-end space-x-3">
                         <button
                           onClick={() => handleEditClick(user)}
-                          className="text-blue-600 hover:text-blue-900 p-1 rounded hover:bg-blue-50 transition-colors"
+                          className="text-blue-600 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-300 p-1 rounded hover:bg-blue-50 dark:hover:bg-blue-900/40 transition-colors"
                           title={t('users.edit')}
                         >
                           <Edit size={18} />
@@ -184,7 +184,7 @@ const UsersPage: React.FC = () => {
                         {!isCurrentUser && (
                           <button
                             onClick={() => handleDeleteClick(user.username)}
-                            className="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50 transition-colors"
+                            className="text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300 p-1 rounded hover:bg-red-50 dark:hover:bg-red-900/40 transition-colors"
                             title={t('users.delete')}
                           >
                             <Trash size={18} />

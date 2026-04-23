@@ -133,7 +133,7 @@ const MarketServerDetail: React.FC<MarketServerDetailProps> = ({
   const preferredInstallation = getPreferredInstallation();
 
   return (
-    <div className="bg-white rounded-lg shadow-md p-6">
+    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
       <div className="mb-4">
         <button onClick={onBack} className="text-gray-600 hover:text-gray-900 flex items-center">
           <svg
@@ -174,7 +174,7 @@ const MarketServerDetail: React.FC<MarketServerDetailProps> = ({
 
         <div className="flex items-center">
           {server.is_official && (
-            <span className="bg-blue-100 text-blue-800 text-sm font-normal px-4 py-2 rounded mr-2 flex items-center label-primary">
+            <span className="bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 text-sm font-normal px-4 py-2 rounded mr-2 flex items-center label-primary">
               {t('market.official')}
             </span>
           )}
@@ -196,7 +196,7 @@ const MarketServerDetail: React.FC<MarketServerDetailProps> = ({
         </h3>
         <div className="flex flex-wrap gap-2">
           {server.categories?.map((category, index) => (
-            <span key={`cat-${index}`} className="bg-gray-100 text-gray-800 px-3 py-1 rounded">
+            <span key={`cat-${index}`} className="bg-gray-100 dark:bg-gray-800 text-gray-800 px-3 py-1 rounded">
               {category}
             </span>
           ))}
@@ -204,7 +204,7 @@ const MarketServerDetail: React.FC<MarketServerDetailProps> = ({
             server.tags.map((tag, index) => (
               <span
                 key={`tag-${index}`}
-                className="bg-gray-100 text-green-700 px-2 py-1 rounded text-sm"
+                className="bg-gray-100 dark:bg-gray-800 text-green-700 px-2 py-1 rounded text-sm"
               >
                 #{tag}
               </span>
@@ -216,8 +216,8 @@ const MarketServerDetail: React.FC<MarketServerDetailProps> = ({
         <div className="mb-6">
           <h3 className="text-lg font-semibold mb-3">{t('market.arguments')}</h3>
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50 border-b border-gray-200">
+            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+              <thead className="bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
                     {t('market.argumentName')}
@@ -233,7 +233,7 @@ const MarketServerDetail: React.FC<MarketServerDetailProps> = ({
                   </th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                 {Object.entries(server.arguments).map(([name, arg], index) => (
                   <tr key={index}>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
@@ -248,7 +248,7 @@ const MarketServerDetail: React.FC<MarketServerDetailProps> = ({
                       )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      <code className="bg-gray-100 px-2 py-1 rounded">{arg.example}</code>
+                      <code className="bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">{arg.example}</code>
                     </td>
                   </tr>
                 ))}
@@ -262,7 +262,7 @@ const MarketServerDetail: React.FC<MarketServerDetailProps> = ({
         <h3 className="text-lg font-semibold mb-3">{t('market.tools')}</h3>
         <div className="space-y-4">
           {server.tools?.map((tool, index) => (
-            <div key={index} className="border border-gray-200 rounded p-4">
+            <div key={index} className="border border-gray-200 dark:border-gray-700 rounded p-4">
               <h4 className="font-medium mb-2">
                 {tool.name}
                 <button
@@ -283,7 +283,7 @@ const MarketServerDetail: React.FC<MarketServerDetailProps> = ({
               <div className="mt-2">
                 <pre
                   id={`schema-${index}`}
-                  className="hidden bg-gray-50 p-3 rounded text-sm overflow-auto mt-2"
+                  className="hidden bg-gray-50 dark:bg-gray-800 p-3 rounded text-sm overflow-auto mt-2"
                 >
                   {JSON.stringify(tool.inputSchema, null, 2)}
                 </pre>
@@ -298,10 +298,10 @@ const MarketServerDetail: React.FC<MarketServerDetailProps> = ({
           <h3 className="text-lg font-semibold mb-3">{t('market.examples')}</h3>
           <div className="space-y-4">
             {server.examples.map((example, index) => (
-              <div key={index} className="border border-gray-200 rounded p-4">
+              <div key={index} className="border border-gray-200 dark:border-gray-700 rounded p-4">
                 <h4 className="font-medium mb-2">{example.title}</h4>
                 <p className="text-gray-600 mb-2">{example.description}</p>
-                <pre className="bg-gray-50 p-3 rounded text-sm overflow-auto">{example.prompt}</pre>
+                <pre className="bg-gray-50 dark:bg-gray-800 p-3 rounded text-sm overflow-auto">{example.prompt}</pre>
               </div>
             ))}
           </div>
@@ -342,7 +342,7 @@ const MarketServerDetail: React.FC<MarketServerDetailProps> = ({
 
       {confirmationVisible && (
         <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">
               {t('server.confirmVariables')}
             </h3>
@@ -379,7 +379,7 @@ const MarketServerDetail: React.FC<MarketServerDetailProps> = ({
                   setConfirmationVisible(false);
                   setPendingPayload(null);
                 }}
-                className="px-4 py-2 text-gray-600 border border-gray-300 rounded hover:bg-gray-50 btn-secondary"
+                className="px-4 py-2 text-gray-600 border border-gray-300 rounded hover:bg-gray-50 dark:bg-gray-800 dark:hover:bg-gray-700 btn-secondary"
               >
                 {t('common.cancel')}
               </button>

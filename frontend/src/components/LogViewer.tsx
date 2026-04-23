@@ -75,7 +75,7 @@ const LogViewer: React.FC<LogViewerProps> = ({ logs, isLoading = false, error = 
           <input
             type="text"
             placeholder={t('logs.search')}
-            className="shadow appearance-none border border-gray-200 rounded py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline form-input"
+            className="shadow appearance-none border border-gray-200 dark:border-gray-700 rounded py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline form-input"
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
           />

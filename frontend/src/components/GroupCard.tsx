@@ -136,7 +136,7 @@ const GroupCard = ({ group, servers, onEdit, onDelete }: GroupCardProps) => {
   const groupServers = servers.filter((server) => serverNames.includes(server.name));
 
   return (
-    <div className="bg-white shadow rounded-lg p-4">
+    <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-4">
       <div className="flex justify-between items-center">
         <div>
           <div className="flex items-center">
@@ -154,24 +154,24 @@ const GroupCard = ({ group, servers, onEdit, onDelete }: GroupCardProps) => {
                 </button>
 
                 {showCopyDropdown && (
-                  <div className="absolute top-full left-0 mt-1 bg-white shadow-lg rounded-md border border-gray-200 py-1 z-10 min-w-[140px]">
+                  <div className="absolute top-full left-0 mt-1 bg-white dark:bg-gray-800 shadow-lg rounded-md border border-gray-200 dark:border-gray-700 py-1 z-10 min-w-[140px]">
                     <button
                       onClick={handleCopyId}
-                      className="w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center"
+                      className="w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 dark:bg-gray-800 flex items-center"
                     >
                       <Copy size={12} className="mr-2" />
                       {t('common.copyId')}
                     </button>
                     <button
                       onClick={handleCopyUrl}
-                      className="w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center"
+                      className="w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 dark:bg-gray-800 flex items-center"
                     >
                       <Link size={12} className="mr-2" />
                       {t('common.copyUrl')}
                     </button>
                     <button
                       onClick={handleCopyJson}
-                      className="w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center"
+                      className="w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 dark:bg-gray-800 flex items-center"
                     >
                       <FileCode size={12} className="mr-2" />
                       {t('common.copyJson')}
@@ -184,7 +184,7 @@ const GroupCard = ({ group, servers, onEdit, onDelete }: GroupCardProps) => {
           {group.description && <p className="text-gray-600 text-sm mt-1">{group.description}</p>}
         </div>
         <div className="flex items-center space-x-3">
-          <div className="bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-sm btn-secondary">
+          <div className="bg-blue-50 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 px-3 py-1 rounded-full text-sm btn-secondary">
             {t('groups.serverCount', { count: group.servers.length })}
           </div>
           <button
@@ -289,7 +289,7 @@ const GroupCard = ({ group, servers, onEdit, onDelete }: GroupCardProps) => {
               return (
                 <div key={server.name} className="relative">
                   <div
-                    className="flex items-center space-x-2 bg-gray-50 rounded-lg px-3 py-2 cursor-pointer hover:bg-gray-100 transition-colors"
+                    className="flex items-center space-x-2 bg-gray-50 dark:bg-gray-800 rounded-lg px-3 py-2 cursor-pointer hover:bg-gray-100 transition-colors"
                     onClick={handleServerClick}
                   >
                     <span className="font-medium text-gray-700 text-sm">{server.name}</span>
@@ -303,19 +303,19 @@ const GroupCard = ({ group, servers, onEdit, onDelete }: GroupCardProps) => {
                       }`}
                     ></span>
                     {toolCount > 0 && (
-                      <span className="text-xs text-blue-600 bg-blue-100 px-2 py-0.5 rounded flex items-center gap-1">
+                      <span className="text-xs text-blue-600 bg-blue-100 dark:bg-blue-900/40 dark:text-blue-300 px-2 py-0.5 rounded flex items-center gap-1">
                         <Wrench size={12} />
                         {toolCount}
                       </span>
                     )}
                     {promptCount > 0 && (
-                      <span className="text-xs text-purple-600 bg-purple-100 px-2 py-0.5 rounded flex items-center gap-1">
+                      <span className="text-xs text-purple-600 bg-purple-100 dark:bg-purple-900/40 dark:text-purple-300 px-2 py-0.5 rounded flex items-center gap-1">
                         <MessageSquare size={12} />
                         {promptCount}
                       </span>
                     )}
                     {resourceCount > 0 && (
-                      <span className="text-xs text-emerald-600 bg-emerald-100 px-2 py-0.5 rounded flex items-center gap-1">
+                      <span className="text-xs text-emerald-600 bg-emerald-100 dark:bg-emerald-900/40 dark:text-emerald-300 px-2 py-0.5 rounded flex items-center gap-1">
                         <FileText size={12} />
                         {resourceCount}
                       </span>
@@ -323,7 +323,7 @@ const GroupCard = ({ group, servers, onEdit, onDelete }: GroupCardProps) => {
                   </div>
 
                   {isExpanded && (
-                    <div className="absolute top-full left-0 mt-1 bg-white shadow-lg rounded-md border border-gray-200 p-3 z-10 min-w-[300px] max-w-[400px]">
+                    <div className="absolute top-full left-0 mt-1 bg-white dark:bg-gray-800 shadow-lg rounded-md border border-gray-200 dark:border-gray-700 p-3 z-10 min-w-[300px] max-w-[400px]">
                       <div className="space-y-3">
                         {toolCount > 0 && (
                           <div>
@@ -334,7 +334,7 @@ const GroupCard = ({ group, servers, onEdit, onDelete }: GroupCardProps) => {
                               {getCapabilityList('tools').map((toolName, index) => (
                                 <span
                                   key={`tool-${index}`}
-                                  className="inline-block bg-gray-100 text-gray-700 px-2 py-1 rounded text-xs"
+                                  className="inline-block bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300 px-2 py-1 rounded text-xs"
                                 >
                                   {toolName}
                                 </span>
@@ -352,7 +352,7 @@ const GroupCard = ({ group, servers, onEdit, onDelete }: GroupCardProps) => {
                               {getCapabilityList('prompts').map((promptName, index) => (
                                 <span
                                   key={`prompt-${index}`}
-                                  className="inline-block bg-purple-50 text-purple-700 px-2 py-1 rounded text-xs"
+                                  className="inline-block bg-purple-50 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300 px-2 py-1 rounded text-xs"
                                 >
                                   {promptName}
                                 </span>
@@ -370,7 +370,7 @@ const GroupCard = ({ group, servers, onEdit, onDelete }: GroupCardProps) => {
                               {getCapabilityList('resources').map((resourceUri, index) => (
                                 <span
                                   key={`resource-${index}`}
-                                  className="inline-block bg-emerald-50 text-emerald-700 px-2 py-1 rounded text-xs break-all"
+                                  className="inline-block bg-emerald-50 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 px-2 py-1 rounded text-xs break-all"
                                 >
                                   {resourceUri}
                                 </span>

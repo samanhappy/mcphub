@@ -337,7 +337,7 @@ const ServerCard = ({
 
   return (
     <>
-      <div className="bg-white shadow rounded-lg mb-6 page-card transition-all duration-200">
+      <div className="bg-white dark:bg-gray-800 shadow rounded-lg mb-6 page-card transition-all duration-200">
         <div
           className="flex justify-between items-center p-4"
         >
@@ -354,7 +354,7 @@ const ServerCard = ({
 
             {/* Server type badge */}
             {server.config?.type && (
-              <div className="flex items-center px-2 py-1 bg-gray-100 text-gray-700 rounded-full text-xs">
+              <div className="flex items-center px-2 py-1 bg-gray-100 dark:bg-gray-800 text-gray-700 rounded-full text-xs">
                 <span>
                   {server.config.type === 'stdio' && t('server.typeStdio')}
                   {server.config.type === 'sse' && t('server.typeSse')}
@@ -366,7 +366,7 @@ const ServerCard = ({
 
             {/* Tool count display */}
             <div 
-              className={`flex items-center px-2 py-1 rounded-full text-sm cursor-pointer transition-colors ${expandedTab === 'tools' ? 'bg-blue-100 text-blue-800' : 'bg-blue-50 text-blue-700 hover:bg-blue-100'}`}
+              className={`flex items-center px-2 py-1 rounded-full text-sm cursor-pointer transition-colors ${expandedTab === 'tools' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300' : 'bg-blue-50 text-blue-700 hover:bg-blue-100 dark:bg-gray-800 dark:text-blue-400 dark:hover:bg-gray-700'}`}
               onClick={(e) => {
                 e.stopPropagation();
                 setExpandedTab(prev => prev === 'tools' ? null : 'tools');
@@ -380,7 +380,7 @@ const ServerCard = ({
 
             {/* Prompt count display */}
             <div 
-              className={`flex items-center px-2 py-1 rounded-full text-sm cursor-pointer transition-colors ${expandedTab === 'prompts' ? 'bg-purple-100 text-purple-800' : 'bg-purple-50 text-purple-700 hover:bg-purple-100'}`}
+              className={`flex items-center px-2 py-1 rounded-full text-sm cursor-pointer transition-colors ${expandedTab === 'prompts' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/50 dark:text-purple-300' : 'bg-purple-50 text-purple-700 hover:bg-purple-100 dark:bg-gray-800 dark:text-purple-400 dark:hover:bg-gray-700'}`}
               onClick={(e) => {
                 e.stopPropagation();
                 setExpandedTab(prev => prev === 'prompts' ? null : 'prompts');
@@ -394,7 +394,7 @@ const ServerCard = ({
 
             {/* Resource count display */}
             <div 
-              className={`flex items-center px-2 py-1 rounded-full text-sm cursor-pointer transition-colors ${expandedTab === 'resources' ? 'bg-emerald-100 text-emerald-800' : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'}`}
+              className={`flex items-center px-2 py-1 rounded-full text-sm cursor-pointer transition-colors ${expandedTab === 'resources' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300' : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-gray-800 dark:text-emerald-400 dark:hover:bg-gray-700'}`}
               onClick={(e) => {
                 e.stopPropagation();
                 setExpandedTab(prev => prev === 'resources' ? null : 'resources');
@@ -419,7 +419,7 @@ const ServerCard = ({
                 {showErrorPopover && (
                   <div
                     ref={errorPopoverRef}
-                    className="absolute z-10 mt-2 bg-white border border-gray-200 rounded-md shadow-lg p-0 w-120"
+                    className="absolute z-10 mt-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-lg p-0 w-120"
                     style={{
                       left: '-231px',
                       top: '24px',
@@ -430,7 +430,7 @@ const ServerCard = ({
                     }}
                     onClick={(e) => e.stopPropagation()}
                   >
-                    <div className="flex justify-between items-center sticky top-0 bg-white py-2 px-4 border-b border-gray-200 z-20 shadow-sm">
+                    <div className="flex justify-between items-center sticky top-0 bg-white dark:bg-gray-800 py-2 px-4 border-b border-gray-200 dark:border-gray-700 z-20 shadow-sm">
                       <div className="flex items-center space-x-2">
                         <h4 className="text-sm font-medium text-red-600">
                           {t('server.errorDetails')}

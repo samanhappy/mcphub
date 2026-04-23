@@ -387,9 +387,9 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
             <p className="text-xs text-gray-500 mb-2">{propSchema.description}</p>
           )}
 
-          <div className="border border-gray-200 rounded-md p-3 bg-gray-50">
+          <div className="border border-gray-200 dark:border-gray-700 rounded-md p-3 bg-gray-50 dark:bg-gray-800">
             {arrayValue.map((item: any, index: number) => (
-              <div key={index} className="mb-3 p-3 bg-white border border-gray-200 rounded-md">
+              <div key={index} className="mb-3 p-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md">
                 <div className="flex justify-between items-center mb-2">
                   <span className="text-sm font-medium text-gray-600">
                     {t('tool.item', { index: index + 1 })}
@@ -491,7 +491,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
               <p className="text-xs text-gray-500 mb-2">{propSchema.description}</p>
             )}
 
-            <div className="border border-gray-200 rounded-md p-4 bg-gray-50">
+            <div className="border border-gray-200 dark:border-gray-700 rounded-md p-4 bg-gray-50 dark:bg-gray-800">
               {Object.entries(propSchema.properties).map(([objKey, objSchema]) =>
                 renderField(objKey, objSchema as JsonSchema, fullPath),
               )}
@@ -669,13 +669,13 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
 
   if (!jsonSchema.properties) {
     return (
-      <div className="p-4 bg-gray-50 rounded-md">
+      <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-md">
         <p className="text-sm text-gray-600">{t('tool.noParameters')}</p>
         <div className="flex justify-end space-x-2 mt-4">
           <button
             type="button"
             onClick={onCancel}
-            className="px-4 py-2 text-sm text-gray-600 bg-gray-100 rounded-md hover:bg-gray-200"
+            className="px-4 py-2 text-sm text-gray-600 bg-gray-100 dark:bg-gray-800 rounded-md hover:bg-gray-200"
           >
             {t('tool.cancel')}
           </button>

@@ -258,7 +258,7 @@ const CloudServerDetail: React.FC<CloudServerDetailProps> = ({
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-md p-6">
+    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
       <div className="mb-6">
         <button
           onClick={onBack}
@@ -272,7 +272,7 @@ const CloudServerDetail: React.FC<CloudServerDetailProps> = ({
       </div>
 
       {loading ? (
-        <div className="bg-white rounded-xl shadow-sm p-12">
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-12">
           <div className="flex flex-col items-center">
             <svg className="animate-spin h-12 w-12 text-blue-500 mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
@@ -282,7 +282,7 @@ const CloudServerDetail: React.FC<CloudServerDetailProps> = ({
           </div>
         </div>
       ) : error && !isMCPRouterApiKeyError(error) ? (
-        <div className="bg-white rounded-xl shadow-sm p-6">
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
           <div className="bg-red-50 border border-red-200 rounded-lg p-4">
             <div className="flex items-center">
               <svg className="h-5 w-5 text-red-400 mr-3" fill="currentColor" viewBox="0 0 20 20">
@@ -293,7 +293,7 @@ const CloudServerDetail: React.FC<CloudServerDetailProps> = ({
           </div>
         </div>
       ) : !server ? (
-        <div className="bg-white rounded-xl shadow-sm p-12">
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-12">
           <div className="text-center">
             <svg className="h-12 w-12 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9.172 16.172a4 4 0 015.656 0M9 12h6m-6-4h6m2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
@@ -304,7 +304,7 @@ const CloudServerDetail: React.FC<CloudServerDetailProps> = ({
       ) : (
         <div className="space-y-6">
           {/* Server Header Card */}
-          <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm overflow-hidden">
             <div className="bg-gradient-to-r from-gray-100 to-gray-200 px-6 py-4">
               <div className="flex justify-between items-end">
                 <div className="flex-1">
@@ -312,7 +312,7 @@ const CloudServerDetail: React.FC<CloudServerDetailProps> = ({
                     {server.title || server.name}
                   </h1>
                   <div className="flex flex-wrap items-center gap-4 text-gray-600">
-                    <span className="text-sm bg-white/60 text-gray-700 px-3 py-1 rounded-full">
+                    <span className="text-sm bg-white dark:bg-gray-800/60 text-gray-700 px-3 py-1 rounded-full">
                       {server.name}
                     </span>
                     <div className="flex items-center">
@@ -343,7 +343,7 @@ const CloudServerDetail: React.FC<CloudServerDetailProps> = ({
           </div>
 
           {/* Description Card */}
-          <div className="bg-white rounded-xl shadow-sm p-6">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
             <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
               <svg className="h-5 w-5 text-gray-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -355,21 +355,21 @@ const CloudServerDetail: React.FC<CloudServerDetailProps> = ({
 
           {/* Content Card */}
           {server.content && (
-            <div className="bg-white rounded-xl shadow-sm p-6">
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
               <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
                 <svg className="h-5 w-5 text-gray-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                 </svg>
                 {t('cloud.details')}
               </h2>
-              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 overflow-auto">
+              <div className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 overflow-auto">
                 <pre className="text-sm text-gray-800 whitespace-pre-wrap">{server.content}</pre>
               </div>
             </div>
           )}
 
           {/* Tools Card */}
-          <div className="bg-white rounded-xl shadow-sm p-6">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
             <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
               <svg className="h-5 w-5 text-gray-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
@@ -377,7 +377,7 @@ const CloudServerDetail: React.FC<CloudServerDetailProps> = ({
               </svg>
               {t('cloud.tools')}
               {tools.length > 0 && (
-                <span className="ml-2 bg-blue-100 text-blue-800 text-sm font-medium px-2.5 py-0.5 rounded-full">
+                <span className="ml-2 bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 text-sm font-medium px-2.5 py-0.5 rounded-full">
                   {tools.length}
                 </span>
               )}
@@ -406,11 +406,11 @@ const CloudServerDetail: React.FC<CloudServerDetailProps> = ({
             ) : tools.length > 0 ? (
               <div className="space-y-4">
                 {tools.map((tool, index) => (
-                  <div key={index} className="border border-gray-200 rounded-lg p-6 hover:border-gray-300 transition-colors">
+                  <div key={index} className="border border-gray-200 dark:border-gray-700 rounded-lg p-6 hover:border-gray-300 transition-colors">
                     <div className="flex justify-between items-start mb-4">
                       <div className="flex-1">
                         <h3 className="text-lg font-medium text-gray-900 mb-2 flex items-center">
-                          <span className="bg-blue-100 text-blue-800 text-xs font-medium px-2 py-1 rounded mr-3">
+                          <span className="bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 text-xs font-medium px-2 py-1 rounded mr-3">
                             TOOL
                           </span>
                           {tool.name}
@@ -445,7 +445,7 @@ const CloudServerDetail: React.FC<CloudServerDetailProps> = ({
 
                     {/* Tool inputs */}
                     {tool.inputSchema && tool.inputSchema.properties && Object.keys(tool.inputSchema.properties).length > 0 && (
-                      <div className="border-t border-gray-100 pt-4">
+                      <div className="border-t border-gray-100 dark:border-gray-700 pt-4">
                         <div className="flex items-center gap-3 mb-4">
                           <h4 className="text-sm font-medium text-gray-700">{t('cloud.parameters')}</h4>
                           <button
@@ -467,7 +467,7 @@ const CloudServerDetail: React.FC<CloudServerDetailProps> = ({
                         {/* Schema content */}
                         {expandedSchemas[tool.name] && (
                           <div className="mb-4">
-                            <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 overflow-auto">
+                            <div className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 overflow-auto">
                               <pre className="text-sm text-gray-800">
                                 {JSON.stringify(tool.inputSchema, null, 2)}
                               </pre>
@@ -496,7 +496,7 @@ const CloudServerDetail: React.FC<CloudServerDetailProps> = ({
 
                     {/* Tool call result */}
                     {toolCallResults[tool.name] && (
-                      <div className="border-t border-gray-100 pt-4 mt-4">
+                      <div className="border-t border-gray-100 dark:border-gray-700 pt-4 mt-4">
                         {toolCallResults[tool.name].error ? (
                           <>
                             {isMCPRouterApiKeyError(toolCallResults[tool.name].error) ? (
@@ -525,7 +525,7 @@ const CloudServerDetail: React.FC<CloudServerDetailProps> = ({
                               </svg>
                               {t('cloud.result')}
                             </h4>
-                            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                            <div className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
                               <pre className="text-sm text-gray-800 whitespace-pre-wrap overflow-auto">
                                 {JSON.stringify(toolCallResults[tool.name], null, 2)}
                               </pre>

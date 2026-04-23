@@ -13,7 +13,7 @@ const LogsPage: React.FC = () => {
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-2xl font-bold text-gray-900">{t('pages.logs.title')}</h1>
       </div>
-      <div className="bg-card rounded-md shadow-sm border border-gray-200 page-card">
+      <div className="bg-card rounded-md shadow-sm border border-gray-200 dark:border-gray-700 page-card">
         <LogViewer
           logs={logs}
           isLoading={loading}

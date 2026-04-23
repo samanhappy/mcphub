@@ -71,7 +71,7 @@ export const ToggleGroup: React.FC<ToggleGroupProps> = ({
       <label className="block text-gray-700 text-sm font-bold mb-2">
         {label}
       </label>
-      <div className="border border-gray-200 rounded shadow max-h-60 overflow-y-auto">
+      <div className="border border-gray-200 dark:border-gray-700 rounded shadow max-h-60 overflow-y-auto">
         {options.length === 0 ? (
           <p className="text-gray-500 text-sm p-3">{noOptionsText}</p>
         ) : (

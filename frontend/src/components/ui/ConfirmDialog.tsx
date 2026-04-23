@@ -87,7 +87,7 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
       tabIndex={-1}
     >
       <div
-        className="bg-white rounded-lg shadow-xl max-w-md w-full transform transition-all duration-200 ease-out"
+        className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full transform transition-all duration-200 ease-out"
         role="dialog"
         aria-modal="true"
         aria-labelledby="confirm-dialog-title"
@@ -121,7 +121,7 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
           <div className="flex justify-end space-x-3 mt-6">
             <button
               onClick={onClose}
-              className="px-4 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors duration-150 btn-secondary"
+              className="px-4 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 dark:bg-gray-800 rounded-md transition-colors duration-150 btn-secondary"
               autoFocus
             >
               {cancelText || t('common.cancel')}

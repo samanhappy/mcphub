@@ -146,7 +146,7 @@ const ToolResult: React.FC<ToolResultProps> = ({ result, onClose }) => {
       const extractedImages = extractImagesFromText(item);
       const sanitizedText = sanitizeTextForDisplay(item);
       return (
-        <div className="bg-gray-50 rounded-md p-3">
+        <div className="bg-gray-50 dark:bg-gray-800 rounded-md p-3">
           {extractedImages.length > 0 && (
             <div className="mb-3 space-y-3">
               {extractedImages.map((image, idx) => (
@@ -171,7 +171,7 @@ const ToolResult: React.FC<ToolResultProps> = ({ result, onClose }) => {
         const extractedImages = extractImagesFromText(item.text);
         const sanitizedText = sanitizeTextForDisplay(item.text);
         return (
-          <div className="bg-gray-50 rounded-md p-3">
+          <div className="bg-gray-50 dark:bg-gray-800 rounded-md p-3">
             {extractedImages.length > 0 && (
               <div className="mb-3 space-y-3">
                 {extractedImages.map((image, idx) => (
@@ -193,7 +193,7 @@ const ToolResult: React.FC<ToolResultProps> = ({ result, onClose }) => {
 
       if (item.type === 'image' && item.data) {
         return (
-          <div className="bg-gray-50 rounded-md p-3">
+          <div className="bg-gray-50 dark:bg-gray-800 rounded-md p-3">
             <img
               src={`data:${item.mimeType || 'image/png'};base64,${item.data}`}
               alt={t('tool.toolResult')}
@@ -208,7 +208,7 @@ const ToolResult: React.FC<ToolResultProps> = ({ result, onClose }) => {
         const parsed = typeof item === 'string' ? JSON.parse(item) : item;
 
         return (
-          <div className="bg-gray-50 rounded-md p-3">
+          <div className="bg-gray-50 dark:bg-gray-800 rounded-md p-3">
             <div className="text-xs text-gray-500 mb-2">{t('tool.jsonResponse')}</div>
             <pre className="text-sm text-gray-800 overflow-auto">{JSON.stringify(parsed, null, 2)}</pre>
           </div>
@@ -216,7 +216,7 @@ const ToolResult: React.FC<ToolResultProps> = ({ result, onClose }) => {
       } catch {
         // If not valid JSON, show as string
         return (
-          <div className="bg-gray-50 rounded-md p-3">
+          <div className="bg-gray-50 dark:bg-gray-800 rounded-md p-3">
             <pre className="whitespace-pre-wrap text-sm text-gray-800 font-mono">{String(item)}</pre>
           </div>
         );
@@ -224,15 +224,15 @@ const ToolResult: React.FC<ToolResultProps> = ({ result, onClose }) => {
     }
 
     return (
-      <div className="bg-gray-50 rounded-md p-3">
+      <div className="bg-gray-50 dark:bg-gray-800 rounded-md p-3">
         <pre className="whitespace-pre-wrap text-sm text-gray-800 font-mono">{String(item)}</pre>
       </div>
     );
   };
 
   return (
-    <div className="border border-gray-300 rounded-lg bg-white shadow-sm">
-      <div className="border-b border-gray-300 px-4 py-3 bg-gray-50 rounded-t-lg">
+    <div className="border border-gray-300 rounded-lg bg-white dark:bg-gray-800 shadow-sm">
+      <div className="border-b border-gray-300 px-4 py-3 bg-gray-50 dark:bg-gray-800 rounded-t-lg">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
             {result.success ? (

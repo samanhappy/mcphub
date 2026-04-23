@@ -21,7 +21,7 @@ const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
           {/* 侧边栏切换按钮 */}
           <button
             onClick={onToggleSidebar}
-            className="p-2 rounded-md text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none"
+            className="p-2 rounded-md text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-100 dark:bg-gray-800 dark:hover:bg-gray-700 focus:outline-none"
             aria-label={t('app.toggleSidebar')}
           >
             <svg
@@ -93,7 +93,7 @@ const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
             href="https://github.com/samanhappy/mcphub"
             target="_blank"
             rel="noopener noreferrer"
-            className="p-2 rounded-md text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+            className="p-2 rounded-md text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-100 dark:bg-gray-800 dark:hover:bg-gray-700"
             aria-label="GitHub Repository"
           >
             <GitHubIcon className="h-5 w-5" />
@@ -103,7 +103,7 @@ const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
             href="https://docs.mcphub.app"
             target="_blank"
             rel="noopener noreferrer"
-            className="p-2 rounded-md text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+            className="p-2 rounded-md text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-100 dark:bg-gray-800 dark:hover:bg-gray-700"
             aria-label="Documentation"
           >
             <BookOpen className="h-5 w-5" />

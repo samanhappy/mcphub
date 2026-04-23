@@ -86,7 +86,7 @@ const TemplateImportForm: React.FC<TemplateImportFormProps> = ({ onSuccess, onCa
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-      <div className="bg-white shadow rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+      <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-xl font-semibold text-gray-900">{t('template.importTitle')}</h2>
           <button onClick={onCancel} className="text-gray-500 hover:text-gray-700">
@@ -153,7 +153,7 @@ const TemplateImportForm: React.FC<TemplateImportFormProps> = ({ onSuccess, onCa
                 <div className="w-full border-t border-gray-300" />
               </div>
               <div className="relative flex justify-center text-sm">
-                <span className="bg-white px-2 text-gray-500">{t('template.or')}</span>
+                <span className="bg-white dark:bg-gray-800 px-2 text-gray-500">{t('template.or')}</span>
               </div>
             </div>
 
@@ -181,7 +181,7 @@ const TemplateImportForm: React.FC<TemplateImportFormProps> = ({ onSuccess, onCa
           <div>
             {/* Template preview */}
             <div className="space-y-4">
-              <div className="p-3 bg-gray-50 rounded-md">
+              <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-md">
                 <h3 className="font-medium text-gray-900">{template.name}</h3>
                 {template.description && (
                   <p className="text-sm text-gray-600 mt-1">{template.description}</p>
@@ -196,7 +196,7 @@ const TemplateImportForm: React.FC<TemplateImportFormProps> = ({ onSuccess, onCa
                 <h4 className="text-sm font-medium text-gray-700 mb-2">
                   {t('template.servers')} ({Object.keys(template.servers).length})
                 </h4>
-                <div className="border border-gray-200 rounded-md divide-y divide-gray-200 max-h-40 overflow-y-auto">
+                <div className="border border-gray-200 dark:border-gray-700 rounded-md divide-y divide-gray-200 dark:divide-gray-700 max-h-40 overflow-y-auto">
                   {Object.entries(template.servers).map(([name, config]) => (
                     <div key={name} className="px-3 py-2">
                       <span className="text-sm font-medium text-gray-900">{name}</span>
@@ -212,7 +212,7 @@ const TemplateImportForm: React.FC<TemplateImportFormProps> = ({ onSuccess, onCa
                 <h4 className="text-sm font-medium text-gray-700 mb-2">
                   {t('template.groups')} ({template.groups.length})
                 </h4>
-                <div className="border border-gray-200 rounded-md divide-y divide-gray-200 max-h-40 overflow-y-auto">
+                <div className="border border-gray-200 dark:border-gray-700 rounded-md divide-y divide-gray-200 dark:divide-gray-700 max-h-40 overflow-y-auto">
                   {template.groups.map((group, idx) => (
                     <div key={idx} className="px-3 py-2">
                       <span className="text-sm font-medium text-gray-900">{group.name}</span>

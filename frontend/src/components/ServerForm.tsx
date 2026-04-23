@@ -259,7 +259,7 @@ const ServerForm = ({
   };
 
   return (
-    <div className="bg-white shadow rounded-lg p-6 w-full max-w-3xl max-h-screen overflow-y-auto">
+    <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6 w-full max-w-3xl max-h-screen overflow-y-auto">
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-xl font-semibold text-gray-900">{modalTitle}</h2>
         <button onClick={onCancel} className="text-gray-500 hover:text-gray-700">
@@ -497,7 +497,7 @@ const ServerForm = ({
 
             {/* API Key Configuration */}
             {formData.openapi?.securityType === 'apiKey' && (
-              <div className="mb-4 p-4 border border-gray-200 rounded bg-gray-50">
+              <div className="mb-4 p-4 border border-gray-200 dark:border-gray-700 rounded bg-gray-50 dark:bg-gray-800">
                 <h4 className="text-sm font-medium text-gray-700 mb-3">
                   {t('server.openapi.apiKeyConfig')}
                 </h4>
@@ -573,7 +573,7 @@ const ServerForm = ({
 
             {/* HTTP Authentication Configuration */}
             {formData.openapi?.securityType === 'http' && (
-              <div className="mb-4 p-4 border border-gray-200 rounded bg-gray-50">
+              <div className="mb-4 p-4 border border-gray-200 dark:border-gray-700 rounded bg-gray-50 dark:bg-gray-800">
                 <h4 className="text-sm font-medium text-gray-700 mb-3">
                   {t('server.openapi.httpAuthConfig')}
                 </h4>
@@ -632,7 +632,7 @@ const ServerForm = ({
 
             {/* OAuth2 Configuration */}
             {formData.openapi?.securityType === 'oauth2' && (
-              <div className="mb-4 p-4 border border-gray-200 rounded bg-gray-50">
+              <div className="mb-4 p-4 border border-gray-200 dark:border-gray-700 rounded bg-gray-50 dark:bg-gray-800">
                 <h4 className="text-sm font-medium text-gray-700 mb-3">
                   {t('server.openapi.oauth2Config')}
                 </h4>
@@ -664,7 +664,7 @@ const ServerForm = ({
 
             {/* OpenID Connect Configuration */}
             {formData.openapi?.securityType === 'openIdConnect' && (
-              <div className="mb-4 p-4 border border-gray-200 rounded bg-gray-50">
+              <div className="mb-4 p-4 border border-gray-200 dark:border-gray-700 rounded bg-gray-50 dark:bg-gray-800">
                 <h4 className="text-sm font-medium text-gray-700 mb-3">
                   {t('server.openapi.openIdConnectConfig')}
                 </h4>
@@ -915,7 +915,7 @@ const ServerForm = ({
 
             <div className="mb-4">
               <div
-                className="flex items-center justify-between cursor-pointer bg-gray-50 hover:bg-gray-100 p-3 rounded border border-gray-200"
+                className="flex items-center justify-between cursor-pointer bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 p-3 rounded border border-gray-200 dark:border-gray-700"
                 onClick={() => setIsOAuthSectionExpanded(!isOAuthSectionExpanded)}
               >
                 <label className="text-gray-700 text-sm font-bold">
@@ -925,7 +925,7 @@ const ServerForm = ({
               </div>
 
               {isOAuthSectionExpanded && (
-                <div className="border border-gray-200 rounded-b p-4 bg-gray-50 border-t-0">
+                <div className="border border-gray-200 dark:border-gray-700 rounded-b p-4 bg-gray-50 dark:bg-gray-800 border-t-0">
                   <p className="text-xs text-gray-500 mb-3">
                     {t('server.oauth.sectionDescription')}
                   </p>
@@ -1121,7 +1121,7 @@ const ServerForm = ({
         {serverType !== 'openapi' && (
           <div className="mb-4">
             <div
-              className="flex items-center justify-between cursor-pointer bg-gray-50 hover:bg-gray-100 p-3 rounded border border-gray-200"
+              className="flex items-center justify-between cursor-pointer bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 p-3 rounded border border-gray-200 dark:border-gray-700"
               onClick={() => setIsRequestOptionsExpanded(!isRequestOptionsExpanded)}
             >
               <label className="text-gray-700 text-sm font-bold">
@@ -1131,7 +1131,7 @@ const ServerForm = ({
             </div>
 
             {isRequestOptionsExpanded && (
-              <div className="border border-gray-200 rounded-b p-4 bg-gray-50 border-t-0">
+              <div className="border border-gray-200 dark:border-gray-700 rounded-b p-4 bg-gray-50 dark:bg-gray-800 border-t-0">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label
@@ -1209,7 +1209,7 @@ const ServerForm = ({
         {(serverType === 'sse' || serverType === 'streamable-http') && (
           <div className="mb-4">
             <div
-              className="flex items-center justify-between cursor-pointer bg-gray-50 hover:bg-gray-100 p-3 rounded border border-gray-200"
+              className="flex items-center justify-between cursor-pointer bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 p-3 rounded border border-gray-200 dark:border-gray-700"
               onClick={() => setIsKeepAliveSectionExpanded(!isKeepAliveSectionExpanded)}
             >
               <label className="text-gray-700 text-sm font-bold">
@@ -1221,7 +1221,7 @@ const ServerForm = ({
             </div>
 
             {isKeepAliveSectionExpanded && (
-              <div className="border border-gray-200 rounded-b p-4 bg-gray-50 border-t-0">
+              <div className="border border-gray-200 dark:border-gray-700 rounded-b p-4 bg-gray-50 dark:bg-gray-800 border-t-0">
                 <div className="flex items-center mb-3">
                   <input
                     type="checkbox"

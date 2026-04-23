@@ -422,7 +422,7 @@ const MarketPage: React.FC = () => {
     <div>
       {/* Tab Navigation */}
       <div className="mb-6">
-        <div className="border-b border-gray-200">
+        <div className="border-b border-gray-200 dark:border-gray-700">
           <nav className="-mb-px flex space-x-3">
             <button
               onClick={() => switchTab('cloud')}
@@ -527,7 +527,7 @@ const MarketPage: React.FC = () => {
 
       {/* Search bar for local market and registry */}
       {(isLocalTab || isRegistryTab) && (
-        <div className="bg-white shadow rounded-lg p-6 mb-6 page-card">
+        <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6 mb-6 page-card">
           <form onSubmit={handleSearch} className="flex space-x-4 mb-0">
             <div className="flex-grow">
               <input
@@ -543,7 +543,7 @@ const MarketPage: React.FC = () => {
                 placeholder={
                   isRegistryTab ? t('registry.searchPlaceholder') : t('market.searchPlaceholder')
                 }
-                className="shadow appearance-none border border-gray-200 rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline form-input"
+                className="shadow appearance-none border border-gray-200 dark:border-gray-700 rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline form-input"
               />
             </div>
             <button
@@ -557,7 +557,7 @@ const MarketPage: React.FC = () => {
               <button
                 type="button"
                 onClick={handleClearFilters}
-                className="border border-gray-300 text-gray-700 font-medium py-2 px-4 rounded hover:bg-gray-50 btn-secondary transition-all duration-200"
+                className="border border-gray-300 text-gray-700 font-medium py-2 px-4 rounded hover:bg-gray-50 dark:bg-gray-800 dark:hover:bg-gray-700 btn-secondary transition-all duration-200"
               >
                 {isRegistryTab ? t('registry.clearFilters') : t('market.clearFilters')}
               </button>
@@ -570,7 +570,7 @@ const MarketPage: React.FC = () => {
         {/* Left sidebar for filters (local market only) */}
         {isLocalTab && (
           <div className="md:w-48 flex-shrink-0">
-            <div className="bg-white shadow rounded-lg p-4 mb-6 sticky top-4 page-card">
+            <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-4 mb-6 sticky top-4 page-card">
               {/* Categories */}
               {categories.length > 0 ? (
                 <div className="mb-6">
@@ -645,7 +645,7 @@ const MarketPage: React.FC = () => {
         {/* Main content area */}
         <div className="flex-grow">
           {loading ? (
-            <div className="bg-white shadow rounded-lg p-6 flex items-center justify-center">
+            <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6 flex items-center justify-center">
               <div className="flex flex-col items-center">
                 <svg
                   className="animate-spin h-10 w-10 text-blue-500 mb-4"
@@ -671,7 +671,7 @@ const MarketPage: React.FC = () => {
               </div>
             </div>
           ) : servers.length === 0 ? (
-            <div className="bg-white shadow rounded-lg p-6">
+            <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
               <p className="text-gray-600">
                 {isLocalTab
                   ? t('market.noServers')

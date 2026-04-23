@@ -18,7 +18,7 @@ const PromptResult: React.FC<PromptResultProps> = ({ result, onClose }) => {
   const renderContent = (content: any): React.ReactNode => {
     if (typeof content === 'string') {
       return (
-        <div className="bg-gray-50 rounded-md p-3">
+        <div className="bg-gray-50 dark:bg-gray-800 rounded-md p-3">
           <pre className="whitespace-pre-wrap text-sm text-gray-800 font-mono">{content}</pre>
         </div>
       );
@@ -32,7 +32,7 @@ const PromptResult: React.FC<PromptResultProps> = ({ result, onClose }) => {
             {content.description && (
               <div>
                 <h4 className="text-sm font-medium text-gray-900 mb-2">{t('prompt.description')}</h4>
-                <div className="bg-gray-50 rounded-md p-3">
+                <div className="bg-gray-50 dark:bg-gray-800 rounded-md p-3">
                   <p className="text-sm text-gray-800">{content.description}</p>
                 </div>
               </div>
@@ -43,7 +43,7 @@ const PromptResult: React.FC<PromptResultProps> = ({ result, onClose }) => {
                 <h4 className="text-sm font-medium text-gray-900 mb-2">{t('prompt.messages')}</h4>
                 <div className="space-y-3">
                   {content.messages.map((message: any, index: number) => (
-                    <div key={index} className="bg-gray-50 rounded-md p-3">
+                    <div key={index} className="bg-gray-50 dark:bg-gray-800 rounded-md p-3">
                       <div className="flex items-center mb-2">
                         <span className="inline-block w-16 text-xs font-medium text-gray-500">
                           {message.role}:
@@ -76,7 +76,7 @@ const PromptResult: React.FC<PromptResultProps> = ({ result, onClose }) => {
         const parsed = typeof content === 'string' ? JSON.parse(content) : content;
 
         return (
-          <div className="bg-gray-50 rounded-md p-3">
+          <div className="bg-gray-50 dark:bg-gray-800 rounded-md p-3">
             <div className="text-xs text-gray-500 mb-2">{t('prompt.jsonResponse')}</div>
             <pre className="text-sm text-gray-800 overflow-auto">{JSON.stringify(parsed, null, 2)}</pre>
           </div>
@@ -84,7 +84,7 @@ const PromptResult: React.FC<PromptResultProps> = ({ result, onClose }) => {
       } catch {
         // If not valid JSON, show as string
         return (
-          <div className="bg-gray-50 rounded-md p-3">
+          <div className="bg-gray-50 dark:bg-gray-800 rounded-md p-3">
             <pre className="whitespace-pre-wrap text-sm text-gray-800 font-mono">{String(content)}</pre>
           </div>
         );
@@ -92,15 +92,15 @@ const PromptResult: React.FC<PromptResultProps> = ({ result, onClose }) => {
     }
 
     return (
-      <div className="bg-gray-50 rounded-md p-3">
+      <div className="bg-gray-50 dark:bg-gray-800 rounded-md p-3">
         <pre className="whitespace-pre-wrap text-sm text-gray-800 font-mono">{String(content)}</pre>
       </div>
     );
   };
 
   return (
-    <div className="border border-gray-300 rounded-lg bg-white shadow-sm">
-      <div className="border-b border-gray-300 px-4 py-3 bg-gray-50 rounded-t-lg">
+    <div className="border border-gray-300 rounded-lg bg-white dark:bg-gray-800 shadow-sm">
+      <div className="border-b border-gray-300 px-4 py-3 bg-gray-50 dark:bg-gray-800 rounded-t-lg">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
             {result.success ? (

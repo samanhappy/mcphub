@@ -308,7 +308,7 @@ const ResourcesPage: React.FC = () => {
                 className="bg-white dark:bg-gray-800 shadow rounded-lg overflow-hidden dashboard-card"
               >
                 <div
-                  className="flex items-center justify-between px-6 py-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-750"
+                  className="flex items-center justify-between px-6 py-4 cursor-pointer hover:bg-gray-50 dark:bg-gray-800 dark:hover:bg-gray-700 dark:hover:bg-gray-750"
                   onClick={() => toggleExpand(resource.id)}
                 >
                   <div className="flex items-center flex-1 min-w-0">
@@ -336,7 +336,7 @@ const ResourcesPage: React.FC = () => {
                           {resource.enabled !== false ? t('builtinResources.active') : t('builtinResources.inactive')}
                         </span>
                         {resource.mimeType && (
-                          <span className="px-2 py-0.5 text-xs bg-blue-50 text-blue-700 rounded-full border border-blue-200 flex-shrink-0">
+                          <span className="px-2 py-0.5 text-xs bg-blue-50 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 rounded-full border border-blue-200 dark:border-blue-800 flex-shrink-0">
                             {resource.mimeType}
                           </span>
                         )}
@@ -356,7 +356,7 @@ const ResourcesPage: React.FC = () => {
                             e.stopPropagation();
                             setEditingResource(resource);
                           }}
-                          className="text-blue-600 hover:text-blue-900 p-1 rounded hover:bg-blue-50 transition-colors"
+                          className="text-blue-600 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-300 p-1 rounded hover:bg-blue-50 dark:hover:bg-blue-900/40 transition-colors"
                           title={t('builtinResources.edit')}
                         >
                           <Edit size={18} />
@@ -366,7 +366,7 @@ const ResourcesPage: React.FC = () => {
                             e.stopPropagation();
                             setResourceToDelete(resource);
                           }}
-                          className="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50 transition-colors"
+                          className="text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300 p-1 rounded hover:bg-red-50 dark:hover:bg-red-900/40 transition-colors"
                           title={t('builtinResources.delete')}
                         >
                           <Trash size={18} />

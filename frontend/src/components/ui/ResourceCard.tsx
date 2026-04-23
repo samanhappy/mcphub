@@ -77,7 +77,7 @@ const ResourceCard = ({ resource, onToggle, onDescriptionUpdate }: ResourceCardP
   };
 
   return (
-    <div className="bg-white border border-gray-200 shadow rounded-lg mb-4">
+    <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow rounded-lg mb-4">
       <div
         className="flex justify-between items-center p-2 cursor-pointer"
         onClick={() => setIsExpanded(!isExpanded)}
@@ -93,7 +93,7 @@ const ResourceCard = ({ resource, onToggle, onDescriptionUpdate }: ResourceCardP
                 <input
                   ref={descriptionInputRef}
                   type="text"
-                  className="px-2 py-1 border border-blue-300 rounded bg-white text-sm focus:outline-none form-input"
+                  className="px-2 py-1 border border-blue-300 rounded bg-white dark:bg-gray-800 text-sm focus:outline-none form-input"
                   value={customDescription}
                   onChange={(e) => setCustomDescription(e.target.value)}
                   onKeyDown={handleDescriptionKeyDown}
@@ -160,7 +160,7 @@ const ResourceCard = ({ resource, onToggle, onDescriptionUpdate }: ResourceCardP
       </div>
 
       {isExpanded && (
-        <div className="mt-2 px-3 pb-3 text-sm text-gray-600 border-t border-gray-100">
+        <div className="mt-2 px-3 pb-3 text-sm text-gray-600 border-t border-gray-100 dark:border-gray-800">
           <div className="pt-2">
             <span className="font-medium">{t('builtinResources.mimeType')}:</span>{' '}
             {resource.mimeType || 'text/plain'}

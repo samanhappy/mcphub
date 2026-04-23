@@ -65,7 +65,7 @@ const AddUserForm = ({ onAdd, onCancel }: AddUserFormProps) => {
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-      <div className="bg-white p-8 rounded-xl shadow-2xl max-w-md w-full mx-4 border border-gray-100">
+      <div className="bg-white dark:bg-gray-800 p-8 rounded-xl shadow-2xl max-w-md w-full mx-4 border border-gray-100 dark:border-gray-700">
         <form onSubmit={handleSubmit}>
           <h2 className="text-xl font-bold text-gray-900 mb-6">{t('users.addNew')}</h2>
 
@@ -134,7 +134,7 @@ const AddUserForm = ({ onAdd, onCancel }: AddUserFormProps) => {
             <button
               type="button"
               onClick={onCancel}
-              className="px-5 py-2.5 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-all duration-200 font-medium btn-secondary shadow-sm"
+              className="px-5 py-2.5 text-gray-700 bg-white dark:bg-gray-800 border border-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-all duration-200 font-medium btn-secondary shadow-sm"
               disabled={isSubmitting}
             >
               {t('common.cancel')}
