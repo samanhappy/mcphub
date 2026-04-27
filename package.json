@@ -120,7 +120,6 @@
     "jest-environment-node": "^30.0.5",
     "jest-mock-extended": "4.0.0",
     "lucide-react": "^0.552.0",
-    "next": "^16.1.1",
     "postcss": "^8.5.6",
     "prettier": "^3.6.2",
     "react": "19.2.1",
@@ -144,7 +143,9 @@
   "packageManager": "pnpm@10.12.4+sha256.cadfd9e6c9fcc2cb76fe7c0779a5250b632898aea5f53d833a73690c77a778d9",
   "pnpm": {
     "overrides": {
-      "@hono/node-server": "1.19.11",
+      "@hono/node-server": "1.19.13",
+      "follow-redirects": "1.16.0",
+      "protobufjs": "7.5.5",
       "brace-expansion@1.1.11": "1.1.13",
       "brace-expansion@1.1.12": "1.1.13",
       "brace-expansion@2.0.1": "2.0.2",
@@ -167,9 +168,11 @@
       "path-to-regexp@8.3.0": "8.4.2",
       "picomatch@2.3.1": "2.3.2",
       "picomatch@4.0.3": "4.0.4",
+      "postcss": "8.5.10",
       "qs": "6.14.2",
       "rollup": "4.59.0",
-      "tar@7.5.10": "7.5.13"
+      "tar@7.5.10": "7.5.13",
+      "uuid": "14.0.0"
     },
     "ignoredBuiltDependencies": [
       "@swc/core",
