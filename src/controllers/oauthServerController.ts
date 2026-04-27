@@ -70,6 +70,44 @@ function validateQueryParam(value: any, name: string, pattern?: RegExp): string 
   return value;
 }
 
+async function validateClientRedirectUri(
+  res: Response,
+  clientId: unknown,
+  redirectUri: unknown,
+): Promise<string | null> {
+  if (typeof clientId !== 'string' || !clientId) {
+    res.status(400).json({
+      error: 'invalid_request',
+      error_description: 'Missing client_id',
+    });
+    return null;
+  }
+
+  if (typeof redirectUri !== 'string' || !redirectUri) {
+    res.status(400).json({
+      error: 'invalid_request',
+      error_description: 'Missing redirect_uri',
+    });
+    return null;
+  }
+
+  const client = await findOAuthClientById(clientId);
+  if (!client) {
+    res.status(400).json({ error: 'invalid_client', error_description: 'Client not found' });
+    return null;
+  }
+
+  if (!client.redirectUris.includes(redirectUri)) {
+    res.status(400).json({
+      error: 'invalid_request',
+      error_description: 'Invalid redirect_uri',
+    });
+    return null;
+  }
+
+  return redirectUri;
+}
+
 /**
  * Generate OAuth authorization consent HTML page with i18n support
  * (keeps visual style consistent with OAuth callback pages)
@@ -299,6 +337,8 @@ export const getAuthorize = async (req: Request, res: Response): Promise<void> =
  * Handle authorization decision
  */
 export const postAuthorize = async (req: Request, res: Response): Promise<void> => {
+  let validatedRedirectUri: string | null = null;
+
   try {
     const oauth = getOAuthServer();
     if (!oauth) {
@@ -306,11 +346,16 @@ export const postAuthorize = async (req: Request, res: Response): Promise<void> 
       return;
     }
 
-    const { allow, redirect_uri, state } = req.body;
+    const { allow, client_id, redirect_uri, state } = req.body;
+
+    validatedRedirectUri = await validateClientRedirectUri(res, client_id, redirect_uri);
+    if (!validatedRedirectUri) {
+      return;
+    }
 
     // If user denied
     if (allow !== 'true') {
-      const redirectUrl = new URL(redirect_uri);
+      const redirectUrl = new URL(validatedRedirectUri);
       redirectUrl.searchParams.set('error', 'access_denied');
       if (state) {
         redirectUrl.searchParams.set('state', state);
@@ -346,7 +391,7 @@ export const postAuthorize = async (req: Request, res: Response): Promise<void> 
     });
 
     // Build redirect URL with authorization code
-    const redirectUrl = new URL(redirect_uri);
+    const redirectUrl = new URL(validatedRedirectUri);
     redirectUrl.searchParams.set('code', code.authorizationCode);
     if (state) {
       redirectUrl.searchParams.set('state', state);
@@ -359,11 +404,10 @@ export const postAuthorize = async (req: Request, res: Response): Promise<void> 
     // Handle OAuth errors
     if (error instanceof Error && 'code' in error) {
       const oauthError = error as any;
-      const redirect_uri = req.body.redirect_uri;
       const state = req.body.state;
 
-      if (redirect_uri) {
-        const redirectUrl = new URL(redirect_uri);
+      if (validatedRedirectUri) {
+        const redirectUrl = new URL(validatedRedirectUri);
         redirectUrl.searchParams.set('error', oauthError.name || 'server_error');
         if (oauthError.message) {
           redirectUrl.searchParams.set('error_description', oauthError.message);
