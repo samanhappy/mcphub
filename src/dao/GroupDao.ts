@@ -1,7 +1,7 @@
 import { IGroup } from '../types/index.js';
 import { BaseDao } from './base/BaseDao.js';
 import { JsonFileBaseDao } from './base/JsonFileBaseDao.js';
-import { v4 as uuidv4 } from 'uuid';
+import { randomUUID } from 'node:crypto';
 
 /**
  * Group DAO interface with group-specific operations
@@ -64,7 +64,7 @@ export class GroupDaoImpl extends JsonFileBaseDao implements GroupDao {
 
   protected createEntity(data: Omit<IGroup, 'id'>): IGroup {
     return {
-      id: uuidv4(),
+      id: randomUUID(),
       owner: 'admin', // Default owner
       ...data,
       servers: data.servers || [],

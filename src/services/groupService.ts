@@ -1,4 +1,4 @@
-import { v4 as uuidv4 } from 'uuid';
+import { randomUUID } from 'node:crypto';
 import { IGroup, IGroupServerConfig } from '../types/index.js';
 import { notifyToolChanged } from './mcpService.js';
 import { getDataService } from './services.js';
@@ -73,7 +73,7 @@ export const createGroup = async (
     );
 
     const newGroup: IGroup = {
-      id: uuidv4(),
+      id: randomUUID(),
       name,
       description,
       servers: validServers,
