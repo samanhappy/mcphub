@@ -39,6 +39,7 @@ module.exports = {
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
     '^(\\.{1,2}/.*)\\.js$': '$1',
+    '^uuid$': '<rootDir>/tests/shims/uuid.ts',
   },
   transformIgnorePatterns: ['node_modules/(?!(@modelcontextprotocol|openid-client|oauth4webapi)/)'],
   extensionsToTreatAsEsm: ['.ts'],
