@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { IGroup, IGroupServerConfig } from '../types/index.js';
 import { notifyToolChanged } from './mcpService.js';
 import { getDataService } from './services.js';
+import { UserContextService } from './userContextService.js';
 import { getGroupDao, getServerDao, getSystemConfigDao } from '../dao/index.js';
 
 // Helper function to normalize group servers configuration
@@ -19,6 +20,20 @@ const normalizeGroupServers = (servers: string[] | IGroupServerConfig[]): IGroup
       resources: server.resources || 'all',
     };
   });
+};
+
+const canMutateGroup = (group: IGroup): boolean => {
+  const currentUser = UserContextService.getInstance().getCurrentUser();
+
+  if (!currentUser) {
+    return false;
+  }
+
+  if (currentUser.isAdmin) {
+    return true;
+  }
+
+  return group.owner === currentUser.username;
 };
 
 // Get all groups
@@ -95,7 +110,7 @@ export const updateGroup = async (id: string, data: Partial<IGroup>): Promise<IG
     const serverDao = getServerDao();
 
     const existingGroup = await groupDao.findById(id);
-    if (!existingGroup) {
+    if (!existingGroup || !canMutateGroup(existingGroup)) {
       return null;
     }
 
@@ -139,7 +154,7 @@ export const updateGroupServers = async (
     const serverDao = getServerDao();
 
     const existingGroup = await groupDao.findById(groupId);
-    if (!existingGroup) {
+    if (!existingGroup || !canMutateGroup(existingGroup)) {
       return null;
     }
 
@@ -168,6 +183,12 @@ export const updateGroupServers = async (
 export const deleteGroup = async (id: string): Promise<boolean> => {
   try {
     const groupDao = getGroupDao();
+
+    const existingGroup = await groupDao.findById(id);
+    if (!existingGroup || !canMutateGroup(existingGroup)) {
+      return false;
+    }
+
     return await groupDao.delete(id);
   } catch (error) {
     console.error(`Failed to delete group ${id}:`, error);
@@ -191,7 +212,7 @@ export const addServerToGroup = async (
     }
 
     const group = await groupDao.findById(groupId);
-    if (!group) {
+    if (!group || !canMutateGroup(group)) {
       return null;
     }
 
@@ -226,7 +247,7 @@ export const removeServerFromGroup = async (
     const groupDao = getGroupDao();
 
     const group = await groupDao.findById(groupId);
-    if (!group) {
+    if (!group || !canMutateGroup(group)) {
       return null;
     }
 
@@ -277,7 +298,7 @@ export const updateServerToolsInGroup = async (
     const serverDao = getServerDao();
 
     const group = await groupDao.findById(groupId);
-    if (!group) {
+    if (!group || !canMutateGroup(group)) {
       return null;
     }
 
