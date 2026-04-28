@@ -191,7 +191,8 @@ export const initRoutes = async (app: express.Application): Promise<void> => {
   app.put('/oauth/register/:clientId', updateClientConfiguration); // Update client configuration
   app.delete('/oauth/register/:clientId', deleteClientRegistration); // Delete client registration
 
-  router.use(authenticatedRouteRateLimiter, authenticatedRouter);
+  authenticatedRouter.use(authenticatedRouteRateLimiter);
+  router.use(authenticatedRouter);
 
   // API routes protected by auth middleware in middlewares/index.ts and rate limited here
   authenticatedRouter.get('/servers', getAllServers);

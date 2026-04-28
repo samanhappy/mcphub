@@ -247,16 +247,15 @@ describe('initRoutes authenticated API rate limiting', () => {
     await initRoutes(app);
 
     const apiRouter = findMountedRouter(app);
-    const authenticatedLimiterIndex =
-      apiRouter.stack?.findIndex((layer) => layer.handle === authenticatedRouteRateLimiter) ?? -1;
-
-    expect(authenticatedLimiterIndex).toBeGreaterThanOrEqual(0);
-
-    const protectedRouter = apiRouter.stack
-      ?.slice(authenticatedLimiterIndex + 1)
-      .find((layer) => layer.name === 'router' && layer.handle?.stack)?.handle;
+    const protectedRouter = apiRouter.stack?.find(
+      (layer) => layer.name === 'router' && layer.handle?.stack,
+    )?.handle;
 
     expect(protectedRouter).toBeDefined();
+    const authenticatedLimiterIndex =
+      protectedRouter?.stack?.findIndex((layer) => layer.handle === authenticatedRouteRateLimiter) ?? -1;
+
+    expect(authenticatedLimiterIndex).toBeGreaterThanOrEqual(0);
     expect(routerContainsRoute(protectedRouter!, 'get', '/servers/:name')).toBe(true);
     expect(routerContainsRoute(protectedRouter!, 'put', '/oauth/clients/:clientId')).toBe(true);
     expect(routerContainsRoute(protectedRouter!, 'delete', '/oauth/clients/:clientId')).toBe(true);
