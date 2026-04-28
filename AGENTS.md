@@ -347,6 +347,7 @@ When adding/changing fields, update **ALL** these files:
 - Optional fields need `nullable: true` in entity
 - Complex objects need `simple-json` column type
 - Runtime-updated system settings (especially `systemConfig.routing` auth/body-limit flags) should be read via `SystemConfigDao`, not `loadSettings()`. In DB-backed or mixed DAO/file flows, `loadSettings()` can return stale values for settings changed from the dashboard/API.
+- Request-scoped authentication or ownership state must use `AsyncLocalStorage` (or another request-safe context carrier). Do **not** store the current user in a mutable process-wide singleton field, or concurrent requests can overwrite each other's authorization context.
 - For multi-user resources with an `owner` field (for example groups, servers, or OAuth clients), read-path filtering alone is **not** sufficient. Any mutating service method must enforce `currentUser.isAdmin || resource.owner === currentUser.username` before calling DAO update/delete helpers, otherwise UUID-based write endpoints can become IDORs.
 
 ## Auto-Evolution Guidelines for AI Agents
