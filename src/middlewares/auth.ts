@@ -88,11 +88,6 @@ export const auth = async (req: Request, res: Response, next: NextFunction): Pro
     skipAuth: false,
   };
 
-  if (routingConfig.skipAuth) {
-    next();
-    return;
-  }
-
   // Check if bearer auth via configured keys can validate this request
   if (await validateBearerAuth(req, systemConfig)) {
     next();

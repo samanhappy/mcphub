@@ -110,11 +110,11 @@ export const register = async (req: Request, res: Response): Promise<void> => {
     return;
   }
 
-  const { username, password, isAdmin } = req.body;
+  const { username, password } = req.body;
 
   try {
     // Create new user
-    const newUser = await createUser({ username, password, isAdmin });
+    const newUser = await createUser({ username, password, isAdmin: false });
 
     if (!newUser) {
       res.status(400).json({ success: false, message: 'User already exists' });

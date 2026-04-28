@@ -9,17 +9,10 @@ import {
   getUserCount,
   getAdminCount,
 } from '../services/userService.js';
-import { getSystemConfigDao } from '../dao/index.js';
 import { validatePasswordStrength } from '../utils/passwordValidation.js';
 
 // Admin permission check middleware function
 const requireAdmin = async (req: Request, res: Response): Promise<boolean> => {
-  const systemConfigDao = getSystemConfigDao();
-  const systemConfig = await systemConfigDao.get();
-  if (systemConfig?.routing?.skipAuth) {
-    return true;
-  }
-
   const user = (req as any).user;
   if (!user || !user.isAdmin) {
     res.status(403).json({

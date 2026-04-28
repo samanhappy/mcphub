@@ -101,4 +101,14 @@ describe('auth middleware', () => {
     expect(response.status).toBe(200);
     expect(response.body).toEqual({ success: true });
   });
+
+  it('does not bypass API authentication when skipAuth is true', async () => {
+    currentSystemConfig.routing.skipAuth = true;
+
+    const app = createApp();
+    const response = await request(app).get('/protected');
+
+    expect(response.status).toBe(401);
+    expect(response.body).toEqual({ success: false, message: 'No token, authorization denied' });
+  });
 });

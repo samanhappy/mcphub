@@ -32,18 +32,18 @@ describe('UserContextService', () => {
 
   it('isolates concurrent async user contexts', async () => {
     const results = await Promise.all([
-      (async () => {
+      service.runWithContext(async () => {
         service.setCurrentUser({ username: 'alpha', password: '', isAdmin: false });
         await new Promise((resolve) => setTimeout(resolve, 10));
 
         return service.getCurrentUser();
-      })(),
-      (async () => {
+      }),
+      service.runWithContext(async () => {
         service.setCurrentUser({ username: 'beta', password: '', isAdmin: true });
         await new Promise((resolve) => setTimeout(resolve, 0));
 
         return service.getCurrentUser();
-      })(),
+      }),
     ]);
 
     expect(results).toEqual([

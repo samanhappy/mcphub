@@ -3,7 +3,7 @@ import { IUser } from '../types/index.js';
 
 export class UserContextService {
   private static instance: UserContextService;
-  private readonly asyncLocalStorage = new AsyncLocalStorage<IUser | null>();
+  private readonly asyncLocalStorage = new AsyncLocalStorage<{ currentUser: IUser | null }>();
 
   private constructor() {}
 
@@ -15,15 +15,31 @@ export class UserContextService {
   }
 
   getCurrentUser(): IUser | null {
-    return this.asyncLocalStorage.getStore() ?? null;
+    return this.asyncLocalStorage.getStore()?.currentUser ?? null;
   }
 
   setCurrentUser(user: IUser): void {
-    this.asyncLocalStorage.enterWith(user);
+    const store = this.asyncLocalStorage.getStore();
+    if (store) {
+      store.currentUser = user;
+      return;
+    }
+
+    this.asyncLocalStorage.enterWith({ currentUser: user });
   }
 
   clearCurrentUser(): void {
-    this.asyncLocalStorage.enterWith(null);
+    const store = this.asyncLocalStorage.getStore();
+    if (store) {
+      store.currentUser = null;
+      return;
+    }
+
+    this.asyncLocalStorage.enterWith({ currentUser: null });
+  }
+
+  runWithContext<T>(callback: () => T, initialUser: IUser | null = null): T {
+    return this.asyncLocalStorage.run({ currentUser: initialUser }, callback);
   }
 
   isAdmin(): boolean {

@@ -1,14 +1,8 @@
 import { Request, Response } from 'express';
 import { ApiResponse, BearerKey } from '../types/index.js';
-import { getBearerKeyDao, getSystemConfigDao } from '../dao/index.js';
+import { getBearerKeyDao } from '../dao/index.js';
 
 const requireAdmin = async (req: Request, res: Response): Promise<boolean> => {
-  const systemConfigDao = getSystemConfigDao();
-  const systemConfig = await systemConfigDao.get();
-  if (systemConfig?.routing?.skipAuth) {
-    return true;
-  }
-
   const user = (req as any).user;
   if (!user || !user.isAdmin) {
     res.status(403).json({

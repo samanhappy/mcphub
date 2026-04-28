@@ -1,8 +1,43 @@
 import { Request, Response, NextFunction } from 'express';
+import jwt from 'jsonwebtoken';
 import { getSystemConfigDao } from '../dao/index.js';
+import { JWT_SECRET } from '../config/jwt.js';
 import { UserContextService } from '../services/userContextService.js';
 import { IUser } from '../types/index.js';
 import { resolveOAuthUserFromHeaders } from '../utils/oauthBearer.js';
+import { getBearerTokenFromHeaders } from '../utils/bearerAuth.js';
+
+const resolveJwtUser = (req: Request): IUser | null => {
+  const headerToken = req.header('x-auth-token');
+  const queryToken = typeof req.query.token === 'string' ? req.query.token : undefined;
+  const token = headerToken || queryToken;
+
+  if (!token) {
+    return null;
+  }
+
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET) as { user?: IUser };
+    return decoded.user || null;
+  } catch {
+    return null;
+  }
+};
+
+const resolveAuthenticatedUserForSse = async (req: Request): Promise<IUser | null> => {
+  const systemConfig = await getSystemConfigDao().get();
+  const oauthUser = await resolveOAuthUserFromHeaders(req.headers, systemConfig);
+  if (oauthUser) {
+    return oauthUser;
+  }
+
+  const bearerToken = getBearerTokenFromHeaders(req.headers, systemConfig);
+  if (bearerToken) {
+    return null;
+  }
+
+  return resolveJwtUser(req);
+};
 
 /**
  * User context middleware
@@ -15,20 +50,12 @@ export const userContextMiddleware = async (
 ): Promise<void> => {
   try {
     const currentUser = (req as any).user as IUser;
-
-    if (currentUser) {
-      // Set user context
-      const userContextService = UserContextService.getInstance();
-      userContextService.setCurrentUser(currentUser);
-
-      // Clean up user context when response ends
-      res.on('finish', () => {
-        const userContextService = UserContextService.getInstance();
-        userContextService.clearCurrentUser();
-      });
-    }
-
-    next();
+    UserContextService.getInstance().runWithContext(() => {
+      if (currentUser) {
+        UserContextService.getInstance().setCurrentUser(currentUser);
+      }
+      next();
+    }, currentUser || null);
   } catch (error) {
     console.error('Error in user context middleware:', error);
     next(error);
@@ -47,47 +74,42 @@ export const sseUserContextMiddleware = async (
   try {
     const userContextService = UserContextService.getInstance();
     const username = req.params.user;
-    let cleanedUp = false;
-    const cleanup = () => {
-      if (cleanedUp) {
-        return;
-      }
-      cleanedUp = true;
-      userContextService.clearCurrentUser();
-    };
-    const attachCleanupHandlers = () => {
-      res.on('finish', cleanup);
-      res.on('close', cleanup);
-    };
+    userContextService.runWithContext(async () => {
+      if (username) {
+        const authenticatedUser = await resolveAuthenticatedUserForSse(req);
 
-    if (username) {
-      // For user-scoped routes, set the user context
-      // Note: In a real implementation, you should validate the user exists
-      // and has proper permissions
-      const user: IUser = {
-        username,
-        password: '',
-        isAdmin: false, // TODO: Should be retrieved from user database
-      };
+        if (!authenticatedUser) {
+          res.status(401).json({
+            success: false,
+            message: 'Authentication is required for user-scoped SSE routes',
+          });
+          return;
+        }
 
-      userContextService.setCurrentUser(user);
-      attachCleanupHandlers();
-      console.log(`User context set for SSE/MCP endpoint: ${username}`);
-    } else {
-      const systemConfig = await getSystemConfigDao().get();
-      const bearerUser = await resolveOAuthUserFromHeaders(req.headers, systemConfig);
+        if (authenticatedUser.username !== username) {
+          res.status(403).json({
+            success: false,
+            message: 'User-scoped SSE routes may only be accessed by the matching user',
+          });
+          return;
+        }
 
-      if (bearerUser) {
-        userContextService.setCurrentUser(bearerUser);
-        attachCleanupHandlers();
-        console.log(`OAuth user context set for SSE/MCP endpoint: ${bearerUser.username}`);
+        userContextService.setCurrentUser(authenticatedUser);
+        console.log(`User context set for SSE/MCP endpoint: ${username}`);
       } else {
-        cleanup();
-        console.log('Global SSE/MCP endpoint access - no user context');
-      }
-    }
+        const systemConfig = await getSystemConfigDao().get();
+        const bearerUser = await resolveOAuthUserFromHeaders(req.headers, systemConfig);
 
-    next();
+        if (bearerUser) {
+          userContextService.setCurrentUser(bearerUser);
+          console.log(`OAuth user context set for SSE/MCP endpoint: ${bearerUser.username}`);
+        } else {
+          console.log('Global SSE/MCP endpoint access - no user context');
+        }
+      }
+
+      next();
+    });
   } catch (error) {
     console.error('Error in SSE user context middleware:', error);
     next(error);
