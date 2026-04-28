@@ -151,6 +151,7 @@ import { getBetterAuthRuntimeConfig } from '../services/betterAuthConfig.js';
 import { authenticatedRouteRateLimiter, templateRateLimiter } from '../utils/rateLimit.js';
 
 const router = express.Router();
+const authenticatedRouter = express.Router();
 
 export const initRoutes = async (app: express.Application): Promise<void> => {
   const isTestEnv =
@@ -190,59 +191,79 @@ export const initRoutes = async (app: express.Application): Promise<void> => {
   app.put('/oauth/register/:clientId', updateClientConfiguration); // Update client configuration
   app.delete('/oauth/register/:clientId', deleteClientRegistration); // Delete client registration
 
-  // API routes protected by auth middleware in middlewares/index.ts
-  router.get('/servers', getAllServers);
-  router.get('/servers/:name', getServerConfig);
-  router.get('/settings', getAllSettings);
-  router.post('/servers', createServer);
-  router.post('/servers/batch', batchCreateServers);
-  router.put('/servers/:name', updateServer);
-  router.delete('/servers/:name', deleteServer);
-  router.post('/servers/:name/toggle', toggleServer);
-  router.post('/servers/:name/reload', reloadServer);
-  router.post('/servers/:serverName/tools/:toolName/toggle', toggleTool);
-  router.put('/servers/:serverName/tools/:toolName/description', updateToolDescription);
-  router.delete('/servers/:serverName/tools/:toolName/description', resetToolDescription);
-  router.post('/servers/:serverName/prompts/:promptName/toggle', togglePrompt);
-  router.put('/servers/:serverName/prompts/:promptName/description', updatePromptDescription);
-  router.delete('/servers/:serverName/prompts/:promptName/description', resetPromptDescription);
-  router.post('/servers/:serverName/resources/:resourceUri/toggle', toggleResource);
-  router.put('/servers/:serverName/resources/:resourceUri/description', updateResourceDescription);
-  router.delete(
+  router.use(authenticatedRouteRateLimiter, authenticatedRouter);
+
+  // API routes protected by auth middleware in middlewares/index.ts and rate limited here
+  authenticatedRouter.get('/servers', getAllServers);
+  authenticatedRouter.get('/servers/:name', getServerConfig);
+  authenticatedRouter.get('/settings', getAllSettings);
+  authenticatedRouter.post('/servers', createServer);
+  authenticatedRouter.post('/servers/batch', batchCreateServers);
+  authenticatedRouter.put('/servers/:name', updateServer);
+  authenticatedRouter.delete('/servers/:name', deleteServer);
+  authenticatedRouter.post('/servers/:name/toggle', toggleServer);
+  authenticatedRouter.post('/servers/:name/reload', reloadServer);
+  authenticatedRouter.post('/servers/:serverName/tools/:toolName/toggle', toggleTool);
+  authenticatedRouter.put(
+    '/servers/:serverName/tools/:toolName/description',
+    updateToolDescription,
+  );
+  authenticatedRouter.delete(
+    '/servers/:serverName/tools/:toolName/description',
+    resetToolDescription,
+  );
+  authenticatedRouter.post('/servers/:serverName/prompts/:promptName/toggle', togglePrompt);
+  authenticatedRouter.put(
+    '/servers/:serverName/prompts/:promptName/description',
+    updatePromptDescription,
+  );
+  authenticatedRouter.delete(
+    '/servers/:serverName/prompts/:promptName/description',
+    resetPromptDescription,
+  );
+  authenticatedRouter.post('/servers/:serverName/resources/:resourceUri/toggle', toggleResource);
+  authenticatedRouter.put(
+    '/servers/:serverName/resources/:resourceUri/description',
+    updateResourceDescription,
+  );
+  authenticatedRouter.delete(
     '/servers/:serverName/resources/:resourceUri/description',
     resetResourceDescription,
   );
-  router.put('/system-config', updateSystemConfig);
+  authenticatedRouter.put('/system-config', updateSystemConfig);
 
   // Group management routes
-  router.get('/groups', getGroups);
-  router.get('/groups/:id', getGroup);
-  router.post('/groups', createNewGroup);
-  router.post('/groups/batch', batchCreateGroups);
-  router.put('/groups/:id', updateExistingGroup);
-  router.delete('/groups/:id', deleteExistingGroup);
-  router.post('/groups/:id/servers', addServerToExistingGroup);
-  router.delete('/groups/:id/servers/:serverName', removeServerFromExistingGroup);
-  router.get('/groups/:id/servers', getGroupServers);
+  authenticatedRouter.get('/groups', getGroups);
+  authenticatedRouter.get('/groups/:id', getGroup);
+  authenticatedRouter.post('/groups', createNewGroup);
+  authenticatedRouter.post('/groups/batch', batchCreateGroups);
+  authenticatedRouter.put('/groups/:id', updateExistingGroup);
+  authenticatedRouter.delete('/groups/:id', deleteExistingGroup);
+  authenticatedRouter.post('/groups/:id/servers', addServerToExistingGroup);
+  authenticatedRouter.delete('/groups/:id/servers/:serverName', removeServerFromExistingGroup);
+  authenticatedRouter.get('/groups/:id/servers', getGroupServers);
   // New route for batch updating servers in a group
-  router.put('/groups/:id/servers/batch', updateGroupServersBatch);
+  authenticatedRouter.put('/groups/:id/servers/batch', updateGroupServersBatch);
   // New routes for server configurations and tool management in groups
-  router.get('/groups/:id/server-configs', getGroupServerConfigs);
-  router.get('/groups/:id/server-configs/:serverName', getGroupServerConfig);
-  router.put('/groups/:id/server-configs/:serverName/tools', updateGroupServerTools);
+  authenticatedRouter.get('/groups/:id/server-configs', getGroupServerConfigs);
+  authenticatedRouter.get('/groups/:id/server-configs/:serverName', getGroupServerConfig);
+  authenticatedRouter.put(
+    '/groups/:id/server-configs/:serverName/tools',
+    updateGroupServerTools,
+  );
 
   // User management routes (admin only)
-  router.get('/users', getUsers);
-  router.get('/users/:username', getUser);
-  router.post('/users', createUser);
-  router.put('/users/:username', updateExistingUser);
-  router.delete('/users/:username', deleteExistingUser);
-  router.get('/users-stats', getUserStats);
+  authenticatedRouter.get('/users', getUsers);
+  authenticatedRouter.get('/users/:username', getUser);
+  authenticatedRouter.post('/users', createUser);
+  authenticatedRouter.put('/users/:username', updateExistingUser);
+  authenticatedRouter.delete('/users/:username', deleteExistingUser);
+  authenticatedRouter.get('/users-stats', getUserStats);
 
   // OAuth Client management routes (admin only)
-  router.get('/oauth/clients', getAllClients);
-  router.get('/oauth/clients/:clientId', getClient);
-  router.post(
+  authenticatedRouter.get('/oauth/clients', getAllClients);
+  authenticatedRouter.get('/oauth/clients/:clientId', getClient);
+  authenticatedRouter.post(
     '/oauth/clients',
     [
       check('name', 'Client name is required').not().isEmpty(),
@@ -250,88 +271,93 @@ export const initRoutes = async (app: express.Application): Promise<void> => {
     ],
     createClient,
   );
-  router.put('/oauth/clients/:clientId', updateClient);
-  router.delete('/oauth/clients/:clientId', deleteClient);
-  router.post('/oauth/clients/:clientId/regenerate-secret', regenerateSecret);
+  authenticatedRouter.put('/oauth/clients/:clientId', updateClient);
+  authenticatedRouter.delete('/oauth/clients/:clientId', deleteClient);
+  authenticatedRouter.post('/oauth/clients/:clientId/regenerate-secret', regenerateSecret);
 
   // Bearer authentication key management (admin only)
-  router.get('/auth/keys', getBearerKeys);
-  router.post('/auth/keys', createBearerKey);
-  router.put('/auth/keys/:id', updateBearerKey);
-  router.delete('/auth/keys/:id', deleteBearerKey);
+  authenticatedRouter.get('/auth/keys', getBearerKeys);
+  authenticatedRouter.post('/auth/keys', createBearerKey);
+  authenticatedRouter.put('/auth/keys/:id', updateBearerKey);
+  authenticatedRouter.delete('/auth/keys/:id', deleteBearerKey);
 
   // Activity routes (database mode only)
-  router.get('/activities/available', checkActivityAvailable);
-  router.get('/activities', getActivities);
-  router.get('/activities/stats', getActivityStats);
-  router.get('/activities/filters', getActivityFilterOptions);
-  router.get('/activities/:id', getActivityById);
-  router.delete('/activities/cleanup', deleteOldActivities);
+  authenticatedRouter.get('/activities/available', checkActivityAvailable);
+  authenticatedRouter.get('/activities', getActivities);
+  authenticatedRouter.get('/activities/stats', getActivityStats);
+  authenticatedRouter.get('/activities/filters', getActivityFilterOptions);
+  authenticatedRouter.get('/activities/:id', getActivityById);
+  authenticatedRouter.delete('/activities/cleanup', deleteOldActivities);
 
   // Configuration template routes
-  router.post('/templates/export', templateRateLimiter, auth, exportConfigTemplate);
-  router.get('/templates/export/groups/:id', templateRateLimiter, auth, exportGroupAsTemplate);
-  router.post('/templates/import', templateRateLimiter, auth, importConfigTemplate);
+  authenticatedRouter.post('/templates/export', templateRateLimiter, auth, exportConfigTemplate);
+  authenticatedRouter.get(
+    '/templates/export/groups/:id',
+    templateRateLimiter,
+    auth,
+    exportGroupAsTemplate,
+  );
+  authenticatedRouter.post('/templates/import', templateRateLimiter, auth, importConfigTemplate);
 
   // Tool management routes
-  router.post('/tools/call/:server', callTool);
+  authenticatedRouter.post('/tools/call/:server', callTool);
 
   // Prompt management routes
-  router.post('/mcp/:serverName/prompts/:promptName', getPrompt);
+  authenticatedRouter.post('/mcp/:serverName/prompts/:promptName', getPrompt);
 
   // Built-in prompt management routes
-  router.get('/prompts', listBuiltinPrompts);
-  router.get('/prompts/:id', getBuiltinPrompt);
-  router.post('/prompts', createBuiltinPrompt);
-  router.put('/prompts/:id', updateBuiltinPrompt);
-  router.delete('/prompts/:id', deleteBuiltinPrompt);
+  authenticatedRouter.get('/prompts', listBuiltinPrompts);
+  authenticatedRouter.get('/prompts/:id', getBuiltinPrompt);
+  authenticatedRouter.post('/prompts', createBuiltinPrompt);
+  authenticatedRouter.put('/prompts/:id', updateBuiltinPrompt);
+  authenticatedRouter.delete('/prompts/:id', deleteBuiltinPrompt);
 
   // Built-in resource management routes
-  router.get('/resources', listBuiltinResources);
-  router.get('/resources/:id', getBuiltinResource);
-  router.post('/resources', createBuiltinResource);
-  router.put('/resources/:id', updateBuiltinResource);
-  router.delete('/resources/:id', deleteBuiltinResource);
-  router.post('/resources/read', readResource);
+  authenticatedRouter.get('/resources', listBuiltinResources);
+  authenticatedRouter.get('/resources/:id', getBuiltinResource);
+  authenticatedRouter.post('/resources', createBuiltinResource);
+  authenticatedRouter.put('/resources/:id', updateBuiltinResource);
+  authenticatedRouter.delete('/resources/:id', deleteBuiltinResource);
+  authenticatedRouter.post('/resources/read', readResource);
 
   // MCPB upload routes
-  router.post('/mcpb/upload', uploadMiddleware, uploadMcpbFile);
+  authenticatedRouter.post('/mcpb/upload', uploadMiddleware, uploadMcpbFile);
 
   // Market routes
-  router.get('/market/servers', getAllMarketServers);
-  router.get('/market/servers/search', searchMarketServersByQuery);
-  router.get('/market/servers/:name', getMarketServer);
-  router.get('/market/categories', getAllMarketCategories);
-  router.get('/market/categories/:category', getMarketServersByCategory);
-  router.get('/market/tags', getAllMarketTags);
-  router.get('/market/tags/:tag', getMarketServersByTag);
+  authenticatedRouter.get('/market/servers', getAllMarketServers);
+  authenticatedRouter.get('/market/servers/search', searchMarketServersByQuery);
+  authenticatedRouter.get('/market/servers/:name', getMarketServer);
+  authenticatedRouter.get('/market/categories', getAllMarketCategories);
+  authenticatedRouter.get('/market/categories/:category', getMarketServersByCategory);
+  authenticatedRouter.get('/market/tags', getAllMarketTags);
+  authenticatedRouter.get('/market/tags/:tag', getMarketServersByTag);
 
   // Cloud Market routes
-  router.get('/cloud/servers', getAllCloudServers);
-  router.get('/cloud/servers/search', searchCloudServersByQuery);
-  router.get('/cloud/servers/:name', getCloudServer);
-  router.get('/cloud/categories', getAllCloudCategories);
-  router.get('/cloud/categories/:category', getCloudServersByCategory);
-  router.get('/cloud/tags', getAllCloudTags);
-  router.get('/cloud/tags/:tag', getCloudServersByTag);
-  router.get('/cloud/servers/:serverName/tools', getCloudServerToolsList);
-  router.post('/cloud/servers/:serverName/tools/:toolName/call', callCloudTool);
+  authenticatedRouter.get('/cloud/servers', getAllCloudServers);
+  authenticatedRouter.get('/cloud/servers/search', searchCloudServersByQuery);
+  authenticatedRouter.get('/cloud/servers/:name', getCloudServer);
+  authenticatedRouter.get('/cloud/categories', getAllCloudCategories);
+  authenticatedRouter.get('/cloud/categories/:category', getCloudServersByCategory);
+  authenticatedRouter.get('/cloud/tags', getAllCloudTags);
+  authenticatedRouter.get('/cloud/tags/:tag', getCloudServersByTag);
+  authenticatedRouter.get('/cloud/servers/:serverName/tools', getCloudServerToolsList);
+  authenticatedRouter.post('/cloud/servers/:serverName/tools/:toolName/call', callCloudTool);
 
   // Registry routes (proxy to official MCP registry)
-  router.get('/registry/servers', getAllRegistryServers);
-  router.get('/registry/servers/versions', getRegistryServerVersions);
-  router.get('/registry/servers/version', getRegistryServerVersion);
+  authenticatedRouter.get('/registry/servers', getAllRegistryServers);
+  authenticatedRouter.get('/registry/servers/versions', getRegistryServerVersions);
+  authenticatedRouter.get('/registry/servers/version', getRegistryServerVersion);
 
   // Log routes
-  router.get('/logs', getAllLogs);
-  router.delete('/logs', clearLogs);
-  router.get('/logs/stream', streamLogs);
+  authenticatedRouter.get('/logs', getAllLogs);
+  authenticatedRouter.delete('/logs', clearLogs);
+  authenticatedRouter.get('/logs/stream', streamLogs);
 
   // MCP settings export route
-  router.get('/mcp-settings/export', getMcpSettingsJson);
+  authenticatedRouter.get('/mcp-settings/export', getMcpSettingsJson);
 
-  // Auth routes - move to router instead of app directly
-  router.get('/better-auth/user', getBetterAuthUser);
+  // Better Auth user route requires authentication and shares the authenticated route limiter
+  authenticatedRouter.get('/better-auth/user', getBetterAuthUser);
 
   router.post(
     '/auth/login',
