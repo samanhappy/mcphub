@@ -66,6 +66,8 @@ docker run -p 3000:3000 -e ADMIN_PASSWORD=your-secure-password samanhappy/mcphub
 
 > **Conseil :** Changez le mot de passe admin après la première connexion pour plus de sécurité.
 
+> **Mode headless :** définissez `DISABLE_WEB=true` pour ne plus servir l'interface web intégrée et exécuter MCPHub uniquement avec le backend/API et les endpoints MCP. C'est utile si vous gérez directement les serveurs via `mcp_settings.json`.
+
 ### Connecter les clients IA
 
 Connectez les clients IA (Claude Desktop, Cursor, etc.) via :

@@ -17,6 +17,7 @@ MCPHub uses environment variables for configuration. This guide covers all avail
 | `INIT_TIMEOUT` | `300000` | Initial timeout for the application |
 | `BASE_PATH` | `''` | The base path of the application |
 | `READONLY` | `false` | Set to `true` to enable readonly mode |
+| `DISABLE_WEB` | `false` | Set to `true` to disable the bundled dashboard UI while keeping backend/API and MCP endpoints available |
 | `MCPHUB_SETTING_PATH` | | Path to the MCPHub settings |
 | `NODE_ENV` | `development` | Application environment (`development`, `production`, `test`) |
 
@@ -25,6 +26,7 @@ PORT=3000
 INIT_TIMEOUT=300000
 BASE_PATH=/api
 READONLY=true
+DISABLE_WEB=true
 MCPHUB_SETTING_PATH=/path/to/settings
 NODE_ENV=production
 ```

@@ -67,6 +67,8 @@ docker run -p 3000:3000 -e ADMIN_PASSWORD=your-secure-password samanhappy/mcphub
 
 > **Tip:** Change the admin password after first login for security.
 
+> **Headless mode:** Set `DISABLE_WEB=true` to skip serving the bundled dashboard UI and run MCPHub with only the backend/API and MCP endpoints. This is useful when you want to manage servers directly from `mcp_settings.json`.
+
 ### Connect AI Clients
 
 Connect AI clients (Claude Desktop, Cursor, etc.) via:

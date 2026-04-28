@@ -66,6 +66,8 @@ docker run -p 3000:3000 -e ADMIN_PASSWORD=your-secure-password samanhappy/mcphub
 
 > **提示：** 首次登录后请及时修改管理员密码以确保安全。
 
+> **无界面模式：** 设置 `DISABLE_WEB=true` 后，MCPHub 将不再提供内置控制台 UI，只保留后端/API 与 MCP 端点。适合直接通过 `mcp_settings.json` 管理服务的场景。
+
 ### 连接 AI 客户端
 
 通过以下地址连接 AI 客户端（Claude Desktop、Cursor 等）：
