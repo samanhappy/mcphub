@@ -95,7 +95,7 @@ const ensureNonAdminCanManageConfig = (
   config: ServerConfig,
 ): boolean => {
   const currentUser = getRequestUser(req);
-  if (!currentUser || currentUser.isAdmin) {
+  if (currentUser?.isAdmin) {
     return true;
   }
 
@@ -110,14 +110,18 @@ const ensureNonAdminCanManageConfig = (
   return true;
 };
 
-const assignServerOwner = (req: Request, config: ServerConfig): void => {
+const assignServerOwner = (
+  req: Request,
+  config: ServerConfig,
+  existingOwner?: string,
+): void => {
   const currentUser = getRequestUser(req);
   if (!currentUser) {
     return;
   }
 
   if (currentUser.isAdmin) {
-    config.owner = config.owner || currentUser.username;
+    config.owner = config.owner || existingOwner || currentUser.username;
     return;
   }
 
@@ -541,7 +545,7 @@ export const batchCreateServers = async (req: Request, res: Response): Promise<v
           normalizedConfig.keepAliveInterval = 60000; // Default 60 seconds for SSE servers
         }
 
-        if (!ensureNonAdminCanManageConfig(req, res, normalizedConfig)) {
+        if (isPrivilegedServerConfig(normalizedConfig) && currentUser?.isAdmin !== true) {
           results.push({
             name,
             success: false,
@@ -764,7 +768,7 @@ export const updateServer = async (req: Request, res: Response): Promise<void> =
     }
 
     // Set owner property if not provided - use current user's username, default to 'admin'
-    assignServerOwner(req, normalizedConfig);
+    assignServerOwner(req, normalizedConfig, existingServer.owner);
 
     // Check if server name is being changed
     const isRenaming = newName && newName !== name;

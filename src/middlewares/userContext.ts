@@ -102,7 +102,7 @@ export const sseUserContextMiddleware = async (
 
         if (bearerUser) {
           userContextService.setCurrentUser(bearerUser);
-          console.log(`OAuth user context set for SSE/MCP endpoint: ${bearerUser.username}`);
+          console.log('OAuth user context set for SSE/MCP endpoint');
         } else {
           console.log('Global SSE/MCP endpoint access - no user context');
         }
