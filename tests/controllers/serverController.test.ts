@@ -15,6 +15,7 @@ const mockSystemConfigDao = {
 const mockNotifyToolChanged = jest.fn();
 const mockSyncToolEmbedding = jest.fn();
 const mockGetServerByName = jest.fn();
+const mockAddServer = jest.fn();
 
 jest.mock('../../src/dao/DaoFactory.js', () => ({
   getServerDao: jest.fn(() => mockServerDao),
@@ -25,7 +26,7 @@ jest.mock('../../src/dao/DaoFactory.js', () => ({
 
 jest.mock('../../src/services/mcpService.js', () => ({
   getServersInfo: jest.fn(),
-  addServer: jest.fn(),
+  addServer: mockAddServer,
   addOrUpdateServer: jest.fn(),
   removeServer: jest.fn(),
   getServerByName: jest.fn(() => mockGetServerByName()),
@@ -36,6 +37,8 @@ jest.mock('../../src/services/mcpService.js', () => ({
 }));
 
 import {
+  createServer,
+  getServerConfig,
   resetPromptDescription,
   resetResourceDescription,
   resetToolDescription,
@@ -124,6 +127,10 @@ describe('serverController - resetToolDescription', () => {
       params: {
         serverName: 'test-server',
         toolName: 'test-server::search',
+      },
+      user: {
+        username: 'admin',
+        isAdmin: true,
       },
     };
 
@@ -216,6 +223,10 @@ describe('serverController - resetPromptDescription', () => {
         serverName: 'test-server',
         promptName: 'test-server::prompt',
       },
+      user: {
+        username: 'admin',
+        isAdmin: true,
+      },
     };
     mockResponse = {
       json: mockJson,
@@ -272,6 +283,10 @@ describe('serverController - resetResourceDescription', () => {
         serverName: 'test-server',
         resourceUri: 'resource://test',
       },
+      user: {
+        username: 'admin',
+        isAdmin: true,
+      },
     };
     mockResponse = {
       json: mockJson,
@@ -308,6 +323,67 @@ describe('serverController - resetResourceDescription', () => {
       data: {
         description: 'Default resource description',
       },
+    });
+  });
+});
+
+describe('serverController - authorization hardening', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('rejects non-admin stdio server creation', async () => {
+    const json = jest.fn();
+    const status = jest.fn().mockReturnThis();
+    const req = {
+      body: {
+        name: 'stdio-server',
+        config: {
+          type: 'stdio',
+          command: 'node',
+          args: ['server.js'],
+        },
+      },
+      user: {
+        username: 'alice',
+        isAdmin: false,
+      },
+    } as unknown as Request;
+    const res = { json, status } as unknown as Response;
+
+    await createServer(req, res);
+
+    expect(mockAddServer).not.toHaveBeenCalled();
+    expect(status).toHaveBeenCalledWith(403);
+    expect(json).toHaveBeenCalledWith({
+      success: false,
+      message: 'Only admins can create or modify stdio-based servers',
+    });
+  });
+
+  it('rejects reading another user server by direct name lookup', async () => {
+    mockServerDao.findById.mockResolvedValue({
+      name: 'shared-server',
+      owner: 'bob',
+    });
+
+    const json = jest.fn();
+    const status = jest.fn().mockReturnThis();
+    const req = {
+      params: { name: 'shared-server' },
+      user: {
+        username: 'alice',
+        isAdmin: false,
+      },
+    } as unknown as Request;
+    const res = { json, status } as unknown as Response;
+
+    await getServerConfig(req, res);
+
+    expect(status).toHaveBeenCalledWith(403);
+    expect(json).toHaveBeenCalledWith({
+      success: false,
+      message: 'Forbidden',
     });
   });
 });

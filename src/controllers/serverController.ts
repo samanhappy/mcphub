@@ -30,6 +30,99 @@ import { UserContextService } from '../services/userContextService.js';
 import { normalizeServerConfigForPersistence } from '../utils/serverConfigPersistence.js';
 
 type DescribableConfig = Record<string, { enabled: boolean; description?: string }>;
+type ServerRecord = ServerConfig & { name: string };
+
+type RequestUser = {
+  username: string;
+  isAdmin?: boolean;
+};
+
+const getRequestUser = (req: Request): RequestUser | null => {
+  return ((req as any).user as RequestUser | undefined) || null;
+};
+
+const canAccessServer = (user: RequestUser | null, server: ServerRecord): boolean => {
+  if (!user) {
+    return false;
+  }
+
+  if (user.isAdmin) {
+    return true;
+  }
+
+  return server.owner === user.username;
+};
+
+const isPrivilegedServerConfig = (config: ServerConfig): boolean => {
+  return Boolean(
+    config.type === 'stdio' ||
+      config.command ||
+      (Array.isArray(config.args) && config.args.length > 0) ||
+      (!config.url && !config.openapi?.url && !config.openapi?.schema),
+  );
+};
+
+const loadAuthorizedServer = async (
+  req: Request,
+  res: Response,
+  serverName: string,
+): Promise<ServerRecord | null> => {
+  const serverDao = getServerDao();
+  const server = await serverDao.findById(serverName);
+
+  if (!server) {
+    res.status(404).json({
+      success: false,
+      message: 'Server not found',
+    });
+    return null;
+  }
+
+  if (!canAccessServer(getRequestUser(req), server)) {
+    res.status(403).json({
+      success: false,
+      message: 'Forbidden',
+    });
+    return null;
+  }
+
+  return server;
+};
+
+const ensureNonAdminCanManageConfig = (
+  req: Request,
+  res: Response,
+  config: ServerConfig,
+): boolean => {
+  const currentUser = getRequestUser(req);
+  if (!currentUser || currentUser.isAdmin) {
+    return true;
+  }
+
+  if (isPrivilegedServerConfig(config)) {
+    res.status(403).json({
+      success: false,
+      message: 'Only admins can create or modify stdio-based servers',
+    });
+    return false;
+  }
+
+  return true;
+};
+
+const assignServerOwner = (req: Request, config: ServerConfig): void => {
+  const currentUser = getRequestUser(req);
+  if (!currentUser) {
+    return;
+  }
+
+  if (currentUser.isAdmin) {
+    config.owner = config.owner || currentUser.username;
+    return;
+  }
+
+  config.owner = currentUser.username;
+};
 
 const clearDescriptionOverride = (
   items: DescribableConfig,
@@ -277,6 +370,10 @@ export const createServer = async (req: Request, res: Response): Promise<void> =
       return;
     }
 
+    if (!ensureNonAdminCanManageConfig(req, res, normalizedConfig)) {
+      return;
+    }
+
     // Set default keep-alive interval for SSE servers if not specified
     if (
       (normalizedConfig.type === 'sse' ||
@@ -286,11 +383,7 @@ export const createServer = async (req: Request, res: Response): Promise<void> =
       normalizedConfig.keepAliveInterval = 60000; // Default 60 seconds for SSE servers
     }
 
-    // Set owner property - use current user's username, default to 'admin'
-    if (!normalizedConfig.owner) {
-      const currentUser = (req as any).user;
-      normalizedConfig.owner = currentUser?.username || 'admin';
-    }
+    assignServerOwner(req, normalizedConfig);
 
     const result = await addServer(name, normalizedConfig);
     if (result.success) {
@@ -418,7 +511,7 @@ export const batchCreateServers = async (req: Request, res: Response): Promise<v
     let failureCount = 0;
 
     // Get current user for owner field
-    const currentUser = (req as any).user;
+    const currentUser = getRequestUser(req);
     const defaultOwner = currentUser?.username || 'admin';
 
     for (const server of servers) {
@@ -448,10 +541,18 @@ export const batchCreateServers = async (req: Request, res: Response): Promise<v
           normalizedConfig.keepAliveInterval = 60000; // Default 60 seconds for SSE servers
         }
 
-        // Set owner property if not provided
-        if (!normalizedConfig.owner) {
-          normalizedConfig.owner = defaultOwner;
+        if (!ensureNonAdminCanManageConfig(req, res, normalizedConfig)) {
+          results.push({
+            name,
+            success: false,
+            message: 'Only admins can create or modify stdio-based servers',
+          });
+          failureCount++;
+          continue;
         }
+
+        // Set owner property if not provided
+        normalizedConfig.owner = currentUser?.isAdmin ? normalizedConfig.owner || defaultOwner : defaultOwner;
 
         // Attempt to add server
         const result = await addServer(name, normalizedConfig);
@@ -527,7 +628,12 @@ export const deleteServer = async (req: Request, res: Response): Promise<void> =
       return;
     }
 
-    const result = await removeServer(name);
+    const existingServer = await loadAuthorizedServer(req, res, name);
+    if (!existingServer) {
+      return;
+    }
+
+    const result = await removeServer(existingServer.name);
     if (result.success) {
       notifyToolChanged();
       res.json({
@@ -639,6 +745,15 @@ export const updateServer = async (req: Request, res: Response): Promise<void> =
       return;
     }
 
+    const existingServer = await loadAuthorizedServer(req, res, name);
+    if (!existingServer) {
+      return;
+    }
+
+    if (!ensureNonAdminCanManageConfig(req, res, normalizedConfig)) {
+      return;
+    }
+
     // Set default keep-alive interval for SSE servers if not specified
     if (
       (normalizedConfig.type === 'sse' ||
@@ -649,10 +764,7 @@ export const updateServer = async (req: Request, res: Response): Promise<void> =
     }
 
     // Set owner property if not provided - use current user's username, default to 'admin'
-    if (!normalizedConfig.owner) {
-      const currentUser = (req as any).user;
-      normalizedConfig.owner = currentUser?.username || 'admin';
-    }
+    assignServerOwner(req, normalizedConfig);
 
     // Check if server name is being changed
     const isRenaming = newName && newName !== name;
@@ -719,15 +831,8 @@ export const getServerConfig = async (req: Request, res: Response): Promise<void
   try {
     const { name } = req.params;
 
-    // Get server configuration from DAO (supports both file and database modes)
-    const serverDao = getServerDao();
-    const serverConfig = await serverDao.findById(name);
-
+    const serverConfig = await loadAuthorizedServer(req, res, name);
     if (!serverConfig) {
-      res.status(404).json({
-        success: false,
-        message: 'Server not found',
-      });
       return;
     }
 
@@ -778,7 +883,12 @@ export const toggleServer = async (req: Request, res: Response): Promise<void> =
       return;
     }
 
-    const result = await toggleServerStatus(name, enabled);
+    const existingServer = await loadAuthorizedServer(req, res, name);
+    if (!existingServer) {
+      return;
+    }
+
+    const result = await toggleServerStatus(existingServer.name, enabled);
     if (result.success) {
       notifyToolChanged();
       res.json({
@@ -810,7 +920,12 @@ export const reloadServer = async (req: Request, res: Response): Promise<void> =
       return;
     }
 
-    await reconnectServer(name);
+    const existingServer = await loadAuthorizedServer(req, res, name);
+    if (!existingServer) {
+      return;
+    }
+
+    await reconnectServer(existingServer.name);
 
     res.json({
       success: true,
@@ -849,16 +964,12 @@ export const toggleTool = async (req: Request, res: Response): Promise<void> => 
       return;
     }
 
-    const serverDao = getServerDao();
-    const server = await serverDao.findById(serverName);
-
+    const server = await loadAuthorizedServer(req, res, serverName);
     if (!server) {
-      res.status(404).json({
-        success: false,
-        message: 'Server not found',
-      });
       return;
     }
+
+    const serverDao = getServerDao();
 
     // Initialize tools config if it doesn't exist
     const tools = server.tools || {};
@@ -916,16 +1027,12 @@ export const updateToolDescription = async (req: Request, res: Response): Promis
       return;
     }
 
-    const serverDao = getServerDao();
-    const server = await serverDao.findById(serverName);
-
+    const server = await loadAuthorizedServer(req, res, serverName);
     if (!server) {
-      res.status(404).json({
-        success: false,
-        message: 'Server not found',
-      });
       return;
     }
+
+    const serverDao = getServerDao();
 
     // Initialize tools config if it doesn't exist
     const tools = server.tools || {};
@@ -978,16 +1085,12 @@ export const resetToolDescription = async (req: Request, res: Response): Promise
       return;
     }
 
-    const serverDao = getServerDao();
-    const server = await serverDao.findById(serverName);
-
+    const server = await loadAuthorizedServer(req, res, serverName);
     if (!server) {
-      res.status(404).json({
-        success: false,
-        message: 'Server not found',
-      });
       return;
     }
+
+    const serverDao = getServerDao();
 
     const tools = clearDescriptionOverride(server.tools || {}, toolName);
 
@@ -1557,16 +1660,12 @@ export const togglePrompt = async (req: Request, res: Response): Promise<void> =
       return;
     }
 
-    const serverDao = getServerDao();
-    const server = await serverDao.findById(serverName);
-
+    const server = await loadAuthorizedServer(req, res, serverName);
     if (!server) {
-      res.status(404).json({
-        success: false,
-        message: 'Server not found',
-      });
       return;
     }
+
+    const serverDao = getServerDao();
 
     // Initialize prompts config if it doesn't exist
     const prompts = server.prompts || {};
@@ -1624,16 +1723,12 @@ export const updatePromptDescription = async (req: Request, res: Response): Prom
       return;
     }
 
-    const serverDao = getServerDao();
-    const server = await serverDao.findById(serverName);
-
+    const server = await loadAuthorizedServer(req, res, serverName);
     if (!server) {
-      res.status(404).json({
-        success: false,
-        message: 'Server not found',
-      });
       return;
     }
+
+    const serverDao = getServerDao();
 
     // Initialize prompts config if it doesn't exist
     const prompts = server.prompts || {};
@@ -1683,16 +1778,12 @@ export const resetPromptDescription = async (req: Request, res: Response): Promi
       return;
     }
 
-    const serverDao = getServerDao();
-    const server = await serverDao.findById(serverName);
-
+    const server = await loadAuthorizedServer(req, res, serverName);
     if (!server) {
-      res.status(404).json({
-        success: false,
-        message: 'Server not found',
-      });
       return;
     }
+
+    const serverDao = getServerDao();
 
     const prompts = clearDescriptionOverride(server.prompts || {}, promptName);
     const result = await serverDao.updatePrompts(serverName, prompts);
@@ -1750,16 +1841,12 @@ export const toggleResource = async (req: Request, res: Response): Promise<void>
       return;
     }
 
-    const serverDao = getServerDao();
-    const server = await serverDao.findById(serverName);
-
+    const server = await loadAuthorizedServer(req, res, serverName);
     if (!server) {
-      res.status(404).json({
-        success: false,
-        message: 'Server not found',
-      });
       return;
     }
+
+    const serverDao = getServerDao();
 
     // Initialize resources config if it doesn't exist
     const resources = server.resources || {};
@@ -1817,16 +1904,12 @@ export const updateResourceDescription = async (req: Request, res: Response): Pr
       return;
     }
 
-    const serverDao = getServerDao();
-    const server = await serverDao.findById(serverName);
-
+    const server = await loadAuthorizedServer(req, res, serverName);
     if (!server) {
-      res.status(404).json({
-        success: false,
-        message: 'Server not found',
-      });
       return;
     }
+
+    const serverDao = getServerDao();
 
     // Initialize resources config if it doesn't exist
     const resources = server.resources || {};
@@ -1876,16 +1959,12 @@ export const resetResourceDescription = async (req: Request, res: Response): Pro
       return;
     }
 
-    const serverDao = getServerDao();
-    const server = await serverDao.findById(serverName);
-
+    const server = await loadAuthorizedServer(req, res, serverName);
     if (!server) {
-      res.status(404).json({
-        success: false,
-        message: 'Server not found',
-      });
       return;
     }
+
+    const serverDao = getServerDao();
 
     const resources = clearDescriptionOverride(server.resources || {}, resourceUri);
     const result = await serverDao.updateResources(serverName, resources);
