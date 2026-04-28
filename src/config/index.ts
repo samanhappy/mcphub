@@ -20,6 +20,8 @@ const defaultConfig = {
 
 const dataService: DataService = getDataService();
 
+export const isWebDisabled = (): boolean => process.env.DISABLE_WEB === 'true';
+
 const ensureOAuthServerDefaults = (settings: McpSettings): boolean => {
   if (!settings.systemConfig) {
     settings.systemConfig = {

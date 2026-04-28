@@ -1,6 +1,6 @@
 import express from 'express';
 import cors from 'cors';
-import config from './config/index.js';
+import config, { isWebDisabled } from './config/index.js';
 import path from 'path';
 import fs from 'fs';
 import { initUpstreamServers, connected, cleanupAllServers } from './services/mcpService.js';
@@ -47,6 +47,7 @@ export class AppServer {
   private port: number | string;
   private frontendPath: string | null = null;
   private basePath: string;
+  private disableWeb: boolean;
 
   constructor() {
     this.app = express();
@@ -63,6 +64,7 @@ export class AppServer {
     );
     this.port = config.port;
     this.basePath = config.basePath;
+    this.disableWeb = isWebDisabled();
   }
 
   async initialize(): Promise<void> {
@@ -175,6 +177,12 @@ export class AppServer {
   }
 
   private findAndServeFrontend(): void {
+    if (this.disableWeb) {
+      console.log('Web UI disabled via DISABLE_WEB=true. Server will run without frontend.');
+      this.registerFrontendUnavailableRoute();
+      return;
+    }
+
     // Find frontend path
     this.frontendPath = this.findFrontendDistPath();
 
@@ -198,19 +206,14 @@ export class AppServer {
       }
     } else {
       console.warn('Frontend dist directory not found. Server will run without frontend.');
-      const rootPath = this.basePath || '/';
-      this.app.get(rootPath, (_req, res) => {
-        res
-          .status(404)
-          .send('Frontend not found. MCPHub API is running, but the UI is not available.');
-      });
+      this.registerFrontendUnavailableRoute();
     }
   }
 
   start(): void {
     this.server = this.app.listen(this.port, () => {
       console.log(`Server is running on port ${this.port}`);
-      if (this.frontendPath) {
+      if (this.frontendPath && !this.disableWeb) {
         console.log(`Open http://localhost:${this.port} in your browser to access MCPHub UI`);
       } else {
         console.log(
@@ -314,6 +317,13 @@ export class AppServer {
     // Use the shared utility function which properly handles ESM module paths
     const currentDir = getCurrentFileDir();
     return findPackageRoot(currentDir);
+  }
+
+  private registerFrontendUnavailableRoute(): void {
+    const rootPath = this.basePath || '/';
+    this.app.get(rootPath, (_req, res) => {
+      res.status(404).send('Frontend not found. MCPHub API is running, but the UI is not available.');
+    });
   }
 }
 
