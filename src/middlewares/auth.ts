@@ -72,6 +72,11 @@ const checkReadonly = (req: Request): boolean => {
   return req.method === 'GET';
 };
 
+const createSkipAuthUser = () => ({
+  username: 'guest',
+  isAdmin: true,
+});
+
 // Middleware to authenticate JWT token
 export const auth = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   const t = (req as any).t;
@@ -87,6 +92,12 @@ export const auth = async (req: Request, res: Response, next: NextFunction): Pro
     enableGroupNameRoute: true,
     skipAuth: false,
   };
+
+  if (routingConfig.skipAuth) {
+    (req as any).user = createSkipAuthUser();
+    next();
+    return;
+  }
 
   // Check if bearer auth via configured keys can validate this request
   if (await validateBearerAuth(req, systemConfig)) {

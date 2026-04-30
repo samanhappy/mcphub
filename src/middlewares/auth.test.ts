@@ -102,13 +102,44 @@ describe('auth middleware', () => {
     expect(response.body).toEqual({ success: true });
   });
 
-  it('does not bypass API authentication when skipAuth is true', async () => {
+  it('bypasses dashboard API authentication when skipAuth is true', async () => {
     currentSystemConfig.routing.skipAuth = true;
 
     const app = createApp();
     const response = await request(app).get('/protected');
 
-    expect(response.status).toBe(401);
-    expect(response.body).toEqual({ success: false, message: 'No token, authorization denied' });
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({ success: true });
+  });
+
+  it('attaches a guest admin user when skipAuth is true', async () => {
+    currentSystemConfig.routing.skipAuth = true;
+
+    const app = express();
+    app.get(
+      '/protected-user',
+      (req, _res, next) => {
+        (req as any).t = (value: string) => value;
+        next();
+      },
+      auth,
+      (req, res) => {
+        res.status(200).json({
+          success: true,
+          user: (req as any).user,
+        });
+      },
+    );
+
+    const response = await request(app).get('/protected-user');
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({
+      success: true,
+      user: {
+        username: 'guest',
+        isAdmin: true,
+      },
+    });
   });
 });
