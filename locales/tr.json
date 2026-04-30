@@ -636,7 +636,7 @@
     "selectAtLeastOneGroup": "Lütfen en az bir grup seçin",
     "selectAtLeastOneServer": "Lütfen en az bir sunucu seçin",
     "skipAuth": "Kimlik Doğrulamayı Atla",
-    "skipAuthDescription": "Kontrol paneline giriş olmadan erişime izin ver (MCP kimlik doğrulamasını etkilemez)",
+    "skipAuthDescription": "Kontrol paneline giriş olmadan erişime izin ver; kimliği doğrulanmamış kullanıcılar guest yönetici erişimi alır (MCP kimlik doğrulamasını etkilemez)",
     "jsonBodyLimit": "JSON Gövde Boyutu Sınırı",
     "jsonBodyLimitDescription": "Express JSON istek boyutu sınırı. Büyük OpenAPI şema yüklemeleri de bu ayardan etkilenir.",
     "jsonBodyLimitPlaceholder": "örn. 1mb, 5mb, 1024kb",

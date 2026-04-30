@@ -28,7 +28,7 @@ Updates various parts of the system configuration. You only need to provide the 
 - `bearerAuthKey` (string): Legacy bearer key (used only for one-time migration).
 - `bearerAuthHeaderName` (string): Header name used to receive MCP bearer credentials (default: `Authorization`). Change this when upstream passthrough headers also use `Authorization`.
 - `jsonBodyLimit` (string): Express JSON body size limit (default: `1mb`). This applies to large inline OpenAPI schema uploads too.
-- `skipAuth` (boolean): If true, skips dashboard/web API login requirements so the frontend can call `/api` routes without a session token. This does **not** disable MCP endpoint authentication.
+- `skipAuth` (boolean): If true, skips dashboard/web API login requirements so the frontend can call `/api` routes without a session token. Unauthenticated dashboard users are treated as the built-in `guest` administrator, so enable this only in trusted environments. This does **not** disable MCP endpoint authentication.
 
 #### Install Configuration (`install`)
 

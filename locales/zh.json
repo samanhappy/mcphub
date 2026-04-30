@@ -637,7 +637,7 @@
     "selectAtLeastOneGroup": "请至少选择一个分组",
     "selectAtLeastOneServer": "请至少选择一个服务器",
     "skipAuth": "免登录开关",
-    "skipAuthDescription": "允许仪表盘免登录（不影响 MCP 端点认证）",
+    "skipAuthDescription": "允许仪表盘免登录；未认证用户将获得 guest 管理员访问权限（不影响 MCP 端点认证）",
     "jsonBodyLimit": "JSON 请求体大小限制",
     "jsonBodyLimitDescription": "Express JSON 请求体大小限制，大型 OpenAPI schema 上传也会受此配置影响。",
     "jsonBodyLimitPlaceholder": "例如：1mb、5mb、1024kb",

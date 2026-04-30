@@ -635,7 +635,7 @@
     "selectAtLeastOneGroup": "Please select at least one group",
     "selectAtLeastOneServer": "Please select at least one server",
     "skipAuth": "Skip Authentication",
-    "skipAuthDescription": "Allow dashboard access without login (does not affect MCP endpoint auth)",
+    "skipAuthDescription": "Allow dashboard access without login; unauthenticated users get guest admin access (does not affect MCP endpoint auth)",
     "jsonBodyLimit": "JSON Body Size Limit",
     "jsonBodyLimitDescription": "Express JSON request size limit. This affects large OpenAPI schema uploads as well.",
     "jsonBodyLimitPlaceholder": "e.g. 1mb, 5mb, 1024kb",

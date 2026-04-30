@@ -77,6 +77,17 @@ const createSkipAuthUser = () => ({
   isAdmin: true,
 });
 
+const isDashboardApiRequest = (req: Request): boolean => {
+  const basePath = defaultConfig.basePath || '';
+  const apiPrefix = `${basePath}/api`;
+
+  return (
+    req.baseUrl === apiPrefix ||
+    req.originalUrl === apiPrefix ||
+    req.originalUrl.startsWith(`${apiPrefix}/`)
+  );
+};
+
 // Middleware to authenticate JWT token
 export const auth = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   const t = (req as any).t;
@@ -92,12 +103,6 @@ export const auth = async (req: Request, res: Response, next: NextFunction): Pro
     enableGroupNameRoute: true,
     skipAuth: false,
   };
-
-  if (routingConfig.skipAuth) {
-    (req as any).user = createSkipAuthUser();
-    next();
-    return;
-  }
 
   // Check if bearer auth via configured keys can validate this request
   if (await validateBearerAuth(req, systemConfig)) {
@@ -143,6 +148,12 @@ export const auth = async (req: Request, res: Response, next: NextFunction): Pro
   const headerToken = req.header('x-auth-token');
   const queryToken = req.query.token as string;
   const token = headerToken || queryToken;
+
+  if (!token && routingConfig.skipAuth && isDashboardApiRequest(req)) {
+    (req as any).user = createSkipAuthUser();
+    next();
+    return;
+  }
 
   // Check if no token
   if (!token) {

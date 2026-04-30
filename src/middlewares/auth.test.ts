@@ -1,6 +1,7 @@
 import express from 'express';
 import request from 'supertest';
 import { jest } from '@jest/globals';
+import { authenticatedRouteRateLimiter } from '../utils/rateLimit.js';
 
 const currentSystemConfig = {
   routing: {
@@ -71,7 +72,7 @@ describe('auth middleware', () => {
 
   const createApp = () => {
     const app = express();
-    app.get('/protected', (req, _res, next) => {
+    app.get('/api/protected', authenticatedRouteRateLimiter, (req, _res, next) => {
       (req as any).t = (value: string) => value;
       next();
     }, auth, (_req, res) => {
@@ -85,7 +86,7 @@ describe('auth middleware', () => {
 
     const app = createApp();
     const response = await request(app)
-      .get('/protected')
+      .get('/api/protected')
       .set('Authorization', 'Bearer test-key');
 
     expect(response.status).toBe(401);
@@ -95,7 +96,7 @@ describe('auth middleware', () => {
   it('still accepts bearer key auth when enableBearerAuth is true', async () => {
     const app = createApp();
     const response = await request(app)
-      .get('/protected')
+      .get('/api/protected')
       .set('Authorization', 'Bearer test-key');
 
     expect(response.status).toBe(200);
@@ -106,10 +107,33 @@ describe('auth middleware', () => {
     currentSystemConfig.routing.skipAuth = true;
 
     const app = createApp();
-    const response = await request(app).get('/protected');
+    const response = await request(app).get('/api/protected');
 
     expect(response.status).toBe(200);
     expect(response.body).toEqual({ success: true });
+  });
+
+  it('does not bypass non-dashboard routes when skipAuth is true', async () => {
+    currentSystemConfig.routing.skipAuth = true;
+
+    const app = express();
+    app.get(
+      '/protected',
+      authenticatedRouteRateLimiter,
+      (req, _res, next) => {
+        (req as any).t = (value: string) => value;
+        next();
+      },
+      auth,
+      (_req, res) => {
+        res.status(200).json({ success: true });
+      },
+    );
+
+    const response = await request(app).get('/protected');
+
+    expect(response.status).toBe(401);
+    expect(response.body).toEqual({ success: false, message: 'No token, authorization denied' });
   });
 
   it('attaches a guest admin user when skipAuth is true', async () => {
@@ -117,7 +141,8 @@ describe('auth middleware', () => {
 
     const app = express();
     app.get(
-      '/protected-user',
+      '/api/protected-user',
+      authenticatedRouteRateLimiter,
       (req, _res, next) => {
         (req as any).t = (value: string) => value;
         next();
@@ -131,7 +156,7 @@ describe('auth middleware', () => {
       },
     );
 
-    const response = await request(app).get('/protected-user');
+    const response = await request(app).get('/api/protected-user');
 
     expect(response.status).toBe(200);
     expect(response.body).toEqual({

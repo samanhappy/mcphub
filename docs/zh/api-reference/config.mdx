@@ -26,7 +26,7 @@ import { Card, Cards } from 'mintlify';
 - `enableGroupNameRoute` (boolean): 启用或禁用基于群组的路由 (例如 `/api/mcp/group/:groupName`)。
 - `enableBearerAuth` (boolean): 为 MCP 端点启用 Bearer 令牌身份验证（默认：`true`）。
 - `bearerAuthKey` (string): 旧版 Bearer 密钥（仅用于一次性迁移）。
-- `skipAuth` (boolean): 如果为 true，则跳过仪表盘 / Web API 的登录要求，前端可在没有会话令牌的情况下访问 `/api` 路由，但**不会**关闭 MCP 端点认证。
+- `skipAuth` (boolean): 如果为 true，则跳过仪表盘 / Web API 的登录要求，前端可在没有会话令牌的情况下访问 `/api` 路由。未登录的仪表盘用户会被视为内置 `guest` 管理员，因此仅应在受信任环境中启用，但**不会**关闭 MCP 端点认证。
 
 #### 安装配置 (`install`)
 
