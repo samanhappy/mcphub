@@ -25,7 +25,8 @@ describe('ConfigController - getMcpSettingsJson', () => {
     mockStatus = jest.fn().mockReturnThis();
     mockRequest = {
       query: {},
-    };
+      user: { username: 'admin', isAdmin: true },
+    } as Partial<Request> & { user: { username: string; isAdmin: boolean } };
     mockResponse = {
       json: mockJson,
       status: mockStatus,
@@ -52,6 +53,67 @@ describe('ConfigController - getMcpSettingsJson', () => {
     (DaoFactory.getOAuthClientDao as unknown as jest.Mock).mockReturnValue(mockOAuthClientDao);
     (DaoFactory.getOAuthTokenDao as unknown as jest.Mock).mockReturnValue(mockOAuthTokenDao);
     (DaoFactory.getBearerKeyDao as unknown as jest.Mock).mockReturnValue(mockBearerKeyDao);
+  });
+
+  it('should reject full settings export for non-admin users', async () => {
+    mockRequest = {
+      query: {},
+      user: { username: 'regular-user', isAdmin: false },
+    } as Partial<Request> & { user: { username: string; isAdmin: boolean } };
+
+    await getMcpSettingsJson(mockRequest as Request, mockResponse as Response);
+
+    expect(mockStatus).toHaveBeenCalledWith(403);
+    expect(mockJson).toHaveBeenCalledWith({
+      success: false,
+      message: 'Admin privileges required',
+    });
+    expect(mockUserDao.findAll).not.toHaveBeenCalled();
+    expect(mockOAuthClientDao.findAll).not.toHaveBeenCalled();
+    expect(mockOAuthTokenDao.findAll).not.toHaveBeenCalled();
+    expect(mockBearerKeyDao.findAll).not.toHaveBeenCalled();
+  });
+
+  it('should redact secrets from full settings export', async () => {
+    mockServerDao.findAll.mockResolvedValue([]);
+    mockUserDao.findAll.mockResolvedValue([
+      { username: 'admin', password: '$2b$hash', isAdmin: true },
+    ]);
+    mockGroupDao.findAll.mockResolvedValue([]);
+    mockSystemConfigDao.get.mockResolvedValue({});
+    mockUserConfigDao.getAll.mockResolvedValue({});
+    mockOAuthClientDao.findAll.mockResolvedValue([
+      { clientId: 'client-1', clientSecret: 'secret', name: 'client', redirectUris: [], grants: [] },
+    ]);
+    mockOAuthTokenDao.findAll.mockResolvedValue([
+      {
+        accessToken: 'access-token',
+        refreshToken: 'refresh-token',
+        clientId: 'client-1',
+        username: 'admin',
+      },
+    ]);
+    mockBearerKeyDao.findAll.mockResolvedValue([
+      { id: 'key-1', name: 'key', token: 'bearer-token', enabled: true, accessType: 'all' },
+    ]);
+
+    await getMcpSettingsJson(mockRequest as Request, mockResponse as Response);
+
+    expect(mockJson).toHaveBeenCalledWith({
+      success: true,
+      data: {
+        mcpServers: {},
+        users: [{ username: 'admin', isAdmin: true }],
+        groups: [],
+        systemConfig: {},
+        userConfigs: {},
+        oauthClients: [
+          { clientId: 'client-1', name: 'client', redirectUris: [], grants: [] },
+        ],
+        oauthTokens: [{ clientId: 'client-1', username: 'admin' }],
+        bearerKeys: [{ id: 'key-1', name: 'key', enabled: true, accessType: 'all' }],
+      },
+    });
   });
 
   describe('Individual Server Export', () => {
