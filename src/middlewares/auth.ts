@@ -50,6 +50,16 @@ const validateBearerAuth = async (req: Request, systemConfig?: SystemConfig | nu
     return false;
   }
 
+  // Dashboard/API bearer authentication grants access to non-MCP management routes.
+  // Scoped keys are enforced on MCP routes in sseService.ts and must not bypass
+  // dashboard API authorization.
+  if (matchingKey.accessType !== 'all') {
+    console.warn(
+      `Bearer auth denied for dashboard API: key id=${matchingKey.id}, name=${matchingKey.name} has restricted accessType=${matchingKey.accessType}`,
+    );
+    return false;
+  }
+
   console.log(
     `Bearer auth succeeded with key id=${matchingKey.id}, name=${matchingKey.name}, accessType=${matchingKey.accessType}`,
   );

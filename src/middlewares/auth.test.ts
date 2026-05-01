@@ -103,6 +103,70 @@ describe('auth middleware', () => {
     expect(response.body).toEqual({ success: true });
   });
 
+  it('does not accept group-scoped bearer key auth for dashboard API routes', async () => {
+    findEnabledMock.mockResolvedValue([
+      {
+        id: 'key-2',
+        name: 'group-scoped',
+        token: 'group-key',
+        enabled: true,
+        accessType: 'groups',
+        allowedGroups: ['engineering'],
+      },
+    ]);
+
+    const app = createApp();
+    const response = await request(app)
+      .get('/api/protected')
+      .set('Authorization', 'Bearer group-key');
+
+    expect(response.status).toBe(401);
+    expect(response.body).toEqual({ success: false, message: 'No token, authorization denied' });
+  });
+
+  it('does not accept server-scoped bearer key auth for dashboard API routes', async () => {
+    findEnabledMock.mockResolvedValue([
+      {
+        id: 'key-3',
+        name: 'server-scoped',
+        token: 'server-key',
+        enabled: true,
+        accessType: 'servers',
+        allowedServers: ['filesystem'],
+      },
+    ]);
+
+    const app = createApp();
+    const response = await request(app)
+      .get('/api/protected')
+      .set('Authorization', 'Bearer server-key');
+
+    expect(response.status).toBe(401);
+    expect(response.body).toEqual({ success: false, message: 'No token, authorization denied' });
+  });
+
+  it('does not accept custom-scoped bearer key auth for dashboard API routes', async () => {
+    findEnabledMock.mockResolvedValue([
+      {
+        id: 'key-4',
+        name: 'custom-scoped',
+        token: 'custom-key',
+        enabled: true,
+        accessType: 'custom',
+        allowedGroups: ['engineering'],
+        allowedServers: ['filesystem'],
+      },
+    ]);
+
+    const app = createApp();
+    const response = await request(app)
+      .get('/api/protected')
+      .set('Authorization', 'Bearer custom-key');
+
+    expect(response.status).toBe(401);
+    expect(response.body).toEqual({ success: false, message: 'No token, authorization denied' });
+  });
+
   it('bypasses dashboard API authentication when skipAuth is true', async () => {
     currentSystemConfig.routing.skipAuth = true;
 
