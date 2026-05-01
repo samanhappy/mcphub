@@ -100,7 +100,10 @@ export const getPublicConfig = (req: Request, res: Response): void => {
 /**
  * Recursively remove null values from an object
  */
-const omitSensitiveFields = <T extends Record<string, any>>(items: T[], fields: string[]): Omit<T, string>[] =>
+const omitSensitiveFields = <T extends Record<string, any>, K extends keyof T & string>(
+  items: T[],
+  fields: readonly K[],
+): Omit<T, K>[] =>
   items.map((item) => {
     const sanitized = { ...item };
     for (const field of fields) {
