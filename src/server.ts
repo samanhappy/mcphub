@@ -20,6 +20,7 @@ import { getCurrentModuleDir } from './utils/moduleDir.js';
 import { initOAuthProvider, getOAuthRouter } from './services/oauthService.js';
 import { initOAuthServer } from './services/oauthServerService.js';
 import { safeStringify } from './utils/serialization.js';
+import { resolveTrustProxySetting } from './utils/proxyTrust.js';
 import http from 'http';
 import { mcpConnectionRateLimiter } from './utils/rateLimit.js';
 
@@ -51,11 +52,7 @@ export class AppServer {
 
   constructor() {
     this.app = express();
-    const trustProxySetting =
-      process.env.TRUST_PROXY === 'true'
-        ? 1
-        : false;
-    this.app.set('trust proxy', trustProxySetting);
+    this.app.set('trust proxy', resolveTrustProxySetting());
     this.app.use(
       cors({
         origin: true,

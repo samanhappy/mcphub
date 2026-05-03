@@ -105,6 +105,7 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=3000
+      - TRUST_PROXY=1
       - JWT_SECRET=${JWT_SECRET:-your-jwt-secret}
       - DB_URL=postgresql://mcphub:password@postgres:5432/mcphub
     volumes:
@@ -178,6 +179,7 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=3000
+      - TRUST_PROXY=1
       - JWT_SECRET=${JWT_SECRET}
       - JWT_EXPIRES_IN=${JWT_EXPIRES_IN:-24h}
       - DB_URL=postgresql://mcphub:${POSTGRES_PASSWORD}@postgres:5432/mcphub
@@ -255,6 +257,7 @@ Create a `.env` file for Docker Compose:
 ```env
 # Application
 NODE_ENV=production
+TRUST_PROXY=1
 JWT_SECRET=your-super-secret-jwt-key-change-this
 JWT_EXPIRES_IN=24h
 
@@ -535,6 +538,8 @@ services:
 ### Common Issues
 
 **Container fails to start**: Check logs with `docker-compose logs mcphub`
+
+**Rate-limit warning about `X-Forwarded-For`**: Set `TRUST_PROXY=1` when MCPHub is behind Nginx, Traefik, a load balancer, or another reverse proxy. Recent versions also default to trusting one proxy automatically inside Docker/Kubernetes, but keeping it explicit in production compose files is recommended.
 
 **Database connection errors**: Ensure PostgreSQL is healthy and accessible
 

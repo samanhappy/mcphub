@@ -18,6 +18,7 @@ MCPHub uses environment variables for configuration. This guide covers all avail
 | `BASE_PATH` | `''` | The base path of the application |
 | `READONLY` | `false` | Set to `true` to enable readonly mode |
 | `DISABLE_WEB` | `false` | Set to `true` to disable the bundled dashboard UI while keeping backend/API and MCP endpoints available |
+| `TRUST_PROXY` | auto | Express proxy trust setting for reverse-proxy deployments. Accepts `false`, `true`, a hop count such as `1` or `2`, or named presets like `loopback, linklocal, uniquelocal`. Defaults to `1` when running inside Docker/Kubernetes and `false` otherwise. |
 | `MCPHUB_SETTING_PATH` | | Path to the MCPHub settings |
 | `NODE_ENV` | `development` | Application environment (`development`, `production`, `test`) |
 
@@ -27,6 +28,7 @@ INIT_TIMEOUT=300000
 BASE_PATH=/api
 READONLY=true
 DISABLE_WEB=true
+TRUST_PROXY=1
 MCPHUB_SETTING_PATH=/path/to/settings
 NODE_ENV=production
 ```

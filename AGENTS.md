@@ -346,10 +346,6 @@ When adding/changing fields, update **ALL** these files:
 - Forgetting migration script → fields won't migrate to DB
 - Optional fields need `nullable: true` in entity
 - Complex objects need `simple-json` column type
-- For authenticated `/api` routes, CodeQL's `Missing rate limiting` query expects explicit limiter wiring close to the protected handlers. Apply `authenticatedRouteRateLimiter` directly on the same router that defines the sensitive handlers (for example `authenticatedRouter.use(authenticatedRouteRateLimiter)` in `src/routes/index.ts`) instead of relying only on the top-level auth middleware in `src/middlewares/index.ts` or a parent router mounting pattern that CodeQL may not follow.
-- Runtime-updated system settings (especially `systemConfig.routing` auth/body-limit flags) should be read via `SystemConfigDao`, not `loadSettings()`. In DB-backed or mixed DAO/file flows, `loadSettings()` can return stale values for settings changed from the dashboard/API.
-- Request-scoped authentication or ownership state must use `AsyncLocalStorage` (or another request-safe context carrier). Do **not** store the current user in a mutable process-wide singleton field, or concurrent requests can overwrite each other's authorization context.
-- For multi-user resources with an `owner` field (for example groups, servers, or OAuth clients), read-path filtering alone is **not** sufficient. Any mutating service method must enforce `currentUser.isAdmin || resource.owner === currentUser.username` before calling DAO update/delete helpers, otherwise UUID-based write endpoints can become IDORs.
 
 ## Auto-Evolution Guidelines for AI Agents
 
