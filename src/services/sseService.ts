@@ -59,8 +59,25 @@ const isValidUUID = (str: string): boolean => {
   return uuidRegex.test(str);
 };
 
+const normalizeBearerScopeParam = (groupParam?: string): string | undefined => {
+  if (!groupParam) {
+    return undefined;
+  }
+
+  if (groupParam.startsWith('$smart/')) {
+    const targetGroup = groupParam.substring(7).trim();
+    return targetGroup || undefined;
+  }
+
+  if (groupParam === '$smart') {
+    return undefined;
+  }
+
+  return groupParam;
+};
+
 const isBearerKeyAllowedForRequest = async (req: Request, key: BearerKey): Promise<boolean> => {
-  const paramValue = (req.params as any)?.group as string | undefined;
+  const paramValue = normalizeBearerScopeParam((req.params as any)?.group as string | undefined);
 
   // accessType 'all' allows all requests
   if (key.accessType === 'all') {

@@ -352,6 +352,52 @@ describe('sseService', () => {
       expect(res.status).not.toHaveBeenCalledWith(401);
       expect(SSEServerTransport).toHaveBeenCalled();
     });
+
+    it('should allow group-scoped bearer keys on smart routing group paths (issue #784)', async () => {
+      setMockSystemConfig({
+        routing: {
+          enableGlobalRoute: true,
+          enableGroupNameRoute: true,
+          enableBearerAuth: true,
+          bearerAuthKey: 'group-token',
+          skipAuth: false,
+        },
+      });
+
+      (getBearerKeyDao as jest.MockedFunction<any>).mockReturnValueOnce({
+        findEnabled: jest.fn().mockResolvedValue([
+          {
+            id: 'smart-group-key-id',
+            name: 'smart-group-key',
+            token: 'group-token',
+            enabled: true,
+            accessType: 'groups',
+            allowedGroups: ['my-group'],
+            allowedServers: [],
+          },
+        ]),
+      });
+
+      (getGroupDao as jest.MockedFunction<any>).mockReturnValueOnce({
+        findByName: jest.fn().mockImplementation((name: string) =>
+          name === 'my-group'
+            ? Promise.resolve({ id: 'my-group-id', name: 'my-group', servers: [] })
+            : Promise.resolve(null),
+        ),
+        findById: jest.fn().mockResolvedValue(null),
+      });
+
+      const req = createMockRequest({
+        headers: { authorization: 'Bearer group-token' },
+        params: { group: '$smart/my-group' },
+      });
+      const res = createMockResponse();
+
+      await handleSseConnection(req, res);
+
+      expect(res.status).not.toHaveBeenCalledWith(401);
+      expect(SSEServerTransport).toHaveBeenCalled();
+    });
   });
 
   describe('getGroup', () => {
