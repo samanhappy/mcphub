@@ -9,11 +9,6 @@ RUN apt-get update && apt-get install -y curl gnupg git build-essential \
 
 RUN npm install -g pnpm
 
-ENV PNPM_HOME=/usr/local/share/pnpm
-ENV PATH=$PNPM_HOME:$PATH
-RUN mkdir -p $PNPM_HOME && \
-  pnpm add -g @amap/amap-maps-mcp-server @playwright/mcp@latest tavily-mcp@latest @modelcontextprotocol/server-github @modelcontextprotocol/server-slack
-
 ARG INSTALL_EXT=false
 RUN if [ "$INSTALL_EXT" = "true" ]; then \
   ARCH=$(uname -m); \
