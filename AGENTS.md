@@ -299,6 +299,23 @@ pnpm build                  # Full build must work - ~10 seconds
 - **Frontend proxy errors**: Ensure backend is running before starting frontend
 - **Hot reload not working**: Restart development server
 
+### Private GitHub Security Advisories
+
+- If a GitHub security advisory page is private, check it with GitHub CLI.
+- Verify access first:
+
+```bash
+gh auth status
+```
+
+- Fetch a repository advisory directly:
+
+```bash
+gh api repos/samanhappy/mcphub/security-advisories/GHSA-<id>
+```
+
+- When checking whether the issue still exists, compare the advisory with current code, fix commits, and tags that contain the fix.
+
 ## DAO Layer & Dual Data Source
 
 MCPHub supports **JSON file** (default) and **PostgreSQL** storage. Set `USE_DB=true` + `DB_URL` to switch.
