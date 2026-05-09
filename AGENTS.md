@@ -311,7 +311,7 @@ gh auth status
 - Fetch a repository advisory directly:
 
 ```bash
-gh api repos/samanhappy/mcphub/security-advisories/GHSA-<id>
+gh api repos/samanhappy/mcphub/security-advisories/<ghsa_id>
 ```
 
 - When checking whether the issue still exists, compare the advisory with current code, fix commits, and tags that contain the fix.
