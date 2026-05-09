@@ -968,10 +968,14 @@ const stableHashSerialize = (value: unknown): string => {
 };
 
 const buildToolSetHash = (tools: Tool[]): string => {
+  // Exclude description from the hash — some MCP servers (e.g. Wiz, Cortex) inject
+  // dynamic content into descriptions (permission checks, scope warnings) that changes
+  // on every connection, causing cache misses and unnecessary embedding regeneration.
+  // The tool's identity and schema (name + inputSchema) are stable structural properties
+  // and sufficient to detect real tool-set changes.
   const normalized = tools
     .map((tool) => ({
       name: tool.name || '',
-      description: tool.description || '',
       inputSchema: tool.inputSchema || null,
     }))
     .sort((a, b) => a.name.localeCompare(b.name));
