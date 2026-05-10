@@ -1387,6 +1387,12 @@ export const reconnectServer = async (serverName: string): Promise<void> => {
     throw new Error(`Server not found: ${serverName}`);
   }
 
+  const serverConfig = await getServerDao().findById(serverName);
+  if (serverConfig?.enabled === false) {
+    console.log(`Skipping reconnect for disabled server: ${serverName}`);
+    return;
+  }
+
   // Close existing connection if any
   if (serverInfo.client) {
     try {
