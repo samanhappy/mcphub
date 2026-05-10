@@ -54,7 +54,7 @@ describe('sseUserContextMiddleware', () => {
   });
 
   it('rejects user-scoped SSE requests when JWT user is not found in persistence', async () => {
-    const token = jwt.sign({ user: { username: 'ghost', password: '', isAdmin: false } }, JWT_SECRET);
+    const token = jwt.sign({ user: { username: 'ghost', isAdmin: false } }, JWT_SECRET);
     findByUsernameMock.mockResolvedValue(null);
     const { response, status, json } = createResponse();
     const next = jest.fn();
@@ -79,7 +79,7 @@ describe('sseUserContextMiddleware', () => {
   });
 
   it('allows user-scoped SSE requests when JWT user exists and matches the route user', async () => {
-    const token = jwt.sign({ user: { username: 'alice', password: '', isAdmin: false } }, JWT_SECRET);
+    const token = jwt.sign({ user: { username: 'alice', isAdmin: false } }, JWT_SECRET);
     findByUsernameMock.mockResolvedValue({ username: 'alice', password: 'hashed', isAdmin: false });
     const { response, status } = createResponse();
     const next = jest.fn();
@@ -98,7 +98,7 @@ describe('sseUserContextMiddleware', () => {
   });
 
   it('rejects user-scoped SSE requests when authenticated user does not match route user', async () => {
-    const token = jwt.sign({ user: { username: 'alice', password: '', isAdmin: false } }, JWT_SECRET);
+    const token = jwt.sign({ user: { username: 'alice', isAdmin: false } }, JWT_SECRET);
     findByUsernameMock.mockResolvedValue({ username: 'alice', password: 'hashed', isAdmin: false });
     const { response, status, json } = createResponse();
     const next = jest.fn();
