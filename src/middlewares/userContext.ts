@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
-import { getSystemConfigDao } from '../dao/index.js';
+import { getSystemConfigDao, getUserDao } from '../dao/index.js';
 import { JWT_SECRET } from '../config/jwt.js';
 import { UserContextService } from '../services/userContextService.js';
 import { IUser } from '../types/index.js';
@@ -36,7 +36,17 @@ const resolveAuthenticatedUserForSse = async (req: Request): Promise<IUser | nul
     return null;
   }
 
-  return resolveJwtUser(req);
+  const jwtUser = resolveJwtUser(req);
+  if (!jwtUser?.username) {
+    return null;
+  }
+
+  const persistedUser = await getUserDao().findByUsername(jwtUser.username);
+  if (!persistedUser) {
+    return null;
+  }
+
+  return persistedUser;
 };
 
 /**
