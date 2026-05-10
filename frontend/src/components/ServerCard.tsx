@@ -9,8 +9,6 @@ import ResourceCard from '@/components/ui/ResourceCard';
 import DeleteDialog from '@/components/ui/DeleteDialog';
 import { useToast } from '@/contexts/ToastContext';
 import { useSettingsData } from '@/hooks/useSettingsData';
-import { toggleTool } from '@/services/toolService';
-import { togglePrompt } from '@/services/promptService';
 
 interface ServerCardProps {
   server: Server;
@@ -185,6 +183,7 @@ const ServerCard = ({
 
   const handleToolToggle = async (toolName: string, enabled: boolean) => {
     try {
+      const { toggleTool } = await import('@/services/toolService');
       const result = await toggleTool(server.name, toolName, enabled);
       if (result.success) {
         showToast(
@@ -206,6 +205,7 @@ const ServerCard = ({
 
   const handlePromptToggle = async (promptName: string, enabled: boolean) => {
     try {
+      const { togglePrompt } = await import('@/services/promptService');
       const result = await togglePrompt(server.name, promptName, enabled);
       if (result.success) {
         showToast(
