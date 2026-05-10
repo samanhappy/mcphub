@@ -5,6 +5,7 @@ import { JWT_SECRET } from '../../src/config/jwt.js';
 
 const getSystemConfigMock = jest.fn();
 const findByUsernameMock = jest.fn();
+const countMock = jest.fn();
 const resolveOAuthUserFromHeadersMock = jest.fn();
 const getBearerTokenFromHeadersMock = jest.fn();
 
@@ -14,6 +15,7 @@ jest.mock('../../src/dao/index.js', () => ({
   }),
   getUserDao: () => ({
     findByUsername: findByUsernameMock,
+    count: countMock,
   }),
 }));
 
@@ -49,6 +51,7 @@ describe('sseUserContextMiddleware', () => {
   beforeEach(() => {
     getSystemConfigMock.mockResolvedValue({});
     findByUsernameMock.mockReset();
+    countMock.mockReset();
     resolveOAuthUserFromHeadersMock.mockResolvedValue(null);
     getBearerTokenFromHeadersMock.mockReturnValue(undefined);
   });
@@ -56,6 +59,7 @@ describe('sseUserContextMiddleware', () => {
   it('rejects user-scoped SSE requests when JWT user is not found in persistence', async () => {
     const token = jwt.sign({ user: { username: 'ghost', isAdmin: false } }, JWT_SECRET);
     findByUsernameMock.mockResolvedValue(null);
+    countMock.mockResolvedValue(2); // users ARE configured
     const { response, status, json } = createResponse();
     const next = jest.fn();
     const req = {
@@ -120,5 +124,27 @@ describe('sseUserContextMiddleware', () => {
       }),
     );
     expect(next).not.toHaveBeenCalled();
+  });
+
+  it('allows user-scoped SSE requests when no users are configured (no user management)', async () => {
+    // Simulates deployments with smart routing disabled or fresh installs —
+    // no users in storage means user-scoped JWT claims are trusted as-is.
+    const token = jwt.sign({ user: { username: 'alice', isAdmin: false } }, JWT_SECRET);
+    findByUsernameMock.mockResolvedValue(null);
+    countMock.mockResolvedValue(0); // no users in system
+    const { response, status } = createResponse();
+    const next = jest.fn();
+    const req = {
+      params: { user: 'alice' },
+      header: (name: string) => (name === 'x-auth-token' ? token : undefined),
+      query: {},
+      headers: {},
+    } as unknown as Request;
+
+    await sseUserContextMiddleware(req, response, next);
+    await waitForAsyncMiddleware();
+
+    expect(next).toHaveBeenCalledTimes(1);
+    expect(status).not.toHaveBeenCalled();
   });
 });

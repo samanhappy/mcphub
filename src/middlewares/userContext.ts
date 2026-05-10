@@ -42,11 +42,19 @@ const resolveAuthenticatedUserForSse = async (req: Request): Promise<IUser | nul
   }
 
   const persistedUser = await getUserDao().findByUsername(jwtUser.username);
-  if (!persistedUser) {
-    return null;
+  if (persistedUser) {
+    return persistedUser;
   }
 
-  return persistedUser;
+  // No matching user found — check if user management is configured at all.
+  // When no users exist in the system (e.g. smart routing disabled, fresh install),
+  // fall back to trusting the JWT payload rather than hard-denying.
+  const totalUsers = await getUserDao().count();
+  if (totalUsers === 0) {
+    return jwtUser;
+  }
+
+  return null;
 };
 
 /**
