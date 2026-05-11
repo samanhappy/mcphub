@@ -686,7 +686,7 @@ export const createTransportFromConfig = async (name: string, conf: ServerConfig
 
   if (conf.type === 'streamable-http') {
     const options: StreamableHTTPClientTransportOptions = {};
-    const headers = conf.headers ? replaceEnvVars(conf.headers) : {};
+    const headers = conf.headers ? replaceEnvVars(conf.headers, env) : {};
     const baseFetch = createFetchWithProxy(getProxyConfigFromEnv(env));
     const requestAwareFetch = createRequestContextAwareFetch(baseFetch, conf.passthroughHeaders);
 
@@ -709,7 +709,7 @@ export const createTransportFromConfig = async (name: string, conf: ServerConfig
   } else if (conf.url) {
     // SSE transport
     const options: any = {};
-    const headers = conf.headers ? replaceEnvVars(conf.headers) : {};
+    const headers = conf.headers ? replaceEnvVars(conf.headers, env) : {};
     const baseFetch = createFetchWithProxy(getProxyConfigFromEnv(env));
     const requestAwareFetch = createRequestContextAwareFetch(baseFetch, conf.passthroughHeaders);
 

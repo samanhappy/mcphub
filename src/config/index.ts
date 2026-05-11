@@ -124,21 +124,31 @@ export const getSettingsCacheInfo = (): { hasCache: boolean } => {
   };
 };
 
-export function replaceEnvVars(input: Record<string, any>): Record<string, any>;
-export function replaceEnvVars(input: string[] | undefined): string[];
-export function replaceEnvVars(input: string): string;
+export function replaceEnvVars(
+  input: Record<string, any>,
+  envSource?: Record<string, string | undefined>,
+): Record<string, any>;
+export function replaceEnvVars(
+  input: string[] | undefined,
+  envSource?: Record<string, string | undefined>,
+): string[];
+export function replaceEnvVars(
+  input: string,
+  envSource?: Record<string, string | undefined>,
+): string;
 export function replaceEnvVars(
   input: Record<string, any> | string[] | string | undefined,
+  envSource: Record<string, string | undefined> = process.env,
 ): Record<string, any> | string[] | string {
   // Handle object input - recursively expand all nested values
   if (input && typeof input === 'object' && !Array.isArray(input)) {
     const res: Record<string, any> = {};
     for (const [key, value] of Object.entries(input)) {
       if (typeof value === 'string') {
-        res[key] = expandEnvVars(value);
+        res[key] = expandEnvVars(value, envSource);
       } else if (typeof value === 'object' && value !== null) {
         // Recursively handle nested objects and arrays
-        res[key] = replaceEnvVars(value as any);
+        res[key] = replaceEnvVars(value as any, envSource);
       } else {
         // Preserve non-string, non-object values (numbers, booleans, etc.)
         res[key] = value;
@@ -151,9 +161,9 @@ export function replaceEnvVars(
   if (Array.isArray(input)) {
     return input.map((item) => {
       if (typeof item === 'string') {
-        return expandEnvVars(item);
+        return expandEnvVars(item, envSource);
       } else if (typeof item === 'object' && item !== null) {
-        return replaceEnvVars(item as any);
+        return replaceEnvVars(item as any, envSource);
       }
       return item;
     });
@@ -161,7 +171,7 @@ export function replaceEnvVars(
 
   // Handle string input
   if (typeof input === 'string') {
-    return expandEnvVars(input);
+    return expandEnvVars(input, envSource);
   }
 
   // Handle undefined/null array input
@@ -177,14 +187,17 @@ export function replaceEnvVars(
  * Trimming here prevents hard-to-diagnose API failures caused by accidental
  * whitespace in values at the beginning or end of the string.
  */
-export const expandEnvVars = (value: string): string => {
+export const expandEnvVars = (
+  value: string,
+  envSource: Record<string, string | undefined> = process.env,
+): string => {
   if (typeof value !== 'string') {
     return String(value);
   }
   // Replace ${VAR} format
-  let result = value.replace(/\$\{([^}]+)\}/g, (_, key) => process.env[key] || '');
+  let result = value.replace(/\$\{([^}]+)\}/g, (_, key) => envSource[key] || '');
   // Also replace $VAR format (common on Unix-like systems)
-  result = result.replace(/\$([A-Z_][A-Z0-9_]*)/g, (_, key) => process.env[key] || '');
+  result = result.replace(/\$([A-Z_][A-Z0-9_]*)/g, (_, key) => envSource[key] || '');
   return result.trim();
 };
 
