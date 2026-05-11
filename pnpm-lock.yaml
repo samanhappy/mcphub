@@ -120,7 +120,7 @@ importers:
         version: 9.0.3
       kysely:
         specifier: ^0.28.9
-        version: 0.28.14
+        version: 0.28.17
       multer:
         specifier: ^2.0.2
         version: 2.1.1
@@ -2393,8 +2393,8 @@ packages:
     engines: {node: '>=6.0.0'}
     hasBin: true
 
-  baseline-browser-mapping@2.10.28:
-    resolution: {integrity: sha512-Ic44hnOtFIgravCunj1ifSoQPSUrkNiJuH9Mf6jr2jjoA74icqV8wU0KuadXeOR8zuIJMOoTv0GuQjZ9ZYNMeA==}
+  baseline-browser-mapping@2.10.29:
+    resolution: {integrity: sha512-Asa2krT+XTPZINCS+2QcyS8WTkObE77RwkydwF7h6DmnKqbvlalz93m/dnphUyCa6SWSP51VgtEUf2FN+gelFQ==}
     engines: {node: '>=6.0.0'}
     hasBin: true
 
@@ -3654,8 +3654,8 @@ packages:
     resolution: {integrity: sha512-eTIzlVOSUR+JxdDFepEYcBMtZ9Qqdef+rnzWdRZuMbOywu5tO2w2N7rqjoANZ5k9vywhL6Br1VRjUIgTQx4E8w==}
     engines: {node: '>=6'}
 
-  kysely@0.28.14:
-    resolution: {integrity: sha512-SU3lgh0rPvq7upc6vvdVrCsSMUG1h3ChvHVOY7wJ2fw4C9QEB7X3d5eyYEyULUX7UQtxZJtZXGuT6U2US72UYA==}
+  kysely@0.28.17:
+    resolution: {integrity: sha512-nbD8lB9EB3wNdMhOCdx5Li8DxnLbvKByylRLcJ1h+4SkrowVeECAyZlyiKMThF7xFdRz0jSQ2MoJr+wXux2y0Q==}
     engines: {node: '>=20.0.0'}
 
   leven@3.1.0:
@@ -5386,20 +5386,20 @@ snapshots:
 
   '@bcoe/v8-coverage@0.2.3': {}
 
-  '@better-auth/core@1.4.14(@better-auth/utils@0.3.0)(@better-fetch/fetch@1.1.21)(better-call@1.1.8(zod@3.25.76))(jose@6.1.3)(kysely@0.28.14)(nanostores@1.1.0)':
+  '@better-auth/core@1.4.14(@better-auth/utils@0.3.0)(@better-fetch/fetch@1.1.21)(better-call@1.1.8(zod@3.25.76))(jose@6.1.3)(kysely@0.28.17)(nanostores@1.1.0)':
     dependencies:
       '@better-auth/utils': 0.3.0
       '@better-fetch/fetch': 1.1.21
       '@standard-schema/spec': 1.1.0
       better-call: 1.1.8(zod@4.3.5)
       jose: 6.1.3
-      kysely: 0.28.14
+      kysely: 0.28.17
       nanostores: 1.1.0
       zod: 4.3.5
 
-  '@better-auth/telemetry@1.4.14(@better-auth/core@1.4.14(@better-auth/utils@0.3.0)(@better-fetch/fetch@1.1.21)(better-call@1.1.8(zod@3.25.76))(jose@6.1.3)(kysely@0.28.14)(nanostores@1.1.0))':
+  '@better-auth/telemetry@1.4.14(@better-auth/core@1.4.14(@better-auth/utils@0.3.0)(@better-fetch/fetch@1.1.21)(better-call@1.1.8(zod@3.25.76))(jose@6.1.3)(kysely@0.28.17)(nanostores@1.1.0))':
     dependencies:
-      '@better-auth/core': 1.4.14(@better-auth/utils@0.3.0)(@better-fetch/fetch@1.1.21)(better-call@1.1.8(zod@3.25.76))(jose@6.1.3)(kysely@0.28.14)(nanostores@1.1.0)
+      '@better-auth/core': 1.4.14(@better-auth/utils@0.3.0)(@better-fetch/fetch@1.1.21)(better-call@1.1.8(zod@3.25.76))(jose@6.1.3)(kysely@0.28.17)(nanostores@1.1.0)
       '@better-auth/utils': 0.3.0
       '@better-fetch/fetch': 1.1.21
 
@@ -7070,7 +7070,7 @@ snapshots:
 
   baseline-browser-mapping@2.10.23: {}
 
-  baseline-browser-mapping@2.10.28:
+  baseline-browser-mapping@2.10.29:
     optional: true
 
   basic-auth@2.0.1:
@@ -7086,8 +7086,8 @@ snapshots:
 
   better-auth@1.4.14(better-sqlite3@12.6.2)(next@16.2.3(@babel/core@7.29.0)(react-dom@19.2.1(react@19.2.1))(react@19.2.1))(pg@8.16.3)(react-dom@19.2.1(react@19.2.1))(react@19.2.1):
     dependencies:
-      '@better-auth/core': 1.4.14(@better-auth/utils@0.3.0)(@better-fetch/fetch@1.1.21)(better-call@1.1.8(zod@3.25.76))(jose@6.1.3)(kysely@0.28.14)(nanostores@1.1.0)
-      '@better-auth/telemetry': 1.4.14(@better-auth/core@1.4.14(@better-auth/utils@0.3.0)(@better-fetch/fetch@1.1.21)(better-call@1.1.8(zod@3.25.76))(jose@6.1.3)(kysely@0.28.14)(nanostores@1.1.0))
+      '@better-auth/core': 1.4.14(@better-auth/utils@0.3.0)(@better-fetch/fetch@1.1.21)(better-call@1.1.8(zod@3.25.76))(jose@6.1.3)(kysely@0.28.17)(nanostores@1.1.0)
+      '@better-auth/telemetry': 1.4.14(@better-auth/core@1.4.14(@better-auth/utils@0.3.0)(@better-fetch/fetch@1.1.21)(better-call@1.1.8(zod@3.25.76))(jose@6.1.3)(kysely@0.28.17)(nanostores@1.1.0))
       '@better-auth/utils': 0.3.0
       '@better-fetch/fetch': 1.1.21
       '@noble/ciphers': 2.1.1
@@ -7095,7 +7095,7 @@ snapshots:
       better-call: 1.1.8(zod@4.3.5)
       defu: 6.1.6
       jose: 6.1.3
-      kysely: 0.28.14
+      kysely: 0.28.17
       nanostores: 1.1.0
       zod: 4.3.5
     optionalDependencies:
@@ -8632,7 +8632,7 @@ snapshots:
 
   kleur@3.0.3: {}
 
-  kysely@0.28.14: {}
+  kysely@0.28.17: {}
 
   leven@3.1.0: {}
 
@@ -8888,7 +8888,7 @@ snapshots:
     dependencies:
       '@next/env': 16.2.3
       '@swc/helpers': 0.5.15
-      baseline-browser-mapping: 2.10.28
+      baseline-browser-mapping: 2.10.29
       caniuse-lite: 1.0.30001792
       postcss: 8.5.10
       react: 19.2.1
