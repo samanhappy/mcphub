@@ -9,7 +9,7 @@ import { useToast } from '@/contexts/ToastContext';
 import { generateRandomKey } from '@/utils/key';
 import { PermissionChecker } from '@/components/PermissionChecker';
 import { PERMISSIONS } from '@/constants/permissions';
-import { Copy, Check, Download, Edit, Trash2, Code as CodeIcon, Zap, Database, Wrench, Sparkles, RefreshCw, Route as RouteIcon } from 'lucide-react';
+import { Copy, Check, Download, Edit, Trash2, Code as CodeIcon, Zap, Database, Wrench, Sparkles, RefreshCw, Route as RouteIcon, Key, Lock, Cloud, SlidersHorizontal, ShieldCheck, Package, KeyRound, FileDown, X } from 'lucide-react';
 import { EndpointCopy } from '@/components/ui/EndpointCopy';
 import type { BearerKey } from '@/types';
 import { useServerContext } from '@/contexts/ServerContext';
@@ -1232,21 +1232,24 @@ const SettingsPage: React.FC = () => {
 
       {/* Bearer Keys Settings */}
       <PermissionChecker permissions={PERMISSIONS.SETTINGS_ROUTE_CONFIG}>
-        <div className="bg-white dark:bg-gray-800 shadow rounded-lg mb-6 page-card dashboard-card">
+        <div className="hub-card mb-6 overflow-hidden">
           <div
             className="flex justify-between items-center cursor-pointer transition-colors hover:bg-[var(--hub-surface-hover)] py-3 px-5"
             onClick={() => toggleSection('bearerKeys')}
           >
-            <h2 className="font-medium text-[var(--hub-ink)]">
-              {t('settings.bearerKeysSectionTitle') || 'Bearer authentication keys'}
-            </h2>
-            <span className="text-[var(--hub-ink-3)] text-sm">
+            <div className="flex items-center gap-2.5">
+              <Key size={15} style={{ color: 'var(--hub-ink-2)' }} />
+              <h2 className="font-medium" style={{ color: 'var(--hub-ink)' }}>
+                {t('settings.bearerKeysSectionTitle') || 'Bearer authentication keys'}
+              </h2>
+            </div>
+            <span style={{ color: 'var(--hub-ink-3)' }}>
               {sectionsVisible.bearerKeys ? '−' : '+'}
             </span>
           </div>
 
           {sectionsVisible.bearerKeys && (
-            <div className="space-y-4 pb-4 px-6">
+            <div className="space-y-4 pb-4 px-6 pt-4" style={{ borderTop: '1px solid var(--hub-line-2)' }}>
               <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-md">
                 <div>
                   <h3 className="font-medium text-gray-700">
@@ -2200,17 +2203,20 @@ const SettingsPage: React.FC = () => {
 
       {/* OAuth Server Configuration Settings */}
       <PermissionChecker permissions={PERMISSIONS.SETTINGS_OAUTH_SERVER}>
-        <div className="bg-white dark:bg-gray-800 shadow rounded-lg mb-6 dashboard-card">
+        <div className="hub-card mb-6 overflow-hidden">
           <div
             className="flex justify-between items-center cursor-pointer transition-colors hover:bg-[var(--hub-surface-hover)] py-3 px-5"
             onClick={() => toggleSection('oauthServerConfig')}
           >
-            <h2 className="font-medium text-[var(--hub-ink)]">{t('pages.settings.oauthServer')}</h2>
-            <span className="text-[var(--hub-ink-3)] text-sm">{sectionsVisible.oauthServerConfig ? '−' : '+'}</span>
+            <div className="flex items-center gap-2.5">
+              <Lock size={15} style={{ color: 'var(--hub-ink-2)' }} />
+              <h2 className="font-medium" style={{ color: 'var(--hub-ink)' }}>{t('pages.settings.oauthServer')}</h2>
+            </div>
+            <span style={{ color: 'var(--hub-ink-3)' }}>{sectionsVisible.oauthServerConfig ? '−' : '+'}</span>
           </div>
 
           {sectionsVisible.oauthServerConfig && (
-            <div className="space-y-4 pb-4 px-6">
+            <div className="space-y-4 pb-4 px-6 pt-4" style={{ borderTop: '1px solid var(--hub-line-2)' }}>
               <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-md">
                 <div>
                   <h3 className="font-medium text-gray-700">{t('settings.enableOauthServer')}</h3>
@@ -2454,19 +2460,22 @@ const SettingsPage: React.FC = () => {
 
       {/* MCPRouter Configuration Settings */}
       <PermissionChecker permissions={PERMISSIONS.SETTINGS_INSTALL_CONFIG}>
-        <div className="bg-white dark:bg-gray-800 shadow rounded-lg mb-6 page-card dashboard-card">
+        <div className="hub-card mb-6 overflow-hidden">
           <div
             className="flex justify-between items-center cursor-pointer transition-colors hover:bg-[var(--hub-surface-hover)] py-3 px-5"
             onClick={() => toggleSection('mcpRouterConfig')}
           >
-            <h2 className="font-medium text-[var(--hub-ink)]">{t('settings.mcpRouterConfig')}</h2>
-            <span className="text-[var(--hub-ink-3)] text-sm">
+            <div className="flex items-center gap-2.5">
+              <Cloud size={15} style={{ color: 'var(--hub-ink-2)' }} />
+              <h2 className="font-medium" style={{ color: 'var(--hub-ink)' }}>{t('settings.mcpRouterConfig')}</h2>
+            </div>
+            <span style={{ color: 'var(--hub-ink-3)' }}>
               {sectionsVisible.mcpRouterConfig ? '−' : '+'}
             </span>
           </div>
 
           {sectionsVisible.mcpRouterConfig && (
-            <div className="space-y-4 pb-4 px-6">
+            <div className="space-y-4 pb-4 px-6 pt-4" style={{ borderTop: '1px solid var(--hub-line-2)' }}>
               <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-md">
                 <div className="mb-2">
                   <h3 className="font-medium text-gray-700">{t('settings.mcpRouterApiKey')}</h3>
@@ -2525,17 +2534,20 @@ const SettingsPage: React.FC = () => {
 
       {/* System Settings */}
       <PermissionChecker permissions={PERMISSIONS.SETTINGS_SYSTEM_CONFIG}>
-        <div className="bg-white dark:bg-gray-800 shadow rounded-lg mb-6 dashboard-card">
+        <div className="hub-card mb-6 overflow-hidden">
           <div
             className="flex justify-between items-center cursor-pointer transition-colors hover:bg-[var(--hub-surface-hover)] py-3 px-5"
             onClick={() => toggleSection('nameSeparator')}
           >
-            <h2 className="font-medium text-[var(--hub-ink)]">{t('settings.systemSettings')}</h2>
-            <span className="text-[var(--hub-ink-3)] text-sm">{sectionsVisible.nameSeparator ? '−' : '+'}</span>
+            <div className="flex items-center gap-2.5">
+              <SlidersHorizontal size={15} style={{ color: 'var(--hub-ink-2)' }} />
+              <h2 className="font-medium" style={{ color: 'var(--hub-ink)' }}>{t('settings.systemSettings')}</h2>
+            </div>
+            <span style={{ color: 'var(--hub-ink-3)' }}>{sectionsVisible.nameSeparator ? '−' : '+'}</span>
           </div>
 
           {sectionsVisible.nameSeparator && (
-            <div className="space-y-4 pb-4 px-6">
+            <div className="space-y-4 pb-4 px-6 pt-4" style={{ borderTop: '1px solid var(--hub-line-2)' }}>
               <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-md">
                 <div className="mb-2">
                   <h3 className="font-medium text-gray-700">{t('settings.nameSeparatorLabel')}</h3>
@@ -2583,17 +2595,20 @@ const SettingsPage: React.FC = () => {
 
       {/* Route Configuration Settings */}
       <PermissionChecker permissions={PERMISSIONS.SETTINGS_ROUTE_CONFIG}>
-        <div className="bg-white dark:bg-gray-800 shadow rounded-lg mb-6 dashboard-card">
+        <div className="hub-card mb-6 overflow-hidden">
           <div
             className="flex justify-between items-center cursor-pointer transition-colors hover:bg-[var(--hub-surface-hover)] py-3 px-5"
             onClick={() => toggleSection('routingConfig')}
           >
-            <h2 className="font-medium text-[var(--hub-ink)]">{t('pages.settings.routeConfig')}</h2>
-            <span className="text-[var(--hub-ink-3)] text-sm">{sectionsVisible.routingConfig ? '−' : '+'}</span>
+            <div className="flex items-center gap-2.5">
+              <ShieldCheck size={15} style={{ color: 'var(--hub-ink-2)' }} />
+              <h2 className="font-medium" style={{ color: 'var(--hub-ink)' }}>{t('pages.settings.routeConfig')}</h2>
+            </div>
+            <span style={{ color: 'var(--hub-ink-3)' }}>{sectionsVisible.routingConfig ? '−' : '+'}</span>
           </div>
 
           {sectionsVisible.routingConfig && (
-            <div className="space-y-4 pb-4 px-6">
+            <div className="space-y-4 pb-4 px-6 pt-4" style={{ borderTop: '1px solid var(--hub-line-2)' }}>
               <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-md">
                 <div>
                   <h3 className="font-medium text-gray-700">{t('settings.enableGlobalRoute')}</h3>
@@ -2670,17 +2685,20 @@ const SettingsPage: React.FC = () => {
 
       {/* Installation Configuration Settings */}
       <PermissionChecker permissions={PERMISSIONS.SETTINGS_INSTALL_CONFIG}>
-        <div className="bg-white dark:bg-gray-800 shadow rounded-lg mb-6 dashboard-card">
+        <div className="hub-card mb-6 overflow-hidden">
           <div
             className="flex justify-between items-center cursor-pointer transition-colors hover:bg-[var(--hub-surface-hover)] py-3 px-5"
             onClick={() => toggleSection('installConfig')}
           >
-            <h2 className="font-medium text-[var(--hub-ink)]">{t('settings.installConfig')}</h2>
-            <span className="text-[var(--hub-ink-3)] text-sm">{sectionsVisible.installConfig ? '−' : '+'}</span>
+            <div className="flex items-center gap-2.5">
+              <Package size={15} style={{ color: 'var(--hub-ink-2)' }} />
+              <h2 className="font-medium" style={{ color: 'var(--hub-ink)' }}>{t('settings.installConfig')}</h2>
+            </div>
+            <span style={{ color: 'var(--hub-ink-3)' }}>{sectionsVisible.installConfig ? '−' : '+'}</span>
           </div>
 
           {sectionsVisible.installConfig && (
-            <div className="space-y-4 pb-4 px-6">
+            <div className="space-y-4 pb-4 px-6 pt-4" style={{ borderTop: '1px solid var(--hub-line-2)' }}>
               <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-md">
                 <div className="mb-2">
                   <h3 className="font-medium text-gray-700">{t('settings.baseUrl')}</h3>
@@ -2758,18 +2776,21 @@ const SettingsPage: React.FC = () => {
       </PermissionChecker>
 
       {/* Change Password */}
-      <div className="bg-white dark:bg-gray-800 shadow rounded-lg mb-6 dashboard-card" data-section="password">
+      <div className="hub-card mb-6 overflow-hidden" data-section="password">
         <div
           className="flex justify-between items-center cursor-pointer transition-colors hover:bg-[var(--hub-surface-hover)] py-3 px-5"
           onClick={() => toggleSection('password')}
           role="button"
         >
-          <h2 className="font-medium text-[var(--hub-ink)]">{t('auth.changePassword')}</h2>
-          <span className="text-[var(--hub-ink-3)] text-sm">{sectionsVisible.password ? '−' : '+'}</span>
+          <div className="flex items-center gap-2.5">
+            <KeyRound size={15} style={{ color: 'var(--hub-ink-2)' }} />
+            <h2 className="font-medium" style={{ color: 'var(--hub-ink)' }}>{t('auth.changePassword')}</h2>
+          </div>
+          <span style={{ color: 'var(--hub-ink-3)' }}>{sectionsVisible.password ? '−' : '+'}</span>
         </div>
 
         {sectionsVisible.password && (
-          <div className="max-w-lg pb-4 px-6">
+          <div className="max-w-lg pb-4 px-6 pt-4" style={{ borderTop: '1px solid var(--hub-line-2)' }}>
             <ChangePasswordForm onSuccess={handlePasswordChangeSuccess} />
           </div>
         )}
@@ -2777,17 +2798,20 @@ const SettingsPage: React.FC = () => {
 
       {/* Export MCP Settings */}
       <PermissionChecker permissions={PERMISSIONS.SETTINGS_EXPORT_CONFIG}>
-        <div className="bg-white dark:bg-gray-800 shadow rounded-lg mb-6 dashboard-card">
+        <div className="hub-card mb-6 overflow-hidden">
           <div
             className="flex justify-between items-center cursor-pointer transition-colors hover:bg-[var(--hub-surface-hover)] py-3 px-5"
             onClick={() => toggleSection('exportConfig')}
           >
-            <h2 className="font-medium text-[var(--hub-ink)]">{t('settings.exportMcpSettings')}</h2>
-            <span className="text-[var(--hub-ink-3)] text-sm">{sectionsVisible.exportConfig ? '−' : '+'}</span>
+            <div className="flex items-center gap-2.5">
+              <FileDown size={15} style={{ color: 'var(--hub-ink-2)' }} />
+              <h2 className="font-medium" style={{ color: 'var(--hub-ink)' }}>{t('settings.exportMcpSettings')}</h2>
+            </div>
+            <span style={{ color: 'var(--hub-ink-3)' }}>{sectionsVisible.exportConfig ? '−' : '+'}</span>
           </div>
 
           {sectionsVisible.exportConfig && (
-            <div className="space-y-4 pb-4 px-6">
+            <div className="space-y-4 pb-4 px-6 pt-4" style={{ borderTop: '1px solid var(--hub-line-2)' }}>
               <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-md">
                 <div className="mb-4">
                   <h3 className="font-medium text-gray-700">{t('settings.mcpSettingsJson')}</h3>

@@ -51,19 +51,19 @@ const CloudServerDetail: React.FC<CloudServerDetailProps> = ({
   const getInstallButtonProps = () => {
     if (isInstalled) {
       return {
-        className: "bg-green-600 cursor-default px-4 py-2 rounded text-sm font-medium text-white",
+        className: "hub-btn cursor-default",
         disabled: true,
         text: t('market.installed')
       };
     } else if (installing) {
       return {
-        className: "bg-gray-400 cursor-not-allowed px-4 py-2 rounded text-sm font-medium text-white",
+        className: "hub-btn cursor-not-allowed opacity-50",
         disabled: true,
         text: t('market.installing')
       };
     } else {
       return {
-        className: "bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded text-sm font-medium text-white transition-colors",
+        className: "hub-btn primary",
         disabled: false,
         text: t('market.install')
       };
@@ -421,7 +421,7 @@ const CloudServerDetail: React.FC<CloudServerDetailProps> = ({
                         <button
                           onClick={() => handleCallTool(tool.name)}
                           disabled={toolCallLoading === tool.name}
-                          className="ml-4 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center min-w-[100px] justify-center"
+                          className="hub-btn primary ml-4 flex items-center min-w-[100px] justify-center"
                         >
                           {toolCallLoading === tool.name ? (
                             <>

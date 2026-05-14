@@ -46,7 +46,7 @@ const MarketServerDetail: React.FC<MarketServerDetailProps> = ({
     } else {
       return {
         className:
-          'bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded text-sm font-medium text-white btn-primary',
+          'hub-btn primary',
         disabled: false,
         text: t('market.install'),
       };
@@ -342,7 +342,7 @@ const MarketServerDetail: React.FC<MarketServerDetailProps> = ({
 
       {confirmationVisible && (
         <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md">
+          <div className="hub-card p-6 w-full max-w-md">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">
               {t('server.confirmVariables')}
             </h3>
@@ -379,13 +379,13 @@ const MarketServerDetail: React.FC<MarketServerDetailProps> = ({
                   setConfirmationVisible(false);
                   setPendingPayload(null);
                 }}
-                className="px-4 py-2 text-gray-600 border border-gray-300 rounded hover:bg-gray-50 dark:bg-gray-800 dark:hover:bg-gray-700 btn-secondary"
+                className="hub-btn"
               >
                 {t('common.cancel')}
               </button>
               <button
                 onClick={handleConfirmInstall}
-                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 btn-primary"
+                className="hub-btn primary"
               >
                 {t('market.confirmAndInstall')}
               </button>

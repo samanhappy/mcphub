@@ -35,7 +35,7 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
             </svg>
           ),
-          confirmClass: 'bg-red-600 hover:bg-red-700 text-white',
+          confirmBtnClass: 'hub-btn danger',
         };
       case 'warning':
         return {
@@ -44,7 +44,7 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
             </svg>
           ),
-          confirmClass: 'bg-yellow-600 hover:bg-yellow-700 text-white',
+          confirmBtnClass: 'hub-btn primary',
         };
       case 'info':
         return {
@@ -53,17 +53,17 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           ),
-          confirmClass: 'bg-blue-600 hover:bg-blue-700 text-white',
+          confirmBtnClass: 'hub-btn primary',
         };
       default:
         return {
           icon: null,
-          confirmClass: 'bg-blue-600 hover:bg-blue-700 text-white',
+          confirmBtnClass: 'hub-btn primary',
         };
     }
   };
 
-  const { icon, confirmClass } = getVariantStyles();
+  const { icon, confirmBtnClass } = getVariantStyles();
 
   const handleBackdropClick = (e: React.MouseEvent) => {
     if (e.target === e.currentTarget) {
@@ -87,7 +87,7 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
       tabIndex={-1}
     >
       <div
-        className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full transform transition-all duration-200 ease-out"
+        className="hub-card max-w-md w-full transform transition-all duration-200 ease-out"
         role="dialog"
         aria-modal="true"
         aria-labelledby="confirm-dialog-title"
@@ -121,14 +121,14 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
           <div className="flex justify-end space-x-3 mt-6">
             <button
               onClick={onClose}
-              className="px-4 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 dark:bg-gray-800 rounded-md transition-colors duration-150 btn-secondary"
+              className="hub-btn"
               autoFocus
             >
               {cancelText || t('common.cancel')}
             </button>
             <button
               onClick={onConfirm}
-              className={`px-4 py-2 rounded-md transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-offset-2 ${confirmClass} ${variant === 'danger' ? 'btn-danger' : variant === 'warning' ? 'btn-warning' : 'btn-primary'}`}
+              className={confirmBtnClass}
             >
               {confirmText || t('common.confirm')}
             </button>

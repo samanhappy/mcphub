@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { X } from 'lucide-react';
 import { Server, EnvVar, ServerFormData } from '@/types';
 import { buildServerPayload } from '../utils/serverFormPayload';
 
@@ -255,11 +256,15 @@ const ServerForm = ({
   };
 
   return (
-    <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6 w-full max-w-3xl max-h-screen overflow-y-auto">
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-semibold text-gray-900">{modalTitle}</h2>
-        <button onClick={onCancel} className="text-gray-500 hover:text-gray-700">
-          ✕
+    <div className="hub-card p-6 w-full max-w-3xl max-h-screen overflow-y-auto">
+      <div className="flex justify-between items-center mb-5">
+        <h2 className="text-lg font-semibold" style={{ color: 'var(--hub-ink)' }}>{modalTitle}</h2>
+        <button
+          onClick={onCancel}
+          className="hub-icon-btn"
+          aria-label="Close"
+        >
+          <X size={16} />
         </button>
       </div>
 
@@ -269,7 +274,7 @@ const ServerForm = ({
 
       <form onSubmit={handleSubmit}>
         <div className="mb-4">
-          <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="name">
+          <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--hub-ink-2)' }} htmlFor="name">
             {t('server.name')}
           </label>
           <input
@@ -278,14 +283,14 @@ const ServerForm = ({
             id="name"
             value={formData.name}
             onChange={handleInputChange}
-            className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline form-input"
+            className="w-full py-2 px-3 form-input"
             placeholder="e.g.: time-mcp"
             required
           />
         </div>
 
         <div className="mb-4">
-          <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="description">
+          <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--hub-ink-2)' }} htmlFor="description">
             {t('server.description')}
           </label>
           <input
@@ -294,13 +299,13 @@ const ServerForm = ({
             id="description"
             value={formData.description || ''}
             onChange={handleInputChange}
-            className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline form-input"
+            className="w-full py-2 px-3 form-input"
             placeholder={t('server.descriptionPlaceholder')}
           />
         </div>
 
         <div className="mb-4">
-          <label className="block text-gray-700 text-sm font-bold mb-2">{t('server.type')}</label>
+          <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--hub-ink-2)' }}>{t('server.type')}</label>
           <div className="flex space-x-4">
             <div>
               <input
@@ -312,7 +317,7 @@ const ServerForm = ({
                 onChange={() => updateServerType('stdio')}
                 className="mr-1"
               />
-              <label htmlFor="command">{t('server.typeStdio')}</label>
+              <label htmlFor="command" style={{ color: 'var(--hub-ink)' }}>{t('server.typeStdio')}</label>
             </div>
             <div>
               <input
@@ -324,7 +329,7 @@ const ServerForm = ({
                 onChange={() => updateServerType('sse')}
                 className="mr-1"
               />
-              <label htmlFor="url">{t('server.typeSse')}</label>
+              <label htmlFor="url" style={{ color: 'var(--hub-ink)' }}>{t('server.typeSse')}</label>
             </div>
             <div>
               <input
@@ -336,7 +341,7 @@ const ServerForm = ({
                 onChange={() => updateServerType('streamable-http')}
                 className="mr-1"
               />
-              <label htmlFor="streamable-http">{t('server.typeStreamableHttp')}</label>
+              <label htmlFor="streamable-http" style={{ color: 'var(--hub-ink)' }}>{t('server.typeStreamableHttp')}</label>
             </div>
             <div>
               <input
@@ -348,7 +353,7 @@ const ServerForm = ({
                 onChange={() => updateServerType('openapi')}
                 className="mr-1"
               />
-              <label htmlFor="openapi">{t('server.typeOpenapi')}</label>
+              <label htmlFor="openapi" style={{ color: 'var(--hub-ink)' }}>{t('server.typeOpenapi')}</label>
             </div>
           </div>
         </div>
@@ -357,7 +362,7 @@ const ServerForm = ({
           <>
             {/* Input Mode Selection */}
             <div className="mb-4">
-              <label className="block text-gray-700 text-sm font-bold mb-2">
+              <label className="block text-sm font-medium mb-1.5 text-gray-700 dark:text-gray-300">
                 {t('server.openapi.inputMode')}
               </label>
               <div className="flex space-x-4">
@@ -401,7 +406,7 @@ const ServerForm = ({
             {/* URL Input */}
             {formData.openapi?.inputMode === 'url' && (
               <div className="mb-4">
-                <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="openapi-url">
+                <label className="block text-sm font-medium mb-1.5 text-gray-700 dark:text-gray-300" htmlFor="openapi-url">
                   {t('server.openapi.specUrl')}
                 </label>
                 <input
@@ -415,7 +420,7 @@ const ServerForm = ({
                       openapi: { ...prev.openapi!, url: e.target.value },
                     }))
                   }
-                  className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline form-input"
+                  className="w-full py-2 px-3 form-input"
                   placeholder="e.g.: https://api.example.com/openapi.json"
                   required={serverType === 'openapi' && formData.openapi?.inputMode === 'url'}
                 />
@@ -426,7 +431,7 @@ const ServerForm = ({
             {formData.openapi?.inputMode === 'schema' && (
               <div className="mb-4">
                 <label
-                  className="block text-gray-700 text-sm font-bold mb-2"
+                  className="block text-sm font-medium mb-1.5 text-gray-700 dark:text-gray-300"
                   htmlFor="openapi-schema"
                 >
                   {t('server.openapi.schema')}
@@ -442,7 +447,7 @@ const ServerForm = ({
                       openapi: { ...prev.openapi!, schema: e.target.value },
                     }))
                   }
-                  className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline font-mono text-sm"
+                  className="w-full py-2 px-3 form-input font-mono text-sm"
                   placeholder={`{
   "openapi": "3.1.0",
   "info": {
@@ -466,7 +471,7 @@ const ServerForm = ({
 
             {/* Security Configuration */}
             <div className="mb-4">
-              <label className="block text-gray-700 text-sm font-bold mb-2">
+              <label className="block text-sm font-medium mb-1.5 text-gray-700 dark:text-gray-300">
                 {t('server.openapi.security')}
               </label>
               <select
@@ -481,7 +486,7 @@ const ServerForm = ({
                     },
                   }))
                 }
-                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline form-input"
+                className="w-full py-2 px-3 form-input"
               >
                 <option value="none">{t('server.openapi.securityNone')}</option>
                 <option value="apiKey">{t('server.openapi.securityApiKey')}</option>
@@ -494,7 +499,7 @@ const ServerForm = ({
             {/* API Key Configuration */}
             {formData.openapi?.securityType === 'apiKey' && (
               <div className="mb-4 p-4 border border-gray-200 dark:border-gray-700 rounded bg-gray-50 dark:bg-gray-800">
-                <h4 className="text-sm font-medium text-gray-700 mb-3">
+                <h4 className="text-sm font-medium mb-3 text-gray-700 dark:text-gray-300">
                   {t('server.openapi.apiKeyConfig')}
                 </h4>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -570,7 +575,7 @@ const ServerForm = ({
             {/* HTTP Authentication Configuration */}
             {formData.openapi?.securityType === 'http' && (
               <div className="mb-4 p-4 border border-gray-200 dark:border-gray-700 rounded bg-gray-50 dark:bg-gray-800">
-                <h4 className="text-sm font-medium text-gray-700 mb-3">
+                <h4 className="text-sm font-medium mb-3 text-gray-700 dark:text-gray-300">
                   {t('server.openapi.httpAuthConfig')}
                 </h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -629,7 +634,7 @@ const ServerForm = ({
             {/* OAuth2 Configuration */}
             {formData.openapi?.securityType === 'oauth2' && (
               <div className="mb-4 p-4 border border-gray-200 dark:border-gray-700 rounded bg-gray-50 dark:bg-gray-800">
-                <h4 className="text-sm font-medium text-gray-700 mb-3">
+                <h4 className="text-sm font-medium mb-3 text-gray-700 dark:text-gray-300">
                   {t('server.openapi.oauth2Config')}
                 </h4>
                 <div className="grid grid-cols-1 gap-3">
@@ -661,7 +666,7 @@ const ServerForm = ({
             {/* OpenID Connect Configuration */}
             {formData.openapi?.securityType === 'openIdConnect' && (
               <div className="mb-4 p-4 border border-gray-200 dark:border-gray-700 rounded bg-gray-50 dark:bg-gray-800">
-                <h4 className="text-sm font-medium text-gray-700 mb-3">
+                <h4 className="text-sm font-medium mb-3 text-gray-700 dark:text-gray-300">
                   {t('server.openapi.openIdConnectConfig')}
                 </h4>
                 <div className="grid grid-cols-1 gap-3">
@@ -713,7 +718,7 @@ const ServerForm = ({
 
             {/* Passthrough Headers Configuration */}
             <div className="mb-4">
-              <label className="block text-gray-700 text-sm font-bold mb-2">
+              <label className="block text-sm font-medium mb-1.5 text-gray-700 dark:text-gray-300">
                 {t('server.openapi.passthroughHeaders')}
               </label>
               <input
@@ -729,7 +734,7 @@ const ServerForm = ({
                     },
                   }))
                 }
-                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline form-input"
+                className="w-full py-2 px-3 form-input"
                 placeholder="Authorization, X-API-Key, X-Custom-Header"
               />
               <p className="text-xs text-gray-500 mt-1">
@@ -739,7 +744,7 @@ const ServerForm = ({
 
             <div className="mb-4">
               <div className="flex justify-between items-center mb-2">
-                <label className="block text-gray-700 text-sm font-bold">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                   {t('server.headers')}
                 </label>
                 <button
@@ -757,7 +762,7 @@ const ServerForm = ({
                       type="text"
                       value={headerVar.key}
                       onChange={(e) => handleHeaderVarChange(index, 'key', e.target.value)}
-                      className="shadow appearance-none border rounded py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline w-1/2 form-input"
+                      className="w-1/2 py-2 px-3 form-input"
                       placeholder="Authorization"
                     />
                     <span className="flex items-center">:</span>
@@ -765,7 +770,7 @@ const ServerForm = ({
                       type="text"
                       value={headerVar.value}
                       onChange={(e) => handleHeaderVarChange(index, 'value', e.target.value)}
-                      className="shadow appearance-none border rounded py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline w-1/2 form-input"
+                      className="w-1/2 py-2 px-3 form-input"
                       placeholder="Bearer token..."
                     />
                   </div>
@@ -783,7 +788,7 @@ const ServerForm = ({
         ) : serverType === 'sse' || serverType === 'streamable-http' ? (
           <>
             <div className="mb-4">
-              <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="url">
+              <label className="block text-sm font-medium mb-1.5 text-gray-700 dark:text-gray-300" htmlFor="url">
                 {t('server.url')}
               </label>
               <input
@@ -792,7 +797,7 @@ const ServerForm = ({
                 id="url"
                 value={formData.url}
                 onChange={handleInputChange}
-                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline form-input"
+                className="w-full py-2 px-3 form-input"
                 placeholder={
                   serverType === 'streamable-http'
                     ? 'e.g.: http://localhost:3000/mcp'
@@ -804,7 +809,7 @@ const ServerForm = ({
 
             <div className="mb-4">
               <div className="flex justify-between items-center mb-2">
-                <label className="block text-gray-700 text-sm font-bold">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                   {t('server.headers')}
                 </label>
                 <button
@@ -822,7 +827,7 @@ const ServerForm = ({
                       type="text"
                       value={headerVar.key}
                       onChange={(e) => handleHeaderVarChange(index, 'key', e.target.value)}
-                      className="shadow appearance-none border rounded py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline w-1/2 form-input"
+                      className="w-1/2 py-2 px-3 form-input"
                       placeholder="Authorization"
                     />
                     <span className="flex items-center">:</span>
@@ -830,7 +835,7 @@ const ServerForm = ({
                       type="text"
                       value={headerVar.value}
                       onChange={(e) => handleHeaderVarChange(index, 'value', e.target.value)}
-                      className="shadow appearance-none border rounded py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline w-1/2 form-input"
+                      className="w-1/2 py-2 px-3 form-input"
                       placeholder="Bearer token..."
                     />
                   </div>
@@ -846,7 +851,7 @@ const ServerForm = ({
             </div>
 
             <div className="mb-4">
-              <label className="block text-gray-700 text-sm font-bold mb-2">
+              <label className="block text-sm font-medium mb-1.5 text-gray-700 dark:text-gray-300">
                 {t('server.openapi.passthroughHeaders')}
               </label>
               <input
@@ -858,7 +863,7 @@ const ServerForm = ({
                     passthroughHeaders: e.target.value,
                   }))
                 }
-                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline form-input"
+                className="w-full py-2 px-3 form-input"
                 placeholder="Authorization, X-Custom-User-Id"
               />
               <p className="text-xs text-gray-500 mt-1">
@@ -868,7 +873,7 @@ const ServerForm = ({
 
             <div className="mb-4">
               <div className="flex justify-between items-center mb-2">
-                <label className="block text-gray-700 text-sm font-bold">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                   {t('server.envVars')}
                 </label>
                 <button
@@ -886,7 +891,7 @@ const ServerForm = ({
                       type="text"
                       value={envVar.key}
                       onChange={(e) => handleEnvVarChange(index, 'key', e.target.value)}
-                      className="shadow appearance-none border rounded py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline w-1/2 form-input"
+                      className="w-1/2 py-2 px-3 form-input"
                       placeholder={t('server.key')}
                     />
                     <span className="flex items-center">:</span>
@@ -894,7 +899,7 @@ const ServerForm = ({
                       type="text"
                       value={envVar.value}
                       onChange={(e) => handleEnvVarChange(index, 'value', e.target.value)}
-                      className="shadow appearance-none border rounded py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline w-1/2 form-input"
+                      className="w-1/2 py-2 px-3 form-input"
                       placeholder={t('server.value')}
                     />
                   </div>
@@ -914,7 +919,7 @@ const ServerForm = ({
                 className="flex items-center justify-between cursor-pointer bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 p-3 rounded border border-gray-200 dark:border-gray-700"
                 onClick={() => setIsOAuthSectionExpanded(!isOAuthSectionExpanded)}
               >
-                <label className="text-gray-700 text-sm font-bold">
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
                   {t('server.oauth.sectionTitle')}
                 </label>
                 <span className="text-gray-500 text-sm">{isOAuthSectionExpanded ? '▼' : '▶'}</span>
@@ -934,7 +939,7 @@ const ServerForm = ({
                         type="text"
                         value={formData.oauth?.clientId || ''}
                         onChange={(e) => handleOAuthChange('clientId', e.target.value)}
-                        className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline form-input"
+                        className="w-full py-2 px-3 form-input"
                         placeholder="client id"
                         autoComplete="off"
                       />
@@ -947,7 +952,7 @@ const ServerForm = ({
                         type="password"
                         value={formData.oauth?.clientSecret || ''}
                         onChange={(e) => handleOAuthChange('clientSecret', e.target.value)}
-                        className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline form-input"
+                        className="w-full py-2 px-3 form-input"
                         placeholder="client secret"
                         autoComplete="off"
                       />
@@ -961,7 +966,7 @@ const ServerForm = ({
                         type="url"
                         value={formData.oauth?.authorizationEndpoint || ''}
                         onChange={(e) => handleOAuthChange('authorizationEndpoint', e.target.value)}
-                        className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline form-input"
+                        className="w-full py-2 px-3 form-input"
                         placeholder="https://auth.example.com/authorize"
                       />
                     </div>
@@ -973,7 +978,7 @@ const ServerForm = ({
                         type="url"
                         value={formData.oauth?.tokenEndpoint || ''}
                         onChange={(e) => handleOAuthChange('tokenEndpoint', e.target.value)}
-                        className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline form-input"
+                        className="w-full py-2 px-3 form-input"
                         placeholder="https://auth.example.com/token"
                       />
                     </div>
@@ -985,7 +990,7 @@ const ServerForm = ({
                         type="text"
                         value={formData.oauth?.scopes || ''}
                         onChange={(e) => handleOAuthChange('scopes', e.target.value)}
-                        className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline form-input"
+                        className="w-full py-2 px-3 form-input"
                         placeholder={t('server.oauth.scopesPlaceholder')}
                         autoComplete="off"
                       />
@@ -998,7 +1003,7 @@ const ServerForm = ({
                         type="text"
                         value={formData.oauth?.resource || ''}
                         onChange={(e) => handleOAuthChange('resource', e.target.value)}
-                        className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline form-input"
+                        className="w-full py-2 px-3 form-input"
                         placeholder="https://mcp.example.com/mcp"
                         autoComplete="off"
                       />
@@ -1011,7 +1016,7 @@ const ServerForm = ({
                         type="password"
                         value={formData.oauth?.accessToken || ''}
                         onChange={(e) => handleOAuthChange('accessToken', e.target.value)}
-                        className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline form-input"
+                        className="w-full py-2 px-3 form-input"
                         placeholder="access-token"
                         autoComplete="off"
                       />
@@ -1024,7 +1029,7 @@ const ServerForm = ({
                         type="password"
                         value={formData.oauth?.refreshToken || ''}
                         onChange={(e) => handleOAuthChange('refreshToken', e.target.value)}
-                        className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline form-input"
+                        className="w-full py-2 px-3 form-input"
                         placeholder="refresh-token"
                         autoComplete="off"
                       />
@@ -1038,7 +1043,7 @@ const ServerForm = ({
         ) : (
           <>
             <div className="mb-4">
-              <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="command">
+              <label className="block text-sm font-medium mb-1.5 text-gray-700 dark:text-gray-300" htmlFor="command">
                 {t('server.command')}
               </label>
               <input
@@ -1047,13 +1052,13 @@ const ServerForm = ({
                 id="command"
                 value={formData.command}
                 onChange={handleInputChange}
-                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline form-input"
+                className="w-full py-2 px-3 form-input"
                 placeholder="e.g.: npx"
                 required={serverType === 'stdio'}
               />
             </div>
             <div className="mb-4">
-              <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="arguments">
+              <label className="block text-sm font-medium mb-1.5 text-gray-700 dark:text-gray-300" htmlFor="arguments">
                 {t('server.arguments')}
               </label>
               <input
@@ -1062,7 +1067,7 @@ const ServerForm = ({
                 id="arguments"
                 value={formData.arguments}
                 onChange={(e) => handleArgsChange(e.target.value)}
-                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline form-input"
+                className="w-full py-2 px-3 form-input"
                 placeholder="e.g.: -y time-mcp"
                 required={serverType === 'stdio'}
               />
@@ -1070,7 +1075,7 @@ const ServerForm = ({
 
             <div className="mb-4">
               <div className="flex justify-between items-center mb-2">
-                <label className="block text-gray-700 text-sm font-bold">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                   {t('server.envVars')}
                 </label>
                 <button
@@ -1088,7 +1093,7 @@ const ServerForm = ({
                       type="text"
                       value={envVar.key}
                       onChange={(e) => handleEnvVarChange(index, 'key', e.target.value)}
-                      className="shadow appearance-none border rounded py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline w-1/2 form-input"
+                      className="w-1/2 py-2 px-3 form-input"
                       placeholder={t('server.key')}
                     />
                     <span className="flex items-center">:</span>
@@ -1096,7 +1101,7 @@ const ServerForm = ({
                       type="text"
                       value={envVar.value}
                       onChange={(e) => handleEnvVarChange(index, 'value', e.target.value)}
-                      className="shadow appearance-none border rounded py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline w-1/2 form-input"
+                      className="w-1/2 py-2 px-3 form-input"
                       placeholder={t('server.value')}
                     />
                   </div>
@@ -1120,7 +1125,7 @@ const ServerForm = ({
               className="flex items-center justify-between cursor-pointer bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 p-3 rounded border border-gray-200 dark:border-gray-700"
               onClick={() => setIsRequestOptionsExpanded(!isRequestOptionsExpanded)}
             >
-              <label className="text-gray-700 text-sm font-bold">
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
                 {t('server.requestOptions')}
               </label>
               <span className="text-gray-500 text-sm">{isRequestOptionsExpanded ? '▼' : '▶'}</span>
@@ -1143,7 +1148,7 @@ const ServerForm = ({
                       onChange={(e) =>
                         handleOptionsChange('timeout', parseInt(e.target.value) || 60000)
                       }
-                      className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline form-input"
+                      className="w-full py-2 px-3 form-input"
                       placeholder="30000"
                       min="1000"
                       max="300000"
@@ -1168,7 +1173,7 @@ const ServerForm = ({
                           e.target.value ? parseInt(e.target.value) : undefined,
                         )
                       }
-                      className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline form-input"
+                      className="w-full py-2 px-3 form-input"
                       placeholder="Optional"
                       min="1000"
                     />
@@ -1208,7 +1213,7 @@ const ServerForm = ({
               className="flex items-center justify-between cursor-pointer bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 p-3 rounded border border-gray-200 dark:border-gray-700"
               onClick={() => setIsKeepAliveSectionExpanded(!isKeepAliveSectionExpanded)}
             >
-              <label className="text-gray-700 text-sm font-bold">
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
                 {t('server.keepAlive', 'Keep-Alive')}
               </label>
               <span className="text-gray-500 text-sm">
@@ -1264,7 +1269,7 @@ const ServerForm = ({
                         },
                       }))
                     }
-                    className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline form-input"
+                    className="w-full py-2 px-3 form-input"
                     placeholder="60000"
                     min="5000"
                     max="300000"
@@ -1285,13 +1290,13 @@ const ServerForm = ({
           <button
             type="button"
             onClick={onCancel}
-            className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-medium py-2 px-4 rounded mr-2 btn-secondary"
+            className="hub-btn mr-2"
           >
             {t('server.cancel')}
           </button>
           <button
             type="submit"
-            className="bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded btn-primary"
+            className="hub-btn primary"
           >
             {isEdit ? t('server.save') : t('server.add')}
           </button>

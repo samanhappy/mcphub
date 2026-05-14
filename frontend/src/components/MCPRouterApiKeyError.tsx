@@ -40,7 +40,7 @@ const MCPRouterApiKeyError: React.FC = () => {
           <div className="mt-4 flex flex-wrap gap-2">
             <button
               onClick={handleGetApiKey}
-              className="inline-flex items-center px-3 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200"
+              className="hub-btn primary inline-flex items-center"
             >
               <svg
                 className="w-4 h-4 mr-1.5"

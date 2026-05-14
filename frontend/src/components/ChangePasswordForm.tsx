@@ -158,7 +158,7 @@ const ChangePasswordForm: React.FC<ChangePasswordFormProps> = ({ onSuccess, onCa
                 type="button"
                 onClick={onCancel}
                 disabled={isLoading}
-                className="py-2 px-4 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                className="hub-btn"
               >
                 {t('common.cancel')}
               </button>
@@ -166,7 +166,7 @@ const ChangePasswordForm: React.FC<ChangePasswordFormProps> = ({ onSuccess, onCa
             <button
               type="submit"
               disabled={isLoading}
-              className="py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 btn-primary"
+              className="hub-btn primary"
             >
               {isLoading ? (
                 <span className="flex items-center">

@@ -201,10 +201,10 @@ const RegistryServerDetail: React.FC<RegistryServerDetailProps> = ({
             disabled={isInstalled || installing}
             className={`px-4 py-2 rounded text-sm font-medium transition-colors ${
               isInstalled
-                ? 'bg-green-600 text-white cursor-default'
+                ? 'hub-btn cursor-default'
                 : installing
-                  ? 'bg-gray-400 text-white cursor-not-allowed'
-                  : 'bg-blue-600 text-white hover:bg-blue-700'
+                  ? 'hub-btn cursor-not-allowed opacity-50'
+                  : 'hub-btn primary'
             }`}
           >
             {isInstalled
@@ -349,10 +349,10 @@ const RegistryServerDetail: React.FC<RegistryServerDetailProps> = ({
             disabled={isInstalled || installing}
             className={`px-4 py-2 rounded text-sm font-medium transition-colors ${
               isInstalled
-                ? 'bg-green-600 text-white cursor-default'
+                ? 'hub-btn cursor-default'
                 : installing
-                  ? 'bg-gray-400 text-white cursor-not-allowed'
-                  : 'bg-blue-600 text-white hover:bg-blue-700'
+                  ? 'hub-btn cursor-not-allowed opacity-50'
+                  : 'hub-btn primary'
             }`}
           >
             {isInstalled

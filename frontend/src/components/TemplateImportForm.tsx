@@ -171,7 +171,7 @@ const TemplateImportForm: React.FC<TemplateImportFormProps> = ({ onSuccess, onCa
             <div className="flex justify-end space-x-4">
               <button
                 onClick={onCancel}
-                className="px-4 py-2 text-gray-700 bg-gray-200 rounded hover:bg-gray-300 btn-secondary"
+                className="hub-btn"
               >
                 {t('common.cancel')}
               </button>
@@ -248,14 +248,14 @@ const TemplateImportForm: React.FC<TemplateImportFormProps> = ({ onSuccess, onCa
                   setResult(null);
                   if (fileInputRef.current) fileInputRef.current.value = '';
                 }}
-                className="px-4 py-2 text-gray-700 bg-gray-200 rounded hover:bg-gray-300 btn-secondary"
+                className="hub-btn"
               >
                 {t('common.back')}
               </button>
               <button
                 onClick={handleImport}
                 disabled={isImporting}
-                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed btn-primary"
+                className="hub-btn primary"
               >
                 {isImporting ? t('template.importing') : t('template.import')}
               </button>

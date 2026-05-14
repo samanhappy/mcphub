@@ -607,6 +607,7 @@
     "restoreDefaultFailed": "Failed to restore the default prompt description"
   },
   "settings": {
+    "subtitle": "Configure system settings, authentication, routing, and MCP server integrations.",
     "enableGlobalRoute": "Enable Global Route",
     "enableGlobalRouteDescription": "Allow connections to /sse endpoint without specifying a group ID",
     "enableGroupNameRoute": "Enable Group Name Route",

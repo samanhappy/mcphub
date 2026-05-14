@@ -606,6 +606,7 @@
     "restoreDefaultFailed": "Échec de la restauration de la description par défaut de l'invite"
   },
   "settings": {
+    "subtitle": "Configurez les paramètres système, l'authentification, le routage et les intégrations de serveurs MCP.",
     "enableGlobalRoute": "Activer la route globale",
     "enableGlobalRouteDescription": "Autoriser les connexions au point de terminaison /sse sans spécifier d'ID de groupe",
     "enableGroupNameRoute": "Activer la route par nom de groupe",

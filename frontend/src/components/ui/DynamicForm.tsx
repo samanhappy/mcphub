@@ -675,14 +675,14 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
           <button
             type="button"
             onClick={onCancel}
-            className="px-4 py-2 text-sm text-gray-600 bg-gray-100 dark:bg-gray-800 rounded-md hover:bg-gray-200"
+            className="hub-btn"
           >
             {t('tool.cancel')}
           </button>
           <button
             onClick={() => onSubmit({})}
             disabled={loading}
-            className="px-4 py-2 text-sm text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50"
+            className="hub-btn primary"
           >
             {loading ? t('tool.running') : t('tool.runTool')}
           </button>
@@ -700,10 +700,8 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
           <button
             type="button"
             onClick={switchToFormMode}
-            className={`px-3 py-1 text-sm rounded-md transition-colors ${
-              !isJsonMode
-                ? 'bg-blue-100 text-blue-800 rounded hover:bg-blue-200 text-sm btn-primary'
-                : 'text-sm text-gray-600 bg-gray-200 rounded hover:bg-gray-300 btn-secondary'
+            className={`hub-btn sm ${
+              !isJsonMode ? 'primary' : ''
             }`}
           >
             {t('tool.formMode')}
@@ -711,10 +709,8 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
           <button
             type="button"
             onClick={switchToJsonMode}
-            className={`px-3 py-1 text-sm rounded-md transition-colors ${
-              isJsonMode
-                ? 'px-4 py-1 bg-blue-100 text-blue-800 rounded hover:bg-blue-200 text-sm btn-primary'
-                : 'text-sm text-gray-600 bg-gray-200 rounded hover:bg-gray-300 btn-secondary'
+            className={`hub-btn sm ${
+              isJsonMode ? 'primary' : ''
             }`}
           >
             {t('tool.jsonMode')}
@@ -744,7 +740,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
             <button
               type="button"
               onClick={onCancel}
-              className="px-4 py-1 text-sm text-gray-600 bg-gray-200 rounded hover:bg-gray-300 btn-secondary"
+              className="hub-btn sm"
             >
               {t('tool.cancel')}
             </button>
@@ -758,7 +754,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
                 }
               }}
               disabled={loading || !!jsonError}
-              className="px-4 py-1 bg-blue-100 text-blue-800 rounded hover:bg-blue-200 text-sm btn-primary"
+              className="hub-btn sm primary"
             >
               {loading ? t('tool.running') : t('tool.runTool')}
             </button>
@@ -775,14 +771,14 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
             <button
               type="button"
               onClick={onCancel}
-              className="px-4 py-1 text-sm text-gray-600 bg-gray-200 rounded hover:bg-gray-300 btn-secondary"
+              className="hub-btn sm"
             >
               {t('tool.cancel')}
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="px-4 py-1 bg-blue-100 text-blue-800 rounded hover:bg-blue-200 text-sm btn-primary"
+              className="hub-btn sm primary"
             >
               {loading ? t('tool.running') : t('tool.runTool')}
             </button>

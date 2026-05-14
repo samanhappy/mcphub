@@ -284,7 +284,7 @@ const McpbUploadForm: React.FC<McpbUploadFormProps> = ({ onSuccess, onCancel }) 
                 <button
                   onClick={onCancel}
                   disabled={isUploading}
-                  className="px-4 py-2 text-gray-700 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50 btn-secondary"
+                  className="hub-btn"
                 >
                   {t('common.cancel')}
                 </button>
@@ -295,7 +295,7 @@ const McpbUploadForm: React.FC<McpbUploadFormProps> = ({ onSuccess, onCancel }) 
                     handleInstallServer(serverName);
                   }}
                   disabled={isUploading}
-                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 flex items-center btn-primary"
+                  className="hub-btn primary"
                 >
                   {isUploading ? (
                     <>
@@ -416,14 +416,14 @@ const McpbUploadForm: React.FC<McpbUploadFormProps> = ({ onSuccess, onCancel }) 
           <button
             onClick={onCancel}
             disabled={isUploading}
-            className="px-4 py-2 text-gray-700 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50 btn-secondary"
+            className="hub-btn"
           >
             {t('common.cancel')}
           </button>
           <button
             onClick={handleUpload}
             disabled={!selectedFile || isUploading}
-            className="px-4 py-2 text-white rounded hover:bg-blue-700 disabled:opacity-50 flex items-center btn-primary"
+            className="hub-btn primary flex items-center"
           >
             {isUploading ? (
               <>

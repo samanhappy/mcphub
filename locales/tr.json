@@ -606,6 +606,7 @@
     "restoreDefaultFailed": "Varsayılan istek açıklamasına dönülemedi"
   },
   "settings": {
+    "subtitle": "Sistem ayarlarını, kimlik doğrulamayı, yönlendirmeyi ve MCP sunucu entegrasyonlarını yapılandırın.",
     "enableGlobalRoute": "Global Yönlendirmeyi Etkinleştir",
     "enableGlobalRouteDescription": "Grup ID'si belirtmeden /sse uç noktasına bağlantıya izin ver",
     "enableGroupNameRoute": "Grup Adı Yönlendirmeyi Etkinleştir",

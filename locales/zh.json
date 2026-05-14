@@ -609,6 +609,7 @@
     "restoreDefaultFailed": "恢复默认提示词描述失败"
   },
   "settings": {
+    "subtitle": "配置系统设置、认证、路由及 MCP 服务器集成。",
     "enableGlobalRoute": "启用全局路由",
     "enableGlobalRouteDescription": "允许不指定组 ID 就连接到 /sse 端点",
     "enableGroupNameRoute": "启用组名路由",

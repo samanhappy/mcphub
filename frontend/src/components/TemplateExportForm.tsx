@@ -170,14 +170,14 @@ const TemplateExportForm: React.FC<TemplateExportFormProps> = ({ groups, onCance
         <div className="flex justify-end space-x-4 mt-6">
           <button
             onClick={onCancel}
-            className="px-4 py-2 text-gray-700 bg-gray-200 rounded hover:bg-gray-300 btn-secondary"
+            className="hub-btn"
           >
             {t('common.cancel')}
           </button>
           <button
             onClick={handleExport}
             disabled={isExporting || !name.trim()}
-            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed btn-primary"
+            className="hub-btn primary"
           >
             {isExporting ? t('template.exporting') : t('template.export')}
           </button>

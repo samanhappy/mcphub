@@ -95,13 +95,13 @@ const DefaultPasswordWarningModal: React.FC<DefaultPasswordWarningModalProps> = 
           <div className="flex justify-end space-x-3 mt-6">
             <button
               onClick={onClose}
-              className="px-4 py-2 text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-white hover:bg-gray-100 dark:bg-gray-800 dark:hover:bg-gray-700 rounded-md transition-colors duration-150 btn-secondary"
+              className="hub-btn"
             >
               {t('common.cancel')}
             </button>
             <button
               onClick={handleGoToSettings}
-              className="px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white rounded-md transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500 btn-warning"
+              className="hub-btn primary"
               autoFocus
             >
               {t('auth.goToSettings')}
