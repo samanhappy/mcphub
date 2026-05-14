@@ -23,11 +23,7 @@ export class VectorEmbedding {
   @Column('simple-json')
   metadata: Record<string, any>; // Additional metadata about the embedding
 
-  @Column({
-    type: 'vector' as any,
-    nullable: true,
-    synchronize: false, // Prevent TypeORM schema sync from altering/nulling the pgvector column
-  })
+  @Column({ type: 'vector' as any, nullable: true })
   embedding: number[]; // The vector embedding stored as pgvector
 
   @Column({ type: 'int' })
