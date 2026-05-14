@@ -222,6 +222,38 @@ const performDatabaseInitialization = async (): Promise<DataSource> => {
           );
         `);
 
+        if (!tableExists[0].exists) {
+          // vector_embeddings has synchronize:false on the entity (prevents the
+          // TypeORM DROP+ADD cycle that nulls stored embeddings on every startup).
+          // Create the table manually so new installations work correctly.
+          console.log('Creating vector_embeddings table...');
+          await appDataSource.query(`
+            CREATE TABLE IF NOT EXISTS vector_embeddings (
+              id           uuid                        NOT NULL DEFAULT uuid_generate_v4() PRIMARY KEY,
+              content_type character varying           NOT NULL,
+              content_id   character varying           NOT NULL,
+              text_content text                        NOT NULL,
+              metadata     text                        NOT NULL,
+              dimensions   integer                     NOT NULL,
+              model        character varying           NOT NULL,
+              created_at   timestamp without time zone NOT NULL DEFAULT now(),
+              updated_at   timestamp without time zone NOT NULL DEFAULT now(),
+              embedding    vector
+            );
+          `);
+        }
+
+        // Ensure the unique index exists (needed for atomic ON CONFLICT upserts).
+        // Safe to run on both new and existing installations.
+        try {
+          await appDataSource.query(`
+            CREATE UNIQUE INDEX IF NOT EXISTS uq_vector_embeddings_content
+            ON vector_embeddings (content_type, content_id);
+          `);
+        } catch (idxError: any) {
+          console.warn('Could not create unique index on vector_embeddings:', idxError.message);
+        }
+
         if (tableExists[0].exists) {
           // Add pgvector support via raw SQL commands
           console.log('Configuring vector support for embeddings table...');
@@ -277,10 +309,6 @@ const performDatabaseInitialization = async (): Promise<DataSource> => {
             console.warn('Vector index creation failed:', indexError.message);
             console.warn('Vector search will work but may be slower without an optimized index.');
           }
-        } else {
-          console.log(
-            'Vector embeddings table does not exist yet - will configure after schema sync.',
-          );
         }
       } catch (error: any) {
         console.warn('Could not set up vector column/index:', error.message);

@@ -71,38 +71,24 @@ export class VectorEmbeddingRepository extends BaseRepository<VectorEmbedding> {
   ): Promise<VectorEmbedding> {
     // TypeORM cannot serialize the pgvector `vector` column type — it silently
     // stores NULL when the entity is saved through the ORM. Bypass TypeORM
-    // entirely for this operation and use raw SQL for the full UPSERT so that
-    // the embedding column is always written correctly.
+    // entirely and use a single atomic INSERT ... ON CONFLICT DO UPDATE so that
+    // the embedding column is always written correctly without a race-prone
+    // SELECT-then-INSERT/UPDATE pattern.
     const rawEmbedding = this.formatEmbeddingForPgVector(embedding);
     const metadataJson = JSON.stringify(metadata);
-    const ds = getAppDataSource();
 
-    const existing = await this.findByContentIdentity(contentType, contentId);
-    if (existing) {
-      await ds.query(
-        `UPDATE vector_embeddings
-         SET text_content = $1,
-             embedding     = $2::vector,
-             dimensions    = $3,
-             metadata      = $4,
-             model         = $5,
-             updated_at    = NOW()
-         WHERE id = $6`,
-        [textContent, rawEmbedding, embedding.length, metadataJson, model, existing.id],
-      );
-      // Return an up-to-date representation without re-fetching from DB.
-      existing.text_content = textContent;
-      existing.dimensions = embedding.length;
-      existing.metadata = metadata;
-      existing.model = model;
-      return existing;
-    }
-
-    const [row] = await ds.query(
+    const [row] = await getAppDataSource().query(
       `INSERT INTO vector_embeddings
          (content_type, content_id, text_content, embedding, dimensions, metadata, model, created_at, updated_at)
        VALUES ($1, $2, $3, $4::vector, $5, $6, $7, NOW(), NOW())
-       RETURNING id`,
+       ON CONFLICT (content_type, content_id) DO UPDATE
+         SET text_content = EXCLUDED.text_content,
+             embedding     = EXCLUDED.embedding,
+             dimensions    = EXCLUDED.dimensions,
+             metadata      = EXCLUDED.metadata,
+             model         = EXCLUDED.model,
+             updated_at    = NOW()
+       RETURNING id, created_at`,
       [contentType, contentId, textContent, rawEmbedding, embedding.length, metadataJson, model],
     );
 
@@ -302,14 +288,14 @@ export class VectorEmbeddingRepository extends BaseRepository<VectorEmbedding> {
     if (currentContentIds.length === 0) return 0;
     try {
       const prefix = `${escapeLikePattern(serverName)}:%`;
-      // Build a parameterised NOT IN list.
-      const placeholders = currentContentIds.map((_, i) => `$${i + 3}`).join(', ');
+      // Pass the keep-list as a single text[] array and use unnest() to avoid
+      // dynamic SQL and PostgreSQL's 65,535 parameter limit.
       const result = await getAppDataSource().query(
         `DELETE FROM vector_embeddings
          WHERE content_type = $1
            AND content_id LIKE $2 ESCAPE '\\'
-           AND content_id NOT IN (${placeholders})`,
-        ['tool', prefix, ...currentContentIds],
+           AND content_id NOT IN (SELECT unnest($3::text[]))`,
+        ['tool', prefix, currentContentIds],
       );
       return result.rowCount ?? 0;
     } catch (error) {
