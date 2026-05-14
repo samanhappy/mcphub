@@ -299,7 +299,7 @@ export class VectorEmbeddingRepository extends BaseRepository<VectorEmbedding> {
       );
       return result.rowCount ?? 0;
     } catch (error) {
-      console.error(`Error deleting stale tool embeddings for server ${serverName}:`, error);
+      console.error('Error deleting stale tool embeddings for server', serverName, error);
       return 0;
     }
   }
@@ -331,7 +331,7 @@ export class VectorEmbeddingRepository extends BaseRepository<VectorEmbedding> {
 
       return result.affected || 0;
     } catch (error) {
-      console.error(`Error deleting embeddings for server ${serverName}:`, error);
+      console.error('Error deleting embeddings for server', serverName, error);
       return 0;
     }
   }
