@@ -1114,10 +1114,13 @@ export const saveToolsAsVectorEmbeddings = async (
           const hasMatchingToolSetHash =
             existingIdentities.length > 0 &&
             existingIdentities.every((item) => item.toolSetHash === expectedToolSetHash);
-          const existingServerEmbedding = await skipCheckRepo.findByContentIdentity('server', serverName);
+          // Use raw-SQL-backed findEmbeddingStatus to avoid TypeORM silently
+          // deserializing the pgvector column as null on a plain findOneBy() call.
+          const serverEmbStatus = await skipCheckRepo.findEmbeddingStatus('server', serverName);
           const hasCurrentServerEmbedding =
-            existingServerEmbedding?.model === persistedEmbeddingModel &&
-            existingServerEmbedding.text_content === serverSearchableText && existingServerEmbedding.embedding != null;
+            serverEmbStatus?.model === persistedEmbeddingModel &&
+            serverEmbStatus.text_content === serverSearchableText &&
+            serverEmbStatus.hasEmbedding === true;
 
           if (hasExactContentIds && hasMatchingToolSetHash && hasCurrentServerEmbedding) {
             console.log(
@@ -1253,6 +1256,21 @@ export const saveToolsAsVectorEmbeddings = async (
         },
         persistedEmbeddingModel,
       );
+    }
+
+    // Remove stale tool embeddings left over from previously-removed tools.
+    // Without this, count(existing) > count(expected) and the skip check on the
+    // next restart would always fail, forcing a full re-generation every time.
+    if (toolEmbeddings.length > 0) {
+      const currentContentIds = toolEmbeddings.map(({ tool }) => `${serverName}:${tool.name}`);
+      const staleCount = await vectorRepository.deleteStaleToolEmbeddings(
+        serverName,
+        currentContentIds,
+        persistedEmbeddingModel,
+      );
+      if (staleCount > 0) {
+        console.log(`[Embedding] [${serverName}] Removed ${staleCount} stale tool embedding(s)`);
+      }
     }
 
     await vectorRepository.saveEmbedding(

@@ -6,7 +6,7 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 
-@Entity({ name: 'vector_embeddings' })
+@Entity({ name: 'vector_embeddings', synchronize: false })
 export class VectorEmbedding {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -26,6 +26,7 @@ export class VectorEmbedding {
   @Column({
     type: 'vector' as any,
     nullable: true,
+    synchronize: false, // Prevent TypeORM schema sync from altering/nulling the pgvector column
   })
   embedding: number[]; // The vector embedding stored as pgvector
 

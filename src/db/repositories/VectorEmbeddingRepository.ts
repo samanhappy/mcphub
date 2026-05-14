@@ -28,6 +28,31 @@ export class VectorEmbeddingRepository extends BaseRepository<VectorEmbedding> {
   }
 
   /**
+   * Check whether a row exists with a non-null embedding, using raw SQL to
+   * avoid TypeORM silently deserializing the pgvector column as null.
+   * Returns { hasEmbedding, model, text_content } or null if no row found.
+   */
+  async findEmbeddingStatus(
+    contentType: string,
+    contentId: string,
+  ): Promise<{ model: string; text_content: string; hasEmbedding: boolean } | null> {
+    const rows: Array<{ model: string; text_content: string; has_embedding: boolean | string }> =
+      await getAppDataSource().query(
+        `SELECT model, text_content, (embedding IS NOT NULL) AS has_embedding
+         FROM vector_embeddings
+         WHERE content_type = $1 AND content_id = $2
+         LIMIT 1`,
+        [contentType, contentId],
+      );
+    if (!rows || rows.length === 0) return null;
+    return {
+      model: rows[0].model,
+      text_content: rows[0].text_content,
+      hasEmbedding: rows[0].has_embedding === true || rows[0].has_embedding === 't',
+    };
+  }
+
+  /**
    * Create or update an embedding for content
    * @param contentType Content type
    * @param contentId Content ID
@@ -44,30 +69,52 @@ export class VectorEmbeddingRepository extends BaseRepository<VectorEmbedding> {
     metadata: Record<string, any> = {},
     model = 'default',
   ): Promise<VectorEmbedding> {
-    // Check if embedding exists
-    let vectorEmbedding = await this.findByContentIdentity(contentType, contentId);
-
-    if (!vectorEmbedding) {
-      vectorEmbedding = new VectorEmbedding();
-      vectorEmbedding.content_type = contentType;
-      vectorEmbedding.content_id = contentId;
-    }
-
-    // Update properties
-    vectorEmbedding.text_content = textContent;
-    vectorEmbedding.embedding = embedding;
-    vectorEmbedding.dimensions = embedding.length;
-    vectorEmbedding.metadata = metadata;
-    vectorEmbedding.model = model;
-
-    // For raw SQL operations where our subscriber might not be called
-    // Ensure the embedding is properly formatted for postgres
+    // TypeORM cannot serialize the pgvector `vector` column type — it silently
+    // stores NULL when the entity is saved through the ORM. Bypass TypeORM
+    // entirely for this operation and use raw SQL for the full UPSERT so that
+    // the embedding column is always written correctly.
     const rawEmbedding = this.formatEmbeddingForPgVector(embedding);
-    if (rawEmbedding) {
-      (vectorEmbedding as any).embedding = rawEmbedding;
+    const metadataJson = JSON.stringify(metadata);
+    const ds = getAppDataSource();
+
+    const existing = await this.findByContentIdentity(contentType, contentId);
+    if (existing) {
+      await ds.query(
+        `UPDATE vector_embeddings
+         SET text_content = $1,
+             embedding     = $2::vector,
+             dimensions    = $3,
+             metadata      = $4,
+             model         = $5,
+             updated_at    = NOW()
+         WHERE id = $6`,
+        [textContent, rawEmbedding, embedding.length, metadataJson, model, existing.id],
+      );
+      // Return an up-to-date representation without re-fetching from DB.
+      existing.text_content = textContent;
+      existing.dimensions = embedding.length;
+      existing.metadata = metadata;
+      existing.model = model;
+      return existing;
     }
 
-    return this.save(vectorEmbedding);
+    const [row] = await ds.query(
+      `INSERT INTO vector_embeddings
+         (content_type, content_id, text_content, embedding, dimensions, metadata, model, created_at, updated_at)
+       VALUES ($1, $2, $3, $4::vector, $5, $6, $7, NOW(), NOW())
+       RETURNING id`,
+      [contentType, contentId, textContent, rawEmbedding, embedding.length, metadataJson, model],
+    );
+
+    const result = new VectorEmbedding();
+    result.id = row.id;
+    result.content_type = contentType;
+    result.content_id = contentId;
+    result.text_content = textContent;
+    result.dimensions = embedding.length;
+    result.metadata = metadata;
+    result.model = model;
+    return result;
   }
 
   /**
@@ -203,24 +250,72 @@ export class VectorEmbeddingRepository extends BaseRepository<VectorEmbedding> {
     serverName: string,
     model: string,
   ): Promise<Array<{ contentId: string; toolSetHash?: string }>> {
+    // Use raw SQL to bypass TypeORM's entity mapping for pgvector columns.
+    // TypeORM's QueryBuilder with getMany() and .andWhere('ve.embedding IS NOT NULL')
+    // on a vector-type column may silently return 0 rows due to type-mapping issues.
     const prefix = `${escapeLikePattern(serverName)}:%`;
 
-    const rows = await this.repository
-      .createQueryBuilder('ve')
-      .select(['ve.content_id', 've.metadata'])
-      .where('ve.content_type = :ct', { ct: 'tool' })
-      .andWhere("ve.content_id LIKE :prefix ESCAPE '\\'", { prefix })
-      .andWhere('ve.model = :model', { model })
-      .andWhere('ve.embedding IS NOT NULL')
-      .getMany();
+    const rows: Array<{ content_id: string; metadata: unknown }> = await getAppDataSource().query(
+      `SELECT content_id, metadata
+       FROM vector_embeddings
+       WHERE content_type = $1
+         AND content_id LIKE $2 ESCAPE '\\'
+         AND model = $3
+         AND embedding IS NOT NULL`,
+      ['tool', prefix, model],
+    );
 
-    return rows.map((row) => ({
-      contentId: row.content_id,
-      toolSetHash:
-        row.metadata && typeof row.metadata === 'object'
-          ? (row.metadata as Record<string, unknown>).toolSetHash?.toString()
-          : undefined,
-    }));
+    return rows.map((row) => {
+      const rawMeta = row.metadata;
+      const meta: Record<string, unknown> | null =
+        rawMeta == null
+          ? null
+          : typeof rawMeta === 'object'
+          ? (rawMeta as Record<string, unknown>)
+          : (() => {
+              try {
+                return JSON.parse(String(rawMeta)) as Record<string, unknown>;
+              } catch {
+                return null;
+              }
+            })();
+      return {
+        contentId: row.content_id,
+        toolSetHash: meta?.toolSetHash?.toString(),
+      };
+    });
+  }
+
+  /**
+   * Delete tool embeddings for a server that are no longer in the current tool set.
+   * Called after Phase 2 saves to remove rows left over from previously-removed tools.
+   * @param serverName Server name
+   * @param currentContentIds Full list of content_ids for the current tool set (e.g. "server:tool-name")
+   * @param model Embedding model identifier
+   * @returns Number of deleted rows
+   */
+  async deleteStaleToolEmbeddings(
+    serverName: string,
+    currentContentIds: string[],
+    model: string,
+  ): Promise<number> {
+    if (currentContentIds.length === 0) return 0;
+    try {
+      const prefix = `${escapeLikePattern(serverName)}:%`;
+      // Build a parameterised NOT IN list.
+      const placeholders = currentContentIds.map((_, i) => `$${i + 3}`).join(', ');
+      const result = await getAppDataSource().query(
+        `DELETE FROM vector_embeddings
+         WHERE content_type = $1
+           AND content_id LIKE $2 ESCAPE '\\'
+           AND content_id NOT IN (${placeholders})`,
+        ['tool', prefix, ...currentContentIds],
+      );
+      return result.rowCount ?? 0;
+    } catch (error) {
+      console.error(`Error deleting stale tool embeddings for server ${serverName}:`, error);
+      return 0;
+    }
   }
 
   /**
