@@ -42,6 +42,7 @@ interface SmartRoutingConfig {
   azureOpenaiApiKey?: string;
   azureOpenaiApiVersion?: string;
   azureOpenaiEmbeddingDeployment?: string;
+  azureOpenaiEmbeddingModel?: string;
   progressiveDisclosure: boolean;
   embeddingMaxTokens?: number;
 }
@@ -204,6 +205,7 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
     azureOpenaiApiKey: '',
     azureOpenaiApiVersion: '',
     azureOpenaiEmbeddingDeployment: '',
+    azureOpenaiEmbeddingModel: '',
     progressiveDisclosure: false,
     embeddingMaxTokens: undefined,
   });
@@ -283,6 +285,8 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
           azureOpenaiApiVersion: data.data.systemConfig.smartRouting.azureOpenaiApiVersion || '',
           azureOpenaiEmbeddingDeployment:
             data.data.systemConfig.smartRouting.azureOpenaiEmbeddingDeployment || '',
+          azureOpenaiEmbeddingModel:
+            data.data.systemConfig.smartRouting.azureOpenaiEmbeddingModel || '',
           progressiveDisclosure: data.data.systemConfig.smartRouting.progressiveDisclosure ?? false,
           embeddingMaxTokens: data.data.systemConfig.smartRouting.embeddingMaxTokens,
         });
