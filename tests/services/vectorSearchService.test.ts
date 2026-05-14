@@ -4,9 +4,11 @@ const mockVectorRepository = {
   countByServerNameAndModel: jest.fn(),
   getToolIdentityByServerNameAndModel: jest.fn(),
   findByContentIdentity: jest.fn(),
+  findEmbeddingStatus: jest.fn(),
   saveEmbedding: jest.fn(),
   searchSimilar: jest.fn(),
   deleteByServerName: jest.fn(),
+  deleteStaleToolEmbeddings: jest.fn(),
 };
 
 const mockGetRepositoryFactory = jest.fn(() => () => mockVectorRepository);
@@ -240,6 +242,7 @@ describe('vectorSearchService', () => {
   it('saves a server embedding alongside tool embeddings', async () => {
     mockVectorRepository.countByServerNameAndModel.mockResolvedValue(0);
     mockVectorRepository.saveEmbedding.mockResolvedValue({});
+    mockVectorRepository.deleteStaleToolEmbeddings.mockResolvedValue(0);
 
     await saveToolsAsVectorEmbeddings('redis', [
       {
@@ -288,12 +291,13 @@ describe('vectorSearchService', () => {
         toolSetHash: buildToolSetHash(tools),
       },
     ]);
-    mockVectorRepository.findByContentIdentity.mockResolvedValue(null);
+    mockVectorRepository.findEmbeddingStatus.mockResolvedValue(null);
     mockVectorRepository.saveEmbedding.mockResolvedValue({});
+    mockVectorRepository.deleteStaleToolEmbeddings.mockResolvedValue(0);
 
     await saveToolsAsVectorEmbeddings('redis', tools);
 
-    expect(mockVectorRepository.findByContentIdentity).toHaveBeenCalledWith('server', 'redis');
+    expect(mockVectorRepository.findEmbeddingStatus).toHaveBeenCalledWith('server', 'redis');
     expect(mockVectorRepository.saveEmbedding).toHaveBeenCalledWith(
       'server',
       'redis',
