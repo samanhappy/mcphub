@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { BookOpen } from 'lucide-react';
+import { useLocation, useParams } from 'react-router-dom';
+import { BookOpen, Menu } from 'lucide-react';
 import ThemeSwitch from '@/components/ui/ThemeSwitch';
 import LanguageSwitch from '@/components/ui/LanguageSwitch';
 import GitHubIcon from '@/components/icons/GitHubIcon';
@@ -10,108 +11,116 @@ interface HeaderProps {
   onToggleSidebar: () => void;
 }
 
+const useCrumbs = (): string[] => {
+  const { t } = useTranslation();
+  const location = useLocation();
+  const params = useParams();
+
+  return useMemo(() => {
+    const path = location.pathname;
+    const root = t('app.title');
+    if (path === '/') return [root, t('nav.dashboard')];
+    if (path.startsWith('/servers')) return [root, t('nav.servers')];
+    if (path.startsWith('/groups')) return [root, t('nav.groups')];
+    if (path.startsWith('/prompts')) return [root, t('nav.prompts')];
+    if (path.startsWith('/resources')) return [root, t('nav.resources')];
+    if (path.startsWith('/users')) return [root, t('nav.users')];
+    if (path.startsWith('/market')) {
+      const serverName = (params as { serverName?: string }).serverName;
+      const crumbs = [root, t('nav.market')];
+      if (serverName) crumbs.push(serverName);
+      return crumbs;
+    }
+    if (path.startsWith('/logs')) return [root, t('nav.logs')];
+    if (path.startsWith('/activity')) return [root, t('nav.activity')];
+    if (path.startsWith('/settings')) return [root, t('nav.settings')];
+    return [root];
+  }, [location.pathname, params, t]);
+};
+
 const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
   const { t } = useTranslation();
   const { activeSyncs } = useEmbeddingSync();
+  const crumbs = useCrumbs();
 
   return (
-    <header className="bg-white dark:bg-gray-800 shadow-sm z-10">
-      <div className="flex items-center gap-4 px-3 py-3">
-        <div className="flex items-center shrink-0">
-          {/* 侧边栏切换按钮 */}
-          <button
-            onClick={onToggleSidebar}
-            className="p-2 rounded-md text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 focus:outline-none"
-            aria-label={t('app.toggleSidebar')}
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-6 w-6"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M4 6h16M4 12h16M4 18h16"
-              />
-            </svg>
-          </button>
+    <header className="hub-topbar shrink-0">
+      <button
+        onClick={onToggleSidebar}
+        className="hub-icon-btn"
+        aria-label={t('app.toggleSidebar')}
+      >
+        <Menu size={16} />
+      </button>
 
-          {/* 应用标题 */}
-          <h1 className="ml-4 text-xl font-bold text-gray-900 dark:text-white">{t('app.title')}</h1>
-        </div>
+      <div className="hub-crumb flex items-center min-w-0">
+        {crumbs.map((c, i) => (
+          <React.Fragment key={i}>
+            {i > 0 && <span className="sep">/</span>}
+            {i === crumbs.length - 1 ? <b className="truncate">{c}</b> : <span className="truncate">{c}</span>}
+          </React.Fragment>
+        ))}
+      </div>
 
-        <div className="flex flex-1 justify-center px-2 min-w-0">
-          {activeSyncs.length > 0 && (
-            <div className="flex max-w-full flex-wrap justify-center gap-2">
-              {activeSyncs.map((activeSync) => (
-                <div
-                  key={activeSync.serverName}
-                  className="flex min-w-0 w-56 max-w-full flex-col rounded-md bg-blue-50 px-3 py-2 text-xs text-blue-900 dark:bg-gray-700 dark:text-blue-100"
-                  title={t('app.embeddingSyncProgressAriaLabel', {
-                    serverName: activeSync.serverName,
-                    current: activeSync.current,
-                    total: activeSync.total,
-                  })}
-                >
-                  <span className="truncate font-medium">
-                    {t('app.embeddingSyncProgress', { serverName: activeSync.serverName })}
+      <div className="flex-1 flex justify-center px-2 min-w-0">
+        {activeSyncs.length > 0 && (
+          <div className="flex max-w-full flex-wrap justify-center gap-2">
+            {activeSyncs.map((activeSync) => (
+              <div
+                key={activeSync.serverName}
+                className="hub-card flex min-w-0 w-56 max-w-full flex-col px-3 py-1.5 text-xs"
+                style={{ borderRadius: 7 }}
+                title={t('app.embeddingSyncProgressAriaLabel', {
+                  serverName: activeSync.serverName,
+                  current: activeSync.current,
+                  total: activeSync.total,
+                })}
+              >
+                <span className="truncate hub-mono text-[var(--hub-ink-2)]">
+                  {t('app.embeddingSyncProgress', { serverName: activeSync.serverName })}
+                </span>
+                <div className="mt-1 flex items-center gap-2">
+                  <progress
+                    className="h-1.5 flex-1"
+                    value={activeSync.current}
+                    max={activeSync.total}
+                    aria-label={t('app.embeddingSyncProgressAriaLabel', {
+                      serverName: activeSync.serverName,
+                      current: activeSync.current,
+                      total: activeSync.total,
+                    })}
+                  />
+                  <span className="shrink-0 hub-mono hub-num text-[var(--hub-ink-3)]">
+                    {activeSync.current}/{activeSync.total}
                   </span>
-                  <div className="mt-1 flex items-center gap-2">
-                    <progress
-                      className="h-2 flex-1"
-                      value={activeSync.current}
-                      max={activeSync.total}
-                      aria-label={t('app.embeddingSyncProgressAriaLabel', {
-                        serverName: activeSync.serverName,
-                        current: activeSync.current,
-                        total: activeSync.total,
-                      })}
-                    />
-                    <span className="shrink-0 tabular-nums">
-                      {activeSync.current}/{activeSync.total}
-                    </span>
-                  </div>
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
-        {/* Theme Switch and Language Switcher and Version */}
-        <div className="flex items-center space-x-1 shrink-0">
-          <span className="text-sm text-gray-500 dark:text-gray-400 mr-2">
-            {import.meta.env.PACKAGE_VERSION === 'dev'
-              ? import.meta.env.PACKAGE_VERSION
-              : `v${import.meta.env.PACKAGE_VERSION}`}
-          </span>
-
-          <a
-            href="https://github.com/samanhappy/mcphub"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="p-2 rounded-md text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800"
-            aria-label="GitHub Repository"
-          >
-            <GitHubIcon className="h-5 w-5" />
-          </a>
-
-          <a
-            href="https://docs.mcphub.app"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="p-2 rounded-md text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800"
-            aria-label="Documentation"
-          >
-            <BookOpen className="h-5 w-5" />
-          </a>
-
-          <ThemeSwitch />
-          <LanguageSwitch />
-        </div>
+      <div className="ml-auto flex items-center gap-1 shrink-0">
+        <a
+          href="https://github.com/samanhappy/mcphub"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="hub-icon-btn"
+          aria-label="GitHub Repository"
+        >
+          <GitHubIcon className="h-4 w-4" />
+        </a>
+        <a
+          href="https://docs.mcphub.app"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="hub-icon-btn"
+          aria-label="Documentation"
+        >
+          <BookOpen className="h-4 w-4" />
+        </a>
+        <ThemeSwitch />
+        <LanguageSwitch />
       </div>
     </header>
   );

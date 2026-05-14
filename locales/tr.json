@@ -274,7 +274,10 @@
     "actions": "Eylemler",
     "saving": "Kaydediliyor...",
     "active": "Aktif",
-    "inactive": "Pasif"
+    "inactive": "Pasif",
+    "viewAll": "Tümünü gör",
+    "docs": "Belgeler",
+    "all": "Tümü"
   },
   "pagination": {
     "rowsPerPage": "Sayfa başına satır",
@@ -292,7 +295,9 @@
     "market": "Market",
     "cloud": "Bulut Market",
     "logs": "Günlükler",
-    "activity": "Etkinlik"
+    "activity": "Etkinlik",
+    "workspace": "Çalışma Alanı",
+    "system": "Sistem"
   },
   "pages": {
     "dashboard": {
@@ -692,6 +697,8 @@
     "embeddingMaxTokensOverride": "Bu değer model varsayılanını geçersiz kılar.",
     "smartRoutingRequiredFields": "Akıllı yönlendirmeyi etkinleştirmek için Veritabanı URL'si gereklidir. LLM Sağlayıcı API Anahtarı yalnızca bulut tabanlı sağlayıcılar için gereklidir (yerel LLM'ler genellikle API anahtarı gerektirmez, form doğrulamasını geçmek için herhangi bir değer girin)",
     "smartRoutingValidationError": "Akıllı Yönlendirmeyi etkinleştirmeden önce lütfen gerekli alanları doldurun: {{fields}}",
+    "smartRoutingWorkflow": "İş Akışı",
+    "smartRoutingWorkflowDescription": "İstem vektörleştirilir; pgvector'dan en benzer top-k araç alınır ve üst LLM'e sunulur.",
     "mcpRouterConfig": "Bulut Market",
     "mcpRouterApiKey": "MCPRouter API Anahtarı",
     "mcpRouterApiKeyDescription": "MCPRouter bulut market hizmetlerine erişim için API anahtarı",

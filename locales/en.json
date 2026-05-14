@@ -273,7 +273,10 @@
     "actions": "Actions",
     "saving": "Saving...",
     "active": "Active",
-    "inactive": "Inactive"
+    "inactive": "Inactive",
+    "viewAll": "View all",
+    "docs": "Docs",
+    "all": "All"
   },
   "pagination": {
     "rowsPerPage": "Rows per page",
@@ -291,7 +294,9 @@
     "market": "Market",
     "cloud": "Cloud Market",
     "logs": "Logs",
-    "activity": "Activity"
+    "activity": "Activity",
+    "workspace": "Workspace",
+    "system": "System"
   },
   "pages": {
     "dashboard": {
@@ -301,7 +306,9 @@
       "disabledServers": "Disabled",
       "offlineServers": "Offline",
       "connectingServers": "Connecting",
-      "recentServers": "Recent Servers"
+      "recentServers": "Recent Servers",
+      "endpoints": "MCP Endpoints",
+      "endpointsHint": "Use these URLs in Claude Desktop, Cursor or any MCP client"
     },
     "servers": {
       "title": "Server Management"
@@ -691,6 +698,8 @@
     "smartRoutingConfigUpdated": "Smart routing configuration updated successfully",
     "smartRoutingRequiredFields": "Database URL is required to enable smart routing. An LLM Provider API Key is required for cloud-based providers (local LLMs usually don't require an API key, enter any value to pass the form validation)",
     "smartRoutingValidationError": "Please fill in the required fields before enabling Smart Routing: {{fields}}",
+    "smartRoutingWorkflow": "Workflow",
+    "smartRoutingWorkflowDescription": "Prompts are vectorized; top-k similar tools are fetched from pgvector and exposed to the upstream LLM.",
     "mcpRouterConfig": "Cloud Market",
     "mcpRouterApiKey": "MCPRouter API Key",
     "mcpRouterApiKeyDescription": "API key for accessing MCPRouter cloud market services",

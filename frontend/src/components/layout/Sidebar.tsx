@@ -1,11 +1,24 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NavLink } from 'react-router-dom';
+import {
+  LayoutGrid,
+  Server as ServerIcon,
+  Users as UsersIcon,
+  Store,
+  Route as RouteIcon,
+  Settings as SettingsIcon,
+  FileText,
+  MessageSquare,
+  Activity,
+  ScrollText,
+} from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useServerContext } from '@/contexts/ServerContext';
+import { useGroupData } from '@/hooks/useGroupData';
 import { usePermissionCheck } from '../PermissionChecker';
 import UserProfileMenu from '@/components/ui/UserProfileMenu';
 import { checkActivityAvailable } from '@/services/activityService';
-import { MessageSquare, FileText } from 'lucide-react';
 
 interface SidebarProps {
   collapsed: boolean;
@@ -15,188 +28,145 @@ interface MenuItem {
   path: string;
   label: string;
   icon: React.ReactNode;
+  badge?: string | number;
+  end?: boolean;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
   const { t } = useTranslation();
   const { auth } = useAuth();
+  const { allServers } = useServerContext();
+  const { groups } = useGroupData();
   const [activityAvailable, setActivityAvailable] = useState(false);
 
-  // Application version from package.json (accessed via Vite environment variables)
   const appVersion = import.meta.env.PACKAGE_VERSION as string;
 
-  // Check if activity logging is available (DB mode only)
   useEffect(() => {
     checkActivityAvailable()
       .then(setActivityAvailable)
       .catch(() => setActivityAvailable(false));
   }, []);
 
-  // Menu item configuration
-  const menuItems: MenuItem[] = [
-    {
-      path: '/',
-      label: t('nav.dashboard'),
-      icon: (
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          className="h-5 w-5"
-          viewBox="0 0 20 20"
-          fill="currentColor"
-        >
-          <path d="M2 10a8 8 0 018-8v8h8a8 8 0 11-16 0z" />
-          <path d="M12 2.252A8.014 8.014 0 0117.748 8H12V2.252z" />
-        </svg>
-      ),
-    },
+  const userCanManageUsers = auth.user?.isAdmin && usePermissionCheck('x');
+
+  const workspaceItems: MenuItem[] = [
+    { path: '/', label: t('nav.dashboard'), icon: <LayoutGrid className="h-4 w-4" />, end: true },
     {
       path: '/servers',
       label: t('nav.servers'),
-      icon: (
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          className="h-5 w-5"
-          viewBox="0 0 20 20"
-          fill="currentColor"
-        >
-          <path
-            fillRule="evenodd"
-            d="M2 5a2 2 0 012-2h12a2 2 0 012 2v2a2 2 0 01-2 2H4a2 2 0 01-2-2V5zm14 1a1 1 0 11-2 0 1 1 0 012 0zM2 13a2 2 0 012-2h12a2 2 0 012 2v2a2 2 0 01-2 2H4a2 2 0 01-2-2v-2zm14 1a1 1 0 11-2 0 1 1 0 012 0z"
-            clipRule="evenodd"
-          />
-        </svg>
-      ),
+      icon: <ServerIcon className="h-4 w-4" />,
+      badge: allServers.length || undefined,
     },
     {
       path: '/groups',
       label: t('nav.groups'),
-      icon: (
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          className="h-5 w-5"
-          viewBox="0 0 20 20"
-          fill="currentColor"
-        >
-          <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z" />
-        </svg>
-      ),
+      icon: <RouteIcon className="h-4 w-4" />,
+      badge: groups.length || undefined,
     },
-    {
-      path: '/prompts',
-      label: t('nav.prompts'),
-      icon: <MessageSquare className="h-4 w-4" />,
-    },
-    {
-      path: '/resources',
-      label: t('nav.resources'),
-      icon: <FileText className="h-5 w-5" />,
-    },
-    {
-      path: '/market',
-      label: t('nav.market'),
-      icon: (
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          className="h-5 w-5"
-          viewBox="0 0 20 20"
-          fill="currentColor"
-        >
-          <path d="M3 1a1 1 0 000 2h1.22l.305 1.222a.997.997 0 00.01.042l1.358 5.43-.893.892C3.74 11.846 4.632 14 6.414 14H15a1 1 0 000-2H6.414l1-1H14a1 1 0 00.894-.553l3-6A1 1 0 0017 3H6.28l-.31-1.243A1 1 0 005 1H3zM16 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM6.5 18a1.5 1.5 0 100-3 1.5 1.5 0 000 3z" />
-        </svg>
-      ),
-    },
-    ...(auth.user?.isAdmin && usePermissionCheck('x')
-      ? [
-          {
-            path: '/users',
-            label: t('nav.users'),
-            icon: (
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-5 w-5"
-                viewBox="0 0 20 20"
-                fill="currentColor"
-              >
-                <path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z" />
-              </svg>
-            ),
-          },
-        ]
+    { path: '/prompts', label: t('nav.prompts'), icon: <MessageSquare className="h-4 w-4" /> },
+    { path: '/resources', label: t('nav.resources'), icon: <FileText className="h-4 w-4" /> },
+    { path: '/market', label: t('nav.market'), icon: <Store className="h-4 w-4" /> },
+  ];
+
+  const systemItems: MenuItem[] = [
+    ...(userCanManageUsers
+      ? [{ path: '/users', label: t('nav.users'), icon: <UsersIcon className="h-4 w-4" /> }]
       : []),
     ...(activityAvailable && auth.user?.isAdmin
-      ? [
-          {
-            path: '/activity',
-            label: t('nav.activity'),
-            icon: (
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-5 w-5"
-                viewBox="0 0 20 20"
-                fill="currentColor"
-              >
-                <path
-                  fillRule="evenodd"
-                  d="M3 3a1 1 0 000 2v8a2 2 0 002 2h2.586l-1.293 1.293a1 1 0 101.414 1.414L10 15.414l2.293 2.293a1 1 0 001.414-1.414L12.414 15H15a2 2 0 002-2V5a1 1 0 100-2H3zm11.707 4.707a1 1 0 00-1.414-1.414L10 9.586 8.707 8.293a1 1 0 00-1.414 0l-2 2a1 1 0 101.414 1.414L8 10.414l1.293 1.293a1 1 0 001.414 0l4-4z"
-                  clipRule="evenodd"
-                />
-              </svg>
-            ),
-          },
-        ]
+      ? [{ path: '/activity', label: t('nav.activity'), icon: <Activity className="h-4 w-4" /> }]
       : []),
-    {
-      path: '/logs',
-      label: t('nav.logs'),
-      icon: (
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          className="h-5 w-5"
-          viewBox="0 0 20 20"
-          fill="currentColor"
-        >
-          <path
-            fillRule="evenodd"
-            d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z"
-            clipRule="evenodd"
-          />
-        </svg>
-      ),
-    },
+    { path: '/logs', label: t('nav.logs'), icon: <ScrollText className="h-4 w-4" /> },
+    { path: '/settings', label: t('nav.settings'), icon: <SettingsIcon className="h-4 w-4" /> },
   ];
+
+  const renderItem = (item: MenuItem) => (
+    <NavLink
+      key={item.path}
+      to={item.path}
+      end={item.end}
+      className={({ isActive }) =>
+        [
+          'group flex items-center gap-2.5 rounded-md text-[13.5px] transition-colors',
+          collapsed ? 'justify-center px-2 py-2' : 'px-2.5 py-1.5',
+          isActive
+            ? 'bg-[var(--hub-surface)] text-[var(--hub-ink)] ring-1 ring-inset ring-[var(--hub-line)]'
+            : 'text-[var(--hub-ink-2)] hover:bg-[var(--hub-surface-hover)] hover:text-[var(--hub-ink)]',
+        ].join(' ')
+      }
+    >
+      {({ isActive }) => (
+        <>
+          <span
+            className={
+              isActive
+                ? 'text-[var(--hub-ink)] flex-shrink-0'
+                : 'text-[var(--hub-ink-3)] group-hover:text-[var(--hub-ink-2)] flex-shrink-0'
+            }
+          >
+            {item.icon}
+          </span>
+          {!collapsed && (
+            <>
+              <span className="truncate">{item.label}</span>
+              {item.badge != null && (
+                <span className="ml-auto hub-mono hub-num text-[11px] text-[var(--hub-ink-3)]">
+                  {item.badge}
+                </span>
+              )}
+            </>
+          )}
+        </>
+      )}
+    </NavLink>
+  );
 
   return (
     <aside
-      className={`bg-white dark:bg-gray-800 shadow-sm transition-all duration-300 ease-in-out flex flex-col h-full relative ${
-        collapsed ? 'w-16' : 'w-64'
-      }`}
+      className={
+        'flex flex-col h-full relative shrink-0 transition-[width] duration-200 ease-out ' +
+        'bg-[var(--hub-bg-2)] border-r border-[var(--hub-line)] ' +
+        (collapsed ? 'w-14' : 'w-[232px]')
+      }
     >
-      {/* Scrollable navigation area */}
-      <div className="overflow-y-auto flex-grow">
-        <nav className="p-3 space-y-1">
-          {menuItems.map((item) => (
-            <NavLink
-              key={item.path}
-              to={item.path}
-              className={({ isActive }) =>
-                `flex items-center px-2.5 py-2 rounded-lg transition-colors duration-200
-         ${
-           isActive
-             ? 'bg-blue-50 text-blue-700 dark:bg-gray-600 dark:text-white'
-             : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-         }`
-              }
-              end={item.path === '/'}
-            >
-              <span className="flex-shrink-0">{item.icon}</span>
-              {!collapsed && <span className="ml-3">{item.label}</span>}
-            </NavLink>
-          ))}
+      {/* Brand */}
+      <div className={'flex items-center gap-2.5 ' + (collapsed ? 'px-2 py-3 justify-center' : 'px-4 py-3')}>
+        <div className="relative w-7 h-7 rounded-md bg-[var(--hub-ink)] grid place-items-center text-white hub-mono font-semibold text-[12px]">
+          <span>M</span>
+          <span
+            className="absolute -right-0.5 -bottom-0.5 w-[6px] h-[6px] rounded-full"
+            style={{
+              background: 'var(--hub-ok)',
+              boxShadow: '0 0 0 2px oklch(0.66 0.15 145 / 0.18)',
+            }}
+          />
+        </div>
+        {!collapsed && (
+          <div className="flex items-baseline gap-1.5 min-w-0">
+            <span className="font-semibold tracking-tight text-[var(--hub-ink)] truncate">
+              {t('app.title')}
+            </span>
+            {appVersion && (
+              <span className="hub-mono text-[10.5px] text-[var(--hub-ink-3)] flex-shrink-0">
+                {appVersion === 'dev' ? appVersion : `v${appVersion}`}
+              </span>
+            )}
+          </div>
+        )}
+      </div>
+
+      <div className="flex-1 overflow-y-auto pb-2">
+        {!collapsed && <div className="hub-sect px-3 pt-2 pb-1.5">{t('nav.workspace')}</div>}
+        <nav className={'flex flex-col gap-px ' + (collapsed ? 'px-1.5' : 'px-2')}>
+          {workspaceItems.map(renderItem)}
+        </nav>
+
+        {!collapsed && <div className="hub-sect px-3 pt-3 pb-1.5">{t('nav.system')}</div>}
+        <nav className={'flex flex-col gap-px ' + (collapsed ? 'px-1.5 mt-1' : 'px-2')}>
+          {systemItems.map(renderItem)}
         </nav>
       </div>
 
-      {/* User profile menu fixed at the bottom */}
-      <div className="p-3 bg-white dark:bg-gray-800">
+      <div className="p-2.5 border-t border-[var(--hub-line)]">
         <UserProfileMenu collapsed={collapsed} version={appVersion} />
       </div>
     </aside>

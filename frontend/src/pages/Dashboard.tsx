@@ -1,369 +1,276 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
+import { RefreshCw, Plus, ChevronRight, AlertCircle } from 'lucide-react';
 import { useServerData } from '@/hooks/useServerData';
+import { useGroupData } from '@/hooks/useGroupData';
+import { useSettingsData } from '@/hooks/useSettingsData';
 import { Server } from '@/types';
+import { EndpointCopy } from '@/components/ui/EndpointCopy';
+import { ServerStatusDot } from '@/components/ui/StatusDot';
+
+const Stat: React.FC<{ label: string; value: React.ReactNode; tone?: 'ok' | 'warn' | 'err' | 'muted' | 'default' }> = ({
+  label,
+  value,
+  tone = 'default',
+}) => {
+  const toneColor =
+    tone === 'ok'
+      ? 'oklch(0.4 0.13 145)'
+      : tone === 'warn'
+        ? 'oklch(0.45 0.13 80)'
+        : tone === 'err'
+          ? 'oklch(0.45 0.18 25)'
+          : tone === 'muted'
+            ? 'var(--hub-ink-3)'
+            : 'var(--hub-ink)';
+  return (
+    <div className="hub-card" style={{ padding: '14px 16px' }}>
+      <div className="text-[12px]" style={{ color: 'var(--hub-ink-3)' }}>
+        {label}
+      </div>
+      <div
+        className="hub-num"
+        style={{
+          fontSize: 26,
+          fontWeight: 500,
+          letterSpacing: '-0.02em',
+          lineHeight: 1.1,
+          marginTop: 8,
+          color: toneColor,
+        }}
+      >
+        {value}
+      </div>
+    </div>
+  );
+};
+
+const transportLabel = (t: any, type?: string) => {
+  if (!type) return null;
+  if (type === 'stdio') return t('server.typeStdio') || 'stdio';
+  if (type === 'sse') return t('server.typeSse') || 'sse';
+  if (type === 'streamable-http') return t('server.typeStreamableHttp') || 'http';
+  if (type === 'openapi') return t('server.typeOpenapi') || 'openapi';
+  return type;
+};
 
 const DashboardPage: React.FC = () => {
   const { t } = useTranslation();
-  const { allServers, error, setError, isLoading } = useServerData({ refreshOnMount: true });
+  const navigate = useNavigate();
+  const { allServers, error, setError, isLoading, triggerRefresh } = useServerData({
+    refreshOnMount: true,
+  });
+  const { groups } = useGroupData();
+  const { installConfig } = useSettingsData();
 
   const [hasLoaded, setHasLoaded] = React.useState(false);
   const loadingStartedRef = React.useRef(false);
-
   React.useEffect(() => {
     if (isLoading) {
       loadingStartedRef.current = true;
       return;
     }
-
     if (loadingStartedRef.current) {
       setHasLoaded(true);
       return;
     }
-
-    if (allServers.length > 0 || error) {
-      setHasLoaded(true);
-    }
+    if (allServers.length > 0 || error) setHasLoaded(true);
   }, [isLoading, allServers.length, error]);
+
+  const stats = useMemo(
+    () => ({
+      total: allServers.length,
+      online: allServers.filter((s: Server) => s.status === 'connected').length,
+      disabled: allServers.filter((s: Server) => s.enabled === false).length,
+      offline: allServers.filter(
+        (s: Server) => s.status === 'disconnected' && s.enabled !== false,
+      ).length,
+      connecting: allServers.filter(
+        (s: Server) =>
+          (s.status === 'connecting' || s.status === 'oauth_required') && s.enabled !== false,
+      ).length,
+      tools: allServers.reduce((acc, s) => acc + (s.tools?.length || 0), 0),
+    }),
+    [allServers],
+  );
+
+  const recentServers = useMemo(() => allServers.slice(0, 6), [allServers]);
+  const baseUrl = installConfig?.baseUrl?.replace(/\/+$/, '') || '';
 
   const showSkeleton = !hasLoaded;
 
-  // Calculate server statistics using allServers (not paginated)
-  const serverStats = {
-    total: allServers.length,
-    online: allServers.filter((server: Server) => server.status === 'connected').length,
-    disabled: allServers.filter((server: Server) => server.enabled === false).length,
-    offline: allServers.filter(
-      (server: Server) => server.status === 'disconnected' && server.enabled !== false,
-    ).length,
-    connecting: allServers.filter((server: Server) => server.status === 'connecting').length,
-    oauthRequired: allServers.filter((server: Server) => server.status === 'oauth_required').length,
-  };
-
-  // Map status to translation keys
-  const statusTranslations: Record<string, string> = {
-    connected: 'status.online',
-    disconnected: 'status.offline',
-    connecting: 'status.connecting',
-    oauth_required: 'status.oauthRequired',
-  };
-
   return (
     <div>
-      <h1 className="text-2xl font-bold text-gray-900 mb-8">{t('pages.dashboard.title')}</h1>
+      {/* Header */}
+      <div className="flex items-end justify-between gap-4 mb-6">
+        <div>
+          <h1 className="hub-h1">{t('pages.dashboard.title')}</h1>
+          <p className="hub-sub">
+            {t('pages.dashboard.totalServers')} · <span className="hub-num">{stats.total}</span>
+            {'  ·  '}
+            {t('pages.dashboard.onlineServers')} · <span className="hub-num">{stats.online}</span>
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <button className="hub-btn" onClick={() => triggerRefresh()}>
+            <RefreshCw size={13} /> {t('common.refresh')}
+          </button>
+          <button className="hub-btn primary" onClick={() => navigate('/servers')}>
+            <Plus size={13} /> {t('server.add')}
+          </button>
+        </div>
+      </div>
 
       {error && (
-        <div className="mb-6 bg-red-50 border-l-4 border-red-500 p-4 rounded shadow-sm error-box">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-status-red text-lg font-medium">{t('app.error')}</h3>
-              <p className="text-gray-600 mt-1">{error}</p>
-            </div>
+        <div
+          className="hub-card flex items-center justify-between gap-3 mb-5"
+          style={{
+            padding: '10px 14px',
+            borderColor: 'oklch(0.85 0.1 25)',
+            background: 'oklch(0.97 0.03 25)',
+            color: 'oklch(0.4 0.18 25)',
+          }}
+        >
+          <div className="flex items-center gap-2 min-w-0">
+            <AlertCircle size={14} className="flex-shrink-0" />
+            <span className="truncate text-[13px]">{error}</span>
+          </div>
+          <button
+            className="hub-icon-btn sm"
+            onClick={() => setError(null)}
+            aria-label={t('app.closeButton')}
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
+      {/* Stat row */}
+      {showSkeleton ? (
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div
+              key={i}
+              className="hub-card animate-pulse"
+              style={{ padding: '14px 16px', height: 78 }}
+            />
+          ))}
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
+          <Stat label={t('pages.dashboard.totalServers')} value={stats.total} />
+          <Stat label={t('pages.dashboard.onlineServers')} value={stats.online} tone="ok" />
+          <Stat label={t('pages.dashboard.connectingServers')} value={stats.connecting} tone="warn" />
+          <Stat label={t('pages.dashboard.offlineServers')} value={stats.offline} tone="err" />
+          <Stat label={t('pages.dashboard.disabledServers')} value={stats.disabled} tone="muted" />
+        </div>
+      )}
+
+      {/* Recent servers */}
+      {allServers.length > 0 && !showSkeleton && (
+        <div className="hub-card overflow-hidden mb-6">
+          <div
+            className="flex items-center justify-between px-4 py-3"
+            style={{ borderBottom: '1px solid var(--hub-line-2)' }}
+          >
+            <h3 className="hub-card-title">{t('pages.dashboard.recentServers')}</h3>
             <button
-              onClick={() => setError(null)}
-              className="ml-4 text-gray-500 hover:text-gray-700 transition-colors duration-200"
-              aria-label={t('app.closeButton')}
+              className="hub-btn ghost sm"
+              style={{ color: 'var(--hub-ink-3)' }}
+              onClick={() => navigate('/servers')}
             >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-5 w-5"
-                viewBox="0 0 20 20"
-                fill="currentColor"
-              >
-                <path
-                  fillRule="evenodd"
-                  d="M4.293 4.293a1 1 011.414 0L10 8.586l4.293-4.293a1 1 111.414 1.414L11.414 10l4.293 4.293a1 1 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 01-1.414-1.414L8.586 10 4.293 5.707a1 1 010-1.414z"
-                  clipRule="evenodd"
-                />
-              </svg>
+              {t('common.viewAll') || 'View all'}
+              <ChevronRight size={12} />
             </button>
           </div>
+          <div
+            className="hub-row head hub-mono"
+            style={{ gridTemplateColumns: '1.3fr 110px 70px 90px 80px 80px 80px' }}
+          >
+            <div>{t('server.name')}</div>
+            <div>{t('server.status')}</div>
+            <div>{t('server.tools')}</div>
+            <div>{t('common.type') || 'Transport'}</div>
+            <div>{t('server.prompts')}</div>
+            <div>{t('nav.resources')}</div>
+            <div>{t('server.enabled')}</div>
+          </div>
+          {recentServers.map((s) => (
+            <div
+              key={s.name}
+              className="hub-row hover cursor-pointer"
+              style={{ gridTemplateColumns: '1.3fr 110px 70px 90px 80px 80px 80px' }}
+              onClick={() => navigate('/servers')}
+            >
+              <div className="flex items-center gap-2 min-w-0">
+                <span
+                  className="hub-mono truncate"
+                  style={{ fontSize: 13, color: s.enabled === false ? 'var(--hub-ink-3)' : 'var(--hub-ink)' }}
+                >
+                  {s.name}
+                </span>
+                {s.error && <AlertCircle size={13} className="text-[var(--hub-err)] flex-shrink-0" />}
+              </div>
+              <div>
+                <ServerStatusDot status={s.status} enabled={s.enabled} />
+              </div>
+              <div className="hub-num hub-mono" style={{ fontSize: 12.5 }}>
+                {s.tools?.length || 0}
+              </div>
+              <div>
+                {s.config?.type ? (
+                  <span className="hub-tag">{transportLabel(t, s.config.type)}</span>
+                ) : (
+                  <span style={{ color: 'var(--hub-ink-3)', fontSize: 12 }}>—</span>
+                )}
+              </div>
+              <div className="hub-num hub-mono" style={{ fontSize: 12.5, color: 'var(--hub-ink-2)' }}>
+                {s.prompts?.length || 0}
+              </div>
+              <div className="hub-num hub-mono" style={{ fontSize: 12.5, color: 'var(--hub-ink-2)' }}>
+                {s.resources?.length || 0}
+              </div>
+              <div className="text-[12px]" style={{ color: s.enabled !== false ? 'var(--hub-ok)' : 'var(--hub-ink-3)' }}>
+                {s.enabled !== false ? '✓' : '—'}
+              </div>
+            </div>
+          ))}
         </div>
       )}
 
-      {showSkeleton && (
-        <div className="space-y-8" aria-busy="true" aria-live="polite">
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-5">
-            {Array.from({ length: 5 }).map((_, index) => (
-              <div
-                key={`stats-skeleton-${index}`}
-                className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 dashboard-card"
-              >
-                <div className="flex items-center">
-                  <div className="h-14 w-14 rounded-full bg-gray-200 animate-pulse" />
-                  <div className="ml-4 flex-1 space-y-3">
-                    <div className="h-4 w-32 rounded bg-gray-200 animate-pulse" />
-                    <div className="h-8 w-20 rounded bg-gray-200 animate-pulse" />
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-
+            {/* Endpoint quick-access */}
+      <div className="hub-card mb-5" style={{ padding: 16 }}>
+        <div className="flex justify-between items-start gap-3 mb-3">
           <div>
-            <div className="h-6 w-40 rounded bg-gray-200 animate-pulse mb-4" />
-            <div className="bg-white dark:bg-gray-800 shadow rounded-lg overflow-hidden table-container">
-              <div className="divide-y divide-gray-200 dark:divide-gray-700">
-                {Array.from({ length: 5 }).map((_, index) => (
-                  <div key={`row-skeleton-${index}`} className="px-6 py-4">
-                    <div className="grid grid-cols-6 gap-6">
-                      <div className="h-4 w-28 rounded bg-gray-200 animate-pulse" />
-                      <div className="h-4 w-24 rounded bg-gray-200 animate-pulse" />
-                      <div className="h-4 w-12 rounded bg-gray-200 animate-pulse" />
-                      <div className="h-4 w-12 rounded bg-gray-200 animate-pulse" />
-                      <div className="h-4 w-12 rounded bg-gray-200 animate-pulse" />
-                      <div className="h-4 w-10 rounded bg-gray-200 animate-pulse" />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
+            <h3 className="hub-card-title">{t('pages.dashboard.endpoints') || 'MCP Endpoints'}</h3>
+            <p className="hub-sub" style={{ marginTop: 2 }}>
+              {t('pages.dashboard.endpointsHint') ||
+                'Use these URLs in Claude Desktop, Cursor, or any MCP client'}
+            </p>
           </div>
+          <a
+            className="hub-btn ghost"
+            href="https://docs.mcphub.app"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ color: 'var(--hub-ink-3)' }}
+          >
+            {t('common.docs') || 'Docs'} →
+          </a>
         </div>
-      )}
-
-      {!showSkeleton && (
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-5">
-          {/* Total servers */}
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 dashboard-card">
-            <div className="flex items-center">
-              <div className="p-3 rounded-full bg-blue-100 text-blue-800 icon-container status-icon-blue">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-8 w-8"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01"
-                  />
-                </svg>
-              </div>
-              <div className="ml-4">
-                <h2 className="text-lg font-semibold text-gray-700">
-                  {t('pages.dashboard.totalServers')}
-                </h2>
-                <p className="text-3xl font-bold text-gray-900">{serverStats.total}</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Online servers */}
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 dashboard-card">
-            <div className="flex items-center">
-              <div className="p-3 rounded-full bg-green-100 text-green-800 icon-container status-icon-green">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-8 w-8"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
-              </div>
-              <div className="ml-4">
-                <h2 className="text-lg font-semibold text-gray-700">
-                  {t('pages.dashboard.onlineServers')}
-                </h2>
-                <p className="text-3xl font-bold text-gray-900">{serverStats.online}</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Disabled servers */}
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 dashboard-card">
-            <div className="flex items-center">
-              <div className="p-3 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-700 icon-container">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-8 w-8"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
-              </div>
-              <div className="ml-4">
-                <h2 className="text-lg font-semibold text-gray-700">
-                  {t('pages.dashboard.disabledServers')}
-                </h2>
-                <p className="text-3xl font-bold text-gray-900">{serverStats.disabled}</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Offline servers */}
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 dashboard-card">
-            <div className="flex items-center">
-              <div className="p-3 rounded-full bg-red-100 text-red-800 icon-container status-icon-red">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-8 w-8"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
-              </div>
-              <div className="ml-4">
-                <h2 className="text-lg font-semibold text-gray-700">
-                  {t('pages.dashboard.offlineServers')}
-                </h2>
-                <p className="text-3xl font-bold text-gray-900">{serverStats.offline}</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Connecting servers */}
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 dashboard-card">
-            <div className="flex items-center">
-              <div className="p-3 rounded-full bg-yellow-100 text-yellow-800 icon-container status-icon-yellow">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-8 w-8"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
-              </div>
-              <div className="ml-4">
-                <h2 className="text-lg font-semibold text-gray-700">
-                  {t('pages.dashboard.connectingServers')}
-                </h2>
-                <p className="text-3xl font-bold text-gray-900">{serverStats.connecting}</p>
-              </div>
-            </div>
-          </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+          <EndpointCopy label="ALL" url={`${baseUrl}/mcp`} />
+          <EndpointCopy label="SMART" url={`${baseUrl}/mcp/$smart`} />
+          {groups.slice(0, 2).map((g) => (
+            <EndpointCopy key={g.id} label="GROUP" url={`${baseUrl}/mcp/${g.id}`} />
+          ))}
+          {/* Pad with first server endpoint if there's space */}
+          {groups.length < 2 && allServers[0] && (
+            <EndpointCopy label="SERVER" url={`${baseUrl}/mcp/${allServers[0].name}`} />
+          )}
         </div>
-      )}
-
-      {/* Recent activity list */}
-      {allServers.length > 0 && !showSkeleton && (
-        <div className="mt-8">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">
-            {t('pages.dashboard.recentServers')}
-          </h2>
-          <div className="bg-white dark:bg-gray-800 shadow rounded-lg overflow-hidden table-container">
-            <table className="min-w-full">
-              <thead className="bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-                <tr>
-                  <th
-                    scope="col"
-                    className="px-6 py-5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                  >
-                    {t('server.name')}
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                  >
-                    {t('server.status')}
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                  >
-                    {t('server.tools')}
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                  >
-                    {t('server.prompts')}
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                  >
-                    {t('nav.resources')}
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                  >
-                    {t('server.enabled')}
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                {allServers.slice(0, 5).map((server, index) => (
-                  <tr key={index}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      {server.name}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      <span
-                        className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                          server.status === 'connected'
-                            ? 'status-badge-online'
-                            : server.status === 'disconnected'
-                              ? 'status-badge-offline'
-                              : server.status === 'oauth_required'
-                                ? 'status-badge-oauth-required'
-                                : 'status-badge-connecting'
-                        }`}
-                      >
-                        {server.status === 'oauth_required' && '🔐 '}
-                        {t(statusTranslations[server.status] || server.status)}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {server.tools?.length || 0}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {server.prompts?.length || 0}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {server.resources?.length || 0}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {server.enabled !== false ? (
-                        <span className="text-green-600">✓</span>
-                      ) : (
-                        <span
-                          className="text-gray-500"
-                          aria-label={t('pages.dashboard.disabledServers')}
-                        >
-                          ⏸
-                        </span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
+      </div>
     </div>
   );
 };

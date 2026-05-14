@@ -130,18 +130,18 @@ const AddUserForm = ({ onAdd, onCancel }: AddUserFormProps) => {
             </div>
           </div>
 
-          <div className="flex justify-end space-x-3 mt-8">
+          <div className="flex justify-end space-x-2 mt-6">
             <button
               type="button"
               onClick={onCancel}
-              className="px-5 py-2.5 text-gray-700 bg-white dark:bg-gray-800 border border-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-all duration-200 font-medium btn-secondary shadow-sm"
+              className="hub-btn"
               disabled={isSubmitting}
             >
               {t('common.cancel')}
             </button>
             <button
               type="submit"
-              className="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all duration-200 font-medium btn-primary shadow-md disabled:opacity-70 disabled:cursor-not-allowed flex items-center"
+              className="hub-btn primary"
               disabled={isSubmitting}
             >
               {isSubmitting && (

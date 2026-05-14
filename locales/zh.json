@@ -275,7 +275,10 @@
     "actions": "操作",
     "saving": "保存中...",
     "active": "已激活",
-    "inactive": "未激活"
+    "inactive": "未激活",
+    "viewAll": "查看全部",
+    "docs": "文档",
+    "all": "全部"
   },
   "pagination": {
     "rowsPerPage": "每页行数",
@@ -293,7 +296,9 @@
     "market": "市场",
     "cloud": "云端市场",
     "logs": "日志",
-    "activity": "活动"
+    "activity": "活动",
+    "workspace": "工作区",
+    "system": "系统"
   },
   "pages": {
     "dashboard": {
@@ -303,7 +308,9 @@
       "disabledServers": "禁用",
       "offlineServers": "离线",
       "connectingServers": "连接中",
-      "recentServers": "最近的服务器"
+      "recentServers": "最近的服务器",
+      "endpoints": "MCP 接入端点",
+      "endpointsHint": "把这些 URL 配到 Claude Desktop / Cursor 等 MCP 客户端即可使用"
     },
     "servers": {
       "title": "服务器管理"
@@ -694,6 +701,8 @@
     "smartRoutingConfigUpdated": "智能路由配置更新成功",
     "smartRoutingRequiredFields": "启用智能路由需要填写数据库连接地址。LLM 提供商 API 密钥仅在使用云端提供商时才需要（本地 LLM 通常不需要 API 密钥，可输入任意值通过表单验证）",
     "smartRoutingValidationError": "启用智能路由前请先填写必要字段：{{fields}}",
+    "smartRoutingWorkflow": "工作流",
+    "smartRoutingWorkflowDescription": "用户的 prompt 经向量化后，在 pgvector 中检索 top-k 相似工具，仅暴露给上游 LLM。",
     "mcpRouterConfig": "云端市场",
     "mcpRouterApiKey": "MCPRouter API 密钥",
     "mcpRouterApiKeyDescription": "用于访问 MCPRouter 云端市场服务的 API 密钥",

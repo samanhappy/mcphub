@@ -109,18 +109,18 @@ const AddGroupForm = ({ onAdd, onCancel }: AddGroupFormProps) => {
             </div>
           </div>
 
-          <div className="flex justify-end space-x-3 p-6 pt-4 border-t border-gray-200 dark:border-gray-700 flex-shrink-0">
+          <div className="flex justify-end space-x-2 p-5 pt-3 border-t border-[var(--hub-line-2)] flex-shrink-0">
             <button
               type="button"
               onClick={onCancel}
-              className="px-4 py-2 text-gray-600 hover:text-gray-800 border border-gray-300 rounded-md hover:bg-gray-50 dark:bg-gray-800 dark:hover:bg-gray-700 transition-colors"
+              className="hub-btn"
               disabled={isSubmitting}
             >
               {t('common.cancel')}
             </button>
             <button
               type="submit"
-              className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:opacity-50 transition-colors"
+              className="hub-btn primary"
               disabled={isSubmitting}
             >
               {isSubmitting ? t('common.submitting') : t('common.create')}

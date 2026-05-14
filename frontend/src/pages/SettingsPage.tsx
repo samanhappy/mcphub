@@ -9,7 +9,8 @@ import { useToast } from '@/contexts/ToastContext';
 import { generateRandomKey } from '@/utils/key';
 import { PermissionChecker } from '@/components/PermissionChecker';
 import { PERMISSIONS } from '@/constants/permissions';
-import { Copy, Check, Download, Edit, Trash2 } from 'lucide-react';
+import { Copy, Check, Download, Edit, Trash2, Code as CodeIcon, Zap, Database, Wrench, Sparkles, RefreshCw, Route as RouteIcon } from 'lucide-react';
+import { EndpointCopy } from '@/components/ui/EndpointCopy';
 import type { BearerKey } from '@/types';
 import { useServerContext } from '@/contexts/ServerContext';
 import { useGroupData } from '@/hooks/useGroupData';
@@ -310,7 +311,7 @@ const BearerKeyRow: React.FC<BearerKeyRowProps> = ({
                   type="button"
                   onClick={handleSave}
                   disabled={loading || saving}
-                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium disabled:opacity-50 btn-primary h-[38px]"
+                  className="hub-btn primary"
                 >
                   {saving ? t('common.saving') || 'Saving...' : t('common.save') || 'Save'}
                 </button>
@@ -343,10 +344,9 @@ const BearerKeyRow: React.FC<BearerKeyRowProps> = ({
           </button>
         </div>
       </td>
-      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-        <span
-          className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${keyData.enabled ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}
-        >
+      <td className="px-6 py-4 whitespace-nowrap text-sm">
+        <span className={`hub-status ${keyData.enabled ? 'ok' : 'muted'}`}>
+          <span className="hub-dot" />
           {keyData.enabled ? t('common.active') || 'Active' : t('common.inactive') || 'Inactive'}
         </span>
       </td>
@@ -1224,21 +1224,24 @@ const SettingsPage: React.FC = () => {
   };
 
   return (
-    <div className="container mx-auto">
-      <h1 className="text-2xl font-bold text-gray-900 mb-8">{t('pages.settings.title')}</h1>
+    <div>
+      <div className="mb-6">
+        <h1 className="hub-h1">{t('pages.settings.title')}</h1>
+        <p className="hub-sub">{t('settings.subtitle') || ''}</p>
+      </div>
 
       {/* Bearer Keys Settings */}
       <PermissionChecker permissions={PERMISSIONS.SETTINGS_ROUTE_CONFIG}>
         <div className="bg-white dark:bg-gray-800 shadow rounded-lg mb-6 page-card dashboard-card">
           <div
-            className="flex justify-between items-center cursor-pointer transition-colors duration-200 hover:text-blue-600 py-4 px-6"
+            className="flex justify-between items-center cursor-pointer transition-colors hover:bg-[var(--hub-surface-hover)] py-3 px-5"
             onClick={() => toggleSection('bearerKeys')}
           >
-            <h2 className="font-semibold text-gray-800">
+            <h2 className="font-medium text-[var(--hub-ink)]">
               {t('settings.bearerKeysSectionTitle') || 'Bearer authentication keys'}
             </h2>
-            <span className="text-gray-500 transition-transform duration-200">
-              {sectionsVisible.bearerKeys ? '▼' : '►'}
+            <span className="text-[var(--hub-ink-3)] text-sm">
+              {sectionsVisible.bearerKeys ? '−' : '+'}
             </span>
           </div>
 
@@ -1291,7 +1294,7 @@ const SettingsPage: React.FC = () => {
                       )
                     }
                     disabled={loading}
-                    className="mt-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium disabled:opacity-50 btn-primary"
+                    className="hub-btn primary"
                   >
                     {t('common.save')}
                   </button>
@@ -1579,7 +1582,7 @@ const SettingsPage: React.FC = () => {
                           type="button"
                           onClick={handleCreateBearerKey}
                           disabled={loading}
-                          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium disabled:opacity-50 btn-primary h-[38px]"
+                          className="hub-btn primary"
                         >
                           {t('settings.addBearerKeyButton') || 'Create Key'}
                         </button>
@@ -1595,39 +1598,204 @@ const SettingsPage: React.FC = () => {
 
       {/* Smart Routing Configuration Settings */}
       <PermissionChecker permissions={PERMISSIONS.SETTINGS_SMART_ROUTING}>
-        <div className="bg-white dark:bg-gray-800 shadow rounded-lg mb-6 page-card dashboard-card">
+        <div className="hub-card mb-6 overflow-hidden">
           <div
-            className="flex justify-between items-center cursor-pointer transition-colors duration-200 hover:text-blue-600 py-4 px-6"
+            className="flex justify-between items-center cursor-pointer transition-colors hover:bg-[var(--hub-surface-hover)] px-6 py-3"
             onClick={() => toggleSection('smartRoutingConfig')}
           >
-            <h2 className="font-semibold text-gray-800">{t('pages.settings.smartRouting')}</h2>
-            <span className="text-gray-500 transition-transform duration-200">
-              {sectionsVisible.smartRoutingConfig ? '▼' : '►'}
+            <div className="flex items-center gap-2.5">
+              <RouteIcon size={15} style={{ color: 'var(--hub-ink-2)' }} />
+              <h2 className="font-medium" style={{ color: 'var(--hub-ink)' }}>{t('pages.settings.smartRouting')}</h2>
+              <span className="hub-status ml-2" data-state={smartRoutingConfig.enabled ? 'on' : 'off'}>
+                <span
+                  className="hub-dot"
+                  style={{
+                    background: smartRoutingConfig.enabled ? 'var(--hub-ok)' : 'var(--hub-ink-3)',
+                    boxShadow: smartRoutingConfig.enabled
+                      ? '0 0 0 3px oklch(0.66 0.15 145 / 0.15)'
+                      : 'none',
+                  }}
+                />
+                <span
+                  style={{
+                    color: smartRoutingConfig.enabled ? 'oklch(0.4 0.13 145)' : 'var(--hub-ink-3)',
+                    fontSize: 12,
+                  }}
+                >
+                  {smartRoutingConfig.enabled ? t('common.active') : t('common.inactive')}
+                </span>
+              </span>
+            </div>
+            <span style={{ color: 'var(--hub-ink-3)' }}>
+              {sectionsVisible.smartRoutingConfig ? '−' : '+'}
             </span>
           </div>
 
           {sectionsVisible.smartRoutingConfig && (
-            <div className="space-y-4 pb-4 px-6">
-              <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-md">
-                <div>
-                  <h3 className="font-medium text-gray-700">{t('settings.enableSmartRouting')}</h3>
-                  <p className="text-sm text-gray-500">
-                    {t('settings.enableSmartRoutingDescription')}
-                  </p>
+            <div className="px-6 py-5" style={{ borderTop: '1px solid var(--hub-line-2)' }}>
+              {/* Status banner */}
+              <div
+                className="hub-card mb-4"
+                style={{ padding: 16, background: 'var(--hub-bg-2)' }}
+              >
+                <div
+                  className="grid items-center gap-4"
+                  style={{ gridTemplateColumns: '1.1fr 1px 1.4fr 1px auto' }}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="relative" style={{ width: 40, height: 40 }}>
+                      <div
+                        className="absolute inset-0 rounded-md grid place-items-center"
+                        style={{
+                          background: smartRoutingConfig.enabled
+                            ? 'oklch(0.95 0.05 145)'
+                            : 'var(--hub-bg-2)',
+                          border: '1px solid var(--hub-line)',
+                        }}
+                      >
+                        <RouteIcon
+                          size={18}
+                          style={{
+                            color: smartRoutingConfig.enabled
+                              ? 'oklch(0.4 0.13 145)'
+                              : 'var(--hub-ink-3)',
+                          }}
+                        />
+                      </div>
+                      {smartRoutingConfig.enabled && (
+                        <span
+                          className="absolute"
+                          style={{
+                            top: -2,
+                            right: -2,
+                            width: 10,
+                            height: 10,
+                            borderRadius: 50,
+                            background: 'var(--hub-ok)',
+                            boxShadow: '0 0 0 2px var(--hub-surface)',
+                          }}
+                        />
+                      )}
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 13.5, fontWeight: 500 }}>
+                        {smartRoutingConfig.enabled
+                          ? t('common.active')
+                          : t('common.inactive')}
+                      </div>
+                      <div style={{ fontSize: 11.5, color: 'var(--hub-ink-3)' }}>
+                        {t('settings.enableSmartRoutingDescription')}
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{ background: 'var(--hub-line)', height: 36 }} />
+                  <div>
+                    <div className="hub-sect" style={{ marginBottom: 5 }}>
+                      smart endpoint
+                    </div>
+                    <EndpointCopy
+                      label="SMART"
+                      url={`${(installConfig.baseUrl || '').replace(/\/+$/, '')}/mcp/$smart`}
+                    />
+                  </div>
+                  <div style={{ background: 'var(--hub-line)', height: 36 }} />
+                  <div className="flex items-center gap-2">
+                    <span style={{ fontSize: 12.5, color: 'var(--hub-ink-2)' }}>
+                      {t('settings.enableSmartRouting')}
+                    </span>
+                    <Switch
+                      disabled={loading}
+                      checked={smartRoutingConfig.enabled}
+                      onCheckedChange={(checked) => handleSmartRoutingEnabledChange(checked)}
+                    />
+                  </div>
                 </div>
-                <Switch
-                  disabled={loading}
-                  checked={smartRoutingConfig.enabled}
-                  onCheckedChange={(checked) => handleSmartRoutingEnabledChange(checked)}
-                />
               </div>
 
-              {/* Smart Routing Required Fields Information */}
-              <div className="p-3 bg-blue-300 border border-blue-200 rounded-md">
-                <p className="text-sm text-blue-800">
-                  {t('settings.smartRoutingRequiredFields')}
+              {/* Flow diagram */}
+              <div className="hub-card mb-4" style={{ padding: 18 }}>
+                <h3 className="hub-card-title" style={{ marginBottom: 4 }}>
+                  {t('settings.smartRoutingWorkflow') || 'Workflow'}
+                </h3>
+                <p className="hub-sub" style={{ marginTop: 0, marginBottom: 16 }}>
+                  {t('settings.smartRoutingWorkflowDescription') ||
+                    'Prompt is embedded, top-k similar tools are retrieved from pgvector, only relevant tools are exposed.'}
                 </p>
+                <div
+                  className="grid items-center"
+                  style={{ gridTemplateColumns: 'repeat(9, 1fr)' }}
+                >
+                  {[
+                    { icon: <CodeIcon size={16} />, title: 'Prompt', sub: 'client' },
+                    null,
+                    { icon: <Zap size={16} />, title: 'Embedding', sub: 'openai · 1536d' },
+                    null,
+                    { icon: <Database size={16} />, title: 'pgvector', sub: 'ann · cosine' },
+                    null,
+                    { icon: <Wrench size={16} />, title: 'Top-K', sub: 'score > 0.7' },
+                    null,
+                    { icon: <Sparkles size={16} />, title: 'LLM', sub: 'relevant subset' },
+                  ].map((step, i) =>
+                    step === null ? (
+                      <div key={`sep-${i}`} className="flex justify-center">
+                        <svg width="100%" height="20" preserveAspectRatio="none" viewBox="0 0 100 20">
+                          <line
+                            x1="4"
+                            y1="10"
+                            x2="96"
+                            y2="10"
+                            stroke="var(--hub-line)"
+                            strokeWidth="1"
+                            strokeDasharray="3 3"
+                          />
+                          <polygon points="96,10 88,6 88,14" fill="var(--hub-ink-3)" />
+                        </svg>
+                      </div>
+                    ) : (
+                      <div key={i} className="flex flex-col items-center gap-2">
+                        <div
+                          className="grid place-items-center"
+                          style={{
+                            width: 42,
+                            height: 42,
+                            borderRadius: 10,
+                            border: '1px solid var(--hub-line)',
+                            background: 'var(--hub-surface)',
+                            color: 'var(--hub-ink)',
+                          }}
+                        >
+                          {step.icon}
+                        </div>
+                        <div className="text-center">
+                          <div style={{ fontSize: 12, fontWeight: 500 }}>{step.title}</div>
+                          <div
+                            className="hub-mono"
+                            style={{ fontSize: 10.5, color: 'var(--hub-ink-3)' }}
+                          >
+                            {step.sub}
+                          </div>
+                        </div>
+                      </div>
+                    ),
+                  )}
+                </div>
               </div>
+
+              {/* Required Fields Information */}
+              <div
+                className="mb-4 flex items-start gap-2"
+                style={{
+                  padding: '8px 12px',
+                  borderRadius: 7,
+                  background: 'var(--hub-accent-soft)',
+                  color: 'var(--hub-accent)',
+                  fontSize: 12.5,
+                }}
+              >
+                <span>{t('settings.smartRoutingRequiredFields')}</span>
+              </div>
+
+              <div className="space-y-3 hub-sr-fields">
 
               {/* hide when DB_URL env is set */}
               {smartRoutingConfig.dbUrl !== '${DB_URL}' && (
@@ -1989,12 +2157,20 @@ const SettingsPage: React.FC = () => {
                 </p>
               </div>
               
-              <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-md">
+              <div
+                className="flex items-center justify-between"
+                style={{
+                  padding: '12px 14px',
+                  border: '1px solid var(--hub-line)',
+                  borderRadius: 8,
+                  background: 'var(--hub-bg-2)',
+                }}
+              >
                 <div>
-                  <h3 className="font-medium text-gray-700">
+                  <h3 className="font-medium" style={{ color: 'var(--hub-ink)', fontSize: 13 }}>
                     {t('settings.progressiveDisclosure')}
                   </h3>
-                  <p className="text-sm text-gray-500">
+                  <p style={{ fontSize: 12, color: 'var(--hub-ink-3)' }}>
                     {t('settings.progressiveDisclosureDescription')}
                   </p>
                 </div>
@@ -2006,12 +2182,13 @@ const SettingsPage: React.FC = () => {
                   }
                 />
               </div>
+              </div> {/* end space-y-3 fields wrapper */}
 
-              <div className="flex justify-end pt-2">
+              <div className="flex justify-end pt-3">
                 <button
                   onClick={handleSaveSmartRoutingConfig}
                   disabled={loading}
-                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium disabled:opacity-50 btn-primary"
+                  className="hub-btn primary"
                 >
                   {t('common.save')}
                 </button>
@@ -2025,11 +2202,11 @@ const SettingsPage: React.FC = () => {
       <PermissionChecker permissions={PERMISSIONS.SETTINGS_OAUTH_SERVER}>
         <div className="bg-white dark:bg-gray-800 shadow rounded-lg mb-6 dashboard-card">
           <div
-            className="flex justify-between items-center cursor-pointer transition-colors duration-200 hover:text-blue-600 py-4 px-6"
+            className="flex justify-between items-center cursor-pointer transition-colors hover:bg-[var(--hub-surface-hover)] py-3 px-5"
             onClick={() => toggleSection('oauthServerConfig')}
           >
-            <h2 className="font-semibold text-gray-800">{t('pages.settings.oauthServer')}</h2>
-            <span className="text-gray-500">{sectionsVisible.oauthServerConfig ? '▼' : '►'}</span>
+            <h2 className="font-medium text-[var(--hub-ink)]">{t('pages.settings.oauthServer')}</h2>
+            <span className="text-[var(--hub-ink-3)] text-sm">{sectionsVisible.oauthServerConfig ? '−' : '+'}</span>
           </div>
 
           {sectionsVisible.oauthServerConfig && (
@@ -2097,7 +2274,7 @@ const SettingsPage: React.FC = () => {
                   <button
                     onClick={() => saveOAuthServerNumberConfig('accessTokenLifetime')}
                     disabled={loading}
-                    className="mt-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium disabled:opacity-50 btn-primary"
+                    className="hub-btn primary"
                   >
                     {t('common.save')}
                   </button>
@@ -2127,7 +2304,7 @@ const SettingsPage: React.FC = () => {
                   <button
                     onClick={() => saveOAuthServerNumberConfig('refreshTokenLifetime')}
                     disabled={loading}
-                    className="mt-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium disabled:opacity-50 btn-primary"
+                    className="hub-btn primary"
                   >
                     {t('common.save')}
                   </button>
@@ -2157,7 +2334,7 @@ const SettingsPage: React.FC = () => {
                   <button
                     onClick={() => saveOAuthServerNumberConfig('authorizationCodeLifetime')}
                     disabled={loading}
-                    className="mt-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium disabled:opacity-50 btn-primary"
+                    className="hub-btn primary"
                   >
                     {t('common.save')}
                   </button>
@@ -2181,7 +2358,7 @@ const SettingsPage: React.FC = () => {
                   <button
                     onClick={saveOAuthServerAllowedScopes}
                     disabled={loading}
-                    className="mt-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium disabled:opacity-50 btn-primary"
+                    className="hub-btn primary"
                   >
                     {t('common.save')}
                   </button>
@@ -2241,7 +2418,7 @@ const SettingsPage: React.FC = () => {
                         !oauthServerConfig.enabled ||
                         !oauthServerConfig.dynamicRegistration.enabled
                       }
-                      className="mt-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium disabled:opacity-50 btn-primary"
+                      className="hub-btn primary"
                     >
                       {t('common.save')}
                     </button>
@@ -2279,12 +2456,12 @@ const SettingsPage: React.FC = () => {
       <PermissionChecker permissions={PERMISSIONS.SETTINGS_INSTALL_CONFIG}>
         <div className="bg-white dark:bg-gray-800 shadow rounded-lg mb-6 page-card dashboard-card">
           <div
-            className="flex justify-between items-center cursor-pointer transition-colors duration-200 hover:text-blue-600 py-4 px-6"
+            className="flex justify-between items-center cursor-pointer transition-colors hover:bg-[var(--hub-surface-hover)] py-3 px-5"
             onClick={() => toggleSection('mcpRouterConfig')}
           >
-            <h2 className="font-semibold text-gray-800">{t('settings.mcpRouterConfig')}</h2>
-            <span className="text-gray-500 transition-transform duration-200">
-              {sectionsVisible.mcpRouterConfig ? '▼' : '►'}
+            <h2 className="font-medium text-[var(--hub-ink)]">{t('settings.mcpRouterConfig')}</h2>
+            <span className="text-[var(--hub-ink-3)] text-sm">
+              {sectionsVisible.mcpRouterConfig ? '−' : '+'}
             </span>
           </div>
 
@@ -2309,7 +2486,7 @@ const SettingsPage: React.FC = () => {
                   <button
                     onClick={() => saveMCPRouterConfig('apiKey')}
                     disabled={loading}
-                    className="mt-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium disabled:opacity-50 btn-primary"
+                    className="hub-btn primary"
                   >
                     {t('common.save')}
                   </button>
@@ -2335,7 +2512,7 @@ const SettingsPage: React.FC = () => {
                   <button
                     onClick={() => saveMCPRouterConfig('baseUrl')}
                     disabled={loading}
-                    className="mt-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium disabled:opacity-50 btn-primary"
+                    className="hub-btn primary"
                   >
                     {t('common.save')}
                   </button>
@@ -2350,11 +2527,11 @@ const SettingsPage: React.FC = () => {
       <PermissionChecker permissions={PERMISSIONS.SETTINGS_SYSTEM_CONFIG}>
         <div className="bg-white dark:bg-gray-800 shadow rounded-lg mb-6 dashboard-card">
           <div
-            className="flex justify-between items-center cursor-pointer transition-colors duration-200 hover:text-blue-600 py-4 px-6"
+            className="flex justify-between items-center cursor-pointer transition-colors hover:bg-[var(--hub-surface-hover)] py-3 px-5"
             onClick={() => toggleSection('nameSeparator')}
           >
-            <h2 className="font-semibold text-gray-800">{t('settings.systemSettings')}</h2>
-            <span className="text-gray-500">{sectionsVisible.nameSeparator ? '▼' : '►'}</span>
+            <h2 className="font-medium text-[var(--hub-ink)]">{t('settings.systemSettings')}</h2>
+            <span className="text-[var(--hub-ink-3)] text-sm">{sectionsVisible.nameSeparator ? '−' : '+'}</span>
           </div>
 
           {sectionsVisible.nameSeparator && (
@@ -2377,7 +2554,7 @@ const SettingsPage: React.FC = () => {
                   <button
                     onClick={saveNameSeparator}
                     disabled={loading}
-                    className="mt-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium disabled:opacity-50 btn-primary"
+                    className="hub-btn primary"
                   >
                     {t('common.save')}
                   </button>
@@ -2408,11 +2585,11 @@ const SettingsPage: React.FC = () => {
       <PermissionChecker permissions={PERMISSIONS.SETTINGS_ROUTE_CONFIG}>
         <div className="bg-white dark:bg-gray-800 shadow rounded-lg mb-6 dashboard-card">
           <div
-            className="flex justify-between items-center cursor-pointer transition-colors duration-200 hover:text-blue-600 py-4 px-6"
+            className="flex justify-between items-center cursor-pointer transition-colors hover:bg-[var(--hub-surface-hover)] py-3 px-5"
             onClick={() => toggleSection('routingConfig')}
           >
-            <h2 className="font-semibold text-gray-800">{t('pages.settings.routeConfig')}</h2>
-            <span className="text-gray-500">{sectionsVisible.routingConfig ? '▼' : '►'}</span>
+            <h2 className="font-medium text-[var(--hub-ink)]">{t('pages.settings.routeConfig')}</h2>
+            <span className="text-[var(--hub-ink-3)] text-sm">{sectionsVisible.routingConfig ? '−' : '+'}</span>
           </div>
 
           {sectionsVisible.routingConfig && (
@@ -2480,7 +2657,7 @@ const SettingsPage: React.FC = () => {
                   <button
                     onClick={() => handleRoutingConfigChange('jsonBodyLimit', tempRoutingConfig.jsonBodyLimit)}
                     disabled={loading}
-                    className="mt-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium disabled:opacity-50 btn-primary"
+                    className="hub-btn primary"
                   >
                     {t('common.save')}
                   </button>
@@ -2495,11 +2672,11 @@ const SettingsPage: React.FC = () => {
       <PermissionChecker permissions={PERMISSIONS.SETTINGS_INSTALL_CONFIG}>
         <div className="bg-white dark:bg-gray-800 shadow rounded-lg mb-6 dashboard-card">
           <div
-            className="flex justify-between items-center cursor-pointer transition-colors duration-200 hover:text-blue-600 py-4 px-6"
+            className="flex justify-between items-center cursor-pointer transition-colors hover:bg-[var(--hub-surface-hover)] py-3 px-5"
             onClick={() => toggleSection('installConfig')}
           >
-            <h2 className="font-semibold text-gray-800">{t('settings.installConfig')}</h2>
-            <span className="text-gray-500">{sectionsVisible.installConfig ? '▼' : '►'}</span>
+            <h2 className="font-medium text-[var(--hub-ink)]">{t('settings.installConfig')}</h2>
+            <span className="text-[var(--hub-ink-3)] text-sm">{sectionsVisible.installConfig ? '−' : '+'}</span>
           </div>
 
           {sectionsVisible.installConfig && (
@@ -2521,7 +2698,7 @@ const SettingsPage: React.FC = () => {
                   <button
                     onClick={() => saveInstallConfig('baseUrl')}
                     disabled={loading}
-                    className="mt-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium disabled:opacity-50 btn-primary"
+                    className="hub-btn primary"
                   >
                     {t('common.save')}
                   </button>
@@ -2545,7 +2722,7 @@ const SettingsPage: React.FC = () => {
                   <button
                     onClick={() => saveInstallConfig('pythonIndexUrl')}
                     disabled={loading}
-                    className="mt-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium disabled:opacity-50 btn-primary"
+                    className="hub-btn primary"
                   >
                     {t('common.save')}
                   </button>
@@ -2569,7 +2746,7 @@ const SettingsPage: React.FC = () => {
                   <button
                     onClick={() => saveInstallConfig('npmRegistry')}
                     disabled={loading}
-                    className="mt-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium disabled:opacity-50 btn-primary"
+                    className="hub-btn primary"
                   >
                     {t('common.save')}
                   </button>
@@ -2583,12 +2760,12 @@ const SettingsPage: React.FC = () => {
       {/* Change Password */}
       <div className="bg-white dark:bg-gray-800 shadow rounded-lg mb-6 dashboard-card" data-section="password">
         <div
-          className="flex justify-between items-center cursor-pointer transition-colors duration-200 hover:text-blue-600 py-4 px-6"
+          className="flex justify-between items-center cursor-pointer transition-colors hover:bg-[var(--hub-surface-hover)] py-3 px-5"
           onClick={() => toggleSection('password')}
           role="button"
         >
-          <h2 className="font-semibold text-gray-800">{t('auth.changePassword')}</h2>
-          <span className="text-gray-500">{sectionsVisible.password ? '▼' : '►'}</span>
+          <h2 className="font-medium text-[var(--hub-ink)]">{t('auth.changePassword')}</h2>
+          <span className="text-[var(--hub-ink-3)] text-sm">{sectionsVisible.password ? '−' : '+'}</span>
         </div>
 
         {sectionsVisible.password && (
@@ -2602,11 +2779,11 @@ const SettingsPage: React.FC = () => {
       <PermissionChecker permissions={PERMISSIONS.SETTINGS_EXPORT_CONFIG}>
         <div className="bg-white dark:bg-gray-800 shadow rounded-lg mb-6 dashboard-card">
           <div
-            className="flex justify-between items-center cursor-pointer transition-colors duration-200 hover:text-blue-600 py-4 px-6"
+            className="flex justify-between items-center cursor-pointer transition-colors hover:bg-[var(--hub-surface-hover)] py-3 px-5"
             onClick={() => toggleSection('exportConfig')}
           >
-            <h2 className="font-semibold text-gray-800">{t('settings.exportMcpSettings')}</h2>
-            <span className="text-gray-500">{sectionsVisible.exportConfig ? '▼' : '►'}</span>
+            <h2 className="font-medium text-[var(--hub-ink)]">{t('settings.exportMcpSettings')}</h2>
+            <span className="text-[var(--hub-ink-3)] text-sm">{sectionsVisible.exportConfig ? '−' : '+'}</span>
           </div>
 
           {sectionsVisible.exportConfig && (
@@ -2623,7 +2800,7 @@ const SettingsPage: React.FC = () => {
                     <button
                       onClick={handleCopyConfig}
                       disabled={!mcpSettingsJson}
-                      className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium disabled:opacity-50 btn-primary"
+                      className="hub-btn primary"
                     >
                       {copiedConfig ? <Check size={16} /> : <Copy size={16} />}
                       {copiedConfig ? t('common.copied') : t('settings.copyToClipboard')}
@@ -2631,7 +2808,7 @@ const SettingsPage: React.FC = () => {
                     <button
                       onClick={handleDownloadConfig}
                       disabled={!mcpSettingsJson}
-                      className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md text-sm font-medium disabled:opacity-50 btn-primary"
+                      className="hub-btn"
                     >
                       <Download size={16} />
                       {t('settings.downloadJson')}

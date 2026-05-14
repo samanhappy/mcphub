@@ -5,8 +5,9 @@ import { useUserData } from '@/hooks/useUserData';
 import { useAuth } from '@/contexts/AuthContext';
 import AddUserForm from '@/components/AddUserForm';
 import EditUserForm from '@/components/EditUserForm';
-import { Edit, Trash, User as UserIcon } from 'lucide-react';
+import { Edit3, Trash2, User as UserIcon, Plus, AlertCircle, X, RefreshCw } from 'lucide-react';
 import DeleteDialog from '@/components/ui/DeleteDialog';
+import { StatusDot } from '@/components/ui/StatusDot';
 
 const UsersPage: React.FC = () => {
   const { t } = useTranslation();
@@ -18,196 +19,189 @@ const UsersPage: React.FC = () => {
     error: userError,
     setError: setUserError,
     deleteUser,
-    triggerRefresh
+    triggerRefresh,
   } = useUserData();
 
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
   const [userToDelete, setUserToDelete] = useState<string | null>(null);
 
-  // Check if current user is admin
   if (!currentUser?.isAdmin) {
     return (
-      <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6 dashboard-card">
-        <p className="text-red-600">{t('users.adminRequired')}</p>
+      <div className="hub-card p-6 text-center" style={{ color: 'var(--hub-err)' }}>
+        {t('users.adminRequired')}
       </div>
     );
   }
 
-  const handleEditClick = (user: User) => {
-    setEditingUser(user);
-  };
-
-  const handleEditComplete = () => {
-    setEditingUser(null);
-    triggerRefresh(); // Refresh the users list after editing
-  };
-
-  const handleDeleteClick = (username: string) => {
-    setUserToDelete(username);
-  };
-
-  const handleConfirmDelete = async () => {
-    if (userToDelete) {
-      const result = await deleteUser(userToDelete);
-      if (!result?.success) {
-        setUserError(result?.message || t('users.deleteError'));
-      }
-      setUserToDelete(null);
-    }
-  };
-
-  const handleAddUser = () => {
-    setShowAddForm(true);
-  };
-
-  const handleAddComplete = () => {
-    setShowAddForm(false);
-    triggerRefresh(); // Refresh the users list after adding
-  };
-
   return (
-    <div className="container mx-auto">
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">{t('pages.users.title')}</h1>
-        <div className="flex space-x-4">
+    <div>
+      <div className="flex items-end justify-between gap-4 mb-6">
+        <div>
+          <h1 className="hub-h1">{t('pages.users.title')}</h1>
+          <p className="hub-sub">
+            <span className="hub-num">{users.length}</span> {t('nav.users').toLowerCase()}
+          </p>
+        </div>
+        <div className="flex gap-2">
           <button
-            onClick={handleAddUser}
-            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 flex items-center btn-primary transition-all duration-200 shadow-sm"
+            className="hub-btn"
+            onClick={() => triggerRefresh()}
+            aria-label={t('common.refresh')}
           >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M10 3a1 1 0 00-1 1v5H4a1 1 0 100 2h5v5a1 1 0 102 0v-5h5a1 1 0 100-2h-5V4a1 1 0 00-1-1z" clipRule="evenodd" />
-            </svg>
-            {t('users.add')}
+            <RefreshCw size={13} /> {t('common.refresh')}
+          </button>
+          <button className="hub-btn primary" onClick={() => setShowAddForm(true)}>
+            <Plus size={13} /> {t('users.add')}
           </button>
         </div>
       </div>
 
       {userError && (
-        <div className="bg-red-50 border-l-4 border-red-500 text-red-700 p-4 mb-6 error-box rounded-lg shadow-sm">
-          <div className="flex justify-between items-center">
-            <p>{userError}</p>
-            <button
-              onClick={() => setUserError(null)}
-              className="text-red-500 hover:text-red-700"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M4.293 4.293a1 1 011.414 0L10 8.586l4.293-4.293a1 1 111.414 1.414L11.414 10l4.293 4.293a1 1 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 01-1.414-1.414L8.586 10 4.293 5.707a1 1 010-1.414z" clipRule="evenodd" />
-              </svg>
-            </button>
+        <div
+          className="hub-card flex items-center justify-between gap-3 mb-4"
+          style={{
+            padding: '10px 14px',
+            borderColor: 'oklch(0.85 0.1 25)',
+            background: 'oklch(0.97 0.03 25)',
+            color: 'oklch(0.4 0.18 25)',
+          }}
+        >
+          <div className="flex items-center gap-2 min-w-0">
+            <AlertCircle size={14} className="flex-shrink-0" />
+            <span className="truncate text-[13px]">{userError}</span>
           </div>
+          <button className="hub-icon-btn sm" onClick={() => setUserError(null)}>
+            <X size={13} />
+          </button>
         </div>
       )}
 
       {usersLoading ? (
-        <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6 loading-container flex justify-center items-center h-64">
-          <div className="flex flex-col items-center justify-center">
-            <svg className="animate-spin h-10 w-10 text-blue-500 mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-            <p className="text-gray-600">{t('app.loading')}</p>
-          </div>
+        <div className="hub-card p-10 text-center" style={{ color: 'var(--hub-ink-3)' }}>
+          {t('app.loading')}
         </div>
       ) : users.length === 0 ? (
-        <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6 empty-state dashboard-card">
-          <div className="flex flex-col items-center justify-center py-12">
-            <div className="p-4 bg-gray-100 dark:bg-gray-800 rounded-full mb-4">
-              <UserIcon className="h-8 w-8 text-gray-400" />
+        <div className="hub-card p-10 text-center" style={{ color: 'var(--hub-ink-3)' }}>
+          <div className="flex flex-col items-center gap-3">
+            <div
+              className="grid place-items-center"
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: 10,
+                border: '1px solid var(--hub-line)',
+                background: 'var(--hub-bg-2)',
+              }}
+            >
+              <UserIcon size={18} />
             </div>
-            <p className="text-gray-600 text-lg font-medium">{t('users.noUsers')}</p>
+            <div className="font-medium" style={{ color: 'var(--hub-ink-2)', fontSize: 13 }}>
+              {t('users.noUsers')}
+            </div>
             <button
-              onClick={handleAddUser}
-              className="mt-4 text-blue-600 hover:text-blue-800 font-medium"
+              onClick={() => setShowAddForm(true)}
+              className="hub-btn ghost sm"
+              style={{ color: 'var(--hub-accent)' }}
             >
               {t('users.addFirst')}
             </button>
           </div>
         </div>
       ) : (
-        <div className="bg-white dark:bg-gray-800 shadow rounded-lg overflow-hidden table-container dashboard-card">
-          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-            <thead className="bg-gray-50 dark:bg-gray-800">
-              <tr>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  {t('users.username')}
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  {t('users.role')}
-                </th>
-                <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  {t('users.actions')}
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-              {users.map((user) => {
-                const isCurrentUser = currentUser?.username === user.username;
-                return (
-                  <tr key={user.username} className="hover:bg-gray-50 dark:bg-gray-800 dark:hover:bg-gray-700 transition-colors duration-150">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <div className="flex-shrink-0 h-10 w-10">
-                          <div className="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center text-blue-600 dark:text-blue-300 font-bold text-lg">
-                            {user.username.charAt(0).toUpperCase()}
-                          </div>
-                        </div>
-                        <div className="ml-4">
-                          <div className="text-sm font-medium text-gray-900 flex items-center">
-                            {user.username}
-                            {isCurrentUser && (
-                              <span className="ml-2 px-2 py-0.5 text-xs bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 rounded-full border border-blue-200 dark:border-blue-800">
-                                {t('users.currentUser')}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${user.isAdmin
-                          ? 'bg-purple-100 text-purple-800 border border-purple-200 dark:bg-purple-900/40 dark:text-purple-300 dark:border-purple-800'
-                          : 'bg-gray-100 text-gray-800 border border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700'
-                        }`}>
-                        {user.isAdmin ? t('users.admin') : t('users.user')}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <div className="flex justify-end space-x-3">
-                        <button
-                          onClick={() => handleEditClick(user)}
-                          className="text-blue-600 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-300 p-1 rounded hover:bg-blue-50 dark:hover:bg-blue-900/40 transition-colors"
-                          title={t('users.edit')}
-                        >
-                          <Edit size={18} />
-                        </button>
-                        {!isCurrentUser && (
-                          <button
-                            onClick={() => handleDeleteClick(user.username)}
-                            className="text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300 p-1 rounded hover:bg-red-50 dark:hover:bg-red-900/40 transition-colors"
-                            title={t('users.delete')}
-                          >
-                            <Trash size={18} />
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+        <div className="hub-card overflow-hidden">
+          <div
+            className="hub-row head hub-mono"
+            style={{ gridTemplateColumns: '1.6fr 100px 100px' }}
+          >
+            <div>{t('users.username')}</div>
+            <div>{t('users.role')}</div>
+            <div className="text-right">{t('users.actions')}</div>
+          </div>
+          {users.map((user) => {
+            const isCurrentUser = currentUser?.username === user.username;
+            return (
+              <div
+                key={user.username}
+                className="hub-row hover"
+                style={{ gridTemplateColumns: '1.6fr 100px 100px' }}
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <div
+                    className="grid place-items-center flex-shrink-0 hub-mono"
+                    style={{
+                      width: 28,
+                      height: 28,
+                      borderRadius: 7,
+                      background: 'var(--hub-bg-2)',
+                      border: '1px solid var(--hub-line)',
+                      color: 'var(--hub-ink-2)',
+                      fontWeight: 600,
+                      fontSize: 12,
+                    }}
+                  >
+                    {user.username.charAt(0).toUpperCase()}
+                  </div>
+                  <span
+                    className="hub-mono truncate"
+                    style={{ fontSize: 13, color: 'var(--hub-ink)' }}
+                  >
+                    {user.username}
+                  </span>
+                  {isCurrentUser && (
+                    <span className="hub-tag accent" style={{ fontSize: 10 }}>
+                      {t('users.currentUser')}
+                    </span>
+                  )}
+                </div>
+                <div>
+                  <StatusDot
+                    kind={user.isAdmin ? 'ok' : 'muted'}
+                    label={user.isAdmin ? t('users.admin') : t('users.user')}
+                  />
+                </div>
+                <div className="flex justify-end gap-1">
+                  <button
+                    onClick={() => setEditingUser(user)}
+                    className="hub-icon-btn sm"
+                    title={t('users.edit')}
+                  >
+                    <Edit3 size={13} />
+                  </button>
+                  {!isCurrentUser && (
+                    <button
+                      onClick={() => setUserToDelete(user.username)}
+                      className="hub-icon-btn sm"
+                      title={t('users.delete')}
+                      style={{ color: 'var(--hub-err)' }}
+                    >
+                      <Trash2 size={13} />
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
 
       {showAddForm && (
-        <AddUserForm onAdd={handleAddComplete} onCancel={handleAddComplete} />
+        <AddUserForm
+          onAdd={() => {
+            setShowAddForm(false);
+            triggerRefresh();
+          }}
+          onCancel={() => setShowAddForm(false)}
+        />
       )}
 
       {editingUser && (
         <EditUserForm
           user={editingUser}
-          onEdit={handleEditComplete}
+          onEdit={() => {
+            setEditingUser(null);
+            triggerRefresh();
+          }}
           onCancel={() => setEditingUser(null)}
         />
       )}
@@ -215,7 +209,15 @@ const UsersPage: React.FC = () => {
       <DeleteDialog
         isOpen={!!userToDelete}
         onClose={() => setUserToDelete(null)}
-        onConfirm={handleConfirmDelete}
+        onConfirm={async () => {
+          if (userToDelete) {
+            const result = await deleteUser(userToDelete);
+            if (!result?.success) {
+              setUserError(result?.message || t('users.deleteError'));
+            }
+            setUserToDelete(null);
+          }
+        }}
         serverName={userToDelete || ''}
         isGroup={false}
         isUser={true}

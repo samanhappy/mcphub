@@ -6,10 +6,8 @@ interface ContentProps {
 
 const Content: React.FC<ContentProps> = ({ children }) => {
   return (
-    <main className="flex-1 overflow-auto p-6 bg-gray-100 dark:bg-gray-900">
-      <div className="container mx-auto">
-        {children}
-      </div>
+    <main className="flex-1 overflow-auto" style={{ background: 'var(--hub-bg)' }}>
+      <div className="px-8 pt-6 pb-16 max-w-[1280px]">{children}</div>
     </main>
   );
 };

@@ -274,7 +274,10 @@
     "actions": "Actions",
     "saving": "Enregistrement...",
     "active": "Actif",
-    "inactive": "Inactif"
+    "inactive": "Inactif",
+    "viewAll": "Voir tout",
+    "docs": "Docs",
+    "all": "Tout"
   },
   "pagination": {
     "rowsPerPage": "Lignes par page",
@@ -292,7 +295,9 @@
     "market": "Marché",
     "cloud": "Marché Cloud",
     "logs": "Journaux",
-    "activity": "Activité"
+    "activity": "Activité",
+    "workspace": "Espace de travail",
+    "system": "Système"
   },
   "pages": {
     "dashboard": {
@@ -692,6 +697,8 @@
     "embeddingMaxTokensOverride": "Cette valeur remplace la valeur par défaut du modèle.",
     "smartRoutingRequiredFields": "L'URL de la base de données est requise pour activer le routage intelligent. Une clé API du fournisseur LLM est requise pour les fournisseurs cloud (les LLM locaux ne nécessitent généralement pas de clé API, entrez n'importe quelle valeur pour passer la validation du formulaire)",
     "smartRoutingValidationError": "Veuillez remplir les champs obligatoires avant d'activer le routage intelligent : {{fields}}",
+    "smartRoutingWorkflow": "Flux de travail",
+    "smartRoutingWorkflowDescription": "Le prompt est vectorisé ; les top-k outils similaires sont récupérés depuis pgvector et exposés au LLM en amont.",
     "mcpRouterConfig": "Marché Cloud",
     "mcpRouterApiKey": "Clé API MCPRouter",
     "mcpRouterApiKeyDescription": "Clé API pour accéder aux services du marché cloud MCPRouter",

@@ -3,8 +3,9 @@ import { useTranslation } from 'react-i18next';
 import { BuiltinResource } from '@/types';
 import { useBuiltinResourceData } from '@/hooks/useBuiltinResourceData';
 import { useAuth } from '@/contexts/AuthContext';
-import { Edit, Trash, Plus, FileText, X, ChevronDown, ChevronUp } from 'lucide-react';
+import { Edit, Trash, Plus, FileText, X, ChevronDown } from 'lucide-react';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
+import { StatusDot } from '@/components/ui/StatusDot';
 
 // Form dialog for creating/editing a built-in resource
 interface ResourceFormDialogProps {
@@ -160,11 +161,11 @@ const ResourceFormDialog: React.FC<ResourceFormDialogProps> = ({ resource, onSav
             </div>
           </div>
 
-          <div className="flex justify-end space-x-3 mt-8">
+          <div className="flex justify-end space-x-2 mt-6">
             <button
               type="button"
               onClick={onCancel}
-              className="px-4 py-2 text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 btn-secondary"
+              className="hub-btn"
               disabled={isSubmitting}
             >
               {t('common.cancel')}
@@ -172,7 +173,7 @@ const ResourceFormDialog: React.FC<ResourceFormDialogProps> = ({ resource, onSav
             <button
               type="submit"
               disabled={isSubmitting}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 btn-primary transition-all duration-200 shadow-sm disabled:opacity-50"
+              className="hub-btn primary"
             >
               {isSubmitting ? t('common.saving') : t('common.save')}
             </button>
@@ -237,61 +238,68 @@ const ResourcesPage: React.FC = () => {
   };
 
   return (
-    <div className="container mx-auto">
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-          {t('pages.resources.title')}
-        </h1>
+    <div>
+      <div className="flex items-end justify-between gap-4 mb-6">
+        <div>
+          <h1 className="hub-h1">{t('pages.resources.title')}</h1>
+          <p className="hub-sub">
+            <span className="hub-num">{resources.length}</span> {t('nav.resources').toLowerCase()}
+          </p>
+        </div>
         {isAdmin && (
-          <button
-            onClick={() => setShowForm(true)}
-            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 flex items-center btn-primary transition-all duration-200 shadow-sm"
-          >
-            <Plus size={16} className="mr-2" />
-            {t('builtinResources.add')}
+          <button onClick={() => setShowForm(true)} className="hub-btn primary">
+            <Plus size={13} /> {t('builtinResources.add')}
           </button>
         )}
       </div>
 
       {error && (
-        <div className="bg-red-50 border-l-4 border-red-500 text-red-700 p-4 mb-6 error-box rounded-lg shadow-sm">
-          <div className="flex justify-between items-center">
-            <p>{error}</p>
-            <button onClick={() => setError(null)} className="text-red-500 hover:text-red-700">
-              <X size={20} />
-            </button>
+        <div
+          className="hub-card flex items-center justify-between gap-3 mb-4"
+          style={{
+            padding: '10px 14px',
+            borderColor: 'oklch(0.85 0.1 25)',
+            background: 'oklch(0.97 0.03 25)',
+            color: 'oklch(0.4 0.18 25)',
+          }}
+        >
+          <div className="flex items-center gap-2 min-w-0">
+            <X size={14} className="flex-shrink-0" />
+            <span className="truncate text-[13px]">{error}</span>
           </div>
+          <button className="hub-icon-btn sm" onClick={() => setError(null)}>
+            <X size={13} />
+          </button>
         </div>
       )}
 
       {loading ? (
-        <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6 loading-container flex justify-center items-center h-64">
-          <div className="flex flex-col items-center justify-center">
-            <svg
-              className="animate-spin h-10 w-10 text-blue-500 mb-4"
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-            >
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-            </svg>
-            <p className="text-gray-600 dark:text-gray-400">{t('app.loading')}</p>
-          </div>
+        <div className="hub-card p-10 text-center" style={{ color: 'var(--hub-ink-3)' }}>
+          {t('app.loading')}
         </div>
       ) : resources.length === 0 ? (
-        <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6 empty-state dashboard-card">
-          <div className="flex flex-col items-center justify-center py-12">
-            <div className="p-4 bg-gray-100 dark:bg-gray-700 rounded-full mb-4">
-              <FileText className="h-8 w-8 text-gray-400" />
+        <div className="hub-card p-10 text-center" style={{ color: 'var(--hub-ink-3)' }}>
+          <div className="flex flex-col items-center gap-3">
+            <div
+              className="grid place-items-center"
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: 10,
+                border: '1px solid var(--hub-line)',
+                background: 'var(--hub-bg-2)',
+              }}
+            >
+              <FileText size={18} />
             </div>
-            <p className="text-gray-600 dark:text-gray-400 text-lg font-medium">
+            <div className="font-medium" style={{ color: 'var(--hub-ink-2)', fontSize: 13 }}>
               {t('builtinResources.noResources')}
-            </p>
+            </div>
             {isAdmin && (
               <button
                 onClick={() => setShowForm(true)}
-                className="mt-4 text-blue-600 hover:text-blue-800 font-medium"
+                className="hub-btn ghost sm"
+                style={{ color: 'var(--hub-accent)' }}
               >
                 {t('builtinResources.addFirst')}
               </button>
@@ -299,97 +307,128 @@ const ResourcesPage: React.FC = () => {
           </div>
         </div>
       ) : (
-        <div className="space-y-3">
-          {resources.map((resource) => {
+        <div className="hub-card overflow-hidden">
+          {resources.map((resource, idx) => {
             const isExpanded = expandedIds.has(resource.id);
+            const enabled = resource.enabled !== false;
             return (
               <div
                 key={resource.id}
-                className="bg-white dark:bg-gray-800 shadow rounded-lg overflow-hidden dashboard-card"
+                style={{ borderTop: idx === 0 ? 0 : '1px solid var(--hub-line-2)' }}
               >
                 <div
-                  className="flex items-center justify-between px-6 py-4 cursor-pointer hover:bg-gray-50 dark:bg-gray-800 dark:hover:bg-gray-700"
+                  className="flex items-center justify-between cursor-pointer transition-colors hover:bg-[var(--hub-surface-hover)]"
+                  style={{ padding: '12px 16px' }}
                   onClick={() => toggleExpand(resource.id)}
                 >
-                  <div className="flex items-center flex-1 min-w-0">
-                    <FileText
-                      size={18}
-                      className={`mr-3 flex-shrink-0 ${resource.enabled !== false ? 'text-green-500' : 'text-gray-400'}`}
+                  <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                    <ChevronDown
+                      size={12}
+                      style={{
+                        color: 'var(--hub-ink-3)',
+                        transform: isExpanded ? 'rotate(0deg)' : 'rotate(-90deg)',
+                        transition: 'transform 0.15s',
+                        flexShrink: 0,
+                      }}
                     />
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium text-gray-900 dark:text-gray-100 truncate">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span
+                          className="font-medium truncate"
+                          style={{
+                            fontSize: 13.5,
+                            color: enabled ? 'var(--hub-ink)' : 'var(--hub-ink-3)',
+                          }}
+                        >
                           {resource.name || resource.uri}
                         </span>
                         {resource.name && (
-                          <span className="text-xs text-gray-500 dark:text-gray-400 font-mono truncate">
+                          <span
+                            className="hub-mono truncate"
+                            style={{ fontSize: 11.5, color: 'var(--hub-ink-3)' }}
+                          >
                             {resource.uri}
                           </span>
                         )}
-                        <span
-                          className={`px-2 py-0.5 text-xs rounded-full flex-shrink-0 ${
-                            resource.enabled !== false
-                              ? 'bg-green-100 text-green-800 border border-green-200'
-                              : 'bg-gray-100 text-gray-600 border border-gray-200'
-                          }`}
-                        >
-                          {resource.enabled !== false ? t('builtinResources.active') : t('builtinResources.inactive')}
-                        </span>
+                        <StatusDot
+                          kind={enabled ? 'ok' : 'muted'}
+                          label={
+                            enabled
+                              ? t('builtinResources.active')
+                              : t('builtinResources.inactive')
+                          }
+                        />
                         {resource.mimeType && (
-                          <span className="px-2 py-0.5 text-xs bg-blue-50 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 rounded-full border border-blue-200 dark:border-blue-800 flex-shrink-0">
+                          <span className="hub-tag accent" style={{ fontSize: 10 }}>
                             {resource.mimeType}
                           </span>
                         )}
                       </div>
                       {resource.description && (
-                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5 truncate">
+                        <div
+                          className="truncate mt-0.5"
+                          style={{ fontSize: 12, color: 'var(--hub-ink-3)' }}
+                        >
                           {resource.description}
-                        </p>
+                        </div>
                       )}
                     </div>
                   </div>
-                  <div className="flex items-center ml-4 gap-2">
-                    {isAdmin && (
-                      <>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setEditingResource(resource);
-                          }}
-                          className="text-blue-600 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-300 p-1 rounded hover:bg-blue-50 dark:hover:bg-blue-900/40 transition-colors"
-                          title={t('builtinResources.edit')}
-                        >
-                          <Edit size={18} />
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setResourceToDelete(resource);
-                          }}
-                          className="text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300 p-1 rounded hover:bg-red-50 dark:hover:bg-red-900/40 transition-colors"
-                          title={t('builtinResources.delete')}
-                        >
-                          <Trash size={18} />
-                        </button>
-                      </>
-                    )}
-                    {isExpanded ? (
-                      <ChevronUp size={18} className="text-gray-400" />
-                    ) : (
-                      <ChevronDown size={18} className="text-gray-400" />
-                    )}
-                  </div>
+                  {isAdmin && (
+                    <div className="flex items-center gap-1 ml-3">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setEditingResource(resource);
+                        }}
+                        className="hub-icon-btn sm"
+                        title={t('builtinResources.edit')}
+                      >
+                        <Edit size={13} />
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setResourceToDelete(resource);
+                        }}
+                        className="hub-icon-btn sm"
+                        title={t('builtinResources.delete')}
+                        style={{ color: 'var(--hub-err)' }}
+                      >
+                        <Trash size={13} />
+                      </button>
+                    </div>
+                  )}
                 </div>
                 {isExpanded && (
-                  <div className="px-6 pb-4 border-t border-gray-100 dark:border-gray-700">
-                    <div className="mt-3">
-                      <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1">
-                        {t('builtinResources.content')}
-                      </h4>
-                      <pre className="text-sm text-gray-800 dark:text-gray-200 bg-gray-50 dark:bg-gray-900 rounded p-3 overflow-x-auto whitespace-pre-wrap font-mono max-h-64 overflow-y-auto">
-                        {resource.content}
-                      </pre>
+                  <div
+                    style={{
+                      padding: '12px 16px 14px 38px',
+                      background: 'var(--hub-bg-2)',
+                      borderTop: '1px solid var(--hub-line-2)',
+                    }}
+                  >
+                    <div className="hub-sect" style={{ marginBottom: 5 }}>
+                      {t('builtinResources.content')}
                     </div>
+                    <pre
+                      className="hub-mono"
+                      style={{
+                        fontSize: 12,
+                        color: 'var(--hub-ink-2)',
+                        background: 'var(--hub-surface)',
+                        border: '1px solid var(--hub-line)',
+                        borderRadius: 7,
+                        padding: 10,
+                        overflowX: 'auto',
+                        overflowY: 'auto',
+                        whiteSpace: 'pre-wrap',
+                        maxHeight: 260,
+                        margin: 0,
+                      }}
+                    >
+                      {resource.content}
+                    </pre>
                   </div>
                 )}
               </div>

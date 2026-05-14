@@ -191,37 +191,41 @@ const ActivityPage: React.FC = () => {
     if (!stats) return null;
 
     return (
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm px-4 py-3 mb-4">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <div className="flex items-center gap-2">
-            <div className="text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap">
-              {t('activity.totalCalls')}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+        {[
+          { label: t('activity.totalCalls'), value: stats.totalCalls, tone: 'default' as const },
+          { label: t('activity.successCount'), value: stats.successCount, tone: 'ok' as const },
+          { label: t('activity.errorCount'), value: stats.errorCount, tone: 'err' as const },
+          {
+            label: t('activity.avgDuration'),
+            value: formatDuration(stats.avgDuration),
+            tone: 'default' as const,
+          },
+        ].map((s) => (
+          <div key={s.label} className="hub-card" style={{ padding: '12px 14px' }}>
+            <div className="text-[12px]" style={{ color: 'var(--hub-ink-3)' }}>
+              {s.label}
             </div>
-            <div className="text-lg font-semibold text-gray-900 dark:text-white">
-              {stats.totalCalls}
+            <div
+              className="hub-num"
+              style={{
+                fontSize: 22,
+                fontWeight: 500,
+                lineHeight: 1.1,
+                marginTop: 6,
+                letterSpacing: '-0.02em',
+                color:
+                  s.tone === 'ok'
+                    ? 'oklch(0.4 0.13 145)'
+                    : s.tone === 'err'
+                      ? 'oklch(0.45 0.18 25)'
+                      : 'var(--hub-ink)',
+              }}
+            >
+              {s.value}
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap">
-              {t('activity.successCount')}
-            </div>
-            <div className="text-lg font-semibold text-green-600">{stats.successCount}</div>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap">
-              {t('activity.errorCount')}
-            </div>
-            <div className="text-lg font-semibold text-red-600">{stats.errorCount}</div>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap">
-              {t('activity.avgDuration')}
-            </div>
-            <div className="text-lg font-semibold text-blue-600">
-              {formatDuration(stats.avgDuration)}
-            </div>
-          </div>
-        </div>
+        ))}
       </div>
     );
   };
@@ -229,7 +233,7 @@ const ActivityPage: React.FC = () => {
   // Render filters
   const renderFilters = () => {
     return (
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm px-4 py-3 mb-4">
+      <div className="hub-card px-4 py-3 mb-4">
         <div className="flex flex-wrap gap-3 items-end">
           <div className="flex-1 min-w-[140px]">
             <label className="sr-only" htmlFor="activity-server">
@@ -242,7 +246,7 @@ const ActivityPage: React.FC = () => {
                 value={searchServer}
                 onChange={(e) => setSearchServer(e.target.value)}
                 placeholder={t('activity.searchServer')}
-                className="w-full h-10 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white pr-9"
+                className="hub-input pr-9"
                 list="server-options"
               />
               {searchServer && (
@@ -286,7 +290,7 @@ const ActivityPage: React.FC = () => {
                 value={searchTool}
                 onChange={(e) => setSearchTool(e.target.value)}
                 placeholder={t('activity.searchTool')}
-                className="w-full h-10 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white pr-9"
+                className="hub-input pr-9"
                 list="tool-options"
               />
               {searchTool && (
@@ -330,7 +334,7 @@ const ActivityPage: React.FC = () => {
                 value={searchStatus}
                 onChange={(e) => setSearchStatus(e.target.value.toLowerCase())}
                 placeholder={t('activity.searchStatus')}
-                className="w-full h-10 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white pr-9"
+                className="hub-input pr-9"
                 list="activity-status-options"
               />
               {searchStatus && (
@@ -372,7 +376,7 @@ const ActivityPage: React.FC = () => {
                 value={searchGroup}
                 onChange={(e) => setSearchGroup(e.target.value)}
                 placeholder={t('activity.searchGroup')}
-                className="w-full h-10 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white pr-9"
+                className="hub-input pr-9"
                 list="group-options"
               />
               {searchGroup && (
@@ -416,7 +420,7 @@ const ActivityPage: React.FC = () => {
                 value={searchKeyName}
                 onChange={(e) => setSearchKeyName(e.target.value)}
                 placeholder={t('activity.searchKeyName')}
-                className="w-full h-10 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white pr-9"
+                className="hub-input pr-9"
                 list="keyname-options"
               />
               {searchKeyName && (
@@ -450,13 +454,10 @@ const ActivityPage: React.FC = () => {
             )}
           </div>
           <div className="flex-shrink-0 flex items-center gap-2">
-            <button
-              onClick={handleSearch}
-              className="h-10 px-3 bg-blue-100 text-blue-800 rounded hover:bg-blue-200 flex items-center btn-primary transition-all duration-200 whitespace-nowrap"
-            >
+            <button onClick={handleSearch} className="hub-btn primary whitespace-nowrap">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
-                className="h-4 w-4 mr-2"
+                className="h-3.5 w-3.5"
                 viewBox="0 0 20 20"
                 fill="currentColor"
               >
@@ -468,21 +469,7 @@ const ActivityPage: React.FC = () => {
               </svg>
               {t('common.search')}
             </button>
-            <button
-              onClick={handleClearFilters}
-              className="h-10 px-3 bg-gray-100 text-gray-800 rounded hover:bg-gray-200 flex items-center btn-secondary transition-all duration-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600 whitespace-nowrap"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-4 w-4 mr-2"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.8"
-              >
-                <circle cx="12" cy="12" r="9" />
-                <path strokeLinecap="round" d="M9 9l6 6M15 9l-6 6" />
-              </svg>
+            <button onClick={handleClearFilters} className="hub-btn whitespace-nowrap">
               {t('common.clear')}
             </button>
           </div>
@@ -495,86 +482,96 @@ const ActivityPage: React.FC = () => {
   const renderActivityTable = () => {
     if (activities.length === 0) {
       return (
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-8 text-center text-gray-500 dark:text-gray-400">
+        <div className="hub-card p-10 text-center" style={{ color: 'var(--hub-ink-3)' }}>
           {t('activity.noData')}
         </div>
       );
     }
 
     return (
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
+      <div className="hub-card overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-            <thead className="bg-gray-50 dark:bg-gray-700">
+          <table className="min-w-full">
+            <thead style={{ background: 'var(--hub-bg-2)' }}>
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  {t('activity.timestamp')}
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  {t('activity.server')}
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  {t('activity.tool')}
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  {t('activity.duration')}
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  {t('activity.status')}
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  {t('activity.group')}
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  {t('activity.key')}
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  {t('common.actions')}
-                </th>
+                {[
+                  t('activity.timestamp'),
+                  t('activity.server'),
+                  t('activity.tool'),
+                  t('activity.duration'),
+                  t('activity.status'),
+                  t('activity.group'),
+                  t('activity.key'),
+                  t('common.actions'),
+                ].map((label) => (
+                  <th
+                    key={label}
+                    className="hub-mono"
+                    style={{
+                      padding: '9px 14px',
+                      textAlign: 'left',
+                      fontSize: 11,
+                      color: 'var(--hub-ink-3)',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.08em',
+                      fontWeight: 500,
+                    }}
+                  >
+                    {label}
+                  </th>
+                ))}
               </tr>
             </thead>
-            <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+            <tbody>
               {activities.map((activity) => (
-                <tr key={activity.id} className="hover:bg-gray-50 dark:bg-gray-800 dark:hover:bg-gray-700">
-                  <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-200 whitespace-nowrap">
+                <tr
+                  key={activity.id}
+                  className="transition-colors hover:bg-[var(--hub-surface-hover)]"
+                  style={{ borderTop: '1px solid var(--hub-line-2)' }}
+                >
+                  <td
+                    className="hub-mono whitespace-nowrap"
+                    style={{ padding: '10px 14px', fontSize: 12, color: 'var(--hub-ink-2)' }}
+                  >
                     {formatTimestamp(activity.timestamp)}
                   </td>
-                  <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-200">
-                    <span className="font-mono bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded text-xs">
-                      {activity.server}
-                    </span>
+                  <td style={{ padding: '10px 14px' }}>
+                    <span className="hub-tag">{activity.server}</span>
                   </td>
-                  <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-200">
-                    <span className="font-mono bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 px-2 py-1 rounded text-xs">
-                      {activity.tool}
-                    </span>
+                  <td style={{ padding: '10px 14px' }}>
+                    <span className="hub-tag accent">{activity.tool}</span>
                   </td>
-                  <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-200 whitespace-nowrap">
+                  <td
+                    className="hub-mono hub-num whitespace-nowrap"
+                    style={{ padding: '10px 14px', fontSize: 12, color: 'var(--hub-ink-2)' }}
+                  >
                     {formatDuration(activity.duration)}
                   </td>
-                  <td className="px-4 py-3 text-sm whitespace-nowrap">
+                  <td style={{ padding: '10px 14px' }} className="whitespace-nowrap">
                     <span
-                      className={`px-2 py-1 rounded text-xs font-medium ${
-                        activity.status === 'success'
-                          ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                          : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
-                      }`}
+                      className={`hub-status ${activity.status === 'success' ? 'ok' : 'err'}`}
                     >
+                      <span className="hub-dot" />
                       {activity.status === 'success'
                         ? t('activity.statusSuccess')
                         : t('activity.statusError')}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">
-                    {activity.group || '-'}
+                  <td
+                    style={{ padding: '10px 14px', fontSize: 12, color: 'var(--hub-ink-3)' }}
+                  >
+                    {activity.group || '—'}
                   </td>
-                  <td className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">
-                    {activity.keyName || '-'}
+                  <td
+                    style={{ padding: '10px 14px', fontSize: 12, color: 'var(--hub-ink-3)' }}
+                  >
+                    {activity.keyName || '—'}
                   </td>
-                  <td className="px-4 py-3 text-sm">
+                  <td style={{ padding: '10px 14px' }}>
                     <button
                       onClick={() => handleViewDetails(activity)}
-                      className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+                      className="hub-btn ghost sm"
+                      style={{ color: 'var(--hub-accent)' }}
                     >
                       {t('common.view')}
                     </button>
@@ -596,17 +593,22 @@ const ActivityPage: React.FC = () => {
     const outputData = safeParseJSON(selectedActivity.output);
 
     return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full mx-4 max-h-[90vh] overflow-hidden">
-          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white">
-              {t('activity.details')}
-            </h3>
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+        <div
+          className="hub-card max-w-4xl w-full mx-4 max-h-[90vh] overflow-hidden"
+          style={{ boxShadow: '0 8px 24px rgba(0,0,0,0.12)' }}
+        >
+          <div
+            className="flex items-center justify-between px-5 py-3"
+            style={{ borderBottom: '1px solid var(--hub-line-2)' }}
+          >
+            <h3 className="hub-card-title">{t('activity.details')}</h3>
             <button
               onClick={() => setShowDetailModal(false)}
-              className="text-gray-400 hover:text-gray-500 dark:hover:text-gray-300"
+              className="hub-icon-btn sm"
+              aria-label="close"
             >
-              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -720,79 +722,61 @@ const ActivityPage: React.FC = () => {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{t('activity.title')}</h1>
-        <div className="flex space-x-4">
-          <button
-            onClick={handleCleanup}
-            className="px-4 py-2 bg-red-100 text-red-800 rounded hover:bg-red-200 flex items-center transition-all duration-200"
+      <div className="flex items-end justify-between gap-4 mb-6">
+        <div>
+          <h1 className="hub-h1">{t('activity.title')}</h1>
+          <p className="hub-sub">
+            <span className="hub-num">{pagination?.total ?? activities.length}</span> entries
+          </p>
+        </div>
+        <button onClick={handleCleanup} className="hub-btn danger">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="h-3.5 w-3.5"
+            viewBox="0 0 20 20"
+            fill="currentColor"
           >
+            <path
+              fillRule="evenodd"
+              d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z"
+              clipRule="evenodd"
+            />
+          </svg>
+          {t('activity.cleanup')}
+        </button>
+      </div>
+
+      {error && (
+        <div
+          className="hub-card flex items-center justify-between gap-3 mb-4"
+          style={{
+            padding: '10px 14px',
+            borderColor: 'oklch(0.85 0.1 25)',
+            background: 'oklch(0.97 0.03 25)',
+            color: 'oklch(0.4 0.18 25)',
+          }}
+        >
+          <span className="truncate text-[13px]">{error}</span>
+          <button className="hub-icon-btn sm" onClick={() => setError(null)} aria-label="close">
             <svg
               xmlns="http://www.w3.org/2000/svg"
-              className="h-4 w-4 mr-2"
+              className="h-3 w-3"
               viewBox="0 0 20 20"
               fill="currentColor"
             >
               <path
                 fillRule="evenodd"
-                d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z"
+                d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
                 clipRule="evenodd"
               />
             </svg>
-            {t('activity.cleanup')}
           </button>
-        </div>
-      </div>
-
-      {error && (
-        <div className="mb-6 bg-red-50 border-l-4 border-red-500 p-4 rounded shadow-sm">
-          <div className="flex items-center justify-between">
-            <p className="text-red-700">{error}</p>
-            <button
-              onClick={() => setError(null)}
-              className="ml-4 text-gray-500 hover:text-gray-700"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-4 w-4 mr-2"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.8"
-              >
-                <circle cx="12" cy="12" r="9" />
-                <path strokeLinecap="round" d="M9 9l6 6M15 9l-6 6" />
-              </svg>
-            </button>
-          </div>
         </div>
       )}
 
       {isLoading && activities.length === 0 ? (
-        <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6 flex items-center justify-center">
-          <div className="flex flex-col items-center">
-            <svg
-              className="animate-spin h-10 w-10 text-blue-500 mb-4"
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-            >
-              <circle
-                className="opacity-25"
-                cx="12"
-                cy="12"
-                r="10"
-                stroke="currentColor"
-                strokeWidth="4"
-              ></circle>
-              <path
-                className="opacity-75"
-                fill="currentColor"
-                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-              ></path>
-            </svg>
-            <p className="text-gray-500 dark:text-gray-400">{t('app.loading')}</p>
-          </div>
+        <div className="hub-card p-10 text-center" style={{ color: 'var(--hub-ink-3)' }}>
+          {t('app.loading')}
         </div>
       ) : (
         <>

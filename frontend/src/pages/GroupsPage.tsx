@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Plus, Download, Upload, AlertCircle, X } from 'lucide-react';
 import { Group } from '@/types';
 import { useGroupData } from '@/hooks/useGroupData';
 import { useServerData } from '@/hooks/useServerData';
@@ -28,15 +29,6 @@ const GroupsPage: React.FC = () => {
   const [showTemplateExport, setShowTemplateExport] = useState(false);
   const [showTemplateImport, setShowTemplateImport] = useState(false);
 
-  const handleEditClick = (group: Group) => {
-    setEditingGroup(group);
-  };
-
-  const handleEditComplete = () => {
-    setEditingGroup(null);
-    triggerRefresh(); // Refresh the groups list after editing
-  };
-
   const handleDeleteGroup = async (groupId: string) => {
     const result = await deleteGroup(groupId);
     if (!result || !result.success) {
@@ -44,160 +36,118 @@ const GroupsPage: React.FC = () => {
     }
   };
 
-  const handleAddGroup = () => {
-    setShowAddForm(true);
-  };
-
-  const handleAddComplete = () => {
-    setShowAddForm(false);
-    triggerRefresh(); // Refresh the groups list after adding
-  };
-
-  const handleImportSuccess = () => {
-    setShowImportForm(false);
-    triggerRefresh(); // Refresh the groups list after import
-  };
-
-  const handleTemplateImportSuccess = () => {
-    setShowTemplateImport(false);
-    triggerRefresh();
-  };
-
   return (
     <div>
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">{t('pages.groups.title')}</h1>
-        <div className="flex space-x-4">
-          <button
-            onClick={handleAddGroup}
-            className="px-4 py-2 bg-blue-100 text-blue-800 rounded hover:bg-blue-200 flex items-center btn-primary transition-all duration-200"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-4 w-4 mr-2"
-              viewBox="0 0 20 20"
-              fill="currentColor"
-            >
-              <path
-                fillRule="evenodd"
-                d="M10 3a1 1 0 00-1 1v5H4a1 1 0 100 2h5v5a1 1 0 102 0v-5h5a1 1 0 100-2h-5V4a1 1 0 00-1-1z"
-                clipRule="evenodd"
-              />
-            </svg>
-            {t('groups.add')}
+      <div className="flex items-end justify-between gap-4 mb-6">
+        <div>
+          <h1 className="hub-h1">{t('pages.groups.title')}</h1>
+          <p className="hub-sub">
+            <span className="hub-num">{groups.length}</span> {t('nav.groups').toLowerCase()}
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <button className="hub-btn" onClick={() => setShowImportForm(true)}>
+            <Upload size={13} /> {t('groupImport.button')}
           </button>
-          <button
-            onClick={() => setShowImportForm(true)}
-            className="px-4 py-2 bg-blue-100 text-blue-800 rounded hover:bg-blue-200 flex items-center btn-primary transition-all duration-200"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-4 w-4 mr-2"
-              viewBox="0 0 20 20"
-              fill="currentColor"
-            >
-              <path
-                fillRule="evenodd"
-                d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z"
-                clipRule="evenodd"
-              />
-            </svg>
-            {t('groupImport.button')}
+          <button className="hub-btn" onClick={() => setShowTemplateExport(true)}>
+            <Download size={13} /> {t('template.exportButton')}
           </button>
-          <button
-            onClick={() => setShowTemplateExport(true)}
-            className="px-4 py-2 bg-green-100 text-green-800 rounded hover:bg-green-200 flex items-center btn-primary transition-all duration-200"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-4 w-4 mr-2"
-              viewBox="0 0 20 20"
-              fill="currentColor"
-            >
-              <path
-                fillRule="evenodd"
-                d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 5.414V13a1 1 0 11-2 0V5.414L7.707 6.707a1 1 0 01-1.414 0z"
-                clipRule="evenodd"
-              />
-            </svg>
-            {t('template.exportButton')}
+          <button className="hub-btn" onClick={() => setShowTemplateImport(true)}>
+            <Upload size={13} /> {t('template.importButton')}
           </button>
-          <button
-            onClick={() => setShowTemplateImport(true)}
-            className="px-4 py-2 bg-green-100 text-green-800 rounded hover:bg-green-200 flex items-center btn-primary transition-all duration-200"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-4 w-4 mr-2"
-              viewBox="0 0 20 20"
-              fill="currentColor"
-            >
-              <path
-                fillRule="evenodd"
-                d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z"
-                clipRule="evenodd"
-              />
-            </svg>
-            {t('template.importButton')}
+          <button className="hub-btn primary" onClick={() => setShowAddForm(true)}>
+            <Plus size={13} /> {t('groups.add')}
           </button>
         </div>
       </div>
 
       {groupError && (
-        <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6 error-box rounded-lg">
-          <p>{groupError}</p>
+        <div
+          className="hub-card flex items-center justify-between gap-3 mb-4"
+          style={{
+            padding: '10px 14px',
+            borderColor: 'oklch(0.85 0.1 25)',
+            background: 'oklch(0.97 0.03 25)',
+            color: 'oklch(0.4 0.18 25)',
+          }}
+        >
+          <div className="flex items-center gap-2 min-w-0">
+            <AlertCircle size={14} className="flex-shrink-0" />
+            <span className="truncate text-[13px]">{groupError}</span>
+          </div>
+          <button className="hub-icon-btn sm" onClick={() => setGroupError(null)}>
+            <X size={13} />
+          </button>
         </div>
       )}
 
       {groupsLoading ? (
-        <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6 loading-container">
-          <div className="flex flex-col items-center justify-center">
-            <svg
-              className="animate-spin h-10 w-10 text-blue-500 mb-4"
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-            >
-              <circle
-                className="opacity-25"
-                cx="12"
-                cy="12"
-                r="10"
-                stroke="currentColor"
-                strokeWidth="4"
-              ></circle>
-              <path
-                className="opacity-75"
-                fill="currentColor"
-                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-              ></path>
-            </svg>
-            <p className="text-gray-600">{t('app.loading')}</p>
-          </div>
+        <div className="hub-card p-6 text-center" style={{ color: 'var(--hub-ink-3)' }}>
+          {t('app.loading')}
         </div>
       ) : groups.length === 0 ? (
-        <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6 empty-state">
-          <p className="text-gray-600">{t('groups.noGroups')}</p>
+        <div className="hub-card p-10 text-center" style={{ color: 'var(--hub-ink-3)' }}>
+          {t('groups.noGroups')}
         </div>
       ) : (
-        <div className="space-y-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3.5">
           {groups.map((group) => (
             <GroupCard
               key={group.id}
               group={group}
               servers={allServers}
-              onEdit={handleEditClick}
+              onEdit={setEditingGroup}
               onDelete={handleDeleteGroup}
             />
           ))}
+          <button
+            onClick={() => setShowAddForm(true)}
+            className="flex items-center justify-center text-[var(--hub-ink-3)] hover:text-[var(--hub-ink-2)] transition-colors"
+            style={{
+              border: '1px dashed var(--hub-line)',
+              borderRadius: 10,
+              minHeight: 200,
+              background: 'transparent',
+              cursor: 'pointer',
+            }}
+          >
+            <div className="text-center">
+              <div
+                className="grid place-items-center mx-auto mb-2"
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 10,
+                  border: '1px solid var(--hub-line)',
+                }}
+              >
+                <Plus size={16} />
+              </div>
+              <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--hub-ink-2)' }}>
+                {t('groups.add')}
+              </div>
+              <div style={{ fontSize: 12, marginTop: 2 }}>{t('groups.addNew')}</div>
+            </div>
+          </button>
         </div>
       )}
 
-      {showAddForm && <AddGroupForm onAdd={handleAddComplete} onCancel={handleAddComplete} />}
+      {showAddForm && (
+        <AddGroupForm
+          onAdd={() => {
+            setShowAddForm(false);
+            triggerRefresh();
+          }}
+          onCancel={() => setShowAddForm(false)}
+        />
+      )}
 
       {showImportForm && (
         <GroupImportForm
-          onSuccess={handleImportSuccess}
+          onSuccess={() => {
+            setShowImportForm(false);
+            triggerRefresh();
+          }}
           onCancel={() => setShowImportForm(false)}
         />
       )}
@@ -205,21 +155,24 @@ const GroupsPage: React.FC = () => {
       {editingGroup && (
         <EditGroupForm
           group={editingGroup}
-          onEdit={handleEditComplete}
+          onEdit={() => {
+            setEditingGroup(null);
+            triggerRefresh();
+          }}
           onCancel={() => setEditingGroup(null)}
         />
       )}
 
       {showTemplateExport && (
-        <TemplateExportForm
-          groups={groups}
-          onCancel={() => setShowTemplateExport(false)}
-        />
+        <TemplateExportForm groups={groups} onCancel={() => setShowTemplateExport(false)} />
       )}
 
       {showTemplateImport && (
         <TemplateImportForm
-          onSuccess={handleTemplateImportSuccess}
+          onSuccess={() => {
+            setShowTemplateImport(false);
+            triggerRefresh();
+          }}
           onCancel={() => setShowTemplateImport(false)}
         />
       )}
