@@ -1238,18 +1238,18 @@ const SettingsPage: React.FC = () => {
             onClick={() => toggleSection('bearerKeys')}
           >
             <div className="flex items-center gap-2.5">
-              <Key size={15} style={{ color: 'var(--hub-ink-2)' }} />
-              <h2 className="font-medium" style={{ color: 'var(--hub-ink)' }}>
+              <Key size={15} className="text-[var(--hub-ink-2)]" />
+              <h2 className="font-medium text-[var(--hub-ink)]">
                 {t('settings.bearerKeysSectionTitle') || 'Bearer authentication keys'}
               </h2>
             </div>
-            <span style={{ color: 'var(--hub-ink-3)' }}>
+            <span className="text-[var(--hub-ink-3)]">
               {sectionsVisible.bearerKeys ? '−' : '+'}
             </span>
           </div>
 
           {sectionsVisible.bearerKeys && (
-            <div className="space-y-4 pb-4 px-6 pt-4" style={{ borderTop: '1px solid var(--hub-line-2)' }}>
+            <div className="space-y-4 pb-4 px-6 pt-4 border-t border-[var(--hub-line-2)]">
               <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-md">
                 <div>
                   <h3 className="font-medium text-gray-700">
@@ -1607,8 +1607,8 @@ const SettingsPage: React.FC = () => {
             onClick={() => toggleSection('smartRoutingConfig')}
           >
             <div className="flex items-center gap-2.5">
-              <RouteIcon size={15} style={{ color: 'var(--hub-ink-2)' }} />
-              <h2 className="font-medium" style={{ color: 'var(--hub-ink)' }}>{t('pages.settings.smartRouting')}</h2>
+              <RouteIcon size={15} className="text-[var(--hub-ink-2)]" />
+              <h2 className="font-medium text-[var(--hub-ink)]">{t('pages.settings.smartRouting')}</h2>
               <span className="hub-status ml-2" data-state={smartRoutingConfig.enabled ? 'on' : 'off'}>
                 <span
                   className="hub-dot"
@@ -1629,13 +1629,13 @@ const SettingsPage: React.FC = () => {
                 </span>
               </span>
             </div>
-            <span style={{ color: 'var(--hub-ink-3)' }}>
+            <span className="text-[var(--hub-ink-3)]">
               {sectionsVisible.smartRoutingConfig ? '−' : '+'}
             </span>
           </div>
 
           {sectionsVisible.smartRoutingConfig && (
-            <div className="px-6 py-5" style={{ borderTop: '1px solid var(--hub-line-2)' }}>
+            <div className="px-6 py-5 border-t border-[var(--hub-line-2)]">
               {/* Status banner */}
               <div
                 className="hub-card mb-4"
@@ -2209,14 +2209,14 @@ const SettingsPage: React.FC = () => {
             onClick={() => toggleSection('oauthServerConfig')}
           >
             <div className="flex items-center gap-2.5">
-              <Lock size={15} style={{ color: 'var(--hub-ink-2)' }} />
-              <h2 className="font-medium" style={{ color: 'var(--hub-ink)' }}>{t('pages.settings.oauthServer')}</h2>
+              <Lock size={15} className="text-[var(--hub-ink-2)]" />
+              <h2 className="font-medium text-[var(--hub-ink)]">{t('pages.settings.oauthServer')}</h2>
             </div>
-            <span style={{ color: 'var(--hub-ink-3)' }}>{sectionsVisible.oauthServerConfig ? '−' : '+'}</span>
+            <span className="text-[var(--hub-ink-3)]">{sectionsVisible.oauthServerConfig ? '−' : '+'}</span>
           </div>
 
           {sectionsVisible.oauthServerConfig && (
-            <div className="space-y-4 pb-4 px-6 pt-4" style={{ borderTop: '1px solid var(--hub-line-2)' }}>
+            <div className="space-y-4 pb-4 px-6 pt-4 border-t border-[var(--hub-line-2)]">
               <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-md">
                 <div>
                   <h3 className="font-medium text-gray-700">{t('settings.enableOauthServer')}</h3>
@@ -2466,16 +2466,16 @@ const SettingsPage: React.FC = () => {
             onClick={() => toggleSection('mcpRouterConfig')}
           >
             <div className="flex items-center gap-2.5">
-              <Cloud size={15} style={{ color: 'var(--hub-ink-2)' }} />
-              <h2 className="font-medium" style={{ color: 'var(--hub-ink)' }}>{t('settings.mcpRouterConfig')}</h2>
+              <Cloud size={15} className="text-[var(--hub-ink-2)]" />
+              <h2 className="font-medium text-[var(--hub-ink)]">{t('settings.mcpRouterConfig')}</h2>
             </div>
-            <span style={{ color: 'var(--hub-ink-3)' }}>
+            <span className="text-[var(--hub-ink-3)]">
               {sectionsVisible.mcpRouterConfig ? '−' : '+'}
             </span>
           </div>
 
           {sectionsVisible.mcpRouterConfig && (
-            <div className="space-y-4 pb-4 px-6 pt-4" style={{ borderTop: '1px solid var(--hub-line-2)' }}>
+            <div className="space-y-4 pb-4 px-6 pt-4 border-t border-[var(--hub-line-2)]">
               <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-md">
                 <div className="mb-2">
                   <h3 className="font-medium text-gray-700">{t('settings.mcpRouterApiKey')}</h3>
@@ -2540,14 +2540,14 @@ const SettingsPage: React.FC = () => {
             onClick={() => toggleSection('nameSeparator')}
           >
             <div className="flex items-center gap-2.5">
-              <SlidersHorizontal size={15} style={{ color: 'var(--hub-ink-2)' }} />
-              <h2 className="font-medium" style={{ color: 'var(--hub-ink)' }}>{t('settings.systemSettings')}</h2>
+              <SlidersHorizontal size={15} className="text-[var(--hub-ink-2)]" />
+              <h2 className="font-medium text-[var(--hub-ink)]">{t('settings.systemSettings')}</h2>
             </div>
-            <span style={{ color: 'var(--hub-ink-3)' }}>{sectionsVisible.nameSeparator ? '−' : '+'}</span>
+            <span className="text-[var(--hub-ink-3)]">{sectionsVisible.nameSeparator ? '−' : '+'}</span>
           </div>
 
           {sectionsVisible.nameSeparator && (
-            <div className="space-y-4 pb-4 px-6 pt-4" style={{ borderTop: '1px solid var(--hub-line-2)' }}>
+            <div className="space-y-4 pb-4 px-6 pt-4 border-t border-[var(--hub-line-2)]">
               <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-md">
                 <div className="mb-2">
                   <h3 className="font-medium text-gray-700">{t('settings.nameSeparatorLabel')}</h3>
@@ -2601,14 +2601,14 @@ const SettingsPage: React.FC = () => {
             onClick={() => toggleSection('routingConfig')}
           >
             <div className="flex items-center gap-2.5">
-              <ShieldCheck size={15} style={{ color: 'var(--hub-ink-2)' }} />
-              <h2 className="font-medium" style={{ color: 'var(--hub-ink)' }}>{t('pages.settings.routeConfig')}</h2>
+              <ShieldCheck size={15} className="text-[var(--hub-ink-2)]" />
+              <h2 className="font-medium text-[var(--hub-ink)]">{t('pages.settings.routeConfig')}</h2>
             </div>
-            <span style={{ color: 'var(--hub-ink-3)' }}>{sectionsVisible.routingConfig ? '−' : '+'}</span>
+            <span className="text-[var(--hub-ink-3)]">{sectionsVisible.routingConfig ? '−' : '+'}</span>
           </div>
 
           {sectionsVisible.routingConfig && (
-            <div className="space-y-4 pb-4 px-6 pt-4" style={{ borderTop: '1px solid var(--hub-line-2)' }}>
+            <div className="space-y-4 pb-4 px-6 pt-4 border-t border-[var(--hub-line-2)]">
               <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-md">
                 <div>
                   <h3 className="font-medium text-gray-700">{t('settings.enableGlobalRoute')}</h3>
@@ -2691,14 +2691,14 @@ const SettingsPage: React.FC = () => {
             onClick={() => toggleSection('installConfig')}
           >
             <div className="flex items-center gap-2.5">
-              <Package size={15} style={{ color: 'var(--hub-ink-2)' }} />
-              <h2 className="font-medium" style={{ color: 'var(--hub-ink)' }}>{t('settings.installConfig')}</h2>
+              <Package size={15} className="text-[var(--hub-ink-2)]" />
+              <h2 className="font-medium text-[var(--hub-ink)]">{t('settings.installConfig')}</h2>
             </div>
-            <span style={{ color: 'var(--hub-ink-3)' }}>{sectionsVisible.installConfig ? '−' : '+'}</span>
+            <span className="text-[var(--hub-ink-3)]">{sectionsVisible.installConfig ? '−' : '+'}</span>
           </div>
 
           {sectionsVisible.installConfig && (
-            <div className="space-y-4 pb-4 px-6 pt-4" style={{ borderTop: '1px solid var(--hub-line-2)' }}>
+            <div className="space-y-4 pb-4 px-6 pt-4 border-t border-[var(--hub-line-2)]">
               <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-md">
                 <div className="mb-2">
                   <h3 className="font-medium text-gray-700">{t('settings.baseUrl')}</h3>
@@ -2783,14 +2783,14 @@ const SettingsPage: React.FC = () => {
           role="button"
         >
           <div className="flex items-center gap-2.5">
-            <KeyRound size={15} style={{ color: 'var(--hub-ink-2)' }} />
-            <h2 className="font-medium" style={{ color: 'var(--hub-ink)' }}>{t('auth.changePassword')}</h2>
+            <KeyRound size={15} className="text-[var(--hub-ink-2)]" />
+            <h2 className="font-medium text-[var(--hub-ink)]">{t('auth.changePassword')}</h2>
           </div>
-          <span style={{ color: 'var(--hub-ink-3)' }}>{sectionsVisible.password ? '−' : '+'}</span>
+          <span className="text-[var(--hub-ink-3)]">{sectionsVisible.password ? '−' : '+'}</span>
         </div>
 
         {sectionsVisible.password && (
-          <div className="max-w-lg pb-4 px-6 pt-4" style={{ borderTop: '1px solid var(--hub-line-2)' }}>
+          <div className="max-w-lg pb-4 px-6 pt-4 border-t border-[var(--hub-line-2)]">
             <ChangePasswordForm onSuccess={handlePasswordChangeSuccess} />
           </div>
         )}
@@ -2804,14 +2804,14 @@ const SettingsPage: React.FC = () => {
             onClick={() => toggleSection('exportConfig')}
           >
             <div className="flex items-center gap-2.5">
-              <FileDown size={15} style={{ color: 'var(--hub-ink-2)' }} />
-              <h2 className="font-medium" style={{ color: 'var(--hub-ink)' }}>{t('settings.exportMcpSettings')}</h2>
+              <FileDown size={15} className="text-[var(--hub-ink-2)]" />
+              <h2 className="font-medium text-[var(--hub-ink)]">{t('settings.exportMcpSettings')}</h2>
             </div>
-            <span style={{ color: 'var(--hub-ink-3)' }}>{sectionsVisible.exportConfig ? '−' : '+'}</span>
+            <span className="text-[var(--hub-ink-3)]">{sectionsVisible.exportConfig ? '−' : '+'}</span>
           </div>
 
           {sectionsVisible.exportConfig && (
-            <div className="space-y-4 pb-4 px-6 pt-4" style={{ borderTop: '1px solid var(--hub-line-2)' }}>
+            <div className="space-y-4 pb-4 px-6 pt-4 border-t border-[var(--hub-line-2)]">
               <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-md">
                 <div className="mb-4">
                   <h3 className="font-medium text-gray-700">{t('settings.mcpSettingsJson')}</h3>

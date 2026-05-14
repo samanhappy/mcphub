@@ -258,7 +258,7 @@ const ServerForm = ({
   return (
     <div className="hub-card p-6 w-full max-w-3xl max-h-screen overflow-y-auto">
       <div className="flex justify-between items-center mb-5">
-        <h2 className="text-lg font-semibold" style={{ color: 'var(--hub-ink)' }}>{modalTitle}</h2>
+        <h2 className="text-lg font-semibold text-[var(--hub-ink)]">{modalTitle}</h2>
         <button
           onClick={onCancel}
           className="hub-icon-btn"
@@ -274,7 +274,7 @@ const ServerForm = ({
 
       <form onSubmit={handleSubmit}>
         <div className="mb-4">
-          <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--hub-ink-2)' }} htmlFor="name">
+          <label className="block text-sm font-medium mb-1.5 text-[var(--hub-ink-2)]" htmlFor="name">
             {t('server.name')}
           </label>
           <input
@@ -290,7 +290,7 @@ const ServerForm = ({
         </div>
 
         <div className="mb-4">
-          <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--hub-ink-2)' }} htmlFor="description">
+          <label className="block text-sm font-medium mb-1.5 text-[var(--hub-ink-2)]" htmlFor="description">
             {t('server.description')}
           </label>
           <input
@@ -305,7 +305,7 @@ const ServerForm = ({
         </div>
 
         <div className="mb-4">
-          <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--hub-ink-2)' }}>{t('server.type')}</label>
+          <label className="block text-sm font-medium mb-1.5 text-[var(--hub-ink-2)]">{t('server.type')}</label>
           <div className="flex space-x-4">
             <div>
               <input
@@ -317,7 +317,7 @@ const ServerForm = ({
                 onChange={() => updateServerType('stdio')}
                 className="mr-1"
               />
-              <label htmlFor="command" style={{ color: 'var(--hub-ink)' }}>{t('server.typeStdio')}</label>
+              <label htmlFor="command" className="text-[var(--hub-ink)]">{t('server.typeStdio')}</label>
             </div>
             <div>
               <input
@@ -329,7 +329,7 @@ const ServerForm = ({
                 onChange={() => updateServerType('sse')}
                 className="mr-1"
               />
-              <label htmlFor="url" style={{ color: 'var(--hub-ink)' }}>{t('server.typeSse')}</label>
+              <label htmlFor="url" className="text-[var(--hub-ink)]">{t('server.typeSse')}</label>
             </div>
             <div>
               <input
@@ -341,7 +341,7 @@ const ServerForm = ({
                 onChange={() => updateServerType('streamable-http')}
                 className="mr-1"
               />
-              <label htmlFor="streamable-http" style={{ color: 'var(--hub-ink)' }}>{t('server.typeStreamableHttp')}</label>
+              <label htmlFor="streamable-http" className="text-[var(--hub-ink)]">{t('server.typeStreamableHttp')}</label>
             </div>
             <div>
               <input
@@ -353,7 +353,7 @@ const ServerForm = ({
                 onChange={() => updateServerType('openapi')}
                 className="mr-1"
               />
-              <label htmlFor="openapi" style={{ color: 'var(--hub-ink)' }}>{t('server.typeOpenapi')}</label>
+              <label htmlFor="openapi" className="text-[var(--hub-ink)]">{t('server.typeOpenapi')}</label>
             </div>
           </div>
         </div>
@@ -362,7 +362,7 @@ const ServerForm = ({
           <>
             {/* Input Mode Selection */}
             <div className="mb-4">
-              <label className="block text-sm font-medium mb-1.5 text-gray-700 dark:text-gray-300">
+              <label className="block text-sm font-medium mb-1.5 text-[var(--hub-ink-2)]">
                 {t('server.openapi.inputMode')}
               </label>
               <div className="flex space-x-4">
@@ -406,7 +406,7 @@ const ServerForm = ({
             {/* URL Input */}
             {formData.openapi?.inputMode === 'url' && (
               <div className="mb-4">
-                <label className="block text-sm font-medium mb-1.5 text-gray-700 dark:text-gray-300" htmlFor="openapi-url">
+                <label className="block text-sm font-medium mb-1.5 text-[var(--hub-ink-2)]" htmlFor="openapi-url">
                   {t('server.openapi.specUrl')}
                 </label>
                 <input
@@ -431,7 +431,7 @@ const ServerForm = ({
             {formData.openapi?.inputMode === 'schema' && (
               <div className="mb-4">
                 <label
-                  className="block text-sm font-medium mb-1.5 text-gray-700 dark:text-gray-300"
+                  className="block text-sm font-medium mb-1.5 text-[var(--hub-ink-2)]"
                   htmlFor="openapi-schema"
                 >
                   {t('server.openapi.schema')}
@@ -465,13 +465,13 @@ const ServerForm = ({
 }`}
                   required={serverType === 'openapi' && formData.openapi?.inputMode === 'schema'}
                 />
-                <p className="text-xs text-gray-500 mt-1">{t('server.openapi.schemaHelp')}</p>
+                <p className="text-xs text-[var(--hub-ink-3)] mt-1">{t('server.openapi.schemaHelp')}</p>
               </div>
             )}
 
             {/* Security Configuration */}
             <div className="mb-4">
-              <label className="block text-sm font-medium mb-1.5 text-gray-700 dark:text-gray-300">
+              <label className="block text-sm font-medium mb-1.5 text-[var(--hub-ink-2)]">
                 {t('server.openapi.security')}
               </label>
               <select
@@ -499,12 +499,12 @@ const ServerForm = ({
             {/* API Key Configuration */}
             {formData.openapi?.securityType === 'apiKey' && (
               <div className="mb-4 p-4 border border-gray-200 dark:border-gray-700 rounded bg-gray-50 dark:bg-gray-800">
-                <h4 className="text-sm font-medium mb-3 text-gray-700 dark:text-gray-300">
+                <h4 className="text-sm font-medium mb-3 text-[var(--hub-ink-2)]">
                   {t('server.openapi.apiKeyConfig')}
                 </h4>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                   <div>
-                    <label className="block text-xs text-gray-600 mb-1">
+                    <label className="block text-xs text-[var(--hub-ink-2)] mb-1">
                       {t('server.openapi.apiKeyName')}
                     </label>
                     <input
@@ -525,7 +525,7 @@ const ServerForm = ({
                     />
                   </div>
                   <div>
-                    <label className="block text-xs text-gray-600 mb-1">
+                    <label className="block text-xs text-[var(--hub-ink-2)] mb-1">
                       {t('server.openapi.apiKeyIn')}
                     </label>
                     <select
