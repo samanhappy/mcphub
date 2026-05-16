@@ -230,90 +230,80 @@ const ToolCard = ({ tool, server, onToggle, onDescriptionUpdate }: ToolCardProps
   };
 
   return (
-    <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow rounded-lg mb-4">
+    <div
+      className="hub-card overflow-hidden"
+      style={{ marginBottom: 8 }}
+    >
       <div
-        className="flex justify-between items-center cursor-pointer p-2"
+        className="flex justify-between items-center gap-2 px-3 py-2.5 cursor-pointer hover:bg-[var(--hub-surface-hover)] transition-colors"
         onClick={(e) => {
           e.stopPropagation();
           setIsExpanded(!isExpanded);
         }}
       >
-        <div className="flex-1">
-          <h3 className="text-lg font-medium text-gray-900 inline-flex items-center">
+        <div className="flex-1 min-w-0 flex items-center gap-1.5 flex-wrap">
+          <span className="hub-mono font-medium" style={{ fontSize: 13, color: 'var(--hub-ink)' }}>
             {tool.name.replace(server + nameSeparator, '')}
-            <button
-              className="ml-2 p-1 text-gray-500 hover:text-blue-600 cursor-pointer transition-colors"
-              onClick={handleCopyToolName}
-              title={t('common.copy')}
-            >
-              {copiedToolName ? <Check size={16} className="text-green-500" /> : <Copy size={16} />}
-            </button>
-            <span className="ml-2 text-sm font-normal text-gray-600 inline-flex items-center">
-              {isEditingDescription ? (
-                <>
-                  <input
-                    ref={descriptionInputRef}
-                    type="text"
-                    className="px-2 py-1 border border-blue-300 rounded bg-white dark:bg-gray-800 text-sm focus:outline-none form-input"
-                    value={customDescription}
-                    onChange={handleDescriptionChange}
-                    onKeyDown={handleDescriptionKeyDown}
-                    onClick={(e) => e.stopPropagation()}
-                    style={{
-                      minWidth: '100px',
-                      width: textWidth > 0 ? `${textWidth + 20}px` : 'auto',
-                    }}
-                  />
-                  <button
-                    className="ml-2 p-1 text-green-600 hover:text-green-800 cursor-pointer transition-colors"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDescriptionSave();
-                    }}
-                    disabled={isResettingDescription}
-                  >
-                    <Check size={16} />
-                  </button>
-                  <ResetDescriptionButton
-                    title={t('tool.restoreDefault')}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDescriptionReset();
-                    }}
-                    disabled={isResettingDescription}
-                    loading={isResettingDescription}
-                  />
-                </>
-              ) : (
-                <>
-                  <span ref={descriptionTextRef}>
-                    {customDescription || t('tool.noDescription')}
-                  </span>
-                  <button
-                    className="ml-2 p-1 text-gray-500 hover:text-blue-600 cursor-pointer transition-colors"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDescriptionEdit();
-                    }}
-                  >
-                    <Edit size={14} />
-                  </button>
-                  <ResetDescriptionButton
-                    title={t('tool.restoreDefault')}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDescriptionReset();
-                    }}
-                    disabled={isResettingDescription}
-                    loading={isResettingDescription}
-                  />
-                </>
-              )}
-            </span>
-          </h3>
+          </span>
+          <button
+            className="hub-icon-btn sm"
+            onClick={handleCopyToolName}
+            title={t('common.copy')}
+          >
+            {copiedToolName
+              ? <Check size={12} style={{ color: 'var(--hub-ok)' }} />
+              : <Copy size={12} />}
+          </button>
+          <span className="flex items-center gap-1" style={{ fontSize: 12, color: 'var(--hub-ink-3)' }}>
+            {isEditingDescription ? (
+              <>
+                <input
+                  ref={descriptionInputRef}
+                  type="text"
+                  className="hub-input"
+                  style={{ height: 26, fontSize: 12, width: textWidth > 0 ? `${textWidth + 20}px` : 160, minWidth: 80 }}
+                  value={customDescription}
+                  onChange={handleDescriptionChange}
+                  onKeyDown={handleDescriptionKeyDown}
+                  onClick={(e) => e.stopPropagation()}
+                />
+                <button
+                  className="hub-icon-btn sm"
+                  onClick={(e) => { e.stopPropagation(); handleDescriptionSave(); }}
+                  disabled={isResettingDescription}
+                >
+                  <Check size={12} style={{ color: 'var(--hub-ok)' }} />
+                </button>
+                <ResetDescriptionButton
+                  title={t('tool.restoreDefault')}
+                  onClick={(e) => { e.stopPropagation(); handleDescriptionReset(); }}
+                  disabled={isResettingDescription}
+                  loading={isResettingDescription}
+                />
+              </>
+            ) : (
+              <>
+                <span ref={descriptionTextRef}>
+                  {customDescription || t('tool.noDescription')}
+                </span>
+                <button
+                  className="hub-icon-btn sm"
+                  onClick={(e) => { e.stopPropagation(); handleDescriptionEdit(); }}
+                >
+                  <Edit size={12} />
+                </button>
+                <ResetDescriptionButton
+                  title={t('tool.restoreDefault')}
+                  onClick={(e) => { e.stopPropagation(); handleDescriptionReset(); }}
+                  disabled={isResettingDescription}
+                  loading={isResettingDescription}
+                />
+              </>
+            )}
+          </span>
         </div>
-        <div className="flex items-center space-x-2">
-          <div className="flex items-center space-x-2" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center gap-1.5 flex-shrink-0">
+          <div onClick={(e) => e.stopPropagation()}>
             <Switch
               checked={tool.enabled ?? true}
               onCheckedChange={handleToggle}
@@ -323,28 +313,29 @@ const ToolCard = ({ tool, server, onToggle, onDescriptionUpdate }: ToolCardProps
           <button
             onClick={(e) => {
               e.stopPropagation();
-              setIsExpanded(true); // Ensure card is expanded when showing run form
+              setIsExpanded(true);
               setShowRunForm(true);
             }}
-            className="flex items-center space-x-1 px-3 py-1 text-sm text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-md transition-colors btn-primary"
+            className="hub-btn sm"
+            style={{ color: 'var(--hub-accent)' }}
             disabled={isRunning || !tool.enabled}
           >
-            {isRunning ? <Loader size={14} className="animate-spin" /> : <Play size={14} />}
+            {isRunning ? <Loader size={12} className="animate-spin" /> : <Play size={12} />}
             <span>{isRunning ? t('tool.running') : t('tool.run')}</span>
           </button>
-          <button className="text-gray-400 hover:text-gray-600">
-            {isExpanded ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
+          <button className="hub-icon-btn sm">
+            {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
           </button>
         </div>
       </div>
 
       {isExpanded && (
-        <div className="mt-4 space-y-4">
+        <div style={{ borderTop: '1px solid var(--hub-line-2)', padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 10 }}>
           {/* Schema Display */}
           {!showRunForm && (
-            <div className="bg-gray-50 dark:bg-gray-800 rounded p-3 border border-gray-300">
-              <h4 className="text-sm font-medium text-gray-900 mb-2">{t('tool.inputSchema')}</h4>
-              <pre className="text-xs text-gray-600 overflow-auto">
+            <div style={{ background: 'var(--hub-bg-2)', borderRadius: 7, padding: '8px 12px', border: '1px solid var(--hub-line)' }}>
+              <div className="hub-sect" style={{ marginBottom: 6 }}>{t('tool.inputSchema')}</div>
+              <pre className="hub-mono overflow-auto" style={{ fontSize: 11.5, color: 'var(--hub-ink-2)', margin: 0 }}>
                 {JSON.stringify(tool.inputSchema, null, 2)}
               </pre>
             </div>
@@ -352,7 +343,7 @@ const ToolCard = ({ tool, server, onToggle, onDescriptionUpdate }: ToolCardProps
 
           {/* Run Form */}
           {showRunForm && (
-            <div className="border border-gray-300 rounded-lg p-4">
+            <div style={{ border: '1px solid var(--hub-line)', borderRadius: 8, padding: 14 }}>
               <DynamicForm
                 schema={tool.inputSchema || { type: 'object' }}
                 onSubmit={handleRunTool}
@@ -363,9 +354,8 @@ const ToolCard = ({ tool, server, onToggle, onDescriptionUpdate }: ToolCardProps
                   name: tool.name.replace(server + nameSeparator, ''),
                 })}
               />
-              {/* Tool Result */}
               {result && (
-                <div className="mt-4">
+                <div style={{ marginTop: 12 }}>
                   <ToolResult result={result} onClose={handleCloseResult} />
                 </div>
               )}

@@ -301,7 +301,7 @@ const ServerCard = ({ server, onRemove, onEdit, onToggle, onRefresh, onReload }:
         {/* Main row */}
         <div
           className="grid items-center gap-3 px-4 py-3 cursor-pointer hover:bg-[var(--hub-surface-hover)] transition-colors"
-          style={{ gridTemplateColumns: 'minmax(220px,1.6fr) 130px 60px 90px 60px 100px 36px' }}
+          style={{ gridTemplateColumns: 'minmax(220px,1.6fr) 130px 76px 90px 90px 80px 36px' }}
           onClick={() => setExpanded(!expanded)}
         >
           {/* Name + description */}
@@ -412,15 +412,6 @@ const ServerCard = ({ server, onRemove, onEdit, onToggle, onRefresh, onReload }:
             <ServerStatusDot status={server.status} enabled={server.enabled} onAuthClick={handleOAuth} />
           </div>
 
-          {/* Tools count */}
-          <div
-            className="hub-num hub-mono text-[12.5px]"
-            style={{ color: 'var(--hub-ink-2)' }}
-            title={`${enabledTools}/${totalTools} ${t('server.tools')}`}
-          >
-            {totalTools === 0 ? '0' : `${enabledTools}/${totalTools}`}
-          </div>
-
           {/* Transport */}
           <div>
             {server.config?.type ? (
@@ -430,13 +421,30 @@ const ServerCard = ({ server, onRemove, onEdit, onToggle, onRefresh, onReload }:
             )}
           </div>
 
+          {/* Tools count */}
+          <div
+            className="flex items-center gap-1 hub-num hub-mono"
+            style={{ color: 'var(--hub-ink-2)', fontSize: 12 }}
+            title={`${enabledTools}/${totalTools} ${t('server.tools')}`}
+          >
+            <Wrench size={11} style={{ color: 'var(--hub-ink-3)', flexShrink: 0 }} />
+            <span>{totalTools === 0 ? '0' : `${enabledTools}/${totalTools}`}</span>
+          </div>
+
           {/* Prompts + resources count */}
           <div
-            className="hub-num hub-mono text-[12.5px]"
-            style={{ color: 'var(--hub-ink-2)' }}
+            className="flex items-center gap-2 hub-num hub-mono"
+            style={{ color: 'var(--hub-ink-2)', fontSize: 12 }}
             title={`P:${enabledPrompts}/${totalPrompts} · R:${enabledResources}/${totalResources}`}
           >
-            {totalPrompts + totalResources > 0 ? `${totalPrompts}/${totalResources}` : '—'}
+            <span className="flex items-center gap-0.5">
+              <MessageSquare size={11} style={{ color: 'var(--hub-ink-3)', flexShrink: 0 }} />
+              <span>{totalPrompts === 0 ? '0' : `${enabledPrompts}/${totalPrompts}`}</span>
+            </span>
+            <span className="flex items-center gap-0.5">
+              <FileText size={11} style={{ color: 'var(--hub-ink-3)', flexShrink: 0 }} />
+              <span>{totalResources === 0 ? '0' : `${enabledResources}/${totalResources}`}</span>
+            </span>
           </div>
 
           {/* Toggle switch */}
@@ -612,7 +620,7 @@ const ServerCard = ({ server, onRemove, onEdit, onToggle, onRefresh, onReload }:
                   <button
                     key={tab.key}
                     onClick={() => setExpandedTab(active ? null : tab.key)}
-                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[12px] transition-colors"
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[12px] transition-colors hover:bg-[var(--hub-surface-hover)]"
                     style={{
                       background: active ? 'var(--hub-surface)' : 'transparent',
                       border: '1px solid ' + (active ? 'var(--hub-line)' : 'transparent'),

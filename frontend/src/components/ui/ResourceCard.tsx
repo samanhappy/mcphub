@@ -77,48 +77,46 @@ const ResourceCard = ({ resource, onToggle, onDescriptionUpdate }: ResourceCardP
   };
 
   return (
-    <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow rounded-lg mb-4">
+    <div
+      className="hub-card overflow-hidden"
+      style={{ marginBottom: 8 }}
+    >
       <div
-        className="flex justify-between items-center p-2 cursor-pointer"
+        className="flex justify-between items-center gap-2 px-3 py-2.5 cursor-pointer hover:bg-[var(--hub-surface-hover)] transition-colors"
         onClick={() => setIsExpanded(!isExpanded)}
       >
         <div className="flex-1 min-w-0">
-          <h3 className="text-lg font-medium text-gray-900 truncate">
-            {resource.name || resource.uri}
-          </h3>
-          <div className="text-sm text-gray-500 truncate">{resource.uri}</div>
-          <span className="text-sm font-normal text-gray-500 inline-flex items-center mt-1">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="hub-mono font-medium truncate" style={{ fontSize: 13, color: 'var(--hub-ink)' }}>
+              {resource.name || resource.uri}
+            </span>
+            <span className="hub-mono truncate" style={{ fontSize: 11.5, color: 'var(--hub-ink-3)' }}>
+              {resource.uri}
+            </span>
+          </div>
+          <span className="flex items-center gap-1 mt-0.5" style={{ fontSize: 12, color: 'var(--hub-ink-3)' }}>
             {isEditingDescription ? (
               <>
                 <input
                   ref={descriptionInputRef}
                   type="text"
-                  className="px-2 py-1 border border-blue-300 rounded bg-white dark:bg-gray-800 text-sm focus:outline-none form-input"
+                  className="hub-input"
+                  style={{ height: 26, fontSize: 12, width: textWidth > 0 ? `${textWidth + 20}px` : 160, minWidth: 80 }}
                   value={customDescription}
                   onChange={(e) => setCustomDescription(e.target.value)}
                   onKeyDown={handleDescriptionKeyDown}
                   onClick={(e) => e.stopPropagation()}
-                  style={{
-                    minWidth: '100px',
-                    width: textWidth > 0 ? `${textWidth + 20}px` : 'auto',
-                  }}
                 />
                 <button
-                  className="ml-2 p-1 text-green-600 hover:text-green-800 cursor-pointer transition-colors"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleDescriptionSave();
-                  }}
+                  className="hub-icon-btn sm"
+                  onClick={(e) => { e.stopPropagation(); handleDescriptionSave(); }}
                   disabled={isResettingDescription}
                 >
-                  <Check size={16} />
+                  <Check size={12} style={{ color: 'var(--hub-ok)' }} />
                 </button>
                 <ResetDescriptionButton
                   title={t('builtinResources.restoreDefault')}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleDescriptionReset();
-                  }}
+                  onClick={(e) => { e.stopPropagation(); handleDescriptionReset(); }}
                   disabled={isResettingDescription}
                   loading={isResettingDescription}
                 />
@@ -127,20 +125,14 @@ const ResourceCard = ({ resource, onToggle, onDescriptionUpdate }: ResourceCardP
               <>
                 <span ref={descriptionTextRef}>{customDescription || t('tool.noDescription')}</span>
                 <button
-                  className="ml-2 p-1 text-gray-500 hover:text-blue-600 cursor-pointer transition-colors"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setIsEditingDescription(true);
-                  }}
+                  className="hub-icon-btn sm"
+                  onClick={(e) => { e.stopPropagation(); setIsEditingDescription(true); }}
                 >
-                  <Edit size={14} />
+                  <Edit size={12} />
                 </button>
                 <ResetDescriptionButton
                   title={t('builtinResources.restoreDefault')}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleDescriptionReset();
-                  }}
+                  onClick={(e) => { e.stopPropagation(); handleDescriptionReset(); }}
                   disabled={isResettingDescription}
                   loading={isResettingDescription}
                 />
@@ -149,22 +141,20 @@ const ResourceCard = ({ resource, onToggle, onDescriptionUpdate }: ResourceCardP
           </span>
         </div>
 
-        <div className="flex items-center space-x-2">
-          <div className="flex items-center space-x-2" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center gap-1.5 flex-shrink-0">
+          <div onClick={(e) => e.stopPropagation()}>
             <Switch checked={resource.enabled !== false} onCheckedChange={handleToggle} />
           </div>
-          <button className="text-gray-400 hover:text-gray-600">
-            {isExpanded ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
+          <button className="hub-icon-btn sm">
+            {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
           </button>
         </div>
       </div>
 
       {isExpanded && (
-        <div className="mt-2 px-3 pb-3 text-sm text-gray-600 border-t border-gray-100 dark:border-gray-800">
-          <div className="pt-2">
-            <span className="font-medium">{t('builtinResources.mimeType')}:</span>{' '}
-            {resource.mimeType || 'text/plain'}
-          </div>
+        <div style={{ borderTop: '1px solid var(--hub-line-2)', padding: '8px 12px' }}>
+          <span className="hub-sect">{t('builtinResources.mimeType')}:</span>{' '}
+          <span style={{ fontSize: 12, color: 'var(--hub-ink-2)' }}>{resource.mimeType || 'text/plain'}</span>
         </div>
       )}
     </div>
