@@ -441,7 +441,8 @@ export const handleSseConnection = async (req: Request, res: Response): Promise<
   console.log(
     `New SSE connection established: ${transport.sessionId} with group: ${group || 'global'}${username ? ` for user: ${username}` : ''}`,
   );
-  await (await getMcpServer(transport.sessionId, group)).connect(transport);
+  const server = await getMcpServer(transport.sessionId, group);
+  await server.connect(transport);
 };
 
 export const handleSseMessage = async (req: Request, res: Response): Promise<void> => {
