@@ -418,6 +418,8 @@ export interface OpenAPISecurityConfig {
 // Information about a server's status and tools
 export interface ServerInfo {
   name: string; // Unique name of the server
+  version?: string; // Upstream server version reported during MCP initialization
+  instructions?: string; // Upstream server instructions reported during MCP initialization
   owner?: string; // Owner of the server, defaults to 'admin' user
   status: 'connected' | 'connecting' | 'disconnected' | 'oauth_required'; // Current connection status
   error: string | null; // Error message if any

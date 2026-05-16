@@ -1,0 +1,181 @@
+const mockClient = {
+  connect: jest.fn().mockResolvedValue(undefined),
+  close: jest.fn(),
+  getServerCapabilities: jest.fn(() => ({ tools: {} })),
+  getServerVersion: jest.fn(() => ({ name: 'upstream-weather', version: '1.2.3' })),
+  getInstructions: jest.fn(() => 'Use the weather tools for forecast lookups.'),
+  listTools: jest.fn().mockResolvedValue({ tools: [] }),
+  listPrompts: jest.fn().mockResolvedValue({ prompts: [] }),
+  listResources: jest.fn().mockResolvedValue({ resources: [] }),
+};
+
+jest.mock('@modelcontextprotocol/sdk/client/index.js', () => ({
+  Client: jest.fn().mockImplementation(() => mockClient),
+}));
+
+jest.mock('@modelcontextprotocol/sdk/client/stdio.js', () => ({
+  StdioClientTransport: jest.fn().mockImplementation(() => ({
+    close: jest.fn(),
+  })),
+}));
+
+jest.mock('@modelcontextprotocol/sdk/client/sse.js', () => ({
+  SSEClientTransport: jest.fn(),
+}));
+
+jest.mock('@modelcontextprotocol/sdk/client/streamableHttp.js', () => ({
+  StreamableHTTPClientTransport: jest.fn(),
+}));
+
+jest.mock('../../src/services/oauthService.js', () => ({
+  initializeAllOAuthClients: jest.fn().mockResolvedValue(undefined),
+}));
+
+jest.mock('../../src/services/mcpOAuthProvider.js', () => ({
+  createOAuthProvider: jest.fn(async () => undefined),
+}));
+
+const mockGetServerConfigsInGroup = jest.fn();
+
+jest.mock('../../src/services/groupService.js', () => ({
+  getServersInGroup: jest.fn(),
+  getServerConfigInGroup: jest.fn(),
+  getServerConfigsInGroup: mockGetServerConfigsInGroup,
+}));
+
+jest.mock('../../src/services/sseService.js', () => ({
+  getGroup: jest.fn(() => ''),
+}));
+
+jest.mock('../../src/services/vectorSearchService.js', () => ({
+  removeServerToolEmbeddings: jest.fn(),
+  saveToolsAsVectorEmbeddings: jest.fn().mockResolvedValue(undefined),
+}));
+
+jest.mock('../../src/services/services.js', () => ({
+  getDataService: jest.fn(() => ({
+    filterData: (data: any) => data,
+  })),
+}));
+
+jest.mock('../../src/services/smartRoutingService.js', () => ({
+  initSmartRoutingService: jest.fn(),
+  getSmartRoutingTools: jest.fn(),
+  handleSearchToolsRequest: jest.fn(),
+  handleDescribeToolRequest: jest.fn(),
+  isSmartRoutingGroup: jest.fn(() => false),
+}));
+
+jest.mock('../../src/services/activityLoggingService.js', () => ({
+  getActivityLoggingService: jest.fn(() => ({
+    logToolCall: jest.fn(),
+  })),
+}));
+
+jest.mock('../../src/services/keepAliveService.js', () => ({
+  setupClientKeepAlive: jest.fn().mockResolvedValue(undefined),
+}));
+
+jest.mock('../../src/services/proxy.js', () => ({
+  createFetchWithProxy: jest.fn(),
+  getProxyConfigFromEnv: jest.fn(() => undefined),
+}));
+
+const mockFindAll = jest.fn();
+
+jest.mock('../../src/dao/index.js', () => ({
+  getServerDao: jest.fn(() => ({
+    findAll: mockFindAll,
+    findById: jest.fn(),
+  })),
+  getSystemConfigDao: jest.fn(() => ({
+    get: jest.fn(async () => ({})),
+  })),
+  getBuiltinPromptDao: jest.fn(() => ({
+    findEnabled: jest.fn(async () => []),
+  })),
+  getBuiltinResourceDao: jest.fn(() => ({
+    findEnabled: jest.fn(async () => []),
+  })),
+}));
+
+jest.mock('../../src/config/index.js', () => ({
+  __esModule: true,
+  expandEnvVars: jest.fn((value: string) => value),
+  replaceEnvVars: jest.fn((value: any) => value),
+  getNameSeparator: jest.fn(() => '::'),
+  default: {
+    mcpHubName: 'test-hub',
+    mcpHubVersion: '1.0.0',
+    initTimeout: 60000,
+  },
+}));
+
+import { cleanupAllServers, getMcpServer, initUpstreamServers } from '../../src/services/mcpService.js';
+
+describe('mcpService initialize metadata', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    cleanupAllServers();
+  });
+
+  afterEach(() => {
+    cleanupAllServers();
+  });
+
+  it('uses upstream server metadata for a single server route', async () => {
+    mockFindAll.mockResolvedValue([
+      {
+        name: 'weather-server',
+        type: 'stdio',
+        command: 'node',
+        args: ['server.js'],
+        enabled: true,
+      },
+    ]);
+    mockGetServerConfigsInGroup.mockResolvedValue([]);
+
+    await initUpstreamServers();
+
+    const server = await getMcpServer('session-1', 'weather-server');
+
+    expect((server as any)._serverInfo).toEqual({
+      name: 'weather-server',
+      version: '1.2.3',
+    });
+    expect((server as any)._instructions).toBe('Use the weather tools for forecast lookups.');
+  });
+
+  it('keeps hub metadata for multi-server groups', async () => {
+    mockFindAll.mockResolvedValue([
+      {
+        name: 'weather-server',
+        type: 'stdio',
+        command: 'node',
+        args: ['weather.js'],
+        enabled: true,
+      },
+      {
+        name: 'calendar-server',
+        type: 'stdio',
+        command: 'node',
+        args: ['calendar.js'],
+        enabled: true,
+      },
+    ]);
+    mockGetServerConfigsInGroup.mockResolvedValue([
+      { name: 'weather-server', tools: 'all', prompts: 'all', resources: 'all' },
+      { name: 'calendar-server', tools: 'all', prompts: 'all', resources: 'all' },
+    ]);
+
+    await initUpstreamServers();
+
+    const server = await getMcpServer('session-1', 'team-a');
+
+    expect((server as any)._serverInfo).toEqual({
+      name: 'test-hub_team-a_group',
+      version: '1.0.0',
+    });
+    expect((server as any)._instructions).toBeUndefined();
+  });
+});

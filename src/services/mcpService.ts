@@ -224,15 +224,51 @@ export const initUpstreamServers = async (): Promise<void> => {
   initSmartRoutingService(() => serverInfos, filterToolsByConfig, filterToolsByGroup);
 };
 
-export const getMcpServer = (sessionId?: string, group?: string): Server => {
+type McpServerDescriptor = {
+  name: string;
+  version: string;
+  group?: string;
+  instructions?: string;
+  appendGroupSuffix?: boolean;
+};
+
+const getMcpServerDescriptor = async (group?: string): Promise<McpServerDescriptor> => {
+  if (!group || isSmartRoutingGroup(group)) {
+    return {
+      name: config.mcpHubName,
+      version: config.mcpHubVersion,
+      group,
+    };
+  }
+
+  const { filteredServerInfos } = await getFilteredServerInfosForGroup(group);
+  if (filteredServerInfos.length === 1) {
+    const [serverInfo] = filteredServerInfos;
+    return {
+      name: serverInfo.name,
+      version: serverInfo.version || config.mcpHubVersion,
+      instructions: serverInfo.instructions,
+      appendGroupSuffix: false,
+    };
+  }
+
+  return {
+    name: config.mcpHubName,
+    version: config.mcpHubVersion,
+    group,
+    appendGroupSuffix: true,
+  };
+};
+
+export const getMcpServer = async (sessionId?: string, group?: string): Promise<Server> => {
+  const descriptor = await getMcpServerDescriptor(group || (sessionId ? getGroup(sessionId) : group));
+
   if (!sessionId) {
-    return createMcpServer(config.mcpHubName, config.mcpHubVersion, group);
+    return createMcpServer(descriptor.name, descriptor.version, descriptor);
   }
 
   if (!servers[sessionId]) {
-    const serverGroup = group || getGroup(sessionId);
-    const server = createMcpServer(config.mcpHubName, config.mcpHubVersion, serverGroup);
-    servers[sessionId] = server;
+    servers[sessionId] = createMcpServer(descriptor.name, descriptor.version, descriptor);
   } else {
     console.log(`MCP server already exists for sessionId: ${sessionId}`);
   }
@@ -1102,6 +1138,9 @@ export const initializeClientsFromSettings = async (
         .connect(transport, initRequestOptions || requestOptions)
         .then(() => {
           console.log(`Successfully connected client for server: ${name}`);
+          const serverVersion = client.getServerVersion();
+          serverInfo.version = serverVersion?.version;
+          serverInfo.instructions = client.getInstructions();
           const capabilities: ServerCapabilities | undefined = client.getServerCapabilities();
           console.log('Server capabilities', JSON.stringify(capabilities));
 
@@ -2268,20 +2307,37 @@ export const handleReadResourceRequest = async (request: any, _extra: any) => {
 };
 
 // Create McpServer instance
-export const createMcpServer = (name: string, version: string, group?: string): Server => {
+type CreateMcpServerOptions = {
+  group?: string;
+  instructions?: string;
+  appendGroupSuffix?: boolean;
+};
+
+export const createMcpServer = (
+  name: string,
+  version: string,
+  options?: string | CreateMcpServerOptions,
+): Server => {
+  const normalizedOptions =
+    typeof options === 'string' ? { group: options } : (options ?? {});
   // Determine server name based on routing type
   let serverName = name;
 
-  if (group) {
+  if (normalizedOptions.group && normalizedOptions.appendGroupSuffix !== false) {
     // For createMcpServer we use sync approach since it's called synchronously
     // The actual group validation happens at request time
-    serverName = `${name}_${group}_group`;
+    serverName = `${name}_${normalizedOptions.group}_group`;
   }
   // If no group, use default name (global routing)
 
   const server = new Server(
     { name: serverName, version },
-    { capabilities: { tools: {}, prompts: {}, resources: {} } },
+    {
+      capabilities: { tools: {}, prompts: {}, resources: {} },
+      ...(normalizedOptions.instructions !== undefined
+        ? { instructions: normalizedOptions.instructions }
+        : {}),
+    },
   );
   server.setRequestHandler(ListToolsRequestSchema, handleListToolsRequest);
   server.setRequestHandler(CallToolRequestSchema, handleCallToolRequest);
