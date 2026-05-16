@@ -1138,9 +1138,9 @@ export const initializeClientsFromSettings = async (
         .connect(transport, initRequestOptions || requestOptions)
         .then(() => {
           console.log(`Successfully connected client for server: ${name}`);
-          const serverVersion = client.getServerVersion();
+          const serverVersion = client.getServerVersion?.();
           serverInfo.version = serverVersion?.version;
-          serverInfo.instructions = client.getInstructions();
+          serverInfo.instructions = client.getInstructions?.();
           const capabilities: ServerCapabilities | undefined = client.getServerCapabilities();
           console.log('Server capabilities', JSON.stringify(capabilities));
 
