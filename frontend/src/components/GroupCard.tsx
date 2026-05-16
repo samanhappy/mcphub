@@ -88,7 +88,7 @@ const GroupCard = ({ group, servers, onEdit, onDelete }: GroupCardProps) => {
     }
   };
 
-  const groupEndpoint = `${baseUrl}/mcp/${group.id}`;
+  const groupEndpoint = `${baseUrl}/mcp/${group.name}`;
 
   const serverNames = getServerNames(group.servers);
   const groupServers = servers.filter((s) => serverNames.includes(s.name));
@@ -334,7 +334,7 @@ const GroupCard = ({ group, servers, onEdit, onDelete }: GroupCardProps) => {
             style={{ fontSize: 12, color: 'var(--hub-ink-2)', lineHeight: 1.4 }}
           >
             <span style={{ color: 'var(--hub-ink-3)' }}>/mcp/</span>
-            <b style={{ color: 'var(--hub-ink)', fontWeight: 600 }}>{group.id}</b>
+            <b style={{ color: 'var(--hub-ink)', fontWeight: 600 }}>{group.name}</b>
           </div>
           <div className="flex gap-1.5 mt-2">
             <button
