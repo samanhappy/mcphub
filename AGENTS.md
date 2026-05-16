@@ -98,7 +98,7 @@ CI runs the same on Node 20.x. If a hook fails, fix the root cause — do **not*
 | 6 | `src/utils/migration.ts`   | Include in JSON→DB migration        |
 | 7 | `mcp_settings.json`        | Update the example if user-facing   |
 
-Model ↔ DAO ↔ entity ↔ JSON-path mapping: see the table in [src/dao/](src/dao/) (the DAO files are the source of truth — read them rather than relying on a stale table here).
+Model ↔ DAO ↔ entity ↔ JSON-path mapping: inspect the DAO files in [src/dao/](src/dao/) directly — they are the source of truth, and any table reproduced here would drift.
 
 Common pitfalls: forgetting step 6 → silent migration drop; missing `nullable: true` → DB write fails; complex object stored without `simple-json` → serialization error.
 
@@ -136,7 +136,7 @@ For deeper architecture context, read [docs/development/architecture.mdx](docs/d
 
 ## 7. Troubleshooting (quick pointers)
 
-- **MCP server fails to start**: validate JSON in `mcp_settings.json`; check the `command`/`args` resolves on PATH (e.g. `uvx` is optional and only needed by Python-based servers).
+- **MCP server fails to start**: validate JSON in `mcp_settings.json`; check the `command`/`args` resolves on PATH (e.g. `uvx` is required for Python-based servers that use it, such as the default `fetch` server).
 - **Frontend not served**: production mode needs `pnpm frontend:build` first.
 - **Type errors**: `pnpm backend:build` shows the full TS output.
 - **Port conflict**: change `PORT` or kill the holder.
