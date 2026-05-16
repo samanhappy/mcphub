@@ -294,8 +294,9 @@ export class VectorEmbeddingRepository extends BaseRepository<VectorEmbedding> {
         `DELETE FROM vector_embeddings
          WHERE content_type = $1
            AND content_id LIKE $2 ESCAPE '\\'
-           AND content_id NOT IN (SELECT unnest($3::text[]))`,
-        ['tool', prefix, currentContentIds],
+           AND model = $3
+           AND content_id NOT IN (SELECT unnest($4::text[]))`,
+        ['tool', prefix, model, currentContentIds],
       );
       return result.rowCount ?? 0;
     } catch (error) {

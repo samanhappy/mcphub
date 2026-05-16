@@ -222,6 +222,12 @@ const performDatabaseInitialization = async (): Promise<DataSource> => {
           );
         `);
 
+        // ⚠️  synchronize: false is set on this entity. TypeORM will NOT auto-apply
+        // future schema changes. Any new columns / type changes MUST be added:
+        //   1. In the CREATE TABLE statement below (for new installs)
+        //   2. As ALTER TABLE ADD COLUMN IF NOT EXISTS checks (for existing installs)
+        // Consider adding TypeORM migrations for this table.
+        let justCreated = false;
         if (!tableExists[0].exists) {
           // vector_embeddings has synchronize:false on the entity (prevents the
           // TypeORM DROP+ADD cycle that nulls stored embeddings on every startup).
@@ -241,11 +247,21 @@ const performDatabaseInitialization = async (): Promise<DataSource> => {
               embedding    vector
             );
           `);
+          justCreated = true;
         }
 
         // Ensure the unique index exists (needed for atomic ON CONFLICT upserts).
-        // Safe to run on both new and existing installations.
+        // Deduplicate first — duplicate rows cause CREATE UNIQUE INDEX to fail,
+        // which would silently leave saveEmbedding() broken on affected installs.
         try {
+          await appDataSource.query(`
+            DELETE FROM vector_embeddings
+            WHERE id NOT IN (
+              SELECT DISTINCT ON (content_type, content_id) id
+              FROM vector_embeddings
+              ORDER BY content_type, content_id, updated_at DESC NULLS LAST
+            );
+          `);
           await appDataSource.query(`
             CREATE UNIQUE INDEX IF NOT EXISTS uq_vector_embeddings_content
             ON vector_embeddings (content_type, content_id);
@@ -254,7 +270,7 @@ const performDatabaseInitialization = async (): Promise<DataSource> => {
           console.warn('Could not create unique index on vector_embeddings:', idxError.message);
         }
 
-        if (tableExists[0].exists) {
+        if (tableExists[0].exists || justCreated) {
           // Add pgvector support via raw SQL commands
           console.log('Configuring vector support for embeddings table...');
 
