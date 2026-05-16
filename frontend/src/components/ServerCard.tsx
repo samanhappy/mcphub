@@ -301,7 +301,7 @@ const ServerCard = ({ server, onRemove, onEdit, onToggle, onRefresh, onReload }:
         {/* Main row */}
         <div
           className="grid items-center gap-3 px-4 py-3 cursor-pointer hover:bg-[var(--hub-surface-hover)] transition-colors"
-          style={{ gridTemplateColumns: 'minmax(220px,1.6fr) 130px 76px 90px 90px 80px 36px' }}
+          style={{ gridTemplateColumns: 'minmax(220px,1.6fr) 130px 90px 140px 80px 36px' }}
           onClick={() => setExpanded(!expanded)}
         >
           {/* Name + description */}
@@ -421,22 +421,16 @@ const ServerCard = ({ server, onRemove, onEdit, onToggle, onRefresh, onReload }:
             )}
           </div>
 
-          {/* Tools count */}
+          {/* Tools / Prompts / Resources counts */}
           <div
-            className="flex items-center gap-1 hub-num hub-mono"
+            className="flex items-center gap-2.5 hub-num hub-mono"
             style={{ color: 'var(--hub-ink-2)', fontSize: 12 }}
-            title={`${enabledTools}/${totalTools} ${t('server.tools')}`}
+            title={`T:${enabledTools}/${totalTools} · P:${enabledPrompts}/${totalPrompts} · R:${enabledResources}/${totalResources}`}
           >
-            <Wrench size={11} style={{ color: 'var(--hub-ink-3)', flexShrink: 0 }} />
-            <span>{totalTools === 0 ? '0' : `${enabledTools}/${totalTools}`}</span>
-          </div>
-
-          {/* Prompts + resources count */}
-          <div
-            className="flex items-center gap-2 hub-num hub-mono"
-            style={{ color: 'var(--hub-ink-2)', fontSize: 12 }}
-            title={`P:${enabledPrompts}/${totalPrompts} · R:${enabledResources}/${totalResources}`}
-          >
+            <span className="flex items-center gap-0.5">
+              <Wrench size={11} style={{ color: 'var(--hub-ink-3)', flexShrink: 0 }} />
+              <span>{totalTools === 0 ? '0' : `${enabledTools}/${totalTools}`}</span>
+            </span>
             <span className="flex items-center gap-0.5">
               <MessageSquare size={11} style={{ color: 'var(--hub-ink-3)', flexShrink: 0 }} />
               <span>{totalPrompts === 0 ? '0' : `${enabledPrompts}/${totalPrompts}`}</span>
