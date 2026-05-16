@@ -600,7 +600,8 @@ async function createNewSession(
     deleteMcpServer(newSessionId);
   };
 
-  await (await getMcpServer(newSessionId, group)).connect(transport);
+  const mcpServer = await getMcpServer(newSessionId, group);
+  await mcpServer.connect(transport);
   console.log(`[SESSION NEW] Successfully created new session ${newSessionId} in group: ${group}`);
   return transport;
 }
