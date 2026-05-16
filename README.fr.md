@@ -4,7 +4,7 @@
 
 MCPHub facilite la gestion et la mise à l'échelle de plusieurs serveurs MCP (Model Context Protocol) en les organisant en points de terminaison HTTP streamables (SSE) flexibles, prenant en charge l'accès à tous les serveurs, à des serveurs individuels ou à des groupes de serveurs logiques.
 
-![Aperçu du tableau de bord](assets/dashboard.zh.png)
+![Aperçu du tableau de bord](assets/dashboard.fr.png)
 
 ## 🌐 Démo en direct et Documentation
 

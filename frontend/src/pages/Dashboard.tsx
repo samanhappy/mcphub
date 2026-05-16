@@ -190,8 +190,8 @@ const DashboardPage: React.FC = () => {
           >
             <div>{t('server.name')}</div>
             <div>{t('server.status')}</div>
-            <div>{t('server.tools')}</div>
             <div>{t('common.type') || 'Transport'}</div>
+            <div>{t('server.tools')}</div>
             <div>{t('server.prompts')}</div>
             <div>{t('nav.resources')}</div>
             <div>{t('server.enabled')}</div>
@@ -215,15 +215,15 @@ const DashboardPage: React.FC = () => {
               <div>
                 <ServerStatusDot status={s.status} enabled={s.enabled} />
               </div>
-              <div className="hub-num hub-mono" style={{ fontSize: 12.5 }}>
-                {s.tools?.length || 0}
-              </div>
               <div>
                 {s.config?.type ? (
                   <span className="hub-tag">{transportLabel(t, s.config.type)}</span>
                 ) : (
                   <span style={{ color: 'var(--hub-ink-3)', fontSize: 12 }}>—</span>
                 )}
+              </div>
+              <div className="hub-num hub-mono" style={{ fontSize: 12.5 }}>
+                {s.tools?.length || 0}
               </div>
               <div className="hub-num hub-mono" style={{ fontSize: 12.5, color: 'var(--hub-ink-2)' }}>
                 {s.prompts?.length || 0}
@@ -263,7 +263,7 @@ const DashboardPage: React.FC = () => {
           <EndpointCopy label="ALL" url={`${baseUrl}/mcp`} />
           <EndpointCopy label="SMART" url={`${baseUrl}/mcp/$smart`} />
           {groups.slice(0, 2).map((g) => (
-            <EndpointCopy key={g.id} label="GROUP" url={`${baseUrl}/mcp/${g.id}`} />
+            <EndpointCopy key={g.id} label="GROUP" url={`${baseUrl}/mcp/${g.name}`} />
           ))}
           {/* Pad with first server endpoint if there's space */}
           {groups.length < 2 && allServers[0] && (
