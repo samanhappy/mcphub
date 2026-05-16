@@ -524,67 +524,7 @@ const ServerCard = ({ server, onRemove, onEdit, onToggle, onRefresh, onReload }:
               padding: '14px 16px 16px 38px',
             }}
           >
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
-              <div>
-                <div className="hub-sect" style={{ marginBottom: 5 }}>
-                  {server.config?.type === 'sse' || server.config?.type === 'streamable-http' || server.config?.type === 'openapi'
-                    ? t('server.url')
-                    : t('server.command')}
-                </div>
-                {launchCmd ? (
-                  <div className="hub-endpoint">
-                    <div className="hub-endpoint-url" title={launchCmd}>
-                      {launchCmd}
-                    </div>
-                    <button
-                      type="button"
-                      className="hub-endpoint-copy"
-                      onClick={async (e) => {
-                        e.stopPropagation();
-                        const ok = await copyText(launchCmd);
-                        showToast(
-                          ok ? t('common.copySuccess') || 'Copied' : t('common.copyFailed') || 'Failed',
-                          ok ? 'success' : 'error',
-                        );
-                      }}
-                      title={t('common.copy')}
-                    >
-                      <Copy size={13} />
-                    </button>
-                  </div>
-                ) : (
-                  <span style={{ color: 'var(--hub-ink-3)', fontSize: 12 }}>—</span>
-                )}
-              </div>
-              <div>
-                <div className="hub-sect" style={{ marginBottom: 5 }}>
-                  {t('pages.dashboard.endpoints') || 'Endpoint'}
-                </div>
-                <div className="hub-endpoint">
-                  <div className="hub-endpoint-label">/mcp/</div>
-                  <div className="hub-endpoint-url" title={serverEndpoint}>
-                    {server.name}
-                  </div>
-                  <button
-                    type="button"
-                    className="hub-endpoint-copy"
-                    onClick={async (e) => {
-                      e.stopPropagation();
-                      const ok = await copyText(serverEndpoint);
-                      showToast(
-                        ok ? t('common.copySuccess') || 'Copied' : t('common.copyFailed') || 'Failed',
-                        ok ? 'success' : 'error',
-                      );
-                    }}
-                    title={t('common.copy')}
-                  >
-                    <Copy size={13} />
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Capability tabs */}
+            {/* Capability tabs + endpoint on same row */}
             <div className="flex items-center gap-1 mb-2">
               {[
                 {
@@ -629,6 +569,31 @@ const ServerCard = ({ server, onRemove, onEdit, onToggle, onRefresh, onReload }:
                   </button>
                 );
               })}
+
+              {/* Endpoint inline, pushed to the right */}
+              <div className="ml-auto flex-shrink-0">
+                <div className="hub-endpoint" style={{ height: 26 }}>
+                  <div className="hub-endpoint-label">/mcp/</div>
+                  <div className="hub-endpoint-url" title={serverEndpoint} style={{ maxWidth: 200 }}>
+                    {server.name}
+                  </div>
+                  <button
+                    type="button"
+                    className="hub-endpoint-copy"
+                    onClick={async (e) => {
+                      e.stopPropagation();
+                      const ok = await copyText(serverEndpoint);
+                      showToast(
+                        ok ? t('common.copySuccess') || 'Copied' : t('common.copyFailed') || 'Failed',
+                        ok ? 'success' : 'error',
+                      );
+                    }}
+                    title={t('common.copy')}
+                  >
+                    <Copy size={12} />
+                  </button>
+                </div>
+              </div>
             </div>
 
             {expandedTab === 'tools' && server.tools && (
