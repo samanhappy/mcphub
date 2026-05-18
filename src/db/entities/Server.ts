@@ -44,6 +44,14 @@ export class Server {
   @Column({ type: 'varchar', length: 255, nullable: true })
   owner?: string;
 
+  // Per-server visibility for non-admin users.
+  //   'private' — only the owner (or admins) can see this server. Default.
+  //   'public'  — every authenticated user can see this server.
+  //   'group'   — reserved for group-scoped visibility once user→group membership lands.
+  // See issue #817.
+  @Column({ type: 'varchar', length: 16, default: 'private' })
+  visibility: 'private' | 'group' | 'public';
+
   @Column({ type: 'boolean', default: false })
   enableKeepAlive?: boolean;
 

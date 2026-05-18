@@ -303,6 +303,10 @@ export interface ProxychainsConfig {
   configPath?: string; // Path to custom proxychains4 configuration file (optional, overrides above settings)
 }
 
+// Visibility level for a server, used by non-admin filtering. See issue #817.
+// 'group' is reserved; group membership plumbing arrives in a follow-up.
+export type ServerVisibility = 'private' | 'group' | 'public';
+
 // Configuration details for an individual server
 export interface ServerConfig {
   type?: 'stdio' | 'sse' | 'streamable-http' | 'openapi'; // Type of server
@@ -315,6 +319,12 @@ export interface ServerConfig {
   passthroughHeaders?: string[]; // Header names to pass through from MCP requests to upstream SSE/streamable-http servers
   enabled?: boolean; // Flag to enable/disable the server
   owner?: string; // Owner of the server, defaults to 'admin' user
+  // Per-server visibility for non-admin users.
+  //   'private' — only the owner (or admins) can see this server. Default.
+  //   'public'  — every authenticated user can see this server.
+  //   'group'   — reserved for group-scoped visibility once user→group membership lands.
+  // See issue #817.
+  visibility?: ServerVisibility;
   enableKeepAlive?: boolean; // Enable keep-alive for this server (requires global enable as well)
   keepAliveInterval?: number; // Keep-alive ping interval in milliseconds (default: 60000ms for SSE servers)
   tools?: Record<string, { enabled: boolean; description?: string }>; // Tool-specific configurations with enable/disable state and custom descriptions
@@ -421,6 +431,7 @@ export interface ServerInfo {
   version?: string; // Upstream server version reported during MCP initialization
   instructions?: string; // Upstream server instructions reported during MCP initialization
   owner?: string; // Owner of the server, defaults to 'admin' user
+  visibility?: ServerVisibility; // Carried over from ServerConfig so dataService.filterData can apply #817 visibility rules at runtime.
   status: 'connected' | 'connecting' | 'disconnected' | 'oauth_required'; // Current connection status
   error: string | null; // Error message if any
   tools: Tool[]; // List of tools available on the server

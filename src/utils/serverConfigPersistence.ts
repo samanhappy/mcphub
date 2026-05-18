@@ -165,11 +165,17 @@ export const normalizeServerConfigForPersistence = (config: ServerConfig): Serve
   const oauth = normalizeOAuth(config.oauth);
   const openapi = normalizeOpenApi(config.openapi);
 
+  // Default visibility to 'private' so file-defined and freshly-created servers behave
+  // identically to the pre-#817 implicit admin-only behaviour. Operators opt servers in
+  // to 'public' (or eventually 'group') from the dashboard.
+  const visibility = config.visibility ?? 'private';
+
   const normalized: ServerConfig = {
     ...config,
     type: normalizedType,
     description,
     owner,
+    visibility,
     options,
   };
 

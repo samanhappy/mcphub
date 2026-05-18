@@ -9,7 +9,14 @@ export class DataService {
     if (!currentUser || currentUser.isAdmin) {
       return data;
     } else {
-      return data.filter((item) => item.owner === currentUser?.username);
+      return data.filter((item) => {
+        if (item.owner === currentUser?.username) return true;
+        // visibility introduced in #817: 'public' is visible to every authenticated
+        // user, 'group' is reserved for a future user→group join (treat as 'private'
+        // for now so the enum value is safe to set ahead of group plumbing).
+        if (item.visibility === 'public') return true;
+        return false;
+      });
     }
   }
 

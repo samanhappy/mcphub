@@ -79,6 +79,10 @@ const ServerForm = ({
     headers: [],
     passthroughHeaders:
       initialData?.config?.passthroughHeaders?.join(', ') || '',
+    visibility: (initialData?.config?.visibility ?? 'private') as
+      | 'private'
+      | 'group'
+      | 'public',
     options: {
       timeout:
         (initialData &&
@@ -302,6 +306,37 @@ const ServerForm = ({
             className="w-full py-2 px-3 form-input"
             placeholder={t('server.descriptionPlaceholder')}
           />
+        </div>
+
+        <div className="mb-4">
+          <label className="block text-sm font-medium mb-1.5 text-[var(--hub-ink-2)]" htmlFor="visibility">
+            {t('server.visibility', 'Visibility')}
+          </label>
+          <select
+            id="visibility"
+            name="visibility"
+            value={formData.visibility || 'private'}
+            onChange={(e) =>
+              setFormData((prev) => ({
+                ...prev,
+                visibility: e.target.value as 'private' | 'public',
+              }))
+            }
+            className="w-full py-2 px-3 form-input"
+          >
+            <option value="private">
+              {t('server.visibilityPrivate', 'Private — only the owner and admins')}
+            </option>
+            <option value="public">
+              {t('server.visibilityPublic', 'Public — every authenticated user')}
+            </option>
+          </select>
+          <p className="text-xs text-gray-500 mt-1">
+            {t(
+              'server.visibilityDescription',
+              "Controls which non-admin users see this server in tools/list. Admins always see all servers regardless of this setting.",
+            )}
+          </p>
         </div>
 
         <div className="mb-4">

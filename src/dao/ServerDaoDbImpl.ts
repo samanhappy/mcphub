@@ -66,6 +66,7 @@ export class ServerDaoDbImpl implements ServerDao {
       headers: entity.headers,
       enabled: entity.enabled !== undefined ? entity.enabled : true,
       owner: entity.owner,
+      visibility: entity.visibility ?? 'private',
       enableKeepAlive: entity.enableKeepAlive,
       keepAliveInterval: entity.keepAliveInterval,
       tools: entity.tools,
@@ -113,6 +114,7 @@ export class ServerDaoDbImpl implements ServerDao {
     assignNullable('headers');
     assign('enabled');
     assignNullable('owner');
+    assign('visibility');
     if (hasOwn('enableKeepAlive')) {
       updateData.enableKeepAlive = entity.enableKeepAlive ?? false;
     }
@@ -206,6 +208,7 @@ export class ServerDaoDbImpl implements ServerDao {
     headers?: Record<string, string>;
     enabled: boolean;
     owner?: string;
+    visibility?: 'private' | 'group' | 'public';
     enableKeepAlive?: boolean;
     keepAliveInterval?: number;
     tools?: Record<string, { enabled: boolean; description?: string }>;
@@ -228,6 +231,7 @@ export class ServerDaoDbImpl implements ServerDao {
       headers: server.headers,
       enabled: server.enabled,
       owner: server.owner,
+      visibility: server.visibility ?? 'private',
       enableKeepAlive: server.enableKeepAlive,
       keepAliveInterval: server.keepAliveInterval,
       tools: server.tools,

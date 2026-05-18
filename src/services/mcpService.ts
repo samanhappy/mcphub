@@ -970,6 +970,7 @@ export const initializeClientsFromSettings = async (
         nextServerInfos.push({
           name,
           owner: expandedConf.owner,
+          visibility: expandedConf.visibility,
           status: 'disconnected',
           error: null,
           tools: [],
@@ -1005,6 +1006,7 @@ export const initializeClientsFromSettings = async (
           nextServerInfos.push({
             name,
             owner: expandedConf.owner,
+            visibility: expandedConf.visibility,
             status: 'disconnected',
             error: 'Missing OpenAPI specification URL or schema',
             tools: [],
@@ -1019,6 +1021,7 @@ export const initializeClientsFromSettings = async (
         const serverInfo: ServerInfo = {
           name,
           owner: expandedConf.owner,
+          visibility: expandedConf.visibility,
           status: 'connecting',
           error: null,
           tools: [],
@@ -1110,6 +1113,7 @@ export const initializeClientsFromSettings = async (
       const serverInfo: ServerInfo = {
         name,
         owner: expandedConf.owner,
+        visibility: expandedConf.visibility,
         status: 'connecting',
         error: null,
         tools: [],
@@ -1327,6 +1331,7 @@ export const getServersInfo = async (
       filteredServerInfos.push({
         name: server.name,
         owner: server.owner,
+        visibility: server.visibility,
         // Newly created servers that are enabled should appear as "connecting"
         // until the MCP client initialization completes. Disabled servers remain
         // in the "disconnected" state.

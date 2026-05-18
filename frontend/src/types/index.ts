@@ -166,6 +166,8 @@ export interface ServerConfig {
   headers?: Record<string, string>;
   passthroughHeaders?: string[];
   enabled?: boolean;
+  // Per-server visibility for non-admin users. See issue #817. 'group' reserved.
+  visibility?: 'private' | 'group' | 'public';
   enableKeepAlive?: boolean; // Enable keep-alive for this server (requires global enable as well)
   keepAliveInterval?: number; // Keep-alive ping interval in milliseconds (default: 60000ms)
   tools?: Record<string, { enabled: boolean; description?: string }>; // Tool-specific configurations with enable/disable state and custom descriptions
@@ -306,6 +308,8 @@ export interface ServerFormData {
   env: EnvVar[];
   headers: EnvVar[];
   passthroughHeaders?: string;
+  // Visibility for non-admin users. See issue #817. 'group' is reserved.
+  visibility?: 'private' | 'group' | 'public';
   options?: {
     timeout?: number;
     resetTimeoutOnProgress?: boolean;

@@ -15,6 +15,16 @@ MCPHub supports several stacked authentication paths. The same middleware (`src/
 
 All persistent user records are stored as `{ username, password, isAdmin }`. There are no `manager` or `viewer` roles; permissions are binary (admin or not). Social accounts that log in via Better Auth live in a separate `mcphub_better_auth_*` table but are mapped to the same `username` / `isAdmin` shape at request time.
 
+### Per-server visibility
+
+Each server has a `visibility` column (`private` / `public`, with `group` reserved for a future user→group plumbing) that controls which non-admin users see the server in `tools/list` and the dashboard. Admins always see every server regardless of this setting; the field only affects the filter applied by `dataService.filterData` to non-admin requests.
+
+- `'private'` (default): only the server's `owner` (and admins) can see it. Servers seeded from `mcp_settings.json` migrate in with `'private'` to preserve the historical admin-only behaviour.
+- `'public'`: every authenticated user can see and call the server. Use this for servers you want to share across all users of the same MCPHub instance — including social-login users created by Better Auth.
+- `'group'`: reserved. Stored if set but treated as `'private'` by the filter until user→group membership ships.
+
+The visibility is editable per server from the dashboard (Server form → Visibility). For deployments where every user should see every server (single-user self-hosted, small trusted team), an operator can set the relevant servers to `'public'` from the dashboard.
+
 ## Login (JWT)
 
 The dashboard and any script that does not present a bearer key uses the JWT flow:

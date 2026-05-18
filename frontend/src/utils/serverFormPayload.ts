@@ -153,6 +153,7 @@ export const buildServerPayload = ({
     type: serverType,
     description,
     options,
+    visibility: formData.visibility ?? 'private',
   };
 
   if (serverType === 'openapi') {
