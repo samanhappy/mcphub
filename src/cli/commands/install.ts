@@ -39,7 +39,7 @@ type Destination = 'hub' | 'file' | 'stdout';
 export interface InstallDeps {
   sourceClient?: ApiClient; // marketplace source (no auth needed)
   destClient?: ApiClient; // active profile hub (auth needed for /api/servers)
-  fs?: Pick<typeof fs, 'readFileSync' | 'writeFileSync' | 'existsSync'>;
+  fs?: Pick<typeof fs, 'readFileSync' | 'writeFileSync' | 'existsSync' | 'renameSync'>;
   prompts?: { line: (q: string) => Promise<string> };
 }
 
@@ -93,15 +93,13 @@ export async function run(args: string[], globals: GlobalFlags, deps: InstallDep
     throw new CliUsageError('Marketplace response did not include an install snippet.');
   }
 
-  // Fold env overrides into the resolved snippet. We only touch keys that the
-  // snippet already declares so we don't accidentally inject unrelated env
-  // vars into the spawned server.
+  // Merge --env overrides into the resolved snippet. The user explicitly
+  // passed these so we add new keys too (e.g. DEBUG=1, optional provider keys)
+  // rather than restricting overrides to whatever the marketplace declared.
   const snippetKey = Object.keys(install.mcpServers)[0];
   const snippet = install.mcpServers[snippetKey];
-  if (snippet.env) {
-    for (const [k, v] of Object.entries(envOverrides)) {
-      if (k in snippet.env) snippet.env[k] = v;
-    }
+  if (Object.keys(envOverrides).length > 0) {
+    snippet.env = { ...(snippet.env ?? {}), ...envOverrides };
   }
 
   // Prompt for required-but-unset env vars when we have a TTY and --yes isn't set.
@@ -208,7 +206,11 @@ function writeToFile(
     }
     merged.mcpServers[k] = v;
   }
-  reader.writeFileSync(outPath, JSON.stringify(merged, null, 2));
+  // Atomic write: a crashed write must not leave a half-written config (the
+  // target may be the user's primary Claude Desktop / OpenClaw config).
+  const tmp = `${outPath}.tmp.${process.pid}`;
+  reader.writeFileSync(tmp, JSON.stringify(merged, null, 2));
+  reader.renameSync(tmp, outPath);
   printLine(green(`Wrote ${Object.keys(install.mcpServers).length} server(s) to ${outPath}.`));
 }
 

@@ -21,6 +21,18 @@ describe('parseCallArguments', () => {
     expect(args).toEqual({ raw: '{not-json}' });
   });
 
+  it('@<missing-file> raises a friendly CliUsageError', () => {
+    const fakeFs = {
+      readFileSync: () => {
+        const err = new Error('ENOENT: no such file or directory');
+        throw err;
+      },
+    } as any;
+    expect(() =>
+      parseCallArguments(['payload=@/no/such.json'], { fs: fakeFs }),
+    ).toThrow(/Failed to read file \/no\/such\.json/);
+  });
+
   it('@path loads JSON from a file', () => {
     const fakeFs = {
       readFileSync: (p: any) => {

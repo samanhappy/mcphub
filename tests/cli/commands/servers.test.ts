@@ -81,6 +81,32 @@ describe('servers command', () => {
     });
   });
 
+  it('add inline preserves --arg values that look like flags', async () => {
+    // Regression: collectRepeated used to skip values starting with "--", which
+    // broke wrapped CLIs (`python --arg --version`). Now we consume the value
+    // verbatim and advance past it.
+    const { client, calls } = makeClient(() => ({ success: true, data: {} }));
+    await servers.run(
+      [
+        'add',
+        'wrapped',
+        '--type',
+        'stdio',
+        '--command',
+        'python',
+        '--arg',
+        '--version',
+        '--arg',
+        '-m',
+        '--arg',
+        'pkg',
+      ],
+      {},
+      { client },
+    );
+    expect(calls[0].body.config.args).toEqual(['--version', '-m', 'pkg']);
+  });
+
   it('remove calls DELETE with URL-encoded name', async () => {
     const { client, calls } = makeClient(() => ({ success: true }));
     await servers.run(['remove', 'my server'], {}, { client });

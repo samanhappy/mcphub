@@ -56,7 +56,12 @@ function coerce(raw: string, reader: Pick<typeof fs, 'readFileSync'>): unknown {
   if (raw.startsWith('@')) {
     const path = raw.slice(1);
     if (!path) throw new CliUsageError('@ prefix requires a file path');
-    const content = reader.readFileSync(path, 'utf8');
+    let content: string;
+    try {
+      content = reader.readFileSync(path, 'utf8');
+    } catch (e) {
+      throw new CliUsageError(`Failed to read file ${path}: ${(e as Error).message}`);
+    }
     try {
       return JSON.parse(content);
     } catch (e) {

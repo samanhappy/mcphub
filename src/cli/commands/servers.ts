@@ -146,13 +146,19 @@ async function reload(client: ApiClient, args: string[]): Promise<void> {
 }
 
 // Helper: pull every occurrence of `--flag <value>` out of argv. extractFlags
-// only captures the last occurrence, so repeated flags need this scan.
+// only captures the last occurrence, so repeated flags need this scan. Values
+// may legitimately start with `--` (e.g. `--arg --version` for a wrapped CLI);
+// we consume them unconditionally and skip the next index so we don't re-scan
+// the value as another flag boundary.
 function collectRepeated(argv: string[], flag: string): string[] {
   const out: string[] = [];
   for (let i = 0; i < argv.length; i++) {
     if (argv[i] === flag) {
       const v = argv[i + 1];
-      if (v !== undefined && !v.startsWith('--')) out.push(v);
+      if (v !== undefined) {
+        out.push(v);
+        i++;
+      }
     } else if (argv[i].startsWith(`${flag}=`)) {
       out.push(argv[i].slice(flag.length + 1));
     }
