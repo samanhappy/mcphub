@@ -25,6 +25,9 @@ type AuthenticatedUser = {
  * sees the Better Auth cookie that social-login (GitHub / Google) users carry. Without
  * this helper, those users end up in a /login ↔ /oauth/authorize redirect loop (GET) or
  * receive a 401 after clicking "Allow access" (POST). See issue #815.
+ *
+ * On success the resolved user is attached to req.user so the caller does not have to
+ * repeat that assignment at every call site.
  */
 async function resolveBetterAuthUserForAuthorize(
   req: Request,
@@ -32,7 +35,12 @@ async function resolveBetterAuthUserForAuthorize(
   try {
     const user = await resolveBetterAuthUser(req);
     if (user) {
-      return { username: user.username, isAdmin: !!user.isAdmin };
+      const authenticatedUser: AuthenticatedUser = {
+        username: user.username,
+        isAdmin: !!user.isAdmin,
+      };
+      (req as any).user = authenticatedUser;
+      return authenticatedUser;
     }
   } catch (error) {
     console.warn('Better Auth lookup failed in /oauth/authorize:', error);
@@ -298,11 +306,7 @@ export const getAuthorize = async (req: Request, res: Response): Promise<void> =
       }
     }
     if (!user) {
-      const betterAuthUser = await resolveBetterAuthUserForAuthorize(req);
-      if (betterAuthUser) {
-        (req as any).user = betterAuthUser;
-        user = betterAuthUser;
-      }
+      user = await resolveBetterAuthUserForAuthorize(req);
     }
 
     if (!user) {
@@ -405,11 +409,7 @@ export const postAuthorize = async (req: Request, res: Response): Promise<void> 
       }
     }
     if (!user) {
-      const betterAuthUser = await resolveBetterAuthUserForAuthorize(req);
-      if (betterAuthUser) {
-        (req as any).user = betterAuthUser;
-        user = betterAuthUser;
-      }
+      user = await resolveBetterAuthUserForAuthorize(req);
     }
 
     if (!user) {
