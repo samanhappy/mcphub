@@ -303,7 +303,7 @@ const ServerCard = ({ server, onRemove, onEdit, onToggle, onRefresh, onReload }:
           className="grid items-center gap-3 px-4 py-3 cursor-pointer hover:bg-[var(--hub-surface-hover)] transition-colors"
           style={{
             gridTemplateColumns:
-              'minmax(220px,1.9fr) minmax(110px,0.9fr) minmax(120px,0.95fr) minmax(140px,1fr) 72px 36px',
+              'minmax(220px,1.9fr) minmax(110px,0.9fr) minmax(120px,0.95fr) minmax(180px,1.1fr) 72px 36px',
           }}
           onClick={() => setExpanded(!expanded)}
         >
@@ -427,23 +427,55 @@ const ServerCard = ({ server, onRemove, onEdit, onToggle, onRefresh, onReload }:
           </div>
 
           {/* Tools / Prompts / Resources counts */}
-          <div
-            className="flex min-w-0 items-center gap-2 hub-num hub-mono"
-            style={{ color: 'var(--hub-ink-2)', fontSize: 12 }}
-            title={`T:${enabledTools}/${totalTools} · P:${enabledPrompts}/${totalPrompts} · R:${enabledResources}/${totalResources}`}
-          >
-            <span className="flex items-center gap-0.5">
-              <Wrench size={11} style={{ color: 'var(--hub-ink-3)', flexShrink: 0 }} />
-              <span>{totalTools === 0 ? '0' : `${enabledTools}/${totalTools}`}</span>
-            </span>
-            <span className="flex items-center gap-0.5">
-              <MessageSquare size={11} style={{ color: 'var(--hub-ink-3)', flexShrink: 0 }} />
-              <span>{totalPrompts === 0 ? '0' : `${enabledPrompts}/${totalPrompts}`}</span>
-            </span>
-            <span className="flex items-center gap-0.5">
-              <FileText size={11} style={{ color: 'var(--hub-ink-3)', flexShrink: 0 }} />
-              <span>{totalResources === 0 ? '0' : `${enabledResources}/${totalResources}`}</span>
-            </span>
+          <div className="flex min-w-0 items-center gap-1.5">
+            {[
+              {
+                key: 'tools',
+                icon: Wrench,
+                total: totalTools,
+                enabled: enabledTools,
+                label: t('server.tools'),
+              },
+              {
+                key: 'prompts',
+                icon: MessageSquare,
+                total: totalPrompts,
+                enabled: enabledPrompts,
+                label: t('server.prompts'),
+              },
+              {
+                key: 'resources',
+                icon: FileText,
+                total: totalResources,
+                enabled: enabledResources,
+                label: t('nav.resources'),
+              },
+            ].map(({ key, icon: Icon, total, enabled: enabledCount, label }) => {
+              const isEmpty = total === 0;
+              return (
+                <span
+                  key={key}
+                  className="inline-flex items-center gap-1 hub-mono hub-num"
+                  title={`${label}: ${enabledCount}/${total}`}
+                  style={{
+                    padding: '2px 7px',
+                    borderRadius: 6,
+                    fontSize: 11.5,
+                    lineHeight: '16px',
+                    background: isEmpty ? 'transparent' : 'var(--hub-bg-2)',
+                    border: '1px solid',
+                    borderColor: isEmpty ? 'transparent' : 'var(--hub-line-2)',
+                    color: isEmpty ? 'var(--hub-ink-3)' : 'var(--hub-ink-2)',
+                  }}
+                >
+                  <Icon
+                    size={12}
+                    style={{ color: 'var(--hub-ink-3)', flexShrink: 0 }}
+                  />
+                  <span>{isEmpty ? '0' : `${enabledCount}/${total}`}</span>
+                </span>
+              );
+            })}
           </div>
 
           {/* Toggle switch */}
