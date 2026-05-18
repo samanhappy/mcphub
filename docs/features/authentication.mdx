@@ -88,9 +88,13 @@ Set `READONLY=true` to prevent any mutating request from succeeding. The middlew
 
 Other methods receive `403`.
 
-## Skip-auth mode (development only)
+## Skip-auth mode (local development only)
 
-`systemConfig.routing.skipAuth = true` instructs the dashboard API middleware to materialize a synthetic admin user (`{ username: 'guest', isAdmin: true }`) for any request that has no other credentials. This is useful for local development but should **never** be left on in production: it grants everyone full admin access to the management API. MCP transport routes are not affected by `skipAuth`.
+<Warning>
+  **`skipAuth` disables dashboard authentication entirely.** When `systemConfig.routing.skipAuth = true`, every unauthenticated request to `${basePath}/api/*` is automatically treated as a synthetic admin user (`{ username: 'guest', isAdmin: true }`). Anyone who can reach the API — including a misconfigured reverse proxy, a forgotten port-forward, or a public cloud IP — gets full administrative access: they can read every server's secrets, create / delete users, mint bearer keys, and exfiltrate the entire `mcp_settings.json`. **Never enable this in staging, production, demo, or any deployment that is reachable beyond `localhost`.** Bind MCPHub to `127.0.0.1` while developing, and double-check that `skipAuth` is `false` before deploying. MCP transport routes (`/mcp/*`, `/sse/*`) are not affected by `skipAuth` and continue to require their own credentials.
+</Warning>
+
+The flag exists purely to make local iteration painless: you can hit the dashboard API from `curl` or a frontend dev server without pasting a JWT. If you need API access from automated tooling instead, prefer a scoped bearer key (`/api/auth/keys`) over `skipAuth`.
 
 ## Password policy
 

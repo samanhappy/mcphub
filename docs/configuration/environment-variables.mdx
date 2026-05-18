@@ -24,7 +24,11 @@ MCPHub reads the following environment variables at startup. The authoritative l
 | Variable | Default | Description |
 | --- | --- | --- |
 | `ADMIN_PASSWORD` | random | Password seeded for the bootstrap `admin` user when no users exist yet. If unset, a 24-character random password is generated and printed to the logs. |
-| `JWT_SECRET` | random per-process | Secret used to sign JWTs issued by `/api/auth/login`. **Set this in production** — otherwise a new random secret is generated on every restart and existing tokens stop working. |
+| `JWT_SECRET` | random per-process | Secret used to sign JWTs issued by `/api/auth/login`. See the warning below — this **must** be set explicitly in any non-development deployment. |
+
+<Warning>
+  **`JWT_SECRET` must be set to a persistent, high-entropy value (≥ 32 random bytes) in staging and production.** If it is left unset, MCPHub generates a new random secret on every process start, which means: every restart invalidates all outstanding sessions and bearer tokens; horizontally-scaled instances cannot share sessions because each replica signs with its own secret; and CI / container restarts silently log everyone out. Generate one with `openssl rand -hex 32` and store it in your secret manager. Treat it like any other long-lived cryptographic key — rotation requires invalidating outstanding JWTs.
+</Warning>
 
 ### Better Auth (optional social login)
 

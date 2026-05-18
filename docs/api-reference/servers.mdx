@@ -103,21 +103,21 @@ Adds a new MCP server to the configuration.
 
 ### Batch Create Servers
 
-Create several servers in a single request. The body is identical to a single `POST /api/servers` payload, but `config` is a record of `{ [serverName]: ServerConfig }`:
+Create several servers in a single request. The body contains a `servers` **array** of `{ name, config }` objects — the same shape `POST /api/servers` accepts, just batched:
 
 - **Endpoint**: `POST /api/servers/batch`
 - **Authentication**: Required.
 - **Body**:
   ```json
   {
-    "servers": {
-      "fetch": { "type": "stdio", "command": "uvx", "args": ["mcp-server-fetch"] },
-      "amap": { "type": "sse", "url": "https://mcp.amap.com/sse?key=..." }
-    }
+    "servers": [
+      { "name": "fetch", "config": { "type": "stdio", "command": "uvx", "args": ["mcp-server-fetch"] } },
+      { "name": "amap", "config": { "type": "sse", "url": "https://mcp.amap.com/sse?key=..." } }
+    ]
   }
   ```
 
-Returns a summary of successes and failures so partial batches do not abort the whole request.
+Each element is validated independently, and the response contains a per-server `{ name, success, message? }` record so partial batches do not abort the whole request.
 
 ---
 
