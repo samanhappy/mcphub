@@ -63,18 +63,49 @@ MCPHub uses several configuration files:
 
 ## Server Configuration Options
 
-### Required Fields
+A server entry has the shape `"<server-name>": ServerConfig`. The relevant fields depend on the transport, which is selected by `type`.
 
-| Field     | Type   | Description                |
-| --------- | ------ | -------------------------- |
-| `command` | string | Executable command or path |
-| `args`    | array  | Command-line arguments     |
+### Top-level fields
 
-### Optional Fields
+| Field | Type | Required | Description |
+| ----- | ---- | -------- | ----------- |
+| `type` | `"stdio" \| "sse" \| "streamable-http" \| "openapi"` | Recommended | Transport. Defaults to `stdio` when omitted but a `command` is provided. |
+| `enabled` | boolean | no | Defaults to `true`. Disabled servers stay in settings but are not connected. |
+| `owner` | string | no | Username that owns the entry. Defaults to the creating user or `admin`. Used for user-scoped routes (`/:user/mcp/...`). |
+| `description` | string | no | Free-form description displayed in the dashboard. |
+| `options` | object | no | Per-server runtime options (see `src/types/index.ts`). |
+| `proxy` | object | no | Optional HTTP proxy settings (`url`, `noProxy`, etc.). |
+| `oauth` | object | no | Upstream OAuth client settings (used when the upstream server requires OAuth). |
+| `enableKeepAlive` | boolean | no | For `sse` / `streamable-http`: enable periodic pings. |
+| `keepAliveInterval` | number | no | Keep-alive interval in milliseconds. Defaults to `60000`. |
+| `tools`, `prompts`, `resources` | object | no | Per-item overrides: `{ "<name>": { "enabled": true, "description": "..." } }`. Managed via the dashboard or the per-resource API endpoints. |
 
-| Field          | Type    | Default         | Description                 |
-| -------------- | ------- | --------------- | --------------------------- |
-| `env`          | object  | `{}`            | Environment variables       |
+### `type: "stdio"` (default)
+
+| Field | Type | Required | Description |
+| ----- | ---- | -------- | ----------- |
+| `command` | string | yes | Executable to spawn. |
+| `args` | string[] | no | Command-line arguments. |
+| `env` | object | no | Extra environment variables for the child process. `${ENV}` placeholders in values are expanded against the MCPHub process environment. |
+
+### `type: "sse"` or `type: "streamable-http"`
+
+| Field | Type | Required | Description |
+| ----- | ---- | -------- | ----------- |
+| `url` | string | yes | Upstream endpoint URL. |
+| `headers` | object | no | Static headers sent on every request. |
+| `passthroughHeaders` | string[] | no | Inbound HTTP header names to forward from the caller to the upstream server. |
+
+### `type: "openapi"`
+
+| Field | Type | Required | Description |
+| ----- | ---- | -------- | ----------- |
+| `openapi.url` | string | one of `url`/`schema` | URL of an OpenAPI document MCPHub will download. |
+| `openapi.schema` | object | one of `url`/`schema` | Inline OpenAPI document. |
+| `headers` | object | no | Static headers applied to outbound calls. |
+| `passthroughHeaders` | string[] | no | Headers to forward from the caller. |
+
+The authoritative definition of every field is the `ServerConfig` type in [src/types/index.ts](src/types/index.ts) — consult it if you need behavior not described here.
 
 ## Common MCP Server Examples
 
@@ -158,23 +189,6 @@ MCPHub uses several configuration files:
 }
 ```
 
-#### Email Server
-
-```json
-{
-  "email": {
-    "command": "python",
-    "args": ["-m", "mcp_server_email"],
-    "env": {
-      "SMTP_HOST": "smtp.gmail.com",
-      "SMTP_PORT": "587",
-      "EMAIL_USER": "${EMAIL_USER}",
-      "EMAIL_PASSWORD": "${EMAIL_PASSWORD}"
-    }
-  }
-}
-```
-
 ### Development and API Servers
 
 #### GitHub Server
@@ -191,22 +205,6 @@ MCPHub uses several configuration files:
 }
 ```
 
-#### Google Drive Server
-
-```json
-{
-  "gdrive": {
-    "command": "npx",
-    "args": ["-y", "@google/mcp-server-gdrive"],
-    "env": {
-      "GOOGLE_CLIENT_ID": "${GOOGLE_CLIENT_ID}",
-      "GOOGLE_CLIENT_SECRET": "${GOOGLE_CLIENT_SECRET}",
-      "GOOGLE_REFRESH_TOKEN": "${GOOGLE_REFRESH_TOKEN}"
-    }
-  }
-}
-```
-
 ### Map and Location Services
 
 #### Amap (高德地图) Server
@@ -217,26 +215,15 @@ MCPHub uses several configuration files:
     "command": "npx",
     "args": ["-y", "@amap/amap-maps-mcp-server"],
     "env": {
-      "AMAP_MAPS_API_KEY": "${AMAP_API_KEY}",
-      "AMAP_LANGUAGE": "zh-cn"
+      "AMAP_MAPS_API_KEY": "${AMAP_API_KEY}"
     }
   }
 }
 ```
 
-#### OpenStreetMap Server
-
-```json
-{
-  "osm": {
-    "command": "python",
-    "args": ["-m", "mcp_server_osm"],
-    "env": {
-      "OSM_USER_AGENT": "MCPHub/1.0"
-    }
-  }
-}
-```
+<Tip>
+  Looking for more servers? The bundled [Market catalog](https://docs.mcphub.app/features/server-management) in the dashboard lists hundreds of known MCP servers with copy-paste-ready configurations.
+</Tip>
 
 ## Advanced Configuration
 

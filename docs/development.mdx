@@ -1,107 +1,31 @@
 ---
 title: 'Development'
-description: 'Preview changes locally to update your docs'
+description: 'Develop and contribute to MCPHub'
 ---
 
-<Info>
-  **Prerequisite**: Please install Node.js (version 19 or higher) before proceeding. <br />
-  Please upgrade to ```docs.json``` before proceeding and delete the legacy ```mint.json``` file.
-</Info>
+This page is a landing index. The full developer documentation lives under `docs/development/`.
 
-Follow these steps to install and run Mintlify on your operating system:
+<CardGroup cols={2}>
+  <Card title="Getting Started" icon="rocket" href="/development/getting-started">
+    Clone the repo, install dependencies, run the dev servers, and find your way around the code.
+  </Card>
+  <Card title="Architecture" icon="diagram-project" href="/development/architecture">
+    The actual moving parts: `AppServer`, the service layer, file vs. database storage, and request paths.
+  </Card>
+  <Card title="Embedding Lifecycle" icon="vector-square" href="/development/embedding-lifecycle">
+    How smart-routing embeddings are generated, persisted, and refreshed.
+  </Card>
+  <Card title="Contributing" icon="code-pull-request" href="/development/contributing">
+    Coding style, commit message conventions, and PR review expectations.
+  </Card>
+</CardGroup>
 
-**Step 1**: Install Mintlify:
+## Quick reference
 
-<CodeGroup>
+- **Source layout**: `src/server.ts` is the process entrypoint; HTTP routes live in `src/routes/index.ts`. See [Architecture](/development/architecture) for the full map.
+- **Dev servers**: `pnpm dev` runs the backend on `:3000` and the Vite frontend on `:5173`. The frontend proxies `/api`, `/mcp`, `/sse`, `/oauth`, `/health` to the backend (`frontend/vite.config.ts`).
+- **Tests**: `pnpm test` runs the Jest suite. Tests live under `src/**/*.test.ts` and `tests/`.
+- **Lint / format**: `pnpm lint`, `pnpm format`.
+- **Storage modes**: file (default, `mcp_settings.json`) or PostgreSQL — see [Database Configuration](/configuration/database-configuration).
 
-  ```bash npm
-  npm i -g mintlify
-  ```
-
-```bash yarn
-yarn global add mintlify
-```
-
-</CodeGroup>
-
-**Step 2**: Navigate to the docs directory (where the `docs.json` file is located) and execute the following command:
-
-```bash
-mintlify dev
-```
-
-A local preview of your documentation will be available at `http://localhost:3000`.
-
-### Custom Ports
-
-By default, Mintlify uses port 3000. You can customize the port Mintlify runs on by using the `--port` flag. To run Mintlify on port 3333, for instance, use this command:
-
-```bash
-mintlify dev --port 3333
-```
-
-If you attempt to run Mintlify on a port that's already in use, it will use the next available port:
-
-```md
-Port 3000 is already in use. Trying 3001 instead.
-```
-
-## Mintlify Versions
-
-Please note that each CLI release is associated with a specific version of Mintlify. If your local website doesn't align with the production version, please update the CLI:
-
-<CodeGroup>
-
-```bash npm
-npm i -g mintlify@latest
-```
-
-```bash yarn
-yarn global upgrade mintlify
-```
-
-</CodeGroup>
-
-## Validating Links
-
-The CLI can assist with validating reference links made in your documentation. To identify any broken links, use the following command:
-
-```bash
-mintlify broken-links
-```
-
-## Deployment
-
-<Tip>
-  Unlimited editors available under the [Pro
-  Plan](https://mintlify.com/pricing) and above.
-</Tip>
-
-If the deployment is successful, you should see the following:
-
-<Frame>
-  <img src="/images/checks-passed.png" style={{ borderRadius: '0.5rem' }} />
-</Frame>
-
-## Code Formatting
-
-We suggest using extensions on your IDE to recognize and format MDX. If you're a VSCode user, consider the [MDX VSCode extension](https://marketplace.visualstudio.com/items?itemName=unifiedjs.vscode-mdx) for syntax highlighting, and [Prettier](https://marketplace.visualstudio.com/items?itemName=esbenp.prettier-vscode) for code formatting.
-
-## Troubleshooting
-
-<AccordionGroup>
-  <Accordion title='Error: Could not load the "sharp" module using the darwin-arm64 runtime'>
-
-    This may be due to an outdated version of node. Try the following:
-    1. Remove the currently-installed version of mintlify: `npm remove -g mintlify`
-    2. Upgrade to Node v19 or higher.
-    3. Reinstall mintlify: `npm install -g mintlify`
-  </Accordion>
-
-  <Accordion title="Issue: Encountering an unknown error">
-  
-    Solution: Go to the root of your device and delete the \~/.mintlify folder. Afterwards, run `mintlify dev` again.
-  </Accordion>
-</AccordionGroup>
-
-Curious about what changed in the CLI version? [Check out the CLI changelog.](https://www.npmjs.com/package/mintlify?activeTab=versions)
+For deployment, dependencies, and full end-user installation, see [Installation Guide](/installation).

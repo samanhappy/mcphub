@@ -15,6 +15,7 @@ MCPHub facilite la gestion et la mise à l'échelle de plusieurs serveurs MCP (M
 
 - **Gestion centralisée** - Surveillez et contrôlez tous les serveurs MCP depuis un tableau de bord unifié
 - **Routage flexible** - Accédez à tous les serveurs, groupes spécifiques ou serveurs individuels via HTTP/SSE
+- **Visibilité granulaire par groupe** - Contrôlez indépendamment la visibilité des Tools, Prompts et Resources de chaque serveur dans un groupe
 - **Routage intelligent** - Découverte d'outils propulsée par IA utilisant la recherche sémantique vectorielle ([En savoir plus](https://docs.mcphub.app/features/smart-routing))
 - **Configuration à chaud** - Ajoutez, supprimez ou mettez à jour les serveurs sans temps d'arrêt
 - **Support OAuth 2.0** - Modes client et serveur pour une authentification sécurisée ([En savoir plus](https://docs.mcphub.app/features/oauth))
@@ -51,8 +52,8 @@ Créez un fichier `mcp_settings.json` :
 # Exécutez avec une configuration personnalisée (recommandé)
 docker run -p 3000:3000 -v ./mcp_settings.json:/app/mcp_settings.json -v ./data:/app/data samanhappy/mcphub
 
-# Ou exécutez avec les paramètres par défaut
-docker run -p 3000:3000 samanhappy/mcphub
+# Ou exécutez avec les paramètres par défaut (montez ./data pour préserver l'état entre redémarrages)
+docker run -p 3000:3000 -v ./data:/app/data samanhappy/mcphub
 ```
 
 ### Accéder au tableau de bord
@@ -110,9 +111,10 @@ pnpm dev
 
 ## 🔍 Stack technique
 
-- **Backend** : Node.js, Express, TypeScript
+- **Backend** : Node.js, Express, TypeScript (ESM)
 - **Frontend** : React, Vite, Tailwind CSS
-- **Authentification** : JWT & bcrypt
+- **Stockage** : `mcp_settings.json` (par défaut) ; PostgreSQL via TypeORM avec pgvector pour le Smart Routing
+- **Authentification** : JWT + bcrypt pour les comptes locaux ; bearer keys ; serveur OAuth 2.0 intégré (`@node-oauth/oauth2-server`) ; Better Auth optionnel pour GitHub/Google
 - **Protocole** : Model Context Protocol SDK
 
 ## 👥 Contribuer

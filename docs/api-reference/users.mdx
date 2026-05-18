@@ -1,195 +1,143 @@
 ---
 title: "Users"
-description: "Manage users in MCPHub."
+description: "Manage local user accounts in MCPHub."
 ---
 
-import { Card, Cards } from 'mintlify';
+These endpoints manage the local username/password users stored in `mcp_settings.json` (or the `mcphub_user` table when the database backend is enabled). All endpoints require an authenticated admin (`isAdmin: true`).
 
-<Card
-  title="GET /api/users"
-  href="#get-all-users"
->
-  Get a list of all users.
-</Card>
+For OAuth/social accounts created via Better Auth, see `/api/better-auth/*` instead — those records live in a separate table and are not managed through this API.
 
-<Card
-  title="GET /api/users/:username"
-  href="#get-a-user"
->
-  Get details of a specific user.
-</Card>
-
-<Card
-  title="POST /api/users"
-  href="#create-a-user"
->
-  Create a new user.
-</Card>
-
-<Card
-  title="PUT /api/users/:username"
-  href="#update-a-user"
->
-  Update an existing user.
-</Card>
-
-<Card
-  title="DELETE /api/users/:username"
-  href="#delete-a-user"
->
-  Delete a user.
-</Card>
-
-<Card
-  title="GET /api/users-stats"
-  href="#get-user-statistics"
->
-  Get statistics about users and their server access.
-</Card>
+<Card title="GET /api/users" href="#get-all-users">List all users.</Card>
+<Card title="GET /api/users/:username" href="#get-a-user">Get a single user.</Card>
+<Card title="POST /api/users" href="#create-a-user">Create a user.</Card>
+<Card title="PUT /api/users/:username" href="#update-a-user">Update a user.</Card>
+<Card title="DELETE /api/users/:username" href="#delete-a-user">Delete a user.</Card>
+<Card title="GET /api/users-stats" href="#get-user-statistics">Aggregate user counts.</Card>
 
 ---
 
 ### Get All Users
 
-Retrieves a list of all users in the system.
+- **Endpoint**: `GET /api/users`
+- **Authentication**: Required (admin only)
+- **Response**: The `password` field is stripped from every record.
 
-- **Endpoint**: `/api/users`
-- **Method**: `GET`
-- **Authentication**: Required (Admin only)
-- **Response**:
-  ```json
-  {
-    "success": true,
-    "data": [
-      {
-        "username": "admin",
-        "role": "admin",
-        "servers": ["server1", "server2"],
-        "groups": ["group1"]
-      },
-      {
-        "username": "user1",
-        "role": "user",
-        "servers": ["server1"],
-        "groups": []
-      }
-    ]
-  }
-  ```
+```json
+{
+  "success": true,
+  "data": [
+    { "username": "admin", "isAdmin": true },
+    { "username": "alice", "isAdmin": false }
+  ]
+}
+```
 
 ---
 
 ### Get a User
 
-Retrieves details of a specific user.
-
-- **Endpoint**: `/api/users/:username`
-- **Method**: `GET`
-- **Authentication**: Required (Admin only)
-- **Parameters**:
-  - `:username` (string, required): The username of the user.
+- **Endpoint**: `GET /api/users/:username`
+- **Authentication**: Required (admin only)
 - **Response**:
-  ```json
-  {
-    "success": true,
-    "data": {
-      "username": "user1",
-      "role": "user",
-      "servers": ["server1", "server2"],
-      "groups": ["group1"]
-    }
-  }
-  ```
+
+```json
+{
+  "success": true,
+  "data": { "username": "alice", "isAdmin": false }
+}
+```
+
+Returns `404` if the user does not exist.
 
 ---
 
 ### Create a User
 
-Creates a new user in the system.
-
-- **Endpoint**: `/api/users`
-- **Method**: `POST`
-- **Authentication**: Required (Admin only)
+- **Endpoint**: `POST /api/users`
+- **Authentication**: Required (admin only)
 - **Body**:
-  ```json
-  {
-    "username": "newuser",
-    "password": "securepassword",
-    "role": "user",
-    "servers": ["server1"],
-    "groups": ["group1"]
-  }
-  ```
-  - `username` (string, required): The username for the new user.
-  - `password` (string, required): The password for the new user. Must be at least 6 characters.
-  - `role` (string, optional): The role of the user. Either `"admin"` or `"user"`. Defaults to `"user"`.
-  - `servers` (array of strings, optional): List of server names the user has access to.
-  - `groups` (array of strings, optional): List of group IDs the user belongs to.
+
+```json
+{
+  "username": "alice",
+  "password": "P@ssw0rd-123",
+  "isAdmin": false
+}
+```
+
+| Field | Type | Required | Description |
+| ----- | ---- | -------- | ----------- |
+| `username` | string | yes | Must be unique. |
+| `password` | string | yes | Must satisfy the configured password policy (see `src/utils/passwordValidation.ts`). |
+| `isAdmin` | boolean | no | Defaults to `false`. |
+
+- Returns `400` if `username`/`password` are missing, the password is too weak, or the username is already taken.
+- Returns `201` with the new user (password stripped) on success.
+
+<Note>
+  The user model does not have per-user `servers` or `groups` lists. Server visibility is governed by the `owner` field on each server and by the group membership recorded on the group itself. See [Group Management](/features/group-management) and [MCP Settings](/configuration/mcp-settings).
+</Note>
 
 ---
 
 ### Update a User
 
-Updates an existing user's information.
+- **Endpoint**: `PUT /api/users/:username`
+- **Authentication**: Required (admin only)
+- **Body** (at least one field is required):
 
-- **Endpoint**: `/api/users/:username`
-- **Method**: `PUT`
-- **Authentication**: Required (Admin only)
-- **Parameters**:
-  - `:username` (string, required): The username of the user to update.
-- **Body**:
-  ```json
-  {
-    "password": "newpassword",
-    "role": "admin",
-    "servers": ["server1", "server2", "server3"],
-    "groups": ["group1", "group2"]
-  }
-  ```
-  - `password` (string, optional): New password for the user.
-  - `role` (string, optional): New role for the user.
-  - `servers` (array of strings, optional): Updated list of accessible servers.
-  - `groups` (array of strings, optional): Updated list of groups.
+```json
+{
+  "isAdmin": true,
+  "newPassword": "Newp@ssw0rd"
+}
+```
+
+| Field | Type | Description |
+| ----- | ---- | ----------- |
+| `isAdmin` | boolean | Promote/demote the user. |
+| `newPassword` | string | Replace the user's password. Must satisfy the password policy. |
+
+- Returns `400` if neither field is supplied, the password fails validation, or the request would demote the last remaining admin.
+- Returns `404` if the username does not exist.
+
+<Warning>
+  Username is the primary key — to rename a user, delete and recreate them. Other profile fields (email, display name, etc.) are not currently supported on the local user model.
+</Warning>
 
 ---
 
 ### Delete a User
 
-Removes a user from the system.
+- **Endpoint**: `DELETE /api/users/:username`
+- **Authentication**: Required (admin only)
+- **Restrictions**:
+  - You cannot delete your own account.
+  - You cannot delete the last admin.
 
-- **Endpoint**: `/api/users/:username`
-- **Method**: `DELETE`
-- **Authentication**: Required (Admin only)
-- **Parameters**:
-  - `:username` (string, required): The username of the user to delete.
+```json
+{
+  "success": true,
+  "message": "User deleted successfully"
+}
+```
 
 ---
 
 ### Get User Statistics
 
-Retrieves statistics about users and their access to servers and groups.
+- **Endpoint**: `GET /api/users-stats`
+- **Authentication**: Required (admin only)
 
-- **Endpoint**: `/api/users-stats`
-- **Method**: `GET`
-- **Authentication**: Required (Admin only)
-- **Response**:
-  ```json
-  {
-    "success": true,
-    "data": {
-      "totalUsers": 5,
-      "adminUsers": 1,
-      "regularUsers": 4,
-      "usersPerServer": {
-        "server1": 3,
-        "server2": 2
-      },
-      "usersPerGroup": {
-        "group1": 2,
-        "group2": 1
-      }
-    }
+```json
+{
+  "success": true,
+  "data": {
+    "totalUsers": 5,
+    "adminUsers": 1,
+    "regularUsers": 4
   }
-  ```
+}
+```
 
-**Note**: All user management endpoints require admin authentication.
+The stats endpoint reports only aggregate counts; per-server or per-group breakdowns are not produced here.

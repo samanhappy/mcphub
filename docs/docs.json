@@ -28,7 +28,9 @@
               "features/server-management",
               "features/group-management",
               "features/smart-routing",
-              "features/oauth"
+              "features/oauth",
+              "features/authentication",
+              "features/monitoring"
             ]
           },
           {
@@ -39,6 +41,16 @@
               "configuration/docker-setup",
               "configuration/nginx",
               "configuration/database-configuration"
+            ]
+          },
+          {
+            "group": "Development",
+            "pages": [
+              "development",
+              "development/getting-started",
+              "development/architecture",
+              "development/embedding-lifecycle",
+              "development/contributing"
             ]
           }
         ]

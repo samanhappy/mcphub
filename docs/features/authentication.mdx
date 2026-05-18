@@ -1,338 +1,103 @@
 ---
 title: 'Authentication & Security'
-description: 'Configure authentication and security settings for MCPHub'
+description: 'How clients authenticate against MCPHub'
 ---
 
 ## Overview
 
-MCPHub provides flexible authentication mechanisms to secure your MCP server management platform. The system supports multiple authentication methods and role-based access control.
+MCPHub supports several stacked authentication paths. The same middleware (`src/middlewares/auth.ts`) evaluates them in order on every authenticated request:
 
-## Authentication Methods
+1. **Bearer key** — a static token created from the dashboard or `/api/auth/keys`.
+2. **MCPHub OAuth access token** — issued by MCPHub's own authorization server (optional).
+3. **Better Auth session cookie** — issued by GitHub / Google login (optional).
+4. **JWT** — issued by `POST /api/auth/login`, sent via the `x-auth-token` header or `?token=` query.
+5. **`skipAuth` guest** — only when `systemConfig.routing.skipAuth` is `true`, the dashboard API treats unauthenticated calls as a synthetic admin `guest` user.
 
-### Environment-based Authentication
+All persistent user records are stored as `{ username, password, isAdmin }`. There are no `manager` or `viewer` roles; permissions are binary (admin or not). Social accounts that log in via Better Auth live in a separate `mcphub_better_auth_*` table but are mapped to the same `username` / `isAdmin` shape at request time.
 
-Configure basic authentication using environment variables:
+## Login (JWT)
 
-```bash
-# Basic auth credentials
-AUTH_USERNAME=admin
-AUTH_PASSWORD=your-secure-password
-
-# JWT settings
-JWT_SECRET=your-jwt-secret-key
-JWT_EXPIRES_IN=24h
-```
-
-### Database Authentication
-
-For production deployments, enable database-backed user management:
-
-```json
-{
-  "auth": {
-    "provider": "database",
-    "database": {
-      "url": "postgresql://user:pass@localhost:5432/mcphub",
-      "userTable": "users"
-    }
-  }
-}
-```
-
-## User Management
-
-### Creating Users
-
-Create users via the admin interface or API:
+The dashboard and any script that does not present a bearer key uses the JWT flow:
 
 ```bash
-# Via API
-curl -X POST http://localhost:3000/api/auth/users \
+curl -X POST http://localhost:3000/api/auth/login \
   -H "Content-Type: application/json" \
-  -H "Authorization: Bearer $ADMIN_TOKEN" \
-  -d '{
-    "username": "newuser",
-    "email": "user@example.com",
-    "password": "securepassword",
-    "role": "user"
-  }'
+  -d '{ "username": "admin", "password": "your-password" }'
 ```
 
-### User Roles
-
-MCPHub supports role-based access control:
-
-- **Admin**: Full system access, user management, server configuration
-- **Manager**: Server management, group management, monitoring
-- **User**: Basic server access within assigned groups
-- **Viewer**: Read-only access to assigned resources
-
-## Group-based Access Control
-
-### Assigning Users to Groups
+The response includes a JWT. Send it on subsequent requests using the `x-auth-token` header:
 
 ```bash
-# Add user to group
-curl -X POST http://localhost:3000/api/groups/{groupId}/users \
-  -H "Authorization: Bearer $TOKEN" \
-  -d '{"userId": "user123"}'
+curl http://localhost:3000/api/servers \
+  -H "x-auth-token: <jwt>"
 ```
 
-### Group Permissions
+The JWT is signed with `JWT_SECRET`. If `JWT_SECRET` is not set, MCPHub generates an ephemeral random secret at startup; this is fine for development but means every restart invalidates outstanding tokens. **Set `JWT_SECRET` explicitly in production.**
 
-Configure group-level permissions:
+The first admin account is created at startup by `initializeDefaultUser()`. If no users exist, MCPHub creates `admin` and uses `ADMIN_PASSWORD` if set, otherwise it generates a random password and prints it to the server logs.
 
-```json
-{
-  "groupId": "dev-team",
-  "permissions": {
-    "servers": ["read", "write", "execute"],
-    "tools": ["read", "execute"],
-    "logs": ["read"],
-    "config": ["read"]
-  }
-}
-```
+## Bearer keys
 
-## API Authentication
+Bearer keys are long-lived static tokens managed at `/api/auth/keys` (admin only). Each key has:
 
-### JWT Token Authentication
+| Field | Description |
+| ----- | ----------- |
+| `name` | Human-readable label. |
+| `token` | The secret value sent in the `Authorization: Bearer ...` header. |
+| `accessType` | `all` (dashboard + MCP), or a scoped value enforced inside `sseService.ts` for MCP-only access. |
+| `enabled` | Disabled keys are ignored without being deleted. |
 
-```javascript
-// Login to get token
-const response = await fetch('/api/auth/login', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({
-    username: 'your-username',
-    password: 'your-password',
-  }),
-});
+Only keys with `accessType === 'all'` are accepted by the dashboard / management API middleware. Restricted keys are enforced at the MCP transport layer.
 
-const { token } = await response.json();
+The header name can be customized via `systemConfig.routing.bearerAuthHeaderName` (default `Authorization`). The legacy `systemConfig.routing.bearerAuthKey` field is preserved only for one-time migration into the bearer key store.
 
-// Use token for authenticated requests
-const serversResponse = await fetch('/api/servers', {
-  headers: { Authorization: `Bearer ${token}` },
-});
-```
+To globally turn off bearer auth on MCP endpoints, set `systemConfig.routing.enableBearerAuth` to `false`.
 
-### API Key Authentication
+## MCPHub OAuth authorization server
 
-For service-to-service communication:
+When `systemConfig.oauthServer.enabled` is `true`, MCPHub exposes an OAuth 2.0 / OIDC-compatible server (`@node-oauth/oauth2-server`). Endpoints:
 
-```bash
-# Generate API key
-curl -X POST http://localhost:3000/api/auth/api-keys \
-  -H "Authorization: Bearer $ADMIN_TOKEN" \
-  -d '{
-    "name": "my-service",
-    "permissions": ["servers:read", "tools:execute"]
-  }'
+| Method & Path | Purpose |
+| ------------- | ------- |
+| `GET /oauth/authorize`, `POST /oauth/authorize` | Authorization endpoint (PKCE supported). |
+| `POST /oauth/token` | Token endpoint. |
+| `GET /oauth/userinfo` | OIDC-style userinfo (also validates an access token). |
+| `GET /.well-known/oauth-authorization-server` | RFC 8414 metadata. |
+| `GET /.well-known/oauth-protected-resource` | Protected resource metadata. |
+| `POST /oauth/register`, `GET/PUT/DELETE /oauth/register/:clientId` | RFC 7591 dynamic client registration. |
+| `GET/POST/PUT/DELETE /api/oauth/clients[...]` | Admin-only client CRUD. |
 
-# Use API key
-curl -H "X-API-Key: your-api-key" \
-  http://localhost:3000/api/servers
-```
+OAuth access tokens issued here are accepted by `src/middlewares/auth.ts`.
 
-## Security Configuration
+## Better Auth (GitHub / Google)
 
-### HTTPS Setup
+Better Auth is optional and only loads when configured. Required environment variables (see `.env.example`):
 
-Configure HTTPS for production:
+- `BETTER_AUTH_URL` — public base URL of MCPHub (used to build redirect URIs).
+- `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` — for Google login.
+- `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` — for GitHub login.
 
-```yaml
-# docker-compose.yml
-services:
-  mcphub:
-    environment:
-      - HTTPS_ENABLED=true
-      - SSL_CERT_PATH=/certs/cert.pem
-      - SSL_KEY_PATH=/certs/key.pem
-    volumes:
-      - ./certs:/certs:ro
-```
+When enabled, Better Auth mounts at `${BASE_PATH}${betterAuthConfig.basePath}` (default `/api/auth/better`). A valid Better Auth session cookie counts as authentication for the dashboard API. The mapped MCPHub user is admin only if a local user with the same username exists and is marked admin.
 
-### CORS Configuration
+## Read-only mode
 
-Configure CORS for web applications:
+Set `READONLY=true` to prevent any mutating request from succeeding. The middleware permits:
 
-```json
-{
-  "cors": {
-    "origin": ["https://your-frontend.com"],
-    "credentials": true,
-    "methods": ["GET", "POST", "PUT", "DELETE"]
-  }
-}
-```
+- All `GET` requests.
+- All paths starting with `${basePath}/tools/` (so OpenAPI tool execution still works).
 
-### Rate Limiting
+Other methods receive `403`.
 
-Protect against abuse with rate limiting:
+## Skip-auth mode (development only)
 
-```json
-{
-  "rateLimit": {
-    "windowMs": 900000,
-    "max": 100,
-    "message": "Too many requests from this IP"
-  }
-}
-```
+`systemConfig.routing.skipAuth = true` instructs the dashboard API middleware to materialize a synthetic admin user (`{ username: 'guest', isAdmin: true }`) for any request that has no other credentials. This is useful for local development but should **never** be left on in production: it grants everyone full admin access to the management API. MCP transport routes are not affected by `skipAuth`.
 
-## Session Management
+## Password policy
 
-### Session Configuration
+Local user passwords are validated by `src/utils/passwordValidation.ts` (length and character-class rules). Failed validations on `POST /api/users` or `PUT /api/users/:username` return `400` with the failed checks under `errors`.
 
-```json
-{
-  "session": {
-    "secret": "your-session-secret",
-    "cookie": {
-      "secure": true,
-      "httpOnly": true,
-      "maxAge": 86400000
-    },
-    "store": "redis",
-    "redis": {
-      "host": "localhost",
-      "port": 6379
-    }
-  }
-}
-```
+## See also
 
-### Logout and Session Cleanup
-
-```javascript
-// Logout endpoint
-app.post('/api/auth/logout', (req, res) => {
-  req.session.destroy();
-  res.json({ message: 'Logged out successfully' });
-});
-```
-
-## Security Best Practices
-
-### Password Security
-
-- Use strong password requirements
-- Implement password hashing with bcrypt
-- Support password reset functionality
-- Enable two-factor authentication (2FA)
-
-### Token Security
-
-- Use secure JWT secrets
-- Implement token rotation
-- Set appropriate expiration times
-- Store tokens securely in httpOnly cookies
-
-### Network Security
-
-- Use HTTPS in production
-- Implement proper CORS policies
-- Enable request validation
-- Use security headers (helmet.js)
-
-### Monitoring Security Events
-
-```javascript
-// Log security events
-const auditLog = {
-  event: 'login_attempt',
-  user: username,
-  ip: req.ip,
-  userAgent: req.headers['user-agent'],
-  success: true,
-  timestamp: new Date(),
-};
-```
-
-## Troubleshooting
-
-### Common Authentication Issues
-
-**Invalid Credentials**
-
-```bash
-# Check user exists and password is correct
-curl -X POST http://localhost:3000/api/auth/verify \
-  -d '{"username": "user", "password": "pass"}'
-```
-
-**Token Expiration**
-
-```javascript
-// Handle token refresh
-if (response.status === 401) {
-  const newToken = await refreshToken();
-  // Retry request with new token
-}
-```
-
-**Permission Denied**
-
-```bash
-# Check user permissions
-curl -H "Authorization: Bearer $TOKEN" \
-  http://localhost:3000/api/auth/permissions
-```
-
-### Debug Authentication
-
-Enable authentication debugging:
-
-```bash
-DEBUG=mcphub:auth npm start
-```
-
-## Integration Examples
-
-### Frontend Integration
-
-```javascript
-// React authentication hook
-const useAuth = () => {
-  const [user, setUser] = useState(null);
-
-  const login = async (credentials) => {
-    const response = await fetch('/api/auth/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(credentials),
-    });
-
-    if (response.ok) {
-      const userData = await response.json();
-      setUser(userData.user);
-      return true;
-    }
-    return false;
-  };
-
-  return { user, login };
-};
-```
-
-### Middleware Integration
-
-```javascript
-// Express middleware
-const authMiddleware = (req, res, next) => {
-  const token = req.headers.authorization?.split(' ')[1];
-
-  if (!token) {
-    return res.status(401).json({ error: 'No token provided' });
-  }
-
-  try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = decoded;
-    next();
-  } catch (error) {
-    res.status(401).json({ error: 'Invalid token' });
-  }
-};
-```
+- [Users API](/api-reference/users) — local user CRUD.
+- [OAuth API](/api-reference/auth) — OAuth client management endpoints.
+- [MCP Settings](/configuration/mcp-settings) — where `routing`, `oauth`, and `auth.betterAuth` configuration lives.

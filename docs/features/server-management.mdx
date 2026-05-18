@@ -9,32 +9,46 @@ MCPHub's server management system allows you to centrally configure, monitor, an
 
 ## Adding MCP Servers
 
+MCPHub supports four upstream transports. Pick the one that matches your server before filling in the dashboard form (or the JSON body).
+
+| Transport (`type`) | Description | Key fields |
+| ------------------ | ----------- | ---------- |
+| `stdio` (default) | MCPHub launches a child process and talks MCP over stdio. | `command`, `args`, `env` |
+| `sse` | Long-lived Server-Sent Events HTTP endpoint. | `url`, `headers`, `enableKeepAlive`, `keepAliveInterval` |
+| `streamable-http` | MCP Streamable HTTP transport. | `url`, `headers` |
+| `openapi` | Wraps an OpenAPI service so its operations appear as MCP tools. | `openapi.url` or `openapi.schema`, optional `headers` |
+
 ### Via Dashboard
 
-1. **Access the Dashboard**: Navigate to `http://localhost:3000` and log in
-2. **Click "Add Server"**: Located in the servers section
-3. **Fill Server Details**:
-   - **Name**: Unique identifier for the server
-   - **Command**: Executable command (e.g., `npx`, `uvx`, `python`)
-   - **Arguments**: Array of command arguments
-   - **Environment Variables**: Key-value pairs for environment setup
-   - **Working Directory**: Optional working directory for the command
+1. **Access the Dashboard**: Navigate to `http://localhost:3000` and log in.
+2. **Click "Add Server"** and choose a transport.
+3. Fill in the fields that apply to that transport. Common optional fields available on every transport: `enabled`, `owner`, `description`, `passthroughHeaders`, `oauth`, `proxy`. See [MCP Settings](/configuration/mcp-settings) for the full schema.
 
 ### Via Configuration File
 
-Edit your `mcp_settings.json` file:
+Edit your `mcp_settings.json` file. Examples for each transport:
 
 ```json
 {
   "mcpServers": {
-    "server-name": {
-      "command": "command-to-run",
-      "args": ["arg1", "arg2"],
-      "env": {
-        "API_KEY": "your-api-key",
-        "CONFIG_VALUE": "some-value"
-      },
-      "cwd": "/optional/working/directory"
+    "fetch": {
+      "type": "stdio",
+      "command": "uvx",
+      "args": ["mcp-server-fetch"],
+      "env": { "USER_AGENT": "MCPHub/1.0" }
+    },
+    "amap": {
+      "type": "sse",
+      "url": "https://mcp.amap.com/sse?key=${AMAP_API_KEY}"
+    },
+    "weather": {
+      "type": "streamable-http",
+      "url": "https://example.com/mcp",
+      "headers": { "Authorization": "Bearer ${WEATHER_TOKEN}" }
+    },
+    "stripe": {
+      "type": "openapi",
+      "openapi": { "url": "https://stripe.com/api/openapi.json" }
     }
   }
 }
@@ -47,12 +61,14 @@ Use the REST API to add servers programmatically:
 ```bash
 curl -X POST http://localhost:3000/api/servers \
   -H "Content-Type: application/json" \
-  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "x-auth-token: YOUR_JWT" \
   -d '{
     "name": "fetch-server",
-    "command": "uvx",
-    "args": ["mcp-server-fetch"],
-    "env": {}
+    "config": {
+      "type": "stdio",
+      "command": "uvx",
+      "args": ["mcp-server-fetch"]
+    }
   }'
 ```
 

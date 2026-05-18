@@ -71,7 +71,7 @@ Smart Routing requires additional setup compared to basic MCPHub usage:
         environment:
           - DB_URL=postgresql://mcphub:password@postgres:5432/mcphub
           - OPENAI_API_KEY=your_openai_api_key
-          - ENABLE_SMART_ROUTING=true
+          - SMART_ROUTING_ENABLED=true
         depends_on:
           - postgres
         volumes:
@@ -109,14 +109,14 @@ Smart Routing requires additional setup compared to basic MCPHub usage:
       -e POSTGRES_USER=mcphub \
       -e POSTGRES_PASSWORD=your_password \
       -p 5432:5432 \
-      pgvector/pgvector:pg16
+      pgvector/pgvector:pg17
     ```
 
     2. **Set Environment Variables**:
     ```bash
     export DB_URL="postgresql://mcphub:your_password@localhost:5432/mcphub"
     export OPENAI_API_KEY="your_openai_api_key"
-    export ENABLE_SMART_ROUTING="true"
+    export SMART_ROUTING_ENABLED="true"
     ```
 
     3. **Start MCPHub**:
@@ -185,7 +185,7 @@ Smart Routing requires additional setup compared to basic MCPHub usage:
                 secretKeyRef:
                   name: openai-secret
                   key: api-key
-            - name: ENABLE_SMART_ROUTING
+            - name: SMART_ROUTING_ENABLED
               value: "true"
             ports:
             - containerPort: 3000
@@ -206,7 +206,7 @@ DB_URL=postgresql://user:password@host:5432/database
 OPENAI_API_KEY=your_openai_api_key
 
 # Optional
-ENABLE_SMART_ROUTING=true
+SMART_ROUTING_ENABLED=true
 EMBEDDING_MODEL=text-embedding-3-small
 SIMILARITY_THRESHOLD=0.7
 MAX_TOOLS_RETURNED=10

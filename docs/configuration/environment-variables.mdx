@@ -3,132 +3,142 @@ title: 'Environment Variables'
 description: 'Configure MCPHub using environment variables'
 ---
 
-# Environment Variables
+MCPHub reads the following environment variables at startup. The authoritative list is whatever appears under `process.env.*` in `src/`; this page summarizes everything currently read by the code on `main`.
 
-MCPHub uses environment variables for configuration. This guide covers all available variables and their usage.
-
-## Core Application Settings
-
-### Server Configuration
+## Core application
 
 | Variable | Default | Description |
 | --- | --- | --- |
-| `PORT` | `3000` | Port number for the HTTP server |
-| `INIT_TIMEOUT` | `300000` | Initial timeout for the application |
-| `BASE_PATH` | `''` | The base path of the application |
-| `READONLY` | `false` | Set to `true` to enable readonly mode |
-| `DISABLE_WEB` | `false` | Set to `true` to disable the bundled dashboard UI while keeping backend/API and MCP endpoints available |
-| `TRUST_PROXY` | auto | Express proxy trust setting for reverse-proxy deployments. Accepts `false`, `true`, a hop count such as `1` or `2`, or named presets like `loopback, linklocal, uniquelocal`. Defaults to `1` when running inside Docker/Kubernetes and `false` otherwise. |
-| `MCPHUB_SETTING_PATH` | | Path to the MCPHub settings |
-| `NODE_ENV` | `development` | Application environment (`development`, `production`, `test`) |
+| `PORT` | `3000` | HTTP server port. |
+| `BASE_PATH` | `''` | Mount-point prefix when MCPHub is served under a sub-path (e.g. `/mcphub`). |
+| `INIT_TIMEOUT` | `300000` | Initial timeout (ms) used when starting upstream MCP servers. |
+| `READONLY` | `false` | Reject mutating dashboard API requests. `GET` and `${basePath}/tools/*` remain allowed. |
+| `DISABLE_WEB` | `false` | Skip serving the bundled dashboard. The API and MCP transport routes still run. |
+| `TRUST_PROXY` | auto | Express `trust proxy` setting. Accepts `true`, `false`, a hop count (`1`, `2`, …), or names like `loopback,linklocal,uniquelocal`. Defaults to `1` inside Docker/Kubernetes, `false` otherwise. |
+| `MCPHUB_SETTING_PATH` | `mcp_settings.json` | Override the path of the settings file used by file-mode storage. |
+| `NODE_ENV` | `development` | `development` / `production` / `test`. |
+| `DEBUG` | `false` | Set to `true` to enable verbose startup logging for frontend-path discovery. |
 
-```env
-PORT=3000
-INIT_TIMEOUT=300000
-BASE_PATH=/api
-READONLY=true
-DISABLE_WEB=true
-TRUST_PROXY=1
-MCPHUB_SETTING_PATH=/path/to/settings
-NODE_ENV=production
-```
-
-## Authentication & Security
-
-### Admin Password
+## Authentication
 
 | Variable | Default | Description |
 | --- | --- | --- |
-| `ADMIN_PASSWORD` | *(random)* | Password for the default `admin` user. If not set, a cryptographically random 24-character password is generated on first launch and printed to the server logs. |
+| `ADMIN_PASSWORD` | random | Password seeded for the bootstrap `admin` user when no users exist yet. If unset, a 24-character random password is generated and printed to the logs. |
+| `JWT_SECRET` | random per-process | Secret used to sign JWTs issued by `/api/auth/login`. **Set this in production** — otherwise a new random secret is generated on every restart and existing tokens stop working. |
 
-```env
-ADMIN_PASSWORD=your-secure-admin-password
+### Better Auth (optional social login)
+
+These are only consumed when `auth.betterAuth.enabled` is set in `mcp_settings.json` (or the equivalent system config). Better Auth is initialized in `src/betterAuth.ts`.
+
+| Variable | Description |
+| --- | --- |
+| `BETTER_AUTH_URL` | Public base URL of MCPHub. Required so Better Auth can generate redirect URIs. |
+| `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` | GitHub OAuth app credentials. |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Google OAuth app credentials. |
+
+## Storage
+
+MCPHub picks file or database storage at boot:
+
 ```
-
-### JWT Configuration
+useDatabase = (USE_DB === 'true') OR (USE_DB unset AND DB_URL is set)
+```
 
 | Variable | Default | Description |
 | --- | --- | --- |
-| `JWT_SECRET` | - | Secret key for JWT token signing (required) |
+| `USE_DB` | unset | Force database mode (`true`) or file mode (`false`). |
+| `DB_URL` | unset | PostgreSQL connection URL. Required for database mode. |
+| `USE_DAO_LAYER` | unset | Force the DAO layer on even in file mode (advanced; usually unnecessary). |
+| `DB_POOL_SIZE` | `10` | Maximum TypeORM connection pool size. |
+| `DB_POOL_IDLE_TIMEOUT` | `30000` | Idle pool connection timeout (ms). |
+| `DB_CONNECTION_TIMEOUT` | `30000` | Initial connect timeout (ms). |
+| `DB_CONNECTION_RETRY_DELAY` | `2000` | Base delay between connection retries (ms). |
+| `DB_MAX_CONNECTION_RETRIES` | `5` | Maximum connection retry attempts at startup. |
+| `DB_ENABLE_HEALTH_CHECK` | `true` | Run periodic DB health probes (consumed by `/health`). |
+| `DB_HEALTH_CHECK_INTERVAL` | `30000` | Health-probe interval (ms). |
+
+See [Database Configuration](/configuration/database-configuration) for end-to-end setup.
+
+## Smart Routing & embeddings
+
+Smart Routing performs vector search over upstream tools to surface only the few most relevant tools for a given query. It requires Postgres + pgvector and an embedding endpoint.
+
+| Variable | Default | Description |
+| --- | --- | --- |
+| `SMART_ROUTING_ENABLED` | `false` | Master switch for smart routing. |
+| `SMART_ROUTING_EMBEDDING_PROVIDER` | `openai` | Embedding provider. Currently `openai` or `azure_openai`. |
+| `SMART_ROUTING_EMBEDDING_ENCODING_FORMAT` | provider default | Override the `encoding_format` passed to the embedding API. |
+| `SMART_ROUTING_BASE_PACING_DELAY_MS` | `0` | Base delay (ms) applied between embedding requests to avoid rate limits. |
+| `SMART_ROUTING_PROGRESSIVE_DISCLOSURE` | unset | When set, expose progressively-disclosed tool metadata (see Smart Routing docs). |
+| `EMBEDDING_MODEL` | `text-embedding-3-small` | Embedding model name. |
+| `EMBEDDING_MAX_TOKENS` | per-model | Override token truncation limit before embedding. Useful to match a local inference server's batch size. |
+
+### OpenAI
+
+| Variable | Description |
+| --- | --- |
+| `OPENAI_API_KEY` | API key. |
+| `OPENAI_API_BASE_URL` | Override the base URL (set this for any OpenAI-compatible endpoint, e.g. LocalAI). |
+
+### Azure OpenAI
+
+| Variable | Description |
+| --- | --- |
+| `AZURE_OPENAI_API_KEY` | API key. |
+| `AZURE_OPENAI_ENDPOINT` | Resource endpoint (e.g. `https://my-resource.openai.azure.com`). |
+| `AZURE_OPENAI_API_VERSION` | API version (e.g. `2024-02-01`). |
+| `AZURE_OPENAI_EMBEDDING_DEPLOYMENT` | Deployment name. |
+| `AZURE_OPENAI_EMBEDDING_MODEL` | The underlying OpenAI model the deployment maps to (e.g. `text-embedding-3-small`). Used for tokenizer and limit selection. |
+
+## MCPRouter (optional upstream catalog)
+
+| Variable | Description |
+| --- | --- |
+| `MCPROUTER_API_KEY` | API key for the MCPRouter cloud catalog. |
+| `MCPROUTER_API_BASE` | Override the API base URL (default `https://api.mcprouter.to/v1`). |
+| `MCPROUTER_REFERER` | Optional `Referer` header sent on MCPRouter requests. |
+| `MCPROUTER_TITLE` | Optional `Title` header sent on MCPRouter requests. |
+
+## Configuration examples
+
+### Development
 
 ```env
-JWT_SECRET=your-super-secret-key-change-this-in-production
-```
-
-## Smart Routing & Embeddings
-
-### Embedding Configuration
-
-| Variable | Type | Default | Description |
-| --- | --- | --- | --- |
-| `SMART_ROUTING_ENABLED` | `boolean` | `false` | Enable the smart routing feature |
-| `EMBEDDING_MODEL` | `string` | `text-embedding-3-small` | Embedding model name used for vector search |
-| `AZURE_OPENAI_EMBEDDING_MODEL` | `string` | `text-embedding-3-small` | The actual OpenAI model name deployed in Azure (e.g. `text-embedding-3-small`). Azure deployment names are arbitrary identifiers, so this field tells MCPHub which OpenAI model is behind the deployment, enabling correct token-limit enforcement and tokenizer selection. Only used when `SMART_ROUTING_EMBEDDING_PROVIDER=azure_openai`. |
-| `EMBEDDING_MAX_TOKENS` | `number` | By model | Maximum tokens for text truncation before generating embeddings. Overrides the per-model default. Useful to match the `batch_size` of a local inference server (e.g. LocalAI, LM Studio). When unset, the limit is resolved automatically: `text-embedding-*` → 8191, `bge-m3` → 8192, `gemini-embedding-001` → 2048, other BGE models → 512, unknown models → 512. |
-
-```env
-# Limit truncation to 510 tokens to match a LocalAI batch_size=512 setup
-EMBEDDING_MAX_TOKENS=510
-```
-
-## Configuration Examples
-
-### Development Environment
-
-```env
-# .env.development
 NODE_ENV=development
 PORT=3000
-
-# Auth
 JWT_SECRET=dev-secret-key
 ```
 
-### Production Environment
+### Production with database + Smart Routing
 
 ```env
-# .env.production
 NODE_ENV=production
 PORT=3000
+BASE_PATH=
+JWT_SECRET=replace-with-32+-random-bytes
 
-# Security
-JWT_SECRET=your-super-secure-production-secret
+USE_DB=true
+DB_URL=postgresql://mcphub:secret@db:5432/mcphub
+
+SMART_ROUTING_ENABLED=true
+OPENAI_API_KEY=sk-...
+EMBEDDING_MODEL=text-embedding-3-small
 ```
 
-### Docker Environment
+## Loading order
 
-```env
-# .env.docker
-NODE_ENV=production
-PORT=3000
+MCPHub loads variables in this order; later sources override earlier ones:
 
-# Security
-JWT_SECRET_FILE=/run/secrets/jwt_secret
-```
+1. System environment variables.
+2. `.env.local` (gitignored).
+3. `.env.{NODE_ENV}` (e.g. `.env.production`).
+4. `.env`.
 
-## Environment Variable Loading
+`dotenv-expand` is enabled, so `${VAR}` interpolation works inside `.env*` files.
 
-MCPHub loads environment variables in the following order:
+## Security best practices
 
-1. System environment variables
-2. `.env.local` (ignored by git)
-3. `.env.{NODE_ENV}` (e.g., `.env.production`)
-4. `.env`
-
-### Using dotenv-expand
-
-MCPHub supports variable expansion:
-
-```env
-BASE_URL=https://api.example.com
-API_ENDPOINT=${BASE_URL}/v1
-```
-
-## Security Best Practices
-
-1. **Never commit secrets** to version control
-2. **Use strong, unique secrets** for production
-3. **Rotate secrets regularly**
-4. **Use environment-specific files**
-5. **Validate all environment variables** at startup
-6. **Use Docker secrets** for container deployments
+1. Never commit secrets — `.env*` files are gitignored by default; keep it that way.
+2. Always set `JWT_SECRET` explicitly in production.
+3. Rotate bearer keys (`/api/auth/keys`) and OAuth client secrets periodically.
+4. Use Docker / Kubernetes secrets for container deployments instead of plain `-e`.

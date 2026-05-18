@@ -52,8 +52,8 @@ Create a `mcp_settings.json` file:
 # Run with custom config (recommended)
 docker run -p 3000:3000 -v ./mcp_settings.json:/app/mcp_settings.json -v ./data:/app/data samanhappy/mcphub
 
-# Or run with default settings
-docker run -p 3000:3000 samanhappy/mcphub
+# Or run with default settings (also mount ./data so credentials and state survive restarts)
+docker run -p 3000:3000 -v ./data:/app/data samanhappy/mcphub
 ```
 
 ### Access Dashboard
@@ -111,9 +111,10 @@ pnpm dev
 
 ## 🔍 Tech Stack
 
-- **Backend**: Node.js, Express, TypeScript
+- **Backend**: Node.js, Express, TypeScript (ESM)
 - **Frontend**: React, Vite, Tailwind CSS
-- **Auth**: JWT & bcrypt
+- **Storage**: file-based `mcp_settings.json` by default; PostgreSQL via TypeORM with pgvector for Smart Routing
+- **Auth**: JWT + bcrypt for local accounts; bearer keys; built-in OAuth 2.0 server (`@node-oauth/oauth2-server`); optional Better Auth for GitHub/Google login
 - **Protocol**: Model Context Protocol SDK
 
 ## 👥 Contributing

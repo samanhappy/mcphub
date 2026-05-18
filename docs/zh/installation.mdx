@@ -90,8 +90,8 @@ description: '各种平台的详细安装说明'
           - ./mcp_settings.json:/app/mcp_settings.json
         environment:
           - PORT=3000
-          - BASE_PATH=""
-          - REQUEST_TIMEOUT=60000
+          - BASE_PATH=
+          - INIT_TIMEOUT=300000
         restart: unless-stopped
 
       # 可选：用于智能路由的 PostgreSQL
@@ -202,7 +202,7 @@ description: '各种平台的详细安装说明'
     pnpm dev
 
     # 这将启动：
-    # - 后端在 http://localhost:3001
+    # - 后端在 http://localhost:3000
     # - 前端在 http://localhost:5173
     # - 前端代理 API 调用到后端
     ```
@@ -383,7 +383,7 @@ description: '各种平台的详细安装说明'
       -e POSTGRES_USER=mcphub \
       -e POSTGRES_PASSWORD=your_password \
       -p 5432:5432 \
-      pgvector/pgvector:pg16
+      pgvector/pgvector:pg17
     ```
   </Tab>
 
@@ -429,7 +429,7 @@ OPENAI_API_KEY=your_openai_api_key
 EMBEDDING_MODEL=text-embedding-3-small
 
 # 可选：启用智能路由
-ENABLE_SMART_ROUTING=true
+SMART_ROUTING_ENABLED=true
 ``` */}
 
 ## 验证

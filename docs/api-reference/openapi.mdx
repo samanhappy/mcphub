@@ -235,8 +235,8 @@ The generated OpenAPI specification includes:
 
 ### Security
 
-- Bearer authentication is defined but not enforced for tool execution endpoints
-- Enables flexible integration with various OpenAPI-compatible systems
+- The OpenAPI specification and tool execution endpoints are mounted **outside** the authenticated router (see `app.use(${BASE_PATH}/api, router)` versus the `app.get(${BASE_PATH}/api/openapi*)` and `app.get(${BASE_PATH}/api/tools/...)` registrations in `src/routes/index.ts`). They do not require a JWT, bearer key, OAuth token, or Better Auth session.
+- For private deployments, gate these endpoints at your reverse proxy or only expose MCPHub on a trusted network.
 
 ## Benefits over MCPO
 

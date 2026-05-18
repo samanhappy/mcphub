@@ -54,7 +54,7 @@ Backend listens on `:3000` (or `$PORT`). Frontend dev server `:5173` proxies API
 pnpm lint && pnpm test:ci && pnpm build
 ```
 
-CI runs the same on Node 20.x. If a hook fails, fix the root cause — do **not** bypass with `--no-verify`.
+The runtime requirement is `^18.0.0 || >=20.0.0` (see `package.json`); CI runs on Node 20.x, and the published Docker image is built on Node 22 (see `Dockerfile`). If a hook fails, fix the root cause — do **not** bypass with `--no-verify`.
 
 ### Post-change manual checks (when relevant)
 
@@ -106,7 +106,8 @@ Common pitfalls: forgetting step 6 → silent migration drop; missing `nullable:
 
 - `/mcp/{group|server}` — route to a specific group or single server.
 - `/mcp/$smart` — smart routing.
-- Auth: JWT (HS256) + bcrypt password hashing. Default admin password is randomized unless `ADMIN_PASSWORD` is set.
+- `/:user/mcp/{group|server}`, `/:user/sse/{group}` — user-scoped variants; the `:user` prefix selects which owner's servers/groups are visible. See `AppServer.initialize()` in [src/server.ts](src/server.ts).
+- Auth: JWT (HS256) + bcrypt for the dashboard, layered with bearer keys (`/api/auth/keys`), MCPHub's own OAuth authorization server (`@node-oauth/oauth2-server`), and optional Better Auth (GitHub/Google). Default admin password is randomized unless `ADMIN_PASSWORD` is set on first launch.
 
 For deeper architecture context, read [docs/development/architecture.mdx](docs/development/architecture.mdx).
 

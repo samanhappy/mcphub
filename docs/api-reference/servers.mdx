@@ -5,68 +5,20 @@ description: "Manage your MCP servers."
 
 import { Card, Cards } from 'mintlify';
 
-<Card
-  title="GET /api/servers"
-  href="#get-all-servers"
->
-  Get a list of all MCP servers.
-</Card>
-
-<Card
-  title="POST /api/servers"
-  href="#create-a-new-server"
->
-  Create a new MCP server.
-</Card>
-
-<Card
-  title="PUT /api/servers/:name"
-  href="#update-a-server"
->
-  Update an existing MCP server.
-</Card>
-
-<Card
-  title="DELETE /api/servers/:name"
-  href="#delete-a-server"
->
-  Delete an MCP server.
-</Card>
-
-<Card
-  title="POST /api/servers/:name/toggle"
-  href="#toggle-a-server"
->
-  Toggle the enabled state of a server.
-</Card>
-
-<Card
-  title="POST /api/servers/:serverName/tools/:toolName/toggle"
-  href="#toggle-a-tool"
->
-  Toggle the enabled state of a tool.
-</Card>
-
-<Card
-  title="PUT /api/servers/:serverName/tools/:toolName/description"
-  href="#update-tool-description"
->
-  Update the description of a tool.
-</Card>
-
-<Card
-  title="PUT /api/system-config"
-  href="#update-system-config"
->
-  Update system configuration settings.
-</Card>
-
-<Card
-  title="GET /api/settings"
-  href="#get-settings"
->
-  Get all server settings and configurations.
-</Card>
+<Card title="GET /api/servers" href="#get-all-servers">List all MCP servers and their status.</Card>
+<Card title="GET /api/servers/:name" href="#get-a-server">Read a single server's configuration.</Card>
+<Card title="POST /api/servers" href="#create-a-new-server">Add a new MCP server.</Card>
+<Card title="POST /api/servers/batch" href="#batch-create-servers">Add multiple servers in one request.</Card>
+<Card title="PUT /api/servers/:name" href="#update-a-server">Update an existing server.</Card>
+<Card title="DELETE /api/servers/:name" href="#delete-a-server">Remove a server.</Card>
+<Card title="POST /api/servers/:name/toggle" href="#toggle-a-server">Enable or disable a server.</Card>
+<Card title="POST /api/servers/:name/reload" href="#reload-a-server">Reconnect to an upstream server.</Card>
+<Card title="POST /api/servers/:serverName/tools/:toolName/toggle" href="#toggle-a-tool">Enable or disable a tool.</Card>
+<Card title="PUT /api/servers/:serverName/tools/:toolName/description" href="#update-tool-description">Override a tool description.</Card>
+<Card title="DELETE /api/servers/:serverName/tools/:toolName/description" href="#reset-tool-description">Reset a tool description to upstream.</Card>
+<Card title="Prompts on servers" href="#prompts">Toggle / describe / reset prompts.</Card>
+<Card title="Resources on servers" href="#resources">Toggle / describe / reset resources.</Card>
+<Card title="GET /api/settings" href="#get-settings">Read everything: servers, groups, system config.</Card>
 
 ---
 
@@ -102,6 +54,16 @@ Retrieves a list of all configured MCP servers, including their status and avail
 
 ---
 
+### Get a Server
+
+Returns the configuration of a single server, including upstream tools/prompts/resources when connected.
+
+- **Endpoint**: `GET /api/servers/:name`
+- **Authentication**: Required.
+- Returns `404` if the server is not configured.
+
+---
+
 ### Create a New Server
 
 Adds a new MCP server to the configuration.
@@ -131,7 +93,31 @@ Adds a new MCP server to the configuration.
       - `schema` (object): The OpenAPI schema object itself.
     - `headers` (object): Headers to send with requests for `sse`, `streamable-http`, and `openapi` types.
     - `keepAliveInterval` (number): Keep-alive interval in milliseconds for `sse` type. Defaults to 60000.
-    - `owner` (string): The owner of the server. Defaults to the current user or 'admin'.
+    - `enableKeepAlive` (boolean): Toggle keep-alive pings on/off independent of the interval.
+    - `enabled` (boolean): Defaults to `true`. Disabled servers stay in the configuration but are not connected.
+    - `owner` (string): The owner of the server. Defaults to the current user or `'admin'`.
+    - `passthroughHeaders` (string[]): Inbound HTTP header names that should be forwarded to the upstream server.
+    - `oauth`, `proxy`, `options`, `description`: Optional advanced settings — see [MCP Settings](/configuration/mcp-settings).
+
+---
+
+### Batch Create Servers
+
+Create several servers in a single request. The body is identical to a single `POST /api/servers` payload, but `config` is a record of `{ [serverName]: ServerConfig }`:
+
+- **Endpoint**: `POST /api/servers/batch`
+- **Authentication**: Required.
+- **Body**:
+  ```json
+  {
+    "servers": {
+      "fetch": { "type": "stdio", "command": "uvx", "args": ["mcp-server-fetch"] },
+      "amap": { "type": "sse", "url": "https://mcp.amap.com/sse?key=..." }
+    }
+  }
+  ```
+
+Returns a summary of successes and failures so partial batches do not abort the whole request.
 
 ---
 
@@ -186,6 +172,15 @@ Enables or disables an MCP server.
 
 ---
 
+### Reload a Server
+
+Forces MCPHub to disconnect and re-establish the upstream connection (or re-spawn the stdio child) for a single server. Use this when an upstream server has been updated out-of-band or appears stuck.
+
+- **Endpoint**: `POST /api/servers/:name/reload`
+- **Authentication**: Required.
+
+---
+
 ### Toggle a Tool
 
 Enables or disables a specific tool on a server.
@@ -224,23 +219,44 @@ Updates the description of a specific tool.
 
 ---
 
-### Update System Config
+### Reset Tool Description
 
-Updates the system-wide configuration settings.
+Drops the override stored in MCPHub and falls back to the upstream tool description.
 
-- **Endpoint**: `/api/system-config`
-- **Method**: `PUT`
-- **Body**:
-  ```json
-  {
-    "openaiApiKey": "sk-...",
-    "openaiBaseUrl": "https://api.openai.com/v1",
-    "modelName": "gpt-4",
-    "temperature": 0.7,
-    "maxTokens": 2048
-  }
-  ```
-  - All fields are optional. Only provided fields will be updated.
+- **Endpoint**: `DELETE /api/servers/:serverName/tools/:toolName/description`
+- **Authentication**: Required.
+
+---
+
+### Prompts
+
+MCPHub exposes the same toggle / describe / reset triple for upstream prompts. The body shape mirrors the tool endpoints above.
+
+| Method & Path | Purpose |
+| ------------- | ------- |
+| `POST /api/servers/:serverName/prompts/:promptName/toggle` | Enable / disable a prompt. Body: `{ "enabled": true }`. |
+| `PUT /api/servers/:serverName/prompts/:promptName/description` | Override the prompt description. Body: `{ "description": "..." }`. |
+| `DELETE /api/servers/:serverName/prompts/:promptName/description` | Reset the description to the upstream value. |
+
+---
+
+### Resources
+
+| Method & Path | Purpose |
+| ------------- | ------- |
+| `POST /api/servers/:serverName/resources/:resourceUri/toggle` | Enable / disable a resource. Body: `{ "enabled": true }`. The `:resourceUri` must be URL-encoded. |
+| `PUT /api/servers/:serverName/resources/:resourceUri/description` | Override the resource description. |
+| `DELETE /api/servers/:serverName/resources/:resourceUri/description` | Reset the description. |
+
+---
+
+### System Configuration
+
+System-wide configuration (routing, install, smart routing, mcpRouter, name separator, session rebuild, OAuth server) is managed through `PUT /api/system-config`. See [System Config API](/api-reference/config) for the full request schema and accepted top-level keys (`routing`, `install`, `smartRouting`, `mcpRouter`, `nameSeparator`, `enableSessionRebuild`, `oauthServer`).
+
+<Warning>
+  The legacy `openaiApiKey` / `modelName` / `temperature` / `maxTokens` request body is no longer accepted. Smart-routing model selection now lives under the nested `smartRouting` object documented in [System Config API](/api-reference/config).
+</Warning>
 
 ---
 
@@ -262,4 +278,26 @@ Retrieves all server settings and configurations.
   }
   ```
 
-**Note**: For detailed prompt management, see the [Prompts API](/api-reference/prompts) documentation.
+**Note**: For built-in prompt and resource management (not tied to an upstream server), see the [Prompts API](/api-reference/prompts) documentation.
+
+---
+
+## Other server-adjacent endpoints
+
+MCPHub exposes several other route families beyond pure server CRUD. Each lives on its own resource and is documented separately or, where no dedicated page exists yet, follows the schema described inline:
+
+| Family | Method & Path(s) | Notes |
+| ------ | ---------------- | ----- |
+| **Auth & users** | `POST /api/auth/login`, `POST /api/auth/register`, `GET /api/auth/user`, `POST /api/auth/change-password`, `/api/users/*`, `/api/users-stats` | See [Auth](/api-reference/auth) and [Users](/api-reference/users). |
+| **Bearer keys** | `GET /api/auth/keys`, `POST /api/auth/keys`, `PUT /api/auth/keys/:id`, `DELETE /api/auth/keys/:id` | Static tokens accepted by the dashboard / MCP transport. See [Authentication](/features/authentication). |
+| **Groups** | `/api/groups`, `/api/groups/batch`, `/api/groups/:id/servers*`, `/api/groups/:id/server-configs*` | See [Groups](/api-reference/groups). |
+| **Templates** | `POST /api/templates/export`, `GET /api/templates/export/groups/:id`, `POST /api/templates/import` | Export / import `mcp_settings.json` snapshots and group templates. Rate-limited. |
+| **Activities** | `GET /api/activities`, `/api/activities/stats`, `/api/activities/filters`, `/api/activities/:id`, `DELETE /api/activities/cleanup`, `GET /api/activities/available` | Database mode only — see [Monitoring](/features/monitoring). |
+| **Logs** | `GET /api/logs`, `DELETE /api/logs`, `GET /api/logs/stream` | In-process log buffer + SSE stream. |
+| **Built-in prompts / resources** | `/api/prompts`, `/api/resources`, `POST /api/resources/read` | First-party prompts and resources that are not attached to an upstream server. |
+| **MCPB upload** | `POST /api/mcpb/upload` | Upload an MCPB bundle to register a new server. |
+| **Market / Cloud / Registry** | `/api/market/*`, `/api/cloud/*`, `/api/registry/*` | Read-only catalogs that back the dashboard's discovery pages. |
+| **OAuth clients (MCPHub server)** | `/api/oauth/clients`, `/api/oauth/clients/:clientId/regenerate-secret` | Manage clients of MCPHub's own authorization server. The flow itself lives at `/oauth/*` and is documented under [OAuth](/features/oauth). |
+| **Better Auth** | `GET /api/better-auth/user`, plus the Better Auth handler mounted at `${BASE_PATH}${betterAuthConfig.basePath}` (default `/api/auth/better`) | Optional GitHub / Google login. |
+| **OpenAPI** | `GET ${BASE_PATH}/api/openapi.json`, `GET ${BASE_PATH}/api/:name/openapi.json`, `GET ${BASE_PATH}/api/openapi/servers`, `GET ${BASE_PATH}/api/openapi/stats`, plus the OpenAPI tool execution routes | See [OpenAPI](/api-reference/openapi). |
+| **MCP settings export** | `GET /api/mcp-settings/export` | Download the live settings as JSON. |

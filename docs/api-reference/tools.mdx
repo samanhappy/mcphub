@@ -32,7 +32,9 @@ Execute a specific tool on an MCP server with given arguments.
     }
   }
   ```
-  - `toolName` (string, required): The name of the tool to execute.
+  - `toolName` (string, required): The name of the tool to execute. Accepted in either form:
+    - The bare upstream tool name (e.g. `weather`). MCPHub will route it to `:server`.
+    - The fully qualified `<server><separator><tool>` form (e.g. `amap-weather`). The separator defaults to `-` and is configurable via `systemConfig.nameSeparator` (see [System Config API](/api-reference/config)). Use the qualified form when an upstream tool name happens to contain the separator and you need to disambiguate.
   - `arguments` (object, optional): The arguments to pass to the tool. Defaults to an empty object.
 
 - **Response**:

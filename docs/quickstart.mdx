@@ -39,7 +39,7 @@ description: 'Get MCPHub running in 5 minutes'
     pnpm dev
     ```
 
-    This starts both backend (port 3001) and frontend (port 5173) in development mode.
+    This starts both backend (port 3000) and frontend (port 5173) in development mode. The Vite dev server proxies API and MCP traffic to the backend.
 
   </Tab>
   <Tab title="npm Package">
@@ -79,25 +79,40 @@ ADMIN_PASSWORD=your-secure-password docker run -p 3000:3000 samanhappy/mcphub
 
 <Warning>Change the admin password after first login for security.</Warning>
 
+<Note>
+  `ADMIN_PASSWORD` and the random password printed to the logs apply only the **first** time MCPHub starts with an empty users list. Once any user exists, the variable is ignored — manage passwords through the dashboard or `PUT /api/users/:username` afterwards. To force a fresh bootstrap, remove the users from `mcp_settings.json` (file mode) or the `mcphub_user` table (database mode) before restarting.
+</Note>
+
 ### 3. Configure Your First MCP Server
 
-1. Click **"Add Server"** in the dashboard
-2. Enter server details:
-   - **Name**: A unique identifier (e.g., `fetch`)
-   - **Command**: The executable command (`uvx`)
-   - **Args**: Command arguments (`["mcp-server-fetch"]`)
-   - **Environment**: Any required environment variables
+Click **"Add Server"** in the dashboard. The form supports four transport types — pick the one that matches the upstream server:
 
-Example configuration for a fetch server:
+| Type | When to use | Required fields |
+| ---- | ----------- | --------------- |
+| `stdio` (default) | The server runs as a local process you launch (`uvx`, `npx`, etc.). | `command`, optional `args` and `env`. |
+| `sse` | The server is reachable over HTTP/SSE. | `url`, optional `headers`, `enableKeepAlive`, `keepAliveInterval`. |
+| `streamable-http` | The server speaks MCP Streamable HTTP. | `url`, optional `headers`. |
+| `openapi` | You want to expose an OpenAPI service as MCP tools. | `openapi.url` or `openapi.schema`. |
+
+Example stdio configuration:
 
 ```json
 {
   "name": "fetch",
-  "command": "uvx",
-  "args": ["mcp-server-fetch"],
-  "env": {}
+  "config": { "type": "stdio", "command": "uvx", "args": ["mcp-server-fetch"] }
 }
 ```
+
+Example SSE configuration:
+
+```json
+{
+  "name": "amap",
+  "config": { "type": "sse", "url": "https://mcp.amap.com/sse?key=YOUR_KEY" }
+}
+```
+
+See [MCP Settings](/configuration/mcp-settings) for the complete field reference.
 
 ## Basic Usage
 

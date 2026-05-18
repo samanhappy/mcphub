@@ -159,7 +159,7 @@ MCPHub integrates [Better Auth](https://www.better-auth.com/) to provide seamles
     *   **Google**: Set `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`.
 
 **Endpoints**:
-The Better Auth API is mounted at `/api/auth/better`. Key endpoints include:
+The Better Auth handler is mounted at `${BASE_PATH}${betterAuthConfig.basePath}`. The default `betterAuthConfig.basePath` is `/api/auth/better`, but it is configurable through `systemConfig.auth.betterAuth.basePath` in `mcp_settings.json`. If you also set `BASE_PATH`, prepend it to every example below. Key endpoints include:
 
 - **Initiate Login**:
   - `GET /api/auth/better/signIn/social?provider=github`

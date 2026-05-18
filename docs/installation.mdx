@@ -90,8 +90,8 @@ Optional for Smart Routing:
           - ./mcp_settings.json:/app/mcp_settings.json
         environment:
           - PORT=3000
-          - BASE_PATH=""
-          - REQUEST_TIMEOUT=60000
+          - BASE_PATH=
+          - INIT_TIMEOUT=300000
         restart: unless-stopped
 
       # Optional: PostgreSQL for Smart Routing
@@ -202,7 +202,7 @@ Optional for Smart Routing:
     pnpm dev
 
     # This will start:
-    # - Backend on http://localhost:3001
+    # - Backend on http://localhost:3000
     # - Frontend on http://localhost:5173
     # - Frontend proxies API calls to backend
     ```
@@ -408,7 +408,7 @@ Smart Routing provides AI-powered tool discovery using vector semantic search.
       -e POSTGRES_USER=mcphub \
       -e POSTGRES_PASSWORD=your_password \
       -p 5432:5432 \
-      pgvector/pgvector:pg16
+      pgvector/pgvector:pg17
     ```
   </Tab>
 
@@ -454,7 +454,7 @@ OPENAI_API_KEY=your_openai_api_key
 EMBEDDING_MODEL=text-embedding-3-small
 
 # Optional: Enable smart routing
-ENABLE_SMART_ROUTING=true
+SMART_ROUTING_ENABLED=true
 ``` */}
 
 ## Verification
