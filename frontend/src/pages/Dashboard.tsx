@@ -97,6 +97,8 @@ const DashboardPage: React.FC = () => {
 
   const recentServers = useMemo(() => allServers.slice(0, 6), [allServers]);
   const baseUrl = installConfig?.baseUrl?.replace(/\/+$/, '') || '';
+  const recentServerColumns =
+    'minmax(220px,1.9fr) minmax(110px,0.95fr) minmax(120px,0.95fr) 80px 80px 90px 72px';
 
   const showSkeleton = !hasLoaded;
 
@@ -186,7 +188,7 @@ const DashboardPage: React.FC = () => {
           </div>
           <div
             className="hub-row head hub-mono"
-            style={{ gridTemplateColumns: '1.3fr 110px 70px 90px 80px 80px 80px' }}
+            style={{ gridTemplateColumns: recentServerColumns }}
           >
             <div>{t('server.name')}</div>
             <div>{t('server.status')}</div>
@@ -200,7 +202,7 @@ const DashboardPage: React.FC = () => {
             <div
               key={s.name}
               className="hub-row hover cursor-pointer"
-              style={{ gridTemplateColumns: '1.3fr 110px 70px 90px 80px 80px 80px' }}
+              style={{ gridTemplateColumns: recentServerColumns }}
               onClick={() => navigate('/servers')}
             >
               <div className="flex items-center gap-2 min-w-0">
@@ -212,12 +214,14 @@ const DashboardPage: React.FC = () => {
                 </span>
                 {s.error && <AlertCircle size={13} className="text-[var(--hub-err)] flex-shrink-0" />}
               </div>
-              <div>
+              <div className="min-w-0">
                 <ServerStatusDot status={s.status} enabled={s.enabled} />
               </div>
-              <div>
+              <div className="min-w-0">
                 {s.config?.type ? (
-                  <span className="hub-tag">{transportLabel(t, s.config.type)}</span>
+                  <span className="hub-tag" title={transportLabel(t, s.config.type) ?? undefined}>
+                    {transportLabel(t, s.config.type)}
+                  </span>
                 ) : (
                   <span style={{ color: 'var(--hub-ink-3)', fontSize: 12 }}>—</span>
                 )}

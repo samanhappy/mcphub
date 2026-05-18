@@ -301,7 +301,10 @@ const ServerCard = ({ server, onRemove, onEdit, onToggle, onRefresh, onReload }:
         {/* Main row */}
         <div
           className="grid items-center gap-3 px-4 py-3 cursor-pointer hover:bg-[var(--hub-surface-hover)] transition-colors"
-          style={{ gridTemplateColumns: 'minmax(220px,1.6fr) 130px 90px 140px 80px 36px' }}
+          style={{
+            gridTemplateColumns:
+              'minmax(220px,1.9fr) minmax(110px,0.9fr) minmax(120px,0.95fr) minmax(140px,1fr) 72px 36px',
+          }}
           onClick={() => setExpanded(!expanded)}
         >
           {/* Name + description */}
@@ -408,14 +411,16 @@ const ServerCard = ({ server, onRemove, onEdit, onToggle, onRefresh, onReload }:
           </div>
 
           {/* Status */}
-          <div>
+          <div className="min-w-0">
             <ServerStatusDot status={server.status} enabled={server.enabled} onAuthClick={handleOAuth} />
           </div>
 
           {/* Transport */}
-          <div>
+          <div className="min-w-0">
             {server.config?.type ? (
-              <span className="hub-tag">{transportLabel(t, server.config.type)}</span>
+              <span className="hub-tag" title={transportLabel(t, server.config.type) ?? undefined}>
+                {transportLabel(t, server.config.type)}
+              </span>
             ) : (
               <span style={{ color: 'var(--hub-ink-3)', fontSize: 12 }}>—</span>
             )}
@@ -423,7 +428,7 @@ const ServerCard = ({ server, onRemove, onEdit, onToggle, onRefresh, onReload }:
 
           {/* Tools / Prompts / Resources counts */}
           <div
-            className="flex items-center gap-2.5 hub-num hub-mono"
+            className="flex min-w-0 items-center gap-2 hub-num hub-mono"
             style={{ color: 'var(--hub-ink-2)', fontSize: 12 }}
             title={`T:${enabledTools}/${totalTools} · P:${enabledPrompts}/${totalPrompts} · R:${enabledResources}/${totalResources}`}
           >
@@ -525,7 +530,7 @@ const ServerCard = ({ server, onRemove, onEdit, onToggle, onRefresh, onReload }:
             }}
           >
             {/* Capability tabs + endpoint on same row */}
-            <div className="flex items-center gap-1 mb-2">
+            <div className="flex items-center gap-1 mb-2 flex-wrap">
               {[
                 {
                   key: 'tools' as const,
@@ -571,7 +576,7 @@ const ServerCard = ({ server, onRemove, onEdit, onToggle, onRefresh, onReload }:
               })}
 
               {/* Endpoint inline, pushed to the right */}
-              <div className="ml-auto flex-shrink-0">
+              <div className="ml-auto max-w-full flex-shrink-0">
                 <div className="hub-endpoint" style={{ height: 26 }}>
                   <div className="hub-endpoint-label">/mcp/</div>
                   <div className="hub-endpoint-url" title={serverEndpoint} style={{ maxWidth: 200 }}>

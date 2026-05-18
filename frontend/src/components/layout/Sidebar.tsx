@@ -130,7 +130,14 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
     >
       {/* Brand */}
       <div className={'flex items-center gap-2.5 ' + (collapsed ? 'px-2 py-3 justify-center' : 'px-4 py-3')}>
-        <div className="relative w-7 h-7 rounded-md bg-[var(--hub-ink)] grid place-items-center text-white hub-mono font-semibold text-[12px]">
+        <div
+          className="relative grid h-7 w-7 place-items-center rounded-md text-white hub-mono text-[12px] font-semibold"
+          style={{
+            background:
+              'linear-gradient(135deg, var(--hub-accent), oklch(0.62 0.18 285))',
+            boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.14)',
+          }}
+        >
           <span>M</span>
           <span
             className="absolute -right-0.5 -bottom-0.5 w-[6px] h-[6px] rounded-full"

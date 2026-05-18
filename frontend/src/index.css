@@ -64,6 +64,7 @@
 
 /* Status dot + text (replaces pills) */
 .hub-status { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--hub-ink-2); }
+.hub-status { white-space: nowrap; }
 .hub-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--hub-ink-3); flex-shrink: 0; }
 .hub-status.ok    { color: oklch(0.4 0.13 145); }
 .hub-status.ok    .hub-dot { background: var(--hub-ok); box-shadow: 0 0 0 3px oklch(0.66 0.15 145 / 0.15); }
@@ -89,6 +90,9 @@
   border: 1px solid var(--hub-line);
   font-family: var(--hub-mono);
   white-space: nowrap;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .hub-tag.accent { color: var(--hub-accent); background: var(--hub-accent-soft); border-color: transparent; }
 .hub-tag.muted { color: var(--hub-ink-3); }
