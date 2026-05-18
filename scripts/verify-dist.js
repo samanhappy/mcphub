@@ -39,6 +39,13 @@ if (!fs.existsSync(serverJsPath)) {
   process.exit(1);
 }
 
+const cliMainPath = path.join(backendDistPath, 'cli', 'main.js');
+if (!fs.existsSync(cliMainPath)) {
+  console.error('❌ Error: dist/cli/main.js does not exist!');
+  console.error('CLI subcommand dispatch will fail. Run "npm run backend:build" again.');
+  process.exit(1);
+}
+
 // All checks passed
 console.log('✅ Verification passed! Frontend and backend dist files are present.');
 console.log('📦 Package is ready for publishing.');

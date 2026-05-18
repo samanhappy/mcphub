@@ -4,44 +4,50 @@ import path from 'path';
 import { fileURLToPath, pathToFileURL } from 'url';
 import fs from 'fs';
 
-// Enable debug logging if needed
-// process.env.DEBUG = 'true';
-
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Start with more debug information
-console.log('📋 MCPHub CLI');
-console.log(`📁 CLI script location: ${__dirname}`);
+// Subcommands routed to the CLI dispatcher in dist/cli/main.js. Anything else
+// (including no args) falls through to the legacy server bootstrap so
+// `npx @samanhappy/mcphub` keeps working exactly as before.
+const CLI_COMMANDS = new Set([
+  'login',
+  'logout',
+  'config',
+  'servers',
+  'groups',
+  'keys',
+  'call',
+  'export',
+  'discover',
+  'install',
+  'help',
+  '--help',
+  '-h',
+  '--version',
+  '-v',
+]);
 
-// The npm package directory structure when installed is:
-// node_modules/@samanhappy/mcphub/
-//   - dist/
-//   - bin/
-//   - frontend/dist/
+const argv = process.argv.slice(2);
+const isCliCommand = argv.length > 0 && CLI_COMMANDS.has(argv[0]);
 
-// Get the package root - this is where package.json is located
 function findPackageRoot() {
   const isDebug = process.env.DEBUG === 'true';
-  
-  // Possible locations for package.json
+
   const possibleRoots = [
-    // Standard npm package location
     path.resolve(__dirname, '..'),
-    // When installed via npx
-    path.resolve(__dirname, '..', '..', '..')
+    path.resolve(__dirname, '..', '..', '..'),
   ];
-  
-  // Special handling for npx
+
   if (process.argv[1] && process.argv[1].includes('_npx')) {
     const npxDir = path.dirname(process.argv[1]);
     possibleRoots.unshift(path.resolve(npxDir, '..'));
   }
-  
+
   if (isDebug) {
     console.log('DEBUG: Checking for package.json in:', possibleRoots);
   }
-  
+
   for (const root of possibleRoots) {
     const packageJsonPath = path.join(root, 'package.json');
     if (fs.existsSync(packageJsonPath)) {
@@ -58,41 +64,48 @@ function findPackageRoot() {
       }
     }
   }
-  
-  console.log('⚠️ Could not find package.json, using default path');
+
+  if (!isCliCommand) {
+    console.log('⚠️ Could not find package.json, using default path');
+  }
   return path.resolve(__dirname, '..');
 }
 
-// Locate and check the frontend distribution
-function checkFrontend(packageRoot) {
-  const isDebug = process.env.DEBUG === 'true';
-  const frontendDistPath = path.join(packageRoot, 'frontend', 'dist');
-  
-  if (isDebug) {
-    console.log(`DEBUG: Checking frontend at: ${frontendDistPath}`);
+const projectRoot = findPackageRoot();
+
+if (isCliCommand) {
+  // CLI subcommand path — keep stdout clean for --json / pipes.
+  const cliEntryPath = path.join(projectRoot, 'dist', 'cli', 'main.js');
+  if (!fs.existsSync(cliEntryPath)) {
+    console.error('❌ CLI build missing: ' + cliEntryPath);
+    console.error('Run "pnpm backend:build" (or "pnpm build") and retry.');
+    process.exit(1);
   }
-  
-  if (fs.existsSync(frontendDistPath) && fs.existsSync(path.join(frontendDistPath, 'index.html'))) {
+  const cliEntryUrl = pathToFileURL(cliEntryPath).href;
+  const mod = await import(cliEntryUrl);
+  await mod.runCli(argv);
+} else {
+  // Legacy: server bootstrap. Existing console.log banner preserved here so it
+  // never leaks into CLI subcommand output.
+  console.log('📋 MCPHub CLI');
+  console.log(`📁 CLI script location: ${__dirname}`);
+  console.log(`📦 Using package root: ${projectRoot}`);
+
+  const frontendDistPath = path.join(projectRoot, 'frontend', 'dist');
+  if (
+    fs.existsSync(frontendDistPath) &&
+    fs.existsSync(path.join(frontendDistPath, 'index.html'))
+  ) {
     console.log('✅ Frontend distribution found');
-    return true;
   } else {
     console.log('⚠️ Frontend distribution not found at', frontendDistPath);
-    return false;
   }
+
+  console.log('🚀 Starting MCPHub server...');
+  const entryPath = path.join(projectRoot, 'dist', 'index.js');
+  const entryUrl = pathToFileURL(entryPath).href;
+  import(entryUrl).catch((err) => {
+    console.error('Failed to start MCPHub:', err);
+    process.exit(1);
+  });
 }
-
-const projectRoot = findPackageRoot();
-console.log(`📦 Using package root: ${projectRoot}`);
-
-// Check if frontend exists
-checkFrontend(projectRoot);
-
-// Start the server
-console.log('🚀 Starting MCPHub server...');
-const entryPath = path.join(projectRoot, 'dist', 'index.js');
-// Convert to file:// URL for cross-platform ESM compatibility (required on Windows)
-const entryUrl = pathToFileURL(entryPath).href;
-import(entryUrl).catch(err => {
-  console.error('Failed to start MCPHub:', err);
-  process.exit(1);
-});

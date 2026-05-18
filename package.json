@@ -20,6 +20,7 @@
     "build": "pnpm backend:build && pnpm frontend:build",
     "backend:build": "tsc",
     "start": "node dist/index.js",
+    "cli": "tsx src/cli/main.ts",
     "backend:dev": "tsx watch src/index.ts",
     "backend:debug": "tsx watch src/index.ts --inspect",
     "lint": "eslint .",
