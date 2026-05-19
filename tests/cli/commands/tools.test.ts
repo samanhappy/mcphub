@@ -55,30 +55,7 @@ const SERVERS_RESPONSE = {
   ],
 };
 
-function captureStdout(fn: () => Promise<void>) {
-  const orig = process.stdout.write;
-  const captured: string[] = [];
-  (process.stdout as any).write = (chunk: any) => {
-    captured.push(String(chunk));
-    return true;
-  };
-  return fn().finally(() => {
-    (process.stdout as any).write = orig;
-  });
-}
-
 describe('tools command', () => {
-  it('list flattens tools across servers (table mode)', async () => {
-    const client = makeClient(SERVERS_RESPONSE);
-    let output = '';
-    await captureStdout(async () => {
-      await tools.run(['list'], {}, { client });
-    }).then(() => { /* no-op */ });
-    // captureStdout returns void; we need to grab via separate approach.
-    // Simpler: just rely on --json mode for assertion below.
-    void output;
-  });
-
   it('list --json returns the flattened tools without schemas by default', async () => {
     const client = makeClient(SERVERS_RESPONSE);
     const captured: string[] = [];
