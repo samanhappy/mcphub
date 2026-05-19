@@ -15,7 +15,7 @@ Commands:
   keys                             manage bearer keys
   call                             call an MCP tool via /mcp/$smart or /mcp/<group>
   export                           export the running hub's mcp_settings.json
-  discover                         browse a remote hub's public marketplace (#809)
+  discover                         browse a remote hub's public marketplace
   install                          install a server from a remote marketplace
   help [command]                   show help for a command
 
