@@ -85,6 +85,22 @@ http://localhost:3000/mcp/$smart/{group}  # 智能路由（特定分组）
 
 📖 查看 [API 参考](https://docs.mcphub.app/zh/api-reference)了解详细的端点文档。
 
+### 终端管理
+
+`mcphub` 同一个二进制兼任 CLI，无需额外安装。
+
+```bash
+mcphub login --url http://localhost:3000 --username admin
+mcphub servers list
+mcphub servers add fetch --type stdio --command uvx --arg mcp-server-fetch
+mcphub call fetch_url url=https://example.com --json
+mcphub keys create --name ci --access-type all
+```
+
+CLI 同样对接公共市场接口（`mcphub discover`、`mcphub install ...`），可对任意开启了 discovery 的 hub 做检索与一键安装。
+
+📖 查看 [CLI 指南](https://docs.mcphub.app/zh/features/cli)了解全部子命令、profile 管理与 CI 用法。
+
 ## 📚 文档
 
 | 主题                                                                           | 描述                         |
@@ -94,6 +110,7 @@ http://localhost:3000/mcp/$smart/{group}  # 智能路由（特定分组）
 | [数据库模式](https://docs.mcphub.app/zh/configuration/database-configuration) | PostgreSQL 生产环境配置      |
 | [OAuth](https://docs.mcphub.app/zh/features/oauth)                            | OAuth 2.0 客户端和服务端配置 |
 | [智能路由](https://docs.mcphub.app/zh/features/smart-routing)                 | AI 驱动的工具发现            |
+| [CLI 指南](https://docs.mcphub.app/zh/features/cli)                           | 终端管理与工具调用           |
 | [Docker 部署](https://docs.mcphub.app/zh/configuration/docker-setup)          | Docker 部署指南              |
 
 ## 🧑‍💻 本地开发

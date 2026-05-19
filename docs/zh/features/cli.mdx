@@ -1,0 +1,187 @@
+---
+title: '命令行 CLI'
+description: '在终端中管理运行中的 mcphub 实例，并调用 MCP 工具'
+---
+
+## 概述
+
+`mcphub` 二进制同时是 CLI 入口。**不带参数**调用 `mcphub` 启动服务器（保持原有行为）；**带子命令**则通过 HTTP API 操作本地或远端 hub。
+
+```bash
+mcphub --help                    # 列出所有子命令
+mcphub <command> [options]       # 执行子命令
+mcphub                            # 旧行为：启动服务器（不变）
+```
+
+CLI 与服务器共用同一个 npm 包，无需额外安装。
+
+## 登录
+
+```bash
+mcphub login --url http://localhost:3000 --username admin --password ********
+```
+
+JWT 会缓存到符合 XDG 规范的凭据文件中，权限 `0600`：
+
+- macOS/Linux: `$XDG_DATA_HOME/mcphub/credentials.json`（默认 `~/.local/share/mcphub/credentials.json`）
+- 兼容旧路径：若 `~/.mcphub/credentials.json` 已存在则继续使用
+
+支持**多 profile**，可以在同一终端中并行操作 `staging`、`prod` 等：
+
+```bash
+mcphub login --profile staging --url https://staging.hub.example
+mcphub config use prod
+mcphub config list
+```
+
+也可以完全绕过凭据文件：
+
+| 覆盖方式 | 来源 |
+| -------- | ---- |
+| `--url`、`--token`、`--bearer` 参数 | 单条命令 |
+| `MCPHUB_URL`、`MCPHUB_TOKEN`、`MCPHUB_TOKEN_KIND` 环境变量 | shell / CI |
+| `credentials.json` 中的 active profile | 默认 |
+
+解析顺序：命令行参数 → 环境变量 → active profile。
+
+## 全局参数
+
+| 参数 | 用途 |
+| ---- | ---- |
+| `--url <url>` | 覆盖 active profile 的 URL |
+| `--token <token>` | 覆盖 active profile 的 token |
+| `--bearer` | 将 `--token` 当作 bearer key 使用（默认是 JWT，走 `x-auth-token`） |
+| `--profile <name>` | 选择非 current 的 profile |
+| `--json` | 输出 JSON 而非人类可读表格 |
+| `--debug` | 出错时打印堆栈 |
+
+## 子命令
+
+### `servers`
+
+```bash
+mcphub servers list
+mcphub servers get <name>
+
+# 从 JSON 文件添加：
+mcphub servers add fetch --from-file ./fetch.json
+
+# 或者内联（--arg / --env 可重复）：
+mcphub servers add fetch \
+  --type stdio --command uvx \
+  --arg mcp-server-fetch \
+  --env USER_AGENT=mcphub
+
+mcphub servers remove fetch
+mcphub servers toggle fetch --on
+mcphub servers reload fetch
+```
+
+### `groups`
+
+```bash
+mcphub groups list
+mcphub groups add dev --description "开发工具组"
+mcphub groups add-server dev fetch
+mcphub groups remove-server dev fetch
+mcphub groups remove dev
+```
+
+`<group>` 可填 UUID 或人类可读名称，CLI 会先列表再解析成 id。
+
+### `keys`
+
+管理 bearer 密钥（hub 端要求管理员权限）。
+
+```bash
+mcphub keys list
+mcphub keys create --name ci --access-type all
+mcphub keys create --name dev-only --access-type groups --groups dev,staging
+mcphub keys delete <id>
+```
+
+`create` 创建后服务端生成的 token 只会显示一次——记得当场复制。
+
+### `call`
+
+调用 active profile 对应 hub 上的 MCP 工具。默认走 `/mcp/$smart`，由智能路由挑选工具。
+
+```bash
+mcphub call fetch_url url=https://example.com timeout=30 verbose=true
+mcphub call my_tool --group dev nested='{"a":1}'
+mcphub call my_tool --params-json '{"deep":{"v":1}}'
+```
+
+`key=value` 强转规则：
+
+| 形式 | 结果 |
+| ---- | ---- |
+| `n=42`、`f=1.5` | 数字 |
+| `b=true`、`b=false` | 布尔 |
+| `x=null` | `null` |
+| `obj={"a":1}`、`arr=[1,2]` | JSON 解析 |
+| `payload=@./body.json` | 从文件加载 JSON |
+| `phone=0123` | 保留为字符串 `"0123"`（保护前导零） |
+| 其他 | 字符串 |
+
+`--no-coerce` 强制所有值按字符串处理。
+
+### `export`
+
+下载 hub 当前的 `mcp_settings.json`。
+
+```bash
+mcphub export --out backup.json
+mcphub export > backup.json
+```
+
+### `discover` / `install`（市场）
+
+当 hub 开启了 `systemConfig.discovery.enabled = true`，CLI 即可浏览公共市场并把 server 装到自己的 hub 或客户端配置文件里。
+
+```bash
+# 浏览 active profile 对应的 hub
+mcphub discover --search github --limit 10
+mcphub discover info amap-maps
+mcphub discover categories
+mcphub discover tags
+
+# 装到 active hub（POST /api/servers）
+mcphub install amap-maps --env AMAP_MAPS_API_KEY=...
+
+# 从另一个 hub 装到 active hub
+mcphub install some-server --remote https://hub.example.com --yes
+
+# 仅打印片段（dry-run）
+mcphub install amap-maps --dry-run
+
+# 装到 Claude Desktop / OpenClaw 风格的客户端配置文件
+mcphub install amap-maps --to file --out ~/Library/Application\ Support/Claude/claude_desktop_config.json
+```
+
+要点：
+
+- `--type` 选择安装方式（`npm`、`docker`、`uvx`、`pip`、`binary`）。不指定则由 hub 选第一个可用；指定但不存在时 CLI 会列出可用类型。
+- `--env KEY=VAL`（可重复）注入环境变量——预声明的键和新增的键都会合并进最终 `env`。
+- `--to file` 采用原子写（临时文件 + rename），中断不会破坏客户端配置。
+
+## 退出码
+
+| 退出码 | 含义 |
+| ------ | ---- |
+| `0` | 成功 |
+| `1` | 用法错误（参数缺失、未登录等） |
+| `2` | API 错误（hub 返回非 2xx） |
+
+## 脚本与 CI
+
+CLI 对 JSON 友好：所有命令都支持 `--json`；`MCPHUB_URL` / `MCPHUB_TOKEN` 在 CI 中可跳过凭据文件。
+
+```bash
+export MCPHUB_URL=https://hub.example.com
+export MCPHUB_TOKEN=$CI_HUB_TOKEN
+
+mcphub servers list --json | jq '.[] | select(.status != "connected") | .name'
+```
+
+如果在 CI 中使用 bearer key，再追加 `MCPHUB_TOKEN_KIND=bearer`（或加 `--bearer`）。注意：bearer key 只有在 `accessType=all` 时才能调用 `/api/*` 管理接口；受限 scope 的 key 只能访问 `/mcp/<group>`。

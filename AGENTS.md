@@ -130,6 +130,7 @@ For deeper architecture context, read [docs/development/architecture.mdx](docs/d
 | Add an MCP server     | Edit `mcp_settings.json`, restart backend, check connect log line     |
 | Add an HTTP API       | `src/routes/` → `src/controllers/` → types in `src/types/` → tests   |
 | Add a frontend page   | `frontend/src/pages/` (+ `frontend/src/components/`), wire in router |
+| Add a CLI subcommand  | `src/cli/commands/<name>.ts` + register in `src/cli/main.ts` dispatcher + `src/cli/help.ts` + tests in `tests/cli/commands/` |
 | Add a translation key | Add to all four `locales/*.json` files                                |
 | Update public docs    | `docs/` (Mintlify); reflect major changes in `README.md`              |
 

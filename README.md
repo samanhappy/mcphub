@@ -85,6 +85,22 @@ http://localhost:3000/mcp/$smart/{group}  # Smart routing within group
 
 📖 See [API Reference](https://docs.mcphub.app/api-reference) for detailed endpoint documentation.
 
+### Manage From the Terminal
+
+The same `mcphub` binary doubles as a CLI for the running hub — no extra install needed.
+
+```bash
+mcphub login --url http://localhost:3000 --username admin
+mcphub servers list
+mcphub servers add fetch --type stdio --command uvx --arg mcp-server-fetch
+mcphub call fetch_url url=https://example.com --json
+mcphub keys create --name ci --access-type all
+```
+
+It also speaks the public marketplace API (`mcphub discover`, `mcphub install ...`) so server lookup and one-command install work against any hub with discovery enabled.
+
+📖 See [CLI Guide](https://docs.mcphub.app/features/cli) for every subcommand, profiles, and CI usage.
+
 ## 📚 Documentation
 
 | Topic                                                                          | Description                       |
@@ -94,6 +110,7 @@ http://localhost:3000/mcp/$smart/{group}  # Smart routing within group
 | [Database Mode](https://docs.mcphub.app/configuration/database-configuration) | PostgreSQL setup for production   |
 | [OAuth](https://docs.mcphub.app/features/oauth)                               | OAuth 2.0 client and server setup |
 | [Smart Routing](https://docs.mcphub.app/features/smart-routing)               | AI-powered tool discovery         |
+| [CLI Guide](https://docs.mcphub.app/features/cli)                             | Manage and call the hub from a terminal |
 | [Docker Setup](https://docs.mcphub.app/configuration/docker-setup)            | Docker deployment guide           |
 
 ## 🧑‍💻 Local Development

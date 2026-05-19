@@ -30,7 +30,8 @@
               "features/smart-routing",
               "features/oauth",
               "features/authentication",
-              "features/monitoring"
+              "features/monitoring",
+              "features/cli"
             ]
           },
           {
@@ -72,7 +73,8 @@
               "zh/features/server-management",
               "zh/features/group-management",
               "zh/features/smart-routing",
-              "zh/features/oauth"
+              "zh/features/oauth",
+              "zh/features/cli"
             ]
           },
           {

@@ -1,0 +1,187 @@
+---
+title: 'CLI'
+description: 'Manage a running mcphub instance and call MCP tools from the terminal'
+---
+
+## Overview
+
+The `mcphub` binary doubles as a CLI for the running hub. Invoke `mcphub` with no arguments to start the server (the original behavior); pass a subcommand to drive a remote (or local) hub over its HTTP API.
+
+```bash
+mcphub --help                    # list every subcommand
+mcphub <command> [options]       # run a CLI command
+mcphub                            # legacy: start the server (unchanged)
+```
+
+The CLI ships with the same npm package as the server — there's nothing extra to install.
+
+## Logging in
+
+```bash
+mcphub login --url http://localhost:3000 --username admin --password ********
+```
+
+A JWT is cached in an XDG-compliant credentials file with `0600` permissions:
+
+- macOS/Linux: `$XDG_DATA_HOME/mcphub/credentials.json` (default `~/.local/share/mcphub/credentials.json`)
+- Legacy: `~/.mcphub/credentials.json` is still honored when it already exists
+
+Multiple **profiles** are supported, so a single shell can target `staging`, `prod`, etc. side-by-side:
+
+```bash
+mcphub login --profile staging --url https://staging.hub.example
+mcphub config use prod
+mcphub config list
+```
+
+You can also bypass the credentials file entirely:
+
+| Override | Where it comes from |
+| -------- | ------------------- |
+| `--url`, `--token`, `--bearer` flags | per-command |
+| `MCPHUB_URL`, `MCPHUB_TOKEN`, `MCPHUB_TOKEN_KIND` env | shell session / CI |
+| Active profile in `credentials.json` | default |
+
+Resolution order: flag → environment variable → active profile.
+
+## Global options
+
+| Option | Purpose |
+| ------ | ------- |
+| `--url <url>` | Override the active profile's base URL |
+| `--token <token>` | Override the active profile's token |
+| `--bearer` | Treat `--token` as a bearer key (default is JWT via `x-auth-token`) |
+| `--profile <name>` | Pick a saved profile other than `current` |
+| `--json` | Print JSON instead of human-friendly tables |
+| `--debug` | Print stack traces on error |
+
+## Commands
+
+### `servers`
+
+```bash
+mcphub servers list
+mcphub servers get <name>
+
+# Add from a JSON file:
+mcphub servers add fetch --from-file ./fetch.json
+
+# Or inline (--arg / --env can repeat):
+mcphub servers add fetch \
+  --type stdio --command uvx \
+  --arg mcp-server-fetch \
+  --env USER_AGENT=mcphub
+
+mcphub servers remove fetch
+mcphub servers toggle fetch --on
+mcphub servers reload fetch
+```
+
+### `groups`
+
+```bash
+mcphub groups list
+mcphub groups add dev --description "developer tools"
+mcphub groups add-server dev fetch
+mcphub groups remove-server dev fetch
+mcphub groups remove dev
+```
+
+`<group>` accepts either the UUID or the human-readable name; the CLI resolves the name to an id by listing groups first.
+
+### `keys`
+
+Manage bearer keys (admin only on the hub side).
+
+```bash
+mcphub keys list
+mcphub keys create --name ci --access-type all
+mcphub keys create --name dev-only --access-type groups --groups dev,staging
+mcphub keys delete <id>
+```
+
+The hub-generated token is printed once on `create` — copy it before navigating away.
+
+### `call`
+
+Call an MCP tool against the active profile's hub. By default `/mcp/$smart` is used so smart routing picks the right tool.
+
+```bash
+mcphub call fetch_url url=https://example.com timeout=30 verbose=true
+mcphub call my_tool --group dev nested='{"a":1}'
+mcphub call my_tool --params-json '{"deep":{"v":1}}'
+```
+
+`key=value` argument coercion:
+
+| Form | Result |
+| ---- | ------ |
+| `n=42`, `f=1.5` | number |
+| `b=true`, `b=false` | boolean |
+| `x=null` | `null` |
+| `obj={"a":1}`, `arr=[1,2]` | parsed JSON |
+| `payload=@./body.json` | JSON loaded from file |
+| `phone=0123` | preserved as the string `"0123"` (leading-zero protection) |
+| anything else | string |
+
+Pass `--no-coerce` to treat every value as a string.
+
+### `export`
+
+Download `mcp_settings.json` from the running hub.
+
+```bash
+mcphub export --out backup.json
+mcphub export > backup.json
+```
+
+### `discover` / `install` (marketplace)
+
+When the hub has `systemConfig.discovery.enabled = true`, the CLI can browse the public marketplace and install servers into your own hub or directly into a client-side config file.
+
+```bash
+# Browse the active profile's hub
+mcphub discover --search github --limit 10
+mcphub discover info amap-maps
+mcphub discover categories
+mcphub discover tags
+
+# Install into the active hub (POST /api/servers)
+mcphub install amap-maps --env AMAP_MAPS_API_KEY=...
+
+# Install from a different hub into the active one
+mcphub install some-server --remote https://hub.example.com --yes
+
+# Dry-run: just print the mcpServers snippet
+mcphub install amap-maps --dry-run
+
+# Install into a Claude Desktop / OpenClaw-style config file
+mcphub install amap-maps --to file --out ~/Library/Application\ Support/Claude/claude_desktop_config.json
+```
+
+Notes:
+
+- `--type` picks the installation method (`npm`, `docker`, `uvx`, `pip`, `binary`). If omitted, the hub picks the first available; if the requested type doesn't exist, the CLI lists the alternatives.
+- `--env KEY=VAL` (repeatable) injects environment values — both predeclared and additional keys are merged into the resulting `env` block.
+- `--to file` writes atomically (temp file + rename), so a crashed write can't corrupt your client config.
+
+## Exit codes
+
+| Code | Meaning |
+| ---- | ------- |
+| `0` | Success |
+| `1` | Usage error (bad flag, missing argument, unauthorized state) |
+| `2` | API error (non-2xx response from the hub) |
+
+## Scripting and CI
+
+The CLI is JSON-friendly: `--json` is honored by every command, and `MCPHUB_URL` / `MCPHUB_TOKEN` make it easy to skip the credentials file in CI.
+
+```bash
+export MCPHUB_URL=https://hub.example.com
+export MCPHUB_TOKEN=$CI_HUB_TOKEN
+
+mcphub servers list --json | jq '.[] | select(.status != "connected") | .name'
+```
+
+For bearer-key auth in CI, add `MCPHUB_TOKEN_KIND=bearer` (or `--bearer`). Note that bearer keys only authorize the `/api/*` admin surface when their `accessType` is `all` — scoped keys can call `/mcp/<group>` but not management routes.
