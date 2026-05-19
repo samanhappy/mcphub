@@ -93,6 +93,8 @@ The same `mcphub` binary doubles as a CLI for the running hub — no extra insta
 mcphub login --url http://localhost:3000 --username admin
 mcphub servers list
 mcphub servers add fetch --type stdio --command uvx --arg mcp-server-fetch
+mcphub tools list                              # discover what tools are available
+mcphub tools get fetch_url                     # see required params + sample command
 mcphub call fetch_url url=https://example.com --json
 mcphub keys create --name ci --access-type all
 ```

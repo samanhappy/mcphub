@@ -41,6 +41,18 @@ describe('call command', () => {
     expect(calls[0].url).toBe('http://hub.test/mcp/dev');
   });
 
+  it('--server routes to /mcp/<server> (same wire surface as --group)', async () => {
+    const { client, calls } = makeClient({ jsonrpc: '2.0', id: 1, result: {} });
+    await call.run(['echo', '--server', 'fetch'], {}, { client });
+    expect(calls[0].url).toBe('http://hub.test/mcp/fetch');
+  });
+
+  it('--server wins over --group when both are present', async () => {
+    const { client, calls } = makeClient({ jsonrpc: '2.0', id: 1, result: {} });
+    await call.run(['echo', '--group', 'dev', '--server', 'fetch'], {}, { client });
+    expect(calls[0].url).toBe('http://hub.test/mcp/fetch');
+  });
+
   it('--smart wins over --group', async () => {
     const { client, calls } = makeClient({ jsonrpc: '2.0', id: 1, result: {} });
     await call.run(['echo', '--group', 'dev', '--smart'], {}, { client });

@@ -13,7 +13,8 @@ Commands:
   servers                          list/get/add/remove/toggle/reload MCP servers
   groups                           manage server groups
   keys                             manage bearer keys
-  call                             call an MCP tool via /mcp/$smart or /mcp/<group>
+  tools                            list MCP tools and inspect their input schema
+  call                             call an MCP tool via /mcp/$smart or /mcp/<server|group>
   export                           export the running hub's mcp_settings.json
   discover                         browse a remote hub's public marketplace
   install                          install a server from a remote marketplace
@@ -82,13 +83,33 @@ Subcommands:
          [--groups a,b] [--servers x,y]
   delete <id>                      delete a key`,
 
-  call: `mcphub call <tool> [k=v ...] [--group <g>|--smart] [--params-json <json>]
+  tools: `mcphub tools <subcommand>
 
-Call an MCP tool. Argument parsing:
+The agent-friendly index for \`call\`. Use it to discover what's available
+and what params each tool wants without hand-parsing \`servers list\` JSON.
+
+Subcommands:
+  list [--server <name>] [--enabled-only] [--schema]
+                                   list tools across all (or one) servers
+  get <tool> [--server <name>]     show one tool's description, parameters,
+                                   input schema, and a sample \`call\` command
+  schema <tool> [--server <name>]  alias for \`get\``,
+
+  call: `mcphub call <tool> [k=v ...] [--server <s>|--group <g>|--smart] [--params-json <json>]
+
+Discover what to pass via:
+  mcphub tools list                   # all tools
+  mcphub tools get <tool>             # required params + sample command
+
+Argument parsing:
   key=value                        string by default
   key=42 / key=true / key=null     auto-coerced to number/boolean/null
   key=@path                        load JSON from file
-  --params-json '{"a":1}'          override the entire params object`,
+  --params-json '{"a":1}'          override the entire params object
+
+Routing precedence: --smart > --server > --group > default ($smart). All
+three resolve to /mcp/<slug>; --server is the natural pair for
+\`tools list\` output.`,
 
   export: `mcphub export [--out <path>]
 

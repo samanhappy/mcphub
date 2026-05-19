@@ -23,14 +23,14 @@ export interface CallDeps {
 
 export async function run(args: string[], globals: GlobalFlags, deps: CallDeps = {}): Promise<void> {
   const { positional, flags } = extractFlags(args, {
-    valued: ['--group', '--params-json'],
+    valued: ['--group', '--server', '--params-json'],
     boolean: ['--smart', '--no-coerce'],
   });
 
   const tool = positional.shift();
   if (!tool) {
     throw new CliUsageError(
-      'Usage: mcphub call <tool> [key=value ...] [--group <g>|--smart] [--params-json <json>]',
+      'Usage: mcphub call <tool> [key=value ...] [--group <g>|--server <s>|--smart] [--params-json <json>]',
     );
   }
 
@@ -46,12 +46,16 @@ export async function run(args: string[], globals: GlobalFlags, deps: CallDeps =
     params = parsed.args;
   }
 
-  // --smart wins over --group; default also resolves to $smart so smart routing
-  // is the documented default behavior.
+  // Routing precedence: --smart > --server > --group > default ($smart).
+  // /mcp/:slug? accepts a group name, a server name, or $smart, so --server
+  // and --group are different names for the same wire surface. --server is
+  // the natural pair for `mcphub tools list`/`tools get` output.
   const group: string | '$smart' | null =
     flags['--smart'] === true
       ? '$smart'
-      : (flags['--group'] as string | undefined) ?? '$smart';
+      : (flags['--server'] as string | undefined) ??
+        (flags['--group'] as string | undefined) ??
+        '$smart';
 
   const client = deps.client ?? buildClient(resolveTarget(globals));
   const body = {

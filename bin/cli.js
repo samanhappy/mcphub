@@ -17,6 +17,7 @@ const CLI_COMMANDS = new Set([
   'servers',
   'groups',
   'keys',
+  'tools',
   'call',
   'export',
   'discover',

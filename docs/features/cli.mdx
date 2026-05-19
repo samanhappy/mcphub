@@ -102,15 +102,45 @@ mcphub keys delete <id>
 
 The hub-generated token is printed once on `create` — copy it before navigating away.
 
-### `call`
+### `tools` — discover what to call
 
-Call an MCP tool against the active profile's hub. By default `/mcp/$smart` is used so smart routing picks the right tool.
+`tools` is the agent-friendly index for `call`: it answers **what tools exist, what params each one takes, which server hosts it** without having to hand-parse `servers list` JSON.
 
 ```bash
-mcphub call fetch_url url=https://example.com timeout=30 verbose=true
+# Flat list of every tool across every connected server.
+mcphub tools list
+mcphub tools list --json                       # machine-readable, no schemas
+mcphub tools list --schema --json              # include each tool's inputSchema
+mcphub tools list --server fetch               # scope to one server
+mcphub tools list --enabled-only
+
+# Inspect one tool: description, parameter table, full input schema, sample command.
+mcphub tools get fetch_url
+mcphub tools get fetch_url --server fetch      # disambiguate when two servers expose the same name
+mcphub tools schema fetch_url                  # alias for `get`
+```
+
+The `tools get` text view prints a parameter table marking which keys are `required`, followed by the full JSON schema and a ready-to-paste `mcphub call ...` example with the required params filled in.
+
+### `call`
+
+Call an MCP tool against the active profile's hub. By default `/mcp/$smart` is used so smart routing picks the right tool. The recommended agent workflow is **`tools list` → `tools get` → `call`**.
+
+```bash
+# 1. Find a tool
+mcphub tools list --json | jq '.[] | select(.name | contains("fetch"))'
+
+# 2. Check its schema
+mcphub tools get fetch_url --json | jq '.inputSchema'
+
+# 3. Call it
+mcphub call fetch_url url=https://example.com timeout=30
+mcphub call fetch_url url=https://example.com --server fetch        # pin to a specific server
 mcphub call my_tool --group dev nested='{"a":1}'
 mcphub call my_tool --params-json '{"deep":{"v":1}}'
 ```
+
+Routing precedence inside `call`: `--smart` > `--server <name>` > `--group <name>` > default (`$smart`). All three resolve to the same `/mcp/<slug>` endpoint; `--server` is the natural pair for `tools list`/`tools get` output.
 
 `key=value` argument coercion:
 
@@ -172,6 +202,26 @@ Notes:
 | `0` | Success |
 | `1` | Usage error (bad flag, missing argument, unauthorized state) |
 | `2` | API error (non-2xx response from the hub) |
+
+## Autonomous-agent recipe
+
+Every command supports `--json` and reads `MCPHUB_URL` / `MCPHUB_TOKEN`, so an agent can drive the entire discover → call loop from JSON:
+
+```bash
+export MCPHUB_URL=http://localhost:3000
+export MCPHUB_TOKEN=$JWT
+
+# 1. enumerate tools
+mcphub tools list --json > tools.json
+
+# 2. pick one and read its schema
+mcphub tools get fetch_url --json > schema.json
+
+# 3. build a payload from the schema and invoke
+mcphub call fetch_url --params-json "$(jq -n '{url:"https://example.com"}')" --json
+```
+
+The `tools list --json` response is intentionally flat (`{server, serverStatus, name, description, enabled}`) so an agent can filter in one pass without traversing nested `servers[*].tools[*]`.
 
 ## Scripting and CI
 

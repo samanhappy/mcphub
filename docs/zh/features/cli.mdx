@@ -102,15 +102,45 @@ mcphub keys delete <id>
 
 `create` 创建后服务端生成的 token 只会显示一次——记得当场复制。
 
-### `call`
+### `tools` —— 发现可调用的工具
 
-调用 active profile 对应 hub 上的 MCP 工具。默认走 `/mcp/$smart`，由智能路由挑选工具。
+`tools` 是 `call` 的发现索引：回答**有哪些 tool、每个 tool 接受什么参数、归属哪个 server**——不用手工解析 `servers list` 的嵌套 JSON。
 
 ```bash
-mcphub call fetch_url url=https://example.com timeout=30 verbose=true
+# 列出所有连接中 server 的全部 tool
+mcphub tools list
+mcphub tools list --json                       # 机器可读，默认不带 schema
+mcphub tools list --schema --json              # 带上每个 tool 的 inputSchema
+mcphub tools list --server fetch               # 限定到一个 server
+mcphub tools list --enabled-only
+
+# 查看单个 tool 的描述、参数表、完整 schema 与样例命令
+mcphub tools get fetch_url
+mcphub tools get fetch_url --server fetch      # 同名 tool 在多个 server 上时用 --server 消歧
+mcphub tools schema fetch_url                  # `get` 的别名
+```
+
+`tools get` 的文本视图会先列参数表（带 `required` 标识），再打印完整 JSON schema，最后给一条可直接复制的 `mcphub call ...` 样例（必填参数已占位）。
+
+### `call`
+
+调用 active profile 对应 hub 上的 MCP 工具。默认走 `/mcp/$smart`，由智能路由挑选工具。**推荐的 agent 工作流：`tools list` → `tools get` → `call`**。
+
+```bash
+# 1. 找到一个 tool
+mcphub tools list --json | jq '.[] | select(.name | contains("fetch"))'
+
+# 2. 查 schema
+mcphub tools get fetch_url --json | jq '.inputSchema'
+
+# 3. 调用
+mcphub call fetch_url url=https://example.com timeout=30
+mcphub call fetch_url url=https://example.com --server fetch        # 指定到具体 server
 mcphub call my_tool --group dev nested='{"a":1}'
 mcphub call my_tool --params-json '{"deep":{"v":1}}'
 ```
+
+`call` 的路由优先级：`--smart` > `--server <name>` > `--group <name>` > 默认（`$smart`）。三种最终都走 `/mcp/<slug>` 同一个端点；`--server` 是和 `tools list`/`tools get` 输出天然对齐的写法。
 
 `key=value` 强转规则：
 
@@ -172,6 +202,26 @@ mcphub install amap-maps --to file --out ~/Library/Application\ Support/Claude/c
 | `0` | 成功 |
 | `1` | 用法错误（参数缺失、未登录等） |
 | `2` | API 错误（hub 返回非 2xx） |
+
+## Agent 自动化范式
+
+所有命令都支持 `--json`，并读取 `MCPHUB_URL` / `MCPHUB_TOKEN`，因此 agent 可以纯 JSON 驱动整个"发现 → 调用"流程：
+
+```bash
+export MCPHUB_URL=http://localhost:3000
+export MCPHUB_TOKEN=$JWT
+
+# 1. 枚举所有 tool
+mcphub tools list --json > tools.json
+
+# 2. 选定一个并读 schema
+mcphub tools get fetch_url --json > schema.json
+
+# 3. 根据 schema 构造参数并调用
+mcphub call fetch_url --params-json "$(jq -n '{url:"https://example.com"}')" --json
+```
+
+`tools list --json` 的响应是**扁平的**（`{server, serverStatus, name, description, enabled}`），agent 一次过滤就能定位目标，不必再下钻 `servers[*].tools[*]`。
 
 ## 脚本与 CI
 

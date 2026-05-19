@@ -93,6 +93,8 @@ http://localhost:3000/mcp/$smart/{group}  # 智能路由（特定分组）
 mcphub login --url http://localhost:3000 --username admin
 mcphub servers list
 mcphub servers add fetch --type stdio --command uvx --arg mcp-server-fetch
+mcphub tools list                              # 看有哪些 tool 可调
+mcphub tools get fetch_url                     # 看必填参数和样例命令
 mcphub call fetch_url url=https://example.com --json
 mcphub keys create --name ci --access-type all
 ```

@@ -18,6 +18,7 @@ const SUBCOMMAND_LOADERS: Record<string, () => Promise<CommandModule>> = {
   servers: () => import('./commands/servers.js'),
   groups: () => import('./commands/groups.js'),
   keys: () => import('./commands/keys.js'),
+  tools: () => import('./commands/tools.js'),
   call: () => import('./commands/call.js'),
   export: () => import('./commands/export.js'),
   discover: () => import('./commands/discover.js'),
