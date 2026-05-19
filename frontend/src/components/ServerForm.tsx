@@ -319,7 +319,7 @@ const ServerForm = ({
             onChange={(e) =>
               setFormData((prev) => ({
                 ...prev,
-                visibility: e.target.value as 'private' | 'public',
+                visibility: e.target.value as 'private' | 'group' | 'public',
               }))
             }
             className="w-full py-2 px-3 form-input"
@@ -327,6 +327,15 @@ const ServerForm = ({
             <option value="private">
               {t('server.visibilityPrivate', 'Private — only the owner and admins')}
             </option>
+            {formData.visibility === 'group' && (
+              // 'group' is a reserved enum value; the filter doesn't yet honour it.
+              // Surface it as a disabled option so a server pre-set to 'group' (e.g.
+              // via direct DB update or a future user→group migration) renders
+              // intelligibly rather than silently falling back to 'private' in the UI.
+              <option value="group" disabled>
+                {t('server.visibilityGroup', 'Group (reserved — not yet implemented)')}
+              </option>
+            )}
             <option value="public">
               {t('server.visibilityPublic', 'Public — every authenticated user')}
             </option>
