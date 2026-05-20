@@ -63,6 +63,7 @@
     "orContinue": "或使用以下方式继续",
     "loginWithGoogle": "使用 Google 登录",
     "loginWithGithub": "使用 GitHub 登录",
+    "loginWithOIDC": "使用 OIDC 登录",
     "socialLoginFailed": "社交登录失败，请重试。",
     "emptyFields": "用户名和密码不能为空",
     "loginFailed": "登录失败，请检查用户名和密码",

@@ -34,11 +34,41 @@ MCPHub reads the following environment variables at startup. The authoritative l
 
 These are only consumed when `auth.betterAuth.enabled` is set in `mcp_settings.json` (or the equivalent system config). Better Auth is initialized in `src/betterAuth.ts`.
 
+<Note>
+  Better Auth currently requires PostgreSQL-backed storage in MCPHub. In practice that means `DB_URL` must be configured; file-only mode does not support Better Auth sessions.
+</Note>
+
 | Variable | Description |
 | --- | --- |
 | `BETTER_AUTH_URL` | Public base URL of MCPHub. Required so Better Auth can generate redirect URIs. |
 | `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` | GitHub OAuth app credentials. |
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Google OAuth app credentials. |
+| `OIDC_DISCOVERY_URL` | Optional helper variable for `${OIDC_DISCOVERY_URL}` interpolation inside `mcp_settings.json`. Points at your local issuer's `/.well-known/openid-configuration` endpoint. |
+| `OIDC_CLIENT_ID` / `OIDC_CLIENT_SECRET` | Client credentials for a local OIDC provider such as Keycloak, Authentik, or Dex. |
+
+For local OIDC login, configure the non-secret provider metadata in `systemConfig.auth.betterAuth.providers.oidc` and keep the client credentials in env vars. A minimal example:
+
+```json
+{
+  "systemConfig": {
+    "auth": {
+      "betterAuth": {
+        "enabled": true,
+        "providers": {
+          "oidc": {
+            "enabled": true,
+            "providerId": "local-oidc",
+            "discoveryUrl": "${OIDC_DISCOVERY_URL}",
+            "scopes": ["openid", "profile", "email"],
+            "pkce": true,
+            "prompt": "login"
+          }
+        }
+      }
+    }
+  }
+}
+```
 
 ## Storage
 

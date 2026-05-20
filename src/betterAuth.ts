@@ -1,4 +1,5 @@
 import { betterAuth, BetterAuthOptions } from 'better-auth';
+import { genericOAuth } from 'better-auth/plugins';
 import { PostgresDialect } from 'kysely';
 import { Pool } from 'pg';
 import defaultConfig from './config/index.js';
@@ -9,6 +10,7 @@ import {
 
 const runtimeConfig = getBetterAuthRuntimeConfig();
 const socialProviders: Record<string, { clientId: string; clientSecret: string }> = {};
+const plugins = [];
 if (
   runtimeConfig.providers.google.enabled &&
   process.env.GOOGLE_CLIENT_ID &&
@@ -28,6 +30,28 @@ if (
     clientId: process.env.GITHUB_CLIENT_ID,
     clientSecret: process.env.GITHUB_CLIENT_SECRET,
   };
+}
+if (
+  runtimeConfig.providers.oidc.enabled &&
+  runtimeConfig.providers.oidc.discoveryUrl &&
+  process.env.OIDC_CLIENT_ID &&
+  process.env.OIDC_CLIENT_SECRET
+) {
+  plugins.push(
+    genericOAuth({
+      config: [
+        {
+          providerId: runtimeConfig.providers.oidc.providerId,
+          discoveryUrl: runtimeConfig.providers.oidc.discoveryUrl,
+          clientId: process.env.OIDC_CLIENT_ID,
+          clientSecret: process.env.OIDC_CLIENT_SECRET,
+          scopes: runtimeConfig.providers.oidc.scopes,
+          pkce: runtimeConfig.providers.oidc.pkce,
+          prompt: runtimeConfig.providers.oidc.prompt,
+        },
+      ],
+    }),
+  );
 }
 
 const resolveBaseURL = (baseUrl: string, basePath: string): string => {
@@ -73,6 +97,7 @@ const authOptions: BetterAuthOptions = {
   emailAndPassword: {
     enabled: false,
   },
+  plugins,
   socialProviders,
   logger: {
     disabled: false,

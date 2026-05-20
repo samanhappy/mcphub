@@ -41,6 +41,42 @@ NODE_ENV=production
 JWT_SECRET=your-super-secret-key-change-this-in-production
 ```
 
+### Better Auth（可选：GitHub / Google / 本地 OIDC 登录）
+
+这些变量只会在 `mcp_settings.json` 的 `systemConfig.auth.betterAuth.enabled` 打开时生效。MCPHub 里的 Better Auth 目前依赖 PostgreSQL 会话存储，因此需要配置 `DB_URL`；纯文件模式不支持 Better Auth 登录。
+
+| 变量 | 描述 |
+| --- | --- |
+| `BETTER_AUTH_URL` | MCPHub 的公网访问地址，用于生成回调 URL |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Google 登录凭据 |
+| `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` | GitHub 登录凭据 |
+| `OIDC_DISCOVERY_URL` | 可选，用于在 `mcp_settings.json` 中通过 `${OIDC_DISCOVERY_URL}` 引用本地 OIDC Issuer 的 discovery 地址 |
+| `OIDC_CLIENT_ID` / `OIDC_CLIENT_SECRET` | 本地 OIDC Provider（例如 Keycloak、Authentik、Dex）的客户端凭据 |
+
+本地 OIDC 的非敏感配置建议写在 `mcp_settings.json`：
+
+```json
+{
+	"systemConfig": {
+		"auth": {
+			"betterAuth": {
+				"enabled": true,
+				"providers": {
+					"oidc": {
+						"enabled": true,
+						"providerId": "local-oidc",
+						"discoveryUrl": "${OIDC_DISCOVERY_URL}",
+						"scopes": ["openid", "profile", "email"],
+						"pkce": true,
+						"prompt": "login"
+					}
+				}
+			}
+		}
+	}
+}
+```
+
 ## 配置示例
 
 ### 开发环境

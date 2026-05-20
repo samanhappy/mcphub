@@ -1,6 +1,8 @@
 import { loadSettings } from '../config/index.js';
 
 const DEFAULT_BETTER_AUTH_BASE_PATH = '/api/auth/better';
+const DEFAULT_OIDC_SCOPES = ['openid', 'profile', 'email'];
+const DEFAULT_OIDC_PROVIDER_ID = 'oidc';
 
 const normalizePath = (value: string): string => {
   if (!value) {
@@ -23,13 +25,23 @@ export const getBetterAuthRuntimeConfig = () => {
   const githubEnvConfigured = Boolean(
     process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET,
   );
+  const oidcEnvConfigured = Boolean(
+    process.env.OIDC_CLIENT_ID && process.env.OIDC_CLIENT_SECRET,
+  );
+  const oidcSettings = providerSettings.oidc || {};
+  const oidcDiscoveryUrl = oidcSettings.discoveryUrl;
+  const oidcEnabled =
+    enabled &&
+    Boolean(oidcSettings.enabled) &&
+    Boolean(oidcDiscoveryUrl) &&
+    oidcEnvConfigured;
 
   const googleEnabled =
     enabled && Boolean(providerSettings.google?.enabled ?? true) && googleEnvConfigured;
   const githubEnabled =
     enabled && Boolean(providerSettings.github?.enabled ?? true) && githubEnvConfigured;
 
-  const anyProviderEnabled = googleEnabled || githubEnabled;
+  const anyProviderEnabled = googleEnabled || githubEnabled || oidcEnabled;
 
   return {
     enabled: anyProviderEnabled,
@@ -40,6 +52,14 @@ export const getBetterAuthRuntimeConfig = () => {
       },
       github: {
         enabled: githubEnabled,
+      },
+      oidc: {
+        enabled: oidcEnabled,
+        providerId: oidcSettings.providerId || DEFAULT_OIDC_PROVIDER_ID,
+        discoveryUrl: oidcDiscoveryUrl,
+        scopes: oidcSettings.scopes || DEFAULT_OIDC_SCOPES,
+        pkce: oidcSettings.pkce ?? true,
+        prompt: oidcSettings.prompt,
       },
     },
   };

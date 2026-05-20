@@ -42,6 +42,14 @@ export interface SystemConfig {
         github?: {
           enabled?: boolean;
         };
+        oidc?: {
+          enabled?: boolean;
+          providerId?: string;
+          discoveryUrl?: string;
+          scopes?: string[];
+          pkce?: boolean;
+          prompt?: string;
+        };
       };
     };
   };
@@ -56,6 +64,14 @@ interface BetterAuthConfig {
     };
     github?: {
       enabled?: boolean;
+    };
+    oidc?: {
+      enabled?: boolean;
+      providerId?: string;
+      discoveryUrl?: string;
+      scopes?: string[];
+      pkce?: boolean;
+      prompt?: string;
     };
   };
 }

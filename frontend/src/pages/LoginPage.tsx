@@ -5,12 +5,14 @@ import { BookOpen, AlertCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { getToken } from '../services/authService';
 import { getPublicConfig } from '../services/configService';
-import { createBetterAuthClient } from '../services/betterAuthClient';
+import { createBetterAuthClient, startOidcLogin } from '../services/betterAuthClient';
 import { getBasePath } from '../utils/runtime';
 import ThemeSwitch from '@/components/ui/ThemeSwitch';
 import LanguageSwitch from '@/components/ui/LanguageSwitch';
 import GitHubIcon from '@/components/icons/GitHubIcon';
 import DefaultPasswordWarningModal from '@/components/ui/DefaultPasswordWarningModal';
+
+type SocialProvider = 'google' | 'github' | 'oidc';
 
 const sanitizeReturnUrl = (value: string | null): string | null => {
   if (!value) return null;
@@ -32,10 +34,15 @@ const LoginPage: React.FC = () => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [socialLoading, setSocialLoading] = useState<'google' | 'github' | null>(null);
+  const [socialLoading, setSocialLoading] = useState<SocialProvider | null>(null);
   const [socialError, setSocialError] = useState<string | null>(null);
   const [betterAuthBasePath, setBetterAuthBasePath] = useState<string | undefined>(undefined);
-  const [socialProviders, setSocialProviders] = useState({ google: false, github: false });
+  const [socialProviders, setSocialProviders] = useState({
+    google: false,
+    github: false,
+    oidc: false,
+  });
+  const [oidcProviderId, setOidcProviderId] = useState<string>('oidc');
   const [showDefaultPasswordWarning, setShowDefaultPasswordWarning] = useState(false);
   const { login, auth } = useAuth();
   const location = useLocation();
@@ -95,13 +102,15 @@ const LoginPage: React.FC = () => {
       const publicConfig = await getPublicConfig();
       const betterAuth = publicConfig.betterAuth;
       if (!betterAuth?.enabled) {
-        setSocialProviders({ google: false, github: false });
+        setSocialProviders({ google: false, github: false, oidc: false });
         return;
       }
       setBetterAuthBasePath(betterAuth.basePath);
+      setOidcProviderId(betterAuth.providers?.oidc?.providerId || 'oidc');
       setSocialProviders({
         google: betterAuth.providers?.google?.enabled === true,
         github: betterAuth.providers?.github?.enabled === true,
+        oidc: betterAuth.providers?.oidc?.enabled === true,
       });
     };
     loadAuthProviders();
@@ -134,10 +143,20 @@ const LoginPage: React.FC = () => {
     }
   };
 
-  const handleSocialLogin = async (provider: 'google' | 'github') => {
+  const handleSocialLogin = async (provider: SocialProvider) => {
     setSocialError(null);
     setSocialLoading(provider);
     try {
+      if (provider === 'oidc') {
+        await startOidcLogin({
+          providerId: oidcProviderId,
+          callbackURL: returnUrl || '/',
+          errorCallbackURL: `${getBasePath()}/login`,
+          basePathOverride: betterAuthBasePath,
+        });
+        return;
+      }
+
       const client = createBetterAuthClient(betterAuthBasePath);
       await client.signIn.social({
         provider,
@@ -330,7 +349,7 @@ const LoginPage: React.FC = () => {
               </button>
             </form>
 
-            {(socialProviders.google || socialProviders.github) && (
+            {(socialProviders.google || socialProviders.github || socialProviders.oidc) && (
               <div className="mt-5 space-y-3">
                 <div className="flex items-center gap-3">
                   <div className="h-px flex-1" style={{ background: 'var(--hub-line)' }} />
@@ -391,6 +410,19 @@ const LoginPage: React.FC = () => {
                       {socialLoading === 'github'
                         ? t('auth.loggingIn')
                         : t('auth.loginWithGithub')}
+                    </button>
+                  )}
+                  {socialProviders.oidc && (
+                    <button
+                      type="button"
+                      onClick={() => handleSocialLogin('oidc')}
+                      disabled={socialLoading !== null}
+                      className="hub-btn w-full justify-center"
+                      style={{ height: 34 }}
+                    >
+                      {socialLoading === 'oidc'
+                        ? t('auth.loggingIn')
+                        : t('auth.loginWithOIDC')}
                     </button>
                   )}
                 </div>

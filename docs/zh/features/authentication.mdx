@@ -7,6 +7,44 @@ description: '为 MCPHub 配置身份认证和安全设置'
 
 MCPHub 提供灵活的身份认证机制来保护您的 MCP 服务器管理平台。系统支持多种身份认证方法和基于角色的访问控制。
 
+## Better Auth（GitHub / Google / 本地 OIDC）
+
+MCPHub 可以通过 Better Auth 为 Dashboard 提供第三方登录。当前支持：
+
+- GitHub
+- Google
+- 本地 OIDC Provider（例如 Keycloak、Authentik、Dex）
+
+启用条件：
+
+1. `mcp_settings.json` 中设置 `systemConfig.auth.betterAuth.enabled = true`
+2. 配置 `DB_URL`（Better Auth 当前依赖 PostgreSQL，会话不支持纯文件模式）
+3. 设置 `BETTER_AUTH_URL`
+4. 为对应登录方式提供客户端凭据
+
+本地 OIDC 登录需要在 `systemConfig.auth.betterAuth.providers.oidc` 中配置：
+
+- `enabled`
+- `providerId`
+- `discoveryUrl`
+- 可选的 `scopes`、`pkce`、`prompt`
+
+`discoveryUrl` 应指向 OIDC Provider 的 `/.well-known/openid-configuration`。
+
+当 OIDC Provider 可用时，登录页会显示“使用 OIDC 登录”按钮。
+
+### 本地用户映射规则
+
+Better Auth 登录成功后，MCPHub 会把会话映射回本地用户：
+
+- 优先使用 `email`
+- 其次使用 `name`
+- 最后回退到 provider 返回的 `id`
+
+如果本地不存在对应 `username`，MCPHub 会自动创建一个**非管理员**用户。
+
+> OIDC / GitHub / Google 登录都不会自动授予管理员权限。只有本地已存在同名且 `isAdmin=true` 的用户，映射后才会拥有管理员权限。
+
 ## 身份认证方法
 
 ### 基于环境变量的认证

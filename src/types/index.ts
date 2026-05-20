@@ -155,12 +155,28 @@ export interface BetterAuthProviderToggle {
   enabled?: boolean; // Enable/disable the provider
 }
 
+export interface BetterAuthOidcProviderConfig extends BetterAuthProviderToggle {
+  providerId?: string; // Provider identifier used by Better Auth generic OAuth plugin
+  discoveryUrl?: string; // OIDC discovery URL for a local issuer
+  scopes?: string[]; // Requested scopes for login
+  pkce?: boolean; // Enable/disable PKCE for the provider
+  prompt?:
+    | 'none'
+    | 'login'
+    | 'create'
+    | 'consent'
+    | 'select_account'
+    | 'select_account consent'
+    | 'login consent';
+}
+
 export interface BetterAuthConfig {
   enabled?: boolean; // Enable/disable Better Auth integration
   basePath?: string; // Base path to mount Better Auth handler
   providers?: {
     google?: BetterAuthProviderToggle;
     github?: BetterAuthProviderToggle;
+    oidc?: BetterAuthOidcProviderConfig;
   };
 }
 
