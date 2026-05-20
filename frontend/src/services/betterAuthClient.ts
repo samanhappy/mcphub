@@ -55,7 +55,7 @@ export const startOidcLogin = async ({
     throw new Error('OIDC sign-in request failed.');
   }
 
-  const data = (await response.json()) as { url?: string; redirect?: boolean };
+const data = await response.json().catch(() => ({})) as { url?: string; redirect?: boolean };
   if (!data.redirect || !data.url) {
     throw new Error('OIDC sign-in did not return a redirect URL.');
   }
