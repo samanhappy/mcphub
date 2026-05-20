@@ -10,7 +10,7 @@ import {
 
 const runtimeConfig = getBetterAuthRuntimeConfig();
 const socialProviders: Record<string, { clientId: string; clientSecret: string }> = {};
-const plugins = [];
+const plugins: any[] = [];
 if (
   runtimeConfig.providers.google.enabled &&
   process.env.GOOGLE_CLIENT_ID &&
