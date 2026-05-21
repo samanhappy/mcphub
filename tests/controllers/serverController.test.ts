@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 
 const mockServerDao = {
   findById: jest.fn(),
+  findAllPaginated: jest.fn(),
   updateTools: jest.fn(),
   updatePrompts: jest.fn(),
   updateResources: jest.fn(),
@@ -16,6 +17,8 @@ const mockNotifyToolChanged = jest.fn();
 const mockSyncToolEmbedding = jest.fn();
 const mockGetServerByName = jest.fn();
 const mockAddServer = jest.fn();
+const mockGetServersInfo = jest.fn();
+const mockGetCurrentUser = jest.fn();
 
 jest.mock('../../src/dao/DaoFactory.js', () => ({
   getServerDao: jest.fn(() => mockServerDao),
@@ -25,7 +28,7 @@ jest.mock('../../src/dao/DaoFactory.js', () => ({
 }));
 
 jest.mock('../../src/services/mcpService.js', () => ({
-  getServersInfo: jest.fn(),
+  getServersInfo: mockGetServersInfo,
   addServer: mockAddServer,
   addOrUpdateServer: jest.fn(),
   removeServer: jest.fn(),
@@ -36,8 +39,17 @@ jest.mock('../../src/services/mcpService.js', () => ({
   reconnectServer: jest.fn(),
 }));
 
+jest.mock('../../src/services/userContextService.js', () => ({
+  UserContextService: {
+    getInstance: jest.fn(() => ({
+      getCurrentUser: mockGetCurrentUser,
+    })),
+  },
+}));
+
 import {
   createServer,
+  getAllServers,
   getServerConfig,
   resetPromptDescription,
   resetResourceDescription,
@@ -384,6 +396,59 @@ describe('serverController - authorization hardening', () => {
     expect(json).toHaveBeenCalledWith({
       success: false,
       message: 'Forbidden',
+    });
+  });
+});
+
+describe('serverController - getAllServers', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockGetCurrentUser.mockReturnValue(undefined);
+    mockServerDao.findAllPaginated.mockResolvedValue({
+      data: [{ name: 'alpha' }],
+      page: 1,
+      limit: 5,
+      total: 2,
+      totalPages: 1,
+    });
+  });
+
+  it('returns allServers alongside paginated data to support dashboard consumers without a second request', async () => {
+    mockGetServersInfo
+      .mockResolvedValueOnce([{ name: 'alpha', status: 'connected', tools: [] }])
+      .mockResolvedValueOnce([
+        { name: 'alpha', status: 'connected', tools: [] },
+        { name: 'beta', status: 'disconnected', tools: [] },
+      ]);
+
+    const json = jest.fn();
+    const req = {
+      query: {
+        page: '1',
+        limit: '5',
+      },
+    } as unknown as Request;
+    const res = { json } as unknown as Response;
+
+    await getAllServers(req, res);
+
+    expect(mockGetServersInfo).toHaveBeenNthCalledWith(1, 1, 5, undefined);
+    expect(mockGetServersInfo).toHaveBeenNthCalledWith(2, undefined, undefined, undefined);
+    expect(json).toHaveBeenCalledWith({
+      success: true,
+      data: [{ name: 'alpha', status: 'connected', tools: [] }],
+      allServers: [
+        { name: 'alpha', status: 'connected', tools: [] },
+        { name: 'beta', status: 'disconnected', tools: [] },
+      ],
+      pagination: {
+        page: 1,
+        limit: 5,
+        total: 2,
+        totalPages: 1,
+        hasNextPage: false,
+        hasPrevPage: false,
+      },
     });
   });
 });

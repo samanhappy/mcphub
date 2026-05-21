@@ -31,7 +31,7 @@ const CONFIG = {
   },
   // Normal operation phase configuration
   normal: {
-    pollingInterval: 10000, // Polling interval during normal operation (10 seconds)
+    pollingInterval: 30000, // Polling interval during normal operation (30 seconds)
   },
 };
 
@@ -44,6 +44,11 @@ interface PaginationInfo {
   hasNextPage: boolean;
   hasPrevPage: boolean;
 }
+
+type ServerListResponse = ApiResponse<Server[]> & {
+  pagination?: PaginationInfo;
+  allServers?: Server[];
+};
 
 // Context type definition
 interface ServerContextType {
@@ -101,6 +106,27 @@ export const ServerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
   };
 
+  const applyServerResponse = useCallback((serverData: ServerListResponse | Server[]) => {
+    if (serverData && !Array.isArray(serverData) && serverData.success && Array.isArray(serverData.data)) {
+      setServers(serverData.data);
+      setAllServers(Array.isArray(serverData.allServers) ? serverData.allServers : serverData.data);
+      setPagination(serverData.pagination ?? null);
+      return;
+    }
+
+    if (Array.isArray(serverData)) {
+      setServers(serverData);
+      setAllServers(serverData);
+      setPagination(null);
+      return;
+    }
+
+    console.error('Invalid server data format', { serverData });
+    setServers([]);
+    setAllServers([]);
+    setPagination(null);
+  }, []);
+
   // Start normal polling
   const startNormalPolling = useCallback(
     (options?: { immediate?: boolean }) => {
@@ -116,42 +142,11 @@ export const ServerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           params.append('page', currentPage.toString());
           params.append('limit', serversPerPage.toString());
 
-          // Fetch both paginated servers and all servers in parallel
-          const [paginatedData, allData] = await Promise.all([
-            apiGet(`/servers?${params.toString()}`),
-            apiGet('/servers'), // Fetch all servers without pagination
-          ]);
+          const serverData = (await apiGet(`/servers?${params.toString()}`)) as ServerListResponse;
 
           // Update last fetch time
           lastFetchTimeRef.current = Date.now();
-
-          // Handle paginated response
-          if (paginatedData && paginatedData.success && Array.isArray(paginatedData.data)) {
-            setServers(paginatedData.data);
-            // Update pagination info if available
-            if (paginatedData.pagination) {
-              setPagination(paginatedData.pagination);
-            } else {
-              setPagination(null);
-            }
-          } else if (paginatedData && Array.isArray(paginatedData)) {
-            // Compatibility handling for non-paginated responses
-            setServers(paginatedData);
-            setPagination(null);
-          } else {
-            console.error('Invalid server data format', { paginatedData });
-            setServers([]);
-            setPagination(null);
-          }
-
-          // Handle all servers response
-          if (allData && allData.success && Array.isArray(allData.data)) {
-            setAllServers(allData.data);
-          } else if (allData && Array.isArray(allData)) {
-            setAllServers(allData);
-          } else {
-            setAllServers([]);
-          }
+          applyServerResponse(serverData);
 
           // Reset error state
           setError(null);
@@ -180,7 +175,7 @@ export const ServerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       // Set up regular polling
       intervalRef.current = setInterval(fetchServers, CONFIG.normal.pollingInterval);
     },
-    [t, currentPage, serversPerPage],
+    [applyServerResponse, t, currentPage, serversPerPage],
   );
 
   // Watch for authentication status changes
@@ -222,43 +217,11 @@ export const ServerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         params.append('page', currentPage.toString());
         params.append('limit', serversPerPage.toString());
 
-        // Fetch both paginated servers and all servers in parallel
-        const [paginatedData, allData] = await Promise.all([
-          apiGet(`/servers?${params.toString()}`),
-          apiGet('/servers'), // Fetch all servers without pagination
-        ]);
+        const serverData = (await apiGet(`/servers?${params.toString()}`)) as ServerListResponse;
 
         // Update last fetch time
         lastFetchTimeRef.current = Date.now();
-
-        // Handle paginated API response wrapper object, extract data field
-        if (paginatedData && paginatedData.success && Array.isArray(paginatedData.data)) {
-          setServers(paginatedData.data);
-          // Update pagination info if available
-          if (paginatedData.pagination) {
-            setPagination(paginatedData.pagination);
-          } else {
-            setPagination(null);
-          }
-        } else if (paginatedData && Array.isArray(paginatedData)) {
-          // Compatibility handling, if API directly returns array
-          setServers(paginatedData);
-          setPagination(null);
-        } else {
-          // If data format is not as expected, set to empty array
-          console.error('Invalid server data format', { paginatedData });
-          setServers([]);
-          setPagination(null);
-        }
-
-        // Handle all servers response
-        if (allData && allData.success && Array.isArray(allData.data)) {
-          setAllServers(allData.data);
-        } else if (allData && Array.isArray(allData)) {
-          setAllServers(allData);
-        } else {
-          setAllServers([]);
-        }
+        applyServerResponse(serverData);
 
         setIsInitialLoading(false);
         // Initialization successful, start normal polling (skip immediate to avoid duplicate fetch)
@@ -316,7 +279,7 @@ export const ServerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     return () => {
       clearTimer();
     };
-  }, [refreshKey, t, isInitialLoading, startNormalPolling, currentPage, serversPerPage]);
+  }, [applyServerResponse, refreshKey, t, isInitialLoading, startNormalPolling, currentPage, serversPerPage]);
 
   useEffect(() => {
     if (!pagination) {

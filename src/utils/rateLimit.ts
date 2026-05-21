@@ -18,15 +18,15 @@ export const createStandardRateLimiter = (options: {
 
 export const templateRateLimiter = createStandardRateLimiter({
   windowMs: 15 * 60 * 1000,
-  max: 100,
+  max: 200,
 });
 
 export const authenticatedRouteRateLimiter = createStandardRateLimiter({
   windowMs: 15 * 60 * 1000,
-  max: 300,
+  max: 600,
 });
 
 export const mcpConnectionRateLimiter = createStandardRateLimiter({
   windowMs: 60 * 1000,
-  max: 240,
+  max: 480,
 });

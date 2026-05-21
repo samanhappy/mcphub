@@ -179,6 +179,7 @@ export const getAllServers = async (req: Request, res: Response): Promise<void> 
 
     // Get servers info with pagination if limit is specified
     let serversInfo: Omit<ServerInfo, 'client' | 'transport'>[];
+    let allServers: Omit<ServerInfo, 'client' | 'transport'>[] | undefined;
     let pagination = undefined;
 
     if (limit !== undefined) {
@@ -190,6 +191,7 @@ export const getAllServers = async (req: Request, res: Response): Promise<void> 
 
       // Get runtime info for paginated servers
       serversInfo = await getServersInfo(page, limit, currentUser);
+      allServers = await getServersInfo(undefined, undefined, currentUser);
 
       pagination = {
         page: paginatedResult.page,
@@ -204,9 +206,13 @@ export const getAllServers = async (req: Request, res: Response): Promise<void> 
       serversInfo = await getServersInfo();
     }
 
-    const response: ApiResponse = {
+    const response: ApiResponse & {
+      pagination?: typeof pagination;
+      allServers?: Omit<ServerInfo, 'client' | 'transport'>[];
+    } = {
       success: true,
       data: createSafeJSON(serversInfo),
+      ...(allServers && { allServers: createSafeJSON(allServers) }),
       ...(pagination && { pagination }),
     };
     res.json(response);
