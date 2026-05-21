@@ -106,6 +106,10 @@ import { RequestContextService } from '../../src/services/requestContextService.
 describe('mcpService activity logging source IP', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockCallTool.mockResolvedValue({
+      content: [{ type: 'text', text: 'ok' }],
+      isError: false,
+    });
     RequestContextService.getInstance().clearRequestContext();
   });
 
@@ -154,6 +158,65 @@ describe('mcpService activity logging source IP', () => {
     expect(mockLogToolCall).toHaveBeenCalledWith(
       expect.objectContaining({
         sourceIp: '198.51.100.24',
+      }),
+    );
+
+    getServerByNameSpy.mockRestore();
+  });
+
+  it('logs raw tool input and output for activity details', async () => {
+    const rawResult = {
+      content: [
+        {
+          type: 'text',
+          text: '{"message":"tool failed for test"}',
+        },
+      ],
+      isError: true,
+    };
+    mockCallTool.mockResolvedValueOnce(rawResult);
+
+    const serverInfo = {
+      name: 'amap',
+      status: 'connected',
+      enabled: true,
+      tools: [{ name: 'amap::maps_geo' }],
+      client: {
+        callTool: mockCallTool,
+      },
+      options: {},
+    } as any;
+
+    const getServerByNameSpy = jest.spyOn(mcpService, 'getServerByName').mockReturnValue(serverInfo);
+
+    const rawArguments = {
+      address: 'Hangzhou West Lake',
+    };
+
+    await mcpService.handleCallToolRequest(
+      {
+        params: {
+          name: 'call_tool',
+          arguments: {
+            toolName: 'amap::maps_geo',
+            arguments: rawArguments,
+          },
+        },
+      },
+      {
+        sessionId: 'session-2',
+        server: 'amap',
+      },
+    );
+
+    expect(mockLogToolCall).toHaveBeenCalledWith(
+      expect.objectContaining({
+        server: 'amap',
+        tool: 'maps_geo',
+        status: 'error',
+        input: rawArguments,
+        output: rawResult,
+        errorMessage: 'Tool returned error response',
       }),
     );
 
