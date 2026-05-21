@@ -45,6 +45,9 @@ export class Activity {
   @Column({ type: 'varchar', length: 255, nullable: true, name: 'key_name' })
   keyName?: string;
 
+  @Column({ type: 'varchar', length: 255, nullable: true, name: 'source_ip' })
+  sourceIp?: string;
+
   @Column({ type: 'text', nullable: true, name: 'error_message' })
   errorMessage?: string;
 }

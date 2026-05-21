@@ -1015,6 +1015,7 @@
     "status": "Durum",
     "group": "Grup",
     "key": "API Anahtarı",
+    "sourceIp": "Kaynak IP",
     "input": "Girdi",
     "output": "Çıktı",
     "details": "Etkinlik detayları",

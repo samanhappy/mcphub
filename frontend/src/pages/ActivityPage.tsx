@@ -502,6 +502,7 @@ const ActivityPage: React.FC = () => {
                   t('activity.status'),
                   t('activity.group'),
                   t('activity.key'),
+                  t('activity.sourceIp'),
                   t('common.actions'),
                 ].map((label) => (
                   <th
@@ -566,6 +567,12 @@ const ActivityPage: React.FC = () => {
                     style={{ padding: '10px 14px', fontSize: 12, color: 'var(--hub-ink-3)' }}
                   >
                     {activity.keyName || '—'}
+                  </td>
+                  <td
+                    className="hub-mono whitespace-nowrap"
+                    style={{ padding: '10px 14px', fontSize: 12, color: 'var(--hub-ink-3)' }}
+                  >
+                    {activity.sourceIp || '—'}
                   </td>
                   <td style={{ padding: '10px 14px' }}>
                     <button
@@ -669,6 +676,14 @@ const ActivityPage: React.FC = () => {
                   {t('activity.group')}
                 </label>
                 <p className="text-gray-900 dark:text-white">{selectedActivity.group || '-'}</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-500 dark:text-gray-400">
+                  {t('activity.sourceIp')}
+                </label>
+                <p className="text-gray-900 dark:text-white font-mono">
+                  {selectedActivity.sourceIp || '-'}
+                </p>
               </div>
               {selectedActivity.keyName && (
                 <div>

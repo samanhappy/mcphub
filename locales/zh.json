@@ -1019,6 +1019,7 @@
     "status": "状态",
     "group": "分组",
     "key": "API密钥",
+    "sourceIp": "来源IP",
     "input": "输入",
     "output": "输出",
     "details": "活动详情",

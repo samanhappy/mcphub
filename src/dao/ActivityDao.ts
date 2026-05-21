@@ -44,6 +44,7 @@ export class ActivityDaoDbImpl implements ActivityDao {
       group: activity.group,
       keyId: activity.keyId,
       keyName: activity.keyName,
+      sourceIp: activity.sourceIp,
       errorMessage: activity.errorMessage,
     });
 
@@ -109,6 +110,7 @@ export class ActivityDaoDbImpl implements ActivityDao {
       group: entity.group,
       keyId: entity.keyId,
       keyName: entity.keyName,
+      sourceIp: entity.sourceIp,
       errorMessage: entity.errorMessage,
     };
   }

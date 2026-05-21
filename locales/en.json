@@ -1017,6 +1017,7 @@
     "status": "Status",
     "group": "Group",
     "key": "API Key",
+    "sourceIp": "Source IP",
     "input": "Input",
     "output": "Output",
     "details": "Activity Details",

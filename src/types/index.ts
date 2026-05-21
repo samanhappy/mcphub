@@ -581,6 +581,7 @@ export interface IActivity {
   group?: string; // Group name if called via group route
   keyId?: string; // Bearer key ID if authenticated with bearer token
   keyName?: string; // Bearer key name for display purposes
+  sourceIp?: string; // Source IP address of the caller
   errorMessage?: string; // Error message if status is 'error'
 }
 

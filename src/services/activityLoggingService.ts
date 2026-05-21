@@ -43,6 +43,7 @@ export class ActivityLoggingService {
     group?: string;
     keyId?: string;
     keyName?: string;
+    sourceIp?: string;
     errorMessage?: string;
   }): Promise<void> {
     if (!this.isEnabled()) {
@@ -66,6 +67,7 @@ export class ActivityLoggingService {
         group: params.group,
         keyId: params.keyId,
         keyName: params.keyName,
+        sourceIp: params.sourceIp,
         errorMessage: params.errorMessage
           ? sanitizeStringForLogging(params.errorMessage)
           : undefined,

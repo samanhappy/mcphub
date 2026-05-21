@@ -1702,6 +1702,7 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
     requestContextService.getGroupContext() || extra?.group || getGroup(sessionId) || undefined;
   const keyId = bearerKeyContext.keyId || extra?.keyId || undefined;
   const keyName = bearerKeyContext.keyName || extra?.keyName || undefined;
+  const sourceIp = requestContextService.getRequestContext()?.remoteAddress || undefined;
 
   try {
     // Special handling for smart routing tools
@@ -1815,6 +1816,7 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
           group,
           keyId,
           keyName,
+          sourceIp,
         });
 
         return {
@@ -1874,6 +1876,7 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
         group,
         keyId,
         keyName,
+        sourceIp,
         errorMessage: result.isError ? 'Tool returned error response' : undefined,
       });
 
@@ -1955,6 +1958,7 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
         group,
         keyId,
         keyName,
+        sourceIp,
       });
 
       return {
@@ -2001,6 +2005,7 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
       group,
       keyId,
       keyName,
+      sourceIp,
         errorMessage: result.isError ? 'Tool returned error response' : undefined,
     });
 
@@ -2022,6 +2027,7 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
       group,
       keyId,
       keyName,
+      sourceIp,
       errorMessage: formatErrorForLogging(error),
     });
 

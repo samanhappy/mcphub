@@ -1015,6 +1015,7 @@
     "status": "Statut",
     "group": "Groupe",
     "key": "Clé API",
+    "sourceIp": "IP source",
     "input": "Entrée",
     "output": "Sortie",
     "details": "Détails de l’activité",

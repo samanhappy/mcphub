@@ -604,6 +604,7 @@ export interface Activity {
   group?: string;
   keyId?: string;
   keyName?: string;
+  sourceIp?: string;
   errorMessage?: string;
 }
 
