@@ -1,6 +1,6 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
-import { isIPv4 } from 'node:net';
 import { Request } from 'express';
+import ipaddr from 'ipaddr.js';
 
 /**
  * Request context interface for MCP request handling
@@ -15,8 +15,6 @@ export interface RequestContext {
   keyName?: string;
 }
 
-const IPV4_MAPPED_IPV6_PREFIX = '::ffff:';
-
 const normalizeRemoteAddress = (remoteAddress?: string): string | undefined => {
   if (!remoteAddress) {
     return undefined;
@@ -27,10 +25,10 @@ const normalizeRemoteAddress = (remoteAddress?: string): string | undefined => {
     return undefined;
   }
 
-  if (trimmedRemoteAddress.toLowerCase().startsWith(IPV4_MAPPED_IPV6_PREFIX)) {
-    const ipv4Address = trimmedRemoteAddress.slice(IPV4_MAPPED_IPV6_PREFIX.length);
-    if (isIPv4(ipv4Address)) {
-      return ipv4Address;
+  if (ipaddr.isValid(trimmedRemoteAddress)) {
+    const parsedAddress = ipaddr.parse(trimmedRemoteAddress);
+    if (parsedAddress instanceof ipaddr.IPv6 && parsedAddress.isIPv4MappedAddress()) {
+      return parsedAddress.toIPv4Address().toString();
     }
   }
 

@@ -54,6 +54,24 @@ describe('RequestContextService', () => {
     expect(service.getRequestContext()?.remoteAddress).toBe('172.19.0.88');
   });
 
+  it('normalizes fully expanded IPv4-mapped IPv6 addresses from custom contexts', () => {
+    service.setCustomRequestContext({
+      headers: {},
+      remoteAddress: '0000:0000:0000:0000:0000:ffff:198.51.100.24',
+    });
+
+    expect(service.getRequestContext()?.remoteAddress).toBe('198.51.100.24');
+  });
+
+  it('normalizes hex-tail IPv4-mapped IPv6 addresses from custom contexts', () => {
+    service.setCustomRequestContext({
+      headers: {},
+      remoteAddress: '0000:0000:0000:0000:0000:ffff:c633:6418',
+    });
+
+    expect(service.getRequestContext()?.remoteAddress).toBe('198.51.100.24');
+  });
+
   it('prefers X-Forwarded-For via req.ip when one trusted proxy is configured', async () => {
     const app = express();
     app.set('trust proxy', 1);

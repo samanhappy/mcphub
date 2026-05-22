@@ -71,6 +71,7 @@
     "hono": "4.12.18",
     "i18next": "^25.5.0",
     "i18next-fs-backend": "^2.6.0",
+    "ipaddr.js": "^2.4.0",
     "jsonwebtoken": "^9.0.2",
     "kysely": "^0.28.9",
     "multer": "^2.0.2",
