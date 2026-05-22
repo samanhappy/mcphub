@@ -1,5 +1,6 @@
 import { RequestContextService } from '../../src/services/requestContextService.js';
-import { Request } from 'express';
+import express, { Request } from 'express';
+import request from 'supertest';
 
 describe('RequestContextService', () => {
   let service: RequestContextService;
@@ -37,6 +38,96 @@ describe('RequestContextService', () => {
     expect(context?.headers).toEqual(mockRequest.headers);
     expect(context?.userAgent).toBe('test-agent');
     expect(context?.remoteAddress).toBe('127.0.0.1');
+  });
+
+  it('normalizes IPv4-mapped IPv6 addresses from Express requests', () => {
+    const mockRequest = {
+      headers: {
+        'user-agent': 'test-agent',
+      },
+      ip: '::ffff:172.19.0.88',
+      connection: { remoteAddress: '::ffff:172.19.0.88' },
+    } as unknown as Request;
+
+    service.setRequestContext(mockRequest);
+
+    expect(service.getRequestContext()?.remoteAddress).toBe('172.19.0.88');
+  });
+
+  it('prefers X-Forwarded-For via req.ip when one trusted proxy is configured', async () => {
+    const app = express();
+    app.set('trust proxy', 1);
+
+    app.get('/request-context', async (req, res) => {
+      await service.runWithRequestContext(req, async () => {
+        res.json({
+          remoteAddress: service.getRequestContext()?.remoteAddress,
+          ip: req.ip,
+          ips: req.ips,
+        });
+      });
+    });
+
+    const response = await request(app)
+      .get('/request-context')
+      .set('X-Forwarded-For', '198.51.100.24')
+      .expect(200);
+
+    expect(response.body).toEqual({
+      remoteAddress: '198.51.100.24',
+      ip: '198.51.100.24',
+      ips: ['198.51.100.24'],
+    });
+  });
+
+  it('resolves the original client IP across multiple trusted proxy hops', async () => {
+    const app = express();
+    app.set('trust proxy', 2);
+
+    app.get('/request-context', async (req, res) => {
+      await service.runWithRequestContext(req, async () => {
+        res.json({
+          remoteAddress: service.getRequestContext()?.remoteAddress,
+          ip: req.ip,
+          ips: req.ips,
+        });
+      });
+    });
+
+    const response = await request(app)
+      .get('/request-context')
+      .set('X-Forwarded-For', '198.51.100.24, 10.0.0.2')
+      .expect(200);
+
+    expect(response.body).toEqual({
+      remoteAddress: '198.51.100.24',
+      ip: '198.51.100.24',
+      ips: ['198.51.100.24', '10.0.0.2'],
+    });
+  });
+
+  it('does not trust X-Forwarded-For when trust proxy is disabled', async () => {
+    const app = express();
+    app.set('trust proxy', false);
+
+    app.get('/request-context', async (req, res) => {
+      await service.runWithRequestContext(req, async () => {
+        res.json({
+          remoteAddress: service.getRequestContext()?.remoteAddress,
+          ip: req.ip,
+          ips: req.ips,
+        });
+      });
+    });
+
+    const response = await request(app)
+      .get('/request-context')
+      .set('X-Forwarded-For', '198.51.100.24, 10.0.0.2')
+      .expect(200);
+
+    expect(response.body.ips).toEqual([]);
+    expect(response.body.ip).not.toBe('198.51.100.24');
+    expect(response.body.remoteAddress).not.toBe('198.51.100.24');
   });
 
   it('should get specific headers case-insensitively', () => {

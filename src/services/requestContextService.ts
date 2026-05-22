@@ -1,4 +1,5 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
+import { isIPv4 } from 'node:net';
 import { Request } from 'express';
 
 /**
@@ -13,6 +14,28 @@ export interface RequestContext {
   keyId?: string;
   keyName?: string;
 }
+
+const IPV4_MAPPED_IPV6_PREFIX = '::ffff:';
+
+const normalizeRemoteAddress = (remoteAddress?: string): string | undefined => {
+  if (!remoteAddress) {
+    return undefined;
+  }
+
+  const trimmedRemoteAddress = remoteAddress.trim();
+  if (!trimmedRemoteAddress) {
+    return undefined;
+  }
+
+  if (trimmedRemoteAddress.toLowerCase().startsWith(IPV4_MAPPED_IPV6_PREFIX)) {
+    const ipv4Address = trimmedRemoteAddress.slice(IPV4_MAPPED_IPV6_PREFIX.length);
+    if (isIPv4(ipv4Address)) {
+      return ipv4Address;
+    }
+  }
+
+  return trimmedRemoteAddress;
+};
 
 /**
  * Service for managing request context during MCP request processing
@@ -36,7 +59,7 @@ export class RequestContextService {
       headers: req.headers,
       sessionId: (req.headers['mcp-session-id'] as string) || undefined,
       userAgent: req.headers['user-agent'] as string,
-      remoteAddress: req.ip || req.socket?.remoteAddress,
+      remoteAddress: normalizeRemoteAddress(req.ip || req.socket?.remoteAddress),
     };
   }
 
@@ -44,6 +67,7 @@ export class RequestContextService {
     return {
       ...context,
       headers: { ...context.headers },
+      remoteAddress: normalizeRemoteAddress(context.remoteAddress),
     };
   }
 

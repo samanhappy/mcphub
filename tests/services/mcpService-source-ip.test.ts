@@ -134,7 +134,7 @@ describe('mcpService activity logging source IP', () => {
     await RequestContextService.getInstance().runWithCustomRequestContext(
       {
         headers: {},
-        remoteAddress: '198.51.100.24',
+        remoteAddress: '::ffff:198.51.100.24',
       },
       async () => {
         await mcpService.handleCallToolRequest(
