@@ -6,6 +6,7 @@ const postgresDialectMock = jest.fn();
 const runtimeConfig = {
   enabled: true,
   basePath: '/api/auth/better',
+  trustedOrigins: ['https://mcp.imdevinc.home'],
   providers: {
     google: { enabled: false },
     github: { enabled: false },
@@ -82,6 +83,7 @@ describe('betterAuth bootstrap', () => {
     expect(betterAuthMock).toHaveBeenCalledWith(
       expect.objectContaining({
         socialProviders: {},
+        trustedOrigins: ['https://mcp.imdevinc.home'],
         plugins: [
           {
             id: 'generic-oauth',

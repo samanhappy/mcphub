@@ -173,6 +173,7 @@ export interface BetterAuthOidcProviderConfig extends BetterAuthProviderToggle {
 export interface BetterAuthConfig {
   enabled?: boolean; // Enable/disable Better Auth integration
   basePath?: string; // Base path to mount Better Auth handler
+  trustedOrigins?: string[]; // Explicitly trusted origins for social/OIDC login requests
   providers?: {
     google?: BetterAuthProviderToggle;
     github?: BetterAuthProviderToggle;

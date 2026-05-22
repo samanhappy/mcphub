@@ -11,13 +11,43 @@ const normalizePath = (value: string): string => {
   return value.startsWith('/') ? value : `/${value}`;
 };
 
+const normalizeTrustedOrigin = (value: unknown): string | null => {
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  const trimmedValue = value.trim();
+  if (!trimmedValue) {
+    return null;
+  }
+
+  try {
+    return new URL(trimmedValue).origin;
+  } catch {
+    return null;
+  }
+};
+
 export const getBetterAuthRuntimeConfig = () => {
   const settings = loadSettings();
+  const systemConfig = settings.systemConfig;
   const betterAuthSettings = settings.systemConfig?.auth?.betterAuth || {};
   const databaseUrlConfigured = Boolean(process.env.DB_URL);
   const enabled = Boolean(betterAuthSettings.enabled ?? true) && databaseUrlConfigured;
   const basePath = normalizePath(betterAuthSettings.basePath || DEFAULT_BETTER_AUTH_BASE_PATH);
   const providerSettings = betterAuthSettings.providers || {};
+  const trustedOrigins = Array.from(
+    new Set(
+      [
+        ...(Array.isArray(betterAuthSettings.trustedOrigins)
+          ? betterAuthSettings.trustedOrigins
+          : []),
+        systemConfig?.install?.baseUrl,
+      ]
+        .map((value) => normalizeTrustedOrigin(value))
+        .filter((value): value is string => Boolean(value)),
+    ),
+  );
 
   const googleEnvConfigured = Boolean(
     process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET,
@@ -46,6 +76,7 @@ export const getBetterAuthRuntimeConfig = () => {
   return {
     enabled: anyProviderEnabled,
     basePath,
+    trustedOrigins,
     providers: {
       google: {
         enabled: googleEnabled,

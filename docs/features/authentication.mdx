@@ -97,6 +97,8 @@ For a local issuer (for example Keycloak, Authentik, or Dex), add `systemConfig.
 
 The `discoveryUrl` should point at the provider's `/.well-known/openid-configuration` endpoint. The login page shows a generic **Continue with OIDC** button when this provider is enabled.
 
+If the dashboard runs behind a different public origin, set `systemConfig.auth.betterAuth.trustedOrigins` to allow that origin to start the login flow. If `trustedOrigins` is omitted, MCPHub automatically trusts `systemConfig.install.baseUrl` when it is set.
+
 <Note>
   Better Auth in MCPHub currently requires PostgreSQL-backed storage (`DB_URL`). File-only mode does not support Better Auth sessions, including local OIDC login.
 </Note>

@@ -99,6 +99,7 @@ const authOptions: BetterAuthOptions = {
   },
   plugins,
   socialProviders,
+  trustedOrigins: runtimeConfig.trustedOrigins,
   logger: {
     disabled: false,
     disableColors: false,
