@@ -119,7 +119,7 @@ pnpm dev
 
 ## 👥 Contribuer
 
-Les contributions sont les bienvenues ! Rejoignez notre [communauté Discord](https://discord.gg/qMKNsn5Q) pour des discussions et du support.
+Les contributions sont les bienvenues ! Rejoignez notre [communauté Discord](https://discord.gg/c8GKyzyFF) pour des discussions et du support.
 
 ## ❤️ Sponsor
 
