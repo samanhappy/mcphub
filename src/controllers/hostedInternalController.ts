@@ -4,13 +4,6 @@ import type { HubWebhookEvent } from '../services/hostedControlPlaneClient.js';
 import { verifyInternalExpressRequest } from '../services/hostedInternalAuth.js';
 import { isHostedModeEnabled } from '../services/hostedMode.js';
 
-function bodyForSignature(req: Request): string {
-  if (req.body === undefined || req.body === null) {
-    return '';
-  }
-  return typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
-}
-
 function isHubWebhookEvent(value: unknown): value is HubWebhookEvent {
   if (!value || typeof value !== 'object') return false;
   const record = value as Record<string, unknown>;
@@ -23,8 +16,7 @@ export const receiveHostedInternalEvent = async (req: Request, res: Response): P
     return;
   }
 
-  const body = bodyForSignature(req);
-  const verified = verifyInternalExpressRequest(req, body);
+  const verified = verifyInternalExpressRequest(req, req.body);
   if (!verified.ok) {
     res.status(401).json({
       success: false,

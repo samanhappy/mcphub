@@ -91,7 +91,7 @@ async function requestControlPlane<T>(
   body?: unknown,
 ): Promise<T> {
   const bodyText = body === undefined ? '' : JSON.stringify(body);
-  const { timestamp, signature } = signInternalRequest(method, path, bodyText);
+  const { timestamp, signature } = signInternalRequest(method, path, body);
   const response = await fetch(`${controlPlaneBaseUrl()}${path}`, {
     method,
     headers: {

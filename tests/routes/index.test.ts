@@ -190,6 +190,10 @@ jest.mock('../../src/controllers/activityController.js', () => ({
   deleteOldActivities: routeHandler,
 }));
 
+jest.mock('../../src/controllers/hostedInternalController.js', () => ({
+  receiveHostedInternalEvent: routeHandler,
+}));
+
 jest.mock('../../src/controllers/templateController.js', () => ({
   exportConfigTemplate: routeHandler,
   exportGroupAsTemplate: routeHandler,
@@ -213,6 +217,7 @@ type ExpressLayer = {
   route?: {
     path: string;
     methods: Record<string, boolean>;
+    stack?: ExpressLayer[];
   };
 };
 
@@ -240,6 +245,15 @@ const routerContainsRoute = (
     (layer) => layer.route?.path === path && Boolean(layer.route.methods[method.toLowerCase()]),
   ) ?? false;
 
+const findAppRoute = (app: express.Application, method: string, path: string): ExpressLayer | undefined => {
+  const appRouter = (app as express.Application & { _router?: { stack?: ExpressLayer[] } })._router;
+
+  return appRouter?.stack?.find(
+    (layer) =>
+      layer.route?.path === path && Boolean(layer.route.methods[method.toLowerCase()]),
+  );
+};
+
 describe('initRoutes authenticated API rate limiting', () => {
   it('mounts sensitive API routes behind the authenticated rate limiter', async () => {
     const app = express();
@@ -259,5 +273,18 @@ describe('initRoutes authenticated API rate limiting', () => {
     expect(routerContainsRoute(protectedRouter!, 'get', '/servers/:name')).toBe(true);
     expect(routerContainsRoute(protectedRouter!, 'put', '/oauth/clients/:clientId')).toBe(true);
     expect(routerContainsRoute(protectedRouter!, 'delete', '/oauth/clients/:clientId')).toBe(true);
+  });
+
+  it('rate limits the hosted internal webhook ingress route', async () => {
+    const app = express();
+
+    await initRoutes(app);
+
+    const internalRoute = findAppRoute(app, 'post', '/internal/v1/events');
+
+    expect(internalRoute).toBeDefined();
+    expect(internalRoute?.route?.stack?.map((layer) => layer.handle)).toContain(
+      authenticatedRouteRateLimiter,
+    );
   });
 });

@@ -1,11 +1,60 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
-import { Request } from 'express';
+import type { Request } from 'express';
 
 const SIGNATURE_HEADER = 'x-internal-signature';
 const TIMESTAMP_HEADER = 'x-internal-timestamp';
 const REPLAY_WINDOW_MS = 5 * 60 * 1000;
+const REDACTED_SIGNATURE_VALUE = '[REDACTED]';
+const REDACTED_SIGNATURE_FIELDS = new Set(['apiKey', 'apiKeyId']);
 
 export { SIGNATURE_HEADER, TIMESTAMP_HEADER, REPLAY_WINDOW_MS };
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return Object.prototype.toString.call(value) === '[object Object]';
+}
+
+function normalizeSignatureBody(value: unknown): unknown {
+  if (Buffer.isBuffer(value)) {
+    return normalizeSignatureBody(value.toString('utf8'));
+  }
+
+  if (typeof value === 'string') {
+    if (!value) return '';
+
+    try {
+      return normalizeSignatureBody(JSON.parse(value));
+    } catch {
+      return value;
+    }
+  }
+
+  if (Array.isArray(value)) {
+    return value.map((item) => normalizeSignatureBody(item));
+  }
+
+  if (isPlainObject(value)) {
+    return Object.fromEntries(
+      Object.entries(value)
+        .sort(([left], [right]) => left.localeCompare(right))
+        .map(([key, item]) => [
+          key,
+          REDACTED_SIGNATURE_FIELDS.has(key)
+            ? REDACTED_SIGNATURE_VALUE
+            : normalizeSignatureBody(item),
+        ]),
+    );
+  }
+
+  return value;
+}
+
+function serializeInternalRequestBody(body?: unknown): string {
+  if (body === undefined || body === null || body === '') {
+    return '';
+  }
+
+  return JSON.stringify(normalizeSignatureBody(body));
+}
 
 function getSecret(): string {
   const secret = process.env.INTERNAL_API_SECRET;
@@ -22,11 +71,12 @@ function payload(timestamp: string, method: string, path: string, body: string):
 export function signInternalRequest(
   method: string,
   path: string,
-  body = '',
+  body?: unknown,
 ): { timestamp: string; signature: string } {
   const timestamp = Date.now().toString();
+  const serializedBody = serializeInternalRequestBody(body);
   const signature = createHmac('sha256', getSecret())
-    .update(payload(timestamp, method, path, body))
+    .update(payload(timestamp, method, path, serializedBody))
     .digest('hex');
   return { timestamp, signature: `sha256=${signature}` };
 }
@@ -34,7 +84,7 @@ export function signInternalRequest(
 export function verifyInternalSignature(opts: {
   method: string;
   path: string;
-  body: string;
+  body?: unknown;
   timestamp: string | null | undefined;
   signature: string | null | undefined;
 }): { ok: true } | { ok: false; reason: string } {
@@ -61,7 +111,7 @@ export function verifyInternalSignature(opts: {
   const expected =
     'sha256=' +
     createHmac('sha256', secret)
-      .update(payload(opts.timestamp, opts.method, opts.path, opts.body))
+      .update(payload(opts.timestamp, opts.method, opts.path, serializeInternalRequestBody(opts.body)))
       .digest('hex');
 
   const actualBuffer = Buffer.from(opts.signature);
@@ -78,7 +128,7 @@ export function verifyInternalSignature(opts: {
 
 export function verifyInternalExpressRequest(
   req: Request,
-  body: string,
+  body?: unknown,
 ): { ok: true } | { ok: false; reason: string } {
   return verifyInternalSignature({
     method: req.method,

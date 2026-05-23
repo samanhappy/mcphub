@@ -176,7 +176,7 @@ export const initRoutes = async (app: express.Application): Promise<void> => {
   app.get('/health', healthCheck);
 
   // Hosted data-plane webhook ingress. HMAC-authenticated by INTERNAL_API_SECRET.
-  app.post('/internal/v1/events', receiveHostedInternalEvent);
+  app.post('/internal/v1/events', authenticatedRouteRateLimiter, receiveHostedInternalEvent);
 
   // OAuth callback endpoint (no auth required, public callback URL)
   app.get('/oauth/callback', handleOAuthCallback);
