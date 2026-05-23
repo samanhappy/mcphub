@@ -302,8 +302,8 @@ export class OpenAPIClient {
   private generateParameterSchema(
     param: OpenAPIV3.ParameterObject,
     fallbackDescription: string,
-  ): Record<string, unknown> {
-    const parameterSchema =
+  ): OpenAPIV3.SchemaObject {
+    const parameterSchema: OpenAPIV3.SchemaObject =
       param.schema && !('$ref' in param.schema) ? { ...param.schema } : { type: 'string' };
 
     if (param.description) {
