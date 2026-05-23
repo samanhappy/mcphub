@@ -1,6 +1,5 @@
 import { Request, Response } from 'express';
 import config from '../config/index.js';
-import { loadSettings } from '../config/index.js';
 import { getDataService } from '../services/services.js';
 import { DataService } from '../services/dataService.js';
 import { IUser } from '../types/index.js';
@@ -62,10 +61,10 @@ export const getRuntimeConfig = (req: Request, res: Response): void => {
  * Get public system configuration (only skipAuth setting)
  * This endpoint doesn't require authentication to allow checking if dashboard login should be skipped
  */
-export const getPublicConfig = (req: Request, res: Response): void => {
+export const getPublicConfig = async (req: Request, res: Response): Promise<void> => {
   try {
-    const settings = loadSettings();
-    const skipAuth = settings.systemConfig?.routing?.skipAuth || false;
+    const systemConfig = await getSystemConfigDao().get();
+    const skipAuth = systemConfig?.routing?.skipAuth || false;
     let permissions = {};
     if (skipAuth) {
       const user: IUser = {
@@ -85,7 +84,7 @@ export const getPublicConfig = (req: Request, res: Response): void => {
       data: {
         skipAuth,
         permissions,
-        betterAuth: getBetterAuthRuntimeConfig(),
+        betterAuth: await getBetterAuthRuntimeConfig(systemConfig),
       },
     });
   } catch (error) {

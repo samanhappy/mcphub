@@ -69,6 +69,30 @@ interface OAuthServerConfig {
   };
 }
 
+interface BetterAuthProviderToggle {
+  enabled: boolean;
+}
+
+interface BetterAuthOidcConfig {
+  enabled: boolean;
+  providerId: string;
+  discoveryUrl: string;
+  scopes: string[];
+  pkce: boolean;
+  prompt: string;
+}
+
+interface BetterAuthConfig {
+  enabled: boolean;
+  basePath: string;
+  trustedOrigins: string[];
+  providers: {
+    google: BetterAuthProviderToggle;
+    github: BetterAuthProviderToggle;
+    oidc: BetterAuthOidcConfig;
+  };
+}
+
 interface SystemSettings {
   systemConfig?: {
     routing?: RoutingConfig;
@@ -77,6 +101,9 @@ interface SystemSettings {
     mcpRouter?: MCPRouterConfig;
     nameSeparator?: string;
     oauthServer?: OAuthServerConfig;
+    auth?: {
+      betterAuth?: Partial<BetterAuthConfig>;
+    };
     enableSessionRebuild?: boolean;
   };
   bearerKeys?: BearerKey[];
@@ -96,6 +123,7 @@ interface SettingsContextValue {
   smartRoutingConfig: SmartRoutingConfig;
   mcpRouterConfig: MCPRouterConfig;
   oauthServerConfig: OAuthServerConfig;
+  betterAuthConfig: BetterAuthConfig;
   nameSeparator: string;
   enableSessionRebuild: boolean;
   bearerKeys: BearerKey[];
@@ -122,6 +150,9 @@ interface SettingsContextValue {
   ) => Promise<boolean | undefined>;
   updateOAuthServerConfigBatch: (
     updates: Partial<OAuthServerConfig>,
+  ) => Promise<boolean | undefined>;
+  updateBetterAuthConfigBatch: (
+    updates: Partial<BetterAuthConfig>,
   ) => Promise<boolean | undefined>;
   updateNameSeparator: (value: string) => Promise<boolean | undefined>;
   updateSessionRebuild: (value: boolean) => Promise<boolean | undefined>;
@@ -150,6 +181,99 @@ const getDefaultOAuthServerConfig = (): OAuthServerConfig => ({
     requiresAuthentication: false,
   },
 });
+
+const DEFAULT_OIDC_SCOPES = ['openid', 'profile', 'email'];
+
+const getDefaultBetterAuthConfig = (): BetterAuthConfig => ({
+  enabled: true,
+  basePath: '/api/auth/better',
+  trustedOrigins: [],
+  providers: {
+    google: {
+      enabled: true,
+    },
+    github: {
+      enabled: true,
+    },
+    oidc: {
+      enabled: false,
+      providerId: 'oidc',
+      discoveryUrl: '',
+      scopes: [...DEFAULT_OIDC_SCOPES],
+      pkce: true,
+      prompt: '',
+    },
+  },
+});
+
+const normalizeStringArray = (value: unknown, fallback: string[] = []): string[] => {
+  const normalized = Array.isArray(value)
+    ? value
+        .filter((item): item is string => typeof item === 'string')
+        .map((item) => item.trim())
+        .filter((item) => item.length > 0)
+    : [];
+
+  return normalized.length > 0 ? normalized : [...fallback];
+};
+
+const normalizeBetterAuthConfig = (
+  config?: Partial<BetterAuthConfig>,
+): BetterAuthConfig => {
+  const defaults = getDefaultBetterAuthConfig();
+
+  return {
+    enabled: config?.enabled ?? defaults.enabled,
+    basePath: config?.basePath?.trim() || defaults.basePath,
+    trustedOrigins: normalizeStringArray(config?.trustedOrigins, defaults.trustedOrigins),
+    providers: {
+      google: {
+        enabled: config?.providers?.google?.enabled ?? defaults.providers.google.enabled,
+      },
+      github: {
+        enabled: config?.providers?.github?.enabled ?? defaults.providers.github.enabled,
+      },
+      oidc: {
+        enabled: config?.providers?.oidc?.enabled ?? defaults.providers.oidc.enabled,
+        providerId: config?.providers?.oidc?.providerId?.trim() || defaults.providers.oidc.providerId,
+        discoveryUrl: config?.providers?.oidc?.discoveryUrl?.trim() || '',
+        scopes: normalizeStringArray(config?.providers?.oidc?.scopes, DEFAULT_OIDC_SCOPES),
+        pkce: config?.providers?.oidc?.pkce ?? defaults.providers.oidc.pkce,
+        prompt: config?.providers?.oidc?.prompt?.trim() || '',
+      },
+    },
+  };
+};
+
+const mergeBetterAuthConfig = (
+  current: BetterAuthConfig,
+  updates: Partial<BetterAuthConfig>,
+): BetterAuthConfig => {
+  const nextConfig: Partial<BetterAuthConfig> = {
+    ...current,
+    ...updates,
+    trustedOrigins: updates.trustedOrigins ?? current.trustedOrigins,
+    providers: {
+      ...current.providers,
+      ...updates.providers,
+      google: {
+        ...current.providers.google,
+        ...updates.providers?.google,
+      },
+      github: {
+        ...current.providers.github,
+        ...updates.providers?.github,
+      },
+      oidc: {
+        ...current.providers.oidc,
+        ...updates.providers?.oidc,
+        scopes: updates.providers?.oidc?.scopes ?? current.providers.oidc.scopes,
+      },
+    },
+  };
+
+  return normalizeBetterAuthConfig(nextConfig);
+};
 
 const SettingsContext = createContext<SettingsContextValue | undefined>(undefined);
 
@@ -219,6 +343,9 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
 
   const [oauthServerConfig, setOAuthServerConfig] = useState<OAuthServerConfig>(
     getDefaultOAuthServerConfig(),
+  );
+  const [betterAuthConfig, setBetterAuthConfig] = useState<BetterAuthConfig>(
+    getDefaultBetterAuthConfig(),
   );
 
   const [nameSeparator, setNameSeparator] = useState<string>('-');
@@ -336,6 +463,10 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
         } else {
           setOAuthServerConfig(getDefaultOAuthServerConfig());
         }
+
+        setBetterAuthConfig(
+          normalizeBetterAuthConfig(data.data?.systemConfig?.auth?.betterAuth),
+        );
       }
       if (data.success && data.data?.systemConfig?.nameSeparator !== undefined) {
         setNameSeparator(data.data.systemConfig.nameSeparator);
@@ -654,6 +785,37 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
     }
   };
 
+  // Batch update Better Auth configuration
+  const updateBetterAuthConfigBatch = async (updates: Partial<BetterAuthConfig>) => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const data = await apiPut('/system-config', {
+        auth: {
+          betterAuth: updates,
+        },
+      });
+
+      if (data.success) {
+        setBetterAuthConfig((current) => mergeBetterAuthConfig(current, updates));
+        showToast(t('settings.systemConfigUpdated'));
+        return true;
+      } else {
+        setError(data.error || 'Failed to update Better Auth config');
+        showToast(data.error || t('errors.failedToUpdateBetterAuthConfig'));
+        return false;
+      }
+    } catch (error) {
+      console.error('Failed to batch update Better Auth config', { updates, error });
+      setError(error instanceof Error ? error.message : 'Failed to update Better Auth config');
+      showToast(t('errors.failedToUpdateBetterAuthConfig'));
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Update name separator
   const updateNameSeparator = async (value: string) => {
     setLoading(true);
@@ -826,6 +988,7 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
     smartRoutingConfig,
     mcpRouterConfig,
     oauthServerConfig,
+    betterAuthConfig,
     nameSeparator,
     enableSessionRebuild,
     bearerKeys,
@@ -843,6 +1006,7 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
     updateMCPRouterConfigBatch,
     updateOAuthServerConfig,
     updateOAuthServerConfigBatch,
+    updateBetterAuthConfigBatch,
     updateNameSeparator,
     updateSessionRebuild,
     exportMCPSettings,

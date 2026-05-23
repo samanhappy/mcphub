@@ -158,7 +158,7 @@ export const initRoutes = async (app: express.Application): Promise<void> => {
     process.env.NODE_ENV === 'test' ||
     process.env.JEST_WORKER_ID !== undefined ||
     process.env.VITEST_WORKER_ID !== undefined;
-  const betterAuthConfig = getBetterAuthRuntimeConfig();
+  const betterAuthConfig = await getBetterAuthRuntimeConfig();
 
   if (betterAuthConfig.enabled && !isTestEnv) {
     const [{ auth: betterAuth, ensureBetterAuthSchema }, { toNodeHandler }] = await Promise.all([

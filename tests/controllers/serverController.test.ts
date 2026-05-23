@@ -121,6 +121,91 @@ describe('serverController - updateSystemConfig', () => {
       }),
     );
   });
+
+  it('persists Better Auth settings via auth.betterAuth', async () => {
+    mockRequest.body = {
+      auth: {
+        betterAuth: {
+          enabled: true,
+          basePath: '/custom-auth',
+          trustedOrigins: ['https://mcp.example.com', '  '],
+          providers: {
+            google: {
+              enabled: true,
+            },
+            github: {
+              enabled: false,
+            },
+            oidc: {
+              enabled: true,
+              providerId: ' local-oidc ',
+              discoveryUrl: ' https://auth.example.com/.well-known/openid-configuration ',
+              scopes: ['openid', 'profile', 'email'],
+              pkce: false,
+              prompt: 'login consent',
+            },
+          },
+        },
+      },
+    };
+
+    mockSystemConfigDao.get.mockResolvedValue({
+      routing: {
+        enableGlobalRoute: true,
+        enableGroupNameRoute: true,
+        enableBearerAuth: true,
+        bearerAuthKey: '',
+        bearerAuthHeaderName: 'Authorization',
+        jsonBodyLimit: '1mb',
+        skipAuth: false,
+      },
+      auth: {},
+    });
+
+    await updateSystemConfig(mockRequest as Request, mockResponse as Response);
+
+    expect(mockSystemConfigDao.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        auth: {
+          betterAuth: {
+            enabled: true,
+            basePath: '/custom-auth',
+            trustedOrigins: ['https://mcp.example.com'],
+            providers: {
+              google: {
+                enabled: true,
+              },
+              github: {
+                enabled: false,
+              },
+              oidc: {
+                enabled: true,
+                providerId: 'local-oidc',
+                discoveryUrl: 'https://auth.example.com/.well-known/openid-configuration',
+                scopes: ['openid', 'profile', 'email'],
+                pkce: false,
+                prompt: 'login consent',
+              },
+            },
+          },
+        },
+      }),
+    );
+
+    expect(mockJson).toHaveBeenCalledWith(
+      expect.objectContaining({
+        success: true,
+        data: expect.objectContaining({
+          auth: expect.objectContaining({
+            betterAuth: expect.objectContaining({
+              enabled: true,
+              basePath: '/custom-auth',
+            }),
+          }),
+        }),
+      }),
+    );
+  });
 });
 
 describe('serverController - resetToolDescription', () => {

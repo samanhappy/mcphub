@@ -5,7 +5,7 @@ import {
   handleAuthenticateRequest,
 } from '../services/oauthServerService.js';
 import { findOAuthClientById } from '../models/OAuth.js';
-import { loadSettings } from '../config/index.js';
+import { getSystemConfigDao } from '../dao/index.js';
 import OAuth2Server from '@node-oauth/oauth2-server';
 import jwt from 'jsonwebtoken';
 import { JWT_SECRET } from '../config/jwt.js';
@@ -526,16 +526,15 @@ export const getUserInfo = async (req: Request, res: Response): Promise<void> =>
  */
 export const getMetadata = async (req: Request, res: Response): Promise<void> => {
   try {
-    const settings = loadSettings();
-    const oauthConfig = settings.systemConfig?.oauthServer;
+    const systemConfig = await getSystemConfigDao().get();
+    const oauthConfig = systemConfig?.oauthServer;
 
     if (!oauthConfig || !oauthConfig.enabled) {
       res.status(404).json({ error: 'OAuth server not configured' });
       return;
     }
 
-    const baseUrl =
-      settings.systemConfig?.install?.baseUrl || `${req.protocol}://${req.get('host')}`;
+    const baseUrl = systemConfig?.install?.baseUrl || `${req.protocol}://${req.get('host')}`;
     const allowedScopes = oauthConfig.allowedScopes || ['read', 'write'];
 
     const metadata: any = {
@@ -572,16 +571,15 @@ export const getMetadata = async (req: Request, res: Response): Promise<void> =>
  */
 export const getProtectedResourceMetadata = async (req: Request, res: Response): Promise<void> => {
   try {
-    const settings = loadSettings();
-    const oauthConfig = settings.systemConfig?.oauthServer;
+    const systemConfig = await getSystemConfigDao().get();
+    const oauthConfig = systemConfig?.oauthServer;
 
     if (!oauthConfig || !oauthConfig.enabled) {
       res.status(404).json({ error: 'OAuth server not configured' });
       return;
     }
 
-    const baseUrl =
-      settings.systemConfig?.install?.baseUrl || `${req.protocol}://${req.get('host')}`;
+    const baseUrl = systemConfig?.install?.baseUrl || `${req.protocol}://${req.get('host')}`;
     const allowedScopes = oauthConfig.allowedScopes || ['read', 'write'];
 
     // Return protected resource metadata according to RFC 9728

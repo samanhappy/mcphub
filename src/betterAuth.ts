@@ -2,14 +2,27 @@ import { betterAuth, BetterAuthOptions } from 'better-auth';
 import { genericOAuth } from 'better-auth/plugins';
 import { PostgresDialect } from 'kysely';
 import { Pool } from 'pg';
-import defaultConfig from './config/index.js';
+import defaultConfig, { loadSettings } from './config/index.js';
 import {
   betterAuthRuntimeConfig,
-  getBetterAuthRuntimeConfig,
 } from './services/betterAuthConfig.js';
-import { getSystemConfigDao } from './dao/index.js';
+import { getCachedSystemConfig, isDatabaseModeEnabled } from './utils/systemConfigCache.js';
 
-const runtimeConfig = getBetterAuthRuntimeConfig();
+const resolveSystemConfig = () => {
+  const cachedSystemConfig = getCachedSystemConfig();
+  if (cachedSystemConfig) {
+    return cachedSystemConfig;
+  }
+
+  if (!isDatabaseModeEnabled()) {
+    return loadSettings().systemConfig ?? null;
+  }
+
+  return null;
+};
+
+const systemConfig = resolveSystemConfig();
+const runtimeConfig = betterAuthRuntimeConfig;
 const socialProviders: Record<string, { clientId: string; clientSecret: string }> = {};
 const plugins: any[] = [];
 if (
@@ -74,8 +87,6 @@ const resolveBaseURL = (baseUrl: string, basePath: string): string => {
   }
 };
 
-const systemConfigDao = getSystemConfigDao();
-const systemConfig = await systemConfigDao.get();
 const systemInstallBaseUrl = systemConfig?.install?.baseUrl;
 const baseURL = resolveBaseURL(
   systemInstallBaseUrl ||
@@ -159,7 +170,7 @@ const isRelationAlreadyExistsError = (error: unknown): boolean => {
 };
 
 export const ensureBetterAuthSchema = async (): Promise<void> => {
-  if (!getBetterAuthRuntimeConfig().enabled) {
+  if (!runtimeConfig.enabled) {
     return;
   }
 
@@ -197,4 +208,4 @@ export const ensureBetterAuthSchema = async (): Promise<void> => {
     throw error;
   }
 };
-export { betterAuthRuntimeConfig };
+export { runtimeConfig as betterAuthRuntimeConfig };

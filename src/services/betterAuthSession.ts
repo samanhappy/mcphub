@@ -14,7 +14,7 @@ const buildUsernameFromSession = (session: any): string | null => {
 };
 
 export const getBetterAuthSession = async (req: Request): Promise<any | null> => {
-  if (!getBetterAuthRuntimeConfig().enabled) {
+  if (!(await getBetterAuthRuntimeConfig()).enabled) {
     return null;
   }
 

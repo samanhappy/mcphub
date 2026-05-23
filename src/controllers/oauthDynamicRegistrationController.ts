@@ -7,7 +7,7 @@ import {
   deleteOAuthClient,
 } from '../models/OAuth.js';
 import { IOAuthClient } from '../types/index.js';
-import { loadSettings } from '../config/index.js';
+import { getSystemConfigDao } from '../dao/DaoFactory.js';
 
 // Store registration access tokens (in production, use database)
 const registrationTokens = new Map<string, { clientId: string; createdAt: Date }>();
@@ -50,8 +50,8 @@ const verifyRegistrationToken = (token: string): string | null => {
  */
 export const registerClient = async (req: Request, res: Response): Promise<void> => {
   try {
-    const settings = loadSettings();
-    const oauthConfig = settings.systemConfig?.oauthServer;
+    const systemConfig = await getSystemConfigDao().get();
+    const oauthConfig = systemConfig?.oauthServer;
 
     // Check if dynamic registration is enabled
     if (!oauthConfig?.dynamicRegistration?.enabled) {
@@ -155,8 +155,7 @@ export const registerClient = async (req: Request, res: Response): Promise<void>
 
     // Generate registration access token
     const registrationAccessToken = generateRegistrationToken(clientId);
-    const baseUrl =
-      settings.systemConfig?.install?.baseUrl || `${req.protocol}://${req.get('host')}`;
+    const baseUrl = systemConfig?.install?.baseUrl || `${req.protocol}://${req.get('host')}`;
     const registrationClientUri = `${baseUrl}/oauth/register/${clientId}`;
 
     // Create OAuth client
@@ -356,8 +355,8 @@ export const updateClientConfiguration = async (req: Request, res: Response): Pr
       tos_uri,
     } = req.body;
 
-    const settings = loadSettings();
-    const oauthConfig = settings.systemConfig?.oauthServer;
+    const systemConfig = await getSystemConfigDao().get();
+    const oauthConfig = systemConfig?.oauthServer;
 
     // Validate redirect URIs if provided
     if (redirect_uris) {

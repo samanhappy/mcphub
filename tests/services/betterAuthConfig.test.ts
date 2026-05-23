@@ -1,7 +1,9 @@
-const loadSettingsMock = jest.fn();
+const getSystemConfigMock = jest.fn();
 
-jest.mock('../../src/config/index.js', () => ({
-  loadSettings: loadSettingsMock,
+jest.mock('../../src/dao/DaoFactory.js', () => ({
+  getSystemConfigDao: jest.fn(() => ({
+    get: getSystemConfigMock,
+  })),
 }));
 
 describe('betterAuthConfig', () => {
@@ -9,7 +11,8 @@ describe('betterAuthConfig', () => {
 
   beforeEach(() => {
     jest.resetModules();
-    loadSettingsMock.mockReset();
+    getSystemConfigMock.mockReset();
+    getSystemConfigMock.mockResolvedValue({});
     process.env = { ...originalEnv };
   });
 
@@ -22,20 +25,18 @@ describe('betterAuthConfig', () => {
     process.env.OIDC_CLIENT_ID = 'oidc-client-id';
     process.env.OIDC_CLIENT_SECRET = 'oidc-client-secret';
 
-    loadSettingsMock.mockReturnValue({
-      systemConfig: {
-        auth: {
-          betterAuth: {
-            enabled: true,
-            trustedOrigins: ['https://mcp.imdevinc.home'],
-            providers: {
-              oidc: {
-                enabled: true,
-                providerId: 'local-oidc',
-                discoveryUrl: 'https://auth.example.com/.well-known/openid-configuration',
-                scopes: ['openid', 'profile', 'email'],
-                pkce: true,
-              },
+    getSystemConfigMock.mockResolvedValue({
+      auth: {
+        betterAuth: {
+          enabled: true,
+          trustedOrigins: ['https://mcp.imdevinc.home'],
+          providers: {
+            oidc: {
+              enabled: true,
+              providerId: 'local-oidc',
+              discoveryUrl: 'https://auth.example.com/.well-known/openid-configuration',
+              scopes: ['openid', 'profile', 'email'],
+              pkce: true,
             },
           },
         },
@@ -44,7 +45,7 @@ describe('betterAuthConfig', () => {
 
     const { getBetterAuthRuntimeConfig } = await import('../../src/services/betterAuthConfig.js');
 
-    expect(getBetterAuthRuntimeConfig()).toEqual({
+    expect(await getBetterAuthRuntimeConfig()).toEqual({
       enabled: true,
       basePath: '/api/auth/better',
       trustedOrigins: ['https://mcp.imdevinc.home'],
@@ -72,16 +73,14 @@ describe('betterAuthConfig', () => {
     process.env.OIDC_CLIENT_ID = 'oidc-client-id';
     process.env.OIDC_CLIENT_SECRET = 'oidc-client-secret';
 
-    loadSettingsMock.mockReturnValue({
-      systemConfig: {
-        auth: {
-          betterAuth: {
-            enabled: true,
-            providers: {
-              oidc: {
-                enabled: true,
-                providerId: 'local-oidc',
-              },
+    getSystemConfigMock.mockResolvedValue({
+      auth: {
+        betterAuth: {
+          enabled: true,
+          providers: {
+            oidc: {
+              enabled: true,
+              providerId: 'local-oidc',
             },
           },
         },
@@ -90,7 +89,7 @@ describe('betterAuthConfig', () => {
 
     const { getBetterAuthRuntimeConfig } = await import('../../src/services/betterAuthConfig.js');
 
-    expect(getBetterAuthRuntimeConfig()).toEqual({
+    expect(await getBetterAuthRuntimeConfig()).toEqual({
       enabled: false,
       basePath: '/api/auth/better',
       trustedOrigins: [],
@@ -118,19 +117,17 @@ describe('betterAuthConfig', () => {
     process.env.OIDC_CLIENT_ID = 'oidc-client-id';
     process.env.OIDC_CLIENT_SECRET = 'oidc-client-secret';
 
-    loadSettingsMock.mockReturnValue({
-      systemConfig: {
-        install: {
-          baseUrl: 'https://mcp.imdevinc.home/mcphub',
-        },
-        auth: {
-          betterAuth: {
-            enabled: true,
-            providers: {
-              oidc: {
-                enabled: true,
-                discoveryUrl: 'https://auth.example.com/.well-known/openid-configuration',
-              },
+    getSystemConfigMock.mockResolvedValue({
+      install: {
+        baseUrl: 'https://mcp.imdevinc.home/mcphub',
+      },
+      auth: {
+        betterAuth: {
+          enabled: true,
+          providers: {
+            oidc: {
+              enabled: true,
+              discoveryUrl: 'https://auth.example.com/.well-known/openid-configuration',
             },
           },
         },
@@ -139,7 +136,7 @@ describe('betterAuthConfig', () => {
 
     const { getBetterAuthRuntimeConfig } = await import('../../src/services/betterAuthConfig.js');
 
-    expect(getBetterAuthRuntimeConfig()).toEqual({
+    expect(await getBetterAuthRuntimeConfig()).toEqual({
       enabled: true,
       basePath: '/api/auth/better',
       trustedOrigins: ['https://mcp.imdevinc.home'],
@@ -160,5 +157,67 @@ describe('betterAuthConfig', () => {
         },
       },
     });
+  });
+
+  it('prefers the provided system config override instead of reloading settings from another source', async () => {
+    process.env.DB_URL = 'postgresql://mcphub:password@localhost:5432/mcphub';
+    process.env.OIDC_CLIENT_ID = 'oidc-client-id';
+    process.env.OIDC_CLIENT_SECRET = 'oidc-client-secret';
+
+    getSystemConfigMock.mockResolvedValue({
+      auth: {
+        betterAuth: {
+          enabled: false,
+        },
+      },
+    });
+
+    const systemConfig = {
+      install: {
+        baseUrl: 'https://dao-backed.example.com/hub',
+      },
+      auth: {
+        betterAuth: {
+          enabled: true,
+          basePath: '/custom-auth',
+          providers: {
+            oidc: {
+              enabled: true,
+              providerId: 'override-oidc',
+              discoveryUrl: 'https://override.example.com/.well-known/openid-configuration',
+              scopes: ['openid', 'profile'],
+              pkce: false,
+              prompt: 'login',
+            },
+          },
+        },
+      },
+    };
+
+    const { getBetterAuthRuntimeConfig } = await import('../../src/services/betterAuthConfig.js');
+
+    expect(await getBetterAuthRuntimeConfig(systemConfig as any)).toEqual({
+      enabled: true,
+      basePath: '/custom-auth',
+      trustedOrigins: ['https://dao-backed.example.com'],
+      providers: {
+        google: {
+          enabled: false,
+        },
+        github: {
+          enabled: false,
+        },
+        oidc: {
+          enabled: true,
+          providerId: 'override-oidc',
+          discoveryUrl: 'https://override.example.com/.well-known/openid-configuration',
+          scopes: ['openid', 'profile'],
+          pkce: false,
+          prompt: 'login',
+        },
+      },
+    });
+
+    expect(getSystemConfigMock).not.toHaveBeenCalled();
   });
 });

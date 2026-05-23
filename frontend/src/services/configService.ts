@@ -14,6 +14,7 @@ export interface SystemConfig {
   install?: {
     pythonIndexUrl?: string;
     npmRegistry?: string;
+    baseUrl?: string;
   };
   smartRouting?: {
     enabled?: boolean;
@@ -35,6 +36,7 @@ export interface SystemConfig {
     betterAuth?: {
       enabled?: boolean;
       basePath?: string;
+      trustedOrigins?: string[];
       providers?: {
         google?: {
           enabled?: boolean;
@@ -58,6 +60,7 @@ export interface SystemConfig {
 interface BetterAuthConfig {
   enabled?: boolean;
   basePath?: string;
+  trustedOrigins?: string[];
   providers?: {
     google?: {
       enabled?: boolean;

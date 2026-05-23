@@ -3,6 +3,7 @@ import AppServer from './server.js';
 import { initializeDatabaseMode } from './utils/migration.js';
 import { createFetchWithProxy, getProxyConfigFromEnv } from './services/proxy.js';
 import { isRetryableDbError } from './utils/dbRetry.js';
+import { hydrateSystemConfigCache } from './utils/systemConfigCache.js';
 
 const appServer = new AppServer();
 
@@ -170,6 +171,8 @@ async function boot() {
         process.exit(1);
       }
     }
+
+    await hydrateSystemConfigCache();
 
     await appServer.initialize();
     appServer.start();

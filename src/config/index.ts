@@ -2,6 +2,7 @@ import dotenv from 'dotenv';
 import fs from 'fs';
 import { McpSettings, IUser } from '../types/index.js';
 import { getConfigFilePath } from '../utils/path.js';
+import { getCachedSystemConfig, isDatabaseModeEnabled } from '../utils/systemConfigCache.js';
 import { getPackageVersion } from '../utils/version.js';
 import { getDataService } from '../services/services.js';
 import { DataService } from '../services/dataService.js';
@@ -204,6 +205,15 @@ export const expandEnvVars = (
 export default defaultConfig;
 
 export function getNameSeparator(): string {
+  const cachedSystemConfig = getCachedSystemConfig();
+  if (cachedSystemConfig?.nameSeparator) {
+    return cachedSystemConfig.nameSeparator;
+  }
+
+  if (isDatabaseModeEnabled()) {
+    return '-';
+  }
+
   const settings = loadSettings();
   return settings.systemConfig?.nameSeparator || '-';
 }

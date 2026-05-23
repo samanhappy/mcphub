@@ -28,44 +28,55 @@ export const initMiddlewares = (app: express.Application): void => {
   // Note: Static files will be handled by the server directly, not here
 
   app.use(async (req, res, next) => {
-    const basePath = config.basePath;
-    const betterAuthPath = `${basePath}${getBetterAuthRuntimeConfig().basePath}`;
     // Only apply JSON parsing for API and auth routes, not for SSE or message endpoints
     // TODO exclude sse responses by mcp endpoint
-    if (
-      !req.path.startsWith(betterAuthPath) &&
-      req.path !== `${basePath}/sse` &&
-      !req.path.startsWith(`${basePath}/sse/`) &&
-      req.path !== `${basePath}/messages` &&
-      !req.path.match(
-        new RegExp(`^${basePath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}/[^/]+/messages$`),
-      ) &&
-      !req.path.match(
-        new RegExp(`^${basePath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}/[^/]+/sse(/.*)?$`),
-      )
-    ) {
-      try {
-        const systemConfig = await getSystemConfigDao().get();
+    try {
+      const basePath = config.basePath;
+      const systemConfig = await getSystemConfigDao().get();
+      const betterAuthConfig = await getBetterAuthRuntimeConfig(systemConfig);
+      const betterAuthPath = `${basePath}${betterAuthConfig.basePath}`;
+
+      if (
+        !req.path.startsWith(betterAuthPath) &&
+        req.path !== `${basePath}/sse` &&
+        !req.path.startsWith(`${basePath}/sse/`) &&
+        req.path !== `${basePath}/messages` &&
+        !req.path.match(
+          new RegExp(`^${basePath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}/[^/]+/messages$`),
+        ) &&
+        !req.path.match(
+          new RegExp(`^${basePath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}/[^/]+/sse(/.*)?$`),
+        )
+      ) {
         const jsonBodyLimit = resolveJsonBodyLimit(systemConfig);
         express.json({ limit: jsonBodyLimit })(req, res, next);
-      } catch (error) {
-        next(error as Error);
+        return;
       }
-    } else {
+
       next();
+    } catch (error) {
+      next(error as Error);
     }
   });
 
   // Protect API routes with authentication middleware, but exclude auth endpoints
-  app.use(`${config.basePath}/api`, (req, res, next) => {
-    // Skip authentication for login endpoint
-    if (
-      req.path === '/auth/login' ||
-      req.path.startsWith('/auth/better') ||
-      req.path.startsWith('/better-auth')
-    ) {
-      next();
-    } else {
+  app.use(`${config.basePath}/api`, async (req, res, next) => {
+    try {
+      const betterAuthConfig = await getBetterAuthRuntimeConfig();
+      const betterAuthApiPath = betterAuthConfig.basePath.startsWith('/api')
+        ? betterAuthConfig.basePath.replace(/^\/api/, '') || '/'
+        : null;
+
+      // Skip authentication for login endpoint
+      if (
+        req.path === '/auth/login' ||
+        (betterAuthApiPath !== null && req.path.startsWith(betterAuthApiPath)) ||
+        req.path.startsWith('/better-auth')
+      ) {
+        next();
+        return;
+      }
+
       // Apply authentication middleware first
       auth(req, res, (err) => {
         if (err) {
@@ -75,6 +86,8 @@ export const initMiddlewares = (app: express.Application): void => {
           userContextMiddleware(req, res, next);
         }
       });
+    } catch (error) {
+      next(error as Error);
     }
   });
 

@@ -1,6 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
-import { loadSettings } from '../config/index.js';
 import defaultConfig from '../config/index.js';
 import { JWT_SECRET } from '../config/jwt.js';
 import { getToken } from '../models/OAuth.js';
@@ -108,7 +107,7 @@ export const auth = async (req: Request, res: Response, next: NextFunction): Pro
 
   // Check if authentication is disabled globally
   const systemConfig = await getSystemConfigDao().get();
-  const routingConfig = systemConfig?.routing || loadSettings().systemConfig?.routing || {
+  const routingConfig = systemConfig?.routing || {
     enableGlobalRoute: true,
     enableGroupNameRoute: true,
     skipAuth: false,
@@ -141,7 +140,7 @@ export const auth = async (req: Request, res: Response, next: NextFunction): Pro
     }
   }
 
-  const betterAuthConfig = getBetterAuthRuntimeConfig();
+  const betterAuthConfig = await getBetterAuthRuntimeConfig(systemConfig);
   if (betterAuthConfig.enabled) {
     const betterAuthUser = await resolveBetterAuthUserSafe(req);
     if (betterAuthUser) {

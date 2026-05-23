@@ -114,6 +114,7 @@ describe('betterAuth bootstrap', () => {
   });
 
   it('prefers install.baseUrl over BETTER_AUTH_URL when deriving the Better Auth base URL', async () => {
+    process.env.USE_DB = 'false';
     loadSettingsMock.mockReturnValue({
       systemConfig: {
         install: {

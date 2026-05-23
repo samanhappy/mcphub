@@ -20,14 +20,22 @@ import {
   toggleServerStatus,
   reconnectServer,
 } from '../services/mcpService.js';
-import { loadSettings } from '../config/index.js';
 import { syncAllServerToolsEmbeddings } from '../services/vectorSearchService.js';
 import { createSafeJSON } from '../utils/serialization.js';
 import { cloneDefaultOAuthServerConfig } from '../constants/oauthServerDefaults.js';
-import { getServerDao, getGroupDao, getSystemConfigDao } from '../dao/DaoFactory.js';
-import { getBearerKeyDao } from '../dao/DaoFactory.js';
+import {
+  getBearerKeyDao,
+  getGroupDao,
+  getOAuthClientDao,
+  getOAuthTokenDao,
+  getServerDao,
+  getSystemConfigDao,
+  getUserConfigDao,
+  getUserDao,
+} from '../dao/DaoFactory.js';
 import { UserContextService } from '../services/userContextService.js';
 import { normalizeServerConfigForPersistence } from '../utils/serverConfigPersistence.js';
+import { setCachedSystemConfig } from '../utils/systemConfigCache.js';
 
 type DescribableConfig = Record<string, { enabled: boolean; description?: string }>;
 type ServerRecord = ServerConfig & { name: string };
@@ -227,12 +235,25 @@ export const getAllServers = async (req: Request, res: Response): Promise<void> 
 
 export const getAllSettings = async (_: Request, res: Response): Promise<void> => {
   try {
-    // Get base settings from file (for OAuth clients, tokens, users, etc.)
-    const fileSettings = loadSettings();
-
-    // Get servers from DAO (supports both file and database modes)
-    const serverDao = getServerDao();
-    const servers = await serverDao.findAll();
+    const [
+      servers,
+      users,
+      groups,
+      systemConfigResult,
+      userConfigs,
+      oauthClients,
+      oauthTokens,
+      bearerKeys,
+    ] = await Promise.all([
+      getServerDao().findAll(),
+      getUserDao().findAll(),
+      getGroupDao().findAll(),
+      getSystemConfigDao().get(),
+      getUserConfigDao().getAll(),
+      getOAuthClientDao().findAll(),
+      getOAuthTokenDao().findAll(),
+      getBearerKeyDao().findAll(),
+    ]);
 
     // Convert servers array to mcpServers map format
     const mcpServers: McpSettings['mcpServers'] = {};
@@ -241,13 +262,7 @@ export const getAllSettings = async (_: Request, res: Response): Promise<void> =
       mcpServers[name] = config;
     }
 
-    // Get groups from DAO
-    const groupDao = getGroupDao();
-    const groups = await groupDao.findAll();
-
-    // Get system config from DAO
-    const systemConfigDao = getSystemConfigDao();
-    const systemConfig = await systemConfigDao.get();
+    const systemConfig = systemConfigResult || {};
 
     // Ensure smart routing config has DB URL set if environment variable is present
     const dbUrlEnv = process.env.DB_URL || '';
@@ -263,16 +278,14 @@ export const getAllSettings = async (_: Request, res: Response): Promise<void> =
       systemConfig.smartRouting.dbUrl = dbUrlEnv ? '${DB_URL}' : '';
     }
 
-    // Get bearer auth keys from DAO
-    const bearerKeyDao = getBearerKeyDao();
-    const bearerKeys = await bearerKeyDao.findAll();
-
-    // Merge all data into settings object
     const settings: McpSettings = {
-      ...fileSettings,
+      users,
       mcpServers,
       groups,
       systemConfig,
+      userConfigs,
+      oauthClients,
+      oauthTokens,
       bearerKeys,
     };
 
@@ -1145,6 +1158,7 @@ export const updateSystemConfig = async (req: Request, res: Response): Promise<v
       nameSeparator,
       enableSessionRebuild,
       oauthServer,
+      auth,
     } = req.body;
 
     const hasRoutingUpdate =
@@ -1207,6 +1221,23 @@ export const updateSystemConfig = async (req: Request, res: Response): Promise<v
             typeof oauthServer.dynamicRegistration.requiresAuthentication === 'boolean' ||
             Array.isArray(oauthServer.dynamicRegistration.allowedGrantTypes))));
 
+    const hasBetterAuthUpdate =
+      auth?.betterAuth &&
+      (typeof auth.betterAuth.enabled === 'boolean' ||
+        typeof auth.betterAuth.basePath === 'string' ||
+        Array.isArray(auth.betterAuth.trustedOrigins) ||
+        (auth.betterAuth.providers &&
+          (typeof auth.betterAuth.providers.google?.enabled === 'boolean' ||
+            typeof auth.betterAuth.providers.github?.enabled === 'boolean' ||
+            (auth.betterAuth.providers.oidc &&
+              (typeof auth.betterAuth.providers.oidc.enabled === 'boolean' ||
+                typeof auth.betterAuth.providers.oidc.providerId === 'string' ||
+                typeof auth.betterAuth.providers.oidc.discoveryUrl === 'string' ||
+                Array.isArray(auth.betterAuth.providers.oidc.scopes) ||
+                typeof auth.betterAuth.providers.oidc.pkce === 'boolean' ||
+                typeof auth.betterAuth.providers.oidc.prompt === 'string' ||
+                auth.betterAuth.providers.oidc.prompt === null)))));
+
     if (
       !hasRoutingUpdate &&
       !hasInstallUpdate &&
@@ -1214,7 +1245,8 @@ export const updateSystemConfig = async (req: Request, res: Response): Promise<v
       !hasMcpRouterUpdate &&
       !hasNameSeparatorUpdate &&
       !hasSessionRebuildUpdate &&
-      !hasOAuthServerUpdate
+      !hasOAuthServerUpdate &&
+      !hasBetterAuthUpdate
     ) {
       res.status(400).json({
         success: false,
@@ -1263,6 +1295,9 @@ export const updateSystemConfig = async (req: Request, res: Response): Promise<v
           baseUrl: 'https://api.mcprouter.to/v1',
         },
         oauthServer: cloneDefaultOAuthServerConfig(),
+        auth: {
+          betterAuth: {},
+        },
       };
     }
 
@@ -1331,6 +1366,14 @@ export const updateSystemConfig = async (req: Request, res: Response): Promise<v
         ],
         requiresAuthentication: defaultDynamic.requiresAuthentication ?? false,
       };
+    }
+
+    if (!systemConfig.auth) {
+      systemConfig.auth = {};
+    }
+
+    if (!systemConfig.auth.betterAuth) {
+      systemConfig.auth.betterAuth = {};
     }
 
     if (routing) {
@@ -1606,6 +1649,82 @@ export const updateSystemConfig = async (req: Request, res: Response): Promise<v
       }
     }
 
+    if (auth?.betterAuth) {
+      const target = systemConfig.auth.betterAuth;
+      const providersTarget = target.providers || {};
+
+      if (typeof auth.betterAuth.enabled === 'boolean') {
+        target.enabled = auth.betterAuth.enabled;
+      }
+
+      if (typeof auth.betterAuth.basePath === 'string') {
+        target.basePath = auth.betterAuth.basePath.trim();
+      }
+
+      if (Array.isArray(auth.betterAuth.trustedOrigins)) {
+        target.trustedOrigins = auth.betterAuth.trustedOrigins
+          .filter((origin: any): origin is string => typeof origin === 'string')
+          .map((origin: string) => origin.trim())
+          .filter((origin: string) => origin.length > 0);
+      }
+
+      if (auth.betterAuth.providers) {
+        if (typeof auth.betterAuth.providers.google?.enabled === 'boolean') {
+          providersTarget.google = {
+            ...(providersTarget.google || {}),
+            enabled: auth.betterAuth.providers.google.enabled,
+          };
+        }
+
+        if (typeof auth.betterAuth.providers.github?.enabled === 'boolean') {
+          providersTarget.github = {
+            ...(providersTarget.github || {}),
+            enabled: auth.betterAuth.providers.github.enabled,
+          };
+        }
+
+        if (auth.betterAuth.providers.oidc) {
+          const oidcTarget = {
+            ...(providersTarget.oidc || {}),
+          };
+
+          if (typeof auth.betterAuth.providers.oidc.enabled === 'boolean') {
+            oidcTarget.enabled = auth.betterAuth.providers.oidc.enabled;
+          }
+
+          if (typeof auth.betterAuth.providers.oidc.providerId === 'string') {
+            oidcTarget.providerId = auth.betterAuth.providers.oidc.providerId.trim();
+          }
+
+          if (typeof auth.betterAuth.providers.oidc.discoveryUrl === 'string') {
+            oidcTarget.discoveryUrl = auth.betterAuth.providers.oidc.discoveryUrl.trim();
+          }
+
+          if (Array.isArray(auth.betterAuth.providers.oidc.scopes)) {
+            oidcTarget.scopes = auth.betterAuth.providers.oidc.scopes
+              .filter((scope: any): scope is string => typeof scope === 'string')
+              .map((scope: string) => scope.trim())
+              .filter((scope: string) => scope.length > 0);
+          }
+
+          if (typeof auth.betterAuth.providers.oidc.pkce === 'boolean') {
+            oidcTarget.pkce = auth.betterAuth.providers.oidc.pkce;
+          }
+
+          if (typeof auth.betterAuth.providers.oidc.prompt === 'string') {
+            const promptValue = auth.betterAuth.providers.oidc.prompt.trim();
+            oidcTarget.prompt = promptValue || undefined;
+          } else if (auth.betterAuth.providers.oidc.prompt === null) {
+            oidcTarget.prompt = undefined;
+          }
+
+          providersTarget.oidc = oidcTarget;
+        }
+
+        target.providers = providersTarget;
+      }
+    }
+
     if (typeof nameSeparator === 'string') {
       systemConfig.nameSeparator = nameSeparator;
     }
@@ -1617,6 +1736,7 @@ export const updateSystemConfig = async (req: Request, res: Response): Promise<v
     // Save using DAO (supports both file and database modes)
     try {
       await systemConfigDao.update(systemConfig);
+      setCachedSystemConfig(systemConfig);
       res.json({
         success: true,
         data: systemConfig,

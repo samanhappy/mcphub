@@ -424,6 +424,8 @@ function parseBasePacingDelayForUpdate(
   return result !== current ? result : undefined;
 }
 
+const DEFAULT_OIDC_SCOPES = ['openid', 'profile', 'email'];
+
 const SettingsPage: React.FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -498,6 +500,22 @@ const SettingsPage: React.FC = () => {
     dynamicRegistrationAllowedGrantTypes: 'authorization_code, refresh_token',
   });
 
+  const [tempBetterAuthConfig, setTempBetterAuthConfig] = useState<{
+    basePath: string;
+    trustedOrigins: string;
+    oidcProviderId: string;
+    oidcDiscoveryUrl: string;
+    oidcScopes: string;
+    oidcPrompt: string;
+  }>({
+    basePath: '/api/auth/better',
+    trustedOrigins: '',
+    oidcProviderId: 'oidc',
+    oidcDiscoveryUrl: '',
+    oidcScopes: DEFAULT_OIDC_SCOPES.join(', '),
+    oidcPrompt: '',
+  });
+
   const [tempNameSeparator, setTempNameSeparator] = useState<string>('-');
   const [showAddBearerKeyForm, setShowAddBearerKeyForm] = useState(false);
 
@@ -509,6 +527,7 @@ const SettingsPage: React.FC = () => {
     smartRoutingConfig,
     mcpRouterConfig,
     oauthServerConfig,
+    betterAuthConfig,
     nameSeparator,
     enableSessionRebuild,
     loading,
@@ -519,6 +538,7 @@ const SettingsPage: React.FC = () => {
     updateSmartRoutingConfigBatch,
     updateMCPRouterConfig,
     updateOAuthServerConfig,
+    updateBetterAuthConfigBatch,
     updateNameSeparator,
     updateSessionRebuild,
     exportMCPSettings,
@@ -607,6 +627,19 @@ const SettingsPage: React.FC = () => {
     }
   }, [oauthServerConfig]);
 
+  useEffect(() => {
+    if (betterAuthConfig) {
+      setTempBetterAuthConfig({
+        basePath: betterAuthConfig.basePath || '/api/auth/better',
+        trustedOrigins: betterAuthConfig.trustedOrigins?.join(', ') || '',
+        oidcProviderId: betterAuthConfig.providers.oidc.providerId || 'oidc',
+        oidcDiscoveryUrl: betterAuthConfig.providers.oidc.discoveryUrl || '',
+        oidcScopes: betterAuthConfig.providers.oidc.scopes?.join(', ') || DEFAULT_OIDC_SCOPES.join(', '),
+        oidcPrompt: betterAuthConfig.providers.oidc.prompt || '',
+      });
+    }
+  }, [betterAuthConfig]);
+
   // Update local tempNameSeparator when nameSeparator changes
   useEffect(() => {
     setTempNameSeparator(nameSeparator);
@@ -622,6 +655,7 @@ const SettingsPage: React.FC = () => {
     installConfig: false,
     smartRoutingConfig: false,
     oauthServerConfig: false,
+    betterAuthConfig: false,
     mcpRouterConfig: false,
     nameSeparator: false,
     password: false,
@@ -635,6 +669,7 @@ const SettingsPage: React.FC = () => {
       | 'installConfig'
       | 'smartRoutingConfig'
       | 'oauthServerConfig'
+      | 'betterAuthConfig'
       | 'mcpRouterConfig'
       | 'nameSeparator'
       | 'password'
@@ -795,6 +830,80 @@ const SettingsPage: React.FC = () => {
       ...oauthServerConfig.dynamicRegistration,
       ...updates,
     });
+  };
+
+  const handleBetterAuthTextChange = (
+    key:
+      | 'basePath'
+      | 'trustedOrigins'
+      | 'oidcProviderId'
+      | 'oidcDiscoveryUrl'
+      | 'oidcScopes'
+      | 'oidcPrompt',
+    value: string,
+  ) => {
+    setTempBetterAuthConfig((prev) => ({
+      ...prev,
+      [key]: value,
+    }));
+  };
+
+  const handleBetterAuthToggle = async (
+    updates: Parameters<typeof updateBetterAuthConfigBatch>[0],
+  ) => {
+    await updateBetterAuthConfigBatch(updates);
+  };
+
+  const handleSaveBetterAuthConfig = async () => {
+    const updates: Parameters<typeof updateBetterAuthConfigBatch>[0] = {};
+    const normalizedBasePath = tempBetterAuthConfig.basePath.trim() || '/api/auth/better';
+    const normalizedTrustedOrigins = parseCommaSeparated(tempBetterAuthConfig.trustedOrigins) || [];
+    const normalizedProviderId = tempBetterAuthConfig.oidcProviderId.trim() || 'oidc';
+    const normalizedDiscoveryUrl = tempBetterAuthConfig.oidcDiscoveryUrl.trim();
+    const normalizedScopes =
+      parseCommaSeparated(tempBetterAuthConfig.oidcScopes) || [...DEFAULT_OIDC_SCOPES];
+    const normalizedPrompt = tempBetterAuthConfig.oidcPrompt.trim();
+
+    if (normalizedBasePath !== betterAuthConfig.basePath) {
+      updates.basePath = normalizedBasePath;
+    }
+
+    if (
+      normalizedTrustedOrigins.join('|') !== (betterAuthConfig.trustedOrigins || []).join('|')
+    ) {
+      updates.trustedOrigins = normalizedTrustedOrigins;
+    }
+
+    const oidcUpdates: Record<string, any> = {};
+
+    if (normalizedProviderId !== betterAuthConfig.providers.oidc.providerId) {
+      oidcUpdates.providerId = normalizedProviderId;
+    }
+
+    if (normalizedDiscoveryUrl !== (betterAuthConfig.providers.oidc.discoveryUrl || '')) {
+      oidcUpdates.discoveryUrl = normalizedDiscoveryUrl;
+    }
+
+    if (normalizedScopes.join('|') !== betterAuthConfig.providers.oidc.scopes.join('|')) {
+      oidcUpdates.scopes = normalizedScopes;
+    }
+
+    if (normalizedPrompt !== (betterAuthConfig.providers.oidc.prompt || '')) {
+      oidcUpdates.prompt = normalizedPrompt;
+    }
+
+    if (Object.keys(oidcUpdates).length > 0) {
+      updates.providers = {
+        oidc: oidcUpdates,
+      } as any;
+    }
+
+    if (Object.keys(updates).length === 0) {
+      showToast(t('settings.noChanges') || 'No changes to save', 'info');
+      return;
+    }
+
+    await updateBetterAuthConfigBatch(updates);
   };
 
   const saveNameSeparator = async () => {
@@ -2526,6 +2635,299 @@ const SettingsPage: React.FC = () => {
                     {t('common.save')}
                   </button>
                 </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </PermissionChecker>
+
+      {/* Better Auth Settings */}
+      <PermissionChecker permissions={PERMISSIONS.SETTINGS_SYSTEM_CONFIG}>
+        <div className="hub-card mb-6 overflow-hidden">
+          <div
+            className="flex justify-between items-center cursor-pointer transition-colors hover:bg-[var(--hub-surface-hover)] py-3 px-5"
+            onClick={() => toggleSection('betterAuthConfig')}
+          >
+            <div className="flex items-center gap-2.5">
+              <Lock size={15} className="text-[var(--hub-ink-2)]" />
+              <h2 className="font-medium text-[var(--hub-ink)]">
+                {t('settings.betterAuthTitle') || 'Better Auth'}
+              </h2>
+            </div>
+            <span className="text-[var(--hub-ink-3)]">
+              {sectionsVisible.betterAuthConfig ? '−' : '+'}
+            </span>
+          </div>
+
+          {sectionsVisible.betterAuthConfig && (
+            <div className="space-y-4 pb-4 px-6 pt-4 border-t border-[var(--hub-line-2)]">
+              <div
+                className="flex items-start gap-2"
+                style={{
+                  padding: '8px 12px',
+                  borderRadius: 7,
+                  background: 'var(--hub-accent-soft)',
+                  color: 'var(--hub-accent)',
+                  fontSize: 12.5,
+                }}
+              >
+                <span>
+                  {t('settings.betterAuthEnvNote') ||
+                    'Client IDs and secrets still come from environment variables. Changing Better Auth settings may require an application restart, and the install base URL origin is trusted automatically.'}
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-md">
+                <div>
+                  <h3 className="font-medium text-gray-700">
+                    {t('settings.enableBetterAuth') || 'Enable Better Auth'}
+                  </h3>
+                  <p className="text-sm text-gray-500">
+                    {t('settings.enableBetterAuthDescription') ||
+                      'Enable social and OIDC login when the required environment variables are configured.'}
+                  </p>
+                </div>
+                <Switch
+                  disabled={loading}
+                  checked={betterAuthConfig.enabled}
+                  onCheckedChange={(checked) => handleBetterAuthToggle({ enabled: checked })}
+                />
+              </div>
+
+              <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-md">
+                <div className="mb-2">
+                  <h3 className="font-medium text-gray-700">
+                    {t('settings.betterAuthBasePath') || 'Auth base path'}
+                  </h3>
+                  <p className="text-sm text-gray-500">
+                    {t('settings.betterAuthBasePathDescription') ||
+                      'Relative API path used by the Better Auth routes.'}
+                  </p>
+                </div>
+                <input
+                  type="text"
+                  value={tempBetterAuthConfig.basePath}
+                  onChange={(e) => handleBetterAuthTextChange('basePath', e.target.value)}
+                  placeholder="/api/auth/better"
+                  className="flex-1 mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm form-input"
+                  disabled={loading}
+                />
+              </div>
+
+              <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-md">
+                <div className="mb-2">
+                  <h3 className="font-medium text-gray-700">
+                    {t('settings.betterAuthTrustedOrigins') || 'Trusted origins'}
+                  </h3>
+                  <p className="text-sm text-gray-500">
+                    {t('settings.betterAuthTrustedOriginsDescription') ||
+                      'Comma-separated origins allowed for Better Auth requests. The install base URL origin is added automatically.'}
+                  </p>
+                </div>
+                <input
+                  type="text"
+                  value={tempBetterAuthConfig.trustedOrigins}
+                  onChange={(e) => handleBetterAuthTextChange('trustedOrigins', e.target.value)}
+                  placeholder="https://app.example.com, https://admin.example.com"
+                  className="flex-1 mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm form-input"
+                  disabled={loading}
+                />
+              </div>
+
+              <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-md space-y-4">
+                <div>
+                  <h3 className="font-medium text-gray-700">
+                    {t('settings.betterAuthProviders') || 'Providers'}
+                  </h3>
+                  <p className="text-sm text-gray-500">
+                    {t('settings.betterAuthProvidersDescription') ||
+                      'Provider switches control which configured login methods are exposed on the sign-in page.'}
+                  </p>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="font-medium text-gray-700">Google</h4>
+                    <p className="text-sm text-gray-500">
+                      {t('settings.betterAuthGoogleDescription') ||
+                        'Requires GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET.'}
+                    </p>
+                  </div>
+                  <Switch
+                    disabled={loading}
+                    checked={betterAuthConfig.providers.google.enabled}
+                    onCheckedChange={(checked) =>
+                      handleBetterAuthToggle({
+                        providers: {
+                          google: { enabled: checked },
+                        },
+                      } as any)
+                    }
+                  />
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="font-medium text-gray-700">GitHub</h4>
+                    <p className="text-sm text-gray-500">
+                      {t('settings.betterAuthGithubDescription') ||
+                        'Requires GITHUB_CLIENT_ID and GITHUB_CLIENT_SECRET.'}
+                    </p>
+                  </div>
+                  <Switch
+                    disabled={loading}
+                    checked={betterAuthConfig.providers.github.enabled}
+                    onCheckedChange={(checked) =>
+                      handleBetterAuthToggle({
+                        providers: {
+                          github: { enabled: checked },
+                        },
+                      } as any)
+                    }
+                  />
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="font-medium text-gray-700">OIDC</h4>
+                    <p className="text-sm text-gray-500">
+                      {t('settings.betterAuthOidcDescription') ||
+                        'Requires OIDC client credentials plus a discovery URL.'}
+                    </p>
+                  </div>
+                  <Switch
+                    disabled={loading}
+                    checked={betterAuthConfig.providers.oidc.enabled}
+                    onCheckedChange={(checked) =>
+                      handleBetterAuthToggle({
+                        providers: {
+                          oidc: { enabled: checked },
+                        },
+                      } as any)
+                    }
+                  />
+                </div>
+              </div>
+
+              {betterAuthConfig.providers.oidc.enabled && (
+                <>
+                  <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-md">
+                    <div className="mb-2">
+                      <h3 className="font-medium text-gray-700">
+                        {t('settings.betterAuthOidcProviderId') || 'OIDC provider ID'}
+                      </h3>
+                      <p className="text-sm text-gray-500">
+                        {t('settings.betterAuthOidcProviderIdDescription') ||
+                          'Provider identifier used when starting the OIDC login flow.'}
+                      </p>
+                    </div>
+                    <input
+                      type="text"
+                      value={tempBetterAuthConfig.oidcProviderId}
+                      onChange={(e) =>
+                        handleBetterAuthTextChange('oidcProviderId', e.target.value)
+                      }
+                      placeholder="oidc"
+                      className="flex-1 mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm form-input"
+                      disabled={loading}
+                    />
+                  </div>
+
+                  <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-md">
+                    <div className="mb-2">
+                      <h3 className="font-medium text-gray-700">
+                        {t('settings.betterAuthOidcDiscoveryUrl') || 'OIDC discovery URL'}
+                      </h3>
+                      <p className="text-sm text-gray-500">
+                        {t('settings.betterAuthOidcDiscoveryUrlDescription') ||
+                          'Well-known OpenID configuration URL published by your identity provider.'}
+                      </p>
+                    </div>
+                    <input
+                      type="text"
+                      value={tempBetterAuthConfig.oidcDiscoveryUrl}
+                      onChange={(e) =>
+                        handleBetterAuthTextChange('oidcDiscoveryUrl', e.target.value)
+                      }
+                      placeholder="https://issuer.example.com/.well-known/openid-configuration"
+                      className="flex-1 mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm form-input"
+                      disabled={loading}
+                    />
+                  </div>
+
+                  <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-md">
+                    <div className="mb-2">
+                      <h3 className="font-medium text-gray-700">
+                        {t('settings.betterAuthOidcScopes') || 'OIDC scopes'}
+                      </h3>
+                      <p className="text-sm text-gray-500">
+                        {t('settings.betterAuthOidcScopesDescription') ||
+                          'Comma-separated scopes requested during the OIDC sign-in flow.'}
+                      </p>
+                    </div>
+                    <input
+                      type="text"
+                      value={tempBetterAuthConfig.oidcScopes}
+                      onChange={(e) => handleBetterAuthTextChange('oidcScopes', e.target.value)}
+                      placeholder="openid, profile, email"
+                      className="flex-1 mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm form-input"
+                      disabled={loading}
+                    />
+                  </div>
+
+                  <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-md">
+                    <div className="mb-2">
+                      <h3 className="font-medium text-gray-700">
+                        {t('settings.betterAuthOidcPrompt') || 'OIDC prompt'}
+                      </h3>
+                      <p className="text-sm text-gray-500">
+                        {t('settings.betterAuthOidcPromptDescription') ||
+                          'Optional prompt value sent to the identity provider, such as login or consent.'}
+                      </p>
+                    </div>
+                    <input
+                      type="text"
+                      value={tempBetterAuthConfig.oidcPrompt}
+                      onChange={(e) => handleBetterAuthTextChange('oidcPrompt', e.target.value)}
+                      placeholder="login"
+                      className="flex-1 mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm form-input"
+                      disabled={loading}
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-md">
+                    <div>
+                      <h3 className="font-medium text-gray-700">
+                        {t('settings.betterAuthOidcPkce') || 'Enable PKCE'}
+                      </h3>
+                      <p className="text-sm text-gray-500">
+                        {t('settings.betterAuthOidcPkceDescription') ||
+                          'Use PKCE for the OIDC authorization flow.'}
+                      </p>
+                    </div>
+                    <Switch
+                      disabled={loading}
+                      checked={betterAuthConfig.providers.oidc.pkce}
+                      onCheckedChange={(checked) =>
+                        handleBetterAuthToggle({
+                          providers: {
+                            oidc: { pkce: checked },
+                          },
+                        } as any)
+                      }
+                    />
+                  </div>
+                </>
+              )}
+
+              <div className="flex justify-end pt-3">
+                <button
+                  onClick={handleSaveBetterAuthConfig}
+                  disabled={loading}
+                  className="hub-btn primary"
+                >
+                  {t('common.save')}
+                </button>
               </div>
             </div>
           )}
