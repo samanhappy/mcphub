@@ -208,27 +208,37 @@ const validateBearerAuth = async (req: Request): Promise<BearerAuthResult> => {
 
   const authHeader = getBearerAuthHeaderValue(req.headers, systemConfig);
   const hasBearerHeader = !!authHeader && authHeader.startsWith('Bearer ');
+  const standardAuthHeader = getBearerAuthHeaderValue(req.headers, null);
+  const hostedAuthHeader =
+    standardAuthHeader && standardAuthHeader.startsWith('Bearer ')
+      ? standardAuthHeader
+      : authHeader;
   const presentedToken = hasBearerHeader
     ? getBearerTokenFromHeaders(req.headers, systemConfig)
     : null;
 
   if (isHostedModeEnabled()) {
-    if (!presentedToken) {
+    const hostedToken =
+      hostedAuthHeader && hostedAuthHeader.startsWith('Bearer ')
+        ? hostedAuthHeader.substring(7).trim()
+        : null;
+
+    if (!hostedToken) {
       return { valid: false, reason: 'missing' };
     }
-    if (!isHostedApiKey(presentedToken)) {
+    if (!isHostedApiKey(hostedToken)) {
       return { valid: false, reason: 'invalid' };
     }
 
     try {
-      const hostedAuth = await validateHostedBearer(presentedToken);
+      const hostedAuth = await validateHostedBearer(hostedToken);
       if (!hostedAuth) {
         return { valid: false, reason: 'invalid' };
       }
 
       return {
         valid: true,
-        user: { username: hostedAuth.userId, password: '', isAdmin: false },
+        user: { username: hostedAuth.userId, password: '', isAdmin: true },
         keyId: hostedAuth.apiKeyId,
         keyName: hostedAuth.apiKeyPrefix,
         hostedAuth,
