@@ -7,6 +7,7 @@ import {
   betterAuthRuntimeConfig,
   getBetterAuthRuntimeConfig,
 } from './services/betterAuthConfig.js';
+import { getSystemConfigDao } from './dao/index.js';
 
 const runtimeConfig = getBetterAuthRuntimeConfig();
 const socialProviders: Record<string, { clientId: string; clientSecret: string }> = {};
@@ -73,8 +74,13 @@ const resolveBaseURL = (baseUrl: string, basePath: string): string => {
   }
 };
 
+const systemConfigDao = getSystemConfigDao();
+const systemConfig = await systemConfigDao.get();
+const systemInstallBaseUrl = systemConfig?.install?.baseUrl;
 const baseURL = resolveBaseURL(
-  process.env.BETTER_AUTH_URL || `http://localhost:${defaultConfig.port}${defaultConfig.basePath}`,
+  systemInstallBaseUrl ||
+    process.env.BETTER_AUTH_URL ||
+    `http://localhost:${defaultConfig.port}${defaultConfig.basePath}`,
   runtimeConfig.basePath,
 );
 

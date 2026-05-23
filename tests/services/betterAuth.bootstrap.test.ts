@@ -2,6 +2,7 @@ const betterAuthMock = jest.fn(() => ({ handler: jest.fn() }));
 const genericOAuthMock = jest.fn((options) => ({ id: 'generic-oauth', options }));
 const poolMock = jest.fn();
 const postgresDialectMock = jest.fn();
+const loadSettingsMock = jest.fn();
 
 const runtimeConfig = {
   enabled: true,
@@ -43,6 +44,7 @@ jest.mock('../../src/config/index.js', () => ({
     port: 3000,
     basePath: '',
   },
+  loadSettings: loadSettingsMock,
 }));
 
 jest.mock('../../src/services/betterAuthConfig.js', () => ({
@@ -58,7 +60,12 @@ describe('betterAuth bootstrap', () => {
     genericOAuthMock.mockClear();
     poolMock.mockClear();
     postgresDialectMock.mockClear();
+    loadSettingsMock.mockReset();
+    loadSettingsMock.mockReturnValue({
+      systemConfig: {},
+    });
     process.env.DB_URL = 'postgresql://mcphub:password@localhost:5432/mcphub';
+    process.env.BETTER_AUTH_URL = 'http://localhost:5173';
     process.env.OIDC_CLIENT_ID = 'oidc-client-id';
     process.env.OIDC_CLIENT_SECRET = 'oidc-client-secret';
   });
@@ -102,6 +109,24 @@ describe('betterAuth bootstrap', () => {
             },
           },
         ],
+      }),
+    );
+  });
+
+  it('prefers install.baseUrl over BETTER_AUTH_URL when deriving the Better Auth base URL', async () => {
+    loadSettingsMock.mockReturnValue({
+      systemConfig: {
+        install: {
+          baseUrl: 'https://mcp.imdevinc.home/mcphub',
+        },
+      },
+    });
+
+    await import('../../src/betterAuth.js');
+
+    expect(betterAuthMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        baseURL: 'https://mcp.imdevinc.home/mcphub/api/auth/better',
       }),
     );
   });
