@@ -376,8 +376,23 @@ export class OpenAPIClient {
       if (axios.isAxiosError(error)) {
         const status = error.response?.status ?? 'unknown';
         const statusText = error.response?.statusText ?? 'Unknown Error';
+        const responseData = error.response?.data;
+        let responseDetails = '';
+
+        if (responseData !== undefined && responseData !== null && responseData !== '') {
+          if (typeof responseData === 'string') {
+            responseDetails = responseData;
+          } else {
+            try {
+              responseDetails = JSON.stringify(responseData);
+            } catch {
+              responseDetails = String(responseData);
+            }
+          }
+        }
+
         throw new Error(
-          `API call failed: ${status} ${statusText}`,
+          `API call failed: ${status} ${statusText}${responseDetails ? ` ${responseDetails}` : ''}`,
         );
       }
       throw error;
