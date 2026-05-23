@@ -256,10 +256,10 @@ export class OpenAPIClient {
 
     if (pathParams?.length) {
       for (const param of pathParams) {
-        properties[param.name] = {
-          type: 'string',
-          description: param.description || `Path parameter: ${param.name}`,
-        };
+        properties[param.name] = this.generateParameterSchema(
+          param,
+          `Path parameter: ${param.name}`,
+        );
         if (param.required) {
           required.push(param.name);
         }
@@ -273,10 +273,10 @@ export class OpenAPIClient {
 
     if (queryParams?.length) {
       for (const param of queryParams) {
-        properties[param.name] = param.schema || {
-          type: 'string',
-          description: param.description || `Query parameter: ${param.name}`,
-        };
+        properties[param.name] = this.generateParameterSchema(
+          param,
+          `Query parameter: ${param.name}`,
+        );
         if (param.required) {
           required.push(param.name);
         }
@@ -297,6 +297,26 @@ export class OpenAPIClient {
     }
 
     return schema;
+  }
+
+  private generateParameterSchema(
+    param: OpenAPIV3.ParameterObject,
+    fallbackDescription: string,
+  ): Record<string, unknown> {
+    const parameterSchema =
+      param.schema && !('$ref' in param.schema) ? { ...param.schema } : { type: 'string' };
+
+    if (param.description) {
+      parameterSchema.description = param.description;
+    } else if (!parameterSchema.description) {
+      parameterSchema.description = fallbackDescription;
+    }
+
+    if (param.example !== undefined) {
+      parameterSchema.example = param.example;
+    }
+
+    return parameterSchema;
   }
 
   async callTool(
