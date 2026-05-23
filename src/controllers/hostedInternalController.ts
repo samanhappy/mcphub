@@ -1,0 +1,44 @@
+import { Request, Response } from 'express';
+import { applyHostedWebhookEvent } from '../services/hostedAuthService.js';
+import type { HubWebhookEvent } from '../services/hostedControlPlaneClient.js';
+import { verifyInternalExpressRequest } from '../services/hostedInternalAuth.js';
+import { isHostedModeEnabled } from '../services/hostedMode.js';
+
+function bodyForSignature(req: Request): string {
+  if (req.body === undefined || req.body === null) {
+    return '';
+  }
+  return typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
+}
+
+function isHubWebhookEvent(value: unknown): value is HubWebhookEvent {
+  if (!value || typeof value !== 'object') return false;
+  const record = value as Record<string, unknown>;
+  return typeof record.type === 'string' && typeof record.userId === 'string';
+}
+
+export const receiveHostedInternalEvent = async (req: Request, res: Response): Promise<void> => {
+  if (!isHostedModeEnabled()) {
+    res.status(404).json({ success: false, message: 'Hosted mode is not enabled' });
+    return;
+  }
+
+  const body = bodyForSignature(req);
+  const verified = verifyInternalExpressRequest(req, body);
+  if (!verified.ok) {
+    res.status(401).json({
+      success: false,
+      message: 'Invalid internal signature',
+      code: verified.reason,
+    });
+    return;
+  }
+
+  if (!isHubWebhookEvent(req.body)) {
+    res.status(400).json({ success: false, message: 'Invalid hosted webhook event' });
+    return;
+  }
+
+  applyHostedWebhookEvent(req.body);
+  res.json({ success: true, data: { accepted: true } });
+};

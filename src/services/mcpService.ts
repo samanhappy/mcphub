@@ -54,6 +54,13 @@ import {
 } from './smartRoutingService.js';
 import { getActivityLoggingService } from './activityLoggingService.js';
 import {
+  assertHostedToolAllowed,
+  filterHostedTools,
+  HostedCreditReservation,
+  reserveHostedToolCall,
+  settleHostedToolCall,
+} from './hostedAuthService.js';
+import {
   formatErrorForLogging,
   sanitizeStringForLogging,
   summarizeErrorForLogging,
@@ -1730,6 +1737,28 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
   const keyId = bearerKeyContext.keyId || extra?.keyId || undefined;
   const keyName = bearerKeyContext.keyName || extra?.keyName || undefined;
   const sourceIp = requestContextService.getRequestContext()?.remoteAddress || undefined;
+  let hostedReservation: HostedCreditReservation | null = null;
+
+  const reserveHostedIfNeeded = async (serverName: string, toolName: string) => {
+    const hostedAuth = requestContextService.getHostedAuthContext();
+    assertHostedToolAllowed(hostedAuth, serverName, toolName);
+    hostedReservation = await reserveHostedToolCall(hostedAuth, serverName, toolName);
+  };
+
+  const settleHostedIfNeeded = async (input: {
+    success: boolean;
+    requestContent?: unknown;
+    responseContent?: unknown;
+  }) => {
+    const reservation = hostedReservation;
+    hostedReservation = null;
+    await settleHostedToolCall(reservation, {
+      success: input.success,
+      latencyMs: Date.now() - startTime,
+      requestContent: input.requestContent,
+      responseContent: input.responseContent,
+    });
+  };
 
   try {
     // Special handling for smart routing tools
@@ -1823,7 +1852,13 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
           }
         }
 
+        await reserveHostedIfNeeded(targetServerInfo.name, cleanToolName);
         const result = await openApiClient.callTool(cleanToolName, finalArgs, passthroughHeaders);
+        await settleHostedIfNeeded({
+          success: true,
+          requestContent: finalArgs,
+          responseContent: result,
+        });
 
         console.log('OpenAPI tool invocation result', {
           serverName: targetServerInfo.name,
@@ -1876,6 +1911,7 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
       const cleanToolName = toolName.startsWith(prefix)
         ? toolName.substring(prefix.length)
         : toolName;
+      await reserveHostedIfNeeded(targetServerInfo.name, cleanToolName);
       const result = await callToolWithReconnect(
         targetServerInfo,
         {
@@ -1884,6 +1920,11 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
         },
         targetServerInfo.options || {},
       );
+      await settleHostedIfNeeded({
+        success: !result.isError,
+        requestContent: finalArgs,
+        responseContent: result,
+      });
 
       console.log('Tool invocation result', {
         serverName: targetServerInfo.name,
@@ -1961,11 +2002,18 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
         }
       }
 
+      const finalArgs = request.params.arguments || {};
+      await reserveHostedIfNeeded(serverInfo.name, cleanToolName);
       const result = await openApiClient.callTool(
         cleanToolName,
-        request.params.arguments || {},
+        finalArgs,
         passthroughHeaders,
       );
+      await settleHostedIfNeeded({
+        success: true,
+        requestContent: finalArgs,
+        responseContent: result,
+      });
 
       console.log('OpenAPI tool invocation result', {
         serverName: serverInfo.name,
@@ -2009,15 +2057,21 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
     const cleanToolName = request.params.name.startsWith(prefix)
       ? request.params.name.substring(prefix.length)
       : request.params.name;
+    await reserveHostedIfNeeded(serverInfo.name, cleanToolName);
     const result = await callToolWithReconnect(
       serverInfo,
       { ...request.params, name: cleanToolName },
       serverInfo.options || {},
     );
+    await settleHostedIfNeeded({
+      success: !result.isError,
+      requestContent: request.params.arguments,
+      responseContent: result,
+    });
     console.log('Tool call result', {
       serverName: serverInfo.name,
       toolName: cleanToolName,
-        result: summarizeToolResultForLogging(result),
+      result: summarizeToolResultForLogging(result),
     });
 
     // Log successful activity
@@ -2042,6 +2096,11 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
 
     // Log error activity
     const duration = Date.now() - startTime;
+    await settleHostedIfNeeded({
+      success: false,
+      requestContent: getActivityInputFromToolRequest(request),
+      responseContent: { error: formatErrorForLogging(error) },
+    });
     const activityToolName = getActivityToolNameFromRequest(request);
     const serverInfo =
       (typeof extra?.server === 'string' ? getServerByName(extra.server) : undefined) ||
@@ -2463,7 +2522,9 @@ async function filterToolsByGroup(
       tools = tools.filter((tool) => allowedToolNames.includes(tool.name));
     }
   }
-  return tools;
+
+  const hostedAuth = RequestContextService.getInstance().getHostedAuthContext();
+  return filterHostedTools(hostedAuth, serverName, tools, getNameSeparator());
 }
 
 const normalizePromptNameForGroup = (serverName: string, promptName: string) => {

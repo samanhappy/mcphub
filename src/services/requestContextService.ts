@@ -1,6 +1,7 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { Request } from 'express';
 import ipaddr from 'ipaddr.js';
+import type { HostedAuthContext } from './hostedAuthService.js';
 
 /**
  * Request context interface for MCP request handling
@@ -13,6 +14,7 @@ export interface RequestContext {
   group?: string;
   keyId?: string;
   keyName?: string;
+  hostedAuth?: HostedAuthContext;
 }
 
 const normalizeRemoteAddress = (remoteAddress?: string): string | undefined => {
@@ -168,6 +170,16 @@ export class RequestContextService {
   }
 
   /**
+   * Set hosted auth context for hosted data-plane authorization and usage.
+   */
+  public setHostedAuthContext(hostedAuth?: HostedAuthContext): void {
+    const requestContext = this.getRequestContext();
+    if (requestContext) {
+      requestContext.hostedAuth = hostedAuth;
+    }
+  }
+
+  /**
    * Set group context for activity logging
    */
   public setGroupContext(group?: string): void {
@@ -193,5 +205,9 @@ export class RequestContextService {
    */
   public getGroupContext(): string | undefined {
     return this.getRequestContext()?.group;
+  }
+
+  public getHostedAuthContext(): HostedAuthContext | undefined {
+    return this.getRequestContext()?.hostedAuth;
   }
 }

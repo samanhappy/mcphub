@@ -13,6 +13,13 @@ import { IUser, BearerKey } from '../types/index.js';
 import { resolveOAuthUserFromToken } from '../utils/oauthBearer.js';
 import { safeCompare } from '../utils/safeCompare.js';
 import { getBearerAuthHeaderValue, getBearerTokenFromHeaders } from '../utils/bearerAuth.js';
+import {
+  HostedAuthUnavailableError,
+  isHostedApiKey,
+  validateHostedBearer,
+} from './hostedAuthService.js';
+import type { HostedAuthContext } from './hostedAuthService.js';
+import { isHostedModeEnabled } from './hostedMode.js';
 
 export interface SessionContext {
   transport: Transport;
@@ -20,6 +27,7 @@ export interface SessionContext {
   needsInitialization?: boolean;
   keyId?: string;
   keyName?: string;
+  hostedAuth?: HostedAuthContext;
 }
 
 export const transports: {
@@ -45,10 +53,16 @@ export const getSessionContext = (
 };
 
 type BearerAuthResult =
-  | { valid: true; user?: IUser; keyId?: string; keyName?: string }
+  | {
+      valid: true;
+      user?: IUser;
+      keyId?: string;
+      keyName?: string;
+      hostedAuth?: HostedAuthContext;
+    }
   | {
       valid: false;
-      reason: 'missing' | 'invalid';
+      reason: 'missing' | 'invalid' | 'unavailable';
     };
 
 /**
@@ -194,13 +208,45 @@ const validateBearerAuth = async (req: Request): Promise<BearerAuthResult> => {
 
   const authHeader = getBearerAuthHeaderValue(req.headers, systemConfig);
   const hasBearerHeader = !!authHeader && authHeader.startsWith('Bearer ');
+  const presentedToken = hasBearerHeader
+    ? getBearerTokenFromHeaders(req.headers, systemConfig)
+    : null;
+
+  if (isHostedModeEnabled()) {
+    if (!presentedToken) {
+      return { valid: false, reason: 'missing' };
+    }
+    if (!isHostedApiKey(presentedToken)) {
+      return { valid: false, reason: 'invalid' };
+    }
+
+    try {
+      const hostedAuth = await validateHostedBearer(presentedToken);
+      if (!hostedAuth) {
+        return { valid: false, reason: 'invalid' };
+      }
+
+      return {
+        valid: true,
+        user: { username: hostedAuth.userId, password: '', isAdmin: false },
+        keyId: hostedAuth.apiKeyId,
+        keyName: hostedAuth.apiKeyPrefix,
+        hostedAuth,
+      };
+    } catch (error) {
+      if (error instanceof HostedAuthUnavailableError) {
+        return { valid: false, reason: 'unavailable' };
+      }
+      throw error;
+    }
+  }
 
   if (!enableBearerAuth) {
     if (!hasBearerHeader) {
       return { valid: true };
     }
 
-    const token = getBearerTokenFromHeaders(req.headers, systemConfig);
+    const token = presentedToken;
     if (!token) {
       return { valid: true };
     }
@@ -234,7 +280,7 @@ const validateBearerAuth = async (req: Request): Promise<BearerAuthResult> => {
     return { valid: false, reason: 'missing' };
   }
 
-  const token = getBearerTokenFromHeaders(req.headers, systemConfig);
+  const token = presentedToken;
   if (!token) {
     return { valid: false, reason: 'missing' };
   }
@@ -340,7 +386,20 @@ const buildResourceMetadataUrl = (req: Request): string | undefined => {
   return `${origin}/.well-known/oauth-protected-resource${normalizedBasePath}`;
 };
 
-const sendBearerAuthError = (req: Request, res: Response, reason: 'missing' | 'invalid'): void => {
+const sendBearerAuthError = (
+  req: Request,
+  res: Response,
+  reason: 'missing' | 'invalid' | 'unavailable',
+): void => {
+  if (reason === 'unavailable') {
+    res.setHeader('Retry-After', '30');
+    res.status(503).json({
+      error: 'temporarily_unavailable',
+      error_description: 'Hosted control plane is unavailable',
+    });
+    return;
+  }
+
   const errorDescription =
     reason === 'missing' ? 'No authorization provided' : 'Invalid bearer token';
 
@@ -430,6 +489,7 @@ export const handleSseConnection = async (req: Request, res: Response): Promise<
     group: group,
     keyId: bearerAuthResult.keyId,
     keyName: bearerAuthResult.keyName,
+    hostedAuth: bearerAuthResult.hostedAuth,
   };
 
   res.on('close', () => {
@@ -502,11 +562,13 @@ export const handleSseMessage = async (req: Request, res: Response): Promise<voi
   const requestContextService = RequestContextService.getInstance();
   const currentKeyId = bearerAuthResult.keyId || keyId;
   const currentKeyName = bearerAuthResult.keyName || keyName;
+  const currentHostedAuth = bearerAuthResult.hostedAuth || transportData.hostedAuth;
 
   await requestContextService.runWithRequestContext(req, async () => {
     // Set bearer key and group context for activity logging (from session or current request)
     requestContextService.setBearerKeyContext(currentKeyId, currentKeyName);
     requestContextService.setGroupContext(group);
+    requestContextService.setHostedAuthContext(currentHostedAuth);
 
     await (transport as SSEServerTransport).handlePostMessage(req, res);
   });
@@ -517,6 +579,7 @@ async function createSessionWithId(
   sessionId: string,
   group: string,
   username?: string,
+  hostedAuth?: HostedAuthContext,
 ): Promise<StreamableHTTPServerTransport> {
   console.log(
     `[SESSION REBUILD] Starting session rebuild for ID: ${sessionId}${username ? ` for user: ${username}` : ''}`,
@@ -532,7 +595,7 @@ async function createSessionWithId(
         `[SESSION REBUILD] onsessioninitialized triggered for ID: ${initializedSessionId}`,
       ); // New log
       if (initializedSessionId === sessionId) {
-        transports[sessionId] = { transport, group };
+        transports[sessionId] = { transport, group, hostedAuth };
         console.log(
           `[SESSION REBUILD] Session ${sessionId} initialized successfully${username ? ` for user: ${username}` : ''}`,
         );
@@ -561,7 +624,7 @@ async function createSessionWithId(
     console.warn(
       `[SESSION REBUILD] Transport not found in transports after initialization, forcing registration`,
     );
-    transports[sessionId] = { transport, group, needsInitialization: true };
+    transports[sessionId] = { transport, group, needsInitialization: true, hostedAuth };
   } else {
     // Mark the session as needing initialization
     transports[sessionId].needsInitialization = true;
@@ -578,6 +641,7 @@ async function createSessionWithId(
 async function createNewSession(
   group: string,
   username?: string,
+  hostedAuth?: HostedAuthContext,
 ): Promise<StreamableHTTPServerTransport> {
   const newSessionId = randomUUID();
   console.log(
@@ -587,7 +651,7 @@ async function createNewSession(
   const transport = new StreamableHTTPServerTransport({
     sessionIdGenerator: () => newSessionId,
     onsessioninitialized: (sessionId) => {
-      transports[sessionId] = { transport, group };
+      transports[sessionId] = { transport, group, hostedAuth };
       console.log(
         `[SESSION NEW] New session ${sessionId} initialized successfully${username ? ` for user: ${username}` : ''}`,
       );
@@ -669,7 +733,12 @@ export const handleMcpPostRequest = async (req: Request, res: Response): Promise
         );
         transport = await sessionCreationLocks[sessionId];
       } else {
-        sessionCreationLocks[sessionId] = createSessionWithId(sessionId, group, username);
+        sessionCreationLocks[sessionId] = createSessionWithId(
+          sessionId,
+          group,
+          username,
+          bearerAuthResult.hostedAuth,
+        );
         try {
           transport = await sessionCreationLocks[sessionId];
           console.log(
@@ -709,7 +778,7 @@ export const handleMcpPostRequest = async (req: Request, res: Response): Promise
     console.log(
       `[SESSION CREATE] No session ID provided for initialize request, creating new session${username ? ` for user: ${username}` : ''}`,
     );
-    transport = await createNewSession(group, username);
+    transport = await createNewSession(group, username, bearerAuthResult.hostedAuth);
   } else if (
     req.body &&
     typeof req.body.method === 'string' &&
@@ -744,6 +813,9 @@ export const handleMcpPostRequest = async (req: Request, res: Response): Promise
     // Set bearer key and group context for activity logging
     requestContextService.setBearerKeyContext(bearerAuthResult.keyId, bearerAuthResult.keyName);
     requestContextService.setGroupContext(group);
+    requestContextService.setHostedAuthContext(
+      bearerAuthResult.hostedAuth || transportInfo?.hostedAuth,
+    );
 
     // Check if the session needs initialization (for rebuilt sessions)
     if (transportInfo && transportInfo.needsInitialization) {
@@ -923,7 +995,12 @@ export const handleMcpOtherRequest = async (req: Request, res: Response) => {
 
         // Create session with same ID using existing function
         const group = req.params.group;
-        const rebuiltSession = await createSessionWithId(sessionId, group, currentUser.username);
+        const rebuiltSession = await createSessionWithId(
+          sessionId,
+          group,
+          currentUser.username,
+          bearerAuthResult.hostedAuth,
+        );
         if (rebuiltSession) {
           console.log(
             `[SESSION AUTO-REBUILD] Successfully transparently rebuilt session: ${sessionId}`,
