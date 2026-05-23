@@ -4,7 +4,7 @@ import { PostgresDialect } from 'kysely';
 import { Pool } from 'pg';
 import defaultConfig, { loadSettings } from './config/index.js';
 import {
-  betterAuthRuntimeConfig,
+  resolveBetterAuthRuntimeConfig,
 } from './services/betterAuthConfig.js';
 import { getCachedSystemConfig, isDatabaseModeEnabled } from './utils/systemConfigCache.js';
 
@@ -22,7 +22,7 @@ const resolveSystemConfig = () => {
 };
 
 const systemConfig = resolveSystemConfig();
-const runtimeConfig = betterAuthRuntimeConfig;
+const runtimeConfig = resolveBetterAuthRuntimeConfig(systemConfig);
 const socialProviders: Record<string, { clientId: string; clientSecret: string }> = {};
 const plugins: any[] = [];
 if (

@@ -1,8 +1,9 @@
 const betterAuthMock = jest.fn(() => ({ handler: jest.fn() }));
-const genericOAuthMock = jest.fn((options) => ({ id: 'generic-oauth', options }));
+const genericOAuthMock = jest.fn((options: unknown) => ({ id: 'generic-oauth', options }));
 const poolMock = jest.fn();
 const postgresDialectMock = jest.fn();
 const loadSettingsMock = jest.fn();
+const resolveBetterAuthRuntimeConfigMock = jest.fn();
 
 const runtimeConfig = {
   enabled: true,
@@ -18,6 +19,22 @@ const runtimeConfig = {
       scopes: ['openid', 'profile', 'email'],
       pkce: true,
       prompt: 'login',
+    },
+  },
+};
+
+const disabledRuntimeConfig = {
+  enabled: false,
+  basePath: '/api/auth/better',
+  trustedOrigins: [],
+  providers: {
+    google: { enabled: false },
+    github: { enabled: false },
+    oidc: {
+      enabled: false,
+      providerId: 'oidc',
+      scopes: ['openid', 'profile', 'email'],
+      pkce: true,
     },
   },
 };
@@ -49,8 +66,9 @@ jest.mock('../../src/config/index.js', () => ({
 
 jest.mock('../../src/services/betterAuthConfig.js', () => ({
   __esModule: true,
-  betterAuthRuntimeConfig: runtimeConfig,
+  betterAuthRuntimeConfig: disabledRuntimeConfig,
   getBetterAuthRuntimeConfig: jest.fn(() => runtimeConfig),
+  resolveBetterAuthRuntimeConfig: resolveBetterAuthRuntimeConfigMock,
 }));
 
 describe('betterAuth bootstrap', () => {
@@ -61,6 +79,8 @@ describe('betterAuth bootstrap', () => {
     poolMock.mockClear();
     postgresDialectMock.mockClear();
     loadSettingsMock.mockReset();
+    resolveBetterAuthRuntimeConfigMock.mockReset();
+    resolveBetterAuthRuntimeConfigMock.mockReturnValue(runtimeConfig);
     loadSettingsMock.mockReturnValue({
       systemConfig: {},
     });
@@ -68,6 +88,7 @@ describe('betterAuth bootstrap', () => {
     process.env.BETTER_AUTH_URL = 'http://localhost:5173';
     process.env.OIDC_CLIENT_ID = 'oidc-client-id';
     process.env.OIDC_CLIENT_SECRET = 'oidc-client-secret';
+    process.env.USE_DB = 'true';
   });
 
   it('registers the generic OAuth plugin when the OIDC provider is enabled', async () => {
@@ -128,6 +149,35 @@ describe('betterAuth bootstrap', () => {
     expect(betterAuthMock).toHaveBeenCalledWith(
       expect.objectContaining({
         baseURL: 'https://mcp.imdevinc.home/mcphub/api/auth/better',
+      }),
+    );
+  });
+
+  it('builds the auth instance from the current resolved runtime config instead of the stale exported snapshot', async () => {
+    await import('../../src/betterAuth.js');
+
+    expect(resolveBetterAuthRuntimeConfigMock).toHaveBeenCalled();
+    expect(genericOAuthMock).toHaveBeenCalledWith({
+      config: [
+        {
+          providerId: 'local-oidc',
+          discoveryUrl: 'https://auth.example.com/.well-known/openid-configuration',
+          clientId: 'oidc-client-id',
+          clientSecret: 'oidc-client-secret',
+          scopes: ['openid', 'profile', 'email'],
+          pkce: true,
+          prompt: 'login',
+        },
+      ],
+    });
+
+    expect(betterAuthMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        plugins: [
+          expect.objectContaining({
+            id: 'generic-oauth',
+          }),
+        ],
       }),
     );
   });
