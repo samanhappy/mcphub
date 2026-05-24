@@ -227,7 +227,9 @@ type ExpressLayerHandle = {
 
 const findMountedRouter = (app: express.Application): ExpressLayerHandle => {
   const appRouter = (app as express.Application & { _router?: { stack?: ExpressLayer[] } })._router;
-  const routerLayer = appRouter?.stack?.find((layer) => layer.name === 'router' && layer.handle?.stack);
+  const routerLayer = appRouter?.stack?.find(
+    (layer) => layer.name === 'router' && layer.handle?.stack,
+  );
 
   if (!routerLayer?.handle?.stack) {
     throw new Error('Expected initRoutes to mount an API router');
@@ -245,12 +247,15 @@ const routerContainsRoute = (
     (layer) => layer.route?.path === path && Boolean(layer.route.methods[method.toLowerCase()]),
   ) ?? false;
 
-const findAppRoute = (app: express.Application, method: string, path: string): ExpressLayer | undefined => {
+const findAppRoute = (
+  app: express.Application,
+  method: string,
+  path: string,
+): ExpressLayer | undefined => {
   const appRouter = (app as express.Application & { _router?: { stack?: ExpressLayer[] } })._router;
 
   return appRouter?.stack?.find(
-    (layer) =>
-      layer.route?.path === path && Boolean(layer.route.methods[method.toLowerCase()]),
+    (layer) => layer.route?.path === path && Boolean(layer.route.methods[method.toLowerCase()]),
   );
 };
 
@@ -267,7 +272,9 @@ describe('initRoutes authenticated API rate limiting', () => {
 
     expect(protectedRouter).toBeDefined();
     const authenticatedLimiterIndex =
-      protectedRouter?.stack?.findIndex((layer) => layer.handle === authenticatedRouteRateLimiter) ?? -1;
+      protectedRouter?.stack?.findIndex(
+        (layer) => layer.handle === authenticatedRouteRateLimiter,
+      ) ?? -1;
 
     expect(authenticatedLimiterIndex).toBeGreaterThanOrEqual(0);
     expect(routerContainsRoute(protectedRouter!, 'get', '/servers/:name')).toBe(true);
@@ -275,7 +282,7 @@ describe('initRoutes authenticated API rate limiting', () => {
     expect(routerContainsRoute(protectedRouter!, 'delete', '/oauth/clients/:clientId')).toBe(true);
   });
 
-  it('rate limits the hosted internal webhook ingress route', async () => {
+  it('does not put the hosted internal webhook ingress behind the authenticated route limiter', async () => {
     const app = express();
 
     await initRoutes(app);
@@ -283,7 +290,7 @@ describe('initRoutes authenticated API rate limiting', () => {
     const internalRoute = findAppRoute(app, 'post', '/internal/v1/events');
 
     expect(internalRoute).toBeDefined();
-    expect(internalRoute?.route?.stack?.map((layer) => layer.handle)).toContain(
+    expect(internalRoute?.route?.stack?.map((layer) => layer.handle)).not.toContain(
       authenticatedRouteRateLimiter,
     );
   });

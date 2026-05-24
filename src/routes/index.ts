@@ -176,7 +176,7 @@ export const initRoutes = async (app: express.Application): Promise<void> => {
   app.get('/health', healthCheck);
 
   // Hosted data-plane webhook ingress. HMAC-authenticated by INTERNAL_API_SECRET.
-  app.post('/internal/v1/events', authenticatedRouteRateLimiter, receiveHostedInternalEvent);
+  app.post('/internal/v1/events', receiveHostedInternalEvent);
 
   // OAuth callback endpoint (no auth required, public callback URL)
   app.get('/oauth/callback', handleOAuthCallback);
@@ -252,10 +252,7 @@ export const initRoutes = async (app: express.Application): Promise<void> => {
   // New routes for server configurations and tool management in groups
   authenticatedRouter.get('/groups/:id/server-configs', getGroupServerConfigs);
   authenticatedRouter.get('/groups/:id/server-configs/:serverName', getGroupServerConfig);
-  authenticatedRouter.put(
-    '/groups/:id/server-configs/:serverName/tools',
-    updateGroupServerTools,
-  );
+  authenticatedRouter.put('/groups/:id/server-configs/:serverName/tools', updateGroupServerTools);
 
   // User management routes (admin only)
   authenticatedRouter.get('/users', getUsers);

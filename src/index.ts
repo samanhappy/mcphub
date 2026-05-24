@@ -4,6 +4,10 @@ import { initializeDatabaseMode } from './utils/migration.js';
 import { createFetchWithProxy, getProxyConfigFromEnv } from './services/proxy.js';
 import { isRetryableDbError } from './utils/dbRetry.js';
 import { hydrateSystemConfigCache } from './utils/systemConfigCache.js';
+import {
+  startHostedEventSubscriber,
+  stopHostedEventSubscriber,
+} from './services/hostedEventSubscriber.js';
 
 const appServer = new AppServer();
 
@@ -90,12 +94,14 @@ process.on('unhandledRejection', handleUnhandledRejection);
 // Handle graceful shutdown
 process.on('SIGTERM', async () => {
   console.log('[SHUTDOWN] Received SIGTERM, shutting down gracefully...');
+  await stopHostedEventSubscriber();
   await appServer.shutdown();
   process.exit(0);
 });
 
 process.on('SIGINT', async () => {
   console.log('[SHUTDOWN] Received SIGINT, shutting down gracefully...');
+  await stopHostedEventSubscriber();
   await appServer.shutdown();
   process.exit(0);
 });
@@ -173,6 +179,7 @@ async function boot() {
     }
 
     await hydrateSystemConfigCache();
+    await startHostedEventSubscriber();
 
     await appServer.initialize();
     appServer.start();

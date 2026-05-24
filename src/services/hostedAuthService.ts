@@ -8,6 +8,7 @@ import {
 } from './hostedControlPlaneClient.js';
 import type { HubWebhookEvent, UserStateResponse } from './hostedControlPlaneClient.js';
 import { isHostedModeEnabled } from './hostedMode.js';
+import { getHostedNodeIdentity } from './hostedNodeIdentity.js';
 import { safeCompare } from '../utils/safeCompare.js';
 
 const KEY_PREFIX = 'mcphub-sk';
@@ -32,10 +33,21 @@ export interface HostedAuthContext {
   subscriptions: HostedSubscriptionProjection[];
 }
 
-interface HostedCacheEntry extends HostedAuthContext {
+export interface HostedCacheEntry extends HostedAuthContext {
   verificationToken: string;
   expiresAt: number;
   staleUntil: number;
+}
+
+export interface HostedAuthStateCache {
+  get(prefix: string): HostedCacheEntry | undefined;
+  set(prefix: string, entry: HostedCacheEntry): void;
+  touch(prefix: string, entry: HostedCacheEntry): void;
+  remove(prefix: string): void;
+  invalidateUser(userId: string): void;
+  invalidateApiKeyId(apiKeyId: string): void;
+  prune(now?: number): void;
+  size(): number;
 }
 
 export interface HostedCreditReservation {
@@ -66,10 +78,6 @@ export class HostedAuthUnavailableError extends Error {
   }
 }
 
-const keyCache = new Map<string, HostedCacheEntry>();
-const userCacheIndex = new Map<string, Set<string>>();
-const apiKeyIdCacheIndex = new Map<string, Set<string>>();
-
 function createVerificationToken(apiKey: string): string {
   return apiKey;
 }
@@ -78,82 +86,98 @@ function matchesVerificationToken(apiKey: string, verificationToken: string): bo
   return safeCompare(apiKey, verificationToken);
 }
 
-function addIndexedPrefix(index: Map<string, Set<string>>, key: string, prefix: string): void {
-  const prefixes = index.get(key);
-  if (prefixes) {
-    prefixes.add(prefix);
-    return;
+class MemoryHostedAuthStateCache implements HostedAuthStateCache {
+  private readonly keyCache = new Map<string, HostedCacheEntry>();
+  private readonly userCacheIndex = new Map<string, Set<string>>();
+  private readonly apiKeyIdCacheIndex = new Map<string, Set<string>>();
+
+  get(prefix: string): HostedCacheEntry | undefined {
+    return this.keyCache.get(prefix);
   }
 
-  index.set(key, new Set([prefix]));
-}
-
-function removeIndexedPrefix(index: Map<string, Set<string>>, key: string, prefix: string): void {
-  const prefixes = index.get(key);
-  if (!prefixes) return;
-
-  prefixes.delete(prefix);
-  if (prefixes.size === 0) {
-    index.delete(key);
+  set(prefix: string, entry: HostedCacheEntry): void {
+    this.remove(prefix);
+    this.keyCache.set(prefix, entry);
+    this.addIndexedPrefix(this.userCacheIndex, entry.userId, prefix);
+    this.addIndexedPrefix(this.apiKeyIdCacheIndex, entry.apiKeyId, prefix);
+    this.prune();
   }
-}
 
-function removeCacheEntry(prefix: string): void {
-  const existing = keyCache.get(prefix);
-  if (!existing) return;
+  touch(prefix: string, entry: HostedCacheEntry): void {
+    this.keyCache.delete(prefix);
+    this.keyCache.set(prefix, entry);
+  }
 
-  keyCache.delete(prefix);
-  removeIndexedPrefix(userCacheIndex, existing.userId, prefix);
-  removeIndexedPrefix(apiKeyIdCacheIndex, existing.apiKeyId, prefix);
-}
+  remove(prefix: string): void {
+    const existing = this.keyCache.get(prefix);
+    if (!existing) return;
 
-function pruneKeyCache(now = Date.now()): void {
-  for (const [prefix, entry] of keyCache.entries()) {
-    if (entry.staleUntil <= now) {
-      removeCacheEntry(prefix);
+    this.keyCache.delete(prefix);
+    this.removeIndexedPrefix(this.userCacheIndex, existing.userId, prefix);
+    this.removeIndexedPrefix(this.apiKeyIdCacheIndex, existing.apiKeyId, prefix);
+  }
+
+  invalidateUser(userId: string): void {
+    const prefixes = this.userCacheIndex.get(userId);
+    if (!prefixes) return;
+
+    for (const prefix of [...prefixes]) {
+      this.remove(prefix);
     }
   }
 
-  while (keyCache.size > MAX_CACHE_ENTRIES) {
-    const oldestPrefix = keyCache.keys().next().value as string | undefined;
-    if (!oldestPrefix) break;
-    removeCacheEntry(oldestPrefix);
+  invalidateApiKeyId(apiKeyId: string): void {
+    const prefixes = this.apiKeyIdCacheIndex.get(apiKeyId);
+    if (!prefixes) return;
+
+    for (const prefix of [...prefixes]) {
+      this.remove(prefix);
+    }
+  }
+
+  prune(now = Date.now()): void {
+    for (const [prefix, entry] of this.keyCache.entries()) {
+      if (entry.staleUntil <= now) {
+        this.remove(prefix);
+      }
+    }
+
+    while (this.keyCache.size > MAX_CACHE_ENTRIES) {
+      const oldestPrefix = this.keyCache.keys().next().value as string | undefined;
+      if (!oldestPrefix) break;
+      this.remove(oldestPrefix);
+    }
+  }
+
+  size(): number {
+    return this.keyCache.size;
+  }
+
+  private addIndexedPrefix(index: Map<string, Set<string>>, key: string, prefix: string): void {
+    const prefixes = index.get(key);
+    if (prefixes) {
+      prefixes.add(prefix);
+      return;
+    }
+
+    index.set(key, new Set([prefix]));
+  }
+
+  private removeIndexedPrefix(index: Map<string, Set<string>>, key: string, prefix: string): void {
+    const prefixes = index.get(key);
+    if (!prefixes) return;
+
+    prefixes.delete(prefix);
+    if (prefixes.size === 0) {
+      index.delete(key);
+    }
   }
 }
 
-function setCacheEntry(prefix: string, entry: HostedCacheEntry): void {
-  removeCacheEntry(prefix);
-  keyCache.set(prefix, entry);
-  addIndexedPrefix(userCacheIndex, entry.userId, prefix);
-  addIndexedPrefix(apiKeyIdCacheIndex, entry.apiKeyId, prefix);
-  pruneKeyCache();
-}
-
-function touchCacheEntry(prefix: string, entry: HostedCacheEntry): void {
-  keyCache.delete(prefix);
-  keyCache.set(prefix, entry);
-}
-
-function invalidateCachedUser(userId: string): void {
-  const prefixes = userCacheIndex.get(userId);
-  if (!prefixes) return;
-
-  for (const prefix of [...prefixes]) {
-    removeCacheEntry(prefix);
-  }
-}
-
-function invalidateCachedApiKeyId(apiKeyId: string): void {
-  const prefixes = apiKeyIdCacheIndex.get(apiKeyId);
-  if (!prefixes) return;
-
-  for (const prefix of [...prefixes]) {
-    removeCacheEntry(prefix);
-  }
-}
+const authStateCache: HostedAuthStateCache = new MemoryHostedAuthStateCache();
 
 const cacheCleanupTimer = setInterval(() => {
-  pruneKeyCache();
+  authStateCache.prune();
 }, CACHE_CLEANUP_INTERVAL_MS);
 
 cacheCleanupTimer.unref?.();
@@ -217,7 +241,7 @@ function projectState(
 async function loadFreshContext(apiKey: string, prefix: string): Promise<HostedCacheEntry | null> {
   const validation = await validateHostedApiKey(apiKey);
   if (!validation.valid || !validation.userId || !validation.apiKeyId || !validation.prefix) {
-    removeCacheEntry(prefix);
+    authStateCache.remove(prefix);
     return null;
   }
 
@@ -234,7 +258,7 @@ async function loadFreshContext(apiKey: string, prefix: string): Promise<HostedC
     state,
     apiKey,
   );
-  setCacheEntry(prefix, entry);
+  authStateCache.set(prefix, entry);
   return entry;
 }
 
@@ -257,15 +281,15 @@ export async function validateHostedBearer(apiKey: string): Promise<HostedAuthCo
   const prefix = extractApiKeyPrefix(apiKey);
   if (!prefix) return null;
 
-  pruneKeyCache();
+  authStateCache.prune();
 
-  const cached = keyCache.get(prefix);
+  const cached = authStateCache.get(prefix);
   if (
     cached &&
     Date.now() < cached.expiresAt &&
     matchesVerificationToken(apiKey, cached.verificationToken)
   ) {
-    touchCacheEntry(prefix, cached);
+    authStateCache.touch(prefix, cached);
     return publicContext(cached);
   }
 
@@ -281,7 +305,7 @@ export async function validateHostedBearer(apiKey: string): Promise<HostedAuthCo
       console.warn('[hosted] control plane unavailable, serving stale cached auth state', {
         error: String(error),
       });
-      touchCacheEntry(prefix, cached);
+      authStateCache.touch(prefix, cached);
       return publicContext(cached);
     }
 
@@ -383,6 +407,7 @@ export async function settleHostedToolCall(
   if (!reservation) return;
 
   try {
+    const nodeIdentity = getHostedNodeIdentity();
     await settleHostedCredit({
       reservationId: reservation.reservationId,
       hubEventId: randomUUID(),
@@ -391,10 +416,12 @@ export async function settleHostedToolCall(
       occurredAt: new Date().toISOString(),
       costMillicents: input.success ? reservation.estimatedCostMillicents : 0,
       metadata: {
+        ...(input.metadata ?? {}),
         hubRequestId: reservation.hubRequestId,
+        hubClusterId: nodeIdentity.clusterId,
+        hubNodeId: nodeIdentity.nodeId,
         serverSlug: reservation.serverSlug,
         toolName: reservation.toolName,
-        ...(input.metadata ?? {}),
       },
       requestContent: reservation.contentRecordingEnabled ? input.requestContent : undefined,
       responseContent: reservation.contentRecordingEnabled ? input.responseContent : undefined,
@@ -409,14 +436,14 @@ export async function settleHostedToolCall(
 
 export function applyHostedWebhookEvent(event: HubWebhookEvent): void {
   if (event.type === 'api_key.created' && event.prefix) {
-    removeCacheEntry(event.prefix);
+    authStateCache.remove(event.prefix);
     return;
   }
 
   if (event.type === 'api_key.revoked' && event.keyId) {
-    invalidateCachedApiKeyId(event.keyId);
+    authStateCache.invalidateApiKeyId(event.keyId);
     return;
   }
 
-  invalidateCachedUser(event.userId);
+  authStateCache.invalidateUser(event.userId);
 }

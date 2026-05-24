@@ -9,7 +9,10 @@ export interface HubWebhookEvent {
     | 'byok.upserted'
     | 'byok.deleted'
     | 'user.suspended';
+  eventId?: string;
   userId: string;
+  occurredAt?: string;
+  schemaVersion?: number;
   keyId?: string;
   prefix?: string;
   scopeSlugs?: string[] | null;
@@ -17,6 +20,8 @@ export interface HubWebhookEvent {
   credentialId?: string;
   reason?: string;
 }
+
+export type HubClusterEvent = HubWebhookEvent;
 
 export interface ValidateApiKeyResponse {
   valid: boolean;
@@ -85,11 +90,7 @@ function controlPlaneBaseUrl(): string {
   return raw.replace(/\/+$/, '');
 }
 
-async function requestControlPlane<T>(
-  method: string,
-  path: string,
-  body?: unknown,
-): Promise<T> {
+async function requestControlPlane<T>(method: string, path: string, body?: unknown): Promise<T> {
   const bodyText = body === undefined ? '' : JSON.stringify(body);
   const { timestamp, signature } = signInternalRequest(method, path, body);
   const response = await fetch(`${controlPlaneBaseUrl()}${path}`, {
