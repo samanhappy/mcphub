@@ -100,6 +100,8 @@ type InternalRequestAuthHeaders = Record<
   string
 >;
 
+const REDACTED_VALIDATE_API_KEY_SIGNATURE_BODY = `{"apiKey":"${REDACTED_SIGNATURE_VALUE}"}`;
+
 function createSignedControlPlaneHeaders(
   method: string,
   path: string,
@@ -110,6 +112,17 @@ function createSignedControlPlaneHeaders(
     [TIMESTAMP_HEADER]: timestamp,
     [SIGNATURE_HEADER]: signature,
   };
+}
+
+function createValidateHostedApiKeyAuthHeaders(
+  method: string,
+  path: string,
+): InternalRequestAuthHeaders {
+  return createSignedControlPlaneHeaders(
+    method,
+    path,
+    REDACTED_VALIDATE_API_KEY_SIGNATURE_BODY,
+  );
 }
 
 async function requestControlPlane<T>(
@@ -148,9 +161,7 @@ export async function validateHostedApiKey(apiKey: string): Promise<ValidateApiK
   return requestControlPlane<ValidateApiKeyResponse>(
     method,
     path,
-    createSignedControlPlaneHeaders(method, path, {
-      apiKey: REDACTED_SIGNATURE_VALUE,
-    }),
+    createValidateHostedApiKeyAuthHeaders(method, path),
     {
       apiKey,
     },

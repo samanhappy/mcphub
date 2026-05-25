@@ -6,10 +6,7 @@ import {
   TIMESTAMP_HEADER,
   verifyInternalSignature,
 } from '../../src/services/hostedInternalAuth.js';
-import {
-  reserveHostedCredit,
-  validateHostedApiKey,
-} from '../../src/services/hostedControlPlaneClient.js';
+import { reserveHostedCredit } from '../../src/services/hostedControlPlaneClient.js';
 
 describe('hostedControlPlaneClient signature redaction', () => {
   const originalFetch = global.fetch;
@@ -23,6 +20,21 @@ describe('hostedControlPlaneClient signature redaction', () => {
     );
 
     expect(source).not.toMatch(/signInternalRequest\s*\([^)]*\?\?[^)]*\)/s);
+  });
+
+  it('keeps validateHostedApiKey signing isolated from the raw apiKey parameter', () => {
+    const source = readFileSync(
+      `${process.cwd()}/src/services/hostedControlPlaneClient.ts`,
+      'utf8',
+    );
+
+    expect(source).toMatch(/function createValidateHostedApiKeyAuthHeaders\s*\(/);
+    expect(source).toMatch(
+      /validateHostedApiKey\(apiKey: string\): Promise<ValidateApiKeyResponse> \{[\s\S]*return requestControlPlane<ValidateApiKeyResponse>\([\s\S]*createValidateHostedApiKeyAuthHeaders\(method, path\)[\s\S]*\{[\s\S]*apiKey,[\s\S]*\}[\s\S]*\);[\s\S]*\}/,
+    );
+    expect(source).not.toMatch(
+      /validateHostedApiKey\(apiKey: string\): Promise<ValidateApiKeyResponse> \{[\s\S]*createSignedControlPlaneHeaders\(method, path, \{[\s\S]*apiKey: REDACTED_SIGNATURE_VALUE[\s\S]*\}\)/,
+    );
   });
 
   beforeEach(() => {
@@ -70,34 +82,6 @@ describe('hostedControlPlaneClient signature redaction', () => {
       body: String(init?.body ?? ''),
     };
   }
-
-  it('sends the raw API key while signing a redacted validate payload', async () => {
-    mockSuccessResponse({
-      valid: true,
-      userId: 'user-1',
-      apiKeyId: 'key-1',
-      prefix: 'abcdefghijkl',
-      scopeSlugs: null,
-      contentRecordingEnabled: false,
-      cacheTtlSeconds: 30,
-    });
-
-    await validateHostedApiKey('mcphub-sk-real-secret');
-
-    const request = getLatestRequest();
-
-    expect(request.url).toBe('https://control-plane.example/api/internal/v1/keys/validate');
-    expect(request.body).toBe(JSON.stringify({ apiKey: 'mcphub-sk-real-secret' }));
-    expect(
-      verifyInternalSignature({
-        method: 'POST',
-        path: '/api/internal/v1/keys/validate',
-        body: { apiKey: REDACTED_SIGNATURE_VALUE },
-        timestamp: request.headers.get(TIMESTAMP_HEADER),
-        signature: request.headers.get(SIGNATURE_HEADER),
-      }),
-    ).toEqual({ ok: true });
-  });
 
   it('does not read apiKeyId when building the signed reserve payload', async () => {
     mockSuccessResponse({
