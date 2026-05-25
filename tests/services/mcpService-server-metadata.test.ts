@@ -82,10 +82,14 @@ jest.mock('../../src/services/proxy.js', () => ({
 }));
 
 const mockFindAll = jest.fn();
+const mockFindAllPaginated = jest.fn();
+const mockFindVisibleToUserPaginated = jest.fn();
 
 jest.mock('../../src/dao/index.js', () => ({
   getServerDao: jest.fn(() => ({
     findAll: mockFindAll,
+    findAllPaginated: mockFindAllPaginated,
+    findVisibleToUserPaginated: mockFindVisibleToUserPaginated,
     findById: jest.fn(),
   })),
   getSystemConfigDao: jest.fn(() => ({
@@ -111,7 +115,12 @@ jest.mock('../../src/config/index.js', () => ({
   },
 }));
 
-import { cleanupAllServers, getMcpServer, initUpstreamServers } from '../../src/services/mcpService.js';
+import {
+  cleanupAllServers,
+  getMcpServer,
+  getServersInfo,
+  initUpstreamServers,
+} from '../../src/services/mcpService.js';
 
 describe('mcpService initialize metadata', () => {
   beforeEach(() => {
@@ -177,5 +186,48 @@ describe('mcpService initialize metadata', () => {
       version: '1.0.0',
     });
     expect((server as any)._instructions).toBeUndefined();
+  });
+
+  it('uses visibility-aware pagination and returns owner metadata for non-admin server lists', async () => {
+    mockFindVisibleToUserPaginated.mockResolvedValue({
+      data: [
+        {
+          name: 'alice-private',
+          owner: 'alice',
+          visibility: 'private',
+          enabled: true,
+        },
+        {
+          name: 'shared-public',
+          owner: 'bob',
+          visibility: 'public',
+          enabled: true,
+        },
+      ],
+      total: 2,
+      page: 1,
+      limit: 5,
+      totalPages: 1,
+    });
+
+    const result = await getServersInfo(1, 5, {
+      username: 'alice',
+      isAdmin: false,
+    });
+
+    expect(mockFindVisibleToUserPaginated).toHaveBeenCalledWith('alice', 1, 5);
+    expect(mockFindAllPaginated).not.toHaveBeenCalled();
+    expect(result).toEqual([
+      expect.objectContaining({
+        name: 'alice-private',
+        owner: 'alice',
+        visibility: 'private',
+      }),
+      expect.objectContaining({
+        name: 'shared-public',
+        owner: 'bob',
+        visibility: 'public',
+      }),
+    ]);
   });
 });

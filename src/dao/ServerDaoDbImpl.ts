@@ -49,6 +49,23 @@ export class ServerDaoDbImpl implements ServerDao {
     };
   }
 
+  async findVisibleToUserPaginated(
+    username: string,
+    page: number,
+    limit: number,
+  ): Promise<PaginatedResult<ServerConfigWithName>> {
+    const { data, total } = await this.repository.findVisibleToUserPaginated(username, page, limit);
+    const totalPages = Math.ceil(total / limit);
+
+    return {
+      data: data.map((s) => this.mapToServerConfig(s)),
+      total,
+      page,
+      limit,
+      totalPages,
+    };
+  }
+
   async findById(name: string): Promise<ServerConfigWithName | null> {
     const server = await this.repository.findByName(name);
     return server ? this.mapToServerConfig(server) : null;

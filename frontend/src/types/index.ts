@@ -261,6 +261,8 @@ export interface OpenAPISecurityConfig {
 // Server types
 export interface Server {
   name: string;
+  owner?: string;
+  visibility?: 'private' | 'group' | 'public';
   status: ServerStatus;
   error?: string;
   tools?: Tool[];

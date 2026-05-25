@@ -28,6 +28,16 @@ export interface ServerDao extends BaseDao<ServerConfigWithName, string> {
   findByOwnerPaginated(owner: string, page: number, limit: number): Promise<PaginatedResult<ServerConfigWithName>>;
 
   /**
+   * Find servers visible to a non-admin user with pagination.
+   * Visible means owned by the user or marked public.
+   */
+  findVisibleToUserPaginated(
+    username: string,
+    page: number,
+    limit: number,
+  ): Promise<PaginatedResult<ServerConfigWithName>>;
+
+  /**
    * Find servers by owner
    */
   findByOwner(owner: string): Promise<ServerConfigWithName[]>;
@@ -245,6 +255,39 @@ export class ServerDaoImpl extends JsonFileBaseDao implements ServerDao {
       return 0; // Keep original order for same enabled status
     });
     
+    const total = sortedServers.length;
+    const totalPages = Math.ceil(total / limit);
+    const startIndex = (page - 1) * limit;
+    const endIndex = startIndex + limit;
+    const data = sortedServers.slice(startIndex, endIndex);
+
+    return {
+      data,
+      total,
+      page,
+      limit,
+      totalPages,
+    };
+  }
+
+  async findVisibleToUserPaginated(
+    username: string,
+    page: number,
+    limit: number,
+  ): Promise<PaginatedResult<ServerConfigWithName>> {
+    const allServers = await this.getAll();
+    const filteredServers = allServers.filter(
+      (server) => server.owner === username || server.visibility === 'public',
+    );
+    const sortedServers = filteredServers.sort((a, b) => {
+      const aEnabled = a.enabled !== false;
+      const bEnabled = b.enabled !== false;
+      if (aEnabled !== bEnabled) {
+        return aEnabled ? -1 : 1;
+      }
+      return 0;
+    });
+
     const total = sortedServers.length;
     const totalPages = Math.ceil(total / limit);
     const startIndex = (page - 1) * limit;

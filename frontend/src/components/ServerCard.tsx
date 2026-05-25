@@ -22,6 +22,8 @@ import ResourceCard from '@/components/ui/ResourceCard';
 import DeleteDialog from '@/components/ui/DeleteDialog';
 import { useToast } from '@/contexts/ToastContext';
 import { useSettingsData } from '@/hooks/useSettingsData';
+import { useAuth } from '@/contexts/AuthContext';
+import { canManageServer } from '@/utils/serverPermissions';
 
 interface ServerCardProps {
   server: Server;
@@ -45,6 +47,7 @@ const ServerCard = ({ server, onRemove, onEdit, onToggle, onRefresh, onReload }:
   const { t } = useTranslation();
   const { showToast } = useToast();
   const { exportMCPSettings, installConfig } = useSettingsData();
+  const { auth } = useAuth();
   const baseUrl = installConfig?.baseUrl?.replace(/\/+$/, '') || '';
 
   const [expanded, setExpanded] = useState(false);
@@ -77,7 +80,7 @@ const ServerCard = ({ server, onRemove, onEdit, onToggle, onRefresh, onReload }:
 
   const handleToggle = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (isToggling || !onToggle) return;
+    if (!canManage || isToggling || !onToggle) return;
     setIsToggling(true);
     try {
       await onToggle(server, !(server.enabled !== false));
@@ -89,7 +92,7 @@ const ServerCard = ({ server, onRemove, onEdit, onToggle, onRefresh, onReload }:
   const handleReload = async (e: React.MouseEvent) => {
     e.stopPropagation();
     setShowMenu(false);
-    if (isReloading || !onReload) return;
+    if (!canManage || isReloading || !onReload) return;
     setIsReloading(true);
     try {
       const success = await onReload(server);
@@ -144,6 +147,7 @@ const ServerCard = ({ server, onRemove, onEdit, onToggle, onRefresh, onReload }:
   const handleCopyConfig = async (e: React.MouseEvent) => {
     e.stopPropagation();
     setShowMenu(false);
+    if (!canManage) return;
     try {
       const result = await exportMCPSettings(server.name);
       if (!result || !result.success || !result.data) {
@@ -290,6 +294,7 @@ const ServerCard = ({ server, onRemove, onEdit, onToggle, onRefresh, onReload }:
   })();
 
   const enabled = server.enabled !== false;
+  const canManage = canManageServer(server, auth.user);
   const serverEndpoint = `${baseUrl}/mcp/${server.name}`;
 
   return (
@@ -484,24 +489,26 @@ const ServerCard = ({ server, onRemove, onEdit, onToggle, onRefresh, onReload }:
               type="button"
               className={'hub-switch' + (enabled ? ' on' : '')}
               onClick={handleToggle}
-              disabled={isToggling}
+              disabled={isToggling || !canManage}
               aria-label={enabled ? t('server.disable') : t('server.enable')}
             />
           </div>
 
           {/* Menu */}
           <div className="relative" ref={menuRef}>
-            <button
-              className="hub-icon-btn"
-              onClick={(e) => {
-                e.stopPropagation();
-                setShowMenu((v) => !v);
-              }}
-              aria-label="More"
-            >
-              <MoreHorizontal size={14} />
-            </button>
-            {showMenu && (
+            {canManage && (
+              <button
+                className="hub-icon-btn"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowMenu((v) => !v);
+                }}
+                aria-label="More"
+              >
+                <MoreHorizontal size={14} />
+              </button>
+            )}
+            {canManage && showMenu && (
               <div
                 className="absolute right-0 top-full mt-1 z-20 hub-card"
                 style={{ minWidth: 160, padding: 4 }}
@@ -640,6 +647,7 @@ const ServerCard = ({ server, onRemove, onEdit, onToggle, onRefresh, onReload }:
                     key={index}
                     server={server.name}
                     tool={tool}
+                    readOnly={!canManage}
                     onToggle={handleToolToggle}
                     onDescriptionUpdate={handleToolDescriptionUpdate}
                   />
@@ -653,6 +661,7 @@ const ServerCard = ({ server, onRemove, onEdit, onToggle, onRefresh, onReload }:
                     key={index}
                     server={server.name}
                     prompt={prompt}
+                    readOnly={!canManage}
                     onToggle={handlePromptToggle}
                     onDescriptionUpdate={handlePromptDescriptionUpdate}
                   />
@@ -671,6 +680,7 @@ const ServerCard = ({ server, onRemove, onEdit, onToggle, onRefresh, onReload }:
                       <ResourceCard
                         key={`${resource.uri}-${index}`}
                         resource={resource}
+                        readOnly={!canManage}
                         onToggle={handleResourceToggle}
                         onDescriptionUpdate={handleResourceDescriptionUpdate}
                       />

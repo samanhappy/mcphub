@@ -3,6 +3,8 @@ import { Request, Response } from 'express';
 const mockServerDao = {
   findById: jest.fn(),
   findAllPaginated: jest.fn(),
+  findByOwnerPaginated: jest.fn(),
+  findVisibleToUserPaginated: jest.fn(),
   updateTools: jest.fn(),
   updatePrompts: jest.fn(),
   updateResources: jest.fn(),
@@ -496,6 +498,20 @@ describe('serverController - getAllServers', () => {
       total: 2,
       totalPages: 1,
     });
+    mockServerDao.findByOwnerPaginated.mockResolvedValue({
+      data: [{ name: 'alpha' }],
+      page: 1,
+      limit: 5,
+      total: 2,
+      totalPages: 1,
+    });
+    mockServerDao.findVisibleToUserPaginated.mockResolvedValue({
+      data: [{ name: 'alpha' }],
+      page: 1,
+      limit: 5,
+      total: 2,
+      totalPages: 1,
+    });
   });
 
   it('returns allServers alongside paginated data to support dashboard consumers without a second request', async () => {
@@ -535,5 +551,50 @@ describe('serverController - getAllServers', () => {
         hasPrevPage: false,
       },
     });
+  });
+
+  it('uses visibility-aware pagination for non-admin users', async () => {
+    mockGetCurrentUser.mockReturnValue({
+      username: 'alice',
+      isAdmin: false,
+    });
+    mockServerDao.findVisibleToUserPaginated.mockResolvedValue({
+      data: [{ name: 'alice-private' }, { name: 'shared-public' }],
+      page: 1,
+      limit: 5,
+      total: 7,
+      totalPages: 2,
+    });
+    mockGetServersInfo
+      .mockResolvedValueOnce([
+        { name: 'alice-private', status: 'connected', tools: [] },
+        { name: 'shared-public', status: 'disconnected', tools: [] },
+      ])
+      .mockResolvedValueOnce([
+        { name: 'alice-private', status: 'connected', tools: [] },
+        { name: 'shared-public', status: 'disconnected', tools: [] },
+      ]);
+
+    const json = jest.fn();
+    const req = {
+      query: {
+        page: '1',
+        limit: '5',
+      },
+    } as unknown as Request;
+    const res = { json } as unknown as Response;
+
+    await getAllServers(req, res);
+
+    expect(mockServerDao.findVisibleToUserPaginated).toHaveBeenCalledWith('alice', 1, 5);
+    expect(mockServerDao.findByOwnerPaginated).not.toHaveBeenCalled();
+    expect(json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        pagination: expect.objectContaining({
+          total: 7,
+          totalPages: 2,
+        }),
+      }),
+    );
   });
 });

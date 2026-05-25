@@ -7,6 +7,7 @@ import ResetDescriptionButton from './ResetDescriptionButton';
 
 interface ResourceCardProps {
   resource: Resource;
+  readOnly?: boolean;
   onToggle?: (resourceUri: string, enabled: boolean) => void;
   onDescriptionUpdate?: (
     resourceUri: string,
@@ -15,7 +16,7 @@ interface ResourceCardProps {
   ) => Promise<void> | void;
 }
 
-const ResourceCard = ({ resource, onToggle, onDescriptionUpdate }: ResourceCardProps) => {
+const ResourceCard = ({ resource, readOnly = false, onToggle, onDescriptionUpdate }: ResourceCardProps) => {
   const { t } = useTranslation();
   const [isExpanded, setIsExpanded] = useState(false);
   const [isEditingDescription, setIsEditingDescription] = useState(false);
@@ -45,12 +46,13 @@ const ResourceCard = ({ resource, onToggle, onDescriptionUpdate }: ResourceCardP
   }, [resource.description]);
 
   const handleToggle = (enabled: boolean) => {
-    if (onToggle) {
+    if (!readOnly && onToggle) {
       onToggle(resource.uri, enabled);
     }
   };
 
   const handleDescriptionSave = async () => {
+    if (readOnly) return;
     setIsEditingDescription(false);
     if (onDescriptionUpdate) {
       await onDescriptionUpdate(resource.uri, customDescription);
@@ -58,6 +60,7 @@ const ResourceCard = ({ resource, onToggle, onDescriptionUpdate }: ResourceCardP
   };
 
   const handleDescriptionReset = async () => {
+    if (readOnly) return;
     setIsResettingDescription(true);
     try {
       await onDescriptionUpdate?.(resource.uri, '', { restored: true });
@@ -124,18 +127,22 @@ const ResourceCard = ({ resource, onToggle, onDescriptionUpdate }: ResourceCardP
             ) : (
               <>
                 <span ref={descriptionTextRef}>{customDescription || t('tool.noDescription')}</span>
-                <button
-                  className="hub-icon-btn sm"
-                  onClick={(e) => { e.stopPropagation(); setIsEditingDescription(true); }}
-                >
-                  <Edit size={12} />
-                </button>
-                <ResetDescriptionButton
-                  title={t('builtinResources.restoreDefault')}
-                  onClick={(e) => { e.stopPropagation(); handleDescriptionReset(); }}
-                  disabled={isResettingDescription}
-                  loading={isResettingDescription}
-                />
+                {!readOnly && (
+                  <>
+                    <button
+                      className="hub-icon-btn sm"
+                      onClick={(e) => { e.stopPropagation(); setIsEditingDescription(true); }}
+                    >
+                      <Edit size={12} />
+                    </button>
+                    <ResetDescriptionButton
+                      title={t('builtinResources.restoreDefault')}
+                      onClick={(e) => { e.stopPropagation(); handleDescriptionReset(); }}
+                      disabled={isResettingDescription}
+                      loading={isResettingDescription}
+                    />
+                  </>
+                )}
               </>
             )}
           </span>
@@ -143,7 +150,11 @@ const ResourceCard = ({ resource, onToggle, onDescriptionUpdate }: ResourceCardP
 
         <div className="flex items-center gap-1.5 flex-shrink-0">
           <div onClick={(e) => e.stopPropagation()}>
-            <Switch checked={resource.enabled !== false} onCheckedChange={handleToggle} />
+            <Switch
+              checked={resource.enabled !== false}
+              onCheckedChange={handleToggle}
+              disabled={readOnly}
+            />
           </div>
           <button className="hub-icon-btn sm">
             {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}

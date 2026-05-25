@@ -1328,12 +1328,15 @@ export const getServersInfo = async (
   user?: any,
 ): Promise<Omit<ServerInfo, 'client' | 'transport'>[]> => {
   const dataService = getDataService();
+  const isNonAdminUser = Boolean(user && !user.isAdmin);
 
-  // Get paginated or all server configurations from DAO
-  // If pagination is used with a non-admin user, filtering is already done at DAO level
   const isPaginated = limit !== undefined && page !== undefined;
   const allServers: ServerConfigWithName[] = isPaginated
-    ? (await getServerDao().findAllPaginated(page, limit)).data
+    ? (
+        isNonAdminUser
+          ? await getServerDao().findVisibleToUserPaginated(user.username, page, limit)
+          : await getServerDao().findAllPaginated(page, limit)
+      ).data
     : await getServerDao().findAll();
 
   // Ensure that servers recently added via DAO but not yet initialized in serverInfos
@@ -1373,8 +1376,9 @@ export const getServersInfo = async (
     }
   }
 
-  // Apply user filtering only when NOT using pagination (pagination already filtered at DAO level)
-  // Or when no pagination parameters provided (backward compatibility)
+  // Apply user filtering only when NOT using pagination.
+  // Paginated non-admin requests are filtered at DAO level; paginated admin requests
+  // should remain unfiltered as well.
   const shouldApplyUserFilter = !isPaginated;
   const filterServerInfos: ServerInfo[] =
     shouldApplyUserFilter && dataService.filterData
@@ -1383,7 +1387,7 @@ export const getServersInfo = async (
 
   const infos = filterServerInfos
     .filter((info) => requestedServerNames.has(info.name)) // Only include requested servers
-    .map(({ name, status, tools, prompts, resources, createTime, error, oauth }) => {
+    .map(({ name, owner, visibility, status, tools, prompts, resources, createTime, error, oauth }) => {
       const serverConfig = allServers.find((server) => server.name === name);
       const enabled = serverConfig ? serverConfig.enabled !== false : true;
       const resolvedType = inferServerType(serverConfig);
@@ -1409,6 +1413,8 @@ export const getServersInfo = async (
 
       return {
         name,
+        owner,
+        visibility,
         status,
         error,
         tools: toolsWithEnabled,

@@ -195,7 +195,7 @@ export const getAllServers = async (req: Request, res: Response): Promise<void> 
       const serverDao = getServerDao();
       const paginatedResult = isAdmin
         ? await serverDao.findAllPaginated(page, limit)
-        : await serverDao.findByOwnerPaginated(currentUser!.username, page, limit);
+        : await serverDao.findVisibleToUserPaginated(currentUser!.username, page, limit);
 
       // Get runtime info for paginated servers
       serversInfo = await getServersInfo(page, limit, currentUser);

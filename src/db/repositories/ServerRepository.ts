@@ -105,6 +105,28 @@ export class ServerRepository {
   }
 
   /**
+   * Find servers visible to a non-admin user with pagination.
+   */
+  async findVisibleToUserPaginated(
+    username: string,
+    page: number,
+    limit: number,
+  ): Promise<{ data: Server[]; total: number }> {
+    const skip = (page - 1) * limit;
+    const [data, total] = await this.repository
+      .createQueryBuilder('server')
+      .where('server.owner = :username', { username })
+      .orWhere('server.visibility = :visibility', { visibility: 'public' })
+      .orderBy('server.enabled', 'DESC')
+      .addOrderBy('server.createdAt', 'ASC')
+      .skip(skip)
+      .take(limit)
+      .getManyAndCount();
+
+    return { data, total };
+  }
+
+  /**
    * Find servers by owner
    */
   async findByOwner(owner: string): Promise<Server[]> {

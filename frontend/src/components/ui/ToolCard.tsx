@@ -26,6 +26,7 @@ import ResetDescriptionButton from './ResetDescriptionButton';
 interface ToolCardProps {
   server: string;
   tool: Tool;
+  readOnly?: boolean;
   onToggle?: (toolName: string, enabled: boolean) => void;
   onDescriptionUpdate?: (
     toolName: string,
@@ -43,7 +44,7 @@ function isEmptyValue(value: any): boolean {
   return false;
 }
 
-const ToolCard = ({ tool, server, onToggle, onDescriptionUpdate }: ToolCardProps) => {
+const ToolCard = ({ tool, server, readOnly = false, onToggle, onDescriptionUpdate }: ToolCardProps) => {
   const { t } = useTranslation();
   const { showToast } = useToast();
   const { nameSeparator } = useSettingsData();
@@ -92,16 +93,18 @@ const ToolCard = ({ tool, server, onToggle, onDescriptionUpdate }: ToolCardProps
   }, [getStorageKey]);
 
   const handleToggle = (enabled: boolean) => {
-    if (onToggle) {
+    if (!readOnly && onToggle) {
       onToggle(tool.name, enabled);
     }
   };
 
   const handleDescriptionEdit = () => {
+    if (readOnly) return;
     setIsEditingDescription(true);
   };
 
   const handleDescriptionSave = async () => {
+    if (readOnly) return;
     try {
       const result = await updateToolDescription(server, tool.name, customDescription);
       if (result.success) {
@@ -126,6 +129,7 @@ const ToolCard = ({ tool, server, onToggle, onDescriptionUpdate }: ToolCardProps
   };
 
   const handleDescriptionReset = async () => {
+    if (readOnly) return;
     setIsResettingDescription(true);
 
     try {
@@ -286,18 +290,22 @@ const ToolCard = ({ tool, server, onToggle, onDescriptionUpdate }: ToolCardProps
                 <span ref={descriptionTextRef}>
                   {customDescription || t('tool.noDescription')}
                 </span>
-                <button
-                  className="hub-icon-btn sm"
-                  onClick={(e) => { e.stopPropagation(); handleDescriptionEdit(); }}
-                >
-                  <Edit size={12} />
-                </button>
-                <ResetDescriptionButton
-                  title={t('tool.restoreDefault')}
-                  onClick={(e) => { e.stopPropagation(); handleDescriptionReset(); }}
-                  disabled={isResettingDescription}
-                  loading={isResettingDescription}
-                />
+                {!readOnly && (
+                  <>
+                    <button
+                      className="hub-icon-btn sm"
+                      onClick={(e) => { e.stopPropagation(); handleDescriptionEdit(); }}
+                    >
+                      <Edit size={12} />
+                    </button>
+                    <ResetDescriptionButton
+                      title={t('tool.restoreDefault')}
+                      onClick={(e) => { e.stopPropagation(); handleDescriptionReset(); }}
+                      disabled={isResettingDescription}
+                      loading={isResettingDescription}
+                    />
+                  </>
+                )}
               </>
             )}
           </span>
@@ -307,7 +315,7 @@ const ToolCard = ({ tool, server, onToggle, onDescriptionUpdate }: ToolCardProps
             <Switch
               checked={tool.enabled ?? true}
               onCheckedChange={handleToggle}
-              disabled={isRunning}
+              disabled={isRunning || readOnly}
             />
           </div>
           <button

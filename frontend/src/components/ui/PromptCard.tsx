@@ -25,6 +25,7 @@ import ResetDescriptionButton from './ResetDescriptionButton';
 interface PromptCardProps {
   server: string;
   prompt: Prompt;
+  readOnly?: boolean;
   onToggle?: (promptName: string, enabled: boolean) => void;
   onDescriptionUpdate?: (
     promptName: string,
@@ -33,7 +34,7 @@ interface PromptCardProps {
   ) => void;
 }
 
-const PromptCard = ({ prompt, server, onToggle, onDescriptionUpdate }: PromptCardProps) => {
+const PromptCard = ({ prompt, server, readOnly = false, onToggle, onDescriptionUpdate }: PromptCardProps) => {
   const { t } = useTranslation();
   const { showToast } = useToast();
   const { nameSeparator } = useSettingsData();
@@ -81,16 +82,18 @@ const PromptCard = ({ prompt, server, onToggle, onDescriptionUpdate }: PromptCar
   }, [getStorageKey]);
 
   const handleToggle = (enabled: boolean) => {
-    if (onToggle) {
+    if (!readOnly && onToggle) {
       onToggle(prompt.name, enabled);
     }
   };
 
   const handleDescriptionEdit = () => {
+    if (readOnly) return;
     setIsEditingDescription(true);
   };
 
   const handleDescriptionSave = async () => {
+    if (readOnly) return;
     setIsEditingDescription(false);
     try {
       const result = await updatePromptDescription(server, prompt.name, customDescription);
@@ -112,6 +115,7 @@ const PromptCard = ({ prompt, server, onToggle, onDescriptionUpdate }: PromptCar
   };
 
   const handleDescriptionReset = async () => {
+    if (readOnly) return;
     setIsResettingDescription(true);
 
     try {
@@ -253,18 +257,22 @@ const PromptCard = ({ prompt, server, onToggle, onDescriptionUpdate }: PromptCar
                 <span ref={descriptionTextRef}>
                   {customDescription || t('tool.noDescription')}
                 </span>
-                <button
-                  className="hub-icon-btn sm"
-                  onClick={(e) => { e.stopPropagation(); handleDescriptionEdit(); }}
-                >
-                  <Edit size={12} />
-                </button>
-                <ResetDescriptionButton
-                  title={t('prompt.restoreDefault')}
-                  onClick={(e) => { e.stopPropagation(); handleDescriptionReset(); }}
-                  disabled={isResettingDescription}
-                  loading={isResettingDescription}
-                />
+                {!readOnly && (
+                  <>
+                    <button
+                      className="hub-icon-btn sm"
+                      onClick={(e) => { e.stopPropagation(); handleDescriptionEdit(); }}
+                    >
+                      <Edit size={12} />
+                    </button>
+                    <ResetDescriptionButton
+                      title={t('prompt.restoreDefault')}
+                      onClick={(e) => { e.stopPropagation(); handleDescriptionReset(); }}
+                      disabled={isResettingDescription}
+                      loading={isResettingDescription}
+                    />
+                  </>
+                )}
               </>
             )}
           </span>
@@ -275,7 +283,7 @@ const PromptCard = ({ prompt, server, onToggle, onDescriptionUpdate }: PromptCar
               <Switch
                 checked={prompt.enabled}
                 onCheckedChange={handleToggle}
-                disabled={isRunning}
+                disabled={isRunning || readOnly}
               />
             )}
           </div>
