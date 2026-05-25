@@ -1,4 +1,9 @@
-import { signInternalRequest, SIGNATURE_HEADER, TIMESTAMP_HEADER } from './hostedInternalAuth.js';
+import {
+  REDACTED_SIGNATURE_VALUE,
+  signInternalRequest,
+  SIGNATURE_HEADER,
+  TIMESTAMP_HEADER,
+} from './hostedInternalAuth.js';
 
 export interface HubWebhookEvent {
   type:
@@ -90,9 +95,14 @@ function controlPlaneBaseUrl(): string {
   return raw.replace(/\/+$/, '');
 }
 
-async function requestControlPlane<T>(method: string, path: string, body?: unknown): Promise<T> {
+async function requestControlPlane<T>(
+  method: string,
+  path: string,
+  body?: unknown,
+  signatureBody?: unknown,
+): Promise<T> {
   const bodyText = body === undefined ? '' : JSON.stringify(body);
-  const { timestamp, signature } = signInternalRequest(method, path, body);
+  const { timestamp, signature } = signInternalRequest(method, path, signatureBody ?? body);
   const response = await fetch(`${controlPlaneBaseUrl()}${path}`, {
     method,
     headers: {
@@ -117,9 +127,16 @@ async function requestControlPlane<T>(method: string, path: string, body?: unkno
 }
 
 export async function validateHostedApiKey(apiKey: string): Promise<ValidateApiKeyResponse> {
-  return requestControlPlane<ValidateApiKeyResponse>('POST', '/api/internal/v1/keys/validate', {
-    apiKey,
-  });
+  return requestControlPlane<ValidateApiKeyResponse>(
+    'POST',
+    '/api/internal/v1/keys/validate',
+    {
+      apiKey,
+    },
+    {
+      apiKey: REDACTED_SIGNATURE_VALUE,
+    },
+  );
 }
 
 export async function getHostedUserState(userId: string): Promise<UserStateResponse> {
@@ -140,6 +157,13 @@ export async function reserveHostedCredit(input: {
     'POST',
     '/api/internal/v1/credits/reserve',
     input,
+    {
+      userId: input.userId,
+      apiKeyId: REDACTED_SIGNATURE_VALUE,
+      serverSlug: input.serverSlug,
+      toolName: input.toolName,
+      hubRequestId: input.hubRequestId,
+    },
   );
 }
 

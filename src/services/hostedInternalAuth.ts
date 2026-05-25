@@ -7,7 +7,7 @@ const REPLAY_WINDOW_MS = 5 * 60 * 1000;
 const REDACTED_SIGNATURE_VALUE = '[REDACTED]';
 const REDACTED_SIGNATURE_FIELDS = new Set(['apiKey', 'apiKeyId']);
 
-export { SIGNATURE_HEADER, TIMESTAMP_HEADER, REPLAY_WINDOW_MS };
+export { SIGNATURE_HEADER, TIMESTAMP_HEADER, REPLAY_WINDOW_MS, REDACTED_SIGNATURE_VALUE };
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return Object.prototype.toString.call(value) === '[object Object]';
@@ -55,7 +55,7 @@ function normalizeSignatureBody(value: unknown): unknown {
   return value;
 }
 
-function serializeInternalRequestBody(body?: unknown): string {
+export function serializeInternalRequestBodyForSignature(body?: unknown): string {
   if (body === undefined || body === null || body === '') {
     return '';
   }
@@ -81,7 +81,7 @@ export function signInternalRequest(
   body?: unknown,
 ): { timestamp: string; signature: string } {
   const timestamp = Date.now().toString();
-  const serializedBody = serializeInternalRequestBody(body);
+  const serializedBody = serializeInternalRequestBodyForSignature(body);
   const signature = createHmac('sha256', getSecret())
     .update(payload(timestamp, method, path, serializedBody))
     .digest('hex');
@@ -118,7 +118,14 @@ export function verifyInternalSignature(opts: {
   const expected =
     'sha256=' +
     createHmac('sha256', secret)
-      .update(payload(opts.timestamp, opts.method, opts.path, serializeInternalRequestBody(opts.body)))
+      .update(
+        payload(
+          opts.timestamp,
+          opts.method,
+          opts.path,
+          serializeInternalRequestBodyForSignature(opts.body),
+        ),
+      )
       .digest('hex');
 
   const actualBuffer = Buffer.from(opts.signature);
