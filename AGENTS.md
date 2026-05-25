@@ -143,14 +143,17 @@ For deeper architecture context, read [docs/development/architecture.mdx](docs/d
 - **Type errors**: `pnpm backend:build` shows the full TS output.
 - **Port conflict**: change `PORT` or kill the holder.
 
-### GitHub security advisories (private)
+### GitHub security advisories / code scanning (private)
 
 ```bash
 gh auth status
 gh api repos/samanhappy/mcphub/security-advisories/<ghsa_id>
+gh api repos/samanhappy/mcphub/code-scanning/alerts/<alert_number>
+gh api repos/samanhappy/mcphub/code-scanning/alerts/<alert_number>/instances
 ```
 
 Compare advisory details against current `main` and the tagged fix commit before deciding if the issue is still live.
+For CodeQL/code-scanning alerts, prefer the API calls above over opening `github.com/.../security/code-scanning/...` directly — the web page may 404 or hide details without the right GitHub session, while `alerts/<id>` returns the rule, severity, `most_recent_instance`, and message, and `/instances` confirms the concrete locations.
 
 ---
 

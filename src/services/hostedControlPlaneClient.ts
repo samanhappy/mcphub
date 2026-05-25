@@ -100,6 +100,8 @@ type InternalRequestAuthHeaders = Record<
   string
 >;
 
+const VALIDATE_API_KEY_METHOD = 'POST';
+const VALIDATE_API_KEY_PATH = '/api/internal/v1/keys/validate';
 const REDACTED_VALIDATE_API_KEY_SIGNATURE_BODY = `{"apiKey":"${REDACTED_SIGNATURE_VALUE}"}`;
 
 function createSignedControlPlaneHeaders(
@@ -114,15 +116,34 @@ function createSignedControlPlaneHeaders(
   };
 }
 
-function createValidateHostedApiKeyAuthHeaders(
-  method: string,
-  path: string,
-): InternalRequestAuthHeaders {
-  return createSignedControlPlaneHeaders(
-    method,
-    path,
+function createValidateHostedApiKeyAuthHeaders(): InternalRequestAuthHeaders {
+  const { timestamp, signature } = signInternalRequest(
+    VALIDATE_API_KEY_METHOD,
+    VALIDATE_API_KEY_PATH,
     REDACTED_VALIDATE_API_KEY_SIGNATURE_BODY,
   );
+
+  return {
+    [TIMESTAMP_HEADER]: timestamp,
+    [SIGNATURE_HEADER]: signature,
+  };
+}
+
+async function parseControlPlaneResponse<T>(
+  response: Response,
+  method: string,
+  path: string,
+): Promise<T> {
+  const envelope = (await response.json().catch(() => null)) as ApiEnvelope<T> | null;
+  if (!response.ok || !envelope?.success) {
+    throw new HostedControlPlaneError(
+      envelope?.message || `Control plane request failed: ${method} ${path}`,
+      response.status,
+      envelope?.code,
+    );
+  }
+
+  return envelope.data as T;
 }
 
 async function requestControlPlane<T>(
@@ -142,29 +163,28 @@ async function requestControlPlane<T>(
     signal: AbortSignal.timeout(Number(process.env.HOSTED_CONTROL_PLANE_TIMEOUT_MS || 5000)),
   });
 
-  const envelope = (await response.json().catch(() => null)) as ApiEnvelope<T> | null;
-  if (!response.ok || !envelope?.success) {
-    throw new HostedControlPlaneError(
-      envelope?.message || `Control plane request failed: ${method} ${path}`,
-      response.status,
-      envelope?.code,
-    );
-  }
-
-  return envelope.data as T;
+  return parseControlPlaneResponse<T>(response, method, path);
 }
 
 export async function validateHostedApiKey(apiKey: string): Promise<ValidateApiKeyResponse> {
-  const method = 'POST';
-  const path = '/api/internal/v1/keys/validate';
+  const body = {
+    apiKey,
+  };
 
-  return requestControlPlane<ValidateApiKeyResponse>(
-    method,
-    path,
-    createValidateHostedApiKeyAuthHeaders(method, path),
-    {
-      apiKey,
+  const response = await fetch(`${controlPlaneBaseUrl()}${VALIDATE_API_KEY_PATH}`, {
+    method: VALIDATE_API_KEY_METHOD,
+    headers: {
+      ...createValidateHostedApiKeyAuthHeaders(),
+      'Content-Type': 'application/json',
     },
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(Number(process.env.HOSTED_CONTROL_PLANE_TIMEOUT_MS || 5000)),
+  });
+
+  return parseControlPlaneResponse<ValidateApiKeyResponse>(
+    response,
+    VALIDATE_API_KEY_METHOD,
+    VALIDATE_API_KEY_PATH,
   );
 }
 

@@ -28,12 +28,12 @@ describe('hostedControlPlaneClient signature redaction', () => {
       'utf8',
     );
 
-    expect(source).toMatch(/function createValidateHostedApiKeyAuthHeaders\s*\(/);
+    expect(source).toMatch(/function createValidateHostedApiKeyAuthHeaders\s*\(\)/);
     expect(source).toMatch(
-      /validateHostedApiKey\(apiKey: string\): Promise<ValidateApiKeyResponse> \{[\s\S]*return requestControlPlane<ValidateApiKeyResponse>\([\s\S]*createValidateHostedApiKeyAuthHeaders\(method, path\)[\s\S]*\{[\s\S]*apiKey,[\s\S]*\}[\s\S]*\);[\s\S]*\}/,
+      /function createValidateHostedApiKeyAuthHeaders\(\): InternalRequestAuthHeaders \{[\s\S]*signInternalRequest\([\s\S]*(?:'POST'|VALIDATE_API_KEY_METHOD)[\s\S]*(?:'\/api\/internal\/v1\/keys\/validate'|VALIDATE_API_KEY_PATH)[\s\S]*REDACTED_VALIDATE_API_KEY_SIGNATURE_BODY[\s\S]*\)[\s\S]*\}/,
     );
     expect(source).not.toMatch(
-      /validateHostedApiKey\(apiKey: string\): Promise<ValidateApiKeyResponse> \{[\s\S]*createSignedControlPlaneHeaders\(method, path, \{[\s\S]*apiKey: REDACTED_SIGNATURE_VALUE[\s\S]*\}\)/,
+      /validateHostedApiKey\(apiKey: string\): Promise<ValidateApiKeyResponse> \{[\s\S]*requestControlPlane<ValidateApiKeyResponse>\(/,
     );
   });
 
