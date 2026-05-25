@@ -208,7 +208,10 @@ jest.mock('../../src/services/betterAuthConfig.js', () => ({
   getBetterAuthRuntimeConfig: () => ({ enabled: false, basePath: '/better-auth' }),
 }));
 
-import { authenticatedRouteRateLimiter } from '../../src/utils/rateLimit.js';
+import {
+  authenticatedRouteRateLimiter,
+  hostedInternalEventRateLimiter,
+} from '../../src/utils/rateLimit.js';
 import { initRoutes } from '../../src/routes/index.js';
 
 type ExpressLayer = {
@@ -282,7 +285,7 @@ describe('initRoutes authenticated API rate limiting', () => {
     expect(routerContainsRoute(protectedRouter!, 'delete', '/oauth/clients/:clientId')).toBe(true);
   });
 
-  it('does not put the hosted internal webhook ingress behind the authenticated route limiter', async () => {
+  it('mounts the hosted internal webhook ingress behind its dedicated rate limiter', async () => {
     const app = express();
 
     await initRoutes(app);
@@ -290,6 +293,9 @@ describe('initRoutes authenticated API rate limiting', () => {
     const internalRoute = findAppRoute(app, 'post', '/internal/v1/events');
 
     expect(internalRoute).toBeDefined();
+    expect(internalRoute?.route?.stack?.map((layer) => layer.handle)).toContain(
+      hostedInternalEventRateLimiter,
+    );
     expect(internalRoute?.route?.stack?.map((layer) => layer.handle)).not.toContain(
       authenticatedRouteRateLimiter,
     );

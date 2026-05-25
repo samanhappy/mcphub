@@ -51,6 +51,47 @@ describe('hostedInternalAuth signature normalization', () => {
     expect(result).toEqual({ ok: true });
   });
 
+  it('does not read sensitive credential values while canonicalizing signatures', () => {
+    const createSensitiveBody = (): Record<string, unknown> => {
+      const body: Record<string, unknown> = {
+        serverSlug: 'server-a',
+        metadata: { z: 1, a: 2 },
+      };
+
+      Object.defineProperty(body, 'apiKey', {
+        enumerable: true,
+        get: () => {
+          throw new Error('apiKey should not be read during signature normalization');
+        },
+      });
+
+      Object.defineProperty(body, 'apiKeyId', {
+        enumerable: true,
+        get: () => {
+          throw new Error('apiKeyId should not be read during signature normalization');
+        },
+      });
+
+      return body;
+    };
+
+    const { timestamp, signature } = signInternalRequest(
+      'POST',
+      '/api/internal/v1/credits/reserve',
+      createSensitiveBody(),
+    );
+
+    const result = verifyInternalSignature({
+      method: 'POST',
+      path: '/api/internal/v1/credits/reserve',
+      body: createSensitiveBody(),
+      timestamp,
+      signature,
+    });
+
+    expect(result).toEqual({ ok: true });
+  });
+
   it('rejects signatures when non-sensitive body fields change', () => {
     const { timestamp, signature } = signInternalRequest(
       'POST',

@@ -13,6 +13,22 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
   return Object.prototype.toString.call(value) === '[object Object]';
 }
 
+function normalizeSignatureObject(value: Record<string, unknown>): Record<string, unknown> {
+  const normalized: Record<string, unknown> = {};
+
+  for (const key of Object.keys(value).sort((left, right) => left.localeCompare(right))) {
+    if (REDACTED_SIGNATURE_FIELDS.has(key)) {
+      // Sensitive credential values must never be read during signature canonicalization.
+      normalized[key] = REDACTED_SIGNATURE_VALUE;
+      continue;
+    }
+
+    normalized[key] = normalizeSignatureBody(value[key]);
+  }
+
+  return normalized;
+}
+
 function normalizeSignatureBody(value: unknown): unknown {
   if (Buffer.isBuffer(value)) {
     return normalizeSignatureBody(value.toString('utf8'));
@@ -33,16 +49,7 @@ function normalizeSignatureBody(value: unknown): unknown {
   }
 
   if (isPlainObject(value)) {
-    return Object.fromEntries(
-      Object.entries(value)
-        .sort(([left], [right]) => left.localeCompare(right))
-        .map(([key, item]) => [
-          key,
-          REDACTED_SIGNATURE_FIELDS.has(key)
-            ? REDACTED_SIGNATURE_VALUE
-            : normalizeSignatureBody(item),
-        ]),
-    );
+    return normalizeSignatureObject(value);
   }
 
   return value;
