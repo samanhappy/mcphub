@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+
 import {
   REDACTED_SIGNATURE_VALUE,
   SIGNATURE_HEADER,
@@ -13,6 +15,15 @@ describe('hostedControlPlaneClient signature redaction', () => {
   const originalFetch = global.fetch;
   const originalSecret = process.env.INTERNAL_API_SECRET;
   const originalControlPlaneUrl = process.env.HOSTED_CONTROL_PLANE_URL;
+
+  it('does not let requestControlPlane fall back to signing a nullish-coalesced body', () => {
+    const source = readFileSync(
+      `${process.cwd()}/src/services/hostedControlPlaneClient.ts`,
+      'utf8',
+    );
+
+    expect(source).not.toMatch(/signInternalRequest\s*\([^)]*\?\?[^)]*\)/s);
+  });
 
   beforeEach(() => {
     process.env.INTERNAL_API_SECRET = '12345678901234567890123456789012';

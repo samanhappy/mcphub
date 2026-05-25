@@ -95,19 +95,34 @@ function controlPlaneBaseUrl(): string {
   return raw.replace(/\/+$/, '');
 }
 
-async function requestControlPlane<T>(
+type InternalRequestAuthHeaders = Record<
+  typeof TIMESTAMP_HEADER | typeof SIGNATURE_HEADER,
+  string
+>;
+
+function createSignedControlPlaneHeaders(
   method: string,
   path: string,
   body?: unknown,
-  signatureBody?: unknown,
+): InternalRequestAuthHeaders {
+  const { timestamp, signature } = signInternalRequest(method, path, body);
+  return {
+    [TIMESTAMP_HEADER]: timestamp,
+    [SIGNATURE_HEADER]: signature,
+  };
+}
+
+async function requestControlPlane<T>(
+  method: string,
+  path: string,
+  authHeaders: InternalRequestAuthHeaders,
+  body?: unknown,
 ): Promise<T> {
   const bodyText = body === undefined ? '' : JSON.stringify(body);
-  const { timestamp, signature } = signInternalRequest(method, path, signatureBody ?? body);
   const response = await fetch(`${controlPlaneBaseUrl()}${path}`, {
     method,
     headers: {
-      [TIMESTAMP_HEADER]: timestamp,
-      [SIGNATURE_HEADER]: signature,
+      ...authHeaders,
       ...(body === undefined ? {} : { 'Content-Type': 'application/json' }),
     },
     body: body === undefined ? undefined : bodyText,
@@ -127,22 +142,29 @@ async function requestControlPlane<T>(
 }
 
 export async function validateHostedApiKey(apiKey: string): Promise<ValidateApiKeyResponse> {
+  const method = 'POST';
+  const path = '/api/internal/v1/keys/validate';
+
   return requestControlPlane<ValidateApiKeyResponse>(
-    'POST',
-    '/api/internal/v1/keys/validate',
+    method,
+    path,
+    createSignedControlPlaneHeaders(method, path, {
+      apiKey: REDACTED_SIGNATURE_VALUE,
+    }),
     {
       apiKey,
-    },
-    {
-      apiKey: REDACTED_SIGNATURE_VALUE,
     },
   );
 }
 
 export async function getHostedUserState(userId: string): Promise<UserStateResponse> {
+  const method = 'GET';
+  const path = `/api/internal/v1/users/${encodeURIComponent(userId)}/state`;
+
   return requestControlPlane<UserStateResponse>(
-    'GET',
-    `/api/internal/v1/users/${encodeURIComponent(userId)}/state`,
+    method,
+    path,
+    createSignedControlPlaneHeaders(method, path),
   );
 }
 
@@ -153,17 +175,20 @@ export async function reserveHostedCredit(input: {
   toolName: string;
   hubRequestId: string;
 }): Promise<CreditReserveResponse> {
+  const method = 'POST';
+  const path = '/api/internal/v1/credits/reserve';
+
   return requestControlPlane<CreditReserveResponse>(
-    'POST',
-    '/api/internal/v1/credits/reserve',
-    input,
-    {
+    method,
+    path,
+    createSignedControlPlaneHeaders(method, path, {
       userId: input.userId,
       apiKeyId: REDACTED_SIGNATURE_VALUE,
       serverSlug: input.serverSlug,
       toolName: input.toolName,
       hubRequestId: input.hubRequestId,
-    },
+    }),
+    input,
   );
 }
 
@@ -178,9 +203,13 @@ export async function settleHostedCredit(input: {
   requestContent?: unknown;
   responseContent?: unknown;
 }): Promise<CreditSettleResponse> {
+  const method = 'POST';
+  const path = '/api/internal/v1/credits/settle';
+
   return requestControlPlane<CreditSettleResponse>(
-    'POST',
-    '/api/internal/v1/credits/settle',
+    method,
+    path,
+    createSignedControlPlaneHeaders(method, path, input),
     input,
   );
 }
