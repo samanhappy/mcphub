@@ -32,7 +32,15 @@ MCPHub reads the following environment variables at startup. The authoritative l
 
 ### Better Auth (optional social login)
 
-These are only consumed when `auth.betterAuth.enabled` is set in `mcp_settings.json` (or the equivalent system config). Better Auth is initialized in `src/betterAuth.ts`.
+Better Auth is initialized once at process startup in `src/betterAuth.ts`. Because of that, changing any Better Auth setting still requires a restart.
+
+For non-secret Better Auth settings, MCPHub resolves values in this order:
+
+1. `BETTER_AUTH_*` environment variables
+2. `systemConfig.auth.betterAuth` (from `mcp_settings.json` or the database-backed system config)
+3. Built-in defaults
+
+Provider client credentials remain environment-variable only.
 
 <Note>
   Better Auth currently requires PostgreSQL-backed storage in MCPHub. In practice that means `DB_URL` must be configured; file-only mode does not support Better Auth sessions.
@@ -40,34 +48,39 @@ These are only consumed when `auth.betterAuth.enabled` is set in `mcp_settings.j
 
 | Variable | Description |
 | --- | --- |
-| `BETTER_AUTH_URL` | Public base URL of MCPHub. Required so Better Auth can generate redirect URIs. |
-| `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` | GitHub OAuth app credentials. |
+| `BETTER_AUTH_ENABLED` | Master switch for Better Auth. Better Auth is still disabled automatically when MCPHub is not in database mode or when no provider has the required credentials. |
+| `BETTER_AUTH_URL` | Public base URL used to build Better Auth redirect URIs. This now takes precedence over `systemConfig.install.baseUrl`. Its origin is also auto-added to the trusted origin list. |
+| `BETTER_AUTH_BASE_PATH` | Mount path for the Better Auth handler. Defaults to `/api/auth/better`. |
+| `BETTER_AUTH_TRUSTED_ORIGINS` | Optional additional origins allowed to start Better Auth login flows. Accepts a comma-separated list, whitespace-separated list, or JSON array. When omitted, MCPHub still auto-trusts the origins from `BETTER_AUTH_URL` and `systemConfig.install.baseUrl`. |
+| `BETTER_AUTH_GOOGLE_ENABLED` | Enable or disable the Google provider after credentials are present. Defaults to `true`. |
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Google OAuth app credentials. |
-| `OIDC_DISCOVERY_URL` | Optional helper variable for `${OIDC_DISCOVERY_URL}` interpolation inside `mcp_settings.json`. Points at your local issuer's `/.well-known/openid-configuration` endpoint. |
+| `BETTER_AUTH_GITHUB_ENABLED` | Enable or disable the GitHub provider after credentials are present. Defaults to `true`. |
+| `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` | GitHub OAuth app credentials. |
+| `BETTER_AUTH_OIDC_ENABLED` | Enable or disable the generic OIDC provider. Defaults to `false`. |
+| `BETTER_AUTH_OIDC_PROVIDER_ID` | Provider identifier passed to Better Auth's generic OAuth plugin. Defaults to `oidc`. |
+| `BETTER_AUTH_OIDC_DISCOVERY_URL` | Discovery URL for a local OIDC issuer (for example Keycloak, Authentik, or Dex). |
+| `OIDC_DISCOVERY_URL` | Legacy alias for `BETTER_AUTH_OIDC_DISCOVERY_URL`. It is also still useful for `${OIDC_DISCOVERY_URL}` interpolation inside `mcp_settings.json`. |
+| `BETTER_AUTH_OIDC_SCOPES` | Optional requested scopes for the local OIDC provider. Accepts a comma-separated list, whitespace-separated list, or JSON array. Defaults to `openid profile email`. |
+| `BETTER_AUTH_OIDC_PKCE` | Enable or disable PKCE for the local OIDC provider. Defaults to `true`. |
+| `BETTER_AUTH_OIDC_PROMPT` | Optional `prompt` parameter for the local OIDC provider (`login`, `consent`, `select_account`, etc.). |
 | `OIDC_CLIENT_ID` / `OIDC_CLIENT_SECRET` | Client credentials for a local OIDC provider such as Keycloak, Authentik, or Dex. |
 
-For local OIDC login, configure the non-secret provider metadata in `systemConfig.auth.betterAuth.providers.oidc` and keep the client credentials in env vars. A minimal example:
+You can still store the non-secret Better Auth settings in `systemConfig.auth.betterAuth`, but `BETTER_AUTH_*` variables now override those values at startup. A full env-only local OIDC example looks like this:
 
-```json
-{
-  "systemConfig": {
-    "auth": {
-      "betterAuth": {
-        "enabled": true,
-        "providers": {
-          "oidc": {
-            "enabled": true,
-            "providerId": "local-oidc",
-            "discoveryUrl": "${OIDC_DISCOVERY_URL}",
-            "scopes": ["openid", "profile", "email"],
-            "pkce": true,
-            "prompt": "login"
-          }
-        }
-      }
-    }
-  }
-}
+```env
+BETTER_AUTH_ENABLED=true
+BETTER_AUTH_URL=https://mcphub.example.com
+BETTER_AUTH_BASE_PATH=/api/auth/better
+BETTER_AUTH_TRUSTED_ORIGINS=https://dashboard.example.com,https://admin.example.com
+
+BETTER_AUTH_OIDC_ENABLED=true
+BETTER_AUTH_OIDC_PROVIDER_ID=local-oidc
+BETTER_AUTH_OIDC_DISCOVERY_URL=https://auth.example.com/.well-known/openid-configuration
+BETTER_AUTH_OIDC_SCOPES=openid,profile,email
+BETTER_AUTH_OIDC_PKCE=true
+BETTER_AUTH_OIDC_PROMPT=login
+OIDC_CLIENT_ID=your-oidc-client-id
+OIDC_CLIENT_SECRET=your-oidc-client-secret
 ```
 
 ## Storage

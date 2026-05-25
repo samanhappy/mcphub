@@ -81,29 +81,48 @@ OAuth access tokens issued here are accepted by `src/middlewares/auth.ts`.
 
 ## Better Auth (GitHub / Google / local OIDC)
 
-Better Auth is optional and only loads when configured. Required environment variables (see `.env.example`):
+Better Auth is optional and initialized once at process startup. That means any change to either `BETTER_AUTH_*` environment variables or stored `systemConfig.auth.betterAuth` values still requires a restart.
 
+Non-secret Better Auth settings can now live either in environment variables or in `systemConfig.auth.betterAuth` (from `mcp_settings.json` or the database-backed system config). The priority order is:
+
+1. `BETTER_AUTH_*` environment variables
+2. `systemConfig.auth.betterAuth`
+3. Built-in defaults
+
+Provider credentials remain environment-variable only. Required variables (see `.env.example`):
+
+- `BETTER_AUTH_ENABLED` — master switch for Better Auth.
 - `BETTER_AUTH_URL` — public base URL of MCPHub (used to build redirect URIs).
+- `BETTER_AUTH_BASE_PATH` — optional mount path override for the Better Auth handler.
+- `BETTER_AUTH_TRUSTED_ORIGINS` — optional extra trusted origins (comma-separated, whitespace-separated, or JSON array).
+- `BETTER_AUTH_GOOGLE_ENABLED` — enable / disable Google login when credentials are present.
 - `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` — for Google login.
+- `BETTER_AUTH_GITHUB_ENABLED` — enable / disable GitHub login when credentials are present.
 - `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` — for GitHub login.
+- `BETTER_AUTH_OIDC_ENABLED` — enable / disable the generic OIDC provider.
+- `BETTER_AUTH_OIDC_PROVIDER_ID` — OIDC provider identifier (defaults to `oidc`).
+- `BETTER_AUTH_OIDC_DISCOVERY_URL` — discovery URL for a local issuer.
+- `BETTER_AUTH_OIDC_SCOPES` — optional requested scopes for local OIDC login.
+- `BETTER_AUTH_OIDC_PKCE` — optional PKCE toggle for local OIDC login.
+- `BETTER_AUTH_OIDC_PROMPT` — optional `prompt` parameter for local OIDC login.
 - `OIDC_CLIENT_ID` / `OIDC_CLIENT_SECRET` — for a local OIDC provider.
 
-For a local issuer (for example Keycloak, Authentik, or Dex), add `systemConfig.auth.betterAuth.providers.oidc` to `mcp_settings.json` with:
+For a local issuer (for example Keycloak, Authentik, or Dex), you can either configure the metadata entirely through environment variables, or keep the non-secret values in `systemConfig.auth.betterAuth.providers.oidc` with:
 
 - `enabled`
 - `providerId`
 - `discoveryUrl`
 - optional `scopes`, `pkce`, and `prompt`
 
-The `discoveryUrl` should point at the provider's `/.well-known/openid-configuration` endpoint. The login page shows a generic **Continue with OIDC** button when this provider is enabled.
+The `discoveryUrl` should point at the provider's `/.well-known/openid-configuration` endpoint. `OIDC_DISCOVERY_URL` remains supported as a legacy alias for `BETTER_AUTH_OIDC_DISCOVERY_URL`, and it can still be referenced from config files via `${OIDC_DISCOVERY_URL}`. The login page shows a generic **Continue with OIDC** button when this provider is enabled.
 
-If the dashboard runs behind a different public origin, set `systemConfig.auth.betterAuth.trustedOrigins` to allow that origin to start the login flow. If `trustedOrigins` is omitted, MCPHub automatically trusts `systemConfig.install.baseUrl` when it is set.
+If the dashboard runs behind a different public origin, set `BETTER_AUTH_TRUSTED_ORIGINS` (or `systemConfig.auth.betterAuth.trustedOrigins`) to allow that origin to start the login flow. If no explicit trusted origins are configured, MCPHub automatically trusts the origins from `BETTER_AUTH_URL` and `systemConfig.install.baseUrl` when they are set.
 
 <Note>
   Better Auth in MCPHub currently requires PostgreSQL-backed storage (`DB_URL`). File-only mode does not support Better Auth sessions, including local OIDC login.
 </Note>
 
-When enabled, Better Auth mounts at `${BASE_PATH}${betterAuthConfig.basePath}` (default `/api/auth/better`). A valid Better Auth session cookie counts as authentication for the dashboard API. The mapped MCPHub user is admin only if a local user with the same username exists and is marked admin.
+When enabled, Better Auth mounts at `${BASE_PATH}${betterAuthConfig.basePath}` (default `/api/auth/better`). `BETTER_AUTH_BASE_PATH` overrides the stored `betterAuth.basePath` value at startup. A valid Better Auth session cookie counts as authentication for the dashboard API. The mapped MCPHub user is admin only if a local user with the same username exists and is marked admin.
 
 Local OIDC login follows the same mapping rule as GitHub / Google login: MCPHub resolves a local username from the Better Auth session (`email ?? name ?? id`). If that username does not exist yet, MCPHub auto-creates a **non-admin** local user. OIDC login never auto-promotes a user to admin.
 

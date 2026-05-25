@@ -154,12 +154,17 @@ MCPHub integrates [Better Auth](https://www.better-auth.com/) to provide seamles
 
 **Prerequisites**:
 1.  **Database Mode**: `DB_URL` environment variable must be configured (PostgreSQL is required for Better Auth persistence).
-2.  **Provider Configuration**:
-    *   **GitHub**: Set `GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET`.
-    *   **Google**: Set `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`.
+2.  **Provider Configuration**: Better Auth bootstrap settings are read once at startup, so restart MCPHub after changing them.
+3.  **Environment Variables**:
+  *   **Global**: `BETTER_AUTH_ENABLED`, `BETTER_AUTH_URL`, optional `BETTER_AUTH_BASE_PATH`, optional `BETTER_AUTH_TRUSTED_ORIGINS`.
+  *   **GitHub**: `BETTER_AUTH_GITHUB_ENABLED`, `GITHUB_CLIENT_ID`, and `GITHUB_CLIENT_SECRET`.
+  *   **Google**: `BETTER_AUTH_GOOGLE_ENABLED`, `GOOGLE_CLIENT_ID`, and `GOOGLE_CLIENT_SECRET`.
+  *   **Local OIDC**: `BETTER_AUTH_OIDC_ENABLED`, optional `BETTER_AUTH_OIDC_PROVIDER_ID`, `BETTER_AUTH_OIDC_DISCOVERY_URL` (or legacy `OIDC_DISCOVERY_URL`), optional `BETTER_AUTH_OIDC_SCOPES`, optional `BETTER_AUTH_OIDC_PKCE`, optional `BETTER_AUTH_OIDC_PROMPT`, plus `OIDC_CLIENT_ID` and `OIDC_CLIENT_SECRET`.
+
+Non-secret Better Auth settings can also be stored in `systemConfig.auth.betterAuth`, but the `BETTER_AUTH_*` environment variables take precedence over stored config values.
 
 **Endpoints**:
-The Better Auth handler is mounted at `${BASE_PATH}${betterAuthConfig.basePath}`. The default `betterAuthConfig.basePath` is `/api/auth/better`, but it is configurable through `systemConfig.auth.betterAuth.basePath` in `mcp_settings.json`. If you also set `BASE_PATH`, prepend it to every example below. Key endpoints include:
+The Better Auth handler is mounted at `${BASE_PATH}${betterAuthConfig.basePath}`. The default `betterAuthConfig.basePath` is `/api/auth/better`; set `BETTER_AUTH_BASE_PATH` to override it at startup, or use `systemConfig.auth.betterAuth.basePath` as a fallback. `BETTER_AUTH_URL` takes precedence over `systemConfig.install.baseUrl` when MCPHub builds redirect URLs. If you also set `BASE_PATH`, prepend it to every example below. Key endpoints include:
 
 - **Initiate Login**:
   - `GET /api/auth/better/signIn/social?provider=github`
@@ -173,4 +178,4 @@ For a complete list of endpoints and usage details, refer to the [Better Auth AP
 
 **Disabling Better Auth**:
 
-Better Auth will also be automatically disabled if `DB_URL` is not configured, or if no social login providers are configured with their required environment variables.
+Better Auth is automatically disabled if `DB_URL` is not configured, if `BETTER_AUTH_ENABLED=false`, or if no login providers are effectively enabled with their required credentials.

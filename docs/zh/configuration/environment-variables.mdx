@@ -43,38 +43,53 @@ JWT_SECRET=your-super-secret-key-change-this-in-production
 
 ### Better Auth（可选：GitHub / Google / 本地 OIDC 登录）
 
-这些变量只会在 `mcp_settings.json` 的 `systemConfig.auth.betterAuth.enabled` 打开时生效。MCPHub 里的 Better Auth 目前依赖 PostgreSQL 会话存储，因此需要配置 `DB_URL`；纯文件模式不支持 Better Auth 登录。
+Better Auth 会在 `src/betterAuth.ts` 中于启动时初始化一次，因此无论是改环境变量还是改 `systemConfig.auth.betterAuth` / `systemConfig.install.baseUrl`，都需要重启后才会生效。
+
+对于非敏感的 Better Auth 配置，MCPHub 现在按以下优先级解析：
+
+1. `BETTER_AUTH_*` 环境变量
+2. `systemConfig.auth.betterAuth`（来自 `mcp_settings.json` 或数据库系统配置）
+3. 内置默认值
+
+Provider 的客户端凭据仍然只支持通过环境变量提供。
+
+MCPHub 里的 Better Auth 目前依赖 PostgreSQL 会话存储，因此需要配置 `DB_URL`；纯文件模式不支持 Better Auth 登录。
 
 | 变量 | 描述 |
 | --- | --- |
-| `BETTER_AUTH_URL` | MCPHub 的公网访问地址，用于生成回调 URL |
-| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Google 登录凭据 |
-| `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` | GitHub 登录凭据 |
-| `OIDC_DISCOVERY_URL` | 可选，用于在 `mcp_settings.json` 中通过 `${OIDC_DISCOVERY_URL}` 引用本地 OIDC Issuer 的 discovery 地址 |
-| `OIDC_CLIENT_ID` / `OIDC_CLIENT_SECRET` | 本地 OIDC Provider（例如 Keycloak、Authentik、Dex）的客户端凭据 |
+| `BETTER_AUTH_ENABLED` | Better Auth 总开关。即使打开了它，如果 MCPHub 不在数据库模式下，或者没有任何提供商具备所需凭据，Better Auth 仍会自动禁用。 |
+| `BETTER_AUTH_URL` | 用于生成 Better Auth 回调 URL 的公网访问地址。现在它会优先于 `systemConfig.install.baseUrl` 生效，其来源也会自动加入可信来源列表。 |
+| `BETTER_AUTH_BASE_PATH` | Better Auth 处理器挂载路径，默认 `/api/auth/better`。 |
+| `BETTER_AUTH_TRUSTED_ORIGINS` | 允许发起 Better Auth 登录流程的额外来源。支持逗号分隔、空白分隔或 JSON 数组。未设置时，MCPHub 仍会自动信任 `BETTER_AUTH_URL` 和 `systemConfig.install.baseUrl` 的来源。 |
+| `BETTER_AUTH_GOOGLE_ENABLED` | 在提供了凭据后启用或禁用 Google 登录，默认 `true`。 |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Google 登录凭据。 |
+| `BETTER_AUTH_GITHUB_ENABLED` | 在提供了凭据后启用或禁用 GitHub 登录，默认 `true`。 |
+| `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` | GitHub 登录凭据。 |
+| `BETTER_AUTH_OIDC_ENABLED` | 启用或禁用通用 OIDC Provider，默认 `false`。 |
+| `BETTER_AUTH_OIDC_PROVIDER_ID` | 传给 Better Auth generic OAuth 插件的 Provider 标识，默认 `oidc`。 |
+| `BETTER_AUTH_OIDC_DISCOVERY_URL` | 本地 OIDC Issuer 的 discovery 地址。 |
+| `OIDC_DISCOVERY_URL` | `BETTER_AUTH_OIDC_DISCOVERY_URL` 的兼容别名；如果仍在配置文件里使用 `${OIDC_DISCOVERY_URL}` 插值，也可以继续保留。 |
+| `BETTER_AUTH_OIDC_SCOPES` | 本地 OIDC 登录请求的 scopes。支持逗号分隔、空白分隔或 JSON 数组，默认 `openid profile email`。 |
+| `BETTER_AUTH_OIDC_PKCE` | 是否启用本地 OIDC 登录的 PKCE，默认 `true`。 |
+| `BETTER_AUTH_OIDC_PROMPT` | 可选的 OIDC `prompt` 参数（如 `login`、`consent`、`select_account`）。 |
+| `OIDC_CLIENT_ID` / `OIDC_CLIENT_SECRET` | 本地 OIDC Provider（例如 Keycloak、Authentik、Dex）的客户端凭据。 |
 
-本地 OIDC 的非敏感配置建议写在 `mcp_settings.json`：
+非敏感的 Better Auth 配置仍然可以放在 `systemConfig.auth.betterAuth` 中，但现在推荐优先使用 `BETTER_AUTH_*` 环境变量。一个纯环境变量驱动的本地 OIDC 配置示例如下：
 
-```json
-{
-	"systemConfig": {
-		"auth": {
-			"betterAuth": {
-				"enabled": true,
-				"providers": {
-					"oidc": {
-						"enabled": true,
-						"providerId": "local-oidc",
-						"discoveryUrl": "${OIDC_DISCOVERY_URL}",
-						"scopes": ["openid", "profile", "email"],
-						"pkce": true,
-						"prompt": "login"
-					}
-				}
-			}
-		}
-	}
-}
+```env
+BETTER_AUTH_ENABLED=true
+BETTER_AUTH_URL=https://mcphub.example.com
+BETTER_AUTH_BASE_PATH=/api/auth/better
+BETTER_AUTH_TRUSTED_ORIGINS=https://dashboard.example.com,https://admin.example.com
+
+BETTER_AUTH_OIDC_ENABLED=true
+BETTER_AUTH_OIDC_PROVIDER_ID=local-oidc
+BETTER_AUTH_OIDC_DISCOVERY_URL=https://auth.example.com/.well-known/openid-configuration
+BETTER_AUTH_OIDC_SCOPES=openid,profile,email
+BETTER_AUTH_OIDC_PKCE=true
+BETTER_AUTH_OIDC_PROMPT=login
+OIDC_CLIENT_ID=your-oidc-client-id
+OIDC_CLIENT_SECRET=your-oidc-client-secret
 ```
 
 ## 配置示例

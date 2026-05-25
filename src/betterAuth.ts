@@ -89,8 +89,8 @@ const resolveBaseURL = (baseUrl: string, basePath: string): string => {
 
 const systemInstallBaseUrl = systemConfig?.install?.baseUrl;
 const baseURL = resolveBaseURL(
-  systemInstallBaseUrl ||
-    process.env.BETTER_AUTH_URL ||
+  process.env.BETTER_AUTH_URL ||
+    systemInstallBaseUrl ||
     `http://localhost:${defaultConfig.port}${defaultConfig.basePath}`,
   runtimeConfig.basePath,
 );

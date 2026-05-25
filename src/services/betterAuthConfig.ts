@@ -1,4 +1,4 @@
-import { loadSettings } from '../config/index.js';
+import { expandEnvVars, loadSettings } from '../config/index.js';
 import { getSystemConfigDao } from '../dao/DaoFactory.js';
 import { BetterAuthConfig, BetterAuthOidcProviderConfig, SystemConfig } from '../types/index.js';
 import { getCachedSystemConfig, isDatabaseModeEnabled } from '../utils/systemConfigCache.js';
@@ -6,6 +6,15 @@ import { getCachedSystemConfig, isDatabaseModeEnabled } from '../utils/systemCon
 const DEFAULT_BETTER_AUTH_BASE_PATH = '/api/auth/better';
 const DEFAULT_OIDC_SCOPES = ['openid', 'profile', 'email'];
 const DEFAULT_OIDC_PROVIDER_ID = 'oidc';
+const VALID_OIDC_PROMPTS = new Set<string>([
+  'none',
+  'login',
+  'create',
+  'consent',
+  'select_account',
+  'select_account consent',
+  'login consent',
+]);
 
 export interface BetterAuthRuntimeConfig {
   enabled: boolean;
@@ -29,38 +38,29 @@ export interface BetterAuthRuntimeConfig {
   };
 }
 
-const normalizePath = (value: string): string => {
-  if (!value) {
-    return DEFAULT_BETTER_AUTH_BASE_PATH;
+const parseBoolean = (value: unknown): boolean | undefined => {
+  if (typeof value === 'boolean') {
+    return value;
   }
-  return value.startsWith('/') ? value : `/${value}`;
-};
 
-const normalizeTrustedOrigin = (value: unknown): string | null => {
   if (typeof value !== 'string') {
-    return null;
+    return undefined;
   }
 
-  const trimmedValue = value.trim();
-  if (!trimmedValue) {
-    return null;
+  const normalizedValue = value.trim().toLowerCase();
+  if (!normalizedValue) {
+    return undefined;
   }
 
-  try {
-    return new URL(trimmedValue).origin;
-  } catch {
-    return null;
+  if (['true', '1', 'yes', 'on'].includes(normalizedValue)) {
+    return true;
   }
-};
 
-const normalizeStringArray = (value: unknown, fallback: string[] = []): string[] => {
-  const values = Array.isArray(value) ? value : fallback;
-  const normalized = values
-    .filter((item): item is string => typeof item === 'string')
-    .map((item) => item.trim())
-    .filter((item) => item.length > 0);
+  if (['false', '0', 'no', 'off'].includes(normalizedValue)) {
+    return false;
+  }
 
-  return normalized.length > 0 ? normalized : fallback;
+  return undefined;
 };
 
 const normalizeOptionalString = (value: unknown): string | undefined => {
@@ -68,24 +68,171 @@ const normalizeOptionalString = (value: unknown): string | undefined => {
     return undefined;
   }
 
-  const trimmedValue = value.trim();
+  const trimmedValue = expandEnvVars(value).trim();
   return trimmedValue || undefined;
+};
+
+const normalizePath = (value: unknown): string => {
+  const normalizedValue = normalizeOptionalString(value);
+  if (!normalizedValue) {
+    return DEFAULT_BETTER_AUTH_BASE_PATH;
+  }
+  return normalizedValue.startsWith('/') ? normalizedValue : `/${normalizedValue}`;
+};
+
+const normalizeTrustedOrigin = (value: unknown): string | null => {
+  const normalizedValue = normalizeOptionalString(value);
+  if (!normalizedValue) {
+    return null;
+  }
+
+  try {
+    return new URL(normalizedValue).origin;
+  } catch {
+    return null;
+  }
+};
+
+const splitStringArray = (value: string): string[] => {
+  const normalizedValue = expandEnvVars(value).trim();
+  if (!normalizedValue) {
+    return [];
+  }
+
+  if (normalizedValue.startsWith('[')) {
+    try {
+      const parsedValue = JSON.parse(normalizedValue);
+      if (Array.isArray(parsedValue)) {
+        return parsedValue
+          .map((item) => normalizeOptionalString(item))
+          .filter((item): item is string => Boolean(item));
+      }
+    } catch {
+      // Fall back to delimiter-based parsing below.
+    }
+  }
+
+  const delimiter = normalizedValue.includes(',') ? /,/ : /\s+/;
+  return normalizedValue
+    .split(delimiter)
+    .map((item) => item.trim())
+    .filter((item) => item.length > 0);
+};
+
+const normalizeStringArray = (value: unknown, fallback: string[] = []): string[] => {
+  const normalized = Array.isArray(value)
+    ? value
+        .map((item) => normalizeOptionalString(item))
+        .filter((item): item is string => Boolean(item))
+    : typeof value === 'string'
+      ? splitStringArray(value)
+      : [];
+
+  return normalized.length > 0 ? normalized : fallback;
+};
+
+const normalizePrompt = (
+  value: unknown,
+): BetterAuthOidcProviderConfig['prompt'] | undefined => {
+  const normalizedValue = normalizeOptionalString(value);
+  if (!normalizedValue || !VALID_OIDC_PROMPTS.has(normalizedValue)) {
+    return undefined;
+  }
+
+  return normalizedValue as BetterAuthOidcProviderConfig['prompt'];
+};
+
+const resolveBooleanSetting = (
+  envValue: string | undefined,
+  settingsValue: unknown,
+  defaultValue: boolean,
+): boolean => {
+  const envOverride = parseBoolean(envValue);
+  if (envOverride !== undefined) {
+    return envOverride;
+  }
+
+  const settingsOverride = parseBoolean(settingsValue);
+  if (settingsOverride !== undefined) {
+    return settingsOverride;
+  }
+
+  return defaultValue;
+};
+
+const resolveStringSetting = (
+  envValue: string | undefined,
+  settingsValue: unknown,
+  defaultValue?: string,
+): string | undefined => {
+  const envOverride = normalizeOptionalString(envValue);
+  if (envOverride !== undefined) {
+    return envOverride;
+  }
+
+  const settingsOverride = normalizeOptionalString(settingsValue);
+  if (settingsOverride !== undefined) {
+    return settingsOverride;
+  }
+
+  return defaultValue;
+};
+
+const resolveStringArraySetting = (
+  envValue: string | undefined,
+  settingsValue: unknown,
+  defaultValue: string[] = [],
+): string[] => {
+  if (envValue !== undefined) {
+    const envOverride = normalizeStringArray(envValue, []);
+    if (envOverride.length > 0) {
+      return envOverride;
+    }
+  }
+
+  const settingsOverride = normalizeStringArray(settingsValue, []);
+  if (settingsOverride.length > 0) {
+    return settingsOverride;
+  }
+
+  return defaultValue;
+};
+
+const resolvePromptSetting = (
+  envValue: string | undefined,
+  settingsValue: unknown,
+): BetterAuthOidcProviderConfig['prompt'] | undefined => {
+  const envOverride = normalizePrompt(envValue);
+  if (envOverride !== undefined) {
+    return envOverride;
+  }
+
+  return normalizePrompt(settingsValue);
 };
 
 export const resolveBetterAuthRuntimeConfig = (
   systemConfig?: SystemConfig | null,
 ): BetterAuthRuntimeConfig => {
   const betterAuthSettings: BetterAuthConfig = systemConfig?.auth?.betterAuth || {};
-  const databaseModeEnabled = isDatabaseModeEnabled();
-  const enabled = Boolean(betterAuthSettings.enabled ?? true) && databaseModeEnabled;
-  const basePath = normalizePath(betterAuthSettings.basePath || DEFAULT_BETTER_AUTH_BASE_PATH);
   const providerSettings = betterAuthSettings.providers || {};
+  const oidcSettings = providerSettings.oidc || {};
+  const databaseModeEnabled = isDatabaseModeEnabled();
+  const betterAuthEnabled =
+    resolveBooleanSetting(process.env.BETTER_AUTH_ENABLED, betterAuthSettings.enabled, true) &&
+    databaseModeEnabled;
+  const basePath = normalizePath(
+    resolveStringSetting(process.env.BETTER_AUTH_BASE_PATH, betterAuthSettings.basePath),
+  );
+  const trustedOriginSettings = resolveStringArraySetting(
+    process.env.BETTER_AUTH_TRUSTED_ORIGINS,
+    betterAuthSettings.trustedOrigins,
+    [],
+  );
   const trustedOrigins = Array.from(
     new Set(
       [
-        ...(Array.isArray(betterAuthSettings.trustedOrigins)
-          ? betterAuthSettings.trustedOrigins
-          : []),
+        ...trustedOriginSettings,
+        process.env.BETTER_AUTH_URL,
         systemConfig?.install?.baseUrl,
       ]
         .map((value) => normalizeTrustedOrigin(value))
@@ -102,18 +249,50 @@ export const resolveBetterAuthRuntimeConfig = (
   const oidcEnvConfigured = Boolean(
     process.env.OIDC_CLIENT_ID && process.env.OIDC_CLIENT_SECRET,
   );
-  const oidcSettings = providerSettings.oidc || {};
-  const oidcDiscoveryUrl = normalizeOptionalString(oidcSettings.discoveryUrl);
+  const oidcDiscoveryUrl = resolveStringSetting(
+    process.env.BETTER_AUTH_OIDC_DISCOVERY_URL,
+    resolveStringSetting(process.env.OIDC_DISCOVERY_URL, oidcSettings.discoveryUrl),
+  );
+  const oidcProviderId =
+    resolveStringSetting(
+      process.env.BETTER_AUTH_OIDC_PROVIDER_ID,
+      oidcSettings.providerId,
+      DEFAULT_OIDC_PROVIDER_ID,
+    ) || DEFAULT_OIDC_PROVIDER_ID;
+  const oidcScopes = resolveStringArraySetting(
+    process.env.BETTER_AUTH_OIDC_SCOPES,
+    oidcSettings.scopes,
+    DEFAULT_OIDC_SCOPES,
+  );
+  const oidcPkce = resolveBooleanSetting(process.env.BETTER_AUTH_OIDC_PKCE, oidcSettings.pkce, true);
+  const oidcPrompt = resolvePromptSetting(process.env.BETTER_AUTH_OIDC_PROMPT, oidcSettings.prompt);
+  const oidcEnabledSetting = resolveBooleanSetting(
+    process.env.BETTER_AUTH_OIDC_ENABLED,
+    oidcSettings.enabled,
+    false,
+  );
   const oidcEnabled =
-    enabled &&
-    Boolean(oidcSettings.enabled) &&
+    betterAuthEnabled &&
+    oidcEnabledSetting &&
     Boolean(oidcDiscoveryUrl) &&
     oidcEnvConfigured;
 
   const googleEnabled =
-    enabled && Boolean(providerSettings.google?.enabled ?? true) && googleEnvConfigured;
+    betterAuthEnabled &&
+    resolveBooleanSetting(
+      process.env.BETTER_AUTH_GOOGLE_ENABLED,
+      providerSettings.google?.enabled,
+      true,
+    ) &&
+    googleEnvConfigured;
   const githubEnabled =
-    enabled && Boolean(providerSettings.github?.enabled ?? true) && githubEnvConfigured;
+    betterAuthEnabled &&
+    resolveBooleanSetting(
+      process.env.BETTER_AUTH_GITHUB_ENABLED,
+      providerSettings.github?.enabled,
+      true,
+    ) &&
+    githubEnvConfigured;
 
   const anyProviderEnabled = googleEnabled || githubEnabled || oidcEnabled;
 
@@ -130,11 +309,11 @@ export const resolveBetterAuthRuntimeConfig = (
       },
       oidc: {
         enabled: oidcEnabled,
-        providerId: normalizeOptionalString(oidcSettings.providerId) || DEFAULT_OIDC_PROVIDER_ID,
+        providerId: oidcProviderId,
         discoveryUrl: oidcDiscoveryUrl,
-        scopes: normalizeStringArray(oidcSettings.scopes, DEFAULT_OIDC_SCOPES),
-        pkce: oidcSettings.pkce ?? true,
-        prompt: normalizeOptionalString(oidcSettings.prompt) as BetterAuthOidcProviderConfig['prompt'],
+        scopes: oidcScopes,
+        pkce: oidcPkce,
+        prompt: oidcPrompt,
       },
     },
   };

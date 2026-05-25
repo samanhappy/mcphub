@@ -134,7 +134,7 @@ describe('betterAuth bootstrap', () => {
     );
   });
 
-  it('prefers install.baseUrl over BETTER_AUTH_URL when deriving the Better Auth base URL', async () => {
+  it('prefers BETTER_AUTH_URL over install.baseUrl when deriving the Better Auth base URL', async () => {
     process.env.USE_DB = 'false';
     loadSettingsMock.mockReturnValue({
       systemConfig: {
@@ -148,7 +148,7 @@ describe('betterAuth bootstrap', () => {
 
     expect(betterAuthMock).toHaveBeenCalledWith(
       expect.objectContaining({
-        baseURL: 'https://mcp.imdevinc.home/mcphub/api/auth/better',
+        baseURL: 'http://localhost:5173/api/auth/better',
       }),
     );
   });
