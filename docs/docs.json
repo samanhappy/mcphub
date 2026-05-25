@@ -74,6 +74,8 @@
               "zh/features/group-management",
               "zh/features/smart-routing",
               "zh/features/oauth",
+              "zh/features/authentication",
+              "zh/features/monitoring",
               "zh/features/cli"
             ]
           },
