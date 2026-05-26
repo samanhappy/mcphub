@@ -5,6 +5,7 @@ import { isHostedModeEnabled } from './hostedMode.js';
 import { getHostedNodeIdentity } from './hostedNodeIdentity.js';
 
 const DEFAULT_EVENT_CHANNEL = 'mcphub:hosted-events';
+const INITIAL_CONNECT_TIMEOUT_MS = 5000;
 const VALID_EVENT_TYPES = new Set([
   'api_key.created',
   'api_key.revoked',
@@ -20,6 +21,7 @@ type RedisSubscriber = ReturnType<typeof createClient>;
 let subscriber: RedisSubscriber | null = null;
 let starting = false;
 let retryTimer: NodeJS.Timeout | null = null;
+let lastStartupFailureSignature: string | null = null;
 
 function eventChannel(): string {
   return process.env.HUB_EVENT_CHANNEL || DEFAULT_EVENT_CHANNEL;
@@ -60,6 +62,10 @@ function scheduleRetry(): void {
   retryTimer.unref?.();
 }
 
+function startupFailureSignature(channel: string, error: unknown): string {
+  return `${channel}:${String(error)}`;
+}
+
 export async function startHostedEventSubscriber(): Promise<void> {
   if (subscriber || starting || !shouldSubscribeToRedisEvents()) return;
 
@@ -69,9 +75,19 @@ export async function startHostedEventSubscriber(): Promise<void> {
   starting = true;
   const channel = eventChannel();
   const nodeIdentity = getHostedNodeIdentity();
-  const client = createClient({ url });
+  const client = createClient({
+    url,
+    socket: {
+      connectTimeout: INITIAL_CONNECT_TIMEOUT_MS,
+      reconnectStrategy: false,
+    },
+  });
 
   client.on('error', (error) => {
+    if (subscriber !== client) {
+      return;
+    }
+
     console.warn('[hosted] Redis event subscriber error', {
       error: String(error),
       channel,
@@ -89,11 +105,18 @@ export async function startHostedEventSubscriber(): Promise<void> {
   });
 
   client.on('end', () => {
+    const wasActiveSubscriber = subscriber === client;
+    if (!wasActiveSubscriber) {
+      return;
+    }
+
+    subscriber = null;
     console.warn('[hosted] Redis event subscriber connection ended', {
       channel,
       hubClusterId: nodeIdentity.clusterId,
       hubNodeId: nodeIdentity.nodeId,
     });
+    scheduleRetry();
   });
 
   try {
@@ -122,17 +145,23 @@ export async function startHostedEventSubscriber(): Promise<void> {
         });
       }
     });
+    clearRetryTimer();
+    lastStartupFailureSignature = null;
     subscriber = client;
   } catch (error) {
-    console.warn(
-      '[hosted] Failed to start Redis event subscriber; local cache TTL remains authoritative',
-      {
-        error: String(error),
-        channel,
-        hubClusterId: nodeIdentity.clusterId,
-        hubNodeId: nodeIdentity.nodeId,
-      },
-    );
+    const failureSignature = startupFailureSignature(channel, error);
+    if (lastStartupFailureSignature !== failureSignature) {
+      lastStartupFailureSignature = failureSignature;
+      console.warn(
+        '[hosted] Failed to start Redis event subscriber; local cache TTL remains authoritative',
+        {
+          error: String(error),
+          channel,
+          hubClusterId: nodeIdentity.clusterId,
+          hubNodeId: nodeIdentity.nodeId,
+        },
+      );
+    }
     await client.quit().catch(() => undefined);
     scheduleRetry();
   } finally {
@@ -142,6 +171,7 @@ export async function startHostedEventSubscriber(): Promise<void> {
 
 export async function stopHostedEventSubscriber(): Promise<void> {
   clearRetryTimer();
+  lastStartupFailureSignature = null;
   const client = subscriber;
   subscriber = null;
   if (!client) return;

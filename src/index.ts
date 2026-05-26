@@ -179,7 +179,11 @@ async function boot() {
     }
 
     await hydrateSystemConfigCache();
-    await startHostedEventSubscriber();
+    void startHostedEventSubscriber().catch((error) => {
+      console.warn('[hosted] Failed to launch Redis event subscriber in background', {
+        error: String(error),
+      });
+    });
 
     await appServer.initialize();
     appServer.start();
