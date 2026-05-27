@@ -1,27 +1,11 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { apiPost } from '@/utils/fetchInterceptor';
+import { ImportJsonFormat, normalizeImportedServers } from '../utils/jsonImport';
 
 interface JSONImportFormProps {
   onSuccess: () => void;
   onCancel: () => void;
-}
-
-interface McpServerConfig {
-  command?: string;
-  args?: string[];
-  env?: Record<string, string>;
-  type?: string;
-  url?: string;
-  headers?: Record<string, string>;
-  openapi?: {
-    version: string;
-    url: string;
-  };
-}
-
-interface ImportJsonFormat {
-  mcpServers: Record<string, McpServerConfig>;
 }
 
 const JSONImportForm: React.FC<JSONImportFormProps> = ({ onSuccess, onCancel }) => {
@@ -85,33 +69,7 @@ All servers will be imported in a single efficient batch operation.`;
     const parsed = parseAndValidateJson(jsonInput);
     if (!parsed) return;
 
-    const servers = Object.entries(parsed.mcpServers).map(([name, config]) => {
-      // Normalize config to MCPHub format
-      const normalizedConfig: any = {};
-
-      if (config.type === 'sse' || config.type === 'streamable-http') {
-        normalizedConfig.type = config.type;
-        normalizedConfig.url = config.url;
-        if (config.headers) {
-          normalizedConfig.headers = config.headers;
-        }
-      } else if (config.type === 'openapi') {
-        normalizedConfig.type = 'openapi';
-        normalizedConfig.openapi = config.openapi;
-      } else {
-        // Default to stdio
-        normalizedConfig.type = 'stdio';
-        normalizedConfig.command = config.command;
-        normalizedConfig.args = config.args || [];
-        if (config.env) {
-          normalizedConfig.env = config.env;
-        }
-      }
-
-      return { name, config: normalizedConfig };
-    });
-
-    setPreviewServers(servers);
+    setPreviewServers(normalizeImportedServers(parsed));
   };
 
   const handleImport = async () => {
