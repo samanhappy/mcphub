@@ -141,4 +141,63 @@ describe('hostedEventSubscriber', () => {
       '[hosted] Failed to start Redis event subscriber; local cache TTL remains authoritative',
     ]);
   });
+
+  it('stops an in-flight connection attempt before it can subscribe', async () => {
+    const client = buildRedisClient();
+    let resolveConnect: (() => void) | undefined;
+
+    client.connect.mockImplementation(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveConnect = resolve;
+        }),
+    );
+
+    createClientMock.mockReturnValue(client);
+
+    const startPromise = startHostedEventSubscriber();
+
+    await stopHostedEventSubscriber();
+    resolveConnect?.();
+    await startPromise;
+
+    expect(client.quit).toHaveBeenCalled();
+    expect(client.subscribe).not.toHaveBeenCalled();
+
+    jest.advanceTimersByTime(5000);
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(createClientMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not schedule a retry when startup fails after the subscriber was stopped', async () => {
+    const client = buildRedisClient();
+    let rejectConnect: ((error: Error) => void) | undefined;
+    const socketClosedError = new Error('Socket closed unexpectedly');
+
+    client.connect.mockImplementation(
+      () =>
+        new Promise<void>((_resolve, reject) => {
+          rejectConnect = reject;
+        }),
+    );
+
+    createClientMock.mockReturnValue(client);
+
+    const startPromise = startHostedEventSubscriber();
+
+    await stopHostedEventSubscriber();
+    rejectConnect?.(socketClosedError);
+    await startPromise;
+
+    expect(client.quit).toHaveBeenCalled();
+    expect(client.subscribe).not.toHaveBeenCalled();
+
+    jest.advanceTimersByTime(5000);
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(createClientMock).toHaveBeenCalledTimes(1);
+  });
 });

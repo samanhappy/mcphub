@@ -19,9 +19,11 @@ const VALID_EVENT_TYPES = new Set([
 type RedisSubscriber = ReturnType<typeof createClient>;
 
 let subscriber: RedisSubscriber | null = null;
+let connectingClient: RedisSubscriber | null = null;
 let starting = false;
 let retryTimer: NodeJS.Timeout | null = null;
 let lastStartupFailureSignature: string | null = null;
+let subscriberEnabled = false;
 
 function eventChannel(): string {
   return process.env.HUB_EVENT_CHANNEL || DEFAULT_EVENT_CHANNEL;
@@ -53,7 +55,16 @@ function clearRetryTimer(): void {
   retryTimer = null;
 }
 
+function isTrackedClient(client: RedisSubscriber): boolean {
+  return subscriber === client || connectingClient === client;
+}
+
+function shouldAbortStartup(client: RedisSubscriber): boolean {
+  return !subscriberEnabled || connectingClient !== client;
+}
+
 function scheduleRetry(): void {
+  if (!subscriberEnabled) return;
   clearRetryTimer();
   retryTimer = setTimeout(() => {
     retryTimer = null;
@@ -72,6 +83,7 @@ export async function startHostedEventSubscriber(): Promise<void> {
   const url = redisUrl();
   if (!url) return;
 
+  subscriberEnabled = true;
   starting = true;
   const channel = eventChannel();
   const nodeIdentity = getHostedNodeIdentity();
@@ -82,9 +94,10 @@ export async function startHostedEventSubscriber(): Promise<void> {
       reconnectStrategy: false,
     },
   });
+  connectingClient = client;
 
   client.on('error', (error) => {
-    if (subscriber !== client) {
+    if (!subscriberEnabled || subscriber !== client) {
       return;
     }
 
@@ -97,6 +110,10 @@ export async function startHostedEventSubscriber(): Promise<void> {
   });
 
   client.on('ready', () => {
+    if (!subscriberEnabled || !isTrackedClient(client)) {
+      return;
+    }
+
     console.info('[hosted] Redis event subscriber ready', {
       channel,
       hubClusterId: nodeIdentity.clusterId,
@@ -121,7 +138,17 @@ export async function startHostedEventSubscriber(): Promise<void> {
 
   try {
     await client.connect();
+
+    if (shouldAbortStartup(client)) {
+      await client.quit().catch(() => undefined);
+      return;
+    }
+
     await client.subscribe(channel, (message) => {
+      if (!subscriberEnabled || !isTrackedClient(client)) {
+        return;
+      }
+
       try {
         const event = JSON.parse(message) as unknown;
         if (!isHubClusterEvent(event)) {
@@ -145,35 +172,56 @@ export async function startHostedEventSubscriber(): Promise<void> {
         });
       }
     });
+
+    if (shouldAbortStartup(client)) {
+      await client.quit().catch(() => undefined);
+      return;
+    }
+
     clearRetryTimer();
     lastStartupFailureSignature = null;
     subscriber = client;
+    connectingClient = null;
   } catch (error) {
-    const failureSignature = startupFailureSignature(channel, error);
-    if (lastStartupFailureSignature !== failureSignature) {
-      lastStartupFailureSignature = failureSignature;
-      console.warn(
-        '[hosted] Failed to start Redis event subscriber; local cache TTL remains authoritative',
-        {
-          error: String(error),
-          channel,
-          hubClusterId: nodeIdentity.clusterId,
-          hubNodeId: nodeIdentity.nodeId,
-        },
-      );
+    const shouldHandleFailure = subscriberEnabled && connectingClient === client;
+
+    if (shouldHandleFailure) {
+      const failureSignature = startupFailureSignature(channel, error);
+      if (lastStartupFailureSignature !== failureSignature) {
+        lastStartupFailureSignature = failureSignature;
+        console.warn(
+          '[hosted] Failed to start Redis event subscriber; local cache TTL remains authoritative',
+          {
+            error: String(error),
+            channel,
+            hubClusterId: nodeIdentity.clusterId,
+            hubNodeId: nodeIdentity.nodeId,
+          },
+        );
+      }
     }
+
     await client.quit().catch(() => undefined);
-    scheduleRetry();
+
+    if (shouldHandleFailure) {
+      scheduleRetry();
+    }
   } finally {
+    if (connectingClient === client) {
+      connectingClient = null;
+    }
+
     starting = false;
   }
 }
 
 export async function stopHostedEventSubscriber(): Promise<void> {
+  subscriberEnabled = false;
   clearRetryTimer();
   lastStartupFailureSignature = null;
-  const client = subscriber;
+  const client = subscriber || connectingClient;
   subscriber = null;
+  connectingClient = null;
   if (!client) return;
 
   try {
