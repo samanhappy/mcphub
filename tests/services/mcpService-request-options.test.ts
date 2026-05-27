@@ -77,11 +77,12 @@ jest.mock('../../src/services/proxy.js', () => ({
 }));
 
 const mockFindAll = jest.fn();
+const mockFindById = jest.fn();
 
 jest.mock('../../src/dao/index.js', () => ({
   getServerDao: jest.fn(() => ({
     findAll: mockFindAll,
-    findById: jest.fn(),
+    findById: mockFindById,
   })),
   getSystemConfigDao: jest.fn(() => ({
     get: jest.fn(async () => ({})),
@@ -109,16 +110,26 @@ import {
   cleanupAllServers,
   getServerByName,
   initUpstreamServers,
+  reconnectServer,
 } from '../../src/services/mcpService.js';
+
+const originalDefaultRequestTimeout = process.env.DEFAULT_REQUEST_TIMEOUT;
 
 describe('mcpService request options defaults', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     cleanupAllServers();
+    delete process.env.DEFAULT_REQUEST_TIMEOUT;
+    mockFindById.mockResolvedValue(undefined);
   });
 
   afterEach(() => {
     cleanupAllServers();
+    if (originalDefaultRequestTimeout === undefined) {
+      delete process.env.DEFAULT_REQUEST_TIMEOUT;
+    } else {
+      process.env.DEFAULT_REQUEST_TIMEOUT = originalDefaultRequestTimeout;
+    }
   });
 
   it('enables resetTimeoutOnProgress by default for stdio servers', async () => {
@@ -177,5 +188,53 @@ describe('mcpService request options defaults', () => {
       resetTimeoutOnProgress: false,
       maxTotalTimeout: undefined,
     });
+  });
+
+  it('uses DEFAULT_REQUEST_TIMEOUT when server timeout is not configured', async () => {
+    process.env.DEFAULT_REQUEST_TIMEOUT = '120000';
+
+    mockFindAll.mockResolvedValue([
+      {
+        name: 'env-timeout-stdio',
+        type: 'stdio',
+        command: 'node',
+        args: ['server.js'],
+        enabled: true,
+      },
+    ]);
+
+    await initUpstreamServers();
+
+    expect(getServerByName('env-timeout-stdio')?.options).toEqual({
+      timeout: 120000,
+      resetTimeoutOnProgress: true,
+      maxTotalTimeout: undefined,
+    });
+    mockClient.connect.mockClear();
+    mockClient.listTools.mockClear();
+    mockFindById.mockResolvedValue({
+      name: 'env-timeout-stdio',
+      type: 'stdio',
+      command: 'node',
+      args: ['server.js'],
+      enabled: true,
+    });
+
+    await reconnectServer('env-timeout-stdio');
+
+    expect(mockClient.connect).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        timeout: 120000,
+        resetTimeoutOnProgress: true,
+      }),
+    );
+    expect(mockClient.listTools).toHaveBeenCalledWith(
+      {},
+      expect.objectContaining({
+        timeout: 120000,
+        resetTimeoutOnProgress: true,
+      }),
+    );
   });
 });

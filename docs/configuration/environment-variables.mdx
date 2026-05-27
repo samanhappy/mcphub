@@ -11,6 +11,7 @@ MCPHub reads the following environment variables at startup. The authoritative l
 | --- | --- | --- |
 | `PORT` | `3000` | HTTP server port. |
 | `BASE_PATH` | `''` | Mount-point prefix when MCPHub is served under a sub-path (e.g. `/mcphub`). |
+| `DEFAULT_REQUEST_TIMEOUT` | `60000` | Default request timeout (ms) for upstream MCP server requests when a server does not set `options.timeout`. |
 | `INIT_TIMEOUT` | `300000` | Initial timeout (ms) used when starting upstream MCP servers. |
 | `READONLY` | `false` | Reject mutating dashboard API requests. `GET` and `${basePath}/tools/*` remain allowed. |
 | `DISABLE_WEB` | `false` | Skip serving the bundled dashboard. The API and MCP transport routes still run. |

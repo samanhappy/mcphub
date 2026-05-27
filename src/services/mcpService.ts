@@ -1152,8 +1152,9 @@ export const initializeClientsFromSettings = async (
 
       // Get request options from server configuration, with fallbacks
       const serverRequestOptions = expandedConf.options || {};
+      const defaultRequestTimeout = Number(process.env.DEFAULT_REQUEST_TIMEOUT) || 60000;
       const requestOptions = {
-        timeout: serverRequestOptions.timeout || 60000,
+        timeout: serverRequestOptions.timeout || defaultRequestTimeout,
         resetTimeoutOnProgress: serverRequestOptions.resetTimeoutOnProgress ?? true,
         maxTotalTimeout: serverRequestOptions.maxTotalTimeout,
       };
