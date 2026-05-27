@@ -432,6 +432,7 @@ export interface OpenAPISecurityConfig {
     clientSecret?: string;
     scopes?: string[]; // Required scopes
     token?: string; // Pre-obtained access token
+    expiresAt?: number; // Access token expiration timestamp in milliseconds
   };
   // OpenID Connect
   openIdConnect?: {

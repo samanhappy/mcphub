@@ -94,6 +94,10 @@ const buildOpenApiConfig = (formData: ServerFormData): NonNullable<ServerConfig[
     version: formData.openapi?.version || '3.1.0',
     passthroughHeaders: parseCommaSeparatedList(formData.openapi?.passthroughHeaders),
   };
+  const oauth2TokenUrl = formData.openapi?.oauth2TokenUrl?.trim();
+  const oauth2ClientId = formData.openapi?.oauth2ClientId?.trim();
+  const oauth2ClientSecret = formData.openapi?.oauth2ClientSecret?.trim();
+  const oauth2Token = formData.openapi?.oauth2Token?.trim();
 
   if (formData.openapi?.inputMode === 'url') {
     openapi.url = formData.openapi?.url || '';
@@ -123,7 +127,18 @@ const buildOpenApiConfig = (formData: ServerFormData): NonNullable<ServerConfig[
       }),
       ...(formData.openapi.securityType === 'oauth2' && {
         oauth2: {
-          token: formData.openapi.oauth2Token || '',
+          ...(oauth2TokenUrl && {
+            tokenUrl: oauth2TokenUrl,
+          }),
+          ...(oauth2ClientId && {
+            clientId: oauth2ClientId,
+          }),
+          ...(oauth2ClientSecret && {
+            clientSecret: oauth2ClientSecret,
+          }),
+          ...(oauth2Token && {
+            token: oauth2Token,
+          }),
         },
       }),
       ...(formData.openapi.securityType === 'openIdConnect' && {

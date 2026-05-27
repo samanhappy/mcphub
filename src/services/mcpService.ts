@@ -1069,7 +1069,28 @@ export const initializeClientsFromSettings = async (
 
         try {
           // Create OpenAPI client instance
-          openApiClient = new OpenAPIClient(expandedConf);
+          openApiClient = new OpenAPIClient(expandedConf, {
+            persistOAuth2Token: async (oauth2) => {
+              const openapiConfig = {
+                ...(expandedConf.openapi || {}),
+                security: {
+                  ...(expandedConf.openapi?.security || { type: 'oauth2' as const }),
+                  type: 'oauth2' as const,
+                  oauth2: { ...oauth2 },
+                },
+              };
+
+              expandedConf.openapi = openapiConfig;
+              serverInfo.config = {
+                ...expandedConf,
+                openapi: openapiConfig,
+              };
+
+              await getServerDao().update(name, {
+                openapi: openapiConfig,
+              });
+            },
+          });
 
           console.log(`Initializing OpenAPI server: ${name}...`);
 

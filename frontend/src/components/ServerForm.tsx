@@ -128,6 +128,9 @@ const ServerForm = ({
             httpScheme: initialData.config.openapi.security?.http?.scheme || 'bearer',
             httpCredentials: initialData.config.openapi.security?.http?.credentials || '',
             // OAuth2 initialization
+            oauth2TokenUrl: initialData.config.openapi.security?.oauth2?.tokenUrl || '',
+            oauth2ClientId: initialData.config.openapi.security?.oauth2?.clientId || '',
+            oauth2ClientSecret: initialData.config.openapi.security?.oauth2?.clientSecret || '',
             oauth2Token: initialData.config.openapi.security?.oauth2?.token || '',
             // OpenID Connect initialization
             openIdConnectUrl: initialData.config.openapi.security?.openIdConnect?.url || '',
@@ -682,6 +685,69 @@ const ServerForm = ({
                   {t('server.openapi.oauth2Config')}
                 </h4>
                 <div className="grid grid-cols-1 gap-3">
+                  <div>
+                    <label className="block text-xs text-gray-600 mb-1">
+                      {t('server.oauth.tokenEndpoint')}
+                    </label>
+                    <input
+                      type="url"
+                      value={formData.openapi?.oauth2TokenUrl || ''}
+                      onChange={(e) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          openapi: {
+                            ...prev.openapi,
+                            oauth2TokenUrl: e.target.value,
+                            url: prev.openapi?.url || '',
+                          },
+                        }))
+                      }
+                      className="w-full border rounded px-2 py-1 text-sm focus:outline-none form-input"
+                      placeholder="https://example.com/oauth/token"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-600 mb-1">
+                      {t('server.oauth.clientId')}
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.openapi?.oauth2ClientId || ''}
+                      onChange={(e) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          openapi: {
+                            ...prev.openapi,
+                            oauth2ClientId: e.target.value,
+                            url: prev.openapi?.url || '',
+                          },
+                        }))
+                      }
+                      className="w-full border rounded px-2 py-1 text-sm focus:outline-none form-input"
+                      placeholder="client-id"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-600 mb-1">
+                      {t('server.oauth.clientSecret')}
+                    </label>
+                    <input
+                      type="password"
+                      value={formData.openapi?.oauth2ClientSecret || ''}
+                      onChange={(e) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          openapi: {
+                            ...prev.openapi,
+                            oauth2ClientSecret: e.target.value,
+                            url: prev.openapi?.url || '',
+                          },
+                        }))
+                      }
+                      className="w-full border rounded px-2 py-1 text-sm focus:outline-none form-input"
+                      placeholder="client-secret"
+                    />
+                  </div>
                   <div>
                     <label className="block text-xs text-gray-600 mb-1">
                       {t('server.openapi.oauth2Token')}

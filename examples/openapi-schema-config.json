@@ -251,6 +251,25 @@
         "User-Agent": "MCPHub/1.0"
       },
       "enabled": true
+    },
+    "example-api-oauth2-client-credentials": {
+      "type": "openapi",
+      "openapi": {
+        "url": "https://api.example.com/openapi.json",
+        "version": "3.1.0",
+        "security": {
+          "type": "oauth2",
+          "oauth2": {
+            "tokenUrl": "https://auth.example.com/oauth/token",
+            "clientId": "your-client-id",
+            "clientSecret": "your-client-secret"
+          }
+        }
+      },
+      "headers": {
+        "User-Agent": "MCPHub/1.0"
+      },
+      "enabled": true
     }
   }
 }

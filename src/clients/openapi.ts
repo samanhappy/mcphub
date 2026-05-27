@@ -15,14 +15,25 @@ export interface OpenAPIToolInfo {
   responses?: OpenAPIV3.ResponsesObject;
 }
 
+type OpenAPIOAuth2Config = NonNullable<OpenAPISecurityConfig['oauth2']>;
+
+interface OpenAPIClientOptions {
+  persistOAuth2Token?: (oauth2: OpenAPIOAuth2Config) => Promise<void> | void;
+}
+
 export class OpenAPIClient {
   private httpClient: AxiosInstance;
   private spec: OpenAPIV3.Document | null = null;
   private tools: OpenAPIToolInfo[] = [];
   private baseUrl: string;
   private securityConfig?: OpenAPISecurityConfig;
+  private readonly persistOAuth2Token?: OpenAPIClientOptions['persistOAuth2Token'];
+  private oauth2TokenRequest?: Promise<string | undefined>;
 
-  constructor(private config: ServerConfig) {
+  constructor(
+    private config: ServerConfig,
+    options: OpenAPIClientOptions = {},
+  ) {
     if (!config.openapi?.url && !config.openapi?.schema) {
       throw new Error('OpenAPI URL or schema is required');
     }
@@ -30,6 +41,7 @@ export class OpenAPIClient {
     // Initial baseUrl, will be updated from OpenAPI servers field in initialize()
     this.baseUrl = config.openapi?.url ? this.extractBaseUrl(config.openapi.url) : '';
     this.securityConfig = config.openapi.security;
+    this.persistOAuth2Token = options.persistOAuth2Token;
 
     this.httpClient = axios.create({
       baseURL: this.baseUrl,
@@ -87,18 +99,136 @@ export class OpenAPIClient {
 
       case 'oauth2':
         if (this.securityConfig.oauth2?.token) {
-          this.httpClient.defaults.headers.common['Authorization'] =
-            `Bearer ${this.securityConfig.oauth2.token}`;
+          this.setAuthorizationHeader(this.securityConfig.oauth2.token);
         }
         break;
 
       case 'openIdConnect':
         if (this.securityConfig.openIdConnect?.token) {
-          this.httpClient.defaults.headers.common['Authorization'] =
-            `Bearer ${this.securityConfig.openIdConnect.token}`;
+          this.setAuthorizationHeader(this.securityConfig.openIdConnect.token);
         }
         break;
     }
+  }
+
+  private setAuthorizationHeader(token?: string): void {
+    if (token) {
+      this.httpClient.defaults.headers.common['Authorization'] = 'Bearer ' + token;
+      return;
+    }
+
+    delete this.httpClient.defaults.headers.common['Authorization'];
+  }
+
+  private getOAuth2Config(): OpenAPIOAuth2Config | undefined {
+    return this.securityConfig?.type === 'oauth2' ? this.securityConfig.oauth2 : undefined;
+  }
+
+  private hasValidOAuth2Token(oauth2: OpenAPIOAuth2Config): boolean {
+    if (!oauth2.token) {
+      return false;
+    }
+
+    if (typeof oauth2.expiresAt !== 'number') {
+      return true;
+    }
+
+    return oauth2.expiresAt > Date.now() + 30_000;
+  }
+
+  private async updateOAuth2TokenState(token: string, expiresAt?: number): Promise<void> {
+    const oauth2 = this.getOAuth2Config();
+    if (!oauth2) {
+      return;
+    }
+
+    oauth2.token = token;
+
+    if (typeof expiresAt === 'number') {
+      oauth2.expiresAt = expiresAt;
+    } else {
+      delete oauth2.expiresAt;
+    }
+
+    if (this.config.openapi?.security?.oauth2) {
+      this.config.openapi.security.oauth2 = oauth2;
+    }
+
+    this.setAuthorizationHeader(token);
+    await this.persistOAuth2Token?.(oauth2);
+  }
+
+  private async fetchOAuth2ClientCredentialsToken(oauth2: OpenAPIOAuth2Config): Promise<string> {
+    if (!oauth2.tokenUrl || !oauth2.clientId) {
+      throw new Error('OAuth2 client credentials require both tokenUrl and clientId');
+    }
+
+    const body = new URLSearchParams({
+      grant_type: 'client_credentials',
+      client_id: oauth2.clientId,
+    });
+
+    if (oauth2.clientSecret) {
+      body.set('client_secret', oauth2.clientSecret);
+    }
+
+    if (Array.isArray(oauth2.scopes) && oauth2.scopes.length > 0) {
+      body.set('scope', oauth2.scopes.join(' '));
+    }
+
+    const response = await this.httpClient.request({
+      method: 'post',
+      url: oauth2.tokenUrl,
+      baseURL: undefined,
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      data: body.toString(),
+    });
+
+    const tokenResponse = response.data as {
+      access_token?: string;
+      expires_in?: number;
+    };
+
+    if (!tokenResponse?.access_token) {
+      throw new Error('OAuth2 token endpoint did not return an access_token');
+    }
+
+    const expiresAt =
+      typeof tokenResponse.expires_in === 'number' && tokenResponse.expires_in > 0
+        ? Date.now() + tokenResponse.expires_in * 1000
+        : undefined;
+
+    await this.updateOAuth2TokenState(tokenResponse.access_token, expiresAt);
+    return tokenResponse.access_token;
+  }
+
+  private async ensureOAuth2AccessToken(): Promise<string | undefined> {
+    const oauth2 = this.getOAuth2Config();
+    if (!oauth2) {
+      return undefined;
+    }
+
+    if (this.hasValidOAuth2Token(oauth2)) {
+      this.setAuthorizationHeader(oauth2.token);
+      return oauth2.token;
+    }
+
+    if (!oauth2.tokenUrl || !oauth2.clientId) {
+      if (oauth2.token) {
+        this.setAuthorizationHeader(oauth2.token);
+      }
+      return oauth2.token;
+    }
+
+    if (!this.oauth2TokenRequest) {
+      this.oauth2TokenRequest = this.fetchOAuth2ClientCredentialsToken(oauth2).finally(() => {
+        this.oauth2TokenRequest = undefined;
+      });
+    }
+
+    return this.oauth2TokenRequest;
   }
 
   async initialize(): Promise<void> {
@@ -121,6 +251,7 @@ export class OpenAPIClient {
       this.updateBaseUrlFromServers();
 
       this.extractTools();
+      await this.ensureOAuth2AccessToken();
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       throw new Error(`Failed to load OpenAPI specification: ${errorMessage}`);
@@ -330,6 +461,8 @@ export class OpenAPIClient {
     }
 
     try {
+      await this.ensureOAuth2AccessToken();
+
       // Build the request URL with path parameters
       let url = tool.path;
       const pathParams = tool.parameters?.filter((p) => p.in === 'path') || [];
