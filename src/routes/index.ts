@@ -141,7 +141,10 @@ import {
   getActivityFilterOptions,
   deleteOldActivities,
 } from '../controllers/activityController.js';
-import { receiveHostedInternalEvent } from '../controllers/hostedInternalController.js';
+import {
+  getHostedInternalRuntimeCatalog,
+  receiveHostedInternalEvent,
+} from '../controllers/hostedInternalController.js';
 import {
   exportConfigTemplate,
   exportGroupAsTemplate,
@@ -181,6 +184,11 @@ export const initRoutes = async (app: express.Application): Promise<void> => {
 
   // Hosted data-plane webhook ingress. HMAC-authenticated by INTERNAL_API_SECRET.
   app.post('/internal/v1/events', hostedInternalEventRateLimiter, receiveHostedInternalEvent);
+  app.get(
+    '/internal/v1/hosted/runtime-catalog',
+    hostedInternalEventRateLimiter,
+    getHostedInternalRuntimeCatalog,
+  );
 
   // OAuth callback endpoint (no auth required, public callback URL)
   app.get('/oauth/callback', handleOAuthCallback);
