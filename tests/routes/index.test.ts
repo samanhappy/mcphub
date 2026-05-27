@@ -192,6 +192,7 @@ jest.mock('../../src/controllers/activityController.js', () => ({
 
 jest.mock('../../src/controllers/hostedInternalController.js', () => ({
   receiveHostedInternalEvent: routeHandler,
+  getHostedInternalRuntimeCatalog: routeHandler,
 }));
 
 jest.mock('../../src/controllers/templateController.js', () => ({
@@ -291,6 +292,22 @@ describe('initRoutes authenticated API rate limiting', () => {
     await initRoutes(app);
 
     const internalRoute = findAppRoute(app, 'post', '/internal/v1/events');
+
+    expect(internalRoute).toBeDefined();
+    expect(internalRoute?.route?.stack?.map((layer) => layer.handle)).toContain(
+      hostedInternalEventRateLimiter,
+    );
+    expect(internalRoute?.route?.stack?.map((layer) => layer.handle)).not.toContain(
+      authenticatedRouteRateLimiter,
+    );
+  });
+
+  it('mounts the hosted runtime catalog ingress behind its dedicated rate limiter', async () => {
+    const app = express();
+
+    await initRoutes(app);
+
+    const internalRoute = findAppRoute(app, 'get', '/internal/v1/hosted/runtime-catalog');
 
     expect(internalRoute).toBeDefined();
     expect(internalRoute?.route?.stack?.map((layer) => layer.handle)).toContain(

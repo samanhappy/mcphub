@@ -59,7 +59,7 @@ export const getHostedInternalRuntimeCatalog = async (
     const catalog = await getHostedRuntimeCatalog();
     res.json({ success: true, data: catalog });
   } catch (error) {
-    console.warn('[hosted] failed to build runtime catalog', { error });
+    console.warn('[hosted] failed to build runtime catalog', error);
     res.status(500).json({ success: false, message: 'Failed to build hosted runtime catalog' });
   }
 };

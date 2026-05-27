@@ -1394,7 +1394,20 @@ export const getServersInfo = async (
 
   const infos = filterServerInfos
     .filter((info) => requestedServerNames.has(info.name)) // Only include requested servers
-    .map(({ name, owner, visibility, status, tools, prompts, resources, createTime, error, oauth }) => {
+    .map(({
+      name,
+      version,
+      instructions,
+      owner,
+      visibility,
+      status,
+      tools,
+      prompts,
+      resources,
+      createTime,
+      error,
+      oauth,
+    }) => {
       const serverConfig = allServers.find((server) => server.name === name);
       const enabled = serverConfig ? serverConfig.enabled !== false : true;
       const resolvedType = inferServerType(serverConfig);
@@ -1420,6 +1433,8 @@ export const getServersInfo = async (
 
       return {
         name,
+        version,
+        instructions,
         owner,
         visibility,
         status,
