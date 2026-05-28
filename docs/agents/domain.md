@@ -18,8 +18,8 @@ Single-context repo (this repo):
 /
 ├── CONTEXT.md
 ├── docs/adr/
-│   ├── 0001-event-sourced-orders.md
-│   └── 0002-postgres-for-write-model.md
+│   ├── 0001-mcp-server-connection-lifecycle.md
+│   └── 0002-dual-datasource-sync.md
 └── src/
 ```
 
