@@ -181,3 +181,19 @@ This file is a living contract. Keep it accurate; resist the urge to grow it.
 4. After editing, skim the rest for stale references to what you changed.
 
 **Scoped guides:** when a subsystem accumulates rules that don't generalize (e.g. frontend-only conventions), prefer a nested `frontend/AGENTS.md` over bloating this file. Agents read the nearest AGENTS.md to the files they're editing.
+
+---
+
+## Agent skills
+
+### Issue tracker
+
+GitHub Issues for `samanhappy/mcphub`, accessed via the `gh` CLI. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Five canonical labels: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context layout: `CONTEXT.md` at repo root + `docs/adr/` for architectural decision records. See `docs/agents/domain.md`.
