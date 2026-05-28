@@ -30,31 +30,9 @@ export const resolveBetterAuthUser = async (req: Request): Promise<IUser | null>
     return null;
   }
 
-  const { fromNodeHeaders } = await import('better-auth/node');
-  const { auth } = await import('../betterAuth.js');
-  const headers = fromNodeHeaders(req.headers);
   const email = session.user?.email;
 
-  // Priority 1: OIDC sub match
-  // Trace: listUserAccounts → OIDC account found → use email to find app user
-  try {
-    const accounts = await auth.api.listUserAccounts({ headers });
-    const config = await getBetterAuthRuntimeConfig();
-    const providerId = config.providers.oidc.providerId || 'oidc';
-    const oidcAccount = accounts?.find(
-      (acc: any) => acc.providerId === providerId || acc.providerId?.startsWith('oidc'),
-    );
-    if (oidcAccount && email) {
-      const appUser = await findUserByEmail(email);
-      if (appUser) {
-        return appUser;
-      }
-    }
-  } catch (error) {
-    console.warn('OIDC identity resolution failed, falling back:', error);
-  }
-
-  // Priority 2: Email match
+  // Priority 1: Email match
   if (email) {
     const emailMatch = await findUserByEmail(email);
     if (emailMatch) {
@@ -62,7 +40,7 @@ export const resolveBetterAuthUser = async (req: Request): Promise<IUser | null>
     }
   }
 
-  // Priority 3: Username match (backward compatibility)
+  // Priority 2: Username match (backward compatibility)
   const username = email || session.user?.name || session.user?.id;
   if (username) {
     const usernameMatch = await findUserByUsername(username);
@@ -80,7 +58,7 @@ export const resolveBetterAuthUser = async (req: Request): Promise<IUser | null>
     }
   }
 
-  // Priority 4: Create new user (unless disabled)
+  // Priority 3: Create new user (unless disabled)
   if (!username) {
     return null;
   }

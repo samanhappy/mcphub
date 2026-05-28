@@ -75,11 +75,12 @@ export class UserDaoDbImpl implements UserDao {
   }
 
   async update(username: string, entity: Partial<IUser>): Promise<IUser | null> {
-    const user = await this.repository.update(username, {
-      password: entity.password,
-      isAdmin: entity.isAdmin,
-      email: entity.email ?? null,
-    });
+    const updateData: any = {};
+    if (entity.password !== undefined) updateData.password = entity.password;
+    if (entity.isAdmin !== undefined) updateData.isAdmin = entity.isAdmin;
+    if (entity.email !== undefined) updateData.email = entity.email ?? null;
+
+    const user = await this.repository.update(username, updateData);
     if (!user) return null;
     return {
       username: user.username,

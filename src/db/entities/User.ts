@@ -23,7 +23,7 @@ export class User {
   @Column({ type: 'boolean', default: false })
   isAdmin: boolean;
 
-  @Column({ type: 'varchar', length: 255, nullable: true })
+  @Column({ type: 'varchar', length: 255, nullable: true, unique: true })
   email: string | null;
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamp' })
