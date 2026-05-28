@@ -54,6 +54,7 @@ describe('betterAuthConfig', () => {
         betterAuth: {
           enabled: true,
           trustedOrigins: ['https://mcp.imdevinc.home'],
+      disableAutoCreate: false,
           providers: {
             oidc: {
               enabled: true,
@@ -73,6 +74,7 @@ describe('betterAuthConfig', () => {
       enabled: true,
       basePath: '/api/auth/better',
       trustedOrigins: ['https://mcp.imdevinc.home'],
+      disableAutoCreate: false,
       providers: {
         google: {
           enabled: false,
@@ -117,6 +119,7 @@ describe('betterAuthConfig', () => {
       enabled: false,
       basePath: '/api/auth/better',
       trustedOrigins: [],
+      disableAutoCreate: false,
       providers: {
         google: {
           enabled: false,
@@ -164,6 +167,7 @@ describe('betterAuthConfig', () => {
       enabled: true,
       basePath: '/api/auth/better',
       trustedOrigins: ['https://mcp.imdevinc.home'],
+      disableAutoCreate: false,
       providers: {
         google: {
           enabled: false,
@@ -212,6 +216,7 @@ describe('betterAuthConfig', () => {
           enabled: false,
           basePath: '/settings-auth',
           trustedOrigins: ['https://settings.example.com'],
+      disableAutoCreate: false,
           providers: {
             google: {
               enabled: true,
@@ -242,6 +247,7 @@ describe('betterAuthConfig', () => {
         'https://dashboard.example.com',
         'https://public.example.com',
       ],
+      disableAutoCreate: false,
       providers: {
         google: {
           enabled: false,
@@ -289,6 +295,7 @@ describe('betterAuthConfig', () => {
       enabled: true,
       basePath: '/api/auth/better',
       trustedOrigins: [],
+      disableAutoCreate: false,
       providers: {
         google: {
           enabled: false,
@@ -349,6 +356,7 @@ describe('betterAuthConfig', () => {
       enabled: true,
       basePath: '/custom-auth',
       trustedOrigins: ['https://dao-backed.example.com'],
+      disableAutoCreate: false,
       providers: {
         google: {
           enabled: false,

@@ -48,6 +48,10 @@ export class UserRepository {
     return this.withRetry(() => this.repository.findOne({ where: { username } }), 'findByUsername');
   }
 
+  async findByEmail(email: string): Promise<User | null> {
+    return this.withRetry(() => this.repository.findOne({ where: { email } }), 'findByEmail');
+  }
+
   /**
    * Create a new user
    */

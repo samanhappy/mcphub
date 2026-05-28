@@ -10,6 +10,7 @@ export interface IUser {
   username: string;
   password: string;
   isAdmin?: boolean;
+  email?: string;
 }
 
 // Group interface for server grouping
@@ -174,6 +175,7 @@ export interface BetterAuthConfig {
   enabled?: boolean; // Enable/disable Better Auth integration
   basePath?: string; // Base path to mount Better Auth handler
   trustedOrigins?: string[]; // Explicitly trusted origins for social/OIDC login requests
+  disableAutoCreate?: boolean; // When true, SSO login will not auto-create new users
   providers?: {
     google?: BetterAuthProviderToggle;
     github?: BetterAuthProviderToggle;

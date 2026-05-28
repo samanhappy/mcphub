@@ -19,6 +19,7 @@ export class UserDaoDbImpl implements UserDao {
       username: u.username,
       password: u.password,
       isAdmin: u.isAdmin,
+      email: u.email ?? undefined,
     }));
   }
 
@@ -29,6 +30,7 @@ export class UserDaoDbImpl implements UserDao {
       username: user.username,
       password: user.password,
       isAdmin: user.isAdmin,
+      email: user.email ?? undefined,
     };
   }
 
@@ -36,16 +38,29 @@ export class UserDaoDbImpl implements UserDao {
     return await this.findById(username);
   }
 
+  async findByEmail(email: string): Promise<IUser | null> {
+    const user = await this.repository.findByEmail(email);
+    if (!user) return null;
+    return {
+      username: user.username,
+      password: user.password,
+      isAdmin: user.isAdmin,
+      email: user.email ?? undefined,
+    };
+  }
+
   async create(entity: Omit<IUser, 'id'>): Promise<IUser> {
     const user = await this.repository.create({
       username: entity.username,
       password: entity.password,
       isAdmin: entity.isAdmin || false,
+      email: entity.email ?? null,
     });
     return {
       username: user.username,
       password: user.password,
       isAdmin: user.isAdmin,
+      email: user.email ?? undefined,
     };
   }
 
@@ -53,21 +68,24 @@ export class UserDaoDbImpl implements UserDao {
     username: string,
     password: string,
     isAdmin: boolean,
+    email?: string,
   ): Promise<IUser> {
     const hashedPassword = await bcrypt.hash(password, 10);
-    return await this.create({ username, password: hashedPassword, isAdmin });
+    return await this.create({ username, password: hashedPassword, isAdmin, email });
   }
 
   async update(username: string, entity: Partial<IUser>): Promise<IUser | null> {
     const user = await this.repository.update(username, {
       password: entity.password,
       isAdmin: entity.isAdmin,
+      email: entity.email ?? null,
     });
     if (!user) return null;
     return {
       username: user.username,
       password: user.password,
       isAdmin: user.isAdmin,
+      email: user.email ?? undefined,
     };
   }
 
@@ -103,6 +121,7 @@ export class UserDaoDbImpl implements UserDao {
       username: u.username,
       password: u.password,
       isAdmin: u.isAdmin,
+      email: u.email ?? undefined,
     }));
   }
 }

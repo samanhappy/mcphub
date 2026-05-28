@@ -20,6 +20,7 @@ export interface BetterAuthRuntimeConfig {
   enabled: boolean;
   basePath: string;
   trustedOrigins: string[];
+  disableAutoCreate: boolean;
   providers: {
     google: {
       enabled: boolean;
@@ -296,10 +297,17 @@ export const resolveBetterAuthRuntimeConfig = (
 
   const anyProviderEnabled = googleEnabled || githubEnabled || oidcEnabled;
 
+  const disableAutoCreate = resolveBooleanSetting(
+    process.env.BETTER_AUTH_DISABLE_AUTO_CREATE,
+    betterAuthSettings.disableAutoCreate,
+    false,
+  );
+
   return {
     enabled: anyProviderEnabled,
     basePath,
     trustedOrigins,
+    disableAutoCreate,
     providers: {
       google: {
         enabled: googleEnabled,

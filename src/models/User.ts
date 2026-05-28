@@ -46,6 +46,7 @@ export const createUser = async (userData: IUser): Promise<IUser | null> => {
       userData.username,
       userData.password,
       userData.isAdmin,
+      userData.email,
     );
   } catch (error) {
     if (!isDuplicateUserError(error)) {
@@ -63,6 +64,18 @@ export const findUserByUsername = async (username: string): Promise<IUser | unde
     return user || undefined;
   } catch (error) {
     console.error('Error finding user:', error);
+    return undefined;
+  }
+};
+
+// Find user by email
+export const findUserByEmail = async (email: string): Promise<IUser | undefined> => {
+  try {
+    const userDao = getUserDao();
+    const user = await userDao.findByEmail(email);
+    return user || undefined;
+  } catch (error) {
+    console.error('Error finding user by email:', error);
     return undefined;
   }
 };
