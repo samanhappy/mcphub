@@ -18,6 +18,7 @@ const AddUserForm = ({ onAdd, onCancel }: AddUserFormProps) => {
     username: '',
     password: '',
     isAdmin: false,
+    email: '',
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -89,6 +90,22 @@ const AddUserForm = ({ onAdd, onCancel }: AddUserFormProps) => {
                 placeholder={t('users.usernamePlaceholder')}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent form-input transition-all duration-200"
                 required
+                disabled={isSubmitting}
+              />
+            </div>
+
+            <div>
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+                {t('users.email')}
+              </label>
+              <input
+                type="email"
+                id="email"
+                name="email"
+                value={formData.email || ''}
+                onChange={handleInputChange}
+                placeholder={t('users.emailPlaceholder')}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent form-input transition-all duration-200"
                 disabled={isSubmitting}
               />
             </div>

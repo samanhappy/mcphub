@@ -842,6 +842,8 @@
     "create": "Créer un utilisateur",
     "update": "Mettre à jour l'utilisateur",
     "username": "Nom d'utilisateur",
+    "email": "E-mail",
+    "emailPlaceholder": "Entrer l'e-mail (optionnel)",
     "password": "Mot de passe",
     "newPassword": "Nouveau mot de passe",
     "confirmPassword": "Confirmer le mot de passe",

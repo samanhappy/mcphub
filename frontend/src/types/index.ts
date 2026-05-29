@@ -399,17 +399,20 @@ export interface IUser {
 export interface User {
   username: string;
   isAdmin: boolean;
+  email?: string;
 }
 
 export interface UserFormData {
   username: string;
   password: string;
   isAdmin: boolean;
+  email?: string;
 }
 
 export interface UserUpdateData {
   isAdmin?: boolean;
   newPassword?: string;
+  email?: string;
 }
 
 export interface UserStats {

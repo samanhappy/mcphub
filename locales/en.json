@@ -848,6 +848,8 @@
     "create": "Create User",
     "update": "Update User",
     "username": "Username",
+    "email": "Email",
+    "emailPlaceholder": "Enter email (optional)",
     "password": "Password",
     "newPassword": "New Password",
     "confirmPassword": "Confirm Password",

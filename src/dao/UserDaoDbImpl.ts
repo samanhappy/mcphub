@@ -2,6 +2,7 @@ import bcrypt from 'bcrypt';
 import { UserDao } from './index.js';
 import { IUser } from '../types/index.js';
 import { UserRepository } from '../db/repositories/UserRepository.js';
+import { User } from '../db/entities/User.js';
 
 /**
  * Database-backed implementation of UserDao
@@ -13,25 +14,25 @@ export class UserDaoDbImpl implements UserDao {
     this.repository = new UserRepository();
   }
 
-  async findAll(): Promise<IUser[]> {
-    const users = await this.repository.findAll();
-    return users.map((u) => ({
+  private toIUser(u: User): IUser {
+    return {
       username: u.username,
       password: u.password,
       isAdmin: u.isAdmin,
       email: u.email ?? undefined,
-    }));
+      ssoUserId: u.ssoUserId ?? undefined,
+    };
+  }
+
+  async findAll(): Promise<IUser[]> {
+    const users = await this.repository.findAll();
+    return users.map((u) => this.toIUser(u));
   }
 
   async findById(username: string): Promise<IUser | null> {
     const user = await this.repository.findByUsername(username);
     if (!user) return null;
-    return {
-      username: user.username,
-      password: user.password,
-      isAdmin: user.isAdmin,
-      email: user.email ?? undefined,
-    };
+    return this.toIUser(user);
   }
 
   async findByUsername(username: string): Promise<IUser | null> {
@@ -41,12 +42,13 @@ export class UserDaoDbImpl implements UserDao {
   async findByEmail(email: string): Promise<IUser | null> {
     const user = await this.repository.findByEmail(email);
     if (!user) return null;
-    return {
-      username: user.username,
-      password: user.password,
-      isAdmin: user.isAdmin,
-      email: user.email ?? undefined,
-    };
+    return this.toIUser(user);
+  }
+
+  async findBySsoUserId(ssoUserId: string): Promise<IUser | null> {
+    const user = await this.repository.findBySsoUserId(ssoUserId);
+    if (!user) return null;
+    return this.toIUser(user);
   }
 
   async create(entity: Omit<IUser, 'id'>): Promise<IUser> {
@@ -55,13 +57,9 @@ export class UserDaoDbImpl implements UserDao {
       password: entity.password,
       isAdmin: entity.isAdmin || false,
       email: entity.email ?? null,
+      ssoUserId: entity.ssoUserId ?? null,
     });
-    return {
-      username: user.username,
-      password: user.password,
-      isAdmin: user.isAdmin,
-      email: user.email ?? undefined,
-    };
+    return this.toIUser(user);
   }
 
   async createWithHashedPassword(
@@ -69,9 +67,10 @@ export class UserDaoDbImpl implements UserDao {
     password: string,
     isAdmin: boolean,
     email?: string,
+    ssoUserId?: string,
   ): Promise<IUser> {
     const hashedPassword = await bcrypt.hash(password, 10);
-    return await this.create({ username, password: hashedPassword, isAdmin, email });
+    return await this.create({ username, password: hashedPassword, isAdmin, email, ssoUserId });
   }
 
   async update(username: string, entity: Partial<IUser>): Promise<IUser | null> {
@@ -79,15 +78,11 @@ export class UserDaoDbImpl implements UserDao {
     if (entity.password !== undefined) updateData.password = entity.password;
     if (entity.isAdmin !== undefined) updateData.isAdmin = entity.isAdmin;
     if (entity.email !== undefined) updateData.email = entity.email ?? null;
+    if (entity.ssoUserId !== undefined) updateData.ssoUserId = entity.ssoUserId ?? null;
 
     const user = await this.repository.update(username, updateData);
     if (!user) return null;
-    return {
-      username: user.username,
-      password: user.password,
-      isAdmin: user.isAdmin,
-      email: user.email ?? undefined,
-    };
+    return this.toIUser(user);
   }
 
   async delete(username: string): Promise<boolean> {
@@ -118,11 +113,6 @@ export class UserDaoDbImpl implements UserDao {
 
   async findAdmins(): Promise<IUser[]> {
     const users = await this.repository.findAdmins();
-    return users.map((u) => ({
-      username: u.username,
-      password: u.password,
-      isAdmin: u.isAdmin,
-      email: u.email ?? undefined,
-    }));
+    return users.map((u) => this.toIUser(u));
   }
 }

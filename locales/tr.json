@@ -842,6 +842,8 @@
     "create": "Kullanıcı Oluştur",
     "update": "Kullanıcıyı Güncelle",
     "username": "Kullanıcı Adı",
+    "email": "E-posta",
+    "emailPlaceholder": "E-posta girin (isteğe bağlı)",
     "password": "Şifre",
     "newPassword": "Yeni Şifre",
     "confirmPassword": "Şifreyi Onayla",

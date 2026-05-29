@@ -17,6 +17,7 @@ const EditUserForm = ({ user, onEdit, onCancel }: EditUserFormProps) => {
 
   const [formData, setFormData] = useState({
     isAdmin: user.isAdmin,
+    email: user.email || '',
     newPassword: '',
     confirmPassword: '',
   });
@@ -41,6 +42,7 @@ const EditUserForm = ({ user, onEdit, onCancel }: EditUserFormProps) => {
     try {
       const updateData: UserUpdateData = {
         isAdmin: formData.isAdmin,
+        email: formData.email,
       };
 
       if (formData.newPassword) {
@@ -99,6 +101,22 @@ const EditUserForm = ({ user, onEdit, onCancel }: EditUserFormProps) => {
               >
                 {t('users.adminRole')}
               </label>
+            </div>
+
+            <div>
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+                {t('users.email')}
+              </label>
+              <input
+                type="email"
+                id="email"
+                name="email"
+                value={formData.email}
+                onChange={handleInputChange}
+                placeholder={t('users.emailPlaceholder')}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent form-input transition-all duration-200"
+                disabled={isSubmitting}
+              />
             </div>
 
             <div className="border-t border-gray-100 dark:border-gray-700 pt-4 mt-2">

@@ -851,6 +851,8 @@
     "create": "创建",
     "update": "更新",
     "username": "用户名",
+    "email": "邮箱",
+    "emailPlaceholder": "输入邮箱（可选）",
     "password": "密码",
     "newPassword": "新密码",
     "confirmPassword": "确认密码",

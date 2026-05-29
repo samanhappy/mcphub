@@ -19,6 +19,7 @@ export const createNewUser = async (
   username: string,
   password: string,
   isAdmin: boolean = false,
+  email?: string,
 ): Promise<IUser | null> => {
   try {
     const userDao = getUserDao();
@@ -27,7 +28,7 @@ export const createNewUser = async (
       return null; // User already exists
     }
 
-    return await userDao.createWithHashedPassword(username, password, isAdmin);
+    return await userDao.createWithHashedPassword(username, password, isAdmin, email);
   } catch (error) {
     console.error('Failed to create user:', error);
     return null;
@@ -37,7 +38,7 @@ export const createNewUser = async (
 // Update user information
 export const updateUser = async (
   username: string,
-  data: { isAdmin?: boolean; newPassword?: string },
+  data: { isAdmin?: boolean; newPassword?: string; email?: string },
 ): Promise<IUser | null> => {
   try {
     const userDao = getUserDao();
@@ -50,6 +51,14 @@ export const updateUser = async (
     // Update admin status if provided
     if (data.isAdmin !== undefined) {
       const result = await userDao.update(username, { isAdmin: data.isAdmin });
+      if (!result) {
+        return null;
+      }
+    }
+
+    // Update email if provided
+    if (data.email !== undefined) {
+      const result = await userDao.update(username, { email: data.email || undefined });
       if (!result) {
         return null;
       }

@@ -11,6 +11,7 @@ export interface IUser {
   password: string;
   isAdmin?: boolean;
   email?: string;
+  ssoUserId?: string;
 }
 
 // Group interface for server grouping

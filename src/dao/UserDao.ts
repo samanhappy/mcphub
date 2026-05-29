@@ -18,6 +18,11 @@ export interface UserDao extends BaseDao<IUser, string> {
   findByEmail(email: string): Promise<IUser | null>;
 
   /**
+   * Find user by SSO user ID (Better Auth user.id, stable across email changes)
+   */
+  findBySsoUserId(ssoUserId: string): Promise<IUser | null>;
+
+  /**
    * Validate user credentials
    */
   validateCredentials(username: string, password: string): Promise<boolean>;
@@ -25,7 +30,7 @@ export interface UserDao extends BaseDao<IUser, string> {
   /**
    * Create user with hashed password
    */
-  createWithHashedPassword(username: string, password: string, isAdmin?: boolean, email?: string): Promise<IUser>;
+  createWithHashedPassword(username: string, password: string, isAdmin?: boolean, email?: string, ssoUserId?: string): Promise<IUser>;
 
   /**
    * Update user password
@@ -88,6 +93,11 @@ export class UserDaoImpl extends JsonFileBaseDao implements UserDao {
     return users.find((user) => user.email === email) || null;
   }
 
+  async findBySsoUserId(ssoUserId: string): Promise<IUser | null> {
+    const users = await this.getAll();
+    return users.find((user) => user.ssoUserId === ssoUserId) || null;
+  }
+
   async create(_data: Omit<IUser, 'username'>): Promise<IUser> {
     throw new Error('Use createWithHashedPassword instead');
   }
@@ -97,6 +107,7 @@ export class UserDaoImpl extends JsonFileBaseDao implements UserDao {
     password: string,
     isAdmin: boolean = false,
     email?: string,
+    ssoUserId?: string,
   ): Promise<IUser> {
     const users = await this.getAll();
 
@@ -111,6 +122,7 @@ export class UserDaoImpl extends JsonFileBaseDao implements UserDao {
       password: hashedPassword,
       isAdmin,
       email,
+      ssoUserId,
     };
 
     users.push(newUser);

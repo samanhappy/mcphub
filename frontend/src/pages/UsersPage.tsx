@@ -112,9 +112,10 @@ const UsersPage: React.FC = () => {
         <div className="hub-card overflow-hidden">
           <div
             className="hub-row head hub-mono"
-            style={{ gridTemplateColumns: '1.6fr 100px 100px' }}
+            style={{ gridTemplateColumns: '1.6fr 1.2fr 100px 100px' }}
           >
             <div>{t('users.username')}</div>
+            <div>{t('users.email')}</div>
             <div>{t('users.role')}</div>
             <div className="text-right">{t('users.actions')}</div>
           </div>
@@ -124,7 +125,7 @@ const UsersPage: React.FC = () => {
               <div
                 key={user.username}
                 className="hub-row hover"
-                style={{ gridTemplateColumns: '1.6fr 100px 100px' }}
+                style={{ gridTemplateColumns: '1.6fr 1.2fr 100px 100px' }}
               >
                 <div className="flex items-center gap-3 min-w-0">
                   <div
@@ -153,6 +154,14 @@ const UsersPage: React.FC = () => {
                       {t('users.currentUser')}
                     </span>
                   )}
+                </div>
+                <div className="flex items-center min-w-0">
+                  <span
+                    className="truncate"
+                    style={{ fontSize: 13, color: user.email ? 'var(--hub-ink)' : 'var(--hub-ink-3)' }}
+                  >
+                    {user.email || '—'}
+                  </span>
                 </div>
                 <div>
                   <StatusDot

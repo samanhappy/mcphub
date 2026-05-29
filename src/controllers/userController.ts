@@ -85,7 +85,7 @@ export const createUser = async (req: Request, res: Response): Promise<void> => 
   if (!(await requireAdmin(req, res))) return;
 
   try {
-    const { username, password, isAdmin } = req.body;
+    const { username, password, isAdmin, email } = req.body;
 
     if (!username || !password) {
       res.status(400).json({
@@ -106,7 +106,7 @@ export const createUser = async (req: Request, res: Response): Promise<void> => 
       return;
     }
 
-    const newUser = await createNewUser(username, password, isAdmin || false);
+    const newUser = await createNewUser(username, password, isAdmin || false, email);
     if (!newUser) {
       res.status(400).json({
         success: false,
@@ -136,7 +136,7 @@ export const updateExistingUser = async (req: Request, res: Response): Promise<v
 
   try {
     const { username } = req.params;
-    const { isAdmin, newPassword } = req.body;
+    const { isAdmin, newPassword, email } = req.body;
 
     if (!username) {
       res.status(400).json({
@@ -169,6 +169,7 @@ export const updateExistingUser = async (req: Request, res: Response): Promise<v
 
     const updateData: any = {};
     if (isAdmin !== undefined) updateData.isAdmin = isAdmin;
+    if (email !== undefined) updateData.email = email;
     if (newPassword) {
       // Validate new password strength
       const validationResult = validatePasswordStrength(newPassword);
@@ -186,7 +187,7 @@ export const updateExistingUser = async (req: Request, res: Response): Promise<v
     if (Object.keys(updateData).length === 0) {
       res.status(400).json({
         success: false,
-        message: 'At least one field (isAdmin or newPassword) is required to update',
+        message: 'At least one field (isAdmin, email, or newPassword) is required to update',
       });
       return;
     }

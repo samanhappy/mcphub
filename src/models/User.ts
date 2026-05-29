@@ -47,6 +47,7 @@ export const createUser = async (userData: IUser): Promise<IUser | null> => {
       userData.password,
       userData.isAdmin,
       userData.email,
+      userData.ssoUserId,
     );
   } catch (error) {
     if (!isDuplicateUserError(error)) {
@@ -76,6 +77,18 @@ export const findUserByEmail = async (email: string): Promise<IUser | undefined>
     return user || undefined;
   } catch (error) {
     console.error('Error finding user by email:', error);
+    return undefined;
+  }
+};
+
+// Find user by SSO user ID (Better Auth user.id, stable across email changes)
+export const findUserBySsoUserId = async (ssoUserId: string): Promise<IUser | undefined> => {
+  try {
+    const userDao = getUserDao();
+    const user = await userDao.findBySsoUserId(ssoUserId);
+    return user || undefined;
+  } catch (error) {
+    console.error('Error finding user by ssoUserId:', error);
     return undefined;
   }
 };
