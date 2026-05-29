@@ -130,7 +130,7 @@ describe('userService', () => {
 
       await updateUser('testuser', { email: '' });
 
-      expect(mockUpdate).toHaveBeenCalledWith('testuser', { email: undefined });
+      expect(mockUpdate).toHaveBeenCalledWith('testuser', { email: null });
     });
   });
 

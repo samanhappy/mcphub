@@ -46,8 +46,8 @@ export const createUser = async (userData: IUser): Promise<IUser | null> => {
       userData.username,
       userData.password,
       userData.isAdmin,
-      userData.email,
-      userData.ssoUserId,
+      userData.email ?? undefined,
+      userData.ssoUserId ?? undefined,
     );
   } catch (error) {
     if (!isDuplicateUserError(error)) {

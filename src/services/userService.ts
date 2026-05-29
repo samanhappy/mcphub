@@ -28,7 +28,7 @@ export const createNewUser = async (
       return null; // User already exists
     }
 
-    return await userDao.createWithHashedPassword(username, password, isAdmin, email);
+    return await userDao.createWithHashedPassword(username, password, isAdmin, email || undefined);
   } catch (error) {
     console.error('Failed to create user:', error);
     return null;
@@ -58,7 +58,7 @@ export const updateUser = async (
 
     // Update email if provided
     if (data.email !== undefined) {
-      const result = await userDao.update(username, { email: data.email || undefined });
+      const result = await userDao.update(username, { email: data.email || null });
       if (!result) {
         return null;
       }
