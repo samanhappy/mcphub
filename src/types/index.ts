@@ -285,12 +285,15 @@ export interface OAuthServerConfig {
 
 // Bearer authentication key configuration
 export type BearerKeyAccessType = 'all' | 'groups' | 'servers' | 'custom';
+export type BearerKeyKind = 'system' | 'user';
 
 export interface BearerKey {
   id: string; // Unique identifier for the key
   name: string; // Human readable key name
   token: string; // Bearer token value
   enabled: boolean; // Whether this key is enabled
+  kind?: BearerKeyKind; // Defaults to 'system' for keys created before user-level keys existed
+  owner?: string; // Required for user-level keys
   accessType: BearerKeyAccessType; // Access scope type
   allowedGroups?: string[]; // Allowed group names when accessType === 'groups' or 'custom'
   allowedServers?: string[]; // Allowed server names when accessType === 'servers' or 'custom'

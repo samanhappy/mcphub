@@ -377,12 +377,15 @@ export interface ApiResponse<T = any> {
 
 // Bearer authentication key configuration (frontend view model)
 export type BearerKeyAccessType = 'all' | 'groups' | 'servers' | 'custom';
+export type BearerKeyKind = 'system' | 'user';
 
 export interface BearerKey {
   id: string;
   name: string;
   token: string;
   enabled: boolean;
+  kind?: BearerKeyKind;
+  owner?: string;
   accessType: BearerKeyAccessType;
   allowedGroups?: string[];
   allowedServers?: string[];

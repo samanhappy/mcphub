@@ -11,9 +11,11 @@ export interface BearerKeyDao {
   findEnabled(): Promise<BearerKey[]>;
   findById(id: string): Promise<BearerKey | undefined>;
   findByToken(token: string): Promise<BearerKey | undefined>;
+  findByOwner(owner: string): Promise<BearerKey[]>;
   create(data: Omit<BearerKey, 'id'>): Promise<BearerKey>;
   update(id: string, data: Partial<Omit<BearerKey, 'id'>>): Promise<BearerKey | null>;
   delete(id: string): Promise<boolean>;
+  deleteByOwner(owner: string): Promise<number>;
   /**
    * Update server name in all bearer keys (when server is renamed)
    */
@@ -26,6 +28,13 @@ export interface BearerKeyDao {
  * and performs one-time migration from legacy routing.enableBearerAuth/bearerAuthKey.
  */
 export class BearerKeyDaoImpl extends JsonFileBaseDao implements BearerKeyDao {
+  private normalizeKey(key: BearerKey): BearerKey {
+    return {
+      ...key,
+      kind: key.kind ?? 'system',
+    };
+  }
+
   private async loadKeysWithMigration(): Promise<BearerKey[]> {
     const settings = await this.loadSettings();
 
@@ -33,7 +42,7 @@ export class BearerKeyDaoImpl extends JsonFileBaseDao implements BearerKeyDao {
     // Otherwise, when there are no configured keys, we'd rewrite mcp_settings.json
     // on every request, which also clears the global settings cache.
     if (Array.isArray(settings.bearerKeys)) {
-      return settings.bearerKeys;
+      return settings.bearerKeys.map((key) => this.normalizeKey(key));
     }
 
     // Perform one-time migration from legacy routing config if present
@@ -51,6 +60,7 @@ export class BearerKeyDaoImpl extends JsonFileBaseDao implements BearerKeyDao {
           name: 'default',
           token: rawKey,
           enabled: enableBearerAuth,
+          kind: 'system',
           accessType: 'all',
           allowedGroups: [],
           allowedServers: [],
@@ -90,6 +100,11 @@ export class BearerKeyDaoImpl extends JsonFileBaseDao implements BearerKeyDao {
     return keys.find((key) => safeCompare(key.token, token));
   }
 
+  async findByOwner(owner: string): Promise<BearerKey[]> {
+    const keys = await this.loadKeysWithMigration();
+    return keys.filter((key) => key.kind === 'user' && key.owner === owner);
+  }
+
   async create(data: Omit<BearerKey, 'id'>): Promise<BearerKey> {
     const keys = await this.loadKeysWithMigration();
     const newKey: BearerKey = {
@@ -126,6 +141,16 @@ export class BearerKeyDaoImpl extends JsonFileBaseDao implements BearerKeyDao {
     }
     await this.saveKeys(next);
     return true;
+  }
+
+  async deleteByOwner(owner: string): Promise<number> {
+    const keys = await this.loadKeysWithMigration();
+    const next = keys.filter((key) => key.kind !== 'user' || key.owner !== owner);
+    const deletedCount = keys.length - next.length;
+    if (deletedCount > 0) {
+      await this.saveKeys(next);
+    }
+    return deletedCount;
   }
 
   async updateServerName(oldName: string, newName: string): Promise<number> {

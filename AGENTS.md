@@ -102,6 +102,8 @@ Model ↔ DAO ↔ entity ↔ JSON-path mapping: inspect the DAO files in [src/da
 
 Common pitfalls: forgetting step 6 → silent migration drop; missing `nullable: true` → DB write fails; complex object stored without `simple-json` → serialization error.
 
+Bearer keys have two explicit kinds: legacy and operator-created keys are `kind: 'system'`; user-level keys are `kind: 'user'` and must have an `owner`. Do not infer kind from whether `owner` is empty. User-level keys restore the owner's live user context on MCP transport requests and are never dashboard API credentials.
+
 ### Routing surface
 
 - `/mcp/{group|server}` — route to a specific group or single server.

@@ -94,12 +94,12 @@ There are three classes of HTTP route, all defined in `src/routes/index.ts` and 
    - All `${basePath}/api/openapi*` and `${basePath}/api/tools/...` OpenAPI endpoints.
    - `POST /api/auth/login`, `POST /api/auth/register`.
 2. **Authenticated dashboard / management API** under `${basePath}/api/*`. Authentication is enforced by `src/middlewares/auth.ts`, which accepts (in order):
-   - A configured bearer key (`/api/auth/keys`) whose `accessType` is `all`.
+   - A configured system-level bearer key (`/api/auth/keys`) whose `accessType` is `all`.
    - An OAuth access token issued by MCPHub's authorization server (when enabled).
    - A Better Auth session cookie (when enabled).
    - An `x-auth-token` JWT issued by `/api/auth/login`, or the same value as a `?token=` query.
    - If `systemConfig.routing.skipAuth` is `true`, unauthenticated dashboard API calls receive a synthetic `guest` user with admin privileges.
-3. **MCP transport routes**: `${basePath}/mcp/:group?`, `${basePath}/sse/:group?`, plus their user-scoped variants `${basePath}/:user/mcp/...` and `${basePath}/:user/sse/...`. These are rate-limited via `mcpConnectionRateLimiter` and pass through `sseUserContextMiddleware` before being dispatched by `sseService.ts`. Per-route bearer key scopes (`accessType !== 'all'`) are enforced inside `sseService.ts`.
+3. **MCP transport routes**: `${basePath}/mcp/:group?`, `${basePath}/sse/:group?`, plus their user-scoped variants `${basePath}/:user/mcp/...` and `${basePath}/:user/sse/...`. These are rate-limited via `mcpConnectionRateLimiter` and pass through `sseUserContextMiddleware` before being dispatched by `sseService.ts`. System-level key scopes are enforced inside `sseService.ts`; user-level keys restore their owner's live user context so server visibility filtering applies.
 
 ## Observability
 

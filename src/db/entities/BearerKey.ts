@@ -24,6 +24,12 @@ export class BearerKey {
   @Column({ type: 'boolean', default: true })
   enabled: boolean;
 
+  @Column({ type: 'varchar', length: 20, default: 'system' })
+  kind: 'system' | 'user';
+
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  owner?: string;
+
   @Column({ type: 'varchar', length: 20, default: 'all' })
   accessType: 'all' | 'groups' | 'servers' | 'custom';
 

@@ -289,7 +289,7 @@ MCPHub exposes several other route families beyond pure server CRUD. Each lives 
 | Family | Method & Path(s) | Notes |
 | ------ | ---------------- | ----- |
 | **Auth & users** | `POST /api/auth/login`, `POST /api/auth/register`, `GET /api/auth/user`, `POST /api/auth/change-password`, `/api/users/*`, `/api/users-stats` | See [Auth](/api-reference/auth) and [Users](/api-reference/users). |
-| **Bearer keys** | `GET /api/auth/keys`, `POST /api/auth/keys`, `PUT /api/auth/keys/:id`, `DELETE /api/auth/keys/:id` | Static tokens accepted by the dashboard / MCP transport. See [Authentication](/features/authentication). |
+| **Bearer keys** | `GET /api/auth/keys`, `POST /api/auth/keys`, `PUT /api/auth/keys/:id`, `DELETE /api/auth/keys/:id` | System-level and user-level static MCP tokens. Only all-access system keys can authenticate dashboard APIs. See [Authentication](/features/authentication). |
 | **Groups** | `/api/groups`, `/api/groups/batch`, `/api/groups/:id/servers*`, `/api/groups/:id/server-configs*` | See [Groups](/api-reference/groups). |
 | **Templates** | `POST /api/templates/export`, `GET /api/templates/export/groups/:id`, `POST /api/templates/import` | Export / import `mcp_settings.json` snapshots and group templates. Rate-limited. |
 | **Activities** | `GET /api/activities`, `/api/activities/stats`, `/api/activities/filters`, `/api/activities/:id`, `DELETE /api/activities/cleanup`, `GET /api/activities/available` | Database mode only — see [Monitoring](/features/monitoring). |

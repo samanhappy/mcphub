@@ -18,6 +18,8 @@ export class BearerKeyDaoDbImpl implements BearerKeyDao {
       name: entity.name,
       token: entity.token,
       enabled: entity.enabled,
+      kind: entity.kind ?? 'system',
+      owner: entity.owner,
       accessType: entity.accessType,
       allowedGroups: entity.allowedGroups ?? [],
       allowedServers: entity.allowedServers ?? [],
@@ -44,11 +46,18 @@ export class BearerKeyDaoDbImpl implements BearerKeyDao {
     return entity ? this.toModel(entity) : undefined;
   }
 
+  async findByOwner(owner: string): Promise<BearerKeyModel[]> {
+    const entities = await this.repository.findByOwner(owner);
+    return entities.map((e) => this.toModel(e));
+  }
+
   async create(data: Omit<BearerKeyModel, 'id'>): Promise<BearerKeyModel> {
     const entity = await this.repository.create({
       name: data.name,
       token: data.token,
       enabled: data.enabled,
+      kind: data.kind ?? 'system',
+      owner: data.owner,
       accessType: data.accessType,
       allowedGroups: data.allowedGroups ?? [],
       allowedServers: data.allowedServers ?? [],
@@ -64,6 +73,8 @@ export class BearerKeyDaoDbImpl implements BearerKeyDao {
       name: data.name,
       token: data.token,
       enabled: data.enabled,
+      kind: data.kind,
+      owner: data.owner,
       accessType: data.accessType,
       allowedGroups: data.allowedGroups,
       allowedServers: data.allowedServers,
@@ -73,6 +84,10 @@ export class BearerKeyDaoDbImpl implements BearerKeyDao {
 
   async delete(id: string): Promise<boolean> {
     return await this.repository.delete(id);
+  }
+
+  async deleteByOwner(owner: string): Promise<number> {
+    return await this.repository.deleteByOwner(owner);
   }
 
   async updateServerName(oldName: string, newName: string): Promise<number> {

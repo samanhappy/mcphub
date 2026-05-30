@@ -81,6 +81,9 @@ jest.mock('../dao/index.js', () => ({
   getServerDao: jest.fn(() => ({
     findById: jest.fn().mockResolvedValue(null),
   })),
+  getUserDao: jest.fn(() => ({
+    findByUsername: jest.fn().mockResolvedValue(null),
+  })),
 }));
 
 // Mock oauthBearer
@@ -92,6 +95,9 @@ jest.mock('./userContextService.js', () => ({
   UserContextService: {
     getInstance: jest.fn(() => ({
       getCurrentUser: jest.fn(() => ({ username: 'testuser' })),
+      hasUser: jest.fn(() => true),
+      setCurrentUser: jest.fn(),
+      clearCurrentUser: jest.fn(),
     })),
   },
 }));
@@ -120,7 +126,7 @@ import { UserContextService } from './userContextService.js';
 import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { isInitializeRequest } from '@modelcontextprotocol/sdk/types.js';
-import { getBearerKeyDao, getGroupDao } from '../dao/index.js';
+import { getBearerKeyDao, getGroupDao, getUserDao } from '../dao/index.js';
 
 // Helper function to update the mock system config
 const setMockSystemConfig = (config: Partial<typeof defaultSystemConfig>) => {
@@ -217,6 +223,12 @@ const expectBearerUnauthorized = (
 describe('sseService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    (UserContextService.getInstance as jest.MockedFunction<any>).mockReturnValue({
+      getCurrentUser: jest.fn(() => ({ username: 'testuser' })),
+      hasUser: jest.fn(() => true),
+      setCurrentUser: jest.fn(),
+      clearCurrentUser: jest.fn(),
+    });
 
     // Reset settings cache to default
     setMockSystemConfig({
@@ -397,6 +409,85 @@ describe('sseService', () => {
 
       expect(res.status).not.toHaveBeenCalledWith(401);
       expect(SSEServerTransport).toHaveBeenCalled();
+    });
+
+    it('restores user context from a user-level key on the unified MCP route', async () => {
+      (getBearerKeyDao as jest.MockedFunction<any>).mockReturnValueOnce({
+        findEnabled: jest.fn().mockResolvedValue([
+          {
+            id: 'alice-key-id',
+            name: 'alice-key',
+            token: 'alice-token',
+            enabled: true,
+            kind: 'user',
+            owner: 'alice',
+            accessType: 'all',
+          },
+        ]),
+      });
+      (getUserDao as jest.MockedFunction<any>).mockReturnValueOnce({
+        findByUsername: jest.fn().mockResolvedValue({
+          username: 'alice',
+          password: '',
+          isAdmin: false,
+        }),
+      });
+      const setCurrentUser = jest.fn();
+      (UserContextService.getInstance as jest.MockedFunction<any>).mockReturnValue({
+        getCurrentUser: jest.fn(() => null),
+        hasUser: jest.fn(() => false),
+        setCurrentUser,
+        clearCurrentUser: jest.fn(),
+      });
+      const req = createMockRequest({
+        headers: { authorization: 'Bearer alice-token' },
+        params: {},
+      });
+      const res = createMockResponse();
+
+      await handleSseConnection(req, res);
+
+      expect(res.status).not.toHaveBeenCalledWith(401);
+      expect(setCurrentUser).toHaveBeenCalledWith(
+        expect.objectContaining({ username: 'alice', isAdmin: false }),
+      );
+      expect(SSEServerTransport).toHaveBeenCalled();
+    });
+
+    it('rejects a user-level key when the username path does not match its owner', async () => {
+      (getBearerKeyDao as jest.MockedFunction<any>).mockReturnValueOnce({
+        findEnabled: jest.fn().mockResolvedValue([
+          {
+            id: 'alice-key-id',
+            name: 'alice-key',
+            token: 'alice-token',
+            enabled: true,
+            kind: 'user',
+            owner: 'alice',
+            accessType: 'all',
+          },
+        ]),
+      });
+      (getUserDao as jest.MockedFunction<any>).mockReturnValueOnce({
+        findByUsername: jest.fn().mockResolvedValue({
+          username: 'alice',
+          password: '',
+          isAdmin: false,
+        }),
+      });
+      const req = createMockRequest({
+        headers: { authorization: 'Bearer alice-token' },
+        params: { user: 'bob' },
+      });
+      const res = createMockResponse();
+
+      await handleSseConnection(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(403);
+      expect(res.json).toHaveBeenCalledWith({
+        error: 'forbidden',
+        error_description: 'Bearer key owner does not match the requested user',
+      });
     });
   });
 

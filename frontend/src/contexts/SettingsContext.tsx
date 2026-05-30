@@ -159,7 +159,9 @@ interface SettingsContextValue {
   exportMCPSettings: (serverName?: string) => Promise<any>;
   // Bearer key management
   refreshBearerKeys: () => Promise<void>;
-  createBearerKey: (payload: Omit<BearerKey, 'id'>) => Promise<BearerKey | null>;
+  createBearerKey: (
+    payload: Pick<BearerKey, 'name'> & Partial<Omit<BearerKey, 'id' | 'name' | 'token'>>,
+  ) => Promise<BearerKey | null>;
   updateBearerKey: (
     id: string,
     updates: Partial<Omit<BearerKey, 'id'>>,
@@ -902,7 +904,9 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
     }
   };
 
-  const createBearerKey = async (payload: Omit<BearerKey, 'id'>): Promise<BearerKey | null> => {
+  const createBearerKey = async (
+    payload: Pick<BearerKey, 'name'> & Partial<Omit<BearerKey, 'id' | 'name' | 'token'>>,
+  ): Promise<BearerKey | null> => {
     try {
       const data: ApiResponse<BearerKey> = await apiPost('/auth/keys', payload as any);
       if (data.success && data.data) {

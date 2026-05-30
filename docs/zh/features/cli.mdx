@@ -91,7 +91,7 @@ mcphub groups remove dev
 
 ### `keys`
 
-管理 bearer 密钥（hub 端要求管理员权限）。
+管理 bearer 密钥。管理员可管理系统级和用户级密钥；普通用户可管理自己的用户级密钥。
 
 ```bash
 mcphub keys list
@@ -234,4 +234,4 @@ export MCPHUB_TOKEN=$CI_HUB_TOKEN
 mcphub servers list --json | jq '.[] | select(.status != "connected") | .name'
 ```
 
-如果在 CI 中使用 bearer key，再追加 `MCPHUB_TOKEN_KIND=bearer`（或加 `--bearer`）。注意：bearer key 只有在 `accessType=all` 时才能调用 `/api/*` 管理接口；受限 scope 的 key 只能访问 `/mcp/<group>`。
+如果在 CI 中使用 bearer key，再追加 `MCPHUB_TOKEN_KIND=bearer`（或加 `--bearer`）。注意：只有 `accessType=all` 的系统级 bearer key 才能调用 `/api/*` 管理接口；受限 scope 的系统级密钥和用户级密钥仅用于 MCP transport。

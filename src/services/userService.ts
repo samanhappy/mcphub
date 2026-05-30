@@ -1,5 +1,5 @@
 import { IUser } from '../types/index.js';
-import { getUserDao } from '../dao/index.js';
+import { getBearerKeyDao, getUserDao } from '../dao/index.js';
 
 // Get all users
 export const getAllUsers = async (): Promise<IUser[]> => {
@@ -94,7 +94,11 @@ export const deleteUser = async (username: string): Promise<boolean> => {
       return false; // Cannot delete the last admin
     }
 
-    return await userDao.delete(username);
+    const deleted = await userDao.delete(username);
+    if (deleted) {
+      await getBearerKeyDao().deleteByOwner(username);
+    }
+    return deleted;
   } catch (error) {
     console.error('Failed to delete user:', error);
     return false;

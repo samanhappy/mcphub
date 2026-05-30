@@ -8,6 +8,7 @@ const mockUpdate = jest.fn();
 const mockUpdatePassword = jest.fn();
 const mockDelete = jest.fn();
 const mockFindAdmins = jest.fn();
+const mockDeleteBearerKeysByOwner = jest.fn();
 
 jest.mock('../../src/dao/index.js', () => ({
   getUserDao: jest.fn(() => ({
@@ -20,6 +21,9 @@ jest.mock('../../src/dao/index.js', () => ({
     updatePassword: mockUpdatePassword,
     delete: mockDelete,
     findAdmins: mockFindAdmins,
+  })),
+  getBearerKeyDao: jest.fn(() => ({
+    deleteByOwner: mockDeleteBearerKeysByOwner,
   })),
 }));
 
@@ -144,11 +148,13 @@ describe('userService', () => {
         { username: 'user1', isAdmin: false },
       ]);
       mockDelete.mockResolvedValue(true);
+      mockDeleteBearerKeysByOwner.mockResolvedValue(1);
 
       const result = await deleteUser('user1');
 
       expect(result).toBe(true);
       expect(mockDelete).toHaveBeenCalledWith('user1');
+      expect(mockDeleteBearerKeysByOwner).toHaveBeenCalledWith('user1');
     });
 
     it('should not delete the last admin', async () => {

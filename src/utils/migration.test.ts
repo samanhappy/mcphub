@@ -98,6 +98,7 @@ describe('initializeDatabaseMode legacy bearer auth migration', () => {
       name: 'default',
       token: 'db-key',
       enabled: true,
+      kind: 'system',
       accessType: 'all',
       allowedGroups: [],
       allowedServers: [],

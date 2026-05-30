@@ -6,25 +6,26 @@ import { Switch } from '@/components/ui/ToggleGroup';
 import { MultiSelect } from '@/components/ui/MultiSelect';
 import { useSettingsData } from '@/hooks/useSettingsData';
 import { useToast } from '@/contexts/ToastContext';
-import { generateRandomKey } from '@/utils/key';
 import { PermissionChecker } from '@/components/PermissionChecker';
 import { PERMISSIONS } from '@/constants/permissions';
 import { Copy, Check, Download, Edit, Trash2, Code as CodeIcon, Zap, Database, Wrench, Sparkles, RefreshCw, Route as RouteIcon, Key, Lock, Cloud, SlidersHorizontal, ShieldCheck, Package, KeyRound, FileDown, X } from 'lucide-react';
 import { EndpointCopy } from '@/components/ui/EndpointCopy';
-import type { BearerKey } from '@/types';
+import type { BearerKey, User } from '@/types';
 import { useServerContext } from '@/contexts/ServerContext';
 import { useGroupData } from '@/hooks/useGroupData';
+import { useAuth } from '@/contexts/AuthContext';
+import { apiGet } from '@/utils/fetchInterceptor';
 
 interface BearerKeyRowProps {
   keyData: BearerKey;
   loading: boolean;
   availableServers: { value: string; label: string }[];
   availableGroups: { value: string; label: string }[];
+  isAdmin: boolean;
   onSave: (
     id: string,
     payload: {
       name: string;
-      token: string;
       enabled: boolean;
       accessType: 'all' | 'groups' | 'servers' | 'custom';
       allowedGroups: string;
@@ -39,14 +40,13 @@ const BearerKeyRow: React.FC<BearerKeyRowProps> = ({
   loading,
   availableServers,
   availableGroups,
+  isAdmin,
   onSave,
   onDelete,
 }) => {
   const { t } = useTranslation();
-  const { showToast } = useToast();
   const [isEditing, setIsEditing] = useState(false);
   const [name, setName] = useState(keyData.name);
-  const [token, setToken] = useState(keyData.token);
   const [enabled, setEnabled] = useState<boolean>(keyData.enabled);
   const [accessType, setAccessType] = useState<'all' | 'groups' | 'servers' | 'custom'>(
     keyData.accessType || 'all',
@@ -59,7 +59,6 @@ const BearerKeyRow: React.FC<BearerKeyRowProps> = ({
   useEffect(() => {
     if (!isEditing) {
       setName(keyData.name);
-      setToken(keyData.token);
       setEnabled(keyData.enabled);
       setAccessType(keyData.accessType || 'all');
       setSelectedGroups(keyData.allowedGroups || []);
@@ -67,46 +66,22 @@ const BearerKeyRow: React.FC<BearerKeyRowProps> = ({
     }
   }, [keyData, isEditing]);
 
-  const handleCopyToken = async () => {
-    try {
-      if (navigator.clipboard && window.isSecureContext) {
-        await navigator.clipboard.writeText(keyData.token);
-        showToast(t('common.copySuccess') || 'Copied to clipboard', 'success');
-      } else {
-        const textArea = document.createElement('textarea');
-        textArea.value = keyData.token;
-        textArea.style.position = 'fixed';
-        textArea.style.left = '-9999px';
-        document.body.appendChild(textArea);
-        textArea.focus();
-        textArea.select();
-        try {
-          document.execCommand('copy');
-          showToast(t('common.copySuccess') || 'Copied to clipboard', 'success');
-        } catch (err) {
-          showToast(t('common.copyFailed') || 'Copy failed', 'error');
-        }
-        document.body.removeChild(textArea);
-      }
-    } catch (error) {
-      console.error('Failed to copy', error);
-      showToast(t('common.copyFailed') || 'Copy failed', 'error');
-    }
-  };
+  const { showToast } = useToast();
+  const isSystemKey = (keyData.kind ?? 'system') === 'system';
 
   const handleSave = async () => {
-    if (accessType === 'groups' && selectedGroups.length === 0) {
+    if (isSystemKey && accessType === 'groups' && selectedGroups.length === 0) {
       showToast(t('settings.selectAtLeastOneGroup') || 'Please select at least one group', 'error');
       return;
     }
-    if (accessType === 'servers' && selectedServers.length === 0) {
+    if (isSystemKey && accessType === 'servers' && selectedServers.length === 0) {
       showToast(
         t('settings.selectAtLeastOneServer') || 'Please select at least one server',
         'error',
       );
       return;
     }
-    if (accessType === 'custom' && selectedGroups.length === 0 && selectedServers.length === 0) {
+    if (isSystemKey && accessType === 'custom' && selectedGroups.length === 0 && selectedServers.length === 0) {
       showToast(
         t('settings.selectAtLeastOneGroupOrServer') || 'Please select at least one group or server',
         'error',
@@ -118,7 +93,6 @@ const BearerKeyRow: React.FC<BearerKeyRowProps> = ({
     try {
       await onSave(keyData.id, {
         name,
-        token,
         enabled,
         accessType,
         allowedGroups: selectedGroups.join(', '),
@@ -147,6 +121,9 @@ const BearerKeyRow: React.FC<BearerKeyRowProps> = ({
 
   // Helper function to format access type display text
   const formatAccessTypeDisplay = (key: BearerKey): string => {
+    if ((key.kind ?? 'system') === 'user') {
+      return `${t('settings.bearerKeyAccessUserVisibility') || 'User visibility'}${key.owner ? ` · ${key.owner}` : ''}`;
+    }
     if (key.accessType === 'all') {
       return t('settings.bearerKeyAccessAll') || 'All Resources';
     }
@@ -191,13 +168,7 @@ const BearerKeyRow: React.FC<BearerKeyRowProps> = ({
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   {t('settings.bearerKeyToken') || 'Token'}
                 </label>
-                <input
-                  type="text"
-                  className="block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm form-input transition-shadow duration-200"
-                  value={token}
-                  onChange={(e) => setToken(e.target.value)}
-                  disabled={loading}
-                />
+                <div className="py-2 px-3 text-sm font-mono text-gray-500">{keyData.token}</div>
               </div>
             </div>
 
@@ -220,7 +191,7 @@ const BearerKeyRow: React.FC<BearerKeyRowProps> = ({
                 </div>
               </div>
 
-              <div className="w-48">
+              {isAdmin && isSystemKey && <div className="w-48">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   {t('settings.bearerKeyAccessType') || 'Access scope'}
                 </label>
@@ -243,10 +214,10 @@ const BearerKeyRow: React.FC<BearerKeyRowProps> = ({
                     {t('settings.bearerKeyAccessCustom') || 'Custom (Groups & Servers)'}
                   </option>
                 </select>
-              </div>
+              </div>}
 
               {/* Show single selector for groups or servers mode */}
-              {!isCustomMode && (
+              {isAdmin && isSystemKey && !isCustomMode && (
                 <div className="flex-1 min-w-[200px]">
                   <label
                     className={`block text-sm font-medium mb-1 ${accessType === 'all' ? 'text-gray-400' : 'text-gray-700'}`}
@@ -270,7 +241,7 @@ const BearerKeyRow: React.FC<BearerKeyRowProps> = ({
               )}
 
               {/* Show both selectors for custom mode */}
-              {isCustomMode && (
+              {isAdmin && isSystemKey && isCustomMode && (
                 <>
                   <div className="flex-1 min-w-[200px]">
                     <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -335,13 +306,6 @@ const BearerKeyRow: React.FC<BearerKeyRowProps> = ({
               ? `${keyData.token.substring(0, 8)}...${keyData.token.substring(keyData.token.length - 4)}`
               : keyData.token}
           </span>
-          <button
-            onClick={handleCopyToken}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
-            title={t('common.copy') || 'Copy'}
-          >
-            <Copy className="h-3.5 w-3.5" />
-          </button>
         </div>
       </td>
       <td className="px-6 py-4 whitespace-nowrap text-sm">
@@ -432,6 +396,8 @@ const SettingsPage: React.FC = () => {
   const { showToast } = useToast();
   const { allServers: servers } = useServerContext(); // Use allServers for settings (not paginated)
   const { groups } = useGroupData();
+  const { auth } = useAuth();
+  const isAdmin = auth.user?.isAdmin === true;
 
   const [installConfig, setInstallConfig] = useState<{
     pythonIndexUrl: string;
@@ -518,6 +484,8 @@ const SettingsPage: React.FC = () => {
 
   const [tempNameSeparator, setTempNameSeparator] = useState<string>('-');
   const [showAddBearerKeyForm, setShowAddBearerKeyForm] = useState(false);
+  const [createdBearerToken, setCreatedBearerToken] = useState('');
+  const [users, setUsers] = useState<User[]>([]);
 
   const {
     routingConfig,
@@ -649,6 +617,15 @@ const SettingsPage: React.FC = () => {
   useEffect(() => {
     refreshBearerKeys();
   }, []);
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    apiGet<{ success: boolean; data?: User[] }>('/users').then((result) => {
+      if (result.success && Array.isArray(result.data)) {
+        setUsers(result.data);
+      }
+    });
+  }, [isAdmin]);
 
   const [sectionsVisible, setSectionsVisible] = useState({
     routingConfig: false,
@@ -1132,15 +1109,17 @@ const SettingsPage: React.FC = () => {
 
   const [newBearerKey, setNewBearerKey] = useState<{
     name: string;
-    token: string;
     enabled: boolean;
+    kind: 'system' | 'user';
+    owner: string;
     accessType: 'all' | 'groups' | 'servers' | 'custom';
     allowedGroups: string;
     allowedServers: string;
   }>({
     name: '',
-    token: '',
     enabled: true,
+    kind: 'system',
+    owner: '',
     accessType: 'all',
     allowedGroups: '',
     allowedServers: '',
@@ -1247,16 +1226,21 @@ const SettingsPage: React.FC = () => {
   };
 
   const handleCreateBearerKey = async () => {
-    if (!newBearerKey.name || !newBearerKey.token) {
-      showToast(t('settings.bearerKeyRequired') || 'Name and token are required', 'error');
+    if (!newBearerKey.name) {
+      showToast(t('settings.bearerKeyNameRequired') || 'Name is required', 'error');
       return;
     }
 
-    if (newBearerKey.accessType === 'groups' && newSelectedGroups.length === 0) {
+    if (isAdmin && newBearerKey.kind === 'user' && !newBearerKey.owner) {
+      showToast(t('settings.bearerKeyOwnerRequired') || 'Owner is required', 'error');
+      return;
+    }
+
+    if (newBearerKey.kind === 'system' && newBearerKey.accessType === 'groups' && newSelectedGroups.length === 0) {
       showToast(t('settings.selectAtLeastOneGroup') || 'Please select at least one group', 'error');
       return;
     }
-    if (newBearerKey.accessType === 'servers' && newSelectedServers.length === 0) {
+    if (newBearerKey.kind === 'system' && newBearerKey.accessType === 'servers' && newSelectedServers.length === 0) {
       showToast(
         t('settings.selectAtLeastOneServer') || 'Please select at least one server',
         'error',
@@ -1264,6 +1248,7 @@ const SettingsPage: React.FC = () => {
       return;
     }
     if (
+      newBearerKey.kind === 'system' &&
       newBearerKey.accessType === 'custom' &&
       newSelectedGroups.length === 0 &&
       newSelectedServers.length === 0
@@ -1275,10 +1260,11 @@ const SettingsPage: React.FC = () => {
       return;
     }
 
-    await createBearerKey({
+    const created = await createBearerKey({
       name: newBearerKey.name,
-      token: newBearerKey.token,
       enabled: newBearerKey.enabled,
+      kind: isAdmin ? newBearerKey.kind : 'user',
+      owner: isAdmin && newBearerKey.kind === 'user' ? newBearerKey.owner : undefined,
       accessType: newBearerKey.accessType,
       allowedGroups:
         (newBearerKey.accessType === 'groups' || newBearerKey.accessType === 'custom') &&
@@ -1291,11 +1277,14 @@ const SettingsPage: React.FC = () => {
           ? newSelectedServers
           : undefined,
     } as any);
+    if (!created) return;
+    setCreatedBearerToken(created.token);
 
     setNewBearerKey({
       name: '',
-      token: '',
       enabled: true,
+      kind: 'system',
+      owner: '',
       accessType: 'all',
       allowedGroups: '',
       allowedServers: '',
@@ -1309,7 +1298,6 @@ const SettingsPage: React.FC = () => {
     id: string,
     payload: {
       name: string;
-      token: string;
       enabled: boolean;
       accessType: 'all' | 'groups' | 'servers' | 'custom';
       allowedGroups: string;
@@ -1318,7 +1306,6 @@ const SettingsPage: React.FC = () => {
   ) => {
     await updateBearerKey(id, {
       name: payload.name,
-      token: payload.token,
       enabled: payload.enabled,
       accessType: payload.accessType,
       allowedGroups: parseCommaSeparated(payload.allowedGroups),
@@ -1340,7 +1327,6 @@ const SettingsPage: React.FC = () => {
       </div>
 
       {/* Bearer Keys Settings */}
-      <PermissionChecker permissions={PERMISSIONS.SETTINGS_ROUTE_CONFIG}>
         <div className="hub-card mb-6 overflow-hidden">
           <div
             className="flex justify-between items-center cursor-pointer transition-colors hover:bg-[var(--hub-surface-hover)] py-3 px-5"
@@ -1359,6 +1345,15 @@ const SettingsPage: React.FC = () => {
 
           {sectionsVisible.bearerKeys && (
             <div className="space-y-4 pb-4 px-6 pt-4 border-t border-[var(--hub-line-2)]">
+              {createdBearerToken && (
+                <div className="p-3 rounded-md border border-amber-300 bg-amber-50 text-sm">
+                  <div className="font-medium">
+                    {t('settings.bearerKeyShownOnce') || 'Copy this token now. It will not be shown again.'}
+                  </div>
+                  <div className="mt-2 font-mono break-all">{createdBearerToken}</div>
+                </div>
+              )}
+              {isAdmin && <>
               <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-md">
                 <div>
                   <h3 className="font-medium text-gray-700">
@@ -1377,8 +1372,9 @@ const SettingsPage: React.FC = () => {
                   }
                 />
               </div>
+              </>}
 
-              <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-md">
+              {isAdmin && <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-md">
                 <div className="mb-2">
                   <h3 className="font-medium text-gray-700">
                     {t('settings.bearerAuthHeaderName')}
@@ -1411,7 +1407,7 @@ const SettingsPage: React.FC = () => {
                     {t('common.save')}
                   </button>
                 </div>
-              </div>
+              </div>}
 
               <div className="flex justify-between items-center">
                 <p className="text-sm text-gray-600">
@@ -1491,6 +1487,7 @@ const SettingsPage: React.FC = () => {
                           loading={loading}
                           availableServers={availableServers}
                           availableGroups={availableGroups}
+                          isAdmin={isAdmin}
                           onSave={handleSaveExistingBearerKey}
                           onDelete={handleDeleteExistingBearerKey}
                         />
@@ -1523,7 +1520,7 @@ const SettingsPage: React.FC = () => {
                     </h3>
 
                     <div className="grid grid-cols-1 md:grid-cols-12 gap-4 mb-4">
-                      <div className="md:col-span-3">
+                      <div className="md:col-span-4">
                         <label className="block text-sm font-medium text-gray-700 mb-1">
                           {t('settings.bearerKeyName') || 'Name'}
                         </label>
@@ -1538,33 +1535,32 @@ const SettingsPage: React.FC = () => {
                           disabled={loading}
                         />
                       </div>
-                      <div className="md:col-span-9">
+                      {isAdmin && <div className="md:col-span-4">
                         <label className="block text-sm font-medium text-gray-700 mb-1">
-                          {t('settings.bearerKeyToken') || 'Token'}
+                          {t('settings.bearerKeyKind') || 'Key type'}
                         </label>
-                        <div className="flex rounded-md shadow-sm">
-                          <input
-                            type="text"
-                            className="flex-1 block w-full py-2 px-3 border border-gray-300 rounded-l-md rounded-r-none border-r-0 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm form-input transition-shadow duration-200"
-                            placeholder="sk-..."
-                            value={newBearerKey.token}
-                            onChange={(e) =>
-                              setNewBearerKey((prev) => ({ ...prev, token: e.target.value }))
-                            }
-                            disabled={loading}
-                          />
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setNewBearerKey((prev) => ({ ...prev, token: generateRandomKey() }))
-                            }
-                            disabled={loading}
-                            className="relative -ml-[5px] inline-flex items-center px-4 py-2 border border-gray-300 bg-gray-100 dark:bg-gray-800 text-gray-700 text-sm font-medium rounded-r-md rounded-l-none hover:bg-gray-200 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200 z-10"
-                          >
-                            {t('settings.generate') || 'Generate'}
-                          </button>
-                        </div>
-                      </div>
+                        <select
+                          className="block w-full py-2 px-3 border border-gray-300 bg-white dark:bg-gray-800 rounded-md sm:text-sm form-select"
+                          value={newBearerKey.kind}
+                          onChange={(e) => setNewBearerKey((prev) => ({ ...prev, kind: e.target.value as 'system' | 'user' }))}
+                        >
+                          <option value="system">{t('settings.bearerKeyKindSystem') || 'System-level'}</option>
+                          <option value="user">{t('settings.bearerKeyKindUser') || 'User-level'}</option>
+                        </select>
+                      </div>}
+                      {isAdmin && newBearerKey.kind === 'user' && <div className="md:col-span-4">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          {t('settings.bearerKeyOwner') || 'Owner'}
+                        </label>
+                        <select
+                          className="block w-full py-2 px-3 border border-gray-300 bg-white dark:bg-gray-800 rounded-md sm:text-sm form-select"
+                          value={newBearerKey.owner}
+                          onChange={(e) => setNewBearerKey((prev) => ({ ...prev, owner: e.target.value }))}
+                        >
+                          <option value="">{t('settings.bearerKeySelectOwner') || 'Select user...'}</option>
+                          {users.map((user) => <option key={user.username} value={user.username}>{user.username}</option>)}
+                        </select>
+                      </div>}
                     </div>
 
                     <div className="flex flex-wrap items-end gap-4 mb-2">
@@ -1588,7 +1584,7 @@ const SettingsPage: React.FC = () => {
                         </div>
                       </div>
 
-                      <div className="w-48">
+                      {isAdmin && newBearerKey.kind === 'system' && <div className="w-48">
                         <label className="block text-sm font-medium text-gray-700 mb-1">
                           {t('settings.bearerKeyAccessType') || 'Access scope'}
                         </label>
@@ -1616,9 +1612,9 @@ const SettingsPage: React.FC = () => {
                             {t('settings.bearerKeyAccessCustom') || 'Custom (Groups & Servers)'}
                           </option>
                         </select>
-                      </div>
+                      </div>}
 
-                      {newBearerKey.accessType !== 'custom' && (
+                      {isAdmin && newBearerKey.kind === 'system' && newBearerKey.accessType !== 'custom' && (
                         <div className="flex-1 min-w-[200px]">
                           <label
                             className={`block text-sm font-medium mb-1 ${newBearerKey.accessType === 'all' ? 'text-gray-400' : 'text-gray-700'}`}
@@ -1653,7 +1649,7 @@ const SettingsPage: React.FC = () => {
                         </div>
                       )}
 
-                      {newBearerKey.accessType === 'custom' && (
+                      {isAdmin && newBearerKey.kind === 'system' && newBearerKey.accessType === 'custom' && (
                         <>
                           <div className="flex-1 min-w-[200px]">
                             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -1706,7 +1702,6 @@ const SettingsPage: React.FC = () => {
             </div>
           )}
         </div>
-      </PermissionChecker>
 
       {/* Smart Routing Configuration Settings */}
       <PermissionChecker permissions={PERMISSIONS.SETTINGS_SMART_ROUTING}>

@@ -37,8 +37,6 @@ async function list(client: ApiClient, globals: GlobalFlags): Promise<void> {
   const res = await client.get<ApiResponse<BearerKey[]>>('/api/auth/keys');
   const keys = res.data ?? [];
   if (globals.json) {
-    // Show the raw token in --json so scripts can capture it. Plaintext only
-    // returns to the user who has admin access to the hub anyway.
     printJson(keys);
     return;
   }
@@ -56,7 +54,7 @@ async function list(client: ApiClient, globals: GlobalFlags): Promise<void> {
 
 async function create(client: ApiClient, args: string[], globals: GlobalFlags): Promise<void> {
   const { flags } = extractFlags(args, {
-    valued: ['--name', '--access-type', '--groups', '--servers', '--token'],
+    valued: ['--name', '--access-type', '--groups', '--servers'],
     boolean: ['--disabled'],
   });
   const name = flags['--name'] as string | undefined;
@@ -76,7 +74,6 @@ async function create(client: ApiClient, args: string[], globals: GlobalFlags): 
     enabled: !flags['--disabled'],
     accessType,
   };
-  if (flags['--token']) body.token = flags['--token'] as string;
   if (accessType === 'groups' || accessType === 'custom') {
     if (flags['--groups']) body.allowedGroups = splitCsv(flags['--groups'] as string);
   }
@@ -91,8 +88,7 @@ async function create(client: ApiClient, args: string[], globals: GlobalFlags): 
   }
   printLine(green(`Created key "${name}" (id: ${res.data?.id ?? 'unknown'}).`));
   if (res.data?.token) {
-    // The server generates the token if not supplied. Print it once — admins
-    // need to copy it before navigating away.
+    // The server generates the token. Print it once so the caller can store it.
     printLine(`Token: ${res.data.token}`);
   }
 }

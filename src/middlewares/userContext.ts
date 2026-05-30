@@ -97,6 +97,12 @@ export const sseUserContextMiddleware = async (
         const authenticatedUser = await resolveAuthenticatedUserForSse(req);
 
         if (!authenticatedUser) {
+          const systemConfig = await getSystemConfigDao().get();
+          if (getBearerTokenFromHeaders(req.headers, systemConfig)) {
+            next();
+            return;
+          }
+
           res.status(401).json({
             success: false,
             message: 'Authentication is required for user-scoped SSE routes',

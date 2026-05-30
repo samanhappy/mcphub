@@ -6,7 +6,13 @@ import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/
 import { isInitializeRequest } from '@modelcontextprotocol/sdk/types.js';
 import { deleteMcpServer, getMcpServer } from './mcpService.js';
 import config from '../config/index.js';
-import { getBearerKeyDao, getGroupDao, getServerDao, getSystemConfigDao } from '../dao/index.js';
+import {
+  getBearerKeyDao,
+  getGroupDao,
+  getServerDao,
+  getSystemConfigDao,
+  getUserDao,
+} from '../dao/index.js';
 import { UserContextService } from './userContextService.js';
 import { RequestContextService } from './requestContextService.js';
 import { IUser, BearerKey } from '../types/index.js';
@@ -62,7 +68,7 @@ type BearerAuthResult =
     }
   | {
       valid: false;
-      reason: 'missing' | 'invalid' | 'unavailable';
+      reason: 'missing' | 'invalid' | 'forbidden' | 'unavailable';
     };
 
 /**
@@ -91,6 +97,10 @@ const normalizeBearerScopeParam = (groupParam?: string): string | undefined => {
 };
 
 const isBearerKeyAllowedForRequest = async (req: Request, key: BearerKey): Promise<boolean> => {
+  if (key.kind === 'user') {
+    return true;
+  }
+
   const paramValue = normalizeBearerScopeParam((req.params as any)?.group as string | undefined);
 
   // accessType 'all' allows all requests
@@ -198,6 +208,31 @@ const isBearerKeyAllowedForRequest = async (req: Request, key: BearerKey): Promi
   }
 };
 
+const resolveUserLevelKeyUser = async (
+  req: Request,
+  key: BearerKey,
+): Promise<BearerAuthResult> => {
+  if (key.kind !== 'user') {
+    return { valid: true, keyId: key.id, keyName: key.name };
+  }
+
+  if (!key.owner) {
+    return { valid: false, reason: 'invalid' };
+  }
+
+  const user = await getUserDao().findByUsername(key.owner);
+  if (!user) {
+    return { valid: false, reason: 'invalid' };
+  }
+
+  const requestedUsername = req.params.user;
+  if (requestedUsername && requestedUsername !== user.username) {
+    return { valid: false, reason: 'forbidden' };
+  }
+
+  return { valid: true, user, keyId: key.id, keyName: key.name };
+};
+
 const validateBearerAuth = async (req: Request): Promise<BearerAuthResult> => {
   const systemConfigDao = getSystemConfigDao();
   const systemConfig = await systemConfigDao.get();
@@ -263,12 +298,16 @@ const validateBearerAuth = async (req: Request): Promise<BearerAuthResult> => {
 
     const matchingKey = enabledKeys.find((key) => safeCompare(key.token, token));
     if (matchingKey) {
+      const userKeyResult = await resolveUserLevelKeyUser(req, matchingKey);
+      if (!userKeyResult.valid) {
+        return { valid: true };
+      }
       const allowed = await isBearerKeyAllowedForRequest(req, matchingKey);
       if (allowed) {
         console.log(
           `Bearer key recognized (auth disabled): id=${matchingKey.id}, name=${matchingKey.name}, accessType=${matchingKey.accessType}`,
         );
-        return { valid: true, keyId: matchingKey.id, keyName: matchingKey.name };
+        return userKeyResult;
       }
 
       console.warn(
@@ -310,6 +349,10 @@ const validateBearerAuth = async (req: Request): Promise<BearerAuthResult> => {
 
   const matchingKey = enabledKeys.find((key) => safeCompare(key.token, token));
   if (matchingKey) {
+    const userKeyResult = await resolveUserLevelKeyUser(req, matchingKey);
+    if (!userKeyResult.valid) {
+      return userKeyResult;
+    }
     const allowed = await isBearerKeyAllowedForRequest(req, matchingKey);
     if (!allowed) {
       console.warn(
@@ -321,7 +364,7 @@ const validateBearerAuth = async (req: Request): Promise<BearerAuthResult> => {
     console.log(
       `Bearer key authenticated: id=${matchingKey.id}, name=${matchingKey.name}, accessType=${matchingKey.accessType}`,
     );
-    return { valid: true, keyId: matchingKey.id, keyName: matchingKey.name };
+    return userKeyResult;
   }
 
   const oauthUser = await resolveOAuthUserFromToken(token);
@@ -399,8 +442,16 @@ const buildResourceMetadataUrl = (req: Request): string | undefined => {
 const sendBearerAuthError = (
   req: Request,
   res: Response,
-  reason: 'missing' | 'invalid' | 'unavailable',
+  reason: 'missing' | 'invalid' | 'forbidden' | 'unavailable',
 ): void => {
+  if (reason === 'forbidden') {
+    res.status(403).json({
+      error: 'forbidden',
+      error_description: 'Bearer key owner does not match the requested user',
+    });
+    return;
+  }
+
   if (reason === 'unavailable') {
     res.setHeader('Retry-After', '30');
     res.status(503).json({

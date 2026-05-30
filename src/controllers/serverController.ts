@@ -280,7 +280,7 @@ export const getAllServers = async (req: Request, res: Response): Promise<void> 
   }
 };
 
-export const getAllSettings = async (_: Request, res: Response): Promise<void> => {
+export const getAllSettings = async (req: Request, res: Response): Promise<void> => {
   try {
     const [
       servers,
@@ -333,12 +333,28 @@ export const getAllSettings = async (_: Request, res: Response): Promise<void> =
       userConfigs,
       oauthClients,
       oauthTokens,
-      bearerKeys,
+      bearerKeys: bearerKeys.map((key) => ({
+        ...key,
+        kind: key.kind ?? 'system',
+        token: key.token.length > 12 ? `${key.token.slice(0, 8)}...${key.token.slice(-4)}` : '********',
+      })),
     };
 
     const response: ApiResponse = {
       success: true,
-      data: createSafeJSON(settings),
+      data: createSafeJSON(
+        (req as any).user?.isAdmin
+          ? settings
+          : {
+              mcpServers: {},
+              systemConfig: {
+                install: {
+                  baseUrl: systemConfig.install?.baseUrl,
+                },
+              },
+              bearerKeys: [],
+            },
+      ),
     };
     res.json(response);
   } catch (error) {

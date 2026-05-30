@@ -91,7 +91,8 @@ mcphub groups remove dev
 
 ### `keys`
 
-Manage bearer keys (admin only on the hub side).
+Manage bearer keys. Admins manage system-level and user-level keys; ordinary users manage their own
+user-level keys.
 
 ```bash
 mcphub keys list
@@ -234,4 +235,4 @@ export MCPHUB_TOKEN=$CI_HUB_TOKEN
 mcphub servers list --json | jq '.[] | select(.status != "connected") | .name'
 ```
 
-For bearer-key auth in CI, add `MCPHUB_TOKEN_KIND=bearer` (or `--bearer`). Note that bearer keys only authorize the `/api/*` admin surface when their `accessType` is `all` — scoped keys can call `/mcp/<group>` but not management routes.
+For bearer-key auth in CI, add `MCPHUB_TOKEN_KIND=bearer` (or `--bearer`). Note that only system-level bearer keys with `accessType=all` authorize the `/api/*` management surface. Scoped system keys and user-level keys are for MCP transports only.

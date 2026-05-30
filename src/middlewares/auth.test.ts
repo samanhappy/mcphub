@@ -167,6 +167,28 @@ describe('auth middleware', () => {
     expect(response.body).toEqual({ success: false, message: 'No token, authorization denied' });
   });
 
+  it('does not accept user-level bearer keys for dashboard API routes', async () => {
+    findEnabledMock.mockResolvedValue([
+      {
+        id: 'key-5',
+        name: 'alice-client',
+        token: 'user-key',
+        enabled: true,
+        kind: 'user',
+        owner: 'alice',
+        accessType: 'all',
+      },
+    ]);
+
+    const app = createApp();
+    const response = await request(app)
+      .get('/api/protected')
+      .set('Authorization', 'Bearer user-key');
+
+    expect(response.status).toBe(401);
+    expect(response.body).toEqual({ success: false, message: 'No token, authorization denied' });
+  });
+
   it('bypasses dashboard API authentication when skipAuth is true', async () => {
     currentSystemConfig.routing.skipAuth = true;
 
