@@ -1,5 +1,7 @@
 export type ServerVisibility = 'private' | 'group' | 'public';
 
+type VisibilityTranslator = (key: string, options?: { defaultValue?: string }) => string;
+
 type VisibilityDisplay = {
   value: ServerVisibility;
   shortLabel: string;
@@ -54,7 +56,7 @@ export const normalizeServerVisibility = (visibility?: string): ServerVisibility
 };
 
 export const getServerVisibilityDisplay = (
-  t: (key: string, fallback?: string) => string,
+  t: VisibilityTranslator,
   visibility?: string,
 ): VisibilityDisplay => {
   const value = normalizeServerVisibility(visibility);
@@ -62,21 +64,21 @@ export const getServerVisibilityDisplay = (
 
   return {
     value,
-    shortLabel: t(meta.shortKey, meta.shortFallback),
-    longLabel: t(meta.longKey, meta.longFallback),
+    shortLabel: t(meta.shortKey, { defaultValue: meta.shortFallback }),
+    longLabel: t(meta.longKey, { defaultValue: meta.longFallback }),
     className: meta.className,
   };
 };
 
 export const getServerVisibilityOptions = (
-  t: (key: string, fallback?: string) => string,
+  t: VisibilityTranslator,
   visibility?: string,
 ): VisibilityOption[] => {
   const currentVisibility = normalizeServerVisibility(visibility);
   const options: VisibilityOption[] = [
     {
       value: 'private',
-      label: t('server.visibilityPrivateShort', 'Private'),
+      label: t('server.visibilityPrivateShort', { defaultValue: 'Private' }),
       disabled: false,
     },
   ];
@@ -84,14 +86,14 @@ export const getServerVisibilityOptions = (
   if (currentVisibility === 'group') {
     options.push({
       value: 'group',
-      label: t('server.visibilityGroupShort', 'Group'),
+      label: t('server.visibilityGroupShort', { defaultValue: 'Group' }),
       disabled: true,
     });
   }
 
   options.push({
     value: 'public',
-    label: t('server.visibilityPublicShort', 'Public'),
+    label: t('server.visibilityPublicShort', { defaultValue: 'Public' }),
     disabled: false,
   });
 

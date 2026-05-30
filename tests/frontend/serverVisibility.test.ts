@@ -4,7 +4,7 @@ import {
   normalizeServerVisibility,
 } from '../../frontend/src/utils/serverVisibility';
 
-const t = (_key: string, fallback?: string) => fallback || _key;
+const t = (_key: string, options?: { defaultValue?: string }) => options?.defaultValue || _key;
 
 describe('serverVisibility', () => {
   it('defaults missing visibility values to private labels', () => {

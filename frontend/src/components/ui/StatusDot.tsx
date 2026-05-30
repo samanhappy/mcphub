@@ -34,7 +34,7 @@ export const StatusDot: React.FC<StatusDotProps> = ({ kind, label, className, on
     title={title}
   >
     <span className="hub-dot" />
-    {label != null && <span>{label}</span>}
+    {label != null && <span className="hub-status-label">{label}</span>}
   </span>
 );
 

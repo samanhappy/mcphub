@@ -93,7 +93,7 @@ const LoadingControl = ({
 );
 
 const CapabilityIcon = ({ icon: Icon }: { icon: LucideIcon }) => (
-  <span className="inline-flex h-[14px] w-[14px] items-center justify-center shrink-0 leading-none">
+  <span className="hub-server-capability-icon" aria-hidden="true">
     <Icon size={11.5} strokeWidth={1.9} className="block" />
   </span>
 );
@@ -386,8 +386,12 @@ const ServerCard = ({
   const enabled = server.enabled !== false;
   const canManage = canManageServer(server, auth.user);
   const serverEndpoint = `${baseUrl}/mcp/${server.name}`;
-  const visibility = getServerVisibilityDisplay(t, server.visibility ?? server.config?.visibility);
-  const visibilityOptions = getServerVisibilityOptions(t, visibility.value);
+  const translateVisibility = (key: string, options?: { defaultValue?: string }) => t(key, options);
+  const visibility = getServerVisibilityDisplay(
+    translateVisibility,
+    server.visibility ?? server.config?.visibility,
+  );
+  const visibilityOptions = getServerVisibilityOptions(translateVisibility, visibility.value);
   const capabilitySummaries: CapabilitySummary[] = [
     {
       key: 'tools',
@@ -420,11 +424,7 @@ const ServerCard = ({
       >
         {/* Main row */}
         <div
-          className="grid items-center gap-3 px-4 py-3 cursor-pointer hover:bg-[var(--hub-surface-hover)] transition-colors"
-          style={{
-            gridTemplateColumns:
-              'minmax(220px,1.9fr) minmax(110px,0.9fr) minmax(120px,0.95fr) minmax(110px,0.9fr) minmax(180px,1.1fr) 72px 36px',
-          }}
+          className="hub-server-card-row cursor-pointer px-4 py-3 transition-colors hover:bg-[var(--hub-surface-hover)]"
           onClick={() => setExpanded(!expanded)}
         >
           {/* Name + description */}
@@ -532,13 +532,21 @@ const ServerCard = ({
 
           {/* Status */}
           <div className="min-w-0">
-            <ServerStatusDot status={server.status} enabled={server.enabled} onAuthClick={handleOAuth} />
+            <ServerStatusDot
+              status={server.status}
+              enabled={server.enabled}
+              onAuthClick={handleOAuth}
+              className="hub-server-card-status"
+            />
           </div>
 
           {/* Transport */}
           <div className="min-w-0">
             {server.config?.type ? (
-              <span className="hub-tag" title={transportLabel(t, server.config.type) ?? undefined}>
+              <span
+                className="hub-tag hub-server-card-transport-tag"
+                title={transportLabel(t, server.config.type) ?? undefined}
+              >
                 {transportLabel(t, server.config.type)}
               </span>
             ) : (
@@ -546,7 +554,7 @@ const ServerCard = ({
             )}
           </div>
 
-          <div className="min-w-0" onClick={(e) => e.stopPropagation()}>
+          <div className="hub-server-card-visibility min-w-0" onClick={(e) => e.stopPropagation()}>
             {canManage && onVisibilityChange ? (
               <LoadingControl
                 isLoading={isUpdatingVisibility}
@@ -557,7 +565,7 @@ const ServerCard = ({
                   value={visibility.value}
                   onChange={handleVisibilityChange}
                   disabled={isUpdatingVisibility}
-                  className="w-full rounded-md border px-2 py-1 text-[11.5px] bg-[var(--hub-surface)] text-[var(--hub-ink)]"
+                  className="hub-server-card-select w-full rounded-md border px-2 py-1 text-[11.5px] bg-[var(--hub-surface)] text-[var(--hub-ink)]"
                   style={{ borderColor: 'var(--hub-line-2)' }}
                   aria-label={t('server.visibility', 'Visibility')}
                   title={visibility.longLabel}
@@ -571,7 +579,7 @@ const ServerCard = ({
               </LoadingControl>
             ) : (
               <span
-                className={`inline-flex items-center rounded-md border px-2 py-0.5 text-[11.5px] ${visibility.className}`}
+                className={`hub-server-card-visibility-badge inline-flex items-center rounded-md border px-2 py-0.5 text-[11.5px] ${visibility.className}`}
                 title={visibility.longLabel}
               >
                 {visibility.shortLabel}
@@ -580,33 +588,23 @@ const ServerCard = ({
           </div>
 
           {/* Tools / Prompts / Resources counts */}
-          <div className="flex min-w-0 items-center gap-1.5">
-            {capabilitySummaries.map(({ key, icon: Icon, total, enabled: enabledCount, label }) => {
-              const isEmpty = total === 0;
-              return (
-                <span
-                  key={key}
-                  className="inline-flex items-center gap-1 hub-mono hub-num leading-none"
-                  title={`${label}: ${enabledCount}/${total}`}
-                  style={{
-                    padding: '2px 7px',
-                    borderRadius: 6,
-                    fontSize: 11.5,
-                    lineHeight: '16px',
-                    background: isEmpty ? 'transparent' : 'var(--hub-bg-2)',
-                    border: '1px solid',
-                    borderColor: isEmpty ? 'transparent' : 'var(--hub-line-2)',
-                    color: isEmpty ? 'var(--hub-ink-3)' : 'var(--hub-ink-2)',
-                  }}
-                >
-                  <span style={{ color: 'var(--hub-ink-3)' }}>
-                    <CapabilityIcon icon={Icon} />
-                  </span>
-                  <span>{isEmpty ? '0' : `${enabledCount}/${total}`}</span>
+          {capabilitySummaries.map(({ key, icon: Icon, total, enabled: enabledCount, label }) => {
+            const isEmpty = total === 0;
+            return (
+              <span
+                key={key}
+                className={`hub-server-capability-stat hub-mono hub-num ${isEmpty ? 'is-empty' : ''}`}
+                title={`${label}: ${enabledCount}/${total}`}
+              >
+                <span className="text-[var(--hub-ink-3)]">
+                  <CapabilityIcon icon={Icon} />
                 </span>
-              );
-            })}
-          </div>
+                <span className="hub-server-capability-value">
+                  {isEmpty ? '0' : `${enabledCount}/${total}`}
+                </span>
+              </span>
+            );
+          })}
 
           {/* Toggle switch */}
           <div className="flex items-center justify-center">
