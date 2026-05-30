@@ -3,6 +3,7 @@ import { Tool } from '../types/index.js';
 import { getServersInfo } from './mcpService.js';
 import config, { getNameSeparator } from '../config/index.js';
 import { getSystemConfigDao } from '../dao/index.js';
+import { filterModelVisibleTools } from '../utils/mcpApps.js';
 
 /**
  * Service for generating OpenAPI 3.x specifications from MCP tools
@@ -199,9 +200,11 @@ export async function generateOpenAPISpec(
   const allTools: Array<{ tool: Tool; serverName: string }> = [];
 
   for (const serverInfo of filteredServers) {
-    const tools = options.includeDisabledTools
-      ? serverInfo.tools
-      : serverInfo.tools.filter((tool) => tool.enabled !== false);
+    const tools = filterModelVisibleTools(
+      options.includeDisabledTools
+        ? serverInfo.tools
+        : serverInfo.tools.filter((tool) => tool.enabled !== false),
+    );
 
     // Apply group-specific tool filtering if group filter is specified
     let filteredTools = tools;
@@ -350,13 +353,13 @@ export async function getToolStats(): Promise<{
 
   const serverBreakdown = serverInfos.map((server) => ({
     name: server.name,
-    toolCount: server.tools.length,
+    toolCount: filterModelVisibleTools(server.tools).length,
     status: server.status,
   }));
 
   const totalTools = serverInfos
     .filter((server) => server.status === 'connected')
-    .reduce((sum, server) => sum + server.tools.length, 0);
+    .reduce((sum, server) => sum + filterModelVisibleTools(server.tools).length, 0);
 
   return {
     totalServers: serverInfos.filter((server) => server.status === 'connected').length,

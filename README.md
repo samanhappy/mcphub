@@ -17,6 +17,7 @@ MCPHub makes it easy to manage and scale multiple MCP (Model Context Protocol) s
 - **Flexible Routing** - Access all servers, specific groups, or individual servers via HTTP/SSE
 - **Granular Group Visibility** - Control Tool, Prompt, and Resource visibility independently for each server inside a group
 - **Smart Routing** - AI-powered tool discovery using vector semantic search ([Learn more](https://docs.mcphub.app/features/smart-routing))
+- **MCP Apps Proxy** - Transparently forward interactive MCP Apps on single-server routes ([Learn more](https://docs.mcphub.app/features/mcp-apps))
 - **Hot-Swappable Config** - Add, remove, or update servers without downtime
 - **OAuth 2.0 Support** - Both client and server modes for secure authentication ([Learn more](https://docs.mcphub.app/features/oauth))
 - **Social Login** - Seamless GitHub and Google login support with Better Auth integration (requires Database Mode)
@@ -112,6 +113,7 @@ It also speaks the public marketplace API (`mcphub discover`, `mcphub install ..
 | [Database Mode](https://docs.mcphub.app/configuration/database-configuration) | PostgreSQL setup for production   |
 | [OAuth](https://docs.mcphub.app/features/oauth)                               | OAuth 2.0 client and server setup |
 | [Smart Routing](https://docs.mcphub.app/features/smart-routing)               | AI-powered tool discovery         |
+| [MCP Apps](https://docs.mcphub.app/features/mcp-apps)                         | Interactive Apps transparent proxy |
 | [CLI Guide](https://docs.mcphub.app/features/cli)                             | Manage and call the hub from a terminal |
 | [Docker Setup](https://docs.mcphub.app/configuration/docker-setup)            | Docker deployment guide           |
 

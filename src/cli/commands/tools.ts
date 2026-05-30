@@ -4,6 +4,7 @@ import { GlobalFlags, buildClient, resolveTarget } from '../context.js';
 import { extractFlags } from '../parse-args.js';
 import { bold, dim, printJson, printLine, printTable } from '../output.js';
 import type { ServerInfo, Tool } from '../../types/index.js';
+import { isAppOnlyTool } from '../../utils/mcpApps.js';
 
 interface ApiResponse<T> {
   success: boolean;
@@ -49,6 +50,9 @@ async function fetchFlatTools(client: ApiClient): Promise<FlatTool[]> {
   const out: FlatTool[] = [];
   for (const s of servers) {
     for (const t of (s.tools ?? []) as Tool[]) {
+      if (isAppOnlyTool(t)) {
+        continue;
+      }
       out.push({
         server: s.name,
         serverStatus: s.status,

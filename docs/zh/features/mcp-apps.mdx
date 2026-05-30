@@ -1,0 +1,42 @@
+---
+title: 'MCP Apps'
+description: '通过单服务器 MCPHub 路由透明代理交互式 MCP Apps'
+---
+
+## 概述
+
+MCPHub 支持将 [MCP Apps](https://github.com/modelcontextprotocol/ext-apps) 作为透明代理转发。它会转发关联 UI 的工具元数据、仅 App 可用的工具、`ui://` 资源和上游列表变更通知。MCPHub 仪表板本身不负责渲染 App UI。
+
+无需增加 MCPHub 配置开关。下游 Host 声明 `io.modelcontextprotocol/ui` 扩展，并支持 `text/html;profile=mcp-app` MIME 类型时，该能力会自动启用。
+
+## 路由要求
+
+只有请求路由解析到一个已连接的 MCP 上游服务器时，MCP Apps 透明代理才会启用：
+
+- `/mcp/{server}`
+- `/mcp/{group}`，且分组内只有一个对调用方可见的 MCP 服务器
+- `/mcp`，且调用方只能看到一个 MCP 服务器
+
+聚合路由和 `$smart` 路由仍按普通 MCP 路由工作。在这些路由上，MCPHub 会：
+
+- 隐藏 `_meta.ui.visibility: ["app"]` 等仅 App 可用的工具
+- 移除 Apps 专属的 `_meta.ui` 和旧版 `_meta["ui/resourceUri"]` 字段
+- 拒绝直接调用仅 App 可用的工具
+- 拒绝读取未列出的 `ui://` 资源
+
+## 工具名称
+
+普通 MCPHub 路由使用带服务器前缀的工具名称，例如 `weather::forecast`，分隔符取决于您的配置。
+
+符合条件的 MCP Apps 路由会保留上游原始工具名，例如 `forecast`。这样 App iframe 发起的调用无需改写即可直接转发。为兼容已有客户端，带前缀的别名仍然可用。
+
+## UI 资源
+
+MCP Apps 服务器可以不在 `resources/list` 中列出仅供 UI 使用的资源。在符合条件的 Apps 路由上，MCPHub 会将未列出的 `ui://` URI 的 `resources/read` 请求直接转发给唯一的上游服务器。
+
+普通已列出资源仍然可以读取，但在不符合条件的路由上会移除 Apps 专属元数据。
+
+## 动态列表
+
+MCPHub 会订阅上游的 `tools/list_changed`、`resources/list_changed` 和 `prompts/list_changed` 通知。收到通知后，它会刷新缓存、为模型可见工具更新 Smart Routing 向量索引，并通知已连接的下游客户端。
+

@@ -12,9 +12,19 @@ jest.mock('openid-client', () => ({
   refreshTokenGrant: jest.fn(),
 }));
 
+const mockGetServersInfo = jest.fn(async () => []);
+
+jest.mock('../../src/services/mcpService.js', () => ({
+  getServersInfo: mockGetServersInfo,
+}));
+
 import { generateOpenAPISpec, getToolStats } from '../../src/services/openApiGeneratorService';
 
 describe('OpenAPI Generator Service', () => {
+  beforeEach(() => {
+    mockGetServersInfo.mockResolvedValue([]);
+  });
+
   describe('generateOpenAPISpec', () => {
     it('should generate a valid OpenAPI specification', async () => {
       const spec = await generateOpenAPISpec();
@@ -85,6 +95,33 @@ describe('OpenAPI Generator Service', () => {
           expect(pathSegments.length).toBe(3);
         }
       }
+    });
+
+    it('should exclude app-only tools from generated paths', async () => {
+      mockGetServersInfo.mockResolvedValue([
+        {
+          name: 'apps',
+          status: 'connected',
+          tools: [
+            {
+              name: 'apps-open_dashboard',
+              description: 'Open dashboard',
+              inputSchema: { type: 'object' },
+            },
+            {
+              name: 'apps-poll_dashboard',
+              description: 'Refresh dashboard',
+              inputSchema: { type: 'object' },
+              _meta: { ui: { visibility: ['app'] } },
+            },
+          ],
+        },
+      ] as any);
+
+      const spec = await generateOpenAPISpec();
+
+      expect(spec.paths).toHaveProperty('/tools/apps/open_dashboard');
+      expect(spec.paths).not.toHaveProperty('/tools/apps/poll_dashboard');
     });
   });
 

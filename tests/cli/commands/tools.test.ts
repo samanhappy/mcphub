@@ -50,6 +50,13 @@ const SERVERS_RESPONSE = {
           enabled: false,
           inputSchema: { type: 'object', properties: {} },
         },
+        {
+          name: 'poll_dashboard',
+          description: 'Refresh an MCP App',
+          enabled: true,
+          inputSchema: { type: 'object', properties: {} },
+          _meta: { ui: { visibility: ['app'] } },
+        },
       ],
     },
   ],

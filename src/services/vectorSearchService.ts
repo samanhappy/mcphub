@@ -4,6 +4,7 @@ import { Tool } from '../types/index.js';
 import { getAppDataSource, isDatabaseConnected, initializeDatabase, reconnectDatabase } from '../db/connection.js';
 import { getServerDao } from '../dao/index.js';
 import { getSmartRoutingConfig, type SmartRoutingConfig } from '../utils/smartRouting.js';
+import { filterModelVisibleTools } from '../utils/mcpApps.js';
 import { toFloat32Array } from '../utils/base64.js';
 import {
   truncateToTokenLimit,
@@ -737,7 +738,7 @@ async function generateEmbedding(text: string): Promise<number[]> {
   const rawMaxTokens =
     smartRoutingConfig.embeddingMaxTokens ?? getModelDefaultTokenLimit(config.embeddingModel);
   const maxTokens = isSiliconFlow ? Math.floor(rawMaxTokens * TOKEN_SAFETY_FACTOR) : rawMaxTokens;
-  
+
   let truncatedText: string;
   const _truncateStart = Date.now();
   try {
@@ -1031,6 +1032,7 @@ export const saveToolsAsVectorEmbeddings = async (
     reportProgress?: boolean;
   } = {},
 ): Promise<void> => {
+  tools = filterModelVisibleTools(tools);
   const shouldReport = options.reportProgress === true;
   let progressErrorEmitted = false;
   let lastProgressCurrent = 0;
@@ -1049,7 +1051,7 @@ export const saveToolsAsVectorEmbeddings = async (
 
   try {
     if (tools.length === 0) {
-      console.warn('No tools to save as vector embeddings', { serverName });
+      await removeServerToolEmbeddings(serverName);
       return;
     }
 

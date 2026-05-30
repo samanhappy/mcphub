@@ -11,6 +11,9 @@ import {
   ListResourceTemplatesRequestSchema,
   ReadResourceRequestSchema,
   ServerCapabilities,
+  type Prompt as McpPrompt,
+  type Resource as McpResource,
+  type Tool as McpTool,
 } from '@modelcontextprotocol/sdk/types.js';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
@@ -25,6 +28,7 @@ import {
   ServerInfo,
   ServerConfig,
   Tool,
+  Resource,
   ProxychainsConfig,
   IGroupServerConfig,
 } from '../types/index.js';
@@ -65,6 +69,13 @@ import {
   sanitizeStringForLogging,
   summarizeErrorForLogging,
 } from '../utils/serialization.js';
+import {
+  MCP_APPS_CAPABILITIES,
+  filterModelVisibleTools,
+  hasMcpAppsCapability,
+  isAppOnlyTool,
+  stripMcpAppsMetadata,
+} from '../utils/mcpApps.js';
 
 const servers: { [sessionId: string]: Server } = {};
 
@@ -294,17 +305,31 @@ export const notifyToolChanged = async (
   broadcastToolListChanged();
 };
 
-export const broadcastToolListChanged = (): void => {
+const broadcastListChanged = (
+  listType: 'tool' | 'resource' | 'prompt',
+  sendNotification: (server: Server) => Promise<void>,
+): void => {
   Object.values(servers).forEach((server) => {
-    server
-      .sendToolListChanged()
+    sendNotification(server)
       .catch((error) => {
-        console.warn('Failed to send tool list changed notification:', error.message);
+        console.warn(`Failed to send ${listType} list changed notification:`, error.message);
       })
       .then(() => {
-        console.log('Tool list changed notification sent successfully');
+        console.log(`${listType} list changed notification sent successfully`);
       });
   });
+};
+
+export const broadcastToolListChanged = (): void => {
+  broadcastListChanged('tool', (server) => server.sendToolListChanged());
+};
+
+export const broadcastResourceListChanged = (): void => {
+  broadcastListChanged('resource', (server) => server.sendResourceListChanged());
+};
+
+export const broadcastPromptListChanged = (): void => {
+  broadcastListChanged('prompt', (server) => server.sendPromptListChanged());
 };
 
 export const updateServerInfoVisibility = (
@@ -337,8 +362,11 @@ export const syncToolEmbedding = async (serverName: string, toolName: string) =>
     console.warn(`Tool not found: ${toolName} on server: ${serverName}`);
     return;
   }
+  if (isAppOnlyTool(tool)) {
+    return;
+  }
   // Save tool as vector embedding for search
-  saveToolsAsVectorEmbeddings(serverName, [tool]).catch((error) => {
+  syncToolsAsVectorEmbeddings(serverName, [tool]).catch((error) => {
     console.warn(
       `[EMBED_SYNC_ERROR] Failed to sync embedding for tool "${toolName}" on server "${serverName}"`,
     );
@@ -358,19 +386,51 @@ const cleanInputSchema = (schema: any): any => {
   return cleanedSchema;
 };
 
+export const normalizeToolForCache = (serverName: string, tool: McpTool): Tool => {
+  return {
+    ...tool,
+    name: `${serverName}${getNameSeparator()}${tool.name}`,
+    description: tool.description || '',
+    inputSchema: cleanInputSchema(tool.inputSchema || {}),
+  };
+};
+
+const syncToolsAsVectorEmbeddings = async (
+  serverName: string,
+  tools: Tool[],
+  options?: { reportProgress?: boolean },
+): Promise<void> => {
+  const modelVisibleTools = filterModelVisibleTools(tools);
+  if (modelVisibleTools.length === 0) {
+    await removeServerToolEmbeddings(serverName);
+    return;
+  }
+
+  await saveToolsAsVectorEmbeddings(serverName, modelVisibleTools, options);
+};
+
 // Normalize prompt payload to satisfy MCP ListPrompts response schema
 const normalizePromptForList = (prompt: {
   name: string;
   title?: string;
   description?: string;
   arguments?: any[];
+  [key: string]: unknown;
 }) => {
   return {
+    ...prompt,
     name: prompt.name,
     title: prompt.title || prompt.name,
     description: prompt.description || '',
     arguments: Array.isArray(prompt.arguments) ? prompt.arguments : [],
   };
+};
+
+const normalizePromptForCache = (serverName: string, prompt: McpPrompt) => {
+  return normalizePromptForList({
+    ...prompt,
+    name: `${serverName}${getNameSeparator()}${prompt.name}`,
+  });
 };
 
 // Normalize resource payload to avoid nullable DB fields violating MCP schema
@@ -379,8 +439,10 @@ const normalizeResourceForList = (resource: {
   name?: string | null;
   description?: string | null;
   mimeType?: string | null;
-}) => {
+  [key: string]: unknown;
+}): Resource => {
   return {
+    ...resource,
     uri: resource.uri,
     name: resource.name || '',
     description: resource.description || '',
@@ -388,8 +450,109 @@ const normalizeResourceForList = (resource: {
   };
 };
 
+const normalizeResourceForCache = (resource: McpResource): Resource => {
+  return normalizeResourceForList(resource);
+};
+
 // Store all server information
 let serverInfos: ServerInfo[] = [];
+
+export const updateServerToolsCache = (
+  serverInfo: ServerInfo,
+  tools: McpTool[],
+  options?: { reportEmbeddingProgress?: boolean },
+): void => {
+  serverInfo.tools = tools.map((tool) => normalizeToolForCache(serverInfo.name, tool));
+  syncToolsAsVectorEmbeddings(serverInfo.name, serverInfo.tools, {
+    reportProgress: options?.reportEmbeddingProgress === true,
+  }).catch((error) => {
+    console.warn(
+      `[EMBED_SYNC_ERROR] Failed to sync tool embeddings for server "${serverInfo.name}"`,
+    );
+    console.error('Error syncing tool embeddings', {
+      serverName: serverInfo.name,
+      error: summarizeErrorForLogging(error),
+    });
+  });
+};
+
+const updateServerPromptsCache = (serverInfo: ServerInfo, prompts: McpPrompt[]): void => {
+  serverInfo.prompts = prompts.map((prompt) => normalizePromptForCache(serverInfo.name, prompt));
+};
+
+const updateServerResourcesCache = (serverInfo: ServerInfo, resources: McpResource[]): void => {
+  serverInfo.resources = resources.map(normalizeResourceForCache);
+};
+
+const logListChangedRefreshError = (
+  serverName: string,
+  listType: 'tool' | 'prompt' | 'resource',
+  error: Error,
+): void => {
+  console.warn(`Failed to refresh ${listType} list after upstream notification`, {
+    serverName,
+    error: summarizeErrorForLogging(error),
+  });
+};
+
+const createUpstreamMcpClient = (
+  name: string,
+  getServerInfo: () => ServerInfo | undefined,
+): Client => {
+  return new Client(
+    {
+      name: `mcp-client-${name}`,
+      version: '1.0.0',
+    },
+    {
+      capabilities: MCP_APPS_CAPABILITIES,
+      listChanged: {
+        tools: {
+          onChanged: (error, tools) => {
+            const serverInfo = getServerInfo();
+            if (error) {
+              logListChangedRefreshError(name, 'tool', error);
+              return;
+            }
+            if (!serverInfo || !tools) {
+              return;
+            }
+            updateServerToolsCache(serverInfo, tools);
+            broadcastToolListChanged();
+          },
+        },
+        prompts: {
+          onChanged: (error, prompts) => {
+            const serverInfo = getServerInfo();
+            if (error) {
+              logListChangedRefreshError(name, 'prompt', error);
+              return;
+            }
+            if (!serverInfo || !prompts) {
+              return;
+            }
+            updateServerPromptsCache(serverInfo, prompts);
+            broadcastPromptListChanged();
+          },
+        },
+        resources: {
+          onChanged: (error, resources) => {
+            const serverInfo = getServerInfo();
+            if (error) {
+              logListChangedRefreshError(name, 'resource', error);
+              return;
+            }
+            if (!serverInfo || !resources) {
+              return;
+            }
+            updateServerResourcesCache(serverInfo, resources);
+            broadcastResourceListChanged();
+          },
+        },
+      },
+    },
+  );
+};
 
 export interface ServerConnectionStats {
   total: number;
@@ -931,15 +1094,7 @@ const callToolWithReconnect = async (
           const newTransport = await createTransportFromConfig(serverInfo.name, server);
 
           // Create new client
-          const client = new Client(
-            {
-              name: `mcp-client-${serverInfo.name}`,
-              version: '1.0.0',
-            },
-            {
-              capabilities: {},
-            },
-          );
+          const client = createUpstreamMcpClient(serverInfo.name, () => serverInfo);
 
           // Reconnect with new transport
           await client.connect(newTransport, serverInfo.options || {});
@@ -952,22 +1107,7 @@ const callToolWithReconnect = async (
           // Reload tools list after reconnection
           try {
             const tools = await client.listTools({}, serverInfo.options || {});
-            serverInfo.tools = tools.tools.map((tool) => ({
-              name: `${serverInfo.name}${getNameSeparator()}${tool.name}`,
-              description: tool.description || '',
-              inputSchema: cleanInputSchema(tool.inputSchema || {}),
-            }));
-
-            // Save tools as vector embeddings for search
-            saveToolsAsVectorEmbeddings(serverInfo.name, serverInfo.tools).catch((error) => {
-              console.warn(
-                `[EMBED_SYNC_ERROR] Failed to sync tool embeddings after reconnect for server "${serverInfo.name}"`,
-              );
-              console.error('Error syncing tool embeddings after reconnect', {
-                serverName: serverInfo.name,
-                error: summarizeErrorForLogging(error),
-              });
-            });
+            updateServerToolsCache(serverInfo, tools.tools);
           } catch (listToolsError) {
             console.warn('Failed to reload tools after reconnection', {
               serverName: serverInfo.name,
@@ -1138,7 +1278,7 @@ export const initializeClientsFromSettings = async (
           );
 
           // Save tools as vector embeddings for search
-          saveToolsAsVectorEmbeddings(name, mcpTools, {
+          syncToolsAsVectorEmbeddings(name, mcpTools, {
             reportProgress: options?.reportEmbeddingProgress === true && serverName === name,
           }).catch((error) => {
             console.warn(`[EMBED_SYNC_ERROR] Failed to sync OpenAPI embeddings for server "${name}"`);
@@ -1163,15 +1303,8 @@ export const initializeClientsFromSettings = async (
         transport = await createTransportFromConfig(name, expandedConf);
       }
 
-      const client = new Client(
-        {
-          name: `mcp-client-${name}`,
-          version: '1.0.0',
-        },
-        {
-          capabilities: {},
-        },
-      );
+      const serverInfoRef: { current?: ServerInfo } = {};
+      const client = createUpstreamMcpClient(name, () => serverInfoRef.current);
 
       // Get request options from server configuration, with fallbacks
       const serverRequestOptions = expandedConf.options || {};
@@ -1204,6 +1337,7 @@ export const initializeClientsFromSettings = async (
         createTime: Date.now(),
         config: expandedConf, // Store reference to expanded config
       };
+      serverInfoRef.current = serverInfo;
 
       const pendingAuth = expandedConf.oauth?.pendingAuthorization;
       if (pendingAuth) {
@@ -1233,22 +1367,9 @@ export const initializeClientsFromSettings = async (
               .listTools({}, initRequestOptions || requestOptions)
               .then((tools) => {
                 console.log(`Successfully listed ${tools.tools.length} tools for server: ${name}`);
-                serverInfo.tools = tools.tools.map((tool) => ({
-                  name: `${name}${getNameSeparator()}${tool.name}`,
-                  description: tool.description || '',
-                  inputSchema: cleanInputSchema(tool.inputSchema || {}),
-                }));
-                // Save tools as vector embeddings for search
-                saveToolsAsVectorEmbeddings(name, serverInfo.tools, {
-                  reportProgress: options?.reportEmbeddingProgress === true && serverName === name,
-                }).catch((embeddingError) => {
-                  console.warn(
-                    `[EMBED_SYNC_ERROR] Failed to sync tool embeddings for connected server "${name}"`,
-                  );
-                  console.error('Error syncing tool embeddings for connected server', {
-                    serverName: name,
-                    error: summarizeErrorForLogging(embeddingError),
-                  });
+                updateServerToolsCache(serverInfo, tools.tools, {
+                  reportEmbeddingProgress:
+                    options?.reportEmbeddingProgress === true && serverName === name,
                 });
               })
               .catch((error) => {
@@ -1267,14 +1388,7 @@ export const initializeClientsFromSettings = async (
                 console.log(
                   `Successfully listed ${prompts.prompts.length} prompts for server: ${name}`,
                 );
-                serverInfo.prompts = prompts.prompts.map((prompt) =>
-                  normalizePromptForList({
-                    name: `${name}${getNameSeparator()}${prompt.name}`,
-                    title: prompt.title,
-                    description: prompt.description,
-                    arguments: prompt.arguments,
-                  }),
-                );
+                updateServerPromptsCache(serverInfo, prompts.prompts);
               })
               .catch((error) => {
                 console.error('Failed to list prompts for server', {
@@ -1292,14 +1406,7 @@ export const initializeClientsFromSettings = async (
                 console.log(
                   `Successfully listed ${resources.resources.length} resources for server: ${name}`,
                 );
-                serverInfo.resources = resources.resources.map((resource) =>
-                  normalizeResourceForList({
-                    uri: resource.uri,
-                    name: resource.name,
-                    description: resource.description,
-                    mimeType: resource.mimeType,
-                  }),
-                );
+                updateServerResourcesCache(serverInfo, resources.resources);
               })
               .catch((error) => {
                 console.error('Failed to list resources for server', {
@@ -1740,6 +1847,79 @@ export const toggleServerStatus = async (
   }
 };
 
+type McpAppsRouteContext = {
+  enabled: boolean;
+  serverInfo?: ServerInfo;
+};
+
+const getMcpAppsRouteContext = async (
+  sessionId: string,
+  group: string | undefined,
+): Promise<McpAppsRouteContext> => {
+  if (
+    !sessionId ||
+    isSmartRoutingGroup(group) ||
+    !hasMcpAppsCapability(servers[sessionId]?.getClientCapabilities())
+  ) {
+    return { enabled: false };
+  }
+
+  const { filteredServerInfos } = await getFilteredServerInfosForGroup(group);
+  if (
+    filteredServerInfos.length !== 1 ||
+    filteredServerInfos[0].status !== 'connected' ||
+    !filteredServerInfos[0].client
+  ) {
+    return { enabled: false };
+  }
+
+  return {
+    enabled: true,
+    serverInfo: filteredServerInfos[0],
+  };
+};
+
+const normalizeToolNameForServer = (serverName: string, toolName: string): string => {
+  const prefix = `${serverName}${getNameSeparator()}`;
+  return toolName.startsWith(prefix) ? toolName.substring(prefix.length) : toolName;
+};
+
+const findToolOnServer = (
+  serverInfo: ServerInfo,
+  toolName: string,
+  allowRawName: boolean,
+): Tool | undefined => {
+  return serverInfo.tools.find(
+    (tool) =>
+      tool.name === toolName ||
+      (allowRawName && normalizeToolNameForServer(serverInfo.name, tool.name) === toolName),
+  );
+};
+
+const assertToolAvailableForRoute = (tool: Tool, appsRouteContext: McpAppsRouteContext): void => {
+  if (isAppOnlyTool(tool) && !appsRouteContext.enabled) {
+    throw new Error(`Tool '${tool.name}' is only available to MCP Apps`);
+  }
+};
+
+const projectToolForDownstream = (
+  serverName: string,
+  tool: Tool,
+  appsRouteContext: McpAppsRouteContext,
+): Tool | undefined => {
+  if (!appsRouteContext.enabled && isAppOnlyTool(tool)) {
+    return undefined;
+  }
+
+  const projectedTool = appsRouteContext.enabled ? tool : stripMcpAppsMetadata(tool);
+  return {
+    ...projectedTool,
+    name: appsRouteContext.enabled
+      ? normalizeToolNameForServer(serverName, projectedTool.name)
+      : projectedTool.name,
+  };
+};
+
 export const handleListToolsRequest = async (_: any, extra: any) => {
   const sessionId = extra.sessionId || '';
   const group = getGroup(sessionId);
@@ -1752,6 +1932,7 @@ export const handleListToolsRequest = async (_: any, extra: any) => {
   }
 
   const { filteredServerInfos, serverConfigsByName } = await getFilteredServerInfosForGroup(group);
+  const appsRouteContext = await getMcpAppsRouteContext(sessionId, group);
 
   const allTools = [];
   for (const serverInfo of filteredServerInfos) {
@@ -1777,7 +1958,12 @@ export const handleListToolsRequest = async (_: any, extra: any) => {
         };
       });
 
-      allTools.push(...toolsWithCustomDescriptions);
+      allTools.push(
+        ...toolsWithCustomDescriptions.flatMap((tool) => {
+          const projectedTool = projectToolForDownstream(serverInfo.name, tool, appsRouteContext);
+          return projectedTool ? [projectedTool] : [];
+        }),
+      );
     }
   }
 
@@ -1801,6 +1987,7 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
   const group =
     requestContextService.getGroupContext() || extra?.group || getGroup(sessionId) || undefined;
   const username = requestContextService.getUsernameContext() || extra?.username || undefined;
+  let appsRouteContext: McpAppsRouteContext = { enabled: false };
   const keyId = bearerKeyContext.keyId || extra?.keyId || undefined;
   const keyName = bearerKeyContext.keyName || extra?.keyName || undefined;
   const sourceIp = requestContextService.getRequestContext()?.remoteAddress || undefined;
@@ -1828,6 +2015,8 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
   };
 
   try {
+    appsRouteContext = await getMcpAppsRouteContext(sessionId, group);
+
     // Special handling for smart routing tools
     if (request.params.name === 'search_tools') {
       const { query, limit = 10 } = request.params.arguments || {};
@@ -1849,7 +2038,9 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
 
       const { arguments: toolArgs } = request.params.arguments || {};
       let targetServerInfo: ServerInfo | undefined;
-      if (extra && extra.server) {
+      if (appsRouteContext.enabled) {
+        targetServerInfo = appsRouteContext.serverInfo;
+      } else if (extra && extra.server) {
         targetServerInfo = getServerByName(extra.server);
       } else {
         // Find the first server that has this tool
@@ -1866,10 +2057,11 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
       }
 
       // Check if the tool exists on the server
-      const toolExists = targetServerInfo.tools.some((tool) => tool.name === toolName);
-      if (!toolExists) {
+      const tool = findToolOnServer(targetServerInfo, toolName, appsRouteContext.enabled);
+      if (!tool) {
         throw new Error(`Tool '${toolName}' not found on server '${targetServerInfo.name}'`);
       }
+      assertToolAvailableForRoute(tool, appsRouteContext);
 
       // Handle OpenAPI servers differently
       if (targetServerInfo.openApiClient) {
@@ -1886,11 +2078,7 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
         });
 
         // Remove server prefix from tool name if present
-        const separator = getNameSeparator();
-        const prefix = `${targetServerInfo.name}${separator}`;
-        const cleanToolName = toolName.startsWith(prefix)
-          ? toolName.substring(prefix.length)
-          : toolName;
+        const cleanToolName = normalizeToolNameForServer(targetServerInfo.name, toolName);
 
         // Extract passthrough headers from extra or request context
         let passthroughHeaders: Record<string, string> | undefined;
@@ -1974,11 +2162,7 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
         arguments: summarizeArgumentsForLogging(finalArgs),
       });
 
-      const separator = getNameSeparator();
-      const prefix = `${targetServerInfo.name}${separator}`;
-      const cleanToolName = toolName.startsWith(prefix)
-        ? toolName.substring(prefix.length)
-        : toolName;
+      const cleanToolName = normalizeToolNameForServer(targetServerInfo.name, toolName);
       await reserveHostedIfNeeded(targetServerInfo.name, cleanToolName);
       const result = await callToolWithReconnect(
         targetServerInfo,
@@ -2021,10 +2205,16 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
     }
 
     // Regular tool handling
-    const serverInfo = getServerByTool(request.params.name);
-    if (!serverInfo) {
+    const serverInfo = appsRouteContext.enabled
+      ? appsRouteContext.serverInfo
+      : getServerByTool(request.params.name);
+    const tool = serverInfo
+      ? findToolOnServer(serverInfo, request.params.name, appsRouteContext.enabled)
+      : undefined;
+    if (!serverInfo || !tool) {
       throw new Error(`Server not found: ${request.params.name}`);
     }
+    assertToolAvailableForRoute(tool, appsRouteContext);
 
     // Handle OpenAPI servers differently
     if (serverInfo.openApiClient) {
@@ -2032,11 +2222,7 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
       const openApiClient = serverInfo.openApiClient;
 
       // Remove server prefix from tool name if present
-      const separator = getNameSeparator();
-      const prefix = `${serverInfo.name}${separator}`;
-      const cleanToolName = request.params.name.startsWith(prefix)
-        ? request.params.name.substring(prefix.length)
-        : request.params.name;
+      const cleanToolName = normalizeToolNameForServer(serverInfo.name, request.params.name);
 
       console.log('Invoking OpenAPI tool', {
         toolName: cleanToolName,
@@ -2122,11 +2308,7 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
       throw new Error(`Client not found for server: ${serverInfo.name}`);
     }
 
-    const separator = getNameSeparator();
-    const prefix = `${serverInfo.name}${separator}`;
-    const cleanToolName = request.params.name.startsWith(prefix)
-      ? request.params.name.substring(prefix.length)
-      : request.params.name;
+    const cleanToolName = normalizeToolNameForServer(serverInfo.name, request.params.name);
     await reserveHostedIfNeeded(serverInfo.name, cleanToolName);
     const result = await callToolWithReconnect(
       serverInfo,
@@ -2343,6 +2525,7 @@ export const handleListResourcesRequest = async (_: any, extra: any) => {
   const sessionId = extra.sessionId || '';
   const group = getGroup(sessionId);
   console.log(`Handling ListResourcesRequest for group: ${group}`);
+  const appsRouteContext = await getMcpAppsRouteContext(sessionId, group);
 
   // Start with built-in resources (only enabled ones)
   const builtinResources = await getBuiltinResourceDao().findEnabled();
@@ -2380,10 +2563,13 @@ export const handleListResourcesRequest = async (_: any, extra: any) => {
       // Apply custom descriptions from server configuration
       const resourcesWithCustomDescriptions = enabledResources.map((resource: any) => {
         const resourceConfig = serverConfig?.resources?.[resource.uri];
-        return normalizeResourceForList({
+        const normalizedResource = normalizeResourceForList({
           ...resource,
           description: resourceConfig?.description || resource.description,
         });
+        return appsRouteContext.enabled
+          ? normalizedResource
+          : stripMcpAppsMetadata(normalizedResource);
       });
 
       allResources.push(...resourcesWithCustomDescriptions);
@@ -2399,6 +2585,7 @@ export const handleListResourceTemplatesRequest = async (_: any, extra: any) => 
   const sessionId = extra.sessionId || '';
   const group = getGroup(sessionId);
   console.log(`Handling ListResourceTemplatesRequest for group: ${group}`);
+  const appsRouteContext = await getMcpAppsRouteContext(sessionId, group);
 
   const { filteredServerInfos, serverConfigsByName } = await getFilteredServerInfosForGroup(group, {
     requireClient: true,
@@ -2411,12 +2598,15 @@ export const handleListResourceTemplatesRequest = async (_: any, extra: any) => 
       }
 
       const templates = await serverInfo.client.listResourceTemplates({}, serverInfo.options || {});
-      return filterResourceTemplatesByGroup(
+      const filteredTemplates = await filterResourceTemplatesByGroup(
         group,
         serverInfo.name,
         templates.resourceTemplates || [],
         serverConfigsByName.get(serverInfo.name),
       );
+      return appsRouteContext.enabled
+        ? filteredTemplates
+        : filteredTemplates.map((template) => stripMcpAppsMetadata(template));
     }),
   );
 
@@ -2427,9 +2617,12 @@ export const handleListResourceTemplatesRequest = async (_: any, extra: any) => 
   };
 };
 
-export const handleReadResourceRequest = async (request: any, _extra: any) => {
+export const handleReadResourceRequest = async (request: any, extra: any) => {
   try {
     const { uri } = request.params;
+    const sessionId = extra.sessionId || '';
+    const group = getGroup(sessionId);
+    const appsRouteContext = await getMcpAppsRouteContext(sessionId, group);
 
     // Check built-in resources first
     const builtinResource = await getBuiltinResourceDao().findByUri(uri);
@@ -2445,24 +2638,48 @@ export const handleReadResourceRequest = async (request: any, _extra: any) => {
       };
     }
 
-    // Find the server that owns this resource
-    const server = serverInfos.find(
-      (serverInfo) =>
-        serverInfo.status === 'connected' &&
-        serverInfo.enabled !== false &&
-        serverInfo.resources?.find((resource) => resource.uri === uri),
-    );
+    const { filteredServerInfos, serverConfigsByName } =
+      await getFilteredServerInfosForGroup(group);
 
-    if (!server) {
+    let server: ServerInfo | undefined;
+    for (const serverInfo of filteredServerInfos) {
+      if (serverInfo.status !== 'connected') {
+        continue;
+      }
+      const serverConfig = await getServerDao().findById(serverInfo.name);
+      let enabledResources = serverInfo.resources;
+      if (serverConfig?.resources) {
+        enabledResources = enabledResources.filter(
+          (resource) => serverConfig.resources?.[resource.uri]?.enabled !== false,
+        );
+      }
+      enabledResources = await filterResourcesByGroup(
+        group,
+        serverInfo.name,
+        enabledResources,
+        serverConfigsByName.get(serverInfo.name),
+      );
+      if (enabledResources.some((resource) => resource.uri === uri)) {
+        server = serverInfo;
+        break;
+      }
+    }
+
+    if (!server && appsRouteContext.enabled && uri.startsWith('ui://')) {
+      server = appsRouteContext.serverInfo;
+    }
+
+    if (!server?.client) {
       throw new Error(`Resource not found: ${uri}`);
     }
 
-    const result = await server.client?.readResource({ uri });
-    if (!result) {
-      throw new Error(`Failed to read resource: ${uri}`);
-    }
-
-    return result;
+    const result = await server.client.readResource({ uri });
+    return appsRouteContext.enabled
+      ? result
+      : {
+          ...result,
+          contents: result.contents.map((content) => stripMcpAppsMetadata(content)),
+        };
   } catch (error) {
     console.error('Error handling ReadResourceRequest', summarizeErrorForLogging(error));
     const safeErrorText = formatErrorForLogging(error);
@@ -2505,7 +2722,12 @@ export const createMcpServer = (
   const server = new Server(
     { name: serverName, version },
     {
-      capabilities: { tools: {}, prompts: {}, resources: {} },
+      capabilities: {
+        tools: { listChanged: true },
+        prompts: { listChanged: true },
+        resources: { listChanged: true },
+        ...MCP_APPS_CAPABILITIES,
+      },
       ...(normalizedOptions.instructions !== undefined
         ? { instructions: normalizedOptions.instructions }
         : {}),
@@ -2675,7 +2897,7 @@ const resourceTemplateMatchesSelection = (uriTemplate: string, allowedResources:
 export async function filterResourceTemplatesByGroup(
   group: string | undefined,
   serverName: string,
-  resourceTemplates: Array<{ uriTemplate?: string }>,
+  resourceTemplates: Array<{ uriTemplate?: string; _meta?: Record<string, unknown> }>,
   serverConfig?: IGroupServerConfig,
 ) {
   if (group) {

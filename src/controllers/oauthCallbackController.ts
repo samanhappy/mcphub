@@ -20,8 +20,9 @@ import {
   getServerByName,
   getServerByOAuthState,
   createTransportFromConfig,
+  updateServerToolsCache,
 } from '../services/mcpService.js';
-import { getNameSeparator, replaceEnvVars } from '../config/index.js';
+import { replaceEnvVars } from '../config/index.js';
 import { loadServerConfig } from '../services/oauthSettingsStore.js';
 import type { ServerInfo } from '../types/index.js';
 
@@ -338,12 +339,7 @@ export const handleOAuthCallback = async (req: Request, res: Response) => {
                   serverName: serverInfo.name,
                 });
                 const toolsResult = await serverInfo.client.listTools({}, serverInfo.options);
-                const separator = getNameSeparator();
-                serverInfo.tools = toolsResult.tools.map((tool) => ({
-                  name: `${serverInfo.name}${separator}${tool.name}`,
-                  description: tool.description || '',
-                  inputSchema: tool.inputSchema || {},
-                }));
+                updateServerToolsCache(serverInfo, toolsResult.tools);
                 console.log('Listed tools after OAuth callback', {
                   serverName: serverInfo.name,
                   toolCount: serverInfo.tools.length,

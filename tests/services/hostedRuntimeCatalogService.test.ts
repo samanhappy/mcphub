@@ -64,6 +64,13 @@ describe('hostedRuntimeCatalogService', () => {
             inputSchema: {},
             enabled: false,
           },
+          {
+            name: 'time-poll_dashboard',
+            description: 'Refresh an MCP App',
+            inputSchema: {},
+            enabled: true,
+            _meta: { ui: { visibility: ['app'] } },
+          },
         ],
         prompts: [],
         resources: [],

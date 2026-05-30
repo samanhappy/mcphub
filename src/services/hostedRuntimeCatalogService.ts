@@ -2,6 +2,7 @@ import { getNameSeparator } from '../config/index.js';
 import { getServersInfo } from './mcpService.js';
 import { getHostedNodeIdentity } from './hostedNodeIdentity.js';
 import { stripRuntimeToolName } from './hostedRuntimeCatalogNames.js';
+import { filterModelVisibleTools } from '../utils/mcpApps.js';
 
 export interface HostedRuntimeTool {
   name: string;
@@ -46,7 +47,7 @@ export async function getHostedRuntimeCatalog(): Promise<HostedRuntimeCatalog> {
       version: server.version,
       instructions: server.instructions,
       error: server.error,
-      tools: server.tools.map((tool) => ({
+      tools: filterModelVisibleTools(server.tools).map((tool) => ({
         name: stripRuntimeToolName(server.name, tool.name, nameSeparator),
         publicName: tool.name,
         description: tool.description ?? '',

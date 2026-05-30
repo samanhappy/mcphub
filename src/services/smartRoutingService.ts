@@ -11,6 +11,7 @@ import { searchToolsByVector } from './vectorSearchService.js';
 import { getSmartRoutingConfig } from '../utils/smartRouting.js';
 import { getServerDao } from '../dao/index.js';
 import { getGroup } from './sseService.js';
+import { isAppOnlyTool } from '../utils/mcpApps.js';
 
 // Reference to serverInfos from mcpService - will be set via init
 let serverInfosRef: ServerInfo[] = [];
@@ -318,6 +319,10 @@ export const handleSearchToolsRequest = async (
         // Find the tool in server.tools
         const actualTool = server.tools.find((tool) => tool.name === result.toolName);
         if (actualTool) {
+          if (isAppOnlyTool(actualTool)) {
+            return null;
+          }
+
           // Check if the tool is enabled in configuration
           const tools = await filterToolsByConfigFn(server.name, [actualTool]);
           if (tools.length > 0) {
@@ -362,10 +367,11 @@ export const handleSearchToolsRequest = async (
       }
     }),
   );
+  const modelVisibleTools = resolvedTools.filter((tool) => tool !== null);
 
   // Filter the resolved tools
   const filterResults = await Promise.all(
-    resolvedTools.map(async (tool) => {
+    modelVisibleTools.map(async (tool) => {
       if (tool.name) {
         const serverName = tool.serverName;
         if (serverName) {
@@ -381,7 +387,7 @@ export const handleSearchToolsRequest = async (
       return true;
     }),
   );
-  const tools = resolvedTools.filter((_, i) => filterResults[i]);
+  const tools = modelVisibleTools.filter((_, i) => filterResults[i]);
 
   // Build response based on mode
   let guideline: string;
@@ -456,7 +462,7 @@ export const handleDescribeToolRequest = async (
 
     // Check if this server has the tool
     const tool = serverInfo.tools?.find((t) => t.name === toolName);
-    if (!tool) {
+    if (!tool || isAppOnlyTool(tool)) {
       continue;
     }
 

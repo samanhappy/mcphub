@@ -1,0 +1,42 @@
+---
+title: 'MCP Apps'
+description: 'Proxy interactive MCP Apps through single-server MCPHub routes'
+---
+
+## Overview
+
+MCPHub supports [MCP Apps](https://github.com/modelcontextprotocol/ext-apps) as a transparent proxy. It forwards UI-linked tool metadata, app-only tools, `ui://` resources, and upstream list-change notifications. MCPHub does not render app UIs in its dashboard.
+
+No MCPHub configuration switch is required. Support is enabled automatically when the downstream host advertises the `io.modelcontextprotocol/ui` extension with the `text/html;profile=mcp-app` MIME type.
+
+## Routing Requirements
+
+MCP Apps passthrough is enabled only when a request route resolves to exactly one connected MCP upstream server:
+
+- `/mcp/{server}`
+- `/mcp/{group}` when the group contains one visible MCP server
+- `/mcp` when only one MCP server is visible to the caller
+
+Aggregate routes and `$smart` routes continue to work as ordinary MCP routes. On those routes MCPHub:
+
+- hides app-only tools such as tools with `_meta.ui.visibility: ["app"]`
+- removes Apps-specific `_meta.ui` and legacy `_meta["ui/resourceUri"]` fields
+- rejects direct calls to app-only tools
+- rejects unlisted `ui://` resource reads
+
+## Tool Names
+
+Ordinary MCPHub routes expose qualified tool names such as `weather::forecast`, using your configured name separator.
+
+An eligible MCP Apps route exposes the upstream tool names unchanged, such as `forecast`. This allows calls from the app iframe to pass through without rewriting. Qualified aliases remain accepted for compatibility.
+
+## UI Resources
+
+MCP Apps servers may omit UI-only resources from `resources/list`. On an eligible Apps route, MCPHub forwards direct `resources/read` calls for unlisted `ui://` URIs to the single upstream server.
+
+Ordinary listed resources remain readable, but Apps-specific metadata is removed outside eligible Apps routes.
+
+## Dynamic Lists
+
+MCPHub subscribes to upstream `tools/list_changed`, `resources/list_changed`, and `prompts/list_changed` notifications. It refreshes its cache, updates Smart Routing embeddings for model-visible tools, and notifies connected downstream clients.
+
