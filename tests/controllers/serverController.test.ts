@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 
 const mockServerDao = {
   findById: jest.fn(),
+  findAll: jest.fn(),
   findAllPaginated: jest.fn(),
   findByOwnerPaginated: jest.fn(),
   findVisibleToUserPaginated: jest.fn(),
@@ -13,6 +14,30 @@ const mockServerDao = {
 const mockSystemConfigDao = {
   get: jest.fn(),
   update: jest.fn(),
+};
+
+const mockUserDao = {
+  findAll: jest.fn(),
+};
+
+const mockGroupDao = {
+  findAll: jest.fn(),
+};
+
+const mockUserConfigDao = {
+  getAll: jest.fn(),
+};
+
+const mockOAuthClientDao = {
+  findAll: jest.fn(),
+};
+
+const mockOAuthTokenDao = {
+  findAll: jest.fn(),
+};
+
+const mockBearerKeyDao = {
+  findAll: jest.fn(),
 };
 
 const mockNotifyToolChanged = jest.fn();
@@ -30,9 +55,13 @@ const mockGetCurrentUser = jest.fn();
 
 jest.mock('../../src/dao/DaoFactory.js', () => ({
   getServerDao: jest.fn(() => mockServerDao),
-  getGroupDao: jest.fn(),
+  getUserDao: jest.fn(() => mockUserDao),
+  getGroupDao: jest.fn(() => mockGroupDao),
   getSystemConfigDao: jest.fn(() => mockSystemConfigDao),
-  getBearerKeyDao: jest.fn(),
+  getUserConfigDao: jest.fn(() => mockUserConfigDao),
+  getOAuthClientDao: jest.fn(() => mockOAuthClientDao),
+  getOAuthTokenDao: jest.fn(() => mockOAuthTokenDao),
+  getBearerKeyDao: jest.fn(() => mockBearerKeyDao),
 }));
 
 jest.mock('../../src/services/mcpService.js', () => ({
@@ -59,6 +88,7 @@ jest.mock('../../src/services/userContextService.js', () => ({
 
 import {
   createServer,
+  getAllSettings,
   getAllServers,
   getServerConfig,
   resetPromptDescription,
@@ -67,6 +97,86 @@ import {
   updateServer,
   updateSystemConfig,
 } from '../../src/controllers/serverController.js';
+
+describe('serverController - getAllSettings', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockServerDao.findAll.mockResolvedValue([]);
+    mockUserDao.findAll.mockResolvedValue([]);
+    mockGroupDao.findAll.mockResolvedValue([]);
+    mockSystemConfigDao.get.mockResolvedValue({
+      install: {
+        baseUrl: 'https://hub.example.com',
+      },
+    });
+    mockUserConfigDao.getAll.mockResolvedValue([]);
+    mockOAuthClientDao.findAll.mockResolvedValue([]);
+    mockOAuthTokenDao.findAll.mockResolvedValue([]);
+    mockBearerKeyDao.findAll.mockResolvedValue([
+      {
+        id: 'alice-key',
+        name: 'alice',
+        token: 'mcphub_abcdefghijklmnopqrstuvwxyz',
+        enabled: true,
+        kind: 'user',
+        owner: 'alice',
+        accessType: 'all',
+      },
+      {
+        id: 'bob-key',
+        name: 'bob',
+        token: 'mcphub_abcdefghijklmnopqrstuvwxyz',
+        enabled: true,
+        kind: 'user',
+        owner: 'bob',
+        accessType: 'all',
+      },
+      {
+        id: 'system-key',
+        name: 'system',
+        token: 'mcphub_abcdefghijklmnopqrstuvwxyz',
+        enabled: true,
+        kind: 'system',
+        accessType: 'all',
+      },
+    ]);
+  });
+
+  it('returns only the current user keys to non-admin users', async () => {
+    const req = {
+      user: {
+        username: 'alice',
+        isAdmin: false,
+      },
+    } as unknown as Request;
+    const res = {
+      json: jest.fn(),
+      status: jest.fn().mockReturnThis(),
+    } as unknown as Response;
+
+    await getAllSettings(req, res);
+
+    expect(res.json).toHaveBeenCalledWith({
+      success: true,
+      data: {
+        mcpServers: {},
+        systemConfig: {
+          install: {
+            baseUrl: 'https://hub.example.com',
+          },
+        },
+        bearerKeys: [
+          expect.objectContaining({
+            id: 'alice-key',
+            kind: 'user',
+            owner: 'alice',
+            token: 'mcphub_a...wxyz',
+          }),
+        ],
+      },
+    });
+  });
+});
 
 describe('serverController - updateSystemConfig', () => {
   let mockRequest: Partial<Request>;

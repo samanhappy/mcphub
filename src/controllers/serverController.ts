@@ -352,7 +352,9 @@ export const getAllSettings = async (req: Request, res: Response): Promise<void>
                   baseUrl: systemConfig.install?.baseUrl,
                 },
               },
-              bearerKeys: [],
+              bearerKeys: settings.bearerKeys?.filter(
+                (key) => key.kind === 'user' && key.owner === getRequestUser(req)?.username,
+              ),
             },
       ),
     };
