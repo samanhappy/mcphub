@@ -1,3 +1,4 @@
+import { isDeepStrictEqual } from 'node:util';
 import { Request, Response } from 'express';
 import {
   ApiResponse,
@@ -16,9 +17,11 @@ import {
   removeServer,
   getServerByName,
   notifyToolChanged,
+  broadcastToolListChanged,
   syncToolEmbedding,
   toggleServerStatus,
   reconnectServer,
+  updateServerInfoVisibility,
 } from '../services/mcpService.js';
 import { syncAllServerToolsEmbeddings } from '../services/vectorSearchService.js';
 import { createSafeJSON } from '../utils/serialization.js';
@@ -156,6 +159,50 @@ const clearDescriptionOverride = (
   }
 
   return nextItems;
+};
+
+const stripUndefinedDeep = (value: unknown): unknown => {
+  if (Array.isArray(value)) {
+    return value.map((item) => stripUndefinedDeep(item));
+  }
+
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value)
+        .filter(([, nestedValue]) => nestedValue !== undefined)
+        .map(([key, nestedValue]) => [key, stripUndefinedDeep(nestedValue)]),
+    );
+  }
+
+  return value;
+};
+
+const toComparableServerConfig = (config: ServerConfig | ServerRecord): unknown => {
+  const { name: _name, ...rest } = config as ServerConfig & {
+    name?: string;
+  };
+
+  const normalized = normalizeServerConfigForPersistence(rest);
+  const { visibility: _visibility, ...comparableConfig } = normalized;
+
+  return stripUndefinedDeep(comparableConfig);
+};
+
+const isVisibilityOnlyServerUpdate = (
+  existingServer: ServerRecord,
+  nextConfig: ServerConfig,
+): boolean => {
+  const currentVisibility = existingServer.visibility ?? 'private';
+  const nextVisibility = nextConfig.visibility ?? 'private';
+
+  if (currentVisibility === nextVisibility) {
+    return false;
+  }
+
+  return isDeepStrictEqual(
+    toComparableServerConfig(existingServer),
+    toComparableServerConfig(nextConfig),
+  );
 };
 
 export const getAllServers = async (req: Request, res: Response): Promise<void> => {
@@ -826,6 +873,28 @@ export const updateServer = async (req: Request, res: Response): Promise<void> =
 
     // Use the final server name (new name if renaming, otherwise original name)
     const finalName = isRenaming ? newName : name;
+
+    if (!isRenaming && isVisibilityOnlyServerUpdate(existingServer, normalizedConfig)) {
+      const serverDao = getServerDao();
+      const updatedServer = await serverDao.update(name, normalizedConfig);
+
+      if (!updatedServer) {
+        res.status(404).json({
+          success: false,
+          message: 'Server not found or failed to update',
+        });
+        return;
+      }
+
+      updateServerInfoVisibility(finalName, normalizedConfig.visibility ?? 'private');
+      broadcastToolListChanged();
+
+      res.json({
+        success: true,
+        message: 'Server updated successfully',
+      });
+      return;
+    }
 
     const result = await addOrUpdateServer(finalName, normalizedConfig, true); // Allow override for updates
     if (result.success) {

@@ -212,7 +212,7 @@
   transition: transform 0.15s;
 }
 .hub-switch.on { background: var(--hub-ink); }
-.hub-switch.on::after { transform: translateX(12px); }
+/* .hub-switch.on::after { transform: translateX(12px); } */
 .hub-switch:disabled { opacity: 0.5; cursor: not-allowed; }
 
 /* Endpoint copy box */

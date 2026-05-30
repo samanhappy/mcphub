@@ -16,9 +16,15 @@ const mockSystemConfigDao = {
 };
 
 const mockNotifyToolChanged = jest.fn();
+const mockBroadcastToolListChanged = jest.fn();
 const mockSyncToolEmbedding = jest.fn();
 const mockGetServerByName = jest.fn();
 const mockAddServer = jest.fn();
+const mockAddOrUpdateServer = jest.fn();
+const mockRemoveServer = jest.fn();
+const mockToggleServerStatus = jest.fn();
+const mockReconnectServer = jest.fn();
+const mockUpdateServerInfoVisibility = jest.fn();
 const mockGetServersInfo = jest.fn();
 const mockGetCurrentUser = jest.fn();
 
@@ -32,13 +38,15 @@ jest.mock('../../src/dao/DaoFactory.js', () => ({
 jest.mock('../../src/services/mcpService.js', () => ({
   getServersInfo: mockGetServersInfo,
   addServer: mockAddServer,
-  addOrUpdateServer: jest.fn(),
-  removeServer: jest.fn(),
+  addOrUpdateServer: mockAddOrUpdateServer,
+  removeServer: mockRemoveServer,
   getServerByName: jest.fn(() => mockGetServerByName()),
   notifyToolChanged: jest.fn(() => mockNotifyToolChanged()),
+  broadcastToolListChanged: jest.fn(() => mockBroadcastToolListChanged()),
   syncToolEmbedding: jest.fn((...args: unknown[]) => mockSyncToolEmbedding(...args)),
-  toggleServerStatus: jest.fn(),
-  reconnectServer: jest.fn(),
+  toggleServerStatus: mockToggleServerStatus,
+  reconnectServer: mockReconnectServer,
+  updateServerInfoVisibility: jest.fn((...args: unknown[]) => mockUpdateServerInfoVisibility(...args)),
 }));
 
 jest.mock('../../src/services/userContextService.js', () => ({
@@ -56,6 +64,7 @@ import {
   resetPromptDescription,
   resetResourceDescription,
   resetToolDescription,
+  updateServer,
   updateSystemConfig,
 } from '../../src/controllers/serverController.js';
 
@@ -302,6 +311,92 @@ describe('serverController - resetToolDescription', () => {
     expect(mockJson).toHaveBeenCalledWith({
       success: false,
       message: 'Server not found',
+    });
+  });
+});
+
+describe('serverController - updateServer', () => {
+  let mockRequest: Partial<Request>;
+  let mockResponse: Partial<Response>;
+  let mockJson: jest.Mock;
+  let mockStatus: jest.Mock;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+
+    mockJson = jest.fn();
+    mockStatus = jest.fn().mockReturnThis();
+
+    mockRequest = {
+      params: {
+        name: 'test-server',
+      },
+      body: {
+        config: {
+          type: 'sse',
+          url: 'https://example.com/sse',
+          enabled: true,
+          owner: 'admin',
+          visibility: 'public',
+        },
+      },
+      user: {
+        username: 'admin',
+        isAdmin: true,
+      },
+    };
+
+    mockResponse = {
+      json: mockJson,
+      status: mockStatus,
+    };
+
+    mockServerDao.findById.mockResolvedValue({
+      name: 'test-server',
+      type: 'sse',
+      url: 'https://example.com/sse',
+      enabled: true,
+      owner: 'admin',
+      visibility: 'private',
+    });
+    mockServerDao.update = jest.fn().mockResolvedValue({
+      name: 'test-server',
+      type: 'sse',
+      url: 'https://example.com/sse',
+      enabled: true,
+      owner: 'admin',
+      visibility: 'public',
+    });
+  });
+
+  it('updates visibility without reinitializing the server runtime', async () => {
+    await updateServer(mockRequest as Request, mockResponse as Response);
+
+    expect(mockServerDao.update).toHaveBeenCalledWith('test-server', {
+      type: 'sse',
+      url: 'https://example.com/sse',
+      enabled: true,
+      owner: 'admin',
+      visibility: 'public',
+      description: undefined,
+      options: undefined,
+      command: undefined,
+      args: undefined,
+      env: undefined,
+      headers: undefined,
+      passthroughHeaders: undefined,
+      oauth: undefined,
+      enableKeepAlive: false,
+      keepAliveInterval: 60000,
+      openapi: undefined,
+    });
+    expect(mockUpdateServerInfoVisibility).toHaveBeenCalledWith('test-server', 'public');
+    expect(mockBroadcastToolListChanged).toHaveBeenCalled();
+    expect(mockAddOrUpdateServer).not.toHaveBeenCalled();
+    expect(mockNotifyToolChanged).not.toHaveBeenCalled();
+    expect(mockJson).toHaveBeenCalledWith({
+      success: true,
+      message: 'Server updated successfully',
     });
   });
 });

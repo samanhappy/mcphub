@@ -291,6 +291,10 @@ export const notifyToolChanged = async (
   options?: { reportEmbeddingProgress?: boolean },
 ) => {
   await registerAllTools(false, name, options);
+  broadcastToolListChanged();
+};
+
+export const broadcastToolListChanged = (): void => {
   Object.values(servers).forEach((server) => {
     server
       .sendToolListChanged()
@@ -301,6 +305,25 @@ export const notifyToolChanged = async (
         console.log('Tool list changed notification sent successfully');
       });
   });
+};
+
+export const updateServerInfoVisibility = (
+  serverName: string,
+  visibility: ServerConfig['visibility'],
+): void => {
+  const serverInfo = getServerByName(serverName);
+  if (!serverInfo) {
+    return;
+  }
+
+  serverInfo.visibility = visibility;
+
+  if (serverInfo.config) {
+    serverInfo.config = {
+      ...serverInfo.config,
+      visibility,
+    };
+  }
 };
 
 export const syncToolEmbedding = async (serverName: string, toolName: string) => {
