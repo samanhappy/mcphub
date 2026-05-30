@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, type CSSProperties, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   ChevronRight,
@@ -13,6 +13,7 @@ import {
   X,
   Edit3,
   Trash2,
+  type LucideIcon,
 } from 'lucide-react';
 import { Server } from '@/types';
 import { ServerStatusDot } from '@/components/ui/StatusDot';
@@ -39,6 +40,63 @@ interface ServerCardProps {
   onRefresh?: () => void;
   onReload?: (server: Server) => Promise<boolean>;
 }
+
+type CapabilityTabKey = 'tools' | 'prompts' | 'resources';
+
+type CapabilitySummary = {
+  key: CapabilityTabKey;
+  icon: LucideIcon;
+  label: string;
+  total: number;
+  enabled: number;
+};
+
+interface LoadingControlProps {
+  isLoading: boolean;
+  children: ReactNode;
+  className?: string;
+  overlayStyle?: CSSProperties;
+  spinnerSize?: number;
+}
+
+const LoadingControl = ({
+  isLoading,
+  children,
+  className,
+  overlayStyle,
+  spinnerSize = 12,
+}: LoadingControlProps) => (
+  <div className={className ? `relative flex items-center ${className}` : 'relative flex items-center'} aria-busy={isLoading}>
+    <div
+      className="flex w-full items-center justify-center"
+      style={{
+        visibility: isLoading ? 'hidden' : 'visible',
+        pointerEvents: isLoading ? 'none' : 'auto',
+      }}
+    >
+      {children}
+    </div>
+    {isLoading && (
+      <div
+        className="pointer-events-none absolute inset-0 flex items-center justify-center"
+        style={{
+          background: 'var(--hub-surface)',
+          border: '1px solid var(--hub-line-2)',
+          borderRadius: 8,
+          ...overlayStyle,
+        }}
+      >
+        <RefreshCw size={spinnerSize} className="animate-spin" style={{ color: 'var(--hub-ink-3)' }} />
+      </div>
+    )}
+  </div>
+);
+
+const CapabilityIcon = ({ icon: Icon }: { icon: LucideIcon }) => (
+  <span className="inline-flex h-[14px] w-[14px] items-center justify-center shrink-0 leading-none">
+    <Icon size={11.5} strokeWidth={1.9} className="block" />
+  </span>
+);
 
 const transportLabel = (t: any, type?: string) => {
   if (!type) return null;
@@ -330,6 +388,29 @@ const ServerCard = ({
   const serverEndpoint = `${baseUrl}/mcp/${server.name}`;
   const visibility = getServerVisibilityDisplay(t, server.visibility ?? server.config?.visibility);
   const visibilityOptions = getServerVisibilityOptions(t, visibility.value);
+  const capabilitySummaries: CapabilitySummary[] = [
+    {
+      key: 'tools',
+      icon: Wrench,
+      total: totalTools,
+      enabled: enabledTools,
+      label: t('server.tools'),
+    },
+    {
+      key: 'prompts',
+      icon: MessageSquare,
+      total: totalPrompts,
+      enabled: enabledPrompts,
+      label: t('server.prompts'),
+    },
+    {
+      key: 'resources',
+      icon: FileText,
+      total: totalResources,
+      enabled: enabledResources,
+      label: t('nav.resources'),
+    },
+  ];
 
   return (
     <>
@@ -467,21 +548,27 @@ const ServerCard = ({
 
           <div className="min-w-0" onClick={(e) => e.stopPropagation()}>
             {canManage && onVisibilityChange ? (
-              <select
-                value={visibility.value}
-                onChange={handleVisibilityChange}
-                disabled={isUpdatingVisibility}
-                className="w-full rounded-md border px-2 py-1 text-[11.5px] bg-[var(--hub-surface)] text-[var(--hub-ink)]"
-                style={{ borderColor: 'var(--hub-line-2)' }}
-                aria-label={t('server.visibility', 'Visibility')}
-                title={visibility.longLabel}
+              <LoadingControl
+                isLoading={isUpdatingVisibility}
+                className="w-full"
+                overlayStyle={{ borderRadius: 6 }}
               >
-                {visibilityOptions.map((option) => (
-                  <option key={option.value} value={option.value} disabled={option.disabled}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
+                <select
+                  value={visibility.value}
+                  onChange={handleVisibilityChange}
+                  disabled={isUpdatingVisibility}
+                  className="w-full rounded-md border px-2 py-1 text-[11.5px] bg-[var(--hub-surface)] text-[var(--hub-ink)]"
+                  style={{ borderColor: 'var(--hub-line-2)' }}
+                  aria-label={t('server.visibility', 'Visibility')}
+                  title={visibility.longLabel}
+                >
+                  {visibilityOptions.map((option) => (
+                    <option key={option.value} value={option.value} disabled={option.disabled}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </LoadingControl>
             ) : (
               <span
                 className={`inline-flex items-center rounded-md border px-2 py-0.5 text-[11.5px] ${visibility.className}`}
@@ -494,34 +581,12 @@ const ServerCard = ({
 
           {/* Tools / Prompts / Resources counts */}
           <div className="flex min-w-0 items-center gap-1.5">
-            {[
-              {
-                key: 'tools',
-                icon: Wrench,
-                total: totalTools,
-                enabled: enabledTools,
-                label: t('server.tools'),
-              },
-              {
-                key: 'prompts',
-                icon: MessageSquare,
-                total: totalPrompts,
-                enabled: enabledPrompts,
-                label: t('server.prompts'),
-              },
-              {
-                key: 'resources',
-                icon: FileText,
-                total: totalResources,
-                enabled: enabledResources,
-                label: t('nav.resources'),
-              },
-            ].map(({ key, icon: Icon, total, enabled: enabledCount, label }) => {
+            {capabilitySummaries.map(({ key, icon: Icon, total, enabled: enabledCount, label }) => {
               const isEmpty = total === 0;
               return (
                 <span
                   key={key}
-                  className="inline-flex items-center gap-1 hub-mono hub-num"
+                  className="inline-flex items-center gap-1 hub-mono hub-num leading-none"
                   title={`${label}: ${enabledCount}/${total}`}
                   style={{
                     padding: '2px 7px',
@@ -534,10 +599,9 @@ const ServerCard = ({
                     color: isEmpty ? 'var(--hub-ink-3)' : 'var(--hub-ink-2)',
                   }}
                 >
-                  <Icon
-                    size={12}
-                    style={{ color: 'var(--hub-ink-3)', flexShrink: 0 }}
-                  />
+                  <span style={{ color: 'var(--hub-ink-3)' }}>
+                    <CapabilityIcon icon={Icon} />
+                  </span>
                   <span>{isEmpty ? '0' : `${enabledCount}/${total}`}</span>
                 </span>
               );
@@ -546,13 +610,23 @@ const ServerCard = ({
 
           {/* Toggle switch */}
           <div className="flex items-center justify-center">
-            <button
-              type="button"
-              className={'hub-switch' + (enabled ? ' on' : '')}
-              onClick={handleToggle}
-              disabled={isToggling || !canManage}
-              aria-label={enabled ? t('server.disable') : t('server.enable')}
-            />
+            <LoadingControl
+              isLoading={isToggling}
+              className="h-[18px] w-[30px]"
+              overlayStyle={{
+                borderRadius: 999,
+                background: 'var(--hub-bg-2)',
+              }}
+              spinnerSize={10}
+            >
+              <button
+                type="button"
+                className={'hub-switch' + (enabled ? ' on' : '')}
+                onClick={handleToggle}
+                disabled={isToggling || !canManage}
+                aria-label={enabled ? t('server.disable') : t('server.enable')}
+              />
+            </LoadingControl>
           </div>
 
           {/* Menu */}
@@ -631,30 +705,9 @@ const ServerCard = ({
           >
             {/* Capability tabs + endpoint on same row */}
             <div className="flex items-center gap-1 mb-2 flex-wrap">
-              {[
-                {
-                  key: 'tools' as const,
-                  icon: <Wrench size={12} />,
-                  label: t('server.tools'),
-                  count: totalTools,
-                  enabled: enabledTools,
-                },
-                {
-                  key: 'prompts' as const,
-                  icon: <MessageSquare size={12} />,
-                  label: t('server.prompts'),
-                  count: totalPrompts,
-                  enabled: enabledPrompts,
-                },
-                {
-                  key: 'resources' as const,
-                  icon: <FileText size={12} />,
-                  label: t('nav.resources'),
-                  count: totalResources,
-                  enabled: enabledResources,
-                },
-              ].map((tab) => {
+              {capabilitySummaries.map((tab) => {
                 const active = expandedTab === tab.key;
+                const Icon = tab.icon;
                 return (
                   <button
                     key={tab.key}
@@ -666,10 +719,10 @@ const ServerCard = ({
                       color: active ? 'var(--hub-ink)' : 'var(--hub-ink-2)',
                     }}
                   >
-                    {tab.icon}
+                    <CapabilityIcon icon={Icon} />
                     <span>{tab.label}</span>
                     <span className="hub-mono hub-num" style={{ color: 'var(--hub-ink-3)', fontSize: 11 }}>
-                      {tab.count === 0 ? '0' : `${tab.enabled}/${tab.count}`}
+                      {tab.total === 0 ? '0' : `${tab.enabled}/${tab.total}`}
                     </span>
                   </button>
                 );

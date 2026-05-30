@@ -1,6 +1,7 @@
 import React, { createContext, useState, useEffect, useRef, useCallback, useContext } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Server, ApiResponse } from '@/types';
+import { applyServerListPatch } from '@/utils/serverListState';
 import { apiDelete, apiGet, apiPost, apiPut } from '../utils/fetchInterceptor';
 import { useAuth } from './AuthContext';
 
@@ -402,7 +403,8 @@ export const ServerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           return false;
         }
 
-        // Update the UI immediately to reflect the change
+        setServers((prev) => applyServerListPatch(prev, server.name, { enabled }));
+        setAllServers((prev) => applyServerListPatch(prev, server.name, { enabled }));
         setRefreshKey((prevKey) => prevKey + 1);
         return true;
       } catch (err) {
@@ -442,19 +444,8 @@ export const ServerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           return false;
         }
 
-        const applyVisibility = (items: Server[]) =>
-          items.map((item) =>
-            item.name === server.name
-              ? {
-                  ...item,
-                  visibility,
-                  config: item.config ? { ...item.config, visibility } : item.config,
-                }
-              : item,
-          );
-
-        setServers((prev) => applyVisibility(prev));
-        setAllServers((prev) => applyVisibility(prev));
+        setServers((prev) => applyServerListPatch(prev, server.name, { visibility }));
+        setAllServers((prev) => applyServerListPatch(prev, server.name, { visibility }));
         setRefreshKey((prevKey) => prevKey + 1);
         return true;
       } catch (err) {
