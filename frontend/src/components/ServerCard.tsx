@@ -77,6 +77,7 @@ const ServerCard = ({ server, onRemove, onEdit, onToggle, onRefresh, onReload }:
   const enabledPrompts = server.prompts?.filter((p) => p.enabled !== false).length || 0;
   const totalResources = server.resources?.length || 0;
   const enabledResources = server.resources?.filter((r) => r.enabled !== false).length || 0;
+  const isMcpApp = server.resources?.some((r) => r.uri?.startsWith('ui://')) ?? false;
 
   const handleToggle = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -334,6 +335,15 @@ const ServerCard = ({ server, onRemove, onEdit, onToggle, onRefresh, onReload }:
                 >
                   {server.name}
                 </span>
+                {isMcpApp && (
+                  <span
+                    className="hub-tag flex-shrink-0"
+                    title={t('server.mcpApp') || 'MCP App — this server exposes interactive UI resources'}
+                    style={{ color: 'var(--hub-accent)', borderColor: 'var(--hub-accent)', opacity: 0.85 }}
+                  >
+                    App
+                  </span>
+                )}
                 {server.error && (
                   <div className="relative" ref={errorPopoverRef}>
                     <button

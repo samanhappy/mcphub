@@ -105,3 +105,41 @@ export const callTool = async (req: Request, res: Response): Promise<void> => {
     });
   }
 };
+
+/**
+ * Read a ui:// resource from a specific connected MCP server.
+ * Used by the MCP Apps host to fetch HTML content for sandboxed iframe rendering.
+ */
+export const readServerResource = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { serverName } = req.params;
+    const { uri } = req.body as { uri?: string };
+
+    if (!uri) {
+      res.status(400).json({ success: false, message: 'uri is required' });
+      return;
+    }
+
+    const serverInfo = getServerByName(serverName);
+    if (!serverInfo) {
+      res.status(404).json({ success: false, message: 'Server not found' });
+      return;
+    }
+
+    if (serverInfo.status !== 'connected' || !serverInfo.client) {
+      res.status(503).json({ success: false, message: 'Server not connected' });
+      return;
+    }
+
+    const result = await serverInfo.client.readResource({ uri });
+
+    const response: ApiResponse = { success: true, data: result };
+    res.json(response);
+  } catch (error) {
+    console.error('Error reading server resource:', error);
+    res.status(500).json({
+      success: false,
+      message: error instanceof Error ? error.message : 'Failed to read resource',
+    });
+  }
+};

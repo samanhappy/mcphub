@@ -77,7 +77,7 @@ import {
   getPublicConfig,
   getMcpSettingsJson,
 } from '../controllers/configController.js';
-import { callTool } from '../controllers/toolController.js';
+import { callTool, readServerResource } from '../controllers/toolController.js';
 import { getPrompt } from '../controllers/promptController.js';
 import {
   listBuiltinPrompts,
@@ -315,6 +315,7 @@ export const initRoutes = async (app: express.Application): Promise<void> => {
 
   // Tool management routes
   authenticatedRouter.post('/tools/call/:server', callTool);
+  authenticatedRouter.post('/servers/:serverName/resources/read', readServerResource);
 
   // Prompt management routes
   authenticatedRouter.post('/mcp/:serverName/prompts/:promptName', getPrompt);

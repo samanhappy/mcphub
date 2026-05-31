@@ -25,6 +25,7 @@ import {
   ServerInfo,
   ServerConfig,
   Tool,
+  Resource,
   ProxychainsConfig,
   IGroupServerConfig,
 } from '../types/index.js';
@@ -356,13 +357,16 @@ const normalizeResourceForList = (resource: {
   name?: string | null;
   description?: string | null;
   mimeType?: string | null;
-}) => {
-  return {
+  _meta?: Record<string, unknown> | null;
+}): Resource => {
+  const result: Resource = {
     uri: resource.uri,
     name: resource.name || '',
     description: resource.description || '',
     mimeType: resource.mimeType || '',
   };
+  if (resource._meta) result._meta = resource._meta;
+  return result;
 };
 
 // Store all server information
@@ -933,6 +937,8 @@ const callToolWithReconnect = async (
               name: `${serverInfo.name}${getNameSeparator()}${tool.name}`,
               description: tool.description || '',
               inputSchema: cleanInputSchema(tool.inputSchema || {}),
+              ...(tool.annotations ? { annotations: tool.annotations } : {}),
+              ...((tool as any)._meta ? { _meta: (tool as any)._meta } : {}),
             }));
 
             // Save tools as vector embeddings for search
@@ -1210,11 +1216,16 @@ export const initializeClientsFromSettings = async (
               .listTools({}, initRequestOptions || requestOptions)
               .then((tools) => {
                 console.log(`Successfully listed ${tools.tools.length} tools for server: ${name}`);
-                serverInfo.tools = tools.tools.map((tool) => ({
-                  name: `${name}${getNameSeparator()}${tool.name}`,
-                  description: tool.description || '',
-                  inputSchema: cleanInputSchema(tool.inputSchema || {}),
-                }));
+                serverInfo.tools = tools.tools.map((tool) => {
+                  const rawMeta = (tool as any)._meta;
+                  return {
+                    name: `${name}${getNameSeparator()}${tool.name}`,
+                    description: tool.description || '',
+                    inputSchema: cleanInputSchema(tool.inputSchema || {}),
+                    ...(tool.annotations ? { annotations: tool.annotations } : {}),
+                    ...(rawMeta ? { _meta: rawMeta } : {}),
+                  };
+                });
                 // Save tools as vector embeddings for search
                 saveToolsAsVectorEmbeddings(name, serverInfo.tools, {
                   reportProgress: options?.reportEmbeddingProgress === true && serverName === name,
@@ -1275,6 +1286,7 @@ export const initializeClientsFromSettings = async (
                     name: resource.name,
                     description: resource.description,
                     mimeType: resource.mimeType,
+                    _meta: (resource as any)._meta,
                   }),
                 );
               })
@@ -2398,9 +2410,11 @@ export const handleListResourceTemplatesRequest = async (_: any, extra: any) => 
   };
 };
 
-export const handleReadResourceRequest = async (request: any, _extra: any) => {
+export const handleReadResourceRequest = async (request: any, extra: any) => {
   try {
     const { uri } = request.params;
+    const sessionId = extra?.sessionId || '';
+    const group = RequestContextService.getInstance().getGroupContext() || extra?.group || getGroup(sessionId) || undefined;
 
     // Check built-in resources first
     const builtinResource = await getBuiltinResourceDao().findByUri(uri);
@@ -2416,24 +2430,48 @@ export const handleReadResourceRequest = async (request: any, _extra: any) => {
       };
     }
 
-    // Find the server that owns this resource
-    const server = serverInfos.find(
-      (serverInfo) =>
-        serverInfo.status === 'connected' &&
-        serverInfo.enabled !== false &&
-        serverInfo.resources?.find((resource) => resource.uri === uri),
+    // When routing is scoped to a single server, use it directly.
+    if (extra?.server) {
+      const target = getServerByName(extra.server);
+      if (!target || target.status !== 'connected' || !target.client) {
+        throw new Error(`Server not available: ${extra.server}`);
+      }
+      const result = await target.client.readResource({ uri });
+      if (!result) throw new Error(`Failed to read resource: ${uri}`);
+      return result;
+    }
+
+    // Get servers scoped to the current group (or all servers if no group).
+    const { filteredServerInfos } = await getFilteredServerInfosForGroup(group);
+
+    // Find the server that has this resource pre-registered.
+    const owner = filteredServerInfos.find(
+      (s) => s.status === 'connected' &&
+        s.enabled !== false &&
+        s.resources?.some((r) => r.uri === uri),
     );
 
-    if (!server) {
-      throw new Error(`Resource not found: ${uri}`);
+    if (owner?.client) {
+      const result = await owner.client.readResource({ uri });
+      if (!result) throw new Error(`Failed to read resource: ${uri}`);
+      return result;
     }
 
-    const result = await server.client?.readResource({ uri });
-    if (!result) {
-      throw new Error(`Failed to read resource: ${uri}`);
+    // ui:// resources are generated dynamically at tool-call time and are never
+    // pre-registered. Try each server in scope until one answers.
+    if (uri.startsWith('ui://')) {
+      for (const candidate of filteredServerInfos) {
+        if (candidate.status !== 'connected' || !candidate.client) continue;
+        try {
+          const result = await candidate.client.readResource({ uri });
+          if (result) return result;
+        } catch {
+          // this candidate doesn't own the resource; try the next
+        }
+      }
     }
 
-    return result;
+    throw new Error(`Resource not found: ${uri}`);
   } catch (error) {
     console.error('Error handling ReadResourceRequest', summarizeErrorForLogging(error));
     const safeErrorText = formatErrorForLogging(error);

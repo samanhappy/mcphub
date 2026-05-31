@@ -89,6 +89,8 @@ export interface Tool {
   description: string;
   inputSchema: ToolInputSchema;
   enabled?: boolean;
+  annotations?: Record<string, unknown>;
+  _meta?: Record<string, unknown>;
 }
 
 // Prompt types

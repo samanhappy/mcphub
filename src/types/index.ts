@@ -480,6 +480,8 @@ export interface Tool {
   description: string; // Brief description of the tool
   inputSchema: Record<string, unknown>; // Input schema for the tool
   enabled?: boolean; // Whether the tool is enabled (optional, defaults to true)
+  annotations?: Record<string, unknown>; // Standard MCP tool annotations
+  _meta?: Record<string, unknown>; // Passthrough metadata (e.g. 'ui/resourceUri' for MCP Apps)
 }
 
 export interface Prompt {
@@ -502,6 +504,7 @@ export interface Resource {
   name?: string; // Human-readable name
   description?: string; // Brief description of the resource
   mimeType?: string; // MIME type of the resource content
+  _meta?: Record<string, unknown>; // MCP Apps metadata (e.g., ui CSP config)
 }
 
 // Built-in prompt defined via configuration
