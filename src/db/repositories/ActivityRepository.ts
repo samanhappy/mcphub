@@ -46,6 +46,9 @@ export class ActivityRepository {
     if (filter?.group) {
       where.group = Like(`%${filter.group}%`);
     }
+    if (filter?.username) {
+      where.username = Like(`%${filter.username}%`);
+    }
     if (filter?.keyId) {
       where.keyId = filter.keyId;
     }
@@ -114,6 +117,9 @@ export class ActivityRepository {
       }
       if (filter?.group) {
         qb.andWhere('activity.group_name LIKE :group', { group: `%${filter.group}%` });
+      }
+      if (filter?.username) {
+        qb.andWhere('activity.username LIKE :username', { username: `%${filter.username}%` });
       }
       if (filter?.keyId) {
         qb.andWhere('activity.key_id = :keyId', { keyId: filter.keyId });
@@ -186,6 +192,17 @@ export class ActivityRepository {
       .getRawMany();
 
     return result.map((r) => r.group);
+  }
+
+  async getDistinctUsernames(): Promise<string[]> {
+    const result = await this.repository
+      .createQueryBuilder('activity')
+      .select('DISTINCT activity.username', 'username')
+      .where('activity.username IS NOT NULL')
+      .orderBy('activity.username', 'ASC')
+      .getRawMany();
+
+    return result.map((r) => r.username);
   }
 
   async getDistinctKeyNames(): Promise<string[]> {

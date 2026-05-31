@@ -63,6 +63,9 @@ export const getActivities = async (req: Request, res: Response): Promise<void> 
     if (req.query.group) {
       filter.group = req.query.group as string;
     }
+    if (req.query.username) {
+      filter.username = req.query.username as string;
+    }
     if (req.query.keyId) {
       filter.keyId = req.query.keyId as string;
     }
@@ -165,6 +168,9 @@ export const getActivityStats = async (req: Request, res: Response): Promise<voi
     if (req.query.group) {
       filter.group = req.query.group as string;
     }
+    if (req.query.username) {
+      filter.username = req.query.username as string;
+    }
     if (req.query.keyId) {
       filter.keyId = req.query.keyId as string;
     }
@@ -207,10 +213,11 @@ export const getActivityFilterOptions = async (req: Request, res: Response): Pro
       return;
     }
 
-    const [servers, tools, groups, keyNames] = await Promise.all([
+    const [servers, tools, groups, usernames, keyNames] = await Promise.all([
       activityDao.getDistinctServers(),
       activityDao.getDistinctTools(),
       activityDao.getDistinctGroups(),
+      activityDao.getDistinctUsernames(),
       activityDao.getDistinctKeyNames(),
     ]);
 
@@ -220,6 +227,7 @@ export const getActivityFilterOptions = async (req: Request, res: Response): Pro
         servers,
         tools,
         groups,
+        usernames,
         keyNames,
       },
     });

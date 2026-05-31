@@ -164,6 +164,54 @@ describe('mcpService activity logging source IP', () => {
     getServerByNameSpy.mockRestore();
   });
 
+  it('passes request username to activity logging', async () => {
+    const serverInfo = {
+      name: 'clock-server',
+      status: 'connected',
+      enabled: true,
+      tools: [{ name: 'clock-server::get_current_time' }],
+      client: {
+        callTool: mockCallTool,
+      },
+      options: {},
+    } as any;
+
+    const getServerByNameSpy = jest.spyOn(mcpService, 'getServerByName').mockReturnValue(serverInfo);
+
+    await RequestContextService.getInstance().runWithCustomRequestContext(
+      {
+        headers: {},
+      } as any,
+      async () => {
+        (RequestContextService.getInstance().getRequestContext() as any).username = 'alice';
+
+        await mcpService.handleCallToolRequest(
+          {
+            params: {
+              name: 'call_tool',
+              arguments: {
+                toolName: 'clock-server::get_current_time',
+                arguments: {},
+              },
+            },
+          },
+          {
+            sessionId: 'session-username',
+            server: 'clock-server',
+          },
+        );
+      },
+    );
+
+    expect(mockLogToolCall).toHaveBeenCalledWith(
+      expect.objectContaining({
+        username: 'alice',
+      }),
+    );
+
+    getServerByNameSpy.mockRestore();
+  });
+
   it('logs raw tool input and output for activity details', async () => {
     const rawResult = {
       content: [

@@ -611,6 +611,7 @@ export interface Activity {
   input?: string;
   output?: string;
   group?: string;
+  username?: string;
   keyId?: string;
   keyName?: string;
   sourceIp?: string;
@@ -629,6 +630,7 @@ export interface ActivityFilter {
   tool?: string;
   status?: ActivityStatus;
   group?: string;
+  username?: string;
   keyId?: string;
   keyName?: string;
   startDate?: string;
@@ -639,6 +641,7 @@ export interface ActivityFilterOptions {
   servers: string[];
   tools: string[];
   groups: string[];
+  usernames: string[];
   keyNames: string[];
 }
 

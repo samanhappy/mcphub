@@ -18,6 +18,7 @@ export interface ActivityDao {
   getDistinctServers(): Promise<string[]>;
   getDistinctTools(): Promise<string[]>;
   getDistinctGroups(): Promise<string[]>;
+  getDistinctUsernames(): Promise<string[]>;
   getDistinctKeyNames(): Promise<string[]>;
 }
 
@@ -42,6 +43,7 @@ export class ActivityDaoDbImpl implements ActivityDao {
       input: activity.input,
       output: activity.output,
       group: activity.group,
+      username: activity.username,
       keyId: activity.keyId,
       keyName: activity.keyName,
       sourceIp: activity.sourceIp,
@@ -93,6 +95,10 @@ export class ActivityDaoDbImpl implements ActivityDao {
     return await this.repository.getDistinctGroups();
   }
 
+  async getDistinctUsernames(): Promise<string[]> {
+    return await this.repository.getDistinctUsernames();
+  }
+
   async getDistinctKeyNames(): Promise<string[]> {
     return await this.repository.getDistinctKeyNames();
   }
@@ -108,6 +114,7 @@ export class ActivityDaoDbImpl implements ActivityDao {
       input: entity.input,
       output: entity.output,
       group: entity.group,
+      username: entity.username,
       keyId: entity.keyId,
       keyName: entity.keyName,
       sourceIp: entity.sourceIp,

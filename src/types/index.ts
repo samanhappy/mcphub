@@ -603,6 +603,7 @@ export interface IActivity {
   input?: string; // JSON stringified input arguments
   output?: string; // JSON stringified output result
   group?: string; // Group name if called via group route
+  username?: string; // Username associated with the request
   keyId?: string; // Bearer key ID if authenticated with bearer token
   keyName?: string; // Bearer key name for display purposes
   sourceIp?: string; // Source IP address of the caller
@@ -623,6 +624,7 @@ export interface IActivityFilter {
   tool?: string;
   status?: ActivityStatus;
   group?: string;
+  username?: string;
   keyId?: string;
   keyName?: string;
   startDate?: Date;

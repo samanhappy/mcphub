@@ -42,4 +42,22 @@ describe('ActivityLoggingService', () => {
       }),
     );
   });
+
+  it('persists username when logging tool calls', async () => {
+    const activityLoggingService = getActivityLoggingService();
+
+    await activityLoggingService.logToolCall({
+      server: 'demo-server',
+      tool: 'demo-tool',
+      duration: 42,
+      status: 'success',
+      username: 'alice',
+    } as any);
+
+    expect(mockCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        username: 'alice',
+      }),
+    );
+  });
 });

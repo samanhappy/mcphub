@@ -40,6 +40,9 @@ const buildQueryString = (page: number, limit: number, filter?: ActivityFilter):
   if (filter?.group) {
     params.append('group', filter.group);
   }
+  if (filter?.username) {
+    params.append('username', filter.username);
+  }
   if (filter?.keyId) {
     params.append('keyId', filter.keyId);
   }
@@ -94,6 +97,9 @@ export const getActivityStats = async (
   }
   if (filter?.group) {
     params.append('group', filter.group);
+  }
+  if (filter?.username) {
+    params.append('username', filter.username);
   }
   if (filter?.keyId) {
     params.append('keyId', filter.keyId);

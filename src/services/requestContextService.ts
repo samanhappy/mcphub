@@ -12,6 +12,7 @@ export interface RequestContext {
   userAgent?: string;
   remoteAddress?: string;
   group?: string;
+  username?: string;
   keyId?: string;
   keyName?: string;
   hostedAuth?: HostedAuthContext;
@@ -190,6 +191,16 @@ export class RequestContextService {
   }
 
   /**
+   * Set username context for activity logging
+   */
+  public setUsernameContext(username?: string): void {
+    const requestContext = this.getRequestContext();
+    if (requestContext) {
+      requestContext.username = username;
+    }
+  }
+
+  /**
    * Get bearer key context
    */
   public getBearerKeyContext(): { keyId?: string; keyName?: string } {
@@ -205,6 +216,13 @@ export class RequestContextService {
    */
   public getGroupContext(): string | undefined {
     return this.getRequestContext()?.group;
+  }
+
+  /**
+   * Get username context
+   */
+  public getUsernameContext(): string | undefined {
+    return this.getRequestContext()?.username;
   }
 
   public getHostedAuthContext(): HostedAuthContext | undefined {

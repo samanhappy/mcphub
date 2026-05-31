@@ -1800,6 +1800,7 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
   // Fallback to extra for backward compatibility (e.g., direct API calls)
   const group =
     requestContextService.getGroupContext() || extra?.group || getGroup(sessionId) || undefined;
+  const username = requestContextService.getUsernameContext() || extra?.username || undefined;
   const keyId = bearerKeyContext.keyId || extra?.keyId || undefined;
   const keyName = bearerKeyContext.keyName || extra?.keyName || undefined;
   const sourceIp = requestContextService.getRequestContext()?.remoteAddress || undefined;
@@ -1942,6 +1943,7 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
           input: finalArgs,
           output: result,
           group,
+          username,
           keyId,
           keyName,
           sourceIp,
@@ -2008,6 +2010,7 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
         input: finalArgs,
         output: result,
         group,
+        username,
         keyId,
         keyName,
         sourceIp,
@@ -2097,6 +2100,7 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
         input: request.params.arguments,
         output: result,
         group,
+        username,
         keyId,
         keyName,
         sourceIp,
@@ -2150,6 +2154,7 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
       input: request.params.arguments,
       output: result,
       group,
+      username,
       keyId,
       keyName,
       sourceIp,
@@ -2180,6 +2185,7 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
       status: 'error',
       input: getActivityInputFromToolRequest(request),
       group,
+      username,
       keyId,
       keyName,
       sourceIp,

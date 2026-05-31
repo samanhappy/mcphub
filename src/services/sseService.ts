@@ -629,6 +629,7 @@ export const handleSseMessage = async (req: Request, res: Response): Promise<voi
     // Set bearer key and group context for activity logging (from session or current request)
     requestContextService.setBearerKeyContext(currentKeyId, currentKeyName);
     requestContextService.setGroupContext(group);
+    requestContextService.setUsernameContext(username);
     requestContextService.setHostedAuthContext(currentHostedAuth);
 
     await (transport as SSEServerTransport).handlePostMessage(req, res);
@@ -874,6 +875,7 @@ export const handleMcpPostRequest = async (req: Request, res: Response): Promise
     // Set bearer key and group context for activity logging
     requestContextService.setBearerKeyContext(bearerAuthResult.keyId, bearerAuthResult.keyName);
     requestContextService.setGroupContext(group);
+    requestContextService.setUsernameContext(username);
     requestContextService.setHostedAuthContext(
       bearerAuthResult.hostedAuth || transportInfo?.hostedAuth,
     );

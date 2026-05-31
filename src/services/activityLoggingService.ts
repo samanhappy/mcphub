@@ -41,6 +41,7 @@ export class ActivityLoggingService {
     input?: any;
     output?: any;
     group?: string;
+    username?: string;
     keyId?: string;
     keyName?: string;
     sourceIp?: string;
@@ -65,6 +66,7 @@ export class ActivityLoggingService {
         input: params.input ? this.safeStringify(params.input) : undefined,
         output: params.output ? this.safeStringify(params.output) : undefined,
         group: params.group,
+        username: params.username,
         keyId: params.keyId,
         keyName: params.keyName,
         sourceIp: params.sourceIp,

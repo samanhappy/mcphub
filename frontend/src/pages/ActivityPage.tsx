@@ -52,6 +52,7 @@ const ActivityPage: React.FC = () => {
   const [searchTool, setSearchTool] = useState('');
   const [searchStatus, setSearchStatus] = useState<string>('');
   const [searchGroup, setSearchGroup] = useState('');
+  const [searchUsername, setSearchUsername] = useState('');
   const [searchKeyName, setSearchKeyName] = useState('');
 
   // Fetch data
@@ -147,6 +148,7 @@ const ActivityPage: React.FC = () => {
       filters.status = searchStatus;
     }
     if (searchGroup) filters.group = searchGroup;
+    if (searchUsername) filters.username = searchUsername;
     if (searchKeyName) filters.keyName = searchKeyName;
 
     setAppliedFilters(filters);
@@ -159,6 +161,7 @@ const ActivityPage: React.FC = () => {
     setSearchTool('');
     setSearchStatus('');
     setSearchGroup('');
+    setSearchUsername('');
     setSearchKeyName('');
     setAppliedFilters({});
     setCurrentPage(1);
@@ -410,6 +413,50 @@ const ActivityPage: React.FC = () => {
             )}
           </div>
           <div className="flex-1 min-w-[140px]">
+            <label className="sr-only" htmlFor="activity-username">
+              {t('activity.user')}
+            </label>
+            <div className="relative">
+              <input
+                id="activity-username"
+                type="text"
+                value={searchUsername}
+                onChange={(e) => setSearchUsername(e.target.value)}
+                placeholder={t('activity.searchUsername')}
+                className="hub-input pr-9"
+                list="username-options"
+              />
+              {searchUsername && (
+                <button
+                  onClick={() => setSearchUsername('')}
+                  className="absolute inset-y-0 right-2 flex items-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                  aria-label={t('common.clear')}
+                  type="button"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-4 w-4"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                </button>
+              )}
+            </div>
+            {filterOptions?.usernames && (
+              <datalist id="username-options">
+                {filterOptions.usernames.map((username) => (
+                  <option key={username} value={username} />
+                ))}
+              </datalist>
+            )}
+          </div>
+          <div className="flex-1 min-w-[140px]">
             <label className="sr-only" htmlFor="activity-keyname">
               {t('activity.keyName')}
             </label>
@@ -501,6 +548,7 @@ const ActivityPage: React.FC = () => {
                   t('activity.duration'),
                   t('activity.status'),
                   t('activity.group'),
+                  t('activity.user'),
                   t('activity.key'),
                   t('activity.sourceIp'),
                   t('common.actions'),
@@ -562,6 +610,11 @@ const ActivityPage: React.FC = () => {
                     style={{ padding: '10px 14px', fontSize: 12, color: 'var(--hub-ink-3)' }}
                   >
                     {activity.group || '—'}
+                  </td>
+                  <td
+                    style={{ padding: '10px 14px', fontSize: 12, color: 'var(--hub-ink-3)' }}
+                  >
+                    {activity.username || '—'}
                   </td>
                   <td
                     style={{ padding: '10px 14px', fontSize: 12, color: 'var(--hub-ink-3)' }}
@@ -676,6 +729,12 @@ const ActivityPage: React.FC = () => {
                   {t('activity.group')}
                 </label>
                 <p className="text-gray-900 dark:text-white">{selectedActivity.group || '-'}</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-500 dark:text-gray-400">
+                  {t('activity.user')}
+                </label>
+                <p className="text-gray-900 dark:text-white">{selectedActivity.username || '-'}</p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-500 dark:text-gray-400">
