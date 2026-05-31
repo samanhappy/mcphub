@@ -57,6 +57,10 @@ export const sanitizeStringForLogging = (value: string): string => {
     `$1${REDACTED_VALUE}`,
   );
   sanitized = sanitized.replace(
+    /(\b(?:access_token|refresh_token|id_token|client_secret|api_key|token|password|authorization|secret)\s*[:=]\s*)[^\s",;]+/gi,
+    `$1${REDACTED_VALUE}`,
+  );
+  sanitized = sanitized.replace(
     /("(?:access_token|refresh_token|id_token|client_secret|api_key|authorization|token|password|secret)"\s*:\s*")([^"]*)(")/gi,
     `$1${REDACTED_VALUE}$3`,
   );
@@ -127,9 +131,29 @@ const serializeError = (error: Error): Record<string, unknown> => {
   return serialized;
 };
 
+const summarizeSerializedErrorForLogging = (
+  serialized: Record<string, unknown>,
+): Record<string, unknown> => {
+  const summary: Record<string, unknown> = {};
+
+  ['name', 'message', 'stack', 'code', 'requestId'].forEach((key) => {
+    if (typeof serialized[key] === 'string') {
+      summary[key] = sanitizeStringForLogging(serialized[key]);
+    }
+  });
+  if (typeof serialized.status === 'number') {
+    summary.status = serialized.status;
+  }
+  if (typeof serialized.hasResponseBody === 'boolean') {
+    summary.hasResponseBody = serialized.hasResponseBody;
+  }
+
+  return summary;
+};
+
 export const summarizeErrorForLogging = (error: unknown): Record<string, unknown> => {
   if (error instanceof Error) {
-    return serializeError(error);
+    return summarizeSerializedErrorForLogging(serializeError(error));
   }
 
   if (typeof error === 'string') {

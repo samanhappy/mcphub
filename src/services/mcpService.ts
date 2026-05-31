@@ -311,11 +311,11 @@ const broadcastListChanged = (
 ): void => {
   Object.values(servers).forEach((server) => {
     sendNotification(server)
-      .catch((error) => {
-        console.warn(`Failed to send ${listType} list changed notification:`, error.message);
-      })
       .then(() => {
         console.log(`${listType} list changed notification sent successfully`);
+      })
+      .catch((error) => {
+        console.warn(`Failed to send ${listType} list changed notification:`, error.message);
       });
   });
 };
@@ -465,14 +465,8 @@ export const updateServerToolsCache = (
   serverInfo.tools = tools.map((tool) => normalizeToolForCache(serverInfo.name, tool));
   syncToolsAsVectorEmbeddings(serverInfo.name, serverInfo.tools, {
     reportProgress: options?.reportEmbeddingProgress === true,
-  }).catch((error) => {
-    console.warn(
-      `[EMBED_SYNC_ERROR] Failed to sync tool embeddings for server "${serverInfo.name}"`,
-    );
-    console.error('Error syncing tool embeddings', {
-      serverName: serverInfo.name,
-      error: summarizeErrorForLogging(error),
-    });
+  }).catch(() => {
+    console.warn('[EMBED_SYNC_ERROR] Failed to sync tool embeddings');
   });
 };
 
@@ -484,15 +478,8 @@ const updateServerResourcesCache = (serverInfo: ServerInfo, resources: McpResour
   serverInfo.resources = resources.map(normalizeResourceForCache);
 };
 
-const logListChangedRefreshError = (
-  serverName: string,
-  listType: 'tool' | 'prompt' | 'resource',
-  error: Error,
-): void => {
-  console.warn(`Failed to refresh ${listType} list after upstream notification`, {
-    serverName,
-    error: summarizeErrorForLogging(error),
-  });
+const logListChangedRefreshError = (listType: 'tool' | 'prompt' | 'resource'): void => {
+  console.warn(`Failed to refresh ${listType} list after upstream notification`);
 };
 
 const createUpstreamMcpClient = (
@@ -511,7 +498,7 @@ const createUpstreamMcpClient = (
           onChanged: (error, tools) => {
             const serverInfo = getServerInfo();
             if (error) {
-              logListChangedRefreshError(name, 'tool', error);
+              logListChangedRefreshError('tool');
               return;
             }
             if (!serverInfo || !tools) {
@@ -525,7 +512,7 @@ const createUpstreamMcpClient = (
           onChanged: (error, prompts) => {
             const serverInfo = getServerInfo();
             if (error) {
-              logListChangedRefreshError(name, 'prompt', error);
+              logListChangedRefreshError('prompt');
               return;
             }
             if (!serverInfo || !prompts) {
@@ -539,7 +526,7 @@ const createUpstreamMcpClient = (
           onChanged: (error, resources) => {
             const serverInfo = getServerInfo();
             if (error) {
-              logListChangedRefreshError(name, 'resource', error);
+              logListChangedRefreshError('resource');
               return;
             }
             if (!serverInfo || !resources) {
@@ -2674,6 +2661,10 @@ export const handleReadResourceRequest = async (request: any, extra: any) => {
     }
 
     const result = await server.client.readResource({ uri });
+    if (!result || !Array.isArray(result.contents)) {
+      throw new Error(`Failed to read resource: ${uri}`);
+    }
+
     return appsRouteContext.enabled
       ? result
       : {

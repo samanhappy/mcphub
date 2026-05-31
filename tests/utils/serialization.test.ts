@@ -107,4 +107,25 @@ describe('serialization utilities', () => {
     expect(formatted).toContain('status=401');
     expect(formatted).not.toContain('top-secret');
   });
+
+  it('summarizeErrorForLogging redacts secrets from ordinary Error fields', () => {
+    const error = Object.assign(new Error('oauth access_token=top-secret'), {
+      code: 'E_OAUTH',
+      accessToken: 'also-secret',
+    });
+
+    const summary = summarizeErrorForLogging(error);
+    const formatted = formatErrorForLogging(error);
+
+    expect(summary).toEqual(
+      expect.objectContaining({
+        message: 'oauth access_token=[REDACTED]',
+        code: 'E_OAUTH',
+      }),
+    );
+    expect(summary).not.toHaveProperty('accessToken');
+    expect(JSON.stringify(summary)).not.toContain('top-secret');
+    expect(JSON.stringify(summary)).not.toContain('also-secret');
+    expect(formatted).not.toContain('top-secret');
+  });
 });

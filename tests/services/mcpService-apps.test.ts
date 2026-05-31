@@ -131,6 +131,7 @@ jest.mock('../../src/config/index.js', () => ({
 
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import {
+  broadcastToolListChanged,
   cleanupAllServers,
   getMcpServer,
   getServerByName,
@@ -324,6 +325,22 @@ describe('mcpService MCP Apps transparent proxy', () => {
     expect(result.contents[0]._meta).toEqual({ trace: 'keep-me' });
   });
 
+  it('returns a readable error when an upstream resource response is malformed', async () => {
+    mockClient.listResources.mockResolvedValue({
+      resources: [{ uri: 'resource://apps/broken', name: 'Broken' }],
+    });
+    mockClient.readResource.mockResolvedValueOnce(undefined);
+    await initUpstreamServers();
+    await flushPromises();
+
+    const result = await handleReadResourceRequest(
+      { params: { uri: 'resource://apps/broken' } },
+      { sessionId: 'ordinary-session' },
+    );
+
+    expect(result.contents[0].text).toContain('Failed to read resource');
+  });
+
   it('blocks unlisted ui resources on aggregate routes', async () => {
     mockFindAll.mockResolvedValue([
       makeServerConfig('apps-server'),
@@ -383,5 +400,25 @@ describe('mcpService MCP Apps transparent proxy', () => {
     expect(getServerByName('apps-server')?.tools).toEqual([
       expect.objectContaining({ name: 'apps-server::new-tool' }),
     ]);
+  });
+
+  it('does not report a successful list-change notification after delivery fails', async () => {
+    const downstreamServer = await getMcpServer('ordinary-session', 'apps-server');
+    jest
+      .spyOn(downstreamServer, 'sendToolListChanged')
+      .mockRejectedValueOnce(new Error('delivery failed'));
+    const logSpy = jest.spyOn(console, 'log').mockImplementation();
+    const warnSpy = jest.spyOn(console, 'warn').mockImplementation();
+
+    broadcastToolListChanged();
+    await flushPromises();
+
+    expect(warnSpy).toHaveBeenCalledWith(
+      'Failed to send tool list changed notification:',
+      'delivery failed',
+    );
+    expect(logSpy).not.toHaveBeenCalledWith('tool list changed notification sent successfully');
+    logSpy.mockRestore();
+    warnSpy.mockRestore();
   });
 });
