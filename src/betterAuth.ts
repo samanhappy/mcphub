@@ -114,6 +114,14 @@ const authOptions: BetterAuthOptions = {
   emailAndPassword: {
     enabled: false,
   },
+  account: {
+    accountLinking: {
+      enabled: true,
+      trustedProviders: [
+        ...(runtimeConfig.providers.oidc.enabled ? [runtimeConfig.providers.oidc.providerId] : []),
+      ],
+    },
+  },
   plugins,
   socialProviders,
   trustedOrigins: runtimeConfig.trustedOrigins,
