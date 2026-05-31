@@ -16,6 +16,7 @@ import {
 import { useAuth } from '@/contexts/AuthContext';
 import { useServerContext } from '@/contexts/ServerContext';
 import { useGroupData } from '@/hooks/useGroupData';
+import { canViewSystemLogs } from '@/utils/navigationPermissions';
 import { usePermissionCheck } from '../PermissionChecker';
 import UserProfileMenu from '@/components/ui/UserProfileMenu';
 import { checkActivityAvailable } from '@/services/activityService';
@@ -75,7 +76,9 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
     ...(activityAvailable && auth.user?.isAdmin
       ? [{ path: '/activity', label: t('nav.activity'), icon: <Activity className="h-4 w-4" /> }]
       : []),
-    { path: '/logs', label: t('nav.logs'), icon: <ScrollText className="h-4 w-4" /> },
+    ...(canViewSystemLogs(auth.user)
+      ? [{ path: '/logs', label: t('nav.logs'), icon: <ScrollText className="h-4 w-4" /> }]
+      : []),
     { path: '/settings', label: t('nav.settings'), icon: <SettingsIcon className="h-4 w-4" /> },
   ];
 
