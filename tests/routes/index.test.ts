@@ -101,6 +101,7 @@ jest.mock('../../src/controllers/configController.js', () => ({
 
 jest.mock('../../src/controllers/toolController.js', () => ({
   callTool: routeHandler,
+  readServerResource: routeHandler,
 }));
 
 jest.mock('../../src/controllers/promptController.js', () => ({
@@ -282,6 +283,7 @@ describe('initRoutes authenticated API rate limiting', () => {
 
     expect(authenticatedLimiterIndex).toBeGreaterThanOrEqual(0);
     expect(routerContainsRoute(protectedRouter!, 'get', '/servers/:name')).toBe(true);
+    expect(routerContainsRoute(protectedRouter!, 'post', '/servers/:serverName/resources/read')).toBe(true);
     expect(routerContainsRoute(protectedRouter!, 'put', '/oauth/clients/:clientId')).toBe(true);
     expect(routerContainsRoute(protectedRouter!, 'delete', '/oauth/clients/:clientId')).toBe(true);
   });
