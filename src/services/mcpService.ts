@@ -579,7 +579,7 @@ const getHttpErrorStatusCode = (error: unknown): number | undefined => {
 
 const isRecoverableHttp4xxError = (error: unknown): boolean => {
   const statusCode = getHttpErrorStatusCode(error);
-  if (statusCode !== undefined) {
+  if (statusCode !== undefined && statusCode >= 400 && statusCode < 500) {
     return statusCode === 401 || statusCode === 404;
   }
 
@@ -587,7 +587,8 @@ const isRecoverableHttp4xxError = (error: unknown): boolean => {
     ? (error as { message: string }).message
     : '';
 
-  return /Error POSTing to endpoint \(HTTP 40[14]/.test(message);
+  return /Error POSTing to endpoint \(HTTP 40[14]/.test(message) ||
+    message.includes('No valid session ID');
 };
 
 const summarizeContentItemForLogging = (item: unknown): Record<string, unknown> => {
@@ -1569,9 +1570,15 @@ const filterToolsByConfig = async (serverName: string, tools: Tool[]): Promise<T
   });
 };
 
-// Get server by tool name
+// Get server by tool name (matches both prefixed and unprefixed tool names)
 const getServerByTool = (toolName: string): ServerInfo | undefined => {
-  return serverInfos.find((serverInfo) => serverInfo.tools.some((tool) => tool.name === toolName));
+  return serverInfos.find((serverInfo) =>
+    serverInfo.tools.some(
+      (tool) =>
+        tool.name === toolName ||
+        tool.name === `${serverInfo.name}${getNameSeparator()}${toolName}`,
+    ),
+  );
 };
 
 // Add new server
