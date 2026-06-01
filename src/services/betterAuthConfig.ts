@@ -35,6 +35,7 @@ export interface BetterAuthRuntimeConfig {
       scopes: string[];
       pkce: boolean;
       prompt?: BetterAuthOidcProviderConfig['prompt'];
+      trustEmail: boolean;
     };
   };
 }
@@ -267,6 +268,11 @@ export const resolveBetterAuthRuntimeConfig = (
   );
   const oidcPkce = resolveBooleanSetting(process.env.BETTER_AUTH_OIDC_PKCE, oidcSettings.pkce, true);
   const oidcPrompt = resolvePromptSetting(process.env.BETTER_AUTH_OIDC_PROMPT, oidcSettings.prompt);
+  const oidcTrustEmail = resolveBooleanSetting(
+    process.env.BETTER_AUTH_OIDC_TRUST_EMAIL,
+    undefined,
+    false,
+  );
   const oidcEnabledSetting = resolveBooleanSetting(
     process.env.BETTER_AUTH_OIDC_ENABLED,
     oidcSettings.enabled,
@@ -322,6 +328,7 @@ export const resolveBetterAuthRuntimeConfig = (
         scopes: oidcScopes,
         pkce: oidcPkce,
         prompt: oidcPrompt,
+        trustEmail: oidcTrustEmail,
       },
     },
   };

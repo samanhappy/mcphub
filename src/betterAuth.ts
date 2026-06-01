@@ -118,7 +118,9 @@ const authOptions: BetterAuthOptions = {
     accountLinking: {
       enabled: true,
       trustedProviders: [
-        ...(runtimeConfig.providers.oidc.enabled ? [runtimeConfig.providers.oidc.providerId] : []),
+        ...(runtimeConfig.providers.oidc.enabled && runtimeConfig.providers.oidc.trustEmail
+          ? [runtimeConfig.providers.oidc.providerId]
+          : []),
       ],
     },
   },

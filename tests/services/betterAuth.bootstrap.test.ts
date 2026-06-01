@@ -19,6 +19,7 @@ const runtimeConfig = {
       scopes: ['openid', 'profile', 'email'],
       pkce: true,
       prompt: 'login',
+      trustEmail: true,
     },
   },
 };
@@ -35,6 +36,7 @@ const disabledRuntimeConfig = {
       providerId: 'oidc',
       scopes: ['openid', 'profile', 'email'],
       pkce: true,
+      trustEmail: false,
     },
   },
 };
@@ -188,7 +190,7 @@ describe('betterAuth bootstrap', () => {
     );
   });
 
-  it('includes the OIDC provider in trustedProviders when OIDC is enabled', async () => {
+  it('includes the OIDC provider in trustedProviders when OIDC is enabled and trustEmail is true', async () => {
     await import('../../src/betterAuth.js');
 
     expect(betterAuthMock).toHaveBeenCalledWith(
@@ -197,6 +199,29 @@ describe('betterAuth bootstrap', () => {
           accountLinking: {
             enabled: true,
             trustedProviders: ['local-oidc'],
+          },
+        },
+      }),
+    );
+  });
+
+  it('uses an empty trustedProviders when OIDC is enabled but trustEmail is false', async () => {
+    resolveBetterAuthRuntimeConfigMock.mockReturnValue({
+      ...runtimeConfig,
+      providers: {
+        ...runtimeConfig.providers,
+        oidc: { ...runtimeConfig.providers.oidc, trustEmail: false },
+      },
+    });
+
+    await import('../../src/betterAuth.js');
+
+    expect(betterAuthMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        account: {
+          accountLinking: {
+            enabled: true,
+            trustedProviders: [],
           },
         },
       }),

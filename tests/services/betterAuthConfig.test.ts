@@ -12,6 +12,7 @@ const BETTER_AUTH_ENV_KEYS = [
   'BETTER_AUTH_OIDC_SCOPES',
   'BETTER_AUTH_OIDC_PKCE',
   'BETTER_AUTH_OIDC_PROMPT',
+  'BETTER_AUTH_OIDC_TRUST_EMAIL',
   'GOOGLE_CLIENT_ID',
   'GOOGLE_CLIENT_SECRET',
   'GITHUB_CLIENT_ID',
@@ -89,6 +90,7 @@ describe('betterAuthConfig', () => {
           scopes: ['openid', 'profile', 'email'],
           pkce: true,
           prompt: undefined,
+          trustEmail: false,
         },
       },
     });
@@ -134,6 +136,7 @@ describe('betterAuthConfig', () => {
           scopes: ['openid', 'profile', 'email'],
           pkce: true,
           prompt: undefined,
+          trustEmail: false,
         },
       },
     });
@@ -182,6 +185,7 @@ describe('betterAuthConfig', () => {
           scopes: ['openid', 'profile', 'email'],
           pkce: true,
           prompt: undefined,
+          trustEmail: false,
         },
       },
     });
@@ -262,6 +266,7 @@ describe('betterAuthConfig', () => {
           scopes: ['openid', 'profile', 'custom'],
           pkce: false,
           prompt: 'select_account',
+          trustEmail: false,
         },
       },
     });
@@ -310,6 +315,7 @@ describe('betterAuthConfig', () => {
           scopes: ['openid', 'profile', 'email'],
           pkce: true,
           prompt: undefined,
+          trustEmail: false,
         },
       },
     });
@@ -371,6 +377,7 @@ describe('betterAuthConfig', () => {
           scopes: ['openid', 'profile'],
           pkce: false,
           prompt: 'login',
+          trustEmail: false,
         },
       },
     });

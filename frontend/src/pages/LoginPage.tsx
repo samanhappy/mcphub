@@ -98,6 +98,16 @@ const LoginPage: React.FC = () => {
   }, [auth.isAuthenticated, auth.loading, redirectAfterLogin]);
 
   useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const errorCode = params.get('error');
+    if (errorCode) {
+      const i18nKey = `auth.error.${errorCode}`;
+      const translated = t(i18nKey);
+      setSocialError(translated !== i18nKey ? translated : t('auth.socialLoginFailed'));
+    }
+  }, [location.search, t]);
+
+  useEffect(() => {
     const loadAuthProviders = async () => {
       const publicConfig = await getPublicConfig();
       const betterAuth = publicConfig.betterAuth;
