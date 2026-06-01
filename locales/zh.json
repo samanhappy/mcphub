@@ -634,6 +634,7 @@
     "bearerAuthHeaderNamePlaceholder": "例如：Authorization 或 X-MCP-Authorization",
     "bearerKeysSectionTitle": "密钥",
     "bearerKeysSectionDescription": "管理多条密钥，并为不同密钥配置不同的访问范围。",
+    "bearerKeyScopeFilter": "访问范围筛选",
     "noBearerKeys": "当前还没有配置任何密钥。",
     "bearerKeyName": "名称",
     "bearerKeyToken": "密钥值",

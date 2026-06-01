@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import ChangePasswordForm from '@/components/ChangePasswordForm';
@@ -15,6 +15,11 @@ import { useServerContext } from '@/contexts/ServerContext';
 import { useGroupData } from '@/hooks/useGroupData';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiGet } from '@/utils/fetchInterceptor';
+import {
+  filterBearerKeysByScopeFilter,
+  getBearerKeyScopeFilterOptions,
+  type BearerKeyScopeFilterValue,
+} from '@/utils/bearerKeyScopeFilter';
 
 interface BearerKeyRowProps {
   keyData: BearerKey;
@@ -486,6 +491,7 @@ const SettingsPage: React.FC = () => {
   const [showAddBearerKeyForm, setShowAddBearerKeyForm] = useState(false);
   const [createdBearerToken, setCreatedBearerToken] = useState('');
   const [users, setUsers] = useState<User[]>([]);
+  const [bearerKeyScopeFilter, setBearerKeyScopeFilter] = useState<BearerKeyScopeFilterValue>('all');
 
   const {
     routingConfig,
@@ -626,6 +632,22 @@ const SettingsPage: React.FC = () => {
       }
     });
   }, [isAdmin]);
+
+  const bearerKeyScopeFilterOptions = useMemo(
+    () => getBearerKeyScopeFilterOptions(t, bearerKeys, users),
+    [t, bearerKeys, users],
+  );
+
+  const filteredBearerKeys = useMemo(
+    () => filterBearerKeysByScopeFilter(bearerKeys, bearerKeyScopeFilter),
+    [bearerKeys, bearerKeyScopeFilter],
+  );
+
+  useEffect(() => {
+    if (!bearerKeyScopeFilterOptions.some((option) => option.value === bearerKeyScopeFilter)) {
+      setBearerKeyScopeFilter('all');
+    }
+  }, [bearerKeyScopeFilter, bearerKeyScopeFilterOptions]);
 
   const [sectionsVisible, setSectionsVisible] = useState({
     routingConfig: false,
@@ -1409,32 +1431,53 @@ const SettingsPage: React.FC = () => {
                 </div>
               </div>}
 
-              <div className="flex justify-between items-center">
+              <div className="flex flex-wrap justify-between items-center gap-3">
                 <p className="text-sm text-gray-600">
                   {t('settings.bearerKeysSectionDescription') ||
                     'Manage multiple bearer authentication keys with different access scopes.'}
                 </p>
-                {!showAddBearerKeyForm && (
-                  <button
-                    type="button"
-                    onClick={() => setShowAddBearerKeyForm(true)}
-                    className="flex items-center text-blue-600 hover:text-blue-800 font-medium transition-colors duration-200"
-                  >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="h-5 w-5 mr-1"
-                      viewBox="0 0 20 20"
-                      fill="currentColor"
+                <div className="flex flex-wrap items-center gap-3">
+                  {bearerKeys.length > 0 && bearerKeyScopeFilterOptions.length > 1 && (
+                    <div className="flex items-center gap-2">
+                      <label htmlFor="bearer-key-scope-filter" className="text-sm text-gray-600 whitespace-nowrap">
+                        {t('settings.bearerKeyScopeFilter') || 'Filter by scope'}
+                      </label>
+                      <select
+                        id="bearer-key-scope-filter"
+                        className="block min-w-48 py-2 px-3 border border-gray-300 bg-white dark:bg-gray-800 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm form-select transition-shadow duration-200"
+                        value={bearerKeyScopeFilter}
+                        onChange={(e) => setBearerKeyScopeFilter(e.target.value as BearerKeyScopeFilterValue)}
+                      >
+                        {bearerKeyScopeFilterOptions.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                  {!showAddBearerKeyForm && (
+                    <button
+                      type="button"
+                      onClick={() => setShowAddBearerKeyForm(true)}
+                      className="flex items-center text-blue-600 hover:text-blue-800 font-medium transition-colors duration-200"
                     >
-                      <path
-                        fillRule="evenodd"
-                        d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                    {t('settings.addBearerKey') || 'Add bearer key'}
-                  </button>
-                )}
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-5 w-5 mr-1"
+                        viewBox="0 0 20 20"
+                        fill="currentColor"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"
+                          clipRule="evenodd"
+                        />
+                      </svg>
+                      {t('settings.addBearerKey') || 'Add bearer key'}
+                    </button>
+                  )}
+                </div>
               </div>
 
               {/* Existing keys */}
@@ -1480,7 +1523,7 @@ const SettingsPage: React.FC = () => {
                       </tr>
                     </thead>
                     <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                      {bearerKeys.map((key) => (
+                      {filteredBearerKeys.map((key) => (
                         <BearerKeyRow
                           key={key.id}
                           keyData={key}

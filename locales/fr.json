@@ -623,6 +623,7 @@
     "bearerAuthHeaderNamePlaceholder": "ex. Authorization ou X-MCP-Authorization",
     "bearerKeysSectionTitle": "Clés",
     "bearerKeysSectionDescription": "Gérez plusieurs clés avec différentes portées d’accès.",
+    "bearerKeyScopeFilter": "Filtrer par portée",
     "noBearerKeys": "Aucune clé configurée pour le moment.",
     "bearerKeyName": "Nom",
     "bearerKeyToken": "Jeton",

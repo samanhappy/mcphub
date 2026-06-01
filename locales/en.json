@@ -632,6 +632,7 @@
     "bearerAuthHeaderNamePlaceholder": "e.g. Authorization or X-MCP-Authorization",
     "bearerKeysSectionTitle": "Keys",
     "bearerKeysSectionDescription": "Manage multiple keys with different access scopes.",
+    "bearerKeyScopeFilter": "Filter by scope",
     "noBearerKeys": "No keys configured yet.",
     "bearerKeyName": "Name",
     "bearerKeyToken": "Token",
