@@ -108,7 +108,7 @@
     "@types/react": "^19.1.11",
     "@types/react-dom": "^19.1.7",
     "@types/supertest": "^6.0.3",
-    "@types/uuid": "^10.0.0",
+    "@types/uuid": "^11.0.0",
     "@typescript-eslint/eslint-plugin": "^8.0.0",
     "@typescript-eslint/parser": "^8.0.0",
     "@vitejs/plugin-react": "^5.1.3",
