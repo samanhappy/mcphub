@@ -279,8 +279,8 @@ importers:
         specifier: 19.2.1
         version: 19.2.1(react@19.2.1)
       react-i18next:
-        specifier: ^15.7.2
-        version: 15.7.2(i18next@25.6.0(typescript@5.9.2))(react-dom@19.2.1(react@19.2.1))(react@19.2.1)(typescript@5.9.2)
+        specifier: ^16.2.4
+        version: 16.2.4(i18next@25.6.0(typescript@5.9.2))(react-dom@19.2.1(react@19.2.1))(react@19.2.1)(typescript@5.9.2)
       react-router-dom:
         specifier: ^7.12.0
         version: 7.13.0(react-dom@19.2.1(react@19.2.1))(react@19.2.1)
@@ -514,6 +514,10 @@ packages:
 
   '@babel/runtime@7.28.4':
     resolution: {integrity: sha512-Q/N6JNWvIvPnLDvjlE1OUBLPQHH6l3CltCEsHIujp45zQUSSh8K+gHnaEX45yAT1nyngnINhvWtzN+Nb9D8RAQ==}
+    engines: {node: '>=6.9.0'}
+
+  '@babel/runtime@7.29.7':
+    resolution: {integrity: sha512-Nq8OhGWiZIZGV6hLHoyAKLLcJihP/xFeBMGJoUrxTX2psI8dCifzLhZISFb+VWS3wFMRDmCGw5R+dOySCqPLhw==}
     engines: {node: '>=6.9.0'}
 
   '@babel/template@7.28.6':
@@ -2435,8 +2439,8 @@ packages:
     engines: {node: '>=6.0.0'}
     hasBin: true
 
-  baseline-browser-mapping@2.10.32:
-    resolution: {integrity: sha512-wbPvpyjJPC0zdfdKXxqEL3Ea+bOMD/87X4lftiJkkaBiuG6ALQy1SLmEd7BSmVCuwCQsBrCamgBoLyfFDD1EPg==}
+  baseline-browser-mapping@2.10.33:
+    resolution: {integrity: sha512-bA6+tcSLpz2tIEdDXZPpPTIuxBcC4+w6SieaYyfigIa4h8GlFxbA17v22Vx3JUtuZQj9SgOsnbK+aTBzyDyEuw==}
     engines: {node: '>=6.0.0'}
     hasBin: true
 
@@ -4405,10 +4409,10 @@ packages:
     peerDependencies:
       react: ^19.2.1
 
-  react-i18next@15.7.2:
-    resolution: {integrity: sha512-xJxq7ibnhUlMvd82lNC4te1GxGUMoM1A05KKyqoqsBXVZtEvZg/fz/fnVzdlY/hhQ3SpP/79qCocZOtICGhd3g==}
+  react-i18next@16.2.4:
+    resolution: {integrity: sha512-pvbcPQ+YuQQoRkKBA4VCU9aO8dOgP/vdKEizIYXcAk3+AmI8yQKSJaCzxQQu4Kgg2zWZm3ax9KqHv8ItUlRY0A==}
     peerDependencies:
-      i18next: '>= 25.4.1'
+      i18next: '>= 25.5.2'
       react: '>= 16.8.0'
       react-dom: '*'
       react-native: '*'
@@ -5041,6 +5045,11 @@ packages:
   uri-js@4.4.1:
     resolution: {integrity: sha512-7rKUyy33Q1yc98pQ1DAmLtwX109F7TIfWlW1Ydo8Wl1ii1SeHieeh0HHfPeL2fMXK6z0s8ecKs9frCuLJvndBg==}
 
+  use-sync-external-store@1.6.0:
+    resolution: {integrity: sha512-Pp6GSwGP/NrPIrxVFAIkOQeyw8lFenOHijQWkUTrDvrF4ALqylP2C/KCkeS9dpUM3KvYRQhna5vt7IL95+ZQ9w==}
+    peerDependencies:
+      react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
+
   util-deprecate@1.0.2:
     resolution: {integrity: sha512-EPD5q1uXyFxJpCrLnCc1nHnq3gOa6DZBocAIiI2TaSCA7VCJ1UJDMagCzIkXNsUYfD1daK//LTEQ8xiIbrHtcw==}
 
@@ -5414,6 +5423,8 @@ snapshots:
   '@babel/runtime@7.28.3': {}
 
   '@babel/runtime@7.28.4': {}
+
+  '@babel/runtime@7.29.7': {}
 
   '@babel/template@7.28.6':
     dependencies:
@@ -7144,7 +7155,7 @@ snapshots:
 
   baseline-browser-mapping@2.10.23: {}
 
-  baseline-browser-mapping@2.10.32:
+  baseline-browser-mapping@2.10.33:
     optional: true
 
   basic-auth@2.0.1:
@@ -8966,7 +8977,7 @@ snapshots:
     dependencies:
       '@next/env': 16.2.3
       '@swc/helpers': 0.5.15
-      baseline-browser-mapping: 2.10.32
+      baseline-browser-mapping: 2.10.33
       caniuse-lite: 1.0.30001793
       postcss: 8.5.10
       react: 19.2.1
@@ -9301,12 +9312,13 @@ snapshots:
       react: 19.2.1
       scheduler: 0.27.0
 
-  react-i18next@15.7.2(i18next@25.6.0(typescript@5.9.2))(react-dom@19.2.1(react@19.2.1))(react@19.2.1)(typescript@5.9.2):
+  react-i18next@16.2.4(i18next@25.6.0(typescript@5.9.2))(react-dom@19.2.1(react@19.2.1))(react@19.2.1)(typescript@5.9.2):
     dependencies:
-      '@babel/runtime': 7.28.3
+      '@babel/runtime': 7.29.7
       html-parse-stringify: 3.0.1
       i18next: 25.6.0(typescript@5.9.2)
       react: 19.2.1
+      use-sync-external-store: 1.6.0(react@19.2.1)
     optionalDependencies:
       react-dom: 19.2.1(react@19.2.1)
       typescript: 5.9.2
@@ -9995,6 +10007,10 @@ snapshots:
   uri-js@4.4.1:
     dependencies:
       punycode: 2.3.1
+
+  use-sync-external-store@1.6.0(react@19.2.1):
+    dependencies:
+      react: 19.2.1
 
   util-deprecate@1.0.2: {}
 
