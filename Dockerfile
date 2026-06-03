@@ -1,3 +1,5 @@
+# syntax=docker/dockerfile:1.7
+
 FROM python:3.13-slim-bookworm AS base
 
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
@@ -7,7 +9,7 @@ RUN apt-get update && apt-get install -y curl gnupg git build-essential \
   && apt-get install -y nodejs \
   && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-RUN npm install -g pnpm
+RUN corepack enable && corepack prepare pnpm@10.12.4 --activate
 
 ARG INSTALL_EXT=false
 RUN if [ "$INSTALL_EXT" = "true" ]; then \
@@ -34,14 +36,17 @@ RUN uv tool install mcp-server-fetch
 WORKDIR /app
 
 COPY package.json pnpm-lock.yaml ./
-RUN pnpm install
+RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store \
+  pnpm config set store-dir /pnpm/store && pnpm fetch --frozen-lockfile
+RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store \
+  pnpm config set store-dir /pnpm/store && pnpm install --frozen-lockfile --offline
 
 COPY . .
 
 # Download the latest servers.json from mcpm.sh and replace the existing file
 RUN curl -s -f --connect-timeout 10 https://mcpm.sh/api/servers.json -o servers.json || echo "Failed to download servers.json, using bundled version"
 
-RUN pnpm frontend:build && pnpm build
+RUN pnpm build
 
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
