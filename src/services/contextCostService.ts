@@ -24,11 +24,13 @@ export async function serverCostFromInfo(info: ServerInfo): Promise<ServerCost> 
 
   // Resources have no per-item enabled flag upstream, so resource exposed == gross by design.
   // Tools and prompts carry an explicit `enabled` boolean set by getServersInfo.
-  const items: ItemCost[] = [
-    ...(await Promise.all((info.tools ?? []).map((t) => itemCostForTool(t)))),
-    ...(await Promise.all((info.prompts ?? []).map((p) => itemCostForPrompt(p)))),
-    ...(await Promise.all((info.resources ?? []).map((r) => itemCostForResource(r)))),
-  ];
+  // Count all three kinds concurrently rather than awaiting each batch in sequence.
+  const [tools, prompts, resources] = await Promise.all([
+    Promise.all((info.tools ?? []).map((t) => itemCostForTool(t))),
+    Promise.all((info.prompts ?? []).map((p) => itemCostForPrompt(p))),
+    Promise.all((info.resources ?? []).map((r) => itemCostForResource(r))),
+  ]);
+  const items: ItemCost[] = [...tools, ...prompts, ...resources];
 
   const gross = items.reduce((sum, i) => sum + i.cost, 0);
   const exposed = items.filter((i) => i.enabled).reduce((sum, i) => sum + i.cost, 0);

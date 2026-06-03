@@ -176,12 +176,20 @@ export const ServerToolConfig: React.FC<ServerToolConfigProps> = ({
     }));
   };
 
-  const costMapForServer = (serverName: string): Map<string, number> => {
-    const sc = serverCosts.find((c) => c.name === serverName);
-    const map = new Map<string, number>();
-    sc?.items.forEach((i) => map.set(i.name, i.cost));
-    return map;
-  };
+  // Build one nested map (server -> item name -> cost) once per serverCosts change,
+  // so per-render lookups don't rebuild a Map on every call (avoids O(N^2) churn).
+  const serverCostsMap = React.useMemo(() => {
+    const outerMap = new Map<string, Map<string, number>>();
+    serverCosts.forEach((sc) => {
+      const innerMap = new Map<string, number>();
+      sc.items.forEach((i) => innerMap.set(i.name, i.cost));
+      outerMap.set(sc.name, innerMap);
+    });
+    return outerMap;
+  }, [serverCosts]);
+
+  const costMapForServer = (serverName: string): Map<string, number> =>
+    serverCostsMap.get(serverName) ?? new Map<string, number>();
 
   const getSelectedCapabilityCost = (server: Server, capability: CapabilityKey): number => {
     const costMap = costMapForServer(server.name);

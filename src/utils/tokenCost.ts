@@ -9,15 +9,15 @@
 import type { Tool, Prompt, Resource, ItemCost } from '../types/index.js';
 
 // Lazily-loaded cl100k encoder (matches the dynamic-import pattern in tokenTruncation.ts,
-// which is proven to work under the ts-jest ESM preset).
-let encodeFn: ((text: string) => number[]) | null = null;
+// which is proven to work under the ts-jest ESM preset). Cache the import promise itself
+// so concurrent callers share a single in-flight import instead of each firing their own.
+let encoderPromise: Promise<(text: string) => number[]> | null = null;
 
-async function getEncoder(): Promise<(text: string) => number[]> {
-  if (!encodeFn) {
-    const mod = await import('gpt-tokenizer');
-    encodeFn = mod.encode;
+function getEncoder(): Promise<(text: string) => number[]> {
+  if (!encoderPromise) {
+    encoderPromise = import('gpt-tokenizer').then((mod) => mod.encode);
   }
-  return encodeFn;
+  return encoderPromise;
 }
 
 /** Count cl100k tokens in a string. */
