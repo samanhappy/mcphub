@@ -4,7 +4,7 @@ export const MCP_APPS_EXTENSION_ID = 'io.modelcontextprotocol/ui';
 export const MCP_APPS_MIME_TYPE = 'text/html;profile=mcp-app';
 
 export const MCP_APPS_CAPABILITIES = {
-  extensions: {
+  experimental: {
     [MCP_APPS_EXTENSION_ID]: {
       mimeTypes: [MCP_APPS_MIME_TYPE],
     },
@@ -18,7 +18,10 @@ const toRecord = (value: unknown): Record<string, unknown> | undefined => {
 };
 
 export const hasMcpAppsCapability = (capabilities: unknown): boolean => {
-  const extension = toRecord(toRecord(capabilities)?.extensions)?.[MCP_APPS_EXTENSION_ID];
+  const capabilityRecord = toRecord(capabilities);
+  const extension =
+    toRecord(capabilityRecord?.experimental)?.[MCP_APPS_EXTENSION_ID] ??
+    toRecord(capabilityRecord?.extensions)?.[MCP_APPS_EXTENSION_ID];
   const mimeTypes = toRecord(extension)?.mimeTypes;
   return Array.isArray(mimeTypes) && mimeTypes.includes(MCP_APPS_MIME_TYPE);
 };

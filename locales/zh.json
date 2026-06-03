@@ -127,6 +127,7 @@
     "typeSse": "SSE",
     "typeStreamableHttp": "流式 HTTP",
     "typeOpenapi": "OpenAPI",
+    "mcpApp": "MCP App — 此服务器暴露交互式 UI 资源",
     "visibility": "可见性",
     "visibilityPrivateShort": "私有",
     "visibilityPrivate": "私有 — 仅所有者和管理员可见",

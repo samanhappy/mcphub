@@ -88,6 +88,8 @@ export interface Tool {
   name: string;
   description: string;
   inputSchema: ToolInputSchema;
+  annotations?: Record<string, unknown>;
+  _meta?: Record<string, unknown>;
   enabled?: boolean;
 }
 
@@ -111,6 +113,8 @@ export interface Resource {
   name?: string;
   description?: string;
   mimeType?: string;
+  annotations?: Record<string, unknown>;
+  _meta?: Record<string, unknown>;
   enabled?: boolean;
 }
 

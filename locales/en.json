@@ -127,6 +127,7 @@
     "typeSse": "SSE",
     "typeStreamableHttp": "Streamable HTTP",
     "typeOpenapi": "OpenAPI",
+    "mcpApp": "MCP App — this server exposes interactive UI resources",
     "visibility": "Visibility",
     "visibilityPrivateShort": "Private",
     "visibilityPrivate": "Private — only the owner and admins",

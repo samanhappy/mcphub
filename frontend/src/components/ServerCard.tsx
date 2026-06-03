@@ -107,6 +107,25 @@ const transportLabel = (t: any, type?: string) => {
   return type;
 };
 
+const MCP_APPS_MIME_TYPE = 'text/html;profile=mcp-app';
+
+const hasMcpAppsMetadata = (metadata?: Record<string, unknown>) => {
+  if (!metadata) return false;
+  return Boolean(metadata.ui || metadata['ui/resourceUri']);
+};
+
+const serverExposesMcpApp = (server: Server) => {
+  return Boolean(
+    server.tools?.some((tool) => hasMcpAppsMetadata(tool._meta)) ||
+      server.resources?.some(
+        (resource) =>
+          resource.uri?.startsWith('ui://') ||
+          resource.mimeType === MCP_APPS_MIME_TYPE ||
+          hasMcpAppsMetadata(resource._meta),
+      ),
+  );
+};
+
 const ServerCard = ({
   server,
   onRemove,
@@ -150,6 +169,7 @@ const ServerCard = ({
   const enabledPrompts = server.prompts?.filter((p) => p.enabled !== false).length || 0;
   const totalResources = server.resources?.length || 0;
   const enabledResources = server.resources?.filter((r) => r.enabled !== false).length || 0;
+  const isMcpApp = serverExposesMcpApp(server);
 
   const handleToggle = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -449,6 +469,11 @@ const ServerCard = ({
                 >
                   {server.name}
                 </span>
+                {isMcpApp && (
+                  <span className="hub-tag accent flex-shrink-0" title={t('server.mcpApp')}>
+                    App
+                  </span>
+                )}
                 {server.error && (
                   <div className="relative" ref={errorPopoverRef}>
                     <button

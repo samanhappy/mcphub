@@ -127,6 +127,7 @@
     "typeSse": "SSE",
     "typeStreamableHttp": "Akış Yapılabilir HTTP",
     "typeOpenapi": "OpenAPI",
+    "mcpApp": "MCP App — bu sunucu etkileşimli UI kaynakları sunar",
     "command": "Komut",
     "arguments": "Argümanlar",
     "envVars": "Ortam Değişkenleri",

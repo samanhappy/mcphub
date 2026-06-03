@@ -127,6 +127,7 @@
     "typeSse": "SSE",
     "typeStreamableHttp": "HTTP diffusable",
     "typeOpenapi": "OpenAPI",
+    "mcpApp": "MCP App — ce serveur expose des ressources d'interface interactives",
     "command": "Commande",
     "arguments": "Arguments",
     "envVars": "Variables d'environnement",
