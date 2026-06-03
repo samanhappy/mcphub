@@ -1132,5 +1132,18 @@
     "serversInGroup": "server(s)",
     "envVarsNeeded": "Required Environment Variables — set these before using the imported servers:",
     "importResult": "Servers: {{serversCreated}} created, {{serversSkipped}} skipped. Groups: {{groupsCreated}} created, {{groupsSkipped}} skipped."
+  },
+  "cost": {
+    "exposed": "Exposed",
+    "gross": "Gross",
+    "estimate": "Estimated tokens (cl100k) — approximate",
+    "direct": "Direct",
+    "smartRouting": "Smart routing",
+    "smartRoutingPd": "Smart routing + progressive disclosure",
+    "smartRoutingPdHint": "Adds the describe_tool meta-tool — higher upfront cost, but smaller per-search responses",
+    "saved": "{{percent}}% less",
+    "notConnected": "Not connected",
+    "connectedOf": "{{connected}} of {{total}} servers connected",
+    "totalFootprint": "Context footprint"
   }
 }

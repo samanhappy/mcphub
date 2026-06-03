@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { IGroupServerConfig, Prompt, Resource, Server, Tool } from '@/types';
+import { IGroupServerConfig, Prompt, Resource, Server, ServerCost, Tool } from '@/types';
 import { Wrench, MessageSquare, FileText } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { useSettingsData } from '@/hooks/useSettingsData';
+import { formatTokens } from '@/utils/contextCost';
 
 type CapabilityKey = 'tools' | 'prompts' | 'resources';
 
@@ -24,13 +25,15 @@ interface ServerToolConfigProps {
   value: string[] | IGroupServerConfig[];
   onChange: (value: IGroupServerConfig[]) => void;
   className?: string;
+  serverCosts?: ServerCost[];
 }
 
 export const ServerToolConfig: React.FC<ServerToolConfigProps> = ({
   servers,
   value,
   onChange,
-  className
+  className,
+  serverCosts = [],
 }) => {
   const { t } = useTranslation();
   const { nameSeparator } = useSettingsData();
@@ -173,6 +176,24 @@ export const ServerToolConfig: React.FC<ServerToolConfigProps> = ({
     }));
   };
 
+  const costMapForServer = (serverName: string): Map<string, number> => {
+    const sc = serverCosts.find((c) => c.name === serverName);
+    const map = new Map<string, number>();
+    sc?.items.forEach((i) => map.set(i.name, i.cost));
+    return map;
+  };
+
+  const getSelectedCapabilityCost = (server: Server, capability: CapabilityKey): number => {
+    const costMap = costMapForServer(server.name);
+    return getCapabilityItems(server, capability)
+      .filter((item) => isCapabilityItemSelected(server.name, capability, item.value))
+      .reduce((sum, item) => sum + (costMap.get(item.key) ?? 0), 0);
+  };
+
+  const getServerSelectedCost = (server: Server): number =>
+    (['tools', 'prompts', 'resources'] as CapabilityKey[])
+      .reduce((sum, cap) => sum + getSelectedCapabilityCost(server, cap), 0);
+
   const toggleCapabilityItem = (serverName: string, capability: CapabilityKey, itemValue: string) => {
     const server = availableServers.find(s => s.name === serverName);
     if (!server) return;
@@ -274,6 +295,7 @@ export const ServerToolConfig: React.FC<ServerToolConfigProps> = ({
           const serverConfig = normalizedValue.find(config => config.name === server.name);
           const summaryBadges = getServerSummaryBadges(server);
           const serverCapabilities = capabilityConfigs.filter(({ key }) => getCapabilityItems(server, key).length > 0);
+          const costMap = costMapForServer(server.name);
 
           return (
             <div key={server.name} className="border border-gray-200 dark:border-gray-700 rounded-lg hover:border-gray-300 hover:bg-gray-50 dark:bg-gray-800 dark:hover:bg-gray-700 transition-colors">
@@ -300,6 +322,11 @@ export const ServerToolConfig: React.FC<ServerToolConfigProps> = ({
                 </div>
 
                 <div className="flex items-center space-x-3">
+                  {getServerSelectedCost(server) > 0 && (
+                    <span className="text-sm text-gray-400 hub-mono" title={t('cost.estimate')}>
+                      Σ {formatTokens(getServerSelectedCost(server))}
+                    </span>
+                  )}
                   {summaryBadges.map(({ key, count }) => (
                     <span key={key} className="text-sm text-green-600 flex items-center gap-1">
                       {key === 'tools' ? <Wrench size={14} /> : key === 'prompts' ? <MessageSquare size={14} /> : <FileText size={14} />} {count}
@@ -346,6 +373,11 @@ export const ServerToolConfig: React.FC<ServerToolConfigProps> = ({
                                     : `(${t(countKey)} ${selectedCount}/${items.length})`}
                                 </span>
                               )}
+                              {serverConfig && getSelectedCapabilityCost(server, key) > 0 && (
+                                <span className="text-xs text-gray-400 hub-mono" title={t('cost.estimate')}>
+                                  Σ {formatTokens(getSelectedCapabilityCost(server, key))}
+                                </span>
+                              )}
                               <button
                                 type="button"
                                 onClick={() => {
@@ -381,6 +413,11 @@ export const ServerToolConfig: React.FC<ServerToolConfigProps> = ({
                                   {item.description && (
                                     <span className="text-gray-400 text-xs truncate">
                                       {item.description}
+                                    </span>
+                                  )}
+                                  {costMap.get(item.key) != null && (
+                                    <span className="text-xs text-gray-400 hub-mono whitespace-nowrap ml-auto flex-shrink-0" title={t('cost.estimate')}>
+                                      Σ {formatTokens(costMap.get(item.key)!)}
                                     </span>
                                   )}
                                 </label>

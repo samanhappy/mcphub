@@ -1,16 +1,18 @@
 import { useState, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Edit3, Trash2, Copy, Check, Link as LinkIcon, FileCode, ChevronDown } from 'lucide-react';
-import { Group, Server, IGroupServerConfig } from '@/types';
+import { Group, Server, IGroupServerConfig, GroupCost } from '@/types';
 import DeleteDialog from '@/components/ui/DeleteDialog';
 import { useToast } from '@/contexts/ToastContext';
 import { useSettingsData } from '@/hooks/useSettingsData';
+import { formatTokens, percentSaved } from '@/utils/contextCost';
 
 interface GroupCardProps {
   group: Group;
   servers: Server[];
   onEdit: (group: Group) => void;
   onDelete: (groupId: string) => void;
+  cost?: GroupCost;
 }
 
 const getServerNames = (servers: string[] | IGroupServerConfig[]): string[] =>
@@ -55,7 +57,7 @@ const copyText = async (value: string): Promise<boolean> => {
   }
 };
 
-const GroupCard = ({ group, servers, onEdit, onDelete }: GroupCardProps) => {
+const GroupCard = ({ group, servers, onEdit, onDelete, cost }: GroupCardProps) => {
   const { t } = useTranslation();
   const { showToast } = useToast();
   const { installConfig, nameSeparator } = useSettingsData();
@@ -357,11 +359,34 @@ const GroupCard = ({ group, servers, onEdit, onDelete }: GroupCardProps) => {
           color: 'var(--hub-ink-3)',
         }}
       >
-        <div className="hub-mono">
-          <span style={{ color: 'var(--hub-ink-2)' }}>{groupServers.length}</span>{' '}
-          {t('nav.servers').toLowerCase()} ·{' '}
-          <span style={{ color: 'var(--hub-ink-2)' }}>{totalVisibleTools}</span>{' '}
-          {t('server.tools').toLowerCase()}
+        <div>
+          <div className="hub-mono">
+            <span style={{ color: 'var(--hub-ink-2)' }}>{groupServers.length}</span>{' '}
+            {t('nav.servers').toLowerCase()} ·{' '}
+            <span style={{ color: 'var(--hub-ink-2)' }}>{totalVisibleTools}</span>{' '}
+            {t('server.tools').toLowerCase()}
+          </div>
+          {cost && (
+            <div className="hub-mono mt-1" style={{ fontSize: 11.5, color: 'var(--hub-ink-3)' }}>
+              <div title={t('cost.estimate')}>
+                {t('cost.totalFootprint')}: {formatTokens(cost.direct.exposed)}/{formatTokens(cost.direct.gross)}
+              </div>
+              {cost.smartRouting && (
+                <>
+                  <div>
+                    {t('cost.smartRouting')}: {formatTokens(cost.smartRouting.base)}{' '}
+                    ({t('cost.saved', { percent: percentSaved(cost.direct.exposed, cost.smartRouting.base) })})
+                  </div>
+                  <div title={t('cost.smartRoutingPdHint')}>
+                    {t('cost.smartRoutingPd')}: {formatTokens(cost.smartRouting.progressiveDisclosure)}
+                  </div>
+                </>
+              )}
+              {cost.connectedCount < cost.totalCount && (
+                <div>{t('cost.connectedOf', { connected: cost.connectedCount, total: cost.totalCount })}</div>
+              )}
+            </div>
+          )}
         </div>
         <button
           className="hub-btn ghost sm"

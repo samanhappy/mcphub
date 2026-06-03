@@ -21,6 +21,7 @@ import DynamicForm from './DynamicForm';
 import PromptResult from './PromptResult';
 import { useToast } from '@/contexts/ToastContext';
 import ResetDescriptionButton from './ResetDescriptionButton';
+import { formatTokens } from '@/utils/contextCost';
 
 interface PromptCardProps {
   server: string;
@@ -32,9 +33,10 @@ interface PromptCardProps {
     description: string,
     options?: { restored?: boolean },
   ) => void;
+  cost?: number;
 }
 
-const PromptCard = ({ prompt, server, readOnly = false, onToggle, onDescriptionUpdate }: PromptCardProps) => {
+const PromptCard = ({ prompt, server, readOnly = false, onToggle, onDescriptionUpdate, cost }: PromptCardProps) => {
   const { t } = useTranslation();
   const { showToast } = useToast();
   const { nameSeparator } = useSettingsData();
@@ -278,6 +280,15 @@ const PromptCard = ({ prompt, server, readOnly = false, onToggle, onDescriptionU
           </span>
         </div>
         <div className="flex items-center gap-1.5 flex-shrink-0">
+          {cost != null && (
+            <span
+              className="hub-mono flex-shrink-0"
+              style={{ fontSize: 11, color: 'var(--hub-ink-3)' }}
+              title={t('cost.estimate')}
+            >
+              Σ {formatTokens(cost)}
+            </span>
+          )}
           <div onClick={(e) => e.stopPropagation()}>
             {prompt.enabled !== undefined && (
               <Switch

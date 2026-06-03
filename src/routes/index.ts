@@ -22,6 +22,7 @@ import {
   resetResourceDescription,
   updateSystemConfig,
 } from '../controllers/serverController.js';
+import { getServerCostsHandler, getGroupCostsHandler } from '../controllers/contextCostController.js';
 import {
   getGroups,
   getGroup,
@@ -257,6 +258,10 @@ export const initRoutes = async (app: express.Application): Promise<void> => {
     resetResourceDescription,
   );
   authenticatedRouter.put('/system-config', updateSystemConfig);
+
+  // Context Footprint cost routes
+  authenticatedRouter.get('/cost/servers', getServerCostsHandler);
+  authenticatedRouter.get('/cost/groups', getGroupCostsHandler);
 
   // Group management routes
   authenticatedRouter.get('/groups', getGroups);

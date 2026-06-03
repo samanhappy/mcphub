@@ -64,43 +64,14 @@ const cleanInputSchema = (schema: any): any => {
 };
 
 /**
- * Generate the list of smart routing tools based on configuration
+ * Build meta-tool definitions for a given scope.
+ * Pure function — no I/O, no config reads.
  */
-export const getSmartRoutingTools = async (
-  group: string | undefined,
-): Promise<{ tools: any[] }> => {
-  // Extract target group if pattern is $smart/{group}
-  const targetGroup = group?.startsWith('$smart/') ? group.substring(7) : undefined;
-
-  // Get smart routing config to check progressive disclosure setting
-  const smartRoutingConfig = await getSmartRoutingConfig();
-  const progressiveDisclosure = smartRoutingConfig.progressiveDisclosure ?? false;
-
-  // Get info about available servers, filtered by target group if specified
-  let availableServers = getServerInfos().filter(
-    (server) => server.status === 'connected' && server.enabled !== false,
-  );
-
-  // If a target group is specified, filter servers to only those in the group
-  if (targetGroup) {
-    const serversInGroup = await getServersInGroup(targetGroup);
-    if (serversInGroup && serversInGroup.length > 0) {
-      availableServers = availableServers.filter((server) => serversInGroup.includes(server.name));
-    }
-  }
-
-  // Create simple server information with only server names
-  const serversList = availableServers
-    .map((server) => {
-      return `${server.name}`;
-    })
-    .join(', ');
-
-  const scopeDescription = targetGroup
-    ? `servers in the "${targetGroup}" group`
-    : 'all available servers';
-
-  // Base tools that are always available
+export const buildSmartRoutingMetaTools = (
+  scopeDescription: string,
+  serversList: string,
+  progressiveDisclosure: boolean,
+): any[] => {
   const tools: any[] = [];
 
   if (progressiveDisclosure) {
@@ -245,7 +216,67 @@ Available servers: ${serversList}`,
     );
   }
 
-  return { tools };
+  return tools;
+};
+
+/**
+ * Compute the scope (server list + scope description) for a smart routing group.
+ */
+const computeSmartRoutingScope = async (
+  group: string | undefined,
+): Promise<{ scopeDescription: string; serversList: string }> => {
+  // Extract target group if pattern is $smart/{group}
+  const targetGroup = group?.startsWith('$smart/') ? group.substring(7) : undefined;
+
+  // Get info about available servers, filtered by target group if specified
+  let availableServers = getServerInfos().filter(
+    (server) => server.status === 'connected' && server.enabled !== false,
+  );
+
+  // If a target group is specified, filter servers to only those in the group
+  if (targetGroup) {
+    const serversInGroup = await getServersInGroup(targetGroup);
+    if (serversInGroup && serversInGroup.length > 0) {
+      availableServers = availableServers.filter((server) => serversInGroup.includes(server.name));
+    }
+  }
+
+  // Create simple server information with only server names
+  const serversList = availableServers
+    .map((server) => {
+      return `${server.name}`;
+    })
+    .join(', ');
+
+  const scopeDescription = targetGroup
+    ? `servers in the "${targetGroup}" group`
+    : 'all available servers';
+
+  return { scopeDescription, serversList };
+};
+
+/** Meta-tool definitions for a scope, for an explicit PD mode (for cost only). */
+export const getSmartRoutingMetaToolDefinitions = async (
+  group: string | undefined,
+  progressiveDisclosure: boolean,
+): Promise<any[]> => {
+  const { scopeDescription, serversList } = await computeSmartRoutingScope(group);
+  return buildSmartRoutingMetaTools(scopeDescription, serversList, progressiveDisclosure);
+};
+
+/**
+ * Generate the list of smart routing tools based on configuration
+ */
+export const getSmartRoutingTools = async (
+  group: string | undefined,
+): Promise<{ tools: any[] }> => {
+  // Get smart routing config to check progressive disclosure setting
+  const smartRoutingConfig = await getSmartRoutingConfig();
+  const progressiveDisclosure = smartRoutingConfig.progressiveDisclosure ?? false;
+
+  const { scopeDescription, serversList } = await computeSmartRoutingScope(group);
+
+  return { tools: buildSmartRoutingMetaTools(scopeDescription, serversList, progressiveDisclosure) };
 };
 
 /**

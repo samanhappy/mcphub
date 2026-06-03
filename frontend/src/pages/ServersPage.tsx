@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { Plus, RefreshCw, Search, Upload, FileCode, AlertCircle, X } from 'lucide-react';
@@ -10,6 +10,7 @@ import McpbUploadForm from '@/components/McpbUploadForm';
 import JSONImportForm from '@/components/JSONImportForm';
 import Pagination from '@/components/ui/Pagination';
 import { useServerData } from '@/hooks/useServerData';
+import { useCostData } from '@/hooks/useCostData';
 
 type Filter = 'all' | 'online' | 'issues';
 
@@ -35,6 +36,13 @@ const ServersPage: React.FC = () => {
     handleServerReload,
     triggerRefresh,
   } = useServerData({ refreshOnMount: true });
+
+  const { serverCosts, refetch: refetchCost } = useCostData();
+
+  // Re-fetch context footprint whenever server data changes (toggle, reload, edit).
+  useEffect(() => {
+    refetchCost();
+  }, [servers, refetchCost]);
 
   const [editingServer, setEditingServer] = useState<Server | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -222,6 +230,7 @@ const ServersPage: React.FC = () => {
               <ServerCard
                 key={server.name}
                 server={server}
+                cost={serverCosts.find((c) => c.name === server.name)}
                 onRemove={handleServerRemove}
                 onEdit={handleEditClick}
                 onToggle={handleServerToggle}

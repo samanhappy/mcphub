@@ -22,6 +22,7 @@ import { Switch } from './ToggleGroup';
 import DynamicForm from './DynamicForm';
 import ToolResult from './ToolResult';
 import ResetDescriptionButton from './ResetDescriptionButton';
+import { formatTokens } from '@/utils/contextCost';
 
 interface ToolCardProps {
   server: string;
@@ -33,6 +34,7 @@ interface ToolCardProps {
     description: string,
     options?: { restored?: boolean },
   ) => void;
+  cost?: number;
 }
 
 // Helper to check for "empty" values
@@ -44,7 +46,7 @@ function isEmptyValue(value: any): boolean {
   return false;
 }
 
-const ToolCard = ({ tool, server, readOnly = false, onToggle, onDescriptionUpdate }: ToolCardProps) => {
+const ToolCard = ({ tool, server, readOnly = false, onToggle, onDescriptionUpdate, cost }: ToolCardProps) => {
   const { t } = useTranslation();
   const { showToast } = useToast();
   const { nameSeparator } = useSettingsData();
@@ -311,6 +313,15 @@ const ToolCard = ({ tool, server, readOnly = false, onToggle, onDescriptionUpdat
           </span>
         </div>
         <div className="flex items-center gap-1.5 flex-shrink-0">
+          {cost != null && (
+            <span
+              className="hub-mono flex-shrink-0"
+              style={{ fontSize: 11, color: 'var(--hub-ink-3)' }}
+              title={t('cost.estimate')}
+            >
+              Σ {formatTokens(cost)}
+            </span>
+          )}
           <div onClick={(e) => e.stopPropagation()}>
             <Switch
               checked={tool.enabled ?? true}

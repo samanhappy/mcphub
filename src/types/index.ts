@@ -700,3 +700,33 @@ export interface TemplateImportDetail {
   action: 'created' | 'skipped' | 'failed';
   message?: string;
 }
+
+// ─── Context Footprint (token cost) feature ───────────────────────────────
+export interface ItemCost {
+  kind: 'tool' | 'prompt' | 'resource';
+  name: string;
+  cost: number;
+  enabled: boolean;
+}
+
+export interface ServerCost {
+  name: string;
+  connected: boolean;
+  exposed: number;
+  gross: number;
+  items: ItemCost[];
+}
+
+export interface SmartRoutingCost {
+  base: number;
+  progressiveDisclosure: number;
+}
+
+export interface GroupCost {
+  id: string;
+  name: string;
+  connectedCount: number;
+  totalCount: number;
+  direct: { exposed: number; gross: number };
+  smartRouting: SmartRoutingCost | null;
+}

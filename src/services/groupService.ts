@@ -6,7 +6,7 @@ import { UserContextService } from './userContextService.js';
 import { getGroupDao, getServerDao, getSystemConfigDao } from '../dao/index.js';
 
 // Helper function to normalize group servers configuration
-const normalizeGroupServers = (servers: string[] | IGroupServerConfig[]): IGroupServerConfig[] => {
+export const normalizeGroupServers = (servers: string[] | IGroupServerConfig[]): IGroupServerConfig[] => {
   return servers.map((server) => {
     if (typeof server === 'string') {
       // Backward compatibility: string format means all tools

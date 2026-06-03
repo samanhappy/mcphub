@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Group, GroupFormData, Server, IGroupServerConfig } from '@/types';
 import { useGroupData } from '@/hooks/useGroupData';
 import { useServerData } from '@/hooks/useServerData';
+import { useCostData } from '@/hooks/useCostData';
 import { ServerToolConfig } from './ServerToolConfig';
 
 interface EditGroupFormProps {
@@ -15,6 +16,7 @@ const EditGroupForm = ({ group, onEdit, onCancel }: EditGroupFormProps) => {
   const { t } = useTranslation();
   const { updateGroup } = useGroupData();
   const { allServers } = useServerData();
+  const { serverCosts } = useCostData();
   const [availableServers, setAvailableServers] = useState<Server[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -110,6 +112,7 @@ const EditGroupForm = ({ group, onEdit, onCancel }: EditGroupFormProps) => {
                   value={formData.servers as IGroupServerConfig[]}
                   onChange={(servers) => setFormData((prev) => ({ ...prev, servers }))}
                   className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-gray-50 dark:bg-gray-800"
+                  serverCosts={serverCosts}
                 />
               </div>
             </div>

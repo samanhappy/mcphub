@@ -15,7 +15,8 @@ import {
   Trash2,
   type LucideIcon,
 } from 'lucide-react';
-import { Server } from '@/types';
+import { Server, ServerCost } from '@/types';
+import { formatTokens } from '@/utils/contextCost';
 import { ServerStatusDot } from '@/components/ui/StatusDot';
 import ToolCard from '@/components/ui/ToolCard';
 import PromptCard from '@/components/ui/PromptCard';
@@ -33,6 +34,7 @@ import {
 
 interface ServerCardProps {
   server: Server;
+  cost?: ServerCost;
   onRemove: (serverName: string) => void;
   onEdit: (server: Server) => void;
   onToggle?: (server: Server, enabled: boolean) => Promise<boolean>;
@@ -128,6 +130,7 @@ const serverExposesMcpApp = (server: Server) => {
 
 const ServerCard = ({
   server,
+  cost,
   onRemove,
   onEdit,
   onToggle,
@@ -142,7 +145,9 @@ const ServerCard = ({
   const baseUrl = installConfig?.baseUrl?.replace(/\/+$/, '') || '';
 
   const [expanded, setExpanded] = useState(false);
-  const [expandedTab, setExpandedTab] = useState<'tools' | 'prompts' | 'resources' | null>(null);
+  const [expandedTab, setExpandedTab] = useState<'tools' | 'prompts' | 'resources' | 'cost' | null>(
+    null,
+  );
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isToggling, setIsToggling] = useState(false);
   const [isUpdatingVisibility, setIsUpdatingVisibility] = useState(false);
@@ -631,6 +636,23 @@ const ServerCard = ({
             );
           })}
 
+          {/* Context Footprint stat */}
+          {cost && cost.connected ? (
+            <span
+              className="hub-server-capability-stat hub-mono hub-num"
+              title={`${t('cost.exposed')} ${cost.exposed} / ${t('cost.gross')} ${cost.gross} · ${t('cost.estimate')}`}
+            >
+              <span className="text-[var(--hub-ink-3)]">Σ</span>
+              <span className="hub-server-capability-value">
+                {formatTokens(cost.exposed)}/{formatTokens(cost.gross)}
+              </span>
+            </span>
+          ) : cost ? (
+            <span className="hub-server-capability-stat hub-mono is-empty" title={t('cost.notConnected')}>
+              <span className="hub-server-capability-value">—</span>
+            </span>
+          ) : null}
+
           {/* Toggle switch */}
           <div className="flex items-center justify-center">
             <LoadingControl
@@ -751,6 +773,29 @@ const ServerCard = ({
                 );
               })}
 
+              {/* Context cost tab */}
+              {cost && cost.connected && (
+                <button
+                  onClick={() => setExpandedTab(expandedTab === 'cost' ? null : 'cost')}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[12px] transition-colors hover:bg-[var(--hub-surface-hover)]"
+                  style={{
+                    background: expandedTab === 'cost' ? 'var(--hub-surface)' : 'transparent',
+                    border: '1px solid ' + (expandedTab === 'cost' ? 'var(--hub-line)' : 'transparent'),
+                    color: expandedTab === 'cost' ? 'var(--hub-ink)' : 'var(--hub-ink-2)',
+                  }}
+                  title={t('cost.estimate')}
+                >
+                  <span style={{ color: 'var(--hub-ink-3)' }}>Σ</span>
+                  <span>{t('cost.totalFootprint')}</span>
+                  <span
+                    className="hub-mono hub-num"
+                    style={{ color: 'var(--hub-ink-3)', fontSize: 11 }}
+                  >
+                    {formatTokens(cost.exposed)}/{formatTokens(cost.gross)}
+                  </span>
+                </button>
+              )}
+
               {/* Endpoint inline, pushed to the right */}
               <div className="ml-auto max-w-full flex-shrink-0">
                 <div className="hub-endpoint" style={{ height: 26 }}>
@@ -777,6 +822,22 @@ const ServerCard = ({
               </div>
             </div>
 
+            {/* Context Footprint breakdown */}
+            {expandedTab === 'cost' && cost?.connected && (
+              <div className="mt-2 space-y-1">
+                {[...cost.items].sort((a, b) => b.cost - a.cost).map((item) => (
+                  <div
+                    key={`${item.kind}:${item.name}`}
+                    className="flex items-center justify-between hub-mono"
+                    style={{ fontSize: 11.5, color: item.enabled ? 'var(--hub-ink-2)' : 'var(--hub-ink-3)' }}
+                  >
+                    <span className="truncate">{item.name}</span>
+                    <span className="hub-num flex-shrink-0">{formatTokens(item.cost)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
             {expandedTab === 'tools' && server.tools && (
               <div className="space-y-3 mt-2">
                 {server.tools.map((tool, index) => (
@@ -787,6 +848,7 @@ const ServerCard = ({
                     readOnly={!canManage}
                     onToggle={handleToolToggle}
                     onDescriptionUpdate={handleToolDescriptionUpdate}
+                    cost={cost?.items.find((i) => i.kind === 'tool' && i.name === tool.name)?.cost}
                   />
                 ))}
               </div>
@@ -801,6 +863,7 @@ const ServerCard = ({
                     readOnly={!canManage}
                     onToggle={handlePromptToggle}
                     onDescriptionUpdate={handlePromptDescriptionUpdate}
+                    cost={cost?.items.find((i) => i.kind === 'prompt' && i.name === prompt.name)?.cost}
                   />
                 ))}
               </div>
@@ -820,6 +883,7 @@ const ServerCard = ({
                         readOnly={!canManage}
                         onToggle={handleResourceToggle}
                         onDescriptionUpdate={handleResourceDescriptionUpdate}
+                        cost={cost?.items.find((i) => i.kind === 'resource' && i.name === resource.uri)?.cost}
                       />
                     ))}
                   </div>

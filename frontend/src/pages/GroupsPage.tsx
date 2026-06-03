@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Plus, Download, Upload, AlertCircle, X } from 'lucide-react';
 import { Group } from '@/types';
@@ -10,6 +10,7 @@ import GroupCard from '@/components/GroupCard';
 import GroupImportForm from '@/components/GroupImportForm';
 import TemplateExportForm from '@/components/TemplateExportForm';
 import TemplateImportForm from '@/components/TemplateImportForm';
+import { useCostData } from '@/hooks/useCostData';
 
 const GroupsPage: React.FC = () => {
   const { t } = useTranslation();
@@ -22,6 +23,12 @@ const GroupsPage: React.FC = () => {
     triggerRefresh,
   } = useGroupData();
   const { allServers } = useServerData({ refreshOnMount: true });
+  const { groupCosts, refetch: refetchCost } = useCostData();
+
+  // Re-fetch context footprint whenever group definitions or server connection state change.
+  useEffect(() => {
+    refetchCost();
+  }, [groups, allServers, refetchCost]);
 
   const [editingGroup, setEditingGroup] = useState<Group | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -98,6 +105,7 @@ const GroupsPage: React.FC = () => {
               servers={allServers}
               onEdit={setEditingGroup}
               onDelete={handleDeleteGroup}
+              cost={groupCosts.find((c) => c.id === group.id)}
             />
           ))}
           <button

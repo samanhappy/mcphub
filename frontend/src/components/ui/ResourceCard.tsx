@@ -4,6 +4,7 @@ import { Check, ChevronDown, ChevronRight, Edit } from '@/components/icons/Lucid
 import { Resource } from '@/types';
 import { Switch } from './ToggleGroup';
 import ResetDescriptionButton from './ResetDescriptionButton';
+import { formatTokens } from '@/utils/contextCost';
 
 interface ResourceCardProps {
   resource: Resource;
@@ -14,9 +15,10 @@ interface ResourceCardProps {
     description: string,
     options?: { restored?: boolean },
   ) => Promise<void> | void;
+  cost?: number;
 }
 
-const ResourceCard = ({ resource, readOnly = false, onToggle, onDescriptionUpdate }: ResourceCardProps) => {
+const ResourceCard = ({ resource, readOnly = false, onToggle, onDescriptionUpdate, cost }: ResourceCardProps) => {
   const { t } = useTranslation();
   const [isExpanded, setIsExpanded] = useState(false);
   const [isEditingDescription, setIsEditingDescription] = useState(false);
@@ -149,6 +151,15 @@ const ResourceCard = ({ resource, readOnly = false, onToggle, onDescriptionUpdat
         </div>
 
         <div className="flex items-center gap-1.5 flex-shrink-0">
+          {cost != null && (
+            <span
+              className="hub-mono flex-shrink-0"
+              style={{ fontSize: 11, color: 'var(--hub-ink-3)' }}
+              title={t('cost.estimate')}
+            >
+              Σ {formatTokens(cost)}
+            </span>
+          )}
           <div onClick={(e) => e.stopPropagation()}>
             <Switch
               checked={resource.enabled !== false}

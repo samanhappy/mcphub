@@ -1134,5 +1134,18 @@
     "serversInGroup": "个服务器",
     "envVarsNeeded": "所需环境变量 — 请在使用导入的服务器前设置这些变量：",
     "importResult": "服务器：创建 {{serversCreated}} 个，跳过 {{serversSkipped}} 个。分组：创建 {{groupsCreated}} 个，跳过 {{groupsSkipped}} 个。"
+  },
+  "cost": {
+    "exposed": "已暴露",
+    "gross": "总量",
+    "estimate": "预估 Token 数（cl100k）— 近似值",
+    "direct": "直接",
+    "smartRouting": "智能路由",
+    "smartRoutingPd": "智能路由 + 渐进式披露",
+    "smartRoutingPdHint": "添加 describe_tool 元工具 — 前期成本较高，但每次搜索的响应更小",
+    "saved": "减少 {{percent}}%",
+    "notConnected": "未连接",
+    "connectedOf": "{{total}} 个服务器中已连接 {{connected}} 个",
+    "totalFootprint": "上下文占用"
   }
 }

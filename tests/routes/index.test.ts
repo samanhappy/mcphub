@@ -201,6 +201,11 @@ jest.mock('../../src/controllers/templateController.js', () => ({
   importConfigTemplate: routeHandler,
 }));
 
+jest.mock('../../src/controllers/contextCostController.js', () => ({
+  getServerCostsHandler: routeHandler,
+  getGroupCostsHandler: routeHandler,
+}));
+
 jest.mock('../../src/middlewares/auth.js', () => ({
   auth: authMiddleware,
 }));

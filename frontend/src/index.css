@@ -232,7 +232,7 @@
     fit-content(92px)
     fit-content(72px)
     minmax(94px, 108px)
-    repeat(3, 88px)
+    repeat(4, 88px)
     44px
     28px;
 }
@@ -346,7 +346,7 @@
       fit-content(88px)
       fit-content(66px)
       minmax(90px, 102px)
-      repeat(3, 80px)
+      repeat(4, 80px)
       44px
       28px;
   }

@@ -5,6 +5,8 @@ import { RefreshCw, Plus, ChevronRight, AlertCircle } from 'lucide-react';
 import { useServerData } from '@/hooks/useServerData';
 import { useGroupData } from '@/hooks/useGroupData';
 import { useSettingsData } from '@/hooks/useSettingsData';
+import { useCostData } from '@/hooks/useCostData';
+import { formatTokens } from '@/utils/contextCost';
 import { Server } from '@/types';
 import { EndpointCopy } from '@/components/ui/EndpointCopy';
 import { ServerStatusDot } from '@/components/ui/StatusDot';
@@ -63,6 +65,7 @@ const DashboardPage: React.FC = () => {
   });
   const { groups } = useGroupData();
   const { installConfig } = useSettingsData();
+  const { serverCosts } = useCostData();
 
   const [hasLoaded, setHasLoaded] = React.useState(false);
   const loadingStartedRef = React.useRef(false);
@@ -93,6 +96,11 @@ const DashboardPage: React.FC = () => {
       tools: allServers.reduce((acc, s) => acc + (s.tools?.length || 0), 0),
     }),
     [allServers],
+  );
+
+  const footprint = useMemo(
+    () => serverCosts.filter((c) => c.connected).reduce((acc, c) => acc + c.exposed, 0),
+    [serverCosts],
   );
 
   const recentServers = useMemo(() => allServers.slice(0, 6), [allServers]);
@@ -150,8 +158,8 @@ const DashboardPage: React.FC = () => {
 
       {/* Stat row */}
       {showSkeleton ? (
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
-          {Array.from({ length: 5 }).map((_, i) => (
+        <div className="grid grid-cols-2 md:grid-cols-6 gap-3 mb-6">
+          {Array.from({ length: 6 }).map((_, i) => (
             <div
               key={i}
               className="hub-card animate-pulse"
@@ -160,12 +168,13 @@ const DashboardPage: React.FC = () => {
           ))}
         </div>
       ) : (
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
+        <div className="grid grid-cols-2 md:grid-cols-6 gap-3 mb-6">
           <Stat label={t('pages.dashboard.totalServers')} value={stats.total} />
           <Stat label={t('pages.dashboard.onlineServers')} value={stats.online} tone="ok" />
           <Stat label={t('pages.dashboard.connectingServers')} value={stats.connecting} tone="warn" />
           <Stat label={t('pages.dashboard.offlineServers')} value={stats.offline} tone="err" />
           <Stat label={t('pages.dashboard.disabledServers')} value={stats.disabled} tone="muted" />
+          <Stat label={t('cost.totalFootprint')} value={formatTokens(footprint)} />
         </div>
       )}
 

@@ -1121,5 +1121,18 @@
     "serversInGroup": "sunucu",
     "envVarsNeeded": "Gerekli Ortam Değişkenleri — içe aktarılan sunucuları kullanmadan önce bunları ayarlayın:",
     "importResult": "Sunucular: {{serversCreated}} oluşturuldu, {{serversSkipped}} atlandı. Gruplar: {{groupsCreated}} oluşturuldu, {{groupsSkipped}} atlandı."
+  },
+  "cost": {
+    "exposed": "Gösterilen",
+    "gross": "Toplam",
+    "estimate": "Tahmini token sayısı (cl100k) — yaklaşık",
+    "direct": "Doğrudan",
+    "smartRouting": "Akıllı yönlendirme",
+    "smartRoutingPd": "Akıllı yönlendirme + aşamalı açıklama",
+    "smartRoutingPdHint": "describe_tool meta-aracını ekler — daha yüksek başlangıç maliyeti, ancak arama başına daha küçük yanıtlar",
+    "saved": "{{percent}}% daha az",
+    "notConnected": "Bağlı değil",
+    "connectedOf": "{{total}} sunucudan {{connected}} tanesi bağlı",
+    "totalFootprint": "Bağlam ayak izi"
   }
 }
