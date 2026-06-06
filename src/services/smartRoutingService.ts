@@ -225,6 +225,9 @@ Available servers: ${serversList}`,
 const computeSmartRoutingScope = async (
   group: string | undefined,
 ): Promise<{ scopeDescription: string; serversList: string }> => {
+  const smartRoutingConfig = await getSmartRoutingConfig();
+  const serverDescriptionMode = smartRoutingConfig.serverDescriptionMode ?? 'names';
+
   // Extract target group if pattern is $smart/{group}
   const targetGroup = group?.startsWith('$smart/') ? group.substring(7) : undefined;
 
@@ -241,12 +244,16 @@ const computeSmartRoutingScope = async (
     }
   }
 
-  // Create simple server information with only server names
+  // Create simple server information with only server names or include descriptions when configured
   const serversList = availableServers
     .map((server) => {
-      return `${server.name}`;
+      const description = server.config?.description || server.instructions || '';
+      if (serverDescriptionMode === 'full' && description) {
+        return `- ${server.name}: ${description}`;
+      }
+      return server.name;
     })
-    .join(', ');
+    .join(serverDescriptionMode === 'full' ? '\n' : ', ');
 
   const scopeDescription = targetGroup
     ? `servers in the "${targetGroup}" group`

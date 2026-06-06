@@ -37,6 +37,13 @@ export interface SmartRoutingConfig {
    */
   progressiveDisclosure?: boolean;
   /**
+   * Controls how available servers are listed in the search_tools meta-tool description.
+   * - 'names': only include server names
+   * - 'full': include server names and descriptions/instructions when available
+   * Default: 'names' for backward compatibility.
+   */
+  serverDescriptionMode?: 'names' | 'full';
+  /**
    * Maximum number of tokens allowed when truncating tool descriptions before generating
    * embeddings. Overrides the per-model default from getModelDefaultTokenLimit().
    *
@@ -179,6 +186,18 @@ export async function getSmartRoutingConfig(): Promise<SmartRoutingConfig> {
       smartRoutingSettings.progressiveDisclosure,
       false,
       parseBooleanEnvVar,
+    ),
+
+    serverDescriptionMode: getConfigValue(
+      [process.env.SMART_ROUTING_SERVER_DESCRIPTION_MODE],
+      smartRoutingSettings.serverDescriptionMode,
+      'names',
+      (value: any) => {
+        const normalized = String(value || '')
+          .trim()
+          .toLowerCase();
+        return normalized === 'full' ? 'full' : 'names';
+      },
     ),
 
     // Maximum tokens for text truncation before generating embeddings.
