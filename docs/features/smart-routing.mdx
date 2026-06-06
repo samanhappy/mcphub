@@ -458,6 +458,16 @@ Progressive Disclosure is an optimization feature that reduces token usage when 
     ```
   </Accordion>
 
+  <Accordion title="Including Server Descriptions in search_tools">
+    By default, `search_tools` lists only server names in its tool description. To include each server's description (or upstream instructions) alongside the name, set:
+
+    ```bash
+    SMART_ROUTING_SERVER_DESCRIPTION_MODE=full
+    ```
+
+    Use `names` (default) to keep the legacy compact list.
+  </Accordion>
+
   <Accordion title="Standard Mode (Default)">
     When Progressive Disclosure is **disabled** (default), Smart Routing provides two tools:
     

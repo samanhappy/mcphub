@@ -118,6 +118,7 @@ Smart Routing performs vector search over upstream tools to surface only the few
 | `SMART_ROUTING_EMBEDDING_ENCODING_FORMAT` | provider default | Override the `encoding_format` passed to the embedding API. |
 | `SMART_ROUTING_BASE_PACING_DELAY_MS` | `0` | Base delay (ms) applied between embedding requests to avoid rate limits. |
 | `SMART_ROUTING_PROGRESSIVE_DISCLOSURE` | unset | When set, expose progressively-disclosed tool metadata (see Smart Routing docs). |
+| `SMART_ROUTING_SERVER_DESCRIPTION_MODE` | `names` | Control how `search_tools` lists available servers: `names` for server names only, `full` to include server descriptions/instructions when available. |
 | `EMBEDDING_MODEL` | `text-embedding-3-small` | Embedding model name. |
 | `EMBEDDING_MAX_TOKENS` | per-model | Override token truncation limit before embedding. Useful to match a local inference server's batch size. |
 

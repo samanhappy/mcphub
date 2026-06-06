@@ -149,6 +149,16 @@ description: '使用向量语义搜索的 AI 工具发现系统'
     ```
   </Accordion>
 
+  <Accordion title="在 search_tools 中包含服务器描述">
+    默认情况下，`search_tools` 只会在工具描述中列出服务器名称。若要同时显示服务器描述（或上游返回的 instructions），请设置：
+
+    ```bash
+    SMART_ROUTING_SERVER_DESCRIPTION_MODE=full
+    ```
+
+    使用 `names`（默认值）可保持原来的紧凑列表。
+  </Accordion>
+
   <Accordion title="标准模式（默认）">
     当渐进式披露**禁用**（默认）时，智能路由提供两个工具：
     
