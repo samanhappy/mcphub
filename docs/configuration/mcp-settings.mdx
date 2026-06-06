@@ -487,6 +487,40 @@ You can also configure runtime routing and authentication behavior under `system
 - Use a custom header such as `X-MCP-Authorization` when an upstream MCP/OpenAPI server also needs to passthrough `Authorization`.
 - `jsonBodyLimit` defaults to `1mb` and controls the Express JSON parser limit for API requests, including large inline OpenAPI schema uploads.
 
+## Tool Result Compression
+
+MCPHub can transparently compress large text tool results before returning them to MCP clients. This is useful when upstream tools return large logs, diffs, search output, JSON arrays, or long text blobs that would otherwise consume too much model context.
+
+Tool result compression is disabled by default. Enable and tune it from **Settings → Tool Result Compression**, or configure it under `systemConfig.toolResultCompression`:
+
+```json
+{
+  "systemConfig": {
+    "toolResultCompression": {
+      "enabled": false,
+      "minTokens": 2000,
+      "maxOutputTokens": 1200,
+      "strategy": "auto"
+    }
+  }
+}
+```
+
+| Field | Type | Default | Description |
+| ----- | ---- | ------- | ----------- |
+| `enabled` | boolean | `false` | Enable transparent compression for successful tool results. |
+| `minTokens` | number | `2000` | Only compress a text block when its estimated token count is at or above this threshold. |
+| `maxOutputTokens` | number | `1200` | Target token budget for each compressed text block. |
+| `strategy` | `"auto" \| "json" \| "log" \| "search" \| "diff" \| "text"` | `"auto"` | Compression strategy. `auto` detects common structured output formats. |
+
+Compression only applies to successful tool responses. Responses with `isError: true` are returned unchanged, non-text content blocks are preserved, and each text block is evaluated independently. When MCPHub compresses a result, it prepends a marker such as:
+
+```text
+[mcphub:compressed-tool-result strategy=log original_tokens=9000 compressed_tokens=1200 omitted_lines=240]
+```
+
+The activity log records the original upstream output before compression, so operators can inspect full results in MCPHub even when clients receive compressed content.
+
 ## Best Practices
 
 ### Security

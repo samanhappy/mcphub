@@ -438,6 +438,40 @@ MCPHub 在启动和重新加载时验证配置：
 }
 ```
 
+## 工具结果压缩
+
+MCPHub 可以在工具结果返回 MCP 客户端前，透明压缩较大的文本结果。它适合处理大型日志、diff、搜索输出、JSON 数组或长文本，避免这些内容占用过多模型上下文。
+
+工具结果压缩默认关闭。可以在 **设置 → 工具结果压缩** 中实时开关，也可以在 `systemConfig.toolResultCompression` 下配置：
+
+```json
+{
+  "systemConfig": {
+    "toolResultCompression": {
+      "enabled": false,
+      "minTokens": 2000,
+      "maxOutputTokens": 1200,
+      "strategy": "auto"
+    }
+  }
+}
+```
+
+| 字段 | 类型 | 默认值 | 描述 |
+| ---- | ---- | ------ | ---- |
+| `enabled` | boolean | `false` | 是否对成功的工具结果启用透明压缩。 |
+| `minTokens` | number | `2000` | 单个文本块的估算 token 数达到或超过该阈值时才会压缩。 |
+| `maxOutputTokens` | number | `1200` | 每个压缩后文本块的目标 token 预算。 |
+| `strategy` | `"auto" \| "json" \| "log" \| "search" \| "diff" \| "text"` | `"auto"` | 压缩策略。`auto` 会自动识别常见结构化输出。 |
+
+压缩只作用于成功的工具响应。带有 `isError: true` 的响应会原样返回，非文本内容块会被保留，每个文本块会独立判断是否需要压缩。MCPHub 压缩结果时会在文本开头加入类似下面的标记：
+
+```text
+[mcphub:compressed-tool-result strategy=log original_tokens=9000 compressed_tokens=1200 omitted_lines=240]
+```
+
+活动日志仍记录上游工具的原始输出，压缩只发生在返回 MCP 客户端之前，因此运维人员仍可在 MCPHub 中查看完整结果。
+
 ## 最佳实践
 
 ### 安全

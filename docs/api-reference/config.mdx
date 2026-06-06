@@ -18,7 +18,7 @@ Updates various parts of the system configuration. You only need to provide the 
 
 - **Endpoint**: `/api/system-config`
 - **Method**: `PUT`
-- **Body**: A JSON object containing one or more of the following top-level keys: `routing`, `install`, `smartRouting`, `mcpRouter`.
+- **Body**: A JSON object containing one or more of the following top-level keys: `routing`, `install`, `smartRouting`, `toolResultCompression`, `mcpRouter`.
 
 #### Routing Configuration (`routing`)
 
@@ -44,6 +44,15 @@ Updates various parts of the system configuration. You only need to provide the 
 - `openaiApiKey` (string): The API key for the embeddings service.
 - `openaiApiEmbeddingModel` (string): The name of the embedding model to use.
 
+#### Tool Result Compression Configuration (`toolResultCompression`)
+
+- `enabled` (boolean): Enable transparent compression for successful tool results.
+- `minTokens` (number): Only compress text blocks at or above this estimated token count. Default: `2000`.
+- `maxOutputTokens` (number): Target token budget for each compressed text block. Default: `1200`.
+- `strategy` (string): Compression strategy. Allowed values: `auto`, `json`, `log`, `search`, `diff`, `text`. Default: `auto`.
+
+Compression applies only to successful tool responses. `isError: true` responses and non-text content blocks are returned unchanged. Activity logging records the original upstream output before compression.
+
 #### MCP Router Configuration (`mcpRouter`)
 
 - `apiKey` (string): The API key for the MCP Router service.
@@ -63,6 +72,12 @@ Updates various parts of the system configuration. You only need to provide the 
     "smartRouting": {
       "enabled": true,
       "dbUrl": "postgresql://user:pass@host:port/db"
+    },
+    "toolResultCompression": {
+      "enabled": true,
+      "minTokens": 2000,
+      "maxOutputTokens": 1200,
+      "strategy": "auto"
     }
   }
   ```

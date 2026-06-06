@@ -18,7 +18,7 @@ import { Card, Cards } from 'mintlify';
 
 - **端点**: `/api/system-config`
 - **方法**: `PUT`
-- **正文**: 一个 JSON 对象，包含以下一个或多个顶级键：`routing`、`install`、`smartRouting`、`mcpRouter`。
+- **正文**: 一个 JSON 对象，包含以下一个或多个顶级键：`routing`、`install`、`smartRouting`、`toolResultCompression`、`mcpRouter`。
 
 #### 路由配置 (`routing`)
 
@@ -42,6 +42,15 @@ import { Card, Cards } from 'mintlify';
 - `openaiApiKey` (string): 嵌入服务的 API 密钥。
 - `openaiApiEmbeddingModel` (string): 要使用的嵌入模型的名称。
 
+#### 工具结果压缩配置 (`toolResultCompression`)
+
+- `enabled` (boolean): 是否对成功的工具结果启用透明压缩。
+- `minTokens` (number): 单个文本块达到或超过该估算 token 数时才会压缩。默认值：`2000`。
+- `maxOutputTokens` (number): 每个压缩后文本块的目标 token 预算。默认值：`1200`。
+- `strategy` (string): 压缩策略。允许值：`auto`、`json`、`log`、`search`、`diff`、`text`。默认值：`auto`。
+
+压缩只作用于成功的工具响应。`isError: true` 的响应和非文本内容块会原样返回。活动日志会在压缩前记录上游原始输出。
+
 #### MCP 路由器配置 (`mcpRouter`)
 
 - `apiKey` (string): MCP 路由器服务的 API 密钥。
@@ -59,6 +68,12 @@ import { Card, Cards } from 'mintlify';
     "smartRouting": {
       "enabled": true,
       "dbUrl": "postgresql://user:pass@host:port/db"
+    },
+    "toolResultCompression": {
+      "enabled": true,
+      "minTokens": 2000,
+      "maxOutputTokens": 1200,
+      "strategy": "auto"
     }
   }
   ```

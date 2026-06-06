@@ -18,6 +18,7 @@ MCPHub makes it easy to manage and scale multiple MCP (Model Context Protocol) s
 - **Granular Group Visibility** - Control Tool, Prompt, and Resource visibility independently for each server inside a group
 - **Smart Routing** - AI-powered tool discovery using vector semantic search ([Learn more](https://docs.mcphub.app/features/smart-routing))
 - **MCP Apps Proxy** - Transparently forward interactive MCP Apps on single-server routes ([Learn more](https://docs.mcphub.app/features/mcp-apps))
+- **Tool Result Compression** - Transparently reduce large text tool outputs before they reach clients
 - **Hot-Swappable Config** - Add, remove, or update servers without downtime
 - **OAuth 2.0 Support** - Both client and server modes for secure authentication ([Learn more](https://docs.mcphub.app/features/oauth))
 - **Social Login** - Seamless GitHub and Google login support with Better Auth integration (requires Database Mode)
