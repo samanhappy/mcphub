@@ -269,6 +269,9 @@ type SearchLine = {
 };
 
 function parseSearchLine(line: string): SearchLine | null {
+  if (/^(?:\d{4}-\d{2}-\d{2}|\d{2}:\d{2}:\d{2}|\[\d{4}-\d{2}-\d{2}|\[\d{2}:\d{2}:\d{2})/.test(line)) {
+    return null;
+  }
   const match = /^(.*?)(?::|-)(\d+)(?::|-)(.*)$/.exec(line);
   if (!match) return null;
   const parsedLine = Number(match[2]);
@@ -325,7 +328,7 @@ const compressDiff = (text: string): TextCompressionResult => {
       /^(diff --git|diff --combined |diff --cc |index |--- |\+\+\+ |@@|Binary files|new file mode|deleted file mode)/.test(
         line,
       ) ||
-      /^[+-][^+-]/.test(line)
+      /^[+-](?![+-])/.test(line)
     ) {
       for (let i = Math.max(0, index - 2); i <= Math.min(lines.length - 1, index + 2); i += 1) {
         keep.add(i);
@@ -461,4 +464,3 @@ export const maybeCompressToolResult = async <T extends ToolResultLike>(
     return result;
   }
 };
-

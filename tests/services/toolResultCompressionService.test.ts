@@ -143,6 +143,29 @@ describe('toolResultCompressionService', () => {
     expect(result.content?.[0].text).toContain('strategy=search');
   });
 
+  it('does not misclassify timestamped logs as search output', async () => {
+    setCachedSystemConfig({
+      toolResultCompression: {
+        enabled: true,
+        minTokens: 1,
+        maxOutputTokens: 140,
+        strategy: 'auto',
+      },
+    });
+
+    const logOutput = Array.from({ length: 120 }, (_value, index) => {
+      const level = index % 10 === 0 ? 'ERROR' : 'INFO';
+      return `2023-10-27 12:34:${String(index % 60).padStart(2, '0')} ${level} src/app.ts:${index + 1}: request ${index}`;
+    }).join('\n');
+
+    const result = await maybeCompressToolResult({
+      content: [{ type: 'text', text: logOutput }],
+    });
+
+    expect(result.content?.[0].text).toContain('strategy=log');
+    expect(result.content?.[0].text).not.toContain('strategy=search');
+  });
+
   it('auto-detects diff output', async () => {
     setCachedSystemConfig({
       toolResultCompression: {
@@ -170,5 +193,37 @@ describe('toolResultCompressionService', () => {
 
     expect(result.content?.[0].text).toContain('strategy=diff');
   });
-});
 
+  it('preserves empty added and removed lines in diff output', async () => {
+    setCachedSystemConfig({
+      toolResultCompression: {
+        enabled: true,
+        minTokens: 1,
+        maxOutputTokens: 600,
+        strategy: 'diff',
+      },
+    });
+
+    const diffOutput = [
+      'diff --git a/src/a.ts b/src/a.ts',
+      'index 1111111..2222222 100644',
+      '--- a/src/a.ts',
+      '+++ b/src/a.ts',
+      '@@ -1,120 +1,120 @@',
+      ...Array.from({ length: 40 }, (_value, index) => ` context before ${index}`),
+      '-',
+      '+',
+      '-removed line',
+      '+added line',
+      ...Array.from({ length: 120 }, (_value, index) => ` context after ${index}`),
+    ].join('\n');
+
+    const result = await maybeCompressToolResult({
+      content: [{ type: 'text', text: diffOutput }],
+    });
+
+    expect(result.content?.[0].text).toContain('strategy=diff');
+    expect(result.content?.[0].text).toContain('\n-\n');
+    expect(result.content?.[0].text).toContain('\n+\n');
+  });
+});
