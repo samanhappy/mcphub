@@ -47,6 +47,15 @@ interface SmartRoutingConfig {
   embeddingMaxTokens?: number;
 }
 
+type ToolResultCompressionStrategy = 'auto' | 'json' | 'log' | 'search' | 'diff' | 'text';
+
+interface ToolResultCompressionConfig {
+  enabled: boolean;
+  minTokens: number;
+  maxOutputTokens: number;
+  strategy: ToolResultCompressionStrategy;
+}
+
 interface MCPRouterConfig {
   apiKey: string;
   referer: string;
@@ -98,6 +107,7 @@ interface SystemSettings {
     routing?: RoutingConfig;
     install?: InstallConfig;
     smartRouting?: SmartRoutingConfig;
+    toolResultCompression?: ToolResultCompressionConfig;
     mcpRouter?: MCPRouterConfig;
     nameSeparator?: string;
     oauthServer?: OAuthServerConfig;
@@ -121,6 +131,7 @@ interface SettingsContextValue {
   setTempRoutingConfig: React.Dispatch<React.SetStateAction<TempRoutingConfig>>;
   installConfig: InstallConfig;
   smartRoutingConfig: SmartRoutingConfig;
+  toolResultCompressionConfig: ToolResultCompressionConfig;
   mcpRouterConfig: MCPRouterConfig;
   oauthServerConfig: OAuthServerConfig;
   betterAuthConfig: BetterAuthConfig;
@@ -140,6 +151,13 @@ interface SettingsContextValue {
   ) => Promise<boolean | undefined>;
   updateSmartRoutingConfigBatch: (
     updates: Partial<SmartRoutingConfig>,
+  ) => Promise<boolean | undefined>;
+  updateToolResultCompressionConfig: (
+    key: keyof ToolResultCompressionConfig,
+    value: any,
+  ) => Promise<boolean | undefined>;
+  updateToolResultCompressionConfigBatch: (
+    updates: Partial<ToolResultCompressionConfig>,
   ) => Promise<boolean | undefined>;
   updateRoutingConfigBatch: (updates: Partial<RoutingConfig>) => Promise<boolean | undefined>;
   updateMCPRouterConfig: (key: keyof MCPRouterConfig, value: any) => Promise<boolean | undefined>;
@@ -336,6 +354,14 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
     embeddingMaxTokens: undefined,
   });
 
+  const [toolResultCompressionConfig, setToolResultCompressionConfig] =
+    useState<ToolResultCompressionConfig>({
+      enabled: false,
+      minTokens: 2000,
+      maxOutputTokens: 1200,
+      strategy: 'auto',
+    });
+
   const [mcpRouterConfig, setMCPRouterConfig] = useState<MCPRouterConfig>({
     apiKey: '',
     referer: 'https://www.mcphub.app',
@@ -418,6 +444,18 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
             data.data.systemConfig.smartRouting.azureOpenaiEmbeddingModel || '',
           progressiveDisclosure: data.data.systemConfig.smartRouting.progressiveDisclosure ?? false,
           embeddingMaxTokens: data.data.systemConfig.smartRouting.embeddingMaxTokens,
+        });
+      }
+      if (data.success && data.data?.systemConfig?.toolResultCompression) {
+        const toolResultCompression = data.data.systemConfig.toolResultCompression;
+        const strategy = toolResultCompression.strategy;
+        setToolResultCompressionConfig({
+          enabled: toolResultCompression.enabled ?? false,
+          minTokens: toolResultCompression.minTokens || 2000,
+          maxOutputTokens: toolResultCompression.maxOutputTokens || 1200,
+          strategy: ['auto', 'json', 'log', 'search', 'diff', 'text'].includes(strategy)
+            ? strategy
+            : 'auto',
         });
       }
       if (data.success && data.data?.systemConfig?.mcpRouter) {
@@ -617,6 +655,88 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
       console.error('Failed to batch update smart routing config', { updates, error });
       setError(error instanceof Error ? error.message : 'Failed to update smart routing config');
       showToast(t('errors.failedToUpdateSmartRoutingConfig'));
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Update tool result compression configuration
+  const updateToolResultCompressionConfig = async (
+    key: keyof ToolResultCompressionConfig,
+    value: any,
+  ) => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const data = await apiPut('/system-config', {
+        toolResultCompression: {
+          [key]: value,
+        },
+      });
+
+      if (data.success) {
+        setToolResultCompressionConfig({
+          ...toolResultCompressionConfig,
+          [key]: value,
+        });
+        showToast(t('settings.systemConfigUpdated'));
+        return true;
+      } else {
+        setError(data.error || 'Failed to update tool result compression config');
+        showToast(data.error || t('errors.failedToUpdateSettings'));
+        return false;
+      }
+    } catch (error) {
+      console.error('Failed to update tool result compression config', { key, value, error });
+      setError(
+        error instanceof Error
+          ? error.message
+          : 'Failed to update tool result compression config',
+      );
+      showToast(t('errors.failedToUpdateSettings'));
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Batch update tool result compression configuration
+  const updateToolResultCompressionConfigBatch = async (
+    updates: Partial<ToolResultCompressionConfig>,
+  ) => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const data = await apiPut('/system-config', {
+        toolResultCompression: updates,
+      });
+
+      if (data.success) {
+        setToolResultCompressionConfig({
+          ...toolResultCompressionConfig,
+          ...updates,
+        });
+        showToast(t('settings.systemConfigUpdated'));
+        return true;
+      } else {
+        setError(data.error || 'Failed to update tool result compression config');
+        showToast(data.error || t('errors.failedToUpdateSettings'));
+        return false;
+      }
+    } catch (error) {
+      console.error('Failed to batch update tool result compression config', {
+        updates,
+        error,
+      });
+      setError(
+        error instanceof Error
+          ? error.message
+          : 'Failed to update tool result compression config',
+      );
+      showToast(t('errors.failedToUpdateSettings'));
       return false;
     } finally {
       setLoading(false);
@@ -990,6 +1110,7 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
     setTempRoutingConfig,
     installConfig,
     smartRoutingConfig,
+    toolResultCompressionConfig,
     mcpRouterConfig,
     oauthServerConfig,
     betterAuthConfig,
@@ -1005,6 +1126,8 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
     updateInstallConfig,
     updateSmartRoutingConfig,
     updateSmartRoutingConfigBatch,
+    updateToolResultCompressionConfig,
+    updateToolResultCompressionConfigBatch,
     updateRoutingConfigBatch,
     updateMCPRouterConfig,
     updateMCPRouterConfigBatch,

@@ -31,6 +31,12 @@ export interface SystemConfig {
     azureOpenaiEmbeddingDeployment?: string;
     embeddingMaxTokens?: number;
   };
+  toolResultCompression?: {
+    enabled?: boolean;
+    minTokens?: number;
+    maxOutputTokens?: number;
+    strategy?: 'auto' | 'json' | 'log' | 'search' | 'diff' | 'text';
+  };
   nameSeparator?: string;
   auth?: {
     betterAuth?: {

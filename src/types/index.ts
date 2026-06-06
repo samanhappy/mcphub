@@ -184,6 +184,15 @@ export interface BetterAuthConfig {
   };
 }
 
+export type ToolResultCompressionStrategy = 'auto' | 'json' | 'log' | 'search' | 'diff' | 'text';
+
+export interface ToolResultCompressionConfig {
+  enabled?: boolean;
+  minTokens?: number;
+  maxOutputTokens?: number;
+  strategy?: ToolResultCompressionStrategy;
+}
+
 export interface SystemConfig {
   routing?: {
     enableGlobalRoute?: boolean; // Controls whether the /sse endpoint without group is enabled
@@ -200,6 +209,7 @@ export interface SystemConfig {
     baseUrl?: string; // Base URL for group card copy operations
   };
   smartRouting?: SmartRoutingConfig;
+  toolResultCompression?: ToolResultCompressionConfig;
   mcpRouter?: {
     apiKey?: string; // MCPRouter API key for authentication
     referer?: string; // Referer header for MCPRouter API requests

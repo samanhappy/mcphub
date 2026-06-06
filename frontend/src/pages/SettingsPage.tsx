@@ -8,7 +8,7 @@ import { useSettingsData } from '@/hooks/useSettingsData';
 import { useToast } from '@/contexts/ToastContext';
 import { PermissionChecker } from '@/components/PermissionChecker';
 import { PERMISSIONS } from '@/constants/permissions';
-import { Copy, Check, Download, Edit, Trash2, Code as CodeIcon, Zap, Database, Wrench, Sparkles, RefreshCw, Route as RouteIcon, Key, Lock, Cloud, SlidersHorizontal, ShieldCheck, Package, KeyRound, FileDown, X } from 'lucide-react';
+import { Copy, Check, Download, Edit, Trash2, Code as CodeIcon, Zap, Database, Wrench, Sparkles, RefreshCw, Route as RouteIcon, Key, Lock, Cloud, SlidersHorizontal, ShieldCheck, Package, KeyRound, FileDown, X, FileText } from 'lucide-react';
 import { EndpointCopy } from '@/components/ui/EndpointCopy';
 import type { BearerKey, User } from '@/types';
 import { useServerContext } from '@/contexts/ServerContext';
@@ -445,6 +445,16 @@ const SettingsPage: React.FC = () => {
     embeddingMaxTokens: '',
   });
 
+  const [tempToolResultCompressionConfig, setTempToolResultCompressionConfig] = useState<{
+    minTokens: string;
+    maxOutputTokens: string;
+    strategy: 'auto' | 'json' | 'log' | 'search' | 'diff' | 'text';
+  }>({
+    minTokens: '2000',
+    maxOutputTokens: '1200',
+    strategy: 'auto',
+  });
+
   const [tempMCPRouterConfig, setTempMCPRouterConfig] = useState<{
     apiKey: string;
     referer: string;
@@ -499,6 +509,7 @@ const SettingsPage: React.FC = () => {
     setTempRoutingConfig,
     installConfig: savedInstallConfig,
     smartRoutingConfig,
+    toolResultCompressionConfig,
     mcpRouterConfig,
     oauthServerConfig,
     betterAuthConfig,
@@ -510,6 +521,8 @@ const SettingsPage: React.FC = () => {
     updateInstallConfig,
     updateSmartRoutingConfig,
     updateSmartRoutingConfigBatch,
+    updateToolResultCompressionConfig,
+    updateToolResultCompressionConfigBatch,
     updateMCPRouterConfig,
     updateOAuthServerConfig,
     updateBetterAuthConfigBatch,
@@ -561,6 +574,16 @@ const SettingsPage: React.FC = () => {
       });
     }
   }, [smartRoutingConfig]);
+
+  useEffect(() => {
+    if (toolResultCompressionConfig) {
+      setTempToolResultCompressionConfig({
+        minTokens: String(toolResultCompressionConfig.minTokens || 2000),
+        maxOutputTokens: String(toolResultCompressionConfig.maxOutputTokens || 1200),
+        strategy: toolResultCompressionConfig.strategy || 'auto',
+      });
+    }
+  }, [toolResultCompressionConfig]);
 
   // Update local tempMCPRouterConfig when mcpRouterConfig changes
   useEffect(() => {
@@ -653,6 +676,7 @@ const SettingsPage: React.FC = () => {
     routingConfig: false,
     installConfig: false,
     smartRoutingConfig: false,
+    toolResultCompressionConfig: false,
     oauthServerConfig: false,
     betterAuthConfig: false,
     mcpRouterConfig: false,
@@ -667,6 +691,7 @@ const SettingsPage: React.FC = () => {
       | 'routingConfig'
       | 'installConfig'
       | 'smartRoutingConfig'
+      | 'toolResultCompressionConfig'
       | 'oauthServerConfig'
       | 'betterAuthConfig'
       | 'mcpRouterConfig'
@@ -1115,6 +1140,60 @@ const SettingsPage: React.FC = () => {
 
     if (Object.keys(updates).length > 0) {
       await updateSmartRoutingConfigBatch(updates);
+    } else {
+      showToast(t('settings.noChanges') || 'No changes to save', 'info');
+    }
+  };
+
+  const handleToolResultCompressionConfigChange = (
+    key: 'minTokens' | 'maxOutputTokens' | 'strategy',
+    value: string,
+  ) => {
+    setTempToolResultCompressionConfig((prev) => ({
+      ...prev,
+      [key]: value,
+    }));
+  };
+
+  const parsePositiveIntegerSetting = (value: string, label: string): number | null => {
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed) || parsed <= 0) {
+      showToast(`${label} must be a positive number`, 'error');
+      return null;
+    }
+    return Math.floor(parsed);
+  };
+
+  const handleToolResultCompressionEnabledChange = async (value: boolean) => {
+    await updateToolResultCompressionConfig('enabled', value);
+  };
+
+  const handleSaveToolResultCompressionConfig = async () => {
+    const minTokens = parsePositiveIntegerSetting(
+      tempToolResultCompressionConfig.minTokens,
+      t('settings.toolResultCompressionMinTokens') || 'Minimum tokens',
+    );
+    if (minTokens === null) return;
+
+    const maxOutputTokens = parsePositiveIntegerSetting(
+      tempToolResultCompressionConfig.maxOutputTokens,
+      t('settings.toolResultCompressionMaxOutputTokens') || 'Output token budget',
+    );
+    if (maxOutputTokens === null) return;
+
+    const updates: any = {};
+    if (minTokens !== toolResultCompressionConfig.minTokens) {
+      updates.minTokens = minTokens;
+    }
+    if (maxOutputTokens !== toolResultCompressionConfig.maxOutputTokens) {
+      updates.maxOutputTokens = maxOutputTokens;
+    }
+    if (tempToolResultCompressionConfig.strategy !== toolResultCompressionConfig.strategy) {
+      updates.strategy = tempToolResultCompressionConfig.strategy;
+    }
+
+    if (Object.keys(updates).length > 0) {
+      await updateToolResultCompressionConfigBatch(updates);
     } else {
       showToast(t('settings.noChanges') || 'No changes to save', 'info');
     }
@@ -2337,6 +2416,175 @@ const SettingsPage: React.FC = () => {
               <div className="flex justify-end pt-3">
                 <button
                   onClick={handleSaveSmartRoutingConfig}
+                  disabled={loading}
+                  className="hub-btn primary"
+                >
+                  {t('common.save')}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </PermissionChecker>
+
+      {/* Tool Result Compression Settings */}
+      <PermissionChecker permissions={PERMISSIONS.SETTINGS_SMART_ROUTING}>
+        <div className="hub-card mb-6 overflow-hidden">
+          <div
+            className="flex justify-between items-center cursor-pointer transition-colors hover:bg-[var(--hub-surface-hover)] px-6 py-3"
+            onClick={() => toggleSection('toolResultCompressionConfig')}
+          >
+            <div className="flex items-center gap-2.5">
+              <FileText size={15} className="text-[var(--hub-ink-2)]" />
+              <h2 className="font-medium text-[var(--hub-ink)]">
+                {t('settings.toolResultCompressionTitle') || 'Tool Result Compression'}
+              </h2>
+              <span
+                className="hub-status ml-2"
+                data-state={toolResultCompressionConfig.enabled ? 'on' : 'off'}
+              >
+                <span
+                  className="hub-dot"
+                  style={{
+                    background: toolResultCompressionConfig.enabled
+                      ? 'var(--hub-ok)'
+                      : 'var(--hub-ink-3)',
+                    boxShadow: toolResultCompressionConfig.enabled
+                      ? '0 0 0 3px oklch(0.66 0.15 145 / 0.15)'
+                      : 'none',
+                  }}
+                />
+                <span
+                  style={{
+                    color: toolResultCompressionConfig.enabled
+                      ? 'oklch(0.4 0.13 145)'
+                      : 'var(--hub-ink-3)',
+                    fontSize: 12,
+                  }}
+                >
+                  {toolResultCompressionConfig.enabled ? t('common.active') : t('common.inactive')}
+                </span>
+              </span>
+            </div>
+            <span className="text-[var(--hub-ink-3)]">
+              {sectionsVisible.toolResultCompressionConfig ? '−' : '+'}
+            </span>
+          </div>
+
+          {sectionsVisible.toolResultCompressionConfig && (
+            <div className="px-6 py-5 border-t border-[var(--hub-line-2)]">
+              <div
+                className="flex items-center justify-between mb-4"
+                style={{
+                  padding: '12px 14px',
+                  border: '1px solid var(--hub-line)',
+                  borderRadius: 8,
+                  background: 'var(--hub-bg-2)',
+                }}
+              >
+                <div>
+                  <h3 className="font-medium" style={{ color: 'var(--hub-ink)', fontSize: 13 }}>
+                    {t('settings.toolResultCompressionEnable') || 'Enable compression'}
+                  </h3>
+                  <p style={{ fontSize: 12, color: 'var(--hub-ink-3)' }}>
+                    {t('settings.toolResultCompressionDescription') ||
+                      'Reduce large text tool outputs before they reach MCP clients. Changes apply to the next tool call.'}
+                  </p>
+                </div>
+                <Switch
+                  disabled={loading}
+                  checked={toolResultCompressionConfig.enabled}
+                  onCheckedChange={(checked) =>
+                    handleToolResultCompressionEnabledChange(checked)
+                  }
+                />
+              </div>
+
+              <div className="space-y-3">
+                <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-md">
+                  <div className="mb-2">
+                    <h3 className="font-medium text-gray-700">
+                      {t('settings.toolResultCompressionStrategy') || 'Strategy'}
+                    </h3>
+                    <p className="text-xs text-gray-500 mt-1">
+                      {t('settings.toolResultCompressionStrategyDescription') ||
+                        'Auto detects JSON, logs, search output, diffs, and plain text.'}
+                    </p>
+                  </div>
+                  <select
+                    value={tempToolResultCompressionConfig.strategy}
+                    onChange={(e) =>
+                      handleToolResultCompressionConfigChange(
+                        'strategy',
+                        e.target.value as any,
+                      )
+                    }
+                    className="flex-1 mt-1 block w-full py-2 px-3 border border-gray-300 bg-white dark:bg-gray-800 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm form-select"
+                    disabled={loading}
+                  >
+                    <option value="auto">Auto</option>
+                    <option value="json">JSON</option>
+                    <option value="log">Log</option>
+                    <option value="search">Search</option>
+                    <option value="diff">Diff</option>
+                    <option value="text">Text</option>
+                  </select>
+                </div>
+
+                <div className="grid gap-3 md:grid-cols-2">
+                  <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-md">
+                    <div className="mb-2">
+                      <h3 className="font-medium text-gray-700">
+                        {t('settings.toolResultCompressionMinTokens') || 'Minimum tokens'}
+                      </h3>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {t('settings.toolResultCompressionMinTokensDescription') ||
+                          'Only compress text blocks at or above this size.'}
+                      </p>
+                    </div>
+                    <input
+                      type="number"
+                      min="1"
+                      value={tempToolResultCompressionConfig.minTokens}
+                      onChange={(e) =>
+                        handleToolResultCompressionConfigChange('minTokens', e.target.value)
+                      }
+                      className="flex-1 mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm form-input"
+                      disabled={loading}
+                    />
+                  </div>
+
+                  <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-md">
+                    <div className="mb-2">
+                      <h3 className="font-medium text-gray-700">
+                        {t('settings.toolResultCompressionMaxOutputTokens') ||
+                          'Output token budget'}
+                      </h3>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {t('settings.toolResultCompressionMaxOutputTokensDescription') ||
+                          'Target maximum tokens for each compressed text block.'}
+                      </p>
+                    </div>
+                    <input
+                      type="number"
+                      min="1"
+                      value={tempToolResultCompressionConfig.maxOutputTokens}
+                      onChange={(e) =>
+                        handleToolResultCompressionConfigChange(
+                          'maxOutputTokens',
+                          e.target.value,
+                        )
+                      }
+                      className="flex-1 mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm form-input"
+                      disabled={loading}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-end pt-4">
+                <button
+                  onClick={handleSaveToolResultCompressionConfig}
                   disabled={loading}
                   className="hub-btn primary"
                 >

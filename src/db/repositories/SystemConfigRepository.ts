@@ -28,6 +28,7 @@ export class SystemConfigRepository {
         routing: {},
         install: {},
         smartRouting: {},
+        toolResultCompression: {},
         mcpRouter: {},
         nameSeparator: '-',
         oauth: {},

@@ -325,6 +325,15 @@ export const getAllSettings = async (req: Request, res: Response): Promise<void>
       systemConfig.smartRouting.dbUrl = dbUrlEnv ? '${DB_URL}' : '';
     }
 
+    if (!systemConfig.toolResultCompression) {
+      systemConfig.toolResultCompression = {
+        enabled: false,
+        minTokens: 2000,
+        maxOutputTokens: 1200,
+        strategy: 'auto',
+      };
+    }
+
     const settings: McpSettings = {
       users,
       mcpServers,
@@ -1241,6 +1250,7 @@ export const updateSystemConfig = async (req: Request, res: Response): Promise<v
       routing,
       install,
       smartRouting,
+      toolResultCompression,
       mcpRouter,
       nameSeparator,
       enableSessionRebuild,
@@ -1282,6 +1292,13 @@ export const updateSystemConfig = async (req: Request, res: Response): Promise<v
         typeof smartRouting.progressiveDisclosure === 'boolean' ||
         typeof smartRouting.embeddingMaxTokens === 'number' ||
         smartRouting.embeddingMaxTokens === null);
+
+    const hasToolResultCompressionUpdate =
+      toolResultCompression &&
+      (typeof toolResultCompression.enabled === 'boolean' ||
+        typeof toolResultCompression.minTokens === 'number' ||
+        typeof toolResultCompression.maxOutputTokens === 'number' ||
+        typeof toolResultCompression.strategy === 'string');
 
     const hasMcpRouterUpdate =
       mcpRouter &&
@@ -1329,6 +1346,7 @@ export const updateSystemConfig = async (req: Request, res: Response): Promise<v
       !hasRoutingUpdate &&
       !hasInstallUpdate &&
       !hasSmartRoutingUpdate &&
+      !hasToolResultCompressionUpdate &&
       !hasMcpRouterUpdate &&
       !hasNameSeparatorUpdate &&
       !hasSessionRebuildUpdate &&
@@ -1374,6 +1392,12 @@ export const updateSystemConfig = async (req: Request, res: Response): Promise<v
           azureOpenaiApiKey: '',
           azureOpenaiApiVersion: '',
           azureOpenaiEmbeddingDeployment: '',
+        },
+        toolResultCompression: {
+          enabled: false,
+          minTokens: 2000,
+          maxOutputTokens: 1200,
+          strategy: 'auto',
         },
         mcpRouter: {
           apiKey: '',
@@ -1421,6 +1445,15 @@ export const updateSystemConfig = async (req: Request, res: Response): Promise<v
         azureOpenaiApiKey: '',
         azureOpenaiApiVersion: '',
         azureOpenaiEmbeddingDeployment: '',
+      };
+    }
+
+    if (!systemConfig.toolResultCompression) {
+      systemConfig.toolResultCompression = {
+        enabled: false,
+        minTokens: 2000,
+        maxOutputTokens: 1200,
+        strategy: 'auto',
       };
     }
 
@@ -1679,6 +1712,33 @@ export const updateSystemConfig = async (req: Request, res: Response): Promise<v
       }
       if (typeof mcpRouter.baseUrl === 'string') {
         systemConfig.mcpRouter.baseUrl = mcpRouter.baseUrl;
+      }
+    }
+
+    if (toolResultCompression) {
+      const target = systemConfig.toolResultCompression;
+      if (typeof toolResultCompression.enabled === 'boolean') {
+        target.enabled = toolResultCompression.enabled;
+      }
+      if (
+        typeof toolResultCompression.minTokens === 'number' &&
+        Number.isFinite(toolResultCompression.minTokens) &&
+        toolResultCompression.minTokens > 0
+      ) {
+        target.minTokens = Math.floor(toolResultCompression.minTokens);
+      }
+      if (
+        typeof toolResultCompression.maxOutputTokens === 'number' &&
+        Number.isFinite(toolResultCompression.maxOutputTokens) &&
+        toolResultCompression.maxOutputTokens > 0
+      ) {
+        target.maxOutputTokens = Math.floor(toolResultCompression.maxOutputTokens);
+      }
+      if (typeof toolResultCompression.strategy === 'string') {
+        const normalized = toolResultCompression.strategy.trim().toLowerCase();
+        target.strategy = ['auto', 'json', 'log', 'search', 'diff', 'text'].includes(normalized)
+          ? (normalized as any)
+          : 'auto';
       }
     }
 

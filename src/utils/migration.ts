@@ -122,6 +122,7 @@ export async function migrateToDatabase(): Promise<boolean> {
         routing: settings.systemConfig.routing || {},
         install: settings.systemConfig.install || {},
         smartRouting: settings.systemConfig.smartRouting || {},
+        toolResultCompression: settings.systemConfig.toolResultCompression || {},
         mcpRouter: settings.systemConfig.mcpRouter || {},
         nameSeparator: settings.systemConfig.nameSeparator,
         oauth: settings.systemConfig.oauth || {},

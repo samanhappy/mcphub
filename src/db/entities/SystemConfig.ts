@@ -19,6 +19,9 @@ export class SystemConfig {
   smartRouting?: Record<string, any>;
 
   @Column({ type: 'simple-json', nullable: true })
+  toolResultCompression?: Record<string, any>;
+
+  @Column({ type: 'simple-json', nullable: true })
   mcpRouter?: Record<string, any>;
 
   @Column({ type: 'varchar', length: 10, nullable: true })

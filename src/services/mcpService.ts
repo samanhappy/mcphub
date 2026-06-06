@@ -57,6 +57,7 @@ import {
   isSmartRoutingGroup,
 } from './smartRoutingService.js';
 import { getActivityLoggingService } from './activityLoggingService.js';
+import { maybeCompressToolResult } from './toolResultCompressionService.js';
 import {
   assertHostedToolAllowed,
   filterHostedTools,
@@ -2124,14 +2125,18 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
           sourceIp,
         });
 
-        return {
+        return await maybeCompressToolResult({
           content: [
             {
               type: 'text',
               text: JSON.stringify(result),
             },
           ],
-        };
+        }, {
+          serverName: targetServerInfo.name,
+          toolName: cleanToolName,
+          group,
+        });
       }
 
       // Call the tool on the target server (MCP servers)
@@ -2188,7 +2193,11 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
         errorMessage: result.isError ? 'Tool returned error response' : undefined,
       });
 
-      return result;
+      return await maybeCompressToolResult(result, {
+        serverName: targetServerInfo.name,
+        toolName: cleanToolName,
+        group,
+      });
     }
 
     // Regular tool handling
@@ -2279,14 +2288,18 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
         sourceIp,
       });
 
-      return {
+      return await maybeCompressToolResult({
         content: [
           {
             type: 'text',
             text: JSON.stringify(result),
           },
         ],
-      };
+      }, {
+        serverName: serverInfo.name,
+        toolName: cleanToolName,
+        group,
+      });
     }
 
     // Handle MCP servers
@@ -2330,7 +2343,11 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
       errorMessage: result.isError ? 'Tool returned error response' : undefined,
     });
 
-    return result;
+    return await maybeCompressToolResult(result, {
+      serverName: serverInfo.name,
+      toolName: cleanToolName,
+      group,
+    });
   } catch (error) {
     console.error('Error handling CallToolRequest', summarizeErrorForLogging(error));
 
