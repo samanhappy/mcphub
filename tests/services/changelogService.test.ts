@@ -49,7 +49,7 @@ describe('changelogService', () => {
   it('returns disabled payload when update checks are disabled', async () => {
     process.env.DISABLE_UPDATE_CHECK = 'true';
 
-    const result = await getChangelogUpdateInfo({ currentVersion: '1.0.11', locale: 'zh' });
+    const result = await getChangelogUpdateInfo({ currentVersion: '1.0.11', locale: 'zh-CN' });
 
     expect(result).toEqual({
       latestVersion: null,
@@ -61,6 +61,26 @@ describe('changelogService', () => {
       source: 'disabled',
     });
     expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  it('normalizes regional Chinese locales for update requests', async () => {
+    const payload = {
+      latestVersion: '1.0.12',
+      hasUpdate: true,
+      entries: [],
+      totalUpdateCount: 1,
+      changelogUrl: 'https://www.mcphub.app/zh/changelog/1.0.12',
+      allChangelogUrl: 'https://www.mcphub.app/zh/changelog',
+      source: 'mcphub-web',
+    };
+    (global.fetch as jest.Mock).mockResolvedValue({
+      ok: true,
+      json: async () => ({ success: true, data: payload }),
+    });
+
+    await getChangelogUpdateInfo({ currentVersion: '1.0.11', locale: 'zh-TW' });
+
+    expect(String((global.fetch as jest.Mock).mock.calls[0][0])).toContain('locale=zh');
   });
 
   it('falls back to npm latest without release details', async () => {
@@ -87,5 +107,30 @@ describe('changelogService', () => {
     });
     expect(global.fetch).toHaveBeenCalledTimes(2);
   });
-});
 
+  it('handles invalid npm fallback JSON without throwing', async () => {
+    (global.fetch as jest.Mock)
+      .mockResolvedValueOnce({
+        ok: false,
+        json: async () => ({ success: false, message: 'unavailable' }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => {
+          throw new SyntaxError('Unexpected token');
+        },
+      });
+
+    const result = await getChangelogUpdateInfo({ currentVersion: '1.0.11', locale: 'en' });
+
+    expect(result).toEqual({
+      latestVersion: null,
+      hasUpdate: false,
+      entries: [],
+      totalUpdateCount: 0,
+      changelogUrl: 'https://updates.example.com/changelog',
+      allChangelogUrl: 'https://updates.example.com/changelog',
+      source: 'npm-fallback',
+    });
+  });
+});

@@ -103,7 +103,7 @@ async function fetchNpmFallback(
     throw new Error(`npm latest request failed: ${response.status}`);
   }
 
-  const payload = (await response.json()) as { version?: string };
+  const payload = (await response.json().catch(() => ({}))) as { version?: string };
   const latestVersion = payload.version || null;
   const hasUpdate =
     latestVersion !== null &&
@@ -122,7 +122,7 @@ async function fetchNpmFallback(
 }
 
 function normalizeLocale(value: string | undefined): 'en' | 'zh' {
-  return value === 'zh' ? 'zh' : 'en';
+  return value?.toLowerCase().startsWith('zh') ? 'zh' : 'en';
 }
 
 function changelogApiBase(): string {
@@ -164,4 +164,3 @@ function compareStableVersions(a: string, b: string): number {
   }
   return 0;
 }
-

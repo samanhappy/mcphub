@@ -30,10 +30,15 @@ const AboutDialog: React.FC<AboutDialogProps> = ({
     initialUpdateInfo ?? null,
   );
   const [isChecking, setIsChecking] = useState(false);
+  const [localDismissed, setLocalDismissed] = useState(false);
 
   useEffect(() => {
     setUpdateInfo(initialUpdateInfo ?? null);
   }, [initialUpdateInfo]);
+
+  useEffect(() => {
+    setLocalDismissed(false);
+  }, [updateInfo?.latestVersion]);
 
   const checkForUpdates = async (force = false) => {
     setIsChecking(true);
@@ -61,8 +66,8 @@ const AboutDialog: React.FC<AboutDialogProps> = ({
   const latestEntry = updateInfo?.entries[0] ?? null;
   const hasNewVersion = Boolean(updateInfo?.hasUpdate && updateInfo.latestVersion);
   const dismissed = useMemo(
-    () => isUpdateDismissed(updateInfo?.latestVersion),
-    [updateInfo?.latestVersion],
+    () => localDismissed || isUpdateDismissed(updateInfo?.latestVersion),
+    [localDismissed, updateInfo?.latestVersion],
   );
   const extraReleaseCount = Math.max(
     0,
@@ -72,6 +77,7 @@ const AboutDialog: React.FC<AboutDialogProps> = ({
   const handleDismiss = () => {
     if (!updateInfo?.latestVersion) return;
     dismissUpdateVersion(updateInfo.latestVersion);
+    setLocalDismissed(true);
     onDismissUpdate?.(updateInfo.latestVersion);
   };
 
@@ -95,7 +101,12 @@ const AboutDialog: React.FC<AboutDialogProps> = ({
           </div>
 
           <div className="mt-5 space-y-4">
-            {updateInfo?.source === 'disabled' ? (
+            {isChecking && !updateInfo ? (
+              <div className="flex items-center gap-2 text-[13px]" style={{ color: 'var(--hub-ink-2)' }}>
+                <RefreshCw className="h-4 w-4 animate-spin" style={{ color: 'var(--hub-accent)' }} />
+                {t('about.checking')}
+              </div>
+            ) : updateInfo?.source === 'disabled' ? (
               <div className="hub-card-pad rounded-md" style={{ background: 'var(--hub-bg-2)' }}>
                 <p className="text-[13px]" style={{ color: 'var(--hub-ink-2)' }}>
                   {t('about.updateChecksDisabled')}
