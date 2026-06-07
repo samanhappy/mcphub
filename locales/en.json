@@ -22,7 +22,17 @@
     "newVersionAvailable": "New version {{version}} is available",
     "viewOnGitHub": "View on GitHub",
     "checkForUpdates": "Check for Updates",
-    "checking": "Checking for updates..."
+    "checking": "Checking for updates...",
+    "viewChangelog": "View changelog",
+    "viewReleaseNotes": "View release notes",
+    "viewAllChanges": "View all changes",
+    "latestChanges": "Latest changes",
+    "upToDate": "You are on the latest known version.",
+    "releaseNotesUnavailable": "A newer version is available, but structured release notes are not available yet.",
+    "updateChecksDisabled": "Update checks are disabled for this deployment.",
+    "dismissUpdate": "Dismiss",
+    "dismissed": "Dismissed",
+    "earlierReleases": "+ {{count}} earlier releases"
   },
   "profile": {
     "viewProfile": "View profile",

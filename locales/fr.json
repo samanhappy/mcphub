@@ -22,7 +22,17 @@
     "newVersionAvailable": "La nouvelle version {{version}} est disponible",
     "viewOnGitHub": "Voir sur GitHub",
     "checkForUpdates": "Vérifier les mises à jour",
-    "checking": "Vérification des mises à jour..."
+    "checking": "Vérification des mises à jour...",
+    "viewChangelog": "Voir le changelog",
+    "viewReleaseNotes": "Voir les notes de version",
+    "viewAllChanges": "Voir tous les changements",
+    "latestChanges": "Derniers changements",
+    "upToDate": "Vous utilisez la dernière version connue.",
+    "releaseNotesUnavailable": "Une nouvelle version est disponible, mais les notes structurées ne sont pas encore disponibles.",
+    "updateChecksDisabled": "La vérification des mises à jour est désactivée pour ce déploiement.",
+    "dismissUpdate": "Ignorer",
+    "dismissed": "Ignoré",
+    "earlierReleases": "+ {{count}} versions précédentes"
   },
   "profile": {
     "viewProfile": "Voir le profil",

@@ -30,6 +30,7 @@
     "test:coverage": "jest --coverage",
     "test:verbose": "jest --verbose",
     "test:ci": "jest --ci --coverage --watchAll=false",
+    "release:check-notes": "node scripts/validate-release-notes.js",
     "frontend:dev": "cd frontend && vite",
     "frontend:build": "cd frontend && vite build",
     "frontend:preview": "cd frontend && vite preview",

@@ -22,7 +22,17 @@
     "newVersionAvailable": "新版本 {{version}} 已发布",
     "viewOnGitHub": "在 GitHub 上查看",
     "checkForUpdates": "检查更新",
-    "checking": "检查更新中..."
+    "checking": "检查更新中...",
+    "viewChangelog": "查看更新日志",
+    "viewReleaseNotes": "查看版本说明",
+    "viewAllChanges": "查看全部更新",
+    "latestChanges": "最近更新",
+    "upToDate": "当前已是已知的最新版本。",
+    "releaseNotesUnavailable": "已有新版本，但暂时没有结构化版本说明。",
+    "updateChecksDisabled": "当前部署已禁用更新检查。",
+    "dismissUpdate": "忽略",
+    "dismissed": "已忽略",
+    "earlierReleases": "另有 {{count}} 个更早版本"
   },
   "profile": {
     "viewProfile": "查看个人中心",

@@ -71,6 +71,7 @@ import {
   getRegistryServerVersions,
   getRegistryServerVersion,
 } from '../controllers/registryController.js';
+import { getChangelogUpdateInfoHandler } from '../controllers/changelogController.js';
 import {
   listDiscoveryServers,
   getDiscoveryServer,
@@ -375,6 +376,9 @@ export const initRoutes = async (app: express.Application): Promise<void> => {
   authenticatedRouter.get('/registry/servers', getAllRegistryServers);
   authenticatedRouter.get('/registry/servers/versions', getRegistryServerVersions);
   authenticatedRouter.get('/registry/servers/version', getRegistryServerVersion);
+
+  // Changelog routes (proxy to mcphub-web changelog API)
+  authenticatedRouter.get('/changelog/update-info', getChangelogUpdateInfoHandler);
 
   // Log routes
   authenticatedRouter.get('/logs', getAllLogs);

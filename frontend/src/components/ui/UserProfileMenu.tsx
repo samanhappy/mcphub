@@ -9,7 +9,11 @@ import WeChatDialog from './WeChatDialog';
 import WeChatIcon from '@/components/icons/WeChatIcon';
 import DiscordIcon from '@/components/icons/DiscordIcon';
 import SponsorIcon from '@/components/icons/SponsorIcon';
-import { checkLatestVersion, compareVersions } from '@/utils/version';
+import { ChangelogUpdateInfo } from '@/types';
+import {
+  fetchChangelogUpdateInfo,
+  shouldShowUpdateBadge,
+} from '@/services/changelogService';
 
 interface UserProfileMenuProps {
   collapsed: boolean;
@@ -25,23 +29,26 @@ const UserProfileMenu: React.FC<UserProfileMenuProps> = ({ collapsed, version })
   const [showAboutDialog, setShowAboutDialog] = useState(false);
   const [sponsorDialogOpen, setSponsorDialogOpen] = useState(false);
   const [wechatDialogOpen, setWechatDialogOpen] = useState(false);
+  const [updateInfo, setUpdateInfo] = useState<ChangelogUpdateInfo | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  // Check for new version on login and component mount
+  // Check for new version on login and component mount.
   useEffect(() => {
     const checkForNewVersion = async () => {
       try {
-        const latestVersion = await checkLatestVersion();
-        if (latestVersion) {
-          setShowNewVersionInfo(compareVersions(version, latestVersion) > 0);
-        }
+        const info = await fetchChangelogUpdateInfo({
+          currentVersion: version,
+          locale: i18n.language,
+        });
+        setUpdateInfo(info);
+        setShowNewVersionInfo(shouldShowUpdateBadge(info));
       } catch (error) {
         console.error('Error checking for new version:', error);
       }
     };
 
     checkForNewVersion();
-  }, [version]);
+  }, [version, i18n.language]);
 
   // Close the menu when clicking outside
   useEffect(() => {
@@ -171,6 +178,14 @@ const UserProfileMenu: React.FC<UserProfileMenuProps> = ({ collapsed, version })
         isOpen={showAboutDialog}
         onClose={() => setShowAboutDialog(false)}
         version={version}
+        initialUpdateInfo={updateInfo}
+        onUpdateInfoChange={(info) => {
+          setUpdateInfo(info);
+          setShowNewVersionInfo(shouldShowUpdateBadge(info));
+        }}
+        onDismissUpdate={() => {
+          setShowNewVersionInfo(false);
+        }}
       />
 
       {/* Sponsor dialog */}

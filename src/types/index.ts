@@ -85,6 +85,37 @@ export interface MarketServer {
   is_official?: boolean;
 }
 
+export type ChangelogCategory = 'feature' | 'fix' | 'breaking' | 'security';
+
+export interface ChangelogEntry {
+  product: 'mcphub';
+  version: string;
+  tagName: string;
+  publishedAt: string;
+  url: string;
+  changelogUrl: string;
+  title: string;
+  summary: string;
+  highlights: string[];
+  fixes: string[];
+  breakingChanges: string[];
+  upgradeNotes: string[];
+  categories: ChangelogCategory[];
+  locale: 'en' | 'zh';
+  bodyMarkdown: string;
+  isStructured: boolean;
+}
+
+export interface ChangelogUpdateInfo {
+  latestVersion: string | null;
+  hasUpdate: boolean;
+  entries: ChangelogEntry[];
+  totalUpdateCount: number;
+  changelogUrl: string;
+  allChangelogUrl: string;
+  source: 'mcphub-web' | 'npm-fallback' | 'disabled';
+}
+
 // Cloud Market Server types (for MCPRouter API)
 export interface CloudServer {
   created_at: string;

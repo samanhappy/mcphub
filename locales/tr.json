@@ -22,7 +22,17 @@
     "newVersionAvailable": "Yeni sürüm {{version}} mevcut",
     "viewOnGitHub": "GitHub'da Görüntüle",
     "checkForUpdates": "Güncellemeleri Kontrol Et",
-    "checking": "Güncellemeler kontrol ediliyor..."
+    "checking": "Güncellemeler kontrol ediliyor...",
+    "viewChangelog": "Değişiklik günlüğünü görüntüle",
+    "viewReleaseNotes": "Sürüm notlarını görüntüle",
+    "viewAllChanges": "Tüm değişiklikleri görüntüle",
+    "latestChanges": "Son değişiklikler",
+    "upToDate": "Bilinen en son sürümü kullanıyorsunuz.",
+    "releaseNotesUnavailable": "Daha yeni bir sürüm var, ancak yapılandırılmış sürüm notları henüz yok.",
+    "updateChecksDisabled": "Bu dağıtımda güncelleme kontrolü devre dışı.",
+    "dismissUpdate": "Yoksay",
+    "dismissed": "Yoksayıldı",
+    "earlierReleases": "+ {{count}} önceki sürüm"
   },
   "profile": {
     "viewProfile": "Profili görüntüle",
