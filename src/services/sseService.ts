@@ -70,7 +70,7 @@ const cleanupSessionState = (sessionId: string): void => {
   const session = transports[sessionId];
   if (session?.transport) {
     session.transport.close().catch((err) => {
-      console.error(`[SESSION] Error closing transport during cleanup for ${sessionId}:`, err);
+      console.error('[SESSION] Error closing transport during cleanup for %s:', sessionId, err);
     });
   }
   delete transports[sessionId];
