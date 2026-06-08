@@ -935,7 +935,7 @@ export const handleMcpPostRequest = async (req: Request, res: Response): Promise
     try {
       await transport.handleRequest(req, res, req.body);
     } catch (error: any) {
-      if (sessionId && error.message && error.message.includes('Server not initialized')) {
+      if (sessionId && error?.message?.includes('Server not initialized')) {
         console.warn(
           `[SESSION AUTO-REBUILD] Rebuilt session ${sessionId} is not initialized. Returning explicit session-not-found response.`,
         );
