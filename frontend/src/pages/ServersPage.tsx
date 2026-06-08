@@ -11,8 +11,7 @@ import JSONImportForm from '@/components/JSONImportForm';
 import Pagination from '@/components/ui/Pagination';
 import { useServerData } from '@/hooks/useServerData';
 import { useCostData } from '@/hooks/useCostData';
-
-type Filter = 'all' | 'online' | 'issues';
+import { filterServers, getServerFilterCounts, type ServerFilter } from '@/utils/serverFilters';
 
 const ServersPage: React.FC = () => {
   const { t } = useTranslation();
@@ -48,36 +47,12 @@ const ServersPage: React.FC = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showMcpbUpload, setShowMcpbUpload] = useState(false);
   const [showJsonImport, setShowJsonImport] = useState(false);
-  const [filter, setFilter] = useState<Filter>('all');
+  const [filter, setFilter] = useState<ServerFilter>('all');
   const [search, setSearch] = useState('');
 
-  const counts = useMemo(
-    () => ({
-      all: allServers.length,
-      online: allServers.filter((s: Server) => s.status === 'connected').length,
-      issues: allServers.filter(
-        (s: Server) => s.status !== 'connected' && s.enabled !== false,
-      ).length,
-    }),
-    [allServers],
-  );
+  const counts = useMemo(() => getServerFilterCounts(allServers), [allServers]);
 
-  const filteredServers = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return servers.filter((s) => {
-      if (filter === 'online' && s.status !== 'connected') return false;
-      if (filter === 'issues' && (s.status === 'connected' || s.enabled === false)) return false;
-      if (!q) return true;
-      const hay = (
-        s.name +
-        ' ' +
-        (s.config?.description || '') +
-        ' ' +
-        (s.tools?.map((t) => t.name).join(' ') || '')
-      ).toLowerCase();
-      return hay.includes(q);
-    });
-  }, [servers, filter, search]);
+  const filteredServers = useMemo(() => filterServers(servers, filter, search), [servers, filter, search]);
 
   const handleEditClick = async (server: Server) => {
     const fullServerData = await handleServerEdit(server);
@@ -165,7 +140,8 @@ const ServersPage: React.FC = () => {
               ['all', t('common.all') || 'All', counts.all],
               ['online', t('status.online'), counts.online],
               ['issues', t('common.inactive') || 'Issues', counts.issues],
-            ] as [Filter, string, number][]
+              ['disabled', t('pages.dashboard.disabledServers') || 'Disabled', counts.disabled],
+            ] as [ServerFilter, string, number][]
           ).map(([k, l, n]) => (
             <button
               key={k}
