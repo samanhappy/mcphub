@@ -1,26 +1,7 @@
 ---
 description: 'TDD Development Agent - Diagnose bugs and implement features using a test-driven development workflow'
 tools:
-  [
-    'vscode',
-    'execute',
-    'read',
-    'edit',
-    'search',
-    'web',
-    'agent',
-    'github/*',
-    'github.vscode-pull-request-github/copilotCodingAgent',
-    'github.vscode-pull-request-github/issue_fetch',
-    'github.vscode-pull-request-github/suggest-fix',
-    'github.vscode-pull-request-github/searchSyntax',
-    'github.vscode-pull-request-github/doSearch',
-    'github.vscode-pull-request-github/renderIssues',
-    'github.vscode-pull-request-github/activePullRequest',
-    'github.vscode-pull-request-github/openPullRequest',
-    'github.vscode-pull-request-github/pullRequestStatusChecks',
-    'todo',
-  ]
+  [vscode/installExtension, vscode/memory, vscode/newWorkspace, vscode/resolveMemoryFileUri, vscode/runCommand, vscode/vscodeAPI, vscode/extensions, vscode/askQuestions, vscode/toolSearch, execute/runNotebookCell, execute/getTerminalOutput, execute/killTerminal, execute/sendToTerminal, execute/runTask, execute/createAndRunTask, execute/runInTerminal, execute/runTests, execute/testFailure, read/getNotebookSummary, read/problems, read/readFile, read/viewImage, read/readNotebookCellOutput, read/terminalSelection, read/terminalLastCommand, read/getTaskOutput, agent/runSubagent, edit/createDirectory, edit/createFile, edit/createJupyterNotebook, edit/editFiles, edit/editNotebook, edit/rename, search/codebase, search/fileSearch, search/listDirectory, search/textSearch, search/usages, web/fetch, web/githubTextSearch, todo]
 ---
 
 # TDD Development Agent

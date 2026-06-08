@@ -157,6 +157,17 @@ const mockStreamableHTTPServerTransport = {
   connect: jest.fn(),
   handleRequest: jest.fn(),
   onclose: null,
+  _webStandardTransport: {
+    sessionId: undefined as string | undefined,
+    _initialized: false,
+  },
+};
+
+const resetMockStreamableHTTPServerTransport = () => {
+  mockStreamableHTTPServerTransport.sessionId = 'test-session-id';
+  mockStreamableHTTPServerTransport.onclose = null;
+  mockStreamableHTTPServerTransport._webStandardTransport.sessionId = undefined;
+  mockStreamableHTTPServerTransport._webStandardTransport._initialized = false;
 };
 
 // Mock Express Request and Response
@@ -223,6 +234,7 @@ const expectBearerUnauthorized = (
 describe('sseService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    resetMockStreamableHTTPServerTransport();
     (UserContextService.getInstance as jest.MockedFunction<any>).mockReturnValue({
       getCurrentUser: jest.fn(() => ({ username: 'testuser' })),
       hasUser: jest.fn(() => true),
@@ -869,6 +881,89 @@ describe('sseService', () => {
         StreamableHTTPServerTransport as jest.MockedClass<typeof StreamableHTTPServerTransport>
       ).mock.results[0].value as typeof mockStreamableHTTPServerTransport;
       expect(mockInstance.handleRequest).toHaveBeenCalledWith(req, res, req.body);
+    });
+
+    it('should rebuild sessions without issuing synthetic initialize requests', async () => {
+      setMockSystemConfig({
+        routing: {
+          enableGlobalRoute: true,
+          enableGroupNameRoute: true,
+          enableBearerAuth: false,
+          bearerAuthKey: 'test-key',
+          skipAuth: false,
+        },
+        enableSessionRebuild: true,
+      });
+
+      const req = createMockRequest({
+        params: { group: 'test-group' },
+        headers: { 'mcp-session-id': 'rebuilt-session' },
+        body: {
+          method: 'tools/call',
+          params: {
+            name: 'test-server::get_current_time',
+            arguments: {},
+          },
+        },
+      });
+      const res = createMockResponse();
+
+      await handleMcpPostRequest(req, res);
+
+      expect(mockStreamableHTTPServerTransport._webStandardTransport.sessionId).toBe(
+        'rebuilt-session',
+      );
+      expect(mockStreamableHTTPServerTransport._webStandardTransport._initialized).toBe(true);
+      expect(mockStreamableHTTPServerTransport.handleRequest).toHaveBeenCalledTimes(1);
+      expect(mockStreamableHTTPServerTransport.handleRequest).toHaveBeenCalledWith(
+        req,
+        res,
+        req.body,
+      );
+    });
+
+    it('should return an explicit session-not-found error when rebuilt transport is still not initialized', async () => {
+      setMockSystemConfig({
+        routing: {
+          enableGlobalRoute: true,
+          enableGroupNameRoute: true,
+          enableBearerAuth: false,
+          bearerAuthKey: 'test-key',
+          skipAuth: false,
+        },
+        enableSessionRebuild: true,
+      });
+
+      mockStreamableHTTPServerTransport.handleRequest.mockRejectedValueOnce(
+        new Error('Server not initialized'),
+      );
+
+      const req = createMockRequest({
+        params: { group: 'test-group' },
+        headers: { 'mcp-session-id': 'broken-session' },
+        body: {
+          method: 'tools/call',
+          params: {
+            name: 'test-server::get_current_time',
+            arguments: {},
+          },
+        },
+      });
+      const res = createMockResponse();
+
+      await handleMcpPostRequest(req, res);
+
+      expect(mockStreamableHTTPServerTransport.handleRequest).toHaveBeenCalledTimes(1);
+      expect(res.status).toHaveBeenCalledWith(404);
+      expect(res.json).toHaveBeenCalledWith({
+        jsonrpc: '2.0',
+        error: {
+          code: -32001,
+          message: 'Session not found. Please reinitialize the session.',
+        },
+        id: null,
+      });
+      expect(transports['broken-session']).toBeUndefined();
     });
 
     it('should return 401 when bearer auth fails', async () => {
