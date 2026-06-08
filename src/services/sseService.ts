@@ -68,7 +68,7 @@ export const getSessionContext = (
 
 const cleanupSessionState = (sessionId: string): void => {
   const session = transports[sessionId];
-  if (session?.transport) {
+  if (session?.transport && typeof session.transport.close === 'function') {
     session.transport.close().catch((err) => {
       console.error('[SESSION] Error closing transport during cleanup for %s:', sessionId, err);
     });
