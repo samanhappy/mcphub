@@ -1038,7 +1038,7 @@ export const handleMcpOtherRequest = async (req: Request, res: Response) => {
   try {
     await (transport as StreamableHTTPServerTransport).handleRequest(req, res);
   } catch (error: any) {
-    if (error.message && error.message.includes('Server not initialized')) {
+    if (error?.message?.includes('Server not initialized')) {
       console.warn(
         `[SESSION AUTO-REBUILD] Rebuilt session ${sessionId} is not initialized for auxiliary request. Returning explicit session-not-found response.`,
       );
