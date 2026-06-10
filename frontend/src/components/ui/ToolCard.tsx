@@ -84,6 +84,8 @@ const ToolCard = ({ tool, server, readOnly = false, onToggle, onDescriptionUpdat
     setCustomDescription(tool.description || '');
   }, [tool.description]);
 
+  const toolDisplayName = tool.name.replace(server + nameSeparator, '');
+
   // Generate a unique key for localStorage based on tool name and server
   const getStorageKey = useCallback(() => {
     return `mcphub_tool_form_${server ? `${server}_` : ''}${tool.name}`;
@@ -249,7 +251,7 @@ const ToolCard = ({ tool, server, readOnly = false, onToggle, onDescriptionUpdat
       >
         <div className="flex-1 min-w-0 flex items-center gap-1.5 flex-wrap">
           <span className="hub-mono font-medium" style={{ fontSize: 13, color: 'var(--hub-ink)' }}>
-            {tool.name.replace(server + nameSeparator, '')}
+            {toolDisplayName}
           </span>
           <button
             className="hub-icon-btn sm"
@@ -328,6 +330,7 @@ const ToolCard = ({ tool, server, readOnly = false, onToggle, onDescriptionUpdat
               onCheckedChange={handleToggle}
               disabled={isRunning || readOnly}
               size="card"
+              aria-label={`${t((tool.enabled ?? true) ? 'server.disable' : 'server.enable')} ${toolDisplayName}`}
             />
           </div>
           <button
@@ -371,7 +374,7 @@ const ToolCard = ({ tool, server, readOnly = false, onToggle, onDescriptionUpdat
                 loading={isRunning}
                 storageKey={getStorageKey()}
                 title={t('tool.runToolWithName', {
-                  name: tool.name.replace(server + nameSeparator, ''),
+                  name: toolDisplayName,
                 })}
               />
               {result && (

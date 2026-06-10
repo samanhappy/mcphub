@@ -176,6 +176,8 @@ const ServerCard = ({
   const totalResources = server.resources?.length || 0;
   const enabledResources = server.resources?.filter((r) => r.enabled !== false).length || 0;
   const isMcpApp = serverExposesMcpApp(server);
+  const enabled = server.enabled !== false;
+  const canManage = canManageServer(server, auth.user);
 
   const handleToggle = async (nextEnabled: boolean) => {
     if (!canManage || isToggling || !onToggle) return;
@@ -408,8 +410,6 @@ const ServerCard = ({
     return parts.join(' ');
   })();
 
-  const enabled = server.enabled !== false;
-  const canManage = canManageServer(server, auth.user);
   const serverEndpoint = `${baseUrl}/mcp/${server.name}`;
   const translateVisibility = (key: string, options?: { defaultValue?: string }) => t(key, options);
   const visibility = getServerVisibilityDisplay(
@@ -669,7 +669,7 @@ const ServerCard = ({
                 onCheckedChange={handleToggle}
                 disabled={isToggling || !canManage}
                 size="compact"
-                ariaLabel={enabled ? t('server.disable') : t('server.enable')}
+                aria-label={`${t(enabled ? 'server.disable' : 'server.enable')} ${server.name}`}
               />
             </LoadingControl>
           </div>

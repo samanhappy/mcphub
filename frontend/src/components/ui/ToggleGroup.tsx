@@ -1,4 +1,4 @@
-import React, { ReactNode } from 'react';
+import React, { ReactNode, useId } from 'react';
 import { cn } from '@/utils/cn';
 
 interface ToggleGroupItemProps {
@@ -59,6 +59,8 @@ export const ToggleGroup: React.FC<ToggleGroupProps> = ({
   onChange,
   className,
 }) => {
+  const labelId = useId();
+
   const handleToggle = (value: string) => {
     const isSelected = values.includes(value);
     if (isSelected) {
@@ -70,8 +72,12 @@ export const ToggleGroup: React.FC<ToggleGroupProps> = ({
 
   return (
     <div className={className}>
-      <label className="mb-2 block text-sm font-bold text-gray-700">{label}</label>
-      <div className="max-h-60 overflow-y-auto rounded border border-gray-200 shadow dark:border-gray-700">
+      <div id={labelId} className="mb-2 block text-sm font-bold text-gray-700">{label}</div>
+      <div
+        role="group"
+        aria-labelledby={labelId}
+        className="max-h-60 overflow-y-auto rounded border border-gray-200 shadow dark:border-gray-700"
+      >
         {options.length === 0 ? (
           <p className="p-3 text-sm text-gray-500">{noOptionsText}</p>
         ) : (
@@ -94,13 +100,10 @@ export const ToggleGroup: React.FC<ToggleGroupProps> = ({
   );
 };
 
-interface SwitchProps {
+interface SwitchProps extends Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, 'children' | 'onChange' | 'role' | 'type'> {
   checked: boolean;
   onCheckedChange: (checked: boolean) => void;
-  disabled?: boolean;
   size?: 'regular' | 'card' | 'compact';
-  className?: string;
-  ariaLabel?: string;
 }
 
 export const Switch: React.FC<SwitchProps> = ({
@@ -109,14 +112,15 @@ export const Switch: React.FC<SwitchProps> = ({
   disabled = false,
   size = 'regular',
   className,
-  ariaLabel,
+  onClick,
+  ...buttonProps
 }) => {
   return (
     <button
+      {...buttonProps}
       type="button"
       role="switch"
       aria-checked={checked}
-      aria-label={ariaLabel}
       disabled={disabled}
       className={cn(
         'hub-switch',
@@ -127,7 +131,10 @@ export const Switch: React.FC<SwitchProps> = ({
       )}
       onClick={(event) => {
         event.stopPropagation();
-        if (!disabled) onCheckedChange(!checked);
+        onClick?.(event);
+        if (!event.defaultPrevented && !disabled) {
+          onCheckedChange(!checked);
+        }
       }}
     />
   );

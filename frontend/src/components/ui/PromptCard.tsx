@@ -184,6 +184,8 @@ const PromptCard = ({ prompt, server, readOnly = false, onToggle, onDescriptionU
     setResult(null);
   };
 
+  const promptDisplayName = prompt.name.replace(server + nameSeparator, '');
+
   // Convert prompt arguments to ToolInputSchema format for DynamicForm
   const convertToSchema = () => {
     if (!prompt.arguments || prompt.arguments.length === 0) {
@@ -222,7 +224,7 @@ const PromptCard = ({ prompt, server, readOnly = false, onToggle, onDescriptionU
       >
         <div className="flex-1 min-w-0 flex items-center gap-1.5 flex-wrap">
           <span className="hub-mono font-medium" style={{ fontSize: 13, color: 'var(--hub-ink)' }}>
-            {prompt.name.replace(server + nameSeparator, '')}
+            {promptDisplayName}
           </span>
           {prompt.title && (
             <span style={{ fontSize: 12, color: 'var(--hub-ink-2)' }}>{prompt.title}</span>
@@ -296,6 +298,7 @@ const PromptCard = ({ prompt, server, readOnly = false, onToggle, onDescriptionU
                 onCheckedChange={handleToggle}
                 disabled={isRunning || readOnly}
                 size="card"
+                aria-label={`${t(prompt.enabled ? 'server.disable' : 'server.enable')} ${promptDisplayName}`}
               />
             )}
           </div>
@@ -330,7 +333,7 @@ const PromptCard = ({ prompt, server, readOnly = false, onToggle, onDescriptionU
                 loading={isRunning}
                 storageKey={getStorageKey()}
                 title={t('prompt.runPromptWithName', {
-                  name: prompt.name.replace(server + nameSeparator, ''),
+                  name: promptDisplayName,
                 })}
               />
               {result && (
