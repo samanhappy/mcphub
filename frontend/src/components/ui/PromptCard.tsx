@@ -289,12 +289,13 @@ const PromptCard = ({ prompt, server, readOnly = false, onToggle, onDescriptionU
               Σ {formatTokens(cost)}
             </span>
           )}
-          <div onClick={(e) => e.stopPropagation()}>
+          <div className="flex h-[26px] items-center" onClick={(e) => e.stopPropagation()}>
             {prompt.enabled !== undefined && (
               <Switch
                 checked={prompt.enabled}
                 onCheckedChange={handleToggle}
                 disabled={isRunning || readOnly}
+                size="card"
               />
             )}
           </div>

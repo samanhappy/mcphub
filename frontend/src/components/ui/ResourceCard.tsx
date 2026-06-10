@@ -160,11 +160,12 @@ const ResourceCard = ({ resource, readOnly = false, onToggle, onDescriptionUpdat
               Σ {formatTokens(cost)}
             </span>
           )}
-          <div onClick={(e) => e.stopPropagation()}>
+          <div className="flex h-[26px] items-center" onClick={(e) => e.stopPropagation()}>
             <Switch
               checked={resource.enabled !== false}
               onCheckedChange={handleToggle}
               disabled={readOnly}
+              size="card"
             />
           </div>
           <button className="hub-icon-btn sm">

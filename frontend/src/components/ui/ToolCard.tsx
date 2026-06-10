@@ -322,11 +322,12 @@ const ToolCard = ({ tool, server, readOnly = false, onToggle, onDescriptionUpdat
               Σ {formatTokens(cost)}
             </span>
           )}
-          <div onClick={(e) => e.stopPropagation()}>
+          <div className="flex h-[26px] items-center" onClick={(e) => e.stopPropagation()}>
             <Switch
               checked={tool.enabled ?? true}
               onCheckedChange={handleToggle}
               disabled={isRunning || readOnly}
+              size="card"
             />
           </div>
           <button

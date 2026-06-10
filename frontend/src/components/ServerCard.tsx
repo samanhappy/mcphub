@@ -22,6 +22,7 @@ import ToolCard from '@/components/ui/ToolCard';
 import PromptCard from '@/components/ui/PromptCard';
 import ResourceCard from '@/components/ui/ResourceCard';
 import DeleteDialog from '@/components/ui/DeleteDialog';
+import { Switch } from '@/components/ui/ToggleGroup';
 import { useToast } from '@/contexts/ToastContext';
 import { useSettingsData } from '@/hooks/useSettingsData';
 import { useAuth } from '@/contexts/AuthContext';
@@ -176,12 +177,11 @@ const ServerCard = ({
   const enabledResources = server.resources?.filter((r) => r.enabled !== false).length || 0;
   const isMcpApp = serverExposesMcpApp(server);
 
-  const handleToggle = async (e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleToggle = async (nextEnabled: boolean) => {
     if (!canManage || isToggling || !onToggle) return;
     setIsToggling(true);
     try {
-      await onToggle(server, !(server.enabled !== false));
+      await onToggle(server, nextEnabled);
     } finally {
       setIsToggling(false);
     }
@@ -654,7 +654,7 @@ const ServerCard = ({
           ) : null}
 
           {/* Toggle switch */}
-          <div className="flex items-center justify-center">
+          <div className="flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
             <LoadingControl
               isLoading={isToggling}
               className="h-[18px] w-[30px]"
@@ -664,12 +664,12 @@ const ServerCard = ({
               }}
               spinnerSize={10}
             >
-              <button
-                type="button"
-                className={'hub-switch' + (enabled ? ' on' : '')}
-                onClick={handleToggle}
+              <Switch
+                checked={enabled}
+                onCheckedChange={handleToggle}
                 disabled={isToggling || !canManage}
-                aria-label={enabled ? t('server.disable') : t('server.enable')}
+                size="compact"
+                ariaLabel={enabled ? t('server.disable') : t('server.enable')}
               />
             </LoadingControl>
           </div>
