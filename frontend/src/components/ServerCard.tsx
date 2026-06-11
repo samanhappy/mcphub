@@ -445,7 +445,7 @@ const ServerCard = ({
     <>
       <div
         className="hub-card overflow-visible"
-        style={{ marginBottom: 10, opacity: enabled ? 1 : 0.7 }}
+        style={{ marginBottom: 10 }}
       >
         {/* Main row */}
         <div
