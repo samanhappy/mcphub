@@ -77,6 +77,7 @@ import {
   isAppOnlyTool,
   stripMcpAppsMetadata,
 } from '../utils/mcpApps.js';
+import { isCommandSafe } from '../utils/security.js';
 
 const servers: { [sessionId: string]: Server } = {};
 
@@ -194,6 +195,14 @@ const wrapWithProxychains = (
 ): { command: string; args: string[] } => {
   // Skip if proxy is not enabled or not configured
   if (!proxyConfig?.enabled) {
+    return { command, args };
+  }
+
+  // SECURITY: Validate command and args before wrapping with proxychains4
+  if (!isCommandSafe(command, args)) {
+    console.warn(
+      `[${serverName}] Security Warning: Command is potentially dangerous. Skipping proxychains wrap to prevent potential RCE.`,
+    );
     return { command, args };
   }
 
