@@ -396,6 +396,32 @@ export const normalizeToolForCache = (serverName: string, tool: McpTool): Tool =
   };
 };
 
+const hasDescriptionOverride = (config?: { description?: string }): boolean => {
+  return Boolean(config && Object.prototype.hasOwnProperty.call(config, 'description'));
+};
+
+const resolveDescriptionOverride = (
+  defaultDescription: string | undefined,
+  config?: { description?: string },
+): string => {
+  return hasDescriptionOverride(config) ? config?.description || '' : defaultDescription || '';
+};
+
+const buildToolWithDescriptionMetadata = (
+  tool: Tool,
+  toolConfig?: { enabled: boolean; description?: string },
+): Tool => {
+  const upstreamDescription = tool.description || '';
+
+  return {
+    ...tool,
+    description: resolveDescriptionOverride(upstreamDescription, toolConfig),
+    defaultDescription: upstreamDescription,
+    hasDescriptionOverride: hasDescriptionOverride(toolConfig),
+    enabled: toolConfig?.enabled !== false,
+  };
+};
+
 const syncToolsAsVectorEmbeddings = async (
   serverName: string,
   tools: Tool[],
@@ -1555,18 +1581,14 @@ export const getServersInfo = async (
       // Add enabled status and custom description to each tool
       const toolsWithEnabled = tools.map((tool) => {
         const toolConfig = serverConfig?.tools?.[tool.name];
-        return {
-          ...tool,
-          description: toolConfig?.description || tool.description, // Use custom description if available
-          enabled: toolConfig?.enabled !== false, // Default to true if not explicitly disabled
-        };
+        return buildToolWithDescriptionMetadata(tool, toolConfig);
       });
 
       const promptsWithEnabled = prompts.map((prompt) => {
         const promptConfig = serverConfig?.prompts?.[prompt.name];
         return {
           ...prompt,
-          description: promptConfig?.description || prompt.description, // Use custom description if available
+          description: resolveDescriptionOverride(prompt.description, promptConfig),
           enabled: promptConfig?.enabled !== false, // Default to true if not explicitly disabled
         };
       });
@@ -1942,7 +1964,7 @@ export const handleListToolsRequest = async (_: any, extra: any) => {
         const toolConfig = serverConfig?.tools?.[tool.name];
         return {
           ...tool,
-          description: toolConfig?.description || tool.description, // Use custom description if available
+          description: resolveDescriptionOverride(tool.description, toolConfig),
         };
       });
 

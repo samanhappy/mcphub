@@ -118,6 +118,8 @@ export interface ToolInputSchema {
 export interface Tool {
   name: string;
   description: string;
+  defaultDescription?: string;
+  hasDescriptionOverride?: boolean;
   inputSchema: ToolInputSchema;
   annotations?: Record<string, unknown>;
   _meta?: Record<string, unknown>;

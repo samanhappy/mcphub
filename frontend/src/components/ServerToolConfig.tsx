@@ -5,6 +5,7 @@ import { Wrench, MessageSquare, FileText } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { useSettingsData } from '@/hooks/useSettingsData';
 import { formatTokens } from '@/utils/contextCost';
+import { getToolDescriptionInfo } from '@/utils/toolDescription';
 
 type CapabilityKey = 'tools' | 'prompts' | 'resources';
 
@@ -26,6 +27,14 @@ interface ServerToolConfigProps {
   onChange: (value: IGroupServerConfig[]) => void;
   className?: string;
   serverCosts?: ServerCost[];
+}
+
+interface CapabilityItem {
+  key: string;
+  value: string;
+  description?: string;
+  defaultDescription?: string;
+  hasDescriptionOverride?: boolean;
 }
 
 export const ServerToolConfig: React.FC<ServerToolConfigProps> = ({
@@ -152,12 +161,14 @@ export const ServerToolConfig: React.FC<ServerToolConfigProps> = ({
     return name.startsWith(prefix) ? name.slice(prefix.length) : name;
   };
 
-  const getCapabilityItems = (server: Server, capability: CapabilityKey) => {
+  const getCapabilityItems = (server: Server, capability: CapabilityKey): CapabilityItem[] => {
     if (capability === 'tools') {
       return (server.tools || []).filter(tool => tool.enabled !== false).map((tool: Tool) => ({
         key: tool.name,
         value: normalizeNamedCapability(server.name, tool.name),
         description: tool.description,
+        defaultDescription: tool.defaultDescription,
+        hasDescriptionOverride: tool.hasDescriptionOverride,
       }));
     }
 
@@ -406,21 +417,46 @@ export const ServerToolConfig: React.FC<ServerToolConfigProps> = ({
                           <div className="grid grid-cols-1 gap-2 max-h-32 overflow-y-auto">
                             {items.map(item => {
                               const isChecked = isCapabilityItemSelected(server.name, key, item.value);
+                              const descriptionInfo = key === 'tools'
+                                ? getToolDescriptionInfo(
+                                    {
+                                      description: item.description,
+                                      defaultDescription: item.defaultDescription,
+                                      hasDescriptionOverride: item.hasDescriptionOverride,
+                                    },
+                                    t('tool.noDescription'),
+                                  )
+                                : null;
+                              const descriptionTitle = descriptionInfo?.hasDescriptionOverride
+                                ? t('tool.defaultDescriptionTooltip', {
+                                    description: descriptionInfo.defaultDescription,
+                                  })
+                                : item.description;
 
                               return (
-                                <label key={item.key} className="flex items-center space-x-2 text-sm">
+                                <label key={item.key} className="flex min-w-0 items-center gap-2 text-sm">
                                   <input
                                     type="checkbox"
                                     checked={isChecked}
                                     onChange={() => toggleCapabilityItem(server.name, key, item.value)}
                                     className="w-3 h-3 text-blue-600 bg-gray-100 dark:bg-gray-800 border-gray-300 rounded focus:ring-blue-500"
                                   />
-                                  <span className="text-gray-700 break-all whitespace-nowrap">
+                                  <span className="text-gray-700 break-all whitespace-nowrap flex-shrink-0">
                                     {item.value}
                                   </span>
-                                  {item.description && (
-                                    <span className="text-gray-400 text-xs truncate">
-                                      {item.description}
+                                  {(item.description || descriptionInfo?.hasDescriptionOverride) && (
+                                    <span className="min-w-0 flex items-center gap-1 text-gray-400 text-xs truncate">
+                                      <span className="truncate" title={descriptionTitle || undefined}>
+                                        {descriptionInfo ? descriptionInfo.currentDescription : item.description}
+                                      </span>
+                                      {descriptionInfo?.hasDescriptionOverride && (
+                                        <span
+                                          className="inline-flex flex-shrink-0 items-center rounded-full border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:border-amber-700/60 dark:bg-amber-900/20 dark:text-amber-300"
+                                          title={descriptionTitle || undefined}
+                                        >
+                                          {t('tool.descriptionModifiedBadge')}
+                                        </span>
+                                      )}
                                     </span>
                                   )}
                                   {costMap.get(item.key) != null && (

@@ -230,4 +230,68 @@ describe('mcpService initialize metadata', () => {
       }),
     ]);
   });
+
+  it('exposes tool description override metadata for dashboard consumers', async () => {
+    mockFindAll.mockResolvedValue([
+      {
+        name: 'weather-server',
+        type: 'stdio',
+        command: 'node',
+        args: ['server.js'],
+        enabled: true,
+        tools: {
+          'weather-server::current': {
+            enabled: true,
+            description: 'Custom current conditions lookup',
+          },
+          'weather-server::blank': {
+            enabled: true,
+            description: '',
+          },
+        },
+      },
+    ]);
+    mockClient.listTools.mockResolvedValueOnce({
+      tools: [
+        {
+          name: 'current',
+          description: 'Fetch current conditions',
+          inputSchema: { type: 'object' },
+        },
+        {
+          name: 'blank',
+          description: 'Fetch fallback conditions',
+          inputSchema: { type: 'object' },
+        },
+      ],
+    });
+
+    await initUpstreamServers();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    const result = await getServersInfo();
+
+    expect(result).toEqual([
+      expect.objectContaining({
+        name: 'weather-server',
+        tools: expect.arrayContaining([
+          expect.objectContaining({
+            name: 'weather-server::current',
+            description: 'Custom current conditions lookup',
+            defaultDescription: 'Fetch current conditions',
+            hasDescriptionOverride: true,
+            enabled: true,
+          }),
+          expect.objectContaining({
+            name: 'weather-server::blank',
+            description: '',
+            defaultDescription: 'Fetch fallback conditions',
+            hasDescriptionOverride: true,
+            enabled: true,
+          }),
+        ]),
+      }),
+    ]);
+  });
 });

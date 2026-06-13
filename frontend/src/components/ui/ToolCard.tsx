@@ -23,6 +23,7 @@ import DynamicForm from './DynamicForm';
 import ToolResult from './ToolResult';
 import ResetDescriptionButton from './ResetDescriptionButton';
 import { formatTokens } from '@/utils/contextCost';
+import { getToolDescriptionInfo } from '@/utils/toolDescription';
 
 interface ToolCardProps {
   server: string;
@@ -85,6 +86,12 @@ const ToolCard = ({ tool, server, readOnly = false, onToggle, onDescriptionUpdat
   }, [tool.description]);
 
   const toolDisplayName = tool.name.replace(server + nameSeparator, '');
+  const descriptionInfo = getToolDescriptionInfo(tool, t('tool.noDescription'));
+  const defaultDescriptionTooltip = descriptionInfo.hasDescriptionOverride
+    ? t('tool.defaultDescriptionTooltip', {
+        description: descriptionInfo.defaultDescription,
+      })
+    : undefined;
 
   // Generate a unique key for localStorage based on tool name and server
   const getStorageKey = useCallback(() => {
@@ -291,9 +298,22 @@ const ToolCard = ({ tool, server, readOnly = false, onToggle, onDescriptionUpdat
               </>
             ) : (
               <>
-                <span ref={descriptionTextRef}>
-                  {customDescription || t('tool.noDescription')}
+                <span ref={descriptionTextRef} title={defaultDescriptionTooltip}>
+                  {descriptionInfo.currentDescription}
                 </span>
+                {descriptionInfo.hasDescriptionOverride && (
+                  <span
+                    className="inline-flex items-center rounded-full border px-1.5 py-0.5 text-[10px] font-medium"
+                    style={{
+                      color: 'var(--hub-accent)',
+                      borderColor: 'var(--hub-line)',
+                      background: 'var(--hub-bg-2)',
+                    }}
+                    title={defaultDescriptionTooltip}
+                  >
+                    {t('tool.descriptionModifiedBadge')}
+                  </span>
+                )}
                 {!readOnly && (
                   <>
                     <button
@@ -354,6 +374,26 @@ const ToolCard = ({ tool, server, readOnly = false, onToggle, onDescriptionUpdat
 
       {isExpanded && (
         <div style={{ borderTop: '1px solid var(--hub-line-2)', padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {descriptionInfo.hasDescriptionOverride && descriptionInfo.defaultDescription && (
+            <div
+              style={{
+                background: 'var(--hub-bg-2)',
+                borderRadius: 7,
+                padding: '8px 12px',
+                border: '1px dashed var(--hub-line)',
+                fontSize: 11.5,
+                color: 'var(--hub-ink-3)',
+              }}
+            >
+              <span className="hub-sect" style={{ marginRight: 6 }}>
+                {t('tool.defaultDescriptionLabel')}
+              </span>
+              <span className="whitespace-pre-wrap break-words">
+                {descriptionInfo.defaultDescription}
+              </span>
+            </div>
+          )}
+
           {/* Schema Display */}
           {!showRunForm && (
             <div style={{ background: 'var(--hub-bg-2)', borderRadius: 7, padding: '8px 12px', border: '1px solid var(--hub-line)' }}>
