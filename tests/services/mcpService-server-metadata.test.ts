@@ -248,6 +248,10 @@ describe('mcpService initialize metadata', () => {
             enabled: true,
             description: '',
           },
+          'weather-server::undefined': {
+            enabled: true,
+            description: undefined,
+          },
         },
       },
     ]);
@@ -261,6 +265,11 @@ describe('mcpService initialize metadata', () => {
         {
           name: 'blank',
           description: 'Fetch fallback conditions',
+          inputSchema: { type: 'object' },
+        },
+        {
+          name: 'undefined',
+          description: 'Fetch undefined fallback conditions',
           inputSchema: { type: 'object' },
         },
       ],
@@ -288,6 +297,13 @@ describe('mcpService initialize metadata', () => {
             description: '',
             defaultDescription: 'Fetch fallback conditions',
             hasDescriptionOverride: true,
+            enabled: true,
+          }),
+          expect.objectContaining({
+            name: 'weather-server::undefined',
+            description: 'Fetch undefined fallback conditions',
+            defaultDescription: 'Fetch undefined fallback conditions',
+            hasDescriptionOverride: false,
             enabled: true,
           }),
         ]),

@@ -1,9 +1,8 @@
-import { Tool } from '../types';
-
-type ToolDescriptionSource = Pick<
-  Tool,
-  'description' | 'defaultDescription' | 'hasDescriptionOverride'
->;
+type ToolDescriptionSource = {
+  description?: string;
+  defaultDescription?: string;
+  hasDescriptionOverride?: boolean;
+};
 
 export interface ToolDescriptionInfo {
   currentDescription: string;

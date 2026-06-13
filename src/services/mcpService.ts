@@ -397,7 +397,7 @@ export const normalizeToolForCache = (serverName: string, tool: McpTool): Tool =
 };
 
 const hasDescriptionOverride = (config?: { description?: string }): boolean => {
-  return Boolean(config && Object.prototype.hasOwnProperty.call(config, 'description'));
+  return Boolean(config && typeof config.description === 'string');
 };
 
 const resolveDescriptionOverride = (
