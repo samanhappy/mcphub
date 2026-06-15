@@ -2800,7 +2800,10 @@ export const getFilteredServerInfosForGroup = async (
     const groupDao = getGroupDao();
     let foundGroup = await groupDao.findByName(group);
     if (!foundGroup) {
-      foundGroup = await groupDao.findById(group);
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      if (uuidRegex.test(group)) {
+        foundGroup = await groupDao.findById(group);
+      }
     }
     if (foundGroup) {
       serverConfigs = normalizeGroupServers(foundGroup.servers || []);

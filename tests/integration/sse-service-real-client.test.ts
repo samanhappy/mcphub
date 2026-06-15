@@ -181,6 +181,64 @@ describe('Real Client Transport Integration Tests', () => {
       expect(error).toBeNull();
       expect(isConnected).toBe(true);
     }, 60000);
+
+    it('should connect using real SSEClientTransport with single server', async () => {
+      const testServer = 'test-server-1';
+      const options = {
+        requestInit: {
+          headers: {
+            Authorization: 'Bearer test-auth-token-123',
+          },
+        },
+      };
+      const sseUrl = new URL(`${baseURL}/sse/${testServer}`);
+
+      const transport = new SSEClientTransport(sseUrl, options);
+
+      const client = new Client(
+        {
+          name: 'real-sse-server-test-client',
+          version: '1.0.0',
+        },
+        {
+          capabilities: {
+            tools: {},
+            resources: {},
+            prompts: {},
+          },
+        },
+      );
+
+      let isConnected = false;
+      let error: any = null;
+
+      try {
+        await client.connect(transport, {});
+        isConnected = true;
+
+        console.log(`SSE Client with server ${testServer} connected successfully`);
+
+        // Test basic operations
+        const tools = await client.listTools({});
+        console.log('Available tools (SSE with server):', JSON.stringify(tools, null, 2));
+
+        await client.close();
+      } catch (err) {
+        error = err;
+        console.error('SSE Client with server test failed:', err);
+
+        if (isConnected) {
+          try {
+            await client.close();
+          } catch (closeErr) {
+            console.error('Error closing client:', closeErr);
+          }
+        }
+      }
+
+      expect(error).toBeNull();
+      expect(isConnected).toBe(true);
+    }, 60000);
   });
 
   describe('StreamableHTTP Client Transport Tests', () => {
@@ -285,6 +343,64 @@ describe('Real Client Transport Integration Tests', () => {
       } catch (err) {
         error = err;
         console.error('HTTP Client with group test failed:', err);
+
+        if (isConnected) {
+          try {
+            await client.close();
+          } catch (closeErr) {
+            console.error('Error closing client:', closeErr);
+          }
+        }
+      }
+
+      expect(error).toBeNull();
+      expect(isConnected).toBe(true);
+    }, 60000);
+
+    it('should connect using real StreamableHTTPClientTransport with single server', async () => {
+      const testServer = 'test-server-1';
+      const mcpUrl = new URL(`${baseURL}/mcp/${testServer}`);
+      const options: any = {
+        requestInit: {
+          headers: {
+            Authorization: `Bearer test-auth-token-123`,
+          },
+        },
+      };
+
+      const transport = new StreamableHTTPClientTransport(mcpUrl, options);
+
+      const client = new Client(
+        {
+          name: 'real-http-server-test-client',
+          version: '1.0.0',
+        },
+        {
+          capabilities: {
+            tools: {},
+            resources: {},
+            prompts: {},
+          },
+        },
+      );
+
+      let isConnected = false;
+      let error: any = null;
+
+      try {
+        await client.connect(transport, {});
+        isConnected = true;
+
+        console.log(`HTTP Client with server ${testServer} connected successfully`);
+
+        // Test basic operations
+        const tools = await client.listTools({});
+        console.log('Available tools (HTTP with server):', JSON.stringify(tools, null, 2));
+
+        await client.close();
+      } catch (err) {
+        error = err;
+        console.error('HTTP Client with server test failed:', err);
 
         if (isConnected) {
           try {
