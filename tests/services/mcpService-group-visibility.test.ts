@@ -389,6 +389,18 @@ describe('getFilteredServerInfosForGroup — issue #914', () => {
     expect(filteredServerInfos).toEqual([]);
   });
 
+  it('does not crash when a group has no servers field', async () => {
+    // Older or corrupted configurations may lack the servers field entirely.
+    mockGroupDao.findByName.mockResolvedValue({
+      id: 'group-no-servers',
+      name: 'NoServersGroup',
+      owner: 'admin',
+    } as IGroup);
+
+    const { filteredServerInfos } = await getFilteredServerInfosForGroup('NoServersGroup');
+    expect(filteredServerInfos).toEqual([]);
+  });
+
   it('includes user-owned servers that are in the group', async () => {
     // Add ServerC to the group
     const groupWithAliceServer: IGroup = {

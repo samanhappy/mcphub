@@ -2803,7 +2803,7 @@ export const getFilteredServerInfosForGroup = async (
       foundGroup = await groupDao.findById(group);
     }
     if (foundGroup) {
-      serverConfigs = normalizeGroupServers(foundGroup.servers);
+      serverConfigs = normalizeGroupServers(foundGroup.servers || []);
     }
   }
 
