@@ -35,13 +35,14 @@ import {
 import { expandEnvVars, replaceEnvVars, getNameSeparator } from '../config/index.js';
 import config from '../config/index.js';
 import { getGroup } from './sseService.js';
-import { getServerConfigsInGroup, getServerConfigInGroup } from './groupService.js';
+import { getServerConfigInGroup, normalizeGroupServers } from './groupService.js';
 import { removeServerToolEmbeddings, saveToolsAsVectorEmbeddings } from './vectorSearchService.js';
 import { OpenAPIClient } from '../clients/openapi.js';
 import { RequestContextService } from './requestContextService.js';
 import { getDataService } from './services.js';
 import {
   getServerDao,
+  getGroupDao,
   getSystemConfigDao,
   getBuiltinPromptDao,
   getBuiltinResourceDao,
@@ -483,6 +484,11 @@ const normalizeResourceForCache = (resource: McpResource): Resource => {
 
 // Store all server information
 let serverInfos: ServerInfo[] = [];
+
+// Test-only helper to set serverInfos directly. Not for production use.
+export const setServerInfosForTest = (infos: ServerInfo[]): void => {
+  serverInfos = infos;
+};
 
 export const updateServerToolsCache = (
   serverInfo: ServerInfo,
@@ -2778,11 +2784,29 @@ type FilteredGroupServersResult = {
   serverConfigsByName: Map<string, IGroupServerConfig>;
 };
 
-const getFilteredServerInfosForGroup = async (
+export const getFilteredServerInfosForGroup = async (
   group: string | undefined,
   options?: { requireClient?: boolean },
 ): Promise<FilteredGroupServersResult> => {
-  const serverConfigs = group ? await getServerConfigsInGroup(group) : [];
+  // Resolve group server configs. We look up the group directly from the DAO
+  // rather than going through getServerConfigsInGroup (which calls getAllGroups
+  // and applies filterData on groups). Groups don't carry a visibility field,
+  // so admin-owned groups would be filtered out for non-admin users even though
+  // bearer-key auth already authorized access and individual servers inside the
+  // group may be public. Server-level filterData below still enforces per-server
+  // visibility. Fix for #914.
+  let serverConfigs: IGroupServerConfig[] = [];
+  if (group) {
+    const groupDao = getGroupDao();
+    let foundGroup = await groupDao.findByName(group);
+    if (!foundGroup) {
+      foundGroup = await groupDao.findById(group);
+    }
+    if (foundGroup) {
+      serverConfigs = normalizeGroupServers(foundGroup.servers);
+    }
+  }
+
   const serverNamesInGroup = new Set(serverConfigs.map((serverConfig) => serverConfig.name));
   const serverConfigsByName = new Map(
     serverConfigs.map((serverConfig) => [serverConfig.name, serverConfig] as const),

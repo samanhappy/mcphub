@@ -92,6 +92,10 @@ jest.mock('../../src/dao/index.js', () => ({
     findVisibleToUserPaginated: mockFindVisibleToUserPaginated,
     findById: jest.fn(),
   })),
+  getGroupDao: jest.fn(() => ({
+    findByName: jest.fn(async () => null),
+    findById: jest.fn(async () => null),
+  })),
   getSystemConfigDao: jest.fn(() => ({
     get: jest.fn(async () => ({})),
   })),

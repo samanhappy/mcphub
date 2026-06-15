@@ -106,6 +106,10 @@ jest.mock('../../src/dao/index.js', () => ({
     findAll: mockFindAll,
     findById: mockFindById,
   })),
+  getGroupDao: jest.fn(() => ({
+    findByName: jest.fn(async () => null),
+    findById: jest.fn(async () => null),
+  })),
   getSystemConfigDao: jest.fn(() => ({
     get: jest.fn(async () => ({})),
   })),
