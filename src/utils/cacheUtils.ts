@@ -120,7 +120,7 @@ export const clearAllCaches = async (): Promise<Record<string, CacheClearResult>
   // Run npm and uv clears in parallel — they operate on independent caches
   const [npmResult, uvResult] = await Promise.all([
     clearRunnerCacheAsync('npm', 'npm', ['cache', 'clean', '--force'], execOptions),
-    clearRunnerCacheAsync('uv', 'uv', ['cache', 'clean'], execOptions),
+    clearRunnerCacheAsync('uv', 'uv', ['cache', 'clean', '--force'], execOptions),
   ]);
 
   return { npm: npmResult, uv: uvResult };
