@@ -67,61 +67,61 @@ export const clearRunnerCache = async (command: string): Promise<void> => {
 
 /**
  * Check if a command binary exists on the system.
+ * Uses a 3s timeout to avoid hanging on slow PATH lookups.
  */
 const commandExists = async (cmd: string): Promise<boolean> => {
   const checkCmd = process.platform === 'win32' ? 'where' : 'which';
   try {
-    await execFileAsync(checkCmd, [cmd]);
+    await execFileAsync(checkCmd, [cmd], { timeout: 3000 });
     return true;
   } catch {
     return false;
   }
 };
 
+// 60s timeout per cache clear command. npm cache clean can be slow on large caches.
+const CACHE_CLEAR_TIMEOUT_MS = 60_000;
+
 /**
- * Clear all runner caches (npm + uv) using fixed commands.
+ * Clear a single runner's cache. Returns the result without throwing.
+ */
+const clearRunnerCacheAsync = async (
+  runner: string,
+  cmd: string,
+  args: string[],
+  execOptions: Record<string, unknown>,
+): Promise<CacheClearResult> => {
+  if (!(await commandExists(cmd))) {
+    return { status: 'skipped', message: `${cmd} not found` };
+  }
+  try {
+    await execFileAsync(cmd, args, { ...execOptions, timeout: CACHE_CLEAR_TIMEOUT_MS });
+    console.log(`Cleared ${runner} cache`);
+    return { status: 'cleared' };
+  } catch (error) {
+    console.error(`Failed to clear ${runner} cache`, error);
+    return {
+      status: 'error',
+      message: error instanceof Error ? error.message : String(error),
+    };
+  }
+};
+
+/**
+ * Clear all runner caches (npm + uv) in parallel using fixed commands.
  * Uses execFile with hardcoded arguments — no shell interpolation, no injection risk.
  * On Windows, shell: true is required because npm and uv are .cmd batch files.
- * Skips runners that are not installed on the system.
+ * Each command has a 60s timeout. Skips runners that are not installed.
  */
 export const clearAllCaches = async (): Promise<Record<string, CacheClearResult>> => {
-  const results: Record<string, CacheClearResult> = {};
   // Windows npm/uv are .cmd wrappers and require shell: true to execute via execFile
   const execOptions = process.platform === 'win32' ? { shell: true } : {};
 
-  // npm cache clean --force
-  if (await commandExists('npm')) {
-    try {
-      await execFileAsync('npm', ['cache', 'clean', '--force'], execOptions);
-      results.npm = { status: 'cleared' };
-      console.log('Cleared npm cache');
-    } catch (error) {
-      results.npm = {
-        status: 'error',
-        message: error instanceof Error ? error.message : String(error),
-      };
-      console.error('Failed to clear npm cache', error);
-    }
-  } else {
-    results.npm = { status: 'skipped', message: 'npm not found' };
-  }
+  // Run npm and uv clears in parallel — they operate on independent caches
+  const [npmResult, uvResult] = await Promise.all([
+    clearRunnerCacheAsync('npm', 'npm', ['cache', 'clean', '--force'], execOptions),
+    clearRunnerCacheAsync('uv', 'uv', ['cache', 'clean'], execOptions),
+  ]);
 
-  // uv cache clean
-  if (await commandExists('uv')) {
-    try {
-      await execFileAsync('uv', ['cache', 'clean'], execOptions);
-      results.uv = { status: 'cleared' };
-      console.log('Cleared uv cache');
-    } catch (error) {
-      results.uv = {
-        status: 'error',
-        message: error instanceof Error ? error.message : String(error),
-      };
-      console.error('Failed to clear uv cache', error);
-    }
-  } else {
-    results.uv = { status: 'skipped', message: 'uv not found' };
-  }
-
-  return results;
+  return { npm: npmResult, uv: uvResult };
 };
