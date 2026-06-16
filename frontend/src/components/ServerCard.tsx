@@ -13,6 +13,7 @@ import {
   X,
   Edit3,
   Trash2,
+  DownloadCloud,
   type LucideIcon,
 } from 'lucide-react';
 import { Server, ServerCost } from '@/types';
@@ -22,6 +23,7 @@ import ToolCard from '@/components/ui/ToolCard';
 import PromptCard from '@/components/ui/PromptCard';
 import ResourceCard from '@/components/ui/ResourceCard';
 import DeleteDialog from '@/components/ui/DeleteDialog';
+import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import { Switch } from '@/components/ui/ToggleGroup';
 import { useToast } from '@/contexts/ToastContext';
 import { useSettingsData } from '@/hooks/useSettingsData';
@@ -42,6 +44,7 @@ interface ServerCardProps {
   onVisibilityChange?: (server: Server, visibility: 'private' | 'group' | 'public') => Promise<boolean>;
   onRefresh?: () => void;
   onReload?: (server: Server) => Promise<boolean>;
+  onReinstall?: (server: Server) => Promise<boolean>;
 }
 
 type CapabilityTabKey = 'tools' | 'prompts' | 'resources';
@@ -138,6 +141,7 @@ const ServerCard = ({
   onVisibilityChange,
   onRefresh,
   onReload,
+  onReinstall,
 }: ServerCardProps) => {
   const { t } = useTranslation();
   const { showToast } = useToast();
@@ -150,9 +154,11 @@ const ServerCard = ({
     null,
   );
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showReinstallDialog, setShowReinstallDialog] = useState(false);
   const [isToggling, setIsToggling] = useState(false);
   const [isUpdatingVisibility, setIsUpdatingVisibility] = useState(false);
   const [isReloading, setIsReloading] = useState(false);
+  const [isReinstalling, setIsReinstalling] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [showErrorPopover, setShowErrorPopover] = useState(false);
   const [copiedError, setCopiedError] = useState(false);
@@ -178,6 +184,9 @@ const ServerCard = ({
   const isMcpApp = serverExposesMcpApp(server);
   const enabled = server.enabled !== false;
   const canManage = canManageServer(server, auth.user);
+  // Reinstall is only available for stdio servers using npx or uvx
+  const supportsReinstall =
+    server.config?.command === 'npx' || server.config?.command === 'uvx';
 
   const handleToggle = async (nextEnabled: boolean) => {
     if (!canManage || isToggling || !onToggle) return;
@@ -203,6 +212,25 @@ const ServerCard = ({
       }
     } finally {
       setIsReloading(false);
+    }
+  };
+
+  const handleReinstall = async () => {
+    setShowMenu(false);
+    if (!canManage || isReinstalling || !onReinstall) return;
+    setIsReinstalling(true);
+    try {
+      const success = await onReinstall(server);
+      if (success) {
+        showToast(t('server.reinstallSuccess') || 'Server reinstall initiated', 'success');
+      } else {
+        showToast(
+          t('server.reinstallError', { serverName: server.name }) || 'Failed to reinstall',
+          'error',
+        );
+      }
+    } finally {
+      setIsReinstalling(false);
     }
   };
 
@@ -722,6 +750,21 @@ const ServerCard = ({
                     <RefreshCw size={13} /> {t('server.reload')}
                   </button>
                 )}
+                {onReinstall && supportsReinstall && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowMenu(false);
+                      if (!canManage || isReinstalling || !enabled) return;
+                      setShowReinstallDialog(true);
+                    }}
+                    disabled={isReinstalling || isToggling || !enabled}
+                    className="flex items-center gap-2 w-full px-2.5 py-1.5 text-[13px] rounded-md hover:bg-[var(--hub-surface-hover)] text-left disabled:opacity-50 disabled:cursor-not-allowed"
+                    style={{ color: 'var(--hub-ink)' }}
+                  >
+                    <DownloadCloud size={13} /> {t('server.reinstall')}
+                  </button>
+                )}
                 <div style={{ height: 1, background: 'var(--hub-line-2)', margin: '4px 0' }} />
                 <button
                   onClick={(e) => {
@@ -902,6 +945,19 @@ const ServerCard = ({
           setShowDeleteDialog(false);
         }}
         serverName={server.name}
+      />
+
+      <ConfirmDialog
+        isOpen={showReinstallDialog}
+        onClose={() => setShowReinstallDialog(false)}
+        onConfirm={() => {
+          setShowReinstallDialog(false);
+          handleReinstall();
+        }}
+        title={t('server.reinstall')}
+        message={t('server.reinstallConfirm') || 'This will clear the package cache and re-download dependencies. The server will restart.'}
+        confirmText={t('server.reinstall')}
+        variant="warning"
       />
     </>
   );

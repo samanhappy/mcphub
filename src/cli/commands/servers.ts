@@ -34,6 +34,8 @@ export async function run(args: string[], globals: GlobalFlags, deps: ServersDep
       return toggle(client, args);
     case 'reload':
       return reload(client, args);
+    case 'reinstall':
+      return reinstall(client, args);
     default:
       throw new CliUsageError(`Unknown servers subcommand: ${sub}`);
   }
@@ -143,6 +145,17 @@ async function reload(client: ApiClient, args: string[]): Promise<void> {
   if (!name) throw new CliUsageError('Usage: mcphub servers reload <name>');
   await client.post(`/api/servers/${encodeURIComponent(name)}/reload`, {});
   printLine(green(`Reloaded server "${name}".`));
+}
+
+async function reinstall(client: ApiClient, args: string[]): Promise<void> {
+  const name = args[0];
+  if (!name) throw new CliUsageError('Usage: mcphub servers reinstall <name>');
+  const res = await client.post<ApiResponse<unknown>>(`/api/servers/${encodeURIComponent(name)}/reinstall`, {});
+  if (res.message) {
+    printLine(green(res.message));
+  } else {
+    printLine(green(`Reinstall initiated for server "${name}".`));
+  }
 }
 
 // Helper: pull every occurrence of `--flag <value>` out of argv. extractFlags

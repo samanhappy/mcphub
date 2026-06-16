@@ -13,8 +13,9 @@ import { EndpointCopy } from '@/components/ui/EndpointCopy';
 import type { BearerKey, User } from '@/types';
 import { useServerContext } from '@/contexts/ServerContext';
 import { useGroupData } from '@/hooks/useGroupData';
+import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import { useAuth } from '@/contexts/AuthContext';
-import { apiGet } from '@/utils/fetchInterceptor';
+import { apiGet, apiPost } from '@/utils/fetchInterceptor';
 import {
   filterBearerKeysByScopeFilter,
   getBearerKeyScopeFilterOptions,
@@ -502,6 +503,8 @@ const SettingsPage: React.FC = () => {
   const [createdBearerToken, setCreatedBearerToken] = useState('');
   const [users, setUsers] = useState<User[]>([]);
   const [bearerKeyScopeFilter, setBearerKeyScopeFilter] = useState<BearerKeyScopeFilterValue>('all');
+  const [isClearingCache, setIsClearingCache] = useState(false);
+  const [showClearCacheDialog, setShowClearCacheDialog] = useState(false);
 
   const {
     routingConfig,
@@ -742,6 +745,43 @@ const SettingsPage: React.FC = () => {
 
   const saveInstallConfig = async (key: 'pythonIndexUrl' | 'npmRegistry' | 'baseUrl') => {
     await updateInstallConfig(key, installConfig[key]);
+  };
+
+  const handleClearCache = async () => {
+    setIsClearingCache(true);
+    try {
+      const result = await apiPost<{
+        success: boolean;
+        message?: string;
+        results?: Record<string, { status: string; message?: string }>;
+      }>('/cache/clear', {});
+
+      if (!result || !result.success) {
+        showToast(result?.message || t('settings.clearCacheError') || 'Failed to clear cache', 'error');
+        return;
+      }
+
+      // Build a summary message from per-runner results
+      const results = result.results || {};
+      const parts: string[] = [];
+      for (const [runner, info] of Object.entries(results)) {
+        if (info.status === 'cleared') {
+          parts.push(`${runner}: ✓`);
+        } else if (info.status === 'skipped') {
+          parts.push(`${runner}: ${t('settings.clearCacheSkipped') || 'skipped'}`);
+        } else {
+          parts.push(`${runner}: ✗ ${info.message || ''}`);
+        }
+      }
+
+      const summary = parts.length > 0 ? parts.join(', ') : t('settings.clearCacheSuccess');
+      showToast(summary, 'success');
+    } catch (err) {
+      console.error('Failed to clear cache:', err);
+      showToast(t('settings.clearCacheError') || 'Failed to clear cache', 'error');
+    } finally {
+      setIsClearingCache(false);
+    }
   };
 
   const handleSmartRoutingConfigChange = (
@@ -3458,6 +3498,22 @@ const SettingsPage: React.FC = () => {
                   </button>
                 </div>
               </div>
+
+              {/* Clear runner caches */}
+              <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-md">
+                <div className="mb-2">
+                  <h3 className="font-medium text-gray-700">{t('settings.clearCache')}</h3>
+                  <p className="text-sm text-gray-500">{t('settings.clearCacheDescription')}</p>
+                </div>
+                <button
+                  onClick={() => setShowClearCacheDialog(true)}
+                  disabled={loading || isClearingCache}
+                  className="hub-btn primary flex items-center gap-2"
+                >
+                  <RefreshCw size={14} className={isClearingCache ? 'animate-spin' : ''} />
+                  {isClearingCache ? t('settings.clearingCache') || 'Clearing...' : t('settings.clearCache')}
+                </button>
+              </div>
             </div>
           )}
         </div>
@@ -3539,6 +3595,19 @@ const SettingsPage: React.FC = () => {
           )}
         </div>
       </PermissionChecker>
+
+      <ConfirmDialog
+        isOpen={showClearCacheDialog}
+        onClose={() => setShowClearCacheDialog(false)}
+        onConfirm={() => {
+          setShowClearCacheDialog(false);
+          handleClearCache();
+        }}
+        title={t('settings.clearCache')}
+        message={t('settings.clearCacheConfirm') || 'This will clear the npm and uv package caches. Servers may need to re-download packages on next start.'}
+        confirmText={t('settings.clearCache')}
+        variant="warning"
+      />
     </div>
   );
 };

@@ -23,6 +23,7 @@ const SUBCOMMAND_LOADERS: Record<string, () => Promise<CommandModule>> = {
   export: () => import('./commands/export.js'),
   discover: () => import('./commands/discover.js'),
   install: () => import('./commands/install.js'),
+  cache: () => import('./commands/cache.js'),
 };
 
 export async function runCli(argv: string[]): Promise<void> {

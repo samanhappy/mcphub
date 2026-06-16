@@ -10,12 +10,13 @@ Commands:
   login                            interactively log in to a mcphub instance
   logout                           clear the cached token for the active profile
   config                           manage local profiles and credentials
-  servers                          list/get/add/remove/toggle/reload MCP servers
+  servers                          list/get/add/remove/toggle/reload/reinstall MCP servers
   groups                           manage server groups
   keys                             manage bearer keys
   tools                            list MCP tools and inspect their input schema
   call                             call an MCP tool via /mcp/$smart or /mcp/<server|group>
   export                           export the running hub's mcp_settings.json
+  cache                            clear npm/uv package caches (admin only)
   discover                         browse a remote hub's public marketplace
   install                          install a server from a remote marketplace
   help [command]                   show help for a command
@@ -63,7 +64,8 @@ Subcommands:
   add <name> --type stdio --command <cmd> [--arg <a> ...] [--env K=V ...]
   remove <name>                    delete a server
   toggle <name> [--on|--off]       enable/disable a server
-  reload <name>                    reconnect a server`,
+  reload <name>                    reconnect a server
+  reinstall <name>                 clear package cache and reconnect (npx/uvx only)`,
 
   groups: `mcphub groups <subcommand>
 
@@ -137,6 +139,14 @@ Install a server from a remote hub's marketplace.
 --to file     merge mcpServers into a Claude Desktop / OpenClaw-style JSON
 --to stdout   print the mcpServers snippet (same as --dry-run)
 `,
+
+  cache: `mcphub cache [clear]
+
+Clear npm and uv package caches on the hub. Requires admin privileges.
+
+Subcommands:
+  (default)                        clear all runner caches
+  clear                            clear all runner caches`,
 };
 
 export function printHelp(command?: string): void {

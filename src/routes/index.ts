@@ -11,6 +11,8 @@ import {
   deleteServer,
   toggleServer,
   reloadServer,
+  reinstallServerHandler,
+  clearCache,
   toggleTool,
   updateToolDescription,
   resetToolDescription,
@@ -231,6 +233,7 @@ export const initRoutes = async (app: express.Application): Promise<void> => {
   authenticatedRouter.delete('/servers/:name', deleteServer);
   authenticatedRouter.post('/servers/:name/toggle', toggleServer);
   authenticatedRouter.post('/servers/:name/reload', reloadServer);
+  authenticatedRouter.post('/servers/:name/reinstall', reinstallServerHandler);
   authenticatedRouter.post('/servers/:serverName/tools/:toolName/toggle', toggleTool);
   authenticatedRouter.put(
     '/servers/:serverName/tools/:toolName/description',
@@ -259,6 +262,7 @@ export const initRoutes = async (app: express.Application): Promise<void> => {
     resetResourceDescription,
   );
   authenticatedRouter.put('/system-config', updateSystemConfig);
+  authenticatedRouter.post('/cache/clear', clearCache);
 
   // Context Footprint cost routes
   authenticatedRouter.get('/cost/servers', getServerCostsHandler);

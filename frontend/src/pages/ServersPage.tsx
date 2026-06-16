@@ -33,6 +33,7 @@ const ServersPage: React.FC = () => {
     handleServerToggle,
     handleServerVisibilityChange,
     handleServerReload,
+    handleServerReinstall,
     triggerRefresh,
   } = useServerData({ refreshOnMount: true });
 
@@ -213,6 +214,7 @@ const ServersPage: React.FC = () => {
                 onVisibilityChange={handleServerVisibilityChange}
                 onRefresh={triggerRefresh}
                 onReload={handleServerReload}
+                onReinstall={handleServerReinstall}
               />
             ))}
           </div>

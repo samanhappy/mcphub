@@ -21,8 +21,10 @@ import {
   syncToolEmbedding,
   toggleServerStatus,
   reconnectServer,
+  reinstallServer,
   updateServerInfoVisibility,
 } from '../services/mcpService.js';
+import { clearAllCaches } from '../utils/cacheUtils.js';
 import { syncAllServerToolsEmbeddings } from '../services/vectorSearchService.js';
 import { createSafeJSON } from '../utils/serialization.js';
 import { cloneDefaultOAuthServerConfig } from '../constants/oauthServerDefaults.js';
@@ -1055,6 +1057,72 @@ export const reloadServer = async (req: Request, res: Response): Promise<void> =
     res.status(500).json({
       success: false,
       message: 'Failed to reload server',
+    });
+  }
+};
+
+// Reinstall server: clear package cache and reconnect
+export const reinstallServerHandler = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { name } = req.params;
+    if (!name) {
+      res.status(400).json({
+        success: false,
+        message: 'Server name is required',
+      });
+      return;
+    }
+
+    const existingServer = await loadAuthorizedServer(req, res, name);
+    if (!existingServer) {
+      return;
+    }
+
+    await reinstallServer(existingServer.name);
+
+    res.json({
+      success: true,
+      message: `Server ${name} reinstall initiated`,
+    });
+  } catch (error) {
+    console.error('Failed to reinstall server:', error);
+    const message = error instanceof Error ? error.message : 'Failed to reinstall server';
+    // Validation errors (unsupported command, disabled server) → 400
+    if (
+      message.includes('does not support cache refresh') ||
+      message.includes('disabled server')
+    ) {
+      res.status(400).json({ success: false, message });
+    } else {
+      res.status(500).json({ success: false, message: 'Failed to reinstall server' });
+    }
+  }
+};
+
+// Clear all runner caches (npm + uv). Admin-only.
+export const clearCache = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const user = (req as any).user;
+    if (!user?.isAdmin) {
+      res.status(403).json({
+        success: false,
+        message: 'Only admins can clear runner caches',
+      });
+      return;
+    }
+
+    const results = await clearAllCaches();
+
+    res.json({
+      success: true,
+      message: 'Cache clear completed',
+      results,
+    });
+  } catch (error) {
+    console.error('Failed to clear cache:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to clear cache',
     });
   }
 };
