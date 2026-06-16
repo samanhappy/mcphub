@@ -81,15 +81,18 @@ const commandExists = async (cmd: string): Promise<boolean> => {
 /**
  * Clear all runner caches (npm + uv) using fixed commands.
  * Uses execFile with hardcoded arguments — no shell interpolation, no injection risk.
+ * On Windows, shell: true is required because npm and uv are .cmd batch files.
  * Skips runners that are not installed on the system.
  */
 export const clearAllCaches = async (): Promise<Record<string, CacheClearResult>> => {
   const results: Record<string, CacheClearResult> = {};
+  // Windows npm/uv are .cmd wrappers and require shell: true to execute via execFile
+  const execOptions = process.platform === 'win32' ? { shell: true } : {};
 
   // npm cache clean --force
   if (await commandExists('npm')) {
     try {
-      await execFileAsync('npm', ['cache', 'clean', '--force']);
+      await execFileAsync('npm', ['cache', 'clean', '--force'], execOptions);
       results.npm = { status: 'cleared' };
       console.log('Cleared npm cache');
     } catch (error) {
@@ -106,7 +109,7 @@ export const clearAllCaches = async (): Promise<Record<string, CacheClearResult>
   // uv cache clean
   if (await commandExists('uv')) {
     try {
-      await execFileAsync('uv', ['cache', 'clean']);
+      await execFileAsync('uv', ['cache', 'clean'], execOptions);
       results.uv = { status: 'cleared' };
       console.log('Cleared uv cache');
     } catch (error) {

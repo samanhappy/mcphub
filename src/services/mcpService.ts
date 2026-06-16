@@ -1639,10 +1639,14 @@ export const getServersInfo = async (
             }
           : undefined,
         config:
-          resolvedType || serverConfig?.description
+          resolvedType || serverConfig?.description || serverConfig?.command
             ? {
                 ...(resolvedType ? { type: resolvedType } : {}),
                 ...(serverConfig?.description ? { description: serverConfig.description } : {}),
+                // Expose command so the frontend can determine if reinstall is
+                // supported (npx/uvx only). This is not a secret — it's the
+                // runner binary name (e.g. "npx", "uvx").
+                ...(serverConfig?.command ? { command: serverConfig.command } : {}),
               }
             : undefined,
       };
@@ -1737,14 +1741,20 @@ export const reinstallServer = async (serverName: string): Promise<void> => {
   // Mark server as pending reinstall (consumed by createTransportFromConfig for uvx)
   pendingReinstalls.add(serverName);
 
-  // For npx, clear cache directory synchronously before reconnect.
-  // For uvx, this is a no-op — refresh is handled via --refresh flag injection.
-  await clearRunnerCache(command);
+  try {
+    // For npx, clear cache directory synchronously before reconnect.
+    // For uvx, this is a no-op — refresh is handled via --refresh flag injection.
+    await clearRunnerCache(command);
 
-  // Close and reconnect (will pick up pendingReinstalls flag for uvx)
-  await reconnectServer(serverName);
+    // Close and reconnect (will pick up pendingReinstalls flag for uvx)
+    await reconnectServer(serverName);
 
-  console.log(`Successfully initiated reinstall for server: ${serverName}`);
+    console.log(`Successfully initiated reinstall for server: ${serverName}`);
+  } catch (error) {
+    // Clean up pendingReinstalls on failure to avoid stale entries
+    pendingReinstalls.delete(serverName);
+    throw error;
+  }
 };
 
 // Filter tools by server configuration
