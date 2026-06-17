@@ -254,6 +254,38 @@ describe('auth middleware', () => {
     });
   });
 
+  it('returns 500 when validateBearerAuth throws a database error', async () => {
+    findEnabledMock.mockRejectedValueOnce(new Error('Database connection failed'));
+
+    const app = express();
+    app.get(
+      '/api/protected',
+      authenticatedRouteRateLimiter,
+      (req: express.Request, _res: express.Response, next: express.NextFunction) => {
+        (req as any).t = (value: string) => value;
+        next();
+      },
+      auth,
+      (_req: express.Request, res: express.Response) => {
+        res.status(200).json({ success: true });
+      },
+      // Error handler to catch next(error) from auth
+      (err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+        res.status(500).json({ success: false, message: 'Internal server error' });
+      },
+    );
+
+    const response = await request(app)
+      .get('/api/protected')
+      .set('Authorization', 'Bearer test-key');
+
+    expect(response.status).toBe(500);
+    expect(response.body).toEqual({
+      success: false,
+      message: 'Internal server error',
+    });
+  });
+
   describe('system bearer auth context', () => {
     it('attaches an admin user context for valid system all-access bearer key', async () => {
       findEnabledMock.mockResolvedValue([

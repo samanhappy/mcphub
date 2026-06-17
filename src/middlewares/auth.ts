@@ -114,7 +114,14 @@ export const auth = async (req: Request, res: Response, next: NextFunction): Pro
   };
 
   // Check if bearer auth via configured keys can validate this request
-  const matchingBearerKey = await validateBearerAuth(req, systemConfig);
+  let matchingBearerKey: BearerKey | null = null;
+  try {
+    matchingBearerKey = await validateBearerAuth(req, systemConfig);
+  } catch (error) {
+    next(error as Error);
+    return;
+  }
+
   if (matchingBearerKey) {
     (req as any).user = {
       username: matchingBearerKey.owner || 'system',
