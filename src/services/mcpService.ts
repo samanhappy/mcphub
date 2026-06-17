@@ -1211,14 +1211,14 @@ export const initializeClientsFromSettings = async (
       //   status. Reloading one server must not reconnect unrelated servers
       //   (e.g. failed/disconnected ones), which would also leak their
       //   previous stdio child processes. See #921.
-      // - it is already connected and we are not specifically targeting it
-      //   for reconnect (serverName is undefined, or names a different server).
+      // - a general/full initialization (no serverName) — only preserve this
+      //   server's state if it is already connected.
       const existingServer = existingServerInfos.find((s) => s.name === name);
-      const isTargetedReload = Boolean(serverName) && serverName !== name;
+      const isDifferentServer = Boolean(serverName) && serverName !== name;
       if (
         existingServer &&
-        (isTargetedReload ||
-          (existingServer.status === 'connected' && serverName !== name))
+        (isDifferentServer ||
+          (!serverName && existingServer.status === 'connected'))
       ) {
         nextServerInfos.push({
           ...existingServer,
