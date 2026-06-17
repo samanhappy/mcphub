@@ -1,6 +1,7 @@
 import express from 'express';
 import request from 'supertest';
 import { jest } from '@jest/globals';
+import jwt from 'jsonwebtoken';
 import { authenticatedRouteRateLimiter } from '../utils/rateLimit.js';
 
 const currentSystemConfig = {
@@ -441,7 +442,6 @@ describe('auth middleware', () => {
         },
       );
 
-      const jwt = require('jsonwebtoken');
       const token = jwt.sign({ user: { username: 'jwt-user', isAdmin: false } }, 'test-secret');
 
       const response = await request(app)
