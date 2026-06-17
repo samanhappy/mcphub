@@ -692,6 +692,162 @@ describe('serverController - authorization hardening', () => {
   });
 });
 
+describe('serverController - system bearer auth context', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('creates server with stable owner from system bearer user context', async () => {
+    mockAddServer.mockResolvedValue({ success: true });
+
+    const json = jest.fn();
+    const status = jest.fn().mockReturnThis();
+    const req = {
+      body: {
+        name: 'openapi-server',
+        config: {
+          type: 'openapi',
+          openapi: {
+            url: 'https://api.example.com/openapi.json',
+            version: '3.1.0',
+          },
+        },
+      },
+      user: {
+        username: 'system-owner',
+        isAdmin: true,
+      },
+    } as unknown as Request;
+    const res = { json, status } as unknown as Response;
+
+    await createServer(req, res);
+
+    expect(mockAddServer).toHaveBeenCalledWith(
+      'openapi-server',
+      expect.objectContaining({
+        owner: 'system-owner',
+        type: 'openapi',
+      }),
+    );
+    expect(json).toHaveBeenCalledWith({
+      success: true,
+      message: 'Server added successfully',
+    });
+  });
+
+  it('allows reading an existing server with system bearer admin context', async () => {
+    mockServerDao.findById.mockResolvedValue({
+      name: 'existing-server',
+      type: 'openapi',
+      url: 'https://api.example.com/openapi.json',
+      owner: 'system-owner',
+      visibility: 'private',
+    });
+    mockGetServersInfo.mockResolvedValue([
+      { name: 'existing-server', status: 'connected', tools: [] },
+    ]);
+
+    const json = jest.fn();
+    const status = jest.fn().mockReturnThis();
+    const req = {
+      params: { name: 'existing-server' },
+      user: {
+        username: 'system-owner',
+        isAdmin: true,
+      },
+    } as unknown as Request;
+    const res = { json, status } as unknown as Response;
+
+    await getServerConfig(req, res);
+
+    expect(mockServerDao.findById).toHaveBeenCalledWith('existing-server');
+    expect(json).toHaveBeenCalledWith({
+      success: true,
+      data: {
+        name: 'existing-server',
+        status: 'connected',
+        tools: [],
+        config: expect.objectContaining({
+          type: 'openapi',
+          url: 'https://api.example.com/openapi.json',
+        }),
+      },
+    });
+  });
+
+  it('allows updating an existing server with system bearer admin context', async () => {
+    mockServerDao.findById.mockResolvedValue({
+      name: 'existing-server',
+      type: 'openapi',
+      url: 'https://api.example.com/openapi.json',
+      owner: 'system-owner',
+      visibility: 'private',
+    });
+    mockAddOrUpdateServer.mockResolvedValue({ success: true });
+
+    const json = jest.fn();
+    const status = jest.fn().mockReturnThis();
+    const req = {
+      params: { name: 'existing-server' },
+      body: {
+        config: {
+          type: 'openapi',
+          openapi: {
+            url: 'https://api.example.com/v2/openapi.json',
+            version: '3.1.0',
+          },
+          visibility: 'public',
+        },
+      },
+      user: {
+        username: 'system-owner',
+        isAdmin: true,
+      },
+    } as unknown as Request;
+    const res = { json, status } as unknown as Response;
+
+    await updateServer(req, res);
+
+    expect(mockAddOrUpdateServer).toHaveBeenCalledWith(
+      'existing-server',
+      expect.objectContaining({
+        visibility: 'public',
+      }),
+      true,
+    );
+    expect(json).toHaveBeenCalledWith({
+      success: true,
+      message: 'Server updated successfully',
+    });
+  });
+
+  it('denies non-admin user from reading another users server', async () => {
+    mockServerDao.findById.mockResolvedValue({
+      name: 'shared-server',
+      owner: 'bob',
+    });
+
+    const json = jest.fn();
+    const status = jest.fn().mockReturnThis();
+    const req = {
+      params: { name: 'shared-server' },
+      user: {
+        username: 'alice',
+        isAdmin: false,
+      },
+    } as unknown as Request;
+    const res = { json, status } as unknown as Response;
+
+    await getServerConfig(req, res);
+
+    expect(status).toHaveBeenCalledWith(403);
+    expect(json).toHaveBeenCalledWith({
+      success: false,
+      message: 'Forbidden',
+    });
+  });
+});
+
 describe('serverController - getAllServers', () => {
   beforeEach(() => {
     jest.clearAllMocks();

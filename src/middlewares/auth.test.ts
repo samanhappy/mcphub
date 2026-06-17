@@ -253,4 +253,174 @@ describe('auth middleware', () => {
       },
     });
   });
+
+  describe('system bearer auth context', () => {
+    it('attaches an admin user context for valid system all-access bearer key', async () => {
+      findEnabledMock.mockResolvedValue([
+        {
+          id: 'key-sys-1',
+          name: 'system-client',
+          token: 'system-key',
+          enabled: true,
+          kind: 'system',
+          accessType: 'all',
+          owner: 'system-owner',
+        },
+      ]);
+
+      const app = express();
+      app.get(
+        '/api/protected',
+        authenticatedRouteRateLimiter,
+        (req, _res, next) => {
+          (req as any).t = (value: string) => value;
+          next();
+        },
+        auth,
+        (req, res) => {
+          res.status(200).json({
+            success: true,
+            user: (req as any).user,
+            bearerKey: (req as any).bearerKey,
+          });
+        },
+      );
+
+      const response = await request(app)
+        .get('/api/protected')
+        .set('Authorization', 'Bearer system-key');
+
+      expect(response.status).toBe(200);
+      expect(response.body.user).toEqual({
+        username: 'system-owner',
+        isAdmin: true,
+      });
+      expect(response.body.bearerKey).toEqual(
+        expect.objectContaining({
+          id: 'key-sys-1',
+          name: 'system-client',
+          kind: 'system',
+          accessType: 'all',
+          owner: 'system-owner',
+        }),
+      );
+    });
+
+    it('uses fallback username "system" when system bearer key has no owner', async () => {
+      findEnabledMock.mockResolvedValue([
+        {
+          id: 'key-sys-2',
+          name: 'no-owner-system',
+          token: 'no-owner-key',
+          enabled: true,
+          kind: 'system',
+          accessType: 'all',
+          owner: undefined,
+        },
+      ]);
+
+      const app = express();
+      app.get(
+        '/api/protected',
+        authenticatedRouteRateLimiter,
+        (req, _res, next) => {
+          (req as any).t = (value: string) => value;
+          next();
+        },
+        auth,
+        (req, res) => {
+          res.status(200).json({
+            success: true,
+            user: (req as any).user,
+          });
+        },
+      );
+
+      const response = await request(app)
+        .get('/api/protected')
+        .set('Authorization', 'Bearer no-owner-key');
+
+      expect(response.status).toBe(200);
+      expect(response.body.user).toEqual({
+        username: 'system',
+        isAdmin: true,
+      });
+    });
+
+    it('denies user-kind bearer keys for dashboard API routes', async () => {
+      findEnabledMock.mockResolvedValue([
+        {
+          id: 'key-user-1',
+          name: 'user-client',
+          token: 'user-key',
+          enabled: true,
+          kind: 'user',
+          accessType: 'all',
+          owner: 'alice',
+        },
+      ]);
+
+      const app = createApp();
+      const response = await request(app)
+        .get('/api/protected')
+        .set('Authorization', 'Bearer user-key');
+
+      expect(response.status).toBe(401);
+      expect(response.body).toEqual({ success: false, message: 'No token, authorization denied' });
+    });
+
+    it('denies system bearer keys with accessType other than all', async () => {
+      findEnabledMock.mockResolvedValue([
+        {
+          id: 'key-scoped-1',
+          name: 'groups-scoped',
+          token: 'groups-key',
+          enabled: true,
+          kind: 'system',
+          accessType: 'groups',
+          allowedGroups: ['engineering'],
+        },
+      ]);
+
+      const app = createApp();
+      const response = await request(app)
+        .get('/api/protected')
+        .set('Authorization', 'Bearer groups-key');
+
+      expect(response.status).toBe(401);
+      expect(response.body).toEqual({ success: false, message: 'No token, authorization denied' });
+    });
+
+    it('still authenticates with JWT x-auth-token', async () => {
+      const app = express();
+      app.get(
+        '/api/protected',
+        authenticatedRouteRateLimiter,
+        (req, _res, next) => {
+          (req as any).t = (value: string) => value;
+          next();
+        },
+        auth,
+        (req, res) => {
+          res.status(200).json({
+            success: true,
+            user: (req as any).user,
+          });
+        },
+      );
+
+      const jwt = require('jsonwebtoken');
+      const token = jwt.sign({ user: { username: 'jwt-user', isAdmin: false } }, 'test-secret');
+
+      const response = await request(app)
+        .get('/api/protected')
+        .set('x-auth-token', token);
+
+      expect(response.status).toBe(200);
+      expect(response.body.user).toEqual({
+        username: 'jwt-user',
+        isAdmin: false,
+      });
+    });
+  });
 });

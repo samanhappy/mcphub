@@ -24,10 +24,10 @@ const resolveBetterAuthUserSafe = async (req: Request) => {
   return module.resolveBetterAuthUser(req);
 };
 
-const validateBearerAuth = async (req: Request, systemConfig?: SystemConfig | null): Promise<boolean> => {
+const validateBearerAuth = async (req: Request, systemConfig?: SystemConfig | null): Promise<BearerKey | null> => {
   const enableBearerAuth = systemConfig?.routing?.enableBearerAuth ?? true;
   if (!enableBearerAuth) {
-    return false;
+    return null;
   }
 
   const bearerKeyDao = getBearerKeyDao();
@@ -35,18 +35,18 @@ const validateBearerAuth = async (req: Request, systemConfig?: SystemConfig | nu
 
   // If there are no enabled keys, bearer auth via static keys is disabled
   if (enabledKeys.length === 0) {
-    return false;
+    return null;
   }
 
   const token = getBearerTokenFromHeaders(req.headers, systemConfig);
   if (!token) {
-    return false;
+    return null;
   }
 
   const matchingKey: BearerKey | undefined = enabledKeys.find((key) => safeCompare(key.token, token));
   if (!matchingKey) {
     console.warn('Bearer auth failed: token did not match any configured bearer key');
-    return false;
+    return null;
   }
 
   // Dashboard/API bearer authentication grants access to non-MCP management routes.
@@ -56,13 +56,13 @@ const validateBearerAuth = async (req: Request, systemConfig?: SystemConfig | nu
     console.warn(
       `Bearer auth denied for dashboard API: key id=${matchingKey.id}, name=${matchingKey.name} is not a system-level all-access key`,
     );
-    return false;
+    return null;
   }
 
   console.log(
     `Bearer auth succeeded with key id=${matchingKey.id}, name=${matchingKey.name}, accessType=${matchingKey.accessType}`,
   );
-  return true;
+  return matchingKey;
 };
 
 const readonlyAllowPaths = ['/tools/'];
@@ -114,7 +114,13 @@ export const auth = async (req: Request, res: Response, next: NextFunction): Pro
   };
 
   // Check if bearer auth via configured keys can validate this request
-  if (await validateBearerAuth(req, systemConfig)) {
+  const matchingBearerKey = await validateBearerAuth(req, systemConfig);
+  if (matchingBearerKey) {
+    (req as any).user = {
+      username: matchingBearerKey.owner || 'system',
+      isAdmin: true,
+    };
+    (req as any).bearerKey = matchingBearerKey;
     next();
     return;
   }
