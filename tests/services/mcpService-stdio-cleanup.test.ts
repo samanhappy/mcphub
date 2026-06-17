@@ -181,10 +181,13 @@ describe('orphan stdio process cleanup (issue #920)', () => {
   afterEach(() => {
     // Each `closeServer` schedules a 2-second setTimeout for the SIGKILL
     // fallback. Use fake timers to make sure those don't keep the event loop
-    // alive between tests.
+    // alive between tests. Also restore process.kill so the spy doesn't leak
+    // into other test files in the same process.
     jest.useFakeTimers();
     jest.clearAllTimers();
     jest.useRealTimers();
+    jest.restoreAllMocks();
+    installProcessKillMock();
   });
 
   describe('removeServer', () => {
@@ -212,7 +215,7 @@ describe('orphan stdio process cleanup (issue #920)', () => {
     it('does not attempt tree-kill for non-stdio transports', async () => {
       const info = makeStdioServerInfo('orphan-server');
       // Replace the stdio transport with a non-stdio one (plain object that
-      // is NOT an instance of StdioClientTransport).
+      // is NOT an instance of StdioClientTransport and has no `pid` getter).
       info.transport = {
         close: jest.fn(),
       } as any;
@@ -222,6 +225,25 @@ describe('orphan stdio process cleanup (issue #920)', () => {
 
       expect(mockTreeKill).not.toHaveBeenCalled();
       expect(mockClientClose).toHaveBeenCalledTimes(1);
+    });
+
+    it('kicks in for any transport with a numeric `pid` (duck-typing, not instanceof)', async () => {
+      // A non-SDK transport with a `pid` getter should still be tree-killed.
+      // This guards against the "dual package hazard" where pnpm loads two
+      // copies of @modelcontextprotocol/sdk and `instanceof` returns false.
+      currentTestPid = 8686;
+      const info = makeStdioServerInfo('duck-server');
+      info.transport = {
+        close: jest.fn(),
+        get pid() {
+          return currentTestPid;
+        },
+      } as any;
+      setServerInfosForTest([info]);
+
+      await removeServer('duck-server');
+
+      expect(mockTreeKill).toHaveBeenCalledWith(8686, 'SIGTERM', expect.any(Function));
     });
 
     it('does not throw when the serverInfo has no transport or client', async () => {
@@ -260,6 +282,38 @@ describe('orphan stdio process cleanup (issue #920)', () => {
         jest.advanceTimersByTime(2000);
 
         expect(mockTreeKill).toHaveBeenCalledWith(4242, 'SIGKILL', expect.any(Function));
+      } finally {
+        jest.clearAllTimers();
+        jest.useRealTimers();
+      }
+    });
+
+    it('treats EPERM from the liveness probe as "still alive" and falls back to SIGKILL', async () => {
+      jest.useFakeTimers();
+      try {
+        // process.kill(pid, 0) throws EPERM when the process exists but we
+        // can't signal it. isProcessAlive() should count that as alive.
+        (process.kill as jest.Mock).mockImplementation(
+          ((_pid: number, signal?: string | number) => {
+            if (signal === 0 || signal === undefined) {
+              throw Object.assign(new Error('EPERM'), { code: 'EPERM' });
+            }
+            return true;
+          }) as any,
+        );
+
+        currentTestPid = 5151;
+        const info = makeStdioServerInfo('eperm-server');
+        setServerInfosForTest([info]);
+
+        await removeServer('eperm-server');
+
+        expect(mockTreeKill).toHaveBeenCalledWith(5151, 'SIGTERM', expect.any(Function));
+        mockTreeKill.mockClear();
+
+        jest.advanceTimersByTime(2000);
+
+        expect(mockTreeKill).toHaveBeenCalledWith(5151, 'SIGKILL', expect.any(Function));
       } finally {
         jest.clearAllTimers();
         jest.useRealTimers();

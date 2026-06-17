@@ -1817,13 +1817,16 @@ function closeServer(name: string) {
       console.log(`Cleared keep-alive interval for server: ${serverInfo.name}`);
     }
 
-    // Capture the child PID BEFORE closing the transport, because
-    // transport.close() nullifies its internal process reference and the
-    // pid getter would then return null.
+    // Capture the child PID via duck-typing. `instanceof StdioClientTransport`
+    // is unreliable under pnpm's "dual package hazard" — a different copy of
+    // @modelcontextprotocol/sdk in node_modules makes the check return false
+    // even for genuine stdio transports. The `pid` getter is the SDK's public
+    // contract, so checking for it is both safer and version-agnostic.
+    const candidateTransport = serverInfo.transport as {
+      pid?: unknown;
+    };
     const stdioPid =
-      serverInfo.transport instanceof StdioClientTransport
-        ? serverInfo.transport.pid
-        : null;
+      typeof candidateTransport.pid === 'number' ? candidateTransport.pid : null;
 
     serverInfo.client.close();
     serverInfo.transport.close();
@@ -1851,15 +1854,25 @@ function killStdioProcessTree(name: string, pid: number): void {
           // — treat as success. Anything else is worth a warning.
           const code = (err as NodeJS.ErrnoException).code;
           if (code !== 'ESRCH') {
-            console.warn(
-              `Failed to send ${signal} to process tree for ${name} (pid ${pid})`,
+            // Pass the user-controlled `name` as a separate argument so a
+            // server named e.g. "%s" cannot inject format specifiers into the
+            // log line (CodeQL: use-of-externally-controlled-format-string).
+            console.warn('Failed to send signal to process tree', {
+              serverName: name,
+              pid,
+              signal,
               err,
-            );
+            });
           }
         }
       });
     } catch (err) {
-      console.warn(`Failed to send ${signal} to process tree for ${name} (pid ${pid})`, err);
+      console.warn('Failed to send signal to process tree', {
+        serverName: name,
+        pid,
+        signal,
+        err,
+      });
     }
   };
 
@@ -1877,8 +1890,11 @@ function isProcessAlive(pid: number): boolean {
   try {
     process.kill(pid, 0);
     return true;
-  } catch {
-    return false;
+  } catch (err) {
+    // EPERM means the process exists but we don't have permission to signal
+    // it — count it as alive so the SIGKILL fallback still fires. Any other
+    // error (typically ESRCH) means the process is gone.
+    return (err as NodeJS.ErrnoException).code === 'EPERM';
   }
 }
 
