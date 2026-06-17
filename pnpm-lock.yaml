@@ -151,6 +151,9 @@ importers:
       reflect-metadata:
         specifier: ^0.2.2
         version: 0.2.2
+      tree-kill:
+        specifier: ^1.2.2
+        version: 1.2.2
       typeorm:
         specifier: ^0.3.26
         version: 0.3.28(better-sqlite3@12.6.2)(pg@8.16.3)(redis@5.12.1)(ts-node@10.9.2(@swc/core@1.15.32)(@types/node@24.6.2)(typescript@5.9.2))
