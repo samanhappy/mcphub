@@ -1787,7 +1787,10 @@ function checkAuthError(result: any) {
         // Ignore JSON parse errors and continue
         return;
       }
-      if (errorContent.code === 401) {
+      // JSON.parse can yield null or a primitive (e.g. text "null", "42",
+      // "true") — only an object payload can carry an auth error code, so guard
+      // the property access to avoid crashing on non-object results.
+      if (errorContent && typeof errorContent === 'object' && errorContent.code === 401) {
         throw new Error('Error POSTing to endpoint (HTTP 401 Unauthorized)');
       }
     }
