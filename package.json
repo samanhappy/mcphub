@@ -84,6 +84,7 @@
     "postgres": "^3.4.7",
     "redis": "^5.12.1",
     "reflect-metadata": "^0.2.2",
+    "tree-kill": "^1.2.2",
     "typeorm": "^0.3.26",
     "undici": "^7.16.0",
     "uuid": "^14.0.0"
