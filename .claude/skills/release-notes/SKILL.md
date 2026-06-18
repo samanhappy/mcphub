@@ -42,7 +42,7 @@ Rules enforced by `scripts/validate-release-notes.js` (CI runs it on publish/edi
    - First-ever tag (no previous tag exists): fetch all merged PRs up to the tag date; if more than 50, take the 50 most recent and flag it for the user to review.
 
 4. **Fetch merged PRs in the range.**
-   - Use `gh pr list --state merged --limit 100 --json number,title,author,url,mergedAt` and filter to those merged after the previous tag (or up to `<tag>`'s publish date for the first-tag case).
+   - Use `gh pr list --state merged --limit 300 --json number,title,author,url,mergedAt` and filter to those merged after the previous tag (or up to `<tag>`'s publish date for the first-tag case). If the range exceeds 300 PRs, fetch in pages and warn the user.
    - Drop bot/maintenance PRs only if the user asks; otherwise include all.
    - Identify new contributors: for each distinct human author of a merged PR in the range, check whether they had any merged PR before the previous tag (`gh pr list --state merged --author <user> --limit 1`, filter by merged date). Authors with none before the previous tag are new contributors. Exclude bot accounts (`dependabot[bot]`, `github-actions[bot]`, `Copilot`, and any `*[bot]` login).
 

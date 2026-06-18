@@ -28,7 +28,7 @@ One paragraph in English describing why this release matters.
 
 ## 破坏性变更
 
-- 无
+- 描述破坏性变更及迁移路径（无则省略本区块）。
 
 ## New Contributors
 

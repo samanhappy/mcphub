@@ -47,7 +47,7 @@ function normalizeHeading(value) {
 
 function collectSections(markdown) {
   const sections = new Map();
-  const lines = markdown.replace(/^﻿/, '').replace(/\r\n?/g, '\n').split('\n');
+  const lines = markdown.replace(/^\uFEFF/, '').replace(/\r\n?/g, '\n').split('\n');
   let current = null;
   let currentLines = [];
 
