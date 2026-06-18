@@ -30,6 +30,10 @@ One paragraph in English describing why this release matters.
 
 - 无
 
+## New Contributors
+
+- @username made their first contribution in #123
+
 ## References
 
 - Pull requests, issues, or compare links.

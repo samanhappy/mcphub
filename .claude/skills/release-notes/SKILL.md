@@ -18,6 +18,7 @@ Every release body must follow this section order. Optional sections are omitted
 | `## Fixes` | optional | `## 修复` |
 | `## Breaking Changes` | optional | `## 破坏性变更` |
 | `## 摘要` | yes (non-empty) | pair of Summary |
+| `## New Contributors` | optional (English only, no Chinese pair) | — |
 | `## References` | yes (non-empty) | — |
 
 Rules enforced by `scripts/validate-release-notes.js` (CI runs it on publish/edit):
@@ -43,6 +44,7 @@ Rules enforced by `scripts/validate-release-notes.js` (CI runs it on publish/edi
 4. **Fetch merged PRs in the range.**
    - Use `gh pr list --state merged --limit 100 --json number,title,author,url,mergedAt` and filter to those merged after the previous tag (or up to `<tag>`'s publish date for the first-tag case).
    - Drop bot/maintenance PRs only if the user asks; otherwise include all.
+   - Identify new contributors: for each distinct human author of a merged PR in the range, check whether they had any merged PR before the previous tag (`gh pr list --state merged --author <user> --limit 1`, filter by merged date). Authors with none before the previous tag are new contributors. Exclude bot accounts (`dependabot[bot]`, `github-actions[bot]`, `Copilot`, and any `*[bot]` login).
 
 5. **Draft the body.** Generate each section from the PR set:
    - `## Summary` — one English paragraph on why this release matters.
@@ -51,6 +53,10 @@ Rules enforced by `scripts/validate-release-notes.js` (CI runs it on publish/edi
    - `## Breaking Changes` — only when present (omit if none).
    - `## 摘要` — Chinese translation of the Summary.
    - `## 功能` / `## 修复` / `## 破坏性变更` — Chinese pairs, present iff the English counterpart is present. Mirror the same bullets.
+   - `## New Contributors` — one bullet per new contributor (English only, no Chinese pair). Omit the whole section if there are none. Format:
+     ```
+     - @<login> made their first contribution in #<number>
+     ```
    - `## References` — one bullet per merged PR in the exact format, followed by the Full changelog line:
      ```
      - <PR title> by @<author login> in https://github.com/samanhappy/mcphub/pull/<number>

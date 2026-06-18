@@ -8,6 +8,8 @@ const PAIRED_HEADINGS = [
   ['Breaking Changes', '破坏性变更'],
 ];
 
+const OPTIONAL_UNPAIRED_HEADINGS = ['New Contributors'];
+
 function usage() {
   console.error('Usage: node scripts/validate-release-notes.js <file>');
   console.error('   or: node scripts/validate-release-notes.js --env RELEASE_BODY');
@@ -88,6 +90,11 @@ for (const [en, zh] of PAIRED_HEADINGS) {
   if ((enValue !== undefined) !== (zhValue !== undefined)) {
     asymmetries.push(`${en} / ${zh}`);
   }
+}
+
+for (const heading of OPTIONAL_UNPAIRED_HEADINGS) {
+  const value = sections.get(normalizeHeading(heading));
+  if (value !== undefined && value.trim() === '') emptyOptional.push(heading);
 }
 
 if (missing.length > 0 || emptyRequired.length > 0 || emptyOptional.length > 0 || asymmetries.length > 0) {
