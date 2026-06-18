@@ -1,16 +1,11 @@
 import fs from 'fs';
 
-const REQUIRED_HEADINGS = [
-  'Summary',
-  'Highlights',
-  'Fixes',
-  'Breaking Changes',
-  'Upgrade Notes',
-  '中文摘要',
-  '中文亮点',
-  '中文修复',
-  '破坏性变更',
-  '升级说明',
+const REQUIRED_HEADINGS = ['Summary', '摘要', 'References'];
+
+const PAIRED_HEADINGS = [
+  ['Features', '功能'],
+  ['Fixes', '修复'],
+  ['Breaking Changes', '破坏性变更'],
 ];
 
 function usage() {
@@ -50,7 +45,7 @@ function normalizeHeading(value) {
 
 function collectSections(markdown) {
   const sections = new Map();
-  const lines = markdown.replace(/^\uFEFF/, '').replace(/\r\n?/g, '\n').split('\n');
+  const lines = markdown.replace(/^﻿/, '').replace(/\r\n?/g, '\n').split('\n');
   let current = null;
   let currentLines = [];
 
@@ -76,22 +71,40 @@ function collectSections(markdown) {
 
 const markdown = readInput();
 const sections = collectSections(markdown);
+
 const missing = REQUIRED_HEADINGS.filter((heading) => !sections.has(normalizeHeading(heading)));
-const empty = REQUIRED_HEADINGS.filter((heading) => {
+const emptyRequired = REQUIRED_HEADINGS.filter((heading) => {
   const value = sections.get(normalizeHeading(heading));
   return value !== undefined && value.trim() === '';
 });
 
-if (missing.length > 0 || empty.length > 0) {
-  if (missing.length > 0) {
-    console.error(`Missing release note sections: ${missing.join(', ')}`);
+const emptyOptional = [];
+const asymmetries = [];
+for (const [en, zh] of PAIRED_HEADINGS) {
+  const enValue = sections.get(normalizeHeading(en));
+  const zhValue = sections.get(normalizeHeading(zh));
+  if (enValue !== undefined && enValue.trim() === '') emptyOptional.push(en);
+  if (zhValue !== undefined && zhValue.trim() === '') emptyOptional.push(zh);
+  if ((enValue !== undefined) !== (zhValue !== undefined)) {
+    asymmetries.push(`${en} / ${zh}`);
   }
-  if (empty.length > 0) {
-    console.error(`Empty release note sections: ${empty.join(', ')}`);
+}
+
+if (missing.length > 0 || emptyRequired.length > 0 || emptyOptional.length > 0 || asymmetries.length > 0) {
+  if (missing.length > 0) {
+    console.error(`Missing required release note sections: ${missing.join(', ')}`);
+  }
+  if (emptyRequired.length > 0) {
+    console.error(`Empty required release note sections: ${emptyRequired.join(', ')}`);
+  }
+  if (emptyOptional.length > 0) {
+    console.error(`Empty optional release note sections: ${emptyOptional.join(', ')} (omit the section instead of leaving it empty)`);
+  }
+  if (asymmetries.length > 0) {
+    console.error(`Asymmetric bilingual sections (both English and Chinese must be present together): ${asymmetries.join(', ')}`);
   }
   console.error('Use .github/release-notes-template.md as the required structure.');
   process.exit(1);
 }
 
 console.log('Release notes structure is valid.');
-
