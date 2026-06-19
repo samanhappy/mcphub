@@ -1,0 +1,11 @@
+{
+  "default_provider": "bearer",
+  "providers": {
+    "bearer": {
+      "type": "api_key",
+      "api_key": "test-auth-token-123",
+      "header_name": "Authorization",
+      "prefix": "Bearer"
+    }
+  }
+}

@@ -42,6 +42,7 @@ Layout map (read the directory when you need specifics, don't expand it here):
 | Format           | `pnpm format`         |
 | Test (CI mode)   | `pnpm test:ci`        |
 | Test (watch)     | `pnpm test:watch`     |
+| MCP fuzz (local) | `pnpm fuzz:mcp`       |
 | Build all        | `pnpm build`          |
 | Verify dist      | `node scripts/verify-dist.js` |
 | Start prod       | `pnpm start`          |

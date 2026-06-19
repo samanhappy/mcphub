@@ -1,0 +1,40 @@
+---
+title: 'MCP security fuzzing'
+description: 'Run mcp-fuzzer against the MCPHub HTTP surface locally or in CI'
+---
+
+MCPHub exposes MCP over streamable HTTP at `/mcp/:group` (and SSE at `/sse/:group`). The repo ships a script that boots the same integration-test fixture used in Jest (`time-mcp` upstream, bearer auth) and runs [mcp-fuzzer](https://github.com/Agent-Hellboy/mcp-server-fuzzer) against that endpoint.
+
+## Prerequisites
+
+- Docker
+- `pnpm install` (for `tsx` and the test fixture)
+
+## Local run
+
+```bash
+pnpm fuzz:mcp
+```
+
+Reports are written to `./fuzz-output/`. Override behavior with environment variables:
+
+| Variable | Default | Purpose |
+| -------- | ------- | ------- |
+| `MCP_FUZZER_IMAGE` | `princekrroshan01/mcp-fuzzer:v0.4.0` | Docker image tag |
+| `MCP_FUZZ_RUNS` | `3` | Fuzz iterations per tool |
+| `MCP_FUZZ_TIMEOUT` | `30` | Per-request timeout (seconds) |
+| `MCP_FUZZ_OUTPUT` | `./fuzz-output` | Host directory mounted at `/output` |
+
+Bearer credentials for the fixture live in `scripts/mcp-fuzzer-auth.json` and match `tests/utils/mockSettings.ts`.
+
+## CI
+
+The `mcp-fuzz` job in `.github/workflows/ci.yml` runs after unit tests, uploads `fuzz-output/` as a workflow artifact, and uses a smaller run budget (`MCP_FUZZ_RUNS=2`) to keep CI fast.
+
+## What gets exercised
+
+- HTTP routes in `src/server.ts` (`/mcp/:group`, bearer middleware)
+- Tool proxy path in `src/services/mcpService.ts` (`handleCallToolRequest`)
+- Auth boundary checks via `--auth-audit` and tool-surface checks via `--security-audit`
+
+This is a smoke-level security pass on the hub proxy, not a substitute for full penetration testing of production OAuth or database-backed deployments.

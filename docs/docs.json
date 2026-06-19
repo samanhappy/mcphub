@@ -52,7 +52,8 @@
               "development/getting-started",
               "development/architecture",
               "development/embedding-lifecycle",
-              "development/contributing"
+              "development/contributing",
+              "development/mcp-fuzz"
             ]
           }
         ]

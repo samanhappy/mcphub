@@ -25,6 +25,7 @@ yarn-error.log*
 .vscode/
 *.log
 coverage/
+fuzz-output/
 
 data/
 temp-test-config/

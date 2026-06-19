@@ -45,6 +45,43 @@ jobs:
           flags: unittests
           name: codecov-umbrella
 
+  mcp-fuzz:
+    runs-on: ubuntu-latest
+    needs: test
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Pull mcp-fuzzer image
+        run: docker pull princekrroshan01/mcp-fuzzer:v0.4.0
+
+      - name: Run MCP surface fuzz pass
+        run: bash scripts/fuzz-mcp-surface.sh
+        env:
+          MCP_FUZZER_IMAGE: princekrroshan01/mcp-fuzzer:v0.4.0
+          MCP_FUZZ_RUNS: 2
+          MCP_FUZZ_TIMEOUT: 20
+
+      - name: Upload fuzz report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mcp-fuzz-report
+          path: fuzz-output/
+          if-no-files-found: warn
+
   # build:
   #   runs-on: ubuntu-latest
   #   needs: test
