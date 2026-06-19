@@ -3,9 +3,7 @@ import { genericOAuth } from 'better-auth/plugins';
 import { PostgresDialect } from 'kysely';
 import { Pool } from 'pg';
 import defaultConfig, { loadSettings } from './config/index.js';
-import {
-  resolveBetterAuthRuntimeConfig,
-} from './services/betterAuthConfig.js';
+import { resolveBetterAuthRuntimeConfig } from './services/betterAuthConfig.js';
 import { getCachedSystemConfig, isDatabaseModeEnabled } from './utils/systemConfigCache.js';
 
 const resolveSystemConfig = () => {
@@ -184,7 +182,7 @@ export const ensureBetterAuthSchema = async (): Promise<void> => {
     return;
   }
 
-  const { getMigrations } = await import('better-auth/db');
+  const { getMigrations } = await import('better-auth/db/migration');
   const { toBeCreated, toBeAdded, runMigrations } = await getMigrations(authOptions);
 
   if (!toBeCreated.length && !toBeAdded.length) {

@@ -21,6 +21,7 @@ const BETTER_AUTH_ENV_KEYS = [
   'OIDC_CLIENT_ID',
   'OIDC_CLIENT_SECRET',
 ];
+const TEST_DB_URL = 'postgresql://mcphub:password@localhost:5432/mcphub';
 
 jest.mock('../../src/dao/DaoFactory.js', () => ({
   getSystemConfigDao: jest.fn(() => ({
@@ -39,6 +40,8 @@ describe('betterAuthConfig', () => {
     for (const envKey of BETTER_AUTH_ENV_KEYS) {
       process.env[envKey] = '';
     }
+    process.env.USE_DB = 'true';
+    process.env.DB_URL = TEST_DB_URL;
   });
 
   afterAll(() => {
@@ -46,7 +49,6 @@ describe('betterAuthConfig', () => {
   });
 
   it('enables Better Auth when only the OIDC provider is configured', async () => {
-    process.env.DB_URL = 'postgresql://mcphub:password@localhost:5432/mcphub';
     process.env.OIDC_CLIENT_ID = 'oidc-client-id';
     process.env.OIDC_CLIENT_SECRET = 'oidc-client-secret';
 
@@ -55,7 +57,7 @@ describe('betterAuthConfig', () => {
         betterAuth: {
           enabled: true,
           trustedOrigins: ['https://mcp.imdevinc.home'],
-      disableAutoCreate: false,
+          disableAutoCreate: false,
           providers: {
             oidc: {
               enabled: true,
@@ -97,7 +99,6 @@ describe('betterAuthConfig', () => {
   });
 
   it('disables the OIDC provider when the discovery URL is missing', async () => {
-    process.env.DB_URL = 'postgresql://mcphub:password@localhost:5432/mcphub';
     process.env.OIDC_CLIENT_ID = 'oidc-client-id';
     process.env.OIDC_CLIENT_SECRET = 'oidc-client-secret';
 
@@ -143,7 +144,6 @@ describe('betterAuthConfig', () => {
   });
 
   it('uses install.baseUrl as a trusted origin when none are configured explicitly', async () => {
-    process.env.DB_URL = 'postgresql://mcphub:password@localhost:5432/mcphub';
     process.env.OIDC_CLIENT_ID = 'oidc-client-id';
     process.env.OIDC_CLIENT_SECRET = 'oidc-client-secret';
 
@@ -192,7 +192,6 @@ describe('betterAuthConfig', () => {
   });
 
   it('prefers Better Auth environment variables over stored settings for runtime config', async () => {
-    process.env.DB_URL = 'postgresql://mcphub:password@localhost:5432/mcphub';
     process.env.BETTER_AUTH_ENABLED = 'true';
     process.env.BETTER_AUTH_BASE_PATH = 'env-auth';
     process.env.BETTER_AUTH_TRUSTED_ORIGINS =
@@ -220,7 +219,7 @@ describe('betterAuthConfig', () => {
           enabled: false,
           basePath: '/settings-auth',
           trustedOrigins: ['https://settings.example.com'],
-      disableAutoCreate: false,
+          disableAutoCreate: false,
           providers: {
             google: {
               enabled: true,
@@ -273,7 +272,6 @@ describe('betterAuthConfig', () => {
   });
 
   it('accepts the legacy OIDC_DISCOVERY_URL environment variable for full env-only OIDC setup', async () => {
-    process.env.DB_URL = 'postgresql://mcphub:password@localhost:5432/mcphub';
     process.env.BETTER_AUTH_ENABLED = 'true';
     process.env.BETTER_AUTH_OIDC_ENABLED = 'true';
     process.env.OIDC_DISCOVERY_URL =
@@ -322,7 +320,6 @@ describe('betterAuthConfig', () => {
   });
 
   it('prefers the provided system config override instead of reloading settings from another source', async () => {
-    process.env.DB_URL = 'postgresql://mcphub:password@localhost:5432/mcphub';
     process.env.OIDC_CLIENT_ID = 'oidc-client-id';
     process.env.OIDC_CLIENT_SECRET = 'oidc-client-secret';
 
