@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Start MCPHub with the integration-test fixture and run mcp-fuzzer against the
-# streamable HTTP /mcp/:group surface. Intended for local use and CI.
+# Start MCPHub with the integration-test fixture and run mcp-fuzzer in tools mode
+# against the streamable HTTP /mcp/:group surface. Protocol fuzzing is for spec
+# implementations (SDKs/transports); hubs should fuzz tools/call through the proxy.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -12,8 +13,10 @@ FUZZ_TIMEOUT="${MCP_FUZZ_TIMEOUT:-30}"
 OUTPUT_DIR="${MCP_FUZZ_OUTPUT:-$ROOT/fuzz-output}"
 AUTH_CONFIG="$ROOT/scripts/mcp-fuzzer-auth.json"
 SERVER_LOG="${TMPDIR:-/tmp}/mcphub-fuzz-server-$$.log"
+FINDINGS_FILE="$OUTPUT_DIR/findings.json"
 
 mkdir -p "$OUTPUT_DIR"
+chmod -R a+rwX "$OUTPUT_DIR"
 
 cleanup() {
   if [[ -n "${SERVER_PID:-}" ]] && kill -0 "$SERVER_PID" 2>/dev/null; then
@@ -35,7 +38,7 @@ SERVER_PID=$!
 
 READY_JSON=""
 for _ in $(seq 1 120); do
-  if READY_JSON="$(grep -E '^\{.*"endpoint".*\}$' "$SERVER_LOG" 2>/dev/null | tail -1)"; then
+  if READY_JSON="$(grep -E '^\{.*"ready"[[:space:]]*:[[:space:]]*true.*\}$' "$SERVER_LOG" 2>/dev/null | tail -1)"; then
     break
   fi
   if ! kill -0 "$SERVER_PID" 2>/dev/null; then
@@ -52,10 +55,17 @@ if [[ -z "$READY_JSON" ]]; then
   exit 1
 fi
 
-MCP_ENDPOINT="$(node -e 'console.log(JSON.parse(process.argv[1]).endpoint)' "$READY_JSON")"
-echo "mcp endpoint: $MCP_ENDPOINT"
+MCP_ENDPOINT="$(READY_JSON="$READY_JSON" node -e 'const d=JSON.parse(process.env.READY_JSON); console.log(d.endpoint)')"
+TOOL_COUNT="$(READY_JSON="$READY_JSON" node -e 'const d=JSON.parse(process.env.READY_JSON); console.log(d.toolCount)')"
+if [[ -z "$TOOL_COUNT" || "$TOOL_COUNT" -lt 1 ]]; then
+  echo "fixture reported ready but toolCount is zero" >&2
+  cat "$SERVER_LOG" >&2
+  exit 1
+fi
 
-DOCKER_ARGS=(--rm)
+echo "mcp endpoint: $MCP_ENDPOINT (tools=$TOOL_COUNT)"
+
+DOCKER_ARGS=(--rm --user "$(id -u):$(id -g)")
 if [[ "$(uname -s)" == "Linux" ]]; then
   DOCKER_ARGS+=(--network host)
 else
@@ -66,12 +76,13 @@ fi
 echo "pulling $FUZZ_IMAGE"
 docker pull "$FUZZ_IMAGE"
 
-echo "running mcp-fuzzer (runs=$FUZZ_RUNS timeout=${FUZZ_TIMEOUT}s)"
+echo "running mcp-fuzzer (mode=tools runs=$FUZZ_RUNS timeout=${FUZZ_TIMEOUT}s)"
+set +e
 docker run "${DOCKER_ARGS[@]}" \
   -v "$OUTPUT_DIR:/output:rw" \
   -v "$AUTH_CONFIG:/auth.json:ro" \
   "$FUZZ_IMAGE" \
-  --mode all \
+  --mode tools \
   --protocol streamablehttp \
   --endpoint "$MCP_ENDPOINT" \
   --auth-config /auth.json \
@@ -81,5 +92,17 @@ docker run "${DOCKER_ARGS[@]}" \
   --runs "$FUZZ_RUNS" \
   --timeout "$FUZZ_TIMEOUT" \
   --output-dir /output
+FUZZ_EXIT=$?
+set -e
+
+if [[ ! -f "$FINDINGS_FILE" ]]; then
+  echo "missing fuzz report: $FINDINGS_FILE" >&2
+  exit 1
+fi
+
+if [[ "$FUZZ_EXIT" -ne 0 ]]; then
+  echo "mcp-fuzzer exited with status $FUZZ_EXIT" >&2
+  exit "$FUZZ_EXIT"
+fi
 
 echo "fuzz complete; reports in $OUTPUT_DIR"

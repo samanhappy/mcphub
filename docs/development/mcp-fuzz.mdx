@@ -1,9 +1,22 @@
 ---
-title: 'MCP security fuzzing'
+title: 'MCP surface fuzzing'
 description: 'Run mcp-fuzzer against the MCPHub HTTP surface locally or in CI'
 ---
 
-MCPHub exposes MCP over streamable HTTP at `/mcp/:group` (and SSE at `/sse/:group`). The repo ships a script that boots the same integration-test fixture used in Jest (`time-mcp` upstream, bearer auth) and runs [mcp-fuzzer](https://github.com/Agent-Hellboy/mcp-server-fuzzer) against that endpoint.
+MCPHub exposes MCP over streamable HTTP at `/mcp/:group` (and SSE at `/sse/:group`). The repo ships a script that boots the same integration-test fixture used in Jest (`time-mcp` upstream, bearer auth) and runs [mcp-fuzzer](https://github.com/Agent-Hellboy/mcp-server-fuzzer) in **`--mode tools`** against that endpoint.
+
+This is a **hub-level smoke test** for MCPHub auth, session handling, routing, and proxy behavior against a known-safe fixture. It is not a security guarantee for arbitrary user-provided MCP servers or production OAuth/database deployments.
+
+## Why tools mode, not protocol mode
+
+mcp-fuzzer supports two broad passes:
+
+| Mode | Best for | What it fuzzes |
+| ---- | -------- | -------------- |
+| `protocol` | SDKs, transports, and other **spec implementations** | MCP wire messages (`initialize`, `tools/list`, malformed JSON-RPC, etc.) |
+| `tools` | Hubs, gateways, and proxies like **MCPHub** | `tools/call` inputs routed through the hub to upstream servers |
+
+MCPHub is a routing proxy, not an MCP protocol stack under test. Protocol fuzzing belongs in repos that implement the spec (for example the official TypeScript/Python SDKs). Here we only need to confirm the hub can authenticate, establish a session, list tools, and safely forward fuzzed tool calls.
 
 ## Prerequisites
 
@@ -16,7 +29,7 @@ MCPHub exposes MCP over streamable HTTP at `/mcp/:group` (and SSE at `/sse/:grou
 pnpm fuzz:mcp
 ```
 
-Reports are written to `./fuzz-output/`. Override behavior with environment variables:
+Reports are written to `./fuzz-output/`. The fixture waits for `tools/list` to return at least one tool before fuzzing starts, and the script fails if `findings.json` is missing. Override behavior with environment variables:
 
 | Variable | Default | Purpose |
 | -------- | ------- | ------- |
@@ -29,12 +42,12 @@ Bearer credentials for the fixture live in `scripts/mcp-fuzzer-auth.json` and ma
 
 ## CI
 
-The `mcp-fuzz` job in `.github/workflows/ci.yml` runs after unit tests, uploads `fuzz-output/` as a workflow artifact, and uses a smaller run budget (`MCP_FUZZ_RUNS=2`) to keep CI fast.
+The `mcp-fuzz` job in `.github/workflows/ci.yml` runs after unit tests, uploads `fuzz-output/` as a workflow artifact, and uses a smaller run budget (`MCP_FUZZ_RUNS=2`) to keep CI fast. The job fails when no tools are discovered or when `fuzz-output/findings.json` is missing.
 
 ## What gets exercised
 
 - HTTP routes in `src/server.ts` (`/mcp/:group`, bearer middleware)
-- Tool proxy path in `src/services/mcpService.ts` (`handleCallToolRequest`)
-- Auth boundary checks via `--auth-audit` and tool-surface checks via `--security-audit`
+- Tool proxy path in `src/services/mcpService.ts` (`handleCallToolRequest`) via `tools/call` fuzzing
+- Auth boundary checks via `--auth-audit` and tool-input checks via `--security-audit`
 
-This is a smoke-level security pass on the hub proxy, not a substitute for full penetration testing of production OAuth or database-backed deployments.
+Do **not** switch this job to `--mode protocol` or `--mode all` unless MCPHub itself is being tested as a spec implementation. That coverage is the wrong signal for a hub.

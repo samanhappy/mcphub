@@ -74,13 +74,16 @@ jobs:
           MCP_FUZZ_RUNS: 2
           MCP_FUZZ_TIMEOUT: 20
 
+      - name: Verify fuzz report artifact
+        run: test -s fuzz-output/findings.json
+
       - name: Upload fuzz report
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: mcp-fuzz-report
           path: fuzz-output/
-          if-no-files-found: warn
+          if-no-files-found: error
 
   # build:
   #   runs-on: ubuntu-latest
