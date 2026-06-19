@@ -75,7 +75,7 @@ jobs:
           MCP_FUZZ_TIMEOUT: 20
 
       - name: Verify fuzz report artifact
-        run: test -s fuzz-output/findings.json
+        run: node scripts/verify-mcp-fuzz-output.js fuzz-output
 
       - name: Upload fuzz report
         if: always()

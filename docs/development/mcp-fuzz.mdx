@@ -29,7 +29,7 @@ MCPHub is a routing proxy, not an MCP protocol stack under test. Protocol fuzzin
 pnpm fuzz:mcp
 ```
 
-Reports are written to `./fuzz-output/`. The fixture waits for `tools/list` to return at least one tool before fuzzing starts, and the script fails if `findings.json` is missing. Override behavior with environment variables:
+Reports are written to `./fuzz-output/`. The fixture waits for `tools/list` to return at least one tool before fuzzing starts, and the script verifies that the fuzzer completed a non-empty tool run. Override behavior with environment variables:
 
 | Variable | Default | Purpose |
 | -------- | ------- | ------- |
@@ -37,12 +37,27 @@ Reports are written to `./fuzz-output/`. The fixture waits for `tools/list` to r
 | `MCP_FUZZ_RUNS` | `3` | Fuzz iterations per tool |
 | `MCP_FUZZ_TIMEOUT` | `30` | Per-request timeout (seconds) |
 | `MCP_FUZZ_OUTPUT` | `./fuzz-output` | Host directory mounted at `/output` |
+| `MCP_FUZZ_MIN_TOOL_RUNS` | `1` | Minimum tool-call runs required by the verifier |
+| `MCP_FUZZER_SKIP_PULL` | `0` | Set to `1` when testing a locally built fuzzer image |
+
+Useful report files:
+
+- `findings.json` — normalized fuzzer findings
+- `fuzzer.log` — full mcp-fuzzer stdout/stderr from the Docker run
+- `run_summary.json` — compact machine-readable status and run counts when using a fuzzer image that emits it
+
+To test an unreleased local fuzzer image:
+
+```bash
+docker build -t mcp-fuzzer:local /path/to/mcp-server-fuzzer
+MCP_FUZZER_IMAGE=mcp-fuzzer:local MCP_FUZZER_SKIP_PULL=1 pnpm fuzz:mcp
+```
 
 Bearer credentials for the fixture live in `scripts/mcp-fuzzer-auth.json` and match `tests/utils/mockSettings.ts`.
 
 ## CI
 
-The `mcp-fuzz` job in `.github/workflows/ci.yml` runs after unit tests, uploads `fuzz-output/` as a workflow artifact, and uses a smaller run budget (`MCP_FUZZ_RUNS=2`) to keep CI fast. The job fails when no tools are discovered or when `fuzz-output/findings.json` is missing.
+The `mcp-fuzz` job in `.github/workflows/ci.yml` runs after unit tests, uploads `fuzz-output/` as a workflow artifact, and uses a smaller run budget (`MCP_FUZZ_RUNS=2`) to keep CI fast. The job fails when no tools are discovered, when `findings.json` is missing, when the fuzzer reports a blocked run, or when the verifier cannot prove that tool calls were executed.
 
 ## What gets exercised
 

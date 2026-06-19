@@ -14,6 +14,7 @@ OUTPUT_DIR="${MCP_FUZZ_OUTPUT:-$ROOT/fuzz-output}"
 AUTH_CONFIG="$ROOT/scripts/mcp-fuzzer-auth.json"
 SERVER_LOG="${TMPDIR:-/tmp}/mcphub-fuzz-server-$$.log"
 FINDINGS_FILE="$OUTPUT_DIR/findings.json"
+FUZZER_LOG="$OUTPUT_DIR/fuzzer.log"
 
 mkdir -p "$OUTPUT_DIR"
 chmod -R a+rwX "$OUTPUT_DIR"
@@ -73,8 +74,12 @@ else
   MCP_ENDPOINT="${MCP_ENDPOINT//127.0.0.1/host.docker.internal}"
 fi
 
-echo "pulling $FUZZ_IMAGE"
-docker pull "$FUZZ_IMAGE"
+if [[ "${MCP_FUZZER_SKIP_PULL:-0}" == "1" ]]; then
+  echo "using local mcp-fuzzer image $FUZZ_IMAGE"
+else
+  echo "pulling $FUZZ_IMAGE"
+  docker pull "$FUZZ_IMAGE"
+fi
 
 echo "running mcp-fuzzer (mode=tools runs=$FUZZ_RUNS timeout=${FUZZ_TIMEOUT}s)"
 set +e
@@ -92,14 +97,16 @@ docker run "${DOCKER_ARGS[@]}" \
   --fail-if-no-tools \
   --runs "$FUZZ_RUNS" \
   --timeout "$FUZZ_TIMEOUT" \
-  --output-dir /output
-FUZZ_EXIT=$?
+  --output-dir /output 2>&1 | tee "$FUZZER_LOG"
+FUZZ_EXIT=${PIPESTATUS[0]}
 set -e
 
 if [[ ! -f "$FINDINGS_FILE" ]]; then
   echo "missing fuzz report: $FINDINGS_FILE" >&2
   exit 1
 fi
+
+node scripts/verify-mcp-fuzz-output.js "$OUTPUT_DIR"
 
 if [[ "$FUZZ_EXIT" -ne 0 ]]; then
   echo "mcp-fuzzer exited with status $FUZZ_EXIT" >&2
