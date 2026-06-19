@@ -79,6 +79,7 @@ docker pull "$FUZZ_IMAGE"
 echo "running mcp-fuzzer (mode=tools runs=$FUZZ_RUNS timeout=${FUZZ_TIMEOUT}s)"
 set +e
 docker run "${DOCKER_ARGS[@]}" \
+  -e MCP_FUZZER_FS_ROOT=/output/.mcp_fuzzer \
   -v "$OUTPUT_DIR:/output:rw" \
   -v "$AUTH_CONFIG:/auth.json:ro" \
   "$FUZZ_IMAGE" \
@@ -86,7 +87,7 @@ docker run "${DOCKER_ARGS[@]}" \
   --protocol streamablehttp \
   --endpoint "$MCP_ENDPOINT" \
   --auth-config /auth.json \
-  --auth-audit \
+  --fs-root /output/.mcp_fuzzer \
   --security-audit \
   --fail-if-no-tools \
   --runs "$FUZZ_RUNS" \

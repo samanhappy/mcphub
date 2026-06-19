@@ -48,6 +48,9 @@ The `mcp-fuzz` job in `.github/workflows/ci.yml` runs after unit tests, uploads 
 
 - HTTP routes in `src/server.ts` (`/mcp/:group`, bearer middleware)
 - Tool proxy path in `src/services/mcpService.ts` (`handleCallToolRequest`) via `tools/call` fuzzing
-- Auth boundary checks via `--auth-audit` and tool-input checks via `--security-audit`
+- Auth boundary checks when `--auth-config` is set (mcp-fuzzer probes unauthenticated access; a one-time HTTP 401 in the log is expected if bearer auth is enforced)
+- Tool-metadata checks via `--security-audit`
+
+`--auth-audit` (OAuth authorization-server probes) is intentionally omitted here: the fixture uses static bearer auth, not OAuth, so that mode only adds noise and ~30s of timeout.
 
 Do **not** switch this job to `--mode protocol` or `--mode all` unless MCPHub itself is being tested as a spec implementation. That coverage is the wrong signal for a hub.
