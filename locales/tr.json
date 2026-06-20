@@ -423,6 +423,7 @@
     "selectNone": "Hiçbirini Seçme",
     "configureTools": "Araçları Yapılandır",
     "configureCapabilities": "Araçları, istemleri ve kaynakları yapılandır",
+    "alias": "Açık Ad",
     "previewPrompts": "[istemler: {{items}}]",
     "previewResources": "[kaynaklar: {{items}}]",
     "previewAllTools": "(tüm araçlar)",

@@ -161,9 +161,8 @@ export const ServerToolConfig: React.FC<ServerToolConfigProps> = ({
     if (!existingServer) return;
 
     const nextConfig: IGroupServerConfig = { ...existingServer };
-    const nextAlias = alias.trim();
-    if (nextAlias) {
-      nextConfig.alias = nextAlias;
+    if (alias) {
+      nextConfig.alias = alias;
     } else {
       delete nextConfig.alias;
     }
@@ -444,7 +443,7 @@ export const ServerToolConfig: React.FC<ServerToolConfigProps> = ({
                     {serverConfig && (
                       <div className="space-y-1" onClick={(e) => e.stopPropagation()}>
                         <label className="block text-xs font-medium text-gray-600">
-                          {t('cost.exposed')}
+                          {t('groups.alias')}
                         </label>
                         <input
                           type="text"

@@ -423,6 +423,7 @@
     "selectNone": "Ne rien sélectionner",
     "configureTools": "Configurer les outils",
     "configureCapabilities": "Configurer les outils, prompts et ressources",
+    "alias": "Nom exposé",
     "previewPrompts": "[prompts : {{items}}]",
     "previewResources": "[ressources : {{items}}]",
     "previewAllTools": "(tous les outils)",

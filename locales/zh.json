@@ -434,6 +434,7 @@
     "selectNone": "全不选",
     "configureTools": "配置工具",
     "configureCapabilities": "配置工具、提示词和资源",
+    "alias": "对外名称",
     "previewPrompts": "[提示词: {{items}}]",
     "previewResources": "[资源: {{items}}]",
     "previewAllTools": "（全部工具）",
