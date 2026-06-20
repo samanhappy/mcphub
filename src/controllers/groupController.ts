@@ -21,7 +21,55 @@ import {
 } from '../services/groupService.js';
 
 const isValidCapabilitySelection = (value: unknown): boolean => {
-  return value === undefined || value === 'all' || (Array.isArray(value) && value.every((item) => typeof item === 'string'));
+  return (
+    value === undefined ||
+    value === 'all' ||
+    (Array.isArray(value) && value.every((item) => typeof item === 'string'))
+  );
+};
+
+const isValidServerAlias = (value: unknown): boolean => {
+  return value === undefined || typeof value === 'string';
+};
+
+const validateGroupServersConfig = (servers: unknown): string | null => {
+  if (servers === undefined) {
+    return null;
+  }
+
+  if (!Array.isArray(servers)) {
+    return 'Group servers must be an array';
+  }
+
+  for (const server of servers) {
+    if (typeof server === 'string') {
+      continue;
+    }
+
+    if (typeof server !== 'object' || server === null) {
+      return 'Group server entries must be strings or objects';
+    }
+
+    const serverConfig = server as Record<string, unknown>;
+
+    if (typeof serverConfig.name !== 'string' || serverConfig.name.length === 0) {
+      return 'Server configuration must have a name property';
+    }
+
+    if (!isValidServerAlias(serverConfig.alias)) {
+      return 'Server alias must be a string when provided';
+    }
+
+    if (
+      !isValidCapabilitySelection(serverConfig.tools) ||
+      !isValidCapabilitySelection(serverConfig.prompts) ||
+      !isValidCapabilitySelection(serverConfig.resources)
+    ) {
+      return 'Server tools, prompts, and resources must each be "all" or an array of names';
+    }
+  }
+
+  return null;
 };
 
 // Get all groups
@@ -88,6 +136,14 @@ export const createNewGroup = async (req: Request, res: Response): Promise<void>
     }
 
     const serverList = Array.isArray(servers) ? servers : [];
+    const validationError = validateGroupServersConfig(serverList);
+    if (validationError) {
+      res.status(400).json({
+        success: false,
+        message: validationError,
+      });
+      return;
+    }
 
     // Set owner property - use current user's username, default to 'admin'
     const currentUser = (req as any).user;
@@ -160,6 +216,13 @@ export const batchCreateGroups = async (req: Request, res: Response): Promise<vo
               return {
                 valid: false,
                 message: 'Server configuration must have a name property',
+              };
+            }
+
+            if (!isValidServerAlias(server.alias)) {
+              return {
+                valid: false,
+                message: 'Server alias must be a string when provided',
               };
             }
 
@@ -271,7 +334,17 @@ export const updateExistingGroup = async (req: Request, res: Response): Promise<
     const updateData: any = {};
     if (name !== undefined) updateData.name = name;
     if (description !== undefined) updateData.description = description;
-    if (servers !== undefined) updateData.servers = servers;
+    if (servers !== undefined) {
+      const validationError = validateGroupServersConfig(servers);
+      if (validationError) {
+        res.status(400).json({
+          success: false,
+          message: validationError,
+        });
+        return;
+      }
+      updateData.servers = servers;
+    }
 
     if (Object.keys(updateData).length === 0) {
       res.status(400).json({
@@ -333,6 +406,13 @@ export const updateGroupServersBatch = async (req: Request, res: Response): Prom
           res.status(400).json({
             success: false,
             message: 'Each server configuration must have a valid name',
+          });
+          return;
+        }
+        if (!isValidServerAlias(server.alias)) {
+          res.status(400).json({
+            success: false,
+            message: 'Server alias must be a string when provided',
           });
           return;
         }

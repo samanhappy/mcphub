@@ -31,7 +31,7 @@ describe('groupService capability selections', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockGroupDao.findByName.mockResolvedValue(null);
-    mockServerDao.findAll.mockResolvedValue([{ name: 'server1' }]);
+    mockServerDao.findAll.mockResolvedValue([{ name: 'server1' }, { name: 'server2' }]);
     mockGroupDao.create.mockImplementation(async (group: any) => group);
   });
 
@@ -42,6 +42,7 @@ describe('groupService capability selections', () => {
       [
         {
           name: 'server1',
+          alias: 'fetch',
           tools: ['search'],
           prompts: ['draft_prompt'],
           resources: ['resource://docs/guide'],
@@ -53,6 +54,7 @@ describe('groupService capability selections', () => {
     expect(result?.servers).toEqual([
       {
         name: 'server1',
+        alias: 'fetch',
         tools: ['search'],
         prompts: ['draft_prompt'],
         resources: ['resource://docs/guide'],
@@ -83,5 +85,32 @@ describe('groupService capability selections', () => {
         resources: [],
       },
     ]);
+  });
+
+  it('rejects duplicate exposed server names in a group', async () => {
+    const result = await createGroup(
+      'Duplicate aliases',
+      'Ambiguous exposed names',
+      [
+        {
+          name: 'server1',
+          alias: 'fetch',
+          tools: 'all',
+          prompts: 'all',
+          resources: 'all',
+        },
+        {
+          name: 'server2',
+          alias: 'fetch',
+          tools: 'all',
+          prompts: 'all',
+          resources: 'all',
+        },
+      ],
+      'admin',
+    );
+
+    expect(result).toBeNull();
+    expect(mockGroupDao.create).not.toHaveBeenCalled();
   });
 });

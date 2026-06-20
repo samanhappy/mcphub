@@ -5,13 +5,18 @@
  * AI-powered tool discovery using vector semantic search.
  */
 
-import { Tool, ServerInfo } from '../types/index.js';
-import { getServersInGroup } from './groupService.js';
+import { Tool, ServerInfo, IGroupServerConfig } from '../types/index.js';
+import {
+  getGroupServerExposedName,
+  getServerConfigsInGroup,
+  getServersInGroup,
+} from './groupService.js';
 import { searchToolsByVector } from './vectorSearchService.js';
 import { getSmartRoutingConfig, type SmartRoutingConfig } from '../utils/smartRouting.js';
 import { getServerDao } from '../dao/index.js';
 import { getGroup } from './sseService.js';
 import { isAppOnlyTool } from '../utils/mcpApps.js';
+import { getNameSeparator } from '../config/index.js';
 
 // Reference to serverInfos from mcpService - will be set via init
 let serverInfosRef: ServerInfo[] = [];
@@ -61,6 +66,77 @@ const cleanInputSchema = (schema: any): any => {
   delete cleanedSchema.$schema;
 
   return cleanedSchema;
+};
+
+const getSmartTargetGroup = (group: string | undefined): string | undefined => {
+  return group?.startsWith('$smart/') ? group.substring(7) || undefined : undefined;
+};
+
+const getGroupServerConfigMap = async (
+  targetGroup: string | undefined,
+): Promise<Map<string, IGroupServerConfig>> => {
+  if (!targetGroup) {
+    return new Map();
+  }
+
+  const serverConfigs = await getServerConfigsInGroup(targetGroup);
+  return new Map(serverConfigs.map((serverConfig) => [serverConfig.name, serverConfig]));
+};
+
+const getExposedServerName = (serverName: string, serverConfig?: IGroupServerConfig): string => {
+  return serverConfig ? getGroupServerExposedName(serverConfig) : serverName;
+};
+
+const replacePrefixedServerName = (
+  name: string,
+  fromServerName: string,
+  toServerName: string,
+): string => {
+  if (fromServerName === toServerName) {
+    return name;
+  }
+
+  const separator = getNameSeparator();
+  const prefix = `${fromServerName}${separator}`;
+  return name.startsWith(prefix)
+    ? `${toServerName}${separator}${name.substring(prefix.length)}`
+    : name;
+};
+
+const projectNameForGroup = (
+  name: string,
+  serverName: string,
+  serverConfigsByName: Map<string, IGroupServerConfig>,
+): string => {
+  return replacePrefixedServerName(
+    name,
+    serverName,
+    getExposedServerName(serverName, serverConfigsByName.get(serverName)),
+  );
+};
+
+const resolveNameFromGroup = (
+  name: string,
+  serverName: string,
+  serverConfigsByName: Map<string, IGroupServerConfig>,
+): string => {
+  return replacePrefixedServerName(
+    name,
+    getExposedServerName(serverName, serverConfigsByName.get(serverName)),
+    serverName,
+  );
+};
+
+const projectToolForGroup = (tool: any, serverConfigsByName: Map<string, IGroupServerConfig>) => {
+  if (!tool.serverName) {
+    return tool;
+  }
+
+  return {
+    ...tool,
+    name: projectNameForGroup(tool.name, tool.serverName, serverConfigsByName),
+    serverName: getExposedServerName(tool.serverName, serverConfigsByName.get(tool.serverName)),
+  };
 };
 
 /**
@@ -229,7 +305,8 @@ const computeSmartRoutingScope = async (
   const serverDescriptionMode = smartRoutingConfig.serverDescriptionMode ?? 'names';
 
   // Extract target group if pattern is $smart/{group}
-  const targetGroup = group?.startsWith('$smart/') ? group.substring(7) : undefined;
+  const targetGroup = getSmartTargetGroup(group);
+  const serverConfigsByName = await getGroupServerConfigMap(targetGroup);
 
   // Get info about available servers, filtered by target group if specified
   let availableServers = getServerInfos().filter(
@@ -249,13 +326,19 @@ const computeSmartRoutingScope = async (
     serverDescriptionMode === 'full'
       ? availableServers
           .map((server) => {
+            const exposedName = getExposedServerName(
+              server.name,
+              serverConfigsByName.get(server.name),
+            );
             const description = (server.config?.description || server.instructions || '')
               .trim()
               .replace(/\s+/g, ' ');
-            return description ? `- ${server.name}: ${description}` : `- ${server.name}`;
+            return description ? `- ${exposedName}: ${description}` : `- ${exposedName}`;
           })
           .join('\n')
-      : availableServers.map((server) => server.name).join(', ');
+      : availableServers
+          .map((server) => getExposedServerName(server.name, serverConfigsByName.get(server.name)))
+          .join(', ');
   const formattedServersList =
     serverDescriptionMode === 'full' && serversList ? `\n${serversList}` : serversList;
 
@@ -331,13 +414,15 @@ export const handleSearchToolsRequest = async (
   // Determine server filtering based on group
   let group = getGroup(sessionId);
   let servers: string[] | undefined = undefined; // No server filtering by default
+  let serverConfigsByName = new Map<string, IGroupServerConfig>();
 
   // If group is in format $smart/{group}, filter servers to that group
-  if (group?.startsWith('$smart/')) {
-    const targetGroup = group.substring(7);
+  const targetGroup = getSmartTargetGroup(group);
+  if (targetGroup) {
     if (targetGroup) {
       group = targetGroup;
     }
+    serverConfigsByName = await getGroupServerConfigMap(targetGroup);
     const serversInGroup = await getServersInGroup(targetGroup);
     if (serversInGroup !== undefined && serversInGroup !== null) {
       servers = serversInGroup;
@@ -438,7 +523,9 @@ export const handleSearchToolsRequest = async (
       return true;
     }),
   );
-  const tools = modelVisibleTools.filter((_, i) => filterResults[i]);
+  const tools = modelVisibleTools
+    .filter((_, i) => filterResults[i])
+    .map((tool) => projectToolForGroup(tool, serverConfigsByName));
 
   // Build response based on mode
   let guideline: string;
@@ -501,8 +588,10 @@ export const handleDescribeToolRequest = async (
 
   // Determine group filtering
   let group = getGroup(sessionId);
-  if (group?.startsWith('$smart/')) {
-    group = group.substring(7);
+  const targetGroup = getSmartTargetGroup(group);
+  const serverConfigsByName = await getGroupServerConfigMap(targetGroup);
+  if (targetGroup) {
+    group = targetGroup;
   }
 
   // Find the tool across all connected servers
@@ -511,8 +600,10 @@ export const handleDescribeToolRequest = async (
       continue;
     }
 
+    const resolvedToolName = resolveNameFromGroup(toolName, serverInfo.name, serverConfigsByName);
+
     // Check if this server has the tool
-    const tool = serverInfo.tools?.find((t) => t.name === toolName);
+    const tool = serverInfo.tools?.find((t) => t.name === resolvedToolName);
     if (!tool || isAppOnlyTool(tool)) {
       continue;
     }
@@ -537,10 +628,10 @@ export const handleDescribeToolRequest = async (
 
     // Return full tool information
     const toolInfo = {
-      name: tool.name,
+      name: projectNameForGroup(tool.name, serverInfo.name, serverConfigsByName),
       description: toolConfig?.description || tool.description,
       inputSchema: cleanInputSchema(tool.inputSchema),
-      serverName: serverInfo.name,
+      serverName: getExposedServerName(serverInfo.name, serverConfigsByName.get(serverInfo.name)),
     };
 
     return {

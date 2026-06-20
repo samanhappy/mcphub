@@ -21,7 +21,16 @@ export class Group {
   description?: string;
 
   @Column({ type: 'simple-json' })
-  servers: Array<string | { name: string; tools?: string[] | 'all' }>;
+  servers: Array<
+    | string
+    | {
+        name: string;
+        alias?: string;
+        tools?: string[] | 'all';
+        prompts?: string[] | 'all';
+        resources?: string[] | 'all';
+      }
+  >;
 
   @Column({ type: 'varchar', length: 255, nullable: true })
   owner?: string;

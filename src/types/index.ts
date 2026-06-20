@@ -26,6 +26,7 @@ export interface IGroup {
 // Server configuration within a group - supports tool selection
 export interface IGroupServerConfig {
   name: string; // Server name
+  alias?: string; // Optional exposed name for this server within the group
   tools?: string[] | 'all'; // Array of specific tool names to include, or 'all' for all tools (default: 'all')
   prompts?: string[] | 'all'; // Array of specific prompt names to include, or 'all' for all prompts (default: 'all')
   resources?: string[] | 'all'; // Array of specific resource URIs to include, or 'all' for all resources (default: 'all')

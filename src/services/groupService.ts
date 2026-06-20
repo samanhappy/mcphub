@@ -6,20 +6,40 @@ import { UserContextService } from './userContextService.js';
 import { getGroupDao, getServerDao, getSystemConfigDao } from '../dao/index.js';
 
 // Helper function to normalize group servers configuration
-export const normalizeGroupServers = (servers: string[] | IGroupServerConfig[]): IGroupServerConfig[] => {
+export const normalizeGroupServers = (
+  servers: string[] | IGroupServerConfig[],
+): IGroupServerConfig[] => {
   return servers.map((server) => {
     if (typeof server === 'string') {
       // Backward compatibility: string format means all tools
       return { name: server, tools: 'all', prompts: 'all', resources: 'all' };
     }
     // New format: ensure capability selections default to 'all' if not specified
+    const alias = server.alias?.trim();
     return {
       name: server.name,
+      ...(alias ? { alias } : {}),
       tools: server.tools || 'all',
       prompts: server.prompts || 'all',
       resources: server.resources || 'all',
     };
   });
+};
+
+export const getGroupServerExposedName = (serverConfig: IGroupServerConfig): string => {
+  return serverConfig.alias?.trim() || serverConfig.name;
+};
+
+const hasDuplicateExposedServerName = (servers: IGroupServerConfig[]): boolean => {
+  const seen = new Set<string>();
+  for (const server of servers) {
+    const exposedName = getGroupServerExposedName(server);
+    if (seen.has(exposedName)) {
+      return true;
+    }
+    seen.add(exposedName);
+  }
+  return false;
 };
 
 const canMutateGroup = (group: IGroup): boolean => {
@@ -86,6 +106,9 @@ export const createGroup = async (
     const validServers: IGroupServerConfig[] = normalizedServers.filter((serverConfig) =>
       serverNames.has(serverConfig.name),
     );
+    if (hasDuplicateExposedServerName(validServers)) {
+      return null;
+    }
 
     const newGroup: IGroup = {
       id: randomUUID(),
@@ -128,6 +151,9 @@ export const updateGroup = async (id: string, data: Partial<IGroup>): Promise<IG
       const allServers = await serverDao.findAll();
       const serverNames = new Set(allServers.map((s) => s.name));
       data.servers = normalizedServers.filter((serverConfig) => serverNames.has(serverConfig.name));
+      if (hasDuplicateExposedServerName(data.servers)) {
+        return null;
+      }
     }
 
     const updatedGroup = await groupDao.update(id, data);
@@ -165,6 +191,9 @@ export const updateGroupServers = async (
     const validServers = normalizedServers.filter((serverConfig) =>
       serverNames.has(serverConfig.name),
     );
+    if (hasDuplicateExposedServerName(validServers)) {
+      return null;
+    }
 
     const updatedGroup = await groupDao.update(groupId, { servers: validServers });
 

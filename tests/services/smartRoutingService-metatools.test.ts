@@ -4,6 +4,10 @@ const mockGetSmartRoutingConfig = jest.fn(() => Promise.resolve({ progressiveDis
 jest.mock('../../src/services/groupService.js', () => ({
   getServersInGroup: jest.fn(),
   getServerConfigInGroup: jest.fn(),
+  getGroupServerExposedName: jest.fn(
+    (serverConfig: any) => serverConfig.alias || serverConfig.name,
+  ),
+  getServerConfigsInGroup: jest.fn(async () => []),
 }));
 
 jest.mock('../../src/services/vectorSearchService.js', () => ({
@@ -24,6 +28,10 @@ jest.mock('../../src/dao/index.js', () => ({
 
 jest.mock('../../src/services/sseService.js', () => ({
   getGroup: jest.fn(),
+}));
+
+jest.mock('../../src/config/index.js', () => ({
+  getNameSeparator: jest.fn(() => '::'),
 }));
 
 import {
