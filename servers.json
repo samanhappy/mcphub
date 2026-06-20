@@ -51,12 +51,12 @@
         "command": "npx",
         "args": [
           "-y",
-          "github:tboome33/openrouter-fusion-mcp"
+          "openrouter-fusion-mcp"
         ],
         "env": {
           "OPENROUTER_API_KEY": "${OPENROUTER_API_KEY}"
         },
-        "description": "Runs server.mjs straight from the public GitHub repo via npx (no npm publish required). Presets 'quality' and 'budget' work out-of-the-box; the custom presets (research, research-eco, maths, medecine, code) are added as extra OPENROUTER_FUSION_<NAME> env vars — paste-ready values are in the repo's fusion-env-vars.json."
+        "description": "Runs the published npm package via npx. Presets 'quality' and 'budget' work out-of-the-box; the custom presets (research, research-eco, maths, medecine, code) are added as extra OPENROUTER_FUSION_<NAME> env vars — paste-ready values are in the repo's fusion-env-vars.json."
       }
     },
     "arguments": {
