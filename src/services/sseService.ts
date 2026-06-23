@@ -15,7 +15,7 @@ import {
 } from '../dao/index.js';
 import { UserContextService } from './userContextService.js';
 import { RequestContextService } from './requestContextService.js';
-import { IUser, BearerKey } from '../types/index.js';
+import { IUser, BearerKey, BearerKeyKind } from '../types/index.js';
 import { resolveOAuthUserFromToken } from '../utils/oauthBearer.js';
 import { safeCompare } from '../utils/safeCompare.js';
 import { getBearerAuthHeaderValue, getBearerTokenFromHeaders } from '../utils/bearerAuth.js';
@@ -117,6 +117,7 @@ type BearerAuthResult =
       user?: IUser;
       keyId?: string;
       keyName?: string;
+      kind?: BearerKeyKind;
       hostedAuth?: HostedAuthContext;
     }
   | {
@@ -266,7 +267,7 @@ const resolveUserLevelKeyUser = async (
   key: BearerKey,
 ): Promise<BearerAuthResult> => {
   if (key.kind !== 'user') {
-    return { valid: true, keyId: key.id, keyName: key.name };
+    return { valid: true, keyId: key.id, keyName: key.name, kind: key.kind || 'system' };
   }
 
   if (!key.owner) {
@@ -283,7 +284,7 @@ const resolveUserLevelKeyUser = async (
     return { valid: false, reason: 'forbidden' };
   }
 
-  return { valid: true, user, keyId: key.id, keyName: key.name };
+  return { valid: true, user, keyId: key.id, keyName: key.name, kind: 'user' };
 };
 
 const validateBearerAuth = async (req: Request): Promise<BearerAuthResult> => {
@@ -329,6 +330,7 @@ const validateBearerAuth = async (req: Request): Promise<BearerAuthResult> => {
         user: { username: hostedAuth.userId, password: '', isAdmin: true },
         keyId: hostedAuth.apiKeyId,
         keyName: hostedAuth.apiKeyPrefix,
+        kind: 'system',
         hostedAuth,
       };
     } catch (error) {
@@ -684,6 +686,7 @@ export const handleSseMessage = async (req: Request, res: Response): Promise<voi
     requestContextService.setGroupContext(group);
     requestContextService.setUsernameContext(username);
     requestContextService.setHostedAuthContext(currentHostedAuth);
+    requestContextService.setKeyKindContext(bearerAuthResult.kind);
 
     await (transport as SSEServerTransport).handlePostMessage(req, res);
   });
@@ -934,6 +937,7 @@ export const handleMcpPostRequest = async (req: Request, res: Response): Promise
     requestContextService.setBearerKeyContext(bearerAuthResult.keyId, bearerAuthResult.keyName);
     requestContextService.setGroupContext(group);
     requestContextService.setUsernameContext(username);
+    requestContextService.setKeyKindContext(bearerAuthResult.kind);
     requestContextService.setHostedAuthContext(
       bearerAuthResult.hostedAuth || transportInfo?.hostedAuth,
     );

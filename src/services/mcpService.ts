@@ -2308,7 +2308,11 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
   // Fallback to extra for backward compatibility (e.g., direct API calls)
   const group =
     requestContextService.getGroupContext() || extra?.group || getGroup(sessionId) || undefined;
-  const username = requestContextService.getUsernameContext() || extra?.username || undefined;
+  const username =
+    requestContextService.getUsernameContext() ||
+    extra?.username ||
+    (requestContextService.getKeyKindContext() === 'system' ? 'system' : undefined) ||
+    undefined;
   let appsRouteContext: McpAppsRouteContext = { enabled: false };
   const keyId = bearerKeyContext.keyId || extra?.keyId || undefined;
   const keyName = bearerKeyContext.keyName || extra?.keyName || undefined;

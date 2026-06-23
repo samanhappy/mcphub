@@ -1,6 +1,7 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { Request } from 'express';
 import ipaddr from 'ipaddr.js';
+import type { BearerKeyKind } from '../types/index.js';
 import type { HostedAuthContext } from './hostedAuthService.js';
 
 /**
@@ -15,6 +16,7 @@ export interface RequestContext {
   username?: string;
   keyId?: string;
   keyName?: string;
+  keyKind?: BearerKeyKind;
   hostedAuth?: HostedAuthContext;
 }
 
@@ -201,6 +203,16 @@ export class RequestContextService {
   }
 
   /**
+   * Set key kind context for activity logging
+   */
+  public setKeyKindContext(keyKind?: BearerKeyKind): void {
+    const requestContext = this.getRequestContext();
+    if (requestContext) {
+      requestContext.keyKind = keyKind;
+    }
+  }
+
+  /**
    * Get bearer key context
    */
   public getBearerKeyContext(): { keyId?: string; keyName?: string } {
@@ -223,6 +235,13 @@ export class RequestContextService {
    */
   public getUsernameContext(): string | undefined {
     return this.getRequestContext()?.username;
+  }
+
+  /**
+   * Get key kind context
+   */
+  public getKeyKindContext(): BearerKeyKind | undefined {
+    return this.getRequestContext()?.keyKind;
   }
 
   public getHostedAuthContext(): HostedAuthContext | undefined {

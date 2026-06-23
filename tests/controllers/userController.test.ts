@@ -8,6 +8,7 @@ const mockUpdateUser = jest.fn();
 const mockDeleteUser = jest.fn();
 const mockGetUserCount = jest.fn();
 const mockGetAdminCount = jest.fn();
+const mockCheckReservedUsername = jest.fn(() => null);
 
 jest.mock('../../src/services/userService.js', () => ({
   getAllUsers: mockGetAllUsers,
@@ -17,6 +18,7 @@ jest.mock('../../src/services/userService.js', () => ({
   deleteUser: mockDeleteUser,
   getUserCount: mockGetUserCount,
   getAdminCount: mockGetAdminCount,
+  checkReservedUsername: mockCheckReservedUsername,
 }));
 
 jest.mock('../../src/utils/passwordValidation.js', () => ({

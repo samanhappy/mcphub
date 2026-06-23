@@ -14,6 +14,21 @@ export const getUserByUsername = async (username: string): Promise<IUser | undef
   return user || undefined;
 };
 
+/** Usernames reserved for system use (case-insensitive). */
+const RESERVED_USERNAMES = ['system', 'admin', 'guest', 'root'];
+
+/**
+ * Check if a username is reserved for system use.
+ * Returns the reason string if reserved, or null if allowed.
+ */
+export const checkReservedUsername = (username: string): string | null => {
+  const lower = username.toLowerCase();
+  if (RESERVED_USERNAMES.includes(lower)) {
+    return `Username "${username}" is reserved and cannot be used`;
+  }
+  return null;
+};
+
 // Create a new user
 export const createNewUser = async (
   username: string,
@@ -22,6 +37,12 @@ export const createNewUser = async (
   email?: string,
 ): Promise<IUser | null> => {
   try {
+    const reservedError = checkReservedUsername(username);
+    if (reservedError) {
+      console.warn(`User creation blocked: ${reservedError}`);
+      return null;
+    }
+
     const userDao = getUserDao();
     const existingUser = await userDao.findByUsername(username);
     if (existingUser) {

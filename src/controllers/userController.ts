@@ -8,6 +8,7 @@ import {
   deleteUser,
   getUserCount,
   getAdminCount,
+  checkReservedUsername,
 } from '../services/userService.js';
 import { validatePasswordStrength } from '../utils/passwordValidation.js';
 
@@ -102,6 +103,16 @@ export const createUser = async (req: Request, res: Response): Promise<void> => 
         success: false,
         message: 'Password does not meet security requirements',
         errors: validationResult.errors,
+      });
+      return;
+    }
+
+    // Check username against reserved names (e.g. "system", "admin")
+    const reservedError = checkReservedUsername(username);
+    if (reservedError) {
+      res.status(400).json({
+        success: false,
+        message: reservedError,
       });
       return;
     }
