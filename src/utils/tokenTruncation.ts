@@ -275,6 +275,19 @@ async function truncateWithHFTokenizer(
   maxTokens: number,
   model: string,
 ): Promise<string> {
+  // Pre-filter: skip the tokenizer download entirely when truncation cannot
+  // possibly trigger. Each token covers at least one UTF-8 byte, and a single
+  // character expands to at most 4 bytes — hence at most 4 tokens under
+  // byte-fallback tokenizers like bge-m3's XLM-RoBERTa. So text.length * 4 is
+  // a provable upper bound on the token count; when it is <= maxTokens no
+  // truncation can be needed. This avoids a ~10s network round-trip on every
+  // short embedding query when HF Hub / hf-mirror are slow or unreachable
+  // (issue #935). bge-m3's limit is 8192; typical search_tools queries are
+  // 10-50 chars.
+  if (text.length * 4 <= maxTokens) {
+    return text;
+  }
+
   const modelId = getHFModelId(model);
 
   // Helper: apply token-level truncation using a downloaded tokenizer instance.

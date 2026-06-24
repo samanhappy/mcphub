@@ -452,6 +452,32 @@ describe('truncateToTokenLimit – HuggingFace tokenizer error handling', () => 
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Pre-filter: skip HF tokenizer download entirely for short text (issue #935)
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('truncateToTokenLimit – HF pre-filter skips download for short text', () => {
+  it('returns short text unchanged without any HF network download', async () => {
+    mockTokenizerModule();
+    const fetchMock = jest.fn(async () => createFetchResponse({}));
+    global.fetch = fetchMock as typeof global.fetch;
+
+    const { truncateToTokenLimit: truncate } = await import('../../src/utils/tokenTruncation.js');
+
+    // Realistic search_tools query (~29 chars). bge-m3 limit is 8192 tokens.
+    // 29 * 4 = 116 <= 8192, so truncation cannot possibly trigger and the HF
+    // tokenizer download must be skipped entirely (issue #935).
+    const query = 'save a memory about a bug fix';
+    const maxTokens = 8192;
+
+    const result = await truncate(query, maxTokens, 'BAAI/bge-m3');
+
+    expect(result).toBe(query);
+    // No download attempted against either the official host or the mirror
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Three-tier fallback: official HF → hf-mirror.com → heuristic
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -528,7 +554,10 @@ describe('truncateToTokenLimit – HuggingFace three-tier fallback', () => {
     ) as typeof global.fetch;
 
     const maxTokens = 100;
-    const shortText = 'hello world'; // 11 chars, well under maxTokens * 3 = 300
+    // Length must bypass the pre-filter (text.length * 4 > maxTokens) so the
+    // download is actually attempted, yet still fit within the heuristic
+    // ceiling (maxTokens * 3 = 300) so the fallback returns it unchanged.
+    const shortText = 'a'.repeat(50); // 50 * 4 = 200 > 100; 50 <= 300
 
     const { truncateToTokenLimit: truncate } = await import('../../src/utils/tokenTruncation.js');
     const result = await truncate(shortText, maxTokens, 'BAAI/bge-m3');
@@ -546,10 +575,15 @@ describe('truncateToTokenLimit – HuggingFace three-tier fallback', () => {
 
     const { truncateToTokenLimit: truncate } = await import('../../src/utils/tokenTruncation.js');
 
+    // Length must bypass the pre-filter (text.length * 4 > maxTokens) so the
+    // download path is actually exercised; the encode mock returns 3 tokens
+    // (<= maxTokens), so the text is returned unchanged.
+    const text = 'a'.repeat(30); // 30 * 4 = 120 > 100
+
     // Fire two concurrent calls for the same model/host
     await Promise.all([
-      truncate('hello world', 100, 'BAAI/bge-m3'),
-      truncate('hello world', 100, 'BAAI/bge-m3'),
+      truncate(text, 100, 'BAAI/bge-m3'),
+      truncate(text, 100, 'BAAI/bge-m3'),
     ]);
 
     expect(TokenizerMock).toHaveBeenCalledTimes(1);
