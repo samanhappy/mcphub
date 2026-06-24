@@ -464,7 +464,7 @@ describe('truncateToTokenLimit – HF pre-filter skips download for short text',
     const { truncateToTokenLimit: truncate } = await import('../../src/utils/tokenTruncation.js');
 
     // Realistic search_tools query (~29 chars). bge-m3 limit is 8192 tokens.
-    // 29 * 4 = 116 <= 8192, so truncation cannot possibly trigger and the HF
+    // 29 * 3 + 2 = 89 <= 8192, so truncation cannot possibly trigger and the HF
     // tokenizer download must be skipped entirely (issue #935).
     const query = 'save a memory about a bug fix';
     const maxTokens = 8192;
@@ -474,6 +474,32 @@ describe('truncateToTokenLimit – HF pre-filter skips download for short text',
     expect(result).toBe(query);
     // No download attempted against either the official host or the mirror
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('does NOT skip when BOS/EOS special tokens would push past the limit', async () => {
+    // XLM-RoBERTa wraps input with <s> (BOS) and </s> (EOS) special tokens,
+    // which count toward the model's max sequence length. For a single 3-byte
+    // CJK char, byte-fallback yields BOS + 3 byte tokens + EOS = 5 ids. With
+    // maxTokens = 4 the pre-filter must NOT skip, or the untruncated text (5
+    // ids) would exceed the limit and be rejected by the embedding API.
+    //
+    // This is the discriminating case between bound formulas:
+    //  - text.length * 4     -> 1 * 4 = 4 <= 4  -> WRONGLY skips (no fetch)
+    //  - text.length * 3 + 2 -> 1 * 3 + 2 = 5 > 4 -> correctly downloads
+    // The +2 accounts for the two special tokens; *3 (not *4) is the provable
+    // upper bound on UTF-8 bytes since 4-byte chars occupy 2 code units.
+    mockTokenizerModule({
+      encode: () => ({ ids: new Int32Array([0, 6, 7, 8, 2]) }), // <s> + 3 bytes + </s>
+    });
+    const fetchMock = jest.fn(async () => createFetchResponse({}));
+    global.fetch = fetchMock as typeof global.fetch;
+
+    const { truncateToTokenLimit: truncate } = await import('../../src/utils/tokenTruncation.js');
+
+    await truncate('你', 4, 'BAAI/bge-m3');
+
+    // Pre-filter must not have skipped: the tokenizer was downloaded and used
+    expect(fetchMock).toHaveBeenCalled();
   });
 });
 
@@ -554,10 +580,10 @@ describe('truncateToTokenLimit – HuggingFace three-tier fallback', () => {
     ) as typeof global.fetch;
 
     const maxTokens = 100;
-    // Length must bypass the pre-filter (text.length * 4 > maxTokens) so the
+    // Length must bypass the pre-filter (text.length * 3 + 2 > maxTokens) so the
     // download is actually attempted, yet still fit within the heuristic
     // ceiling (maxTokens * 3 = 300) so the fallback returns it unchanged.
-    const shortText = 'a'.repeat(50); // 50 * 4 = 200 > 100; 50 <= 300
+    const shortText = 'a'.repeat(50); // 50 * 3 + 2 = 152 > 100; 50 <= 300
 
     const { truncateToTokenLimit: truncate } = await import('../../src/utils/tokenTruncation.js');
     const result = await truncate(shortText, maxTokens, 'BAAI/bge-m3');
@@ -575,10 +601,10 @@ describe('truncateToTokenLimit – HuggingFace three-tier fallback', () => {
 
     const { truncateToTokenLimit: truncate } = await import('../../src/utils/tokenTruncation.js');
 
-    // Length must bypass the pre-filter (text.length * 4 > maxTokens) so the
+    // Length must bypass the pre-filter (text.length * 3 + 2 > maxTokens) so the
     // download path is actually exercised; the encode mock returns 3 tokens
     // (<= maxTokens), so the text is returned unchanged.
-    const text = 'a'.repeat(30); // 30 * 4 = 120 > 100
+    const text = 'a'.repeat(35); // 35 * 3 + 2 = 107 > 100
 
     // Fire two concurrent calls for the same model/host
     await Promise.all([
