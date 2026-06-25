@@ -25,6 +25,8 @@ import {
 } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { normalizeHeaders } from '@modelcontextprotocol/sdk/shared/transport.js';
 import { createFetchWithProxy, getProxyConfigFromEnv } from './proxy.js';
+import { assertSafeUrl } from '../utils/ssrf.js';
+import { getUserDao } from '../dao/index.js';
 import {
   ServerInfo,
   ServerConfig,
@@ -976,6 +978,17 @@ export const createTransportFromConfig = async (name: string, conf: ServerConfig
     ...(process.env as Record<string, string>),
     ...replaceEnvVars(conf.env || {}),
   };
+
+  // SSRF guard: block URL/streamable-http transports from reaching
+  // loopback / RFC1918 / link-local targets (e.g. cloud metadata service).
+  // Admin-owned servers may legitimately target internal services, so they
+  // skip the internal-IP blocklist.
+  if (conf.url) {
+    const ownerUser = conf.owner
+      ? await getUserDao().findByUsername(conf.owner)
+      : null;
+    await assertSafeUrl(conf.url, { allowInternal: !!ownerUser?.isAdmin });
+  }
 
   if (conf.type === 'streamable-http') {
     const options: StreamableHTTPClientTransportOptions = {};

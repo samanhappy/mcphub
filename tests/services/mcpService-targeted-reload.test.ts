@@ -138,6 +138,9 @@ jest.mock('../../src/dao/index.js', () => ({
   getBuiltinResourceDao: jest.fn(() => ({
     findEnabled: jest.fn(async () => []),
   })),
+  getUserDao: jest.fn(() => ({
+    findByUsername: jest.fn(async () => ({ isAdmin: false })),
+  })),
 }));
 
 jest.mock('../../src/config/index.js', () => ({

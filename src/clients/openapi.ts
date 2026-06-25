@@ -2,6 +2,8 @@ import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
 import SwaggerParser from '@apidevtools/swagger-parser';
 import { OpenAPIV3 } from 'openapi-types';
 import { ServerConfig, OpenAPISecurityConfig } from '../types/index.js';
+import { assertSafeUrl } from '../utils/ssrf.js';
+import { getUserDao } from '../dao/index.js';
 
 export interface OpenAPIToolInfo {
   name: string;
@@ -29,6 +31,9 @@ export class OpenAPIClient {
   private securityConfig?: OpenAPISecurityConfig;
   private readonly persistOAuth2Token?: OpenAPIClientOptions['persistOAuth2Token'];
   private oauth2TokenRequest?: Promise<string | undefined>;
+  // Resolved in initialize(): admin-owned servers may target internal services
+  // and skip the SSRF internal-IP blocklist.
+  private allowInternalNetworks = false;
 
   constructor(
     private config: ServerConfig,
@@ -46,6 +51,7 @@ export class OpenAPIClient {
     this.httpClient = axios.create({
       baseURL: this.baseUrl,
       timeout: config.options?.timeout || 30000,
+      maxRedirects: 0,
       headers: {
         'Content-Type': 'application/json',
         ...config.headers,
@@ -249,6 +255,13 @@ export class OpenAPIClient {
 
       // Update baseUrl from OpenAPI servers field
       this.updateBaseUrlFromServers();
+
+      // Resolve whether this server's owner is an admin; admin-owned servers
+      // may legitimately target internal services and skip the SSRF blocklist.
+      const ownerUser = this.config.owner
+        ? await getUserDao().findByUsername(this.config.owner)
+        : null;
+      this.allowInternalNetworks = !!ownerUser?.isAdmin;
 
       this.extractTools();
       await this.ensureOAuth2AccessToken();
@@ -521,6 +534,22 @@ export class OpenAPIClient {
       // Set headers if any were collected
       if (Object.keys(allHeaders).length > 0) {
         requestConfig.headers = allHeaders;
+      }
+
+      // SSRF guard: reject requests whose resolved target resolves to an
+      // internal/loopback/link-local address. The baseURL and tool path are
+      // both attacker-influenced (via the OpenAPI spec), so validate the
+      // final URL rather than trusting either alone.
+      let resolvedTarget: URL | null = null;
+      try {
+        resolvedTarget = new URL(String(requestConfig.url ?? '/'), this.baseUrl || undefined);
+      } catch {
+        // relative path with no base — no host to validate; axios surfaces the error
+      }
+      if (resolvedTarget) {
+        await assertSafeUrl(resolvedTarget.href, {
+          allowInternal: this.allowInternalNetworks,
+        });
       }
 
       const response = await this.httpClient.request(requestConfig);
