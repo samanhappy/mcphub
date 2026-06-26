@@ -59,6 +59,13 @@ const ServersPage: React.FC = () => {
     [allServers, filter, search, currentPage, serversPerPage],
   );
 
+  // Sync currentPage when client-side pagination clamps it (filter/search narrows results).
+  useEffect(() => {
+    if (clientPagination.page !== currentPage) {
+      setCurrentPage(clientPagination.page);
+    }
+  }, [clientPagination.page, currentPage, setCurrentPage]);
+
   const handleEditClick = async (server: Server) => {
     const fullServerData = await handleServerEdit(server);
     if (fullServerData) setEditingServer(fullServerData);
