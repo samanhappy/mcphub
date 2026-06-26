@@ -11,7 +11,7 @@ import JSONImportForm from '@/components/JSONImportForm';
 import Pagination from '@/components/ui/Pagination';
 import { useServerData } from '@/hooks/useServerData';
 import { useCostData } from '@/hooks/useCostData';
-import { filterServers, getServerFilterCounts, type ServerFilter } from '@/utils/serverFilters';
+import { selectServerPage, getServerFilterCounts, type ServerFilter } from '@/utils/serverFilters';
 
 const ServersPage: React.FC = () => {
   const { t } = useTranslation();
@@ -22,7 +22,6 @@ const ServersPage: React.FC = () => {
     error,
     setError,
     isLoading,
-    pagination,
     currentPage,
     serversPerPage,
     setCurrentPage,
@@ -53,7 +52,12 @@ const ServersPage: React.FC = () => {
 
   const counts = useMemo(() => getServerFilterCounts(allServers), [allServers]);
 
-  const filteredServers = useMemo(() => filterServers(servers, filter, search), [servers, filter, search]);
+  // Filter against the full list and paginate the filtered result client-side,
+  // so status filters reach servers that live on other pagination pages.
+  const { servers: visibleServers, pagination: clientPagination } = useMemo(
+    () => selectServerPage(allServers, filter, search, currentPage, serversPerPage),
+    [allServers, filter, search, currentPage, serversPerPage],
+  );
 
   const handleEditClick = async (server: Server) => {
     const fullServerData = await handleServerEdit(server);
@@ -184,7 +188,7 @@ const ServersPage: React.FC = () => {
         </div>
 
         <div className="ml-auto hub-mono text-[12px]" style={{ color: 'var(--hub-ink-3)' }}>
-          {filteredServers.length}/{servers.length}
+          {clientPagination.total}/{allServers.length}
         </div>
       </div>
 
@@ -196,14 +200,14 @@ const ServersPage: React.FC = () => {
             <p style={{ color: 'var(--hub-ink-3)' }}>{t('app.loading')}</p>
           </div>
         </div>
-      ) : filteredServers.length === 0 ? (
+      ) : visibleServers.length === 0 ? (
         <div className="hub-card p-10 text-center" style={{ color: 'var(--hub-ink-3)' }}>
           <p>{servers.length === 0 ? t('app.noServers') : t('market.noServers')}</p>
         </div>
       ) : (
         <>
           <div className="flex flex-col">
-            {filteredServers.map((server) => (
+            {visibleServers.map((server) => (
               <ServerCard
                 key={server.name}
                 server={server}
@@ -221,19 +225,17 @@ const ServersPage: React.FC = () => {
 
           <div className="flex items-center mt-4 text-[12px]" style={{ color: 'var(--hub-ink-3)' }}>
             <div className="flex-[2]">
-              {pagination
-                ? t('common.showing', {
-                    start: (pagination.page - 1) * pagination.limit + 1,
-                    end: Math.min(pagination.page * pagination.limit, pagination.total),
-                    total: pagination.total,
-                  })
-                : t('common.showing', { start: 1, end: servers.length, total: servers.length })}
+              {t('common.showing', {
+                start: (clientPagination.page - 1) * clientPagination.limit + 1,
+                end: Math.min(clientPagination.page * clientPagination.limit, clientPagination.total),
+                total: clientPagination.total,
+              })}
             </div>
             <div className="flex-[4] flex justify-center">
-              {pagination && pagination.totalPages > 1 && (
+              {clientPagination.totalPages > 1 && (
                 <Pagination
-                  currentPage={currentPage}
-                  totalPages={pagination.totalPages}
+                  currentPage={clientPagination.page}
+                  totalPages={clientPagination.totalPages}
                   onPageChange={setCurrentPage}
                   disabled={isLoading}
                 />
