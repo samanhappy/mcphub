@@ -1,6 +1,11 @@
-import { describe, expect, it } from '@jest/globals';
+import { describe, expect, it, jest } from '@jest/globals';
 
-import { assertSafeUrl, isBlockedIp, UnsafeUrlError } from '../ssrf.js';
+import {
+  assertSafeUrl,
+  createRedirectValidatingFetch,
+  isBlockedIp,
+  UnsafeUrlError,
+} from '../ssrf.js';
 
 describe('isBlockedIp', () => {
   it.each([
@@ -144,5 +149,138 @@ describe('assertSafeUrl with allowInternal', () => {
     await expect(
       assertSafeUrl('http://127.0.0.1:8181/secret'),
     ).rejects.toThrow(UnsafeUrlError);
+  });
+});
+
+describe('createRedirectValidatingFetch', () => {
+  const makeResponse = (
+    status: number,
+    location?: string,
+    body: BodyInit = '',
+  ): Response => {
+    const headers = new Headers();
+    if (location) headers.set('location', location);
+    const nullBody = status === 204 || status === 304;
+    return new Response(nullBody ? null : body, { status, headers });
+  };
+
+  it('returns the response directly for a non-redirect (2xx)', async () => {
+    const baseFetch = jest.fn(async () => makeResponse(200));
+    const safeFetch = createRedirectValidatingFetch(
+      baseFetch as unknown as typeof fetch,
+      false,
+    );
+    const res = await safeFetch('http://8.8.8.8/api');
+    expect(res.status).toBe(200);
+    expect(baseFetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('follows a redirect to a safe Location and returns the final response', async () => {
+    const baseFetch = jest
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        makeResponse(302, 'http://8.8.8.8/next') as Response,
+      )
+      .mockResolvedValueOnce(makeResponse(200, undefined, 'done') as Response);
+    const safeFetch = createRedirectValidatingFetch(baseFetch, false);
+    const res = await safeFetch('http://8.8.8.8/start');
+    expect(res.status).toBe(200);
+    expect(baseFetch).toHaveBeenCalledTimes(2);
+    expect(baseFetch).toHaveBeenNthCalledWith(
+      1,
+      'http://8.8.8.8/start',
+      expect.objectContaining({ redirect: 'manual' }),
+    );
+    expect(baseFetch).toHaveBeenNthCalledWith(
+      2,
+      'http://8.8.8.8/next',
+      expect.objectContaining({ redirect: 'manual' }),
+    );
+  });
+
+  it('rejects a redirect to an internal IP Location without following', async () => {
+    const baseFetch = jest
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        makeResponse(302, 'http://127.0.0.1:8181/secret') as Response,
+      );
+    const safeFetch = createRedirectValidatingFetch(baseFetch, false);
+    await expect(safeFetch('http://8.8.8.8/start')).rejects.toThrow(
+      UnsafeUrlError,
+    );
+    expect(baseFetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('allows a redirect to an internal IP when allowInternal is true', async () => {
+    const baseFetch = jest
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        makeResponse(302, 'http://127.0.0.1:8181/secret') as Response,
+      )
+      .mockResolvedValueOnce(makeResponse(200, undefined, 'internal') as Response);
+    const safeFetch = createRedirectValidatingFetch(baseFetch, true);
+    const res = await safeFetch('http://8.8.8.8/start');
+    expect(res.status).toBe(200);
+    expect(baseFetch).toHaveBeenCalledTimes(2);
+  });
+
+  it('rejects the metadata endpoint on redirect', async () => {
+    const baseFetch = jest
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        makeResponse(302, 'http://169.254.169.254/latest/meta-data/') as Response,
+      );
+    const safeFetch = createRedirectValidatingFetch(baseFetch, false);
+    await expect(safeFetch('http://8.8.8.8/start')).rejects.toThrow(
+      UnsafeUrlError,
+    );
+  });
+
+  it('rejects after too many redirects (>5 hops)', async () => {
+    const baseFetch = jest
+      .fn<typeof fetch>()
+      .mockImplementation(async (url: URL | RequestInfo) =>
+        makeResponse(302, `${url.toString()}/x`),
+      );
+    const safeFetch = createRedirectValidatingFetch(baseFetch, false);
+    await expect(safeFetch('http://8.8.8.8/loop')).rejects.toThrow(
+      UnsafeUrlError,
+    );
+    expect(baseFetch).toHaveBeenCalledTimes(6);
+  });
+
+  it('returns the response when a 3xx has no Location header', async () => {
+    const baseFetch = jest
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(makeResponse(302) as Response);
+    const safeFetch = createRedirectValidatingFetch(baseFetch, false);
+    const res = await safeFetch('http://8.8.8.8/start');
+    expect(res.status).toBe(302);
+    expect(baseFetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('resolves a relative Location against the current URL', async () => {
+    const baseFetch = jest
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(makeResponse(302, '/next') as Response)
+      .mockResolvedValueOnce(makeResponse(200, undefined, 'done') as Response);
+    const safeFetch = createRedirectValidatingFetch(baseFetch, false);
+    const res = await safeFetch('http://8.8.8.8/start');
+    expect(res.status).toBe(200);
+    expect(baseFetch).toHaveBeenNthCalledWith(
+      2,
+      'http://8.8.8.8/next',
+      expect.anything(),
+    );
+  });
+
+  it('does not treat 304 Not Modified as a redirect', async () => {
+    const baseFetch = jest
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(makeResponse(304) as Response);
+    const safeFetch = createRedirectValidatingFetch(baseFetch, false);
+    const res = await safeFetch('http://8.8.8.8/start');
+    expect(res.status).toBe(304);
+    expect(baseFetch).toHaveBeenCalledTimes(1);
   });
 });

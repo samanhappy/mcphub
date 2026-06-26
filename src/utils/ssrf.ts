@@ -138,3 +138,46 @@ export async function assertSafeUrl(
     }
   }
 }
+
+export type FetchLike = (url: string | URL, init?: RequestInit) => Promise<Response>;
+
+// Wraps a fetch so HTTP redirects (3xx) are followed manually with each hop
+// validated against the SSRF blocklist, instead of letting the underlying
+// fetch auto-follow to an attacker-chosen internal address. Validates the
+// resolved Location (absolute or relative) on every hop and caps the chain
+// at maxHops to avoid redirect loops.
+export function createRedirectValidatingFetch(
+  baseFetch: FetchLike,
+  allowInternal: boolean,
+): FetchLike {
+  const maxHops = 5;
+  return async (url, init) => {
+    let currentUrl = typeof url === 'string' ? url : url.toString();
+    let hops = 0;
+    let response = await baseFetch(currentUrl, { ...init, redirect: 'manual' });
+    while (
+      response.status >= 300 &&
+      response.status < 400 &&
+      response.status !== 304 &&
+      hops < maxHops
+    ) {
+      const location = response.headers.get('location');
+      if (!location) {
+        return response;
+      }
+      const resolvedUrl = new URL(location, currentUrl).toString();
+      await assertSafeUrl(resolvedUrl, { allowInternal });
+      currentUrl = resolvedUrl;
+      hops++;
+      response = await baseFetch(currentUrl, { ...init, redirect: 'manual' });
+    }
+    if (
+      response.status >= 300 &&
+      response.status < 400 &&
+      response.status !== 304
+    ) {
+      throw new UnsafeUrlError('Too many redirects');
+    }
+    return response;
+  };
+}
