@@ -94,6 +94,7 @@ import {
   resetPromptDescription,
   resetResourceDescription,
   resetToolDescription,
+  toggleServer,
   updateServer,
   updateSystemConfig,
 } from '../../src/controllers/serverController.js';
@@ -956,6 +957,60 @@ describe('serverController - getAllServers', () => {
           totalPages: 2,
         }),
       }),
+    );
+  });
+});
+
+describe('serverController - toggleServer (issue #938)', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockServerDao.findById.mockResolvedValue({
+      name: 'target',
+      owner: 'admin',
+    });
+    mockToggleServerStatus.mockResolvedValue({ success: true });
+  });
+
+  const makeReqRes = (enabled: boolean) => {
+    const json = jest.fn();
+    const status = jest.fn().mockReturnThis();
+    const req = {
+      params: { name: 'target' },
+      body: { enabled },
+      user: { username: 'admin', isAdmin: true },
+    } as unknown as Request;
+    const res = { json, status } as unknown as Response;
+    return { req, res, json, status };
+  };
+
+  // toggleServerStatus already scopes work to the target server (disable closes
+  // it; enable runs a targeted initializeClientsFromSettings(false, name)). The
+  // controller must NOT additionally call the unscoped notifyToolChanged(),
+  // which would re-initialize every non-connected server in the fleet and spike
+  // CPU. It should only broadcast the tool-list change.
+  it('enabling a server broadcasts only and does not trigger a fleet-wide re-init', async () => {
+    const { req, res, json } = makeReqRes(true);
+
+    await toggleServer(req, res);
+
+    expect(mockToggleServerStatus).toHaveBeenCalledWith('target', true);
+    expect(mockNotifyToolChanged).not.toHaveBeenCalled();
+    expect(mockBroadcastToolListChanged).toHaveBeenCalledTimes(1);
+    expect(json).toHaveBeenCalledWith(
+      expect.objectContaining({ success: true }),
+    );
+  });
+
+  it('disabling a server broadcasts only and does not trigger a fleet-wide re-init', async () => {
+    const { req, res, json } = makeReqRes(false);
+
+    await toggleServer(req, res);
+
+    expect(mockToggleServerStatus).toHaveBeenCalledWith('target', false);
+    expect(mockNotifyToolChanged).not.toHaveBeenCalled();
+    expect(mockBroadcastToolListChanged).toHaveBeenCalledTimes(1);
+    expect(json).toHaveBeenCalledWith(
+      expect.objectContaining({ success: true }),
     );
   });
 });

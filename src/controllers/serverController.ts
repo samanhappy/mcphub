@@ -1011,7 +1011,12 @@ export const toggleServer = async (req: Request, res: Response): Promise<void> =
 
     const result = await toggleServerStatus(existingServer.name, enabled);
     if (result.success) {
-      notifyToolChanged();
+      // toggleServerStatus already scopes its work to this server (disabling
+      // closes it; enabling runs a targeted reconnect). Only broadcast the
+      // tool-list change here — calling the unscoped notifyToolChanged() would
+      // re-initialize every non-connected server in the fleet, spiking CPU and
+      // orphaning stdio child processes. See #938 (and the #921/#926 guarantee).
+      broadcastToolListChanged();
       res.json({
         success: true,
         message: result.message || `Server ${enabled ? 'enabled' : 'disabled'} successfully`,
