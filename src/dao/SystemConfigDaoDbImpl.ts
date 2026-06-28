@@ -26,6 +26,7 @@ export class SystemConfigDaoDbImpl implements SystemConfigDao {
       auth: config.auth as any,
       enableSessionRebuild: config.enableSessionRebuild,
       discovery: config.discovery as any,
+      activityLog: config.activityLog as any,
     };
   }
 
@@ -43,6 +44,7 @@ export class SystemConfigDaoDbImpl implements SystemConfigDao {
       auth: updated.auth as any,
       enableSessionRebuild: updated.enableSessionRebuild,
       discovery: updated.discovery as any,
+      activityLog: updated.activityLog as any,
     };
   }
 
@@ -60,6 +62,7 @@ export class SystemConfigDaoDbImpl implements SystemConfigDao {
       auth: config.auth as any,
       enableSessionRebuild: config.enableSessionRebuild,
       discovery: config.discovery as any,
+      activityLog: config.activityLog as any,
     };
   }
 

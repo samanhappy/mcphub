@@ -262,6 +262,13 @@ export interface SystemConfig {
     // install servers programmatically. Off by default to avoid leaking catalog data.
     enabled?: boolean;
   };
+  activityLog?: {
+    // Whether to persist the full tool call input/output payload in activity logs.
+    // Tool payloads are stored verbatim (no field-level redaction); deployments that
+    // treat tool arguments as sensitive can turn this off to store metadata only.
+    // Defaults to true.
+    storeToolPayload?: boolean;
+  };
 }
 
 export interface UserConfig {

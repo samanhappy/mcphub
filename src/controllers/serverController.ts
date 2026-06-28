@@ -1336,6 +1336,7 @@ export const updateSystemConfig = async (req: Request, res: Response): Promise<v
       enableSessionRebuild,
       oauthServer,
       auth,
+      activityLog,
     } = req.body;
 
     const hasRoutingUpdate =
@@ -1391,6 +1392,9 @@ export const updateSystemConfig = async (req: Request, res: Response): Promise<v
 
     const hasSessionRebuildUpdate = typeof enableSessionRebuild === 'boolean';
 
+    const hasActivityLogUpdate =
+      activityLog && typeof activityLog.storeToolPayload === 'boolean';
+
     const hasOAuthServerUpdate =
       oauthServer &&
       (typeof oauthServer.enabled === 'boolean' ||
@@ -1431,7 +1435,8 @@ export const updateSystemConfig = async (req: Request, res: Response): Promise<v
       !hasNameSeparatorUpdate &&
       !hasSessionRebuildUpdate &&
       !hasOAuthServerUpdate &&
-      !hasBetterAuthUpdate
+      !hasBetterAuthUpdate &&
+      !hasActivityLogUpdate
     ) {
       res.status(400).json({
         success: false,
@@ -1958,6 +1963,13 @@ export const updateSystemConfig = async (req: Request, res: Response): Promise<v
 
     if (typeof enableSessionRebuild === 'boolean') {
       systemConfig.enableSessionRebuild = enableSessionRebuild;
+    }
+
+    if (activityLog && typeof activityLog.storeToolPayload === 'boolean') {
+      systemConfig.activityLog = {
+        ...systemConfig.activityLog,
+        storeToolPayload: activityLog.storeToolPayload,
+      };
     }
 
     // Save using DAO (supports both file and database modes)

@@ -301,6 +301,24 @@ export const safeStringify = (obj: any, space?: number): string => {
 };
 
 /**
+ * JSON stringifier that is safe against circular references and serializes
+ * Error instances, but does NOT redact field values.
+ *
+ * Use this for persisting tool call input/output verbatim: heuristic
+ * (key-name / regex) redaction produces both false positives that corrupt the
+ * audit record and false negatives that give a misleading sense of safety, so
+ * whether such payloads are stored at all is a deployment decision (config
+ * switch) rather than something to guess at per field.
+ *
+ * @param obj - The object to stringify
+ * @param space - Number of spaces to use for indentation (optional)
+ * @returns JSON string representation of the object
+ */
+export const stringifyWithoutRedaction = (obj: any, space?: number): string => {
+  return JSON.stringify(obj, createSafeJsonReplacer(), space);
+};
+
+/**
  * Removes specific properties that might contain circular references
  * More targeted approach for known problematic properties
  *

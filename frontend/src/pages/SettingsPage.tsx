@@ -518,6 +518,7 @@ const SettingsPage: React.FC = () => {
     betterAuthConfig,
     nameSeparator,
     enableSessionRebuild,
+    storeToolPayload,
     loading,
     bearerKeys,
     updateRoutingConfig,
@@ -531,6 +532,7 @@ const SettingsPage: React.FC = () => {
     updateBetterAuthConfigBatch,
     updateNameSeparator,
     updateSessionRebuild,
+    updateStoreToolPayload,
     exportMCPSettings,
     createBearerKey,
     updateBearerKey,
@@ -3314,6 +3316,22 @@ const SettingsPage: React.FC = () => {
                   disabled={loading}
                   checked={enableSessionRebuild}
                   onCheckedChange={(checked) => updateSessionRebuild(checked)}
+                />
+              </div>
+
+              <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-md">
+                <div>
+                  <h3 className="font-medium text-gray-700">
+                    {t('settings.storeToolPayload')}
+                  </h3>
+                  <p className="text-sm text-gray-500">
+                    {t('settings.storeToolPayloadDescription')}
+                  </p>
+                </div>
+                <Switch
+                  disabled={loading}
+                  checked={storeToolPayload}
+                  onCheckedChange={(checked) => updateStoreToolPayload(checked)}
                 />
               </div>
             </div>

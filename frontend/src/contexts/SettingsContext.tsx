@@ -115,6 +115,9 @@ interface SystemSettings {
       betterAuth?: Partial<BetterAuthConfig>;
     };
     enableSessionRebuild?: boolean;
+    activityLog?: {
+      storeToolPayload?: boolean;
+    };
   };
   bearerKeys?: BearerKey[];
 }
@@ -137,6 +140,7 @@ interface SettingsContextValue {
   betterAuthConfig: BetterAuthConfig;
   nameSeparator: string;
   enableSessionRebuild: boolean;
+  storeToolPayload: boolean;
   bearerKeys: BearerKey[];
   loading: boolean;
   error: string | null;
@@ -174,6 +178,7 @@ interface SettingsContextValue {
   ) => Promise<boolean | undefined>;
   updateNameSeparator: (value: string) => Promise<boolean | undefined>;
   updateSessionRebuild: (value: boolean) => Promise<boolean | undefined>;
+  updateStoreToolPayload: (value: boolean) => Promise<boolean | undefined>;
   exportMCPSettings: (serverName?: string) => Promise<any>;
   // Bearer key management
   refreshBearerKeys: () => Promise<void>;
@@ -378,6 +383,7 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
 
   const [nameSeparator, setNameSeparator] = useState<string>('-');
   const [enableSessionRebuild, setEnableSessionRebuild] = useState<boolean>(false);
+  const [storeToolPayload, setStoreToolPayload] = useState<boolean>(true);
   const [bearerKeys, setBearerKeys] = useState<BearerKey[]>([]);
 
   const [loading, setLoading] = useState(false);
@@ -513,6 +519,9 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
       }
       if (data.success && data.data?.systemConfig?.enableSessionRebuild !== undefined) {
         setEnableSessionRebuild(data.data.systemConfig.enableSessionRebuild);
+      }
+      if (data.success && data.data?.systemConfig?.activityLog?.storeToolPayload !== undefined) {
+        setStoreToolPayload(data.data.systemConfig.activityLog.storeToolPayload);
       }
 
       if (data.success && Array.isArray(data.data?.bearerKeys)) {
@@ -996,6 +1005,36 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
     }
   };
 
+  const updateStoreToolPayload = async (value: boolean) => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const data = await apiPut('/system-config', {
+        activityLog: {
+          storeToolPayload: value,
+        },
+      });
+
+      if (data.success) {
+        setStoreToolPayload(value);
+        showToast(t('settings.systemConfigUpdated'));
+        return true;
+      } else {
+        setError(data.error || 'Failed to update activity log setting');
+        showToast(data.error || t('settings.storeToolPayloadUpdateFailed'));
+        return false;
+      }
+    } catch (error) {
+      console.error('Failed to update activity log setting', { value, error });
+      setError(error instanceof Error ? error.message : 'Failed to update activity log setting');
+      showToast(t('settings.storeToolPayloadUpdateFailed'));
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const exportMCPSettings = async (serverName?: string) => {
     setLoading(true);
     setError(null);
@@ -1116,6 +1155,7 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
     betterAuthConfig,
     nameSeparator,
     enableSessionRebuild,
+    storeToolPayload,
     bearerKeys,
     loading,
     error,
@@ -1136,6 +1176,7 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
     updateBetterAuthConfigBatch,
     updateNameSeparator,
     updateSessionRebuild,
+    updateStoreToolPayload,
     exportMCPSettings,
     refreshBearerKeys,
     createBearerKey,
