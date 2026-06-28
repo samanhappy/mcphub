@@ -179,4 +179,38 @@ describe('serialization utilities', () => {
 
     expect(result).toContain('2026-01-02T03:04:05.000Z');
   });
+
+  it('createSafeJSON breaks cycles that close through a serialized Error', () => {
+    const parent: Record<string, unknown> = { tag: 'PARENT' };
+    const error = new Error('boom') as Error & { ctx?: unknown };
+    error.ctx = parent; // error points back to its own ancestor
+    parent.error = error;
+
+    // Must not throw "Converting circular structure to JSON".
+    const result = createSafeJSON(parent) as {
+      tag: string;
+      error: { message: string; ctx: string };
+    };
+
+    expect(result.tag).toBe('PARENT');
+    expect(result.error.message).toBe('boom');
+    expect(result.error.ctx).toBe('[Circular Reference]');
+    // The ancestor must not be duplicated by a premature stack unwind.
+    expect(JSON.stringify(result).match(/PARENT/g)).toHaveLength(1);
+  });
+
+  it('safeStringify terminates on a cyclic Error.cause chain', () => {
+    const first = new Error('first') as Error & { cause?: unknown };
+    const second = new Error('second') as Error & { cause?: unknown };
+    first.cause = second;
+    second.cause = first;
+
+    // Must not blow the stack.
+    const result = safeStringify({ first });
+    const parsed = JSON.parse(result);
+
+    expect(parsed.first.message).toBe('first');
+    expect(parsed.first.cause.message).toBe('second');
+    expect(parsed.first.cause.cause).toBe('[Circular Reference]');
+  });
 });

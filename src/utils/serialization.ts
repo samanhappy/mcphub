@@ -246,32 +246,45 @@ const CIRCULAR_REFERENCE = '[Circular Reference]';
 const createAncestorTracker = () => {
   const stack: unknown[] = [];
 
-  return (holder: unknown, value: unknown): boolean => {
-    // Unwind to the current holder: siblings share a holder, so anything still
-    // on the stack below it belongs to an already-finished branch.
-    while (stack.length > 0 && stack[stack.length - 1] !== holder) {
-      stack.pop();
-    }
+  return {
+    isCircular(holder: unknown, value: unknown): boolean {
+      // Unwind to the current holder: siblings share a holder, so anything still
+      // on the stack below it belongs to an already-finished branch.
+      while (stack.length > 0 && stack[stack.length - 1] !== holder) {
+        stack.pop();
+      }
 
-    if (stack.includes(value)) {
-      return true;
-    }
+      if (stack.includes(value)) {
+        return true;
+      }
 
-    stack.push(value);
-    return false;
+      stack.push(value);
+      return false;
+    },
+    // When a value is replaced mid-traversal (an Error becomes a plain object),
+    // swap it on the stack too. JSON.stringify walks the *replacement's*
+    // properties next, passing it as the holder, so the stack must reference the
+    // replacement or the unwind above would empty the stack and miss cycles that
+    // close through the error.
+    replace(oldValue: unknown, newValue: unknown): void {
+      const index = stack.indexOf(oldValue);
+      if (index !== -1) {
+        stack[index] = newValue;
+      }
+    },
   };
 };
 
 const createSafeJsonReplacer = () => {
-  const isCircular = createAncestorTracker();
-  // Errors are replaced by serializeError() mid-traversal, which detaches the
-  // original from the ancestor stack; this guard keeps a cyclic Error.cause
-  // chain from recursing forever.
+  const tracker = createAncestorTracker();
+  // serializeError() returns a fresh object on each call, so a cyclic
+  // Error.cause chain would keep producing new objects forever; this guard
+  // breaks it independently of the ancestor stack.
   const seenErrors = new WeakSet<Error>();
 
   return function (this: unknown, _key: string, value: unknown): unknown {
     if (typeof value === 'object' && value !== null) {
-      if (isCircular(this, value)) {
+      if (tracker.isCircular(this, value)) {
         return CIRCULAR_REFERENCE;
       }
 
@@ -280,7 +293,9 @@ const createSafeJsonReplacer = () => {
           return CIRCULAR_REFERENCE;
         }
         seenErrors.add(value);
-        return serializeError(value);
+        const serialized = serializeError(value);
+        tracker.replace(value, serialized);
+        return serialized;
       }
     }
 
@@ -289,7 +304,7 @@ const createSafeJsonReplacer = () => {
 };
 
 const createSafeLogReplacer = () => {
-  const isCircular = createAncestorTracker();
+  const tracker = createAncestorTracker();
   const seenErrors = new WeakSet<Error>();
 
   return function (this: unknown, key: string, value: unknown): unknown {
@@ -302,7 +317,7 @@ const createSafeLogReplacer = () => {
     }
 
     if (typeof value === 'object' && value !== null) {
-      if (isCircular(this, value)) {
+      if (tracker.isCircular(this, value)) {
         return CIRCULAR_REFERENCE;
       }
 
@@ -311,7 +326,9 @@ const createSafeLogReplacer = () => {
           return CIRCULAR_REFERENCE;
         }
         seenErrors.add(value);
-        return serializeError(value);
+        const serialized = serializeError(value);
+        tracker.replace(value, serialized);
+        return serialized;
       }
     }
 
