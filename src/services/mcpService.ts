@@ -1355,6 +1355,10 @@ export const initializeClientsFromSettings = async (
             `Successfully initialized OpenAPI server: ${name} with ${mcpTools.length} tools`,
           );
 
+          // Broadcast now that tools are loaded. OpenAPI servers expose tools
+          // only (no prompts/resources). See the standard-path note above.
+          broadcastToolListChanged();
+
           // Save tools as vector embeddings for search
           syncToolsAsVectorEmbeddings(name, mcpTools, {
             reportProgress: options?.reportEmbeddingProgress === true && serverName === name,
@@ -1451,6 +1455,11 @@ export const initializeClientsFromSettings = async (
                   reportEmbeddingProgress:
                     options?.reportEmbeddingProgress === true && serverName === name,
                 });
+                // Broadcast only after tools are actually loaded into the cache.
+                // The connection completes asynchronously, so callers (e.g. enabling
+                // a server) cannot broadcast a correct tool list themselves — doing so
+                // would race ahead of this point and push a stale (empty) list.
+                broadcastToolListChanged();
               })
               .catch((error) => {
                 console.error('Failed to list tools for server', {
@@ -1469,6 +1478,7 @@ export const initializeClientsFromSettings = async (
                   `Successfully listed ${prompts.prompts.length} prompts for server: ${name}`,
                 );
                 updateServerPromptsCache(serverInfo, prompts.prompts);
+                broadcastPromptListChanged();
               })
               .catch((error) => {
                 console.error('Failed to list prompts for server', {
@@ -1487,6 +1497,7 @@ export const initializeClientsFromSettings = async (
                   `Successfully listed ${resources.resources.length} resources for server: ${name}`,
                 );
                 updateServerResourcesCache(serverInfo, resources.resources);
+                broadcastResourceListChanged();
               })
               .catch((error) => {
                 console.error('Failed to list resources for server', {

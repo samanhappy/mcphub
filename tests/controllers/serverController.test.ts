@@ -42,6 +42,8 @@ const mockBearerKeyDao = {
 
 const mockNotifyToolChanged = jest.fn();
 const mockBroadcastToolListChanged = jest.fn();
+const mockBroadcastPromptListChanged = jest.fn();
+const mockBroadcastResourceListChanged = jest.fn();
 const mockSyncToolEmbedding = jest.fn();
 const mockGetServerByName = jest.fn();
 const mockAddServer = jest.fn();
@@ -72,6 +74,8 @@ jest.mock('../../src/services/mcpService.js', () => ({
   getServerByName: jest.fn(() => mockGetServerByName()),
   notifyToolChanged: jest.fn(() => mockNotifyToolChanged()),
   broadcastToolListChanged: jest.fn(() => mockBroadcastToolListChanged()),
+  broadcastPromptListChanged: jest.fn(() => mockBroadcastPromptListChanged()),
+  broadcastResourceListChanged: jest.fn(() => mockBroadcastResourceListChanged()),
   syncToolEmbedding: jest.fn((...args: unknown[]) => mockSyncToolEmbedding(...args)),
   toggleServerStatus: mockToggleServerStatus,
   reconnectServer: mockReconnectServer,
@@ -985,23 +989,29 @@ describe('serverController - toggleServer (issue #938)', () => {
 
   // toggleServerStatus already scopes work to the target server (disable closes
   // it; enable runs a targeted initializeClientsFromSettings(false, name)). The
-  // controller must NOT additionally call the unscoped notifyToolChanged(),
-  // which would re-initialize every non-connected server in the fleet and spike
-  // CPU. It should only broadcast the tool-list change.
-  it('enabling a server broadcasts only and does not trigger a fleet-wide re-init', async () => {
+  // controller must NOT call the unscoped notifyToolChanged(), which would
+  // re-initialize every non-connected server in the fleet and spike CPU.
+  //
+  // On enable, the connection completes asynchronously and mcpService broadcasts
+  // itself once tools/prompts/resources are loaded — so the controller must NOT
+  // broadcast here (it would race ahead and push a stale, empty list). On
+  // disable, work is synchronous, so the controller broadcasts all three lists.
+  it('enabling a server does not broadcast from the controller (mcpService broadcasts after load)', async () => {
     const { req, res, json } = makeReqRes(true);
 
     await toggleServer(req, res);
 
     expect(mockToggleServerStatus).toHaveBeenCalledWith('target', true);
     expect(mockNotifyToolChanged).not.toHaveBeenCalled();
-    expect(mockBroadcastToolListChanged).toHaveBeenCalledTimes(1);
+    expect(mockBroadcastToolListChanged).not.toHaveBeenCalled();
+    expect(mockBroadcastPromptListChanged).not.toHaveBeenCalled();
+    expect(mockBroadcastResourceListChanged).not.toHaveBeenCalled();
     expect(json).toHaveBeenCalledWith(
       expect.objectContaining({ success: true }),
     );
   });
 
-  it('disabling a server broadcasts only and does not trigger a fleet-wide re-init', async () => {
+  it('disabling a server broadcasts tools/prompts/resources and does not trigger a fleet-wide re-init', async () => {
     const { req, res, json } = makeReqRes(false);
 
     await toggleServer(req, res);
@@ -1009,6 +1019,8 @@ describe('serverController - toggleServer (issue #938)', () => {
     expect(mockToggleServerStatus).toHaveBeenCalledWith('target', false);
     expect(mockNotifyToolChanged).not.toHaveBeenCalled();
     expect(mockBroadcastToolListChanged).toHaveBeenCalledTimes(1);
+    expect(mockBroadcastPromptListChanged).toHaveBeenCalledTimes(1);
+    expect(mockBroadcastResourceListChanged).toHaveBeenCalledTimes(1);
     expect(json).toHaveBeenCalledWith(
       expect.objectContaining({ success: true }),
     );

@@ -18,6 +18,8 @@ import {
   getServerByName,
   notifyToolChanged,
   broadcastToolListChanged,
+  broadcastPromptListChanged,
+  broadcastResourceListChanged,
   syncToolEmbedding,
   toggleServerStatus,
   reconnectServer,
@@ -1011,12 +1013,17 @@ export const toggleServer = async (req: Request, res: Response): Promise<void> =
 
     const result = await toggleServerStatus(existingServer.name, enabled);
     if (result.success) {
-      // toggleServerStatus already scopes its work to this server (disabling
-      // closes it; enabling runs a targeted reconnect). Only broadcast the
-      // tool-list change here — calling the unscoped notifyToolChanged() would
-      // re-initialize every non-connected server in the fleet, spiking CPU and
-      // orphaning stdio child processes. See #938 (and the #921/#926 guarantee).
-      broadcastToolListChanged();
+      // On disable, toggleServerStatus synchronously closes the server and
+      // updates serverInfos, so we broadcast the now-removed tools/prompts/
+      // resources here. On enable, the connection completes asynchronously
+      // inside initializeClientsFromSettings, which broadcasts itself once the
+      // tools/prompts/resources are actually loaded — broadcasting here would
+      // race ahead of that and push a stale (empty) list. See #938 / #942.
+      if (!enabled) {
+        broadcastToolListChanged();
+        broadcastPromptListChanged();
+        broadcastResourceListChanged();
+      }
       res.json({
         success: true,
         message: result.message || `Server ${enabled ? 'enabled' : 'disabled'} successfully`,
