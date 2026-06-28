@@ -128,4 +128,55 @@ describe('serialization utilities', () => {
     expect(JSON.stringify(summary)).not.toContain('also-secret');
     expect(formatted).not.toContain('top-secret');
   });
+
+  it('createSafeJSON keeps shared (diamond) references instead of dropping them as circular', () => {
+    const shared = { id: 1, label: 'shared' };
+    const result = createSafeJSON({ a: shared, b: shared, list: [shared, shared] }) as {
+      a: typeof shared;
+      b: typeof shared;
+      list: Array<typeof shared>;
+    };
+
+    // None of these are true cycles, so every occurrence must survive verbatim.
+    expect(result.a).toEqual(shared);
+    expect(result.b).toEqual(shared);
+    expect(result.list[0]).toEqual(shared);
+    expect(result.list[1]).toEqual(shared);
+    expect(JSON.stringify(result)).not.toContain('[Circular Reference]');
+  });
+
+  it('safeStringify keeps shared references but still breaks true cycles', () => {
+    const shared = { id: 7 };
+    const cyclic: Record<string, unknown> = { shared, sibling: shared };
+    cyclic.self = cyclic;
+
+    const result = safeStringify(cyclic);
+    const parsed = JSON.parse(result);
+
+    expect(parsed.shared).toEqual({ id: 7 });
+    expect(parsed.sibling).toEqual({ id: 7 });
+    expect(parsed.self).toBe('[Circular Reference]');
+    // Only the genuine self-reference should be flagged, not the shared sibling.
+    expect(result.match(/\[Circular Reference\]/g)).toHaveLength(1);
+  });
+
+  it('createSafeJSON breaks deep transitive cycles', () => {
+    const a: Record<string, unknown> = { name: 'a' };
+    const b: Record<string, unknown> = { name: 'b' };
+    a.child = b;
+    b.parent = a; // a -> b -> a
+
+    const result = createSafeJSON(a) as { name: string; child: { name: string; parent: string } };
+
+    expect(result.name).toBe('a');
+    expect(result.child.name).toBe('b');
+    expect(result.child.parent).toBe('[Circular Reference]');
+  });
+
+  it('safeStringify still honors toJSON (e.g. Date) after the replacer change', () => {
+    const when = new Date('2026-01-02T03:04:05.000Z');
+    const result = safeStringify({ when });
+
+    expect(result).toContain('2026-01-02T03:04:05.000Z');
+  });
 });

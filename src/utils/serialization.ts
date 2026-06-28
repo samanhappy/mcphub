@@ -229,18 +229,57 @@ export const formatErrorForLogging = (error: unknown): string => {
   return parts.join(' | ') || 'Unknown error';
 };
 
-const createSafeJsonReplacer = () => {
-  const seen = new WeakSet<object>();
+const CIRCULAR_REFERENCE = '[Circular Reference]';
 
-  return (_key: string, value: unknown): unknown => {
+/**
+ * Tracks the chain of ancestors during a single JSON.stringify traversal so
+ * that only true circular references (an object that contains itself, directly
+ * or transitively) are flagged — not diamond/shared references where the same
+ * object is reachable from two sibling keys.
+ *
+ * A naive `WeakSet` of every visited object cannot tell the two apart: it marks
+ * a shared-but-acyclic object as circular the second time it is seen, silently
+ * dropping data. JSON.stringify traverses depth-first and invokes the replacer
+ * with `this` bound to the object that holds the current value, so we keep an
+ * ancestor stack and unwind it back to the current holder before each check.
+ */
+const createAncestorTracker = () => {
+  const stack: unknown[] = [];
+
+  return (holder: unknown, value: unknown): boolean => {
+    // Unwind to the current holder: siblings share a holder, so anything still
+    // on the stack below it belongs to an already-finished branch.
+    while (stack.length > 0 && stack[stack.length - 1] !== holder) {
+      stack.pop();
+    }
+
+    if (stack.includes(value)) {
+      return true;
+    }
+
+    stack.push(value);
+    return false;
+  };
+};
+
+const createSafeJsonReplacer = () => {
+  const isCircular = createAncestorTracker();
+  // Errors are replaced by serializeError() mid-traversal, which detaches the
+  // original from the ancestor stack; this guard keeps a cyclic Error.cause
+  // chain from recursing forever.
+  const seenErrors = new WeakSet<Error>();
+
+  return function (this: unknown, _key: string, value: unknown): unknown {
     if (typeof value === 'object' && value !== null) {
-      if (seen.has(value)) {
-        return '[Circular Reference]';
+      if (isCircular(this, value)) {
+        return CIRCULAR_REFERENCE;
       }
 
-      seen.add(value);
-
       if (value instanceof Error) {
+        if (seenErrors.has(value)) {
+          return CIRCULAR_REFERENCE;
+        }
+        seenErrors.add(value);
         return serializeError(value);
       }
     }
@@ -250,9 +289,10 @@ const createSafeJsonReplacer = () => {
 };
 
 const createSafeLogReplacer = () => {
-  const seen = new WeakSet<object>();
+  const isCircular = createAncestorTracker();
+  const seenErrors = new WeakSet<Error>();
 
-  return (key: string, value: unknown): unknown => {
+  return function (this: unknown, key: string, value: unknown): unknown {
     if (isSensitiveLogKey(key)) {
       return REDACTED_VALUE;
     }
@@ -262,13 +302,15 @@ const createSafeLogReplacer = () => {
     }
 
     if (typeof value === 'object' && value !== null) {
-      if (seen.has(value)) {
-        return '[Circular Reference]';
+      if (isCircular(this, value)) {
+        return CIRCULAR_REFERENCE;
       }
 
-      seen.add(value);
-
       if (value instanceof Error) {
+        if (seenErrors.has(value)) {
+          return CIRCULAR_REFERENCE;
+        }
+        seenErrors.add(value);
         return serializeError(value);
       }
     }
