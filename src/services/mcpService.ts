@@ -2105,6 +2105,9 @@ const normalizeToolNameForServer = (serverName: string, toolName: string): strin
 };
 
 const getGroupLookupName = (group: string | undefined): string | undefined => {
+  if (group === '$smart') {
+    return undefined;
+  }
   if (group?.startsWith('$smart/')) {
     return group.substring(7) || undefined;
   }
@@ -2403,7 +2406,7 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
         targetServerInfo = appsRouteContext.serverInfo;
       } else if (extra && extra.server) {
         targetServerInfo = getServerByName(extra.server);
-      } else if (group) {
+      } else if (getGroupLookupName(group)) {
         const groupTool = await resolveToolInGroup(group, toolName, appsRouteContext.enabled);
         if (groupTool) {
           targetServerInfo = groupTool.serverInfo;
@@ -2585,13 +2588,15 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
     }
 
     // Regular tool handling
+    const lookupGroup = getGroupLookupName(group);
     const groupTool =
-      !appsRouteContext.enabled && group
-        ? await resolveToolInGroup(group, request.params.name, appsRouteContext.enabled)
+      !appsRouteContext.enabled && lookupGroup
+        ? await resolveToolInGroup(lookupGroup, request.params.name, appsRouteContext.enabled)
         : undefined;
     const serverInfo = appsRouteContext.enabled
       ? appsRouteContext.serverInfo
-      : (groupTool?.serverInfo ?? (group ? undefined : getServerByTool(request.params.name)));
+      : (groupTool?.serverInfo ??
+        (lookupGroup ? undefined : getServerByTool(request.params.name)));
     const routeToolName = groupTool?.toolName ?? request.params.name;
     const tool =
       groupTool?.tool ??
@@ -2810,10 +2815,11 @@ export const handleGetPromptRequest = async (request: any, extra: any) => {
 
     let server: ServerInfo | undefined;
     let promptNameForServer = name;
+    const lookupGroup = getGroupLookupName(group);
     if (extra && extra.server) {
       server = getServerByName(extra.server);
-    } else if (group) {
-      const groupPrompt = await resolvePromptInGroup(group, name);
+    } else if (lookupGroup) {
+      const groupPrompt = await resolvePromptInGroup(lookupGroup, name);
       if (groupPrompt) {
         server = groupPrompt.serverInfo;
         promptNameForServer = groupPrompt.promptName;
@@ -2872,6 +2878,7 @@ export const handleGetPromptRequest = async (request: any, extra: any) => {
 export const handleListPromptsRequest = async (_: any, extra: any) => {
   const sessionId = extra.sessionId || '';
   const group = getGroup(sessionId);
+  const lookupGroup = getGroupLookupName(group);
   console.log(`Handling ListPromptsRequest for group: ${group}`);
 
   // Start with built-in prompts (only enabled ones)
@@ -2885,7 +2892,8 @@ export const handleListPromptsRequest = async (_: any, extra: any) => {
     }),
   );
 
-  const { filteredServerInfos, serverConfigsByName } = await getFilteredServerInfosForGroup(group);
+  const { filteredServerInfos, serverConfigsByName } =
+    await getFilteredServerInfosForGroup(lookupGroup);
 
   for (const serverInfo of filteredServerInfos) {
     if (serverInfo.prompts && serverInfo.prompts.length > 0) {
@@ -2904,7 +2912,7 @@ export const handleListPromptsRequest = async (_: any, extra: any) => {
       }
 
       enabledPrompts = await filterPromptsByGroup(
-        group,
+        lookupGroup,
         serverInfo.name,
         enabledPrompts,
         groupServerConfig,
@@ -2932,6 +2940,7 @@ export const handleListPromptsRequest = async (_: any, extra: any) => {
 export const handleListResourcesRequest = async (_: any, extra: any) => {
   const sessionId = extra.sessionId || '';
   const group = getGroup(sessionId);
+  const lookupGroup = getGroupLookupName(group);
   console.log(`Handling ListResourcesRequest for group: ${group}`);
   const appsRouteContext = await getMcpAppsRouteContext(sessionId, group);
 
@@ -2946,7 +2955,8 @@ export const handleListResourcesRequest = async (_: any, extra: any) => {
     }),
   );
 
-  const { filteredServerInfos, serverConfigsByName } = await getFilteredServerInfosForGroup(group);
+  const { filteredServerInfos, serverConfigsByName } =
+    await getFilteredServerInfosForGroup(lookupGroup);
 
   for (const serverInfo of filteredServerInfos) {
     if (serverInfo.resources && serverInfo.resources.length > 0) {
@@ -2962,7 +2972,7 @@ export const handleListResourcesRequest = async (_: any, extra: any) => {
       }
 
       enabledResources = await filterResourcesByGroup(
-        group,
+        lookupGroup,
         serverInfo.name,
         enabledResources,
         serverConfigsByName.get(serverInfo.name),
@@ -2992,12 +3002,16 @@ export const handleListResourcesRequest = async (_: any, extra: any) => {
 export const handleListResourceTemplatesRequest = async (_: any, extra: any) => {
   const sessionId = extra.sessionId || '';
   const group = getGroup(sessionId);
+  const lookupGroup = getGroupLookupName(group);
   console.log(`Handling ListResourceTemplatesRequest for group: ${group}`);
   const appsRouteContext = await getMcpAppsRouteContext(sessionId, group);
 
-  const { filteredServerInfos, serverConfigsByName } = await getFilteredServerInfosForGroup(group, {
-    requireClient: true,
-  });
+  const { filteredServerInfos, serverConfigsByName } = await getFilteredServerInfosForGroup(
+    lookupGroup,
+    {
+      requireClient: true,
+    },
+  );
 
   const results = await Promise.allSettled(
     filteredServerInfos.map(async (serverInfo) => {
@@ -3007,7 +3021,7 @@ export const handleListResourceTemplatesRequest = async (_: any, extra: any) => 
 
       const templates = await serverInfo.client.listResourceTemplates({}, serverInfo.options || {});
       const filteredTemplates = await filterResourceTemplatesByGroup(
-        group,
+        lookupGroup,
         serverInfo.name,
         templates.resourceTemplates || [],
         serverConfigsByName.get(serverInfo.name),
@@ -3030,6 +3044,7 @@ export const handleReadResourceRequest = async (request: any, extra: any) => {
     const { uri } = request.params;
     const sessionId = extra.sessionId || '';
     const group = getGroup(sessionId);
+    const lookupGroup = getGroupLookupName(group);
     const appsRouteContext = await getMcpAppsRouteContext(sessionId, group);
 
     // Check built-in resources first
@@ -3047,7 +3062,7 @@ export const handleReadResourceRequest = async (request: any, extra: any) => {
     }
 
     const { filteredServerInfos, serverConfigsByName } =
-      await getFilteredServerInfosForGroup(group);
+      await getFilteredServerInfosForGroup(lookupGroup);
 
     let server: ServerInfo | undefined;
     for (const serverInfo of filteredServerInfos) {
@@ -3062,7 +3077,7 @@ export const handleReadResourceRequest = async (request: any, extra: any) => {
         );
       }
       enabledResources = await filterResourcesByGroup(
-        group,
+        lookupGroup,
         serverInfo.name,
         enabledResources,
         serverConfigsByName.get(serverInfo.name),
