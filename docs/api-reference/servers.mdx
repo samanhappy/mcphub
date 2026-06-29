@@ -299,5 +299,5 @@ MCPHub exposes several other route families beyond pure server CRUD. Each lives 
 | **Market / Cloud / Registry** | `/api/market/*`, `/api/cloud/*`, `/api/registry/*` | Read-only catalogs that back the dashboard's discovery pages. |
 | **OAuth clients (MCPHub server)** | `/api/oauth/clients`, `/api/oauth/clients/:clientId/regenerate-secret` | Manage clients of MCPHub's own authorization server. The flow itself lives at `/oauth/*` and is documented under [OAuth](/features/oauth). |
 | **Better Auth** | `GET /api/better-auth/user`, plus the Better Auth handler mounted at `${BASE_PATH}${betterAuthConfig.basePath}` (default `/api/auth/better`) | Optional GitHub / Google login. |
-| **OpenAPI** | `GET ${BASE_PATH}/api/openapi.json`, `GET ${BASE_PATH}/api/:name/openapi.json`, `GET ${BASE_PATH}/api/openapi/servers`, `GET ${BASE_PATH}/api/openapi/stats`, plus the OpenAPI tool execution routes | See [OpenAPI](/api-reference/openapi). |
+| **OpenAPI** | `GET ${BASE_PATH}/api/openapi.{json,yaml}`, `GET ${BASE_PATH}/api/:name/openapi.{json,yaml}`, `GET ${BASE_PATH}/api/openapi/servers`, `GET ${BASE_PATH}/api/openapi/stats`, plus the OpenAPI tool execution routes | See [OpenAPI](/api-reference/openapi). |
 | **MCP settings export** | `GET /api/mcp-settings/export` | Download the live settings as JSON. |

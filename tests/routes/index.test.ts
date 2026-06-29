@@ -324,4 +324,15 @@ describe('initRoutes authenticated API rate limiting', () => {
       authenticatedRouteRateLimiter,
     );
   });
+
+  it('mounts generated OpenAPI specs as JSON and YAML endpoints', async () => {
+    const app = express();
+
+    await initRoutes(app);
+
+    expect(findAppRoute(app, 'get', '/api/openapi.json')).toBeDefined();
+    expect(findAppRoute(app, 'get', '/api/openapi.yaml')).toBeDefined();
+    expect(findAppRoute(app, 'get', '/api/:name/openapi.json')).toBeDefined();
+    expect(findAppRoute(app, 'get', '/api/:name/openapi.yaml')).toBeDefined();
+  });
 });

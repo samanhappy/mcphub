@@ -447,7 +447,9 @@ export const initRoutes = async (app: express.Application): Promise<void> => {
 
   // OpenAPI generation endpoints
   app.get(`${config.basePath}/api/openapi.json`, getOpenAPISpec);
+  app.get(`${config.basePath}/api/openapi.yaml`, getOpenAPISpec);
   app.get(`${config.basePath}/api/:name/openapi.json`, getGroupOpenAPISpec);
+  app.get(`${config.basePath}/api/:name/openapi.yaml`, getGroupOpenAPISpec);
   app.get(`${config.basePath}/api/openapi/servers`, getOpenAPIServers);
   app.get(`${config.basePath}/api/openapi/stats`, getOpenAPIStats);
 

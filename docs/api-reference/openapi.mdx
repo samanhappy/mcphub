@@ -26,13 +26,17 @@ MCPHub now supports generating OpenAPI 3.0.3 specifications from MCP tools, enab
 curl "http://localhost:3000/api/openapi.json"
 ```
 
+```bash GET /api/openapi.yaml
+curl "http://localhost:3000/api/openapi.yaml"
+```
+
 ```bash With Parameters
 curl "http://localhost:3000/api/openapi.json?title=My MCP API&version=2.0.0"
 ```
 
 </CodeGroup>
 
-Generates and returns the complete OpenAPI 3.0.3 specification for all connected MCP tools.
+Generates and returns the complete OpenAPI 3.0.3 specification for all connected MCP tools. The `.json` and `.yaml` variants accept the same query parameters.
 
 **Query Parameters:**
 
@@ -68,13 +72,17 @@ Generates and returns the complete OpenAPI 3.0.3 specification for all connected
 curl "http://localhost:3000/api/mygroup/openapi.json"
 ```
 
+```bash GET /api/:name/openapi.yaml
+curl "http://localhost:3000/api/mygroup/openapi.yaml"
+```
+
 ```bash With Parameters
 curl "http://localhost:3000/api/myserver/openapi.json?title=My Server API&version=1.0.0"
 ```
 
 </CodeGroup>
 
-Generates and returns the OpenAPI 3.0.3 specification for a specific group or server. If a group with the given name exists, it returns the specification for all servers in that group. Otherwise, it treats the name as a server name and returns the specification for that server only.
+Generates and returns the OpenAPI 3.0.3 specification for a specific group or server in JSON or YAML format. If a group with the given name exists, it returns the specification for all servers in that group. Otherwise, it treats the name as a server name and returns the specification for that server only.
 
 **Path Parameters:**
 
@@ -179,6 +187,7 @@ To integrate MCPHub with OpenWebUI:
   <Step title="Get OpenAPI Specification">
     ```bash
     curl http://localhost:3000/api/openapi.json > mcphub-api.json
+    curl http://localhost:3000/api/openapi.yaml > mcphub-api.yaml
     ```
   </Step>
   <Step title="Add to OpenWebUI">
@@ -192,7 +201,7 @@ In OpenWebUI, you can add MCPHub as an OpenAPI tool by using:
 
 <CardGroup cols={2}>
   <Card title="OpenAPI URL" icon="link">
-    `http://localhost:3000/api/openapi.json`
+    `http://localhost:3000/api/openapi.json` or `http://localhost:3000/api/openapi.yaml`
   </Card>
   <Card title="Base URL" icon="server">
     `http://localhost:3000/api`
@@ -261,15 +270,15 @@ The generated OpenAPI specification includes:
   <Accordion title="OpenAPI spec shows no tools">
     Ensure MCP servers are connected. Check `/api/openapi/stats` for server status.
   </Accordion>
-  
+
   <Accordion title="Tool execution fails">
     Verify the tool name and parameters match the OpenAPI specification. Check server logs for details.
   </Accordion>
-  
+
   <Accordion title="OpenWebUI can't connect">
     Ensure MCPHub is accessible from OpenWebUI and the OpenAPI URL is correct.
   </Accordion>
-  
+
   <Accordion title="Missing tools in specification">
     Check if tools are enabled in your MCP server configuration. Use `includeDisabled=true` to see all tools.
   </Accordion>

@@ -26,13 +26,17 @@ MCPHub 现在支持从 MCP 工具生成 OpenAPI 3.0.3 规范，实现与 OpenWeb
 curl "http://localhost:3000/api/openapi.json"
 ```
 
+```bash GET /api/openapi.yaml
+curl "http://localhost:3000/api/openapi.yaml"
+```
+
 ```bash 带参数
 curl "http://localhost:3000/api/openapi.json?title=我的 MCP API&version=2.0.0"
 ```
 
 </CodeGroup>
 
-生成并返回所有已连接 MCP 工具的完整 OpenAPI 3.0.3 规范。
+生成并返回所有已连接 MCP 工具的完整 OpenAPI 3.0.3 规范。`.json` 和 `.yaml` 版本接受相同的查询参数。
 
 **查询参数：**
 
@@ -68,13 +72,17 @@ curl "http://localhost:3000/api/openapi.json?title=我的 MCP API&version=2.0.0"
 curl "http://localhost:3000/api/mygroup/openapi.json"
 ```
 
+```bash GET /api/:name/openapi.yaml
+curl "http://localhost:3000/api/mygroup/openapi.yaml"
+```
+
 ```bash 带参数
 curl "http://localhost:3000/api/myserver/openapi.json?title=我的服务器 API&version=1.0.0"
 ```
 
 </CodeGroup>
 
-为特定组或服务器生成并返回 OpenAPI 3.0.3 规范。如果存在具有给定名称的组，则返回该组中所有服务器的规范。否则，将名称视为服务器名称并仅返回该服务器的规范。
+为特定组或服务器生成并返回 JSON 或 YAML 格式的 OpenAPI 3.0.3 规范。如果存在具有给定名称的组，则返回该组中所有服务器的规范。否则，将名称视为服务器名称并仅返回该服务器的规范。
 
 **路径参数：**
 
@@ -179,6 +187,7 @@ curl -X POST "http://localhost:3000/api/tools/playwright/playwright-browser_navi
   <Step title="获取 OpenAPI 规范">
     ```bash
     curl http://localhost:3000/api/openapi.json > mcphub-api.json
+    curl http://localhost:3000/api/openapi.yaml > mcphub-api.yaml
     ```
   </Step>
   <Step title="添加到 OpenWebUI">
@@ -192,7 +201,7 @@ curl -X POST "http://localhost:3000/api/tools/playwright/playwright-browser_navi
 
 <CardGroup cols={2}>
   <Card title="OpenAPI URL" icon="link">
-    `http://localhost:3000/api/openapi.json`
+    `http://localhost:3000/api/openapi.json` 或 `http://localhost:3000/api/openapi.yaml`
   </Card>
   <Card title="基础 URL" icon="server">
     `http://localhost:3000/api`
@@ -261,15 +270,15 @@ curl -X POST "http://localhost:3000/api/tools/playwright/playwright-browser_navi
   <Accordion title="OpenAPI 规范显示没有工具">
     确保 MCP 服务器已连接。检查 `/api/openapi/stats` 查看服务器状态。
   </Accordion>
-  
+
   <Accordion title="工具执行失败">
     验证工具名称和参数是否与 OpenAPI 规范匹配。检查服务器日志以获取详细信息。
   </Accordion>
-  
+
   <Accordion title="OpenWebUI 无法连接">
     确保 MCPHub 可从 OpenWebUI 访问，并且 OpenAPI URL 正确。
   </Accordion>
-  
+
   <Accordion title="规范中缺少工具">
     检查您的 MCP 服务器配置中是否启用了工具。使用 `includeDisabled=true` 查看所有工具。
   </Accordion>
