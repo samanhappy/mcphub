@@ -17,7 +17,7 @@ import { convertParametersToTypes } from '../utils/parameterConversion.js';
  * Provides OpenAPI specifications for MCP tools to enable OpenWebUI integration
  */
 
-const isYamlSpecRequest = (req: Request): boolean => req.path.endsWith('.yaml');
+const isYamlSpecRequest = (req: Request): boolean => req.path.toLowerCase().endsWith('.yaml');
 
 const setOpenAPISpecHeaders = (
   res: Response,
@@ -32,7 +32,7 @@ const setOpenAPISpecHeaders = (
 const sendOpenAPISpec = (req: Request, res: Response, openApiSpec: OpenAPIV3.Document): void => {
   if (isYamlSpecRequest(req)) {
     setOpenAPISpecHeaders(res, 'application/yaml');
-    res.send(dumpYaml(openApiSpec, { noRefs: true }));
+    res.send(dumpYaml(openApiSpec, { noRefs: true, lineWidth: -1 }));
     return;
   }
 
