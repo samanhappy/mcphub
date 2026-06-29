@@ -141,7 +141,7 @@ pnpm dev
 
 ## 👥 Contributing
 
-Contributions welcome! See our [Discord community](https://discord.gg/c8GKyzyFF) for discussions and support.
+Contributions welcome! See our [Discord community](https://discord.gg/2BJehJZVH5) for discussions and support.
 
 ## ❤️ Sponsor
 
