@@ -131,7 +131,12 @@ export class OpenAPIClient {
     return this.securityConfig?.type === 'oauth2' ? this.securityConfig.oauth2 : undefined;
   }
 
-  private invalidateRefreshableOAuth2Token(): boolean {
+  private getDefaultAuthorizationHeader(): string | undefined {
+    const authorization = this.httpClient.defaults?.headers?.common?.['Authorization'];
+    return typeof authorization === 'string' ? authorization : undefined;
+  }
+
+  private async invalidateRefreshableOAuth2Token(): Promise<boolean> {
     const oauth2 = this.getOAuth2Config();
     if (!oauth2?.tokenUrl || !oauth2.clientId) {
       return false;
@@ -145,6 +150,7 @@ export class OpenAPIClient {
     }
 
     this.setAuthorizationHeader(undefined);
+    await this.persistOAuth2Token?.({ ...oauth2 });
     return true;
   }
 
@@ -493,6 +499,7 @@ export class OpenAPIClient {
     }
 
     let attemptedUpstreamRequest = false;
+    let authorizationUsedForRequest: string | undefined;
 
     try {
       await this.ensureOAuth2AccessToken();
@@ -573,6 +580,7 @@ export class OpenAPIClient {
         });
       }
 
+      authorizationUsedForRequest = this.getDefaultAuthorizationHeader();
       attemptedUpstreamRequest = true;
       const response = await this.httpClient.request(requestConfig);
       return response.data;
@@ -582,7 +590,17 @@ export class OpenAPIClient {
           attemptedUpstreamRequest &&
           error.response?.status === 401 &&
           !hasRetriedAfterUnauthorized &&
-          this.invalidateRefreshableOAuth2Token()
+          authorizationUsedForRequest &&
+          authorizationUsedForRequest !== this.getDefaultAuthorizationHeader()
+        ) {
+          return this.callTool(toolName, args, passthroughHeaders, true);
+        }
+
+        if (
+          attemptedUpstreamRequest &&
+          error.response?.status === 401 &&
+          !hasRetriedAfterUnauthorized &&
+          (await this.invalidateRefreshableOAuth2Token())
         ) {
           return this.callTool(toolName, args, passthroughHeaders, true);
         }

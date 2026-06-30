@@ -32,6 +32,26 @@ const SENSITIVE_LOG_KEY_NAMES = new Set([
 const SENSITIVE_INLINE_KEY_PATTERN =
   'access_token|refresh_token|id_token|client_secret|api_key|token|password|authorization|secret|error_description|error_uri|error_code';
 
+const AUTHORIZATION_CREDENTIAL_RE =
+  /((?:authorization|proxy-authorization)\s*[:=]\s*(?:bearer|basic)\s+)[^\s",;]+/gi;
+const BEARER_BASIC_CREDENTIAL_RE = /\b(Bearer|Basic)\s+[A-Za-z0-9\-._~+/]+=*/gi;
+const SENSITIVE_QUERY_PARAM_RE = new RegExp(
+  `([?&](?:${SENSITIVE_INLINE_KEY_PATTERN})=)[^&#\\s",;]+`,
+  'gi',
+);
+const SENSITIVE_EQUALS_RE = new RegExp(
+  `(\\b(?:${SENSITIVE_INLINE_KEY_PATTERN})\\s*[:=]\\s*)[^\\s",;]+`,
+  'gi',
+);
+const SENSITIVE_JSON_DOUBLE_QUOTE_RE = new RegExp(
+  `("(?:${SENSITIVE_INLINE_KEY_PATTERN})"\\s*:\\s*")([^"]*)(")`,
+  'gi',
+);
+const SENSITIVE_JSON_SINGLE_QUOTE_RE = new RegExp(
+  `('(?:${SENSITIVE_INLINE_KEY_PATTERN})'\\s*:\\s*')([^']*)(')`,
+  'gi',
+);
+
 const normalizeKey = (key: string): string => key.replace(/[^a-z0-9]/gi, '').toLowerCase();
 
 const isSensitiveLogKey = (key: string): boolean => {
@@ -53,30 +73,12 @@ const isSensitiveLogKey = (key: string): boolean => {
 export const sanitizeStringForLogging = (value: string): string => {
   let sanitized = value;
 
-  sanitized = sanitized.replace(
-    /((?:authorization|proxy-authorization)\s*[:=]\s*(?:bearer|basic)\s+)[^\s",;]+/gi,
-    `$1${REDACTED_VALUE}`,
-  );
-  sanitized = sanitized.replace(
-    /\b(Bearer|Basic)\s+[A-Za-z0-9\-._~+/]+=*/gi,
-    `$1 ${REDACTED_VALUE}`,
-  );
-  sanitized = sanitized.replace(
-    new RegExp(`([?&](?:${SENSITIVE_INLINE_KEY_PATTERN})=)[^&#\\s",;]+`, 'gi'),
-    `$1${REDACTED_VALUE}`,
-  );
-  sanitized = sanitized.replace(
-    new RegExp(`(\\b(?:${SENSITIVE_INLINE_KEY_PATTERN})\\s*[:=]\\s*)[^\\s",;]+`, 'gi'),
-    `$1${REDACTED_VALUE}`,
-  );
-  sanitized = sanitized.replace(
-    new RegExp(`("(?:${SENSITIVE_INLINE_KEY_PATTERN})"\\s*:\\s*")([^"]*)(")`, 'gi'),
-    `$1${REDACTED_VALUE}$3`,
-  );
-  sanitized = sanitized.replace(
-    new RegExp(`('(?:${SENSITIVE_INLINE_KEY_PATTERN})'\\s*:\\s*')([^']*)(')`, 'gi'),
-    `$1${REDACTED_VALUE}$3`,
-  );
+  sanitized = sanitized.replace(AUTHORIZATION_CREDENTIAL_RE, `$1${REDACTED_VALUE}`);
+  sanitized = sanitized.replace(BEARER_BASIC_CREDENTIAL_RE, `$1 ${REDACTED_VALUE}`);
+  sanitized = sanitized.replace(SENSITIVE_QUERY_PARAM_RE, `$1${REDACTED_VALUE}`);
+  sanitized = sanitized.replace(SENSITIVE_EQUALS_RE, `$1${REDACTED_VALUE}`);
+  sanitized = sanitized.replace(SENSITIVE_JSON_DOUBLE_QUOTE_RE, `$1${REDACTED_VALUE}$3`);
+  sanitized = sanitized.replace(SENSITIVE_JSON_SINGLE_QUOTE_RE, `$1${REDACTED_VALUE}$3`);
 
   return sanitized;
 };
