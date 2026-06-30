@@ -43,6 +43,14 @@ export const transports: {
 const SESSION_NOT_FOUND_CODE = -32001;
 const SESSION_NOT_FOUND_MESSAGE = 'Session not found. Please reinitialize the session.';
 
+/**
+ * Label recorded in the activity log's API key field when a request was
+ * authenticated via an OAuth bearer token (no static API key was presented).
+ * OAuth requests have no keyId/keyName of their own, so this surfaces the
+ * authentication method instead of leaving the field blank.
+ */
+const OAUTH_AUTH_METHOD_LABEL = 'OAuth';
+
 type RehydratableWebStandardTransport = {
   sessionId?: string;
   _initialized?: boolean;
@@ -374,7 +382,7 @@ const validateBearerAuth = async (req: Request): Promise<BearerAuthResult> => {
     const oauthUser = await resolveOAuthUserFromToken(token);
     if (oauthUser) {
       console.log('Recognized OAuth bearer token (auth disabled)');
-      return { valid: true, user: oauthUser };
+      return { valid: true, user: oauthUser, keyName: OAUTH_AUTH_METHOD_LABEL };
     }
 
     return { valid: true };
@@ -393,7 +401,7 @@ const validateBearerAuth = async (req: Request): Promise<BearerAuthResult> => {
     const oauthUser = await resolveOAuthUserFromToken(token);
     if (oauthUser) {
       console.log('Authenticated request using OAuth bearer token without configured keys');
-      return { valid: true, user: oauthUser };
+      return { valid: true, user: oauthUser, keyName: OAUTH_AUTH_METHOD_LABEL };
     }
 
     console.warn(
@@ -425,7 +433,7 @@ const validateBearerAuth = async (req: Request): Promise<BearerAuthResult> => {
   const oauthUser = await resolveOAuthUserFromToken(token);
   if (oauthUser) {
     console.log('Authenticated request using OAuth bearer token (no matching static key)');
-    return { valid: true, user: oauthUser };
+    return { valid: true, user: oauthUser, keyName: OAUTH_AUTH_METHOD_LABEL };
   }
 
   console.warn('Bearer authentication failed: token did not match any key or OAuth user');

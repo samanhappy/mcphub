@@ -47,6 +47,7 @@ jest.mock('../../src/config/index.js', () => ({
 
 import { Request, Response } from 'express';
 import { handleSseConnection, transports } from '../../src/services/sseService.js';
+import { resolveOAuthUserFromToken } from '../../src/utils/oauthBearer.js';
 import * as mcpService from '../../src/services/mcpService.js';
 import * as configModule from '../../src/config/index.js';
 import * as daoIndex from '../../src/dao/index.js';
@@ -269,6 +270,43 @@ describe('Keepalive Functionality', () => {
       // This test verifies the pattern is set up correctly
       const intervalCount = intervals.length;
       expect(intervalCount).toBeGreaterThanOrEqual(0);
+    });
+  });
+
+  describe('OAuth authentication activity logging', () => {
+    it('records OAuth as the API key name when authenticated via an OAuth bearer token', async () => {
+      // Enable bearer auth and present an OAuth bearer token with no static keys configured
+      const mockSystemConfigDao = {
+        get: jest.fn().mockResolvedValue({
+          routing: {
+            enableGlobalRoute: true,
+            enableGroupNameRoute: true,
+            enableBearerAuth: true,
+            bearerAuthKey: '',
+            skipAuth: false,
+          },
+        }),
+      };
+      (daoIndex.getSystemConfigDao as unknown as jest.Mock).mockReturnValue(mockSystemConfigDao);
+
+      const mockBearerKeyDao = {
+        findEnabled: jest.fn().mockResolvedValue([]),
+      };
+      (daoIndex.getBearerKeyDao as unknown as jest.Mock).mockReturnValue(mockBearerKeyDao);
+
+      (resolveOAuthUserFromToken as jest.Mock).mockResolvedValue({
+        username: 'oauth-user',
+        password: '',
+        isAdmin: false,
+      });
+
+      mockReq.headers = { authorization: 'Bearer a-valid-oauth-token' };
+
+      await handleSseConnection(mockReq as Request, mockRes as Response);
+
+      // The OAuth auth method should be surfaced in the API key field rather than blank
+      expect(transports['test-session-id'].keyName).toBe('OAuth');
+      expect(transports['test-session-id'].keyId).toBeUndefined();
     });
   });
 });
