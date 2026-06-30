@@ -11,6 +11,8 @@ description: '使用 Docker 和 Docker Compose 部署 MCPHub'
 
 ### 使用预构建镜像
 
+标准 MCPHub 镜像内置 Node.js/pnpm、Python、uv/uvx、Git 和构建工具。如果需要为 Rust MCP server 使用 Cargo 和稳定版 Rust 工具链，请使用 `latest-full` 镜像。
+
 ```bash
 # 拉取最新镜像
 docker pull samanhappy/mcphub:latest
@@ -43,10 +45,10 @@ docker run -d \
 
 ### 构建扩展功能版本
 
-Docker 镜像支持 `INSTALL_EXT` 构建参数以包含额外工具：
+Docker 镜像支持 `INSTALL_EXT` 构建参数以包含额外工具。发布的 `-full` 镜像会启用此参数：
 
 ```bash
-# 构建扩展功能版本（包含 Docker 引擎，以及供 Playwright 使用的 Chrome 和 Firefox）
+# 构建扩展功能版本（包含稳定版 Rust/Cargo、Docker 引擎，以及供 Playwright 使用的 Chrome 和 Firefox）
 docker build --build-arg INSTALL_EXT=true -t mcphub:extended .
 
 # 方式 1: 使用自动 Docker-in-Docker（需要特权模式）
@@ -72,6 +74,7 @@ docker exec mcphub docker ps
 
 <Note>
   **INSTALL_EXT=true 包含的功能：**
+  - **稳定版 Rust + Cargo**：通过 rustup 安装，用于基于 Rust 的 MCP server。
   - **Docker 引擎**：完整的 Docker 守护进程和 CLI，用于容器管理。在特权模式下运行时，守护进程会自动启动。
   - **Chrome + Firefox（供 Playwright 使用，仅 amd64）**：用于浏览器自动化任务
   

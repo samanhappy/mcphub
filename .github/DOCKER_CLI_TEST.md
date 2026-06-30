@@ -20,11 +20,14 @@ docker run --rm mcphub:base docker --version
 # Build with extended features
 docker build --build-arg INSTALL_EXT=true -t mcphub:extended .
 
-# Test Docker CLI is available
+# Test Docker CLI, Cargo, and Rust are available
 docker run --rm mcphub:extended docker --version
+docker run --rm --entrypoint sh mcphub:extended -c 'rustup --version && cargo --version && rustc --version'
 ```
 
-**Expected Result**: Docker version output (e.g., `Docker version 27.x.x, build xxxxx`)
+**Expected Result**:
+- Docker version output (e.g., `Docker version 27.x.x, build xxxxx`)
+- rustup, Cargo, and Rust compiler version output
 
 ## Test 3: Docker-in-Docker with Auto-start Daemon
 
@@ -96,7 +99,7 @@ docker images mcphub:*
 
 **Expected Result**: 
 - The `extended` image should be larger than the `base` image
-- The size difference should be reasonable (Docker Engine adds ~100-150MB)
+- The size difference should be expected for the full toolchain (Docker Engine plus rustup-managed Rust/Cargo)
 
 ## Test 6: Architecture Support
 
@@ -110,13 +113,14 @@ docker build --build-arg INSTALL_EXT=true --platform linux/arm64 -t mcphub:exten
 
 **Expected Result**: 
 - Both builds should succeed
-- AMD64 includes Chrome + Firefox for Playwright + Docker Engine
-- ARM64 includes Docker Engine only (browser installation is skipped)
+- AMD64 includes Chrome + Firefox for Playwright, Docker Engine, and rustup-managed Rust/Cargo
+- ARM64 includes Docker Engine and rustup-managed Rust/Cargo only (browser installation is skipped)
 
 ## Notes
 
 - The Docker Engine installation follows the official Docker documentation
 - Includes full Docker daemon (`dockerd`), CLI (`docker`), and containerd
+- Includes rustup-managed Rust/Cargo only in the opt-in `INSTALL_EXT=true` image, published as `-full`
 - The daemon auto-starts when running in privileged mode
 - The installation uses the Debian Bookworm repository
 - All temporary files are cleaned up to minimize image size

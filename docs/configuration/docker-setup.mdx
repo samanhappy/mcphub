@@ -11,6 +11,8 @@ This guide covers deploying MCPHub using Docker, including development and produ
 
 ### Using Pre-built Image
 
+The standard MCPHub image includes Node.js/pnpm, Python, uv/uvx, Git, and build tools. Use the `latest-full` image if you need Cargo and the stable Rust toolchain for Rust-based MCP servers.
+
 ```bash
 # Pull the latest image
 docker pull samanhappy/mcphub:latest
@@ -43,10 +45,10 @@ docker run -d \
 
 ### Building with Extended Features
 
-The Docker image supports an `INSTALL_EXT` build argument to include additional tools:
+The Docker image supports an `INSTALL_EXT` build argument to include additional tools. Published `-full` images are built with this enabled:
 
 ```bash
-# Build with extended features (includes Docker Engine, Chrome + Firefox for Playwright)
+# Build with extended features (includes stable Rust/Cargo, Docker Engine, Chrome + Firefox for Playwright)
 docker build --build-arg INSTALL_EXT=true -t mcphub:extended .
 
 # Option 1: Run with automatic Docker-in-Docker (requires privileged mode)
@@ -72,6 +74,7 @@ docker exec mcphub docker ps
 
 <Note>
   **What's included with INSTALL_EXT=true:**
+  - **Stable Rust + Cargo**: Installed through rustup for Rust-based MCP servers.
   - **Docker Engine**: Full Docker daemon with CLI for container management. The daemon auto-starts when the container runs in privileged mode.
   - **Chrome + Firefox for Playwright** (amd64 only): For browser automation tasks
   

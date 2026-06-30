@@ -11,6 +11,10 @@ RUN apt-get update && apt-get install -y curl gnupg git build-essential \
 
 RUN corepack enable && corepack prepare pnpm@10.12.4 --activate
 
+ENV RUSTUP_HOME=/usr/local/rustup \
+  CARGO_HOME=/usr/local/cargo \
+  PATH=/usr/local/cargo/bin:$PATH
+
 ARG INSTALL_EXT=false
 RUN if [ "$INSTALL_EXT" = "true" ]; then \
   ARCH=$(uname -m); \
@@ -19,9 +23,11 @@ RUN if [ "$INSTALL_EXT" = "true" ]; then \
   else \
   echo "Skipping Chrome and Firefox installation on non-amd64 architecture: $ARCH"; \
   fi; \
-  # Install Docker Engine (includes CLI and daemon) \
+  # Install Rust toolchain and Docker Engine (includes CLI and daemon) \
   apt-get update && \
   apt-get install -y ca-certificates curl iptables && \
+  curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --no-modify-path --profile minimal && \
+  cargo --version && rustc --version && \
   install -m 0755 -d /etc/apt/keyrings && \
   curl -fsSL https://download.docker.com/linux/debian/gpg -o /etc/apt/keyrings/docker.asc && \
   chmod a+r /etc/apt/keyrings/docker.asc && \
