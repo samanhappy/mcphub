@@ -4,6 +4,7 @@ import { OpenAPIV3 } from 'openapi-types';
 import { ServerConfig, OpenAPISecurityConfig } from '../types/index.js';
 import { assertSafeUrl } from '../utils/ssrf.js';
 import { getUserDao } from '../dao/index.js';
+import { sanitizeStringForLogging } from '../utils/serialization.js';
 
 export interface OpenAPIToolInfo {
   name: string;
@@ -128,6 +129,23 @@ export class OpenAPIClient {
 
   private getOAuth2Config(): OpenAPIOAuth2Config | undefined {
     return this.securityConfig?.type === 'oauth2' ? this.securityConfig.oauth2 : undefined;
+  }
+
+  private invalidateRefreshableOAuth2Token(): boolean {
+    const oauth2 = this.getOAuth2Config();
+    if (!oauth2?.tokenUrl || !oauth2.clientId) {
+      return false;
+    }
+
+    delete oauth2.token;
+    delete oauth2.expiresAt;
+
+    if (this.config.openapi?.security?.oauth2) {
+      this.config.openapi.security.oauth2 = oauth2;
+    }
+
+    this.setAuthorizationHeader(undefined);
+    return true;
   }
 
   private hasValidOAuth2Token(oauth2: OpenAPIOAuth2Config): boolean {
@@ -467,11 +485,14 @@ export class OpenAPIClient {
     toolName: string,
     args: Record<string, unknown>,
     passthroughHeaders?: Record<string, string>,
+    hasRetriedAfterUnauthorized = false,
   ): Promise<unknown> {
     const tool = this.tools.find((t) => t.name === toolName);
     if (!tool) {
       throw new Error(`Tool '${toolName}' not found`);
     }
+
+    let attemptedUpstreamRequest = false;
 
     try {
       await this.ensureOAuth2AccessToken();
@@ -552,10 +573,20 @@ export class OpenAPIClient {
         });
       }
 
+      attemptedUpstreamRequest = true;
       const response = await this.httpClient.request(requestConfig);
       return response.data;
     } catch (error) {
       if (axios.isAxiosError(error)) {
+        if (
+          attemptedUpstreamRequest &&
+          error.response?.status === 401 &&
+          !hasRetriedAfterUnauthorized &&
+          this.invalidateRefreshableOAuth2Token()
+        ) {
+          return this.callTool(toolName, args, passthroughHeaders, true);
+        }
+
         const status = error.response?.status ?? 'unknown';
         const statusText = error.response?.statusText ?? 'Unknown Error';
         const responseData = error.response?.data;
@@ -573,6 +604,7 @@ export class OpenAPIClient {
           }
         }
 
+        responseDetails = sanitizeStringForLogging(responseDetails);
         throw new Error(
           `API call failed: ${status} ${statusText}${responseDetails ? ` ${responseDetails}` : ''}`,
         );

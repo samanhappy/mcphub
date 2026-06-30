@@ -24,7 +24,13 @@ const SENSITIVE_LOG_KEY_NAMES = new Set([
   'registrationaccesstoken',
   'privatekey',
   'assertion',
+  'errordescription',
+  'erroruri',
+  'errorcode',
 ]);
+
+const SENSITIVE_INLINE_KEY_PATTERN =
+  'access_token|refresh_token|id_token|client_secret|api_key|token|password|authorization|secret|error_description|error_uri|error_code';
 
 const normalizeKey = (key: string): string => key.replace(/[^a-z0-9]/gi, '').toLowerCase();
 
@@ -51,21 +57,24 @@ export const sanitizeStringForLogging = (value: string): string => {
     /((?:authorization|proxy-authorization)\s*[:=]\s*(?:bearer|basic)\s+)[^\s",;]+/gi,
     `$1${REDACTED_VALUE}`,
   );
-  sanitized = sanitized.replace(/\b(Bearer|Basic)\s+[A-Za-z0-9\-._~+/]+=*/gi, `$1 ${REDACTED_VALUE}`);
   sanitized = sanitized.replace(
-    /([?&](?:access_token|refresh_token|id_token|client_secret|api_key|token|password|authorization)=)[^&#\s"]+/gi,
+    /\b(Bearer|Basic)\s+[A-Za-z0-9\-._~+/]+=*/gi,
+    `$1 ${REDACTED_VALUE}`,
+  );
+  sanitized = sanitized.replace(
+    new RegExp(`([?&](?:${SENSITIVE_INLINE_KEY_PATTERN})=)[^&#\\s",;]+`, 'gi'),
     `$1${REDACTED_VALUE}`,
   );
   sanitized = sanitized.replace(
-    /(\b(?:access_token|refresh_token|id_token|client_secret|api_key|token|password|authorization|secret)\s*[:=]\s*)[^\s",;]+/gi,
+    new RegExp(`(\\b(?:${SENSITIVE_INLINE_KEY_PATTERN})\\s*[:=]\\s*)[^\\s",;]+`, 'gi'),
     `$1${REDACTED_VALUE}`,
   );
   sanitized = sanitized.replace(
-    /("(?:access_token|refresh_token|id_token|client_secret|api_key|authorization|token|password|secret)"\s*:\s*")([^"]*)(")/gi,
+    new RegExp(`("(?:${SENSITIVE_INLINE_KEY_PATTERN})"\\s*:\\s*")([^"]*)(")`, 'gi'),
     `$1${REDACTED_VALUE}$3`,
   );
   sanitized = sanitized.replace(
-    /('(?:access_token|refresh_token|id_token|client_secret|api_key|authorization|token|password|secret)'\s*:\s*')([^']*)(')/gi,
+    new RegExp(`('(?:${SENSITIVE_INLINE_KEY_PATTERN})'\\s*:\\s*')([^']*)(')`, 'gi'),
     `$1${REDACTED_VALUE}$3`,
   );
 
@@ -108,8 +117,7 @@ const serializeRemoteError = (error: Error): Record<string, unknown> => {
     name: error.name,
     message: REMOTE_ERROR_REDACTED_MESSAGE,
     code: candidate.code,
-    status:
-      typeof candidate.status === 'number' ? candidate.status : candidate.response?.status,
+    status: typeof candidate.status === 'number' ? candidate.status : candidate.response?.status,
     requestId: typeof requestId === 'string' ? requestId : undefined,
     hasResponseBody: candidate.response?.data !== undefined,
   };

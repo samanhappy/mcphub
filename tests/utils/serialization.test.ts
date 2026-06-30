@@ -2,6 +2,7 @@ import {
   createSafeJSON,
   formatErrorForLogging,
   safeStringify,
+  sanitizeStringForLogging,
   summarizeErrorForLogging,
 } from '../../src/utils/serialization.js';
 
@@ -127,6 +128,22 @@ describe('serialization utilities', () => {
     expect(JSON.stringify(summary)).not.toContain('top-secret');
     expect(JSON.stringify(summary)).not.toContain('also-secret');
     expect(formatted).not.toContain('top-secret');
+  });
+
+  it('redacts OAuth error response fields that may carry tokens', () => {
+    const jwt = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9';
+    const rawJson = `{"error":"invalid_token","error_description":"expired ${jwt}","error_uri":"https://auth.example.com/debug?token=${jwt}","error_code":"${jwt}"}`;
+    const rawText = `error_description=expired-${jwt}; error_uri=https://auth.example.com/debug?token=${jwt}; error_code=${jwt}`;
+
+    expect(sanitizeStringForLogging(rawJson)).toBe(
+      '{"error":"invalid_token","error_description":"[REDACTED]","error_uri":"[REDACTED]","error_code":"[REDACTED]"}',
+    );
+    expect(sanitizeStringForLogging(rawText)).toBe(
+      'error_description=[REDACTED]; error_uri=[REDACTED]; error_code=[REDACTED]',
+    );
+    expect(safeStringify({ error_description: `expired ${jwt}` })).toBe(
+      '{"error_description":"[REDACTED]"}',
+    );
   });
 
   it('createSafeJSON keeps shared (diamond) references instead of dropping them as circular', () => {
