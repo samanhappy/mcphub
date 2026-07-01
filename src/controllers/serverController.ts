@@ -966,14 +966,17 @@ export const getServerConfig = async (req: Request, res: Response): Promise<void
     // Extract config without the name field
     const { name: serverName, ...config } = serverConfig;
 
+    // OpenAPI tools can carry circular $ref cycles left by SwaggerParser.dereference
+    // (recursive schemas), which would make res.json throw. Mirror the list endpoint
+    // and sanitize via createSafeJSON. See #959.
     const response: ApiResponse = {
       success: true,
-      data: {
+      data: createSafeJSON({
         name: serverName,
         status: serverInfo?.status || 'disconnected',
         tools: serverInfo?.tools || [],
         config,
-      },
+      }),
     };
 
     res.json(response);

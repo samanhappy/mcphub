@@ -697,6 +697,80 @@ describe('serverController - authorization hardening', () => {
   });
 });
 
+// Regression test for issue #959: OpenAPI specs loaded via URL can define
+// recursive JSON schemas. SwaggerParser.dereference turns those $ref cycles
+// into live circular references on the tool inputSchemas held in serverInfos.
+// getServerConfig must return a JSON-serializable payload (matching the list
+// endpoint's use of createSafeJSON), otherwise res.json throws and the edit
+// modal reports "Could not find configuration data for <server>".
+describe('serverController - getServerConfig openapi circular schemas', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('returns a JSON-serializable response when openapi tool inputSchemas are circular', async () => {
+    // Recursive OpenAPI schema: after dereference, `properties.self` points
+    // back at the schema object — exactly the cycle JSON.stringify rejects.
+    const recursiveSchema: Record<string, unknown> = {
+      type: 'object',
+      properties: {},
+    };
+    (recursiveSchema.properties as Record<string, unknown>).self = recursiveSchema;
+
+    mockServerDao.findById.mockResolvedValue({
+      name: 'seerr',
+      type: 'openapi',
+      openapi: { url: 'https://example.com/seerr-api.yml' },
+      owner: 'admin',
+      visibility: 'private',
+      enabled: true,
+    });
+    mockGetServersInfo.mockResolvedValue([
+      {
+        name: 'seerr',
+        status: 'connected',
+        tools: [
+          {
+            name: 'seerr-get_movie',
+            description: 'Get a movie',
+            inputSchema: recursiveSchema,
+          },
+        ],
+      },
+    ]);
+
+    const json = jest.fn();
+    const status = jest.fn().mockReturnThis();
+    const req = {
+      params: { name: 'seerr' },
+      user: { username: 'admin', isAdmin: true },
+    } as unknown as Request;
+    const res = { json, status } as unknown as Response;
+
+    await getServerConfig(req, res);
+
+    expect(status).not.toHaveBeenCalledWith(500);
+    expect(json).toHaveBeenCalledTimes(1);
+    const responseArg = json.mock.calls[0][0];
+    // Express res.json JSON.stringifies the payload; circular inputSchemas
+    // would make it throw. The payload must therefore be serializable.
+    expect(() => JSON.stringify(responseArg)).not.toThrow();
+    expect(responseArg).toEqual(
+      expect.objectContaining({
+        success: true,
+        data: expect.objectContaining({
+          name: 'seerr',
+          status: 'connected',
+          config: expect.objectContaining({
+            type: 'openapi',
+            openapi: { url: 'https://example.com/seerr-api.yml' },
+          }),
+        }),
+      }),
+    );
+  });
+});
+
 describe('serverController - system bearer auth context', () => {
   beforeEach(() => {
     jest.clearAllMocks();
