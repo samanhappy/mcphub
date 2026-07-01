@@ -316,7 +316,21 @@ export class OpenAPIClient {
     }
 
     // Get the first server's URL
-    const serverUrl = this.spec.servers[0].url;
+    const server = this.spec.servers[0];
+    let serverUrl = server.url;
+
+    // OpenAPI server URLs may contain {variable} templates that must be
+    // substituted with the variable's `default` before use (e.g. seerr declares
+    // `url: '{server}/api/v1'` with `variables.server.default`). Without
+    // substitution the literal '{server}/api/v1' is misclassified as a relative
+    // path and glued onto the spec source host, 404-ing every tool call.
+    if (server.variables) {
+      for (const [name, variable] of Object.entries(server.variables)) {
+        if (variable?.default !== undefined) {
+          serverUrl = serverUrl.split(`{${name}}`).join(variable.default);
+        }
+      }
+    }
 
     // If it's a relative path, combine with original spec URL
     if (serverUrl.startsWith('/')) {
