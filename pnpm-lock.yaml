@@ -74,7 +74,7 @@ importers:
         version: 2.0.0
       '@types/pg':
         specifier: ^8.15.5
-        version: 8.15.5
+        version: 8.20.0
       adm-zip:
         specifier: ^0.5.16
         version: 0.5.16
@@ -89,7 +89,7 @@ importers:
         version: 3.0.3
       better-auth:
         specifier: ^1.6.19
-        version: 1.6.19(better-sqlite3@12.6.2)(pg@8.16.3)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+        version: 1.6.19(better-sqlite3@12.6.2)(pg@8.22.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       better-sqlite3:
         specifier: ^12.6.2
         version: 12.6.2
@@ -149,7 +149,7 @@ importers:
         version: 6.8.1
       pg:
         specifier: ^8.16.3
-        version: 8.16.3
+        version: 8.22.0
       pgvector:
         specifier: ^0.2.1
         version: 0.2.1
@@ -167,7 +167,7 @@ importers:
         version: 1.2.2
       typeorm:
         specifier: ^0.3.26
-        version: 0.3.29(better-sqlite3@12.6.2)(pg@8.16.3)(redis@5.12.1)(ts-node@10.9.2(@swc/core@1.15.32)(@types/node@24.6.2)(typescript@5.9.2))
+        version: 0.3.29(better-sqlite3@12.6.2)(pg@8.22.0)(redis@5.12.1)(ts-node@10.9.2(@swc/core@1.15.32)(@types/node@24.6.2)(typescript@5.9.2))
       undici:
         specifier: ^7.28.0
         version: 7.28.0
@@ -1977,8 +1977,8 @@ packages:
   '@types/node@24.6.2':
     resolution: {integrity: sha512-d2L25Y4j+W3ZlNAeMKcy7yDsK425ibcAOO2t7aPTz6gNMH0z2GThtwENCDc0d/Pw9wgyRqE5Px1wkV7naz8ang==}
 
-  '@types/pg@8.15.5':
-    resolution: {integrity: sha512-LF7lF6zWEKxuT3/OR8wAZGzkg4ENGXFNyiV/JeOt9z5B+0ZVwbql9McqX5c/WStFq1GaGso7H1AzP/qSzmlCKQ==}
+  '@types/pg@8.20.0':
+    resolution: {integrity: sha512-bEPFOaMAHTEP1EzpvHTbmwR8UsFyHSKsRisLIHVMXnpNefSbGA1bD6CVy+qKjGSqmZqNqBDV2azOBo8TgkcVow==}
 
   '@types/qs@6.14.0':
     resolution: {integrity: sha512-eOunJqu0K1923aExK6y8p6fsihYEn/BYuQ4g0CxAAgFc4b/ZLN4CrsRZ55srTdqoiLzU2B2evC+apEIxprEzkQ==}
@@ -4144,30 +4144,30 @@ packages:
   path-to-regexp@8.4.2:
     resolution: {integrity: sha512-qRcuIdP69NPm4qbACK+aDogI5CBDMi1jKe0ry5rSQJz8JVLsC7jV8XpiJjGRLLol3N+R5ihGYcrPLTno6pAdBA==}
 
-  pg-cloudflare@1.2.7:
-    resolution: {integrity: sha512-YgCtzMH0ptvZJslLM1ffsY4EuGaU0cx4XSdXLRFae8bPP4dS5xL1tNB3k2o/N64cHJpwU7dxKli/nZ2lUa5fLg==}
+  pg-cloudflare@1.4.0:
+    resolution: {integrity: sha512-Vo7z/6rrQYxpNRylp4Tlob2elzbh+N/MOQbxFVWCxS7oEx6jF53GTJFxK2WWpKuBRkmiin4Mt+xofFDjx09R0A==}
 
-  pg-connection-string@2.9.1:
-    resolution: {integrity: sha512-nkc6NpDcvPVpZXxrreI/FOtX3XemeLl8E0qFr6F2Lrm/I8WOnaWNhIPK2Z7OHpw7gh5XJThi6j6ppgNoaT1w4w==}
+  pg-connection-string@2.14.0:
+    resolution: {integrity: sha512-XwWDGcLRGCXAR8F/AM5bG7Q+A3Wm2s6QeEjlOKZLlH3UYcguiqCWKyWXVag5TLTIjR7oOJUY8kcADaZgWPyLeg==}
 
   pg-int8@1.0.1:
     resolution: {integrity: sha512-WCtabS6t3c8SkpDBUlb1kjOs7l66xsGdKpIPZsg4wR+B3+u9UAum2odSsF9tnvxg80h4ZxLWMy4pRjOsFIqQpw==}
     engines: {node: '>=4.0.0'}
 
-  pg-pool@3.10.1:
-    resolution: {integrity: sha512-Tu8jMlcX+9d8+QVzKIvM/uJtp07PKr82IUOYEphaWcoBhIYkoHpLXN3qO59nAI11ripznDsEzEv8nUxBVWajGg==}
+  pg-pool@3.14.0:
+    resolution: {integrity: sha512-gKtPkFdQPU3DksooVLi9LsjZxrsBUZIpa+7aVx+LV5pNh0KzP4Zleud2po+ConrxbuXGBJ6Hfer6hdgpIBpBaw==}
     peerDependencies:
       pg: '>=8.0'
 
-  pg-protocol@1.10.3:
-    resolution: {integrity: sha512-6DIBgBQaTKDJyxnXaLiLR8wBpQQcGWuAESkRBX/t6OwA8YsqP+iVSiond2EDy6Y/dsGk8rh/jtax3js5NeV7JQ==}
+  pg-protocol@1.15.0:
+    resolution: {integrity: sha512-cq9sECI5s0+uPUXjbz8ioyPJni6RzsRib0US67i5IoTZKw8fNeYlVE7u8F4dG7vEJJtc5wdD1K189lCCUwqWTQ==}
 
   pg-types@2.2.0:
     resolution: {integrity: sha512-qTAAlrEsl8s4OiEQY69wDvcMIdQN6wdz5ojQiOy6YRMuynxenON0O5oCpJI6lshc6scgAY8qvJ2On/p+CXY0GA==}
     engines: {node: '>=4'}
 
-  pg@8.16.3:
-    resolution: {integrity: sha512-enxc1h0jA/aq5oSDMvqyW3q89ra6XIIDZgCX9vkMrnz5DFTw/Ny3Li2lFQ+pt3L6MCgm/5o2o8HW9hiJji+xvw==}
+  pg@8.22.0:
+    resolution: {integrity: sha512-8wih1vVIBMxoUM2oB4soJsD9tDnDpLv4OXBJ+EJzFsvycD+lfyIreC2gGHq78f8jbLLt+bvlPTFdFZfJkOuzAA==}
     engines: {node: '>= 16.0.0'}
     peerDependencies:
       pg-native: '>=3.0.1'
@@ -4220,8 +4220,8 @@ packages:
     resolution: {integrity: sha512-VpZrUqU5A69eQyW2c5CA1jtLecCsN2U/bD6VilrFDWq5+5UIEVO7nazS3TEcHf1zuPYO/sqGvUvW62g86RXZuA==}
     engines: {node: '>=4'}
 
-  postgres-bytea@1.0.0:
-    resolution: {integrity: sha512-xy3pmLuQqRBZBXDULy7KbaitYqLcmxigw14Q5sj8QBVLqEwXfeybIKVWiqAXTlcvdvb0+xkOtDbfQMOf4lST1w==}
+  postgres-bytea@1.0.1:
+    resolution: {integrity: sha512-5+5HqXnsZPE65IJZSMkZtURARZelel2oXUEO8rH83VS/hxH5vv1uHquPg5wZs8yMAfdv971IU+kcPUczi7NVBQ==}
     engines: {node: '>=0.10.0'}
 
   postgres-date@1.0.7:
@@ -6585,10 +6585,10 @@ snapshots:
     dependencies:
       undici-types: 7.13.0
 
-  '@types/pg@8.15.5':
+  '@types/pg@8.20.0':
     dependencies:
       '@types/node': 24.6.2
-      pg-protocol: 1.10.3
+      pg-protocol: 1.15.0
       pg-types: 2.2.0
 
   '@types/qs@6.14.0': {}
@@ -6993,7 +6993,7 @@ snapshots:
 
   bcryptjs@3.0.3: {}
 
-  better-auth@1.6.19(better-sqlite3@12.6.2)(pg@8.16.3)(react-dom@19.2.7(react@19.2.7))(react@19.2.7):
+  better-auth@1.6.19(better-sqlite3@12.6.2)(pg@8.22.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7):
     dependencies:
       '@better-auth/core': 1.6.19(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(better-call@1.3.6(zod@4.4.3))(jose@6.1.3)(kysely@0.28.17)(nanostores@1.3.0)
       '@better-auth/drizzle-adapter': 1.6.19(@better-auth/core@1.6.19(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(better-call@1.3.6(zod@4.4.3))(jose@6.1.3)(kysely@0.28.17)(nanostores@1.3.0))(@better-auth/utils@0.4.2)
@@ -7014,7 +7014,7 @@ snapshots:
       zod: 4.4.3
     optionalDependencies:
       better-sqlite3: 12.6.2
-      pg: 8.16.3
+      pg: 8.22.0
       react: 19.2.7
       react-dom: 19.2.7(react@19.2.7)
     transitivePeerDependencies:
@@ -8953,36 +8953,36 @@ snapshots:
 
   path-to-regexp@8.4.2: {}
 
-  pg-cloudflare@1.2.7:
+  pg-cloudflare@1.4.0:
     optional: true
 
-  pg-connection-string@2.9.1: {}
+  pg-connection-string@2.14.0: {}
 
   pg-int8@1.0.1: {}
 
-  pg-pool@3.10.1(pg@8.16.3):
+  pg-pool@3.14.0(pg@8.22.0):
     dependencies:
-      pg: 8.16.3
+      pg: 8.22.0
 
-  pg-protocol@1.10.3: {}
+  pg-protocol@1.15.0: {}
 
   pg-types@2.2.0:
     dependencies:
       pg-int8: 1.0.1
       postgres-array: 2.0.0
-      postgres-bytea: 1.0.0
+      postgres-bytea: 1.0.1
       postgres-date: 1.0.7
       postgres-interval: 1.2.0
 
-  pg@8.16.3:
+  pg@8.22.0:
     dependencies:
-      pg-connection-string: 2.9.1
-      pg-pool: 3.10.1(pg@8.16.3)
-      pg-protocol: 1.10.3
+      pg-connection-string: 2.14.0
+      pg-pool: 3.14.0(pg@8.22.0)
+      pg-protocol: 1.15.0
       pg-types: 2.2.0
       pgpass: 1.0.5
     optionalDependencies:
-      pg-cloudflare: 1.2.7
+      pg-cloudflare: 1.4.0
 
   pgpass@1.0.5:
     dependencies:
@@ -9016,7 +9016,7 @@ snapshots:
 
   postgres-array@2.0.0: {}
 
-  postgres-bytea@1.0.0: {}
+  postgres-bytea@1.0.1: {}
 
   postgres-date@1.0.7: {}
 
@@ -9708,7 +9708,7 @@ snapshots:
 
   typedarray@0.0.6: {}
 
-  typeorm@0.3.29(better-sqlite3@12.6.2)(pg@8.16.3)(redis@5.12.1)(ts-node@10.9.2(@swc/core@1.15.32)(@types/node@24.6.2)(typescript@5.9.2)):
+  typeorm@0.3.29(better-sqlite3@12.6.2)(pg@8.22.0)(redis@5.12.1)(ts-node@10.9.2(@swc/core@1.15.32)(@types/node@24.6.2)(typescript@5.9.2)):
     dependencies:
       '@sqltools/formatter': 1.2.5
       ansis: 4.3.1
@@ -9727,7 +9727,7 @@ snapshots:
       yargs: 17.7.3
     optionalDependencies:
       better-sqlite3: 12.6.2
-      pg: 8.16.3
+      pg: 8.22.0
       redis: 5.12.1
       ts-node: 10.9.2(@swc/core@1.15.32)(@types/node@24.6.2)(typescript@5.9.2)
     transitivePeerDependencies:
