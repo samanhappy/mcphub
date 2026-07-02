@@ -40,23 +40,38 @@ export const setupClientKeepAlive = async (
 
   // Default interval: 60 seconds
   const interval = serverConfig.keepAliveInterval || 60000;
+  let isChecking = false;
+
+  const isHealthCheckCurrent = (activeClient: NonNullable<ServerInfo['client']>): boolean =>
+    serverInfo.client === activeClient &&
+    serverInfo.enabled !== false &&
+    serverInfo.status !== 'connecting' &&
+    serverInfo.status !== 'oauth_required';
 
   const checkRemoteHealth = async (): Promise<void> => {
+    const activeClient = serverInfo.client;
     if (
-      !serverInfo.client ||
+      !activeClient ||
       serverInfo.enabled === false ||
       serverInfo.status === 'connecting' ||
-      serverInfo.status === 'oauth_required'
+      serverInfo.status === 'oauth_required' ||
+      isChecking
     ) {
       return;
     }
 
+    isChecking = true;
+
     try {
       // Use client.ping() if available, otherwise fallback to listTools.
-      if (typeof (serverInfo.client as any).ping === 'function') {
-        await (serverInfo.client as any).ping({ ...(serverInfo.options || {}), timeout: 5000 });
+      if (typeof (activeClient as any).ping === 'function') {
+        await (activeClient as any).ping({ ...(serverInfo.options || {}), timeout: 5000 });
       } else {
-        await serverInfo.client.listTools({}, { ...(serverInfo.options || {}), timeout: 5000 });
+        await activeClient.listTools({}, { ...(serverInfo.options || {}), timeout: 5000 });
+      }
+
+      if (!isHealthCheckCurrent(activeClient)) {
+        return;
       }
 
       if (serverInfo.status !== 'connected') {
@@ -67,6 +82,10 @@ export const setupClientKeepAlive = async (
       serverInfo.status = 'connected';
       serverInfo.error = null;
     } catch (error) {
+      if (!isHealthCheckCurrent(activeClient)) {
+        return;
+      }
+
       const message = formatErrorForLogging(error);
       const nextError = `Keep-alive failed: ${message}`;
       if (serverInfo.status !== 'disconnected' || serverInfo.error !== nextError) {
@@ -74,6 +93,8 @@ export const setupClientKeepAlive = async (
       }
       serverInfo.status = 'disconnected';
       serverInfo.error = nextError;
+    } finally {
+      isChecking = false;
     }
   };
 

@@ -24,6 +24,17 @@ const makeServerInfo = (
     options: {},
   }) as unknown as ServerInfo;
 
+const createDeferred = <T>() => {
+  let resolve!: (value: T | PromiseLike<T>) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((promiseResolve, promiseReject) => {
+    resolve = promiseResolve;
+    reject = promiseReject;
+  });
+
+  return { promise, resolve, reject };
+};
+
 describe('setupClientKeepAlive', () => {
   afterEach(() => {
     jest.useRealTimers();
@@ -74,6 +85,94 @@ describe('setupClientKeepAlive', () => {
 
     expect(serverInfo.error).toContain('Streamable HTTP error: Error POSTing to endpoint:');
     expect(serverInfo.error).toContain('502');
+  });
+
+  it('does not start a second remote health check while one is still running', async () => {
+    jest.useFakeTimers();
+    const deferred = createDeferred<unknown>();
+    const ping = jest.fn(() => deferred.promise);
+    const serverInfo = makeServerInfo(
+      new StreamableHTTPClientTransport(new URL('https://example.com/mcp')),
+      ping,
+    );
+
+    await setupClientKeepAlive(serverInfo, {
+      type: 'streamable-http',
+      url: 'https://example.com/mcp',
+      enableKeepAlive: true,
+    });
+
+    jest.advanceTimersByTime(60000);
+    await Promise.resolve();
+    jest.advanceTimersByTime(60000);
+    await Promise.resolve();
+
+    expect(ping).toHaveBeenCalledTimes(1);
+
+    deferred.resolve({});
+    await jest.advanceTimersByTimeAsync(0);
+    jest.advanceTimersByTime(60000);
+    await Promise.resolve();
+
+    expect(ping).toHaveBeenCalledTimes(2);
+  });
+
+  it('ignores stale health check results after the client is cleared', async () => {
+    jest.useFakeTimers();
+    const deferred = createDeferred<unknown>();
+    const ping = jest.fn(() => deferred.promise);
+    const serverInfo = makeServerInfo(
+      new StreamableHTTPClientTransport(new URL('https://example.com/mcp')),
+      ping,
+    );
+
+    await setupClientKeepAlive(serverInfo, {
+      type: 'streamable-http',
+      url: 'https://example.com/mcp',
+      enableKeepAlive: true,
+    });
+
+    jest.advanceTimersByTime(60000);
+    await Promise.resolve();
+
+    serverInfo.client = undefined;
+    serverInfo.status = 'disconnected';
+    serverInfo.error = 'Server disabled';
+
+    deferred.resolve({});
+    await jest.advanceTimersByTimeAsync(0);
+
+    expect(serverInfo.status).toBe('disconnected');
+    expect(serverInfo.error).toBe('Server disabled');
+  });
+
+  it('ignores stale health check failures after the client is cleared', async () => {
+    jest.useFakeTimers();
+    const deferred = createDeferred<unknown>();
+    const ping = jest.fn(() => deferred.promise);
+    const serverInfo = makeServerInfo(
+      new StreamableHTTPClientTransport(new URL('https://example.com/mcp')),
+      ping,
+    );
+
+    await setupClientKeepAlive(serverInfo, {
+      type: 'streamable-http',
+      url: 'https://example.com/mcp',
+      enableKeepAlive: true,
+    });
+
+    jest.advanceTimersByTime(60000);
+    await Promise.resolve();
+
+    serverInfo.client = undefined;
+    serverInfo.status = 'disconnected';
+    serverInfo.error = 'Server disabled';
+
+    deferred.reject(new Error('late keep-alive failure'));
+    await jest.advanceTimersByTimeAsync(0);
+
+    expect(serverInfo.status).toBe('disconnected');
+    expect(serverInfo.error).toBe('Server disabled');
   });
 
   it('restores connected status when a later SSE health check succeeds', async () => {
