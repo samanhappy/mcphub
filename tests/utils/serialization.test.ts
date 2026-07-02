@@ -109,6 +109,25 @@ describe('serialization utilities', () => {
     expect(formatted).not.toContain('top-secret');
   });
 
+  it('formatErrorForLogging includes numeric transport error codes', () => {
+    const error = Object.assign(
+      new Error('Streamable HTTP error: Error POSTing to endpoint: '),
+      { code: 502 },
+    );
+
+    const summary = summarizeErrorForLogging(error);
+    const formatted = formatErrorForLogging(error);
+
+    expect(summary).toEqual(
+      expect.objectContaining({
+        message: 'Streamable HTTP error: Error POSTing to endpoint: ',
+        code: 502,
+      }),
+    );
+    expect(formatted).toContain('Streamable HTTP error: Error POSTing to endpoint:');
+    expect(formatted).toContain('code=502');
+  });
+
   it('summarizeErrorForLogging redacts secrets from ordinary Error fields', () => {
     const error = Object.assign(new Error('oauth access_token=top-secret'), {
       code: 'E_OAUTH',

@@ -146,11 +146,16 @@ const summarizeSerializedErrorForLogging = (
 ): Record<string, unknown> => {
   const summary: Record<string, unknown> = {};
 
-  ['name', 'message', 'stack', 'code', 'requestId'].forEach((key) => {
+  ['name', 'message', 'stack', 'requestId'].forEach((key) => {
     if (typeof serialized[key] === 'string') {
       summary[key] = sanitizeStringForLogging(serialized[key]);
     }
   });
+  if (typeof serialized.code === 'string') {
+    summary.code = sanitizeStringForLogging(serialized.code);
+  } else if (typeof serialized.code === 'number') {
+    summary.code = serialized.code;
+  }
   if (typeof serialized.status === 'number') {
     summary.status = serialized.status;
   }
@@ -182,6 +187,8 @@ export const summarizeErrorForLogging = (error: unknown): Record<string, unknown
     }
     if (typeof record.code === 'string') {
       summary.code = sanitizeStringForLogging(record.code);
+    } else if (typeof record.code === 'number') {
+      summary.code = record.code;
     }
     if (typeof record.status === 'number') {
       summary.status = record.status;
@@ -229,7 +236,7 @@ export const formatErrorForLogging = (error: unknown): string => {
   if (summary.status !== undefined) {
     parts.push(`status=${summary.status}`);
   }
-  if (typeof summary.code === 'string') {
+  if (typeof summary.code === 'string' || typeof summary.code === 'number') {
     parts.push(`code=${summary.code}`);
   }
   if (typeof summary.requestId === 'string') {
