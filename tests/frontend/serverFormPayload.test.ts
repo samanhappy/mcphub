@@ -63,6 +63,42 @@ describe('buildServerPayload', () => {
     expect(payload.config).toHaveProperty('keepAliveInterval', undefined);
   });
 
+  it('keeps keep-alive disabled by default for remote server payloads', () => {
+    const payload = buildServerPayload({
+      formData: {
+        name: 'remote-server',
+        description: '',
+        url: 'https://example.com/mcp',
+        command: '',
+        arguments: '',
+        args: [],
+        env: [],
+        headers: [],
+        passthroughHeaders: '',
+        options: {},
+        oauth: {},
+        openapi: {
+          inputMode: 'url',
+          url: '',
+          schema: '',
+          version: '3.1.0',
+          securityType: 'none',
+          passthroughHeaders: '',
+        },
+      },
+      serverType: 'streamable-http',
+      envVars: [],
+      headerVars: [],
+    });
+
+    expect(payload.config).toMatchObject({
+      type: 'streamable-http',
+      url: 'https://example.com/mcp',
+      enableKeepAlive: false,
+    });
+    expect(payload.config).toHaveProperty('keepAliveInterval', undefined);
+  });
+
   it('clears remote-only fields when switching to stdio', () => {
     const payload = buildServerPayload({
       formData: {

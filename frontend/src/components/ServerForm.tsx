@@ -102,7 +102,7 @@ const ServerForm = ({
     oauth: getInitialOAuthConfig(initialData),
     // KeepAlive configuration initialization
     keepAlive: {
-      enabled: initialData?.config?.enableKeepAlive || false,
+      enabled: initialData?.config?.enableKeepAlive === true,
       interval: initialData?.config?.keepAliveInterval || 60000,
     },
     // OpenAPI configuration initialization

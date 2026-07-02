@@ -175,15 +175,15 @@ export const buildServerPayload = ({
     config.headers = headers;
     config.openapi = buildOpenApiConfig(formData);
   } else if (serverType === 'sse' || serverType === 'streamable-http') {
+    const keepAliveEnabled = formData.keepAlive?.enabled === true;
+
     config.url = formData.url.trim();
     config.env = env;
     config.headers = headers;
     config.passthroughHeaders = parseCommaSeparatedList(formData.passthroughHeaders);
     config.oauth = buildOAuthConfig(formData.oauth);
-    config.enableKeepAlive = formData.keepAlive?.enabled || false;
-    config.keepAliveInterval = formData.keepAlive?.enabled
-      ? formData.keepAlive.interval || 60000
-      : undefined;
+    config.enableKeepAlive = keepAliveEnabled;
+    config.keepAliveInterval = keepAliveEnabled ? formData.keepAlive?.interval || 60000 : undefined;
   } else {
     config.command = formData.command.trim();
     config.args = formData.args;

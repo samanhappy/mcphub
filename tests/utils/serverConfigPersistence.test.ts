@@ -1,6 +1,35 @@
 import { normalizeServerConfigForPersistence } from '../../src/utils/serverConfigPersistence.js';
 
 describe('normalizeServerConfigForPersistence', () => {
+  it('keeps remote keep-alive checks disabled by default', () => {
+    const normalized = normalizeServerConfigForPersistence({
+      type: 'streamable-http',
+      url: 'https://example.com/mcp',
+    });
+
+    expect(normalized).toMatchObject({
+      type: 'streamable-http',
+      url: 'https://example.com/mcp',
+      enableKeepAlive: false,
+    });
+    expect(normalized).toHaveProperty('keepAliveInterval', undefined);
+  });
+
+  it('preserves explicitly enabled remote keep-alive checks', () => {
+    const normalized = normalizeServerConfigForPersistence({
+      type: 'streamable-http',
+      url: 'https://example.com/mcp',
+      enableKeepAlive: true,
+    });
+
+    expect(normalized).toMatchObject({
+      type: 'streamable-http',
+      url: 'https://example.com/mcp',
+      enableKeepAlive: true,
+      keepAliveInterval: 60000,
+    });
+  });
+
   it('clears empty remote collections while preserving explicit field presence for DB/JSON persistence', () => {
     const normalized = normalizeServerConfigForPersistence({
       type: 'sse',

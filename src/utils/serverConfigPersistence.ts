@@ -194,6 +194,8 @@ export const normalizeServerConfigForPersistence = (config: ServerConfig): Serve
   }
 
   if (normalizedType === 'sse' || normalizedType === 'streamable-http') {
+    const keepAliveEnabled = config.enableKeepAlive === true;
+
     normalized.url = url;
     normalized.command = undefined;
     normalized.args = undefined;
@@ -201,9 +203,8 @@ export const normalizeServerConfigForPersistence = (config: ServerConfig): Serve
     normalized.headers = headers;
     normalized.passthroughHeaders = passthroughHeaders;
     normalized.oauth = oauth;
-    normalized.enableKeepAlive = config.enableKeepAlive === true;
-    normalized.keepAliveInterval =
-      config.enableKeepAlive === true ? config.keepAliveInterval || 60000 : undefined;
+    normalized.enableKeepAlive = keepAliveEnabled;
+    normalized.keepAliveInterval = keepAliveEnabled ? config.keepAliveInterval || 60000 : undefined;
     normalized.openapi = undefined;
     return normalized;
   }

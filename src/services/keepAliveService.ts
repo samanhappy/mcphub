@@ -9,7 +9,7 @@ export interface KeepAliveOptions {
 
 /**
  * Set up keep-alive ping for MCP client connections (SSE or Streamable HTTP).
- * Keepalive is controlled per-server via `serverConfig.enableKeepAlive` (default off).
+ * Remote server health checks are opt-in because probes may count as upstream calls.
  */
 export const setupClientKeepAlive = async (
   serverInfo: ServerInfo,
@@ -40,22 +40,52 @@ export const setupClientKeepAlive = async (
   // Default interval: 60 seconds
   const interval = serverConfig.keepAliveInterval || 60000;
 
-  serverInfo.keepAliveIntervalId = setInterval(async () => {
-    try {
-      if (serverInfo.client && serverInfo.status === 'connected') {
-        // Use client.ping() if available, otherwise fallback to listTools
-        if (typeof (serverInfo.client as any).ping === 'function') {
-          await (serverInfo.client as any).ping();
-          console.log('Keep-alive ping successful', { serverName: serverInfo.name });
-        } else {
-          await serverInfo.client
-            .listTools({}, { ...(serverInfo.options || {}), timeout: 5000 })
-            .catch(() => void 0);
-        }
-      }
-    } catch (error) {
-      console.warn('Keep-alive ping failed', { serverName: serverInfo.name, error });
+  const formatKeepAliveError = (error: unknown): string => {
+    if (error instanceof Error) {
+      return error.message;
     }
+
+    return String(error);
+  };
+
+  const checkRemoteHealth = async (): Promise<void> => {
+    if (
+      !serverInfo.client ||
+      serverInfo.enabled === false ||
+      serverInfo.status === 'connecting' ||
+      serverInfo.status === 'oauth_required'
+    ) {
+      return;
+    }
+
+    try {
+      // Use client.ping() if available, otherwise fallback to listTools.
+      if (typeof (serverInfo.client as any).ping === 'function') {
+        await (serverInfo.client as any).ping({ ...(serverInfo.options || {}), timeout: 5000 });
+      } else {
+        await serverInfo.client.listTools({}, { ...(serverInfo.options || {}), timeout: 5000 });
+      }
+
+      if (serverInfo.status !== 'connected') {
+        console.log('Keep-alive ping restored server connection', {
+          serverName: serverInfo.name,
+        });
+      }
+      serverInfo.status = 'connected';
+      serverInfo.error = null;
+    } catch (error) {
+      const message = formatKeepAliveError(error);
+      const nextError = `Keep-alive failed: ${message}`;
+      if (serverInfo.status !== 'disconnected' || serverInfo.error !== nextError) {
+        console.warn('Keep-alive ping failed', { serverName: serverInfo.name, error });
+      }
+      serverInfo.status = 'disconnected';
+      serverInfo.error = nextError;
+    }
+  };
+
+  serverInfo.keepAliveIntervalId = setInterval(async () => {
+    await checkRemoteHealth();
   }, interval);
 
   console.log('Keep-alive enabled for server', {
