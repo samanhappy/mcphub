@@ -41,8 +41,37 @@ export const setupClientKeepAlive = async (
   const interval = serverConfig.keepAliveInterval || 60000;
 
   const formatKeepAliveError = (error: unknown): string => {
+    const detailParts: string[] = [];
+    const appendDetail = (label: string, value: unknown): void => {
+      if (value === undefined || value === null || value === '') {
+        return;
+      }
+      const detail = `${label}: ${String(value)}`;
+      if (!detailParts.includes(detail)) {
+        detailParts.push(detail);
+      }
+    };
+
     if (error instanceof Error) {
-      return error.message;
+      const errorWithMetadata = error as Error & {
+        code?: unknown;
+        status?: unknown;
+        statusCode?: unknown;
+        response?: {
+          status?: unknown;
+          statusText?: unknown;
+        };
+      };
+
+      appendDetail('code', errorWithMetadata.code);
+      appendDetail('status', errorWithMetadata.status);
+      appendDetail('status', errorWithMetadata.statusCode);
+      appendDetail('status', errorWithMetadata.response?.status);
+      appendDetail('statusText', errorWithMetadata.response?.statusText);
+
+      return detailParts.length > 0
+        ? `${error.message} (${detailParts.join(', ')})`
+        : error.message;
     }
 
     return String(error);

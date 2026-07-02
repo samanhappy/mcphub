@@ -52,6 +52,30 @@ describe('setupClientKeepAlive', () => {
     expect(serverInfo.error).toContain('connect ECONNREFUSED');
   });
 
+  it('includes HTTP error metadata in the displayed keep-alive error', async () => {
+    jest.useFakeTimers();
+    const error = Object.assign(
+      new Error('Streamable HTTP error: Error POSTing to endpoint: '),
+      { code: 502 },
+    );
+    const ping = jest.fn().mockRejectedValue(error);
+    const serverInfo = makeServerInfo(
+      new StreamableHTTPClientTransport(new URL('https://example.com/mcp')),
+      ping,
+    );
+
+    await setupClientKeepAlive(serverInfo, {
+      type: 'streamable-http',
+      url: 'https://example.com/mcp',
+      enableKeepAlive: true,
+    });
+
+    await jest.advanceTimersByTimeAsync(60000);
+
+    expect(serverInfo.error).toContain('Streamable HTTP error: Error POSTing to endpoint:');
+    expect(serverInfo.error).toContain('502');
+  });
+
   it('restores connected status when a later SSE health check succeeds', async () => {
     jest.useFakeTimers();
     const ping = jest.fn().mockResolvedValue({});
