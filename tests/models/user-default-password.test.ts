@@ -1,4 +1,6 @@
 import crypto from 'crypto';
+import fs from 'fs';
+import path from 'path';
 
 // Mock the dao module before importing the module under test
 const mockCreateWithHashedPassword = jest.fn();
@@ -130,5 +132,15 @@ describe('initializeDefaultUser', () => {
 
     // Two random passwords should differ (probabilistically certain)
     expect(password1).not.toBe(password2);
+  });
+});
+
+describe('shipped mcp_settings.json', () => {
+  const settingsPath = path.resolve(__dirname, '../../mcp_settings.json');
+
+  it('does not ship a pre-seeded admin user (prevents default credentials in image)', () => {
+    const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+    expect(Array.isArray(settings.users)).toBe(true);
+    expect(settings.users.length).toBe(0);
   });
 });
