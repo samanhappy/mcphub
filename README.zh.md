@@ -57,6 +57,13 @@ docker run -p 3000:3000 -v ./mcp_settings.json:/app/mcp_settings.json -v ./data:
 docker run -p 3000:3000 -v ./data:/app/data samanhappy/mcphub
 ```
 
+`samanhappy/mcphub` 提供两种镜像变体：
+
+- **`latest`**（默认镜像）— 包含 Node.js/pnpm、Python、uv/uvx、Git、构建工具，覆盖大多数 MCP server 场景。
+- **`latest-full`**（扩展镜像）— 在 `latest` 基础上增加 Rust 工具链（Cargo/rustc）、Docker Engine，以及 Playwright 浏览器（Chrome + Firefox，仅限 amd64）。适合需要运行 Rust MCP server 或容器嵌套的场景。镜像体积更大。
+
+构建选项与 Docker-in-Docker 配置详见 [Docker 部署文档](https://docs.mcphub.app/zh/configuration/docker-setup)。
+
 ### 访问控制台
 
 打开 `http://localhost:3000`，使用用户名 `admin` 登录。首次启动时，如果未设置 `ADMIN_PASSWORD` 环境变量，系统将自动生成随机密码并输出到服务器日志中。也可以预先设置密码：

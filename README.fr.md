@@ -57,6 +57,13 @@ docker run -p 3000:3000 -v ./mcp_settings.json:/app/mcp_settings.json -v ./data:
 docker run -p 3000:3000 -v ./data:/app/data samanhappy/mcphub
 ```
 
+Deux variantes d'image sont publiées sous `samanhappy/mcphub` :
+
+- **`latest`** — l'image par défaut. Inclut Node.js/pnpm, Python, uv/uvx, Git et les outils de compilation. Couvre la plupart des serveurs MCP.
+- **`latest-full`** — l'image étendue. Ajoute la chaîne d'outils Rust (Cargo/rustc), Docker Engine, et les navigateurs Playwright (Chrome + Firefox, amd64 uniquement). À utiliser pour les serveurs Rust ou les workflows conteneur-dans-conteneur. Téléchargement plus volumineux.
+
+Voir [Configuration Docker](https://docs.mcphub.app/configuration/docker-setup) pour les options de build et la configuration Docker-in-Docker.
+
 ### Accéder au tableau de bord
 
 Ouvrez `http://localhost:3000` et connectez-vous avec le nom d'utilisateur `admin`. Au premier lancement, si la variable d'environnement `ADMIN_PASSWORD` n'est pas définie, un mot de passe aléatoire est généré et affiché dans les logs du serveur. Vous pouvez également prédéfinir le mot de passe :
