@@ -130,7 +130,8 @@ import { Card, Cards } from 'mintlify';
       - `url` (string): OpenAPI 模式的 URL。
       - `schema` (object): OpenAPI 模式对象本身。
     - `headers` (object): `sse`、`streamable-http` 和 `openapi` 类型请求要发送的标头。
-    - `keepAliveInterval` (number): `sse` 类型的保持活动间隔（毫秒）。默认为 60000。
+    - `keepAliveInterval` (number): 远端服务健康检查和自动重连的间隔（毫秒）。默认为 60000。
+    - `enableKeepAlive` (boolean): 是否为远端服务启用周期性健康检查和自动重连。
     - `owner` (string): 服务器的所有者。默认为当前用户或“admin”。
 
 ---

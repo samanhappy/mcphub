@@ -92,8 +92,8 @@ Adds a new MCP server to the configuration.
       - `url` (string): URL to the OpenAPI schema.
       - `schema` (object): The OpenAPI schema object itself.
     - `headers` (object): Headers to send with requests for `sse`, `streamable-http`, and `openapi` types.
-    - `keepAliveInterval` (number): Keep-alive interval in milliseconds for `sse` type. Defaults to 60000.
-    - `enableKeepAlive` (boolean): Toggle keep-alive pings on/off independent of the interval.
+    - `keepAliveInterval` (number): Health check and reconnect interval in milliseconds for remote servers. Defaults to 60000.
+    - `enableKeepAlive` (boolean): Toggle periodic health checks and automatic reconnect attempts for remote servers.
     - `enabled` (boolean): Defaults to `true`. Disabled servers stay in the configuration but are not connected.
     - `owner` (string): The owner of the server. Defaults to the current user or `'admin'`.
     - `passthroughHeaders` (string[]): Inbound HTTP header names that should be forwarded to the upstream server.

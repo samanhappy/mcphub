@@ -404,8 +404,8 @@ export interface ServerConfig {
   //   'group'   — reserved for group-scoped visibility once user→group membership lands.
   // See issue #817.
   visibility?: ServerVisibility;
-  enableKeepAlive?: boolean; // Enable keep-alive for this server (requires global enable as well)
-  keepAliveInterval?: number; // Keep-alive ping interval in milliseconds (default: 60000ms for SSE servers)
+  enableKeepAlive?: boolean; // Enable remote health checks and automatic reconnect attempts
+  keepAliveInterval?: number; // Health check and reconnect interval in milliseconds (default: 60000ms for SSE servers)
   tools?: Record<string, { enabled: boolean; description?: string }>; // Tool-specific configurations with enable/disable state and custom descriptions
   prompts?: Record<string, { enabled: boolean; description?: string }>; // Prompt-specific configurations with enable/disable state and custom descriptions
   resources?: Record<string, { enabled: boolean; description?: string }>; // Resource-specific configurations with enable/disable state and custom descriptions

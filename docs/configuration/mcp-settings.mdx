@@ -76,8 +76,8 @@ A server entry has the shape `"<server-name>": ServerConfig`. The relevant field
 | `options` | object | no | Per-server runtime options (see `src/types/index.ts`). |
 | `proxy` | object | no | Optional HTTP proxy settings (`url`, `noProxy`, etc.). |
 | `oauth` | object | no | Upstream OAuth client settings (used when the upstream server requires OAuth). |
-| `enableKeepAlive` | boolean | no | For `sse` / `streamable-http`: enable periodic pings. |
-| `keepAliveInterval` | number | no | Keep-alive interval in milliseconds. Defaults to `60000`. |
+| `enableKeepAlive` | boolean | no | For `sse` / `streamable-http`: enable periodic health checks and automatic reconnect attempts. |
+| `keepAliveInterval` | number | no | Health check and reconnect interval in milliseconds. Defaults to `60000`. |
 | `tools`, `prompts`, `resources` | object | no | Per-item overrides: `{ "<name>": { "enabled": true, "description": "..." } }`. Managed via the dashboard or the per-resource API endpoints. |
 
 ### `type: "stdio"` (default)

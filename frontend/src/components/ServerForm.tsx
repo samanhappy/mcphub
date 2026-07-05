@@ -1324,7 +1324,7 @@ const ServerForm = ({
               onClick={() => setIsKeepAliveSectionExpanded(!isKeepAliveSectionExpanded)}
             >
               <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                {t('server.keepAlive', 'Keep-Alive')}
+                {t('server.keepAlive', 'Connection Health')}
               </label>
               <span className="text-gray-500 text-sm">
                 {isKeepAliveSectionExpanded ? '▼' : '▶'}
@@ -1350,13 +1350,13 @@ const ServerForm = ({
                     className="mr-2"
                   />
                   <label htmlFor="enableKeepAlive" className="text-gray-600 text-sm">
-                    {t('server.enableKeepAlive', 'Enable Keep-Alive')}
+                    {t('server.enableKeepAlive', 'Enable Health Checks and Auto Reconnect')}
                   </label>
                 </div>
                 <p className="text-xs text-gray-500 mb-3">
                   {t(
                     'server.keepAliveDescription',
-                    'Send periodic ping requests to maintain the connection. Useful for long-running connections that may timeout.',
+                    'Run periodic health checks and automatically reconnect this remote server when it becomes disconnected.',
                   )}
                 </p>
                 <div>
@@ -1364,7 +1364,7 @@ const ServerForm = ({
                     className="block text-gray-600 text-sm font-medium mb-1"
                     htmlFor="keepAliveInterval"
                   >
-                    {t('server.keepAliveInterval', 'Interval (ms)')}
+                    {t('server.keepAliveInterval', 'Check interval (ms)')}
                   </label>
                   <input
                     type="number"
@@ -1387,7 +1387,7 @@ const ServerForm = ({
                   <p className="text-xs text-gray-500 mt-1">
                     {t(
                       'server.keepAliveIntervalDescription',
-                      'Time between keep-alive pings in milliseconds (default: 60000ms = 1 minute)',
+                      'Time between health checks and automatic reconnect attempts in milliseconds (default: 60000ms = 1 minute)',
                     )}
                   </p>
                 </div>
