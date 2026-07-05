@@ -267,14 +267,13 @@
 .hub-server-card-row {
   display: grid;
   align-items: center;
-  justify-content: space-between;
   gap: 10px;
   grid-template-columns:
-    minmax(136px, 196px)
-    fit-content(92px)
-    fit-content(72px)
-    minmax(94px, 108px)
-    repeat(4, 88px)
+    minmax(140px, 1.35fr)
+    minmax(126px, 0.55fr)
+    minmax(146px, 0.65fr)
+    minmax(104px, 0.52fr)
+    repeat(4, minmax(82px, 0.42fr))
     44px
     28px;
 }
@@ -288,9 +287,18 @@
   justify-self: start;
 }
 
+.hub-server-card-status-cell,
+.hub-server-card-transport-cell {
+  display: flex;
+  align-items: center;
+  height: 30px;
+  justify-self: start;
+}
+
 .hub-status.hub-server-card-status {
   gap: 5px;
   font-size: 11.5px;
+  min-height: 24px;
 }
 
 .hub-status.hub-server-card-status .hub-dot {
@@ -316,6 +324,8 @@
   border-radius: 999px;
   font-size: 10.5px;
   letter-spacing: 0.02em;
+  justify-content: center;
+  min-width: max-content;
 }
 
 .hub-server-card-select,
@@ -384,11 +394,11 @@
   .hub-server-card-row {
     gap: 9px;
     grid-template-columns:
-      minmax(128px, 180px)
-      fit-content(88px)
-      fit-content(66px)
-      minmax(90px, 102px)
-      repeat(4, 80px)
+      minmax(128px, 1.25fr)
+      minmax(112px, 0.55fr)
+      minmax(128px, 0.62fr)
+      minmax(96px, 0.5fr)
+      repeat(4, minmax(76px, 0.4fr))
       44px
       28px;
   }

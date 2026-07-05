@@ -589,7 +589,7 @@ const ServerCard = ({
           </div>
 
           {/* Status */}
-          <div className="min-w-0">
+          <div className="hub-server-card-status-cell min-w-0">
             <ServerStatusDot
               status={server.status}
               enabled={server.enabled}
@@ -599,7 +599,7 @@ const ServerCard = ({
           </div>
 
           {/* Transport */}
-          <div className="min-w-0">
+          <div className="hub-server-card-transport-cell min-w-0">
             {server.config?.type ? (
               <span
                 className="hub-tag hub-server-card-transport-tag"
