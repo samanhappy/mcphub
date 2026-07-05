@@ -167,7 +167,7 @@ jest.mock('../../src/services/toolResultCompressionService.js', () => ({
 }));
 
 jest.mock('../../src/services/keepAliveService.js', () => ({
-  setupClientKeepAlive: jest.fn(),
+  setupClientKeepAlive: jest.fn().mockResolvedValue(undefined),
 }));
 
 jest.mock('../../src/services/groupService.js', () => ({

@@ -1214,11 +1214,16 @@ const callToolWithReconnect = async (
 };
 
 const setupServerKeepAlive = (serverInfo: ServerInfo, serverConfig: ServerConfig): void => {
-  Promise.resolve(
-    setupClientKeepAlive(serverInfo, serverConfig, {
-      reconnectServer: async (serverName) => reconnectServer(serverName),
-    }),
-  ).catch((error) =>
+  setupClientKeepAlive(serverInfo, serverConfig, {
+    reconnectServer: async (serverName) => {
+      try {
+        await reconnectServer(serverName);
+      } catch (error) {
+        setupServerKeepAlive(serverInfo, serverConfig);
+        throw error;
+      }
+    },
+  }).catch((error) =>
     console.warn('Keepalive setup failed', {
       serverName: serverInfo.name,
       error: summarizeErrorForLogging(error),

@@ -271,4 +271,48 @@ describe('mcpService request options defaults', () => {
       }),
     );
   });
+
+  it('re-registers keep-alive when an automatic reconnect attempt fails', async () => {
+    mockFindAll.mockResolvedValue([
+      {
+        name: 'flaky-http',
+        type: 'streamable-http',
+        url: 'https://example.com/mcp',
+        enabled: true,
+        enableKeepAlive: true,
+      },
+    ]);
+    mockFindById.mockResolvedValue({
+      name: 'flaky-http',
+      type: 'streamable-http',
+      url: 'https://example.com/mcp',
+      enabled: true,
+      enableKeepAlive: true,
+    });
+
+    await initUpstreamServers();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    const reconnectOptions = (setupClientKeepAlive as jest.Mock).mock.calls[0][2];
+    mockFindAll.mockRejectedValueOnce(new Error('settings unavailable'));
+
+    await expect(reconnectOptions.reconnectServer('flaky-http')).rejects.toThrow(
+      'settings unavailable',
+    );
+
+    expect(setupClientKeepAlive).toHaveBeenCalledTimes(2);
+    expect(setupClientKeepAlive).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        name: 'flaky-http',
+      }),
+      expect.objectContaining({
+        name: 'flaky-http',
+        enableKeepAlive: true,
+      }),
+      expect.objectContaining({
+        reconnectServer: expect.any(Function),
+      }),
+    );
+  });
 });

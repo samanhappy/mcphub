@@ -69,7 +69,7 @@ export const setupClientKeepAlive = async (
         });
         await options.reconnectServer(serverInfo.name);
       } catch (error) {
-        if (!shouldSkipCheck()) {
+        if (!shouldSkipCheck() && serverInfo.status === 'disconnected') {
           const message = formatErrorForLogging(error);
           const nextError = `Reconnect failed: ${message}`;
           if (serverInfo.error !== nextError) {

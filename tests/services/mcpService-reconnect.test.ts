@@ -101,7 +101,7 @@ jest.mock('../../src/services/activityLoggingService.js', () => ({
 }));
 
 jest.mock('../../src/services/keepAliveService.js', () => ({
-  setupClientKeepAlive: jest.fn(),
+  setupClientKeepAlive: jest.fn().mockResolvedValue(undefined),
 }));
 
 const mockBaseFetch = jest.fn();
