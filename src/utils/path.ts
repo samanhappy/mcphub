@@ -168,11 +168,31 @@ export const findPackageRoot = (startPath?: string): string | null => {
   return null;
 };
 
-function getParentPath(p: string, filename: string): string {
-  if (p.endsWith(filename)) {
-    p = p.slice(0, -filename.length);
+function isExplicitDirectoryPath(p: string): boolean {
+  return /[/\\]$/.test(p);
+}
+
+function resolveSettingsPathFromEnv(envPath: string, filename: string): string {
+  const resolvedEnvPath = path.resolve(envPath);
+  let settingsPath: string;
+
+  if (fs.existsSync(resolvedEnvPath)) {
+    settingsPath = fs.statSync(resolvedEnvPath).isDirectory()
+      ? path.join(resolvedEnvPath, filename)
+      : resolvedEnvPath;
+  } else if (isExplicitDirectoryPath(envPath) || path.extname(path.basename(envPath)) === '') {
+    settingsPath = path.join(resolvedEnvPath, filename);
+  } else {
+    settingsPath = resolvedEnvPath;
   }
-  return path.resolve(p);
+
+  const dir = path.dirname(settingsPath);
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+    console.log(`Created directory for settings at ${dir}`);
+  }
+
+  return settingsPath;
 }
 
 /**
@@ -185,20 +205,7 @@ export const getConfigFilePath = (filename: string, description = 'Configuration
   if (filename === 'mcp_settings.json') {
     const envPath = process.env.MCPHUB_SETTING_PATH;
     if (envPath) {
-      // Ensure directory exists
-      const dir = getParentPath(envPath, filename);
-      if (!fs.existsSync(dir)) {
-        fs.mkdirSync(dir, { recursive: true });
-        console.log(`Created directory for settings at ${dir}`);
-      }
-
-      // if full path, return as is
-      if (envPath?.endsWith(filename)) {
-        return envPath;
-      }
-
-      // if directory, return path under that directory
-      return path.resolve(envPath, filename);
+      return resolveSettingsPathFromEnv(envPath, filename);
     }
   }
 
