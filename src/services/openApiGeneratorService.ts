@@ -3,6 +3,7 @@ import { Tool } from '../types/index.js';
 import { getServersInfo } from './mcpService.js';
 import config, { getNameSeparator } from '../config/index.js';
 import { getSystemConfigDao } from '../dao/index.js';
+import { resolveInstallBaseUrl } from '../utils/installBaseUrl.js';
 import { filterModelVisibleTools } from '../utils/mcpApps.js';
 
 /**
@@ -257,7 +258,7 @@ export async function generateOpenAPISpec(
   const systemConfig = await systemConfigDao.get();
   // Get server URL
   const baseUrl =
-    options.serverUrl || systemConfig?.install?.baseUrl || `http://localhost:${config.port}`;
+    options.serverUrl || resolveInstallBaseUrl(systemConfig, `http://localhost:${config.port}`);
   const serverUrl = `${baseUrl}${config.basePath}/api`;
 
   // Generate OpenAPI document

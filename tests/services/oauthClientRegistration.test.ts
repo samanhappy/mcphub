@@ -24,11 +24,19 @@ jest.mock('../../src/dao/index.js', () => ({
 }));
 
 import { getSystemConfigDao } from '../../src/dao/index.js';
-import { registerClient } from '../../src/services/oauthClientRegistration.js';
+import {
+  registerClient,
+  removeRegisteredClient,
+} from '../../src/services/oauthClientRegistration.js';
 
 describe('registerClient redirect URI handling', () => {
+  const originalEnv = process.env;
+
   beforeEach(() => {
     jest.clearAllMocks();
+    removeRegisteredClient('notion');
+    process.env = { ...originalEnv };
+    delete process.env.INSTALL_BASE_URL;
     mockDynamicClientRegistration.mockResolvedValue({
       client_id: 'registered-client',
       client_secret: 'registered-secret',
@@ -72,5 +80,34 @@ describe('registerClient redirect URI handling', () => {
       }),
       expect.any(Function),
     );
+  });
+
+  it('uses INSTALL_BASE_URL for dynamic client registration when install.baseUrl is unset', async () => {
+    process.env.INSTALL_BASE_URL = 'https://env.example.com/mcphub';
+    (getSystemConfigDao as jest.Mock).mockReturnValue({
+      get: jest.fn().mockResolvedValue({}),
+    });
+
+    await registerClient('notion', {
+      url: 'https://mcp.notion.com/mcp',
+      oauth: {
+        dynamicRegistration: {
+          enabled: true,
+          issuer: 'https://issuer.example.com',
+        },
+      },
+    } as any);
+
+    expect(mockDynamicClientRegistration).toHaveBeenCalledWith(
+      new URL('https://issuer.example.com'),
+      expect.objectContaining({
+        redirect_uris: ['https://env.example.com/mcphub/oauth/callback'],
+      }),
+      expect.any(Function),
+    );
+  });
+
+  afterAll(() => {
+    process.env = originalEnv;
   });
 });

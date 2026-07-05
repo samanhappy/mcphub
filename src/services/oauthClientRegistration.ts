@@ -12,6 +12,7 @@
 import * as client from 'openid-client';
 import { getSystemConfigDao } from '../dao/index.js';
 import { ServerConfig } from '../types/index.js';
+import { resolveInstallBaseUrl } from '../utils/installBaseUrl.js';
 import { resolvePreferredRedirectUris } from '../utils/oauthRedirectUri.js';
 import {
   mutateOAuthSettings,
@@ -253,7 +254,10 @@ export const registerClient = async (
     // Step 2: Prepare client metadata for registration
     const metadata = dynamicConfig?.metadata || {};
     const systemConfig = await getSystemConfigDao().get();
-    const redirectUris = resolvePreferredRedirectUris(serverConfig, systemConfig?.install?.baseUrl);
+    const redirectUris = resolvePreferredRedirectUris(
+      serverConfig,
+      resolveInstallBaseUrl(systemConfig),
+    );
 
     // Determine scopes: priority is metadata.scope > autoDetectedScopes > configured scopes > 'openid'
     let scopeValue: string;

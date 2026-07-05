@@ -43,6 +43,7 @@ import {
 import { UserContextService } from '../services/userContextService.js';
 import { normalizeServerConfigForPersistence } from '../utils/serverConfigPersistence.js';
 import { setCachedSystemConfig } from '../utils/systemConfigCache.js';
+import { DEFAULT_INSTALL_BASE_URL, withResolvedInstallBaseUrl } from '../utils/installBaseUrl.js';
 
 type DescribableConfig = Record<string, { enabled: boolean; description?: string }>;
 type ServerRecord = ServerConfig & { name: string };
@@ -338,11 +339,16 @@ export const getAllSettings = async (req: Request, res: Response): Promise<void>
       };
     }
 
+    const systemConfigForResponse = withResolvedInstallBaseUrl(
+      systemConfig,
+      DEFAULT_INSTALL_BASE_URL,
+    );
+
     const settings: McpSettings = {
       users,
       mcpServers,
       groups,
-      systemConfig,
+      systemConfig: systemConfigForResponse,
       userConfigs,
       oauthClients,
       oauthTokens,
@@ -362,7 +368,7 @@ export const getAllSettings = async (req: Request, res: Response): Promise<void>
               mcpServers: {},
               systemConfig: {
                 install: {
-                  baseUrl: systemConfig.install?.baseUrl,
+                  baseUrl: systemConfigForResponse.install?.baseUrl,
                 },
               },
               bearerKeys: settings.bearerKeys?.filter(

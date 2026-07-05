@@ -4,6 +4,7 @@ import { PostgresDialect } from 'kysely';
 import { Pool } from 'pg';
 import defaultConfig, { loadSettings } from './config/index.js';
 import { resolveBetterAuthRuntimeConfig } from './services/betterAuthConfig.js';
+import { resolveInstallBaseUrl } from './utils/installBaseUrl.js';
 import { getCachedSystemConfig, isDatabaseModeEnabled } from './utils/systemConfigCache.js';
 
 const resolveSystemConfig = () => {
@@ -85,7 +86,7 @@ const resolveBaseURL = (baseUrl: string, basePath: string): string => {
   }
 };
 
-const systemInstallBaseUrl = systemConfig?.install?.baseUrl;
+const systemInstallBaseUrl = resolveInstallBaseUrl(systemConfig);
 const baseURL = resolveBaseURL(
   process.env.BETTER_AUTH_URL ||
     systemInstallBaseUrl ||

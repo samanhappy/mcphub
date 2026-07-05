@@ -28,6 +28,7 @@ import {
 } from '../../src/controllers/oauthServerController.js';
 
 describe('oauthServerController metadata endpoints', () => {
+  const originalEnv = process.env;
   let mockRequest: Partial<Request>;
   let mockResponse: Partial<Response>;
   let mockJson: jest.Mock;
@@ -35,6 +36,8 @@ describe('oauthServerController metadata endpoints', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    process.env = { ...originalEnv };
+    delete process.env.INSTALL_BASE_URL;
 
     mockJson = jest.fn();
     mockStatus = jest.fn().mockReturnThis();
@@ -80,6 +83,29 @@ describe('oauthServerController metadata endpoints', () => {
     });
   });
 
+  it('uses INSTALL_BASE_URL when returning authorization server metadata without install.baseUrl', async () => {
+    process.env.INSTALL_BASE_URL = 'https://env.example.com/mcphub';
+    getSystemConfigMock.mockResolvedValue({
+      oauthServer: {
+        enabled: true,
+        dynamicRegistration: {
+          enabled: true,
+        },
+      },
+    });
+
+    await getMetadata(mockRequest as Request, mockResponse as Response);
+
+    expect(mockJson).toHaveBeenCalledWith(
+      expect.objectContaining({
+        issuer: 'https://env.example.com/mcphub',
+        authorization_endpoint: 'https://env.example.com/mcphub/oauth/authorize',
+        token_endpoint: 'https://env.example.com/mcphub/oauth/token',
+        registration_endpoint: 'https://env.example.com/mcphub/oauth/register',
+      }),
+    );
+  });
+
   it('uses DAO-backed baseUrl when returning protected resource metadata', async () => {
     getSystemConfigMock.mockResolvedValue({
       install: {
@@ -96,6 +122,25 @@ describe('oauthServerController metadata endpoints', () => {
     expect(mockJson).toHaveBeenCalledWith({
       resource: 'https://mcp.example.com/hub',
       authorization_servers: ['https://mcp.example.com/hub'],
+      scopes_supported: ['read'],
+      bearer_methods_supported: ['header'],
+    });
+  });
+
+  it('uses INSTALL_BASE_URL when returning protected resource metadata without install.baseUrl', async () => {
+    process.env.INSTALL_BASE_URL = 'https://env.example.com/mcphub';
+    getSystemConfigMock.mockResolvedValue({
+      oauthServer: {
+        enabled: true,
+        allowedScopes: ['read'],
+      },
+    });
+
+    await getProtectedResourceMetadata(mockRequest as Request, mockResponse as Response);
+
+    expect(mockJson).toHaveBeenCalledWith({
+      resource: 'https://env.example.com/mcphub',
+      authorization_servers: ['https://env.example.com/mcphub'],
       scopes_supported: ['read'],
       bearer_methods_supported: ['header'],
     });
@@ -202,5 +247,9 @@ describe('oauthServerController metadata endpoints', () => {
         token_endpoint_auth_methods_supported: ['none'],
       }),
     );
+  });
+
+  afterAll(() => {
+    process.env = originalEnv;
   });
 });

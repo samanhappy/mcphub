@@ -17,6 +17,7 @@ MCPHub reads the following environment variables at startup. The authoritative l
 | `DISABLE_WEB` | `false` | Skip serving the bundled dashboard. The API and MCP transport routes still run. |
 | `TRUST_PROXY` | auto | Express `trust proxy` setting. Accepts `true`, `false`, a hop count (`1`, `2`, …), or names like `loopback,linklocal,uniquelocal`. Defaults to `1` inside Docker/Kubernetes, `false` otherwise. |
 | `MCPHUB_SETTING_PATH` | `mcp_settings.json` | Override the path of the settings file used by file-mode storage. |
+| `INSTALL_BASE_URL` | `http://localhost:3000` | Public installation base URL used when `systemConfig.install.baseUrl` is unset. The dashboard/API setting still takes precedence; this env var is useful for declarative Docker/Kubernetes deployments and OAuth callback URLs. |
 | `NODE_ENV` | `development` | `development` / `production` / `test`. |
 | `DEBUG` | `false` | Set to `true` to enable verbose startup logging for frontend-path discovery. |
 

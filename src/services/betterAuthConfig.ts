@@ -1,6 +1,7 @@
 import { expandEnvVars, loadSettings } from '../config/index.js';
 import { getSystemConfigDao } from '../dao/DaoFactory.js';
 import { BetterAuthConfig, BetterAuthOidcProviderConfig, SystemConfig } from '../types/index.js';
+import { resolveInstallBaseUrl } from '../utils/installBaseUrl.js';
 import { getCachedSystemConfig, isDatabaseModeEnabled } from '../utils/systemConfigCache.js';
 
 const DEFAULT_BETTER_AUTH_BASE_PATH = '/api/auth/better';
@@ -235,7 +236,7 @@ export const resolveBetterAuthRuntimeConfig = (
       [
         ...trustedOriginSettings,
         process.env.BETTER_AUTH_URL,
-        systemConfig?.install?.baseUrl,
+        resolveInstallBaseUrl(systemConfig),
       ]
         .map((value) => normalizeTrustedOrigin(value))
         .filter((value): value is string => Boolean(value)),

@@ -8,6 +8,7 @@ import {
 } from '../models/OAuth.js';
 import { IOAuthClient } from '../types/index.js';
 import { getSystemConfigDao } from '../dao/DaoFactory.js';
+import { resolveInstallBaseUrl } from '../utils/installBaseUrl.js';
 
 // Store registration access tokens (in production, use database)
 const registrationTokens = new Map<string, { clientId: string; createdAt: Date }>();
@@ -155,7 +156,7 @@ export const registerClient = async (req: Request, res: Response): Promise<void>
 
     // Generate registration access token
     const registrationAccessToken = generateRegistrationToken(clientId);
-    const baseUrl = systemConfig?.install?.baseUrl || `${req.protocol}://${req.get('host')}`;
+    const baseUrl = resolveInstallBaseUrl(systemConfig, `${req.protocol}://${req.get('host')}`);
     const registrationClientUri = `${baseUrl}/oauth/register/${clientId}`;
 
     // Create OAuth client

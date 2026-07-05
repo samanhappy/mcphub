@@ -11,6 +11,7 @@ import jwt from 'jsonwebtoken';
 import { JWT_SECRET } from '../config/jwt.js';
 import { resolveBetterAuthUser } from '../services/betterAuthSession.js';
 import { cloneDefaultOAuthServerConfig } from '../constants/oauthServerDefaults.js';
+import { resolveInstallBaseUrl } from '../utils/installBaseUrl.js';
 
 const { Request: OAuth2Request, Response: OAuth2Response } = OAuth2Server;
 
@@ -537,7 +538,7 @@ export const getMetadata = async (req: Request, res: Response): Promise<void> =>
       return;
     }
 
-    const baseUrl = systemConfig?.install?.baseUrl || `${req.protocol}://${req.get('host')}`;
+    const baseUrl = resolveInstallBaseUrl(systemConfig, `${req.protocol}://${req.get('host')}`);
     const allowedScopes = oauthConfig.allowedScopes || ['read', 'write'];
 
     const metadata: any = {
@@ -584,7 +585,7 @@ export const getProtectedResourceMetadata = async (req: Request, res: Response):
       return;
     }
 
-    const baseUrl = systemConfig?.install?.baseUrl || `${req.protocol}://${req.get('host')}`;
+    const baseUrl = resolveInstallBaseUrl(systemConfig, `${req.protocol}://${req.get('host')}`);
     const allowedScopes = oauthConfig.allowedScopes || ['read', 'write'];
 
     // Return protected resource metadata according to RFC 9728

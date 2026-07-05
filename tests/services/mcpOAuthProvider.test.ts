@@ -26,8 +26,16 @@ import { getSystemConfigDao } from '../../src/dao/index.js';
 import { MCPHubOAuthProvider } from '../../src/services/mcpOAuthProvider.js';
 
 describe('MCPHubOAuthProvider redirect URI resolution', () => {
+  const originalEnv = process.env;
+
   beforeEach(() => {
     jest.clearAllMocks();
+    process.env = { ...originalEnv };
+    delete process.env.INSTALL_BASE_URL;
+  });
+
+  afterAll(() => {
+    process.env = originalEnv;
   });
 
   it('prefers oauth.redirectUri over installation Base URL for the callback URL', async () => {
@@ -47,6 +55,19 @@ describe('MCPHubOAuthProvider redirect URI resolution', () => {
     } as any);
 
     expect(provider.redirectUrl).toBe('https://custom.example.com/oauth/callback');
+  });
+
+  it('uses INSTALL_BASE_URL for the callback URL when installation Base URL is unset', async () => {
+    process.env.INSTALL_BASE_URL = 'https://env.example.com/mcphub';
+    (getSystemConfigDao as jest.Mock).mockReturnValue({
+      get: jest.fn().mockResolvedValue({}),
+    });
+
+    const provider = await MCPHubOAuthProvider.create('notion', {
+      url: 'https://mcp.notion.com/mcp',
+    } as any);
+
+    expect(provider.redirectUrl).toBe('https://env.example.com/mcphub/oauth/callback');
   });
 
   it('registers the preferred redirect URI ahead of the Base URL in client metadata', async () => {

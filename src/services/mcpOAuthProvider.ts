@@ -27,6 +27,7 @@ import {
   getConfiguredRedirectUris,
   resolvePreferredRedirectUris,
 } from '../utils/oauthRedirectUri.js';
+import { resolveInstallBaseUrl } from '../utils/installBaseUrl.js';
 import {
   initializeOAuthForServer,
   getRegisteredClient,
@@ -75,7 +76,7 @@ export class MCPHubOAuthProvider implements OAuthClientProvider {
   ): Promise<MCPHubOAuthProvider> {
     const systemConfigDao = getSystemConfigDao();
     const systemConfig = await systemConfigDao.get();
-    const systemInstallBaseUrl = systemConfig?.install?.baseUrl;
+    const systemInstallBaseUrl = resolveInstallBaseUrl(systemConfig);
     return new MCPHubOAuthProvider(serverName, serverConfig, systemInstallBaseUrl);
   }
 

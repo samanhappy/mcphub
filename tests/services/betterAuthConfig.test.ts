@@ -13,6 +13,7 @@ const BETTER_AUTH_ENV_KEYS = [
   'BETTER_AUTH_OIDC_PKCE',
   'BETTER_AUTH_OIDC_PROMPT',
   'BETTER_AUTH_OIDC_TRUST_EMAIL',
+  'INSTALL_BASE_URL',
   'GOOGLE_CLIENT_ID',
   'GOOGLE_CLIENT_SECRET',
   'GITHUB_CLIENT_ID',
@@ -189,6 +190,32 @@ describe('betterAuthConfig', () => {
         },
       },
     });
+  });
+
+  it('uses INSTALL_BASE_URL as a trusted origin when install.baseUrl is unset', async () => {
+    process.env.OIDC_CLIENT_ID = 'oidc-client-id';
+    process.env.OIDC_CLIENT_SECRET = 'oidc-client-secret';
+    process.env.INSTALL_BASE_URL = 'https://env.example.com/mcphub';
+
+    getSystemConfigMock.mockResolvedValue({
+      auth: {
+        betterAuth: {
+          enabled: true,
+          providers: {
+            oidc: {
+              enabled: true,
+              discoveryUrl: 'https://auth.example.com/.well-known/openid-configuration',
+            },
+          },
+        },
+      },
+    });
+
+    const { getBetterAuthRuntimeConfig } = await import('../../src/services/betterAuthConfig.js');
+
+    expect((await getBetterAuthRuntimeConfig()).trustedOrigins).toEqual([
+      'https://env.example.com',
+    ]);
   });
 
   it('prefers Better Auth environment variables over stored settings for runtime config', async () => {
