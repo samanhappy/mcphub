@@ -112,6 +112,7 @@ import {
   initUpstreamServers,
   reconnectServer,
 } from '../../src/services/mcpService.js';
+import { setupClientKeepAlive } from '../../src/services/keepAliveService.js';
 
 const originalDefaultRequestTimeout = process.env.DEFAULT_REQUEST_TIMEOUT;
 
@@ -234,6 +235,39 @@ describe('mcpService request options defaults', () => {
       expect.objectContaining({
         timeout: 120000,
         resetTimeoutOnProgress: true,
+      }),
+    );
+  });
+
+  it('sets up keep-alive reconnect checks after a remote startup connection failure', async () => {
+    mockClient.connect.mockRejectedValueOnce(new Error('connect timeout'));
+    mockFindAll.mockResolvedValue([
+      {
+        name: 'flaky-http',
+        type: 'streamable-http',
+        url: 'https://example.com/mcp',
+        enabled: true,
+        enableKeepAlive: true,
+      },
+    ]);
+
+    await initUpstreamServers();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    const serverInfo = getServerByName('flaky-http');
+    expect(serverInfo?.status).toBe('disconnected');
+    expect(setupClientKeepAlive).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'flaky-http',
+        status: 'disconnected',
+      }),
+      expect.objectContaining({
+        name: 'flaky-http',
+        enableKeepAlive: true,
+      }),
+      expect.objectContaining({
+        reconnectServer: expect.any(Function),
       }),
     );
   });

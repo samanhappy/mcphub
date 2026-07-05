@@ -198,6 +198,34 @@ describe('setupClientKeepAlive', () => {
     expect(serverInfo.error).toBeNull();
   });
 
+  it('reconnects disconnected enabled remote servers on the next keep-alive check', async () => {
+    jest.useFakeTimers();
+    const ping = jest.fn();
+    const reconnectServer = jest.fn().mockResolvedValue(undefined);
+    const serverInfo = makeServerInfo(
+      new StreamableHTTPClientTransport(new URL('https://example.com/mcp')),
+      ping,
+      'disconnected',
+    );
+    serverInfo.client = undefined;
+    serverInfo.error = 'Failed to connect: timeout';
+
+    await setupClientKeepAlive(
+      serverInfo,
+      {
+        type: 'streamable-http',
+        url: 'https://example.com/mcp',
+        enableKeepAlive: true,
+      },
+      { reconnectServer },
+    );
+
+    await jest.advanceTimersByTimeAsync(60000);
+
+    expect(reconnectServer).toHaveBeenCalledWith('remote-server');
+    expect(ping).not.toHaveBeenCalled();
+  });
+
   it('does not schedule checks when remote keep-alive is explicitly disabled', async () => {
     jest.useFakeTimers();
     const serverInfo = makeServerInfo(

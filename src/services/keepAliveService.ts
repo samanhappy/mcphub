@@ -6,6 +6,7 @@ import { formatErrorForLogging } from '../utils/serialization.js';
 export interface KeepAliveOptions {
   enabled?: boolean;
   intervalMs?: number;
+  reconnectServer?: (serverName: string) => Promise<void>;
 }
 
 /**
@@ -15,6 +16,7 @@ export interface KeepAliveOptions {
 export const setupClientKeepAlive = async (
   serverInfo: ServerInfo,
   serverConfig: ServerConfig,
+  options: KeepAliveOptions = {},
 ): Promise<void> => {
   // Only set up keep-alive for SSE or Streamable HTTP client transports
   const isSSE = serverInfo.transport instanceof SSEClientTransport;
@@ -48,15 +50,44 @@ export const setupClientKeepAlive = async (
     serverInfo.status !== 'connecting' &&
     serverInfo.status !== 'oauth_required';
 
+  const shouldSkipCheck = (): boolean =>
+    serverInfo.enabled === false ||
+    serverInfo.status === 'connecting' ||
+    serverInfo.status === 'oauth_required';
+
   const checkRemoteHealth = async (): Promise<void> => {
     const activeClient = serverInfo.client;
-    if (
-      !activeClient ||
-      serverInfo.enabled === false ||
-      serverInfo.status === 'connecting' ||
-      serverInfo.status === 'oauth_required' ||
-      isChecking
-    ) {
+    if (shouldSkipCheck() || isChecking) {
+      return;
+    }
+
+    if ((!activeClient || serverInfo.status === 'disconnected') && options.reconnectServer) {
+      isChecking = true;
+      try {
+        console.log('Keep-alive reconnecting disconnected server', {
+          serverName: serverInfo.name,
+        });
+        await options.reconnectServer(serverInfo.name);
+      } catch (error) {
+        if (!shouldSkipCheck()) {
+          const message = formatErrorForLogging(error);
+          const nextError = `Reconnect failed: ${message}`;
+          if (serverInfo.error !== nextError) {
+            console.warn('Keep-alive reconnect failed', {
+              serverName: serverInfo.name,
+              error,
+            });
+          }
+          serverInfo.status = 'disconnected';
+          serverInfo.error = nextError;
+        }
+      } finally {
+        isChecking = false;
+      }
+      return;
+    }
+
+    if (!activeClient) {
       return;
     }
 

@@ -1213,6 +1213,19 @@ const callToolWithReconnect = async (
   throw new Error('Unexpected error in callToolWithReconnect');
 };
 
+const setupServerKeepAlive = (serverInfo: ServerInfo, serverConfig: ServerConfig): void => {
+  Promise.resolve(
+    setupClientKeepAlive(serverInfo, serverConfig, {
+      reconnectServer: async (serverName) => reconnectServer(serverName),
+    }),
+  ).catch((error) =>
+    console.warn('Keepalive setup failed', {
+      serverName: serverInfo.name,
+      error: summarizeErrorForLogging(error),
+    }),
+  );
+};
+
 // Initialize MCP server clients
 export const initializeClientsFromSettings = async (
   isInit: boolean,
@@ -1512,15 +1525,11 @@ export const initializeClientsFromSettings = async (
             serverInfo.status = 'connected';
             serverInfo.error = null;
             // Set up keep-alive ping for SSE connections via shared service
-            setupClientKeepAlive(serverInfo, expandedConf).catch((e) =>
-              console.warn('Keepalive setup failed', {
-                serverName: name,
-                error: summarizeErrorForLogging(e),
-              }),
-            );
+            setupServerKeepAlive(serverInfo, expandedConf);
           } else {
             serverInfo.status = 'disconnected';
             serverInfo.error = `Failed to list data: ${formatErrorForLogging(dataError)}`;
+            setupServerKeepAlive(serverInfo, expandedConf);
           }
         })
         .catch(async (error) => {
@@ -1548,6 +1557,7 @@ export const initializeClientsFromSettings = async (
             // Other connection errors
             serverInfo.status = 'disconnected';
             serverInfo.error = `Failed to connect: ${formatErrorForLogging(error)}`;
+            setupServerKeepAlive(serverInfo, expandedConf);
           }
         });
       console.log(`Initialized client for server: ${name}`);
