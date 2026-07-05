@@ -122,6 +122,7 @@ describe('initializeDefaultUser', () => {
 
     const [, password] = mockCreateWithHashedPassword.mock.calls[0];
     expect(password).toBe('MyCustomP@ss1');
+    expect(loggedMessages()).not.toContain('MyCustomP@ss1');
   });
 
   it('should not create a user when users already exist', async () => {

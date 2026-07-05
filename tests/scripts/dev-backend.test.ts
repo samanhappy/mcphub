@@ -21,14 +21,17 @@ const runScript = (args: string[], env: NodeJS.ProcessEnv = {}) => {
 };
 
 describe('dev backend launcher', () => {
-  it('uses development mode and an ignored data settings file by default', () => {
-    const result = JSON.parse(runScript(['--print-env']));
+  it('prints only sanitized environment metadata', () => {
+    const resultText = runScript(['--print-env'], {
+      ADMIN_PASSWORD: 'super-secret-password',
+      MCPHUB_SETTING_PATH: 'data/custom-dev-settings.json',
+    });
+    const result = JSON.parse(resultText);
 
-    expect(result.NODE_ENV).toBe('development');
-    expect(result.ADMIN_PASSWORD).toBeUndefined();
-    expect(result.MCPHUB_SETTING_PATH).toBe(
-      path.join(projectRoot, 'data', 'mcp_settings.dev.json'),
-    );
+    expect(result).toEqual({ environment: 'sanitized' });
+    expect(result).not.toHaveProperty('ADMIN_PASSWORD');
+    expect(resultText).not.toContain('super-secret-password');
+    expect(resultText).not.toContain('custom-dev-settings.json');
   });
 
   it('prepares a copied dev settings file without modifying the repository settings', () => {
@@ -45,7 +48,7 @@ describe('dev backend launcher', () => {
       );
 
       expect(result.created).toBe(true);
-      expect(result.MCPHUB_SETTING_PATH).toBe(devSettingsPath);
+      expect(result).not.toHaveProperty('MCPHUB_SETTING_PATH');
       expect(fs.readFileSync(devSettingsPath, 'utf8')).toBe(shippedSettingsBefore);
       expect(fs.readFileSync(shippedSettingsPath, 'utf8')).toBe(shippedSettingsBefore);
     } finally {

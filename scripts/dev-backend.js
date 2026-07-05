@@ -13,15 +13,18 @@ function resolvePathFromProjectRoot(value) {
   return path.isAbsolute(value) ? value : path.resolve(projectRoot, value);
 }
 
-function resolveDevEnvironment(env = process.env) {
+function resolveDevConfiguration(env = process.env) {
   const settingsPath = env.MCPHUB_SETTING_PATH
     ? resolvePathFromProjectRoot(env.MCPHUB_SETTING_PATH)
     : DEFAULT_DEV_SETTINGS_PATH;
 
   return {
-    ...env,
-    NODE_ENV: env.NODE_ENV || 'development',
-    MCPHUB_SETTING_PATH: settingsPath,
+    childEnvironment: {
+      ...env,
+      NODE_ENV: env.NODE_ENV || 'development',
+      MCPHUB_SETTING_PATH: settingsPath,
+    },
+    settingsPath,
   };
 }
 
@@ -36,36 +39,33 @@ function prepareDevSettingsFile(settingsPath) {
   return true;
 }
 
-function printEnvironment(env) {
+function printEnvironment() {
   console.log(
     JSON.stringify({
-      NODE_ENV: env.NODE_ENV,
-      ADMIN_PASSWORD: env.ADMIN_PASSWORD,
-      MCPHUB_SETTING_PATH: env.MCPHUB_SETTING_PATH,
+      environment: 'sanitized',
     }),
   );
 }
 
-function printPrepareResult(env, created) {
+function printPrepareResult(created) {
   console.log(
     JSON.stringify({
       created,
-      MCPHUB_SETTING_PATH: env.MCPHUB_SETTING_PATH,
     }),
   );
 }
 
 function startBackend(extraArgs) {
-  const env = resolveDevEnvironment();
-  prepareDevSettingsFile(env.MCPHUB_SETTING_PATH);
+  const configuration = resolveDevConfiguration();
+  prepareDevSettingsFile(configuration.settingsPath);
 
-  console.log(`[dev] NODE_ENV=${env.NODE_ENV}`);
-  console.log(`[dev] Using settings file: ${path.relative(projectRoot, env.MCPHUB_SETTING_PATH)}`);
+  console.log('[dev] Starting backend dev server');
+  console.log('[dev] Using isolated development settings');
 
   const pnpm = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm';
   const child = spawn(pnpm, ['exec', 'tsx', 'watch', 'src/index.ts', ...extraArgs], {
     cwd: projectRoot,
-    env,
+    env: configuration.childEnvironment,
     stdio: 'inherit',
   });
 
@@ -93,13 +93,13 @@ const args = process.argv.slice(2);
 const printEnv = args.includes('--print-env');
 const prepareOnly = args.includes('--prepare-only');
 const backendArgs = args.filter((arg) => arg !== '--print-env' && arg !== '--prepare-only');
-const env = resolveDevEnvironment();
+const configuration = resolveDevConfiguration();
 
 if (printEnv) {
-  printEnvironment(env);
+  printEnvironment();
 } else if (prepareOnly) {
-  const created = prepareDevSettingsFile(env.MCPHUB_SETTING_PATH);
-  printPrepareResult(env, created);
+  const created = prepareDevSettingsFile(configuration.settingsPath);
+  printPrepareResult(created);
 } else {
   startBackend(backendArgs);
 }
