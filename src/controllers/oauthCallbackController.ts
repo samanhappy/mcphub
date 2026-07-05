@@ -38,53 +38,82 @@ const escapeHtml = (value: string): string =>
     .replace(/'/g, '&#39;');
 
 /**
- * Generate HTML response page with i18n support
+ * Generate HTML response page with i18n support.
+ *
+ * Styling mirrors the OAuth authorize consent page (oauthServerController) so the
+ * flow feels continuous for end users, and adapts to light/dark color schemes.
  */
 const generateHtmlResponse = (
+  t: (key: string) => string,
   type: 'error' | 'success',
   title: string,
   message: string,
   details?: { label: string; value: string }[],
   autoClose: boolean = false,
 ): string => {
-  const backgroundColor = type === 'error' ? '#fee' : '#efe';
-  const borderColor = type === 'error' ? '#fcc' : '#cfc';
-  const titleColor = type === 'error' ? '#c33' : '#3c3';
-  const buttonColor = type === 'error' ? '#c33' : '#3c3';
+  const isSuccess = type === 'success';
+  const accentColor = isSuccess ? '#16a34a' : '#dc2626';
+  const accentBgLight = isSuccess ? '#dcfce7' : '#fee2e2';
+  const accentBgDark = isSuccess ? '#14532d' : '#7f1d1d';
+  const icon = isSuccess ? '✓' : '⚠';
 
   const safeTitle = escapeHtml(title);
-  const safeMessage = escapeHtml(message);
+  // Render multi-line messages (joined with \n by callers) as line breaks.
+  const safeMessage = escapeHtml(message).replace(/\n/g, '<br />');
+  const closeButtonLabel = escapeHtml(
+    t(autoClose ? 'oauthCallback.closeNow' : 'oauthCallback.closeWindow'),
+  );
+  const autoCloseNotice = escapeHtml(t('oauthCallback.autoCloseMessage'));
 
   return `
     <!DOCTYPE html>
     <html>
       <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
         <title>${safeTitle}</title>
         <style>
-          body { font-family: Arial, sans-serif; max-width: 600px; margin: 50px auto; padding: 20px; }
-          .container { background-color: ${backgroundColor}; border: 1px solid ${borderColor}; padding: 20px; border-radius: 8px; }
-          h1 { color: ${titleColor}; margin-top: 0; }
-          .detail { margin-top: 10px; padding: 10px; background: #f9f9f9; border-radius: 4px; ${type === 'error' ? 'font-family: monospace; font-size: 12px; white-space: pre-wrap;' : ''} }
-          .close-btn { margin-top: 20px; padding: 10px 20px; background: ${buttonColor}; color: white; border: none; border-radius: 4px; cursor: pointer; }
+          :root { color-scheme: light dark; }
+          body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 560px; margin: 60px auto; padding: 24px; background: #f3f4f6; color: #111827; }
+          .container { background-color: #ffffff; border: 1px solid #e5e7eb; padding: 28px; border-radius: 12px; box-shadow: 0 10px 25px rgba(15, 23, 42, 0.12); }
+          h1 { margin-top: 0; font-size: 22px; display: flex; align-items: center; gap: 10px; color: #111827; }
+          h1 .icon { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 999px; background: ${accentBgLight}; color: ${accentColor}; font-size: 18px; font-weight: 700; }
+          p.message { color: #4b5563; font-size: 14px; line-height: 1.6; margin: 12px 0 0; }
+          .detail { margin-top: 12px; padding: 12px 14px; background: #f9fafb; border: 1px solid #f3f4f6; border-radius: 8px; font-size: 13px; color: #374151; }
+          .detail strong { color: #111827; }
+          .detail.mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; white-space: pre-wrap; word-break: break-word; }
+          .autoclose { margin-top: 12px; color: #6b7280; font-size: 13px; }
+          .close-btn { margin-top: 24px; padding: 10px 20px; background: #2563eb; color: #ffffff; border: none; border-radius: 999px; cursor: pointer; font-size: 14px; font-weight: 500; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35); transition: background-color 120ms ease, transform 60ms ease; }
+          .close-btn:hover { background: #1d4ed8; transform: translateY(-1px); }
+          @media (prefers-color-scheme: dark) {
+            body { background: #0f172a; color: #e5e7eb; }
+            .container { background-color: #1e293b; border-color: #334155; box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4); }
+            h1 { color: #f1f5f9; }
+            h1 .icon { background: ${accentBgDark}; }
+            p.message { color: #cbd5e1; }
+            .detail { background: #0f172a; border-color: #334155; color: #cbd5e1; }
+            .detail strong { color: #f1f5f9; }
+            .autoclose { color: #94a3b8; }
+          }
         </style>
         ${autoClose ? '<script>setTimeout(() => { window.close(); }, 3000);</script>' : ''}
       </head>
       <body>
         <div class="container">
-          <h1>${type === 'success' ? '✓ ' : ''}${safeTitle}</h1>
+          <h1><span class="icon">${icon}</span>${safeTitle}</h1>
           ${
             details
               ? details
                   .map(
                     (d) =>
-                      `<div class="detail"><strong>${escapeHtml(d.label)}:</strong> ${escapeHtml(d.value)}</div>`,
+                      `<div class="detail${type === 'error' ? ' mono' : ''}">${d.label ? `<strong>${escapeHtml(d.label)}:</strong> ` : ''}${escapeHtml(d.value)}</div>`,
                   )
                   .join('')
               : ''
           }
-          <p>${safeMessage}</p>
-          ${autoClose ? '<p>This window will close automatically in 3 seconds...</p>' : ''}
-          <button class="close-btn" onclick="window.close()">${autoClose ? 'Close Now' : 'Close Window'}</button>
+          ${message ? `<p class="message">${safeMessage}</p>` : ''}
+          ${autoClose ? `<p class="autoclose">${autoCloseNotice}</p>` : ''}
+          <button class="close-btn" onclick="window.close()">${closeButtonLabel}</button>
         </div>
       </body>
     </html>
@@ -155,7 +184,7 @@ export const handleOAuthCallback = async (req: Request, res: Response) => {
         errorDescription: error_description || '',
       });
       return res.status(400).send(
-        generateHtmlResponse('error', t('oauthCallback.authorizationFailed'), '', [
+        generateHtmlResponse(t, 'error', t('oauthCallback.authorizationFailed'), '', [
           { label: t('oauthCallback.authorizationFailedError'), value: String(error) },
           ...(error_description
             ? [
@@ -176,6 +205,7 @@ export const handleOAuthCallback = async (req: Request, res: Response) => {
         .status(400)
         .send(
           generateHtmlResponse(
+            t,
             'error',
             t('oauthCallback.invalidRequest'),
             t('oauthCallback.missingStateParameter'),
@@ -189,6 +219,7 @@ export const handleOAuthCallback = async (req: Request, res: Response) => {
         .status(400)
         .send(
           generateHtmlResponse(
+            t,
             'error',
             t('oauthCallback.invalidRequest'),
             t('oauthCallback.missingCodeParameter'),
@@ -223,6 +254,7 @@ export const handleOAuthCallback = async (req: Request, res: Response) => {
         .status(400)
         .send(
           generateHtmlResponse(
+            t,
             'error',
             t('oauthCallback.serverNotFound'),
             `${t('oauthCallback.serverNotFoundMessage')}\n${t('oauthCallback.sessionExpiredMessage')}`,
@@ -383,9 +415,10 @@ export const handleOAuthCallback = async (req: Request, res: Response) => {
         // Return success page
         return res.status(200).send(
           generateHtmlResponse(
+            t,
             'success',
             t('oauthCallback.authorizationSuccessful'),
-            `${t('oauthCallback.successMessage')}\n${t('oauthCallback.autoCloseMessage')}`,
+            t('oauthCallback.successMessage'),
             [
               { label: t('oauthCallback.server'), value: serverInfo.name },
               { label: t('oauthCallback.status'), value: t('oauthCallback.connected') },
@@ -410,6 +443,7 @@ export const handleOAuthCallback = async (req: Request, res: Response) => {
           .status(500)
           .send(
             generateHtmlResponse(
+              t,
               'error',
               t('oauthCallback.connectionError'),
               `${t('oauthCallback.connectionErrorMessage')}\n${t('oauthCallback.reconnectMessage')}`,
@@ -424,6 +458,7 @@ export const handleOAuthCallback = async (req: Request, res: Response) => {
         .status(500)
         .send(
           generateHtmlResponse(
+            t,
             'error',
             t('oauthCallback.configurationError'),
             t('oauthCallback.configurationErrorMessage'),
@@ -440,6 +475,7 @@ export const handleOAuthCallback = async (req: Request, res: Response) => {
       .status(500)
       .send(
         generateHtmlResponse(
+          t,
           'error',
           t('oauthCallback.internalError'),
           t('oauthCallback.internalErrorMessage'),
