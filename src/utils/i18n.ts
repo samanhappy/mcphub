@@ -8,10 +8,13 @@ import fs from 'fs';
 const localesDir = path.join(process.cwd(), 'locales');
 const discoverSupportedLanguages = (): string[] => {
   try {
-    return fs
+    const languages = fs
       .readdirSync(localesDir)
       .filter((file) => file.endsWith('.json'))
       .map((file) => path.basename(file, '.json'));
+    // Fall back to English if the directory exists but has no locale files,
+    // so i18next preloading and resolution always have a usable language.
+    return languages.length > 0 ? languages : ['en'];
   } catch {
     return ['en'];
   }
@@ -45,23 +48,31 @@ const initI18n = async () => {
   });
 };
 
-// Resolve a language code to a supported language. Falls back to the base
-// language (e.g. zh-TW -> zh) when no region-specific locale file exists, and
-// finally to English. Exported so the middleware can normalize without duplicating
-// the whitelist or stripping region codes itself.
+// Resolve a language code to a supported language. Matching is case-insensitive
+// so client requests like `zh-tw` or `ZH-TW` resolve to a mixed-case locale file
+// such as `zh-TW.json`. Falls back to the base language (e.g. zh-TW -> zh) when
+// no region-specific locale file exists, and finally to English. Exported so
+// the middleware can normalize without duplicating the whitelist or stripping
+// region codes itself.
 export const resolveLanguage = (language?: string): string => {
   if (!language) {
     return 'en';
   }
 
-  const normalized = language.trim();
-  if (supportedLanguages.includes(normalized)) {
-    return normalized;
+  const normalized = language.trim().toLowerCase();
+  const exactMatch = supportedLanguages.find(
+    (lang) => lang.toLowerCase() === normalized,
+  );
+  if (exactMatch) {
+    return exactMatch;
   }
 
-  const base = normalized.split('-')[0].toLowerCase();
-  if (base && supportedLanguages.includes(base)) {
-    return base;
+  const base = normalized.split('-')[0];
+  const baseMatch = supportedLanguages.find(
+    (lang) => lang.toLowerCase() === base,
+  );
+  if (baseMatch) {
+    return baseMatch;
   }
 
   return 'en';
