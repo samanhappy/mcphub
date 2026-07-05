@@ -113,7 +113,7 @@ pnpm install
 pnpm dev
 ```
 
-Le développement local utilise le compte par défaut `admin` / `admin123` stocké dans `mcp_settings.json`.
+Le développement local utilise `admin` / `admin123` et stocke sa copie de configuration modifiable dans `data/mcp_settings.dev.json`, afin que le `mcp_settings.json` du dépôt reste sans identifiants par défaut.
 
 > Pour les utilisateurs Windows, démarrez le backend et le frontend séparément : `pnpm backend:dev`, `pnpm frontend:dev`
 

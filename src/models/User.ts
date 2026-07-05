@@ -123,22 +123,41 @@ const generateRandomPassword = (): string => {
   return crypto.randomBytes(18).toString('base64url');
 };
 
+type BootstrapAdminPassword = {
+  password: string;
+  source: 'env' | 'development' | 'generated';
+};
+
+const getBootstrapAdminPassword = (): BootstrapAdminPassword => {
+  const adminPasswordFromEnv = process.env.ADMIN_PASSWORD;
+  if (adminPasswordFromEnv) {
+    return { password: adminPasswordFromEnv, source: 'env' };
+  }
+
+  if (process.env.NODE_ENV === 'development') {
+    return { password: 'admin123', source: 'development' };
+  }
+
+  return { password: generateRandomPassword(), source: 'generated' };
+};
+
 // Initialize with default admin user if no users exist
 export const initializeDefaultUser = async (): Promise<void> => {
   const userDao = getUserDao();
   const users = await userDao.findAll();
 
   if (users.length === 0) {
-    const adminPasswordFromEnv = process.env.ADMIN_PASSWORD;
-    const password = adminPasswordFromEnv || generateRandomPassword();
+    const { password, source } = getBootstrapAdminPassword();
     await userDao.createWithHashedPassword('admin', password, true);
     console.log('Default admin user created');
 
-    if (!adminPasswordFromEnv) {
+    if (source === 'generated') {
       console.log('========================================');
       console.log('  Generated admin password: ' + password);
       console.log('  Please change this password after first login.');
       console.log('========================================');
+    } else if (source === 'development') {
+      console.log('Using development admin password: admin123');
     }
   }
 };

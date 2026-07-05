@@ -132,7 +132,7 @@ pnpm install
 pnpm dev
 ```
 
-本地开发使用 `mcp_settings.json` 中内置的默认账号 `admin` / `admin123`。
+本地开发默认使用 `admin` / `admin123`，并将可写配置副本保存到 `data/mcp_settings.dev.json`，仓库里的 `mcp_settings.json` 不包含默认凭证。
 
 > Windows 用户需分别启动后端和前端：`pnpm backend:dev`，`pnpm frontend:dev`
 

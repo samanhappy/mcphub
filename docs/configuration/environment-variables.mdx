@@ -24,7 +24,7 @@ MCPHub reads the following environment variables at startup. The authoritative l
 
 | Variable | Default | Description |
 | --- | --- | --- |
-| `ADMIN_PASSWORD` | random | Password seeded for the bootstrap `admin` user when no users exist yet. If unset, a 24-character random password is generated and printed to the logs. |
+| `ADMIN_PASSWORD` | random (`admin123` in `pnpm dev`) | Password seeded for the bootstrap `admin` user when no users exist yet. If unset, `pnpm dev` uses `admin123`; other starts generate a 24-character random password and print it to the logs. |
 | `JWT_SECRET` | random per-process | Secret used to sign JWTs issued by `/api/auth/login`. See the warning below — this **must** be set explicitly in any non-development deployment. |
 
 <Warning>

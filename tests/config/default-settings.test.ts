@@ -1,36 +1,34 @@
-import bcrypt from 'bcryptjs';
 import fs from 'fs';
 import path from 'path';
 
 const projectRoot = path.resolve(__dirname, '../..');
 
+const readJsonFile = (filename: string) => {
+  try {
+    return JSON.parse(fs.readFileSync(path.join(projectRoot, filename), 'utf8'));
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(`Failed to read ${filename}: ${message}`);
+  }
+};
+
 describe('default settings files', () => {
-  it('keeps admin/admin123 in the repository settings for local development', async () => {
-    const settings = JSON.parse(
-      fs.readFileSync(path.join(projectRoot, 'mcp_settings.json'), 'utf8'),
-    );
+  it('keeps the repository settings free of pre-seeded users', () => {
+    const settings = readJsonFile('mcp_settings.json');
 
-    expect(settings.users).toHaveLength(1);
-    expect(settings.users[0].username).toBe('admin');
-    expect(settings.users[0].isAdmin).toBe(true);
-    expect(settings.users[0].password).not.toBe('admin123');
-    await expect(bcrypt.compare('admin123', settings.users[0].password)).resolves.toBe(true);
+    expect(Array.isArray(settings.users)).toBe(true);
+    expect(settings.users).toHaveLength(0);
   });
 
-  it('keeps Docker defaults free of pre-seeded users', () => {
-    const dockerSettings = JSON.parse(
-      fs.readFileSync(path.join(projectRoot, 'mcp_settings.docker.json'), 'utf8'),
-    );
-
-    expect(Array.isArray(dockerSettings.users)).toBe(true);
-    expect(dockerSettings.users).toHaveLength(0);
+  it('does not maintain a separate Docker settings file', () => {
+    expect(fs.existsSync(path.join(projectRoot, 'mcp_settings.docker.json'))).toBe(false);
   });
 
-  it('prevents the local settings file from entering the Docker build context', () => {
+  it('lets Docker copy the standard credential-free settings file', () => {
     const dockerignore = fs.readFileSync(path.join(projectRoot, '.dockerignore'), 'utf8');
     const dockerfile = fs.readFileSync(path.join(projectRoot, 'Dockerfile'), 'utf8');
 
-    expect(dockerignore.split(/\r?\n/)).toContain('mcp_settings.json');
-    expect(dockerfile).toContain('COPY mcp_settings.docker.json ./mcp_settings.json');
+    expect(dockerignore.split(/\r?\n/)).not.toContain('mcp_settings.json');
+    expect(dockerfile).not.toContain('mcp_settings.docker.json');
   });
 });

@@ -39,7 +39,7 @@ description: '5 分钟内运行 MCPHub'
     pnpm dev
     ```
 
-    这会同时启动后端（端口 3000）和前端（端口 5173）的开发模式，Vite 开发服务器会把 API 与 MCP 请求代理到后端。本地源码启动使用 `mcp_settings.json` 中的默认账号 `admin` / `admin123`。
+    这会同时启动后端（端口 3000）和前端（端口 5173）的开发模式，Vite 开发服务器会把 API 与 MCP 请求代理到后端。本地开发默认使用 `admin` / `admin123`，可写配置保存在 `data/mcp_settings.dev.json`。
 
   </Tab>
   <Tab title="npm 包">
@@ -68,7 +68,7 @@ http://localhost:3000
 
 ### 2. 登录
 
-默认用户名为 `admin`。使用 `pnpm dev` 本地开发时，默认密码是 `admin123`。Docker 镜像不包含本地默认用户；首次启动时如果未设置 `ADMIN_PASSWORD` 环境变量，系统将自动生成随机密码并输出到服务器日志中。
+默认用户名为 `admin`。使用 `pnpm dev` 本地开发时，默认密码是 `admin123`。Docker、npm 包和生产启动不包含默认用户；首次启动时如果未设置 `ADMIN_PASSWORD` 环境变量，系统将自动生成随机密码并输出到服务器日志中。
 
 可以通过环境变量预先设置管理员密码：
 

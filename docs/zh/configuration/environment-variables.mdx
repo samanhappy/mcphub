@@ -37,6 +37,7 @@ NODE_ENV=production
 
 | 变量 | 默认值 | 描述 |
 | --- | --- | --- |
+| `ADMIN_PASSWORD` | `pnpm dev` 中为 `admin123`，其他启动随机生成 | 首次启动且没有用户时用于创建 `admin` 用户的密码。未设置时，`pnpm dev` 使用 `admin123`；其他启动会生成随机密码并输出到日志。 |
 | `JWT_SECRET` | - | 用于 JWT 令牌签名的密钥 (必需) |
 
 ```env
