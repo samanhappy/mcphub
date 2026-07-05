@@ -49,6 +49,11 @@ RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store \
 
 COPY . .
 
+# The repository settings file keeps local development credentials. Do not copy
+# those into the image; Docker starts with an empty user list and bootstraps a
+# random admin password unless ADMIN_PASSWORD is explicitly provided.
+COPY mcp_settings.docker.json ./mcp_settings.json
+
 # Download the latest servers.json from mcpm.sh and replace the existing file
 RUN curl -s -f --connect-timeout 10 https://mcpm.sh/api/servers.json -o servers.json || echo "Failed to download servers.json, using bundled version"
 

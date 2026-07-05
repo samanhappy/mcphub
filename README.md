@@ -134,6 +134,8 @@ pnpm install
 pnpm dev
 ```
 
+Local development uses the default `admin` / `admin123` account stored in `mcp_settings.json`.
+
 > For Windows users, start backend and frontend separately: `pnpm backend:dev`, `pnpm frontend:dev`
 
 📖 See [Development Guide](https://docs.mcphub.app/development) for detailed setup instructions.

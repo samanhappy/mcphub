@@ -11,6 +11,7 @@ coverage
 .DS_Store
 .env
 .env.*
+mcp_settings.json
 *.log
 npm-debug.log*
 pnpm-debug.log*

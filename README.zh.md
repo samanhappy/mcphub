@@ -132,6 +132,8 @@ pnpm install
 pnpm dev
 ```
 
+本地开发使用 `mcp_settings.json` 中内置的默认账号 `admin` / `admin123`。
+
 > Windows 用户需分别启动后端和前端：`pnpm backend:dev`，`pnpm frontend:dev`
 
 📖 查看[开发指南](https://docs.mcphub.app/zh/development)了解详细设置说明。
