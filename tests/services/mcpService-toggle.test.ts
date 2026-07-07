@@ -99,11 +99,21 @@ jest.mock('../../src/services/activityLoggingService.js', () => ({
 }));
 
 // Import after mocks
-import { summarizeServerConnections, toggleServerStatus } from '../../src/services/mcpService.js';
+import {
+  getServerByName,
+  initializeClientsFromSettings,
+  setServerInfosForTest,
+  summarizeServerConnections,
+  toggleServerStatus,
+} from '../../src/services/mcpService.js';
 
 describe('mcpService toggleServerStatus', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    setServerInfosForTest([]);
+    mockServerDao.findAll.mockResolvedValue([]);
+    mockServerDao.setEnabled.mockResolvedValue(true);
+    mockClientConnect.mockResolvedValue(undefined);
   });
 
   describe('when disabling a server', () => {
@@ -165,6 +175,66 @@ describe('mcpService toggleServerStatus', () => {
       expect(result.success).toBe(false);
       expect(result.message).toBe('Failed to toggle server status');
     });
+  });
+});
+
+describe('mcpService initializeClientsFromSettings OAuth authorization reuse', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    setServerInfosForTest([]);
+    mockServerDao.findAll.mockResolvedValue([]);
+    mockClientConnect.mockResolvedValue(undefined);
+  });
+
+  it('does not reconnect a server with an in-flight OAuth authorization during full reload', async () => {
+    setServerInfosForTest([
+      {
+        name: 'notion',
+        status: 'oauth_required',
+        error: null,
+        tools: [],
+        prompts: [],
+        resources: [],
+        createTime: 123,
+        enabled: true,
+        oauth: {
+          authorizationUrl: 'https://auth.example/authorize?code_challenge=old',
+          state: 'state-1',
+          codeVerifier: 'verifier-1',
+        },
+      } as any,
+    ]);
+    mockServerDao.findAll.mockResolvedValueOnce([
+      {
+        name: 'notion',
+        enabled: true,
+        command: 'node',
+        args: ['server.js'],
+        oauth: {
+          pendingAuthorization: {
+            authorizationUrl: 'https://auth.example/authorize?code_challenge=old',
+            state: 'state-1',
+            codeVerifier: 'verifier-1',
+          },
+        },
+      },
+    ]);
+
+    const servers = await initializeClientsFromSettings(false);
+
+    expect(mockClientConnect).not.toHaveBeenCalled();
+    expect(servers).toHaveLength(1);
+    expect(servers[0]).toMatchObject({
+      name: 'notion',
+      status: 'oauth_required',
+      enabled: true,
+      oauth: {
+        authorizationUrl: 'https://auth.example/authorize?code_challenge=old',
+        state: 'state-1',
+        codeVerifier: 'verifier-1',
+      },
+    });
+    expect(getServerByName('notion')?.oauth?.codeVerifier).toBe('verifier-1');
   });
 });
 

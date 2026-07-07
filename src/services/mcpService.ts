@@ -1272,19 +1272,32 @@ export const initializeClientsFromSettings = async (
       //   status. Reloading one server must not reconnect unrelated servers
       //   (e.g. failed/disconnected ones), which would also leak their
       //   previous stdio child processes. See #921.
-      // - a general/full initialization (no serverName) — only preserve this
-      //   server's state if it is already connected.
+      // - a general/full initialization (no serverName) — preserve this
+      //   server's state if it is already connected, or if an OAuth
+      //   authorization is in flight. Reconnecting during PKCE authorization
+      //   would replace the pending code verifier and break the callback.
       const existingServer = existingServerInfos.find((s) => s.name === name);
       const isDifferentServer = Boolean(serverName) && serverName !== name;
+      const hasInflightOAuthAuthorization =
+        existingServer?.status === 'oauth_required' &&
+        Boolean(
+          expandedConf.oauth?.pendingAuthorization?.codeVerifier ||
+            existingServer.oauth?.codeVerifier,
+        );
       if (
         existingServer &&
-        (isDifferentServer || (!serverName && existingServer.status === 'connected'))
+        (isDifferentServer ||
+          (!serverName && (existingServer.status === 'connected' || hasInflightOAuthAuthorization)))
       ) {
         nextServerInfos.push({
           ...existingServer,
           enabled: expandedConf.enabled === undefined ? true : expandedConf.enabled,
         });
-        console.log(`Server '${name}' is already connected.`);
+        console.log(
+          hasInflightOAuthAuthorization
+            ? `Server '${name}' has an in-flight OAuth authorization; preserving existing state.`
+            : `Server '${name}' is already connected.`,
+        );
         continue;
       }
 
