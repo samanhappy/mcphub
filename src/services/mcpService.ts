@@ -1281,8 +1281,8 @@ export const initializeClientsFromSettings = async (
       const hasInflightOAuthAuthorization =
         existingServer?.status === 'oauth_required' &&
         Boolean(
-          expandedConf.oauth?.pendingAuthorization?.codeVerifier ||
-            existingServer.oauth?.codeVerifier,
+          expandedConf.oauth?.pendingAuthorization?.state ||
+            existingServer.oauth?.state,
         );
       if (
         existingServer &&
