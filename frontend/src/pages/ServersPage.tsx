@@ -33,6 +33,7 @@ const ServersPage: React.FC = () => {
     handleServerVisibilityChange,
     handleServerReload,
     handleServerReinstall,
+    handleServerOAuthDisconnect,
     triggerRefresh,
   } = useServerData({ refreshOnMount: true });
 
@@ -226,6 +227,7 @@ const ServersPage: React.FC = () => {
                 onRefresh={triggerRefresh}
                 onReload={handleServerReload}
                 onReinstall={handleServerReinstall}
+                onOAuthDisconnect={handleServerOAuthDisconnect}
               />
             ))}
           </div>

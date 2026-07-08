@@ -322,6 +322,7 @@ export const registerClient = async (
       scopes: autoDetectedScopes,
       authorizationEndpoint: clientInfo.config.serverMetadata().authorization_endpoint,
       tokenEndpoint: clientInfo.config.serverMetadata().token_endpoint,
+      revocationEndpoint: clientInfo.config.serverMetadata().revocation_endpoint,
     });
 
     if (persistedConfig) {

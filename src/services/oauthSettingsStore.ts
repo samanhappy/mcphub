@@ -67,6 +67,7 @@ export const persistClientCredentials = async (
     scopes?: string[];
     authorizationEndpoint?: string;
     tokenEndpoint?: string;
+    revocationEndpoint?: string;
   },
 ): Promise<ServerConfigWithOAuth | undefined> => {
   const updated = await mutateOAuthSettings(serverName, ({ oauth }) => {
@@ -81,6 +82,9 @@ export const persistClientCredentials = async (
     }
     if (credentials.tokenEndpoint) {
       oauth.tokenEndpoint = credentials.tokenEndpoint;
+    }
+    if (credentials.revocationEndpoint) {
+      oauth.revocationEndpoint = credentials.revocationEndpoint;
     }
   });
 

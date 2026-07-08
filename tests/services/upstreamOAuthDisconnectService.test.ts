@@ -1,0 +1,119 @@
+const mockLoadServerConfig = jest.fn();
+const mockClearOAuthData = jest.fn();
+const mockResetServerOAuthConnection = jest.fn();
+const mockGetRegisteredClient = jest.fn();
+
+jest.mock('../../src/services/oauthSettingsStore.js', () => ({
+  loadServerConfig: mockLoadServerConfig,
+  clearOAuthData: mockClearOAuthData,
+}));
+
+jest.mock('../../src/services/mcpService.js', () => ({
+  resetServerOAuthConnection: mockResetServerOAuthConnection,
+}));
+
+jest.mock('../../src/services/oauthClientRegistration.js', () => ({
+  getRegisteredClient: mockGetRegisteredClient,
+  removeRegisteredClient: jest.fn(),
+}));
+
+import { disconnectUpstreamOAuth } from '../../src/services/upstreamOAuthDisconnectService.js';
+
+describe('disconnectUpstreamOAuth', () => {
+  const originalFetch = global.fetch;
+  const fetchMock = jest.fn();
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    global.fetch = fetchMock as unknown as typeof fetch;
+    fetchMock.mockResolvedValue({
+      ok: true,
+      status: 200,
+      text: jest.fn().mockResolvedValue(''),
+    });
+    mockClearOAuthData.mockResolvedValue({ oauth: {} });
+    mockGetRegisteredClient.mockReturnValue(undefined);
+  });
+
+  afterAll(() => {
+    global.fetch = originalFetch;
+  });
+
+  it('revokes stored refresh and access tokens before clearing local tokens and resetting runtime status', async () => {
+    mockLoadServerConfig.mockResolvedValue({
+      url: 'https://mcp.example.com/mcp',
+      oauth: {
+        accessToken: 'access-token',
+        refreshToken: 'refresh-token',
+        clientId: 'client-id',
+        clientSecret: 'client-secret',
+        revocationEndpoint: 'https://issuer.example.com/oauth/revoke',
+      },
+    });
+
+    const result = await disconnectUpstreamOAuth('notion', { scope: 'tokens' });
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      'https://issuer.example.com/oauth/revoke',
+      expect.objectContaining({
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+      }),
+    );
+    const refreshBody = fetchMock.mock.calls[0][1].body as URLSearchParams;
+    expect(refreshBody.get('token')).toBe('refresh-token');
+    expect(refreshBody.get('token_type_hint')).toBe('refresh_token');
+    expect(refreshBody.get('client_id')).toBe('client-id');
+    expect(refreshBody.get('client_secret')).toBe('client-secret');
+
+    const accessBody = fetchMock.mock.calls[1][1].body as URLSearchParams;
+    expect(accessBody.get('token')).toBe('access-token');
+    expect(accessBody.get('token_type_hint')).toBe('access_token');
+
+    expect(mockClearOAuthData).toHaveBeenCalledWith('notion', 'tokens');
+    expect(mockResetServerOAuthConnection).toHaveBeenCalledWith('notion');
+    expect(result).toEqual({
+      success: true,
+      scope: 'tokens',
+      revoked: {
+        attempted: 2,
+        succeeded: 2,
+        failed: 0,
+      },
+      revocationEndpoint: 'https://issuer.example.com/oauth/revoke',
+    });
+  });
+
+  it('clears local OAuth data and resets runtime status when provider revocation fails', async () => {
+    mockLoadServerConfig.mockResolvedValue({
+      oauth: {
+        accessToken: 'access-token',
+        clientId: 'client-id',
+        revocationEndpoint: 'https://issuer.example.com/oauth/revoke',
+      },
+    });
+    fetchMock.mockResolvedValueOnce({
+      ok: false,
+      status: 503,
+      text: jest.fn().mockResolvedValue('temporarily unavailable'),
+    });
+
+    const result = await disconnectUpstreamOAuth('notion', { scope: 'all' });
+
+    expect(mockClearOAuthData).toHaveBeenCalledWith('notion', 'all');
+    expect(mockResetServerOAuthConnection).toHaveBeenCalledWith('notion');
+    expect(result).toMatchObject({
+      success: true,
+      scope: 'all',
+      revoked: {
+        attempted: 1,
+        succeeded: 0,
+        failed: 1,
+      },
+    });
+  });
+});

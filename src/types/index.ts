@@ -454,6 +454,8 @@ export interface ServerConfig {
     authorizationEndpoint?: string;
     // Token endpoint for exchanging authorization codes for tokens
     tokenEndpoint?: string;
+    // Token revocation endpoint for upstream OAuth providers (RFC 7009)
+    revocationEndpoint?: string;
     // Pending OAuth session metadata for PKCE/state recovery between restarts
     pendingAuthorization?: {
       authorizationUrl?: string;
@@ -530,6 +532,7 @@ export interface ServerInfo {
     authorizationUrl?: string; // OAuth authorization URL for user to visit
     state?: string; // OAuth state parameter for CSRF protection
     codeVerifier?: string; // PKCE code verifier
+    connected?: boolean; // True when stored upstream OAuth tokens exist
   };
 }
 

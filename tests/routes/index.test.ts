@@ -16,6 +16,7 @@ jest.mock('../../src/controllers/serverController.js', () => ({
   toggleServer: routeHandler,
   reloadServer: routeHandler,
   reinstallServerHandler: routeHandler,
+  disconnectServerOAuth: routeHandler,
   clearCache: routeHandler,
   toggleTool: routeHandler,
   updateToolDescription: routeHandler,
@@ -289,6 +290,9 @@ describe('initRoutes authenticated API rate limiting', () => {
 
     expect(authenticatedLimiterIndex).toBeGreaterThanOrEqual(0);
     expect(routerContainsRoute(protectedRouter!, 'get', '/servers/:name')).toBe(true);
+    expect(routerContainsRoute(protectedRouter!, 'post', '/servers/:name/oauth/disconnect')).toBe(
+      true,
+    );
     expect(routerContainsRoute(protectedRouter!, 'put', '/oauth/clients/:clientId')).toBe(true);
     expect(routerContainsRoute(protectedRouter!, 'delete', '/oauth/clients/:clientId')).toBe(true);
   });

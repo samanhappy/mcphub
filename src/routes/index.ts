@@ -12,6 +12,7 @@ import {
   toggleServer,
   reloadServer,
   reinstallServerHandler,
+  disconnectServerOAuth,
   clearCache,
   toggleTool,
   updateToolDescription,
@@ -234,6 +235,7 @@ export const initRoutes = async (app: express.Application): Promise<void> => {
   authenticatedRouter.post('/servers/:name/toggle', toggleServer);
   authenticatedRouter.post('/servers/:name/reload', reloadServer);
   authenticatedRouter.post('/servers/:name/reinstall', reinstallServerHandler);
+  authenticatedRouter.post('/servers/:name/oauth/disconnect', disconnectServerOAuth);
   authenticatedRouter.post('/servers/:serverName/tools/:toolName/toggle', toggleTool);
   authenticatedRouter.put(
     '/servers/:serverName/tools/:toolName/description',

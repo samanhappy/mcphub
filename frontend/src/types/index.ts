@@ -246,6 +246,7 @@ export interface ServerConfig {
     resource?: string; // OAuth resource parameter (RFC8707)
     authorizationEndpoint?: string; // Authorization endpoint (authorization code flow)
     tokenEndpoint?: string; // Token endpoint for exchanging authorization codes for tokens
+    revocationEndpoint?: string; // Token revocation endpoint (RFC 7009)
     pendingAuthorization?: {
       authorizationUrl?: string;
       state?: string;
@@ -311,6 +312,7 @@ export interface Server {
   oauth?: {
     authorizationUrl?: string;
     state?: string;
+    connected?: boolean;
   };
 }
 

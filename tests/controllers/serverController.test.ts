@@ -54,6 +54,7 @@ const mockReconnectServer = jest.fn();
 const mockUpdateServerInfoVisibility = jest.fn();
 const mockGetServersInfo = jest.fn();
 const mockGetCurrentUser = jest.fn();
+const mockDisconnectUpstreamOAuth = jest.fn();
 
 jest.mock('../../src/dao/DaoFactory.js', () => ({
   getServerDao: jest.fn(() => mockServerDao),
@@ -90,8 +91,13 @@ jest.mock('../../src/services/userContextService.js', () => ({
   },
 }));
 
+jest.mock('../../src/services/upstreamOAuthDisconnectService.js', () => ({
+  disconnectUpstreamOAuth: mockDisconnectUpstreamOAuth,
+}));
+
 import {
   createServer,
+  disconnectServerOAuth,
   getAllSettings,
   getAllServers,
   getServerConfig,
@@ -1098,5 +1104,74 @@ describe('serverController - toggleServer (issue #938)', () => {
     expect(json).toHaveBeenCalledWith(
       expect.objectContaining({ success: true }),
     );
+  });
+});
+
+describe('serverController - disconnectServerOAuth', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockServerDao.findById.mockResolvedValue({
+      name: 'notion',
+      owner: 'admin',
+      oauth: {
+        accessToken: 'access-token',
+      },
+    });
+    mockDisconnectUpstreamOAuth.mockResolvedValue({
+      success: true,
+      scope: 'tokens',
+      revoked: {
+        attempted: 1,
+        succeeded: 1,
+        failed: 0,
+      },
+      revocationEndpoint: 'https://issuer.example.com/oauth/revoke',
+    });
+  });
+
+  const makeReqRes = (body: Record<string, unknown> = {}) => {
+    const json = jest.fn();
+    const status = jest.fn().mockReturnThis();
+    const req = {
+      params: { name: 'notion' },
+      body,
+      user: { username: 'admin', isAdmin: true },
+    } as unknown as Request;
+    const res = { json, status } as unknown as Response;
+    return { req, res, json, status };
+  };
+
+  it('disconnects upstream OAuth with token scope by default', async () => {
+    const { req, res, json } = makeReqRes();
+
+    await disconnectServerOAuth(req, res);
+
+    expect(mockDisconnectUpstreamOAuth).toHaveBeenCalledWith('notion', { scope: 'tokens' });
+    expect(json).toHaveBeenCalledWith({
+      success: true,
+      message: 'Server notion OAuth disconnected successfully',
+      data: {
+        scope: 'tokens',
+        revoked: {
+          attempted: 1,
+          succeeded: 1,
+          failed: 0,
+        },
+        revocationEndpoint: 'https://issuer.example.com/oauth/revoke',
+      },
+    });
+  });
+
+  it('rejects unsupported disconnect scopes', async () => {
+    const { req, res, status, json } = makeReqRes({ scope: 'client' });
+
+    await disconnectServerOAuth(req, res);
+
+    expect(mockDisconnectUpstreamOAuth).not.toHaveBeenCalled();
+    expect(status).toHaveBeenCalledWith(400);
+    expect(json).toHaveBeenCalledWith({
+      success: false,
+      message: 'OAuth disconnect scope must be "tokens" or "all"',
+    });
   });
 });

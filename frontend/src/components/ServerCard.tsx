@@ -14,6 +14,7 @@ import {
   Edit3,
   Trash2,
   DownloadCloud,
+  LogOut,
   type LucideIcon,
 } from 'lucide-react';
 import { Server, ServerCost } from '@/types';
@@ -45,6 +46,7 @@ interface ServerCardProps {
   onRefresh?: () => void;
   onReload?: (server: Server) => Promise<boolean>;
   onReinstall?: (server: Server) => Promise<boolean>;
+  onOAuthDisconnect?: (server: Server) => Promise<boolean>;
 }
 
 type CapabilityTabKey = 'tools' | 'prompts' | 'resources';
@@ -142,6 +144,7 @@ const ServerCard = ({
   onRefresh,
   onReload,
   onReinstall,
+  onOAuthDisconnect,
 }: ServerCardProps) => {
   const { t } = useTranslation();
   const { showToast } = useToast();
@@ -155,10 +158,12 @@ const ServerCard = ({
   );
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showReinstallDialog, setShowReinstallDialog] = useState(false);
+  const [showOAuthDisconnectDialog, setShowOAuthDisconnectDialog] = useState(false);
   const [isToggling, setIsToggling] = useState(false);
   const [isUpdatingVisibility, setIsUpdatingVisibility] = useState(false);
   const [isReloading, setIsReloading] = useState(false);
   const [isReinstalling, setIsReinstalling] = useState(false);
+  const [isDisconnectingOAuth, setIsDisconnectingOAuth] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [showErrorPopover, setShowErrorPopover] = useState(false);
   const [copiedError, setCopiedError] = useState(false);
@@ -187,6 +192,7 @@ const ServerCard = ({
   // Reinstall is only available for stdio servers using npx or uvx
   const supportsReinstall =
     server.config?.command === 'npx' || server.config?.command === 'uvx';
+  const supportsOAuthDisconnect = Boolean(server.oauth?.connected && onOAuthDisconnect);
 
   const handleToggle = async (nextEnabled: boolean) => {
     if (!canManage || isToggling || !onToggle) return;
@@ -231,6 +237,25 @@ const ServerCard = ({
       }
     } finally {
       setIsReinstalling(false);
+    }
+  };
+
+  const handleOAuthDisconnect = async () => {
+    setShowMenu(false);
+    if (!canManage || isDisconnectingOAuth || !onOAuthDisconnect) return;
+    setIsDisconnectingOAuth(true);
+    try {
+      const success = await onOAuthDisconnect(server);
+      if (success) {
+        showToast(t('server.disconnectOAuthSuccess') || 'Server OAuth disconnected', 'success');
+      } else {
+        showToast(
+          t('server.disconnectOAuthError', { serverName: server.name }) || 'Failed to disconnect OAuth',
+          'error',
+        );
+      }
+    } finally {
+      setIsDisconnectingOAuth(false);
     }
   };
 
@@ -765,6 +790,21 @@ const ServerCard = ({
                     <DownloadCloud size={13} /> {t('server.reinstall')}
                   </button>
                 )}
+                {supportsOAuthDisconnect && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowMenu(false);
+                      if (!canManage || isDisconnectingOAuth) return;
+                      setShowOAuthDisconnectDialog(true);
+                    }}
+                    disabled={isDisconnectingOAuth}
+                    className="flex items-center gap-2 w-full px-2.5 py-1.5 text-[13px] rounded-md hover:bg-[var(--hub-surface-hover)] text-left disabled:opacity-50 disabled:cursor-not-allowed"
+                    style={{ color: 'var(--hub-ink)' }}
+                  >
+                    <LogOut size={13} /> {t('server.disconnectOAuth')}
+                  </button>
+                )}
                 <div style={{ height: 1, background: 'var(--hub-line-2)', margin: '4px 0' }} />
                 <button
                   onClick={(e) => {
@@ -957,6 +997,19 @@ const ServerCard = ({
         title={t('server.reinstall')}
         message={t('server.reinstallConfirm') || 'This will clear the package cache and re-download dependencies. The server will restart.'}
         confirmText={t('server.reinstall')}
+        variant="warning"
+      />
+
+      <ConfirmDialog
+        isOpen={showOAuthDisconnectDialog}
+        onClose={() => setShowOAuthDisconnectDialog(false)}
+        onConfirm={() => {
+          setShowOAuthDisconnectDialog(false);
+          handleOAuthDisconnect();
+        }}
+        title={t('server.disconnectOAuth')}
+        message={t('server.disconnectOAuthConfirm') || 'This will revoke stored OAuth credentials where supported and require authorization again.'}
+        confirmText={t('server.disconnectOAuth')}
         variant="warning"
       />
     </>

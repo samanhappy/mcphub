@@ -235,6 +235,32 @@ describe('mcpService initialize metadata', () => {
     ]);
   });
 
+  it('exposes whether a server has stored upstream OAuth credentials', async () => {
+    mockFindAll.mockResolvedValue([
+      {
+        name: 'notion',
+        type: 'streamable-http',
+        url: 'https://mcp.notion.com/mcp',
+        enabled: true,
+        oauth: {
+          accessToken: 'access-token',
+          refreshToken: 'refresh-token',
+        },
+      },
+    ]);
+
+    const result = await getServersInfo();
+
+    expect(result).toEqual([
+      expect.objectContaining({
+        name: 'notion',
+        oauth: {
+          connected: true,
+        },
+      }),
+    ]);
+  });
+
   it('exposes tool description override metadata for dashboard consumers', async () => {
     mockFindAll.mockResolvedValue([
       {

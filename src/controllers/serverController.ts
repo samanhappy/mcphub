@@ -41,6 +41,8 @@ import {
   getUserDao,
 } from '../dao/DaoFactory.js';
 import { UserContextService } from '../services/userContextService.js';
+import { disconnectUpstreamOAuth } from '../services/upstreamOAuthDisconnectService.js';
+import type { UpstreamOAuthDisconnectScope } from '../services/upstreamOAuthDisconnectService.js';
 import { normalizeServerConfigForPersistence } from '../utils/serverConfigPersistence.js';
 import { setCachedSystemConfig } from '../utils/systemConfigCache.js';
 import { DEFAULT_INSTALL_BASE_URL, withResolvedInstallBaseUrl } from '../utils/installBaseUrl.js';
@@ -1078,6 +1080,60 @@ export const reloadServer = async (req: Request, res: Response): Promise<void> =
     res.status(500).json({
       success: false,
       message: 'Failed to reload server',
+    });
+  }
+};
+
+const parseOAuthDisconnectScope = (scope: unknown): UpstreamOAuthDisconnectScope | null => {
+  if (scope === undefined) {
+    return 'tokens';
+  }
+
+  if (scope === 'tokens' || scope === 'all') {
+    return scope;
+  }
+
+  return null;
+};
+
+export const disconnectServerOAuth = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { name } = req.params;
+    if (!name) {
+      res.status(400).json({
+        success: false,
+        message: 'Server name is required',
+      });
+      return;
+    }
+
+    const scope = parseOAuthDisconnectScope(req.body?.scope);
+    if (!scope) {
+      res.status(400).json({
+        success: false,
+        message: 'OAuth disconnect scope must be "tokens" or "all"',
+      });
+      return;
+    }
+
+    const existingServer = await loadAuthorizedServer(req, res, name);
+    if (!existingServer) {
+      return;
+    }
+
+    const result = await disconnectUpstreamOAuth(existingServer.name, { scope });
+    const { success: _success, ...data } = result;
+
+    res.json({
+      success: true,
+      message: `Server ${name} OAuth disconnected successfully`,
+      data,
+    });
+  } catch (error) {
+    console.error('Failed to disconnect server OAuth:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to disconnect server OAuth',
     });
   }
 };
