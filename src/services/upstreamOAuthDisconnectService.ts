@@ -4,9 +4,12 @@ import { assertSafeUrl, createRedirectValidatingFetch } from '../utils/ssrf.js';
 import { summarizeErrorForLogging } from '../utils/serialization.js';
 import { getRegisteredClient, removeRegisteredClient } from './oauthClientRegistration.js';
 import { clearOAuthData, loadServerConfig } from './oauthSettingsStore.js';
-import { resetServerOAuthConnection } from './mcpService.js';
+import { getServerByName, reconnectServer, resetServerOAuthConnection } from './mcpService.js';
 
 export type UpstreamOAuthDisconnectScope = 'tokens' | 'all';
+
+const OAUTH_RECONNECT_WAIT_TIMEOUT_MS = 3000;
+const OAUTH_RECONNECT_WAIT_INTERVAL_MS = 50;
 
 interface RevokeableToken {
   token: string;
@@ -128,6 +131,43 @@ const canServerOwnerReachInternalUrls = async (serverConfig: ServerConfig): Prom
   }
 };
 
+const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
+
+const waitForFreshAuthorizationUrl = async (serverName: string): Promise<void> => {
+  const deadline = Date.now() + OAUTH_RECONNECT_WAIT_TIMEOUT_MS;
+
+  while (Date.now() <= deadline) {
+    const serverInfo = getServerByName(serverName);
+
+    if (serverInfo?.status === 'oauth_required' && serverInfo.oauth?.authorizationUrl) {
+      return;
+    }
+
+    if (serverInfo && serverInfo.status !== 'connecting' && serverInfo.status !== 'oauth_required') {
+      return;
+    }
+
+    await sleep(OAUTH_RECONNECT_WAIT_INTERVAL_MS);
+  }
+};
+
+const restartServerOAuthFlow = async (serverName: string): Promise<void> => {
+  const runtimeReset = resetServerOAuthConnection(serverName);
+  if (!runtimeReset) {
+    return;
+  }
+
+  try {
+    await reconnectServer(serverName);
+    await waitForFreshAuthorizationUrl(serverName);
+  } catch (error) {
+    console.warn('Failed to restart upstream OAuth authorization after disconnect', {
+      serverName,
+      error: summarizeErrorForLogging(error),
+    });
+  }
+};
+
 export const disconnectUpstreamOAuth = async (
   serverName: string,
   options?: { scope?: UpstreamOAuthDisconnectScope },
@@ -157,7 +197,10 @@ export const disconnectUpstreamOAuth = async (
   }
 
   await clearOAuthData(serverName, scope);
-  resetServerOAuthConnection(serverName);
+  if (scope === 'tokens') {
+    await clearOAuthData(serverName, 'verifier');
+  }
+  await restartServerOAuthFlow(serverName);
 
   const attempted = revocationEndpoint ? tokens.length : 0;
 

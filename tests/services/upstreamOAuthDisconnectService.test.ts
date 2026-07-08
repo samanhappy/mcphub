@@ -1,6 +1,8 @@
 const mockLoadServerConfig = jest.fn();
 const mockClearOAuthData = jest.fn();
 const mockResetServerOAuthConnection = jest.fn();
+const mockReconnectServer = jest.fn();
+const mockGetServerByName = jest.fn();
 const mockGetRegisteredClient = jest.fn();
 const mockUserDao = {
   findByUsername: jest.fn(),
@@ -23,6 +25,8 @@ jest.mock('../../src/utils/ssrf.js', () => ({
 }));
 
 jest.mock('../../src/services/mcpService.js', () => ({
+  getServerByName: mockGetServerByName,
+  reconnectServer: mockReconnectServer,
   resetServerOAuthConnection: mockResetServerOAuthConnection,
 }));
 
@@ -49,6 +53,14 @@ describe('disconnectUpstreamOAuth', () => {
     mockAssertSafeUrl.mockResolvedValue(undefined);
     mockCreateRedirectValidatingFetch.mockImplementation((baseFetch) => baseFetch);
     mockClearOAuthData.mockResolvedValue({ oauth: {} });
+    mockReconnectServer.mockResolvedValue(undefined);
+    mockResetServerOAuthConnection.mockReturnValue(true);
+    mockGetServerByName.mockReturnValue({
+      status: 'oauth_required',
+      oauth: {
+        authorizationUrl: 'https://issuer.example.com/oauth/authorize?state=fresh',
+      },
+    });
     mockGetRegisteredClient.mockReturnValue(undefined);
   });
 
@@ -98,8 +110,10 @@ describe('disconnectUpstreamOAuth', () => {
     expect(accessBody.get('token')).toBe('access-token');
     expect(accessBody.get('token_type_hint')).toBe('access_token');
 
-    expect(mockClearOAuthData).toHaveBeenCalledWith('notion', 'tokens');
+    expect(mockClearOAuthData).toHaveBeenNthCalledWith(1, 'notion', 'tokens');
+    expect(mockClearOAuthData).toHaveBeenNthCalledWith(2, 'notion', 'verifier');
     expect(mockResetServerOAuthConnection).toHaveBeenCalledWith('notion');
+    expect(mockReconnectServer).toHaveBeenCalledWith('notion');
     expect(result).toEqual({
       success: true,
       scope: 'tokens',
@@ -149,6 +163,7 @@ describe('disconnectUpstreamOAuth', () => {
 
     expect(mockClearOAuthData).toHaveBeenCalledWith('notion', 'all');
     expect(mockResetServerOAuthConnection).toHaveBeenCalledWith('notion');
+    expect(mockReconnectServer).toHaveBeenCalledWith('notion');
     expect(result).toMatchObject({
       success: true,
       scope: 'all',
@@ -158,5 +173,30 @@ describe('disconnectUpstreamOAuth', () => {
         failed: 1,
       },
     });
+  });
+
+  it('waits for reconnect to expose a fresh authorization URL before returning', async () => {
+    mockLoadServerConfig.mockResolvedValue({
+      url: 'https://mcp.example.com/mcp',
+      oauth: {
+        accessToken: 'access-token',
+      },
+    });
+    mockGetServerByName
+      .mockReturnValueOnce({ status: 'connecting' })
+      .mockReturnValueOnce({
+        status: 'oauth_required',
+        oauth: {
+          authorizationUrl: 'https://issuer.example.com/oauth/authorize?state=fresh',
+        },
+      });
+
+    await disconnectUpstreamOAuth('linear', { scope: 'tokens' });
+
+    expect(mockClearOAuthData).toHaveBeenNthCalledWith(1, 'linear', 'tokens');
+    expect(mockClearOAuthData).toHaveBeenNthCalledWith(2, 'linear', 'verifier');
+    expect(mockResetServerOAuthConnection).toHaveBeenCalledWith('linear');
+    expect(mockReconnectServer).toHaveBeenCalledWith('linear');
+    expect(mockGetServerByName).toHaveBeenCalledTimes(2);
   });
 });
