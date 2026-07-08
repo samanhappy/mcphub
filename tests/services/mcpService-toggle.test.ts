@@ -100,8 +100,11 @@ jest.mock('../../src/services/activityLoggingService.js', () => ({
 
 // Import after mocks
 import {
+  deleteMcpServer,
   getServerByName,
+  getMcpServer,
   initializeClientsFromSettings,
+  resetServerOAuthConnection,
   setServerInfosForTest,
   summarizeServerConnections,
   toggleServerStatus,
@@ -235,6 +238,59 @@ describe('mcpService initializeClientsFromSettings OAuth authorization reuse', (
       },
     });
     expect(getServerByName('notion')?.oauth?.codeVerifier).toBe('verifier-1');
+  });
+});
+
+describe('mcpService resetServerOAuthConnection', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    setServerInfosForTest([]);
+    mockServerDao.findAll.mockResolvedValue([]);
+  });
+
+  afterEach(() => {
+    deleteMcpServer('oauth-reset-session');
+  });
+
+  it('broadcasts capability list changes after clearing OAuth-protected capabilities', async () => {
+    const mcpServer = await getMcpServer('oauth-reset-session');
+    const sendToolListChanged = jest
+      .spyOn(mcpServer, 'sendToolListChanged')
+      .mockResolvedValue(undefined);
+    const sendPromptListChanged = jest
+      .spyOn(mcpServer, 'sendPromptListChanged')
+      .mockResolvedValue(undefined);
+    const sendResourceListChanged = jest
+      .spyOn(mcpServer, 'sendResourceListChanged')
+      .mockResolvedValue(undefined);
+
+    setServerInfosForTest([
+      {
+        name: 'notion',
+        status: 'connected',
+        error: null,
+        tools: [{ name: 'search', description: 'Search', inputSchema: {} }],
+        prompts: [{ name: 'summarize', description: 'Summarize' }],
+        resources: [{ uri: 'notion://page/1', name: 'Page', description: '' }],
+        createTime: 123,
+        enabled: true,
+      } as any,
+    ]);
+
+    expect(resetServerOAuthConnection('notion')).toBe(true);
+
+    expect(sendToolListChanged).toHaveBeenCalledTimes(1);
+    expect(sendPromptListChanged).toHaveBeenCalledTimes(1);
+    expect(sendResourceListChanged).toHaveBeenCalledTimes(1);
+    expect(getServerByName('notion')).toEqual(
+      expect.objectContaining({
+        status: 'oauth_required',
+        tools: [],
+        prompts: [],
+        resources: [],
+        oauth: undefined,
+      }),
+    );
   });
 });
 

@@ -1963,10 +1963,12 @@ function checkAuthError(result: any) {
 }
 
 const closeServerRuntime = (serverInfo: ServerInfo): void => {
+  const safeServerName = sanitizeStringForLogging(serverInfo.name);
+
   if (serverInfo.keepAliveIntervalId) {
     clearInterval(serverInfo.keepAliveIntervalId);
     serverInfo.keepAliveIntervalId = undefined;
-    console.log(`Cleared keep-alive interval for server: ${serverInfo.name}`);
+    console.log(`Cleared keep-alive interval for server: ${safeServerName}`);
   }
 
   const candidateTransport = serverInfo.transport as
@@ -1980,7 +1982,10 @@ const closeServerRuntime = (serverInfo: ServerInfo): void => {
     try {
       serverInfo.client.close();
     } catch (error) {
-      console.warn('Error closing client for server', { serverName: serverInfo.name, error });
+      console.warn('Error closing client for server', {
+        serverName: safeServerName,
+        error: summarizeErrorForLogging(error),
+      });
     }
     serverInfo.client = undefined;
   }
@@ -1989,7 +1994,10 @@ const closeServerRuntime = (serverInfo: ServerInfo): void => {
     try {
       serverInfo.transport.close();
     } catch (error) {
-      console.warn('Error closing transport for server', { serverName: serverInfo.name, error });
+      console.warn('Error closing transport for server', {
+        serverName: safeServerName,
+        error: summarizeErrorForLogging(error),
+      });
     }
     serverInfo.transport = undefined;
   }
@@ -1998,7 +2006,7 @@ const closeServerRuntime = (serverInfo: ServerInfo): void => {
     killStdioProcessTree(serverInfo.name, stdioPid);
   }
 
-  console.log(`Closed client and transport for server: ${serverInfo.name}`);
+  console.log(`Closed client and transport for server: ${safeServerName}`);
 };
 
 // Close server client and transport
@@ -2022,6 +2030,10 @@ export const resetServerOAuthConnection = (name: string): boolean => {
   serverInfo.prompts = [];
   serverInfo.resources = [];
   serverInfo.oauth = undefined;
+
+  broadcastToolListChanged();
+  broadcastPromptListChanged();
+  broadcastResourceListChanged();
 
   return true;
 };

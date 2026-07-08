@@ -2,10 +2,24 @@ const mockLoadServerConfig = jest.fn();
 const mockClearOAuthData = jest.fn();
 const mockResetServerOAuthConnection = jest.fn();
 const mockGetRegisteredClient = jest.fn();
+const mockUserDao = {
+  findByUsername: jest.fn(),
+};
+const mockAssertSafeUrl = jest.fn();
+const mockCreateRedirectValidatingFetch = jest.fn();
 
 jest.mock('../../src/services/oauthSettingsStore.js', () => ({
   loadServerConfig: mockLoadServerConfig,
   clearOAuthData: mockClearOAuthData,
+}));
+
+jest.mock('../../src/dao/DaoFactory.js', () => ({
+  getUserDao: jest.fn(() => mockUserDao),
+}));
+
+jest.mock('../../src/utils/ssrf.js', () => ({
+  assertSafeUrl: mockAssertSafeUrl,
+  createRedirectValidatingFetch: mockCreateRedirectValidatingFetch,
 }));
 
 jest.mock('../../src/services/mcpService.js', () => ({
@@ -31,6 +45,9 @@ describe('disconnectUpstreamOAuth', () => {
       status: 200,
       text: jest.fn().mockResolvedValue(''),
     });
+    mockUserDao.findByUsername.mockResolvedValue({ isAdmin: true });
+    mockAssertSafeUrl.mockResolvedValue(undefined);
+    mockCreateRedirectValidatingFetch.mockImplementation((baseFetch) => baseFetch);
     mockClearOAuthData.mockResolvedValue({ oauth: {} });
     mockGetRegisteredClient.mockReturnValue(undefined);
   });
@@ -42,6 +59,7 @@ describe('disconnectUpstreamOAuth', () => {
   it('revokes stored refresh and access tokens before clearing local tokens and resetting runtime status', async () => {
     mockLoadServerConfig.mockResolvedValue({
       url: 'https://mcp.example.com/mcp',
+      owner: 'admin',
       oauth: {
         accessToken: 'access-token',
         refreshToken: 'refresh-token',
@@ -53,6 +71,12 @@ describe('disconnectUpstreamOAuth', () => {
 
     const result = await disconnectUpstreamOAuth('notion', { scope: 'tokens' });
 
+    expect(mockUserDao.findByUsername).toHaveBeenCalledWith('admin');
+    expect(mockAssertSafeUrl).toHaveBeenCalledWith(
+      'https://issuer.example.com/oauth/revoke',
+      { allowInternal: true },
+    );
+    expect(mockCreateRedirectValidatingFetch).toHaveBeenCalledWith(fetchMock, true);
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(fetchMock).toHaveBeenNthCalledWith(
       1,
@@ -86,6 +110,25 @@ describe('disconnectUpstreamOAuth', () => {
       },
       revocationEndpoint: 'https://issuer.example.com/oauth/revoke',
     });
+  });
+
+  it('uses non-admin SSRF restrictions for non-admin-owned servers', async () => {
+    mockUserDao.findByUsername.mockResolvedValue({ isAdmin: false });
+    mockLoadServerConfig.mockResolvedValue({
+      owner: 'alice',
+      oauth: {
+        accessToken: 'access-token',
+        revocationEndpoint: 'https://issuer.example.com/oauth/revoke',
+      },
+    });
+
+    await disconnectUpstreamOAuth('notion', { scope: 'tokens' });
+
+    expect(mockAssertSafeUrl).toHaveBeenCalledWith(
+      'https://issuer.example.com/oauth/revoke',
+      { allowInternal: false },
+    );
+    expect(mockCreateRedirectValidatingFetch).toHaveBeenCalledWith(fetchMock, false);
   });
 
   it('clears local OAuth data and resets runtime status when provider revocation fails', async () => {
