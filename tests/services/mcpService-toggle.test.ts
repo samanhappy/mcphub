@@ -292,6 +292,61 @@ describe('mcpService resetServerOAuthConnection', () => {
       }),
     );
   });
+
+  it('uses generic close diagnostics when resetting OAuth state', () => {
+    const logSpy = jest.spyOn(console, 'log').mockImplementation(() => undefined);
+    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const closeError = new Error('close failed: code_verifier=pkce-secret');
+    const keepAliveIntervalId = setInterval(() => undefined, 1000);
+
+    try {
+      setServerInfosForTest([
+        {
+          name: 'notion access_token=server-secret',
+          status: 'connected',
+          error: null,
+          tools: [],
+          prompts: [],
+          resources: [],
+          createTime: 123,
+          enabled: true,
+          client: {
+            close: jest.fn(() => {
+              throw closeError;
+            }),
+          },
+          transport: {
+            close: jest.fn(() => {
+              throw closeError;
+            }),
+          },
+          keepAliveIntervalId,
+          oauth: {
+            authorizationUrl: 'https://auth.example/authorize?code_challenge=challenge',
+            state: 'state-1',
+            codeVerifier: 'pkce-secret',
+          },
+        } as any,
+      ]);
+
+      expect(resetServerOAuthConnection('notion access_token=server-secret')).toBe(true);
+
+      const diagnosticArgs = [...logSpy.mock.calls, ...warnSpy.mock.calls].flat();
+      expect(diagnosticArgs).toEqual([
+        'Cleared MCP server keep-alive interval',
+        'Closed MCP server client and transport',
+        'Error closing MCP client during runtime shutdown',
+        'Error closing MCP transport during runtime shutdown',
+      ]);
+      expect(JSON.stringify(diagnosticArgs)).not.toContain('pkce-secret');
+      expect(JSON.stringify(diagnosticArgs)).not.toContain('server-secret');
+      expect(JSON.stringify(diagnosticArgs)).not.toContain('code_verifier');
+    } finally {
+      logSpy.mockRestore();
+      warnSpy.mockRestore();
+      clearInterval(keepAliveIntervalId);
+    }
+  });
 });
 
 describe('mcpService summarizeServerConnections', () => {

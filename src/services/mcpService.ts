@@ -1963,12 +1963,10 @@ function checkAuthError(result: any) {
 }
 
 const closeServerRuntime = (serverInfo: ServerInfo): void => {
-  const safeServerName = sanitizeStringForLogging(serverInfo.name);
-
   if (serverInfo.keepAliveIntervalId) {
     clearInterval(serverInfo.keepAliveIntervalId);
     serverInfo.keepAliveIntervalId = undefined;
-    console.log(`Cleared keep-alive interval for server: ${safeServerName}`);
+    console.log('Cleared MCP server keep-alive interval');
   }
 
   const candidateTransport = serverInfo.transport as
@@ -1981,11 +1979,8 @@ const closeServerRuntime = (serverInfo: ServerInfo): void => {
   if (serverInfo.client) {
     try {
       serverInfo.client.close();
-    } catch (error) {
-      console.warn('Error closing client for server', {
-        serverName: safeServerName,
-        error: summarizeErrorForLogging(error),
-      });
+    } catch {
+      console.warn('Error closing MCP client during runtime shutdown');
     }
     serverInfo.client = undefined;
   }
@@ -1993,11 +1988,8 @@ const closeServerRuntime = (serverInfo: ServerInfo): void => {
   if (serverInfo.transport) {
     try {
       serverInfo.transport.close();
-    } catch (error) {
-      console.warn('Error closing transport for server', {
-        serverName: safeServerName,
-        error: summarizeErrorForLogging(error),
-      });
+    } catch {
+      console.warn('Error closing MCP transport during runtime shutdown');
     }
     serverInfo.transport = undefined;
   }
@@ -2006,7 +1998,7 @@ const closeServerRuntime = (serverInfo: ServerInfo): void => {
     killStdioProcessTree(serverInfo.name, stdioPid);
   }
 
-  console.log(`Closed client and transport for server: ${safeServerName}`);
+  console.log('Closed MCP server client and transport');
 };
 
 // Close server client and transport
