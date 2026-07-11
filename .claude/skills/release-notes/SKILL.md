@@ -52,7 +52,7 @@ Rules enforced by `scripts/validate-release-notes.js` (CI runs it on publish/edi
    - `## Fixes` — bug fixes, reliability, dependency bumps (omit if none).
    - `## Breaking Changes` — only when present (omit if none).
    - `## 摘要` — Chinese translation of the Summary.
-   - `## 功能` / `## 修复` / `## 破坏性变更` — Chinese pairs, present iff the English counterpart is present. Mirror the same bullets.
+   - `## 功能` / `## 修复` / `## 破坏性变更` — Chinese pairs, present iff the English counterpart is present. Translate each bullet into Chinese (keep the same structure: PR title in Chinese, then `by @<author>` and URL as-is).
    - `## New Contributors` — one bullet per new contributor (English only, no Chinese pair). Omit the whole section if there are none. Format:
      ```
      - @<login> made their first contribution in #<number>
