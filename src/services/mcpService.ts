@@ -188,6 +188,48 @@ ${proxyLine}
 };
 
 /**
+ * Validate that a command is safe to execute.
+ * Blocks shell builtins and common injection patterns.
+ */
+const isSafeCommand = (command: string): boolean => {
+  // Block shell builtins that could be used for command injection
+  const blockedCommands = new Set([
+    'sh', 'bash', 'zsh', 'fish', 'csh', 'ksh', 'tcsh',
+    'cmd', 'powershell', 'pwsh',
+    'eval', 'exec', 'source', '.',
+  ]);
+
+  const basename = command.split('/').pop()?.split('\\').pop()?.toLowerCase() || '';
+  if (blockedCommands.has(basename)) {
+    return false;
+  }
+
+  // Block commands with shell metacharacters
+  if (/[;&|`$(){}[\]!]/.test(command)) {
+    return false;
+  }
+
+  return true;
+};
+
+/**
+ * Sanitize arguments to prevent command injection.
+ * Removes shell metacharacters and dangerous patterns.
+ */
+const sanitizeArgs = (args: string[]): string[] => {
+  return args.map(arg => {
+    // Remove shell metacharacters that could be used for injection
+    // Allow common flags (-f, --flag, -vvv) and paths
+    if (/^[a-zA-Z0-9._/\\:@=+,-]+$/.test(arg)) {
+      return arg;
+    }
+    // For arguments with special characters, log a warning
+    console.warn(`[proxychains] Potentially unsafe argument blocked: ${arg}`);
+    return arg.replace(/[;&|`$(){}[\]!]/g, '');
+  });
+};
+
+/**
  * Wrap a command with proxychains4 if proxy is configured and available.
  * Returns modified command and args if proxychains4 is used, original values otherwise.
  */
@@ -210,6 +252,14 @@ const wrapWithProxychains = (
     return { command, args };
   }
 
+  // SECURITY: Validate command is safe
+  if (!isSafeCommand(command)) {
+    console.error(
+      `[${serverName}] Blocked unsafe command for proxychains4 wrapping: ${command}`,
+    );
+    return { command, args };
+  }
+
   // Find proxychains4 binary
   const proxychains4Path = findProxychains4();
   if (!proxychains4Path) {
@@ -226,6 +276,9 @@ const wrapWithProxychains = (
     return { command, args };
   }
 
+  // SECURITY: Sanitize arguments
+  const sanitizedArgs = sanitizeArgs(args);
+
   // Wrap command with proxychains4
   console.log(
     `[${serverName}] Using proxychains4 proxy: ${proxyConfig.type || 'socks5'}://${proxyConfig.host}:${proxyConfig.port}`,
@@ -233,7 +286,7 @@ const wrapWithProxychains = (
 
   return {
     command: proxychains4Path,
-    args: ['-f', configPath, command, ...args],
+    args: ['-f', configPath, command, ...sanitizedArgs],
   };
 };
 
