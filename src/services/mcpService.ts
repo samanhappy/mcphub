@@ -224,8 +224,9 @@ const sanitizeArgs = (args: string[]): string[] => {
       return arg;
     }
     // For arguments with special characters, log a warning
+    // Also block redirection operators (>, <, >>) and newlines
     console.warn(`[proxychains] Potentially unsafe argument blocked: ${arg}`);
-    return arg.replace(/[;&|`$(){}[\]!]/g, '');
+    return arg.replace(/[;&|`$(){}[\]!><\n\r]/g, '');
   });
 };
 
@@ -257,7 +258,9 @@ const wrapWithProxychains = (
     console.error(
       `[${serverName}] Blocked unsafe command for proxychains4 wrapping: ${command}`,
     );
-    return { command, args };
+    throw new Error(
+      `[${serverName}] Unsafe command blocked: ${command}. Shell builtins and metacharacters are not allowed.`,
+    );
   }
 
   // Find proxychains4 binary
