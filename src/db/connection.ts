@@ -497,7 +497,7 @@ const attemptReconnection = (): Promise<DataSource> => {
     return reconnectionPromise;
   }
 
-  reconnectionPromise = (async () => {
+  const promise = (async () => {
     reconnectionInProgress = true;
     console.log('[DB Reconnect] Starting reconnection attempt...');
 
@@ -521,10 +521,6 @@ const attemptReconnection = (): Promise<DataSource> => {
         }
       }
 
-      // Reuse the existing DataSource options. Resolving the URL through the
-      // database-backed system config is impossible while that database is down.
-      initializationPromise = null;
-
       let lastError: Error | null = null;
       for (let attempt = 1; attempt <= CONNECTION_CONFIG.maxConnectionRetries; attempt++) {
         try {
@@ -544,6 +540,18 @@ const attemptReconnection = (): Promise<DataSource> => {
           lastError = error instanceof Error ? error : new Error(String(error));
           console.warn(`[DB Reconnect] Attempt ${attempt} failed: ${lastError.message}`);
 
+          if (dataSource.isInitialized) {
+            try {
+              await dataSource.destroy();
+            } catch (destroyError: any) {
+              console.warn(
+                '[DB Reconnect] Error cleaning up partially initialized connection:',
+                destroyError.message,
+              );
+              Object.assign(dataSource, { isInitialized: false });
+            }
+          }
+
           if (attempt < CONNECTION_CONFIG.maxConnectionRetries) {
             const delay = CONNECTION_CONFIG.connectionRetryDelayMs * Math.pow(2, attempt - 1);
             console.log(`[DB Reconnect] Waiting ${delay}ms before next attempt...`);
@@ -560,10 +568,17 @@ const attemptReconnection = (): Promise<DataSource> => {
     } finally {
       reconnectionInProgress = false;
       reconnectionPromise = null;
+      initializationPromise = null;
     }
   })();
 
-  return reconnectionPromise;
+  // Reuse the existing DataSource options. Resolving the URL through the
+  // database-backed system config is impossible while that database is down.
+  // Initialization callers must wait for the same reconnection attempt.
+  reconnectionPromise = promise;
+  initializationPromise = promise;
+
+  return promise;
 };
 
 // Close database connection

@@ -54,10 +54,14 @@ jest.mock('./types/postgresVectorType.js', () => ({
 import {
   checkDatabaseHealth,
   closeDatabase,
+  initializeDatabase,
   reconnectDatabase,
   stopHealthCheck,
   updateDataSourceConfig,
 } from './connection.js';
+import { registerPostgresVectorType } from './types/postgresVectorType.js';
+
+const registerPostgresVectorTypeMock = jest.mocked(registerPostgresVectorType);
 
 describe('database connection recovery', () => {
   beforeEach(() => {
@@ -83,7 +87,7 @@ describe('database connection recovery', () => {
     expect(getSmartRoutingConfigMock).toHaveBeenCalledTimes(1);
   });
 
-  it('shares one reconnection attempt between concurrent callers', async () => {
+  it('shares one reconnection attempt with concurrent initialization callers', async () => {
     const dataSource = await updateDataSourceConfig();
     let finishInitialization!: () => void;
     dataSource.initialize.mockImplementationOnce(
@@ -98,15 +102,36 @@ describe('database connection recovery', () => {
 
     const firstReconnect = reconnectDatabase();
     const secondReconnect = reconnectDatabase();
+    const concurrentInitialization = initializeDatabase();
 
-    expect(dataSource.initialize).toHaveBeenCalledTimes(1);
+    await new Promise((resolve) => setImmediate(resolve));
+    const initializationCallsBeforeRelease = dataSource.initialize.mock.calls.length;
     finishInitialization();
 
-    await expect(Promise.all([firstReconnect, secondReconnect])).resolves.toEqual([
-      dataSource,
-      dataSource,
-    ]);
+    await expect(
+      Promise.all([firstReconnect, secondReconnect, concurrentInitialization]),
+    ).resolves.toEqual([dataSource, dataSource, dataSource]);
+    expect(initializationCallsBeforeRelease).toBe(1);
     expect(dataSource.initialize).toHaveBeenCalledTimes(1);
+  });
+
+  it('cleans up an initialized connection when post-initialization setup fails', async () => {
+    jest.useFakeTimers();
+    const dataSource = await updateDataSourceConfig();
+    registerPostgresVectorTypeMock.mockImplementationOnce(() => {
+      throw new Error('vector type registration failed');
+    });
+
+    try {
+      const recovery = reconnectDatabase();
+      await jest.runAllTimersAsync();
+
+      await expect(recovery).resolves.toBe(dataSource);
+      expect(dataSource.initialize).toHaveBeenCalledTimes(2);
+      expect(dataSource.destroy).toHaveBeenCalledTimes(1);
+    } finally {
+      jest.useRealTimers();
+    }
   });
 
   it('recovers when the driver pool is gone but TypeORM still reports the DataSource as initialized', async () => {
