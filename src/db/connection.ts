@@ -14,7 +14,7 @@ const CONNECTION_CONFIG = {
   poolIdleTimeout: parseInt(process.env.DB_POOL_IDLE_TIMEOUT || '30000', 10), // 30 seconds
   connectionTimeout: parseInt(process.env.DB_CONNECTION_TIMEOUT || '60000', 10), // 60 seconds
 
-  // Retry settings for initial connection
+  // Automatic reconnection settings
   maxConnectionRetries: parseInt(process.env.DB_MAX_CONNECTION_RETRIES || '5', 10),
   connectionRetryDelayMs: parseInt(process.env.DB_CONNECTION_RETRY_DELAY || '3000', 10),
 
@@ -28,6 +28,7 @@ let healthCheckInterval: NodeJS.Timeout | null = null;
 let isHealthy = false;
 let lastHealthCheckError: Error | null = null;
 let reconnectionInProgress = false;
+let reconnectionPromise: Promise<DataSource> | null = null;
 
 // Helper function to create required PostgreSQL extensions
 const createRequiredExtensions = async (dataSource: DataSource): Promise<void> => {
@@ -141,21 +142,10 @@ export const getAppDataSource = (): DataSource => {
   return appDataSource;
 };
 
-// Reconnect database with updated configuration
+// Reconnect the database using the current DataSource configuration
 export const reconnectDatabase = async (): Promise<DataSource> => {
   try {
-    // Close existing connection if it exists
-    if (appDataSource && appDataSource.isInitialized) {
-      console.log('Closing existing database connection...');
-      await appDataSource.destroy();
-    }
-
-    // Reset initialization promise to allow fresh initialization
-    initializationPromise = null;
-
-    // Update configuration and reconnect
-    appDataSource = await updateDataSourceConfig();
-    return await initializeDatabase();
+    return await attemptReconnection();
   } catch (error) {
     console.error('Error during database reconnection:', error);
     throw error;
@@ -424,10 +414,25 @@ export const getDatabaseHealth = (): {
 
 // Perform a health check on the database connection
 export const checkDatabaseHealth = async (): Promise<boolean> => {
-  if (!appDataSource || !appDataSource.isInitialized) {
+  if (!appDataSource) {
     isHealthy = false;
     lastHealthCheckError = new Error('Database not initialized');
     return false;
+  }
+
+  if (!appDataSource.isInitialized) {
+    isHealthy = false;
+    lastHealthCheckError = new Error('Database not initialized');
+    console.log('[DB Health] DataSource is disconnected, attempting reconnection...');
+
+    try {
+      await attemptReconnection();
+      return true;
+    } catch (error) {
+      lastHealthCheckError = error instanceof Error ? error : new Error(String(error));
+      console.error('[DB Health] Reconnection attempt failed:', lastHealthCheckError.message);
+      return false;
+    }
   }
 
   try {
@@ -442,11 +447,16 @@ export const checkDatabaseHealth = async (): Promise<boolean> => {
     console.warn('[DB Health] Health check failed:', lastHealthCheckError.message);
 
     // If it's a retryable error, attempt reconnection
-    if (isRetryableDbError(error) && !reconnectionInProgress) {
+    if (isRetryableDbError(error)) {
       console.log('[DB Health] Detected connection issue, attempting reconnection...');
-      attemptReconnection().catch((err) => {
-        console.error('[DB Health] Reconnection attempt failed:', err.message);
-      });
+      try {
+        await attemptReconnection();
+        return true;
+      } catch (reconnectError) {
+        lastHealthCheckError =
+          reconnectError instanceof Error ? reconnectError : new Error(String(reconnectError));
+        console.error('[DB Health] Reconnection attempt failed:', lastHealthCheckError.message);
+      }
     }
 
     return false;
@@ -481,64 +491,79 @@ export const stopHealthCheck = (): void => {
 };
 
 // Attempt to reconnect to the database with retries
-const attemptReconnection = async (): Promise<void> => {
-  if (reconnectionInProgress) {
-    console.log('[DB Reconnect] Reconnection already in progress, skipping...');
-    return;
+const attemptReconnection = (): Promise<DataSource> => {
+  if (reconnectionPromise) {
+    console.log('[DB Reconnect] Reconnection already in progress, waiting...');
+    return reconnectionPromise;
   }
 
-  reconnectionInProgress = true;
-  console.log('[DB Reconnect] Starting reconnection attempt...');
+  reconnectionPromise = (async () => {
+    reconnectionInProgress = true;
+    console.log('[DB Reconnect] Starting reconnection attempt...');
 
-  try {
-    // Close existing connection if it exists
-    if (appDataSource && appDataSource.isInitialized) {
-      try {
-        console.log('[DB Reconnect] Closing existing connection...');
-        await appDataSource.destroy();
-      } catch (closeError: any) {
-        console.warn('[DB Reconnect] Error closing connection:', closeError.message);
+    try {
+      if (!appDataSource) {
+        return await initializeDatabase();
       }
-    }
 
-    // Reset state
-    initializationPromise = null;
+      const dataSource = appDataSource;
 
-    // Retry connection with exponential backoff
-    let lastError: Error | null = null;
-    for (let attempt = 1; attempt <= CONNECTION_CONFIG.maxConnectionRetries; attempt++) {
-      try {
-        console.log(
-          `[DB Reconnect] Connection attempt ${attempt}/${CONNECTION_CONFIG.maxConnectionRetries}...`,
-        );
-
-        appDataSource = await updateDataSourceConfig();
-        await performDatabaseInitialization();
-
-        console.log('[DB Reconnect] Successfully reconnected to database');
-        isHealthy = true;
-        lastHealthCheckError = null;
-        return;
-      } catch (error) {
-        lastError = error instanceof Error ? error : new Error(String(error));
-        console.warn(`[DB Reconnect] Attempt ${attempt} failed: ${lastError.message}`);
-
-        if (attempt < CONNECTION_CONFIG.maxConnectionRetries) {
-          const delay = CONNECTION_CONFIG.connectionRetryDelayMs * Math.pow(2, attempt - 1);
-          console.log(`[DB Reconnect] Waiting ${delay}ms before next attempt...`);
-          await new Promise((resolve) => setTimeout(resolve, delay));
+      if (dataSource.isInitialized) {
+        try {
+          console.log('[DB Reconnect] Closing existing connection...');
+          await dataSource.destroy();
+        } catch (closeError: any) {
+          console.warn('[DB Reconnect] Error closing connection:', closeError.message);
+          // TypeORM only clears this flag after driver.disconnect() succeeds.
+          // If the driver pool is already gone, destroy() throws first and leaves
+          // the DataSource incorrectly marked as initialized.
+          Object.assign(dataSource, { isInitialized: false });
         }
       }
-    }
 
-    // All retries exhausted
-    console.error(
-      `[DB Reconnect] Failed to reconnect after ${CONNECTION_CONFIG.maxConnectionRetries} attempts`,
-    );
-    lastHealthCheckError = lastError;
-  } finally {
-    reconnectionInProgress = false;
-  }
+      // Reuse the existing DataSource options. Resolving the URL through the
+      // database-backed system config is impossible while that database is down.
+      initializationPromise = null;
+
+      let lastError: Error | null = null;
+      for (let attempt = 1; attempt <= CONNECTION_CONFIG.maxConnectionRetries; attempt++) {
+        try {
+          console.log(
+            `[DB Reconnect] Connection attempt ${attempt}/${CONNECTION_CONFIG.maxConnectionRetries}...`,
+          );
+
+          await dataSource.initialize();
+          registerPostgresVectorType(dataSource);
+          appDataSource = dataSource;
+
+          console.log('[DB Reconnect] Successfully reconnected to database');
+          isHealthy = true;
+          lastHealthCheckError = null;
+          return dataSource;
+        } catch (error) {
+          lastError = error instanceof Error ? error : new Error(String(error));
+          console.warn(`[DB Reconnect] Attempt ${attempt} failed: ${lastError.message}`);
+
+          if (attempt < CONNECTION_CONFIG.maxConnectionRetries) {
+            const delay = CONNECTION_CONFIG.connectionRetryDelayMs * Math.pow(2, attempt - 1);
+            console.log(`[DB Reconnect] Waiting ${delay}ms before next attempt...`);
+            await new Promise((resolve) => setTimeout(resolve, delay));
+          }
+        }
+      }
+
+      console.error(
+        `[DB Reconnect] Failed to reconnect after ${CONNECTION_CONFIG.maxConnectionRetries} attempts`,
+      );
+      lastHealthCheckError = lastError;
+      throw lastError || new Error('Database reconnection failed');
+    } finally {
+      reconnectionInProgress = false;
+      reconnectionPromise = null;
+    }
+  })();
+
+  return reconnectionPromise;
 };
 
 // Close database connection

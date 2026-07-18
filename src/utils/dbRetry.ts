@@ -56,6 +56,7 @@ const RETRYABLE_ERROR_CODES = new Set([
  * Known database connection error message patterns that should trigger a retry
  */
 const RETRYABLE_ERROR_PATTERNS = [
+  /driver.*not.*connected/i,
   /connection.*reset/i,
   /connection.*closed/i,
   /connection.*lost/i,

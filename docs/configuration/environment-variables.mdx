@@ -100,9 +100,9 @@ useDatabase = (USE_DB === 'true') OR (USE_DB unset AND DB_URL is set)
 | `USE_DAO_LAYER` | unset | Force the DAO layer on even in file mode (advanced; usually unnecessary). |
 | `DB_POOL_SIZE` | `10` | Maximum TypeORM connection pool size. |
 | `DB_POOL_IDLE_TIMEOUT` | `30000` | Idle pool connection timeout (ms). |
-| `DB_CONNECTION_TIMEOUT` | `30000` | Initial connect timeout (ms). |
-| `DB_CONNECTION_RETRY_DELAY` | `2000` | Base delay between connection retries (ms). |
-| `DB_MAX_CONNECTION_RETRIES` | `5` | Maximum connection retry attempts at startup. |
+| `DB_CONNECTION_TIMEOUT` | `60000` | Initial connect timeout (ms). |
+| `DB_CONNECTION_RETRY_DELAY` | `3000` | Base delay between automatic reconnection attempts (ms). |
+| `DB_MAX_CONNECTION_RETRIES` | `5` | Maximum automatic reconnection attempts. |
 | `DB_ENABLE_HEALTH_CHECK` | `true` | Run periodic DB health probes (consumed by `/health`). |
 | `DB_HEALTH_CHECK_INTERVAL` | `30000` | Health-probe interval (ms). |
 
