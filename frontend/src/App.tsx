@@ -63,7 +63,9 @@ function App() {
                       <Route path="/groups" element={<GroupsPage />} />
                       <Route path="/prompts" element={<PromptsPage />} />
                       <Route path="/resources" element={<ResourcesPage />} />
-                      <Route path="/users" element={<UsersPage />} />
+                      <Route element={<ProtectedRoute requireAdmin />}>
+                        <Route path="/users" element={<UsersPage />} />
+                      </Route>
                       <Route path="/market" element={<MarketPage />} />
                       <Route path="/market/:serverName" element={<MarketPage />} />
                       {/* Legacy cloud routes redirect to market with cloud tab */}

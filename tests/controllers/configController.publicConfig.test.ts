@@ -39,7 +39,7 @@ describe('ConfigController - getPublicConfig', () => {
     };
   });
 
-  it('uses DAO-backed routing and Better Auth configuration for public config', async () => {
+  it('grants only non-admin guest permissions when skipAuth is enabled', async () => {
     const systemConfig = {
       routing: {
         skipAuth: true,
@@ -52,9 +52,7 @@ describe('ConfigController - getPublicConfig', () => {
     };
 
     getSystemConfigMock.mockResolvedValue(systemConfig);
-    getPermissionsMock.mockReturnValue({
-      settings: ['manage'],
-    });
+    getPermissionsMock.mockReturnValue(['']);
     getBetterAuthRuntimeConfigMock.mockResolvedValue({
       enabled: true,
       basePath: '/api/auth/better',
@@ -80,15 +78,13 @@ describe('ConfigController - getPublicConfig', () => {
     expect(getPermissionsMock).toHaveBeenCalledWith({
       username: 'guest',
       password: '',
-      isAdmin: true,
+      isAdmin: false,
     });
     expect(mockJson).toHaveBeenCalledWith({
       success: true,
       data: {
         skipAuth: true,
-        permissions: {
-          settings: ['manage'],
-        },
+        permissions: [''],
         betterAuth: {
           enabled: true,
           basePath: '/api/auth/better',

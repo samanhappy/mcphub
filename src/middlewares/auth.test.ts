@@ -223,7 +223,7 @@ describe('auth middleware', () => {
     expect(response.body).toEqual({ success: false, message: 'No token, authorization denied' });
   });
 
-  it('attaches a guest admin user when skipAuth is true', async () => {
+  it('attaches a non-admin guest user when skipAuth is true', async () => {
     currentSystemConfig.routing.skipAuth = true;
 
     const app = express();
@@ -250,7 +250,7 @@ describe('auth middleware', () => {
       success: true,
       user: {
         username: 'guest',
-        isAdmin: true,
+        isAdmin: false,
       },
     });
   });

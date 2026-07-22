@@ -70,7 +70,7 @@ export const getPublicConfig = async (req: Request, res: Response): Promise<void
       const user: IUser = {
         username: 'guest',
         password: '',
-        isAdmin: true,
+        isAdmin: false,
       };
       permissions = dataService.getPermissions(user);
     }

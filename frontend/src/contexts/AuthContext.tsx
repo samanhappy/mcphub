@@ -44,7 +44,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           loading: false,
           user: {
             username: 'guest',
-            isAdmin: true,
+            isAdmin: false,
             permissions,
           },
           error: null,

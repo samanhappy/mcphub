@@ -83,7 +83,7 @@ const checkReadonly = (req: Request): boolean => {
 
 const createSkipAuthUser = () => ({
   username: 'guest',
-  isAdmin: true,
+  isAdmin: false,
 });
 
 const isDashboardApiRequest = (req: Request): boolean => {

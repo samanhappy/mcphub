@@ -1,4 +1,21 @@
-import { canViewSystemLogs } from '../../frontend/src/utils/navigationPermissions';
+import {
+  canAccessAdminPages,
+  canViewSystemLogs,
+} from '../../frontend/src/utils/navigationPermissions';
+
+describe('canAccessAdminPages', () => {
+  it('allows authenticated administrators', () => {
+    expect(canAccessAdminPages({ username: 'admin', isAdmin: true })).toBe(true);
+  });
+
+  it('denies non-admin skipAuth guests', () => {
+    expect(canAccessAdminPages({ username: 'guest', isAdmin: false })).toBe(false);
+  });
+
+  it('denies access when no user is signed in', () => {
+    expect(canAccessAdminPages(null)).toBe(false);
+  });
+});
 
 describe('canViewSystemLogs', () => {
   it('allows admins to access the system logs menu', () => {
