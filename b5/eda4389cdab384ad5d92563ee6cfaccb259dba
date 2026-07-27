@@ -1,0 +1,140 @@
+frontend/src/pages/ServersPage.tsx
+  s_34182efdc1026e::t_610ff88fafc7a1 94,238-241
+  s_34182efdc1026e::t_ab02084fc1458d 219
+tests/dao/serverDaoDbImpl.test.ts
+  s_34182efdc1026e::t_87f981532868c8 7,27-28
+  s_34182efdc1026e::t_cdf28bc53ec428 6,35,60-75
+frontend/src/components/ServerCard.tsx
+  s_34182efdc1026e::t_e3cc32fd20b6ce 192,323,355,371,387,426-427,467,930,945,985
+src/dao/GroupDao.ts
+  s_34182efdc1026e::t_f8fd9882a36f60 167,186,241
+  s_34182efdc1026e::t_aef3991fb07491 209
+docs/api-reference/groups.mdx
+  s_34182efdc1026e::t_e3cc32fd20b6ce 54,63,128-129,133,153,172,190,211
+src/dao/ServerDaoDbImpl.ts
+  s_34182efdc1026e::t_0115b9f807a6ed 81-85
+  s_34182efdc1026e::t_2b025badaf30ce 14-20,77,86,162-164,169-170,174-175,198-200,229-230,234,259
+src/services/groupService.ts
+  s_34182efdc1026e::t_d62f7450f4add2 20
+  s_34182efdc1026e::t_f44486d67437d0 46-51,60-67,69-70,128,169,203,241,267-281,294,302,313-315,319,340-342,375-377
+  s_34182efdc1026e::t_39a486d4ef1998 55-56,59,242,249-254
+  s_34182efdc1026e::t_4840ca0604ba36 68
+  s_34182efdc1026e::t_f28afc19788b86 52-54,57-58
+frontend/src/components/EditServerForm.tsx
+  s_34182efdc1026e::t_ab02084fc1458d 20
+tests/services/mcpService-group-server-id.test.ts
+  s_34182efdc1026e::t_610ff88fafc7a1 24-26
+  s_34182efdc1026e::t_cdf28bc53ec428 1-23,27-144
+frontend/src/components/GroupCard.tsx
+  s_34182efdc1026e::t_610ff88fafc7a1 19
+  s_34182efdc1026e::t_bd322bef97ee5f 23,28-30,32,281
+  s_34182efdc1026e::t_ab02084fc1458d 21-22,24-26,35-37,106
+  s_34182efdc1026e::t_4f8a3cb0b1ae5c 101-103
+tests/dao/serverDao-identity.test.ts
+  s_34182efdc1026e::t_cdf28bc53ec428 1-91
+src/controllers/configController.ts
+  s_34182efdc1026e::t_bd4698a03f533d 17,156,189
+src/config/DaoConfigService.ts
+  s_34182efdc1026e::t_4f8a3cb0b1ae5c 96-104,109-110,112-118
+  s_34182efdc1026e::t_1d9fa682722a3a 15,42
+  s_34182efdc1026e::t_ae1a3879bc11e5 95,106-108,111,119-121,123,129-130
+frontend/src/types/index.ts
+  s_34182efdc1026e::t_ab02084fc1458d 303,324
+frontend/src/contexts/ServerContext.tsx
+  s_34182efdc1026e::t_e3cc32fd20b6ce 347,400-401,410-411,426-427,452-453,468,492,516
+tests/utils/serverSettings.test.ts
+  s_34182efdc1026e::t_5c8729036a7342 1-25
+src/controllers/serverController.ts
+  s_34182efdc1026e::t_67d1d5ebdf1c5e 504,984
+  s_34182efdc1026e::t_610ff88fafc7a1 141,362-363,491,649,666-668,876,1126-1128,1172,1461,1753-1764,1807-1808
+  s_34182efdc1026e::t_9d5d701b95bc0c 971-973
+  s_34182efdc1026e::t_7cc1565f7d92da 976
+  s_34182efdc1026e::t_0719c268226942 52,753,893,913,1027,1074,1162
+  s_34182efdc1026e::t_0115b9f807a6ed 90-99
+  s_34182efdc1026e::t_39623f6a74cb53 912,917,927,937,939
+  s_34182efdc1026e::t_2a10a81f7076c0 49,319
+  s_34182efdc1026e::t_7689327219af0c 506,675,714-718
+src/utils/serverSettings.ts
+  s_34182efdc1026e::t_aaf37100b51a2a 1-22
+src/dao/GroupDaoDbImpl.ts
+  s_34182efdc1026e::t_f8fd9882a36f60 98-102,119,173
+  s_34182efdc1026e::t_610ff88fafc7a1 135
+src/utils/migration.ts
+  s_34182efdc1026e::t_e43d959cdcc8d9 63-64,71-74,97,100,115-126
+  s_34182efdc1026e::t_d02b3ccb47147a 69-70
+src/dao/ServerDao.ts
+  s_34182efdc1026e::t_1f6f288a40be6b 109-117,184,187,203,207,220,222,232-234,383
+  s_34182efdc1026e::t_610ff88fafc7a1 31-35,186,242-245,256,272-276,288
+  s_34182efdc1026e::t_0115b9f807a6ed 21-22,181,183
+  s_34182efdc1026e::t_eb58acb5e5fc29 4,101,122-123,125-126,139-143,150,153,173,175-178,190
+src/services/smartRoutingService.ts
+  s_34182efdc1026e::t_fc704f47f38711 466,626
+tests/services/groupService-capabilities.test.ts
+  s_34182efdc1026e::t_761947b2ecedd3 8-9,37-39,61,88
+tests/services/groupService-authorization.test.ts
+  s_34182efdc1026e::t_610ff88fafc7a1 116-118
+  s_34182efdc1026e::t_761947b2ecedd3 13,78-85,104,146
+src/services/oauthService.ts
+  s_34182efdc1026e::t_b0fc25cc001437 240,246
+src/types/index.ts
+  s_34182efdc1026e::t_be3617fb72d78d 28,514
+  s_34182efdc1026e::t_7689327219af0c 628
+  s_34182efdc1026e::t_038bcdcbe40d97 363
+  s_34182efdc1026e::t_4f8a3cb0b1ae5c 515
+frontend/src/components/ServerToolConfig.tsx
+  s_34182efdc1026e::t_610ff88fafc7a1 109,164,185,254,383,521,547
+  s_34182efdc1026e::t_4911481ecfa113 51,57,82-85,89,91-92,99-101,105,114,134,139-140,143,150,155,163,165,172-174,184,186,255,257,260,267,274,283,290,293-296,300-303,313,317-319,328-330,379-382,392,397,403,409,471,506
+  s_34182efdc1026e::t_e43d959cdcc8d9 244
+  s_34182efdc1026e::t_4f8a3cb0b1ae5c 52-56
+src/services/oauthSettingsStore.ts
+  s_34182efdc1026e::t_b0fc25cc001437 21,41,54
+tests/controllers/serverController.test.ts
+  s_34182efdc1026e::t_610ff88fafc7a1 84-86,1122,1135
+  s_34182efdc1026e::t_38ab6ecdeca742 116
+  s_34182efdc1026e::t_af8120f7382851 870-895
+  s_34182efdc1026e::t_0719c268226942 5,115,117
+  s_34182efdc1026e::t_bc7c113ab31bda 118
+src/services/mcpService.ts
+  s_34182efdc1026e::t_610ff88fafc7a1 197-210,231,269,484-487,1219,1391-1394,1404-1414,1422-1431,1555,2975,3602,3606
+  s_34182efdc1026e::t_8b671dae46e798 2192
+  s_34182efdc1026e::t_d62f7450f4add2 2567,2607,2666,3282,3360,3409,3465,3585-3592,3594-3596,3619,3626-3629
+  s_34182efdc1026e::t_89b2a70dc9cd91 2167-2175,2184,2187,2189,2387-2395,2398,2401,2412-2413,2416
+  s_34182efdc1026e::t_2d5b238375e4e1 1386,2675,3285,3346,3454
+  s_34182efdc1026e::t_943c4446c427b4 2165,2203-2204,2209,2211,2213-2215,2218-2219,2224,2295,2302
+  s_34182efdc1026e::t_e2b00d9ad4d023 1516,1525,1550-1552,1582,1598,1632,1689,1712
+  s_34182efdc1026e::t_56536b6806ccee 1899,1908,1956-1958
+  s_34182efdc1026e::t_ab12842cdc92d5 3599-3601,3603-3605,3607-3608,3610,3620
+  s_34182efdc1026e::t_da271dfbb8e836 1896,1903,1911,1939,1942,1981,2027-2030
+  s_34182efdc1026e::t_ae1a3879bc11e5 2154-2155,2157
+  s_34182efdc1026e::t_25358eb219af9f 1515
+docs/api-reference/servers.mdx
+  s_34182efdc1026e::t_e3cc32fd20b6ce 37,64-65,87,124-125,135
+src/db/entities/Group.ts
+  s_34182efdc1026e::t_f8fd9882a36f60 27
+src/controllers/groupController.ts
+  s_34182efdc1026e::t_a7d340fae58df3 493-494,503,506
+  s_34182efdc1026e::t_39a486d4ef1998 511
+frontend/src/utils/serverListState.ts
+  s_34182efdc1026e::t_ba418e5cfbf3b3 10,14,30
+src/db/entities/Server.ts
+  s_34182efdc1026e::t_7fa47ea5bd77f1 17
+src/db/repositories/ServerRepository.ts
+  s_34182efdc1026e::t_7fa47ea5bd77f1 29-36,48-49,60-61,68-69,158-159,165-166
+  s_34182efdc1026e::t_610ff88fafc7a1 86-88,100-104,108-110
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "b5eda4389cdab384ad5d92563ee6cfaccb259dba",
+  "prompts": {},
+  "sessions": {
+    "s_34182efdc1026e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fa3db-eb6d-77c3-b3c2-f7a5f21af93d",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
