@@ -51,7 +51,7 @@ Creates a new server group.
 - **Body**:
   - `name` (string, required): The name of the group.
   - `description` (string, optional): A description for the group.
-  - `servers` (array, optional): A list of server names or capability-scoped server configuration objects.
+  - `servers` (array, optional): A list of unique server names or capability-scoped server configuration objects. Use `serverId` when names are duplicated.
 - **Request Example**:
   ```json
   {
@@ -60,6 +60,7 @@ Creates a new server group.
     "servers": [
       "server1",
       {
+        "serverId": "bc13f5e2-9b2c-4b23-a80f-1b4fa18c0f62",
         "name": "server2",
         "tools": ["toolA", "toolB"],
         "prompts": ["draft_prompt"],
@@ -124,11 +125,12 @@ Adds a single server to a group.
 - **Parameters**:
   - `:id` (string, required): The ID or name of the group.
 - **Body**:
-  - `serverName` (string, required): The name of the server to add.
+  - `serverId` (string, recommended): The stable ID of the server to add.
+  - `serverName` (string, legacy): A unique server name. Ambiguous names are rejected.
 - **Request Example**:
   ```json
   {
-    "serverName": "my-server"
+    "serverId": "bc13f5e2-9b2c-4b23-a80f-1b4fa18c0f62"
   }
   ```
 
@@ -148,7 +150,7 @@ Removes a single server from a group.
 
 ### Batch Update Group Servers
 
-Replaces all servers in a group with a new list. The list can be simple strings or detailed configuration objects.
+Replaces all servers in a group with a new list. The list can be simple strings or detailed configuration objects. Stable `serverId` references are required to distinguish servers that share a name.
 
 - **Endpoint**: `/api/groups/:id/servers/batch`
 - **Method**: `PUT`
@@ -167,6 +169,7 @@ Replaces all servers in a group with a new list. The list can be simple strings 
   {
     "servers": [
       {
+        "serverId": "bc13f5e2-9b2c-4b23-a80f-1b4fa18c0f62",
         "name": "server1",
         "tools": "all",
         "prompts": "all",
@@ -184,6 +187,7 @@ Replaces all servers in a group with a new list. The list can be simple strings 
 
 Each detailed server object accepts these optional capability selectors:
 
+- `serverId`: Stable server identity. Prefer this over name-only references.
 - `tools`: `"all"` or an array of tool names.
 - `prompts`: `"all"` or an array of prompt names.
 - `resources`: `"all"` or an array of resource URIs.
@@ -204,6 +208,7 @@ Retrieves the detailed configuration for all servers within a group, including w
     "success": true,
     "data": [
       {
+        "serverId": "bc13f5e2-9b2c-4b23-a80f-1b4fa18c0f62",
         "name": "server1",
         "tools": "all",
         "prompts": "all",

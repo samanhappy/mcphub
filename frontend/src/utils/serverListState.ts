@@ -7,11 +7,11 @@ type ServerListPatch = {
 
 export const applyServerListPatch = (
   servers: Server[],
-  serverName: string,
+  serverIdentifier: string,
   patch: ServerListPatch,
 ): Server[] =>
   servers.map((server) => {
-    if (server.name !== serverName) {
+    if ((server.id ?? server.name) !== serverIdentifier) {
       return server;
     }
 

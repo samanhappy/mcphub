@@ -5,6 +5,8 @@ const mockGroupDao = {
 
 const mockServerDao = {
   findAll: jest.fn(),
+  findByName: jest.fn(),
+  findById: jest.fn(),
 };
 
 jest.mock('../../src/dao/index.js', () => ({
@@ -32,6 +34,9 @@ describe('groupService capability selections', () => {
     jest.clearAllMocks();
     mockGroupDao.findByName.mockResolvedValue(null);
     mockServerDao.findAll.mockResolvedValue([{ name: 'server1' }, { name: 'server2' }]);
+    mockServerDao.findByName.mockImplementation(async (name: string) => [
+      { id: `${name}-id`, name },
+    ]);
     mockGroupDao.create.mockImplementation(async (group: any) => group);
   });
 
@@ -53,6 +58,7 @@ describe('groupService capability selections', () => {
 
     expect(result?.servers).toEqual([
       {
+        serverId: 'server1-id',
         name: 'server1',
         alias: 'fetch',
         tools: ['search'],
@@ -79,6 +85,7 @@ describe('groupService capability selections', () => {
 
     expect(result?.servers).toEqual([
       {
+        serverId: 'server1-id',
         name: 'server1',
         tools: [],
         prompts: [],

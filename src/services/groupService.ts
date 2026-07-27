@@ -17,6 +17,7 @@ export const normalizeGroupServers = (
     // New format: ensure capability selections default to 'all' if not specified
     const alias = server.alias?.trim();
     return {
+      ...(server.serverId ? { serverId: server.serverId } : {}),
       name: server.name,
       ...(alias ? { alias } : {}),
       tools: server.tools || 'all',
@@ -40,6 +41,31 @@ const hasDuplicateExposedServerName = (servers: IGroupServerConfig[]): boolean =
     seen.add(exposedName);
   }
   return false;
+};
+
+const resolveGroupServers = async (
+  servers: string[] | IGroupServerConfig[],
+): Promise<IGroupServerConfig[]> => {
+  const serverDao = getServerDao();
+  const resolved = await Promise.all(
+    normalizeGroupServers(servers).map(async (serverConfig) => {
+      const namedServers = serverConfig.serverId
+        ? []
+        : await serverDao.findByName(serverConfig.name);
+      const server = serverConfig.serverId
+        ? await serverDao.findById(serverConfig.serverId)
+        : namedServers.length === 1
+          ? namedServers[0]
+          : null;
+      if (!server) return null;
+      return {
+        ...serverConfig,
+        serverId: server.id,
+        name: server.name,
+      };
+    }),
+  );
+  return resolved.flatMap((server) => (server ? [server] : []));
 };
 
 const canMutateGroup = (group: IGroup): boolean => {
@@ -91,7 +117,6 @@ export const createGroup = async (
 ): Promise<IGroup | null> => {
   try {
     const groupDao = getGroupDao();
-    const serverDao = getServerDao();
 
     // Check if group with same name already exists
     const existingGroup = await groupDao.findByName(name);
@@ -100,12 +125,7 @@ export const createGroup = async (
     }
 
     // Normalize servers configuration and filter out non-existent servers
-    const normalizedServers = normalizeGroupServers(servers);
-    const allServers = await serverDao.findAll();
-    const serverNames = new Set(allServers.map((s) => s.name));
-    const validServers: IGroupServerConfig[] = normalizedServers.filter((serverConfig) =>
-      serverNames.has(serverConfig.name),
-    );
+    const validServers = await resolveGroupServers(servers);
     if (hasDuplicateExposedServerName(validServers)) {
       return null;
     }
@@ -130,7 +150,6 @@ export const createGroup = async (
 export const updateGroup = async (id: string, data: Partial<IGroup>): Promise<IGroup | null> => {
   try {
     const groupDao = getGroupDao();
-    const serverDao = getServerDao();
 
     const existingGroup = await groupDao.findById(id);
     if (!existingGroup || !canMutateGroup(existingGroup)) {
@@ -147,10 +166,7 @@ export const updateGroup = async (id: string, data: Partial<IGroup>): Promise<IG
 
     // If servers array is provided, validate server existence and normalize format
     if (data.servers) {
-      const normalizedServers = normalizeGroupServers(data.servers);
-      const allServers = await serverDao.findAll();
-      const serverNames = new Set(allServers.map((s) => s.name));
-      data.servers = normalizedServers.filter((serverConfig) => serverNames.has(serverConfig.name));
+      data.servers = await resolveGroupServers(data.servers);
       if (hasDuplicateExposedServerName(data.servers)) {
         return null;
       }
@@ -177,7 +193,6 @@ export const updateGroupServers = async (
 ): Promise<IGroup | null> => {
   try {
     const groupDao = getGroupDao();
-    const serverDao = getServerDao();
 
     const existingGroup = await groupDao.findById(groupId);
     if (!existingGroup || !canMutateGroup(existingGroup)) {
@@ -185,12 +200,7 @@ export const updateGroupServers = async (
     }
 
     // Normalize and filter out non-existent servers
-    const normalizedServers = normalizeGroupServers(servers);
-    const allServers = await serverDao.findAll();
-    const serverNames = new Set(allServers.map((s) => s.name));
-    const validServers = normalizedServers.filter((serverConfig) =>
-      serverNames.has(serverConfig.name),
-    );
+    const validServers = await resolveGroupServers(servers);
     if (hasDuplicateExposedServerName(validServers)) {
       return null;
     }
@@ -228,14 +238,20 @@ export const deleteGroup = async (id: string): Promise<boolean> => {
 // Add server to group
 export const addServerToGroup = async (
   groupId: string,
-  serverName: string,
+  serverIdentifier: string,
+  byId: boolean = false,
 ): Promise<IGroup | null> => {
   try {
     const groupDao = getGroupDao();
     const serverDao = getServerDao();
 
     // Verify server exists
-    const server = await serverDao.findById(serverName);
+    const namedServers = byId ? [] : await serverDao.findByName(serverIdentifier);
+    const server = byId
+      ? await serverDao.findById(serverIdentifier)
+      : namedServers.length === 1
+        ? namedServers[0]
+        : null;
     if (!server) {
       return null;
     }
@@ -248,8 +264,21 @@ export const addServerToGroup = async (
     const normalizedServers = normalizeGroupServers(group.servers);
 
     // Add server to group if not already in it
-    if (!normalizedServers.some((s) => s.name === serverName)) {
-      normalizedServers.push({ name: serverName, tools: 'all', prompts: 'all', resources: 'all' });
+    if (!normalizedServers.some((s) => s.serverId === server.id)) {
+      if (
+        normalizedServers.some(
+          (configured) => getGroupServerExposedName(configured) === server.name,
+        )
+      ) {
+        return null;
+      }
+      normalizedServers.push({
+        serverId: server.id,
+        name: server.name,
+        tools: 'all',
+        prompts: 'all',
+        resources: 'all',
+      });
       const updatedGroup = await groupDao.update(groupId, { servers: normalizedServers });
 
       if (updatedGroup) {
@@ -262,7 +291,7 @@ export const addServerToGroup = async (
     notifyToolChanged();
     return group;
   } catch (error) {
-    console.error(`Failed to add server ${serverName} to group ${groupId}:`, error);
+    console.error(`Failed to add server ${serverIdentifier} to group ${groupId}:`, error);
     return null;
   }
 };
@@ -270,7 +299,7 @@ export const addServerToGroup = async (
 // Remove server from group
 export const removeServerFromGroup = async (
   groupId: string,
-  serverName: string,
+  serverIdentifier: string,
 ): Promise<IGroup | null> => {
   try {
     const groupDao = getGroupDao();
@@ -281,11 +310,13 @@ export const removeServerFromGroup = async (
     }
 
     const normalizedServers = normalizeGroupServers(group.servers);
-    const filteredServers = normalizedServers.filter((server) => server.name !== serverName);
+    const filteredServers = normalizedServers.filter(
+      (server) => server.serverId !== serverIdentifier && server.name !== serverIdentifier,
+    );
 
     return await groupDao.update(groupId, { servers: filteredServers });
   } catch (error) {
-    console.error(`Failed to remove server ${serverName} from group ${groupId}:`, error);
+    console.error(`Failed to remove server ${serverIdentifier} from group ${groupId}:`, error);
     return null;
   }
 };
@@ -306,7 +337,9 @@ export const getServerConfigInGroup = async (
   const group = await getGroupByIdOrName(groupId);
   if (!group) return undefined;
   const normalizedServers = normalizeGroupServers(group.servers);
-  return normalizedServers.find((server) => server.name === serverName);
+  return normalizedServers.find(
+    (server) => server.serverId === serverName || server.name === serverName,
+  );
 };
 
 // Get all server configurations in a group
@@ -339,7 +372,9 @@ export const updateServerToolsInGroup = async (
 
     const normalizedServers = normalizeGroupServers(group.servers);
 
-    const serverIndex = normalizedServers.findIndex((s) => s.name === serverName);
+    const serverIndex = normalizedServers.findIndex(
+      (configured) => configured.serverId === server.id || configured.name === serverName,
+    );
     if (serverIndex === -1) {
       return null; // Server not in group
     }

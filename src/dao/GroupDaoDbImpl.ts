@@ -95,7 +95,11 @@ export class GroupDaoDbImpl implements GroupDao {
     const allGroups = await this.repository.findAll();
     return allGroups
       .filter((g) =>
-        g.servers.some((s) => (typeof s === 'string' ? s === serverName : s.name === serverName)),
+        g.servers.some((s) =>
+          typeof s === 'string'
+            ? s === serverName
+            : s.serverId === serverName || s.name === serverName,
+        ),
       )
       .map((g) => ({
         id: g.id,
@@ -112,7 +116,7 @@ export class GroupDaoDbImpl implements GroupDao {
 
     // Check if server already exists
     const serverExists = group.servers.some((s) =>
-      typeof s === 'string' ? s === serverName : s.name === serverName,
+      typeof s === 'string' ? s === serverName : s.serverId === serverName || s.name === serverName,
     );
 
     if (!serverExists) {
@@ -128,7 +132,7 @@ export class GroupDaoDbImpl implements GroupDao {
     if (!group) return false;
 
     group.servers = group.servers.filter((s) =>
-      typeof s === 'string' ? s !== serverName : s.name !== serverName,
+      typeof s === 'string' ? s !== serverName : s.serverId !== serverName && s.name !== serverName,
     ) as any;
 
     await this.update(groupId, { servers: group.servers as any });
@@ -166,7 +170,7 @@ export class GroupDaoDbImpl implements GroupDao {
           }
           return server;
         } else {
-          if (server.name === oldName) {
+          if (!server.serverId && server.name === oldName) {
             updated = true;
             return { ...server, name: newName };
           }

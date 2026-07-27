@@ -48,6 +48,13 @@ export const ServerToolConfig: React.FC<ServerToolConfigProps> = ({
   const { nameSeparator } = useSettingsData();
   const [expandedServers, setExpandedServers] = useState<Set<string>>(new Set());
 
+  const getServerId = (server: Server) => server.id ?? server.name;
+  const matchesServer = (config: IGroupServerConfig, serverId: string) => {
+    if (config.serverId) return config.serverId === serverId;
+    const server = servers.find((candidate) => getServerId(candidate) === serverId);
+    return config.name === (server?.name ?? serverId);
+  };
+
   // Normalize current value to IGroupServerConfig[] format
   const normalizedValue: IGroupServerConfig[] = React.useMemo(() => {
     return value.map((item) => {
@@ -72,36 +79,39 @@ export const ServerToolConfig: React.FC<ServerToolConfigProps> = ({
   // Clean up expanded servers when servers are removed from configuration
   // But keep servers that were explicitly expanded even if they have no configuration
   React.useEffect(() => {
-    const configuredServerNames = new Set(normalizedValue.map((config) => config.name));
-    const availableServerNames = new Set(availableServers.map((server) => server.name));
+    const configuredServerIds = new Set(
+      normalizedValue.map((config) => config.serverId ?? config.name),
+    );
+    const availableServerIds = new Set(availableServers.map(getServerId));
 
     setExpandedServers((prev) => {
       const newSet = new Set<string>();
-      prev.forEach((serverName) => {
+      prev.forEach((serverId) => {
         // Keep expanded if server is configured OR if server exists and user manually expanded it
-        if (configuredServerNames.has(serverName) || availableServerNames.has(serverName)) {
-          newSet.add(serverName);
+        if (configuredServerIds.has(serverId) || availableServerIds.has(serverId)) {
+          newSet.add(serverId);
         }
       });
       return newSet;
     });
   }, [normalizedValue, availableServers]);
 
-  const toggleServer = (serverName: string) => {
-    const existingIndex = normalizedValue.findIndex((config) => config.name === serverName);
+  const toggleServer = (server: Server) => {
+    const serverId = getServerId(server);
+    const existingIndex = normalizedValue.findIndex((config) => matchesServer(config, serverId));
 
     if (existingIndex >= 0) {
       // Remove server - this also removes all capability selections
-      const newValue = normalizedValue.filter((config) => config.name !== serverName);
+      const newValue = normalizedValue.filter((config) => !matchesServer(config, serverId));
       onChange(newValue);
     } else {
       // Add server with all capabilities by default
-      const newValue = [...normalizedValue, { name: serverName, ...FULL_SELECTIONS }];
+      const newValue = [...normalizedValue, { serverId, name: server.name, ...FULL_SELECTIONS }];
       onChange(newValue);
     }
   };
 
-  const toggleServerExpanded = (serverName: string) => {
+  const toggleServerExpanded = (serverId: string) => {
     setExpandedServers((prev) => {
       const newSet = new Set(prev);
       if (newSet.has(serverName)) {
@@ -121,27 +131,28 @@ export const ServerToolConfig: React.FC<ServerToolConfigProps> = ({
   };
 
   const updateServerCapability = (
-    serverName: string,
+    server: Server,
     capability: CapabilityKey,
     selection: string[] | 'all',
     keepExpanded = false,
   ) => {
-    const existingServer = normalizedValue.find((config) => config.name === serverName);
+    const serverId = getServerId(server);
+    const existingServer = normalizedValue.find((config) => matchesServer(config, serverId));
     const baseConfig: IGroupServerConfig = existingServer
       ? { ...existingServer }
-      : { name: serverName, ...EMPTY_SELECTIONS };
+      : { serverId, name: server.name, ...EMPTY_SELECTIONS };
     const nextConfig: IGroupServerConfig = {
       ...baseConfig,
       [capability]: selection,
     };
 
     if (!hasAnyCapabilitySelection(nextConfig)) {
-      const newValue = normalizedValue.filter((config) => config.name !== serverName);
+      const newValue = normalizedValue.filter((config) => !matchesServer(config, serverId));
       onChange(newValue);
       if (!keepExpanded) {
         setExpandedServers((prev) => {
           const newSet = new Set(prev);
-          newSet.delete(serverName);
+          newSet.delete(serverId);
           return newSet;
         });
       }
@@ -149,15 +160,18 @@ export const ServerToolConfig: React.FC<ServerToolConfigProps> = ({
     }
 
     if (existingServer) {
-      onChange(normalizedValue.map((config) => (config.name === serverName ? nextConfig : config)));
+      onChange(
+        normalizedValue.map((config) => (matchesServer(config, serverId) ? nextConfig : config)),
+      );
       return;
     }
 
     onChange([...normalizedValue, nextConfig]);
   };
 
-  const updateServerAlias = (serverName: string, alias: string) => {
-    const existingServer = normalizedValue.find((config) => config.name === serverName);
+  const updateServerAlias = (server: Server, alias: string) => {
+    const serverId = getServerId(server);
+    const existingServer = normalizedValue.find((config) => matchesServer(config, serverId));
     if (!existingServer) return;
 
     const nextConfig: IGroupServerConfig = { ...existingServer };
@@ -167,7 +181,9 @@ export const ServerToolConfig: React.FC<ServerToolConfigProps> = ({
       delete nextConfig.alias;
     }
 
-    onChange(normalizedValue.map((config) => (config.name === serverName ? nextConfig : config)));
+    onChange(
+      normalizedValue.map((config) => (matchesServer(config, serverId) ? nextConfig : config)),
+    );
   };
 
   const normalizeNamedCapability = (serverName: string, name: string) => {
@@ -225,7 +241,7 @@ export const ServerToolConfig: React.FC<ServerToolConfigProps> = ({
   const getSelectedCapabilityCost = (server: Server, capability: CapabilityKey): number => {
     const costMap = costMapForServer(server.name);
     return getCapabilityItems(server, capability)
-      .filter((item) => isCapabilityItemSelected(server.name, capability, item.value))
+      .filter((item) => isCapabilityItemSelected(server, capability, item.value))
       .reduce((sum, item) => sum + (costMap.get(item.key) ?? 0), 0);
   };
 
@@ -235,33 +251,27 @@ export const ServerToolConfig: React.FC<ServerToolConfigProps> = ({
       0,
     );
 
-  const toggleCapabilityItem = (
-    serverName: string,
-    capability: CapabilityKey,
-    itemValue: string,
-  ) => {
-    const server = availableServers.find((s) => s.name === serverName);
-    if (!server) return;
-
+  const toggleCapabilityItem = (server: Server, capability: CapabilityKey, itemValue: string) => {
+    const serverId = getServerId(server);
     const allItems = getCapabilityItems(server, capability).map((item) => item.value);
-    const serverConfig = normalizedValue.find((config) => config.name === serverName);
+    const serverConfig = normalizedValue.find((config) => matchesServer(config, serverId));
 
     if (!serverConfig) {
-      updateServerCapability(serverName, capability, [itemValue]);
+      updateServerCapability(server, capability, [itemValue]);
       return;
     }
 
     const currentSelection = serverConfig[capability];
     if (currentSelection === 'all') {
       const nextSelection = allItems.filter((value) => value !== itemValue);
-      updateServerCapability(serverName, capability, nextSelection);
+      updateServerCapability(server, capability, nextSelection);
       return;
     }
 
     if (Array.isArray(currentSelection)) {
       if (currentSelection.includes(itemValue)) {
         updateServerCapability(
-          serverName,
+          server,
           capability,
           currentSelection.filter((value) => value !== itemValue),
         );
@@ -270,23 +280,27 @@ export const ServerToolConfig: React.FC<ServerToolConfigProps> = ({
 
       const nextSelection = [...currentSelection, itemValue];
       updateServerCapability(
-        serverName,
+        server,
         capability,
         nextSelection.length === allItems.length ? 'all' : nextSelection,
       );
       return;
     }
 
-    updateServerCapability(serverName, capability, [itemValue]);
+    updateServerCapability(server, capability, [itemValue]);
   };
 
-  const isServerSelected = (serverName: string) => {
-    const serverConfig = normalizedValue.find((config) => config.name === serverName);
+  const isServerSelected = (server: Server) => {
+    const serverConfig = normalizedValue.find((config) =>
+      matchesServer(config, getServerId(server)),
+    );
     return Boolean(serverConfig && hasAnyCapabilitySelection(serverConfig));
   };
 
-  const isServerPartiallySelected = (serverName: string) => {
-    const serverConfig = normalizedValue.find((config) => config.name === serverName);
+  const isServerPartiallySelected = (server: Server) => {
+    const serverConfig = normalizedValue.find((config) =>
+      matchesServer(config, getServerId(server)),
+    );
     if (!serverConfig) return false;
 
     return (['tools', 'prompts', 'resources'] as CapabilityKey[]).some((capability) => {
@@ -296,11 +310,13 @@ export const ServerToolConfig: React.FC<ServerToolConfigProps> = ({
   };
 
   const isCapabilityItemSelected = (
-    serverName: string,
+    server: Server,
     capability: CapabilityKey,
     itemValue: string,
   ) => {
-    const serverConfig = normalizedValue.find((config) => config.name === serverName);
+    const serverConfig = normalizedValue.find((config) =>
+      matchesServer(config, getServerId(server)),
+    );
     if (!serverConfig) return false;
 
     const selection = serverConfig[capability];
@@ -309,7 +325,9 @@ export const ServerToolConfig: React.FC<ServerToolConfigProps> = ({
   };
 
   const getSelectedCapabilityCount = (server: Server, capability: CapabilityKey) => {
-    const serverConfig = normalizedValue.find((config) => config.name === server.name);
+    const serverConfig = normalizedValue.find((config) =>
+      matchesServer(config, getServerId(server)),
+    );
     if (!serverConfig) return 0;
 
     const items = getCapabilityItems(server, capability);
@@ -358,10 +376,11 @@ export const ServerToolConfig: React.FC<ServerToolConfigProps> = ({
     <div className={cn('space-y-4', className)}>
       <div className="space-y-3">
         {availableServers.map((server) => {
-          const isSelected = isServerSelected(server.name);
-          const isPartiallySelected = isServerPartiallySelected(server.name);
-          const isExpanded = expandedServers.has(server.name);
-          const serverConfig = normalizedValue.find((config) => config.name === server.name);
+          const serverId = getServerId(server);
+          const isSelected = isServerSelected(server);
+          const isPartiallySelected = isServerPartiallySelected(server);
+          const isExpanded = expandedServers.has(serverId);
+          const serverConfig = normalizedValue.find((config) => matchesServer(config, serverId));
           const summaryBadges = getServerSummaryBadges(server);
           const serverCapabilities = capabilityConfigs.filter(
             ({ key }) => getCapabilityItems(server, key).length > 0,
@@ -370,24 +389,24 @@ export const ServerToolConfig: React.FC<ServerToolConfigProps> = ({
 
           return (
             <div
-              key={server.name}
+              key={serverId}
               className="border border-gray-200 dark:border-gray-700 rounded-lg hover:border-gray-300 hover:bg-gray-50 dark:bg-gray-800 dark:hover:bg-gray-700 transition-colors"
             >
               <div
                 className="flex items-center justify-between p-3 cursor-pointer rounded-lg transition-colors"
-                onClick={() => toggleServerExpanded(server.name)}
+                onClick={() => toggleServerExpanded(serverId)}
               >
                 <div
                   className="flex items-center space-x-3"
                   onClick={(e) => {
                     e.stopPropagation();
-                    toggleServer(server.name);
+                    toggleServer(server);
                   }}
                 >
                   <input
                     type="checkbox"
                     checked={isSelected || isPartiallySelected}
-                    onChange={() => toggleServer(server.name)}
+                    onChange={() => toggleServer(server)}
                     className="w-4 h-4 text-blue-600 bg-gray-100 dark:bg-gray-800 border-gray-300 rounded focus:ring-blue-500"
                   />
                   <span className="font-medium text-gray-900 cursor-pointer select-none">
@@ -449,7 +468,7 @@ export const ServerToolConfig: React.FC<ServerToolConfigProps> = ({
                           type="text"
                           value={serverConfig.alias || ''}
                           placeholder={server.name}
-                          onChange={(event) => updateServerAlias(server.name, event.target.value)}
+                          onChange={(event) => updateServerAlias(server, event.target.value)}
                           className="w-full rounded-md border border-gray-300 bg-white px-2.5 py-1.5 text-sm text-gray-800 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
                         />
                       </div>
@@ -484,7 +503,7 @@ export const ServerToolConfig: React.FC<ServerToolConfigProps> = ({
                                 type="button"
                                 onClick={() => {
                                   updateServerCapability(
-                                    server.name,
+                                    server,
                                     key,
                                     allSelected ? [] : 'all',
                                     true,
@@ -499,11 +518,7 @@ export const ServerToolConfig: React.FC<ServerToolConfigProps> = ({
 
                           <div className="grid grid-cols-1 gap-2 max-h-32 overflow-y-auto">
                             {items.map((item) => {
-                              const isChecked = isCapabilityItemSelected(
-                                server.name,
-                                key,
-                                item.value,
-                              );
+                              const isChecked = isCapabilityItemSelected(server, key, item.value);
                               const descriptionInfo =
                                 key === 'tools'
                                   ? getToolDescriptionInfo(
@@ -529,9 +544,7 @@ export const ServerToolConfig: React.FC<ServerToolConfigProps> = ({
                                   <input
                                     type="checkbox"
                                     checked={isChecked}
-                                    onChange={() =>
-                                      toggleCapabilityItem(server.name, key, item.value)
-                                    }
+                                    onChange={() => toggleCapabilityItem(server, key, item.value)}
                                     className="w-3 h-3 text-blue-600 bg-gray-100 dark:bg-gray-800 border-gray-300 rounded focus:ring-blue-500"
                                   />
                                   <span className="text-gray-700 break-all whitespace-nowrap flex-shrink-0">

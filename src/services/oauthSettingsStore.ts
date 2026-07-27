@@ -18,7 +18,7 @@ export const loadServerConfig = async (serverName: string): Promise<ServerConfig
   if (!server) {
     return undefined;
   }
-  const { name: _, ...config } = server;
+  const { id: _id, name: _, ...config } = server;
   return config;
 };
 
@@ -38,7 +38,7 @@ export const mutateOAuthSettings = async (
     return undefined;
   }
 
-  const { name: _, ...serverConfig } = server;
+  const { id: _id, name: _, ...serverConfig } = server;
 
   if (!serverConfig.oauth) {
     serverConfig.oauth = {};
@@ -51,7 +51,7 @@ export const mutateOAuthSettings = async (
 
   mutator(context);
 
-  const updated = await serverDao.update(serverName, { oauth: serverConfig.oauth });
+  const updated = await serverDao.update(server.id, { oauth: serverConfig.oauth });
   if (!updated) {
     throw new Error(`Failed to persist OAuth settings for server ${serverName}`);
   }

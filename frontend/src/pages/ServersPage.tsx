@@ -91,8 +91,7 @@ const ServersPage: React.FC = () => {
           <p className="hub-sub">
             <span className="hub-num">{counts.all}</span> {t('nav.servers').toLowerCase()} ·{' '}
             <span className="hub-num">{counts.online}</span> {t('status.online')} ·{' '}
-            <span className="hub-num">{counts.issues}</span>{' '}
-            {t('common.inactive') || 'issues'}
+            <span className="hub-num">{counts.issues}</span> {t('common.inactive') || 'issues'}
           </p>
         </div>
         <div className="flex gap-2">
@@ -217,7 +216,7 @@ const ServersPage: React.FC = () => {
           <div className="flex flex-col">
             {visibleServers.map((server) => (
               <ServerCard
-                key={server.name}
+                key={server.id ?? server.name}
                 server={server}
                 cost={serverCosts.find((c) => c.name === server.name)}
                 onRemove={handleServerRemove}
@@ -236,7 +235,10 @@ const ServersPage: React.FC = () => {
             <div className="flex-[2]">
               {t('common.showing', {
                 start: (clientPagination.page - 1) * clientPagination.limit + 1,
-                end: Math.min(clientPagination.page * clientPagination.limit, clientPagination.total),
+                end: Math.min(
+                  clientPagination.page * clientPagination.limit,
+                  clientPagination.total,
+                ),
                 total: clientPagination.total,
               })}
             </div>

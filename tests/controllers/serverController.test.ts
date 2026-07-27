@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 
 const mockServerDao = {
   findById: jest.fn(),
+  findByName: jest.fn(),
   findAll: jest.fn(),
   findAllPaginated: jest.fn(),
   findByOwnerPaginated: jest.fn(),
@@ -80,7 +81,9 @@ jest.mock('../../src/services/mcpService.js', () => ({
   syncToolEmbedding: jest.fn((...args: unknown[]) => mockSyncToolEmbedding(...args)),
   toggleServerStatus: mockToggleServerStatus,
   reconnectServer: mockReconnectServer,
-  updateServerInfoVisibility: jest.fn((...args: unknown[]) => mockUpdateServerInfoVisibility(...args)),
+  updateServerInfoVisibility: jest.fn((...args: unknown[]) =>
+    mockUpdateServerInfoVisibility(...args),
+  ),
 }));
 
 jest.mock('../../src/services/userContextService.js', () => ({
@@ -108,6 +111,10 @@ import {
   updateServer,
   updateSystemConfig,
 } from '../../src/controllers/serverController.js';
+
+beforeEach(() => {
+  mockServerDao.findByName.mockResolvedValue([]);
+});
 
 describe('serverController - getAllSettings', () => {
   beforeEach(() => {
@@ -860,6 +867,32 @@ describe('serverController - system bearer auth context', () => {
     });
   });
 
+  it('returns 409 when a legacy name-addressed request matches multiple servers', async () => {
+    mockServerDao.findByName.mockResolvedValue([
+      { id: 'server-a', name: 'notion', owner: 'system-owner' },
+      { id: 'server-b', name: 'notion', owner: 'system-owner' },
+    ]);
+    const json = jest.fn();
+    const status = jest.fn().mockReturnThis();
+    const req = {
+      params: { name: 'notion' },
+      user: { username: 'system-owner', isAdmin: true },
+    } as unknown as Request;
+    const res = { json, status } as unknown as Response;
+
+    await getServerConfig(req, res);
+
+    expect(status).toHaveBeenCalledWith(409);
+    expect(json).toHaveBeenCalledWith({
+      success: false,
+      message: "Server name 'notion' is ambiguous; use a server ID",
+      data: [
+        { id: 'server-a', name: 'notion' },
+        { id: 'server-b', name: 'notion' },
+      ],
+    });
+  });
+
   it('allows updating an existing server with system bearer admin context', async () => {
     mockServerDao.findById.mockResolvedValue({
       name: 'existing-server',
@@ -1086,9 +1119,7 @@ describe('serverController - toggleServer (issue #938)', () => {
     expect(mockBroadcastToolListChanged).not.toHaveBeenCalled();
     expect(mockBroadcastPromptListChanged).not.toHaveBeenCalled();
     expect(mockBroadcastResourceListChanged).not.toHaveBeenCalled();
-    expect(json).toHaveBeenCalledWith(
-      expect.objectContaining({ success: true }),
-    );
+    expect(json).toHaveBeenCalledWith(expect.objectContaining({ success: true }));
   });
 
   it('disabling a server broadcasts tools/prompts/resources and does not trigger a fleet-wide re-init', async () => {
@@ -1101,9 +1132,7 @@ describe('serverController - toggleServer (issue #938)', () => {
     expect(mockBroadcastToolListChanged).toHaveBeenCalledTimes(1);
     expect(mockBroadcastPromptListChanged).toHaveBeenCalledTimes(1);
     expect(mockBroadcastResourceListChanged).toHaveBeenCalledTimes(1);
-    expect(json).toHaveBeenCalledWith(
-      expect.objectContaining({ success: true }),
-    );
+    expect(json).toHaveBeenCalledWith(expect.objectContaining({ success: true }));
   });
 });
 

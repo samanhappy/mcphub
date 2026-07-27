@@ -24,6 +24,7 @@ export class Group {
   servers: Array<
     | string
     | {
+        serverId?: string;
         name: string;
         alias?: string;
         tools?: string[] | 'all';

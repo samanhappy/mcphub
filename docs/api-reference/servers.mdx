@@ -34,6 +34,7 @@ Retrieves a list of all configured MCP servers, including their status and avail
     "success": true,
     "data": [
       {
+        "id": "bc13f5e2-9b2c-4b23-a80f-1b4fa18c0f62",
         "name": "example-server",
         "status": "connected",
         "tools": [
@@ -60,7 +61,8 @@ Returns the configuration of a single server, including upstream tools/prompts/r
 
 - **Endpoint**: `GET /api/servers/:name`
 - **Authentication**: Required.
-- Returns `404` if the server is not configured.
+- `:name` accepts the stable server ID or a unique server name.
+- Returns `409` with matching server IDs when a name is ambiguous, or `404` if the server is not configured.
 
 ---
 
@@ -82,7 +84,7 @@ Adds a new MCP server to the configuration.
     }
   }
   ```
-  - `name` (string, required): The unique name for the server.
+  - `name` (string, required): The display name for the server. Names may be reused across groups; the response includes the stable server `id`.
   - `config` (object, required): The server configuration object.
     - `type` (string): `stdio`, `sse`, `streamable-http`, or `openapi`.
     - `command` (string): Command to execute for `stdio` type.
@@ -119,6 +121,8 @@ Create several servers in a single request. The body contains a `servers` **arra
 
 Each element is validated independently, and the response contains a per-server `{ name, success, message? }` record so partial batches do not abort the whole request.
 
+Successful records also include `serverId`. Use that ID for later updates and group membership when names are duplicated.
+
 ---
 
 ### Update a Server
@@ -128,7 +132,7 @@ Updates the configuration of an existing MCP server.
 - **Endpoint**: `/api/servers/:name`
 - **Method**: `PUT`
 - **Parameters**:
-  - `:name` (string, required): The name of the server to update.
+  - `:name` (string, required): The stable ID or unique name of the server to update.
 - **Body**:
   ```json
   {

@@ -344,7 +344,7 @@ export const ServerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     async (server: Server) => {
       try {
         // Fetch single server config instead of all settings
-        const encodedServerName = encodeURIComponent(server.name);
+        const encodedServerName = encodeURIComponent(server.id ?? server.name);
         const serverData: ApiResponse<{
           name: string;
           status: string;
@@ -397,7 +397,8 @@ export const ServerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const handleServerToggle = useCallback(
     async (server: Server, enabled: boolean) => {
       try {
-        const encodedServerName = encodeURIComponent(server.name);
+        const serverIdentifier = server.id ?? server.name;
+        const encodedServerName = encodeURIComponent(serverIdentifier);
         const result = await apiPost(`/servers/${encodedServerName}/toggle`, { enabled });
 
         if (!result || !result.success) {
@@ -406,8 +407,8 @@ export const ServerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           return false;
         }
 
-        setServers((prev) => applyServerListPatch(prev, server.name, { enabled }));
-        setAllServers((prev) => applyServerListPatch(prev, server.name, { enabled }));
+        setServers((prev) => applyServerListPatch(prev, serverIdentifier, { enabled }));
+        setAllServers((prev) => applyServerListPatch(prev, serverIdentifier, { enabled }));
         setRefreshKey((prevKey) => prevKey + 1);
         return true;
       } catch (err) {
@@ -422,7 +423,8 @@ export const ServerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const handleServerVisibilityChange = useCallback(
     async (server: Server, visibility: 'private' | 'group' | 'public') => {
       try {
-        const encodedServerName = encodeURIComponent(server.name);
+        const serverIdentifier = server.id ?? server.name;
+        const encodedServerName = encodeURIComponent(serverIdentifier);
         const serverData: ApiResponse<{
           name: string;
           status: string;
@@ -447,8 +449,8 @@ export const ServerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           return false;
         }
 
-        setServers((prev) => applyServerListPatch(prev, server.name, { visibility }));
-        setAllServers((prev) => applyServerListPatch(prev, server.name, { visibility }));
+        setServers((prev) => applyServerListPatch(prev, serverIdentifier, { visibility }));
+        setAllServers((prev) => applyServerListPatch(prev, serverIdentifier, { visibility }));
         setRefreshKey((prevKey) => prevKey + 1);
         return true;
       } catch (err) {
@@ -463,7 +465,7 @@ export const ServerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const handleServerReload = useCallback(
     async (server: Server) => {
       try {
-        const encodedServerName = encodeURIComponent(server.name);
+        const encodedServerName = encodeURIComponent(server.id ?? server.name);
         const result = await apiPost(`/servers/${encodedServerName}/reload`, {});
 
         if (!result || !result.success) {
@@ -487,7 +489,7 @@ export const ServerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const handleServerReinstall = useCallback(
     async (server: Server) => {
       try {
-        const encodedServerName = encodeURIComponent(server.name);
+        const encodedServerName = encodeURIComponent(server.id ?? server.name);
         const result = await apiPost(`/servers/${encodedServerName}/reinstall`, {});
 
         if (!result || !result.success) {
@@ -511,7 +513,7 @@ export const ServerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const handleServerOAuthDisconnect = useCallback(
     async (server: Server) => {
       try {
-        const result = await disconnectServerOAuthRequest(server.name);
+        const result = await disconnectServerOAuthRequest(server.id ?? server.name);
 
         if (!result || !result.success) {
           console.error('Failed to disconnect server OAuth', { serverName: server.name, result });

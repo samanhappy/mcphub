@@ -26,6 +26,14 @@ export class ServerRepository {
     return await this.repository.findOne({ where: { name } });
   }
 
+  async findAllByName(name: string): Promise<Server[]> {
+    return await this.repository.find({ where: { name }, order: { createdAt: 'ASC' } });
+  }
+
+  async findById(id: string): Promise<Server | null> {
+    return await this.repository.findOne({ where: { id } });
+  }
+
   /**
    * Create a new server
    */
@@ -37,8 +45,8 @@ export class ServerRepository {
   /**
    * Update an existing server
    */
-  async update(name: string, serverData: Partial<Server>): Promise<Server | null> {
-    const server = await this.findByName(name);
+  async update(id: string, serverData: Partial<Server>): Promise<Server | null> {
+    const server = await this.findById(id);
     if (!server) {
       return null;
     }
@@ -49,16 +57,16 @@ export class ServerRepository {
   /**
    * Delete a server
    */
-  async delete(name: string): Promise<boolean> {
-    const result = await this.repository.delete({ name });
+  async delete(id: string): Promise<boolean> {
+    const result = await this.repository.delete({ id });
     return (result.affected ?? 0) > 0;
   }
 
   /**
    * Check if server exists
    */
-  async exists(name: string): Promise<boolean> {
-    const count = await this.repository.count({ where: { name } });
+  async exists(id: string): Promise<boolean> {
+    const count = await this.repository.count({ where: { id } });
     return count > 0;
   }
 
@@ -75,9 +83,9 @@ export class ServerRepository {
   async findAllPaginated(page: number, limit: number): Promise<{ data: Server[]; total: number }> {
     const skip = (page - 1) * limit;
     const [data, total] = await this.repository.findAndCount({
-      order: { 
-        enabled: 'DESC',  // Enabled servers first
-        createdAt: 'ASC'  // Then by creation time
+      order: {
+        enabled: 'DESC', // Enabled servers first
+        createdAt: 'ASC', // Then by creation time
       },
       skip,
       take: limit,
@@ -89,13 +97,17 @@ export class ServerRepository {
   /**
    * Find servers by owner with pagination
    */
-  async findByOwnerPaginated(owner: string, page: number, limit: number): Promise<{ data: Server[]; total: number }> {
+  async findByOwnerPaginated(
+    owner: string,
+    page: number,
+    limit: number,
+  ): Promise<{ data: Server[]; total: number }> {
     const skip = (page - 1) * limit;
     const [data, total] = await this.repository.findAndCount({
       where: { owner },
-      order: { 
-        enabled: 'DESC',  // Enabled servers first
-        createdAt: 'ASC'  // Then by creation time
+      order: {
+        enabled: 'DESC', // Enabled servers first
+        createdAt: 'ASC', // Then by creation time
       },
       skip,
       take: limit,
@@ -143,15 +155,15 @@ export class ServerRepository {
   /**
    * Set server enabled status
    */
-  async setEnabled(name: string, enabled: boolean): Promise<Server | null> {
-    return await this.update(name, { enabled });
+  async setEnabled(id: string, enabled: boolean): Promise<Server | null> {
+    return await this.update(id, { enabled });
   }
 
   /**
    * Rename a server
    */
-  async rename(oldName: string, newName: string): Promise<boolean> {
-    const server = await this.findByName(oldName);
+  async rename(id: string, newName: string): Promise<boolean> {
+    const server = await this.findById(id);
     if (!server) {
       return false;
     }

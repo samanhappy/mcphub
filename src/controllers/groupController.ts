@@ -490,7 +490,8 @@ export const deleteExistingGroup = async (req: Request, res: Response): Promise<
 export const addServerToExistingGroup = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    const { serverName } = req.body;
+    const { serverId, serverName } = req.body;
+    const serverIdentifier = serverId || serverName;
     if (!id) {
       res.status(400).json({
         success: false,
@@ -499,15 +500,15 @@ export const addServerToExistingGroup = async (req: Request, res: Response): Pro
       return;
     }
 
-    if (!serverName) {
+    if (!serverIdentifier) {
       res.status(400).json({
         success: false,
-        message: 'Server name is required',
+        message: 'Server ID or name is required',
       });
       return;
     }
 
-    const updatedGroup = await addServerToGroup(id, serverName);
+    const updatedGroup = await addServerToGroup(id, serverIdentifier, Boolean(serverId));
     if (!updatedGroup) {
       res.status(404).json({
         success: false,

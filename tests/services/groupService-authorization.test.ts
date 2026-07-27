@@ -10,6 +10,7 @@ const mockGroupDao = {
 const mockServerDao = {
   findAll: jest.fn(),
   findById: jest.fn(),
+  findByName: jest.fn(),
 };
 
 const mockUserContextService = {
@@ -74,8 +75,14 @@ describe('groupService authorization', () => {
     }));
     mockGroupDao.delete.mockResolvedValue(true);
 
-    mockServerDao.findAll.mockResolvedValue([{ name: 'server-1' }, { name: 'server-2' }]);
-    mockServerDao.findById.mockResolvedValue({ name: 'server-1' });
+    mockServerDao.findAll.mockResolvedValue([
+      { id: 'server-1-id', name: 'server-1' },
+      { id: 'server-2-id', name: 'server-2' },
+    ]);
+    mockServerDao.findById.mockResolvedValue({ id: 'server-1-id', name: 'server-1' });
+    mockServerDao.findByName.mockImplementation(async (name: string) => [
+      { id: `${name}-id`, name },
+    ]);
   });
 
   it('rejects updateGroup for non-owner non-admin users', async () => {
@@ -94,7 +101,7 @@ describe('groupService authorization', () => {
   });
 
   it('rejects addServerToGroup for non-owner non-admin users', async () => {
-    mockServerDao.findById.mockResolvedValue({ name: 'server-2' });
+    mockServerDao.findById.mockResolvedValue({ id: 'server-2-id', name: 'server-2' });
 
     await expect(addServerToGroup('group-1', 'server-2')).resolves.toBeNull();
     expect(mockGroupDao.update).not.toHaveBeenCalled();
@@ -106,7 +113,9 @@ describe('groupService authorization', () => {
   });
 
   it('rejects updateServerToolsInGroup for non-owner non-admin users', async () => {
-    await expect(updateServerToolsInGroup('group-1', 'server-1', ['dangerous-tool'])).resolves.toBeNull();
+    await expect(
+      updateServerToolsInGroup('group-1', 'server-1', ['dangerous-tool']),
+    ).resolves.toBeNull();
     expect(mockGroupDao.update).not.toHaveBeenCalled();
   });
 

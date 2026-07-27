@@ -463,7 +463,7 @@ export const handleSearchToolsRequest = async (
           const tools = await filterToolsByConfigFn(server.name, [actualTool]);
           if (tools.length > 0) {
             // Apply custom description from configuration
-            const serverConfig = await getServerDao().findById(server.name);
+            const serverConfig = await getServerDao().findById(server.id ?? server.name);
             const toolConfig = serverConfig?.tools?.[actualTool.name];
 
             // Return the actual tool info from serverInfos with custom description
@@ -623,7 +623,7 @@ export const handleDescribeToolRequest = async (
     }
 
     // Get custom description from configuration
-    const serverConfig = await getServerDao().findById(serverInfo.name);
+    const serverConfig = await getServerDao().findById(serverInfo.id ?? serverInfo.name);
     const toolConfig = serverConfig?.tools?.[tool.name];
 
     // Return full tool information

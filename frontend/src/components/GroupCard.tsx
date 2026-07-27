@@ -16,22 +16,25 @@ interface GroupCardProps {
 }
 
 const getServerNames = (servers: string[] | IGroupServerConfig[]): string[] =>
-  servers.map((server) => (typeof server === 'string' ? server : server.name));
+  servers.map((server) => (typeof server === 'string' ? server : (server.serverId ?? server.name)));
 
-const getServerConfig = (group: Group, serverName: string): IGroupServerConfig => {
-  const server = group.servers.find((s) =>
-    typeof s === 'string' ? s === serverName : s.name === serverName,
+const getServerConfig = (group: Group, server: Server): IGroupServerConfig => {
+  const serverIdentifier = server.id ?? server.name;
+  const configEntry = group.servers.find((s) =>
+    typeof s === 'string'
+      ? s === server.name
+      : s.serverId === serverIdentifier || (!s.serverId && s.name === server.name),
   );
-  if (!server) return { name: serverName, tools: 'all', prompts: 'all', resources: 'all' };
-  if (typeof server === 'string') {
-    return { name: server, tools: 'all', prompts: 'all', resources: 'all' };
+  if (!configEntry) return { name: server.name, tools: 'all', prompts: 'all', resources: 'all' };
+  if (typeof configEntry === 'string') {
+    return { name: configEntry, tools: 'all', prompts: 'all', resources: 'all' };
   }
-  return server;
+  return configEntry;
 };
 
-const getServerDisplayName = (group: Group, serverName: string): string => {
-  const config = getServerConfig(group, serverName);
-  return config.alias?.trim() || serverName;
+const getServerDisplayName = (group: Group, server: Server): string => {
+  const config = getServerConfig(group, server);
+  return config.alias?.trim() || server.name;
 };
 
 const copyText = async (value: string): Promise<boolean> => {
@@ -95,10 +98,12 @@ const GroupCard = ({ group, servers, onEdit, onDelete, cost }: GroupCardProps) =
   const groupEndpoint = `${baseUrl}/mcp/${group.name}`;
 
   const serverNames = getServerNames(group.servers);
-  const groupServers = servers.filter((s) => serverNames.includes(s.name));
+  const groupServers = servers.filter(
+    (server) => serverNames.includes(server.id ?? server.name) || serverNames.includes(server.name),
+  );
 
   const tally = (server: Server) => {
-    const cfg = getServerConfig(group, server.name);
+    const cfg = getServerConfig(group, server);
     const prefix = `${server.name}${nameSeparator}`;
     const allTools = server.tools || [];
     const allPrompts = server.prompts || [];
@@ -273,7 +278,7 @@ const GroupCard = ({ group, servers, onEdit, onDelete, cost }: GroupCardProps) =
                     }}
                   />
                   <span className="hub-mono truncate flex-1" style={{ fontSize: 12.5 }}>
-                    <span title={s.name}>{getServerDisplayName(group, s.name)}</span>
+                    <span title={s.name}>{getServerDisplayName(group, s)}</span>
                   </span>
                   <span
                     className="hub-mono hub-num flex-shrink-0"

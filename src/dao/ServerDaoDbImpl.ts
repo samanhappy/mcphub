@@ -11,6 +11,13 @@ export class ServerDaoDbImpl implements ServerDao {
     this.repository = new ServerRepository();
   }
 
+  private async resolveServer(identifier: string) {
+    const byId = await this.repository.findById(identifier);
+    if (byId) return byId;
+    const byName = await this.repository.findAllByName(identifier);
+    return byName.length === 1 ? byName[0] : null;
+  }
+
   async findAll(): Promise<ServerConfigWithName[]> {
     const servers = await this.repository.findAll();
     return servers.map((s) => this.mapToServerConfig(s));
@@ -67,11 +74,16 @@ export class ServerDaoDbImpl implements ServerDao {
   }
 
   async findById(name: string): Promise<ServerConfigWithName | null> {
-    const server = await this.repository.findByName(name);
+    const server = await this.resolveServer(name);
     return server ? this.mapToServerConfig(server) : null;
   }
 
-  async create(entity: ServerConfigWithName): Promise<ServerConfigWithName> {
+  async findByName(name: string): Promise<ServerConfigWithName[]> {
+    const servers = await this.repository.findAllByName(name);
+    return servers.map((server) => this.mapToServerConfig(server));
+  }
+
+  async create(entity: Omit<ServerConfigWithName, 'id'>): Promise<ServerConfigWithName> {
     const server = await this.repository.create({
       name: entity.name,
       type: entity.type,
@@ -147,16 +159,20 @@ export class ServerDaoDbImpl implements ServerDao {
     assignNullable('passthroughHeaders');
     assignNullable('perSessionClient');
 
-    const server = await this.repository.update(name, updateData as any);
+    const existing = await this.resolveServer(name);
+    if (!existing) return null;
+    const server = await this.repository.update(existing.id, updateData as any);
     return server ? this.mapToServerConfig(server) : null;
   }
 
   async delete(name: string): Promise<boolean> {
-    return await this.repository.delete(name);
+    const existing = await this.resolveServer(name);
+    return existing ? await this.repository.delete(existing.id) : false;
   }
 
   async exists(name: string): Promise<boolean> {
-    return await this.repository.exists(name);
+    if (await this.repository.exists(name)) return true;
+    return (await this.repository.findAllByName(name)).length > 0;
   }
 
   async count(): Promise<number> {
@@ -179,7 +195,9 @@ export class ServerDaoDbImpl implements ServerDao {
   }
 
   async setEnabled(name: string, enabled: boolean): Promise<boolean> {
-    const server = await this.repository.setEnabled(name, enabled);
+    const existing = await this.resolveServer(name);
+    if (!existing) return false;
+    const server = await this.repository.setEnabled(existing.id, enabled);
     return server !== null;
   }
 
@@ -208,15 +226,12 @@ export class ServerDaoDbImpl implements ServerDao {
   }
 
   async rename(oldName: string, newName: string): Promise<boolean> {
-    // Check if newName already exists
-    if (await this.repository.exists(newName)) {
-      throw new Error(`Server ${newName} already exists`);
-    }
-
-    return await this.repository.rename(oldName, newName);
+    const existing = await this.resolveServer(oldName);
+    return existing ? await this.repository.rename(existing.id, newName) : false;
   }
 
   private mapToServerConfig(server: {
+    id: string;
     name: string;
     type?: string;
     description?: string;
@@ -241,6 +256,7 @@ export class ServerDaoDbImpl implements ServerDao {
     perSessionClient?: boolean;
   }): ServerConfigWithName {
     return {
+      id: server.id,
       name: server.name,
       type: server.type as 'stdio' | 'sse' | 'streamable-http' | 'openapi' | undefined,
       description: server.description,

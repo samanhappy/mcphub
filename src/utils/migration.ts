@@ -60,14 +60,18 @@ export async function migrateToDatabase(): Promise<boolean> {
       }
     }
 
+    const migratedServerIds = new Map<string, string>();
+
     // Migrate servers
     if (settings.mcpServers) {
       const serverNames = Object.keys(settings.mcpServers);
       console.log(`Migrating ${serverNames.length} servers...`);
-      for (const [name, config] of Object.entries(settings.mcpServers)) {
-        const exists = await serverRepo.exists(name);
-        if (!exists) {
-          await serverRepo.create({
+      for (const [storageId, config] of Object.entries(settings.mcpServers)) {
+        const name = config.name || storageId;
+        const legacyMatches = config.name ? [] : await serverRepo.findAllByName(name);
+        const existing = legacyMatches.length === 1 ? legacyMatches[0] : null;
+        if (!existing) {
+          const created = await serverRepo.create({
             name,
             type: config.type,
             description: config.description,
@@ -90,8 +94,10 @@ export async function migrateToDatabase(): Promise<boolean> {
             passthroughHeaders: config.passthroughHeaders,
             perSessionClient: config.perSessionClient,
           });
+          migratedServerIds.set(storageId, created.id);
           console.log(`  - Created server: ${name}`);
         } else {
+          migratedServerIds.set(storageId, existing.id);
           console.log(`  - Server already exists: ${name}`);
         }
       }
@@ -106,7 +112,18 @@ export async function migrateToDatabase(): Promise<boolean> {
           await groupRepo.create({
             name: group.name,
             description: group.description,
-            servers: Array.isArray(group.servers) ? group.servers : [],
+            servers: Array.isArray(group.servers)
+              ? group.servers.map((server) => {
+                  if (typeof server === 'string') {
+                    const serverId = migratedServerIds.get(server);
+                    return serverId ? { serverId, name: server } : server;
+                  }
+
+                  const storageId = server.serverId ?? server.name;
+                  const serverId = migratedServerIds.get(storageId);
+                  return serverId ? { ...server, serverId } : server;
+                })
+              : [],
             owner: group.owner,
           });
           console.log(`  - Created group: ${group.name}`);

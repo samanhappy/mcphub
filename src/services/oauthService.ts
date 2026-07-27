@@ -237,12 +237,13 @@ export const initializeAllOAuthClients = async (): Promise<void> => {
 
   for (const serverConfig of allServers) {
     const serverName = serverConfig.name;
+    const serverId = serverConfig.id;
 
     // Only initialize servers with explicitly enabled dynamic registration
     // Others will be auto-detected and registered on first 401 response
     if (serverConfig.oauth?.dynamicRegistration?.enabled === true) {
       registrationPromises.push(
-        initializeOAuthForServer(serverName, serverConfig)
+        initializeOAuthForServer(serverId, serverConfig)
           .then((clientInfo) => {
             if (clientInfo) {
               console.log('OAuth client pre-registered for server', { serverName });

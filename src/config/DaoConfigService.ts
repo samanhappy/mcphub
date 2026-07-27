@@ -12,6 +12,7 @@ import {
   getSystemConfigDao,
   getUserConfigDao,
 } from '../dao/index.js';
+import { serializeServersForSettings } from '../utils/serverSettings.js';
 
 /**
  * Configuration service using DAO layer
@@ -38,11 +39,7 @@ export class DaoConfigService {
     ]);
 
     // Convert servers back to the original format
-    const mcpServers: { [key: string]: ServerConfig } = {};
-    for (const server of servers) {
-      const { name, ...config } = server;
-      mcpServers[name] = config;
-    }
+    const mcpServers = serializeServersForSettings(servers);
 
     const settings: McpSettings = {
       users,
@@ -95,21 +92,42 @@ export class DaoConfigService {
       // Save servers
       if (settings.mcpServers) {
         const currentServers = await this.serverDao.findAll();
-        const currentServerNames = new Set(currentServers.map((s: ServerConfigWithName) => s.name));
+        const retainedServerIds = new Set<string>();
+        const incomingNameCounts = new Map<string, number>();
+        const currentNameCounts = new Map<string, number>();
+        for (const [storageId, storedConfig] of Object.entries(settings.mcpServers)) {
+          const name = storedConfig.name || storageId;
+          incomingNameCounts.set(name, (incomingNameCounts.get(name) ?? 0) + 1);
+        }
+        for (const server of currentServers) {
+          currentNameCounts.set(server.name, (currentNameCounts.get(server.name) ?? 0) + 1);
+        }
 
-        for (const [name, config] of Object.entries(settings.mcpServers)) {
-          const serverWithName: ServerConfigWithName = { name, ...config };
-          if (currentServerNames.has(name)) {
-            promises.push(this.serverDao.update(name, serverWithName));
+        for (const [storageId, storedConfig] of Object.entries(settings.mcpServers)) {
+          const { name: storedName, ...config } = storedConfig;
+          const name = storedName || storageId;
+          const existingById = currentServers.find(
+            (server: ServerConfigWithName) => server.id === storageId,
+          );
+          const canMatchLegacyName =
+            incomingNameCounts.get(name) === 1 && currentNameCounts.get(name) === 1;
+          const existing =
+            existingById ||
+            (canMatchLegacyName
+              ? currentServers.find((server: ServerConfigWithName) => server.name === name)
+              : undefined);
+          if (existing) {
+            retainedServerIds.add(existing.id);
+            promises.push(this.serverDao.update(existing.id, { name, ...config }));
           } else {
-            promises.push(this.serverDao.create(serverWithName));
+            promises.push(this.serverDao.create({ name, ...config }));
           }
         }
 
         // Remove servers that are no longer in the settings
         for (const existingServer of currentServers) {
-          if (!settings.mcpServers[existingServer.name]) {
-            promises.push(this.serverDao.delete(existingServer.name));
+          if (!retainedServerIds.has(existingServer.id)) {
+            promises.push(this.serverDao.delete(existingServer.id));
           }
         }
       }

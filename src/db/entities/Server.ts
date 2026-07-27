@@ -14,7 +14,7 @@ export class Server {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ type: 'varchar', length: 255, unique: true })
+  @Column({ type: 'varchar', length: 255 })
   name: string;
 
   @Column({ type: 'varchar', length: 50, nullable: true })

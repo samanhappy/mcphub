@@ -25,6 +25,7 @@ export interface IGroup {
 
 // Server configuration within a group - supports tool selection
 export interface IGroupServerConfig {
+  serverId?: string; // Stable server identity; legacy entries may only contain name
   name: string; // Server name
   alias?: string; // Optional exposed name for this server within the group
   tools?: string[] | 'all'; // Array of specific tool names to include, or 'all' for all tools (default: 'all')
@@ -359,7 +360,7 @@ export interface BearerKey {
 export interface McpSettings {
   users?: IUser[]; // Array of user credentials and permissions
   mcpServers: {
-    [key: string]: ServerConfig; // Key-value pairs of server names and their configurations
+    [key: string]: ServerConfig & { name?: string }; // Stable ID keys; legacy files use names
   };
   groups?: IGroup[]; // Array of server groups
   systemConfig?: SystemConfig; // System-wide configuration settings
@@ -510,7 +511,8 @@ export interface OpenAPISecurityConfig {
 
 // Information about a server's status and tools
 export interface ServerInfo {
-  name: string; // Unique name of the server
+  id?: string; // Stable server identity; optional only for legacy/test fixtures
+  name: string; // User-facing server name; may be reused across groups
   version?: string; // Upstream server version reported during MCP initialization
   instructions?: string; // Upstream server instructions reported during MCP initialization
   owner?: string; // Owner of the server, defaults to 'admin' user
@@ -623,6 +625,7 @@ export interface BatchCreateServersRequest {
 // Result for a single server in batch operation
 export interface BatchServerResult {
   name: string; // Server name
+  serverId?: string; // Stable server identity when creation succeeds
   success: boolean; // Whether the operation succeeded
   message?: string; // Error message if failed
 }

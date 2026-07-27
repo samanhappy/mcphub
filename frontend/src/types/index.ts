@@ -300,6 +300,7 @@ export interface OpenAPISecurityConfig {
 
 // Server types
 export interface Server {
+  id?: string;
   name: string;
   owner?: string;
   visibility?: 'private' | 'group' | 'public';
@@ -320,6 +321,7 @@ export interface Server {
 // Group types
 // Group server configuration - supports tool selection
 export interface IGroupServerConfig {
+  serverId?: string;
   name: string; // Server name
   alias?: string; // Optional exposed name for this server within the group
   tools?: string[] | 'all'; // Array of specific tool names to include, or 'all' for all tools (default: 'all')

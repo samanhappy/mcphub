@@ -189,6 +189,7 @@ const ServerCard = ({
   const isMcpApp = serverExposesMcpApp(server);
   const enabled = server.enabled !== false;
   const canManage = canManageServer(server, auth.user);
+  const serverIdentifier = server.id ?? server.name;
   // Reinstall is only available for stdio servers using npx or uvx
   const supportsReinstall =
     server.config?.command === 'npx' || server.config?.command === 'uvx';
@@ -319,7 +320,7 @@ const ServerCard = ({
     setShowMenu(false);
     if (!canManage) return;
     try {
-      const result = await exportMCPSettings(server.name);
+      const result = await exportMCPSettings(serverIdentifier);
       if (!result || !result.success || !result.data) {
         showToast(result?.message || t('common.copyFailed') || 'Copy failed', 'error');
         return;
@@ -351,7 +352,7 @@ const ServerCard = ({
   const handleToolToggle = async (toolName: string, enabled: boolean) => {
     try {
       const { toggleTool } = await import('@/services/toolService');
-      const result = await toggleTool(server.name, toolName, enabled);
+      const result = await toggleTool(serverIdentifier, toolName, enabled);
       if (result.success) {
         showToast(t(enabled ? 'tool.enableSuccess' : 'tool.disableSuccess', { name: toolName }), 'success');
         onRefresh?.();
@@ -367,7 +368,7 @@ const ServerCard = ({
   const handlePromptToggle = async (promptName: string, enabled: boolean) => {
     try {
       const { togglePrompt } = await import('@/services/promptService');
-      const result = await togglePrompt(server.name, promptName, enabled);
+      const result = await togglePrompt(serverIdentifier, promptName, enabled);
       if (result.success) {
         showToast(t(enabled ? 'tool.enableSuccess' : 'tool.disableSuccess', { name: promptName }), 'success');
         onRefresh?.();
@@ -383,7 +384,7 @@ const ServerCard = ({
   const handleResourceToggle = async (resourceUri: string, enabled: boolean) => {
     try {
       const { toggleResource } = await import('@/services/resourceService');
-      const result = await toggleResource(server.name, resourceUri, enabled);
+      const result = await toggleResource(serverIdentifier, resourceUri, enabled);
       if (result.success) {
         showToast(t(enabled ? 'tool.enableSuccess' : 'tool.disableSuccess', { name: resourceUri }), 'success');
         onRefresh?.();
@@ -422,8 +423,8 @@ const ServerCard = ({
         '@/services/resourceService'
       );
       const result = options?.restored
-        ? await resetResourceDescription(server.name, resourceUri)
-        : await updateResourceDescription(server.name, resourceUri, description);
+        ? await resetResourceDescription(serverIdentifier, resourceUri)
+        : await updateResourceDescription(serverIdentifier, resourceUri, description);
       if (result.success) {
         showToast(
           options?.restored
@@ -463,7 +464,7 @@ const ServerCard = ({
     return parts.join(' ');
   })();
 
-  const serverEndpoint = `${baseUrl}/mcp/${server.name}`;
+  const serverEndpoint = `${baseUrl}/mcp/${serverIdentifier}`;
   const translateVisibility = (key: string, options?: { defaultValue?: string }) => t(key, options);
   const visibility = getServerVisibilityDisplay(
     translateVisibility,
@@ -926,7 +927,7 @@ const ServerCard = ({
                 {server.tools.map((tool, index) => (
                   <ToolCard
                     key={index}
-                    server={server.name}
+                    server={serverIdentifier}
                     tool={tool}
                     readOnly={!canManage}
                     onToggle={handleToolToggle}
@@ -941,7 +942,7 @@ const ServerCard = ({
                 {server.prompts.map((prompt, index) => (
                   <PromptCard
                     key={index}
-                    server={server.name}
+                    server={serverIdentifier}
                     prompt={prompt}
                     readOnly={!canManage}
                     onToggle={handlePromptToggle}
@@ -981,7 +982,7 @@ const ServerCard = ({
         isOpen={showDeleteDialog}
         onClose={() => setShowDeleteDialog(false)}
         onConfirm={() => {
-          onRemove(server.name);
+          onRemove(serverIdentifier);
           setShowDeleteDialog(false);
         }}
         serverName={server.name}

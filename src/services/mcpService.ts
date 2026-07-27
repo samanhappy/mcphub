@@ -194,9 +194,20 @@ ${proxyLine}
 const isSafeCommand = (command: string): boolean => {
   // Block shell builtins that could be used for command injection
   const blockedCommands = new Set([
-    'sh', 'bash', 'zsh', 'fish', 'csh', 'ksh', 'tcsh',
-    'cmd', 'powershell', 'pwsh',
-    'eval', 'exec', 'source', '.',
+    'sh',
+    'bash',
+    'zsh',
+    'fish',
+    'csh',
+    'ksh',
+    'tcsh',
+    'cmd',
+    'powershell',
+    'pwsh',
+    'eval',
+    'exec',
+    'source',
+    '.',
   ]);
 
   const basename = command.split('/').pop()?.split('\\').pop()?.toLowerCase() || '';
@@ -217,7 +228,7 @@ const isSafeCommand = (command: string): boolean => {
  * Removes shell metacharacters and dangerous patterns.
  */
 const sanitizeArgs = (args: string[]): string[] => {
-  return args.map(arg => {
+  return args.map((arg) => {
     // Remove shell metacharacters that could be used for injection
     // Allow common flags (-f, --flag, -vvv) and paths
     if (/^[a-zA-Z0-9._/\\:@=+,-]+$/.test(arg)) {
@@ -255,9 +266,7 @@ const wrapWithProxychains = (
 
   // SECURITY: Validate command is safe
   if (!isSafeCommand(command)) {
-    console.error(
-      `[${serverName}] Blocked unsafe command for proxychains4 wrapping: ${command}`,
-    );
+    console.error(`[${serverName}] Blocked unsafe command for proxychains4 wrapping: ${command}`);
     throw new Error(
       `[${serverName}] Unsafe command blocked: ${command}. Shell builtins and metacharacters are not allowed.`,
     );
@@ -472,7 +481,10 @@ const getOrCreateIsolatedClient = async (
     }
 
     const reservedClients = sessionIsolatedClients.get(sessionId);
-    const transport = await createTransportFromConfig(serverInfo.name, serverConfig);
+    const transport = await createTransportFromConfig(
+      serverInfo.id ?? serverInfo.name,
+      serverConfig,
+    );
     const client = createUpstreamMcpClient(serverInfo.name, () => serverInfo);
 
     try {
@@ -1204,9 +1216,7 @@ export const createTransportFromConfig = async (name: string, conf: ServerConfig
   // Admin-owned servers may legitimately target internal services, so they
   // skip the internal-IP blocklist. allowInternal also governs per-hop
   // redirect validation in createRedirectValidatingFetch below.
-  const ownerUser = conf.owner
-    ? await getUserDao().findByUsername(conf.owner)
-    : null;
+  const ownerUser = conf.owner ? await getUserDao().findByUsername(conf.owner) : null;
   const allowInternal = !!ownerUser?.isAdmin;
 
   if (conf.url) {
@@ -1333,7 +1343,6 @@ export const createTransportFromConfig = async (name: string, conf: ServerConfig
   return transport;
 };
 
-
 type IsolatedClientContext = {
   sessionId: string;
   client: Client;
@@ -1374,12 +1383,15 @@ const callToolWithReconnect = async (
         );
 
         try {
-          const server = await getServerDao().findById(serverInfo.name);
+          const server = await getServerDao().findById(serverInfo.id ?? serverInfo.name);
           if (!server) {
             throw new Error(`Server configuration not found for: ${serverInfo.name}`);
           }
 
-          const newTransport = await createTransportFromConfig(serverInfo.name, server);
+          const newTransport = await createTransportFromConfig(
+            serverInfo.id ?? serverInfo.name,
+            server,
+          );
           const newClient = createUpstreamMcpClient(serverInfo.name, () => serverInfo);
 
           // Reconnect with new transport
@@ -1389,9 +1401,17 @@ const callToolWithReconnect = async (
             // Isolated path: close only this session's stale connection and
             // replace its entry in the per-session map. Never touch the shared
             // serverInfo client/transport.
-            try { client.close(); } catch { /* empty */ }
-            try { transport.close(); } catch { /* empty */ }
-            
+            try {
+              client.close();
+            } catch {
+              /* empty */
+            }
+            try {
+              transport.close();
+            } catch {
+              /* empty */
+            }
+
             setSessionIsolatedClient(isolated.sessionId, serverInfo.name, newClient, newTransport);
           } else {
             // Shared path: tear down and replace the shared connection.
@@ -1399,8 +1419,16 @@ const callToolWithReconnect = async (
               clearInterval(serverInfo.keepAliveIntervalId);
               serverInfo.keepAliveIntervalId = undefined;
             }
-            try { serverInfo.client?.close(); } catch { /* empty */ }
-            try { transport.close(); } catch { /* empty */ }
+            try {
+              serverInfo.client?.close();
+            } catch {
+              /* empty */
+            }
+            try {
+              transport.close();
+            } catch {
+              /* empty */
+            }
 
             serverInfo.client = newClient;
             serverInfo.transport = newTransport;
@@ -1484,7 +1512,8 @@ export const initializeClientsFromSettings = async (
 
   try {
     for (const conf of allServers) {
-      const { name } = conf;
+      const { id, name } = conf;
+      const serverId = id ?? name;
 
       // Expand environment variables in all configuration values
       const expandedConf = replaceEnvVars(conf as any) as ServerConfigWithName;
@@ -1493,6 +1522,7 @@ export const initializeClientsFromSettings = async (
       if (expandedConf.enabled === false) {
         console.log(`Skipping disabled server: ${name}`);
         nextServerInfos.push({
+          id: serverId,
           name,
           owner: expandedConf.owner,
           visibility: expandedConf.visibility,
@@ -1517,14 +1547,12 @@ export const initializeClientsFromSettings = async (
       //   server's state if it is already connected, or if an OAuth
       //   authorization is in flight. Reconnecting during PKCE authorization
       //   would replace the pending code verifier and break the callback.
-      const existingServer = existingServerInfos.find((s) => s.name === name);
-      const isDifferentServer = Boolean(serverName) && serverName !== name;
+      const existingServer = existingServerInfos.find((s) => (s.id ?? s.name) === serverId);
+      const isDifferentServer =
+        Boolean(serverName) && serverName !== serverId && serverName !== name;
       const hasInflightOAuthAuthorization =
         existingServer?.status === 'oauth_required' &&
-        Boolean(
-          expandedConf.oauth?.pendingAuthorization?.state ||
-            existingServer.oauth?.state,
-        );
+        Boolean(expandedConf.oauth?.pendingAuthorization?.state || existingServer.oauth?.state);
       if (
         existingServer &&
         (isDifferentServer ||
@@ -1551,6 +1579,7 @@ export const initializeClientsFromSettings = async (
             `Skipping OpenAPI server '${name}': missing OpenAPI specification URL or schema`,
           );
           nextServerInfos.push({
+            id: serverId,
             name,
             owner: expandedConf.owner,
             visibility: expandedConf.visibility,
@@ -1566,6 +1595,7 @@ export const initializeClientsFromSettings = async (
 
         // Create server info first and keep reference to it
         const serverInfo: ServerInfo = {
+          id: serverId,
           name,
           owner: expandedConf.owner,
           visibility: expandedConf.visibility,
@@ -1599,7 +1629,7 @@ export const initializeClientsFromSettings = async (
                 openapi: openapiConfig,
               };
 
-              await getServerDao().update(name, {
+              await getServerDao().update(serverId, {
                 openapi: openapiConfig,
               });
             },
@@ -1656,7 +1686,7 @@ export const initializeClientsFromSettings = async (
           continue;
         }
       } else {
-        transport = await createTransportFromConfig(name, expandedConf);
+        transport = await createTransportFromConfig(serverId, expandedConf);
       }
 
       const serverInfoRef: { current?: ServerInfo } = {};
@@ -1679,6 +1709,7 @@ export const initializeClientsFromSettings = async (
 
       // Create server info first and keep reference to it
       const serverInfo: ServerInfo = {
+        id: serverId,
         name,
         owner: expandedConf.owner,
         visibility: expandedConf.visibility,
@@ -1862,21 +1893,22 @@ export const getServersInfo = async (
   // a POST /api/servers immediately followed by GET /api/servers would not
   // return the newly created server until background initialization completes.
   const combinedServerInfos: ServerInfo[] = [...serverInfos];
-  const existingNames = new Set(combinedServerInfos.map((s) => s.name));
+  const existingIds = new Set(combinedServerInfos.map((s) => s.id ?? s.name));
 
   // Create a set of server names we're interested in (for pagination)
-  const requestedServerNames = new Set(allServers.map((s) => s.name));
+  const requestedServerIds = new Set(allServers.map((s) => s.id ?? s.name));
 
   // Filter serverInfos to only include requested servers if pagination is used
   const filteredServerInfos = isPaginated
-    ? combinedServerInfos.filter((s) => requestedServerNames.has(s.name))
+    ? combinedServerInfos.filter((s) => requestedServerIds.has(s.id ?? s.name))
     : combinedServerInfos;
 
   // Add servers from DAO that don't have runtime info yet
   for (const server of allServers) {
-    if (!existingNames.has(server.name)) {
+    if (!existingIds.has(server.id ?? server.name)) {
       const isEnabled = server.enabled === undefined ? true : server.enabled;
       filteredServerInfos.push({
+        id: server.id,
         name: server.name,
         owner: server.owner,
         visibility: server.visibility,
@@ -1904,9 +1936,10 @@ export const getServersInfo = async (
       : filteredServerInfos;
 
   const infos = filterServerInfos
-    .filter((info) => requestedServerNames.has(info.name)) // Only include requested servers
+    .filter((info) => requestedServerIds.has(info.id ?? info.name)) // Only include requested servers
     .map(
       ({
+        id,
         name,
         version,
         instructions,
@@ -1920,7 +1953,9 @@ export const getServersInfo = async (
         error,
         oauth,
       }) => {
-        const serverConfig = allServers.find((server) => server.name === name);
+        const serverConfig = allServers.find(
+          (server) => (server.id ?? server.name) === (id ?? name),
+        );
         const enabled = serverConfig ? serverConfig.enabled !== false : true;
         const resolvedType = inferServerType(serverConfig);
         const oauthConnected = Boolean(
@@ -1943,6 +1978,7 @@ export const getServersInfo = async (
         });
 
         return {
+          id,
           name,
           version,
           instructions,
@@ -1988,7 +2024,10 @@ export const getServersInfo = async (
 
 // Get server by name
 export const getServerByName = (name: string): ServerInfo | undefined => {
-  return serverInfos.find((serverInfo) => serverInfo.name === name);
+  const byId = serverInfos.find((serverInfo) => serverInfo.id === name);
+  if (byId) return byId;
+  const byName = serverInfos.filter((serverInfo) => serverInfo.name === name);
+  return byName.length === 1 ? byName[0] : undefined;
 };
 
 // Get server by OAuth state parameter
@@ -2112,11 +2151,10 @@ const getServerByTool = (toolName: string): ServerInfo | undefined => {
 export const addServer = async (
   name: string,
   config: ServerConfig,
-): Promise<{ success: boolean; message?: string }> => {
-  const server: ServerConfigWithName = { name, ...config };
-  const result = await getServerDao().create(server);
+): Promise<{ success: boolean; message?: string; serverId?: string }> => {
+  const result = await getServerDao().create({ name, ...config });
   if (result) {
-    return { success: true, message: 'Server added successfully' };
+    return { success: true, message: 'Server added successfully', serverId: result.id };
   } else {
     return { success: false, message: 'Failed to add server' };
   }
@@ -2124,9 +2162,17 @@ export const addServer = async (
 
 // Remove server
 export const removeServer = async (
-  name: string,
+  identifier: string,
 ): Promise<{ success: boolean; message?: string }> => {
-  const result = await getServerDao().delete(name);
+  const storedServer = await getServerDao().findById(identifier);
+  const runtimeMatches = serverInfos.filter(
+    (serverInfo) =>
+      (serverInfo.id ?? serverInfo.name) === identifier || serverInfo.name === identifier,
+  );
+  const runtimeServer = runtimeMatches.length === 1 ? runtimeMatches[0] : undefined;
+  const serverId = storedServer?.id ?? runtimeServer?.id ?? identifier;
+  const serverName = storedServer?.name ?? runtimeServer?.name ?? identifier;
+  const result = await getServerDao().delete(serverId);
   if (!result) {
     return { success: false, message: 'Failed to remove server' };
   }
@@ -2135,15 +2181,15 @@ export const removeServer = async (
   // dropping the serverInfos reference. Without this, a stdio child launched
   // via npx / npm exec outlives the request and becomes an unkillable orphan
   // that leaks memory until the container is restarted.
-  closeServer(name);
+  closeServer(serverId);
 
   try {
-    await removeServerToolEmbeddings(name);
+    await removeServerToolEmbeddings(serverName);
   } catch (error) {
-    console.warn('Failed to remove embeddings for server', { serverName: name, error });
+    console.warn('Failed to remove embeddings for server', { serverName, error });
   }
 
-  serverInfos = serverInfos.filter((serverInfo) => serverInfo.name !== name);
+  serverInfos = serverInfos.filter((serverInfo) => (serverInfo.id ?? serverInfo.name) !== serverId);
   return { success: true, message: 'Server removed successfully' };
 };
 
@@ -2154,26 +2200,28 @@ export const addOrUpdateServer = async (
   allowOverride: boolean = false,
 ): Promise<{ success: boolean; message?: string }> => {
   try {
-    const exists = await getServerDao().exists(name);
-    if (exists && !allowOverride) {
+    const existing = await getServerDao().findById(name);
+    if (existing && !allowOverride) {
       return { success: false, message: 'Server name already exists' };
     }
 
     // If overriding an existing server, close connections and clear keep-alive timers
-    if (exists) {
+    if (existing) {
       // Close existing server connections (clears keep-alive intervals as well)
-      closeServer(name);
+      closeServer(existing.id);
       // Remove from server infos
-      serverInfos = serverInfos.filter((serverInfo) => serverInfo.name !== name);
+      serverInfos = serverInfos.filter(
+        (serverInfo) => (serverInfo.id ?? serverInfo.name) !== existing.id,
+      );
     }
 
-    if (exists) {
-      await getServerDao().update(name, config);
+    if (existing) {
+      await getServerDao().update(existing.id, config);
     } else {
       await getServerDao().create({ name, ...config });
     }
 
-    const action = exists ? 'updated' : 'added';
+    const action = existing ? 'updated' : 'added';
     return { success: true, message: `Server ${action} successfully` };
   } catch (error) {
     console.error('Failed to add/update server', { serverName: name, error });
@@ -2244,14 +2292,14 @@ const closeServerRuntime = (serverInfo: ServerInfo): void => {
 
 // Close server client and transport
 function closeServer(name: string) {
-  const serverInfo = serverInfos.find((serverInfo) => serverInfo.name === name);
+  const serverInfo = getServerByName(name);
   if (serverInfo) {
     closeServerRuntime(serverInfo);
   }
 }
 
 export const resetServerOAuthConnection = (name: string): boolean => {
-  const serverInfo = serverInfos.find((serverInfo) => serverInfo.name === name);
+  const serverInfo = getServerByName(name);
   if (!serverInfo) {
     return false;
   }
@@ -2336,13 +2384,21 @@ export const toggleServerStatus = async (
   enabled: boolean,
 ): Promise<{ success: boolean; message?: string }> => {
   try {
-    await getServerDao().setEnabled(name, enabled);
+    const storedServer = await getServerDao().findById(name);
+    const runtimeMatches = serverInfos.filter(
+      (serverInfo) => (serverInfo.id ?? serverInfo.name) === name || serverInfo.name === name,
+    );
+    const runtimeServer = runtimeMatches.length === 1 ? runtimeMatches[0] : undefined;
+    const serverId = storedServer?.id ?? runtimeServer?.id ?? name;
+    const serverName = storedServer?.name ?? runtimeServer?.name ?? name;
+    const updated = await getServerDao().setEnabled(serverId, enabled);
+    if (!updated) return { success: false, message: 'Server not found' };
     // If disabling, disconnect the server and remove from active servers
     if (!enabled) {
-      closeServer(name);
+      closeServer(serverId);
 
       // Update the server info to show as disconnected and disabled
-      const index = serverInfos.findIndex((s) => s.name === name);
+      const index = serverInfos.findIndex((s) => (s.id ?? s.name) === serverId);
       if (index !== -1) {
         serverInfos[index] = {
           ...serverInfos[index],
@@ -2353,11 +2409,11 @@ export const toggleServerStatus = async (
 
       // Remove tool embeddings when server is disabled (for smart routing consistency)
       try {
-        await removeServerToolEmbeddings(name);
-        console.log(`Removed tool embeddings for disabled server: ${name}`);
+        await removeServerToolEmbeddings(serverName);
+        console.log(`Removed tool embeddings for disabled server: ${serverName}`);
       } catch (embeddingError) {
         console.warn('Failed to remove embeddings for server', {
-          serverName: name,
+          serverName,
           error: summarizeErrorForLogging(embeddingError),
         });
       }
@@ -2508,7 +2564,7 @@ const resolveToolInGroup = async (
       continue;
     }
 
-    const serverConfig = serverConfigsByName.get(serverInfo.name);
+    const serverConfig = serverConfigsByName.get(serverInfo.id ?? serverInfo.name);
     const internalToolName = resolveNameFromGroup(toolName, serverInfo.name, serverConfig);
     const tool = findToolOnServer(serverInfo, internalToolName, allowRawName);
     if (!tool) {
@@ -2548,7 +2604,7 @@ async function resolvePromptInGroup(
       continue;
     }
 
-    const serverConfig = serverConfigsByName.get(serverInfo.name);
+    const serverConfig = serverConfigsByName.get(serverInfo.id ?? serverInfo.name);
     const internalPromptName = resolveNameFromGroup(promptName, serverInfo.name, serverConfig);
     const prompt = serverInfo.prompts.find((item) => item.name === internalPromptName);
     if (!prompt) {
@@ -2607,7 +2663,7 @@ export const handleListToolsRequest = async (_: any, extra: any) => {
   const allTools = [];
   for (const serverInfo of filteredServerInfos) {
     if (serverInfo.tools && serverInfo.tools.length > 0) {
-      const groupServerConfig = serverConfigsByName.get(serverInfo.name);
+      const groupServerConfig = serverConfigsByName.get(serverInfo.id ?? serverInfo.name);
 
       // Filter tools based on server configuration
       let tools = await filterToolsByConfig(serverInfo.name, serverInfo.tools);
@@ -2616,7 +2672,7 @@ export const handleListToolsRequest = async (_: any, extra: any) => {
       tools = await filterToolsByGroup(group, serverInfo.name, tools, groupServerConfig);
 
       // Apply custom descriptions from server configuration
-      const serverConfig = await getServerDao().findById(serverInfo.name);
+      const serverConfig = await getServerDao().findById(serverInfo.id ?? serverInfo.name);
       const toolsWithCustomDescriptions = tools.map((tool) => {
         const toolConfig = serverConfig?.tools?.[tool.name];
         return {
@@ -2916,8 +2972,7 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
         : undefined;
     const serverInfo = appsRouteContext.enabled
       ? appsRouteContext.serverInfo
-      : (groupTool?.serverInfo ??
-        (lookupGroup ? undefined : getServerByTool(request.params.name)));
+      : (groupTool?.serverInfo ?? (lookupGroup ? undefined : getServerByTool(request.params.name)));
     const routeToolName = groupTool?.toolName ?? request.params.name;
     const tool =
       groupTool?.tool ??
@@ -3224,10 +3279,10 @@ export const handleListPromptsRequest = async (_: any, extra: any) => {
 
   for (const serverInfo of filteredServerInfos) {
     if (serverInfo.prompts && serverInfo.prompts.length > 0) {
-      const groupServerConfig = serverConfigsByName.get(serverInfo.name);
+      const groupServerConfig = serverConfigsByName.get(serverInfo.id ?? serverInfo.name);
 
       // Filter prompts based on server configuration
-      const serverConfig = await getServerDao().findById(serverInfo.name);
+      const serverConfig = await getServerDao().findById(serverInfo.id ?? serverInfo.name);
 
       let enabledPrompts = serverInfo.prompts;
       if (serverConfig && serverConfig.prompts) {
@@ -3288,7 +3343,7 @@ export const handleListResourcesRequest = async (_: any, extra: any) => {
   for (const serverInfo of filteredServerInfos) {
     if (serverInfo.resources && serverInfo.resources.length > 0) {
       // Filter resources based on server configuration
-      const serverConfig = await getServerDao().findById(serverInfo.name);
+      const serverConfig = await getServerDao().findById(serverInfo.id ?? serverInfo.name);
 
       let enabledResources = serverInfo.resources;
       if (serverConfig && serverConfig.resources) {
@@ -3302,7 +3357,7 @@ export const handleListResourcesRequest = async (_: any, extra: any) => {
         lookupGroup,
         serverInfo.name,
         enabledResources,
-        serverConfigsByName.get(serverInfo.name),
+        serverConfigsByName.get(serverInfo.id ?? serverInfo.name),
       );
 
       // Apply custom descriptions from server configuration
@@ -3351,7 +3406,7 @@ export const handleListResourceTemplatesRequest = async (_: any, extra: any) => 
         lookupGroup,
         serverInfo.name,
         templates.resourceTemplates || [],
-        serverConfigsByName.get(serverInfo.name),
+        serverConfigsByName.get(serverInfo.id ?? serverInfo.name),
       );
       return appsRouteContext.enabled
         ? filteredTemplates
@@ -3396,7 +3451,7 @@ export const handleReadResourceRequest = async (request: any, extra: any) => {
       if (serverInfo.status !== 'connected') {
         continue;
       }
-      const serverConfig = await getServerDao().findById(serverInfo.name);
+      const serverConfig = await getServerDao().findById(serverInfo.id ?? serverInfo.name);
       let enabledResources = serverInfo.resources;
       if (serverConfig?.resources) {
         enabledResources = enabledResources.filter(
@@ -3407,7 +3462,7 @@ export const handleReadResourceRequest = async (request: any, extra: any) => {
         lookupGroup,
         serverInfo.name,
         enabledResources,
-        serverConfigsByName.get(serverInfo.name),
+        serverConfigsByName.get(serverInfo.id ?? serverInfo.name),
       );
       if (enabledResources.some((resource) => resource.uri === uri)) {
         server = serverInfo;
@@ -3527,13 +3582,32 @@ export const getFilteredServerInfosForGroup = async (
     }
   }
 
-  const serverNamesInGroup = new Set(serverConfigs.map((serverConfig) => serverConfig.name));
+  const serverIdsInGroup = new Set(
+    serverConfigs.flatMap((serverConfig) => (serverConfig.serverId ? [serverConfig.serverId] : [])),
+  );
+  const legacyServerNamesInGroup = new Set(
+    serverConfigs
+      .filter((serverConfig) => !serverConfig.serverId)
+      .map((serverConfig) => serverConfig.name),
+  );
   const serverConfigsByName = new Map(
-    serverConfigs.map((serverConfig) => [serverConfig.name, serverConfig] as const),
+    serverConfigs.map(
+      (serverConfig) => [serverConfig.serverId ?? serverConfig.name, serverConfig] as const,
+    ),
   );
 
+  const visibleServerInfos = getDataService().filterData(serverInfos);
+  const directServer =
+    group && serverIdsInGroup.size === 0 && legacyServerNamesInGroup.size === 0
+      ? (visibleServerInfos.find((serverInfo) => serverInfo.id === group) ??
+        (() => {
+          const byName = visibleServerInfos.filter((serverInfo) => serverInfo.name === group);
+          return byName.length === 1 ? byName[0] : undefined;
+        })())
+      : undefined;
+
   const filteredServerInfos: ServerInfo[] = [];
-  for (const serverInfo of getDataService().filterData(serverInfos)) {
+  for (const serverInfo of visibleServerInfos) {
     if (serverInfo.enabled === false) continue;
     if (options?.requireClient && !serverInfo.client) continue;
 
@@ -3542,14 +3616,17 @@ export const getFilteredServerInfosForGroup = async (
       continue;
     }
 
-    if (serverNamesInGroup.size === 0) {
-      if (serverInfo.name === group) {
+    if (serverIdsInGroup.size === 0 && legacyServerNamesInGroup.size === 0) {
+      if (serverInfo === directServer) {
         filteredServerInfos.push(serverInfo);
       }
       continue;
     }
 
-    if (serverNamesInGroup.has(serverInfo.name)) {
+    if (
+      (serverInfo.id && serverIdsInGroup.has(serverInfo.id)) ||
+      legacyServerNamesInGroup.has(serverInfo.name)
+    ) {
       filteredServerInfos.push(serverInfo);
     }
   }

@@ -14,6 +14,7 @@ import {
   getBearerKeyDao,
 } from '../dao/DaoFactory.js';
 import { getBetterAuthRuntimeConfig } from '../services/betterAuthConfig.js';
+import { serializeServersForSettings } from '../utils/serverSettings.js';
 
 const dataService: DataService = getDataService();
 
@@ -152,7 +153,7 @@ export const getMcpSettingsJson = async (req: Request, res: Response): Promise<v
       }
 
       // Remove the 'name' field from config as it's used as the key
-      const { name, ...configWithoutName } = serverConfig;
+      const { id: _id, name, ...configWithoutName } = serverConfig;
       // Remove null values from the config
       const cleanedConfig = removeNullValues(configWithoutName);
       res.json({
@@ -185,10 +186,7 @@ export const getMcpSettingsJson = async (req: Request, res: Response): Promise<v
         getBearerKeyDao().findAll(),
       ]);
 
-      const mcpServers: Record<string, any> = {};
-      for (const { name: serverConfigName, ...config } of servers) {
-        mcpServers[serverConfigName] = removeNullValues(config);
-      }
+      const mcpServers = removeNullValues(serializeServersForSettings(servers));
 
       const settings = {
         mcpServers,

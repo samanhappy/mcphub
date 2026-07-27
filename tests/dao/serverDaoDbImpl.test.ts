@@ -3,6 +3,8 @@ const mockRepository = {
   findAllPaginated: jest.fn(),
   findByOwnerPaginated: jest.fn(),
   findByName: jest.fn(),
+  findById: jest.fn(),
+  findAllByName: jest.fn(),
   create: jest.fn(),
   update: jest.fn(),
   delete: jest.fn(),
@@ -22,12 +24,15 @@ import { ServerDaoDbImpl } from '../../src/dao/ServerDaoDbImpl.js';
 describe('ServerDaoDbImpl', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockRepository.findById.mockImplementation(async (id: string) => ({ id, name: id }));
+    mockRepository.findAllByName.mockResolvedValue([]);
   });
 
   it('should persist and map server description field', async () => {
     const dao = new ServerDaoDbImpl();
 
     mockRepository.create.mockResolvedValue({
+      id: 'server-id',
       name: 'serena',
       type: 'stdio',
       command: 'npx',
@@ -52,6 +57,22 @@ describe('ServerDaoDbImpl', () => {
     );
 
     expect(result.description).toBe('my server note');
+    expect(result.id).toBe('server-id');
+  });
+
+  it('finds a server by stable id instead of treating id as a name', async () => {
+    const dao = new ServerDaoDbImpl();
+    mockRepository.findById.mockResolvedValue({
+      id: 'server-b',
+      name: 'notion',
+      url: 'https://team-b.example/mcp',
+      enabled: true,
+    });
+
+    const result = await dao.findById('server-b');
+
+    expect(mockRepository.findById).toHaveBeenCalledWith('server-b');
+    expect(result).toMatchObject({ id: 'server-b', name: 'notion' });
   });
 
   it('should persist and map passthroughHeaders field', async () => {

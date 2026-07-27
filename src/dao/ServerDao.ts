@@ -1,6 +1,7 @@
 import { ServerConfig } from '../types/index.js';
 import { BaseDao } from './base/BaseDao.js';
 import { JsonFileBaseDao } from './base/JsonFileBaseDao.js';
+import { randomUUID } from 'node:crypto';
 
 /**
  * Pagination result interface
@@ -17,6 +18,8 @@ export interface PaginatedResult<T> {
  * Server DAO interface with server-specific operations
  */
 export interface ServerDao extends BaseDao<ServerConfigWithName, string> {
+  /** Find every server with the given user-facing name. */
+  findByName(name: string): Promise<ServerConfigWithName[]>;
   /**
    * Find all servers with pagination
    */
@@ -25,7 +28,11 @@ export interface ServerDao extends BaseDao<ServerConfigWithName, string> {
   /**
    * Find servers by owner with pagination
    */
-  findByOwnerPaginated(owner: string, page: number, limit: number): Promise<PaginatedResult<ServerConfigWithName>>;
+  findByOwnerPaginated(
+    owner: string,
+    page: number,
+    limit: number,
+  ): Promise<PaginatedResult<ServerConfigWithName>>;
 
   /**
    * Find servers visible to a non-admin user with pagination.
@@ -91,6 +98,7 @@ export interface ServerDao extends BaseDao<ServerConfigWithName, string> {
  * Server configuration with name for DAO operations
  */
 export interface ServerConfigWithName extends ServerConfig {
+  id: string;
   name: string;
 }
 
@@ -98,13 +106,24 @@ export interface ServerConfigWithName extends ServerConfig {
  * JSON file-based Server DAO implementation
  */
 export class ServerDaoImpl extends JsonFileBaseDao implements ServerDao {
+  private resolveIndex(servers: ServerConfigWithName[], identifier: string): number {
+    const byId = servers.findIndex((server) => server.id === identifier);
+    if (byId !== -1) return byId;
+    const byName = servers
+      .map((server, index) => ({ server, index }))
+      .filter(({ server }) => server.name === identifier);
+    return byName.length === 1 ? byName[0].index : -1;
+  }
+
   protected async getAll(): Promise<ServerConfigWithName[]> {
     const settings = await this.loadSettings();
     const servers: ServerConfigWithName[] = [];
 
-    for (const [name, config] of Object.entries(settings.mcpServers || {})) {
+    for (const [id, storedConfig] of Object.entries(settings.mcpServers || {})) {
+      const { name: storedName, ...config } = storedConfig;
       servers.push({
-        name,
+        id,
+        name: storedName || id,
         ...config,
       });
     }
@@ -117,18 +136,21 @@ export class ServerDaoImpl extends JsonFileBaseDao implements ServerDao {
     settings.mcpServers = {};
 
     for (const server of servers) {
-      const { name, ...config } = server;
-      settings.mcpServers[name] = config;
+      const { id, name, ...config } = server;
+      settings.mcpServers[id] = {
+        ...(id === name ? {} : { name }),
+        ...config,
+      };
     }
 
     await this.saveSettings(settings);
   }
 
   protected getEntityId(server: ServerConfigWithName): string {
-    return server.name;
+    return server.id;
   }
 
-  protected createEntity(_data: Omit<ServerConfigWithName, 'name'>): ServerConfigWithName {
+  protected createEntity(_data: Omit<ServerConfigWithName, 'id'>): ServerConfigWithName {
     throw new Error('Server name must be provided');
   }
 
@@ -148,22 +170,24 @@ export class ServerDaoImpl extends JsonFileBaseDao implements ServerDao {
     return this.getAll();
   }
 
-  async findById(name: string): Promise<ServerConfigWithName | null> {
+  async findById(identifier: string): Promise<ServerConfigWithName | null> {
     const servers = await this.getAll();
-    return servers.find((server) => server.name === name) || null;
+    const byId = servers.find((server) => server.id === identifier);
+    if (byId) return byId;
+    const byName = servers.filter((server) => server.name === identifier);
+    return byName.length === 1 ? byName[0] : null;
   }
 
-  async create(
-    data: Omit<ServerConfigWithName, 'name'> & { name: string },
-  ): Promise<ServerConfigWithName> {
+  async findByName(name: string): Promise<ServerConfigWithName[]> {
+    const servers = await this.getAll();
+    return servers.filter((server) => server.name === name);
+  }
+
+  async create(data: Omit<ServerConfigWithName, 'id'>): Promise<ServerConfigWithName> {
     const servers = await this.getAll();
 
-    // Check if server already exists
-    if (servers.find((server) => server.name === data.name)) {
-      throw new Error(`Server ${data.name} already exists`);
-    }
-
     const newServer: ServerConfigWithName = {
+      id: randomUUID(),
       enabled: true, // Default to enabled
       owner: 'admin', // Default owner
       ...data,
@@ -176,11 +200,11 @@ export class ServerDaoImpl extends JsonFileBaseDao implements ServerDao {
   }
 
   async update(
-    name: string,
+    identifier: string,
     updates: Partial<ServerConfigWithName>,
   ): Promise<ServerConfigWithName | null> {
     const servers = await this.getAll();
-    const index = servers.findIndex((server) => server.name === name);
+    const index = this.resolveIndex(servers, identifier);
 
     if (index === -1) {
       return null;
@@ -193,9 +217,9 @@ export class ServerDaoImpl extends JsonFileBaseDao implements ServerDao {
     return updatedServer;
   }
 
-  async delete(name: string): Promise<boolean> {
+  async delete(identifier: string): Promise<boolean> {
     const servers = await this.getAll();
-    const index = servers.findIndex((server) => server.name === name);
+    const index = this.resolveIndex(servers, identifier);
     if (index === -1) {
       return false;
     }
@@ -205,9 +229,9 @@ export class ServerDaoImpl extends JsonFileBaseDao implements ServerDao {
     return true;
   }
 
-  async exists(name: string): Promise<boolean> {
-    const server = await this.findById(name);
-    return server !== null;
+  async exists(identifier: string): Promise<boolean> {
+    const servers = await this.getAll();
+    return servers.some((server) => server.id === identifier || server.name === identifier);
   }
 
   async count(): Promise<number> {
@@ -215,7 +239,10 @@ export class ServerDaoImpl extends JsonFileBaseDao implements ServerDao {
     return servers.length;
   }
 
-  async findAllPaginated(page: number, limit: number): Promise<PaginatedResult<ServerConfigWithName>> {
+  async findAllPaginated(
+    page: number,
+    limit: number,
+  ): Promise<PaginatedResult<ServerConfigWithName>> {
     const allServers = await this.getAll();
     // Sort: enabled servers first, then by creation time
     const sortedServers = allServers.sort((a, b) => {
@@ -226,7 +253,7 @@ export class ServerDaoImpl extends JsonFileBaseDao implements ServerDao {
       }
       return 0; // Keep original order for same enabled status
     });
-    
+
     const total = sortedServers.length;
     const totalPages = Math.ceil(total / limit);
     const startIndex = (page - 1) * limit;
@@ -242,7 +269,11 @@ export class ServerDaoImpl extends JsonFileBaseDao implements ServerDao {
     };
   }
 
-  async findByOwnerPaginated(owner: string, page: number, limit: number): Promise<PaginatedResult<ServerConfigWithName>> {
+  async findByOwnerPaginated(
+    owner: string,
+    page: number,
+    limit: number,
+  ): Promise<PaginatedResult<ServerConfigWithName>> {
     const allServers = await this.getAll();
     const filteredServers = allServers.filter((server) => server.owner === owner);
     // Sort: enabled servers first, then by creation time
@@ -254,7 +285,7 @@ export class ServerDaoImpl extends JsonFileBaseDao implements ServerDao {
       }
       return 0; // Keep original order for same enabled status
     });
-    
+
     const total = sortedServers.length;
     const totalPages = Math.ceil(total / limit);
     const startIndex = (page - 1) * limit;
@@ -349,15 +380,10 @@ export class ServerDaoImpl extends JsonFileBaseDao implements ServerDao {
 
   async rename(oldName: string, newName: string): Promise<boolean> {
     const servers = await this.getAll();
-    const index = servers.findIndex((server) => server.name === oldName);
+    const index = this.resolveIndex(servers, oldName);
 
     if (index === -1) {
       return false;
-    }
-
-    // Check if newName already exists
-    if (servers.find((server) => server.name === newName)) {
-      throw new Error(`Server ${newName} already exists`);
     }
 
     servers[index] = { ...servers[index], name: newName };

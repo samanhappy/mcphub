@@ -17,7 +17,7 @@ const EditServerForm = ({ server, onEdit, onCancel }: EditServerFormProps) => {
   const handleSubmit = async (payload: any) => {
     try {
       setError(null);
-      const encodedServerName = encodeURIComponent(server.name);
+      const encodedServerName = encodeURIComponent(server.id ?? server.name);
 
       // Check if name is being changed
       const isRenaming = payload.name && payload.name !== server.name;

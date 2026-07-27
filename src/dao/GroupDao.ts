@@ -164,7 +164,7 @@ export class GroupDaoImpl extends JsonFileBaseDao implements GroupDao {
           if (typeof server === 'string') {
             return server === serverName;
           } else {
-            return server.name === serverName;
+            return server.serverId === serverName || server.name === serverName;
           }
         });
       }
@@ -183,7 +183,7 @@ export class GroupDaoImpl extends JsonFileBaseDao implements GroupDao {
       if (typeof server === 'string') {
         return server === serverName;
       } else {
-        return server.name === serverName;
+        return server.serverId === serverName || server.name === serverName;
       }
     });
 
@@ -206,7 +206,7 @@ export class GroupDaoImpl extends JsonFileBaseDao implements GroupDao {
       if (typeof server === 'string') {
         return server !== serverName;
       } else {
-        return server.name !== serverName;
+        return server.serverId !== serverName && server.name !== serverName;
       }
     }) as IGroup['servers'];
 
@@ -238,7 +238,7 @@ export class GroupDaoImpl extends JsonFileBaseDao implements GroupDao {
           }
           return server;
         } else {
-          if (server.name === oldName) {
+          if (!server.serverId && server.name === oldName) {
             updated = true;
             return { ...server, name: newName };
           }

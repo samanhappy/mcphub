@@ -46,9 +46,10 @@ import type { UpstreamOAuthDisconnectScope } from '../services/upstreamOAuthDisc
 import { normalizeServerConfigForPersistence } from '../utils/serverConfigPersistence.js';
 import { setCachedSystemConfig } from '../utils/systemConfigCache.js';
 import { DEFAULT_INSTALL_BASE_URL, withResolvedInstallBaseUrl } from '../utils/installBaseUrl.js';
+import { serializeServersForSettings } from '../utils/serverSettings.js';
 
 type DescribableConfig = Record<string, { enabled: boolean; description?: string }>;
-type ServerRecord = ServerConfig & { name: string };
+type ServerRecord = ServerConfig & { id?: string; name: string };
 
 type RequestUser = {
   username: string;
@@ -86,7 +87,16 @@ const loadAuthorizedServer = async (
   serverName: string,
 ): Promise<ServerRecord | null> => {
   const serverDao = getServerDao();
-  const server = await serverDao.findById(serverName);
+  const namedServers = await serverDao.findByName(serverName);
+  if (namedServers.length > 1) {
+    res.status(409).json({
+      success: false,
+      message: `Server name '${serverName}' is ambiguous; use a server ID`,
+      data: namedServers.map((server) => ({ id: server.id, name: server.name })),
+    });
+    return null;
+  }
+  const server = namedServers[0] ?? (await serverDao.findById(serverName));
 
   if (!server) {
     res.status(404).json({
@@ -128,11 +138,7 @@ const ensureNonAdminCanManageConfig = (
   return true;
 };
 
-const assignServerOwner = (
-  req: Request,
-  config: ServerConfig,
-  existingOwner?: string,
-): void => {
+const assignServerOwner = (req: Request, config: ServerConfig, existingOwner?: string): void => {
   const currentUser = getRequestUser(req);
   if (!currentUser) {
     return;
@@ -310,11 +316,7 @@ export const getAllSettings = async (req: Request, res: Response): Promise<void>
     ]);
 
     // Convert servers array to mcpServers map format
-    const mcpServers: McpSettings['mcpServers'] = {};
-    for (const server of servers) {
-      const { name, ...config } = server;
-      mcpServers[name] = config;
-    }
+    const mcpServers = serializeServersForSettings(servers);
 
     const systemConfig = systemConfigResult || {};
 
@@ -357,7 +359,8 @@ export const getAllSettings = async (req: Request, res: Response): Promise<void>
       bearerKeys: bearerKeys.map((key) => ({
         ...key,
         kind: key.kind ?? 'system',
-        token: key.token.length > 12 ? `${key.token.slice(0, 8)}...${key.token.slice(-4)}` : '********',
+        token:
+          key.token.length > 12 ? `${key.token.slice(0, 8)}...${key.token.slice(-4)}` : '********',
       })),
     };
 
@@ -485,8 +488,7 @@ export const createServer = async (req: Request, res: Response): Promise<void> =
 
     // Set default keep-alive interval for SSE servers if not specified
     if (
-      (normalizedConfig.type === 'sse' ||
-        (!normalizedConfig.type && normalizedConfig.url)) &&
+      (normalizedConfig.type === 'sse' || (!normalizedConfig.type && normalizedConfig.url)) &&
       !normalizedConfig.keepAliveInterval
     ) {
       normalizedConfig.keepAliveInterval = 60000; // Default 60 seconds for SSE servers
@@ -499,8 +501,9 @@ export const createServer = async (req: Request, res: Response): Promise<void> =
       res.json({
         success: true,
         message: 'Server added successfully',
+        ...(result.serverId ? { data: { id: result.serverId, name } } : {}),
       });
-      notifyToolChanged(name, { reportEmbeddingProgress: true }).catch((error) => {
+      notifyToolChanged(result.serverId, { reportEmbeddingProgress: true }).catch((error) => {
         console.error('Failed to trigger embedding sync for created server:', error);
       });
     } else {
@@ -643,8 +646,7 @@ export const batchCreateServers = async (req: Request, res: Response): Promise<v
         const normalizedConfig = normalizeServerConfigForPersistence(config);
 
         if (
-          (normalizedConfig.type === 'sse' ||
-            (!normalizedConfig.type && normalizedConfig.url)) &&
+          (normalizedConfig.type === 'sse' || (!normalizedConfig.type && normalizedConfig.url)) &&
           !normalizedConfig.keepAliveInterval
         ) {
           normalizedConfig.keepAliveInterval = 60000; // Default 60 seconds for SSE servers
@@ -661,13 +663,16 @@ export const batchCreateServers = async (req: Request, res: Response): Promise<v
         }
 
         // Set owner property if not provided
-        normalizedConfig.owner = currentUser?.isAdmin ? normalizedConfig.owner || defaultOwner : defaultOwner;
+        normalizedConfig.owner = currentUser?.isAdmin
+          ? normalizedConfig.owner || defaultOwner
+          : defaultOwner;
 
         // Attempt to add server
         const result = await addServer(name, normalizedConfig);
         if (result.success) {
           results.push({
             name,
+            serverId: result.serverId,
             success: true,
           });
           successCount++;
@@ -706,8 +711,11 @@ export const batchCreateServers = async (req: Request, res: Response): Promise<v
 
     if (successCount > 0) {
       const successfulServerNames = results
-        .filter((result): result is BatchServerResult & { name: string; success: true } => result.success)
-        .map((result) => result.name);
+        .filter(
+          (result): result is BatchServerResult & { serverId: string; success: true } =>
+            result.success && Boolean(result.serverId),
+        )
+        .map((result) => result.serverId);
 
       Promise.all(
         successfulServerNames.map((serverName) =>
@@ -742,7 +750,7 @@ export const deleteServer = async (req: Request, res: Response): Promise<void> =
       return;
     }
 
-    const result = await removeServer(existingServer.name);
+    const result = await removeServer(existingServer.id ?? existingServer.name);
     if (result.success) {
       notifyToolChanged();
       res.json({
@@ -865,8 +873,7 @@ export const updateServer = async (req: Request, res: Response): Promise<void> =
 
     // Set default keep-alive interval for SSE servers if not specified
     if (
-      (normalizedConfig.type === 'sse' ||
-        (!normalizedConfig.type && normalizedConfig.url)) &&
+      (normalizedConfig.type === 'sse' || (!normalizedConfig.type && normalizedConfig.url)) &&
       !normalizedConfig.keepAliveInterval
     ) {
       normalizedConfig.keepAliveInterval = 60000; // Default 60 seconds for SSE servers
@@ -882,17 +889,8 @@ export const updateServer = async (req: Request, res: Response): Promise<void> =
     if (isRenaming) {
       const serverDao = getServerDao();
 
-      // Check if new name already exists
-      if (await serverDao.exists(newName)) {
-        res.status(400).json({
-          success: false,
-          message: `Server name '${newName}' already exists`,
-        });
-        return;
-      }
-
       // Rename the server
-      const renamed = await serverDao.rename(name, newName);
+      const renamed = await serverDao.rename(existingServer.id ?? existingServer.name, newName);
       if (!renamed) {
         res.status(404).json({
           success: false,
@@ -911,11 +909,12 @@ export const updateServer = async (req: Request, res: Response): Promise<void> =
     }
 
     // Use the final server name (new name if renaming, otherwise original name)
-    const finalName = isRenaming ? newName : name;
+    const finalName = isRenaming ? newName : existingServer.name;
+    const serverIdentifier = existingServer.id ?? existingServer.name;
 
     if (!isRenaming && isVisibilityOnlyServerUpdate(existingServer, normalizedConfig)) {
       const serverDao = getServerDao();
-      const updatedServer = await serverDao.update(name, normalizedConfig);
+      const updatedServer = await serverDao.update(serverIdentifier, normalizedConfig);
 
       if (!updatedServer) {
         res.status(404).json({
@@ -925,7 +924,7 @@ export const updateServer = async (req: Request, res: Response): Promise<void> =
         return;
       }
 
-      updateServerInfoVisibility(finalName, normalizedConfig.visibility ?? 'private');
+      updateServerInfoVisibility(serverIdentifier, normalizedConfig.visibility ?? 'private');
       broadcastToolListChanged();
 
       res.json({
@@ -935,9 +934,9 @@ export const updateServer = async (req: Request, res: Response): Promise<void> =
       return;
     }
 
-    const result = await addOrUpdateServer(finalName, normalizedConfig, true); // Allow override for updates
+    const result = await addOrUpdateServer(serverIdentifier, normalizedConfig, true); // Allow override for updates
     if (result.success) {
-      notifyToolChanged(finalName);
+      notifyToolChanged(serverIdentifier);
       res.json({
         success: true,
         message: isRenaming
@@ -969,10 +968,12 @@ export const getServerConfig = async (req: Request, res: Response): Promise<void
 
     // Get runtime info (status, tools) from getServersInfo
     const allServers = await getServersInfo();
-    const serverInfo = allServers.find((s) => s.name === name);
+    const serverInfo = allServers.find((s) =>
+      serverConfig.id ? s.id === serverConfig.id : s.name === serverConfig.name,
+    );
 
     // Extract config without the name field
-    const { name: serverName, ...config } = serverConfig;
+    const { id: serverId, name: serverName, ...config } = serverConfig;
 
     // OpenAPI tools can carry circular $ref cycles left by SwaggerParser.dereference
     // (recursive schemas), which would make res.json throw. Mirror the list endpoint
@@ -980,6 +981,7 @@ export const getServerConfig = async (req: Request, res: Response): Promise<void
     const response: ApiResponse = {
       success: true,
       data: createSafeJSON({
+        ...(serverId ? { id: serverId } : {}),
         name: serverName,
         status: serverInfo?.status || 'disconnected',
         tools: serverInfo?.tools || [],
@@ -1022,7 +1024,7 @@ export const toggleServer = async (req: Request, res: Response): Promise<void> =
       return;
     }
 
-    const result = await toggleServerStatus(existingServer.name, enabled);
+    const result = await toggleServerStatus(existingServer.id ?? existingServer.name, enabled);
     if (result.success) {
       // On disable, toggleServerStatus synchronously closes the server and
       // updates serverInfos, so we broadcast the now-removed tools/prompts/
@@ -1069,7 +1071,7 @@ export const reloadServer = async (req: Request, res: Response): Promise<void> =
       return;
     }
 
-    await reconnectServer(existingServer.name);
+    await reconnectServer(existingServer.id ?? existingServer.name);
 
     res.json({
       success: true,
@@ -1121,7 +1123,9 @@ export const disconnectServerOAuth = async (req: Request, res: Response): Promis
       return;
     }
 
-    const result = await disconnectUpstreamOAuth(existingServer.name, { scope });
+    const result = await disconnectUpstreamOAuth(existingServer.id ?? existingServer.name, {
+      scope,
+    });
     const { success: _success, ...data } = result;
 
     res.json({
@@ -1155,7 +1159,7 @@ export const reinstallServerHandler = async (req: Request, res: Response): Promi
       return;
     }
 
-    await reinstallServer(existingServer.name);
+    await reinstallServer(existingServer.id ?? existingServer.name);
 
     res.json({
       success: true,
@@ -1165,10 +1169,7 @@ export const reinstallServerHandler = async (req: Request, res: Response): Promi
     console.error('Failed to reinstall server:', error);
     const message = error instanceof Error ? error.message : 'Failed to reinstall server';
     // Validation errors (unsupported command, disabled server) → 400
-    if (
-      message.includes('does not support cache refresh') ||
-      message.includes('disabled server')
-    ) {
+    if (message.includes('does not support cache refresh') || message.includes('disabled server')) {
       res.status(400).json({ success: false, message });
     } else {
       res.status(500).json({ success: false, message: 'Failed to reinstall server' });
@@ -1457,8 +1458,7 @@ export const updateSystemConfig = async (req: Request, res: Response): Promise<v
 
     const hasSessionRebuildUpdate = typeof enableSessionRebuild === 'boolean';
 
-    const hasActivityLogUpdate =
-      activityLog && typeof activityLog.storeToolPayload === 'boolean';
+    const hasActivityLogUpdate = activityLog && typeof activityLog.storeToolPayload === 'boolean';
 
     const hasOAuthServerUpdate =
       oauthServer &&
@@ -1750,15 +1750,18 @@ export const updateSystemConfig = async (req: Request, res: Response): Promise<v
             }
           } else {
             // Get current OpenAI config values, preferring new values from request
-            const currentOpenAiKey = typeof smartRouting.openaiApiKey === 'string'
-              ? smartRouting.openaiApiKey.trim()
-              : (systemConfig.smartRouting.openaiApiKey || '').trim();
-            const currentOpenaiApiBaseUrl = typeof smartRouting.openaiApiBaseUrl === 'string'
-              ? smartRouting.openaiApiBaseUrl.trim()
-              : (systemConfig.smartRouting.openaiApiBaseUrl || '').trim();
-            const currentOpenaiApiEmbeddingModel = typeof smartRouting.openaiApiEmbeddingModel === 'string'
-              ? smartRouting.openaiApiEmbeddingModel.trim()
-              : (systemConfig.smartRouting.openaiApiEmbeddingModel || '').trim();
+            const currentOpenAiKey =
+              typeof smartRouting.openaiApiKey === 'string'
+                ? smartRouting.openaiApiKey.trim()
+                : (systemConfig.smartRouting.openaiApiKey || '').trim();
+            const currentOpenaiApiBaseUrl =
+              typeof smartRouting.openaiApiBaseUrl === 'string'
+                ? smartRouting.openaiApiBaseUrl.trim()
+                : (systemConfig.smartRouting.openaiApiBaseUrl || '').trim();
+            const currentOpenaiApiEmbeddingModel =
+              typeof smartRouting.openaiApiEmbeddingModel === 'string'
+                ? smartRouting.openaiApiEmbeddingModel.trim()
+                : (systemConfig.smartRouting.openaiApiEmbeddingModel || '').trim();
 
             if (!currentOpenAiKey || !currentOpenaiApiBaseUrl || !currentOpenaiApiEmbeddingModel) {
               res.status(400).json({
@@ -1801,7 +1804,8 @@ export const updateSystemConfig = async (req: Request, res: Response): Promise<v
         systemConfig.smartRouting.azureOpenaiApiKey = smartRouting.azureOpenaiApiKey?.trim();
       }
       if (typeof smartRouting.azureOpenaiApiVersion === 'string') {
-        systemConfig.smartRouting.azureOpenaiApiVersion = smartRouting.azureOpenaiApiVersion?.trim();
+        systemConfig.smartRouting.azureOpenaiApiVersion =
+          smartRouting.azureOpenaiApiVersion?.trim();
       }
       if (typeof smartRouting.azureOpenaiEmbeddingDeployment === 'string') {
         systemConfig.smartRouting.azureOpenaiEmbeddingDeployment =
