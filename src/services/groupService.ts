@@ -291,7 +291,7 @@ export const addServerToGroup = async (
     notifyToolChanged();
     return group;
   } catch (error) {
-    console.error(`Failed to add server ${serverIdentifier} to group ${groupId}:`, error);
+    console.error('Failed to add server to group:', error);
     return null;
   }
 };
@@ -316,7 +316,7 @@ export const removeServerFromGroup = async (
 
     return await groupDao.update(groupId, { servers: filteredServers });
   } catch (error) {
-    console.error(`Failed to remove server ${serverIdentifier} from group ${groupId}:`, error);
+    console.error('Failed to remove server from group:', error);
     return null;
   }
 };

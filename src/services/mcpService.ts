@@ -266,10 +266,8 @@ const wrapWithProxychains = (
 
   // SECURITY: Validate command is safe
   if (!isSafeCommand(command)) {
-    console.error(`[${serverName}] Blocked unsafe command for proxychains4 wrapping: ${command}`);
-    throw new Error(
-      `[${serverName}] Unsafe command blocked: ${command}. Shell builtins and metacharacters are not allowed.`,
-    );
+    console.error('Blocked unsafe command for proxychains4 wrapping');
+    throw new Error('Unsafe command blocked. Shell builtins and metacharacters are not allowed.');
   }
 
   // Find proxychains4 binary
@@ -2186,7 +2184,9 @@ export const removeServer = async (
   try {
     await removeServerToolEmbeddings(serverName);
   } catch (error) {
-    console.warn('Failed to remove embeddings for server', { serverName, error });
+    console.warn('Failed to remove server tool embeddings', {
+      error: summarizeErrorForLogging(error),
+    });
   }
 
   serverInfos = serverInfos.filter((serverInfo) => (serverInfo.id ?? serverInfo.name) !== serverId);
@@ -2410,10 +2410,9 @@ export const toggleServerStatus = async (
       // Remove tool embeddings when server is disabled (for smart routing consistency)
       try {
         await removeServerToolEmbeddings(serverName);
-        console.log(`Removed tool embeddings for disabled server: ${serverName}`);
+        console.log('Removed tool embeddings for disabled server');
       } catch (embeddingError) {
-        console.warn('Failed to remove embeddings for server', {
-          serverName,
+        console.warn('Failed to remove server tool embeddings', {
           error: summarizeErrorForLogging(embeddingError),
         });
       }
