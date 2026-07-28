@@ -69,6 +69,8 @@ export class VectorEmbeddingRepository extends BaseRepository<VectorEmbedding> {
     metadata: Record<string, any> = {},
     model = 'default',
   ): Promise<VectorEmbedding> {
+    this.validateEmbedding(embedding, contentType, contentId);
+
     // TypeORM cannot serialize the pgvector `vector` column type — it silently
     // stores NULL when the entity is saved through the ORM. Bypass TypeORM
     // entirely and use a single atomic INSERT ... ON CONFLICT DO UPDATE so that
@@ -88,9 +90,32 @@ export class VectorEmbeddingRepository extends BaseRepository<VectorEmbedding> {
              metadata      = EXCLUDED.metadata,
              model         = EXCLUDED.model,
              updated_at    = NOW()
-       RETURNING id, created_at`,
+       RETURNING id,
+                 created_at,
+                 embedding IS NOT NULL AS has_embedding,
+                 vector_dims(embedding) AS persisted_dimensions`,
       [contentType, contentId, textContent, rawEmbedding, embedding.length, metadataJson, model],
     );
+
+    if (!row) {
+      throw new Error(
+        `Embedding write for ${contentType} "${contentId}" did not return a persisted row`,
+      );
+    }
+
+    const hasEmbedding = row.has_embedding === true || row.has_embedding === 't';
+    if (!hasEmbedding) {
+      throw new Error(`Embedding for ${contentType} "${contentId}" was persisted as NULL`);
+    }
+
+    const persistedDimensions = Number(row.persisted_dimensions);
+    if (persistedDimensions !== embedding.length) {
+      throw new Error(
+        `Embedding for ${contentType} "${contentId}" persisted with ${String(
+          row.persisted_dimensions,
+        )} dimensions; expected ${embedding.length}`,
+      );
+    }
 
     const result = new VectorEmbedding();
     result.id = row.id;
@@ -361,23 +386,35 @@ export class VectorEmbeddingRepository extends BaseRepository<VectorEmbedding> {
    * @param embedding Array of embedding values
    * @returns Properly formatted vector string for pgvector
    */
-  private formatEmbeddingForPgVector(embedding: number[] | string): string | null {
-    if (!embedding) return null;
+  private formatEmbeddingForPgVector(embedding: number[]): string {
+    return `[${embedding.join(',')}]`;
+  }
 
-    // If it's already a string and starts with '[', assume it's formatted
-    if (typeof embedding === 'string') {
-      if (embedding.startsWith('[') && embedding.endsWith(']')) {
-        return embedding;
-      }
-      return `[${embedding}]`;
+  /**
+   * Validate embedding values before they reach PostgreSQL. Passing null as the
+   * vector parameter is valid SQL, so malformed runtime values must fail here
+   * instead of silently creating an unusable search index.
+   */
+  private validateEmbedding(embedding: number[], contentType: string, contentId: string): void {
+    const runtimeType =
+      embedding && typeof embedding === 'object'
+        ? embedding.constructor?.name || 'object'
+        : typeof embedding;
+
+    if (!Array.isArray(embedding) || embedding.length === 0) {
+      throw new TypeError(
+        `Invalid embedding for ${contentType} "${contentId}": expected a non-empty number array, received ${runtimeType}`,
+      );
     }
 
-    // Format array as proper pgvector string
-    if (Array.isArray(embedding)) {
-      return `[${embedding.join(',')}]`;
+    const invalidIndex = embedding.findIndex(
+      (value) => typeof value !== 'number' || !Number.isFinite(value),
+    );
+    if (invalidIndex >= 0) {
+      throw new TypeError(
+        `Invalid embedding for ${contentType} "${contentId}": value at index ${invalidIndex} is not a finite number`,
+      );
     }
-
-    return null;
   }
 }
 
