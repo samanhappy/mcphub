@@ -1280,7 +1280,7 @@ export const createTransportFromConfig = async (name: string, conf: ServerConfig
     options.fetch = requestAwareFetch;
 
     transport = new SSEClientTransport(new URL(conf.url), options);
-  } else if (conf.command && conf.args) {
+  } else if (conf.command) {
     // Stdio transport
     env['PATH'] = expandEnvVars(process.env.PATH as string) || '';
 
@@ -1306,7 +1306,7 @@ export const createTransportFromConfig = async (name: string, conf: ServerConfig
     }
 
     // Apply proxychains4 wrapper if proxy is configured (Linux/macOS only)
-    let resolvedArgs = replaceEnvVars(conf.args) as string[];
+    let resolvedArgs = replaceEnvVars(conf.args ?? []) as string[];
 
     // If this server is pending a reinstall, inject cache-busting flags (uvx only).
     // For npx, the cache directory was already cleared before reconnect.

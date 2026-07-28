@@ -417,12 +417,12 @@ export const createServer = async (req: Request, res: Response): Promise<void> =
       !normalizedConfig.url &&
       !normalizedConfig.openapi?.url &&
       !normalizedConfig.openapi?.schema &&
-      (!normalizedConfig.command || !normalizedConfig.args)
+      !normalizedConfig.command
     ) {
       res.status(400).json({
         success: false,
         message:
-          'Server configuration must include either a URL, OpenAPI specification URL or schema, or command with arguments',
+          'Server configuration must include either a URL, OpenAPI specification URL or schema, or command',
       });
       return;
     }
@@ -561,12 +561,12 @@ export const batchCreateServers = async (req: Request, res: Response): Promise<v
         !normalizedConfig.url &&
         !normalizedConfig.openapi?.url &&
         !normalizedConfig.openapi?.schema &&
-        (!normalizedConfig.command || !normalizedConfig.args)
+        !normalizedConfig.command
       ) {
         return {
           valid: false,
           message:
-            'Server configuration must include either a URL, OpenAPI specification URL or schema, or command with arguments',
+            'Server configuration must include either a URL, OpenAPI specification URL or schema, or command',
         };
       }
 
@@ -797,12 +797,12 @@ export const updateServer = async (req: Request, res: Response): Promise<void> =
       !normalizedConfig.url &&
       !normalizedConfig.openapi?.url &&
       !normalizedConfig.openapi?.schema &&
-      (!normalizedConfig.command || !normalizedConfig.args)
+      !normalizedConfig.command
     ) {
       res.status(400).json({
         success: false,
         message:
-          'Server configuration must include either a URL, OpenAPI specification URL or schema, or command with arguments',
+          'Server configuration must include either a URL, OpenAPI specification URL or schema, or command',
       });
       return;
     }

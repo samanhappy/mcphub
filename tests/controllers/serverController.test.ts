@@ -99,6 +99,7 @@ jest.mock('../../src/services/upstreamOAuthDisconnectService.js', () => ({
 }));
 
 import {
+  batchCreateServers,
   createServer,
   disconnectServerOAuth,
   getAllSettings,
@@ -114,6 +115,134 @@ import {
 
 beforeEach(() => {
   mockServerDao.findByName.mockResolvedValue([]);
+});
+
+describe('serverController - stdio servers without arguments', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockAddServer.mockResolvedValue({ success: true });
+    mockAddOrUpdateServer.mockResolvedValue({ success: true });
+    mockNotifyToolChanged.mockResolvedValue(undefined);
+    mockServerDao.findById.mockResolvedValue({
+      name: 'no-args-server',
+      type: 'stdio',
+      command: '/usr/bin/some-tool',
+      args: [],
+      owner: 'admin',
+      visibility: 'private',
+    });
+  });
+
+  const createResponse = () => {
+    const json = jest.fn();
+    const status = jest.fn().mockReturnThis();
+    return { json, status, response: { json, status } as unknown as Response };
+  };
+
+  const adminUser = {
+    username: 'admin',
+    isAdmin: true,
+  };
+
+  it('creates a stdio server with an empty arguments array', async () => {
+    const { json, status, response } = createResponse();
+    const request = {
+      body: {
+        name: 'no-args-server',
+        config: {
+          type: 'stdio',
+          command: '/usr/bin/some-tool',
+          args: [],
+        },
+      },
+      user: adminUser,
+    } as unknown as Request;
+
+    await createServer(request, response);
+
+    expect(status).not.toHaveBeenCalledWith(400);
+    expect(mockAddServer).toHaveBeenCalledWith(
+      'no-args-server',
+      expect.objectContaining({
+        type: 'stdio',
+        command: '/usr/bin/some-tool',
+      }),
+    );
+    expect(json).toHaveBeenCalledWith({
+      success: true,
+      message: 'Server added successfully',
+    });
+  });
+
+  it('updates a stdio server with an empty arguments array', async () => {
+    const { json, status, response } = createResponse();
+    const request = {
+      params: { name: 'no-args-server' },
+      body: {
+        config: {
+          type: 'stdio',
+          command: '/usr/bin/some-tool',
+          args: [],
+        },
+      },
+      user: adminUser,
+    } as unknown as Request;
+
+    await updateServer(request, response);
+
+    expect(status).not.toHaveBeenCalledWith(400);
+    expect(mockAddOrUpdateServer).toHaveBeenCalledWith(
+      'no-args-server',
+      expect.objectContaining({
+        type: 'stdio',
+        command: '/usr/bin/some-tool',
+      }),
+      true,
+    );
+    expect(json).toHaveBeenCalledWith({
+      success: true,
+      message: 'Server updated successfully',
+    });
+  });
+
+  it('imports a stdio server with an empty arguments array', async () => {
+    const { json, status, response } = createResponse();
+    const request = {
+      body: {
+        servers: [
+          {
+            name: 'no-args-server',
+            config: {
+              type: 'stdio',
+              command: '/usr/bin/some-tool',
+              args: [],
+            },
+          },
+        ],
+      },
+      user: adminUser,
+    } as unknown as Request;
+
+    await batchCreateServers(request, response);
+
+    expect(status).toHaveBeenCalledWith(200);
+    expect(mockAddServer).toHaveBeenCalledWith(
+      'no-args-server',
+      expect.objectContaining({
+        type: 'stdio',
+        command: '/usr/bin/some-tool',
+      }),
+    );
+    expect(json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        success: true,
+        data: expect.objectContaining({
+          successCount: 1,
+          failureCount: 0,
+        }),
+      }),
+    );
+  });
 });
 
 describe('serverController - getAllSettings', () => {

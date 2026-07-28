@@ -1181,7 +1181,6 @@ const ServerForm = ({
                 onChange={(e) => handleArgsChange(e.target.value)}
                 className="w-full py-2 px-3 form-input"
                 placeholder="e.g.: -y time-mcp"
-                required={serverType === 'stdio'}
               />
             </div>
 
