@@ -1,0 +1,34 @@
+src/controllers/serverController.ts
+  s_34182efdc1026e::t_693de2e1a789bd 420,425,564,569,800,805
+tests/controllers/serverController.test.ts
+  s_34182efdc1026e::t_693de2e1a789bd 102,120-245
+  s_1be86e01d109fe::t_8a3d911ca80442 246-247
+tests/services/mcpService-passthrough-headers.test.ts
+  s_34182efdc1026e::t_693de2e1a789bd 260-278
+src/services/mcpService.ts
+  s_34182efdc1026e::t_693de2e1a789bd 1283,1309
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "00d255116d9967f12ba10d3e6956ef1549b475b4",
+  "prompts": {},
+  "sessions": {
+    "s_1be86e01d109fe": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fa3dc-ecb2-70b0-aa03-b77249de9a44",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    },
+    "s_34182efdc1026e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fa3db-eb6d-77c3-b3c2-f7a5f21af93d",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
