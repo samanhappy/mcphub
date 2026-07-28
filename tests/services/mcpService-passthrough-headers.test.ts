@@ -257,4 +257,23 @@ describe('MCP Service - passthrough headers for upstream MCP transports', () => 
       }),
     );
   });
+
+  it('should create a stdio transport when command arguments are omitted', async () => {
+    (StdioClientTransport as jest.Mock).mockImplementation(() => ({
+      stderr: {
+        on: jest.fn(),
+      },
+    }));
+
+    await createTransportFromConfig('demo-stdio-without-args', {
+      command: '/usr/bin/some-tool',
+    });
+
+    expect(StdioClientTransport).toHaveBeenCalledWith(
+      expect.objectContaining({
+        command: '/usr/bin/some-tool',
+        args: [],
+      }),
+    );
+  });
 });
