@@ -465,6 +465,12 @@ export interface ServerConfig {
     };
   };
   perSessionClient?: boolean; // When true, creates a dedicated upstream client per downstream session (session isolation for stateful servers like Playwright)
+  // On-demand spawning: start the stdio process only when a tool call arrives,
+  // and shut it down automatically after a period of inactivity.
+  // This reduces persistent memory usage for rarely-used servers.
+  // Only effective for stdio-type servers; HTTP/SSE servers are unaffected.
+  startOnDemand?: boolean; // When true, skip startup connect and spawn lazily on first tool call
+  idleTimeoutMs?: number; // Milliseconds of inactivity before shutting down (default: 300_000 = 5 min)
   // OpenAPI specific configuration
   openapi?: {
     url?: string; // OpenAPI specification URL
@@ -528,6 +534,10 @@ export interface ServerInfo {
   enabled?: boolean; // Flag to indicate if the server is enabled
   keepAliveIntervalId?: NodeJS.Timeout; // Timer ID for keep-alive ping interval
   config?: ServerConfig; // Reference to the original server configuration for OpenAPI passthrough headers
+  // On-demand spawning runtime state
+  spawningPromise?: Promise<void>; // Singleton promise: concurrent callers await this instead of double-spawning
+  idleTimeoutId?: NodeJS.Timeout; // Timer ID for idle-shutdown (cleared/reset on each tool call)
+  lastUsedAt?: number; // Timestamp of last tool call (ms since epoch)
   oauth?: {
     // OAuth authorization state
     authorizationUrl?: string; // OAuth authorization URL for user to visit
