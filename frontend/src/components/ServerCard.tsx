@@ -618,6 +618,7 @@ const ServerCard = ({
             <ServerStatusDot
               status={server.status}
               enabled={server.enabled}
+              startOnDemand={server.config?.startOnDemand === true}
               onAuthClick={handleOAuth}
               className="hub-server-card-status"
             />

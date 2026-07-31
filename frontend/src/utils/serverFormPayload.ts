@@ -170,6 +170,8 @@ export const buildServerPayload = ({
     options,
     visibility: formData.visibility ?? 'private',
     perSessionClient: formData.perSessionClient === true ? true : undefined,
+    startOnDemand: formData.startOnDemand === true ? true : undefined,
+    idleTimeoutMs: formData.startOnDemand === true ? (formData.idleTimeoutMs ?? 300000) : undefined,
   };
 
   if (serverType === 'openapi') {

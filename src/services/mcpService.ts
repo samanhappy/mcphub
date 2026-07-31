@@ -1507,6 +1507,31 @@ export const initializeClientsFromSettings = async (
         continue;
       }
 
+      // On-demand servers: skip startup connect; spawn lazily on first tool call.
+      // Preserve existing runtime state (tools/prompts populated from a previous
+      // connection) so the tool list stays visible to agents even while sleeping.
+      if (expandedConf.startOnDemand === true) {
+        const existingOnDemand = existingServerInfos.find((s) => s.name === name);
+        nextServerInfos.push({
+          // Carry over cached tools/prompts/resources if the server was previously connected
+          ...(existingOnDemand ?? {
+            name,
+            status: 'disconnected' as const,
+            error: null,
+            tools: [],
+            prompts: [],
+            resources: [],
+            createTime: Date.now(),
+          }),
+          owner: expandedConf.owner,
+          visibility: expandedConf.visibility,
+          enabled: true,
+          config: expandedConf,
+        });
+        console.log(`Skipping startup connect for on-demand server: ${name}`);
+        continue;
+      }
+
       // Reuse this server's existing runtime state instead of reconnecting when:
       // - a targeted reload/reconnect (serverName) was requested for a
       //   *different* server — preserve its current state regardless of
@@ -2250,6 +2275,81 @@ function closeServer(name: string) {
   }
 }
 
+// ---------------------------------------------------------------------------
+// On-demand spawning helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Shuts down an on-demand stdio server without removing it from serverInfos.
+ * The tool/prompt/resource lists are preserved so agents can still see what
+ * the server offers and trigger a cold-start on the next tool call.
+ */
+const shutdownOnDemandServer = (serverInfo: ServerInfo): void => {
+  if (serverInfo.idleTimeoutId) {
+    clearTimeout(serverInfo.idleTimeoutId);
+    serverInfo.idleTimeoutId = undefined;
+  }
+
+  // Close runtime (kills process) but intentionally keep tools/prompts/resources
+  closeServerRuntime(serverInfo);
+
+  serverInfo.status = 'disconnected';
+  console.log(
+    `[${serverInfo.name}] On-demand server shut down after idle; ` +
+      `${serverInfo.tools.length} tools cached for next wake-up`,
+  );
+};
+
+/**
+ * Resets (or starts) the idle-shutdown timer for an on-demand server.
+ * Call this after every successful tool invocation.
+ */
+const scheduleIdleShutdown = (serverInfo: ServerInfo): void => {
+  if (!serverInfo.config?.startOnDemand) return;
+
+  if (serverInfo.idleTimeoutId) {
+    clearTimeout(serverInfo.idleTimeoutId);
+  }
+
+  const idleMs = serverInfo.config.idleTimeoutMs ?? 300_000; // default 5 minutes
+  serverInfo.idleTimeoutId = setTimeout(() => {
+    if (serverInfo.status === 'connected') {
+      shutdownOnDemandServer(serverInfo);
+    }
+  }, idleMs);
+};
+
+/**
+ * Ensures an on-demand server is connected before a tool call proceeds.
+ * Uses a singleton promise so concurrent callers wait for the same spawn
+ * instead of triggering duplicate process launches.
+ */
+const ensureServerReady = async (serverInfo: ServerInfo): Promise<void> => {
+  if (serverInfo.status === 'connected') return;
+
+  // Another call is already spawning — wait for it
+  if (serverInfo.spawningPromise) {
+    await serverInfo.spawningPromise;
+    return;
+  }
+
+  console.log(`[${serverInfo.name}] Cold-starting on-demand server…`);
+  const spawnStart = Date.now();
+
+  const spawnPromise = reconnectServer(serverInfo.name).then(() => {
+    console.log(
+      `[${serverInfo.name}] On-demand server ready in ${Date.now() - spawnStart}ms`,
+    );
+  });
+
+  serverInfo.spawningPromise = spawnPromise;
+  try {
+    await spawnPromise;
+  } finally {
+    serverInfo.spawningPromise = undefined;
+  }
+};
+
 export const resetServerOAuthConnection = (name: string): boolean => {
   const serverInfo = serverInfos.find((serverInfo) => serverInfo.name === name);
   if (!serverInfo) {
@@ -2759,11 +2859,13 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
           targetTool = groupTool.tool;
         }
       } else {
-        // Find the first server that has this tool
+        // Find the first server that has this tool.
+        // On-demand servers may be sleeping (disconnected) but still advertise
+        // their cached tool list — include them as candidates.
         targetServerInfo = serverInfos.find(
           (serverInfo) =>
-            serverInfo.status === 'connected' &&
             serverInfo.enabled !== false &&
+            (serverInfo.status === 'connected' || serverInfo.config?.startOnDemand === true) &&
             serverInfo.tools.some((tool) => tool.name === toolName),
         );
       }
@@ -2771,6 +2873,22 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
       if (!targetServerInfo) {
         throw new Error(`No available servers found with tool: ${toolName}`);
       }
+
+      // If the target is an on-demand server that is not yet running, wake it up now.
+      // Concurrent callers are serialised via ensureServerReady's singleton promise.
+      if (targetServerInfo.config?.startOnDemand && targetServerInfo.status !== 'connected') {
+        await ensureServerReady(targetServerInfo);
+        // Re-read status from the mutated serverInfo after async spawn
+        const freshStatus = (targetServerInfo as ServerInfo).status;
+        if (freshStatus !== 'connected') {
+          throw new Error(
+            `Failed to start on-demand server '${targetServerInfo.name}' — check server logs`,
+          );
+        }
+      }
+
+      // Record activity timestamp for on-demand servers
+      targetServerInfo.lastUsedAt = Date.now();
 
       // Check if the tool exists on the server
       const tool =
@@ -2914,6 +3032,9 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
         toolName: cleanToolName,
         result: summarizeToolResultForLogging(result),
       });
+
+      // Reset idle-shutdown timer for on-demand servers after each successful call
+      scheduleIdleShutdown(targetServerInfo);
 
       // Log successful activity
       const duration = Date.now() - startTime;

@@ -41,6 +41,7 @@ export const StatusDot: React.FC<StatusDotProps> = ({ kind, label, className, on
 interface ServerStatusDotProps {
   status: ServerStatus;
   enabled?: boolean;
+  startOnDemand?: boolean;
   onAuthClick?: (e: React.MouseEvent) => void;
   className?: string;
 }
@@ -48,12 +49,29 @@ interface ServerStatusDotProps {
 export const ServerStatusDot: React.FC<ServerStatusDotProps> = ({
   status,
   enabled,
+  startOnDemand,
   onAuthClick,
   className,
 }) => {
   const { t } = useTranslation();
   if (enabled === false) {
     return <StatusDot kind="muted" label={t('server.disable') || 'Disabled'} className={className} />;
+  }
+  // On-demand servers that are disconnected are "sleeping", not offline
+  if (startOnDemand && status === 'disconnected') {
+    return (
+      <StatusDot
+        kind="muted"
+        label={
+          <>
+            <span aria-hidden>💤</span>
+            <span>{t('status.sleeping', 'Sleeping')}</span>
+          </>
+        }
+        title={t('status.sleepingDescription', 'On-demand server — will start automatically when a tool is called')}
+        className={className}
+      />
+    );
   }
   const kind = STATUS_TO_KIND[status] ?? 'muted';
   const isOAuth = status === 'oauth_required';

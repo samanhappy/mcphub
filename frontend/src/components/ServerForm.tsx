@@ -107,6 +107,9 @@ const ServerForm = ({
     },
     // Per-session client isolation initialization
     perSessionClient: initialData?.config?.perSessionClient === true,
+    // On-demand spawning initialization
+    startOnDemand: initialData?.config?.startOnDemand === true,
+    idleTimeoutMs: initialData?.config?.idleTimeoutMs ?? 300000,
     // OpenAPI configuration initialization
     openapi:
       initialData && initialData.config && initialData.config.openapi
@@ -1423,6 +1426,62 @@ const ServerForm = ({
                 'Create a dedicated upstream connection per session instead of sharing one across all sessions. Enable for stateful servers like Playwright. Increases upstream connections with concurrent sessions.',
               )}
             </p>
+          </div>
+        )}
+
+        {/* On-demand spawning - stdio only */}
+        {serverType === 'stdio' && (
+          <div className="mb-4">
+            <div className="flex items-center mb-1">
+              <input
+                type="checkbox"
+                id="startOnDemand"
+                checked={formData.startOnDemand || false}
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    startOnDemand: e.target.checked,
+                  }))
+                }
+                className="mr-2"
+              />
+              <label htmlFor="startOnDemand" className="text-gray-700 dark:text-gray-300 text-sm font-medium">
+                {t('server.startOnDemand', 'Start On Demand')}
+              </label>
+            </div>
+            <p className="text-xs text-gray-500 ml-6">
+              {t(
+                'server.startOnDemandDescription',
+                'Skip startup connect and spawn this server only when a tool call arrives. The process is shut down automatically after the idle timeout, then restarted on the next call. Reduces persistent memory usage for rarely-used servers.',
+              )}
+            </p>
+            {formData.startOnDemand && (
+              <div className="ml-6 mt-2">
+                <label htmlFor="idleTimeoutMs" className="block text-xs text-gray-600 dark:text-gray-400 mb-1">
+                  {t('server.idleTimeoutMs', 'Idle shutdown timeout (ms)')}
+                </label>
+                <input
+                  type="number"
+                  id="idleTimeoutMs"
+                  min={10000}
+                  step={1000}
+                  value={formData.idleTimeoutMs ?? 300000}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      idleTimeoutMs: Number(e.target.value),
+                    }))
+                  }
+                  className="hub-input w-40 text-sm"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  {t(
+                    'server.idleTimeoutMsDescription',
+                    'Shut down the process after this many milliseconds with no tool calls. Default: 300000 (5 minutes).',
+                  )}
+                </p>
+              </div>
+            )}
           </div>
         )}
 
