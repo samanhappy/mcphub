@@ -19,6 +19,7 @@ import { Request, Response } from 'express';
 import {
   getServerByName,
   getServerByOAuthState,
+  connectClientWithDiagnostics,
   createTransportFromConfig,
   updateServerToolsCache,
 } from '../services/mcpService.js';
@@ -354,7 +355,11 @@ export const handleOAuthCallback = async (req: Request, res: Response) => {
               serverName: serverInfo.name,
             });
             try {
-              await serverInfo.client.connect(serverInfo.transport, serverInfo.options);
+              await connectClientWithDiagnostics(
+                serverInfo.client,
+                serverInfo.transport,
+                serverInfo.options,
+              );
               console.log('Client connected successfully after OAuth callback', {
                 serverName: serverInfo.name,
               });

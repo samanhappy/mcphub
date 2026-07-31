@@ -147,7 +147,7 @@ const summarizeSerializedErrorForLogging = (
 ): Record<string, unknown> => {
   const summary: Record<string, unknown> = {};
 
-  ['name', 'message', 'stack', 'requestId'].forEach((key) => {
+  ['name', 'message', 'stack', 'requestId', 'upstreamStderr'].forEach((key) => {
     if (typeof serialized[key] === 'string') {
       summary[key] = sanitizeStringForLogging(serialized[key]);
     }
@@ -197,6 +197,9 @@ export const summarizeErrorForLogging = (error: unknown): Record<string, unknown
     if (typeof record.requestId === 'string') {
       summary.requestId = sanitizeStringForLogging(record.requestId);
     }
+    if (typeof record.upstreamStderr === 'string') {
+      summary.upstreamStderr = sanitizeStringForLogging(record.upstreamStderr);
+    }
 
     if (Object.keys(summary).length > 0) {
       return summary;
@@ -242,6 +245,9 @@ export const formatErrorForLogging = (error: unknown): string => {
   }
   if (typeof summary.requestId === 'string') {
     parts.push(`requestId=${summary.requestId}`);
+  }
+  if (typeof summary.upstreamStderr === 'string') {
+    parts.push(`Upstream stderr:\n${summary.upstreamStderr}`);
   }
 
   return parts.join(' | ') || 'Unknown error';

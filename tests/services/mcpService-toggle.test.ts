@@ -4,6 +4,7 @@ const mockSaveToolsAsVectorEmbeddings = jest.fn().mockResolvedValue(undefined);
 const mockClientConnect = jest.fn().mockResolvedValue(undefined);
 const mockClientClose = jest.fn();
 const mockListTools = jest.fn().mockResolvedValue({ tools: [] });
+const mockStderrListeners = new Map<string, (data?: Buffer) => void>();
 
 jest.mock('@modelcontextprotocol/sdk/client/index.js', () => ({
   Client: jest.fn().mockImplementation(() => ({
@@ -18,7 +19,9 @@ jest.mock('@modelcontextprotocol/sdk/client/stdio.js', () => ({
   StdioClientTransport: jest.fn().mockImplementation(() => ({
     close: jest.fn(),
     stderr: {
-      on: jest.fn(),
+      on: jest.fn((event: string, listener: (data?: Buffer) => void) => {
+        mockStderrListeners.set(event, listener);
+      }),
     },
   })),
 }));
@@ -187,6 +190,7 @@ describe('mcpService initializeClientsFromSettings OAuth authorization reuse', (
     setServerInfosForTest([]);
     mockServerDao.findAll.mockResolvedValue([]);
     mockClientConnect.mockResolvedValue(undefined);
+    mockStderrListeners.clear();
   });
 
   it('does not reconnect a server with an in-flight OAuth authorization during full reload', async () => {
@@ -238,6 +242,44 @@ describe('mcpService initializeClientsFromSettings OAuth authorization reuse', (
       },
     });
     expect(getServerByName('notion')?.oauth?.codeVerifier).toBe('verifier-1');
+  });
+
+  it('includes upstream stderr when a stdio server connection closes', async () => {
+    mockServerDao.findAll.mockResolvedValueOnce([
+      {
+        name: 'fetch',
+        enabled: true,
+        command: 'uvx',
+        args: ['mcp-server-fetch'],
+      },
+    ]);
+    mockClientConnect.mockImplementationOnce(async () => {
+      mockStderrListeners.get('data')?.(
+        Buffer.from('ImportError: token=secret cannot import name McpError\n'),
+      );
+      throw Object.assign(new Error('MCP error -32000: Connection closed'), { code: -32000 });
+    });
+
+    const servers = await initializeClientsFromSettings(true);
+    await new Promise((resolve) => setImmediate(resolve));
+
+    expect(servers[0]).toMatchObject({
+      status: 'disconnected',
+    });
+    expect(servers[0].error).toContain('MCP error -32000: Connection closed');
+    expect(servers[0].error).toContain(
+      'Upstream stderr:\nImportError: token=[REDACTED] cannot import name McpError',
+    );
+    expect(console.error).toHaveBeenCalledWith(
+      'Failed to connect client for server',
+      expect.objectContaining({
+        serverName: 'fetch',
+        error: expect.objectContaining({
+          code: -32000,
+          upstreamStderr: 'ImportError: token=[REDACTED] cannot import name McpError',
+        }),
+      }),
+    );
   });
 });
 

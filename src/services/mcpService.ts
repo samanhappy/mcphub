@@ -23,7 +23,8 @@ import {
   StreamableHTTPClientTransport,
   StreamableHTTPClientTransportOptions,
 } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
-import { normalizeHeaders } from '@modelcontextprotocol/sdk/shared/transport.js';
+import { normalizeHeaders, type Transport } from '@modelcontextprotocol/sdk/shared/transport.js';
+import type { RequestOptions } from '@modelcontextprotocol/sdk/shared/protocol.js';
 import { createFetchWithProxy, getProxyConfigFromEnv } from './proxy.js';
 import { assertSafeUrl, createRedirectValidatingFetch } from '../utils/ssrf.js';
 import { getUserDao } from '../dao/index.js';
@@ -74,6 +75,7 @@ import {
   sanitizeStringForLogging,
   summarizeErrorForLogging,
 } from '../utils/serialization.js';
+import { addStdioErrorContext, observeStdioStderr } from '../utils/stdioDiagnostics.js';
 import {
   MCP_APPS_CAPABILITIES,
   filterModelVisibleTools,
@@ -476,7 +478,7 @@ const getOrCreateIsolatedClient = async (
     const client = createUpstreamMcpClient(serverInfo.name, () => serverInfo);
 
     try {
-      await client.connect(transport, serverInfo.options || {});
+      await connectClientWithDiagnostics(client, transport, serverInfo.options || {});
     } catch (connectError) {
       // Connect failed — close the client/transport and kill any spawned
       // process tree so a failed handshake doesn't leak resources.
@@ -705,6 +707,18 @@ const sessionIsolatedClients = new Map<string, Map<string, { client: Client; tra
 
 // Locks to prevent concurrent creation of the same isolated client
 const isolatedClientCreationLocks = new Map<string, Promise<any>>();
+
+export const connectClientWithDiagnostics = async (
+  client: Client,
+  transport: Transport,
+  options?: RequestOptions,
+): Promise<void> => {
+  try {
+    await client.connect(transport, options);
+  } catch (error) {
+    throw addStdioErrorContext(error, transport);
+  }
+};
 
 // Track servers pending a cache-refresh reinstall.
 // Consumed once by createTransportFromConfig on the next reconnect.
@@ -1323,9 +1337,14 @@ export const createTransportFromConfig = async (name: string, conf: ServerConfig
       env: env,
       stderr: 'pipe',
     });
-    transport.stderr?.on('data', (data) => {
-      console.log(`[${name}] [child] ${data}`);
-    });
+    if (transport.stderr) {
+      observeStdioStderr(transport, transport.stderr, (message) => {
+        console.log('Upstream server stderr', {
+          serverName: name,
+          message,
+        });
+      });
+    }
   } else {
     throw new Error(`Unable to create transport for server: ${name}`);
   }
@@ -1383,7 +1402,7 @@ const callToolWithReconnect = async (
           const newClient = createUpstreamMcpClient(serverInfo.name, () => serverInfo);
 
           // Reconnect with new transport
-          await newClient.connect(newTransport, serverInfo.options || {});
+          await connectClientWithDiagnostics(newClient, newTransport, serverInfo.options || {});
 
           if (isolated) {
             // Isolated path: close only this session's stale connection and
@@ -1707,8 +1726,7 @@ export const initializeClientsFromSettings = async (
       }
       nextServerInfos.push(serverInfo);
 
-      client
-        .connect(transport, initRequestOptions || requestOptions)
+      connectClientWithDiagnostics(client, transport, initRequestOptions || requestOptions)
         .then(() => {
           console.log(`Successfully connected client for server: ${name}`);
           const serverVersion = client.getServerVersion?.();
