@@ -243,7 +243,8 @@
     "connecting": "Bağlanıyor",
     "oauthRequired": "OAuth Gerekli",
     "clickToAuthorize": "OAuth ile yetkilendirmek için tıklayın",
-    "oauthWindowOpened": "OAuth yetkilendirme penceresi açıldı. Lütfen yetkilendirmeyi tamamlayın."
+    "oauthWindowOpened": "OAuth yetkilendirme penceresi açıldı. Lütfen yetkilendirmeyi tamamlayın.",
+    "oauthClientIdHint": "Bu sunucuda önceden yapılandırılmış bir OAuth istemci kimliği var. Yetkilendirme \"invalid redirect_uri\" hatasıyla başarısız olursa, MCPHub'ın kendi OAuth istemcisini otomatik olarak kaydedebilmesi için clientId'yi kaldırın."
   },
   "errors": {
     "general": "Bir şeyler yanlış gitti",
@@ -879,7 +880,8 @@
     "parseError": "JSON ayrıştırılamadı. Lütfen formatı kontrol edip tekrar deneyin.",
     "addFailed": "Sunucu eklenemedi",
     "importFailed": "Sunucular içe aktarılamadı",
-    "partialSuccess": "{{total}} sunucudan {{count}} tanesi başarıyla içe aktarıldı. Bazı sunucular başarısız oldu:"
+    "partialSuccess": "{{total}} sunucudan {{count}} tanesi başarıyla içe aktarıldı. Bazı sunucular başarısız oldu:",
+    "validationErrors": "Bazı sunucular içe aktarılamadı. Lütfen aşağıdakileri düzeltip tekrar deneyin:"
   },
   "groupImport": {
     "button": "İçe Aktar",

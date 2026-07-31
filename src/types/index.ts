@@ -544,6 +544,10 @@ export interface ServerInfo {
     state?: string; // OAuth state parameter for CSRF protection
     codeVerifier?: string; // PKCE code verifier
     connected?: boolean; // True when stored upstream OAuth tokens exist
+    clientIdConfigured?: boolean; // True when a static oauth.clientId is set (dynamic registration is suppressed).
+    // When set, a preconfigured client's redirect-URI allow-list may not include this hub's callback,
+    // causing the upstream authorize endpoint to reject with "invalid redirect_uri". Surfaced so the UI
+    // can hint the user to remove clientId and let MCPHub self-register (DCR).
   };
 }
 

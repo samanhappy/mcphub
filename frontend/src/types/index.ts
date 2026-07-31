@@ -314,6 +314,7 @@ export interface Server {
     authorizationUrl?: string;
     state?: string;
     connected?: boolean;
+    clientIdConfigured?: boolean; // A static oauth.clientId is set (dynamic registration suppressed)
   };
 }
 

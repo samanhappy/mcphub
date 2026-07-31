@@ -243,7 +243,8 @@
     "connecting": "Connexion en cours",
     "oauthRequired": "OAuth requis",
     "clickToAuthorize": "Cliquez pour autoriser avec OAuth",
-    "oauthWindowOpened": "Fenêtre d'autorisation OAuth ouverte. Veuillez compléter l'autorisation."
+    "oauthWindowOpened": "Fenêtre d'autorisation OAuth ouverte. Veuillez compléter l'autorisation.",
+    "oauthClientIdHint": "Ce serveur possède un ID client OAuth préconfiguré. Si l'autorisation échoue avec « invalid redirect_uri », supprimez le clientId pour que MCPHub puisse enregistrer automatiquement son propre client OAuth."
   },
   "errors": {
     "general": "Une erreur est survenue",
@@ -880,7 +881,8 @@
     "parseError": "Échec de l'analyse du JSON. Veuillez vérifier le format et réessayer.",
     "addFailed": "Échec de l'ajout du serveur",
     "importFailed": "Échec de l'importation des serveurs",
-    "partialSuccess": "{{count}} serveur(s) sur {{total}} importé(s) avec succès. Certains serveurs ont échoué :"
+    "partialSuccess": "{{count}} serveur(s) sur {{total}} importé(s) avec succès. Certains serveurs ont échoué :",
+    "validationErrors": "Certains serveurs n'ont pas pu être importés. Veuillez corriger les points suivants et réessayer :"
   },
   "groupImport": {
     "button": "Importer",
