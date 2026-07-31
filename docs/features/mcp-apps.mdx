@@ -1,6 +1,6 @@
 ---
 title: 'MCP Apps'
-description: 'Proxy interactive MCP Apps through single-server MCPHub routes'
+description: 'Proxy interactive MCP Apps through MCPHub routes, including multi-server groups'
 ---
 
 ## Overview
@@ -11,30 +11,37 @@ No MCPHub configuration switch is required. Support is enabled automatically whe
 
 ## Routing Requirements
 
-MCP Apps passthrough is enabled only when a request route resolves to exactly one connected MCP upstream server:
+MCP Apps passthrough is enabled whenever a request route resolves to at least one connected MCP upstream server:
 
 - `/mcp/{server}`
-- `/mcp/{group}` when the group contains one visible MCP server
-- `/mcp` when only one MCP server is visible to the caller
+- `/mcp/{group}`, whether the group contains one visible MCP server or several
+- `/mcp` when at least one MCP server is visible to the caller
 
-Aggregate routes and `$smart` routes continue to work as ordinary MCP routes. On those routes MCPHub:
+`$smart` routes are the one exception and continue to work as ordinary MCP routes, since Smart Routing tools aren't addressed by name at all. On that route MCPHub:
 
 - hides app-only tools such as tools with `_meta.ui.visibility: ["app"]`
 - removes Apps-specific `_meta.ui` and legacy `_meta["ui/resourceUri"]` fields
 - rejects direct calls to app-only tools
 - rejects unlisted `ui://` resource reads
 
+Routes with more than one connected server behave differently from single-server routes in one respect: tool names. See below.
+
 ## Tool Names
 
-Ordinary MCPHub routes expose qualified tool names such as `weather::forecast`, using your configured name separator.
+Ordinary (non-Apps) MCPHub routes expose qualified tool names such as `weather::forecast`, using your configured name separator.
 
-An eligible MCP Apps route exposes the upstream tool names unchanged, such as `forecast`. This allows calls from the app iframe to pass through without rewriting. Qualified aliases remain accepted for compatibility.
+A route eligible for Apps passthrough that resolves to a **single** connected server exposes the upstream tool names unchanged, such as `forecast`. This allows calls from the app iframe to pass through without rewriting, which is what most Apps widgets expect when they call back into a single-server host.
+
+A route that resolves to **more than one** connected server keeps the qualified name (`weather-station::forecast`) instead, since more than one upstream server could otherwise expose a tool with the same bare name. Apps metadata (`_meta.ui`) and app-only tools are still fully surfaced on these multi-server routes — only the tool-name qualification differs from the single-server case. A widget on a multi-server route should read its own qualified name from the tool listing (or the host context passed to it) rather than assume the bare name.
 
 ## UI Resources
 
-MCP Apps servers may omit UI-only resources from `resources/list`. On an eligible Apps route, MCPHub forwards direct `resources/read` calls for unlisted `ui://` URIs to the single upstream server.
+MCP Apps servers may omit UI-only resources from `resources/list`. On an Apps-eligible route, MCPHub forwards direct `resources/read` calls for unlisted `ui://` URIs:
 
-Ordinary listed resources remain readable, but Apps-specific metadata is removed outside eligible Apps routes.
+- On a single-server route, the request goes straight to that server.
+- On a multi-server route, MCPHub has no prior way to know which upstream owns a given `ui://` URI, since it isn't listed. It probes each connected server in the group in turn and returns the first successful response.
+
+Ordinary listed resources remain readable, but Apps-specific metadata is removed outside Apps-eligible routes.
 
 ## Dynamic Lists
 

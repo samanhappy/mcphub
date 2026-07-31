@@ -2383,7 +2383,16 @@ export const toggleServerStatus = async (
 
 type McpAppsRouteContext = {
   enabled: boolean;
+  // Set when the route resolves to exactly one connected upstream server.
+  // Preserves the existing behavior of exposing raw (unqualified) tool
+  // names, which most Apps widgets assume when calling back into a
+  // single-server host.
   serverInfo?: ServerInfo;
+  // Set when the route resolves to more than one connected upstream
+  // server. Tool names stay qualified (server::tool) in this case so
+  // calls can still be routed unambiguously; Apps metadata and app-only
+  // tools are still surfaced, unlike ordinary (non-Apps) group routes.
+  serverInfos?: ServerInfo[];
 };
 
 const getMcpAppsRouteContext = async (
@@ -2399,17 +2408,24 @@ const getMcpAppsRouteContext = async (
   }
 
   const { filteredServerInfos } = await getFilteredServerInfosForGroup(group);
-  if (
-    filteredServerInfos.length !== 1 ||
-    filteredServerInfos[0].status !== 'connected' ||
-    !filteredServerInfos[0].client
-  ) {
+  const connectedServerInfos = filteredServerInfos.filter(
+    (serverInfo) => serverInfo.status === 'connected' && !!serverInfo.client,
+  );
+
+  if (connectedServerInfos.length === 0) {
     return { enabled: false };
+  }
+
+  if (connectedServerInfos.length === 1) {
+    return {
+      enabled: true,
+      serverInfo: connectedServerInfos[0],
+    };
   }
 
   return {
     enabled: true,
-    serverInfo: filteredServerInfos[0],
+    serverInfos: connectedServerInfos,
   };
 };
 
@@ -2582,11 +2598,21 @@ const projectToolForDownstream = (
   }
 
   const projectedTool = appsRouteContext.enabled ? tool : stripMcpAppsMetadata(tool);
+
+  // Single connected server: keep the existing raw (unqualified) name so
+  // widgets that call back with the bare tool name continue to work.
+  if (appsRouteContext.serverInfo) {
+    return {
+      ...projectedTool,
+      name: normalizeToolNameForServer(serverName, projectedTool.name),
+    };
+  }
+
+  // Multiple connected servers (Apps-enabled) or Apps disabled: qualify the
+  // name so it can still be routed to the right server unambiguously.
   return {
     ...projectedTool,
-    name: appsRouteContext.enabled
-      ? normalizeToolNameForServer(serverName, projectedTool.name)
-      : projectNameForGroup(projectedTool.name, serverName, serverConfig),
+    name: projectNameForGroup(projectedTool.name, serverName, serverConfig),
   };
 };
 
@@ -2713,15 +2739,20 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
       }
 
       const { arguments: toolArgs } = request.params.arguments || {};
+      // A single connected server on an Apps-enabled route is addressed by
+      // its raw (unqualified) tool name, same as before. A multi-server
+      // Apps-enabled route falls through to qualified-name group
+      // resolution below, same as an ordinary (non-Apps) group route.
+      const singleServerAppsRoute = !!appsRouteContext.serverInfo;
       let targetServerInfo: ServerInfo | undefined;
       let targetToolName = toolName;
       let targetTool: Tool | undefined;
-      if (appsRouteContext.enabled) {
+      if (singleServerAppsRoute) {
         targetServerInfo = appsRouteContext.serverInfo;
       } else if (extra && extra.server) {
         targetServerInfo = getServerByName(extra.server);
       } else if (getGroupLookupName(group)) {
-        const groupTool = await resolveToolInGroup(group, toolName, appsRouteContext.enabled);
+        const groupTool = await resolveToolInGroup(group, toolName, false);
         if (groupTool) {
           targetServerInfo = groupTool.serverInfo;
           targetToolName = groupTool.toolName;
@@ -2743,7 +2774,7 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
 
       // Check if the tool exists on the server
       const tool =
-        targetTool ?? findToolOnServer(targetServerInfo, targetToolName, appsRouteContext.enabled);
+        targetTool ?? findToolOnServer(targetServerInfo, targetToolName, singleServerAppsRoute);
       if (!tool) {
         throw new Error(`Tool '${toolName}' not found on server '${targetServerInfo.name}'`);
       }
@@ -2910,11 +2941,18 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
 
     // Regular tool handling
     const lookupGroup = getGroupLookupName(group);
+    // A single connected server on an Apps-enabled route is addressed
+    // directly, using its raw (unqualified) tool name, same as before. A
+    // multi-server Apps-enabled route resolves via the qualified-name
+    // group lookup below, same as an ordinary (non-Apps) group route,
+    // just without stripping Apps metadata or hiding app-only tools
+    // (assertToolAvailableForRoute below still gates on appsRouteContext.enabled).
+    const singleServerAppsRoute = !!appsRouteContext.serverInfo;
     const groupTool =
-      !appsRouteContext.enabled && lookupGroup
-        ? await resolveToolInGroup(lookupGroup, request.params.name, appsRouteContext.enabled)
+      !singleServerAppsRoute && lookupGroup
+        ? await resolveToolInGroup(lookupGroup, request.params.name, false)
         : undefined;
-    const serverInfo = appsRouteContext.enabled
+    const serverInfo = singleServerAppsRoute
       ? appsRouteContext.serverInfo
       : (groupTool?.serverInfo ??
         (lookupGroup ? undefined : getServerByTool(request.params.name)));
@@ -2922,7 +2960,7 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
     const tool =
       groupTool?.tool ??
       (serverInfo
-        ? findToolOnServer(serverInfo, routeToolName, appsRouteContext.enabled)
+        ? findToolOnServer(serverInfo, routeToolName, singleServerAppsRoute)
         : undefined);
     if (!serverInfo || !tool) {
       throw new Error(`Server not found: ${request.params.name}`);
@@ -3415,24 +3453,53 @@ export const handleReadResourceRequest = async (request: any, extra: any) => {
       }
     }
 
-    if (!server && appsRouteContext.enabled && uri.startsWith('ui://')) {
-      server = appsRouteContext.serverInfo;
-    }
+    let result: any;
 
-    if (!server?.client) {
+    if (server?.client) {
+      result = await server.client.readResource({ uri });
+      if (!result || !Array.isArray(result.contents)) {
+        throw new Error(`Failed to read resource: ${uri}`);
+      }
+    } else if (appsRouteContext.enabled && uri.startsWith('ui://')) {
+      // Not pre-registered in resources/list — common for MCP Apps servers
+      // that generate ui:// resources dynamically at tool-call time. A
+      // single-server route goes straight to that server. A multi-server
+      // route has no way to know which upstream owns the URI up front, so
+      // probe each connected candidate in turn and use the first one that
+      // answers.
+      const candidates = appsRouteContext.serverInfo
+        ? [appsRouteContext.serverInfo]
+        : (appsRouteContext.serverInfos ?? []);
+
+      for (const candidate of candidates) {
+        if (!candidate.client) {
+          continue;
+        }
+        try {
+          const candidateResult = await candidate.client.readResource({ uri });
+          if (candidateResult && Array.isArray(candidateResult.contents)) {
+            result = candidateResult;
+            break;
+          }
+        } catch {
+          // This candidate doesn't own the resource; try the next one.
+        }
+      }
+
+      if (!result) {
+        throw new Error(`Resource not found: ${uri}`);
+      }
+    } else {
       throw new Error(`Resource not found: ${uri}`);
-    }
-
-    const result = await server.client.readResource({ uri });
-    if (!result || !Array.isArray(result.contents)) {
-      throw new Error(`Failed to read resource: ${uri}`);
     }
 
     return appsRouteContext.enabled
       ? result
       : {
           ...result,
-          contents: result.contents.map((content) => stripMcpAppsMetadata(content)),
+          contents: result.contents.map((content: { _meta?: Record<string, unknown> }) =>
+            stripMcpAppsMetadata(content),
+          ),
         };
   } catch (error) {
     console.error('Error handling ReadResourceRequest', summarizeErrorForLogging(error));

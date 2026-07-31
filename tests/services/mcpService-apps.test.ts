@@ -1,4 +1,4 @@
-const mockClient = {
+const createMockClient = () => ({
   connect: jest.fn().mockResolvedValue(undefined),
   close: jest.fn(),
   getServerCapabilities: jest.fn(() => ({ tools: {}, resources: {}, prompts: {} })),
@@ -9,10 +9,23 @@ const mockClient = {
   listResources: jest.fn(),
   readResource: jest.fn(),
   callTool: jest.fn(),
-};
+});
+
+const mockClient = createMockClient();
+
+// Most tests only ever deal with one upstream server, so every constructed
+// Client shares the single `mockClient` above by default. A handful of new
+// multi-server-group tests need each upstream to behave independently (e.g.
+// one server owns a ui:// resource and the other doesn't); those tests
+// register a dedicated mock here, keyed by server name, which takes
+// precedence over the shared default.
+const mockClientsByServer = new Map<string, ReturnType<typeof createMockClient>>();
 
 jest.mock('@modelcontextprotocol/sdk/client/index.js', () => ({
-  Client: jest.fn().mockImplementation(() => mockClient),
+  Client: jest.fn().mockImplementation((clientInfo: { name: string }) => {
+    const serverName = clientInfo.name.replace(/^mcp-client-/, '');
+    return mockClientsByServer.get(serverName) ?? mockClient;
+  }),
 }));
 
 jest.mock('@modelcontextprotocol/sdk/client/stdio.js', () => ({
@@ -43,6 +56,15 @@ jest.mock('../../src/services/groupService.js', () => ({
   getServersInGroup: jest.fn(),
   getServerConfigInGroup: jest.fn(),
   getServerConfigsInGroup: mockGetServerConfigsInGroup,
+  // Real implementation: getFilteredServerInfosForGroup uses this to turn a
+  // group's stored server list (strings or per-server config objects) into
+  // normalized IGroupServerConfig entries.
+  normalizeGroupServers: (servers: Array<string | { name: string }>) =>
+    servers.map((server) =>
+      typeof server === 'string'
+        ? { name: server, tools: 'all', prompts: 'all', resources: 'all' }
+        : { tools: 'all', prompts: 'all', resources: 'all', ...server },
+    ),
 }));
 
 jest.mock('../../src/services/sseService.js', () => ({
@@ -100,6 +122,7 @@ jest.mock('../../src/services/proxy.js', () => ({
 const mockFindAll = jest.fn();
 const mockFindById = jest.fn();
 const mockFindBuiltinResourceByUri = jest.fn();
+const mockGroupFindByName = jest.fn(async (_name: string) => null as any);
 
 jest.mock('../../src/dao/index.js', () => ({
   getServerDao: jest.fn(() => ({
@@ -107,7 +130,7 @@ jest.mock('../../src/dao/index.js', () => ({
     findById: mockFindById,
   })),
   getGroupDao: jest.fn(() => ({
-    findByName: jest.fn(async () => null),
+    findByName: mockGroupFindByName,
     findById: jest.fn(async () => null),
   })),
   getSystemConfigDao: jest.fn(() => ({
@@ -193,9 +216,11 @@ describe('mcpService MCP Apps transparent proxy', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     cleanupAllServers();
+    mockClientsByServer.clear();
     mockFindAll.mockResolvedValue([makeServerConfig('apps-server')]);
     mockFindById.mockImplementation(async (name: string) => makeServerConfig(name));
     mockGetServerConfigsInGroup.mockResolvedValue([]);
+    mockGroupFindByName.mockImplementation(async () => null);
     mockFindBuiltinResourceByUri.mockResolvedValue(undefined);
     mockClient.listTools.mockResolvedValue({ tools: appsTools });
     mockClient.listPrompts.mockResolvedValue({ prompts: [] });
@@ -345,25 +370,149 @@ describe('mcpService MCP Apps transparent proxy', () => {
     expect(result.contents[0].text).toContain('Failed to read resource');
   });
 
-  it('blocks unlisted ui resources on aggregate routes', async () => {
-    mockFindAll.mockResolvedValue([
-      makeServerConfig('apps-server'),
-      makeServerConfig('other-server'),
-    ]);
-    mockGetServerConfigsInGroup.mockImplementation(async (group: string) =>
-      group === 'pair' ? [{ name: 'apps-server' }, { name: 'other-server' }] : [],
-    );
-    await initUpstreamServers();
-    await flushPromises();
-    await markSessionAsAppsCapable('aggregate-session', 'pair');
+  describe('multi-server Apps-enabled groups', () => {
+    // 'pair' is a real two-server group (apps-server + other-server), resolved
+    // through the group DAO the same way mcpService looks it up in production.
+    // Previously an Apps-enabled route required the group to resolve to
+    // exactly one connected server; groups with more than one server were
+    // silently treated as an ordinary (non-Apps) route. These tests cover the
+    // relaxed behavior: multiple connected servers keep Apps metadata and
+    // app-only tools, addressed by qualified name instead of a bare one.
+    const setUpPairGroup = () => {
+      mockFindAll.mockResolvedValue([
+        makeServerConfig('apps-server'),
+        makeServerConfig('other-server'),
+      ]);
+      mockGroupFindByName.mockImplementation(async (name: string) =>
+        name === 'pair' ? { servers: ['apps-server', 'other-server'] } : null,
+      );
+    };
 
-    const result = await handleReadResourceRequest(
-      { params: { uri: 'ui://apps/dashboard.html' } },
-      { sessionId: 'aggregate-session' },
-    );
+    it('keeps qualified tool names and full Apps metadata on a multi-server Apps route', async () => {
+      setUpPairGroup();
+      await initUpstreamServers();
+      await flushPromises();
+      await markSessionAsAppsCapable('aggregate-session', 'pair');
 
-    expect(result.contents[0].text).toContain('Resource not found');
-    expect(mockClient.readResource).not.toHaveBeenCalled();
+      const result = await handleListToolsRequest({}, { sessionId: 'aggregate-session' });
+
+      const dashboardTool = result.tools.find(
+        (tool: any) => tool.name === 'apps-server::open-dashboard',
+      );
+      const appOnlyTool = result.tools.find(
+        (tool: any) => tool.name === 'apps-server::poll-dashboard',
+      );
+      expect(dashboardTool._meta).toEqual(appsTools[0]._meta);
+      // App-only tools (visibility excludes 'model') stay visible here, unlike
+      // on an ordinary group route where they're hidden entirely.
+      expect(appOnlyTool).toBeDefined();
+    });
+
+    it('routes a qualified app-only tool call to the right server on a multi-server Apps route', async () => {
+      setUpPairGroup();
+      await initUpstreamServers();
+      await flushPromises();
+      await markSessionAsAppsCapable('aggregate-session', 'pair');
+
+      const result = await handleCallToolRequest(
+        { params: { name: 'apps-server::poll-dashboard', arguments: {} } },
+        { sessionId: 'aggregate-session' },
+      );
+
+      expect(result.isError).toBe(false);
+      expect(mockClient.callTool).toHaveBeenCalledWith(
+        { name: 'poll-dashboard', arguments: {} },
+        undefined,
+        expect.anything(),
+      );
+    });
+
+    it('reads an unlisted ui:// resource by probing each connected server', async () => {
+      setUpPairGroup();
+      await initUpstreamServers();
+      await flushPromises();
+      await markSessionAsAppsCapable('aggregate-session', 'pair');
+
+      const result = await handleReadResourceRequest(
+        { params: { uri: 'ui://apps/dashboard.html' } },
+        { sessionId: 'aggregate-session' },
+      );
+
+      expect(result.contents[0]._meta).toEqual({
+        ui: { csp: { connectDomains: [] } },
+        trace: 'keep-me',
+      });
+    });
+
+    it('falls through to the next candidate when a server does not own the resource', async () => {
+      setUpPairGroup();
+      // apps-server (the shared default mock client, probed first since it's
+      // first in the group's server list) does not own this resource.
+      mockClient.readResource.mockRejectedValue(new Error('not found on this server'));
+
+      // other-server does own it.
+      const otherServerClient = createMockClient();
+      otherServerClient.listTools.mockResolvedValue({ tools: [] });
+      otherServerClient.listPrompts.mockResolvedValue({ prompts: [] });
+      otherServerClient.listResources.mockResolvedValue({ resources: [] });
+      otherServerClient.readResource.mockResolvedValue({
+        contents: [
+          {
+            uri: 'ui://apps/dashboard.html',
+            mimeType: 'text/html;profile=mcp-app',
+            text: '<html>from other-server</html>',
+            _meta: { ui: { csp: { connectDomains: [] } }, trace: 'keep-me' },
+          },
+        ],
+      });
+      mockClientsByServer.set('other-server', otherServerClient);
+
+      await initUpstreamServers();
+      await flushPromises();
+      await markSessionAsAppsCapable('aggregate-session', 'pair');
+
+      const result = await handleReadResourceRequest(
+        { params: { uri: 'ui://apps/dashboard.html' } },
+        { sessionId: 'aggregate-session' },
+      );
+
+      expect(mockClient.readResource).toHaveBeenCalledWith({ uri: 'ui://apps/dashboard.html' });
+      expect(otherServerClient.readResource).toHaveBeenCalledWith({
+        uri: 'ui://apps/dashboard.html',
+      });
+      expect(result.contents[0]._meta).toEqual({
+        ui: { csp: { connectDomains: [] } },
+        trace: 'keep-me',
+      });
+    });
+
+    it('reports resource not found when no connected server owns an unlisted ui:// resource', async () => {
+      setUpPairGroup();
+      const appsServerClient = createMockClient();
+      appsServerClient.listTools.mockResolvedValue({ tools: appsTools });
+      appsServerClient.listPrompts.mockResolvedValue({ prompts: [] });
+      appsServerClient.listResources.mockResolvedValue({ resources: [] });
+      appsServerClient.readResource.mockRejectedValue(new Error('nope'));
+      mockClientsByServer.set('apps-server', appsServerClient);
+
+      const otherServerClient = createMockClient();
+      otherServerClient.listTools.mockResolvedValue({ tools: [] });
+      otherServerClient.listPrompts.mockResolvedValue({ prompts: [] });
+      otherServerClient.listResources.mockResolvedValue({ resources: [] });
+      otherServerClient.readResource.mockRejectedValue(new Error('nope'));
+      mockClientsByServer.set('other-server', otherServerClient);
+
+      await initUpstreamServers();
+      await flushPromises();
+      await markSessionAsAppsCapable('aggregate-session', 'pair');
+
+      const result = await handleReadResourceRequest(
+        { params: { uri: 'ui://apps/missing.html' } },
+        { sessionId: 'aggregate-session' },
+      );
+
+      expect(result.contents[0].text).toContain('Resource not found');
+    });
   });
 
   it('does not read a listed resource through a different single-server route', async () => {
