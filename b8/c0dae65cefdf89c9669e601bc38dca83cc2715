@@ -1,0 +1,36 @@
+src/utils/stdioDiagnostics.ts
+  s_8c78b747b7736c::t_b3cc946eeed4f9 16,76-79
+  s_8c78b747b7736c::t_780148ea63d56c 1-15,17-75,80-82
+src/utils/serialization.ts
+  s_8c78b747b7736c::t_780148ea63d56c 150,200-202,249-250
+  s_8c78b747b7736c::t_b2f5d575e9cd83 251
+tests/services/mcpService-toggle.test.ts
+  s_8c78b747b7736c::t_5f181a6ce58501 257-259
+  s_8c78b747b7736c::t_aa6679b18b6be9 7,22-24,193,246-256,260-282
+  s_8c78b747b7736c::t_9e725d4ea0981e 283
+src/controllers/oauthCallbackController.ts
+  s_8c78b747b7736c::t_662c8b15a60f23 22,358-362
+tests/utils/stdioDiagnostics.test.ts
+  s_8c78b747b7736c::t_780148ea63d56c 38
+  s_8c78b747b7736c::t_6a07ed4e0169a3 1-37,39-60
+src/services/mcpService.ts
+  s_8c78b747b7736c::t_b97dd1b2925745 26,713
+  s_8c78b747b7736c::t_662c8b15a60f23 78,481,711-712,714-722,1340-1347,1405,1729
+  s_8c78b747b7736c::t_4ee28aa031e95e 27
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "b8c0dae65cefdf89c9669e601bc38dca83cc2715",
+  "prompts": {},
+  "sessions": {
+    "s_8c78b747b7736c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fb5ec-3a45-7c13-82fe-1d5f4e324164",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
