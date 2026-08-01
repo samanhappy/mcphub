@@ -535,6 +535,27 @@ export const createOAuthProvider = async (
   serverName: string,
   serverConfig: ServerConfig,
 ): Promise<OAuthClientProvider | undefined> => {
+  const oauth = serverConfig.oauth;
+
+  // Only create a provider when OAuth is actually configured. Static
+  // Authorization headers or API key auth must not be detached for remote MCP
+  // servers that have no OAuth state.
+  const hasOAuthConfig = Boolean(
+    oauth &&
+      (oauth.clientId ||
+        oauth.accessToken ||
+        oauth.refreshToken ||
+        oauth.authorizationEndpoint ||
+        oauth.tokenEndpoint ||
+        oauth.dynamicRegistration?.enabled ||
+        oauth.dynamicRegistration?.issuer ||
+        oauth.dynamicRegistration?.registrationEndpoint),
+  );
+
+  if (!hasOAuthConfig) {
+    return undefined;
+  }
+
   // Ensure scopes are pre-populated if dynamic registration already ran previously
   await prepopulateScopesIfMissing(serverName, serverConfig);
 

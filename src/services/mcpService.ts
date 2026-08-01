@@ -1192,6 +1192,22 @@ export const createRequestContextAwareFetch = (
 };
 
 // Helper function to create transport based on server configuration
+/**
+ * Remove any Authorization header (case-insensitive) from a headers map.
+ *
+ * Used when an OAuth authProvider manages authentication for a transport. The
+ * MCP SDK injects the OAuth Bearer token first and then spreads the configured
+ * requestInit headers on top, so a leftover static Authorization value would
+ * override the valid OAuth access token and produce 401 authentication loops.
+ */
+const stripAuthorizationHeader = (
+  headers: Record<string, string>,
+): Record<string, string> => {
+  return Object.fromEntries(
+    Object.entries(headers).filter(([key]) => key.toLowerCase() !== 'authorization'),
+  );
+};
+
 export const createTransportFromConfig = async (name: string, conf: ServerConfig): Promise<any> => {
   let transport;
   const env: Record<string, string> = {
@@ -1215,24 +1231,31 @@ export const createTransportFromConfig = async (name: string, conf: ServerConfig
 
   if (conf.type === 'streamable-http') {
     const options: StreamableHTTPClientTransportOptions = {};
-    const headers = conf.headers ? replaceEnvVars(conf.headers, env) : {};
+    let headers = conf.headers ? replaceEnvVars(conf.headers, env) : {};
     const baseFetch = createFetchWithProxy(getProxyConfigFromEnv(env));
     const requestAwareFetch = createRedirectValidatingFetch(
       createRequestContextAwareFetch(baseFetch, conf.passthroughHeaders),
       allowInternal,
     );
 
-    if (Object.keys(headers).length > 0) {
-      options.requestInit = {
-        headers,
-      };
-    }
-
     // Create OAuth provider if configured - SDK will handle authentication automatically
     const authProvider = await createOAuthProvider(name, conf);
     if (authProvider) {
       options.authProvider = authProvider;
+      // When the OAuth provider is active, strip any static Authorization
+      // header before passing the configured headers to the SDK. The SDK's
+      // transport builds common headers by adding the OAuth Bearer token first
+      // and then spreading requestInit headers on top, so a stale static
+      // Authorization value would override the valid access token and cause
+      // 401 re-authorization loops.
+      headers = stripAuthorizationHeader(headers);
       console.log(`OAuth provider configured for server: ${name}`);
+    }
+
+    if (Object.keys(headers).length > 0) {
+      options.requestInit = {
+        headers,
+      };
     }
 
     options.fetch = requestAwareFetch;
@@ -1241,12 +1264,21 @@ export const createTransportFromConfig = async (name: string, conf: ServerConfig
   } else if (conf.url) {
     // SSE transport
     const options: any = {};
-    const headers = conf.headers ? replaceEnvVars(conf.headers, env) : {};
+    let headers = conf.headers ? replaceEnvVars(conf.headers, env) : {};
     const baseFetch = createFetchWithProxy(getProxyConfigFromEnv(env));
     const requestAwareFetch = createRedirectValidatingFetch(
       createRequestContextAwareFetch(baseFetch, conf.passthroughHeaders),
       allowInternal,
     );
+
+    // Create OAuth provider if configured - SDK will handle authentication automatically
+    const authProvider = await createOAuthProvider(name, conf);
+    if (authProvider) {
+      options.authProvider = authProvider;
+      // Drop static Authorization header when OAuth manages auth (see above).
+      headers = stripAuthorizationHeader(headers);
+      console.log(`OAuth provider configured for server: ${name}`);
+    }
 
     if (Object.keys(headers).length > 0) {
       options.eventSourceInit = {
@@ -1260,13 +1292,6 @@ export const createTransportFromConfig = async (name: string, conf: ServerConfig
       options.eventSourceInit = {
         fetch: requestAwareFetch,
       };
-    }
-
-    // Create OAuth provider if configured - SDK will handle authentication automatically
-    const authProvider = await createOAuthProvider(name, conf);
-    if (authProvider) {
-      options.authProvider = authProvider;
-      console.log(`OAuth provider configured for server: ${name}`);
     }
 
     options.fetch = requestAwareFetch;
