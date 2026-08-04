@@ -251,7 +251,8 @@
     "connecting": "Connecting",
     "oauthRequired": "OAuth Required",
     "clickToAuthorize": "Click to authorize with OAuth",
-    "oauthWindowOpened": "OAuth authorization window opened. Please complete the authorization."
+    "oauthWindowOpened": "OAuth authorization window opened. Please complete the authorization.",
+    "oauthClientIdHint": "This server has a preconfigured OAuth client ID. If authorization fails with \"invalid redirect_uri\", remove the clientId so MCPHub can register its own OAuth client automatically."
   },
   "errors": {
     "general": "Something went wrong",
@@ -889,7 +890,8 @@
     "parseError": "Failed to parse JSON. Please check the format and try again.",
     "addFailed": "Failed to add server",
     "importFailed": "Failed to import servers",
-    "partialSuccess": "Imported {{count}} of {{total}} servers successfully. Some servers failed:"
+    "partialSuccess": "Imported {{count}} of {{total}} servers successfully. Some servers failed:",
+    "validationErrors": "Some servers could not be imported. Please fix the following and try again:"
   },
   "groupImport": {
     "button": "Import",

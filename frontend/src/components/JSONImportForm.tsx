@@ -69,7 +69,17 @@ All servers will be imported in a single efficient batch operation.`;
     const parsed = parseAndValidateJson(jsonInput);
     if (!parsed) return;
 
-    setPreviewServers(normalizeImportedServers(parsed));
+    const { servers, issues } = normalizeImportedServers(parsed);
+
+    if (issues.length > 0) {
+      const details = issues.map((issue) => `${issue.name}: ${issue.message}`).join('\n');
+      setError(t('jsonImport.validationErrors') + '\n' + details);
+      if (servers.length === 0) {
+        return;
+      }
+    }
+
+    setPreviewServers(servers);
   };
 
   const handleImport = async () => {

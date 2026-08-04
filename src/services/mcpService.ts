@@ -2032,6 +2032,7 @@ export const getServersInfo = async (
                     ? {
                         authorizationUrl: oauth.authorizationUrl,
                         state: oauth.state,
+                        ...(oauth.clientIdConfigured ? { clientIdConfigured: true } : {}),
                         // Don't expose codeVerifier to frontend for security
                       }
                     : {}),

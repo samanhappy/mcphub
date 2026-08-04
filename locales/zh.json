@@ -251,7 +251,8 @@
     "connecting": "连接中",
     "oauthRequired": "需要OAuth授权",
     "clickToAuthorize": "点击进行OAuth授权",
-    "oauthWindowOpened": "OAuth授权窗口已打开，请完成授权。"
+    "oauthWindowOpened": "OAuth授权窗口已打开，请完成授权。",
+    "oauthClientIdHint": "该服务器配置了预设的 OAuth 客户端 ID。如果授权因“invalid redirect_uri”失败，请删除 clientId，让 MCPHub 自动注册自己的 OAuth 客户端。"
   },
   "errors": {
     "general": "发生错误",
@@ -892,7 +893,8 @@
     "parseError": "解析 JSON 失败。请检查格式后重试。",
     "addFailed": "添加服务器失败",
     "importFailed": "导入服务器失败",
-    "partialSuccess": "成功导入 {{count}} / {{total}} 个服务器。部分服务器失败："
+    "partialSuccess": "成功导入 {{count}} / {{total}} 个服务器。部分服务器失败：",
+    "validationErrors": "部分服务器无法导入。请修正以下问题后重试："
   },
   "groupImport": {
     "button": "导入",

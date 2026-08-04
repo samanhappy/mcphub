@@ -2,7 +2,7 @@ import { normalizeImportedServers } from '../../frontend/src/utils/jsonImport';
 
 describe('normalizeImportedServers', () => {
   it('preserves stdio timeout options during JSON import', () => {
-    const servers = normalizeImportedServers({
+    const { servers, issues } = normalizeImportedServers({
       mcpServers: {
         'my-server': {
           command: 'npx',
@@ -16,6 +16,7 @@ describe('normalizeImportedServers', () => {
       },
     });
 
+    expect(issues).toEqual([]);
     expect(servers).toEqual([
       {
         name: 'my-server',

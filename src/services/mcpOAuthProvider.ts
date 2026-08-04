@@ -355,6 +355,12 @@ export class MCPHubOAuthProvider implements OAuthClientProvider {
         authorizationUrl,
         state,
         codeVerifier: this._codeVerifier,
+        // Flag when a static clientId is configured (which suppresses dynamic client
+        // registration). Such a client is registered on the provider with its own
+        // redirect URI allow-list, which frequently does NOT include this hub's callback,
+        // producing an "invalid redirect_uri" 400 at the provider's authorize endpoint.
+        // The frontend uses this to hint the user to remove clientId and let MCPHub self-register.
+        clientIdConfigured: Boolean(this.serverConfig?.oauth?.clientId),
       };
       console.log('Stored OAuth authorization URL in server info', {
         serverName: this.serverName,

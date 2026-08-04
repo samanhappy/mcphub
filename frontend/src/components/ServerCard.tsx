@@ -345,6 +345,13 @@ const ServerCard = ({
       const top = window.screen.height / 2 - h / 2;
       window.open(server.oauth.authorizationUrl, 'OAuth Authorization', `width=${w},height=${h},left=${left},top=${top}`);
       showToast(t('status.oauthWindowOpened'), 'info');
+      // When a static clientId is configured, the provider's OAuth client is registered
+      // with its own redirect-URI allow-list, which often excludes this hub's callback and
+      // makes the provider reject the authorize request with "invalid redirect_uri". Warn the
+      // user and point them to removing clientId so MCPHub can dynamically register its own.
+      if (server.oauth.clientIdConfigured) {
+        showToast(t('status.oauthClientIdHint'), 'warning');
+      }
     }
   };
 
