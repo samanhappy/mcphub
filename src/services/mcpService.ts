@@ -27,6 +27,7 @@ import { normalizeHeaders, type Transport } from '@modelcontextprotocol/sdk/shar
 import type { RequestOptions } from '@modelcontextprotocol/sdk/shared/protocol.js';
 import { createFetchWithProxy, getProxyConfigFromEnv } from './proxy.js';
 import { assertSafeUrl, createRedirectValidatingFetch } from '../utils/ssrf.js';
+import { ResilientJsonSchemaValidator } from '../utils/jsonSchemaValidator.js';
 import { getUserDao } from '../dao/index.js';
 import {
   ServerInfo,
@@ -770,6 +771,7 @@ const createUpstreamMcpClient = (
     },
     {
       capabilities: MCP_APPS_CAPABILITIES,
+      jsonSchemaValidator: new ResilientJsonSchemaValidator(),
       listChanged: {
         tools: {
           onChanged: (error, tools) => {
