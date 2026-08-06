@@ -1553,10 +1553,12 @@ export const initializeClientsFromSettings = async (
         continue;
       }
 
-      // On-demand servers: skip startup connect; spawn lazily on first tool call.
+      // On-demand stdio servers: skip startup connect; spawn lazily on first
+      // tool call. startOnDemand is a stdio-only optimisation - HTTP/SSE and
+      // OpenAPI servers have no deferred child process, so they connect normally.
       // Preserve existing runtime state (tools/prompts populated from a previous
       // connection) so the tool list stays visible to agents even while sleeping.
-      if (expandedConf.startOnDemand === true) {
+      if (expandedConf.startOnDemand === true && isStdioServer(expandedConf)) {
         const existingOnDemand = existingServerInfos.find((s) => s.name === name);
         nextServerInfos.push({
           // Carry over cached tools/prompts/resources if the server was previously connected
@@ -1898,6 +1900,13 @@ export const initializeClientsFromSettings = async (
   }
 
   serverInfos = nextServerInfos;
+
+  // Populate the tool cache for on-demand stdio servers so their tools are
+  // visible to agents, then put them back to sleep. Running here (rather than
+  // only at startup) also covers servers added/enabled/reloaded after startup.
+  // Fire-and-forget: a slow or broken on-demand server must not block the init.
+  primeOnDemandServers();
+
   return serverInfos;
 };
 
@@ -2176,7 +2185,10 @@ const filterToolsByConfig = async (serverName: string, tools: Tool[]): Promise<T
 
 // Get server by tool name
 const getServerByTool = (toolName: string): ServerInfo | undefined => {
-  return serverInfos.find((serverInfo) => serverInfo.tools.some((tool) => tool.name === toolName));
+  return serverInfos.find(
+    (serverInfo) =>
+      serverInfo.enabled !== false && serverInfo.tools.some((tool) => tool.name === toolName),
+  );
 };
 
 // Add new server
@@ -2367,33 +2379,159 @@ const scheduleIdleShutdown = (serverInfo: ServerInfo): void => {
 
 /**
  * Ensures an on-demand server is connected before a tool call proceeds.
- * Uses a singleton promise so concurrent callers wait for the same spawn
- * instead of triggering duplicate process launches.
+ *
+ * Performs a direct, awaited wake-up that mutates the existing `serverInfo`
+ * in place (preserving the reference callers hold), rather than going through
+ * `reconnectServer` -> `initializeClientsFromSettings`. The latter skips the
+ * connect for on-demand servers, resolves before the fire-and-forget handshake
+ * completes, and rebuilds `serverInfos` (leaving callers with a stale object) -
+ * so it could never actually wake a sleeping server. See #1029.
+ *
+ * Concurrent callers coalesce on `spawningPromise` so only one spawn runs.
  */
 const ensureServerReady = async (serverInfo: ServerInfo): Promise<void> => {
   if (serverInfo.status === 'connected') return;
 
-  // Another call is already spawning — wait for it
+  // Another call is already spawning - wait for it
   if (serverInfo.spawningPromise) {
     await serverInfo.spawningPromise;
     return;
   }
 
-  console.log(`[${serverInfo.name}] Cold-starting on-demand server…`);
+  const name = serverInfo.name;
+  console.log(`[${name}] Cold-starting on-demand server…`);
   const spawnStart = Date.now();
 
-  const spawnPromise = reconnectServer(serverInfo.name).then(() => {
-    console.log(
-      `[${serverInfo.name}] On-demand server ready in ${Date.now() - spawnStart}ms`,
-    );
-  });
+  const spawnPromise = (async () => {
+    const rawConfig = await getServerDao().findById(name);
+    if (!rawConfig) {
+      throw new Error(`Server configuration not found for: ${name}`);
+    }
+    if (rawConfig.enabled === false) {
+      throw new Error(`Cannot start disabled on-demand server: ${name}`);
+    }
+    const expandedConf = replaceEnvVars(rawConfig as any) as ServerConfigWithName;
+
+    // startOnDemand is a stdio-only optimisation; OpenAPI/HTTP servers have no
+    // deferred process to spawn, so there is nothing to wake.
+    if (expandedConf.type === 'openapi') {
+      return;
+    }
+
+    const transport = await createTransportFromConfig(name, expandedConf);
+    const client = createUpstreamMcpClient(name, () => serverInfo);
+
+    const serverRequestOptions = expandedConf.options || {};
+    const defaultRequestTimeout = Number(process.env.DEFAULT_REQUEST_TIMEOUT) || 60000;
+    const requestOptions = {
+      timeout: serverRequestOptions.timeout || defaultRequestTimeout,
+      resetTimeoutOnProgress: serverRequestOptions.resetTimeoutOnProgress ?? true,
+      maxTotalTimeout: serverRequestOptions.maxTotalTimeout,
+    };
+
+    await connectClientWithDiagnostics(client, transport, requestOptions);
+
+    // Mutate in place so every holder of this serverInfo (resolution paths,
+    // the caller about to invoke the tool) sees the live client/status.
+    serverInfo.client = client;
+    serverInfo.transport = transport;
+    serverInfo.options = requestOptions;
+    serverInfo.version = client.getServerVersion?.()?.version;
+    serverInfo.instructions = client.getInstructions?.();
+    serverInfo.config = expandedConf;
+    serverInfo.status = 'connected';
+    serverInfo.error = null;
+
+    const capabilities = client.getServerCapabilities?.();
+    if (capabilities?.tools) {
+      try {
+        const tools = await client.listTools({}, requestOptions);
+        updateServerToolsCache(serverInfo, tools.tools);
+        broadcastToolListChanged();
+      } catch (error) {
+        console.warn(`[${name}] Failed to list tools during wake`, {
+          error: summarizeErrorForLogging(error),
+        });
+      }
+    }
+    if (capabilities?.prompts) {
+      try {
+        const prompts = await client.listPrompts({}, requestOptions);
+        updateServerPromptsCache(serverInfo, prompts.prompts);
+      } catch (error) {
+        console.warn(`[${name}] Failed to list prompts during wake`, {
+          error: summarizeErrorForLogging(error),
+        });
+      }
+    }
+    if (capabilities?.resources) {
+      try {
+        const resources = await client.listResources({}, requestOptions);
+        updateServerResourcesCache(serverInfo, resources.resources);
+      } catch (error) {
+        console.warn(`[${name}] Failed to list resources during wake`, {
+          error: summarizeErrorForLogging(error),
+        });
+      }
+    }
+
+    // No-op for stdio transports; only SSE/streamable-http opt in via enableKeepAlive.
+    setupServerKeepAlive(serverInfo, expandedConf);
+
+    console.log(`[${name}] On-demand server ready in ${Date.now() - spawnStart}ms`);
+  })();
 
   serverInfo.spawningPromise = spawnPromise;
   try {
     await spawnPromise;
+  } catch (error) {
+    serverInfo.status = 'disconnected';
+    serverInfo.error = `Failed to start on-demand server: ${formatErrorForLogging(error)}`;
+    throw error;
   } finally {
     serverInfo.spawningPromise = undefined;
   }
+};
+
+// stdio servers are the only ones that benefit from deferred spawning; HTTP/SSE
+// and OpenAPI servers have no long-lived child process to skip.
+const isStdioServer = (conf: ServerConfig | undefined): boolean =>
+  !!conf && (conf.type === 'stdio' || (!conf.type && !!conf.command));
+
+/**
+ * Connects each on-demand stdio server once to populate its tool cache, then
+ * shuts the child back down (keeping the cache). Run after startup init so the
+ * tools are advertised immediately and a later `tools/call` can wake the server.
+ * Fire-and-forget: a slow or broken on-demand server must not block startup, and
+ * each server is isolated so one failure does not affect the others. See #1029.
+ */
+const primeOnDemandServers = (): void => {
+  const targets = serverInfos.filter(
+    (si) =>
+      si.config?.startOnDemand === true &&
+      isStdioServer(si.config) &&
+      si.tools.length === 0 &&
+      si.enabled !== false,
+  );
+  if (targets.length === 0) return;
+
+  console.log(`Priming ${targets.length} on-demand server(s) for tool discovery…`);
+  void Promise.allSettled(
+    targets.map(async (si) => {
+      try {
+        await ensureServerReady(si);
+        // Sleep the child but keep the cached tool list visible to agents.
+        shutdownOnDemandServer(si);
+        console.log(
+          `[${si.name}] On-demand server primed and asleep; ${si.tools.length} tools cached`,
+        );
+      } catch (error) {
+        console.warn(`[${si.name}] Failed to prime on-demand server`, {
+          error: summarizeErrorForLogging(error),
+        });
+      }
+    }),
+  );
 };
 
 export const resetServerOAuthConnection = (name: string): boolean => {
@@ -2666,7 +2804,13 @@ const resolveToolInGroup = async (
     await getFilteredServerInfosForGroup(lookupGroup);
 
   for (const serverInfo of filteredServerInfos) {
-    if (serverInfo.status !== 'connected' || serverInfo.enabled === false) {
+    // A disconnected on-demand server may still have a cached tool list from a
+    // previous wake-up; allow it through so it can be selected and woken by the
+    // caller. Other disconnected servers cannot serve the request. See #1029.
+    if (
+      (serverInfo.status !== 'connected' && !serverInfo.config?.startOnDemand) ||
+      serverInfo.enabled === false
+    ) {
       continue;
     }
 
@@ -2775,6 +2919,20 @@ export const handleListToolsRequest = async (_: any, extra: any) => {
 
   const { filteredServerInfos, serverConfigsByName } = await getFilteredServerInfosForGroup(group);
   const appsRouteContext = await getMcpAppsRouteContext(sessionId, group);
+
+  // If the startup prime of an on-demand server is still in flight, wait for it
+  // so this list reflects the freshly cached tools instead of returning empty.
+  // No wake is triggered from list itself; the prime handles that. See #1029.
+  await Promise.allSettled(
+    filteredServerInfos
+      .filter(
+        (si) =>
+          si.config?.startOnDemand === true &&
+          si.tools.length === 0 &&
+          si.spawningPromise,
+      )
+      .map((si) => si.spawningPromise as Promise<void>),
+  );
 
   const allTools = [];
   for (const serverInfo of filteredServerInfos) {
@@ -3134,6 +3292,14 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
     }
     assertToolAvailableForRoute(tool, appsRouteContext);
 
+    // Wake the on-demand server before invoking the tool. It may be asleep with
+    // a cached tool list (visible above) but no live client. Mirrors the
+    // $smart call_tool path. See #1029.
+    if (serverInfo.config?.startOnDemand && serverInfo.status !== 'connected') {
+      await ensureServerReady(serverInfo);
+    }
+    serverInfo.lastUsedAt = Date.now();
+
     // Handle OpenAPI servers differently
     if (serverInfo.openApiClient) {
       // For OpenAPI servers, use the OpenAPI client
@@ -3252,6 +3418,9 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
       toolName: cleanToolName,
       result: summarizeToolResultForLogging(result),
     });
+
+    // Reset idle-shutdown timer for on-demand servers after each successful call
+    scheduleIdleShutdown(serverInfo);
 
     // Log successful activity
     const duration = Date.now() - startTime;
