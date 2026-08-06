@@ -96,10 +96,11 @@ jest.mock('../../src/services/proxy.js', () => ({
   getProxyConfigFromEnv: jest.fn(() => undefined),
 }));
 
+const mockFindAll = jest.fn(async () => []);
 const mockFindById = jest.fn();
 jest.mock('../../src/dao/index.js', () => ({
   getServerDao: jest.fn(() => ({
-    findAll: jest.fn(async () => []),
+    findAll: mockFindAll,
     findById: mockFindById,
   })),
   getSystemConfigDao: jest.fn(() => ({
@@ -170,6 +171,7 @@ describe('startOnDemand wake-up (issue #1029)', () => {
       isError: false,
     });
     mockFindById.mockResolvedValue(ON_DEMAND_CONFIG);
+    mockFindAll.mockResolvedValue([]);
     // Stub transport creation so the wake does not spawn a real child process.
     createTransportSpy = jest
       .spyOn(mcpService, 'createTransportFromConfig')
@@ -277,5 +279,29 @@ describe('startOnDemand wake-up (issue #1029)', () => {
     expect(toolNames).toContain('demo::ping');
     // spawningPromise is cleared by ensureServerReady elsewhere; nothing to
     // assert here beyond the list reflecting the populated cache.
+  });
+
+  it('awaits prime on a targeted reload so the tool cache is populated before returning', async () => {
+    // Regression for #1032: editing an already-connected server to enable
+    // startOnDemand wiped its tool list (addOrUpdateServer removes the
+    // serverInfo) and relied on fire-and-forget prime to repopulate it, so the
+    // dashboard refresh that followed the PUT saw an empty list until the next
+    // poll. A targeted initializeClientsFromSettings must await the prime so the
+    // cache is populated by the time the caller (and the dashboard) reads it.
+    mockFindAll.mockResolvedValue([ON_DEMAND_CONFIG]);
+    mcpService.setServerInfosForTest([]);
+
+    await mcpService.initializeClientsFromSettings(false, 'demo');
+
+    const serverInfo = mcpService.getServerByName('demo');
+    expect(serverInfo).toBeDefined();
+    // Prime ran to completion (awaited): tools are cached and the child was put
+    // back to sleep, so it is advertised as disconnected-with-cached-tools.
+    expect(serverInfo?.tools.map((t) => t.name)).toContain('demo::ping');
+    expect(serverInfo?.status).toBe('disconnected');
+    expect(createTransportSpy).toHaveBeenCalledWith(
+      'demo',
+      expect.objectContaining({ command: 'node' }),
+    );
   });
 });

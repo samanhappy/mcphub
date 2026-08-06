@@ -178,6 +178,13 @@ export const normalizeServerConfigForPersistence = (config: ServerConfig): Serve
     visibility,
     options,
     perSessionClient: config.perSessionClient === true ? true : undefined,
+    // The dashboard sends `startOnDemand: undefined` when the toggle is off, which
+    // JSON.stringify strips from the PUT body. Without an explicit key here the
+    // DAO update's shallow merge ({...existing, ...updates}) treats the field as
+    // "unchanged", so a previously-enabled on-demand server could never be turned
+    // off - the toggle would still read enabled after save. Emit an explicit key
+    // (matching perSessionClient above) so the old `true` is overwritten. See #1032.
+    startOnDemand: config.startOnDemand === true ? true : undefined,
   };
 
   if (normalizedType === 'openapi') {

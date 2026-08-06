@@ -109,6 +109,10 @@
     "passwordStrengthHint": "Le mot de passe doit contenir au moins 8 caractères et inclure des lettres, des chiffres et des caractères spéciaux"
   },
   "server": {
+    "startOnDemand": "Démarrage à la demande",
+    "startOnDemandDescription": "Ignore la connexion au démarrage et lance ce serveur uniquement lorsqu'un appel d'outil se produit. Le processus est arrêté automatiquement après le délai d'inactivité, puis redémarré au prochain appel. Réduit l'utilisation de la mémoire pour les serveurs rarement utilisés.",
+    "idleTimeoutMs": "Délai d'arrêt en inactivité (ms)",
+    "idleTimeoutMsDescription": "Arrête le processus après ce nombre de millisecondes sans appel d'outil. Par défaut : 300000 (5 minutes).",
     "addServer": "Ajouter un serveur",
     "add": "Ajouter",
     "edit": "Modifier",
@@ -238,6 +242,8 @@
     }
   },
   "status": {
+    "sleeping": "En veille",
+    "sleepingDescription": "Serveur à la demande - démarrera automatiquement lorsqu'un outil est appelé",
     "online": "En ligne",
     "offline": "Hors ligne",
     "connecting": "Connexion en cours",

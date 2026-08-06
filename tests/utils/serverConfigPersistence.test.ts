@@ -122,6 +122,34 @@ describe('normalizeServerConfigForPersistence', () => {
     expect(normalized).toHaveProperty('perSessionClient', undefined);
   });
 
+  it('preserves an explicitly enabled start on demand', () => {
+    const normalized = normalizeServerConfigForPersistence({
+      type: 'stdio',
+      command: 'npx',
+      args: ['-y', 'demo-server'],
+      startOnDemand: true,
+    });
+
+    expect(normalized).toHaveProperty('startOnDemand', true);
+  });
+
+  it('keeps start on demand present (not merely absent) so unchecking it clears the stored value', () => {
+    // The dashboard drops the key from the JSON payload when unchecked
+    // (JSON.stringify strips `undefined`), so the incoming config has no
+    // `startOnDemand`. Normalization must still emit an explicit key - otherwise
+    // the DAO update's shallow merge ({...existing, ...updates}) treats it as
+    // "unchanged" and a previously-enabled on-demand server can never be turned
+    // off: the toggle would keep reading enabled after save. See #1032.
+    const normalized = normalizeServerConfigForPersistence({
+      type: 'stdio',
+      command: 'npx',
+      args: ['-y', 'demo-server'],
+    });
+
+    expect(Object.prototype.hasOwnProperty.call(normalized, 'startOnDemand')).toBe(true);
+    expect(normalized).toHaveProperty('startOnDemand', undefined);
+  });
+
   it('normalizes openapi payloads and trims empty values', () => {
     const normalized = normalizeServerConfigForPersistence({
       type: 'openapi',

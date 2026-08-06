@@ -1904,8 +1904,16 @@ export const initializeClientsFromSettings = async (
   // Populate the tool cache for on-demand stdio servers so their tools are
   // visible to agents, then put them back to sleep. Running here (rather than
   // only at startup) also covers servers added/enabled/reloaded after startup.
-  // Fire-and-forget: a slow or broken on-demand server must not block the init.
-  primeOnDemandServers();
+  const primePromise = primeOnDemandServers();
+  // At full startup (no serverName) keep prime fire-and-forget so a slow or
+  // broken on-demand server does not block init. For a targeted reload/edit
+  // (serverName set), await it so the caller - and the dashboard refresh that
+  // follows the HTTP response - sees the cached tools immediately instead of an
+  // empty list that only fills in after the fire-and-forget prime completes and
+  // the next poll picks it up. See #1032.
+  if (serverName) {
+    await primePromise;
+  }
 
   return serverInfos;
 };
@@ -2517,10 +2525,16 @@ const isStdioServer = (conf: ServerConfig | undefined): boolean =>
  * Connects each on-demand stdio server once to populate its tool cache, then
  * shuts the child back down (keeping the cache). Run after startup init so the
  * tools are advertised immediately and a later `tools/call` can wake the server.
- * Fire-and-forget: a slow or broken on-demand server must not block startup, and
- * each server is isolated so one failure does not affect the others. See #1029.
+ *
+ * Returns a promise so a targeted reload/edit can await it (via
+ * initializeClientsFromSettings) and surface the populated tool cache before
+ * the HTTP response - otherwise the dashboard refresh that follows the edit
+ * sees an empty list until the next poll. At full startup the caller still
+ * ignores the promise (fire-and-forget) so a slow or broken on-demand server
+ * does not block init. Each server is isolated so one failure does not affect
+ * the others. See #1029 / #1032.
  */
-const primeOnDemandServers = (): void => {
+const primeOnDemandServers = (): Promise<void> => {
   const targets = serverInfos.filter(
     (si) =>
       si.config?.startOnDemand === true &&
@@ -2528,10 +2542,10 @@ const primeOnDemandServers = (): void => {
       si.tools.length === 0 &&
       si.enabled !== false,
   );
-  if (targets.length === 0) return;
+  if (targets.length === 0) return Promise.resolve();
 
   console.log(`Priming ${targets.length} on-demand server(s) for tool discovery…`);
-  void Promise.allSettled(
+  return Promise.allSettled(
     targets.map(async (si) => {
       try {
         await ensureServerReady(si);
@@ -2544,7 +2558,7 @@ const primeOnDemandServers = (): void => {
         });
       }
     }),
-  );
+  ).then(() => undefined);
 };
 
 export const resetServerOAuthConnection = (name: string): boolean => {
