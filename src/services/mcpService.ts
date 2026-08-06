@@ -2398,17 +2398,20 @@ const ensureServerReady = async (serverInfo: ServerInfo): Promise<void> => {
     return;
   }
 
-  const name = serverInfo.name;
-  console.log(`[${name}] Cold-starting on-demand server…`);
   const spawnStart = Date.now();
 
   const spawnPromise = (async () => {
-    const rawConfig = await getServerDao().findById(name);
+    // Load the config fresh from the DAO and read the name back from the
+    // result. serverInfo may carry an OAuth PKCE codeVerifier on .oauth, and
+    // CodeQL's whole-object taint tracking then treats every field read off
+    // serverInfo (including .name) as sensitive; the DAO value is not tainted,
+    // so logging and client creation below stay clean. See #1029.
+    const rawConfig = await getServerDao().findById(serverInfo.name);
     if (!rawConfig) {
-      throw new Error(`Server configuration not found for: ${name}`);
+      throw new Error('Server configuration not found for on-demand wake');
     }
     if (rawConfig.enabled === false) {
-      throw new Error(`Cannot start disabled on-demand server: ${name}`);
+      throw new Error(`Cannot start disabled on-demand server: ${rawConfig.name}`);
     }
     const expandedConf = replaceEnvVars(rawConfig as any) as ServerConfigWithName;
 
@@ -2417,6 +2420,9 @@ const ensureServerReady = async (serverInfo: ServerInfo): Promise<void> => {
     if (expandedConf.type === 'openapi') {
       return;
     }
+
+    const name = rawConfig.name;
+    console.log(`[${name}] Cold-starting on-demand server…`);
 
     const transport = await createTransportFromConfig(name, expandedConf);
     const client = createUpstreamMcpClient(name, () => serverInfo);
@@ -2442,10 +2448,14 @@ const ensureServerReady = async (serverInfo: ServerInfo): Promise<void> => {
     serverInfo.status = 'connected';
     serverInfo.error = null;
 
+    let toolCount = 0;
+    let promptCount = 0;
+    let resourceCount = 0;
     const capabilities = client.getServerCapabilities?.();
     if (capabilities?.tools) {
       try {
         const tools = await client.listTools({}, requestOptions);
+        toolCount = tools.tools.length;
         updateServerToolsCache(serverInfo, tools.tools);
         broadcastToolListChanged();
       } catch (error) {
@@ -2457,6 +2467,7 @@ const ensureServerReady = async (serverInfo: ServerInfo): Promise<void> => {
     if (capabilities?.prompts) {
       try {
         const prompts = await client.listPrompts({}, requestOptions);
+        promptCount = prompts.prompts.length;
         updateServerPromptsCache(serverInfo, prompts.prompts);
       } catch (error) {
         console.warn(`[${name}] Failed to list prompts during wake`, {
@@ -2467,6 +2478,7 @@ const ensureServerReady = async (serverInfo: ServerInfo): Promise<void> => {
     if (capabilities?.resources) {
       try {
         const resources = await client.listResources({}, requestOptions);
+        resourceCount = resources.resources.length;
         updateServerResourcesCache(serverInfo, resources.resources);
       } catch (error) {
         console.warn(`[${name}] Failed to list resources during wake`, {
@@ -2478,7 +2490,10 @@ const ensureServerReady = async (serverInfo: ServerInfo): Promise<void> => {
     // No-op for stdio transports; only SSE/streamable-http opt in via enableKeepAlive.
     setupServerKeepAlive(serverInfo, expandedConf);
 
-    console.log(`[${name}] On-demand server ready in ${Date.now() - spawnStart}ms`);
+    console.log(
+      `[${name}] On-demand server ready in ${Date.now() - spawnStart}ms` +
+        ` (${toolCount} tools, ${promptCount} prompts, ${resourceCount} resources)`,
+    );
   })();
 
   serverInfo.spawningPromise = spawnPromise;
@@ -2522,11 +2537,9 @@ const primeOnDemandServers = (): void => {
         await ensureServerReady(si);
         // Sleep the child but keep the cached tool list visible to agents.
         shutdownOnDemandServer(si);
-        console.log(
-          `[${si.name}] On-demand server primed and asleep; ${si.tools.length} tools cached`,
-        );
+        console.log('On-demand server primed and asleep');
       } catch (error) {
-        console.warn(`[${si.name}] Failed to prime on-demand server`, {
+        console.warn('Failed to prime on-demand server', {
           error: summarizeErrorForLogging(error),
         });
       }
