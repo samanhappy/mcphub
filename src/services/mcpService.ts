@@ -1775,7 +1775,6 @@ export const initializeClientsFromSettings = async (
         serverInfo.oauth = {
           authorizationUrl: pendingAuth.authorizationUrl,
           state: pendingAuth.state,
-          codeVerifier: pendingAuth.codeVerifier,
         };
       }
       nextServerInfos.push(serverInfo);
@@ -2409,11 +2408,8 @@ const ensureServerReady = async (serverInfo: ServerInfo): Promise<void> => {
   const spawnStart = Date.now();
 
   const spawnPromise = (async () => {
-    // Load the config fresh from the DAO and read the name back from the
-    // result. serverInfo may carry an OAuth PKCE codeVerifier on .oauth, and
-    // CodeQL's whole-object taint tracking then treats every field read off
-    // serverInfo (including .name) as sensitive; the DAO value is not tainted,
-    // so logging and client creation below stay clean. See #1029.
+    // Load the config fresh from the DAO for the expanded transport config and
+    // to read the server name. See #1029.
     const rawConfig = await getServerDao().findById(serverInfo.name);
     if (!rawConfig) {
       throw new Error('Server configuration not found for on-demand wake');
