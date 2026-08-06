@@ -342,7 +342,6 @@ export const handleOAuthCallback = async (req: Request, res: Response) => {
         if (serverInfo.oauth) {
           serverInfo.oauth.authorizationUrl = undefined;
           serverInfo.oauth.state = undefined;
-          serverInfo.oauth.codeVerifier = undefined;
         }
 
         // Check if client needs to be connected

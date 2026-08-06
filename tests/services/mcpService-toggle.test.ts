@@ -207,7 +207,6 @@ describe('mcpService initializeClientsFromSettings OAuth authorization reuse', (
         oauth: {
           authorizationUrl: 'https://auth.example/authorize?code_challenge=old',
           state: 'state-1',
-          codeVerifier: 'verifier-1',
         },
       } as any,
     ]);
@@ -238,10 +237,8 @@ describe('mcpService initializeClientsFromSettings OAuth authorization reuse', (
       oauth: {
         authorizationUrl: 'https://auth.example/authorize?code_challenge=old',
         state: 'state-1',
-        codeVerifier: 'verifier-1',
       },
     });
-    expect(getServerByName('notion')?.oauth?.codeVerifier).toBe('verifier-1');
   });
 
   it('includes upstream stderr when a stdio server connection closes', async () => {
@@ -366,7 +363,6 @@ describe('mcpService resetServerOAuthConnection', () => {
           oauth: {
             authorizationUrl: 'https://auth.example/authorize?code_challenge=challenge',
             state: 'state-1',
-            codeVerifier: 'pkce-secret',
           },
         } as any,
       ]);

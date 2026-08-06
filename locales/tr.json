@@ -109,6 +109,10 @@
     "passwordStrengthHint": "Şifre en az 8 karakter olmalı ve harf, rakam ve özel karakter içermelidir"
   },
   "server": {
+    "startOnDemand": "Talep üzerine başlat",
+    "startOnDemandDescription": "Başlangıçtaki bağlantıyı atla ve bu sunucuyu yalnızca bir araç çağrısı geldiğinde başlat. İşlem, boşta kalma zaman aşımından sonra otomatik olarak kapatılır ve bir sonraki çağrıda yeniden başlatılır. Seyrek kullanılan sunucularda kalıcı bellek kullanımını azaltır.",
+    "idleTimeoutMs": "Boşta kapatma zaman aşımı (ms)",
+    "idleTimeoutMsDescription": "Araç çağrısı olmadan bu kadar milisaniye geçtikten sonra işlemi kapat. Varsayılan: 300000 (5 dakika).",
     "addServer": "Sunucu Ekle",
     "add": "Ekle",
     "edit": "Düzenle",
@@ -238,6 +242,8 @@
     }
   },
   "status": {
+    "sleeping": "Uykuda",
+    "sleepingDescription": "Talep üzerine sunucu - bir araç çağrıldığında otomatik olarak başlar",
     "online": "Çevrimiçi",
     "offline": "Çevrimdışı",
     "connecting": "Bağlanıyor",

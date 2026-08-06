@@ -109,6 +109,10 @@
     "passwordStrengthHint": "Password must be at least 8 characters and contain letters, numbers, and special characters"
   },
   "server": {
+    "startOnDemand": "Start On Demand",
+    "startOnDemandDescription": "Skip startup connect and spawn this server only when a tool call arrives. The process is shut down automatically after the idle timeout, then restarted on the next call. Reduces persistent memory usage for rarely-used servers.",
+    "idleTimeoutMs": "Idle shutdown timeout (ms)",
+    "idleTimeoutMsDescription": "Shut down the process after this many milliseconds with no tool calls. Default: 300000 (5 minutes).",
     "addServer": "Add Server",
     "add": "Add",
     "edit": "Edit",
@@ -246,6 +250,8 @@
     }
   },
   "status": {
+    "sleeping": "Sleeping",
+    "sleepingDescription": "On-demand server - will start automatically when a tool is called",
     "online": "Online",
     "offline": "Offline",
     "connecting": "Connecting",

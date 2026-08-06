@@ -109,6 +109,10 @@
     "passwordStrengthHint": "密码必须至少 8 个字符，且包含字母、数字和特殊字符"
   },
   "server": {
+    "startOnDemand": "按需启动",
+    "startOnDemandDescription": "跳过启动时连接，仅在收到工具调用时才启动此服务器。进程在空闲超时后自动关闭，下次调用时再重新启动。可减少不常用服务器的常驻内存占用。",
+    "idleTimeoutMs": "空闲关闭超时（毫秒）",
+    "idleTimeoutMsDescription": "无工具调用达到此时长后关闭进程。默认：300000（5 分钟）。",
     "addServer": "添加服务器",
     "add": "添加",
     "edit": "编辑",
@@ -246,6 +250,8 @@
     }
   },
   "status": {
+    "sleeping": "休眠",
+    "sleepingDescription": "按需启动服务器 - 调用工具时将自动启动",
     "online": "在线",
     "offline": "离线",
     "connecting": "连接中",

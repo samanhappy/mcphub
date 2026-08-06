@@ -354,7 +354,11 @@ export class MCPHubOAuthProvider implements OAuthClientProvider {
       serverInfo.oauth = {
         authorizationUrl,
         state,
-        codeVerifier: this._codeVerifier,
+        // codeVerifier is intentionally NOT stored on serverInfo.oauth: it is a
+        // PKCE credential, and storing it on the long-lived ServerInfo taints the
+        // whole object (CodeQL js/clear-text-logging), flagging every log that
+        // touches serverInfo.name. The verifier lives on this provider's private
+        // _codeVerifier and the DAO's pendingAuthorization.codeVerifier. See #1029.
         // Flag when a static clientId is configured (which suppresses dynamic client
         // registration). Such a client is registered on the provider with its own
         // redirect URI allow-list, which frequently does NOT include this hub's callback,

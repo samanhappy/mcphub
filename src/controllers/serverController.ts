@@ -937,7 +937,18 @@ export const updateServer = async (req: Request, res: Response): Promise<void> =
 
     const result = await addOrUpdateServer(finalName, normalizedConfig, true); // Allow override for updates
     if (result.success) {
-      notifyToolChanged(finalName);
+      // On-demand servers repopulate their tool cache via primeOnDemandServers
+      // inside initializeClientsFromSettings, which is awaited for a targeted
+      // reload. Await it here too: the dashboard refreshes the server list as
+      // soon as the PUT responds, and without this the refresh would race ahead
+      // of the prime and show an empty tool list until the next 30s poll (or a
+      // manual refresh). Non-on-demand servers keep the existing fire-and-forget
+      // behavior since their connect is already async. See #1032.
+      if (normalizedConfig.startOnDemand === true) {
+        await notifyToolChanged(finalName);
+      } else {
+        notifyToolChanged(finalName);
+      }
       res.json({
         success: true,
         message: isRenaming

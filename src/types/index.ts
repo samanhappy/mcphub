@@ -542,7 +542,6 @@ export interface ServerInfo {
     // OAuth authorization state
     authorizationUrl?: string; // OAuth authorization URL for user to visit
     state?: string; // OAuth state parameter for CSRF protection
-    codeVerifier?: string; // PKCE code verifier
     connected?: boolean; // True when stored upstream OAuth tokens exist
     clientIdConfigured?: boolean; // True when a static oauth.clientId is set (dynamic registration is suppressed).
     // When set, a preconfigured client's redirect-URI allow-list may not include this hub's callback,
