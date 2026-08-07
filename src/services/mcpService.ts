@@ -2028,6 +2028,15 @@ export const getServersInfo = async (
           };
         });
 
+        const resourcesWithEnabled = resources.map((resource) => {
+          const resourceConfig = serverConfig?.resources?.[resource.uri];
+          return {
+            ...resource,
+            description: resolveDescriptionOverride(resource.description, resourceConfig),
+            enabled: resourceConfig?.enabled !== false,
+          };
+        });
+
         return {
           name,
           version,
@@ -2038,7 +2047,7 @@ export const getServersInfo = async (
           error,
           tools: toolsWithEnabled,
           prompts: promptsWithEnabled,
-          resources,
+          resources: resourcesWithEnabled,
           createTime,
           enabled,
           oauth:

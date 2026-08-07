@@ -1,7 +1,7 @@
 const mockClient = {
   connect: jest.fn().mockResolvedValue(undefined),
   close: jest.fn(),
-  getServerCapabilities: jest.fn(() => ({ tools: {} })),
+  getServerCapabilities: jest.fn(() => ({ tools: {}, prompts: {}, resources: {} })),
   getServerVersion: jest.fn(() => ({ name: 'upstream-weather', version: '1.2.3' })),
   getInstructions: jest.fn(() => 'Use the weather tools for forecast lookups.'),
   listTools: jest.fn().mockResolvedValue({ tools: [] }),
@@ -257,6 +257,83 @@ describe('mcpService initialize metadata', () => {
         oauth: {
           connected: true,
         },
+      }),
+    ]);
+  });
+
+  it('exposes resource description and enabled overrides for dashboard consumers', async () => {
+    mockFindAll.mockResolvedValue([
+      {
+        name: 'zabbix',
+        type: 'stdio',
+        command: 'node',
+        args: ['server.js'],
+        enabled: true,
+        resources: {
+          'resource://hosts': {
+            enabled: true,
+            description: 'Custom hosts description',
+          },
+          'resource://disabled': {
+            enabled: false,
+            description: 'Disabled resource',
+          },
+          'resource://no-override': {
+            enabled: true,
+            description: undefined,
+          },
+        },
+      },
+    ]);
+    mockClient.listResources.mockResolvedValueOnce({
+      resources: [
+        {
+          uri: 'resource://hosts',
+          name: 'resource_hosts',
+          description: 'Upstream hosts description',
+          mimeType: 'text/plain',
+        },
+        {
+          uri: 'resource://disabled',
+          name: 'resource_disabled',
+          description: 'Upstream disabled description',
+          mimeType: 'text/plain',
+        },
+        {
+          uri: 'resource://no-override',
+          name: 'resource_no_override',
+          description: 'Upstream no-override description',
+          mimeType: 'text/plain',
+        },
+      ],
+    });
+
+    await initUpstreamServers();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    const result = await getServersInfo();
+
+    expect(result).toEqual([
+      expect.objectContaining({
+        name: 'zabbix',
+        resources: expect.arrayContaining([
+          expect.objectContaining({
+            uri: 'resource://hosts',
+            description: 'Custom hosts description',
+            enabled: true,
+          }),
+          expect.objectContaining({
+            uri: 'resource://disabled',
+            description: 'Disabled resource',
+            enabled: false,
+          }),
+          expect.objectContaining({
+            uri: 'resource://no-override',
+            description: 'Upstream no-override description',
+            enabled: true,
+          }),
+        ]),
       }),
     ]);
   });
