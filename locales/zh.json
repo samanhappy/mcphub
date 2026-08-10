@@ -742,6 +742,8 @@
     "betterAuthGoogleDescription": "需要配置 GOOGLE_CLIENT_ID 和 GOOGLE_CLIENT_SECRET。",
     "betterAuthGithubDescription": "需要配置 GITHUB_CLIENT_ID 和 GITHUB_CLIENT_SECRET。",
     "betterAuthOidcDescription": "需要配置 OIDC 客户端凭据以及 discovery URL。",
+    "betterAuthOidcConfigViaUi": "通过 UI 配置 OIDC",
+    "betterAuthOidcConfigViaUiDescription": "启用后，OIDC 凭据通过 UI 配置并存储在数据库中。禁用后，通过环境变量配置 (OIDC_CLIENT_ID, OIDC_CLIENT_SECRET, OIDC_DISCOVERY_URL)。",
     "betterAuthOidcProviderId": "OIDC 提供方 ID",
     "betterAuthOidcProviderIdDescription": "启动 OIDC 登录流程时使用的提供方标识。",
     "betterAuthOidcDiscoveryUrl": "OIDC Discovery URL",

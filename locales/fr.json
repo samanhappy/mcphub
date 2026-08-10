@@ -731,6 +731,8 @@
     "betterAuthGoogleDescription": "Nécessite GOOGLE_CLIENT_ID et GOOGLE_CLIENT_SECRET.",
     "betterAuthGithubDescription": "Nécessite GITHUB_CLIENT_ID et GITHUB_CLIENT_SECRET.",
     "betterAuthOidcDescription": "Nécessite les identifiants client OIDC ainsi qu'une URL de découverte.",
+    "betterAuthOidcConfigViaUi": "Configurer OIDC via l'interface",
+    "betterAuthOidcConfigViaUiDescription": "Lorsqu'activé, les identifiants OIDC sont configurés via l'interface et stockés dans la base de données. Lorsque désactivé, configurez via les variables d'environnement (OIDC_CLIENT_ID, OIDC_CLIENT_SECRET, OIDC_DISCOVERY_URL).",
     "betterAuthOidcProviderId": "Identifiant du fournisseur OIDC",
     "betterAuthOidcProviderIdDescription": "Identifiant du fournisseur utilisé pour démarrer le flux de connexion OIDC.",
     "betterAuthOidcDiscoveryUrl": "URL de découverte OIDC",
