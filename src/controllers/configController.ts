@@ -13,7 +13,13 @@ import {
   getUserDao,
   getBearerKeyDao,
 } from '../dao/DaoFactory.js';
-import { getBetterAuthRuntimeConfig, toBetterAuthPublicConfig } from '../services/betterAuthConfig.js';
+import {
+  getAppliedBetterAuthRuntimeConfig,
+  getBetterAuthRuntimeConfig,
+  isBetterAuthRestartRequired,
+  resolveBetterAuthRuntimeConfig,
+  toBetterAuthPublicConfig,
+} from '../services/betterAuthConfig.js';
 
 const dataService: DataService = getDataService();
 
@@ -65,6 +71,8 @@ export const getPublicConfig = async (req: Request, res: Response): Promise<void
   try {
     const systemConfig = await getSystemConfigDao().get();
     const skipAuth = systemConfig?.routing?.skipAuth || false;
+    const appliedBetterAuthConfig =
+      getAppliedBetterAuthRuntimeConfig() || resolveBetterAuthRuntimeConfig(null);
     let permissions = {};
     if (skipAuth) {
       const user: IUser = {
@@ -84,7 +92,7 @@ export const getPublicConfig = async (req: Request, res: Response): Promise<void
       data: {
         skipAuth,
         permissions,
-        betterAuth: toBetterAuthPublicConfig(await getBetterAuthRuntimeConfig(systemConfig)),
+        betterAuth: toBetterAuthPublicConfig(appliedBetterAuthConfig),
       },
     });
   } catch (error) {
@@ -94,6 +102,48 @@ export const getPublicConfig = async (req: Request, res: Response): Promise<void
       message: 'Failed to get public configuration',
     });
   }
+};
+
+export const getBetterAuthStatus = async (req: Request, res: Response): Promise<void> => {
+  if (!requireAdmin(req, res)) return;
+
+  try {
+    const systemConfig = await getSystemConfigDao().get();
+    const desiredConfig = await getBetterAuthRuntimeConfig(systemConfig);
+    const appliedConfig = getAppliedBetterAuthRuntimeConfig() || resolveBetterAuthRuntimeConfig(null);
+
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+
+    res.json({
+      success: true,
+      data: {
+        desired: toBetterAuthPublicConfig(desiredConfig),
+        applied: toBetterAuthPublicConfig(appliedConfig),
+        restartRequired: isBetterAuthRestartRequired(desiredConfig, appliedConfig),
+      },
+    });
+  } catch (error) {
+    console.error('Error getting Better Auth status:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get Better Auth status',
+    });
+  }
+};
+
+export const restartApplication = async (req: Request, res: Response): Promise<void> => {
+  if (!requireAdmin(req, res)) return;
+
+  res.status(202).json({
+    success: true,
+    message: 'Application restart requested',
+  });
+
+  setTimeout(() => {
+    process.kill(process.pid, 'SIGTERM');
+  }, 250);
 };
 
 /**

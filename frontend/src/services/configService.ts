@@ -1,4 +1,4 @@
-import { apiGet, fetchWithInterceptors } from '../utils/fetchInterceptor';
+import { apiGet, apiPost, fetchWithInterceptors } from '../utils/fetchInterceptor';
 import { getBasePath } from '../utils/runtime';
 
 export interface SystemConfig {
@@ -90,7 +90,13 @@ interface BetterAuthConfig {
       prompt?: string;
     };
   };
-};
+}
+
+export interface BetterAuthStatus {
+  desired: BetterAuthConfig;
+  applied: BetterAuthConfig;
+  restartRequired: boolean;
+}
 
 export interface PublicConfigResponse {
   success: boolean;
@@ -99,6 +105,12 @@ export interface PublicConfigResponse {
     permissions?: any;
     betterAuth?: BetterAuthConfig;
   };
+  message?: string;
+}
+
+interface BetterAuthStatusResponse {
+  success: boolean;
+  data?: BetterAuthStatus;
   message?: string;
 }
 
@@ -175,3 +187,16 @@ export const shouldSkipAuth = async (): Promise<boolean> => {
     return false;
   }
 };
+
+export const getBetterAuthStatus = async (): Promise<BetterAuthStatus | null> => {
+  const response = await apiGet<BetterAuthStatusResponse>('/better-auth/status');
+  if (!response.success || !response.data) {
+    return null;
+  }
+  return response.data;
+};
+
+export const restartBetterAuthApplication = async (): Promise<{
+  success: boolean;
+  message?: string;
+}> => apiPost('/better-auth/restart', {});

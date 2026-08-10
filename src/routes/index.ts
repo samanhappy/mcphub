@@ -89,6 +89,8 @@ import {
   getRuntimeConfig,
   getPublicConfig,
   getMcpSettingsJson,
+  getBetterAuthStatus,
+  restartApplication,
 } from '../controllers/configController.js';
 import { callTool } from '../controllers/toolController.js';
 import { getPrompt } from '../controllers/promptController.js';
@@ -228,6 +230,7 @@ export const initRoutes = async (app: express.Application): Promise<void> => {
   authenticatedRouter.get('/servers', getAllServers);
   authenticatedRouter.get('/servers/:name', getServerConfig);
   authenticatedRouter.get('/settings', getAllSettings);
+  authenticatedRouter.get('/better-auth/status', getBetterAuthStatus);
   authenticatedRouter.post('/servers', createServer);
   authenticatedRouter.post('/servers/batch', batchCreateServers);
   authenticatedRouter.put('/servers/:name', updateServer);
@@ -264,6 +267,7 @@ export const initRoutes = async (app: express.Application): Promise<void> => {
     resetResourceDescription,
   );
   authenticatedRouter.put('/system-config', updateSystemConfig);
+  authenticatedRouter.post('/better-auth/restart', restartApplication);
   authenticatedRouter.post('/cache/clear', clearCache);
 
   // Context Footprint cost routes

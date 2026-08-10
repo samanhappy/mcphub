@@ -3,7 +3,7 @@ import { genericOAuth } from 'better-auth/plugins';
 import { PostgresDialect } from 'kysely';
 import { Pool } from 'pg';
 import defaultConfig, { loadSettings } from './config/index.js';
-import { resolveBetterAuthRuntimeConfig } from './services/betterAuthConfig.js';
+import { resolveBetterAuthRuntimeConfig, setAppliedBetterAuthRuntimeConfig } from './services/betterAuthConfig.js';
 import { resolveInstallBaseUrl } from './utils/installBaseUrl.js';
 import { getCachedSystemConfig, isDatabaseModeEnabled } from './utils/systemConfigCache.js';
 
@@ -22,6 +22,7 @@ const resolveSystemConfig = () => {
 
 const systemConfig = resolveSystemConfig();
 const runtimeConfig = resolveBetterAuthRuntimeConfig(systemConfig);
+setAppliedBetterAuthRuntimeConfig(runtimeConfig);
 const socialProviders: Record<string, { clientId: string; clientSecret: string }> = {};
 const plugins: any[] = [];
 if (

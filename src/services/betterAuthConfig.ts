@@ -46,6 +46,8 @@ export interface BetterAuthRuntimeConfig {
   };
 }
 
+let appliedBetterAuthRuntimeConfig: BetterAuthRuntimeConfig | null = null;
+
 export type BetterAuthPublicConfig = Omit<BetterAuthRuntimeConfig, 'providers'> & {
   providers: Omit<BetterAuthRuntimeConfig['providers'], 'oidc'> & {
     oidc: Omit<BetterAuthRuntimeConfig['providers']['oidc'], 'clientSecret'> & {
@@ -53,6 +55,45 @@ export type BetterAuthPublicConfig = Omit<BetterAuthRuntimeConfig, 'providers'> 
     };
   };
 };
+
+const stringArraysEqual = (left: string[], right: string[]): boolean => {
+  if (left.length !== right.length) {
+    return false;
+  }
+  const normalizedLeft = [...left].sort();
+  const normalizedRight = [...right].sort();
+  return normalizedLeft.every((value, index) => value === normalizedRight[index]);
+};
+
+export const setAppliedBetterAuthRuntimeConfig = (config: BetterAuthRuntimeConfig): void => {
+  appliedBetterAuthRuntimeConfig = config;
+};
+
+export const getAppliedBetterAuthRuntimeConfig = (): BetterAuthRuntimeConfig | null =>
+  appliedBetterAuthRuntimeConfig;
+
+export const isBetterAuthRestartRequired = (
+  desired: BetterAuthRuntimeConfig,
+  applied: BetterAuthRuntimeConfig,
+): boolean =>
+  desired.enabled !== applied.enabled ||
+  desired.basePath !== applied.basePath ||
+  desired.disableAutoCreate !== applied.disableAutoCreate ||
+  desired.allowLocalUser !== applied.allowLocalUser ||
+  desired.autoLogin !== applied.autoLogin ||
+  !stringArraysEqual(desired.trustedOrigins, applied.trustedOrigins) ||
+  desired.providers.google.enabled !== applied.providers.google.enabled ||
+  desired.providers.github.enabled !== applied.providers.github.enabled ||
+  desired.providers.oidc.enabled !== applied.providers.oidc.enabled ||
+  desired.providers.oidc.configViaUi !== applied.providers.oidc.configViaUi ||
+  desired.providers.oidc.providerId !== applied.providers.oidc.providerId ||
+  (desired.providers.oidc.discoveryUrl || '') !== (applied.providers.oidc.discoveryUrl || '') ||
+  (desired.providers.oidc.clientId || '') !== (applied.providers.oidc.clientId || '') ||
+  (desired.providers.oidc.clientSecret || '') !== (applied.providers.oidc.clientSecret || '') ||
+  !stringArraysEqual(desired.providers.oidc.scopes, applied.providers.oidc.scopes) ||
+  desired.providers.oidc.pkce !== applied.providers.oidc.pkce ||
+  (desired.providers.oidc.prompt || '') !== (applied.providers.oidc.prompt || '') ||
+  desired.providers.oidc.trustEmail !== applied.providers.oidc.trustEmail;
 
 const parseBoolean = (value: unknown): boolean | undefined => {
   if (typeof value === 'boolean') {
