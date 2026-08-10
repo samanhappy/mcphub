@@ -7,6 +7,7 @@ const mockUpdate = jest.fn();
 const mockCreateWithHashedPassword = jest.fn();
 const mockSessionGet = jest.fn();
 const mockGetAccessToken = jest.fn();
+const originalFetch = global.fetch;
 
 jest.mock('../../src/dao/index.js', () => ({
   getUserDao: jest.fn(() => ({
@@ -53,9 +54,24 @@ describe('resolveBetterAuthUser', () => {
     configMod.getBetterAuthRuntimeConfig.mockResolvedValue({
       enabled: true,
       disableAutoCreate: false,
-      providers: { oidc: { enabled: true, providerId: 'authentik' } },
+      providers: {
+        oidc: {
+          enabled: true,
+          providerId: 'authentik',
+          discoveryUrl: 'https://auth.example.de/.well-known/openid-configuration',
+        },
+      },
     });
     mockGetAccessToken.mockResolvedValue({ idToken: undefined, accessToken: undefined });
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: false,
+      status: 404,
+      json: async () => ({}),
+    }) as unknown as typeof global.fetch;
+  });
+
+  afterEach(() => {
+    global.fetch = originalFetch;
   });
 
   it('returns null when no Better Auth session exists', async () => {
@@ -217,7 +233,13 @@ describe('resolveBetterAuthUser', () => {
     configMod.getBetterAuthRuntimeConfig.mockResolvedValue({
       enabled: true,
       disableAutoCreate: true,
-      providers: { oidc: { enabled: true, providerId: 'authentik' } },
+      providers: {
+        oidc: {
+          enabled: true,
+          providerId: 'authentik',
+          discoveryUrl: 'https://auth.example.de/.well-known/openid-configuration',
+        },
+      },
     });
 
     mockSessionGet.mockResolvedValue({
@@ -230,5 +252,43 @@ describe('resolveBetterAuthUser', () => {
     const result = await resolveBetterAuthUser(makeReq());
     expect(result).toBeNull();
     expect(mockCreateWithHashedPassword).not.toHaveBeenCalled();
+  });
+
+  it('maps isAdmin entitlement from userinfo when token claims do not include it', async () => {
+    const header = Buffer.from(JSON.stringify({ alg: 'none' })).toString('base64url');
+    const payload = Buffer.from(
+      JSON.stringify({ iss: 'https://auth.example.de', sub: '12345' }),
+    ).toString('base64url');
+    mockSessionGet.mockResolvedValue({
+      user: { id: 'ba-admin', email: 'admin@example.com', name: 'Admin User' },
+    });
+    mockGetAccessToken.mockResolvedValue({
+      idToken: `${header}.${payload}.signature`,
+      accessToken: `${header}.${payload}.signature`,
+    });
+    (global.fetch as jest.Mock)
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          userinfo_endpoint: 'https://auth.example.de/application/o/userinfo/',
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          entitlements: ['isAdmin'],
+        }),
+      });
+    mockFindBySsoUserId.mockResolvedValue({
+      username: 'admin-user',
+      email: 'admin@example.com',
+      isAdmin: false,
+      ssoUserId: 'ba-admin',
+    });
+
+    const result = await resolveBetterAuthUser(makeReq());
+
+    expect(result?.isAdmin).toBe(true);
+    expect(mockUpdate).toHaveBeenCalledWith('admin-user', expect.objectContaining({ isAdmin: true }));
   });
 });

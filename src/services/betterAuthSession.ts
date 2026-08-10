@@ -51,6 +51,57 @@ const getTokenPayload = (token: string | undefined): Record<string, unknown> | n
   }
 };
 
+const fetchOidcUserInfoClaims = async (
+  discoveryUrl: string | undefined,
+  accessToken: string | undefined,
+): Promise<Record<string, unknown> | null> => {
+  if (!discoveryUrl || !accessToken) {
+    return null;
+  }
+
+  try {
+    const discoveryResponse = await fetch(discoveryUrl, {
+      method: 'GET',
+      headers: {
+        Accept: 'application/json',
+      },
+    });
+    if (!discoveryResponse.ok) {
+      console.warn('OIDC discovery request for userinfo failed:', discoveryResponse.status);
+      return null;
+    }
+
+    const discoveryDocument = (await discoveryResponse.json()) as Record<string, unknown>;
+    const userInfoEndpoint =
+      typeof discoveryDocument.userinfo_endpoint === 'string'
+        ? discoveryDocument.userinfo_endpoint
+        : undefined;
+    if (!userInfoEndpoint) {
+      return null;
+    }
+
+    const userInfoResponse = await fetch(userInfoEndpoint, {
+      method: 'GET',
+      headers: {
+        Accept: 'application/json',
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+    if (!userInfoResponse.ok) {
+      console.warn('OIDC userinfo request failed:', userInfoResponse.status);
+      return null;
+    }
+
+    const userInfoPayload = await userInfoResponse.json();
+    return userInfoPayload && typeof userInfoPayload === 'object'
+      ? (userInfoPayload as Record<string, unknown>)
+      : null;
+  } catch (error) {
+    console.warn('OIDC userinfo lookup failed:', error);
+    return null;
+  }
+};
+
 const resolveOidcClaims = async (
   req: Request,
 ): Promise<{ identity: OidcIdentity | null; groups: string[]; isAdminClaim: boolean }> => {
@@ -71,7 +122,16 @@ const resolveOidcClaims = async (
       body: { providerId: oidcConfig?.providerId },
     });
 
-    const payload = getTokenPayload(tokenResponse?.idToken || tokenResponse?.accessToken);
+    const tokenPayload =
+      getTokenPayload(tokenResponse?.idToken) || getTokenPayload(tokenResponse?.accessToken);
+    const userInfoPayload = await fetchOidcUserInfoClaims(
+      oidcConfig?.discoveryUrl,
+      tokenResponse?.accessToken,
+    );
+    const payload = {
+      ...(tokenPayload || {}),
+      ...(userInfoPayload || {}),
+    };
     const issuer = typeof payload?.iss === 'string' ? payload.iss : undefined;
     const sub = typeof payload?.sub === 'string' ? payload.sub : undefined;
     const groups = resolveOidcGroups(payload);
