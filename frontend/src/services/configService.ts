@@ -194,7 +194,7 @@ export const shouldSkipAuth = async (): Promise<boolean> => {
 export const testBetterAuthOidcConnection = async (
   betterAuth: Partial<BetterAuthConfig>,
 ): Promise<BetterAuthOidcTestResponse> =>
-  apiPost('/better-auth/oidc/test', {
+  apiPost('/admin/better-auth/oidc/test', {
     auth: {
       betterAuth,
     },
@@ -203,4 +203,4 @@ export const testBetterAuthOidcConnection = async (
 export const restartBetterAuthApplication = async (): Promise<{
   success: boolean;
   message?: string;
-}> => apiPost<RestartResponse>('/better-auth/restart', {});
+}> => apiPost<RestartResponse>('/admin/better-auth/restart', {});

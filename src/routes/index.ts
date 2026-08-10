@@ -266,8 +266,8 @@ export const initRoutes = async (app: express.Application): Promise<void> => {
     resetResourceDescription,
   );
   authenticatedRouter.put('/system-config', updateSystemConfig);
-  authenticatedRouter.post('/better-auth/oidc/test', testBetterAuthOidcConnection);
-  authenticatedRouter.post('/better-auth/restart', restartApplication);
+  authenticatedRouter.post('/admin/better-auth/oidc/test', testBetterAuthOidcConnection);
+  authenticatedRouter.post('/admin/better-auth/restart', restartApplication);
   authenticatedRouter.post('/cache/clear', clearCache);
 
   // Context Footprint cost routes
