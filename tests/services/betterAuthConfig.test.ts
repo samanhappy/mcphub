@@ -13,6 +13,8 @@ const BETTER_AUTH_ENV_KEYS = [
   'BETTER_AUTH_OIDC_PKCE',
   'BETTER_AUTH_OIDC_PROMPT',
   'BETTER_AUTH_OIDC_TRUST_EMAIL',
+  'BETTER_AUTH_ALLOW_LOCAL_USER',
+  'BETTER_AUTH_AUTO_LOGIN',
   'INSTALL_BASE_URL',
   'GOOGLE_CLIENT_ID',
   'GOOGLE_CLIENT_SECRET',
@@ -50,20 +52,22 @@ describe('betterAuthConfig', () => {
   });
 
   it('enables Better Auth when only the OIDC provider is configured', async () => {
-    process.env.OIDC_CLIENT_ID = 'oidc-client-id';
-    process.env.OIDC_CLIENT_SECRET = 'oidc-client-secret';
-
     getSystemConfigMock.mockResolvedValue({
       auth: {
         betterAuth: {
           enabled: true,
           trustedOrigins: ['https://mcp.imdevinc.home'],
           disableAutoCreate: false,
+          allowLocalUser: true,
+          autoLogin: true,
           providers: {
             oidc: {
               enabled: true,
+              configViaUi: true,
               providerId: 'local-oidc',
               discoveryUrl: 'https://auth.example.com/.well-known/openid-configuration',
+              clientId: 'oidc-client-id',
+              clientSecret: 'oidc-client-secret',
               scopes: ['openid', 'profile', 'email'],
               pkce: true,
             },
@@ -79,6 +83,8 @@ describe('betterAuthConfig', () => {
       basePath: '/api/auth/better',
       trustedOrigins: ['https://mcp.imdevinc.home'],
       disableAutoCreate: false,
+      allowLocalUser: true,
+      autoLogin: true,
       providers: {
         google: {
           enabled: false,
@@ -88,8 +94,11 @@ describe('betterAuthConfig', () => {
         },
         oidc: {
           enabled: true,
+          configViaUi: true,
           providerId: 'local-oidc',
           discoveryUrl: 'https://auth.example.com/.well-known/openid-configuration',
+          clientId: 'oidc-client-id',
+          clientSecret: 'oidc-client-secret',
           scopes: ['openid', 'profile', 'email'],
           pkce: true,
           prompt: undefined,
@@ -110,6 +119,7 @@ describe('betterAuthConfig', () => {
           providers: {
             oidc: {
               enabled: true,
+              configViaUi: false,
               providerId: 'local-oidc',
             },
           },
@@ -124,6 +134,8 @@ describe('betterAuthConfig', () => {
       basePath: '/api/auth/better',
       trustedOrigins: [],
       disableAutoCreate: false,
+      allowLocalUser: true,
+      autoLogin: true,
       providers: {
         google: {
           enabled: false,
@@ -133,8 +145,11 @@ describe('betterAuthConfig', () => {
         },
         oidc: {
           enabled: false,
-          providerId: 'local-oidc',
+          configViaUi: false,
+          providerId: 'oidc',
           discoveryUrl: undefined,
+          clientId: 'oidc-client-id',
+          clientSecret: 'oidc-client-secret',
           scopes: ['openid', 'profile', 'email'],
           pkce: true,
           prompt: undefined,
@@ -147,6 +162,8 @@ describe('betterAuthConfig', () => {
   it('uses install.baseUrl as a trusted origin when none are configured explicitly', async () => {
     process.env.OIDC_CLIENT_ID = 'oidc-client-id';
     process.env.OIDC_CLIENT_SECRET = 'oidc-client-secret';
+    process.env.BETTER_AUTH_OIDC_DISCOVERY_URL =
+      'https://auth.example.com/.well-known/openid-configuration';
 
     getSystemConfigMock.mockResolvedValue({
       install: {
@@ -158,6 +175,7 @@ describe('betterAuthConfig', () => {
           providers: {
             oidc: {
               enabled: true,
+              configViaUi: false,
               discoveryUrl: 'https://auth.example.com/.well-known/openid-configuration',
             },
           },
@@ -172,6 +190,8 @@ describe('betterAuthConfig', () => {
       basePath: '/api/auth/better',
       trustedOrigins: ['https://mcp.imdevinc.home'],
       disableAutoCreate: false,
+      allowLocalUser: true,
+      autoLogin: true,
       providers: {
         google: {
           enabled: false,
@@ -181,8 +201,11 @@ describe('betterAuthConfig', () => {
         },
         oidc: {
           enabled: true,
+          configViaUi: false,
           providerId: 'oidc',
           discoveryUrl: 'https://auth.example.com/.well-known/openid-configuration',
+          clientId: 'oidc-client-id',
+          clientSecret: 'oidc-client-secret',
           scopes: ['openid', 'profile', 'email'],
           pkce: true,
           prompt: undefined,
@@ -204,6 +227,7 @@ describe('betterAuthConfig', () => {
           providers: {
             oidc: {
               enabled: true,
+              configViaUi: false,
               discoveryUrl: 'https://auth.example.com/.well-known/openid-configuration',
             },
           },
@@ -247,6 +271,8 @@ describe('betterAuthConfig', () => {
           basePath: '/settings-auth',
           trustedOrigins: ['https://settings.example.com'],
           disableAutoCreate: false,
+          allowLocalUser: true,
+          autoLogin: true,
           providers: {
             google: {
               enabled: true,
@@ -256,6 +282,7 @@ describe('betterAuthConfig', () => {
             },
             oidc: {
               enabled: false,
+              configViaUi: false,
               providerId: 'settings-oidc',
               discoveryUrl: 'https://settings-auth.example.com/.well-known/openid-configuration',
               scopes: ['openid'],
@@ -278,6 +305,8 @@ describe('betterAuthConfig', () => {
         'https://public.example.com',
       ],
       disableAutoCreate: false,
+      allowLocalUser: true,
+      autoLogin: true,
       providers: {
         google: {
           enabled: false,
@@ -287,8 +316,11 @@ describe('betterAuthConfig', () => {
         },
         oidc: {
           enabled: true,
+          configViaUi: false,
           providerId: 'env-oidc',
           discoveryUrl: 'https://env-auth.example.com/.well-known/openid-configuration',
+          clientId: 'oidc-client-id',
+          clientSecret: 'oidc-client-secret',
           scopes: ['openid', 'profile', 'custom'],
           pkce: false,
           prompt: 'select_account',
@@ -313,6 +345,7 @@ describe('betterAuthConfig', () => {
           providers: {
             oidc: {
               enabled: false,
+              configViaUi: false,
             },
           },
         },
@@ -326,6 +359,8 @@ describe('betterAuthConfig', () => {
       basePath: '/api/auth/better',
       trustedOrigins: [],
       disableAutoCreate: false,
+      allowLocalUser: true,
+      autoLogin: true,
       providers: {
         google: {
           enabled: false,
@@ -335,8 +370,11 @@ describe('betterAuthConfig', () => {
         },
         oidc: {
           enabled: true,
+          configViaUi: false,
           providerId: 'oidc',
           discoveryUrl: 'https://legacy-auth.example.com/.well-known/openid-configuration',
+          clientId: 'oidc-client-id',
+          clientSecret: 'oidc-client-secret',
           scopes: ['openid', 'profile', 'email'],
           pkce: true,
           prompt: undefined,
@@ -369,8 +407,11 @@ describe('betterAuthConfig', () => {
           providers: {
             oidc: {
               enabled: true,
+              configViaUi: true,
               providerId: 'override-oidc',
               discoveryUrl: 'https://override.example.com/.well-known/openid-configuration',
+              clientId: 'override-client-id',
+              clientSecret: 'override-client-secret',
               scopes: ['openid', 'profile'],
               pkce: false,
               prompt: 'login',
@@ -387,6 +428,8 @@ describe('betterAuthConfig', () => {
       basePath: '/custom-auth',
       trustedOrigins: ['https://dao-backed.example.com'],
       disableAutoCreate: false,
+      allowLocalUser: true,
+      autoLogin: true,
       providers: {
         google: {
           enabled: false,
@@ -396,8 +439,11 @@ describe('betterAuthConfig', () => {
         },
         oidc: {
           enabled: true,
+          configViaUi: true,
           providerId: 'override-oidc',
           discoveryUrl: 'https://override.example.com/.well-known/openid-configuration',
+          clientId: 'override-client-id',
+          clientSecret: 'override-client-secret',
           scopes: ['openid', 'profile'],
           pkce: false,
           prompt: 'login',

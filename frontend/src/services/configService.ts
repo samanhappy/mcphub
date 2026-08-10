@@ -43,6 +43,8 @@ export interface SystemConfig {
       enabled?: boolean;
       basePath?: string;
       trustedOrigins?: string[];
+      allowLocalUser?: boolean;
+      autoLogin?: boolean;
       providers?: {
         google?: {
           enabled?: boolean;
@@ -52,6 +54,7 @@ export interface SystemConfig {
         };
         oidc?: {
           enabled?: boolean;
+          configViaUi?: boolean;
           providerId?: string;
           discoveryUrl?: string;
           scopes?: string[];
@@ -76,14 +79,18 @@ interface BetterAuthConfig {
     };
     oidc?: {
       enabled?: boolean;
+      configViaUi?: boolean;
       providerId?: string;
       discoveryUrl?: string;
+      clientId?: string;
+      clientSecret?: string;
+      clientConfigured?: boolean;
       scopes?: string[];
       pkce?: boolean;
       prompt?: string;
     };
   };
-}
+};
 
 export interface PublicConfigResponse {
   success: boolean;

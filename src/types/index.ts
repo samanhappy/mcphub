@@ -190,8 +190,11 @@ export interface BetterAuthProviderToggle {
 }
 
 export interface BetterAuthOidcProviderConfig extends BetterAuthProviderToggle {
+  configViaUi?: boolean; // True: read OIDC config from MCPHub settings, false: read from environment
   providerId?: string; // Provider identifier used by Better Auth generic OAuth plugin
   discoveryUrl?: string; // OIDC discovery URL for a local issuer
+  clientId?: string; // OIDC client ID stored in MCPHub settings
+  clientSecret?: string; // OIDC client secret stored in MCPHub settings
   scopes?: string[]; // Requested scopes for login
   pkce?: boolean; // Enable/disable PKCE for the provider
   prompt?:
@@ -209,6 +212,8 @@ export interface BetterAuthConfig {
   basePath?: string; // Base path to mount Better Auth handler
   trustedOrigins?: string[]; // Explicitly trusted origins for social/OIDC login requests
   disableAutoCreate?: boolean; // When true, SSO login will not auto-create new users
+  allowLocalUser?: boolean; // When false, hide local login form unless ?direct=1 is used
+  autoLogin?: boolean; // When true, auto-start OIDC login on /login
   providers?: {
     google?: BetterAuthProviderToggle;
     github?: BetterAuthProviderToggle;

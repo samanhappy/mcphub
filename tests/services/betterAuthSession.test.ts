@@ -1,11 +1,12 @@
 import { Request } from 'express';
 
-// ── Mock DAO layer ────────────────────────────────────────────────
 const mockFindBySsoUserId = jest.fn();
 const mockFindByEmail = jest.fn();
 const mockFindByUsername = jest.fn();
 const mockUpdate = jest.fn();
 const mockCreateWithHashedPassword = jest.fn();
+const mockSessionGet = jest.fn();
+const mockGetAccessToken = jest.fn();
 
 jest.mock('../../src/dao/index.js', () => ({
   getUserDao: jest.fn(() => ({
@@ -17,295 +18,217 @@ jest.mock('../../src/dao/index.js', () => ({
   })),
 }));
 
-// ── Mock Better Auth runtime config ──────────────────────────────
 jest.mock('../../src/services/betterAuthConfig.js', () => ({
   getBetterAuthRuntimeConfig: jest.fn(() =>
-    Promise.resolve({ enabled: true, disableAutoCreate: false }),
+    Promise.resolve({
+      enabled: true,
+      disableAutoCreate: false,
+      providers: { oidc: { enabled: true, providerId: 'authentik' } },
+    }),
   ),
 }));
 
-// ── Mock Better Auth modules (used by getBetterAuthSession) ──────
-const mockSessionGet = jest.fn();
 jest.mock('../../src/betterAuth.js', () => ({
-  auth: { api: { getSession: mockSessionGet } },
+  auth: { api: { getSession: mockSessionGet, getAccessToken: mockGetAccessToken } },
 }));
+
 jest.mock('better-auth/node', () => ({
   fromNodeHeaders: jest.fn((h: any) => h),
 }));
 
 import { resolveBetterAuthUser } from '../../src/services/betterAuthSession.js';
 
-const makeReq = () => ({ headers: { authorization: 'Bearer test' } }) as unknown as Request;
+const makeReq = () => ({ headers: { authorization: 'Bearer token' } }) as unknown as Request;
 
 describe('resolveBetterAuthUser', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    mockFindBySsoUserId.mockReset();
+    mockFindByEmail.mockReset();
+    mockFindByUsername.mockReset();
+    mockUpdate.mockReset();
+    mockCreateWithHashedPassword.mockReset();
+    mockSessionGet.mockReset();
+    mockGetAccessToken.mockReset();
+    const configMod = jest.requireMock('../../src/services/betterAuthConfig.js');
+    configMod.getBetterAuthRuntimeConfig.mockResolvedValue({
+      enabled: true,
+      disableAutoCreate: false,
+      providers: { oidc: { enabled: true, providerId: 'authentik' } },
+    });
+    mockGetAccessToken.mockResolvedValue({ idToken: undefined, accessToken: undefined });
   });
 
-  // ── Priority 1: ssoUserId match ──────────────────────────────
-
-  describe('Priority 1: ssoUserId match', () => {
-    it('should match user by ssoUserId and return immediately', async () => {
-      mockSessionGet.mockResolvedValue({
-        user: { id: 'ba-123', email: 'test@example.com', name: 'Test' },
-      });
-      mockFindBySsoUserId.mockResolvedValue({
-        username: 'testuser',
-        email: 'test@example.com',
-        ssoUserId: 'ba-123',
-        isAdmin: false,
-      });
-
-      const result = await resolveBetterAuthUser(makeReq());
-
-      expect(result).not.toBeNull();
-      expect(result!.username).toBe('testuser');
-      expect(mockFindBySsoUserId).toHaveBeenCalledWith('ba-123');
-      expect(mockFindByEmail).not.toHaveBeenCalled();
-      expect(mockFindByUsername).not.toHaveBeenCalled();
-    });
-
-    it('should backfill email when ssoUserId match has no email', async () => {
-      mockSessionGet.mockResolvedValue({
-        user: { id: 'ba-123', email: 'new@example.com', name: 'Test' },
-      });
-      mockFindBySsoUserId.mockResolvedValue({
-        username: 'testuser',
-        email: undefined,
-        ssoUserId: 'ba-123',
-        isAdmin: false,
-      });
-      mockUpdate.mockResolvedValue({});
-
-      const result = await resolveBetterAuthUser(makeReq());
-
-      expect(result!.username).toBe('testuser');
-      expect(mockUpdate).toHaveBeenCalledWith('testuser', { email: 'new@example.com' });
-    });
-
-    it('should not attempt email backfill when session has no email', async () => {
-      mockSessionGet.mockResolvedValue({
-        user: { id: 'ba-123', email: undefined, name: 'Test' },
-      });
-      mockFindBySsoUserId.mockResolvedValue({
-        username: 'testuser',
-        email: undefined,
-        ssoUserId: 'ba-123',
-        isAdmin: false,
-      });
-
-      const result = await resolveBetterAuthUser(makeReq());
-
-      expect(result!.username).toBe('testuser');
-      expect(mockUpdate).not.toHaveBeenCalled();
-    });
+  it('returns null when no Better Auth session exists', async () => {
+    mockSessionGet.mockResolvedValue(null);
+    await expect(resolveBetterAuthUser(makeReq())).resolves.toBeNull();
   });
 
-  // ── Priority 2: email match (legacy fallback) ────────────────
-
-  describe('Priority 2: email match (legacy fallback)', () => {
-    it('should match by email when ssoUserId is not found', async () => {
-      mockSessionGet.mockResolvedValue({
-        user: { id: 'ba-new', email: 'legacy@example.com', name: 'Legacy' },
-      });
-      mockFindBySsoUserId.mockResolvedValue(undefined);
-      mockFindByEmail.mockResolvedValue({
-        username: 'legacy@example.com',
-        email: 'legacy@example.com',
-        ssoUserId: undefined,
-        isAdmin: false,
-      });
-      mockUpdate.mockResolvedValue({});
-
-      const result = await resolveBetterAuthUser(makeReq());
-
-      expect(result!.username).toBe('legacy@example.com');
-      expect(mockFindBySsoUserId).toHaveBeenCalledWith('ba-new');
-      expect(mockFindByEmail).toHaveBeenCalledWith('legacy@example.com');
+  it('matches user by ssoUserId first', async () => {
+    mockSessionGet.mockResolvedValue({
+      user: { id: 'ba-123', email: 'test@example.com', name: 'Test' },
+    });
+    mockFindBySsoUserId.mockResolvedValue({
+      username: 'testuser',
+      email: 'test@example.com',
+      ssoUserId: 'ba-123',
+      isAdmin: false,
     });
 
-    it('should backfill ssoUserId on email match', async () => {
-      mockSessionGet.mockResolvedValue({
-        user: { id: 'ba-456', email: 'user@example.com', name: 'User' },
-      });
-      mockFindBySsoUserId.mockResolvedValue(undefined);
-      mockFindByEmail.mockResolvedValue({
-        username: 'user@example.com',
-        email: 'user@example.com',
-        ssoUserId: undefined,
-        isAdmin: false,
-      });
-      mockUpdate.mockResolvedValue({});
+    const result = await resolveBetterAuthUser(makeReq());
 
-      await resolveBetterAuthUser(makeReq());
+    expect(result?.username).toBe('testuser');
+    expect(mockFindBySsoUserId).toHaveBeenCalledWith('ba-123');
+    expect(mockFindByEmail).not.toHaveBeenCalled();
+    expect(mockFindByUsername).not.toHaveBeenCalled();
+  });
 
-      expect(mockUpdate).toHaveBeenCalledWith('user@example.com', { ssoUserId: 'ba-456' });
+  it('backfills email on ssoUserId match', async () => {
+    mockSessionGet.mockResolvedValue({
+      user: { id: 'ba-123', email: 'new@example.com', name: 'Test' },
     });
+    mockFindBySsoUserId.mockResolvedValue({
+      username: 'testuser',
+      email: undefined,
+      ssoUserId: 'ba-123',
+      isAdmin: false,
+    });
+    mockUpdate.mockResolvedValue({});
 
-    it('should not backfill ssoUserId when session has no user.id', async () => {
-      mockSessionGet.mockResolvedValue({
-        user: { id: undefined, email: 'user@example.com' },
-      });
-      mockFindBySsoUserId.mockResolvedValue(undefined);
-      mockFindByEmail.mockResolvedValue({
-        username: 'user@example.com',
-        email: 'user@example.com',
-        isAdmin: false,
-      });
+    await resolveBetterAuthUser(makeReq());
+    expect(mockUpdate).toHaveBeenCalledWith('testuser', { email: 'new@example.com' });
+  });
 
-      await resolveBetterAuthUser(makeReq());
+  it('falls back to email match and backfills ssoUserId', async () => {
+    mockSessionGet.mockResolvedValue({
+      user: { id: 'ba-456', email: 'legacy@example.com', name: 'Legacy' },
+    });
+    mockFindBySsoUserId.mockResolvedValue(undefined);
+    mockFindByEmail.mockResolvedValue({
+      username: 'legacy@example.com',
+      email: 'legacy@example.com',
+      ssoUserId: undefined,
+      isAdmin: false,
+    });
+    mockUpdate.mockResolvedValue({});
 
-      expect(mockUpdate).not.toHaveBeenCalled();
+    const result = await resolveBetterAuthUser(makeReq());
+
+    expect(result?.username).toBe('legacy@example.com');
+    expect(mockUpdate).toHaveBeenCalledWith('legacy@example.com', { ssoUserId: 'ba-456' });
+  });
+
+  it('falls back to username match when no sso/email match exists', async () => {
+    mockSessionGet.mockResolvedValue({
+      user: { id: 'ba-789', email: 'old@example.com', name: 'Old' },
+    });
+    mockFindBySsoUserId.mockResolvedValue(undefined);
+    mockFindByEmail.mockResolvedValue(undefined);
+    mockFindByUsername.mockResolvedValue({
+      username: 'old@example.com',
+      email: undefined,
+      ssoUserId: undefined,
+      isAdmin: false,
+    });
+    mockUpdate.mockResolvedValue({});
+
+    const result = await resolveBetterAuthUser(makeReq());
+
+    expect(result?.username).toBe('old@example.com');
+    expect(mockUpdate).toHaveBeenCalledWith('old@example.com', {
+      ssoUserId: 'ba-789',
+      email: 'old@example.com',
     });
   });
 
-  // ── Priority 3: username match (backward compat) ─────────────
-
-  describe('Priority 3: username match', () => {
-    it('should match by username and backfill both ssoUserId and email', async () => {
-      mockSessionGet.mockResolvedValue({
-        user: { id: 'ba-789', email: 'old@example.com', name: 'Old' },
-      });
-      mockFindBySsoUserId.mockResolvedValue(undefined);
-      mockFindByEmail.mockResolvedValue(undefined);
-      mockFindByUsername.mockResolvedValue({
-        username: 'old@example.com',
-        email: undefined,
-        ssoUserId: undefined,
-        isAdmin: false,
-      });
-      mockUpdate.mockResolvedValue({});
-
-      const result = await resolveBetterAuthUser(makeReq());
-
-      expect(result!.username).toBe('old@example.com');
-      expect(mockUpdate).toHaveBeenCalledWith('old@example.com', { ssoUserId: 'ba-789' });
-      expect(mockUpdate).toHaveBeenCalledWith('old@example.com', { email: 'old@example.com' });
+  it('creates a new user when no match exists', async () => {
+    mockSessionGet.mockResolvedValue({
+      user: { id: 'ba-new', email: 'new@example.com', name: 'New' },
+    });
+    mockFindBySsoUserId.mockResolvedValue(undefined);
+    mockFindByEmail.mockResolvedValue(undefined);
+    mockFindByUsername.mockResolvedValue(undefined);
+    mockCreateWithHashedPassword.mockResolvedValue({
+      username: 'new@example.com',
+      email: 'new@example.com',
+      ssoUserId: 'ba-new',
+      isAdmin: false,
     });
 
-    it('should prefer email as username over name when building username', async () => {
-      mockSessionGet.mockResolvedValue({
-        user: { id: 'ba-1', email: 'e@x.com', name: 'Display Name' },
-      });
-      mockFindBySsoUserId.mockResolvedValue(undefined);
-      mockFindByEmail.mockResolvedValue(undefined);
-      mockFindByUsername.mockResolvedValue({
-        username: 'e@x.com',
-        email: 'e@x.com',
-        isAdmin: false,
-      });
+    await resolveBetterAuthUser(makeReq());
 
-      await resolveBetterAuthUser(makeReq());
-
-      expect(mockFindByUsername).toHaveBeenCalledWith('e@x.com');
-    });
-
-    it('should fallback to name when email is not available', async () => {
-      mockSessionGet.mockResolvedValue({
-        user: { id: 'ba-2', email: undefined, name: 'DisplayName' },
-      });
-      mockFindBySsoUserId.mockResolvedValue(undefined);
-      mockFindByUsername.mockResolvedValue({
-        username: 'DisplayName',
-        isAdmin: false,
-      });
-
-      await resolveBetterAuthUser(makeReq());
-
-      expect(mockFindByUsername).toHaveBeenCalledWith('DisplayName');
-    });
+    expect(mockCreateWithHashedPassword).toHaveBeenCalledWith(
+      'new@example.com',
+      expect.any(String),
+      false,
+      'new@example.com',
+      'ba-new',
+    );
   });
 
-  // ── Priority 4: create new user ──────────────────────────────
-
-  describe('Priority 4: create new user', () => {
-    it('should create new user with ssoUserId and email', async () => {
-      mockSessionGet.mockResolvedValue({
-        user: { id: 'ba-new', email: 'new@example.com', name: 'New' },
-      });
-      mockFindBySsoUserId.mockResolvedValue(undefined);
-      mockFindByEmail.mockResolvedValue(undefined);
-      mockFindByUsername.mockResolvedValue(undefined);
-      mockCreateWithHashedPassword.mockResolvedValue({
-        username: 'new@example.com',
-        email: 'new@example.com',
-        ssoUserId: 'ba-new',
-        isAdmin: false,
-      });
-
-      const result = await resolveBetterAuthUser(makeReq());
-
-      expect(result).not.toBeNull();
-      expect(mockCreateWithHashedPassword).toHaveBeenCalledWith(
-        'new@example.com',
-        expect.any(String), // random UUID password
-        false,
-        'new@example.com',
-        'ba-new',
-      );
+  it('maps entitlement isAdmin to local isAdmin', async () => {
+    const header = Buffer.from(JSON.stringify({ alg: 'none' })).toString('base64url');
+    const payload = Buffer.from(
+      JSON.stringify({ iss: 'https://auth.example.de', sub: '12345', entitlements: ['isAdmin'] }),
+    ).toString('base64url');
+    mockSessionGet.mockResolvedValue({
+      user: { id: 'ba-admin', email: 'admin@example.com', name: 'Admin User' },
+    });
+    mockGetAccessToken.mockResolvedValue({
+      idToken: `${header}.${payload}.signature`,
+      accessToken: 'access-token',
+    });
+    mockFindBySsoUserId.mockResolvedValue({
+      username: 'admin-user',
+      email: 'admin@example.com',
+      isAdmin: false,
+      ssoUserId: 'ba-admin',
     });
 
-    it('should return null when session has no usable username', async () => {
-      mockSessionGet.mockResolvedValue({
-        user: { id: undefined, email: undefined, name: undefined },
-      });
-      mockFindBySsoUserId.mockResolvedValue(undefined);
-
-      const result = await resolveBetterAuthUser(makeReq());
-
-      expect(result).toBeNull();
-      expect(mockCreateWithHashedPassword).not.toHaveBeenCalled();
-    });
-
-    it('should return null when disableAutoCreate is true', async () => {
-      // Override the default mock for this test — replace the implementation entirely
-      const configMod = jest.requireMock('../../src/services/betterAuthConfig.js');
-      configMod.getBetterAuthRuntimeConfig.mockResolvedValue({
-        enabled: true,
-        disableAutoCreate: true,
-      });
-
-      mockSessionGet.mockResolvedValue({
-        user: { id: 'ba-x', email: 'x@x.com', name: 'X' },
-      });
-      mockFindBySsoUserId.mockResolvedValue(undefined);
-      mockFindByEmail.mockResolvedValue(undefined);
-      mockFindByUsername.mockResolvedValue(undefined);
-
-      const result = await resolveBetterAuthUser(makeReq());
-
-      expect(result).toBeNull();
-      expect(mockCreateWithHashedPassword).not.toHaveBeenCalled();
-    });
+    const result = await resolveBetterAuthUser(makeReq());
+    expect(result?.isAdmin).toBe(true);
+    expect(mockUpdate).toHaveBeenCalledWith('admin-user', expect.objectContaining({ isAdmin: true }));
   });
 
-  // ── Session edge cases ───────────────────────────────────────
-
-  describe('session edge cases', () => {
-    it('should return null when no session exists', async () => {
-      mockSessionGet.mockResolvedValue(null);
-
-      const result = await resolveBetterAuthUser(makeReq());
-
-      expect(result).toBeNull();
+  it('maps boolean isAdmin claim to local isAdmin', async () => {
+    const header = Buffer.from(JSON.stringify({ alg: 'none' })).toString('base64url');
+    const payload = Buffer.from(
+      JSON.stringify({ iss: 'https://auth.example.de', sub: '12345', isAdmin: true }),
+    ).toString('base64url');
+    mockSessionGet.mockResolvedValue({
+      user: { id: 'ba-admin', email: 'admin@example.com', name: 'Admin User' },
+    });
+    mockGetAccessToken.mockResolvedValue({
+      idToken: `${header}.${payload}.signature`,
+      accessToken: 'access-token',
+    });
+    mockFindBySsoUserId.mockResolvedValue({
+      username: 'admin-user',
+      email: 'admin@example.com',
+      isAdmin: false,
+      ssoUserId: 'ba-admin',
     });
 
-    it('should handle backfill errors gracefully', async () => {
-      mockSessionGet.mockResolvedValue({
-        user: { id: 'ba-err', email: 'err@example.com' },
-      });
-      mockFindBySsoUserId.mockResolvedValue({
-        username: 'erruser',
-        email: undefined,
-        ssoUserId: 'ba-err',
-        isAdmin: false,
-      });
-      mockUpdate.mockRejectedValue(new Error('DB write failed'));
+    const result = await resolveBetterAuthUser(makeReq());
+    expect(result?.isAdmin).toBe(true);
+  });
 
-      const result = await resolveBetterAuthUser(makeReq());
-
-      // Should still return the user even if backfill fails
-      expect(result!.username).toBe('erruser');
+  it('returns null when auto-create is disabled and user does not exist', async () => {
+    const configMod = jest.requireMock('../../src/services/betterAuthConfig.js');
+    configMod.getBetterAuthRuntimeConfig.mockResolvedValue({
+      enabled: true,
+      disableAutoCreate: true,
+      providers: { oidc: { enabled: true, providerId: 'authentik' } },
     });
+
+    mockSessionGet.mockResolvedValue({
+      user: { id: 'ba-x', email: 'x@x.com', name: 'X' },
+    });
+    mockFindBySsoUserId.mockResolvedValue(undefined);
+    mockFindByEmail.mockResolvedValue(undefined);
+    mockFindByUsername.mockResolvedValue(undefined);
+
+    const result = await resolveBetterAuthUser(makeReq());
+    expect(result).toBeNull();
+    expect(mockCreateWithHashedPassword).not.toHaveBeenCalled();
   });
 });

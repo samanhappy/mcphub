@@ -47,8 +47,8 @@ if (
 if (
   runtimeConfig.providers.oidc.enabled &&
   runtimeConfig.providers.oidc.discoveryUrl &&
-  process.env.OIDC_CLIENT_ID &&
-  process.env.OIDC_CLIENT_SECRET
+  runtimeConfig.providers.oidc.clientId &&
+  runtimeConfig.providers.oidc.clientSecret
 ) {
   plugins.push(
     genericOAuth({
@@ -56,8 +56,8 @@ if (
         {
           providerId: runtimeConfig.providers.oidc.providerId,
           discoveryUrl: runtimeConfig.providers.oidc.discoveryUrl,
-          clientId: process.env.OIDC_CLIENT_ID,
-          clientSecret: process.env.OIDC_CLIENT_SECRET,
+          clientId: runtimeConfig.providers.oidc.clientId,
+          clientSecret: runtimeConfig.providers.oidc.clientSecret,
           scopes: runtimeConfig.providers.oidc.scopes,
           pkce: runtimeConfig.providers.oidc.pkce,
           prompt: runtimeConfig.providers.oidc.prompt,

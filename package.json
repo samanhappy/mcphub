@@ -1,6 +1,6 @@
 {
   "name": "@samanhappy/mcphub",
-  "version": "dev",
+  "version": "0.1.2",
   "description": "A hub server for mcp servers",
   "main": "dist/index.js",
   "type": "module",

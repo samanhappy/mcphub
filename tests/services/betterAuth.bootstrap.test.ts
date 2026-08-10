@@ -16,6 +16,8 @@ const runtimeConfig = {
       enabled: true,
       providerId: 'local-oidc',
       discoveryUrl: 'https://auth.example.com/.well-known/openid-configuration',
+      clientId: 'oidc-client-id',
+      clientSecret: 'oidc-client-secret',
       scopes: ['openid', 'profile', 'email'],
       pkce: true,
       prompt: 'login',
@@ -34,6 +36,8 @@ const disabledRuntimeConfig = {
     oidc: {
       enabled: false,
       providerId: 'oidc',
+      clientId: undefined,
+      clientSecret: undefined,
       scopes: ['openid', 'profile', 'email'],
       pkce: true,
       trustEmail: false,

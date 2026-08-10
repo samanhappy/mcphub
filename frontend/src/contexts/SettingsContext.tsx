@@ -84,8 +84,11 @@ interface BetterAuthProviderToggle {
 
 interface BetterAuthOidcConfig {
   enabled: boolean;
+  configViaUi: boolean;
   providerId: string;
   discoveryUrl: string;
+  clientId: string;
+  clientSecret: string;
   scopes: string[];
   pkce: boolean;
   prompt: string;
@@ -95,6 +98,8 @@ interface BetterAuthConfig {
   enabled: boolean;
   basePath: string;
   trustedOrigins: string[];
+  allowLocalUser: boolean;
+  autoLogin: boolean;
   providers: {
     google: BetterAuthProviderToggle;
     github: BetterAuthProviderToggle;
@@ -213,6 +218,8 @@ const getDefaultBetterAuthConfig = (): BetterAuthConfig => ({
   enabled: true,
   basePath: '/api/auth/better',
   trustedOrigins: [],
+  allowLocalUser: true,
+  autoLogin: true,
   providers: {
     google: {
       enabled: true,
@@ -222,8 +229,11 @@ const getDefaultBetterAuthConfig = (): BetterAuthConfig => ({
     },
     oidc: {
       enabled: false,
+      configViaUi: false,
       providerId: 'oidc',
       discoveryUrl: '',
+      clientId: '',
+      clientSecret: '',
       scopes: [...DEFAULT_OIDC_SCOPES],
       pkce: true,
       prompt: '',
@@ -251,6 +261,8 @@ const normalizeBetterAuthConfig = (
     enabled: config?.enabled ?? defaults.enabled,
     basePath: config?.basePath?.trim() || defaults.basePath,
     trustedOrigins: normalizeStringArray(config?.trustedOrigins, defaults.trustedOrigins),
+    allowLocalUser: config?.allowLocalUser ?? defaults.allowLocalUser,
+    autoLogin: config?.autoLogin ?? defaults.autoLogin,
     providers: {
       google: {
         enabled: config?.providers?.google?.enabled ?? defaults.providers.google.enabled,
@@ -260,8 +272,11 @@ const normalizeBetterAuthConfig = (
       },
       oidc: {
         enabled: config?.providers?.oidc?.enabled ?? defaults.providers.oidc.enabled,
+        configViaUi: config?.providers?.oidc?.configViaUi ?? defaults.providers.oidc.configViaUi,
         providerId: config?.providers?.oidc?.providerId?.trim() || defaults.providers.oidc.providerId,
         discoveryUrl: config?.providers?.oidc?.discoveryUrl?.trim() || '',
+        clientId: config?.providers?.oidc?.clientId?.trim() || '',
+        clientSecret: config?.providers?.oidc?.clientSecret?.trim() || '',
         scopes: normalizeStringArray(config?.providers?.oidc?.scopes, DEFAULT_OIDC_SCOPES),
         pkce: config?.providers?.oidc?.pkce ?? defaults.providers.oidc.pkce,
         prompt: config?.providers?.oidc?.prompt?.trim() || '',

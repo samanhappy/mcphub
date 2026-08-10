@@ -1,0 +1,95 @@
+---
+title: 'Authentik OIDC'
+description: 'Configure MCPHub with Authentik as an OIDC provider for Better Auth sign-in'
+---
+
+## Overview
+
+MCPHub can use Authentik as a provider-neutral OpenID Connect identity provider for browser sign-in through Better Auth. This guide focuses on the settings that matter for a practical deployment:
+
+- OIDC discovery and authorization code flow
+- PKCE and secure callback handling
+- stable identity via the OIDC `(issuer, sub)` pair
+- admin access via an `isAdmin` token claim
+
+## Prerequisites
+
+Before you begin, make sure:
+
+- MCPHub is running in database mode (`DB_URL` configured)
+- Better Auth is enabled
+- you can create an application in Authentik
+- you have a public HTTPS URL for MCPHub
+
+## 1. Create an Authentik application
+
+In Authentik, create an OAuth2/OpenID Provider application for MCPHub.
+
+Recommended settings:
+
+- Provider type: OAuth2/OpenID Connect
+- Client type: confidential
+- Redirect URI: the callback URL shown by MCPHub for the OIDC provider. When the provider ID is `oidc`, this is typically `/api/auth/better/oidc/callback` relative to your MCPHub base URL.
+- Subject mode: **Based on the hashed User ID** (recommended)
+- Include claims in `id_token`: enabled
+- Scopes: `openid`, `profile`, `email`, and `groups`
+
+Save the generated client ID and client secret.
+
+## 2. Configure MCPHub
+
+In MCPHub, open **Settings → Better Auth** and set:
+
+- Enable Better Auth
+- Enable OIDC provider
+- OIDC provider ID (`oidc` is fine)
+- OIDC discovery URL
+- OIDC client ID
+- OIDC client secret
+- OIDC scopes (for example `openid,profile,email,groups`)
+- OIDC PKCE enabled
+
+## 3. Map Authentik entitlement to `isAdmin`
+
+Create an Authentik property mapping (as shown in the Homarr integration style) that emits an `isAdmin` claim.
+
+Example expression idea:
+
+```python
+return {
+  "isAdmin": ak_is_group_member(request.user, name="IT-Admin")
+}
+```
+
+You can also expose `isAdmin` through an entitlement claim value named `isAdmin`. MCPHub accepts both patterns.
+
+## 4. Make sure the user identity stays stable
+
+MCPHub treats the OIDC pair `(issuer, sub)` as the stable external identity. This means:
+
+- changing an email address does not create a new MCPHub user
+- changing the display name does not create a new MCPHub user
+- a renamed Authentik account still resolves to the same MCPHub account as long as the `sub` stays the same
+
+That behavior is especially important when your identity provider is the source of truth for users.
+
+## 5. Test the flow
+
+After saving the configuration:
+
+1. Open the MCPHub sign-in page.
+2. Start the OIDC login flow.
+3. Confirm that Authentik redirects back successfully.
+4. Verify that the user is created or linked correctly.
+5. Verify that admin access appears only when the claim/entitlement `isAdmin` is present and true.
+
+## 6. Recommended production settings
+
+For production deployments, use:
+
+- a real HTTPS URL for `BETTER_AUTH_URL`
+- a long-lived client secret
+- deterministic `sub` values (use Authentik hashed user ID subject mode)
+- the same OIDC issuer configuration in every environment
+
+If you need to keep the provider configuration in code rather than the dashboard, the same values can be written to `systemConfig.auth.betterAuth.providers.oidc` in your MCP settings.

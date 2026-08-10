@@ -485,15 +485,21 @@ const SettingsPage: React.FC = () => {
   const [tempBetterAuthConfig, setTempBetterAuthConfig] = useState<{
     basePath: string;
     trustedOrigins: string;
+    oidcConfigViaUi: boolean;
     oidcProviderId: string;
     oidcDiscoveryUrl: string;
+    oidcClientId: string;
+    oidcClientSecret: string;
     oidcScopes: string;
     oidcPrompt: string;
   }>({
     basePath: '/api/auth/better',
     trustedOrigins: '',
+    oidcConfigViaUi: false,
     oidcProviderId: 'oidc',
     oidcDiscoveryUrl: '',
+    oidcClientId: '',
+    oidcClientSecret: '',
     oidcScopes: DEFAULT_OIDC_SCOPES.join(', '),
     oidcPrompt: '',
   });
@@ -634,8 +640,11 @@ const SettingsPage: React.FC = () => {
       setTempBetterAuthConfig({
         basePath: betterAuthConfig.basePath || '/api/auth/better',
         trustedOrigins: betterAuthConfig.trustedOrigins?.join(', ') || '',
+        oidcConfigViaUi: betterAuthConfig.providers.oidc.configViaUi ?? false,
         oidcProviderId: betterAuthConfig.providers.oidc.providerId || 'oidc',
         oidcDiscoveryUrl: betterAuthConfig.providers.oidc.discoveryUrl || '',
+        oidcClientId: betterAuthConfig.providers.oidc.clientId || '',
+        oidcClientSecret: betterAuthConfig.providers.oidc.clientSecret || '',
         oidcScopes: betterAuthConfig.providers.oidc.scopes?.join(', ') || DEFAULT_OIDC_SCOPES.join(', '),
         oidcPrompt: betterAuthConfig.providers.oidc.prompt || '',
       });
@@ -902,11 +911,14 @@ const SettingsPage: React.FC = () => {
     key:
       | 'basePath'
       | 'trustedOrigins'
+      | 'oidcConfigViaUi'
       | 'oidcProviderId'
       | 'oidcDiscoveryUrl'
+      | 'oidcClientId'
+      | 'oidcClientSecret'
       | 'oidcScopes'
       | 'oidcPrompt',
-    value: string,
+    value: string | boolean,
   ) => {
     setTempBetterAuthConfig((prev) => ({
       ...prev,
@@ -924,8 +936,11 @@ const SettingsPage: React.FC = () => {
     const updates: Parameters<typeof updateBetterAuthConfigBatch>[0] = {};
     const normalizedBasePath = tempBetterAuthConfig.basePath.trim() || '/api/auth/better';
     const normalizedTrustedOrigins = parseCommaSeparated(tempBetterAuthConfig.trustedOrigins) || [];
+    const normalizedOidcConfigViaUi = Boolean(tempBetterAuthConfig.oidcConfigViaUi);
     const normalizedProviderId = tempBetterAuthConfig.oidcProviderId.trim() || 'oidc';
     const normalizedDiscoveryUrl = tempBetterAuthConfig.oidcDiscoveryUrl.trim();
+    const normalizedClientId = tempBetterAuthConfig.oidcClientId.trim();
+    const normalizedClientSecret = tempBetterAuthConfig.oidcClientSecret.trim();
     const normalizedScopes =
       parseCommaSeparated(tempBetterAuthConfig.oidcScopes) || [...DEFAULT_OIDC_SCOPES];
     const normalizedPrompt = tempBetterAuthConfig.oidcPrompt.trim();
@@ -942,20 +957,34 @@ const SettingsPage: React.FC = () => {
 
     const oidcUpdates: Record<string, any> = {};
 
-    if (normalizedProviderId !== betterAuthConfig.providers.oidc.providerId) {
-      oidcUpdates.providerId = normalizedProviderId;
+    if (normalizedOidcConfigViaUi !== (betterAuthConfig.providers.oidc.configViaUi ?? false)) {
+      oidcUpdates.configViaUi = normalizedOidcConfigViaUi;
     }
 
-    if (normalizedDiscoveryUrl !== (betterAuthConfig.providers.oidc.discoveryUrl || '')) {
-      oidcUpdates.discoveryUrl = normalizedDiscoveryUrl;
-    }
+    if (normalizedOidcConfigViaUi) {
+      if (normalizedProviderId !== betterAuthConfig.providers.oidc.providerId) {
+        oidcUpdates.providerId = normalizedProviderId;
+      }
 
-    if (normalizedScopes.join('|') !== betterAuthConfig.providers.oidc.scopes.join('|')) {
-      oidcUpdates.scopes = normalizedScopes;
-    }
+      if (normalizedDiscoveryUrl !== (betterAuthConfig.providers.oidc.discoveryUrl || '')) {
+        oidcUpdates.discoveryUrl = normalizedDiscoveryUrl;
+      }
 
-    if (normalizedPrompt !== (betterAuthConfig.providers.oidc.prompt || '')) {
-      oidcUpdates.prompt = normalizedPrompt;
+      if (normalizedClientId !== (betterAuthConfig.providers.oidc.clientId || '')) {
+        oidcUpdates.clientId = normalizedClientId;
+      }
+
+      if (normalizedClientSecret !== (betterAuthConfig.providers.oidc.clientSecret || '')) {
+        oidcUpdates.clientSecret = normalizedClientSecret;
+      }
+
+      if (normalizedScopes.join('|') !== betterAuthConfig.providers.oidc.scopes.join('|')) {
+        oidcUpdates.scopes = normalizedScopes;
+      }
+
+      if (normalizedPrompt !== (betterAuthConfig.providers.oidc.prompt || '')) {
+        oidcUpdates.prompt = normalizedPrompt;
+      }
     }
 
     if (Object.keys(oidcUpdates).length > 0) {
@@ -3001,7 +3030,7 @@ const SettingsPage: React.FC = () => {
               >
                 <span>
                   {t('settings.betterAuthEnvNote') ||
-                    'Client IDs and secrets still come from environment variables. Changing Better Auth settings may require an application restart, and the install base URL origin is trusted automatically.'}
+                    'OIDC settings (including client credentials) are saved in MCPHub. Changing Better Auth settings may require an application restart, and the install base URL origin is trusted automatically.'}
                 </span>
               </div>
 
@@ -3012,13 +3041,47 @@ const SettingsPage: React.FC = () => {
                   </h3>
                   <p className="text-sm text-gray-500">
                     {t('settings.enableBetterAuthDescription') ||
-                      'Enable social and OIDC login when the required environment variables are configured.'}
+                      'Enable social and OIDC login providers.'}
                   </p>
                 </div>
                 <Switch
                   disabled={loading}
                   checked={betterAuthConfig.enabled}
                   onCheckedChange={(checked) => handleBetterAuthToggle({ enabled: checked })}
+                />
+              </div>
+
+              <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-md">
+                <div>
+                  <h3 className="font-medium text-gray-700">
+                    {t('settings.betterAuthAllowLocalUser') || 'Allow local user login'}
+                  </h3>
+                  <p className="text-sm text-gray-500">
+                    {t('settings.betterAuthAllowLocalUserDescription') ||
+                      'Allow username/password login on this page. Add ?direct=1 to force the local form even when this is disabled.'}
+                  </p>
+                </div>
+                <Switch
+                  disabled={loading}
+                  checked={betterAuthConfig.allowLocalUser}
+                  onCheckedChange={(checked) => handleBetterAuthToggle({ allowLocalUser: checked })}
+                />
+              </div>
+
+              <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-md">
+                <div>
+                  <h3 className="font-medium text-gray-700">
+                    {t('settings.betterAuthAutoLogin') || 'Auto-login to OIDC'}
+                  </h3>
+                  <p className="text-sm text-gray-500">
+                    {t('settings.betterAuthAutoLoginDescription') ||
+                      'Automatically start OIDC login when the login page opens (unless ?direct=1 is present).'}
+                  </p>
+                </div>
+                <Switch
+                  disabled={loading}
+                  checked={betterAuthConfig.autoLogin}
+                  onCheckedChange={(checked) => handleBetterAuthToggle({ autoLogin: checked })}
                 />
               </div>
 
@@ -3120,7 +3183,7 @@ const SettingsPage: React.FC = () => {
                     <h4 className="font-medium text-gray-700">OIDC</h4>
                     <p className="text-sm text-gray-500">
                       {t('settings.betterAuthOidcDescription') ||
-                        'Requires OIDC client credentials plus a discovery URL.'}
+                        'Configure your OIDC provider endpoint and client credentials.'}
                     </p>
                   </div>
                   <Switch
@@ -3139,6 +3202,27 @@ const SettingsPage: React.FC = () => {
 
               {betterAuthConfig.providers.oidc.enabled && (
                 <>
+                  <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-md">
+                    <div>
+                      <h3 className="font-medium text-gray-700">
+                        {t('settings.betterAuthOidcConfigViaUi') || 'Config OIDC via UI'}
+                      </h3>
+                      <p className="text-sm text-gray-500">
+                        {t('settings.betterAuthOidcConfigViaUiDescription') ||
+                          'When disabled, configure OIDC through environment variables: OIDC_CLIENT_ID, OIDC_CLIENT_SECRET, BETTER_AUTH_OIDC_DISCOVERY_URL (or OIDC_DISCOVERY_URL), and optional BETTER_AUTH_OIDC_PROVIDER_ID / BETTER_AUTH_OIDC_SCOPES / BETTER_AUTH_OIDC_PKCE / BETTER_AUTH_OIDC_PROMPT.'}
+                      </p>
+                    </div>
+                    <Switch
+                      disabled={loading}
+                      checked={tempBetterAuthConfig.oidcConfigViaUi}
+                      onCheckedChange={(checked) =>
+                        handleBetterAuthTextChange('oidcConfigViaUi', checked)
+                      }
+                    />
+                  </div>
+
+                  {tempBetterAuthConfig.oidcConfigViaUi && (
+                    <>
                   <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-md">
                     <div className="mb-2">
                       <h3 className="font-medium text-gray-700">
@@ -3178,6 +3262,42 @@ const SettingsPage: React.FC = () => {
                         handleBetterAuthTextChange('oidcDiscoveryUrl', e.target.value)
                       }
                       placeholder="https://issuer.example.com/.well-known/openid-configuration"
+                      className="flex-1 mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm form-input"
+                      disabled={loading}
+                    />
+                  </div>
+
+                  <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-md">
+                    <div className="mb-2">
+                      <h3 className="font-medium text-gray-700">
+                        {t('settings.betterAuthOidcClientId') || 'OIDC client ID'}
+                      </h3>
+                    </div>
+                    <input
+                      type="text"
+                      value={tempBetterAuthConfig.oidcClientId}
+                      onChange={(e) =>
+                        handleBetterAuthTextChange('oidcClientId', e.target.value)
+                      }
+                      placeholder="mcphub"
+                      className="flex-1 mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm form-input"
+                      disabled={loading}
+                    />
+                  </div>
+
+                  <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-md">
+                    <div className="mb-2">
+                      <h3 className="font-medium text-gray-700">
+                        {t('settings.betterAuthOidcClientSecret') || 'OIDC client secret'}
+                      </h3>
+                    </div>
+                    <input
+                      type="password"
+                      value={tempBetterAuthConfig.oidcClientSecret}
+                      onChange={(e) =>
+                        handleBetterAuthTextChange('oidcClientSecret', e.target.value)
+                      }
+                      placeholder="••••••••"
                       className="flex-1 mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm form-input"
                       disabled={loading}
                     />
@@ -3245,6 +3365,8 @@ const SettingsPage: React.FC = () => {
                       }
                     />
                   </div>
+                </>
+              )}
                 </>
               )}
 

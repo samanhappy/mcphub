@@ -1495,12 +1495,17 @@ export const updateSystemConfig = async (req: Request, res: Response): Promise<v
             typeof auth.betterAuth.providers.github?.enabled === 'boolean' ||
             (auth.betterAuth.providers.oidc &&
               (typeof auth.betterAuth.providers.oidc.enabled === 'boolean' ||
+                typeof auth.betterAuth.providers.oidc.configViaUi === 'boolean' ||
                 typeof auth.betterAuth.providers.oidc.providerId === 'string' ||
                 typeof auth.betterAuth.providers.oidc.discoveryUrl === 'string' ||
+                typeof auth.betterAuth.providers.oidc.clientId === 'string' ||
+                typeof auth.betterAuth.providers.oidc.clientSecret === 'string' ||
                 Array.isArray(auth.betterAuth.providers.oidc.scopes) ||
                 typeof auth.betterAuth.providers.oidc.pkce === 'boolean' ||
                 typeof auth.betterAuth.providers.oidc.prompt === 'string' ||
-                auth.betterAuth.providers.oidc.prompt === null)))));
+                auth.betterAuth.providers.oidc.prompt === null))) ||
+          typeof auth.betterAuth.allowLocalUser === 'boolean' ||
+          typeof auth.betterAuth.autoLogin === 'boolean'));
 
     if (
       !hasRoutingUpdate &&
@@ -1969,6 +1974,14 @@ export const updateSystemConfig = async (req: Request, res: Response): Promise<v
         target.basePath = auth.betterAuth.basePath.trim();
       }
 
+      if (typeof auth.betterAuth.allowLocalUser === 'boolean') {
+        target.allowLocalUser = auth.betterAuth.allowLocalUser;
+      }
+
+      if (typeof auth.betterAuth.autoLogin === 'boolean') {
+        target.autoLogin = auth.betterAuth.autoLogin;
+      }
+
       if (Array.isArray(auth.betterAuth.trustedOrigins)) {
         target.trustedOrigins = auth.betterAuth.trustedOrigins
           .filter((origin: any): origin is string => typeof origin === 'string')
@@ -2000,12 +2013,24 @@ export const updateSystemConfig = async (req: Request, res: Response): Promise<v
             oidcTarget.enabled = auth.betterAuth.providers.oidc.enabled;
           }
 
+          if (typeof auth.betterAuth.providers.oidc.configViaUi === 'boolean') {
+            oidcTarget.configViaUi = auth.betterAuth.providers.oidc.configViaUi;
+          }
+
           if (typeof auth.betterAuth.providers.oidc.providerId === 'string') {
             oidcTarget.providerId = auth.betterAuth.providers.oidc.providerId.trim();
           }
 
           if (typeof auth.betterAuth.providers.oidc.discoveryUrl === 'string') {
             oidcTarget.discoveryUrl = auth.betterAuth.providers.oidc.discoveryUrl.trim();
+          }
+
+          if (typeof auth.betterAuth.providers.oidc.clientId === 'string') {
+            oidcTarget.clientId = auth.betterAuth.providers.oidc.clientId.trim();
+          }
+
+          if (typeof auth.betterAuth.providers.oidc.clientSecret === 'string') {
+            oidcTarget.clientSecret = auth.betterAuth.providers.oidc.clientSecret.trim();
           }
 
           if (Array.isArray(auth.betterAuth.providers.oidc.scopes)) {

@@ -2,7 +2,7 @@ import { expandEnvVars, loadSettings } from '../config/index.js';
 import { getSystemConfigDao } from '../dao/DaoFactory.js';
 import { BetterAuthConfig, BetterAuthOidcProviderConfig, SystemConfig } from '../types/index.js';
 import { resolveInstallBaseUrl } from '../utils/installBaseUrl.js';
-import { getCachedSystemConfig, isDatabaseModeEnabled } from '../utils/systemConfigCache.js';
+import { getCachedSystemConfig, isDatabaseModeEnabled, setCachedSystemConfig } from '../utils/systemConfigCache.js';
 
 const DEFAULT_BETTER_AUTH_BASE_PATH = '/api/auth/better';
 const DEFAULT_OIDC_SCOPES = ['openid', 'profile', 'email'];
@@ -22,6 +22,8 @@ export interface BetterAuthRuntimeConfig {
   basePath: string;
   trustedOrigins: string[];
   disableAutoCreate: boolean;
+  allowLocalUser: boolean;
+  autoLogin: boolean;
   providers: {
     google: {
       enabled: boolean;
@@ -31,8 +33,11 @@ export interface BetterAuthRuntimeConfig {
     };
     oidc: {
       enabled: boolean;
+      configViaUi: boolean;
       providerId: string;
       discoveryUrl?: string;
+      clientId?: string;
+      clientSecret?: string;
       scopes: string[];
       pkce: boolean;
       prompt?: BetterAuthOidcProviderConfig['prompt'];
@@ -40,6 +45,14 @@ export interface BetterAuthRuntimeConfig {
     };
   };
 }
+
+export type BetterAuthPublicConfig = Omit<BetterAuthRuntimeConfig, 'providers'> & {
+  providers: Omit<BetterAuthRuntimeConfig['providers'], 'oidc'> & {
+    oidc: Omit<BetterAuthRuntimeConfig['providers']['oidc'], 'clientSecret'> & {
+      clientConfigured: boolean;
+    };
+  };
+};
 
 const parseBoolean = (value: unknown): boolean | undefined => {
   if (typeof value === 'boolean') {
@@ -249,26 +262,34 @@ export const resolveBetterAuthRuntimeConfig = (
   const githubEnvConfigured = Boolean(
     process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET,
   );
-  const oidcEnvConfigured = Boolean(
-    process.env.OIDC_CLIENT_ID && process.env.OIDC_CLIENT_SECRET,
-  );
-  const oidcDiscoveryUrl = resolveStringSetting(
-    process.env.BETTER_AUTH_OIDC_DISCOVERY_URL,
-    resolveStringSetting(process.env.OIDC_DISCOVERY_URL, oidcSettings.discoveryUrl),
-  );
+  const oidcConfigViaUi = parseBoolean(oidcSettings.configViaUi) ?? false;
+  const oidcClientId = oidcConfigViaUi
+    ? resolveStringSetting(undefined, oidcSettings.clientId)
+    : resolveStringSetting(process.env.OIDC_CLIENT_ID, undefined);
+  const oidcClientSecret = oidcConfigViaUi
+    ? resolveStringSetting(undefined, oidcSettings.clientSecret)
+    : resolveStringSetting(process.env.OIDC_CLIENT_SECRET, undefined);
+  const oidcConfigured = Boolean(oidcClientId && oidcClientSecret);
+  const oidcDiscoveryUrl = oidcConfigViaUi
+    ? resolveStringSetting(undefined, oidcSettings.discoveryUrl)
+    : resolveStringSetting(
+        process.env.BETTER_AUTH_OIDC_DISCOVERY_URL,
+        resolveStringSetting(process.env.OIDC_DISCOVERY_URL, undefined),
+      );
   const oidcProviderId =
-    resolveStringSetting(
-      process.env.BETTER_AUTH_OIDC_PROVIDER_ID,
-      oidcSettings.providerId,
-      DEFAULT_OIDC_PROVIDER_ID,
-    ) || DEFAULT_OIDC_PROVIDER_ID;
-  const oidcScopes = resolveStringArraySetting(
-    process.env.BETTER_AUTH_OIDC_SCOPES,
-    oidcSettings.scopes,
-    DEFAULT_OIDC_SCOPES,
-  );
-  const oidcPkce = resolveBooleanSetting(process.env.BETTER_AUTH_OIDC_PKCE, oidcSettings.pkce, true);
-  const oidcPrompt = resolvePromptSetting(process.env.BETTER_AUTH_OIDC_PROMPT, oidcSettings.prompt);
+    (oidcConfigViaUi
+      ? resolveStringSetting(undefined, oidcSettings.providerId, DEFAULT_OIDC_PROVIDER_ID)
+      : resolveStringSetting(process.env.BETTER_AUTH_OIDC_PROVIDER_ID, undefined, DEFAULT_OIDC_PROVIDER_ID)) ||
+    DEFAULT_OIDC_PROVIDER_ID;
+  const oidcScopes = oidcConfigViaUi
+    ? resolveStringArraySetting(undefined, oidcSettings.scopes, DEFAULT_OIDC_SCOPES)
+    : resolveStringArraySetting(process.env.BETTER_AUTH_OIDC_SCOPES, undefined, DEFAULT_OIDC_SCOPES);
+  const oidcPkce = oidcConfigViaUi
+    ? resolveBooleanSetting(undefined, oidcSettings.pkce, true)
+    : resolveBooleanSetting(process.env.BETTER_AUTH_OIDC_PKCE, undefined, true);
+  const oidcPrompt = oidcConfigViaUi
+    ? resolvePromptSetting(undefined, oidcSettings.prompt)
+    : resolvePromptSetting(process.env.BETTER_AUTH_OIDC_PROMPT, undefined);
   const oidcTrustEmail = resolveBooleanSetting(
     process.env.BETTER_AUTH_OIDC_TRUST_EMAIL,
     undefined,
@@ -283,7 +304,7 @@ export const resolveBetterAuthRuntimeConfig = (
     betterAuthEnabled &&
     oidcEnabledSetting &&
     Boolean(oidcDiscoveryUrl) &&
-    oidcEnvConfigured;
+    oidcConfigured;
 
   const googleEnabled =
     betterAuthEnabled &&
@@ -309,12 +330,24 @@ export const resolveBetterAuthRuntimeConfig = (
     betterAuthSettings.disableAutoCreate,
     false,
   );
+  const allowLocalUser = resolveBooleanSetting(
+    process.env.BETTER_AUTH_ALLOW_LOCAL_USER,
+    betterAuthSettings.allowLocalUser,
+    true,
+  );
+  const autoLogin = resolveBooleanSetting(
+    process.env.BETTER_AUTH_AUTO_LOGIN,
+    betterAuthSettings.autoLogin,
+    true,
+  );
 
   return {
     enabled: anyProviderEnabled,
     basePath,
     trustedOrigins,
     disableAutoCreate,
+    allowLocalUser,
+    autoLogin,
     providers: {
       google: {
         enabled: googleEnabled,
@@ -324,12 +357,32 @@ export const resolveBetterAuthRuntimeConfig = (
       },
       oidc: {
         enabled: oidcEnabled,
+        configViaUi: oidcConfigViaUi,
         providerId: oidcProviderId,
         discoveryUrl: oidcDiscoveryUrl,
+        clientId: oidcClientId,
+        clientSecret: oidcClientSecret,
         scopes: oidcScopes,
         pkce: oidcPkce,
         prompt: oidcPrompt,
         trustEmail: oidcTrustEmail,
+      },
+    },
+  };
+};
+
+export const toBetterAuthPublicConfig = (
+  runtimeConfig: BetterAuthRuntimeConfig,
+): BetterAuthPublicConfig => {
+  const { clientSecret, clientId, ...publicOidcConfig } = runtimeConfig.providers.oidc;
+  return {
+    ...runtimeConfig,
+    providers: {
+      ...runtimeConfig.providers,
+      oidc: {
+        ...publicOidcConfig,
+        clientId,
+        clientConfigured: Boolean(clientId && clientSecret),
       },
     },
   };
@@ -343,6 +396,7 @@ export const getBetterAuthRuntimeConfig = async (
   }
 
   const systemConfig = await getSystemConfigDao().get();
+  setCachedSystemConfig(systemConfig);
   return resolveBetterAuthRuntimeConfig(systemConfig);
 };
 

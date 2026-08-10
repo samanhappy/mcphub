@@ -46,6 +46,12 @@
             ]
           },
           {
+            "group": "Integrations",
+            "pages": [
+              "integrations/authentik"
+            ]
+          },
+          {
             "group": "Development",
             "pages": [
               "development",

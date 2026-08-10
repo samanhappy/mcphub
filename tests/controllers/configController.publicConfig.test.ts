@@ -18,6 +18,7 @@ jest.mock('../../src/services/services.js', () => ({
 
 jest.mock('../../src/services/betterAuthConfig.js', () => ({
   getBetterAuthRuntimeConfig: getBetterAuthRuntimeConfigMock,
+  toBetterAuthPublicConfig: (config: unknown) => config,
 }));
 
 import { getPublicConfig } from '../../src/controllers/configController.js';
@@ -59,13 +60,18 @@ describe('ConfigController - getPublicConfig', () => {
       enabled: true,
       basePath: '/api/auth/better',
       trustedOrigins: ['https://mcp.example.com'],
+      allowLocalUser: true,
+      autoLogin: true,
       providers: {
         google: { enabled: false },
         github: { enabled: false },
         oidc: {
           enabled: true,
+          configViaUi: true,
           providerId: 'oidc',
           discoveryUrl: 'https://auth.example.com/.well-known/openid-configuration',
+          clientId: 'mcphub',
+          clientConfigured: true,
           scopes: ['openid', 'profile', 'email'],
           pkce: true,
           prompt: undefined,
@@ -93,13 +99,18 @@ describe('ConfigController - getPublicConfig', () => {
           enabled: true,
           basePath: '/api/auth/better',
           trustedOrigins: ['https://mcp.example.com'],
+          allowLocalUser: true,
+          autoLogin: true,
           providers: {
             google: { enabled: false },
             github: { enabled: false },
             oidc: {
               enabled: true,
+              configViaUi: true,
               providerId: 'oidc',
               discoveryUrl: 'https://auth.example.com/.well-known/openid-configuration',
+              clientId: 'mcphub',
+              clientConfigured: true,
               scopes: ['openid', 'profile', 'email'],
               pkce: true,
               prompt: undefined,
@@ -122,13 +133,18 @@ describe('ConfigController - getPublicConfig', () => {
       enabled: false,
       basePath: '/api/auth/better',
       trustedOrigins: [],
+      allowLocalUser: true,
+      autoLogin: true,
       providers: {
         google: { enabled: false },
         github: { enabled: false },
         oidc: {
           enabled: false,
+          configViaUi: false,
           providerId: 'oidc',
           discoveryUrl: undefined,
+          clientId: undefined,
+          clientConfigured: false,
           scopes: ['openid', 'profile', 'email'],
           pkce: true,
           prompt: undefined,

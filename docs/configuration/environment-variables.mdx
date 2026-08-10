@@ -42,7 +42,7 @@ For non-secret Better Auth settings, MCPHub resolves values in this order:
 2. `systemConfig.auth.betterAuth` (from `mcp_settings.json` or the database-backed system config)
 3. Built-in defaults
 
-Provider client credentials remain environment-variable only.
+Provider client credentials can be supplied by environment variables or by `systemConfig.auth.betterAuth.providers.oidc` from the MCPHub settings UI.
 
 <Note>
   Better Auth currently requires PostgreSQL-backed storage in MCPHub. In practice that means `DB_URL` must be configured; file-only mode does not support Better Auth sessions.
@@ -65,6 +65,8 @@ Provider client credentials remain environment-variable only.
 | `BETTER_AUTH_OIDC_SCOPES` | Optional requested scopes for the local OIDC provider. Accepts a comma-separated list, whitespace-separated list, or JSON array. Defaults to `openid profile email`. |
 | `BETTER_AUTH_OIDC_PKCE` | Enable or disable PKCE for the local OIDC provider. Defaults to `true`. |
 | `BETTER_AUTH_OIDC_PROMPT` | Optional `prompt` parameter for the local OIDC provider (`login`, `consent`, `select_account`, etc.). |
+| `BETTER_AUTH_ALLOW_LOCAL_USER` | Allow local username/password login on `/login`. Defaults to `true`. |
+| `BETTER_AUTH_AUTO_LOGIN` | Automatically redirect `/login` to OIDC when OIDC is enabled. Defaults to `true`. |
 | `OIDC_CLIENT_ID` / `OIDC_CLIENT_SECRET` | Client credentials for a local OIDC provider such as Keycloak, Authentik, or Dex. |
 
 You can still store the non-secret Better Auth settings in `systemConfig.auth.betterAuth`, but `BETTER_AUTH_*` variables now override those values at startup. A full env-only local OIDC example looks like this:
