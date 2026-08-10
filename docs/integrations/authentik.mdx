@@ -12,6 +12,20 @@ MCPHub can use Authentik as a provider-neutral OpenID Connect identity provider 
 - stable identity via the OIDC `(issuer, sub)` pair
 - admin access via an `isAdmin` token claim
 
+## Known-good callback URL
+
+When the MCPHub OIDC provider ID is `authentik`, Authentik must allow this exact redirect URI:
+
+```text
+https://mcp.cloud.kiga-gramschatz.de/api/auth/better/oauth2/callback/authentik
+```
+
+Replace the domain with your own public MCPHub URL if needed, but keep the path shape the same:
+
+```text
+https://<your-mcphub-domain>/api/auth/better/oauth2/callback/<provider-id>
+```
+
 ## Prerequisites
 
 Before you begin, make sure:
@@ -29,10 +43,10 @@ Recommended settings:
 
 - Provider type: OAuth2/OpenID Connect
 - Client type: confidential
-- Redirect URI: the callback URL shown by MCPHub for the OIDC provider. When the provider ID is `oidc`, this is typically `/api/auth/better/oidc/callback` relative to your MCPHub base URL.
+- Redirect URI: `https://<your-mcphub-domain>/api/auth/better/oauth2/callback/<provider-id>`
 - Subject mode: **Based on the hashed User ID** (recommended)
 - Include claims in `id_token`: enabled
-- Scopes: `openid`, `profile`, `email`, and `groups`
+- Scopes: `openid`, `profile`, `email`, and a custom MCPHub scope such as `mcphub`
 
 Save the generated client ID and client secret.
 
@@ -46,22 +60,39 @@ In MCPHub, open **Settings → Better Auth** and set:
 - OIDC discovery URL
 - OIDC client ID
 - OIDC client secret
-- OIDC scopes (for example `openid,profile,email,groups`)
+- OIDC scopes (for example `openid, profile, email, mcphub`)
 - OIDC PKCE enabled
+
+If you use UI-based configuration, save the settings and then use **Restart System** so the running Better Auth instance reloads the saved OIDC values.
 
 ## 3. Map Authentik entitlement to `isAdmin`
 
-Create an Authentik property mapping (as shown in the Homarr integration style) that emits an `isAdmin` claim.
+Create an Authentik scope mapping that emits an `isAdmin` claim and/or an application-specific `groups` array.
 
-Example expression idea:
+Example expression:
 
 ```python
 return {
-  "isAdmin": ak_is_group_member(request.user, name="IT-Admin")
+  "groups": [entitlement.name for entitlement in request.user.app_entitlements(provider.application)],
+  "isAdmin": "isAdmin" in [entitlement.name for entitlement in request.user.app_entitlements(provider.application)],
 }
 ```
 
-You can also expose `isAdmin` through an entitlement claim value named `isAdmin`. MCPHub accepts both patterns.
+Recommended Authentik setup:
+
+1. Create a **Scope Mapping** with:
+   - **Scope name**: `mcphub`
+   - the expression above
+2. Add `mcphub` to the provider's **Selected Scopes**
+3. Create an application entitlement literally named `isAdmin`
+4. Bind the appropriate Authentik group or users to that entitlement
+
+MCPHub accepts any of these admin indicators:
+
+- `isAdmin: true`
+- `is_admin: true`
+- `groups` containing `isAdmin`
+- `entitlements` containing `isAdmin`
 
 ## 4. Make sure the user identity stays stable
 
@@ -77,13 +108,63 @@ That behavior is especially important when your identity provider is the source 
 
 After saving the configuration:
 
-1. Open the MCPHub sign-in page.
-2. Start the OIDC login flow.
-3. Confirm that Authentik redirects back successfully.
-4. Verify that the user is created or linked correctly.
-5. Verify that admin access appears only when the claim/entitlement `isAdmin` is present and true.
+1. If you still need the local bootstrap admin, open:
 
-## 6. Recommended production settings
+   ```text
+   /login?direct=1
+   ```
+
+   This forces the local username/password form even when OIDC auto-login is enabled.
+
+2. In **Settings → Better Auth → OIDC**, click **Test Connection**.
+
+   This checks:
+
+   - whether the saved OIDC settings can build a valid runtime configuration
+   - whether the discovery document is reachable
+   - whether client ID and client secret are present
+
+3. Click **Restart System** after any Better Auth / OIDC config change.
+
+   Better Auth is initialized at process startup, so changing discovery URL, client ID, client secret, scopes, provider ID, or config mode does not affect the live login flow until MCPHub restarts.
+
+4. Open the MCPHub sign-in page and start the OIDC login flow.
+5. Confirm that Authentik redirects back successfully.
+6. Verify that the user is created or linked correctly.
+7. Verify that admin access appears only when the claim/entitlement `isAdmin` is present and true.
+
+## 6. Troubleshooting
+
+### Redirect URI error in Authentik
+
+If Authentik shows **Redirect URI Error**, make sure the provider allows the exact URI:
+
+```text
+https://<your-mcphub-domain>/api/auth/better/oauth2/callback/<provider-id>
+```
+
+### Local admin login is hidden
+
+Use:
+
+```text
+/login?direct=1
+```
+
+to force the local login form.
+
+### OIDC login works but the user is not admin
+
+First confirm that the requested OIDC scope really includes `mcphub`. The most common cause is:
+
+- the MCPHub settings were not restarted after saving, or
+- Authentik is still not emitting `isAdmin` / `groups` / `entitlements` in the token
+
+### Test Connection succeeds but login still behaves like the old config
+
+Use **Restart System**. `Test Connection` validates the saved config; it does not hot-reload the Better Auth plugin.
+
+## 7. Recommended production settings
 
 For production deployments, use:
 

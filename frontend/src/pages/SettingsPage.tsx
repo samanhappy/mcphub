@@ -518,6 +518,7 @@ const SettingsPage: React.FC = () => {
   const [showClearCacheDialog, setShowClearCacheDialog] = useState(false);
   const [showBetterAuthRestartDialog, setShowBetterAuthRestartDialog] = useState(false);
   const [isTestingOidcConnection, setIsTestingOidcConnection] = useState(false);
+  const [isRestartingSystem, setIsRestartingSystem] = useState(false);
   const [oidcTestResult, setOidcTestResult] = useState<{
     status: 'success' | 'warning' | 'error';
     messages: string[];
@@ -1022,15 +1023,45 @@ const SettingsPage: React.FC = () => {
       return;
     }
 
+    setIsRestartingSystem(true);
     showToast(
       result.message ||
         t('settings.betterAuthRestartRequested') ||
         'Restart requested. Reload this page in a few seconds.',
       'success',
     );
-    window.setTimeout(() => {
-      window.location.reload();
-    }, 5000);
+
+    const wait = (ms: number) => new Promise((resolve) => window.setTimeout(resolve, ms));
+    const maxAttempts = 60;
+    const pollDelayMs = 2000;
+
+    for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+      await wait(pollDelayMs);
+      try {
+        const response = await fetch('/health', {
+          method: 'GET',
+          cache: 'no-store',
+        });
+        if (response.ok) {
+          showToast(
+            t('settings.betterAuthRestartCompleted') ||
+              'MCPHub is reachable again. Reloading now.',
+            'success',
+          );
+          window.location.reload();
+          return;
+        }
+      } catch {
+        // MCPHub is still restarting; continue polling until it is reachable again.
+      }
+    }
+
+    setIsRestartingSystem(false);
+    showToast(
+      t('settings.betterAuthRestartTimedOut') ||
+        'MCPHub is still restarting. Please reload the page manually in a few seconds.',
+      'error',
+    );
   };
 
   const buildOidcTestPayload = (): Partial<BetterAuthServiceConfig> => {
@@ -3480,13 +3511,22 @@ const SettingsPage: React.FC = () => {
                      </button>
                      <button
                        onClick={() => setShowBetterAuthRestartDialog(true)}
-                       disabled={loading}
+                       disabled={loading || isRestartingSystem}
                        className="hub-btn primary inline-flex items-center gap-2"
                      >
-                       <RefreshCw size={14} />
-                       {t('settings.betterAuthRestartSystem') || 'Restart System'}
+                       <RefreshCw size={14} className={isRestartingSystem ? 'animate-spin' : ''} />
+                       {isRestartingSystem
+                         ? t('settings.betterAuthRestarting') || 'Restarting...'
+                         : t('settings.betterAuthRestartSystem') || 'Restart System'}
                      </button>
                    </div>
+
+                   {isRestartingSystem && (
+                     <div className="mt-3 rounded-md border border-blue-300 bg-blue-50 px-3 py-2 text-sm text-blue-900 dark:border-blue-700 dark:bg-blue-950/30 dark:text-blue-100">
+                       {t('settings.betterAuthRestartWaiting') ||
+                         'Waiting for MCPHub to come back online. This page will reload automatically once the system is reachable again.'}
+                     </div>
+                   )}
 
                    {oidcTestResult && (
                      <div
@@ -3896,12 +3936,16 @@ const SettingsPage: React.FC = () => {
           setShowBetterAuthRestartDialog(false);
           void handleRestartBetterAuth();
         }}
+        confirmText={
+          isRestartingSystem
+            ? t('settings.betterAuthRestarting') || 'Restarting...'
+            : t('settings.betterAuthRestartSystem') || 'Restart System'
+        }
         title={t('settings.betterAuthRestartSystem') || 'Restart System'}
         message={
           t('settings.betterAuthRestartConfirm') ||
           'This sends SIGTERM to the running MCPHub process so Docker or your service manager can start it again with the saved Better Auth settings.'
         }
-        confirmText={t('settings.betterAuthRestartSystem') || 'Restart System'}
         variant="warning"
       />
     </div>
