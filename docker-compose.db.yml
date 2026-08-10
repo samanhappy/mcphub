@@ -35,6 +35,8 @@ services:
       # Application settings
       PORT: 3000
       NODE_ENV: production
+      JWT_SECRET: ${JWT_SECRET}
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET}
 
       # Optional: Custom npm registry
       # NPM_REGISTRY: https://registry.npmjs.org/

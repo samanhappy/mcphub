@@ -111,6 +111,7 @@ const database = new PostgresDialect({
 const authOptions: BetterAuthOptions = {
   baseURL,
   database,
+  secret: process.env.BETTER_AUTH_SECRET || process.env.JWT_SECRET,
   emailAndPassword: {
     enabled: false,
   },

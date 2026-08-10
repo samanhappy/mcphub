@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import ChangePasswordForm from '@/components/ChangePasswordForm';
@@ -17,9 +17,9 @@ import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiGet, apiPost } from '@/utils/fetchInterceptor';
 import {
-  getBetterAuthStatus,
   restartBetterAuthApplication,
-  type BetterAuthStatus,
+  testBetterAuthOidcConnection,
+  type BetterAuthConfig as BetterAuthServiceConfig,
 } from '@/services/configService';
 import {
   filterBearerKeysByScopeFilter,
@@ -516,9 +516,12 @@ const SettingsPage: React.FC = () => {
   const [bearerKeyScopeFilter, setBearerKeyScopeFilter] = useState<BearerKeyScopeFilterValue>('all');
   const [isClearingCache, setIsClearingCache] = useState(false);
   const [showClearCacheDialog, setShowClearCacheDialog] = useState(false);
-  const [betterAuthStatus, setBetterAuthStatus] = useState<BetterAuthStatus | null>(null);
-  const [betterAuthStatusLoading, setBetterAuthStatusLoading] = useState(false);
   const [showBetterAuthRestartDialog, setShowBetterAuthRestartDialog] = useState(false);
+  const [isTestingOidcConnection, setIsTestingOidcConnection] = useState(false);
+  const [oidcTestResult, setOidcTestResult] = useState<{
+    status: 'success' | 'warning' | 'error';
+    messages: string[];
+  } | null>(null);
 
   const {
     routingConfig,
@@ -553,24 +556,6 @@ const SettingsPage: React.FC = () => {
     deleteBearerKey,
     refreshBearerKeys,
   } = useSettingsData();
-
-  const loadBetterAuthStatus = useCallback(async () => {
-    if (!isAdmin) {
-      setBetterAuthStatus(null);
-      return;
-    }
-
-    setBetterAuthStatusLoading(true);
-    try {
-      const status = await getBetterAuthStatus();
-      setBetterAuthStatus(status);
-    } catch (error) {
-      console.error('Failed to load Better Auth status', error);
-      setBetterAuthStatus(null);
-    } finally {
-      setBetterAuthStatusLoading(false);
-    }
-  }, [isAdmin]);
 
   // Update local installConfig when savedInstallConfig changes
   useEffect(() => {
@@ -686,10 +671,6 @@ const SettingsPage: React.FC = () => {
   useEffect(() => {
     refreshBearerKeys();
   }, []);
-
-  useEffect(() => {
-    void loadBetterAuthStatus();
-  }, [loadBetterAuthStatus]);
 
   useEffect(() => {
     if (!isAdmin) return;
@@ -959,10 +940,7 @@ const SettingsPage: React.FC = () => {
   const handleBetterAuthToggle = async (
     updates: Parameters<typeof updateBetterAuthConfigBatch>[0],
   ) => {
-    const updated = await updateBetterAuthConfigBatch(updates);
-    if (updated) {
-      await loadBetterAuthStatus();
-    }
+    await updateBetterAuthConfigBatch(updates);
   };
 
   const handleSaveBetterAuthConfig = async () => {
@@ -1031,10 +1009,7 @@ const SettingsPage: React.FC = () => {
       return;
     }
 
-    const updated = await updateBetterAuthConfigBatch(updates);
-    if (updated) {
-      await loadBetterAuthStatus();
-    }
+    await updateBetterAuthConfigBatch(updates);
   };
 
   const handleRestartBetterAuth = async () => {
@@ -1053,18 +1028,86 @@ const SettingsPage: React.FC = () => {
         'Restart requested. Reload this page in a few seconds.',
       'success',
     );
-    setBetterAuthStatus((current) =>
-      current
-        ? {
-            ...current,
-            restartRequired: false,
-          }
-        : current,
-    );
-
     window.setTimeout(() => {
       window.location.reload();
     }, 5000);
+  };
+
+  const buildOidcTestPayload = (): Partial<BetterAuthServiceConfig> => {
+    const normalizedScopes =
+      parseCommaSeparated(tempBetterAuthConfig.oidcScopes) || [...DEFAULT_OIDC_SCOPES];
+    const normalizedPrompt = tempBetterAuthConfig.oidcPrompt.trim();
+
+    return {
+      enabled: betterAuthConfig.enabled,
+      basePath: tempBetterAuthConfig.basePath.trim() || '/api/auth/better',
+      trustedOrigins: parseCommaSeparated(tempBetterAuthConfig.trustedOrigins) || [],
+      allowLocalUser: betterAuthConfig.allowLocalUser,
+      autoLogin: betterAuthConfig.autoLogin,
+      providers: {
+        google: {
+          enabled: betterAuthConfig.providers.google.enabled,
+        },
+        github: {
+          enabled: betterAuthConfig.providers.github.enabled,
+        },
+        oidc: {
+          enabled: betterAuthConfig.providers.oidc.enabled,
+          configViaUi: Boolean(tempBetterAuthConfig.oidcConfigViaUi),
+          providerId: tempBetterAuthConfig.oidcProviderId.trim() || 'oidc',
+          discoveryUrl: tempBetterAuthConfig.oidcDiscoveryUrl.trim(),
+          clientId: tempBetterAuthConfig.oidcClientId.trim(),
+          clientSecret: tempBetterAuthConfig.oidcClientSecret.trim(),
+          scopes: normalizedScopes,
+          pkce: betterAuthConfig.providers.oidc.pkce,
+          prompt: normalizedPrompt || undefined,
+        },
+      },
+    };
+  };
+
+  const handleTestOidcConnection = async () => {
+    setIsTestingOidcConnection(true);
+    setOidcTestResult(null);
+    try {
+      const result = await testBetterAuthOidcConnection(buildOidcTestPayload());
+      if (!result.success || !result.data) {
+        const message =
+          result.message || t('settings.betterAuthOidcTestFailed') || 'OIDC connection test failed.';
+        setOidcTestResult({
+          status: 'error',
+          messages: [message],
+        });
+        showToast(message, 'error');
+        return;
+      }
+
+      setOidcTestResult({
+        status: result.data.status,
+        messages: result.data.messages,
+      });
+      showToast(
+        result.data.messages[0] ||
+          (result.data.status === 'success'
+            ? t('settings.betterAuthOidcTestSuccess') || 'OIDC connection looks good.'
+            : t('settings.betterAuthOidcTestCompleted') || 'OIDC test completed.'),
+        result.data.status === 'error'
+          ? 'error'
+          : result.data.status === 'warning'
+            ? 'info'
+            : 'success',
+      );
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : t('settings.betterAuthOidcTestFailed');
+      setOidcTestResult({
+        status: 'error',
+        messages: [message || 'OIDC connection test failed.'],
+      });
+      showToast(message || 'OIDC connection test failed.', 'error');
+    } finally {
+      setIsTestingOidcConnection(false);
+    }
   };
 
   const saveNameSeparator = async () => {
@@ -3084,114 +3127,8 @@ const SettingsPage: React.FC = () => {
 
           {sectionsVisible.betterAuthConfig && (
             <div className="space-y-4 pb-4 px-6 pt-4 border-t border-[var(--hub-line-2)]">
-              <div
-                className="flex items-start gap-2"
-                style={{
-                  padding: '8px 12px',
-                  borderRadius: 7,
-                  background: 'var(--hub-accent-soft)',
-                  color: 'var(--hub-accent)',
-                  fontSize: 12.5,
-                }}
-              >
-                <span>
-                  {t('settings.betterAuthEnvNote') ||
-                    'OIDC settings (including client credentials) are saved in MCPHub. Changing Better Auth settings may require an application restart, and the install base URL origin is trusted automatically.'}
-                </span>
-              </div>
-
-              <div
-              className={`rounded-md border p-3 ${
-                betterAuthStatus?.restartRequired
-                  ? 'border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-950/30'
-                  : 'border-emerald-300 bg-emerald-50 dark:border-emerald-700 dark:bg-emerald-950/30'
-              }`}
-              >
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <h3 className="font-medium text-gray-700 dark:text-gray-200">
-                    {t('settings.betterAuthRuntimeStatus') || 'Better Auth runtime status'}
-                  </h3>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">
-                    {betterAuthStatus?.restartRequired
-                      ? t('settings.betterAuthRuntimeStatusPending') ||
-                        'Saved Better Auth settings differ from the active runtime. Login uses the applied runtime until you restart.'
-                      : t('settings.betterAuthRuntimeStatusApplied') ||
-                        'Saved Better Auth settings match the active runtime.'}
-                  </p>
-                </div>
-                <span
-                  className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-                    betterAuthStatus?.restartRequired
-                      ? 'bg-amber-200 text-amber-900 dark:bg-amber-800 dark:text-amber-100'
-                      : 'bg-emerald-200 text-emerald-900 dark:bg-emerald-800 dark:text-emerald-100'
-                  }`}
-                >
-                  {betterAuthStatusLoading
-                    ? t('common.loading') || 'Loading...'
-                    : betterAuthStatus?.restartRequired
-                      ? t('settings.betterAuthRestartRequired') || 'Restart required'
-                      : t('settings.betterAuthApplied') || 'Applied'}
-                </span>
-              </div>
-
-              {betterAuthStatus && (
-                <div className="mt-3 grid gap-2 text-xs text-gray-600 dark:text-gray-300 sm:grid-cols-2">
-                  <div>
-                    <span className="font-medium">
-                      {t('settings.betterAuthSavedOidcStatus') || 'Saved OIDC'}:
-                    </span>{' '}
-                    {betterAuthStatus.desired.providers.oidc.enabled
-                      ? t('common.enabled') || 'Enabled'
-                      : t('common.disabled') || 'Disabled'}
-                  </div>
-                  <div>
-                    <span className="font-medium">
-                      {t('settings.betterAuthAppliedOidcStatus') || 'Applied OIDC'}:
-                    </span>{' '}
-                    {betterAuthStatus.applied.providers.oidc.enabled
-                      ? t('common.enabled') || 'Enabled'
-                      : t('common.disabled') || 'Disabled'}
-                  </div>
-                  <div>
-                    <span className="font-medium">
-                      {t('settings.betterAuthAppliedConfigSource') || 'Applied config source'}:
-                    </span>{' '}
-                    {betterAuthStatus.applied.providers.oidc.configViaUi
-                      ? t('settings.betterAuthConfigSourceUi') || 'UI'
-                      : t('settings.betterAuthConfigSourceEnv') || 'Environment'}
-                  </div>
-                  <div>
-                    <span className="font-medium">
-                      {t('settings.betterAuthAppliedClientStatus') || 'Applied client credentials'}:
-                    </span>{' '}
-                    {betterAuthStatus.applied.providers.oidc.clientConfigured
-                      ? t('settings.betterAuthClientConfigured') || 'Configured'
-                      : t('settings.betterAuthClientMissing') || 'Missing'}
-                  </div>
-                </div>
-              )}
-
-              {betterAuthStatus?.restartRequired && (
-                <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-                  <p className="text-sm text-amber-800 dark:text-amber-200">
-                    {t('settings.betterAuthRestartHelp') ||
-                      'Use this after saving Better Auth or OIDC changes so the login handlers reload with the new configuration.'}
-                  </p>
-                  <button
-                    onClick={() => setShowBetterAuthRestartDialog(true)}
-                    disabled={loading || betterAuthStatusLoading}
-                    className="hub-btn primary inline-flex items-center gap-2"
-                  >
-                    <RefreshCw size={14} />
-                    {t('settings.betterAuthRestartButton') || 'Restart to apply'}
-                  </button>
-                </div>
-              )}
-              </div>
-
               <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-md">
-              <div>
+                <div>
                   <h3 className="font-medium text-gray-700">
                     {t('settings.enableBetterAuth') || 'Enable Better Auth'}
                   </h3>
@@ -3529,6 +3466,46 @@ const SettingsPage: React.FC = () => {
                       }
                     />
                   </div>
+
+                 <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-md">
+                   <div className="flex flex-wrap items-center gap-3">
+                     <button
+                       onClick={handleTestOidcConnection}
+                       disabled={loading || isTestingOidcConnection}
+                       className="hub-btn"
+                     >
+                       {isTestingOidcConnection
+                         ? t('settings.betterAuthOidcTesting') || 'Testing...'
+                         : t('settings.betterAuthOidcTestConnection') || 'Test Connection'}
+                     </button>
+                     <button
+                       onClick={() => setShowBetterAuthRestartDialog(true)}
+                       disabled={loading}
+                       className="hub-btn primary inline-flex items-center gap-2"
+                     >
+                       <RefreshCw size={14} />
+                       {t('settings.betterAuthRestartSystem') || 'Restart System'}
+                     </button>
+                   </div>
+
+                   {oidcTestResult && (
+                     <div
+                       className={`mt-3 rounded-md border px-3 py-2 text-sm ${
+                         oidcTestResult.status === 'success'
+                           ? 'border-emerald-300 bg-emerald-50 text-emerald-900 dark:border-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-100'
+                           : oidcTestResult.status === 'warning'
+                             ? 'border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-700 dark:bg-amber-950/30 dark:text-amber-100'
+                             : 'border-red-300 bg-red-50 text-red-900 dark:border-red-700 dark:bg-red-950/30 dark:text-red-100'
+                       }`}
+                     >
+                       <ul className="list-disc space-y-1 pl-5">
+                         {oidcTestResult.messages.map((message, index) => (
+                           <li key={`${message}-${index}`}>{message}</li>
+                         ))}
+                       </ul>
+                     </div>
+                   )}
+                 </div>
                 </>
               )}
                 </>
@@ -3919,12 +3896,12 @@ const SettingsPage: React.FC = () => {
           setShowBetterAuthRestartDialog(false);
           void handleRestartBetterAuth();
         }}
-        title={t('settings.betterAuthRestartButton') || 'Restart to apply'}
+        title={t('settings.betterAuthRestartSystem') || 'Restart System'}
         message={
           t('settings.betterAuthRestartConfirm') ||
           'This sends SIGTERM to the running MCPHub process so Docker or your service manager can start it again with the saved Better Auth settings.'
         }
-        confirmText={t('settings.betterAuthRestartButton') || 'Restart to apply'}
+        confirmText={t('settings.betterAuthRestartSystem') || 'Restart System'}
         variant="warning"
       />
     </div>

@@ -6,6 +6,7 @@ const getBetterAuthRuntimeConfigMock = jest.fn();
 const getAppliedBetterAuthRuntimeConfigMock = jest.fn();
 const resolveBetterAuthRuntimeConfigMock = jest.fn();
 const isBetterAuthRestartRequiredMock = jest.fn();
+const fetchMock = jest.fn();
 
 jest.mock('../../src/dao/DaoFactory.js', () => ({
   getSystemConfigDao: jest.fn(() => ({
@@ -27,7 +28,7 @@ jest.mock('../../src/services/betterAuthConfig.js', () => ({
   toBetterAuthPublicConfig: (config: unknown) => config,
 }));
 
-import { getBetterAuthStatus, getPublicConfig } from '../../src/controllers/configController.js';
+import { getPublicConfig, testBetterAuthOidcConnection } from '../../src/controllers/configController.js';
 
 describe('ConfigController - getPublicConfig', () => {
   let mockRequest: Partial<Request>;
@@ -36,6 +37,8 @@ describe('ConfigController - getPublicConfig', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    (globalThis as any).fetch = fetchMock;
+    process.env.BETTER_AUTH_SECRET = 'test-better-auth-secret';
 
     mockJson = jest.fn();
     mockRequest = {};
@@ -44,6 +47,10 @@ describe('ConfigController - getPublicConfig', () => {
       setHeader: jest.fn(),
       status: jest.fn().mockReturnThis(),
     };
+  });
+
+  afterEach(() => {
+    delete process.env.BETTER_AUTH_SECRET;
   });
 
   it('uses DAO-backed routing and Better Auth configuration for public config', async () => {
@@ -172,7 +179,7 @@ describe('ConfigController - getPublicConfig', () => {
     );
   });
 
-  it('returns desired and applied Better Auth status for admins', async () => {
+  it('tests OIDC settings and reports restart mismatch for admins', async () => {
     const systemConfig = {
       auth: {
         betterAuth: {
@@ -195,6 +202,7 @@ describe('ConfigController - getPublicConfig', () => {
           providerId: 'authentik',
           discoveryUrl: 'https://auth.example.com/.well-known/openid-configuration',
           clientId: 'mcphub',
+          clientSecret: 'secret-value',
           clientConfigured: true,
           scopes: ['openid', 'profile', 'email'],
           pkce: false,
@@ -223,17 +231,46 @@ describe('ConfigController - getPublicConfig', () => {
     getBetterAuthRuntimeConfigMock.mockResolvedValue(desiredConfig);
     getAppliedBetterAuthRuntimeConfigMock.mockReturnValue(appliedConfig);
     isBetterAuthRestartRequiredMock.mockReturnValue(true);
-
-    await getBetterAuthStatus(mockRequest as Request, mockResponse as Response);
-
-    expect(getBetterAuthRuntimeConfigMock).toHaveBeenCalledWith(systemConfig);
-    expect(mockJson).toHaveBeenCalledWith({
-      success: true,
-      data: {
-        desired: desiredConfig,
-        applied: appliedConfig,
-        restartRequired: true,
-      },
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        issuer: 'https://auth.example.com/application/o/mcphub/',
+        authorization_endpoint: 'https://auth.example.com/application/o/authorize/',
+        token_endpoint: 'https://auth.example.com/application/o/token/',
+        jwks_uri: 'https://auth.example.com/application/o/jwks/',
+      }),
     });
+
+    mockRequest.body = {
+      auth: {
+        betterAuth: {
+          providers: {
+            oidc: {
+              enabled: true,
+              configViaUi: true,
+            },
+          },
+        },
+      },
+    };
+
+    await testBetterAuthOidcConnection(mockRequest as Request, mockResponse as Response);
+
+    expect(getBetterAuthRuntimeConfigMock).toHaveBeenCalled();
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://auth.example.com/.well-known/openid-configuration',
+      expect.objectContaining({
+        method: 'GET',
+      }),
+    );
+    expect(mockJson).toHaveBeenCalledWith(
+      expect.objectContaining({
+        success: true,
+        data: expect.objectContaining({
+          status: 'warning',
+          restartRequired: true,
+        }),
+      }),
+    );
   });
 });

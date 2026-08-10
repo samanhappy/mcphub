@@ -66,7 +66,7 @@ export interface SystemConfig {
   };
 }
 
-interface BetterAuthConfig {
+export interface BetterAuthConfig {
   enabled?: boolean;
   basePath?: string;
   trustedOrigins?: string[];
@@ -92,12 +92,6 @@ interface BetterAuthConfig {
   };
 }
 
-export interface BetterAuthStatus {
-  desired: BetterAuthConfig;
-  applied: BetterAuthConfig;
-  restartRequired: boolean;
-}
-
 export interface PublicConfigResponse {
   success: boolean;
   data?: {
@@ -108,9 +102,18 @@ export interface PublicConfigResponse {
   message?: string;
 }
 
-interface BetterAuthStatusResponse {
+export interface BetterAuthOidcTestResponse {
   success: boolean;
-  data?: BetterAuthStatus;
+  data?: {
+    status: 'success' | 'warning' | 'error';
+    restartRequired: boolean;
+    messages: string[];
+  };
+  message?: string;
+}
+
+interface RestartResponse {
+  success: boolean;
   message?: string;
 }
 
@@ -188,15 +191,16 @@ export const shouldSkipAuth = async (): Promise<boolean> => {
   }
 };
 
-export const getBetterAuthStatus = async (): Promise<BetterAuthStatus | null> => {
-  const response = await apiGet<BetterAuthStatusResponse>('/better-auth/status');
-  if (!response.success || !response.data) {
-    return null;
-  }
-  return response.data;
-};
+export const testBetterAuthOidcConnection = async (
+  betterAuth: Partial<BetterAuthConfig>,
+): Promise<BetterAuthOidcTestResponse> =>
+  apiPost('/better-auth/oidc/test', {
+    auth: {
+      betterAuth,
+    },
+  });
 
 export const restartBetterAuthApplication = async (): Promise<{
   success: boolean;
   message?: string;
-}> => apiPost('/better-auth/restart', {});
+}> => apiPost<RestartResponse>('/better-auth/restart', {});
