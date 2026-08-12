@@ -4,6 +4,7 @@ const poolMock = jest.fn();
 const postgresDialectMock = jest.fn();
 const loadSettingsMock = jest.fn();
 const resolveBetterAuthRuntimeConfigMock = jest.fn();
+const setAppliedBetterAuthRuntimeConfigMock = jest.fn();
 
 const runtimeConfig = {
   enabled: true,
@@ -75,6 +76,7 @@ jest.mock('../../src/services/betterAuthConfig.js', () => ({
   betterAuthRuntimeConfig: disabledRuntimeConfig,
   getBetterAuthRuntimeConfig: jest.fn(() => runtimeConfig),
   resolveBetterAuthRuntimeConfig: resolveBetterAuthRuntimeConfigMock,
+  setAppliedBetterAuthRuntimeConfig: setAppliedBetterAuthRuntimeConfigMock,
 }));
 
 describe('betterAuth bootstrap', () => {
@@ -86,6 +88,7 @@ describe('betterAuth bootstrap', () => {
     postgresDialectMock.mockClear();
     loadSettingsMock.mockReset();
     resolveBetterAuthRuntimeConfigMock.mockReset();
+    setAppliedBetterAuthRuntimeConfigMock.mockReset();
     resolveBetterAuthRuntimeConfigMock.mockReturnValue(runtimeConfig);
     loadSettingsMock.mockReturnValue({
       systemConfig: {},

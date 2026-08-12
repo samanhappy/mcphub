@@ -100,6 +100,8 @@ jest.mock('../../src/controllers/configController.js', () => ({
   getRuntimeConfig: routeHandler,
   getPublicConfig: routeHandler,
   getMcpSettingsJson: routeHandler,
+  testBetterAuthOidcConnection: routeHandler,
+  restartApplication: routeHandler,
 }));
 
 jest.mock('../../src/controllers/toolController.js', () => ({
