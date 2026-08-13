@@ -27,7 +27,10 @@ import {
   updateServerInfoVisibility,
 } from '../services/mcpService.js';
 import { clearAllCaches } from '../utils/cacheUtils.js';
-import { syncAllServerToolsEmbeddings } from '../services/vectorSearchService.js';
+import {
+  removeServerToolEmbeddings,
+  syncAllServerToolsEmbeddings,
+} from '../services/vectorSearchService.js';
 import { createSafeJSON } from '../utils/serialization.js';
 import { cloneDefaultOAuthServerConfig } from '../constants/oauthServerDefaults.js';
 import {
@@ -908,6 +911,18 @@ export const updateServer = async (req: Request, res: Response): Promise<void> =
       // Update references in bearer keys
       const bearerKeyDao = getBearerKeyDao();
       await bearerKeyDao.updateServerName(name, newName);
+
+      // Drop embeddings stored under the old name so search_tools does not
+      // advertise phantom tools; addOrUpdateServer below regenerates them
+      // under the new name. A failure here must not abort the rename.
+      try {
+        await removeServerToolEmbeddings(name);
+      } catch (error) {
+        console.warn('Failed to remove embeddings for renamed server', {
+          serverName: name,
+          error,
+        });
+      }
     }
 
     // Use the final server name (new name if renaming, otherwise original name)
