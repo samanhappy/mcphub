@@ -6,6 +6,8 @@ const mockServerDao = {
   findAllPaginated: jest.fn(),
   findByOwnerPaginated: jest.fn(),
   findVisibleToUserPaginated: jest.fn(),
+  exists: jest.fn(),
+  rename: jest.fn(),
   updateTools: jest.fn(),
   updatePrompts: jest.fn(),
   updateResources: jest.fn(),
@@ -22,6 +24,7 @@ const mockUserDao = {
 
 const mockGroupDao = {
   findAll: jest.fn(),
+  updateServerName: jest.fn(),
 };
 
 const mockUserConfigDao = {
@@ -38,8 +41,10 @@ const mockOAuthTokenDao = {
 
 const mockBearerKeyDao = {
   findAll: jest.fn(),
+  updateServerName: jest.fn(),
 };
 
+const mockRemoveServerToolEmbeddings = jest.fn();
 const mockNotifyToolChanged = jest.fn();
 const mockBroadcastToolListChanged = jest.fn();
 const mockBroadcastPromptListChanged = jest.fn();
@@ -81,6 +86,13 @@ jest.mock('../../src/services/mcpService.js', () => ({
   toggleServerStatus: mockToggleServerStatus,
   reconnectServer: mockReconnectServer,
   updateServerInfoVisibility: jest.fn((...args: unknown[]) => mockUpdateServerInfoVisibility(...args)),
+}));
+
+jest.mock('../../src/services/vectorSearchService.js', () => ({
+  syncAllServerToolsEmbeddings: jest.fn(),
+  removeServerToolEmbeddings: jest.fn((...args: unknown[]) =>
+    mockRemoveServerToolEmbeddings(...args),
+  ),
 }));
 
 jest.mock('../../src/services/userContextService.js', () => ({
@@ -647,6 +659,63 @@ describe('serverController - updateServer', () => {
     expect(mockJson).toHaveBeenCalledWith({
       success: true,
       message: 'Server updated successfully',
+    });
+  });
+
+  describe('when renaming a server', () => {
+    beforeEach(() => {
+      mockServerDao.exists.mockResolvedValue(false);
+      mockServerDao.rename.mockResolvedValue(true);
+      mockGroupDao.updateServerName.mockResolvedValue(undefined);
+      mockBearerKeyDao.updateServerName.mockResolvedValue(undefined);
+      mockAddOrUpdateServer.mockResolvedValue({ success: true });
+      mockRemoveServerToolEmbeddings.mockResolvedValue(undefined);
+
+      mockRequest.body = {
+        ...mockRequest.body,
+        newName: 'renamed-server',
+      };
+    });
+
+    it('updates every reference to the old name, including vector embeddings', async () => {
+      await updateServer(mockRequest as Request, mockResponse as Response);
+
+      expect(mockServerDao.rename).toHaveBeenCalledWith('test-server', 'renamed-server');
+      expect(mockGroupDao.updateServerName).toHaveBeenCalledWith('test-server', 'renamed-server');
+      expect(mockBearerKeyDao.updateServerName).toHaveBeenCalledWith(
+        'test-server',
+        'renamed-server',
+      );
+      // Orphaned embeddings under the old name would make search_tools advertise
+      // uncallable phantom tools, so the rename must drop them; addOrUpdateServer
+      // regenerates embeddings under the new name.
+      expect(mockRemoveServerToolEmbeddings).toHaveBeenCalledWith('test-server');
+      expect(mockAddOrUpdateServer).toHaveBeenCalledWith(
+        'renamed-server',
+        expect.any(Object),
+        true,
+      );
+      expect(mockJson).toHaveBeenCalledWith({
+        success: true,
+        message: 'Server renamed and updated successfully',
+      });
+    });
+
+    it('still succeeds when embedding cleanup fails', async () => {
+      mockRemoveServerToolEmbeddings.mockRejectedValue(new Error('db unavailable'));
+
+      await updateServer(mockRequest as Request, mockResponse as Response);
+
+      expect(mockRemoveServerToolEmbeddings).toHaveBeenCalledWith('test-server');
+      expect(mockAddOrUpdateServer).toHaveBeenCalledWith(
+        'renamed-server',
+        expect.any(Object),
+        true,
+      );
+      expect(mockJson).toHaveBeenCalledWith({
+        success: true,
+        message: 'Server renamed and updated successfully',
+      });
     });
   });
 });
