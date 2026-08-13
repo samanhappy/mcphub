@@ -1416,6 +1416,15 @@ export const resetToolDescription = async (req: Request, res: Response): Promise
 };
 
 export const updateSystemConfig = async (req: Request, res: Response): Promise<void> => {
+  const user = getRequestUser(req);
+  if (!user?.isAdmin) {
+    res.status(403).json({
+      success: false,
+      message: 'Admin privileges required',
+    });
+    return;
+  }
+
   try {
     const {
       routing,

@@ -349,6 +349,10 @@ describe('serverController - updateSystemConfig', () => {
           jsonBodyLimit: '2mb',
         },
       },
+      user: {
+        username: 'admin',
+        isAdmin: true,
+      },
     };
 
     mockResponse = {
@@ -368,6 +372,28 @@ describe('serverController - updateSystemConfig', () => {
       },
     });
     mockSystemConfigDao.update.mockResolvedValue(true);
+  });
+
+  it('rejects system configuration updates from non-admin users', async () => {
+    mockRequest.user = {
+      username: 'regular-user',
+      isAdmin: false,
+    };
+    mockRequest.body = {
+      routing: {
+        skipAuth: true,
+      },
+    };
+
+    await updateSystemConfig(mockRequest as Request, mockResponse as Response);
+
+    expect(mockStatus).toHaveBeenCalledWith(403);
+    expect(mockJson).toHaveBeenCalledWith({
+      success: false,
+      message: 'Admin privileges required',
+    });
+    expect(mockSystemConfigDao.get).not.toHaveBeenCalled();
+    expect(mockSystemConfigDao.update).not.toHaveBeenCalled();
   });
 
   it('persists bearer auth header name and JSON body limit routing settings', async () => {
