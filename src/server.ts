@@ -22,7 +22,9 @@ import { initOAuthServer } from './services/oauthServerService.js';
 import { safeStringify } from './utils/serialization.js';
 import { resolveTrustProxySetting } from './utils/proxyTrust.js';
 import http from 'http';
+import type { Socket } from 'net';
 import { mcpConnectionRateLimiter } from './utils/rateLimit.js';
+import { closeHttpServer } from './utils/serverShutdown.js';
 
 /**
  * Get the directory of the current module
@@ -45,6 +47,7 @@ function getCurrentFileDir(): string {
 export class AppServer {
   private app: express.Application;
   private server: http.Server | null = null;
+  private connections = new Set<Socket>();
   private port: number | string;
   private frontendPath: string | null = null;
   private basePath: string;
@@ -218,6 +221,10 @@ export class AppServer {
         );
       }
     });
+    this.server.on('connection', (socket) => {
+      this.connections.add(socket);
+      socket.once('close', () => this.connections.delete(socket));
+    });
   }
 
   /**
@@ -226,15 +233,10 @@ export class AppServer {
   async shutdown(): Promise<void> {
     console.log('[SHUTDOWN] Starting graceful shutdown...');
 
-    // Close HTTP server first (stop accepting new connections)
-    if (this.server) {
-      await new Promise<void>((resolve) => {
-        this.server!.close(() => {
-          console.log('[SHUTDOWN] HTTP server closed');
-          resolve();
-        });
-      });
-    }
+    // Stop accepting new connections while existing requests finish within the grace period.
+    const httpShutdown = this.server
+      ? closeHttpServer(this.server, this.connections)
+      : Promise.resolve();
 
     // Close all MCP clients
     try {
@@ -243,6 +245,9 @@ export class AppServer {
     } catch (error) {
       console.error('[SHUTDOWN] Error closing MCP clients', safeStringify({ error }));
     }
+
+    await httpShutdown;
+    this.server = null;
 
     // Close database connection if in database mode
     const useDatabase =
