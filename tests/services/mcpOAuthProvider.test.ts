@@ -23,7 +23,7 @@ jest.mock('../../src/services/mcpService.js', () => ({
 }));
 
 import { getSystemConfigDao } from '../../src/dao/index.js';
-import { MCPHubOAuthProvider } from '../../src/services/mcpOAuthProvider.js';
+import { MCPHubOAuthProvider, createOAuthProvider } from '../../src/services/mcpOAuthProvider.js';
 
 describe('MCPHubOAuthProvider redirect URI resolution', () => {
   const originalEnv = process.env;
@@ -96,5 +96,74 @@ describe('MCPHubOAuthProvider redirect URI resolution', () => {
       'https://backup.example.com/oauth/callback',
       'https://base.example.com/oauth/callback',
     ]);
+  });
+});
+
+describe('createOAuthProvider - 401 auto-discovery guard', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    (getSystemConfigDao as jest.Mock).mockReturnValue({
+      get: jest.fn().mockResolvedValue({}),
+    });
+  });
+
+  it('creates a provider for a URL-only server so 401 auto-discovery can run', async () => {
+    const provider = await createOAuthProvider('notion', {
+      type: 'streamable-http',
+      url: 'https://mcp.notion.com/mcp',
+    } as any);
+
+    expect(provider).toBeInstanceOf(MCPHubOAuthProvider);
+  });
+
+  it('creates a provider for a URL-only server with non-Authorization headers', async () => {
+    const provider = await createOAuthProvider('notion', {
+      type: 'streamable-http',
+      url: 'https://mcp.notion.com/mcp',
+      headers: { 'X-Custom': 'value' },
+    } as any);
+
+    expect(provider).toBeInstanceOf(MCPHubOAuthProvider);
+  });
+
+  it('returns undefined when only a static Authorization header is configured', async () => {
+    const provider = await createOAuthProvider('static', {
+      type: 'streamable-http',
+      url: 'https://example.com/mcp',
+      headers: { Authorization: 'Bearer api-token' },
+    } as any);
+
+    expect(provider).toBeUndefined();
+  });
+
+  it('returns undefined for a static auth header with non-canonical casing', async () => {
+    const provider = await createOAuthProvider('static', {
+      type: 'streamable-http',
+      url: 'https://example.com/mcp',
+      headers: { authorization: 'Bearer api-token' },
+    } as any);
+
+    expect(provider).toBeUndefined();
+  });
+
+  it('creates a provider when OAuth is explicitly configured', async () => {
+    const provider = await createOAuthProvider('oauth', {
+      type: 'streamable-http',
+      url: 'https://example.com/mcp',
+      oauth: { clientId: 'abc' },
+    } as any);
+
+    expect(provider).toBeInstanceOf(MCPHubOAuthProvider);
+  });
+
+  it('creates a provider when OAuth is configured alongside a static Authorization header', async () => {
+    const provider = await createOAuthProvider('oauth', {
+      type: 'streamable-http',
+      url: 'https://example.com/mcp',
+      headers: { Authorization: 'Bearer stale-token' },
+      oauth: { clientId: 'abc' },
+    } as any);
+
+    expect(provider).toBeInstanceOf(MCPHubOAuthProvider);
   });
 });

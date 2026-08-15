@@ -534,6 +534,15 @@ const prepopulateScopesIfMissing = async (
   }
 };
 
+const hasAuthorizationHeader = (
+  headers?: Record<string, string>,
+): boolean => {
+  if (!headers) {
+    return false;
+  }
+  return Object.keys(headers).some((key) => key.toLowerCase() === 'authorization');
+};
+
 /**
  * Create an OAuth provider for a server if OAuth is configured
  *
@@ -547,9 +556,12 @@ export const createOAuthProvider = async (
 ): Promise<OAuthClientProvider | undefined> => {
   const oauth = serverConfig.oauth;
 
-  // Only create a provider when OAuth is actually configured. Static
-  // Authorization headers or API key auth must not be detached for remote MCP
-  // servers that have no OAuth state.
+  // Create a provider when OAuth is explicitly configured, OR when the server
+  // has no static Authorization header. The SDK's StreamableHTTPClientTransport
+  // only intercepts a 401 OAuth challenge when an authProvider is attached, so a
+  // URL-only remote server needs a provider up front for 401-driven auto-discovery
+  // to run. A server whose auth is a static Authorization header / API key is left
+  // alone so that header is preserved verbatim (see #1013, #1045).
   const hasOAuthConfig = Boolean(
     oauth &&
       (oauth.clientId ||
@@ -562,7 +574,7 @@ export const createOAuthProvider = async (
         oauth.dynamicRegistration?.registrationEndpoint),
   );
 
-  if (!hasOAuthConfig) {
+  if (!hasOAuthConfig && hasAuthorizationHeader(serverConfig.headers)) {
     return undefined;
   }
 
