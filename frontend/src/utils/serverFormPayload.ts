@@ -93,6 +93,7 @@ const buildOpenApiConfig = (formData: ServerFormData): NonNullable<ServerConfig[
   const openapi: NonNullable<ServerConfig['openapi']> = {
     version: formData.openapi?.version || '3.1.0',
     passthroughHeaders: parseCommaSeparatedList(formData.openapi?.passthroughHeaders),
+    cookieSession: formData.openapi?.cookieSession === true ? true : undefined,
   };
   const oauth2TokenUrl = formData.openapi?.oauth2TokenUrl?.trim();
   const oauth2ClientId = formData.openapi?.oauth2ClientId?.trim();

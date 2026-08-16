@@ -233,7 +233,9 @@
       "apiKeyInQuery": "查询",
       "apiKeyInCookie": "Cookie",
       "passthroughHeaders": "透传请求头",
-      "passthroughHeadersHelp": "要从传入的 MCP 请求透传到上游服务器请求的请求头名称列表，用逗号分隔（如：Authorization, X-API-Key）"
+      "passthroughHeadersHelp": "要从传入的 MCP 请求透传到上游服务器请求的请求头名称列表，用逗号分隔（如：Authorization, X-API-Key）",
+      "cookieSession": "Cookie 会话处理",
+      "cookieSessionHelp": "捕获上游登录响应中的 Set-Cookie，并在同一下游会话的后续调用中自动携带。按 MCP 会话隔离，不持久化存储。"
     },
     "oauth": {
       "sectionTitle": "OAuth 配置",

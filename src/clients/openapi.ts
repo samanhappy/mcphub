@@ -1,4 +1,5 @@
-import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
+import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
+import { CookieJar } from 'tough-cookie';
 import SwaggerParser from '@apidevtools/swagger-parser';
 import { OpenAPIV3 } from 'openapi-types';
 import { ServerConfig, OpenAPISecurityConfig } from '../types/index.js';
@@ -32,6 +33,15 @@ export class OpenAPIClient {
   private securityConfig?: OpenAPISecurityConfig;
   private readonly persistOAuth2Token?: OpenAPIClientOptions['persistOAuth2Token'];
   private oauth2TokenRequest?: Promise<string | undefined>;
+  // Per-session cookie jars for the dynamic Set-Cookie login flow. Keyed by
+  // downstream MCP sessionId so authenticated state never crosses users or
+  // sessions. In-memory only; never persisted.
+  private readonly cookieJars = new Map<string, CookieJar>();
+  private static readonly MAX_COOKIE_JARS = 1000;
+  // Static cookie from `apiKey.in: 'cookie'` config, merged into the Cookie
+  // header at call time. Seeded into each session jar so a dynamic Set-Cookie
+  // of the same name can override it.
+  private staticCookieHeader?: string;
   // Resolved in initialize(): admin-owned servers may target internal services
   // and skip the SSRF internal-IP blocklist.
   private allowInternalNetworks = false;
@@ -88,8 +98,9 @@ export class OpenAPIClient {
               config.params = { ...config.params, [name]: value };
               return config;
             });
+          } else if (location === 'cookie') {
+            this.staticCookieHeader = `${name}=${value}`;
           }
-          // Note: Cookie authentication would need additional setup
         }
         break;
 
@@ -513,6 +524,7 @@ export class OpenAPIClient {
     args: Record<string, unknown>,
     passthroughHeaders?: Record<string, string>,
     hasRetriedAfterUnauthorized = false,
+    sessionId?: string,
   ): Promise<unknown> {
     const tool = this.tools.find((t) => t.name === toolName);
     if (!tool) {
@@ -521,6 +533,7 @@ export class OpenAPIClient {
 
     let attemptedUpstreamRequest = false;
     let authorizationUsedForRequest: string | undefined;
+    let resolvedTarget: URL | null = null;
 
     try {
       await this.ensureOAuth2AccessToken();
@@ -589,7 +602,7 @@ export class OpenAPIClient {
       // internal/loopback/link-local address. The baseURL and tool path are
       // both attacker-influenced (via the OpenAPI spec), so validate the
       // final URL rather than trusting either alone.
-      let resolvedTarget: URL | null = null;
+      resolvedTarget = null;
       try {
         resolvedTarget = new URL(String(requestConfig.url ?? '/'), this.baseUrl || undefined);
       } catch {
@@ -601,12 +614,40 @@ export class OpenAPIClient {
         });
       }
 
+      const cookieSessionEnabled = this.isCookieSessionEnabled(sessionId);
+      // Inject cookies when either the dynamic session store is active for this
+      // call or a static `apiKey.in: 'cookie'` is configured (static cookies
+      // apply to every request regardless of session).
+      if ((cookieSessionEnabled || this.staticCookieHeader) && resolvedTarget) {
+        this.applyRequestCookies(
+          requestConfig,
+          resolvedTarget.href,
+          cookieSessionEnabled ? sessionId : undefined,
+        );
+      }
+
       authorizationUsedForRequest = this.getDefaultAuthorizationHeader();
       attemptedUpstreamRequest = true;
       const response = await this.httpClient.request(requestConfig);
+
+      if (cookieSessionEnabled && resolvedTarget) {
+        this.captureResponseCookies(response, resolvedTarget.href, sessionId);
+      }
+
       return response.data;
     } catch (error) {
       if (axios.isAxiosError(error)) {
+        // Capture Set-Cookie from non-2xx responses too. With maxRedirects: 0,
+        // a 3xx login redirect is surfaced as an error; 4xx logout responses
+        // may expire cookies. Capture before retry/rethrow so the jar stays
+        // current and the 401-retry path can re-inject updated cookies.
+        if (
+          this.isCookieSessionEnabled(sessionId) &&
+          resolvedTarget &&
+          error.response
+        ) {
+          this.captureResponseCookies(error.response, resolvedTarget.href, sessionId);
+        }
         if (
           attemptedUpstreamRequest &&
           error.response?.status === 401 &&
@@ -614,7 +655,7 @@ export class OpenAPIClient {
           authorizationUsedForRequest &&
           authorizationUsedForRequest !== this.getDefaultAuthorizationHeader()
         ) {
-          return this.callTool(toolName, args, passthroughHeaders, true);
+          return this.callTool(toolName, args, passthroughHeaders, true, sessionId);
         }
 
         if (
@@ -623,7 +664,7 @@ export class OpenAPIClient {
           !hasRetriedAfterUnauthorized &&
           (await this.invalidateRefreshableOAuth2Token())
         ) {
-          return this.callTool(toolName, args, passthroughHeaders, true);
+          return this.callTool(toolName, args, passthroughHeaders, true, sessionId);
         }
 
         const status = error.response?.status ?? 'unknown';
@@ -660,7 +701,128 @@ export class OpenAPIClient {
     return this.spec;
   }
 
+  private isCookieSessionEnabled(sessionId?: string): sessionId is string {
+    return !!this.config.openapi?.cookieSession && typeof sessionId === 'string' && sessionId.length > 0;
+  }
+
+  // Lazily create a per-session cookie jar, seeded with the static apiKey
+  // cookie (if any) so it applies to every request and can be overridden by a
+  // dynamic Set-Cookie of the same name.
+  private getCookieJar(sessionId: string): CookieJar {
+    let jar = this.cookieJars.get(sessionId);
+    if (jar) {
+      return jar;
+    }
+
+    // Backstop: evict the oldest jar before exceeding the cap. Session-end
+    // cleanup is the primary eviction path; this guards against leaks when a
+    // session is abandoned without an explicit close.
+    if (this.cookieJars.size >= OpenAPIClient.MAX_COOKIE_JARS) {
+      const oldest = this.cookieJars.keys().next().value;
+      if (oldest !== undefined) {
+        this.cookieJars.delete(oldest);
+      }
+    }
+
+    jar = new CookieJar();
+    if (this.staticCookieHeader && this.baseUrl) {
+      try {
+        jar.setCookieSync(`${this.staticCookieHeader}; Path=/`, this.baseUrl);
+      } catch {
+        // ignore malformed static cookie / unsuitable baseUrl
+      }
+    }
+    this.cookieJars.set(sessionId, jar);
+    return jar;
+  }
+
+  // Apply stored cookies to an outgoing request. When a session jar exists,
+  // use it (it already includes any seeded static cookie and captured dynamic
+  // cookies). Otherwise fall back to the static `apiKey.in: 'cookie'` value so
+  // static cookie auth works without opting into session handling.
+  private applyRequestCookies(
+    requestConfig: AxiosRequestConfig,
+    requestUrl: string,
+    sessionId?: string,
+  ): void {
+    let cookieString = '';
+    if (sessionId) {
+      const jar = this.cookieJars.get(sessionId);
+      if (jar) {
+        try {
+          cookieString = jar.getCookieStringSync(requestUrl);
+        } catch {
+          return;
+        }
+      } else if (this.staticCookieHeader) {
+        cookieString = this.staticCookieHeader;
+      }
+    } else if (this.staticCookieHeader) {
+      cookieString = this.staticCookieHeader;
+    }
+
+    if (cookieString) {
+      const existingHeaders = requestConfig.headers as Record<string, string> | undefined;
+      const merged = OpenAPIClient.mergeCookieHeader(existingHeaders?.Cookie, cookieString);
+      requestConfig.headers = {
+        ...existingHeaders,
+        Cookie: merged,
+      };
+    }
+  }
+
+  // Merge two Cookie header strings, with `additional` (jar/static) values
+  // winning for duplicate names so caller-configured cookies are preserved.
+  private static mergeCookieHeader(existing: string | undefined, additional: string): string {
+    const entries = new Map<string, string>();
+    const parse = (header: string) => {
+      for (const part of header.split(';')) {
+        const trimmed = part.trim();
+        if (!trimmed) {
+          continue;
+        }
+        const eq = trimmed.indexOf('=');
+        if (eq <= 0) {
+          continue;
+        }
+        entries.set(trimmed.slice(0, eq).trim(), trimmed.slice(eq + 1));
+      }
+    };
+    if (existing) {
+      parse(existing);
+    }
+    parse(additional);
+    return [...entries].map(([k, v]) => `${k}=${v}`).join('; ');
+  }
+
+  // Capture Set-Cookie headers from an upstream response into the session jar.
+  private captureResponseCookies(
+    response: AxiosResponse,
+    requestUrl: string,
+    sessionId: string,
+  ): void {
+    const setCookie = response.headers?.['set-cookie'];
+    if (!setCookie) {
+      return;
+    }
+    const jar = this.getCookieJar(sessionId);
+    const headers = Array.isArray(setCookie) ? setCookie : [setCookie];
+    for (const header of headers) {
+      try {
+        jar.setCookieSync(header, requestUrl);
+      } catch {
+        // skip unparseable Set-Cookie rather than failing the tool call
+      }
+    }
+  }
+
+  // Drop the cookie jar for a session. Called from session-end cleanup.
+  clearSessionCookies(sessionId: string): void {
+    this.cookieJars.delete(sessionId);
+  }
+
   disconnect(): void {
     // No persistent connection to close for OpenAPI
+    this.cookieJars.clear();
   }
 }

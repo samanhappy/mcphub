@@ -225,7 +225,9 @@
       "apiKeyInQuery": "Sorgu",
       "apiKeyInCookie": "Çerez",
       "passthroughHeaders": "Geçiş Başlıkları",
-      "passthroughHeadersHelp": "Gelen MCP isteklerinden yukarı akış sunucu isteklerine geçirilecek başlık adlarının virgülle ayrılmış listesi (örn. Authorization, X-API-Key)"
+      "passthroughHeadersHelp": "Gelen MCP isteklerinden yukarı akış sunucu isteklerine geçirilecek başlık adlarının virgülle ayrılmış listesi (örn. Authorization, X-API-Key)",
+      "cookieSession": "Cookie Oturum Yönetimi",
+      "cookieSessionHelp": "Yukarı akış oturum açma yanıtlarındaki Set-Cookie değerini yakalar ve aynı aşağı akış oturumundaki sonraki çağrılarda yeniden gönderir. MCP oturumu başına izole edilir; kalıcı değildir."
     },
     "oauth": {
       "sectionTitle": "OAuth Yapılandırması",

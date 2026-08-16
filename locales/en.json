@@ -233,7 +233,9 @@
       "apiKeyInQuery": "Query",
       "apiKeyInCookie": "Cookie",
       "passthroughHeaders": "Passthrough Headers",
-      "passthroughHeadersHelp": "Comma-separated list of header names to pass through from incoming MCP requests to upstream server requests (e.g., Authorization, X-API-Key)"
+      "passthroughHeadersHelp": "Comma-separated list of header names to pass through from incoming MCP requests to upstream server requests (e.g., Authorization, X-API-Key)",
+      "cookieSession": "Cookie Session Handling",
+      "cookieSessionHelp": "Capture Set-Cookie from upstream login responses and replay them on later calls within the same downstream session. Isolated per MCP session; not persisted."
     },
     "oauth": {
       "sectionTitle": "OAuth Configuration",

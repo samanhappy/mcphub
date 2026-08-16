@@ -225,7 +225,9 @@
       "apiKeyInQuery": "Requête",
       "apiKeyInCookie": "Cookie",
       "passthroughHeaders": "En-têtes de transmission",
-      "passthroughHeadersHelp": "Liste séparée par des virgules des noms d’en-têtes à transmettre des requêtes MCP entrantes vers les requêtes du serveur en amont (par ex. : Authorization, X-API-Key)"
+      "passthroughHeadersHelp": "Liste séparée par des virgules des noms d’en-têtes à transmettre des requêtes MCP entrantes vers les requêtes du serveur en amont (par ex. : Authorization, X-API-Key)",
+      "cookieSession": "Gestion de session Cookie",
+      "cookieSessionHelp": "Capture les Set-Cookie des réponses de connexion en amont et les renvoie lors des appels ultérieurs dans la même session aval. Isolé par session MCP ; non persistant."
     },
     "oauth": {
       "sectionTitle": "Configuration OAuth",
