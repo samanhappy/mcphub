@@ -137,7 +137,7 @@ Les contributions sont les bienvenues ! Rejoignez notre [communauté Discord](ht
 
 ## 🌟 Historique des étoiles
 
-[![Historique des étoiles](https://api.star-history.com/svg?repos=samanhappy/mcphub&type=Date)](https://www.star-history.com/#samanhappy/mcphub&Date)
+[![Historique des étoiles](https://star-history.dera.page/svg?repos=samanhappy/mcphub&type=Date)](https://star-history.dera.page/#samanhappy/mcphub&Date)
 
 ## 📄 Licence
 

@@ -160,7 +160,7 @@ Contributions welcome! See our [Discord community](https://discord.gg/2BJehJZVH5
 
 ## 🌟 Star History
 
-[![Star History Chart](https://api.star-history.com/svg?repos=samanhappy/mcphub&type=Date)](https://www.star-history.com/#samanhappy/mcphub&Date)
+[![Star History Chart](https://star-history.dera.page/svg?repos=samanhappy/mcphub&type=Date)](https://star-history.dera.page/#samanhappy/mcphub&Date)
 
 ## 📄 License
 
