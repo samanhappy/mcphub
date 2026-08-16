@@ -284,6 +284,11 @@ export class OpenAPIClient {
         : null;
       this.allowInternalNetworks = !!ownerUser?.isAdmin;
 
+      // Obtain/refresh the OAuth2 access token up front so it authenticates the
+      // document download (for url configs) and is ready for later API calls.
+      // No-op when no OAuth2 security is configured.
+      await this.ensureOAuth2AccessToken();
+
       // Parse and dereference the OpenAPI specification
       if (this.config.openapi?.url) {
         // Fetch the document through the authenticated httpClient (carries
@@ -295,10 +300,16 @@ export class OpenAPIClient {
         // therefore receives no auth by default.
         const specUrl = this.config.openapi.url;
         await assertSafeUrl(specUrl, { allowInternal: this.allowInternalNetworks });
-        const response = await this.httpClient.get(specUrl, {
+        const requestConfig: AxiosRequestConfig = {
           responseType: 'text',
           transformResponse: [(data: unknown) => data],
-        });
+        };
+        // The static apiKey.in:'cookie' value is otherwise only injected in
+        // callTool; apply it here too so cookie-protected spec URLs load.
+        if (this.staticCookieHeader) {
+          requestConfig.headers = { Cookie: this.staticCookieHeader };
+        }
+        const response = await this.httpClient.get(specUrl, requestConfig);
         const raw =
           typeof response.data === 'string' ? response.data : String(response.data);
         this.spec = (await SwaggerParser.dereference(
@@ -319,7 +330,6 @@ export class OpenAPIClient {
       this.updateBaseUrlFromServers();
 
       this.extractTools();
-      await this.ensureOAuth2AccessToken();
     } catch (error) {
       // Let SSRF rejections propagate as-is so callers can distinguish a blocked
       // target from a parse/auth failure (matches callTool's handling).

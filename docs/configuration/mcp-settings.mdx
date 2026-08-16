@@ -104,7 +104,7 @@ A server entry has the shape `"<server-name>": ServerConfig`. The relevant field
 | `openapi.url` | string | one of `url`/`schema` | URL of an OpenAPI document MCPHub will download. |
 | `openapi.schema` | object | one of `url`/`schema` | Inline OpenAPI document. |
 | `headers` | object | no | Static headers applied to outbound calls, including the spec download itself. |
-| `passthroughHeaders` | string[] | no | Headers to forward from the caller. |
+| `openapi.passthroughHeaders` | string[] | no | Headers to forward from the caller. |
 
 The authoritative definition of every field is the `ServerConfig` type in [src/types/index.ts](src/types/index.ts) — consult it if you need behavior not described here.
 

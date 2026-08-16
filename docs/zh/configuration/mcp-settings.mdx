@@ -94,7 +94,7 @@ MCPHub 使用几个配置文件：
 | `openapi.url` | string | `url`/`schema` 二选一 | MCPHub 将下载的 OpenAPI 文档 URL。 |
 | `openapi.schema` | object | `url`/`schema` 二选一 | 内联的 OpenAPI 文档。 |
 | `headers` | object | 否 | 应用于所有出站请求的静态请求头，包括文档下载本身。 |
-| `passthroughHeaders` | string[] | 否 | 从调用方转发到上游的请求头名称。 |
+| `openapi.passthroughHeaders` | string[] | 否 | 从调用方转发到上游的请求头名称。 |
 
 每个字段的权威定义见 [src/types/index.ts](src/types/index.ts) 中的 `ServerConfig` 类型；如需此处未描述的行为，请查阅该类型。
 

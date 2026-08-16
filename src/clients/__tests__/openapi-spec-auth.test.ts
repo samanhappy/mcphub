@@ -292,4 +292,78 @@ describe('OpenAPIClient - authenticated spec document fetch (#1044)', () => {
     expect(externalHeaders.Authorization).toBeUndefined();
     expect(client.getTools().some((t) => t.name === 'get_things')).toBe(true);
   });
+
+  it('applies a static apiKey cookie to the document download', async () => {
+    const config: ServerConfig = {
+      type: 'openapi',
+      openapi: {
+        url: SPEC_URL,
+        security: {
+          type: 'apiKey',
+          apiKey: { name: 'session', in: 'cookie', value: 'abc123' },
+        },
+      },
+    };
+    const client = new OpenAPIClient(config) as TestClient;
+    const captured = { v: null as unknown };
+    installCapturingAdapter(client, minimalSpec, captured);
+
+    await client.initialize();
+
+    expect((captured.v as { headers: { get: (n: string) => string } }).headers.get('Cookie')).toBe(
+      'session=abc123',
+    );
+    expect(client.getTools().some((t) => t.name === 'get_things')).toBe(true);
+  });
+
+  it('fetches an OAuth2 client-credentials token before the document download', async () => {
+    const config: ServerConfig = {
+      type: 'openapi',
+      openapi: {
+        url: SPEC_URL,
+        security: {
+          type: 'oauth2',
+          oauth2: {
+            tokenUrl: 'https://auth.example.com/oauth/token',
+            clientId: 'test-client',
+            clientSecret: 'test-secret',
+            token: '',
+          },
+        },
+      },
+    };
+    const client = new OpenAPIClient(config) as TestClient;
+    const captured = { v: null as unknown };
+    // Both the token POST (httpClient.request) and the doc GET (httpClient.get)
+    // route through the configured adapter; differentiate by method.
+    let tokenFetchIndex: number | null = null;
+    let docFetchIndex: number | null = null;
+    let callCount = 0;
+    client.httpClient.defaults.adapter = (cfg: any) => {
+      callCount += 1;
+      if (cfg.method === 'post') {
+        tokenFetchIndex = callCount;
+        return Promise.resolve({
+          data: { access_token: 'fresh-token', expires_in: 3600 },
+          status: 200,
+          statusText: 'OK',
+          headers: {},
+          config: cfg,
+        });
+      }
+      docFetchIndex = callCount;
+      captured.v = cfg;
+      return Promise.resolve({ data: minimalSpec, status: 200, statusText: 'OK', headers: {}, config: cfg });
+    };
+
+    await client.initialize();
+
+    expect(tokenFetchIndex).not.toBeNull();
+    expect(docFetchIndex).not.toBeNull();
+    expect(tokenFetchIndex!).toBeLessThan(docFetchIndex!);
+    expect(
+      (captured.v as { headers: { get: (n: string) => string } }).headers.get('Authorization'),
+    ).toBe('Bearer fresh-token');
+    expect(client.getTools().some((t) => t.name === 'get_things')).toBe(true);
+  });
 });
