@@ -210,6 +210,70 @@ describe('OpenAPIClient - cookie session handling', () => {
     const protectedCall = lastCallTo(client.httpClient.request, '/protected');
     expect(protectedCall[0].headers?.Cookie).toBeUndefined();
   });
+
+  it('captures Set-Cookie from a non-2xx error response', async () => {
+    const client = makeClient({ cookieSession: true }, [loginTool, protectedTool]);
+    client.httpClient.request.mockImplementation(async (cfg: any) => {
+      if (cfg.url === '/login') {
+        // Simulate a non-2xx response (e.g. a redirect treated as an error)
+        // carrying Set-Cookie. Axios surfaces this as a rejected promise.
+        throw {
+          isAxiosError: true,
+          response: {
+            status: 400,
+            statusText: 'Bad Request',
+            data: {},
+            headers: { 'set-cookie': ['accesstoken=abc; Path=/; HttpOnly'] },
+          },
+        };
+      }
+      return { data: { ok: true }, headers: {} };
+    });
+
+    await expect(client.callTool('login', {}, undefined, false, 'sess-1')).rejects.toThrow(
+      'API call failed: 400',
+    );
+    await client.callTool('getProtected', {}, undefined, false, 'sess-1');
+
+    const protectedCall = lastCallTo(client.httpClient.request, '/protected');
+    expect(protectedCall[0].headers?.Cookie).toBe('accesstoken=abc');
+  });
+
+  it('preserves a caller-configured Cookie header, merging with jar cookies', async () => {
+    const cookieHeaderTool: TestTool = {
+      name: 'getProtected',
+      description: 'protected',
+      inputSchema: {
+        type: 'object',
+        properties: { Cookie: { type: 'string' } },
+        required: [],
+      },
+      operationId: 'getProtected',
+      method: 'get',
+      path: '/protected',
+      parameters: [{ name: 'Cookie', in: 'header', required: false, schema: { type: 'string' } }],
+    };
+    const client = makeClient({ cookieSession: true }, [loginTool, cookieHeaderTool]);
+    client.httpClient.request.mockImplementation(async (cfg: any) => {
+      if (cfg.url === '/login') {
+        return {
+          data: { ok: true },
+          headers: { 'set-cookie': ['accesstoken=abc; Path=/; HttpOnly'] },
+        };
+      }
+      return { data: { ok: true }, headers: {} };
+    });
+
+    await client.callTool('login', {}, undefined, false, 'sess-1');
+    // Caller supplies a Cookie header param alongside the session jar cookie.
+    await client.callTool('getProtected', { Cookie: 'pref=dark' }, undefined, false, 'sess-1');
+
+    const protectedCall = lastCallTo(client.httpClient.request, '/protected');
+    const cookie = protectedCall[0].headers?.Cookie;
+    // Both cookies present; jar value wins for a duplicate name.
+    expect(cookie).toContain('pref=dark');
+    expect(cookie).toContain('accesstoken=abc');
+  });
 });
 
 describe('OpenAPIClient - static apiKey.in:cookie', () => {

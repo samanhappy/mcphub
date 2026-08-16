@@ -533,6 +533,7 @@ export class OpenAPIClient {
 
     let attemptedUpstreamRequest = false;
     let authorizationUsedForRequest: string | undefined;
+    let resolvedTarget: URL | null = null;
 
     try {
       await this.ensureOAuth2AccessToken();
@@ -601,7 +602,7 @@ export class OpenAPIClient {
       // internal/loopback/link-local address. The baseURL and tool path are
       // both attacker-influenced (via the OpenAPI spec), so validate the
       // final URL rather than trusting either alone.
-      let resolvedTarget: URL | null = null;
+      resolvedTarget = null;
       try {
         resolvedTarget = new URL(String(requestConfig.url ?? '/'), this.baseUrl || undefined);
       } catch {
@@ -636,6 +637,17 @@ export class OpenAPIClient {
       return response.data;
     } catch (error) {
       if (axios.isAxiosError(error)) {
+        // Capture Set-Cookie from non-2xx responses too. With maxRedirects: 0,
+        // a 3xx login redirect is surfaced as an error; 4xx logout responses
+        // may expire cookies. Capture before retry/rethrow so the jar stays
+        // current and the 401-retry path can re-inject updated cookies.
+        if (
+          this.isCookieSessionEnabled(sessionId) &&
+          resolvedTarget &&
+          error.response
+        ) {
+          this.captureResponseCookies(error.response, resolvedTarget.href, sessionId);
+        }
         if (
           attemptedUpstreamRequest &&
           error.response?.status === 401 &&
@@ -750,11 +762,37 @@ export class OpenAPIClient {
     }
 
     if (cookieString) {
+      const existingHeaders = requestConfig.headers as Record<string, string> | undefined;
+      const merged = OpenAPIClient.mergeCookieHeader(existingHeaders?.Cookie, cookieString);
       requestConfig.headers = {
-        ...(requestConfig.headers as Record<string, string>),
-        Cookie: cookieString,
+        ...existingHeaders,
+        Cookie: merged,
       };
     }
+  }
+
+  // Merge two Cookie header strings, with `additional` (jar/static) values
+  // winning for duplicate names so caller-configured cookies are preserved.
+  private static mergeCookieHeader(existing: string | undefined, additional: string): string {
+    const entries = new Map<string, string>();
+    const parse = (header: string) => {
+      for (const part of header.split(';')) {
+        const trimmed = part.trim();
+        if (!trimmed) {
+          continue;
+        }
+        const eq = trimmed.indexOf('=');
+        if (eq <= 0) {
+          continue;
+        }
+        entries.set(trimmed.slice(0, eq).trim(), trimmed.slice(eq + 1));
+      }
+    };
+    if (existing) {
+      parse(existing);
+    }
+    parse(additional);
+    return [...entries].map(([k, v]) => `${k}=${v}`).join('; ');
   }
 
   // Capture Set-Cookie headers from an upstream response into the session jar.

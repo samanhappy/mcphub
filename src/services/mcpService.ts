@@ -3023,14 +3023,21 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
   const sessionId = extra.sessionId || '';
 
   // For OpenAPI cookie-session isolation, use a real per-caller session id.
-  // `extra.sessionId` falls back to the shared 'api-session' literal for direct
-  // API calls without x-session-id, which would leak cookies across callers, so
-  // exclude that value. Fail-safe (undefined) when no real session is present.
-  const cookieSessionId =
-    requestContextService.getSessionId() ||
-    (typeof extra?.sessionId === 'string' && extra.sessionId !== 'api-session'
-      ? extra.sessionId
-      : undefined);
+  // Direct API controllers fall back to shared synthetic ids ('api-session' /
+  // 'openapi-session') when x-session-id is absent, which would leak cookies
+  // across callers, so only accept an explicitly-provided session header or a
+  // non-synthetic extra.sessionId. Fail-safe (undefined) otherwise.
+  const isSyntheticSessionFallback = (id: string) =>
+    id === 'api-session' || id === 'openapi-session';
+  const explicitXSessionId = extra?.headers?.['x-session-id'];
+  const cookieSessionId = [
+    requestContextService.getSessionId(),
+    typeof explicitXSessionId === 'string' ? explicitXSessionId : undefined,
+    typeof extra?.sessionId === 'string' ? extra.sessionId : undefined,
+  ].find(
+    (id): id is string =>
+      typeof id === 'string' && id.length > 0 && !isSyntheticSessionFallback(id),
+  );
 
   // Extract group and key info from request context (set by SSE/HTTP handlers)
   // Fallback to extra for backward compatibility (e.g., direct API calls)
