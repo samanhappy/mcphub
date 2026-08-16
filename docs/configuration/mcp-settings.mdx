@@ -103,10 +103,19 @@ A server entry has the shape `"<server-name>": ServerConfig`. The relevant field
 | ----- | ---- | -------- | ----------- |
 | `openapi.url` | string | one of `url`/`schema` | URL of an OpenAPI document MCPHub will download. |
 | `openapi.schema` | object | one of `url`/`schema` | Inline OpenAPI document. |
-| `headers` | object | no | Static headers applied to outbound calls. |
-| `passthroughHeaders` | string[] | no | Headers to forward from the caller. |
+| `headers` | object | no | Static headers applied to outbound calls, including the spec download itself. |
+| `openapi.passthroughHeaders` | string[] | no | Headers to forward from the caller. |
 
 The authoritative definition of every field is the `ServerConfig` type in [src/types/index.ts](src/types/index.ts) — consult it if you need behavior not described here.
+
+<Note>
+A protected `openapi.url` is downloaded through MCPHub's authenticated client, so the
+configured `headers` and OpenAPI `security` credentials (HTTP Basic/Bearer, API key,
+OAuth2 token) authenticate the fetch. Credentials are scoped to the document origin only —
+they are **not** forwarded to external `$ref` resolutions or cross-origin redirects. If a
+protected document references external `$ref`s that also require auth, inline the document
+via `openapi.schema` instead.
+</Note>
 
 ## Common MCP Server Examples
 

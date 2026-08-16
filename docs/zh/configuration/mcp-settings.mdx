@@ -87,6 +87,21 @@ MCPHub 使用几个配置文件：
 | `stdio`        | string  | `pipe`          | stdio 配置         |
 | `perSessionClient` | boolean | `false`     | 为每个下游 MCP 会话创建独立的上游客户端，而不是在所有会话间共享同一个连接。适用于 Playwright 等有状态服务器。参见[会话级客户端隔离](#会话级客户端隔离有状态服务器)。 |
 
+### `type: "openapi"`
+
+| 字段 | 类型 | 必需 | 描述 |
+| ---- | ---- | ---- | ---- |
+| `openapi.url` | string | `url`/`schema` 二选一 | MCPHub 将下载的 OpenAPI 文档 URL。 |
+| `openapi.schema` | object | `url`/`schema` 二选一 | 内联的 OpenAPI 文档。 |
+| `headers` | object | 否 | 应用于所有出站请求的静态请求头，包括文档下载本身。 |
+| `openapi.passthroughHeaders` | string[] | 否 | 从调用方转发到上游的请求头名称。 |
+
+每个字段的权威定义见 [src/types/index.ts](src/types/index.ts) 中的 `ServerConfig` 类型；如需此处未描述的行为，请查阅该类型。
+
+<Note>
+受保护的 `openapi.url` 会通过 MCPHub 的已认证客户端下载，因此配置的 `headers` 与 OpenAPI `security` 凭证（HTTP Basic/Bearer、API Key、OAuth2 令牌）会用于该次拉取的认证。凭证仅作用于文档所在源，不会转发给外部 `$ref` 解析或跨源重定向。若受保护的文档引用了同样需要认证的外部 `$ref`，请改用 `openapi.schema` 内联文档。
+</Note>
+
 ## 常见 MCP 服务器示例
 
 ### Web 和 API 服务器
