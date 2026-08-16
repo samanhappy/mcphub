@@ -1,9 +1,10 @@
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
 import { CookieJar } from 'tough-cookie';
 import SwaggerParser from '@apidevtools/swagger-parser';
+import * as yaml from 'js-yaml';
 import { OpenAPIV3 } from 'openapi-types';
 import { ServerConfig, OpenAPISecurityConfig } from '../types/index.js';
-import { assertSafeUrl } from '../utils/ssrf.js';
+import { assertSafeUrl, UnsafeUrlError } from '../utils/ssrf.js';
 import { getUserDao } from '../dao/index.js';
 import { sanitizeStringForLogging, createSafeJSON } from '../utils/serialization.js';
 
@@ -274,10 +275,36 @@ export class OpenAPIClient {
 
   async initialize(): Promise<void> {
     try {
+      // Resolve whether this server's owner is an admin first; admin-owned
+      // servers may legitimately target internal services and skip the SSRF
+      // blocklist. Needed before the URL fetch so the spec-download guard is
+      // scoped the same way as callTool's.
+      const ownerUser = this.config.owner
+        ? await getUserDao().findByUsername(this.config.owner)
+        : null;
+      this.allowInternalNetworks = !!ownerUser?.isAdmin;
+
       // Parse and dereference the OpenAPI specification
       if (this.config.openapi?.url) {
+        // Fetch the document through the authenticated httpClient (carries
+        // config.headers + security credentials from setupSecurity, and uses
+        // maxRedirects: 0 so credentials are never forwarded across a
+        // cross-origin redirect). SwaggerParser's own resolver is bypassed for
+        // the main document so its (unauthenticated) headers never see the
+        // credentials; external $ref resolution still uses that resolver and
+        // therefore receives no auth by default.
+        const specUrl = this.config.openapi.url;
+        await assertSafeUrl(specUrl, { allowInternal: this.allowInternalNetworks });
+        const response = await this.httpClient.get(specUrl, {
+          responseType: 'text',
+          transformResponse: [(data: unknown) => data],
+        });
+        const raw =
+          typeof response.data === 'string' ? response.data : String(response.data);
         this.spec = (await SwaggerParser.dereference(
-          this.config.openapi.url,
+          specUrl,
+          this.parseSpecDocument(raw),
+          {},
         )) as OpenAPIV3.Document;
       } else if (this.config.openapi?.schema) {
         // For schema object, we need to pass it as a cloned object
@@ -291,18 +318,29 @@ export class OpenAPIClient {
       // Update baseUrl from OpenAPI servers field
       this.updateBaseUrlFromServers();
 
-      // Resolve whether this server's owner is an admin; admin-owned servers
-      // may legitimately target internal services and skip the SSRF blocklist.
-      const ownerUser = this.config.owner
-        ? await getUserDao().findByUsername(this.config.owner)
-        : null;
-      this.allowInternalNetworks = !!ownerUser?.isAdmin;
-
       this.extractTools();
       await this.ensureOAuth2AccessToken();
     } catch (error) {
+      // Let SSRF rejections propagate as-is so callers can distinguish a blocked
+      // target from a parse/auth failure (matches callTool's handling).
+      if (error instanceof UnsafeUrlError) {
+        throw error;
+      }
       const errorMessage = error instanceof Error ? error.message : String(error);
-      throw new Error(`Failed to load OpenAPI specification: ${errorMessage}`);
+      throw new Error(
+        `Failed to load OpenAPI specification: ${sanitizeStringForLogging(errorMessage)}`,
+      );
+    }
+  }
+
+  // Parse a fetched spec body into an object. JSON first (stricter errors for
+  // malformed JSON), YAML fallback so protected YAML documents work without
+  // relying on SwaggerParser's own fetch (which cannot carry our credentials).
+  private parseSpecDocument(raw: string): any {
+    try {
+      return JSON.parse(raw);
+    } catch {
+      return yaml.load(raw);
     }
   }
 
