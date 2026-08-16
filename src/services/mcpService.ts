@@ -413,6 +413,12 @@ const cleanupIsolatedSession = (sessionId: string): void => {
     }
     console.log(`Cleaned up isolated clients for session: ${sessionId}`);
   }
+
+  // Drop per-session OpenAPI cookie jars so authenticated state does not
+  // outlive the downstream session.
+  for (const serverInfo of serverInfos) {
+    serverInfo.openApiClient?.clearSessionCookies?.(sessionId);
+  }
 };
 
 /** Helper to write an isolated session upstream client into the tracking map. */
@@ -3016,6 +3022,16 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
   const bearerKeyContext = requestContextService.getBearerKeyContext();
   const sessionId = extra.sessionId || '';
 
+  // For OpenAPI cookie-session isolation, use a real per-caller session id.
+  // `extra.sessionId` falls back to the shared 'api-session' literal for direct
+  // API calls without x-session-id, which would leak cookies across callers, so
+  // exclude that value. Fail-safe (undefined) when no real session is present.
+  const cookieSessionId =
+    requestContextService.getSessionId() ||
+    (typeof extra?.sessionId === 'string' && extra.sessionId !== 'api-session'
+      ? extra.sessionId
+      : undefined);
+
   // Extract group and key info from request context (set by SSE/HTTP handlers)
   // Fallback to extra for backward compatibility (e.g., direct API calls)
   const group =
@@ -3179,7 +3195,13 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
         }
 
         await reserveHostedIfNeeded(targetServerInfo.name, cleanToolName);
-        const result = await openApiClient.callTool(cleanToolName, finalArgs, passthroughHeaders);
+        const result = await openApiClient.callTool(
+          cleanToolName,
+          finalArgs,
+          passthroughHeaders,
+          false,
+          cookieSessionId,
+        );
         await settleHostedIfNeeded({
           success: true,
           requestContent: finalArgs,
@@ -3375,7 +3397,13 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
 
       const finalArgs = request.params.arguments || {};
       await reserveHostedIfNeeded(serverInfo.name, cleanToolName);
-      const result = await openApiClient.callTool(cleanToolName, finalArgs, passthroughHeaders);
+      const result = await openApiClient.callTool(
+        cleanToolName,
+        finalArgs,
+        passthroughHeaders,
+        false,
+        cookieSessionId,
+      );
       await settleHostedIfNeeded({
         success: true,
         requestContent: finalArgs,

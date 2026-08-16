@@ -126,6 +126,10 @@ const normalizeOpenApi = (
     normalized.passthroughHeaders = passthroughHeaders;
   }
 
+  if (openapi.cookieSession === true) {
+    normalized.cookieSession = true;
+  }
+
   return Object.keys(normalized).length > 0 ? normalized : undefined;
 };
 

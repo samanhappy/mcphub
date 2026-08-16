@@ -144,6 +144,7 @@ const ServerForm = ({
             passthroughHeaders: initialData.config.openapi.passthroughHeaders
               ? initialData.config.openapi.passthroughHeaders.join(', ')
               : '',
+            cookieSession: initialData.config.openapi.cookieSession === true,
           }
         : {
             inputMode: 'url',
@@ -152,6 +153,7 @@ const ServerForm = ({
             version: '3.1.0',
             securityType: 'none',
             passthroughHeaders: '',
+            cookieSession: false,
           },
   });
 
@@ -830,6 +832,41 @@ const ServerForm = ({
                   />
                   <p className="text-xs text-gray-500 mt-1">
                     {t('server.openapi.passthroughHeadersHelp')}
+                  </p>
+                </div>
+
+                {/* Cookie Session Handling */}
+                <div className="mb-4">
+                  <div className="flex items-center mb-1">
+                    <input
+                      type="checkbox"
+                      id="openapiCookieSession"
+                      checked={formData.openapi?.cookieSession || false}
+                      onChange={(e) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          openapi: {
+                            ...prev.openapi,
+                            passthroughHeaders: prev.openapi?.passthroughHeaders || '',
+                            url: prev.openapi?.url || '',
+                            cookieSession: e.target.checked,
+                          },
+                        }))
+                      }
+                      className="mr-2"
+                    />
+                    <label
+                      htmlFor="openapiCookieSession"
+                      className="text-gray-700 dark:text-gray-300 text-sm font-medium"
+                    >
+                      {t('server.openapi.cookieSession', 'Cookie Session Handling')}
+                    </label>
+                  </div>
+                  <p className="text-xs text-gray-500 ml-6">
+                    {t(
+                      'server.openapi.cookieSessionHelp',
+                      'Capture Set-Cookie from upstream login responses and replay them on later calls within the same downstream session. Isolated per MCP session; not persisted.',
+                    )}
                   </p>
                 </div>
 
