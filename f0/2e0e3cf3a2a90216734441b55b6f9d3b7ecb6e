@@ -1,0 +1,50 @@
+src/types/index.ts
+  s_0c4e5caa9ccf88::t_8e26401d4e6525 209
+docs/configuration/environment-variables.mdx
+  s_0c4e5caa9ccf88::t_a040844dedb9f4 10-22,26-27,29,32-38,54-55,58-75,103-114,122-131,135-137,142-148,152-154,156-157
+frontend/src/pages/SettingsPage.tsx
+  s_0c4e5caa9ccf88::t_a040844dedb9f4 11-34,113-118,228-255,539-540,675-676,799-802,971-973,984,1052-1055,1057-1060,1062-1065,1430-1434,1438-1442,1529-1538,1540-1541,1543-1549,1551,1553-1575,1577-1578,1611-1666,1668-1680,1682-1733,1736,1746-1748,1750-1766,1774-1779,1781-1786,1788-1791,1798-1800,1802-1809,1811-1813,1815-1832,1834,1836-1837,1865-1866,1868-1870,1905-1907,1936-1951,1955-1959,1970-1976,2004,2046,2102-2107,2163-2164,2169,2175-2178,2183,2185-2189,2191-2205,2207,2209-2229,2231-2251,2254-2276,2278-2302,2305-2323,2325-2346,2349-2374,2376-2406,2408-2409,2411-2444,2448-2475,2478-2517,2520-2542,2546-2547,2629,2647,2700,2732-2734,2736-2738,3261,3380-3382,3430,3455-3457,3459-3461,3527-3529,3553-3555,3644-3646,3684-3686,3688-3690,3743-3746
+  s_0c4e5caa9ccf88::t_1e40efb8a613f9 3128-3130
+  s_0c4e5caa9ccf88::t_0781d60a12b6f6 518,526,670,943,966,976-979,3111-3127
+locales/tr.json
+  s_0c4e5caa9ccf88::t_812a61d7184d5b 726-727
+locales/zh.json
+  s_0c4e5caa9ccf88::t_812a61d7184d5b 738-739
+src/betterAuth.ts
+  s_0c4e5caa9ccf88::t_8e26401d4e6525 6-9,91,93
+locales/fr.json
+  s_0c4e5caa9ccf88::t_812a61d7184d5b 727-728
+docs/zh/configuration/environment-variables.mdx
+  s_0c4e5caa9ccf88::t_a040844dedb9f4 14-23,40-41,43,63-80
+frontend/src/contexts/SettingsContext.tsx
+  s_0c4e5caa9ccf88::t_cac1f62459dde6 96,213,250,280
+  s_0c4e5caa9ccf88::t_a040844dedb9f4 177,245,262-263,514,702,741
+locales/en.json
+  s_0c4e5caa9ccf88::t_812a61d7184d5b 736-737
+src/services/betterAuthConfig.ts
+  s_0c4e5caa9ccf88::t_8e26401d4e6525 147-150,242
+  s_0c4e5caa9ccf88::t_a040844dedb9f4 137,146,256,272-276,289
+frontend/src/services/configService.ts
+  s_0c4e5caa9ccf88::t_cac1f62459dde6 68
+tests/services/betterAuth.bootstrap.test.ts
+  s_0c4e5caa9ccf88::t_5c9011ac58676c 188-191
+  s_0c4e5caa9ccf88::t_1f31a5709cfb7e 7,75,96,157,168-187
+tests/services/betterAuthConfig.test.ts
+  s_0c4e5caa9ccf88::t_1f31a5709cfb7e 221-274
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "f02e0e3cf3a2a90216734441b55b6f9d3b7ecb6e",
+  "prompts": {},
+  "sessions": {
+    "s_0c4e5caa9ccf88": {
+      "agent_id": {
+        "tool": "github-copilot",
+        "id": "973e693d-6851-4bbb-91e8-9143fceccd8c",
+        "model": "copilot/kimi-k3"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
