@@ -1512,6 +1512,7 @@ export const updateSystemConfig = async (req: Request, res: Response): Promise<v
     const hasBetterAuthUpdate =
       auth?.betterAuth &&
       (typeof auth.betterAuth.enabled === 'boolean' ||
+        typeof auth.betterAuth.baseUrl === 'string' ||
         typeof auth.betterAuth.basePath === 'string' ||
         Array.isArray(auth.betterAuth.trustedOrigins) ||
         (auth.betterAuth.providers &&
@@ -1987,6 +1988,10 @@ export const updateSystemConfig = async (req: Request, res: Response): Promise<v
 
       if (typeof auth.betterAuth.enabled === 'boolean') {
         target.enabled = auth.betterAuth.enabled;
+      }
+
+      if (typeof auth.betterAuth.baseUrl === 'string') {
+        target.baseUrl = auth.betterAuth.baseUrl.trim();
       }
 
       if (typeof auth.betterAuth.basePath === 'string') {

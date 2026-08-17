@@ -4,6 +4,7 @@ const poolMock = jest.fn();
 const postgresDialectMock = jest.fn();
 const loadSettingsMock = jest.fn();
 const resolveBetterAuthRuntimeConfigMock = jest.fn();
+const resolveBetterAuthBaseUrlMock = jest.fn();
 
 const runtimeConfig = {
   enabled: true,
@@ -71,6 +72,7 @@ jest.mock('../../src/services/betterAuthConfig.js', () => ({
   betterAuthRuntimeConfig: disabledRuntimeConfig,
   getBetterAuthRuntimeConfig: jest.fn(() => runtimeConfig),
   resolveBetterAuthRuntimeConfig: resolveBetterAuthRuntimeConfigMock,
+  resolveBetterAuthBaseUrl: resolveBetterAuthBaseUrlMock,
 }));
 
 describe('betterAuth bootstrap', () => {
@@ -91,6 +93,7 @@ describe('betterAuth bootstrap', () => {
     process.env.OIDC_CLIENT_ID = 'oidc-client-id';
     process.env.OIDC_CLIENT_SECRET = 'oidc-client-secret';
     process.env.USE_DB = 'true';
+    resolveBetterAuthBaseUrlMock.mockReturnValue('http://localhost:5173');
   });
 
   it('registers the generic OAuth plugin when the OIDC provider is enabled', async () => {
@@ -151,12 +154,37 @@ describe('betterAuth bootstrap', () => {
         },
       },
     });
+    resolveBetterAuthBaseUrlMock.mockReturnValue('http://localhost:5173');
 
     await import('../../src/betterAuth.js');
 
     expect(betterAuthMock).toHaveBeenCalledWith(
       expect.objectContaining({
         baseURL: 'http://localhost:5173/api/auth/better',
+      }),
+    );
+  });
+
+  it('uses betterAuth.baseUrl when BETTER_AUTH_URL is not set', async () => {
+    resolveBetterAuthBaseUrlMock.mockReturnValue('https://settings.example.com/mcphub');
+
+    await import('../../src/betterAuth.js');
+
+    expect(betterAuthMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        baseURL: 'https://settings.example.com/mcphub/api/auth/better',
+      }),
+    );
+  });
+
+  it('falls back to the default localhost URL when no base URL is configured', async () => {
+    resolveBetterAuthBaseUrlMock.mockReturnValue(undefined);
+
+    await import('../../src/betterAuth.js');
+
+    expect(betterAuthMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        baseURL: 'http://localhost:3000/api/auth/better',
       }),
     );
   });

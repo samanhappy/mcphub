@@ -65,6 +65,7 @@ export interface SystemConfig {
 
 interface BetterAuthConfig {
   enabled?: boolean;
+  baseUrl?: string;
   basePath?: string;
   trustedOrigins?: string[];
   providers?: {

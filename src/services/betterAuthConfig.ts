@@ -145,6 +145,13 @@ const normalizePrompt = (
   return normalizedValue as BetterAuthOidcProviderConfig['prompt'];
 };
 
+export const resolveBetterAuthBaseUrl = (
+  systemConfig?: SystemConfig | null,
+): string | undefined =>
+  normalizeOptionalString(process.env.BETTER_AUTH_URL) ||
+  normalizeOptionalString(systemConfig?.auth?.betterAuth?.baseUrl) ||
+  resolveInstallBaseUrl(systemConfig);
+
 const resolveBooleanSetting = (
   envValue: string | undefined,
   settingsValue: unknown,
@@ -236,6 +243,7 @@ export const resolveBetterAuthRuntimeConfig = (
       [
         ...trustedOriginSettings,
         process.env.BETTER_AUTH_URL,
+        betterAuthSettings.baseUrl,
         resolveInstallBaseUrl(systemConfig),
       ]
         .map((value) => normalizeTrustedOrigin(value))

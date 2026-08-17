@@ -206,6 +206,7 @@ export interface BetterAuthOidcProviderConfig extends BetterAuthProviderToggle {
 
 export interface BetterAuthConfig {
   enabled?: boolean; // Enable/disable Better Auth integration
+  baseUrl?: string; // Public base URL used to build Better Auth redirect URIs
   basePath?: string; // Base path to mount Better Auth handler
   trustedOrigins?: string[]; // Explicitly trusted origins for social/OIDC login requests
   disableAutoCreate?: boolean; // When true, SSO login will not auto-create new users

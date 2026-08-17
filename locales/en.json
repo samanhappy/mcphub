@@ -733,6 +733,8 @@
     "betterAuthEnvNote": "Client IDs and secrets still come from environment variables. Changing Better Auth settings may require an application restart, and the install base URL origin is trusted automatically.",
     "enableBetterAuth": "Enable Better Auth",
     "enableBetterAuthDescription": "Enable social and OIDC login when the required environment variables are configured.",
+    "betterAuthBaseUrl": "Base URL",
+    "betterAuthBaseUrlDescription": "Public base URL used to build Better Auth redirect URIs. Falls back to the install base URL when empty; the BETTER_AUTH_URL environment variable takes precedence.",
     "betterAuthBasePath": "Auth base path",
     "betterAuthBasePathDescription": "Relative API path used by the Better Auth routes.",
     "betterAuthTrustedOrigins": "Trusted origins",

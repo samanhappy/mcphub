@@ -51,7 +51,7 @@ Provider client credentials remain environment-variable only.
 | Variable | Description |
 | --- | --- |
 | `BETTER_AUTH_ENABLED` | Master switch for Better Auth. Better Auth is still disabled automatically when MCPHub is not in database mode or when no provider has the required credentials. |
-| `BETTER_AUTH_URL` | Public base URL used to build Better Auth redirect URIs. This now takes precedence over `systemConfig.install.baseUrl`. Its origin is also auto-added to the trusted origin list. |
+| `BETTER_AUTH_URL` | Public base URL used to build Better Auth redirect URIs. Takes precedence over `systemConfig.auth.betterAuth.baseUrl` (configurable in Settings → Better Auth) and `systemConfig.install.baseUrl`. Its origin is also auto-added to the trusted origin list. |
 | `BETTER_AUTH_BASE_PATH` | Mount path for the Better Auth handler. Defaults to `/api/auth/better`. |
 | `BETTER_AUTH_TRUSTED_ORIGINS` | Optional additional origins allowed to start Better Auth login flows. Accepts a comma-separated list, whitespace-separated list, or JSON array. When omitted, MCPHub still auto-trusts the origins from `BETTER_AUTH_URL` and `systemConfig.install.baseUrl`. |
 | `BETTER_AUTH_GOOGLE_ENABLED` | Enable or disable the Google provider after credentials are present. Defaults to `true`. |

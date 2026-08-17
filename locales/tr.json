@@ -723,6 +723,8 @@
     "betterAuthEnvNote": "İstemci kimlikleri ve gizli anahtarlar hâlâ ortam değişkenlerinden gelir. Better Auth ayarlarını değiştirmek uygulamanın yeniden başlatılmasını gerektirebilir; kurulum temel URL kaynağı da güvenilen kaynaklara otomatik olarak eklenir.",
     "enableBetterAuth": "Better Auth'u etkinleştir",
     "enableBetterAuthDescription": "Gerekli ortam değişkenleri yapılandırıldığında sosyal giriş ve OIDC girişini etkinleştirin.",
+    "betterAuthBaseUrl": "Temel URL",
+    "betterAuthBaseUrlDescription": "Better Auth yönlendirme URI'lerini oluşturmak için kullanılan genel temel URL. Boş bırakılırsa kurulum temel URL'si kullanılır; BETTER_AUTH_URL ortam değişkeni önceliklidir.",
     "betterAuthBasePath": "Kimlik doğrulama temel yolu",
     "betterAuthBasePathDescription": "Better Auth rotaları tarafından kullanılan göreli API yolu.",
     "betterAuthTrustedOrigins": "Güvenilen kaynaklar",

@@ -724,6 +724,8 @@
     "betterAuthEnvNote": "Les identifiants et secrets client proviennent toujours des variables d'environnement. Modifier les paramètres Better Auth peut nécessiter un redémarrage de l'application, et l'origine de l'URL de base d'installation est ajoutée automatiquement aux origines approuvées.",
     "enableBetterAuth": "Activer Better Auth",
     "enableBetterAuthDescription": "Activez la connexion sociale et OIDC lorsque les variables d'environnement requises sont configurées.",
+    "betterAuthBaseUrl": "URL de base",
+    "betterAuthBaseUrlDescription": "URL de base publique utilisée pour construire les URI de redirection Better Auth. Si vide, l'URL de base d'installation est utilisée ; la variable d'environnement BETTER_AUTH_URL est prioritaire.",
     "betterAuthBasePath": "Chemin de base d'authentification",
     "betterAuthBasePathDescription": "Chemin API relatif utilisé par les routes Better Auth.",
     "betterAuthTrustedOrigins": "Origines approuvées",

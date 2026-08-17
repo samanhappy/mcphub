@@ -218,6 +218,60 @@ describe('betterAuthConfig', () => {
     ]);
   });
 
+  it('uses betterAuth.baseUrl as a trusted origin and prefers it over install.baseUrl', async () => {
+    process.env.OIDC_CLIENT_ID = 'oidc-client-id';
+    process.env.OIDC_CLIENT_SECRET = 'oidc-client-secret';
+
+    const systemConfig = {
+      install: {
+        baseUrl: 'https://install.example.com/mcphub',
+      },
+      auth: {
+        betterAuth: {
+          enabled: true,
+          baseUrl: 'https://settings.example.com/mcphub',
+          providers: {
+            oidc: {
+              enabled: true,
+              discoveryUrl: 'https://auth.example.com/.well-known/openid-configuration',
+            },
+          },
+        },
+      },
+    };
+
+    getSystemConfigMock.mockResolvedValue(systemConfig);
+
+    const { getBetterAuthRuntimeConfig, resolveBetterAuthBaseUrl } = await import(
+      '../../src/services/betterAuthConfig.js'
+    );
+
+    expect((await getBetterAuthRuntimeConfig()).trustedOrigins).toEqual([
+      'https://settings.example.com',
+      'https://install.example.com',
+    ]);
+    expect(resolveBetterAuthBaseUrl(systemConfig)).toBe('https://settings.example.com/mcphub');
+  });
+
+  it('prefers BETTER_AUTH_URL over betterAuth.baseUrl for the resolved base URL', async () => {
+    process.env.BETTER_AUTH_URL = 'https://env-public.example.com/mcphub';
+
+    const systemConfig = {
+      install: {
+        baseUrl: 'https://install.example.com/mcphub',
+      },
+      auth: {
+        betterAuth: {
+          baseUrl: 'https://settings.example.com/mcphub',
+        },
+      },
+    };
+
+    const { resolveBetterAuthBaseUrl } = await import('../../src/services/betterAuthConfig.js');
+
+    expect(resolveBetterAuthBaseUrl(systemConfig)).toBe('https://env-public.example.com/mcphub');
+  });
+
   it('prefers Better Auth environment variables over stored settings for runtime config', async () => {
     process.env.BETTER_AUTH_ENABLED = 'true';
     process.env.BETTER_AUTH_BASE_PATH = 'env-auth';
