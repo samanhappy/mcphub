@@ -45,7 +45,7 @@
     "model context protocol"
   ],
   "author": "",
-  "license": "ISC",
+  "license": "Apache-2.0",
   "dependencies": {
     "@apidevtools/swagger-parser": "^12.1.0",
     "@google/genai": "^1.44.0",

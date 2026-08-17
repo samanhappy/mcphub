@@ -4,7 +4,7 @@
     "title": "OpenAPI Plant Store",
     "description": "A sample API that uses a plant store as an example to demonstrate features in the OpenAPI specification",
     "license": {
-      "name": "MIT"
+      "name": "Apache-2.0"
     },
     "version": "1.0.0"
   },
