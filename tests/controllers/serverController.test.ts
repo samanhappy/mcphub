@@ -426,6 +426,7 @@ describe('serverController - updateSystemConfig', () => {
       auth: {
         betterAuth: {
           enabled: true,
+          baseUrl: ' https://mcp.example.com ',
           basePath: '/custom-auth',
           trustedOrigins: ['https://mcp.example.com', '  '],
           providers: {
@@ -468,6 +469,7 @@ describe('serverController - updateSystemConfig', () => {
         auth: {
           betterAuth: {
             enabled: true,
+            baseUrl: 'https://mcp.example.com',
             basePath: '/custom-auth',
             trustedOrigins: ['https://mcp.example.com'],
             providers: {
@@ -500,6 +502,43 @@ describe('serverController - updateSystemConfig', () => {
               enabled: true,
               basePath: '/custom-auth',
             }),
+          }),
+        }),
+      }),
+    );
+  });
+
+  it('persists a baseUrl-only Better Auth update', async () => {
+    mockRequest.body = {
+      auth: {
+        betterAuth: {
+          baseUrl: ' https://mcp.example.com ',
+        },
+      },
+    };
+
+    mockSystemConfigDao.get.mockResolvedValue({
+      routing: {
+        enableGlobalRoute: true,
+        enableGroupNameRoute: true,
+        enableBearerAuth: true,
+        bearerAuthKey: '',
+        bearerAuthHeaderName: 'Authorization',
+        jsonBodyLimit: '1mb',
+        skipAuth: false,
+      },
+      auth: {},
+    });
+
+    await updateSystemConfig(mockRequest as Request, mockResponse as Response);
+
+    expect(mockStatus).not.toHaveBeenCalledWith(400);
+
+    expect(mockSystemConfigDao.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        auth: expect.objectContaining({
+          betterAuth: expect.objectContaining({
+            baseUrl: 'https://mcp.example.com',
           }),
         }),
       }),
