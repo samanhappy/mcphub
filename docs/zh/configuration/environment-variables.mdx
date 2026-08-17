@@ -63,7 +63,7 @@ MCPHub 里的 Better Auth 目前依赖 PostgreSQL 会话存储，因此需要配
 | 变量 | 描述 |
 | --- | --- |
 | `BETTER_AUTH_ENABLED` | Better Auth 总开关。即使打开了它，如果 MCPHub 不在数据库模式下，或者没有任何提供商具备所需凭据，Better Auth 仍会自动禁用。 |
-| `BETTER_AUTH_URL` | 用于生成 Better Auth 回调 URL 的公网访问地址。现在它会优先于 `systemConfig.install.baseUrl` 生效，其来源也会自动加入可信来源列表。 |
+| `BETTER_AUTH_URL` | 用于生成 Better Auth 回调 URL 的公网访问地址。优先级高于 `systemConfig.auth.betterAuth.baseUrl`（可在 设置 → Better Auth 中配置）和 `systemConfig.install.baseUrl`，其来源也会自动加入可信来源列表。 |
 | `BETTER_AUTH_BASE_PATH` | Better Auth 处理器挂载路径，默认 `/api/auth/better`。 |
 | `BETTER_AUTH_TRUSTED_ORIGINS` | 允许发起 Better Auth 登录流程的额外来源。支持逗号分隔、空白分隔或 JSON 数组。未设置时，MCPHub 仍会自动信任 `BETTER_AUTH_URL` 和 `systemConfig.install.baseUrl` 的来源。 |
 | `BETTER_AUTH_GOOGLE_ENABLED` | 在提供了凭据后启用或禁用 Google 登录，默认 `true`。 |

@@ -735,6 +735,8 @@
     "betterAuthEnvNote": "客户端 ID 和密钥仍然来自环境变量。修改 Better Auth 设置后可能需要重启应用；同时，安装配置中的基础地址来源会自动加入受信任来源。",
     "enableBetterAuth": "启用 Better Auth",
     "enableBetterAuthDescription": "当所需环境变量配置完成后，启用社交登录和 OIDC 登录。",
+    "betterAuthBaseUrl": "基础地址",
+    "betterAuthBaseUrlDescription": "用于生成 Better Auth 回调 URL 的公网访问地址。留空时回退到安装配置中的基础地址；BETTER_AUTH_URL 环境变量优先级更高。",
     "betterAuthBasePath": "认证基础路径",
     "betterAuthBasePathDescription": "Better Auth 路由使用的相对 API 路径。",
     "betterAuthTrustedOrigins": "受信任来源",

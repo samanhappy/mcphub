@@ -3,8 +3,10 @@ import { genericOAuth } from 'better-auth/plugins';
 import { PostgresDialect } from 'kysely';
 import { Pool } from 'pg';
 import defaultConfig, { loadSettings } from './config/index.js';
-import { resolveBetterAuthRuntimeConfig } from './services/betterAuthConfig.js';
-import { resolveInstallBaseUrl } from './utils/installBaseUrl.js';
+import {
+  resolveBetterAuthBaseUrl,
+  resolveBetterAuthRuntimeConfig,
+} from './services/betterAuthConfig.js';
 import { getCachedSystemConfig, isDatabaseModeEnabled } from './utils/systemConfigCache.js';
 
 const resolveSystemConfig = () => {
@@ -86,11 +88,9 @@ const resolveBaseURL = (baseUrl: string, basePath: string): string => {
   }
 };
 
-const systemInstallBaseUrl = resolveInstallBaseUrl(systemConfig);
+const betterAuthBaseUrl = resolveBetterAuthBaseUrl(systemConfig);
 const baseURL = resolveBaseURL(
-  process.env.BETTER_AUTH_URL ||
-    systemInstallBaseUrl ||
-    `http://localhost:${defaultConfig.port}${defaultConfig.basePath}`,
+  betterAuthBaseUrl || `http://localhost:${defaultConfig.port}${defaultConfig.basePath}`,
   runtimeConfig.basePath,
 );
 

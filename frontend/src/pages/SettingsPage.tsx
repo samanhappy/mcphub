@@ -483,6 +483,7 @@ const SettingsPage: React.FC = () => {
   });
 
   const [tempBetterAuthConfig, setTempBetterAuthConfig] = useState<{
+    baseUrl: string;
     basePath: string;
     trustedOrigins: string;
     oidcProviderId: string;
@@ -490,6 +491,7 @@ const SettingsPage: React.FC = () => {
     oidcScopes: string;
     oidcPrompt: string;
   }>({
+    baseUrl: '',
     basePath: '/api/auth/better',
     trustedOrigins: '',
     oidcProviderId: 'oidc',
@@ -632,6 +634,7 @@ const SettingsPage: React.FC = () => {
   useEffect(() => {
     if (betterAuthConfig) {
       setTempBetterAuthConfig({
+        baseUrl: betterAuthConfig.baseUrl || '',
         basePath: betterAuthConfig.basePath || '/api/auth/better',
         trustedOrigins: betterAuthConfig.trustedOrigins?.join(', ') || '',
         oidcProviderId: betterAuthConfig.providers.oidc.providerId || 'oidc',
@@ -900,6 +903,7 @@ const SettingsPage: React.FC = () => {
 
   const handleBetterAuthTextChange = (
     key:
+      | 'baseUrl'
       | 'basePath'
       | 'trustedOrigins'
       | 'oidcProviderId'
@@ -922,6 +926,7 @@ const SettingsPage: React.FC = () => {
 
   const handleSaveBetterAuthConfig = async () => {
     const updates: Parameters<typeof updateBetterAuthConfigBatch>[0] = {};
+    const normalizedBaseUrl = tempBetterAuthConfig.baseUrl.trim();
     const normalizedBasePath = tempBetterAuthConfig.basePath.trim() || '/api/auth/better';
     const normalizedTrustedOrigins = parseCommaSeparated(tempBetterAuthConfig.trustedOrigins) || [];
     const normalizedProviderId = tempBetterAuthConfig.oidcProviderId.trim() || 'oidc';
@@ -929,6 +934,10 @@ const SettingsPage: React.FC = () => {
     const normalizedScopes =
       parseCommaSeparated(tempBetterAuthConfig.oidcScopes) || [...DEFAULT_OIDC_SCOPES];
     const normalizedPrompt = tempBetterAuthConfig.oidcPrompt.trim();
+
+    if (normalizedBaseUrl !== (betterAuthConfig.baseUrl || '')) {
+      updates.baseUrl = normalizedBaseUrl;
+    }
 
     if (normalizedBasePath !== betterAuthConfig.basePath) {
       updates.basePath = normalizedBasePath;
@@ -3019,6 +3028,26 @@ const SettingsPage: React.FC = () => {
                   disabled={loading}
                   checked={betterAuthConfig.enabled}
                   onCheckedChange={(checked) => handleBetterAuthToggle({ enabled: checked })}
+                />
+              </div>
+
+              <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-md">
+                <div className="mb-2">
+                  <h3 className="font-medium text-gray-700">
+                    {t('settings.betterAuthBaseUrl') || 'Base URL'}
+                  </h3>
+                  <p className="text-sm text-gray-500">
+                    {t('settings.betterAuthBaseUrlDescription') ||
+                      'Public base URL used to build Better Auth redirect URIs. Falls back to the install base URL when empty; the BETTER_AUTH_URL environment variable takes precedence.'}
+                  </p>
+                </div>
+                <input
+                  type="text"
+                  value={tempBetterAuthConfig.baseUrl}
+                  onChange={(e) => handleBetterAuthTextChange('baseUrl', e.target.value)}
+                  placeholder="https://mcphub.example.com"
+                  className="flex-1 mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm form-input"
+                  disabled={loading}
                 />
               </div>
 
