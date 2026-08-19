@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { X } from 'lucide-react';
 import { Server, EnvVar, ServerFormData } from '@/types';
+import { apiGet } from '../utils/fetchInterceptor';
 import { buildServerPayload } from '../utils/serverFormPayload';
 
 interface ServerFormProps {
@@ -83,6 +84,7 @@ const ServerForm = ({
       | 'private'
       | 'group'
       | 'public',
+    sharedWithUsers: initialData?.config?.sharedWithUsers || [],
     options: {
       timeout:
         (initialData &&
@@ -156,6 +158,63 @@ const ServerForm = ({
             cookieSession: false,
           },
   });
+
+  const [shareCandidates, setShareCandidates] = useState<string[]>([]);
+  const [shareCandidatesLoading, setShareCandidatesLoading] = useState(false);
+  const [shareCandidatesError, setShareCandidatesError] = useState(false);
+
+  useEffect(() => {
+    if (formData.visibility !== 'group' || !initialData?.name) {
+      return;
+    }
+
+    let cancelled = false;
+    setShareCandidatesLoading(true);
+    setShareCandidatesError(false);
+
+    void apiGet<{ success: boolean; data?: string[] }>(
+      `/servers/${encodeURIComponent(initialData.name)}/share-candidates`,
+    )
+      .then((response) => {
+        if (cancelled) return;
+
+        if (response.success && Array.isArray(response.data)) {
+          setShareCandidates(response.data);
+        } else {
+          setShareCandidatesError(true);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setShareCandidatesError(true);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setShareCandidatesLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [formData.visibility, initialData?.name]);
+
+  const selectableShareUsers = Array.from(
+    new Set([...(formData.sharedWithUsers || []), ...shareCandidates]),
+  ).sort((left, right) => left.localeCompare(right));
+
+  const toggleSharedUser = (username: string) => {
+    setFormData((previous) => {
+      const selected = new Set(previous.sharedWithUsers || []);
+      if (selected.has(username)) {
+        selected.delete(username);
+      } else {
+        selected.add(username);
+      }
+      return { ...previous, sharedWithUsers: Array.from(selected) };
+    });
+  };
 
   const [envVars, setEnvVars] = useState<EnvVar[]>(
     initialData && initialData.config && initialData.config.env
@@ -1203,11 +1262,9 @@ const ServerForm = ({
                   <option value="private">
                     {t('server.visibilityPrivate', 'Private — only the owner and admins')}
                   </option>
-                  {formData.visibility === 'group' && (
-                    <option value="group" disabled>
-                      {t('server.visibilityGroup', 'Group (reserved — not yet implemented)')}
-                    </option>
-                  )}
+                  <option value="group">
+                    {t('server.visibilityGroup', 'Shared — selected users only')}
+                  </option>
                   <option value="public">
                     {t('server.visibilityPublic', 'Public — every authenticated user')}
                   </option>
@@ -1215,9 +1272,66 @@ const ServerForm = ({
                 <p className="text-xs text-gray-500 mt-1">
                   {t(
                     'server.visibilityDescription',
-                    "Controls which non-admin users see this server in tools/list. Admins always see all servers regardless of this setting.",
+                    'Controls which non-admin users can discover and call this server. Admins always have access.',
                   )}
                 </p>
+
+                {formData.visibility === 'group' && (
+                  <div className="mt-4 rounded border border-gray-200 dark:border-gray-700 p-3">
+                    <div className="text-sm font-medium text-[var(--hub-ink-2)]">
+                      {t('server.shareWithUsers', 'Share with users')}
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1 mb-3">
+                      {t(
+                        'server.shareWithUsersDescription',
+                        'Selected users can discover and call this server, but cannot manage its configuration.',
+                      )}
+                    </p>
+
+                    {!initialData?.name ? (
+                      <p className="text-sm text-gray-500">
+                        {t('server.shareAfterCreate', 'Save the server before selecting users.')}
+                      </p>
+                    ) : (
+                      <>
+                        {shareCandidatesLoading && (
+                          <p className="text-sm text-gray-500">
+                            {t('server.shareCandidatesLoading', 'Loading users...')}
+                          </p>
+                        )}
+                        {shareCandidatesError && (
+                          <p className="text-sm text-red-600 dark:text-red-400">
+                            {t('server.shareCandidatesError', 'Failed to load users.')}
+                          </p>
+                        )}
+                        {!shareCandidatesLoading &&
+                          !shareCandidatesError &&
+                          selectableShareUsers.length === 0 && (
+                            <p className="text-sm text-gray-500">
+                              {t('server.noShareCandidates', 'No other users are available.')}
+                            </p>
+                          )}
+                        {selectableShareUsers.length > 0 && (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            {selectableShareUsers.map((username) => (
+                              <label
+                                key={username}
+                                className="flex items-center gap-2 rounded border border-gray-200 dark:border-gray-700 px-3 py-2 text-sm text-[var(--hub-ink-2)]"
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={(formData.sharedWithUsers || []).includes(username)}
+                                  onChange={() => toggleSharedUser(username)}
+                                />
+                                <span>{username}</span>
+                              </label>
+                            ))}
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Request Options Configuration */}

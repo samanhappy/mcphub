@@ -9,6 +9,7 @@ jest.mock('../../src/controllers/serverController.js', () => ({
   getAllServers: routeHandler,
   getAllSettings: routeHandler,
   getServerConfig: routeHandler,
+  getServerShareCandidates: routeHandler,
   createServer: routeHandler,
   batchCreateServers: routeHandler,
   updateServer: routeHandler,
@@ -289,6 +290,9 @@ describe('initRoutes authenticated API rate limiting', () => {
       ) ?? -1;
 
     expect(authenticatedLimiterIndex).toBeGreaterThanOrEqual(0);
+    expect(routerContainsRoute(protectedRouter!, 'get', '/servers/:name/share-candidates')).toBe(
+      true,
+    );
     expect(routerContainsRoute(protectedRouter!, 'get', '/servers/:name')).toBe(true);
     expect(routerContainsRoute(protectedRouter!, 'post', '/servers/:name/oauth/disconnect')).toBe(
       true,

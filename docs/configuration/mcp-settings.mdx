@@ -72,6 +72,8 @@ A server entry has the shape `"<server-name>": ServerConfig`. The relevant field
 | `type` | `"stdio" \| "sse" \| "streamable-http" \| "openapi"` | Recommended | Transport. Defaults to `stdio` when omitted but a `command` is provided. |
 | `enabled` | boolean | no | Defaults to `true`. Disabled servers stay in settings but are not connected. |
 | `owner` | string | no | Username that owns the entry. Defaults to the creating user or `admin`. Used for user-scoped routes (`/:user/mcp/...`). |
+| `visibility` | `"private" \| "group" \| "public"` | no | Runtime access for non-admin users. Defaults to `private`; `group` grants access to `sharedWithUsers`. |
+| `sharedWithUsers` | string[] | no | Local usernames allowed to discover and call a server whose `visibility` is `group`. Ignored for other visibility values. |
 | `description` | string | no | Free-form description displayed in the dashboard. |
 | `options` | object | no | Per-server runtime options (see `src/types/index.ts`). |
 | `proxy` | object | no | Optional HTTP proxy settings (`url`, `noProxy`, etc.). |

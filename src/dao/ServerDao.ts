@@ -277,7 +277,10 @@ export class ServerDaoImpl extends JsonFileBaseDao implements ServerDao {
   ): Promise<PaginatedResult<ServerConfigWithName>> {
     const allServers = await this.getAll();
     const filteredServers = allServers.filter(
-      (server) => server.owner === username || server.visibility === 'public',
+      (server) =>
+        server.owner === username ||
+        server.visibility === 'public' ||
+        (server.visibility === 'group' && server.sharedWithUsers?.includes(username)),
     );
     const sortedServers = filteredServers.sort((a, b) => {
       const aEnabled = a.enabled !== false;

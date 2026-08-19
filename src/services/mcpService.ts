@@ -304,7 +304,7 @@ export const initUpstreamServers = async (): Promise<void> => {
   await registerAllTools(true);
 
   // Initialize smart routing service with references to mcpService functions
-  initSmartRoutingService(() => serverInfos, filterToolsByConfig, filterToolsByGroup);
+  initSmartRoutingService(getVisibleServerInfos, filterToolsByConfig, filterToolsByGroup);
 };
 
 type McpServerDescriptor = {
@@ -560,6 +560,7 @@ export const broadcastPromptListChanged = (): void => {
 export const updateServerInfoVisibility = (
   serverName: string,
   visibility: ServerConfig['visibility'],
+  sharedWithUsers?: string[],
 ): void => {
   const serverInfo = getServerByName(serverName);
   if (!serverInfo) {
@@ -567,11 +568,13 @@ export const updateServerInfoVisibility = (
   }
 
   serverInfo.visibility = visibility;
+  serverInfo.sharedWithUsers = sharedWithUsers;
 
   if (serverInfo.config) {
     serverInfo.config = {
       ...serverInfo.config,
       visibility,
+      sharedWithUsers,
     };
   }
 };
@@ -707,6 +710,14 @@ const normalizeResourceForCache = (resource: McpResource): Resource => {
 
 // Store all server information
 let serverInfos: ServerInfo[] = [];
+
+const getVisibleServerInfos = (): ServerInfo[] => {
+  return getDataService().filterData(serverInfos);
+};
+
+const getVisibleServerByName = (name: string): ServerInfo | undefined => {
+  return getVisibleServerInfos().find((serverInfo) => serverInfo.name === name);
+};
 
 // Per-session upstream clients for isolated servers (perSessionClient: true).
 // Map<sessionId, Map<serverName, { client, transport }>>
@@ -1548,6 +1559,7 @@ export const initializeClientsFromSettings = async (
           name,
           owner: expandedConf.owner,
           visibility: expandedConf.visibility,
+          sharedWithUsers: expandedConf.sharedWithUsers,
           status: 'disconnected',
           error: null,
           tools: [],
@@ -1579,6 +1591,7 @@ export const initializeClientsFromSettings = async (
           }),
           owner: expandedConf.owner,
           visibility: expandedConf.visibility,
+          sharedWithUsers: expandedConf.sharedWithUsers,
           enabled: true,
           config: expandedConf,
         });
@@ -1611,6 +1624,9 @@ export const initializeClientsFromSettings = async (
       ) {
         nextServerInfos.push({
           ...existingServer,
+          owner: expandedConf.owner,
+          visibility: expandedConf.visibility,
+          sharedWithUsers: expandedConf.sharedWithUsers,
           enabled: expandedConf.enabled === undefined ? true : expandedConf.enabled,
         });
         console.log(
@@ -1633,6 +1649,7 @@ export const initializeClientsFromSettings = async (
             name,
             owner: expandedConf.owner,
             visibility: expandedConf.visibility,
+            sharedWithUsers: expandedConf.sharedWithUsers,
             status: 'disconnected',
             error: 'Missing OpenAPI specification URL or schema',
             tools: [],
@@ -1648,6 +1665,7 @@ export const initializeClientsFromSettings = async (
           name,
           owner: expandedConf.owner,
           visibility: expandedConf.visibility,
+          sharedWithUsers: expandedConf.sharedWithUsers,
           status: 'connecting',
           error: null,
           tools: [],
@@ -1761,6 +1779,7 @@ export const initializeClientsFromSettings = async (
         name,
         owner: expandedConf.owner,
         visibility: expandedConf.visibility,
+        sharedWithUsers: expandedConf.sharedWithUsers,
         status: 'connecting',
         error: null,
         tools: [],
@@ -1972,6 +1991,7 @@ export const getServersInfo = async (
         name: server.name,
         owner: server.owner,
         visibility: server.visibility,
+        sharedWithUsers: server.sharedWithUsers,
         // Newly created servers that are enabled should appear as "connecting"
         // until the MCP client initialization completes. Disabled servers remain
         // in the "disconnected" state.
@@ -2207,7 +2227,7 @@ const filterToolsByConfig = async (serverName: string, tools: Tool[]): Promise<T
 
 // Get server by tool name
 const getServerByTool = (toolName: string): ServerInfo | undefined => {
-  return serverInfos.find(
+  return getVisibleServerInfos().find(
     (serverInfo) =>
       serverInfo.enabled !== false && serverInfo.tools.some((tool) => tool.name === toolName),
   );
@@ -3109,7 +3129,7 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
       if (singleServerAppsRoute) {
         targetServerInfo = appsRouteContext.serverInfo;
       } else if (extra && extra.server) {
-        targetServerInfo = getServerByName(extra.server);
+        targetServerInfo = getVisibleServerByName(extra.server);
       } else if (getGroupLookupName(group)) {
         const groupTool = await resolveToolInGroup(group, toolName, false);
         if (groupTool) {
@@ -3121,7 +3141,7 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
         // Find the first server that has this tool.
         // On-demand servers may be sleeping (disconnected) but still advertise
         // their cached tool list — include them as candidates.
-        targetServerInfo = serverInfos.find(
+        targetServerInfo = getVisibleServerInfos().find(
           (serverInfo) =>
             serverInfo.enabled !== false &&
             (serverInfo.status === 'connected' || serverInfo.config?.startOnDemand === true) &&
@@ -3585,7 +3605,7 @@ export const handleGetPromptRequest = async (request: any, extra: any) => {
     let promptNameForServer = name;
     const lookupGroup = getGroupLookupName(group);
     if (extra && extra.server) {
-      server = getServerByName(extra.server);
+      server = getVisibleServerByName(extra.server);
     } else if (lookupGroup) {
       const groupPrompt = await resolvePromptInGroup(lookupGroup, name);
       if (groupPrompt) {
@@ -3594,7 +3614,7 @@ export const handleGetPromptRequest = async (request: any, extra: any) => {
       }
     } else {
       // Find the first server that has this prompt
-      server = serverInfos.find(
+      server = getVisibleServerInfos().find(
         (serverInfo) =>
           serverInfo.status === 'connected' &&
           serverInfo.enabled !== false &&
@@ -4003,7 +4023,7 @@ export const getFilteredServerInfosForGroup = async (
   );
 
   const filteredServerInfos: ServerInfo[] = [];
-  for (const serverInfo of getDataService().filterData(serverInfos)) {
+  for (const serverInfo of getVisibleServerInfos()) {
     if (serverInfo.enabled === false) continue;
     if (options?.requireClient && !serverInfo.client) continue;
 

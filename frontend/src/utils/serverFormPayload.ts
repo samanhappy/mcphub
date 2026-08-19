@@ -33,6 +33,16 @@ const parseCommaSeparatedList = (value?: string): string[] => {
     .filter((item) => item.length > 0);
 };
 
+const normalizeSharedUsers = (usernames?: string[]): string[] => {
+  return Array.from(
+    new Set(
+      (usernames || [])
+        .map((username) => username.trim())
+        .filter((username) => username.length > 0),
+    ),
+  );
+};
+
 const buildOptions = (options?: ServerFormData['options']) => {
   const nextOptions: NonNullable<ServerFormData['options']> = {};
 
@@ -170,6 +180,8 @@ export const buildServerPayload = ({
     description,
     options,
     visibility: formData.visibility ?? 'private',
+    sharedWithUsers:
+      formData.visibility === 'group' ? normalizeSharedUsers(formData.sharedWithUsers) : undefined,
     perSessionClient: formData.perSessionClient === true ? true : undefined,
     startOnDemand: formData.startOnDemand === true ? true : undefined,
     idleTimeoutMs: formData.startOnDemand === true ? (formData.idleTimeoutMs ?? 300000) : undefined,

@@ -18,7 +18,7 @@ describe('serverVisibility', () => {
     });
   });
 
-  it('only exposes the reserved group option when the current visibility is group', () => {
+  it('keeps shared visibility read-only in the quick selector', () => {
     expect(getServerVisibilityOptions(t, 'public')).toEqual([
       { value: 'private', label: 'Private', disabled: false },
       { value: 'public', label: 'Public', disabled: false },
@@ -26,7 +26,7 @@ describe('serverVisibility', () => {
 
     expect(getServerVisibilityOptions(t, 'group')).toEqual([
       { value: 'private', label: 'Private', disabled: false },
-      { value: 'group', label: 'Group', disabled: true },
+      { value: 'group', label: 'Shared', disabled: true },
       { value: 'public', label: 'Public', disabled: false },
     ]);
   });

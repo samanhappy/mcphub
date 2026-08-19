@@ -12,7 +12,18 @@ const rows = {
   aliceGroup: { name: 'aliceGroup', owner: 'alice', visibility: 'group' },
   bobPrivate: { name: 'bobPrivate', owner: 'bob', visibility: 'private' },
   bobPublic: { name: 'bobPublic', owner: 'bob', visibility: 'public' },
-  bobGroup: { name: 'bobGroup', owner: 'bob', visibility: 'group' },
+  bobGroup: {
+    name: 'bobGroup',
+    owner: 'bob',
+    visibility: 'group',
+    sharedWithUsers: ['alice'],
+  },
+  bobUnsharedGroup: {
+    name: 'bobUnsharedGroup',
+    owner: 'bob',
+    visibility: 'group',
+    sharedWithUsers: ['charlie'],
+  },
   systemPrivate: { name: 'systemPrivate', owner: undefined, visibility: 'private' },
   systemPublic: { name: 'systemPublic', owner: undefined, visibility: 'public' },
   systemGroup: { name: 'systemGroup', owner: undefined, visibility: 'group' },
@@ -57,16 +68,20 @@ describe('DataService.filterData (visibility, #817)', () => {
       expect(dataService.filterData([rows.aliceGroup], alice)).toEqual([rows.aliceGroup]);
     });
 
-    it('does NOT see another user\'s private rows', () => {
+    it("does NOT see another user's private rows", () => {
       expect(dataService.filterData([rows.bobPrivate], alice)).toEqual([]);
     });
 
-    it('sees another user\'s public rows', () => {
+    it("sees another user's public rows", () => {
       expect(dataService.filterData([rows.bobPublic], alice)).toEqual([rows.bobPublic]);
     });
 
-    it('does NOT see another user\'s group rows yet (reserved value, not implemented)', () => {
-      expect(dataService.filterData([rows.bobGroup], alice)).toEqual([]);
+    it("sees another user's group row when explicitly shared", () => {
+      expect(dataService.filterData([rows.bobGroup], alice)).toEqual([rows.bobGroup]);
+    });
+
+    it("does NOT see another user's group row when not explicitly shared", () => {
+      expect(dataService.filterData([rows.bobUnsharedGroup], alice)).toEqual([]);
     });
 
     it('does NOT see system (owner=null) private rows', () => {
@@ -77,7 +92,7 @@ describe('DataService.filterData (visibility, #817)', () => {
       expect(dataService.filterData([rows.systemPublic], alice)).toEqual([rows.systemPublic]);
     });
 
-    it('does NOT see system group rows (reserved value)', () => {
+    it('does NOT see group rows that are not shared with them', () => {
       expect(dataService.filterData([rows.systemGroup], alice)).toEqual([]);
     });
 
@@ -91,17 +106,31 @@ describe('DataService.filterData (visibility, #817)', () => {
       const result = dataService.filterData(allRows, alice);
       const names = result.map((r) => r.name).sort();
       expect(names).toEqual(
-        ['alicePrivate', 'alicePublic', 'aliceGroup', 'bobPublic', 'systemPublic'].sort(),
+        [
+          'alicePrivate',
+          'alicePublic',
+          'aliceGroup',
+          'bobPublic',
+          'bobGroup',
+          'systemPublic',
+        ].sort(),
       );
     });
   });
 
   describe('a different non-admin user (bob) sees the symmetric set', () => {
-    it('symmetry check: bob sees his own rows + everyone\'s public rows', () => {
+    it("symmetry check: bob sees his own rows + everyone's public rows", () => {
       const result = dataService.filterData(allRows, bob);
       const names = result.map((r) => r.name).sort();
       expect(names).toEqual(
-        ['bobPrivate', 'bobPublic', 'bobGroup', 'alicePublic', 'systemPublic'].sort(),
+        [
+          'bobPrivate',
+          'bobPublic',
+          'bobGroup',
+          'bobUnsharedGroup',
+          'alicePublic',
+          'systemPublic',
+        ].sort(),
       );
     });
   });

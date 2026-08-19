@@ -117,6 +117,10 @@ export class ServerRepository {
       .createQueryBuilder('server')
       .where('server.owner = :username', { username })
       .orWhere('server.visibility = :visibility', { visibility: 'public' })
+      .orWhere(
+        "server.visibility = :sharedVisibility AND :username = ANY(COALESCE(server.sharedWithUsers, ARRAY[]::text[]))",
+        { sharedVisibility: 'group', username },
+      )
       .orderBy('server.enabled', 'DESC')
       .addOrderBy('server.createdAt', 'ASC')
       .skip(skip)

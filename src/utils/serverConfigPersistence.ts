@@ -32,6 +32,11 @@ const normalizeStringArray = (value?: string[]): string[] | undefined => {
   return normalized.length > 0 ? normalized : undefined;
 };
 
+const normalizeSharedUsers = (value?: string[]): string[] | undefined => {
+  const normalized = normalizeStringArray(value);
+  return normalized ? Array.from(new Set(normalized)) : undefined;
+};
+
 const normalizeOptions = (
   options?: ServerConfig['options'],
 ): ServerConfig['options'] | undefined => {
@@ -171,8 +176,10 @@ export const normalizeServerConfigForPersistence = (config: ServerConfig): Serve
 
   // Default visibility to 'private' so file-defined and freshly-created servers behave
   // identically to the pre-#817 implicit admin-only behaviour. Operators opt servers in
-  // to 'public' (or eventually 'group') from the dashboard.
+  // to 'public' or restricted 'group' sharing from the dashboard.
   const visibility = config.visibility ?? 'private';
+  const sharedWithUsers =
+    visibility === 'group' ? normalizeSharedUsers(config.sharedWithUsers) : undefined;
 
   const normalized: ServerConfig = {
     ...config,
@@ -180,6 +187,7 @@ export const normalizeServerConfigForPersistence = (config: ServerConfig): Serve
     description,
     owner,
     visibility,
+    sharedWithUsers,
     options,
     perSessionClient: config.perSessionClient === true ? true : undefined,
     // The dashboard sends `startOnDemand: undefined` when the toggle is off, which

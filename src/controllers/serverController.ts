@@ -193,19 +193,29 @@ const toComparableServerConfig = (config: ServerConfig | ServerRecord): unknown 
   };
 
   const normalized = normalizeServerConfigForPersistence(rest);
-  const { visibility: _visibility, ...comparableConfig } = normalized;
+  const {
+    visibility: _visibility,
+    sharedWithUsers: _sharedWithUsers,
+    ...comparableConfig
+  } = normalized;
 
   return stripUndefinedDeep(comparableConfig);
 };
 
-const isVisibilityOnlyServerUpdate = (
+const isAccessOnlyServerUpdate = (
   existingServer: ServerRecord,
   nextConfig: ServerConfig,
 ): boolean => {
-  const currentVisibility = existingServer.visibility ?? 'private';
-  const nextVisibility = nextConfig.visibility ?? 'private';
+  const currentAccess = {
+    visibility: existingServer.visibility ?? 'private',
+    sharedWithUsers: existingServer.sharedWithUsers ?? [],
+  };
+  const nextAccess = {
+    visibility: nextConfig.visibility ?? 'private',
+    sharedWithUsers: nextConfig.sharedWithUsers ?? [],
+  };
 
-  if (currentVisibility === nextVisibility) {
+  if (isDeepStrictEqual(currentAccess, nextAccess)) {
     return false;
   }
 
@@ -286,6 +296,33 @@ export const getAllServers = async (req: Request, res: Response): Promise<void> 
     res.status(500).json({
       success: false,
       message: 'Failed to get servers information',
+    });
+  }
+};
+
+export const getServerShareCandidates = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
+  try {
+    const { name } = req.params;
+    const server = await loadAuthorizedServer(req, res, name);
+    if (!server) {
+      return;
+    }
+
+    const users = await getUserDao().findAll();
+    const usernames = users
+      .map((user) => user.username)
+      .filter((username) => username !== server.owner)
+      .sort((left, right) => left.localeCompare(right));
+
+    res.json({ success: true, data: usernames });
+  } catch (error) {
+    console.error('Failed to get server share candidates:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get server share candidates',
     });
   }
 };
@@ -928,7 +965,7 @@ export const updateServer = async (req: Request, res: Response): Promise<void> =
     // Use the final server name (new name if renaming, otherwise original name)
     const finalName = isRenaming ? newName : name;
 
-    if (!isRenaming && isVisibilityOnlyServerUpdate(existingServer, normalizedConfig)) {
+    if (!isRenaming && isAccessOnlyServerUpdate(existingServer, normalizedConfig)) {
       const serverDao = getServerDao();
       const updatedServer = await serverDao.update(name, normalizedConfig);
 
@@ -940,7 +977,11 @@ export const updateServer = async (req: Request, res: Response): Promise<void> =
         return;
       }
 
-      updateServerInfoVisibility(finalName, normalizedConfig.visibility ?? 'private');
+      updateServerInfoVisibility(
+        finalName,
+        normalizedConfig.visibility ?? 'private',
+        normalizedConfig.sharedWithUsers,
+      );
       broadcastToolListChanged();
 
       res.json({

@@ -18,6 +18,7 @@ MCPHub makes it easy to manage and scale multiple MCP (Model Context Protocol) s
 - **Centralized Management** - Monitor and control all MCP servers from a unified dashboard
 - **Flexible Routing** - Access all servers, specific groups, or individual servers via HTTP/SSE
 - **Granular Group Visibility** - Control Tool, Prompt, and Resource visibility independently for each server inside a group
+- **Per-Server Sharing** - Keep servers private, share them with selected users, or make them public
 - **Smart Routing** - AI-powered tool discovery using vector semantic search ([Learn more](https://docs.mcphub.app/features/smart-routing))
 - **MCP Apps Proxy** - Transparently forward interactive MCP Apps on single-server routes ([Learn more](https://docs.mcphub.app/features/mcp-apps))
 - **Tool Result Compression** - Transparently reduce large text tool outputs before they reach clients

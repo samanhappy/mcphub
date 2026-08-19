@@ -117,4 +117,18 @@ describe('smartRoutingService group server alias', () => {
       }),
     );
   });
+
+  it('does not search embeddings when the current user has no visible servers', async () => {
+    initSmartRoutingService(
+      () => [],
+      jest.fn(async (_serverName, tools) => tools),
+      jest.fn(async (_group, _serverName, tools) => tools),
+    );
+
+    const result = await handleSearchToolsRequest('fetch', 10, 'smart-session');
+    const payload = JSON.parse(result.content[0].text);
+
+    expect(mockSearchToolsByVector).not.toHaveBeenCalled();
+    expect(payload.tools).toEqual([]);
+  });
 });

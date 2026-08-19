@@ -413,7 +413,8 @@ export const handleSearchToolsRequest = async (
 
   // Determine server filtering based on group
   let group = getGroup(sessionId);
-  let servers: string[] | undefined = undefined; // No server filtering by default
+  const visibleServerNames = new Set(getServerInfos().map((serverInfo) => serverInfo.name));
+  let servers: string[] = Array.from(visibleServerNames);
   let serverConfigsByName = new Map<string, IGroupServerConfig>();
 
   // If group is in format $smart/{group}, filter servers to that group
@@ -425,7 +426,7 @@ export const handleSearchToolsRequest = async (
     serverConfigsByName = await getGroupServerConfigMap(targetGroup);
     const serversInGroup = await getServersInGroup(targetGroup);
     if (serversInGroup !== undefined && serversInGroup !== null) {
-      servers = serversInGroup;
+      servers = serversInGroup.filter((serverName) => visibleServerNames.has(serverName));
       if (servers && servers.length > 0) {
         console.log(`Filtering search to servers in group "${targetGroup}": ${servers.join(', ')}`);
       } else {
@@ -434,7 +435,8 @@ export const handleSearchToolsRequest = async (
     }
   }
 
-  const searchResults = await searchToolsByVector(query, limitNum, thresholdNum, servers);
+  const searchResults =
+    servers.length > 0 ? await searchToolsByVector(query, limitNum, thresholdNum, servers) : [];
   console.log(`Search results: ${JSON.stringify(searchResults)}`);
 
   // Get smart routing config to check progressive disclosure setting

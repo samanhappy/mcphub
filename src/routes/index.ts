@@ -5,6 +5,7 @@ import {
   getAllServers,
   getAllSettings,
   getServerConfig,
+  getServerShareCandidates,
   createServer,
   batchCreateServers,
   updateServer,
@@ -226,6 +227,7 @@ export const initRoutes = async (app: express.Application): Promise<void> => {
 
   // API routes protected by auth middleware in middlewares/index.ts and rate limited here
   authenticatedRouter.get('/servers', getAllServers);
+  authenticatedRouter.get('/servers/:name/share-candidates', getServerShareCandidates);
   authenticatedRouter.get('/servers/:name', getServerConfig);
   authenticatedRouter.get('/settings', getAllSettings);
   authenticatedRouter.post('/servers', createServer);

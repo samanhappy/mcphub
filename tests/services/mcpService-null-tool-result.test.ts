@@ -58,9 +58,18 @@ jest.mock('../../src/services/vectorSearchService.js', () => ({
   saveToolsAsVectorEmbeddings: jest.fn().mockResolvedValue(undefined),
 }));
 
+let currentUser: { username: string; isAdmin: boolean } | null = null;
 jest.mock('../../src/services/services.js', () => ({
   getDataService: jest.fn(() => ({
-    filterData: (data: any) => data,
+    filterData: (data: any[]) => {
+      if (!currentUser || currentUser.isAdmin) return data;
+      return data.filter(
+        (item) =>
+          item.owner === currentUser?.username ||
+          item.visibility === 'public' ||
+          (item.visibility === 'group' && item.sharedWithUsers?.includes(currentUser?.username)),
+      );
+    },
   })),
 }));
 
@@ -98,6 +107,7 @@ jest.mock('../../src/dao/index.js', () => ({
   })),
   getBuiltinPromptDao: jest.fn(() => ({
     findEnabled: jest.fn(async () => []),
+    findByName: jest.fn(async () => undefined),
   })),
   getBuiltinResourceDao: jest.fn(() => ({
     findEnabled: jest.fn(async () => []),
@@ -120,6 +130,7 @@ import * as mcpService from '../../src/services/mcpService.js';
 describe('handleCallToolRequest null / primitive tool result payloads (issue #922)', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    currentUser = null;
   });
 
   const createServerInfo = (callToolImpl: jest.Mock) => ({
@@ -138,10 +149,7 @@ describe('handleCallToolRequest null / primitive tool result payloads (issue #92
       isError: false,
     });
     const serverInfo = createServerInfo(callTool) as any;
-
-    const getServerByNameSpy = jest
-      .spyOn(mcpService, 'getServerByName')
-      .mockReturnValue(serverInfo);
+    mcpService.setServerInfosForTest([serverInfo]);
 
     const result = await mcpService.handleCallToolRequest(
       {
@@ -159,7 +167,6 @@ describe('handleCallToolRequest null / primitive tool result payloads (issue #92
       },
     );
 
-    getServerByNameSpy.mockRestore();
     return { result, callTool };
   };
 
@@ -203,10 +210,7 @@ describe('handleCallToolRequest null / primitive tool result payloads (issue #92
       isError: false,
     });
     const serverInfo = createServerInfo(callTool) as any;
-
-    const getServerByNameSpy = jest
-      .spyOn(mcpService, 'getServerByName')
-      .mockReturnValue(serverInfo);
+    mcpService.setServerInfosForTest([serverInfo]);
 
     const result = await mcpService.handleCallToolRequest(
       {
@@ -218,9 +222,125 @@ describe('handleCallToolRequest null / primitive tool result payloads (issue #92
       { sessionId: 'session-1', server: 'null-server' },
     );
 
-    getServerByNameSpy.mockRestore();
-
     expect(result.isError).toBe(true);
     expect(result.content[0].text).toContain('401');
+  });
+
+  it('rejects a guessed global tool call when its server is not visible to the user', async () => {
+    currentUser = { username: 'alice', isAdmin: false };
+    const callTool = jest.fn().mockResolvedValue({ content: [], isError: false });
+    mcpService.setServerInfosForTest([
+      {
+        name: 'private-server',
+        owner: 'bob',
+        visibility: 'private',
+        status: 'connected',
+        enabled: true,
+        error: null,
+        tools: [{ name: 'private-server::secret' }],
+        prompts: [],
+        resources: [],
+        client: { callTool },
+        createTime: 0,
+      } as any,
+    ]);
+
+    const result = await mcpService.handleCallToolRequest(
+      { params: { name: 'private-server::secret', arguments: {} } },
+      { sessionId: '' },
+    );
+
+    expect(callTool).not.toHaveBeenCalled();
+    expect(result.isError).toBe(true);
+  });
+
+  it('rejects a direct server route when its server is not visible to the user', async () => {
+    currentUser = { username: 'alice', isAdmin: false };
+    const callTool = jest.fn().mockResolvedValue({ content: [], isError: false });
+    mcpService.setServerInfosForTest([
+      {
+        name: 'private-server',
+        owner: 'bob',
+        visibility: 'private',
+        status: 'connected',
+        enabled: true,
+        error: null,
+        tools: [{ name: 'private-server::secret' }],
+        prompts: [],
+        resources: [],
+        client: { callTool },
+        createTime: 0,
+      } as any,
+    ]);
+
+    const result = await mcpService.handleCallToolRequest(
+      {
+        params: {
+          name: 'call_tool',
+          arguments: { toolName: 'private-server::secret', arguments: {} },
+        },
+      },
+      { sessionId: 'session-1', server: 'private-server' },
+    );
+
+    expect(callTool).not.toHaveBeenCalled();
+    expect(result.isError).toBe(true);
+  });
+
+  it('rejects a direct prompt request when its server is not visible to the user', async () => {
+    currentUser = { username: 'alice', isAdmin: false };
+    const getPrompt = jest.fn().mockResolvedValue({ messages: [] });
+    mcpService.setServerInfosForTest([
+      {
+        name: 'private-server',
+        owner: 'bob',
+        visibility: 'private',
+        status: 'connected',
+        enabled: true,
+        error: null,
+        tools: [],
+        prompts: [{ name: 'private-server::secret-prompt' }],
+        resources: [],
+        client: { getPrompt },
+        createTime: 0,
+      } as any,
+    ]);
+
+    const result = await mcpService.handleGetPromptRequest(
+      { params: { name: 'private-server::secret-prompt', arguments: {} } },
+      { sessionId: 'session-1', server: 'private-server' },
+    );
+
+    expect(getPrompt).not.toHaveBeenCalled();
+    expect(result.isError).toBe(true);
+  });
+
+  it('allows a guessed global tool call when the server is explicitly shared', async () => {
+    currentUser = { username: 'alice', isAdmin: false };
+    const callTool = jest.fn().mockResolvedValue({ content: [], isError: false });
+    mcpService.setServerInfosForTest([
+      {
+        name: 'shared-server',
+        owner: 'bob',
+        visibility: 'group',
+        sharedWithUsers: ['alice'],
+        status: 'connected',
+        enabled: true,
+        error: null,
+        tools: [{ name: 'shared-server::allowed' }],
+        prompts: [],
+        resources: [],
+        client: { callTool },
+        createTime: 0,
+      } as any,
+    ]);
+
+    const result = await mcpService.handleCallToolRequest(
+      { params: { name: 'shared-server::allowed', arguments: {} } },
+      { sessionId: '' },
+    );
+
+    expect(callTool).toHaveBeenCalledTimes(1);
+    expect(result.isError).toBe(false);
   });
 });

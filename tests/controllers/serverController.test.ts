@@ -85,7 +85,9 @@ jest.mock('../../src/services/mcpService.js', () => ({
   syncToolEmbedding: jest.fn((...args: unknown[]) => mockSyncToolEmbedding(...args)),
   toggleServerStatus: mockToggleServerStatus,
   reconnectServer: mockReconnectServer,
-  updateServerInfoVisibility: jest.fn((...args: unknown[]) => mockUpdateServerInfoVisibility(...args)),
+  updateServerInfoVisibility: jest.fn((...args: unknown[]) =>
+    mockUpdateServerInfoVisibility(...args),
+  ),
 }));
 
 jest.mock('../../src/services/vectorSearchService.js', () => ({
@@ -114,6 +116,7 @@ import {
   getAllSettings,
   getAllServers,
   getServerConfig,
+  getServerShareCandidates,
   resetPromptDescription,
   resetResourceDescription,
   resetToolDescription,
@@ -121,6 +124,55 @@ import {
   updateServer,
   updateSystemConfig,
 } from '../../src/controllers/serverController.js';
+
+describe('serverController - server share candidates', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockServerDao.findById.mockResolvedValue({
+      name: 'team-server',
+      owner: 'bob',
+      visibility: 'group',
+    });
+    mockUserDao.findAll.mockResolvedValue([
+      { username: 'charlie', password: 'secret', isAdmin: false },
+      { username: 'bob', password: 'secret', isAdmin: false },
+      { username: 'alice', password: 'secret', isAdmin: false },
+    ]);
+  });
+
+  it('returns sorted usernames to the server owner without passwords', async () => {
+    const json = jest.fn();
+    const status = jest.fn().mockReturnThis();
+    const req = {
+      params: { name: 'team-server' },
+      user: { username: 'bob', isAdmin: false },
+    } as unknown as Request;
+    const res = { json, status } as unknown as Response;
+
+    await getServerShareCandidates(req, res);
+
+    expect(status).not.toHaveBeenCalledWith(403);
+    expect(json).toHaveBeenCalledWith({
+      success: true,
+      data: ['alice', 'charlie'],
+    });
+  });
+
+  it('rejects a shared user who does not own the server', async () => {
+    const json = jest.fn();
+    const status = jest.fn().mockReturnThis();
+    const req = {
+      params: { name: 'team-server' },
+      user: { username: 'alice', isAdmin: false },
+    } as unknown as Request;
+    const res = { json, status } as unknown as Response;
+
+    await getServerShareCandidates(req, res);
+
+    expect(status).toHaveBeenCalledWith(403);
+    expect(mockUserDao.findAll).not.toHaveBeenCalled();
+  });
+});
 
 describe('serverController - stdio servers without arguments', () => {
   beforeEach(() => {
@@ -717,7 +769,7 @@ describe('serverController - updateServer', () => {
       keepAliveInterval: 60000,
       openapi: undefined,
     });
-    expect(mockUpdateServerInfoVisibility).toHaveBeenCalledWith('test-server', 'public');
+    expect(mockUpdateServerInfoVisibility).toHaveBeenCalledWith('test-server', 'public', undefined);
     expect(mockBroadcastToolListChanged).toHaveBeenCalled();
     expect(mockAddOrUpdateServer).not.toHaveBeenCalled();
     expect(mockNotifyToolChanged).not.toHaveBeenCalled();
@@ -725,6 +777,33 @@ describe('serverController - updateServer', () => {
       success: true,
       message: 'Server updated successfully',
     });
+  });
+
+  it('updates the sharing allowlist without reinitializing the server runtime', async () => {
+    mockRequest.body.config.visibility = 'group';
+    mockRequest.body.config.sharedWithUsers = ['bob'];
+    mockServerDao.findById.mockResolvedValue({
+      name: 'test-server',
+      type: 'sse',
+      url: 'https://example.com/sse',
+      enabled: true,
+      owner: 'admin',
+      visibility: 'group',
+      sharedWithUsers: ['alice'],
+    });
+
+    await updateServer(mockRequest as Request, mockResponse as Response);
+
+    expect(mockServerDao.update).toHaveBeenCalledWith(
+      'test-server',
+      expect.objectContaining({
+        visibility: 'group',
+        sharedWithUsers: ['bob'],
+      }),
+    );
+    expect(mockUpdateServerInfoVisibility).toHaveBeenCalledWith('test-server', 'group', ['bob']);
+    expect(mockBroadcastToolListChanged).toHaveBeenCalled();
+    expect(mockAddOrUpdateServer).not.toHaveBeenCalled();
   });
 
   describe('when renaming a server', () => {
@@ -1349,9 +1428,7 @@ describe('serverController - toggleServer (issue #938)', () => {
     expect(mockBroadcastToolListChanged).not.toHaveBeenCalled();
     expect(mockBroadcastPromptListChanged).not.toHaveBeenCalled();
     expect(mockBroadcastResourceListChanged).not.toHaveBeenCalled();
-    expect(json).toHaveBeenCalledWith(
-      expect.objectContaining({ success: true }),
-    );
+    expect(json).toHaveBeenCalledWith(expect.objectContaining({ success: true }));
   });
 
   it('disabling a server broadcasts tools/prompts/resources and does not trigger a fleet-wide re-init', async () => {
@@ -1364,9 +1441,7 @@ describe('serverController - toggleServer (issue #938)', () => {
     expect(mockBroadcastToolListChanged).toHaveBeenCalledTimes(1);
     expect(mockBroadcastPromptListChanged).toHaveBeenCalledTimes(1);
     expect(mockBroadcastResourceListChanged).toHaveBeenCalledTimes(1);
-    expect(json).toHaveBeenCalledWith(
-      expect.objectContaining({ success: true }),
-    );
+    expect(json).toHaveBeenCalledWith(expect.objectContaining({ success: true }));
   });
 });
 

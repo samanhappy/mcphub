@@ -99,6 +99,41 @@ describe('buildServerPayload', () => {
     expect(payload.config).toHaveProperty('keepAliveInterval', undefined);
   });
 
+  it('persists explicit user sharing only for group visibility', () => {
+    const payload = buildServerPayload({
+      formData: {
+        name: 'shared-server',
+        description: '',
+        url: 'https://example.com/mcp',
+        command: '',
+        arguments: '',
+        args: [],
+        env: [],
+        headers: [],
+        visibility: 'group',
+        sharedWithUsers: [' alice ', 'bob', 'alice', ''],
+        options: {},
+        oauth: {},
+        openapi: {
+          inputMode: 'url',
+          url: '',
+          schema: '',
+          version: '3.1.0',
+          securityType: 'none',
+          passthroughHeaders: '',
+        },
+      },
+      serverType: 'streamable-http',
+      envVars: [],
+      headerVars: [],
+    });
+
+    expect(payload.config).toMatchObject({
+      visibility: 'group',
+      sharedWithUsers: ['alice', 'bob'],
+    });
+  });
+
   it('clears remote-only fields when switching to stdio', () => {
     const payload = buildServerPayload({
       formData: {
