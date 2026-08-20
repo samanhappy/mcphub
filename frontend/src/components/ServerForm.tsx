@@ -109,6 +109,9 @@ const ServerForm = ({
     },
     // Per-session client isolation initialization
     perSessionClient: initialData?.config?.perSessionClient === true,
+    // Proxychains proxy config: round-trip the stored value so editing the
+    // server does not silently drop it (there is no in-form editor for it).
+    proxy: initialData?.config?.proxy,
     // On-demand spawning initialization
     startOnDemand: initialData?.config?.startOnDemand === true,
     idleTimeoutMs: initialData?.config?.idleTimeoutMs ?? 300000,
@@ -353,35 +356,37 @@ const ServerForm = ({
             {t('server.sectionBasicInfo', 'Basic Info')}
           </h3>
 
-          <div className="mb-4">
-            <label className="block text-sm font-medium mb-1.5 text-[var(--hub-ink-2)]" htmlFor="name">
-              {t('server.name')}
-            </label>
-            <input
-              type="text"
-              name="name"
-              id="name"
-              value={formData.name}
-              onChange={handleInputChange}
-              className="w-full py-2 px-3 form-input"
-              placeholder="e.g.: time-mcp"
-              required
-            />
-          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+            <div className="md:col-span-1">
+              <label className="block text-sm font-medium mb-1.5 text-[var(--hub-ink-2)]" htmlFor="name">
+                {t('server.name')}
+              </label>
+              <input
+                type="text"
+                name="name"
+                id="name"
+                value={formData.name}
+                onChange={handleInputChange}
+                className="w-full py-2 px-3 form-input"
+                placeholder="e.g.: time-mcp"
+                required
+              />
+            </div>
 
-          <div className="mb-4">
-            <label className="block text-sm font-medium mb-1.5 text-[var(--hub-ink-2)]" htmlFor="description">
-              {t('server.description')}
-            </label>
-            <input
-              type="text"
-              name="description"
-              id="description"
-              value={formData.description || ''}
-              onChange={handleInputChange}
-              className="w-full py-2 px-3 form-input"
-              placeholder={t('server.descriptionPlaceholder')}
-            />
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium mb-1.5 text-[var(--hub-ink-2)]" htmlFor="description">
+                {t('server.description')}
+              </label>
+              <input
+                type="text"
+                name="description"
+                id="description"
+                value={formData.description || ''}
+                onChange={handleInputChange}
+                className="w-full py-2 px-3 form-input"
+                placeholder={t('server.descriptionPlaceholder')}
+              />
+            </div>
           </div>
         </div>
 
@@ -720,6 +725,59 @@ const ServerForm = ({
                   </div>
                 )}
 
+                {/* OpenID Connect Configuration */}
+                {formData.openapi?.securityType === 'openIdConnect' && (
+                  <div className="mb-4 p-4 border border-gray-200 dark:border-gray-700 rounded bg-gray-50 dark:bg-gray-800">
+                    <h4 className="text-sm font-medium mb-3 text-gray-700 dark:text-gray-300">
+                      {t('server.openapi.openIdConnectConfig')}
+                    </h4>
+                    <div className="grid grid-cols-1 gap-3">
+                      <div>
+                        <label className="block text-xs text-gray-600 mb-1">
+                          {t('server.openapi.openIdConnectUrl')}
+                        </label>
+                        <input
+                          type="url"
+                          value={formData.openapi?.openIdConnectUrl || ''}
+                          onChange={(e) =>
+                            setFormData((prev) => ({
+                              ...prev,
+                              openapi: {
+                                ...prev.openapi,
+                                openIdConnectUrl: e.target.value,
+                                url: prev.openapi?.url || '',
+                              },
+                            }))
+                          }
+                          className="w-full border rounded px-2 py-1 text-sm focus:outline-none form-input"
+                          placeholder="https://example.com/.well-known/openid_configuration"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-gray-600 mb-1">
+                          {t('server.openapi.openIdConnectToken')}
+                        </label>
+                        <input
+                          type="password"
+                          value={formData.openapi?.openIdConnectToken || ''}
+                          onChange={(e) =>
+                            setFormData((prev) => ({
+                              ...prev,
+                              openapi: {
+                                ...prev.openapi,
+                                openIdConnectToken: e.target.value,
+                                url: prev.openapi?.url || '',
+                              },
+                            }))
+                          }
+                          className="w-full border rounded px-2 py-1 text-sm focus:outline-none form-input"
+                          placeholder="id-token"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {/* OAuth2 Configuration */}
                 {formData.openapi?.securityType === 'oauth2' && (
                   <div className="mb-4 p-4 border border-gray-200 dark:border-gray-700 rounded bg-gray-50 dark:bg-gray-800">
@@ -815,85 +873,6 @@ const ServerForm = ({
                   </div>
                 )}
 
-                {/* OpenID Connect Configuration */}
-                {formData.openapi?.securityType === 'openIdConnect' && (
-                  <div className="mb-4 p-4 border border-gray-200 dark:border-gray-700 rounded bg-gray-50 dark:bg-gray-800">
-                    <h4 className="text-sm font-medium mb-3 text-gray-700 dark:text-gray-300">
-                      {t('server.openapi.openIdConnectConfig')}
-                    </h4>
-                    <div className="grid grid-cols-1 gap-3">
-                      <div>
-                        <label className="block text-xs text-gray-600 mb-1">
-                          {t('server.openapi.openIdConnectUrl')}
-                        </label>
-                        <input
-                          type="url"
-                          value={formData.openapi?.openIdConnectUrl || ''}
-                          onChange={(e) =>
-                            setFormData((prev) => ({
-                              ...prev,
-                              openapi: {
-                                ...prev.openapi,
-                                openIdConnectUrl: e.target.value,
-                                url: prev.openapi?.url || '',
-                              },
-                            }))
-                          }
-                          className="w-full border rounded px-2 py-1 text-sm focus:outline-none form-input"
-                          placeholder="https://example.com/.well-known/openid_configuration"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs text-gray-600 mb-1">
-                          {t('server.openapi.openIdConnectToken')}
-                        </label>
-                        <input
-                          type="password"
-                          value={formData.openapi?.openIdConnectToken || ''}
-                          onChange={(e) =>
-                            setFormData((prev) => ({
-                              ...prev,
-                              openapi: {
-                                ...prev.openapi,
-                                openIdConnectToken: e.target.value,
-                                url: prev.openapi?.url || '',
-                              },
-                            }))
-                          }
-                          className="w-full border rounded px-2 py-1 text-sm focus:outline-none form-input"
-                          placeholder="id-token"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Passthrough Headers Configuration */}
-                <div className="mb-4">
-                  <label className="block text-sm font-medium mb-1.5 text-gray-700 dark:text-gray-300">
-                    {t('server.openapi.passthroughHeaders')}
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.openapi?.passthroughHeaders || ''}
-                    onChange={(e) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        openapi: {
-                          ...prev.openapi,
-                          passthroughHeaders: e.target.value,
-                          url: prev.openapi?.url || '',
-                        },
-                      }))
-                    }
-                    className="w-full py-2 px-3 form-input"
-                    placeholder="Authorization, X-API-Key, X-Custom-Header"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">
-                    {t('server.openapi.passthroughHeadersHelp')}
-                  </p>
-                </div>
-
                 {/* Cookie Session Handling */}
                 <div className="mb-4">
                   <div className="flex items-center mb-1">
@@ -937,7 +916,7 @@ const ServerForm = ({
                     <button
                       type="button"
                       onClick={addHeaderVar}
-                      className="bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-1 px-2 rounded text-sm flex items-center justify-center min-w-[30px] min-h-[30px] btn-primary"
+                      className="hub-btn primary !w-[30px] !h-[30px] !p-0 justify-center text-base font-bold"
                     >
                       +
                     </button>
@@ -1002,7 +981,7 @@ const ServerForm = ({
                     <button
                       type="button"
                       onClick={addHeaderVar}
-                      className="bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-1 px-2 rounded text-sm flex items-center justify-center min-w-[30px] min-h-[30px] btn-primary"
+                      className="hub-btn primary !w-[30px] !h-[30px] !p-0 justify-center text-base font-bold"
                     >
                       +
                     </button>
@@ -1038,27 +1017,6 @@ const ServerForm = ({
                 </div>
 
                 <div className="mb-4">
-                  <label className="block text-sm font-medium mb-1.5 text-gray-700 dark:text-gray-300">
-                    {t('server.openapi.passthroughHeaders')}
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.passthroughHeaders || ''}
-                    onChange={(e) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        passthroughHeaders: e.target.value,
-                      }))
-                    }
-                    className="w-full py-2 px-3 form-input"
-                    placeholder="Authorization, X-Custom-User-Id"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">
-                    {t('server.openapi.passthroughHeadersHelp')}
-                  </p>
-                </div>
-
-                <div className="mb-4">
                   <div className="flex justify-between items-center mb-2">
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                       {t('server.envVars')}
@@ -1066,7 +1024,7 @@ const ServerForm = ({
                     <button
                       type="button"
                       onClick={addEnvVar}
-                      className="bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-1 px-2 rounded text-sm flex items-center justify-center min-w-[30px] min-h-[30px] btn-primary"
+                      className="hub-btn primary !w-[30px] !h-[30px] !p-0 justify-center text-base font-bold"
                     >
                       +
                     </button>
@@ -1099,54 +1057,6 @@ const ServerForm = ({
                       </button>
                     </div>
                   ))}
-                </div>
-
-                <div className="mb-4">
-                  <div
-                    className="flex items-center justify-between cursor-pointer bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 p-3 rounded border border-gray-200 dark:border-gray-700"
-                    onClick={() => setIsOAuthSectionExpanded(!isOAuthSectionExpanded)}
-                  >
-                    <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                      {t('server.oauth.sectionTitle')}
-                    </label>
-                    <span className="text-gray-500 text-sm">{isOAuthSectionExpanded ? '▼' : '▶'}</span>
-                  </div>
-
-                  {isOAuthSectionExpanded && (
-                    <div className="border border-gray-200 dark:border-gray-700 rounded-b p-4 bg-gray-50 dark:bg-gray-800 border-t-0">
-                      <p className="text-xs text-gray-500 mb-3">
-                        {t('server.oauth.sectionDescription')}
-                      </p>
-                      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                        <div>
-                          <label className="block text-xs text-gray-600 mb-1">
-                            {t('server.oauth.clientId')}
-                          </label>
-                          <input
-                            type="text"
-                            value={formData.oauth?.clientId || ''}
-                            onChange={(e) => handleOAuthChange('clientId', e.target.value)}
-                            className="w-full py-2 px-3 form-input"
-                            placeholder="client id"
-                            autoComplete="off"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-xs text-gray-600 mb-1">
-                            {t('server.oauth.clientSecret')}
-                          </label>
-                          <input
-                            type="password"
-                            value={formData.oauth?.clientSecret || ''}
-                            onChange={(e) => handleOAuthChange('clientSecret', e.target.value)}
-                            className="w-full py-2 px-3 form-input"
-                            placeholder="client secret"
-                            autoComplete="off"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  )}
                 </div>
               </>
             ) : (
@@ -1189,7 +1099,7 @@ const ServerForm = ({
                     <button
                       type="button"
                       onClick={addEnvVar}
-                      className="bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-1 px-2 rounded text-sm flex items-center justify-center min-w-[30px] min-h-[30px] btn-primary"
+                      className="hub-btn primary !w-[30px] !h-[30px] !p-0 justify-center text-base font-bold"
                     >
                       +
                     </button>
@@ -1333,6 +1243,100 @@ const ServerForm = ({
                   </div>
                 )}
               </div>
+
+              {/* Passthrough Headers Configuration */}
+              <div>
+                <label className="block text-sm font-medium mb-1.5 text-[var(--hub-ink-2)]">
+                  {t('server.openapi.passthroughHeaders')}
+                </label>
+                {serverType === 'openapi' ? (
+                  <>
+                    <input
+                      type="text"
+                      value={formData.openapi?.passthroughHeaders || ''}
+                      onChange={(e) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          openapi: {
+                            ...prev.openapi,
+                            passthroughHeaders: e.target.value,
+                            url: prev.openapi?.url || '',
+                          },
+                        }))
+                      }
+                      className="w-full py-2 px-3 form-input"
+                      placeholder="Authorization, X-API-Key, X-Custom-Header"
+                    />
+                  </>
+                ) : (
+                  <input
+                    type="text"
+                    value={formData.passthroughHeaders || ''}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        passthroughHeaders: e.target.value,
+                      }))
+                    }
+                    className="w-full py-2 px-3 form-input"
+                    placeholder="Authorization, X-Custom-User-Id"
+                  />
+                )}
+                <p className="text-xs text-gray-500 mt-1">
+                  {t('server.openapi.passthroughHeadersHelp')}
+                </p>
+              </div>
+
+              {/* OAuth Configuration - non-OpenAPI types */}
+              {serverType !== 'openapi' && (
+                <div>
+                  <div
+                    className="flex items-center justify-between cursor-pointer bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 p-3 rounded border border-gray-200 dark:border-gray-700"
+                    onClick={() => setIsOAuthSectionExpanded(!isOAuthSectionExpanded)}
+                  >
+                    <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                      {t('server.oauth.sectionTitle')}
+                    </label>
+                    <span className="text-gray-500 text-sm">{isOAuthSectionExpanded ? '▼' : '▶'}</span>
+                  </div>
+
+                  {isOAuthSectionExpanded && (
+                    <div className="border border-gray-200 dark:border-gray-700 rounded-b p-4 bg-gray-50 dark:bg-gray-800 border-t-0">
+                      <p className="text-xs text-gray-500 mb-3">
+                        {t('server.oauth.sectionDescription')}
+                      </p>
+                      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                        <div>
+                          <label className="block text-xs text-gray-600 mb-1">
+                            {t('server.oauth.clientId')}
+                          </label>
+                          <input
+                            type="text"
+                            value={formData.oauth?.clientId || ''}
+                            onChange={(e) => handleOAuthChange('clientId', e.target.value)}
+                            className="w-full py-2 px-3 form-input"
+                            placeholder="client id"
+                            autoComplete="off"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-600 mb-1">
+                            {t('server.oauth.clientSecret')}
+                          </label>
+                          <input
+                            type="password"
+                            value={formData.oauth?.clientSecret || ''}
+                            onChange={(e) => handleOAuthChange('clientSecret', e.target.value)}
+                            className="w-full py-2 px-3 form-input"
+                            placeholder="client secret"
+                            autoComplete="off"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Request Options Configuration */}
               {serverType !== 'openapi' && (

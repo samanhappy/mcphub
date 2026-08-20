@@ -93,29 +93,34 @@ export const EmbeddingSyncProvider: React.FC<{ children: React.ReactNode }> = ({
           return;
         }
 
-        clearHideTimer(data.progress.serverName);
+        // Hold the narrowed reference: type-guard narrowing of a property access
+        // is not preserved inside the setTimeout closure below, so dereference
+        // once into a const and use that everywhere.
+        const progress = data.progress;
 
-        if (data.progress.status === 'error') {
-          removeSync(data.progress.serverName);
+        clearHideTimer(progress.serverName);
+
+        if (progress.status === 'error') {
+          removeSync(progress.serverName);
           return;
         }
 
         const nextState: EmbeddingSyncProgressState = {
-          serverName: data.progress.serverName,
-          current: data.progress.current,
-          total: data.progress.total,
-          status: data.progress.status,
+          serverName: progress.serverName,
+          current: progress.current,
+          total: progress.total,
+          status: progress.status,
         };
 
         upsertSync(nextState);
 
-        if (data.progress.status === 'completed') {
+        if (progress.status === 'completed') {
           const timer = setTimeout(() => {
-            removeSync(data.progress.serverName);
-            hideTimersRef.current.delete(data.progress.serverName);
+            removeSync(progress.serverName);
+            hideTimersRef.current.delete(progress.serverName);
           }, COMPLETION_VISIBILITY_MS);
 
-          hideTimersRef.current.set(data.progress.serverName, timer);
+          hideTimersRef.current.set(progress.serverName, timer);
         }
       } catch {
         // Ignore malformed stream messages.
