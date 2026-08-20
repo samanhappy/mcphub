@@ -17,13 +17,13 @@ All persistent user records are stored as `{ username, password, isAdmin }`. The
 
 ### Per-server visibility
 
-Each server has a `visibility` column (`private` / `public`, with `group` reserved for a future user→group plumbing) that controls which non-admin users see the server in `tools/list` and the dashboard. Admins always see every server regardless of this setting; the field only affects the filter applied by `dataService.filterData` to non-admin requests.
+Each server has a `visibility` setting (`private` / `group` / `public`) that controls which non-admin users can discover and call the server. Admins always have access. The same filter is applied to dashboard listings, direct tool and prompt calls, group routes, and `$smart` routing.
 
 - `'private'` (default): only the server's `owner` (and admins) can see it. Servers seeded from `mcp_settings.json` migrate in with `'private'` to preserve the historical admin-only behaviour.
 - `'public'`: every authenticated user can see and call the server. Use this for servers you want to share across all users of the same MCPHub instance — including social-login users created by Better Auth.
-- `'group'`: reserved. Stored if set but treated as `'private'` by the filter until user→group membership ships.
+- `'group'`: the owner and usernames listed in the server's `sharedWithUsers` array can see and call it. Sharing grants runtime access only; selected users cannot edit or delete the server.
 
-The visibility is editable per server from the dashboard (Server form → Visibility). For deployments where every user should see every server (single-user self-hosted, small trusted team), an operator can set the relevant servers to `'public'` from the dashboard.
+The visibility is editable per server from the dashboard (Server form → Advanced Options → Visibility). Edit an existing server to select local usernames for `'group'` sharing. For deployments where every user should see every server (single-user self-hosted, small trusted team), an operator can set the relevant servers to `'public'` from the dashboard.
 
 ## Login (JWT)
 

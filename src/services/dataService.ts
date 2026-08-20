@@ -11,10 +11,17 @@ export class DataService {
     } else {
       return data.filter((item) => {
         if (item.owner === currentUser?.username) return true;
-        // visibility introduced in #817: 'public' is visible to every authenticated
-        // user, 'group' is reserved for a future user→group join (treat as 'private'
-        // for now so the enum value is safe to set ahead of group plumbing).
+        // Visibility introduced in #817. Issue #1037 activates the restricted
+        // 'group' scope for explicitly selected local usernames.
         if (item.visibility === 'public') return true;
+        if (
+          currentUser &&
+          item.visibility === 'group' &&
+          Array.isArray(item.sharedWithUsers) &&
+          item.sharedWithUsers.includes(currentUser.username)
+        ) {
+          return true;
+        }
         return false;
       });
     }

@@ -333,9 +333,7 @@ describe('MCP Service - Smart Routing with Group Support', () => {
         options: {},
       } as any;
 
-      const getServerByNameSpy = jest
-        .spyOn(mcpService, 'getServerByName')
-        .mockReturnValue(serverInfo);
+      mcpService.setServerInfosForTest([serverInfo]);
 
       const request = {
         params: {
@@ -356,8 +354,6 @@ describe('MCP Service - Smart Routing with Group Support', () => {
       const toolParams = callTool.mock.calls[0][0];
       expect(toolParams).toEqual({ name: 'pal-version', arguments: {} });
       expect(toolParams.arguments).not.toHaveProperty('toolName');
-
-      getServerByNameSpy.mockRestore();
     });
   });
 

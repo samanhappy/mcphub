@@ -133,6 +133,28 @@ describe('normalizeServerConfigForPersistence', () => {
     expect(normalized).toHaveProperty('startOnDemand', true);
   });
 
+  it('normalizes explicit user sharing for group visibility', () => {
+    const normalized = normalizeServerConfigForPersistence({
+      type: 'streamable-http',
+      url: 'https://example.com/mcp',
+      visibility: 'group',
+      sharedWithUsers: [' alice ', 'bob', 'alice', ''],
+    });
+
+    expect(normalized.sharedWithUsers).toEqual(['alice', 'bob']);
+  });
+
+  it('clears explicit user sharing outside group visibility', () => {
+    const normalized = normalizeServerConfigForPersistence({
+      type: 'streamable-http',
+      url: 'https://example.com/mcp',
+      visibility: 'private',
+      sharedWithUsers: ['alice'],
+    });
+
+    expect(normalized).toHaveProperty('sharedWithUsers', undefined);
+  });
+
   it('keeps start on demand present (not merely absent) so unchecking it clears the stored value', () => {
     // The dashboard drops the key from the JSON payload when unchecked
     // (JSON.stringify strips `undefined`), so the incoming config has no

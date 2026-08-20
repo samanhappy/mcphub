@@ -129,7 +129,7 @@ describe('mcpService activity logging source IP', () => {
       options: {},
     } as any;
 
-    const getServerByNameSpy = jest.spyOn(mcpService, 'getServerByName').mockReturnValue(serverInfo);
+    mcpService.setServerInfosForTest([serverInfo]);
 
     await RequestContextService.getInstance().runWithCustomRequestContext(
       {
@@ -160,8 +160,6 @@ describe('mcpService activity logging source IP', () => {
         sourceIp: '198.51.100.24',
       }),
     );
-
-    getServerByNameSpy.mockRestore();
   });
 
   it('passes request username to activity logging', async () => {
@@ -176,7 +174,7 @@ describe('mcpService activity logging source IP', () => {
       options: {},
     } as any;
 
-    const getServerByNameSpy = jest.spyOn(mcpService, 'getServerByName').mockReturnValue(serverInfo);
+    mcpService.setServerInfosForTest([serverInfo]);
 
     await RequestContextService.getInstance().runWithCustomRequestContext(
       {
@@ -208,8 +206,6 @@ describe('mcpService activity logging source IP', () => {
         username: 'alice',
       }),
     );
-
-    getServerByNameSpy.mockRestore();
   });
 
   it('logs raw tool input and output for activity details', async () => {
@@ -235,7 +231,7 @@ describe('mcpService activity logging source IP', () => {
       options: {},
     } as any;
 
-    const getServerByNameSpy = jest.spyOn(mcpService, 'getServerByName').mockReturnValue(serverInfo);
+    mcpService.setServerInfosForTest([serverInfo]);
 
     const rawArguments = {
       address: 'Hangzhou West Lake',
@@ -267,7 +263,5 @@ describe('mcpService activity logging source IP', () => {
         errorMessage: 'Tool returned error response',
       }),
     );
-
-    getServerByNameSpy.mockRestore();
   });
 });

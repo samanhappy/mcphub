@@ -34,9 +34,9 @@ const VISIBILITY_META: Record<
   },
   group: {
     shortKey: 'server.visibilityGroupShort',
-    shortFallback: 'Group',
+    shortFallback: 'Shared',
     longKey: 'server.visibilityGroup',
-    longFallback: 'Group (reserved — not yet implemented)',
+    longFallback: 'Shared — selected users only',
     className: 'bg-[oklch(0.97_0.02_85)] text-[oklch(0.45_0.07_85)] border-[oklch(0.88_0.04_85)]',
   },
   public: {
@@ -44,7 +44,8 @@ const VISIBILITY_META: Record<
     shortFallback: 'Public',
     longKey: 'server.visibilityPublic',
     longFallback: 'Public — every authenticated user',
-    className: 'bg-[oklch(0.97_0.03_145)] text-[oklch(0.42_0.12_145)] border-[oklch(0.88_0.04_145)]',
+    className:
+      'bg-[oklch(0.97_0.03_145)] text-[oklch(0.42_0.12_145)] border-[oklch(0.88_0.04_145)]',
   },
 };
 
@@ -86,7 +87,7 @@ export const getServerVisibilityOptions = (
   if (currentVisibility === 'group') {
     options.push({
       value: 'group',
-      label: t('server.visibilityGroupShort', { defaultValue: 'Group' }),
+      label: t('server.visibilityGroupShort', { defaultValue: 'Shared' }),
       disabled: true,
     });
   }

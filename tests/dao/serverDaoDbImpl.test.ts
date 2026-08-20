@@ -109,6 +109,50 @@ describe('ServerDaoDbImpl', () => {
     expect(result?.passthroughHeaders).toEqual(headers);
   });
 
+  it('should persist and map explicit shared users', async () => {
+    const dao = new ServerDaoDbImpl();
+    const sharedWithUsers = ['alice', 'bob'];
+
+    mockRepository.create.mockResolvedValue({
+      name: 'shared-server',
+      type: 'sse',
+      url: 'https://example.com/sse',
+      enabled: true,
+      visibility: 'group',
+      sharedWithUsers,
+    });
+
+    const result = await dao.create({
+      name: 'shared-server',
+      type: 'sse',
+      url: 'https://example.com/sse',
+      visibility: 'group',
+      sharedWithUsers,
+    });
+
+    expect(mockRepository.create).toHaveBeenCalledWith(
+      expect.objectContaining({ sharedWithUsers }),
+    );
+    expect(result.sharedWithUsers).toEqual(sharedWithUsers);
+  });
+
+  it('should persist explicit shared-user updates', async () => {
+    const dao = new ServerDaoDbImpl();
+
+    mockRepository.update.mockResolvedValue({
+      name: 'shared-server',
+      enabled: true,
+      visibility: 'group',
+      sharedWithUsers: ['alice'],
+    });
+
+    await dao.update('shared-server', { sharedWithUsers: ['alice'] });
+
+    expect(mockRepository.update).toHaveBeenCalledWith('shared-server', {
+      sharedWithUsers: ['alice'],
+    });
+  });
+
   it('should convert explicit undefined updates into null for nullable DB fields', async () => {
     const dao = new ServerDaoDbImpl();
 

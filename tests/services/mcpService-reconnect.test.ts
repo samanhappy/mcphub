@@ -181,9 +181,7 @@ describe('mcpService streamable-http reconnect', () => {
     const initialTransport = new StreamableHTTPClientTransport(new URL('https://example.com/mcp'));
     const serverInfo = createServerInfo(initialCallTool, initialTransport) as any;
 
-    const getServerByNameSpy = jest
-      .spyOn(mcpService, 'getServerByName')
-      .mockReturnValue(serverInfo);
+    mcpService.setServerInfosForTest([serverInfo]);
 
     const result = await mcpService.handleCallToolRequest(
       {
@@ -215,8 +213,6 @@ describe('mcpService streamable-http reconnect', () => {
       undefined,
       {},
     );
-
-    getServerByNameSpy.mockRestore();
   });
 
   it('reconnects when the HTTP status is exposed via error.status', async () => {
@@ -227,9 +223,7 @@ describe('mcpService streamable-http reconnect', () => {
     });
     const serverInfo = createServerInfo(initialCallTool) as any;
 
-    const getServerByNameSpy = jest
-      .spyOn(mcpService, 'getServerByName')
-      .mockReturnValue(serverInfo);
+    mcpService.setServerInfosForTest([serverInfo]);
 
     const result = await mcpService.handleCallToolRequest(
       {
@@ -250,8 +244,6 @@ describe('mcpService streamable-http reconnect', () => {
     expect(result.isError).toBe(false);
     expect(serverInfo.initialClientClose).toHaveBeenCalledTimes(1);
     expect(mockReconnectClient.connect).toHaveBeenCalledTimes(1);
-
-    getServerByNameSpy.mockRestore();
   });
 
   it('does not reconnect for non-recoverable HTTP 400 errors', async () => {
@@ -262,9 +254,7 @@ describe('mcpService streamable-http reconnect', () => {
     });
     const serverInfo = createServerInfo(initialCallTool) as any;
 
-    const getServerByNameSpy = jest
-      .spyOn(mcpService, 'getServerByName')
-      .mockReturnValue(serverInfo);
+    mcpService.setServerInfosForTest([serverInfo]);
 
     const result = await mcpService.handleCallToolRequest(
       {
@@ -286,7 +276,5 @@ describe('mcpService streamable-http reconnect', () => {
     expect(result.content[0].text).toContain('HTTP 400 Bad Request');
     expect(serverInfo.initialClientClose).not.toHaveBeenCalled();
     expect(mockReconnectClient.connect).not.toHaveBeenCalled();
-
-    getServerByNameSpy.mockRestore();
   });
 });

@@ -75,7 +75,7 @@ Returns `404` if the user does not exist.
 - Returns `201` with the new user (password stripped) on success.
 
 <Note>
-  The user model does not have per-user `servers` or `groups` lists. Server visibility is governed by the `owner` field on each server and by the group membership recorded on the group itself. See [Group Management](/features/group-management) and [MCP Settings](/configuration/mcp-settings).
+  The user model does not have per-user `servers` or `groups` lists. Server access is governed by each server's `owner`, `visibility`, and `sharedWithUsers` fields. See [Authentication & Security](/features/authentication) and [MCP Settings](/configuration/mcp-settings).
 </Note>
 
 ---

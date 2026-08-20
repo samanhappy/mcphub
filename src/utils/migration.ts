@@ -79,6 +79,7 @@ export async function migrateToDatabase(): Promise<boolean> {
             enabled: config.enabled !== undefined ? config.enabled : true,
             owner: config.owner,
             visibility: config.visibility ?? 'private',
+            sharedWithUsers: config.sharedWithUsers,
             enableKeepAlive: config.enableKeepAlive,
             keepAliveInterval: config.keepAliveInterval,
             tools: config.tools,
