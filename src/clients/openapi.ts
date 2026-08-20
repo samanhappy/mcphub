@@ -531,6 +531,26 @@ export class OpenAPIClient {
       }
     }
 
+    // Handle header parameters. callTool() already copies `in: header`
+    // arguments into the outgoing request, so they must be advertised here too,
+    // otherwise an operation whose per-call credential is a header is exposed
+    // as a zero-argument tool the model cannot supply a value for.
+    const headerParams = operation.parameters?.filter(
+      (p: any) => 'in' in p && p.in === 'header',
+    ) as OpenAPIV3.ParameterObject[];
+
+    if (headerParams?.length) {
+      for (const param of headerParams) {
+        properties[param.name] = this.generateParameterSchema(
+          param,
+          `Header parameter: ${param.name}`,
+        );
+        if (param.required) {
+          required.push(param.name);
+        }
+      }
+    }
+
     // Handle request body
     if (operation.requestBody && 'content' in operation.requestBody) {
       const requestBody = operation.requestBody as OpenAPIV3.RequestBodyObject;

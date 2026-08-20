@@ -165,4 +165,63 @@ describe('OpenAPIClient - Input Schema Generation', () => {
     expect(item.kind).toBe('tool');
     expect(item.cost).toBeGreaterThan(0);
   });
+  // Header parameters must reach the generated inputSchema. callTool() already
+  // reads `in: header` parameters back out of the tool arguments, but
+  // generateInputSchema only emitted path/query/body, so an operation whose
+  // per-call credential is a header (Authorization, X-API-Key, ...) was exposed
+  // to the model as a zero-argument tool with no way to supply it.
+  test('should expose header parameters in the generated input schema', async () => {
+    const config: ServerConfig = {
+      type: 'openapi',
+      openapi: {
+        schema: {
+          openapi: '3.0.0',
+          info: { title: 'Header API', version: '1.0.0' },
+          paths: {
+            '/bearer/protected': {
+              get: {
+                operationId: 'bearerProtected',
+                parameters: [
+                  {
+                    name: 'Authorization',
+                    in: 'header',
+                    required: true,
+                    description: 'Bearer token in the form: Bearer <accessToken>',
+                    schema: { type: 'string' },
+                  },
+                  {
+                    name: 'X-Tenant-Id',
+                    in: 'header',
+                    required: false,
+                    schema: { type: 'string' },
+                  },
+                ],
+                responses: { '200': { description: 'Success' } },
+              },
+            },
+          },
+        } as OpenAPIV3.Document,
+      },
+    };
+
+    const client = new OpenAPIClient(config);
+    await client.initialize();
+
+    const tool = client.getTools()[0];
+
+    expect(tool.inputSchema).toEqual({
+      type: 'object',
+      properties: {
+        Authorization: {
+          type: 'string',
+          description: 'Bearer token in the form: Bearer <accessToken>',
+        },
+        'X-Tenant-Id': {
+          type: 'string',
+          description: 'Header parameter: X-Tenant-Id',
+        },
+      },
+      required: ['Authorization'],
+    });
+  });
 });
