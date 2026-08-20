@@ -916,7 +916,7 @@ const ServerForm = ({
                     <button
                       type="button"
                       onClick={addHeaderVar}
-                      className="bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-1 px-2 rounded text-sm flex items-center justify-center min-w-[30px] min-h-[30px] btn-primary"
+                      className="hub-btn primary !w-[30px] !h-[30px] !p-0 justify-center text-base font-bold"
                     >
                       +
                     </button>
@@ -981,7 +981,7 @@ const ServerForm = ({
                     <button
                       type="button"
                       onClick={addHeaderVar}
-                      className="bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-1 px-2 rounded text-sm flex items-center justify-center min-w-[30px] min-h-[30px] btn-primary"
+                      className="hub-btn primary !w-[30px] !h-[30px] !p-0 justify-center text-base font-bold"
                     >
                       +
                     </button>
@@ -1024,7 +1024,7 @@ const ServerForm = ({
                     <button
                       type="button"
                       onClick={addEnvVar}
-                      className="bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-1 px-2 rounded text-sm flex items-center justify-center min-w-[30px] min-h-[30px] btn-primary"
+                      className="hub-btn primary !w-[30px] !h-[30px] !p-0 justify-center text-base font-bold"
                     >
                       +
                     </button>
@@ -1099,7 +1099,7 @@ const ServerForm = ({
                     <button
                       type="button"
                       onClick={addEnvVar}
-                      className="bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-1 px-2 rounded text-sm flex items-center justify-center min-w-[30px] min-h-[30px] btn-primary"
+                      className="hub-btn primary !w-[30px] !h-[30px] !p-0 justify-center text-base font-bold"
                     >
                       +
                     </button>
