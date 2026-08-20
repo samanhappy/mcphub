@@ -11,6 +11,9 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   asChild?: boolean;
   loading?: boolean;
   children: React.ReactNode;
+  // Allow async handlers: Button detects a returned promise and shows the
+  // loading state for the duration of the call.
+  onClick?: (event: React.MouseEvent<HTMLButtonElement>) => void | Promise<void>;
 }
 
 const variantStyles: Record<ButtonVariant, string> = {
