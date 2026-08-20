@@ -312,9 +312,12 @@ export const getServerShareCandidates = async (
     }
 
     const users = await getUserDao().findAll();
+    // Treat a missing/empty owner as 'admin' so the candidate list is
+    // consistent before and after the first edit (which assigns the owner).
+    const effectiveOwner = server.owner?.trim() || 'admin';
     const usernames = users
       .map((user) => user.username)
-      .filter((username) => username !== server.owner)
+      .filter((username) => username !== effectiveOwner)
       .sort((left, right) => left.localeCompare(right));
 
     res.json({ success: true, data: usernames });

@@ -158,6 +158,35 @@ describe('serverController - server share candidates', () => {
     });
   });
 
+  it('treats an empty/missing owner as "admin" so admin is excluded from candidates', async () => {
+    mockServerDao.findById.mockResolvedValue({
+      name: 'orphan-server',
+      owner: '',
+      visibility: 'group',
+    });
+    mockUserDao.findAll.mockResolvedValue([
+      { username: 'charlie', password: 'secret', isAdmin: false },
+      { username: 'admin', password: 'secret', isAdmin: true },
+      { username: 'alice', password: 'secret', isAdmin: false },
+    ]);
+
+    const json = jest.fn();
+    const status = jest.fn().mockReturnThis();
+    const req = {
+      params: { name: 'orphan-server' },
+      user: { username: 'admin', isAdmin: true },
+    } as unknown as Request;
+    const res = { json, status } as unknown as Response;
+
+    await getServerShareCandidates(req, res);
+
+    expect(status).not.toHaveBeenCalledWith(403);
+    expect(json).toHaveBeenCalledWith({
+      success: true,
+      data: ['alice', 'charlie'],
+    });
+  });
+
   it('rejects a shared user who does not own the server', async () => {
     const json = jest.fn();
     const status = jest.fn().mockReturnThis();
