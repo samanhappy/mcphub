@@ -109,6 +109,9 @@ const ServerForm = ({
     },
     // Per-session client isolation initialization
     perSessionClient: initialData?.config?.perSessionClient === true,
+    // Proxychains proxy config: round-trip the stored value so editing the
+    // server does not silently drop it (there is no in-form editor for it).
+    proxy: initialData?.config?.proxy,
     // On-demand spawning initialization
     startOnDemand: initialData?.config?.startOnDemand === true,
     idleTimeoutMs: initialData?.config?.idleTimeoutMs ?? 300000,

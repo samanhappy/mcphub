@@ -46,7 +46,12 @@ const normalizeSharedUsers = (usernames?: string[]): string[] => {
 const buildOptions = (options?: ServerFormData['options']) => {
   const nextOptions: NonNullable<ServerFormData['options']> = {};
 
-  if (options?.timeout && options.timeout !== 60000) {
+  // Always echo the timeout, even when it equals the 60000 default: dropping it
+  // makes the payload differ from a stored explicit `timeout: 60000` and trips
+  // the backend's "connection changed" fast-path check on unrelated edits. The
+  // backend comparison normalizes the default timeout, so an explicit 60000 and
+  // an absent one compare as equal.
+  if (typeof options?.timeout === 'number' && !Number.isNaN(options.timeout)) {
     nextOptions.timeout = options.timeout;
   }
 
@@ -185,6 +190,9 @@ export const buildServerPayload = ({
     perSessionClient: formData.perSessionClient === true ? true : undefined,
     startOnDemand: formData.startOnDemand === true ? true : undefined,
     idleTimeoutMs: formData.startOnDemand === true ? (formData.idleTimeoutMs ?? 300000) : undefined,
+    // Round-trip the stored proxychains config (no in-form editor) so an edit
+    // of any other field does not drop it and force an avoidable reload.
+    proxy: formData.proxy,
   };
 
   if (serverType === 'openapi') {
