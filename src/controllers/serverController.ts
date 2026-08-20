@@ -15,6 +15,7 @@ import {
   addServer,
   addOrUpdateServer,
   removeServer,
+  closeServer,
   getServerByName,
   notifyToolChanged,
   broadcastToolListChanged,
@@ -187,43 +188,69 @@ const stripUndefinedDeep = (value: unknown): unknown => {
   return value;
 };
 
-const toComparableServerConfig = (config: ServerConfig | ServerRecord): unknown => {
-  const { name: _name, ...rest } = config as ServerConfig & {
-    name?: string;
-  };
+// Fields baked into the live MCP client/transport at connect time. Editing any
+// of these requires tearing down and re-establishing the runtime. Everything
+// else in ServerConfig (description, owner, visibility, sharedWithUsers,
+// `enabled`, and the tools/prompts/resources per-item overrides) is read-time
+// or access metadata that can be applied without a reconnect.
+const CONNECTION_RELEVANT_CONFIG_FIELDS = [
+  'type',
+  'url',
+  'command',
+  'args',
+  'env',
+  'headers',
+  'passthroughHeaders',
+  'options',
+  'oauth',
+  'openapi',
+  'perSessionClient',
+  'startOnDemand',
+  'idleTimeoutMs',
+  'enableKeepAlive',
+  'keepAliveInterval',
+  'proxy',
+] as const;
 
-  const normalized = normalizeServerConfigForPersistence(rest);
-  const {
-    visibility: _visibility,
-    sharedWithUsers: _sharedWithUsers,
-    ...comparableConfig
-  } = normalized;
+type ConnectionRelevantServerConfig = Pick<
+  ServerConfig,
+  (typeof CONNECTION_RELEVANT_CONFIG_FIELDS)[number]
+>;
 
-  return stripUndefinedDeep(comparableConfig);
+const toConnectionRelevantConfig = (
+  config: ServerConfig | ServerRecord,
+): ConnectionRelevantServerConfig => {
+  const normalized = normalizeServerConfigForPersistence(config) as Record<string, unknown>;
+  const picked: Record<string, unknown> = {};
+  for (const field of CONNECTION_RELEVANT_CONFIG_FIELDS) {
+    picked[field] = normalized[field];
+  }
+  const comparable = stripUndefinedDeep(picked) as Record<string, unknown>;
+  // Treat the default request timeout (60000, the dashboard form default) as
+  // equivalent to "not set": an explicit 60000 stored via API/file import and an
+  // absent timeout resolve to the same effective connect timeout. Without this, a
+  // stored explicit 60000 (or the dashboard echoing 60000 back) would look like a
+  // connection change on unrelated edits and reload the runtime for nothing.
+  const options = comparable.options as { timeout?: number } | undefined;
+  if (options && options.timeout === 60000) {
+    delete options.timeout;
+    if (Object.keys(options).length === 0) {
+      delete comparable.options;
+    }
+  }
+  return comparable as ConnectionRelevantServerConfig;
 };
 
-const isAccessOnlyServerUpdate = (
+// True when an edit touches at least one field the live connection depends on,
+// i.e. the runtime must be torn down and reconnected.
+const hasConnectionRelevantChange = (
   existingServer: ServerRecord,
   nextConfig: ServerConfig,
-): boolean => {
-  const currentAccess = {
-    visibility: existingServer.visibility ?? 'private',
-    sharedWithUsers: existingServer.sharedWithUsers ?? [],
-  };
-  const nextAccess = {
-    visibility: nextConfig.visibility ?? 'private',
-    sharedWithUsers: nextConfig.sharedWithUsers ?? [],
-  };
-
-  if (isDeepStrictEqual(currentAccess, nextAccess)) {
-    return false;
-  }
-
-  return isDeepStrictEqual(
-    toComparableServerConfig(existingServer),
-    toComparableServerConfig(nextConfig),
+): boolean =>
+  !isDeepStrictEqual(
+    toConnectionRelevantConfig(existingServer),
+    toConnectionRelevantConfig(nextConfig),
   );
-};
 
 export const getAllServers = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -944,6 +971,13 @@ export const updateServer = async (req: Request, res: Response): Promise<void> =
         return;
       }
 
+      // Close the runtime still keyed by the OLD name. addOrUpdateServer below
+      // closes by `finalName` (the new name), which finds nothing - the entry is
+      // still registered under the old name until initializeClientsFromSettings
+      // rebuilds serverInfos. Without this explicit close the old stdio child
+      // process tree is orphaned and leaks until the process restarts.
+      closeServer(name);
+
       // Update references in groups
       const groupDao = getGroupDao();
       await groupDao.updateServerName(name, newName);
@@ -968,7 +1002,11 @@ export const updateServer = async (req: Request, res: Response): Promise<void> =
     // Use the final server name (new name if renaming, otherwise original name)
     const finalName = isRenaming ? newName : name;
 
-    if (!isRenaming && isAccessOnlyServerUpdate(existingServer, normalizedConfig)) {
+    // Fast path: if no connection-relevant field changed, persist and update
+    // in-memory access metadata without tearing down the runtime. This covers
+    // visibility/sharedWithUsers edits, description-only edits, owner changes,
+    // and no-op edits alike - none of them need a reconnect.
+    if (!isRenaming && !hasConnectionRelevantChange(existingServer, normalizedConfig)) {
       const serverDao = getServerDao();
       const updatedServer = await serverDao.update(name, normalizedConfig);
 

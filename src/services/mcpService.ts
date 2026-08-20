@@ -2367,8 +2367,9 @@ const closeServerRuntime = (serverInfo: ServerInfo): void => {
   console.log('Closed MCP server client and transport');
 };
 
-// Close server client and transport
-function closeServer(name: string) {
+// Close server client and transport (keeps the entry in serverInfos; the next
+// initializeClientsFromSettings rebuild drops it if it is no longer configured).
+export function closeServer(name: string) {
   const serverInfo = serverInfos.find((serverInfo) => serverInfo.name === name);
   if (serverInfo) {
     closeServerRuntime(serverInfo);

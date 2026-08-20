@@ -54,6 +54,7 @@ const mockGetServerByName = jest.fn();
 const mockAddServer = jest.fn();
 const mockAddOrUpdateServer = jest.fn();
 const mockRemoveServer = jest.fn();
+const mockCloseServer = jest.fn();
 const mockToggleServerStatus = jest.fn();
 const mockReconnectServer = jest.fn();
 const mockUpdateServerInfoVisibility = jest.fn();
@@ -77,6 +78,7 @@ jest.mock('../../src/services/mcpService.js', () => ({
   addServer: mockAddServer,
   addOrUpdateServer: mockAddOrUpdateServer,
   removeServer: mockRemoveServer,
+  closeServer: jest.fn((...args: unknown[]) => mockCloseServer(...args)),
   getServerByName: jest.fn(() => mockGetServerByName()),
   notifyToolChanged: jest.fn(() => mockNotifyToolChanged()),
   broadcastToolListChanged: jest.fn(() => mockBroadcastToolListChanged()),
@@ -209,6 +211,14 @@ describe('serverController - stdio servers without arguments', () => {
     mockAddServer.mockResolvedValue({ success: true });
     mockAddOrUpdateServer.mockResolvedValue({ success: true });
     mockNotifyToolChanged.mockResolvedValue(undefined);
+    mockServerDao.update = jest.fn().mockResolvedValue({
+      name: 'no-args-server',
+      type: 'stdio',
+      command: '/usr/bin/some-tool',
+      args: [],
+      owner: 'admin',
+      visibility: 'private',
+    });
     mockServerDao.findById.mockResolvedValue({
       name: 'no-args-server',
       type: 'stdio',
@@ -277,14 +287,16 @@ describe('serverController - stdio servers without arguments', () => {
     await updateServer(request, response);
 
     expect(status).not.toHaveBeenCalledWith(400);
-    expect(mockAddOrUpdateServer).toHaveBeenCalledWith(
+    // The payload is identical to the stored connection config (a no-op edit),
+    // so it takes the fast path: persisted via DAO update, no runtime reload.
+    expect(mockServerDao.update).toHaveBeenCalledWith(
       'no-args-server',
       expect.objectContaining({
         type: 'stdio',
         command: '/usr/bin/some-tool',
       }),
-      true,
     );
+    expect(mockAddOrUpdateServer).not.toHaveBeenCalled();
     expect(json).toHaveBeenCalledWith({
       success: true,
       message: 'Server updated successfully',
@@ -835,6 +847,279 @@ describe('serverController - updateServer', () => {
     expect(mockAddOrUpdateServer).not.toHaveBeenCalled();
   });
 
+  it('uses the access-only fast path when the payload omits enabled (real dashboard payload)', async () => {
+    // The dashboard's buildServerPayload never sends `enabled`, while servers
+    // created through the DAO are persisted with `enabled: true`. The comparable
+    // config must therefore ignore `enabled`, or every visibility-only edit
+    // would tear down and reconnect the server runtime for no reason.
+    mockRequest.body.config = {
+      type: 'sse',
+      url: 'https://example.com/sse',
+      description: '',
+      visibility: 'public',
+      sharedWithUsers: undefined,
+      perSessionClient: undefined,
+      startOnDemand: undefined,
+      idleTimeoutMs: undefined,
+    };
+    mockServerDao.findById.mockResolvedValue({
+      name: 'test-server',
+      type: 'sse',
+      url: 'https://example.com/sse',
+      enabled: true,
+      owner: 'admin',
+      visibility: 'private',
+    });
+
+    await updateServer(mockRequest as Request, mockResponse as Response);
+
+    expect(mockServerDao.update).toHaveBeenCalled();
+    expect(mockUpdateServerInfoVisibility).toHaveBeenCalledWith('test-server', 'public', undefined);
+    expect(mockBroadcastToolListChanged).toHaveBeenCalled();
+    expect(mockAddOrUpdateServer).not.toHaveBeenCalled();
+    expect(mockNotifyToolChanged).not.toHaveBeenCalled();
+    expect(mockJson).toHaveBeenCalledWith({
+      success: true,
+      message: 'Server updated successfully',
+    });
+  });
+
+  it('uses the access-only fast path for a sharedWithUsers-only edit (real dashboard payload)', async () => {
+    // Same asymmetry as above, but for the sharing allowlist on a group server:
+    // the stored record carries `enabled: true` and the existing allowlist, while
+    // the dashboard payload omits `enabled`. A pure allowlist edit must not
+    // tear down and reconnect the runtime either.
+    mockRequest.body.config = {
+      type: 'sse',
+      url: 'https://example.com/sse',
+      description: '',
+      visibility: 'group',
+      sharedWithUsers: ['alice', 'bob'],
+      perSessionClient: undefined,
+      startOnDemand: undefined,
+      idleTimeoutMs: undefined,
+    };
+    mockServerDao.findById.mockResolvedValue({
+      name: 'test-server',
+      type: 'sse',
+      url: 'https://example.com/sse',
+      enabled: true,
+      owner: 'admin',
+      visibility: 'group',
+      sharedWithUsers: ['alice'],
+    });
+
+    await updateServer(mockRequest as Request, mockResponse as Response);
+
+    expect(mockServerDao.update).toHaveBeenCalled();
+    expect(mockUpdateServerInfoVisibility).toHaveBeenCalledWith('test-server', 'group', [
+      'alice',
+      'bob',
+    ]);
+    expect(mockBroadcastToolListChanged).toHaveBeenCalled();
+    expect(mockAddOrUpdateServer).not.toHaveBeenCalled();
+    expect(mockNotifyToolChanged).not.toHaveBeenCalled();
+    expect(mockJson).toHaveBeenCalledWith({
+      success: true,
+      message: 'Server updated successfully',
+    });
+  });
+
+  it('uses the access-only fast path when the stored config carries tool/prompt/resource overrides', async () => {
+    // The dashboard payload never sends `tools`/`prompts`/`resources` (they are
+    // edited via dedicated endpoints and applied at read time), but a server may
+    // well have such overrides persisted. If they stay part of the comparable
+    // config, any access-only edit of such a server (e.g. changing the sharing
+    // allowlist) tears down and reconnects the runtime for nothing.
+    mockRequest.body.config = {
+      type: 'stdio',
+      command: 'uvx',
+      args: ['--with', 'mcp<2', 'mcp-server-fetch'],
+      description: '',
+      options: { resetTimeoutOnProgress: true },
+      visibility: 'group',
+      sharedWithUsers: ['admin2', 'test2'],
+      perSessionClient: undefined,
+      startOnDemand: undefined,
+      idleTimeoutMs: undefined,
+      env: {},
+    };
+    mockServerDao.findById.mockResolvedValue({
+      name: 'test-server',
+      enabled: true,
+      owner: 'admin',
+      type: 'stdio',
+      command: 'uvx',
+      args: ['--with', 'mcp<2', 'mcp-server-fetch'],
+      visibility: 'group',
+      options: { resetTimeoutOnProgress: true },
+      prompts: {
+        'test-server::fetch': {
+          enabled: true,
+          description: 'Custom prompt description',
+        },
+      },
+      sharedWithUsers: ['admin2', 'test'],
+    });
+
+    await updateServer(mockRequest as Request, mockResponse as Response);
+
+    expect(mockServerDao.update).toHaveBeenCalled();
+    expect(mockUpdateServerInfoVisibility).toHaveBeenCalledWith('test-server', 'group', [
+      'admin2',
+      'test2',
+    ]);
+    expect(mockBroadcastToolListChanged).toHaveBeenCalled();
+    expect(mockAddOrUpdateServer).not.toHaveBeenCalled();
+    expect(mockNotifyToolChanged).not.toHaveBeenCalled();
+    expect(mockJson).toHaveBeenCalledWith({
+      success: true,
+      message: 'Server updated successfully',
+    });
+  });
+
+  it('does not reload the runtime for a description-only edit', async () => {
+    // The server description is read-time display metadata. Changing it (while
+    // every connection-relevant field stays the same) must not tear down and
+    // reconnect the runtime.
+    mockRequest.body.config = {
+      type: 'sse',
+      url: 'https://example.com/sse',
+      description: 'New note text',
+      visibility: 'private',
+      sharedWithUsers: undefined,
+      perSessionClient: undefined,
+      startOnDemand: undefined,
+      idleTimeoutMs: undefined,
+    };
+    mockServerDao.findById.mockResolvedValue({
+      name: 'test-server',
+      type: 'sse',
+      url: 'https://example.com/sse',
+      enabled: true,
+      owner: 'admin',
+      visibility: 'private',
+      description: 'Old note text',
+    });
+
+    await updateServer(mockRequest as Request, mockResponse as Response);
+
+    expect(mockServerDao.update).toHaveBeenCalled();
+    expect(mockUpdateServerInfoVisibility).toHaveBeenCalledWith('test-server', 'private', undefined);
+    expect(mockBroadcastToolListChanged).toHaveBeenCalled();
+    expect(mockAddOrUpdateServer).not.toHaveBeenCalled();
+    expect(mockNotifyToolChanged).not.toHaveBeenCalled();
+    expect(mockJson).toHaveBeenCalledWith({
+      success: true,
+      message: 'Server updated successfully',
+    });
+  });
+
+  it('reloads the runtime when a connection-relevant field changes', async () => {
+    // Changing the launch command is a real connection change and must go
+    // through the reload path (addOrUpdateServer + targeted reconnect).
+    mockRequest.body.config = {
+      type: 'stdio',
+      command: 'node',
+      args: ['server.js'],
+      description: '',
+      visibility: 'private',
+      sharedWithUsers: undefined,
+      perSessionClient: undefined,
+      startOnDemand: undefined,
+      idleTimeoutMs: undefined,
+      env: {},
+    };
+    mockServerDao.findById.mockResolvedValue({
+      name: 'test-server',
+      type: 'stdio',
+      command: 'uvx',
+      args: ['mcp-server-fetch'],
+      enabled: true,
+      owner: 'admin',
+      visibility: 'private',
+    });
+    mockAddOrUpdateServer.mockResolvedValue({ success: true });
+
+    await updateServer(mockRequest as Request, mockResponse as Response);
+
+    expect(mockServerDao.update).not.toHaveBeenCalled();
+    expect(mockAddOrUpdateServer).toHaveBeenCalledWith('test-server', expect.any(Object), true);
+    expect(mockNotifyToolChanged).toHaveBeenCalled();
+  });
+
+  it('does not reload when the stored config carries an explicit default timeout the payload omits', async () => {
+    // The old dashboard payload dropped `timeout` when it equaled the 60000
+    // default. A server persisted with an explicit `timeout: 60000` (e.g. via
+    // API/file import) would then differ from the payload on every edit and
+    // reload for nothing. An explicit default timeout and an absent one are the
+    // same effective connection setting.
+    mockRequest.body.config = {
+      type: 'stdio',
+      command: 'uvx',
+      args: ['mcp-server-fetch'],
+      description: '',
+      options: { resetTimeoutOnProgress: true },
+      visibility: 'private',
+      sharedWithUsers: undefined,
+      perSessionClient: undefined,
+      startOnDemand: undefined,
+      idleTimeoutMs: undefined,
+      env: {},
+    };
+    mockServerDao.findById.mockResolvedValue({
+      name: 'test-server',
+      type: 'stdio',
+      command: 'uvx',
+      args: ['mcp-server-fetch'],
+      options: { timeout: 60000, resetTimeoutOnProgress: true },
+      enabled: true,
+      owner: 'admin',
+      visibility: 'private',
+    });
+
+    await updateServer(mockRequest as Request, mockResponse as Response);
+
+    expect(mockServerDao.update).toHaveBeenCalled();
+    expect(mockAddOrUpdateServer).not.toHaveBeenCalled();
+    expect(mockNotifyToolChanged).not.toHaveBeenCalled();
+  });
+
+  it('does not reload when the payload echoes the default timeout onto a server without one', async () => {
+    // Mirror case: the (new) dashboard always echoes `timeout: 60000`, while a
+    // form-created server has no explicit timeout persisted. The comparison must
+    // treat them as equal too.
+    mockRequest.body.config = {
+      type: 'stdio',
+      command: 'uvx',
+      args: ['mcp-server-fetch'],
+      description: '',
+      options: { timeout: 60000, resetTimeoutOnProgress: true },
+      visibility: 'private',
+      sharedWithUsers: undefined,
+      perSessionClient: undefined,
+      startOnDemand: undefined,
+      idleTimeoutMs: undefined,
+      env: {},
+    };
+    mockServerDao.findById.mockResolvedValue({
+      name: 'test-server',
+      type: 'stdio',
+      command: 'uvx',
+      args: ['mcp-server-fetch'],
+      options: { resetTimeoutOnProgress: true },
+      enabled: true,
+      owner: 'admin',
+      visibility: 'private',
+    });
+
+    await updateServer(mockRequest as Request, mockResponse as Response);
+
+    expect(mockServerDao.update).toHaveBeenCalled();
+    expect(mockAddOrUpdateServer).not.toHaveBeenCalled();
+    expect(mockNotifyToolChanged).not.toHaveBeenCalled();
+  });
+
   describe('when renaming a server', () => {
     beforeEach(() => {
       mockServerDao.exists.mockResolvedValue(false);
@@ -889,6 +1174,15 @@ describe('serverController - updateServer', () => {
         success: true,
         message: 'Server renamed and updated successfully',
       });
+    });
+
+    it('closes the runtime still registered under the old name', async () => {
+      // addOrUpdateServer closes by the NEW name, which finds nothing - the
+      // runtime stays keyed by the old name until the rebuild drops it. Without
+      // an explicit close of the old name the stdio child process is orphaned.
+      await updateServer(mockRequest as Request, mockResponse as Response);
+
+      expect(mockCloseServer).toHaveBeenCalledWith('test-server');
     });
   });
 });
