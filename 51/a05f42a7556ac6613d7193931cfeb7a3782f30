@@ -1,0 +1,18 @@
+src/controllers/serverController.ts
+  h_18676a549cd52a 18,191-241,244-246,249-252,974-980,1005-1009
+src/services/mcpService.ts
+  h_18676a549cd52a 2370-2372
+tests/controllers/serverController.test.ts
+  h_18676a549cd52a 57,81,214-221,290-292,299,850-1122,1178-1186
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "51a05f42a7556ac6613d7193931cfeb7a3782f30",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
