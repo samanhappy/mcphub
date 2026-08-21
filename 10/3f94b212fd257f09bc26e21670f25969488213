@@ -1,0 +1,16 @@
+src/services/sseService.test.ts
+  h_18676a549cd52a 406-412,735-741,1021-1141
+src/services/sseService.ts
+  h_18676a549cd52a 199-201,214-217,232-234,239-242,283,753,760
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "103f94b212fd257f09bc26e21670f25969488213",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
