@@ -403,11 +403,13 @@ describe('sseService', () => {
       });
 
       (getGroupDao as jest.MockedFunction<any>).mockReturnValueOnce({
-        findByName: jest.fn().mockImplementation((name: string) =>
-          name === 'my-group'
-            ? Promise.resolve({ id: 'my-group-id', name: 'my-group', servers: [] })
-            : Promise.resolve(null),
-        ),
+        findByName: jest
+          .fn()
+          .mockImplementation((name: string) =>
+            name === 'my-group'
+              ? Promise.resolve({ id: 'my-group-id', name: 'my-group', servers: [] })
+              : Promise.resolve(null),
+          ),
         findById: jest.fn().mockResolvedValue(null),
       });
 
@@ -730,11 +732,13 @@ describe('sseService', () => {
 
       // Override group DAO so isBearerKeyAllowedForRequest can find the group for this test only
       (getGroupDao as jest.MockedFunction<any>).mockReturnValueOnce({
-        findByName: jest.fn().mockImplementation((name: string) =>
-          name === 'my-group'
-            ? Promise.resolve({ id: 'group-uuid', name: 'my-group', servers: [] })
-            : Promise.resolve(null),
-        ),
+        findByName: jest
+          .fn()
+          .mockImplementation((name: string) =>
+            name === 'my-group'
+              ? Promise.resolve({ id: 'group-uuid', name: 'my-group', servers: [] })
+              : Promise.resolve(null),
+          ),
         findById: jest.fn().mockResolvedValue(null),
       });
 
@@ -1013,6 +1017,127 @@ describe('sseService', () => {
       expect(res.status).toHaveBeenCalledWith(200);
       expect(res.end).toHaveBeenCalled();
       expect(StreamableHTTPServerTransport).not.toHaveBeenCalled();
+    });
+
+    describe('bearer key group scope escalation (GHSA-454m-4vm6-842f)', () => {
+      // Regression tests for the "any-overlap" group authorization flaw:
+      // a servers/custom-scoped bearer key must NOT gain access to every server
+      // in a group just because one group member appears in allowedServers.
+      const postToTeamGroup = async (key: Record<string, unknown>) => {
+        (getBearerKeyDao as jest.MockedFunction<any>).mockReturnValueOnce({
+          findEnabled: jest.fn().mockResolvedValue([key]),
+        });
+        (getGroupDao as jest.MockedFunction<any>).mockReturnValueOnce({
+          findByName: jest.fn().mockImplementation((name: string) =>
+            name === 'team-group'
+              ? Promise.resolve({
+                  id: 'team-group-uuid',
+                  name: 'team-group',
+                  servers: ['public-server', 'secret-server'],
+                })
+              : Promise.resolve(null),
+          ),
+          findById: jest.fn().mockResolvedValue(null),
+        });
+
+        setMockSystemConfig({
+          routing: {
+            enableGlobalRoute: true,
+            enableGroupNameRoute: true,
+            enableBearerAuth: true,
+            bearerAuthKey: 'scoped-token',
+            skipAuth: false,
+          },
+          enableSessionRebuild: false,
+        });
+
+        const req = createMockRequest({
+          params: { group: 'team-group' },
+          body: { jsonrpc: '2.0', method: 'tools/list', id: 1 },
+          headers: { authorization: 'Bearer scoped-token' },
+        });
+        const res = createMockResponse();
+
+        await handleMcpPostRequest(req, res);
+        return res;
+      };
+
+      const scopedKey = (overrides: Record<string, unknown> = {}) => ({
+        id: 'key-1',
+        name: 'contractor-key',
+        token: 'scoped-token',
+        enabled: true,
+        accessType: 'servers',
+        allowedGroups: [],
+        allowedServers: ['public-server'],
+        ...overrides,
+      });
+
+      it('denies a servers-scoped key access to a group containing a non-allowed server', async () => {
+        // Key is only granted public-server, but team-group also contains secret-server.
+        const res = await postToTeamGroup(scopedKey());
+        expectBearerUnauthorized(res, 'Invalid bearer token');
+      });
+
+      it('denies a custom-scoped key whose allowedServers overlap only partially with a group', async () => {
+        const res = await postToTeamGroup(scopedKey({ accessType: 'custom', allowedGroups: [] }));
+        expectBearerUnauthorized(res, 'Invalid bearer token');
+      });
+
+      it('allows a servers-scoped key when every server in the group is allowed', async () => {
+        const res = await postToTeamGroup(
+          scopedKey({ allowedServers: ['public-server', 'secret-server'] }),
+        );
+        expect(res.status).not.toHaveBeenCalledWith(401);
+      });
+
+      it('allows a custom-scoped key when the group itself is in allowedGroups', async () => {
+        const res = await postToTeamGroup(
+          scopedKey({
+            accessType: 'custom',
+            allowedGroups: ['team-group'],
+            allowedServers: [],
+          }),
+        );
+        expect(res.status).not.toHaveBeenCalledWith(401);
+      });
+
+      it('denies a servers-scoped key for an empty group (no servers to contain)', async () => {
+        (getBearerKeyDao as jest.MockedFunction<any>).mockReturnValueOnce({
+          findEnabled: jest.fn().mockResolvedValue([scopedKey()]),
+        });
+        (getGroupDao as jest.MockedFunction<any>).mockReturnValueOnce({
+          findByName: jest
+            .fn()
+            .mockImplementation((name: string) =>
+              name === 'empty-group'
+                ? Promise.resolve({ id: 'empty-group-uuid', name: 'empty-group', servers: [] })
+                : Promise.resolve(null),
+            ),
+          findById: jest.fn().mockResolvedValue(null),
+        });
+
+        setMockSystemConfig({
+          routing: {
+            enableGlobalRoute: true,
+            enableGroupNameRoute: true,
+            enableBearerAuth: true,
+            bearerAuthKey: 'scoped-token',
+            skipAuth: false,
+          },
+          enableSessionRebuild: false,
+        });
+
+        const req = createMockRequest({
+          params: { group: 'empty-group' },
+          body: { jsonrpc: '2.0', method: 'tools/list', id: 1 },
+          headers: { authorization: 'Bearer scoped-token' },
+        });
+        const res = createMockResponse();
+
+        await handleMcpPostRequest(req, res);
+        expectBearerUnauthorized(res, 'Invalid bearer token');
+      });
     });
   });
 
