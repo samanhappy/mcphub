@@ -511,7 +511,12 @@
       "deny": "Refuser",
       "approveSubtitle": "Recommandé si vous faites confiance à cette application.",
       "denySubtitle": "Vous pourrez toujours accorder l'accès plus tard."
-    }
+    },
+    "application": "Application",
+    "scopesTitle": "Cette application pourra :",
+    "noScopes": "Aucune autorisation demandée.",
+    "requestInvalidTitle": "Demande invalide",
+    "requestInvalid": "Cette demande d'autorisation est invalide ou a expiré. Veuillez revenir en arrière et réessayer."
   },
   "cloud": {
     "title": "Support Cloud",

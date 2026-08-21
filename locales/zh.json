@@ -514,7 +514,12 @@
       "deny": "拒绝",
       "approveSubtitle": "如果您信任此应用，建议选择允许。",
       "denySubtitle": "您可以在之后随时再次授权。"
-    }
+    },
+    "application": "应用程序",
+    "scopesTitle": "此应用程序将能够：",
+    "noScopes": "未请求任何权限。",
+    "requestInvalidTitle": "请求无效",
+    "requestInvalid": "此授权请求无效或已过期。请返回后重试。"
   },
   "cloud": {
     "title": "云端支持",

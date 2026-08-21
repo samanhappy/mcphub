@@ -511,7 +511,12 @@
       "deny": "Reddet",
       "approveSubtitle": "Bu uygulamaya güveniyorsanız izin vermeniz önerilir.",
       "denySubtitle": "İstediğiniz zaman daha sonra erişim verebilirsiniz."
-    }
+    },
+    "application": "Uygulama",
+    "scopesTitle": "Bu uygulama şunları yapabilecek:",
+    "noScopes": "İzin istenmedi.",
+    "requestInvalidTitle": "Geçersiz istek",
+    "requestInvalid": "Bu yetkilendirme isteği geçersiz veya süresi dolmuş. Lütfen geri dönüp tekrar deneyin."
   },
   "cloud": {
     "title": "Bulut Desteği",

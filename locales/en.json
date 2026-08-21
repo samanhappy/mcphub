@@ -512,7 +512,12 @@
       "deny": "Deny",
       "approveSubtitle": "Recommended if you trust this application.",
       "denySubtitle": "You can always grant access later."
-    }
+    },
+    "application": "Application",
+    "scopesTitle": "This application will be able to:",
+    "noScopes": "No permissions requested.",
+    "requestInvalidTitle": "Request invalid",
+    "requestInvalid": "This authorization request is invalid or has expired. Please go back and try again."
   },
   "cloud": {
     "title": "Cloud Support",

@@ -21,6 +21,7 @@ import { initOAuthProvider, getOAuthRouter } from './services/oauthService.js';
 import { initOAuthServer } from './services/oauthServerService.js';
 import { safeStringify } from './utils/serialization.js';
 import { resolveTrustProxySetting } from './utils/proxyTrust.js';
+import { setFrontendDistPath } from './utils/frontendShell.js';
 import http from 'http';
 import type { Socket } from 'net';
 import { mcpConnectionRateLimiter } from './utils/rateLimit.js';
@@ -185,6 +186,9 @@ export class AppServer {
 
     // Find frontend path
     this.frontendPath = this.findFrontendDistPath();
+    // Register the discovered SPA build so server-rendered pages (e.g. the
+    // OAuth consent screen) can boot the shell with injected context.
+    setFrontendDistPath(this.frontendPath);
 
     if (this.frontendPath) {
       console.log('Serving frontend', JSON.stringify({ frontendPath: this.frontendPath }));
