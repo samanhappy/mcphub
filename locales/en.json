@@ -517,7 +517,17 @@
     "scopesTitle": "This application will be able to:",
     "noScopes": "No permissions requested.",
     "requestInvalidTitle": "Request invalid",
-    "requestInvalid": "This authorization request is invalid or has expired. Please go back and try again."
+    "requestInvalid": "This authorization request is invalid or has expired. Please go back and try again.",
+    "grantingAccessTo": "Granting access to:",
+    "resourceAll": "All MCP servers",
+    "resourceSmart": "Smart routing",
+    "resourceServer": "MCP server: {{name}}",
+    "resourceGroup": "MCP group: {{name}}",
+    "clientId": "Client ID",
+    "willRedirectTo": "Will redirect to:",
+    "policy": "Privacy policy",
+    "terms": "Terms",
+    "homepage": "Homepage"
   },
   "cloud": {
     "title": "Cloud Support",

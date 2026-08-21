@@ -516,7 +516,17 @@
     "scopesTitle": "Bu uygulama şunları yapabilecek:",
     "noScopes": "İzin istenmedi.",
     "requestInvalidTitle": "Geçersiz istek",
-    "requestInvalid": "Bu yetkilendirme isteği geçersiz veya süresi dolmuş. Lütfen geri dönüp tekrar deneyin."
+    "requestInvalid": "Bu yetkilendirme isteği geçersiz veya süresi dolmuş. Lütfen geri dönüp tekrar deneyin.",
+    "grantingAccessTo": "Erişim verilecek hedef:",
+    "resourceAll": "Tüm MCP sunucuları",
+    "resourceSmart": "Akıllı yönlendirme",
+    "resourceServer": "MCP sunucusu: {{name}}",
+    "resourceGroup": "MCP grubu: {{name}}",
+    "clientId": "İstemci kimliği",
+    "willRedirectTo": "Şuraya yönlendirilecek:",
+    "policy": "Gizlilik politikası",
+    "terms": "Hizmet şartları",
+    "homepage": "Ana sayfa"
   },
   "cloud": {
     "title": "Bulut Desteği",

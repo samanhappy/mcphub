@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import type { ResourceTarget } from './oauthConsentResource.js';
 
 /**
  * Shared holder for the frontend dist directory.
@@ -16,6 +17,18 @@ export const setFrontendDistPath = (value: string | null): void => {
 };
 
 export const getFrontendDistPath = (): string | null => frontendDistPath;
+
+/**
+ * RFC 7591 client metadata surfaced on the consent screen as trust signals.
+ */
+export type ConsentClientInfo = {
+  clientUri?: string;
+  policyUri?: string;
+  tosUri?: string;
+  logoUri?: string;
+  contacts?: string[];
+  applicationType?: string;
+};
 
 /**
  * Data the OAuth consent screen needs to render. This is the security-relevant
@@ -36,6 +49,10 @@ export type OAuthConsentContext = {
   codeChallenge?: string;
   codeChallengeMethod?: string;
   token?: string;
+  // RFC 8707 `resource` — which MCPHub target the client wants to access.
+  resource?: ResourceTarget;
+  // RFC 7591 client identity / trust metadata (populated when registered).
+  client?: ConsentClientInfo;
 };
 
 /**
