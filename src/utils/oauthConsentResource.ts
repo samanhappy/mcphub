@@ -35,7 +35,11 @@ export function parseResourceTarget(raw: string): ResourceTarget {
     pathname = raw;
   }
 
-  const clean = pathname.replace(/\/+$/, '');
+  // Strip trailing slashes without a regex: `/\/+$/` is quadratic on a long
+  // run of slashes followed by a non-slash (user-controlled `resource`), i.e.
+  // an unauthenticated ReDoS on GET /oauth/authorize (CWE-1333).
+  let clean = pathname;
+  while (clean.endsWith('/')) clean = clean.slice(0, -1);
 
   if (!clean || clean === '/mcp') {
     return { raw, path: clean, kind: 'all' };
