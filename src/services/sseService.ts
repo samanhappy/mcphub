@@ -196,7 +196,9 @@ const isBearerKeyAllowedForRequest = async (req: Request, key: BearerKey): Promi
       }
 
       if (key.accessType === 'servers') {
-        // For server-scoped keys, check if any server in the group is allowed
+        // For server-scoped keys, the group is only accessible when every
+        // server in it is allowed (full containment). A key scoped to one
+        // group member must not gain access to the whole group (GHSA-454m-4vm6-842f).
         const allowedServers = key.allowedServers || [];
         if (allowedServers.length === 0) {
           return false;
@@ -209,7 +211,10 @@ const isBearerKeyAllowedForRequest = async (req: Request, key: BearerKey): Promi
         const groupServerNames = matchedGroup.servers.map((server) =>
           typeof server === 'string' ? server : server.name,
         );
-        return groupServerNames.some((name) => allowedServers.includes(name));
+        if (groupServerNames.length === 0) {
+          return false;
+        }
+        return groupServerNames.every((name) => allowedServers.includes(name));
       }
 
       if (key.accessType === 'custom') {
@@ -224,12 +229,17 @@ const isBearerKeyAllowedForRequest = async (req: Request, key: BearerKey): Promi
           return true;
         }
 
-        // Check if any server in the group is allowed
+        // Check if any server in the group is allowed. Require full
+        // containment: a key scoped to one group member must not gain access
+        // to the whole group (GHSA-454m-4vm6-842f).
         if (allowedServers.length > 0 && Array.isArray(matchedGroup.servers)) {
           const groupServerNames = matchedGroup.servers.map((server) =>
             typeof server === 'string' ? server : server.name,
           );
-          return groupServerNames.some((name) => allowedServers.includes(name));
+          if (groupServerNames.length === 0) {
+            return false;
+          }
+          return groupServerNames.every((name) => allowedServers.includes(name));
         }
 
         return false;
@@ -270,10 +280,7 @@ const isBearerKeyAllowedForRequest = async (req: Request, key: BearerKey): Promi
   }
 };
 
-const resolveUserLevelKeyUser = async (
-  req: Request,
-  key: BearerKey,
-): Promise<BearerAuthResult> => {
+const resolveUserLevelKeyUser = async (req: Request, key: BearerKey): Promise<BearerAuthResult> => {
   if (key.kind !== 'user') {
     return { valid: true, keyId: key.id, keyName: key.name, kind: key.kind || 'system' };
   }
@@ -743,18 +750,14 @@ async function createSessionWithId(
   await server.connect(transport);
 
   if (!rehydrateRebuiltTransport(transport, sessionId)) {
-    console.error(
-      `[SESSION REBUILD] Failed to rehydrate transport state for session ${sessionId}`,
-    );
+    console.error(`[SESSION REBUILD] Failed to rehydrate transport state for session ${sessionId}`);
     await transport.close();
     throw new Error('Failed to rebuild session transport state');
   }
 
   transports[sessionId] = { transport, group, hostedAuth };
 
-  console.log(
-    `[SESSION REBUILD] Rehydrated session ${sessionId} for immediate request handling.`,
-  );
+  console.log(`[SESSION REBUILD] Rehydrated session ${sessionId} for immediate request handling.`);
 
   console.log(`[SESSION REBUILD] Successfully rebuilt session ${sessionId} in group: ${group}`);
   return transport;
