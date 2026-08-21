@@ -12,6 +12,10 @@ import { JWT_SECRET } from '../config/jwt.js';
 import { resolveBetterAuthUser } from '../services/betterAuthSession.js';
 import { cloneDefaultOAuthServerConfig } from '../constants/oauthServerDefaults.js';
 import { resolveInstallBaseUrl } from '../utils/installBaseUrl.js';
+import {
+  injectOAuthConsentShell,
+  type OAuthConsentContext,
+} from '../utils/frontendShell.js';
 
 const { Request: OAuth2Request, Response: OAuth2Response } = OAuth2Server;
 
@@ -341,6 +345,32 @@ export const getAuthorize = async (req: Request, res: Response): Promise<void> =
       ${code_challenge_method ? `<input type="hidden" name="code_challenge_method" value="${escapeHtml(code_challenge_method)}" />` : ''}
       ${tokenField}
     `;
+
+    // Build the structured consent context handed to the React SPA. The server
+    // has already validated the request and resolved the authenticated user, so
+    // the SPA only renders this payload (never re-resolves auth).
+    const consentContext: OAuthConsentContext = {
+      clientName: client.name || '',
+      scopes,
+      clientId: client_id,
+      redirectUri: redirect_uri,
+      responseType: response_type,
+      scope: scope || '',
+      state: state || undefined,
+      codeChallenge: code_challenge || undefined,
+      codeChallengeMethod: code_challenge_method || undefined,
+      token: requestToken || undefined,
+    };
+
+    // Serve the consent screen inside the React dashboard (SPA shell) when the
+    // frontend build is available, so it shares the dashboard's visual
+    // language, i18n and dark mode. Fall back to the legacy inline page when
+    // the frontend is not deployed (e.g. DISABLE_WEB / headless installs).
+    const shell = injectOAuthConsentShell(consentContext);
+    if (shell) {
+      res.type('html').send(shell);
+      return;
+    }
 
     // Render authorization consent page with consistent, localized styling
     res.send(

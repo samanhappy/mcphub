@@ -11,6 +11,7 @@ import EmbeddingSyncAlertListener from './components/EmbeddingSyncAlertListener'
 import { getBasePath } from './utils/runtime';
 
 const LoginPage = lazy(() => import('./pages/LoginPage'));
+const OAuthConsentPage = lazy(() => import('./pages/OAuthConsentPage'));
 const DashboardPage = lazy(() => import('./pages/Dashboard'));
 const ServersPage = lazy(() => import('./pages/ServersPage'));
 const GroupsPage = lazy(() => import('./pages/GroupsPage'));
@@ -51,6 +52,17 @@ function App() {
                     element={
                       <Suspense fallback={<RouteFallback />}>
                         <LoginPage />
+                      </Suspense>
+                    }
+                  />
+
+                  {/* OAuth consent screen: server injects the consent context
+                      into the SPA shell served at /oauth/authorize */}
+                  <Route
+                    path="/oauth/authorize"
+                    element={
+                      <Suspense fallback={<RouteFallback />}>
+                        <OAuthConsentPage />
                       </Suspense>
                     }
                   />
