@@ -1,0 +1,14 @@
+frontend/src/pages/OAuthConsentPage.tsx
+  h_18676a549cd52a 137
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "57f3cb7d6275d967cf8708d0ef4a0bdaf69b2587",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
