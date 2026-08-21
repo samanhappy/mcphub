@@ -1,10 +1,10 @@
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, ExternalLink } from 'lucide-react';
 import { getBasePath } from '../utils/runtime';
 import ThemeSwitch from '@/components/ui/ThemeSwitch';
 import LanguageSwitch from '@/components/ui/LanguageSwitch';
-import type { OAuthConsentContext } from '../types/runtime';
+import type { OAuthConsentContext, ResourceTarget } from '../types/runtime';
 
 /**
  * OAuth consent screen, booted inside the dashboard SPA by the shell the
@@ -31,6 +31,9 @@ const OAuthConsentPage: React.FC = () => {
         <input type="hidden" name="redirect_uri" value={context.redirectUri} />
         <input type="hidden" name="response_type" value={context.responseType} />
         <input type="hidden" name="scope" value={context.scope} />
+        {context.resource ? (
+          <input type="hidden" name="resource" value={context.resource.raw} />
+        ) : null}
         {context.state ? <input type="hidden" name="state" value={context.state} /> : null}
         {context.codeChallenge ? (
           <input type="hidden" name="code_challenge" value={context.codeChallenge} />
@@ -44,13 +47,62 @@ const OAuthConsentPage: React.FC = () => {
     );
   };
 
+  const resourceLabel = (resource: ResourceTarget): string => {
+    switch (resource.kind) {
+      case 'all':
+        return t('oauthServer.resourceAll');
+      case 'smart':
+        return t('oauthServer.resourceSmart');
+      case 'server':
+        return t('oauthServer.resourceServer', { name: resource.name ?? '' });
+      case 'group':
+        return t('oauthServer.resourceGroup', { name: resource.name ?? '' });
+      default:
+        return resource.name || resource.raw;
+    }
+  };
+
+  const link = (href: string | undefined, label: string): React.ReactNode => {
+    if (!href) return null;
+    return (
+      <a
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 3,
+          fontSize: 11.5,
+          color: 'var(--hub-ink-2)',
+          textDecoration: 'none',
+          borderBottom: '1px solid var(--hub-line)',
+          paddingBottom: 1,
+          maxWidth: 220,
+        }}
+        title={href}
+      >
+        <span
+          style={{
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {label}
+        </span>
+        <ExternalLink size={10} className="flex-shrink-0" />
+      </a>
+    );
+  };
+
   if (!context) {
     return (
       <div
         className="relative min-h-screen w-full overflow-hidden"
         style={{ background: 'var(--hub-bg)', color: 'var(--hub-ink)' }}
       >
-        <div className="relative mx-auto flex min-h-screen w-full max-w-md items-center justify-center px-6">
+        <div className="relative mx-auto flex min-h-screen w-full max-w-lg items-center justify-center px-6">
           <div className="hub-card w-full" style={{ padding: '22px' }}>
             <div className="flex items-center gap-2" style={{ color: 'var(--hub-err)' }}>
               <AlertCircle size={16} className="flex-shrink-0" />
@@ -67,6 +119,10 @@ const OAuthConsentPage: React.FC = () => {
     );
   }
 
+  const clientIdFingerprint = `${context.clientId.slice(0, 8)}…`;
+  const client = context.client;
+  const hasLinks = Boolean(client?.policyUri || client?.tosUri || client?.clientUri);
+
   return (
     <div
       className="relative min-h-screen w-full overflow-hidden"
@@ -78,7 +134,7 @@ const OAuthConsentPage: React.FC = () => {
         <LanguageSwitch />
       </div>
 
-      <div className="relative mx-auto flex min-h-screen w-full max-w-md items-center justify-center px-6">
+      <div className="relative mx-auto flex min-h-screen w-full max-w-lg items-center justify-center px-6">
         <div className="w-full space-y-6">
           {/* Brand */}
           <div className="flex flex-col items-center gap-3">
@@ -89,7 +145,7 @@ const OAuthConsentPage: React.FC = () => {
                 height: 44,
                 borderRadius: 10,
                 background: 'var(--hub-ink)',
-                color: 'white',
+                color: 'var(--hub-bg)',
               }}
             >
               <span className="hub-mono font-semibold" style={{ fontSize: 18 }}>
@@ -115,6 +171,39 @@ const OAuthConsentPage: React.FC = () => {
 
           {/* Consent card */}
           <div className="hub-card" style={{ padding: '22px 22px 20px' }}>
+            {/* Resource target (RFC 8707) */}
+            {context.resource ? (
+              <div
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 4,
+                  padding: '12px 14px',
+                  borderRadius: 10,
+                  background: 'var(--hub-accent-soft)',
+                  border: '1px solid var(--hub-line)',
+                  marginBottom: 14,
+                }}
+              >
+                <span className="hub-sect">{t('oauthServer.grantingAccessTo')}</span>
+                <span style={{ fontWeight: 600, fontSize: 14, color: 'var(--hub-ink)' }}>
+                  {resourceLabel(context.resource)}
+                </span>
+                <span
+                  className="hub-mono"
+                  style={{
+                    fontSize: 11.5,
+                    color: 'var(--hub-ink-2)',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {context.resource.raw}
+                </span>
+              </div>
+            ) : null}
+
             {/* Client box */}
             <div
               style={{
@@ -127,10 +216,43 @@ const OAuthConsentPage: React.FC = () => {
                 border: '1px solid var(--hub-line)',
               }}
             >
-              <span className="hub-sect">{t('oauthServer.application')}</span>
-              <span style={{ fontWeight: 600, fontSize: 15, color: 'var(--hub-ink)' }}>
-                {context.clientName}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                {client?.logoUri ? (
+                  <img
+                    src={client.logoUri}
+                    alt=""
+                    width={20}
+                    height={20}
+                    style={{ borderRadius: 4, flexShrink: 0, objectFit: 'contain' }}
+                    referrerPolicy="no-referrer"
+                  />
+                ) : null}
+                <span style={{ fontWeight: 600, fontSize: 15, color: 'var(--hub-ink)' }}>
+                  {context.clientName}
+                </span>
+              </div>
+              <span className="hub-sect">
+                {t('oauthServer.clientId')}: <span className="hub-mono">{clientIdFingerprint}</span>
               </span>
+              <span
+                style={{
+                  fontSize: 11.5,
+                  color: 'var(--hub-ink-2)',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }}
+                title={context.redirectUri}
+              >
+                {t('oauthServer.willRedirectTo')} {context.redirectUri}
+              </span>
+              {hasLinks ? (
+                <div style={{ display: 'flex', gap: 12, marginTop: 6, flexWrap: 'wrap' }}>
+                  {link(client?.policyUri, t('oauthServer.policy'))}
+                  {link(client?.tosUri, t('oauthServer.terms'))}
+                  {link(client?.clientUri, t('oauthServer.homepage'))}
+                </div>
+              ) : null}
             </div>
 
             {/* Scopes */}
@@ -174,16 +296,6 @@ const OAuthConsentPage: React.FC = () => {
                   }}
                 >
                   <span style={{ lineHeight: 1.3 }}>{t('oauthServer.buttons.approve')}</span>
-                  <span
-                    style={{
-                      fontSize: 10.5,
-                      lineHeight: 1.3,
-                      opacity: 0.8,
-                      color: 'inherit',
-                    }}
-                  >
-                    {t('oauthServer.buttons.approveSubtitle')}
-                  </span>
                 </button>
               </form>
               <form method="POST" action={postUrl} style={{ flex: 1 }}>
@@ -200,16 +312,6 @@ const OAuthConsentPage: React.FC = () => {
                   }}
                 >
                   <span style={{ lineHeight: 1.3 }}>{t('oauthServer.buttons.deny')}</span>
-                  <span
-                    style={{
-                      fontSize: 10.5,
-                      lineHeight: 1.3,
-                      opacity: 0.75,
-                      color: 'inherit',
-                    }}
-                  >
-                    {t('oauthServer.buttons.denySubtitle')}
-                  </span>
                 </button>
               </form>
             </div>

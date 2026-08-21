@@ -5,7 +5,7 @@ import {
   handleAuthenticateRequest,
 } from '../services/oauthServerService.js';
 import { findOAuthClientById } from '../models/OAuth.js';
-import { getSystemConfigDao } from '../dao/index.js';
+import { getSystemConfigDao, getGroupDao, getServerDao } from '../dao/index.js';
 import OAuth2Server from '@node-oauth/oauth2-server';
 import jwt from 'jsonwebtoken';
 import { JWT_SECRET } from '../config/jwt.js';
@@ -15,7 +15,12 @@ import { resolveInstallBaseUrl } from '../utils/installBaseUrl.js';
 import {
   injectOAuthConsentShell,
   type OAuthConsentContext,
+  type ConsentClientInfo,
 } from '../utils/frontendShell.js';
+import {
+  parseResourceTarget,
+  type ResourceTarget,
+} from '../utils/oauthConsentResource.js';
 
 const { Request: OAuth2Request, Response: OAuth2Response } = OAuth2Server;
 
@@ -246,6 +251,40 @@ const generateAuthorizeHtml = (
 };
 
 /**
+ * Resolve an RFC 8707 `resource` URI into a display target for the consent
+ * screen, disambiguating `/mcp/{name}` between a group and a single server.
+ * Best-effort: unknown or unresolvable targets are surfaced as-is, never
+ * blocking the authorization request.
+ */
+async function resolveResourceTarget(raw: string | undefined): Promise<ResourceTarget | undefined> {
+  if (!raw) {
+    return undefined;
+  }
+
+  const parsed = parseResourceTarget(raw);
+  if (parsed.kind !== 'target' || !parsed.name) {
+    return parsed;
+  }
+
+  try {
+    const [group, server] = await Promise.all([
+      getGroupDao().findByName(parsed.name),
+      getServerDao().findById(parsed.name),
+    ]);
+    if (group) {
+      return { ...parsed, kind: 'group' };
+    }
+    if (server) {
+      return { ...parsed, kind: 'server' };
+    }
+    return { ...parsed, kind: 'unknown' };
+  } catch (error) {
+    console.warn('Failed to resolve OAuth consent resource target:', error);
+    return { ...parsed, kind: 'unknown' };
+  }
+}
+
+/**
  * GET /oauth/authorize
  * Display authorization page or handle authorization
  */
@@ -279,6 +318,12 @@ export const getAuthorize = async (req: Request, res: Response): Promise<void> =
           'code_challenge_method',
           /^(S256|plain)$/,
         )
+      : undefined;
+    // RFC 8707: the resource URI the client wants to access (e.g. which MCP
+    // server). Optional here for compatibility with clients that omit it, but
+    // surfaced on the consent screen when present.
+    const resource = req.query.resource
+      ? validateQueryParam(req.query.resource, 'resource')
       : undefined;
 
     // Validate required parameters
@@ -341,6 +386,7 @@ export const getAuthorize = async (req: Request, res: Response): Promise<void> =
       <input type="hidden" name="response_type" value="${escapeHtml(response_type)}" />
       <input type="hidden" name="scope" value="${escapeHtml(scope || '')}" />
       <input type="hidden" name="state" value="${escapeHtml(state || '')}" />
+      ${resource ? `<input type="hidden" name="resource" value="${escapeHtml(resource)}" />` : ''}
       ${code_challenge ? `<input type="hidden" name="code_challenge" value="${escapeHtml(code_challenge)}" />` : ''}
       ${code_challenge_method ? `<input type="hidden" name="code_challenge_method" value="${escapeHtml(code_challenge_method)}" />` : ''}
       ${tokenField}
@@ -349,6 +395,14 @@ export const getAuthorize = async (req: Request, res: Response): Promise<void> =
     // Build the structured consent context handed to the React SPA. The server
     // has already validated the request and resolved the authenticated user, so
     // the SPA only renders this payload (never re-resolves auth).
+    const consentClientInfo: ConsentClientInfo = {
+      clientUri: client.metadata?.client_uri,
+      policyUri: client.metadata?.policy_uri,
+      tosUri: client.metadata?.tos_uri,
+      logoUri: client.metadata?.logo_uri,
+      contacts: client.metadata?.contacts,
+      applicationType: client.metadata?.application_type,
+    };
     const consentContext: OAuthConsentContext = {
       clientName: client.name || '',
       scopes,
@@ -360,6 +414,8 @@ export const getAuthorize = async (req: Request, res: Response): Promise<void> =
       codeChallenge: code_challenge || undefined,
       codeChallengeMethod: code_challenge_method || undefined,
       token: requestToken || undefined,
+      resource: await resolveResourceTarget(resource),
+      client: consentClientInfo,
     };
 
     // Serve the consent screen inside the React dashboard (SPA shell) when the

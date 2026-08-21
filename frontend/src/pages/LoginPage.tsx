@@ -246,7 +246,7 @@ const LoginPage: React.FC = () => {
                 height: 44,
                 borderRadius: 10,
                 background: 'var(--hub-ink)',
-                color: 'white',
+                color: 'var(--hub-bg)',
               }}
             >
               <span className="hub-mono font-semibold" style={{ fontSize: 18 }}>

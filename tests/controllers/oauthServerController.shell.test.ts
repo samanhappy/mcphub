@@ -16,11 +16,17 @@ jest.mock('../../src/utils/frontendShell.js', () => ({
   injectOAuthConsentShell: jest.fn(),
 }));
 
+jest.mock('../../src/dao/index.js', () => ({
+  getGroupDao: jest.fn(),
+  getServerDao: jest.fn(),
+}));
+
 import { getAuthorize } from '../../src/controllers/oauthServerController.js';
 import { getOAuthServer } from '../../src/services/oauthServerService.js';
 import { findOAuthClientById } from '../../src/models/OAuth.js';
 import { resolveBetterAuthUser } from '../../src/services/betterAuthSession.js';
 import { injectOAuthConsentShell } from '../../src/utils/frontendShell.js';
+import { getGroupDao, getServerDao } from '../../src/dao/index.js';
 
 type MockResponse = {
   status: jest.Mock;
@@ -71,6 +77,14 @@ describe('oauthServerController getAuthorize consent shell', () => {
     (resolveBetterAuthUser as jest.Mock).mockResolvedValue({
       username: 'alice',
       isAdmin: false,
+    });
+
+    // Default: no group/server matches the target name.
+    (getGroupDao as jest.Mock).mockReturnValue({
+      findByName: jest.fn().mockResolvedValue(null),
+    });
+    (getServerDao as jest.Mock).mockReturnValue({
+      findById: jest.fn().mockResolvedValue(null),
     });
   });
 
@@ -163,5 +177,132 @@ describe('oauthServerController getAuthorize consent shell', () => {
     );
     expect(injectOAuthConsentShell).not.toHaveBeenCalled();
     expect(res.send).not.toHaveBeenCalled();
+  });
+
+  it('passes the RFC 8707 resource target into the consent context', async () => {
+    (injectOAuthConsentShell as jest.Mock).mockReturnValue('<html>shell</html>');
+
+    const req = createRequest({
+      query: {
+        client_id: 'trusted-client',
+        redirect_uri: 'https://trusted.example.com/callback',
+        response_type: 'code',
+        scope: 'read',
+        resource: 'https://mcphub.example.com/mcp',
+      },
+    });
+    const res = createResponse();
+
+    await getAuthorize(req as any, res as any);
+
+    const context = (injectOAuthConsentShell as jest.Mock).mock.calls[0][0];
+    expect(context.resource).toEqual({
+      raw: 'https://mcphub.example.com/mcp',
+      path: '/mcp',
+      kind: 'all',
+    });
+  });
+
+  it('resolves /mcp/{name} to a server via the DAOs', async () => {
+    (getServerDao as jest.Mock).mockReturnValue({
+      findById: jest.fn().mockResolvedValue({ name: 'toggl' }),
+    });
+
+    const req = createRequest({
+      query: {
+        client_id: 'trusted-client',
+        redirect_uri: 'https://trusted.example.com/callback',
+        response_type: 'code',
+        scope: 'read',
+        resource: 'https://mcphub.example.com/mcp/toggl',
+      },
+    });
+    const res = createResponse();
+
+    await getAuthorize(req as any, res as any);
+
+    const context = (injectOAuthConsentShell as jest.Mock).mock.calls[0][0];
+    expect(context.resource).toMatchObject({ kind: 'server', name: 'toggl' });
+  });
+
+  it('resolves /mcp/{name} to a group via the DAOs (group wins over server)', async () => {
+    (getGroupDao as jest.Mock).mockReturnValue({
+      findByName: jest.fn().mockResolvedValue({ name: 'toggl' }),
+    });
+
+    const req = createRequest({
+      query: {
+        client_id: 'trusted-client',
+        redirect_uri: 'https://trusted.example.com/callback',
+        response_type: 'code',
+        scope: 'read',
+        resource: 'https://mcphub.example.com/mcp/toggl',
+      },
+    });
+    const res = createResponse();
+
+    await getAuthorize(req as any, res as any);
+
+    const context = (injectOAuthConsentShell as jest.Mock).mock.calls[0][0];
+    expect(context.resource).toMatchObject({ kind: 'group', name: 'toggl' });
+  });
+
+  it('marks /mcp/{name} as unknown when it matches no server or group', async () => {
+    const req = createRequest({
+      query: {
+        client_id: 'trusted-client',
+        redirect_uri: 'https://trusted.example.com/callback',
+        response_type: 'code',
+        scope: 'read',
+        resource: 'https://mcphub.example.com/mcp/does-not-exist',
+      },
+    });
+    const res = createResponse();
+
+    await getAuthorize(req as any, res as any);
+
+    const context = (injectOAuthConsentShell as jest.Mock).mock.calls[0][0];
+    expect(context.resource).toMatchObject({
+      kind: 'unknown',
+      name: 'does-not-exist',
+    });
+  });
+
+  it('passes RFC 7591 client metadata into the consent context', async () => {
+    (findOAuthClientById as jest.Mock).mockResolvedValue({
+      clientId: 'e9d6adf9e48449e6bee3f8b6fb024297',
+      name: 'Claude',
+      redirectUris: ['https://claude.ai/api/mcp/auth_callback'],
+      metadata: {
+        application_type: 'web',
+        contacts: ['security@example.com'],
+        logo_uri: 'https://example.com/logo.png',
+        client_uri: 'https://example.com',
+        policy_uri: 'https://example.com/privacy',
+        tos_uri: 'https://example.com/terms',
+      },
+    });
+
+    const req = createRequest({
+      query: {
+        client_id: 'e9d6adf9e48449e6bee3f8b6fb024297',
+        redirect_uri: 'https://claude.ai/api/mcp/auth_callback',
+        response_type: 'code',
+        scope: 'read',
+      },
+    });
+    const res = createResponse();
+
+    await getAuthorize(req as any, res as any);
+
+    const context = (injectOAuthConsentShell as jest.Mock).mock.calls[0][0];
+    expect(context.client).toEqual({
+      applicationType: 'web',
+      contacts: ['security@example.com'],
+      logoUri: 'https://example.com/logo.png',
+      clientUri: 'https://example.com',
+      policyUri: 'https://example.com/privacy',
+      tosUri: 'https://example.com/terms',
+    });
   });
 });

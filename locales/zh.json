@@ -519,7 +519,17 @@
     "scopesTitle": "此应用程序将能够：",
     "noScopes": "未请求任何权限。",
     "requestInvalidTitle": "请求无效",
-    "requestInvalid": "此授权请求无效或已过期。请返回后重试。"
+    "requestInvalid": "此授权请求无效或已过期。请返回后重试。",
+    "grantingAccessTo": "将授予访问权限：",
+    "resourceAll": "所有 MCP 服务器",
+    "resourceSmart": "智能路由",
+    "resourceServer": "MCP 服务器：{{name}}",
+    "resourceGroup": "MCP 分组：{{name}}",
+    "clientId": "客户端 ID",
+    "willRedirectTo": "将重定向到：",
+    "policy": "隐私政策",
+    "terms": "服务条款",
+    "homepage": "主页"
   },
   "cloud": {
     "title": "云端支持",
