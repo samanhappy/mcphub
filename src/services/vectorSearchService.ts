@@ -18,13 +18,13 @@ import {
 } from '../utils/tokenTruncation.js';
 import { safeStringify, summarizeErrorForLogging } from '../utils/serialization.js';
 import logService from './logService.js';
-import { createHmac } from 'node:crypto';
+import { scryptSync } from 'node:crypto';
 import OpenAI from 'openai';
 import axios from 'axios';
 import { logger } from '../utils/logger.js';
 
-// Stable key for the toolset cache HMAC. Not secret material — it only
-// domain-separates the hash so identical inputs remain deterministic.
+// Stable salt for the toolset cache key derivation. Not secret material — it
+// only domain-separates the derivation so identical inputs remain deterministic.
 const TOOLSET_HASH_KEY = 'mcphub:toolset-embedding-cache:v1';
 
 const maskApiKey = (apiKey: string): string => {
@@ -992,11 +992,15 @@ const buildToolSetHash = (tools: Tool[]): string => {
     }))
     .sort((a, b) => a.name.localeCompare(b.name));
 
-  // HMAC (keyed hash) instead of a bare SHA-256 digest: this is a cache key,
-  // not a password digest, and HMAC is the appropriate keyed construction.
-  return createHmac('sha256', TOOLSET_HASH_KEY)
-    .update(stableHashSerialize(normalized))
-    .digest('hex');
+  // Derive the cache key with a memory-hard KDF (scrypt) rather than a bare
+  // digest: inputs may embed configuration-derived content, so a deliberately
+  // expensive keyed derivation is the appropriate construction. Parameters
+  // are tuned down (~2ms) because this runs on tool-set refreshes only.
+  return scryptSync(stableHashSerialize(normalized), TOOLSET_HASH_KEY, 32, {
+    N: 2048,
+    r: 8,
+    p: 1,
+  }).toString('hex');
 };
 
 const buildServerSearchableText = (serverName: string, description?: string | null): string =>
