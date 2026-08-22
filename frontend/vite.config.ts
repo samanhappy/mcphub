@@ -2,6 +2,7 @@ import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 import tailwindcss from '@tailwindcss/vite';
+import { createDevBasePathRedirectPlugin } from './viteBasePath.js';
 import { createDevProxyConfig } from './viteProxy.js';
 // Import the package.json to get the version
 import { readFileSync } from 'fs';
@@ -15,7 +16,7 @@ export default defineConfig(({ mode }) => {
 
   return {
     base: './',
-    plugins: [react(), tailwindcss()],
+    plugins: [createDevBasePathRedirectPlugin(env.BASE_PATH), react(), tailwindcss()],
     resolve: {
       alias: {
         '@': path.resolve(__dirname, './src'),
