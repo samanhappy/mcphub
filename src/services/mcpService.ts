@@ -27,6 +27,7 @@ import { normalizeHeaders, type Transport } from '@modelcontextprotocol/sdk/shar
 import type { RequestOptions } from '@modelcontextprotocol/sdk/shared/protocol.js';
 import { createFetchWithProxy, getProxyConfigFromEnv } from './proxy.js';
 import { assertSafeUrl, createRedirectValidatingFetch } from '../utils/ssrf.js';
+import { createAbortIsolatingFetch } from '../utils/abortIsolatingFetch.js';
 import { ResilientJsonSchemaValidator } from '../utils/jsonSchemaValidator.js';
 import { getUserDao } from '../dao/index.js';
 import {
@@ -1265,7 +1266,7 @@ export const createTransportFromConfig = async (name: string, conf: ServerConfig
   if (conf.type === 'streamable-http') {
     const options: StreamableHTTPClientTransportOptions = {};
     let headers = conf.headers ? replaceEnvVars(conf.headers, env) : {};
-    const baseFetch = createFetchWithProxy(getProxyConfigFromEnv(env));
+    const baseFetch = createAbortIsolatingFetch(createFetchWithProxy(getProxyConfigFromEnv(env)));
     const requestAwareFetch = createRedirectValidatingFetch(
       createRequestContextAwareFetch(baseFetch, conf.passthroughHeaders),
       allowInternal,
@@ -1298,7 +1299,7 @@ export const createTransportFromConfig = async (name: string, conf: ServerConfig
     // SSE transport
     const options: any = {};
     let headers = conf.headers ? replaceEnvVars(conf.headers, env) : {};
-    const baseFetch = createFetchWithProxy(getProxyConfigFromEnv(env));
+    const baseFetch = createAbortIsolatingFetch(createFetchWithProxy(getProxyConfigFromEnv(env)));
     const requestAwareFetch = createRedirectValidatingFetch(
       createRequestContextAwareFetch(baseFetch, conf.passthroughHeaders),
       allowInternal,
