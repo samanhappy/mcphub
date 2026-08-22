@@ -60,17 +60,13 @@ export const resolveLanguage = (language?: string): string => {
   }
 
   const normalized = language.trim().toLowerCase();
-  const exactMatch = supportedLanguages.find(
-    (lang) => lang.toLowerCase() === normalized,
-  );
+  const exactMatch = supportedLanguages.find((lang) => lang.toLowerCase() === normalized);
   if (exactMatch) {
     return exactMatch;
   }
 
   const base = normalized.split('-')[0];
-  const baseMatch = supportedLanguages.find(
-    (lang) => lang.toLowerCase() === base,
-  );
+  const baseMatch = supportedLanguages.find((lang) => lang.toLowerCase() === base);
   if (baseMatch) {
     return baseMatch;
   }

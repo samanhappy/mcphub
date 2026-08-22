@@ -1,5 +1,5 @@
 import express from 'express';
-import cors from 'cors';
+import cors, { type CorsOptions } from 'cors';
 import config, { isWebDisabled } from './config/index.js';
 import path from 'path';
 import fs from 'fs';
@@ -21,11 +21,13 @@ import { initOAuthProvider, getOAuthRouter } from './services/oauthService.js';
 import { initOAuthServer } from './services/oauthServerService.js';
 import { safeStringify } from './utils/serialization.js';
 import { resolveTrustProxySetting } from './utils/proxyTrust.js';
+import { resolveCorsOrigin } from './utils/corsOrigin.js';
 import { setFrontendDistPath } from './utils/frontendShell.js';
 import http from 'http';
 import type { Socket } from 'net';
 import { mcpConnectionRateLimiter } from './utils/rateLimit.js';
 import { closeHttpServer } from './utils/serverShutdown.js';
+import { logger } from './utils/logger.js';
 
 /**
  * Get the directory of the current module
@@ -57,11 +59,22 @@ export class AppServer {
   constructor() {
     this.app = express();
     this.app.set('trust proxy', resolveTrustProxySetting());
+    // Delegate-based CORS so the Host header is available for the same-host
+    // check inside resolveCorsOrigin.
     this.app.use(
-      cors({
-        origin: true,
-        credentials: true,
-      }),
+      cors(
+        (
+          req: import('express').Request,
+          callback: (err: Error | null, options?: CorsOptions) => void,
+        ) => {
+          const origin = resolveCorsOrigin(
+            req.headers.origin,
+            req.headers.host,
+            process.env.ALLOWED_ORIGINS,
+          );
+          callback(null, { origin: origin === false ? false : origin, credentials: true });
+        },
+      ),
     );
     this.port = config.port;
     this.basePath = config.basePath;
@@ -72,7 +85,7 @@ export class AppServer {
     try {
       // Initialize i18n before other components
       await initI18n();
-      console.log('i18n initialized successfully');
+      logger.log('i18n initialized successfully');
 
       // Initialize default admin user if no users exist
       await initializeDefaultUser();
@@ -84,7 +97,7 @@ export class AppServer {
         // Mount OAuth router at the root level (before other routes)
         // This must be at root level as per MCP OAuth specification
         this.app.use(oauthRouter);
-        console.log('OAuth router mounted successfully');
+        logger.log('OAuth router mounted successfully');
       }
 
       // Initialize OAuth authorization server (for MCPHub's own OAuth)
@@ -92,19 +105,18 @@ export class AppServer {
 
       initMiddlewares(this.app);
       await initRoutes(this.app);
-      console.log('Server initialized successfully');
+      logger.log('Server initialized successfully');
 
       initUpstreamServers()
         .then(() => {
-          console.log('MCP server initialized successfully');
+          logger.log('MCP server initialized successfully');
 
           // Original routes (global and group-based)
           this.app.get(
             `${this.basePath}/sse/:group(.*)?`,
             mcpConnectionRateLimiter,
             sseUserContextMiddleware,
-            (req, res) =>
-            handleSseConnection(req, res),
+            (req, res) => handleSseConnection(req, res),
           );
           this.app.post(
             `${this.basePath}/messages`,
@@ -164,7 +176,7 @@ export class AppServer {
           );
         })
         .catch((error) => {
-          console.error('Error initializing MCP server', safeStringify({ error }));
+          logger.error('Error initializing MCP server', safeStringify({ error }));
           throw error;
         })
         .finally(() => {
@@ -172,14 +184,14 @@ export class AppServer {
           this.findAndServeFrontend();
         });
     } catch (error) {
-      console.error('Error initializing server', safeStringify({ error }));
+      logger.error('Error initializing server', safeStringify({ error }));
       throw error;
     }
   }
 
   private findAndServeFrontend(): void {
     if (this.disableWeb) {
-      console.log('Web UI disabled via DISABLE_WEB=true. Server will run without frontend.');
+      logger.log('Web UI disabled via DISABLE_WEB=true. Server will run without frontend.');
       this.registerFrontendUnavailableRoute();
       return;
     }
@@ -191,7 +203,7 @@ export class AppServer {
     setFrontendDistPath(this.frontendPath);
 
     if (this.frontendPath) {
-      console.log('Serving frontend', JSON.stringify({ frontendPath: this.frontendPath }));
+      logger.log('Serving frontend', JSON.stringify({ frontendPath: this.frontendPath }));
       // Serve static files with base path
       this.app.use(this.basePath, express.static(this.frontendPath));
 
@@ -209,18 +221,18 @@ export class AppServer {
         }
       }
     } else {
-      console.warn('Frontend dist directory not found. Server will run without frontend.');
+      logger.warn('Frontend dist directory not found. Server will run without frontend.');
       this.registerFrontendUnavailableRoute();
     }
   }
 
   start(): void {
     this.server = this.app.listen(this.port, () => {
-      console.log(`Server is running on port ${this.port}`);
+      logger.log(`Server is running on port ${this.port}`);
       if (this.frontendPath && !this.disableWeb) {
-        console.log(`Open http://localhost:${this.port} in your browser to access MCPHub UI`);
+        logger.log(`Open http://localhost:${this.port} in your browser to access MCPHub UI`);
       } else {
-        console.log(
+        logger.log(
           `MCPHub API is running on http://localhost:${this.port}, but the UI is not available`,
         );
       }
@@ -235,7 +247,7 @@ export class AppServer {
    * Gracefully shutdown the server
    */
   async shutdown(): Promise<void> {
-    console.log('[SHUTDOWN] Starting graceful shutdown...');
+    logger.log('[SHUTDOWN] Starting graceful shutdown...');
 
     // Stop accepting new connections while existing requests finish within the grace period.
     const httpShutdown = this.server
@@ -245,9 +257,9 @@ export class AppServer {
     // Close all MCP clients
     try {
       cleanupAllServers();
-      console.log('[SHUTDOWN] MCP clients closed');
+      logger.log('[SHUTDOWN] MCP clients closed');
     } catch (error) {
-      console.error('[SHUTDOWN] Error closing MCP clients', safeStringify({ error }));
+      logger.error('[SHUTDOWN] Error closing MCP clients', safeStringify({ error }));
     }
 
     await httpShutdown;
@@ -260,13 +272,13 @@ export class AppServer {
       try {
         const { closeDatabase } = await import('./db/connection.js');
         await closeDatabase();
-        console.log('[SHUTDOWN] Database connection closed');
+        logger.log('[SHUTDOWN] Database connection closed');
       } catch (error) {
-        console.error('[SHUTDOWN] Error closing database', safeStringify({ error }));
+        logger.error('[SHUTDOWN] Error closing database', safeStringify({ error }));
       }
     }
 
-    console.log('[SHUTDOWN] Graceful shutdown completed');
+    logger.log('[SHUTDOWN] Graceful shutdown completed');
   }
 
   connected(): boolean {
@@ -284,19 +296,19 @@ export class AppServer {
     const currentDir = getCurrentFileDir();
 
     if (debug) {
-      console.log('DEBUG: Current directory:', process.cwd());
-      console.log('DEBUG: Script directory:', currentDir);
+      logger.log('DEBUG: Current directory:', process.cwd());
+      logger.log('DEBUG: Script directory:', currentDir);
     }
 
     // First, find the package root directory
     const packageRoot = this.findPackageRoot();
 
     if (debug) {
-      console.log('DEBUG: Using package root:', packageRoot);
+      logger.log('DEBUG: Using package root:', packageRoot);
     }
 
     if (!packageRoot) {
-      console.warn('Could not determine package root directory');
+      logger.warn('Could not determine package root directory');
       return null;
     }
 
@@ -304,7 +316,7 @@ export class AppServer {
     const frontendDistPath = path.join(packageRoot, 'frontend', 'dist');
 
     if (debug) {
-      console.log(`DEBUG: Checking frontend at: ${frontendDistPath}`);
+      logger.log(`DEBUG: Checking frontend at: ${frontendDistPath}`);
     }
 
     if (
@@ -314,7 +326,7 @@ export class AppServer {
       return frontendDistPath;
     }
 
-    console.warn('Frontend distribution not found', { frontendDistPath });
+    logger.warn('Frontend distribution not found', { frontendDistPath });
     return null;
   }
 
@@ -328,7 +340,9 @@ export class AppServer {
   private registerFrontendUnavailableRoute(): void {
     const rootPath = this.basePath || '/';
     this.app.get(rootPath, (_req, res) => {
-      res.status(404).send('Frontend not found. MCPHub API is running, but the UI is not available.');
+      res
+        .status(404)
+        .send('Frontend not found. MCPHub API is running, but the UI is not available.');
     });
   }
 }

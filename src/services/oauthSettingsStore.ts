@@ -1,5 +1,6 @@
 import { getServerDao } from '../dao/index.js';
 import { ServerConfig } from '../types/index.js';
+import { logger } from '../utils/logger.js';
 
 type OAuthConfig = NonNullable<ServerConfig['oauth']>;
 export type ServerConfigWithOAuth = ServerConfig & { oauth: OAuthConfig };
@@ -34,7 +35,7 @@ export const mutateOAuthSettings = async (
   const server = await serverDao.findById(serverName);
 
   if (!server) {
-    console.warn(`Server ${serverName} not found while updating OAuth settings`);
+    logger.warn(`Server ${serverName} not found while updating OAuth settings`);
     return undefined;
   }
 
@@ -88,9 +89,9 @@ export const persistClientCredentials = async (
     }
   });
 
-  console.log(`Persisted OAuth client credentials for server: ${serverName}`);
+  logger.log(`Persisted OAuth client credentials for server: ${serverName}`);
   if (credentials.scopes && credentials.scopes.length > 0) {
-    console.log(`Stored OAuth scopes for ${serverName}: ${credentials.scopes.join(', ')}`);
+    logger.log(`Stored OAuth scopes for ${serverName}: ${credentials.scopes.join(', ')}`);
   }
 
   return updated;

@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { ApiResponse } from '../types/index.js';
+import { logger } from '../utils/logger.js';
 
 const REGISTRY_BASE_URL = 'https://registry.modelcontextprotocol.io/v0.1';
 
@@ -46,7 +47,7 @@ export const getAllRegistryServers = async (req: Request, res: Response): Promis
 
     res.json(apiResponse);
   } catch (error) {
-    console.error('Error fetching registry servers:', error);
+    logger.error('Error fetching registry servers:', error);
     const errorMessage =
       error instanceof Error ? error.message : 'Failed to fetch registry servers';
     res.status(500).json({
@@ -99,7 +100,7 @@ export const getRegistryServerVersions = async (req: Request, res: Response): Pr
 
     res.json(apiResponse);
   } catch (error) {
-    console.error('Error fetching registry server versions:', error);
+    logger.error('Error fetching registry server versions:', error);
     const errorMessage =
       error instanceof Error ? error.message : 'Failed to fetch registry server versions';
     res.status(500).json({
@@ -157,7 +158,7 @@ export const getRegistryServerVersion = async (req: Request, res: Response): Pro
 
     res.json(apiResponse);
   } catch (error) {
-    console.error('Error fetching registry server version:', error);
+    logger.error('Error fetching registry server version:', error);
     const errorMessage =
       error instanceof Error ? error.message : 'Failed to fetch registry server version';
     res.status(500).json({

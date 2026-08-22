@@ -7,6 +7,7 @@ import { clearOAuthData, loadServerConfig } from './oauthSettingsStore.js';
 import { getServerByName, reconnectServer, resetServerOAuthConnection } from './mcpService.js';
 
 export type UpstreamOAuthDisconnectScope = 'tokens' | 'all';
+import { logger } from '../utils/logger.js';
 
 const OAUTH_RECONNECT_WAIT_TIMEOUT_MS = 3000;
 const OAUTH_RECONNECT_WAIT_INTERVAL_MS = 50;
@@ -31,7 +32,7 @@ const getCachedRevocationEndpoint = (serverName: string): string | undefined => 
   try {
     return getRegisteredClient(serverName)?.config.serverMetadata().revocation_endpoint;
   } catch (error) {
-    console.warn('Failed to read cached OAuth server metadata', {
+    logger.warn('Failed to read cached OAuth server metadata', {
       serverName,
       error: summarizeErrorForLogging(error),
     });
@@ -97,7 +98,7 @@ const revokeToken = async (
     });
 
     if (!response.ok) {
-      console.warn('OAuth token revocation failed', {
+      logger.warn('OAuth token revocation failed', {
         status: response.status,
         tokenTypeHint: token.hint,
       });
@@ -106,7 +107,7 @@ const revokeToken = async (
 
     return true;
   } catch (error) {
-    console.warn('OAuth token revocation request failed', {
+    logger.warn('OAuth token revocation request failed', {
       tokenTypeHint: token.hint,
       error: summarizeErrorForLogging(error),
     });
@@ -123,7 +124,7 @@ const canServerOwnerReachInternalUrls = async (serverConfig: ServerConfig): Prom
     const ownerUser = await getUserDao().findByUsername(serverConfig.owner);
     return Boolean(ownerUser?.isAdmin);
   } catch (error) {
-    console.warn('Failed to load server owner while disconnecting upstream OAuth', {
+    logger.warn('Failed to load server owner while disconnecting upstream OAuth', {
       serverName: serverConfig.owner,
       error: summarizeErrorForLogging(error),
     });
@@ -143,7 +144,11 @@ const waitForFreshAuthorizationUrl = async (serverName: string): Promise<void> =
       return;
     }
 
-    if (serverInfo && serverInfo.status !== 'connecting' && serverInfo.status !== 'oauth_required') {
+    if (
+      serverInfo &&
+      serverInfo.status !== 'connecting' &&
+      serverInfo.status !== 'oauth_required'
+    ) {
       return;
     }
 
@@ -161,7 +166,7 @@ const restartServerOAuthFlow = async (serverName: string): Promise<void> => {
     await reconnectServer(serverName);
     await waitForFreshAuthorizationUrl(serverName);
   } catch (error) {
-    console.warn('Failed to restart upstream OAuth authorization after disconnect', {
+    logger.warn('Failed to restart upstream OAuth authorization after disconnect', {
       serverName,
       error: summarizeErrorForLogging(error),
     });

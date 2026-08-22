@@ -12,6 +12,7 @@ import { DataService } from '../services/dataService.js';
 import { JWT_SECRET } from '../config/jwt.js';
 import { validatePasswordStrength, isDefaultPassword } from '../utils/passwordValidation.js';
 import { getPackageVersion } from '../utils/version.js';
+import { logger } from '../utils/logger.js';
 
 const dataService: DataService = getDataService();
 
@@ -86,7 +87,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       });
     });
   } catch (error) {
-    console.error('Login error:', error);
+    logger.error('Login error:', error);
     res.status(500).json({
       success: false,
       message: t('api.errors.server_error'),
@@ -142,7 +143,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
       });
     });
   } catch (error) {
-    console.error('Registration error:', error);
+    logger.error('Registration error:', error);
     res.status(500).json({ success: false, message: 'Server error' });
   }
 };
@@ -162,7 +163,7 @@ export const getCurrentUser = (req: Request, res: Response): void => {
       },
     });
   } catch (error) {
-    console.error('Get current user error:', error);
+    logger.error('Get current user error:', error);
     res.status(500).json({ success: false, message: 'Server error' });
   }
 };
@@ -217,7 +218,7 @@ export const changePassword = async (req: Request, res: Response): Promise<void>
 
     res.json({ success: true, message: 'Password updated successfully' });
   } catch (error) {
-    console.error('Change password error:', error);
+    logger.error('Change password error:', error);
     res.status(500).json({ success: false, message: 'Server error' });
   }
 };

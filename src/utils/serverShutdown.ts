@@ -1,5 +1,6 @@
 import type { Socket } from 'net';
 import type http from 'http';
+import { logger } from './logger.js';
 
 export const SHUTDOWN_GRACE_PERIOD_MS = 10_000;
 
@@ -14,7 +15,7 @@ export const closeHttpServer = (
         return;
       }
 
-      console.warn('[SHUTDOWN] Grace period expired; force closing HTTP connections', {
+      logger.warn('[SHUTDOWN] Grace period expired; force closing HTTP connections', {
         connections: connections.size,
         gracePeriodMs,
       });
@@ -32,7 +33,7 @@ export const closeHttpServer = (
         return;
       }
 
-      console.log('[SHUTDOWN] HTTP server closed');
+      logger.log('[SHUTDOWN] HTTP server closed');
       resolve();
     });
   });

@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { findPackageRoot } from './path.js';
+import { logger } from './logger.js';
 
 /**
  * Gets the package version from package.json
@@ -14,7 +15,7 @@ export const getPackageVersion = (searchPath?: string): string => {
 
     const packageRoot = findPackageRoot(startPath);
     if (!packageRoot) {
-      console.warn('Could not find package root, using default version');
+      logger.warn('Could not find package root, using default version');
       return 'dev';
     }
 
@@ -23,7 +24,7 @@ export const getPackageVersion = (searchPath?: string): string => {
     const packageJson = JSON.parse(packageJsonContent);
     return packageJson.version || 'dev';
   } catch (error) {
-    console.error('Error reading package version:', error);
+    logger.error('Error reading package version:', error);
     return 'dev';
   }
 };

@@ -81,7 +81,10 @@ export class RequestContextService {
   }
 
   public runWithCustomRequestContext<T>(context: RequestContext, callback: () => T): T;
-  public runWithCustomRequestContext<T>(context: RequestContext, callback: () => Promise<T>): Promise<T>;
+  public runWithCustomRequestContext<T>(
+    context: RequestContext,
+    callback: () => Promise<T>,
+  ): Promise<T>;
   public runWithCustomRequestContext<T>(
     context: RequestContext,
     callback: () => T | Promise<T>,

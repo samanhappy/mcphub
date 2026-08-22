@@ -9,6 +9,7 @@ import { BearerKey, SystemConfig } from '../types/index.js';
 import { getBetterAuthRuntimeConfig } from '../services/betterAuthConfig.js';
 import { safeCompare } from '../utils/safeCompare.js';
 import { getBearerTokenFromHeaders } from '../utils/bearerAuth.js';
+import { logger } from '../utils/logger.js';
 
 const isTestEnv =
   process.env.NODE_ENV === 'test' ||
@@ -24,7 +25,10 @@ const resolveBetterAuthUserSafe = async (req: Request) => {
   return module.resolveBetterAuthUser(req);
 };
 
-const validateBearerAuth = async (req: Request, systemConfig?: SystemConfig | null): Promise<BearerKey | null> => {
+const validateBearerAuth = async (
+  req: Request,
+  systemConfig?: SystemConfig | null,
+): Promise<BearerKey | null> => {
   const enableBearerAuth = systemConfig?.routing?.enableBearerAuth ?? true;
   if (!enableBearerAuth) {
     return null;
@@ -43,9 +47,11 @@ const validateBearerAuth = async (req: Request, systemConfig?: SystemConfig | nu
     return null;
   }
 
-  const matchingKey: BearerKey | undefined = enabledKeys.find((key) => safeCompare(key.token, token));
+  const matchingKey: BearerKey | undefined = enabledKeys.find((key) =>
+    safeCompare(key.token, token),
+  );
   if (!matchingKey) {
-    console.warn('Bearer auth failed: token did not match any configured bearer key');
+    logger.warn('Bearer auth failed: token did not match any configured bearer key');
     return null;
   }
 
@@ -53,13 +59,13 @@ const validateBearerAuth = async (req: Request, systemConfig?: SystemConfig | nu
   // Scoped keys are enforced on MCP routes in sseService.ts and must not bypass
   // dashboard API authorization.
   if (matchingKey.kind === 'user' || matchingKey.accessType !== 'all') {
-    console.warn(
+    logger.warn(
       `Bearer auth denied for dashboard API: key id=${matchingKey.id}, name=${matchingKey.name} is not a system-level all-access key`,
     );
     return null;
   }
 
-  console.log(
+  logger.log(
     `Bearer auth succeeded with key id=${matchingKey.id}, name=${matchingKey.name}, accessType=${matchingKey.accessType}`,
   );
   return matchingKey;

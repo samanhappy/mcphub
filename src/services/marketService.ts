@@ -1,6 +1,7 @@
 import fs from 'fs';
 import { MarketServer } from '../types/index.js';
 import { getConfigFilePath } from '../utils/path.js';
+import { logger } from '../utils/logger.js';
 
 // Get path to the servers.json file
 export const getServersJsonPath = (): string => {
@@ -27,7 +28,7 @@ export const getMarketServers = (): Record<string, MarketServer> => {
 
     return Object.fromEntries(sortedEntries);
   } catch (error) {
-    console.error('Failed to load servers from servers.json:', error);
+    logger.error('Failed to load servers from servers.json:', error);
     return {};
   }
 };

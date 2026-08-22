@@ -310,8 +310,7 @@ export class OpenAPIClient {
           requestConfig.headers = { Cookie: this.staticCookieHeader };
         }
         const response = await this.httpClient.get(specUrl, requestConfig);
-        const raw =
-          typeof response.data === 'string' ? response.data : String(response.data);
+        const raw = typeof response.data === 'string' ? response.data : String(response.data);
         this.spec = (await SwaggerParser.dereference(
           specUrl,
           this.parseSpecDocument(raw),
@@ -467,9 +466,7 @@ export class OpenAPIClient {
           // references those objects directly, so without sanitization every
           // downstream serializer (tokenCost, getServerConfig, MCP ListTools,
           // embeddings) throws "Converting circular structure to JSON". See #959.
-          inputSchema: createSafeJSON(
-            this.generateInputSchema(operation, path, method as string),
-          ),
+          inputSchema: createSafeJSON(this.generateInputSchema(operation, path, method as string)),
           operationId: operation.operationId || operationName,
           method: method as string,
           path,
@@ -709,11 +706,7 @@ export class OpenAPIClient {
         // a 3xx login redirect is surfaced as an error; 4xx logout responses
         // may expire cookies. Capture before retry/rethrow so the jar stays
         // current and the 401-retry path can re-inject updated cookies.
-        if (
-          this.isCookieSessionEnabled(sessionId) &&
-          resolvedTarget &&
-          error.response
-        ) {
+        if (this.isCookieSessionEnabled(sessionId) && resolvedTarget && error.response) {
           this.captureResponseCookies(error.response, resolvedTarget.href, sessionId);
         }
         if (
@@ -770,7 +763,9 @@ export class OpenAPIClient {
   }
 
   private isCookieSessionEnabled(sessionId?: string): sessionId is string {
-    return !!this.config.openapi?.cookieSession && typeof sessionId === 'string' && sessionId.length > 0;
+    return (
+      !!this.config.openapi?.cookieSession && typeof sessionId === 'string' && sessionId.length > 0
+    );
   }
 
   // Lazily create a per-session cookie jar, seeded with the static apiKey

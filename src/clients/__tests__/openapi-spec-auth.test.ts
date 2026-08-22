@@ -39,7 +39,7 @@ const yamlSpec = [
   '  /things:',
   '    get:',
   '      operationId: get_things',
-  "      responses:",
+  '      responses:',
   "        '200':",
   '          description: ok',
 ].join('\n');
@@ -162,9 +162,9 @@ describe('OpenAPIClient - authenticated spec document fetch (#1044)', () => {
 
     await client.initialize();
 
-    expect((captured.v as { headers: { get: (n: string) => string } }).headers.get('Authorization')).toBe(
-      `Basic ${credentials}`,
-    );
+    expect(
+      (captured.v as { headers: { get: (n: string) => string } }).headers.get('Authorization'),
+    ).toBe(`Basic ${credentials}`);
     expect(client.getTools().some((t) => t.name === 'get_things')).toBe(true);
   });
 
@@ -227,9 +227,9 @@ describe('OpenAPIClient - authenticated spec document fetch (#1044)', () => {
 
     await client.initialize();
 
-    expect((captured.v as { headers: { get: (n: string) => string } }).headers.get('Authorization')).toBe(
-      `Basic ${credentials}`,
-    );
+    expect(
+      (captured.v as { headers: { get: (n: string) => string } }).headers.get('Authorization'),
+    ).toBe(`Basic ${credentials}`);
     expect(client.getTools().some((t) => t.name === 'get_things')).toBe(true);
   });
 
@@ -255,7 +255,9 @@ describe('OpenAPIClient - authenticated spec document fetch (#1044)', () => {
         },
       },
     });
-    const subSchema = JSON.stringify({ Thing: { type: 'object', properties: { id: { type: 'string' } } } });
+    const subSchema = JSON.stringify({
+      Thing: { type: 'object', properties: { id: { type: 'string' } } },
+    });
 
     const config: ServerConfig = {
       type: 'openapi',
@@ -279,15 +281,16 @@ describe('OpenAPIClient - authenticated spec document fetch (#1044)', () => {
     await client.initialize();
 
     // Main document fetch (axios) carried the credentials...
-    expect((captured.v as { headers: { get: (n: string) => string } }).headers.get('Authorization')).toBe(
-      `Basic ${credentials}`,
-    );
+    expect(
+      (captured.v as { headers: { get: (n: string) => string } }).headers.get('Authorization'),
+    ).toBe(`Basic ${credentials}`);
     // ...but the external $ref resolution (SwaggerParser's own resolver) did not.
     expect(fetchMock).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({ method: 'GET' }),
     );
-    const externalHeaders = (fetchMock.mock.calls[0][1] as { headers: Record<string, string> }).headers;
+    const externalHeaders = (fetchMock.mock.calls[0][1] as { headers: Record<string, string> })
+      .headers;
     expect(externalHeaders).toEqual({});
     expect(externalHeaders.Authorization).toBeUndefined();
     expect(client.getTools().some((t) => t.name === 'get_things')).toBe(true);
@@ -353,7 +356,13 @@ describe('OpenAPIClient - authenticated spec document fetch (#1044)', () => {
       }
       docFetchIndex = callCount;
       captured.v = cfg;
-      return Promise.resolve({ data: minimalSpec, status: 200, statusText: 'OK', headers: {}, config: cfg });
+      return Promise.resolve({
+        data: minimalSpec,
+        status: 200,
+        statusText: 'OK',
+        headers: {},
+        config: cfg,
+      });
     };
 
     await client.initialize();

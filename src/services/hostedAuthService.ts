@@ -10,6 +10,7 @@ import type { HubWebhookEvent, UserStateResponse } from './hostedControlPlaneCli
 import { isHostedModeEnabled } from './hostedMode.js';
 import { getHostedNodeIdentity } from './hostedNodeIdentity.js';
 import { safeCompare } from '../utils/safeCompare.js';
+import { logger } from '../utils/logger.js';
 
 const KEY_PREFIX = 'mcphub-sk';
 const API_KEY_PREFIX_CHARS = 12;
@@ -302,7 +303,7 @@ export async function validateHostedBearer(apiKey: string): Promise<HostedAuthCo
       Date.now() < cached.staleUntil &&
       matchesVerificationToken(apiKey, cached.verificationToken)
     ) {
-      console.warn('[hosted] control plane unavailable, serving stale cached auth state', {
+      logger.warn('[hosted] control plane unavailable, serving stale cached auth state', {
         error: String(error),
       });
       authStateCache.touch(prefix, cached);
@@ -427,7 +428,7 @@ export async function settleHostedToolCall(
       responseContent: reservation.contentRecordingEnabled ? input.responseContent : undefined,
     });
   } catch (error) {
-    console.warn('[hosted] failed to settle hosted tool call', {
+    logger.warn('[hosted] failed to settle hosted tool call', {
       reservationId: reservation.reservationId,
       error: String(error),
     });

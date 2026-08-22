@@ -1,5 +1,6 @@
 import { IUser } from '../types/index.js';
 import { getBearerKeyDao, getUserDao } from '../dao/index.js';
+import { logger } from '../utils/logger.js';
 
 // Get all users
 export const getAllUsers = async (): Promise<IUser[]> => {
@@ -39,7 +40,7 @@ export const createNewUser = async (
   try {
     const reservedError = checkReservedUsername(username);
     if (reservedError) {
-      console.warn(`User creation blocked: ${reservedError}`);
+      logger.warn(`User creation blocked: ${reservedError}`);
       return null;
     }
 
@@ -51,7 +52,7 @@ export const createNewUser = async (
 
     return await userDao.createWithHashedPassword(username, password, isAdmin, email || undefined);
   } catch (error) {
-    console.error('Failed to create user:', error);
+    logger.error('Failed to create user:', error);
     return null;
   }
 };
@@ -96,7 +97,7 @@ export const updateUser = async (
     // Return updated user
     return await userDao.findByUsername(username);
   } catch (error) {
-    console.error('Failed to update user:', error);
+    logger.error('Failed to update user:', error);
     return null;
   }
 };
@@ -121,7 +122,7 @@ export const deleteUser = async (username: string): Promise<boolean> => {
     }
     return deleted;
   } catch (error) {
-    console.error('Failed to delete user:', error);
+    logger.error('Failed to delete user:', error);
     return false;
   }
 };

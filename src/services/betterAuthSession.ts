@@ -1,9 +1,15 @@
 import crypto from 'crypto';
 import { Request } from 'express';
-import { createUser, findUserByUsername, findUserByEmail, findUserBySsoUserId } from '../models/User.js';
+import {
+  createUser,
+  findUserByUsername,
+  findUserByEmail,
+  findUserBySsoUserId,
+} from '../models/User.js';
 import { IUser } from '../types/index.js';
 import { getBetterAuthRuntimeConfig } from './betterAuthConfig.js';
 import { getUserDao } from '../dao/index.js';
+import { logger } from '../utils/logger.js';
 
 export const getBetterAuthSession = async (req: Request): Promise<any | null> => {
   if (!(await getBetterAuthRuntimeConfig()).enabled) {
@@ -19,7 +25,7 @@ export const getBetterAuthSession = async (req: Request): Promise<any | null> =>
     const session = await auth.api.getSession({ headers });
     return session || null;
   } catch (error) {
-    console.warn('Better Auth session lookup failed:', error);
+    logger.warn('Better Auth session lookup failed:', error);
     return null;
   }
 };
@@ -44,7 +50,7 @@ export const resolveBetterAuthUser = async (req: Request): Promise<IUser | null>
           const userDao = getUserDao();
           await userDao.update(ssoMatch.username, { email });
         } catch (backfillError) {
-          console.warn('Email backfill failed (non-critical):', backfillError);
+          logger.warn('Email backfill failed (non-critical):', backfillError);
         }
       }
       return ssoMatch;
@@ -61,7 +67,7 @@ export const resolveBetterAuthUser = async (req: Request): Promise<IUser | null>
           const userDao = getUserDao();
           await userDao.update(emailMatch.username, { ssoUserId });
         } catch (backfillError) {
-          console.warn('ssoUserId backfill failed (non-critical):', backfillError);
+          logger.warn('ssoUserId backfill failed (non-critical):', backfillError);
         }
       }
       return emailMatch;
@@ -79,14 +85,14 @@ export const resolveBetterAuthUser = async (req: Request): Promise<IUser | null>
         try {
           await userDao.update(usernameMatch.username, { ssoUserId });
         } catch (backfillError) {
-          console.warn('ssoUserId backfill failed (non-critical):', backfillError);
+          logger.warn('ssoUserId backfill failed (non-critical):', backfillError);
         }
       }
       if (email && !usernameMatch.email) {
         try {
           await userDao.update(usernameMatch.username, { email });
         } catch (backfillError) {
-          console.warn('Email backfill failed (non-critical):', backfillError);
+          logger.warn('Email backfill failed (non-critical):', backfillError);
         }
       }
       return usernameMatch;
@@ -100,7 +106,7 @@ export const resolveBetterAuthUser = async (req: Request): Promise<IUser | null>
 
   const runtimeConfig = await getBetterAuthRuntimeConfig();
   if (runtimeConfig.disableAutoCreate) {
-    console.warn(`SSO auto-creation disabled: user "${username}" not found in system`);
+    logger.warn(`SSO auto-creation disabled: user "${username}" not found in system`);
     return null;
   }
 

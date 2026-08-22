@@ -1,7 +1,12 @@
 import { getRepositoryFactory } from '../db/index.js';
 import { VectorEmbeddingRepository } from '../db/repositories/index.js';
 import { Tool } from '../types/index.js';
-import { getAppDataSource, isDatabaseConnected, initializeDatabase, reconnectDatabase } from '../db/connection.js';
+import {
+  getAppDataSource,
+  isDatabaseConnected,
+  initializeDatabase,
+  reconnectDatabase,
+} from '../db/connection.js';
 import { getServerDao } from '../dao/index.js';
 import { getSmartRoutingConfig, type SmartRoutingConfig } from '../utils/smartRouting.js';
 import { filterModelVisibleTools } from '../utils/mcpApps.js';
@@ -13,9 +18,14 @@ import {
 } from '../utils/tokenTruncation.js';
 import { safeStringify, summarizeErrorForLogging } from '../utils/serialization.js';
 import logService from './logService.js';
-import { createHash } from 'node:crypto';
+import { createHmac } from 'node:crypto';
 import OpenAI from 'openai';
 import axios from 'axios';
+import { logger } from '../utils/logger.js';
+
+// Stable key for the toolset cache HMAC. Not secret material — it only
+// domain-separates the hash so identical inputs remain deterministic.
+const TOOLSET_HASH_KEY = 'mcphub:toolset-embedding-cache:v1';
 
 const maskApiKey = (apiKey: string): string => {
   if (!apiKey) {
@@ -94,7 +104,12 @@ const generateAzureOpenAIEmbedding = async (
   const embeddingModel = smartRoutingConfig.azureOpenaiEmbeddingModel || 'text-embedding-3-small';
   const azureMaxTokens =
     smartRoutingConfig.embeddingMaxTokens ?? getModelDefaultTokenLimit(embeddingModel);
-  text = await truncateToTokenLimit(text, azureMaxTokens, embeddingModel, smartRoutingConfig.openaiApiKey);
+  text = await truncateToTokenLimit(
+    text,
+    azureMaxTokens,
+    embeddingModel,
+    smartRoutingConfig.openaiApiKey,
+  );
 
   const response = await axios.post(
     url,
@@ -282,7 +297,9 @@ const extractRetryAfterMs = (error: any): number | undefined => {
 
 const applyConfiguredBasePacingDelay = (basePacingDelayMs?: number): void => {
   const normalizedBaseDelay =
-    typeof basePacingDelayMs === 'number' && !Number.isNaN(basePacingDelayMs) && basePacingDelayMs >= 0
+    typeof basePacingDelayMs === 'number' &&
+    !Number.isNaN(basePacingDelayMs) &&
+    basePacingDelayMs >= 0
       ? Math.floor(basePacingDelayMs)
       : SAFE_BASE_PACING_DELAY_MS;
   const previousBaseDelay = configuredBasePacingDelayMs;
@@ -321,7 +338,7 @@ const increaseAdaptivePacingDelay = (status?: number): void => {
   lastPacingIncreaseAt = Date.now();
 
   if (adaptivePacingDelayMs !== previousDelay) {
-    console.warn(
+    logger.warn(
       `[Embedding][Throttle] Increased pacing delay to ${adaptivePacingDelayMs}ms after status=${status ?? 'unknown'}`,
     );
   }
@@ -360,19 +377,19 @@ const executeWithRetry = async <T>(
         if (retryAfterMs !== undefined && retryAfterMs > 0) {
           // Server specified an explicit wait — honor it regardless of accumulated time.
           waitMs = retryAfterMs;
-          console.warn(
+          logger.warn(
             `[Embedding][Retry] provider=${context.provider}, model=${context.model || 'unknown'}, baseURL=${context.baseURL || 'default'}, status=${status}, attempt=${attempt}, respecting Retry-After header: ${waitMs}ms`,
           );
         } else {
           // No Retry-After header: use 63 second cooldown and apply the 5-minute safety budget.
           waitMs = 63 * 1000;
-          console.warn(
+          logger.warn(
             `[Embedding][Retry] provider=${context.provider}, model=${context.model || 'unknown'}, baseURL=${context.baseURL || 'default'}, status=${status}, attempt=${attempt}, applying 63s rate-limit cooldown (no Retry-After header found)`,
           );
 
           if (totalRetryTimeMs + waitMs > MAX_TOTAL_RETRY_TIME_MS) {
             const remainingMs = MAX_TOTAL_RETRY_TIME_MS - totalRetryTimeMs;
-            console.warn(
+            logger.warn(
               `[Embedding][Retry] Max retry time limit reached (no Retry-After). totalTime=${totalRetryTimeMs}ms, nextWait=${waitMs}ms, remaining=${remainingMs}ms, limit=${MAX_TOTAL_RETRY_TIME_MS}ms. Throwing error.`,
             );
             throw error;
@@ -385,20 +402,20 @@ const executeWithRetry = async <T>(
         // Fixed exponential sequence: 4s, 8s, 16s, 30s, 60s, 120s, 240s — exactly 7 attempts.
         // No time budget imposed; all 7 attempts will be made regardless of total elapsed time.
         if (exponentialAttempt >= RETRY_EXPONENTIAL_SEQUENCE_MS.length) {
-          console.warn(
+          logger.warn(
             `[Embedding][Retry] Exhausted all ${RETRY_EXPONENTIAL_SEQUENCE_MS.length} exponential backoff attempts. provider=${context.provider}, model=${context.model || 'unknown'}, status=${status}. Throwing error.`,
           );
           throw error;
         }
 
         waitMs = withJitter(RETRY_EXPONENTIAL_SEQUENCE_MS[exponentialAttempt]);
-        console.warn(
+        logger.warn(
           `[Embedding][Retry] provider=${context.provider}, model=${context.model || 'unknown'}, baseURL=${context.baseURL || 'default'}, status=${status}, attempt=${attempt} (exponential ${exponentialAttempt + 1}/${RETRY_EXPONENTIAL_SEQUENCE_MS.length}), waiting=${waitMs}ms`,
         );
         exponentialAttempt++;
       }
 
-      console.log(
+      logger.log(
         `[Embedding][Retry] Attempt ${attempt} failed. Waiting ${waitMs}ms before retry...`,
       );
       await sleep(waitMs);
@@ -418,7 +435,7 @@ const withEmbeddingQueue = <T>(operation: () => Promise<T>): Promise<T> => {
     const pacingDelayMs = getAdaptivePacingDelayMs();
     const waitMs = lastEmbeddingCallAt === 0 ? 0 : Math.max(0, pacingDelayMs - elapsed);
     if (waitMs > 0) {
-      console.log(`[Embedding][Queue] Pacing wait ${waitMs}ms before next API call`);
+      logger.log(`[Embedding][Queue] Pacing wait ${waitMs}ms before next API call`);
       await sleep(waitMs);
     }
     lastEmbeddingCallAt = Date.now();
@@ -434,12 +451,14 @@ const withEmbeddingQueue = <T>(operation: () => Promise<T>): Promise<T> => {
 
 const scheduleFullEmbeddingResync = (reason: string): void => {
   if (fullResyncScheduled || fullResyncInProgress) {
-    console.log(`[Embedding] Full embeddings resync already in progress/scheduled. reason=${reason}`);
+    logger.log(
+      `[Embedding] Full embeddings resync already in progress/scheduled. reason=${reason}`,
+    );
     return;
   }
 
   fullResyncScheduled = true;
-  console.warn(`[Embedding] Scheduling full embeddings resync. reason=${reason}`);
+  logger.warn(`[Embedding] Scheduling full embeddings resync. reason=${reason}`);
 
   setTimeout(async () => {
     if (fullResyncInProgress) {
@@ -453,7 +472,7 @@ const scheduleFullEmbeddingResync = (reason: string): void => {
     try {
       await syncAllServerToolsEmbeddings();
     } catch (error) {
-      console.error('[EMBED_SYNC_ERROR] Full embeddings resync failed', { reason, error });
+      logger.error('[EMBED_SYNC_ERROR] Full embeddings resync failed', { reason, error });
     } finally {
       fullResyncInProgress = false;
     }
@@ -510,7 +529,7 @@ export async function createVectorIndex(
         CREATE INDEX ${indexName}
         ON ${tableName} USING hnsw (${columnName} vector_cosine_ops);
       `);
-      console.log(`Created HNSW index for ${dimensions}-dimensional vectors.`);
+      logger.log(`Created HNSW index for ${dimensions}-dimensional vectors.`);
       return {
         success: true,
         indexType: 'hnsw',
@@ -518,7 +537,7 @@ export async function createVectorIndex(
       };
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      console.warn(`HNSW index creation failed: ${errorMessage}`);
+      logger.warn(`HNSW index creation failed: ${errorMessage}`);
 
       // Fallback to IVFFlat if HNSW fails (e.g., older pgvector version)
       try {
@@ -526,7 +545,7 @@ export async function createVectorIndex(
           CREATE INDEX ${indexName}
           ON ${tableName} USING ivfflat (${columnName} vector_cosine_ops) WITH (lists = 100);
         `);
-        console.log(`Created IVFFlat index for ${dimensions}-dimensional vectors (fallback).`);
+        logger.log(`Created IVFFlat index for ${dimensions}-dimensional vectors (fallback).`);
         return {
           success: true,
           indexType: 'ivfflat',
@@ -534,7 +553,7 @@ export async function createVectorIndex(
         };
       } catch (ivfError: unknown) {
         const ivfErrorMessage = ivfError instanceof Error ? ivfError.message : 'Unknown error';
-        console.warn(`IVFFlat index creation also failed: ${ivfErrorMessage}`);
+        logger.warn(`IVFFlat index creation also failed: ${ivfErrorMessage}`);
         return {
           success: false,
           indexType: null,
@@ -552,7 +571,7 @@ export async function createVectorIndex(
         CREATE INDEX ${indexName}
         ON ${tableName} USING hnsw ((${columnName}::halfvec(${dimensions})) halfvec_cosine_ops);
       `);
-      console.log(`Created HNSW index with halfvec casting for ${dimensions}-dimensional vectors.`);
+      logger.log(`Created HNSW index with halfvec casting for ${dimensions}-dimensional vectors.`);
       return {
         success: true,
         indexType: 'hnsw-halfvec',
@@ -566,33 +585,31 @@ export async function createVectorIndex(
         errorMessage.includes('operator class');
 
       if (isHalfvecNotSupported) {
-        console.warn('');
-        console.warn('═══════════════════════════════════════════════════════════════════════════');
-        console.warn('  ⚠️  HIGH-DIMENSIONAL EMBEDDING INDEX WARNING');
-        console.warn('═══════════════════════════════════════════════════════════════════════════');
-        console.warn(
+        logger.warn('');
+        logger.warn('═══════════════════════════════════════════════════════════════════════════');
+        logger.warn('  ⚠️  HIGH-DIMENSIONAL EMBEDDING INDEX WARNING');
+        logger.warn('═══════════════════════════════════════════════════════════════════════════');
+        logger.warn(
           `  Your embeddings have ${dimensions} dimensions, which requires halfvec support.`,
         );
-        console.warn('');
-        console.warn('  pgvector dimension limits:');
-        console.warn(`  - vector type: max ${VECTOR_MAX_DIMENSIONS} dimensions`);
-        console.warn(
-          `  - halfvec type: max ${HALFVEC_MAX_DIMENSIONS} dimensions (pgvector 0.7.0+)`,
-        );
-        console.warn('');
-        console.warn('  RECOMMENDATIONS:');
-        console.warn('  1. Upgrade pgvector to >= 0.7.0 for halfvec support');
-        console.warn('  2. Or use a smaller embedding model:');
-        console.warn(
+        logger.warn('');
+        logger.warn('  pgvector dimension limits:');
+        logger.warn(`  - vector type: max ${VECTOR_MAX_DIMENSIONS} dimensions`);
+        logger.warn(`  - halfvec type: max ${HALFVEC_MAX_DIMENSIONS} dimensions (pgvector 0.7.0+)`);
+        logger.warn('');
+        logger.warn('  RECOMMENDATIONS:');
+        logger.warn('  1. Upgrade pgvector to >= 0.7.0 for halfvec support');
+        logger.warn('  2. Or use a smaller embedding model:');
+        logger.warn(
           '     - text-embedding-3-small (1536 dimensions) instead of text-embedding-3-large',
         );
-        console.warn('     - bge-m3 (1024 dimensions)');
-        console.warn('');
-        console.warn('  Vector search will work but may be slower without an optimized index.');
-        console.warn('═══════════════════════════════════════════════════════════════════════════');
-        console.warn('');
+        logger.warn('     - bge-m3 (1024 dimensions)');
+        logger.warn('');
+        logger.warn('  Vector search will work but may be slower without an optimized index.');
+        logger.warn('═══════════════════════════════════════════════════════════════════════════');
+        logger.warn('');
       } else {
-        console.warn(`HNSW halfvec index creation failed: ${errorMessage}`);
+        logger.warn(`HNSW halfvec index creation failed: ${errorMessage}`);
       }
 
       return {
@@ -604,24 +621,24 @@ export async function createVectorIndex(
   }
 
   // Strategy 3: For dimensions > 4000, no index is supported
-  console.warn('');
-  console.warn('═══════════════════════════════════════════════════════════════════════════');
-  console.warn('  ⚠️  EMBEDDING DIMENSIONS EXCEED INDEX LIMITS');
-  console.warn('═══════════════════════════════════════════════════════════════════════════');
-  console.warn(`  Your embeddings have ${dimensions} dimensions, which exceeds all limits:`);
-  console.warn(`  - vector type: max ${VECTOR_MAX_DIMENSIONS} dimensions`);
-  console.warn(`  - halfvec type: max ${HALFVEC_MAX_DIMENSIONS} dimensions`);
-  console.warn('');
-  console.warn('  RECOMMENDATIONS:');
-  console.warn('  1. Use a smaller embedding model:');
-  console.warn('     - text-embedding-3-small (1536 dimensions)');
-  console.warn('     - text-embedding-3-large (3072 dimensions) with halfvec');
-  console.warn('     - bge-m3 (1024 dimensions)');
-  console.warn('  2. Or use dimensionality reduction (PCA) to reduce vector size');
-  console.warn('');
-  console.warn('  Vector search will work but will be slow without an index.');
-  console.warn('═══════════════════════════════════════════════════════════════════════════');
-  console.warn('');
+  logger.warn('');
+  logger.warn('═══════════════════════════════════════════════════════════════════════════');
+  logger.warn('  ⚠️  EMBEDDING DIMENSIONS EXCEED INDEX LIMITS');
+  logger.warn('═══════════════════════════════════════════════════════════════════════════');
+  logger.warn(`  Your embeddings have ${dimensions} dimensions, which exceeds all limits:`);
+  logger.warn(`  - vector type: max ${VECTOR_MAX_DIMENSIONS} dimensions`);
+  logger.warn(`  - halfvec type: max ${HALFVEC_MAX_DIMENSIONS} dimensions`);
+  logger.warn('');
+  logger.warn('  RECOMMENDATIONS:');
+  logger.warn('  1. Use a smaller embedding model:');
+  logger.warn('     - text-embedding-3-small (1536 dimensions)');
+  logger.warn('     - text-embedding-3-large (3072 dimensions) with halfvec');
+  logger.warn('     - bge-m3 (1024 dimensions)');
+  logger.warn('  2. Or use dimensionality reduction (PCA) to reduce vector size');
+  logger.warn('');
+  logger.warn('  Vector search will work but will be slow without an index.');
+  logger.warn('═══════════════════════════════════════════════════════════════════════════');
+  logger.warn('');
 
   return {
     success: false,
@@ -690,33 +707,27 @@ async function generateEmbedding(text: string): Promise<number[]> {
     const azureConfig = getAzureOpenAIConfig(smartRoutingConfig);
 
     if (!azureConfig.endpoint || !azureConfig.apiKey) {
-      console.warn('Azure OpenAI endpoint/key not configured. Using fallback embedding method.');
+      logger.warn('Azure OpenAI endpoint/key not configured. Using fallback embedding method.');
       return generateFallbackEmbedding(text);
     }
 
     try {
       return await withEmbeddingQueue(() =>
-        executeWithRetry(
-          () => generateAzureOpenAIEmbedding(text, smartRoutingConfig),
-          {
-            provider: 'azure_openai',
-            model: smartRoutingConfig.azureOpenaiEmbeddingModel,
-            baseURL: azureConfig.endpoint,
-          },
-        ),
+        executeWithRetry(() => generateAzureOpenAIEmbedding(text, smartRoutingConfig), {
+          provider: 'azure_openai',
+          model: smartRoutingConfig.azureOpenaiEmbeddingModel,
+          baseURL: azureConfig.endpoint,
+        }),
       );
     } catch (error: any) {
       const status = extractErrorStatus(error);
-      console.warn(
-        'Azure OpenAI embeddings request failed after retries',
-        {
-          status: status ?? 'unknown',
-          endpoint: azureConfig.endpoint || 'missing',
-          deployment: azureConfig.embeddingDeployment || 'missing',
-          apiVersion: azureConfig.apiVersion || 'missing',
-          error,
-        },
-      );
+      logger.warn('Azure OpenAI embeddings request failed after retries', {
+        status: status ?? 'unknown',
+        endpoint: azureConfig.endpoint || 'missing',
+        deployment: azureConfig.embeddingDeployment || 'missing',
+        apiVersion: azureConfig.apiVersion || 'missing',
+        error,
+      });
       throw error;
     }
   }
@@ -726,7 +737,7 @@ async function generateEmbedding(text: string): Promise<number[]> {
 
   // Check if API key is configured
   if (!openai.apiKey) {
-    console.warn('OpenAI API key is not configured. Using fallback embedding method.');
+    logger.warn('OpenAI API key is not configured. Using fallback embedding method.');
     return generateFallbackEmbedding(text);
   }
 
@@ -749,7 +760,7 @@ async function generateEmbedding(text: string): Promise<number[]> {
       config.apiKey,
     );
   } catch (truncationError: any) {
-    console.warn(
+    logger.warn(
       `Token truncation failed for model ${config.embeddingModel}: ${
         truncationError?.message ?? String(truncationError)
       }. Falling back to character-based truncation.`,
@@ -758,7 +769,7 @@ async function generateEmbedding(text: string): Promise<number[]> {
     // to prevent oversized text from causing a failure in the embedding API call.
     truncatedText = truncateWithHeuristic(text, maxTokens);
   }
-  console.debug(
+  logger.debug(
     `[Embedding] Truncation: ${text.length} → ${truncatedText.length} chars (${Date.now() - _truncateStart}ms, maxTokens=${maxTokens})`,
   );
 
@@ -781,7 +792,7 @@ async function generateEmbedding(text: string): Promise<number[]> {
   if (process.env.DEBUG === 'true') {
     const debugCurl = buildEmbeddingsDebugCurl(config.baseURL, embeddingPayload);
 
-    console.log(
+    logger.log(
       `[Embedding] HTTP request details: ${JSON.stringify(
         {
           url: `${(config.baseURL || 'https://api.openai.com/v1').replace(/\/+$/, '')}/embeddings`,
@@ -796,12 +807,12 @@ async function generateEmbedding(text: string): Promise<number[]> {
         2,
       )}`,
     );
-    console.log(
+    logger.log(
       `[Embedding] Reproducible curl (copy/paste and replace <YOUR_API_KEY>):\n${debugCurl}`,
     );
   }
 
-  console.debug(
+  logger.debug(
     `[Embedding] API request → model=${config.embeddingModel}, encoding_format=${encodingFormat}, input_length=${truncatedText.length} chars | input_preview: "${truncatedText.substring(0, 200).replace(/\s+/g, ' ')}"`,
   );
   const _requestStart = Date.now();
@@ -822,7 +833,7 @@ async function generateEmbedding(text: string): Promise<number[]> {
         },
       ),
     );
-    console.debug(`[Embedding] API response OK in ${Date.now() - _requestStart}ms`);
+    logger.debug(`[Embedding] API response OK in ${Date.now() - _requestStart}ms`);
 
     if (encodingFormat === 'base64' && typeof response.data[0].embedding === 'string') {
       const embeddingBase64Str = response.data[0].embedding as unknown as string;
@@ -833,7 +844,7 @@ async function generateEmbedding(text: string): Promise<number[]> {
     return response.data[0].embedding;
   } catch (error: any) {
     const status = extractErrorStatus(error);
-    console.warn('OpenAI-compatible embeddings request failed after retries', {
+    logger.warn('OpenAI-compatible embeddings request failed after retries', {
       status: status ?? 'unknown',
       baseURL: config.baseURL || 'default',
       model: config.embeddingModel || 'default',
@@ -981,15 +992,17 @@ const buildToolSetHash = (tools: Tool[]): string => {
     }))
     .sort((a, b) => a.name.localeCompare(b.name));
 
-  return createHash('sha256').update(stableHashSerialize(normalized)).digest('hex');
+  // HMAC (keyed hash) instead of a bare SHA-256 digest: this is a cache key,
+  // not a password digest, and HMAC is the appropriate keyed construction.
+  return createHmac('sha256', TOOLSET_HASH_KEY)
+    .update(stableHashSerialize(normalized))
+    .digest('hex');
 };
 
 const buildServerSearchableText = (serverName: string, description?: string | null): string =>
   [serverName, description || ''].filter(Boolean).join(' ');
 
-const parseEmbeddingMetadata = (
-  metadata: unknown,
-): Record<string, any> | null => {
+const parseEmbeddingMetadata = (metadata: unknown): Record<string, any> | null => {
   if (!metadata) {
     return null;
   }
@@ -998,7 +1011,7 @@ const parseEmbeddingMetadata = (
     try {
       return JSON.parse(metadata);
     } catch (error) {
-      console.error('Error parsing vector embedding metadata string', safeStringify({ error }));
+      logger.error('Error parsing vector embedding metadata string', safeStringify({ error }));
       return null;
     }
   }
@@ -1037,7 +1050,10 @@ export const saveToolsAsVectorEmbeddings = async (
   let progressErrorEmitted = false;
   let lastProgressCurrent = 0;
 
-  const emitProgress = (current: number, status: 'started' | 'in_progress' | 'completed' | 'error') => {
+  const emitProgress = (
+    current: number,
+    status: 'started' | 'in_progress' | 'completed' | 'error',
+  ) => {
     if (!shouldReport) return;
     lastProgressCurrent = current;
     if (status === 'error') {
@@ -1062,7 +1078,7 @@ export const saveToolsAsVectorEmbeddings = async (
 
     // Ensure database is initialized before starting
     if (!isDatabaseConnected()) {
-      console.log('Database not initialized, initializing...');
+      logger.log('Database not initialized, initializing...');
       await initializeDatabase();
     }
 
@@ -1098,7 +1114,7 @@ export const saveToolsAsVectorEmbeddings = async (
         );
 
         if (existingCount !== tools.length) {
-          console.log(
+          logger.log(
             `[Embedding] [${serverName}] Generating embeddings: existing=${existingCount}, expected=${tools.length} (model=${persistedEmbeddingModel}, hash=${expectedToolSetHash.substring(0, 12)})`,
           );
         } else {
@@ -1125,18 +1141,18 @@ export const saveToolsAsVectorEmbeddings = async (
             serverEmbStatus.hasEmbedding === true;
 
           if (hasExactContentIds && hasMatchingToolSetHash && hasCurrentServerEmbedding) {
-            console.log(
+            logger.log(
               `[Embedding] [${serverName}] Skipping — tool set already up-to-date (model=${persistedEmbeddingModel}, hash=${expectedToolSetHash.substring(0, 12)})`,
             );
             return;
           }
 
-          console.log(
+          logger.log(
             `[Embedding] [${serverName}] Generating embeddings: existing=${existingCount}, expected=${tools.length} (model=${persistedEmbeddingModel}, hash=${expectedToolSetHash.substring(0, 12)})`,
           );
         }
       } catch (skipCheckError: any) {
-        console.warn(
+        logger.warn(
           `[Embedding] [${serverName}] Skip check failed, proceeding with full sync: ${skipCheckError?.message ?? skipCheckError}`,
         );
       }
@@ -1178,7 +1194,7 @@ export const saveToolsAsVectorEmbeddings = async (
         .filter(Boolean)
         .join(' ');
 
-      console.debug(
+      logger.debug(
         `[Embedding] [${serverName}] Tool ${_toolIdx + 1}/${tools.length}: "${tool.name}" | raw text: ${searchableText.length} chars | preview: "${searchableText.substring(0, 200).replace(/\s+/g, ' ')}"`,
       );
 
@@ -1188,7 +1204,7 @@ export const saveToolsAsVectorEmbeddings = async (
         emitProgress(_toolIdx + 1, 'in_progress');
       } catch (error: any) {
         const status = extractErrorStatus(error);
-        console.warn('[EMBED_SYNC_ERROR] Failed while embedding tool', {
+        logger.warn('[EMBED_SYNC_ERROR] Failed while embedding tool', {
           serverName,
           toolName: tool.name,
           status: status ?? 'unknown',
@@ -1204,7 +1220,7 @@ export const saveToolsAsVectorEmbeddings = async (
       serverEmbedding = await generateEmbedding(serverSearchableText);
     } catch (error: any) {
       const status = extractErrorStatus(error);
-      console.warn('[EMBED_SYNC_ERROR] Failed while embedding server metadata', {
+      logger.warn('[EMBED_SYNC_ERROR] Failed while embedding server metadata', {
         serverName,
         status: status ?? 'unknown',
         error: summarizeErrorForLogging(error),
@@ -1217,13 +1233,13 @@ export const saveToolsAsVectorEmbeddings = async (
     // Probe the connection before writing; reconnect if it went stale during the
     // (potentially long) embedding-generation phase above.
     if (!isDatabaseConnected()) {
-      console.info('Database connection lost during embedding generation, reinitializing...');
+      logger.info('Database connection lost during embedding generation, reinitializing...');
       await initializeDatabase();
     } else {
       try {
         await getAppDataSource().query('SELECT 1');
       } catch {
-        console.warn(
+        logger.warn(
           'DB connection stale after embedding generation for server %s — reconnecting...',
           serverName,
         );
@@ -1271,7 +1287,7 @@ export const saveToolsAsVectorEmbeddings = async (
         persistedEmbeddingModel,
       );
       if (staleCount > 0) {
-        console.log(`[Embedding] [${serverName}] Removed ${staleCount} stale tool embedding(s)`);
+        logger.log(`[Embedding] [${serverName}] Removed ${staleCount} stale tool embedding(s)`);
       }
     }
 
@@ -1290,17 +1306,15 @@ export const saveToolsAsVectorEmbeddings = async (
     emitProgress(toolEmbeddings.length, 'completed');
 
     if (vectorDimensionsReset) {
-      scheduleFullEmbeddingResync(
-        `Vector dimensions changed while syncing server "${serverName}"`,
-      );
+      scheduleFullEmbeddingResync(`Vector dimensions changed while syncing server "${serverName}"`);
     }
 
-    console.log('Saved tool embeddings', safeStringify({ serverName, toolCount: tools.length }));
+    logger.log('Saved tool embeddings', safeStringify({ serverName, toolCount: tools.length }));
   } catch (error) {
     if (shouldReport && !progressErrorEmitted) {
       emitProgress(lastProgressCurrent, 'error');
     }
-    console.error('Error saving tool embeddings', safeStringify({ serverName, error }));
+    logger.error('Error saving tool embeddings', safeStringify({ serverName, error }));
     throw error;
   }
 };
@@ -1412,7 +1426,7 @@ export const searchToolsByVector = async (
       })
       .sort((a, b) => b.similarity - a.similarity);
   } catch (error) {
-    console.error(
+    logger.error(
       'Error searching tools by vector',
       safeStringify({ query, limit, threshold, error }),
     );
@@ -1463,7 +1477,7 @@ export const getAllVectorizedTools = async (
         }
       }
     } catch (error: any) {
-      console.warn('Could not determine vector dimensions from database', {
+      logger.warn('Could not determine vector dimensions from database', {
         error: error?.message,
       });
     }
@@ -1504,10 +1518,7 @@ export const getAllVectorizedTools = async (
             inputSchema: parsedMetadata.inputSchema,
           };
         } catch (error) {
-          console.error(
-            'Error parsing vector embedding metadata string',
-            safeStringify({ error }),
-          );
+          logger.error('Error parsing vector embedding metadata string', safeStringify({ error }));
           return {
             serverName: 'unknown',
             toolName: 'unknown',
@@ -1524,7 +1535,7 @@ export const getAllVectorizedTools = async (
       };
     });
   } catch (error) {
-    console.error('Error getting all vectorized tools', safeStringify({ error, serverNames }));
+    logger.error('Error getting all vectorized tools', safeStringify({ error, serverNames }));
     return [];
   }
 };
@@ -1537,7 +1548,7 @@ export const removeServerToolEmbeddings = async (serverName: string): Promise<vo
   try {
     const smartRoutingConfig = await getSmartRoutingConfig();
     if (!smartRoutingConfig.dbUrl && !process.env.DB_URL) {
-      console.warn('Skipping embedding cleanup because DB URL is not configured', {
+      logger.warn('Skipping embedding cleanup because DB URL is not configured', {
         serverName,
       });
       return;
@@ -1545,7 +1556,7 @@ export const removeServerToolEmbeddings = async (serverName: string): Promise<vo
 
     // Ensure database is initialized before using repository
     if (!isDatabaseConnected()) {
-      console.info('Database not initialized, initializing...');
+      logger.info('Database not initialized, initializing...');
       await initializeDatabase();
     }
 
@@ -1554,9 +1565,9 @@ export const removeServerToolEmbeddings = async (serverName: string): Promise<vo
     )() as VectorEmbeddingRepository;
 
     const removedCount = await vectorRepository.deleteByServerName(serverName);
-    console.log('Removed server embeddings', safeStringify({ serverName, removedCount }));
+    logger.log('Removed server embeddings', safeStringify({ serverName, removedCount }));
   } catch (error) {
-    console.error('Error removing server embeddings', safeStringify({ serverName, error }));
+    logger.error('Error removing server embeddings', safeStringify({ serverName, error }));
   }
 };
 
@@ -1566,7 +1577,7 @@ export const removeServerToolEmbeddings = async (serverName: string): Promise<vo
  */
 export const syncAllServerToolsEmbeddings = async (): Promise<void> => {
   try {
-    console.log('Starting synchronization of all server tool embeddings');
+    logger.log('Starting synchronization of all server tool embeddings');
 
     // Import getServersInfo to get all server information
     const { getServersInfo } = await import('./mcpService.js');
@@ -1578,7 +1589,7 @@ export const syncAllServerToolsEmbeddings = async (): Promise<void> => {
     for (const server of servers) {
       if (server.status === 'connected' && server.tools && server.tools.length > 0) {
         try {
-          console.log('Syncing tool embeddings for server', {
+          logger.log('Syncing tool embeddings for server', {
             serverName: server.name,
             toolCount: server.tools.length,
           });
@@ -1586,10 +1597,10 @@ export const syncAllServerToolsEmbeddings = async (): Promise<void> => {
           totalToolsSynced += server.tools.length;
           serversSynced++;
         } catch (error) {
-          console.warn(
+          logger.warn(
             `[EMBED_SYNC_ERROR] Failed to sync tool embeddings for server "${server.name}"`,
           );
-          console.error(
+          logger.error(
             'Failed to sync tool embeddings for server',
             safeStringify({
               serverName: server.name,
@@ -1598,21 +1609,24 @@ export const syncAllServerToolsEmbeddings = async (): Promise<void> => {
           );
         }
       } else if (server.status === 'connected' && (!server.tools || server.tools.length === 0)) {
-        console.log('Connected server has no tools to sync', safeStringify({ serverName: server.name }));
+        logger.log(
+          'Connected server has no tools to sync',
+          safeStringify({ serverName: server.name }),
+        );
       } else {
-        console.log('Skipping server during tool embedding sync', {
+        logger.log('Skipping server during tool embedding sync', {
           serverName: server.name,
           status: server.status,
         });
       }
     }
 
-    console.log('Completed smart routing tool embedding sync', {
+    logger.log('Completed smart routing tool embedding sync', {
       totalToolsSynced,
       serversSynced,
     });
   } catch (error) {
-    console.error('Error during smart routing tool embedding synchronization', { error });
+    logger.error('Error during smart routing tool embedding synchronization', { error });
     throw error;
   }
 };
@@ -1626,7 +1640,7 @@ async function checkDatabaseVectorDimensions(dimensionsNeeded: number): Promise<
   try {
     // First check if database is initialized
     if (!getAppDataSource().isInitialized) {
-      console.info('Database not initialized, initializing...');
+      logger.info('Database not initialized, initializing...');
       await initializeDatabase();
     }
 
@@ -1643,7 +1657,7 @@ async function checkDatabaseVectorDimensions(dimensionsNeeded: number): Promise<
         AND attname = 'embedding'
       `);
     } catch (error) {
-      console.warn('Could not get vector type info, falling back to atttypmod query');
+      logger.warn('Could not get vector type info, falling back to atttypmod query');
     }
 
     // Fallback to original query
@@ -1697,20 +1711,20 @@ async function checkDatabaseVectorDimensions(dimensionsNeeded: number): Promise<
         }
       }
     } catch (error) {
-      console.warn('Could not check vector dimensions from actual records', { error });
+      logger.warn('Could not check vector dimensions from actual records', { error });
     }
 
     // If no dimensions are set or they don't match what we need, handle the mismatch
     if (currentDimensions === 0 || currentDimensions !== dimensionsNeeded) {
-      console.log('Vector dimensions mismatch detected', {
+      logger.log('Vector dimensions mismatch detected', {
         currentDimensions,
         dimensionsNeeded,
       });
 
       if (currentDimensions === 0) {
-        console.log('Setting up vector dimensions for the first time...');
+        logger.log('Setting up vector dimensions for the first time...');
       } else {
-        console.log('Dimension mismatch detected. Clearing existing incompatible vector data...');
+        logger.log('Dimension mismatch detected. Clearing existing incompatible vector data...');
 
         // Clear all existing vector embeddings with mismatched dimensions
         await clearMismatchedVectorData(dimensionsNeeded);
@@ -1724,11 +1738,9 @@ async function checkDatabaseVectorDimensions(dimensionsNeeded: number): Promise<
       // text-embedding-3-large) vectors would trigger error code 54000 from
       // hnswbuild.c without this pre-emptive drop.
       try {
-        await getAppDataSource().query(
-          `DROP INDEX IF EXISTS idx_vector_embeddings_embedding;`,
-        );
+        await getAppDataSource().query(`DROP INDEX IF EXISTS idx_vector_embeddings_embedding;`);
       } catch (dropError: any) {
-        console.warn('Could not drop existing vector index before ALTER', {
+        logger.warn('Could not drop existing vector index before ALTER', {
           error: dropError?.message,
         });
       }
@@ -1736,7 +1748,7 @@ async function checkDatabaseVectorDimensions(dimensionsNeeded: number): Promise<
       // Alter the column type with the new dimensions
       // Use halfvec for dimensions > 2000, vector otherwise
       const vectorType = dimensionsNeeded <= VECTOR_MAX_DIMENSIONS ? 'vector' : 'halfvec';
-      console.log('Using vector storage type for configured dimensions', {
+      logger.log('Using vector storage type for configured dimensions', {
         vectorType,
         dimensionsNeeded,
       });
@@ -1749,10 +1761,10 @@ async function checkDatabaseVectorDimensions(dimensionsNeeded: number): Promise<
       // Create appropriate vector index using the helper function
       const result = await createVectorIndex(getAppDataSource(), dimensionsNeeded);
       if (!result.success) {
-        console.log('Continuing without optimized vector index...');
+        logger.log('Continuing without optimized vector index...');
       }
 
-      console.log('Successfully configured vector dimensions', { dimensionsNeeded });
+      logger.log('Successfully configured vector dimensions', { dimensionsNeeded });
       // Only signal that a full resync is needed when existing data was cleared due
       // to a real dimension change. When currentDimensions === 0 it is a first-time
       // setup — there are no stale embeddings to re-generate.
@@ -1761,7 +1773,7 @@ async function checkDatabaseVectorDimensions(dimensionsNeeded: number): Promise<
 
     return false;
   } catch (error: any) {
-    console.error('Error checking or updating vector dimensions', { error });
+    logger.error('Error checking or updating vector dimensions', { error });
     throw new Error(`Vector dimension check failed: ${error?.message || 'Unknown error'}`);
   }
 }
@@ -1773,7 +1785,7 @@ async function checkDatabaseVectorDimensions(dimensionsNeeded: number): Promise<
  */
 async function clearMismatchedVectorData(expectedDimensions: number): Promise<void> {
   try {
-    console.log(
+    logger.log(
       `Clearing vector embeddings with dimensions different from ${expectedDimensions}...`,
     );
 
@@ -1786,9 +1798,9 @@ async function clearMismatchedVectorData(expectedDimensions: number): Promise<vo
       [expectedDimensions],
     );
 
-    console.log('Successfully cleared mismatched vector embeddings');
+    logger.log('Successfully cleared mismatched vector embeddings');
   } catch (error: any) {
-    console.error('Error clearing mismatched vector data:', error);
+    logger.error('Error clearing mismatched vector data:', error);
     throw error;
   }
 }

@@ -75,9 +75,9 @@ function ipv6ToBigInt(addr: string): bigint {
 
 function isBlockedIpv6(big: bigint): boolean {
   if (big === 0n || big === 1n) return true; // ::, ::1
-  if ((big >> 118n) === 0x3fan) return true; // fe80::/10 link-local
-  if ((big >> 121n) === 0x7en) return true; // fc00::/7 unique-local
-  if ((big >> 32n) === 0xffffn) return isBlockedIpv4Number(Number(big & 0xffffffffn)); // ::ffff:a.b.c.d
+  if (big >> 118n === 0x3fan) return true; // fe80::/10 link-local
+  if (big >> 121n === 0x7en) return true; // fc00::/7 unique-local
+  if (big >> 32n === 0xffffn) return isBlockedIpv4Number(Number(big & 0xffffffffn)); // ::ffff:a.b.c.d
   if (big < 0x100000000n) return isBlockedIpv4Number(Number(big)); // ::a.b.c.d (deprecated, compatible)
   return false;
 }
@@ -171,11 +171,7 @@ export function createRedirectValidatingFetch(
       hops++;
       response = await baseFetch(currentUrl, { ...init, redirect: 'manual' });
     }
-    if (
-      response.status >= 300 &&
-      response.status < 400 &&
-      response.status !== 304
-    ) {
+    if (response.status >= 300 && response.status < 400 && response.status !== 304) {
       throw new UnsafeUrlError('Too many redirects');
     }
     return response;

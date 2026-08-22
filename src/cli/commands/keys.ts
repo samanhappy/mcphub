@@ -17,7 +17,11 @@ export interface KeysDeps {
   client?: ApiClient;
 }
 
-export async function run(args: string[], globals: GlobalFlags, deps: KeysDeps = {}): Promise<void> {
+export async function run(
+  args: string[],
+  globals: GlobalFlags,
+  deps: KeysDeps = {},
+): Promise<void> {
   const sub = args.shift();
   const client = deps.client ?? buildClient(resolveTarget(globals));
   switch (sub) {

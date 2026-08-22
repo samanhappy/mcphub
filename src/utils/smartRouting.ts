@@ -1,5 +1,6 @@
 import { expandEnvVars } from '../config/index.js';
 import { getSystemConfigDao } from '../dao/DaoFactory.js';
+import { logger } from './logger.js';
 
 /**
  * Smart routing configuration interface
@@ -235,7 +236,7 @@ function getConfigValue<T>(
       try {
         return transformer(envVar);
       } catch (error) {
-        console.warn(`Failed to transform environment variable "${envVar}":`, error);
+        logger.warn(`Failed to transform environment variable "${envVar}":`, error);
         continue;
       }
     }
@@ -246,7 +247,7 @@ function getConfigValue<T>(
     try {
       return transformer(settingsValue);
     } catch (error) {
-      console.warn('Failed to transform settings value:', error);
+      logger.warn('Failed to transform settings value:', error);
     }
   }
 
@@ -289,6 +290,6 @@ function parseBooleanEnvVar(value: string): boolean {
   }
 
   // Default to false for unrecognized values
-  console.warn(`Unrecognized boolean value for smart routing: "${value}", defaulting to false`);
+  logger.warn(`Unrecognized boolean value for smart routing: "${value}", defaulting to false`);
   return false;
 }

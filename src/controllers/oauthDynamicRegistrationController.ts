@@ -9,6 +9,7 @@ import {
 import { IOAuthClient } from '../types/index.js';
 import { getSystemConfigDao } from '../dao/DaoFactory.js';
 import { resolveInstallBaseUrl } from '../utils/installBaseUrl.js';
+import { logger } from '../utils/logger.js';
 
 // Store registration access tokens (in production, use database)
 const registrationTokens = new Map<string, { clientId: string; createdAt: Date }>();
@@ -217,7 +218,7 @@ export const registerClient = async (req: Request, res: Response): Promise<void>
 
     res.status(201).json(response);
   } catch (error) {
-    console.error('Dynamic client registration error:', error);
+    logger.error('Dynamic client registration error:', error);
 
     if (error instanceof Error && error.message.includes('already exists')) {
       res.status(400).json({
@@ -298,7 +299,7 @@ export const getClientConfiguration = async (req: Request, res: Response): Promi
 
     res.json(response);
   } catch (error) {
-    console.error('Get client configuration error:', error);
+    logger.error('Get client configuration error:', error);
     res.status(500).json({
       error: 'server_error',
       error_description: 'Failed to retrieve client configuration',
@@ -482,7 +483,7 @@ export const updateClientConfiguration = async (req: Request, res: Response): Pr
 
     res.json(response);
   } catch (error) {
-    console.error('Update client configuration error:', error);
+    logger.error('Update client configuration error:', error);
     res.status(500).json({
       error: 'server_error',
       error_description: 'Failed to update client configuration',
@@ -534,7 +535,7 @@ export const deleteClientRegistration = async (req: Request, res: Response): Pro
 
     res.status(204).send();
   } catch (error) {
-    console.error('Delete client registration error:', error);
+    logger.error('Delete client registration error:', error);
     res.status(500).json({
       error: 'server_error',
       error_description: 'Failed to delete client registration',

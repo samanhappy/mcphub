@@ -95,10 +95,7 @@ function controlPlaneBaseUrl(): string {
   return raw.replace(/\/+$/, '');
 }
 
-type InternalRequestAuthHeaders = Record<
-  typeof TIMESTAMP_HEADER | typeof SIGNATURE_HEADER,
-  string
->;
+type InternalRequestAuthHeaders = Record<typeof TIMESTAMP_HEADER | typeof SIGNATURE_HEADER, string>;
 
 const VALIDATE_API_KEY_METHOD = 'POST';
 const VALIDATE_API_KEY_PATH = '/api/internal/v1/keys/validate';

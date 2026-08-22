@@ -20,12 +20,11 @@ export const cloneDefaultOAuthServerConfig = (): OAuthServerConfig => {
     ? [...DEFAULT_OAUTH_SERVER_CONFIG.allowedScopes]
     : [];
 
-  const baseDynamicRegistration =
-    DEFAULT_OAUTH_SERVER_CONFIG.dynamicRegistration ?? {
-      enabled: false,
-      allowedGrantTypes: [],
-      requiresAuthentication: false,
-    };
+  const baseDynamicRegistration = DEFAULT_OAUTH_SERVER_CONFIG.dynamicRegistration ?? {
+    enabled: false,
+    allowedGrantTypes: [],
+    requiresAuthentication: false,
+  };
 
   const dynamicRegistration = {
     ...baseDynamicRegistration,

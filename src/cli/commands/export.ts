@@ -9,7 +9,11 @@ export interface ExportDeps {
   fs?: Pick<typeof fs, 'writeFileSync'>;
 }
 
-export async function run(args: string[], globals: GlobalFlags, deps: ExportDeps = {}): Promise<void> {
+export async function run(
+  args: string[],
+  globals: GlobalFlags,
+  deps: ExportDeps = {},
+): Promise<void> {
   const { flags } = extractFlags(args, { valued: ['--out'] });
   const client = deps.client ?? buildClient(resolveTarget(globals));
   const settings = await client.get<unknown>('/api/mcp-settings/export');

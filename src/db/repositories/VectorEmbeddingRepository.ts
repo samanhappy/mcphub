@@ -1,6 +1,7 @@
 import { VectorEmbedding } from '../entities/VectorEmbedding.js';
 import BaseRepository from './BaseRepository.js';
 import { getAppDataSource } from '../connection.js';
+import { logger } from '../../utils/logger.js';
 
 // Escape special characters for SQL LIKE patterns.
 // This is used in methods that filter by content_id with a prefix,
@@ -175,7 +176,7 @@ export class VectorEmbeddingRepository extends BaseRepository<VectorEmbedding> {
           similarity: parseFloat(row.similarity),
         }));
       } catch (vectorError) {
-        console.warn(
+        logger.warn(
           'Vector similarity search failed, falling back to basic filtering:',
           vectorError,
         );
@@ -203,7 +204,7 @@ export class VectorEmbeddingRepository extends BaseRepository<VectorEmbedding> {
         }));
       }
     } catch (error) {
-      console.error('Error during vector search:', error);
+      logger.error('Error during vector search:', error);
       return [];
     }
   }
@@ -230,7 +231,7 @@ export class VectorEmbeddingRepository extends BaseRepository<VectorEmbedding> {
       // Search by embedding
       return this.searchSimilar(embedding, limit, threshold, contentTypes);
     } catch (error) {
-      console.error('Error searching by text:', error);
+      logger.error('Error searching by text:', error);
       return [];
     }
   }
@@ -282,14 +283,14 @@ export class VectorEmbeddingRepository extends BaseRepository<VectorEmbedding> {
         rawMeta == null
           ? null
           : typeof rawMeta === 'object'
-          ? (rawMeta as Record<string, unknown>)
-          : (() => {
-              try {
-                return JSON.parse(String(rawMeta)) as Record<string, unknown>;
-              } catch {
-                return null;
-              }
-            })();
+            ? (rawMeta as Record<string, unknown>)
+            : (() => {
+                try {
+                  return JSON.parse(String(rawMeta)) as Record<string, unknown>;
+                } catch {
+                  return null;
+                }
+              })();
       return {
         contentId: row.content_id,
         toolSetHash: meta?.toolSetHash?.toString(),
@@ -325,7 +326,7 @@ export class VectorEmbeddingRepository extends BaseRepository<VectorEmbedding> {
       );
       return result.rowCount ?? 0;
     } catch (error) {
-      console.error('Error deleting stale tool embeddings for server', serverName, error);
+      logger.error('Error deleting stale tool embeddings for server', serverName, error);
       return 0;
     }
   }
@@ -357,7 +358,7 @@ export class VectorEmbeddingRepository extends BaseRepository<VectorEmbedding> {
 
       return result.affected || 0;
     } catch (error) {
-      console.error('Error deleting embeddings for server', serverName, error);
+      logger.error('Error deleting embeddings for server', serverName, error);
       return 0;
     }
   }

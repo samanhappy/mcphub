@@ -5,8 +5,21 @@
  * GUI. Live-only: cost is computed for connected servers; disconnected servers
  * report connected=false with a zero footprint. No persistence.
  */
-import type { ServerInfo, ServerCost, ItemCost, GroupCost, IGroupServerConfig, SmartRoutingCost } from '../types/index.js';
-import { itemCostForTool, itemCostForPrompt, itemCostForResource, countTokens, serializeToolDefinition } from '../utils/tokenCost.js';
+import type {
+  ServerInfo,
+  ServerCost,
+  ItemCost,
+  GroupCost,
+  IGroupServerConfig,
+  SmartRoutingCost,
+} from '../types/index.js';
+import {
+  itemCostForTool,
+  itemCostForPrompt,
+  itemCostForResource,
+  countTokens,
+  serializeToolDefinition,
+} from '../utils/tokenCost.js';
 import { getServersInfo } from './mcpService.js';
 import { getNameSeparator } from '../config/index.js';
 import { getAllGroups, normalizeGroupServers } from './groupService.js';
@@ -67,7 +80,11 @@ const smartRoutingCostFor = async (groupName: string): Promise<SmartRoutingCost>
     const counts = await Promise.all(
       tools.map((t) =>
         countTokens(
-          serializeToolDefinition({ name: t.name, description: t.description, inputSchema: t.inputSchema }),
+          serializeToolDefinition({
+            name: t.name,
+            description: t.description,
+            inputSchema: t.inputSchema,
+          }),
         ),
       ),
     );
@@ -111,8 +128,7 @@ export async function getGroupCosts(): Promise<GroupCost[]> {
                 ? member.prompts
                 : member.resources;
           // Resources use URIs as names (not prefixed); tools/prompts are prefixed
-          const key =
-            item.kind === 'resource' ? item.name : shortName(item.name, member.name, sep);
+          const key = item.kind === 'resource' ? item.name : shortName(item.name, member.name, sep);
           if (item.enabled && isSelected(selection, key)) {
             exposed += item.cost;
           }

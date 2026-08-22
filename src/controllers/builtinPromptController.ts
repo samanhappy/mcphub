@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { ApiResponse, BuiltinPrompt } from '../types/index.js';
 import { getBuiltinPromptDao } from '../dao/index.js';
+import { logger } from '../utils/logger.js';
 
 /**
  * List all built-in prompts
@@ -14,7 +15,7 @@ export const listBuiltinPrompts = async (_req: Request, res: Response): Promise<
     };
     res.json(response);
   } catch (error) {
-    console.error('Error listing built-in prompts:', error);
+    logger.error('Error listing built-in prompts:', error);
     res.status(500).json({
       success: false,
       message: error instanceof Error ? error.message : 'Failed to list built-in prompts',
@@ -36,7 +37,7 @@ export const getBuiltinPrompt = async (req: Request, res: Response): Promise<voi
     const response: ApiResponse<BuiltinPrompt> = { success: true, data: prompt };
     res.json(response);
   } catch (error) {
-    console.error('Error getting built-in prompt:', error);
+    logger.error('Error getting built-in prompt:', error);
     res.status(500).json({
       success: false,
       message: error instanceof Error ? error.message : 'Failed to get built-in prompt',
@@ -65,7 +66,7 @@ export const createBuiltinPrompt = async (req: Request, res: Response): Promise<
     const response: ApiResponse<BuiltinPrompt> = { success: true, data: prompt };
     res.status(201).json(response);
   } catch (error) {
-    console.error('Error creating built-in prompt:', error);
+    logger.error('Error creating built-in prompt:', error);
     const status = error instanceof Error && error.message.includes('already exists') ? 409 : 500;
     res.status(status).json({
       success: false,
@@ -89,7 +90,7 @@ export const updateBuiltinPrompt = async (req: Request, res: Response): Promise<
     const response: ApiResponse<BuiltinPrompt> = { success: true, data: prompt };
     res.json(response);
   } catch (error) {
-    console.error('Error updating built-in prompt:', error);
+    logger.error('Error updating built-in prompt:', error);
     const status = error instanceof Error && error.message.includes('already exists') ? 409 : 500;
     res.status(status).json({
       success: false,
@@ -111,7 +112,7 @@ export const deleteBuiltinPrompt = async (req: Request, res: Response): Promise<
     }
     res.json({ success: true, message: 'Built-in prompt deleted' });
   } catch (error) {
-    console.error('Error deleting built-in prompt:', error);
+    logger.error('Error deleting built-in prompt:', error);
     res.status(500).json({
       success: false,
       message: error instanceof Error ? error.message : 'Failed to delete built-in prompt',

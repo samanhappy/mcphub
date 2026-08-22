@@ -4,6 +4,7 @@ import type { HubWebhookEvent } from '../services/hostedControlPlaneClient.js';
 import { verifyInternalExpressRequest } from '../services/hostedInternalAuth.js';
 import { isHostedModeEnabled } from '../services/hostedMode.js';
 import { getHostedRuntimeCatalog } from '../services/hostedRuntimeCatalogService.js';
+import { logger } from '../utils/logger.js';
 
 function isHubWebhookEvent(value: unknown): value is HubWebhookEvent {
   if (!value || typeof value !== 'object') return false;
@@ -59,7 +60,7 @@ export const getHostedInternalRuntimeCatalog = async (
     const catalog = await getHostedRuntimeCatalog();
     res.json({ success: true, data: catalog });
   } catch (error) {
-    console.warn('[hosted] failed to build runtime catalog', error);
+    logger.warn('[hosted] failed to build runtime catalog', error);
     res.status(500).json({ success: false, message: 'Failed to build hosted runtime catalog' });
   }
 };

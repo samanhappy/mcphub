@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import type { ResourceTarget } from './oauthConsentResource.js';
+import { logger } from './logger.js';
 
 /**
  * Shared holder for the frontend dist directory.
@@ -97,7 +98,7 @@ export function injectOAuthConsentShell(context: OAuthConsentContext): string | 
   try {
     html = fs.readFileSync(indexPath, 'utf8');
   } catch (error) {
-    console.warn('Failed to read frontend index.html for OAuth consent shell:', error);
+    logger.warn('Failed to read frontend index.html for OAuth consent shell:', error);
     return null;
   }
 

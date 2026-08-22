@@ -2,6 +2,7 @@ import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { ServerInfo, ServerConfig } from '../types/index.js';
 import { formatErrorForLogging } from '../utils/serialization.js';
+import { logger } from '../utils/logger.js';
 
 export interface KeepAliveOptions {
   enabled?: boolean;
@@ -64,7 +65,7 @@ export const setupClientKeepAlive = async (
     if ((!activeClient || serverInfo.status === 'disconnected') && options.reconnectServer) {
       isChecking = true;
       try {
-        console.log('Keep-alive reconnecting disconnected server', {
+        logger.log('Keep-alive reconnecting disconnected server', {
           serverName: serverInfo.name,
         });
         await options.reconnectServer(serverInfo.name);
@@ -73,7 +74,7 @@ export const setupClientKeepAlive = async (
           const message = formatErrorForLogging(error);
           const nextError = `Reconnect failed: ${message}`;
           if (serverInfo.error !== nextError) {
-            console.warn('Keep-alive reconnect failed', {
+            logger.warn('Keep-alive reconnect failed', {
               serverName: serverInfo.name,
               error,
             });
@@ -106,7 +107,7 @@ export const setupClientKeepAlive = async (
       }
 
       if (serverInfo.status !== 'connected') {
-        console.log('Keep-alive ping restored server connection', {
+        logger.log('Keep-alive ping restored server connection', {
           serverName: serverInfo.name,
         });
       }
@@ -120,7 +121,7 @@ export const setupClientKeepAlive = async (
       const message = formatErrorForLogging(error);
       const nextError = `Keep-alive failed: ${message}`;
       if (serverInfo.status !== 'disconnected' || serverInfo.error !== nextError) {
-        console.warn('Keep-alive ping failed', { serverName: serverInfo.name, error });
+        logger.warn('Keep-alive ping failed', { serverName: serverInfo.name, error });
       }
       serverInfo.status = 'disconnected';
       serverInfo.error = nextError;
@@ -133,7 +134,7 @@ export const setupClientKeepAlive = async (
     await checkRemoteHealth();
   }, interval);
 
-  console.log('Keep-alive enabled for server', {
+  logger.log('Keep-alive enabled for server', {
     serverName: serverInfo.name,
     intervalSeconds: Math.round(interval / 1000),
   });
@@ -146,6 +147,6 @@ export const clearClientKeepAlive = (serverInfo: ServerInfo): void => {
   if (serverInfo.keepAliveIntervalId) {
     clearInterval(serverInfo.keepAliveIntervalId as NodeJS.Timeout);
     serverInfo.keepAliveIntervalId = undefined;
-    console.log('Cleared keep-alive interval', { serverName: serverInfo.name });
+    logger.log('Cleared keep-alive interval', { serverName: serverInfo.name });
   }
 };

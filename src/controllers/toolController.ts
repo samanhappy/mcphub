@@ -3,6 +3,7 @@ import { ApiResponse } from '../types/index.js';
 import { handleCallToolRequest, getServerByName } from '../services/mcpService.js';
 import { convertParametersToTypes } from '../utils/parameterConversion.js';
 import { getNameSeparator } from '../config/index.js';
+import { logger } from '../utils/logger.js';
 
 /**
  * Interface for tool call request
@@ -97,7 +98,7 @@ export const callTool = async (req: Request, res: Response): Promise<void> => {
 
     res.json(response);
   } catch (error) {
-    console.error('Error calling tool:', error);
+    logger.error('Error calling tool:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to call tool',

@@ -73,12 +73,18 @@ describe('auth middleware', () => {
 
   const createApp = () => {
     const app = express();
-    app.get('/api/protected', authenticatedRouteRateLimiter, (req, _res, next) => {
-      (req as any).t = (value: string) => value;
-      next();
-    }, auth, (_req, res) => {
-      res.status(200).json({ success: true });
-    });
+    app.get(
+      '/api/protected',
+      authenticatedRouteRateLimiter,
+      (req, _res, next) => {
+        (req as any).t = (value: string) => value;
+        next();
+      },
+      auth,
+      (_req, res) => {
+        res.status(200).json({ success: true });
+      },
+    );
     return app;
   };
 
@@ -444,9 +450,7 @@ describe('auth middleware', () => {
 
       const token = jwt.sign({ user: { username: 'jwt-user', isAdmin: false } }, 'test-secret');
 
-      const response = await request(app)
-        .get('/api/protected')
-        .set('x-auth-token', token);
+      const response = await request(app).get('/api/protected').set('x-auth-token', token);
 
       expect(response.status).toBe(200);
       expect(response.body.user).toEqual({

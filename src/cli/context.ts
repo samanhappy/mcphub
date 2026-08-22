@@ -1,11 +1,6 @@
 import { ApiClient, TokenKind } from './http.js';
 import { CliUsageError } from './errors.js';
-import {
-  Credentials,
-  getProfile,
-  loadCredentials,
-  Profile,
-} from './profile.js';
+import { Credentials, getProfile, loadCredentials, Profile } from './profile.js';
 
 export interface GlobalFlags {
   url?: string;

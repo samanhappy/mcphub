@@ -21,7 +21,11 @@ export interface CallDeps {
   client?: ApiClient;
 }
 
-export async function run(args: string[], globals: GlobalFlags, deps: CallDeps = {}): Promise<void> {
+export async function run(
+  args: string[],
+  globals: GlobalFlags,
+  deps: CallDeps = {},
+): Promise<void> {
   const { positional, flags } = extractFlags(args, {
     valued: ['--group', '--server', '--params-json'],
     boolean: ['--smart', '--no-coerce'],
@@ -53,9 +57,9 @@ export async function run(args: string[], globals: GlobalFlags, deps: CallDeps =
   const group: string | '$smart' | null =
     flags['--smart'] === true
       ? '$smart'
-      : (flags['--server'] as string | undefined) ??
+      : ((flags['--server'] as string | undefined) ??
         (flags['--group'] as string | undefined) ??
-        '$smart';
+        '$smart');
 
   const client = deps.client ?? buildClient(resolveTarget(globals));
   const body = {

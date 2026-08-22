@@ -3,6 +3,7 @@ import { mcpAuthRouter } from '@modelcontextprotocol/sdk/server/auth/router.js';
 import { RequestHandler } from 'express';
 import { getServerDao, getSystemConfigDao } from '../dao/index.js';
 import { initializeOAuthForServer, refreshAccessToken } from './oauthClientRegistration.js';
+import { logger } from '../utils/logger.js';
 
 // Re-export for external use
 export {
@@ -28,7 +29,7 @@ export const initOAuthProvider = async (): Promise<void> => {
   const oauthConfig = systemConfig?.oauth;
 
   if (!oauthConfig || !oauthConfig.enabled) {
-    console.log('OAuth provider is disabled or not configured');
+    logger.log('OAuth provider is disabled or not configured');
     return;
   }
 
@@ -101,15 +102,15 @@ export const initOAuthProvider = async (): Promise<void> => {
       scopesSupported: oauthConfig.scopesSupported,
     });
 
-    console.log('OAuth provider initialized successfully');
-    console.log(`OAuth issuer URL: ${issuerUrl.origin}`);
+    logger.log('OAuth provider initialized successfully');
+    logger.log(`OAuth issuer URL: ${issuerUrl.origin}`);
     // Only log endpoint URLs, not full config which might contain sensitive data
-    console.log(
+    logger.log(
       'OAuth endpoints configured: authorization, token' +
         (oauthConfig.endpoints.revocationUrl ? ', revocation' : ''),
     );
   } catch (error) {
-    console.error('Failed to initialize OAuth provider', { error });
+    logger.error('Failed to initialize OAuth provider', { error });
     oauthProvider = null;
     oauthRouter = null;
   }
@@ -162,7 +163,7 @@ export const getServerOAuthToken = async (serverName: string): Promise<string | 
       const clientInfo = await initializeOAuthForServer(serverName, serverConfig);
 
       if (!clientInfo) {
-        console.warn('Failed to initialize OAuth for server', { serverName });
+        logger.warn('Failed to initialize OAuth for server', { serverName });
         return undefined;
       }
 
@@ -177,7 +178,7 @@ export const getServerOAuthToken = async (serverName: string): Promise<string | 
           );
           return tokens.accessToken;
         } catch (error) {
-          console.error('Failed to refresh OAuth token for server', { serverName, error });
+          logger.error('Failed to refresh OAuth token for server', { serverName, error });
           // Token refresh failed - user needs to re-authorize
           // In a production system, you would trigger a new authorization flow here
           return undefined;
@@ -187,10 +188,10 @@ export const getServerOAuthToken = async (serverName: string): Promise<string | 
       // No access token and no refresh token available
       // User needs to go through the authorization flow
       // This would typically be triggered by an API endpoint that initiates the OAuth flow
-      console.log('Server requires user authorization via OAuth flow', { serverName });
+      logger.log('Server requires user authorization via OAuth flow', { serverName });
       return undefined;
     } catch (error) {
-      console.error('Failed to get OAuth token for server', { serverName, error });
+      logger.error('Failed to get OAuth token for server', { serverName, error });
       return undefined;
     }
   }
@@ -231,7 +232,7 @@ export const initializeAllOAuthClients = async (): Promise<void> => {
   const serverDao = getServerDao();
   const allServers = await serverDao.findAll();
 
-  console.log('Initializing OAuth clients for explicitly configured servers...');
+  logger.log('Initializing OAuth clients for explicitly configured servers...');
 
   const registrationPromises: Promise<void>[] = [];
 
@@ -245,13 +246,13 @@ export const initializeAllOAuthClients = async (): Promise<void> => {
         initializeOAuthForServer(serverName, serverConfig)
           .then((clientInfo) => {
             if (clientInfo) {
-              console.log('OAuth client pre-registered for server', { serverName });
+              logger.log('OAuth client pre-registered for server', { serverName });
             } else {
-              console.warn('Failed to pre-register OAuth client for server', { serverName });
+              logger.warn('Failed to pre-register OAuth client for server', { serverName });
             }
           })
           .catch((error) => {
-            console.error('Error pre-registering OAuth client for server', {
+            logger.error('Error pre-registering OAuth client for server', {
               serverName,
               error: error.message,
             });
@@ -263,10 +264,10 @@ export const initializeAllOAuthClients = async (): Promise<void> => {
   // Wait for all registrations to complete
   if (registrationPromises.length > 0) {
     await Promise.all(registrationPromises);
-    console.log(
+    logger.log(
       `OAuth client pre-registration completed for ${registrationPromises.length} server(s)`,
     );
   } else {
-    console.log('No servers configured for pre-registration (will auto-detect on 401 responses)');
+    logger.log('No servers configured for pre-registration (will auto-detect on 401 responses)');
   }
 };

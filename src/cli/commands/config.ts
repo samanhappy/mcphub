@@ -16,7 +16,11 @@ export interface ConfigDeps {
   saveCreds?: (creds: Credentials) => void;
 }
 
-export async function run(args: string[], globals: GlobalFlags, deps: ConfigDeps = {}): Promise<void> {
+export async function run(
+  args: string[],
+  globals: GlobalFlags,
+  deps: ConfigDeps = {},
+): Promise<void> {
   const sub = args.shift();
   switch (sub) {
     case undefined:

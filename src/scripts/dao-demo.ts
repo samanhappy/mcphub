@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 
+import { logger } from '../utils/logger.js';
+
 /**
  * MCPHub DAO Layer Demo Script
  *
@@ -29,7 +31,7 @@ async function main() {
   switch (command) {
     case 'migrate':
       {
-        console.log('🚀 Starting migration to DAO layer...');
+        logger.log('🚀 Starting migration to DAO layer...');
         const success = await performMigration();
         process.exit(success ? 0 : 1);
       }
@@ -37,7 +39,7 @@ async function main() {
 
     case 'validate':
       {
-        console.log('🔍 Validating migration...');
+        logger.log('🔍 Validating migration...');
         const isValid = await validateMigration();
         process.exit(isValid ? 0 : 1);
       }
@@ -45,7 +47,7 @@ async function main() {
 
     case 'test':
       {
-        console.log('🧪 Testing DAO operations...');
+        logger.log('🧪 Testing DAO operations...');
         const testSuccess = await testDaoOperations();
         process.exit(testSuccess ? 0 : 1);
       }
@@ -53,7 +55,7 @@ async function main() {
 
     case 'compare':
       {
-        console.log('⚡ Comparing performance...');
+        logger.log('⚡ Comparing performance...');
         await performanceComparison();
         process.exit(0);
       }
@@ -61,7 +63,7 @@ async function main() {
 
     case 'report':
       {
-        console.log('📊 Generating migration report...');
+        logger.log('📊 Generating migration report...');
         await generateMigrationReport();
         process.exit(0);
       }
@@ -77,7 +79,7 @@ async function main() {
     case 'switch-dao':
       {
         switchToDao();
-        console.log('✅ Switched to DAO layer');
+        logger.log('✅ Switched to DAO layer');
         process.exit(0);
       }
       break;
@@ -85,7 +87,7 @@ async function main() {
     case 'switch-legacy':
       {
         switchToLegacy();
-        console.log('✅ Switched to legacy file-based approach');
+        logger.log('✅ Switched to legacy file-based approach');
         process.exit(0);
       }
       break;
@@ -98,7 +100,7 @@ async function main() {
 }
 
 function printHelp() {
-  console.log(`
+  logger.log(`
 MCPHub DAO Layer Demo
 
 Usage: node dao-demo.js <command>
@@ -121,15 +123,15 @@ Examples:
 }
 
 async function runDemo() {
-  console.log('🎭 MCPHub DAO Layer Interactive Demo');
-  console.log('=====================================\n');
+  logger.log('🎭 MCPHub DAO Layer Interactive Demo');
+  logger.log('=====================================\n');
 
   try {
     // Step 1: Show current configuration
-    console.log('📋 Step 1: Loading current configuration...');
+    logger.log('📋 Step 1: Loading current configuration...');
     switchToLegacy();
     const legacySettings = await loadSettings();
-    console.log(`Current data:
+    logger.log(`Current data:
 - Users: ${legacySettings.users?.length || 0}
 - Servers: ${Object.keys(legacySettings.mcpServers || {}).length}
 - Groups: ${legacySettings.groups?.length || 0}
@@ -138,12 +140,12 @@ async function runDemo() {
 `);
 
     // Step 2: Switch to DAO and show same data
-    console.log('🔄 Step 2: Switching to DAO layer...');
+    logger.log('🔄 Step 2: Switching to DAO layer...');
     switchToDao();
     const daoService = getDaoConfigService();
 
     const daoSettings = await daoService.loadSettings();
-    console.log(`DAO layer data:
+    logger.log(`DAO layer data:
 - Users: ${daoSettings.users?.length || 0}
 - Servers: ${Object.keys(daoSettings.mcpServers || {}).length}
 - Groups: ${daoSettings.groups?.length || 0}
@@ -152,13 +154,13 @@ async function runDemo() {
 `);
 
     // Step 3: Demonstrate CRUD operations
-    console.log('🛠️ Step 3: Demonstrating CRUD operations...');
+    logger.log('🛠️ Step 3: Demonstrating CRUD operations...');
 
     // Test user creation (if not exists)
     try {
       // Add demo data if needed
       if (!daoSettings.users?.length) {
-        console.log('Creating demo user...');
+        logger.log('Creating demo user...');
         // Note: In practice, you'd use the UserDao directly for password hashing
         const demoSettings = {
           ...daoSettings,
@@ -171,12 +173,12 @@ async function runDemo() {
           ],
         };
         await daoService.saveSettings(demoSettings);
-        console.log('✅ Demo user created');
+        logger.log('✅ Demo user created');
       }
 
       // Add demo server if needed
       if (!Object.keys(daoSettings.mcpServers || {}).length) {
-        console.log('Creating demo server...');
+        logger.log('Creating demo server...');
         const demoSettings = {
           ...daoSettings,
           mcpServers: {
@@ -189,12 +191,12 @@ async function runDemo() {
           },
         };
         await daoService.saveSettings(demoSettings);
-        console.log('✅ Demo server created');
+        logger.log('✅ Demo server created');
       }
 
       // Add demo group if needed
       if (!daoSettings.groups?.length) {
-        console.log('Creating demo group...');
+        logger.log('Creating demo group...');
         const demoSettings = {
           ...daoSettings,
           groups: [
@@ -208,15 +210,15 @@ async function runDemo() {
           ],
         };
         await daoService.saveSettings(demoSettings);
-        console.log('✅ Demo group created');
+        logger.log('✅ Demo group created');
       }
     } catch (error) {
-      console.log('⚠️ Some demo operations failed (this is expected for password hashing)');
-      console.log('In production, you would use individual DAO methods for proper handling');
+      logger.log('⚠️ Some demo operations failed (this is expected for password hashing)');
+      logger.log('In production, you would use individual DAO methods for proper handling');
     }
 
     // Step 4: Show benefits
-    console.log(`
+    logger.log(`
 🌟 Benefits of the DAO Layer:
 
 1. 📦 Separation of Concerns
@@ -247,13 +249,13 @@ async function runDemo() {
    - Support for complex queries and relationships
 `);
 
-    console.log('✅ Demo completed successfully!');
+    logger.log('✅ Demo completed successfully!');
   } catch (error) {
-    console.error('❌ Demo failed:', error);
+    logger.error('❌ Demo failed:', error);
   }
 }
 
 // Run the main function
 if (require.main === module) {
-  main().catch(console.error);
+  main().catch(logger.error);
 }

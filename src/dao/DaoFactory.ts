@@ -9,6 +9,7 @@ import { BearerKeyDao, BearerKeyDaoImpl } from './BearerKeyDao.js';
 import { ActivityDao } from './ActivityDao.js';
 import { BuiltinPromptDao, BuiltinPromptDaoImpl } from './BuiltinPromptDao.js';
 import { BuiltinResourceDao, BuiltinResourceDaoImpl } from './BuiltinResourceDao.js';
+import { logger } from '../utils/logger.js';
 
 /**
  * DAO Factory interface for creating DAO instances
@@ -173,12 +174,12 @@ export async function initializeDaoFactory(): Promise<void> {
   const useDatabase =
     process.env.USE_DB !== undefined ? process.env.USE_DB === 'true' : !!process.env.DB_URL;
   if (useDatabase) {
-    console.log('Using database-backed DAO implementations');
+    logger.log('Using database-backed DAO implementations');
     // Dynamic import to avoid circular dependencies
     const { DatabaseDaoFactory } = await import('./DatabaseDaoFactory.js');
     setDaoFactory(DatabaseDaoFactory.getInstance());
   } else {
-    console.log('Using file-based DAO implementations');
+    logger.log('Using file-based DAO implementations');
     setDaoFactory(JsonFileDaoFactory.getInstance());
   }
 }

@@ -12,21 +12,22 @@ import { OAuthTokenRepository } from '../db/repositories/OAuthTokenRepository.js
 import { BearerKeyRepository } from '../db/repositories/BearerKeyRepository.js';
 import { BuiltinPromptRepository } from '../db/repositories/BuiltinPromptRepository.js';
 import { BuiltinResourceRepository } from '../db/repositories/BuiltinResourceRepository.js';
+import { logger } from './logger.js';
 
 /**
  * Migrate from file-based configuration to database
  */
 export async function migrateToDatabase(): Promise<boolean> {
   try {
-    console.log('Starting migration from file to database...');
+    logger.log('Starting migration from file to database...');
 
     // Initialize database connection
     await initializeDatabase();
-    console.log('Database connection established');
+    logger.log('Database connection established');
 
     // Load current settings from file
     const settings = loadOriginalSettings();
-    console.log('Loaded settings from file');
+    logger.log('Loaded settings from file');
 
     // Create repositories
     const userRepo = new UserRepository();
@@ -42,7 +43,7 @@ export async function migrateToDatabase(): Promise<boolean> {
 
     // Migrate users
     if (settings.users && settings.users.length > 0) {
-      console.log(`Migrating ${settings.users.length} users...`);
+      logger.log(`Migrating ${settings.users.length} users...`);
       for (const user of settings.users) {
         const exists = await userRepo.exists(user.username);
         if (!exists) {
@@ -53,9 +54,9 @@ export async function migrateToDatabase(): Promise<boolean> {
             email: user.email ?? null,
             ssoUserId: (user as any).ssoUserId ?? null,
           });
-          console.log(`  - Created user: ${user.username}`);
+          logger.log(`  - Created user: ${user.username}`);
         } else {
-          console.log(`  - User already exists: ${user.username}`);
+          logger.log(`  - User already exists: ${user.username}`);
         }
       }
     }
@@ -63,7 +64,7 @@ export async function migrateToDatabase(): Promise<boolean> {
     // Migrate servers
     if (settings.mcpServers) {
       const serverNames = Object.keys(settings.mcpServers);
-      console.log(`Migrating ${serverNames.length} servers...`);
+      logger.log(`Migrating ${serverNames.length} servers...`);
       for (const [name, config] of Object.entries(settings.mcpServers)) {
         const exists = await serverRepo.exists(name);
         if (!exists) {
@@ -91,16 +92,16 @@ export async function migrateToDatabase(): Promise<boolean> {
             passthroughHeaders: config.passthroughHeaders,
             perSessionClient: config.perSessionClient,
           });
-          console.log(`  - Created server: ${name}`);
+          logger.log(`  - Created server: ${name}`);
         } else {
-          console.log(`  - Server already exists: ${name}`);
+          logger.log(`  - Server already exists: ${name}`);
         }
       }
     }
 
     // Migrate groups
     if (settings.groups && settings.groups.length > 0) {
-      console.log(`Migrating ${settings.groups.length} groups...`);
+      logger.log(`Migrating ${settings.groups.length} groups...`);
       for (const group of settings.groups) {
         const exists = await groupRepo.existsByName(group.name);
         if (!exists) {
@@ -110,16 +111,16 @@ export async function migrateToDatabase(): Promise<boolean> {
             servers: Array.isArray(group.servers) ? group.servers : [],
             owner: group.owner,
           });
-          console.log(`  - Created group: ${group.name}`);
+          logger.log(`  - Created group: ${group.name}`);
         } else {
-          console.log(`  - Group already exists: ${group.name}`);
+          logger.log(`  - Group already exists: ${group.name}`);
         }
       }
     }
 
     // Migrate system config
     if (settings.systemConfig) {
-      console.log('Migrating system configuration...');
+      logger.log('Migrating system configuration...');
       const systemConfig = {
         routing: settings.systemConfig.routing || {},
         install: settings.systemConfig.install || {},
@@ -134,11 +135,11 @@ export async function migrateToDatabase(): Promise<boolean> {
         discovery: settings.systemConfig.discovery || {},
       };
       await systemConfigRepo.update(systemConfig);
-      console.log('  - System configuration updated');
+      logger.log('  - System configuration updated');
     }
 
     // Migrate bearer auth keys
-    console.log('Migrating bearer authentication keys...');
+    logger.log('Migrating bearer authentication keys...');
 
     // Prefer explicit bearerKeys if present in settings
     if (Array.isArray(settings.bearerKeys) && settings.bearerKeys.length > 0) {
@@ -153,7 +154,7 @@ export async function migrateToDatabase(): Promise<boolean> {
           allowedGroups: key.allowedGroups ?? [],
           allowedServers: key.allowedServers ?? [],
         } as any);
-        console.log(`  - Migrated bearer key: ${key.name} (${key.id ?? 'no-id'})`);
+        logger.log(`  - Migrated bearer key: ${key.name} (${key.id ?? 'no-id'})`);
       }
     } else if (settings.systemConfig?.routing) {
       // Fallback to legacy routing.enableBearerAuth / bearerAuthKey
@@ -176,33 +177,33 @@ export async function migrateToDatabase(): Promise<boolean> {
           allowedGroups: [],
           allowedServers: [],
         } as any);
-        console.log(
+        logger.log(
           `  - Migrated legacy bearer auth config to key: default (enabled=${enableBearerAuth})`,
         );
       } else {
-        console.log('  - No legacy bearer auth key found, skipping bearer key migration');
+        logger.log('  - No legacy bearer auth key found, skipping bearer key migration');
       }
     } else {
-      console.log('  - No bearer auth configuration found, skipping bearer key migration');
+      logger.log('  - No bearer auth configuration found, skipping bearer key migration');
     }
 
     // Migrate user configs
     if (settings.userConfigs) {
       const usernames = Object.keys(settings.userConfigs);
-      console.log(`Migrating ${usernames.length} user configurations...`);
+      logger.log(`Migrating ${usernames.length} user configurations...`);
       for (const [username, config] of Object.entries(settings.userConfigs)) {
         const userConfig = {
           routing: config.routing || {},
           additionalConfig: config,
         };
         await userConfigRepo.update(username, userConfig);
-        console.log(`  - Updated configuration for user: ${username}`);
+        logger.log(`  - Updated configuration for user: ${username}`);
       }
     }
 
     // Migrate OAuth clients
     if (settings.oauthClients && settings.oauthClients.length > 0) {
-      console.log(`Migrating ${settings.oauthClients.length} OAuth clients...`);
+      logger.log(`Migrating ${settings.oauthClients.length} OAuth clients...`);
       for (const client of settings.oauthClients) {
         const exists = await oauthClientRepo.exists(client.clientId);
         if (!exists) {
@@ -216,16 +217,16 @@ export async function migrateToDatabase(): Promise<boolean> {
             owner: client.owner,
             metadata: client.metadata,
           });
-          console.log(`  - Created OAuth client: ${client.clientId}`);
+          logger.log(`  - Created OAuth client: ${client.clientId}`);
         } else {
-          console.log(`  - OAuth client already exists: ${client.clientId}`);
+          logger.log(`  - OAuth client already exists: ${client.clientId}`);
         }
       }
     }
 
     // Migrate OAuth tokens
     if (settings.oauthTokens && settings.oauthTokens.length > 0) {
-      console.log(`Migrating ${settings.oauthTokens.length} OAuth tokens...`);
+      logger.log(`Migrating ${settings.oauthTokens.length} OAuth tokens...`);
       for (const token of settings.oauthTokens) {
         const exists = await oauthTokenRepo.exists(token.accessToken);
         if (!exists) {
@@ -240,16 +241,16 @@ export async function migrateToDatabase(): Promise<boolean> {
             clientId: token.clientId,
             username: token.username,
           });
-          console.log(`  - Created OAuth token for client: ${token.clientId}`);
+          logger.log(`  - Created OAuth token for client: ${token.clientId}`);
         } else {
-          console.log(`  - OAuth token already exists: ${token.accessToken.substring(0, 8)}...`);
+          logger.log(`  - OAuth token already exists: ${token.accessToken.substring(0, 8)}...`);
         }
       }
     }
 
     // Migrate built-in prompts
     if (settings.prompts && settings.prompts.length > 0) {
-      console.log(`Migrating ${settings.prompts.length} built-in prompts...`);
+      logger.log(`Migrating ${settings.prompts.length} built-in prompts...`);
       for (const prompt of settings.prompts) {
         const exists = await builtinPromptRepo.findByName(prompt.name);
         if (!exists) {
@@ -261,16 +262,16 @@ export async function migrateToDatabase(): Promise<boolean> {
             arguments: prompt.arguments,
             enabled: prompt.enabled !== false,
           } as any);
-          console.log(`  - Created built-in prompt: ${prompt.name}`);
+          logger.log(`  - Created built-in prompt: ${prompt.name}`);
         } else {
-          console.log(`  - Built-in prompt already exists: ${prompt.name}`);
+          logger.log(`  - Built-in prompt already exists: ${prompt.name}`);
         }
       }
     }
 
     // Migrate built-in resources
     if (settings.resources && settings.resources.length > 0) {
-      console.log(`Migrating ${settings.resources.length} built-in resources...`);
+      logger.log(`Migrating ${settings.resources.length} built-in resources...`);
       for (const resource of settings.resources) {
         const exists = await builtinResourceRepo.findByUri(resource.uri);
         if (!exists) {
@@ -282,17 +283,17 @@ export async function migrateToDatabase(): Promise<boolean> {
             content: resource.content,
             enabled: resource.enabled !== false,
           } as any);
-          console.log(`  - Created built-in resource: ${resource.uri}`);
+          logger.log(`  - Created built-in resource: ${resource.uri}`);
         } else {
-          console.log(`  - Built-in resource already exists: ${resource.uri}`);
+          logger.log(`  - Built-in resource already exists: ${resource.uri}`);
         }
       }
     }
 
-    console.log('✅ Migration completed successfully');
+    logger.log('✅ Migration completed successfully');
     return true;
   } catch (error) {
-    console.error('❌ Migration failed:', error);
+    logger.error('❌ Migration failed:', error);
     return false;
   }
 }
@@ -303,15 +304,15 @@ export async function migrateToDatabase(): Promise<boolean> {
  */
 export async function initializeDatabaseMode(): Promise<boolean> {
   try {
-    console.log('Initializing database mode...');
+    logger.log('Initializing database mode...');
 
     // Initialize database connection
     await initializeDatabase();
-    console.log('Database connection established');
+    logger.log('Database connection established');
 
     // Switch to database factory
     setDaoFactory(DatabaseDaoFactory.getInstance());
-    console.log('Switched to database-backed DAO implementations');
+    logger.log('Switched to database-backed DAO implementations');
 
     // Check if migration is needed
     const userRepo = new UserRepository();
@@ -321,19 +322,19 @@ export async function initializeDatabaseMode(): Promise<boolean> {
     const userCount = await userRepo.count();
 
     if (userCount === 0) {
-      console.log('No users found in database, running migration...');
+      logger.log('No users found in database, running migration...');
       const migrated = await migrateToDatabase();
       if (!migrated) {
         throw new Error('Migration failed');
       }
     } else {
-      console.log(`Database already contains ${userCount} users, skipping migration`);
+      logger.log(`Database already contains ${userCount} users, skipping migration`);
 
       // One-time migration for legacy bearer auth config stored inside DB routing settings.
       // If bearerKeys table already has data, do nothing.
       const bearerKeyCount = await bearerKeyRepo.count();
       if (bearerKeyCount > 0) {
-        console.log(
+        logger.log(
           `Bearer keys table already contains ${bearerKeyCount} keys, skipping legacy bearer auth migration`,
         );
       } else {
@@ -352,19 +353,19 @@ export async function initializeDatabaseMode(): Promise<boolean> {
             allowedGroups: [],
             allowedServers: [],
           } as any);
-          console.log(
+          logger.log(
             `  - Migrated legacy DB routing bearer auth config to key: default (enabled=${enableBearerAuth})`,
           );
         } else {
-          console.log('No legacy DB routing bearer auth key found, skipping bearer key migration');
+          logger.log('No legacy DB routing bearer auth key found, skipping bearer key migration');
         }
       }
     }
 
-    console.log('✅ Database mode initialized successfully');
+    logger.log('✅ Database mode initialized successfully');
     return true;
   } catch (error) {
-    console.error('❌ Failed to initialize database mode:', error);
+    logger.error('❌ Failed to initialize database mode:', error);
     return false;
   }
 }
@@ -373,17 +374,17 @@ export async function initializeDatabaseMode(): Promise<boolean> {
  * CLI tool for migration
  */
 export async function runMigrationCli(): Promise<void> {
-  console.log('MCPHub Configuration Migration Tool');
-  console.log('====================================\n');
+  logger.log('MCPHub Configuration Migration Tool');
+  logger.log('====================================\n');
 
   const success = await migrateToDatabase();
 
   if (success) {
-    console.log('\n✅ Migration completed successfully!');
-    console.log('You can now set USE_DB=true to use database-backed configuration');
+    logger.log('\n✅ Migration completed successfully!');
+    logger.log('You can now set USE_DB=true to use database-backed configuration');
     process.exit(0);
   } else {
-    console.log('\n❌ Migration failed!');
+    logger.log('\n❌ Migration failed!');
     process.exit(1);
   }
 }

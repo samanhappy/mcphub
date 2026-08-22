@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { ApiResponse, CloudServer, CloudTool } from '../types/index.js';
+import { logger } from '../utils/logger.js';
 import {
   getCloudServers,
   getCloudServerByName,
@@ -22,7 +23,7 @@ export const getAllCloudServers = async (_: Request, res: Response): Promise<voi
     };
     res.json(response);
   } catch (error) {
-    console.error('Error getting cloud market servers:', error);
+    logger.error('Error getting cloud market servers:', error);
     const errorMessage =
       error instanceof Error ? error.message : 'Failed to get cloud market servers';
     res.status(500).json({
@@ -58,7 +59,7 @@ export const getCloudServer = async (req: Request, res: Response): Promise<void>
       const tools = await getCloudServerTools(server.server_key);
       server.tools = tools;
     } catch (toolError) {
-      console.warn(`Failed to fetch tools for server ${server.name}:`, toolError);
+      logger.warn(`Failed to fetch tools for server ${server.name}:`, toolError);
       // Continue without tools
     }
 
@@ -68,7 +69,7 @@ export const getCloudServer = async (req: Request, res: Response): Promise<void>
     };
     res.json(response);
   } catch (error) {
-    console.error('Error getting cloud market server:', error);
+    logger.error('Error getting cloud market server:', error);
     const errorMessage =
       error instanceof Error ? error.message : 'Failed to get cloud market server';
     res.status(500).json({
@@ -88,7 +89,7 @@ export const getAllCloudCategories = async (_: Request, res: Response): Promise<
     };
     res.json(response);
   } catch (error) {
-    console.error('Error getting cloud market categories:', error);
+    logger.error('Error getting cloud market categories:', error);
     const errorMessage =
       error instanceof Error ? error.message : 'Failed to get cloud market categories';
     res.status(500).json({
@@ -108,7 +109,7 @@ export const getAllCloudTags = async (_: Request, res: Response): Promise<void> 
     };
     res.json(response);
   } catch (error) {
-    console.error('Error getting cloud market tags:', error);
+    logger.error('Error getting cloud market tags:', error);
     const errorMessage = error instanceof Error ? error.message : 'Failed to get cloud market tags';
     res.status(500).json({
       success: false,
@@ -136,7 +137,7 @@ export const searchCloudServersByQuery = async (req: Request, res: Response): Pr
     };
     res.json(response);
   } catch (error) {
-    console.error('Error searching cloud market servers:', error);
+    logger.error('Error searching cloud market servers:', error);
     const errorMessage =
       error instanceof Error ? error.message : 'Failed to search cloud market servers';
     res.status(500).json({
@@ -165,7 +166,7 @@ export const getCloudServersByCategory = async (req: Request, res: Response): Pr
     };
     res.json(response);
   } catch (error) {
-    console.error('Error getting cloud market servers by category:', error);
+    logger.error('Error getting cloud market servers by category:', error);
     const errorMessage =
       error instanceof Error ? error.message : 'Failed to get cloud market servers by category';
     res.status(500).json({
@@ -194,7 +195,7 @@ export const getCloudServersByTag = async (req: Request, res: Response): Promise
     };
     res.json(response);
   } catch (error) {
-    console.error('Error getting cloud market servers by tag:', error);
+    logger.error('Error getting cloud market servers by tag:', error);
     const errorMessage =
       error instanceof Error ? error.message : 'Failed to get cloud market servers by tag';
     res.status(500).json({
@@ -224,7 +225,7 @@ export const getCloudServerToolsList = async (req: Request, res: Response): Prom
     };
     res.json(response);
   } catch (error) {
-    console.error('Error getting cloud server tools:', error);
+    logger.error('Error getting cloud server tools:', error);
     const errorMessage =
       error instanceof Error ? error.message : 'Failed to get cloud server tools';
     res.status(500).json({
@@ -265,7 +266,7 @@ export const callCloudTool = async (req: Request, res: Response): Promise<void> 
     };
     res.json(response);
   } catch (error) {
-    console.error('Error calling cloud server tool:', error);
+    logger.error('Error calling cloud server tool:', error);
     const errorMessage =
       error instanceof Error ? error.message : 'Failed to call cloud server tool';
     res.status(500).json({

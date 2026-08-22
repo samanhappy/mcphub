@@ -1,5 +1,6 @@
 import { initializeDatabase, closeDatabase, isDatabaseConnected } from './connection.js';
 import * as repositories from './repositories/index.js';
+import { logger } from '../utils/logger.js';
 
 /**
  * Initialize the database module
@@ -10,7 +11,7 @@ export async function initializeDbModule(): Promise<boolean> {
     await initializeDatabase();
     return true;
   } catch (error) {
-    console.error('Failed to initialize database module:', error);
+    logger.error('Failed to initialize database module:', error);
     return false;
   }
 }

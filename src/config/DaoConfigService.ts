@@ -1,4 +1,5 @@
 import { McpSettings, IUser, ServerConfig } from '../types/index.js';
+import { logger } from '../utils/logger.js';
 import {
   UserDao,
   ServerDao,
@@ -87,7 +88,7 @@ export class DaoConfigService {
           } else {
             // For new users, we'd need to handle password hashing properly
             // This is a placeholder - actual implementation would use createWithHashedPassword
-            console.warn('Creating new user requires special handling for password hashing');
+            logger.warn('Creating new user requires special handling for password hashing');
           }
         }
       }
@@ -151,7 +152,7 @@ export class DaoConfigService {
       await Promise.all(promises);
       return true;
     } catch (error) {
-      console.error('Failed to save settings using DAO layer:', error);
+      logger.error('Failed to save settings using DAO layer:', error);
       return false;
     }
   }

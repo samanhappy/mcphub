@@ -61,6 +61,7 @@ jest.mock('../../src/services/upstreamOAuthDisconnectService.js', () => ({
 }));
 
 import { auth } from '../../src/middlewares/auth.js';
+import { authenticatedRouteRateLimiter } from '../../src/utils/rateLimit.js';
 import { updateSystemConfig } from '../../src/controllers/serverController.js';
 import { createUserToken } from '../utils/testHelpers.js';
 
@@ -79,7 +80,7 @@ describe('system configuration authorization', () => {
   it('rejects a non-admin JWT before updating global configuration', async () => {
     const app = express();
     app.use(express.json());
-    app.put('/api/system-config', auth, updateSystemConfig);
+    app.put('/api/system-config', authenticatedRouteRateLimiter, auth, updateSystemConfig);
 
     const response = await request(app)
       .put('/api/system-config')

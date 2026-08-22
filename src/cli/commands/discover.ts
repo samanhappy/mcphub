@@ -27,7 +27,11 @@ export interface DiscoverDeps {
   client?: ApiClient;
 }
 
-export async function run(args: string[], globals: GlobalFlags, deps: DiscoverDeps = {}): Promise<void> {
+export async function run(
+  args: string[],
+  globals: GlobalFlags,
+  deps: DiscoverDeps = {},
+): Promise<void> {
   const sub = args[0];
   // Reserved subcommands consume the head; everything else flows through to
   // the default "list" behavior.
