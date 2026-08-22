@@ -102,6 +102,10 @@ pnpm dev
 本地开发默认使用 `admin` / `admin123`，运行时变更会写入
 `data/mcp_settings.dev.json`，仓库里的 `mcp_settings.json` 不包含默认凭证。
 
+如果需要在子路径下开发，请在项目根目录的 `.env` 中设置
+`BASE_PATH=/mcphub`，重启 `pnpm dev`，然后访问
+`http://localhost:5173/mcphub/`。Vite 会通过该前缀代理运行时配置和控制台 API。
+
 ### 仅运行后端
 
 ```bash

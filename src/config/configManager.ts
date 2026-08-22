@@ -1,6 +1,7 @@
 import dotenv from 'dotenv';
 import { McpSettings, IUser } from '../types/index.js';
 import { getPackageVersion } from '../utils/version.js';
+import { normalizeBasePath } from '../utils/basePath.js';
 import { getDataService } from '../services/services.js';
 import { DataService } from '../services/dataService.js';
 import { DaoConfigService, createDaoConfigService } from './DaoConfigService.js';
@@ -15,7 +16,7 @@ dotenv.config();
 const defaultConfig = {
   port: process.env.PORT || 3000,
   initTimeout: process.env.INIT_TIMEOUT || 300000,
-  basePath: process.env.BASE_PATH || '',
+  basePath: normalizeBasePath(process.env.BASE_PATH),
   readonly: 'true' === process.env.READONLY || false,
   mcpHubName: 'mcphub',
   mcpHubVersion: getPackageVersion(),

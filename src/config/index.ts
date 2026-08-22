@@ -2,6 +2,7 @@ import dotenv from 'dotenv';
 import fs from 'fs';
 import { McpSettings, IUser } from '../types/index.js';
 import { getConfigFilePath } from '../utils/path.js';
+import { normalizeBasePath } from '../utils/basePath.js';
 import { getCachedSystemConfig, isDatabaseModeEnabled } from '../utils/systemConfigCache.js';
 import { getPackageVersion } from '../utils/version.js';
 import { getDataService } from '../services/services.js';
@@ -13,7 +14,7 @@ dotenv.config();
 const defaultConfig = {
   port: process.env.PORT || 3000,
   initTimeout: process.env.INIT_TIMEOUT || 300000,
-  basePath: process.env.BASE_PATH || '',
+  basePath: normalizeBasePath(process.env.BASE_PATH),
   readonly: 'true' === process.env.READONLY || false,
   mcpHubName: 'mcphub',
   mcpHubVersion: getPackageVersion(),
