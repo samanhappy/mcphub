@@ -183,6 +183,8 @@ node dist/scripts/migrate-to-database.js
 
 Web 仪表板的工作方式完全相同，但现在将更改存储在数据库中而不是文件中。
 
+启用数据库模式时，`mcp_settings.json` 仅在首次初始化时作为一次性种子配置使用。首次迁移后，PostgreSQL 是唯一的配置来源；之后对 `mcp_settings.json` 的修改不会自动导入。数据库模式下请通过仪表板、API 或 CLI 管理配置。
+
 ## 数据库架构
 
 MCPHub 创建以下表：
