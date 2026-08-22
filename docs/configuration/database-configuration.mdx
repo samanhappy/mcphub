@@ -183,6 +183,8 @@ Once running in database mode, all configuration changes are stored in the datab
 
 The web dashboard works exactly the same way, but now stores changes in the database instead of the file.
 
+`mcp_settings.json` is used as a one-time seed when database mode is initialized. After the initial migration, PostgreSQL is the authoritative configuration source; later edits to `mcp_settings.json` are not imported automatically. Use the dashboard, API, or CLI to manage configuration in database mode.
+
 ## Database Schema
 
 MCPHub creates the following tables:
