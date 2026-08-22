@@ -103,6 +103,10 @@ Local development uses `admin` / `admin123` and writes runtime changes to
 `data/mcp_settings.dev.json`. The repository `mcp_settings.json` remains
 credential-free.
 
+To develop with a sub-path, set `BASE_PATH=/mcphub` in the project-root `.env`
+file, restart `pnpm dev`, and open `http://localhost:5173/mcphub/`. The Vite
+server proxies the runtime configuration and dashboard API through that prefix.
+
 ### Running Backend Only
 
 ```bash
