@@ -25,7 +25,11 @@ export interface ServerDao extends BaseDao<ServerConfigWithName, string> {
   /**
    * Find servers by owner with pagination
    */
-  findByOwnerPaginated(owner: string, page: number, limit: number): Promise<PaginatedResult<ServerConfigWithName>>;
+  findByOwnerPaginated(
+    owner: string,
+    page: number,
+    limit: number,
+  ): Promise<PaginatedResult<ServerConfigWithName>>;
 
   /**
    * Find servers visible to a non-admin user with pagination.
@@ -215,7 +219,10 @@ export class ServerDaoImpl extends JsonFileBaseDao implements ServerDao {
     return servers.length;
   }
 
-  async findAllPaginated(page: number, limit: number): Promise<PaginatedResult<ServerConfigWithName>> {
+  async findAllPaginated(
+    page: number,
+    limit: number,
+  ): Promise<PaginatedResult<ServerConfigWithName>> {
     const allServers = await this.getAll();
     // Sort: enabled servers first, then by creation time
     const sortedServers = allServers.sort((a, b) => {
@@ -226,7 +233,7 @@ export class ServerDaoImpl extends JsonFileBaseDao implements ServerDao {
       }
       return 0; // Keep original order for same enabled status
     });
-    
+
     const total = sortedServers.length;
     const totalPages = Math.ceil(total / limit);
     const startIndex = (page - 1) * limit;
@@ -242,7 +249,11 @@ export class ServerDaoImpl extends JsonFileBaseDao implements ServerDao {
     };
   }
 
-  async findByOwnerPaginated(owner: string, page: number, limit: number): Promise<PaginatedResult<ServerConfigWithName>> {
+  async findByOwnerPaginated(
+    owner: string,
+    page: number,
+    limit: number,
+  ): Promise<PaginatedResult<ServerConfigWithName>> {
     const allServers = await this.getAll();
     const filteredServers = allServers.filter((server) => server.owner === owner);
     // Sort: enabled servers first, then by creation time
@@ -254,7 +265,7 @@ export class ServerDaoImpl extends JsonFileBaseDao implements ServerDao {
       }
       return 0; // Keep original order for same enabled status
     });
-    
+
     const total = sortedServers.length;
     const totalPages = Math.ceil(total / limit);
     const startIndex = (page - 1) * limit;

@@ -134,9 +134,7 @@ const normalizeStringArray = (value: unknown, fallback: string[] = []): string[]
   return normalized.length > 0 ? normalized : fallback;
 };
 
-const normalizePrompt = (
-  value: unknown,
-): BetterAuthOidcProviderConfig['prompt'] | undefined => {
+const normalizePrompt = (value: unknown): BetterAuthOidcProviderConfig['prompt'] | undefined => {
   const normalizedValue = normalizeOptionalString(value);
   if (!normalizedValue || !VALID_OIDC_PROMPTS.has(normalizedValue)) {
     return undefined;
@@ -145,9 +143,7 @@ const normalizePrompt = (
   return normalizedValue as BetterAuthOidcProviderConfig['prompt'];
 };
 
-export const resolveBetterAuthBaseUrl = (
-  systemConfig?: SystemConfig | null,
-): string | undefined =>
+export const resolveBetterAuthBaseUrl = (systemConfig?: SystemConfig | null): string | undefined =>
   normalizeOptionalString(process.env.BETTER_AUTH_URL) ||
   normalizeOptionalString(systemConfig?.auth?.betterAuth?.baseUrl) ||
   resolveInstallBaseUrl(systemConfig);
@@ -257,9 +253,7 @@ export const resolveBetterAuthRuntimeConfig = (
   const githubEnvConfigured = Boolean(
     process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET,
   );
-  const oidcEnvConfigured = Boolean(
-    process.env.OIDC_CLIENT_ID && process.env.OIDC_CLIENT_SECRET,
-  );
+  const oidcEnvConfigured = Boolean(process.env.OIDC_CLIENT_ID && process.env.OIDC_CLIENT_SECRET);
   const oidcDiscoveryUrl = resolveStringSetting(
     process.env.BETTER_AUTH_OIDC_DISCOVERY_URL,
     resolveStringSetting(process.env.OIDC_DISCOVERY_URL, oidcSettings.discoveryUrl),
@@ -275,7 +269,11 @@ export const resolveBetterAuthRuntimeConfig = (
     oidcSettings.scopes,
     DEFAULT_OIDC_SCOPES,
   );
-  const oidcPkce = resolveBooleanSetting(process.env.BETTER_AUTH_OIDC_PKCE, oidcSettings.pkce, true);
+  const oidcPkce = resolveBooleanSetting(
+    process.env.BETTER_AUTH_OIDC_PKCE,
+    oidcSettings.pkce,
+    true,
+  );
   const oidcPrompt = resolvePromptSetting(process.env.BETTER_AUTH_OIDC_PROMPT, oidcSettings.prompt);
   const oidcTrustEmail = resolveBooleanSetting(
     process.env.BETTER_AUTH_OIDC_TRUST_EMAIL,
@@ -288,10 +286,7 @@ export const resolveBetterAuthRuntimeConfig = (
     false,
   );
   const oidcEnabled =
-    betterAuthEnabled &&
-    oidcEnabledSetting &&
-    Boolean(oidcDiscoveryUrl) &&
-    oidcEnvConfigured;
+    betterAuthEnabled && oidcEnabledSetting && Boolean(oidcDiscoveryUrl) && oidcEnvConfigured;
 
   const googleEnabled =
     betterAuthEnabled &&

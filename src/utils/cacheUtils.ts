@@ -3,6 +3,7 @@ import path from 'path';
 import fs from 'fs';
 import { execFile } from 'child_process';
 import { promisify } from 'util';
+import { logger } from './logger.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -17,7 +18,11 @@ export interface CacheClearResult {
  */
 export const getNpxCacheDir = (): string => {
   if (process.platform === 'win32') {
-    return path.join(process.env.APPDATA || path.join(os.homedir(), 'AppData', 'Roaming'), 'npm-cache', '_npx');
+    return path.join(
+      process.env.APPDATA || path.join(os.homedir(), 'AppData', 'Roaming'),
+      'npm-cache',
+      '_npx',
+    );
   }
   return path.join(os.homedir(), '.npm', '_npx');
 };
@@ -56,9 +61,9 @@ export const clearRunnerCache = async (command: string): Promise<void> => {
     const cacheDir = getNpxCacheDir();
     try {
       await fs.promises.rm(cacheDir, { recursive: true, force: true });
-      console.log(`Cleared npx cache directory: ${cacheDir}`);
+      logger.log(`Cleared npx cache directory: ${cacheDir}`);
     } catch (error) {
-      console.error(`Failed to clear npx cache directory: ${cacheDir}`, error);
+      logger.error(`Failed to clear npx cache directory: ${cacheDir}`, error);
       throw error;
     }
   }
@@ -96,10 +101,10 @@ const clearRunnerCacheAsync = async (
   }
   try {
     await execFileAsync(cmd, args, { ...execOptions, timeout: CACHE_CLEAR_TIMEOUT_MS });
-    console.log(`Cleared ${runner} cache`);
+    logger.log(`Cleared ${runner} cache`);
     return { status: 'cleared' };
   } catch (error) {
-    console.error(`Failed to clear ${runner} cache`, error);
+    logger.error(`Failed to clear ${runner} cache`, error);
     return {
       status: 'error',
       message: error instanceof Error ? error.message : String(error),

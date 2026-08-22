@@ -4,6 +4,7 @@ import { notifyToolChanged } from './mcpService.js';
 import { getDataService } from './services.js';
 import { UserContextService } from './userContextService.js';
 import { getGroupDao, getServerDao, getSystemConfigDao } from '../dao/index.js';
+import { logger } from '../utils/logger.js';
 
 // Helper function to normalize group servers configuration
 export const normalizeGroupServers = (
@@ -121,7 +122,7 @@ export const createGroup = async (
     const createdGroup = await groupDao.create(newGroup);
     return createdGroup;
   } catch (error) {
-    console.error('Failed to create group:', error);
+    logger.error('Failed to create group:', error);
     return null;
   }
 };
@@ -164,7 +165,7 @@ export const updateGroup = async (id: string, data: Partial<IGroup>): Promise<IG
 
     return updatedGroup;
   } catch (error) {
-    console.error(`Failed to update group ${id}:`, error);
+    logger.error(`Failed to update group ${id}:`, error);
     return null;
   }
 };
@@ -203,7 +204,7 @@ export const updateGroupServers = async (
 
     return updatedGroup;
   } catch (error) {
-    console.error(`Failed to update servers for group ${groupId}:`, error);
+    logger.error(`Failed to update servers for group ${groupId}:`, error);
     return null;
   }
 };
@@ -220,7 +221,7 @@ export const deleteGroup = async (id: string): Promise<boolean> => {
 
     return await groupDao.delete(id);
   } catch (error) {
-    console.error(`Failed to delete group ${id}:`, error);
+    logger.error(`Failed to delete group ${id}:`, error);
     return false;
   }
 };
@@ -262,7 +263,7 @@ export const addServerToGroup = async (
     notifyToolChanged();
     return group;
   } catch (error) {
-    console.error(`Failed to add server ${serverName} to group ${groupId}:`, error);
+    logger.error(`Failed to add server ${serverName} to group ${groupId}:`, error);
     return null;
   }
 };
@@ -285,7 +286,7 @@ export const removeServerFromGroup = async (
 
     return await groupDao.update(groupId, { servers: filteredServers });
   } catch (error) {
-    console.error(`Failed to remove server ${serverName} from group ${groupId}:`, error);
+    logger.error(`Failed to remove server ${serverName} from group ${groupId}:`, error);
     return null;
   }
 };
@@ -355,7 +356,7 @@ export const updateServerToolsInGroup = async (
 
     return updatedGroup;
   } catch (error) {
-    console.error(`Failed to update tools for server ${serverName} in group ${groupId}:`, error);
+    logger.error(`Failed to update tools for server ${serverName} in group ${groupId}:`, error);
     return null;
   }
 };

@@ -8,6 +8,7 @@ import {
   MCPRouterCallToolResponse,
 } from '../types/index.js';
 import { getSystemConfigDao } from '../dao/index.js';
+import { logger } from '../utils/logger.js';
 // MCPRouter API default base URL
 const DEFAULT_MCPROUTER_API_BASE = 'https://api.mcprouter.to/v1';
 
@@ -60,7 +61,7 @@ export const getCloudServers = async (): Promise<CloudServer[]> => {
 
     return data.data.servers || [];
   } catch (error) {
-    console.error('Error fetching cloud market servers', { error });
+    logger.error('Error fetching cloud market servers', { error });
     throw error;
   }
 };
@@ -71,7 +72,7 @@ export const getCloudServerByName = async (name: string): Promise<CloudServer | 
     const servers = await getCloudServers();
     return servers.find((server) => server.name === name || server.config_name === name) || null;
   } catch (error) {
-    console.error('Error fetching cloud server', { name, error });
+    logger.error('Error fetching cloud server', { name, error });
     throw error;
   }
 };
@@ -104,7 +105,7 @@ export const getCloudServerTools = async (serverKey: string): Promise<CloudTool[
 
     return data.data.tools || [];
   } catch (error) {
-    console.error('Error fetching cloud server tools', { serverKey, error });
+    logger.error('Error fetching cloud server tools', { serverKey, error });
     throw error;
   }
 };
@@ -144,7 +145,7 @@ export const callCloudServerTool = async (
 
     return data.data;
   } catch (error) {
-    console.error('Error calling cloud server tool', { serverName, toolName, error });
+    logger.error('Error calling cloud server tool', { serverName, toolName, error });
     throw error;
   }
 };
@@ -171,7 +172,7 @@ export const getCloudCategories = async (): Promise<string[]> => {
 
     return Array.from(categories).sort();
   } catch (error) {
-    console.error('Error fetching cloud market categories', { error });
+    logger.error('Error fetching cloud market categories', { error });
     throw error;
   }
 };
@@ -197,7 +198,7 @@ export const getCloudTags = async (): Promise<string[]> => {
 
     return Array.from(tags).sort();
   } catch (error) {
-    console.error('Error fetching cloud market tags', { error });
+    logger.error('Error fetching cloud market tags', { error });
     throw error;
   }
 };
@@ -229,7 +230,7 @@ export const searchCloudServers = async (query: string): Promise<CloudServer[]> 
       return searchTerms.some((term) => searchText.includes(term));
     });
   } catch (error) {
-    console.error('Error searching cloud market servers', { query, error });
+    logger.error('Error searching cloud market servers', { query, error });
     throw error;
   }
 };
@@ -248,7 +249,7 @@ export const filterCloudServersByCategory = async (category: string): Promise<Cl
       return content.includes(category.toLowerCase());
     });
   } catch (error) {
-    console.error('Error filtering cloud market servers by category', { category, error });
+    logger.error('Error filtering cloud market servers by category', { category, error });
     throw error;
   }
 };
@@ -267,7 +268,7 @@ export const filterCloudServersByTag = async (tag: string): Promise<CloudServer[
       return content.includes(tag.toLowerCase());
     });
   } catch (error) {
-    console.error('Error filtering cloud market servers by tag', { tag, error });
+    logger.error('Error filtering cloud market servers by tag', { tag, error });
     throw error;
   }
 };

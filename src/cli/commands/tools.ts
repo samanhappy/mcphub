@@ -29,7 +29,11 @@ export interface ToolsDeps {
 // what params does it take, where does it live" in one place, without making
 // callers post-process `servers list` responses.
 
-export async function run(args: string[], globals: GlobalFlags, deps: ToolsDeps = {}): Promise<void> {
+export async function run(
+  args: string[],
+  globals: GlobalFlags,
+  deps: ToolsDeps = {},
+): Promise<void> {
   const sub = args.shift();
   const client = deps.client ?? buildClient(resolveTarget(globals));
   switch (sub) {
@@ -162,9 +166,9 @@ async function get(client: ApiClient, args: string[], globals: GlobalFlags): Pro
     printLine(bold('Parameters:'));
     const rows = Object.entries(props).map(([key, p]) => ({
       param: key,
-      type: typeof p === 'object' && p ? p.type ?? '' : '',
+      type: typeof p === 'object' && p ? (p.type ?? '') : '',
       required: required.has(key) ? 'yes' : 'no',
-      description: truncate(typeof p === 'object' && p ? p.description ?? '' : '', 60),
+      description: truncate(typeof p === 'object' && p ? (p.description ?? '') : '', 60),
     }));
     printTable(rows, ['param', 'type', 'required', 'description']);
   }

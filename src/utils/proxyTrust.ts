@@ -5,8 +5,7 @@ export type TrustProxySetting = boolean | number | string;
 const isContainerEnvironment = (
   env: NodeJS.ProcessEnv,
   pathExists: (filePath: string) => boolean,
-): boolean =>
-  Boolean(env.KUBERNETES_SERVICE_HOST) || pathExists('/.dockerenv');
+): boolean => Boolean(env.KUBERNETES_SERVICE_HOST) || pathExists('/.dockerenv');
 
 export const resolveTrustProxySetting = (
   env: NodeJS.ProcessEnv = process.env,

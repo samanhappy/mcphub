@@ -6,6 +6,7 @@ import config from '../config/index.js';
 import { getSystemConfigDao } from '../dao/index.js';
 import { getBetterAuthRuntimeConfig } from '../services/betterAuthConfig.js';
 import { resolveJsonBodyLimit } from '../utils/bearerAuth.js';
+import { logger } from '../utils/logger.js';
 
 export const errorHandler = (
   err: Error,
@@ -13,7 +14,7 @@ export const errorHandler = (
   res: Response,
   _next: NextFunction,
 ): void => {
-  console.error('Unhandled error:', err);
+  logger.error('Unhandled error:', err);
   res.status(500).json({
     success: false,
     message: 'Internal server error',

@@ -1,12 +1,7 @@
 import fs from 'node:fs';
 import { ApiClient } from '../http.js';
 import { CliApiError, CliUsageError } from '../errors.js';
-import {
-  GlobalFlags,
-  buildClient,
-  resolveTarget,
-  resolveTargetForPublic,
-} from '../context.js';
+import { GlobalFlags, buildClient, resolveTarget, resolveTargetForPublic } from '../context.js';
 import { extractFlags } from '../parse-args.js';
 import { green, printJson, printLine, printWarn } from '../output.js';
 import { promptLine } from '../prompts.js';
@@ -43,7 +38,11 @@ export interface InstallDeps {
   prompts?: { line: (q: string) => Promise<string> };
 }
 
-export async function run(args: string[], globals: GlobalFlags, deps: InstallDeps = {}): Promise<void> {
+export async function run(
+  args: string[],
+  globals: GlobalFlags,
+  deps: InstallDeps = {},
+): Promise<void> {
   const { positional, flags } = extractFlags(args, {
     valued: ['--remote', '--type', '--to', '--out'],
     boolean: ['--yes', '--force', '--dry-run'],
@@ -200,9 +199,7 @@ function writeToFile(
   };
   for (const [k, v] of Object.entries(install.mcpServers)) {
     if (merged.mcpServers[k] && !force) {
-      throw new CliUsageError(
-        `"${k}" already present in ${outPath}. Pass --force to overwrite.`,
-      );
+      throw new CliUsageError(`"${k}" already present in ${outPath}. Pass --force to overwrite.`);
     }
     merged.mcpServers[k] = v;
   }

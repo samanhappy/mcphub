@@ -2,6 +2,7 @@ import { randomBytes } from 'node:crypto';
 import { Request, Response } from 'express';
 import { ApiResponse, BearerKey, BearerKeyAccessType, BearerKeyKind } from '../types/index.js';
 import { getBearerKeyDao, getUserDao } from '../dao/index.js';
+import { logger } from '../utils/logger.js';
 
 const VALID_ACCESS_TYPES: BearerKeyAccessType[] = ['all', 'groups', 'servers', 'custom'];
 
@@ -52,7 +53,7 @@ export const getBearerKeys = async (req: Request, res: Response): Promise<void> 
     };
     res.json(response);
   } catch (error) {
-    console.error('Failed to get bearer keys:', error);
+    logger.error('Failed to get bearer keys:', error);
     res.status(500).json({ success: false, message: 'Failed to get bearer keys' });
   }
 };
@@ -65,15 +66,22 @@ export const createBearerKey = async (req: Request, res: Response): Promise<void
       return;
     }
 
-    const { name, enabled, kind: requestedKind, owner, accessType, allowedGroups, allowedServers } =
-      req.body as Partial<BearerKey>;
+    const {
+      name,
+      enabled,
+      kind: requestedKind,
+      owner,
+      accessType,
+      allowedGroups,
+      allowedServers,
+    } = req.body as Partial<BearerKey>;
 
     if (!name || typeof name !== 'string') {
       res.status(400).json({ success: false, message: 'Key name is required' });
       return;
     }
 
-    const kind: BearerKeyKind = user.isAdmin ? requestedKind ?? 'system' : 'user';
+    const kind: BearerKeyKind = user.isAdmin ? (requestedKind ?? 'system') : 'user';
     if (!['system', 'user'].includes(kind)) {
       res.status(400).json({ success: false, message: 'Invalid key kind' });
       return;
@@ -103,10 +111,8 @@ export const createBearerKey = async (req: Request, res: Response): Promise<void
       kind,
       owner: resolvedOwner,
       accessType: resolvedAccessType ?? 'all',
-      allowedGroups:
-        kind === 'system' && Array.isArray(allowedGroups) ? allowedGroups : [],
-      allowedServers:
-        kind === 'system' && Array.isArray(allowedServers) ? allowedServers : [],
+      allowedGroups: kind === 'system' && Array.isArray(allowedGroups) ? allowedGroups : [],
+      allowedServers: kind === 'system' && Array.isArray(allowedServers) ? allowedServers : [],
     });
 
     res.status(201).json({
@@ -115,7 +121,7 @@ export const createBearerKey = async (req: Request, res: Response): Promise<void
       message: 'Bearer key created. The token is only shown once.',
     } satisfies ApiResponse);
   } catch (error) {
-    console.error('Failed to create bearer key:', error);
+    logger.error('Failed to create bearer key:', error);
     res.status(500).json({ success: false, message: 'Failed to create bearer key' });
   }
 };
@@ -163,7 +169,7 @@ export const updateBearerKey = async (req: Request, res: Response): Promise<void
     const updated = await dao.update(id, updates);
     res.json({ success: true, data: sanitizeKey(updated!) } satisfies ApiResponse);
   } catch (error) {
-    console.error('Failed to update bearer key:', error);
+    logger.error('Failed to update bearer key:', error);
     res.status(500).json({ success: false, message: 'Failed to update bearer key' });
   }
 };
@@ -191,7 +197,7 @@ export const deleteBearerKey = async (req: Request, res: Response): Promise<void
     await dao.delete(id);
     res.json({ success: true } satisfies ApiResponse);
   } catch (error) {
-    console.error('Failed to delete bearer key:', error);
+    logger.error('Failed to delete bearer key:', error);
     res.status(500).json({ success: false, message: 'Failed to delete bearer key' });
   }
 };

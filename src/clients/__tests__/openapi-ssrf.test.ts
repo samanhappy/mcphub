@@ -53,34 +53,26 @@ function makeClient(baseUrl: string): TestClient {
 describe('OpenAPIClient - SSRF guard on the request path', () => {
   it('rejects a callTool whose baseURL is loopback and never sends the request', async () => {
     const client = makeClient('http://127.0.0.1:8181');
-    await expect(client.callTool('read_internal', {})).rejects.toThrow(
-      UnsafeUrlError,
-    );
+    await expect(client.callTool('read_internal', {})).rejects.toThrow(UnsafeUrlError);
     expect(client.httpClient.request).not.toHaveBeenCalled();
   });
 
   it('rejects the cloud metadata endpoint as baseURL', async () => {
     const client = makeClient('http://169.254.169.254');
-    await expect(client.callTool('read_internal', {})).rejects.toThrow(
-      UnsafeUrlError,
-    );
+    await expect(client.callTool('read_internal', {})).rejects.toThrow(UnsafeUrlError);
     expect(client.httpClient.request).not.toHaveBeenCalled();
   });
 
   it('rejects a private RFC1918 baseURL', async () => {
     const client = makeClient('http://10.0.0.5');
-    await expect(client.callTool('read_internal', {})).rejects.toThrow(
-      UnsafeUrlError,
-    );
+    await expect(client.callTool('read_internal', {})).rejects.toThrow(UnsafeUrlError);
     expect(client.httpClient.request).not.toHaveBeenCalled();
   });
 
   it('rejects an absolute tool path that overrides baseURL to an internal host', async () => {
     const client = makeClient('http://8.8.8.8');
     client.tools[0].path = 'http://127.0.0.1:8181/internal';
-    await expect(client.callTool('read_internal', {})).rejects.toThrow(
-      UnsafeUrlError,
-    );
+    await expect(client.callTool('read_internal', {})).rejects.toThrow(UnsafeUrlError);
     expect(client.httpClient.request).not.toHaveBeenCalled();
   });
 

@@ -5,10 +5,7 @@ const isTestEnv =
   process.env.JEST_WORKER_ID !== undefined ||
   process.env.VITEST_WORKER_ID !== undefined;
 
-export const createStandardRateLimiter = (options: {
-  windowMs: number;
-  max: number;
-}) =>
+export const createStandardRateLimiter = (options: { windowMs: number; max: number }) =>
   rateLimit({
     ...options,
     standardHeaders: true,

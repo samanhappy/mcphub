@@ -9,9 +9,7 @@ const trimToUndefined = (value?: string): string | undefined => {
   return trimmed.length > 0 ? trimmed : undefined;
 };
 
-const normalizeRecord = (
-  value?: Record<string, string>,
-): Record<string, string> | undefined => {
+const normalizeRecord = (value?: Record<string, string>): Record<string, string> | undefined => {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
     return undefined;
   }
@@ -61,9 +59,7 @@ const normalizeOptions = (
   return Object.keys(normalized).length > 0 ? normalized : undefined;
 };
 
-const normalizeOAuth = (
-  oauth?: ServerConfig['oauth'],
-): ServerConfig['oauth'] | undefined => {
+const normalizeOAuth = (oauth?: ServerConfig['oauth']): ServerConfig['oauth'] | undefined => {
   if (!oauth) {
     return undefined;
   }
@@ -138,9 +134,7 @@ const normalizeOpenApi = (
   return Object.keys(normalized).length > 0 ? normalized : undefined;
 };
 
-const inferServerType = (
-  config: ServerConfig,
-): NonNullable<ServerConfig['type']> | undefined => {
+const inferServerType = (config: ServerConfig): NonNullable<ServerConfig['type']> | undefined => {
   if (config.type) {
     return config.type;
   }

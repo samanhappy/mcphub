@@ -64,7 +64,10 @@ export class UserConfigRepository {
   /**
    * Get a specific configuration section for a user
    */
-  async getSection<K extends keyof UserConfig>(username: string, section: K): Promise<UserConfig[K] | null> {
+  async getSection<K extends keyof UserConfig>(
+    username: string,
+    section: K,
+  ): Promise<UserConfig[K] | null> {
     const config = await this.get(username);
     return config ? config[section] : null;
   }

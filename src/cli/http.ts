@@ -47,7 +47,9 @@ export class ApiClient {
     body?: unknown,
     init?: RequestInit,
   ): Promise<T> {
-    const url = path.startsWith('http') ? path : `${this.baseUrl}${path.startsWith('/') ? '' : '/'}${path}`;
+    const url = path.startsWith('http')
+      ? path
+      : `${this.baseUrl}${path.startsWith('/') ? '' : '/'}${path}`;
     const headers = this.buildHeaders(init?.headers as Record<string, string> | undefined);
     let payload: BodyInit | undefined;
     if (body !== undefined) {

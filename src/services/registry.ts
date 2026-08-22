@@ -1,5 +1,6 @@
 import { join } from 'path';
 import { pathToFileURL } from 'url';
+import { logger } from '../utils/logger.js';
 
 type Class<T> = new (...args: any[]) => T;
 
@@ -11,7 +12,10 @@ interface Service<T> {
 const registry = new Map<string, Service<any>>();
 const instances = new Map<string, unknown>();
 
-async function tryLoadOverride<T>(key: string, overridePath: string): Promise<Class<T> | undefined> {
+async function tryLoadOverride<T>(
+  key: string,
+  overridePath: string,
+): Promise<Class<T> | undefined> {
   try {
     const moduleUrl = pathToFileURL(overridePath).href;
     const mod = await import(moduleUrl);
@@ -22,7 +26,7 @@ async function tryLoadOverride<T>(key: string, overridePath: string): Promise<Cl
   } catch (error: any) {
     // Ignore not-found errors and keep trying other paths; surface other errors for visibility
     if (error?.code !== 'ERR_MODULE_NOT_FOUND' && error?.code !== 'MODULE_NOT_FOUND') {
-      console.warn('Failed to load service override', { overridePath, error });
+      logger.warn('Failed to load service override', { overridePath, error });
     }
   }
   return undefined;

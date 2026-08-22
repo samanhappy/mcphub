@@ -4,7 +4,5 @@ export function stripRuntimeToolName(
   nameSeparator: string,
 ): string {
   const prefix = `${serverSlug}${nameSeparator}`;
-  return publicToolName.startsWith(prefix)
-    ? publicToolName.slice(prefix.length)
-    : publicToolName;
+  return publicToolName.startsWith(prefix) ? publicToolName.slice(prefix.length) : publicToolName;
 }

@@ -23,8 +23,16 @@ type TemplateOpenApiSecurityConfig = NonNullable<TemplateOpenApiConfig['security
 
 // Fields that commonly contain secrets and should be replaced with placeholders
 const SECRET_ENV_KEYS = new Set([
-  'api_key', 'apikey', 'secret', 'token', 'password', 'passwd',
-  'access_key', 'secret_key', 'private_key', 'auth',
+  'api_key',
+  'apikey',
+  'secret',
+  'token',
+  'password',
+  'passwd',
+  'access_key',
+  'secret_key',
+  'private_key',
+  'auth',
 ]);
 
 function extractPlaceholderName(value: string): string | null {
@@ -33,11 +41,17 @@ function extractPlaceholderName(value: string): string | null {
 }
 
 function toPlaceholderName(value: string, fallback: string): string {
-  const normalized = value.toUpperCase().replace(/[^A-Z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+  const normalized = value
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '');
   return normalized || fallback;
 }
 
-function sanitizeSecretValue(value: string, placeholder: string): {
+function sanitizeSecretValue(
+  value: string,
+  placeholder: string,
+): {
   sanitizedValue: string;
   placeholder: string;
 } {
@@ -61,13 +75,15 @@ function cloneJsonObject<T>(value: T): T {
 
 function isSecretKey(key: string): boolean {
   const lower = key.toLowerCase();
-  return SECRET_ENV_KEYS.has(lower) ||
+  return (
+    SECRET_ENV_KEYS.has(lower) ||
     lower.includes('secret') ||
     lower.includes('token') ||
     lower.includes('password') ||
     lower.includes('api_key') ||
     lower.includes('apikey') ||
-    lower.includes('auth_key');
+    lower.includes('auth_key')
+  );
 }
 
 /**
@@ -116,7 +132,10 @@ function stripHeaderSecrets(headers: Record<string, string>): {
     const lower = key.toLowerCase();
     if (lower === 'authorization' || lower.includes('token') || lower.includes('auth')) {
       const placeholder = toPlaceholderName(key, 'HEADER_SECRET');
-      const { sanitizedValue, placeholder: placeholderName } = sanitizeSecretValue(value, placeholder);
+      const { sanitizedValue, placeholder: placeholderName } = sanitizeSecretValue(
+        value,
+        placeholder,
+      );
       sanitized[key] = sanitizedValue;
       placeholders.push(placeholderName);
     } else if (ENV_PLACEHOLDER_RE.test(value)) {
@@ -362,7 +381,8 @@ function serverConfigToTemplate(config: ServerConfig): {
   if (config.openapi) {
     templateConfig.openapi = {};
     if (config.openapi.url) templateConfig.openapi.url = config.openapi.url;
-    if (config.openapi.schema) templateConfig.openapi.schema = cloneJsonObject(config.openapi.schema);
+    if (config.openapi.schema)
+      templateConfig.openapi.schema = cloneJsonObject(config.openapi.schema);
     if (config.openapi.version) templateConfig.openapi.version = config.openapi.version;
     if (config.openapi.passthroughHeaders) {
       templateConfig.openapi.passthroughHeaders = [...config.openapi.passthroughHeaders];
@@ -545,7 +565,12 @@ export async function importTemplate(
   for (const groupDef of template.groups) {
     const existingGroup = await groupDao.findByName(groupDef.name);
     if (existingGroup) {
-      details.push({ type: 'group', name: groupDef.name, action: 'skipped', message: 'Group already exists' });
+      details.push({
+        type: 'group',
+        name: groupDef.name,
+        action: 'skipped',
+        message: 'Group already exists',
+      });
       groupsSkipped++;
       continue;
     }
@@ -561,7 +586,12 @@ export async function importTemplate(
         details.push({ type: 'group', name: groupDef.name, action: 'created' });
         groupsCreated++;
       } else {
-        details.push({ type: 'group', name: groupDef.name, action: 'failed', message: 'Failed to create group' });
+        details.push({
+          type: 'group',
+          name: groupDef.name,
+          action: 'failed',
+          message: 'Failed to create group',
+        });
       }
     } catch (error) {
       details.push({

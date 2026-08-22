@@ -17,6 +17,7 @@ import { getServerDao } from '../dao/index.js';
 import { getGroup } from './sseService.js';
 import { isAppOnlyTool } from '../utils/mcpApps.js';
 import { getNameSeparator } from '../config/index.js';
+import { logger } from '../utils/logger.js';
 
 // Reference to serverInfos from mcpService - will be set via init
 let serverInfosRef: ServerInfo[] = [];
@@ -409,7 +410,7 @@ export const handleSearchToolsRequest = async (
     thresholdNum = 0.4;
   }
 
-  console.log(`Using similarity threshold: ${thresholdNum} for query: "${query}"`);
+  logger.log(`Using similarity threshold: ${thresholdNum} for query: "${query}"`);
 
   // Determine server filtering based on group
   let group = getGroup(sessionId);
@@ -428,16 +429,16 @@ export const handleSearchToolsRequest = async (
     if (serversInGroup !== undefined && serversInGroup !== null) {
       servers = serversInGroup.filter((serverName) => visibleServerNames.has(serverName));
       if (servers && servers.length > 0) {
-        console.log(`Filtering search to servers in group "${targetGroup}": ${servers.join(', ')}`);
+        logger.log(`Filtering search to servers in group "${targetGroup}": ${servers.join(', ')}`);
       } else {
-        console.log(`Group "${targetGroup}" has no servers, search will return no results`);
+        logger.log(`Group "${targetGroup}" has no servers, search will return no results`);
       }
     }
   }
 
   const searchResults =
     servers.length > 0 ? await searchToolsByVector(query, limitNum, thresholdNum, servers) : [];
-  console.log(`Search results: ${JSON.stringify(searchResults)}`);
+  logger.log(`Search results: ${JSON.stringify(searchResults)}`);
 
   // Get smart routing config to check progressive disclosure setting
   const smartRoutingConfig = await getSmartRoutingConfig();
@@ -586,7 +587,7 @@ export const handleDescribeToolRequest = async (
     throw new Error('toolName parameter is required and must be a string');
   }
 
-  console.log(`Handling describe_tool request for: ${toolName}`);
+  logger.log(`Handling describe_tool request for: ${toolName}`);
 
   // Determine group filtering
   let group = getGroup(sessionId);

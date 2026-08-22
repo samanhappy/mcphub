@@ -6,6 +6,7 @@ import { UserContextService } from '../services/userContextService.js';
 import { IUser } from '../types/index.js';
 import { resolveOAuthUserFromHeaders } from '../utils/oauthBearer.js';
 import { getBearerTokenFromHeaders } from '../utils/bearerAuth.js';
+import { logger } from '../utils/logger.js';
 
 const resolveJwtUser = (req: Request): IUser | null => {
   const headerToken = req.header('x-auth-token');
@@ -75,7 +76,7 @@ export const userContextMiddleware = async (
       next();
     }, currentUser || null);
   } catch (error) {
-    console.error('Error in user context middleware:', error);
+    logger.error('Error in user context middleware:', error);
     next(error);
   }
 };
@@ -119,23 +120,23 @@ export const sseUserContextMiddleware = async (
         }
 
         userContextService.setCurrentUser(authenticatedUser);
-        console.log(`User context set for SSE/MCP endpoint: ${username}`);
+        logger.log(`User context set for SSE/MCP endpoint: ${username}`);
       } else {
         const systemConfig = await getSystemConfigDao().get();
         const bearerUser = await resolveOAuthUserFromHeaders(req.headers, systemConfig);
 
         if (bearerUser) {
           userContextService.setCurrentUser(bearerUser);
-          console.log('OAuth user context set for SSE/MCP endpoint');
+          logger.log('OAuth user context set for SSE/MCP endpoint');
         } else {
-          console.log('Global SSE/MCP endpoint access - no user context');
+          logger.log('Global SSE/MCP endpoint access - no user context');
         }
       }
 
       next();
     });
   } catch (error) {
-    console.error('Error in SSE user context middleware:', error);
+    logger.error('Error in SSE user context middleware:', error);
     next(error);
   }
 };
@@ -167,7 +168,7 @@ export class ContextAwareDataServiceImpl implements ContextAwareDataService {
       throw new Error('No user in context');
     }
 
-    console.log(`Getting ${dataType} data for user: ${user.username}`);
+    logger.log(`Getting ${dataType} data for user: ${user.username}`);
 
     // Return different data based on user permissions
     if (user.isAdmin) {

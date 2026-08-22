@@ -14,6 +14,7 @@ import {
   getBearerKeyDao,
 } from '../dao/DaoFactory.js';
 import { getBetterAuthRuntimeConfig } from '../services/betterAuthConfig.js';
+import { logger } from '../utils/logger.js';
 
 const dataService: DataService = getDataService();
 
@@ -49,7 +50,7 @@ export const getRuntimeConfig = (req: Request, res: Response): void => {
       data: runtimeConfig,
     });
   } catch (error) {
-    console.error('Error getting runtime config:', error);
+    logger.error('Error getting runtime config:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to get runtime configuration',
@@ -88,7 +89,7 @@ export const getPublicConfig = async (req: Request, res: Response): Promise<void
       },
     });
   } catch (error) {
-    console.error('Error getting public config:', error);
+    logger.error('Error getting public config:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to get public configuration',
@@ -207,7 +208,7 @@ export const getMcpSettingsJson = async (req: Request, res: Response): Promise<v
       });
     }
   } catch (error) {
-    console.error('Error getting MCP settings JSON:', error);
+    logger.error('Error getting MCP settings JSON:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to get MCP settings',

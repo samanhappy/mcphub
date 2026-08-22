@@ -12,15 +12,13 @@ import { JWT_SECRET } from '../config/jwt.js';
 import { resolveBetterAuthUser } from '../services/betterAuthSession.js';
 import { cloneDefaultOAuthServerConfig } from '../constants/oauthServerDefaults.js';
 import { resolveInstallBaseUrl } from '../utils/installBaseUrl.js';
+import { logger } from '../utils/logger.js';
 import {
   injectOAuthConsentShell,
   type OAuthConsentContext,
   type ConsentClientInfo,
 } from '../utils/frontendShell.js';
-import {
-  parseResourceTarget,
-  type ResourceTarget,
-} from '../utils/oauthConsentResource.js';
+import { parseResourceTarget, type ResourceTarget } from '../utils/oauthConsentResource.js';
 
 const { Request: OAuth2Request, Response: OAuth2Response } = OAuth2Server;
 
@@ -40,9 +38,7 @@ type AuthenticatedUser = {
  * On success the resolved user is attached to req.user so the caller does not have to
  * repeat that assignment at every call site.
  */
-async function resolveBetterAuthUserForAuthorize(
-  req: Request,
-): Promise<AuthenticatedUser | null> {
+async function resolveBetterAuthUserForAuthorize(req: Request): Promise<AuthenticatedUser | null> {
   try {
     const user = await resolveBetterAuthUser(req);
     if (user) {
@@ -54,7 +50,7 @@ async function resolveBetterAuthUserForAuthorize(
       return authenticatedUser;
     }
   } catch (error) {
-    console.warn('Better Auth lookup failed in /oauth/authorize:', error);
+    logger.warn('Better Auth lookup failed in /oauth/authorize:', error);
   }
   return null;
 }
@@ -81,7 +77,7 @@ function resolveUserFromRequest(req: Request): AuthenticatedUser | null {
       return decoded.user;
     }
   } catch (error) {
-    console.warn('Invalid JWT supplied to OAuth authorize endpoint:', error);
+    logger.warn('Invalid JWT supplied to OAuth authorize endpoint:', error);
   }
 
   return null;
@@ -279,7 +275,7 @@ async function resolveResourceTarget(raw: string | undefined): Promise<ResourceT
     }
     return { ...parsed, kind: 'unknown' };
   } catch (error) {
-    console.warn('Failed to resolve OAuth consent resource target:', error);
+    logger.warn('Failed to resolve OAuth consent resource target:', error);
     return { ...parsed, kind: 'unknown' };
   }
 }
@@ -449,7 +445,7 @@ export const getAuthorize = async (req: Request, res: Response): Promise<void> =
       ),
     );
   } catch (error) {
-    console.error('Authorization error:', error);
+    logger.error('Authorization error:', error);
     res.status(500).json({ error: 'server_error', error_description: 'Internal server error' });
   }
 };
@@ -525,7 +521,7 @@ export const postAuthorize = async (req: Request, res: Response): Promise<void> 
 
     res.redirect(redirectUrl.toString());
   } catch (error) {
-    console.error('Authorization error:', error);
+    logger.error('Authorization error:', error);
 
     // Handle OAuth errors
     if (error instanceof Error && 'code' in error) {
@@ -569,7 +565,7 @@ export const postToken = async (req: Request, res: Response): Promise<void> => {
       scope: Array.isArray(token.scope) ? token.scope.join(' ') : token.scope,
     });
   } catch (error) {
-    console.error('Token error:', error);
+    logger.error('Token error:', error);
 
     if (error instanceof Error && 'code' in error) {
       const oauthError = error as any;
@@ -600,7 +596,7 @@ export const getUserInfo = async (req: Request, res: Response): Promise<void> =>
       // Add more user info as needed
     });
   } catch (error) {
-    console.error('UserInfo error:', error);
+    logger.error('UserInfo error:', error);
     res.status(401).json({
       error: 'invalid_token',
       error_description: 'Invalid or expired access token',
@@ -649,7 +645,7 @@ export const getMetadata = async (req: Request, res: Response): Promise<void> =>
 
     res.json(metadata);
   } catch (error) {
-    console.error('Metadata error:', error);
+    logger.error('Metadata error:', error);
     res.status(500).json({ error: 'server_error' });
   }
 };
@@ -682,7 +678,7 @@ export const getProtectedResourceMetadata = async (req: Request, res: Response):
       bearer_methods_supported: ['header'],
     });
   } catch (error) {
-    console.error('Protected resource metadata error:', error);
+    logger.error('Protected resource metadata error:', error);
     res.status(500).json({ error: 'server_error' });
   }
 };

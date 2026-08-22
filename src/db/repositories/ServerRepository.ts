@@ -75,9 +75,9 @@ export class ServerRepository {
   async findAllPaginated(page: number, limit: number): Promise<{ data: Server[]; total: number }> {
     const skip = (page - 1) * limit;
     const [data, total] = await this.repository.findAndCount({
-      order: { 
-        enabled: 'DESC',  // Enabled servers first
-        createdAt: 'ASC'  // Then by creation time
+      order: {
+        enabled: 'DESC', // Enabled servers first
+        createdAt: 'ASC', // Then by creation time
       },
       skip,
       take: limit,
@@ -89,13 +89,17 @@ export class ServerRepository {
   /**
    * Find servers by owner with pagination
    */
-  async findByOwnerPaginated(owner: string, page: number, limit: number): Promise<{ data: Server[]; total: number }> {
+  async findByOwnerPaginated(
+    owner: string,
+    page: number,
+    limit: number,
+  ): Promise<{ data: Server[]; total: number }> {
     const skip = (page - 1) * limit;
     const [data, total] = await this.repository.findAndCount({
       where: { owner },
-      order: { 
-        enabled: 'DESC',  // Enabled servers first
-        createdAt: 'ASC'  // Then by creation time
+      order: {
+        enabled: 'DESC', // Enabled servers first
+        createdAt: 'ASC', // Then by creation time
       },
       skip,
       take: limit,
@@ -118,7 +122,7 @@ export class ServerRepository {
       .where('server.owner = :username', { username })
       .orWhere('server.visibility = :visibility', { visibility: 'public' })
       .orWhere(
-        "server.visibility = :sharedVisibility AND :username = ANY(COALESCE(server.sharedWithUsers, ARRAY[]::text[]))",
+        'server.visibility = :sharedVisibility AND :username = ANY(COALESCE(server.sharedWithUsers, ARRAY[]::text[]))',
         { sharedVisibility: 'group', username },
       )
       .orderBy('server.enabled', 'DESC')

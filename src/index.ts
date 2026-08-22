@@ -4,6 +4,7 @@ import { initializeDatabaseMode } from './utils/migration.js';
 import { createFetchWithProxy, getProxyConfigFromEnv } from './services/proxy.js';
 import { isRetryableDbError } from './utils/dbRetry.js';
 import { hydrateSystemConfigCache } from './utils/systemConfigCache.js';
+import { logger } from './utils/logger.js';
 import {
   startHostedEventSubscriber,
   stopHostedEventSubscriber,
@@ -21,11 +22,11 @@ let lastFatalErrorTime = 0;
  * Handle uncaught exceptions - log and determine if recovery is possible
  */
 const handleUncaughtException = (error: Error): void => {
-  console.error('[FATAL] Uncaught exception', { error });
+  logger.error('[FATAL] Uncaught exception', { error });
 
   // Check if this is a retryable database error
   if (isRetryableDbError(error)) {
-    console.warn('[RECOVERY] Database connection error detected, attempting to continue...');
+    logger.warn('[RECOVERY] Database connection error detected, attempting to continue...');
     // For database errors, we don't crash - the retry logic should handle it
     return;
   }
@@ -41,13 +42,13 @@ const handleUncaughtException = (error: Error): void => {
 
   // Circuit breaker: if too many consecutive errors, exit
   if (consecutiveFatalErrors >= MAX_CONSECUTIVE_FATAL_ERRORS) {
-    console.error('[FATAL] Too many consecutive fatal errors, exiting', {
+    logger.error('[FATAL] Too many consecutive fatal errors, exiting', {
       consecutiveFatalErrors,
     });
     process.exit(1);
   }
 
-  console.warn('[RECOVERY] Non-fatal error, continuing', { consecutiveFatalErrors });
+  logger.warn('[RECOVERY] Non-fatal error, continuing', { consecutiveFatalErrors });
 };
 
 /**
@@ -55,12 +56,12 @@ const handleUncaughtException = (error: Error): void => {
  */
 const handleUnhandledRejection = (reason: unknown, promise: Promise<unknown>): void => {
   const error = reason instanceof Error ? reason : new Error(String(reason));
-  console.error('[FATAL] Unhandled promise rejection', { error });
-  console.error('[FATAL] Promise associated with unhandled rejection', { promise });
+  logger.error('[FATAL] Unhandled promise rejection', { error });
+  logger.error('[FATAL] Promise associated with unhandled rejection', { promise });
 
   // Check if this is a retryable database error
   if (isRetryableDbError(error)) {
-    console.warn(
+    logger.warn(
       '[RECOVERY] Database connection error detected in promise, attempting to continue...',
     );
     // For database errors, we don't crash - the retry logic should handle it
@@ -78,13 +79,13 @@ const handleUnhandledRejection = (reason: unknown, promise: Promise<unknown>): v
 
   // Circuit breaker: if too many consecutive errors, exit
   if (consecutiveFatalErrors >= MAX_CONSECUTIVE_FATAL_ERRORS) {
-    console.error('[FATAL] Too many consecutive fatal errors, exiting', {
+    logger.error('[FATAL] Too many consecutive fatal errors, exiting', {
       consecutiveFatalErrors,
     });
     process.exit(1);
   }
 
-  console.warn('[RECOVERY] Non-fatal error, continuing', { consecutiveFatalErrors });
+  logger.warn('[RECOVERY] Non-fatal error, continuing', { consecutiveFatalErrors });
 };
 
 // Set up global error handlers
@@ -93,14 +94,14 @@ process.on('unhandledRejection', handleUnhandledRejection);
 
 // Handle graceful shutdown
 process.on('SIGTERM', async () => {
-  console.log('[SHUTDOWN] Received SIGTERM, shutting down gracefully...');
+  logger.log('[SHUTDOWN] Received SIGTERM, shutting down gracefully...');
   await stopHostedEventSubscriber();
   await appServer.shutdown();
   process.exit(0);
 });
 
 process.on('SIGINT', async () => {
-  console.log('[SHUTDOWN] Received SIGINT, shutting down gracefully...');
+  logger.log('[SHUTDOWN] Received SIGINT, shutting down gracefully...');
   await stopHostedEventSubscriber();
   await appServer.shutdown();
   process.exit(0);
@@ -137,7 +138,7 @@ const setupGlobalProxyFetch = (): void => {
   }
 
   if (typeof globalThis.fetch !== 'function') {
-    console.warn('[proxy] Global fetch is unavailable; proxy is not enabled');
+    logger.warn('[proxy] Global fetch is unavailable; proxy is not enabled');
     return;
   }
 
@@ -148,13 +149,13 @@ const setupGlobalProxyFetch = (): void => {
     init?: RequestInit,
   ): Promise<Response> => {
     const targetUrl = input instanceof Request ? input.url : input.toString();
-    console.info('[proxy] Request via proxy', { url: targetUrl });
+    logger.info('[proxy] Request via proxy', { url: targetUrl });
     const proxyInput = input instanceof Request ? input.url : input;
     return proxyRequest(proxyInput, init);
   };
 
   globalThis.fetch = proxyFetchWithLog as typeof fetch;
-  console.info('[proxy] Global fetch overridden for proxy usage', {
+  logger.info('[proxy] Global fetch overridden for proxy usage', {
     httpProxy: maskProxyUrl(proxyConfig.httpProxy),
     httpsProxy: maskProxyUrl(proxyConfig.httpsProxy),
     noProxy: proxyConfig.noProxy,
@@ -170,17 +171,17 @@ async function boot() {
     const useDatabase =
       process.env.USE_DB !== undefined ? process.env.USE_DB === 'true' : !!process.env.DB_URL;
     if (useDatabase) {
-      console.log('Database mode enabled, initializing...');
+      logger.log('Database mode enabled, initializing...');
       const dbInitialized = await initializeDatabaseMode();
       if (!dbInitialized) {
-        console.error('Failed to initialize database mode');
+        logger.error('Failed to initialize database mode');
         process.exit(1);
       }
     }
 
     await hydrateSystemConfigCache();
     void startHostedEventSubscriber().catch((error) => {
-      console.warn('[hosted] Failed to launch Redis event subscriber in background', {
+      logger.warn('[hosted] Failed to launch Redis event subscriber in background', {
         error: String(error),
       });
     });
@@ -188,7 +189,7 @@ async function boot() {
     await appServer.initialize();
     appServer.start();
   } catch (error) {
-    console.error('Failed to start application', { error });
+    logger.error('Failed to start application', { error });
     process.exit(1);
   }
 }

@@ -1,3 +1,4 @@
+import { logger } from './logger.js';
 /**
  * Database retry utility for handling connection failures gracefully
  * Implements exponential backoff with jitter for resilient database operations
@@ -215,7 +216,7 @@ export async function withDbRetry<T>(
       );
 
       // Log the retry attempt
-      console.warn(
+      logger.warn(
         `[DB Retry] ${operationName} failed (attempt ${attempt}/${maxRetries + 1}), ` +
           `retrying in ${delayMs}ms: ${lastError.message}`,
       );

@@ -314,10 +314,7 @@ describe('OpenAPIClient - static apiKey.in:cookie', () => {
   });
 
   it('lets a dynamic Set-Cookie override the static cookie within a session', async () => {
-    const client = makeClient(
-      { ...staticConfig, cookieSession: true },
-      [loginTool, protectedTool],
-    );
+    const client = makeClient({ ...staticConfig, cookieSession: true }, [loginTool, protectedTool]);
     client.httpClient.request.mockImplementation(async (cfg: any) => {
       if (cfg.url === '/login') {
         return {

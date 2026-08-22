@@ -1,3 +1,4 @@
+import { logger } from '../utils/logger.js';
 /**
  * Data access layer example and test utilities
  *
@@ -23,30 +24,30 @@ export async function exampleUserOperations() {
 
   // Create a new user
   const newUser = await userDao.createWithHashedPassword('testuser', 'password123', false);
-  console.log('Created user:', newUser.username);
+  logger.log('Created user:', newUser.username);
 
   // Find user by username
   const foundUser = await userDao.findByUsername('testuser');
-  console.log('Found user:', foundUser?.username);
+  logger.log('Found user:', foundUser?.username);
 
   // Validate credentials
   const isValid = await userDao.validateCredentials('testuser', 'password123');
-  console.log('Credentials valid:', isValid);
+  logger.log('Credentials valid:', isValid);
 
   // Update user
   await userDao.update('testuser', { isAdmin: true });
-  console.log('Updated user to admin');
+  logger.log('Updated user to admin');
 
   // Find all admin users
   const admins = await userDao.findAdmins();
-  console.log(
+  logger.log(
     'Admin users:',
     admins.map((u) => u.username),
   );
 
   // Delete user
   await userDao.delete('testuser');
-  console.log('Deleted test user');
+  logger.log('Deleted test user');
 }
 
 /**
@@ -63,18 +64,18 @@ export async function exampleServerOperations() {
     enabled: true,
     owner: 'admin',
   });
-  console.log('Created server:', newServer.name);
+  logger.log('Created server:', newServer.name);
 
   // Find servers by owner
   const userServers = await serverDao.findByOwner('admin');
-  console.log(
+  logger.log(
     'Servers owned by admin:',
     userServers.map((s) => s.name),
   );
 
   // Find enabled servers
   const enabledServers = await serverDao.findEnabled();
-  console.log(
+  logger.log(
     'Enabled servers:',
     enabledServers.map((s) => s.name),
   );
@@ -83,11 +84,11 @@ export async function exampleServerOperations() {
   await serverDao.updateTools('test-server', {
     tool1: { enabled: true, description: 'Test tool' },
   });
-  console.log('Updated server tools');
+  logger.log('Updated server tools');
 
   // Delete server
   await serverDao.delete('test-server');
-  console.log('Deleted test server');
+  logger.log('Deleted test server');
 }
 
 /**
@@ -103,33 +104,33 @@ export async function exampleGroupOperations() {
     servers: ['server1', 'server2'],
     owner: 'admin',
   });
-  console.log('Created group:', newGroup.name, 'with ID:', newGroup.id);
+  logger.log('Created group:', newGroup.name, 'with ID:', newGroup.id);
 
   // Find groups by owner
   const userGroups = await groupDao.findByOwner('admin');
-  console.log(
+  logger.log(
     'Groups owned by admin:',
     userGroups.map((g) => g.name),
   );
 
   // Add server to group
   await groupDao.addServerToGroup(newGroup.id, 'server3');
-  console.log('Added server3 to group');
+  logger.log('Added server3 to group');
 
   // Find groups containing specific server
   const groupsWithServer = await groupDao.findByServer('server1');
-  console.log(
+  logger.log(
     'Groups containing server1:',
     groupsWithServer.map((g) => g.name),
   );
 
   // Remove server from group
   await groupDao.removeServerFromGroup(newGroup.id, 'server2');
-  console.log('Removed server2 from group');
+  logger.log('Removed server2 from group');
 
   // Delete group
   await groupDao.delete(newGroup.id);
-  console.log('Deleted test group');
+  logger.log('Deleted test group');
 }
 
 /**
@@ -140,7 +141,7 @@ export async function exampleSystemConfigOperations() {
 
   // Get current system config
   const currentConfig = await systemConfigDao.get();
-  console.log('Current system config:', currentConfig);
+  logger.log('Current system config:', currentConfig);
 
   // Update routing configuration
   await systemConfigDao.updateSection('routing', {
@@ -148,7 +149,7 @@ export async function exampleSystemConfigOperations() {
     enableGroupNameRoute: true,
     enableBearerAuth: true,
   });
-  console.log('Updated routing configuration');
+  logger.log('Updated routing configuration');
 
   // Update install configuration
   await systemConfigDao.updateSection('install', {
@@ -156,11 +157,11 @@ export async function exampleSystemConfigOperations() {
     npmRegistry: 'https://registry.npmjs.org/',
     baseUrl: 'https://mcphub.local',
   });
-  console.log('Updated install configuration');
+  logger.log('Updated install configuration');
 
   // Get specific section
   const routingConfig = await systemConfigDao.getSection('routing');
-  console.log('Routing config:', routingConfig);
+  logger.log('Routing config:', routingConfig);
 }
 
 /**
@@ -176,23 +177,23 @@ export async function exampleUserConfigOperations() {
       enableGroupNameRoute: true,
     },
   });
-  console.log('Updated admin user config');
+  logger.log('Updated admin user config');
 
   // Get user configuration
   const adminConfig = await userConfigDao.get('admin');
-  console.log('Admin config:', adminConfig);
+  logger.log('Admin config:', adminConfig);
 
   // Get all user configurations
   const allUserConfigs = await userConfigDao.getAll();
-  console.log('All user configs:', Object.keys(allUserConfigs));
+  logger.log('All user configs:', Object.keys(allUserConfigs));
 
   // Get specific section for user
   const userRoutingConfig = await userConfigDao.getSection('admin', 'routing' as never);
-  console.log('Admin routing config:', userRoutingConfig);
+  logger.log('Admin routing config:', userRoutingConfig);
 
   // Delete user configuration
   await userConfigDao.delete('admin');
-  console.log('Deleted admin user config');
+  logger.log('Deleted admin user config');
 }
 
 /**
@@ -200,26 +201,26 @@ export async function exampleUserConfigOperations() {
  */
 export async function testAllDaoOperations() {
   try {
-    console.log('=== Testing DAO Layer ===');
+    logger.log('=== Testing DAO Layer ===');
 
-    console.log('\n--- User Operations ---');
+    logger.log('\n--- User Operations ---');
     await exampleUserOperations();
 
-    console.log('\n--- Server Operations ---');
+    logger.log('\n--- Server Operations ---');
     await exampleServerOperations();
 
-    console.log('\n--- Group Operations ---');
+    logger.log('\n--- Group Operations ---');
     await exampleGroupOperations();
 
-    console.log('\n--- System Config Operations ---');
+    logger.log('\n--- System Config Operations ---');
     await exampleSystemConfigOperations();
 
-    console.log('\n--- User Config Operations ---');
+    logger.log('\n--- User Config Operations ---');
     await exampleUserConfigOperations();
 
-    console.log('\n=== DAO Layer Test Complete ===');
+    logger.log('\n=== DAO Layer Test Complete ===');
   } catch (error) {
-    console.error('Error during DAO testing:', error);
+    logger.error('Error during DAO testing:', error);
   }
 }
 

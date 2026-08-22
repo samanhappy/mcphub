@@ -27,7 +27,10 @@ export async function run(args: string[], globals: GlobalFlags): Promise<void> {
 }
 
 async function clear(client: ApiClient, globals: GlobalFlags): Promise<void> {
-  const res = await client.post<ApiResponse<Record<string, CacheClearResult>>>('/api/cache/clear', {});
+  const res = await client.post<ApiResponse<Record<string, CacheClearResult>>>(
+    '/api/cache/clear',
+    {},
+  );
 
   if (globals.json) {
     printJson(res);

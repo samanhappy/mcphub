@@ -1,4 +1,5 @@
 import { ChangelogUpdateInfo } from '../types/index.js';
+import { logger } from '../utils/logger.js';
 
 const DEFAULT_CHANGELOG_API_BASE = 'https://www.mcphub.app/api/v1/changelog';
 const DEFAULT_NPM_LATEST_URL = 'https://registry.npmjs.org/@samanhappy/mcphub/latest';
@@ -51,7 +52,7 @@ export async function getChangelogUpdateInfo(input: {
   }
 
   const data = await fetchUpdateInfoFromMcphubWeb(currentVersion, locale).catch(async (error) => {
-    console.warn('[changelog] mcphub-web update check failed, falling back to npm latest', {
+    logger.warn('[changelog] mcphub-web update check failed, falling back to npm latest', {
       error: error instanceof Error ? error.message : String(error),
     });
     return fetchNpmFallback(currentVersion, locale);
@@ -79,9 +80,9 @@ async function fetchUpdateInfoFromMcphubWeb(
     headers: { Accept: 'application/json' },
     signal: AbortSignal.timeout(timeoutMs()),
   });
-  const envelope = (await response.json().catch(() => null)) as
-    | ApiEnvelope<ChangelogUpdateInfo>
-    | null;
+  const envelope = (await response
+    .json()
+    .catch(() => null)) as ApiEnvelope<ChangelogUpdateInfo> | null;
 
   if (!response.ok || !envelope?.success || !envelope.data) {
     throw new Error(envelope?.message || `Changelog request failed: ${response.status}`);

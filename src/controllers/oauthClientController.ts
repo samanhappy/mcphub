@@ -9,6 +9,7 @@ import {
   deleteOAuthClient,
 } from '../models/OAuth.js';
 import { IOAuthClient } from '../types/index.js';
+import { logger } from '../utils/logger.js';
 
 const canAccessClient = (req: Request, client: IOAuthClient): boolean => {
   const user = (req as any).user as { username?: string; isAdmin?: boolean } | undefined;
@@ -42,7 +43,7 @@ export const getAllClients = async (req: Request, res: Response): Promise<void> 
       clients: sanitizedClients,
     });
   } catch (error) {
-    console.error('Get OAuth clients error:', error);
+    logger.error('Get OAuth clients error:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to retrieve OAuth clients',
@@ -90,7 +91,7 @@ export const getClient = async (req: Request, res: Response): Promise<void> => {
       client: sanitizedClient,
     });
   } catch (error) {
-    console.error('Get OAuth client error:', error);
+    logger.error('Get OAuth client error:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to retrieve OAuth client',
@@ -156,7 +157,7 @@ export const createClient = async (req: Request, res: Response): Promise<void> =
         : undefined,
     });
   } catch (error) {
-    console.error('Create OAuth client error:', error);
+    logger.error('Create OAuth client error:', error);
 
     if (error instanceof Error && error.message.includes('already exists')) {
       res.status(409).json({
@@ -230,7 +231,7 @@ export const updateClient = async (req: Request, res: Response): Promise<void> =
       },
     });
   } catch (error) {
-    console.error('Update OAuth client error:', error);
+    logger.error('Update OAuth client error:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to update OAuth client',
@@ -278,7 +279,7 @@ export const deleteClient = async (req: Request, res: Response): Promise<void> =
       message: 'OAuth client deleted successfully',
     });
   } catch (error) {
-    console.error('Delete OAuth client error:', error);
+    logger.error('Delete OAuth client error:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to delete OAuth client',
@@ -330,7 +331,7 @@ export const regenerateSecret = async (req: Request, res: Response): Promise<voi
       warning: 'Client secret is only shown once. Please save it securely.',
     });
   } catch (error) {
-    console.error('Regenerate secret error:', error);
+    logger.error('Regenerate secret error:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to regenerate client secret',

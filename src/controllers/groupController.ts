@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import { logger } from '../utils/logger.js';
 import {
   ApiResponse,
   AddGroupRequest,
@@ -309,7 +310,7 @@ export const batchCreateGroups = async (req: Request, res: Response): Promise<vo
     const statusCode = failureCount > 0 && successCount > 0 ? 207 : successCount > 0 ? 200 : 400;
     res.status(statusCode).json(response);
   } catch (error) {
-    console.error('Batch create groups error:', error);
+    logger.error('Batch create groups error:', error);
     res.status(500).json({
       success: false,
       message: 'Internal server error',

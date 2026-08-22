@@ -17,7 +17,11 @@ export interface ServersDeps {
   fs?: Pick<typeof fs, 'readFileSync'>;
 }
 
-export async function run(args: string[], globals: GlobalFlags, deps: ServersDeps = {}): Promise<void> {
+export async function run(
+  args: string[],
+  globals: GlobalFlags,
+  deps: ServersDeps = {},
+): Promise<void> {
   const sub = args.shift();
   const client = deps.client ?? buildClient(resolveTarget(globals));
   switch (sub) {
@@ -150,7 +154,10 @@ async function reload(client: ApiClient, args: string[]): Promise<void> {
 async function reinstall(client: ApiClient, args: string[]): Promise<void> {
   const name = args[0];
   if (!name) throw new CliUsageError('Usage: mcphub servers reinstall <name>');
-  const res = await client.post<ApiResponse<unknown>>(`/api/servers/${encodeURIComponent(name)}/reinstall`, {});
+  const res = await client.post<ApiResponse<unknown>>(
+    `/api/servers/${encodeURIComponent(name)}/reinstall`,
+    {},
+  );
   if (res.message) {
     printLine(green(res.message));
   } else {

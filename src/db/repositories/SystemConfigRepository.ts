@@ -3,6 +3,7 @@ import { SystemConfig } from '../entities/SystemConfig.js';
 import { getAppDataSource, reconnectDatabase } from '../connection.js';
 import { cloneDefaultOAuthServerConfig } from '../../constants/oauthServerDefaults.js';
 import { isRetryableDbError } from '../../utils/dbRetry.js';
+import { logger } from '../../utils/logger.js';
 
 /**
  * Repository for SystemConfig entity
@@ -25,7 +26,7 @@ export class SystemConfigRepository {
         throw error;
       }
 
-      console.warn('[DB Recovery] System config operation failed, reconnecting...');
+      logger.warn('[DB Recovery] System config operation failed, reconnecting...');
       await reconnectDatabase();
       return await operation(this.getRepository());
     }

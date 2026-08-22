@@ -30,7 +30,9 @@ export async function countTokens(text: string): Promise<number> {
  * Serialize a tool definition to the JSON a client forwards to the model:
  * name + description + full inputSchema. Deterministic key order.
  */
-export function serializeToolDefinition(tool: Pick<Tool, 'name' | 'description' | 'inputSchema'>): string {
+export function serializeToolDefinition(
+  tool: Pick<Tool, 'name' | 'description' | 'inputSchema'>,
+): string {
   return JSON.stringify({
     name: tool.name,
     description: tool.description ?? '',
@@ -83,7 +85,9 @@ export async function itemCostForPrompt(prompt: Prompt & { enabled?: boolean }):
   };
 }
 
-export async function itemCostForResource(resource: Resource & { enabled?: boolean }): Promise<ItemCost> {
+export async function itemCostForResource(
+  resource: Resource & { enabled?: boolean },
+): Promise<ItemCost> {
   return {
     kind: 'resource',
     name: resource.uri,

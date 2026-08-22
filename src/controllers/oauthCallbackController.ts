@@ -26,6 +26,7 @@ import {
 import { replaceEnvVars } from '../config/index.js';
 import { loadServerConfig } from '../services/oauthSettingsStore.js';
 import type { ServerInfo } from '../types/index.js';
+import { logger } from '../utils/logger.js';
 
 /**
  * Basic HTML escaping helper to prevent XSS in generated pages.
@@ -180,7 +181,7 @@ export const handleOAuthCallback = async (req: Request, res: Response) => {
 
     // Check for authorization errors
     if (error) {
-      console.error('OAuth authorization failed', {
+      logger.error('OAuth authorization failed', {
         error,
         errorDescription: error_description || '',
       });
@@ -201,7 +202,7 @@ export const handleOAuthCallback = async (req: Request, res: Response) => {
 
     // Validate required parameters
     if (!stateParam) {
-      console.error('OAuth callback missing state parameter');
+      logger.error('OAuth callback missing state parameter');
       return res
         .status(400)
         .send(
@@ -215,7 +216,7 @@ export const handleOAuthCallback = async (req: Request, res: Response) => {
     }
 
     if (!codeParam) {
-      console.error('OAuth callback missing authorization code');
+      logger.error('OAuth callback missing authorization code');
       return res
         .status(400)
         .send(
@@ -228,7 +229,7 @@ export const handleOAuthCallback = async (req: Request, res: Response) => {
         );
     }
 
-    console.log('OAuth callback received', { hasCode: true, state: stateParam });
+    logger.log('OAuth callback received', { hasCode: true, state: stateParam });
 
     // Find server by state parameter
     let serverInfo: ServerInfo | undefined;
@@ -239,7 +240,7 @@ export const handleOAuthCallback = async (req: Request, res: Response) => {
     if (!serverInfo) {
       decodedServerName = extractServerNameFromState(stateParam);
       if (decodedServerName) {
-        console.log('State lookup failed; decoded server name from state', {
+        logger.log('State lookup failed; decoded server name from state', {
           decodedServerName,
         });
         serverInfo = getServerByName(decodedServerName);
@@ -247,7 +248,7 @@ export const handleOAuthCallback = async (req: Request, res: Response) => {
     }
 
     if (!serverInfo) {
-      console.error('No server found for OAuth callback', {
+      logger.error('No server found for OAuth callback', {
         state: stateParam,
         decodedServerName,
       });
@@ -265,7 +266,7 @@ export const handleOAuthCallback = async (req: Request, res: Response) => {
 
     // Optional: Validate state parameter for additional security
     if (serverInfo.oauth?.state && serverInfo.oauth.state !== stateParam) {
-      console.warn('OAuth state mismatch detected', {
+      logger.warn('OAuth state mismatch detected', {
         serverName: serverInfo.name,
         // State values are considered sensitive and are not logged
         expectedState: '<redacted>',
@@ -274,17 +275,17 @@ export const handleOAuthCallback = async (req: Request, res: Response) => {
       // Note: We log a warning but don't fail the request since we have server name as primary identifier
     }
 
-    console.log('Processing OAuth callback for server', { serverName: serverInfo.name });
+    logger.log('Processing OAuth callback for server', { serverName: serverInfo.name });
 
     // For StreamableHTTPClientTransport, we need to call finishAuth() on the transport
     // This will exchange the authorization code for tokens automatically
     if (serverInfo.transport && 'finishAuth' in serverInfo.transport) {
       try {
-        console.log('Calling transport.finishAuth for server', { serverName: serverInfo.name });
+        logger.log('Calling transport.finishAuth for server', { serverName: serverInfo.name });
         const currentTransport = serverInfo.transport as any;
         await currentTransport.finishAuth(codeParam);
 
-        console.log('Successfully exchanged authorization code for tokens', {
+        logger.log('Successfully exchanged authorization code for tokens', {
           serverName: serverInfo.name,
         });
 
@@ -322,13 +323,13 @@ export const handleOAuthCallback = async (req: Request, res: Response) => {
             await (serverInfo.transport as any).close();
           }
         } catch (closeError) {
-          console.warn('Failed to close existing transport during OAuth reconnect', {
+          logger.warn('Failed to close existing transport during OAuth reconnect', {
             serverName: serverInfo.name,
             error: closeError,
           });
         }
 
-        console.log('Rebuilding transport with refreshed credentials', {
+        logger.log('Rebuilding transport with refreshed credentials', {
           serverName: serverInfo.name,
         });
         const refreshedTransport = await createTransportFromConfig(
@@ -350,7 +351,7 @@ export const handleOAuthCallback = async (req: Request, res: Response) => {
         if (!isClientConnected) {
           // Client is not connected yet, connect it
           if (serverInfo.client && serverInfo.transport) {
-            console.log('Connecting client with refreshed transport', {
+            logger.log('Connecting client with refreshed transport', {
               serverName: serverInfo.name,
             });
             try {
@@ -359,39 +360,39 @@ export const handleOAuthCallback = async (req: Request, res: Response) => {
                 serverInfo.transport,
                 serverInfo.options,
               );
-              console.log('Client connected successfully after OAuth callback', {
+              logger.log('Client connected successfully after OAuth callback', {
                 serverName: serverInfo.name,
               });
 
               // List tools after successful connection
               const capabilities = serverInfo.client.getServerCapabilities();
-              console.log('Server capabilities after OAuth callback', {
+              logger.log('Server capabilities after OAuth callback', {
                 serverName: serverInfo.name,
                 capabilities,
               });
 
               if (capabilities?.tools) {
-                console.log('Listing tools after OAuth callback', {
+                logger.log('Listing tools after OAuth callback', {
                   serverName: serverInfo.name,
                 });
                 const toolsResult = await serverInfo.client.listTools({}, serverInfo.options);
                 updateServerToolsCache(serverInfo, toolsResult.tools);
-                console.log('Listed tools after OAuth callback', {
+                logger.log('Listed tools after OAuth callback', {
                   serverName: serverInfo.name,
                   toolCount: serverInfo.tools.length,
                 });
               } else {
-                console.log('Server does not support tools capability after OAuth callback', {
+                logger.log('Server does not support tools capability after OAuth callback', {
                   serverName: serverInfo.name,
                 });
               }
             } catch (connectError) {
-              console.error('Error connecting client after OAuth callback', {
+              logger.error('Error connecting client after OAuth callback', {
                 serverName: serverInfo.name,
                 error: connectError,
               });
               if (connectError instanceof Error) {
-                console.error('Connect error details after OAuth callback', {
+                logger.error('Connect error details after OAuth callback', {
                   serverName: serverInfo.name,
                   message: connectError.message,
                   stack: connectError.stack,
@@ -401,18 +402,18 @@ export const handleOAuthCallback = async (req: Request, res: Response) => {
               // The user can try reconnecting from the dashboard
             }
           } else {
-            console.log(
+            logger.log(
               'Cannot connect client after OAuth callback because client or transport is missing',
               { serverName: serverInfo.name },
             );
           }
         } else {
-          console.log('Client already connected after OAuth callback', {
+          logger.log('Client already connected after OAuth callback', {
             serverName: serverInfo.name,
           });
         }
 
-        console.log('Successfully completed OAuth flow for server', {
+        logger.log('Successfully completed OAuth flow for server', {
           serverName: serverInfo.name,
         });
 
@@ -431,11 +432,11 @@ export const handleOAuthCallback = async (req: Request, res: Response) => {
           ),
         );
       } catch (error) {
-        console.error('Failed to complete OAuth flow for server', {
+        logger.error('Failed to complete OAuth flow for server', {
           serverName: serverInfo.name,
           error,
         });
-        console.error('OAuth callback error details', {
+        logger.error('OAuth callback error details', {
           serverName: serverInfo.name,
           errorType: typeof error,
           errorName: error?.constructor?.name,
@@ -457,7 +458,7 @@ export const handleOAuthCallback = async (req: Request, res: Response) => {
       }
     } else {
       // No transport available or transport doesn't support finishAuth
-        console.error('Transport does not support finishAuth', { serverName: serverInfo.name });
+      logger.error('Transport does not support finishAuth', { serverName: serverInfo.name });
       return res
         .status(500)
         .send(
@@ -470,7 +471,7 @@ export const handleOAuthCallback = async (req: Request, res: Response) => {
         );
     }
   } catch (error) {
-    console.error('Unexpected error handling OAuth callback', { error });
+    logger.error('Unexpected error handling OAuth callback', { error });
 
     // Get translation function from request (set by i18n middleware)
     const t = (req as any).t || ((key: string) => key);

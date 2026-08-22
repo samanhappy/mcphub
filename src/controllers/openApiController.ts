@@ -11,6 +11,7 @@ import { getServerByName } from '../services/mcpService.js';
 import { getGroupByIdOrName } from '../services/groupService.js';
 import { getNameSeparator } from '../config/index.js';
 import { convertParametersToTypes } from '../utils/parameterConversion.js';
+import { logger } from '../utils/logger.js';
 
 /**
  * Controller for OpenAPI generation endpoints
@@ -60,7 +61,7 @@ export const getOpenAPISpec = async (req: Request, res: Response): Promise<void>
 
     sendOpenAPISpec(req, res, openApiSpec);
   } catch (error) {
-    console.error('Error generating OpenAPI specification:', error);
+    logger.error('Error generating OpenAPI specification:', error);
     res.status(500).json({
       error: 'Failed to generate OpenAPI specification',
       message: error instanceof Error ? error.message : 'Unknown error',
@@ -80,7 +81,7 @@ export const getOpenAPIServers = async (req: Request, res: Response): Promise<vo
       data: servers,
     });
   } catch (error) {
-    console.error('Error getting available servers:', error);
+    logger.error('Error getting available servers:', error);
     res.status(500).json({
       success: false,
       error: 'Failed to get available servers',
@@ -101,7 +102,7 @@ export const getOpenAPIStats = async (req: Request, res: Response): Promise<void
       data: stats,
     });
   } catch (error) {
-    console.error('Error getting tool statistics:', error);
+    logger.error('Error getting tool statistics:', error);
     res.status(500).json({
       success: false,
       error: 'Failed to get tool statistics',
@@ -166,7 +167,7 @@ export const executeToolViaOpenAPI = async (req: Request, res: Response): Promis
     // Return the result in OpenAPI format (matching MCP tool response structure)
     res.json(result);
   } catch (error) {
-    console.error('Error executing tool via OpenAPI:', error);
+    logger.error('Error executing tool via OpenAPI:', error);
     res.status(500).json({
       error: 'Failed to execute tool',
       message: error instanceof Error ? error.message : 'Unknown error',
@@ -206,7 +207,7 @@ export const getServerOpenAPISpec = async (req: Request, res: Response): Promise
 
     sendOpenAPISpec(req, res, openApiSpec);
   } catch (error) {
-    console.error('Error generating server OpenAPI specification:', error);
+    logger.error('Error generating server OpenAPI specification:', error);
     res.status(500).json({
       error: 'Failed to generate server OpenAPI specification',
       message: error instanceof Error ? error.message : 'Unknown error',
@@ -243,7 +244,7 @@ export const getGroupOpenAPISpec = async (req: Request, res: Response): Promise<
 
     sendOpenAPISpec(req, res, openApiSpec);
   } catch (error) {
-    console.error('Error generating group OpenAPI specification:', error);
+    logger.error('Error generating group OpenAPI specification:', error);
     res.status(500).json({
       error: 'Failed to generate group OpenAPI specification',
       message: error instanceof Error ? error.message : 'Unknown error',

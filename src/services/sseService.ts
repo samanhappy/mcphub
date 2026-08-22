@@ -26,6 +26,7 @@ import {
 } from './hostedAuthService.js';
 import type { HostedAuthContext } from './hostedAuthService.js';
 import { isHostedModeEnabled } from './hostedMode.js';
+import { logger } from '../utils/logger.js';
 
 export interface SessionContext {
   transport: Transport;
@@ -78,7 +79,7 @@ const cleanupSessionState = (sessionId: string): void => {
   const session = transports[sessionId];
   if (session?.transport && typeof session.transport.close === 'function') {
     session.transport.close().catch((err) => {
-      console.error('[SESSION] Error closing transport during cleanup for %s:', sessionId, err);
+      logger.error('[SESSION] Error closing transport during cleanup for %s:', sessionId, err);
     });
   }
   delete transports[sessionId];
@@ -270,12 +271,12 @@ const isBearerKeyAllowedForRequest = async (req: Request, key: BearerKey): Promi
     }
 
     // Step 3: Not a valid group or server, deny access
-    console.warn(
+    logger.warn(
       `Bearer key access denied: parameter '${paramValue}' does not match any group or server`,
     );
     return false;
   } catch (error) {
-    console.error('Error checking bearer key request access:', error);
+    logger.error('Error checking bearer key request access:', error);
     return false;
   }
 };
@@ -374,13 +375,13 @@ const validateBearerAuth = async (req: Request): Promise<BearerAuthResult> => {
       }
       const allowed = await isBearerKeyAllowedForRequest(req, matchingKey);
       if (allowed) {
-        console.log(
+        logger.log(
           `Bearer key recognized (auth disabled): id=${matchingKey.id}, name=${matchingKey.name}, accessType=${matchingKey.accessType}`,
         );
         return userKeyResult;
       }
 
-      console.warn(
+      logger.warn(
         `Bearer key matched but rejected due to scope restrictions (auth disabled): id=${matchingKey.id}, name=${matchingKey.name}, accessType=${matchingKey.accessType}`,
       );
       return { valid: true };
@@ -388,7 +389,7 @@ const validateBearerAuth = async (req: Request): Promise<BearerAuthResult> => {
 
     const oauthUser = await resolveOAuthUserFromToken(token);
     if (oauthUser) {
-      console.log('Recognized OAuth bearer token (auth disabled)');
+      logger.log('Recognized OAuth bearer token (auth disabled)');
       return { valid: true, user: oauthUser, keyName: OAUTH_AUTH_METHOD_LABEL };
     }
 
@@ -407,11 +408,11 @@ const validateBearerAuth = async (req: Request): Promise<BearerAuthResult> => {
   if (enabledKeys.length === 0) {
     const oauthUser = await resolveOAuthUserFromToken(token);
     if (oauthUser) {
-      console.log('Authenticated request using OAuth bearer token without configured keys');
+      logger.log('Authenticated request using OAuth bearer token without configured keys');
       return { valid: true, user: oauthUser, keyName: OAUTH_AUTH_METHOD_LABEL };
     }
 
-    console.warn(
+    logger.warn(
       'Bearer authentication failed: no configured keys and token is not a valid OAuth token',
     );
     return { valid: false, reason: 'invalid' };
@@ -425,13 +426,13 @@ const validateBearerAuth = async (req: Request): Promise<BearerAuthResult> => {
     }
     const allowed = await isBearerKeyAllowedForRequest(req, matchingKey);
     if (!allowed) {
-      console.warn(
+      logger.warn(
         `Bearer key rejected due to scope restrictions: id=${matchingKey.id}, name=${matchingKey.name}, accessType=${matchingKey.accessType}`,
       );
       return { valid: false, reason: 'invalid' };
     }
 
-    console.log(
+    logger.log(
       `Bearer key authenticated: id=${matchingKey.id}, name=${matchingKey.name}, accessType=${matchingKey.accessType}`,
     );
     return userKeyResult;
@@ -439,11 +440,11 @@ const validateBearerAuth = async (req: Request): Promise<BearerAuthResult> => {
 
   const oauthUser = await resolveOAuthUserFromToken(token);
   if (oauthUser) {
-    console.log('Authenticated request using OAuth bearer token (no matching static key)');
+    logger.log('Authenticated request using OAuth bearer token (no matching static key)');
     return { valid: true, user: oauthUser, keyName: OAUTH_AUTH_METHOD_LABEL };
   }
 
-  console.warn('Bearer authentication failed: token did not match any key or OAuth user');
+  logger.warn('Bearer authentication failed: token did not match any key or OAuth user');
   return { valid: false, reason: 'invalid' };
 };
 
@@ -544,7 +545,7 @@ const sendBearerAuthError = (
     headerParts.push(`resource_metadata="${escapeHeaderValue(resourceMetadataUrl)}"`);
   }
 
-  console.warn(
+  logger.warn(
     reason === 'missing'
       ? 'Bearer authentication required but no authorization header was provided'
       : 'Bearer authentication failed due to invalid bearer token',
@@ -596,7 +597,7 @@ export const handleSseConnection = async (req: Request, res: Response): Promise<
 
   // Check if this is a global route (no group) and if it's allowed
   if (!group && !routingConfig.enableGlobalRoute) {
-    console.warn('Global routes are disabled, group ID is required');
+    logger.warn('Global routes are disabled, group ID is required');
     res.status(403).send('Global routes are disabled. Please specify a group ID.');
     return;
   }
@@ -604,7 +605,7 @@ export const handleSseConnection = async (req: Request, res: Response): Promise<
   // For user-scoped routes, validate that the user has access to the requested group
   if (username && group) {
     // Additional validation can be added here to check if user has access to the group
-    console.log(`User ${username} accessing group: ${group}`);
+    logger.log(`User ${username} accessing group: ${group}`);
   }
 
   // Construct the appropriate messages path based on user context
@@ -612,7 +613,7 @@ export const handleSseConnection = async (req: Request, res: Response): Promise<
     ? `${config.basePath}/${username}/messages`
     : `${config.basePath}/messages`;
 
-  console.log(`Creating SSE transport with messages path: ${messagesPath}`);
+  logger.log(`Creating SSE transport with messages path: ${messagesPath}`);
 
   const transport = new SSEServerTransport(messagesPath, res);
   transports[transport.sessionId] = {
@@ -626,10 +627,10 @@ export const handleSseConnection = async (req: Request, res: Response): Promise<
   res.on('close', () => {
     delete transports[transport.sessionId];
     deleteMcpServer(transport.sessionId);
-    console.log(`SSE connection closed: ${transport.sessionId}`);
+    logger.log(`SSE connection closed: ${transport.sessionId}`);
   });
 
-  console.log(
+  logger.log(
     `New SSE connection established: ${transport.sessionId} with group: ${group || 'global'}${username ? ` for user: ${username}` : ''}`,
   );
   const server = await getMcpServer(transport.sessionId, group);
@@ -670,7 +671,7 @@ export const handleSseMessage = async (req: Request, res: Response): Promise<voi
 
   // Validate sessionId
   if (!sessionId) {
-    console.error('Missing sessionId in query parameters');
+    logger.error('Missing sessionId in query parameters');
     res.status(400).send('Missing sessionId parameter');
     return;
   }
@@ -678,7 +679,7 @@ export const handleSseMessage = async (req: Request, res: Response): Promise<voi
   // Check if transport exists before destructuring
   const transportData = transports[sessionId];
   if (!transportData) {
-    console.warn(`No transport found for sessionId: ${sessionId}`);
+    logger.warn(`No transport found for sessionId: ${sessionId}`);
     res.status(404).send('No transport found for sessionId');
     return;
   }
@@ -686,7 +687,7 @@ export const handleSseMessage = async (req: Request, res: Response): Promise<voi
   const { transport, group, keyId, keyName } = transportData;
   req.params.group = group;
   req.query.group = group;
-  console.log(
+  logger.log(
     `Received message for sessionId: ${sessionId} in group: ${group}${username ? ` for user: ${username}` : ''}`,
   );
 
@@ -714,7 +715,7 @@ async function createSessionWithId(
   username?: string,
   hostedAuth?: HostedAuthContext,
 ): Promise<StreamableHTTPServerTransport> {
-  console.log(
+  logger.log(
     `[SESSION REBUILD] Starting session rebuild for ID: ${sessionId}${username ? ` for user: ${username}` : ''}`,
   );
 
@@ -724,16 +725,16 @@ async function createSessionWithId(
   const transport = new StreamableHTTPServerTransport({
     sessionIdGenerator: () => sessionId, // Use the specified sessionId
     onsessioninitialized: (initializedSessionId) => {
-      console.log(
+      logger.log(
         `[SESSION REBUILD] onsessioninitialized triggered for ID: ${initializedSessionId}`,
       ); // New log
       if (initializedSessionId === sessionId) {
         transports[sessionId] = { transport, group, hostedAuth };
-        console.log(
+        logger.log(
           `[SESSION REBUILD] Session ${sessionId} initialized successfully${username ? ` for user: ${username}` : ''}`,
         );
       } else {
-        console.warn(
+        logger.warn(
           `[SESSION REBUILD] Session ID mismatch: expected ${sessionId}, got ${initializedSessionId}`,
         );
       }
@@ -741,7 +742,7 @@ async function createSessionWithId(
   });
 
   transport.onclose = () => {
-    console.log(`[SESSION REBUILD] Transport closed: ${sessionId}`);
+    logger.log(`[SESSION REBUILD] Transport closed: ${sessionId}`);
     delete transports[sessionId];
     deleteMcpServer(sessionId);
   };
@@ -750,16 +751,16 @@ async function createSessionWithId(
   await server.connect(transport);
 
   if (!rehydrateRebuiltTransport(transport, sessionId)) {
-    console.error(`[SESSION REBUILD] Failed to rehydrate transport state for session ${sessionId}`);
+    logger.error(`[SESSION REBUILD] Failed to rehydrate transport state for session ${sessionId}`);
     await transport.close();
     throw new Error('Failed to rebuild session transport state');
   }
 
   transports[sessionId] = { transport, group, hostedAuth };
 
-  console.log(`[SESSION REBUILD] Rehydrated session ${sessionId} for immediate request handling.`);
+  logger.log(`[SESSION REBUILD] Rehydrated session ${sessionId} for immediate request handling.`);
 
-  console.log(`[SESSION REBUILD] Successfully rebuilt session ${sessionId} in group: ${group}`);
+  logger.log(`[SESSION REBUILD] Successfully rebuilt session ${sessionId} in group: ${group}`);
   return transport;
 }
 // Helper function to create a completely new session
@@ -769,7 +770,7 @@ async function createNewSession(
   hostedAuth?: HostedAuthContext,
 ): Promise<StreamableHTTPServerTransport> {
   const newSessionId = randomUUID();
-  console.log(
+  logger.log(
     `[SESSION NEW] Creating new session with ID: ${newSessionId}${username ? ` for user: ${username}` : ''}`,
   );
 
@@ -777,21 +778,21 @@ async function createNewSession(
     sessionIdGenerator: () => newSessionId,
     onsessioninitialized: (sessionId) => {
       transports[sessionId] = { transport, group, hostedAuth };
-      console.log(
+      logger.log(
         `[SESSION NEW] New session ${sessionId} initialized successfully${username ? ` for user: ${username}` : ''}`,
       );
     },
   });
 
   transport.onclose = () => {
-    console.log(`[SESSION NEW] Transport closed: ${newSessionId}`);
+    logger.log(`[SESSION NEW] Transport closed: ${newSessionId}`);
     delete transports[newSessionId];
     deleteMcpServer(newSessionId);
   };
 
   const mcpServer = await getMcpServer(newSessionId, group);
   await mcpServer.connect(transport);
-  console.log(`[SESSION NEW] Successfully created new session ${newSessionId} in group: ${group}`);
+  logger.log(`[SESSION NEW] Successfully created new session ${newSessionId} in group: ${group}`);
   return transport;
 }
 
@@ -814,7 +815,7 @@ export const handleMcpPostRequest = async (req: Request, res: Response): Promise
   const sessionId = req.headers['mcp-session-id'] as string | undefined;
   const group = req.params.group;
   const body = req.body;
-  console.log(
+  logger.log(
     `Handling MCP post request for sessionId: ${sessionId} and group: ${group}${username ? ` for user: ${username}` : ''} with body: ${JSON.stringify(body)}`,
   );
 
@@ -839,7 +840,7 @@ export const handleMcpPostRequest = async (req: Request, res: Response): Promise
 
   if (sessionId && transportInfo) {
     // Case 1: Session exists and is valid, reuse it
-    console.log(
+    logger.log(
       `[SESSION REUSE] Reusing existing session: ${sessionId}${username ? ` for user: ${username}` : ''}`,
     );
     transport = transportInfo.transport as StreamableHTTPServerTransport;
@@ -848,7 +849,7 @@ export const handleMcpPostRequest = async (req: Request, res: Response): Promise
     const enableSessionRebuild = systemConfig?.enableSessionRebuild || false;
 
     if (enableSessionRebuild) {
-      console.log(
+      logger.log(
         `[SESSION AUTO-REBUILD] Session ${sessionId} not found, initiating transparent rebuild${username ? ` for user: ${username}` : ''}`,
       );
       const ownsSessionCreationLock = sessionCreationLocks[sessionId] === undefined;
@@ -861,7 +862,7 @@ export const handleMcpPostRequest = async (req: Request, res: Response): Promise
           bearerAuthResult.hostedAuth,
         );
       } else {
-        console.log(
+        logger.log(
           `[SESSION AUTO-REBUILD] Session creation in progress for ${sessionId}, waiting...`,
         );
       }
@@ -870,12 +871,12 @@ export const handleMcpPostRequest = async (req: Request, res: Response): Promise
         transport = await sessionCreationLocks[sessionId];
 
         if (ownsSessionCreationLock) {
-          console.log(
+          logger.log(
             `[SESSION AUTO-REBUILD] Successfully transparently rebuilt session: ${sessionId}`,
           );
         }
       } catch (error) {
-        console.error('[SESSION AUTO-REBUILD] Failed to rebuild session', {
+        logger.error('[SESSION AUTO-REBUILD] Failed to rebuild session', {
           sessionId,
           error,
         });
@@ -894,7 +895,7 @@ export const handleMcpPostRequest = async (req: Request, res: Response): Promise
       }
     } else {
       // Session rebuild is disabled, return error
-      console.warn(
+      logger.warn(
         `[SESSION ERROR] Session ${sessionId} not found and session rebuild is disabled${username ? ` for user: ${username}` : ''}`,
       );
       res.status(400).json({
@@ -909,7 +910,7 @@ export const handleMcpPostRequest = async (req: Request, res: Response): Promise
     }
   } else if (isInitializeRequest(req.body)) {
     // Case 3: No sessionId and this is an initialize request, create new session
-    console.log(
+    logger.log(
       `[SESSION CREATE] No session ID provided for initialize request, creating new session${username ? ` for user: ${username}` : ''}`,
     );
     transport = await createNewSession(group, username, bearerAuthResult.hostedAuth);
@@ -919,14 +920,14 @@ export const handleMcpPostRequest = async (req: Request, res: Response): Promise
     req.body.method.startsWith('notifications/')
   ) {
     // Case 4: Session-less notification requests should be acknowledged and ignored
-    console.log(
+    logger.log(
       `[SESSION SKIP] Ignoring session-less notification request (method: ${req.body.method})${username ? ` for user: ${username}` : ''}`,
     );
     res.status(200).end();
     return;
   } else {
     // Case 5: No sessionId and not an initialize/notification request, return error
-    console.warn(
+    logger.warn(
       `[SESSION ERROR] No session ID provided for non-initialize request (method: ${req.body?.method})${username ? ` for user: ${username}` : ''}`,
     );
     res.status(400).json({
@@ -940,7 +941,7 @@ export const handleMcpPostRequest = async (req: Request, res: Response): Promise
     return;
   }
 
-  console.log(`Handling request using transport with type ${transport.constructor.name}`);
+  logger.log(`Handling request using transport with type ${transport.constructor.name}`);
 
   const requestContextService = RequestContextService.getInstance();
   await requestContextService.runWithRequestContext(req, async () => {
@@ -957,7 +958,7 @@ export const handleMcpPostRequest = async (req: Request, res: Response): Promise
       await transport.handleRequest(req, res, req.body);
     } catch (error: any) {
       if (sessionId && error?.message?.includes('Server not initialized')) {
-        console.warn(
+        logger.warn(
           `[SESSION AUTO-REBUILD] Rebuilt session ${sessionId} is not initialized. Returning explicit session-not-found response.`,
         );
         cleanupSessionState(sessionId);
@@ -989,7 +990,7 @@ export const handleMcpOtherRequest = async (req: Request, res: Response) => {
   const currentUser = userContextService.getCurrentUser();
   const username = currentUser?.username;
 
-  console.log(`Handling MCP other request${username ? ` for user: ${username}` : ''}`);
+  logger.log(`Handling MCP other request${username ? ` for user: ${username}` : ''}`);
 
   const sessionId = req.headers['mcp-session-id'] as string | undefined;
   if (!sessionId) {
@@ -1006,7 +1007,7 @@ export const handleMcpOtherRequest = async (req: Request, res: Response) => {
     const enableSessionRebuild = systemConfig?.enableSessionRebuild || false;
 
     if (enableSessionRebuild) {
-      console.log(
+      logger.log(
         `[SESSION AUTO-REBUILD] Session ${sessionId} not found in handleMcpOtherRequest, initiating transparent rebuild`,
       );
 
@@ -1026,13 +1027,13 @@ export const handleMcpOtherRequest = async (req: Request, res: Response) => {
           bearerAuthResult.hostedAuth,
         );
         if (rebuiltSession) {
-          console.log(
+          logger.log(
             `[SESSION AUTO-REBUILD] Successfully transparently rebuilt session: ${sessionId}`,
           );
           transportEntry = transports[sessionId];
         }
       } catch (error) {
-        console.error('[SESSION AUTO-REBUILD] Failed to rebuild session', {
+        logger.error('[SESSION AUTO-REBUILD] Failed to rebuild session', {
           sessionId,
           error,
         });
@@ -1041,7 +1042,7 @@ export const handleMcpOtherRequest = async (req: Request, res: Response) => {
         return;
       }
     } else {
-      console.warn(
+      logger.warn(
         `[SESSION ERROR] Session ${sessionId} not found and session rebuild is disabled in handleMcpOtherRequest`,
       );
       res.status(400).send('Invalid or missing session ID');
@@ -1060,7 +1061,7 @@ export const handleMcpOtherRequest = async (req: Request, res: Response) => {
     await (transport as StreamableHTTPServerTransport).handleRequest(req, res);
   } catch (error: any) {
     if (error?.message?.includes('Server not initialized')) {
-      console.warn(
+      logger.warn(
         `[SESSION AUTO-REBUILD] Rebuilt session ${sessionId} is not initialized for auxiliary request. Returning explicit session-not-found response.`,
       );
       cleanupSessionState(sessionId);

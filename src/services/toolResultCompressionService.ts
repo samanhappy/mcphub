@@ -4,13 +4,11 @@
  * Design inspired by Headroom's Apache-2.0 content routing and log/search/diff
  * compression strategies, reimplemented for MCPHub.
  */
-import type {
-  ToolResultCompressionConfig,
-  ToolResultCompressionStrategy,
-} from '../types/index.js';
+import type { ToolResultCompressionConfig, ToolResultCompressionStrategy } from '../types/index.js';
 import { countTokens } from '../utils/tokenCost.js';
 import { getCachedSystemConfig } from '../utils/systemConfigCache.js';
 import { getSystemConfigDao } from '../dao/index.js';
+import { logger } from '../utils/logger.js';
 
 const DEFAULT_CONFIG: Required<ToolResultCompressionConfig> = {
   enabled: false,
@@ -150,7 +148,10 @@ const detectStrategy = (
 
 const safeStringify = (value: unknown): string => JSON.stringify(value, null, 2);
 
-const stringifyJsonSample = (value: unknown, maxItems: number): { text: string; omitted: number } => {
+const stringifyJsonSample = (
+  value: unknown,
+  maxItems: number,
+): { text: string; omitted: number } => {
   if (Array.isArray(value)) {
     const kept = value.slice(0, maxItems);
     return {
@@ -190,7 +191,10 @@ const stringifyJsonSample = (value: unknown, maxItems: number): { text: string; 
   return { text: safeStringify(output), omitted };
 };
 
-const summarizeObject = (value: Record<string, unknown>, maxItems: number): Record<string, unknown> => {
+const summarizeObject = (
+  value: Record<string, unknown>,
+  maxItems: number,
+): Record<string, unknown> => {
   const output: Record<string, unknown> = {};
   for (const [key, entryValue] of Object.entries(value)) {
     if (Array.isArray(entryValue)) {
@@ -269,7 +273,9 @@ type SearchLine = {
 };
 
 function parseSearchLine(line: string): SearchLine | null {
-  if (/^(?:\d{4}-\d{2}-\d{2}|\d{2}:\d{2}:\d{2}|\[\d{4}-\d{2}-\d{2}|\[\d{2}:\d{2}:\d{2})/.test(line)) {
+  if (
+    /^(?:\d{4}-\d{2}-\d{2}|\d{2}:\d{2}:\d{2}|\[\d{4}-\d{2}-\d{2}|\[\d{2}:\d{2}:\d{2})/.test(line)
+  ) {
     return null;
   }
   const match = /^(.*?)(?::|-)(\d+)(?::|-)(.*)$/.exec(line);
@@ -303,9 +309,7 @@ const compressSearch = (text: string): TextCompressionResult => {
   omitted += Math.max(0, byFile.size - files.length);
 
   for (const [file, matches] of files) {
-    const kept = matches.length <= 6
-      ? matches
-      : [...matches.slice(0, 4), ...matches.slice(-2)];
+    const kept = matches.length <= 6 ? matches : [...matches.slice(0, 4), ...matches.slice(-2)];
     output.push(...kept.map((match) => `${file}:${match.line}:${match.body}`));
     if (matches.length > kept.length) {
       omitted += matches.length - kept.length;
@@ -403,9 +407,11 @@ const fitToTokenBudget = async (text: string, maxOutputTokens: number): Promise<
     const head = lines.slice(0, headCount);
     const tail = lines.slice(Math.max(headCount, lines.length - tailCount));
     const omitted = Math.max(0, lines.length - head.length - tail.length);
-    const candidate = [...head, `[... ${omitted} lines omitted to fit output budget]`, ...tail].join(
-      '\n',
-    );
+    const candidate = [
+      ...head,
+      `[... ${omitted} lines omitted to fit output budget]`,
+      ...tail,
+    ].join('\n');
     if ((await countTokens(candidate)) <= maxOutputTokens) return candidate;
     headCount = Math.max(5, Math.floor(headCount * 0.75));
     tailCount = Math.max(5, Math.floor(tailCount * 0.75));
@@ -458,7 +464,7 @@ export const maybeCompressToolResult = async <T extends ToolResultLike>(
 
     return changed ? ({ ...result, content } as T) : result;
   } catch (error) {
-    console.warn('Tool result compression failed, returning original result', {
+    logger.warn('Tool result compression failed, returning original result', {
       error: error instanceof Error ? error.message : String(error),
     });
     return result;

@@ -1,3 +1,4 @@
+import { logger } from './logger.js';
 /**
  * Utility functions for converting parameter types based on JSON schema definitions
  */
@@ -84,7 +85,7 @@ export function convertParametersToTypes(
       }
     } catch (error) {
       // If conversion fails, keep the original value
-      console.warn(`Failed to convert parameter '${key}' to type '${propType}':`, error);
+      logger.warn(`Failed to convert parameter '${key}' to type '${propType}':`, error);
       convertedParams[key] = value;
     }
   }

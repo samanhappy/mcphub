@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { ApiResponse } from '../types/index.js';
 import { handleGetPromptRequest } from '../services/mcpService.js';
+import { logger } from '../utils/logger.js';
 
 /**
  * Get a specific prompt by server and prompt name
@@ -37,7 +38,7 @@ export const getPrompt = async (req: Request, res: Response): Promise<void> => {
 
     res.json(response);
   } catch (error) {
-    console.error('Error getting prompt:', error);
+    logger.error('Error getting prompt:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to get prompt',

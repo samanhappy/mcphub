@@ -15,14 +15,14 @@ export class UserConfigDaoDbImpl implements UserConfigDao {
   async getAll(): Promise<Record<string, UserConfig>> {
     const configs = await this.repository.getAll();
     const result: Record<string, UserConfig> = {};
-    
+
     for (const [username, config] of Object.entries(configs)) {
       result[username] = {
         routing: config.routing,
         ...config.additionalConfig,
       };
     }
-    
+
     return result;
   }
 
@@ -53,7 +53,10 @@ export class UserConfigDaoDbImpl implements UserConfigDao {
     return await this.repository.delete(username);
   }
 
-  async getSection<K extends keyof UserConfig>(username: string, section: K): Promise<UserConfig[K]> {
+  async getSection<K extends keyof UserConfig>(
+    username: string,
+    section: K,
+  ): Promise<UserConfig[K]> {
     const config = await this.get(username);
     return config[section];
   }

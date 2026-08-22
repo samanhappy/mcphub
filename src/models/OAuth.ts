@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import { getOAuthClientDao, getOAuthTokenDao } from '../dao/index.js';
 import { IOAuthClient, IOAuthAuthorizationCode, IOAuthToken } from '../types/index.js';
+import { logger } from '../utils/logger.js';
 
 // In-memory storage for authorization codes (short-lived, no persistence needed)
 const authorizationCodes = new Map<string, IOAuthAuthorizationCode>();
@@ -28,12 +29,12 @@ const initializeTokenCache = async (): Promise<void> => {
       }
     }
   } catch (error) {
-    console.error('Failed to initialize OAuth tokens from DAO:', error);
+    logger.error('Failed to initialize OAuth tokens from DAO:', error);
   }
 };
 
 // Initialize on module load (fire and forget for backward compatibility)
-initializeTokenCache().catch(console.error);
+initializeTokenCache().catch(logger.error);
 
 /**
  * Get all OAuth clients from configuration
@@ -175,7 +176,7 @@ export const saveToken = async (
     const tokenDao = getOAuthTokenDao();
     await tokenDao.create(token);
   } catch (error) {
-    console.error('Failed to persist OAuth token to DAO:', error);
+    logger.error('Failed to persist OAuth token to DAO:', error);
   }
 
   return token;
@@ -243,7 +244,7 @@ export const revokeToken = async (token: string): Promise<void> => {
     const tokenDao = getOAuthTokenDao();
     await tokenDao.revokeToken(token);
   } catch (error) {
-    console.error('Failed to remove OAuth token from DAO:', error);
+    logger.error('Failed to remove OAuth token from DAO:', error);
   }
 };
 
@@ -286,7 +287,7 @@ export const cleanupExpired = async (): Promise<void> => {
     const tokenDao = getOAuthTokenDao();
     await tokenDao.cleanupExpired();
   } catch (error) {
-    console.error('Failed to cleanup persisted OAuth tokens:', error);
+    logger.error('Failed to cleanup persisted OAuth tokens:', error);
   }
 };
 
@@ -295,7 +296,7 @@ let cleanupIntervalId: NodeJS.Timeout | null = null;
 if (process.env.NODE_ENV !== 'test') {
   cleanupIntervalId = setInterval(
     () => {
-      cleanupExpired().catch(console.error);
+      cleanupExpired().catch(logger.error);
     },
     5 * 60 * 1000,
   );

@@ -1,3 +1,4 @@
+import { logger } from './logger.js';
 /**
  * Token-aware text truncation utilities for embedding generation.
  *
@@ -51,7 +52,11 @@ export function getModelDefaultTokenLimit(model: string): number {
 // Model family detection helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
-const OPENAI_MODELS = new Set(['text-embedding-3-small', 'text-embedding-3-large', 'text-embedding-ada-002']);
+const OPENAI_MODELS = new Set([
+  'text-embedding-3-small',
+  'text-embedding-3-large',
+  'text-embedding-ada-002',
+]);
 
 function isOpenAIModel(model: string): boolean {
   return OPENAI_MODELS.has(model.toLowerCase());
@@ -259,7 +264,7 @@ function getHFModelId(model: string): string {
  * model's own vocabulary, then decodes a truncated token sequence back to text.
  * This provides exact tokenization matching the model's behavior, with tokenizer
  * instances cached to avoid repeated downloads.
- * 
+ *
  * Uses a three-tier fallback strategy to ensure robustness across all deployment environments:
  *   1. Official HuggingFace Hub (huggingface.co)
  *   2. hf-mirror.com — accessible in regions where huggingface.co is blocked (e.g. China)
@@ -308,7 +313,7 @@ async function truncateWithHFTokenizer(
   // log noise and latency in deployments where the host is permanently blocked (e.g. China).
   if (isHostUnhealthy(HF_OFFICIAL_HOST)) {
     const health = hostHealth.get(HF_OFFICIAL_HOST)!;
-    console.warn(
+    logger.warn(
       `Skipping HuggingFace Hub (marked unhealthy until ${new Date(health.unhealthyUntil).toISOString()}, TTL active). Trying hf-mirror.com directly for model "${model}" (${modelId}).`,
     );
   } else {
@@ -320,7 +325,7 @@ async function truncateWithHFTokenizer(
     } catch (error) {
       markHostUnhealthy(HF_OFFICIAL_HOST, error);
       const message = error instanceof Error ? error.message : String(error);
-      console.warn(
+      logger.warn(
         `HuggingFace Hub unreachable for model "${model}" (${modelId}): ${message}. Retrying with hf-mirror.com...`,
         error,
       );
@@ -335,7 +340,7 @@ async function truncateWithHFTokenizer(
     return result;
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    console.warn(
+    logger.warn(
       `hf-mirror.com also failed for model "${model}" (${modelId}): ${message}. Falling back to character-based heuristic truncation.`,
       error,
     );

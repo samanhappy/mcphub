@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { McpSettings } from '../../types/index.js';
 import { getSettingsPath, clearSettingsCache } from '../../config/index.js';
+import { logger } from '../../utils/logger.js';
 
 /**
  * Abstract base class for JSON file-based DAO implementations
@@ -33,7 +34,7 @@ export abstract class JsonFileBaseDao {
 
       return settings;
     } catch (error) {
-      console.error(`Failed to load settings:`, error);
+      logger.error(`Failed to load settings:`, error);
       const defaultSettings: McpSettings = {
         mcpServers: {},
         users: [],
@@ -70,7 +71,7 @@ export abstract class JsonFileBaseDao {
 
       clearSettingsCache();
     } catch (error) {
-      console.error(`Failed to save settings:`, error);
+      logger.error(`Failed to save settings:`, error);
       throw error;
     }
   }

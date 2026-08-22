@@ -9,7 +9,8 @@ import {
 // Export full configuration template
 export const exportConfigTemplate = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { name, description, groupIds, includeDisabledServers } = req.body as TemplateExportOptions;
+    const { name, description, groupIds, includeDisabledServers } =
+      req.body as TemplateExportOptions;
 
     if (!name) {
       res.status(400).json({

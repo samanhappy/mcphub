@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { resolveBetterAuthUser } from '../services/betterAuthSession.js';
 import { getDataService } from '../services/services.js';
+import { logger } from '../utils/logger.js';
 
 const dataService = getDataService();
 
@@ -21,7 +22,7 @@ export const getBetterAuthUser = async (req: Request, res: Response): Promise<vo
       },
     });
   } catch (error) {
-    console.error('Get Better Auth user error:', error);
+    logger.error('Get Better Auth user error:', error);
     res.status(500).json({ success: false, message: 'Server error' });
   }
 };

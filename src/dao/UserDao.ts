@@ -30,7 +30,13 @@ export interface UserDao extends BaseDao<IUser, string> {
   /**
    * Create user with hashed password
    */
-  createWithHashedPassword(username: string, password: string, isAdmin?: boolean, email?: string, ssoUserId?: string): Promise<IUser>;
+  createWithHashedPassword(
+    username: string,
+    password: string,
+    isAdmin?: boolean,
+    email?: string,
+    ssoUserId?: string,
+  ): Promise<IUser>;
 
   /**
    * Update user password

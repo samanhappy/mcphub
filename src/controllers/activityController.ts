@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { getActivityDao, isActivityLoggingEnabled } from '../dao/DaoFactory.js';
 import { IActivityFilter } from '../types/index.js';
+import { logger } from '../utils/logger.js';
 
 /**
  * Check if activity feature is available (database mode only)
@@ -94,7 +95,7 @@ export const getActivities = async (req: Request, res: Response): Promise<void> 
       },
     });
   } catch (error) {
-    console.error('Error fetching activities:', error);
+    logger.error('Error fetching activities:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to fetch activities',
@@ -132,7 +133,7 @@ export const getActivityById = async (req: Request, res: Response): Promise<void
       data: activity,
     });
   } catch (error) {
-    console.error('Error fetching activity:', error);
+    logger.error('Error fetching activity:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to fetch activity',
@@ -191,7 +192,7 @@ export const getActivityStats = async (req: Request, res: Response): Promise<voi
       data: stats,
     });
   } catch (error) {
-    console.error('Error fetching activity stats:', error);
+    logger.error('Error fetching activity stats:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to fetch activity statistics',
@@ -232,7 +233,7 @@ export const getActivityFilterOptions = async (req: Request, res: Response): Pro
       },
     });
   } catch (error) {
-    console.error('Error fetching filter options:', error);
+    logger.error('Error fetching filter options:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to fetch filter options',
@@ -278,7 +279,7 @@ export const deleteOldActivities = async (req: Request, res: Response): Promise<
       },
     });
   } catch (error) {
-    console.error('Error deleting old activities:', error);
+    logger.error('Error deleting old activities:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to delete old activities',

@@ -8,6 +8,7 @@ import {
   resolveBetterAuthRuntimeConfig,
 } from './services/betterAuthConfig.js';
 import { getCachedSystemConfig, isDatabaseModeEnabled } from './utils/systemConfigCache.js';
+import { logger } from './utils/logger.js';
 
 const resolveSystemConfig = () => {
   const cachedSystemConfig = getCachedSystemConfig();
@@ -69,6 +70,14 @@ if (
   );
 }
 
+const trimTrailingSlashes = (value: string): string => {
+  let end = value.length;
+  while (end > 0 && value[end - 1] === '/') {
+    end -= 1;
+  }
+  return value.slice(0, end);
+};
+
 const resolveBaseURL = (baseUrl: string, basePath: string): string => {
   const normalizedPath = basePath.startsWith('/') ? basePath : `/${basePath}`;
   try {
@@ -80,10 +89,10 @@ const resolveBaseURL = (baseUrl: string, basePath: string): string => {
     if (url.pathname.endsWith(normalizedPath)) {
       return url.toString();
     }
-    url.pathname = `${url.pathname.replace(/\/+$/, '')}${normalizedPath}`;
+    url.pathname = `${trimTrailingSlashes(url.pathname)}${normalizedPath}`;
     return url.toString();
   } catch {
-    const trimmedBase = baseUrl.replace(/\/+$/, '');
+    const trimmedBase = trimTrailingSlashes(baseUrl);
     return `${trimmedBase}${normalizedPath}`;
   }
 };
@@ -131,7 +140,7 @@ const authOptions: BetterAuthOptions = {
     disableColors: false,
     level: 'info',
     log: (level, message, ...args) => {
-      console.log('[better-auth]', { level, message }, ...args);
+      logger.log('[better-auth]', { level, message }, ...args);
     },
   },
 };
@@ -199,7 +208,7 @@ export const ensureBetterAuthSchema = async (): Promise<void> => {
       const existingTables = await listExistingTables(schema, tableNames);
       const allTablesExist = tableNames.every((tableName) => existingTables.has(tableName));
       if (allTablesExist && !toBeAdded.length) {
-        console.warn(
+        logger.warn(
           `[better-auth] Detected existing tables in schema "${schema}"; skipping migrations.`,
         );
         return;
@@ -211,7 +220,7 @@ export const ensureBetterAuthSchema = async (): Promise<void> => {
     await runMigrations();
   } catch (error) {
     if (isRelationAlreadyExistsError(error)) {
-      console.warn('[better-auth] Migration skipped due to existing relations.', error);
+      logger.warn('[better-auth] Migration skipped due to existing relations.', error);
       return;
     }
     throw error;

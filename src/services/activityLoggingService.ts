@@ -1,10 +1,8 @@
 import { getActivityDao, isActivityLoggingEnabled } from '../dao/DaoFactory.js';
 import { IActivity, ActivityStatus } from '../types/index.js';
-import {
-  stringifyWithoutRedaction,
-  sanitizeStringForLogging,
-} from '../utils/serialization.js';
+import { stringifyWithoutRedaction, sanitizeStringForLogging } from '../utils/serialization.js';
 import { getCachedSystemConfig } from '../utils/systemConfigCache.js';
+import { logger } from '../utils/logger.js';
 
 const PAYLOAD_OMITTED = JSON.stringify({
   _omitted: true,
@@ -85,7 +83,7 @@ export class ActivityLoggingService {
       await activityDao.create(activity);
     } catch (error) {
       // Don't let logging failures affect the main flow
-      console.error('Failed to log activity:', error);
+      logger.error('Failed to log activity:', error);
     }
   }
 

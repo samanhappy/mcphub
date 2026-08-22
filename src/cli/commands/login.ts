@@ -30,7 +30,11 @@ export interface LoginDeps {
   };
 }
 
-export async function run(args: string[], globals: GlobalFlags, deps: LoginDeps = {}): Promise<void> {
+export async function run(
+  args: string[],
+  globals: GlobalFlags,
+  deps: LoginDeps = {},
+): Promise<void> {
   const { flags } = extractFlags(args, {
     valued: ['--url', '--username', '--password', '--profile-name'],
   });
@@ -90,7 +94,11 @@ export async function run(args: string[], globals: GlobalFlags, deps: LoginDeps 
   }
 }
 
-export async function logout(args: string[], globals: GlobalFlags, deps: LoginDeps = {}): Promise<void> {
+export async function logout(
+  args: string[],
+  globals: GlobalFlags,
+  deps: LoginDeps = {},
+): Promise<void> {
   const loadCreds = deps.loadCreds ?? loadCredentials;
   const saveCreds = deps.saveCreds ?? saveCredentials;
   const credentials = loadCreds();

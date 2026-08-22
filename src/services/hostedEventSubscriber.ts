@@ -3,6 +3,7 @@ import { applyHostedWebhookEvent } from './hostedAuthService.js';
 import type { HubClusterEvent } from './hostedControlPlaneClient.js';
 import { isHostedModeEnabled } from './hostedMode.js';
 import { getHostedNodeIdentity } from './hostedNodeIdentity.js';
+import { logger } from '../utils/logger.js';
 
 const DEFAULT_EVENT_CHANNEL = 'mcphub:hosted-events';
 const INITIAL_CONNECT_TIMEOUT_MS = 5000;
@@ -101,7 +102,7 @@ export async function startHostedEventSubscriber(): Promise<void> {
       return;
     }
 
-    console.warn('[hosted] Redis event subscriber error', {
+    logger.warn('[hosted] Redis event subscriber error', {
       error: String(error),
       channel,
       hubClusterId: nodeIdentity.clusterId,
@@ -114,7 +115,7 @@ export async function startHostedEventSubscriber(): Promise<void> {
       return;
     }
 
-    console.info('[hosted] Redis event subscriber ready', {
+    logger.info('[hosted] Redis event subscriber ready', {
       channel,
       hubClusterId: nodeIdentity.clusterId,
       hubNodeId: nodeIdentity.nodeId,
@@ -128,7 +129,7 @@ export async function startHostedEventSubscriber(): Promise<void> {
     }
 
     subscriber = null;
-    console.warn('[hosted] Redis event subscriber connection ended', {
+    logger.warn('[hosted] Redis event subscriber connection ended', {
       channel,
       hubClusterId: nodeIdentity.clusterId,
       hubNodeId: nodeIdentity.nodeId,
@@ -152,12 +153,12 @@ export async function startHostedEventSubscriber(): Promise<void> {
       try {
         const event = JSON.parse(message) as unknown;
         if (!isHubClusterEvent(event)) {
-          console.warn('[hosted] Ignoring invalid cluster event', { channel });
+          logger.warn('[hosted] Ignoring invalid cluster event', { channel });
           return;
         }
 
         applyHostedWebhookEvent(event);
-        console.info('[hosted] Applied cluster event', {
+        logger.info('[hosted] Applied cluster event', {
           eventId: event.eventId,
           type: event.type,
           userId: event.userId,
@@ -166,7 +167,7 @@ export async function startHostedEventSubscriber(): Promise<void> {
           hubNodeId: nodeIdentity.nodeId,
         });
       } catch (error) {
-        console.warn('[hosted] Failed to process cluster event', {
+        logger.warn('[hosted] Failed to process cluster event', {
           error: String(error),
           channel,
         });
@@ -189,7 +190,7 @@ export async function startHostedEventSubscriber(): Promise<void> {
       const failureSignature = startupFailureSignature(channel, error);
       if (lastStartupFailureSignature !== failureSignature) {
         lastStartupFailureSignature = failureSignature;
-        console.warn(
+        logger.warn(
           '[hosted] Failed to start Redis event subscriber; local cache TTL remains authoritative',
           {
             error: String(error),
@@ -227,7 +228,7 @@ export async function stopHostedEventSubscriber(): Promise<void> {
   try {
     await client.quit();
   } catch (error) {
-    console.warn('[hosted] Failed to stop Redis event subscriber cleanly', {
+    logger.warn('[hosted] Failed to stop Redis event subscriber cleanly', {
       error: String(error),
     });
   }

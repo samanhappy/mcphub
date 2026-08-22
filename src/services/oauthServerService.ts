@@ -14,6 +14,7 @@ import {
 import crypto from 'crypto';
 import { safeCompare } from '../utils/safeCompare.js';
 import { cloneDefaultOAuthServerConfig } from '../constants/oauthServerDefaults.js';
+import { logger } from '../utils/logger.js';
 
 const { Request, Response } = OAuth2Server;
 
@@ -300,7 +301,7 @@ export const initOAuthServer = async (): Promise<void> => {
   const requireState = oauthConfig.requireState === true;
 
   if (!oauthConfig.enabled) {
-    console.log('OAuth authorization server is disabled');
+    logger.log('OAuth authorization server is disabled');
     return;
   }
 
@@ -318,9 +319,9 @@ export const initOAuthServer = async (): Promise<void> => {
         : { authorization_code: false, refresh_token: false },
     });
 
-    console.log('OAuth authorization server initialized successfully');
+    logger.log('OAuth authorization server initialized successfully');
   } catch (error) {
-    console.error('Failed to initialize OAuth authorization server:', error);
+    logger.error('Failed to initialize OAuth authorization server:', error);
     oauth = null;
   }
 };

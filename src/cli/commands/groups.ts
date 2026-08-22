@@ -15,7 +15,11 @@ export interface GroupsDeps {
   client?: ApiClient;
 }
 
-export async function run(args: string[], globals: GlobalFlags, deps: GroupsDeps = {}): Promise<void> {
+export async function run(
+  args: string[],
+  globals: GlobalFlags,
+  deps: GroupsDeps = {},
+): Promise<void> {
   const sub = args.shift();
   const client = deps.client ?? buildClient(resolveTarget(globals));
   switch (sub) {
