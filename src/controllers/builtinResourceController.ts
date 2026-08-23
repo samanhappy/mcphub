@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { ApiResponse, BuiltinResource } from '../types/index.js';
 import { getBuiltinResourceDao } from '../dao/index.js';
 import { handleReadResourceRequest } from '../services/mcpService.js';
+import { requireAdmin } from '../utils/requireAdmin.js';
 import { logger } from '../utils/logger.js';
 
 /**
@@ -50,6 +51,7 @@ export const getBuiltinResource = async (req: Request, res: Response): Promise<v
  * Create a new built-in resource
  */
 export const createBuiltinResource = async (req: Request, res: Response): Promise<void> => {
+  if (!(await requireAdmin(req, res))) return;
   try {
     const { uri, name, description, mimeType, content, enabled } = req.body;
     if (!uri || !content) {
@@ -80,6 +82,7 @@ export const createBuiltinResource = async (req: Request, res: Response): Promis
  * Update an existing built-in resource
  */
 export const updateBuiltinResource = async (req: Request, res: Response): Promise<void> => {
+  if (!(await requireAdmin(req, res))) return;
   try {
     const { id } = req.params;
     const updates = req.body;
@@ -104,6 +107,7 @@ export const updateBuiltinResource = async (req: Request, res: Response): Promis
  * Delete a built-in resource
  */
 export const deleteBuiltinResource = async (req: Request, res: Response): Promise<void> => {
+  if (!(await requireAdmin(req, res))) return;
   try {
     const { id } = req.params;
     const deleted = await getBuiltinResourceDao().delete(id);
