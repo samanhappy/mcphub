@@ -3,7 +3,7 @@ import AppServer from './server.js';
 import { initializeDatabaseMode } from './utils/migration.js';
 import { createFetchWithProxy, getProxyConfigFromEnv } from './services/proxy.js';
 import { isRetryableDbError } from './utils/dbRetry.js';
-import { hydrateSystemConfigCache } from './utils/systemConfigCache.js';
+import { hydrateSystemConfigCache, getCachedSystemConfig } from './utils/systemConfigCache.js';
 import { logger } from './utils/logger.js';
 import {
   startHostedEventSubscriber,
@@ -180,6 +180,18 @@ async function boot() {
     }
 
     await hydrateSystemConfigCache();
+
+    // GHSA-wmv9-3qh3-9rpw: skipAuth disables dashboard authentication entirely
+    // and treats every API caller as an implicit admin. Make sure operators
+    // cannot enable it without seeing the consequences in their logs.
+    if (getCachedSystemConfig()?.routing?.skipAuth) {
+      logger.warn(
+        '⚠️  SECURITY WARNING: routing.skipAuth is ENABLED — dashboard authentication is DISABLED and ALL API callers are treated as admins.\n' +
+          '⚠️  Anyone who can reach this port can read/modify settings, export secrets, and register stdio servers (remote code execution).\n' +
+          '⚠️  Never expose this instance to a network. To disable: set systemConfig.routing.skipAuth=false in mcp_settings.json.',
+      );
+    }
+
     void startHostedEventSubscriber().catch((error) => {
       logger.warn('[hosted] Failed to launch Redis event subscriber in background', {
         error: String(error),

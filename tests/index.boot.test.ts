@@ -14,6 +14,7 @@ const createFetchWithProxyMock = jest.fn();
 const getProxyConfigFromEnvMock = jest.fn(() => ({}));
 const isRetryableDbErrorMock = jest.fn(() => false);
 const hydrateSystemConfigCacheMock = jest.fn(async () => undefined);
+const getCachedSystemConfigMock = jest.fn(() => null);
 const startHostedEventSubscriberMock = jest.fn();
 const stopHostedEventSubscriberMock = jest.fn(async () => undefined);
 
@@ -37,6 +38,7 @@ jest.mock('../src/utils/dbRetry.js', () => ({
 
 jest.mock('../src/utils/systemConfigCache.js', () => ({
   hydrateSystemConfigCache: hydrateSystemConfigCacheMock,
+  getCachedSystemConfig: getCachedSystemConfigMock,
 }));
 
 jest.mock('../src/services/hostedEventSubscriber.js', () => ({
@@ -63,6 +65,7 @@ describe('index boot', () => {
     getProxyConfigFromEnvMock.mockReturnValue({});
     isRetryableDbErrorMock.mockReturnValue(false);
     hydrateSystemConfigCacheMock.mockResolvedValue(undefined);
+    getCachedSystemConfigMock.mockReturnValue(null);
     startHostedEventSubscriberMock.mockReturnValue(new Promise(() => undefined));
 
     delete process.env.USE_DB;
@@ -78,5 +81,20 @@ describe('index boot', () => {
     expect(startHostedEventSubscriberMock).toHaveBeenCalledTimes(1);
     expect(initializeMock).toHaveBeenCalledTimes(1);
     expect(startMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('logs the skipAuth security warning path without crashing boot', async () => {
+    getCachedSystemConfigMock.mockReturnValue({ routing: { skipAuth: true } } as never);
+    await import('../src/index.js');
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(initializeMock).toHaveBeenCalledTimes(1);
+    expect(startMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('boot survives a null cached system config', async () => {
+    getCachedSystemConfigMock.mockReturnValue(null);
+    await import('../src/index.js');
+    expect(initializeMock).toHaveBeenCalledTimes(1);
   });
 });
