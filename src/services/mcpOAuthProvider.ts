@@ -592,6 +592,6 @@ export const createOAuthProvider = async (
   // Create and return the provider using the factory method
   const provider = await MCPHubOAuthProvider.create(serverName, serverConfig);
 
-  logger.log('Created OAuth provider', { serverName });
+  logger.log('Created OAuth provider', JSON.stringify({ serverName }));
   return provider;
 };
