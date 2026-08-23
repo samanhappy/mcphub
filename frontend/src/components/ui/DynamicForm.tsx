@@ -187,6 +187,12 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
     setFormValues((prev) => {
       const newValues = { ...prev };
       const keys = path.split('.');
+
+      // Guard against prototype pollution via malicious path segments
+      if (keys.some((key) => key === '__proto__' || key === 'constructor' || key === 'prototype')) {
+        return prev;
+      }
+
       let current = newValues;
 
       for (let i = 0; i < keys.length - 1; i++) {

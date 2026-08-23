@@ -17,8 +17,12 @@ const storage = multer.diskStorage({
   },
   filename: (_req, file, cb) => {
     const timestamp = Date.now();
-    const originalName = path.parse(file.originalname).name;
-    cb(null, `${originalName}-${timestamp}.mcpb`);
+    // Sanitize the original name so the stored path cannot escape the upload directory
+    const safeOriginalName = path.parse(path.basename(file.originalname)).name.replace(
+      /[^A-Za-z0-9._-]/g,
+      '_',
+    );
+    cb(null, `${safeOriginalName}-${timestamp}.mcpb`);
   },
 });
 
@@ -42,6 +46,12 @@ const MCPB_UPLOAD_DIR = path.join('data', 'uploads', 'mcpb');
 const MCPB_SERVER_NAME_PATTERN = /^[A-Za-z0-9._-]+$/;
 
 const getMcpbUploadDir = (): string => path.join(process.cwd(), MCPB_UPLOAD_DIR);
+
+const isPathInsideUploadDir = (targetPath: string): boolean => {
+  const uploadDir = path.resolve(getMcpbUploadDir());
+  const resolvedTargetPath = path.resolve(targetPath);
+  return resolvedTargetPath === uploadDir || resolvedTargetPath.startsWith(uploadDir + path.sep);
+};
 
 const validateMcpbServerName = (serverName: unknown): string => {
   if (typeof serverName !== 'string') {
@@ -112,6 +122,13 @@ export const uploadMcpbFile = async (req: Request, res: Response): Promise<void>
     }
 
     const mcpbFilePath = req.file.path;
+    if (!isPathInsideUploadDir(mcpbFilePath)) {
+      res.status(400).json({
+        success: false,
+        message: 'Invalid MCPB file location',
+      });
+      return;
+    }
     const timestamp = Date.now();
     const tempExtractDir = path.join(path.dirname(mcpbFilePath), `temp-extracted-${timestamp}`);
 

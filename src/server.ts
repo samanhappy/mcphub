@@ -25,7 +25,7 @@ import { resolveCorsOrigin } from './utils/corsOrigin.js';
 import { setFrontendDistPath } from './utils/frontendShell.js';
 import http from 'http';
 import type { Socket } from 'net';
-import { mcpConnectionRateLimiter } from './utils/rateLimit.js';
+import { mcpConnectionRateLimiter, spaPageRateLimiter } from './utils/rateLimit.js';
 import { closeHttpServer } from './utils/serverShutdown.js';
 import { logger } from './utils/logger.js';
 
@@ -209,7 +209,7 @@ export class AppServer {
 
       // Add the wildcard route for SPA with base path
       if (fs.existsSync(path.join(this.frontendPath, 'index.html'))) {
-        this.app.get(`${this.basePath}/*`, (_req, res) => {
+        this.app.get(`${this.basePath}/*`, spaPageRateLimiter, (_req, res) => {
           res.sendFile(path.join(this.frontendPath!, 'index.html'));
         });
 
