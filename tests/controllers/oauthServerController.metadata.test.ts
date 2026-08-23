@@ -78,7 +78,7 @@ describe('oauthServerController metadata endpoints', () => {
       response_types_supported: ['code'],
       grant_types_supported: ['authorization_code', 'refresh_token'],
       token_endpoint_auth_methods_supported: ['none'],
-      code_challenge_methods_supported: ['S256', 'plain'],
+      code_challenge_methods_supported: ['S256'],
       registration_endpoint: 'https://mcp.example.com/hub/oauth/register',
     });
   });
@@ -159,7 +159,7 @@ describe('oauthServerController metadata endpoints', () => {
         authorization_endpoint: 'https://localhost:3000/oauth/authorize',
         token_endpoint: 'https://localhost:3000/oauth/token',
         scopes_supported: ['read', 'write'],
-        code_challenge_methods_supported: ['S256', 'plain'],
+        code_challenge_methods_supported: ['S256'],
       }),
     );
   });
@@ -243,7 +243,7 @@ describe('oauthServerController metadata endpoints', () => {
     expect(mockJson).toHaveBeenCalledWith(
       expect.objectContaining({
         scopes_supported: ['read', 'write'],
-        code_challenge_methods_supported: ['S256', 'plain'],
+        code_challenge_methods_supported: ['S256'],
         token_endpoint_auth_methods_supported: ['none'],
       }),
     );

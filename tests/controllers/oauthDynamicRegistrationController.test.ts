@@ -19,6 +19,12 @@ jest.mock('../../src/models/OAuth.js', () => ({
   deleteOAuthClient: deleteOAuthClientMock,
 }));
 
+const mockAuthMiddleware = jest.fn((req, res, next) => next());
+
+jest.mock('../../src/middlewares/auth.js', () => ({
+  auth: (...args: [unknown, unknown, () => void]) => mockAuthMiddleware(...args),
+}));
+
 import { registerClient } from '../../src/controllers/oauthDynamicRegistrationController.js';
 
 describe('oauthDynamicRegistrationController - registerClient', () => {
@@ -91,5 +97,64 @@ describe('oauthDynamicRegistrationController - registerClient', () => {
         ),
       }),
     );
+  });
+});
+
+describe('registerClient requiresAuthentication gate', () => {
+  let mockJson: jest.Mock;
+  let mockStatus: jest.Mock;
+  let mockRequest: Partial<Request>;
+  let mockResponse: Partial<Response>;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    // Restore default pass-through behavior cleared by the outer clearAllMocks
+    mockAuthMiddleware.mockImplementation((req, res, next) => next());
+
+    mockJson = jest.fn();
+    mockStatus = jest.fn().mockReturnThis();
+    mockRequest = {
+      protocol: 'https',
+      get: jest.fn().mockReturnValue('localhost:3000'),
+      body: {
+        redirect_uris: ['https://client.example.com/callback'],
+        client_name: 'Gated Client',
+      },
+    };
+    mockResponse = { json: mockJson, status: mockStatus };
+
+    getSystemConfigMock.mockResolvedValue({
+      oauthServer: {
+        enabled: true,
+        allowedScopes: ['read', 'write'],
+        dynamicRegistration: {
+          enabled: true,
+          requiresAuthentication: true,
+        },
+      },
+    });
+    createOAuthClientMock.mockImplementation(async (client) => client);
+  });
+
+  it('rejects unauthenticated registrations with 401 when requiresAuthentication is set', async () => {
+    mockAuthMiddleware.mockImplementationOnce((_req, res, _next) => {
+      (res as unknown as { status: (n: number) => unknown; json: (b: unknown) => unknown })
+        .status(401)
+        .json({ error: 'invalid_token' });
+    });
+
+    await registerClient(mockRequest as Request, mockResponse as Response);
+
+    expect(mockStatus).toHaveBeenCalledWith(401);
+    expect(createOAuthClientMock).not.toHaveBeenCalled();
+  });
+
+  it('registers normally when a credential resolves to a user', async () => {
+    (mockRequest as { user?: unknown }).user = { username: 'alice', isAdmin: false };
+
+    await registerClient(mockRequest as Request, mockResponse as Response);
+
+    expect(mockStatus).toHaveBeenCalledWith(201);
+    expect(createOAuthClientMock).toHaveBeenCalledTimes(1);
   });
 });
