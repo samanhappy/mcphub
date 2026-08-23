@@ -22,6 +22,10 @@ const { Request, Response } = OAuth2Server;
 const oauthModel: OAuth2Server.AuthorizationCodeModel & OAuth2Server.RefreshTokenModel = {
   /**
    * Get client by client ID
+   *
+   * Confidential clients (a secret is registered) MUST always present their
+   * secret, even when the global requireClientSecret toggle is off — that
+   * toggle only permits secret-less PUBLIC clients (GHSA-3m7m).
    */
   getClient: async (clientId: string, clientSecret?: string) => {
     const client = await findOAuthClientById(clientId);
@@ -29,9 +33,9 @@ const oauthModel: OAuth2Server.AuthorizationCodeModel & OAuth2Server.RefreshToke
       return false;
     }
 
-    // If client secret is provided, verify it
-    if (clientSecret && client.clientSecret) {
-      if (!safeCompare(client.clientSecret, clientSecret)) {
+    // If the registered client has a secret, it must be presented and match.
+    if (client.clientSecret) {
+      if (!clientSecret || !safeCompare(client.clientSecret, clientSecret)) {
         return false;
       }
     }
@@ -47,12 +51,23 @@ const oauthModel: OAuth2Server.AuthorizationCodeModel & OAuth2Server.RefreshToke
 
   /**
    * Save authorization code
+   *
+   * Public clients (no registered secret) MUST use PKCE with the S256 method:
+   * without this, an intercepted code could be redeemed by anyone (GHSA-3m7m).
    */
   saveAuthorizationCode: async (
     code: OAuth2Server.AuthorizationCode,
     client: OAuth2Server.Client,
     user: OAuth2Server.User,
   ) => {
+    if (!client.clientSecret) {
+      if (!code.codeChallenge || code.codeChallengeMethod !== 'S256') {
+        throw new OAuth2Server.InvalidRequestError(
+          'PKCE with code_challenge_method=S256 is required for public clients',
+        );
+      }
+    }
+
     const systemConfigDao = getSystemConfigDao();
     const systemConfig = await systemConfigDao.get();
     const oauthConfig = systemConfig?.oauthServer;
@@ -378,24 +393,10 @@ export const generateCodeChallenge = (verifier: string): string => {
 };
 
 /**
- * Verify PKCE code challenge
+ * Test seam: the OAuth2Server model implementation. Exposed so unit tests can
+ * verify per-client authentication and PKCE policy directly.
  */
-export const verifyCodeChallenge = (
-  verifier: string,
-  challenge: string,
-  method: string = 'S256',
-): boolean => {
-  if (method === 'plain') {
-    return verifier === challenge;
-  }
-
-  if (method === 'S256') {
-    const computed = generateCodeChallenge(verifier);
-    return computed === challenge;
-  }
-
-  return false;
-};
+export const getOAuthModel = (): typeof oauthModel => oauthModel;
 
 /**
  * Handle OAuth authorize request

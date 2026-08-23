@@ -71,6 +71,9 @@ describe('oauthServerController getAuthorize consent shell', () => {
     (findOAuthClientById as jest.Mock).mockResolvedValue({
       clientId: 'trusted-client',
       name: 'Trusted Client',
+      // Confidential client: skips the public-client PKCE requirement so the
+      // consent-shell assertions stay focused on rendering.
+      clientSecret: 'confidential-secret',
       redirectUris: ['https://trusted.example.com/callback'],
     });
 
@@ -272,6 +275,8 @@ describe('oauthServerController getAuthorize consent shell', () => {
     (findOAuthClientById as jest.Mock).mockResolvedValue({
       clientId: 'e9d6adf9e48449e6bee3f8b6fb024297',
       name: 'Claude',
+      // Confidential client (skips public-client PKCE requirement)
+      clientSecret: 'confidential-secret',
       redirectUris: ['https://claude.ai/api/mcp/auth_callback'],
       metadata: {
         application_type: 'web',

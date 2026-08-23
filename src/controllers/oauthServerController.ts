@@ -343,6 +343,16 @@ export const getAuthorize = async (req: Request, res: Response): Promise<void> =
       return;
     }
 
+    // RFC 7636 + GHSA-3m7m: public clients (no registered secret) must present
+    // an S256 code challenge up front. Confidential clients may omit PKCE.
+    if (!client.clientSecret && (!code_challenge || code_challenge_method !== 'S256')) {
+      res.status(400).json({
+        error: 'invalid_request',
+        error_description: 'PKCE with code_challenge_method=S256 is required for public clients',
+      });
+      return;
+    }
+
     // Check if user is authenticated (including via JWT token)
     let user = (req as any).user;
     if (!user) {
@@ -635,7 +645,8 @@ export const getMetadata = async (req: Request, res: Response): Promise<void> =>
         oauthConfig.requireClientSecret !== false
           ? ['client_secret_basic', 'client_secret_post', 'none']
           : ['none'],
-      code_challenge_methods_supported: ['S256', 'plain'],
+      // Only S256 is supported; the library rejects plain (GHSA-3m7m).
+      code_challenge_methods_supported: ['S256'],
     };
 
     // Add dynamic registration endpoint if enabled
