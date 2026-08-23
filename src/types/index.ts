@@ -753,6 +753,7 @@ export interface TemplateExportOptions {
   description?: string; // Template description
   groupIds?: string[]; // Specific group IDs to export (empty = all)
   includeDisabledServers?: boolean; // Include disabled servers (default: false)
+  requestingUser?: IUser; // Caller identity; non-admins only export what they can see
 }
 
 // Result of importing a template
