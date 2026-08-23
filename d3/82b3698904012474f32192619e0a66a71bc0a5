@@ -1,0 +1,23 @@
+src/utils/ssrf.ts
+  s_f6ad850d1ee010::t_072637d14b4922 78-80,82-87
+  s_f6ad850d1ee010::t_411941812f7090 81
+src/utils/__tests__/ssrf.test.ts
+  s_f6ad850d1ee010::t_add63eb336e41c 28-37
+  s_f6ad850d1ee010::t_34380ee00807f3 48-49
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "d382b3698904012474f32192619e0a66a71bc0a5",
+  "prompts": {},
+  "sessions": {
+    "s_f6ad850d1ee010": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_fd33ad616ffe1S2hjbNZxMUA71",
+        "model": "x-preview-f-free"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
