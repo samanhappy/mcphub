@@ -75,7 +75,16 @@ function ipv6ToBigInt(addr: string): bigint {
 
 function isBlockedIpv6(big: bigint): boolean {
   if (big === 0n || big === 1n) return true; // ::, ::1
-  if (big >> 118n === 0x3fan) return true; // fe80::/10 link-local
+  const top10 = big >> 118n;
+  if (top10 === 0x3fan) return true; // fe80::/10 link-local
+  if (top10 === 0x3fbn) return true; // fec0::/10 site-local (deprecated)
+  if (big >> 120n === 0xffn) return true; // ff00::/8 multicast — never a valid dial target
+  const top16 = big >> 112n;
+  if (top16 === 0x2002n) return true; // 2002::/16 6to4 transition (deprecated, RFC 7526)
+  if (top16 === 0x64ffn && big >> 80n === 0x64ff9b1n) return true; // 64:ff9b:1::/48 local-use NAT64
+  const top32 = big >> 96n;
+  if (top32 === 0x20010000n) return true; // 2001:0::/32 Teredo transition
+  if (top32 === 0x64ff9bn) return true; // 64:ff9b::/96 NAT64 well-known prefix
   if (big >> 121n === 0x7en) return true; // fc00::/7 unique-local
   if (big >> 32n === 0xffffn) return isBlockedIpv4Number(Number(big & 0xffffffffn)); // ::ffff:a.b.c.d
   if (big < 0x100000000n) return isBlockedIpv4Number(Number(big)); // ::a.b.c.d (deprecated, compatible)
