@@ -6,9 +6,10 @@ MCPHub 通过将多个 MCP（Model Context Protocol）服务器组织为灵活�
 
 ![控制面板预览](assets/dashboard.zh.png)
 
-## 🌐 在线文档与演示
+## 🌐 官网、演示与文档
 
-- **文档地址**: [docs.mcphub.app](https://docs.mcphub.app/)
+- **官网**: [mcphub.app](https://www.mcphub.app/zh)
+- **文档**: [docs.mcphub.app](https://docs.mcphub.app/)
 - **演示环境**: [demo.mcphub.app](https://demo.mcphub.app/)
 
 ## 🚀 功能亮点
@@ -146,6 +147,15 @@ pnpm dev
 - **存储**：默认基于文件的 `mcp_settings.json`；可选 PostgreSQL（TypeORM + pgvector，用于智能路由）
 - **认证**：本地账号使用 JWT + bcrypt；支持 Bearer Key、内置 OAuth 2.0 服务端（`@node-oauth/oauth2-server`），以及可选的 Better Auth（GitHub/Google 一键登录）
 - **协议**：Model Context Protocol SDK
+
+## 🏢 生产支持
+
+正在生产环境使用 MCPHub？
+
+可以直接与维护者合作，解决生产部署、OAuth/OIDC、访问控制、
+凭据管理、审计、Kubernetes 和高可用准备等问题。
+
+[讨论 Production Pilot →](https://www.mcphub.app/zh/pricing)
 
 ## 👥 贡献指南
 

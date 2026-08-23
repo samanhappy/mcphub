@@ -8,8 +8,9 @@ MCPHub makes it easy to manage and scale multiple MCP (Model Context Protocol) s
 
 ![Dashboard Preview](assets/dashboard.png)
 
-## 🌐 Live Demo & Docs
+## 🌐 Website, Demo & Docs
 
+- **Website**: [mcphub.app](https://www.mcphub.app/)
 - **Documentation**: [docs.mcphub.app](https://docs.mcphub.app/)
 - **Demo Environment**: [demo.mcphub.app](https://demo.mcphub.app/)
 
@@ -150,6 +151,15 @@ Local development uses `admin` / `admin123` and stores its writable settings cop
 - **Storage**: file-based `mcp_settings.json` by default; PostgreSQL via TypeORM with pgvector for Smart Routing
 - **Auth**: JWT + bcrypt for local accounts; bearer keys; built-in OAuth 2.0 server (`@node-oauth/oauth2-server`); optional Better Auth for GitHub/Google login
 - **Protocol**: Model Context Protocol SDK
+
+## 🏢 Production Support
+
+Running MCPHub in production?
+
+Work directly with the maintainer on production deployment, OAuth/OIDC,
+access control, credential management, audit, Kubernetes, and HA readiness.
+
+[Discuss a production pilot →](https://www.mcphub.app/pricing)
 
 ## 👥 Contributing
 
