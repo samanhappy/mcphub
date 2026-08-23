@@ -32,3 +32,13 @@ export const mcpConnectionRateLimiter = createStandardRateLimiter({
   windowMs: 60 * 1000,
   max: 480,
 });
+
+export const authAttemptRateLimiter = createStandardRateLimiter({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+});
+
+export const spaPageRateLimiter = createStandardRateLimiter({
+  windowMs: 60 * 1000,
+  max: 600,
+});

@@ -147,6 +147,11 @@ const assignServerOwner = (req: Request, config: ServerConfig, existingOwner?: s
   config.owner = currentUser.username;
 };
 
+// Keys that must never be used as config object indices to prevent prototype pollution
+const UNSAFE_CONFIG_ITEM_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
+
+const isSafeConfigItemKey = (value: string): boolean => !UNSAFE_CONFIG_ITEM_KEYS.has(value);
+
 const clearDescriptionOverride = (
   items: DescribableConfig,
   itemName: string,
@@ -1313,7 +1318,7 @@ export const toggleTool = async (req: Request, res: Response): Promise<void> => 
     const toolName = decodeURIComponent(req.params.toolName);
     const { enabled } = req.body;
 
-    if (!serverName || !toolName) {
+    if (!serverName || !toolName || !isSafeConfigItemKey(toolName)) {
       res.status(400).json({
         success: false,
         message: 'Server name and tool name are required',
@@ -1376,7 +1381,7 @@ export const updateToolDescription = async (req: Request, res: Response): Promis
     const toolName = decodeURIComponent(req.params.toolName);
     const { description } = req.body;
 
-    if (!serverName || !toolName) {
+    if (!serverName || !toolName || !isSafeConfigItemKey(toolName)) {
       res.status(400).json({
         success: false,
         message: 'Server name and tool name are required',
@@ -1442,7 +1447,7 @@ export const resetToolDescription = async (req: Request, res: Response): Promise
     const serverName = decodeURIComponent(req.params.serverName);
     const toolName = decodeURIComponent(req.params.toolName);
 
-    if (!serverName || !toolName) {
+    if (!serverName || !toolName || !isSafeConfigItemKey(toolName)) {
       res.status(400).json({
         success: false,
         message: 'Server name and tool name are required',
@@ -2196,7 +2201,7 @@ export const togglePrompt = async (req: Request, res: Response): Promise<void> =
     const promptName = decodeURIComponent(req.params.promptName);
     const { enabled } = req.body;
 
-    if (!serverName || !promptName) {
+    if (!serverName || !promptName || !isSafeConfigItemKey(promptName)) {
       res.status(400).json({
         success: false,
         message: 'Server name and prompt name are required',
@@ -2259,7 +2264,7 @@ export const updatePromptDescription = async (req: Request, res: Response): Prom
     const promptName = decodeURIComponent(req.params.promptName);
     const { description } = req.body;
 
-    if (!serverName || !promptName) {
+    if (!serverName || !promptName || !isSafeConfigItemKey(promptName)) {
       res.status(400).json({
         success: false,
         message: 'Server name and prompt name are required',
@@ -2322,7 +2327,7 @@ export const resetPromptDescription = async (req: Request, res: Response): Promi
     const serverName = decodeURIComponent(req.params.serverName);
     const promptName = decodeURIComponent(req.params.promptName);
 
-    if (!serverName || !promptName) {
+    if (!serverName || !promptName || !isSafeConfigItemKey(promptName)) {
       res.status(400).json({
         success: false,
         message: 'Server name and prompt name are required',
@@ -2377,7 +2382,7 @@ export const toggleResource = async (req: Request, res: Response): Promise<void>
     const resourceUri = decodeURIComponent(req.params.resourceUri);
     const { enabled } = req.body;
 
-    if (!serverName || !resourceUri) {
+    if (!serverName || !resourceUri || !isSafeConfigItemKey(resourceUri)) {
       res.status(400).json({
         success: false,
         message: 'Server name and resource URI are required',
@@ -2440,7 +2445,7 @@ export const updateResourceDescription = async (req: Request, res: Response): Pr
     const resourceUri = decodeURIComponent(req.params.resourceUri);
     const { description } = req.body;
 
-    if (!serverName || !resourceUri) {
+    if (!serverName || !resourceUri || !isSafeConfigItemKey(resourceUri)) {
       res.status(400).json({
         success: false,
         message: 'Server name and resource URI are required',
@@ -2503,7 +2508,7 @@ export const resetResourceDescription = async (req: Request, res: Response): Pro
     const serverName = decodeURIComponent(req.params.serverName);
     const resourceUri = decodeURIComponent(req.params.resourceUri);
 
-    if (!serverName || !resourceUri) {
+    if (!serverName || !resourceUri || !isSafeConfigItemKey(resourceUri)) {
       res.status(400).json({
         success: false,
         message: 'Server name and resource URI are required',

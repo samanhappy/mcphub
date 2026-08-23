@@ -61,6 +61,7 @@ jest.mock('../../src/middlewares/userContext.js', () => ({
 jest.mock('../../src/utils/rateLimit.js', () => ({
   __esModule: true,
   mcpConnectionRateLimiter: mcpConnectionRateLimiterMock,
+  spaPageRateLimiter: mcpConnectionRateLimiterMock,
 }));
 
 import { AppServer } from '../../src/server.js';

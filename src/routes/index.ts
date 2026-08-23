@@ -170,10 +170,11 @@ import {
 import { auth } from '../middlewares/auth.js';
 import { getBetterAuthRuntimeConfig } from '../services/betterAuthConfig.js';
 import {
+  authAttemptRateLimiter,
   authenticatedRouteRateLimiter,
   hostedInternalEventRateLimiter,
-  templateRateLimiter,
   mcpConnectionRateLimiter,
+  templateRateLimiter,
 } from '../utils/rateLimit.js';
 
 const router = express.Router();
@@ -209,7 +210,7 @@ export const initRoutes = async (app: express.Application): Promise<void> => {
   );
 
   // OAuth callback endpoint (no auth required, public callback URL)
-  app.get('/oauth/callback', handleOAuthCallback);
+  app.get('/oauth/callback', mcpConnectionRateLimiter, handleOAuthCallback);
 
   // OAuth Authorization Server endpoints (no auth required for OAuth flow)
   app.get('/oauth/authorize', mcpConnectionRateLimiter, getAuthorize);
@@ -422,6 +423,7 @@ export const initRoutes = async (app: express.Application): Promise<void> => {
       check('username', 'Username is required').not().isEmpty(),
       check('password', 'Password is required').not().isEmpty(),
     ],
+    authAttemptRateLimiter,
     login,
   );
 
@@ -431,6 +433,7 @@ export const initRoutes = async (app: express.Application): Promise<void> => {
       check('username', 'Username is required').not().isEmpty(),
       check('password', 'Password must be at least 6 characters').isLength({ min: 6 }),
     ],
+    authAttemptRateLimiter,
     register,
   );
 
