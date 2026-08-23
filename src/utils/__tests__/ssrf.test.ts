@@ -25,6 +25,16 @@ describe('isBlockedIp', () => {
     ['::', 'IPv6 unspecified'],
     ['::ffff:127.0.0.1', 'IPv4-mapped loopback'],
     ['::ffff:169.254.169.254', 'IPv4-mapped link-local'],
+    ['64:ff9b::169.254.169.254', 'NAT64 well-known prefix embedding link-local'],
+    ['64:ff9b::7f00:1', 'NAT64 embedding loopback'],
+    ['64:ff9b:1::a9fe:a9fe', 'NAT64 local-use /48 embedding link-local'],
+    ['2002:c0a8:0101::', '6to4 embedding 192.168.1.1'],
+    ['2002:a9fe:a9fe::', '6to4 embedding link-local'],
+    ['2002:0808:0808::', '6to4 even with public embedded IPv4 (deprecated, RFC 7526)'],
+    ['2001:0:1111:2222:3333:4444:4455:5566', 'Teredo prefix 2001:0::/32'],
+    ['fec0::1', 'site-local (deprecated)'],
+    ['fec0:1234::1', 'site-local upper range feff::/16 boundary'],
+    ['febf:ffff::1', 'link-local /10 upper boundary (fe80::/10 ends at febf)'],
   ])('blocks %s (%s)', (ip) => {
     expect(isBlockedIp(ip)).toBe(true);
   });
@@ -35,6 +45,8 @@ describe('isBlockedIp', () => {
     ['172.32.0.1', 'just outside 172.16/12'],
     ['11.0.0.1', 'just outside 10/8'],
     ['2606:4700:4700::1111', 'Cloudflare IPv6'],
+    ['2001:4860:4860::8888', 'Google IPv6 DNS (global unicast, not Teredo)'],
+    ['2620:fe::fe', 'Quad9 IPv6'],
   ])('allows %s (%s)', (ip) => {
     expect(isBlockedIp(ip)).toBe(false);
   });
