@@ -1,0 +1,23 @@
+README.md
+  s_3378330dc62714::t_105fd284444845 11,13
+  s_3378330dc62714::t_74214f5f20d445 155-163
+README.zh.md
+  s_3378330dc62714::t_3029002163e2cd 151-159
+  s_3378330dc62714::t_27e767fd9bc577 9,11-12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "9b9d29eed2e24a4cb84cad3c6ac56f3967b27de0",
+  "prompts": {},
+  "sessions": {
+    "s_3378330dc62714": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_fd1e3c553ffeDvhshaNEbUeVMy",
+        "model": "x-preview-f-free"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
