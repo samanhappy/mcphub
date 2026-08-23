@@ -47,12 +47,6 @@ const MCPB_SERVER_NAME_PATTERN = /^[A-Za-z0-9._-]+$/;
 
 const getMcpbUploadDir = (): string => path.join(process.cwd(), MCPB_UPLOAD_DIR);
 
-const isPathInsideUploadDir = (targetPath: string): boolean => {
-  const uploadDir = path.resolve(getMcpbUploadDir());
-  const resolvedTargetPath = path.resolve(targetPath);
-  return resolvedTargetPath === uploadDir || resolvedTargetPath.startsWith(uploadDir + path.sep);
-};
-
 const validateMcpbServerName = (serverName: unknown): string => {
   if (typeof serverName !== 'string') {
     throw new Error('Invalid manifest: missing name');
@@ -121,11 +115,12 @@ export const uploadMcpbFile = async (req: Request, res: Response): Promise<void>
       return;
     }
 
-    const mcpbFilePath = req.file.path;
-    if (!isPathInsideUploadDir(mcpbFilePath)) {
+    const mcpbFilePath = req.file?.path;
+    const uploadRoot = `${path.resolve(getMcpbUploadDir())}${path.sep}`;
+    if (!mcpbFilePath || !path.resolve(mcpbFilePath).startsWith(uploadRoot)) {
       res.status(400).json({
         success: false,
-        message: 'Invalid MCPB file location',
+        message: mcpbFilePath ? 'Invalid MCPB file location' : 'No MCPB file uploaded',
       });
       return;
     }

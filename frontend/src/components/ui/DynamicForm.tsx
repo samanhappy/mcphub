@@ -187,22 +187,25 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
     setFormValues((prev) => {
       const newValues = { ...prev };
       const keys = path.split('.');
-
-      // Guard against prototype pollution via malicious path segments
-      if (keys.some((key) => key === '__proto__' || key === 'constructor' || key === 'prototype')) {
-        return prev;
-      }
-
       let current = newValues;
 
       for (let i = 0; i < keys.length - 1; i++) {
-        if (!current[keys[i]]) {
-          current[keys[i]] = {};
+        const key = keys[i];
+        if (key === '__proto__' || key === 'constructor' || key === 'prototype') {
+          return prev;
         }
-        current = current[keys[i]];
+        if (!current[key]) {
+          current[key] = {};
+        }
+        current = current[key];
       }
 
-      current[keys[keys.length - 1]] = value;
+      const lastKey = keys[keys.length - 1];
+      if (!lastKey || lastKey === '__proto__' || lastKey === 'constructor' || lastKey === 'prototype') {
+        return prev;
+      }
+
+      current[lastKey] = value;
 
       // Save to localStorage if storageKey is provided
       if (storageKey) {
