@@ -1,10 +1,11 @@
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
+import { readFile } from 'node:fs/promises';
 import { CookieJar } from 'tough-cookie';
 import SwaggerParser from '@apidevtools/swagger-parser';
 import * as yaml from 'js-yaml';
 import { OpenAPIV3 } from 'openapi-types';
 import { ServerConfig, OpenAPISecurityConfig } from '../types/index.js';
-import { assertSafeUrl, UnsafeUrlError } from '../utils/ssrf.js';
+import { assertSafeUrl, UnsafeUrlError, createRedirectValidatingFetch } from '../utils/ssrf.js';
 import { getUserDao } from '../dao/index.js';
 import { sanitizeStringForLogging, createSafeJSON } from '../utils/serialization.js';
 
@@ -46,6 +47,11 @@ export class OpenAPIClient {
   // Resolved in initialize(): admin-owned servers may target internal services
   // and skip the SSRF internal-IP blocklist.
   private allowInternalNetworks = false;
+  // Records the most recent SSRF rejection raised while resolving external
+  // $refs. SwaggerParser wraps resolver failures in its own ResolverError and
+  // drops the original cause, so initialize() uses this to re-throw the real
+  // UnsafeUrlError to callers.
+  private refGuardRejection?: UnsafeUrlError;
 
   constructor(
     private config: ServerConfig,
@@ -289,6 +295,10 @@ export class OpenAPIClient {
       // No-op when no OAuth2 security is configured.
       await this.ensureOAuth2AccessToken();
 
+      // Reset the external-$ref guard marker so a rejection from THIS
+      // dereference pass is never confused with a stale one.
+      this.refGuardRejection = undefined;
+
       // Parse and dereference the OpenAPI specification
       if (this.config.openapi?.url) {
         // Fetch the document through the authenticated httpClient (carries
@@ -314,12 +324,13 @@ export class OpenAPIClient {
         this.spec = (await SwaggerParser.dereference(
           specUrl,
           this.parseSpecDocument(raw),
-          {},
+          this.guardedRefResolveOptions(),
         )) as OpenAPIV3.Document;
       } else if (this.config.openapi?.schema) {
         // For schema object, we need to pass it as a cloned object
         this.spec = (await SwaggerParser.dereference(
           JSON.parse(JSON.stringify(this.config.openapi.schema)),
+          this.guardedRefResolveOptions(),
         )) as OpenAPIV3.Document;
       } else {
         throw new Error('Either OpenAPI URL or schema must be provided');
@@ -334,6 +345,12 @@ export class OpenAPIClient {
       // target from a parse/auth failure (matches callTool's handling).
       if (error instanceof UnsafeUrlError) {
         throw error;
+      }
+      // SwaggerParser wraps resolver failures (including our SSRF guard
+      // rejections) in its own ResolverError and drops the cause — surface the
+      // real UnsafeUrlError when the guarded $ref resolver flagged one.
+      if (this.refGuardRejection) {
+        throw this.refGuardRejection;
       }
       const errorMessage = error instanceof Error ? error.message : String(error);
       throw new Error(
@@ -351,6 +368,60 @@ export class OpenAPIClient {
     } catch {
       return yaml.load(raw);
     }
+  }
+
+  // SwaggerParser options that replace its built-in resolvers so EVERY external
+  // $ref target is validated by the SSRF guard before any request leaves the
+  // process. Without this, a non-admin-supplied spec could point $refs at
+  // internal addresses (IMDS, RFC1918, loopback) or local files and have their
+  // contents embedded into the dereferenced schema served back to clients.
+  // Admin-owned servers keep the same allowInternal escape hatch as the main
+  // document download and callTool.
+  private guardedRefResolveOptions(): Record<string, unknown> {
+    const rejectUnsafe = (err: UnsafeUrlError): never => {
+      this.refGuardRejection = err;
+      throw err;
+    };
+    return {
+      resolve: {
+        http: {
+          order: 1,
+          canRead: (file: { url: string }) => /^https?:\/\//i.test(file.url),
+          read: async (file: { url: string }): Promise<string> => {
+            try {
+              await assertSafeUrl(file.url, { allowInternal: this.allowInternalNetworks });
+            } catch (error) {
+              rejectUnsafe(error as UnsafeUrlError);
+            }
+            // Plain fetch, NOT this.httpClient: default auth headers and
+            // interceptors must never be forwarded cross-origin to $ref
+            // targets (#1044). Redirects are followed manually with every hop
+            // re-validated by the guard.
+            const safeFetch = createRedirectValidatingFetch(
+              (url, init) => fetch(url, init),
+              this.allowInternalNetworks,
+            );
+            const response = await safeFetch(file.url, { method: 'GET', headers: {} });
+            const buf = await response.arrayBuffer();
+            return new TextDecoder().decode(buf);
+          },
+        },
+        file: {
+          order: 1,
+          canRead: true,
+          read: async (file: { url: string }): Promise<string> => {
+            if (!this.allowInternalNetworks) {
+              rejectUnsafe(
+                new UnsafeUrlError(
+                  `Blocked local file reference in specification: ${sanitizeStringForLogging(file.url)}`,
+                ),
+              );
+            }
+            return readFile(new URL(file.url), 'utf8');
+          },
+        },
+      },
+    };
   }
 
   private generateOperationName(method: string, path: string): string {

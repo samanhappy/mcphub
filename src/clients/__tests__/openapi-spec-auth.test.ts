@@ -235,7 +235,9 @@ describe('OpenAPIClient - authenticated spec document fetch (#1044)', () => {
 
   it('does not forward credentials to a cross-origin external $ref', async () => {
     const credentials = Buffer.from('user:pass').toString('base64');
-    const externalUrl = 'https://external.example.com/schema.json';
+    // Public IP literal so the external-$ref SSRF guard passes without DNS
+    // (all refs are guarded since GHSA-9wx9; example.com is unresolvable by design).
+    const externalUrl = 'https://93.184.216.34/schema.json';
     const docWithExternalRef = JSON.stringify({
       openapi: '3.0.0',
       info: { title: 'Test API', version: '1.0.0' },
