@@ -47,6 +47,13 @@ const mockTreeKill = jest.fn((_pid: number, _signal: string, cb?: (err?: Error) 
 });
 jest.mock('tree-kill', () => mockTreeKill);
 
+// Mutable holder for the process-lister availability probe (issue #1072).
+// The jest.mock factory must be self-contained, hence the wrapper object.
+const mockProcessTreeKillAvailability = { value: true };
+jest.mock('../../src/utils/processTree', () => ({
+  isProcessTreeKillAvailable: () => mockProcessTreeKillAvailability.value,
+}));
+
 jest.mock('../../src/services/oauthService.js', () => ({
   initializeAllOAuthClients: jest.fn(),
 }));
@@ -174,6 +181,7 @@ describe('orphan stdio process cleanup (issue #920)', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     currentTestPid = 12345;
+    mockProcessTreeKillAvailability.value = true;
     setServerInfosForTest([]);
     installProcessKillMock();
   });
@@ -333,6 +341,73 @@ describe('orphan stdio process cleanup (issue #920)', () => {
       expect(mockClientClose).toHaveBeenCalledTimes(1);
       expect(mockStdioTransportClose).toHaveBeenCalledTimes(1);
       expect(mockTreeKill).toHaveBeenCalledWith(7777, 'SIGTERM', expect.any(Function));
+    });
+  });
+
+  describe('when the process lister (ps) is unavailable (issue #1072)', () => {
+    beforeEach(() => {
+      mockProcessTreeKillAvailability.value = false;
+    });
+
+    // Replace the liveness-probe-aware mock with a plain recording mock so we
+    // never signal real PIDs on the host machine.
+    const recordProcessKills = (): jest.Mock => {
+      const kill = jest.fn(() => true);
+      (process.kill as jest.Mock).mockImplementation(kill as any);
+      return kill;
+    };
+
+    it('does not call tree-kill and signals only the direct child', async () => {
+      const kill = recordProcessKills();
+      currentTestPid = 6161;
+      const info = makeStdioServerInfo('no-ps-server');
+      setServerInfosForTest([info]);
+
+      await removeServer('no-ps-server');
+
+      expect(mockTreeKill).not.toHaveBeenCalled();
+      expect(kill).toHaveBeenCalledWith(6161, 'SIGTERM');
+    });
+
+    it('still escalates to SIGKILL on the direct child after the grace period', async () => {
+      jest.useFakeTimers();
+      try {
+        const kill = recordProcessKills();
+        currentTestPid = 6262;
+        const info = makeStdioServerInfo('stubborn-no-ps-server');
+        setServerInfosForTest([info]);
+
+        await removeServer('stubborn-no-ps-server');
+
+        expect(kill).toHaveBeenCalledWith(6262, 'SIGTERM');
+        kill.mockClear();
+
+        jest.advanceTimersByTime(2000);
+
+        expect(mockTreeKill).not.toHaveBeenCalled();
+        expect(kill).toHaveBeenCalledWith(6262, 'SIGKILL');
+      } finally {
+        jest.clearAllTimers();
+        jest.useRealTimers();
+      }
+    });
+
+    it('does not throw when the direct child no longer exists', async () => {
+      const kill = recordProcessKills();
+      kill.mockImplementation(((pid: number, signal?: string | number) => {
+        if (signal !== 0 && signal !== undefined && pid === currentTestPid) {
+          throw Object.assign(new Error('ESRCH'), { code: 'ESRCH' });
+        }
+        return true;
+      }) as any);
+      currentTestPid = 6363;
+      const info = makeStdioServerInfo('gone-no-ps-server');
+      setServerInfosForTest([info]);
+
+      await expect(removeServer('gone-no-ps-server')).resolves.toEqual(
+        expect.objectContaining({ success: true }),
+      );
+      expect(mockTreeKill).not.toHaveBeenCalled();
     });
   });
 });
