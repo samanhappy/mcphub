@@ -25,6 +25,7 @@ import {
 } from '../services/mcpService.js';
 import { replaceEnvVars } from '../config/index.js';
 import { loadServerConfig } from '../services/oauthSettingsStore.js';
+import { validateAuthorizationIss } from '../utils/oauthIssuer.js';
 import type { ServerInfo } from '../types/index.js';
 import { logger } from '../utils/logger.js';
 
@@ -276,6 +277,40 @@ export const handleOAuthCallback = async (req: Request, res: Response) => {
     }
 
     logger.log('Processing OAuth callback for server', { serverName: serverInfo.name });
+
+    // RFC 9207 / SEP-2468: when the authorization response carries `iss`,
+    // validate it against the issuer we sent the authorization request to
+    // before redeeming the code (mix-up attack mitigation). Legacy servers
+    // that omit `iss` are allowed through.
+    const issParam = normalizeQueryParam(req.query.iss);
+    const issResult = validateAuthorizationIss({
+      iss: issParam,
+      authorizationUrl:
+        serverInfo.oauth?.authorizationUrl ??
+        serverInfo.config?.oauth?.pendingAuthorization?.authorizationUrl,
+      configuredIssuer: serverInfo.config?.oauth?.dynamicRegistration?.issuer,
+    });
+    if (!issResult.valid) {
+      logger.error('OAuth callback iss validation failed', {
+        serverName: serverInfo.name,
+        reason: issResult.reason,
+      });
+      return res
+        .status(400)
+        .send(
+          generateHtmlResponse(
+            t,
+            'error',
+            t('oauthCallback.authorizationFailed'),
+            issResult.reason,
+          ),
+        );
+    }
+    if (issParam && !issResult.checked) {
+      logger.warn('OAuth callback carried iss but no expected issuer is known; accepting', {
+        serverName: serverInfo.name,
+      });
+    }
 
     // For StreamableHTTPClientTransport, we need to call finishAuth() on the transport
     // This will exchange the authorization code for tokens automatically

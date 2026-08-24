@@ -338,6 +338,13 @@ export interface OAuthServerConfig {
     allowedGrantTypes?: string[]; // Allowed grant types for dynamic registration (default: ['authorization_code', 'refresh_token'])
     requiresAuthentication?: boolean; // Whether initial registration requires authentication (default: false for public registration)
   };
+  clientIdMetadata?: {
+    // Client ID Metadata Documents (CIMD, draft-ietf-oauth-client-id-metadata-document):
+    // accept HTTPS-URL-shaped client_ids whose metadata is fetched from the URL itself.
+    // Opt-in (default false) because it makes the authorize endpoint fetch attacker-chosen URLs.
+    enabled?: boolean;
+    cacheTtlMs?: number; // Metadata document cache TTL in milliseconds (default: 3600000)
+  };
 }
 
 // Bearer authentication key configuration
