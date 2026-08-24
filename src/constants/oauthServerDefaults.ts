@@ -13,6 +13,10 @@ export const DEFAULT_OAUTH_SERVER_CONFIG: OAuthServerConfig = {
     allowedGrantTypes: ['authorization_code', 'refresh_token'],
     requiresAuthentication: false,
   },
+  clientIdMetadata: {
+    enabled: false,
+    cacheTtlMs: 3_600_000,
+  },
 };
 
 export const cloneDefaultOAuthServerConfig = (): OAuthServerConfig => {
@@ -37,5 +41,6 @@ export const cloneDefaultOAuthServerConfig = (): OAuthServerConfig => {
     ...DEFAULT_OAUTH_SERVER_CONFIG,
     allowedScopes,
     dynamicRegistration,
+    clientIdMetadata: { ...DEFAULT_OAUTH_SERVER_CONFIG.clientIdMetadata },
   };
 };

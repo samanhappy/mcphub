@@ -14,6 +14,7 @@ import {
 import crypto from 'crypto';
 import { safeCompare } from '../utils/safeCompare.js';
 import { cloneDefaultOAuthServerConfig } from '../constants/oauthServerDefaults.js';
+import { resolveCimdClient } from './cimdClientService.js';
 import { logger } from '../utils/logger.js';
 
 const { Request, Response } = OAuth2Server;
@@ -28,7 +29,24 @@ const oauthModel: OAuth2Server.AuthorizationCodeModel & OAuth2Server.RefreshToke
    * toggle only permits secret-less PUBLIC clients (GHSA-3m7m).
    */
   getClient: async (clientId: string, clientSecret?: string) => {
-    const client = await findOAuthClientById(clientId);
+    let client = await findOAuthClientById(clientId);
+
+    // CIMD fallback: URL-shaped client_ids resolve to public clients via their
+    // metadata document (opt-in). They never carry a secret, so the strict
+    // secret check below is a no-op for them.
+    if (!client) {
+      const cimdClient = await resolveCimdClient(clientId);
+      if (cimdClient) {
+        client = {
+          clientId: cimdClient.clientId,
+          name: cimdClient.name,
+          redirectUris: cimdClient.redirectUris,
+          grants: cimdClient.grants,
+          metadata: cimdClient.metadata,
+        };
+      }
+    }
+
     if (!client) {
       return false;
     }

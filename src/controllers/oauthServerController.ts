@@ -4,7 +4,7 @@ import {
   handleTokenRequest,
   handleAuthenticateRequest,
 } from '../services/oauthServerService.js';
-import { findOAuthClientById } from '../models/OAuth.js';
+import { findOAuthClientIncludingCimd, isCimdClientId } from '../services/cimdClientService.js';
 import { getSystemConfigDao, getGroupDao, getServerDao } from '../dao/index.js';
 import OAuth2Server from '@node-oauth/oauth2-server';
 import jwt from 'jsonwebtoken';
@@ -129,7 +129,7 @@ async function validateClientRedirectUri(
     return null;
   }
 
-  const client = await findOAuthClientById(clientId);
+  const client = await findOAuthClientIncludingCimd(clientId);
   if (!client) {
     res.status(400).json({ error: 'invalid_client', error_description: 'Client not found' });
     return null;
@@ -144,6 +144,33 @@ async function validateClientRedirectUri(
   }
 
   return redirectUri;
+}
+
+/**
+ * Resolve this install's issuer identifier (RFC 9207). Uses the same
+ * resolution chain as the RFC 8414 metadata endpoint (`issuer` field) so
+ * clients validating `iss` compare against a value they can discover.
+ */
+async function resolveIssuer(req: Request): Promise<string | undefined> {
+  try {
+    const systemConfig = await getSystemConfigDao().get();
+    const host = typeof req.get === 'function' ? req.get('host') : undefined;
+    const fallback = host ? `${req.protocol ?? 'http'}://${host}` : undefined;
+    return resolveInstallBaseUrl(systemConfig, fallback);
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Attach the RFC 9207 `iss` parameter to an authorization response redirect.
+ * A no-op when the issuer cannot be resolved (defensive: authorization
+ * responses must never fail because of this hardening).
+ */
+function setIssuerParam(redirectUrl: URL, issuer: string | undefined): void {
+  if (issuer) {
+    redirectUrl.searchParams.set('iss', issuer);
+  }
 }
 
 /**
@@ -293,7 +320,13 @@ export const getAuthorize = async (req: Request, res: Response): Promise<void> =
     }
 
     // Get and validate query parameters
-    const client_id = validateQueryParam(req.query.client_id, 'client_id', /^[a-zA-Z0-9_-]+$/);
+    // CIMD (draft-ietf-oauth-client-id-metadata-document) client_ids are HTTPS
+    // URLs; registered client_ids stay restricted to the legacy safe charset.
+    const rawClientId = validateQueryParam(req.query.client_id, 'client_id');
+    const isUrlClientId = isCimdClientId(rawClientId);
+    const client_id = isUrlClientId
+      ? rawClientId
+      : validateQueryParam(rawClientId, 'client_id', /^[a-zA-Z0-9_-]+$/);
     const redirect_uri = validateQueryParam(req.query.redirect_uri, 'redirect_uri');
     const response_type = validateQueryParam(req.query.response_type, 'response_type', /^code$/);
     // RFC 6749 §3.3: scope tokens are printable ASCII (!#-[]-~) excluding " and \, space-delimited
@@ -331,7 +364,7 @@ export const getAuthorize = async (req: Request, res: Response): Promise<void> =
     }
 
     // Verify client
-    const client = await findOAuthClientById(client_id as string);
+    const client = await findOAuthClientIncludingCimd(client_id as string);
     if (!client) {
       res.status(400).json({ error: 'invalid_client', error_description: 'Client not found' });
       return;
@@ -474,6 +507,7 @@ export const postAuthorize = async (req: Request, res: Response): Promise<void> 
       return;
     }
 
+    const issuer = await resolveIssuer(req);
     const { allow, client_id, redirect_uri, state } = req.body;
 
     validatedRedirectUri = await validateClientRedirectUri(res, client_id, redirect_uri);
@@ -485,6 +519,7 @@ export const postAuthorize = async (req: Request, res: Response): Promise<void> 
     if (allow !== 'true') {
       const redirectUrl = new URL(validatedRedirectUri);
       redirectUrl.searchParams.set('error', 'access_denied');
+      setIssuerParam(redirectUrl, issuer);
       if (state) {
         redirectUrl.searchParams.set('state', state);
       }
@@ -525,6 +560,7 @@ export const postAuthorize = async (req: Request, res: Response): Promise<void> 
     // Build redirect URL with authorization code
     const redirectUrl = new URL(validatedRedirectUri);
     redirectUrl.searchParams.set('code', code.authorizationCode);
+    setIssuerParam(redirectUrl, issuer);
     if (state) {
       redirectUrl.searchParams.set('state', state);
     }
@@ -544,6 +580,7 @@ export const postAuthorize = async (req: Request, res: Response): Promise<void> 
         if (oauthError.message) {
           redirectUrl.searchParams.set('error_description', oauthError.message);
         }
+        setIssuerParam(redirectUrl, await resolveIssuer(req));
         if (state) {
           redirectUrl.searchParams.set('state', state);
         }
