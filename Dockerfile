@@ -4,7 +4,9 @@ FROM python:3.13-slim-trixie AS base
 
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
-RUN apt-get update && apt-get install -y curl gnupg git build-essential \
+# procps provides `ps`, which tree-kill needs to walk stdio process trees
+# (missing it caused spawn ps ENOENT crashes — issue #1072)
+RUN apt-get update && apt-get install -y curl gnupg git build-essential procps \
   && curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
   && apt-get install -y nodejs \
   && apt-get clean && rm -rf /var/lib/apt/lists/*
