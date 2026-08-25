@@ -45,6 +45,11 @@ import {
   getUserDao,
 } from '../dao/DaoFactory.js';
 import { UserContextService } from '../services/userContextService.js';
+import { authorizationService } from '../services/authorizationService.js';
+import {
+  presentServerForPrincipal,
+  presentServerInfoForPrincipal,
+} from '../services/serverConfigPresenter.js';
 import { disconnectUpstreamOAuth } from '../services/upstreamOAuthDisconnectService.js';
 import type { UpstreamOAuthDisconnectScope } from '../services/upstreamOAuthDisconnectService.js';
 import { normalizeServerConfigForPersistence } from '../utils/serverConfigPersistence.js';
@@ -305,13 +310,23 @@ export const getAllServers = async (req: Request, res: Response): Promise<void> 
       serversInfo = await getServersInfo();
     }
 
+    // #1036 Phase 1: withhold OAuth session-recovery fields from principals
+    // who may not read the full server configuration (defense in depth; the
+    // config block on list entries is already narrowed to safe metadata).
+    const presentedServersInfo = serversInfo.map((info) =>
+      presentServerInfoForPrincipal(info, currentUser),
+    );
+    const presentedAllServers = allServers?.map((info) =>
+      presentServerInfoForPrincipal(info, currentUser),
+    );
+
     const response: ApiResponse & {
       pagination?: typeof pagination;
       allServers?: Omit<ServerInfo, 'client' | 'transport'>[];
     } = {
       success: true,
-      data: createSafeJSON(serversInfo),
-      ...(allServers && { allServers: createSafeJSON(allServers) }),
+      data: createSafeJSON(presentedServersInfo),
+      ...(presentedAllServers && { allServers: createSafeJSON(presentedAllServers) }),
       ...(pagination && { pagination }),
     };
     res.json(response);
@@ -1066,8 +1081,31 @@ export const getServerConfig = async (req: Request, res: Response): Promise<void
   try {
     const { name } = req.params;
 
-    const serverConfig = await loadAuthorizedServer(req, res, name);
-    if (!serverConfig) {
+    const serverDao = getServerDao();
+    const serverRecord = await serverDao.findById(name);
+    if (!serverRecord) {
+      res.status(404).json({
+        success: false,
+        message: 'Server not found',
+      });
+      return;
+    }
+
+    // #1036 Phase 1: config read and server use are separate decisions.
+    // Owner/admin get the full configuration; visibility-admitted shared users
+    // (public / group members) get a safe view without secret-bearing fields;
+    // everyone else is rejected exactly as before.
+    const principal = getRequestUser(req);
+    const canReadFullConfig = authorizationService.can(
+      'server.config.read',
+      serverRecord,
+      principal,
+    );
+    if (!canReadFullConfig && !authorizationService.can('server.invoke', serverRecord, principal)) {
+      res.status(403).json({
+        success: false,
+        message: 'Forbidden',
+      });
       return;
     }
 
@@ -1076,7 +1114,8 @@ export const getServerConfig = async (req: Request, res: Response): Promise<void
     const serverInfo = allServers.find((s) => s.name === name);
 
     // Extract config without the name field
-    const { name: serverName, ...config } = serverConfig;
+    const { name: serverName, ...config } = serverRecord;
+    const presented = presentServerForPrincipal(config, principal);
 
     // OpenAPI tools can carry circular $ref cycles left by SwaggerParser.dereference
     // (recursive schemas), which would make res.json throw. Mirror the list endpoint
@@ -1087,7 +1126,7 @@ export const getServerConfig = async (req: Request, res: Response): Promise<void
         name: serverName,
         status: serverInfo?.status || 'disconnected',
         tools: serverInfo?.tools || [],
-        config,
+        config: presented.data,
       }),
     };
 
