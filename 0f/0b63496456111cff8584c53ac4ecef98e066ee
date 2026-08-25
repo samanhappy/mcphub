@@ -1,0 +1,22 @@
+frontend/src/components/AddUserForm.tsx
+  h_18676a549cd52a 5-8,19,32,44-47,57-59,87-93,145,147-149
+frontend/src/components/ChangePasswordForm.tsx
+  h_18676a549cd52a 50-51,89-96
+frontend/src/components/EditUserForm.tsx
+  h_18676a549cd52a 5-8,20,33,41-47,65-67,97-103,164,166-168,188
+frontend/src/types/index.ts
+  h_18676a549cd52a 435
+frontend/src/utils/passwordValidation.ts
+  h_18676a549cd52a 39-50
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "0f0b63496456111cff8584c53ac4ecef98e066ee",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
