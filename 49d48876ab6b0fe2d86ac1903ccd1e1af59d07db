@@ -1,0 +1,35 @@
+locales/zh.json
+  h_18676a549cd52a 522-532
+src/utils/frontendShell.ts
+  h_18676a549cd52a 3,21-32,52-55
+locales/fr.json
+  h_18676a549cd52a 519-529
+frontend/src/types/runtime.ts
+  h_18676a549cd52a 8-25,41-42
+frontend/src/pages/OAuthConsentPage.tsx
+  h_18676a549cd52a 3,7,34-36,50-98,122-125,174-206,219-247,249-255
+  h_18676a549cd52a 105
+src/utils/oauthConsentResource.ts
+  h_18676a549cd52a 1-60
+locales/en.json
+  h_18676a549cd52a 520-530
+tests/controllers/oauthServerController.shell.test.ts
+  h_18676a549cd52a 19-23,29,81-88,181-307
+src/controllers/oauthServerController.ts
+  h_18676a549cd52a 8,18,20-23,253-286,322-327,389,398-405,417-418
+locales/tr.json
+  h_18676a549cd52a 519-529
+tests/utils/oauthConsentResource.test.ts
+  h_18676a549cd52a 1-59
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "49d48876ab6b0fe2d86ac1903ccd1e1af59d07db",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

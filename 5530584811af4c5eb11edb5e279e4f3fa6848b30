@@ -1,0 +1,23 @@
+src/clients/__tests__/openapi-cookie.test.ts
+  s_b13d47881349ab::t_c25b81833e5bf8 213-276
+src/clients/openapi.ts
+  s_b13d47881349ab::t_cac7d45c9e1a1d 536,605,640-650,765-766,768-769,774-797
+src/services/mcpService.ts
+  s_b13d47881349ab::t_a7ec379c622244 3026-3040
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "5530584811af4c5eb11edb5e279e4f3fa6848b30",
+  "prompts": {},
+  "sessions": {
+    "s_b13d47881349ab": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "09530aa2-802a-4288-953c-37337abe14dc",
+        "model": "unknown"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

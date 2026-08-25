@@ -1,0 +1,23 @@
+src/services/mcpService.ts
+  s_54c82856eacd9e::t_8a7159676e13ce 30,1269,1302
+src/utils/__tests__/abortIsolatingFetch.test.ts
+  s_54c82856eacd9e::t_346ade40195cfe 1-99
+src/utils/abortIsolatingFetch.ts
+  s_54c82856eacd9e::t_2363da3edd3984 1-32
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "eb139e18d611c3d9dbe0de0947c3717274252641",
+  "prompts": {},
+  "sessions": {
+    "s_54c82856eacd9e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c6febb2d-d79d-42c0-948a-0418312a74f1",
+        "model": "unknown"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

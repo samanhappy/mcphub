@@ -1,0 +1,21 @@
+src/services/mcpOAuthProvider.ts
+  s_42e0fa33478e57::t_a416952cb22de9 537-545,559-564,577
+tests/services/mcpOAuthProvider.test.ts
+  s_42e0fa33478e57::t_fd76aab55a2716 26,101-169
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "09382fc450734d2ad76b065c7d42496950082e6c",
+  "prompts": {},
+  "sessions": {
+    "s_42e0fa33478e57": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "df015707-afbf-4142-892b-a1e992568709",
+        "model": "unknown"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

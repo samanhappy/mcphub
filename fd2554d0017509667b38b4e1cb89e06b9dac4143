@@ -1,0 +1,18 @@
+frontend/src/components/ServerForm.tsx
+  h_18676a549cd52a 112-114
+frontend/src/types/index.ts
+  h_18676a549cd52a 212-215,370-372,379-382
+frontend/src/utils/serverFormPayload.ts
+  h_18676a549cd52a 49-54,193-195
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "fd2554d0017509667b38b4e1cb89e06b9dac4143",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

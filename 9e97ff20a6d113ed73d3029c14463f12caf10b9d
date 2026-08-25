@@ -1,0 +1,21 @@
+src/services/mcpService.ts
+  s_e1c5fa95319d02::t_5e8696ff9151ae 1556-1558,1561,1903-1909,2188-2191,2382-2390,2395,2401-2402,2405-2482,2487-2490,2496-2536,2807-2813,2923-2936,3295-3302,3422-3424
+tests/services/mcpService-onDemand.test.ts
+  s_e1c5fa95319d02::t_e1e054ee50d802 1-281
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "9e97ff20a6d113ed73d3029c14463f12caf10b9d",
+  "prompts": {},
+  "sessions": {
+    "s_e1c5fa95319d02": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9f9a130b-335e-4fe3-a4cb-5d3288ec1b58",
+        "model": "unknown"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

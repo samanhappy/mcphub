@@ -1,0 +1,119 @@
+frontend/src/utils/serverFormPayload.ts
+  s_5decbff0d6c19a::t_5b081f9b51613f 184
+  s_5decbff0d6c19a::t_29eaea8e88b98b 36-45,183
+src/services/mcpService.ts
+  s_5decbff0d6c19a::t_db5691b74845a1 307,563,571,577,714-721,1562,1594,1627-1629,1652,1668,1782,1994,2230,3132,3144,3608,3617,4026
+tests/db/repositories/serverRepository.test.ts
+  s_5decbff0d6c19a::t_83918a47279704 1-33,38-41
+  s_5decbff0d6c19a::t_5b081f9b51613f 34-37
+tests/frontend/serverLocales.test.ts
+  s_5decbff0d6c19a::t_75c6c03c08328a 5-21,28-29,33
+frontend/src/types/index.ts
+  s_5decbff0d6c19a::t_e01d58267b3851 206,358
+  s_5decbff0d6c19a::t_29eaea8e88b98b 208,360
+locales/fr.json
+  s_5decbff0d6c19a::t_c9ad9407c8e592 145-158
+src/db/repositories/ServerRepository.ts
+  s_5decbff0d6c19a::t_c734ed9eacde3c 120-123
+tests/services/mcpService-smart-routing-group.test.ts
+  s_5decbff0d6c19a::t_87003a16ff68a6 336
+frontend/src/components/ServerForm.tsx
+  s_5decbff0d6c19a::t_c96ff5cb192753 177-179,181-196
+  s_5decbff0d6c19a::t_f21a656516a891 1,5,87,162-176,180,197-218,1265-1267,1275,1278-1334
+tests/utils/serverConfigPersistence.test.ts
+  s_5decbff0d6c19a::t_83918a47279704 136-157
+tests/services/mcpService-null-tool-result.test.ts
+  s_5decbff0d6c19a::t_71afa9db7c5039 61,64-69,71-72,133,228-250,284-286,315-345
+  s_5decbff0d6c19a::t_a07cc3e925bb72 110,287-314
+  s_5decbff0d6c19a::t_5b081f9b51613f 70
+  s_5decbff0d6c19a::t_8f527dfa255ad9 152,213,251-283
+src/dao/ServerDao.ts
+  s_5decbff0d6c19a::t_c734ed9eacde3c 280-283
+tests/services/mcpService-source-ip.test.ts
+  s_5decbff0d6c19a::t_87003a16ff68a6 132,177,234
+locales/tr.json
+  s_5decbff0d6c19a::t_c9ad9407c8e592 145-158
+tests/services/dataService.test.ts
+  s_5decbff0d6c19a::t_99afaecd5be4c4 95
+  s_5decbff0d6c19a::t_5759d679860a05 15-26,80,84,109-116,126-133
+  s_5decbff0d6c19a::t_5b081f9b51613f 71,75,79,83,122
+  s_5decbff0d6c19a::t_0dbb26fbba3559 81-82
+tests/services/smartRoutingService-alias.test.ts
+  s_5decbff0d6c19a::t_5759d679860a05 120-133
+src/controllers/serverController.ts
+  s_5decbff0d6c19a::t_791b956723272f 326-329
+  s_5decbff0d6c19a::t_c734ed9eacde3c 196-200,205,209-216,218,303-325,968,980-984
+tests/controllers/serverController.test.ts
+  s_5decbff0d6c19a::t_a07cc3e925bb72 782-808
+  s_5decbff0d6c19a::t_5b081f9b51613f 88-90,772,1431,1444
+  s_5decbff0d6c19a::t_c3cd20ac884e30 119,128-175
+  s_5decbff0d6c19a::t_1c4d3b1e3f9ad6 176
+src/utils/serverConfigPersistence.ts
+  s_5decbff0d6c19a::t_c734ed9eacde3c 35-39,181-182,190
+  s_5decbff0d6c19a::t_a1035e5c308c19 179
+README.md
+  s_5decbff0d6c19a::t_c0a519dbe32ddd 21
+src/db/entities/Server.ts
+  s_5decbff0d6c19a::t_8572e952dfc304 50-51,55-56
+  s_5decbff0d6c19a::t_48a42895efdd31 57
+locales/zh.json
+  s_5decbff0d6c19a::t_c9ad9407c8e592 148-149,152-158
+README.fr.md
+  s_5decbff0d6c19a::t_c0a519dbe32ddd 19
+src/services/smartRoutingService.ts
+  s_5decbff0d6c19a::t_29eaea8e88b98b 416-417,429,438
+  s_5decbff0d6c19a::t_3af6ce3cbd2a43 439
+src/dao/ServerDaoDbImpl.ts
+  s_5decbff0d6c19a::t_8572e952dfc304 87,137,233,258
+tests/frontend/serverVisibility.test.ts
+  s_5decbff0d6c19a::t_bbfc9c56bbda6e 21,29
+locales/en.json
+  s_5decbff0d6c19a::t_c9ad9407c8e592 148-149,152-158
+src/utils/migration.ts
+  s_5decbff0d6c19a::t_bbfc9c56bbda6e 82
+src/types/index.ts
+  s_5decbff0d6c19a::t_8572e952dfc304 387-388,406-407,409,528
+tests/frontend/serverFormPayload.test.ts
+  s_5decbff0d6c19a::t_5759d679860a05 102-136
+tests/services/mcpService-reconnect.test.ts
+  s_5decbff0d6c19a::t_acb1156eec9098 184,226,257
+docs/configuration/mcp-settings.mdx
+  s_5decbff0d6c19a::t_c0a519dbe32ddd 75-76
+docs/features/authentication.mdx
+  s_5decbff0d6c19a::t_c0a519dbe32ddd 20,24,26
+tests/dao/serverDaoDbImpl.test.ts
+  s_5decbff0d6c19a::t_83918a47279704 112-155
+src/services/dataService.ts
+  s_5decbff0d6c19a::t_8572e952dfc304 14-15
+  s_5decbff0d6c19a::t_29eaea8e88b98b 17,19-24
+  s_5decbff0d6c19a::t_a1035e5c308c19 18
+src/routes/index.ts
+  s_5decbff0d6c19a::t_c734ed9eacde3c 8,230
+docs/api-reference/users.mdx
+  s_5decbff0d6c19a::t_c0a519dbe32ddd 78
+frontend/src/utils/serverVisibility.ts
+  s_5decbff0d6c19a::t_e01d58267b3851 37,39,90
+  s_5decbff0d6c19a::t_5b081f9b51613f 47-48
+tests/dao/serverDao.test.ts
+  s_5decbff0d6c19a::t_83918a47279704 1-28
+tests/routes/index.test.ts
+  s_5decbff0d6c19a::t_acb1156eec9098 12,293-295
+README.zh.md
+  s_5decbff0d6c19a::t_c0a519dbe32ddd 19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "f2486df40bfb7b3f9174faeb397f27595c138d10",
+  "prompts": {},
+  "sessions": {
+    "s_5decbff0d6c19a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a01916-5cfe-7cf3-9e7f-ce0aaa38765e",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

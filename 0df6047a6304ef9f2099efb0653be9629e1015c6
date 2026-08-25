@@ -1,0 +1,14 @@
+frontend/src/components/ServerForm.tsx
+  h_18676a549cd52a 919,984,1027,1102
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "0df6047a6304ef9f2099efb0653be9629e1015c6",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
