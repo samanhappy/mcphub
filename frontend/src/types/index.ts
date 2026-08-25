@@ -432,6 +432,7 @@ export interface ApiResponse<T = any> {
   success: boolean;
   message?: string;
   data?: T;
+  errors?: string[];
 }
 
 // Bearer authentication key configuration (frontend view model)

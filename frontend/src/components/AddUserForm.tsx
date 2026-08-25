@@ -2,6 +2,10 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useUserData } from '@/hooks/useUserData';
 import { UserFormData } from '@/types';
+import {
+  validatePasswordStrength,
+  mapBackendPasswordErrors,
+} from '../utils/passwordValidation';
 
 interface AddUserFormProps {
   onAdd: () => void;
@@ -12,6 +16,7 @@ const AddUserForm = ({ onAdd, onCancel }: AddUserFormProps) => {
   const { t } = useTranslation();
   const { createUser } = useUserData();
   const [error, setError] = useState<string | null>(null);
+  const [passwordErrors, setPasswordErrors] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [formData, setFormData] = useState<UserFormData>({
@@ -24,6 +29,7 @@ const AddUserForm = ({ onAdd, onCancel }: AddUserFormProps) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setPasswordErrors([]);
 
     if (!formData.username.trim()) {
       setError(t('users.usernameRequired'));
@@ -35,8 +41,10 @@ const AddUserForm = ({ onAdd, onCancel }: AddUserFormProps) => {
       return;
     }
 
-    if (formData.password.length < 6) {
-      setError(t('users.passwordTooShort'));
+    const validation = validatePasswordStrength(formData.password);
+    if (!validation.isValid) {
+      setError(t('auth.passwordStrengthError'));
+      setPasswordErrors(validation.errors.map((key) => t(`auth.${key}`)));
       return;
     }
 
@@ -46,6 +54,9 @@ const AddUserForm = ({ onAdd, onCancel }: AddUserFormProps) => {
       const result = await createUser(formData);
       if (result?.success) {
         onAdd();
+      } else if (result?.errors?.length) {
+        setError(result.message || t('auth.passwordStrengthError'));
+        setPasswordErrors(mapBackendPasswordErrors(result.errors).map((key) => t(key)));
       } else {
         setError(result?.message || t('users.createError'));
       }
@@ -73,6 +84,13 @@ const AddUserForm = ({ onAdd, onCancel }: AddUserFormProps) => {
           {error && (
             <div className="bg-red-50 border-l-4 border-red-500 text-red-700 p-4 mb-6 rounded-md">
               <p className="text-sm font-medium">{error}</p>
+              {passwordErrors.length > 0 && (
+                <ul className="list-disc list-inside mt-2 space-y-1 text-sm">
+                  {passwordErrors.map((message) => (
+                    <li key={message}>{message}</li>
+                  ))}
+                </ul>
+              )}
             </div>
           )}
 
@@ -124,8 +142,11 @@ const AddUserForm = ({ onAdd, onCancel }: AddUserFormProps) => {
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent form-input transition-all duration-200"
                 required
                 disabled={isSubmitting}
-                minLength={6}
+                minLength={8}
               />
+              <p className="mt-1 text-xs text-gray-500">
+                {t('auth.passwordStrengthHint')}
+              </p>
             </div>
 
             <div className="flex items-center pt-2">
