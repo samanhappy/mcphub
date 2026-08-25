@@ -21,20 +21,26 @@ export interface AuthorizableServer {
   sharedWithUsers?: string[];
 }
 
-export type RequestPrincipal = Pick<IUser, 'username'> & { isAdmin?: boolean } | null;
+export type RequestPrincipal = Pick<IUser, 'username'> & { isAdmin?: boolean };
 
 // Records may predate owner tracking; those are administered by the 'admin'
 // account (same normalization as the share-candidates endpoint).
 const effectiveOwner = (server: AuthorizableServer): string => server.owner?.trim() || 'admin';
 
-const resolvePrincipal = (principal?: RequestPrincipal): RequestPrincipal =>
-  principal ?? UserContextService.getInstance().getCurrentUser();
+// Principal resolution semantics:
+//   undefined -> fall back to the ambient UserContext
+//   null      -> anonymous (explicitly unauthenticated, never falls back)
+//   user      -> that exact principal
+const resolvePrincipal = (
+  principal?: RequestPrincipal | null,
+): RequestPrincipal | null | undefined =>
+  principal === undefined ? UserContextService.getInstance().getCurrentUser() : principal;
 
 export class AuthorizationService {
   can(
     action: ServerAuthorizationAction,
     server: AuthorizableServer,
-    principal?: RequestPrincipal,
+    principal?: RequestPrincipal | null,
   ): boolean {
     const user = resolvePrincipal(principal);
     if (!user?.username) {

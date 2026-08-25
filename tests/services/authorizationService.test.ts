@@ -94,6 +94,16 @@ describe('AuthorizationService (#1036 Phase 1)', () => {
       const server = { owner: 'bob', visibility: 'public' as const };
       expect(service.can('server.invoke', server, null)).toBe(false);
     });
+
+    it('an explicitly null principal stays anonymous even when the ambient context is admin', () => {
+      // Regression: `??` used to coalesce explicit null into the ambient
+      // UserContext, so an unauthenticated request could inherit an ambient
+      // admin identity. null must mean anonymous, never fallback.
+      mockGetCurrentUser.mockReturnValue(admin);
+      const server = { owner: 'bob', visibility: 'public' as const };
+      expect(service.can('server.config.read', server, null)).toBe(false);
+      expect(service.can('server.invoke', server, null)).toBe(false);
+    });
   });
 
   describe('principal resolution', () => {

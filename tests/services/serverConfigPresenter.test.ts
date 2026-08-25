@@ -16,12 +16,15 @@ const mockGetCurrentUser = jest.fn();
 
 // Sentinel secrets from the Phase 1 plan. Every safe-view assertion below
 // checks the SERIALIZED output so a nested leak cannot slip through.
+// `futureSetting` simulates an unrecognized ServerConfig field added in a
+// future release — the allowlist must withhold it too.
 const SENTINELS = [
   'Bearer mcphub-phase1-secret',
   'mcphub-phase1-api-key',
   'mcphub-phase1-client-secret',
   'mcphub-phase1-refresh-token',
   'mcphub-phase1-proxy-password',
+  'mcphub-phase1-future-secret',
 ];
 
 const admin = { username: 'admin', isAdmin: true };
@@ -40,7 +43,7 @@ const buildRawServerConfig = (): Record<string, unknown> => ({
   passthroughHeaders: ['X-Request-Id'],
   owner: 'bob',
   visibility: 'public',
-  sharedWithUsers: undefined,
+  sharedWithUsers: ['alice'],
   enabled: true,
   options: { timeout: 30000 },
   oauth: {
@@ -65,6 +68,9 @@ const buildRawServerConfig = (): Record<string, unknown> => ({
   enableKeepAlive: true,
   keepAliveInterval: 60000,
   tools: { search: { enabled: true } },
+  // Unrecognized field a future MCPHub version might add. The restricted view
+  // is allowlist-based, so this must never leak to shared users.
+  futureSetting: 'mcphub-phase1-future-secret',
 });
 
 describe('serverConfigPresenter (#1036 Phase 1)', () => {
@@ -88,42 +94,51 @@ describe('serverConfigPresenter (#1036 Phase 1)', () => {
       expect((raw as Record<string, unknown>).description).toBe('Org web search');
     });
 
-    it('gives shared users a safe view with no secret-bearing fields', () => {
+    it('gives shared users an allowlisted view with no connection configuration', () => {
       const raw = buildRawServerConfig();
 
       const presented = presentServerForPrincipal(raw, alice);
 
       expect(presented.view).toBe('safe');
       const data = presented.data as Record<string, unknown>;
-      expect(data.env).toBeUndefined();
-      expect(data.headers).toBeUndefined();
-      expect(data.args).toBeUndefined();
-      expect(data.oauth).toBeUndefined();
-      expect(data.proxy).toBeUndefined();
-      expect(data.openapi).toEqual({
-        url: 'https://api.example.com/openapi.json',
-        version: '3.1.0',
+      expect(data).toEqual({
+        name: 'org-search',
+        description: 'Org web search',
+        type: 'streamable-http',
+        visibility: 'public',
+        owner: 'bob',
+        enabled: true,
+        tools: { search: { enabled: true } },
+        configRestricted: true,
       });
-      expect(data.configRestricted).toBe(true);
     });
 
-    it('keeps harmless metadata in the safe view', () => {
-      const presented = presentServerForPrincipal(buildRawServerConfig(), alice);
-      const data = presented.data as Record<string, unknown>;
-
-      expect(data.name).toBe('org-search');
-      expect(data.type).toBe('streamable-http');
-      expect(data.url).toBe('https://mcp.example.com/mcp');
-      expect(data.description).toBe('Org web search');
-      expect(data.visibility).toBe('public');
-      expect(data.owner).toBe('bob');
-      expect(data.enabled).toBe(true);
-      expect(data.passthroughHeaders).toEqual(['X-Request-Id']);
-      expect(data.options).toEqual({ timeout: 30000 });
-      expect(data.tools).toEqual({ search: { enabled: true } });
+    it('withholds url, command and every other raw config field from shared users', () => {
+      const body = JSON.stringify(presentServerForPrincipal(buildRawServerConfig(), alice));
+      for (const withheld of [
+        'https://mcp.example.com/mcp',
+        '"command"',
+        '"args"',
+        '"env"',
+        '"headers"',
+        '"oauth"',
+        '"proxy"',
+        '"openapi"',
+        '"options"',
+        '"passthroughHeaders"',
+        '"sharedWithUsers"',
+        '"perSessionClient"',
+        '"startOnDemand"',
+        '"idleTimeoutMs"',
+        '"enableKeepAlive"',
+        '"keepAliveInterval"',
+        '"futureSetting"',
+      ]) {
+        expect(body).not.toContain(withheld);
+      }
     });
 
-    it('serializes the safe view without any sentinel secret', () => {
+    it('serializes the safe view without any sentinel secret, including unknown fields', () => {
       const body = JSON.stringify(presentServerForPrincipal(buildRawServerConfig(), alice));
       for (const sentinel of SENTINELS) {
         expect(body).not.toContain(sentinel);
@@ -133,25 +148,26 @@ describe('serverConfigPresenter (#1036 Phase 1)', () => {
       expect(body).not.toContain('pkce-secret');
     });
 
-    it('fails closed for anonymous principals', () => {
-      const presented = presentServerForPrincipal(buildRawServerConfig(), null);
-      expect(presented.view).toBe('safe');
-      expect(
-        (presented.data as Record<string, unknown>).headers,
-      ).toBeUndefined();
-    });
+    it('an explicitly null principal stays anonymous even when the ambient context is admin', () => {
+      mockGetCurrentUser.mockReturnValue(admin);
 
-    it('marks servers without any credentials as restricted too, for uniform handling', () => {
-      const plain = { name: 'plain', type: 'sse', url: 'https://x.example.com/sse' };
-      const presented = presentServerForPrincipal(plain, alice);
+      const presented = presentServerForPrincipal(buildRawServerConfig(), null);
+
       expect(presented.view).toBe('safe');
-      expect((presented.data as Record<string, unknown>).configRestricted).toBe(true);
+      const body = JSON.stringify(presented.data);
+      for (const sentinel of SENTINELS) {
+        expect(body).not.toContain(sentinel);
+      }
     });
 
     it('falls back to the ambient user context when no principal is passed', () => {
       mockGetCurrentUser.mockReturnValue(admin);
       const presented = presentServerForPrincipal({ owner: 'bob', visibility: 'private' });
       expect(presented.view).toBe('full');
+
+      mockGetCurrentUser.mockReturnValue(alice);
+      const restricted = presentServerForPrincipal({ owner: 'bob', visibility: 'private' });
+      expect(restricted.view).toBe('safe');
     });
   });
 
@@ -161,11 +177,17 @@ describe('serverConfigPresenter (#1036 Phase 1)', () => {
       owner: 'bob',
       status: 'connected',
       tools: [{ name: 'search' }],
+      createTime: 1234567890,
       oauth: {
         authorizationUrl: 'https://auth.example.com/authorize?state=oauth-state-value',
         state: 'oauth-state-value',
         clientIdConfigured: true,
         connected: false,
+      },
+      config: {
+        type: 'streamable-http',
+        description: 'Org web search',
+        command: 'npx',
       },
     };
 
@@ -184,9 +206,19 @@ describe('serverConfigPresenter (#1036 Phase 1)', () => {
       expect(presented.status).toBe('connected');
     });
 
-    it('never leaks the OAuth state value in serialized output', () => {
+    it('reduces the embedded connection config to the safe allowlist', () => {
+      const presented = presentServerInfoForPrincipal(info, alice) as Record<string, unknown>;
+      const config = presented.config as Record<string, unknown>;
+      expect(config.type).toBe('streamable-http');
+      expect(config.description).toBe('Org web search');
+      expect(config.command).toBeUndefined();
+      expect(config.configRestricted).toBe(true);
+    });
+
+    it('never leaks the OAuth state or command values in serialized output', () => {
       const body = JSON.stringify([presentServerInfoForPrincipal(info, alice)]);
       expect(body).not.toContain('oauth-state-value');
+      expect(body).not.toContain('"command"');
     });
   });
 });

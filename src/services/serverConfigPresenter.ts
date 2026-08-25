@@ -1,8 +1,10 @@
 import { authorizationService, RequestPrincipal } from './authorizationService.js';
 
 // Safe server representation for issue #1036 Phase 1: shared users may see a
-// server's metadata but never its secret-bearing configuration. Redaction is
-// enforced here (server-side); the dashboard is never the security boundary.
+// server's metadata but never its connection configuration. The restricted
+// view is an explicit ALLOWLIST — newly added ServerConfig fields are withheld
+// by default until they are reviewed and added here. Redaction is enforced
+// server-side; the dashboard is never the security boundary.
 
 type ServerConfigLike = Record<string, unknown>;
 
@@ -11,10 +13,20 @@ export interface PresentedServer<T> {
   data: T;
 }
 
-// Connection/authentication fields whose raw values must never reach an
-// unauthorized reader. `args` is included because stdio arguments routinely
-// carry tokens on the command line.
-const SECRET_BEARING_FIELDS = ['env', 'headers', 'args', 'oauth', 'proxy'] as const;
+// Metadata a shared user legitimately needs. Everything else — including
+// url, command, args, env, headers, oauth, proxy, openapi, options and any
+// unrecognized future field — is withheld.
+const SAFE_SERVER_CONFIG_FIELDS = [
+  'name',
+  'description',
+  'type',
+  'visibility',
+  'owner',
+  'enabled',
+  'tools',
+  'prompts',
+  'resources',
+] as const;
 
 // OAuth session-recovery fields exposed on ServerInfo list entries; only the
 // connected/clientIdConfigured indicators are safe for non-config-readers.
@@ -25,36 +37,16 @@ const clone = <T>(value: T): T =>
     ? structuredClone(value)
     : (JSON.parse(JSON.stringify(value)) as T);
 
-const stripOpenApiSecrets = (openapi: Record<string, unknown>): Record<string, unknown> => {
-  const { security: _security, ...rest } = openapi;
-  return rest;
-};
-
 const presentSafeServerConfig = (config: ServerConfigLike): ServerConfigLike => {
-  const safe = clone(config);
-  let hadSecrets = false;
-
-  for (const field of SECRET_BEARING_FIELDS) {
-    if (safe[field] !== undefined && safe[field] !== null) {
-      hadSecrets = true;
+  const safe: Record<string, unknown> = {};
+  for (const field of SAFE_SERVER_CONFIG_FIELDS) {
+    if (config[field] !== undefined && config[field] !== null) {
+      safe[field] = clone(config[field]);
     }
-    delete safe[field];
   }
-
-  if (safe.openapi && typeof safe.openapi === 'object') {
-    const openapi = safe.openapi as Record<string, unknown>;
-    if ('security' in openapi) {
-      hadSecrets = true;
-    }
-    safe.openapi = stripOpenApiSecrets(openapi);
-  }
-
   // Explicit marker so callers (and the dashboard) can tell a restricted view
   // apart from "this server genuinely has no credentials".
-  if (hadSecrets || !('configRestricted' in safe)) {
-    return { ...safe, configRestricted: true };
-  }
-  return safe;
+  return { ...safe, configRestricted: true };
 };
 
 const presentSafeServerInfoOauth = (
@@ -75,7 +67,7 @@ const presentSafeServerInfoOauth = (
 // the server at all (403 handling stays with them).
 export const presentServerForPrincipal = <T extends object>(
   config: T,
-  principal?: RequestPrincipal,
+  principal?: RequestPrincipal | null,
 ): PresentedServer<T> => {
   if (authorizationService.can('server.config.read', config as ServerConfigLike, principal)) {
     return { view: 'full', data: clone(config) };
@@ -83,23 +75,26 @@ export const presentServerForPrincipal = <T extends object>(
   return { view: 'safe', data: presentSafeServerConfig(config as ServerConfigLike) as T };
 };
 
-// Present a ServerInfo-shaped list entry: metadata stays, but OAuth session
-// fields are withheld from principals who may not read the full config.
+// Present a ServerInfo-shaped list entry: runtime metadata stays, but OAuth
+// session fields and the embedded connection config are reduced to their safe
+// subsets for principals who may not read the full configuration.
 export const presentServerInfoForPrincipal = <T extends object>(
   info: T,
-  principal?: RequestPrincipal,
+  principal?: RequestPrincipal | null,
 ): T => {
   if (authorizationService.can('server.config.read', info as ServerConfigLike, principal)) {
     return info;
   }
 
-  const oauth = (info as ServerConfigLike).oauth;
-  if (!oauth || typeof oauth !== 'object') {
-    return info;
+  const entry = { ...(info as ServerConfigLike) };
+
+  if (entry.oauth && typeof entry.oauth === 'object') {
+    entry.oauth = presentSafeServerInfoOauth(entry.oauth as Record<string, unknown>);
   }
 
-  return {
-    ...(info as ServerConfigLike),
-    oauth: presentSafeServerInfoOauth(oauth as Record<string, unknown>),
-  } as T;
+  if (entry.config && typeof entry.config === 'object') {
+    entry.config = presentSafeServerConfig(entry.config as ServerConfigLike);
+  }
+
+  return entry as T;
 };

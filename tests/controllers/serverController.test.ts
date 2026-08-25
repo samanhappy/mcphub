@@ -1863,6 +1863,9 @@ describe('serverController - getServerConfig shared use / private config (#1036)
     proxy: { server: 'proxy.example.com', password: 'mcphub-phase1-proxy-password' },
     enabled: true,
     tools: { search: { enabled: true } },
+    // Unrecognized ServerConfig field simulating a future addition — the
+    // allowlisted safe view must withhold it.
+    futureSetting: 'mcphub-phase1-unrecognized-secret',
   };
 
   const SENTINELS = [
@@ -1871,6 +1874,7 @@ describe('serverController - getServerConfig shared use / private config (#1036)
     'mcphub-phase1-client-secret',
     'mcphub-phase1-refresh-token',
     'mcphub-phase1-proxy-password',
+    'mcphub-phase1-unrecognized-secret',
   ];
 
   const runGetServerConfig = async (user: { username: string; isAdmin?: boolean } | null) => {
@@ -1911,15 +1915,18 @@ describe('serverController - getServerConfig shared use / private config (#1036)
     for (const sentinel of SENTINELS) {
       expect(body).not.toContain(sentinel);
     }
+    // Allowlisted metadata survives; raw connection config does not.
     expect(body).toContain('Org web search');
-    expect(body).toContain('https://mcp.example.com/mcp');
     const data = json.mock.calls[0][0].data;
     expect(data.config.env).toBeUndefined();
     expect(data.config.headers).toBeUndefined();
     expect(data.config.args).toBeUndefined();
     expect(data.config.oauth).toBeUndefined();
     expect(data.config.proxy).toBeUndefined();
-    expect(data.config.security).toBeUndefined();
+    expect(data.config.openapi).toBeUndefined();
+    expect(data.config.url).toBeUndefined();
+    expect(data.config.options).toBeUndefined();
+    expect(data.config.futureSetting).toBeUndefined();
     expect(data.config.configRestricted).toBe(true);
     expect(data.tools).toEqual([{ name: 'search', description: 'Search' }]);
   });
@@ -2061,6 +2068,11 @@ describe('serverController - getAllServers OAuth session scrub (#1036)', () => {
         clientIdConfigured: true,
         connected: false,
       },
+      config: {
+        type: 'streamable-http',
+        description: 'Org web search',
+        command: 'npx',
+      },
     };
     mockGetServersInfo
       .mockResolvedValueOnce([entry])
@@ -2078,10 +2090,13 @@ describe('serverController - getAllServers OAuth session scrub (#1036)', () => {
     const body = JSON.stringify(json.mock.calls[0][0]);
     expect(body).not.toContain('mcphub-phase1-oauth-state');
     expect(body).not.toContain('authorizationUrl');
+    expect(body).not.toContain('"command"');
     expect(body).toContain('clientIdConfigured');
     const data = json.mock.calls[0][0];
     expect(data.data[0].oauth.state).toBeUndefined();
     expect(data.allServers[0].oauth.state).toBeUndefined();
+    expect(data.data[0].config.type).toBe('streamable-http');
+    expect(data.data[0].config.command).toBeUndefined();
   });
 
   it('keeps OAuth session fields for admins', async () => {
