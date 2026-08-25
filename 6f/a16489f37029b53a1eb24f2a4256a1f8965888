@@ -1,0 +1,18 @@
+src/services/serverConfigPresenter.ts
+  h_18676a549cd52a 78-92,94-96,115-118
+tests/controllers/serverController.test.ts
+  h_18676a549cd52a 2076,2095-2096,2103,2106,2111,2114,2128-2130
+tests/services/serverConfigPresenter.test.ts
+  h_18676a549cd52a 223-280
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "6fa16489f37029b53a1eb24f2a4256a1f8965888",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
