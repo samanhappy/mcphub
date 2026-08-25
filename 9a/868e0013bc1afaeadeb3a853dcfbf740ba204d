@@ -1,0 +1,22 @@
+src/services/authorizationService.ts
+  h_18676a549cd52a 24,30-37,43
+src/services/serverConfigPresenter.ts
+  h_18676a549cd52a 4-7,16-29,41-44,49,70,78-80,83,89-96,99
+tests/controllers/serverController.test.ts
+  h_18676a549cd52a 1866-1868,1877,1918,1926-1929,2071-2075,2093,2098-2099
+tests/services/authorizationService.test.ts
+  h_18676a549cd52a 97-106
+tests/services/serverConfigPresenter.test.ts
+  h_18676a549cd52a 19-20,27,46,71-73,97,104-112,116-138,141,151-153,157-160,167-170,180,187-191,209-218,221
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "9a868e0013bc1afaeadeb3a853dcfbf740ba204d",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
