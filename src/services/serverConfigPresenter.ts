@@ -75,9 +75,25 @@ export const presentServerForPrincipal = <T extends object>(
   return { view: 'safe', data: presentSafeServerConfig(config as ServerConfigLike) as T };
 };
 
+// Generic placeholder for runtime connection errors shown to principals who
+// may not read the full configuration. Upstream/transport error text can
+// contain connection URLs, tokens, or internal paths, and heuristic redaction
+// cannot guarantee arbitrary secrets are removed — so the raw value is
+// withheld entirely (fail closed). `status` stays untouched so shared users
+// can still tell connected/connecting/disconnected/oauth_required apart.
+export const SAFE_RUNTIME_ERROR_MESSAGE = 'Server connection failed';
+
+const presentSafeRuntimeError = (error: unknown): unknown => {
+  if (error === null || error === undefined) {
+    return error;
+  }
+  return SAFE_RUNTIME_ERROR_MESSAGE;
+};
+
 // Present a ServerInfo-shaped list entry: runtime metadata stays, but OAuth
-// session fields and the embedded connection config are reduced to their safe
-// subsets for principals who may not read the full configuration.
+// session fields, the embedded connection config, and raw runtime error text
+// are reduced to their safe subsets for principals who may not read the full
+// configuration.
 export const presentServerInfoForPrincipal = <T extends object>(
   info: T,
   principal?: RequestPrincipal | null,
@@ -94,6 +110,10 @@ export const presentServerInfoForPrincipal = <T extends object>(
 
   if (entry.config && typeof entry.config === 'object') {
     entry.config = presentSafeServerConfig(entry.config as ServerConfigLike);
+  }
+
+  if ('error' in entry) {
+    entry.error = presentSafeRuntimeError(entry.error);
   }
 
   return entry as T;

@@ -2073,6 +2073,7 @@ describe('serverController - getAllServers OAuth session scrub (#1036)', () => {
         description: 'Org web search',
         command: 'npx',
       },
+      error: 'Failed to connect to https://mcp.example.com/mcp?token=mcphub-runtime-secret',
     };
     mockGetServersInfo
       .mockResolvedValueOnce([entry])
@@ -2091,22 +2092,26 @@ describe('serverController - getAllServers OAuth session scrub (#1036)', () => {
     expect(body).not.toContain('mcphub-phase1-oauth-state');
     expect(body).not.toContain('authorizationUrl');
     expect(body).not.toContain('"command"');
+    expect(body).not.toContain('mcphub-runtime-secret');
+    expect(body).toContain('Server connection failed');
     expect(body).toContain('clientIdConfigured');
     const data = json.mock.calls[0][0];
     expect(data.data[0].oauth.state).toBeUndefined();
     expect(data.allServers[0].oauth.state).toBeUndefined();
     expect(data.data[0].config.type).toBe('streamable-http');
     expect(data.data[0].config.command).toBeUndefined();
+    expect(data.data[0].error).toBe('Server connection failed');
   });
 
-  it('keeps OAuth session fields for admins', async () => {
+  it('keeps OAuth session fields and raw errors for admins', async () => {
     mockGetCurrentUser.mockReturnValue({ username: 'admin', isAdmin: true });
     const entry = {
       name: 'org-search',
       owner: 'bob',
-      status: 'connected',
+      status: 'disconnected',
       tools: [],
       oauth: { state: 'owner-state', connected: false },
+      error: 'Failed to connect to https://mcp.example.com/mcp?token=mcphub-runtime-secret',
     };
     mockGetServersInfo.mockResolvedValueOnce([entry]).mockResolvedValueOnce([entry]);
 
@@ -2120,5 +2125,8 @@ describe('serverController - getAllServers OAuth session scrub (#1036)', () => {
     await getAllServers(req, res);
 
     expect(json.mock.calls[0][0].data[0].oauth.state).toBe('owner-state');
+    expect(json.mock.calls[0][0].data[0].error).toBe(
+      'Failed to connect to https://mcp.example.com/mcp?token=mcphub-runtime-secret',
+    );
   });
 });

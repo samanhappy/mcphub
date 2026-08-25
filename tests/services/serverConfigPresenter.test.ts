@@ -220,5 +220,63 @@ describe('serverConfigPresenter (#1036 Phase 1)', () => {
       expect(body).not.toContain('oauth-state-value');
       expect(body).not.toContain('"command"');
     });
+
+    describe.each([
+      {
+        label: 'credential-bearing URL',
+        rawError: 'Failed to connect to https://mcp.example.com/mcp?token=mcphub-runtime-secret',
+      },
+      {
+        label: 'bearer token header',
+        rawError: 'Authorization: Bearer mcphub-runtime-bearer rejected by upstream',
+      },
+      {
+        label: 'arbitrary secret no sanitizer would necessarily match',
+        rawError: 'connection failed for mcphub-arbitrary-runtime-secret',
+      },
+    ])('runtime error redaction ($label)', ({ rawError }) => {
+      const errored = { ...info, status: 'disconnected', error: rawError };
+
+      it('replaces the raw error with a generic message for restricted users', () => {
+        const presented = presentServerInfoForPrincipal(errored, alice) as Record<
+          string,
+          unknown
+        >;
+        // The raw upstream text must not survive heuristic redaction — only
+        // the generic placeholder may appear.
+        expect(presented.error).toBe('Server connection failed');
+        // Runtime metadata stays so shared users can see connection state.
+        expect(presented.status).toBe('disconnected');
+      });
+
+      it('never leaks the raw error in serialized output', () => {
+        const body = JSON.stringify(presentServerInfoForPrincipal(errored, alice));
+        for (const sentinel of [
+          'mcphub-runtime-secret',
+          'mcphub-runtime-bearer',
+          'mcphub-arbitrary-runtime-secret',
+          rawError,
+        ]) {
+          expect(body).not.toContain(sentinel);
+        }
+        expect(body).toContain('Server connection failed');
+      });
+
+      it('keeps the original error for owner and admin', () => {
+        for (const principal of [bob, admin]) {
+          const presented = presentServerInfoForPrincipal(errored, principal) as Record<
+            string,
+            unknown
+          >;
+          expect(presented.error).toBe(rawError);
+        }
+      });
+
+      it('preserves a null error state as null', () => {
+        const clean = { ...info, error: null };
+        const presented = presentServerInfoForPrincipal(clean, alice) as Record<string, unknown>;
+        expect(presented.error).toBeNull();
+      });
+    });
   });
 });
