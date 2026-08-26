@@ -862,7 +862,9 @@ export class OpenAPIClient {
         const safeTargetUrl = await assertSafeUrl(resolvedTarget.href, {
           allowInternal: this.allowInternalNetworks,
         });
-        requestConfig.url = safeTargetUrl;
+        const safeTarget = new URL(safeTargetUrl);
+        requestConfig.baseURL = safeTarget.origin;
+        requestConfig.url = `${safeTarget.pathname}${safeTarget.search}`;
       }
 
       const cookieSessionEnabled = this.isCookieSessionEnabled(sessionId);
