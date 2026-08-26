@@ -78,6 +78,27 @@ describe('previewOpenApiToolStats', () => {
     expect(large.estimatedTokens).toBeGreaterThanOrEqual(small.estimatedTokens);
   });
 
+  test('reports the declared security requirement for form prefill (#1077)', async () => {
+    const schema = baseSchema();
+    schema.security = [{ 'Bearer Auth': [] }];
+    schema.components = {
+      securitySchemes: {
+        'Bearer Auth': { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' },
+      },
+    };
+
+    const stats = await previewOpenApiToolStats(buildConfig(schema));
+
+    expect(stats.declaredSecurity).toEqual(
+      expect.objectContaining({
+        declared: true,
+        supported: true,
+        summary: 'HTTP bearer (JWT)',
+        prefill: { type: 'http', http: { scheme: 'bearer', bearerFormat: 'JWT' } },
+      }),
+    );
+  });
+
   test('rejects when the schema cannot be parsed', async () => {
     const config: ServerConfig = {
       type: 'openapi',

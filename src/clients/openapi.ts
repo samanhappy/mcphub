@@ -5,7 +5,11 @@ import { CookieJar } from 'tough-cookie';
 import SwaggerParser from '@apidevtools/swagger-parser';
 import * as yaml from 'js-yaml';
 import { OpenAPIV3 } from 'openapi-types';
-import { ServerConfig, OpenAPISecurityConfig } from '../types/index.js';
+import {
+  ServerConfig,
+  OpenAPISecurityConfig,
+  OpenAPIDeclaredSecurity,
+} from '../types/index.js';
 import { assertSafeUrl, UnsafeUrlError, createRedirectValidatingFetch } from '../utils/ssrf.js';
 import { getUserDao } from '../dao/index.js';
 import { sanitizeStringForLogging, createSafeJSON } from '../utils/serialization.js';
@@ -31,6 +35,17 @@ export interface OpenAPIToolInfo {
 }
 
 type OpenAPIOAuth2Config = NonNullable<OpenAPISecurityConfig['oauth2']>;
+
+// Result of mapping one declared OpenAPI security scheme onto MCPHub's model
+// (#1077). `ok: false` carries a human reason so the form can explain why the
+// spec's auth cannot be represented rather than silently ignoring it.
+interface MappedSecurityScheme {
+  ok: boolean;
+  prefill?: OpenAPISecurityConfig;
+  summary: string;
+  unsupportedReason?: string;
+  cookieHint?: boolean;
+}
 
 interface OpenAPIClientOptions {
   persistOAuth2Token?: (oauth2: OpenAPISecurityConfig['oauth2']) => Promise<void> | void;
@@ -129,14 +144,17 @@ export class OpenAPIClient {
       case 'apiKey':
         if (this.securityConfig.apiKey) {
           const { name, in: location, value } = this.securityConfig.apiKey;
-          if (location === 'header') {
+          // An empty/absent value means the credential has not been supplied
+          // yet ("needs credentials"); skip injection rather than sending a
+          // broken empty header/param/cookie (#1077).
+          if (location === 'header' && value) {
             this.httpClient.defaults.headers.common[name] = value;
-          } else if (location === 'query') {
+          } else if (location === 'query' && value) {
             this.httpClient.interceptors.request.use((config: any) => {
               config.params = { ...config.params, [name]: value };
               return config;
             });
-          } else if (location === 'cookie') {
+          } else if (location === 'cookie' && value) {
             this.staticCookieHeader = `${name}=${value}`;
           }
         }
@@ -949,6 +967,212 @@ export class OpenAPIClient {
 
   getSpec(): OpenAPIV3.Document | null {
     return this.spec;
+  }
+
+  // ── Declared-security resolution (#1077) ─────────────────────────────────
+  //
+  // The import path reads the effective `security` requirement the spec
+  // declares and maps it onto MCPHub's OpenAPISecurityConfig so the form can
+  // prefill type/scheme/name fields. Only structural fields are ever produced
+  // — a spec cannot contain the secret, so value / credentials / token stay
+  // empty for the user.
+
+  /**
+   * Resolve the effective security requirement the (already parsed) spec
+   * declares and map it onto MCPHub's security model for form prefill.
+   *
+   * OpenAPI 3.x rules applied here:
+   *  - an operation-level `security` overrides the root-level one for that
+   *    operation; operations without one inherit the root requirement;
+   *  - `security: []` explicitly disables auth for that scope;
+   *  - each requirement is an OR-list of named schemes (from
+   *    `components.securitySchemes`); a single scheme may be repeated in an
+   *    AND-list with its required scopes.
+   *
+   * The first requirement whose scheme maps onto MCPHub's model (apiKey,
+   * http/basic|bearer, oauth2, openIdConnect) is returned as `prefill`.
+   */
+  getDeclaredSecurity(): OpenAPIDeclaredSecurity {
+    const none: OpenAPIDeclaredSecurity = {
+      declared: false,
+      supported: false,
+      summary: '',
+      alternatives: 0,
+      requiresCredentials: false,
+    };
+    if (!this.spec) {
+      return none;
+    }
+
+    const rootSecurity = Array.isArray(this.spec.security) ? this.spec.security : undefined;
+    // An explicit operation-level requirement is the most specific declaration
+    // in the document (it overrides the root default for that operation), so it
+    // wins for prefill; the root requirement is the fallback default.
+    const effective =
+      this.firstOperationSecurity() ??
+      (rootSecurity && rootSecurity.length > 0 ? rootSecurity : undefined);
+    if (!effective || effective.length === 0) {
+      return none;
+    }
+
+    const schemes = this.spec.components?.securitySchemes ?? {};
+    return this.mapSecurityRequirement(effective, schemes);
+  }
+
+  // Per OpenAPI 3.x, an operation without a `security` field inherits the
+  // root-level requirement. Return the first operation that declares one — the
+  // most specific security statement in the document — so the prefill reflects
+  // what operations actually require rather than only the root default.
+  private firstOperationSecurity(): OpenAPIV3.SecurityRequirementObject[] | undefined {
+    if (!this.spec?.paths) {
+      return undefined;
+    }
+    const methods = ['get', 'post', 'put', 'delete', 'patch', 'head', 'options', 'trace'] as const;
+    for (const pathItem of Object.values(this.spec.paths)) {
+      if (!pathItem) {
+        continue;
+      }
+      for (const method of methods) {
+        const operation = pathItem[method] as OpenAPIV3.OperationObject | undefined;
+        if (operation?.security && operation.security.length > 0) {
+          return operation.security;
+        }
+      }
+    }
+    return undefined;
+  }
+
+  private mapSecurityRequirement(
+    requirement: OpenAPIV3.SecurityRequirementObject[],
+    schemes: Record<string, OpenAPIV3.ReferenceObject | OpenAPIV3.SecuritySchemeObject>,
+  ): OpenAPIDeclaredSecurity {
+    let firstUnsupported: OpenAPIDeclaredSecurity | undefined;
+    for (const alternative of requirement) {
+      for (const schemeName of Object.keys(alternative)) {
+        const scheme = schemes[schemeName];
+        if (!scheme || '$ref' in scheme) {
+          // Unknown name or an unresolved reference — try the next alternative.
+          continue;
+        }
+        const mapped = this.mapSecurityScheme(
+          schemeName,
+          scheme as OpenAPIV3.SecuritySchemeObject,
+        );
+        if (mapped.ok) {
+          return {
+            declared: true,
+            supported: true,
+            prefill: mapped.prefill,
+            summary: mapped.summary,
+            alternatives: requirement.length,
+            requiresCredentials: true,
+            ...(mapped.cookieHint ? { cookieHint: true } : {}),
+          };
+        }
+        firstUnsupported ??= {
+          declared: true,
+          supported: false,
+          summary: mapped.summary,
+          alternatives: requirement.length,
+          requiresCredentials: false,
+          unsupportedReason: mapped.unsupportedReason,
+        };
+      }
+    }
+    return (
+      firstUnsupported ?? {
+        declared: true,
+        supported: false,
+        summary: 'unknown security scheme',
+        alternatives: requirement.length,
+        requiresCredentials: false,
+        unsupportedReason: 'The spec declares a security scheme MCPHub cannot recognize.',
+      }
+    );
+  }
+
+  private mapSecurityScheme(
+    schemeName: string,
+    scheme: OpenAPIV3.SecuritySchemeObject,
+  ): MappedSecurityScheme {
+    switch (scheme.type) {
+      case 'http':
+        if (scheme.scheme === 'bearer') {
+          return {
+            ok: true,
+            prefill: {
+              type: 'http',
+              http: {
+                scheme: 'bearer',
+                ...(scheme.bearerFormat ? { bearerFormat: scheme.bearerFormat } : {}),
+              },
+            },
+            summary: scheme.bearerFormat ? `HTTP bearer (${scheme.bearerFormat})` : 'HTTP bearer',
+          };
+        }
+        if (scheme.scheme === 'basic') {
+          return {
+            ok: true,
+            prefill: { type: 'http', http: { scheme: 'basic' } },
+            summary: 'HTTP basic',
+          };
+        }
+        // MCPHub's form can select digest but setupSecurity() never emits a
+        // Digest header, so declaring it as prefilled would silently mislead.
+        return {
+          ok: false,
+          summary: `HTTP ${scheme.scheme}`,
+          unsupportedReason: `HTTP scheme '${scheme.scheme}' cannot be sent by MCPHub.`,
+        };
+
+      case 'apiKey': {
+        const location = scheme.in;
+        if (location === 'header' || location === 'query' || location === 'cookie') {
+          return {
+            ok: true,
+            prefill: { type: 'apiKey', apiKey: { name: scheme.name, in: location } },
+            summary: `API key in ${location} '${scheme.name}'`,
+            cookieHint: location === 'cookie',
+          };
+        }
+        return {
+          ok: false,
+          summary: `API key in '${location}'`,
+          unsupportedReason: `API key location '${location}' is not supported by MCPHub.`,
+        };
+      }
+
+      case 'oauth2': {
+        // Only flows with a token endpoint are actionable for MCPHub's
+        // client-credentials token fetch; prefill it when the spec provides it.
+        const tokenUrl =
+          scheme.flows?.clientCredentials?.tokenUrl ||
+          scheme.flows?.password?.tokenUrl ||
+          scheme.flows?.authorizationCode?.tokenUrl;
+        return {
+          ok: true,
+          prefill: {
+            type: 'oauth2',
+            ...(tokenUrl ? { oauth2: { tokenUrl } } : {}),
+          },
+          summary: 'OAuth2',
+        };
+      }
+
+      case 'openIdConnect':
+        return {
+          ok: true,
+          prefill: { type: 'openIdConnect', openIdConnect: { url: scheme.openIdConnectUrl } },
+          summary: 'OpenID Connect',
+        };
+
+      default:
+        return {
+          ok: false,
+          summary: `security scheme '${schemeName}'`,
+          unsupportedReason: `Security scheme type '${(scheme as { type: string }).type}' is not supported by MCPHub.`,
+        };
+    }
   }
 
   private isCookieSessionEnabled(sessionId?: string): sessionId is string {

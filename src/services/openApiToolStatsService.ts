@@ -37,5 +37,7 @@ export async function previewOpenApiToolStats(
     toolCount: tools.length,
     definitionsBytes: Buffer.byteLength(JSON.stringify(tools)),
     estimatedTokens: items.reduce((sum, item) => sum + item.cost, 0),
+    // Effective security requirement the spec declares, for form prefill (#1077).
+    declaredSecurity: client.getDeclaredSecurity(),
   };
 }

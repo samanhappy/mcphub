@@ -825,9 +825,29 @@ export interface GroupCost {
   smartRouting: SmartRoutingCost | null;
 }
 
+// Effective security requirement a parsed OpenAPI spec declares (#1077).
+// Structural fields only — the spec can never supply the secret itself.
+export interface OpenAPIDeclaredSecurity {
+  declared: boolean;
+  supported: boolean;
+  prefill?: {
+    type: 'none' | 'apiKey' | 'http' | 'oauth2' | 'openIdConnect';
+    apiKey?: { name: string; in: 'header' | 'query' | 'cookie' };
+    http?: { scheme: 'basic' | 'bearer' | 'digest'; bearerFormat?: string };
+    oauth2?: { tokenUrl?: string };
+    openIdConnect?: { url?: string };
+  };
+  summary: string;
+  alternatives: number;
+  requiresCredentials: boolean;
+  unsupportedReason?: string;
+  cookieHint?: boolean;
+}
+
 // Pre-save OpenAPI import preview (#1082)
 export interface OpenApiToolStats {
   toolCount: number;
   definitionsBytes: number;
   estimatedTokens: number;
+  declaredSecurity?: OpenAPIDeclaredSecurity;
 }
