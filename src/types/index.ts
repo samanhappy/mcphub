@@ -811,3 +811,19 @@ export interface GroupCost {
   direct: { exposed: number; gross: number };
   smartRouting: SmartRoutingCost | null;
 }
+
+/**
+ * Pre-save OpenAPI import preview (#1082): what the generated tool list would
+ * look like if this spec were imported, before anything is persisted.
+ */
+export interface OpenApiToolStats {
+  /** Number of tools extractTools() would generate for the spec. */
+  toolCount: number;
+  /**
+   * Byte length of the JSON array of generated tool definitions — a proxy for
+   * the tools/list payload size clients receive.
+   */
+  definitionsBytes: number;
+  /** cl100k token estimate across all generated tool definitions. */
+  estimatedTokens: number;
+}

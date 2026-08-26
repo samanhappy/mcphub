@@ -1,9 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { X } from 'lucide-react';
-import { Server, EnvVar, ServerFormData } from '@/types';
-import { apiGet } from '../utils/fetchInterceptor';
+import { Server, EnvVar, ServerFormData, OpenApiToolStats } from '@/types';
+import { apiGet, apiPost } from '../utils/fetchInterceptor';
 import { buildServerPayload } from '../utils/serverFormPayload';
+import ConfirmDialog from './ui/ConfirmDialog';
+import { OPENAPI_STATS_WARN_TOKENS, formatBytes, formatTokens } from '../utils/contextCost';
+import { shouldConfirmOpenApiImport } from '../utils/openApiImportConfirmation';
 
 interface ServerFormProps {
   onSubmit: (payload: any) => void;
@@ -78,12 +81,8 @@ const ServerForm = ({
     type: getInitialServerType(), // Initialize the type field
     env: getInitialServerEnvVars(initialData),
     headers: [],
-    passthroughHeaders:
-      initialData?.config?.passthroughHeaders?.join(', ') || '',
-    visibility: (initialData?.config?.visibility ?? 'private') as
-      | 'private'
-      | 'group'
-      | 'public',
+    passthroughHeaders: initialData?.config?.passthroughHeaders?.join(', ') || '',
+    visibility: (initialData?.config?.visibility ?? 'private') as 'private' | 'group' | 'public',
     sharedWithUsers: initialData?.config?.sharedWithUsers || [],
     options: {
       timeout:
@@ -92,8 +91,7 @@ const ServerForm = ({
           initialData.config.options &&
           initialData.config.options.timeout) ||
         60000,
-      resetTimeoutOnProgress:
-        initialData?.config?.options?.resetTimeoutOnProgress ?? true,
+      resetTimeoutOnProgress: initialData?.config?.options?.resetTimeoutOnProgress ?? true,
       maxTotalTimeout:
         (initialData &&
           initialData.config &&
@@ -231,6 +229,17 @@ const ServerForm = ({
       : [],
   );
 
+  // ── OpenAPI import confirmation (#1082) ───────────────────────────────────
+  // Measure the generated tool list when the user submits the form, then show
+  // the result in an explicit confirmation dialog before importing it.
+  const [openApiStats, setOpenApiStats] = useState<OpenApiToolStats | null>(null);
+  const [openApiStatsLoading, setOpenApiStatsLoading] = useState(false);
+  const [openApiConfirmationVisible, setOpenApiConfirmationVisible] = useState(false);
+  const [pendingOpenApiPayload, setPendingOpenApiPayload] = useState<ReturnType<
+    typeof buildServerPayload
+  > | null>(null);
+  const openApiStatsRequestId = useRef(0);
+
   const [isRequestOptionsExpanded, setIsRequestOptionsExpanded] = useState<boolean>(false);
   const [isOAuthSectionExpanded, setIsOAuthSectionExpanded] = useState<boolean>(false);
   const [isKeepAliveSectionExpanded, setIsKeepAliveSectionExpanded] = useState<boolean>(false);
@@ -313,6 +322,47 @@ const ServerForm = ({
     }));
   };
 
+  const measureOpenApiToolStats = async (payload: ReturnType<typeof buildServerPayload>) => {
+    const requestId = ++openApiStatsRequestId.current;
+    setOpenApiStats(null);
+    setOpenApiStatsLoading(true);
+
+    try {
+      const response = await apiPost<{ success: boolean; data?: OpenApiToolStats }>(
+        '/servers/openapi/tool-stats',
+        { config: payload.config },
+        { signal: AbortSignal.timeout(60000) },
+      );
+
+      if (openApiStatsRequestId.current !== requestId) return;
+      if (response.success && response.data) {
+        setOpenApiStats(response.data);
+      }
+    } catch {
+      // The confirmation remains usable when the advisory request fails.
+    } finally {
+      if (openApiStatsRequestId.current === requestId) {
+        setOpenApiStatsLoading(false);
+      }
+    }
+  };
+
+  const closeOpenApiConfirmation = () => {
+    openApiStatsRequestId.current += 1;
+    setOpenApiConfirmationVisible(false);
+    setPendingOpenApiPayload(null);
+    setOpenApiStats(null);
+    setOpenApiStatsLoading(false);
+  };
+
+  const confirmOpenApiImport = () => {
+    if (!pendingOpenApiPayload) return;
+
+    const payload = pendingOpenApiPayload;
+    closeOpenApiConfirmation();
+    onSubmit(payload);
+  };
+
   // Submit handler for server configuration
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -326,6 +376,13 @@ const ServerForm = ({
         headerVars,
       });
 
+      if (shouldConfirmOpenApiImport(serverType, formData.openapi)) {
+        setPendingOpenApiPayload(payload);
+        setOpenApiConfirmationVisible(true);
+        void measureOpenApiToolStats(payload);
+        return;
+      }
+
       onSubmit(payload);
     } catch (err) {
       setError(`Error: ${err instanceof Error ? err.message : String(err)}`);
@@ -336,11 +393,7 @@ const ServerForm = ({
     <div className="hub-card p-6 w-full max-w-3xl max-h-screen overflow-y-auto">
       <div className="flex justify-between items-center mb-5">
         <h2 className="text-lg font-semibold text-[var(--hub-ink)]">{modalTitle}</h2>
-        <button
-          onClick={onCancel}
-          className="hub-icon-btn"
-          aria-label="Close"
-        >
+        <button onClick={onCancel} className="hub-icon-btn" aria-label="Close">
           <X size={16} />
         </button>
       </div>
@@ -358,7 +411,10 @@ const ServerForm = ({
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
             <div className="md:col-span-1">
-              <label className="block text-sm font-medium mb-1.5 text-[var(--hub-ink-2)]" htmlFor="name">
+              <label
+                className="block text-sm font-medium mb-1.5 text-[var(--hub-ink-2)]"
+                htmlFor="name"
+              >
                 {t('server.name')}
               </label>
               <input
@@ -374,7 +430,10 @@ const ServerForm = ({
             </div>
 
             <div className="md:col-span-2">
-              <label className="block text-sm font-medium mb-1.5 text-[var(--hub-ink-2)]" htmlFor="description">
+              <label
+                className="block text-sm font-medium mb-1.5 text-[var(--hub-ink-2)]"
+                htmlFor="description"
+              >
                 {t('server.description')}
               </label>
               <input
@@ -397,7 +456,9 @@ const ServerForm = ({
           </h3>
 
           <div className="mb-4">
-            <label className="block text-sm font-medium mb-1.5 text-[var(--hub-ink-2)]">{t('server.type')}</label>
+            <label className="block text-sm font-medium mb-1.5 text-[var(--hub-ink-2)]">
+              {t('server.type')}
+            </label>
             <div className="flex flex-wrap gap-x-4 gap-y-2">
               <div>
                 <input
@@ -409,7 +470,9 @@ const ServerForm = ({
                   onChange={() => updateServerType('stdio')}
                   className="mr-1"
                 />
-                <label htmlFor="command" className="text-[var(--hub-ink)]">{t('server.typeStdio')}</label>
+                <label htmlFor="command" className="text-[var(--hub-ink)]">
+                  {t('server.typeStdio')}
+                </label>
               </div>
               <div>
                 <input
@@ -421,7 +484,9 @@ const ServerForm = ({
                   onChange={() => updateServerType('sse')}
                   className="mr-1"
                 />
-                <label htmlFor="url" className="text-[var(--hub-ink)]">{t('server.typeSse')}</label>
+                <label htmlFor="url" className="text-[var(--hub-ink)]">
+                  {t('server.typeSse')}
+                </label>
               </div>
               <div>
                 <input
@@ -433,7 +498,9 @@ const ServerForm = ({
                   onChange={() => updateServerType('streamable-http')}
                   className="mr-1"
                 />
-                <label htmlFor="streamable-http" className="text-[var(--hub-ink)]">{t('server.typeStreamableHttp')}</label>
+                <label htmlFor="streamable-http" className="text-[var(--hub-ink)]">
+                  {t('server.typeStreamableHttp')}
+                </label>
               </div>
               <div>
                 <input
@@ -445,7 +512,9 @@ const ServerForm = ({
                   onChange={() => updateServerType('openapi')}
                   className="mr-1"
                 />
-                <label htmlFor="openapi" className="text-[var(--hub-ink)]">{t('server.typeOpenapi')}</label>
+                <label htmlFor="openapi" className="text-[var(--hub-ink)]">
+                  {t('server.typeOpenapi')}
+                </label>
               </div>
             </div>
           </div>
@@ -492,7 +561,9 @@ const ServerForm = ({
                         }
                         className="mr-1"
                       />
-                      <label htmlFor="input-mode-schema">{t('server.openapi.inputModeSchema')}</label>
+                      <label htmlFor="input-mode-schema">
+                        {t('server.openapi.inputModeSchema')}
+                      </label>
                     </div>
                   </div>
                 </div>
@@ -500,7 +571,10 @@ const ServerForm = ({
                 {/* URL Input */}
                 {formData.openapi?.inputMode === 'url' && (
                   <div className="mb-4">
-                    <label className="block text-sm font-medium mb-1.5 text-[var(--hub-ink-2)]" htmlFor="openapi-url">
+                    <label
+                      className="block text-sm font-medium mb-1.5 text-[var(--hub-ink-2)]"
+                      htmlFor="openapi-url"
+                    >
                       {t('server.openapi.specUrl')}
                     </label>
                     <input
@@ -557,9 +631,13 @@ const ServerForm = ({
     ...
   }
 }`}
-                      required={serverType === 'openapi' && formData.openapi?.inputMode === 'schema'}
+                      required={
+                        serverType === 'openapi' && formData.openapi?.inputMode === 'schema'
+                      }
                     />
-                    <p className="text-xs text-[var(--hub-ink-3)] mt-1">{t('server.openapi.schemaHelp')}</p>
+                    <p className="text-xs text-[var(--hub-ink-3)] mt-1">
+                      {t('server.openapi.schemaHelp')}
+                    </p>
                   </div>
                 )}
 
@@ -586,7 +664,9 @@ const ServerForm = ({
                     <option value="apiKey">{t('server.openapi.securityApiKey')}</option>
                     <option value="http">{t('server.openapi.securityHttp')}</option>
                     <option value="oauth2">{t('server.openapi.securityOAuth2')}</option>
-                    <option value="openIdConnect">{t('server.openapi.securityOpenIdConnect')}</option>
+                    <option value="openIdConnect">
+                      {t('server.openapi.securityOpenIdConnect')}
+                    </option>
                   </select>
                 </div>
 
@@ -954,7 +1034,10 @@ const ServerForm = ({
             ) : serverType === 'sse' || serverType === 'streamable-http' ? (
               <>
                 <div className="mb-4">
-                  <label className="block text-sm font-medium mb-1.5 text-gray-700 dark:text-gray-300" htmlFor="url">
+                  <label
+                    className="block text-sm font-medium mb-1.5 text-gray-700 dark:text-gray-300"
+                    htmlFor="url"
+                  >
                     {t('server.url')}
                   </label>
                   <input
@@ -1062,7 +1145,10 @@ const ServerForm = ({
             ) : (
               <>
                 <div className="mb-4">
-                  <label className="block text-sm font-medium mb-1.5 text-gray-700 dark:text-gray-300" htmlFor="command">
+                  <label
+                    className="block text-sm font-medium mb-1.5 text-gray-700 dark:text-gray-300"
+                    htmlFor="command"
+                  >
                     {t('server.command')}
                   </label>
                   <input
@@ -1077,7 +1163,10 @@ const ServerForm = ({
                   />
                 </div>
                 <div className="mb-4">
-                  <label className="block text-sm font-medium mb-1.5 text-gray-700 dark:text-gray-300" htmlFor="arguments">
+                  <label
+                    className="block text-sm font-medium mb-1.5 text-gray-700 dark:text-gray-300"
+                    htmlFor="arguments"
+                  >
                     {t('server.arguments')}
                   </label>
                   <input
@@ -1154,7 +1243,10 @@ const ServerForm = ({
             <div className="border border-gray-200 dark:border-gray-700 rounded-b p-4 bg-white dark:bg-gray-900 border-t-0 space-y-4">
               {/* Visibility */}
               <div>
-                <label className="block text-sm font-medium mb-1.5 text-[var(--hub-ink-2)]" htmlFor="visibility">
+                <label
+                  className="block text-sm font-medium mb-1.5 text-[var(--hub-ink-2)]"
+                  htmlFor="visibility"
+                >
                   {t('server.visibility', 'Visibility')}
                 </label>
                 <select
@@ -1297,7 +1389,9 @@ const ServerForm = ({
                     <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
                       {t('server.oauth.sectionTitle')}
                     </label>
-                    <span className="text-gray-500 text-sm">{isOAuthSectionExpanded ? '▼' : '▶'}</span>
+                    <span className="text-gray-500 text-sm">
+                      {isOAuthSectionExpanded ? '▼' : '▶'}
+                    </span>
                   </div>
 
                   {isOAuthSectionExpanded && (
@@ -1348,7 +1442,9 @@ const ServerForm = ({
                     <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
                       {t('server.requestOptions')}
                     </label>
-                    <span className="text-gray-500 text-sm">{isRequestOptionsExpanded ? '▼' : '▶'}</span>
+                    <span className="text-gray-500 text-sm">
+                      {isRequestOptionsExpanded ? '▼' : '▶'}
+                    </span>
                   </div>
 
                   {isRequestOptionsExpanded && (
@@ -1373,7 +1469,9 @@ const ServerForm = ({
                             min="1000"
                             max="300000"
                           />
-                          <p className="text-xs text-gray-500 mt-1">{t('server.timeoutDescription')}</p>
+                          <p className="text-xs text-gray-500 mt-1">
+                            {t('server.timeoutDescription')}
+                          </p>
                         </div>
 
                         <div>
@@ -1522,7 +1620,10 @@ const ServerForm = ({
                       }
                       className="mr-2"
                     />
-                    <label htmlFor="perSessionClient" className="text-gray-700 dark:text-gray-300 text-sm font-medium">
+                    <label
+                      htmlFor="perSessionClient"
+                      className="text-gray-700 dark:text-gray-300 text-sm font-medium"
+                    >
                       {t('server.perSessionClient', 'Per-Session Client Isolation')}
                     </label>
                   </div>
@@ -1551,7 +1652,10 @@ const ServerForm = ({
                       }
                       className="mr-2"
                     />
-                    <label htmlFor="startOnDemand" className="text-gray-700 dark:text-gray-300 text-sm font-medium">
+                    <label
+                      htmlFor="startOnDemand"
+                      className="text-gray-700 dark:text-gray-300 text-sm font-medium"
+                    >
                       {t('server.startOnDemand', 'Start On Demand')}
                     </label>
                   </div>
@@ -1563,7 +1667,10 @@ const ServerForm = ({
                   </p>
                   {formData.startOnDemand && (
                     <div className="ml-6 mt-2">
-                      <label htmlFor="idleTimeoutMs" className="block text-xs text-gray-600 dark:text-gray-400 mb-1">
+                      <label
+                        htmlFor="idleTimeoutMs"
+                        className="block text-xs text-gray-600 dark:text-gray-400 mb-1"
+                      >
                         {t('server.idleTimeoutMs', 'Idle shutdown timeout (ms)')}
                       </label>
                       <input
@@ -1595,21 +1702,54 @@ const ServerForm = ({
         </div>
 
         <div className="flex justify-end mt-6">
-          <button
-            type="button"
-            onClick={onCancel}
-            className="hub-btn mr-2"
-          >
+          <button type="button" onClick={onCancel} className="hub-btn mr-2">
             {t('server.cancel')}
           </button>
-          <button
-            type="submit"
-            className="hub-btn primary"
-          >
+          <button type="submit" className="hub-btn primary">
             {isEdit ? t('server.save') : t('server.add')}
           </button>
         </div>
       </form>
+
+      <ConfirmDialog
+        isOpen={openApiConfirmationVisible}
+        onClose={closeOpenApiConfirmation}
+        onConfirm={confirmOpenApiImport}
+        title={t('server.openapi.statsConfirmTitle')}
+        confirmText={t('common.confirm')}
+        cancelText={t('common.cancel')}
+        confirmDisabled={openApiStatsLoading}
+        variant={
+          openApiStats && openApiStats.estimatedTokens >= OPENAPI_STATS_WARN_TOKENS
+            ? 'warning'
+            : 'info'
+        }
+        message={
+          openApiStatsLoading ? (
+            <p>{t('server.openapi.statsMeasuring')}</p>
+          ) : openApiStats ? (
+            <div className="space-y-3">
+              <p>{t('server.openapi.statsConfirmMessage')}</p>
+              <div className="rounded border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-800">
+                <p className="font-medium text-[var(--hub-ink-2)]">
+                  {t('server.openapi.statsSummary', {
+                    toolCount: openApiStats.toolCount,
+                    bytes: formatBytes(openApiStats.definitionsBytes),
+                    tokens: formatTokens(openApiStats.estimatedTokens),
+                  })}
+                </p>
+              </div>
+              {openApiStats.estimatedTokens >= OPENAPI_STATS_WARN_TOKENS && (
+                <p className="text-sm text-yellow-700 dark:text-yellow-300">
+                  {t('server.openapi.statsWarning')}
+                </p>
+              )}
+            </div>
+          ) : (
+            <p>{t('server.openapi.statsUnavailable')}</p>
+          )
+        }
+      />
     </div>
   );
 };

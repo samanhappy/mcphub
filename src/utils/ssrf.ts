@@ -106,7 +106,7 @@ const defaultLookup: SsrfLookup = async (host) => {
 export async function assertSafeUrl(
   rawUrl: string,
   opts: AssertSafeUrlOptions = {},
-): Promise<void> {
+): Promise<string> {
   const { allowInternal = false, lookup = defaultLookup } = opts;
 
   let parsed: URL;
@@ -121,7 +121,7 @@ export async function assertSafeUrl(
   }
 
   if (allowInternal) {
-    return;
+    return parsed.href;
   }
 
   const host = parsed.hostname;
@@ -129,7 +129,7 @@ export async function assertSafeUrl(
     if (isBlockedIp(host)) {
       throw new UnsafeUrlError(`Blocked target IP: ${host}`);
     }
-    return;
+    return parsed.href;
   }
 
   let addresses: string[];
@@ -146,6 +146,8 @@ export async function assertSafeUrl(
       throw new UnsafeUrlError(`Host ${host} resolves to blocked address: ${addr}`);
     }
   }
+
+  return parsed.href;
 }
 
 export type FetchLike = (url: string | URL, init?: RequestInit) => Promise<Response>;
@@ -175,8 +177,7 @@ export function createRedirectValidatingFetch(
         return response;
       }
       const resolvedUrl = new URL(location, currentUrl).toString();
-      await assertSafeUrl(resolvedUrl, { allowInternal });
-      currentUrl = resolvedUrl;
+      currentUrl = await assertSafeUrl(resolvedUrl, { allowInternal });
       hops++;
       response = await baseFetch(currentUrl, { ...init, redirect: 'manual' });
     }

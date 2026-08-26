@@ -50,6 +50,7 @@ import type { UpstreamOAuthDisconnectScope } from '../services/upstreamOAuthDisc
 import { normalizeServerConfigForPersistence } from '../utils/serverConfigPersistence.js';
 import { setCachedSystemConfig } from '../utils/systemConfigCache.js';
 import { DEFAULT_INSTALL_BASE_URL, withResolvedInstallBaseUrl } from '../utils/installBaseUrl.js';
+import { previewOpenApiToolStats } from '../services/openApiToolStatsService.js';
 import { logger } from '../utils/logger.js';
 
 type DescribableConfig = Record<string, { enabled: boolean; description?: string }>;
@@ -450,6 +451,52 @@ export const getAllSettings = async (req: Request, res: Response): Promise<void>
     res.status(500).json({
       success: false,
       message: 'Failed to get server settings',
+    });
+  }
+};
+
+/**
+ * Preview the tool list an OpenAPI import would generate, without persisting
+ * anything (#1082). Large specs can silently produce a tools/list that does
+ * not fit in a model's context window; this endpoint lets the form surface
+ * the numbers at the point of confirming the import.
+ */
+export const previewOpenApiToolStatsHandler = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
+  try {
+    const { config } = req.body as AddServerRequest;
+    if (!config || typeof config !== 'object') {
+      res.status(400).json({
+        success: false,
+        message: 'Server configuration is required',
+      });
+      return;
+    }
+
+    const normalizedConfig = normalizeServerConfigForPersistence(config);
+
+    if (!normalizedConfig.openapi?.url && !normalizedConfig.openapi?.schema) {
+      res.status(400).json({
+        success: false,
+        message: 'OpenAPI specification URL or schema is required',
+      });
+      return;
+    }
+
+    // Assign the requesting user as owner so initialize()'s admin check (and
+    // therefore the internal-network SSRF allowance) matches what a real
+    // add-server request would produce for the same caller.
+    assignServerOwner(req, normalizedConfig);
+
+    const stats = await previewOpenApiToolStats(normalizedConfig);
+    res.json({ success: true, data: stats });
+  } catch (error) {
+    logger.warn('Failed to preview OpenAPI tool stats:', error);
+    res.status(400).json({
+      success: false,
+      message: error instanceof Error ? error.message : 'Failed to analyze OpenAPI specification',
     });
   }
 };

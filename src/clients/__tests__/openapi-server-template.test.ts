@@ -2,6 +2,12 @@ import { OpenAPIClient } from '../openapi.js';
 import { ServerConfig } from '../../types/index.js';
 import { OpenAPIV3 } from 'openapi-types';
 
+type TestClient = OpenAPIClient & {
+  baseUrl: string;
+  allowInternalNetworks: boolean;
+  httpClient: { request: jest.Mock };
+};
+
 describe('OpenAPIClient - server URL template variables', () => {
   // Regression: specs like seerr's declare
   //   servers:
@@ -42,21 +48,25 @@ describe('OpenAPIClient - server URL template variables', () => {
       },
     };
 
-    const client = new OpenAPIClient(config) as OpenAPIClient & {
-      httpClient: { defaults: { baseURL: string } };
-    };
+    const client = new OpenAPIClient(config) as TestClient;
     await client.initialize();
 
     // After substitution '{server}/api/v1' -> 'http://localhost:5055/api/v1',
-    // which is an absolute URL and must become the axios baseURL verbatim.
-    expect(client.httpClient.defaults.baseURL).toBe('http://localhost:5055/api/v1');
+    // the resolved base must be the substituted server URL — not the spec
+    // source host (raw.githubusercontent.com) that 404'd before the fix.
+    expect(client.baseUrl).toBe('http://localhost:5055/api/v1');
 
-    const tool = client.getTools().find((t) => t.name === 'get_status');
-    expect(tool).toBeDefined();
-    expect(tool!.path).toBe('/status');
-    // Axios concatenates baseURL + relative path (preserving the /api/v1 prefix),
-    // so the upstream target is http://localhost:5055/api/v1/status — not the
-    // spec source host (raw.githubusercontent.com) that 404'd before the fix.
+    // The axios instance carries no user-derived default baseURL: each
+    // request's host is resolved and SSRF-validated explicitly in callTool, so
+    // a user-supplied default must not taint the client (CodeQL tracks a
+    // client's default baseURL as the host of every request it makes). Tool
+    // calls still resolve their relative path against the substituted base.
+    client.allowInternalNetworks = true;
+    client.httpClient = { request: jest.fn().mockResolvedValue({ data: 'ok' }) };
+    await expect(client.callTool('get_status', {})).resolves.toBe('ok');
+    const requestConfig = client.httpClient.request.mock.calls[0][0];
+    expect(requestConfig.baseURL).toBe('http://localhost:5055');
+    expect(requestConfig.url).toBe('/status');
   });
 
   // A non-templated server URL must keep working unchanged.
@@ -80,11 +90,9 @@ describe('OpenAPIClient - server URL template variables', () => {
       },
     };
 
-    const client = new OpenAPIClient(config) as OpenAPIClient & {
-      httpClient: { defaults: { baseURL: string } };
-    };
+    const client = new OpenAPIClient(config) as TestClient;
     await client.initialize();
 
-    expect(client.httpClient.defaults.baseURL).toBe('https://api.example.com/v2');
+    expect(client.baseUrl).toBe('https://api.example.com/v2');
   });
 });

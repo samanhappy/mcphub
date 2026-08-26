@@ -241,7 +241,13 @@
       "passthroughHeaders": "Geçiş Başlıkları",
       "passthroughHeadersHelp": "Gelen MCP isteklerinden yukarı akış sunucu isteklerine geçirilecek başlık adlarının virgülle ayrılmış listesi (örn. Authorization, X-API-Key)",
       "cookieSession": "Cookie Oturum Yönetimi",
-      "cookieSessionHelp": "Yukarı akış oturum açma yanıtlarındaki Set-Cookie değerini yakalar ve aynı aşağı akış oturumundaki sonraki çağrılarda yeniden gönderir. MCP oturumu başına izole edilir; kalıcı değildir."
+      "cookieSessionHelp": "Yukarı akış oturum açma yanıtlarındaki Set-Cookie değerini yakalar ve aynı aşağı akış oturumundaki sonraki çağrılarda yeniden gönderir. MCP oturumu başına izole edilir; kalıcı değildir.",
+      "statsMeasuring": "Oluşturulan araç listesi ölçülüyor…",
+      "statsSummary": "{{toolCount}} araç · tanımlar ~{{bytes}} · ~{{tokens}} token",
+      "statsWarning": "Bu araç listesi tek başına yaygın model bağlam pencerelerine yaklaşabilir veya bunları aşabilir. Daha az araç göstermeyi düşünün: bir grup oluşturun veya sunucuda tek tek araçları devre dışı bırakın.",
+      "statsConfirmTitle": "OpenAPI içe aktarmasını onayla",
+      "statsConfirmMessage": "Devam etmeden önce oluşturulan araç listesinin boyutunu inceleyin.",
+      "statsUnavailable": "Belirtim ölçülemedi. Devam edebilirsiniz; sunucu gönderim sırasında içe aktarmayı doğrular."
     },
     "oauth": {
       "sectionTitle": "OAuth Yapılandırması",

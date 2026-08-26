@@ -6,9 +6,10 @@ interface ConfirmDialogProps {
   onClose: () => void;
   onConfirm: () => void;
   title?: string;
-  message: string;
+  message: React.ReactNode;
   confirmText?: string;
   cancelText?: string;
+  confirmDisabled?: boolean;
   variant?: 'danger' | 'warning' | 'info';
 }
 
@@ -20,7 +21,8 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   message,
   confirmText,
   cancelText,
-  variant = 'warning'
+  confirmDisabled = false,
+  variant = 'warning',
 }) => {
   const { t } = useTranslation();
 
@@ -31,8 +33,18 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
       case 'danger':
         return {
           icon: (
-            <svg className="w-6 h-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+            <svg
+              className="w-6 h-6 text-red-600"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"
+              />
             </svg>
           ),
           confirmBtnClass: 'hub-btn danger',
@@ -40,8 +52,18 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
       case 'warning':
         return {
           icon: (
-            <svg className="w-6 h-6 text-yellow-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+            <svg
+              className="w-6 h-6 text-yellow-600"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"
+              />
             </svg>
           ),
           confirmBtnClass: 'hub-btn primary',
@@ -49,8 +71,18 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
       case 'info':
         return {
           icon: (
-            <svg className="w-6 h-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            <svg
+              className="w-6 h-6 text-blue-600"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
             </svg>
           ),
           confirmBtnClass: 'hub-btn primary',
@@ -74,7 +106,7 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Escape') {
       onClose();
-    } else if (e.key === 'Enter') {
+    } else if (e.key === 'Enter' && !confirmDisabled) {
       onConfirm();
     }
   };
@@ -87,7 +119,7 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
       tabIndex={-1}
     >
       <div
-        className="hub-card max-w-md w-full transform transition-all duration-200 ease-out"
+        className="hub-card max-w-2xl w-full transform transition-all duration-200 ease-out"
         role="dialog"
         aria-modal="true"
         aria-labelledby="confirm-dialog-title"
@@ -95,41 +127,24 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
       >
         <div className="p-6">
           <div className="flex items-start space-x-3">
-            {icon && (
-              <div className="flex-shrink-0">
-                {icon}
-              </div>
-            )}
+            {icon && <div className="flex-shrink-0">{icon}</div>}
             <div className="flex-1">
               {title && (
-                <h3
-                  id="confirm-dialog-title"
-                  className="text-lg font-medium text-gray-900 mb-2"
-                >
+                <h3 id="confirm-dialog-title" className="text-lg font-medium text-gray-900 mb-2">
                   {title}
                 </h3>
               )}
-              <p
-                id="confirm-dialog-message"
-                className="text-gray-600 leading-relaxed"
-              >
+              <div id="confirm-dialog-message" className="text-gray-600 leading-relaxed">
                 {message}
-              </p>
+              </div>
             </div>
           </div>
 
           <div className="flex justify-end space-x-3 mt-6">
-            <button
-              onClick={onClose}
-              className="hub-btn"
-              autoFocus
-            >
+            <button onClick={onClose} className="hub-btn" autoFocus>
               {cancelText || t('common.cancel')}
             </button>
-            <button
-              onClick={onConfirm}
-              className={confirmBtnClass}
-            >
+            <button onClick={onConfirm} className={confirmBtnClass} disabled={confirmDisabled}>
               {confirmText || t('common.confirm')}
             </button>
           </div>

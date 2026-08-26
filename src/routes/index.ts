@@ -8,6 +8,7 @@ import {
   getServerShareCandidates,
   createServer,
   batchCreateServers,
+  previewOpenApiToolStatsHandler,
   updateServer,
   deleteServer,
   toggleServer,
@@ -250,6 +251,7 @@ export const initRoutes = async (app: express.Application): Promise<void> => {
   authenticatedRouter.get('/settings', getAllSettings);
   authenticatedRouter.post('/servers', createServer);
   authenticatedRouter.post('/servers/batch', batchCreateServers);
+  authenticatedRouter.post('/servers/openapi/tool-stats', previewOpenApiToolStatsHandler);
   authenticatedRouter.put('/servers/:name', updateServer);
   authenticatedRouter.delete('/servers/:name', deleteServer);
   authenticatedRouter.post('/servers/:name/toggle', toggleServer);

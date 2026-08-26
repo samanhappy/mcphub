@@ -112,7 +112,7 @@ describe('assertSafeUrl', () => {
       assertSafeUrl('https://public.example/api', {
         lookup: lookup({ 'public.example': ['93.184.216.34'] }),
       }),
-    ).resolves.toBeUndefined();
+    ).resolves.toBe('https://public.example/api');
   });
 });
 
@@ -120,7 +120,7 @@ describe('assertSafeUrl with allowInternal', () => {
   it('allows loopback when allowInternal is true', async () => {
     await expect(
       assertSafeUrl('http://127.0.0.1:8181/secret', { allowInternal: true }),
-    ).resolves.toBeUndefined();
+    ).resolves.toBe('http://127.0.0.1:8181/secret');
   });
 
   it('allows the metadata endpoint when allowInternal is true', async () => {
@@ -128,7 +128,7 @@ describe('assertSafeUrl with allowInternal', () => {
       assertSafeUrl('http://169.254.169.254/latest/meta-data/', {
         allowInternal: true,
       }),
-    ).resolves.toBeUndefined();
+    ).resolves.toBe('http://169.254.169.254/latest/meta-data/');
   });
 
   it('allows a hostname resolving to private IP when allowInternal is true', async () => {
@@ -137,7 +137,7 @@ describe('assertSafeUrl with allowInternal', () => {
         allowInternal: true,
         lookup: lookup({ 'internal.example': ['10.0.0.5'] }),
       }),
-    ).resolves.toBeUndefined();
+    ).resolves.toBe('http://internal.example/admin');
   });
 
   it('still rejects non-http schemes even with allowInternal', async () => {

@@ -241,7 +241,13 @@
       "passthroughHeaders": "Passthrough Headers",
       "passthroughHeadersHelp": "Comma-separated list of header names to pass through from incoming MCP requests to upstream server requests (e.g., Authorization, X-API-Key)",
       "cookieSession": "Cookie Session Handling",
-      "cookieSessionHelp": "Capture Set-Cookie from upstream login responses and replay them on later calls within the same downstream session. Isolated per MCP session; not persisted."
+      "cookieSessionHelp": "Capture Set-Cookie from upstream login responses and replay them on later calls within the same downstream session. Isolated per MCP session; not persisted.",
+      "statsMeasuring": "Measuring the generated tool list…",
+      "statsSummary": "{{toolCount}} tools · ~{{bytes}} of definitions · ~{{tokens}} tokens",
+      "statsWarning": "This tool list alone may approach or exceed common model context windows. Consider exposing fewer tools — create a group or disable individual tools on the server.",
+      "statsConfirmTitle": "Confirm OpenAPI import",
+      "statsConfirmMessage": "Review the generated tool-list footprint before continuing.",
+      "statsUnavailable": "The specification could not be measured. You can still continue; the server will validate the import when it is submitted."
     },
     "oauth": {
       "sectionTitle": "OAuth Configuration",

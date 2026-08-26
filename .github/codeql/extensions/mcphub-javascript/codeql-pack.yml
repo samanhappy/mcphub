@@ -1,0 +1,9 @@
+name: samanhappy/mcphub-javascript
+version: 1.0.0
+library: true
+extensionTargets:
+  # codeql/javascript-all versions are independent of the CodeQL CLI version:
+  # 2.6.27 ships with CLI 2.25.x, 2.9.0 with CLI 2.26.3, 2.9.1 with CLI 2.27.x.
+  codeql/javascript-all: '>=2.6.0 <3.0.0'
+dataExtensions:
+  - models/**/*.yml

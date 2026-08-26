@@ -85,13 +85,17 @@ export class OpenAPIClient {
       throw new Error('OpenAPI URL or schema is required');
     }
 
-    // Initial baseUrl, will be updated from OpenAPI servers field in initialize()
+    // Initial baseUrl, will be updated from OpenAPI servers field in initialize().
+    // It is only used to resolve relative request paths (see callTool), never
+    // installed as the axios instance's default baseURL. Each request's
+    // effective URL is SSRF-validated explicitly before dispatch, so a
+    // user-derived default baseURL must not taint this.httpClient — CodeQL
+    // tracks a client's default baseURL as the host of every request it makes.
     this.baseUrl = config.openapi?.url ? this.extractBaseUrl(config.openapi.url) : '';
     this.securityConfig = config.openapi.security;
     this.persistOAuth2Token = options.persistOAuth2Token;
 
     this.httpClient = axios.create({
-      baseURL: this.baseUrl,
       timeout: config.options?.timeout || 30000,
       maxRedirects: 0,
       // Serialize array query params per OpenAPI's default `style: form, explode: true`
@@ -251,9 +255,16 @@ export class OpenAPIClient {
       body.set('scope', oauth2.scopes.join(' '));
     }
 
+    // Validate OAuth token endpoints with the same owner-scoped SSRF policy as
+    // specification and tool requests. This is especially important for the
+    // unsaved preview endpoint, which accepts the complete OpenAPI config.
+    const safeTokenUrl = await assertSafeUrl(oauth2.tokenUrl, {
+      allowInternal: this.allowInternalNetworks,
+    });
+
     const response = await this.httpClient.request({
       method: 'post',
-      url: oauth2.tokenUrl,
+      url: safeTokenUrl,
       baseURL: undefined,
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
@@ -336,7 +347,9 @@ export class OpenAPIClient {
         // credentials; external $ref resolution still uses that resolver and
         // therefore receives no auth by default.
         const specUrl = this.config.openapi.url;
-        await assertSafeUrl(specUrl, { allowInternal: this.allowInternalNetworks });
+        const safeSpecUrl = await assertSafeUrl(specUrl, {
+          allowInternal: this.allowInternalNetworks,
+        });
         const requestConfig: AxiosRequestConfig = {
           responseType: 'text',
           transformResponse: [(data: unknown) => data],
@@ -346,10 +359,10 @@ export class OpenAPIClient {
         if (this.staticCookieHeader) {
           requestConfig.headers = { Cookie: this.staticCookieHeader };
         }
-        const response = await this.httpClient.get(specUrl, requestConfig);
+        const response = await this.httpClient.get(safeSpecUrl, requestConfig);
         const raw = typeof response.data === 'string' ? response.data : String(response.data);
         this.spec = (await SwaggerParser.dereference(
-          specUrl,
+          safeSpecUrl,
           this.parseSpecDocument(raw),
           this.guardedRefResolveOptions(),
         )) as OpenAPIV3.Document;
@@ -415,10 +428,14 @@ export class OpenAPIClient {
           order: 1,
           canRead: (file: { url: string }) => /^https?:\/\//i.test(file.url),
           read: async (file: { url: string }): Promise<string> => {
+            let safeRefUrl: string;
             try {
-              await assertSafeUrl(file.url, { allowInternal: this.allowInternalNetworks });
+              safeRefUrl = await assertSafeUrl(file.url, {
+                allowInternal: this.allowInternalNetworks,
+              });
             } catch (error) {
               rejectUnsafe(error as UnsafeUrlError);
+              return '';
             }
             // Plain fetch, NOT this.httpClient: default auth headers and
             // interceptors must never be forwarded cross-origin to $ref
@@ -428,7 +445,7 @@ export class OpenAPIClient {
               (url, init) => fetch(url, init),
               this.allowInternalNetworks,
             );
-            const response = await safeFetch(file.url, { method: 'GET', headers: {} });
+            const response = await safeFetch(safeRefUrl, { method: 'GET', headers: {} });
             const buf = await response.arrayBuffer();
             return new TextDecoder().decode(buf);
           },
@@ -505,9 +522,6 @@ export class OpenAPIClient {
         this.baseUrl = `${originalUrl.protocol}//${originalUrl.host}/${serverUrl}`;
       }
     }
-
-    // Update HTTP client's baseURL
-    this.httpClient.defaults.baseURL = this.baseUrl;
   }
 
   private extractTools(): void {
@@ -846,9 +860,12 @@ export class OpenAPIClient {
         // relative path with no base — no host to validate; axios surfaces the error
       }
       if (resolvedTarget) {
-        await assertSafeUrl(resolvedTarget.href, {
+        const safeTargetUrl = await assertSafeUrl(resolvedTarget.href, {
           allowInternal: this.allowInternalNetworks,
         });
+        const safeTarget = new URL(safeTargetUrl);
+        requestConfig.baseURL = safeTarget.origin;
+        requestConfig.url = `${safeTarget.pathname}${safeTarget.search}`;
       }
 
       const cookieSessionEnabled = this.isCookieSessionEnabled(sessionId);
