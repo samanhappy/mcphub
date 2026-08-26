@@ -824,3 +824,10 @@ export interface GroupCost {
   direct: { exposed: number; gross: number };
   smartRouting: SmartRoutingCost | null;
 }
+
+// Pre-save OpenAPI import preview (#1082)
+export interface OpenApiToolStats {
+  toolCount: number;
+  definitionsBytes: number;
+  estimatedTokens: number;
+}

@@ -12,6 +12,7 @@ jest.mock('../../src/controllers/serverController.js', () => ({
   getServerShareCandidates: routeHandler,
   createServer: routeHandler,
   batchCreateServers: routeHandler,
+  previewOpenApiToolStatsHandler: routeHandler,
   updateServer: routeHandler,
   deleteServer: routeHandler,
   toggleServer: routeHandler,

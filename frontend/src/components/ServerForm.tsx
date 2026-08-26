@@ -1,9 +1,14 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { X } from 'lucide-react';
-import { Server, EnvVar, ServerFormData } from '@/types';
-import { apiGet } from '../utils/fetchInterceptor';
+import { Server, EnvVar, ServerFormData, OpenApiToolStats } from '@/types';
+import { apiGet, apiPost } from '../utils/fetchInterceptor';
 import { buildServerPayload } from '../utils/serverFormPayload';
+import {
+  OPENAPI_STATS_WARN_TOKENS,
+  formatBytes,
+  formatTokens,
+} from '../utils/contextCost';
 
 interface ServerFormProps {
   onSubmit: (payload: any) => void;
@@ -230,6 +235,89 @@ const ServerForm = ({
       ? Object.entries(initialData.config.headers).map(([key, value]) => ({ key, value }))
       : [],
   );
+
+  // ── OpenAPI import preview (#1082) ────────────────────────────────────────
+  // Importing a large OpenAPI document can silently generate a tools/list
+  // larger than a model's context window. Measure what the import would
+  // produce — tool count, definition size, token estimate — while the user is
+  // still filling in the form, and warn past a threshold.
+  const [openApiStats, setOpenApiStats] = useState<OpenApiToolStats | null>(null);
+  const [openApiStatsLoading, setOpenApiStatsLoading] = useState(false);
+  const openApiStatsRequestId = useRef(0);
+  // Latest form values for the debounced preview request, without widening
+  // the effect's dependencies to every field of the form.
+  const openApiPreviewInputsRef = useRef({ formData, serverType, envVars, headerVars });
+  openApiPreviewInputsRef.current = { formData, serverType, envVars, headerVars };
+
+  useEffect(() => {
+    if (serverType !== 'openapi') {
+      return;
+    }
+
+    const openapi = formData.openapi;
+    const hasInput =
+      openapi?.inputMode === 'schema'
+        ? Boolean(openapi?.schema?.trim())
+        : Boolean(openapi?.url?.trim());
+    if (!hasInput) {
+      setOpenApiStats(null);
+      setOpenApiStatsLoading(false);
+      return;
+    }
+
+    // Debounce so typing a URL or pasting a schema does not fire per keystroke.
+    const timer = setTimeout(() => {
+      const requestId = ++openApiStatsRequestId.current;
+      const { formData: currentFormData, serverType: currentServerType } =
+        openApiPreviewInputsRef.current;
+
+      let config: Record<string, unknown>;
+      try {
+        // Reuse the exact payload the submit path builds so the preview sees
+        // the same spec source, headers, and security configuration.
+        const { config: serverConfig } = buildServerPayload({
+          formData: currentFormData,
+          serverType: currentServerType,
+          envVars,
+          headerVars,
+        });
+        config = serverConfig;
+      } catch {
+        // Invalid inline JSON etc.: nothing to measure yet; submit-time
+        // validation surfaces the error to the user.
+        setOpenApiStats(null);
+        setOpenApiStatsLoading(false);
+        return;
+      }
+
+      setOpenApiStats(null);
+      setOpenApiStatsLoading(true);
+
+      void apiPost<{ success: boolean; data?: OpenApiToolStats }>(
+        '/servers/openapi/tool-stats',
+        { config },
+        { signal: AbortSignal.timeout(60000) },
+      )
+        .then((response) => {
+          if (openApiStatsRequestId.current !== requestId) return;
+          setOpenApiStats(response.success && response.data ? response.data : null);
+        })
+        .catch(() => {
+          // Spec unreachable, unauthorized, or invalid: keep the form usable;
+          // the same failure surfaces again with details at submit time.
+          if (openApiStatsRequestId.current !== requestId) return;
+          setOpenApiStats(null);
+        })
+        .finally(() => {
+          if (openApiStatsRequestId.current === requestId) {
+            setOpenApiStatsLoading(false);
+          }
+        });
+    }, 600);
+
+    return () => clearTimeout(timer);
+  }, [serverType, formData.openapi, formData.options, envVars, headerVars]);
+
 
   const [isRequestOptionsExpanded, setIsRequestOptionsExpanded] = useState<boolean>(false);
   const [isOAuthSectionExpanded, setIsOAuthSectionExpanded] = useState<boolean>(false);
@@ -907,6 +995,48 @@ const ServerForm = ({
                     )}
                   </p>
                 </div>
+
+                {/* Import preview (#1082): show how big the generated tool list
+                    would be before the import is confirmed. */}
+                {(formData.openapi?.inputMode === 'schema'
+                  ? formData.openapi?.schema?.trim()
+                  : formData.openapi?.url?.trim()) && (
+                  <div className="mb-4">
+                    {openApiStatsLoading && (
+                      <p className="text-xs text-[var(--hub-ink-3)]">
+                        {t('server.openapi.statsMeasuring')}
+                      </p>
+                    )}
+                    {!openApiStatsLoading && openApiStats && (
+                      <div
+                        className={`p-3 rounded border text-sm ${
+                          openApiStats.estimatedTokens >= OPENAPI_STATS_WARN_TOKENS
+                            ? 'bg-yellow-50 border-yellow-300 dark:bg-yellow-900/20 dark:border-yellow-600'
+                            : 'bg-gray-50 border-gray-200 dark:bg-gray-800 dark:border-gray-700'
+                        }`}
+                      >
+                        <p
+                          className={
+                            openApiStats.estimatedTokens >= OPENAPI_STATS_WARN_TOKENS
+                              ? 'text-yellow-800 dark:text-yellow-200'
+                              : 'text-[var(--hub-ink-2)]'
+                          }
+                        >
+                          {t('server.openapi.statsSummary', {
+                            toolCount: openApiStats.toolCount,
+                            bytes: formatBytes(openApiStats.definitionsBytes),
+                            tokens: formatTokens(openApiStats.estimatedTokens),
+                          })}
+                        </p>
+                        {openApiStats.estimatedTokens >= OPENAPI_STATS_WARN_TOKENS && (
+                          <p className="mt-1 text-xs text-yellow-700 dark:text-yellow-300">
+                            {t('server.openapi.statsWarning')}
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 <div className="mb-4">
                   <div className="flex justify-between items-center mb-2">
