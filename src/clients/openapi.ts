@@ -1,4 +1,5 @@
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
+import { randomUUID } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { CookieJar } from 'tough-cookie';
 import SwaggerParser from '@apidevtools/swagger-parser';
@@ -40,6 +41,286 @@ function encodePathParameterValue(value: unknown): string {
       .join(',');
   }
   return encodeURIComponent(String(value));
+}
+
+// Request-body content types the hub can advertise and serialize, in the order
+// they are preferred when an operation declares several. Schema advertisement
+// (generateInputSchema) and outgoing serialization (callTool) both resolve the
+// operation's body through selectRequestBodyContent so they can never drift
+// apart (#1078).
+const REQUEST_BODY_CONTENT_TYPE_PRIORITY = [
+  'application/json',
+  'application/x-www-form-urlencoded',
+  'multipart/form-data',
+] as const;
+
+type SupportedRequestBodyContentType = (typeof REQUEST_BODY_CONTENT_TYPE_PRIORITY)[number];
+
+interface RequestBodyContentSelection {
+  contentType: SupportedRequestBodyContentType;
+  mediaType: OpenAPIV3.MediaTypeObject;
+}
+
+// Media type keys may carry parameters ('application/json; charset=utf-8');
+// compare on the bare type so those declarations still match.
+function normalizeMediaTypeKey(key: string): string {
+  return key.split(';')[0].trim().toLowerCase();
+}
+
+function selectRequestBodyContent(
+  requestBody?: OpenAPIV3.RequestBodyObject | null,
+): RequestBodyContentSelection | null {
+  const content = requestBody?.content;
+  if (!content) {
+    return null;
+  }
+
+  for (const contentType of REQUEST_BODY_CONTENT_TYPE_PRIORITY) {
+    const key = Object.keys(content).find((k) => normalizeMediaTypeKey(k) === contentType);
+    if (!key) {
+      continue;
+    }
+    const mediaType = content[key];
+    if (mediaType) {
+      return { contentType, mediaType };
+    }
+  }
+  return null;
+}
+
+// Rewrites a multipart/form-data body schema for model consumption. Binary
+// fields (`type: string, format: binary`) become plain strings carrying
+// base64-encoded contents, because tool arguments arrive as JSON — a model
+// cannot produce raw bytes. The rewrite must tolerate the circular references
+// SwaggerParser.dereference leaves behind (#959), hence the memoized walk.
+const MULTIPART_BINARY_FIELD_HINT =
+  'Provide base64-encoded file contents; MCPHub decodes them and uploads the bytes as this file part. An object {content, filename, contentType} may be supplied instead of a bare string to control the uploaded filename and MIME type.';
+
+function makeMultipartBodySchemaModelFriendly(schema: unknown): unknown {
+  const cache = new Map<object, unknown>();
+
+  const transform = (node: unknown): unknown => {
+    if (!node || typeof node !== 'object' || Array.isArray(node)) {
+      return node;
+    }
+    const cached = cache.get(node);
+    if (cached !== undefined) {
+      return cached;
+    }
+
+    const source = node as Record<string, unknown>;
+    const clone: Record<string, unknown> = { ...source };
+    cache.set(node, clone);
+
+    if (source.type === 'string' && source.format === 'binary') {
+      delete clone.format;
+      const ownDescription =
+        typeof source.description === 'string' ? `${source.description.trim()} ` : '';
+      clone.description = `${ownDescription}${MULTIPART_BINARY_FIELD_HINT}`;
+    }
+
+    if (clone.items) {
+      clone.items = transform(clone.items);
+    }
+    if (clone.additionalProperties && typeof clone.additionalProperties === 'object') {
+      clone.additionalProperties = transform(clone.additionalProperties);
+    }
+    for (const keyword of ['properties', 'patternProperties'] as const) {
+      const nested = clone[keyword];
+      if (nested && typeof nested === 'object') {
+        const transformed: Record<string, unknown> = {};
+        for (const [key, value] of Object.entries(nested as Record<string, unknown>)) {
+          transformed[key] = transform(value);
+        }
+        clone[keyword] = transformed;
+      }
+    }
+    for (const keyword of ['anyOf', 'oneOf', 'allOf', 'prefixItems'] as const) {
+      if (Array.isArray(clone[keyword])) {
+        clone[keyword] = (clone[keyword] as unknown[]).map(transform);
+      }
+    }
+
+    return clone;
+  };
+
+  return transform(schema);
+}
+
+interface MultipartPart {
+  name: string;
+  value: string | Buffer;
+  filename?: string;
+  contentType?: string;
+}
+
+const DEFAULT_UPLOAD_FILENAME = 'upload';
+const DEFAULT_UPLOAD_CONTENT_TYPE = 'application/octet-stream';
+const MULTIPART_FILE_DESCRIPTOR_KEYS = new Set(['content', 'filename', 'contentType']);
+// base64 (standard or URL-safe alphabet), whitespace allowed around the value
+const BASE64_PATTERN = /^[A-Za-z0-9+/\-_]+={0,2}$/;
+
+function decodeBase64FileContents(fieldName: string, value: string): Buffer {
+  const compact = value.replace(/\s+/g, '');
+  if (!BASE64_PATTERN.test(compact)) {
+    throw new Error(
+      `Multipart field '${fieldName}' must be a base64-encoded string of the file contents`,
+    );
+  }
+  const buffer = Buffer.from(compact, 'base64');
+  if (buffer.length === 0) {
+    throw new Error(
+      `Multipart field '${fieldName}' does not contain any decodable base64 file contents`,
+    );
+  }
+  return buffer;
+}
+
+function appendMultipartField(
+  parts: MultipartPart[],
+  name: string,
+  value: unknown,
+  isBinaryField: boolean,
+): void {
+  if (value === undefined || value === null) {
+    return;
+  }
+
+  // Arrays expand into repeated parts, matching how form fields repeat keys.
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      appendMultipartField(parts, name, item, isBinaryField);
+    }
+    return;
+  }
+
+  if (isBinaryField) {
+    let contents: string;
+    let filename: string | undefined;
+    let contentType: string | undefined;
+    if (typeof value === 'string') {
+      contents = value;
+    } else if (
+      typeof value === 'object' &&
+      typeof (value as Record<string, unknown>).content === 'string'
+    ) {
+      const descriptor = value as Record<string, unknown>;
+      contents = descriptor.content as string;
+      if (typeof descriptor.filename === 'string') {
+        filename = descriptor.filename;
+      }
+      if (typeof descriptor.contentType === 'string') {
+        contentType = descriptor.contentType;
+      }
+    } else {
+      throw new Error(
+        `Multipart field '${name}' expects a base64-encoded string or an object {content, filename, contentType}`,
+      );
+    }
+    parts.push({
+      name,
+      value: decodeBase64FileContents(name, contents),
+      filename: filename ?? DEFAULT_UPLOAD_FILENAME,
+      contentType: contentType ?? DEFAULT_UPLOAD_CONTENT_TYPE,
+    });
+    return;
+  }
+
+  // Defensive: honor explicit file descriptors even when the spec did not mark
+  // the field binary, then fall back to text serialization.
+  if (typeof value === 'object') {
+    const record = value as Record<string, unknown>;
+    if (
+      typeof record.content === 'string' &&
+      Object.keys(record).every((key) => MULTIPART_FILE_DESCRIPTOR_KEYS.has(key))
+    ) {
+      appendMultipartField(parts, name, value, true);
+      return;
+    }
+    parts.push({ name, value: JSON.stringify(record) });
+    return;
+  }
+
+  parts.push({ name, value: String(value) });
+}
+
+function buildMultipartParts(bodyValue: unknown, schema?: OpenAPIV3.SchemaObject): MultipartPart[] {
+  if (!bodyValue || typeof bodyValue !== 'object' || Array.isArray(bodyValue)) {
+    throw new Error('multipart/form-data request body must be provided as an object of form fields');
+  }
+
+  const properties = schema?.properties as Record<string, OpenAPIV3.SchemaObject> | undefined;
+  const isBinaryField = (name: string): boolean => {
+    const propertySchema = properties?.[name];
+    return !!propertySchema && propertySchema.type === 'string' && propertySchema.format === 'binary';
+  };
+
+  const parts: MultipartPart[] = [];
+  for (const [name, value] of Object.entries(bodyValue as Record<string, unknown>)) {
+    appendMultipartField(parts, name, value, isBinaryField(name));
+  }
+  return parts;
+}
+
+// Quotes/newlines in part names or filenames would corrupt the multipart
+// framing; replace them rather than trusting upstream spec names.
+function sanitizeHeaderToken(token: string): string {
+  return token.replace(/[\r\n"]/g, '_');
+}
+
+function serializeMultipartBody(parts: MultipartPart[], boundary: string): Buffer {
+  const chunks: Buffer[] = [];
+  for (const part of parts) {
+    chunks.push(Buffer.from(`--${boundary}\r\n`, 'utf8'));
+    if (part.filename !== undefined) {
+      chunks.push(
+        Buffer.from(
+          `Content-Disposition: form-data; name="${sanitizeHeaderToken(part.name)}"; filename="${sanitizeHeaderToken(part.filename)}"\r\n`,
+          'utf8',
+        ),
+      );
+      chunks.push(
+        Buffer.from(`Content-Type: ${part.contentType ?? DEFAULT_UPLOAD_CONTENT_TYPE}\r\n\r\n`, 'utf8'),
+      );
+      chunks.push(part.value as Buffer);
+    } else {
+      chunks.push(
+        Buffer.from(`Content-Disposition: form-data; name="${sanitizeHeaderToken(part.name)}"\r\n\r\n`, 'utf8'),
+      );
+      chunks.push(Buffer.from(String(part.value), 'utf8'));
+    }
+    chunks.push(Buffer.from('\r\n', 'utf8'));
+  }
+  chunks.push(Buffer.from(`--${boundary}--\r\n`, 'utf8'));
+  return Buffer.concat(chunks);
+}
+
+// Serializes an application/x-www-form-urlencoded body: arrays become repeated
+// keys, nested objects are JSON-stringified, primitives use their string form.
+function encodeFormUrlEncoded(bodyValue: unknown): string {
+  if (!bodyValue || typeof bodyValue !== 'object' || Array.isArray(bodyValue)) {
+    throw new Error(
+      'application/x-www-form-urlencoded request body must be provided as an object of form fields',
+    );
+  }
+
+  const params = new URLSearchParams();
+  const append = (key: string, value: unknown): void => {
+    if (value === undefined || value === null) {
+      return;
+    }
+    if (Array.isArray(value)) {
+      for (const item of value) {
+        append(key, item);
+      }
+      return;
+    }
+    params.append(key, typeof value === 'object' ? JSON.stringify(value) : String(value));
+  };
+  for (const [key, value] of Object.entries(bodyValue as Record<string, unknown>)) {
+    append(key, value);
+  }
+  return params.toString();
 }
 
 export class OpenAPIClient {
@@ -543,16 +824,37 @@ export class OpenAPIClient {
 
         generatedNames.add(operationName);
 
+        // Resolve the operation's declared request-body content type once so
+        // schema advertisement below and outgoing serialization in callTool
+        // stay symmetric (#1078).
+        const declaredRequestBody =
+          operation.requestBody && 'content' in operation.requestBody
+            ? (operation.requestBody as OpenAPIV3.RequestBodyObject)
+            : undefined;
+        const requestBodySelection = selectRequestBodyContent(declaredRequestBody);
+
+        let description =
+          operation.summary || operation.description || `${method.toUpperCase()} ${path}`;
+
+        // A body whose content type the hub cannot serialize used to produce a
+        // silent zero-argument tool that models would retry forever. Mark such
+        // operations visibly in the description instead (#1078).
+        if (declaredRequestBody && !requestBodySelection) {
+          const declaredTypes = Object.keys(declaredRequestBody.content ?? {}).join(', ');
+          description += ` [Unsupported request body content type(s): ${declaredTypes} — only application/json, application/x-www-form-urlencoded and multipart/form-data can be sent by MCPHub.]`;
+        }
+
         const tool: OpenAPIToolInfo = {
           name: operationName,
-          description:
-            operation.summary || operation.description || `${method.toUpperCase()} ${path}`,
+          description,
           // SwaggerParser.dereference turns recursive $ref schemas into live
           // circular references on the dereferenced spec objects. generateInputSchema
           // references those objects directly, so without sanitization every
           // downstream serializer (tokenCost, getServerConfig, MCP ListTools,
           // embeddings) throws "Converting circular structure to JSON". See #959.
-          inputSchema: createSafeJSON(this.generateInputSchema(operation, path, method as string)),
+          inputSchema: createSafeJSON(
+            this.generateInputSchema(operation, path, method as string, requestBodySelection),
+          ),
           operationId: operation.operationId || operationName,
           method: method as string,
           path,
@@ -570,6 +872,7 @@ export class OpenAPIClient {
     operation: OpenAPIV3.OperationObject,
     _path: string,
     _method: string,
+    requestBodySelection: RequestBodyContentSelection | null,
   ): Record<string, unknown> {
     const schema: Record<string, unknown> = {
       type: 'object',
@@ -634,13 +937,19 @@ export class OpenAPIClient {
       }
     }
 
-    // Handle request body
-    if (operation.requestBody && 'content' in operation.requestBody) {
+    // Handle request body. The advertised schema must match what callTool can
+    // serialize, so key off the same resolved content type selection (#1078):
+    // JSON and urlencoded bodies are exposed as-is; multipart bodies are
+    // rewritten so binary fields accept base64-encoded strings.
+    if (operation.requestBody && 'content' in operation.requestBody && requestBodySelection) {
       const requestBody = operation.requestBody as OpenAPIV3.RequestBodyObject;
-      const jsonContent = requestBody.content?.['application/json'];
+      const selectedSchema = requestBodySelection.mediaType.schema;
 
-      if (jsonContent?.schema) {
-        properties['body'] = jsonContent.schema;
+      if (selectedSchema) {
+        properties['body'] =
+          requestBodySelection.contentType === 'multipart/form-data'
+            ? makeMultipartBodySchemaModelFriendly(selectedSchema)
+            : selectedSchema;
         if (requestBody.required) {
           required.push('body');
         }
@@ -728,9 +1037,39 @@ export class OpenAPIClient {
       // (bulk deletes), and RFC 9110 §9.3.5 permits content when the origin
       // server has indicated support for it — which a requestBody declaration
       // in its OpenAPI document is. Keeps schema advertisement and sending
-      // symmetric (#1084).
+      // symmetric (#1084). The body is serialized according to the content type
+      // resolved from the same spec the tool schema was built from (#1078).
+      let requestBodyContentType: string | undefined;
       if (args.body !== undefined && tool.requestBody) {
-        requestConfig.data = args.body;
+        const selection = selectRequestBodyContent(tool.requestBody);
+        if (!selection) {
+          const declaredTypes = Object.keys(tool.requestBody.content ?? {}).join(', ');
+          throw new Error(
+            `Tool '${toolName}' declares a request body with unsupported content type(s): ${declaredTypes}. Only application/json, application/x-www-form-urlencoded and multipart/form-data can be sent by MCPHub.`,
+          );
+        }
+
+        switch (selection.contentType) {
+          case 'application/json':
+            requestConfig.data = args.body;
+            break;
+          case 'application/x-www-form-urlencoded':
+            requestConfig.data = encodeFormUrlEncoded(args.body);
+            requestBodyContentType = 'application/x-www-form-urlencoded';
+            break;
+          case 'multipart/form-data': {
+            const boundary = `----MCPHubBoundary${randomUUID().replace(/-/g, '')}`;
+            // The spec is dereferenced before tools are built, so the schema
+            // cannot still be a $ref here.
+            const bodySchema = selection.mediaType.schema as OpenAPIV3.SchemaObject | undefined;
+            const parts = buildMultipartParts(args.body, bodySchema);
+            requestConfig.data = serializeMultipartBody(parts, boundary);
+            // The boundary must travel with the header, so it is set explicitly
+            // per request rather than left to axios.
+            requestBodyContentType = `multipart/form-data; boundary=${boundary}`;
+            break;
+          }
+        }
       }
 
       // Collect all headers to be sent
@@ -752,6 +1091,12 @@ export class OpenAPIClient {
             allHeaders[headerName] = passthroughHeaders[headerName];
           }
         }
+      }
+
+      // Form and multipart bodies override the client-wide JSON Content-Type
+      // default for this request only (#1078).
+      if (requestBodyContentType) {
+        allHeaders['Content-Type'] = requestBodyContentType;
       }
 
       // Set headers if any were collected
