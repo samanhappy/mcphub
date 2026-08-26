@@ -85,13 +85,17 @@ export class OpenAPIClient {
       throw new Error('OpenAPI URL or schema is required');
     }
 
-    // Initial baseUrl, will be updated from OpenAPI servers field in initialize()
+    // Initial baseUrl, will be updated from OpenAPI servers field in initialize().
+    // It is only used to resolve relative request paths (see callTool), never
+    // installed as the axios instance's default baseURL. Each request's
+    // effective URL is SSRF-validated explicitly before dispatch, so a
+    // user-derived default baseURL must not taint this.httpClient — CodeQL
+    // tracks a client's default baseURL as the host of every request it makes.
     this.baseUrl = config.openapi?.url ? this.extractBaseUrl(config.openapi.url) : '';
     this.securityConfig = config.openapi.security;
     this.persistOAuth2Token = options.persistOAuth2Token;
 
     this.httpClient = axios.create({
-      baseURL: this.baseUrl,
       timeout: config.options?.timeout || 30000,
       maxRedirects: 0,
       // Serialize array query params per OpenAPI's default `style: form, explode: true`
@@ -518,9 +522,6 @@ export class OpenAPIClient {
         this.baseUrl = `${originalUrl.protocol}//${originalUrl.host}/${serverUrl}`;
       }
     }
-
-    // Update HTTP client's baseURL
-    this.httpClient.defaults.baseURL = this.baseUrl;
   }
 
   private extractTools(): void {
