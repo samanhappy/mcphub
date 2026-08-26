@@ -4,4 +4,4 @@ library: true
 extensionTargets:
   codeql/javascript-all: '>=2.25.4 <3.0.0'
 dataExtensions:
-  - models/**/*.yml
+  - models/**/*.yaml
