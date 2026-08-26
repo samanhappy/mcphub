@@ -7,6 +7,12 @@ import { buildServerPayload } from '../utils/serverFormPayload';
 import ConfirmDialog from './ui/ConfirmDialog';
 import { OPENAPI_STATS_WARN_TOKENS, formatBytes, formatTokens } from '../utils/contextCost';
 import { shouldConfirmOpenApiImport } from '../utils/openApiImportConfirmation';
+import {
+  applyDeclaredSecurityPrefill,
+  buildOpenApiSecurityNotice,
+  isOpenApiSecurityUntouched,
+  type OpenApiSecurityNotice,
+} from '../utils/openApiSecurityPrefill';
 
 interface ServerFormProps {
   onSubmit: (payload: any) => void;
@@ -239,6 +245,10 @@ const ServerForm = ({
     typeof buildServerPayload
   > | null>(null);
   const openApiStatsRequestId = useRef(0);
+  const [openApiSecurityNotice, setOpenApiSecurityNotice] = useState<OpenApiSecurityNotice | null>(
+    null,
+  );
+  const [securityDetectionLoading, setSecurityDetectionLoading] = useState(false);
 
   const [isRequestOptionsExpanded, setIsRequestOptionsExpanded] = useState<boolean>(false);
   const [isOAuthSectionExpanded, setIsOAuthSectionExpanded] = useState<boolean>(false);
@@ -322,30 +332,86 @@ const ServerForm = ({
     }));
   };
 
-  const measureOpenApiToolStats = async (payload: ReturnType<typeof buildServerPayload>) => {
-    const requestId = ++openApiStatsRequestId.current;
-    setOpenApiStats(null);
-    setOpenApiStatsLoading(true);
-
+  // Shared probe used by both the submit-time tool-stats preview and the
+  // "Detect from spec" button. Returns the preview data (including the
+  // declared security scheme) or null when the spec cannot be analyzed.
+  const runOpenApiSecurityDetection = async (
+    payload: ReturnType<typeof buildServerPayload>,
+  ): Promise<OpenApiToolStats | null> => {
     try {
       const response = await apiPost<{ success: boolean; data?: OpenApiToolStats }>(
         '/servers/openapi/tool-stats',
         { config: payload.config },
         { signal: AbortSignal.timeout(60000) },
       );
-
-      if (openApiStatsRequestId.current !== requestId) return;
-      if (response.success && response.data) {
-        setOpenApiStats(response.data);
-      }
+      return response.success && response.data ? response.data : null;
     } catch {
-      // The confirmation remains usable when the advisory request fails.
-    } finally {
-      if (openApiStatsRequestId.current === requestId) {
-        setOpenApiStatsLoading(false);
-      }
+      // The form remains usable when the advisory request fails.
+      return null;
     }
   };
+
+  const measureOpenApiToolStats = async (payload: ReturnType<typeof buildServerPayload>) => {
+    const requestId = ++openApiStatsRequestId.current;
+    setOpenApiStats(null);
+    setOpenApiStatsLoading(true);
+
+    const data = await runOpenApiSecurityDetection(payload);
+    if (openApiStatsRequestId.current !== requestId) return;
+    if (data) {
+      setOpenApiStats(data);
+
+      // Security prefill (#1077): only ever fill an untouched security section.
+      // Rebuild the pending payload so the confirmed import carries the
+      // prefilled scheme.
+      const declared = data.declaredSecurity;
+      if (declared?.declared && declared.supported && isOpenApiSecurityUntouched(formData)) {
+        const nextFormData = applyDeclaredSecurityPrefill(formData, declared);
+        setFormData(nextFormData);
+        setPendingOpenApiPayload(
+          buildServerPayload({ formData: nextFormData, serverType, envVars, headerVars }),
+        );
+      }
+      if (declared?.declared) {
+        setOpenApiSecurityNotice(buildOpenApiSecurityNotice(formData, declared));
+      }
+    }
+
+    if (openApiStatsRequestId.current === requestId) {
+      setOpenApiStatsLoading(false);
+    }
+  };
+
+  // "Detect from spec" button: parse the entered spec and prefill the untouched
+  // security section (or warn about a mismatch) without submitting the form.
+  const detectOpenApiSecurity = async () => {
+    setSecurityDetectionLoading(true);
+    try {
+      const payload = buildServerPayload({ formData, serverType, envVars, headerVars });
+      const data = await runOpenApiSecurityDetection(payload);
+      const declared = data?.declaredSecurity;
+      if (declared?.declared && declared.supported && isOpenApiSecurityUntouched(formData)) {
+        setFormData((prev) => applyDeclaredSecurityPrefill(prev, declared));
+      }
+      setOpenApiSecurityNotice(
+        buildOpenApiSecurityNotice(formData, declared, { includeNotDeclared: true }),
+      );
+    } catch {
+      // Advisory only.
+    } finally {
+      setSecurityDetectionLoading(false);
+    }
+  };
+
+  const openApiSourcePresent =
+    serverType === 'openapi' &&
+    Boolean(
+      (
+        formData.openapi?.inputMode === 'schema'
+          ? formData.openapi?.schema
+          : formData.openapi?.url
+      )?.trim(),
+    );
 
   const closeOpenApiConfirmation = () => {
     openApiStatsRequestId.current += 1;
@@ -643,20 +709,35 @@ const ServerForm = ({
 
                 {/* Security Configuration */}
                 <div className="mb-4">
-                  <label className="block text-sm font-medium mb-1.5 text-[var(--hub-ink-2)]">
-                    {t('server.openapi.security')}
-                  </label>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="block text-sm font-medium text-[var(--hub-ink-2)]">
+                      {t('server.openapi.security')}
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => void detectOpenApiSecurity()}
+                      disabled={securityDetectionLoading || !openApiSourcePresent}
+                      className="hub-btn text-xs !h-7 !px-2"
+                    >
+                      {securityDetectionLoading
+                        ? t('server.openapi.securityDetecting')
+                        : t('server.openapi.securityDetect')}
+                    </button>
+                  </div>
                   <select
                     value={formData.openapi?.securityType || 'none'}
                     onChange={(e) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        openapi: {
-                          ...prev.openapi,
-                          securityType: e.target.value as any,
-                          url: prev.openapi?.url || '',
-                        },
-                      }))
+                      setFormData((prev) => {
+                        setOpenApiSecurityNotice(null);
+                        return {
+                          ...prev,
+                          openapi: {
+                            ...prev.openapi,
+                            securityType: e.target.value as any,
+                            url: prev.openapi?.url || '',
+                          },
+                        };
+                      })
                     }
                     className="w-full py-2 px-3 form-input"
                   >
@@ -668,6 +749,20 @@ const ServerForm = ({
                       {t('server.openapi.securityOpenIdConnect')}
                     </option>
                   </select>
+                  {openApiSecurityNotice && (
+                    <p
+                      className={`mt-2 text-xs ${
+                        openApiSecurityNotice.kind === 'warning'
+                          ? 'text-yellow-700 dark:text-yellow-300'
+                          : 'text-blue-700 dark:text-blue-300'
+                      }`}
+                    >
+                      {t(
+                        `server.openapi.${openApiSecurityNotice.messageKey}`,
+                        openApiSecurityNotice.values,
+                      )}
+                    </p>
+                  )}
                 </div>
 
                 {/* API Key Configuration */}
@@ -1742,6 +1837,20 @@ const ServerForm = ({
               {openApiStats.estimatedTokens >= OPENAPI_STATS_WARN_TOKENS && (
                 <p className="text-sm text-yellow-700 dark:text-yellow-300">
                   {t('server.openapi.statsWarning')}
+                </p>
+              )}
+              {openApiSecurityNotice && (
+                <p
+                  className={`text-sm ${
+                    openApiSecurityNotice.kind === 'warning'
+                      ? 'text-yellow-700 dark:text-yellow-300'
+                      : 'text-blue-700 dark:text-blue-300'
+                  }`}
+                >
+                  {t(
+                    `server.openapi.${openApiSecurityNotice.messageKey}`,
+                    openApiSecurityNotice.values,
+                  )}
                 </p>
               )}
             </div>

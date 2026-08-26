@@ -499,7 +499,7 @@ export interface OpenAPISecurityConfig {
   apiKey?: {
     name: string; // Header/query/cookie name
     in: 'header' | 'query' | 'cookie';
-    value: string; // The API key value
+    value?: string; // The API key value (may be empty until the user supplies it)
   };
   // HTTP authentication (Basic, Bearer, etc.)
   http?: {
@@ -813,6 +813,36 @@ export interface GroupCost {
 }
 
 /**
+ * The effective security requirement a parsed OpenAPI spec declares (#1077).
+ *
+ * Resolved per OpenAPI 3.x: an operation-level `security` overrides the
+ * root-level one for that operation; `security: []` explicitly disables auth.
+ * A requirement is an OR-list of named schemes from
+ * `components.securitySchemes`; the first alternative MCPHub can represent is
+ * returned as `prefill` with structural fields only — a spec can never supply
+ * the secret itself, so value / credentials / token are left empty for the
+ * user to fill in on the import form.
+ */
+export interface OpenAPIDeclaredSecurity {
+  /** True when the spec declares a resolvable security requirement. */
+  declared: boolean;
+  /** True when the declared scheme maps onto MCPHub's security model. */
+  supported: boolean;
+  /** Prefill-able security config (structure only, never secrets). */
+  prefill?: OpenAPISecurityConfig;
+  /** Human-readable description of the resolved scheme (e.g. "HTTP bearer (JWT)"). */
+  summary: string;
+  /** Number of OR-alternatives in the resolved requirement (1 = single scheme). */
+  alternatives: number;
+  /** True when a secret the spec cannot supply is required to call tools. */
+  requiresCredentials: boolean;
+  /** Why the declared scheme cannot be represented by MCPHub. */
+  unsupportedReason?: string;
+  /** True when the effective apiKey scheme uses `in: 'cookie'` (cookieSession hint). */
+  cookieHint?: boolean;
+}
+
+/**
  * Pre-save OpenAPI import preview (#1082): what the generated tool list would
  * look like if this spec were imported, before anything is persisted.
  */
@@ -826,4 +856,6 @@ export interface OpenApiToolStats {
   definitionsBytes: number;
   /** cl100k token estimate across all generated tool definitions. */
   estimatedTokens: number;
+  /** Effective security requirement the spec declares, for form prefill (#1077). */
+  declaredSecurity?: OpenAPIDeclaredSecurity;
 }
