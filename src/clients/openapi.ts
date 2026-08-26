@@ -1,4 +1,5 @@
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
+import { randomUUID } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { CookieJar } from 'tough-cookie';
 import SwaggerParser from '@apidevtools/swagger-parser';
@@ -8,6 +9,14 @@ import { ServerConfig, OpenAPISecurityConfig } from '../types/index.js';
 import { assertSafeUrl, UnsafeUrlError, createRedirectValidatingFetch } from '../utils/ssrf.js';
 import { getUserDao } from '../dao/index.js';
 import { sanitizeStringForLogging, createSafeJSON } from '../utils/serialization.js';
+import {
+  buildMultipartParts,
+  encodeFormUrlEncoded,
+  makeMultipartBodySchemaModelFriendly,
+  selectRequestBodyContent,
+  serializeMultipartBody,
+  type RequestBodyContentSelection,
+} from '../utils/openApiRequestBody.js';
 
 export interface OpenAPIToolInfo {
   name: string;
@@ -543,16 +552,37 @@ export class OpenAPIClient {
 
         generatedNames.add(operationName);
 
+        // Resolve the operation's declared request-body content type once so
+        // schema advertisement below and outgoing serialization in callTool
+        // stay symmetric (#1078).
+        const declaredRequestBody =
+          operation.requestBody && 'content' in operation.requestBody
+            ? (operation.requestBody as OpenAPIV3.RequestBodyObject)
+            : undefined;
+        const requestBodySelection = selectRequestBodyContent(declaredRequestBody);
+
+        let description =
+          operation.summary || operation.description || `${method.toUpperCase()} ${path}`;
+
+        // A body whose content type the hub cannot serialize used to produce a
+        // silent zero-argument tool that models would retry forever. Mark such
+        // operations visibly in the description instead (#1078).
+        if (declaredRequestBody && !requestBodySelection) {
+          const declaredTypes = Object.keys(declaredRequestBody.content ?? {}).join(', ');
+          description += ` [Unsupported request body content type(s): ${declaredTypes} — only application/json, application/x-www-form-urlencoded and multipart/form-data can be sent by MCPHub.]`;
+        }
+
         const tool: OpenAPIToolInfo = {
           name: operationName,
-          description:
-            operation.summary || operation.description || `${method.toUpperCase()} ${path}`,
+          description,
           // SwaggerParser.dereference turns recursive $ref schemas into live
           // circular references on the dereferenced spec objects. generateInputSchema
           // references those objects directly, so without sanitization every
           // downstream serializer (tokenCost, getServerConfig, MCP ListTools,
           // embeddings) throws "Converting circular structure to JSON". See #959.
-          inputSchema: createSafeJSON(this.generateInputSchema(operation, path, method as string)),
+          inputSchema: createSafeJSON(
+            this.generateInputSchema(operation, path, method as string, requestBodySelection),
+          ),
           operationId: operation.operationId || operationName,
           method: method as string,
           path,
@@ -570,6 +600,7 @@ export class OpenAPIClient {
     operation: OpenAPIV3.OperationObject,
     _path: string,
     _method: string,
+    requestBodySelection: RequestBodyContentSelection | null,
   ): Record<string, unknown> {
     const schema: Record<string, unknown> = {
       type: 'object',
@@ -634,13 +665,19 @@ export class OpenAPIClient {
       }
     }
 
-    // Handle request body
-    if (operation.requestBody && 'content' in operation.requestBody) {
+    // Handle request body. The advertised schema must match what callTool can
+    // serialize, so key off the same resolved content type selection (#1078):
+    // JSON and urlencoded bodies are exposed as-is; multipart bodies are
+    // rewritten so binary fields accept base64-encoded strings.
+    if (operation.requestBody && 'content' in operation.requestBody && requestBodySelection) {
       const requestBody = operation.requestBody as OpenAPIV3.RequestBodyObject;
-      const jsonContent = requestBody.content?.['application/json'];
+      const selectedSchema = requestBodySelection.mediaType.schema;
 
-      if (jsonContent?.schema) {
-        properties['body'] = jsonContent.schema;
+      if (selectedSchema) {
+        properties['body'] =
+          requestBodySelection.contentType === 'multipart/form-data'
+            ? makeMultipartBodySchemaModelFriendly(selectedSchema)
+            : selectedSchema;
         if (requestBody.required) {
           required.push('body');
         }
@@ -728,9 +765,39 @@ export class OpenAPIClient {
       // (bulk deletes), and RFC 9110 §9.3.5 permits content when the origin
       // server has indicated support for it — which a requestBody declaration
       // in its OpenAPI document is. Keeps schema advertisement and sending
-      // symmetric (#1084).
+      // symmetric (#1084). The body is serialized according to the content type
+      // resolved from the same spec the tool schema was built from (#1078).
+      let requestBodyContentType: string | undefined;
       if (args.body !== undefined && tool.requestBody) {
-        requestConfig.data = args.body;
+        const selection = selectRequestBodyContent(tool.requestBody);
+        if (!selection) {
+          const declaredTypes = Object.keys(tool.requestBody.content ?? {}).join(', ');
+          throw new Error(
+            `Tool '${toolName}' declares a request body with unsupported content type(s): ${declaredTypes}. Only application/json, application/x-www-form-urlencoded and multipart/form-data can be sent by MCPHub.`,
+          );
+        }
+
+        switch (selection.contentType) {
+          case 'application/json':
+            requestConfig.data = args.body;
+            break;
+          case 'application/x-www-form-urlencoded':
+            requestConfig.data = encodeFormUrlEncoded(args.body);
+            requestBodyContentType = 'application/x-www-form-urlencoded';
+            break;
+          case 'multipart/form-data': {
+            const boundary = `----MCPHubBoundary${randomUUID().replace(/-/g, '')}`;
+            // The spec is dereferenced before tools are built, so the schema
+            // cannot still be a $ref here.
+            const bodySchema = selection.mediaType.schema as OpenAPIV3.SchemaObject | undefined;
+            const parts = buildMultipartParts(args.body, bodySchema);
+            requestConfig.data = serializeMultipartBody(parts, boundary);
+            // The boundary must travel with the header, so it is set explicitly
+            // per request rather than left to axios.
+            requestBodyContentType = `multipart/form-data; boundary=${boundary}`;
+            break;
+          }
+        }
       }
 
       // Collect all headers to be sent
@@ -752,6 +819,12 @@ export class OpenAPIClient {
             allHeaders[headerName] = passthroughHeaders[headerName];
           }
         }
+      }
+
+      // Form and multipart bodies override the client-wide JSON Content-Type
+      // default for this request only (#1078).
+      if (requestBodyContentType) {
+        allHeaders['Content-Type'] = requestBodyContentType;
       }
 
       // Set headers if any were collected
