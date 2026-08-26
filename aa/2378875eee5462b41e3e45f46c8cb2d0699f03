@@ -1,0 +1,19 @@
+.github/codeql/extensions/mcphub-codeql-models/codeql-pack.yml
+  s_ddfe0ac222d71f::t_48d0271cabd09a 7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "aa2378875eee5462b41e3e45f46c8cb2d0699f03",
+  "prompts": {},
+  "sessions": {
+    "s_ddfe0ac222d71f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a03d0c-7477-70e0-972f-5cea99edb512",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
