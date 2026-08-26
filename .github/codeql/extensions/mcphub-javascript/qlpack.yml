@@ -1,0 +1,7 @@
+name: samanhappy/mcphub-javascript
+version: 1.0.0
+library: true
+extensionTargets:
+  codeql/javascript-all: '>=2.25.2 <3.0.0'
+dataExtensions:
+  - models/**/*.yml

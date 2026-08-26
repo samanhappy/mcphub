@@ -1,0 +1,6 @@
+extensions:
+  - addsTo:
+      pack: codeql/javascript-all
+      extensible: barrierModel
+    data:
+      - ['file:src/utils/ssrf.ts', 'Member[assertSafeUrl].ReturnValue.Awaited', 'request-forgery']
