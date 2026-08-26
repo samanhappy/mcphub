@@ -2,6 +2,10 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useUserData } from '@/hooks/useUserData';
 import { User, UserUpdateData } from '@/types';
+import {
+  validatePasswordStrength,
+  mapBackendPasswordErrors,
+} from '../utils/passwordValidation';
 
 interface EditUserFormProps {
   user: User;
@@ -13,6 +17,7 @@ const EditUserForm = ({ user, onEdit, onCancel }: EditUserFormProps) => {
   const { t } = useTranslation();
   const { updateUser } = useUserData();
   const [error, setError] = useState<string | null>(null);
+  const [passwordErrors, setPasswordErrors] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [formData, setFormData] = useState({
@@ -25,6 +30,7 @@ const EditUserForm = ({ user, onEdit, onCancel }: EditUserFormProps) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setPasswordErrors([]);
 
     // Validate passwords match if changing password
     if (formData.newPassword && formData.newPassword !== formData.confirmPassword) {
@@ -32,9 +38,13 @@ const EditUserForm = ({ user, onEdit, onCancel }: EditUserFormProps) => {
       return;
     }
 
-    if (formData.newPassword && formData.newPassword.length < 6) {
-      setError(t('users.passwordTooShort'));
-      return;
+    if (formData.newPassword) {
+      const validation = validatePasswordStrength(formData.newPassword);
+      if (!validation.isValid) {
+        setError(t('auth.passwordStrengthError'));
+        setPasswordErrors(validation.errors.map((key) => t(`auth.${key}`)));
+        return;
+      }
     }
 
     setIsSubmitting(true);
@@ -52,6 +62,9 @@ const EditUserForm = ({ user, onEdit, onCancel }: EditUserFormProps) => {
       const result = await updateUser(user.username, updateData);
       if (result?.success) {
         onEdit();
+      } else if (result?.errors?.length) {
+        setError(result.message || t('auth.passwordStrengthError'));
+        setPasswordErrors(mapBackendPasswordErrors(result.errors).map((key) => t(key)));
       } else {
         setError(result?.message || t('users.updateError'));
       }
@@ -81,6 +94,13 @@ const EditUserForm = ({ user, onEdit, onCancel }: EditUserFormProps) => {
           {error && (
             <div className="bg-red-50 border-l-4 border-red-500 text-red-700 p-4 mb-6 rounded-md">
               <p className="text-sm font-medium">{error}</p>
+              {passwordErrors.length > 0 && (
+                <ul className="list-disc list-inside mt-2 space-y-1 text-sm">
+                  {passwordErrors.map((message) => (
+                    <li key={message}>{message}</li>
+                  ))}
+                </ul>
+              )}
             </div>
           )}
 
@@ -141,8 +161,11 @@ const EditUserForm = ({ user, onEdit, onCancel }: EditUserFormProps) => {
                     placeholder={t('users.newPasswordPlaceholder')}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent form-input transition-all duration-200"
                     disabled={isSubmitting}
-                    minLength={6}
+                    minLength={8}
                   />
+                  <p className="mt-1 text-xs text-gray-500">
+                    {t('auth.passwordStrengthHint')}
+                  </p>
                 </div>
 
                 {formData.newPassword && (
@@ -162,7 +185,7 @@ const EditUserForm = ({ user, onEdit, onCancel }: EditUserFormProps) => {
                       placeholder={t('users.confirmPasswordPlaceholder')}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent form-input transition-all duration-200"
                       disabled={isSubmitting}
-                      minLength={6}
+                      minLength={8}
                     />
                   </div>
                 )}

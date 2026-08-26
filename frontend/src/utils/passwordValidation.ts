@@ -36,3 +36,15 @@ export const validatePasswordStrength = (password: string): PasswordValidationRe
     errors,
   };
 };
+
+// Maps backend validation error messages (English) to i18n keys.
+// Unknown messages are passed through unchanged so they can still be displayed.
+const backendErrorKeyMap: Record<string, string> = {
+  'Password must be at least 8 characters long': 'auth.passwordMinLength',
+  'Password must contain at least one letter': 'auth.passwordRequireLetter',
+  'Password must contain at least one number': 'auth.passwordRequireNumber',
+  'Password must contain at least one special character': 'auth.passwordRequireSpecial',
+};
+
+export const mapBackendPasswordErrors = (errors: string[]): string[] =>
+  errors.map((error) => backendErrorKeyMap[error] ?? error);
