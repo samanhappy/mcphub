@@ -24,7 +24,22 @@ export interface OpenAPIToolInfo {
 type OpenAPIOAuth2Config = NonNullable<OpenAPISecurityConfig['oauth2']>;
 
 interface OpenAPIClientOptions {
-  persistOAuth2Token?: (oauth2: OpenAPIOAuth2Config) => Promise<void> | void;
+  persistOAuth2Token?: (oauth2: OpenAPISecurityConfig['oauth2']) => Promise<void> | void;
+}
+
+// Encodes a substituted path parameter following OpenAPI's default
+// `style: simple, explode: false`: primitives whole, arrays and objects part
+// by part, joined with literal commas (#1083).
+function encodePathParameterValue(value: unknown): string {
+  if (Array.isArray(value)) {
+    return value.map((item) => encodeURIComponent(String(item))).join(',');
+  }
+  if (value !== null && typeof value === 'object') {
+    return Object.entries(value as Record<string, unknown>)
+      .map(([key, val]) => `${encodeURIComponent(key)},${encodeURIComponent(String(val))}`)
+      .join(',');
+  }
+  return encodeURIComponent(String(value));
 }
 
 export class OpenAPIClient {
@@ -680,9 +695,14 @@ export class OpenAPIClient {
 
       for (const param of pathParams) {
         const value = args[param.name];
-        if (value !== undefined) {
-          url = url.replace(`{${param.name}}`, String(value));
+        if (value === undefined || value === null) {
+          // Path parameters are required by the OpenAPI spec; fail fast rather
+          // than sending a request whose `{placeholder}` can only 404 (#1083).
+          throw new Error(`Required path parameter '${param.name}' is missing`);
         }
+        // Values come from model output, so encode them to keep URL-significant
+        // characters ('/', '?', '#', '%') from changing the endpoint (#1083).
+        url = url.replace(`{${param.name}}`, encodePathParameterValue(value));
       }
 
       // Build query parameters
