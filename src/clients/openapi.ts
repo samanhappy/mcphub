@@ -703,8 +703,13 @@ export class OpenAPIClient {
         params: queryParams,
       };
 
-      // Add request body if applicable
-      if (args.body && ['post', 'put', 'patch'].includes(tool.method)) {
+      // Add request body if applicable. Key off the operation's own spec rather
+      // than a method allowlist: some APIs declare required bodies on DELETE
+      // (bulk deletes), and RFC 9110 §9.3.5 permits content when the origin
+      // server has indicated support for it — which a requestBody declaration
+      // in its OpenAPI document is. Keeps schema advertisement and sending
+      // symmetric (#1084).
+      if (args.body !== undefined && tool.requestBody) {
         requestConfig.data = args.body;
       }
 
