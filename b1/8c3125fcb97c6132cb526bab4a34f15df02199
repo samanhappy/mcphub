@@ -1,0 +1,21 @@
+src/clients/openapi.ts
+  s_1f4b1fd9efe0d1::t_bf8dabaf6775c3 706-712
+src/clients/__tests__/openapi-request-body.test.ts
+  s_1f4b1fd9efe0d1::t_7d7f4995993831 1-132
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "b18c3125fcb97c6132cb526bab4a34f15df02199",
+  "prompts": {},
+  "sessions": {
+    "s_1f4b1fd9efe0d1": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_fc3d722c5ffez8kzqyfq633amq",
+        "model": "x-preview-f-free"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
