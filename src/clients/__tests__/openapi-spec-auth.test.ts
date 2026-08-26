@@ -329,7 +329,7 @@ describe('OpenAPIClient - authenticated spec document fetch (#1044)', () => {
         security: {
           type: 'oauth2',
           oauth2: {
-            tokenUrl: 'https://auth.example.com/oauth/token',
+            tokenUrl: 'https://8.8.8.8/oauth/token',
             clientId: 'test-client',
             clientSecret: 'test-secret',
             token: '',

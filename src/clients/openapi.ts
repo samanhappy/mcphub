@@ -251,6 +251,13 @@ export class OpenAPIClient {
       body.set('scope', oauth2.scopes.join(' '));
     }
 
+    // Validate OAuth token endpoints with the same owner-scoped SSRF policy as
+    // specification and tool requests. This is especially important for the
+    // unsaved preview endpoint, which accepts the complete OpenAPI config.
+    await assertSafeUrl(oauth2.tokenUrl, { allowInternal: this.allowInternalNetworks });
+
+    // codeql[js/request-forgery] The URL is checked by assertSafeUrl above;
+    // internal targets are only allowed for admin-owned server configs.
     const response = await this.httpClient.request({
       method: 'post',
       url: oauth2.tokenUrl,
@@ -346,6 +353,8 @@ export class OpenAPIClient {
         if (this.staticCookieHeader) {
           requestConfig.headers = { Cookie: this.staticCookieHeader };
         }
+        // codeql[js/request-forgery] The URL is checked by assertSafeUrl above;
+        // redirects are disabled and internal targets are owner-scoped.
         const response = await this.httpClient.get(specUrl, requestConfig);
         const raw = typeof response.data === 'string' ? response.data : String(response.data);
         this.spec = (await SwaggerParser.dereference(
@@ -865,6 +874,8 @@ export class OpenAPIClient {
 
       authorizationUsedForRequest = this.getDefaultAuthorizationHeader();
       attemptedUpstreamRequest = true;
+      // codeql[js/request-forgery] The final resolved URL is checked by
+      // assertSafeUrl above, including DNS resolution and private-IP blocking.
       const response = await this.httpClient.request(requestConfig);
 
       if (cookieSessionEnabled && resolvedTarget) {

@@ -244,7 +244,10 @@
       "cookieSessionHelp": "捕获上游登录响应中的 Set-Cookie，并在同一下游会话的后续调用中自动携带。按 MCP 会话隔离，不持久化存储。",
       "statsMeasuring": "正在测量生成的工具列表…",
       "statsSummary": "{{toolCount}} 个工具 · 定义约 {{bytes}} · 约 {{tokens}} tokens",
-      "statsWarning": "仅此工具列表就可能接近或超过常见模型的上下文窗口。建议只暴露部分工具：创建分组，或在服务器上按工具禁用。"
+      "statsWarning": "仅此工具列表就可能接近或超过常见模型的上下文窗口。建议只暴露部分工具：创建分组，或在服务器上按工具禁用。",
+      "statsConfirmTitle": "确认导入 OpenAPI",
+      "statsConfirmMessage": "继续之前，请确认生成的工具列表规模。",
+      "statsUnavailable": "暂时无法测量此规范。仍可继续，提交时服务器会再次校验导入。"
     },
     "oauth": {
       "sectionTitle": "OAuth 配置",

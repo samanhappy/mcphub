@@ -1,7 +1,42 @@
 import { OpenAPIClient } from '../openapi.js';
 import type { ServerConfig } from '../../types/index.js';
+import { UnsafeUrlError } from '../../utils/ssrf.js';
 
 describe('OpenAPIClient - OAuth2 client credentials', () => {
+  test('blocks a private OAuth2 token endpoint before sending credentials', async () => {
+    const config: ServerConfig = {
+      type: 'openapi',
+      openapi: {
+        schema: {
+          openapi: '3.0.0',
+          info: { title: 'Test API', version: '1.0.0' },
+          paths: {},
+        },
+        security: {
+          type: 'oauth2',
+          oauth2: {
+            tokenUrl: 'http://127.0.0.1:8181/oauth/token',
+            clientId: 'test-client',
+            clientSecret: 'test-secret',
+          },
+        },
+      },
+    };
+    const client = new OpenAPIClient(config) as OpenAPIClient & {
+      httpClient: {
+        request: jest.Mock;
+        defaults: { headers: { common: Record<string, string> } };
+      };
+    };
+    client.httpClient = {
+      request: jest.fn(),
+      defaults: { headers: { common: {} } },
+    };
+
+    await expect(client.initialize()).rejects.toThrow(UnsafeUrlError);
+    expect(client.httpClient.request).not.toHaveBeenCalled();
+  });
+
   test('fetches and persists an OAuth2 client credentials token during initialization', async () => {
     const persistOAuth2Token = jest.fn();
     const config: ServerConfig = {
@@ -26,7 +61,7 @@ describe('OpenAPIClient - OAuth2 client credentials', () => {
         security: {
           type: 'oauth2',
           oauth2: {
-            tokenUrl: 'https://auth.example.com/oauth/token',
+            tokenUrl: 'https://8.8.8.8/oauth/token',
             clientId: 'test-client',
             clientSecret: 'test-secret',
             token: '',
@@ -73,7 +108,7 @@ describe('OpenAPIClient - OAuth2 client credentials', () => {
       1,
       expect.objectContaining({
         method: 'post',
-        url: 'https://auth.example.com/oauth/token',
+        url: 'https://8.8.8.8/oauth/token',
         baseURL: undefined,
         headers: expect.objectContaining({
           'Content-Type': 'application/x-www-form-urlencoded',
@@ -117,7 +152,7 @@ describe('OpenAPIClient - OAuth2 client credentials', () => {
         security: {
           type: 'oauth2',
           oauth2: {
-            tokenUrl: 'https://auth.example.com/oauth/token',
+            tokenUrl: 'https://8.8.8.8/oauth/token',
             clientId: 'test-client',
             clientSecret: 'test-secret',
             token: 'stale-token',
@@ -177,7 +212,7 @@ describe('OpenAPIClient - OAuth2 client credentials', () => {
           });
         }
 
-        if (requestConfig.url === 'https://auth.example.com/oauth/token') {
+        if (requestConfig.url === 'https://8.8.8.8/oauth/token') {
           return Promise.resolve({
             data: {
               access_token: 'fresh-token',
@@ -210,7 +245,7 @@ describe('OpenAPIClient - OAuth2 client credentials', () => {
       2,
       expect.objectContaining({
         method: 'post',
-        url: 'https://auth.example.com/oauth/token',
+        url: 'https://8.8.8.8/oauth/token',
       }),
     );
     expect(client.httpClient.request).toHaveBeenNthCalledWith(
@@ -226,7 +261,7 @@ describe('OpenAPIClient - OAuth2 client credentials', () => {
     expect(persistOAuth2Token).toHaveBeenCalledTimes(2);
     expect(persistedOAuth2States[0]).toEqual(
       expect.objectContaining({
-        tokenUrl: 'https://auth.example.com/oauth/token',
+        tokenUrl: 'https://8.8.8.8/oauth/token',
         clientId: 'test-client',
         clientSecret: 'test-secret',
       }),
@@ -253,7 +288,7 @@ describe('OpenAPIClient - OAuth2 client credentials', () => {
         security: {
           type: 'oauth2',
           oauth2: {
-            tokenUrl: 'https://auth.example.com/oauth/token',
+            tokenUrl: 'https://8.8.8.8/oauth/token',
             clientId: 'test-client',
             token: 'stale-token',
             expiresAt: Date.now() + 3600_000,
@@ -303,7 +338,7 @@ describe('OpenAPIClient - OAuth2 client credentials', () => {
       request: jest.fn((requestConfig: { url: string }) => {
         observedAuthorizationHeaders.push(client.httpClient.defaults.headers.common.Authorization);
 
-        if (requestConfig.url === 'https://auth.example.com/oauth/token') {
+        if (requestConfig.url === 'https://8.8.8.8/oauth/token') {
           tokenRequestCount += 1;
           return Promise.resolve({
             data: {
@@ -400,7 +435,7 @@ describe('OpenAPIClient - OAuth2 client credentials', () => {
         security: {
           type: 'oauth2',
           oauth2: {
-            tokenUrl: 'https://auth.example.com/oauth/token',
+            tokenUrl: 'https://8.8.8.8/oauth/token',
             clientId: 'test-client',
             token: 'stale-token',
             expiresAt: Date.now() + 3600_000,
