@@ -94,6 +94,9 @@ export class OpenAPIClient {
       baseURL: this.baseUrl,
       timeout: config.options?.timeout || 30000,
       maxRedirects: 0,
+      // Serialize array query params per OpenAPI's default `style: form, explode: true`
+      // (`id=a&id=b`) instead of axios's bracket form `id[]=a&id[]=b` (#1080).
+      paramsSerializer: { indexes: null },
       headers: {
         'Content-Type': 'application/json',
         ...config.headers,
