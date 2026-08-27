@@ -37,23 +37,41 @@ const normalizeSharedUsers = (value?: string[]): string[] | undefined => {
 
 const normalizeOptions = (
   options?: ServerConfig['options'],
+  startOnDemand?: boolean,
+  idleTimeoutMs?: number,
 ): ServerConfig['options'] | undefined => {
-  if (!options) {
-    return undefined;
-  }
-
   const normalized: NonNullable<ServerConfig['options']> = {};
 
-  if (typeof options.timeout === 'number' && !Number.isNaN(options.timeout)) {
-    normalized.timeout = options.timeout;
+  if (options) {
+    if (typeof options.timeout === 'number' && !Number.isNaN(options.timeout)) {
+      normalized.timeout = options.timeout;
+    }
+
+    if (typeof options.resetTimeoutOnProgress === 'boolean') {
+      normalized.resetTimeoutOnProgress = options.resetTimeoutOnProgress;
+    }
+
+    if (typeof options.maxTotalTimeout === 'number' && !Number.isNaN(options.maxTotalTimeout)) {
+      normalized.maxTotalTimeout = options.maxTotalTimeout;
+    }
   }
 
-  if (typeof options.resetTimeoutOnProgress === 'boolean') {
-    normalized.resetTimeoutOnProgress = options.resetTimeoutOnProgress;
+  // startOnDemand/idleTimeoutMs (#1012) are exposed as top-level ServerConfig
+  // fields everywhere else in the codebase (mcpService.ts reads
+  // config.startOnDemand / config.idleTimeoutMs directly), but the database-backed
+  // ServerDaoDbImpl has no dedicated columns for them and previously dropped both
+  // fields silently on every save when running with DB_URL configured (the default
+  // production deployment mode) - see ServerDaoDbImpl create()/update(), which only
+  // ever whitelisted the fixed set of known Server entity columns. Piggybacking
+  // them onto the existing schema-less `options` JSON blob column persists them
+  // without requiring a database migration. ServerDaoDbImpl.mapToServerConfig()
+  // unpacks them back out to top-level fields on read.
+  if (startOnDemand === true) {
+    normalized.startOnDemand = true;
   }
 
-  if (typeof options.maxTotalTimeout === 'number' && !Number.isNaN(options.maxTotalTimeout)) {
-    normalized.maxTotalTimeout = options.maxTotalTimeout;
+  if (typeof idleTimeoutMs === 'number' && !Number.isNaN(idleTimeoutMs) && idleTimeoutMs > 0) {
+    normalized.idleTimeoutMs = idleTimeoutMs;
   }
 
   return Object.keys(normalized).length > 0 ? normalized : undefined;
@@ -164,7 +182,11 @@ export const normalizeServerConfigForPersistence = (config: ServerConfig): Serve
   const env = normalizeRecord(config.env);
   const headers = normalizeRecord(config.headers);
   const passthroughHeaders = normalizeStringArray(config.passthroughHeaders);
-  const options = normalizeOptions(config.options);
+  const options = normalizeOptions(
+    config.options,
+    config.startOnDemand === true,
+    config.idleTimeoutMs,
+  );
   const oauth = normalizeOAuth(config.oauth);
   const openapi = normalizeOpenApi(config.openapi);
 

@@ -201,4 +201,52 @@ describe('ServerDaoDbImpl', () => {
       tools: {},
     });
   });
+
+  it('should unpack startOnDemand/idleTimeoutMs mirrored inside the options JSON blob back to top-level fields on read', async () => {
+    // The `servers` table has no dedicated startOnDemand/idleTimeoutMs columns, so
+    // normalizeServerConfigForPersistence() piggybacks them onto the schema-less
+    // `options` column. mapToServerConfig() must unpack them back out so the rest
+    // of the app (which reads config.startOnDemand / config.idleTimeoutMs at the
+    // top level) sees them after a DB round-trip.
+    const dao = new ServerDaoDbImpl();
+
+    mockRepository.findByName.mockResolvedValue({
+      name: 'on-demand-server',
+      type: 'stdio',
+      command: 'npx',
+      args: ['-y', 'demo-server'],
+      enabled: true,
+      options: {
+        timeout: 5000,
+        startOnDemand: true,
+        idleTimeoutMs: 120000,
+      },
+    });
+
+    const result = await dao.findById('on-demand-server');
+
+    expect(result?.startOnDemand).toBe(true);
+    expect(result?.idleTimeoutMs).toBe(120000);
+    // The mirrored keys must not leak into the plain request-options object.
+    expect(result?.options).toEqual({ timeout: 5000 });
+  });
+
+  it('should leave startOnDemand/idleTimeoutMs undefined when not present in stored options', async () => {
+    const dao = new ServerDaoDbImpl();
+
+    mockRepository.findByName.mockResolvedValue({
+      name: 'always-on-server',
+      type: 'stdio',
+      command: 'npx',
+      args: ['-y', 'demo-server'],
+      enabled: true,
+      options: { timeout: 5000 },
+    });
+
+    const result = await dao.findById('always-on-server');
+
+    expect(result?.startOnDemand).toBeUndefined();
+    expect(result?.idleTimeoutMs).toBeUndefined();
+    expect(result?.options).toEqual({ timeout: 5000 });
+  });
 });

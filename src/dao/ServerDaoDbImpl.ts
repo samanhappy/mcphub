@@ -243,6 +243,26 @@ export class ServerDaoDbImpl implements ServerDao {
     passthroughHeaders?: string[];
     perSessionClient?: boolean;
   }): ServerConfigWithName {
+    // startOnDemand/idleTimeoutMs (#1012) have no dedicated columns on the `servers`
+    // table; they are piggybacked onto the schema-less `options` JSON blob by
+    // normalizeServerConfigForPersistence() (see src/utils/serverConfigPersistence.ts)
+    // so they survive a save when running in database mode. Unpack them back to
+    // top-level ServerConfig fields here, since every other consumer (mcpService.ts,
+    // the dashboard, etc.) reads config.startOnDemand / config.idleTimeoutMs directly.
+    const rawOptions = server.options as
+      | (Record<string, any> & { startOnDemand?: boolean; idleTimeoutMs?: number })
+      | undefined;
+    const startOnDemand = rawOptions?.startOnDemand === true ? true : undefined;
+    const idleTimeoutMs =
+      typeof rawOptions?.idleTimeoutMs === 'number' ? rawOptions.idleTimeoutMs : undefined;
+    const options = rawOptions
+      ? (() => {
+          const { startOnDemand: _startOnDemand, idleTimeoutMs: _idleTimeoutMs, ...rest } =
+            rawOptions;
+          return Object.keys(rest).length > 0 ? rest : undefined;
+        })()
+      : undefined;
+
     return {
       name: server.name,
       type: server.type as 'stdio' | 'sse' | 'streamable-http' | 'openapi' | undefined,
@@ -261,12 +281,14 @@ export class ServerDaoDbImpl implements ServerDao {
       tools: server.tools,
       prompts: server.prompts,
       resources: server.resources,
-      options: server.options,
+      options,
       oauth: server.oauth,
       proxy: server.proxy,
       openapi: server.openapi,
       passthroughHeaders: server.passthroughHeaders,
       perSessionClient: server.perSessionClient,
+      startOnDemand,
+      idleTimeoutMs,
     };
   }
 }
