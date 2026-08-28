@@ -241,6 +241,9 @@ function stripOAuthSecrets(oauth: NonNullable<ServerConfig['oauth']>): {
 
 function stripOpenApiSecuritySecrets(
   security: NonNullable<NonNullable<ServerConfig['openapi']>['security']>,
+  // Placeholder prefix, so `security` and `specSecurity` (#1079) secrets map
+  // to distinct required env vars instead of one var filling both slots.
+  placeholderPrefix = 'OPENAPI',
 ): {
   sanitized: TemplateOpenApiSecurityConfig;
   placeholders: string[];
@@ -257,7 +260,7 @@ function stripOpenApiSecuritySecrets(
     if (security.apiKey.value) {
       const { sanitizedValue, placeholder } = sanitizeSecretValue(
         security.apiKey.value,
-        toPlaceholderName(security.apiKey.name, 'OPENAPI_API_KEY'),
+        toPlaceholderName(security.apiKey.name, `${placeholderPrefix}_API_KEY`),
       );
       sanitized.apiKey.value = sanitizedValue;
       placeholders.push(placeholder);
@@ -274,7 +277,7 @@ function stripOpenApiSecuritySecrets(
     if (security.http.credentials) {
       const { sanitizedValue, placeholder } = sanitizeSecretValue(
         security.http.credentials,
-        'OPENAPI_HTTP_CREDENTIALS',
+        `${placeholderPrefix}_HTTP_CREDENTIALS`,
       );
       sanitized.http.credentials = sanitizedValue;
       placeholders.push(placeholder);
@@ -290,7 +293,7 @@ function stripOpenApiSecuritySecrets(
     if (security.oauth2.clientSecret) {
       const { sanitizedValue, placeholder } = sanitizeSecretValue(
         security.oauth2.clientSecret,
-        'OPENAPI_OAUTH2_CLIENT_SECRET',
+        `${placeholderPrefix}_OAUTH2_CLIENT_SECRET`,
       );
       sanitized.oauth2.clientSecret = sanitizedValue;
       placeholders.push(placeholder);
@@ -299,7 +302,7 @@ function stripOpenApiSecuritySecrets(
     if (security.oauth2.token) {
       const { sanitizedValue, placeholder } = sanitizeSecretValue(
         security.oauth2.token,
-        'OPENAPI_OAUTH2_TOKEN',
+        `${placeholderPrefix}_OAUTH2_TOKEN`,
       );
       sanitized.oauth2.token = sanitizedValue;
       placeholders.push(placeholder);
@@ -316,7 +319,7 @@ function stripOpenApiSecuritySecrets(
     if (security.openIdConnect.clientSecret) {
       const { sanitizedValue, placeholder } = sanitizeSecretValue(
         security.openIdConnect.clientSecret,
-        'OPENAPI_OPENID_CLIENT_SECRET',
+        `${placeholderPrefix}_OPENID_CLIENT_SECRET`,
       );
       sanitized.openIdConnect.clientSecret = sanitizedValue;
       placeholders.push(placeholder);
@@ -324,7 +327,7 @@ function stripOpenApiSecuritySecrets(
     if (security.openIdConnect.token) {
       const { sanitizedValue, placeholder } = sanitizeSecretValue(
         security.openIdConnect.token,
-        'OPENAPI_OPENID_TOKEN',
+        `${placeholderPrefix}_OPENID_TOKEN`,
       );
       sanitized.openIdConnect.token = sanitizedValue;
       placeholders.push(placeholder);
@@ -395,6 +398,14 @@ function serverConfigToTemplate(config: ServerConfig): {
     if (config.openapi.security) {
       const { sanitized, placeholders } = stripOpenApiSecuritySecrets(config.openapi.security);
       templateConfig.openapi.security = sanitized;
+      envVars.push(...placeholders);
+    }
+    if (config.openapi.specSecurity) {
+      const { sanitized, placeholders } = stripOpenApiSecuritySecrets(
+        config.openapi.specSecurity,
+        'OPENAPI_SPEC',
+      );
+      templateConfig.openapi.specSecurity = sanitized;
       envVars.push(...placeholders);
     }
   }

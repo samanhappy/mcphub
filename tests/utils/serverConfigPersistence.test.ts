@@ -199,4 +199,21 @@ describe('normalizeServerConfigForPersistence', () => {
       version: '3.1.0',
     });
   });
+
+  it('keeps the specSecurity credential slot through openapi normalization (#1079)', () => {
+    const specSecurity = {
+      type: 'http' as const,
+      http: { scheme: 'basic' as const, credentials: 'admin:s3cret' },
+    };
+    const normalized = normalizeServerConfigForPersistence({
+      type: 'openapi',
+      openapi: {
+        url: 'https://example.com/v3/api-docs',
+        security: { type: 'http', http: { scheme: 'bearer', credentials: 'api-token' } },
+        specSecurity,
+      },
+    });
+
+    expect(normalized.openapi?.specSecurity).toEqual(specSecurity);
+  });
 });

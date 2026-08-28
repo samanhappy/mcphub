@@ -302,6 +302,48 @@ describe('templateService', () => {
         ]),
       );
     });
+
+    it('should strip spec download credentials into distinct placeholders (#1079)', async () => {
+      mockServerDao.findAll.mockResolvedValue([
+        {
+          name: 'layered-openapi',
+          type: 'openapi',
+          openapi: {
+            url: 'http://internal/v3/api-docs',
+            security: {
+              type: 'http',
+              http: { scheme: 'bearer', credentials: 'bearer-secret' },
+            },
+            specSecurity: {
+              type: 'http',
+              http: { scheme: 'basic', credentials: 'basic-secret' },
+            },
+          },
+        },
+      ]);
+      mockGroupDao.findAll.mockResolvedValue([
+        { id: 'g1', name: 'G', servers: [{ name: 'layered-openapi', tools: 'all' }] },
+      ]);
+
+      const template = await exportTemplate({ name: 'Test' });
+      const config = template.servers['layered-openapi'];
+
+      expect(config.openapi?.specSecurity).toEqual({
+        type: 'http',
+        http: { scheme: 'basic', credentials: '${OPENAPI_SPEC_HTTP_CREDENTIALS}' },
+      });
+      expect(config.openapi?.security).toEqual({
+        type: 'http',
+        http: { scheme: 'bearer', credentials: '${OPENAPI_HTTP_CREDENTIALS}' },
+      });
+      // The two slots must map to distinct env vars so one exported value
+      // cannot silently fill both credentials.
+      expect(template.requiredEnvVars).toEqual(
+        expect.arrayContaining(['OPENAPI_HTTP_CREDENTIALS', 'OPENAPI_SPEC_HTTP_CREDENTIALS']),
+      );
+      expect(JSON.stringify(template)).not.toContain('basic-secret');
+      expect(JSON.stringify(template)).not.toContain('bearer-secret');
+    });
   });
 
   describe('exportGroupTemplate', () => {

@@ -123,6 +123,10 @@ const normalizeOpenApi = (
     normalized.security = openapi.security;
   }
 
+  if (openapi.specSecurity) {
+    normalized.specSecurity = openapi.specSecurity;
+  }
+
   if (passthroughHeaders) {
     normalized.passthroughHeaders = passthroughHeaders;
   }
