@@ -1,5 +1,7 @@
 import { ServerDao, ServerConfigWithName, PaginatedResult } from './index.js';
 import { ServerRepository } from '../db/repositories/ServerRepository.js';
+import { ServerConfig } from '../types/index.js';
+import { unpackStartOnDemandOptions } from '../utils/serverConfigPersistence.js';
 
 /**
  * Database-backed implementation of ServerDao
@@ -249,19 +251,9 @@ export class ServerDaoDbImpl implements ServerDao {
     // so they survive a save when running in database mode. Unpack them back to
     // top-level ServerConfig fields here, since every other consumer (mcpService.ts,
     // the dashboard, etc.) reads config.startOnDemand / config.idleTimeoutMs directly.
-    const rawOptions = server.options as
-      | (Record<string, any> & { startOnDemand?: boolean; idleTimeoutMs?: number })
-      | undefined;
-    const startOnDemand = rawOptions?.startOnDemand === true ? true : undefined;
-    const idleTimeoutMs =
-      typeof rawOptions?.idleTimeoutMs === 'number' ? rawOptions.idleTimeoutMs : undefined;
-    const options = rawOptions
-      ? (() => {
-          const { startOnDemand: _startOnDemand, idleTimeoutMs: _idleTimeoutMs, ...rest } =
-            rawOptions;
-          return Object.keys(rest).length > 0 ? rest : undefined;
-        })()
-      : undefined;
+    const { options, startOnDemand, idleTimeoutMs } = unpackStartOnDemandOptions(
+      server.options as ServerConfig['options'],
+    );
 
     return {
       name: server.name,

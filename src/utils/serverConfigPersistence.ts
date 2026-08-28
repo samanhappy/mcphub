@@ -35,6 +35,36 @@ const normalizeSharedUsers = (value?: string[]): string[] | undefined => {
   return normalized ? Array.from(new Set(normalized)) : undefined;
 };
 
+/**
+ * Unpacks the startOnDemand/idleTimeoutMs values mirrored into the `options`
+ * blob by normalizeOptions() (see below) back to top-level fields, stripping
+ * the mirrored keys out of the returned `options` so they don't leak into
+ * plain MCP RequestOptions or resurface as file/API noise. Shared by both
+ * ServerDaoDbImpl (unpacks on every DB read) and ServerDaoImpl (unpacks on
+ * every JSON-file read), so both storage backends behave identically instead
+ * of only stripping the mirrored keys in database mode.
+ */
+export const unpackStartOnDemandOptions = (
+  options: ServerConfig['options'] | undefined,
+): {
+  options: ServerConfig['options'] | undefined;
+  startOnDemand: boolean | undefined;
+  idleTimeoutMs: number | undefined;
+} => {
+  if (!options) {
+    return { options: undefined, startOnDemand: undefined, idleTimeoutMs: undefined };
+  }
+
+  const { startOnDemand: rawStartOnDemand, idleTimeoutMs: rawIdleTimeoutMs, ...rest } =
+    options as Record<string, unknown>;
+
+  return {
+    options: Object.keys(rest).length > 0 ? (rest as ServerConfig['options']) : undefined,
+    startOnDemand: rawStartOnDemand === true ? true : undefined,
+    idleTimeoutMs: typeof rawIdleTimeoutMs === 'number' ? rawIdleTimeoutMs : undefined,
+  };
+};
+
 const normalizeOptions = (
   options?: ServerConfig['options'],
   startOnDemand?: boolean,
@@ -213,6 +243,16 @@ export const normalizeServerConfigForPersistence = (config: ServerConfig): Serve
     // off - the toggle would still read enabled after save. Emit an explicit key
     // (matching perSessionClient above) so the old `true` is overwritten. See #1032.
     startOnDemand: config.startOnDemand === true ? true : undefined,
+    // Keep the top-level value consistent with what actually gets mirrored into
+    // `options` above: an invalid/non-positive idleTimeoutMs is dropped instead
+    // of surviving as a meaningless top-level 0/NaN value that only JSON-mode
+    // storage would otherwise preserve verbatim.
+    idleTimeoutMs:
+      typeof config.idleTimeoutMs === 'number' &&
+      !Number.isNaN(config.idleTimeoutMs) &&
+      config.idleTimeoutMs > 0
+        ? config.idleTimeoutMs
+        : undefined,
   };
 
   if (normalizedType === 'openapi') {
