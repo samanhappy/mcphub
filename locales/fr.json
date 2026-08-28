@@ -124,6 +124,7 @@
     "tools": "Outils",
     "prompts": "Invites",
     "name": "Nom du serveur",
+    "nameInvalid": "Le nom du serveur ne peut contenir que des lettres, chiffres, points, underscores et traits d'union (ni espaces ni caractères spéciaux)",
     "description": "Note du serveur",
     "descriptionPlaceholder": "Optionnel : décrivez l'utilité de ce serveur",
     "url": "URL du serveur",

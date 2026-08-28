@@ -343,6 +343,154 @@ describe('serverController - stdio servers without arguments', () => {
   });
 });
 
+describe('serverController - server name charset validation', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockAddServer.mockResolvedValue({ success: true });
+  });
+
+  const createResponse = () => {
+    const json = jest.fn();
+    const status = jest.fn().mockReturnThis();
+    return { json, status, response: { json, status } as unknown as Response };
+  };
+
+  const adminUser = {
+    username: 'admin',
+    isAdmin: true,
+  };
+
+  const validConfig = {
+    type: 'sse',
+    url: 'http://localhost:3001/mcp',
+  };
+
+  it('rejects a server name containing spaces on create', async () => {
+    const { json, status, response } = createResponse();
+    const request = {
+      body: { name: 'my server', config: validConfig },
+      user: adminUser,
+    } as unknown as Request;
+
+    await createServer(request, response);
+
+    expect(status).toHaveBeenCalledWith(400);
+    expect(json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        success: false,
+        message: expect.stringContaining('only contain letters'),
+      }),
+    );
+    expect(mockAddServer).not.toHaveBeenCalled();
+  });
+
+  it('rejects a server name with non-ASCII (CJK) characters on create', async () => {
+    const { json, status, response } = createResponse();
+    const request = {
+      body: { name: '我的伺服器', config: validConfig },
+      user: adminUser,
+    } as unknown as Request;
+
+    await createServer(request, response);
+
+    expect(status).toHaveBeenCalledWith(400);
+    expect(mockAddServer).not.toHaveBeenCalled();
+  });
+
+  it('rejects a registry-style reverse-DNS name on create (path separator)', async () => {
+    const { json, status, response } = createResponse();
+    const request = {
+      body: { name: 'io.github.user/weather', config: validConfig },
+      user: adminUser,
+    } as unknown as Request;
+
+    await createServer(request, response);
+
+    expect(status).toHaveBeenCalledWith(400);
+    expect(mockAddServer).not.toHaveBeenCalled();
+  });
+
+  it('accepts a trimmed valid name on create', async () => {
+    const { status, response } = createResponse();
+    const request = {
+      body: { name: '  weather-server  ', config: validConfig },
+      user: adminUser,
+    } as unknown as Request;
+
+    await createServer(request, response);
+
+    expect(status).not.toHaveBeenCalledWith(400);
+    expect(mockAddServer).toHaveBeenCalledWith(
+      'weather-server',
+      expect.objectContaining({ type: 'sse' }),
+    );
+  });
+
+  it('reports an invalid name as a failed item in batch import', async () => {
+    const { json, status, response } = createResponse();
+    const request = {
+      body: {
+        servers: [
+          { name: 'ok-server', config: validConfig },
+          { name: 'bad server', config: validConfig },
+        ],
+      },
+      user: adminUser,
+    } as unknown as Request;
+
+    await batchCreateServers(request, response);
+
+    expect(status).toHaveBeenCalledWith(207);
+    expect(mockAddServer).toHaveBeenCalledTimes(1);
+    expect(json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          successCount: 1,
+          failureCount: 1,
+          results: expect.arrayContaining([
+            expect.objectContaining({
+              name: 'bad server',
+              success: false,
+              message: expect.stringContaining('only contain letters'),
+            }),
+          ]),
+        }),
+      }),
+    );
+  });
+
+  it('rejects an invalid newName when renaming', async () => {
+    mockServerDao.findById.mockResolvedValue({
+      name: 'old-server',
+      type: 'sse',
+      url: 'http://localhost:3001/mcp',
+      owner: 'admin',
+      visibility: 'private',
+    });
+
+    const { json, status, response } = createResponse();
+    const request = {
+      params: { name: 'old-server' },
+      body: {
+        config: { type: 'sse', url: 'http://localhost:3001/mcp' },
+        newName: 'new server',
+      },
+      user: adminUser,
+    } as unknown as Request;
+
+    await updateServer(request, response);
+
+    expect(status).toHaveBeenCalledWith(400);
+    expect(mockServerDao.rename).not.toHaveBeenCalled();
+    expect(json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        success: false,
+        message: expect.stringContaining('only contain letters'),
+      }),
+    );
+  });
+});
+
 describe('serverController - getAllSettings', () => {
   beforeEach(() => {
     jest.clearAllMocks();

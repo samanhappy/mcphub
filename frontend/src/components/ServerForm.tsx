@@ -15,6 +15,11 @@ import {
   isOpenApiSourceReady,
   shouldAutoAnalyzeOpenApiSource,
 } from '../utils/openApiSourceAnalysis';
+import {
+  isValidServerName,
+  SERVER_NAME_MAX_LENGTH,
+  SERVER_NAME_PATTERN,
+} from '../utils/serverName';
 
 interface ServerFormProps {
   onSubmit: (payload: any) => void;
@@ -32,6 +37,11 @@ const ServerForm = ({
   formError = null,
 }: ServerFormProps) => {
   const { t } = useTranslation();
+
+  // Native `pattern`/`maxLength` on the name field are enforced on create and
+  // on edit of an already-valid name. Editing a legacy (invalid) name without
+  // changing it stays allowed, mirroring the backend create/rename-only rule.
+  const enforceNamePattern = !initialData?.name || isValidServerName(initialData.name);
 
   // Determine the initial server type from the initialData
   const getInitialServerType = () => {
@@ -496,6 +506,16 @@ const ServerForm = ({
     e.preventDefault();
     setError(null);
 
+    // Server names become part of downstream tool identifiers, so they must
+    // satisfy the MCP tool-name charset. Mirror the backend rule: enforce on
+    // create and on rename, but let a no-op edit of a legacy (invalid) name
+    // through so existing working installations can still be maintained.
+    const isNameChanging = !initialData?.name || formData.name !== initialData.name;
+    if (isNameChanging && !isValidServerName(formData.name)) {
+      setError(t('server.nameInvalid'));
+      return;
+    }
+
     try {
       const payload = buildServerPayload({
         formData,
@@ -546,8 +566,14 @@ const ServerForm = ({
                 onChange={handleInputChange}
                 className="w-full py-2 px-3 form-input"
                 placeholder="e.g.: time-mcp"
+                pattern={enforceNamePattern ? SERVER_NAME_PATTERN.source : undefined}
+                maxLength={enforceNamePattern ? SERVER_NAME_MAX_LENGTH : undefined}
+                title={t('server.nameInvalid')}
                 required
               />
+              <p className="text-xs text-[var(--hub-ink-3)] mt-1">
+                {t('server.nameInvalid')}
+              </p>
             </div>
 
             <div className="md:col-span-2">

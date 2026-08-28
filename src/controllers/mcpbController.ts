@@ -5,6 +5,7 @@ import fs from 'fs';
 import AdmZip from 'adm-zip';
 import { ApiResponse } from '../types/index.js';
 import { logger } from '../utils/logger.js';
+import { validateServerName } from '../utils/serverNameValidation.js';
 
 // Configure multer for file uploads
 const storage = multer.diskStorage({
@@ -43,30 +44,18 @@ const upload = multer({
 export const uploadMiddleware = upload.single('mcpbFile');
 
 const MCPB_UPLOAD_DIR = path.join('data', 'uploads', 'mcpb');
-const MCPB_SERVER_NAME_PATTERN = /^[A-Za-z0-9._-]+$/;
 
 const getMcpbUploadDir = (): string => path.join(process.cwd(), MCPB_UPLOAD_DIR);
 
 const validateMcpbServerName = (serverName: unknown): string => {
-  if (typeof serverName !== 'string') {
-    throw new Error('Invalid manifest: missing name');
-  }
-
-  const normalizedServerName = serverName.trim();
-  if (!normalizedServerName) {
-    throw new Error('Invalid manifest: missing name');
-  }
-
-  if (
-    !MCPB_SERVER_NAME_PATTERN.test(normalizedServerName) ||
-    normalizedServerName.includes('..') ||
-    normalizedServerName.includes(path.posix.sep) ||
-    normalizedServerName.includes(path.win32.sep)
-  ) {
+  // Reuse the shared server-name rule (charset + `..`/path-separator safety)
+  // while keeping the MCPB-specific error wording.
+  const validation = validateServerName(serverName);
+  if (!validation.valid) {
     throw new Error('Invalid manifest: name contains unsafe characters');
   }
 
-  return normalizedServerName;
+  return validation.normalized as string;
 };
 
 const resolveMcpbServerExtractDir = (baseDir: string, serverName: string): string => {

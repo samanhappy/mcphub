@@ -54,6 +54,7 @@ import { disconnectUpstreamOAuth } from '../services/upstreamOAuthDisconnectServ
 import type { UpstreamOAuthDisconnectScope } from '../services/upstreamOAuthDisconnectService.js';
 import { normalizeServerConfigForPersistence } from '../utils/serverConfigPersistence.js';
 import { isPrivilegedServerConfig } from '../utils/serverConfigValidation.js';
+import { validateServerName } from '../utils/serverNameValidation.js';
 import { setCachedSystemConfig } from '../utils/systemConfigCache.js';
 import { DEFAULT_INSTALL_BASE_URL, withResolvedInstallBaseUrl } from '../utils/installBaseUrl.js';
 import { previewOpenApiToolStats } from '../services/openApiToolStatsService.js';
@@ -511,13 +512,15 @@ export const previewOpenApiToolStatsHandler = async (
 export const createServer = async (req: Request, res: Response): Promise<void> => {
   try {
     const { name, config } = req.body as AddServerRequest;
-    if (!name || typeof name !== 'string') {
+    const nameValidation = validateServerName(name);
+    if (!nameValidation.valid) {
       res.status(400).json({
         success: false,
-        message: 'Server name is required',
+        message: nameValidation.message,
       });
       return;
     }
+    const serverName = nameValidation.normalized as string;
 
     if (!config || typeof config !== 'object') {
       res.status(400).json({
@@ -612,13 +615,13 @@ export const createServer = async (req: Request, res: Response): Promise<void> =
 
     assignServerOwner(req, normalizedConfig);
 
-    const result = await addServer(name, normalizedConfig);
+    const result = await addServer(serverName, normalizedConfig);
     if (result.success) {
       res.json({
         success: true,
         message: 'Server added successfully',
       });
-      notifyToolChanged(name, { reportEmbeddingProgress: true }).catch((error) => {
+      notifyToolChanged(serverName, { reportEmbeddingProgress: true }).catch((error) => {
         logger.error('Failed to trigger embedding sync for created server:', error);
       });
     } else {
@@ -661,9 +664,10 @@ export const batchCreateServers = async (req: Request, res: Response): Promise<v
     const validateServerConfig = (
       name: string,
       config: ServerConfig,
-    ): { valid: boolean; message?: string } => {
-      if (!name || typeof name !== 'string') {
-        return { valid: false, message: 'Server name is required and must be a string' };
+    ): { valid: boolean; message?: string; normalizedName?: string } => {
+      const nameValidation = validateServerName(name);
+      if (!nameValidation.valid) {
+        return { valid: false, message: nameValidation.message };
       }
 
       if (!config || typeof config !== 'object') {
@@ -729,7 +733,7 @@ export const batchCreateServers = async (req: Request, res: Response): Promise<v
         return { valid: false, message: 'Headers are not supported for stdio server type' };
       }
 
-      return { valid: true };
+      return { valid: true, normalizedName: nameValidation.normalized };
     };
 
     // Process each server
@@ -756,6 +760,8 @@ export const batchCreateServers = async (req: Request, res: Response): Promise<v
         continue;
       }
 
+      const serverName = validation.normalizedName ?? name;
+
       try {
         // Set default keep-alive interval for SSE servers if not specified
         const normalizedConfig = normalizeServerConfigForPersistence(config);
@@ -769,7 +775,7 @@ export const batchCreateServers = async (req: Request, res: Response): Promise<v
 
         if (isPrivilegedServerConfig(normalizedConfig) && currentUser?.isAdmin !== true) {
           results.push({
-            name,
+            name: serverName,
             success: false,
             message: 'Only admins can create or modify stdio-based servers',
           });
@@ -783,16 +789,16 @@ export const batchCreateServers = async (req: Request, res: Response): Promise<v
           : defaultOwner;
 
         // Attempt to add server
-        const result = await addServer(name, normalizedConfig);
+        const result = await addServer(serverName, normalizedConfig);
         if (result.success) {
           results.push({
-            name,
+            name: serverName,
             success: true,
           });
           successCount++;
         } else {
           results.push({
-            name,
+            name: serverName,
             success: false,
             message: result.message || 'Failed to add server',
           });
@@ -800,7 +806,7 @@ export const batchCreateServers = async (req: Request, res: Response): Promise<v
         }
       } catch (error) {
         results.push({
-          name,
+          name: serverName,
           success: false,
           message: error instanceof Error ? error.message : 'Internal server error',
         });
@@ -998,21 +1004,35 @@ export const updateServer = async (req: Request, res: Response): Promise<void> =
     // Check if server name is being changed
     const isRenaming = newName && newName !== name;
 
+    // Final server name used for the rest of the update flow (the new name when
+    // renaming, otherwise the original name).
+    let finalName = name;
+
     // If renaming, validate the new name and update references
     if (isRenaming) {
       const serverDao = getServerDao();
-
-      // Check if new name already exists
-      if (await serverDao.exists(newName)) {
+      const nameValidation = validateServerName(newName);
+      if (!nameValidation.valid) {
         res.status(400).json({
           success: false,
-          message: `Server name '${newName}' already exists`,
+          message: nameValidation.message,
+        });
+        return;
+      }
+      const targetName = nameValidation.normalized as string;
+      finalName = targetName;
+
+      // Check if new name already exists
+      if (await serverDao.exists(targetName)) {
+        res.status(400).json({
+          success: false,
+          message: `Server name '${targetName}' already exists`,
         });
         return;
       }
 
       // Rename the server
-      const renamed = await serverDao.rename(name, newName);
+      const renamed = await serverDao.rename(name, targetName);
       if (!renamed) {
         res.status(404).json({
           success: false,
@@ -1030,11 +1050,11 @@ export const updateServer = async (req: Request, res: Response): Promise<void> =
 
       // Update references in groups
       const groupDao = getGroupDao();
-      await groupDao.updateServerName(name, newName);
+      await groupDao.updateServerName(name, targetName);
 
       // Update references in bearer keys
       const bearerKeyDao = getBearerKeyDao();
-      await bearerKeyDao.updateServerName(name, newName);
+      await bearerKeyDao.updateServerName(name, targetName);
 
       // Drop embeddings stored under the old name so search_tools does not
       // advertise phantom tools; addOrUpdateServer below regenerates them
@@ -1048,9 +1068,6 @@ export const updateServer = async (req: Request, res: Response): Promise<void> =
         });
       }
     }
-
-    // Use the final server name (new name if renaming, otherwise original name)
-    const finalName = isRenaming ? newName : name;
 
     // Fast path: if no connection-relevant field changed, persist and update
     // in-memory access metadata without tearing down the runtime. This covers

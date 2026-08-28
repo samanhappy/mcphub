@@ -124,6 +124,7 @@
     "tools": "工具",
     "prompts": "提示词",
     "name": "服务器名称",
+    "nameInvalid": "服务器名称只能包含字母、数字、点、下划线和连字符（不能包含空格或特殊字符）",
     "description": "服务器注释",
     "descriptionPlaceholder": "可选：记录这个服务器的用途说明",
     "url": "服务器 URL",

@@ -41,6 +41,7 @@ import {
 } from '../types/index.js';
 import { expandEnvVars, replaceEnvVars, getNameSeparator } from '../config/index.js';
 import config from '../config/index.js';
+import { validateServerName } from '../utils/serverNameValidation.js';
 import { getGroup } from './sseService.js';
 import { getServerConfigInGroup, normalizeGroupServers } from './groupService.js';
 import { removeServerToolEmbeddings, saveToolsAsVectorEmbeddings } from './vectorSearchService.js';
@@ -1571,6 +1572,18 @@ export const initializeClientsFromSettings = async (
   try {
     for (const conf of allServers) {
       const { name } = conf;
+
+      // Names loaded from disk are not rejected (that would break existing
+      // configs on upgrade), but a strict client may drop the whole tools/list
+      // if the server name produces a non-conforming downstream tool name.
+      if (isInit) {
+        const nameValidation = validateServerName(name);
+        if (!nameValidation.valid) {
+          logger.warn(
+            `Server name '${name}' does not match the MCP tool-name charset (${nameValidation.message}); downstream tool names may be rejected by strict clients`,
+          );
+        }
+      }
 
       // Expand environment variables in all configuration values
       const expandedConf = replaceEnvVars(conf as any) as ServerConfigWithName;
