@@ -66,8 +66,50 @@ function encodePathParameterValue(value: unknown): string {
   return encodeURIComponent(String(value));
 }
 
+function isPrintableAscii(value: string): boolean {
+  return /^[\x20-\x7E]*$/.test(value);
+}
+
+// Strict base64 check: the alphabet plus canonical padding must round-trip
+// through decode → encode unchanged. Buffer.from alone is too lenient (it
+// silently drops invalid characters), which would misread raw secrets as
+// encoded ones.
+function tryDecodeBase64Utf8(value: string): string | null {
+  if (!/^[A-Za-z0-9+/]*={0,2}$/.test(value)) {
+    return null;
+  }
+  const decoded = Buffer.from(value, 'base64').toString('utf8');
+  const stripPadding = (input: string) => input.replace(/=+$/, '');
+  return stripPadding(Buffer.from(decoded, 'utf8').toString('base64')) === stripPadding(value)
+    ? decoded
+    : null;
+}
+
+// HTTP Basic transmits base64("user:password"), but users reasonably enter the
+// raw `user:pass` pair into the credentials field (#1079). Encode such values
+// automatically; keep a value only when it decodes to printable
+// `user:pass`-shaped text (contains ':'), the conservative test for a
+// credential that was pre-encoded upstream. Anything ambiguous (e.g. a token
+// without a colon) is treated as raw and encoded.
+function toBasicAuthCredentials(credentials: string): string {
+  const decoded = tryDecodeBase64Utf8(credentials);
+  if (decoded !== null && isPrintableAscii(decoded) && decoded.includes(':')) {
+    return credentials;
+  }
+  return Buffer.from(credentials, 'utf8').toString('base64');
+}
+
 export class OpenAPIClient {
   private httpClient: AxiosInstance;
+  // Dedicated client used ONLY for the specification document download when
+  // `openapi.specSecurity` names a credential different from
+  // `openapi.security` (#1079) — e.g. Basic-protected /v3/api-docs behind a
+  // Bearer-protected API. A separate instance (rather than per-request header
+  // overrides) guarantees the two credentials never mix: the main client's
+  // query-param interceptor and default headers cannot leak into the spec
+  // fetch, and vice versa. Absent when the two share one credential, in which
+  // case the spec download uses httpClient exactly as before.
+  private specHttpClient?: AxiosInstance;
   private spec: OpenAPIV3.Document | null = null;
   private tools: OpenAPIToolInfo[] = [];
   private baseUrl: string;
@@ -83,6 +125,9 @@ export class OpenAPIClient {
   // header at call time. Seeded into each session jar so a dynamic Set-Cookie
   // of the same name can override it.
   private staticCookieHeader?: string;
+  // Same, but sourced from `specSecurity` and applied only to the spec
+  // document download (#1079).
+  private specStaticCookieHeader?: string;
   // Resolved in initialize(): admin-owned servers may target internal services
   // and skip the SSRF internal-IP blocklist.
   private allowInternalNetworks = false;
@@ -110,7 +155,34 @@ export class OpenAPIClient {
     this.securityConfig = config.openapi.security;
     this.persistOAuth2Token = options.persistOAuth2Token;
 
-    this.httpClient = axios.create({
+    this.httpClient = this.createHttpClient(config);
+    const mainCookie = this.applySecurityToClient(this.httpClient, this.securityConfig);
+    this.staticCookieHeader = mainCookie.staticCookieHeader;
+
+    const specSecurity = config.openapi?.specSecurity;
+    if (specSecurity && specSecurity.type !== 'none') {
+      // The dynamic OAuth2 client-credentials flow persists refreshed tokens
+      // back into `security`, so `specSecurity` only supports a static token.
+      if (
+        (specSecurity.type === 'oauth2' && !specSecurity.oauth2?.token) ||
+        (specSecurity.type === 'openIdConnect' && !specSecurity.openIdConnect?.token)
+      ) {
+        throw new Error(
+          'openapi.specSecurity: oauth2/openIdConnect requires a pre-obtained token; dynamic token fetch is only supported for openapi.security',
+        );
+      }
+      this.specHttpClient = this.createHttpClient(config);
+      const specCookie = this.applySecurityToClient(this.specHttpClient, specSecurity);
+      this.specStaticCookieHeader = specCookie.staticCookieHeader;
+    }
+  }
+
+  // Shared instance factory so the main client and the spec-download client
+  // (#1079) get identical base behavior: no redirects (credentials must never
+  // cross origins), OpenAPI array query serialization, and operator-supplied
+  // static headers.
+  private createHttpClient(config: ServerConfig): AxiosInstance {
+    return axios.create({
       timeout: config.options?.timeout || 30000,
       maxRedirects: 0,
       // Serialize array query params per OpenAPI's default `style: form, explode: true`
@@ -121,8 +193,6 @@ export class OpenAPIClient {
         ...config.headers,
       },
     });
-
-    this.setupSecurity();
   }
 
   private extractBaseUrl(specUrl: string): string {
@@ -135,63 +205,74 @@ export class OpenAPIClient {
     }
   }
 
-  private setupSecurity(): void {
-    if (!this.securityConfig || this.securityConfig.type === 'none') {
-      return;
+  // Apply one OpenAPISecurityConfig onto a specific axios instance: default
+  // headers for header-based credentials, a request interceptor for query
+  // params, and a returned static cookie for the caller to manage (cookies
+  // cannot live in axios defaults). Both `security` and `specSecurity` (#1079)
+  // go through here so the two credential slots behave identically.
+  private applySecurityToClient(
+    client: AxiosInstance,
+    securityConfig?: OpenAPISecurityConfig,
+  ): { staticCookieHeader?: string } {
+    if (!securityConfig || securityConfig.type === 'none') {
+      return {};
     }
 
-    switch (this.securityConfig.type) {
-      case 'apiKey':
-        if (this.securityConfig.apiKey) {
-          const { name, in: location, value } = this.securityConfig.apiKey;
+    switch (securityConfig.type) {
+      case 'apiKey': {
+        if (securityConfig.apiKey) {
+          const { name, in: location, value } = securityConfig.apiKey;
           // An empty/absent value means the credential has not been supplied
           // yet ("needs credentials"); skip injection rather than sending a
           // broken empty header/param/cookie (#1077).
           if (location === 'header' && value) {
-            this.httpClient.defaults.headers.common[name] = value;
+            client.defaults.headers.common[name] = value;
           } else if (location === 'query' && value) {
-            this.httpClient.interceptors.request.use((config: any) => {
+            client.interceptors.request.use((config: any) => {
               config.params = { ...config.params, [name]: value };
               return config;
             });
           } else if (location === 'cookie' && value) {
-            this.staticCookieHeader = `${name}=${value}`;
+            return { staticCookieHeader: `${name}=${value}` };
           }
         }
-        break;
+        return {};
+      }
 
-      case 'http':
-        if (this.securityConfig.http) {
-          const { scheme, credentials } = this.securityConfig.http;
+      case 'http': {
+        if (securityConfig.http) {
+          const { scheme, credentials } = securityConfig.http;
           if (scheme === 'bearer' && credentials) {
-            this.httpClient.defaults.headers.common['Authorization'] = `Bearer ${credentials}`;
+            client.defaults.headers.common['Authorization'] = `Bearer ${credentials}`;
           } else if (scheme === 'basic' && credentials) {
-            this.httpClient.defaults.headers.common['Authorization'] = `Basic ${credentials}`;
+            // Accept the raw `user:pass` form and pre-encoded base64 alike (#1079).
+            const trimmed = credentials.trim();
+            if (trimmed) {
+              client.defaults.headers.common['Authorization'] =
+                `Basic ${toBasicAuthCredentials(trimmed)}`;
+            }
           }
         }
-        break;
+        return {};
+      }
 
       case 'oauth2':
-        if (this.securityConfig.oauth2?.token) {
-          this.setAuthorizationHeader(this.securityConfig.oauth2.token);
-        }
-        break;
+        this.setAuthorizationHeader(client, securityConfig.oauth2?.token);
+        return {};
 
       case 'openIdConnect':
-        if (this.securityConfig.openIdConnect?.token) {
-          this.setAuthorizationHeader(this.securityConfig.openIdConnect.token);
-        }
-        break;
+        this.setAuthorizationHeader(client, securityConfig.openIdConnect?.token);
+        return {};
     }
   }
 
-  private setAuthorizationHeader(token?: string): void {
+  private setAuthorizationHeader(client: AxiosInstance, token?: string): void {
     if (token) {
-      this.httpClient.defaults.headers.common['Authorization'] = 'Bearer ' + token;
+      client.defaults.headers.common['Authorization'] = 'Bearer ' + token;
       return;
     }
 
-    delete this.httpClient.defaults.headers.common['Authorization'];
+    delete client.defaults.headers.common['Authorization'];
   }
 
   private getOAuth2Config(): OpenAPIOAuth2Config | undefined {
@@ -216,7 +297,7 @@ export class OpenAPIClient {
       this.config.openapi.security.oauth2 = oauth2;
     }
 
-    this.setAuthorizationHeader(undefined);
+    this.setAuthorizationHeader(this.httpClient, undefined);
     await this.persistOAuth2Token?.({ ...oauth2 });
     return true;
   }
@@ -251,7 +332,7 @@ export class OpenAPIClient {
       this.config.openapi.security.oauth2 = oauth2;
     }
 
-    this.setAuthorizationHeader(token);
+    this.setAuthorizationHeader(this.httpClient, token);
     await this.persistOAuth2Token?.(oauth2);
   }
 
@@ -315,13 +396,13 @@ export class OpenAPIClient {
     }
 
     if (this.hasValidOAuth2Token(oauth2)) {
-      this.setAuthorizationHeader(oauth2.token);
+      this.setAuthorizationHeader(this.httpClient, oauth2.token);
       return oauth2.token;
     }
 
     if (!oauth2.tokenUrl || !oauth2.clientId) {
       if (oauth2.token) {
-        this.setAuthorizationHeader(oauth2.token);
+        this.setAuthorizationHeader(this.httpClient, oauth2.token);
       }
       return oauth2.token;
     }
@@ -357,13 +438,10 @@ export class OpenAPIClient {
 
       // Parse and dereference the OpenAPI specification
       if (this.config.openapi?.url) {
-        // Fetch the document through the authenticated httpClient (carries
-        // config.headers + security credentials from setupSecurity, and uses
-        // maxRedirects: 0 so credentials are never forwarded across a
-        // cross-origin redirect). SwaggerParser's own resolver is bypassed for
-        // the main document so its (unauthenticated) headers never see the
-        // credentials; external $ref resolution still uses that resolver and
-        // therefore receives no auth by default.
+        // SwaggerParser's own resolver is bypassed for the main document so
+        // its (unauthenticated) headers never see the credentials; external
+        // $ref resolution still uses that resolver and therefore receives no
+        // auth by default.
         const specUrl = this.config.openapi.url;
         const safeSpecUrl = await assertSafeUrl(specUrl, {
           allowInternal: this.allowInternalNetworks,
@@ -372,12 +450,23 @@ export class OpenAPIClient {
           responseType: 'text',
           transformResponse: [(data: unknown) => data],
         };
+        // Download through the client whose credentials match the spec
+        // endpoint: the dedicated specHttpClient when `specSecurity` names one
+        // (#1079), otherwise the main client whose defaults already carry
+        // `security` (and the apiKey-in-query interceptor). Uses maxRedirects:
+        // 0 so credentials are never forwarded across a cross-origin redirect;
+        // external $ref resolution keeps using the unauthenticated resolver
+        // from guardedRefResolveOptions below.
+        const specClient = this.specHttpClient ?? this.httpClient;
+        const specCookie = this.specHttpClient
+          ? this.specStaticCookieHeader
+          : this.staticCookieHeader;
         // The static apiKey.in:'cookie' value is otherwise only injected in
-        // callTool; apply it here too so cookie-protected spec URLs load.
-        if (this.staticCookieHeader) {
-          requestConfig.headers = { Cookie: this.staticCookieHeader };
+        // callTool; apply it here so cookie-protected spec URLs load.
+        if (specCookie) {
+          requestConfig.headers = { Cookie: specCookie };
         }
-        const response = await this.httpClient.get(safeSpecUrl, requestConfig);
+        const response = await specClient.get(safeSpecUrl, requestConfig);
         const raw = typeof response.data === 'string' ? response.data : String(response.data);
         this.spec = (await SwaggerParser.dereference(
           safeSpecUrl,
@@ -873,7 +962,23 @@ export class OpenAPIClient {
       // final URL rather than trusting either alone.
       resolvedTarget = null;
       try {
-        resolvedTarget = new URL(String(requestConfig.url ?? '/'), this.baseUrl || undefined);
+        // Join the operation path onto the server-declared base path with
+        // append semantics, matching axios's combineURLs before #937 and the
+        // OpenAPI servers+paths model: `new URL` reference resolution would
+        // drop the base path for root-absolute paths ('/ping' against
+        // 'http://host/api' resolves to '/ping'), 404-ing every tool call
+        // (#1098). Absolute URLs bypass the join and resolve as-is.
+        let joinedPath = String(requestConfig.url ?? '/');
+        let resolveBase = this.baseUrl || undefined;
+        if (resolveBase && !/^https?:\/\//i.test(joinedPath)) {
+          const parsedBase = new URL(resolveBase);
+          const basePath = parsedBase.pathname.replace(/\/+$/, '');
+          if (basePath) {
+            joinedPath = `${basePath}/${joinedPath.replace(/^\/+/, '')}`;
+          }
+          resolveBase = parsedBase.origin;
+        }
+        resolvedTarget = new URL(joinedPath, resolveBase);
       } catch {
         // relative path with no base — no host to validate; axios surfaces the error
       }
@@ -1117,7 +1222,8 @@ export class OpenAPIClient {
             summary: 'HTTP basic',
           };
         }
-        // MCPHub's form can select digest but setupSecurity() never emits a
+        // MCPHub's form can select digest but applySecurityToClient() never
+        // emits a
         // Digest header, so declaring it as prefilled would silently mislead.
         return {
           ok: false,

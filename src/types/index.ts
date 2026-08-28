@@ -487,6 +487,13 @@ export interface ServerConfig {
     schema?: Record<string, any>; // Complete OpenAPI JSON schema
     version?: string; // OpenAPI version (default: '3.1.0')
     security?: OpenAPISecurityConfig; // Security configuration for API calls
+    // Optional credential used ONLY to download the specification document when
+    // the spec endpoint authenticates differently from the API (#1079), e.g.
+    // Basic-protected /v3/api-docs behind a Bearer-protected API. Falls back to
+    // `security` when absent. oauth2/openIdConnect here require a pre-obtained
+    // static token; the dynamic client-credentials flow only exists for
+    // `security`.
+    specSecurity?: OpenAPISecurityConfig;
     passthroughHeaders?: string[]; // Header names to pass through from tool call requests to upstream OpenAPI endpoints
     cookieSession?: boolean; // Opt-in: capture upstream Set-Cookie and replay on later calls, isolated per downstream MCP session
   };

@@ -60,13 +60,15 @@ describe('OpenAPIClient - server URL template variables', () => {
     // request's host is resolved and SSRF-validated explicitly in callTool, so
     // a user-supplied default must not taint the client (CodeQL tracks a
     // client's default baseURL as the host of every request it makes). Tool
-    // calls still resolve their relative path against the substituted base.
+    // calls resolve their relative path onto the substituted base with append
+    // semantics — #1098 restored that after the #937 SSRF rework switched to
+    // `new URL` reference resolution, which dropped the '/api/v1' base path.
     client.allowInternalNetworks = true;
     client.httpClient = { request: jest.fn().mockResolvedValue({ data: 'ok' }) };
     await expect(client.callTool('get_status', {})).resolves.toBe('ok');
     const requestConfig = client.httpClient.request.mock.calls[0][0];
     expect(requestConfig.baseURL).toBe('http://localhost:5055');
-    expect(requestConfig.url).toBe('/status');
+    expect(requestConfig.url).toBe('/api/v1/status');
   });
 
   // A non-templated server URL must keep working unchanged.

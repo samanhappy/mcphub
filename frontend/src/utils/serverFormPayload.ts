@@ -166,6 +166,35 @@ const buildOpenApiConfig = (formData: ServerFormData): NonNullable<ServerConfig[
     };
   }
 
+  // Separate credential for the spec document download (#1079). Only emitted
+  // when explicitly enabled; absent means "share the main `security`". oauth2
+  // here is a static token only — the dynamic client-credentials fetch exists
+  // just for the main `security`.
+  const specSecurityType = formData.openapi?.specSecurityType;
+  if (specSecurityType && specSecurityType !== 'none') {
+    openapi.specSecurity = {
+      type: specSecurityType,
+      ...(specSecurityType === 'apiKey' && {
+        apiKey: {
+          name: formData.openapi?.specApiKeyName || '',
+          in: formData.openapi?.specApiKeyIn || 'header',
+          value: formData.openapi?.specApiKeyValue || '',
+        },
+      }),
+      ...(specSecurityType === 'http' && {
+        http: {
+          scheme: formData.openapi?.specHttpScheme || 'basic',
+          credentials: formData.openapi?.specHttpCredentials || '',
+        },
+      }),
+      ...(specSecurityType === 'oauth2' && {
+        oauth2: {
+          token: formData.openapi?.specOauth2Token || '',
+        },
+      }),
+    };
+  }
+
   return openapi;
 };
 

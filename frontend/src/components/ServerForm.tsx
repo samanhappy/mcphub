@@ -149,6 +149,21 @@ const ServerForm = ({
             // OpenID Connect initialization
             openIdConnectUrl: initialData.config.openapi.security?.openIdConnect?.url || '',
             openIdConnectToken: initialData.config.openapi.security?.openIdConnect?.token || '',
+            // Spec-download security initialization (#1079)
+            specSecurityType: ['apiKey', 'http', 'oauth2'].includes(
+              initialData.config.openapi.specSecurity?.type as string,
+            )
+              ? (initialData.config.openapi.specSecurity!.type as 'apiKey' | 'http' | 'oauth2')
+              : 'none',
+            specApiKeyName: initialData.config.openapi.specSecurity?.apiKey?.name || '',
+            specApiKeyIn: initialData.config.openapi.specSecurity?.apiKey?.in || 'header',
+            specApiKeyValue: initialData.config.openapi.specSecurity?.apiKey?.value || '',
+            specHttpScheme:
+              initialData.config.openapi.specSecurity?.http?.scheme === 'bearer'
+                ? 'bearer'
+                : 'basic',
+            specHttpCredentials: initialData.config.openapi.specSecurity?.http?.credentials || '',
+            specOauth2Token: initialData.config.openapi.specSecurity?.oauth2?.token || '',
             // Passthrough headers initialization
             passthroughHeaders: initialData.config.openapi.passthroughHeaders
               ? initialData.config.openapi.passthroughHeaders.join(', ')
@@ -161,6 +176,7 @@ const ServerForm = ({
             schema: '',
             version: '3.1.0',
             securityType: 'none',
+            specSecurityType: 'none',
             passthroughHeaders: '',
             cookieSession: false,
           },
@@ -891,10 +907,15 @@ const ServerForm = ({
                           className="w-full border rounded px-2 py-1 text-sm focus:outline-none form-input"
                           placeholder={
                             formData.openapi?.httpScheme === 'basic'
-                              ? 'base64-encoded-credentials'
+                              ? 'user:password or base64'
                               : 'bearer-token'
                           }
                         />
+                        {formData.openapi?.httpScheme === 'basic' && (
+                          <p className="text-xs text-[var(--hub-ink-3)] mt-1">
+                            {t('server.openapi.httpCredentialsBasicHint')}
+                          </p>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -1047,6 +1068,213 @@ const ServerForm = ({
                     </div>
                   </div>
                 )}
+
+                {/* Specification Download Security (#1079) */}
+                <div className="mb-4">
+                  <div className="flex items-center mb-1">
+                    <input
+                      type="checkbox"
+                      id="openapiSpecSecurity"
+                      checked={(formData.openapi?.specSecurityType || 'none') !== 'none'}
+                      onChange={(e) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          openapi: {
+                            ...prev.openapi,
+                            url: prev.openapi?.url || '',
+                            specSecurityType: e.target.checked ? 'http' : 'none',
+                          },
+                        }))
+                      }
+                      className="mr-2"
+                    />
+                    <label
+                      htmlFor="openapiSpecSecurity"
+                      className="text-gray-700 dark:text-gray-300 text-sm font-medium"
+                    >
+                      {t('server.openapi.specSecurityToggle')}
+                    </label>
+                  </div>
+                  <p className="text-xs text-gray-500 ml-6">
+                    {t('server.openapi.specSecurityHelp')}
+                  </p>
+                  {(formData.openapi?.specSecurityType || 'none') !== 'none' && (
+                    <div className="mt-2 ml-6 p-4 border border-gray-200 dark:border-gray-700 rounded bg-gray-50 dark:bg-gray-800">
+                      <div className="mb-3">
+                        <label className="block text-xs text-gray-600 mb-1">
+                          {t('server.openapi.security')}
+                        </label>
+                        <select
+                          value={formData.openapi?.specSecurityType || 'http'}
+                          onChange={(e) =>
+                            setFormData((prev) => ({
+                              ...prev,
+                              openapi: {
+                                ...prev.openapi,
+                                url: prev.openapi?.url || '',
+                                specSecurityType: e.target.value as any,
+                              },
+                            }))
+                          }
+                          className="w-full border rounded px-2 py-1 text-sm focus:outline-none form-input"
+                        >
+                          <option value="http">{t('server.openapi.securityHttp')}</option>
+                          <option value="apiKey">{t('server.openapi.securityApiKey')}</option>
+                          <option value="oauth2">{t('server.openapi.securityOAuth2')}</option>
+                        </select>
+                      </div>
+
+                      {formData.openapi?.specSecurityType === 'http' && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-xs text-gray-600 mb-1">
+                              {t('server.openapi.httpScheme')}
+                            </label>
+                            <select
+                              value={formData.openapi?.specHttpScheme || 'basic'}
+                              onChange={(e) =>
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  openapi: {
+                                    ...prev.openapi,
+                                    url: prev.openapi?.url || '',
+                                    specHttpScheme: e.target.value as any,
+                                  },
+                                }))
+                              }
+                              className="w-full border rounded px-2 py-1 text-sm focus:outline-none form-input"
+                            >
+                              <option value="basic">{t('server.openapi.httpSchemeBasic')}</option>
+                              <option value="bearer">
+                                {t('server.openapi.httpSchemeBearer')}
+                              </option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-xs text-gray-600 mb-1">
+                              {t('server.openapi.httpCredentials')}
+                            </label>
+                            <input
+                              type="password"
+                              value={formData.openapi?.specHttpCredentials || ''}
+                              onChange={(e) =>
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  openapi: {
+                                    ...prev.openapi,
+                                    url: prev.openapi?.url || '',
+                                    specHttpCredentials: e.target.value,
+                                  },
+                                }))
+                              }
+                              className="w-full border rounded px-2 py-1 text-sm focus:outline-none form-input"
+                              placeholder={
+                                formData.openapi?.specHttpScheme === 'basic'
+                                  ? 'user:password or base64'
+                                  : 'bearer-token'
+                              }
+                            />
+                          </div>
+                        </div>
+                      )}
+
+                      {formData.openapi?.specSecurityType === 'apiKey' && (
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                          <div>
+                            <label className="block text-xs text-gray-600 mb-1">
+                              {t('server.openapi.apiKeyName')}
+                            </label>
+                            <input
+                              type="text"
+                              value={formData.openapi?.specApiKeyName || ''}
+                              onChange={(e) =>
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  openapi: {
+                                    ...prev.openapi,
+                                    url: prev.openapi?.url || '',
+                                    specApiKeyName: e.target.value,
+                                  },
+                                }))
+                              }
+                              className="w-full border rounded px-2 py-1 text-sm focus:outline-none form-input"
+                              placeholder="X-API-Key"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs text-gray-600 mb-1">
+                              {t('server.openapi.apiKeyIn')}
+                            </label>
+                            <select
+                              value={formData.openapi?.specApiKeyIn || 'header'}
+                              onChange={(e) =>
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  openapi: {
+                                    ...prev.openapi,
+                                    url: prev.openapi?.url || '',
+                                    specApiKeyIn: e.target.value as any,
+                                  },
+                                }))
+                              }
+                              className="w-full border rounded px-2 py-1 text-sm focus:outline-none form-input"
+                            >
+                              <option value="header">
+                                {t('server.openapi.apiKeyInHeader')}
+                              </option>
+                              <option value="query">{t('server.openapi.apiKeyInQuery')}</option>
+                              <option value="cookie">{t('server.openapi.apiKeyInCookie')}</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-xs text-gray-600 mb-1">
+                              {t('server.openapi.apiKeyValue')}
+                            </label>
+                            <input
+                              type="password"
+                              value={formData.openapi?.specApiKeyValue || ''}
+                              onChange={(e) =>
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  openapi: {
+                                    ...prev.openapi,
+                                    url: prev.openapi?.url || '',
+                                    specApiKeyValue: e.target.value,
+                                  },
+                                }))
+                              }
+                              className="w-full border rounded px-2 py-1 text-sm focus:outline-none form-input"
+                            />
+                          </div>
+                        </div>
+                      )}
+
+                      {formData.openapi?.specSecurityType === 'oauth2' && (
+                        <div>
+                          <label className="block text-xs text-gray-600 mb-1">
+                            {t('server.openapi.oauth2Token')}
+                          </label>
+                          <input
+                            type="password"
+                            value={formData.openapi?.specOauth2Token || ''}
+                            onChange={(e) =>
+                              setFormData((prev) => ({
+                                ...prev,
+                                openapi: {
+                                  ...prev.openapi,
+                                  url: prev.openapi?.url || '',
+                                  specOauth2Token: e.target.value,
+                                },
+                              }))
+                            }
+                            className="w-full border rounded px-2 py-1 text-sm focus:outline-none form-input"
+                            placeholder="access-token"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
 
                 {/* Cookie Session Handling */}
                 <div className="mb-4">

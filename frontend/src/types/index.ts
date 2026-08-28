@@ -266,6 +266,9 @@ export interface ServerConfig {
     schema?: Record<string, any>; // Complete OpenAPI JSON schema
     version?: string; // OpenAPI version (default: '3.1.0')
     security?: OpenAPISecurityConfig; // Security configuration for API calls
+    // Credential used only to download the spec document when it authenticates
+    // differently from the API (#1079); falls back to `security`.
+    specSecurity?: OpenAPISecurityConfig;
     passthroughHeaders?: string[]; // Header names to pass through from tool call requests to upstream OpenAPI endpoints
     cookieSession?: boolean; // Opt-in: capture upstream Set-Cookie and replay on later calls, isolated per downstream MCP session
   };
@@ -414,6 +417,17 @@ export interface ServerFormData {
     openIdConnectClientId?: string;
     openIdConnectClientSecret?: string;
     openIdConnectToken?: string;
+    // Spec-download security fields (openapi.specSecurity, #1079). oauth2 is
+    // limited to a static token (dynamic fetch only exists for the main
+    // `security`); the stored config otherwise accepts the full
+    // OpenAPISecurityConfig via JSON import.
+    specSecurityType?: 'none' | 'apiKey' | 'http' | 'oauth2';
+    specApiKeyName?: string;
+    specApiKeyIn?: 'header' | 'query' | 'cookie';
+    specApiKeyValue?: string;
+    specHttpScheme?: 'basic' | 'bearer';
+    specHttpCredentials?: string;
+    specOauth2Token?: string;
     // Passthrough headers
     passthroughHeaders?: string; // Comma-separated list of header names
     cookieSession?: boolean; // Opt-in dynamic cookie session handling
@@ -768,6 +782,7 @@ export interface TemplateServerConfig {
     schema?: Record<string, any>;
     version?: string;
     security?: OpenAPISecurityConfig;
+    specSecurity?: OpenAPISecurityConfig; // Spec-download credential (#1079)
     passthroughHeaders?: string[];
   };
 }
