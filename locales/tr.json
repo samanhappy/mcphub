@@ -124,6 +124,7 @@
     "tools": "Araçlar",
     "prompts": "İstekler",
     "name": "Sunucu Adı",
+    "nameInvalid": "Sunucu adı yalnızca harf, rakam, nokta, alt çizgi ve tire içerebilir (boşluk veya özel karakter içeremez)",
     "description": "Sunucu Notu",
     "descriptionPlaceholder": "İsteğe bağlı: Bu sunucunun ne işe yaradığını yazın",
     "url": "Sunucu URL'si",

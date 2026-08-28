@@ -8,6 +8,7 @@ import {
   ServerConfig,
 } from '@/types';
 import ServerForm from './ServerForm';
+import { slugifyServerName } from '@/utils/serverName';
 
 interface RegistryServerDetailProps {
   serverEntry: RegistryServerEntry;
@@ -146,7 +147,10 @@ const RegistryServerDetail: React.FC<RegistryServerDetailProps> = ({
 
       const command = getCommand(pkg.registryType);
       return {
-        name: server.name,
+        // Registry names are reverse-DNS (`io.github.user/weather`); the `/`
+        // is not part of the MCP tool-name charset, so slugify it. The field
+        // stays editable in the form.
+        name: slugifyServerName(server.name),
         status: 'disconnected' as const,
         config: {
           type: 'stdio' as const,
@@ -170,7 +174,7 @@ const RegistryServerDetail: React.FC<RegistryServerDetailProps> = ({
       const transportType = remote.type === 'sse' ? ('sse' as const) : ('streamable-http' as const);
 
       return {
-        name: server.name,
+        name: slugifyServerName(server.name),
         status: 'disconnected' as const,
         config: {
           type: transportType,

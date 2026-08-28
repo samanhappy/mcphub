@@ -124,6 +124,7 @@
     "tools": "Tools",
     "prompts": "Prompts",
     "name": "Server Name",
+    "nameInvalid": "Server name can only contain letters, numbers, dots, underscores, and hyphens (no spaces or special characters)",
     "description": "Server Note",
     "descriptionPlaceholder": "Optional note to describe this server",
     "url": "Server URL",

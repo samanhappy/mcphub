@@ -14,6 +14,7 @@ import { useCloudData } from '@/hooks/useCloudData';
 import { useRegistryData } from '@/hooks/useRegistryData';
 import { useToast } from '@/contexts/ToastContext';
 import { apiPost } from '@/utils/fetchInterceptor';
+import { slugifyServerName } from '@/utils/serverName';
 import MarketServerCard from '@/components/MarketServerCard';
 import MarketServerDetail from '@/components/MarketServerDetail';
 import CloudServerCard from '@/components/CloudServerCard';
@@ -214,7 +215,9 @@ const MarketPage: React.FC = () => {
   const handleRegistryInstall = async (server: RegistryServerData, config: ServerConfig) => {
     try {
       setInstalling(true);
-      const payload = { name: server.name, config };
+      // Registry names are reverse-DNS (`io.github.user/weather`); the `/` is
+      // not part of the MCP tool-name charset, so slugify before creating.
+      const payload = { name: slugifyServerName(server.name), config };
       const result = await apiPost('/servers', payload);
       if (!result.success) {
         showToast(result?.message || t('server.addError'), 'error');

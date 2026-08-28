@@ -12,6 +12,7 @@ import {
 import { getServerDao, getGroupDao } from '../dao/index.js';
 import type { ServerConfigWithName } from '../dao/ServerDao.js';
 import { isPrivilegedServerConfig } from '../utils/serverConfigValidation.js';
+import { validateServerName } from '../utils/serverNameValidation.js';
 import { createGroup } from './groupService.js';
 import { addServer } from './mcpService.js';
 import { getDataService } from './services.js';
@@ -588,10 +589,24 @@ export async function importTemplate(
       continue;
     }
 
-    if (requestingUser && !requestingUser.isAdmin && isPrivilegedServerConfig(config)) {
+    // Server names become part of downstream tool identifiers, so they must
+    // satisfy the same charset rule as every other create path.
+    const nameValidation = validateServerName(name);
+    if (!nameValidation.valid) {
       details.push({
         type: 'server',
         name,
+        action: 'failed',
+        message: nameValidation.message || 'Invalid server name',
+      });
+      continue;
+    }
+    const serverName = nameValidation.normalized as string;
+
+    if (requestingUser && !requestingUser.isAdmin && isPrivilegedServerConfig(config)) {
+      details.push({
+        type: 'server',
+        name: serverName,
         action: 'failed',
         message: 'Only admins can import stdio-based server configurations',
       });
@@ -604,13 +619,13 @@ export async function importTemplate(
         enabled: config.enabled ?? true,
         owner: owner || 'admin',
       };
-      await addServer(name, serverConfig);
-      details.push({ type: 'server', name, action: 'created' });
+      await addServer(serverName, serverConfig);
+      details.push({ type: 'server', name: serverName, action: 'created' });
       serversCreated++;
     } catch (error) {
       details.push({
         type: 'server',
-        name,
+        name: serverName,
         action: 'failed',
         message: error instanceof Error ? error.message : 'Unknown error',
       });

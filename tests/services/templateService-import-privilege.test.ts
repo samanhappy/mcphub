@@ -127,3 +127,27 @@ describe('template import privileged-config policy (#1094)', () => {
     expect(addServer).toHaveBeenCalledWith('local', expect.objectContaining({ command: 'npx' }));
   });
 });
+
+describe('template import server-name charset validation', () => {
+  it('rejects servers whose names do not match the MCP tool-name charset', async () => {
+    const result = await importTemplate(
+      templateWith({
+        'bad server': { type: 'sse', url: 'http://example.com/sse' },
+        'io.github.user/weather': { type: 'sse', url: 'http://example.com/sse' },
+        good: { type: 'sse', url: 'http://example.com/sse' },
+      }),
+      'admin',
+      admin,
+    );
+
+    expect(result.serversCreated).toBe(1);
+    expect(result.details.find((d) => d.name === 'bad server')?.action).toBe('failed');
+    expect(result.details.find((d) => d.name === 'io.github.user/weather')?.action).toBe('failed');
+    expect(result.details.find((d) => d.name === 'good')?.action).toBe('created');
+    expect(addServer).toHaveBeenCalledTimes(1);
+    expect(addServer).toHaveBeenCalledWith(
+      'good',
+      expect.objectContaining({ type: 'sse', url: 'http://example.com/sse' }),
+    );
+  });
+});
