@@ -96,7 +96,7 @@ export const importConfigTemplate = async (req: Request, res: Response): Promise
     const currentUser = (req as any).user;
     const owner = currentUser?.username || 'admin';
 
-    const result = await importTemplate(template, owner);
+    const result = await importTemplate(template, owner, currentUser);
 
     const statusCode = result.success ? 200 : 400;
     res.status(statusCode).json({

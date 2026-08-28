@@ -11,6 +11,7 @@ import {
 } from '../types/index.js';
 import { getServerDao, getGroupDao } from '../dao/index.js';
 import type { ServerConfigWithName } from '../dao/ServerDao.js';
+import { isPrivilegedServerConfig } from '../utils/serverConfigValidation.js';
 import { createGroup } from './groupService.js';
 import { addServer } from './mcpService.js';
 import { getDataService } from './services.js';
@@ -535,10 +536,16 @@ function validateTemplate(data: unknown): data is ConfigTemplate {
 /**
  * Import a configuration template.
  * Creates servers and groups that don't already exist.
+ *
+ * Non-admin callers cannot import privileged (stdio/command-carrying) server
+ * configs; each such server is reported as a failed detail item and skipped.
+ * No `requestingUser` means a trusted system caller — legacy unrestricted
+ * behavior, mirroring `exportTemplate`.
  */
 export async function importTemplate(
   template: unknown,
   owner?: string,
+  requestingUser?: IUser,
 ): Promise<TemplateImportResult> {
   if (!validateTemplate(template)) {
     return {
@@ -567,6 +574,16 @@ export async function importTemplate(
     if (existingServerNames.has(name)) {
       details.push({ type: 'server', name, action: 'skipped', message: 'Server already exists' });
       serversSkipped++;
+      continue;
+    }
+
+    if (requestingUser && !requestingUser.isAdmin && isPrivilegedServerConfig(config)) {
+      details.push({
+        type: 'server',
+        name,
+        action: 'failed',
+        message: 'Only admins can import stdio-based server configurations',
+      });
       continue;
     }
 
