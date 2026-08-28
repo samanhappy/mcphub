@@ -962,7 +962,23 @@ export class OpenAPIClient {
       // final URL rather than trusting either alone.
       resolvedTarget = null;
       try {
-        resolvedTarget = new URL(String(requestConfig.url ?? '/'), this.baseUrl || undefined);
+        // Join the operation path onto the server-declared base path with
+        // append semantics, matching axios's combineURLs before #937 and the
+        // OpenAPI servers+paths model: `new URL` reference resolution would
+        // drop the base path for root-absolute paths ('/ping' against
+        // 'http://host/api' resolves to '/ping'), 404-ing every tool call
+        // (#1098). Absolute URLs bypass the join and resolve as-is.
+        let joinedPath = String(requestConfig.url ?? '/');
+        let resolveBase = this.baseUrl || undefined;
+        if (resolveBase && !/^https?:\/\//i.test(joinedPath)) {
+          const parsedBase = new URL(resolveBase);
+          const basePath = parsedBase.pathname.replace(/\/+$/, '');
+          if (basePath) {
+            joinedPath = `${basePath}/${joinedPath.replace(/^\/+/, '')}`;
+          }
+          resolveBase = parsedBase.origin;
+        }
+        resolvedTarget = new URL(joinedPath, resolveBase);
       } catch {
         // relative path with no base — no host to validate; axios surfaces the error
       }
