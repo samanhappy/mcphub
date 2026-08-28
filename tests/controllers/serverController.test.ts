@@ -1836,3 +1836,297 @@ describe('serverController - disconnectServerOAuth', () => {
     });
   });
 });
+
+// Issue #1036 Phase 1: shared users may read a safe configuration view of
+// public/group servers, but secret-bearing fields must never appear in any
+// serialized response. Owner/admin keep the full view; unrelated users and
+// every write path stay owner/admin-gated.
+describe('serverController - getServerConfig shared use / private config (#1036)', () => {
+  const secretServer = {
+    name: 'org-search',
+    type: 'streamable-http',
+    url: 'https://mcp.example.com/mcp',
+    description: 'Org web search',
+    owner: 'bob',
+    env: { UPSTREAM_API_KEY: 'mcphub-phase1-api-key' },
+    headers: { Authorization: 'Bearer mcphub-phase1-secret' },
+    args: ['--token', 'mcphub-phase1-secret'],
+    oauth: {
+      clientId: 'client-123',
+      clientSecret: 'mcphub-phase1-client-secret',
+      refreshToken: 'mcphub-phase1-refresh-token',
+    },
+    openapi: {
+      url: 'https://api.example.com/openapi.json',
+      security: { type: 'apiKey', apiKey: { name: 'X-Key', in: 'header', value: 'k' } },
+    },
+    proxy: { server: 'proxy.example.com', password: 'mcphub-phase1-proxy-password' },
+    enabled: true,
+    tools: { search: { enabled: true } },
+    // Unrecognized ServerConfig field simulating a future addition — the
+    // allowlisted safe view must withhold it.
+    futureSetting: 'mcphub-phase1-unrecognized-secret',
+  };
+
+  const SENTINELS = [
+    'Bearer mcphub-phase1-secret',
+    'mcphub-phase1-api-key',
+    'mcphub-phase1-client-secret',
+    'mcphub-phase1-refresh-token',
+    'mcphub-phase1-proxy-password',
+    'mcphub-phase1-unrecognized-secret',
+  ];
+
+  const runGetServerConfig = async (user: { username: string; isAdmin?: boolean } | null) => {
+    mockGetServersInfo.mockResolvedValue([
+      {
+        name: 'org-search',
+        status: 'connected',
+        tools: [{ name: 'search', description: 'Search' }],
+      },
+    ]);
+    const json = jest.fn();
+    const status = jest.fn().mockReturnThis();
+    const req = {
+      params: { name: 'org-search' },
+      ...(user ? { user } : {}),
+    } as unknown as Request;
+    const res = { json, status } as unknown as Response;
+    await getServerConfig(req, res);
+    return { json, status };
+  };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockGetCurrentUser.mockReturnValue(undefined);
+  });
+
+  it('gives a shared user a safe view of a public server with no sentinel secrets', async () => {
+    mockServerDao.findById.mockResolvedValue({
+      ...secretServer,
+      visibility: 'public',
+    });
+
+    const { json, status } = await runGetServerConfig({ username: 'alice', isAdmin: false });
+
+    expect(status).not.toHaveBeenCalledWith(403);
+    expect(json).toHaveBeenCalledTimes(1);
+    const body = JSON.stringify(json.mock.calls[0][0]);
+    for (const sentinel of SENTINELS) {
+      expect(body).not.toContain(sentinel);
+    }
+    // Allowlisted metadata survives; raw connection config does not.
+    expect(body).toContain('Org web search');
+    const data = json.mock.calls[0][0].data;
+    expect(data.config.env).toBeUndefined();
+    expect(data.config.headers).toBeUndefined();
+    expect(data.config.args).toBeUndefined();
+    expect(data.config.oauth).toBeUndefined();
+    expect(data.config.proxy).toBeUndefined();
+    expect(data.config.openapi).toBeUndefined();
+    expect(data.config.url).toBeUndefined();
+    expect(data.config.options).toBeUndefined();
+    expect(data.config.futureSetting).toBeUndefined();
+    expect(data.config.configRestricted).toBe(true);
+    expect(data.tools).toEqual([{ name: 'search', description: 'Search' }]);
+  });
+
+  it('gives an explicitly shared group member the same safe view', async () => {
+    mockServerDao.findById.mockResolvedValue({
+      ...secretServer,
+      visibility: 'group',
+      sharedWithUsers: ['alice'],
+    });
+
+    const { json, status } = await runGetServerConfig({ username: 'alice', isAdmin: false });
+
+    expect(status).not.toHaveBeenCalledWith(403);
+    const body = JSON.stringify(json.mock.calls[0][0]);
+    for (const sentinel of SENTINELS) {
+      expect(body).not.toContain(sentinel);
+    }
+  });
+
+  it('still rejects a group server from a user who is not in the allowlist', async () => {
+    mockServerDao.findById.mockResolvedValue({
+      ...secretServer,
+      visibility: 'group',
+      sharedWithUsers: ['charlie'],
+    });
+
+    const { status } = await runGetServerConfig({ username: 'alice', isAdmin: false });
+
+    expect(status).toHaveBeenCalledWith(403);
+  });
+
+  it('keeps the full configuration available to the owner', async () => {
+    mockServerDao.findById.mockResolvedValue({
+      ...secretServer,
+      visibility: 'public',
+    });
+
+    const { json } = await runGetServerConfig({ username: 'bob', isAdmin: false });
+
+    const data = json.mock.calls[0][0].data;
+    expect(data.config).toEqual(
+      expect.objectContaining({
+        headers: { Authorization: 'Bearer mcphub-phase1-secret' },
+        env: { UPSTREAM_API_KEY: 'mcphub-phase1-api-key' },
+        oauth: expect.objectContaining({ clientSecret: 'mcphub-phase1-client-secret' }),
+      }),
+    );
+  });
+
+  it('keeps the full configuration available to admins', async () => {
+    mockServerDao.findById.mockResolvedValue({
+      ...secretServer,
+      visibility: 'public',
+    });
+
+    const { json } = await runGetServerConfig({ username: 'admin', isAdmin: true });
+
+    expect(json.mock.calls[0][0].data.config.oauth).toBeDefined();
+  });
+});
+
+describe('serverController - updateServer write-path stays owner/admin-only (#1036)', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('rejects a shared user from writing a public server so secrets cannot be overwritten', async () => {
+    mockServerDao.findById.mockResolvedValue({
+      name: 'org-search',
+      type: 'streamable-http',
+      url: 'https://mcp.example.com/mcp',
+      owner: 'bob',
+      visibility: 'public',
+      headers: { Authorization: 'Bearer mcphub-phase1-secret' },
+    });
+
+    const json = jest.fn();
+    const status = jest.fn().mockReturnThis();
+    const req = {
+      params: { name: 'org-search' },
+      body: {
+        config: {
+          type: 'streamable-http',
+          url: 'https://mcp.example.com/mcp',
+          headers: { Authorization: 'Bearer tampered' },
+          visibility: 'public',
+        },
+      },
+      user: { username: 'alice', isAdmin: false },
+    } as unknown as Request;
+    const res = { json, status } as unknown as Response;
+
+    await updateServer(req, res);
+
+    expect(status).toHaveBeenCalledWith(403);
+    expect(mockServerDao.update).not.toHaveBeenCalled();
+    expect(mockAddOrUpdateServer).not.toHaveBeenCalled();
+  });
+});
+
+describe('serverController - getAllServers OAuth session scrub (#1036)', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockServerDao.findAllPaginated.mockResolvedValue({
+      data: [],
+      page: 1,
+      limit: 5,
+      total: 1,
+      totalPages: 1,
+    });
+    mockServerDao.findVisibleToUserPaginated.mockResolvedValue({
+      data: [],
+      page: 1,
+      limit: 5,
+      total: 1,
+      totalPages: 1,
+    });
+    mockServerDao.findByOwnerPaginated.mockResolvedValue({
+      data: [],
+      page: 1,
+      limit: 5,
+      total: 1,
+      totalPages: 1,
+    });
+  });
+
+  it('strips OAuth authorizationUrl/state from list entries for non-owner users in both collections', async () => {
+    mockGetCurrentUser.mockReturnValue({ username: 'alice', isAdmin: false });
+    const entry = {
+      name: 'org-search',
+      owner: 'bob',
+      visibility: 'public',
+      status: 'connected',
+      tools: [],
+      oauth: {
+        authorizationUrl: 'https://auth.example.com/authorize?state=mcphub-phase1-oauth-state',
+        state: 'mcphub-phase1-oauth-state',
+        clientIdConfigured: true,
+        connected: false,
+      },
+      config: {
+        type: 'streamable-http',
+        description: 'Org web search',
+        command: 'npx',
+      },
+      error: 'Failed to connect to https://mcp.example.com/mcp?token=mcphub-runtime-secret',
+    };
+    mockGetServersInfo
+      .mockResolvedValueOnce([entry])
+      .mockResolvedValueOnce([{ ...entry, oauth: { ...entry.oauth } }]);
+
+    const json = jest.fn();
+    const req = {
+      query: { page: '1', limit: '5' },
+      user: { username: 'alice', isAdmin: false },
+    } as unknown as Request;
+    const res = { json } as unknown as Response;
+
+    await getAllServers(req, res);
+
+    const body = JSON.stringify(json.mock.calls[0][0]);
+    expect(body).not.toContain('mcphub-phase1-oauth-state');
+    expect(body).not.toContain('authorizationUrl');
+    expect(body).not.toContain('"command"');
+    expect(body).not.toContain('mcphub-runtime-secret');
+    expect(body).toContain('Server connection failed');
+    expect(body).toContain('clientIdConfigured');
+    const data = json.mock.calls[0][0];
+    expect(data.data[0].oauth.state).toBeUndefined();
+    expect(data.allServers[0].oauth.state).toBeUndefined();
+    expect(data.data[0].config.type).toBe('streamable-http');
+    expect(data.data[0].config.command).toBeUndefined();
+    expect(data.data[0].error).toBe('Server connection failed');
+  });
+
+  it('keeps OAuth session fields and raw errors for admins', async () => {
+    mockGetCurrentUser.mockReturnValue({ username: 'admin', isAdmin: true });
+    const entry = {
+      name: 'org-search',
+      owner: 'bob',
+      status: 'disconnected',
+      tools: [],
+      oauth: { state: 'owner-state', connected: false },
+      error: 'Failed to connect to https://mcp.example.com/mcp?token=mcphub-runtime-secret',
+    };
+    mockGetServersInfo.mockResolvedValueOnce([entry]).mockResolvedValueOnce([entry]);
+
+    const json = jest.fn();
+    const req = {
+      query: { page: '1', limit: '5' },
+      user: { username: 'admin', isAdmin: true },
+    } as unknown as Request;
+    const res = { json } as unknown as Response;
+
+    await getAllServers(req, res);
+
+    expect(json.mock.calls[0][0].data[0].oauth.state).toBe('owner-state');
+    expect(json.mock.calls[0][0].data[0].error).toBe(
+      'Failed to connect to https://mcp.example.com/mcp?token=mcphub-runtime-secret',
+    );
+  });
+});
