@@ -254,8 +254,6 @@
       "statsMeasuring": "Mesure de la liste d'outils générée…",
       "statsSummary": "{{toolCount}} outils · ~{{bytes}} de définitions · ~{{tokens}} jetons",
       "statsWarning": "Cette liste d'outils peut à elle seule approcher ou dépasser les fenêtres de contexte courantes des modèles. Envisagez d'exposer moins d'outils : créez un groupe ou désactivez des outils individuels sur le serveur.",
-      "statsConfirmTitle": "Confirmer l'importation OpenAPI",
-      "statsConfirmMessage": "Vérifiez la taille de la liste d'outils générée avant de continuer.",
       "statsUnavailable": "La spécification n'a pas pu être mesurée. Vous pouvez continuer ; le serveur la validera lors de l'envoi."
     },
     "oauth": {

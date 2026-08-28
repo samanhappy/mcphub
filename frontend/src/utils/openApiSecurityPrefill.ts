@@ -26,7 +26,11 @@ export interface OpenApiSecurityNotice {
 // True when the security section is still at its untouched defaults (no type
 // selected, no value fields filled). This is the only state under which the
 // spec's declared scheme may be prefilled.
-export function isOpenApiSecurityUntouched(formData: ServerFormData): boolean {
+export function isOpenApiSecurityUntouched(formData: ServerFormData, userTouched = false): boolean {
+  if (userTouched) {
+    return false;
+  }
+
   const openapi = formData.openapi;
   if (openapi && openapi.securityType && openapi.securityType !== 'none') {
     return false;
@@ -48,12 +52,13 @@ export function isOpenApiSecurityUntouched(formData: ServerFormData): boolean {
 export function applyDeclaredSecurityPrefill(
   formData: ServerFormData,
   declared: OpenAPIDeclaredSecurity,
+  userTouched = false,
 ): ServerFormData {
   if (
     !declared.declared ||
     !declared.supported ||
     !declared.prefill ||
-    !isOpenApiSecurityUntouched(formData)
+    !isOpenApiSecurityUntouched(formData, userTouched)
   ) {
     return formData;
   }
@@ -129,19 +134,19 @@ export function describeConfiguredSecurity(formData: ServerFormData): string | n
   }
 }
 
-// Build the notice to show next to the security section / in the import
-// confirmation, based on the declared scheme and the current form state.
+// Build the notice to show next to the security section, based on the declared
+// scheme and the current form state.
 export function buildOpenApiSecurityNotice(
   formData: ServerFormData,
   declared: OpenAPIDeclaredSecurity | undefined,
-  options: { includeNotDeclared?: boolean } = {},
+  options: { includeNotDeclared?: boolean; securityTouched?: boolean } = {},
 ): OpenApiSecurityNotice | null {
   if (!declared?.declared) {
     return options.includeNotDeclared
       ? { kind: 'info', messageKey: 'securityNotDeclared', values: {} }
       : null;
   }
-  if (!isOpenApiSecurityUntouched(formData)) {
+  if (!isOpenApiSecurityUntouched(formData, options.securityTouched)) {
     if (securityConfigurationsDiffer(formData, declared)) {
       return {
         kind: 'warning',
@@ -160,5 +165,9 @@ export function buildOpenApiSecurityNotice(
       values: { summary: declared.summary, reason: declared.unsupportedReason || '' },
     };
   }
-  return { kind: 'info', messageKey: 'securityPrefillNotice', values: { summary: declared.summary } };
+  return {
+    kind: 'info',
+    messageKey: 'securityPrefillNotice',
+    values: { summary: declared.summary },
+  };
 }
