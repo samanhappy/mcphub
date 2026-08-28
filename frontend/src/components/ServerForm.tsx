@@ -4,15 +4,17 @@ import { X } from 'lucide-react';
 import { Server, EnvVar, ServerFormData, OpenApiToolStats } from '@/types';
 import { apiGet, apiPost } from '../utils/fetchInterceptor';
 import { buildServerPayload } from '../utils/serverFormPayload';
-import ConfirmDialog from './ui/ConfirmDialog';
 import { OPENAPI_STATS_WARN_TOKENS, formatBytes, formatTokens } from '../utils/contextCost';
-import { shouldConfirmOpenApiImport } from '../utils/openApiImportConfirmation';
 import {
   applyDeclaredSecurityPrefill,
   buildOpenApiSecurityNotice,
-  isOpenApiSecurityUntouched,
   type OpenApiSecurityNotice,
 } from '../utils/openApiSecurityPrefill';
+import {
+  getOpenApiSource,
+  isOpenApiSourceReady,
+  shouldAutoAnalyzeOpenApiSource,
+} from '../utils/openApiSourceAnalysis';
 
 interface ServerFormProps {
   onSubmit: (payload: any) => void;
@@ -251,16 +253,23 @@ const ServerForm = ({
       : [],
   );
 
-  // ── OpenAPI import confirmation (#1082) ───────────────────────────────────
-  // Measure the generated tool list when the user submits the form, then show
-  // the result in an explicit confirmation dialog before importing it.
+  // ── OpenAPI source analysis (#1082, #1093) ────────────────────────────────
+  // Analyze a new OpenAPI source while the form is being filled. The result is
+  // advisory and is shown inline, so submitting the form does not replace the
+  // user's current state with a stale async payload.
   const [openApiStats, setOpenApiStats] = useState<OpenApiToolStats | null>(null);
   const [openApiStatsLoading, setOpenApiStatsLoading] = useState(false);
-  const [openApiConfirmationVisible, setOpenApiConfirmationVisible] = useState(false);
-  const [pendingOpenApiPayload, setPendingOpenApiPayload] = useState<ReturnType<
-    typeof buildServerPayload
-  > | null>(null);
+  const [openApiStatsUnavailable, setOpenApiStatsUnavailable] = useState(false);
   const openApiStatsRequestId = useRef(0);
+  const analyzedOpenApiSourceKey = useRef<string | null>(null);
+  const automaticSecurityAnalysisDone = useRef(false);
+  const openApiSecurityTouched = useRef(Boolean(initialData));
+  const openApiFormDataRef = useRef(formData);
+  openApiFormDataRef.current = formData;
+  const openApiEnvVarsRef = useRef(envVars);
+  openApiEnvVarsRef.current = envVars;
+  const openApiHeaderVarsRef = useRef(headerVars);
+  openApiHeaderVarsRef.current = headerVars;
   const [openApiSecurityNotice, setOpenApiSecurityNotice] = useState<OpenApiSecurityNotice | null>(
     null,
   );
@@ -272,6 +281,11 @@ const ServerForm = ({
   const [isAdvancedExpanded, setIsAdvancedExpanded] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const isEdit = !!initialData;
+
+  const markOpenApiSecurityTouched = () => {
+    openApiSecurityTouched.current = true;
+    setOpenApiSecurityNotice(null);
+  };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -348,9 +362,9 @@ const ServerForm = ({
     }));
   };
 
-  // Shared probe used by both the submit-time tool-stats preview and the
-  // "Detect from spec" button. Returns the preview data (including the
-  // declared security scheme) or null when the spec cannot be analyzed.
+  // Shared probe used by automatic source analysis and the explicit retry
+  // button. Returns the preview data (including the declared security scheme)
+  // or null when the spec cannot be analyzed.
   const runOpenApiSecurityDetection = async (
     payload: ReturnType<typeof buildServerPayload>,
   ): Promise<OpenApiToolStats | null> => {
@@ -367,51 +381,69 @@ const ServerForm = ({
     }
   };
 
-  const measureOpenApiToolStats = async (payload: ReturnType<typeof buildServerPayload>) => {
+  const analyzeOpenApiSource = async (
+    payload: ReturnType<typeof buildServerPayload>,
+    sourceKey: string,
+    options: { allowSecurityPrefill: boolean; consumeAutomaticAnalysis: boolean },
+  ) => {
     const requestId = ++openApiStatsRequestId.current;
-    setOpenApiStats(null);
     setOpenApiStatsLoading(true);
+    setOpenApiStatsUnavailable(false);
 
     const data = await runOpenApiSecurityDetection(payload);
     if (openApiStatsRequestId.current !== requestId) return;
-    if (data) {
-      setOpenApiStats(data);
 
-      // Security prefill (#1077): only ever fill an untouched security section.
-      // Rebuild the pending payload so the confirmed import carries the
-      // prefilled scheme.
-      const declared = data.declaredSecurity;
-      if (declared?.declared && declared.supported && isOpenApiSecurityUntouched(formData)) {
-        const nextFormData = applyDeclaredSecurityPrefill(formData, declared);
-        setFormData(nextFormData);
-        setPendingOpenApiPayload(
-          buildServerPayload({ formData: nextFormData, serverType, envVars, headerVars }),
-        );
-      }
-      if (declared?.declared) {
-        setOpenApiSecurityNotice(buildOpenApiSecurityNotice(formData, declared));
-      }
-    }
-
-    if (openApiStatsRequestId.current === requestId) {
+    if (!data) {
+      setOpenApiStatsUnavailable(true);
       setOpenApiStatsLoading(false);
+      return;
     }
+
+    analyzedOpenApiSourceKey.current = sourceKey;
+    setOpenApiStats(data);
+
+    const latestFormData = openApiFormDataRef.current;
+    const securityTouched = openApiSecurityTouched.current;
+    const declared = data.declaredSecurity;
+    const canPrefillSecurity =
+      options.allowSecurityPrefill &&
+      !securityTouched &&
+      !isEdit &&
+      !automaticSecurityAnalysisDone.current;
+
+    if (options.consumeAutomaticAnalysis) {
+      automaticSecurityAnalysisDone.current = true;
+    }
+
+    const nextFormData =
+      declared?.declared && declared.supported && canPrefillSecurity
+        ? applyDeclaredSecurityPrefill(latestFormData, declared, securityTouched)
+        : latestFormData;
+
+    if (nextFormData !== latestFormData) {
+      openApiFormDataRef.current = nextFormData;
+      setFormData(nextFormData);
+    }
+
+    setOpenApiSecurityNotice(
+      buildOpenApiSecurityNotice(latestFormData, declared, {
+        includeNotDeclared: true,
+        securityTouched,
+      }),
+    );
+    setOpenApiStatsLoading(false);
   };
 
-  // "Detect from spec" button: parse the entered spec and prefill the untouched
-  // security section (or warn about a mismatch) without submitting the form.
+  // Explicit retry button for cases where automatic analysis failed or the
+  // user wants to inspect the current source again.
   const detectOpenApiSecurity = async () => {
     setSecurityDetectionLoading(true);
     try {
       const payload = buildServerPayload({ formData, serverType, envVars, headerVars });
-      const data = await runOpenApiSecurityDetection(payload);
-      const declared = data?.declaredSecurity;
-      if (declared?.declared && declared.supported && isOpenApiSecurityUntouched(formData)) {
-        setFormData((prev) => applyDeclaredSecurityPrefill(prev, declared));
-      }
-      setOpenApiSecurityNotice(
-        buildOpenApiSecurityNotice(formData, declared, { includeNotDeclared: true }),
-      );
+      await analyzeOpenApiSource(payload, getOpenApiSource(formData).key, {
+        allowSecurityPrefill: !isEdit && !openApiSecurityTouched.current,
+        consumeAutomaticAnalysis: false,
+      });
     } catch {
       // Advisory only.
     } finally {
@@ -419,31 +451,45 @@ const ServerForm = ({
     }
   };
 
-  const openApiSourcePresent =
-    serverType === 'openapi' &&
-    Boolean(
-      (
-        formData.openapi?.inputMode === 'schema'
-          ? formData.openapi?.schema
-          : formData.openapi?.url
-      )?.trim(),
-    );
+  const openApiSource = getOpenApiSource(formData);
+  const openApiSourcePresent = serverType === 'openapi' && isOpenApiSourceReady(openApiSource);
 
-  const closeOpenApiConfirmation = () => {
+  useEffect(() => {
     openApiStatsRequestId.current += 1;
-    setOpenApiConfirmationVisible(false);
-    setPendingOpenApiPayload(null);
     setOpenApiStats(null);
+    setOpenApiStatsUnavailable(false);
     setOpenApiStatsLoading(false);
-  };
+    setOpenApiSecurityNotice(null);
 
-  const confirmOpenApiImport = () => {
-    if (!pendingOpenApiPayload) return;
+    if (
+      !shouldAutoAnalyzeOpenApiSource({
+        isEdit,
+        serverType,
+        source: openApiSource,
+        analyzedSourceKey: analyzedOpenApiSourceKey.current,
+      })
+    ) {
+      return;
+    }
 
-    const payload = pendingOpenApiPayload;
-    closeOpenApiConfirmation();
-    onSubmit(payload);
-  };
+    setOpenApiStatsLoading(true);
+    const timeoutId = window.setTimeout(() => {
+      const payload = buildServerPayload({
+        formData: openApiFormDataRef.current,
+        serverType,
+        envVars: openApiEnvVarsRef.current,
+        headerVars: openApiHeaderVarsRef.current,
+      });
+      void analyzeOpenApiSource(payload, openApiSource.key, {
+        allowSecurityPrefill: true,
+        consumeAutomaticAnalysis: true,
+      });
+    }, 600);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [isEdit, openApiSource.key, serverType]);
 
   // Submit handler for server configuration
   const handleSubmit = async (e: React.FormEvent) => {
@@ -457,13 +503,6 @@ const ServerForm = ({
         envVars,
         headerVars,
       });
-
-      if (shouldConfirmOpenApiImport(serverType, formData.openapi)) {
-        setPendingOpenApiPayload(payload);
-        setOpenApiConfirmationVisible(true);
-        void measureOpenApiToolStats(payload);
-        return;
-      }
 
       onSubmit(payload);
     } catch (err) {
@@ -723,8 +762,40 @@ const ServerForm = ({
                   </div>
                 )}
 
+                {!isEdit && openApiSourcePresent && (
+                  <div
+                    className="mb-4 rounded border border-blue-200 bg-blue-50 p-3 text-sm dark:border-blue-900 dark:bg-blue-950/30"
+                    aria-live="polite"
+                  >
+                    {openApiStatsLoading ? (
+                      <p className="text-blue-700 dark:text-blue-300">
+                        {t('server.openapi.statsMeasuring')}
+                      </p>
+                    ) : openApiStats ? (
+                      <>
+                        <p className="font-medium text-blue-900 dark:text-blue-100">
+                          {t('server.openapi.statsSummary', {
+                            toolCount: openApiStats.toolCount,
+                            bytes: formatBytes(openApiStats.definitionsBytes),
+                            tokens: formatTokens(openApiStats.estimatedTokens),
+                          })}
+                        </p>
+                        {openApiStats.estimatedTokens >= OPENAPI_STATS_WARN_TOKENS && (
+                          <p className="mt-1 text-yellow-700 dark:text-yellow-300">
+                            {t('server.openapi.statsWarning')}
+                          </p>
+                        )}
+                      </>
+                    ) : openApiStatsUnavailable ? (
+                      <p className="text-gray-600 dark:text-gray-300">
+                        {t('server.openapi.statsUnavailable')}
+                      </p>
+                    ) : null}
+                  </div>
+                )}
+
                 {/* Security Configuration */}
-                <div className="mb-4">
+                <div className="mb-4" onChange={markOpenApiSecurityTouched}>
                   <div className="flex items-center justify-between mb-1.5">
                     <label className="block text-sm font-medium text-[var(--hub-ink-2)]">
                       {t('server.openapi.security')}
@@ -732,10 +803,12 @@ const ServerForm = ({
                     <button
                       type="button"
                       onClick={() => void detectOpenApiSecurity()}
-                      disabled={securityDetectionLoading || !openApiSourcePresent}
+                      disabled={
+                        securityDetectionLoading || openApiStatsLoading || !openApiSourcePresent
+                      }
                       className="hub-btn text-xs !h-7 !px-2"
                     >
-                      {securityDetectionLoading
+                      {securityDetectionLoading || openApiStatsLoading
                         ? t('server.openapi.securityDetecting')
                         : t('server.openapi.securityDetect')}
                     </button>
@@ -1145,9 +1218,7 @@ const ServerForm = ({
                               className="w-full border rounded px-2 py-1 text-sm focus:outline-none form-input"
                             >
                               <option value="basic">{t('server.openapi.httpSchemeBasic')}</option>
-                              <option value="bearer">
-                                {t('server.openapi.httpSchemeBearer')}
-                              </option>
+                              <option value="bearer">{t('server.openapi.httpSchemeBearer')}</option>
                             </select>
                           </div>
                           <div>
@@ -1219,9 +1290,7 @@ const ServerForm = ({
                               }
                               className="w-full border rounded px-2 py-1 text-sm focus:outline-none form-input"
                             >
-                              <option value="header">
-                                {t('server.openapi.apiKeyInHeader')}
-                              </option>
+                              <option value="header">{t('server.openapi.apiKeyInHeader')}</option>
                               <option value="query">{t('server.openapi.apiKeyInQuery')}</option>
                               <option value="cookie">{t('server.openapi.apiKeyInCookie')}</option>
                             </select>
@@ -2033,60 +2102,6 @@ const ServerForm = ({
           </button>
         </div>
       </form>
-
-      <ConfirmDialog
-        isOpen={openApiConfirmationVisible}
-        onClose={closeOpenApiConfirmation}
-        onConfirm={confirmOpenApiImport}
-        title={t('server.openapi.statsConfirmTitle')}
-        confirmText={t('common.confirm')}
-        cancelText={t('common.cancel')}
-        confirmDisabled={openApiStatsLoading}
-        variant={
-          openApiStats && openApiStats.estimatedTokens >= OPENAPI_STATS_WARN_TOKENS
-            ? 'warning'
-            : 'info'
-        }
-        message={
-          openApiStatsLoading ? (
-            <p>{t('server.openapi.statsMeasuring')}</p>
-          ) : openApiStats ? (
-            <div className="space-y-3">
-              <p>{t('server.openapi.statsConfirmMessage')}</p>
-              <div className="rounded border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-800">
-                <p className="font-medium text-[var(--hub-ink-2)]">
-                  {t('server.openapi.statsSummary', {
-                    toolCount: openApiStats.toolCount,
-                    bytes: formatBytes(openApiStats.definitionsBytes),
-                    tokens: formatTokens(openApiStats.estimatedTokens),
-                  })}
-                </p>
-              </div>
-              {openApiStats.estimatedTokens >= OPENAPI_STATS_WARN_TOKENS && (
-                <p className="text-sm text-yellow-700 dark:text-yellow-300">
-                  {t('server.openapi.statsWarning')}
-                </p>
-              )}
-              {openApiSecurityNotice && (
-                <p
-                  className={`text-sm ${
-                    openApiSecurityNotice.kind === 'warning'
-                      ? 'text-yellow-700 dark:text-yellow-300'
-                      : 'text-blue-700 dark:text-blue-300'
-                  }`}
-                >
-                  {t(
-                    `server.openapi.${openApiSecurityNotice.messageKey}`,
-                    openApiSecurityNotice.values,
-                  )}
-                </p>
-              )}
-            </div>
-          ) : (
-            <p>{t('server.openapi.statsUnavailable')}</p>
-          )
-        }
-      />
     </div>
   );
 };

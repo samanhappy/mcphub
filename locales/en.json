@@ -254,8 +254,6 @@
       "statsMeasuring": "Measuring the generated tool list…",
       "statsSummary": "{{toolCount}} tools · ~{{bytes}} of definitions · ~{{tokens}} tokens",
       "statsWarning": "This tool list alone may approach or exceed common model context windows. Consider exposing fewer tools — create a group or disable individual tools on the server.",
-      "statsConfirmTitle": "Confirm OpenAPI import",
-      "statsConfirmMessage": "Review the generated tool-list footprint before continuing.",
       "statsUnavailable": "The specification could not be measured. You can still continue; the server will validate the import when it is submitted."
     },
     "oauth": {
