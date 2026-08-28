@@ -1,0 +1,20 @@
+docs/configuration/mcp-settings.mdx
+  h_18676a549cd52a 497-506
+src/config/index.ts
+  h_18676a549cd52a 46-49,56,58-66,77,99-103,124,138
+src/utils/systemConfigCache.ts
+  h_18676a549cd52a 1-3,6-11,16-33,37-47,53
+tests/config/loadOriginalSettings.test.ts
+  h_18676a549cd52a 1-154
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "549e37f3ef44fb2cbeda1f8956f464b5ff118790",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
