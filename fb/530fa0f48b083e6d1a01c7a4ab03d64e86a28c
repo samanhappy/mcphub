@@ -1,0 +1,24 @@
+src/controllers/serverController.ts
+  h_18676a549cd52a 56
+src/controllers/templateController.ts
+  h_18676a549cd52a 99
+src/services/templateService.ts
+  h_18676a549cd52a 14,539-543,548,580-589
+src/utils/serverConfigValidation.ts
+  h_18676a549cd52a 1-16
+tests/services/templateService-import-privilege.test.ts
+  h_18676a549cd52a 1-129
+tests/utils/serverConfigValidation.test.ts
+  h_18676a549cd52a 1-36
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "fb530fa0f48b083e6d1a01c7a4ab03d64e86a28c",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
