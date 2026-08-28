@@ -53,6 +53,7 @@ import {
 import { disconnectUpstreamOAuth } from '../services/upstreamOAuthDisconnectService.js';
 import type { UpstreamOAuthDisconnectScope } from '../services/upstreamOAuthDisconnectService.js';
 import { normalizeServerConfigForPersistence } from '../utils/serverConfigPersistence.js';
+import { isPrivilegedServerConfig } from '../utils/serverConfigValidation.js';
 import { setCachedSystemConfig } from '../utils/systemConfigCache.js';
 import { DEFAULT_INSTALL_BASE_URL, withResolvedInstallBaseUrl } from '../utils/installBaseUrl.js';
 import { previewOpenApiToolStats } from '../services/openApiToolStatsService.js';
@@ -80,15 +81,6 @@ const canAccessServer = (user: RequestUser | null, server: ServerRecord): boolea
   }
 
   return server.owner === user.username;
-};
-
-const isPrivilegedServerConfig = (config: ServerConfig): boolean => {
-  return Boolean(
-    config.type === 'stdio' ||
-      config.command ||
-      (Array.isArray(config.args) && config.args.length > 0) ||
-      (!config.url && !config.openapi?.url && !config.openapi?.schema),
-  );
 };
 
 const loadAuthorizedServer = async (
