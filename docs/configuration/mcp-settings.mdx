@@ -494,6 +494,16 @@ Complement `mcp_settings.json` with server metadata:
 }
 ```
 
+## Editing mcp_settings.json while running
+
+In file mode, MCPHub re-reads `mcp_settings.json` when it changes, without a restart:
+
+- **Server definitions and credentials** are picked up on the next server reload — `POST /api/servers/:name/reload`, the `reload` button in the dashboard, or `mcphub servers reload <name>`.
+- **System settings** (`systemConfig`, e.g. `nameSeparator`) are picked up on the next read once the file has changed.
+- Settings that are read once at process startup still require a restart to take effect: the Better Auth bootstrap, `skipAuth`, the listening port, and anything driven by environment variables.
+
+In database mode (`USE_DB=true`), `mcp_settings.json` is only a one-time seed; edit configuration through the dashboard, API, or CLI instead.
+
 {/* ### Access Control
 
 | Access Level    | Description                |

@@ -43,15 +43,27 @@ const ensureOAuthServerDefaults = (settings: McpSettings): boolean => {
 
 // Settings cache
 let settingsCache: McpSettings | null = null;
+// mtime of the settings file our cache snapshot was read from. The file is
+// re-read when it is newer, mirroring JsonFileBaseDao so system settings do
+// not behave differently from server definitions on external edits (#1081).
+let lastModified = 0;
 
 export const getSettingsPath = (): string => {
   return getConfigFilePath('mcp_settings.json', 'Settings');
 };
 
 export const loadOriginalSettings = (): McpSettings => {
-  // If cache exists, return cached data directly
+  // If cache exists and the file hasn't changed, return cached data directly.
   if (settingsCache) {
-    return settingsCache;
+    try {
+      const stats = fs.statSync(getSettingsPath());
+      if (lastModified >= stats.mtime.getTime()) {
+        return settingsCache;
+      }
+    } catch {
+      // Missing/unreadable file — keep serving the cached snapshot.
+      return settingsCache;
+    }
   }
 
   const settingsPath = getSettingsPath();
@@ -62,6 +74,7 @@ export const loadOriginalSettings = (): McpSettings => {
     ensureOAuthServerDefaults(defaultSettings);
     // Cache default settings
     settingsCache = defaultSettings;
+    lastModified = Date.now();
     return defaultSettings;
   }
 
@@ -83,6 +96,11 @@ export const loadOriginalSettings = (): McpSettings => {
 
     // Update cache
     settingsCache = settings;
+    try {
+      lastModified = fs.statSync(settingsPath).mtime.getTime();
+    } catch {
+      lastModified = Date.now();
+    }
 
     logger.log(`Loaded settings from ${settingsPath}`);
     return settings;
@@ -103,6 +121,7 @@ export const saveSettings = (settings: McpSettings, user?: IUser): boolean => {
 
     // Update cache after successful save
     settingsCache = mergedSettings;
+    lastModified = Date.now();
 
     return true;
   } catch (error) {
@@ -116,6 +135,7 @@ export const saveSettings = (settings: McpSettings, user?: IUser): boolean => {
  */
 export const clearSettingsCache = (): void => {
   settingsCache = null;
+  lastModified = 0;
 };
 
 /**
