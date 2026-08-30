@@ -244,11 +244,11 @@ describe('startOnDemand wake-up (issue #1029)', () => {
       { sessionId: 'session-1' },
     );
 
-    // Disabled server is skipped by getServerByTool -> "Server not found".
+    // Disabled server is skipped by getServerByTool -> unified "not available".
     expect(mockConnect).not.toHaveBeenCalled();
     expect(mockCallTool).not.toHaveBeenCalled();
     expect(result.isError).toBe(true);
-    expect(result.content[0].text).toContain('Server not found');
+    expect(result.content[0].text).toContain('Tool not available');
   });
 
   it('advertises a sleeping on-demand server cached tools via tools/list', async () => {
