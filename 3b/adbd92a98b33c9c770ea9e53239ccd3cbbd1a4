@@ -1,0 +1,18 @@
+src/services/mcpService.ts
+  h_18676a549cd52a 2269-2308,3256-3259,3282,3475-3478,3641-3648,3674-3678,3681-3683,3744-3747,3774-3783
+tests/services/mcpService-hidden-server.test.ts
+  h_18676a549cd52a 1-413
+tests/services/mcpService-onDemand.test.ts
+  h_18676a549cd52a 247,251
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "3badbd92a98b33c9c770ea9e53239ccd3cbbd1a4",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
