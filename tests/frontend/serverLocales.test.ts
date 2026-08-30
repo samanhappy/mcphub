@@ -15,6 +15,11 @@ describe('server visibility locale strings', () => {
       expect(translations.server.shareCandidatesError).toBeTruthy();
       expect(translations.server.shareAfterCreate).toBeTruthy();
       expect(translations.server.noShareCandidates).toBeTruthy();
+      expect(translations.server.shareUserSearchLabel).toBeTruthy();
+      expect(translations.server.shareUserSearchPlaceholder).toBeTruthy();
+      expect(translations.server.selectAllShareUsers).toBeTruthy();
+      expect(translations.server.deselectAllShareUsers).toBeTruthy();
+      expect(translations.server.noMatchingShareUsers).toBeTruthy();
     }
   });
 

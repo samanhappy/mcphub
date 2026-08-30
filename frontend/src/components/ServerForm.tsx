@@ -4,6 +4,12 @@ import { X } from 'lucide-react';
 import { Server, EnvVar, ServerFormData, OpenApiToolStats } from '@/types';
 import { apiGet, apiPost } from '../utils/fetchInterceptor';
 import { buildServerPayload } from '../utils/serverFormPayload';
+import {
+  deselectShareUsers,
+  filterShareUsers,
+  getSelectableShareUsers,
+  selectShareUsers,
+} from '../utils/shareUserSelection.js';
 import { OPENAPI_STATS_WARN_TOKENS, formatBytes, formatTokens } from '../utils/contextCost';
 import {
   applyDeclaredSecurityPrefill,
@@ -197,6 +203,7 @@ const ServerForm = ({
   const [shareCandidates, setShareCandidates] = useState<string[]>([]);
   const [shareCandidatesLoading, setShareCandidatesLoading] = useState(false);
   const [shareCandidatesError, setShareCandidatesError] = useState(false);
+  const [shareUserSearch, setShareUserSearch] = useState('');
 
   useEffect(() => {
     if (formData.visibility !== 'group' || !initialData?.name) {
@@ -235,9 +242,18 @@ const ServerForm = ({
     };
   }, [formData.visibility, initialData?.name]);
 
-  const selectableShareUsers = Array.from(
-    new Set([...(formData.sharedWithUsers || []), ...shareCandidates]),
-  ).sort((left, right) => left.localeCompare(right));
+  const selectableShareUsers = getSelectableShareUsers(
+    formData.sharedWithUsers || [],
+    shareCandidates,
+  );
+  const filteredShareUsers = filterShareUsers(selectableShareUsers, shareUserSearch);
+  const selectedShareUsers = new Set(formData.sharedWithUsers || []);
+  const allFilteredShareUsersSelected =
+    filteredShareUsers.length > 0 &&
+    filteredShareUsers.every((username) => selectedShareUsers.has(username));
+  const noFilteredShareUsersSelected =
+    filteredShareUsers.length === 0 ||
+    filteredShareUsers.every((username) => !selectedShareUsers.has(username));
 
   const toggleSharedUser = (username: string) => {
     setFormData((previous) => {
@@ -249,6 +265,20 @@ const ServerForm = ({
       }
       return { ...previous, sharedWithUsers: Array.from(selected) };
     });
+  };
+
+  const selectFilteredShareUsers = () => {
+    setFormData((previous) => ({
+      ...previous,
+      sharedWithUsers: selectShareUsers(previous.sharedWithUsers || [], filteredShareUsers),
+    }));
+  };
+
+  const deselectFilteredShareUsers = () => {
+    setFormData((previous) => ({
+      ...previous,
+      sharedWithUsers: deselectShareUsers(previous.sharedWithUsers || [], filteredShareUsers),
+    }));
   };
 
   const [envVars, setEnvVars] = useState<EnvVar[]>(
@@ -1732,21 +1762,66 @@ const ServerForm = ({
                             </p>
                           )}
                         {selectableShareUsers.length > 0 && (
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                            {selectableShareUsers.map((username) => (
+                          <>
+                            <div className="mb-3 space-y-2">
                               <label
-                                key={username}
-                                className="flex items-center gap-2 rounded border border-gray-200 dark:border-gray-700 px-3 py-2 text-sm text-[var(--hub-ink-2)]"
+                                htmlFor="share-user-search"
+                                className="block text-xs font-medium text-[var(--hub-ink-2)]"
                               >
-                                <input
-                                  type="checkbox"
-                                  checked={(formData.sharedWithUsers || []).includes(username)}
-                                  onChange={() => toggleSharedUser(username)}
-                                />
-                                <span>{username}</span>
+                                {t('server.shareUserSearchLabel', 'Search users')}
                               </label>
-                            ))}
-                          </div>
+                              <input
+                                id="share-user-search"
+                                type="search"
+                                value={shareUserSearch}
+                                onChange={(event) => setShareUserSearch(event.target.value)}
+                                placeholder={t(
+                                  'server.shareUserSearchPlaceholder',
+                                  'Search usernames...',
+                                )}
+                                className="w-full py-2 px-3 form-input text-sm"
+                              />
+                              <div className="flex flex-wrap gap-2">
+                                <button
+                                  type="button"
+                                  onClick={selectFilteredShareUsers}
+                                  disabled={allFilteredShareUsersSelected}
+                                  className="hub-btn text-sm"
+                                >
+                                  {t('server.selectAllShareUsers', 'Select all')}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={deselectFilteredShareUsers}
+                                  disabled={noFilteredShareUsersSelected}
+                                  className="hub-btn text-sm"
+                                >
+                                  {t('server.deselectAllShareUsers', 'Deselect all')}
+                                </button>
+                              </div>
+                            </div>
+                            {filteredShareUsers.length === 0 ? (
+                              <p className="text-sm text-gray-500">
+                                {t('server.noMatchingShareUsers', 'No users match your search.')}
+                              </p>
+                            ) : (
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                {filteredShareUsers.map((username) => (
+                                  <label
+                                    key={username}
+                                    className="flex items-center gap-2 rounded border border-gray-200 dark:border-gray-700 px-3 py-2 text-sm text-[var(--hub-ink-2)]"
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      checked={selectedShareUsers.has(username)}
+                                      onChange={() => toggleSharedUser(username)}
+                                    />
+                                    <span>{username}</span>
+                                  </label>
+                                ))}
+                              </div>
+                            )}
+                          </>
                         )}
                       </>
                     )}
