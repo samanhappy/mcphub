@@ -2266,6 +2266,46 @@ const getServerByTool = (toolName: string): ServerInfo | undefined => {
   );
 };
 
+/**
+ * Error thrown when the requested server/tool (or server/prompt) cannot be
+ * used by the current caller. `message` is the single safe text returned to
+ * the caller — intentionally identical whether the target is hidden from them
+ * or does not exist at all, so server/tool existence is never leaked through
+ * distinguishable authorization errors (see #1103). `reason` is an internal
+ * diagnostic recorded only in logs/activity, never surfaced to the caller.
+ */
+export class ToolUnavailableError extends Error {
+  constructor(
+    message: string,
+    public readonly reason: string,
+  ) {
+    super(message);
+    this.name = 'ToolUnavailableError';
+  }
+}
+
+/**
+ * Best-effort internal classification of why a qualified tool/prompt name was
+ * unavailable, for logs/activity only. The externally visible message must not
+ * vary with this result.
+ */
+const classifyUnavailableReason = (qualifiedName: string): string => {
+  // Qualified names are `<server><separator><name>`; a bare name has no prefix.
+  const serverName = qualifiedName.split(getNameSeparator())[0];
+  const server = getServerByName(serverName);
+  if (!server) {
+    return 'server-or-name-not-found';
+  }
+  if (server.enabled === false) {
+    return 'server-disabled';
+  }
+  // Server exists and is enabled: distinguish a caller-hidden server from a
+  // tool/prompt that is missing (or group-filtered) on a visible server.
+  return getVisibleServerByName(serverName)
+    ? 'tool-or-prompt-not-found'
+    : 'server-hidden-from-caller';
+};
+
 // Add new server
 export const addServer = async (
   name: string,
@@ -3213,7 +3253,10 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
       }
 
       if (!targetServerInfo) {
-        throw new Error(`No available servers found with tool: ${toolName}`);
+        throw new ToolUnavailableError(
+          `Tool not available: ${toolName}`,
+          classifyUnavailableReason(toolName),
+        );
       }
 
       // If the target is an on-demand server that is not yet running, wake it up now.
@@ -3236,7 +3279,7 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
       const tool =
         targetTool ?? findToolOnServer(targetServerInfo, targetToolName, singleServerAppsRoute);
       if (!tool) {
-        throw new Error(`Tool '${toolName}' not found on server '${targetServerInfo.name}'`);
+        throw new ToolUnavailableError(`Tool not available: ${toolName}`, 'tool-not-found');
       }
       assertToolAvailableForRoute(tool, appsRouteContext);
 
@@ -3429,7 +3472,10 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
       groupTool?.tool ??
       (serverInfo ? findToolOnServer(serverInfo, routeToolName, singleServerAppsRoute) : undefined);
     if (!serverInfo || !tool) {
-      throw new Error(`Server not found: ${request.params.name}`);
+      throw new ToolUnavailableError(
+        `Tool not available: ${request.params.name}`,
+        classifyUnavailableReason(request.params.name),
+      );
     }
     assertToolAvailableForRoute(tool, appsRouteContext);
 
@@ -3592,7 +3638,14 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
       group,
     });
   } catch (error) {
-    logger.error('Error handling CallToolRequest', summarizeErrorForLogging(error));
+    const unavailable =
+      error instanceof ToolUnavailableError
+        ? { message: error.message, reason: error.reason }
+        : undefined;
+    logger.error('Error handling CallToolRequest', {
+      ...summarizeErrorForLogging(error),
+      ...(unavailable ? { reason: unavailable.reason } : {}),
+    });
 
     // Log error activity
     const duration = Date.now() - startTime;
@@ -3618,10 +3671,16 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
       keyId,
       keyName,
       sourceIp,
-      errorMessage: formatErrorForLogging(error),
+      // The reason is an internal diagnostic; the caller-facing message stays
+      // identical for hidden and nonexistent targets.
+      errorMessage: unavailable
+        ? `${unavailable.message} (reason: ${unavailable.reason})`
+        : formatErrorForLogging(error),
     });
 
-    const safeErrorText = formatErrorForLogging(error);
+    // For unavailable-target errors, surface exactly the unified message (no
+    // error-class name, no reason) so hidden vs nonexistent is indistinguishable.
+    const safeErrorText = unavailable ? unavailable.message : formatErrorForLogging(error);
 
     return {
       content: [
@@ -3682,7 +3741,10 @@ export const handleGetPromptRequest = async (request: any, extra: any) => {
       );
     }
     if (!server) {
-      throw new Error(`Server not found: ${name}`);
+      throw new ToolUnavailableError(
+        `Prompt not available: ${name}`,
+        classifyUnavailableReason(name),
+      );
     }
 
     // Remove server prefix from prompt name if present
@@ -3709,8 +3771,16 @@ export const handleGetPromptRequest = async (request: any, extra: any) => {
 
     return prompt;
   } catch (error) {
-    logger.error('Error handling GetPromptRequest', summarizeErrorForLogging(error));
-    const safeErrorText = formatErrorForLogging(error);
+    const unavailable =
+      error instanceof ToolUnavailableError
+        ? { message: error.message, reason: error.reason }
+        : undefined;
+    logger.error('Error handling GetPromptRequest', {
+      ...summarizeErrorForLogging(error),
+      ...(unavailable ? { reason: unavailable.reason } : {}),
+    });
+    // Surface exactly the unified message for unavailable targets (see #1103).
+    const safeErrorText = unavailable ? unavailable.message : formatErrorForLogging(error);
     return {
       content: [
         {
