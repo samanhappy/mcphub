@@ -1,0 +1,14 @@
+Dockerfile
+  h_18676a549cd52a 65-69
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "97efb8cd6a5ab021affcc073c3922ae2e16241b5",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
