@@ -1,0 +1,38 @@
+locales/fr.json
+  s_6cb0168a7b5f1f::t_b8c0ced874a597 160-164
+tests/frontend/serverLocales.test.ts
+  s_6cb0168a7b5f1f::t_d9a29ff859719c 18-22
+frontend/src/components/ServerForm.tsx
+  s_6cb0168a7b5f1f::t_e9460344870681 7-11,206,245-251,270-282
+  s_6cb0168a7b5f1f::t_d6f368567c2399 12
+  s_6cb0168a7b5f1f::t_bfb994fda99267 252-254,1765-1766,1768-1769,1771,1773-1824
+  s_6cb0168a7b5f1f::t_9f396bef1314e9 255-256
+  s_6cb0168a7b5f1f::t_0ad06cd1891f24 283
+frontend/src/utils/shareUserSelection.ts
+  s_6cb0168a7b5f1f::t_4eb9594574a626 1-29
+locales/tr.json
+  s_6cb0168a7b5f1f::t_b8c0ced874a597 160-164
+tests/frontend/shareUserSelection.test.ts
+  s_6cb0168a7b5f1f::t_e68d5f76089c9d 1-29,33-43
+  s_6cb0168a7b5f1f::t_9f396bef1314e9 30-32
+locales/zh.json
+  s_6cb0168a7b5f1f::t_b8c0ced874a597 160-164
+locales/en.json
+  s_6cb0168a7b5f1f::t_b8c0ced874a597 160-164
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "04ebb3359342f0627940cba0574fa3fa8fd5fdc0",
+  "prompts": {},
+  "sessions": {
+    "s_6cb0168a7b5f1f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a050e4-87d5-70e3-9bff-d973b0af0685",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
