@@ -1441,8 +1441,13 @@ const callToolWithReconnect = async (
       const isSSE = transport instanceof SSEClientTransport;
       if (attempt < maxRetries && transport && ((isStreamableHttp && isHttp40xError) || isSSE)) {
         logger.warn(
-          `${isHttp40xError ? 'HTTP 40x error' : 'error'} detected for ${isStreamableHttp ? 'StreamableHTTP' : 'SSE'} server ${serverInfo.name}${isolated ? ` (isolated session ${isolated.sessionId})` : ''}, attempting reconnection (attempt ${attempt + 1}/${maxRetries + 1})`,
+          `${isHttp40xError ? 'HTTP 40x error' : 'error'} detected for ${isStreamableHttp ? 'StreamableHTTP' : 'SSE'} server ${serverInfo.name}${isolated ? ` (isolated session ${isolated.sessionId})` : ''}, attempting reconnection (attempt ${attempt + 1}/${maxRetries})`,
         );
+
+        // Exponential backoff delay: 1s, 2s, 4s... max 10s
+        const backoffMs = Math.min(1000 * Math.pow(2, attempt), 10000);
+        await new Promise((resolve) => setTimeout(resolve, backoffMs));
+
 
         try {
           const server = await getServerDao().findById(serverInfo.name);

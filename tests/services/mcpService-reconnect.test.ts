@@ -148,6 +148,14 @@ import * as mcpService from '../../src/services/mcpService.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 
 describe('mcpService streamable-http reconnect', () => {
+  beforeAll(() => {
+    jest.useFakeTimers();
+    jest.spyOn(global, 'setTimeout');
+  });
+
+  afterAll(() => {
+    jest.useRealTimers();
+  });
   beforeEach(() => {
     jest.clearAllMocks();
   });
