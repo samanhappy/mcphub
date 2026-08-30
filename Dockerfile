@@ -62,4 +62,8 @@ RUN chmod +x /usr/local/bin/entrypoint.sh
 EXPOSE 3000
 
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
-CMD ["pnpm", "start"]
+# Launch node directly instead of `pnpm start`: the pnpm shim resolves via
+# Corepack, which re-downloads pnpm into the runtime user's HOME cache when the
+# image runs as a non-root user, breaking startup in egress-restricted
+# environments (#1105).
+CMD ["node", "dist/index.js"]
