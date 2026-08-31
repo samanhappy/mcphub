@@ -41,7 +41,12 @@ const shellEscapeSingleQuotes = (value: string): string => value.replace(/'/g, `
 
 const buildEmbeddingsDebugCurl = (
   baseURL: string | undefined,
-  payload: { model: string; input: string; encoding_format: 'base64' | 'float' },
+  payload: {
+    model: string;
+    input: string;
+    encoding_format: 'base64' | 'float';
+    dimensions?: number;
+  },
 ): string => {
   const normalizedBaseURL = (baseURL || 'https://api.openai.com/v1').replace(/\/+$/, '');
   const payloadJson = JSON.stringify(payload);
@@ -53,6 +58,21 @@ const buildEmbeddingsDebugCurl = (
   ].join(' \\\n');
 };
 
+/**
+ * Normalize provider output before storing it. Cosine similarity only depends
+ * on vector direction, and normalizing here keeps custom output dimensions
+ * consistent across providers that do not normalize their responses.
+ */
+const normalizeEmbedding = (embedding: number[]): number[] => {
+  const squaredMagnitude = embedding.reduce((sum, value) => sum + value * value, 0);
+  if (!Number.isFinite(squaredMagnitude) || squaredMagnitude === 0) {
+    return embedding;
+  }
+
+  const magnitude = Math.sqrt(squaredMagnitude);
+  return embedding.map((value) => value / magnitude);
+};
+
 // Get OpenAI configuration from smartRouting settings or fallback to environment variables
 const getOpenAIConfig = async () => {
   const smartRoutingConfig = await getSmartRoutingConfig();
@@ -60,6 +80,7 @@ const getOpenAIConfig = async () => {
     apiKey: smartRoutingConfig.openaiApiKey,
     baseURL: smartRoutingConfig.openaiApiBaseUrl,
     embeddingModel: smartRoutingConfig.openaiApiEmbeddingModel,
+    embeddingDimensions: smartRoutingConfig.embeddingDimensions,
   };
 };
 
@@ -115,6 +136,9 @@ const generateAzureOpenAIEmbedding = async (
     url,
     {
       input: text,
+      ...(smartRoutingConfig.embeddingDimensions !== undefined
+        ? { dimensions: smartRoutingConfig.embeddingDimensions }
+        : {}),
     },
     {
       headers: {
@@ -129,7 +153,7 @@ const generateAzureOpenAIEmbedding = async (
     throw new Error('Azure embeddings response missing embedding data');
   }
 
-  return embedding;
+  return normalizeEmbedding(embedding);
 };
 
 // ============================================================================
@@ -648,7 +672,11 @@ export async function createVectorIndex(
 }
 
 // Get dimensions for a model
-const getDimensionsForModel = (model: string): number => {
+const getDimensionsForModel = (model: string, configuredDimensions?: number): number => {
+  if (configuredDimensions !== undefined) {
+    return configuredDimensions;
+  }
+
   model = model.toLowerCase();
   if (model.includes('bge-m3')) {
     return BGE_DIMENSIONS;
@@ -785,6 +813,7 @@ async function generateEmbedding(text: string): Promise<number[]> {
 
   const embeddingPayload = {
     model: config.embeddingModel,
+    ...(config.embeddingDimensions !== undefined ? { dimensions: config.embeddingDimensions } : {}),
     encoding_format: encodingFormat,
     input: truncatedText,
   } as const;
@@ -823,6 +852,9 @@ async function generateEmbedding(text: string): Promise<number[]> {
         () =>
           openai.embeddings.create({
             model: embeddingPayload.model,
+            ...(embeddingPayload.dimensions !== undefined
+              ? { dimensions: embeddingPayload.dimensions }
+              : {}),
             encoding_format: embeddingPayload.encoding_format,
             input: embeddingPayload.input,
           }),
@@ -837,11 +869,11 @@ async function generateEmbedding(text: string): Promise<number[]> {
 
     if (encodingFormat === 'base64' && typeof response.data[0].embedding === 'string') {
       const embeddingBase64Str = response.data[0].embedding as unknown as string;
-      return toFloat32Array(embeddingBase64Str);
+      return normalizeEmbedding(toFloat32Array(embeddingBase64Str));
     }
 
     // Return the embedding
-    return response.data[0].embedding;
+    return normalizeEmbedding(response.data[0].embedding);
   } catch (error: any) {
     const status = extractErrorStatus(error);
     logger.warn('OpenAI-compatible embeddings request failed after retries', {
@@ -1453,13 +1485,17 @@ export const getAllVectorizedTools = async (
   }>
 > => {
   try {
+    const smartRoutingConfig = await getSmartRoutingConfig();
     const config = await getOpenAIConfig();
     const vectorRepository = getRepositoryFactory(
       'vectorEmbeddings',
     )() as VectorEmbeddingRepository;
 
     // Try to determine what dimension our database is using
-    let dimensionsToUse = getDimensionsForModel(config.embeddingModel); // Default based on the model selected
+    let dimensionsToUse = getDimensionsForModel(
+      config.embeddingModel,
+      smartRoutingConfig.embeddingDimensions,
+    ); // Default based on the model selected
 
     try {
       const result = await getAppDataSource().query(`
@@ -1474,7 +1510,10 @@ export const getAllVectorizedTools = async (
 
         if (rawValue === -1) {
           // No type modifier specified
-          dimensionsToUse = getDimensionsForModel(config.embeddingModel);
+          dimensionsToUse = getDimensionsForModel(
+            config.embeddingModel,
+            smartRoutingConfig.embeddingDimensions,
+          );
         } else {
           // For this version of pgvector, atttypmod stores the dimension value directly
           dimensionsToUse = rawValue;

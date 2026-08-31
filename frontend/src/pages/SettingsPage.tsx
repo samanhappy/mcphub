@@ -365,6 +365,53 @@ function getDefaultTokenLimitForUI(model: string): number {
   return 512;
 }
 
+type EmbeddingProviderPresetId = 'openai' | 'openrouter' | 'siliconflow' | 'gemini' | 'custom';
+
+const EMBEDDING_PROVIDER_PRESETS: Record<
+  EmbeddingProviderPresetId,
+  { baseUrl?: string; model?: string }
+> = {
+  openai: {
+    baseUrl: 'https://api.openai.com/v1',
+    model: 'text-embedding-3-small',
+  },
+  openrouter: {
+    baseUrl: 'https://openrouter.ai/api/v1',
+    model: 'baai/bge-m3',
+  },
+  siliconflow: {
+    baseUrl: 'https://api.siliconflow.cn/v1',
+    model: 'BAAI/bge-m3',
+  },
+  gemini: {
+    baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai',
+    model: 'gemini-embedding-001',
+  },
+  custom: {},
+};
+
+function getEmbeddingProviderPresetId(
+  baseUrl: string,
+  model: string,
+): EmbeddingProviderPresetId {
+  const normalizedBaseUrl = baseUrl.trim().replace(/\/+$/, '').toLowerCase();
+  const normalizedModel = model.trim().toLowerCase();
+
+  for (const [id, preset] of Object.entries(EMBEDDING_PROVIDER_PRESETS) as Array<
+    [EmbeddingProviderPresetId, (typeof EMBEDDING_PROVIDER_PRESETS)[EmbeddingProviderPresetId]]
+  >) {
+    if (
+      id !== 'custom' &&
+      normalizedBaseUrl === preset.baseUrl?.replace(/\/+$/, '').toLowerCase() &&
+      normalizedModel === preset.model?.toLowerCase()
+    ) {
+      return id;
+    }
+  }
+
+  return 'custom';
+}
+
 /**
  * Parses embeddingMaxTokens from form input string.
  * Returns the parsed value if it differs from current value, otherwise undefined (no update needed).
@@ -381,6 +428,23 @@ function parseEmbeddingMaxTokensForUpdate(
   const result = trimmed && !isNaN(parsed) ? parsed : null;
   const current = currentValue ?? null;
   return result !== current ? result : undefined;
+}
+
+function parseEmbeddingDimensionsForUpdate(
+  rawValue: string,
+  currentValue: number | null | undefined,
+): number | null | undefined {
+  const trimmed = rawValue.trim();
+  if (!trimmed) {
+    return currentValue == null ? undefined : null;
+  }
+
+  const parsed = Number(trimmed);
+  if (!Number.isSafeInteger(parsed) || parsed <= 0) {
+    return undefined;
+  }
+
+  return parsed !== currentValue ? parsed : undefined;
 }
 
 function parseBasePacingDelayForUpdate(
@@ -419,7 +483,9 @@ const SettingsPage: React.FC = () => {
     dbUrl: string;
     basePacingDelayMs: string;
     embeddingProvider: 'openai' | 'azure_openai';
+    embeddingProviderPreset: EmbeddingProviderPresetId;
     embeddingEncodingFormat: 'auto' | 'base64' | 'float';
+    embeddingDimensions: string;
     openaiApiBaseUrl: string;
     openaiApiKey: string;
     openaiApiEmbeddingModel: string;
@@ -434,7 +500,9 @@ const SettingsPage: React.FC = () => {
     dbUrl: '',
     basePacingDelayMs: '',
     embeddingProvider: 'openai',
+    embeddingProviderPreset: 'openai',
     embeddingEncodingFormat: 'auto',
+    embeddingDimensions: '',
     openaiApiBaseUrl: '',
     openaiApiKey: '',
     openaiApiEmbeddingModel: '',
@@ -560,12 +628,20 @@ const SettingsPage: React.FC = () => {
             : '',
         embeddingProvider:
           smartRoutingConfig.embeddingProvider === 'azure_openai' ? 'azure_openai' : 'openai',
+        embeddingProviderPreset: getEmbeddingProviderPresetId(
+          smartRoutingConfig.openaiApiBaseUrl || '',
+          smartRoutingConfig.openaiApiEmbeddingModel || '',
+        ),
         embeddingEncodingFormat:
           smartRoutingConfig.embeddingEncodingFormat === 'base64'
             ? 'base64'
             : smartRoutingConfig.embeddingEncodingFormat === 'float'
               ? 'float'
               : 'auto',
+        embeddingDimensions:
+          smartRoutingConfig.embeddingDimensions != null
+            ? String(smartRoutingConfig.embeddingDimensions)
+            : '',
         openaiApiBaseUrl: smartRoutingConfig.openaiApiBaseUrl || '',
         openaiApiKey: smartRoutingConfig.openaiApiKey || '',
         openaiApiEmbeddingModel: smartRoutingConfig.openaiApiEmbeddingModel || '',
@@ -795,6 +871,7 @@ const SettingsPage: React.FC = () => {
       | 'basePacingDelayMs'
       | 'embeddingProvider'
       | 'embeddingEncodingFormat'
+      | 'embeddingDimensions'
       | 'openaiApiBaseUrl'
       | 'openaiApiKey'
       | 'openaiApiEmbeddingModel'
@@ -809,6 +886,19 @@ const SettingsPage: React.FC = () => {
     setTempSmartRoutingConfig({
       ...tempSmartRoutingConfig,
       [key]: value,
+      ...(key === 'openaiApiBaseUrl' || key === 'openaiApiEmbeddingModel'
+        ? { embeddingProviderPreset: 'custom' as EmbeddingProviderPresetId }
+        : {}),
+    });
+  };
+
+  const handleEmbeddingProviderPresetChange = (presetId: EmbeddingProviderPresetId) => {
+    const preset = EMBEDDING_PROVIDER_PRESETS[presetId];
+    setTempSmartRoutingConfig({
+      ...tempSmartRoutingConfig,
+      embeddingProviderPreset: presetId,
+      ...(preset.baseUrl ? { openaiApiBaseUrl: preset.baseUrl } : {}),
+      ...(preset.model ? { openaiApiEmbeddingModel: preset.model } : {}),
     });
   };
 
@@ -1115,6 +1205,13 @@ const SettingsPage: React.FC = () => {
       if (parsedTokens !== undefined) {
         updates.embeddingMaxTokens = parsedTokens;
       }
+      const parsedDimensions = parseEmbeddingDimensionsForUpdate(
+        tempSmartRoutingConfig.embeddingDimensions,
+        smartRoutingConfig.embeddingDimensions,
+      );
+      if (parsedDimensions !== undefined) {
+        updates.embeddingDimensions = parsedDimensions;
+      }
 
       // Save all changes in a single batch update
       await updateSmartRoutingConfigBatch(updates);
@@ -1187,6 +1284,13 @@ const SettingsPage: React.FC = () => {
     );
     if (parsedEmbeddingMaxTokens !== undefined) {
       updates.embeddingMaxTokens = parsedEmbeddingMaxTokens;
+    }
+    const parsedEmbeddingDimensions = parseEmbeddingDimensionsForUpdate(
+      tempSmartRoutingConfig.embeddingDimensions,
+      smartRoutingConfig.embeddingDimensions,
+    );
+    if (parsedEmbeddingDimensions !== undefined) {
+      updates.embeddingDimensions = parsedEmbeddingDimensions;
     }
 
     if (Object.keys(updates).length > 0) {
@@ -2128,6 +2232,49 @@ const SettingsPage: React.FC = () => {
                   <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-md">
                     <div className="mb-2">
                       <h3 className="font-medium text-gray-700">
+                        {t('settings.embeddingProviderPreset') || 'Provider Preset'}
+                      </h3>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {t('settings.embeddingProviderPresetDescription') ||
+                          'Choose a provider to prefill its OpenAI-compatible endpoint and model.'}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <select
+                        value={tempSmartRoutingConfig.embeddingProviderPreset}
+                        onChange={(e) =>
+                          handleEmbeddingProviderPresetChange(
+                            e.target.value as EmbeddingProviderPresetId,
+                          )
+                        }
+                        className="flex-1 mt-1 block w-full py-2 px-3 border border-gray-300 bg-white dark:bg-gray-800 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm form-select"
+                        disabled={loading}
+                      >
+                        <option value="openai">
+                          {t('settings.embeddingProviderPresetOpenai') || 'OpenAI'}
+                        </option>
+                        <option value="openrouter">
+                          {t('settings.embeddingProviderPresetOpenrouter') || 'OpenRouter'}
+                        </option>
+                        <option value="siliconflow">
+                          {t('settings.embeddingProviderPresetSiliconflow') ||
+                            'SiliconFlow · free tier'}
+                        </option>
+                        <option value="gemini">
+                          {t('settings.embeddingProviderPresetGemini') ||
+                            'Google Gemini · free tier'}
+                        </option>
+                        <option value="custom">
+                          {t('settings.embeddingProviderPresetCustom') ||
+                            'Other / OpenAI-compatible'}
+                        </option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-md">
+                    <div className="mb-2">
+                      <h3 className="font-medium text-gray-700">
                         <span className="text-red-500 px-1">*</span>
                         {t('settings.openaiApiKey')}
                       </h3>
@@ -2321,6 +2468,34 @@ const SettingsPage: React.FC = () => {
                   </div>
                 </>
               )}
+
+              <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-md">
+                <div className="mb-2">
+                  <h3 className="font-medium text-gray-700">
+                    {t('settings.embeddingDimensions') || 'Embedding Dimensions'}
+                  </h3>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {t('settings.embeddingDimensionsDescription') ||
+                      "Optional output size for providers that support it. Leave empty to use the model's default."}
+                  </p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="number"
+                    min="1"
+                    step="1"
+                    value={tempSmartRoutingConfig.embeddingDimensions}
+                    onChange={(e) =>
+                      handleSmartRoutingConfigChange('embeddingDimensions', e.target.value)
+                    }
+                    placeholder={
+                      t('settings.embeddingDimensionsPlaceholder') || 'Empty = model default'
+                    }
+                    className="flex-1 mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm form-input"
+                    disabled={loading}
+                  />
+                </div>
+              </div>
 
               <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-md">
                 <div className="mb-2">

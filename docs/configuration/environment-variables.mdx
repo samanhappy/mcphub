@@ -121,6 +121,7 @@ Smart Routing performs vector search over upstream tools to surface only the few
 | `SMART_ROUTING_PROGRESSIVE_DISCLOSURE` | unset | When set, expose progressively-disclosed tool metadata (see Smart Routing docs). |
 | `SMART_ROUTING_SERVER_DESCRIPTION_MODE` | `names` | Control how `search_tools` lists available servers: `names` for server names only, `full` to include server descriptions/instructions when available. |
 | `EMBEDDING_MODEL` | `text-embedding-3-small` | Embedding model name. `OPENAI_API_EMBEDDING_MODEL` is accepted as a legacy alias; when both are set, this variable takes precedence. |
+| `EMBEDDING_DIMENSIONS` | unset | Optional output dimensionality for providers that support it. When unset, the provider's model default is used. |
 | `EMBEDDING_MAX_TOKENS` | per-model | Override token truncation limit before embedding. Useful to match a local inference server's batch size. |
 
 ### OpenAI

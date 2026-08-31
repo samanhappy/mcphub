@@ -18,6 +18,7 @@ const SMART_ROUTING_ENV_VARS = [
   'SMART_ROUTING_BASE_PACING_DELAY_MS',
   'SMART_ROUTING_EMBEDDING_PROVIDER',
   'SMART_ROUTING_EMBEDDING_ENCODING_FORMAT',
+  'EMBEDDING_DIMENSIONS',
   'OPENAI_API_BASE_URL',
   'OPENAI_API_KEY',
   'EMBEDDING_MODEL',
@@ -176,6 +177,7 @@ describe('smartRouting config resolution', () => {
         basePacingDelayMs: 0,
         embeddingProvider: 'openai',
         embeddingEncodingFormat: 'auto',
+        embeddingDimensions: undefined,
         openaiApiBaseUrl: 'https://api.openai.com/v1',
         openaiApiKey: '',
         openaiApiEmbeddingModel: 'text-embedding-3-small',
@@ -276,6 +278,26 @@ describe('smartRouting config resolution', () => {
         process.env.SMART_ROUTING_EMBEDDING_ENCODING_FORMAT = 'bogus';
         const config = await getSmartRoutingConfig();
         expect(config.embeddingEncodingFormat).toBe('auto');
+      });
+    });
+
+    describe('embeddingDimensions', () => {
+      it("parses '768' → 768", async () => {
+        process.env.EMBEDDING_DIMENSIONS = '768';
+        const config = await getSmartRoutingConfig();
+        expect(config.embeddingDimensions).toBe(768);
+      });
+
+      it('uses the settings value when the environment variable is absent', async () => {
+        mockGet.mockResolvedValue({ smartRouting: { embeddingDimensions: 1536 } });
+        const config = await getSmartRoutingConfig();
+        expect(config.embeddingDimensions).toBe(1536);
+      });
+
+      it.each(['0', '-1', '1.5', 'not-a-number'])('rejects invalid value %s', async (value) => {
+        process.env.EMBEDDING_DIMENSIONS = value;
+        const config = await getSmartRoutingConfig();
+        expect(config.embeddingDimensions).toBeUndefined();
       });
     });
 

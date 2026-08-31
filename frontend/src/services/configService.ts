@@ -22,6 +22,7 @@ export interface SystemConfig {
     basePacingDelayMs?: number;
     embeddingProvider?: 'openai' | 'azure_openai';
     embeddingEncodingFormat?: 'auto' | 'base64' | 'float';
+    embeddingDimensions?: number;
     openaiApiBaseUrl?: string;
     openaiApiKey?: string;
     openaiApiEmbeddingModel?: string;

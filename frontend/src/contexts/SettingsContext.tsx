@@ -35,6 +35,7 @@ interface SmartRoutingConfig {
   basePacingDelayMs?: number;
   embeddingProvider?: 'openai' | 'azure_openai';
   embeddingEncodingFormat?: 'auto' | 'base64' | 'float';
+  embeddingDimensions?: number;
   openaiApiBaseUrl: string;
   openaiApiKey: string;
   openaiApiEmbeddingModel: string;
@@ -351,6 +352,7 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
     basePacingDelayMs: undefined,
     embeddingProvider: 'openai',
     embeddingEncodingFormat: 'auto',
+    embeddingDimensions: undefined,
     openaiApiBaseUrl: '',
     openaiApiKey: '',
     openaiApiEmbeddingModel: '',
@@ -441,6 +443,7 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
               : data.data.systemConfig.smartRouting.embeddingEncodingFormat === 'float'
                 ? 'float'
                 : 'auto',
+          embeddingDimensions: data.data.systemConfig.smartRouting.embeddingDimensions,
           openaiApiBaseUrl: data.data.systemConfig.smartRouting.openaiApiBaseUrl || '',
           openaiApiKey: data.data.systemConfig.smartRouting.openaiApiKey || '',
           openaiApiEmbeddingModel:
