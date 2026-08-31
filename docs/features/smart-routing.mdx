@@ -208,9 +208,6 @@ OPENAI_API_KEY=your_openai_api_key
 # Optional
 SMART_ROUTING_ENABLED=true
 EMBEDDING_MODEL=text-embedding-3-small
-SIMILARITY_THRESHOLD=0.7
-MAX_TOOLS_RETURNED=10
-EMBEDDING_BATCH_SIZE=100
 ```
 
 ### Configuration Options
@@ -240,7 +237,7 @@ EMBEDDING_BATCH_SIZE=100
     # Azure OpenAI
     AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com
     AZURE_OPENAI_API_KEY=your-api-key
-    AZURE_OPENAI_DEPLOYMENT=your-embedding-deployment
+    AZURE_OPENAI_EMBEDDING_DEPLOYMENT=your-embedding-deployment
     # The actual OpenAI model name behind the deployment (for accurate token counting)
     AZURE_OPENAI_EMBEDDING_MODEL=text-embedding-3-small
 

@@ -13,6 +13,7 @@ import { getSmartRoutingConfig } from '../../src/utils/smartRouting.js';
 // not leak into the 3-layer resolution being tested.
 const SMART_ROUTING_ENV_VARS = [
   'SMART_ROUTING_ENABLED',
+  'ENABLE_SMART_ROUTING',
   'DB_URL',
   'SMART_ROUTING_BASE_PACING_DELAY_MS',
   'SMART_ROUTING_EMBEDDING_PROVIDER',
@@ -20,6 +21,7 @@ const SMART_ROUTING_ENV_VARS = [
   'OPENAI_API_BASE_URL',
   'OPENAI_API_KEY',
   'EMBEDDING_MODEL',
+  'OPENAI_API_EMBEDDING_MODEL',
   'AZURE_OPENAI_ENDPOINT',
   'AZURE_OPENAI_API_KEY',
   'AZURE_OPENAI_API_VERSION',
@@ -50,7 +52,7 @@ describe('smartRouting config resolution', () => {
   });
 
   // parseBooleanEnvVar is private; exercised indirectly through `enabled`
-  // (env: SMART_ROUTING_ENABLED) and `progressiveDisclosure`
+  // (env: SMART_ROUTING_ENABLED / ENABLE_SMART_ROUTING) and `progressiveDisclosure`
   // (env: SMART_ROUTING_PROGRESSIVE_DISCLOSURE / settings passthrough).
   describe('parseBooleanEnvVar (via enabled / progressiveDisclosure)', () => {
     it.each(['true', '1', 'yes', 'on', 'TRUE', 'True', 'YES'])(
@@ -61,6 +63,19 @@ describe('smartRouting config resolution', () => {
         expect(config.enabled).toBe(true);
       },
     );
+
+    it('accepts the legacy ENABLE_SMART_ROUTING alias', async () => {
+      process.env.ENABLE_SMART_ROUTING = 'true';
+      const config = await getSmartRoutingConfig();
+      expect(config.enabled).toBe(true);
+    });
+
+    it('prefers SMART_ROUTING_ENABLED over the legacy alias', async () => {
+      process.env.SMART_ROUTING_ENABLED = 'false';
+      process.env.ENABLE_SMART_ROUTING = 'true';
+      const config = await getSmartRoutingConfig();
+      expect(config.enabled).toBe(false);
+    });
 
     it.each(['false', '0', 'no', 'off'])('treats %s as falsy', async (value) => {
       process.env.SMART_ROUTING_ENABLED = value;
@@ -131,11 +146,24 @@ describe('smartRouting config resolution', () => {
     // `continue`/fall-to-settings path cannot be exercised with real values
     // without modifying src (out of scope). We instead cover the equivalent
     // "empty env string falls through to settings" fall-through path.
-    it("empty-string env falls through to settings value", async () => {
+    it('empty-string env falls through to settings value', async () => {
       process.env.OPENAI_API_KEY = '';
       mockGet.mockResolvedValue({ smartRouting: { openaiApiKey: 'sk-from-settings' } });
       const config = await getSmartRoutingConfig();
       expect(config.openaiApiKey).toBe('sk-from-settings');
+    });
+
+    it('accepts the legacy OpenAI embedding model alias', async () => {
+      process.env.OPENAI_API_EMBEDDING_MODEL = 'legacy-embedding-model';
+      const config = await getSmartRoutingConfig();
+      expect(config.openaiApiEmbeddingModel).toBe('legacy-embedding-model');
+    });
+
+    it('prefers EMBEDDING_MODEL over the legacy model alias', async () => {
+      process.env.EMBEDDING_MODEL = 'canonical-embedding-model';
+      process.env.OPENAI_API_EMBEDDING_MODEL = 'legacy-embedding-model';
+      const config = await getSmartRoutingConfig();
+      expect(config.openaiApiEmbeddingModel).toBe('canonical-embedding-model');
     });
   });
 

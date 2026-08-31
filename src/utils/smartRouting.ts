@@ -58,7 +58,8 @@ export interface SmartRoutingConfig {
  * Gets the complete smart routing configuration from environment variables and settings.
  *
  * Priority order for each setting:
- * 1. Specific environment variables (ENABLE_SMART_ROUTING, SMART_ROUTING_ENABLED, etc.)
+ * 1. Specific environment variables (SMART_ROUTING_ENABLED, with
+ *    ENABLE_SMART_ROUTING retained as a legacy alias)
  * 2. Generic environment variables (OPENAI_API_KEY, DB_URL, etc.)
  * 3. Settings configuration (systemConfig.smartRouting)
  * 4. Default values
@@ -72,9 +73,9 @@ export async function getSmartRoutingConfig(): Promise<SmartRoutingConfig> {
   const smartRoutingSettings: Partial<SmartRoutingConfig> = systemConfig.smartRouting || {};
 
   return {
-    // Enabled status - check multiple environment variables
+    // Enabled status - prefer the canonical variable but keep the legacy alias
     enabled: getConfigValue(
-      [process.env.SMART_ROUTING_ENABLED],
+      [process.env.SMART_ROUTING_ENABLED, process.env.ENABLE_SMART_ROUTING],
       smartRoutingSettings.enabled,
       false,
       parseBooleanEnvVar,
@@ -139,7 +140,7 @@ export async function getSmartRoutingConfig(): Promise<SmartRoutingConfig> {
     ),
 
     openaiApiEmbeddingModel: getConfigValue(
-      [process.env.EMBEDDING_MODEL],
+      [process.env.EMBEDDING_MODEL, process.env.OPENAI_API_EMBEDDING_MODEL],
       smartRoutingSettings.openaiApiEmbeddingModel,
       'text-embedding-3-small',
       expandEnvVars,
