@@ -97,6 +97,39 @@ OIDC_CLIENT_ID=your-oidc-client-id
 OIDC_CLIENT_SECRET=your-oidc-client-secret
 ```
 
+## 智能路由与嵌入
+
+智能路由使用 PostgreSQL + pgvector 和嵌入服务，对上游工具执行向量搜索。启用智能路由至少需要配置 `DB_URL`、OpenAI 兼容嵌入服务和开关变量。
+
+| 变量 | 默认值 | 描述 |
+| --- | --- | --- |
+| `SMART_ROUTING_ENABLED` | `false` | 智能路由的规范总开关。`ENABLE_SMART_ROUTING` 仍作为旧版兼容别名；两者同时设置时，以本变量为准。 |
+| `SMART_ROUTING_EMBEDDING_PROVIDER` | `openai` | 嵌入提供商，目前支持 `openai` 和 `azure_openai`。 |
+| `SMART_ROUTING_EMBEDDING_ENCODING_FORMAT` | `auto` | 覆盖发送给嵌入 API 的 `encoding_format`。 |
+| `SMART_ROUTING_BASE_PACING_DELAY_MS` | `0` | 嵌入请求之间的基础等待时间（毫秒）。 |
+| `SMART_ROUTING_PROGRESSIVE_DISCLOSURE` | `false` | 是否启用渐进式工具信息披露。 |
+| `SMART_ROUTING_SERVER_DESCRIPTION_MODE` | `names` | `search_tools` 中服务器信息的展示方式：`names` 或 `full`。 |
+| `EMBEDDING_MODEL` | `text-embedding-3-small` | 嵌入模型名称。`OPENAI_API_EMBEDDING_MODEL` 仍作为旧版兼容别名；两者同时设置时，以本变量为准。 |
+| `EMBEDDING_MAX_TOKENS` | 按模型决定 | 生成嵌入前的最大 token 数。 |
+
+### OpenAI 或兼容服务
+
+| 变量 | 描述 |
+| --- | --- |
+| `DB_URL` | PostgreSQL 连接 URL；数据库需要启用 `pgvector` 扩展。 |
+| `OPENAI_API_KEY` | OpenAI 或兼容嵌入服务的 API 密钥。 |
+| `OPENAI_API_BASE_URL` | OpenAI 兼容 API 的 Base URL，例如 LocalAI 或其他兼容服务。 |
+
+### Azure OpenAI
+
+| 变量 | 描述 |
+| --- | --- |
+| `AZURE_OPENAI_API_KEY` | Azure OpenAI API 密钥。 |
+| `AZURE_OPENAI_ENDPOINT` | Azure OpenAI 资源地址。 |
+| `AZURE_OPENAI_API_VERSION` | Azure OpenAI API 版本。 |
+| `AZURE_OPENAI_EMBEDDING_DEPLOYMENT` | Azure 中的嵌入 deployment 名称。 |
+| `AZURE_OPENAI_EMBEDDING_MODEL` | deployment 背后的实际 OpenAI 模型名称，用于 tokenizer 和 token 上限选择。 |
+
 ## 配置示例
 
 ### 开发环境
