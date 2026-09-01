@@ -158,7 +158,11 @@ const fetchCimdDocument = async (clientIdUrl: string): Promise<IOAuthClient | un
     ...(ssrfLookupOverride ? { lookup: ssrfLookupOverride } : {}),
   });
 
-  const validatingFetch = createRedirectValidatingFetch((url, init) => fetchImpl(url, init), false);
+  const validatingFetch = createRedirectValidatingFetch(
+    (url, init) => fetchImpl(url, init),
+    false,
+    ssrfLookupOverride,
+  );
   const response = await validatingFetch(clientIdUrl, {
     method: 'GET',
     headers: { Accept: 'application/json' },

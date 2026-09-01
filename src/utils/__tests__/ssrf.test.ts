@@ -170,6 +170,19 @@ describe('createRedirectValidatingFetch', () => {
     expect(baseFetch).not.toHaveBeenCalled();
   });
 
+  it('uses the supplied DNS lookup for the initial URL and redirects', async () => {
+    const lookup = jest.fn(async () => ['93.184.216.34']);
+    const baseFetch = jest
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(makeResponse(302, 'https://redirect.example/next') as Response)
+      .mockResolvedValueOnce(makeResponse(200) as Response);
+    const safeFetch = createRedirectValidatingFetch(baseFetch, false, lookup);
+
+    await expect(safeFetch('https://client.example/start')).resolves.toMatchObject({ status: 200 });
+    expect(lookup).toHaveBeenCalledWith('client.example');
+    expect(lookup).toHaveBeenCalledWith('redirect.example');
+  });
+
   it('returns the response directly for a non-redirect (2xx)', async () => {
     const baseFetch = jest.fn(async () => makeResponse(200));
     const safeFetch = createRedirectValidatingFetch(baseFetch as unknown as typeof fetch, false);

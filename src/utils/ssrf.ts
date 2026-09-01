@@ -160,12 +160,13 @@ export type FetchLike = (url: string | URL, init?: RequestInit) => Promise<Respo
 export function createRedirectValidatingFetch(
   baseFetch: FetchLike,
   allowInternal: boolean,
+  lookup: SsrfLookup = defaultLookup,
 ): FetchLike {
   const maxHops = 5;
   return async (url, init) => {
     let currentUrl = typeof url === 'string' ? url : url.toString();
     let hops = 0;
-    currentUrl = await assertSafeUrl(currentUrl, { allowInternal });
+    currentUrl = await assertSafeUrl(currentUrl, { allowInternal, lookup });
     let response = await baseFetch(currentUrl, { ...init, redirect: 'manual' });
     while (
       response.status >= 300 &&
@@ -178,7 +179,7 @@ export function createRedirectValidatingFetch(
         return response;
       }
       const resolvedUrl = new URL(location, currentUrl).toString();
-      currentUrl = await assertSafeUrl(resolvedUrl, { allowInternal });
+      currentUrl = await assertSafeUrl(resolvedUrl, { allowInternal, lookup });
       hops++;
       response = await baseFetch(currentUrl, { ...init, redirect: 'manual' });
     }
