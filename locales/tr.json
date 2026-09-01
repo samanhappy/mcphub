@@ -65,8 +65,8 @@
   "auth": {
     "login": "Giriş Yap",
     "loginTitle": "MCPHub'a Giriş Yap",
-    "slogan": "Birleşik MCP sunucu yönetim platformu",
-    "subtitle": "Model Context Protocol sunucuları için merkezi yönetim platformu. Esnek yönlendirme stratejileri ile birden fazla MCP sunucusunu organize edin, izleyin ve ölçeklendirin.",
+    "slogan": "Kendi kendine barındırılan MCP ağ geçidi ve yönetim platformu",
+    "subtitle": "Model Context Protocol sunucularını birleşik uç noktalar üzerinden bağlayın, düzenleyin, kontrol edin ve işletin.",
     "username": "Kullanıcı Adı",
     "password": "Şifre",
     "loggingIn": "Giriş yapılıyor...",

@@ -1,10 +1,12 @@
-# MCPHub: The Unified Hub for Model Context Protocol (MCP) Servers
+# MCPHub
+
+> A self-hosted MCP gateway and management platform for connecting, managing, and operating MCP servers.
 
 [![MCP Toplist](https://mcptoplist.com/badge/glama%2Fsamanhappy%2Fmcphub.svg)](https://mcptoplist.com/server/glama%2Fsamanhappy%2Fmcphub)
 
 English | [Français](README.fr.md) | [中文版](README.zh.md)
 
-MCPHub makes it easy to manage and scale multiple MCP (Model Context Protocol) servers by organizing them into flexible Streamable HTTP (SSE) endpoints—supporting access to all servers, individual servers, or logical server groups.
+MCPHub provides a unified way to connect and manage multiple MCP servers, organize them into groups, control access, and expose stable MCP endpoints for clients such as Claude Code, Cursor, Cherry Studio, OpenWebUI, and other MCP-compatible applications.
 
 ![Dashboard Preview](assets/dashboard.png)
 
@@ -16,10 +18,14 @@ MCPHub makes it easy to manage and scale multiple MCP (Model Context Protocol) s
 
 ## 🚀 Features
 
-- **Centralized Management** - Monitor and control all MCP servers from a unified dashboard
-- **Flexible Routing** - Access all servers, specific groups, or individual servers via HTTP/SSE
-- **Granular Group Visibility** - Control Tool, Prompt, and Resource visibility independently for each server inside a group
-- **Per-Server Sharing** - Keep servers private, share them with selected users, or make them public
+- **Unified MCP Gateway** - Expose all connected servers through stable MCP endpoints, including routes for groups and individual servers
+- **Server and Group Management** - Organize servers into groups, manage visibility, and control Tool, Prompt, and Resource exposure
+- **SSE / Streamable HTTP / stdio Support** - Connect local and remote MCP servers over the supported transports
+- **Authentication and Access Control** - Use OAuth 2.0, bearer keys, and server or group visibility controls to manage access
+- **Server Aliases and Routing** - Define aliases and route clients to all servers, specific groups, individual servers, or smart routing
+- **Logs and Observability** - Inspect tool-call activity, request status, latency, and server logs
+- **Health Checks** - Monitor connection health and server status from one place
+- **Web Dashboard** - Manage server configuration and runtime operations from a browser
 - **Smart Routing** - AI-powered tool discovery using vector semantic search ([Learn more](https://docs.mcphub.app/features/smart-routing))
 - **MCP Apps Proxy** - Transparently forward interactive MCP Apps on single-server routes ([Learn more](https://docs.mcphub.app/features/mcp-apps))
 - **Tool Result Compression** - Transparently reduce large text tool outputs before they reach clients

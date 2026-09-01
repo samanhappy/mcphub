@@ -2,7 +2,7 @@
   "$schema": "https://mintlify.com/docs.json",
   "theme": "mint",
   "name": "MCPHub Documentation",
-  "description": "The Unified Hub for Model Context Protocol (MCP) Servers",
+  "description": "Self-hosted MCP gateway and management platform for connecting, managing, and operating MCP servers.",
   "colors": {
     "primary": "#16A34A",
     "light": "#07C983",

@@ -65,8 +65,8 @@
   "auth": {
     "login": "Connexion",
     "loginTitle": "Se connecter à MCPHub",
-    "slogan": "Le Hub unifié pour les serveurs MCP",
-    "subtitle": "Plateforme de gestion centralisée pour les serveurs Model Context Protocol. Organisez, surveillez et mettez à l'échelle plusieurs serveurs MCP avec des stratégies de routage flexibles.",
+    "slogan": "Passerelle MCP et plateforme de gestion auto-hébergées",
+    "subtitle": "Connectez, organisez, contrôlez et exploitez vos serveurs Model Context Protocol via des points de terminaison unifiés.",
     "username": "Nom d'utilisateur",
     "password": "Mot de passe",
     "loggingIn": "Connexion en cours...",
