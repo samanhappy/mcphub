@@ -18,6 +18,8 @@ const mockInitializeDatabase = jest.fn();
 const mockReconnectDatabase = jest.fn();
 const mockGetSmartRoutingConfig = jest.fn();
 const mockFindServerById = jest.fn();
+const mockEmbeddingCreate = jest.fn();
+const mockOpenAIConstructor = jest.fn();
 const mockGetServerDao = jest.fn(() => ({
   findById: mockFindServerById,
 }));
@@ -54,11 +56,12 @@ jest.mock('openai', () => ({
   default: class MockOpenAI {
     apiKey?: string;
     embeddings = {
-      create: jest.fn(),
+      create: mockEmbeddingCreate,
     };
 
     constructor(config: { apiKey?: string }) {
       this.apiKey = config.apiKey;
+      mockOpenAIConstructor(config);
     }
   },
 }));
@@ -108,6 +111,8 @@ const buildToolSetHash = (tools: Array<{ name: string; description?: string; inp
 describe('vectorSearchService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockEmbeddingCreate.mockReset();
+    mockOpenAIConstructor.mockReset();
 
     mockGetSmartRoutingConfig.mockResolvedValue({
       enabled: true,
@@ -116,6 +121,7 @@ describe('vectorSearchService', () => {
       openaiApiEmbeddingModel: 'text-embedding-3-small',
       openaiApiBaseUrl: 'https://api.openai.com/v1',
       openaiApiKey: '',
+      embeddingDimensions: undefined,
     });
     mockFindServerById.mockResolvedValue({
       name: 'redis',
@@ -266,6 +272,66 @@ describe('vectorSearchService', () => {
         serverName: 'redis',
         description: 'Fast in-memory data store and cache',
       },
+      'text-embedding-3-small',
+    );
+  });
+
+  it('uses configured dimensions, the Dashboard API key, and normalized provider output', async () => {
+    mockGetSmartRoutingConfig.mockResolvedValue({
+      enabled: true,
+      dbUrl: 'postgres://localhost/test',
+      embeddingProvider: 'openai',
+      embeddingEncodingFormat: 'float',
+      embeddingDimensions: 2,
+      openaiApiEmbeddingModel: 'text-embedding-3-small',
+      openaiApiBaseUrl: 'https://api.example.com/v1',
+      openaiApiKey: 'sk-from-dashboard',
+    });
+    mockEmbeddingCreate.mockResolvedValue({ data: [{ embedding: [3, 4] }] });
+    mockVectorRepository.countByServerNameAndModel.mockResolvedValue(0);
+    mockVectorRepository.saveEmbedding.mockResolvedValue({});
+    mockVectorRepository.deleteStaleToolEmbeddings.mockResolvedValue(0);
+    mockGetAppDataSource.mockReturnValue({
+      isInitialized: true,
+      query: jest.fn(async (sql: string) => {
+        if (sql.includes('format_type')) {
+          return [{ formatted_type: 'vector(2)', atttypmod: 2 }];
+        }
+        if (sql.includes('SELECT atttypmod as dimensions')) {
+          return [{ dimensions: 2 }];
+        }
+        if (sql.includes('GROUP BY dimensions, model')) {
+          return [{ dimensions: 2, model: 'text-embedding-3-small', count: 1 }];
+        }
+        return [];
+      }),
+    });
+
+    await saveToolsAsVectorEmbeddings('redis', [
+      {
+        name: 'redis-get',
+        description: 'Get a cache value',
+        inputSchema: {},
+      } as any,
+    ]);
+
+    expect(mockOpenAIConstructor).toHaveBeenCalledWith({
+      apiKey: 'sk-from-dashboard',
+      baseURL: 'https://api.example.com/v1',
+    });
+    expect(mockEmbeddingCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        model: 'text-embedding-3-small',
+        dimensions: 2,
+        encoding_format: 'float',
+      }),
+    );
+    expect(mockVectorRepository.saveEmbedding).toHaveBeenCalledWith(
+      'tool',
+      'redis:redis-get',
+      expect.any(String),
+      [0.6, 0.8],
+      expect.any(Object),
       'text-embedding-3-small',
     );
   });

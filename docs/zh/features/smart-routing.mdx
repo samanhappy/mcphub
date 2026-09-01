@@ -384,6 +384,8 @@ curl http://localhost:3000/api/smart-routing/embedding-stats \
 ```bash
 # 大多数部署的推荐配置
 EMBEDDING_MODEL=text-embedding-3-small
+# 可选：支持自定义维度的提供方（例如 768）
+EMBEDDING_DIMENSIONS=768
 
 # 更高质量（需要 pgvector >= 0.7.0 以获得最佳索引）
 EMBEDDING_MODEL=text-embedding-3-large
@@ -392,6 +394,7 @@ EMBEDDING_MODEL=text-embedding-3-large
 OPENAI_API_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai
 OPENAI_API_KEY=your-google-ai-studio-api-key
 EMBEDDING_MODEL=gemini-embedding-001
+EMBEDDING_DIMENSIONS=768
 ```
 
 <Tip>

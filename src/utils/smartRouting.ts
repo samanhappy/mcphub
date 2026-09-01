@@ -16,6 +16,11 @@ export interface SmartRoutingConfig {
   basePacingDelayMs?: number;
   embeddingProvider?: 'openai' | 'azure_openai';
   embeddingEncodingFormat?: 'auto' | 'base64' | 'float';
+  /**
+   * Optional output dimensionality passed to providers that support it.
+   * When omitted, the provider's model default is used.
+   */
+  embeddingDimensions?: number;
   openaiApiBaseUrl: string;
   openaiApiKey: string;
   openaiApiEmbeddingModel: string;
@@ -121,6 +126,16 @@ export async function getSmartRoutingConfig(): Promise<SmartRoutingConfig> {
           return normalized;
         }
         return 'auto';
+      },
+    ),
+
+    embeddingDimensions: getConfigValue<number | undefined>(
+      [process.env.EMBEDDING_DIMENSIONS],
+      smartRoutingSettings.embeddingDimensions,
+      undefined,
+      (value: unknown) => {
+        const parsed = Number(value);
+        return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : undefined;
       },
     ),
 

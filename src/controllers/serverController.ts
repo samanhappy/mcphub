@@ -1633,6 +1633,8 @@ export const updateSystemConfig = async (req: Request, res: Response): Promise<v
         smartRouting.basePacingDelayMs === null ||
         typeof smartRouting.embeddingProvider === 'string' ||
         typeof smartRouting.embeddingEncodingFormat === 'string' ||
+        typeof smartRouting.embeddingDimensions === 'number' ||
+        smartRouting.embeddingDimensions === null ||
         typeof smartRouting.openaiApiBaseUrl === 'string' ||
         typeof smartRouting.openaiApiKey === 'string' ||
         typeof smartRouting.openaiApiEmbeddingModel === 'string' ||
@@ -1740,6 +1742,7 @@ export const updateSystemConfig = async (req: Request, res: Response): Promise<v
           dbUrl: '',
           basePacingDelayMs: undefined,
           embeddingProvider: 'openai',
+          embeddingDimensions: undefined,
           openaiApiBaseUrl: '',
           openaiApiKey: '',
           openaiApiEmbeddingModel: '',
@@ -1793,6 +1796,7 @@ export const updateSystemConfig = async (req: Request, res: Response): Promise<v
         dbUrl: '',
         basePacingDelayMs: undefined,
         embeddingProvider: 'openai',
+        embeddingDimensions: undefined,
         openaiApiBaseUrl: '',
         openaiApiKey: '',
         openaiApiEmbeddingModel: '',
@@ -1909,6 +1913,16 @@ export const updateSystemConfig = async (req: Request, res: Response): Promise<v
         const normalized = smartRouting.embeddingEncodingFormat.trim().toLowerCase();
         systemConfig.smartRouting.embeddingEncodingFormat =
           normalized === 'base64' || normalized === 'float' ? normalized : 'auto';
+      }
+
+      if (
+        typeof smartRouting.embeddingDimensions === 'number' &&
+        Number.isSafeInteger(smartRouting.embeddingDimensions) &&
+        smartRouting.embeddingDimensions > 0
+      ) {
+        systemConfig.smartRouting.embeddingDimensions = smartRouting.embeddingDimensions;
+      } else if (smartRouting.embeddingDimensions === null) {
+        systemConfig.smartRouting.embeddingDimensions = undefined;
       }
 
       if (typeof smartRouting.enabled === 'boolean') {
@@ -2039,6 +2053,8 @@ export const updateSystemConfig = async (req: Request, res: Response): Promise<v
           systemConfig.smartRouting.embeddingProvider ||
         previousSmartRoutingConfig.embeddingEncodingFormat !==
           systemConfig.smartRouting.embeddingEncodingFormat ||
+        previousSmartRoutingConfig.embeddingDimensions !==
+          systemConfig.smartRouting.embeddingDimensions ||
         previousSmartRoutingConfig.openaiApiBaseUrl !==
           systemConfig.smartRouting.openaiApiBaseUrl ||
         previousSmartRoutingConfig.openaiApiKey !== systemConfig.smartRouting.openaiApiKey ||
