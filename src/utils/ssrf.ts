@@ -165,6 +165,7 @@ export function createRedirectValidatingFetch(
   return async (url, init) => {
     let currentUrl = typeof url === 'string' ? url : url.toString();
     let hops = 0;
+    currentUrl = await assertSafeUrl(currentUrl, { allowInternal });
     let response = await baseFetch(currentUrl, { ...init, redirect: 'manual' });
     while (
       response.status >= 300 &&

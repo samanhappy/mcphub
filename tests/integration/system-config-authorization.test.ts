@@ -60,9 +60,19 @@ jest.mock('../../src/services/upstreamOAuthDisconnectService.js', () => ({
   disconnectUpstreamOAuth: jest.fn(),
 }));
 
+jest.mock('../../src/services/logService.js', () => ({
+  default: {
+    getLogs: jest.fn(),
+    clearLogs: jest.fn(),
+    subscribeToStream: jest.fn(),
+  },
+}));
+
 import { auth } from '../../src/middlewares/auth.js';
 import { authenticatedRouteRateLimiter } from '../../src/utils/rateLimit.js';
 import { updateSystemConfig } from '../../src/controllers/serverController.js';
+import { getActivities } from '../../src/controllers/activityController.js';
+import { clearLogs, getAllLogs, streamLogs } from '../../src/controllers/logController.js';
 import { createUserToken } from '../utils/testHelpers.js';
 
 describe('system configuration authorization', () => {
@@ -96,5 +106,30 @@ describe('system configuration authorization', () => {
       success: false,
       message: 'Admin privileges required',
     });
+  });
+
+  it('rejects a non-admin JWT on activity and system log routes', async () => {
+    const app = express();
+    app.use(express.json());
+    app.get('/api/activities', auth, getActivities);
+    app.get('/api/logs', auth, getAllLogs);
+    app.delete('/api/logs', auth, clearLogs);
+    app.get('/api/logs/stream', auth, streamLogs);
+
+    const token = createUserToken('regular-user', false);
+    const responses = [
+      await request(app).get('/api/activities').set('x-auth-token', token),
+      await request(app).get('/api/logs').set('x-auth-token', token),
+      await request(app).delete('/api/logs').set('x-auth-token', token),
+      await request(app).get('/api/logs/stream').set('x-auth-token', token),
+    ];
+
+    for (const response of responses) {
+      expect(response.status).toBe(403);
+      expect(response.body).toEqual({
+        success: false,
+        message: 'Admin privileges required',
+      });
+    }
   });
 });

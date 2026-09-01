@@ -162,6 +162,14 @@ describe('createRedirectValidatingFetch', () => {
     return new Response(nullBody ? null : body, { status, headers });
   };
 
+  it('rejects an internal initial URL without calling base fetch', async () => {
+    const baseFetch = jest.fn(async () => makeResponse(200));
+    const safeFetch = createRedirectValidatingFetch(baseFetch as unknown as typeof fetch, false);
+
+    await expect(safeFetch('http://127.0.0.1:8181/secret')).rejects.toThrow(UnsafeUrlError);
+    expect(baseFetch).not.toHaveBeenCalled();
+  });
+
   it('returns the response directly for a non-redirect (2xx)', async () => {
     const baseFetch = jest.fn(async () => makeResponse(200));
     const safeFetch = createRedirectValidatingFetch(baseFetch as unknown as typeof fetch, false);

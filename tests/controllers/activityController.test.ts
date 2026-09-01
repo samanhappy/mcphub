@@ -1,6 +1,9 @@
 import { Request, Response } from 'express';
 
 const mockFindPaginated = jest.fn();
+const mockFindById = jest.fn();
+const mockGetStats = jest.fn();
+const mockDeleteOlderThan = jest.fn();
 const mockGetDistinctServers = jest.fn();
 const mockGetDistinctTools = jest.fn();
 const mockGetDistinctGroups = jest.fn();
@@ -9,6 +12,9 @@ const mockGetDistinctUsernames = jest.fn();
 
 const mockActivityDao = {
   findPaginated: mockFindPaginated,
+  findById: mockFindById,
+  getStats: mockGetStats,
+  deleteOlderThan: mockDeleteOlderThan,
   getDistinctServers: mockGetDistinctServers,
   getDistinctTools: mockGetDistinctTools,
   getDistinctGroups: mockGetDistinctGroups,
@@ -23,7 +29,10 @@ jest.mock('../../src/dao/DaoFactory.js', () => ({
 
 import {
   getActivities,
+  getActivityById,
   getActivityFilterOptions,
+  getActivityStats,
+  deleteOldActivities,
 } from '../../src/controllers/activityController.js';
 
 const makeRes = () =>
@@ -36,6 +45,7 @@ const makeReq = (overrides: Record<string, any> = {}) =>
   ({
     query: {},
     params: {},
+    user: { username: 'admin', isAdmin: true },
     ...overrides,
   }) as unknown as Request;
 
@@ -54,6 +64,9 @@ describe('activityController', () => {
     mockGetDistinctGroups.mockResolvedValue(['group-a']);
     mockGetDistinctKeyNames.mockResolvedValue(['key-a']);
     mockGetDistinctUsernames.mockResolvedValue(['alice']);
+    mockFindById.mockResolvedValue(null);
+    mockGetStats.mockResolvedValue({ total: 0 });
+    mockDeleteOlderThan.mockResolvedValue(0);
   });
 
   it('passes username filters through to the activity DAO', async () => {
@@ -93,5 +106,37 @@ describe('activityController', () => {
         usernames: ['alice'],
       },
     });
+  });
+
+  it('rejects non-admin access to every sensitive activity endpoint', async () => {
+    const handlers = [
+      [getActivities, { query: {}, params: {} }],
+      [getActivityById, { query: {}, params: { id: 'activity-1' } }],
+      [getActivityStats, { query: {}, params: {} }],
+      [getActivityFilterOptions, { query: {}, params: {} }],
+      [deleteOldActivities, { query: {}, params: {} }],
+    ] as const;
+
+    for (const [handler, overrides] of handlers) {
+      const req = makeReq({
+        ...overrides,
+        user: { username: 'alice', isAdmin: false },
+      });
+      const res = makeRes();
+
+      await handler(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(403);
+      expect(res.json).toHaveBeenCalledWith({
+        success: false,
+        message: 'Admin privileges required',
+      });
+    }
+
+    expect(mockFindPaginated).not.toHaveBeenCalled();
+    expect(mockFindById).not.toHaveBeenCalled();
+    expect(mockGetStats).not.toHaveBeenCalled();
+    expect(mockDeleteOlderThan).not.toHaveBeenCalled();
+    expect(mockGetDistinctServers).not.toHaveBeenCalled();
   });
 });

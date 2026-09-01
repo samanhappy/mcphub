@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { getActivityDao, isActivityLoggingEnabled } from '../dao/DaoFactory.js';
 import { IActivityFilter } from '../types/index.js';
 import { logger } from '../utils/logger.js';
+import { requireAdmin } from '../utils/requireAdmin.js';
 
 /**
  * Check if activity feature is available (database mode only)
@@ -19,6 +20,8 @@ export const checkActivityAvailable = async (req: Request, res: Response): Promi
  * Get paginated list of activities
  */
 export const getActivities = async (req: Request, res: Response): Promise<void> => {
+  if (!(await requireAdmin(req, res))) return;
+
   try {
     const activityDao = getActivityDao();
     if (!activityDao) {
@@ -107,6 +110,8 @@ export const getActivities = async (req: Request, res: Response): Promise<void> 
  * Get activity by ID (for viewing full details including input/output)
  */
 export const getActivityById = async (req: Request, res: Response): Promise<void> => {
+  if (!(await requireAdmin(req, res))) return;
+
   try {
     const activityDao = getActivityDao();
     if (!activityDao) {
@@ -145,6 +150,8 @@ export const getActivityById = async (req: Request, res: Response): Promise<void
  * Get activity statistics
  */
 export const getActivityStats = async (req: Request, res: Response): Promise<void> => {
+  if (!(await requireAdmin(req, res))) return;
+
   try {
     const activityDao = getActivityDao();
     if (!activityDao) {
@@ -204,6 +211,8 @@ export const getActivityStats = async (req: Request, res: Response): Promise<voi
  * Get distinct filter options (servers, tools, groups)
  */
 export const getActivityFilterOptions = async (req: Request, res: Response): Promise<void> => {
+  if (!(await requireAdmin(req, res))) return;
+
   try {
     const activityDao = getActivityDao();
     if (!activityDao) {
@@ -245,6 +254,8 @@ export const getActivityFilterOptions = async (req: Request, res: Response): Pro
  * Delete old activity records
  */
 export const deleteOldActivities = async (req: Request, res: Response): Promise<void> => {
+  if (!(await requireAdmin(req, res))) return;
+
   try {
     const activityDao = getActivityDao();
     if (!activityDao) {

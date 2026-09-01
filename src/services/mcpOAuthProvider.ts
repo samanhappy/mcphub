@@ -33,6 +33,7 @@ import {
   getRegisteredClient,
   removeRegisteredClient,
   fetchScopesFromServer,
+  createOAuthFetch,
 } from './oauthClientRegistration.js';
 import {
   clearOAuthData,
@@ -140,7 +141,10 @@ export class MCPHubOAuthProvider implements OAuthClientProvider {
     }
 
     try {
-      const scopes = await fetchScopesFromServer(serverUrl);
+      const scopes = await fetchScopesFromServer(
+        serverUrl,
+        await createOAuthFetch(this.serverConfig),
+      );
       if (scopes && scopes.length > 0) {
         const updatedConfig = await mutateOAuthSettings(this.serverName, ({ oauth }) => {
           oauth.scopes = scopes;

@@ -10,11 +10,12 @@
  */
 
 import * as client from 'openid-client';
-import { getSystemConfigDao } from '../dao/index.js';
+import { getSystemConfigDao, getUserDao } from '../dao/index.js';
 import { ServerConfig } from '../types/index.js';
 import { resolveInstallBaseUrl } from '../utils/installBaseUrl.js';
 import { resolvePreferredRedirectUris } from '../utils/oauthRedirectUri.js';
 import { logger } from '../utils/logger.js';
+import { createRedirectValidatingFetch, type FetchLike } from '../utils/ssrf.js';
 import {
   mutateOAuthSettings,
   persistClientCredentials,
@@ -33,6 +34,18 @@ interface RegisteredClientInfo {
 
 // Cache for registered clients to avoid re-registering on every restart
 const registeredClients = new Map<string, RegisteredClientInfo>();
+
+export const createOAuthFetch = async (serverConfig?: ServerConfig): Promise<FetchLike> => {
+  const ownerUser = serverConfig?.owner
+    ? await getUserDao().findByUsername(serverConfig.owner)
+    : undefined;
+  return createRedirectValidatingFetch(fetch, ownerUser?.isAdmin === true);
+};
+
+const toOpenIdClientFetch =
+  (fetchFn: FetchLike): client.CustomFetch =>
+  (url, options) =>
+    fetchFn(url, options as unknown as RequestInit);
 
 export const removeRegisteredClient = (serverName: string): void => {
   registeredClients.delete(serverName);
@@ -67,6 +80,7 @@ export const parseWWWAuthenticateHeader = (header: string): string | null => {
  */
 export const fetchProtectedResourceMetadata = async (
   resourceMetadataUrl: string,
+  fetchFn?: FetchLike,
 ): Promise<{
   authorization_servers: string[];
   resource?: string;
@@ -75,7 +89,8 @@ export const fetchProtectedResourceMetadata = async (
   try {
     logger.log('Fetching protected resource metadata', { resourceMetadataUrl });
 
-    const response = await fetch(resourceMetadataUrl, {
+    const safeFetch = fetchFn ?? (await createOAuthFetch());
+    const response = await safeFetch(resourceMetadataUrl, {
       method: 'GET',
       headers: {
         Accept: 'application/json',
@@ -113,7 +128,10 @@ export const fetchProtectedResourceMetadata = async (
  * @param serverUrl - The MCP server URL
  * @returns Array of supported scopes or undefined if not available
  */
-export const fetchScopesFromServer = async (serverUrl: string): Promise<string[] | undefined> => {
+export const fetchScopesFromServer = async (
+  serverUrl: string,
+  fetchFn?: FetchLike,
+): Promise<string[] | undefined> => {
   try {
     // Construct the well-known protected resource metadata URL
     // Format: https://example.com/.well-known/oauth-protected-resource/path/to/resource
@@ -125,7 +143,7 @@ export const fetchScopesFromServer = async (serverUrl: string): Promise<string[]
       wellKnownUrl,
     });
 
-    const metadata = await fetchProtectedResourceMetadata(wellKnownUrl);
+    const metadata = await fetchProtectedResourceMetadata(wellKnownUrl, fetchFn);
 
     if (metadata.scopes_supported && Array.isArray(metadata.scopes_supported)) {
       logger.log('Fetched OAuth scopes from server', {
@@ -200,10 +218,13 @@ export const discoverIssuer = async (
   try {
     logger.log('Discovering OAuth issuer', { issuerUrl });
     const server = new URL(issuerUrl);
+    const safeFetch = await createOAuthFetch();
 
     const clientAuth = clientSecret ? client.ClientSecretPost(clientSecret) : client.None();
 
-    const config = await client.discovery(server, clientId, undefined, clientAuth);
+    const config = await client.discovery(server, clientId, undefined, clientAuth, {
+      [client.customFetch]: toOpenIdClientFetch(safeFetch),
+    });
     logger.log('Successfully discovered OAuth issuer', { issuerUrl });
     return config;
   } catch (error) {
@@ -291,8 +312,11 @@ export const registerClient = async (
     const clientAuth = dynamicConfig?.initialAccessToken
       ? client.ClientSecretPost(dynamicConfig.initialAccessToken)
       : client.None();
+    const safeFetch = await createOAuthFetch(serverConfig);
 
-    const config = await client.dynamicClientRegistration(serverUrl, clientMetadata, clientAuth);
+    const config = await client.dynamicClientRegistration(serverUrl, clientMetadata, clientAuth, {
+      [client.customFetch]: toOpenIdClientFetch(safeFetch),
+    });
 
     logger.log('Successfully registered OAuth client', { serverName });
 
@@ -533,10 +557,12 @@ export const initializeOAuthForServer = async (
 
   // Static client configuration - create Configuration from static values
   if (serverConfig.oauth.clientId) {
+    const safeFetch = await createOAuthFetch(serverConfig);
+
     // Try to fetch and store scopes if not already configured
     if (!serverConfig.oauth.scopes && serverConfig.url) {
       try {
-        const fetchedScopes = await fetchScopesFromServer(serverConfig.url);
+        const fetchedScopes = await fetchScopesFromServer(serverConfig.url, safeFetch);
         if (fetchedScopes && fetchedScopes.length > 0) {
           await mutateOAuthSettings(serverName, ({ oauth }) => {
             oauth.scopes = fetchedScopes;
@@ -578,6 +604,9 @@ export const initializeOAuthForServer = async (
         serverConfig.oauth.clientId!,
         undefined,
         clientAuth,
+        {
+          [client.customFetch]: toOpenIdClientFetch(safeFetch),
+        },
       );
 
       const clientInfo: RegisteredClientInfo = {

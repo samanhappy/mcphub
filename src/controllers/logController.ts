@@ -2,9 +2,12 @@
 import { Request, Response } from 'express';
 import logService from '../services/logService.js';
 import { logger } from '../utils/logger.js';
+import { requireAdmin } from '../utils/requireAdmin.js';
 
 // Get all logs
-export const getAllLogs = (req: Request, res: Response): void => {
+export const getAllLogs = async (req: Request, res: Response): Promise<void> => {
+  if (!(await requireAdmin(req, res))) return;
+
   try {
     const logs = logService.getLogs();
     res.json({ success: true, data: logs });
@@ -15,7 +18,9 @@ export const getAllLogs = (req: Request, res: Response): void => {
 };
 
 // Clear all logs
-export const clearLogs = (req: Request, res: Response): void => {
+export const clearLogs = async (req: Request, res: Response): Promise<void> => {
+  if (!(await requireAdmin(req, res))) return;
+
   try {
     logService.clearLogs();
     res.json({ success: true, message: 'Logs cleared successfully' });
@@ -26,7 +31,9 @@ export const clearLogs = (req: Request, res: Response): void => {
 };
 
 // Stream logs via SSE
-export const streamLogs = (req: Request, res: Response): void => {
+export const streamLogs = async (req: Request, res: Response): Promise<void> => {
+  if (!(await requireAdmin(req, res))) return;
+
   try {
     // Set headers for SSE
     res.writeHead(200, {
