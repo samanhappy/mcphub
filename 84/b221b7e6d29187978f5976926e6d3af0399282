@@ -1,0 +1,23 @@
+src/services/cimdClientService.ts
+  s_2259e194b1a47b::t_d4fb2fec687be5 161-165
+src/utils/__tests__/ssrf.test.ts
+  s_2259e194b1a47b::t_16633fa67cfc0b 173-185
+src/utils/ssrf.ts
+  s_2259e194b1a47b::t_d4fb2fec687be5 163,169,182
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "84b221b7e6d29187978f5976926e6d3af0399282",
+  "prompts": {},
+  "sessions": {
+    "s_2259e194b1a47b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a05c81-2374-74b0-8308-6b446e193b67",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
