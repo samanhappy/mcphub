@@ -1,8 +1,10 @@
-# MCPHub : Le Hub Unifié pour les Serveurs MCP
+# MCPHub
+
+> Une passerelle MCP et plateforme de gestion auto-hébergées pour connecter, gérer et exploiter des serveurs MCP.
 
 [English](README.md) | Français | [中文版](README.zh.md)
 
-MCPHub facilite la gestion et la mise à l'échelle de plusieurs serveurs MCP (Model Context Protocol) en les organisant en points de terminaison HTTP streamables (SSE) flexibles, prenant en charge l'accès à tous les serveurs, à des serveurs individuels ou à des groupes de serveurs logiques.
+MCPHub offre une manière unifiée de connecter et de gérer plusieurs serveurs MCP, de les organiser en groupes, de contrôler les accès et d'exposer des points de terminaison MCP stables aux clients tels que Claude Code, Cursor, Cherry Studio, OpenWebUI et autres applications compatibles MCP.
 
 ![Aperçu du tableau de bord](assets/dashboard.fr.png)
 
@@ -13,10 +15,14 @@ MCPHub facilite la gestion et la mise à l'échelle de plusieurs serveurs MCP (M
 
 ## 🚀 Fonctionnalités
 
-- **Gestion centralisée** - Surveillez et contrôlez tous les serveurs MCP depuis un tableau de bord unifié
-- **Routage flexible** - Accédez à tous les serveurs, groupes spécifiques ou serveurs individuels via HTTP/SSE
-- **Visibilité granulaire par groupe** - Contrôlez indépendamment la visibilité des Tools, Prompts et Resources de chaque serveur dans un groupe
-- **Partage par serveur** - Gardez un serveur privé, partagez-le avec certains utilisateurs ou rendez-le public
+- **Passerelle MCP unifiée** - Exposez tous les serveurs connectés via des points de terminaison MCP stables, avec des routes pour les groupes et les serveurs individuels
+- **Gestion des serveurs et des groupes** - Organisez les serveurs en groupes, gérez leur visibilité et contrôlez l'exposition des Tools, Prompts et Resources
+- **Prise en charge SSE / Streamable HTTP / stdio** - Connectez des serveurs MCP locaux et distants via les transports pris en charge
+- **Authentification et contrôle d'accès** - Utilisez OAuth 2.0, des bearer keys et la visibilité des serveurs ou groupes pour gérer les accès
+- **Alias et routage des serveurs** - Définissez des alias et routez les clients vers tous les serveurs, des groupes, un serveur individuel ou le routage intelligent
+- **Journaux et observabilité** - Consultez l'activité des appels d'outils, l'état des requêtes, la latence et les journaux des serveurs
+- **Vérifications de santé** - Surveillez la santé des connexions et l'état des serveurs depuis un même endroit
+- **Tableau de bord Web** - Gérez la configuration et le fonctionnement des serveurs depuis un navigateur
 - **Routage intelligent** - Découverte d'outils propulsée par IA utilisant la recherche sémantique vectorielle ([En savoir plus](https://docs.mcphub.app/features/smart-routing))
 - **Compression des résultats d'outils** - Réduisez automatiquement les grands résultats texte avant qu'ils n'atteignent les clients
 - **Configuration à chaud** - Ajoutez, supprimez ou mettez à jour les serveurs sans temps d'arrêt

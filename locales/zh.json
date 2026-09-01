@@ -65,8 +65,8 @@
   "auth": {
     "login": "登录",
     "loginTitle": "登录 MCPHub",
-    "slogan": "统一的 MCP 服务器管理平台",
-    "subtitle": "模型上下文协议服务器的集中管理平台，通过灵活的路由策略组织、监控和扩展多个 MCP 服务器。",
+    "slogan": "自托管 MCP 网关与管理平台",
+    "subtitle": "通过统一端点连接、组织、控制和运行 Model Context Protocol 服务器。",
     "username": "用户名",
     "password": "密码",
     "loggingIn": "登录中...",

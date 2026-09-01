@@ -1,7 +1,7 @@
 {
   "name": "@samanhappy/mcphub",
   "version": "dev",
-  "description": "A hub server for mcp servers",
+  "description": "Self-hosted MCP gateway and management platform for connecting, managing, and operating MCP servers.",
   "main": "dist/index.js",
   "type": "module",
   "bin": {
