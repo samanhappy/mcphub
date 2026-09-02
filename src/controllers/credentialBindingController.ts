@@ -5,10 +5,8 @@ import {
   CredentialBindingError,
   credentialBindingService,
 } from '../services/credentialBindingService.js';
-import {
-  invalidateCredentialRuntime,
-  refreshCredentialServerCatalog,
-} from '../services/mcpService.js';
+
+const loadCredentialRuntimeOperations = () => import('../services/mcpService.js');
 
 const getPrincipal = (req: Request): RequestPrincipal | null =>
   ((req as Request & { user?: RequestPrincipal }).user as RequestPrincipal | undefined) ?? null;
@@ -38,6 +36,8 @@ export const upsertCredentialBinding = async (req: Request, res: Response): Prom
       principal,
       (req.body?.values || {}) as CredentialValues,
     );
+    const { invalidateCredentialRuntime, refreshCredentialServerCatalog } =
+      await loadCredentialRuntimeOperations();
     invalidateCredentialRuntime(req.params.serverName, principal?.username || '');
     await refreshCredentialServerCatalog(req.params.serverName, principal?.username || '', {
       onlyIfEmpty: true,
@@ -55,6 +55,7 @@ export const deleteCredentialBinding = async (req: Request, res: Response): Prom
       req.params.serverName,
       principal,
     );
+    const { invalidateCredentialRuntime } = await loadCredentialRuntimeOperations();
     invalidateCredentialRuntime(req.params.serverName, principal?.username || '');
     res.json({ success: true, data: { deleted } } satisfies ApiResponse);
   } catch (error) {
