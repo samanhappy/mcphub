@@ -136,6 +136,34 @@ describe('ServerDaoDbImpl', () => {
     expect(result.sharedWithUsers).toEqual(sharedWithUsers);
   });
 
+  it('persists credential template and on-demand lifecycle metadata', async () => {
+    const dao = new ServerDaoDbImpl();
+    const credentialTemplate = { env: { PERSONAL_TOKEN: { label: 'Personal token' } } };
+    mockRepository.create.mockResolvedValue({
+      name: 'personal-server',
+      type: 'stdio',
+      command: 'node',
+      enabled: true,
+      credentialTemplate,
+      startOnDemand: true,
+      idleTimeoutMs: 120000,
+    });
+
+    const result = await dao.create({
+      name: 'personal-server',
+      type: 'stdio',
+      command: 'node',
+      credentialTemplate,
+      startOnDemand: true,
+      idleTimeoutMs: 120000,
+    });
+
+    expect(mockRepository.create).toHaveBeenCalledWith(
+      expect.objectContaining({ credentialTemplate, startOnDemand: true, idleTimeoutMs: 120000 }),
+    );
+    expect(result).toMatchObject({ credentialTemplate, startOnDemand: true, idleTimeoutMs: 120000 });
+  });
+
   it('should persist explicit shared-user updates', async () => {
     const dao = new ServerDaoDbImpl();
 

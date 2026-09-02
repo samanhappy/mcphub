@@ -375,6 +375,7 @@ export interface McpSettings {
   oauthClients?: IOAuthClient[]; // OAuth clients for MCPHub's authorization server
   oauthTokens?: IOAuthToken[]; // Persisted OAuth tokens (access + refresh) for authorization server
   bearerKeys?: BearerKey[]; // Bearer authentication keys (multi-key configuration)
+  credentialBindings?: CredentialBinding[]; // Encrypted user-owned per-server credentials
   prompts?: BuiltinPrompt[]; // Built-in configuration-driven prompt templates
   resources?: BuiltinResource[]; // Built-in configuration-driven static resources
 }
@@ -395,6 +396,38 @@ export interface ProxychainsConfig {
 // can extend the same scope in a future change.
 export type ServerVisibility = 'private' | 'group' | 'public';
 
+export interface CredentialTemplateSlot {
+  label?: string;
+}
+
+// Metadata-only declaration of user-supplied secret slots. Values are stored
+// separately in user-owned CredentialBinding records and never in ServerConfig.
+export interface CredentialTemplate {
+  env?: Record<string, CredentialTemplateSlot>;
+  headers?: Record<string, CredentialTemplateSlot>;
+}
+
+export interface CredentialValues {
+  env?: Record<string, string>;
+  headers?: Record<string, string>;
+}
+
+export interface EncryptedCredentialValues {
+  version: 1;
+  iv: string;
+  ciphertext: string;
+  authTag: string;
+}
+
+export interface CredentialBinding {
+  id: string;
+  serverName: string;
+  username: string;
+  encryptedValues: EncryptedCredentialValues;
+  createdAt: string;
+  updatedAt: string;
+}
+
 // Configuration details for an individual server
 export interface ServerConfig {
   type?: 'stdio' | 'sse' | 'streamable-http' | 'openapi'; // Type of server
@@ -414,6 +447,7 @@ export interface ServerConfig {
   // See issues #817 and #1037.
   visibility?: ServerVisibility;
   sharedWithUsers?: string[]; // Local MCPHub usernames allowed when visibility is 'group'.
+  credentialTemplate?: CredentialTemplate; // Required per-user env/header slot metadata; never values.
   enableKeepAlive?: boolean; // Enable remote health checks and automatic reconnect attempts
   keepAliveInterval?: number; // Health check and reconnect interval in milliseconds (default: 60000ms for SSE servers)
   tools?: Record<string, { enabled: boolean; description?: string }>; // Tool-specific configurations with enable/disable state and custom descriptions

@@ -12,6 +12,7 @@ import { OAuthTokenRepository } from '../db/repositories/OAuthTokenRepository.js
 import { BearerKeyRepository } from '../db/repositories/BearerKeyRepository.js';
 import { BuiltinPromptRepository } from '../db/repositories/BuiltinPromptRepository.js';
 import { BuiltinResourceRepository } from '../db/repositories/BuiltinResourceRepository.js';
+import { CredentialBindingRepository } from '../db/repositories/CredentialBindingRepository.js';
 import { logger } from './logger.js';
 
 /**
@@ -40,6 +41,7 @@ export async function migrateToDatabase(): Promise<boolean> {
     const bearerKeyRepo = new BearerKeyRepository();
     const builtinPromptRepo = new BuiltinPromptRepository();
     const builtinResourceRepo = new BuiltinResourceRepository();
+    const credentialBindingRepo = new CredentialBindingRepository();
 
     // Migrate users
     if (settings.users && settings.users.length > 0) {
@@ -81,6 +83,7 @@ export async function migrateToDatabase(): Promise<boolean> {
             owner: config.owner,
             visibility: config.visibility ?? 'private',
             sharedWithUsers: config.sharedWithUsers,
+            credentialTemplate: config.credentialTemplate,
             enableKeepAlive: config.enableKeepAlive,
             keepAliveInterval: config.keepAliveInterval,
             tools: config.tools,
@@ -91,11 +94,26 @@ export async function migrateToDatabase(): Promise<boolean> {
             openapi: config.openapi,
             passthroughHeaders: config.passthroughHeaders,
             perSessionClient: config.perSessionClient,
+            startOnDemand: config.startOnDemand,
+            idleTimeoutMs: config.idleTimeoutMs,
           });
           logger.log(`  - Created server: ${name}`);
         } else {
           logger.log(`  - Server already exists: ${name}`);
         }
+      }
+    }
+
+    // Credential payloads are already encrypted in the JSON settings file;
+    // migration copies ciphertext without ever decrypting or logging it.
+    if (settings.credentialBindings && settings.credentialBindings.length > 0) {
+      logger.log(`Migrating ${settings.credentialBindings.length} credential bindings...`);
+      for (const binding of settings.credentialBindings) {
+        await credentialBindingRepo.upsert(
+          binding.serverName,
+          binding.username,
+          binding.encryptedValues,
+        );
       }
     }
 

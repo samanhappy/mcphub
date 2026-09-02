@@ -109,6 +109,16 @@
     "passwordStrengthHint": "Le mot de passe doit contenir au moins 8 caractères et inclure des lettres, des chiffres et des caractères spéciaux"
   },
   "server": {
+    "credentialTemplate": {
+      "title": "Champs d’identifiants par utilisateur",
+      "description": "Déclarez les valeurs que chaque utilisateur doit fournir. Seules les métadonnées sont stockées ici ; les valeurs sont saisies dans Mes identifiants.",
+      "envSlots": "Variables d’environnement",
+      "headerSlots": "En-têtes HTTP",
+      "noSlots": "Aucun champ déclaré.",
+      "slotName": "Nom du champ d’identifiant",
+      "slotLabel": "Libellé du champ d’identifiant",
+      "labelPlaceholder": "Libellé affiché à l’utilisateur"
+    },
     "startOnDemand": "Démarrage à la demande",
     "startOnDemandDescription": "Ignore la connexion au démarrage et lance ce serveur uniquement lorsqu'un appel d'outil se produit. Le processus est arrêté automatiquement après le délai d'inactivité, puis redémarré au prochain appel. Réduit l'utilisation de la mémoire pour les serveurs rarement utilisés.",
     "idleTimeoutMs": "Délai d'arrêt en inactivité (ms)",
@@ -364,6 +374,7 @@
     "groups": "Groupes",
     "prompts": "Prompts",
     "resources": "Ressources",
+    "credentials": "Mes identifiants",
     "users": "Utilisateurs",
     "settings": "Paramètres",
     "changePassword": "Changer le mot de passe",
@@ -373,6 +384,27 @@
     "activity": "Activité",
     "workspace": "Espace de travail",
     "system": "Système"
+  },
+  "credentials": {
+    "title": "Mes identifiants",
+    "subtitle": "Identifiants privés utilisés uniquement pour vos appels aux serveurs partagés.",
+    "empty": "Aucun serveur ne demande d’identifiants personnels.",
+    "configured": "Configuré",
+    "required": "Requis",
+    "badge": "Identifiants personnels",
+    "configureForServer": "Configurer vos identifiants pour ce serveur",
+    "writeOnly": "Les valeurs sont accessibles uniquement en écriture et ne sont jamais renvoyées par l’API.",
+    "valuePlaceholder": "Saisir la valeur",
+    "replacePlaceholder": "Configuré — saisir une valeur de remplacement",
+    "save": "Enregistrer les identifiants",
+    "saving": "Enregistrement...",
+    "saved": "Identifiants enregistrés",
+    "deleted": "Identifiants supprimés",
+    "enterValue": "Saisissez au moins une valeur d’identifiant",
+    "loadFailed": "Échec du chargement des identifiants",
+    "saveFailed": "Échec de l’enregistrement des identifiants",
+    "deleteFailed": "Échec de la suppression des identifiants",
+    "deleteConfirm": "Supprimer vos identifiants pour {{serverName}} ?"
   },
   "pages": {
     "dashboard": {

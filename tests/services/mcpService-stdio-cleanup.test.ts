@@ -84,6 +84,7 @@ const mockServerDao = {
   create: jest.fn().mockResolvedValue(true),
   update: jest.fn().mockResolvedValue(true),
 };
+const mockDeleteCredentialBindingsByServer = jest.fn().mockResolvedValue(0);
 
 jest.mock('../../src/dao/index.js', () => ({
   getServerDao: jest.fn(() => mockServerDao),
@@ -93,6 +94,9 @@ jest.mock('../../src/dao/index.js', () => ({
   getGroupDao: jest.fn(),
   getBuiltinPromptDao: jest.fn(),
   getBuiltinResourceDao: jest.fn(),
+  getCredentialBindingDao: jest.fn(() => ({
+    deleteByServer: mockDeleteCredentialBindingsByServer,
+  })),
 }));
 
 jest.mock('../../src/services/services.js', () => ({
@@ -208,6 +212,7 @@ describe('orphan stdio process cleanup (issue #920)', () => {
       expect(result.success).toBe(true);
       expect(mockClientClose).toHaveBeenCalledTimes(1);
       expect(mockStdioTransportClose).toHaveBeenCalledTimes(1);
+      expect(mockDeleteCredentialBindingsByServer).toHaveBeenCalledWith('orphan-server');
     });
 
     it('sends SIGTERM to the full stdio process tree on delete (not just the wrapper)', async () => {

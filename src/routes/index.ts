@@ -152,6 +152,11 @@ import {
   deleteBearerKey,
 } from '../controllers/bearerKeyController.js';
 import {
+  deleteCredentialBinding,
+  getCredentialBindings,
+  upsertCredentialBinding,
+} from '../controllers/credentialBindingController.js';
+import {
   checkActivityAvailable,
   getActivities,
   getActivityById,
@@ -337,6 +342,12 @@ export const initRoutes = async (app: express.Application): Promise<void> => {
   authenticatedRouter.post('/auth/keys', createBearerKey);
   authenticatedRouter.put('/auth/keys/:id', updateBearerKey);
   authenticatedRouter.delete('/auth/keys/:id', deleteBearerKey);
+
+  // Current-user credential bindings. Ownership always comes from the
+  // authenticated principal; no route accepts a target username.
+  authenticatedRouter.get('/credentials', getCredentialBindings);
+  authenticatedRouter.put('/credentials/:serverName', upsertCredentialBinding);
+  authenticatedRouter.delete('/credentials/:serverName', deleteCredentialBinding);
 
   // Activity routes (database mode only)
   authenticatedRouter.get('/activities/available', checkActivityAvailable);

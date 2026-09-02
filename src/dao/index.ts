@@ -9,6 +9,8 @@ export * from './UserConfigDao.js';
 export * from './OAuthClientDao.js';
 export * from './OAuthTokenDao.js';
 export * from './BearerKeyDao.js';
+export * from './CredentialBindingDao.js';
+export * from './CredentialBindingDaoDbImpl.js';
 export * from './ActivityDao.js';
 export * from './BuiltinPromptDao.js';
 export * from './BuiltinResourceDao.js';

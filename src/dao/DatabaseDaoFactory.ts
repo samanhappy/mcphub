@@ -10,6 +10,7 @@ import {
   BearerKeyDao,
   BuiltinPromptDao,
   BuiltinResourceDao,
+  CredentialBindingDao,
 } from './index.js';
 import { UserDaoDbImpl } from './UserDaoDbImpl.js';
 import { ServerDaoDbImpl } from './ServerDaoDbImpl.js';
@@ -22,6 +23,7 @@ import { BearerKeyDaoDbImpl } from './BearerKeyDaoDbImpl.js';
 import { BuiltinPromptDaoDbImpl } from './BuiltinPromptDaoDbImpl.js';
 import { BuiltinResourceDaoDbImpl } from './BuiltinResourceDaoDbImpl.js';
 import { ActivityDao, ActivityDaoDbImpl } from './ActivityDao.js';
+import { CredentialBindingDaoDbImpl } from './CredentialBindingDaoDbImpl.js';
 
 /**
  * Database-backed DAO factory implementation
@@ -40,6 +42,7 @@ export class DatabaseDaoFactory implements DaoFactory {
   private builtinPromptDao: BuiltinPromptDao | null = null;
   private builtinResourceDao: BuiltinResourceDao | null = null;
   private activityDao: ActivityDao | null = null;
+  private credentialBindingDao: CredentialBindingDao | null = null;
 
   /**
    * Get singleton instance
@@ -111,6 +114,13 @@ export class DatabaseDaoFactory implements DaoFactory {
     return this.bearerKeyDao!;
   }
 
+  getCredentialBindingDao(): CredentialBindingDao {
+    if (!this.credentialBindingDao) {
+      this.credentialBindingDao = new CredentialBindingDaoDbImpl();
+    }
+    return this.credentialBindingDao;
+  }
+
   getBuiltinPromptDao(): BuiltinPromptDao {
     if (!this.builtinPromptDao) {
       this.builtinPromptDao = new BuiltinPromptDaoDbImpl();
@@ -147,5 +157,6 @@ export class DatabaseDaoFactory implements DaoFactory {
     this.builtinPromptDao = null;
     this.builtinResourceDao = null;
     this.activityDao = null;
+    this.credentialBindingDao = null;
   }
 }

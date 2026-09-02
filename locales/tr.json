@@ -109,6 +109,16 @@
     "passwordStrengthHint": "Şifre en az 8 karakter olmalı ve harf, rakam ve özel karakter içermelidir"
   },
   "server": {
+    "credentialTemplate": {
+      "title": "Kullanıcı başına kimlik bilgisi alanları",
+      "description": "Her kullanıcının sağlaması gereken değerleri tanımlayın. Burada yalnızca meta veriler saklanır; değerler Kimlik Bilgilerim sayfasında girilir.",
+      "envSlots": "Ortam değişkenleri",
+      "headerSlots": "HTTP başlıkları",
+      "noSlots": "Tanımlanmış alan yok.",
+      "slotName": "Kimlik bilgisi alan adı",
+      "slotLabel": "Kimlik bilgisi alan etiketi",
+      "labelPlaceholder": "Kullanıcıya gösterilen etiket"
+    },
     "startOnDemand": "Talep üzerine başlat",
     "startOnDemandDescription": "Başlangıçtaki bağlantıyı atla ve bu sunucuyu yalnızca bir araç çağrısı geldiğinde başlat. İşlem, boşta kalma zaman aşımından sonra otomatik olarak kapatılır ve bir sonraki çağrıda yeniden başlatılır. Seyrek kullanılan sunucularda kalıcı bellek kullanımını azaltır.",
     "idleTimeoutMs": "Boşta kapatma zaman aşımı (ms)",
@@ -364,6 +374,7 @@
     "groups": "Gruplar",
     "prompts": "Promptlar",
     "resources": "Kaynaklar",
+    "credentials": "Kimlik Bilgilerim",
     "users": "Kullanıcılar",
     "settings": "Ayarlar",
     "changePassword": "Şifre Değiştir",
@@ -373,6 +384,27 @@
     "activity": "Etkinlik",
     "workspace": "Çalışma Alanı",
     "system": "Sistem"
+  },
+  "credentials": {
+    "title": "Kimlik Bilgilerim",
+    "subtitle": "Yalnızca paylaşılan sunuculara yaptığınız çağrılarda kullanılan özel kimlik bilgileri.",
+    "empty": "Kişisel kimlik bilgisi kullanılabilen sunucu yok.",
+    "configured": "Yapılandırıldı",
+    "required": "Gerekli",
+    "badge": "Kişisel kimlik bilgileri",
+    "configureForServer": "Bu sunucu için kimlik bilgilerinizi yapılandırın",
+    "writeOnly": "Değerler yalnızca yazılabilir ve API tarafından hiçbir zaman döndürülmez.",
+    "valuePlaceholder": "Değer girin",
+    "replacePlaceholder": "Yapılandırıldı — değiştirmek için yeni değer girin",
+    "save": "Kimlik bilgilerini kaydet",
+    "saving": "Kaydediliyor...",
+    "saved": "Kimlik bilgileri kaydedildi",
+    "deleted": "Kimlik bilgileri kaldırıldı",
+    "enterValue": "En az bir kimlik bilgisi değeri girin",
+    "loadFailed": "Kimlik bilgileri yüklenemedi",
+    "saveFailed": "Kimlik bilgileri kaydedilemedi",
+    "deleteFailed": "Kimlik bilgileri kaldırılamadı",
+    "deleteConfirm": "{{serverName}} için kimlik bilgilerinizi kaldırmak istiyor musunuz?"
   },
   "pages": {
     "dashboard": {

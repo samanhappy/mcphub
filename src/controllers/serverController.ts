@@ -36,6 +36,7 @@ import { createSafeJSON } from '../utils/serialization.js';
 import { cloneDefaultOAuthServerConfig } from '../constants/oauthServerDefaults.js';
 import {
   getBearerKeyDao,
+  getCredentialBindingDao,
   getGroupDao,
   getOAuthClientDao,
   getOAuthTokenDao,
@@ -53,7 +54,10 @@ import {
 import { disconnectUpstreamOAuth } from '../services/upstreamOAuthDisconnectService.js';
 import type { UpstreamOAuthDisconnectScope } from '../services/upstreamOAuthDisconnectService.js';
 import { normalizeServerConfigForPersistence } from '../utils/serverConfigPersistence.js';
-import { isPrivilegedServerConfig } from '../utils/serverConfigValidation.js';
+import {
+  getCredentialTemplateValidationError,
+  isPrivilegedServerConfig,
+} from '../utils/serverConfigValidation.js';
 import { validateServerName } from '../utils/serverNameValidation.js';
 import { setCachedSystemConfig } from '../utils/systemConfigCache.js';
 import { DEFAULT_INSTALL_BASE_URL, withResolvedInstallBaseUrl } from '../utils/installBaseUrl.js';
@@ -206,6 +210,7 @@ const CONNECTION_RELEVANT_CONFIG_FIELDS = [
   'enableKeepAlive',
   'keepAliveInterval',
   'proxy',
+  'credentialTemplate',
 ] as const;
 
 type ConnectionRelevantServerConfig = Pick<
@@ -531,6 +536,11 @@ export const createServer = async (req: Request, res: Response): Promise<void> =
     }
 
     const normalizedConfig = normalizeServerConfigForPersistence(config);
+    const credentialTemplateError = getCredentialTemplateValidationError(normalizedConfig);
+    if (credentialTemplateError) {
+      res.status(400).json({ success: false, message: credentialTemplateError });
+      return;
+    }
 
     if (
       !normalizedConfig.url &&
@@ -675,6 +685,10 @@ export const batchCreateServers = async (req: Request, res: Response): Promise<v
       }
 
       const normalizedConfig = normalizeServerConfigForPersistence(config);
+      const credentialTemplateError = getCredentialTemplateValidationError(normalizedConfig);
+      if (credentialTemplateError) {
+        return { valid: false, message: credentialTemplateError };
+      }
 
       if (
         !normalizedConfig.url &&
@@ -911,6 +925,11 @@ export const updateServer = async (req: Request, res: Response): Promise<void> =
     }
 
     const normalizedConfig = normalizeServerConfigForPersistence(config);
+    const credentialTemplateError = getCredentialTemplateValidationError(normalizedConfig);
+    if (credentialTemplateError) {
+      res.status(400).json({ success: false, message: credentialTemplateError });
+      return;
+    }
 
     if (
       !normalizedConfig.url &&
@@ -1055,6 +1074,9 @@ export const updateServer = async (req: Request, res: Response): Promise<void> =
       // Update references in bearer keys
       const bearerKeyDao = getBearerKeyDao();
       await bearerKeyDao.updateServerName(name, targetName);
+
+      // Bindings remain encrypted while their canonical server key changes.
+      await getCredentialBindingDao().renameServer(name, targetName);
 
       // Drop embeddings stored under the old name so search_tools does not
       // advertise phantom tools; addOrUpdateServer below regenerates them

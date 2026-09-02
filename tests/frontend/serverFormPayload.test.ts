@@ -1,6 +1,30 @@
 import { buildServerPayload } from '../../frontend/src/utils/serverFormPayload';
 
 describe('buildServerPayload', () => {
+  it('serializes per-user credential slot metadata without credential values', () => {
+    const payload = buildServerPayload({
+      formData: {
+        name: 'personal-http',
+        url: 'https://example.com/mcp',
+        command: '',
+        arguments: '',
+        env: [],
+        headers: [],
+        credentialEnvSlots: [{ key: 'API_TOKEN', label: 'API token' }],
+        credentialHeaderSlots: [{ key: 'Authorization', label: 'Bearer token' }],
+      },
+      serverType: 'streamable-http',
+      envVars: [],
+      headerVars: [],
+    });
+
+    expect(payload.config.credentialTemplate).toEqual({
+      env: { API_TOKEN: { label: 'API token' } },
+      headers: { Authorization: { label: 'Bearer token' } },
+    });
+    expect(JSON.stringify(payload)).not.toContain('secret');
+  });
+
   it('keeps empty headers and env payloads explicit for SSE servers', () => {
     const payload = buildServerPayload({
       formData: {

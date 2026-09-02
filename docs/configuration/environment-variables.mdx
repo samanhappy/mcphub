@@ -27,10 +27,17 @@ MCPHub reads the following environment variables at startup. The authoritative l
 | --- | --- | --- |
 | `ADMIN_PASSWORD` | random (`admin123` in `pnpm dev`) | Password seeded for the bootstrap `admin` user when no users exist yet. If unset, `pnpm dev` uses `admin123`; other starts generate a 24-character random password and print it to the logs. |
 | `JWT_SECRET` | random per-process | Secret used to sign JWTs issued by `/api/auth/login`. See the warning below — this **must** be set explicitly in any non-development deployment. |
+| `MCPHUB_CREDENTIAL_ENCRYPTION_KEY` | `JWT_SECRET` | Optional dedicated key material for AES-256-GCM encrypted per-user credential bindings. Use a persistent, high-entropy value. Rotation makes existing bindings unreadable, so users must re-enter them. |
 
 <Warning>
   **`JWT_SECRET` must be set to a persistent, high-entropy value (≥ 32 random bytes) in staging and production.** If it is left unset, MCPHub generates a new random secret on every process start, which means: every restart invalidates all outstanding sessions and bearer tokens; horizontally-scaled instances cannot share sessions because each replica signs with its own secret; and CI / container restarts silently log everyone out. Generate one with `openssl rand -hex 32` and store it in your secret manager. Treat it like any other long-lived cryptographic key — rotation requires invalidating outstanding JWTs.
 </Warning>
+
+If you enable per-user server credentials, prefer a dedicated
+`MCPHUB_CREDENTIAL_ENCRYPTION_KEY`. When it is omitted, MCPHub derives the
+encryption key from `JWT_SECRET`; therefore an ephemeral or rotated
+`JWT_SECRET` also makes stored credential bindings unreadable. Neither key is
+stored in `mcp_settings.json` or the database.
 
 ### Better Auth (optional social login)
 

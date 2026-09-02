@@ -16,7 +16,9 @@ import {
   DownloadCloud,
   LogOut,
   type LucideIcon,
+  KeyRound,
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { Server, ServerCost } from '@/types';
 import { formatTokens } from '@/utils/contextCost';
 import { ServerStatusDot } from '@/components/ui/StatusDot';
@@ -150,6 +152,7 @@ const ServerCard = ({
   const { showToast } = useToast();
   const { exportMCPSettings, installConfig } = useSettingsData();
   const { auth } = useAuth();
+  const navigate = useNavigate();
   const baseUrl = installConfig?.baseUrl?.replace(/\/+$/, '') || '';
 
   const [expanded, setExpanded] = useState(false);
@@ -538,6 +541,19 @@ const ServerCard = ({
                   <span className="hub-tag accent flex-shrink-0" title={t('server.mcpApp')}>
                     App
                   </span>
+                )}
+                {server.config?.credentialTemplate && (
+                  <button
+                    type="button"
+                    className="hub-tag accent flex items-center gap-1 flex-shrink-0"
+                    title={t('credentials.configureForServer')}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      navigate(`/credentials?server=${encodeURIComponent(server.name)}`);
+                    }}
+                  >
+                    <KeyRound size={10} /> {t('credentials.badge')}
+                  </button>
                 )}
                 {server.error && (
                   <div className="relative" ref={errorPopoverRef}>

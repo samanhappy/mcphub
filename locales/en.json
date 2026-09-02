@@ -109,6 +109,16 @@
     "passwordStrengthHint": "Password must be at least 8 characters and contain letters, numbers, and special characters"
   },
   "server": {
+    "credentialTemplate": {
+      "title": "Per-user credential slots",
+      "description": "Declare the values each user must provide. This stores metadata only; credential values are entered separately in My Credentials.",
+      "envSlots": "Environment variables",
+      "headerSlots": "HTTP headers",
+      "noSlots": "No slots declared.",
+      "slotName": "Credential slot name",
+      "slotLabel": "Credential slot label",
+      "labelPlaceholder": "User-facing label"
+    },
     "startOnDemand": "Start On Demand",
     "startOnDemandDescription": "Skip startup connect and spawn this server only when a tool call arrives. The process is shut down automatically after the idle timeout, then restarted on the next call. Reduces persistent memory usage for rarely-used servers.",
     "idleTimeoutMs": "Idle shutdown timeout (ms)",
@@ -363,6 +373,7 @@
     "groups": "Groups",
     "prompts": "Prompts",
     "resources": "Resources",
+    "credentials": "My Credentials",
     "users": "Users",
     "settings": "Settings",
     "changePassword": "Change Password",
@@ -372,6 +383,27 @@
     "activity": "Activity",
     "workspace": "Workspace",
     "system": "System"
+  },
+  "credentials": {
+    "title": "My Credentials",
+    "subtitle": "Private credentials used only for your calls to shared servers.",
+    "empty": "No servers available for personal credentials.",
+    "configured": "Configured",
+    "required": "Required",
+    "badge": "Personal credentials",
+    "configureForServer": "Configure your credentials for this server",
+    "writeOnly": "Values are write-only and are never returned by the API.",
+    "valuePlaceholder": "Enter value",
+    "replacePlaceholder": "Configured — enter a replacement",
+    "save": "Save credentials",
+    "saving": "Saving...",
+    "saved": "Credentials saved",
+    "deleted": "Credentials removed",
+    "enterValue": "Enter at least one credential value",
+    "loadFailed": "Failed to load credentials",
+    "saveFailed": "Failed to save credentials",
+    "deleteFailed": "Failed to remove credentials",
+    "deleteConfirm": "Remove your credentials for {{serverName}}?"
   },
   "pages": {
     "dashboard": {

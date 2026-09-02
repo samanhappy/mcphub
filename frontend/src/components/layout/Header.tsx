@@ -24,6 +24,7 @@ const useCrumbs = (): string[] => {
     if (path.startsWith('/groups')) return [root, t('nav.groups')];
     if (path.startsWith('/prompts')) return [root, t('nav.prompts')];
     if (path.startsWith('/resources')) return [root, t('nav.resources')];
+    if (path.startsWith('/credentials')) return [root, t('nav.credentials')];
     if (path.startsWith('/users')) return [root, t('nav.users')];
     if (path.startsWith('/market')) {
       const serverName = (params as { serverName?: string }).serverName;

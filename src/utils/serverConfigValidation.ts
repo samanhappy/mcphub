@@ -14,3 +14,25 @@ export const isPrivilegedServerConfig = (config: ServerConfig): boolean => {
       (!config.url && !config.openapi?.url && !config.openapi?.schema),
   );
 };
+
+/**
+ * Credential runtimes currently cover MCP stdio and MCP HTTP transports.
+ * Header slots have no meaning for stdio, and OpenAPI has a separate request
+ * client/lifecycle that is intentionally deferred from the MVP.
+ */
+export const getCredentialTemplateValidationError = (config: ServerConfig): string | null => {
+  const template = config.credentialTemplate;
+  if (!template) return null;
+  const hasEnv = Object.keys(template.env || {}).length > 0;
+  const hasHeaders = Object.keys(template.headers || {}).length > 0;
+  if (!hasEnv && !hasHeaders) return null;
+
+  const type = config.type || (config.openapi ? 'openapi' : config.url ? 'sse' : 'stdio');
+  if (type === 'openapi') {
+    return 'Per-user credential templates are not supported for OpenAPI servers yet';
+  }
+  if (type === 'stdio' && hasHeaders) {
+    return 'STDIO per-user credential templates do not support header slots; use environment variable slots';
+  }
+  return null;
+};

@@ -6,6 +6,7 @@ import { UserConfigDao, UserConfigDaoImpl } from './UserConfigDao.js';
 import { OAuthClientDao, OAuthClientDaoImpl } from './OAuthClientDao.js';
 import { OAuthTokenDao, OAuthTokenDaoImpl } from './OAuthTokenDao.js';
 import { BearerKeyDao, BearerKeyDaoImpl } from './BearerKeyDao.js';
+import { CredentialBindingDao, CredentialBindingDaoImpl } from './CredentialBindingDao.js';
 import { ActivityDao } from './ActivityDao.js';
 import { BuiltinPromptDao, BuiltinPromptDaoImpl } from './BuiltinPromptDao.js';
 import { BuiltinResourceDao, BuiltinResourceDaoImpl } from './BuiltinResourceDao.js';
@@ -23,6 +24,7 @@ export interface DaoFactory {
   getOAuthClientDao(): OAuthClientDao;
   getOAuthTokenDao(): OAuthTokenDao;
   getBearerKeyDao(): BearerKeyDao;
+  getCredentialBindingDao(): CredentialBindingDao;
   getBuiltinPromptDao(): BuiltinPromptDao;
   getBuiltinResourceDao(): BuiltinResourceDao;
   getActivityDao?(): ActivityDao; // Optional - only available in database mode
@@ -42,6 +44,7 @@ export class JsonFileDaoFactory implements DaoFactory {
   private oauthClientDao: OAuthClientDao | null = null;
   private oauthTokenDao: OAuthTokenDao | null = null;
   private bearerKeyDao: BearerKeyDao | null = null;
+  private credentialBindingDao: CredentialBindingDao | null = null;
   private builtinPromptDao: BuiltinPromptDao | null = null;
   private builtinResourceDao: BuiltinResourceDao | null = null;
 
@@ -115,6 +118,13 @@ export class JsonFileDaoFactory implements DaoFactory {
     return this.bearerKeyDao;
   }
 
+  getCredentialBindingDao(): CredentialBindingDao {
+    if (!this.credentialBindingDao) {
+      this.credentialBindingDao = new CredentialBindingDaoImpl();
+    }
+    return this.credentialBindingDao;
+  }
+
   getBuiltinPromptDao(): BuiltinPromptDao {
     if (!this.builtinPromptDao) {
       this.builtinPromptDao = new BuiltinPromptDaoImpl();
@@ -141,6 +151,7 @@ export class JsonFileDaoFactory implements DaoFactory {
     this.oauthClientDao = null;
     this.oauthTokenDao = null;
     this.bearerKeyDao = null;
+    this.credentialBindingDao = null;
     this.builtinPromptDao = null;
     this.builtinResourceDao = null;
   }
@@ -217,6 +228,10 @@ export function getOAuthTokenDao(): OAuthTokenDao {
 
 export function getBearerKeyDao(): BearerKeyDao {
   return getDaoFactory().getBearerKeyDao();
+}
+
+export function getCredentialBindingDao(): CredentialBindingDao {
+  return getDaoFactory().getCredentialBindingDao();
 }
 
 export function getBuiltinPromptDao(): BuiltinPromptDao {

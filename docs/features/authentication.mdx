@@ -25,6 +25,20 @@ Each server has a `visibility` setting (`private` / `group` / `public`) that con
 
 The visibility is editable per server from the dashboard (Server form → Advanced Options → Visibility). Edit an existing server to select local usernames for `'group'` sharing. For deployments where every user should see every server (single-user self-hosted, small trusted team), an operator can set the relevant servers to `'public'` from the dashboard.
 
+### Per-user credentials for shared servers
+
+Server owners can declare required environment-variable or HTTP-header slots in
+the server form without storing shared values. Each authorized user fills those
+write-only values in **My Credentials**. The binding belongs to the exact
+authenticated username, including an OIDC email or the owner of a user-level
+bearer key, and does not grant additional server visibility.
+
+Credential use is intentionally separate from configuration read access:
+authorized callers can use their binding when invoking the server, while only
+the existing owner/admin rules expose full server configuration. Read APIs
+return template metadata and configured/not-configured indicators, never raw
+credential values or encrypted payloads.
+
 ## Login (JWT)
 
 The dashboard and any script that does not present a bearer key uses the JWT flow:

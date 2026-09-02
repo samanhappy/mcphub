@@ -26,6 +26,7 @@ const SAFE_SERVER_CONFIG_FIELDS = [
   'tools',
   'prompts',
   'resources',
+  'credentialTemplate',
 ] as const;
 
 // OAuth session-recovery fields exposed on ServerInfo list entries; only the

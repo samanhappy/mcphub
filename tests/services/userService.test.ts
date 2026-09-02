@@ -9,6 +9,8 @@ const mockUpdatePassword = jest.fn();
 const mockDelete = jest.fn();
 const mockFindAdmins = jest.fn();
 const mockDeleteBearerKeysByOwner = jest.fn();
+const mockDeleteCredentialBindingsByUsername = jest.fn();
+const mockInvalidateUserCredentialRuntimes = jest.fn();
 
 jest.mock('../../src/dao/index.js', () => ({
   getUserDao: jest.fn(() => ({
@@ -25,6 +27,13 @@ jest.mock('../../src/dao/index.js', () => ({
   getBearerKeyDao: jest.fn(() => ({
     deleteByOwner: mockDeleteBearerKeysByOwner,
   })),
+  getCredentialBindingDao: jest.fn(() => ({
+    deleteByUsername: mockDeleteCredentialBindingsByUsername,
+  })),
+}));
+
+jest.mock('../../src/services/mcpService.js', () => ({
+  invalidateUserCredentialRuntimes: mockInvalidateUserCredentialRuntimes,
 }));
 
 import {
@@ -149,12 +158,15 @@ describe('userService', () => {
       ]);
       mockDelete.mockResolvedValue(true);
       mockDeleteBearerKeysByOwner.mockResolvedValue(1);
+      mockDeleteCredentialBindingsByUsername.mockResolvedValue(1);
 
       const result = await deleteUser('user1');
 
       expect(result).toBe(true);
       expect(mockDelete).toHaveBeenCalledWith('user1');
       expect(mockDeleteBearerKeysByOwner).toHaveBeenCalledWith('user1');
+      expect(mockDeleteCredentialBindingsByUsername).toHaveBeenCalledWith('user1');
+      expect(mockInvalidateUserCredentialRuntimes).toHaveBeenCalledWith('user1');
     });
 
     it('should not delete the last admin', async () => {

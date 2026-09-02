@@ -44,6 +44,10 @@ const mockBearerKeyDao = {
   updateServerName: jest.fn(),
 };
 
+const mockCredentialBindingDao = {
+  renameServer: jest.fn(),
+};
+
 const mockRemoveServerToolEmbeddings = jest.fn();
 const mockNotifyToolChanged = jest.fn();
 const mockBroadcastToolListChanged = jest.fn();
@@ -71,6 +75,7 @@ jest.mock('../../src/dao/DaoFactory.js', () => ({
   getOAuthClientDao: jest.fn(() => mockOAuthClientDao),
   getOAuthTokenDao: jest.fn(() => mockOAuthTokenDao),
   getBearerKeyDao: jest.fn(() => mockBearerKeyDao),
+  getCredentialBindingDao: jest.fn(() => mockCredentialBindingDao),
 }));
 
 jest.mock('../../src/services/mcpService.js', () => ({
@@ -1311,6 +1316,7 @@ describe('serverController - updateServer', () => {
       mockServerDao.rename.mockResolvedValue(true);
       mockGroupDao.updateServerName.mockResolvedValue(undefined);
       mockBearerKeyDao.updateServerName.mockResolvedValue(undefined);
+      mockCredentialBindingDao.renameServer.mockResolvedValue(1);
       mockAddOrUpdateServer.mockResolvedValue({ success: true });
       mockRemoveServerToolEmbeddings.mockResolvedValue(undefined);
 
@@ -1326,6 +1332,10 @@ describe('serverController - updateServer', () => {
       expect(mockServerDao.rename).toHaveBeenCalledWith('test-server', 'renamed-server');
       expect(mockGroupDao.updateServerName).toHaveBeenCalledWith('test-server', 'renamed-server');
       expect(mockBearerKeyDao.updateServerName).toHaveBeenCalledWith(
+        'test-server',
+        'renamed-server',
+      );
+      expect(mockCredentialBindingDao.renameServer).toHaveBeenCalledWith(
         'test-server',
         'renamed-server',
       );

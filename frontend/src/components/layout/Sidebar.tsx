@@ -12,6 +12,7 @@ import {
   MessageSquare,
   Activity,
   ScrollText,
+  KeyRound,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useServerContext } from '@/contexts/ServerContext';
@@ -66,6 +67,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
     },
     { path: '/prompts', label: t('nav.prompts'), icon: <MessageSquare className="h-4 w-4" /> },
     { path: '/resources', label: t('nav.resources'), icon: <FileText className="h-4 w-4" /> },
+    { path: '/credentials', label: t('nav.credentials'), icon: <KeyRound className="h-4 w-4" /> },
     { path: '/market', label: t('nav.market'), icon: <Store className="h-4 w-4" /> },
   ];
 

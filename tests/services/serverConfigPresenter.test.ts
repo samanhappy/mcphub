@@ -65,6 +65,10 @@ const buildRawServerConfig = (): Record<string, unknown> => ({
   perSessionClient: false,
   startOnDemand: false,
   idleTimeoutMs: 300000,
+  credentialTemplate: {
+    env: { TAVILY_API_KEY: { label: 'Tavily API key' } },
+    headers: { Authorization: { label: 'Personal token' } },
+  },
   enableKeepAlive: true,
   keepAliveInterval: 60000,
   tools: { search: { enabled: true } },
@@ -109,6 +113,10 @@ describe('serverConfigPresenter (#1036 Phase 1)', () => {
         owner: 'bob',
         enabled: true,
         tools: { search: { enabled: true } },
+        credentialTemplate: {
+          env: { TAVILY_API_KEY: { label: 'Tavily API key' } },
+          headers: { Authorization: { label: 'Personal token' } },
+        },
         configRestricted: true,
       });
     });
@@ -119,8 +127,6 @@ describe('serverConfigPresenter (#1036 Phase 1)', () => {
         'https://mcp.example.com/mcp',
         '"command"',
         '"args"',
-        '"env"',
-        '"headers"',
         '"oauth"',
         '"proxy"',
         '"openapi"',
@@ -136,6 +142,8 @@ describe('serverConfigPresenter (#1036 Phase 1)', () => {
       ]) {
         expect(body).not.toContain(withheld);
       }
+      expect(body).toContain('"credentialTemplate"');
+      expect(body).toContain('"TAVILY_API_KEY"');
     });
 
     it('serializes the safe view without any sentinel secret, including unknown fields', () => {

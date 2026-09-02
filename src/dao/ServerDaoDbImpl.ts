@@ -85,6 +85,7 @@ export class ServerDaoDbImpl implements ServerDao {
       owner: entity.owner,
       visibility: entity.visibility ?? 'private',
       sharedWithUsers: entity.sharedWithUsers,
+      credentialTemplate: entity.credentialTemplate,
       enableKeepAlive: entity.enableKeepAlive,
       keepAliveInterval: entity.keepAliveInterval,
       tools: entity.tools,
@@ -96,6 +97,8 @@ export class ServerDaoDbImpl implements ServerDao {
       openapi: entity.openapi,
       passthroughHeaders: entity.passthroughHeaders,
       perSessionClient: entity.perSessionClient,
+      startOnDemand: entity.startOnDemand,
+      idleTimeoutMs: entity.idleTimeoutMs,
     });
     return this.mapToServerConfig(server);
   }
@@ -135,6 +138,7 @@ export class ServerDaoDbImpl implements ServerDao {
     assignNullable('owner');
     assign('visibility');
     assignNullable('sharedWithUsers');
+    assignNullable('credentialTemplate');
     if (hasOwn('enableKeepAlive')) {
       updateData.enableKeepAlive = entity.enableKeepAlive ?? false;
     }
@@ -148,6 +152,8 @@ export class ServerDaoDbImpl implements ServerDao {
     assignNullable('openapi');
     assignNullable('passthroughHeaders');
     assignNullable('perSessionClient');
+    assignNullable('startOnDemand');
+    assignNullable('idleTimeoutMs');
 
     const server = await this.repository.update(name, updateData as any);
     return server ? this.mapToServerConfig(server) : null;
@@ -231,6 +237,7 @@ export class ServerDaoDbImpl implements ServerDao {
     owner?: string;
     visibility?: 'private' | 'group' | 'public';
     sharedWithUsers?: string[];
+    credentialTemplate?: import('../types/index.js').CredentialTemplate;
     enableKeepAlive?: boolean;
     keepAliveInterval?: number;
     tools?: Record<string, { enabled: boolean; description?: string }>;
@@ -242,6 +249,8 @@ export class ServerDaoDbImpl implements ServerDao {
     openapi?: Record<string, any>;
     passthroughHeaders?: string[];
     perSessionClient?: boolean;
+    startOnDemand?: boolean;
+    idleTimeoutMs?: number;
   }): ServerConfigWithName {
     return {
       name: server.name,
@@ -256,6 +265,7 @@ export class ServerDaoDbImpl implements ServerDao {
       owner: server.owner,
       visibility: server.visibility ?? 'private',
       sharedWithUsers: server.sharedWithUsers,
+      credentialTemplate: server.credentialTemplate,
       enableKeepAlive: server.enableKeepAlive,
       keepAliveInterval: server.keepAliveInterval,
       tools: server.tools,
@@ -267,6 +277,8 @@ export class ServerDaoDbImpl implements ServerDao {
       openapi: server.openapi,
       passthroughHeaders: server.passthroughHeaders,
       perSessionClient: server.perSessionClient,
+      startOnDemand: server.startOnDemand,
+      idleTimeoutMs: server.idleTimeoutMs,
     };
   }
 }

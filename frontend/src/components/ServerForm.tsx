@@ -86,6 +86,15 @@ const ServerForm = ({
     };
   };
 
+  const getInitialCredentialSlots = (
+    data: Server | null,
+    kind: 'env' | 'headers',
+  ): NonNullable<ServerFormData['credentialEnvSlots']> =>
+    Object.entries(data?.config?.credentialTemplate?.[kind] || {}).map(([key, slot]) => ({
+      key,
+      label: slot.label || '',
+    }));
+
   const [serverType, setServerType] = useState<'stdio' | 'sse' | 'streamable-http' | 'openapi'>(
     getInitialServerType(),
   );
@@ -105,6 +114,8 @@ const ServerForm = ({
     type: getInitialServerType(), // Initialize the type field
     env: getInitialServerEnvVars(initialData),
     headers: [],
+    credentialEnvSlots: getInitialCredentialSlots(initialData, 'env'),
+    credentialHeaderSlots: getInitialCredentialSlots(initialData, 'headers'),
     passthroughHeaders: initialData?.config?.passthroughHeaders?.join(', ') || '',
     visibility: (initialData?.config?.visibility ?? 'private') as 'private' | 'group' | 'public',
     sharedWithUsers: initialData?.config?.sharedWithUsers || [],
@@ -373,6 +384,36 @@ const ServerForm = ({
     const newHeaderVars = [...headerVars];
     newHeaderVars.splice(index, 1);
     setHeaderVars(newHeaderVars);
+  };
+
+  const updateCredentialSlot = (
+    kind: 'env' | 'headers',
+    index: number,
+    field: 'key' | 'label',
+    value: string,
+  ) => {
+    const property = kind === 'env' ? 'credentialEnvSlots' : 'credentialHeaderSlots';
+    setFormData((previous) => {
+      const slots = [...(previous[property] || [])];
+      slots[index] = { ...slots[index], [field]: value };
+      return { ...previous, [property]: slots };
+    });
+  };
+
+  const addCredentialSlot = (kind: 'env' | 'headers') => {
+    const property = kind === 'env' ? 'credentialEnvSlots' : 'credentialHeaderSlots';
+    setFormData((previous) => ({
+      ...previous,
+      [property]: [...(previous[property] || []), { key: '', label: '' }],
+    }));
+  };
+
+  const removeCredentialSlot = (kind: 'env' | 'headers', index: number) => {
+    const property = kind === 'env' ? 'credentialEnvSlots' : 'credentialHeaderSlots';
+    setFormData((previous) => ({
+      ...previous,
+      [property]: (previous[property] || []).filter((_, slotIndex) => slotIndex !== index),
+    }));
   };
 
   const handleOAuthChange = <K extends keyof NonNullable<ServerFormData['oauth']>>(
@@ -1828,6 +1869,94 @@ const ServerForm = ({
                   </div>
                 )}
               </div>
+
+              {/* Per-user credential template (metadata only; values live in My Credentials). */}
+              {serverType !== 'openapi' && (
+                <div className="rounded border border-gray-200 dark:border-gray-700 p-3">
+                  <div className="text-sm font-medium text-[var(--hub-ink-2)]">
+                    {t('server.credentialTemplate.title')}
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1 mb-3">
+                    {t('server.credentialTemplate.description')}
+                  </p>
+
+                  {(
+                    [
+                      {
+                        kind: 'env' as const,
+                        label: t('server.credentialTemplate.envSlots'),
+                        slots: formData.credentialEnvSlots || [],
+                      },
+                      ...(serverType === 'stdio'
+                        ? []
+                        : [
+                            {
+                              kind: 'headers' as const,
+                              label: t('server.credentialTemplate.headerSlots'),
+                              slots: formData.credentialHeaderSlots || [],
+                            },
+                          ]),
+                    ]
+                  ).map(({ kind, label, slots }) => (
+                    <div key={kind} className="mb-3 last:mb-0">
+                      <div className="flex items-center justify-between mb-2">
+                        <label className="text-xs font-medium text-[var(--hub-ink-2)]">
+                          {label}
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => addCredentialSlot(kind)}
+                          className="hub-btn sm"
+                        >
+                          + {t('server.add')}
+                        </button>
+                      </div>
+                      {slots.length === 0 ? (
+                        <p className="text-xs text-gray-500">
+                          {t('server.credentialTemplate.noSlots')}
+                        </p>
+                      ) : (
+                        <div className="space-y-2">
+                          {slots.map((slot, index) => (
+                            <div key={`${kind}-${index}`} className="flex items-center gap-2">
+                              <input
+                                type="text"
+                                value={slot.key}
+                                onChange={(event) =>
+                                  updateCredentialSlot(kind, index, 'key', event.target.value)
+                                }
+                                className="w-1/2 py-2 px-3 form-input"
+                                placeholder={
+                                  kind === 'env' ? 'PERSONAL_API_TOKEN' : 'Authorization'
+                                }
+                                aria-label={t('server.credentialTemplate.slotName')}
+                              />
+                              <input
+                                type="text"
+                                value={slot.label}
+                                onChange={(event) =>
+                                  updateCredentialSlot(kind, index, 'label', event.target.value)
+                                }
+                                className="w-1/2 py-2 px-3 form-input"
+                                placeholder={t('server.credentialTemplate.labelPlaceholder')}
+                                aria-label={t('server.credentialTemplate.slotLabel')}
+                              />
+                              <button
+                                type="button"
+                                onClick={() => removeCredentialSlot(kind, index)}
+                                className="hub-btn sm"
+                                aria-label={t('common.delete')}
+                              >
+                                −
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
 
               {/* Passthrough Headers Configuration */}
               <div>

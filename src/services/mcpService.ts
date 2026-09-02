@@ -30,7 +30,6 @@ import { createFetchWithProxy, getProxyConfigFromEnv } from './proxy.js';
 import { assertSafeUrl, createRedirectValidatingFetch } from '../utils/ssrf.js';
 import { createAbortIsolatingFetch } from '../utils/abortIsolatingFetch.js';
 import { ResilientJsonSchemaValidator } from '../utils/jsonSchemaValidator.js';
-import { getUserDao } from '../dao/index.js';
 import {
   ServerInfo,
   ServerConfig,
@@ -51,9 +50,11 @@ import { getDataService } from './services.js';
 import {
   getServerDao,
   getGroupDao,
+  getUserDao,
   getSystemConfigDao,
   getBuiltinPromptDao,
   getBuiltinResourceDao,
+  getCredentialBindingDao,
   ServerConfigWithName,
 } from '../dao/index.js';
 import { initializeAllOAuthClients } from './oauthService.js';
@@ -88,6 +89,8 @@ import {
   stripMcpAppsMetadata,
 } from '../utils/mcpApps.js';
 import { supportsCacheRefresh, injectRefreshFlag, clearRunnerCache } from '../utils/cacheUtils.js';
+import { UserContextService } from './userContextService.js';
+import { credentialBindingService } from './credentialBindingService.js';
 
 const servers: { [sessionId: string]: Server } = {};
 
@@ -739,6 +742,156 @@ const sessionIsolatedClients = new Map<string, Map<string, { client: Client; tra
 // Locks to prevent concurrent creation of the same isolated client
 const isolatedClientCreationLocks = new Map<string, Promise<any>>();
 
+type PrincipalCredentialRuntime = {
+  serverName: string;
+  username: string;
+  bindingVersion: string;
+  client: Client;
+  transport: Transport;
+  idleTimeoutId?: NodeJS.Timeout;
+};
+
+// Credential-templated MCP clients are isolated by server + authenticated
+// principal. They deliberately do not use the downstream MCP session id.
+const principalCredentialRuntimes = new Map<string, PrincipalCredentialRuntime>();
+const principalCredentialCreationLocks = new Map<string, Promise<PrincipalCredentialRuntime>>();
+const principalCredentialGenerations = new Map<string, number>();
+
+const principalCredentialRuntimeKey = (serverName: string, username: string): string =>
+  JSON.stringify([serverName, username]);
+
+const hasCredentialTemplate = (config?: ServerConfig): boolean =>
+  Boolean(
+    config?.credentialTemplate &&
+      (Object.keys(config.credentialTemplate.env || {}).length > 0 ||
+        Object.keys(config.credentialTemplate.headers || {}).length > 0),
+  );
+
+const closePrincipalCredentialRuntime = (runtime: PrincipalCredentialRuntime): void => {
+  if (runtime.idleTimeoutId) {
+    clearTimeout(runtime.idleTimeoutId);
+    runtime.idleTimeoutId = undefined;
+  }
+  closeIsolatedClient(runtime.serverName, runtime.client, runtime.transport);
+};
+
+const setPrincipalCredentialRuntime = (runtime: PrincipalCredentialRuntime): void => {
+  const key = principalCredentialRuntimeKey(runtime.serverName, runtime.username);
+  const existing = principalCredentialRuntimes.get(key);
+  if (existing && existing !== runtime) closePrincipalCredentialRuntime(existing);
+  principalCredentialRuntimes.set(key, runtime);
+};
+
+export const invalidateCredentialRuntime = (serverName: string, username: string): void => {
+  if (!serverName || !username) return;
+  const key = principalCredentialRuntimeKey(serverName, username);
+  principalCredentialGenerations.set(key, (principalCredentialGenerations.get(key) || 0) + 1);
+  const runtime = principalCredentialRuntimes.get(key);
+  if (runtime) {
+    principalCredentialRuntimes.delete(key);
+    closePrincipalCredentialRuntime(runtime);
+  }
+};
+
+export const invalidateServerCredentialRuntimes = (serverName: string): void => {
+  for (const runtime of [...principalCredentialRuntimes.values()]) {
+    if (runtime.serverName === serverName) {
+      invalidateCredentialRuntime(serverName, runtime.username);
+    }
+  }
+};
+
+export const invalidateUserCredentialRuntimes = (username: string): void => {
+  for (const runtime of [...principalCredentialRuntimes.values()]) {
+    if (runtime.username === username) {
+      invalidateCredentialRuntime(runtime.serverName, username);
+    }
+  }
+};
+
+const getOrCreatePrincipalCredentialClient = async (
+  serverInfo: ServerInfo,
+): Promise<PrincipalCredentialRuntime> => {
+  const principal = UserContextService.getInstance().getCurrentUser();
+  if (!principal?.username) {
+    throw new Error(
+      `Credential binding required for server '${serverInfo.name}'. Add it in My Credentials.`,
+    );
+  }
+
+  const rawServer = await getServerDao().findById(serverInfo.name);
+  if (!rawServer) throw new Error(`Server configuration not found for: ${serverInfo.name}`);
+  const resolved = await credentialBindingService.resolveServerConfig(rawServer, principal);
+  const key = principalCredentialRuntimeKey(serverInfo.name, principal.username);
+  const existing = principalCredentialRuntimes.get(key);
+  if (existing?.bindingVersion === resolved.bindingVersion) return existing;
+  if (existing) {
+    principalCredentialRuntimes.delete(key);
+    closePrincipalCredentialRuntime(existing);
+  }
+
+  const pending = principalCredentialCreationLocks.get(key);
+  if (pending) {
+    const runtime = await pending;
+    if (runtime.bindingVersion === resolved.bindingVersion) return runtime;
+    invalidateCredentialRuntime(serverInfo.name, principal.username);
+  }
+
+  const generation = principalCredentialGenerations.get(key) || 0;
+  const createPromise = (async () => {
+    const transport = await createTransportFromConfig(serverInfo.name, resolved.config);
+    const client = createUpstreamMcpClient(serverInfo.name, () => serverInfo);
+    try {
+      await connectClientWithDiagnostics(client, transport, serverInfo.options || {});
+    } catch {
+      closeIsolatedClient(serverInfo.name, client, transport);
+      throw new Error(`Credential runtime could not start for server '${serverInfo.name}'`);
+    }
+
+    if ((principalCredentialGenerations.get(key) || 0) !== generation) {
+      closeIsolatedClient(serverInfo.name, client, transport);
+      throw new Error(`Credential runtime changed while starting for server '${serverInfo.name}'`);
+    }
+
+    const runtime: PrincipalCredentialRuntime = {
+      serverName: serverInfo.name,
+      username: principal.username,
+      bindingVersion: resolved.bindingVersion,
+      client,
+      transport,
+    };
+    setPrincipalCredentialRuntime(runtime);
+    logger.log(`Created principal credential runtime for ${serverInfo.name}`);
+    return runtime;
+  })();
+
+  principalCredentialCreationLocks.set(key, createPromise);
+  void createPromise
+    .finally(() => {
+      if (principalCredentialCreationLocks.get(key) === createPromise) {
+        principalCredentialCreationLocks.delete(key);
+      }
+    })
+    .catch(() => undefined);
+  return createPromise;
+};
+
+const schedulePrincipalCredentialIdleShutdown = (
+  serverInfo: ServerInfo,
+  runtime: PrincipalCredentialRuntime,
+): void => {
+  if (!serverInfo.config?.startOnDemand) return;
+  if (runtime.idleTimeoutId) clearTimeout(runtime.idleTimeoutId);
+  const idleMs = serverInfo.config.idleTimeoutMs ?? 300_000;
+  runtime.idleTimeoutId = setTimeout(() => {
+    const key = principalCredentialRuntimeKey(runtime.serverName, runtime.username);
+    if (principalCredentialRuntimes.get(key) !== runtime) return;
+    principalCredentialRuntimes.delete(key);
+    closePrincipalCredentialRuntime(runtime);
+    logger.log(`[${runtime.serverName}] Principal credential runtime shut down after idle`);
+  }, idleMs);
+};
+
 export const connectClientWithDiagnostics = async (
   client: Client,
   transport: Transport,
@@ -933,6 +1086,10 @@ export const cleanupAllServers = (): void => {
   // Drain all per-session isolated upstream clients (perSessionClient: true),
   for (const sessionId of [...sessionIsolatedClients.keys()]) {
     cleanupIsolatedSession(sessionId);
+  }
+
+  for (const runtime of [...principalCredentialRuntimes.values()]) {
+    invalidateCredentialRuntime(runtime.serverName, runtime.username);
   }
 
   // Clear session servers as well
@@ -1405,11 +1562,20 @@ export const createTransportFromConfig = async (name: string, conf: ServerConfig
   return transport;
 };
 
-type IsolatedClientContext = {
-  sessionId: string;
-  client: Client;
-  transport: any;
-};
+type IsolatedClientContext =
+  | {
+      kind: 'session';
+      sessionId: string;
+      client: Client;
+      transport: any;
+    }
+  | {
+      kind: 'principal';
+      username: string;
+      bindingVersion: string;
+      client: Client;
+      transport: any;
+    };
 
 // Helper function to handle client.callTool with reconnection logic
 const callToolWithReconnect = async (
@@ -1441,7 +1607,7 @@ const callToolWithReconnect = async (
       const isSSE = transport instanceof SSEClientTransport;
       if (attempt < maxRetries && transport && ((isStreamableHttp && isHttp40xError) || isSSE)) {
         logger.warn(
-          `${isHttp40xError ? 'HTTP 40x error' : 'error'} detected for ${isStreamableHttp ? 'StreamableHTTP' : 'SSE'} server ${serverInfo.name}${isolated ? ` (isolated session ${isolated.sessionId})` : ''}, attempting reconnection (attempt ${attempt + 1}/${maxRetries + 1})`,
+          `${isHttp40xError ? 'HTTP 40x error' : 'error'} detected for ${isStreamableHttp ? 'StreamableHTTP' : 'SSE'} server ${serverInfo.name}${isolated ? ' (isolated runtime)' : ''}, attempting reconnection (attempt ${attempt + 1}/${maxRetries + 1})`,
         );
 
         try {
@@ -1450,13 +1616,21 @@ const callToolWithReconnect = async (
             throw new Error(`Server configuration not found for: ${serverInfo.name}`);
           }
 
-          const newTransport = await createTransportFromConfig(serverInfo.name, server);
+          const reconnectConfig =
+            isolated?.kind === 'principal'
+              ? (
+                  await credentialBindingService.resolveServerConfig(server, {
+                    username: isolated.username,
+                  })
+                ).config
+              : server;
+          const newTransport = await createTransportFromConfig(serverInfo.name, reconnectConfig);
           const newClient = createUpstreamMcpClient(serverInfo.name, () => serverInfo);
 
           // Reconnect with new transport
           await connectClientWithDiagnostics(newClient, newTransport, serverInfo.options || {});
 
-          if (isolated) {
+          if (isolated?.kind === 'session') {
             // Isolated path: close only this session's stale connection and
             // replace its entry in the per-session map. Never touch the shared
             // serverInfo client/transport.
@@ -1472,6 +1646,14 @@ const callToolWithReconnect = async (
             }
 
             setSessionIsolatedClient(isolated.sessionId, serverInfo.name, newClient, newTransport);
+          } else if (isolated?.kind === 'principal') {
+            setPrincipalCredentialRuntime({
+              serverName: serverInfo.name,
+              username: isolated.username,
+              bindingVersion: isolated.bindingVersion,
+              client: newClient,
+              transport: newTransport,
+            });
           } else {
             // Shared path: tear down and replace the shared connection.
             if (serverInfo.keepAliveIntervalId) {
@@ -1517,7 +1699,9 @@ const callToolWithReconnect = async (
         } catch (reconnectError) {
           logger.error('Failed to reconnect to server', {
             serverName: serverInfo.name,
-            error: summarizeErrorForLogging(reconnectError),
+            ...(isolated?.kind === 'principal'
+              ? { error: 'Credential runtime reconnect failed' }
+              : { error: summarizeErrorForLogging(reconnectError) }),
           });
 
           if (!isolated) {
@@ -1556,6 +1740,74 @@ const setupServerKeepAlive = (serverInfo: ServerInfo, serverConfig: ServerConfig
       serverName: serverInfo.name,
       error: summarizeErrorForLogging(error),
     }),
+  );
+};
+
+export const refreshCredentialServerCatalog = async (
+  serverName: string,
+  username: string,
+  options?: { onlyIfEmpty?: boolean },
+): Promise<boolean> => {
+  const serverInfo = getServerByName(serverName);
+  if (!serverInfo || !hasCredentialTemplate(serverInfo.config) || !username) return false;
+  if (options?.onlyIfEmpty && serverInfo.tools.length > 0) return false;
+
+  return UserContextService.getInstance().runWithContext(
+    async () => {
+      let runtime: PrincipalCredentialRuntime | undefined;
+      try {
+        runtime = await getOrCreatePrincipalCredentialClient(serverInfo);
+        const capabilities = runtime.client.getServerCapabilities?.();
+        if (capabilities?.tools) {
+          const tools = await runtime.client.listTools({}, serverInfo.options || {});
+          updateServerToolsCache(serverInfo, tools.tools);
+          broadcastToolListChanged();
+        }
+        if (capabilities?.prompts) {
+          const prompts = await runtime.client.listPrompts({}, serverInfo.options || {});
+          updateServerPromptsCache(serverInfo, prompts.prompts);
+          broadcastPromptListChanged();
+        }
+        if (capabilities?.resources) {
+          const resources = await runtime.client.listResources({}, serverInfo.options || {});
+          updateServerResourcesCache(serverInfo, resources.resources);
+          broadcastResourceListChanged();
+        }
+        serverInfo.version = runtime.client.getServerVersion?.()?.version;
+        serverInfo.instructions = runtime.client.getInstructions?.();
+        serverInfo.status = 'connected';
+        serverInfo.error = null;
+        return true;
+      } catch (error) {
+        serverInfo.status = 'disconnected';
+        // All errors emitted by credential resolution/runtime creation are
+        // intentionally value-free. Do not include upstream diagnostic text.
+        serverInfo.error =
+          error instanceof Error ? error.message : 'Credential runtime could not start';
+        return false;
+      } finally {
+        if (runtime && serverInfo.config?.startOnDemand) {
+          invalidateCredentialRuntime(serverName, username);
+        }
+      }
+    },
+    { username, password: '', isAdmin: false },
+  );
+};
+
+const primeCredentialServerCatalogs = async (): Promise<void> => {
+  await Promise.all(
+    serverInfos
+      .filter(
+        (serverInfo) =>
+          serverInfo.enabled !== false &&
+          hasCredentialTemplate(serverInfo.config) &&
+          serverInfo.tools.length === 0,
+      )
+      .map(async (serverInfo) => {
+        const owner = serverInfo.owner?.trim() || 'admin';
+        await refreshCredentialServerCatalog(serverInfo.name, owner, { onlyIfEmpty: true });
+      }),
   );
 };
 
@@ -1604,6 +1856,33 @@ export const initializeClientsFromSettings = async (
           createTime: Date.now(),
           enabled: false,
         });
+        continue;
+      }
+
+      // Credential-templated servers never receive a shared upstream runtime.
+      // Their single ServerInfo is catalog/status metadata only; actual clients
+      // are created through the (server, principal) map on an authorized call.
+      if (hasCredentialTemplate(expandedConf)) {
+        const existingCredentialServer = existingServerInfos.find((s) => s.name === name);
+        if (existingCredentialServer?.client || existingCredentialServer?.transport) {
+          closeServerRuntime(existingCredentialServer);
+        }
+        nextServerInfos.push({
+          name,
+          owner: expandedConf.owner,
+          visibility: expandedConf.visibility,
+          sharedWithUsers: expandedConf.sharedWithUsers,
+          status: existingCredentialServer?.tools.length ? 'connected' : 'disconnected',
+          error: null,
+          tools: existingCredentialServer?.tools || [],
+          prompts: existingCredentialServer?.prompts || [],
+          resources: existingCredentialServer?.resources || [],
+          options: expandedConf.options || {},
+          createTime: existingCredentialServer?.createTime || Date.now(),
+          enabled: true,
+          config: expandedConf,
+        });
+        logger.log(`Registered credential-templated server without a shared runtime: ${name}`);
         continue;
       }
 
@@ -1958,6 +2237,11 @@ export const initializeClientsFromSettings = async (
 
   serverInfos = nextServerInfos;
 
+  // Resolve only the server owner's binding to establish shared catalog
+  // metadata. Other principals remain lazy and isolated; failures are expected
+  // until the owner (or another visible user through the dashboard flow) binds.
+  const credentialPrimePromise = primeCredentialServerCatalogs();
+
   // Populate the tool cache for on-demand stdio servers so their tools are
   // visible to agents, then put them back to sleep. Running here (rather than
   // only at startup) also covers servers added/enabled/reloaded after startup.
@@ -1969,7 +2253,7 @@ export const initializeClientsFromSettings = async (
   // empty list that only fills in after the fire-and-forget prime completes and
   // the next poll picks it up. See #1032.
   if (serverName) {
-    await primePromise;
+    await Promise.all([primePromise, credentialPrimePromise]);
   }
 
   return serverInfos;
@@ -2124,7 +2408,10 @@ export const getServersInfo = async (
                 }
               : undefined,
           config:
-            resolvedType || serverConfig?.description || serverConfig?.command
+            resolvedType ||
+            serverConfig?.description ||
+            serverConfig?.command ||
+            serverConfig?.credentialTemplate
               ? {
                   ...(resolvedType ? { type: resolvedType } : {}),
                   ...(serverConfig?.description ? { description: serverConfig.description } : {}),
@@ -2132,6 +2419,9 @@ export const getServersInfo = async (
                   // supported (npx/uvx only). This is not a secret — it's the
                   // runner binary name (e.g. "npx", "uvx").
                   ...(serverConfig?.command ? { command: serverConfig.command } : {}),
+                  ...(serverConfig?.credentialTemplate
+                    ? { credentialTemplate: serverConfig.credentialTemplate }
+                    : {}),
                 }
               : undefined,
         };
@@ -2157,6 +2447,7 @@ export const getServerByOAuthState = (state: string): ServerInfo | undefined => 
  */
 export const reconnectServer = async (serverName: string): Promise<void> => {
   logger.log(`Reconnecting server: ${serverName}`);
+  invalidateServerCredentialRuntimes(serverName);
 
   const serverInfo = getServerByName(serverName);
   if (!serverInfo) {
@@ -2334,6 +2625,7 @@ export const removeServer = async (
   // via npx / npm exec outlives the request and becomes an unkillable orphan
   // that leaks memory until the container is restarted.
   closeServer(name);
+  await getCredentialBindingDao().deleteByServer(name);
 
   try {
     await removeServerToolEmbeddings(name);
@@ -2443,6 +2735,7 @@ const closeServerRuntime = (serverInfo: ServerInfo): void => {
 // Close server client and transport (keeps the entry in serverInfos; the next
 // initializeClientsFromSettings rebuild drops it if it is no longer configured).
 export function closeServer(name: string) {
+  invalidateServerCredentialRuntimes(name);
   const serverInfo = serverInfos.find((serverInfo) => serverInfo.name === name);
   if (serverInfo) {
     closeServerRuntime(serverInfo);
@@ -2644,6 +2937,7 @@ const primeOnDemandServers = (): Promise<void> => {
     (si) =>
       si.config?.startOnDemand === true &&
       isStdioServer(si.config) &&
+      !hasCredentialTemplate(si.config) &&
       si.tools.length === 0 &&
       si.enabled !== false,
   );
@@ -3261,7 +3555,11 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
 
       // If the target is an on-demand server that is not yet running, wake it up now.
       // Concurrent callers are serialised via ensureServerReady's singleton promise.
-      if (targetServerInfo.config?.startOnDemand && targetServerInfo.status !== 'connected') {
+      if (
+        targetServerInfo.config?.startOnDemand &&
+        !hasCredentialTemplate(targetServerInfo.config) &&
+        targetServerInfo.status !== 'connected'
+      ) {
         await ensureServerReady(targetServerInfo);
         // Re-read status from the mutated serverInfo after async spawn
         const freshStatus = (targetServerInfo as ServerInfo).status;
@@ -3380,12 +3678,26 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
         );
       }
 
-      // Call the tool on the target server (MCP servers)
-      // For servers with perSessionClient: true, use a per-session dedicated client
+      // Credential templates take precedence over perSessionClient: the security
+      // isolation key is the authenticated principal, never the MCP session.
       let isolatedCtx: IsolatedClientContext | undefined;
-      if (targetServerInfo.config?.perSessionClient && sessionId) {
+      if (hasCredentialTemplate(targetServerInfo.config)) {
+        const runtime = await getOrCreatePrincipalCredentialClient(targetServerInfo);
+        isolatedCtx = {
+          kind: 'principal',
+          username: runtime.username,
+          bindingVersion: runtime.bindingVersion,
+          client: runtime.client,
+          transport: runtime.transport,
+        };
+      } else if (targetServerInfo.config?.perSessionClient && sessionId) {
         const isolated = await getOrCreateIsolatedClient(sessionId, targetServerInfo);
-        isolatedCtx = { sessionId, client: isolated.client, transport: isolated.transport };
+        isolatedCtx = {
+          kind: 'session',
+          sessionId,
+          client: isolated.client,
+          transport: isolated.transport,
+        };
       } else if (!targetServerInfo.client) {
         throw new Error(`Client not found for server: ${targetServerInfo.name}`);
       }
@@ -3398,6 +3710,7 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
         serverName: targetServerInfo.name,
         arguments: summarizeArgumentsForLogging(finalArgs),
         perSessionClient: !!targetServerInfo.config?.perSessionClient,
+        perPrincipalCredential: isolatedCtx?.kind === 'principal',
       });
 
       const cleanToolName = normalizeToolNameForServer(targetServerInfo.name, targetToolName);
@@ -3425,7 +3738,14 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
       });
 
       // Reset idle-shutdown timer for on-demand servers after each successful call
-      scheduleIdleShutdown(targetServerInfo);
+      if (isolatedCtx?.kind === 'principal') {
+        const runtime = principalCredentialRuntimes.get(
+          principalCredentialRuntimeKey(targetServerInfo.name, isolatedCtx.username),
+        );
+        if (runtime) schedulePrincipalCredentialIdleShutdown(targetServerInfo, runtime);
+      } else {
+        scheduleIdleShutdown(targetServerInfo);
+      }
 
       // Log successful activity
       const duration = Date.now() - startTime;
@@ -3482,7 +3802,11 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
     // Wake the on-demand server before invoking the tool. It may be asleep with
     // a cached tool list (visible above) but no live client. Mirrors the
     // $smart call_tool path. See #1029.
-    if (serverInfo.config?.startOnDemand && serverInfo.status !== 'connected') {
+    if (
+      serverInfo.config?.startOnDemand &&
+      !hasCredentialTemplate(serverInfo.config) &&
+      serverInfo.status !== 'connected'
+    ) {
       await ensureServerReady(serverInfo);
     }
     serverInfo.lastUsedAt = Date.now();
@@ -3582,12 +3906,26 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
       );
     }
 
-    // Handle MCP servers
-    // For servers with perSessionClient: true, use a per-session dedicated client
+    // Handle MCP servers. Credential templates use principal isolation even if
+    // perSessionClient is also set.
     let isolatedCtx: IsolatedClientContext | undefined;
-    if (serverInfo.config?.perSessionClient && sessionId) {
+    if (hasCredentialTemplate(serverInfo.config)) {
+      const runtime = await getOrCreatePrincipalCredentialClient(serverInfo);
+      isolatedCtx = {
+        kind: 'principal',
+        username: runtime.username,
+        bindingVersion: runtime.bindingVersion,
+        client: runtime.client,
+        transport: runtime.transport,
+      };
+    } else if (serverInfo.config?.perSessionClient && sessionId) {
       const isolated = await getOrCreateIsolatedClient(sessionId, serverInfo);
-      isolatedCtx = { sessionId, client: isolated.client, transport: isolated.transport };
+      isolatedCtx = {
+        kind: 'session',
+        sessionId,
+        client: isolated.client,
+        transport: isolated.transport,
+      };
     } else if (!serverInfo.client) {
       throw new Error(`Client not found for server: ${serverInfo.name}`);
     }
@@ -3613,7 +3951,14 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
     });
 
     // Reset idle-shutdown timer for on-demand servers after each successful call
-    scheduleIdleShutdown(serverInfo);
+    if (isolatedCtx?.kind === 'principal') {
+      const runtime = principalCredentialRuntimes.get(
+        principalCredentialRuntimeKey(serverInfo.name, isolatedCtx.username),
+      );
+      if (runtime) schedulePrincipalCredentialIdleShutdown(serverInfo, runtime);
+    } else {
+      scheduleIdleShutdown(serverInfo);
+    }
 
     // Log successful activity
     const duration = Date.now() - startTime;

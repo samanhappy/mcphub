@@ -43,6 +43,16 @@ const normalizeSharedUsers = (usernames?: string[]): string[] => {
   );
 };
 
+const buildCredentialSlots = (
+  slots: ServerFormData['credentialEnvSlots'],
+): Record<string, { label?: string }> | undefined => {
+  const entries = (slots || [])
+    .map(({ key, label }) => [key.trim(), label.trim()] as const)
+    .filter(([key]) => key.length > 0)
+    .map(([key, label]) => [key, label ? { label } : {}] as const);
+  return entries.length > 0 ? Object.fromEntries(entries) : undefined;
+};
+
 const buildOptions = (options?: ServerFormData['options']) => {
   const nextOptions: NonNullable<ServerFormData['options']> = {};
 
@@ -208,6 +218,13 @@ export const buildServerPayload = ({
   const headers = buildKeyValueRecord(headerVars);
   const options = buildOptions(formData.options);
   const description = formData.description?.trim() || '';
+  const credentialEnv = buildCredentialSlots(formData.credentialEnvSlots);
+  const credentialHeaders =
+    serverType === 'stdio' ? undefined : buildCredentialSlots(formData.credentialHeaderSlots);
+  const credentialTemplate =
+    serverType !== 'openapi' && (credentialEnv || credentialHeaders)
+      ? { env: credentialEnv, headers: credentialHeaders }
+      : undefined;
 
   const config: Partial<ServerConfig> = {
     type: serverType,
@@ -222,6 +239,7 @@ export const buildServerPayload = ({
     // Round-trip the stored proxychains config (no in-form editor) so an edit
     // of any other field does not drop it and force an avoidable reload.
     proxy: formData.proxy,
+    credentialTemplate,
   };
 
   if (serverType === 'openapi') {

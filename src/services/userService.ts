@@ -1,6 +1,7 @@
 import { IUser } from '../types/index.js';
-import { getBearerKeyDao, getUserDao } from '../dao/index.js';
+import { getBearerKeyDao, getCredentialBindingDao, getUserDao } from '../dao/index.js';
 import { logger } from '../utils/logger.js';
+import { invalidateUserCredentialRuntimes } from './mcpService.js';
 
 // Get all users
 export const getAllUsers = async (): Promise<IUser[]> => {
@@ -118,7 +119,11 @@ export const deleteUser = async (username: string): Promise<boolean> => {
 
     const deleted = await userDao.delete(username);
     if (deleted) {
-      await getBearerKeyDao().deleteByOwner(username);
+      await Promise.all([
+        getBearerKeyDao().deleteByOwner(username),
+        getCredentialBindingDao().deleteByUsername(username),
+      ]);
+      invalidateUserCredentialRuntimes(username);
     }
     return deleted;
   } catch (error) {

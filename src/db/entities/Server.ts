@@ -55,6 +55,9 @@ export class Server {
   @Column({ type: 'text', array: true, nullable: true })
   sharedWithUsers?: string[];
 
+  @Column({ type: 'simple-json', nullable: true })
+  credentialTemplate?: import('../../types/index.js').CredentialTemplate;
+
   @Column({ type: 'boolean', default: false })
   enableKeepAlive?: boolean;
 
@@ -87,6 +90,12 @@ export class Server {
 
   @Column({ type: 'boolean', nullable: true })
   perSessionClient?: boolean;
+
+  @Column({ type: 'boolean', nullable: true })
+  startOnDemand?: boolean;
+
+  @Column({ type: 'int', nullable: true })
+  idleTimeoutMs?: number;
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamp' })
   createdAt: Date;

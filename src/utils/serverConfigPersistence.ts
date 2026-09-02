@@ -35,6 +35,49 @@ const normalizeSharedUsers = (value?: string[]): string[] | undefined => {
   return normalized ? Array.from(new Set(normalized)) : undefined;
 };
 
+const normalizeCredentialSlots = (
+  value?: Record<string, { label?: string }>,
+): Record<string, { label?: string }> | undefined => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return undefined;
+  }
+
+  const entries = Object.entries(value)
+    .map(([rawName, rawSlot]) => {
+      const name = rawName.trim();
+      const label = trimToUndefined(rawSlot?.label);
+      return [name, label ? { label } : {}] as const;
+    })
+    .filter(([name]) => name.length > 0);
+
+  return entries.length > 0 ? Object.fromEntries(entries) : undefined;
+};
+
+const normalizeCredentialTemplate = (
+  template?: ServerConfig['credentialTemplate'],
+): ServerConfig['credentialTemplate'] | undefined => {
+  if (!template || typeof template !== 'object' || Array.isArray(template)) {
+    return undefined;
+  }
+
+  const env = normalizeCredentialSlots(template.env);
+  const headers = normalizeCredentialSlots(template.headers);
+  return env || headers ? { ...(env ? { env } : {}), ...(headers ? { headers } : {}) } : undefined;
+};
+
+const withoutCredentialSlots = (
+  values: Record<string, string> | undefined,
+  slots: Record<string, { label?: string }> | undefined,
+): Record<string, string> | undefined => {
+  if (!values) {
+    return undefined;
+  }
+
+  const slotNames = new Set(Object.keys(slots || {}));
+  const entries = Object.entries(values).filter(([name]) => !slotNames.has(name));
+  return entries.length > 0 ? Object.fromEntries(entries) : undefined;
+};
+
 const normalizeOptions = (
   options?: ServerConfig['options'],
 ): ServerConfig['options'] | undefined => {
@@ -171,6 +214,9 @@ export const normalizeServerConfigForPersistence = (config: ServerConfig): Serve
   const options = normalizeOptions(config.options);
   const oauth = normalizeOAuth(config.oauth);
   const openapi = normalizeOpenApi(config.openapi);
+  const credentialTemplate = normalizeCredentialTemplate(config.credentialTemplate);
+  const staticEnv = withoutCredentialSlots(env, credentialTemplate?.env);
+  const staticHeaders = withoutCredentialSlots(headers, credentialTemplate?.headers);
 
   // Default visibility to 'private' so file-defined and freshly-created servers behave
   // identically to the pre-#817 implicit admin-only behaviour. Operators opt servers in
@@ -187,6 +233,7 @@ export const normalizeServerConfigForPersistence = (config: ServerConfig): Serve
     visibility,
     sharedWithUsers,
     options,
+    credentialTemplate,
     perSessionClient: config.perSessionClient === true ? true : undefined,
     // The dashboard sends `startOnDemand: undefined` when the toggle is off, which
     // JSON.stringify strips from the PUT body. Without an explicit key here the
@@ -202,7 +249,7 @@ export const normalizeServerConfigForPersistence = (config: ServerConfig): Serve
     normalized.command = undefined;
     normalized.args = undefined;
     normalized.env = undefined;
-    normalized.headers = headers;
+    normalized.headers = staticHeaders;
     normalized.passthroughHeaders = undefined;
     normalized.oauth = undefined;
     normalized.enableKeepAlive = undefined;
@@ -217,8 +264,8 @@ export const normalizeServerConfigForPersistence = (config: ServerConfig): Serve
     normalized.url = url;
     normalized.command = undefined;
     normalized.args = undefined;
-    normalized.env = env;
-    normalized.headers = headers;
+    normalized.env = staticEnv;
+    normalized.headers = staticHeaders;
     normalized.passthroughHeaders = passthroughHeaders;
     normalized.oauth = oauth;
     normalized.enableKeepAlive = keepAliveEnabled;
@@ -230,7 +277,7 @@ export const normalizeServerConfigForPersistence = (config: ServerConfig): Serve
   normalized.url = undefined;
   normalized.command = command;
   normalized.args = args;
-  normalized.env = env;
+  normalized.env = staticEnv;
   normalized.headers = undefined;
   normalized.passthroughHeaders = undefined;
   normalized.oauth = undefined;

@@ -81,6 +81,7 @@ A server entry has the shape `"<server-name>": ServerConfig`. The relevant field
 | `enableKeepAlive` | boolean | no | For `sse` / `streamable-http`: enable periodic health checks and automatic reconnect attempts. |
 | `keepAliveInterval` | number | no | Health check and reconnect interval in milliseconds. Defaults to `60000`. |
 | `perSessionClient` | boolean | no | Create a dedicated upstream client per downstream MCP session instead of sharing one connection across all sessions. Use for stateful servers like Playwright. See [Per-session client isolation](#per-session-client-isolation-stateful-servers). |
+| `credentialTemplate` | object | no | Metadata-only declaration of required per-user credential slots. `env` slots work for stdio and MCP HTTP transports; `headers` slots work for SSE/Streamable HTTP. OpenAPI is not supported in this MVP. Values are stored separately and never returned by read APIs. |
 | `tools`, `prompts`, `resources` | object | no | Per-item overrides: `{ "<name>": { "enabled": true, "description": "..." } }`. Managed via the dashboard or the per-resource API endpoints. |
 
 ### `type: "stdio"` (default)
@@ -109,6 +110,43 @@ A server entry has the shape `"<server-name>": ServerConfig`. The relevant field
 | `openapi.passthroughHeaders` | string[] | no | Headers to forward from the caller. |
 
 The authoritative definition of every field is the `ServerConfig` type in [src/types/index.ts](src/types/index.ts) — consult it if you need behavior not described here.
+
+### Per-user credentials
+
+An operator can declare credential names without putting shared secrets in the
+server definition. Every authorized user then supplies their own values from
+**My Credentials** in the dashboard or through `PUT /api/credentials/:serverName`.
+
+```json
+{
+  "mcpServers": {
+    "personal-search": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "personal-search-mcp"],
+      "visibility": "public",
+      "credentialTemplate": {
+        "env": {
+          "SEARCH_API_KEY": { "label": "Search API key" }
+        }
+      }
+    }
+  }
+}
+```
+
+Bindings are owned by the exact authenticated principal. User-level bearer
+keys resolve to their owner; JWT and OIDC email-style usernames are used as-is.
+MCPHub encrypts values at rest with AES-256-GCM and exposes only configured/not
+configured metadata. It derives the key from
+`MCPHUB_CREDENTIAL_ENCRYPTION_KEY`, falling back to `JWT_SECRET`; production
+deployments must keep the effective key stable.
+
+At runtime, SSE and Streamable HTTP clients are isolated by `(server, user)` and
+pick up the latest binding on each invocation. Credential-aware stdio processes
+use the same key, are reused across downstream MCP sessions for that user, and
+honor `startOnDemand` / `idleTimeoutMs`. Updating or deleting a binding closes
+only that user's runtime. Deleting a user or server removes its bindings.
 
 <Note>
 A protected `openapi.url` is downloaded through MCPHub's authenticated client, so the

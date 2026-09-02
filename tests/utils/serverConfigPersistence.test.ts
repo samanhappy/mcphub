@@ -1,6 +1,37 @@
 import { normalizeServerConfigForPersistence } from '../../src/utils/serverConfigPersistence.js';
+import { getCredentialTemplateValidationError } from '../../src/utils/serverConfigValidation.js';
 
 describe('normalizeServerConfigForPersistence', () => {
+  it('normalizes credential template metadata and strips static values from required slots', () => {
+    const normalized = normalizeServerConfigForPersistence({
+      type: 'streamable-http',
+      url: 'https://example.com/mcp',
+      env: {
+        TAVILY_API_KEY: 'must-not-fallback',
+        REGION: 'us-east-1',
+      },
+      headers: {
+        Authorization: 'must-not-fallback',
+        'X-Tenant': 'shared-tenant',
+      },
+      credentialTemplate: {
+        env: {
+          ' TAVILY_API_KEY ': { label: ' Tavily API key ' },
+        },
+        headers: {
+          ' Authorization ': { label: ' Personal token ' },
+        },
+      },
+    });
+
+    expect(normalized.credentialTemplate).toEqual({
+      env: { TAVILY_API_KEY: { label: 'Tavily API key' } },
+      headers: { Authorization: { label: 'Personal token' } },
+    });
+    expect(normalized.env).toEqual({ REGION: 'us-east-1' });
+    expect(normalized.headers).toEqual({ 'X-Tenant': 'shared-tenant' });
+  });
+
   it('keeps remote keep-alive checks disabled by default', () => {
     const normalized = normalizeServerConfigForPersistence({
       type: 'streamable-http',
@@ -215,5 +246,44 @@ describe('normalizeServerConfigForPersistence', () => {
     });
 
     expect(normalized.openapi?.specSecurity).toEqual(specSecurity);
+  });
+});
+
+describe('getCredentialTemplateValidationError', () => {
+  it('rejects header slots for stdio and templates on OpenAPI servers', () => {
+    expect(
+      getCredentialTemplateValidationError({
+        type: 'stdio',
+        command: 'node',
+        credentialTemplate: { headers: { Authorization: {} } },
+      }),
+    ).toMatch(/header/i);
+    expect(
+      getCredentialTemplateValidationError({
+        type: 'openapi',
+        openapi: { schema: {} },
+        credentialTemplate: { headers: { Authorization: {} } },
+      }),
+    ).toMatch(/OpenAPI/i);
+  });
+
+  it('accepts env slots for stdio and env/header slots for MCP HTTP transports', () => {
+    expect(
+      getCredentialTemplateValidationError({
+        type: 'stdio',
+        command: 'node',
+        credentialTemplate: { env: { TOKEN: {} } },
+      }),
+    ).toBeNull();
+    expect(
+      getCredentialTemplateValidationError({
+        type: 'streamable-http',
+        url: 'https://example.com/mcp',
+        credentialTemplate: {
+          env: { TOKEN: {} },
+          headers: { Authorization: {} },
+        },
+      }),
+    ).toBeNull();
   });
 });

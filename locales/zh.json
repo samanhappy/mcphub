@@ -109,6 +109,16 @@
     "passwordStrengthHint": "密码必须至少 8 个字符，且包含字母、数字和特殊字符"
   },
   "server": {
+    "credentialTemplate": {
+      "title": "每用户凭据字段",
+      "description": "声明每位用户必须提供的值。此处仅保存字段元数据；凭据值需在“我的凭据”中单独填写。",
+      "envSlots": "环境变量",
+      "headerSlots": "HTTP 请求头",
+      "noSlots": "尚未声明字段。",
+      "slotName": "凭据字段名",
+      "slotLabel": "凭据字段标签",
+      "labelPlaceholder": "面向用户的标签"
+    },
     "startOnDemand": "按需启动",
     "startOnDemandDescription": "跳过启动时连接，仅在收到工具调用时才启动此服务器。进程在空闲超时后自动关闭，下次调用时再重新启动。可减少不常用服务器的常驻内存占用。",
     "idleTimeoutMs": "空闲关闭超时（毫秒）",
@@ -367,6 +377,7 @@
     "groups": "分组",
     "prompts": "提示词",
     "resources": "资源",
+    "credentials": "我的凭据",
     "users": "用户",
     "market": "市场",
     "cloud": "云端市场",
@@ -374,6 +385,27 @@
     "activity": "活动",
     "workspace": "工作区",
     "system": "系统"
+  },
+  "credentials": {
+    "title": "我的凭据",
+    "subtitle": "仅用于您调用共享服务器的私密凭据。",
+    "empty": "没有可配置个人凭据的服务器。",
+    "configured": "已配置",
+    "required": "待配置",
+    "badge": "个人凭据",
+    "configureForServer": "配置您用于此服务器的凭据",
+    "writeOnly": "凭据值只可写入，API 永远不会返回。",
+    "valuePlaceholder": "输入凭据值",
+    "replacePlaceholder": "已配置 — 输入新值以替换",
+    "save": "保存凭据",
+    "saving": "保存中...",
+    "saved": "凭据已保存",
+    "deleted": "凭据已移除",
+    "enterValue": "请至少输入一个凭据值",
+    "loadFailed": "加载凭据失败",
+    "saveFailed": "保存凭据失败",
+    "deleteFailed": "移除凭据失败",
+    "deleteConfirm": "移除您用于 {{serverName}} 的凭据？"
   },
   "pages": {
     "dashboard": {

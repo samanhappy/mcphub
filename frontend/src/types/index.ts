@@ -192,6 +192,34 @@ export interface ProxychainsConfig {
   configPath?: string; // Path to custom proxychains4 configuration file (optional)
 }
 
+export interface CredentialTemplateSlot {
+  label?: string;
+}
+
+export interface CredentialTemplate {
+  env?: Record<string, CredentialTemplateSlot>;
+  headers?: Record<string, CredentialTemplateSlot>;
+}
+
+export interface CredentialSlotForm {
+  key: string;
+  label: string;
+}
+
+export interface CredentialBindingSummary {
+  serverName: string;
+  description?: string;
+  owner?: string;
+  type?: ServerConfig['type'];
+  credentialTemplate: CredentialTemplate;
+  complete: boolean;
+  configured: {
+    env?: Record<string, boolean>;
+    headers?: Record<string, boolean>;
+  };
+  updatedAt?: string;
+}
+
 // Server config types
 export interface ServerConfig {
   type?: 'stdio' | 'sse' | 'streamable-http' | 'openapi';
@@ -201,6 +229,7 @@ export interface ServerConfig {
   args?: string[];
   env?: Record<string, string>;
   headers?: Record<string, string>;
+  credentialTemplate?: CredentialTemplate;
   passthroughHeaders?: string[];
   enabled?: boolean;
   // Per-server visibility for non-admin users.
@@ -361,6 +390,8 @@ export interface ServerFormData {
   type?: 'stdio' | 'sse' | 'streamable-http' | 'openapi'; // Added type field with openapi support
   env: EnvVar[];
   headers: EnvVar[];
+  credentialEnvSlots?: CredentialSlotForm[];
+  credentialHeaderSlots?: CredentialSlotForm[];
   passthroughHeaders?: string;
   // Visibility for non-admin users.
   visibility?: 'private' | 'group' | 'public';
