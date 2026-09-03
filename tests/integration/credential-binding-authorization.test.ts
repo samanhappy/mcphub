@@ -1,4 +1,5 @@
 import express from 'express';
+import rateLimit from 'express-rate-limit';
 import request from 'supertest';
 
 const mockUpsertForPrincipal = jest.fn();
@@ -45,6 +46,11 @@ describe('credential binding HTTP authorization (#1114)', () => {
     });
     const app = express();
     app.use(express.json());
+    const limiter = rateLimit({
+      windowMs: 15 * 60 * 1000,
+      max: 1000,
+    });
+    app.use('/api/credentials', limiter);
     app.put('/api/credentials/:serverName', auth, upsertCredentialBinding);
 
     const response = await request(app)
