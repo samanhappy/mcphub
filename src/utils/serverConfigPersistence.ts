@@ -65,6 +65,38 @@ export const unpackStartOnDemandOptions = (
   };
 };
 
+/**
+ * Merges startOnDemand/idleTimeoutMs into an `options` blob for storage,
+ * without touching/re-validating any other keys already present in
+ * `options` (unlike normalizeOptions() below, which only forwards a fixed
+ * whitelist). Used by ServerDaoDbImpl itself as a persistence-layer safety
+ * net: normalizeServerConfigForPersistence() is the primary place that does
+ * this, but not every caller routes through it (e.g.
+ * templateService.importTemplate() -> mcpService.addServer() calls
+ * ServerDao.create()/update() directly), so the DAO mirrors the fields
+ * unconditionally to guarantee they're never silently dropped in database
+ * mode regardless of how the DAO was invoked.
+ */
+export const mirrorStartOnDemandIntoOptions = (
+  options: ServerConfig['options'] | undefined,
+  startOnDemand: boolean | undefined,
+  idleTimeoutMs: number | undefined,
+): ServerConfig['options'] | undefined => {
+  const merged: Record<string, unknown> = { ...(options as Record<string, unknown> | undefined) };
+  delete merged.startOnDemand;
+  delete merged.idleTimeoutMs;
+
+  if (startOnDemand === true) {
+    merged.startOnDemand = true;
+  }
+
+  if (typeof idleTimeoutMs === 'number' && !Number.isNaN(idleTimeoutMs) && idleTimeoutMs > 0) {
+    merged.idleTimeoutMs = idleTimeoutMs;
+  }
+
+  return Object.keys(merged).length > 0 ? (merged as ServerConfig['options']) : undefined;
+};
+
 const normalizeOptions = (
   options?: ServerConfig['options'],
   startOnDemand?: boolean,
