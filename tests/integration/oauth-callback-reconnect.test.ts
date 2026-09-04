@@ -1,4 +1,5 @@
 import express from 'express';
+import rateLimit from 'express-rate-limit';
 import request from 'supertest';
 
 jest.mock('../../src/services/mcpService.js', () => ({
@@ -53,6 +54,11 @@ describe('OAuth callback reconnect integration', () => {
     };
     const refreshedTransport = { close: jest.fn().mockResolvedValue(undefined) };
     const app = express();
+    const limiter = rateLimit({
+      windowMs: 15 * 60 * 1000,
+      max: 100,
+    });
+    app.use(limiter);
     app.get('/oauth/callback', (req, res) => {
       void handleOAuthCallback(req, res);
     });
