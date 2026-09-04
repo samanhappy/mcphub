@@ -172,6 +172,38 @@ describe('normalizeServerConfigForPersistence', () => {
     expect(normalized).toHaveProperty('startOnDemand', undefined);
   });
 
+  it('mirrors startOnDemand/idleTimeoutMs into options so DB-backed storage persists them', () => {
+    // The database-backed ServerDao has no dedicated startOnDemand/idleTimeoutMs
+    // columns, so those two fields must also be piggybacked onto the schema-less
+    // `options` JSON blob (ServerDaoDbImpl.mapToServerConfig unpacks them back out
+    // on read). Without this, saving a server with startOnDemand enabled while
+    // running in database mode silently drops the setting.
+    const normalized = normalizeServerConfigForPersistence({
+      type: 'stdio',
+      command: 'npx',
+      args: ['-y', 'demo-server'],
+      startOnDemand: true,
+      idleTimeoutMs: 120000,
+    });
+
+    expect(normalized.startOnDemand).toBe(true);
+    expect(normalized.idleTimeoutMs).toBe(120000);
+    expect(normalized.options).toMatchObject({
+      startOnDemand: true,
+      idleTimeoutMs: 120000,
+    });
+  });
+
+  it('does not persist startOnDemand/idleTimeoutMs into options when disabled', () => {
+    const normalized = normalizeServerConfigForPersistence({
+      type: 'stdio',
+      command: 'npx',
+      args: ['-y', 'demo-server'],
+    });
+
+    expect(normalized.options).toBeUndefined();
+  });
+
   it('normalizes openapi payloads and trims empty values', () => {
     const normalized = normalizeServerConfigForPersistence({
       type: 'openapi',

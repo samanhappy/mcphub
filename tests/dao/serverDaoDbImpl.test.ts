@@ -201,4 +201,165 @@ describe('ServerDaoDbImpl', () => {
       tools: {},
     });
   });
+
+  it('should unpack startOnDemand/idleTimeoutMs mirrored inside the options JSON blob back to top-level fields on read', async () => {
+    // The `servers` table has no dedicated startOnDemand/idleTimeoutMs columns, so
+    // normalizeServerConfigForPersistence() piggybacks them onto the schema-less
+    // `options` column. mapToServerConfig() must unpack them back out so the rest
+    // of the app (which reads config.startOnDemand / config.idleTimeoutMs at the
+    // top level) sees them after a DB round-trip.
+    const dao = new ServerDaoDbImpl();
+
+    mockRepository.findByName.mockResolvedValue({
+      name: 'on-demand-server',
+      type: 'stdio',
+      command: 'npx',
+      args: ['-y', 'demo-server'],
+      enabled: true,
+      options: {
+        timeout: 5000,
+        startOnDemand: true,
+        idleTimeoutMs: 120000,
+      },
+    });
+
+    const result = await dao.findById('on-demand-server');
+
+    expect(result?.startOnDemand).toBe(true);
+    expect(result?.idleTimeoutMs).toBe(120000);
+    // The mirrored keys must not leak into the plain request-options object.
+    expect(result?.options).toEqual({ timeout: 5000 });
+  });
+
+  it('should leave startOnDemand/idleTimeoutMs undefined when not present in stored options', async () => {
+    const dao = new ServerDaoDbImpl();
+
+    mockRepository.findByName.mockResolvedValue({
+      name: 'always-on-server',
+      type: 'stdio',
+      command: 'npx',
+      args: ['-y', 'demo-server'],
+      enabled: true,
+      options: { timeout: 5000 },
+    });
+
+    const result = await dao.findById('always-on-server');
+
+    expect(result?.startOnDemand).toBeUndefined();
+    expect(result?.idleTimeoutMs).toBeUndefined();
+    expect(result?.options).toEqual({ timeout: 5000 });
+  });
+
+  it('should mirror startOnDemand/idleTimeoutMs into options on create() even when the caller bypassed normalizeServerConfigForPersistence', async () => {
+    // templateService.importTemplate() calls mcpService.addServer(), which calls
+    // ServerDao.create() directly with a raw ServerConfig - it never runs through
+    // normalizeServerConfigForPersistence(). The DAO must mirror the fields itself
+    // so a template import still persists startOnDemand/idleTimeoutMs in database
+    // mode. See PR #1095 review discussion.
+    const dao = new ServerDaoDbImpl();
+
+    mockRepository.create.mockResolvedValue({
+      name: 'templated-server',
+      type: 'stdio',
+      command: 'npx',
+      args: ['-y', 'demo-server'],
+      enabled: true,
+      options: { startOnDemand: true, idleTimeoutMs: 120000 },
+    });
+
+    await dao.create({
+      name: 'templated-server',
+      type: 'stdio',
+      command: 'npx',
+      args: ['-y', 'demo-server'],
+      startOnDemand: true,
+      idleTimeoutMs: 120000,
+    });
+
+    expect(mockRepository.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        options: { startOnDemand: true, idleTimeoutMs: 120000 },
+      }),
+    );
+  });
+
+  it('should not mirror startOnDemand into options on create() when not set', async () => {
+    const dao = new ServerDaoDbImpl();
+
+    mockRepository.create.mockResolvedValue({
+      name: 'always-on-server',
+      type: 'stdio',
+      command: 'npx',
+      args: ['-y', 'demo-server'],
+      enabled: true,
+    });
+
+    await dao.create({
+      name: 'always-on-server',
+      type: 'stdio',
+      command: 'npx',
+      args: ['-y', 'demo-server'],
+    });
+
+    expect(mockRepository.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        options: undefined,
+      }),
+    );
+  });
+
+  it('should mirror startOnDemand/idleTimeoutMs into options on update() even when only those top-level fields are provided', async () => {
+    // Simulates a direct DAO update() call that only touches startOnDemand,
+    // without going through normalizeServerConfigForPersistence and without an
+    // `options` key at all. The DAO must read the current row and merge, rather
+    // than dropping the change or wiping unrelated stored options.
+    const dao = new ServerDaoDbImpl();
+
+    mockRepository.findByName.mockResolvedValue({
+      name: 'templated-server',
+      type: 'stdio',
+      command: 'npx',
+      args: ['-y', 'demo-server'],
+      enabled: true,
+      options: { timeout: 5000 },
+    });
+
+    mockRepository.update.mockResolvedValue({
+      name: 'templated-server',
+      type: 'stdio',
+      enabled: true,
+      options: { timeout: 5000, startOnDemand: true, idleTimeoutMs: 120000 },
+    });
+
+    await dao.update('templated-server', {
+      startOnDemand: true,
+      idleTimeoutMs: 120000,
+    });
+
+    expect(mockRepository.findByName).toHaveBeenCalledWith('templated-server');
+    expect(mockRepository.update).toHaveBeenCalledWith('templated-server', {
+      options: { timeout: 5000, startOnDemand: true, idleTimeoutMs: 120000 },
+    });
+  });
+
+  it('should not read the current row on update() when options is explicitly provided', async () => {
+    const dao = new ServerDaoDbImpl();
+
+    mockRepository.update.mockResolvedValue({
+      name: 'normalized-server',
+      type: 'stdio',
+      enabled: true,
+      options: { startOnDemand: true },
+    });
+
+    await dao.update('normalized-server', {
+      options: { startOnDemand: true } as any,
+      startOnDemand: true,
+    });
+
+    expect(mockRepository.findByName).not.toHaveBeenCalled();
+    expect(mockRepository.update).toHaveBeenCalledWith('normalized-server', {
+      options: { startOnDemand: true },
+    });
+  });
 });

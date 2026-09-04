@@ -1,6 +1,7 @@
 import { ServerConfig } from '../types/index.js';
 import { BaseDao } from './base/BaseDao.js';
 import { JsonFileBaseDao } from './base/JsonFileBaseDao.js';
+import { unpackStartOnDemandOptions } from '../utils/serverConfigPersistence.js';
 
 /**
  * Pagination result interface
@@ -107,9 +108,21 @@ export class ServerDaoImpl extends JsonFileBaseDao implements ServerDao {
     const servers: ServerConfigWithName[] = [];
 
     for (const [name, config] of Object.entries(settings.mcpServers || {})) {
+      // startOnDemand/idleTimeoutMs are mirrored into `options` by
+      // normalizeServerConfigForPersistence() so database-backed installs can
+      // persist them (see ServerDaoDbImpl). Unpack + strip the mirrored keys
+      // here too so JSON-mode behaves the same way: no duplicate/stale
+      // options.startOnDemand noise in mcp_settings.json or API responses.
+      const { options, startOnDemand, idleTimeoutMs } = unpackStartOnDemandOptions(
+        config.options,
+      );
+
       servers.push({
         name,
         ...config,
+        options,
+        ...(startOnDemand !== undefined ? { startOnDemand } : {}),
+        ...(idleTimeoutMs !== undefined ? { idleTimeoutMs } : {}),
       });
     }
 

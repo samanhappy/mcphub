@@ -419,7 +419,16 @@ export interface ServerConfig {
   tools?: Record<string, { enabled: boolean; description?: string }>; // Tool-specific configurations with enable/disable state and custom descriptions
   prompts?: Record<string, { enabled: boolean; description?: string }>; // Prompt-specific configurations with enable/disable state and custom descriptions
   resources?: Record<string, { enabled: boolean; description?: string }>; // Resource-specific configurations with enable/disable state and custom descriptions
-  options?: Partial<Pick<RequestOptions, 'timeout' | 'resetTimeoutOnProgress' | 'maxTotalTimeout'>>; // MCP request options configuration
+  options?: Partial<Pick<RequestOptions, 'timeout' | 'resetTimeoutOnProgress' | 'maxTotalTimeout'>> & {
+    // Internal persistence carriers for startOnDemand/idleTimeoutMs (see below). The
+    // database-backed ServerDao has no dedicated columns for those two fields, so
+    // serverConfigPersistence.ts piggybacks them onto this schema-less JSON blob
+    // and ServerDaoDbImpl unpacks them back to the top-level fields on read.
+    // Application code should read/write config.startOnDemand / config.idleTimeoutMs
+    // directly rather than these mirrored keys.
+    startOnDemand?: boolean;
+    idleTimeoutMs?: number;
+  }; // MCP request options configuration
   // Proxychains4 proxy configuration for STDIO servers (Linux/macOS only, Windows not supported)
   proxy?: ProxychainsConfig;
   // OAuth authentication for upstream MCP servers

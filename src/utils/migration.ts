@@ -68,6 +68,19 @@ export async function migrateToDatabase(): Promise<boolean> {
       for (const [name, config] of Object.entries(settings.mcpServers)) {
         const exists = await serverRepo.exists(name);
         if (!exists) {
+          // startOnDemand/idleTimeoutMs have no dedicated DB columns and must be
+          // mirrored into the schema-less `options` blob (see
+          // serverConfigPersistence.ts / ServerDaoDbImpl.ts), otherwise a JSON-mode
+          // user who already configured on-demand servers silently loses that
+          // setting the moment they migrate to the database.
+          const options = {
+            ...(config.options ?? {}),
+            ...(config.startOnDemand === true ? { startOnDemand: true } : {}),
+            ...(typeof config.idleTimeoutMs === 'number' && config.idleTimeoutMs > 0
+              ? { idleTimeoutMs: config.idleTimeoutMs }
+              : {}),
+          };
+
           await serverRepo.create({
             name,
             type: config.type,
@@ -86,7 +99,7 @@ export async function migrateToDatabase(): Promise<boolean> {
             tools: config.tools,
             prompts: config.prompts,
             resources: config.resources,
-            options: config.options,
+            options: Object.keys(options).length > 0 ? options : config.options,
             oauth: config.oauth,
             openapi: config.openapi,
             passthroughHeaders: config.passthroughHeaders,

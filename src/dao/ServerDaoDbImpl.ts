@@ -1,5 +1,10 @@
 import { ServerDao, ServerConfigWithName, PaginatedResult } from './index.js';
 import { ServerRepository } from '../db/repositories/ServerRepository.js';
+import { ServerConfig } from '../types/index.js';
+import {
+  unpackStartOnDemandOptions,
+  mirrorStartOnDemandIntoOptions,
+} from '../utils/serverConfigPersistence.js';
 
 /**
  * Database-backed implementation of ServerDao
@@ -72,6 +77,18 @@ export class ServerDaoDbImpl implements ServerDao {
   }
 
   async create(entity: ServerConfigWithName): Promise<ServerConfigWithName> {
+    // Mirror startOnDemand/idleTimeoutMs into `options` here (rather than only
+    // relying on callers to have already run normalizeServerConfigForPersistence)
+    // so paths that call the DAO directly - e.g.
+    // templateService.importTemplate() -> mcpService.addServer() -> create() -
+    // still persist both fields in database mode instead of silently dropping
+    // them. See #1095 review discussion.
+    const options = mirrorStartOnDemandIntoOptions(
+      entity.options,
+      entity.startOnDemand === true,
+      entity.idleTimeoutMs,
+    );
+
     const server = await this.repository.create({
       name: entity.name,
       type: entity.type,
@@ -90,7 +107,7 @@ export class ServerDaoDbImpl implements ServerDao {
       tools: entity.tools,
       prompts: entity.prompts,
       resources: entity.resources,
-      options: entity.options,
+      options,
       oauth: entity.oauth,
       proxy: entity.proxy,
       openapi: entity.openapi,
@@ -142,12 +159,39 @@ export class ServerDaoDbImpl implements ServerDao {
     assignNullable('tools');
     assignNullable('prompts');
     assignNullable('resources');
-    assignNullable('options');
     assignNullable('oauth');
     assignNullable('proxy');
     assignNullable('openapi');
     assignNullable('passthroughHeaders');
     assignNullable('perSessionClient');
+
+    // Mirror startOnDemand/idleTimeoutMs into `options`, the same way create()
+    // does, so partial updates that bypass normalizeServerConfigForPersistence
+    // still persist both fields. If this update doesn't touch `options` at all,
+    // read the current row first so we merge into (rather than clobber) any
+    // options already stored - startOnDemand/idleTimeoutMs-only updates must not
+    // wipe out unrelated options like timeout/resetTimeoutOnProgress.
+    if (hasOwn('options') || hasOwn('startOnDemand') || hasOwn('idleTimeoutMs')) {
+      let baseOptions = entity.options;
+      let existingStartOnDemand: boolean | undefined;
+      let existingIdleTimeoutMs: number | undefined;
+
+      if (!hasOwn('options')) {
+        const current = await this.repository.findByName(name);
+        const unpacked = unpackStartOnDemandOptions(current?.options as ServerConfig['options']);
+        baseOptions = unpacked.options;
+        existingStartOnDemand = unpacked.startOnDemand;
+        existingIdleTimeoutMs = unpacked.idleTimeoutMs;
+      }
+
+      const startOnDemand = hasOwn('startOnDemand')
+        ? entity.startOnDemand === true
+        : existingStartOnDemand === true;
+      const idleTimeoutMs = hasOwn('idleTimeoutMs') ? entity.idleTimeoutMs : existingIdleTimeoutMs;
+
+      const options = mirrorStartOnDemandIntoOptions(baseOptions, startOnDemand, idleTimeoutMs);
+      updateData.options = options ?? null;
+    }
 
     const server = await this.repository.update(name, updateData as any);
     return server ? this.mapToServerConfig(server) : null;
@@ -243,6 +287,16 @@ export class ServerDaoDbImpl implements ServerDao {
     passthroughHeaders?: string[];
     perSessionClient?: boolean;
   }): ServerConfigWithName {
+    // startOnDemand/idleTimeoutMs (#1012) have no dedicated columns on the `servers`
+    // table; they are piggybacked onto the schema-less `options` JSON blob by
+    // normalizeServerConfigForPersistence() (see src/utils/serverConfigPersistence.ts)
+    // so they survive a save when running in database mode. Unpack them back to
+    // top-level ServerConfig fields here, since every other consumer (mcpService.ts,
+    // the dashboard, etc.) reads config.startOnDemand / config.idleTimeoutMs directly.
+    const { options, startOnDemand, idleTimeoutMs } = unpackStartOnDemandOptions(
+      server.options as ServerConfig['options'],
+    );
+
     return {
       name: server.name,
       type: server.type as 'stdio' | 'sse' | 'streamable-http' | 'openapi' | undefined,
@@ -261,12 +315,14 @@ export class ServerDaoDbImpl implements ServerDao {
       tools: server.tools,
       prompts: server.prompts,
       resources: server.resources,
-      options: server.options,
+      options,
       oauth: server.oauth,
       proxy: server.proxy,
       openapi: server.openapi,
       passthroughHeaders: server.passthroughHeaders,
       perSessionClient: server.perSessionClient,
+      startOnDemand,
+      idleTimeoutMs,
     };
   }
 }
