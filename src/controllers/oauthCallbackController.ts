@@ -392,10 +392,12 @@ export const handleOAuthCallback = async (req: Request, res: Response) => {
         logger.log('Connecting client with refreshed transport', {
           serverName: serverInfo.name,
         });
+        const reconnectClient = serverInfo.client;
+        const reconnectTransport = serverInfo.transport;
         try {
           await connectClientWithDiagnostics(
-            serverInfo.client,
-            serverInfo.transport,
+            reconnectClient,
+            reconnectTransport,
             serverInfo.options,
           );
         } catch (connectError) {
@@ -414,6 +416,32 @@ export const handleOAuthCallback = async (req: Request, res: Response) => {
               stack: connectError.stack,
             });
           }
+
+          try {
+            await reconnectClient.close();
+          } catch (clientCloseError) {
+            logger.warn('Failed to close client after OAuth reconnect failure', {
+              serverName: serverInfo.name,
+              error: clientCloseError,
+            });
+          }
+
+          try {
+            await reconnectTransport.close();
+          } catch (transportCloseError) {
+            logger.warn('Failed to close transport after OAuth reconnect failure', {
+              serverName: serverInfo.name,
+              error: transportCloseError,
+            });
+          }
+
+          if (serverInfo.client === reconnectClient) {
+            serverInfo.client = undefined;
+          }
+          if (serverInfo.transport === reconnectTransport) {
+            serverInfo.transport = undefined;
+          }
+
           throw connectError;
         }
 

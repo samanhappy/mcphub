@@ -32,11 +32,13 @@ import { loadServerConfig } from '../../src/services/oauthSettingsStore.js';
 const AUTHORIZATION_URL = 'https://as.example.com/authorize?client_id=mcphub';
 
 type MockClient = {
+  close: jest.Mock;
   getServerCapabilities: jest.Mock;
   listTools: jest.Mock;
 };
 
 const createMockClient = (): MockClient => ({
+  close: jest.fn().mockResolvedValue(undefined),
   getServerCapabilities: jest.fn().mockReturnValue(undefined),
   listTools: jest.fn(),
 });
@@ -143,6 +145,7 @@ describe('oauthCallbackController iss validation', () => {
 
   it('reconnects a previously initialized client with the refreshed transport', async () => {
     const client: MockClient = {
+      close: jest.fn().mockResolvedValue(undefined),
       getServerCapabilities: jest.fn().mockReturnValue({ tools: {} }),
       listTools: jest.fn().mockResolvedValue({
         tools: [{ name: 'refreshed-tool', inputSchema: { type: 'object' } }],
@@ -176,12 +179,15 @@ describe('oauthCallbackController iss validation', () => {
 
   it('reports a disconnected server when the refreshed transport cannot connect', async () => {
     const client: MockClient = {
+      close: jest.fn().mockResolvedValue(undefined),
       getServerCapabilities: jest.fn().mockReturnValue({ tools: {} }),
       listTools: jest.fn(),
     };
     serverInfo = createServerInfo(client);
     (getServerByOAuthState as jest.Mock).mockReturnValue(serverInfo);
 
+    const refreshedTransport = { close: jest.fn().mockResolvedValue(undefined) };
+    (createTransportFromConfig as jest.Mock).mockResolvedValue(refreshedTransport);
     const connectionError = new Error('upstream unavailable');
     (connectClientWithDiagnostics as jest.Mock).mockRejectedValue(connectionError);
 
@@ -193,8 +199,46 @@ describe('oauthCallbackController iss validation', () => {
     );
 
     expect(connectClientWithDiagnostics).toHaveBeenCalledTimes(1);
+    expect(client.close).toHaveBeenCalledTimes(1);
+    expect(refreshedTransport.close).toHaveBeenCalledTimes(1);
+    expect(serverInfo.client).toBeUndefined();
+    expect(serverInfo.transport).toBeUndefined();
     expect(serverInfo.status).toBe('disconnected');
     expect(serverInfo.error).toContain('upstream unavailable');
+    expect(res.statusCode).toBe(500);
+    expect(String(res.body)).toContain('upstream unavailable');
+  });
+
+  it('preserves the reconnect error when cleanup also fails', async () => {
+    const client: MockClient = {
+      close: jest.fn().mockRejectedValue(new Error('client cleanup failed')),
+      getServerCapabilities: jest.fn().mockReturnValue({ tools: {} }),
+      listTools: jest.fn(),
+    };
+    serverInfo = createServerInfo(client);
+    (getServerByOAuthState as jest.Mock).mockReturnValue(serverInfo);
+
+    const refreshedTransport = {
+      close: jest.fn().mockRejectedValue(new Error('transport cleanup failed')),
+    };
+    (createTransportFromConfig as jest.Mock).mockResolvedValue(refreshedTransport);
+    (connectClientWithDiagnostics as jest.Mock).mockRejectedValue(
+      new Error('upstream unavailable'),
+    );
+
+    const res = createResponse();
+
+    await handleOAuthCallback(
+      createRequest({ code: 'auth-code', state: 'state-123' }),
+      res as never,
+    );
+
+    expect(client.close).toHaveBeenCalledTimes(1);
+    expect(refreshedTransport.close).toHaveBeenCalledTimes(1);
+    expect(serverInfo.client).toBeUndefined();
+    expect(serverInfo.transport).toBeUndefined();
+    expect(serverInfo.error).toContain('upstream unavailable');
+    expect(serverInfo.error).not.toContain('cleanup failed');
     expect(res.statusCode).toBe(500);
     expect(String(res.body)).toContain('upstream unavailable');
   });
