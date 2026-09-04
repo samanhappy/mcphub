@@ -373,77 +373,83 @@ export const handleOAuthCallback = async (req: Request, res: Response) => {
         );
         serverInfo.transport = refreshedTransport;
 
-        // Update server status to indicate OAuth is complete
-        serverInfo.status = 'connected';
+        // OAuth tokens are available, but the new transport is not connected yet.
+        serverInfo.status = 'connecting';
         if (serverInfo.oauth) {
           serverInfo.oauth.authorizationUrl = undefined;
           serverInfo.oauth.state = undefined;
         }
 
-        // Check if client needs to be connected
-        const isClientConnected = serverInfo.client && serverInfo.client.getServerCapabilities();
+        if (!serverInfo.client || !serverInfo.transport) {
+          const missingRuntimeError = new Error(
+            `Cannot reconnect ${serverInfo.name} after OAuth callback because client or transport is missing`,
+          );
+          serverInfo.status = 'disconnected';
+          serverInfo.error = missingRuntimeError.message;
+          throw missingRuntimeError;
+        }
 
-        if (!isClientConnected) {
-          // Client is not connected yet, connect it
-          if (serverInfo.client && serverInfo.transport) {
-            logger.log('Connecting client with refreshed transport', {
+        logger.log('Connecting client with refreshed transport', {
+          serverName: serverInfo.name,
+        });
+        try {
+          await connectClientWithDiagnostics(
+            serverInfo.client,
+            serverInfo.transport,
+            serverInfo.options,
+          );
+        } catch (connectError) {
+          serverInfo.status = 'disconnected';
+          serverInfo.error = `Failed to connect after OAuth callback: ${
+            connectError instanceof Error ? connectError.message : String(connectError)
+          }`;
+          logger.error('Error connecting client after OAuth callback', {
+            serverName: serverInfo.name,
+            error: connectError,
+          });
+          if (connectError instanceof Error) {
+            logger.error('Connect error details after OAuth callback', {
               serverName: serverInfo.name,
+              message: connectError.message,
+              stack: connectError.stack,
             });
-            try {
-              await connectClientWithDiagnostics(
-                serverInfo.client,
-                serverInfo.transport,
-                serverInfo.options,
-              );
-              logger.log('Client connected successfully after OAuth callback', {
-                serverName: serverInfo.name,
-              });
+          }
+          throw connectError;
+        }
 
-              // List tools after successful connection
-              const capabilities = serverInfo.client.getServerCapabilities();
-              logger.log('Server capabilities after OAuth callback', {
-                serverName: serverInfo.name,
-                capabilities,
-              });
+        serverInfo.status = 'connected';
+        serverInfo.error = null;
+        logger.log('Client connected successfully after OAuth callback', {
+          serverName: serverInfo.name,
+        });
 
-              if (capabilities?.tools) {
-                logger.log('Listing tools after OAuth callback', {
-                  serverName: serverInfo.name,
-                });
-                const toolsResult = await serverInfo.client.listTools({}, serverInfo.options);
-                updateServerToolsCache(serverInfo, toolsResult.tools);
-                logger.log('Listed tools after OAuth callback', {
-                  serverName: serverInfo.name,
-                  toolCount: serverInfo.tools.length,
-                });
-              } else {
-                logger.log('Server does not support tools capability after OAuth callback', {
-                  serverName: serverInfo.name,
-                });
-              }
-            } catch (connectError) {
-              logger.error('Error connecting client after OAuth callback', {
-                serverName: serverInfo.name,
-                error: connectError,
-              });
-              if (connectError instanceof Error) {
-                logger.error('Connect error details after OAuth callback', {
-                  serverName: serverInfo.name,
-                  message: connectError.message,
-                  stack: connectError.stack,
-                });
-              }
-              // Even if connection fails, mark OAuth as complete
-              // The user can try reconnecting from the dashboard
-            }
-          } else {
-            logger.log(
-              'Cannot connect client after OAuth callback because client or transport is missing',
-              { serverName: serverInfo.name },
-            );
+        // List tools after successful connection. A cache refresh failure does not
+        // invalidate the connection established by the MCP handshake.
+        const capabilities = serverInfo.client.getServerCapabilities();
+        logger.log('Server capabilities after OAuth callback', {
+          serverName: serverInfo.name,
+          capabilities,
+        });
+
+        if (capabilities?.tools) {
+          logger.log('Listing tools after OAuth callback', {
+            serverName: serverInfo.name,
+          });
+          try {
+            const toolsResult = await serverInfo.client.listTools({}, serverInfo.options);
+            updateServerToolsCache(serverInfo, toolsResult.tools);
+            logger.log('Listed tools after OAuth callback', {
+              serverName: serverInfo.name,
+              toolCount: serverInfo.tools.length,
+            });
+          } catch (listToolsError) {
+            logger.error('Failed to list tools after OAuth callback', {
+              serverName: serverInfo.name,
+              error: listToolsError,
+            });
           }
         } else {
-          logger.log('Client already connected after OAuth callback', {
+          logger.log('Server does not support tools capability after OAuth callback', {
             serverName: serverInfo.name,
           });
         }

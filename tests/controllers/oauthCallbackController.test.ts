@@ -23,13 +23,25 @@ jest.mock('../../src/config/index.js', () => ({
 import { handleOAuthCallback } from '../../src/controllers/oauthCallbackController.js';
 import {
   getServerByOAuthState,
+  connectClientWithDiagnostics,
   createTransportFromConfig,
+  updateServerToolsCache,
 } from '../../src/services/mcpService.js';
 import { loadServerConfig } from '../../src/services/oauthSettingsStore.js';
 
 const AUTHORIZATION_URL = 'https://as.example.com/authorize?client_id=mcphub';
 
-const createServerInfo = () => {
+type MockClient = {
+  getServerCapabilities: jest.Mock;
+  listTools: jest.Mock;
+};
+
+const createMockClient = (): MockClient => ({
+  getServerCapabilities: jest.fn().mockReturnValue(undefined),
+  listTools: jest.fn(),
+});
+
+const createServerInfo = (client: MockClient = createMockClient()) => {
   const finishAuth = jest.fn().mockResolvedValue(undefined);
   return {
     name: 'upstream-server',
@@ -40,7 +52,7 @@ const createServerInfo = () => {
     },
     options: undefined,
     transport: { finishAuth, close: jest.fn().mockResolvedValue(undefined) },
-    client: undefined,
+    client,
     tools: [],
     oauth: {
       authorizationUrl: AUTHORIZATION_URL,
@@ -127,5 +139,63 @@ describe('oauthCallbackController iss validation', () => {
 
     expect(res.statusCode).toBe(200);
     expect(originalFinishAuth).toHaveBeenCalledWith('auth-code');
+  });
+
+  it('reconnects a previously initialized client with the refreshed transport', async () => {
+    const client: MockClient = {
+      getServerCapabilities: jest.fn().mockReturnValue({ tools: {} }),
+      listTools: jest.fn().mockResolvedValue({
+        tools: [{ name: 'refreshed-tool', inputSchema: { type: 'object' } }],
+      }),
+    };
+    serverInfo = createServerInfo(client);
+    (getServerByOAuthState as jest.Mock).mockReturnValue(serverInfo);
+
+    const refreshedTransport = { close: jest.fn().mockResolvedValue(undefined) };
+    (createTransportFromConfig as jest.Mock).mockResolvedValue(refreshedTransport);
+    (connectClientWithDiagnostics as jest.Mock).mockResolvedValue(undefined);
+
+    const res = createResponse();
+
+    await handleOAuthCallback(
+      createRequest({ code: 'auth-code', state: 'state-123' }),
+      res as never,
+    );
+
+    expect(connectClientWithDiagnostics).toHaveBeenCalledWith(
+      client,
+      refreshedTransport,
+      expect.objectContaining({ timeout: 60000 }),
+    );
+    expect(updateServerToolsCache).toHaveBeenCalledWith(serverInfo, [
+      { name: 'refreshed-tool', inputSchema: { type: 'object' } },
+    ]);
+    expect(serverInfo.status).toBe('connected');
+    expect(res.statusCode).toBe(200);
+  });
+
+  it('reports a disconnected server when the refreshed transport cannot connect', async () => {
+    const client: MockClient = {
+      getServerCapabilities: jest.fn().mockReturnValue({ tools: {} }),
+      listTools: jest.fn(),
+    };
+    serverInfo = createServerInfo(client);
+    (getServerByOAuthState as jest.Mock).mockReturnValue(serverInfo);
+
+    const connectionError = new Error('upstream unavailable');
+    (connectClientWithDiagnostics as jest.Mock).mockRejectedValue(connectionError);
+
+    const res = createResponse();
+
+    await handleOAuthCallback(
+      createRequest({ code: 'auth-code', state: 'state-123' }),
+      res as never,
+    );
+
+    expect(connectClientWithDiagnostics).toHaveBeenCalledTimes(1);
+    expect(serverInfo.status).toBe('disconnected');
+    expect(serverInfo.error).toContain('upstream unavailable');
+    expect(res.statusCode).toBe(500);
+    expect(String(res.body)).toContain('upstream unavailable');
   });
 });
