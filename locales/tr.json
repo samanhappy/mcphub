@@ -1247,5 +1247,30 @@
     "notConnected": "Bağlı değil",
     "connectedOf": "{{total}} sunucudan {{connected}} tanesi bağlı",
     "totalFootprint": "Bağlam ayak izi"
+  },
+  "credentials": {
+    "title": "Kimlik Bilgilerim",
+    "description": "Paylaşılan sunuculara kendi kimlik bilgilerinizi bağlayın. Her istek, çağrıyı yapan kullanıcının bilgilerini kullanır.",
+    "slots": "Kişisel kimlik bilgisi alanları",
+    "slotsHint": "Yalnızca alan adlarını tanımlayın. Tüm alanlar zorunludur; kuruluş bilgilerine otomatik dönüş yapılmaz.",
+    "fieldName": "Alan adı",
+    "label": "Etiket (isteğe bağlı)",
+    "addSlot": "Alan ekle",
+    "removeSlot": "Alanı kaldır",
+    "personalBadge": "Kişisel kimlik bilgileri",
+    "manage": "Yönet",
+    "configured": "Yapılandırıldı",
+    "required": "Bağlama gerekli",
+    "writeOnly": "Kaydedilen değerler görüntülenemez. Bağlamayı değiştirmek için tüm alanlara yeni değerler girin.",
+    "replaceValue": "Yeni değer girin",
+    "enterValue": "Kimlik bilgisi girin",
+    "save": "Bağlamayı kaydet",
+    "delete": "Bağlamayı sil",
+    "saved": "Bağlama kaydedildi",
+    "deleted": "Bağlama silindi",
+    "failed": "Kimlik bilgileri yönetilemiyor",
+    "showAll": "Tüm sunucuları göster",
+    "loading": "Yükleniyor…",
+    "empty": "Kişisel kimlik bilgisi gerektiren paylaşılan sunucu yok."
   }
 }

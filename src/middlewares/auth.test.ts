@@ -257,6 +257,7 @@ describe('auth middleware', () => {
       user: {
         username: 'guest',
         isAdmin: true,
+        credentialEligible: false,
       },
     });
   });
@@ -333,6 +334,7 @@ describe('auth middleware', () => {
       expect(response.body.user).toEqual({
         username: 'system-owner',
         isAdmin: true,
+        credentialEligible: false,
       });
       expect(response.body.bearerKey).toEqual(
         expect.objectContaining({
@@ -383,6 +385,7 @@ describe('auth middleware', () => {
       expect(response.body.user).toEqual({
         username: 'system',
         isAdmin: true,
+        credentialEligible: false,
       });
     });
 

@@ -1,3 +1,4 @@
+import { listMyCredentials, updateMyCredential } from '../controllers/credentialBindingController.js';
 import express from 'express';
 import { check } from 'express-validator';
 import config from '../config/index.js';
@@ -245,6 +246,9 @@ export const initRoutes = async (app: express.Application): Promise<void> => {
   router.use(authenticatedRouter);
 
   // API routes protected by auth middleware in middlewares/index.ts and rate limited here
+  authenticatedRouter.get('/credentials', listMyCredentials);
+  authenticatedRouter.put('/credentials/:name', updateMyCredential);
+  authenticatedRouter.delete('/credentials/:name', updateMyCredential);
   authenticatedRouter.get('/servers', getAllServers);
   authenticatedRouter.get('/servers/:name/share-candidates', getServerShareCandidates);
   authenticatedRouter.get('/servers/:name', getServerConfig);

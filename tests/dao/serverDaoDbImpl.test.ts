@@ -363,3 +363,17 @@ describe('ServerDaoDbImpl', () => {
     });
   });
 });
+
+
+test('credential templates survive database create, partial update and explicit removal', async () => {
+  const dao = new ServerDaoDbImpl();
+  const credentialTemplate = [{ target: 'env' as const, name: 'PERSONAL_KEY' }];
+  mockRepository.create.mockResolvedValue({ name: 'shared', enabled: true, credentialTemplate });
+  expect((await dao.create({ name: 'shared', credentialTemplate })).credentialTemplate).toEqual(credentialTemplate);
+  expect(mockRepository.create).toHaveBeenCalledWith(expect.objectContaining({ credentialTemplate }));
+  mockRepository.update.mockResolvedValue({ name: 'shared', enabled: true, credentialTemplate });
+  expect((await dao.update('shared', { credentialTemplate }))?.credentialTemplate).toEqual(credentialTemplate);
+  expect(mockRepository.update).toHaveBeenCalledWith('shared', { credentialTemplate });
+  await dao.update('shared', { credentialTemplate: undefined });
+  expect(mockRepository.update).toHaveBeenLastCalledWith('shared', { credentialTemplate: null });
+});

@@ -26,6 +26,7 @@
             "group": "Core Features",
             "pages": [
               "features/server-management",
+              "features/per-user-credentials",
               "features/group-management",
               "features/smart-routing",
               "features/mcp-apps",
@@ -72,6 +73,7 @@
             "group": "核心功能",
             "pages": [
               "zh/features/server-management",
+              "zh/features/per-user-credentials",
               "zh/features/group-management",
               "zh/features/smart-routing",
               "zh/features/mcp-apps",

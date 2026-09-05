@@ -1,3 +1,4 @@
+import { AxiosHeaders } from 'axios';
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
 import { randomUUID } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
@@ -1003,6 +1004,14 @@ export class OpenAPIClient {
         );
       }
 
+      // Bound headers take precedence over tool parameters, cookies and static auth.
+      if (this.config.credentialTemplate?.length) {
+        const headers = AxiosHeaders.from(requestConfig.headers as Record<string, string>);
+        for (const slot of this.config.credentialTemplate) {
+          if (slot.target === 'headers') headers.set(slot.name, this.config.headers?.[slot.name]);
+        }
+        requestConfig.headers = headers;
+      }
       authorizationUsedForRequest = this.getDefaultAuthorizationHeader();
       attemptedUpstreamRequest = true;
       const response = await this.httpClient.request(requestConfig);

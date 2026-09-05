@@ -31,3 +31,7 @@ temp-test-config/
 
 # GitGuardian cache
 .cache_ggshield
+
+# Encrypted personal credential store (back up separately)
+*.credentials.json
+*.credentials.json.*.tmp

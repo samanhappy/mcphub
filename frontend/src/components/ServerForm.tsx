@@ -131,6 +131,7 @@ const ServerForm = ({
     },
     // Per-session client isolation initialization
     perSessionClient: initialData?.config?.perSessionClient === true,
+    credentialTemplate: initialData?.config?.credentialTemplate || [],
     // Proxychains proxy config: round-trip the stored value so editing the
     // server does not silently drop it (there is no in-form editor for it).
     proxy: initialData?.config?.proxy,
@@ -601,9 +602,7 @@ const ServerForm = ({
                 title={t('server.nameInvalid')}
                 required
               />
-              <p className="text-xs text-[var(--hub-ink-3)] mt-1">
-                {t('server.nameInvalid')}
-              </p>
+              <p className="text-xs text-[var(--hub-ink-3)] mt-1">{t('server.nameInvalid')}</p>
             </div>
 
             <div className="md:col-span-2">
@@ -1675,6 +1674,75 @@ const ServerForm = ({
           </div>
         </div>
 
+        <fieldset className="mt-5 space-y-3 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+          <legend className="px-1 font-medium">{t('credentials.slots')}</legend>
+          <p className="text-sm text-gray-500">{t('credentials.slotsHint')}</p>
+          {(formData.credentialTemplate || []).map((slot, index) => (
+            <div key={index} className="flex flex-wrap items-center gap-2">
+              <span className="text-sm">{serverType === 'stdio' ? 'env.' : 'headers.'}</span>
+              <input
+                required
+                maxLength={128}
+                aria-label={t('credentials.fieldName')}
+                placeholder={t('credentials.fieldName')}
+                value={slot.name}
+                className="min-w-0 flex-1 rounded border p-2 dark:bg-gray-800 dark:border-gray-600"
+                onChange={(event) =>
+                  setFormData({
+                    ...formData,
+                    credentialTemplate: formData.credentialTemplate?.map((item, i) =>
+                      i === index ? { ...item, name: event.target.value } : item,
+                    ),
+                  })
+                }
+              />
+              <input
+                maxLength={200}
+                aria-label={t('credentials.label')}
+                placeholder={t('credentials.label')}
+                value={slot.label || ''}
+                className="min-w-0 flex-1 rounded border p-2 dark:bg-gray-800 dark:border-gray-600"
+                onChange={(event) =>
+                  setFormData({
+                    ...formData,
+                    credentialTemplate: formData.credentialTemplate?.map((item, i) =>
+                      i === index ? { ...item, label: event.target.value } : item,
+                    ),
+                  })
+                }
+              />
+              <button
+                type="button"
+                aria-label={t('credentials.removeSlot')}
+                onClick={() =>
+                  setFormData({
+                    ...formData,
+                    credentialTemplate: formData.credentialTemplate?.filter((_, i) => i !== index),
+                  })
+                }
+              >
+                <X size={18} />
+              </button>
+            </div>
+          ))}
+          <button
+            type="button"
+            className="text-sm text-blue-600"
+            disabled={(formData.credentialTemplate?.length || 0) >= 32}
+            onClick={() =>
+              setFormData({
+                ...formData,
+                credentialTemplate: [
+                  ...(formData.credentialTemplate || []),
+                  { target: serverType === 'stdio' ? 'env' : 'headers', name: '' },
+                ],
+              })
+            }
+          >
+            {t('credentials.addSlot')}
+          </button>
+        </fieldset>
+
         {/* ─── Section 3: Advanced Options (collapsible) ─── */}
         <div className="mb-4">
           <div
@@ -2158,7 +2226,7 @@ const ServerForm = ({
                       'Skip startup connect and spawn this server only when a tool call arrives. The process is shut down automatically after the idle timeout, then restarted on the next call. Reduces persistent memory usage for rarely-used servers.',
                     )}
                   </p>
-                  {formData.startOnDemand && (
+                  {(formData.startOnDemand || !!formData.credentialTemplate?.length) && (
                     <div className="ml-6 mt-2">
                       <label
                         htmlFor="idleTimeoutMs"
