@@ -1,0 +1,138 @@
+src/services/serverConfigPresenter.ts
+  s_29d7282f1637cb::t_298390c0380d8f 1,48-49
+  s_29d7282f1637cb::t_6f6528f0a24015 50
+frontend/src/components/layout/Sidebar.tsx
+  s_29d7282f1637cb::t_d8237904e65db0 15,83
+tests/fixtures/credential-server.mjs
+  s_29d7282f1637cb::t_295e3120a240d6 1-16
+  s_29d7282f1637cb::t_2cd6852128455d 17-46
+README.fr.md
+  s_29d7282f1637cb::t_b84a4e92fc2915 13
+src/db/entities/CredentialBinding.ts
+  s_29d7282f1637cb::t_2a0c13a8c39ebe 1-16
+src/dao/DatabaseDaoFactory.ts
+  s_29d7282f1637cb::t_298390c0380d8f 1,59-60
+  s_29d7282f1637cb::t_b84a3aa00a0a99 61-62
+src/dao/ServerDaoDbImpl.ts
+  s_29d7282f1637cb::t_298390c0380d8f 116,168,291,327
+src/controllers/credentialBindingController.ts
+  s_29d7282f1637cb::t_f212d9604275d9 1-14,16-28,30-39
+  s_29d7282f1637cb::t_2880a117544dc2 15,29
+  s_29d7282f1637cb::t_c3dfa8bb17db50 40-72
+frontend/src/components/ServerCard.tsx
+  s_29d7282f1637cb::t_d8237904e65db0 1,612-614
+src/controllers/serverController.ts
+  s_29d7282f1637cb::t_298390c0380d8f 2,206,637,639,1133,1135
+  s_29d7282f1637cb::t_c5354bfd51709d 1,1053
+src/dao/CredentialBindingDao.ts
+  s_29d7282f1637cb::t_2a0c13a8c39ebe 1-14,16-36,38-40,42-45,47-51
+  s_29d7282f1637cb::t_2880a117544dc2 15,37,41,46
+  s_29d7282f1637cb::t_82f5e7e7492352 52-59
+frontend/src/pages/CredentialsPage.tsx
+  s_29d7282f1637cb::t_9c9051255a5a7f 1-82
+  s_29d7282f1637cb::t_9ad066a9689689 83-143
+src/utils/serverConfigPersistence.ts
+  s_29d7282f1637cb::t_298390c0380d8f 1,270
+tests/services/credentialBindingService.test.ts
+  s_29d7282f1637cb::t_295e3120a240d6 1-86
+  s_29d7282f1637cb::t_70f8676e25a7a8 87-168
+docs/docs.json
+  s_29d7282f1637cb::t_b84a4e92fc2915 29,76
+src/utils/credentialTemplate.ts
+  s_29d7282f1637cb::t_2a0c13a8c39ebe 1-38
+  s_29d7282f1637cb::t_9001705811a7cd 39-46
+src/controllers/userController.ts
+  s_29d7282f1637cb::t_c5354bfd51709d 1,256
+tests/services/principalRuntimeService.test.ts
+  s_29d7282f1637cb::t_5d210f1cf220a5 1-57
+src/services/mcpService.ts
+  s_29d7282f1637cb::t_d8237904e65db0 1405,4135,4146,4161,4175
+  s_29d7282f1637cb::t_dd3c587d7c6b0f 1,3-6,732,735,926,1267,1270-1272,1287,1320,1404,1406,1444-1447,1627-1633,2200,2355,2370,2398,2490,2527,2691,3119,3184,3432,3634,3743,3842,3904,3966,4006
+  s_29d7282f1637cb::t_2880a117544dc2 2,4180,4187
+  s_29d7282f1637cb::t_c5354bfd51709d 4118-4134,4136-4145,4147-4160,4162-4174,4176-4179,4181-4186,4188-4203,4214,4216-4228
+  s_29d7282f1637cb::t_f63c978d37c933 1636,2079-2091,4204-4213,4215
+  s_29d7282f1637cb::t_40c36aedc43feb 1634-1635,1637
+src/db/entities/index.ts
+  s_29d7282f1637cb::t_298390c0380d8f 1,17,34
+locales/fr.json
+  s_29d7282f1637cb::t_1d023efb3b8da1 1251-1275
+docs/features/per-user-credentials.mdx
+  s_29d7282f1637cb::t_b84a4e92fc2915 1-77
+src/types/index.ts
+  s_29d7282f1637cb::t_298390c0380d8f 398-410,413
+docs/zh/features/per-user-credentials.mdx
+  s_29d7282f1637cb::t_b84a4e92fc2915 1-76
+src/services/principalRuntimeService.ts
+  s_29d7282f1637cb::t_2880a117544dc2 43
+  s_29d7282f1637cb::t_6df318104bd477 1-14,16-42,44-51,53-68,70-100
+  s_29d7282f1637cb::t_d8237904e65db0 15,52,69
+  s_29d7282f1637cb::t_90da56775042b0 101-139
+README.md
+  s_29d7282f1637cb::t_b84a4e92fc2915 15
+frontend/src/components/ServerForm.tsx
+  s_29d7282f1637cb::t_d8237904e65db0 134,1679-1696
+  s_29d7282f1637cb::t_aecfaf3d2241a8 1697
+tests/integration/personal-credentials.test.ts
+  s_29d7282f1637cb::t_222f4baf76ec0e 2-17,19-21,23-27,29-33,35-37,39-45,47-49,51-52,54-55,57-68,70-95,97-101,103-112,114-119,121,123-156,158-165,167-169,173-187,190-196,198-205,207-212,215-224,226-228,231-248,250-265,268,270,280-316
+  s_29d7282f1637cb::t_982c0e19600743 1,18,22,28,34,38,46,50,53,56,69,96,102,113,120,122,157,166,170-172,188-189,197,206,213-214,225,229-230,249,266-267,269,271-279
+src/clients/openapi.ts
+  s_29d7282f1637cb::t_c5354bfd51709d 1,1007-1008,1010-1014
+  s_29d7282f1637cb::t_d8237904e65db0 1009
+src/routes/index.ts
+  s_29d7282f1637cb::t_698eb33e1565ca 1,249-251
+src/utils/migration.ts
+  s_29d7282f1637cb::t_2880a117544dc2 1-2,118-121
+  s_29d7282f1637cb::t_298390c0380d8f 109
+  s_29d7282f1637cb::t_0e2df1e3272ae4 122-123
+frontend/src/utils/serverFormPayload.ts
+  s_29d7282f1637cb::t_d8237904e65db0 219
+src/db/entities/Server.ts
+  s_29d7282f1637cb::t_298390c0380d8f 1,92-93
+  s_29d7282f1637cb::t_f65f8f829aed8f 94
+locales/tr.json
+  s_29d7282f1637cb::t_1d023efb3b8da1 1250-1274
+src/dao/CredentialBindingDaoDbImpl.ts
+  s_29d7282f1637cb::t_2a0c13a8c39ebe 1-22
+frontend/src/types/index.ts
+  s_29d7282f1637cb::t_d8237904e65db0 195-208,211,370
+.gitignore
+  s_29d7282f1637cb::t_e842e654b430f9 34-37
+src/middlewares/auth.ts
+  s_29d7282f1637cb::t_2880a117544dc2 93,136
+locales/en.json
+  s_29d7282f1637cb::t_1d023efb3b8da1 1253-1277
+src/services/authorizationService.ts
+  s_29d7282f1637cb::t_2880a117544dc2 24
+locales/zh.json
+  s_29d7282f1637cb::t_1d023efb3b8da1 1255-1279
+src/services/credentialBindingService.ts
+  s_29d7282f1637cb::t_f212d9604275d9 1-96
+  s_29d7282f1637cb::t_f8367f89a7461d 97-167
+README.zh.md
+  s_29d7282f1637cb::t_b84a4e92fc2915 13
+src/dao/DaoFactory.ts
+  s_29d7282f1637cb::t_298390c0380d8f 1,19,64-67,246-248
+  s_29d7282f1637cb::t_2088e3186628c7 249
+frontend/src/App.tsx
+  s_29d7282f1637cb::t_d8237904e65db0 16,75
+tests/controllers/serverController.test.ts
+  s_29d7282f1637cb::t_a7d7dfad8d5541 66
+tests/dao/serverDaoDbImpl.test.ts
+  s_29d7282f1637cb::t_0f0c9585925e38 366-379
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "c8c6c66660b0c6e5af3c34c2fa37448405754779",
+  "prompts": {},
+  "sessions": {
+    "s_29d7282f1637cb": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a070d1-21c4-7f83-9701-a94ba6815dc8",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
