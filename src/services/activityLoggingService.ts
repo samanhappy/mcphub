@@ -8,6 +8,10 @@ const PAYLOAD_OMITTED = JSON.stringify({
   _omitted: true,
   _reason: 'activityLog.storeToolPayload is disabled',
 });
+const CREDENTIAL_TEMPLATE_PAYLOAD_OMITTED = JSON.stringify({
+  _omitted: true,
+  _reason: 'activityLog payload storage is disabled by security policy',
+});
 const CREDENTIAL_TEMPLATE_ERROR = 'Credential-templated server tool call failed';
 
 /**
@@ -66,6 +70,9 @@ export class ActivityLoggingService {
       // Personal credential calls are metadata-only because upstream responses can echo or
       // transform secrets in ways field-level redaction cannot reliably detect.
       const storePayload = this.shouldStoreToolPayload() && !params.hasCredentialTemplate;
+      const omittedPayload = params.hasCredentialTemplate
+        ? CREDENTIAL_TEMPLATE_PAYLOAD_OMITTED
+        : PAYLOAD_OMITTED;
       const errorMessage = params.errorMessage
         ? params.hasCredentialTemplate
           ? CREDENTIAL_TEMPLATE_ERROR
@@ -77,8 +84,8 @@ export class ActivityLoggingService {
         tool: params.tool,
         duration: params.duration,
         status: params.status,
-        input: this.serializePayload(params.input, storePayload),
-        output: this.serializePayload(params.output, storePayload),
+        input: this.serializePayload(params.input, storePayload, omittedPayload),
+        output: this.serializePayload(params.output, storePayload, omittedPayload),
         group: params.group,
         username: params.username,
         keyId: params.keyId,
@@ -109,12 +116,16 @@ export class ActivityLoggingService {
    * redaction corrupts the audit record on false positives and gives false
    * assurance on false negatives, so the decision is whether to store at all.
    */
-  private serializePayload(payload: any, storePayload: boolean): string | undefined {
+  private serializePayload(
+    payload: any,
+    storePayload: boolean,
+    omittedPayload: string,
+  ): string | undefined {
     if (payload === undefined || payload === null) {
       return undefined;
     }
     if (!storePayload) {
-      return PAYLOAD_OMITTED;
+      return omittedPayload;
     }
     return this.safeStringify(payload);
   }

@@ -102,6 +102,7 @@ describe('ActivityLoggingService', () => {
     const persisted = mockCreate.mock.calls[0][0];
     expect(persisted.input).not.toContain('do-not-store');
     expect(persisted.input).toContain('_omitted');
+    expect(persisted.input).toContain('activityLog.storeToolPayload is disabled');
     expect(persisted.output).toContain('_omitted');
   });
 
@@ -139,6 +140,8 @@ describe('ActivityLoggingService', () => {
     expect(mockCreate).toHaveBeenCalledTimes(1);
     const persisted = mockCreate.mock.calls[0][0];
     expect(persisted.input).toContain('_omitted');
+    expect(persisted.input).toContain('security policy');
+    expect(persisted.input).not.toContain('storeToolPayload');
     expect(persisted.output).toContain('_omitted');
     expect(persisted.errorMessage).toBe('Credential-templated server tool call failed');
     expect(JSON.stringify(persisted)).not.toContain('alice-personal-secret');
