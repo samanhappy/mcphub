@@ -219,7 +219,14 @@ export function buildMultipartParts(
   const properties = schema?.properties as Record<string, OpenAPIV3.SchemaObject> | undefined;
   const isBinaryField = (name: string): boolean => {
     const propertySchema = properties?.[name];
-    return !!propertySchema && propertySchema.type === 'string' && propertySchema.format === 'binary';
+    // Multipart arrays use the item schema to determine each repeated part's type.
+    const partSchema = propertySchema?.type === 'array' ? propertySchema.items : propertySchema;
+    return (
+      !!partSchema &&
+      'type' in partSchema &&
+      partSchema.type === 'string' &&
+      partSchema.format === 'binary'
+    );
   };
 
   const parts: MultipartPart[] = [];
