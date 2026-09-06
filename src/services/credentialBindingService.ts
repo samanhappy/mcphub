@@ -124,8 +124,17 @@ const requestLanguage = (): string | undefined => {
   return language?.split(',')[0].split(';')[0].trim() || undefined;
 };
 
-export const missingCredentialError = (serverName: string): CredentialBindingError =>
-  new CredentialBindingError(getT(requestLanguage())('credentials.missing', { serverName }));
+const defaultMissingCredentialMessage = (serverName: string): string =>
+  `Personal credentials required for '${serverName}'. Bind all required slots in Dashboard → Credentials.`;
+
+export const missingCredentialError = (serverName: string): CredentialBindingError => {
+  const fallback = defaultMissingCredentialMessage(serverName);
+  const message = getT(requestLanguage())('credentials.missing', {
+    serverName,
+    defaultValue: fallback,
+  });
+  return new CredentialBindingError(message || fallback);
+};
 
 export const getCredentialBindingStatus = async (
   serverName: string,
