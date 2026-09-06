@@ -43,7 +43,8 @@ Updates various parts of the system configuration. You only need to provide the 
 - `openaiApiBaseUrl` (string): The base URL for the OpenAI-compatible API for generating embeddings.
 - `openaiApiKey` (string): The API key for the embeddings service.
 - `openaiApiEmbeddingModel` (string): The name of the embedding model to use.
-- `embeddingDimensions` (number, optional): The output dimensionality for providers that support configurable dimensions. Leave unset to use the model default.
+- `embeddingDimensions` (number, optional): The output dimensionality for providers that support configurable dimensions. Leave unset to use the model default. This value also declares the expected storage dimension, but it is only forwarded to the provider as the `dimensions` request parameter for models known to support Matryoshka (MRL) representations, or when `embeddingDimensionsApiPassthrough` is enabled (issue #1131).
+- `embeddingDimensionsApiPassthrough` (boolean, optional, default `false`): When `true`, always forward `embeddingDimensions` to the provider as the `dimensions` request parameter. Non-MRL models/backends (Qwen3-Embedding, BGE, vLLM/sglang) reject the parameter outright; enable only for other MRL-capable models. See also `EMBEDDING_DIMENSIONS_API_PASSTHROUGH`.
 
 #### Tool Result Compression Configuration (`toolResultCompression`)
 

@@ -1635,6 +1635,7 @@ export const updateSystemConfig = async (req: Request, res: Response): Promise<v
         typeof smartRouting.embeddingEncodingFormat === 'string' ||
         typeof smartRouting.embeddingDimensions === 'number' ||
         smartRouting.embeddingDimensions === null ||
+        typeof smartRouting.embeddingDimensionsApiPassthrough === 'boolean' ||
         typeof smartRouting.openaiApiBaseUrl === 'string' ||
         typeof smartRouting.openaiApiKey === 'string' ||
         typeof smartRouting.openaiApiEmbeddingModel === 'string' ||
@@ -1925,6 +1926,11 @@ export const updateSystemConfig = async (req: Request, res: Response): Promise<v
         systemConfig.smartRouting.embeddingDimensions = undefined;
       }
 
+      if (typeof smartRouting.embeddingDimensionsApiPassthrough === 'boolean') {
+        systemConfig.smartRouting.embeddingDimensionsApiPassthrough =
+          smartRouting.embeddingDimensionsApiPassthrough;
+      }
+
       if (typeof smartRouting.enabled === 'boolean') {
         // If enabling Smart Routing, validate required fields
         if (smartRouting.enabled) {
@@ -2055,6 +2061,8 @@ export const updateSystemConfig = async (req: Request, res: Response): Promise<v
           systemConfig.smartRouting.embeddingEncodingFormat ||
         previousSmartRoutingConfig.embeddingDimensions !==
           systemConfig.smartRouting.embeddingDimensions ||
+        previousSmartRoutingConfig.embeddingDimensionsApiPassthrough !==
+          systemConfig.smartRouting.embeddingDimensionsApiPassthrough ||
         previousSmartRoutingConfig.openaiApiBaseUrl !==
           systemConfig.smartRouting.openaiApiBaseUrl ||
         previousSmartRoutingConfig.openaiApiKey !== systemConfig.smartRouting.openaiApiKey ||

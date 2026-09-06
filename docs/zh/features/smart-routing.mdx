@@ -387,6 +387,12 @@ EMBEDDING_MODEL=text-embedding-3-small
 # 可选：支持自定义维度的提供方（例如 768）
 EMBEDDING_DIMENSIONS=768
 
+# 仅已知支持 Matryoshka（MRL）的模型会自动收到 `dimensions` 参数
+# （text-embedding-3-*、gemini-embedding-*）。非 MRL 模型/后端
+# （Qwen3-Embedding、BGE、vLLM/sglang 等）会直接拒绝该参数（issue #1131）。
+# 如使用其它支持 MRL 的模型，可通过以下变量强制转发：
+# EMBEDDING_DIMENSIONS_API_PASSTHROUGH=true
+
 # 更高质量（需要 pgvector >= 0.7.0 以获得最佳索引）
 EMBEDDING_MODEL=text-embedding-3-large
 

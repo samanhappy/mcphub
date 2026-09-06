@@ -36,6 +36,7 @@ interface SmartRoutingConfig {
   embeddingProvider?: 'openai' | 'azure_openai';
   embeddingEncodingFormat?: 'auto' | 'base64' | 'float';
   embeddingDimensions?: number;
+  embeddingDimensionsApiPassthrough: boolean;
   openaiApiBaseUrl: string;
   openaiApiKey: string;
   openaiApiEmbeddingModel: string;
@@ -353,6 +354,7 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
     embeddingProvider: 'openai',
     embeddingEncodingFormat: 'auto',
     embeddingDimensions: undefined,
+    embeddingDimensionsApiPassthrough: false,
     openaiApiBaseUrl: '',
     openaiApiKey: '',
     openaiApiEmbeddingModel: '',
@@ -444,6 +446,8 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
                 ? 'float'
                 : 'auto',
           embeddingDimensions: data.data.systemConfig.smartRouting.embeddingDimensions,
+          embeddingDimensionsApiPassthrough:
+            data.data.systemConfig.smartRouting.embeddingDimensionsApiPassthrough ?? false,
           openaiApiBaseUrl: data.data.systemConfig.smartRouting.openaiApiBaseUrl || '',
           openaiApiKey: data.data.systemConfig.smartRouting.openaiApiKey || '',
           openaiApiEmbeddingModel:

@@ -21,6 +21,19 @@ export interface SmartRoutingConfig {
    * When omitted, the provider's model default is used.
    */
   embeddingDimensions?: number;
+  /**
+   * When true, the configured embeddingDimensions is always forwarded to the
+   * provider as the OpenAI `dimensions` request parameter, even for models not
+   * known to support Matryoshka (MRL) representations.
+   *
+   * Defaults to false: MCPHub only forwards `dimensions` for models/backends it
+   * recognizes as MRL-capable (text-embedding-3-*, gemini-embedding-*), because
+   * many popular open embedding models/backends (Qwen3-Embedding, BGE, most
+   * vLLM/sglang deployments) reject the parameter outright — even when the
+   * value equals the model's native dimension (issue #1131). Enable this only
+   * for MRL-capable models that MCPHub does not recognize.
+   */
+  embeddingDimensionsApiPassthrough?: boolean;
   openaiApiBaseUrl: string;
   openaiApiKey: string;
   openaiApiEmbeddingModel: string;
@@ -137,6 +150,13 @@ export async function getSmartRoutingConfig(): Promise<SmartRoutingConfig> {
         const parsed = Number(value);
         return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : undefined;
       },
+    ),
+
+    embeddingDimensionsApiPassthrough: getConfigValue(
+      [process.env.EMBEDDING_DIMENSIONS_API_PASSTHROUGH],
+      smartRoutingSettings.embeddingDimensionsApiPassthrough,
+      false,
+      parseBooleanEnvVar,
     ),
 
     // OpenAI API configuration

@@ -236,6 +236,13 @@ EMBEDDING_MODEL=text-embedding-3-small
     # Optional provider-supported output dimension (for example: 768)
     EMBEDDING_DIMENSIONS=768
 
+    # Only models known to support Matryoshka (MRL) receive the `dimensions`
+    # parameter automatically (text-embedding-3-*, gemini-embedding-*).
+    # Non-MRL models/backends (Qwen3-Embedding, BGE, vLLM/sglang) reject the
+    # parameter outright (issue #1131). Force forwarding for other MRL-capable
+    # models with:
+    # EMBEDDING_DIMENSIONS_API_PASSTHROUGH=true
+
     # Azure OpenAI
     AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com
     AZURE_OPENAI_API_KEY=your-api-key
