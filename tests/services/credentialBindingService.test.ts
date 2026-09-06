@@ -112,14 +112,110 @@ test('authenticates ciphertext against both server and principal', async () => {
   );
 });
 
-test('fails closed without encryption configuration and on corrupted storage', async () => {
+test('generates one private persistent key and reuses it after loading a fresh service', async () => {
   delete process.env.MCPHUB_CREDENTIAL_ENCRYPTION_KEY;
+  await Promise.all(
+    ['alice', 'bob'].map((username) =>
+      saveCredentialBinding('shared', username, stdio, {
+        'env.PERSONAL_KEY': `${username}-secret`,
+      }),
+    ),
+  );
+  const keyFile = `${process.env.MCPHUB_SETTING_PATH}.credentials.key`;
+  const key = fs.readFileSync(keyFile, 'utf8').trim();
+  expect(Buffer.from(key, 'base64')).toHaveLength(32);
+  expect(fs.statSync(keyFile).mode & 0o777).toBe(0o600);
+  expect(process.env.MCPHUB_CREDENTIAL_ENCRYPTION_KEY).toBeUndefined();
+  await jest.isolateModulesAsync(async () => {
+    const fresh = await import('../../src/services/credentialBindingService.js');
+    expect(
+      (await fresh.resolveCredentialBinding('shared', 'alice', stdio)).config.env?.PERSONAL_KEY,
+    ).toBe('alice-secret');
+    await fresh.saveCredentialBinding('shared', 'bob', stdio, { 'env.PERSONAL_KEY': 'bob-new' });
+  });
+  expect(fs.readFileSync(keyFile, 'utf8').trim()).toBe(key);
+  expect((await resolveCredentialBinding('shared', 'bob', stdio)).config.env?.PERSONAL_KEY).toBe(
+    'bob-new',
+  );
+  expect(fs.readdirSync(directory).some((name) => name.endsWith('.tmp'))).toBe(false);
+});
+
+test('uses an explicit key without creating or overwriting the local key', async () => {
+  await saveCredentialBinding('shared', 'alice', stdio, { 'env.PERSONAL_KEY': 'secret' });
+  const keyFile = `${process.env.MCPHUB_SETTING_PATH}.credentials.key`;
+  expect(fs.existsSync(keyFile)).toBe(false);
+  fs.writeFileSync(keyFile, 'invalid-local-key');
+  expect((await resolveCredentialBinding('shared', 'alice', stdio)).config.env?.PERSONAL_KEY).toBe(
+    'secret',
+  );
+  expect(fs.readFileSync(keyFile, 'utf8')).toBe('invalid-local-key');
+});
+
+test('uses the winning key when another process creates the file concurrently', async () => {
+  delete process.env.MCPHUB_CREDENTIAL_ENCRYPTION_KEY;
+  const winningKey = randomBytes(32).toString('base64');
+  const link = jest.spyOn(fs, 'linkSync').mockImplementationOnce((_source, destination) => {
+    fs.writeFileSync(destination, winningKey, { mode: 0o600, flag: 'wx' });
+    throw Object.assign(new Error('File exists'), { code: 'EEXIST' });
+  });
+  try {
+    await saveCredentialBinding('shared', 'alice', stdio, { 'env.PERSONAL_KEY': 'secret' });
+  } finally {
+    link.mockRestore();
+  }
+  expect(fs.readFileSync(`${process.env.MCPHUB_SETTING_PATH}.credentials.key`, 'utf8')).toBe(
+    winningKey,
+  );
+  process.env.MCPHUB_CREDENTIAL_ENCRYPTION_KEY = winningKey;
+  expect((await resolveCredentialBinding('shared', 'alice', stdio)).config.env?.PERSONAL_KEY).toBe(
+    'secret',
+  );
+  expect(fs.readdirSync(directory).some((name) => name.endsWith('.tmp'))).toBe(false);
+});
+
+test('does not regenerate a missing key when any encrypted bindings already exist', async () => {
+  await saveCredentialBinding('shared', 'alice', stdio, { 'env.PERSONAL_KEY': 'secret' });
+  delete process.env.MCPHUB_CREDENTIAL_ENCRYPTION_KEY;
+  const before = fs.readFileSync(`${process.env.MCPHUB_SETTING_PATH}.credentials.json`, 'utf8');
+  await expect(resolveCredentialBinding('shared', 'alice', stdio)).rejects.toThrow('Restore');
+  await expect(
+    saveCredentialBinding('other-server', 'bob', stdio, { 'env.PERSONAL_KEY': 'new' }),
+  ).rejects.toThrow('Restore');
+  expect(fs.existsSync(`${process.env.MCPHUB_SETTING_PATH}.credentials.key`)).toBe(false);
+  expect(fs.readFileSync(`${process.env.MCPHUB_SETTING_PATH}.credentials.json`, 'utf8')).toBe(
+    before,
+  );
+});
+
+test('fails closed for an invalid explicit key, an invalid key file, or an unwritable key path', async () => {
+  process.env.MCPHUB_CREDENTIAL_ENCRYPTION_KEY = 'invalid';
   await expect(
     saveCredentialBinding('shared', 'alice', stdio, { 'env.PERSONAL_KEY': 'secret' }),
   ).rejects.toThrow('MCPHUB_CREDENTIAL_ENCRYPTION_KEY');
   expect(fs.existsSync(`${process.env.MCPHUB_SETTING_PATH}.credentials.json`)).toBe(false);
-  fs.writeFileSync(`${process.env.MCPHUB_SETTING_PATH}.credentials.json`, 'broken');
+  delete process.env.MCPHUB_CREDENTIAL_ENCRYPTION_KEY;
+  const keyFile = `${process.env.MCPHUB_SETTING_PATH}.credentials.key`;
+  fs.writeFileSync(keyFile, 'corrupt');
+  await expect(
+    saveCredentialBinding('shared', 'alice', stdio, { 'env.PERSONAL_KEY': 'secret' }),
+  ).rejects.toThrow('encryption key');
+  expect(fs.readFileSync(keyFile, 'utf8')).toBe('corrupt');
+  fs.rmSync(keyFile);
+  fs.mkdirSync(keyFile);
+  await expect(
+    saveCredentialBinding('shared', 'alice', stdio, { 'env.PERSONAL_KEY': 'secret' }),
+  ).rejects.toThrow('encryption key');
+  expect(fs.existsSync(`${process.env.MCPHUB_SETTING_PATH}.credentials.json`)).toBe(false);
+});
+
+test.each(['broken', '{}'])('fails closed on corrupted binding storage: %s', async (content) => {
+  fs.writeFileSync(`${process.env.MCPHUB_SETTING_PATH}.credentials.json`, content);
   await expect(new CredentialBindingDaoImpl().get('shared', 'alice')).rejects.toThrow();
+  delete process.env.MCPHUB_CREDENTIAL_ENCRYPTION_KEY;
+  await expect(
+    saveCredentialBinding('shared', 'alice', stdio, { 'env.PERSONAL_KEY': 'secret' }),
+  ).rejects.toThrow();
+  expect(fs.existsSync(`${process.env.MCPHUB_SETTING_PATH}.credentials.key`)).toBe(false);
 });
 
 test('injects literal personal headers and excludes passthrough overrides case-insensitively', async () => {

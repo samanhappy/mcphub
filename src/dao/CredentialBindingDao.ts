@@ -5,6 +5,7 @@ import { getSettingsPath } from '../config/index.js';
 import type { StoredCredentialBinding } from '../types/index.js';
 
 export interface CredentialBindingDao {
+  hasBindings(): Promise<boolean>;
   get(serverName: string, username: string): Promise<StoredCredentialBinding | null>;
   save(binding: StoredCredentialBinding): Promise<void>;
   delete(filter: { serverName?: string; username?: string }): Promise<void>;
@@ -12,9 +13,15 @@ export interface CredentialBindingDao {
 
 // Kept outside settings/config exports. Only authenticated ciphertext is persisted.
 export class CredentialBindingDaoImpl implements CredentialBindingDao {
+  async hasBindings(): Promise<boolean> {
+    return this.readAll().length > 0;
+  }
+
   readAll(): StoredCredentialBinding[] {
     try {
-      return JSON.parse(fs.readFileSync(`${getSettingsPath()}.credentials.json`, 'utf8'));
+      const bindings = JSON.parse(fs.readFileSync(`${getSettingsPath()}.credentials.json`, 'utf8'));
+      if (!Array.isArray(bindings)) throw new Error('Invalid credential binding store');
+      return bindings;
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code === 'ENOENT') return [];
       throw error;

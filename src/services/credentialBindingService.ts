@@ -1,5 +1,8 @@
-import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto';
+import { createCipheriv, createDecipheriv, randomBytes, randomUUID } from 'node:crypto';
+import fs from 'node:fs';
+import path from 'node:path';
 import { EventEmitter } from 'node:events';
+import { getSettingsPath } from '../config/index.js';
 import { getCredentialBindingDao } from '../dao/DaoFactory.js';
 import type { ServerConfig, StoredCredentialBinding } from '../types/index.js';
 import {
@@ -10,23 +13,77 @@ import {
 
 export const credentialBindingEvents = new EventEmitter();
 
-const encryptionKey = (): Buffer => {
-  const encoded = process.env.MCPHUB_CREDENTIAL_ENCRYPTION_KEY || '';
+const parseEncryptionKey = (encoded: string): Buffer => {
   const key = Buffer.from(encoded, 'base64');
   if (key.length !== 32 || key.toString('base64') !== encoded) {
     throw new CredentialBindingError(
-      'Ask an administrator to configure MCPHUB_CREDENTIAL_ENCRYPTION_KEY (32 random bytes, base64 encoded)',
+      'Invalid encryption key: MCPHUB_CREDENTIAL_ENCRYPTION_KEY or its local key file must contain 32 random bytes, base64 encoded',
     );
   }
   return key;
 };
 
+const encryptionKey = async (allowCreate = false): Promise<Buffer> => {
+  const configured = process.env.MCPHUB_CREDENTIAL_ENCRYPTION_KEY;
+  if (configured !== undefined) return parseEncryptionKey(configured);
+  const file = `${getSettingsPath()}.credentials.key`;
+  const readKey = (): Buffer | undefined => {
+    try {
+      return parseEncryptionKey(fs.readFileSync(file, 'utf8').trim());
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') return undefined;
+      if (error instanceof CredentialBindingError) throw error;
+      throw new CredentialBindingError(
+        'Unable to read the personal credential encryption key file',
+      );
+    }
+  };
+  const existing = readKey();
+  if (existing) return existing;
+  const missing = () =>
+    new CredentialBindingError(
+      'Personal credential encryption key is missing. Restore the key file or MCPHUB_CREDENTIAL_ENCRYPTION_KEY before using existing bindings',
+    );
+  if (!allowCreate) throw missing();
+  const hasBindings = await getCredentialBindingDao().hasBindings();
+  // Another process may have created the key while storage was being checked.
+  const createdElsewhere = readKey();
+  if (createdElsewhere) return createdElsewhere;
+  if (hasBindings) throw missing();
+
+  const temporary = `${file}.${randomUUID()}.tmp`;
+  try {
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(temporary, randomBytes(32).toString('base64'), { mode: 0o600, flag: 'wx' });
+    try {
+      // Publish a complete key atomically without replacing a concurrent creator's key.
+      fs.linkSync(temporary, file);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error;
+    }
+    const key = readKey();
+    if (!key) throw missing();
+    return key;
+  } catch (error) {
+    if (error instanceof CredentialBindingError) throw error;
+    throw new CredentialBindingError(
+      'Unable to persist the personal credential encryption key. Make the settings directory writable or configure MCPHUB_CREDENTIAL_ENCRYPTION_KEY',
+    );
+  } finally {
+    fs.rmSync(temporary, { force: true });
+  }
+};
+
 const bindingIdentity = (serverName: string, username: string): Buffer =>
   Buffer.from(JSON.stringify([serverName, username]));
 
-const encrypt = (serverName: string, username: string, values: Record<string, string>): string => {
+const encrypt = async (
+  serverName: string,
+  username: string,
+  values: Record<string, string>,
+): Promise<string> => {
   const iv = randomBytes(12);
-  const cipher = createCipheriv('aes-256-gcm', encryptionKey(), iv);
+  const cipher = createCipheriv('aes-256-gcm', await encryptionKey(true), iv);
   cipher.setAAD(bindingIdentity(serverName, username));
   const ciphertext = Buffer.concat([cipher.update(JSON.stringify(values), 'utf8'), cipher.final()]);
   return [
@@ -37,8 +94,8 @@ const encrypt = (serverName: string, username: string, values: Record<string, st
   ].join('.');
 };
 
-const decrypt = (binding: StoredCredentialBinding): Record<string, string> => {
-  const key = encryptionKey();
+const decrypt = async (binding: StoredCredentialBinding): Promise<Record<string, string>> => {
+  const key = await encryptionKey();
   try {
     const [version, iv, tag, ciphertext] = binding.encryptedValues.split('.');
     if (version !== 'v1') throw new Error('Unsupported version');
@@ -70,7 +127,7 @@ export const getCredentialBindingStatus = async (
 ) => {
   const binding = await getCredentialBindingDao().get(serverName, username);
   const slots = validateCredentialTemplate(config) || [];
-  const values = binding ? decrypt(binding) : {};
+  const values = binding ? await decrypt(binding) : {};
   const configuredSlots = slots
     .map(credentialSlotId)
     .filter((id) => typeof values[id] === 'string' && values[id].length > 0);
@@ -111,7 +168,7 @@ export const saveCredentialBinding = async (
   await getCredentialBindingDao().save({
     serverName,
     username,
-    encryptedValues: encrypt(serverName, username, record as Record<string, string>),
+    encryptedValues: await encrypt(serverName, username, record as Record<string, string>),
     updatedAt: new Date().toISOString(),
   });
   credentialBindingEvents.emit('invalidate', { serverName, username });
@@ -133,7 +190,7 @@ export const resolveCredentialBinding = async (
   const slots = validateCredentialTemplate(config) || [];
   const binding = await getCredentialBindingDao().get(serverName, username);
   if (!binding) throw missingCredentialError(serverName);
-  const values = decrypt(binding);
+  const values = await decrypt(binding);
   const resolved: ServerConfig = {
     ...config,
     env: { ...config.env },

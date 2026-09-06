@@ -8,6 +8,10 @@ export class CredentialBindingDaoDbImpl implements CredentialBindingDao {
     return getAppDataSource().getRepository(CredentialBinding);
   }
 
+  async hasBindings(): Promise<boolean> {
+    return this.repository.exists();
+  }
+
   async get(serverName: string, username: string): Promise<StoredCredentialBinding | null> {
     return this.repository.findOneBy({ serverName, username });
   }

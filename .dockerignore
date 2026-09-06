@@ -19,3 +19,9 @@ yarn-error.log*
 
 .idea
 .vscode
+
+# Local personal credential storage and encryption keys
+*.credentials.json
+*.credentials.json.*.tmp
+*.credentials.key
+*.credentials.key.*.tmp
