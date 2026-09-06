@@ -1250,5 +1250,31 @@
     "notConnected": "Not connected",
     "connectedOf": "{{connected}} of {{total}} servers connected",
     "totalFootprint": "Context footprint"
+  },
+  "credentials": {
+    "title": "Credentials",
+    "missing": "Personal credentials required for '{{serverName}}'. Bind all required slots in Dashboard → Credentials.",
+    "description": "Bind your own credentials to shared servers. Each server uses the credentials of the user making the request.",
+    "slots": "Per-user credential slots",
+    "slotsHint": "Declare field names only. Every slot requires a personal binding; organization credentials are never used as a fallback.",
+    "fieldName": "Field name",
+    "label": "Label (optional)",
+    "addSlot": "Add slot",
+    "removeSlot": "Remove slot",
+    "personalBadge": "Personal credentials",
+    "manage": "Manage",
+    "configured": "Configured",
+    "required": "Binding required",
+    "writeOnly": "Saved values cannot be displayed. To replace a binding, enter new values for every slot.",
+    "replaceValue": "Enter replacement value",
+    "enterValue": "Enter credential",
+    "save": "Save binding",
+    "delete": "Delete binding",
+    "saved": "Binding saved",
+    "deleted": "Binding deleted",
+    "failed": "Unable to manage credentials",
+    "showAll": "Show all servers",
+    "loading": "Loading…",
+    "empty": "No shared servers require personal credentials."
   }
 }

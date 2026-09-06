@@ -10,6 +10,7 @@ MCPHub 提供统一的方式来连接和管理多个 MCP 服务器，将它们�
 
 ## 🌐 官网、演示与文档
 
+- **个人凭据** - 一个共享服务器支持每位用户独立绑定密钥，加密保存并隔离 stdio 运行进程（[了解更多](docs/zh/features/per-user-credentials.mdx)）
 - **官网**: [mcphub.app](https://www.mcphub.app/zh)
 - **文档**: [docs.mcphub.app](https://docs.mcphub.app/)
 - **演示环境**: [demo.mcphub.app](https://demo.mcphub.app/)

@@ -1252,5 +1252,31 @@
     "notConnected": "未连接",
     "connectedOf": "{{total}} 个服务器中已连接 {{connected}} 个",
     "totalFootprint": "上下文占用"
+  },
+  "credentials": {
+    "title": "凭据",
+    "missing": "服务器“{{serverName}}”需要个人凭据。请在控制台 → 凭据中绑定所有必需字段。",
+    "description": "为共享服务器绑定自己的凭据。每次请求使用当前调用用户的凭据。",
+    "slots": "个人凭据字段",
+    "slotsHint": "仅声明字段名。所有字段均需用户绑定，缺失时不会回退到组织凭据。",
+    "fieldName": "字段名",
+    "label": "显示名称（可选）",
+    "addSlot": "添加字段",
+    "removeSlot": "移除字段",
+    "personalBadge": "个人凭据",
+    "manage": "管理",
+    "configured": "已绑定",
+    "required": "需要绑定",
+    "writeOnly": "已保存的值无法查看。替换绑定时，请为所有字段填写新值。",
+    "replaceValue": "输入替换值",
+    "enterValue": "输入凭据",
+    "save": "保存绑定",
+    "delete": "删除绑定",
+    "saved": "绑定已保存",
+    "deleted": "绑定已删除",
+    "failed": "无法管理凭据",
+    "showAll": "显示所有服务器",
+    "loading": "加载中…",
+    "empty": "暂无需要个人凭据的共享服务器。"
   }
 }

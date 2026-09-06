@@ -12,6 +12,7 @@ import {
   MessageSquare,
   Activity,
   ScrollText,
+  KeyRound,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useServerContext } from '@/contexts/ServerContext';
@@ -79,6 +80,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
     ...(canViewSystemLogs(auth.user)
       ? [{ path: '/logs', label: t('nav.logs'), icon: <ScrollText className="h-4 w-4" /> }]
       : []),
+    { path: '/credentials', label: t('credentials.title'), icon: <KeyRound className="h-4 w-4" /> },
     { path: '/settings', label: t('nav.settings'), icon: <SettingsIcon className="h-4 w-4" /> },
   ];
 

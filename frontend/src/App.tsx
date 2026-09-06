@@ -13,6 +13,7 @@ import { getBasePath } from './utils/runtime';
 const LoginPage = lazy(() => import('./pages/LoginPage'));
 const OAuthConsentPage = lazy(() => import('./pages/OAuthConsentPage'));
 const DashboardPage = lazy(() => import('./pages/Dashboard'));
+const CredentialsPage = lazy(() => import('./pages/CredentialsPage'));
 const ServersPage = lazy(() => import('./pages/ServersPage'));
 const GroupsPage = lazy(() => import('./pages/GroupsPage'));
 const UsersPage = lazy(() => import('./pages/UsersPage'));
@@ -71,6 +72,7 @@ function App() {
                   <Route element={<ProtectedRoute />}>
                     <Route element={<MainLayout />}>
                       <Route path="/" element={<DashboardPage />} />
+                      <Route path="/credentials" element={<CredentialsPage />} />
                       <Route path="/servers" element={<ServersPage />} />
                       <Route path="/groups" element={<GroupsPage />} />
                       <Route path="/prompts" element={<PromptsPage />} />

@@ -1,3 +1,4 @@
+import { CredentialBindingDao, CredentialBindingDaoImpl } from './CredentialBindingDao.js';
 import { UserDao, UserDaoImpl } from './UserDao.js';
 import { ServerDao, ServerDaoImpl } from './ServerDao.js';
 import { GroupDao, GroupDaoImpl } from './GroupDao.js';
@@ -15,6 +16,7 @@ import { logger } from '../utils/logger.js';
  * DAO Factory interface for creating DAO instances
  */
 export interface DaoFactory {
+  getCredentialBindingDao(): CredentialBindingDao;
   getUserDao(): UserDao;
   getServerDao(): ServerDao;
   getGroupDao(): GroupDao;
@@ -57,6 +59,10 @@ export class JsonFileDaoFactory implements DaoFactory {
 
   private constructor() {
     // Private constructor for singleton
+  }
+
+  getCredentialBindingDao(): CredentialBindingDao {
+    return new CredentialBindingDaoImpl();
   }
 
   getUserDao(): UserDao {
@@ -236,4 +242,8 @@ export function getActivityDao(): ActivityDao | undefined {
  */
 export function isActivityLoggingEnabled(): boolean {
   return typeof getDaoFactory().getActivityDao === 'function';
+}
+
+export function getCredentialBindingDao(): CredentialBindingDao {
+  return getDaoFactory().getCredentialBindingDao();
 }

@@ -1,3 +1,4 @@
+import { validateCredentialTemplate } from './credentialTemplate.js';
 import { ServerConfig } from '../types/index.js';
 
 const trimToUndefined = (value?: string): string | undefined => {
@@ -266,6 +267,7 @@ export const normalizeServerConfigForPersistence = (config: ServerConfig): Serve
   const normalized: ServerConfig = {
     ...config,
     type: normalizedType,
+    credentialTemplate: validateCredentialTemplate({ ...config, type: normalizedType }),
     description,
     owner,
     visibility,

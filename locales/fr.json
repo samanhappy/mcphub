@@ -1248,5 +1248,31 @@
     "notConnected": "Non connecté",
     "connectedOf": "{{connected}} sur {{total}} serveurs connectés",
     "totalFootprint": "Empreinte contextuelle"
+  },
+  "credentials": {
+    "title": "Identifiants",
+    "missing": "Des identifiants personnels sont requis pour « {{serverName}} ». Associez tous les champs requis dans Tableau de bord → Identifiants.",
+    "description": "Associez vos identifiants aux serveurs partagés. Chaque requête utilise les identifiants de son utilisateur.",
+    "slots": "Champs d’identifiants personnels",
+    "slotsHint": "Déclarez uniquement les noms des champs. Chaque champ est obligatoire, sans repli sur les identifiants de l’organisation.",
+    "fieldName": "Nom du champ",
+    "label": "Libellé (facultatif)",
+    "addSlot": "Ajouter un champ",
+    "removeSlot": "Retirer le champ",
+    "personalBadge": "Identifiants personnels",
+    "manage": "Gérer",
+    "configured": "Configuré",
+    "required": "Association requise",
+    "writeOnly": "Les valeurs enregistrées ne sont jamais affichées. Pour remplacer une association, renseignez tous les champs.",
+    "replaceValue": "Nouvelle valeur",
+    "enterValue": "Saisir l’identifiant",
+    "save": "Enregistrer",
+    "delete": "Supprimer l’association",
+    "saved": "Association enregistrée",
+    "deleted": "Association supprimée",
+    "failed": "Impossible de gérer les identifiants",
+    "showAll": "Afficher tous les serveurs",
+    "loading": "Chargement…",
+    "empty": "Aucun serveur partagé ne nécessite d’identifiants personnels."
   }
 }
