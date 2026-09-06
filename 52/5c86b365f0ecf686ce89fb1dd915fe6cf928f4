@@ -1,0 +1,24 @@
+tests/integration/personal-credentials.test.ts
+  s_29d7282f1637cb::t_a840553cedd2af 151-156
+  s_29d7282f1637cb::t_25ad38ce066344 48-51,144,149-150
+tests/services/principalRuntimeService.test.ts
+  s_29d7282f1637cb::t_5115317e7f7a8d 3,5,33,91-127
+src/services/principalRuntimeService.ts
+  s_29d7282f1637cb::t_25ad38ce066344 56-57,63,90
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "525c86b365f0ecf686ce89fb1dd915fe6cf928f4",
+  "prompts": {},
+  "sessions": {
+    "s_29d7282f1637cb": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a070d1-21c4-7f83-9701-a94ba6815dc8",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
