@@ -682,9 +682,9 @@ describe('serverController - updateSystemConfig', () => {
         enabled: false,
         dbUrl: 'postgres://localhost/test',
         embeddingProvider: 'openai',
-        openaiApiBaseUrl: 'https://api.openai.com/v1',
-        openaiApiKey: 'sk-test',
-        openaiApiEmbeddingModel: 'text-embedding-3-small',
+        llmProviderBaseUrl: 'https://api.openai.com/v1',
+        llmProviderApiKey: 'sk-test',
+        embeddingModel: 'text-embedding-3-small',
       },
     });
 

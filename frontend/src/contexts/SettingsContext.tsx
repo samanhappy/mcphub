@@ -36,9 +36,9 @@ interface SmartRoutingConfig {
   embeddingProvider?: 'openai' | 'azure_openai';
   embeddingEncodingFormat?: 'auto' | 'base64' | 'float';
   embeddingDimensions?: number;
-  openaiApiBaseUrl: string;
-  openaiApiKey: string;
-  openaiApiEmbeddingModel: string;
+  llmProviderBaseUrl: string;
+  llmProviderApiKey: string;
+  embeddingModel: string;
   azureOpenaiEndpoint?: string;
   azureOpenaiApiKey?: string;
   azureOpenaiApiVersion?: string;
@@ -353,9 +353,9 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
     embeddingProvider: 'openai',
     embeddingEncodingFormat: 'auto',
     embeddingDimensions: undefined,
-    openaiApiBaseUrl: '',
-    openaiApiKey: '',
-    openaiApiEmbeddingModel: '',
+    llmProviderBaseUrl: '',
+    llmProviderApiKey: '',
+    embeddingModel: '',
     azureOpenaiEndpoint: '',
     azureOpenaiApiKey: '',
     azureOpenaiApiVersion: '',
@@ -444,10 +444,10 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
                 ? 'float'
                 : 'auto',
           embeddingDimensions: data.data.systemConfig.smartRouting.embeddingDimensions,
-          openaiApiBaseUrl: data.data.systemConfig.smartRouting.openaiApiBaseUrl || '',
-          openaiApiKey: data.data.systemConfig.smartRouting.openaiApiKey || '',
-          openaiApiEmbeddingModel:
-            data.data.systemConfig.smartRouting.openaiApiEmbeddingModel || '',
+          llmProviderBaseUrl: data.data.systemConfig.smartRouting.llmProviderBaseUrl || '',
+          llmProviderApiKey: data.data.systemConfig.smartRouting.llmProviderApiKey || '',
+          embeddingModel:
+            data.data.systemConfig.smartRouting.embeddingModel || '',
           azureOpenaiEndpoint: data.data.systemConfig.smartRouting.azureOpenaiEndpoint || '',
           azureOpenaiApiKey: data.data.systemConfig.smartRouting.azureOpenaiApiKey || '',
           azureOpenaiApiVersion: data.data.systemConfig.smartRouting.azureOpenaiApiVersion || '',

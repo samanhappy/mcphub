@@ -1,9 +1,8 @@
 const mockGet = jest.fn();
+const mockUpdate = jest.fn();
 
 jest.mock('../../src/dao/DaoFactory.js', () => ({
-  getSystemConfigDao: jest.fn(() => ({
-    get: mockGet,
-  })),
+  getSystemConfigDao: jest.fn(() => ({ get: mockGet, update: mockUpdate })),
 }));
 
 import { getSmartRoutingConfig } from '../../src/utils/smartRouting.js';
@@ -116,29 +115,85 @@ describe('smartRouting config resolution', () => {
   });
 
   describe('getConfigValue priority chain', () => {
+    it('migrates legacy persisted provider fields to their neutral names', async () => {
+      mockGet.mockResolvedValue({
+        smartRouting: {
+          openaiApiKey: 'sk-from-settings',
+          openaiApiBaseUrl: 'https://provider.example/v1',
+          openaiApiEmbeddingModel: 'provider-embedding',
+          azureOpenaiApiKey: 'azure-key',
+        },
+      });
+
+      const config = await getSmartRoutingConfig();
+
+      expect(config).toMatchObject({
+        llmProviderApiKey: 'sk-from-settings',
+        llmProviderBaseUrl: 'https://provider.example/v1',
+        embeddingModel: 'provider-embedding',
+        azureOpenaiApiKey: 'azure-key',
+      });
+      expect(mockUpdate).toHaveBeenCalledWith({
+        smartRouting: {
+          llmProviderApiKey: 'sk-from-settings',
+          llmProviderBaseUrl: 'https://provider.example/v1',
+          embeddingModel: 'provider-embedding',
+          azureOpenaiApiKey: 'azure-key',
+        },
+      });
+    });
+
+    it('keeps neutral values when a persisted config also has legacy fields', async () => {
+      mockGet.mockResolvedValue({
+        smartRouting: {
+          llmProviderApiKey: 'new-key',
+          llmProviderBaseUrl: 'https://new.example/v1',
+          embeddingModel: 'new-model',
+          openaiApiKey: 'old-key',
+          openaiApiBaseUrl: 'https://old.example/v1',
+          openaiApiEmbeddingModel: 'old-model',
+        },
+      });
+
+      const config = await getSmartRoutingConfig();
+
+      expect(config).toMatchObject({
+        llmProviderApiKey: 'new-key',
+        llmProviderBaseUrl: 'https://new.example/v1',
+        embeddingModel: 'new-model',
+      });
+      expect(mockUpdate).toHaveBeenCalledWith({
+        smartRouting: {
+          llmProviderApiKey: 'new-key',
+          llmProviderBaseUrl: 'https://new.example/v1',
+          embeddingModel: 'new-model',
+        },
+      });
+    });
+
     it('env var overrides settings', async () => {
       process.env.OPENAI_API_KEY = 'sk-from-env';
-      mockGet.mockResolvedValue({ smartRouting: { openaiApiKey: 'sk-from-settings' } });
+      mockGet.mockResolvedValue({ smartRouting: { llmProviderApiKey: 'sk-from-settings' } });
       const config = await getSmartRoutingConfig();
-      expect(config.openaiApiKey).toBe('sk-from-env');
+      expect(config.llmProviderApiKey).toBe('sk-from-env');
     });
 
     it('settings overrides default when no env is present', async () => {
-      mockGet.mockResolvedValue({ smartRouting: { openaiApiKey: 'sk-from-settings' } });
+      mockGet.mockResolvedValue({ smartRouting: { llmProviderApiKey: 'sk-from-settings' } });
       const config = await getSmartRoutingConfig();
-      expect(config.openaiApiKey).toBe('sk-from-settings');
+      expect(config.llmProviderApiKey).toBe('sk-from-settings');
     });
 
     it('uses default when env is undefined and settings is undefined', async () => {
       mockGet.mockResolvedValue({ smartRouting: {} });
       const config = await getSmartRoutingConfig();
-      expect(config.openaiApiKey).toBe('');
+      expect(config.llmProviderApiKey).toBe('');
     });
 
     it('uses default when env is undefined and settings is null', async () => {
-      mockGet.mockResolvedValue({ smartRouting: { openaiApiKey: null } });
+      mockGet.mockResolvedValue({ smartRouting: { llmProviderApiKey: null } });
       const config = await getSmartRoutingConfig();
-      expect(config.openaiApiKey).toBe('');
+      expect(config.llmProviderApiKey).toBe('');
     });
 
     // Empty-string env is treated as "not set" and falls through to settings.
@@ -149,22 +204,22 @@ describe('smartRouting config resolution', () => {
     // "empty env string falls through to settings" fall-through path.
     it('empty-string env falls through to settings value', async () => {
       process.env.OPENAI_API_KEY = '';
-      mockGet.mockResolvedValue({ smartRouting: { openaiApiKey: 'sk-from-settings' } });
+      mockGet.mockResolvedValue({ smartRouting: { llmProviderApiKey: 'sk-from-settings' } });
       const config = await getSmartRoutingConfig();
-      expect(config.openaiApiKey).toBe('sk-from-settings');
+      expect(config.llmProviderApiKey).toBe('sk-from-settings');
     });
 
     it('accepts the legacy OpenAI embedding model alias', async () => {
       process.env.OPENAI_API_EMBEDDING_MODEL = 'legacy-embedding-model';
       const config = await getSmartRoutingConfig();
-      expect(config.openaiApiEmbeddingModel).toBe('legacy-embedding-model');
+      expect(config.embeddingModel).toBe('legacy-embedding-model');
     });
 
     it('prefers EMBEDDING_MODEL over the legacy model alias', async () => {
       process.env.EMBEDDING_MODEL = 'canonical-embedding-model';
       process.env.OPENAI_API_EMBEDDING_MODEL = 'legacy-embedding-model';
       const config = await getSmartRoutingConfig();
-      expect(config.openaiApiEmbeddingModel).toBe('canonical-embedding-model');
+      expect(config.embeddingModel).toBe('canonical-embedding-model');
     });
   });
 
@@ -178,9 +233,9 @@ describe('smartRouting config resolution', () => {
         embeddingProvider: 'openai',
         embeddingEncodingFormat: 'auto',
         embeddingDimensions: undefined,
-        openaiApiBaseUrl: 'https://api.openai.com/v1',
-        openaiApiKey: '',
-        openaiApiEmbeddingModel: 'text-embedding-3-small',
+        llmProviderBaseUrl: 'https://api.openai.com/v1',
+        llmProviderApiKey: '',
+        embeddingModel: 'text-embedding-3-small',
         azureOpenaiEndpoint: '',
         azureOpenaiApiKey: '',
         azureOpenaiApiVersion: '2024-02-15-preview',
@@ -345,10 +400,10 @@ describe('smartRouting config resolution', () => {
   describe('settings override via mockGet', () => {
     it('uses settings values when env absent', async () => {
       mockGet.mockResolvedValue({
-        smartRouting: { openaiApiKey: 'sk-set', embeddingProvider: 'azure' },
+        smartRouting: { llmProviderApiKey: 'sk-set', embeddingProvider: 'azure' },
       });
       const config = await getSmartRoutingConfig();
-      expect(config.openaiApiKey).toBe('sk-set');
+      expect(config.llmProviderApiKey).toBe('sk-set');
       expect(config.embeddingProvider).toBe('azure_openai');
     });
 

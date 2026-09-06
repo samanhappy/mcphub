@@ -1,5 +1,6 @@
 import { expandEnvVars } from '../config/index.js';
 import { getSystemConfigDao } from '../dao/DaoFactory.js';
+import { migrateLegacySmartRoutingConfig } from '../dao/SystemConfigDao.js';
 import { logger } from './logger.js';
 
 /**
@@ -21,9 +22,9 @@ export interface SmartRoutingConfig {
    * When omitted, the provider's model default is used.
    */
   embeddingDimensions?: number;
-  openaiApiBaseUrl: string;
-  openaiApiKey: string;
-  openaiApiEmbeddingModel: string;
+  llmProviderBaseUrl: string;
+  llmProviderApiKey: string;
+  embeddingModel: string;
   azureOpenaiEndpoint?: string;
   azureOpenaiApiKey?: string;
   azureOpenaiApiVersion?: string;
@@ -75,7 +76,11 @@ export async function getSmartRoutingConfig(): Promise<SmartRoutingConfig> {
   // Get system config from DAO
   const systemConfigDao = getSystemConfigDao();
   const systemConfig = await systemConfigDao.get();
-  const smartRoutingSettings: Partial<SmartRoutingConfig> = systemConfig.smartRouting || {};
+  const { smartRouting, migrated } = migrateLegacySmartRoutingConfig(systemConfig.smartRouting);
+  if (migrated) {
+    await systemConfigDao.update({ smartRouting: smartRouting! });
+  }
+  const smartRoutingSettings: Partial<SmartRoutingConfig> = smartRouting || {};
 
   return {
     // Enabled status - prefer the canonical variable but keep the legacy alias
@@ -140,23 +145,23 @@ export async function getSmartRoutingConfig(): Promise<SmartRoutingConfig> {
     ),
 
     // OpenAI API configuration
-    openaiApiBaseUrl: getConfigValue(
+    llmProviderBaseUrl: getConfigValue(
       [process.env.OPENAI_API_BASE_URL],
-      smartRoutingSettings.openaiApiBaseUrl,
+      smartRoutingSettings.llmProviderBaseUrl,
       'https://api.openai.com/v1',
       expandEnvVars,
     ),
 
-    openaiApiKey: getConfigValue(
+    llmProviderApiKey: getConfigValue(
       [process.env.OPENAI_API_KEY],
-      smartRoutingSettings.openaiApiKey,
+      smartRoutingSettings.llmProviderApiKey,
       '',
       expandEnvVars,
     ),
 
-    openaiApiEmbeddingModel: getConfigValue(
+    embeddingModel: getConfigValue(
       [process.env.EMBEDDING_MODEL, process.env.OPENAI_API_EMBEDDING_MODEL],
-      smartRoutingSettings.openaiApiEmbeddingModel,
+      smartRoutingSettings.embeddingModel,
       'text-embedding-3-small',
       expandEnvVars,
     ),

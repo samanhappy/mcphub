@@ -73,13 +73,13 @@ const normalizeEmbedding = (embedding: number[]): number[] => {
   return embedding.map((value) => value / magnitude);
 };
 
-// Get OpenAI configuration from smartRouting settings or fallback to environment variables
-const getOpenAIConfig = async () => {
+// Get LLM provider configuration from smartRouting settings or fallback to environment variables
+const getLlmProviderConfig = async () => {
   const smartRoutingConfig = await getSmartRoutingConfig();
   return {
-    apiKey: smartRoutingConfig.openaiApiKey,
-    baseURL: smartRoutingConfig.openaiApiBaseUrl,
-    embeddingModel: smartRoutingConfig.openaiApiEmbeddingModel,
+    apiKey: smartRoutingConfig.llmProviderApiKey,
+    baseURL: smartRoutingConfig.llmProviderBaseUrl,
+    embeddingModel: smartRoutingConfig.embeddingModel,
     embeddingDimensions: smartRoutingConfig.embeddingDimensions,
   };
 };
@@ -129,7 +129,7 @@ const generateAzureOpenAIEmbedding = async (
     text,
     azureMaxTokens,
     embeddingModel,
-    smartRoutingConfig.openaiApiKey,
+    smartRoutingConfig.llmProviderApiKey,
   );
 
   const response = await axios.post(
@@ -698,7 +698,7 @@ const getDimensionsForModel = (model: string, configuredDimensions?: number): nu
 
 // Initialize the OpenAI client with smartRouting configuration
 const getOpenAIClient = async () => {
-  const config = await getOpenAIConfig();
+  const config = await getLlmProviderConfig();
   return new OpenAI({
     apiKey: config.apiKey, // Get API key from smartRouting settings or environment variables
     baseURL: config.baseURL, // Get base URL from smartRouting settings or fallback to default
@@ -760,7 +760,7 @@ async function generateEmbedding(text: string): Promise<number[]> {
     }
   }
 
-  const config = await getOpenAIConfig();
+  const config = await getLlmProviderConfig();
   const openai = await getOpenAIClient();
 
   // Check if API key is configured
@@ -1118,7 +1118,7 @@ export const saveToolsAsVectorEmbeddings = async (
       await initializeDatabase();
     }
 
-    const config = await getOpenAIConfig();
+    const config = await getLlmProviderConfig();
     const embeddingProvider = smartRoutingConfig.embeddingProvider || 'openai';
     const persistedEmbeddingModel =
       embeddingProvider === 'azure_openai'
@@ -1486,7 +1486,7 @@ export const getAllVectorizedTools = async (
 > => {
   try {
     const smartRoutingConfig = await getSmartRoutingConfig();
-    const config = await getOpenAIConfig();
+    const config = await getLlmProviderConfig();
     const vectorRepository = getRepositoryFactory(
       'vectorEmbeddings',
     )() as VectorEmbeddingRepository;

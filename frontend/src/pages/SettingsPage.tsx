@@ -486,9 +486,9 @@ const SettingsPage: React.FC = () => {
     embeddingProviderPreset: EmbeddingProviderPresetId;
     embeddingEncodingFormat: 'auto' | 'base64' | 'float';
     embeddingDimensions: string;
-    openaiApiBaseUrl: string;
-    openaiApiKey: string;
-    openaiApiEmbeddingModel: string;
+    llmProviderBaseUrl: string;
+    llmProviderApiKey: string;
+    embeddingModel: string;
     azureOpenaiEndpoint: string;
     azureOpenaiApiKey: string;
     azureOpenaiApiVersion: string;
@@ -503,9 +503,9 @@ const SettingsPage: React.FC = () => {
     embeddingProviderPreset: 'openai',
     embeddingEncodingFormat: 'auto',
     embeddingDimensions: '',
-    openaiApiBaseUrl: '',
-    openaiApiKey: '',
-    openaiApiEmbeddingModel: '',
+    llmProviderBaseUrl: '',
+    llmProviderApiKey: '',
+    embeddingModel: '',
     azureOpenaiEndpoint: '',
     azureOpenaiApiKey: '',
     azureOpenaiApiVersion: '2024-02-15-preview',
@@ -629,8 +629,8 @@ const SettingsPage: React.FC = () => {
         embeddingProvider:
           smartRoutingConfig.embeddingProvider === 'azure_openai' ? 'azure_openai' : 'openai',
         embeddingProviderPreset: getEmbeddingProviderPresetId(
-          smartRoutingConfig.openaiApiBaseUrl || '',
-          smartRoutingConfig.openaiApiEmbeddingModel || '',
+          smartRoutingConfig.llmProviderBaseUrl || '',
+          smartRoutingConfig.embeddingModel || '',
         ),
         embeddingEncodingFormat:
           smartRoutingConfig.embeddingEncodingFormat === 'base64'
@@ -642,9 +642,9 @@ const SettingsPage: React.FC = () => {
           smartRoutingConfig.embeddingDimensions != null
             ? String(smartRoutingConfig.embeddingDimensions)
             : '',
-        openaiApiBaseUrl: smartRoutingConfig.openaiApiBaseUrl || '',
-        openaiApiKey: smartRoutingConfig.openaiApiKey || '',
-        openaiApiEmbeddingModel: smartRoutingConfig.openaiApiEmbeddingModel || '',
+        llmProviderBaseUrl: smartRoutingConfig.llmProviderBaseUrl || '',
+        llmProviderApiKey: smartRoutingConfig.llmProviderApiKey || '',
+        embeddingModel: smartRoutingConfig.embeddingModel || '',
         azureOpenaiEndpoint: smartRoutingConfig.azureOpenaiEndpoint || '',
         azureOpenaiApiKey: smartRoutingConfig.azureOpenaiApiKey || '',
         azureOpenaiApiVersion: smartRoutingConfig.azureOpenaiApiVersion || '2024-02-15-preview',
@@ -872,9 +872,9 @@ const SettingsPage: React.FC = () => {
       | 'embeddingProvider'
       | 'embeddingEncodingFormat'
       | 'embeddingDimensions'
-      | 'openaiApiBaseUrl'
-      | 'openaiApiKey'
-      | 'openaiApiEmbeddingModel'
+      | 'llmProviderBaseUrl'
+      | 'llmProviderApiKey'
+      | 'embeddingModel'
       | 'azureOpenaiEndpoint'
       | 'azureOpenaiApiKey'
       | 'azureOpenaiApiVersion'
@@ -886,7 +886,7 @@ const SettingsPage: React.FC = () => {
     setTempSmartRoutingConfig({
       ...tempSmartRoutingConfig,
       [key]: value,
-      ...(key === 'openaiApiBaseUrl' || key === 'openaiApiEmbeddingModel'
+      ...(key === 'llmProviderBaseUrl' || key === 'embeddingModel'
         ? { embeddingProviderPreset: 'custom' as EmbeddingProviderPresetId }
         : {}),
     });
@@ -897,8 +897,8 @@ const SettingsPage: React.FC = () => {
     setTempSmartRoutingConfig({
       ...tempSmartRoutingConfig,
       embeddingProviderPreset: presetId,
-      ...(preset.baseUrl ? { openaiApiBaseUrl: preset.baseUrl } : {}),
-      ...(preset.model ? { openaiApiEmbeddingModel: preset.model } : {}),
+      ...(preset.baseUrl ? { llmProviderBaseUrl: preset.baseUrl } : {}),
+      ...(preset.model ? { embeddingModel: preset.model } : {}),
     });
   };
 
@@ -1102,28 +1102,28 @@ const SettingsPage: React.FC = () => {
           );
         }
       } else {
-        // Get current OpenAI config values with explicit type checking and trim
-        const currentOpenaiApiKey = (typeof tempSmartRoutingConfig.openaiApiKey === 'string'
-          ? tempSmartRoutingConfig.openaiApiKey
-          : smartRoutingConfig.openaiApiKey || ''
+        // Get current LLM provider config values with explicit type checking and trim
+        const currentLlmProviderApiKey = (typeof tempSmartRoutingConfig.llmProviderApiKey === 'string'
+          ? tempSmartRoutingConfig.llmProviderApiKey
+          : smartRoutingConfig.llmProviderApiKey || ''
         ).trim();
-        const currentOpenaiApiBaseUrl = (typeof tempSmartRoutingConfig.openaiApiBaseUrl === 'string'
-          ? tempSmartRoutingConfig.openaiApiBaseUrl
-          : smartRoutingConfig.openaiApiBaseUrl || ''
+        const currentLlmProviderBaseUrl = (typeof tempSmartRoutingConfig.llmProviderBaseUrl === 'string'
+          ? tempSmartRoutingConfig.llmProviderBaseUrl
+          : smartRoutingConfig.llmProviderBaseUrl || ''
         ).trim();
-        const currentOpenaiApiEmbeddingModel = (typeof tempSmartRoutingConfig.openaiApiEmbeddingModel === 'string'
-          ? tempSmartRoutingConfig.openaiApiEmbeddingModel
-          : smartRoutingConfig.openaiApiEmbeddingModel || ''
+        const currentEmbeddingModel = (typeof tempSmartRoutingConfig.embeddingModel === 'string'
+          ? tempSmartRoutingConfig.embeddingModel
+          : smartRoutingConfig.embeddingModel || ''
         ).trim();
 
-        if (!currentOpenaiApiKey) {
-          missingFields.push(t('settings.openaiApiKey') || 'OpenAI API Key');
+        if (!currentLlmProviderApiKey) {
+          missingFields.push(t('settings.llmProviderApiKey') || 'OpenAI API Key');
         }
-        if (!currentOpenaiApiBaseUrl) {
-          missingFields.push(t('settings.openaiApiBaseUrl') || 'OpenAI API Base URL');
+        if (!currentLlmProviderBaseUrl) {
+          missingFields.push(t('settings.llmProviderBaseUrl') || 'OpenAI API Base URL');
         }
-        if (!currentOpenaiApiEmbeddingModel) {
-          missingFields.push(t('settings.openaiApiEmbeddingModel') || 'OpenAI Embedding Model');
+        if (!currentEmbeddingModel) {
+          missingFields.push(t('settings.embeddingModel') || 'OpenAI Embedding Model');
         }
       }
 
@@ -1159,17 +1159,17 @@ const SettingsPage: React.FC = () => {
       ) {
         updates.embeddingEncodingFormat = tempSmartRoutingConfig.embeddingEncodingFormat;
       }
-      if (tempSmartRoutingConfig.openaiApiBaseUrl !== smartRoutingConfig.openaiApiBaseUrl) {
-        updates.openaiApiBaseUrl = tempSmartRoutingConfig.openaiApiBaseUrl;
+      if (tempSmartRoutingConfig.llmProviderBaseUrl !== smartRoutingConfig.llmProviderBaseUrl) {
+        updates.llmProviderBaseUrl = tempSmartRoutingConfig.llmProviderBaseUrl;
       }
-      if (tempSmartRoutingConfig.openaiApiKey !== smartRoutingConfig.openaiApiKey) {
-        updates.openaiApiKey = tempSmartRoutingConfig.openaiApiKey;
+      if (tempSmartRoutingConfig.llmProviderApiKey !== smartRoutingConfig.llmProviderApiKey) {
+        updates.llmProviderApiKey = tempSmartRoutingConfig.llmProviderApiKey;
       }
       if (
-        tempSmartRoutingConfig.openaiApiEmbeddingModel !==
-        smartRoutingConfig.openaiApiEmbeddingModel
+        tempSmartRoutingConfig.embeddingModel !==
+        smartRoutingConfig.embeddingModel
       ) {
-        updates.openaiApiEmbeddingModel = tempSmartRoutingConfig.openaiApiEmbeddingModel;
+        updates.embeddingModel = tempSmartRoutingConfig.embeddingModel;
       }
 
       if (tempSmartRoutingConfig.azureOpenaiEndpoint !== smartRoutingConfig.azureOpenaiEndpoint) {
@@ -1242,16 +1242,16 @@ const SettingsPage: React.FC = () => {
     ) {
       updates.embeddingEncodingFormat = tempSmartRoutingConfig.embeddingEncodingFormat;
     }
-    if (tempSmartRoutingConfig.openaiApiBaseUrl !== smartRoutingConfig.openaiApiBaseUrl) {
-      updates.openaiApiBaseUrl = tempSmartRoutingConfig.openaiApiBaseUrl;
+    if (tempSmartRoutingConfig.llmProviderBaseUrl !== smartRoutingConfig.llmProviderBaseUrl) {
+      updates.llmProviderBaseUrl = tempSmartRoutingConfig.llmProviderBaseUrl;
     }
-    if (tempSmartRoutingConfig.openaiApiKey !== smartRoutingConfig.openaiApiKey) {
-      updates.openaiApiKey = tempSmartRoutingConfig.openaiApiKey;
+    if (tempSmartRoutingConfig.llmProviderApiKey !== smartRoutingConfig.llmProviderApiKey) {
+      updates.llmProviderApiKey = tempSmartRoutingConfig.llmProviderApiKey;
     }
     if (
-      tempSmartRoutingConfig.openaiApiEmbeddingModel !== smartRoutingConfig.openaiApiEmbeddingModel
+      tempSmartRoutingConfig.embeddingModel !== smartRoutingConfig.embeddingModel
     ) {
-      updates.openaiApiEmbeddingModel = tempSmartRoutingConfig.openaiApiEmbeddingModel;
+      updates.embeddingModel = tempSmartRoutingConfig.embeddingModel;
     }
 
     if (tempSmartRoutingConfig.azureOpenaiEndpoint !== smartRoutingConfig.azureOpenaiEndpoint) {
@@ -2276,17 +2276,17 @@ const SettingsPage: React.FC = () => {
                     <div className="mb-2">
                       <h3 className="font-medium text-gray-700">
                         <span className="text-red-500 px-1">*</span>
-                        {t('settings.openaiApiKey')}
+                        {t('settings.llmProviderApiKey')}
                       </h3>
                     </div>
                     <div className="flex items-center gap-3">
                       <input
                         type="password"
-                        value={tempSmartRoutingConfig.openaiApiKey}
+                        value={tempSmartRoutingConfig.llmProviderApiKey}
                         onChange={(e) =>
-                          handleSmartRoutingConfigChange('openaiApiKey', e.target.value)
+                          handleSmartRoutingConfigChange('llmProviderApiKey', e.target.value)
                         }
-                        placeholder={t('settings.openaiApiKeyPlaceholder')}
+                        placeholder={t('settings.llmProviderApiKeyPlaceholder')}
                         className="flex-1 mt-1 block w-full py-2 px-3 border rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm border-gray-300"
                         disabled={loading}
                       />
@@ -2297,17 +2297,17 @@ const SettingsPage: React.FC = () => {
                     <div className="mb-2">
                       <h3 className="font-medium text-gray-700">
                         <span className="text-red-500 px-1">*</span>
-                        {t('settings.openaiApiBaseUrl')}
+                        {t('settings.llmProviderBaseUrl')}
                       </h3>
                     </div>
                     <div className="flex items-center gap-3">
                       <input
                         type="text"
-                        value={tempSmartRoutingConfig.openaiApiBaseUrl}
+                        value={tempSmartRoutingConfig.llmProviderBaseUrl}
                         onChange={(e) =>
-                          handleSmartRoutingConfigChange('openaiApiBaseUrl', e.target.value)
+                          handleSmartRoutingConfigChange('llmProviderBaseUrl', e.target.value)
                         }
-                        placeholder={t('settings.openaiApiBaseUrlPlaceholder')}
+                        placeholder={t('settings.llmProviderBaseUrlPlaceholder')}
                         className="flex-1 mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm form-input"
                         disabled={loading}
                         required
@@ -2319,17 +2319,17 @@ const SettingsPage: React.FC = () => {
                     <div className="mb-2">
                       <h3 className="font-medium text-gray-700">
                         <span className="text-red-500 px-1">*</span>
-                        {t('settings.openaiApiEmbeddingModel')}
+                        {t('settings.embeddingModel')}
                       </h3>
                     </div>
                     <div className="flex items-center gap-3">
                       <input
                         type="text"
-                        value={tempSmartRoutingConfig.openaiApiEmbeddingModel}
+                        value={tempSmartRoutingConfig.embeddingModel}
                         onChange={(e) =>
-                          handleSmartRoutingConfigChange('openaiApiEmbeddingModel', e.target.value)
+                          handleSmartRoutingConfigChange('embeddingModel', e.target.value)
                         }
-                        placeholder={t('settings.openaiApiEmbeddingModelPlaceholder')}
+                        placeholder={t('settings.embeddingModelPlaceholder')}
                         className="flex-1 mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm form-input"
                         disabled={loading}
                         required
@@ -2598,8 +2598,8 @@ const SettingsPage: React.FC = () => {
                       (tempSmartRoutingConfig.embeddingProvider === 'azure_openai'
                         ? tempSmartRoutingConfig.azureOpenaiEmbeddingModel ||
                           smartRoutingConfig.azureOpenaiEmbeddingModel
-                        : tempSmartRoutingConfig.openaiApiEmbeddingModel ||
-                          smartRoutingConfig.openaiApiEmbeddingModel) ||
+                        : tempSmartRoutingConfig.embeddingModel ||
+                          smartRoutingConfig.embeddingModel) ||
                       'text-embedding-3-small';
 
                     return tempSmartRoutingConfig.embeddingMaxTokens.trim()

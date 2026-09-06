@@ -118,9 +118,9 @@ describe('vectorSearchService', () => {
       enabled: true,
       dbUrl: 'postgres://localhost/test',
       embeddingProvider: 'openai',
-      openaiApiEmbeddingModel: 'text-embedding-3-small',
-      openaiApiBaseUrl: 'https://api.openai.com/v1',
-      openaiApiKey: '',
+      embeddingModel: 'text-embedding-3-small',
+      llmProviderBaseUrl: 'https://api.openai.com/v1',
+      llmProviderApiKey: '',
       embeddingDimensions: undefined,
     });
     mockFindServerById.mockResolvedValue({
@@ -283,9 +283,9 @@ describe('vectorSearchService', () => {
       embeddingProvider: 'openai',
       embeddingEncodingFormat: 'float',
       embeddingDimensions: 2,
-      openaiApiEmbeddingModel: 'text-embedding-3-small',
-      openaiApiBaseUrl: 'https://api.example.com/v1',
-      openaiApiKey: 'sk-from-dashboard',
+      embeddingModel: 'text-embedding-3-small',
+      llmProviderBaseUrl: 'https://api.example.com/v1',
+      llmProviderApiKey: 'sk-from-dashboard',
     });
     mockEmbeddingCreate.mockResolvedValue({ data: [{ embedding: [3, 4] }] });
     mockVectorRepository.countByServerNameAndModel.mockResolvedValue(0);
