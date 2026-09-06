@@ -1,0 +1,31 @@
+tests/services/credentialBindingService.test.ts
+  s_29d7282f1637cb::t_d67939e6ce0607 77,93
+src/services/principalRuntimeService.ts
+  s_29d7282f1637cb::t_d67939e6ce0607 105
+docs/features/per-user-credentials.mdx
+  s_29d7282f1637cb::t_d67939e6ce0607 6,75
+src/services/mcpService.ts
+  s_29d7282f1637cb::t_d67939e6ce0607 4179,4232
+src/services/credentialBindingService.ts
+  s_29d7282f1637cb::t_d67939e6ce0607 120
+docs/zh/features/per-user-credentials.mdx
+  s_29d7282f1637cb::t_d67939e6ce0607 6
+tests/integration/personal-credentials.test.ts
+  s_29d7282f1637cb::t_d67939e6ce0607 269,341
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "6ae0b5ebcfa06b3ed2a9b8c8f94f3c1a2e6d7ce6",
+  "prompts": {},
+  "sessions": {
+    "s_29d7282f1637cb": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a070d1-21c4-7f83-9701-a94ba6815dc8",
+        "model": "gpt-reserve"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
