@@ -45,6 +45,10 @@ import { createOAuthProvider } from '../../src/services/mcpOAuthProvider.js';
 import { JsonFileDaoFactory, setDaoFactory } from '../../src/dao/DaoFactory.js';
 import { clearSettingsCache, getNameSeparator } from '../../src/config/index.js';
 import { createUserToken } from '../utils/testHelpers.js';
+import {
+  authenticatedRouteRateLimiter,
+  mcpConnectionRateLimiter,
+} from '../../src/utils/rateLimit.js';
 import type { McpSettings } from '../../src/types/index.js';
 
 jest.mock('../../src/services/oauthService.js', () => ({ initializeAllOAuthClients: jest.fn() }));
@@ -137,14 +141,19 @@ beforeAll(async () => {
   await initializeClientsFromSettings(true);
   app = express();
   app.use(express.json());
-  app.use('/api', auth, userContextMiddleware);
+  app.use('/api', authenticatedRouteRateLimiter, auth, userContextMiddleware);
   app.get('/api/credentials', listMyCredentials);
   app.put('/api/credentials/:name', updateMyCredential);
   app.delete('/api/credentials/:name', updateMyCredential);
   app.get('/api/servers/:name', getServerConfig);
-  app.post('/mcp/:group', sseUserContextMiddleware, handleMcpPostRequest);
-  app.get('/mcp/:group', sseUserContextMiddleware, handleMcpOtherRequest);
-  app.delete('/mcp/:group', sseUserContextMiddleware, handleMcpOtherRequest);
+  app.post('/mcp/:group', mcpConnectionRateLimiter, sseUserContextMiddleware, handleMcpPostRequest);
+  app.get('/mcp/:group', mcpConnectionRateLimiter, sseUserContextMiddleware, handleMcpOtherRequest);
+  app.delete(
+    '/mcp/:group',
+    mcpConnectionRateLimiter,
+    sseUserContextMiddleware,
+    handleMcpOtherRequest,
+  );
   server = await new Promise<HttpServer>((resolve) => {
     const listener = app.listen(0, '127.0.0.1', () => resolve(listener));
   });

@@ -1,4 +1,3 @@
-import { createHash } from 'node:crypto';
 import { getServerDao } from '../dao/DaoFactory.js';
 import { credentialBindingEvents, resolveCredentialBinding } from './credentialBindingService.js';
 import { authorizationService, type RequestPrincipal } from './authorizationService.js';
@@ -54,14 +53,14 @@ export class PrincipalRuntimeService {
     ) {
       throw new CredentialBindingError('Server not available');
     }
+    // These snapshots only detect runtime changes in memory; they are never persisted or logged.
+    const definitionSnapshot = JSON.stringify(definition);
     const resolved = await resolveCredentialBinding(
       serverName,
       principal.username,
       replaceEnvVars(definition) as ServerConfig,
     );
-    const revision = createHash('sha256')
-      .update(JSON.stringify([definition, resolved.revision]))
-      .digest('hex');
+    const revision = JSON.stringify([definitionSnapshot, resolved.revision]);
     const key = JSON.stringify([serverName, principal.username]);
     let entry = this.entries.get(key);
     if (entry && (entry.revision !== revision || entry.info?.status === 'disconnected')) {
@@ -88,7 +87,7 @@ export class PrincipalRuntimeService {
           if (
             !created.valid ||
             latest.revision !== resolved.revision ||
-            JSON.stringify(currentDefinition) !== JSON.stringify(definition)
+            JSON.stringify(currentDefinition) !== definitionSnapshot
           ) {
             throw new CredentialBindingError(
               'Personal credentials or server configuration changed; retry the request',
