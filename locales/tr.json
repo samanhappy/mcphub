@@ -1249,7 +1249,7 @@
     "totalFootprint": "Bağlam ayak izi"
   },
   "credentials": {
-    "title": "Kimlik Bilgilerim",
+    "title": "Kimlik Bilgileri",
     "description": "Paylaşılan sunuculara kendi kimlik bilgilerinizi bağlayın. Her istek, çağrıyı yapan kullanıcının bilgilerini kullanır.",
     "slots": "Kişisel kimlik bilgisi alanları",
     "slotsHint": "Yalnızca alan adlarını tanımlayın. Tüm alanlar zorunludur; kuruluş bilgilerine otomatik dönüş yapılmaz.",

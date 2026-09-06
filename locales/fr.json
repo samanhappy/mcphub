@@ -1250,7 +1250,7 @@
     "totalFootprint": "Empreinte contextuelle"
   },
   "credentials": {
-    "title": "Mes identifiants",
+    "title": "Identifiants",
     "description": "Associez vos identifiants aux serveurs partagés. Chaque requête utilise les identifiants de son utilisateur.",
     "slots": "Champs d’identifiants personnels",
     "slotsHint": "Déclarez uniquement les noms des champs. Chaque champ est obligatoire, sans repli sur les identifiants de l’organisation.",
