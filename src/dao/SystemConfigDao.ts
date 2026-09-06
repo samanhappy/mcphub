@@ -1,6 +1,35 @@
 import { SystemConfig } from '../types/index.js';
 import { JsonFileBaseDao } from './base/JsonFileBaseDao.js';
 
+const legacySmartRoutingFields = [
+  ['openaiApiKey', 'llmProviderApiKey'],
+  ['openaiApiBaseUrl', 'llmProviderBaseUrl'],
+  ['openaiApiEmbeddingModel', 'embeddingModel'],
+] as const;
+
+export const migrateLegacySmartRoutingConfig = (
+  smartRouting: SystemConfig['smartRouting'],
+): { smartRouting: SystemConfig['smartRouting']; migrated: boolean } => {
+  if (!smartRouting) {
+    return { smartRouting, migrated: false };
+  }
+
+  const migratedConfig: Record<string, unknown> = { ...smartRouting };
+  let migrated = false;
+
+  for (const [legacyField, neutralField] of legacySmartRoutingFields) {
+    if (migratedConfig[neutralField] === undefined && migratedConfig[legacyField] !== undefined) {
+      migratedConfig[neutralField] = migratedConfig[legacyField];
+    }
+    if (legacyField in migratedConfig) {
+      delete migratedConfig[legacyField];
+      migrated = true;
+    }
+  }
+
+  return { smartRouting: migratedConfig as unknown as SystemConfig['smartRouting'], migrated };
+};
+
 /**
  * System Configuration DAO interface
  */
@@ -37,7 +66,16 @@ export interface SystemConfigDao {
 export class SystemConfigDaoImpl extends JsonFileBaseDao implements SystemConfigDao {
   async get(): Promise<SystemConfig> {
     const settings = await this.loadSettings();
-    return settings.systemConfig || {};
+    const config = settings.systemConfig || {};
+    const { smartRouting, migrated } = migrateLegacySmartRoutingConfig(config.smartRouting);
+    if (!migrated) {
+      return config;
+    }
+
+    const migratedConfig = { ...config, smartRouting };
+    settings.systemConfig = migratedConfig;
+    await this.saveSettings(settings);
+    return migratedConfig;
   }
 
   async update(config: Partial<SystemConfig>): Promise<SystemConfig> {

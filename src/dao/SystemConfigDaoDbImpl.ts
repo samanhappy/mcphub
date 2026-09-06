@@ -1,4 +1,4 @@
-import { SystemConfigDao } from './index.js';
+import { migrateLegacySmartRoutingConfig, SystemConfigDao } from './SystemConfigDao.js';
 import { SystemConfig } from '../types/index.js';
 import { SystemConfigRepository } from '../db/repositories/SystemConfigRepository.js';
 
@@ -13,7 +13,14 @@ export class SystemConfigDaoDbImpl implements SystemConfigDao {
   }
 
   async get(): Promise<SystemConfig> {
-    const config = await this.repository.get();
+    let config = await this.repository.get();
+    const { smartRouting, migrated } = migrateLegacySmartRoutingConfig(
+      config.smartRouting as SystemConfig['smartRouting'],
+    );
+    if (migrated) {
+      config = await this.repository.update({ smartRouting: smartRouting as Record<string, any> });
+    }
+
     return {
       routing: config.routing as any,
       install: config.install as any,

@@ -397,9 +397,9 @@ export const getAllSettings = async (req: Request, res: Response): Promise<void>
       systemConfig.smartRouting = {
         enabled: false,
         dbUrl: dbUrlEnv ? '${DB_URL}' : '',
-        openaiApiBaseUrl: '',
-        openaiApiKey: '',
-        openaiApiEmbeddingModel: '',
+        llmProviderBaseUrl: '',
+        llmProviderApiKey: '',
+        embeddingModel: '',
       };
     } else if (!systemConfig.smartRouting.dbUrl) {
       systemConfig.smartRouting.dbUrl = dbUrlEnv ? '${DB_URL}' : '';
@@ -1635,9 +1635,9 @@ export const updateSystemConfig = async (req: Request, res: Response): Promise<v
         typeof smartRouting.embeddingEncodingFormat === 'string' ||
         typeof smartRouting.embeddingDimensions === 'number' ||
         smartRouting.embeddingDimensions === null ||
-        typeof smartRouting.openaiApiBaseUrl === 'string' ||
-        typeof smartRouting.openaiApiKey === 'string' ||
-        typeof smartRouting.openaiApiEmbeddingModel === 'string' ||
+        typeof smartRouting.llmProviderBaseUrl === 'string' ||
+        typeof smartRouting.llmProviderApiKey === 'string' ||
+        typeof smartRouting.embeddingModel === 'string' ||
         typeof smartRouting.azureOpenaiEndpoint === 'string' ||
         typeof smartRouting.azureOpenaiApiKey === 'string' ||
         typeof smartRouting.azureOpenaiApiVersion === 'string' ||
@@ -1743,9 +1743,9 @@ export const updateSystemConfig = async (req: Request, res: Response): Promise<v
           basePacingDelayMs: undefined,
           embeddingProvider: 'openai',
           embeddingDimensions: undefined,
-          openaiApiBaseUrl: '',
-          openaiApiKey: '',
-          openaiApiEmbeddingModel: '',
+          llmProviderBaseUrl: '',
+          llmProviderApiKey: '',
+          embeddingModel: '',
           azureOpenaiEndpoint: '',
           azureOpenaiApiKey: '',
           azureOpenaiApiVersion: '',
@@ -1797,9 +1797,9 @@ export const updateSystemConfig = async (req: Request, res: Response): Promise<v
         basePacingDelayMs: undefined,
         embeddingProvider: 'openai',
         embeddingDimensions: undefined,
-        openaiApiBaseUrl: '',
-        openaiApiKey: '',
-        openaiApiEmbeddingModel: '',
+        llmProviderBaseUrl: '',
+        llmProviderApiKey: '',
+        embeddingModel: '',
         azureOpenaiEndpoint: '',
         azureOpenaiApiKey: '',
         azureOpenaiApiVersion: '',
@@ -1968,24 +1968,24 @@ export const updateSystemConfig = async (req: Request, res: Response): Promise<v
               return;
             }
           } else {
-            // Get current OpenAI config values, preferring new values from request
-            const currentOpenAiKey =
-              typeof smartRouting.openaiApiKey === 'string'
-                ? smartRouting.openaiApiKey.trim()
-                : (systemConfig.smartRouting.openaiApiKey || '').trim();
-            const currentOpenaiApiBaseUrl =
-              typeof smartRouting.openaiApiBaseUrl === 'string'
-                ? smartRouting.openaiApiBaseUrl.trim()
-                : (systemConfig.smartRouting.openaiApiBaseUrl || '').trim();
-            const currentOpenaiApiEmbeddingModel =
-              typeof smartRouting.openaiApiEmbeddingModel === 'string'
-                ? smartRouting.openaiApiEmbeddingModel.trim()
-                : (systemConfig.smartRouting.openaiApiEmbeddingModel || '').trim();
+            // Get current LLM provider config values, preferring new values from request
+            const currentLlmProviderApiKey =
+              typeof smartRouting.llmProviderApiKey === 'string'
+                ? smartRouting.llmProviderApiKey.trim()
+                : (systemConfig.smartRouting.llmProviderApiKey || '').trim();
+            const currentLlmProviderBaseUrl =
+              typeof smartRouting.llmProviderBaseUrl === 'string'
+                ? smartRouting.llmProviderBaseUrl.trim()
+                : (systemConfig.smartRouting.llmProviderBaseUrl || '').trim();
+            const currentEmbeddingModel =
+              typeof smartRouting.embeddingModel === 'string'
+                ? smartRouting.embeddingModel.trim()
+                : (systemConfig.smartRouting.embeddingModel || '').trim();
 
-            if (!currentOpenAiKey || !currentOpenaiApiBaseUrl || !currentOpenaiApiEmbeddingModel) {
+            if (!currentLlmProviderApiKey || !currentLlmProviderBaseUrl || !currentEmbeddingModel) {
               res.status(400).json({
                 message:
-                  'Smart routing cannot be enabled without OpenAI configuration. Please provide API key, API base URL, and embedding model.',
+                  'Smart routing cannot be enabled without LLM provider configuration. Please provide API key, API base URL, and embedding model.',
               });
               return;
             }
@@ -2005,15 +2005,15 @@ export const updateSystemConfig = async (req: Request, res: Response): Promise<v
       } else if (smartRouting.basePacingDelayMs === null) {
         systemConfig.smartRouting.basePacingDelayMs = undefined;
       }
-      if (typeof smartRouting.openaiApiBaseUrl === 'string') {
-        systemConfig.smartRouting.openaiApiBaseUrl = smartRouting.openaiApiBaseUrl?.trim();
+      if (typeof smartRouting.llmProviderBaseUrl === 'string') {
+        systemConfig.smartRouting.llmProviderBaseUrl = smartRouting.llmProviderBaseUrl?.trim();
       }
-      if (typeof smartRouting.openaiApiKey === 'string') {
-        systemConfig.smartRouting.openaiApiKey = smartRouting.openaiApiKey?.trim();
+      if (typeof smartRouting.llmProviderApiKey === 'string') {
+        systemConfig.smartRouting.llmProviderApiKey = smartRouting.llmProviderApiKey?.trim();
       }
-      if (typeof smartRouting.openaiApiEmbeddingModel === 'string') {
-        systemConfig.smartRouting.openaiApiEmbeddingModel =
-          smartRouting.openaiApiEmbeddingModel?.trim();
+      if (typeof smartRouting.embeddingModel === 'string') {
+        systemConfig.smartRouting.embeddingModel =
+          smartRouting.embeddingModel?.trim();
       }
 
       if (typeof smartRouting.azureOpenaiEndpoint === 'string') {
@@ -2055,11 +2055,11 @@ export const updateSystemConfig = async (req: Request, res: Response): Promise<v
           systemConfig.smartRouting.embeddingEncodingFormat ||
         previousSmartRoutingConfig.embeddingDimensions !==
           systemConfig.smartRouting.embeddingDimensions ||
-        previousSmartRoutingConfig.openaiApiBaseUrl !==
-          systemConfig.smartRouting.openaiApiBaseUrl ||
-        previousSmartRoutingConfig.openaiApiKey !== systemConfig.smartRouting.openaiApiKey ||
-        previousSmartRoutingConfig.openaiApiEmbeddingModel !==
-          systemConfig.smartRouting.openaiApiEmbeddingModel ||
+        previousSmartRoutingConfig.llmProviderBaseUrl !==
+          systemConfig.smartRouting.llmProviderBaseUrl ||
+        previousSmartRoutingConfig.llmProviderApiKey !== systemConfig.smartRouting.llmProviderApiKey ||
+        previousSmartRoutingConfig.embeddingModel !==
+          systemConfig.smartRouting.embeddingModel ||
         previousSmartRoutingConfig.azureOpenaiEndpoint !==
           systemConfig.smartRouting.azureOpenaiEndpoint ||
         previousSmartRoutingConfig.azureOpenaiApiKey !==

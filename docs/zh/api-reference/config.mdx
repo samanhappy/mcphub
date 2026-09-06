@@ -38,9 +38,9 @@ import { Card, Cards } from 'mintlify';
 
 - `enabled` (boolean): 启用或禁用智能路由功能。
 - `dbUrl` (string): 用于存储嵌入的数据库连接 URL。
-- `openaiApiBaseUrl` (string): 用于生成嵌入的 OpenAI 兼容 API 的基础 URL。
-- `openaiApiKey` (string): 嵌入服务的 API 密钥。
-- `openaiApiEmbeddingModel` (string): 要使用的嵌入模型的名称。
+- `llmProviderBaseUrl` (string): 用于生成嵌入的 OpenAI 兼容 API 的基础 URL。
+- `llmProviderApiKey` (string): 嵌入服务的 API 密钥。
+- `embeddingModel` (string): 要使用的嵌入模型的名称。
 - `embeddingDimensions` (number，可选)：对于支持自定义维度的提供方，指定嵌入输出维度；不设置时使用模型默认值。
 
 #### 工具结果压缩配置 (`toolResultCompression`)
