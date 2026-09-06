@@ -52,8 +52,9 @@ const CredentialForm = ({
         const id = `${slot.target}.${slot.name}`;
         return (
           <label key={id} className="block space-y-1 text-sm">
-            <span>
-              {slot.label || slot.name} <span className="text-[var(--hub-ink-3)]">({id})</span>
+            <span className="font-medium">
+              {slot.label || slot.name}{' '}
+              <span className="hub-mono text-xs font-normal text-[var(--hub-ink-3)]">({id})</span>
             </span>
             <input
               type="password"
@@ -66,19 +67,19 @@ const CredentialForm = ({
                   ? 'credentials.replaceValue'
                   : 'credentials.enterValue',
               )}
-              className="w-full rounded-md border border-[var(--hub-line)] bg-[var(--hub-surface)] px-3 py-2"
+              className="hub-input"
               onChange={(event) => setValues({ ...values, [id]: event.target.value })}
             />
           </label>
         );
       })}
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         <button type="submit" className="hub-btn primary" disabled={busy}>
           {t('credentials.save')}
         </button>
         <button
           type="button"
-          className="hub-btn"
+          className="hub-btn danger"
           disabled={busy || !binding.updatedAt}
           onClick={() => void save(true)}
         >
@@ -86,7 +87,7 @@ const CredentialForm = ({
         </button>
       </div>
       {message && (
-        <p role="status" className="text-sm">
+        <p role="status" className="text-sm text-[var(--hub-ink-2)]">
           {message}
         </p>
       )}
@@ -119,21 +120,29 @@ export default function CredentialsPage() {
     (binding) => !search.get('server') || binding.serverName === search.get('server'),
   );
   return (
-    <div className="p-6 max-w-4xl mx-auto space-y-5">
+    <div className="max-w-4xl mx-auto space-y-5">
       <div>
-        <h1 className="text-2xl font-semibold">{t('credentials.title')}</h1>
-        <p className="mt-2 text-sm text-[var(--hub-ink-3)]">{t('credentials.description')}</p>
+        <h1 className="hub-h1">{t('credentials.title')}</h1>
+        <p className="hub-sub">{t('credentials.description')}</p>
       </div>
       {search.has('server') && (
         <button className="hub-btn" onClick={() => setSearch({})}>
           {t('credentials.showAll')}
         </button>
       )}
-      {error && <p role="alert">{error}</p>}
+      {error && (
+        <div className="hub-card px-4 py-3 text-sm" style={{ color: 'var(--hub-err)' }} role="alert">
+          {error}
+        </div>
+      )}
       {loading ? (
-        <p>{t('credentials.loading')}</p>
+        <div className="hub-card p-10 text-center text-sm" style={{ color: 'var(--hub-ink-3)' }}>
+          {t('credentials.loading')}
+        </div>
       ) : !visible.length && !error ? (
-        <p>{t('credentials.empty')}</p>
+        <div className="hub-card p-10 text-center text-sm" style={{ color: 'var(--hub-ink-3)' }}>
+          {t('credentials.empty')}
+        </div>
       ) : null}
       {visible.map((binding) => (
         <CredentialForm key={binding.serverName} binding={binding} onChange={reload} />
