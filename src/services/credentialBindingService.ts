@@ -117,7 +117,7 @@ const decrypt = async (binding: StoredCredentialBinding): Promise<Record<string,
 
 export const missingCredentialError = (serverName: string): CredentialBindingError =>
   new CredentialBindingError(
-    `Personal credentials required for '${serverName}'. Bind all required slots in Dashboard → My Credentials.`,
+    `Personal credentials required for '${serverName}'. Bind all required slots in Dashboard → Credentials.`,
   );
 
 export const getCredentialBindingStatus = async (

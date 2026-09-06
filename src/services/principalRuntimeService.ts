@@ -102,7 +102,7 @@ export class PrincipalRuntimeService {
           throw error instanceof CredentialBindingError
             ? error
             : new CredentialBindingError(
-                `Unable to connect '${serverName}' with your personal credentials. Check your binding in My Credentials.`,
+                `Unable to connect '${serverName}' with your personal credentials. Check your binding in Credentials.`,
               );
         }
       })();

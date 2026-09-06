@@ -266,7 +266,7 @@ test('real stdio calls resolve bearer owners, isolate simultaneous users, and re
   await request(app).delete('/api/credentials/shared').set('x-auth-token', apiToken(alice));
   const missing = await aliceClient.callTool({ name: toolName });
   expect(missing.isError).toBe(true);
-  expect(JSON.stringify(missing)).toContain('My Credentials');
+  expect(JSON.stringify(missing)).toContain('Credentials');
   expect(JSON.stringify(missing)).not.toContain('org-must-never-be-used');
 
   await getBuiltinPromptDao().create({ name: 'builtin-example', template: 'Hello' });
@@ -338,7 +338,7 @@ test('a session/JWT principal can invoke directly, while an absent principal can
     ),
   );
   expect(anonymous.isError).toBe(true);
-  expect(JSON.stringify(anonymous)).toContain('My Credentials');
+  expect(JSON.stringify(anonymous)).toContain('Credentials');
 });
 
 test('HTTP and OpenAPI resolve the latest personal headers without passthrough or parameter overrides', async () => {

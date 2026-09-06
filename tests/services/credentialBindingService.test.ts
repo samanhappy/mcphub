@@ -74,7 +74,7 @@ test('encrypts at rest, isolates email principals, and returns status only', asy
 
 test('requires all declared slots without implicit organization fallback', async () => {
   await expect(resolveCredentialBinding('shared', 'alice', stdio)).rejects.toThrow(
-    'My Credentials',
+    'Credentials',
   );
   for (const values of [
     {},
@@ -90,7 +90,7 @@ test('requires all declared slots without implicit organization fallback', async
   );
   await deleteCredentialBindings({ serverName: 'shared', username: 'alice' });
   await expect(resolveCredentialBinding('shared', 'alice', stdio)).rejects.toThrow(
-    'My Credentials',
+    'Credentials',
   );
 });
 

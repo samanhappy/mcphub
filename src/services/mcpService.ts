@@ -4176,7 +4176,7 @@ const createPrincipalRuntime = async (
           } catch {
             info.status = 'disconnected';
             throw new CredentialBindingError(
-              `Personal credential request failed for '${name}'. Check your binding in My Credentials.`,
+              `Personal credential request failed for '${name}'. Check your binding in Credentials.`,
             );
           }
         };
@@ -4229,7 +4229,7 @@ const createPrincipalRuntime = async (
   } catch {
     closeServerRuntime(info);
     throw new CredentialBindingError(
-      `Unable to connect '${name}' with your personal credentials. Check your binding in My Credentials.`,
+      `Unable to connect '${name}' with your personal credentials. Check your binding in Credentials.`,
     );
   }
 };
