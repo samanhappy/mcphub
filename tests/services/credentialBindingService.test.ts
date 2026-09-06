@@ -8,9 +8,12 @@ import {
   saveCredentialBinding,
   resolveCredentialBinding,
   deleteCredentialBindings,
+  missingCredentialError,
 } from '../../src/services/credentialBindingService.js';
 import { validateCredentialTemplate } from '../../src/utils/credentialTemplate.js';
 import { presentServerForPrincipal } from '../../src/services/serverConfigPresenter.js';
+import { RequestContextService } from '../../src/services/requestContextService.js';
+import { initI18n } from '../../src/utils/i18n.js';
 import type { ServerConfig } from '../../src/types/index.js';
 
 jest.mock('../../src/dao/DaoFactory.js', () => ({
@@ -27,6 +30,10 @@ const stdio: ServerConfig = {
 let directory: string;
 const originalPath = process.env.MCPHUB_SETTING_PATH;
 const originalKey = process.env.MCPHUB_CREDENTIAL_ENCRYPTION_KEY;
+
+beforeAll(async () => {
+  await initI18n();
+});
 
 beforeEach(() => {
   directory = fs.mkdtempSync(path.join(os.tmpdir(), 'mcphub-credentials-'));
@@ -91,6 +98,18 @@ test('requires all declared slots without implicit organization fallback', async
   await deleteCredentialBindings({ serverName: 'shared', username: 'alice' });
   await expect(resolveCredentialBinding('shared', 'alice', stdio)).rejects.toThrow(
     'Credentials',
+  );
+});
+
+test('localizes missing credential guidance from the request language', async () => {
+  const context = RequestContextService.getInstance();
+  await context.runWithCustomRequestContext(
+    { headers: { 'accept-language': 'zh-CN,zh;q=0.9' } },
+    async () => {
+      expect(missingCredentialError('amap').message).toBe(
+        '服务器“amap”需要个人凭据。请在控制台 → 凭据中绑定所有必需字段。',
+      );
+    },
   );
 });
 

@@ -4,6 +4,8 @@ import path from 'node:path';
 import { EventEmitter } from 'node:events';
 import { getSettingsPath } from '../config/index.js';
 import { getCredentialBindingDao } from '../dao/DaoFactory.js';
+import { RequestContextService } from './requestContextService.js';
+import { getT } from '../utils/i18n.js';
 import type { ServerConfig, StoredCredentialBinding } from '../types/index.js';
 import {
   CredentialBindingError,
@@ -115,10 +117,15 @@ const decrypt = async (binding: StoredCredentialBinding): Promise<Record<string,
   }
 };
 
+const requestLanguage = (): string | undefined => {
+  const context = RequestContextService.getInstance();
+  const configured = context.getHeader('x-language') ?? context.getHeader('accept-language');
+  const language = Array.isArray(configured) ? configured[0] : configured;
+  return language?.split(',')[0].split(';')[0].trim() || undefined;
+};
+
 export const missingCredentialError = (serverName: string): CredentialBindingError =>
-  new CredentialBindingError(
-    `Personal credentials required for '${serverName}'. Bind all required slots in Dashboard → Credentials.`,
-  );
+  new CredentialBindingError(getT(requestLanguage())('credentials.missing', { serverName }));
 
 export const getCredentialBindingStatus = async (
   serverName: string,

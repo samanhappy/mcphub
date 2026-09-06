@@ -1253,6 +1253,7 @@
   },
   "credentials": {
     "title": "Credentials",
+    "missing": "Personal credentials required for '{{serverName}}'. Bind all required slots in Dashboard → Credentials.",
     "description": "Bind your own credentials to shared servers. Each server uses the credentials of the user making the request.",
     "slots": "Per-user credential slots",
     "slotsHint": "Declare field names only. Every slot requires a personal binding; organization credentials are never used as a fallback.",
