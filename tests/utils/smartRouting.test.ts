@@ -19,6 +19,7 @@ const SMART_ROUTING_ENV_VARS = [
   'SMART_ROUTING_EMBEDDING_PROVIDER',
   'SMART_ROUTING_EMBEDDING_ENCODING_FORMAT',
   'EMBEDDING_DIMENSIONS',
+  'EMBEDDING_DIMENSIONS_API_PASSTHROUGH',
   'OPENAI_API_BASE_URL',
   'OPENAI_API_KEY',
   'EMBEDDING_MODEL',
@@ -178,6 +179,7 @@ describe('smartRouting config resolution', () => {
         embeddingProvider: 'openai',
         embeddingEncodingFormat: 'auto',
         embeddingDimensions: undefined,
+        embeddingDimensionsApiPassthrough: false,
         openaiApiBaseUrl: 'https://api.openai.com/v1',
         openaiApiKey: '',
         openaiApiEmbeddingModel: 'text-embedding-3-small',
@@ -298,6 +300,33 @@ describe('smartRouting config resolution', () => {
         process.env.EMBEDDING_DIMENSIONS = value;
         const config = await getSmartRoutingConfig();
         expect(config.embeddingDimensions).toBeUndefined();
+      });
+    });
+
+    describe('embeddingDimensionsApiPassthrough', () => {
+      it("parses 'true' → true", async () => {
+        process.env.EMBEDDING_DIMENSIONS_API_PASSTHROUGH = 'true';
+        const config = await getSmartRoutingConfig();
+        expect(config.embeddingDimensionsApiPassthrough).toBe(true);
+      });
+
+      it('uses the settings value when the environment variable is absent', async () => {
+        mockGet.mockResolvedValue({
+          smartRouting: { embeddingDimensionsApiPassthrough: true },
+        });
+        const config = await getSmartRoutingConfig();
+        expect(config.embeddingDimensionsApiPassthrough).toBe(true);
+      });
+
+      it("treats unrecognized value 'maybe' as false", async () => {
+        process.env.EMBEDDING_DIMENSIONS_API_PASSTHROUGH = 'maybe';
+        const config = await getSmartRoutingConfig();
+        expect(config.embeddingDimensionsApiPassthrough).toBe(false);
+      });
+
+      it('defaults to false when neither env nor settings are set', async () => {
+        const config = await getSmartRoutingConfig();
+        expect(config.embeddingDimensionsApiPassthrough).toBe(false);
       });
     });
 

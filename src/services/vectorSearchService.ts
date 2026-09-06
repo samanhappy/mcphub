@@ -132,11 +132,20 @@ const generateAzureOpenAIEmbedding = async (
     smartRoutingConfig.openaiApiKey,
   );
 
+  // Only forward `dimensions` for models known to support it (or when the user
+  // explicitly opts into passthrough). Non-MRL deployments reject the parameter
+  // outright (issue #1131).
+  const forwardDimensions = shouldForwardDimensionsToApi(
+    embeddingModel,
+    smartRoutingConfig.embeddingDimensions,
+    smartRoutingConfig.embeddingDimensionsApiPassthrough,
+  );
+
   const response = await axios.post(
     url,
     {
       input: text,
-      ...(smartRoutingConfig.embeddingDimensions !== undefined
+      ...(forwardDimensions && smartRoutingConfig.embeddingDimensions !== undefined
         ? { dimensions: smartRoutingConfig.embeddingDimensions }
         : {}),
     },
@@ -696,6 +705,43 @@ const getDimensionsForModel = (model: string, configuredDimensions?: number): nu
   return EMBEDDING_DIMENSIONS_SMALL;
 };
 
+/**
+ * Whether a model/backend is known to support the OpenAI `dimensions` request
+ * parameter (Matryoshka Representation Learning / MRL).
+ *
+ * Many popular open embedding models/backends (Qwen3-Embedding, BGE, most
+ * vLLM/sglang deployments) reject the parameter outright — even when the value
+ * equals the model's native dimension (issue #1131) — so MCPHub must not send
+ * it blindly. Only models known to support configurable output dimensions are
+ * granted the parameter automatically.
+ */
+const supportsDimensionsParameter = (model: string): boolean => {
+  const normalized = model.toLowerCase();
+  return (
+    normalized.includes('text-embedding-3') || normalized.includes('gemini-embedding')
+  );
+};
+
+/**
+ * Decide whether the `dimensions` request parameter should be forwarded to the
+ * embedding provider for the given model.
+ *
+ * The parameter is only meaningful when a dimension is configured, and it is an
+ * MRL feature: recognized MRL-capable models get it automatically, while
+ * `embeddingDimensionsApiPassthrough` forces it for any other model (e.g. a
+ * self-hosted MRL proxy MCPHub does not recognize).
+ */
+const shouldForwardDimensionsToApi = (
+  model: string,
+  configuredDimensions: number | undefined,
+  forcePassthrough: boolean | undefined,
+): boolean => {
+  if (configuredDimensions === undefined) {
+    return false;
+  }
+  return forcePassthrough === true || supportsDimensionsParameter(model);
+};
+
 // Initialize the OpenAI client with smartRouting configuration
 const getOpenAIClient = async () => {
   const config = await getOpenAIConfig();
@@ -811,9 +857,21 @@ async function generateEmbedding(text: string): Promise<number[]> {
     encodingFormat = encodingFormatSetting;
   }
 
+  // Only forward `dimensions` for models known to support it (or when the user
+  // explicitly opts into passthrough). Non-MRL deployments reject the parameter
+  // outright — even when the value equals the model's native dimension
+  // (issue #1131).
+  const forwardDimensions = shouldForwardDimensionsToApi(
+    config.embeddingModel,
+    config.embeddingDimensions,
+    smartRoutingConfig.embeddingDimensionsApiPassthrough,
+  );
+
   const embeddingPayload = {
     model: config.embeddingModel,
-    ...(config.embeddingDimensions !== undefined ? { dimensions: config.embeddingDimensions } : {}),
+    ...(forwardDimensions && config.embeddingDimensions !== undefined
+      ? { dimensions: config.embeddingDimensions }
+      : {}),
     encoding_format: encodingFormat,
     input: truncatedText,
   } as const;

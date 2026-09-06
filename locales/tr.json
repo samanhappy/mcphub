@@ -822,6 +822,8 @@
     "embeddingDimensions": "Embedding Boyutları",
     "embeddingDimensionsDescription": "Destekleyen sağlayıcılar için isteğe bağlı çıktı boyutu. Model varsayılanını kullanmak için boş bırakın.",
     "embeddingDimensionsPlaceholder": "Boş = model varsayılanı",
+    "embeddingDimensionsApiPassthrough": "dimensions'ı API'ye ilet (MRL passthrough)",
+    "embeddingDimensionsApiPassthroughDescription": "Yalnızca Matryoshka (MRL) desteklediği bilinen modeller dimensions parametresini alır. Diğer MRL uyumlu modeller için zorlamak üzere etkinleştirin. MRL olmayan modeller (Qwen3-Embedding, BGE, vLLM/sglang) parametreyi doğrudan reddeder, bu yüzden onlar için kapalı bırakın.",
     "azureOpenaiEndpoint": "Azure OpenAI Uç Noktası",
     "azureOpenaiEndpointPlaceholder": "https://KAYNAK_ADINIZ.openai.azure.com",
     "azureOpenaiApiKey": "Azure OpenAI API Anahtarı",

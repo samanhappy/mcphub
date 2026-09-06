@@ -23,6 +23,7 @@ export interface SystemConfig {
     embeddingProvider?: 'openai' | 'azure_openai';
     embeddingEncodingFormat?: 'auto' | 'base64' | 'float';
     embeddingDimensions?: number;
+    embeddingDimensionsApiPassthrough?: boolean;
     openaiApiBaseUrl?: string;
     openaiApiKey?: string;
     openaiApiEmbeddingModel?: string;

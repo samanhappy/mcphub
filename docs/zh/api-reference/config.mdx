@@ -41,7 +41,8 @@ import { Card, Cards } from 'mintlify';
 - `openaiApiBaseUrl` (string): 用于生成嵌入的 OpenAI 兼容 API 的基础 URL。
 - `openaiApiKey` (string): 嵌入服务的 API 密钥。
 - `openaiApiEmbeddingModel` (string): 要使用的嵌入模型的名称。
-- `embeddingDimensions` (number，可选)：对于支持自定义维度的提供方，指定嵌入输出维度；不设置时使用模型默认值。
+- `embeddingDimensions` (number，可选)：对于支持自定义维度的提供方，指定嵌入输出维度；不设置时使用模型默认值。该值同时声明了预期的存储维度，但仅对已知支持 Matryoshka（MRL）表示的模型、或开启 `embeddingDimensionsApiPassthrough` 时，才会作为 `dimensions` 请求参数转发给提供方（issue #1131）。
+- `embeddingDimensionsApiPassthrough` (boolean，可选，默认 `false`)：设为 `true` 时，始终将 `embeddingDimensions` 作为 `dimensions` 请求参数转发给提供方。非 MRL 模型/后端（Qwen3-Embedding、BGE、vLLM/sglang 等）会直接拒绝该参数；仅对其它支持 MRL 的模型开启。参见 `EMBEDDING_DIMENSIONS_API_PASSTHROUGH`。
 
 #### 工具结果压缩配置 (`toolResultCompression`)
 

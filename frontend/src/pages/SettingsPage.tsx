@@ -486,6 +486,7 @@ const SettingsPage: React.FC = () => {
     embeddingProviderPreset: EmbeddingProviderPresetId;
     embeddingEncodingFormat: 'auto' | 'base64' | 'float';
     embeddingDimensions: string;
+    embeddingDimensionsApiPassthrough: boolean;
     openaiApiBaseUrl: string;
     openaiApiKey: string;
     openaiApiEmbeddingModel: string;
@@ -503,6 +504,7 @@ const SettingsPage: React.FC = () => {
     embeddingProviderPreset: 'openai',
     embeddingEncodingFormat: 'auto',
     embeddingDimensions: '',
+    embeddingDimensionsApiPassthrough: false,
     openaiApiBaseUrl: '',
     openaiApiKey: '',
     openaiApiEmbeddingModel: '',
@@ -642,6 +644,8 @@ const SettingsPage: React.FC = () => {
           smartRoutingConfig.embeddingDimensions != null
             ? String(smartRoutingConfig.embeddingDimensions)
             : '',
+        embeddingDimensionsApiPassthrough:
+          smartRoutingConfig.embeddingDimensionsApiPassthrough,
         openaiApiBaseUrl: smartRoutingConfig.openaiApiBaseUrl || '',
         openaiApiKey: smartRoutingConfig.openaiApiKey || '',
         openaiApiEmbeddingModel: smartRoutingConfig.openaiApiEmbeddingModel || '',
@@ -2493,6 +2497,25 @@ const SettingsPage: React.FC = () => {
                     }
                     className="flex-1 mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm form-input"
                     disabled={loading}
+                  />
+                </div>
+                <div className="flex items-center justify-between mt-3">
+                  <div>
+                    <h4 className="font-medium text-gray-700">
+                      {t('settings.embeddingDimensionsApiPassthrough') ||
+                        'Forward dimensions to API (MRL passthrough)'}
+                    </h4>
+                    <p className="text-xs text-gray-500 mt-1">
+                      {t('settings.embeddingDimensionsApiPassthroughDescription') ||
+                        "Only models known to support Matryoshka (MRL) receive the dimensions parameter. Enable this to force it for other MRL-capable models. Non-MRL models (Qwen3-Embedding, BGE, vLLM/sglang) reject the parameter outright, so leave this off for them."}
+                    </p>
+                  </div>
+                  <Switch
+                    disabled={loading || !smartRoutingConfig.enabled}
+                    checked={smartRoutingConfig.embeddingDimensionsApiPassthrough}
+                    onCheckedChange={(checked) =>
+                      updateSmartRoutingConfig('embeddingDimensionsApiPassthrough', checked)
+                    }
                   />
                 </div>
               </div>

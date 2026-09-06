@@ -827,6 +827,8 @@
     "embeddingDimensions": "嵌入维度",
     "embeddingDimensionsDescription": "支持该参数的提供方可自定义输出维度。留空则使用模型默认值。",
     "embeddingDimensionsPlaceholder": "留空 = 模型默认值",
+    "embeddingDimensionsApiPassthrough": "向 API 转发 dimensions 参数（MRL 透传）",
+    "embeddingDimensionsApiPassthroughDescription": "仅已知支持 Matryoshka（MRL）的模型会收到 dimensions 参数。如使用其他支持 MRL 的模型，可开启此选项强制转发。非 MRL 模型（Qwen3-Embedding、BGE、vLLM/sglang 等）会直接拒绝该参数，请保持关闭。",
     "azureOpenaiEndpoint": "Azure OpenAI 终端地址",
     "azureOpenaiEndpointPlaceholder": "https://YOUR_RESOURCE_NAME.openai.azure.com",
     "azureOpenaiApiKey": "Azure OpenAI API 密钥",
