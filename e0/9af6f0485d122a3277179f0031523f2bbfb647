@@ -1,0 +1,37 @@
+tests/middlewares/i18n.test.ts
+  s_29d7282f1637cb::t_56ffd517467bb9 1,11-22,24
+  s_29d7282f1637cb::t_34f699b3837e96 2-10,23,25
+locales/tr.json
+  s_29d7282f1637cb::t_cc2e65f5688a35 1253
+src/middlewares/i18n.ts
+  s_29d7282f1637cb::t_73d537f7f24943 3,39
+locales/fr.json
+  s_29d7282f1637cb::t_cc2e65f5688a35 1254
+tests/services/credentialBindingService.test.ts
+  s_29d7282f1637cb::t_cc2e65f5688a35 11,15-16,34-37,104-112,114
+  s_29d7282f1637cb::t_420c2032b07e4c 113
+  s_29d7282f1637cb::t_e74d06a312f980 115
+src/services/credentialBindingService.ts
+  s_29d7282f1637cb::t_19fbe3b58bd85e 126,128
+  s_29d7282f1637cb::t_cc2e65f5688a35 7-8,120-125
+locales/en.json
+  s_29d7282f1637cb::t_cc2e65f5688a35 1256
+locales/zh.json
+  s_29d7282f1637cb::t_cc2e65f5688a35 1258
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "e09af6f0485d122a3277179f0031523f2bbfb647",
+  "prompts": {},
+  "sessions": {
+    "s_29d7282f1637cb": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a070d1-21c4-7f83-9701-a94ba6815dc8",
+        "model": "gpt-reserve"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
