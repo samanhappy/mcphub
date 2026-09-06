@@ -1,0 +1,25 @@
+locales/en.json
+  s_29d7282f1637cb::t_112700954ad2d6 1255
+locales/zh.json
+  s_29d7282f1637cb::t_112700954ad2d6 1257
+locales/tr.json
+  s_29d7282f1637cb::t_112700954ad2d6 1252
+locales/fr.json
+  s_29d7282f1637cb::t_112700954ad2d6 1253
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "abe59e6e426d24a848494d9818010542b5252b73",
+  "prompts": {},
+  "sessions": {
+    "s_29d7282f1637cb": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a070d1-21c4-7f83-9701-a94ba6815dc8",
+        "model": "gpt-reserve"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
