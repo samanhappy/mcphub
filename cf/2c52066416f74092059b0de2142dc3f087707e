@@ -1,0 +1,37 @@
+src/services/mcpService.ts
+  s_29d7282f1637cb::t_1f0936b72c633e 3430,3511,3634,3701,3744
+src/services/activityLoggingService.ts
+  s_29d7282f1637cb::t_1f0936b72c633e 54,68
+  s_29d7282f1637cb::t_134858cd142ea7 11,69-73,87
+  s_29d7282f1637cb::t_bd314697edb9be 66-67
+tests/integration/personal-credentials.test.ts
+  s_29d7282f1637cb::t_add154e86f6fd6 61,63,228,249,258-264
+  s_29d7282f1637cb::t_2b5e515971eae4 250-257
+tests/services/activityLoggingService.test.ts
+  s_29d7282f1637cb::t_5c0c1da1ccb94c 117
+  s_29d7282f1637cb::t_134858cd142ea7 135,143
+  s_29d7282f1637cb::t_27f678c943820f 139
+  s_29d7282f1637cb::t_4fb4e35922f7ad 124-134,136,138,140-142,144-146
+  s_29d7282f1637cb::t_d5cf694d607164 137
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "cf2c52066416f74092059b0de2142dc3f087707e",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_29d7282f1637cb": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a070d1-21c4-7f83-9701-a94ba6815dc8",
+        "model": "gpt-reserve"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
