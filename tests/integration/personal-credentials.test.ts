@@ -58,8 +58,9 @@ jest.mock('../../src/services/vectorSearchService.js', () => ({
   syncAllServerToolsEmbeddings: jest.fn(),
 }));
 jest.mock('../../src/services/mcpOAuthProvider.js', () => ({ createOAuthProvider: jest.fn() }));
+const mockActivityLogToolCall = jest.fn();
 jest.mock('../../src/services/activityLoggingService.js', () => ({
-  getActivityLoggingService: () => ({ logToolCall: jest.fn() }),
+  getActivityLoggingService: () => ({ logToolCall: mockActivityLogToolCall }),
 }));
 jest.mock('../../src/services/toolResultCompressionService.js', () => ({
   maybeCompressToolResult: (result: unknown) => result,
@@ -224,6 +225,7 @@ test('dashboard bindings are write-only, self-scoped, and preserve the shared sa
 });
 
 test('real stdio calls resolve bearer owners, isolate simultaneous users, and reuse a principal across sessions', async () => {
+  mockActivityLogToolCall.mockClear();
   await bind(bob, 'bob-sentinel');
   const [aliceClient, bobClient, anotherAliceClient] = await Promise.all([
     connect(alice),
@@ -244,6 +246,22 @@ test('real stdio calls resolve bearer owners, isolate simultaneous users, and re
   expect(a2.pid).toBe(a.pid);
   expect(b.pid).not.toBe(a.pid);
   expect(a.masterKeyInherited).toBe(false);
+
+  const activity = mockActivityLogToolCall.mock.calls
+    .map(([entry]) => entry)
+    .find(
+      (entry) =>
+        entry.server === 'shared' &&
+        entry.tool === 'identity' &&
+        JSON.stringify(entry.output).includes('alice-sentinel'),
+    );
+  expect(activity).toEqual(
+    expect.objectContaining({
+      hasCredentialTemplate: true,
+      output: expect.objectContaining({ content: expect.any(Array) }),
+    }),
+  );
+  expect(JSON.stringify(activity?.output)).toContain('alice-sentinel');
   const promptName = (await aliceClient.listPrompts()).prompts[0].name;
   const prompt = await aliceClient.getPrompt({ name: promptName });
   expect(JSON.parse((prompt.messages[0].content as { text: string }).text).credential).toBe(

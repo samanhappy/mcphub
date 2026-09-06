@@ -114,10 +114,33 @@ describe('ActivityLoggingService', () => {
       duration: 1,
       status: 'success',
       input: { value: 'kept' },
+      hasCredentialTemplate: false,
     });
 
     const persisted = mockCreate.mock.calls[0][0];
     expect(persisted.input).toContain('kept');
     expect(persisted.input).not.toContain('_omitted');
+  });
+
+  it('omits tool payloads for credential-templated servers', async () => {
+    const activityLoggingService = getActivityLoggingService();
+
+    await activityLoggingService.logToolCall({
+      server: 'personal-server',
+      tool: 'echo-secret',
+      duration: 1,
+      status: 'success',
+      input: { secret: 'alice-personal-secret' },
+      output: { echoed: 'alice-personal-secret' },
+      errorMessage: 'upstream alice-personal-secret',
+      hasCredentialTemplate: true,
+    });
+
+    expect(mockCreate).toHaveBeenCalledTimes(1);
+    const persisted = mockCreate.mock.calls[0][0];
+    expect(persisted.input).toContain('_omitted');
+    expect(persisted.output).toContain('_omitted');
+    expect(persisted.errorMessage).toBe('Credential-templated server tool call failed');
+    expect(JSON.stringify(persisted)).not.toContain('alice-personal-secret');
   });
 });

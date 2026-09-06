@@ -3427,6 +3427,7 @@ const handleCallToolRequestImpl = async (request: any, extra: any) => {
           keyId,
           keyName,
           sourceIp,
+          hasCredentialTemplate: hasCredentialTemplate(targetServerInfo.config),
         });
 
         return await maybeCompressToolResult(
@@ -3507,6 +3508,7 @@ const handleCallToolRequestImpl = async (request: any, extra: any) => {
         keyId,
         keyName,
         sourceIp,
+        hasCredentialTemplate: hasCredentialTemplate(targetServerInfo.config),
         errorMessage: result.isError ? 'Tool returned error response' : undefined,
       });
 
@@ -3629,6 +3631,7 @@ const handleCallToolRequestImpl = async (request: any, extra: any) => {
         keyId,
         keyName,
         sourceIp,
+        hasCredentialTemplate: hasCredentialTemplate(serverInfo.config),
       });
 
       return await maybeCompressToolResult(
@@ -3695,6 +3698,7 @@ const handleCallToolRequestImpl = async (request: any, extra: any) => {
       keyId,
       keyName,
       sourceIp,
+      hasCredentialTemplate: hasCredentialTemplate(serverInfo.config),
       errorMessage: result.isError ? 'Tool returned error response' : undefined,
     });
 
@@ -3737,6 +3741,7 @@ const handleCallToolRequestImpl = async (request: any, extra: any) => {
       keyId,
       keyName,
       sourceIp,
+      hasCredentialTemplate: hasCredentialTemplate(serverInfo?.config),
       // The reason is an internal diagnostic; the caller-facing message stays
       // identical for hidden and nonexistent targets.
       errorMessage: unavailable

@@ -8,6 +8,7 @@ const PAYLOAD_OMITTED = JSON.stringify({
   _omitted: true,
   _reason: 'activityLog.storeToolPayload is disabled',
 });
+const CREDENTIAL_TEMPLATE_ERROR = 'Credential-templated server tool call failed';
 
 /**
  * Service for logging tool call activities
@@ -50,6 +51,7 @@ export class ActivityLoggingService {
     keyName?: string;
     sourceIp?: string;
     errorMessage?: string;
+    hasCredentialTemplate?: boolean;
   }): Promise<void> {
     if (!this.isEnabled()) {
       return;
@@ -61,7 +63,14 @@ export class ActivityLoggingService {
     }
 
     try {
-      const storePayload = this.shouldStoreToolPayload();
+      // Personal credential calls are metadata-only because upstream responses can echo or
+      // transform secrets in ways field-level redaction cannot reliably detect.
+      const storePayload = this.shouldStoreToolPayload() && !params.hasCredentialTemplate;
+      const errorMessage = params.errorMessage
+        ? params.hasCredentialTemplate
+          ? CREDENTIAL_TEMPLATE_ERROR
+          : sanitizeStringForLogging(params.errorMessage)
+        : undefined;
       const activity: Omit<IActivity, 'id'> = {
         timestamp: new Date(),
         server: params.server,
@@ -75,9 +84,7 @@ export class ActivityLoggingService {
         keyId: params.keyId,
         keyName: params.keyName,
         sourceIp: params.sourceIp,
-        errorMessage: params.errorMessage
-          ? sanitizeStringForLogging(params.errorMessage)
-          : undefined,
+        errorMessage,
       };
 
       await activityDao.create(activity);
