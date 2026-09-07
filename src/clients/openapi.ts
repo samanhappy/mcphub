@@ -868,13 +868,35 @@ export class OpenAPIClient {
 
       // Build query parameters
       const queryParams: Record<string, unknown> = {};
+      const serializedArrayQueryParams = new URLSearchParams();
       const queryParamDefs = tool.parameters?.filter((p) => p.in === 'query') || [];
 
       for (const param of queryParamDefs) {
         const value = args[param.name];
         if (value !== undefined) {
-          queryParams[param.name] = value;
+          // OpenAPI query parameters default to style=form and explode=true.
+          // Axios serializes arrays as `name[]=value`, which differs from the
+          // OpenAPI default of repeated `name=value` pairs. Keep non-form
+          // styles with Axios so this focused fix does not alter their current
+          // behavior.
+          if (
+            Array.isArray(value) &&
+            (param.style === undefined || param.style === 'form') &&
+            param.explode !== false
+          ) {
+            for (const item of value) {
+              if (item !== null && item !== undefined) {
+                serializedArrayQueryParams.append(param.name, String(item));
+              }
+            }
+          } else {
+            queryParams[param.name] = value;
+          }
         }
+      }
+
+      if (serializedArrayQueryParams.size > 0) {
+        url += `${url.includes('?') ? '&' : '?'}${serializedArrayQueryParams.toString()}`;
       }
 
       // Prepare request configuration
