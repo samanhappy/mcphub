@@ -36,6 +36,7 @@ interface SmartRoutingConfig {
   embeddingProvider?: 'openai' | 'azure_openai';
   embeddingEncodingFormat?: 'auto' | 'base64' | 'float';
   embeddingDimensions?: number;
+  embeddingDimensionsApiPassthrough: boolean;
   llmProviderBaseUrl: string;
   llmProviderApiKey: string;
   embeddingModel: string;
@@ -353,6 +354,7 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
     embeddingProvider: 'openai',
     embeddingEncodingFormat: 'auto',
     embeddingDimensions: undefined,
+    embeddingDimensionsApiPassthrough: false,
     llmProviderBaseUrl: '',
     llmProviderApiKey: '',
     embeddingModel: '',
@@ -444,10 +446,11 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
                 ? 'float'
                 : 'auto',
           embeddingDimensions: data.data.systemConfig.smartRouting.embeddingDimensions,
+          embeddingDimensionsApiPassthrough:
+            data.data.systemConfig.smartRouting.embeddingDimensionsApiPassthrough ?? false,
           llmProviderBaseUrl: data.data.systemConfig.smartRouting.llmProviderBaseUrl || '',
           llmProviderApiKey: data.data.systemConfig.smartRouting.llmProviderApiKey || '',
-          embeddingModel:
-            data.data.systemConfig.smartRouting.embeddingModel || '',
+          embeddingModel: data.data.systemConfig.smartRouting.embeddingModel || '',
           azureOpenaiEndpoint: data.data.systemConfig.smartRouting.azureOpenaiEndpoint || '',
           azureOpenaiApiKey: data.data.systemConfig.smartRouting.azureOpenaiApiKey || '',
           azureOpenaiApiVersion: data.data.systemConfig.smartRouting.azureOpenaiApiVersion || '',

@@ -824,6 +824,8 @@
     "embeddingDimensions": "Embedding Dimensions",
     "embeddingDimensionsDescription": "Optional output size for providers that support it. Leave empty to use the model's default.",
     "embeddingDimensionsPlaceholder": "Empty = model default",
+    "embeddingDimensionsApiPassthrough": "Forward dimensions to API (MRL passthrough)",
+    "embeddingDimensionsApiPassthroughDescription": "Only models known to support Matryoshka (MRL) receive the dimensions parameter. Enable this to force it for other MRL-capable models. Non-MRL models (Qwen3-Embedding, BGE, vLLM/sglang) reject the parameter outright, so leave this off for them.",
     "azureOpenaiEndpoint": "Azure OpenAI Endpoint",
     "azureOpenaiEndpointPlaceholder": "https://YOUR_RESOURCE_NAME.openai.azure.com",
     "azureOpenaiApiKey": "Azure OpenAI API Key",

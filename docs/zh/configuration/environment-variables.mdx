@@ -111,6 +111,7 @@ OIDC_CLIENT_SECRET=your-oidc-client-secret
 | `SMART_ROUTING_SERVER_DESCRIPTION_MODE` | `names` | `search_tools` 中服务器信息的展示方式：`names` 或 `full`。 |
 | `EMBEDDING_MODEL` | `text-embedding-3-small` | 嵌入模型名称。`OPENAI_API_EMBEDDING_MODEL` 仍作为旧版兼容别名；两者同时设置时，以本变量为准。 |
 | `EMBEDDING_DIMENSIONS` | 未设置 | 支持该参数的提供方可使用的嵌入输出维度；未设置时使用提供方的模型默认值。 |
+| `EMBEDDING_DIMENSIONS_API_PASSTHROUGH` | `false` | 设为 `true` 时，始终将 `embeddingDimensions` 作为 `dimensions` 请求参数转发给提供方。默认情况下 MCPHub 仅对已知支持 Matryoshka（MRL）表示的模型（`text-embedding-3-*`、`gemini-embedding-*`）转发 `dimensions`；许多开源模型/后端（Qwen3-Embedding、BGE、vLLM/sglang 等）会直接拒绝该参数（issue #1131）。仅对其它支持 MRL 的模型开启。 |
 | `EMBEDDING_MAX_TOKENS` | 按模型决定 | 生成嵌入前的最大 token 数。 |
 
 ### OpenAI 或兼容服务

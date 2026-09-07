@@ -823,6 +823,8 @@
     "embeddingDimensions": "Dimensions des embeddings",
     "embeddingDimensionsDescription": "Taille de sortie facultative pour les fournisseurs qui la prennent en charge. Laissez vide pour utiliser la valeur par défaut du modèle.",
     "embeddingDimensionsPlaceholder": "Vide = valeur par défaut du modèle",
+    "embeddingDimensionsApiPassthrough": "Transmettre dimensions à l'API (passthrough MRL)",
+    "embeddingDimensionsApiPassthroughDescription": "Seuls les modèles connus pour supporter Matryoshka (MRL) reçoivent le paramètre dimensions. Activez cette option pour le forcer sur d'autres modèles compatibles MRL. Les modèles non-MRL (Qwen3-Embedding, BGE, vLLM/sglang) rejettent le paramètre, laissez donc désactivé pour eux.",
     "azureOpenaiEndpoint": "Point de terminaison Azure OpenAI",
     "azureOpenaiEndpointPlaceholder": "https://VOTRE_NOM_DE_RESSOURCE.openai.azure.com",
     "azureOpenaiApiKey": "Clé API Azure OpenAI",

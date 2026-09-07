@@ -699,6 +699,43 @@ describe('serverController - updateSystemConfig', () => {
     );
   });
 
+  it('persists the embedding dimensions API passthrough flag', async () => {
+    mockRequest.body = {
+      smartRouting: {
+        embeddingDimensionsApiPassthrough: true,
+      },
+    };
+    mockSystemConfigDao.get.mockResolvedValue({
+      routing: {
+        enableGlobalRoute: true,
+        enableGroupNameRoute: true,
+        enableBearerAuth: true,
+        bearerAuthKey: '',
+        bearerAuthHeaderName: 'Authorization',
+        jsonBodyLimit: '1mb',
+        skipAuth: false,
+      },
+      smartRouting: {
+        enabled: false,
+        dbUrl: 'postgres://localhost/test',
+        embeddingProvider: 'openai',
+        llmProviderBaseUrl: 'https://api.openai.com/v1',
+        llmProviderApiKey: 'sk-test',
+        embeddingModel: 'text-embedding-3-small',
+      },
+    });
+
+    await updateSystemConfig(mockRequest as Request, mockResponse as Response);
+
+    expect(mockSystemConfigDao.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        smartRouting: expect.objectContaining({
+          embeddingDimensionsApiPassthrough: true,
+        }),
+      }),
+    );
+  });
+
   it('normalizes legacy smart-routing request fields before persisting the update', async () => {
     mockRequest.body = {
       smartRouting: {
