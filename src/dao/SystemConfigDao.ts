@@ -74,7 +74,13 @@ export class SystemConfigDaoImpl extends JsonFileBaseDao implements SystemConfig
 
     const migratedConfig = { ...config, smartRouting };
     settings.systemConfig = migratedConfig;
-    await this.saveSettings(settings);
+    try {
+      await this.saveSettings(settings);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'EROFS') {
+        throw error;
+      }
+    }
     return migratedConfig;
   }
 

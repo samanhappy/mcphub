@@ -44,6 +44,7 @@ import {
   getUserConfigDao,
   getUserDao,
 } from '../dao/DaoFactory.js';
+import { migrateLegacySmartRoutingConfig } from '../dao/SystemConfigDao.js';
 import { UserContextService } from '../services/userContextService.js';
 import { authorizationService } from '../services/authorizationService.js';
 import {
@@ -1599,7 +1600,7 @@ export const updateSystemConfig = async (req: Request, res: Response): Promise<v
     const {
       routing,
       install,
-      smartRouting,
+      smartRouting: requestSmartRouting,
       toolResultCompression,
       mcpRouter,
       nameSeparator,
@@ -1608,6 +1609,7 @@ export const updateSystemConfig = async (req: Request, res: Response): Promise<v
       auth,
       activityLog,
     } = req.body;
+    const { smartRouting } = migrateLegacySmartRoutingConfig(requestSmartRouting);
 
     const hasRoutingUpdate =
       routing &&
