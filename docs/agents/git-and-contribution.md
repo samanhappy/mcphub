@@ -8,6 +8,23 @@
 
 GitHub Issues for `samanhappy/mcphub` are operated with `gh`. See [issue-tracker.md](issue-tracker.md) for commands and [triage-labels.md](triage-labels.md) for the canonical labels.
 
+## Pull request review
+
+Prefer the `gh` CLI over scraping the GitHub web UI or hand-calling the REST API. For a review, read the structured metadata, per-file patches, and the linked issue with:
+
+```bash
+gh pr view <number> --json title,body,files,commits,mergeable,headRefName,baseRefName
+gh pr diff <number>
+gh issue view <number>
+```
+
+`gh pr diff` prints the same unified diff as the web view. When the PR branch exists locally, cross-check it against the remote before judging the change:
+
+```bash
+git fetch origin pull/<number>/head:<local-branch>
+git diff main...<local-branch> --stat
+```
+
 ## Security advisories and code scanning
 
 For private GitHub security work, use `gh api` as the primary interface for

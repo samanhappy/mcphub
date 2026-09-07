@@ -8,6 +8,7 @@ MCPHub (`@samanhappy/mcphub`) is a TypeScript/Node.js ESM hub that aggregates MC
 - Treat the current implementation as the source of truth. If this guide disagrees with the code, follow the code and update the guide; tests document expected behavior and should change only when behavior intentionally changes.
 - Do not hand-edit generated output: `dist/`, `frontend/dist/`, or `coverage/`.
 - Read the scoped guide relevant to the files you will change. The full index is in [docs/agents/README.md](docs/agents/README.md).
+- Prefer the `gh` CLI for GitHub operations — reviewing PRs, reading issues, fetching diffs, creating PRs — over scraping the GitHub web UI or hand-calling the REST API. Command details live in [docs/agents/git-and-contribution.md](docs/agents/git-and-contribution.md).
 
 ## Project-specific build checks
 
