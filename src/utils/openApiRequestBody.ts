@@ -242,6 +242,12 @@ function sanitizeHeaderToken(token: string): string {
   return token.replace(/[\r\n"]/g, '_');
 }
 
+function assertValidMultipartContentType(contentType: string): void {
+  if (/\r|\n/.test(contentType)) {
+    throw new Error('Multipart part content type must not contain CR or LF');
+  }
+}
+
 export function serializeMultipartBody(parts: MultipartPart[], boundary: string): Buffer {
   const chunks: Buffer[] = [];
   for (const part of parts) {
@@ -253,8 +259,10 @@ export function serializeMultipartBody(parts: MultipartPart[], boundary: string)
           'utf8',
         ),
       );
+      const contentType = part.contentType ?? DEFAULT_UPLOAD_CONTENT_TYPE;
+      assertValidMultipartContentType(contentType);
       chunks.push(
-        Buffer.from(`Content-Type: ${part.contentType ?? DEFAULT_UPLOAD_CONTENT_TYPE}\r\n\r\n`, 'utf8'),
+        Buffer.from(`Content-Type: ${contentType}\r\n\r\n`, 'utf8'),
       );
       chunks.push(part.value as Buffer);
     } else {

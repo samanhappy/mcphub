@@ -139,6 +139,37 @@ describe('openApiRequestBody utils (#1078)', () => {
       expect(body).toContain('\r\n\r\nhello\r\n');
       expect(body.trimEnd().endsWith('--BOUNDARY--')).toBe(true);
     });
+
+    test('rejects content types containing header line breaks', () => {
+      const parts: MultipartPart[] = [
+        {
+          name: 'file',
+          value: Buffer.from('x'),
+          filename: 'upload.txt',
+          contentType: 'text/plain\r\nX-MCPHub-Probe: injected',
+        },
+      ];
+
+      expect(() => serializeMultipartBody(parts, 'BOUNDARY')).toThrow(
+        /content type.*CR or LF/i,
+      );
+    });
+
+    test('preserves quoted MIME parameters in content types', () => {
+      const body = serializeMultipartBody(
+        [
+          {
+            name: 'file',
+            value: Buffer.from('x'),
+            filename: 'upload.txt',
+            contentType: 'text/plain; charset="utf-8"',
+          },
+        ],
+        'BOUNDARY',
+      ).toString('utf8');
+
+      expect(body).toContain('Content-Type: text/plain; charset="utf-8"');
+    });
   });
 
   describe('encodeFormUrlEncoded', () => {
