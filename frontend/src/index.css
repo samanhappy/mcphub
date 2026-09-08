@@ -577,7 +577,7 @@
 .btn-primary {
   background: var(--hub-ink) !important;
   color: var(--hub-bg) !important;
-  border: 1px solid var(--hub-ink) !important;
+  border: 1px solid transparent !important;
   border-radius: 7px !important;
   box-shadow: none !important;
   transition: background 0.15s ease !important;
@@ -592,7 +592,7 @@
 .dark .btn-primary {
   background: var(--hub-ink) !important;
   color: oklch(0.18 0.005 250) !important;
-  border-color: var(--hub-ink) !important;
+  border-color: transparent !important;
 }
 .dark .btn-primary:hover {
   background: oklch(0.92 0.005 250) !important;
