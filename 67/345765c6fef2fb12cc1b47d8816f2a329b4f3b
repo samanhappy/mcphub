@@ -1,0 +1,19 @@
+frontend/src/index.css
+  s_3abdf12d9fccc1::t_2db3fc8e5f5596 580,595
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "67345765c6fef2fb12cc1b47d8816f2a329b4f3b",
+  "prompts": {},
+  "sessions": {
+    "s_3abdf12d9fccc1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a07ffa-ac49-7a30-b871-cf78aee287b3",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
