@@ -201,7 +201,7 @@ const GroupCard = ({ group, servers, onEdit, onDelete, cost }: GroupCardProps) =
                       JSON.stringify(
                         {
                           mcpServers: {
-                            mcphub: {
+                            [group.name]: {
                               url: groupEndpoint,
                               headers: { Authorization: 'Bearer <your-access-token>' },
                             },
