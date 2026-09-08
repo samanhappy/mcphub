@@ -885,7 +885,7 @@ export class OpenAPIClient {
             param.explode !== false
           ) {
             for (const item of value) {
-              if (item !== null && item !== undefined) {
+              if (item !== undefined) {
                 serializedArrayQueryParams.append(param.name, String(item));
               }
             }
@@ -895,8 +895,9 @@ export class OpenAPIClient {
         }
       }
 
-      if (serializedArrayQueryParams.size > 0) {
-        url += `${url.includes('?') ? '&' : '?'}${serializedArrayQueryParams.toString()}`;
+      const serializedArrayQuery = serializedArrayQueryParams.toString();
+      if (serializedArrayQuery) {
+        url += `${url.includes('?') ? '&' : '?'}${serializedArrayQuery}`;
       }
 
       // Prepare request configuration

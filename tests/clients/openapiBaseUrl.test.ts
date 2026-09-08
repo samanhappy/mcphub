@@ -151,4 +151,16 @@ describe('OpenAPIClient tool call base path resolution (#1098)', () => {
       params: { q: 'hello' },
     });
   });
+
+  test('preserves nullable items in default-form query arrays', async () => {
+    const client = await makeInitializedClient(`${HOST}/api/v1`);
+    await client.callTool('ping', { tag: [null, undefined, 'alpha'] });
+
+    const requestConfig = instances[0].request.mock.calls[0][0];
+    expect(requestConfig).toMatchObject({
+      baseURL: HOST,
+      url: '/api/v1/ping?tag=null&tag=alpha',
+      params: {},
+    });
+  });
 });
