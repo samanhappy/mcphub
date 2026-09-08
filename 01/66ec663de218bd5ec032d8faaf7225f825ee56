@@ -1,0 +1,19 @@
+frontend/src/components/GroupCard.tsx
+  s_1f4c4388d9766a::t_0cb8a163b9ac4a 204
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "0166ec663de218bd5ec032d8faaf7225f825ee56",
+  "prompts": {},
+  "sessions": {
+    "s_1f4c4388d9766a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a08019-c96a-7d40-8c8a-e6da1db52cce",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
