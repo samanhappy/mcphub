@@ -10,10 +10,6 @@ One paragraph in English describing why this release matters.
 
 - Bug fix, reliability improvement, or dependency update.
 
-## Breaking Changes
-
-- None
-
 ## 摘要
 
 用中文概括这个版本为什么值得升级。
@@ -26,15 +22,11 @@ One paragraph in English describing why this release matters.
 
 - 缺陷修复、稳定性改进或依赖更新。
 
-## 破坏性变更
-
-- 描述破坏性变更及迁移路径（无则省略本区块）。
-
 ## New Contributors
 
 - @username made their first contribution in #123
 
 ## References
 
-- Pull requests, issues, or compare links.
-- Full changelog: https://github.com/samanhappy/mcphub/compare/vX.Y.Z...vX.Y.W
+- Add provider presets by @samanhappy in https://github.com/samanhappy/mcphub/pull/1234
+- Full changelog: https://github.com/samanhappy/mcphub/compare/v1.0.0...v1.0.1
