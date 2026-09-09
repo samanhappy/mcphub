@@ -1815,7 +1815,35 @@ export const initializeClientsFromSettings = async (
           continue;
         }
       } else {
-        transport = await createTransportFromConfig(name, expandedConf);
+        try {
+          transport = await createTransportFromConfig(name, expandedConf);
+        } catch (error) {
+          // Fail this server only. Letting the error escape the loop hits the
+          // outer catch, which restores `serverInfos` to its previous value -
+          // empty at startup - so a single malformed config (an unparseable URL
+          // rejected by assertSafeUrl, say) would drop every server from
+          // getServersInfo and leave the whole fleet reporting 'connecting'.
+          // The OpenAPI branch above already isolates its failures this way.
+          logger.error('Failed to create transport for server', {
+            serverName: name,
+            error: summarizeErrorForLogging(error),
+          });
+          nextServerInfos.push({
+            name,
+            owner: expandedConf.owner,
+            visibility: expandedConf.visibility,
+            sharedWithUsers: expandedConf.sharedWithUsers,
+            status: 'disconnected',
+            error: `Failed to create transport: ${formatErrorForLogging(error)}`,
+            tools: [],
+            prompts: [],
+            resources: [],
+            createTime: Date.now(),
+            enabled: true,
+            config: expandedConf,
+          });
+          continue;
+        }
       }
 
       const serverInfoRef: { current?: ServerInfo } = {};
