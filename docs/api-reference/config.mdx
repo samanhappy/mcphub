@@ -131,3 +131,15 @@ Retrieves public configuration, primarily to check if authentication is skipped.
     }
   }
   ```
+
+## Session rebuild
+
+Set `enableSessionRebuild` to `true` to recreate a missing Streamable HTTP session
+using its existing ID. This does not restore the client's negotiated capabilities.
+Single-upstream routes accept both raw and prefixed tool names, allowing cached
+ordinary tool calls to continue. MCP Apps metadata and app-only tools still require
+a fresh initialization that advertises Apps support.
+
+When rebuild is disabled, requests with an unknown session ID return HTTP 404 so
+the client can initialize a new session. Requests missing a required session ID
+continue to return HTTP 400.

@@ -898,14 +898,7 @@ export const handleMcpPostRequest = async (req: Request, res: Response): Promise
       logger.warn(
         `[SESSION ERROR] Session ${sessionId} not found and session rebuild is disabled${username ? ` for user: ${username}` : ''}`,
       );
-      res.status(400).json({
-        jsonrpc: '2.0',
-        error: {
-          code: -32000,
-          message: 'Bad Request: No valid session ID provided',
-        },
-        id: null,
-      });
+      sendSessionNotFoundJsonRpc(res);
       return;
     }
   } else if (isInitializeRequest(req.body)) {
@@ -1045,7 +1038,7 @@ export const handleMcpOtherRequest = async (req: Request, res: Response) => {
       logger.warn(
         `[SESSION ERROR] Session ${sessionId} not found and session rebuild is disabled in handleMcpOtherRequest`,
       );
-      res.status(400).send('Invalid or missing session ID');
+      sendSessionNotFoundText(res);
       return;
     }
   }
