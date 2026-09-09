@@ -846,12 +846,12 @@ describe('sseService', () => {
       await handleMcpPostRequest(req, res);
 
       // When session rebuild is disabled, invalid sessions should return an error
-      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.status).toHaveBeenCalledWith(404);
       expect(res.json).toHaveBeenCalledWith({
         jsonrpc: '2.0',
         error: {
-          code: -32000,
-          message: 'Bad Request: No valid session ID provided',
+          code: -32001,
+          message: 'Session not found. Please reinitialize the session.',
         },
         id: null,
       });
@@ -1197,9 +1197,9 @@ describe('sseService', () => {
 
       await handleMcpOtherRequest(req, res);
 
-      // Should return 400 error when session rebuild is disabled
-      expect(res.status).toHaveBeenCalledWith(400);
-      expect(res.send).toHaveBeenCalledWith('Invalid or missing session ID');
+      // Should return 404 error when session rebuild is disabled
+      expect(res.status).toHaveBeenCalledWith(404);
+      expect(res.send).toHaveBeenCalledWith('Session not found. Please reinitialize the session.');
     });
 
     it('should transparently rebuild invalid session in handleMcpOtherRequest when enabled', async () => {

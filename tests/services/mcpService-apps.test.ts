@@ -292,6 +292,57 @@ describe('mcpService MCP Apps transparent proxy', () => {
     expect(result.tools[0]._meta).toEqual(appsTools[0]._meta);
   });
 
+  it.each(['direct', 'wrapped'])(
+    'accepts cached raw and qualified names without capabilities (%s)',
+    async (mode) => {
+      await initUpstreamServers();
+      await flushPromises();
+      await getMcpServer('ordinary-session', 'apps-server');
+
+      for (const name of ['open-dashboard', 'apps-server::open-dashboard']) {
+        const params =
+          mode === 'direct'
+            ? { name, arguments: {} }
+            : { name: 'call_tool', arguments: { toolName: name, arguments: {} } };
+        const result = await handleCallToolRequest({ params }, { sessionId: 'ordinary-session' });
+        expect(result.isError).toBe(false);
+        expect(mockClient.callTool).toHaveBeenLastCalledWith(
+          { name: 'open-dashboard', arguments: {} },
+          undefined,
+          expect.anything(),
+        );
+      }
+
+      mockClient.callTool.mockClear();
+      for (const name of ['missing-tool', 'poll-dashboard']) {
+        const params =
+          mode === 'direct'
+            ? { name, arguments: {} }
+            : { name: 'call_tool', arguments: { toolName: name, arguments: {} } };
+        const result = await handleCallToolRequest({ params }, { sessionId: 'ordinary-session' });
+        expect(result.isError).toBe(true);
+      }
+      expect(mockClient.callTool).not.toHaveBeenCalled();
+    },
+  );
+
+  it('keeps group tool filtering when accepting raw names', async () => {
+    mockGroupFindByName.mockImplementation(async (name: string) =>
+      name === 'apps-server' ? { servers: [{ name: 'apps-server', tools: [] }] } : null,
+    );
+    await initUpstreamServers();
+    await flushPromises();
+    await getMcpServer('ordinary-session', 'apps-server');
+    for (const params of [
+      { name: 'open-dashboard', arguments: {} },
+      { name: 'call_tool', arguments: { toolName: 'open-dashboard', arguments: {} } },
+    ]) {
+      const result = await handleCallToolRequest({ params }, { sessionId: 'ordinary-session' });
+      expect(result.isError).toBe(true);
+    }
+    expect(mockClient.callTool).not.toHaveBeenCalled();
+  });
+
   it('allows raw app-only calls only on an eligible Apps route', async () => {
     await initUpstreamServers();
     await flushPromises();
@@ -387,6 +438,40 @@ describe('mcpService MCP Apps transparent proxy', () => {
         name === 'pair' ? { servers: ['apps-server', 'other-server'] } : null,
       );
     };
+
+    it.each(['direct', 'wrapped'])(
+      'rejects ambiguous raw names without capabilities (%s)',
+      async (mode) => {
+        setUpPairGroup();
+        await initUpstreamServers();
+        await flushPromises();
+        await getMcpServer('aggregate-session', 'pair');
+        const params =
+          mode === 'direct'
+            ? { name: 'open-dashboard', arguments: {} }
+            : { name: 'call_tool', arguments: { toolName: 'open-dashboard', arguments: {} } };
+        const result = await handleCallToolRequest({ params }, { sessionId: 'aggregate-session' });
+        expect(result.isError).toBe(true);
+        expect(mockClient.callTool).not.toHaveBeenCalled();
+      },
+    );
+
+    it('does not allow raw names when a configured peer is disabled', async () => {
+      setUpPairGroup();
+      mockFindAll.mockResolvedValue([
+        makeServerConfig('apps-server'),
+        { ...makeServerConfig('other-server'), enabled: false },
+      ]);
+      await initUpstreamServers();
+      await flushPromises();
+      await getMcpServer('aggregate-session', 'pair');
+      const result = await handleCallToolRequest(
+        { params: { name: 'open-dashboard', arguments: {} } },
+        { sessionId: 'aggregate-session' },
+      );
+      expect(result.isError).toBe(true);
+      expect(mockClient.callTool).not.toHaveBeenCalled();
+    });
 
     it('keeps qualified tool names and full Apps metadata on a multi-server Apps route', async () => {
       setUpPairGroup();

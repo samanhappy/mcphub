@@ -3023,7 +3023,6 @@ const assertToolAvailableForRoute = (tool: Tool, appsRouteContext: McpAppsRouteC
 const resolveToolInGroup = async (
   group: string | undefined,
   toolName: string,
-  allowRawName: boolean,
 ): Promise<{ serverInfo: ServerInfo; toolName: string; tool: Tool } | undefined> => {
   const lookupGroup = getGroupLookupName(group);
   if (!lookupGroup) {
@@ -3032,6 +3031,14 @@ const resolveToolInGroup = async (
 
   const { filteredServerInfos, serverConfigsByName } =
     await getFilteredServerInfosForGroup(lookupGroup);
+
+  // Accept raw names only on single-upstream routes, even without client
+  // capabilities after session rebuild. Count configured servers as well so
+  // a disabled or disconnected peer cannot make a group appear unambiguous.
+  const allowRawName =
+    !isSmartRoutingGroup(group) &&
+    serverConfigsByName.size <= 1 &&
+    filteredServerInfos.length === 1;
 
   for (const serverInfo of filteredServerInfos) {
     // A disconnected on-demand server may still have a cached tool list from a
@@ -3300,7 +3307,7 @@ const handleCallToolRequestImpl = async (request: any, extra: any) => {
       } else if (extra && extra.server) {
         targetServerInfo = getVisibleServerByName(extra.server);
       } else if (getGroupLookupName(group)) {
-        const groupTool = await resolveToolInGroup(group, toolName, false);
+        const groupTool = await resolveToolInGroup(group, toolName);
         if (groupTool) {
           targetServerInfo = groupTool.serverInfo;
           targetToolName = groupTool.toolName;
@@ -3530,7 +3537,7 @@ const handleCallToolRequestImpl = async (request: any, extra: any) => {
     const singleServerAppsRoute = !!appsRouteContext.serverInfo;
     const groupTool =
       !singleServerAppsRoute && lookupGroup
-        ? await resolveToolInGroup(lookupGroup, request.params.name, false)
+        ? await resolveToolInGroup(group, request.params.name)
         : undefined;
     const serverInfo = singleServerAppsRoute
       ? appsRouteContext.serverInfo
