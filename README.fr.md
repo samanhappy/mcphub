@@ -10,6 +10,7 @@ MCPHub offre une manière unifiée de connecter et de gérer plusieurs serveurs 
 
 ## 🌐 Démo en direct et Documentation
 
+- **Identifiants personnels** - Associez une clé par utilisateur à un serveur partagé, avec stockage chiffré et processus stdio isolés ([En savoir plus](docs/features/per-user-credentials.mdx))
 - **Documentation** : [docs.mcphub.app](https://docs.mcphub.app/)
 - **Environnement de démo** : [demo.mcphub.app](https://demo.mcphub.app/)
 

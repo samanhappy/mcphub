@@ -138,6 +138,8 @@ describe('buildServerPayload', () => {
     const payload = buildServerPayload({
       formData: {
         name: '  stdio-server  ',
+        credentialTemplate: [{ target: 'env', name: 'PERSONAL_KEY' }],
+        idleTimeoutMs: 12000,
         description: 'local command server',
         url: 'https://example.com/previous-sse',
         command: 'npx',
@@ -180,6 +182,8 @@ describe('buildServerPayload', () => {
     });
 
     expect(payload.name).toBe('stdio-server');
+    expect(payload.config.credentialTemplate).toEqual([{ target: 'env', name: 'PERSONAL_KEY' }]);
+    expect(payload.config.idleTimeoutMs).toBe(12000);
     expect(payload.config).toMatchObject({
       type: 'stdio',
       description: 'local command server',

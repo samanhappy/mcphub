@@ -12,6 +12,7 @@ MCPHub provides a unified way to connect and manage multiple MCP servers, organi
 
 ## 🌐 Website, Demo & Docs
 
+- **Per-user Credentials** - Bind personal keys to one shared server, with encrypted storage and isolated stdio runtimes ([Learn more](docs/features/per-user-credentials.mdx))
 - **Website**: [mcphub.app](https://www.mcphub.app/)
 - **Documentation**: [docs.mcphub.app](https://docs.mcphub.app/)
 - **Demo Environment**: [demo.mcphub.app](https://demo.mcphub.app/)

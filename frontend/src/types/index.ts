@@ -192,8 +192,23 @@ export interface ProxychainsConfig {
   configPath?: string; // Path to custom proxychains4 configuration file (optional)
 }
 
+export interface CredentialSlot {
+  target: 'env' | 'headers';
+  name: string;
+  label?: string;
+}
+
+export interface MyCredentialBinding {
+  serverName: string;
+  credentialTemplate: CredentialSlot[];
+  configured: boolean;
+  configuredSlots: string[];
+  updatedAt: string | null;
+}
+
 // Server config types
 export interface ServerConfig {
+  credentialTemplate?: CredentialSlot[];
   type?: 'stdio' | 'sse' | 'streamable-http' | 'openapi';
   description?: string;
   url?: string;
@@ -352,6 +367,7 @@ export interface EnvVar {
 
 // Form data types
 export interface ServerFormData {
+  credentialTemplate?: CredentialSlot[];
   name: string;
   description?: string;
   url: string;

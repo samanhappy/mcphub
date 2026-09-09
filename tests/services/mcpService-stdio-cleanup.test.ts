@@ -85,6 +85,13 @@ const mockServerDao = {
   update: jest.fn().mockResolvedValue(true),
 };
 
+jest.mock('../../src/dao/DaoFactory.js', () => ({
+  ...jest.requireActual('../../src/dao/DaoFactory.js'),
+  getCredentialBindingDao: jest.fn(() => ({
+    delete: jest.fn().mockResolvedValue(undefined),
+  })),
+}));
+
 jest.mock('../../src/dao/index.js', () => ({
   getServerDao: jest.fn(() => mockServerDao),
   getSystemConfigDao: jest.fn(() => ({

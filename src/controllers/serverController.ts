@@ -1,3 +1,5 @@
+import { deleteCredentialBindings } from '../services/credentialBindingService.js';
+import { CredentialBindingError } from '../utils/credentialTemplate.js';
 import { isDeepStrictEqual } from 'node:util';
 import { Request, Response } from 'express';
 import {
@@ -202,6 +204,7 @@ const CONNECTION_RELEVANT_CONFIG_FIELDS = [
   'oauth',
   'openapi',
   'perSessionClient',
+  'credentialTemplate',
   'startOnDemand',
   'idleTimeoutMs',
   'enableKeepAlive',
@@ -632,9 +635,9 @@ export const createServer = async (req: Request, res: Response): Promise<void> =
       });
     }
   } catch (error) {
-    res.status(500).json({
+    res.status(error instanceof CredentialBindingError ? 400 : 500).json({
       success: false,
-      message: 'Internal server error',
+      message: error instanceof CredentialBindingError ? error.message : 'Internal server error',
     });
   }
 };
@@ -1048,6 +1051,7 @@ export const updateServer = async (req: Request, res: Response): Promise<void> =
       // rebuilds serverInfos. Without this explicit close the old stdio child
       // process tree is orphaned and leaks until the process restarts.
       closeServer(name);
+      await deleteCredentialBindings({ serverName: name });
 
       // Update references in groups
       const groupDao = getGroupDao();
@@ -1127,9 +1131,9 @@ export const updateServer = async (req: Request, res: Response): Promise<void> =
       });
     }
   } catch (error) {
-    res.status(500).json({
+    res.status(error instanceof CredentialBindingError ? 400 : 500).json({
       success: false,
-      message: 'Internal server error',
+      message: error instanceof CredentialBindingError ? error.message : 'Internal server error',
     });
   }
 };

@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { useState, useRef, useEffect, type CSSProperties, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -608,6 +609,9 @@ const ServerCard = ({
                   </div>
                 )}
               </div>
+              {!!server.config?.credentialTemplate?.length && (
+                <Link className="hub-tag text-xs" to={`/credentials?server=${encodeURIComponent(server.name)}`} onClick={(event) => event.stopPropagation()}>{t('credentials.personalBadge')} · {t('credentials.manage')}</Link>
+              )}
               {server.config?.description && (
                 <div
                   className="text-[11.5px] truncate"

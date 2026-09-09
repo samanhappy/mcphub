@@ -1,3 +1,4 @@
+import type { CredentialSlot } from '../../types/index.js';
 import {
   Entity,
   Column,
@@ -87,6 +88,9 @@ export class Server {
 
   @Column({ type: 'boolean', nullable: true })
   perSessionClient?: boolean;
+
+  @Column({ type: 'simple-json', nullable: true })
+  credentialTemplate?: CredentialSlot[];
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamp' })
   createdAt: Date;

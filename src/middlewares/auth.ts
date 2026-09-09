@@ -90,6 +90,7 @@ const checkReadonly = (req: Request): boolean => {
 const createSkipAuthUser = () => ({
   username: 'guest',
   isAdmin: true,
+  credentialEligible: false,
 });
 
 const isDashboardApiRequest = (req: Request): boolean => {
@@ -132,6 +133,7 @@ export const auth = async (req: Request, res: Response, next: NextFunction): Pro
     (req as any).user = {
       username: matchingBearerKey.owner || 'system',
       isAdmin: true,
+      credentialEligible: false,
     };
     (req as any).bearerKey = matchingBearerKey;
     next();

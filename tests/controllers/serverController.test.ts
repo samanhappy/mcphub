@@ -63,6 +63,7 @@ const mockGetCurrentUser = jest.fn();
 const mockDisconnectUpstreamOAuth = jest.fn();
 
 jest.mock('../../src/dao/DaoFactory.js', () => ({
+  getCredentialBindingDao: jest.fn(() => ({ delete: jest.fn().mockResolvedValue(undefined) })),
   getServerDao: jest.fn(() => mockServerDao),
   getUserDao: jest.fn(() => mockUserDao),
   getGroupDao: jest.fn(() => mockGroupDao),

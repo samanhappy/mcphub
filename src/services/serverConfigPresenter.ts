@@ -1,3 +1,4 @@
+import type { CredentialSlot } from '../types/index.js';
 import { authorizationService, RequestPrincipal } from './authorizationService.js';
 
 // Safe server representation for issue #1036 Phase 1: shared users may see a
@@ -43,6 +44,9 @@ const presentSafeServerConfig = (config: ServerConfigLike): ServerConfigLike => 
     if (config[field] !== undefined && config[field] !== null) {
       safe[field] = clone(config[field]);
     }
+  }
+  if (Array.isArray(config.credentialTemplate)) {
+    safe.credentialTemplate = config.credentialTemplate.map(({ target, name, label }: CredentialSlot) => ({ target, name, ...(label ? { label } : {}) }));
   }
   // Explicit marker so callers (and the dashboard) can tell a restricted view
   // apart from "this server genuinely has no credentials".

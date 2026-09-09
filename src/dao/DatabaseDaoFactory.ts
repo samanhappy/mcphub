@@ -1,3 +1,4 @@
+import { CredentialBindingDaoDbImpl } from './CredentialBindingDaoDbImpl.js';
 import {
   DaoFactory,
   UserDao,
@@ -53,6 +54,10 @@ export class DatabaseDaoFactory implements DaoFactory {
 
   private constructor() {
     // Private constructor for singleton
+  }
+
+  getCredentialBindingDao(): CredentialBindingDaoDbImpl {
+    return new CredentialBindingDaoDbImpl();
   }
 
   getUserDao(): UserDao {

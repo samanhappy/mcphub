@@ -395,8 +395,22 @@ export interface ProxychainsConfig {
 // can extend the same scope in a future change.
 export type ServerVisibility = 'private' | 'group' | 'public';
 
+export interface CredentialSlot {
+  target: 'env' | 'headers';
+  name: string;
+  label?: string;
+}
+
+export interface StoredCredentialBinding {
+  serverName: string;
+  username: string;
+  encryptedValues: string;
+  updatedAt: string;
+}
+
 // Configuration details for an individual server
 export interface ServerConfig {
+  credentialTemplate?: CredentialSlot[]; // Metadata only; every slot requires a personal binding.
   type?: 'stdio' | 'sse' | 'streamable-http' | 'openapi'; // Type of server
   description?: string; // Optional server note/description for management UI
   url?: string; // URL for SSE or streamable HTTP servers

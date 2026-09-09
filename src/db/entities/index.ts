@@ -1,3 +1,4 @@
+import { CredentialBinding } from './CredentialBinding.js';
 import { VectorEmbedding } from './VectorEmbedding.js';
 import User from './User.js';
 import Server from './Server.js';
@@ -13,6 +14,7 @@ import BuiltinResource from './BuiltinResource.js';
 
 // Export all entities
 export default [
+  CredentialBinding,
   VectorEmbedding,
   User,
   Server,
@@ -29,6 +31,7 @@ export default [
 
 // Export individual entities for direct use
 export {
+  CredentialBinding,
   VectorEmbedding,
   User,
   Server,

@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { getT, resolveLanguage } from '../utils/i18n.js';
+import { RequestContextService } from '../services/requestContextService.js';
 
 /**
  * i18n middleware to detect user language and attach translation function to request
@@ -35,5 +36,5 @@ export const i18nMiddleware = (req: Request, res: Response, next: NextFunction) 
   const t = getT(supportedLanguage);
   (req as any).t = t;
 
-  next();
+  RequestContextService.getInstance().runWithRequestContext(req, () => next());
 };

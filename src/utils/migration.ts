@@ -1,3 +1,5 @@
+import { CredentialBindingDaoImpl } from '../dao/CredentialBindingDao.js';
+import { CredentialBindingDaoDbImpl } from '../dao/CredentialBindingDaoDbImpl.js';
 import { loadOriginalSettings } from '../config/index.js';
 import { initializeDatabase } from '../db/connection.js';
 import { setDaoFactory } from '../dao/DaoFactory.js';
@@ -104,12 +106,19 @@ export async function migrateToDatabase(): Promise<boolean> {
             openapi: config.openapi,
             passthroughHeaders: config.passthroughHeaders,
             perSessionClient: config.perSessionClient,
+            credentialTemplate: config.credentialTemplate,
           });
           logger.log(`  - Created server: ${name}`);
         } else {
           logger.log(`  - Server already exists: ${name}`);
         }
       }
+    }
+
+    // Ciphertext is portable between persistence backends; the encryption key stays external.
+    const credentialDao = new CredentialBindingDaoDbImpl();
+    for (const binding of new CredentialBindingDaoImpl().readAll()) {
+      if (!(await credentialDao.get(binding.serverName, binding.username))) await credentialDao.save(binding);
     }
 
     // Migrate groups

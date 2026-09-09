@@ -21,7 +21,7 @@ export interface AuthorizableServer {
   sharedWithUsers?: string[];
 }
 
-export type RequestPrincipal = Pick<IUser, 'username'> & { isAdmin?: boolean };
+export type RequestPrincipal = Pick<IUser, 'username'> & { isAdmin?: boolean; credentialEligible?: boolean };
 
 // Records may predate owner tracking; those are administered by the 'admin'
 // account (same normalization as the share-candidates endpoint).

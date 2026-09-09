@@ -20,6 +20,7 @@ const useCrumbs = (): string[] => {
     const path = location.pathname;
     const root = t('app.title');
     if (path === '/') return [root, t('nav.dashboard')];
+    if (path.startsWith('/credentials')) return [root, t('credentials.title')];
     if (path.startsWith('/servers')) return [root, t('nav.servers')];
     if (path.startsWith('/groups')) return [root, t('nav.groups')];
     if (path.startsWith('/prompts')) return [root, t('nav.prompts')];

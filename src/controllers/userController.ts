@@ -1,3 +1,4 @@
+import { deleteCredentialBindings } from '../services/credentialBindingService.js';
 import { Request, Response } from 'express';
 import { ApiResponse } from '../types/index.js';
 import {
@@ -252,6 +253,7 @@ export const deleteExistingUser = async (req: Request, res: Response): Promise<v
     }
 
     const success = await deleteUser(username);
+    if (success) await deleteCredentialBindings({ username });
     if (!success) {
       res.status(400).json({
         success: false,

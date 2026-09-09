@@ -113,6 +113,7 @@ export class ServerDaoDbImpl implements ServerDao {
       openapi: entity.openapi,
       passthroughHeaders: entity.passthroughHeaders,
       perSessionClient: entity.perSessionClient,
+      credentialTemplate: entity.credentialTemplate,
     });
     return this.mapToServerConfig(server);
   }
@@ -164,6 +165,7 @@ export class ServerDaoDbImpl implements ServerDao {
     assignNullable('openapi');
     assignNullable('passthroughHeaders');
     assignNullable('perSessionClient');
+    assignNullable('credentialTemplate');
 
     // Mirror startOnDemand/idleTimeoutMs into `options`, the same way create()
     // does, so partial updates that bypass normalizeServerConfigForPersistence
@@ -286,6 +288,7 @@ export class ServerDaoDbImpl implements ServerDao {
     openapi?: Record<string, any>;
     passthroughHeaders?: string[];
     perSessionClient?: boolean;
+    credentialTemplate?: ServerConfig['credentialTemplate'];
   }): ServerConfigWithName {
     // startOnDemand/idleTimeoutMs (#1012) have no dedicated columns on the `servers`
     // table; they are piggybacked onto the schema-less `options` JSON blob by
@@ -321,6 +324,7 @@ export class ServerDaoDbImpl implements ServerDao {
       openapi: server.openapi,
       passthroughHeaders: server.passthroughHeaders,
       perSessionClient: server.perSessionClient,
+      credentialTemplate: server.credentialTemplate,
       startOnDemand,
       idleTimeoutMs,
     };

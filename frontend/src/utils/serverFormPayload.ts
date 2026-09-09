@@ -216,9 +216,16 @@ export const buildServerPayload = ({
     visibility: formData.visibility ?? 'private',
     sharedWithUsers:
       formData.visibility === 'group' ? normalizeSharedUsers(formData.sharedWithUsers) : undefined,
+    credentialTemplate: formData.credentialTemplate?.map((slot) => ({
+      ...slot,
+      target: serverType === 'stdio' ? 'env' : 'headers',
+    })),
     perSessionClient: formData.perSessionClient === true ? true : undefined,
     startOnDemand: formData.startOnDemand === true ? true : undefined,
-    idleTimeoutMs: formData.startOnDemand === true ? (formData.idleTimeoutMs ?? 300000) : undefined,
+    idleTimeoutMs:
+      formData.startOnDemand === true || formData.credentialTemplate?.length
+        ? (formData.idleTimeoutMs ?? 300000)
+        : undefined,
     // Round-trip the stored proxychains config (no in-form editor) so an edit
     // of any other field does not drop it and force an avoidable reload.
     proxy: formData.proxy,
