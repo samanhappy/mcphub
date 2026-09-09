@@ -97,6 +97,16 @@ class LogStreamManager {
         this.subscribers.forEach((cb) => cb(event));
       };
 
+      // Reset attempts only once the connection is actually established.
+      // `new EventSource()` returns immediately and connects asynchronously, so
+      // resetting here (rather than in onopen) cleared the counter on every
+      // attempt and pinned the backoff below to its first step - a fixed 1s
+      // retry loop whenever the stream kept dropping.
+      this.eventSource.onopen = () => {
+        this.openAttempts = 0;
+        console.log('[LogStreamManager] EventSource opened successfully');
+      };
+
       this.eventSource.onerror = () => {
         console.warn('[LogStreamManager] EventSource error, attempting reconnect...');
         this.closeEventSource();
@@ -104,10 +114,6 @@ class LogStreamManager {
           this.scheduleReconnect();
         }
       };
-
-      // Reset attempts on successful connection
-      this.openAttempts = 0;
-      console.log('[LogStreamManager] EventSource opened successfully');
     } catch (error) {
       console.error('[LogStreamManager] Failed to open EventSource:', error);
       this.closeEventSource();
