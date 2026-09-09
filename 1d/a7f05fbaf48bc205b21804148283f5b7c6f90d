@@ -1,0 +1,32 @@
+src/services/sseService.test.ts
+  s_97b316a80f8dba::t_4f638f957bfb2d 849,853-854,1200-1202
+tests/services/mcpService-apps.test.ts
+  s_97b316a80f8dba::t_28d0b8255dfe01 295-335,340-345,442-458,460-467,471-474
+  s_97b316a80f8dba::t_cdfa9dc53bfb32 336-339,459,468-470,475
+src/services/mcpService.ts
+  s_97b316a80f8dba::t_4f638f957bfb2d 3042,3310,3540
+  s_97b316a80f8dba::t_28d0b8255dfe01 3038-3041
+  s_97b316a80f8dba::t_68fb5ad60d2b4a 3035-3037
+src/services/sseService.ts
+  s_97b316a80f8dba::t_4f638f957bfb2d 901,1041
+docs/api-reference/config.mdx
+  s_97b316a80f8dba::t_2a0d8de57b2d86 134-145
+tests/integration/sse-service-real-client.test.ts
+  s_97b316a80f8dba::t_956df4ff32bbd8 418-427,429,431-435,437-451,453-461,463-464,466-468,470,473-474,476,478-479,481-482,484-485,487,489,491-492,494-497,499-513,515,517-519,543-564
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "1da7f05fbaf48bc205b21804148283f5b7c6f90d",
+  "prompts": {},
+  "sessions": {
+    "s_97b316a80f8dba": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a08432-d785-79d0-b218-f22187ffe550",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
