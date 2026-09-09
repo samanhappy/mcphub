@@ -302,6 +302,36 @@ describe('initRoutes authenticated API rate limiting', () => {
     expect(routerContainsRoute(protectedRouter!, 'delete', '/oauth/clients/:clientId')).toBe(true);
   });
 
+  it('matches public auth routes before the shared authenticated rate limiter', async () => {
+    const app = express();
+
+    await initRoutes(app);
+
+    const apiRouter = findMountedRouter(app);
+    const stack = apiRouter.stack ?? [];
+
+    // The authenticated sub-router carries a path-less rate limiter, so anything
+    // mounted after it on the API router would be counted against the shared
+    // authenticated-route budget - including public routes that carry their own
+    // limiter, such as POST /api/auth/login.
+    const authenticatedRouterIndex = stack.findIndex(
+      (layer) => layer.name === 'router' && layer.handle?.stack,
+    );
+    expect(authenticatedRouterIndex).toBeGreaterThanOrEqual(0);
+
+    for (const [method, path] of [
+      ['post', '/auth/login'],
+      ['post', '/auth/register'],
+    ] as const) {
+      const routeIndex = stack.findIndex(
+        (layer) => layer.route?.path === path && Boolean(layer.route.methods[method]),
+      );
+
+      expect(routeIndex).toBeGreaterThanOrEqual(0);
+      expect(routeIndex).toBeLessThan(authenticatedRouterIndex);
+    }
+  });
+
   it('mounts the hosted internal webhook ingress behind its dedicated rate limiter', async () => {
     const app = express();
 

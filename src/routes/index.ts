@@ -243,7 +243,13 @@ export const initRoutes = async (app: express.Application): Promise<void> => {
   app.delete('/oauth/register/:clientId', mcpConnectionRateLimiter, deleteClientRegistration); // Delete client registration
 
   authenticatedRouter.use(authenticatedRouteRateLimiter);
-  router.use(authenticatedRouter);
+  // `authenticatedRouter` is mounted at the end of this function, after the public
+  // routes below have been registered on `router`. The order matters: the limiter
+  // above is a path-less `use`, so it runs for every request that reaches the
+  // sub-router - including ones that match no authenticated route and only fall
+  // through to a public route such as POST /api/auth/login. Mounting last lets
+  // those public routes match first, so they are governed by their own limiters
+  // instead of consuming the shared authenticated-route budget.
 
   // API routes protected by auth middleware in middlewares/index.ts and rate limited here
   authenticatedRouter.get('/credentials', listMyCredentials);
@@ -488,6 +494,11 @@ export const initRoutes = async (app: express.Application): Promise<void> => {
   app.post(`${config.basePath}/api/tools/:serverName/:toolName`, executeToolViaOpenAPI);
   app.get(`${config.basePath}/api/:name/tools/:serverName/:toolName`, executeToolViaOpenAPI);
   app.post(`${config.basePath}/api/:name/tools/:serverName/:toolName`, executeToolViaOpenAPI);
+
+  // Mounted last so the public routes registered on `router` above are matched
+  // before the shared authenticated-route rate limiter runs. See the comment on
+  // `authenticatedRouter.use(authenticatedRouteRateLimiter)`.
+  router.use(authenticatedRouter);
 
   app.use(`${config.basePath}/api`, router);
 };
