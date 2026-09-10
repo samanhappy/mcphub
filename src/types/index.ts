@@ -578,6 +578,7 @@ export interface ServerInfo {
   config?: ServerConfig; // Reference to the original server configuration for OpenAPI passthrough headers
   // On-demand spawning runtime state
   spawningPromise?: Promise<void>; // Singleton promise: concurrent callers await this instead of double-spawning
+  activeToolCalls?: number; // Calls holding the on-demand runtime awake, including cold starts
   idleTimeoutId?: NodeJS.Timeout; // Timer ID for idle-shutdown (cleared/reset on each tool call)
   lastUsedAt?: number; // Timestamp of last tool call (ms since epoch)
   oauth?: {
