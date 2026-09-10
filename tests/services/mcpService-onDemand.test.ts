@@ -157,7 +157,17 @@ const createSleepingServerInfo = (overrides: Record<string, any> = {}) => ({
   ...overrides,
 });
 
-describe('startOnDemand wake-up (issue #1029)', () => {
+const deferred = <T>() => {
+  let resolve!: (value: T) => void;
+  let reject!: (reason: Error) => void;
+  const promise = new Promise<T>((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise;
+    reject = rejectPromise;
+  });
+  return { promise, resolve, reject };
+};
+
+describe('startOnDemand lifecycle', () => {
   let createTransportSpy: jest.SpyInstance;
 
   beforeEach(() => {
@@ -173,9 +183,7 @@ describe('startOnDemand wake-up (issue #1029)', () => {
     mockFindById.mockResolvedValue(ON_DEMAND_CONFIG);
     mockFindAll.mockResolvedValue([]);
     // Stub transport creation so the wake does not spawn a real child process.
-    createTransportSpy = jest
-      .spyOn(mcpService, 'createTransportFromConfig')
-      .mockResolvedValue({});
+    createTransportSpy = jest.spyOn(mcpService, 'createTransportFromConfig').mockResolvedValue({});
   });
 
   afterEach(() => {
@@ -192,7 +200,10 @@ describe('startOnDemand wake-up (issue #1029)', () => {
     );
 
     // The child was spawned (transport + connect) and the tool was invoked.
-    expect(createTransportSpy).toHaveBeenCalledWith('demo', expect.objectContaining({ command: 'node' }));
+    expect(createTransportSpy).toHaveBeenCalledWith(
+      'demo',
+      expect.objectContaining({ command: 'node' }),
+    );
     expect(mockConnect).toHaveBeenCalledTimes(1);
     expect(mockCallTool).toHaveBeenCalledWith(
       expect.objectContaining({ name: 'ping', arguments: {} }),
@@ -233,6 +244,161 @@ describe('startOnDemand wake-up (issue #1029)', () => {
     expect(mockCallTool).not.toHaveBeenCalled();
     // A failed wake must not leave the idle timer armed.
     expect(serverInfo.idleTimeoutId).toBeFalsy();
+  });
+
+  describe.each(['direct', 'call_tool'])('idle shutdown during %s calls (issue #1163)', (route) => {
+    const result = { content: [{ type: 'text', text: 'pong' }], isError: false };
+    const config = { ...ON_DEMAND_CONFIG, idleTimeoutMs: 1000 };
+    const call = () =>
+      mcpService.handleCallToolRequest(
+        route === 'direct'
+          ? { params: { name: 'demo::ping', arguments: {} } }
+          : { params: { name: 'call_tool', arguments: { toolName: 'demo::ping', arguments: {} } } },
+        { sessionId: 'session-1' },
+      );
+
+    const startPendingCall = async () => {
+      const started = deferred<void>();
+      const completion = deferred<typeof result>();
+      mockCallTool.mockImplementationOnce(() => {
+        started.resolve();
+        return completion.promise;
+      });
+      const pending = call();
+      await started.promise;
+      return { pending, completion };
+    };
+
+    beforeEach(() => {
+      jest.useFakeTimers();
+      mcpService.setServerInfosForTest([
+        createSleepingServerInfo({
+          status: 'connected',
+          client: mockClient,
+          config,
+        }) as any,
+      ]);
+      mockFindById.mockResolvedValue(config);
+    });
+
+    afterEach(() => {
+      jest.clearAllTimers();
+      jest.useRealTimers();
+    });
+
+    const expectIdleShutdown = async () => {
+      await jest.advanceTimersByTimeAsync(999);
+      expect(mockClient.close).not.toHaveBeenCalled();
+      await jest.advanceTimersByTimeAsync(1);
+      expect(mockClient.close).toHaveBeenCalledTimes(1);
+      expect(mcpService.getServerByName('demo')?.status).toBe('disconnected');
+      expect(mcpService.getServerByName('demo')?.client).toBeUndefined();
+      expect(mcpService.getServerByName('demo')?.tools.map((tool) => tool.name)).toContain(
+        'demo::ping',
+      );
+    };
+
+    it('keeps a new call alive past the previous idle deadline, then reclaims the idle child', async () => {
+      await call();
+      await jest.advanceTimersByTimeAsync(900);
+      const active = await startPendingCall();
+      try {
+        // Also exceeds a full idle period: resetting the timer at call start is insufficient.
+        await jest.advanceTimersByTimeAsync(2000);
+        expect(mockClient.close).not.toHaveBeenCalled();
+      } finally {
+        active.completion.resolve(result);
+        await active.pending;
+      }
+      await expectIdleShutdown();
+    });
+
+    it('waits for the last concurrent call before starting the idle period', async () => {
+      const active = await startPendingCall();
+      try {
+        await jest.advanceTimersByTimeAsync(300);
+        await call();
+        await jest.advanceTimersByTimeAsync(2000);
+        expect(mockClient.close).not.toHaveBeenCalled();
+      } finally {
+        active.completion.resolve(result);
+        await active.pending;
+      }
+      await expectIdleShutdown();
+    });
+
+    it.each(['rejection', 'error result'])(
+      'reclaims the child after a tool %s',
+      async (failure) => {
+        if (failure === 'rejection') {
+          mockCallTool.mockRejectedValueOnce(new Error('tool failed'));
+        } else {
+          mockCallTool.mockResolvedValueOnce({ ...result, isError: true });
+        }
+        expect((await call()).isError).toBe(true);
+        await expectIdleShutdown();
+      },
+    );
+
+    it('preserves active calls and idle shutdown across a configuration reload', async () => {
+      const active = await startPendingCall();
+      try {
+        mockFindAll.mockResolvedValue([config]);
+        await mcpService.initializeClientsFromSettings(false, 'another-server');
+        await call();
+        await jest.advanceTimersByTimeAsync(2000);
+        expect(mockClient.close).not.toHaveBeenCalled();
+      } finally {
+        active.completion.resolve(result);
+        await active.pending;
+      }
+      await expectIdleShutdown();
+    });
+
+    it('clears the idle timer when the server is explicitly closed', async () => {
+      await call();
+      mcpService.closeServer('demo');
+      expect(mcpService.getServerByName('demo')?.idleTimeoutId).toBeUndefined();
+      await jest.advanceTimersByTimeAsync(2000);
+      expect(mockClient.close).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not rearm idle shutdown when a closed runtime finishes a call', async () => {
+      const active = await startPendingCall();
+      mcpService.closeServer('demo');
+      active.completion.reject(new Error('Connection closed'));
+      expect((await active.pending).isError).toBe(true);
+      expect(mcpService.getServerByName('demo')?.idleTimeoutId).toBeUndefined();
+      await jest.advanceTimersByTimeAsync(2000);
+      expect(mockClient.close).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not let discovery priming close a child being used by a tool call', async () => {
+      const listing = deferred<void>();
+      const prompts = deferred<{ prompts: [] }>();
+      mockClient.getServerCapabilities.mockReturnValue({ tools: {}, prompts: {} } as any);
+      mockClient.listPrompts.mockImplementationOnce(() => {
+        listing.resolve();
+        return prompts.promise;
+      });
+      mockFindAll.mockResolvedValue([config]);
+      mcpService.setServerInfosForTest([]);
+      const priming = mcpService.initializeClientsFromSettings(false, 'demo');
+      await listing.promise;
+      const active = await startPendingCall();
+      try {
+        prompts.resolve({ prompts: [] });
+        await priming;
+        await jest.advanceTimersByTimeAsync(2000);
+        expect(mockClient.close).not.toHaveBeenCalled();
+      } finally {
+        prompts.resolve({ prompts: [] });
+        active.completion.resolve(result);
+        await Promise.all([priming, active.pending]);
+        mockClient.getServerCapabilities.mockReturnValue({ tools: {} });
+      }
+      await expectIdleShutdown();
+    });
   });
 
   it('does not select a disabled on-demand server for a tool call', async () => {
