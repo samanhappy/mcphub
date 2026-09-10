@@ -114,6 +114,10 @@ services:
       - ./mcp_settings.json:/app/mcp_settings.json:ro
       - ./servers.json:/app/servers.json:ro
       - mcphub_data:/app/data
+      # 让已安装的 stdio 服务器包在容器重建后依然保留。
+      # 参见下方"持久化 stdio 包缓存"。
+      - mcphub_npm_cache:/root/.npm
+      - mcphub_uv_cache:/root/.cache/uv
     depends_on:
       postgres:
         condition: service_healthy
@@ -145,11 +149,64 @@ services:
 volumes:
   postgres_data:
   mcphub_data:
+  mcphub_npm_cache:
+  mcphub_uv_cache:
 
 networks:
   mcphub-network:
     driver: bridge
 ```
+
+### 持久化 stdio 包缓存
+
+`stdio` 服务器通过 `npx` 或 `uvx` 启动，首次使用时会下载并安装对应的包。镜像以 `root`
+运行，因此这些安装内容位于：
+
+| 路径 | 存放内容 |
+| --- | --- |
+| `/root/.npm/_npx` | `npx` 安装的包 |
+| `/root/.npm/_cacache` | npm 下载的 tarball |
+| `/root/.cache/uv` | `uvx` 创建的环境 |
+
+这些路径默认都不是卷，因此只存在于容器的可写层。而可写层会在容器被**重建**时丢弃——升级镜像、
+执行 `docker compose down && up -d`，或修改任何服务配置都会触发重建。下次启动时，所有
+`stdio` 服务器会同时从零重新安装，之后才能开始各自的 MCP 握手。
+
+<Warning>
+  `docker restart` 保留可写层，因此不会丢失缓存；而 `docker compose down` 后再 `up -d`
+  会删除并重建容器，缓存随之消失。如果你发现"重启后似乎重装了所有东西"，通常就是这个区别。
+</Warning>
+
+把这两个路径挂载出来，安装内容就会保存在宿主机上：
+
+```yaml
+services:
+  mcphub:
+    volumes:
+      - mcphub_npm_cache:/root/.npm
+      - mcphub_uv_cache:/root/.cache/uv
+
+volumes:
+  mcphub_npm_cache:
+  mcphub_uv_cache:
+```
+
+具名卷可以在 `docker compose down` 后保留，只有 `down -v` 才会删除。使用绑定挂载
+（`./data/npm-cache:/root/.npm`）效果相同，而且更方便手动查看或清理。
+
+几点值得注意：
+
+- **不需要锁定版本。** 未指定版本的 `npx -y <package>` 同样可以命中已有缓存，直接复用已安装
+  的包，无需访问 registry。
+- **挂载后的第一次启动仍然是冷的。** 卷刚创建时是空的，这一次需要付出完整的安装成本；此后每次
+  重建都会复用它。
+- **预留足够空间。** 约 90 个 `stdio` 服务器大致占用 2 GB。
+- **安装内容损坏时**，请使用该服务器的「重新安装」操作，而不是删除整个缓存目录，这样只会重新
+  获取那一个包。
+
+规模越大影响越明显。在一个约 95 个 `stdio` 服务器的部署中，冷启动重建导致其中大部分连接失败并
+报 `MCP error -32001: Request timed out`，因为所有服务器都在同时安装、互相争抢资源。挂载缓存
+之后，同样的重启不再出现任何超时。
 
 ### 生产配置（包含 Nginx）
 
@@ -191,6 +248,8 @@ services:
       - ./servers.json:/app/servers.json:ro
       - mcphub_data:/app/data
       - mcphub_logs:/app/logs
+      - mcphub_npm_cache:/root/.npm
+      - mcphub_uv_cache:/root/.cache/uv
     depends_on:
       postgres:
         condition: service_healthy
@@ -244,6 +303,8 @@ volumes:
   redis_data:
   mcphub_data:
   mcphub_logs:
+  mcphub_npm_cache:
+  mcphub_uv_cache:
   nginx_logs:
 
 networks:

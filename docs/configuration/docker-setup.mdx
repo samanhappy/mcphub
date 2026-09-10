@@ -115,6 +115,10 @@ services:
       - ./mcp_settings.json:/app/mcp_settings.json:ro
       - ./servers.json:/app/servers.json:ro
       - mcphub_data:/app/data
+      # Keep installed stdio server packages across container recreates.
+      # See "Persisting the stdio package cache" below.
+      - mcphub_npm_cache:/root/.npm
+      - mcphub_uv_cache:/root/.cache/uv
     depends_on:
       postgres:
         condition: service_healthy
@@ -146,11 +150,69 @@ services:
 volumes:
   postgres_data:
   mcphub_data:
+  mcphub_npm_cache:
+  mcphub_uv_cache:
 
 networks:
   mcphub-network:
     driver: bridge
 ```
+
+### Persisting the stdio package cache
+
+`stdio` servers are launched through `npx` or `uvx`, which download and install the
+server's package on first use. The image runs as `root`, so those installs land in:
+
+| Path | Holds |
+| --- | --- |
+| `/root/.npm/_npx` | packages installed by `npx` |
+| `/root/.npm/_cacache` | npm's downloaded tarballs |
+| `/root/.cache/uv` | environments created by `uvx` |
+
+None of these are volumes by default, so they live in the container's writable layer.
+That layer is discarded whenever the container is **recreated** — an image bump,
+`docker compose down && up -d`, or any change to a service's configuration. The next
+start then reinstalls every `stdio` server from scratch, in parallel, before any of them
+can complete their MCP handshake.
+
+<Warning>
+  `docker restart` keeps the writable layer, so it does not lose the cache.
+  `docker compose down` followed by `up -d` removes and recreates the container, which
+  does. If restarting appears to reinstall everything, this distinction is usually why.
+</Warning>
+
+Mounting the two paths keeps the installs on the host:
+
+```yaml
+services:
+  mcphub:
+    volumes:
+      - mcphub_npm_cache:/root/.npm
+      - mcphub_uv_cache:/root/.cache/uv
+
+volumes:
+  mcphub_npm_cache:
+  mcphub_uv_cache:
+```
+
+Named volumes survive `docker compose down`; only `down -v` removes them. Bind mounts
+(`./data/npm-cache:/root/.npm`) work equally well and are easier to inspect or clear by
+hand.
+
+A few things worth knowing:
+
+- **Version pinning is not required.** An unpinned `npx -y <package>` still resolves
+  against a warm cache — the installed package is reused without contacting the registry.
+- **The first start after adding the volumes is still cold.** The volume begins empty, so
+  that run pays the full install cost once; every recreate afterwards reuses it.
+- **Budget for the size.** Around 90 `stdio` servers occupy roughly 2 GB.
+- **To recover from a corrupted install**, use a server's *Reinstall* action rather than
+  deleting the whole cache, so only that package is refetched.
+
+This matters most at scale. On a deployment with ~95 `stdio` servers, a cold recreate left
+most of them failing their connect with `MCP error -32001: Request timed out`, because
+every server was competing to install at once. With the cache mounted, the same restart
+had no timeouts at all.
 
 ### Production Configuration with Nginx
 
@@ -193,6 +255,8 @@ services:
       - ./servers.json:/app/servers.json:ro
       - mcphub_data:/app/data
       - mcphub_logs:/app/logs
+      - mcphub_npm_cache:/root/.npm
+      - mcphub_uv_cache:/root/.cache/uv
     depends_on:
       postgres:
         condition: service_healthy
@@ -246,6 +310,8 @@ volumes:
   redis_data:
   mcphub_data:
   mcphub_logs:
+  mcphub_npm_cache:
+  mcphub_uv_cache:
   nginx_logs:
 
 networks:
