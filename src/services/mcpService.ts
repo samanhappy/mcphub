@@ -729,6 +729,13 @@ const normalizeResourceForCache = (resource: McpResource): Resource => {
 
 // Store all server information
 let serverInfos: ServerInfo[] = [];
+
+// Bumped by every initializeClientsFromSettings pass. Connections are started
+// fire-and-forget and settle long after the pass that started them returned, so
+// a callback needs to know whether a later pass has run before it writes its
+// result anywhere. See the `liveServerInfo` helper in that function.
+let initGeneration = 0;
+
 const principalServerScope = new AsyncLocalStorage<ServerInfo[]>();
 
 const getVisibleServerInfos = (): ServerInfo[] => {
@@ -1586,6 +1593,7 @@ export const initializeClientsFromSettings = async (
   const allServers: ServerConfigWithName[] = await getServerDao().findAll();
   const existingServerInfos = serverInfos;
   const nextServerInfos: ServerInfo[] = [];
+  const generation = ++initGeneration;
 
   try {
     for (const conf of allServers) {
@@ -1894,12 +1902,39 @@ export const initializeClientsFromSettings = async (
       }
       nextServerInfos.push(serverInfo);
 
+      // The connect below settles long after this loop returns. If another
+      // initialization pass has run by then, `serverInfo` may no longer be the
+      // object `serverInfos` holds for this server - even when the reuse guard
+      // "preserved" it, because preservation spreads the entry into a fresh
+      // object. Writing the result into a replaced object leaves the server
+      // stuck on 'connecting' for good while the log reports a successful
+      // connect and a full tool list.
+      //
+      // While this pass is still the newest one, `serverInfo` is the entry that
+      // will be published, so it is the right target even before the swap. Once
+      // a later pass has run, resolve the live entry by name and only apply the
+      // result if it still owns this client - which is exactly the case where
+      // the later pass preserved this server rather than reconnecting it.
+      const liveServerInfo = (): ServerInfo | undefined => {
+        if (generation === initGeneration) return serverInfo;
+        const current = serverInfos.find((si) => si.name === name);
+        return current && current.client === client ? current : undefined;
+      };
+
       connectClientWithDiagnostics(client, transport, initRequestOptions || requestOptions)
         .then(() => {
+          const info = liveServerInfo();
+          if (!info) {
+            // Nothing will ever read this connection again, so shut it down
+            // rather than leaving its stdio child process running.
+            logger.log(`Discarding superseded connection result for server: ${name}`);
+            closeServerRuntime(serverInfo);
+            return;
+          }
           logger.log(`Successfully connected client for server: ${name}`);
           const serverVersion = client.getServerVersion?.();
-          serverInfo.version = serverVersion?.version;
-          serverInfo.instructions = client.getInstructions?.();
+          info.version = serverVersion?.version;
+          info.instructions = client.getInstructions?.();
           const capabilities: ServerCapabilities | undefined = client.getServerCapabilities();
           logger.log('Server capabilities', JSON.stringify(capabilities));
 
@@ -1908,8 +1943,10 @@ export const initializeClientsFromSettings = async (
             client
               .listTools({}, initRequestOptions || requestOptions)
               .then((tools) => {
+                const target = liveServerInfo();
+                if (!target) return;
                 logger.log(`Successfully listed ${tools.tools.length} tools for server: ${name}`);
-                updateServerToolsCache(serverInfo, tools.tools, {
+                updateServerToolsCache(target, tools.tools, {
                   reportEmbeddingProgress:
                     options?.reportEmbeddingProgress === true && serverName === name,
                 });
@@ -1932,10 +1969,12 @@ export const initializeClientsFromSettings = async (
             client
               .listPrompts({}, initRequestOptions || requestOptions)
               .then((prompts) => {
+                const target = liveServerInfo();
+                if (!target) return;
                 logger.log(
                   `Successfully listed ${prompts.prompts.length} prompts for server: ${name}`,
                 );
-                updateServerPromptsCache(serverInfo, prompts.prompts);
+                updateServerPromptsCache(target, prompts.prompts);
                 broadcastPromptListChanged();
               })
               .catch((error) => {
@@ -1951,10 +1990,12 @@ export const initializeClientsFromSettings = async (
             client
               .listResources({}, initRequestOptions || requestOptions)
               .then((resources) => {
+                const target = liveServerInfo();
+                if (!target) return;
                 logger.log(
                   `Successfully listed ${resources.resources.length} resources for server: ${name}`,
                 );
-                updateServerResourcesCache(serverInfo, resources.resources);
+                updateServerResourcesCache(target, resources.resources);
                 broadcastResourceListChanged();
               })
               .catch((error) => {
@@ -1967,17 +2008,24 @@ export const initializeClientsFromSettings = async (
           }
 
           if (!dataError) {
-            serverInfo.status = 'connected';
-            serverInfo.error = null;
+            info.status = 'connected';
+            info.error = null;
             // Set up keep-alive ping for SSE connections via shared service
-            setupServerKeepAlive(serverInfo, expandedConf);
+            setupServerKeepAlive(info, expandedConf);
           } else {
-            serverInfo.status = 'disconnected';
-            serverInfo.error = `Failed to list data: ${formatErrorForLogging(dataError)}`;
-            setupServerKeepAlive(serverInfo, expandedConf);
+            info.status = 'disconnected';
+            info.error = `Failed to list data: ${formatErrorForLogging(dataError)}`;
+            setupServerKeepAlive(info, expandedConf);
           }
         })
         .catch(async (error) => {
+          const info = liveServerInfo();
+          if (!info) {
+            logger.log(`Discarding superseded connection failure for server: ${name}`);
+            closeServerRuntime(serverInfo);
+            return;
+          }
+
           // Check if this is an OAuth authorization error
           const isOAuthError =
             error?.message?.includes('OAuth authorization required') ||
@@ -1990,19 +2038,19 @@ export const initializeClientsFromSettings = async (
               `OAuth authorization required for server ${name}. Status should be set to 'oauth_required'.`,
             );
             // Make sure status is set correctly
-            if (serverInfo.status !== 'oauth_required') {
-              serverInfo.status = 'oauth_required';
+            if (info.status !== 'oauth_required') {
+              info.status = 'oauth_required';
             }
-            serverInfo.error = null;
+            info.error = null;
           } else {
             logger.error('Failed to connect client for server', {
               serverName: name,
               error: summarizeErrorForLogging(error),
             });
             // Other connection errors
-            serverInfo.status = 'disconnected';
-            serverInfo.error = `Failed to connect: ${formatErrorForLogging(error)}`;
-            setupServerKeepAlive(serverInfo, expandedConf);
+            info.status = 'disconnected';
+            info.error = `Failed to connect: ${formatErrorForLogging(error)}`;
+            setupServerKeepAlive(info, expandedConf);
           }
         });
       logger.log(`Initialized client for server: ${name}`);
