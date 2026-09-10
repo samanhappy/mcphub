@@ -1,0 +1,41 @@
+docs/docs.json
+  s_67389981320e37::t_422d05009f9d25 5
+docs/zh/index.mdx
+  s_67389981320e37::t_422d05009f9d25 3,11
+docs/index.mdx
+  s_67389981320e37::t_422d05009f9d25 3,11
+package.json
+  s_67389981320e37::t_422d05009f9d25 4
+README.zh.md
+  s_67389981320e37::t_422d05009f9d25 3,7-9,22-23
+  s_67389981320e37::t_b5a3b1a76a2fda 164
+locales/zh.json
+  s_67389981320e37::t_af2f52c5aa04bd 68
+locales/en.json
+  s_67389981320e37::t_af2f52c5aa04bd 68
+locales/tr.json
+  s_67389981320e37::t_af2f52c5aa04bd 68
+README.fr.md
+  s_67389981320e37::t_422d05009f9d25 3
+README.md
+  s_67389981320e37::t_b5a3b1a76a2fda 168-169
+  s_67389981320e37::t_422d05009f9d25 3,9-11,24-25
+locales/fr.json
+  s_67389981320e37::t_af2f52c5aa04bd 68
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "c08cb3299efb479c20c00ef2f8479b789b59e7a2",
+  "prompts": {},
+  "sessions": {
+    "s_67389981320e37": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0892e-c25e-7d00-b3df-0dfd69f7e40f",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
