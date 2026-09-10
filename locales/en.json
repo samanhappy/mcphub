@@ -65,7 +65,7 @@
   "auth": {
     "login": "Login",
     "loginTitle": "Login to MCPHub",
-    "slogan": "Self-hosted MCP gateway and management platform",
+    "slogan": "Open-source, self-hosted MCP gateway and control plane",
     "subtitle": "Connect, organize, control, and operate Model Context Protocol servers through unified endpoints.",
     "username": "Username",
     "password": "Password",

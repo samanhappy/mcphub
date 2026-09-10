@@ -1,6 +1,6 @@
 # MCPHub
 
-> Une passerelle MCP et plateforme de gestion auto-hébergées pour connecter, gérer et exploiter des serveurs MCP.
+> Une passerelle et un plan de contrôle MCP open source et auto-hébergés pour connecter, contrôler et exploiter des serveurs MCP.
 
 [English](README.md) | Français | [中文版](README.zh.md)
 

@@ -65,7 +65,7 @@
   "auth": {
     "login": "登录",
     "loginTitle": "登录 MCPHub",
-    "slogan": "自托管 MCP 网关与管理平台",
+    "slogan": "开源、自托管的 MCP 网关与控制平面",
     "subtitle": "通过统一端点连接、组织、控制和运行 Model Context Protocol 服务器。",
     "username": "用户名",
     "password": "密码",

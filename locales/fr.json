@@ -65,7 +65,7 @@
   "auth": {
     "login": "Connexion",
     "loginTitle": "Se connecter à MCPHub",
-    "slogan": "Passerelle MCP et plateforme de gestion auto-hébergées",
+    "slogan": "Passerelle et plan de contrôle MCP open source et auto-hébergés",
     "subtitle": "Connectez, organisez, contrôlez et exploitez vos serveurs Model Context Protocol via des points de terminaison unifiés.",
     "username": "Nom d'utilisateur",
     "password": "Mot de passe",
