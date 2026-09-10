@@ -1,18 +1,19 @@
 # MCPHub
 
-> A self-hosted MCP gateway and management platform for connecting, managing, and operating MCP servers.
+> An open-source, self-hosted MCP gateway and control plane for connecting, controlling, and operating MCP servers.
 
 [![MCP Toplist](https://mcptoplist.com/badge/glama%2Fsamanhappy%2Fmcphub.svg)](https://mcptoplist.com/server/glama%2Fsamanhappy%2Fmcphub)
 
 English | [Français](README.fr.md) | [中文版](README.zh.md)
 
-MCPHub provides a unified way to connect and manage multiple MCP servers, organize them into groups, control access, and expose stable MCP endpoints for clients such as Claude Code, Cursor, Cherry Studio, OpenWebUI, and other MCP-compatible applications.
+MCPHub provides a unified control point between AI clients and MCP servers. Connect local and remote MCP servers once, organize and route their capabilities through stable endpoints, control access with authentication, scoped credentials, and per-user visibility, and operate everything with centralized logs, activity tracking, and health monitoring.
+
+It works with MCP clients such as Claude Code, Cursor, Cherry Studio, OpenWebUI, and other MCP-compatible applications.
 
 ![Dashboard Preview](assets/dashboard.png)
 
 ## 🌐 Website, Demo & Docs
 
-- **Per-user Credentials** - Bind personal keys to one shared server, with encrypted storage and isolated stdio runtimes ([Learn more](docs/features/per-user-credentials.mdx))
 - **Website**: [mcphub.app](https://www.mcphub.app/)
 - **Documentation**: [docs.mcphub.app](https://docs.mcphub.app/)
 - **Demo Environment**: [demo.mcphub.app](https://demo.mcphub.app/)
@@ -20,9 +21,10 @@ MCPHub provides a unified way to connect and manage multiple MCP servers, organi
 ## 🚀 Features
 
 - **Unified MCP Gateway** - Expose all connected servers through stable MCP endpoints, including routes for groups and individual servers
+- **Authentication and Access Control** - Use OAuth 2.0, bearer keys, and server or group visibility controls to manage access
+- **Per-user Credentials** - Bind personal keys to one shared server, with encrypted storage and isolated stdio runtimes ([Learn more](docs/features/per-user-credentials.mdx))
 - **Server and Group Management** - Organize servers into groups, manage visibility, and control Tool, Prompt, and Resource exposure
 - **SSE / Streamable HTTP / stdio Support** - Connect local and remote MCP servers over the supported transports
-- **Authentication and Access Control** - Use OAuth 2.0, bearer keys, and server or group visibility controls to manage access
 - **Server Aliases and Routing** - Define aliases and route clients to all servers, specific groups, individual servers, or smart routing
 - **Logs and Observability** - Inspect tool-call activity, request status, latency, and server logs
 - **Health Checks** - Monitor connection health and server status from one place
@@ -163,8 +165,8 @@ Local development uses `admin` / `admin123` and stores its writable settings cop
 
 Running MCPHub in production?
 
-Work directly with the maintainer on production deployment, OAuth/OIDC,
-access control, credential management, audit, Kubernetes, and HA readiness.
+Work directly with the maintainer on production architecture, OAuth/OIDC,
+identity and access control, credential management, audit, Kubernetes, and HA readiness.
 
 [Discuss a production pilot →](https://www.mcphub.app/pricing)
 

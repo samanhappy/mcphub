@@ -65,7 +65,7 @@
   "auth": {
     "login": "Giriş Yap",
     "loginTitle": "MCPHub'a Giriş Yap",
-    "slogan": "Kendi kendine barındırılan MCP ağ geçidi ve yönetim platformu",
+    "slogan": "Açık kaynaklı, kendi kendine barındırılan MCP ağ geçidi ve kontrol düzlemi",
     "subtitle": "Model Context Protocol sunucularını birleşik uç noktalar üzerinden bağlayın, düzenleyin, kontrol edin ve işletin.",
     "username": "Kullanıcı Adı",
     "password": "Şifre",

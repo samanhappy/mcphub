@@ -1,16 +1,17 @@
 # MCPHub
 
-> 自托管的 MCP 网关与管理平台，用于连接、管理和运行 MCP 服务器。
+> 开源、自托管的 MCP 网关与控制平面，用于连接、控制和运行 MCP 服务器。
 
 [English](README.md) | [Français](README.fr.md) | 中文版
 
-MCPHub 提供统一的方式来连接和管理多个 MCP 服务器，将它们组织成分组、控制访问权限，并为 Claude Code、Cursor、Cherry Studio、OpenWebUI 及其他兼容 MCP 的应用提供稳定的 MCP 端点。
+MCPHub 是 AI 客户端与 MCP 服务器之间的统一控制点。一次连接本地和远程 MCP 服务器，通过稳定端点组织和路由其能力，借助身份认证、限定作用域的凭据和用户级可见性控制访问，并通过集中日志、活动追踪和健康监控统一运行与管理。
+
+兼容 Claude Code、Cursor、Cherry Studio、OpenWebUI 及其他支持 MCP 的应用。
 
 ![控制面板预览](assets/dashboard.zh.png)
 
 ## 🌐 官网、演示与文档
 
-- **个人凭据** - 一个共享服务器支持每位用户独立绑定密钥，加密保存并隔离 stdio 运行进程（[了解更多](docs/zh/features/per-user-credentials.mdx)）
 - **官网**: [mcphub.app](https://www.mcphub.app/zh)
 - **文档**: [docs.mcphub.app](https://docs.mcphub.app/)
 - **演示环境**: [demo.mcphub.app](https://demo.mcphub.app/)
@@ -18,9 +19,10 @@ MCPHub 提供统一的方式来连接和管理多个 MCP 服务器，将它们�
 ## 🚀 功能亮点
 
 - **统一 MCP 网关** - 通过稳定的 MCP 端点暴露所有已连接的服务器，也支持分组和单服务器路由
+- **身份认证与访问控制** - 使用 OAuth 2.0、Bearer Key 以及服务器或分组可见性控制访问权限
+- **个人凭据** - 一个共享服务器支持每位用户独立绑定密钥，加密保存并隔离 stdio 运行进程（[了解更多](docs/zh/features/per-user-credentials.mdx)）
 - **服务器与分组管理** - 组织服务器分组，管理可见性，并控制 Tool、Prompt 与 Resource 的暴露范围
 - **SSE / Streamable HTTP / stdio 支持** - 通过支持的传输方式连接本地和远程 MCP 服务器
-- **身份认证与访问控制** - 使用 OAuth 2.0、Bearer Key 以及服务器或分组可见性控制访问权限
 - **服务器别名与路由** - 设置别名，并将客户端路由到所有服务器、指定分组、单个服务器或智能路由
 - **日志与可观测性** - 查看工具调用活动、请求状态、延迟和服务器日志
 - **健康检查** - 在一个地方监控连接健康状况和服务器状态
@@ -159,7 +161,7 @@ pnpm dev
 
 正在生产环境使用 MCPHub？
 
-可以直接与维护者合作，解决生产部署、OAuth/OIDC、访问控制、
+可以直接与维护者合作，解决生产架构、OAuth/OIDC、身份与访问控制、
 凭据管理、审计、Kubernetes 和高可用准备等问题。
 
 [讨论 Production Pilot →](https://www.mcphub.app/zh/pricing)
