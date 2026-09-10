@@ -13,6 +13,7 @@ MCPHub reads the following environment variables at startup. The authoritative l
 | `BASE_PATH` | `''` | Mount-point prefix when MCPHub is served under a sub-path (e.g. `/mcphub`). |
 | `DEFAULT_REQUEST_TIMEOUT` | `60000` | Default request timeout (ms) for upstream MCP server requests when a server does not set `options.timeout`. |
 | `INIT_TIMEOUT` | `300000` | Initial timeout (ms) used when starting upstream MCP servers. |
+| `STARTUP_CONNECT_CONCURRENCY` | `0` | How many upstream servers may connect at once during startup. `0` (or unset) connects them all in parallel. On deployments with many `stdio` servers, a bound keeps them from competing for CPU, network and disk hard enough to exhaust `INIT_TIMEOUT`. Time spent queueing does not count against a server's timeout. |
 | `READONLY` | `false` | Reject mutating dashboard API requests. `GET` and `${basePath}/tools/*` remain allowed. |
 | `DISABLE_WEB` | `false` | Skip serving the bundled dashboard. The API and MCP transport routes still run. |
 | `TRUST_PROXY` | auto | Express `trust proxy` setting. Accepts `true`, `false`, a hop count (`1`, `2`, …), or names like `loopback,linklocal,uniquelocal`. Defaults to `1` inside Docker/Kubernetes, `false` otherwise. |

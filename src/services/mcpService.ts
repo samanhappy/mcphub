@@ -730,6 +730,65 @@ const normalizeResourceForCache = (resource: McpResource): Resource => {
 // Store all server information
 let serverInfos: ServerInfo[] = [];
 
+/**
+ * How many upstream connections an initialization pass may open at once.
+ * Unset, empty or `0` keeps the previous behaviour of connecting every enabled
+ * server in parallel. Read per pass so a restart is enough to change it.
+ */
+const resolveStartupConcurrency = (): number => {
+  const raw = process.env.STARTUP_CONNECT_CONCURRENCY?.trim();
+  if (!raw) {
+    return 0;
+  }
+
+  const parsed = Number(raw);
+  if (!Number.isInteger(parsed) || parsed < 0) {
+    logger.warn(
+      `Ignoring invalid STARTUP_CONNECT_CONCURRENCY="${raw}"; expected a non-negative integer. Connecting without a limit.`,
+    );
+    return 0;
+  }
+
+  return parsed;
+};
+
+type ConnectGate = { run: <T>(start: () => Promise<T>) => Promise<T> };
+
+/**
+ * Defers the *invocation* of a connect rather than wrapping its promise, so a
+ * server waiting for a slot has not started its request yet and its timeout
+ * budget is not spent queueing. A limit of 0 runs everything immediately.
+ */
+const createConnectGate = (limit: number): ConnectGate => {
+  if (limit <= 0) {
+    return { run: (start) => start() };
+  }
+
+  let active = 0;
+  const waiting: Array<() => void> = [];
+
+  const release = () => {
+    active -= 1;
+    waiting.shift()?.();
+  };
+
+  return {
+    run: <T>(start: () => Promise<T>): Promise<T> =>
+      new Promise<T>((resolve, reject) => {
+        const begin = () => {
+          active += 1;
+          start().then(resolve, reject).finally(release);
+        };
+
+        if (active < limit) {
+          begin();
+        } else {
+          waiting.push(begin);
+        }
+      }),
+  };
+};
+
 // Bumped by every initializeClientsFromSettings pass. Connections are started
 // fire-and-forget and settle long after the pass that started them returned, so
 // a callback needs to know whether a later pass has run before it writes its
@@ -1594,6 +1653,11 @@ export const initializeClientsFromSettings = async (
   const existingServerInfos = serverInfos;
   const nextServerInfos: ServerInfo[] = [];
   const generation = ++initGeneration;
+  const concurrency = resolveStartupConcurrency();
+  const connectGate = createConnectGate(concurrency);
+  if (isInit && concurrency > 0) {
+    logger.log(`Connecting upstream servers with a concurrency limit of ${concurrency}`);
+  }
 
   try {
     for (const conf of allServers) {
@@ -1921,7 +1985,10 @@ export const initializeClientsFromSettings = async (
         return current && current.client === client ? current : undefined;
       };
 
-      connectClientWithDiagnostics(client, transport, initRequestOptions || requestOptions)
+      connectGate
+        .run(() =>
+          connectClientWithDiagnostics(client, transport, initRequestOptions || requestOptions),
+        )
         .then(() => {
           const info = liveServerInfo();
           if (!info) {
@@ -2066,7 +2133,7 @@ export const initializeClientsFromSettings = async (
   // Populate the tool cache for on-demand stdio servers so their tools are
   // visible to agents, then put them back to sleep. Running here (rather than
   // only at startup) also covers servers added/enabled/reloaded after startup.
-  const primePromise = primeOnDemandServers();
+  const primePromise = primeOnDemandServers(connectGate);
   // At full startup (no serverName) keep prime fire-and-forget so a slow or
   // broken on-demand server does not block init. For a targeted reload/edit
   // (serverName set), await it so the caller - and the dashboard refresh that
@@ -2780,7 +2847,7 @@ const isStdioServer = (conf: ServerConfig | undefined): boolean =>
  * does not block init. Each server is isolated so one failure does not affect
  * the others. See #1029 / #1032.
  */
-const primeOnDemandServers = (): Promise<void> => {
+const primeOnDemandServers = (gate?: ConnectGate): Promise<void> => {
   const targets = serverInfos.filter(
     (si) =>
       si.config?.startOnDemand === true &&
@@ -2792,10 +2859,14 @@ const primeOnDemandServers = (): Promise<void> => {
   if (targets.length === 0) return Promise.resolve();
 
   logger.log(`Priming ${targets.length} on-demand server(s) for tool discovery…`);
+  // Priming happens right after init, so it competes for the same machine.
+  // Share the pass's concurrency limit rather than waking every sleeping server
+  // at once and undoing the pacing above.
+  const run = gate ? gate.run : <T,>(start: () => Promise<T>) => start();
   return Promise.allSettled(
     targets.map(async (si) => {
       try {
-        await ensureServerReady(si);
+        await run(() => ensureServerReady(si));
         // Sleep the child but keep the cached tool list visible to agents.
         shutdownOnDemandServer(si);
         logger.log('On-demand server primed and asleep');
