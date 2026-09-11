@@ -1,0 +1,40 @@
+README.md
+  s_a35c705ab22ba2::t_fd166ff11fd345 191-192
+  s_a35c705ab22ba2::t_931e8d503c226b 100
+  s_a35c705ab22ba2::t_8761e705252e8a 6-11
+  s_a35c705ab22ba2::t_85b46d73900167 29-31,33-39,41-42,44-46
+  s_a35c705ab22ba2::t_6cbbba07da9a46 57-76
+  s_a35c705ab22ba2::t_2f4cb4ad5424f1 111
+README.fr.md
+  s_a35c705ab22ba2::t_9bf5f29f42e3b2 53-72
+  s_a35c705ab22ba2::t_a1e0ea7accdfa2 26-28,30,32-36,38-43
+  s_a35c705ab22ba2::t_a81731399ad4d3 177-178
+  s_a35c705ab22ba2::t_ef1076ef996472 20
+  s_a35c705ab22ba2::t_0223d61357832d 107
+  s_a35c705ab22ba2::t_9b855e0f0119ff 5-11
+  s_a35c705ab22ba2::t_3da8a22ca075e4 143
+  s_a35c705ab22ba2::t_c289d633932a59 96
+README.zh.md
+  s_a35c705ab22ba2::t_77c6689ede1a7b 98
+  s_a35c705ab22ba2::t_d5a4ae944e0fdc 109
+  s_a35c705ab22ba2::t_a6281fdef8632c 5-11
+  s_a35c705ab22ba2::t_bdd9ceed47d5e6 190-191
+  s_a35c705ab22ba2::t_fd9b8166918b4a 28-30,32-38,40-41,43-45
+  s_a35c705ab22ba2::t_13060c4a6c1769 55-74
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "51f82af3946a4c8523df5112075316638baf254c",
+  "prompts": {},
+  "sessions": {
+    "s_a35c705ab22ba2": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f7046ea25ffeTAIbjFSzjy8xyO",
+        "model": "muse-spark-1.3-contributor-free"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
