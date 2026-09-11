@@ -21,9 +21,13 @@ docker pull samanhappy/mcphub:latest
 docker run -d \
   --name mcphub \
   -p 3000:3000 \
-  -v $(pwd)/mcp_settings.json:/app/mcp_settings.json \
+  -v ./data:/app/data \
   samanhappy/mcphub:latest
 ```
+
+镜像默认使用 `/app/data/mcp_settings.json`。挂载整个数据目录可持久化配置、用户、凭据绑定及其加密密钥。如需自定义服务器，可在首次启动前创建 `data/mcp_settings.json`，或在启动后编辑现有文件。后台运行（`-d`）时，通过 `docker logs mcphub` 查看首次生成的管理员密码。
+
+启动时会自动识别旧方式挂载的 `/app/mcp_settings.json`，并优先于数据目录使用，因此原有 Docker 命令无需修改。显式设置的 `MCPHUB_SETTING_PATH` 始终拥有最高优先级。为完整持久化数据，应将配置文件及已有的 `.credentials.json`、`.credentials.key` 伴随文件一起迁入挂载的数据目录。仍支持显式覆盖 `MCPHUB_SETTING_PATH`。
 
 ### 从源码构建
 
@@ -39,7 +43,7 @@ docker build -t mcphub:local .
 docker run -d \
   --name mcphub \
   -p 3000:3000 \
-  -v $(pwd)/mcp_settings.json:/app/mcp_settings.json \
+  -v ./data:/app/data \
   mcphub:local
 ```
 
@@ -56,14 +60,14 @@ docker run -d \
   --name mcphub \
   --privileged \
   -p 3000:3000 \
-  -v $(pwd)/mcp_settings.json:/app/mcp_settings.json \
+  -v ./data:/app/data \
   mcphub:extended
 
 # 方式 2: 挂载 Docker socket（使用宿主机的 Docker 守护进程）
 docker run -d \
   --name mcphub \
   -p 3000:3000 \
-  -v $(pwd)/mcp_settings.json:/app/mcp_settings.json \
+  -v ./data:/app/data \
   -v /var/run/docker.sock:/var/run/docker.sock \
   mcphub:extended
 
@@ -111,9 +115,8 @@ services:
       - JWT_SECRET=${JWT_SECRET:-your-jwt-secret}
       - DB_URL=postgresql://mcphub:password@postgres:5432/mcphub
     volumes:
-      - ./mcp_settings.json:/app/mcp_settings.json:ro
       - ./servers.json:/app/servers.json:ro
-      - mcphub_data:/app/data
+      - ./data:/app/data
     depends_on:
       postgres:
         condition: service_healthy
@@ -144,7 +147,6 @@ services:
 
 volumes:
   postgres_data:
-  mcphub_data:
 
 networks:
   mcphub-network:
@@ -187,9 +189,8 @@ services:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - REDIS_URL=redis://redis:6379
     volumes:
-      - ./mcp_settings.json:/app/mcp_settings.json:ro
       - ./servers.json:/app/servers.json:ro
-      - mcphub_data:/app/data
+      - ./data:/app/data
       - mcphub_logs:/app/logs
     depends_on:
       postgres:
@@ -242,7 +243,6 @@ services:
 volumes:
   postgres_data:
   redis_data:
-  mcphub_data:
   mcphub_logs:
   nginx_logs:
 
@@ -391,7 +391,7 @@ docker-compose down
 
 ### MCP 设置卷挂载
 
-创建您的 `mcp_settings.json`：
+首次启动前，创建 `data/mcp_settings.json`：
 
 ```json
 {

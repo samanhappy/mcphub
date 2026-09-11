@@ -21,9 +21,13 @@ docker pull samanhappy/mcphub:latest
 docker run -d \
   --name mcphub \
   -p 3000:3000 \
-  -v $(pwd)/mcp_settings.json:/app/mcp_settings.json \
+  -v ./data:/app/data \
   samanhappy/mcphub:latest
 ```
+
+The image defaults to `/app/data/mcp_settings.json`. Mount the entire data directory to persist settings, users, credential bindings, and their encryption key. For custom servers, create `data/mcp_settings.json` before the first launch, or edit the existing file afterward. With detached mode (`-d`), run `docker logs mcphub` to see the generated initial admin password.
+
+Existing file mounts at `/app/mcp_settings.json` are detected automatically and take precedence over the data directory, so existing Docker commands keep working. An explicit `MCPHUB_SETTING_PATH` always takes precedence over both locations. For full persistence, migrate the settings file and its existing `.credentials.json` and `.credentials.key` sidecars together into the mounted data directory. Explicit `MCPHUB_SETTING_PATH` values remain supported.
 
 ### Building from Source
 
@@ -39,7 +43,7 @@ docker build -t mcphub:local .
 docker run -d \
   --name mcphub \
   -p 3000:3000 \
-  -v $(pwd)/mcp_settings.json:/app/mcp_settings.json \
+  -v ./data:/app/data \
   mcphub:local
 ```
 
@@ -56,14 +60,14 @@ docker run -d \
   --name mcphub \
   --privileged \
   -p 3000:3000 \
-  -v $(pwd)/mcp_settings.json:/app/mcp_settings.json \
+  -v ./data:/app/data \
   mcphub:extended
 
 # Option 2: Run with Docker socket mounted (use host's Docker daemon)
 docker run -d \
   --name mcphub \
   -p 3000:3000 \
-  -v $(pwd)/mcp_settings.json:/app/mcp_settings.json \
+  -v ./data:/app/data \
   -v /var/run/docker.sock:/var/run/docker.sock \
   mcphub:extended
 
@@ -112,9 +116,8 @@ services:
       - JWT_SECRET=${JWT_SECRET:-your-jwt-secret}
       - DB_URL=postgresql://mcphub:password@postgres:5432/mcphub
     volumes:
-      - ./mcp_settings.json:/app/mcp_settings.json:ro
       - ./servers.json:/app/servers.json:ro
-      - mcphub_data:/app/data
+      - ./data:/app/data
     depends_on:
       postgres:
         condition: service_healthy
@@ -145,7 +148,6 @@ services:
 
 volumes:
   postgres_data:
-  mcphub_data:
 
 networks:
   mcphub-network:
@@ -189,9 +191,8 @@ services:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - REDIS_URL=redis://redis:6379
     volumes:
-      - ./mcp_settings.json:/app/mcp_settings.json:ro
       - ./servers.json:/app/servers.json:ro
-      - mcphub_data:/app/data
+      - ./data:/app/data
       - mcphub_logs:/app/logs
     depends_on:
       postgres:
@@ -244,7 +245,6 @@ services:
 volumes:
   postgres_data:
   redis_data:
-  mcphub_data:
   mcphub_logs:
   nginx_logs:
 
@@ -394,7 +394,7 @@ docker-compose down
 
 ### MCP Settings Volume Mount
 
-Create your `mcp_settings.json`:
+Before the first launch, create `data/mcp_settings.json`:
 
 ```json
 {

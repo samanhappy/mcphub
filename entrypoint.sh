@@ -1,5 +1,14 @@
 #!/bin/bash
 
+# Explicit overrides win; preserve legacy file mounts before using the data directory.
+if [ -z "$MCPHUB_SETTING_PATH" ]; then
+  if [ -f /app/mcp_settings.json ]; then
+    export MCPHUB_SETTING_PATH=/app/mcp_settings.json
+  else
+    export MCPHUB_SETTING_PATH=/app/data/mcp_settings.json
+  fi
+fi
+
 NPM_REGISTRY=${NPM_REGISTRY:-https://registry.npmjs.org/}
 echo "Setting npm registry to ${NPM_REGISTRY}"
 npm config set registry "$NPM_REGISTRY"

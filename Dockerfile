@@ -55,6 +55,8 @@ COPY . .
 RUN curl -s -f --connect-timeout 10 https://mcpm.sh/api/servers.json -o servers.json || echo "Failed to download servers.json, using bundled version"
 
 RUN pnpm build
+# Keep the legacy path available only for user-mounted configuration.
+RUN rm /app/mcp_settings.json
 
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
