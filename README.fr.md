@@ -55,26 +55,21 @@ MCPHub offre une manière unifiée de connecter et de gérer plusieurs serveurs 
 - **Docker** (recommandé) — le moyen le plus rapide d'exécuter MCPHub ; toutes les commandes ci-dessous l'utilisent
 - **Node.js** `^18.0.0 || >=20.0.0` et **pnpm** `10.12.4` — uniquement pour exécuter depuis les sources ou développer localement (voir [Développement local](#développement-local))
 
-### Lancer en 30 secondes
+### Démarrer avec Docker
 
 ```bash
-docker run -p 3000:3000 -v ./data:/app/data -e MCPHUB_SETTING_PATH=/app/data/mcp_settings.json samanhappy/mcphub
+docker run -p 3000:3000 -v ./data:/app/data samanhappy/mcphub
 ```
 
 Ouvrez `http://localhost:3000` et connectez-vous avec le nom d'utilisateur `admin`. Au premier lancement, si la variable d'environnement `ADMIN_PASSWORD` n'est pas définie, un mot de passe aléatoire est généré et affiché dans les logs du serveur.
 
-La configuration, les utilisateurs et les identifiants persistent dans `./data` (via `MCPHUB_SETTING_PATH`).
+La configuration, les utilisateurs et les identifiants persistent dans `./data` par défaut.
 
-Avec vos propres serveurs ? Écrivez un `mcp_settings.json` (voir [Configuration](#configuration)), copiez-le dans `./data/` et lancez la même commande :
-
-```bash
-cp mcp_settings.json data/
-docker run -p 3000:3000 -v ./data:/app/data -e MCPHUB_SETTING_PATH=/app/data/mcp_settings.json samanhappy/mcphub
-```
+Avec vos propres serveurs ? Avant le premier lancement, créez `data/mcp_settings.json` (voir [Configuration](#configuration)). Ensuite, ajoutez des serveurs dans le tableau de bord ou modifiez le fichier existant et redémarrez MCPHub.
 
 ### Configuration
 
-Créez un fichier `mcp_settings.json` :
+Avant le premier lancement, créez `data/mcp_settings.json` :
 
 ```json
 {
@@ -95,7 +90,7 @@ Créez un fichier `mcp_settings.json` :
 
 ### Déploiement avec Docker
 
-Voir [Lancer en 30 secondes](#lancer-en-30-secondes) pour les commandes prêtes à copier. Montez toujours `./data` avec `-e MCPHUB_SETTING_PATH=/app/data/mcp_settings.json` pour que la configuration, les utilisateurs et les identifiants survivent aux recréations du conteneur.
+Voir [Démarrer avec Docker](#démarrer-avec-docker) pour la commande prête à copier. Gardez `./data` monté pour conserver la configuration, les utilisateurs et les identifiants après la recréation du conteneur.
 
 Deux variantes d'image sont publiées sous `samanhappy/mcphub` :
 
@@ -106,11 +101,11 @@ Voir [Configuration Docker](https://docs.mcphub.app/configuration/docker-setup) 
 
 ### Accéder au tableau de bord
 
-Ouvrez `http://localhost:3000` (voir [Lancer en 30 secondes](#lancer-en-30-secondes) pour la connexion). Vous pouvez également prédéfinir le mot de passe :
+Ouvrez `http://localhost:3000` (voir [Démarrer avec Docker](#démarrer-avec-docker) pour la connexion). Vous pouvez également prédéfinir le mot de passe :
 
 ```bash
 # Docker : définir le mot de passe admin via une variable d'environnement
-docker run -p 3000:3000 -e ADMIN_PASSWORD=your-secure-password samanhappy/mcphub
+docker run -p 3000:3000 -v ./data:/app/data -e ADMIN_PASSWORD=your-secure-password samanhappy/mcphub
 ```
 
 > **Conseil :** Changez le mot de passe admin après la première connexion pour plus de sécurité.

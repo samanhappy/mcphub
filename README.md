@@ -2,7 +2,6 @@
 
 > An open-source, self-hosted MCP gateway and control plane for connecting, controlling, and operating MCP servers.
 
-[![MCP Toplist](https://mcptoplist.com/badge/glama%2Fsamanhappy%2Fmcphub.svg)](https://mcptoplist.com/server/glama%2Fsamanhappy%2Fmcphub)
 [![CI](https://github.com/samanhappy/mcphub/actions/workflows/ci.yml/badge.svg)](https://github.com/samanhappy/mcphub/actions/workflows/ci.yml)
 [![npm version](https://img.shields.io/npm/v/@samanhappy/mcphub)](https://www.npmjs.com/package/@samanhappy/mcphub)
 [![Docker pulls](https://img.shields.io/docker/pulls/samanhappy/mcphub)](https://hub.docker.com/r/samanhappy/mcphub)
@@ -59,26 +58,21 @@ It works with MCP clients such as Claude Code, Cursor, Cherry Studio, OpenWebUI,
 - **Docker** (recommended) — the fastest way to run MCPHub; all commands below use it
 - **Node.js** `^18.0.0 || >=20.0.0` and **pnpm** `10.12.4` — only needed to run from source or develop locally (see [Local Development](#local-development))
 
-### Run in 30 seconds
+### Start with Docker
 
 ```bash
-docker run -p 3000:3000 -v ./data:/app/data -e MCPHUB_SETTING_PATH=/app/data/mcp_settings.json samanhappy/mcphub
+docker run -p 3000:3000 -v ./data:/app/data samanhappy/mcphub
 ```
 
 Open `http://localhost:3000` and log in with username `admin`. On first launch, if no `ADMIN_PASSWORD` environment variable is set, a random password is generated and printed to the server logs.
 
-Settings, users, and credential bindings all persist in `./data` (via `MCPHUB_SETTING_PATH`).
+Settings, users, and credential bindings persist in `./data` by default.
 
-Want your own servers? Write a `mcp_settings.json` (see [Configuration](#configuration)), copy it into `./data/`, and run the same command:
-
-```bash
-cp mcp_settings.json data/
-docker run -p 3000:3000 -v ./data:/app/data -e MCPHUB_SETTING_PATH=/app/data/mcp_settings.json samanhappy/mcphub
-```
+Want your own servers? Before the first launch, create `data/mcp_settings.json` (see [Configuration](#configuration)). After launch, add servers in the dashboard or edit the existing file and restart MCPHub.
 
 ### Configuration
 
-Create a `mcp_settings.json` file:
+Create `data/mcp_settings.json` before the first launch:
 
 ```json
 {
@@ -99,7 +93,7 @@ Create a `mcp_settings.json` file:
 
 ### Docker Deployment
 
-See [Run in 30 seconds](#run-in-30-seconds) for the copy-paste commands. Always mount `./data` together with `-e MCPHUB_SETTING_PATH=/app/data/mcp_settings.json` so settings, users, and credential bindings survive restarts.
+See [Start with Docker](#start-with-docker) for the copy-paste command. Keep `./data` mounted so settings, users, and credential bindings survive container recreation.
 
 Two image variants are published under `samanhappy/mcphub`:
 
@@ -110,11 +104,11 @@ See [Docker Setup](https://docs.mcphub.app/configuration/docker-setup) for build
 
 ### Access Dashboard
 
-Open `http://localhost:3000` (see [Run in 30 seconds](#run-in-30-seconds) for login details). You can also pre-set the password:
+Open `http://localhost:3000` (see [Start with Docker](#start-with-docker) for login details). You can also pre-set the password:
 
 ```bash
 # Docker: set admin password via environment variable
-docker run -p 3000:3000 -e ADMIN_PASSWORD=your-secure-password samanhappy/mcphub
+docker run -p 3000:3000 -v ./data:/app/data -e ADMIN_PASSWORD=your-secure-password samanhappy/mcphub
 ```
 
 > **Tip:** Change the admin password after first login for security.

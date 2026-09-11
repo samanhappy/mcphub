@@ -57,26 +57,21 @@ MCPHub 是 AI 客户端与 MCP 服务器之间的统一控制点。一次连接�
 - **Docker**（推荐）—— 运行 MCPHub 最快的方式，下面的命令都基于它
 - **Node.js** `^18.0.0 || >=20.0.0` 和 **pnpm** `10.12.4` —— 仅从源码运行或参与本地开发时需要（见[本地开发](#本地开发)）
 
-### 30 秒运行
+### 使用 Docker 启动
 
 ```bash
-docker run -p 3000:3000 -v ./data:/app/data -e MCPHUB_SETTING_PATH=/app/data/mcp_settings.json samanhappy/mcphub
+docker run -p 3000:3000 -v ./data:/app/data samanhappy/mcphub
 ```
 
 打开 `http://localhost:3000`，使用用户名 `admin` 登录。首次启动时，如果未设置 `ADMIN_PASSWORD` 环境变量，系统将自动生成随机密码并输出到服务器日志中。
 
-配置、用户和凭据绑定都会持久化到 `./data`（通过 `MCPHUB_SETTING_PATH`）。
+配置、用户和凭据绑定默认持久化到 `./data`。
 
-想用自己的服务器？编写 `mcp_settings.json`（见[配置](#配置)），拷贝到 `./data/` 下，用同一条命令运行：
-
-```bash
-cp mcp_settings.json data/
-docker run -p 3000:3000 -v ./data:/app/data -e MCPHUB_SETTING_PATH=/app/data/mcp_settings.json samanhappy/mcphub
-```
+想用自己的服务器？首次启动前，创建 `data/mcp_settings.json`（见[配置](#配置)）。启动后，可在控制台添加服务器，或编辑现有配置文件并重启 MCPHub。
 
 ### 配置
 
-创建 `mcp_settings.json` 文件：
+首次启动前，创建 `data/mcp_settings.json` 文件：
 
 ```json
 {
@@ -97,7 +92,7 @@ docker run -p 3000:3000 -v ./data:/app/data -e MCPHUB_SETTING_PATH=/app/data/mcp
 
 ### Docker 部署
 
-可复制的命令见[30 秒运行](#30-秒运行)。请始终挂载 `./data` 并设置 `-e MCPHUB_SETTING_PATH=/app/data/mcp_settings.json`，这样配置、用户和凭据绑定在容器重建后不会丢失。
+可复制的命令见[使用 Docker 启动](#使用-docker-启动)。请保持挂载 `./data`，这样配置、用户和凭据绑定在容器重建后不会丢失。
 
 `samanhappy/mcphub` 提供两种镜像变体：
 
@@ -108,11 +103,11 @@ docker run -p 3000:3000 -v ./data:/app/data -e MCPHUB_SETTING_PATH=/app/data/mcp
 
 ### 访问控制台
 
-打开 `http://localhost:3000`（登录方式见[30 秒运行](#30-秒运行)）。也可以预先设置密码：
+打开 `http://localhost:3000`（登录方式见[使用 Docker 启动](#使用-docker-启动)）。也可以预先设置密码：
 
 ```bash
 # Docker：通过环境变量设置管理员密码
-docker run -p 3000:3000 -e ADMIN_PASSWORD=your-secure-password samanhappy/mcphub
+docker run -p 3000:3000 -v ./data:/app/data -e ADMIN_PASSWORD=your-secure-password samanhappy/mcphub
 ```
 
 > **提示：** 首次登录后请及时修改管理员密码以确保安全。
