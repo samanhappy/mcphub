@@ -1,0 +1,27 @@
+src/services/oauthSettingsStore.ts
+  s_4ed139d7b826ea::t_320f5bd7e82462 92-95
+tests/services/oauthClientRegistration.test.ts
+  s_4ed139d7b826ea::t_320f5bd7e82462 31,46-48
+tests/integration/oauth-registration-persistence.test.ts
+  s_4ed139d7b826ea::t_cfe4c5295466cb 1-23,25-48,51-72,83-91
+  s_4ed139d7b826ea::t_320f5bd7e82462 24,49-50,73-82
+src/services/oauthClientRegistration.ts
+  s_4ed139d7b826ea::t_320f5bd7e82462 350-351,354-358
+  s_4ed139d7b826ea::t_1da0d9bc48d986 359
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "b6918151e9cd5156593384d998fff403ae941cfe",
+  "prompts": {},
+  "sessions": {
+    "s_4ed139d7b826ea": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a08ee9-c442-7701-87a3-ffc8c225999a",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
