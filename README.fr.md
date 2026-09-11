@@ -2,6 +2,13 @@
 
 > Une passerelle et un plan de contrôle MCP open source et auto-hébergés pour connecter, contrôler et exploiter des serveurs MCP.
 
+[![CI](https://github.com/samanhappy/mcphub/actions/workflows/ci.yml/badge.svg)](https://github.com/samanhappy/mcphub/actions/workflows/ci.yml)
+[![npm version](https://img.shields.io/npm/v/@samanhappy/mcphub)](https://www.npmjs.com/package/@samanhappy/mcphub)
+[![Docker pulls](https://img.shields.io/docker/pulls/samanhappy/mcphub)](https://hub.docker.com/r/samanhappy/mcphub)
+[![License](https://img.shields.io/github/license/samanhappy/mcphub)](LICENSE)
+[![Discord](https://img.shields.io/badge/discord-join-5865F2?logo=discord&logoColor=white)](https://discord.gg/2BJehJZVH5)
+[![GitHub stars](https://img.shields.io/github/stars/samanhappy/mcphub?style=social)](https://github.com/samanhappy/mcphub/stargazers)
+
 [English](README.md) | Français | [中文版](README.zh.md)
 
 MCPHub offre une manière unifiée de connecter et de gérer plusieurs serveurs MCP, de les organiser en groupes, de contrôler les accès et d'exposer des points de terminaison MCP stables aux clients tels que Claude Code, Cursor, Cherry Studio, OpenWebUI et autres applications compatibles MCP.
@@ -10,29 +17,58 @@ MCPHub offre une manière unifiée de connecter et de gérer plusieurs serveurs 
 
 ## 🌐 Démo en direct et Documentation
 
-- **Identifiants personnels** - Associez une clé par utilisateur à un serveur partagé, avec stockage chiffré et processus stdio isolés ([En savoir plus](docs/features/per-user-credentials.mdx))
+- **Site web** : [mcphub.app](https://www.mcphub.app/)
 - **Documentation** : [docs.mcphub.app](https://docs.mcphub.app/)
 - **Environnement de démo** : [demo.mcphub.app](https://demo.mcphub.app/)
 
 ## 🚀 Fonctionnalités
 
+### Connecter une fois, exposer partout
+
+- **Routage intelligent** ⭐ - Découverte d'outils propulsée par IA utilisant la recherche sémantique vectorielle ([En savoir plus](https://docs.mcphub.app/features/smart-routing))
 - **Passerelle MCP unifiée** - Exposez tous les serveurs connectés via des points de terminaison MCP stables, avec des routes pour les groupes et les serveurs individuels
-- **Gestion des serveurs et des groupes** - Organisez les serveurs en groupes, gérez leur visibilité et contrôlez l'exposition des Tools, Prompts et Resources
-- **Prise en charge SSE / Streamable HTTP / stdio** - Connectez des serveurs MCP locaux et distants via les transports pris en charge
-- **Authentification et contrôle d'accès** - Utilisez OAuth 2.0, des bearer keys et la visibilité des serveurs ou groupes pour gérer les accès
 - **Alias et routage des serveurs** - Définissez des alias et routez les clients vers tous les serveurs, des groupes, un serveur individuel ou le routage intelligent
+- **Prise en charge SSE / Streamable HTTP / stdio** - Connectez des serveurs MCP locaux et distants via les transports pris en charge
+- **Configuration à chaud** - Ajoutez, supprimez ou mettez à jour les serveurs sans temps d'arrêt
+
+### Contrôler les accès et les identifiants
+
+- **Identifiants personnels** ⭐ - Associez une clé par utilisateur à un serveur partagé, avec stockage chiffré et processus stdio isolés ([En savoir plus](docs/features/per-user-credentials.mdx))
+- **Authentification et contrôle d'accès** - Utilisez OAuth 2.0, des bearer keys et la visibilité des serveurs ou groupes pour gérer les accès
+- **Support OAuth 2.0** ⭐ - Modes client et serveur pour une authentification sécurisée ([En savoir plus](https://docs.mcphub.app/features/oauth))
+- **Connexion Sociale** - Support de connexion GitHub et Google via Better Auth (nécessite le mode Base de données)
+- **Gestion des serveurs et des groupes** - Organisez les serveurs en groupes, gérez leur visibilité et contrôlez l'exposition des Tools, Prompts et Resources
+
+### Exploiter en confiance
+
 - **Journaux et observabilité** - Consultez l'activité des appels d'outils, l'état des requêtes, la latence et les journaux des serveurs
 - **Vérifications de santé** - Surveillez la santé des connexions et l'état des serveurs depuis un même endroit
 - **Tableau de bord Web** - Gérez la configuration et le fonctionnement des serveurs depuis un navigateur
-- **Routage intelligent** - Découverte d'outils propulsée par IA utilisant la recherche sémantique vectorielle ([En savoir plus](https://docs.mcphub.app/features/smart-routing))
 - **Compression des résultats d'outils** - Réduisez automatiquement les grands résultats texte avant qu'ils n'atteignent les clients
-- **Configuration à chaud** - Ajoutez, supprimez ou mettez à jour les serveurs sans temps d'arrêt
-- **Support OAuth 2.0** - Modes client et serveur pour une authentification sécurisée ([En savoir plus](https://docs.mcphub.app/features/oauth))
-- **Connexion Sociale** - Support de connexion GitHub et Google via Better Auth (nécessite le mode Base de données)
 - **Mode Base de données** - Stockez la configuration dans PostgreSQL pour les environnements de production ([En savoir plus](https://docs.mcphub.app/configuration/database-configuration))
 - **Prêt pour Docker** - Déployez instantanément avec la configuration conteneurisée
 
 ## 🔧 Démarrage rapide
+
+### Prérequis
+
+- **Node.js** `^18.0.0 || >=20.0.0` (la CI tourne sur Node 20)
+- **pnpm** `10.12.4` (déclaré dans `package.json`)
+- **Docker** (optionnel, pour le déploiement conteneurisé)
+
+### Lancer en 30 secondes
+
+```bash
+docker run -p 3000:3000 -v ./data:/app/data samanhappy/mcphub
+```
+
+Ouvrez `http://localhost:3000` et connectez-vous avec le nom d'utilisateur `admin`. Au premier lancement, si la variable d'environnement `ADMIN_PASSWORD` n'est pas définie, un mot de passe aléatoire est généré et affiché dans les logs du serveur.
+
+Avec vos propres serveurs ? Ajoutez un `mcp_settings.json` (voir [Configuration](#configuration)) et montez-le :
+
+```bash
+docker run -p 3000:3000 -v ./mcp_settings.json:/app/mcp_settings.json -v ./data:/app/data samanhappy/mcphub
+```
 
 ### Configuration
 
@@ -57,13 +93,7 @@ Créez un fichier `mcp_settings.json` :
 
 ### Déploiement avec Docker
 
-```bash
-# Exécutez avec une configuration personnalisée (recommandé)
-docker run -p 3000:3000 -v ./mcp_settings.json:/app/mcp_settings.json -v ./data:/app/data samanhappy/mcphub
-
-# Ou exécutez avec les paramètres par défaut (montez ./data pour préserver l'état entre redémarrages)
-docker run -p 3000:3000 -v ./data:/app/data samanhappy/mcphub
-```
+Voir [Lancer en 30 secondes](#lancer-en-30-secondes) pour les commandes prêtes à copier. Montez toujours `./data` pour préserver l'état entre redémarrages.
 
 Deux variantes d'image sont publiées sous `samanhappy/mcphub` :
 
@@ -74,7 +104,7 @@ Voir [Configuration Docker](https://docs.mcphub.app/configuration/docker-setup) 
 
 ### Accéder au tableau de bord
 
-Ouvrez `http://localhost:3000` et connectez-vous avec le nom d'utilisateur `admin`. Au premier lancement, si la variable d'environnement `ADMIN_PASSWORD` n'est pas définie, un mot de passe aléatoire est généré et affiché dans les logs du serveur. Vous pouvez également prédéfinir le mot de passe :
+Ouvrez `http://localhost:3000` (voir [Lancer en 30 secondes](#lancer-en-30-secondes) pour la connexion). Vous pouvez également prédéfinir le mot de passe :
 
 ```bash
 # Docker : définir le mot de passe admin via une variable d'environnement
@@ -110,6 +140,7 @@ http://localhost:3000/mcp/$smart/{group}  # Routage intelligent dans un groupe
 | [Mode Base de données](https://docs.mcphub.app/configuration/database-configuration) | Configuration PostgreSQL pour la production |
 | [OAuth](https://docs.mcphub.app/features/oauth)                                      | Configuration client et serveur OAuth 2.0   |
 | [Routage intelligent](https://docs.mcphub.app/features/smart-routing)                | Découverte d'outils propulsée par IA        |
+| [Guide CLI](https://docs.mcphub.app/features/cli)                                 | Gérer et appeler le hub depuis un terminal  |
 | [Configuration Docker](https://docs.mcphub.app/configuration/docker-setup)           | Guide de déploiement Docker                 |
 
 ## 🧑‍💻 Développement local
@@ -142,6 +173,8 @@ Les contributions sont les bienvenues ! Rejoignez notre [communauté Discord](ht
 ## ❤️ Sponsor
 
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/samanhappy)
+
+Les utilisateurs en Chine peuvent aussi soutenir via WeChat Pay — voir [中文版](README.zh.md).
 
 ## 🌟 Historique des étoiles
 

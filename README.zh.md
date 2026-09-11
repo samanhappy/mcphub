@@ -2,6 +2,13 @@
 
 > 开源、自托管的 MCP 网关与控制平面，用于连接、控制和运行 MCP 服务器。
 
+[![CI](https://github.com/samanhappy/mcphub/actions/workflows/ci.yml/badge.svg)](https://github.com/samanhappy/mcphub/actions/workflows/ci.yml)
+[![npm version](https://img.shields.io/npm/v/@samanhappy/mcphub)](https://www.npmjs.com/package/@samanhappy/mcphub)
+[![Docker pulls](https://img.shields.io/docker/pulls/samanhappy/mcphub)](https://hub.docker.com/r/samanhappy/mcphub)
+[![License](https://img.shields.io/github/license/samanhappy/mcphub)](LICENSE)
+[![Discord](https://img.shields.io/badge/discord-join-5865F2?logo=discord&logoColor=white)](https://discord.gg/2BJehJZVH5)
+[![GitHub stars](https://img.shields.io/github/stars/samanhappy/mcphub?style=social)](https://github.com/samanhappy/mcphub/stargazers)
+
 [English](README.md) | [Français](README.fr.md) | 中文版
 
 MCPHub 是 AI 客户端与 MCP 服务器之间的统一控制点。一次连接本地和远程 MCP 服务器，通过稳定端点组织和路由其能力，借助身份认证、限定作用域的凭据和用户级可见性控制访问，并通过集中日志、活动追踪和健康监控统一运行与管理。
@@ -18,24 +25,52 @@ MCPHub 是 AI 客户端与 MCP 服务器之间的统一控制点。一次连接�
 
 ## 🚀 功能亮点
 
+### 一次连接，随处暴露
+
+- **智能路由** ⭐ - 基于向量语义搜索的 AI 工具发现 ([了解更多](https://docs.mcphub.app/zh/features/smart-routing))
 - **统一 MCP 网关** - 通过稳定的 MCP 端点暴露所有已连接的服务器，也支持分组和单服务器路由
-- **身份认证与访问控制** - 使用 OAuth 2.0、Bearer Key 以及服务器或分组可见性控制访问权限
-- **个人凭据** - 一个共享服务器支持每位用户独立绑定密钥，加密保存并隔离 stdio 运行进程（[了解更多](docs/zh/features/per-user-credentials.mdx)）
-- **服务器与分组管理** - 组织服务器分组，管理可见性，并控制 Tool、Prompt 与 Resource 的暴露范围
-- **SSE / Streamable HTTP / stdio 支持** - 通过支持的传输方式连接本地和远程 MCP 服务器
 - **服务器别名与路由** - 设置别名，并将客户端路由到所有服务器、指定分组、单个服务器或智能路由
+- **SSE / Streamable HTTP / stdio 支持** - 通过支持的传输方式连接本地和远程 MCP 服务器
+- **热插拔配置** - 无需停机即可添加、移除或更新服务器
+
+### 管控访问与凭据
+
+- **个人凭据** ⭐ - 一个共享服务器支持每位用户独立绑定密钥，加密保存并隔离 stdio 运行进程（[了解更多](docs/zh/features/per-user-credentials.mdx)）
+- **身份认证与访问控制** - 使用 OAuth 2.0、Bearer Key 以及服务器或分组可见性控制访问权限
+- **OAuth 2.0 支持** ⭐ - 客户端和服务端模式，实现安全认证 ([了解更多](https://docs.mcphub.app/zh/features/oauth))
+- **社交一键登录** - 通过 Better Auth 集成支持 GitHub 和 Google 快捷登录（需启用数据库模式）
+- **服务器与分组管理** - 组织服务器分组，管理可见性，并控制 Tool、Prompt 与 Resource 的暴露范围
+
+### 稳定运行
+
 - **日志与可观测性** - 查看工具调用活动、请求状态、延迟和服务器日志
 - **健康检查** - 在一个地方监控连接健康状况和服务器状态
 - **Web 控制台** - 通过浏览器管理服务器配置和运行状态
-- **智能路由** - 基于向量语义搜索的 AI 工具发现 ([了解更多](https://docs.mcphub.app/zh/features/smart-routing))
 - **工具结果压缩** - 在返回客户端前透明压缩大型文本工具输出
-- **热插拔配置** - 无需停机即可添加、移除或更新服务器
-- **OAuth 2.0 支持** - 客户端和服务端模式，实现安全认证 ([了解更多](https://docs.mcphub.app/zh/features/oauth))
-- **社交一键登录** - 通过 Better Auth 集成支持 GitHub 和 Google 快捷登录（需启用数据库模式）
 - **数据库模式** - 将配置存储在 PostgreSQL 中，适用于生产环境 ([了解更多](https://docs.mcphub.app/zh/configuration/database-configuration))
 - **Docker 就绪** - 容器化部署，开箱即用
 
 ## 🔧 快速开始
+
+### 前置条件
+
+- **Node.js** `^18.0.0 || >=20.0.0`（CI 使用 Node 20）
+- **pnpm** `10.12.4`（见 `package.json` 声明）
+- **Docker**（可选，用于容器化部署）
+
+### 30 秒运行
+
+```bash
+docker run -p 3000:3000 -v ./data:/app/data samanhappy/mcphub
+```
+
+打开 `http://localhost:3000`，使用用户名 `admin` 登录。首次启动时，如果未设置 `ADMIN_PASSWORD` 环境变量，系统将自动生成随机密码并输出到服务器日志中。
+
+想用自己的服务器？添加 `mcp_settings.json`（见[配置](#配置)）并挂载：
+
+```bash
+docker run -p 3000:3000 -v ./mcp_settings.json:/app/mcp_settings.json -v ./data:/app/data samanhappy/mcphub
+```
 
 ### 配置
 
@@ -60,13 +95,7 @@ MCPHub 是 AI 客户端与 MCP 服务器之间的统一控制点。一次连接�
 
 ### Docker 部署
 
-```bash
-# 挂载自定义配置运行（推荐）
-docker run -p 3000:3000 -v ./mcp_settings.json:/app/mcp_settings.json -v ./data:/app/data samanhappy/mcphub
-
-# 或使用默认配置运行（仍建议挂载 ./data，避免容器删除后数据丢失）
-docker run -p 3000:3000 -v ./data:/app/data samanhappy/mcphub
-```
+可复制的命令见[30 秒运行](#30-秒运行)。请始终挂载 `./data`，避免容器删除后数据丢失。
 
 `samanhappy/mcphub` 提供两种镜像变体：
 
@@ -77,7 +106,7 @@ docker run -p 3000:3000 -v ./data:/app/data samanhappy/mcphub
 
 ### 访问控制台
 
-打开 `http://localhost:3000`，使用用户名 `admin` 登录。首次启动时，如果未设置 `ADMIN_PASSWORD` 环境变量，系统将自动生成随机密码并输出到服务器日志中。也可以预先设置密码：
+打开 `http://localhost:3000`（登录方式见[30 秒运行](#30-秒运行)）。也可以预先设置密码：
 
 ```bash
 # Docker：通过环境变量设置管理员密码
@@ -103,24 +132,6 @@ http://localhost:3000/mcp/$smart/{group}  # 智能路由（特定分组）
 > **安全提示**：MCP 端点默认需要身份验证，以避免意外暴露。若需对 MCP 端点开放匿名访问，请在密钥设置中关闭 **启用 Bearer 认证**。**免登录开关**仅影响仪表盘登录。仅建议在受信任环境中使用。
 
 📖 查看 [API 参考](https://docs.mcphub.app/zh/api-reference)了解详细的端点文档。
-
-### 终端管理
-
-`mcphub` 同一个二进制兼任 CLI，无需额外安装。
-
-```bash
-mcphub login --url http://localhost:3000 --username admin
-mcphub servers list
-mcphub servers add fetch --type stdio --command uvx --arg mcp-server-fetch
-mcphub tools list                              # 看有哪些 tool 可调
-mcphub tools get fetch_url                     # 看必填参数和样例命令
-mcphub call fetch_url url=https://example.com --json
-mcphub keys create --name ci --access-type all
-```
-
-CLI 同样对接公共市场接口（`mcphub discover`、`mcphub install ...`），可对任意开启了 discovery 的 hub 做检索与一键安装。
-
-📖 查看 [CLI 指南](https://docs.mcphub.app/zh/features/cli)了解全部子命令、profile 管理与 CI 用法。
 
 ## 📚 文档
 
@@ -175,6 +186,8 @@ pnpm dev
 如果觉得项目有帮助，不妨请我喝杯咖啡 ☕️
 
 <img src="assets/reward.png" width="350">
+
+海外用户可通过 [ko-fi](https://ko-fi.com/samanhappy) 支持。
 
 ## 致谢
 
