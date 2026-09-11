@@ -53,3 +53,36 @@ describe('logService error serialization', () => {
     expect(lastLog?.message).not.toContain('top-secret');
   });
 });
+
+describe('logService console timestamp formatting', () => {
+  let logService: typeof import('../../src/services/logService.js').default;
+
+  beforeAll(async () => {
+    ({ default: logService } = await import('../../src/services/logService.js'));
+  });
+
+  it('renders console timestamps as ISO 8601 with the local UTC offset', () => {
+    const formatTimestamp = (
+      logService as unknown as { formatTimestamp(t: number): string }
+    ).formatTimestamp.bind(logService);
+    const ts = Date.UTC(2026, 8, 11, 8, 15, 59, 327); // 08:15:59.327Z
+    const prevTz = process.env.TZ;
+
+    try {
+      process.env.TZ = 'Asia/Shanghai';
+      expect(formatTimestamp(ts)).toBe('2026-09-11T16:15:59.327+08:00');
+
+      process.env.TZ = 'America/New_York';
+      expect(formatTimestamp(ts)).toBe('2026-09-11T04:15:59.327-04:00');
+
+      process.env.TZ = 'UTC';
+      expect(formatTimestamp(ts)).toBe('2026-09-11T08:15:59.327+00:00');
+    } finally {
+      if (prevTz === undefined) {
+        delete process.env.TZ;
+      } else {
+        process.env.TZ = prevTz;
+      }
+    }
+  });
+});
