@@ -63,15 +63,18 @@ It works with MCP clients such as Claude Code, Cursor, Cherry Studio, OpenWebUI,
 ### Run in 30 seconds
 
 ```bash
-docker run -p 3000:3000 -v ./data:/app/data samanhappy/mcphub
+docker run -p 3000:3000 -v ./data:/app/data -e MCPHUB_SETTING_PATH=/app/data/mcp_settings.json samanhappy/mcphub
 ```
 
 Open `http://localhost:3000` and log in with username `admin`. On first launch, if no `ADMIN_PASSWORD` environment variable is set, a random password is generated and printed to the server logs.
 
-Want your own servers? Add a `mcp_settings.json` (see [Configuration](#configuration)) and mount it:
+Settings, users, and credential bindings all persist in `./data` (via `MCPHUB_SETTING_PATH`).
+
+Want your own servers? Write a `mcp_settings.json` (see [Configuration](#configuration)), copy it into `./data/`, and run the same command:
 
 ```bash
-docker run -p 3000:3000 -v ./mcp_settings.json:/app/mcp_settings.json -v ./data:/app/data samanhappy/mcphub
+cp mcp_settings.json data/
+docker run -p 3000:3000 -v ./data:/app/data -e MCPHUB_SETTING_PATH=/app/data/mcp_settings.json samanhappy/mcphub
 ```
 
 ### Configuration
@@ -97,7 +100,7 @@ Create a `mcp_settings.json` file:
 
 ### Docker Deployment
 
-See [Run in 30 seconds](#run-in-30-seconds) for the copy-paste commands. Always mount `./data` so credentials and state survive restarts.
+See [Run in 30 seconds](#run-in-30-seconds) for the copy-paste commands. Always mount `./data` together with `-e MCPHUB_SETTING_PATH=/app/data/mcp_settings.json` so settings, users, and credential bindings survive restarts.
 
 Two image variants are published under `samanhappy/mcphub`:
 

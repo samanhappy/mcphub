@@ -61,15 +61,18 @@ MCPHub 是 AI 客户端与 MCP 服务器之间的统一控制点。一次连接�
 ### 30 秒运行
 
 ```bash
-docker run -p 3000:3000 -v ./data:/app/data samanhappy/mcphub
+docker run -p 3000:3000 -v ./data:/app/data -e MCPHUB_SETTING_PATH=/app/data/mcp_settings.json samanhappy/mcphub
 ```
 
 打开 `http://localhost:3000`，使用用户名 `admin` 登录。首次启动时，如果未设置 `ADMIN_PASSWORD` 环境变量，系统将自动生成随机密码并输出到服务器日志中。
 
-想用自己的服务器？添加 `mcp_settings.json`（见[配置](#配置)）并挂载：
+配置、用户和凭据绑定都会持久化到 `./data`（通过 `MCPHUB_SETTING_PATH`）。
+
+想用自己的服务器？编写 `mcp_settings.json`（见[配置](#配置)），拷贝到 `./data/` 下，用同一条命令运行：
 
 ```bash
-docker run -p 3000:3000 -v ./mcp_settings.json:/app/mcp_settings.json -v ./data:/app/data samanhappy/mcphub
+cp mcp_settings.json data/
+docker run -p 3000:3000 -v ./data:/app/data -e MCPHUB_SETTING_PATH=/app/data/mcp_settings.json samanhappy/mcphub
 ```
 
 ### 配置
@@ -95,7 +98,7 @@ docker run -p 3000:3000 -v ./mcp_settings.json:/app/mcp_settings.json -v ./data:
 
 ### Docker 部署
 
-可复制的命令见[30 秒运行](#30-秒运行)。请始终挂载 `./data`，避免容器删除后数据丢失。
+可复制的命令见[30 秒运行](#30-秒运行)。请始终挂载 `./data` 并设置 `-e MCPHUB_SETTING_PATH=/app/data/mcp_settings.json`，这样配置、用户和凭据绑定在容器重建后不会丢失。
 
 `samanhappy/mcphub` 提供两种镜像变体：
 

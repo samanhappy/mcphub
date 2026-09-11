@@ -36,7 +36,7 @@ MCPHub offre une manière unifiée de connecter et de gérer plusieurs serveurs 
 - **Identifiants personnels** ⭐ - Associez une clé par utilisateur à un serveur partagé, avec stockage chiffré et processus stdio isolés ([En savoir plus](docs/features/per-user-credentials.mdx))
 - **Authentification et contrôle d'accès** - Utilisez OAuth 2.0, des bearer keys et la visibilité des serveurs ou groupes pour gérer les accès
 - **Support OAuth 2.0** ⭐ - Modes client et serveur pour une authentification sécurisée ([En savoir plus](https://docs.mcphub.app/features/oauth))
-- **Connexion Sociale** - Support de connexion GitHub et Google via Better Auth (nécessite le mode Base de données)
+- **Connexion sociale** - Support de connexion GitHub et Google via Better Auth (nécessite le mode Base de données)
 - **Gestion des serveurs et des groupes** - Organisez les serveurs en groupes, gérez leur visibilité et contrôlez l'exposition des Tools, Prompts et Resources
 
 ### Exploiter en confiance
@@ -59,15 +59,18 @@ MCPHub offre une manière unifiée de connecter et de gérer plusieurs serveurs 
 ### Lancer en 30 secondes
 
 ```bash
-docker run -p 3000:3000 -v ./data:/app/data samanhappy/mcphub
+docker run -p 3000:3000 -v ./data:/app/data -e MCPHUB_SETTING_PATH=/app/data/mcp_settings.json samanhappy/mcphub
 ```
 
 Ouvrez `http://localhost:3000` et connectez-vous avec le nom d'utilisateur `admin`. Au premier lancement, si la variable d'environnement `ADMIN_PASSWORD` n'est pas définie, un mot de passe aléatoire est généré et affiché dans les logs du serveur.
 
-Avec vos propres serveurs ? Ajoutez un `mcp_settings.json` (voir [Configuration](#configuration)) et montez-le :
+La configuration, les utilisateurs et les identifiants persistent dans `./data` (via `MCPHUB_SETTING_PATH`).
+
+Avec vos propres serveurs ? Écrivez un `mcp_settings.json` (voir [Configuration](#configuration)), copiez-le dans `./data/` et lancez la même commande :
 
 ```bash
-docker run -p 3000:3000 -v ./mcp_settings.json:/app/mcp_settings.json -v ./data:/app/data samanhappy/mcphub
+cp mcp_settings.json data/
+docker run -p 3000:3000 -v ./data:/app/data -e MCPHUB_SETTING_PATH=/app/data/mcp_settings.json samanhappy/mcphub
 ```
 
 ### Configuration
@@ -93,7 +96,7 @@ Créez un fichier `mcp_settings.json` :
 
 ### Déploiement avec Docker
 
-Voir [Lancer en 30 secondes](#lancer-en-30-secondes) pour les commandes prêtes à copier. Montez toujours `./data` pour préserver l'état entre redémarrages.
+Voir [Lancer en 30 secondes](#lancer-en-30-secondes) pour les commandes prêtes à copier. Montez toujours `./data` avec `-e MCPHUB_SETTING_PATH=/app/data/mcp_settings.json` pour que la configuration, les utilisateurs et les identifiants survivent aux recréations du conteneur.
 
 Deux variantes d'image sont publiées sous `samanhappy/mcphub` :
 
