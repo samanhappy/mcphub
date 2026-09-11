@@ -81,10 +81,19 @@ class LogService {
     this.overrideConsole();
   }
 
-  // Format a timestamp for display
+  // Format a timestamp for console display as ISO 8601 with the process-local
+  // UTC offset (e.g. `2026-09-11T16:15:59.327+08:00`). Unlike `toISOString()`,
+  // which is hardwired to UTC, this honors the `TZ` environment variable while
+  // staying unambiguous and machine-parseable.
   private formatTimestamp(timestamp: number): string {
     const date = new Date(timestamp);
-    return date.toISOString();
+    const offsetMinutes = -date.getTimezoneOffset();
+    const sign = offsetMinutes >= 0 ? '+' : '-';
+    const absOffset = Math.abs(offsetMinutes);
+    const offsetHH = String(Math.floor(absOffset / 60)).padStart(2, '0');
+    const offsetMM = String(absOffset % 60).padStart(2, '0');
+    const localParts = new Date(timestamp + offsetMinutes * 60000).toISOString();
+    return `${localParts.slice(0, 23)}${sign}${offsetHH}:${offsetMM}`;
   }
 
   // Format a log message for console output
