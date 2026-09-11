@@ -1,0 +1,23 @@
+README.md
+  s_a35c705ab22ba2::t_4f2045df529eee 59-60
+README.zh.md
+  s_a35c705ab22ba2::t_7ca1b8dff912cc 57-58
+README.fr.md
+  s_a35c705ab22ba2::t_15469f8f19c11b 55-56
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "e6f05786d1add3c095a5c6cd876728ff2e991733",
+  "prompts": {},
+  "sessions": {
+    "s_a35c705ab22ba2": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f7046ea25ffeTAIbjFSzjy8xyO",
+        "model": "muse-spark-1.3-contributor-free"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
