@@ -19,6 +19,7 @@ import {
   registerClient,
   removeRegisteredClient,
 } from '../../src/services/oauthClientRegistration.js';
+import { logger } from '../../src/utils/logger.js';
 import { ServerConfig } from '../../src/types/index.js';
 
 describe('OAuth registration persistence', () => {
@@ -40,7 +41,10 @@ describe('OAuth registration persistence', () => {
     }));
   });
 
-  afterEach(() => removeRegisteredClient(serverName));
+  afterEach(() => {
+    removeRegisteredClient(serverName);
+    jest.restoreAllMocks();
+  });
 
   it.each(['missing record', 'write rejection', 'empty update result'])(
     'leaves registration retryable after %s',
@@ -49,11 +53,15 @@ describe('OAuth registration persistence', () => {
       if (failure === 'write rejection')
         mockUpdate.mockRejectedValueOnce(new Error('write failed'));
       if (failure === 'empty update result') mockUpdate.mockResolvedValueOnce(null);
+      const log = jest.spyOn(logger, 'log');
       const config = makeConfig();
 
       await expect(registerClient(serverName, config)).rejects.toThrow();
       expect(getRegisteredClient(serverName)).toBeUndefined();
       expect(config.oauth?.clientId).toBeUndefined();
+      expect(log).not.toHaveBeenCalledWith(
+        `Persisted OAuth client credentials for server: ${serverName}`,
+      );
 
       const registered = await registerClient(serverName, config);
       expect(registered.clientId).toBe('client-2');
@@ -64,6 +72,53 @@ describe('OAuth registration persistence', () => {
       expect(getRegisteredClient(serverName)).toBe(registered);
       expect(await registerClient(serverName, config)).toBe(registered);
       expect(mockDynamicClientRegistration).toHaveBeenCalledTimes(2);
+    },
+  );
+
+  it.each([false, true])(
+    'shares pending registration and clears it after failure=%s',
+    async (fail) => {
+      let finishWrite!: () => void;
+      let writeStarted!: () => void;
+      const started = new Promise<void>((resolve) => {
+        writeStarted = resolve;
+      });
+      const writeError = new Error('write failed');
+      mockUpdate.mockImplementationOnce(
+        () =>
+          new Promise((resolve, reject) => {
+            finishWrite = () => (fail ? reject(writeError) : resolve({ name: serverName }));
+            writeStarted();
+          }),
+      );
+
+      const first = registerClient(serverName, makeConfig());
+      const second = registerClient(serverName, makeConfig());
+      await started;
+      const third = registerClient(serverName, makeConfig());
+      const resultsPromise = Promise.allSettled([first, second, third]);
+      const cachedDuringWrite = getRegisteredClient(serverName);
+      finishWrite();
+      const results = await resultsPromise;
+      expect(cachedDuringWrite).toBeUndefined();
+      expect(mockDynamicClientRegistration).toHaveBeenCalledTimes(1);
+      expect(mockUpdate).toHaveBeenCalledTimes(1);
+
+      if (fail) {
+        expect(results).toEqual(Array(3).fill({ status: 'rejected', reason: writeError }));
+        expect(getRegisteredClient(serverName)).toBeUndefined();
+        const retried = await registerClient(serverName, makeConfig());
+        expect(retried.clientId).toBe('client-2');
+        expect(getRegisteredClient(serverName)).toBe(retried);
+        expect(mockDynamicClientRegistration).toHaveBeenCalledTimes(2);
+        expect(mockUpdate).toHaveBeenCalledTimes(2);
+      } else {
+        const registered = getRegisteredClient(serverName);
+        expect(registered?.clientId).toBe('client-1');
+        expect(results).toEqual(Array(3).fill({ status: 'fulfilled', value: registered }));
+        removeRegisteredClient(serverName);
+        expect((await registerClient(serverName, makeConfig())).clientId).toBe('client-2');
+      }
     },
   );
 
