@@ -337,9 +337,6 @@ export const registerClient = async (
       metadata: config,
     };
 
-    // Cache the registered client
-    registeredClients.set(serverName, clientInfo);
-
     // Persist the client credentials and scopes to configuration
     const persistedConfig = await persistClientCredentials(serverName, {
       clientId,
@@ -350,12 +347,15 @@ export const registerClient = async (
       revocationEndpoint: clientInfo.config.serverMetadata().revocation_endpoint,
     });
 
-    if (persistedConfig) {
-      serverConfig.oauth = {
-        ...(serverConfig.oauth || {}),
-        ...persistedConfig.oauth,
-      };
+    if (!persistedConfig) {
+      throw new Error(`Failed to persist OAuth client credentials for server ${serverName}`);
     }
+
+    serverConfig.oauth = {
+      ...(serverConfig.oauth || {}),
+      ...persistedConfig.oauth,
+    };
+    registeredClients.set(serverName, clientInfo);
 
     return clientInfo;
   } catch (error) {
