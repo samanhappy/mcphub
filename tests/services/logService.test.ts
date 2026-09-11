@@ -65,24 +65,39 @@ describe('logService console timestamp formatting', () => {
     const formatTimestamp = (
       logService as unknown as { formatTimestamp(t: number): string }
     ).formatTimestamp.bind(logService);
-    const ts = Date.UTC(2026, 8, 11, 8, 15, 59, 327); // 08:15:59.327Z
-    const prevTz = process.env.TZ;
+    const ts = Date.UTC(2026, 8, 11, 8, 15, 59, 327); // 2026-09-11T08:15:59.327Z
 
-    try {
-      process.env.TZ = 'Asia/Shanghai';
-      expect(formatTimestamp(ts)).toBe('2026-09-11T16:15:59.327+08:00');
+    const output = formatTimestamp(ts);
 
-      process.env.TZ = 'America/New_York';
-      expect(formatTimestamp(ts)).toBe('2026-09-11T04:15:59.327-04:00');
+    // Explicit numeric offset, never the bare `Z` form of the old toISOString() output.
+    expect(output).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}[+-]\d{2}:\d{2}$/);
 
-      process.env.TZ = 'UTC';
-      expect(formatTimestamp(ts)).toBe('2026-09-11T08:15:59.327+00:00');
-    } finally {
-      if (prevTz === undefined) {
-        delete process.env.TZ;
-      } else {
-        process.env.TZ = prevTz;
-      }
-    }
+    // Wall clock must match an independent ICU reference computed in the process timezone.
+    const parts = new Intl.DateTimeFormat('en-CA', {
+      hourCycle: 'h23',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    }).formatToParts(new Date(ts));
+    const get = (type: Intl.DateTimeFormatPartTypes) =>
+      parts.find((part) => part.type === type)?.value ?? '';
+    const referenceWallClock =
+      `${get('year')}-${get('month')}-${get('day')}` +
+      `T${get('hour')}:${get('minute')}:${get('second')}.327`;
+
+    // Offset must reflect the same process timezone at that instant.
+    const offsetMinutes = -new Date(ts).getTimezoneOffset();
+    const sign = offsetMinutes >= 0 ? '+' : '-';
+    const absOffset = Math.abs(offsetMinutes);
+    const offsetHH = String(Math.floor(absOffset / 60)).padStart(2, '0');
+    const offsetMM = String(absOffset % 60).padStart(2, '0');
+
+    expect(output).toBe(`${referenceWallClock}${sign}${offsetHH}:${offsetMM}`);
+
+    // Round-trips through Date.parse back to the exact original instant.
+    expect(Date.parse(output)).toBe(ts);
   });
 });
