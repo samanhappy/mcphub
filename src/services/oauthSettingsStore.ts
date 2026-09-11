@@ -89,6 +89,10 @@ export const persistClientCredentials = async (
     }
   });
 
+  if (!updated) {
+    return undefined;
+  }
+
   logger.log(`Persisted OAuth client credentials for server: ${serverName}`);
   if (credentials.scopes && credentials.scopes.length > 0) {
     logger.log(`Stored OAuth scopes for ${serverName}: ${credentials.scopes.join(', ')}`);

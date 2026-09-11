@@ -34,6 +34,7 @@ interface RegisteredClientInfo {
 
 // Cache for registered clients to avoid re-registering on every restart
 const registeredClients = new Map<string, RegisteredClientInfo>();
+const pendingRegistrations = new Map<string, Promise<RegisteredClientInfo>>();
 
 export const createOAuthFetch = async (serverConfig?: ServerConfig): Promise<FetchLike> => {
   const ownerUser = serverConfig?.owner
@@ -252,6 +253,31 @@ export const registerClient = async (
     return cached;
   }
 
+  const pending = pendingRegistrations.get(serverName);
+  if (pending) {
+    return pending;
+  }
+
+  const registration = registerAndPersistClient(
+    serverName,
+    serverConfig,
+    autoDetectedIssuer,
+    autoDetectedScopes,
+  );
+  pendingRegistrations.set(serverName, registration);
+  try {
+    return await registration;
+  } finally {
+    pendingRegistrations.delete(serverName);
+  }
+};
+
+const registerAndPersistClient = async (
+  serverName: string,
+  serverConfig: ServerConfig,
+  autoDetectedIssuer?: string,
+  autoDetectedScopes?: string[],
+): Promise<RegisteredClientInfo> => {
   const dynamicConfig = serverConfig.oauth?.dynamicRegistration;
 
   try {
@@ -337,9 +363,6 @@ export const registerClient = async (
       metadata: config,
     };
 
-    // Cache the registered client
-    registeredClients.set(serverName, clientInfo);
-
     // Persist the client credentials and scopes to configuration
     const persistedConfig = await persistClientCredentials(serverName, {
       clientId,
@@ -350,12 +373,15 @@ export const registerClient = async (
       revocationEndpoint: clientInfo.config.serverMetadata().revocation_endpoint,
     });
 
-    if (persistedConfig) {
-      serverConfig.oauth = {
-        ...(serverConfig.oauth || {}),
-        ...persistedConfig.oauth,
-      };
+    if (!persistedConfig) {
+      throw new Error(`Failed to persist OAuth client credentials for server ${serverName}`);
     }
+
+    serverConfig.oauth = {
+      ...(serverConfig.oauth || {}),
+      ...persistedConfig.oauth,
+    };
+    registeredClients.set(serverName, clientInfo);
 
     return clientInfo;
   } catch (error) {

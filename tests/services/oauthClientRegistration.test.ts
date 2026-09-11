@@ -28,6 +28,7 @@ jest.mock('../../src/dao/index.js', () => ({
   getUserDao: jest.fn(() => ({ findByUsername: mockFindByUsername })),
 }));
 
+import { persistClientCredentials } from '../../src/services/oauthSettingsStore.js';
 import { getSystemConfigDao } from '../../src/dao/index.js';
 import {
   fetchProtectedResourceMetadata,
@@ -42,6 +43,9 @@ describe('registerClient redirect URI handling', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    jest
+      .mocked(persistClientCredentials)
+      .mockResolvedValue({ oauth: { clientId: 'registered-client' } });
     removeRegisteredClient('notion');
     process.env = { ...originalEnv };
     delete process.env.INSTALL_BASE_URL;
