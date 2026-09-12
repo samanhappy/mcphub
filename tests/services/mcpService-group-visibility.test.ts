@@ -29,12 +29,12 @@ const adminGroup: IGroup = {
 
 const mockGroupDao = {
   findAll: jest.fn<() => Promise<IGroup[]>>().mockResolvedValue([adminGroup]),
-  findById: jest.fn<(id: string) => Promise<IGroup | null>>().mockImplementation(async (id) =>
-    id === adminGroup.id ? adminGroup : null,
-  ),
-  findByName: jest.fn<(name: string) => Promise<IGroup | null>>().mockImplementation(
-    async (name) => (name === adminGroup.name ? adminGroup : null),
-  ),
+  findById: jest
+    .fn<(id: string) => Promise<IGroup | null>>()
+    .mockImplementation(async (id) => (id === adminGroup.id ? adminGroup : null)),
+  findByName: jest
+    .fn<(name: string) => Promise<IGroup | null>>()
+    .mockImplementation(async (name) => (name === adminGroup.name ? adminGroup : null)),
   findByOwner: jest.fn(),
   findByServer: jest.fn(),
   create: jest.fn(),
@@ -86,6 +86,8 @@ const realFilterData = (data: any[], user?: any) => {
   return data.filter((item) => {
     if (item.owner === currentUser.username) return true;
     if (item.visibility === 'public') return true;
+    if (item.visibility === 'group' && item.sharedWithUsers?.includes(currentUser.username))
+      return true;
     return false;
   });
 };
@@ -228,7 +230,12 @@ jest.mock('../../src/services/groupService.js', () => ({
     servers.map((s: any) =>
       typeof s === 'string'
         ? { name: s, tools: 'all', prompts: 'all', resources: 'all' }
-        : { name: s.name, tools: s.tools || 'all', prompts: s.prompts || 'all', resources: s.resources || 'all' },
+        : {
+            name: s.name,
+            tools: s.tools || 'all',
+            prompts: s.prompts || 'all',
+            resources: s.resources || 'all',
+          },
     ),
   ),
   notifyToolChanged: jest.fn(),
@@ -441,5 +448,39 @@ describe('getFilteredServerInfosForGroup — issue #914', () => {
     expect(names).toContain('ServerA'); // public
     expect(names).not.toContain('ServerB'); // private, admin-owned
     expect(names).toContain('ServerC'); // alice-owned
+  });
+  it('denies explicit private groups even when their servers are public', async () => {
+    mockGroupDao.findByName.mockResolvedValue({ ...adminGroup, visibility: 'private' } as IGroup);
+    expect((await getFilteredServerInfosForGroup('GroupG')).filteredServerInfos).toEqual([]);
+  });
+
+  it('allows selected shared users only and still filters private servers', async () => {
+    mockGroupDao.findByName.mockResolvedValue({
+      ...adminGroup,
+      visibility: 'group',
+      sharedWithUsers: ['alice'],
+    } as IGroup);
+    expect(
+      (await getFilteredServerInfosForGroup('GroupG')).filteredServerInfos.map((s) => s.name),
+    ).toEqual(['ServerA']);
+    currentUserForFilter = { username: 'bob', isAdmin: false };
+    expect((await getFilteredServerInfosForGroup('GroupG')).filteredServerInfos).toEqual([]);
+  });
+
+  it('never falls back to a same-name server for an inaccessible or empty group', async () => {
+    mockGroupDao.findByName.mockResolvedValue({
+      ...adminGroup,
+      name: 'ServerA',
+      visibility: 'private',
+      servers: [],
+    } as IGroup);
+    expect((await getFilteredServerInfosForGroup('ServerA')).filteredServerInfos).toEqual([]);
+    mockGroupDao.findByName.mockResolvedValue({
+      ...adminGroup,
+      name: 'ServerA',
+      visibility: 'public',
+      servers: [],
+    } as IGroup);
+    expect((await getFilteredServerInfosForGroup('ServerA')).filteredServerInfos).toEqual([]);
   });
 });

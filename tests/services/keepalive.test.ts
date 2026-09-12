@@ -131,6 +131,7 @@ describe('Keepalive Functionality', () => {
 
     mockReq = {
       params: { group: 'test-group' },
+      query: {},
       headers: {},
     };
 
@@ -174,6 +175,10 @@ describe('Keepalive Functionality', () => {
       }),
     };
     (daoIndex.getSystemConfigDao as unknown as jest.Mock).mockReturnValue(mockSystemConfigDao);
+
+    (daoIndex.getGroupDao as jest.Mock).mockReturnValue({
+      findByName: jest.fn().mockResolvedValue(null),
+    });
 
     // Mock loadSettings
     (configModule.loadSettings as jest.Mock).mockReturnValue({

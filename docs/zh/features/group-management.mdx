@@ -28,7 +28,6 @@ MCPHub 的分组管理功能允许您根据功能、用例或访问要求将 MCP
 1. **导航到分组部分**: 在主导航中点击"分组"
 2. **点击"创建分组"**: 开始分组创建流程
 3. **填写分组详细信息**:
-
    - **名称**: 分组的唯一标识符
 
 4. **添加服务器**: 选择要包含在分组中的服务器
@@ -47,7 +46,7 @@ curl -X POST http://localhost:3000/api/groups \
   }'
 ```
 
-{/* ### 通过配置文件
+{/\* ### 通过配置文件
 
 在您的 `mcp_settings.json` 中定义分组：
 
@@ -76,7 +75,7 @@ curl -X POST http://localhost:3000/api/groups \
 <AccordionGroup>
   <Accordion title="Web 自动化分组">
     **用途**: 浏览器自动化和网页抓取
-    
+
     **服务器**:
     - `playwright`: 浏览器自动化
     - `fetch`: HTTP 请求和网页抓取
@@ -94,7 +93,7 @@ curl -X POST http://localhost:3000/api/groups \
 
   <Accordion title="数据处理分组">
     **用途**: 数据操作和分析
-    
+
     **服务器**:
     - `sqlite`: 数据库操作
     - `filesystem`: 文件操作
@@ -112,7 +111,7 @@ curl -X POST http://localhost:3000/api/groups \
 
   <Accordion title="通信分组">
     **用途**: 消息传递和协作
-    
+
     **服务器**:
     - `slack`: Slack 集成
     - `discord`: Discord 机器人
@@ -131,7 +130,7 @@ curl -X POST http://localhost:3000/api/groups \
 
   <Accordion title="开发分组">
     **用途**: 软件开发工具
-    
+
     **服务器**:
     - `github`: GitHub 操作
     - `gitlab`: GitLab 集成
@@ -150,7 +149,7 @@ curl -X POST http://localhost:3000/api/groups \
 
   <Accordion title="AI/ML 分组">
     **用途**: 机器学习和 AI 工具
-    
+
     **服务器**:
     - `openai`: OpenAI API 集成
     - `huggingface`: Hugging Face 模型
@@ -336,7 +335,7 @@ curl -X POST http://localhost:3000/mcp/web-tools \
   </Tab>
 </Tabs>
 
-{/* ### 批量服务器更新
+{/\* ### 批量服务器更新
 
 一次更新多个服务器：
 
@@ -385,7 +384,7 @@ curl http://localhost:3000/api/groups/web-tools/analytics \
 - 错误率
 - 用户活动 */}
 
-{/* ## 高级分组功能
+{/\* ## 高级分组功能
 
 ### 嵌套分组
 
@@ -571,3 +570,27 @@ curl -X POST http://localhost:3000/api/groups/from-template \
     高级分组配置选项
   </Card>
 </CardGroup>
+
+## 可见性与共享
+
+新建组默认使用 `private`。`visibility` 支持 `private`（所有者和管理员）、
+`group`（所有者、管理员及 `sharedWithUsers` 中指定的用户名）和 `public`（所有用户）。
+界面将 `group` 显示为共享；请先保存组，再在编辑界面选择用户。
+只有所有者和管理员可以修改、删除组及其服务器配置。
+
+以用户身份访问 MCP 时，有效权限为密钥范围、组可见性和服务器可见性的交集。
+共享组不会赋予私有服务器的访问权。SSE、`$smart/<group>` 和已有会话每次请求
+也会重新检查组权限。系统密钥保留原有的操作员权限范围，不会变成用户身份或获得个人凭证。
+
+组列表、详情和服务器配置响应会隐藏调用者无权访问的服务器，包括名称、别名及能力选择。
+所有者保存可见服务器列表时，已有的隐藏条目会保留；管理员可以管理完整配置。
+
+### 历史组升级
+
+未设置可见性的组保留旧端点规则：知道端点的用户可以使用其中有权限的服务器，
+目录仍仅对所有者和管理员可见。界面会提示设置可见性；仅保存其他字段不会将历史组
+自动改为私有或公开。
+
+数据库模式为组名添加唯一约束。启动时会在同步结构前检查重复组名，发现重复时停止升级，
+报告名称和数量。请手动处理冲突后重启；系统不会自动重命名或删除组。
+私有组同样占用全局组名，无法自行解决的冲突需联系管理员。

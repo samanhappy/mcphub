@@ -1,7 +1,10 @@
+import { getGroupDao, getUserDao } from '../dao/index.js';
+import { validateGroupAccess } from '../utils/groupAccess.js';
 import { Request, Response } from 'express';
 import { logger } from '../utils/logger.js';
 import {
   ApiResponse,
+  IGroup,
   AddGroupRequest,
   BatchCreateGroupsRequest,
   BatchCreateGroupsResponse,
@@ -9,6 +12,8 @@ import {
 } from '../types/index.js';
 import {
   getAllGroups,
+  presentGroup,
+  canMutateGroup,
   getGroupByIdOrName,
   createGroup,
   updateGroup,
@@ -127,7 +132,12 @@ export const getGroup = async (req: Request, res: Response): Promise<void> => {
 // Create a new group
 export const createNewGroup = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { name, description, servers } = req.body;
+    const { name, description, servers, visibility, sharedWithUsers } = req.body;
+    const accessError = validateGroupAccess({ visibility, sharedWithUsers });
+    if (accessError) {
+      res.status(400).json({ success: false, message: accessError });
+      return;
+    }
     if (!name) {
       res.status(400).json({
         success: false,
@@ -150,7 +160,10 @@ export const createNewGroup = async (req: Request, res: Response): Promise<void>
     const currentUser = (req as any).user;
     const owner = currentUser?.username || 'admin';
 
-    const newGroup = await createGroup(name, description, serverList, owner);
+    const newGroup = await createGroup(name, description, serverList, owner, {
+      visibility,
+      sharedWithUsers,
+    });
     if (!newGroup) {
       res.status(400).json({
         success: false,
@@ -161,7 +174,7 @@ export const createNewGroup = async (req: Request, res: Response): Promise<void>
 
     const response: ApiResponse = {
       success: true,
-      data: newGroup,
+      data: await presentGroup(newGroup),
       message: 'Group created successfully',
     };
     res.status(201).json(response);
@@ -255,10 +268,13 @@ export const batchCreateGroups = async (req: Request, res: Response): Promise<vo
     const defaultOwner = currentUser?.username || 'admin';
 
     for (const groupData of groups) {
-      const { name, description, servers } = groupData;
+      const { name, description, servers, visibility, sharedWithUsers } = groupData;
 
       // Validate group configuration
-      const validation = validateGroupConfig(groupData);
+      const accessError = validateGroupAccess(groupData);
+      const validation = accessError
+        ? { valid: false, message: accessError }
+        : validateGroupConfig(groupData);
       if (!validation.valid) {
         results.push({
           name: name || 'unknown',
@@ -271,7 +287,10 @@ export const batchCreateGroups = async (req: Request, res: Response): Promise<vo
 
       try {
         const serverList = Array.isArray(servers) ? servers : [];
-        const newGroup = await createGroup(name, description, serverList, defaultOwner);
+        const newGroup = await createGroup(name, description, serverList, defaultOwner, {
+          visibility,
+          sharedWithUsers,
+        });
 
         if (newGroup) {
           results.push({
@@ -322,7 +341,12 @@ export const batchCreateGroups = async (req: Request, res: Response): Promise<vo
 export const updateExistingGroup = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    const { name, description, servers } = req.body;
+    const { name, description, servers, visibility, sharedWithUsers } = req.body;
+    const accessError = validateGroupAccess({ visibility, sharedWithUsers });
+    if (accessError) {
+      res.status(400).json({ success: false, message: accessError });
+      return;
+    }
     if (!id) {
       res.status(400).json({
         success: false,
@@ -332,7 +356,12 @@ export const updateExistingGroup = async (req: Request, res: Response): Promise<
     }
 
     // Allow updating servers along with other fields
-    const updateData: any = {};
+    const updateData: Partial<IGroup> = {};
+    if (visibility !== undefined) updateData.visibility = visibility;
+    if (sharedWithUsers !== undefined)
+      updateData.sharedWithUsers = [
+        ...new Set<string>(sharedWithUsers.map((name: string) => name.trim())),
+      ];
     if (name !== undefined) updateData.name = name;
     if (description !== undefined) updateData.description = description;
     if (servers !== undefined) {
@@ -350,7 +379,8 @@ export const updateExistingGroup = async (req: Request, res: Response): Promise<
     if (Object.keys(updateData).length === 0) {
       res.status(400).json({
         success: false,
-        message: 'At least one field (name, description, or servers) is required to update',
+        message:
+          'At least one field (name, description, servers, visibility, or sharedWithUsers) is required to update',
       });
       return;
     }
@@ -366,7 +396,7 @@ export const updateExistingGroup = async (req: Request, res: Response): Promise<
 
     const response: ApiResponse = {
       success: true,
-      data: updatedGroup,
+      data: await presentGroup(updatedGroup),
       message: 'Group updated successfully',
     };
     res.json(response);
@@ -442,7 +472,7 @@ export const updateGroupServersBatch = async (req: Request, res: Response): Prom
 
     const response: ApiResponse = {
       success: true,
-      data: updatedGroup,
+      data: await presentGroup(updatedGroup),
       message: 'Group servers updated successfully',
     };
     res.json(response);
@@ -519,7 +549,7 @@ export const addServerToExistingGroup = async (req: Request, res: Response): Pro
 
     const response: ApiResponse = {
       success: true,
-      data: updatedGroup,
+      data: await presentGroup(updatedGroup),
       message: 'Server added to group successfully',
     };
     res.json(response);
@@ -554,7 +584,7 @@ export const removeServerFromExistingGroup = async (req: Request, res: Response)
 
     const response: ApiResponse = {
       success: true,
-      data: updatedGroup,
+      data: await presentGroup(updatedGroup),
       message: 'Server removed from group successfully',
     };
     res.json(response);
@@ -697,7 +727,7 @@ export const updateGroupServerTools = async (req: Request, res: Response): Promi
 
     const response: ApiResponse = {
       success: true,
-      data: updatedGroup,
+      data: await presentGroup(updatedGroup),
       message: 'Server tools updated successfully',
     };
     res.json(response);
@@ -706,5 +736,27 @@ export const updateGroupServerTools = async (req: Request, res: Response): Promi
       success: false,
       message: 'Internal server error',
     });
+  }
+};
+
+// Username-only candidates are restricted to the group owner/admin, like server sharing.
+export const getGroupShareCandidates = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const group = await getGroupDao().findById(req.params.id);
+    if (!group || !canMutateGroup(group)) {
+      res.status(404).json({ success: false, message: 'Group not found' });
+      return;
+    }
+    const users = await getUserDao().findAll();
+    res.json({
+      success: true,
+      data: users
+        .map((user) => user.username)
+        .filter((username) => username !== group.owner)
+        .sort((a, b) => a.localeCompare(b)),
+    });
+  } catch (error) {
+    logger.error('Failed to get group share candidates:', error);
+    res.status(500).json({ success: false, message: 'Failed to get group share candidates' });
   }
 };

@@ -132,6 +132,8 @@ export async function migrateToDatabase(): Promise<boolean> {
             description: group.description,
             servers: Array.isArray(group.servers) ? group.servers : [],
             owner: group.owner,
+            visibility: group.visibility,
+            sharedWithUsers: group.sharedWithUsers,
           });
           logger.log(`  - Created group: ${group.name}`);
         } else {

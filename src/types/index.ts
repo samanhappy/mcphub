@@ -16,6 +16,8 @@ export interface IUser {
 
 // Group interface for server grouping
 export interface IGroup {
+  visibility?: 'private' | 'group' | 'public';
+  sharedWithUsers?: string[];
   id: string; // Unique UUID for the group
   name: string; // Display name of the group
   description?: string; // Optional description of the group
@@ -693,6 +695,8 @@ export interface BatchCreateServersResponse {
 
 // Request payload for adding a new group
 export interface AddGroupRequest {
+  visibility?: IGroup['visibility'];
+  sharedWithUsers?: string[];
   name: string; // Name of the group to add
   description?: string; // Optional description of the group
   servers?: string[] | IGroupServerConfig[]; // Array of server names or server configurations

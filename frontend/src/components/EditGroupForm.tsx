@@ -5,6 +5,7 @@ import { useGroupData } from '@/hooks/useGroupData';
 import { useServerData } from '@/hooks/useServerData';
 import { useCostData } from '@/hooks/useCostData';
 import { ServerToolConfig } from './ServerToolConfig';
+import GroupVisibilityFields from './GroupVisibilityFields';
 
 interface EditGroupFormProps {
   group: Group;
@@ -22,6 +23,8 @@ const EditGroupForm = ({ group, onEdit, onCancel }: EditGroupFormProps) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [formData, setFormData] = useState<GroupFormData>({
+    visibility: group.visibility,
+    sharedWithUsers: group.sharedWithUsers || [],
     name: group.name,
     description: group.description || '',
     servers: group.servers || [],
@@ -53,6 +56,8 @@ const EditGroupForm = ({ group, onEdit, onCancel }: EditGroupFormProps) => {
       }
 
       const result = await updateGroup(group.id, {
+        visibility: formData.visibility,
+        sharedWithUsers: formData.sharedWithUsers,
         name: formData.name,
         description: formData.description,
         servers: formData.servers,
@@ -103,6 +108,12 @@ const EditGroupForm = ({ group, onEdit, onCancel }: EditGroupFormProps) => {
                 />
               </div>
 
+              <GroupVisibilityFields
+                groupId={group.id}
+                value={formData}
+                onChange={(access) => setFormData((previous) => ({ ...previous, ...access }))}
+              />
+
               <div>
                 <label className="block text-gray-700 text-sm font-bold mb-2">
                   {t('groups.configureCapabilities')}
@@ -119,19 +130,10 @@ const EditGroupForm = ({ group, onEdit, onCancel }: EditGroupFormProps) => {
           </div>
 
           <div className="flex justify-end space-x-2 p-5 pt-3 border-t border-[var(--hub-line-2)] flex-shrink-0">
-            <button
-              type="button"
-              onClick={onCancel}
-              className="hub-btn"
-              disabled={isSubmitting}
-            >
+            <button type="button" onClick={onCancel} className="hub-btn" disabled={isSubmitting}>
               {t('common.cancel')}
             </button>
-            <button
-              type="submit"
-              className="hub-btn primary"
-              disabled={isSubmitting}
-            >
+            <button type="submit" className="hub-btn primary" disabled={isSubmitting}>
               {isSubmitting ? t('common.submitting') : t('common.save')}
             </button>
           </div>

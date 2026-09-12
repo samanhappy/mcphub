@@ -17,6 +17,8 @@ jest.mock('typeorm', () => {
       const dataSource = {
         options,
         isInitialized: false,
+        setOptions: jest.fn((updates) => Object.assign(options, updates)),
+        synchronize: jest.fn(async () => {}),
         initialize: jest.fn(async function (this: { isInitialized: boolean }) {
           if (this.isInitialized) {
             throw new Error('Cannot connect because the DataSource is already initialized');
@@ -27,7 +29,9 @@ jest.mock('typeorm', () => {
         destroy: jest.fn(async function (this: { isInitialized: boolean }) {
           this.isInitialized = false;
         }),
-        query: jest.fn(async () => []),
+        query: jest.fn(async (sql: string) =>
+          sql.includes('to_regclass') ? [{ exists: false }] : [],
+        ),
       };
       dataSources.push(dataSource);
       return dataSource;

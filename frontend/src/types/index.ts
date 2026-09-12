@@ -353,6 +353,9 @@ export interface IGroupServerConfig {
 }
 
 export interface Group {
+  owner?: string;
+  visibility?: 'private' | 'group' | 'public';
+  sharedWithUsers?: string[];
   id: string;
   name: string;
   description?: string;
@@ -452,6 +455,8 @@ export interface ServerFormData {
 
 // Group form data types
 export interface GroupFormData {
+  visibility?: Group['visibility'];
+  sharedWithUsers?: string[];
   name: string;
   description: string;
   servers: string[] | IGroupServerConfig[]; // Updated to support new format

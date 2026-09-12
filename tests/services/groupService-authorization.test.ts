@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 
 const mockGroupDao = {
+  findAll: jest.fn(),
+  create: jest.fn(),
   findById: jest.fn(),
   findByName: jest.fn(),
   update: jest.fn(),
@@ -30,7 +32,8 @@ jest.mock('../../src/services/mcpService.js', () => ({
 
 jest.mock('../../src/services/services.js', () => ({
   getDataService: jest.fn(() => ({
-    filterData: (data: any) => data,
+    filterData: (data: any[]) =>
+      new (jest.requireActual('../../src/services/dataService.js').DataService)().filterData(data),
   })),
 }));
 
@@ -41,6 +44,8 @@ jest.mock('../../src/services/userContextService.js', () => ({
 }));
 
 import {
+  createGroup,
+  getAllGroups,
   addServerToGroup,
   deleteGroup,
   removeServerFromGroup,
@@ -66,6 +71,8 @@ describe('groupService authorization', () => {
       isAdmin: false,
     });
 
+    mockGroupDao.findAll.mockResolvedValue([adminOwnedGroup]);
+    mockGroupDao.create.mockImplementation(async (group: any) => group);
     mockGroupDao.findById.mockResolvedValue(adminOwnedGroup);
     mockGroupDao.findByName.mockResolvedValue(null);
     mockGroupDao.update.mockImplementation(async (_id: string, updates: any) => ({
@@ -106,7 +113,9 @@ describe('groupService authorization', () => {
   });
 
   it('rejects updateServerToolsInGroup for non-owner non-admin users', async () => {
-    await expect(updateServerToolsInGroup('group-1', 'server-1', ['dangerous-tool'])).resolves.toBeNull();
+    await expect(
+      updateServerToolsInGroup('group-1', 'server-1', ['dangerous-tool']),
+    ).resolves.toBeNull();
     expect(mockGroupDao.update).not.toHaveBeenCalled();
   });
 
@@ -133,5 +142,64 @@ describe('groupService authorization', () => {
 
     await expect(deleteGroup('group-1')).resolves.toBe(true);
     expect(mockGroupDao.delete).toHaveBeenCalledWith('group-1');
+  });
+});
+describe('group visibility', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockUserContextService.getCurrentUser.mockReturnValue({ username: 'alice', isAdmin: false });
+    mockGroupDao.findByName.mockResolvedValue(null);
+    mockGroupDao.create.mockImplementation(async (group: any) => group);
+    mockServerDao.findAll.mockResolvedValue([
+      { name: 'visible', visibility: 'public', owner: 'admin' },
+      { name: 'secret', visibility: 'private', owner: 'admin' },
+    ]);
+  });
+
+  it('creates private groups by default', async () => {
+    await expect(createGroup('team', undefined, [], 'alice')).resolves.toMatchObject({
+      visibility: 'private',
+    });
+  });
+
+  it('lists shared/public groups without exposing private nested server configuration', async () => {
+    const groups = [
+      {
+        id: 'shared',
+        name: 'shared',
+        owner: 'admin',
+        visibility: 'group',
+        sharedWithUsers: ['alice'],
+        servers: [{ name: 'secret', alias: 'secret-alias', tools: ['secret-tool'] }, 'visible'],
+      },
+      { id: 'public', name: 'public', owner: 'admin', visibility: 'public', servers: ['visible'] },
+      {
+        id: 'private',
+        name: 'private',
+        owner: 'admin',
+        visibility: 'private',
+        servers: ['visible'],
+      },
+      { id: 'legacy', name: 'legacy', owner: 'admin', servers: ['visible'] },
+    ];
+    mockGroupDao.findAll.mockResolvedValue(groups);
+    const result = await getAllGroups();
+    expect(result.map((g) => g.id)).toEqual(['shared', 'public']);
+    expect(result[0].servers).toEqual(['visible']);
+    expect(groups[0].servers).toHaveLength(2);
+  });
+
+  it('preserves hidden server entries when an owner saves the visible selection', async () => {
+    const group = { id: 'own', name: 'own', owner: 'alice', servers: ['secret', 'visible'] };
+    mockGroupDao.findById.mockResolvedValue(group);
+    mockGroupDao.update.mockImplementation(async (_id: string, data: any) => ({
+      ...group,
+      ...data,
+    }));
+    await updateGroup('own', { servers: [] });
+    expect(mockGroupDao.update).toHaveBeenCalledWith(
+      'own',
+      expect.objectContaining({ servers: [expect.objectContaining({ name: 'secret' })] }),
+    );
   });
 });

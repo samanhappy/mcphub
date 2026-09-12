@@ -210,3 +210,15 @@ import { Card, Cards } from 'mintlify';
     "tools": ["toolA", "toolC"]
   }
   ```
+
+## 可见性字段
+
+`POST /api/groups`、`POST /api/groups/batch` 中的各组以及 `PUT /api/groups/:id`
+支持 `visibility`（`private | group | public`）和 `sharedWithUsers`（非空用户名数组）。
+新组默认私有，更新时省略字段则保持原值。`shared` 和 `null` 不是合法的可见性值。
+共享用户为空时仅所有者和管理员有权限。
+
+`GET /api/groups/:id/share-candidates` 返回按名称排序的用户名数组（不包含所有者），
+仅所有者和管理员可调用。共享允许发现和使用，不赋予管理权限。
+组读取响应会隐藏无权访问的服务器；替换服务器列表时保留已有的隐藏条目。
+历史组兼容和数据库升级规则见[组管理](/zh/features/group-management)。

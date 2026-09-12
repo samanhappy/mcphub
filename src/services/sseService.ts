@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { randomUUID } from 'node:crypto';
+import { canAccessGroupRoute } from '../utils/groupAccess.js';
 import { Transport } from '@modelcontextprotocol/sdk/shared/transport.js';
 import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
@@ -448,6 +449,25 @@ const validateBearerAuth = async (req: Request): Promise<BearerAuthResult> => {
   return { valid: false, reason: 'invalid' };
 };
 
+// Recheck every request, including existing sessions and smart group routes.
+const authorizeGroupRoute = async (req: Request, res: Response): Promise<boolean> => {
+  const sessionId = (req.headers['mcp-session-id'] || req.query.sessionId) as string | undefined;
+  const session = sessionId ? transports[sessionId] : undefined;
+  if (session && (session.group || '') !== (req.params.group || '')) {
+    res.status(403).json({ error: 'forbidden', error_description: 'Session route mismatch' });
+    return false;
+  }
+  const key = normalizeBearerScopeParam(req.params.group);
+  if (!key) return true;
+  const dao = getGroupDao();
+  const group = (await dao.findByName(key)) || (isValidUUID(key) ? await dao.findById(key) : null);
+  if (group && !canAccessGroupRoute(group)) {
+    res.status(403).json({ error: 'forbidden', error_description: 'Group access denied' });
+    return false;
+  }
+  return true;
+};
+
 const attachUserContextFromBearer = (result: BearerAuthResult, res: Response): void => {
   if (!result.valid || !result.user) {
     return;
@@ -581,6 +601,7 @@ export const handleSseConnection = async (req: Request, res: Response): Promise<
   }
 
   attachUserContextFromBearer(bearerAuthResult, res);
+  if (!(await authorizeGroupRoute(req, res))) return;
 
   const currentUser = userContextService.getCurrentUser();
   const username = currentUser?.username;
@@ -663,6 +684,7 @@ export const handleSseMessage = async (req: Request, res: Response): Promise<voi
   }
 
   attachUserContextFromBearer(bearerAuthResult, res);
+  if (!(await authorizeGroupRoute(req, res))) return;
 
   const currentUser = userContextService.getCurrentUser();
   const username = currentUser?.username;
@@ -808,6 +830,7 @@ export const handleMcpPostRequest = async (req: Request, res: Response): Promise
   }
 
   attachUserContextFromBearer(bearerAuthResult, res);
+  if (!(await authorizeGroupRoute(req, res))) return;
 
   const currentUser = userContextService.getCurrentUser();
   const username = currentUser?.username;
@@ -979,6 +1002,7 @@ export const handleMcpOtherRequest = async (req: Request, res: Response) => {
   }
 
   attachUserContextFromBearer(bearerAuthResult, res);
+  if (!(await authorizeGroupRoute(req, res))) return;
 
   const currentUser = userContextService.getCurrentUser();
   const username = currentUser?.username;

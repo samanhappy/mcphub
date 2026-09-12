@@ -42,9 +42,15 @@ export const useGroupData = () => {
     name: string,
     description?: string,
     servers: string[] | IGroupServerConfig[] = [],
+    access: Pick<Group, 'visibility' | 'sharedWithUsers'> = {},
   ) => {
     try {
-      const result: ApiResponse<Group> = await apiPost('/groups', { name, description, servers });
+      const result: ApiResponse<Group> = await apiPost('/groups', {
+        name,
+        description,
+        servers,
+        ...access,
+      });
       console.log('Group created successfully:', result);
 
       if (!result || !result.success) {
@@ -63,7 +69,9 @@ export const useGroupData = () => {
   // Update an existing group with server associations
   const updateGroup = async (
     id: string,
-    data: { name?: string; description?: string; servers?: string[] | IGroupServerConfig[] },
+    data: Partial<
+      Pick<Group, 'name' | 'description' | 'servers' | 'visibility' | 'sharedWithUsers'>
+    >,
   ) => {
     try {
       const result: ApiResponse<Group> = await apiPut(`/groups/${id}`, data);

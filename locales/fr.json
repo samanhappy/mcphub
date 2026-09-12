@@ -431,6 +431,10 @@
     "child": "Enfant"
   },
   "groups": {
+    "legacyVisibility": "Groupe existant — choisir la visibilité",
+    "legacyVisibilityHint": "Ce groupe conserve ses règles d’accès précédentes jusqu’au choix explicite de sa visibilité.",
+    "visibilityDescription": "L’accès au groupe nécessite aussi l’accès à chaque serveur. Partager un groupe ne partage pas ses serveurs privés. Seuls le propriétaire et les administrateurs peuvent le gérer.",
+    "shareAfterCreate": "Enregistrez le groupe avant de sélectionner des utilisateurs.",
     "add": "Ajouter",
     "addNew": "Ajouter un nouveau groupe",
     "edit": "Modifier le groupe",

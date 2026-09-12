@@ -14,7 +14,7 @@ export class Group {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ type: 'varchar', length: 255 })
+  @Column({ type: 'varchar', length: 255, unique: true })
   name: string;
 
   @Column({ type: 'text', nullable: true })
@@ -34,6 +34,12 @@ export class Group {
 
   @Column({ type: 'varchar', length: 255, nullable: true })
   owner?: string;
+
+  @Column({ type: 'varchar', length: 20, nullable: true })
+  visibility?: 'private' | 'group' | 'public';
+
+  @Column({ type: 'simple-json', nullable: true })
+  sharedWithUsers?: string[];
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamp' })
   createdAt: Date;
