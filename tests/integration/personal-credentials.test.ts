@@ -162,7 +162,7 @@ beforeAll(async () => {
   app.post('/api/groups', createNewGroup);
   app.put('/api/groups/:id', updateExistingGroup);
   app.get('/api/groups/:id/share-candidates', getGroupShareCandidates);
-  app.get('/sse/:group', sseUserContextMiddleware, handleSseConnection);
+  app.get('/sse/:group', mcpConnectionRateLimiter, sseUserContextMiddleware, handleSseConnection);
   app.post('/mcp/:group', mcpConnectionRateLimiter, sseUserContextMiddleware, handleMcpPostRequest);
   app.get('/mcp/:group', mcpConnectionRateLimiter, sseUserContextMiddleware, handleMcpOtherRequest);
   app.delete(
