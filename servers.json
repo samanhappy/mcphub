@@ -55117,6 +55117,162 @@
       }
     ]
   },
+  "you-mcp": {
+    "display_name": "You.com MCP Server",
+    "repository": {
+      "type": "git",
+      "url": "https://github.com/youdotcom-oss/agent-skills"
+    },
+    "homepage": "https://you.com/docs",
+    "author": {
+      "name": "youdotcom-oss"
+    },
+    "license": "MIT",
+    "categories": [
+      "Web Services"
+    ],
+    "tags": [
+      "search",
+      "web",
+      "research",
+      "contents",
+      "citations",
+      "finance",
+      "mcp"
+    ],
+    "arguments": {
+      "YDC_API_KEY": {
+        "description": "You.com API key for the authenticated MCP endpoint (https://api.you.com/mcp). Optional: the keyless endpoint https://api.you.com/mcp?profile=free works without a key.",
+        "required": false,
+        "example": "your-youcom-api-key"
+      }
+    },
+    "installations": {
+      "npm": {
+        "type": "npm",
+        "command": "npx",
+        "args": [
+          "-y",
+          "mcp-remote",
+          "https://api.you.com/mcp"
+        ],
+        "env": {
+          "YDC_API_KEY": "${YDC_API_KEY}"
+        },
+        "description": "Connect to the hosted You.com MCP server via mcp-remote (no local install of the server itself)"
+      },
+      "npm-free": {
+        "type": "npm",
+        "command": "npx",
+        "args": [
+          "-y",
+          "mcp-remote",
+          "https://api.you.com/mcp?profile=free"
+        ],
+        "env": {},
+        "description": "Connect keyless to the free profile (you-search only, no API key needed)"
+      }
+    },
+    "examples": [
+      {
+        "title": "Web Search",
+        "description": "Search the web for current information and sources.",
+        "prompt": "Search the web for the latest MCP gateway release notes and give me the URLs."
+      },
+      {
+        "title": "Read a URL",
+        "description": "Fetch page content as markdown or HTML for citation-first answers.",
+        "prompt": "Read https://you.com/docs and summarize the API authentication options."
+      },
+      {
+        "title": "Keyless search",
+        "description": "Use the free profile endpoint when no API key is configured.",
+        "prompt": "Search for 'streamable http mcp transport' using the free profile and list the top sources."
+      }
+    ],
+    "name": "you-mcp",
+    "description": "Web search, URL content extraction, and cited research tools from You.com, hosted as a remote MCP server.",
+    "tools": [
+      {
+        "name": "you-search",
+        "description": "Search the web for current information, facts, news, and sources. Best for current events, facts about people, companies, and organizations, finding primary sources, and verifying claims. Returns ranked results with URLs and snippets; read them with you-contents before answering. Supports inline site:, lang:, and loc: filters plus a freshness window.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Short natural-language phrase describing one thing to find."
+            },
+            "count": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 30,
+              "description": "Max results per section."
+            },
+            "freshness": {
+              "type": "string",
+              "description": "Limit results to a recent window: day, week, month, year, or a date range YYYY-MM-DDtoYYYY-MM-DD."
+            },
+            "extraction": {
+              "type": "string",
+              "enum": [
+                "none",
+                "highlights",
+                "full_page"
+              ],
+              "default": "highlights",
+              "description": "Extraction mode: highlights returns query-relevant passages; none returns plain snippets; full_page crawls each result and returns full page content."
+            },
+            "knowledge": {
+              "type": "string",
+              "enum": [
+                "core"
+              ],
+              "description": "Include licensed knowledge results alongside web and news results."
+            }
+          },
+          "required": [
+            "query"
+          ]
+        }
+      },
+      {
+        "name": "you-contents",
+        "description": "Fetch content from specific URLs in markdown or HTML so answers can be built from read pages rather than snippets. Use HTML when layout or tables matter; otherwise prefer markdown.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "urls": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "List of URLs to read (1-3 at a time works best)."
+            },
+            "formats": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "markdown",
+                  "html"
+                ]
+              },
+              "default": [
+                "markdown"
+              ],
+              "description": "Output formats for the extracted content."
+            }
+          },
+          "required": [
+            "urls"
+          ]
+        }
+      }
+    ]
+  },
   "gotohuman-mcp-server": {
     "display_name": "gotoHuman MCP Server",
     "repository": {
