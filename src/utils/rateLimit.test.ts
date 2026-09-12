@@ -8,6 +8,7 @@ jest.mock('express-rate-limit', () => ({
 }));
 
 import {
+  authAttemptRateLimiter,
   authenticatedRouteRateLimiter,
   createStandardRateLimiter,
   mcpConnectionRateLimiter,
@@ -33,6 +34,16 @@ describe('rateLimit configuration', () => {
       max: 480,
       standardHeaders: true,
       legacyHeaders: false,
+    });
+  });
+
+  it('keeps the auth attempt budget for rejected attempts only', () => {
+    expect(authAttemptRateLimiter).toMatchObject({
+      windowMs: 15 * 60 * 1000,
+      max: 20,
+      standardHeaders: true,
+      legacyHeaders: false,
+      skipSuccessfulRequests: true,
     });
   });
 

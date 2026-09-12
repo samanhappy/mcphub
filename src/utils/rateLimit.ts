@@ -5,7 +5,11 @@ const isTestEnv =
   process.env.JEST_WORKER_ID !== undefined ||
   process.env.VITEST_WORKER_ID !== undefined;
 
-export const createStandardRateLimiter = (options: { windowMs: number; max: number }) =>
+export const createStandardRateLimiter = (options: {
+  windowMs: number;
+  max: number;
+  skipSuccessfulRequests?: boolean;
+}) =>
   rateLimit({
     ...options,
     standardHeaders: true,
@@ -33,9 +37,13 @@ export const mcpConnectionRateLimiter = createStandardRateLimiter({
   max: 480,
 });
 
+// Only rejected attempts consume this budget. Counting successful logins would lock out
+// API clients and service accounts that legitimately re-authenticate in bursts, for
+// example after a restart invalidated their cached tokens.
 export const authAttemptRateLimiter = createStandardRateLimiter({
   windowMs: 15 * 60 * 1000,
   max: 20,
+  skipSuccessfulRequests: true,
 });
 
 export const spaPageRateLimiter = createStandardRateLimiter({
