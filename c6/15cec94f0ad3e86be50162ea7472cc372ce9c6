@@ -1,0 +1,109 @@
+src/db/entities/Group.ts
+  s_9664399dad2fde::t_e01e27a8fdf560 17,38-42
+  s_9664399dad2fde::t_1b859aa43110a5 43
+tests/services/mcpService-group-visibility.test.ts
+  s_9664399dad2fde::t_9681fd007c1266 89-90,233-238,452-460,462-463,465-474,476-481,483-485
+  s_9664399dad2fde::t_d10573d8372713 32-37,461,464,475,482
+frontend/src/components/GroupVisibilityFields.tsx
+  s_9664399dad2fde::t_5863d581a40cae 1-10,12-27,29,31-47,50-57,59,61-63,65-69,71,74-75,77,79-80,82-84,86-93,95-111,113-119,121-124,126-128,130-133,141-142,144,146
+  s_9664399dad2fde::t_ff20180c93ee8e 11,28,30,48-49,58,60,64,70,72-73,76,78,81,85,94,112,120,125,129,134-140,143,145
+src/services/sseService.ts
+  s_9664399dad2fde::t_e01e27a8fdf560 452-462,464-470,604,687,833,1005
+  s_9664399dad2fde::t_a5ec3e330363b8 3
+  s_9664399dad2fde::t_d397866f2258a6 463
+frontend/src/hooks/useGroupData.ts
+  s_9664399dad2fde::t_5863d581a40cae 45,48-51,53,72
+  s_9664399dad2fde::t_8683b40f5f7272 52,73-74
+locales/tr.json
+  s_9664399dad2fde::t_5863d581a40cae 434-437
+tests/services/groupService-authorization.test.ts
+  s_9664399dad2fde::t_9681fd007c1266 4-5,35-36,47-48,74-75,116-118,146-160,162-172,174-180,182-186,188-196,198-201,203-205
+  s_9664399dad2fde::t_c387d37d0a7ba4 161,173,181,187,197,202
+tests/integration/personal-credentials.test.ts
+  s_9664399dad2fde::t_9dc90c528c6935 1-5,7,21-22,40,160-165,469-476,478-481,483-487,489-498,501-535,537-557,559-565,568-586
+  s_9664399dad2fde::t_118a096273ae30 536
+  s_9664399dad2fde::t_56e72fdeb04481 6,477,482,488,499-500,558,566-567
+src/dao/GroupDaoDbImpl.ts
+  s_9664399dad2fde::t_e01e27a8fdf560 23-24,37-38,48-49,57-58,68-69,78-79,103-104,120-121,168-169
+src/services/groupService.ts
+  s_9664399dad2fde::t_a5ec3e330363b8 2
+  s_9664399dad2fde::t_e01e27a8fdf560 47,61-68,70-73,76-81,83-87,89-94,96-98,104-105,132,136-137,145,156-157,174,223,269,313-315,369
+  s_9664399dad2fde::t_e7991ed8a0ec15 69,74-75,82,88,95,189-191
+locales/en.json
+  s_9664399dad2fde::t_5863d581a40cae 435-438
+locales/fr.json
+  s_9664399dad2fde::t_5863d581a40cae 434-437
+tests/services/group-schema.test.ts
+  s_9664399dad2fde::t_9dc90c528c6935 1-25,27-39,41,43
+  s_9664399dad2fde::t_2584b804475d6e 26,40,42
+frontend/src/types/index.ts
+  s_9664399dad2fde::t_5863d581a40cae 356-358,458-459
+docs/api-reference/groups.mdx
+  s_9664399dad2fde::t_118a096273ae30 241-254
+docs/features/group-management.mdx
+  s_9664399dad2fde::t_118a096273ae30 578-608
+  s_9664399dad2fde::t_b2435c2a11f7d2 78,96,114,133,152
+docs/zh/features/group-management.mdx
+  s_9664399dad2fde::t_118a096273ae30 573-596
+  s_9664399dad2fde::t_d3938dbc69f68a 49,78,96,114,133,152,338,387
+src/utils/groupAccess.ts
+  s_9664399dad2fde::t_e01e27a8fdf560 1-10,12-22,24-29
+  s_9664399dad2fde::t_430941deec3b00 11,23
+frontend/src/components/EditGroupForm.tsx
+  s_9664399dad2fde::t_7fe5015e7982db 8
+  s_9664399dad2fde::t_5863d581a40cae 26-27,59-60,111-115
+  s_9664399dad2fde::t_c44051a25a8f83 116
+  s_9664399dad2fde::t_65cfad1925e68f 133,136
+src/services/mcpService.ts
+  s_9664399dad2fde::t_e01e27a8fdf560 4541-4542,4554-4557,4577
+  s_9664399dad2fde::t_a5ec3e330363b8 2
+src/utils/migration.ts
+  s_9664399dad2fde::t_e01e27a8fdf560 135-136
+frontend/src/components/AddGroupForm.tsx
+  s_9664399dad2fde::t_7fe5015e7982db 8
+  s_9664399dad2fde::t_5863d581a40cae 25-26,57-58,60,106-109
+  s_9664399dad2fde::t_83b36adb22e03b 59
+  s_9664399dad2fde::t_1db02109c238fe 110
+  s_9664399dad2fde::t_981dcf2abf0a44 127,130
+docs/zh/api-reference/groups.mdx
+  s_9664399dad2fde::t_118a096273ae30 213-224
+frontend/src/components/GroupCard.tsx
+  s_9664399dad2fde::t_5863d581a40cae 1,65-66,169-171,173-175,233-249,411-418
+  s_9664399dad2fde::t_72541d589a26cc 172,232,250,410,419
+locales/zh.json
+  s_9664399dad2fde::t_5863d581a40cae 437-440
+src/types/index.ts
+  s_9664399dad2fde::t_e01e27a8fdf560 19-20,698-699
+src/controllers/groupController.ts
+  s_9664399dad2fde::t_9634132025eef2 1-2,7,15-16,135-140,163-166,177,271,274-277,290-293,344-349,359-364,382-383,399,475,552,587,730,741-762
+src/db/connection.test.ts
+  s_9664399dad2fde::t_568087c44e3f03 20-21,32-34
+src/db/connection.ts
+  s_9664399dad2fde::t_a4f93107b832eb 1,200,536
+src/db/groupSchema.ts
+  s_9664399dad2fde::t_cc4555b16f2797 1-32
+tests/services/group-dao-persistence.test.ts
+  s_9664399dad2fde::t_d0a5e5f72293fd 1-51
+tests/services/keepalive.test.ts
+  s_9664399dad2fde::t_0cafe3795057ed 134,179-182
+src/routes/index.ts
+  s_9664399dad2fde::t_0c9ab98d46088a 39,309
+tests/routes/index.test.ts
+  s_9664399dad2fde::t_a6d48fe770dbce 37
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "c615cec94f0ad3e86be50162ea7472cc372ce9c6",
+  "prompts": {},
+  "sessions": {
+    "s_9664399dad2fde": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a093ad-c12e-7cf0-bbd8-b57d2c19dd83",
+        "model": "gpt-reserve"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
