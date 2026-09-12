@@ -103,11 +103,6 @@ const AddGroupForm = ({ onAdd, onCancel }: AddGroupFormProps) => {
                 />
               </div>
 
-              <GroupVisibilityFields
-                value={formData}
-                onChange={(access) => setFormData((previous) => ({ ...previous, ...access }))}
-              />
-
               <div>
                 <label className="block text-gray-700 text-sm font-bold mb-2">
                   {t('groups.configureCapabilities')}
@@ -120,6 +115,11 @@ const AddGroupForm = ({ onAdd, onCancel }: AddGroupFormProps) => {
                   serverCosts={serverCosts}
                 />
               </div>
+
+              <GroupVisibilityFields
+                value={formData}
+                onChange={(access) => setFormData((previous) => ({ ...previous, ...access }))}
+              />
             </div>
           </div>
 

@@ -108,12 +108,6 @@ const EditGroupForm = ({ group, onEdit, onCancel }: EditGroupFormProps) => {
                 />
               </div>
 
-              <GroupVisibilityFields
-                groupId={group.id}
-                value={formData}
-                onChange={(access) => setFormData((previous) => ({ ...previous, ...access }))}
-              />
-
               <div>
                 <label className="block text-gray-700 text-sm font-bold mb-2">
                   {t('groups.configureCapabilities')}
@@ -126,6 +120,12 @@ const EditGroupForm = ({ group, onEdit, onCancel }: EditGroupFormProps) => {
                   serverCosts={serverCosts}
                 />
               </div>
+
+              <GroupVisibilityFields
+                groupId={group.id}
+                value={formData}
+                onChange={(access) => setFormData((previous) => ({ ...previous, ...access }))}
+              />
             </div>
           </div>
 
