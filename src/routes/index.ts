@@ -36,6 +36,7 @@ import {
   getGroups,
   getGroup,
   createNewGroup,
+  getGroupShareCandidates,
   batchCreateGroups,
   updateExistingGroup,
   deleteExistingGroup,
@@ -305,6 +306,7 @@ export const initRoutes = async (app: express.Application): Promise<void> => {
   // Group management routes
   authenticatedRouter.get('/groups', getGroups);
   authenticatedRouter.get('/groups/:id', getGroup);
+  authenticatedRouter.get('/groups/:id/share-candidates', getGroupShareCandidates);
   authenticatedRouter.post('/groups', createNewGroup);
   authenticatedRouter.post('/groups/batch', batchCreateGroups);
   authenticatedRouter.put('/groups/:id', updateExistingGroup);

@@ -1,3 +1,10 @@
+import {
+  getGroups,
+  getGroup,
+  createNewGroup,
+  updateExistingGroup,
+  getGroupShareCandidates,
+} from '../../src/controllers/groupController.js';
 jest.mock('openid-client', () => ({}));
 import fs from 'node:fs';
 import os from 'node:os';
@@ -11,6 +18,8 @@ import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/
 import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 import {
   getServerDao,
+  getGroupDao,
+  getBearerKeyDao,
   getBuiltinPromptDao,
   getBuiltinResourceDao,
 } from '../../src/dao/DaoFactory.js';
@@ -28,6 +37,7 @@ import {
 import { getServerConfig } from '../../src/controllers/serverController.js';
 import {
   handleMcpPostRequest,
+  handleSseConnection,
   handleMcpOtherRequest,
   transports,
 } from '../../src/services/sseService.js';
@@ -147,6 +157,12 @@ beforeAll(async () => {
   app.put('/api/credentials/:name', updateMyCredential);
   app.delete('/api/credentials/:name', updateMyCredential);
   app.get('/api/servers/:name', getServerConfig);
+  app.get('/api/groups', getGroups);
+  app.get('/api/groups/:id', getGroup);
+  app.post('/api/groups', createNewGroup);
+  app.put('/api/groups/:id', updateExistingGroup);
+  app.get('/api/groups/:id/share-candidates', getGroupShareCandidates);
+  app.get('/sse/:group', mcpConnectionRateLimiter, sseUserContextMiddleware, handleSseConnection);
   app.post('/mcp/:group', mcpConnectionRateLimiter, sseUserContextMiddleware, handleMcpPostRequest);
   app.get('/mcp/:group', mcpConnectionRateLimiter, sseUserContextMiddleware, handleMcpOtherRequest);
   app.delete(
@@ -449,4 +465,122 @@ test('HTTP and OpenAPI resolve the latest personal headers without passthrough o
     expect(parseIdentity(await a.callTool({ name: toolName })).credential).toBe('alice-latest');
   }
   expect(createOAuthProvider).not.toHaveBeenCalled();
+});
+
+test('group visibility composes with personal credentials and revokes existing MCP sessions', async () => {
+  const groupDao = getGroupDao();
+  const group = await groupDao.create({
+    name: 'shared-team',
+    owner: 'admin',
+    visibility: 'group',
+    sharedWithUsers: [alice],
+    servers: ['shared'],
+  });
+  const legacy = await groupDao.create({
+    name: 'legacy-team',
+    owner: 'admin',
+    servers: ['shared'],
+  });
+  await bind(alice, 'alice-group-sentinel');
+  const client = await connect(alice, group.name);
+  const toolName = (await client.listTools()).tools[0].name;
+  expect(parseIdentity(await client.callTool({ name: toolName, arguments: {} })).credential).toBe(
+    'alice-group-sentinel',
+  );
+  const legacyClient = await connect(bob, legacy.name);
+  expect((await legacyClient.listTools()).tools).toHaveLength(1);
+  const initialize = {
+    jsonrpc: '2.0',
+    id: 1,
+    method: 'initialize',
+    params: {
+      protocolVersion: '2024-11-05',
+      capabilities: {},
+      clientInfo: { name: 'group-test', version: '1' },
+    },
+  };
+  const denied = await request(app)
+    .post('/mcp/shared-team')
+    .set('Authorization', `Bearer ${bob}-bearer`)
+    .set('Accept', 'application/json, text/event-stream')
+    .send(initialize);
+  expect(denied.status).toBe(403);
+  for (const route of ['/mcp/$smart%2Fshared-team', `/mcp/${group.id}`]) {
+    const response = await request(app)
+      .post(route)
+      .set('Authorization', `Bearer ${bob}-bearer`)
+      .set('Accept', 'application/json, text/event-stream')
+      .send(initialize);
+    expect(response.status).toBe(403);
+  }
+  const sseDenied = await request(app)
+    .get('/sse/shared-team')
+    .set('Authorization', `Bearer ${bob}-bearer`);
+  expect(sseDenied.status).toBe(403);
+  await getBearerKeyDao().create({
+    name: 'unrelated-scope',
+    token: 'unrelated-scope-token',
+    kind: 'system',
+    enabled: true,
+    accessType: 'groups',
+    allowedGroups: ['other-team'],
+    createdAt: new Date().toISOString(),
+  });
+  const scoped = await request(app)
+    .post('/mcp/shared-team')
+    .set('Authorization', 'Bearer unrelated-scope-token')
+    .set('Accept', 'application/json, text/event-stream')
+    .send(initialize);
+  expect(scoped.status).toBe(401);
+  await groupDao.update(group.id, { sharedWithUsers: [] });
+  await expect(client.listTools()).rejects.toThrow(/Group access denied/);
+  // Restore for SDK session cleanup.
+  await groupDao.update(group.id, { sharedWithUsers: [alice] });
+});
+
+test('group APIs validate visibility, sanitize nested metadata, and keep sharing read-only', async () => {
+  const created = await request(app)
+    .post('/api/groups')
+    .set('x-auth-token', apiToken(alice))
+    .send({ name: 'new-private', servers: ['shared'] });
+  expect(created.status).toBe(201);
+  expect(created.body.data.visibility).toBe('private');
+  const invalid = await request(app)
+    .put(`/api/groups/${created.body.data.id}`)
+    .set('x-auth-token', apiToken(alice))
+    .send({ visibility: 'shared' });
+  expect(invalid.status).toBe(400);
+  await getServerDao().create({
+    name: 'hidden-server',
+    owner: 'admin',
+    visibility: 'private',
+    type: 'stdio',
+    command: 'unused',
+  });
+  const group = await getGroupDao().create({
+    name: 'metadata-team',
+    owner: 'admin',
+    visibility: 'public',
+    servers: [
+      { name: 'hidden-server', alias: 'secret-alias', tools: ['secret-tool'] },
+      { name: 'shared', tools: 'all' },
+    ],
+  });
+  const detail = await request(app)
+    .get(`/api/groups/${group.id}`)
+    .set('x-auth-token', apiToken(alice));
+  expect(detail.body.data.servers.map((s: any) => s.name)).toEqual(['shared']);
+  expect(JSON.stringify(detail.body)).not.toContain('secret');
+  const listing = await request(app).get('/api/groups').set('x-auth-token', apiToken(alice));
+  expect(listing.body.data.some((g: any) => g.name === 'legacy-team')).toBe(false);
+  expect(JSON.stringify(listing.body)).not.toContain('secret');
+  const edit = await request(app)
+    .put(`/api/groups/${group.id}`)
+    .set('x-auth-token', apiToken(alice))
+    .send({ visibility: 'private' });
+  expect(edit.status).toBe(404);
+  const candidates = await request(app)
+    .get(`/api/groups/${group.id}/share-candidates`)
+    .set('x-auth-token', apiToken(alice));
+  expect(candidates.status).toBe(404);
 });

@@ -28,7 +28,6 @@ Groups are named collections of MCP servers that can be accessed through dedicat
 1. **Navigate to Groups Section**: Click "Groups" in the main navigation
 2. **Click "Create Group"**: Start the group creation process
 3. **Fill Group Details**:
-
    - **Name**: Unique identifier for the group
 
 4. **Add Servers**: Select servers to include in the group
@@ -76,7 +75,7 @@ Define groups in your `mcp_settings.json`:
 <AccordionGroup>
   <Accordion title="Web Automation Group">
     **Purpose**: Browser automation and web scraping
-    
+
     **Servers**:
     - `playwright`: Browser automation
     - `fetch`: HTTP requests and web scraping
@@ -94,7 +93,7 @@ Define groups in your `mcp_settings.json`:
 
   <Accordion title="Data Processing Group">
     **Purpose**: Data manipulation and analysis
-    
+
     **Servers**:
     - `sqlite`: Database operations
     - `filesystem`: File operations
@@ -112,7 +111,7 @@ Define groups in your `mcp_settings.json`:
 
   <Accordion title="Communication Group">
     **Purpose**: Messaging and collaboration
-    
+
     **Servers**:
     - `slack`: Slack integration
     - `discord`: Discord bot
@@ -131,7 +130,7 @@ Define groups in your `mcp_settings.json`:
 
   <Accordion title="Development Group">
     **Purpose**: Software development tools
-    
+
     **Servers**:
     - `github`: GitHub operations
     - `gitlab`: GitLab integration
@@ -150,7 +149,7 @@ Define groups in your `mcp_settings.json`:
 
   <Accordion title="AI/ML Group">
     **Purpose**: Machine learning and AI tools
-    
+
     **Servers**:
     - `openai`: OpenAI API integration
     - `huggingface`: Hugging Face models
@@ -576,3 +575,43 @@ Define policies for group behavior:
     Advanced group configuration options
   </Card>
 </CardGroup>
+
+## Visibility and sharing
+
+New groups default to `private`. Set `visibility` to `private` (owner and admins),
+`group` (owner, admins, and usernames in `sharedWithUsers`), or `public` (all users).
+The dashboard labels `group` as Shared. Save a group before choosing users in its edit form.
+Only the owner and admins can change or delete a group, including its server configuration.
+
+For user-authenticated MCP requests, access requires both group and server visibility,
+subject to the legacy group behavior described below. Sharing a group never grants access
+to a server the user cannot otherwise access. These checks also apply to SSE and
+`$smart/<group>` routes, and group access is checked again for existing sessions.
+
+User bearer keys (`kind: 'user'`) inherit their owner's live permissions and do not support
+an independent key scope. The API creates them with `accessType: 'all'` and empty
+`allowedGroups`/`allowedServers`; these scope fields do not restrict user keys at runtime.
+Here, `all` means the owner's permitted resources, not unrestricted system access.
+
+System bearer keys (`kind: 'system'`) use their configured operator scope without applying
+user-based group or server visibility. A system key with `accessType: 'all'` can therefore
+access private groups and servers; scoped system keys remain limited to their configured
+scope. System keys do not establish a user identity or provide personal credentials.
+
+Group lists, details, and server configuration responses omit servers the caller cannot
+access, including their names, aliases, and capability selections. When an owner replaces
+the visible server selection, inaccessible existing entries are preserved; an admin can
+manage the complete group.
+
+### Upgrading existing groups
+
+Groups without a visibility value retain legacy endpoint access: users who know the
+endpoint can use servers they are authorized to access. Their directory visibility remains
+owner/admin only. The dashboard flags these groups for an explicit visibility choice;
+saving unrelated fields does not silently make them private or public.
+
+Database mode adds a unique constraint on group names. Startup checks for duplicate names
+before schema synchronization and stops with the conflicting names/counts if any exist.
+Resolve duplicates manually before restarting; MCPHub does not rename or delete them.
+Group names remain globally reserved, including private groups. Contact an administrator
+for conflicts you cannot resolve from your directory.

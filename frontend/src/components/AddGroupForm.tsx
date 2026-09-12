@@ -5,6 +5,7 @@ import { useServerData } from '@/hooks/useServerData';
 import { useCostData } from '@/hooks/useCostData';
 import { GroupFormData, Server, IGroupServerConfig } from '@/types';
 import { ServerToolConfig } from './ServerToolConfig';
+import GroupVisibilityFields from './GroupVisibilityFields';
 
 interface AddGroupFormProps {
   onAdd: () => void;
@@ -21,6 +22,8 @@ const AddGroupForm = ({ onAdd, onCancel }: AddGroupFormProps) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [formData, setFormData] = useState<GroupFormData>({
+    visibility: 'private',
+    sharedWithUsers: [],
     name: '',
     description: '',
     servers: [] as IGroupServerConfig[],
@@ -51,7 +54,10 @@ const AddGroupForm = ({ onAdd, onCancel }: AddGroupFormProps) => {
         return;
       }
 
-      const result = await createGroup(formData.name, formData.description, formData.servers);
+      const result = await createGroup(formData.name, formData.description, formData.servers, {
+        visibility: formData.visibility,
+        sharedWithUsers: formData.sharedWithUsers,
+      });
       if (!result || !result.success) {
         setError(result?.message || t('groups.createError'));
         setIsSubmitting(false);
@@ -109,23 +115,19 @@ const AddGroupForm = ({ onAdd, onCancel }: AddGroupFormProps) => {
                   serverCosts={serverCosts}
                 />
               </div>
+
+              <GroupVisibilityFields
+                value={formData}
+                onChange={(access) => setFormData((previous) => ({ ...previous, ...access }))}
+              />
             </div>
           </div>
 
           <div className="flex justify-end space-x-2 p-5 pt-3 border-t border-[var(--hub-line-2)] flex-shrink-0">
-            <button
-              type="button"
-              onClick={onCancel}
-              className="hub-btn"
-              disabled={isSubmitting}
-            >
+            <button type="button" onClick={onCancel} className="hub-btn" disabled={isSubmitting}>
               {t('common.cancel')}
             </button>
-            <button
-              type="submit"
-              className="hub-btn primary"
-              disabled={isSubmitting}
-            >
+            <button type="submit" className="hub-btn primary" disabled={isSubmitting}>
               {isSubmitting ? t('common.submitting') : t('common.create')}
             </button>
           </div>

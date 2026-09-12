@@ -357,6 +357,61 @@ describe('Real Client Transport Integration Tests', () => {
       expect(isConnected).toBe(true);
     }, 60000);
 
+    it('continues an existing HTTP session through equivalent group routes', async () => {
+      const testGroup = 'integration-test-group';
+      const transport = new StreamableHTTPClientTransport(new URL(`${baseURL}/mcp/${testGroup}`), {
+        requestInit: {
+          headers: {
+            Authorization: 'Bearer test-auth-token-123',
+          },
+        },
+      });
+      const client = new Client(
+        {
+          name: 'real-http-equivalent-route-test-client',
+          version: '1.0.0',
+        },
+        {
+          capabilities: {
+            tools: {},
+            resources: {},
+            prompts: {},
+          },
+        },
+      );
+
+      try {
+        await client.connect(transport, {});
+        await client.listTools({});
+
+        const sessionId = transport.sessionId;
+        expect(sessionId).toBeDefined();
+
+        for (const route of ['/mcp', `/mcp/$smart/${testGroup}`]) {
+          const response = await fetch(baseURL + route, {
+            method: 'POST',
+            headers: {
+              Accept: 'application/json, text/event-stream',
+              Authorization: 'Bearer test-auth-token-123',
+              'Content-Type': 'application/json',
+              'mcp-session-id': sessionId as string,
+            },
+            body: JSON.stringify({
+              jsonrpc: '2.0',
+              id: 1,
+              method: 'tools/list',
+              params: {},
+            }),
+          });
+
+          expect(response.ok).toBe(true);
+          await response.arrayBuffer();
+        }
+      } finally {
+        await client.close();
+      }
+    }, 60000);
+
     it('should connect using real StreamableHTTPClientTransport with single server', async () => {
       const testServer = 'test-server-1';
       const mcpUrl = new URL(`${baseURL}/mcp/${testServer}`);

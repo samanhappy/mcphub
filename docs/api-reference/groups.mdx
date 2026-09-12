@@ -238,3 +238,17 @@ Updates the tool selection for a specific server within a group.
     "tools": ["toolA", "toolC"]
   }
   ```
+
+## Visibility fields
+
+`POST /api/groups`, entries in `POST /api/groups/batch`, and `PUT /api/groups/:id`
+accept `visibility` (`private | group | public`) and `sharedWithUsers` (an array of
+non-empty usernames). New groups default to `private`; omitted fields on update remain
+unchanged. `shared` and `null` are not valid visibility values. An empty shared user list
+allows only the owner and admins.
+
+`GET /api/groups/:id/share-candidates` returns a sorted array of usernames, excluding
+the owner, and requires owner/admin access. Sharing grants discovery/use, not management.
+All group read responses filter inaccessible nested servers; replacement server edits
+preserve existing inaccessible entries. See [Group Management](/features/group-management)
+for legacy compatibility and database upgrade behavior.

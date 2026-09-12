@@ -434,6 +434,10 @@
     "child": "子"
   },
   "groups": {
+    "legacyVisibility": "历史组 — 请设置可见性",
+    "legacyVisibilityHint": "在您明确选择可见性之前，该组保留原有的端点访问规则。",
+    "visibilityDescription": "访问组内服务器还需具备对应服务器的权限。共享组不会共享私有服务器。仅所有者和管理员可管理此组。",
+    "shareAfterCreate": "请先保存组，再选择共享用户。",
     "add": "添加",
     "addNew": "添加新分组",
     "edit": "编辑分组",

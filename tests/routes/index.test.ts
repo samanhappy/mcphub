@@ -34,6 +34,7 @@ jest.mock('../../src/controllers/serverController.js', () => ({
 
 jest.mock('../../src/controllers/groupController.js', () => ({
   getGroups: routeHandler,
+  getGroupShareCandidates: routeHandler,
   getGroup: routeHandler,
   createNewGroup: routeHandler,
   batchCreateGroups: routeHandler,

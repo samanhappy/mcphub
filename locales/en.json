@@ -432,6 +432,10 @@
     "child": "Child"
   },
   "groups": {
+    "legacyVisibility": "Legacy — choose visibility",
+    "legacyVisibilityHint": "This group keeps its previous endpoint access until you explicitly choose visibility.",
+    "visibilityDescription": "Group access also requires access to each server. Sharing a group does not share private servers. Only the owner and admins can manage the group.",
+    "shareAfterCreate": "Save the group before selecting users.",
     "add": "Add",
     "addNew": "Add New Group",
     "edit": "Edit Group",

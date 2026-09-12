@@ -1,3 +1,4 @@
+import { initializeWithGroupNameCheck } from './groupSchema.js';
 import 'reflect-metadata'; // Ensure reflect-metadata is imported here too
 import { DataSource, DataSourceOptions } from 'typeorm';
 import entities from './entities/index.js';
@@ -196,7 +197,7 @@ const performDatabaseInitialization = async (): Promise<DataSource> => {
     if (!appDataSource.isInitialized) {
       logger.log('Initializing database connection...');
       // Register the vector type with TypeORM
-      await appDataSource.initialize();
+      await initializeWithGroupNameCheck(appDataSource);
       registerPostgresVectorType(appDataSource);
 
       // Create required PostgreSQL extensions
@@ -532,7 +533,7 @@ const attemptReconnection = (): Promise<DataSource> => {
             `[DB Reconnect] Connection attempt ${attempt}/${CONNECTION_CONFIG.maxConnectionRetries}...`,
           );
 
-          await dataSource.initialize();
+          await initializeWithGroupNameCheck(dataSource);
           registerPostgresVectorType(dataSource);
           appDataSource = dataSource;
 

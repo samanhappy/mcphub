@@ -431,6 +431,10 @@
     "child": "Alt"
   },
   "groups": {
+    "legacyVisibility": "Eski grup — görünürlük seçin",
+    "legacyVisibilityHint": "Görünürlüğü açıkça seçene kadar bu grup önceki erişim kurallarını korur.",
+    "visibilityDescription": "Grup erişimi, her sunucuya erişim de gerektirir. Grubu paylaşmak özel sunucuları paylaşmaz. Grubu yalnızca sahibi ve yöneticiler yönetebilir.",
+    "shareAfterCreate": "Kullanıcıları seçmeden önce grubu kaydedin.",
     "add": "Ekle",
     "addNew": "Yeni Grup Ekle",
     "edit": "Grubu Düzenle",

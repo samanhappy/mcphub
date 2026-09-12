@@ -1,4 +1,5 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
+import { canAccessGroupRoute } from '../utils/groupAccess.js';
 import type { RequestPrincipal } from './authorizationService.js';
 import { PrincipalRuntimeService } from './principalRuntimeService.js';
 import { UserContextService } from './userContextService.js';
@@ -4537,13 +4538,8 @@ export const getFilteredServerInfosForGroup = async (
   group: string | undefined,
   options?: { requireClient?: boolean },
 ): Promise<FilteredGroupServersResult> => {
-  // Resolve group server configs. We look up the group directly from the DAO
-  // rather than going through getServerConfigsInGroup (which calls getAllGroups
-  // and applies filterData on groups). Groups don't carry a visibility field,
-  // so admin-owned groups would be filtered out for non-admin users even though
-  // bearer-key auth already authorized access and individual servers inside the
-  // group may be public. Server-level filterData below still enforces per-server
-  // visibility. Fix for #914.
+  // Resolve raw groups so legacy routing remains compatible, then enforce explicit visibility.
+  let matchedGroup = false;
   let serverConfigs: IGroupServerConfig[] = [];
   if (group) {
     const groupDao = getGroupDao();
@@ -4555,6 +4551,10 @@ export const getFilteredServerInfosForGroup = async (
       }
     }
     if (foundGroup) {
+      matchedGroup = true;
+      if (!canAccessGroupRoute(foundGroup)) {
+        return { filteredServerInfos: [], serverConfigsByName: new Map() };
+      }
       serverConfigs = normalizeGroupServers(foundGroup.servers || []);
     }
   }
@@ -4574,7 +4574,7 @@ export const getFilteredServerInfosForGroup = async (
       continue;
     }
 
-    if (serverNamesInGroup.size === 0) {
+    if (!matchedGroup) {
       if (serverInfo.name === group) {
         filteredServerInfos.push(serverInfo);
       }

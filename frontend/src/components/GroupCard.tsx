@@ -1,3 +1,4 @@
+import { useAuth } from '@/contexts/AuthContext';
 import { useState, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Edit3, Trash2, Copy, Check, Link as LinkIcon, FileCode, ChevronDown } from 'lucide-react';
@@ -61,6 +62,8 @@ const copyText = async (value: string): Promise<boolean> => {
 
 const GroupCard = ({ group, servers, onEdit, onDelete, cost }: GroupCardProps) => {
   const { t } = useTranslation();
+  const { auth } = useAuth();
+  const canManage = !!auth.user && (auth.user.isAdmin || auth.user.username === group.owner);
   const { showToast } = useToast();
   const { installConfig, nameSeparator } = useSettingsData();
   const baseUrl = installConfig?.baseUrl?.replace(/\/+$/, '') || '';
@@ -163,6 +166,13 @@ const GroupCard = ({ group, servers, onEdit, onDelete, cost }: GroupCardProps) =
               {group.id}
             </span>
           </div>
+          <div className="mt-1 text-xs text-[var(--hub-ink-3)]">
+            {group.visibility
+              ? t(
+                  `server.visibility${group.visibility === 'group' ? 'Group' : group.visibility === 'public' ? 'Public' : 'Private'}`,
+                )
+              : t('groups.legacyVisibility')}
+          </div>
           {group.description && (
             <div style={{ fontSize: 12.5, color: 'var(--hub-ink-3)', marginTop: 2 }}>
               {group.description}
@@ -219,21 +229,25 @@ const GroupCard = ({ group, servers, onEdit, onDelete, cost }: GroupCardProps) =
               </div>
             )}
           </div>
-          <button
-            onClick={() => onEdit(group)}
-            className="hub-icon-btn sm"
-            title={t('groups.edit')}
-          >
-            <Edit3 size={13} />
-          </button>
-          <button
-            onClick={() => setShowDeleteDialog(true)}
-            className="hub-icon-btn sm"
-            title={t('groups.delete')}
-            style={{ color: 'var(--hub-ink-3)' }}
-          >
-            <Trash2 size={13} />
-          </button>
+          {canManage && (
+            <>
+              <button
+                onClick={() => onEdit(group)}
+                className="hub-icon-btn sm"
+                title={t('groups.edit')}
+              >
+                <Edit3 size={13} />
+              </button>
+              <button
+                onClick={() => setShowDeleteDialog(true)}
+                className="hub-icon-btn sm"
+                title={t('groups.delete')}
+                style={{ color: 'var(--hub-ink-3)' }}
+              >
+                <Trash2 size={13} />
+              </button>
+            </>
+          )}
         </div>
       </div>
 
@@ -393,14 +407,16 @@ const GroupCard = ({ group, servers, onEdit, onDelete, cost }: GroupCardProps) =
             </div>
           )}
         </div>
-        <button
-          className="hub-btn ghost sm"
-          style={{ color: 'var(--hub-ink-3)' }}
-          onClick={() => onEdit(group)}
-        >
-          {t('groups.configureTools') || t('groups.edit')}
-          <ChevronDown size={11} style={{ transform: 'rotate(-90deg)' }} />
-        </button>
+        {canManage && (
+          <button
+            className="hub-btn ghost sm"
+            style={{ color: 'var(--hub-ink-3)' }}
+            onClick={() => onEdit(group)}
+          >
+            {t('groups.configureTools') || t('groups.edit')}
+            <ChevronDown size={11} style={{ transform: 'rotate(-90deg)' }} />
+          </button>
+        )}
       </div>
 
       <DeleteDialog
