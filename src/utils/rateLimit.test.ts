@@ -17,9 +17,18 @@ jest.mock('dotenv', () => ({
   default: { config: jest.fn() },
 }));
 
+const warnMock = jest.fn();
+
+jest.mock('./logger.js', () => ({
+  __esModule: true,
+  logger: { warn: warnMock, info: jest.fn(), error: jest.fn(), debug: jest.fn() },
+}));
+
 const ENV_KEYS = [
   'AUTH_RATE_LIMIT_MAX',
   'AUTH_RATE_LIMIT_WINDOW_MS',
+  'REGISTER_RATE_LIMIT_MAX',
+  'REGISTER_RATE_LIMIT_WINDOW_MS',
   'API_RATE_LIMIT_MAX',
   'API_RATE_LIMIT_WINDOW_MS',
   'MCP_RATE_LIMIT_MAX',
@@ -43,17 +52,46 @@ const clearEnv = () => {
  * cleared first, so a test asserting a default never depends on what happens to
  * be set in the ambient environment.
  */
-const loadRateLimit = async (env: Record<string, string> = {}) => {
+const loadRateLimit = async (
+  env: Record<string, string> = {},
+  options: { productionLike?: boolean } = {},
+) => {
   clearEnv();
   for (const [key, value] of Object.entries(env)) {
     process.env[key] = value;
   }
+
+  // `skip()` is always true under a test runner, so asserting that a limiter is
+  // disabled by configuration requires evaluating the module as production would.
+  const restore: Array<() => void> = [];
+  if (options.productionLike) {
+    for (const key of ['NODE_ENV', 'JEST_WORKER_ID', 'VITEST_WORKER_ID']) {
+      const previous = process.env[key];
+      restore.push(() => {
+        if (previous === undefined) {
+          delete process.env[key];
+        } else {
+          process.env[key] = previous;
+        }
+      });
+      delete process.env[key];
+    }
+    process.env.NODE_ENV = 'production';
+  }
+
   jest.resetModules();
-  return import('./rateLimit.js');
+  try {
+    return await import('./rateLimit.js');
+  } finally {
+    for (const undo of restore) {
+      undo();
+    }
+  }
 };
 
 beforeEach(() => {
   clearEnv();
+  warnMock.mockClear();
 });
 
 afterEach(() => {
@@ -118,10 +156,84 @@ describe('rateLimit configuration', () => {
     it('keeps counting every request on the other limiters', async () => {
       const mod = await loadRateLimit();
 
-      expect(mod.authenticatedRouteRateLimiter).not.toMatchObject({
+      for (const limiter of [
+        mod.authenticatedRouteRateLimiter,
+        mod.mcpConnectionRateLimiter,
+        mod.templateRateLimiter,
+        mod.spaPageRateLimiter,
+        mod.hostedInternalEventRateLimiter,
+        mod.authRegistrationRateLimiter,
+      ]) {
+        expect(limiter).not.toMatchObject({ skipSuccessfulRequests: true });
+      }
+    });
+  });
+
+  describe('registration limiter', () => {
+    it('counts successful registrations so the per-IP account cap survives', async () => {
+      const mod = await loadRateLimit();
+
+      // /auth/register is ungated: a successful request creates an account, which is
+      // exactly what the cap exists to limit. It must not inherit skipSuccessfulRequests
+      // from the login limiter.
+      expect(mod.authRegistrationRateLimiter).toMatchObject({
+        windowMs: 15 * 60 * 1000,
+        max: 20,
+      });
+      expect(mod.authRegistrationRateLimiter).not.toMatchObject({
         skipSuccessfulRequests: true,
       });
-      expect(mod.mcpConnectionRateLimiter).not.toMatchObject({ skipSuccessfulRequests: true });
+    });
+
+    it('has its own budget so login traffic cannot exhaust it', async () => {
+      const mod = await loadRateLimit({
+        AUTH_RATE_LIMIT_MAX: '500',
+        REGISTER_RATE_LIMIT_MAX: '5',
+        REGISTER_RATE_LIMIT_WINDOW_MS: '60000',
+      });
+
+      expect(mod.authAttemptRateLimiter).toMatchObject({ max: 500 });
+      expect(mod.authRegistrationRateLimiter).toMatchObject({ max: 5, windowMs: 60000 });
+    });
+  });
+
+  describe('disabling a limiter', () => {
+    it('treats 0 as unlimited rather than blocking every request', async () => {
+      // express-rate-limit >= 7 rejects every request when limit is 0, so an operator
+      // reaching for "no limit" must not have that value passed through verbatim.
+      const mod = await loadRateLimit({ AUTH_RATE_LIMIT_MAX: '0' }, { productionLike: true });
+
+      const auth = mod.authAttemptRateLimiter as unknown as { skip: () => boolean; max: number };
+      expect(auth.skip()).toBe(true);
+      expect(auth.max).toBeGreaterThan(0);
+    });
+
+    it('accepts off as a spelling of unlimited', async () => {
+      const mod = await loadRateLimit({ API_RATE_LIMIT_MAX: 'off' }, { productionLike: true });
+
+      expect((mod.authenticatedRouteRateLimiter as unknown as { skip: () => boolean }).skip()).toBe(
+        true,
+      );
+    });
+
+    it('leaves every other limiter enabled', async () => {
+      const mod = await loadRateLimit({ AUTH_RATE_LIMIT_MAX: '0' }, { productionLike: true });
+
+      for (const limiter of [
+        mod.authenticatedRouteRateLimiter,
+        mod.mcpConnectionRateLimiter,
+        mod.authRegistrationRateLimiter,
+      ]) {
+        expect((limiter as unknown as { skip: () => boolean }).skip()).toBe(false);
+      }
+    });
+
+    it('warns so a disabled limiter is visible in the logs', async () => {
+      await loadRateLimit({ AUTH_RATE_LIMIT_MAX: '0' });
+
+      expect(warnMock).toHaveBeenCalledWith(
+        expect.stringContaining('Rate limiting disabled by AUTH_RATE_LIMIT_MAX'),
+      );
     });
   });
 
