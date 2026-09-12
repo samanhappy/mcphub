@@ -583,11 +583,20 @@ New groups default to `private`. Set `visibility` to `private` (owner and admins
 The dashboard labels `group` as Shared. Save a group before choosing users in its edit form.
 Only the owner and admins can change or delete a group, including its server configuration.
 
-For user-authenticated MCP requests, access is the intersection of bearer-key scope,
-group visibility, and server visibility. Sharing a group never grants access to a private
-server. These checks also apply to SSE and `$smart/<group>` routes and are repeated for
-existing sessions. System keys retain their existing operator scope; visibility does not
-turn them into user identities or provide personal credentials.
+For user-authenticated MCP requests, access requires both group and server visibility,
+subject to the legacy group behavior described below. Sharing a group never grants access
+to a server the user cannot otherwise access. These checks also apply to SSE and
+`$smart/<group>` routes, and group access is checked again for existing sessions.
+
+User bearer keys (`kind: 'user'`) inherit their owner's live permissions and do not support
+an independent key scope. The API creates them with `accessType: 'all'` and empty
+`allowedGroups`/`allowedServers`; these scope fields do not restrict user keys at runtime.
+Here, `all` means the owner's permitted resources, not unrestricted system access.
+
+System bearer keys (`kind: 'system'`) use their configured operator scope without applying
+user-based group or server visibility. A system key with `accessType: 'all'` can therefore
+access private groups and servers; scoped system keys remain limited to their configured
+scope. System keys do not establish a user identity or provide personal credentials.
 
 Group lists, details, and server configuration responses omit servers the caller cannot
 access, including their names, aliases, and capability selections. When an owner replaces
