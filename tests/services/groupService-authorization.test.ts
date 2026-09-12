@@ -187,6 +187,7 @@ describe('group visibility', () => {
     expect(result.map((g) => g.id)).toEqual(['shared', 'public']);
     expect(result[0].servers).toEqual(['visible']);
     expect(groups[0].servers).toHaveLength(2);
+    expect(mockServerDao.findAll).toHaveBeenCalledTimes(1);
   });
 
   it('preserves hidden server entries when an owner saves the visible selection', async () => {

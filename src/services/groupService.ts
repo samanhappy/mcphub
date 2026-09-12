@@ -58,16 +58,26 @@ export const canMutateGroup = (group: IGroup): boolean => {
   return group.owner === currentUser.username;
 };
 
-// Filter nested entries without mutating the persisted group. Apply on every API response.
-export const presentGroup = async (group: IGroup): Promise<IGroup> => {
+const getVisibleServerNames = async (): Promise<Set<string> | undefined> => {
   const currentUser = UserContextService.getInstance().getCurrentUser();
-  if (!currentUser || currentUser.isAdmin) return group;
+  if (!currentUser || currentUser.isAdmin) return undefined;
+
   const servers = await getServerDao().findAll();
-  const visible = new Set(
+  return new Set(
     getDataService()
       .filterData(servers)
       .map((server) => server.name),
   );
+};
+
+// Filter nested entries without mutating the persisted group. Apply on every API response.
+export const presentGroup = async (
+  group: IGroup,
+  visibleServerNames?: Set<string>,
+): Promise<IGroup> => {
+  const currentUser = UserContextService.getInstance().getCurrentUser();
+  if (!currentUser || currentUser.isAdmin) return group;
+  const visible = visibleServerNames ?? (await getVisibleServerNames()) ?? new Set<string>();
   return {
     ...group,
     servers: (group.servers || []).filter((entry) =>
@@ -102,7 +112,8 @@ export const getAllGroups = async (): Promise<IGroup[]> => {
   const groups = await groupDao.findAll();
   const dataService = getDataService();
   const visibleGroups = dataService.filterData ? dataService.filterData(groups) : groups;
-  return Promise.all(visibleGroups.map(presentGroup));
+  const visibleServerNames = await getVisibleServerNames();
+  return Promise.all(visibleGroups.map((group) => presentGroup(group, visibleServerNames)));
 };
 
 // Get group by ID or name

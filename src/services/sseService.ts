@@ -160,6 +160,40 @@ const normalizeBearerScopeParam = (groupParam?: string): string | undefined => {
   return groupParam;
 };
 
+const getRequestSessionId = (req: Request): string | undefined =>
+  (req.headers['mcp-session-id'] || req.query.sessionId) as string | undefined;
+
+const attachSessionGroupToRequest = (req: Request): void => {
+  const sessionId = getRequestSessionId(req);
+  const sessionGroup = sessionId ? transports[sessionId]?.group : undefined;
+  if (sessionGroup && !req.params.group) {
+    req.params.group = sessionGroup;
+  }
+};
+
+const resolveGroupRouteReference = async (reference: string) => {
+  const groupDao = getGroupDao();
+  const byName = await groupDao.findByName(reference);
+  if (byName || !isValidUUID(reference)) return byName;
+  return groupDao.findById(reference);
+};
+
+const groupRouteReferencesMatch = async (
+  requestedGroup?: string,
+  sessionGroup?: string,
+): Promise<boolean> => {
+  const normalizedRequestedGroup = normalizeBearerScopeParam(requestedGroup);
+  const normalizedSessionGroup = normalizeBearerScopeParam(sessionGroup);
+  if (normalizedRequestedGroup === normalizedSessionGroup) return true;
+  if (!normalizedRequestedGroup || !normalizedSessionGroup) return false;
+
+  const [requested, session] = await Promise.all([
+    resolveGroupRouteReference(normalizedRequestedGroup),
+    resolveGroupRouteReference(normalizedSessionGroup),
+  ]);
+  return Boolean(requested && session && requested.id === session.id);
+};
+
 const isBearerKeyAllowedForRequest = async (req: Request, key: BearerKey): Promise<boolean> => {
   if (key.kind === 'user') {
     return true;
@@ -451,9 +485,9 @@ const validateBearerAuth = async (req: Request): Promise<BearerAuthResult> => {
 
 // Recheck every request, including existing sessions and smart group routes.
 const authorizeGroupRoute = async (req: Request, res: Response): Promise<boolean> => {
-  const sessionId = (req.headers['mcp-session-id'] || req.query.sessionId) as string | undefined;
+  const sessionId = getRequestSessionId(req);
   const session = sessionId ? transports[sessionId] : undefined;
-  if (session && (session.group || '') !== (req.params.group || '')) {
+  if (session && !(await groupRouteReferencesMatch(req.params.group, session.group))) {
     res.status(403).json({ error: 'forbidden', error_description: 'Session route mismatch' });
     return false;
   }
@@ -668,13 +702,7 @@ export const handleSseMessage = async (req: Request, res: Response): Promise<voi
   // (no :group param), so isBearerKeyAllowedForRequest would see an empty paramValue
   // and reject the key with 401. Injecting the group here lets the validator use
   // the correct scope from the already-authenticated session.
-  const preSessionId = req.query.sessionId as string;
-  if (preSessionId && transports[preSessionId] && !req.params.group) {
-    const sessionGroup = transports[preSessionId].group;
-    if (sessionGroup) {
-      req.params.group = sessionGroup;
-    }
-  }
+  attachSessionGroupToRequest(req);
 
   // Check bearer auth using filtered settings
   const bearerAuthResult = await validateBearerAuth(req);
@@ -821,6 +849,10 @@ async function createNewSession(
 export const handleMcpPostRequest = async (req: Request, res: Response): Promise<void> => {
   // User context is now set by sseUserContextMiddleware
   const userContextService = UserContextService.getInstance();
+
+  // Streamable HTTP clients may continue an existing session on the global route.
+  // Reuse the session's group before bearer-scope validation in that case.
+  attachSessionGroupToRequest(req);
 
   // Check bearer auth using filtered settings
   const bearerAuthResult = await validateBearerAuth(req);
@@ -993,6 +1025,10 @@ export const handleMcpPostRequest = async (req: Request, res: Response): Promise
 export const handleMcpOtherRequest = async (req: Request, res: Response) => {
   // User context is now set by sseUserContextMiddleware
   const userContextService = UserContextService.getInstance();
+
+  // Streamable HTTP clients may continue an existing session on the global route.
+  // Reuse the session's group before bearer-scope validation in that case.
+  attachSessionGroupToRequest(req);
 
   // Check bearer auth using filtered settings
   const bearerAuthResult = await validateBearerAuth(req);
