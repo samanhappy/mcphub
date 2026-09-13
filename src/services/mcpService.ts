@@ -2397,7 +2397,11 @@ const filterToolsByConfig = async (serverName: string, tools: Tool[]): Promise<T
   }
 
   return tools.filter((tool) => {
-    const toolConfig = serverConfig.tools?.[tool.name];
+    // toggleTool stores the disable under whatever key string the caller used
+    // (bare upstream name or server-prefixed name, never normalized) — check
+    // both, same as findToolOnServer's execution-time gate.
+    const bareToolName = normalizeToolNameForServer(serverName, tool.name);
+    const toolConfig = serverConfig.tools?.[tool.name] ?? serverConfig.tools?.[bareToolName];
     // If tool is not in config, it's enabled by default
     return toolConfig?.enabled !== false;
   });
