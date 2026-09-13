@@ -303,7 +303,7 @@ function getConfigValue<T>(
  * @param {string} value - The environment variable value to parse
  * @returns {boolean} The parsed boolean value
  */
-function parseBooleanEnvVar(value: string): boolean {
+export function parseBooleanEnvVar(value: string): boolean {
   if (typeof value === 'boolean') {
     return value;
   }

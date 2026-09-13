@@ -570,6 +570,63 @@ describe('serverController - getAllSettings', () => {
       },
     });
   });
+
+  describe('smart routing dashboard reflects SMART_ROUTING_ENABLED', () => {
+    const originalEnv = process.env.SMART_ROUTING_ENABLED;
+
+    afterEach(() => {
+      if (originalEnv === undefined) {
+        delete process.env.SMART_ROUTING_ENABLED;
+      } else {
+        process.env.SMART_ROUTING_ENABLED = originalEnv;
+      }
+    });
+
+    const adminReq = { user: { username: 'admin', isAdmin: true } } as unknown as Request;
+
+    it('shows smart routing as enabled when only the env var (no DB setting) turns it on', async () => {
+      // Regression: an env-only deployment (our own Docker quick start) never
+      // writes systemConfig.smartRouting to the DB, yet the runtime
+      // (getSmartRoutingConfig) honors SMART_ROUTING_ENABLED and smart routing
+      // works end-to-end. The dashboard read this same DAO result directly and
+      // hardcoded `enabled: false` whenever no DB row existed, showing
+      // "Inactive" for a feature that was actually live.
+      process.env.SMART_ROUTING_ENABLED = 'true';
+      const res = { json: jest.fn(), status: jest.fn().mockReturnThis() } as unknown as Response;
+
+      await getAllSettings(adminReq, res);
+
+      const payload = (res.json as jest.Mock).mock.calls[0][0];
+      expect(payload.data.systemConfig.smartRouting.enabled).toBe(true);
+    });
+
+    it('shows smart routing as enabled when the env var overrides an explicit DB false', async () => {
+      // Same precedence bug, other direction: a stale/default `enabled: false`
+      // row in the DB must not shadow the env var either — getSmartRoutingConfig
+      // always lets the env var win.
+      mockSystemConfigDao.get.mockResolvedValueOnce({
+        install: { baseUrl: 'https://hub.example.com' },
+        smartRouting: { enabled: false, dbUrl: '' },
+      });
+      process.env.SMART_ROUTING_ENABLED = 'true';
+      const res = { json: jest.fn(), status: jest.fn().mockReturnThis() } as unknown as Response;
+
+      await getAllSettings(adminReq, res);
+
+      const payload = (res.json as jest.Mock).mock.calls[0][0];
+      expect(payload.data.systemConfig.smartRouting.enabled).toBe(true);
+    });
+
+    it('still reports disabled when neither the env var nor the DB enable it', async () => {
+      delete process.env.SMART_ROUTING_ENABLED;
+      const res = { json: jest.fn(), status: jest.fn().mockReturnThis() } as unknown as Response;
+
+      await getAllSettings(adminReq, res);
+
+      const payload = (res.json as jest.Mock).mock.calls[0][0];
+      expect(payload.data.systemConfig.smartRouting.enabled).toBe(false);
+    });
+  });
 });
 
 describe('serverController - updateSystemConfig', () => {

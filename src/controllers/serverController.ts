@@ -60,6 +60,7 @@ import { isPrivilegedServerConfig } from '../utils/serverConfigValidation.js';
 import { validateServerName } from '../utils/serverNameValidation.js';
 import { setCachedSystemConfig } from '../utils/systemConfigCache.js';
 import { DEFAULT_INSTALL_BASE_URL, withResolvedInstallBaseUrl } from '../utils/installBaseUrl.js';
+import { parseBooleanEnvVar } from '../utils/smartRouting.js';
 import { previewOpenApiToolStats } from '../services/openApiToolStatsService.js';
 import { logger } from '../utils/logger.js';
 
@@ -397,16 +398,29 @@ export const getAllSettings = async (req: Request, res: Response): Promise<void>
 
     // Ensure smart routing config has DB URL set if environment variable is present
     const dbUrlEnv = process.env.DB_URL || '';
+    // Runtime enablement (getSmartRoutingConfig) always lets SMART_ROUTING_ENABLED /
+    // ENABLE_SMART_ROUTING override the stored setting — the dashboard must reflect
+    // that same precedence, or an env-only deployment (our own Docker quick start)
+    // shows "Inactive" here while smart routing is actually live end-to-end.
+    const smartRoutingEnabledEnv =
+      process.env.SMART_ROUTING_ENABLED || process.env.ENABLE_SMART_ROUTING;
+    const smartRoutingEnabledFromEnv =
+      smartRoutingEnabledEnv !== undefined ? parseBooleanEnvVar(smartRoutingEnabledEnv) : undefined;
     if (!systemConfig.smartRouting) {
       systemConfig.smartRouting = {
-        enabled: false,
+        enabled: smartRoutingEnabledFromEnv ?? false,
         dbUrl: dbUrlEnv ? '${DB_URL}' : '',
         llmProviderBaseUrl: '',
         llmProviderApiKey: '',
         embeddingModel: '',
       };
-    } else if (!systemConfig.smartRouting.dbUrl) {
-      systemConfig.smartRouting.dbUrl = dbUrlEnv ? '${DB_URL}' : '';
+    } else {
+      if (smartRoutingEnabledFromEnv !== undefined) {
+        systemConfig.smartRouting.enabled = smartRoutingEnabledFromEnv;
+      }
+      if (!systemConfig.smartRouting.dbUrl) {
+        systemConfig.smartRouting.dbUrl = dbUrlEnv ? '${DB_URL}' : '';
+      }
     }
 
     if (!systemConfig.toolResultCompression) {
