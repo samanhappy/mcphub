@@ -1453,6 +1453,18 @@ export const toggleTool = async (req: Request, res: Response): Promise<void> => 
       return;
     }
 
+    // For an already-connected server, notifyToolChanged()'s full re-init pass
+    // takes the "already connected" shortcut and preserves the in-memory
+    // serverInfo verbatim (see registerAllTools) instead of applying the
+    // freshly-persisted tools config — so findToolOnServer's enabled check
+    // would keep seeing the pre-toggle state until the server reconnects for
+    // an unrelated reason. Patch the live config in place so the toggle takes
+    // effect immediately, without waiting for (or forcing) a reconnect.
+    const liveServer = getServerByName(serverName);
+    if (liveServer?.config) {
+      liveServer.config = { ...liveServer.config, tools };
+    }
+
     // Notify that tools have changed
     notifyToolChanged();
 
@@ -1517,6 +1529,14 @@ export const updateToolDescription = async (req: Request, res: Response): Promis
         message: 'Failed to save settings',
       });
       return;
+    }
+
+    // Same stale-config gap as toggleTool: keep the live serverInfo in sync so
+    // a subsequent enable/disable check (or the dashboard's display of this
+    // description) doesn't read pre-update state.
+    const liveServerForDescription = getServerByName(serverName);
+    if (liveServerForDescription?.config) {
+      liveServerForDescription.config = { ...liveServerForDescription.config, tools };
     }
 
     // Notify that tools have changed

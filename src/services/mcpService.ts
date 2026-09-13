@@ -2210,9 +2210,14 @@ export const getServersInfo = async (
           serverConfig?.oauth?.accessToken || serverConfig?.oauth?.refreshToken,
         );
 
-        // Add enabled status and custom description to each tool
+        // Add enabled status and custom description to each tool.
+        // toggleTool stores under whatever key the caller passed (prefixed,
+        // as the dashboard sends, or bare, as a direct API call may) with no
+        // normalization — check both so the dashboard reflects a disable set
+        // either way instead of always showing enabled:true for one of them.
         const toolsWithEnabled = tools.map((tool) => {
-          const toolConfig = serverConfig?.tools?.[tool.name];
+          const bareToolName = normalizeToolNameForServer(name, tool.name);
+          const toolConfig = serverConfig?.tools?.[tool.name] ?? serverConfig?.tools?.[bareToolName];
           return buildToolWithDescriptionMetadata(tool, toolConfig);
         });
 
@@ -2392,7 +2397,11 @@ const filterToolsByConfig = async (serverName: string, tools: Tool[]): Promise<T
   }
 
   return tools.filter((tool) => {
-    const toolConfig = serverConfig.tools?.[tool.name];
+    // toggleTool stores the disable under whatever key string the caller used
+    // (bare upstream name or server-prefixed name, never normalized) — check
+    // both, same as findToolOnServer's execution-time gate.
+    const bareToolName = normalizeToolNameForServer(serverName, tool.name);
+    const toolConfig = serverConfig.tools?.[tool.name] ?? serverConfig.tools?.[bareToolName];
     // If tool is not in config, it's enabled by default
     return toolConfig?.enabled !== false;
   });
@@ -3114,11 +3123,40 @@ const findToolOnServer = (
   toolName: string,
   allowRawName: boolean,
 ): Tool | undefined => {
-  return serverInfo.tools.find(
+  const tool = serverInfo.tools.find(
     (tool) =>
       tool.name === toolName ||
       (allowRawName && normalizeToolNameForServer(serverInfo.name, tool.name) === toolName),
   );
+  if (!tool) {
+    return undefined;
+  }
+  // A tool disabled via POST /api/servers/:server/tools/:tool/toggle must be
+  // unresolvable for execution, not just hidden from tools/list — otherwise a
+  // caller who already knows the tool name can invoke it regardless of the
+  // disabled flag.
+  //
+  // The runtime tool cache (serverInfo.tools, built by normalizeToolForCache)
+  // never carries an `enabled` field — that field only exists on the
+  // *projection* built for the dashboard/API (buildToolWithDescriptionMetadata),
+  // which is a different object. So the persisted per-tool config must be
+  // consulted directly here.
+  //
+  // toggleTool (serverController.ts) stores `tools[toolName] = ...` using
+  // whatever string the caller passed as :toolName, with no normalization.
+  // The dashboard sends the already-prefixed `tool.name`, matching what
+  // getServersInfo's toolsWithEnabled already reads — but any other caller
+  // (REST API used directly, scripts, docs examples) can just as validly
+  // pass the bare upstream name, which then never matches a prefixed-only
+  // lookup. Check both so a disable takes effect regardless of which form
+  // was used to set it.
+  const bareToolName = normalizeToolNameForServer(serverInfo.name, tool.name);
+  const toolConfig =
+    serverInfo.config?.tools?.[tool.name] ?? serverInfo.config?.tools?.[bareToolName];
+  if (toolConfig && toolConfig.enabled === false) {
+    return undefined;
+  }
+  return tool;
 };
 
 const assertToolAvailableForRoute = (tool: Tool, appsRouteContext: McpAppsRouteContext): void => {
