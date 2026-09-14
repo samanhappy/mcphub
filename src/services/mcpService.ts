@@ -2375,7 +2375,9 @@ export const reinstallServer = async (serverName: string): Promise<void> => {
   try {
     // For npx, clear cache directory synchronously before reconnect.
     // For uvx, this is a no-op — refresh is handled via --refresh flag injection.
-    await clearRunnerCache(command);
+    // Pass the server's own arguments so the npx clear can be scoped to this
+    // server's package instead of discarding every npx server's install.
+    await clearRunnerCache(command, serverConfig.args || []);
 
     // Close and reconnect (will pick up pendingReinstalls flag for uvx)
     await reconnectServer(serverName);
