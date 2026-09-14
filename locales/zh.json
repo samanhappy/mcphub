@@ -322,6 +322,7 @@
     "copy": "复制",
     "copyId": "复制ID",
     "copyUrl": "复制URL",
+    "copyOpenApiUrl": "复制OpenAPI URL",
     "copyJson": "复制JSON",
     "copySuccess": "已复制到剪贴板",
     "copyFailed": "复制失败",

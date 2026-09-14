@@ -321,6 +321,7 @@
     "copy": "Kopyala",
     "copyId": "ID'yi Kopyala",
     "copyUrl": "URL'yi Kopyala",
+    "copyOpenApiUrl": "OpenAPI URL'sini Kopyala",
     "copyJson": "JSON'u Kopyala",
     "copySuccess": "Panoya kopyalandı",
     "copyFailed": "Kopyalama başarısız",

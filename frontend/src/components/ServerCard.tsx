@@ -472,6 +472,15 @@ const ServerCard = ({
   })();
 
   const serverEndpoint = `${baseUrl}/mcp/${server.name}`;
+  const serverOpenApiEndpoint = `${baseUrl}/api/${server.name}`;
+
+  const copyEndpoint = async (value: string) => {
+    const ok = await copyText(value);
+    showToast(
+      ok ? t('common.copySuccess') || 'Copied' : t('common.copyFailed') || 'Failed',
+      ok ? 'success' : 'error',
+    );
+  };
   const translateVisibility = (key: string, options?: { defaultValue?: string }) => t(key, options);
   const visibility = getServerVisibilityDisplay(
     translateVisibility,
@@ -892,7 +901,7 @@ const ServerCard = ({
               )}
 
               {/* Endpoint inline, pushed to the right */}
-              <div className="ml-auto max-w-full flex-shrink-0">
+              <div className="ml-auto max-w-full flex-shrink-0 flex items-center justify-end gap-1.5 flex-wrap">
                 <div className="hub-endpoint" style={{ height: 26 }}>
                   <div className="hub-endpoint-label">/mcp/</div>
                   <div className="hub-endpoint-url" title={serverEndpoint} style={{ maxWidth: 200 }}>
@@ -901,15 +910,32 @@ const ServerCard = ({
                   <button
                     type="button"
                     className="hub-endpoint-copy"
-                    onClick={async (e) => {
+                    onClick={(e) => {
                       e.stopPropagation();
-                      const ok = await copyText(serverEndpoint);
-                      showToast(
-                        ok ? t('common.copySuccess') || 'Copied' : t('common.copyFailed') || 'Failed',
-                        ok ? 'success' : 'error',
-                      );
+                      void copyEndpoint(serverEndpoint);
                     }}
-                    title={t('common.copy')}
+                    title={t('common.copyUrl')}
+                  >
+                    <Copy size={12} />
+                  </button>
+                </div>
+                <div className="hub-endpoint" style={{ height: 26 }}>
+                  <div className="hub-endpoint-label">/api/</div>
+                  <div
+                    className="hub-endpoint-url"
+                    title={serverOpenApiEndpoint}
+                    style={{ maxWidth: 200 }}
+                  >
+                    {server.name}
+                  </div>
+                  <button
+                    type="button"
+                    className="hub-endpoint-copy"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      void copyEndpoint(serverOpenApiEndpoint);
+                    }}
+                    title={t('common.copyOpenApiUrl')}
                   >
                     <Copy size={12} />
                   </button>

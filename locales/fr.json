@@ -321,6 +321,7 @@
     "copy": "Copier",
     "copyId": "Copier l'ID",
     "copyUrl": "Copier l'URL",
+    "copyOpenApiUrl": "Copier l'URL OpenAPI",
     "copyJson": "Copier le JSON",
     "copySuccess": "Copié dans le presse-papiers",
     "copyFailed": "Échec de la copie",
