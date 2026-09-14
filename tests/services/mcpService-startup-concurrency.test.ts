@@ -16,7 +16,9 @@ jest.mock('@modelcontextprotocol/sdk/client/index.js', () => ({
 }));
 
 jest.mock('@modelcontextprotocol/sdk/client/stdio.js', () => ({
-  StdioClientTransport: jest.fn().mockImplementation(() => ({
+  StdioClientTransport: jest.fn().mockImplementation((params: { args?: string[] }) => ({
+    // Kept so a test can tell which server a connect() call belongs to.
+    params,
     close: jest.fn(),
     stderr: {
       on: jest.fn((event: string, listener: (data?: Buffer) => void) => {
@@ -105,6 +107,7 @@ jest.mock('../../src/services/activityLoggingService.js', () => ({
 import {
   initializeClientsFromSettings,
   setServerInfosForTest,
+  toggleServerStatus,
 } from '../../src/services/mcpService.js';
 
 const flush = async () => {
@@ -191,3 +194,95 @@ describe('startup connect concurrency', () => {
     expect(releases).toHaveLength(servers.length);
   });
 });
+
+describe('startup connect queue invalidation', () => {
+  // Each server gets its own args so a connect() call can be traced back to it
+  // through the transport the client was handed.
+  const queued = ['a', 'b', 'c'].map((name) => ({
+    name,
+    enabled: true,
+    command: 'node',
+    args: ['server.js', name],
+  }));
+
+  const connectedServerNames = (): Array<string | undefined> =>
+    mockClientConnect.mock.calls.map((call) => call[0]?.params?.args?.[1]);
+
+  let releases: Array<() => void>;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    setServerInfosForTest([]);
+    mockServerDao.findAll.mockResolvedValue(queued);
+    mockListTools.mockResolvedValue({ tools: [] });
+    releases = [];
+    mockClientConnect.mockImplementation(
+      () =>
+        new Promise<void>((resolve) => {
+          releases.push(() => resolve());
+        }),
+    );
+    process.env.STARTUP_CONNECT_CONCURRENCY = '1';
+  });
+
+  afterEach(() => {
+    delete process.env.STARTUP_CONNECT_CONCURRENCY;
+  });
+
+  it('does not connect a server that was disabled while it waited for a slot', async () => {
+    await initializeClientsFromSettings(true);
+    expect(connectedServerNames()).toEqual(['a']);
+
+    // 'b' is queued but has not started: no child process exists yet, and
+    // closeServerRuntime clears the references that would later own one.
+    await toggleServerStatus('b', false);
+
+    releases[0]();
+    await flush();
+
+    expect(connectedServerNames()).not.toContain('b');
+  });
+
+  it('does not connect a queued server whose pass has been superseded', async () => {
+    await initializeClientsFromSettings(true);
+
+    // A second pass builds its own clients for every server; the ones still
+    // queued from the first pass belong to transports nobody will read.
+    await initializeClientsFromSettings(false);
+    const connectsBeforeRelease = mockClientConnect.mock.calls.length;
+
+    // Release the first pass's in-flight connect, freeing its queue.
+    releases[0]();
+    await flush();
+
+    expect(mockClientConnect.mock.calls.length).toBe(connectsBeforeRelease);
+  });
+
+  it('still connects a queued server that a scoped reload preserved', async () => {
+    await initializeClientsFromSettings(true);
+    expect(connectedServerNames()).toEqual(['a']);
+
+    // Reloading one server preserves every other server as-is, whatever its
+    // status (#921), carrying the same client across into the new entry. The
+    // queued connect from this pass is the one that will complete it, so
+    // cancelling it would strand the server on 'connecting' for good (#1150).
+    await initializeClientsFromSettings(false, 'a');
+
+    releases[0]();
+    await flush();
+
+    expect(connectedServerNames()).toContain('b');
+  });
+
+  it('gives the slot of a cancelled server to the next server in the queue', async () => {
+    await initializeClientsFromSettings(true);
+
+    await toggleServerStatus('b', false);
+
+    releases[0]();
+    await flush();
+
+    expect(connectedServerNames()).toEqual(['a', 'c']);
+  });
+});
+
