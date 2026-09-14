@@ -573,12 +573,18 @@ describe('serverController - getAllSettings', () => {
 
   describe('smart routing dashboard reflects SMART_ROUTING_ENABLED', () => {
     const originalEnv = process.env.SMART_ROUTING_ENABLED;
+    const originalLegacyEnv = process.env.ENABLE_SMART_ROUTING;
 
     afterEach(() => {
       if (originalEnv === undefined) {
         delete process.env.SMART_ROUTING_ENABLED;
       } else {
         process.env.SMART_ROUTING_ENABLED = originalEnv;
+      }
+      if (originalLegacyEnv === undefined) {
+        delete process.env.ENABLE_SMART_ROUTING;
+      } else {
+        process.env.ENABLE_SMART_ROUTING = originalLegacyEnv;
       }
     });
 
@@ -625,6 +631,25 @@ describe('serverController - getAllSettings', () => {
 
       const payload = (res.json as jest.Mock).mock.calls[0][0];
       expect(payload.data.systemConfig.smartRouting.enabled).toBe(false);
+    });
+
+    it('falls through an empty legacy env var to the DB value, matching getConfigValue', async () => {
+      // getConfigValue treats "" as unset and moves on to the next candidate.
+      // With the primary var unset, `A || B` resolves to the legacy var's own
+      // value — so ENABLE_SMART_ROUTING="" alone must NOT be parsed as
+      // "false" and silently flip a DB-persisted `true`.
+      mockSystemConfigDao.get.mockResolvedValueOnce({
+        install: { baseUrl: 'https://hub.example.com' },
+        smartRouting: { enabled: true, dbUrl: '' },
+      });
+      delete process.env.SMART_ROUTING_ENABLED;
+      process.env.ENABLE_SMART_ROUTING = '';
+      const res = { json: jest.fn(), status: jest.fn().mockReturnThis() } as unknown as Response;
+
+      await getAllSettings(adminReq, res);
+
+      const payload = (res.json as jest.Mock).mock.calls[0][0];
+      expect(payload.data.systemConfig.smartRouting.enabled).toBe(true);
     });
   });
 });

@@ -402,10 +402,16 @@ export const getAllSettings = async (req: Request, res: Response): Promise<void>
     // ENABLE_SMART_ROUTING override the stored setting — the dashboard must reflect
     // that same precedence, or an env-only deployment (our own Docker quick start)
     // shows "Inactive" here while smart routing is actually live end-to-end.
-    const smartRoutingEnabledEnv =
-      process.env.SMART_ROUTING_ENABLED || process.env.ENABLE_SMART_ROUTING;
+    // Mirrors getConfigValue's own precedence: try each var in order, skipping
+    // unset/blank ones — an empty string must fall through to the next
+    // candidate (and ultimately the DB value) rather than being parsed as
+    // "false", or SMART_ROUTING_ENABLED="" would silently override a DB `true`.
+    const smartRoutingEnabledRaw = [
+      process.env.SMART_ROUTING_ENABLED,
+      process.env.ENABLE_SMART_ROUTING,
+    ].find((raw) => raw !== undefined && raw.trim() !== '');
     const smartRoutingEnabledFromEnv =
-      smartRoutingEnabledEnv !== undefined ? parseBooleanEnvVar(smartRoutingEnabledEnv) : undefined;
+      smartRoutingEnabledRaw !== undefined ? parseBooleanEnvVar(smartRoutingEnabledRaw) : undefined;
     if (!systemConfig.smartRouting) {
       systemConfig.smartRouting = {
         enabled: smartRoutingEnabledFromEnv ?? false,
