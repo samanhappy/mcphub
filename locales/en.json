@@ -320,6 +320,7 @@
     "copy": "Copy",
     "copyId": "Copy ID",
     "copyUrl": "Copy URL",
+    "copyOpenApiUrl": "Copy OpenAPI URL",
     "copyJson": "Copy JSON",
     "copySuccess": "Copied to clipboard",
     "copyFailed": "Copy failed",

@@ -96,6 +96,7 @@ const GroupCard = ({ group, servers, onEdit, onDelete, cost }: GroupCardProps) =
   };
 
   const groupEndpoint = `${baseUrl}/mcp/${group.name}`;
+  const groupOpenApiEndpoint = `${baseUrl}/api/${group.name}`;
 
   const serverNames = getServerNames(group.servers);
   const groupServers = servers.filter((s) => serverNames.includes(s.name));
@@ -204,6 +205,12 @@ const GroupCard = ({ group, servers, onEdit, onDelete, cost }: GroupCardProps) =
                   className="flex items-center gap-2 w-full px-2.5 py-1.5 text-[13px] rounded-md hover:bg-[var(--hub-surface-hover)] text-left"
                 >
                   <LinkIcon size={12} /> {t('common.copyUrl')}
+                </button>
+                <button
+                  onClick={() => doCopy(groupOpenApiEndpoint)}
+                  className="flex items-center gap-2 w-full px-2.5 py-1.5 text-[13px] rounded-md hover:bg-[var(--hub-surface-hover)] text-left"
+                >
+                  <LinkIcon size={12} /> {t('common.copyOpenApiUrl')}
                 </button>
                 <button
                   onClick={() =>
@@ -347,12 +354,27 @@ const GroupCard = ({ group, servers, onEdit, onDelete, cost }: GroupCardProps) =
             <span style={{ color: 'var(--hub-ink-3)' }}>/mcp/</span>
             <b style={{ color: 'var(--hub-ink)', fontWeight: 600 }}>{group.name}</b>
           </div>
+          <div
+            className="hub-mono break-all"
+            style={{ fontSize: 12, color: 'var(--hub-ink-2)', lineHeight: 1.4 }}
+          >
+            <span style={{ color: 'var(--hub-ink-3)' }}>/api/</span>
+            <b style={{ color: 'var(--hub-ink)', fontWeight: 600 }}>{group.name}</b>
+          </div>
           <div className="flex gap-1.5 mt-2">
             <button
               className="hub-btn sm flex-1 justify-center"
               onClick={() => doCopy(groupEndpoint)}
+              title={t('common.copyUrl')}
             >
-              <Copy size={11} /> {t('common.copy')}
+              <Copy size={11} /> MCP
+            </button>
+            <button
+              className="hub-btn sm flex-1 justify-center"
+              onClick={() => doCopy(groupOpenApiEndpoint)}
+              title={t('common.copyOpenApiUrl')}
+            >
+              <Copy size={11} /> OpenAPI
             </button>
           </div>
         </div>
