@@ -162,14 +162,20 @@ networks:
 
 ### Persisting the stdio package cache
 
-`stdio` servers are launched through `npx` or `uvx`, which download and install the
-server's package on first use. The image runs as `root`, so those installs land in:
+`stdio` servers download and install their package on first use: `npx` through npm's
+caches, `uvx` and other `uv`-based commands through uv's. The image sets no `USER`, so it
+runs as `root` and those installs land in:
 
 | Path | Holds |
 | --- | --- |
 | `/root/.npm/_npx` | packages installed by `npx` |
 | `/root/.npm/_cacache` | npm's downloaded tarballs |
-| `/root/.cache/uv` | environments created by `uvx` |
+| `/root/.cache/uv` | uv's download cache and the environments `uvx` creates |
+
+Environments created by `uv tool install` live in `~/.local/share/uv/tools` instead. Those
+are baked into the image layer and are not affected by any of this. If you run the image as
+a non-root user, `~` is not `/root`: adjust both the paths above and the mount targets below
+to that user's home directory.
 
 None of these are volumes by default, so they live in the container's writable layer.
 That layer is discarded whenever the container is **recreated** — an image bump,
@@ -197,24 +203,35 @@ volumes:
   mcphub_uv_cache:
 ```
 
-Named volumes survive `docker compose down`; only `down -v` removes them. Bind mounts
-(`./data/npm-cache:/root/.npm`) work equally well and are easier to inspect or clear by
-hand.
+Named volumes survive `docker compose down`; only `down -v` removes them. A bind mount
+(`./data/npm-cache:/root/.npm`) also works and is easier to inspect or clear by hand, but it
+is not initialised from the image the way a named volume is — it hides whatever the image
+already holds at that path. On amd64 the `-full` image bakes a Playwright install
+into `/root/.npm/_npx`, so a bind mount there costs that download once.
 
 A few things worth knowing:
 
-- **Version pinning is not required.** An unpinned `npx -y <package>` still resolves
-  against a warm cache — the installed package is reused without contacting the registry.
+- **Version pinning is not required.** An unpinned `npx -y <package>` reuses the package
+  already installed in the cache instead of reinstalling it. npm still revalidates the
+  package metadata against the registry on each run, so the registry (or your proxy) must
+  stay reachable — the cache removes the install cost, not the network round trip.
 - **The first start after adding the volumes is still cold.** The volume begins empty, so
   that run pays the full install cost once; every recreate afterwards reuses it.
 - **Budget for the size.** Around 90 `stdio` servers occupy roughly 2 GB.
-- **To recover from a corrupted install**, use a server's *Reinstall* action rather than
-  deleting the whole cache, so only that package is refetched.
+- **To recover from a corrupted install**, use a server's *Reinstall* action — available
+  for `npx` and `uvx` servers only. For `uvx` it refreshes just that package, through a
+  `--refresh` flag on the next spawn. For `npx` it deletes the whole shared
+  `/root/.npm/_npx` directory, so every npx server reinstalls on its next start, not only
+  the one you targeted. The `_cacache` volume is what keeps that reinstall cheap.
 
 This matters most at scale. On a deployment with ~95 `stdio` servers, a cold recreate left
-most of them failing their connect with `MCP error -32001: Request timed out`, because
-every server was competing to install at once. With the cache mounted, the same restart
-had no timeouts at all.
+19 of them connected and 74 failing their connect with `MCP error -32001: Request timed
+out`, because every server was competing to install at once. The same restart with the
+cache mounted reached 73 connected and no timeouts — though that run also raised
+`INIT_TIMEOUT` from its 300000 default to 900000, so the two changes have to be read apart.
+Against the per-minute connect curve they split roughly as: the cache is worth about +45
+servers inside the original 300-second budget, the longer timeout about +9. The dominant
+cost was reinstalling packages, not waiting.
 
 ### Production Configuration with Nginx
 
