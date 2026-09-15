@@ -1,5 +1,5 @@
 import crypto from 'crypto';
-import { getOAuthClientDao, getOAuthTokenDao } from '../dao/index.js';
+import { getOAuthClientDao, getOAuthTokenDao, getSystemConfigDao } from '../dao/index.js';
 import { IOAuthClient, IOAuthAuthorizationCode, IOAuthToken } from '../types/index.js';
 import { logger } from '../utils/logger.js';
 
@@ -8,6 +8,16 @@ const authorizationCodes = new Map<string, IOAuthAuthorizationCode>();
 
 // In-memory cache for tokens (also persisted via DAO)
 const tokensCache = new Map<string, IOAuthToken>();
+
+// In-memory registration access tokens (RFC 7591 §3.2). Expiry is enforced
+// lazily on verification; cleanupExpired() sweeps entries that are never used
+// again so expired tokens do not accumulate for the lifetime of the process.
+const registrationTokens = new Map<string, { clientId: string; expiresAt: Date }>();
+
+const REGISTRATION_TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+
+// Default idle TTL for dynamically-registered clients (see oauthServerDefaults).
+const DEFAULT_DYNAMIC_CLIENT_TTL_SECONDS = 30 * 24 * 60 * 60; // 30 days
 
 // Flag to track if we've initialized from DAO
 let initialized = false;
@@ -86,6 +96,52 @@ export const deleteOAuthClient = async (clientId: string): Promise<boolean> => {
   const clientDao = getOAuthClientDao();
   return clientDao.delete(clientId);
 };
+
+/**
+ * Generate a registration access token for a dynamically-registered client
+ * (RFC 7591 §3.2). The token is stored in memory and expires after `ttlMs`.
+ */
+export const createRegistrationToken = (
+  clientId: string,
+  ttlMs: number = REGISTRATION_TOKEN_TTL_MS,
+): string => {
+  const token = crypto.randomBytes(32).toString('hex');
+  registrationTokens.set(token, {
+    clientId,
+    expiresAt: new Date(Date.now() + ttlMs),
+  });
+  return token;
+};
+
+/**
+ * Verify a registration access token. Returns the client ID it was issued to,
+ * or null if the token is unknown or expired (expired tokens are removed).
+ */
+export const verifyRegistrationToken = (token: string): string | null => {
+  const data = registrationTokens.get(token);
+  if (!data) {
+    return null;
+  }
+
+  if (new Date() > data.expiresAt) {
+    registrationTokens.delete(token);
+    return null;
+  }
+
+  return data.clientId;
+};
+
+/**
+ * Delete a registration access token (e.g. when the client registration is deleted)
+ */
+export const deleteRegistrationToken = (token: string): void => {
+  registrationTokens.delete(token);
+};
+
+/**
+ * Number of registration access tokens currently held in memory (for diagnostics/tests)
+ */
+export const countRegistrationTokens = (): number => registrationTokens.size;
 
 /**
  * Generate a secure random token
@@ -288,6 +344,69 @@ export const cleanupExpired = async (): Promise<void> => {
     await tokenDao.cleanupExpired();
   } catch (error) {
     logger.error('Failed to cleanup persisted OAuth tokens:', error);
+  }
+
+  // Sweep expired registration access tokens that were never verified again
+  for (const [token, data] of registrationTokens.entries()) {
+    if (data.expiresAt < now) {
+      registrationTokens.delete(token);
+    }
+  }
+
+  await cleanupIdleDynamicClients(now);
+};
+
+/**
+ * Reap dynamically-registered OAuth clients that are idle: older than the
+ * configured `oauthServer.dynamicRegistration.clientTtl` with no live token and
+ * no in-progress authorization flow. Reclaimed clients must register again.
+ * Legacy records without `clientIdIssuedAt` are never treated as expired.
+ * A `clientTtl` of 0 disables cleanup entirely.
+ */
+const cleanupIdleDynamicClients = async (now: Date): Promise<void> => {
+  try {
+    // Client IDs that are still in use: they have a live token or an unexpired
+    // authorization code (an in-progress authorization flow).
+    const liveClientIds = new Set<string>();
+
+    for (const [, authCode] of authorizationCodes.entries()) {
+      liveClientIds.add(authCode.clientId);
+    }
+    for (const [, token] of tokensCache.entries()) {
+      liveClientIds.add(token.clientId);
+    }
+    const persistedTokens = await getOAuthTokenDao().findAll();
+    for (const token of persistedTokens) {
+      liveClientIds.add(token.clientId);
+    }
+
+    // Read the configured idle-client TTL. 0 disables cleanup entirely.
+    const systemConfig = await getSystemConfigDao().get();
+    const clientTtl = systemConfig?.oauthServer?.dynamicRegistration?.clientTtl;
+    if (clientTtl !== undefined && clientTtl <= 0) {
+      return;
+    }
+    const ttlSeconds = clientTtl ?? DEFAULT_DYNAMIC_CLIENT_TTL_SECONDS;
+
+    const clientDao = getOAuthClientDao();
+    const dynamicClients = await clientDao.findByOwner('dynamic-registration');
+    const cutoff = Math.floor(now.getTime() / 1000) - ttlSeconds;
+
+    const stale = dynamicClients.filter(
+      (client) =>
+        typeof client.clientIdIssuedAt === 'number' &&
+        client.clientIdIssuedAt < cutoff &&
+        !liveClientIds.has(client.clientId),
+    );
+
+    for (const client of stale) {
+      await clientDao.delete(client.clientId);
+    }
+    if (stale.length > 0) {
+      logger.log(`Reaped ${stale.length} idle dynamically-registered OAuth client(s)`);
+    }
+  } catch (error) {
+    logger.error('Failed to cleanup idle dynamically-registered OAuth clients:', error);
   }
 };
 

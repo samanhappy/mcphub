@@ -288,6 +288,7 @@ export interface IOAuthClient {
   grants: string[]; // Allowed grant types (e.g., ['authorization_code', 'refresh_token'])
   scopes?: string[]; // Allowed scopes for this client
   owner?: string; // Owner of the OAuth client, defaults to 'admin' user
+  clientIdIssuedAt?: number; // Unix timestamp (seconds) when the client was registered (RFC 7591 client_id_issued_at)
   metadata?: {
     // RFC 7591 Client Metadata
     application_type?: 'web' | 'native'; // Application type
@@ -339,6 +340,7 @@ export interface OAuthServerConfig {
     enabled?: boolean; // Enable/disable RFC 7591 dynamic client registration
     allowedGrantTypes?: string[]; // Allowed grant types for dynamic registration (default: ['authorization_code', 'refresh_token'])
     requiresAuthentication?: boolean; // Whether initial registration requires authentication (default: false for public registration)
+    clientTtl?: number; // Idle-client cleanup TTL in seconds. Dynamically-registered clients with no live token and no in-progress authorization flow older than this are reaped (default: 2592000 = 30 days; 0 disables cleanup)
   };
   clientIdMetadata?: {
     // Client ID Metadata Documents (CIMD, draft-ietf-oauth-client-id-metadata-document):

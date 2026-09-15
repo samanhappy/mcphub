@@ -917,7 +917,10 @@
     "dynamicRegistrationAllowedGrantTypesPlaceholder": "e.g. authorization_code, refresh_token",
     "dynamicRegistrationAuth": "Require Authentication",
     "dynamicRegistrationAuthDescription": "Protect the registration endpoint so only authenticated requests can register clients",
-    "invalidNumberInput": "Please enter a valid non-negative number"
+    "invalidNumberInput": "Please enter a valid non-negative number",
+    "dynamicRegistrationClientTtl": "Idle Client Cleanup TTL (seconds)",
+    "dynamicRegistrationClientTtlDescription": "Reap dynamically-registered clients with no live tokens and no in-progress authorization flow older than this age. Set to 0 to disable cleanup.",
+    "dynamicRegistrationClientTtlPlaceholder": "e.g. 2592000"
   },
   "mcpb": {
     "upload": "Upload",

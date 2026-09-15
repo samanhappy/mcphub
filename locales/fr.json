@@ -916,7 +916,10 @@
     "dynamicRegistrationAllowedGrantTypesPlaceholder": "ex. authorization_code, refresh_token",
     "dynamicRegistrationAuth": "Exiger une authentification",
     "dynamicRegistrationAuthDescription": "Protège l'endpoint d'enregistrement afin que seules les requêtes authentifiées puissent créer des clients",
-    "invalidNumberInput": "Veuillez saisir un nombre valide supérieur ou égal à zéro"
+    "invalidNumberInput": "Veuillez saisir un nombre valide supérieur ou égal à zéro",
+    "dynamicRegistrationClientTtl": "TTL de nettoyage des clients inactifs (secondes)",
+    "dynamicRegistrationClientTtlDescription": "Réclame les clients enregistrés dynamiquement, sans jeton actif ni flux d'autorisation en cours, plus anciens que cette durée. Mettre à 0 pour désactiver.",
+    "dynamicRegistrationClientTtlPlaceholder": "ex. 2592000"
   },
   "mcpb": {
     "upload": "Télécharger",

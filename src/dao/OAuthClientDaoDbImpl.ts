@@ -40,6 +40,7 @@ export class OAuthClientDaoDbImpl implements OAuthClientDao {
       grants: entity.grants,
       scopes: entity.scopes,
       owner: entity.owner || 'admin',
+      clientIdIssuedAt: entity.clientIdIssuedAt,
       metadata: entity.metadata,
     });
     return this.mapToOAuthClient(client);
@@ -53,6 +54,7 @@ export class OAuthClientDaoDbImpl implements OAuthClientDao {
       grants: entity.grants,
       scopes: entity.scopes,
       owner: entity.owner,
+      clientIdIssuedAt: entity.clientIdIssuedAt,
       metadata: entity.metadata,
     });
     return client ? this.mapToOAuthClient(client) : null;
@@ -93,6 +95,7 @@ export class OAuthClientDaoDbImpl implements OAuthClientDao {
     grants: string[];
     scopes?: string[];
     owner?: string;
+    clientIdIssuedAt?: number;
     metadata?: Record<string, any>;
   }): IOAuthClient {
     return {
@@ -103,6 +106,7 @@ export class OAuthClientDaoDbImpl implements OAuthClientDao {
       grants: client.grants,
       scopes: client.scopes,
       owner: client.owner,
+      clientIdIssuedAt: client.clientIdIssuedAt,
       metadata: client.metadata as IOAuthClient['metadata'],
     };
   }
