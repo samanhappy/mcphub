@@ -16,6 +16,7 @@ MCPHub 使用环境变量进行配置。本指南涵盖了所有可用的变量�
 | `PORT` | `3000` | HTTP 服务器的端口号 |
 | `DEFAULT_REQUEST_TIMEOUT` | `60000` | 当服务器未设置 `options.timeout` 时，上游 MCP 服务器请求使用的默认超时时间（毫秒） |
 | `INIT_TIMEOUT` | `300000` | 应用程序的初始超时时间 |
+| `STARTUP_CONNECT_CONCURRENCY` | `0` | 启动时最多允许多少个上游服务器同时连接。`0`（或不设置）表示全部并行连接。当部署了大量 `stdio` 服务器时，设置上限可以避免它们争抢 CPU、网络和磁盘，进而耗尽 `INIT_TIMEOUT`。排队等待的时间不计入服务器自身的超时预算。 |
 | `BASE_PATH` | `''` | 应用程序的基本路径 |
 | `READONLY` | `false` | 设置为 `true` 以启用只读模式 |
 | `MCPHUB_SETTING_PATH` | | MCPHub 设置文件的路径 |
@@ -26,6 +27,7 @@ MCPHub 使用环境变量进行配置。本指南涵盖了所有可用的变量�
 PORT=3000
 DEFAULT_REQUEST_TIMEOUT=60000
 INIT_TIMEOUT=300000
+STARTUP_CONNECT_CONCURRENCY=0
 BASE_PATH=/api
 READONLY=true
 MCPHUB_SETTING_PATH=/path/to/settings

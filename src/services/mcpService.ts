@@ -731,6 +731,99 @@ const normalizeResourceForCache = (resource: McpResource): Resource => {
 // Store all server information
 let serverInfos: ServerInfo[] = [];
 
+/**
+ * How many upstream connections an initialization pass may open at once.
+ * Unset, empty or `0` keeps the previous behaviour of connecting every enabled
+ * server in parallel. Read per pass so a restart is enough to change it.
+ */
+const resolveStartupConcurrency = (): number => {
+  const raw = process.env.STARTUP_CONNECT_CONCURRENCY?.trim();
+  if (!raw) {
+    return 0;
+  }
+
+  const parsed = Number(raw);
+  if (!Number.isInteger(parsed) || parsed < 0) {
+    logger.warn(
+      `Ignoring invalid STARTUP_CONNECT_CONCURRENCY="${raw}"; expected a non-negative integer. Connecting without a limit.`,
+    );
+    return 0;
+  }
+
+  return parsed;
+};
+
+type ConnectGate = {
+  run: <T>(start: () => Promise<T>, isStillWanted?: () => boolean) => Promise<T>;
+};
+
+/**
+ * Rejection reason for a queued connection that was dropped before it started,
+ * because the server it belonged to was disabled, removed or superseded while
+ * it waited for a slot. Not a connection failure: nothing was spawned and there
+ * is nothing wrong with the server, so callers report it as a cancellation
+ * rather than marking the server as failed.
+ */
+class QueuedConnectCancelledError extends Error {
+  constructor() {
+    super('Queued connection was cancelled before it started');
+    this.name = 'QueuedConnectCancelledError';
+  }
+}
+
+/**
+ * Defers the *invocation* of a connect rather than wrapping its promise, so a
+ * server waiting for a slot has not started its request yet and its timeout
+ * budget is not spent queueing. A limit of 0 runs everything immediately.
+ *
+ * Because work waits here, what the operator wants can change while it waits -
+ * a queued server may be disabled, removed or replaced by a later pass. The
+ * `isStillWanted` guard is therefore evaluated when the slot is granted, not
+ * when the work is queued; a queued entry that is no longer wanted is cancelled
+ * and its slot handed straight to the next in line.
+ */
+const createConnectGate = (limit: number): ConnectGate => {
+  if (limit <= 0) {
+    // Nothing queues, so nothing can go stale while it waits.
+    return { run: (start) => start() };
+  }
+
+  let active = 0;
+  const waiting: Array<() => void> = [];
+
+  const startNextWaiting = () => {
+    waiting.shift()?.();
+  };
+
+  const release = () => {
+    active -= 1;
+    startNextWaiting();
+  };
+
+  return {
+    run: <T>(start: () => Promise<T>, isStillWanted?: () => boolean): Promise<T> =>
+      new Promise<T>((resolve, reject) => {
+        const begin = () => {
+          if (isStillWanted && !isStillWanted()) {
+            // The slot was never taken, so pass it on rather than release it.
+            reject(new QueuedConnectCancelledError());
+            startNextWaiting();
+            return;
+          }
+
+          active += 1;
+          start().then(resolve, reject).finally(release);
+        };
+
+        if (active < limit) {
+          begin();
+        } else {
+          waiting.push(begin);
+        }
+      }),
+  };
+};
+
 // Bumped by every initializeClientsFromSettings pass. Connections are started
 // fire-and-forget and settle long after the pass that started them returned, so
 // a callback needs to know whether a later pass has run before it writes its
@@ -1595,6 +1688,15 @@ export const initializeClientsFromSettings = async (
   const existingServerInfos = serverInfos;
   const nextServerInfos: ServerInfo[] = [];
   const generation = ++initGeneration;
+  const concurrency = resolveStartupConcurrency();
+  const connectGate = createConnectGate(concurrency);
+  // Set once this pass swaps its entries into `serverInfos`. Until then a
+  // queued server cannot have been retired by anyone, because the entry that
+  // `closeServer`/`toggleServerStatus` would act on is not published yet.
+  let entriesPublished = false;
+  if (isInit && concurrency > 0) {
+    logger.log(`Connecting upstream servers with a concurrency limit of ${concurrency}`);
+  }
 
   try {
     for (const conf of allServers) {
@@ -1924,7 +2026,37 @@ export const initializeClientsFromSettings = async (
         return current && current.client === client ? current : undefined;
       };
 
-      connectClientWithDiagnostics(client, transport, initRequestOptions || requestOptions)
+      // A queued connection has not spawned anything yet, so cancelling it is
+      // free - and necessary: `closeServerRuntime` clears the client/transport
+      // references that would later own the child process, so connecting after
+      // a disable strands a process nothing can clean up.
+      const connectStillWanted = (): boolean => {
+        // Until this pass publishes its entries, nothing else can have retired
+        // this server: the entry a disable would act on does not exist yet.
+        if (!entriesPublished) return true;
+
+        const current = serverInfos.find((si) => si.name === name);
+        // Gone from the configuration while it waited.
+        if (!current) return false;
+        // Client identity, not the generation, decides whether anyone is still
+        // waiting on this connect - the same rule liveServerInfo() applies to
+        // the result. A later pass that *preserved* this server spreads our
+        // client into its entry and relies on this very connect to complete it
+        // (a scoped reload preserves every other server whatever its status,
+        // see #921), so cancelling on generation alone would strand it on
+        // 'connecting' for good - the failure #1150 was about. A later pass
+        // that rebuilt the server carries a client of its own, and disabling
+        // closes the runtime before replacing the entry, so in both of those
+        // cases the published entry no longer carries our client.
+        return current.client === client && current.enabled !== false;
+      };
+
+      connectGate
+        .run(
+          () =>
+            connectClientWithDiagnostics(client, transport, initRequestOptions || requestOptions),
+          connectStillWanted,
+        )
         .then(() => {
           const info = liveServerInfo();
           if (!info) {
@@ -2022,6 +2154,14 @@ export const initializeClientsFromSettings = async (
           }
         })
         .catch(async (error) => {
+          if (error instanceof QueuedConnectCancelledError) {
+            logger.log(
+              `Cancelled queued connection for server: ${name} (disabled, removed or superseded while queued)`,
+            );
+            closeServerRuntime(serverInfo);
+            return;
+          }
+
           const info = liveServerInfo();
           if (!info) {
             logger.log(`Discarding superseded connection failure for server: ${name}`);
@@ -2065,11 +2205,12 @@ export const initializeClientsFromSettings = async (
   }
 
   serverInfos = nextServerInfos;
+  entriesPublished = true;
 
   // Populate the tool cache for on-demand stdio servers so their tools are
   // visible to agents, then put them back to sleep. Running here (rather than
   // only at startup) also covers servers added/enabled/reloaded after startup.
-  const primePromise = primeOnDemandServers();
+  const primePromise = primeOnDemandServers(connectGate);
   // At full startup (no serverName) keep prime fire-and-forget so a slow or
   // broken on-demand server does not block init. For a targeted reload/edit
   // (serverName set), await it so the caller - and the dashboard refresh that
@@ -2820,7 +2961,7 @@ const isStdioServer = (conf: ServerConfig | undefined): boolean =>
  * does not block init. Each server is isolated so one failure does not affect
  * the others. See #1029 / #1032.
  */
-const primeOnDemandServers = (): Promise<void> => {
+const primeOnDemandServers = (gate?: ConnectGate): Promise<void> => {
   const targets = serverInfos.filter(
     (si) =>
       si.config?.startOnDemand === true &&
@@ -2832,10 +2973,14 @@ const primeOnDemandServers = (): Promise<void> => {
   if (targets.length === 0) return Promise.resolve();
 
   logger.log(`Priming ${targets.length} on-demand server(s) for tool discovery…`);
+  // Priming happens right after init, so it competes for the same machine.
+  // Share the pass's concurrency limit rather than waking every sleeping server
+  // at once and undoing the pacing above.
+  const run = gate ? gate.run : <T,>(start: () => Promise<T>) => start();
   return Promise.allSettled(
     targets.map(async (si) => {
       try {
-        await ensureServerReady(si);
+        await run(() => ensureServerReady(si));
         // Sleep the child unless a tool call is using it; keep the cached tool list.
         shutdownOnDemandServer(si);
         logger.log('On-demand server tool cache primed');
