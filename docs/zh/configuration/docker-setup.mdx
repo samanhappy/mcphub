@@ -117,6 +117,10 @@ services:
     volumes:
       - ./servers.json:/app/servers.json:ro
       - ./data:/app/data
+      # 让已安装的 stdio 服务器包在容器重建后依然保留。
+      # 参见下方"持久化 stdio 包缓存"。
+      - mcphub_npm_cache:/root/.npm
+      - mcphub_uv_cache:/root/.cache/uv
     depends_on:
       postgres:
         condition: service_healthy
@@ -147,11 +151,75 @@ services:
 
 volumes:
   postgres_data:
+  mcphub_npm_cache:
+  mcphub_uv_cache:
 
 networks:
   mcphub-network:
     driver: bridge
 ```
+
+### 持久化 stdio 包缓存
+
+`stdio` 服务器在首次使用时会下载并安装对应的包：`npx` 使用 npm 的缓存，`uvx` 以及其他基于
+`uv` 的命令使用 uv 的缓存。镜像未设置 `USER`，因此以 `root` 运行，这些安装内容位于：
+
+| 路径 | 存放内容 |
+| --- | --- |
+| `/root/.npm/_npx` | `npx` 安装的包 |
+| `/root/.npm/_cacache` | npm 下载的 tarball |
+| `/root/.cache/uv` | uv 的下载缓存，以及 `uvx` 创建的环境 |
+
+`uv tool install` 创建的环境位于 `~/.local/share/uv/tools`，它们烘焙在镜像层中，不受这里的
+讨论影响。如果你以非 root 用户运行镜像，`~` 就不是 `/root`：上表中的路径与下文的挂载目标都需
+要改成该用户的家目录。
+
+这些路径默认都不是卷，因此只存在于容器的可写层。而可写层会在容器被**重建**时丢弃——升级镜像、
+执行 `docker compose down && up -d`，或修改任何服务配置都会触发重建。下次启动时，所有
+`stdio` 服务器会同时从零重新安装，之后才能开始各自的 MCP 握手。
+
+<Warning>
+  `docker restart` 保留可写层，因此不会丢失缓存；而 `docker compose down` 后再 `up -d`
+  会删除并重建容器，缓存随之消失。如果你发现"重启后似乎重装了所有东西"，通常就是这个区别。
+</Warning>
+
+把这两个路径挂载出来，安装内容就会保存在宿主机上：
+
+```yaml
+services:
+  mcphub:
+    volumes:
+      - mcphub_npm_cache:/root/.npm
+      - mcphub_uv_cache:/root/.cache/uv
+
+volumes:
+  mcphub_npm_cache:
+  mcphub_uv_cache:
+```
+
+具名卷可以在 `docker compose down` 后保留，只有 `down -v` 才会删除。绑定挂载
+（`./data/npm-cache:/root/.npm`）同样可行，也更方便手动查看或清理，但它不会像具名卷那样用镜像
+中该路径的内容初始化——而是直接遮蔽掉镜像里已有的东西。在 amd64 上，`-full` 镜像会在 `/root/.npm/_npx`
+中预装 Playwright，因此在该路径使用绑定挂载意味着要重新下载一次。
+
+几点值得注意：
+
+- **不需要锁定版本。** 未指定版本的 `npx -y <package>` 会直接复用缓存中已安装的包，而不会重新
+  安装。但 npm 每次运行仍会向 registry 重新校验包的元数据，因此 registry（或你的代理）必须保持
+  可达——缓存省下的是安装成本，不是这一次网络往返。
+- **挂载后的第一次启动仍然是冷的。** 卷刚创建时是空的，这一次需要付出完整的安装成本；此后每次
+  重建都会复用它。
+- **预留足够空间。** 约 90 个 `stdio` 服务器大致占用 2 GB。
+- **安装内容损坏时**，请使用该服务器的「重新安装」操作——仅 `npx` 与 `uvx` 服务器支持。对
+  `uvx` 而言，它只刷新那一个包（在下次启动时注入 `--refresh` 参数）；对 `npx` 而言，它会删除
+  整个共用的 `/root/.npm/_npx` 目录，因此下次启动时**所有** npx 服务器都会重新安装，而不只是
+  你指定的那一个。`_cacache` 卷的作用就是让这次重装的代价变小。
+
+规模越大影响越明显。在一个约 95 个 `stdio` 服务器的部署中，冷启动重建后只有 19 个连接成功，
+74 个因 `MCP error -32001: Request timed out` 连接失败，因为所有服务器都在同时安装、互相争抢
+资源。挂载缓存后，同一次重启达到 73 个连接成功且没有任何超时——但那次运行同时把 `INIT_TIMEOUT`
+从默认的 300000 提高到了 900000，所以这两项改动必须分开看。按每分钟的连接曲线粗略拆分：缓存在
+原本 300 秒的预算内约值 +45 台，更长的超时约值 +9 台。主要成本是重新安装包，而不是等待。
 
 ### 生产配置（包含 Nginx）
 
@@ -192,6 +260,8 @@ services:
       - ./servers.json:/app/servers.json:ro
       - ./data:/app/data
       - mcphub_logs:/app/logs
+      - mcphub_npm_cache:/root/.npm
+      - mcphub_uv_cache:/root/.cache/uv
     depends_on:
       postgres:
         condition: service_healthy
@@ -244,6 +314,8 @@ volumes:
   postgres_data:
   redis_data:
   mcphub_logs:
+  mcphub_npm_cache:
+  mcphub_uv_cache:
   nginx_logs:
 
 networks:
