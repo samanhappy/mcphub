@@ -163,6 +163,8 @@
     "deselectAllShareUsers": "Tout désélectionner",
     "noMatchingShareUsers": "Aucun utilisateur ne correspond à votre recherche.",
     "command": "Commande",
+    "packageVersion": "Version du paquet installé",
+    "updateAvailable": "Une version plus récente est disponible sur le registre",
     "arguments": "Arguments",
     "envVars": "Variables d'environnement",
     "headers": "En-têtes HTTP",

@@ -213,6 +213,11 @@ export interface ServerConfig {
   description?: string;
   url?: string;
   command?: string;
+  // Resolved npx/uvx package version backing a stdio server (#1166).
+  packageVersion?: string;
+  // Newest registry version + update flag for npx/uvx servers (#1166).
+  latestVersion?: string;
+  updateAvailable?: boolean;
   args?: string[];
   env?: Record<string, string>;
   headers?: Record<string, string>;

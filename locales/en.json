@@ -163,6 +163,8 @@
     "deselectAllShareUsers": "Deselect all",
     "noMatchingShareUsers": "No users match your search.",
     "command": "Command",
+    "packageVersion": "Installed package version",
+    "updateAvailable": "A newer version is available on the registry",
     "arguments": "Arguments",
     "envVars": "Environment Variables",
     "headers": "HTTP Headers",

@@ -105,7 +105,7 @@ export const resolveNpxPackageSpecs = (args: string[]): string[] => {
  * `cowsay@1.5.0` -> `cowsay`, `@scope/pkg@1.2.3` -> `@scope/pkg`, `@scope/pkg`
  * unchanged (its only `@` is the scope marker at position 0).
  */
-const packageNameFromSpec = (spec: string): string => {
+export const packageNameFromSpec = (spec: string): string => {
   const separator = spec.lastIndexOf('@');
   return separator > 0 ? spec.slice(0, separator) : spec;
 };
@@ -221,6 +221,322 @@ export const clearRunnerCache = async (command: string, args: string[] = []): Pr
     }
   }
   // uvx: cache refresh is handled via --refresh flag injection in createTransportFromConfig
+};
+
+/**
+ * Get the uv tool install directory (the environments `uv tool install` creates).
+ * Platform-aware: honors UV_TOOL_DIR, then XDG_DATA_HOME/uv/tools on posix and
+ * %APPDATA%/uv/tools on Windows, matching uv's own defaults.
+ */
+export const getUvToolDir = (): string => {
+  if (process.env.UV_TOOL_DIR) return process.env.UV_TOOL_DIR;
+  if (process.platform === 'win32') {
+    return path.join(
+      process.env.APPDATA || path.join(os.homedir(), 'AppData', 'Roaming'),
+      'uv',
+      'tools',
+    );
+  }
+  if (process.env.XDG_DATA_HOME) return path.join(process.env.XDG_DATA_HOME, 'uv', 'tools');
+  return path.join(os.homedir(), '.local', 'share', 'uv', 'tools');
+};
+
+/**
+ * Get the uv cache directory (where uvx keeps its ephemeral environments).
+ * Platform-aware: honors UV_CACHE_DIR, then XDG_CACHE_HOME/uv on posix and
+ * %LOCALAPPDATA%/uv/cache on Windows, matching uv's own defaults.
+ */
+export const getUvCacheDir = (): string => {
+  if (process.env.UV_CACHE_DIR) return process.env.UV_CACHE_DIR;
+  if (process.platform === 'win32') {
+    return path.join(
+      process.env.LOCALAPPDATA || path.join(os.homedir(), 'AppData', 'Local'),
+      'uv',
+      'cache',
+    );
+  }
+  if (process.env.XDG_CACHE_HOME) return path.join(process.env.XDG_CACHE_HOME, 'uv');
+  return path.join(os.homedir(), '.cache', 'uv');
+};
+
+/**
+ * Derive the package spec a `uvx` invocation runs, from a server's args.
+ *
+ * Mirrors uvx's argument shape: a --from PACKAGE option names the package
+ * explicitly (and may repeat), otherwise the first bare token is the
+ * command/package. Options that take a value are skipped together with their
+ * value so their arguments are not mistaken for the package (-p 3.12 is a
+ * python version, not a package). Everything after the package is the server's
+ * own args.
+ */
+export const resolveUvxPackageSpec = (args: string[]): string | undefined => {
+  const valueOptions = new Set([
+    '--from',
+    '--with',
+    '--with-editable',
+    '-p',
+    '--python',
+    '--index',
+    '--default-index',
+    '--find-links',
+    '--extra-index-url',
+  ]);
+
+  for (let i = 0; i < args.length; i += 1) {
+    const arg = args[i];
+
+    if (arg === '--from') {
+      const value = args[i + 1];
+      if (value !== undefined) return value;
+      continue;
+    }
+
+    if (arg.startsWith('--from=')) {
+      return arg.slice('--from='.length);
+    }
+
+    if (valueOptions.has(arg)) {
+      i += 1; // skip the option's value
+      continue;
+    }
+
+    if (arg.startsWith('-')) {
+      continue;
+    }
+
+    // The first bare token is the package; the rest are the server's own args.
+    return arg;
+  }
+
+  return undefined;
+};
+
+/**
+ * PEP 503 name normalization, matching how pip/uv spell dist-info directories:
+ * `mcp-server-fetch` and `mcp_server.fetch` both become `mcp_server_fetch`.
+ */
+const normalizePackageName = (name: string): string => name.toLowerCase().replace(/[-_.]+/g, '_');
+
+/**
+ * Read the installed version of `packageName` from a python environment root
+ * (a uv tool install env or a uvx cache environment). The version lives in
+ * the NAME-VERSION.dist-info directory inside site-packages under lib, the
+ * same layout pip/uv write everywhere.
+ */
+const scanDistInfoVersion = async (
+  envRoot: string,
+  packageName: string,
+): Promise<string | undefined> => {
+  const normalized = normalizePackageName(packageName);
+  let libs: string[];
+  try {
+    libs = await fs.promises.readdir(path.join(envRoot, 'lib'));
+  } catch {
+    return undefined;
+  }
+
+  for (const lib of libs) {
+    let files: string[];
+    try {
+      files = await fs.promises.readdir(path.join(envRoot, 'lib', lib, 'site-packages'));
+    } catch {
+      continue;
+    }
+    for (const file of files) {
+      if (!file.endsWith('.dist-info')) continue;
+      const base = file.slice(0, -'.dist-info'.length);
+      const separator = base.lastIndexOf('-');
+      if (separator <= 0) continue;
+      if (normalizePackageName(base.slice(0, separator)) !== normalized) continue;
+      const version = base.slice(separator + 1);
+      if (version) return version;
+    }
+  }
+
+  return undefined;
+};
+
+/**
+ * List the ephemeral uvx environments uv keeps in its cache. Modern uv stores
+ * them under environments-v2/PYHASH/ENVHASH (each a symlink into the archive);
+ * older layouts kept the env directly under the cache root. Only the cache
+ * layout matters, never npm's — returns [] when nothing is found.
+ */
+const listUvCacheEnvironments = async (cacheDir: string): Promise<string[]> => {
+  const envsRoot = path.join(cacheDir, 'environments-v2');
+  try {
+    const pyHashes = await fs.promises.readdir(envsRoot);
+    const envs: string[] = [];
+    for (const pyHash of pyHashes) {
+      let entries: string[];
+      try {
+        entries = await fs.promises.readdir(path.join(envsRoot, pyHash));
+      } catch {
+        continue;
+      }
+      for (const entry of entries) {
+        envs.push(path.join(envsRoot, pyHash, entry));
+      }
+    }
+    return envs;
+  } catch {
+    // Fallback for older uv layouts without environments-v2.
+    try {
+      const entries = await fs.promises.readdir(cacheDir);
+      const envs: string[] = [];
+      for (const entry of entries) {
+        const candidate = path.join(cacheDir, entry);
+        try {
+          await fs.promises.access(path.join(candidate, 'pyvenv.cfg'));
+          envs.push(candidate);
+        } catch {
+          // Not an environment root (wheels, archives, index caches, ...).
+        }
+      }
+      return envs;
+    } catch {
+      return [];
+    }
+  }
+};
+
+/**
+ * Resolve the package version currently installed for a uvx server.
+ *
+ * Two homes for a uvx environment are checked, newest-first: uv tool install
+ * environments (UV_TOOL_DIR) and the ephemeral environments uvx itself creates
+ * in the uv cache. The most recently touched environment that holds the package
+ * is the one a fresh uvx spawn would use.
+ */
+export const resolveUvxPackageVersion = async (args: string[]): Promise<string | undefined> => {
+  const spec = resolveUvxPackageSpec(args);
+  if (!spec) return undefined;
+  const packageName = packageNameFromSpec(spec);
+  if (!packageName) return undefined;
+
+  const toolDir = getUvToolDir();
+  const cacheDir = getUvCacheDir();
+
+  const candidates: string[] = [];
+  try {
+    candidates.push(
+      ...(await fs.promises.readdir(toolDir)).map((entry) => path.join(toolDir, entry)),
+    );
+  } catch {
+    // No tool installs yet.
+  }
+  candidates.push(...(await listUvCacheEnvironments(cacheDir)));
+
+  const withMtime = await Promise.all(
+    candidates.map(async (candidate) => {
+      try {
+        return { path: candidate, mtime: (await fs.promises.stat(candidate)).mtimeMs };
+      } catch {
+        return undefined;
+      }
+    }),
+  );
+  const ordered = withMtime
+    .filter((candidate): candidate is { path: string; mtime: number } => candidate !== undefined)
+    .sort((a, b) => b.mtime - a.mtime);
+
+  for (const candidate of ordered) {
+    const version = await scanDistInfoVersion(candidate.path, packageName);
+    if (version) return version;
+  }
+
+  return undefined;
+};
+
+/**
+ * Read the installed version of `packageName` from an _npx cache entry.
+ * Each entry is a private npm install: node_modules/PKG/package.json
+ * carries the exact resolved version.
+ */
+const readInstalledPackageVersion = async (
+  entryDir: string,
+  packageName: string,
+): Promise<string | undefined> => {
+  try {
+    const pkg = JSON.parse(
+      await fs.promises.readFile(
+        path.join(entryDir, 'node_modules', packageName, 'package.json'),
+        'utf8',
+      ),
+    );
+    if (typeof pkg?.version === 'string' && pkg.version) return pkg.version;
+  } catch {
+    // The package is not installed in this entry, or the manifest is unreadable.
+  }
+  return undefined;
+};
+
+/**
+ * Resolve the package version currently installed for an npx server.
+ *
+ * Reuses the same _npx entry matching as the cache clear: npm 11 records the
+ * invoked specs as _npx.packages, npm <= 10.9 only writes dependencies. When
+ * several entries hold the same package, the most recently modified one is
+ * what a fresh npx spawn would use.
+ */
+export const resolveNpxPackageVersion = async (args: string[]): Promise<string | undefined> => {
+  const specs = resolveNpxPackageSpecs(args);
+  if (specs.length === 0) return undefined;
+  const primaryName = packageNameFromSpec(specs[0]);
+  const cacheDir = getNpxCacheDir();
+
+  let entries: string[];
+  try {
+    entries = await fs.promises.readdir(cacheDir);
+  } catch {
+    return undefined;
+  }
+
+  const withMtime = await Promise.all(
+    entries.map(async (entry) => {
+      try {
+        return { entry, mtime: (await fs.promises.stat(path.join(cacheDir, entry))).mtimeMs };
+      } catch {
+        return undefined;
+      }
+    }),
+  );
+  const ordered = withMtime
+    .filter((candidate): candidate is { entry: string; mtime: number } => candidate !== undefined)
+    .sort((a, b) => b.mtime - a.mtime);
+
+  for (const { entry } of ordered) {
+    const entryDir = path.join(cacheDir, entry);
+    let manifest: { _npx?: { packages?: unknown }; dependencies?: unknown };
+    try {
+      manifest = JSON.parse(
+        await fs.promises.readFile(path.join(entryDir, 'package.json'), 'utf8'),
+      );
+    } catch {
+      continue;
+    }
+    if (!entryMatchesSpecs(manifest, specs)) continue;
+    const version = await readInstalledPackageVersion(entryDir, primaryName);
+    if (version) return version;
+  }
+
+  return undefined;
+};
+
+/**
+ * Resolve the package version currently installed for a stdio server launched
+ * through npx or uvx, so the dashboard can answer "what version is actually
+ * running" (see #1166). Returns undefined for anything else — HTTP/SSE servers,
+ * unsupported runners, or packages that have not been installed yet — without
+ * throwing.
+ */
+export const resolveRunnerPackageVersion = async (
+  command: string,
+  args: string[] = [],
+): Promise<string | undefined> => {
+  if (command === 'npx') return resolveNpxPackageVersion(args);
+  if (command === 'uvx') return resolveUvxPackageVersion(args);
+  return undefined;
 };
 
 /**

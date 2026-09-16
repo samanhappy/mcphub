@@ -163,6 +163,8 @@
     "deselectAllShareUsers": "取消全选",
     "noMatchingShareUsers": "没有匹配的用户。",
     "command": "命令",
+    "packageVersion": "已安装的包版本",
+    "updateAvailable": "源上有更新的版本可用",
     "arguments": "参数",
     "envVars": "环境变量",
     "headers": "HTTP 请求头",
