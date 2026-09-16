@@ -36,6 +36,9 @@ export class OAuthClient {
   @Column({ type: 'varchar', length: 255, nullable: true })
   owner?: string;
 
+  @Column({ name: 'client_id_issued_at', type: 'int', nullable: true })
+  clientIdIssuedAt?: number;
+
   @Column({ type: 'simple-json', nullable: true })
   metadata?: {
     application_type?: 'web' | 'native';

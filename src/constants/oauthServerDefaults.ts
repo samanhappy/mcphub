@@ -12,6 +12,7 @@ export const DEFAULT_OAUTH_SERVER_CONFIG: OAuthServerConfig = {
     enabled: true,
     allowedGrantTypes: ['authorization_code', 'refresh_token'],
     requiresAuthentication: false,
+    clientTtl: 2592000, // 30 days: reap idle dynamically-registered clients with no live tokens
   },
   clientIdMetadata: {
     enabled: false,

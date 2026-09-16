@@ -1,5 +1,7 @@
 import {
+  cleanupExpired,
   createOAuthClient,
+  createRegistrationToken,
   findOAuthClientById,
   updateOAuthClient,
   deleteOAuthClient,
@@ -9,12 +11,16 @@ import {
   saveToken,
   getToken,
   revokeToken,
+  verifyRegistrationToken,
+  deleteRegistrationToken,
+  countRegistrationTokens,
 } from '../../src/models/OAuth.js';
 import { IOAuthClient, IOAuthToken } from '../../src/types/index.js';
 
 // Mock in-memory storage for OAuth clients and tokens
 let mockOAuthClients: IOAuthClient[] = [];
 let mockOAuthTokens: IOAuthToken[] = [];
+let mockSystemConfig: any = null;
 
 // Mock the DAO factory to use in-memory storage for tests
 jest.mock('../../src/dao/index.js', () => {
@@ -43,6 +49,12 @@ jest.mock('../../src/dao/index.js', () => {
         mockOAuthClients.splice(index, 1);
         return true;
       }),
+      findByOwner: jest.fn(async (owner: string) =>
+        mockOAuthClients.filter((c) => c.owner === owner),
+      ),
+    })),
+    getSystemConfigDao: jest.fn(() => ({
+      get: jest.fn(async () => mockSystemConfig),
     })),
     getOAuthTokenDao: jest.fn(() => ({
       findAll: jest.fn(async () => [...mockOAuthTokens]),
@@ -85,6 +97,7 @@ describe('OAuth Model', () => {
     // Reset mock storage before each test
     mockOAuthClients = [];
     mockOAuthTokens = [];
+    mockSystemConfig = null;
   });
 
   describe('OAuth Client Management', () => {
@@ -288,6 +301,172 @@ describe('OAuth Model', () => {
       if (token.refreshToken) {
         expect(await getToken(token.refreshToken)).toBeUndefined();
       }
+    });
+  });
+
+  describe('Registration Access Token Lifecycle', () => {
+    test('should create and verify a registration access token', () => {
+      const token = createRegistrationToken('test-client');
+      expect(token).toBeDefined();
+      expect(typeof token).toBe('string');
+      expect(verifyRegistrationToken(token)).toBe('test-client');
+    });
+
+    test('should not verify an expired registration access token', () => {
+      const expired = createRegistrationToken('test-client', -1); // Expired immediately
+      expect(verifyRegistrationToken(expired)).toBeNull();
+    });
+
+    test('should delete a registration access token', () => {
+      const token = createRegistrationToken('test-client');
+      expect(verifyRegistrationToken(token)).toBe('test-client');
+      deleteRegistrationToken(token);
+      expect(verifyRegistrationToken(token)).toBeNull();
+    });
+
+    test('should sweep expired registration access tokens during cleanup', async () => {
+      const before = countRegistrationTokens();
+      createRegistrationToken('live-client');
+      createRegistrationToken('expired-client', -1); // Expired immediately
+
+      expect(countRegistrationTokens()).toBe(before + 2);
+
+      await cleanupExpired();
+
+      // The expired token is removed by the sweep; the live one is kept.
+      expect(countRegistrationTokens()).toBe(before + 1);
+    });
+  });
+
+  describe('Idle Dynamic Client Cleanup', () => {
+    const nowSeconds = (): number => Math.floor(Date.now() / 1000);
+
+    const dynamicClient = (overrides: Partial<IOAuthClient> = {}): IOAuthClient => ({
+      clientId: 'dynamic-client',
+      name: 'Claude',
+      redirectUris: ['https://claude.ai/api/mcp/auth_callback'],
+      grants: ['authorization_code', 'refresh_token'],
+      scopes: ['read', 'write'],
+      owner: 'dynamic-registration',
+      clientIdIssuedAt: nowSeconds() - 7200, // Registered 2 hours ago
+      ...overrides,
+    });
+
+    beforeEach(() => {
+      mockSystemConfig = {
+        oauthServer: {
+          dynamicRegistration: {
+            clientTtl: 3600, // 1 hour
+          },
+        },
+      };
+    });
+
+    test('should reap an idle dynamic client older than clientTtl with no live tokens', async () => {
+      await createOAuthClient(dynamicClient());
+
+      await cleanupExpired();
+
+      expect(await findOAuthClientById('dynamic-client')).toBeUndefined();
+    });
+
+    test('should keep a dynamic client that has a live token', async () => {
+      const client = dynamicClient();
+      await createOAuthClient(client);
+
+      await saveToken(
+        {
+          scope: 'read',
+          clientId: client.clientId,
+          username: 'testuser',
+        },
+        3600,
+        86400,
+      );
+
+      await cleanupExpired();
+
+      expect(await findOAuthClientById('dynamic-client')).toBeDefined();
+    });
+
+    test('should keep a dynamic client with an unexpired authorization code', async () => {
+      const client = dynamicClient();
+      await createOAuthClient(client);
+
+      saveAuthorizationCode(
+        {
+          redirectUri: 'https://claude.ai/api/mcp/auth_callback',
+          scope: 'read',
+          clientId: client.clientId,
+          username: 'testuser',
+        },
+        300,
+      );
+
+      await cleanupExpired();
+
+      expect(await findOAuthClientById('dynamic-client')).toBeDefined();
+    });
+
+    test('should keep a dynamic client without clientIdIssuedAt (legacy record)', async () => {
+      const client = dynamicClient();
+      delete client.clientIdIssuedAt;
+      await createOAuthClient(client);
+
+      await cleanupExpired();
+
+      expect(await findOAuthClientById('dynamic-client')).toBeDefined();
+    });
+
+    test('should keep a dynamic client younger than clientTtl', async () => {
+      await createOAuthClient(dynamicClient({ clientIdIssuedAt: nowSeconds() - 60 }));
+
+      await cleanupExpired();
+
+      expect(await findOAuthClientById('dynamic-client')).toBeDefined();
+    });
+
+    test('should keep a non-dynamic (admin-owned) client regardless of age', async () => {
+      await createOAuthClient(dynamicClient({ owner: 'admin' }));
+
+      await cleanupExpired();
+
+      expect(await findOAuthClientById('dynamic-client')).toBeDefined();
+    });
+
+    test('should not reap any clients when clientTtl is 0 (cleanup disabled)', async () => {
+      mockSystemConfig = {
+        oauthServer: {
+          dynamicRegistration: {
+            clientTtl: 0,
+          },
+        },
+      };
+      await createOAuthClient(dynamicClient());
+
+      await cleanupExpired();
+
+      expect(await findOAuthClientById('dynamic-client')).toBeDefined();
+    });
+
+    test('should not reap a client referenced by an expired but not yet cleaned token', async () => {
+      const client = dynamicClient();
+      await createOAuthClient(client);
+
+      // Token whose refresh token is still valid but access expired long ago
+      await saveToken(
+        {
+          scope: 'read',
+          clientId: client.clientId,
+          username: 'testuser',
+        },
+        -3600,
+        86400,
+      );
+
+      await cleanupExpired();
+
+      expect(await findOAuthClientById('dynamic-client')).toBeDefined();
     });
   });
 });

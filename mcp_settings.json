@@ -54,7 +54,8 @@
           "authorization_code",
           "refresh_token"
         ],
-        "requiresAuthentication": false
+        "requiresAuthentication": false,
+        "clientTtl": 2592000
       }
     }
   },

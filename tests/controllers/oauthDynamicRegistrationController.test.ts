@@ -17,6 +17,9 @@ jest.mock('../../src/models/OAuth.js', () => ({
   findOAuthClientById: findOAuthClientByIdMock,
   updateOAuthClient: updateOAuthClientMock,
   deleteOAuthClient: deleteOAuthClientMock,
+  createRegistrationToken: jest.fn(() => 'test-registration-token'),
+  verifyRegistrationToken: jest.fn(() => 'test-client'),
+  deleteRegistrationToken: jest.fn(),
 }));
 
 const mockAuthMiddleware = jest.fn((req, res, next) => next());

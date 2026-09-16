@@ -920,7 +920,10 @@
     "dynamicRegistrationAllowedGrantTypesPlaceholder": "例如：authorization_code, refresh_token",
     "dynamicRegistrationAuth": "注册需要认证",
     "dynamicRegistrationAuthDescription": "开启后，注册端点需要认证请求才能创建客户端",
-    "invalidNumberInput": "请输入合法的非负数字"
+    "invalidNumberInput": "请输入合法的非负数字",
+    "dynamicRegistrationClientTtl": "空闲客户端清理 TTL（秒）",
+    "dynamicRegistrationClientTtlDescription": "回收超过此时长、且没有活跃令牌和进行中授权流程的动态注册客户端。设为 0 可禁用清理。",
+    "dynamicRegistrationClientTtlPlaceholder": "例如 2592000"
   },
   "mcpb": {
     "upload": "上传",

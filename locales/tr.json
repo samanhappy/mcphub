@@ -915,7 +915,10 @@
     "dynamicRegistrationAllowedGrantTypesPlaceholder": "örn. authorization_code, refresh_token",
     "dynamicRegistrationAuth": "Kayıt için kimlik doğrulaması iste",
     "dynamicRegistrationAuthDescription": "Kayıt uç noktasını korur, yalnızca kimliği doğrulanmış istekler yeni istemci oluşturabilir",
-    "invalidNumberInput": "Lütfen sıfırdan küçük olmayan geçerli bir sayı girin"
+    "invalidNumberInput": "Lütfen sıfırdan küçük olmayan geçerli bir sayı girin",
+    "dynamicRegistrationClientTtl": "Boşta İstemci Temizleme TTL'si (saniye)",
+    "dynamicRegistrationClientTtlDescription": "Aktif tokenı ve devam eden yetkilendirme akışı olmayan, bu süreden daha eski dinamik kayıtlı istemcileri temizler. Temizlemeyi devre dışı bırakmak için 0 yapın.",
+    "dynamicRegistrationClientTtlPlaceholder": "örn. 2592000"
   },
   "mcpb": {
     "upload": "Yükle",

@@ -544,12 +544,14 @@ const SettingsPage: React.FC = () => {
     authorizationCodeLifetime: string;
     allowedScopes: string;
     dynamicRegistrationAllowedGrantTypes: string;
+    dynamicRegistrationClientTtl: string;
   }>({
     accessTokenLifetime: '3600',
     refreshTokenLifetime: '1209600',
     authorizationCodeLifetime: '300',
     allowedScopes: 'read, write',
     dynamicRegistrationAllowedGrantTypes: 'authorization_code, refresh_token',
+    dynamicRegistrationClientTtl: '2592000',
   });
 
   const [tempBetterAuthConfig, setTempBetterAuthConfig] = useState<{
@@ -707,6 +709,10 @@ const SettingsPage: React.FC = () => {
           ?.allowedGrantTypes?.length
           ? oauthServerConfig.dynamicRegistration.allowedGrantTypes.join(', ')
           : '',
+        dynamicRegistrationClientTtl:
+          oauthServerConfig.dynamicRegistration?.clientTtl !== undefined
+            ? String(oauthServerConfig.dynamicRegistration.clientTtl)
+            : '',
       });
     }
   }, [oauthServerConfig]);
@@ -925,7 +931,11 @@ const SettingsPage: React.FC = () => {
     | 'refreshTokenLifetime'
     | 'authorizationCodeLifetime';
 
-  const handleOAuthServerNumberChange = (key: OAuthServerNumberField, value: string) => {
+  // Temp-config fields handled by the generic number input; nested
+  // dynamicRegistration fields get their own dedicated save handler.
+  type OAuthServerTempNumberField = OAuthServerNumberField | 'dynamicRegistrationClientTtl';
+
+  const handleOAuthServerNumberChange = (key: OAuthServerTempNumberField, value: string) => {
     setTempOAuthServerConfig((prev) => ({
       ...prev,
       [key]: value,
@@ -976,6 +986,25 @@ const SettingsPage: React.FC = () => {
     await updateOAuthServerConfig('dynamicRegistration', {
       ...oauthServerConfig.dynamicRegistration,
       allowedGrantTypes: grantTypes,
+    });
+  };
+
+  const saveDynamicRegistrationClientTtl = async () => {
+    const rawValue = tempOAuthServerConfig.dynamicRegistrationClientTtl;
+    if (rawValue.trim() === '') {
+      showToast(t('settings.invalidNumberInput') || 'Please enter a valid number', 'error');
+      return;
+    }
+
+    const parsedValue = Number(rawValue);
+    if (Number.isNaN(parsedValue) || parsedValue < 0) {
+      showToast(t('settings.invalidNumberInput') || 'Please enter a valid number', 'error');
+      return;
+    }
+
+    await updateOAuthServerConfig('dynamicRegistration', {
+      ...oauthServerConfig.dynamicRegistration,
+      clientTtl: Math.floor(parsedValue),
     });
   };
 
@@ -3063,6 +3092,45 @@ const SettingsPage: React.FC = () => {
                     />
                     <button
                       onClick={saveOAuthServerGrantTypes}
+                      disabled={
+                        loading ||
+                        !oauthServerConfig.enabled ||
+                        !oauthServerConfig.dynamicRegistration.enabled
+                      }
+                      className="hub-btn primary"
+                    >
+                      {t('common.save')}
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <div className="mb-2">
+                    <h3 className="font-medium text-gray-700">
+                      {t('settings.dynamicRegistrationClientTtl')}
+                    </h3>
+                    <p className="text-sm text-gray-500">
+                      {t('settings.dynamicRegistrationClientTtlDescription')}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="number"
+                      min={0}
+                      value={tempOAuthServerConfig.dynamicRegistrationClientTtl}
+                      onChange={(e) =>
+                        handleOAuthServerNumberChange('dynamicRegistrationClientTtl', e.target.value)
+                      }
+                      placeholder={t('settings.dynamicRegistrationClientTtlPlaceholder')}
+                      className="flex-1 mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm form-input"
+                      disabled={
+                        loading ||
+                        !oauthServerConfig.enabled ||
+                        !oauthServerConfig.dynamicRegistration.enabled
+                      }
+                    />
+                    <button
+                      onClick={saveDynamicRegistrationClientTtl}
                       disabled={
                         loading ||
                         !oauthServerConfig.enabled ||

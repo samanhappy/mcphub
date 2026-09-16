@@ -239,6 +239,7 @@ export async function migrateToDatabase(): Promise<boolean> {
             grants: client.grants,
             scopes: client.scopes,
             owner: client.owner,
+            clientIdIssuedAt: client.clientIdIssuedAt,
             metadata: client.metadata,
           });
           logger.log(`  - Created OAuth client: ${client.clientId}`);

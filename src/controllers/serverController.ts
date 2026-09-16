@@ -1725,6 +1725,7 @@ export const updateSystemConfig = async (req: Request, res: Response): Promise<v
         (oauthServer.dynamicRegistration &&
           (typeof oauthServer.dynamicRegistration.enabled === 'boolean' ||
             typeof oauthServer.dynamicRegistration.requiresAuthentication === 'boolean' ||
+            typeof oauthServer.dynamicRegistration.clientTtl === 'number' ||
             Array.isArray(oauthServer.dynamicRegistration.allowedGrantTypes))));
 
     const hasBetterAuthUpdate =
@@ -2219,6 +2220,14 @@ export const updateSystemConfig = async (req: Request, res: Response): Promise<v
         if (typeof oauthServer.dynamicRegistration.requiresAuthentication === 'boolean') {
           dynamicTarget.requiresAuthentication =
             oauthServer.dynamicRegistration.requiresAuthentication;
+        }
+
+        if (
+          typeof oauthServer.dynamicRegistration.clientTtl === 'number' &&
+          Number.isFinite(oauthServer.dynamicRegistration.clientTtl) &&
+          oauthServer.dynamicRegistration.clientTtl >= 0
+        ) {
+          dynamicTarget.clientTtl = Math.floor(oauthServer.dynamicRegistration.clientTtl);
         }
 
         target.dynamicRegistration = dynamicTarget;
