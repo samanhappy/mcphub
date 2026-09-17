@@ -5,6 +5,7 @@ import {
   ChevronRight,
   AlertCircle,
   Copy,
+  CopyPlus,
   Check,
   RefreshCw,
   Wrench,
@@ -42,6 +43,7 @@ interface ServerCardProps {
   cost?: ServerCost;
   onRemove: (serverName: string) => void;
   onEdit: (server: Server) => void;
+  onDuplicate?: (server: Server) => void;
   onToggle?: (server: Server, enabled: boolean) => Promise<boolean>;
   onVisibilityChange?: (server: Server, visibility: 'private' | 'group' | 'public') => Promise<boolean>;
   onRefresh?: () => void;
@@ -140,6 +142,7 @@ const ServerCard = ({
   cost,
   onRemove,
   onEdit,
+  onDuplicate,
   onToggle,
   onVisibilityChange,
   onRefresh,
@@ -779,6 +782,19 @@ const ServerCard = ({
                 >
                   <Edit3 size={13} /> {t('server.edit')}
                 </button>
+                {onDuplicate && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowMenu(false);
+                      onDuplicate(server);
+                    }}
+                    className="flex items-center gap-2 w-full px-2.5 py-1.5 text-[13px] rounded-md hover:bg-[var(--hub-surface-hover)] text-left"
+                    style={{ color: 'var(--hub-ink)' }}
+                  >
+                    <CopyPlus size={13} /> {t('server.duplicate')}
+                  </button>
+                )}
                 <button
                   onClick={handleCopyConfig}
                   className="flex items-center gap-2 w-full px-2.5 py-1.5 text-[13px] rounded-md hover:bg-[var(--hub-surface-hover)] text-left"

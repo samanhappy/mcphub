@@ -1,26 +1,62 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ServerForm from './ServerForm'
 import { apiPost } from '../utils/fetchInterceptor'
 import { detectVariables } from '../utils/variableDetection'
+import { buildDuplicateSource, carryOverCapabilityOverrides } from '../utils/serverDuplicate'
+import { Server } from '../types'
 
 interface AddServerFormProps {
   onAdd: () => void
+  /**
+   * Source server for the card's Duplicate action (#1187). Setting it opens the
+   * add modal pre-filled from that server and the copy is created through the
+   * normal `POST /servers` path; clearing it closes the modal again.
+   */
+  duplicateSource?: Server | null
+  onDuplicateCancel?: () => void
 }
 
-const AddServerForm = ({ onAdd }: AddServerFormProps) => {
+const AddServerForm = ({
+  onAdd,
+  duplicateSource = null,
+  onDuplicateCancel,
+}: AddServerFormProps) => {
   const { t } = useTranslation()
-  const [modalVisible, setModalVisible] = useState(false)
+  const [addModalVisible, setAddModalVisible] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [confirmationVisible, setConfirmationVisible] = useState(false)
   const [pendingPayload, setPendingPayload] = useState<any>(null)
   const [detectedVariables, setDetectedVariables] = useState<string[]>([])
 
-  const toggleModal = () => {
-    setModalVisible(!modalVisible)
+  const duplicatePrefill = useMemo(
+    () => (duplicateSource ? buildDuplicateSource(duplicateSource) : null),
+    [duplicateSource],
+  )
+  const modalVisible = addModalVisible || duplicateSource !== null
+
+  const resetModalState = () => {
     setError(null) // Clear any previous errors when toggling modal
     setConfirmationVisible(false) // Close confirmation dialog
     setPendingPayload(null) // Clear pending payload
+  }
+
+  const closeModal = () => {
+    setAddModalVisible(false)
+    resetModalState()
+    if (duplicateSource) {
+      onDuplicateCancel?.()
+    }
+  }
+
+  const toggleModal = () => {
+    if (modalVisible) {
+      closeModal()
+      return
+    }
+
+    setAddModalVisible(true)
+    resetModalState()
   }
 
   const handleConfirmSubmit = async () => {
@@ -46,7 +82,7 @@ const AddServerForm = ({ onAdd }: AddServerFormProps) => {
         return
       }
 
-      setModalVisible(false)
+      closeModal()
       onAdd()
     } catch (err) {
       console.error('Error adding server:', err)
@@ -67,17 +103,23 @@ const AddServerForm = ({ onAdd }: AddServerFormProps) => {
 
   const handleSubmit = async (payload: any) => {
     try {
+      // The create payload is rebuilt from form fields, so a duplicate has to
+      // get the source's capability overrides re-attached (#1187).
+      const nextPayload = duplicateSource
+        ? carryOverCapabilityOverrides(payload, duplicateSource)
+        : payload
+
       // Check for variables in the payload
-      const variables = detectVariables(payload)
+      const variables = detectVariables(nextPayload)
 
       if (variables.length > 0) {
         // Show confirmation dialog
         setDetectedVariables(variables)
-        setPendingPayload(payload)
+        setPendingPayload(nextPayload)
         setConfirmationVisible(true)
       } else {
         // Submit directly if no variables found
-        await submitServer(payload)
+        await submitServer(nextPayload)
       }
     } catch (err) {
       console.error('Error processing server submission:', err)
@@ -101,8 +143,15 @@ const AddServerForm = ({ onAdd }: AddServerFormProps) => {
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <ServerForm
             onSubmit={handleSubmit}
-            onCancel={toggleModal}
-            modalTitle={t('server.addServer')}
+            onCancel={closeModal}
+            initialData={duplicatePrefill}
+            mode="create"
+            shareCandidatesFrom={duplicateSource?.name}
+            modalTitle={
+              duplicateSource
+                ? t('server.duplicateTitle', { serverName: duplicateSource.name })
+                : t('server.addServer')
+            }
             formError={error}
           />
         </div>

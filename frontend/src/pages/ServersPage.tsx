@@ -45,6 +45,7 @@ const ServersPage: React.FC = () => {
   }, [servers, refetchCost]);
 
   const [editingServer, setEditingServer] = useState<Server | null>(null);
+  const [duplicateServer, setDuplicateServer] = useState<Server | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showMcpbUpload, setShowMcpbUpload] = useState(false);
   const [showJsonImport, setShowJsonImport] = useState(false);
@@ -70,6 +71,14 @@ const ServersPage: React.FC = () => {
   const handleEditClick = async (server: Server) => {
     const fullServerData = await handleServerEdit(server);
     if (fullServerData) setEditingServer(fullServerData);
+  };
+
+  // Duplicate pre-fills the add form, so it needs the same full stored
+  // configuration the edit flow loads - the card only carries the list
+  // projection, which has no env/headers/credential template (#1187).
+  const handleDuplicateClick = async (server: Server) => {
+    const fullServerData = await handleServerEdit(server);
+    if (fullServerData) setDuplicateServer(fullServerData);
   };
 
   const handleRefresh = async () => {
@@ -114,7 +123,11 @@ const ServersPage: React.FC = () => {
             <RefreshCw size={13} className={isRefreshing ? 'animate-spin' : ''} />
             {t('common.refresh')}
           </button>
-          <AddServerForm onAdd={handleServerAdd} />
+          <AddServerForm
+            onAdd={handleServerAdd}
+            duplicateSource={duplicateServer}
+            onDuplicateCancel={() => setDuplicateServer(null)}
+          />
         </div>
       </div>
 
@@ -222,6 +235,7 @@ const ServersPage: React.FC = () => {
                 cost={serverCosts.find((c) => c.name === server.name)}
                 onRemove={handleServerRemove}
                 onEdit={handleEditClick}
+                onDuplicate={handleDuplicateClick}
                 onToggle={handleServerToggle}
                 onVisibilityChange={handleServerVisibilityChange}
                 onRefresh={triggerRefresh}
