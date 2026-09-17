@@ -98,7 +98,9 @@ const stableHashSerialize = (value: unknown): string => {
   return JSON.stringify(value);
 };
 
-const buildToolSetHash = (tools: Array<{ name: string; description?: string; inputSchema?: unknown }>) =>
+const buildToolSetHash = (
+  tools: Array<{ name: string; description?: string; inputSchema?: unknown }>,
+) =>
   createHash('sha256')
     .update(
       stableHashSerialize(
@@ -219,6 +221,83 @@ describe('vectorSearchService', () => {
     expect(mockVectorRepository.searchSimilar.mock.calls[0][0]).toBe(
       mockVectorRepository.searchSimilar.mock.calls[1][0],
     );
+  });
+
+  it('scopes the search to the requested servers in SQL, not after the limit', async () => {
+    // Regression: the server filter used to be applied in JS *after* the
+    // database had already returned the global top-`limit` rows. Embeddings are
+    // keyed per server and the same tool set usually exists under several
+    // server entries (read-only entry, write twin, per-user copies), so a
+    // group-scoped search spent its whole budget on rows it then discarded and
+    // could return nothing while good matches sat above the threshold.
+    mockVectorRepository.searchSimilar.mockImplementation(
+      async (
+        _embedding: number[],
+        limit: number,
+        _threshold: number,
+        contentTypes?: string[],
+        serverNames?: string[],
+      ) => {
+        // Ordered by similarity like `ORDER BY similarity DESC` does: the
+        // copies the caller did NOT ask for score higher than the one it did.
+        const rows = contentTypes?.includes('tool')
+          ? [
+              {
+                serverName: 'redis',
+                toolName: 'redis-get',
+                text: 'redis-get Read a cache value',
+                similarity: 0.9,
+              },
+              {
+                serverName: 'redis-rw',
+                toolName: 'redis-rw-get',
+                text: 'redis-rw-get Read a cache value',
+                similarity: 0.8,
+              },
+              {
+                serverName: 'redis-me',
+                toolName: 'redis-me-get',
+                text: 'redis-me-get Read a cache value',
+                similarity: 0.65,
+              },
+            ]
+          : [];
+
+        // Stand in for the SQL predicate: the database filters, then limits.
+        return rows
+          .filter((row) => !serverNames || serverNames.includes(row.serverName))
+          .slice(0, limit)
+          .map((row) => ({
+            embedding: {
+              metadata: JSON.stringify({
+                serverName: row.serverName,
+                toolName: row.toolName,
+                description: 'Read a cache value',
+                inputSchema: {},
+              }),
+              text_content: row.text,
+            },
+            similarity: row.similarity,
+          }));
+      },
+    );
+
+    const results = await searchToolsByVector('read a cache value', 1, 0.3, ['redis-me']);
+
+    expect(results.map((result) => result.toolName)).toEqual(['redis-me-get']);
+    for (const call of mockVectorRepository.searchSimilar.mock.calls) {
+      expect(call[4]).toEqual(['redis-me']);
+    }
+  });
+
+  it('leaves the search unscoped when no server names are given', async () => {
+    mockVectorRepository.searchSimilar.mockResolvedValue([]);
+
+    await searchToolsByVector('anything', 10, 0.3);
+
+    for (const call of mockVectorRepository.searchSimilar.mock.calls) {
+      expect(call[4]).toBeUndefined();
+    }
   });
 
   it('preserves the original tool similarity when no server score is available', async () => {

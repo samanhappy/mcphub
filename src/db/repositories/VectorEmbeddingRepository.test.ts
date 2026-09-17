@@ -2,9 +2,35 @@ import { VectorEmbedding } from '../entities/VectorEmbedding.js';
 
 const queryMock = jest.fn();
 const getRepositoryMock = jest.fn(() => ({}));
+
+type QueryBuilderCall = { clause: string; parameters?: Record<string, unknown> };
+const andWhereCalls: QueryBuilderCall[] = [];
+const getRawManyMock = jest.fn(async () => [] as unknown[]);
+const createQueryBuilderMock = jest.fn(() => {
+  const builder: Record<string, unknown> = {};
+  for (const method of [
+    'select',
+    'addSelect',
+    'from',
+    'where',
+    'orderBy',
+    'limit',
+    'setParameter',
+  ]) {
+    builder[method] = jest.fn(() => builder);
+  }
+  builder.andWhere = jest.fn((clause: string, parameters?: Record<string, unknown>) => {
+    andWhereCalls.push({ clause, parameters });
+    return builder;
+  });
+  builder.getRawMany = getRawManyMock;
+  return builder;
+});
+
 const getAppDataSourceMock = jest.fn(() => ({
   getRepository: getRepositoryMock,
   query: queryMock,
+  createQueryBuilder: createQueryBuilderMock,
 }));
 
 jest.mock('../connection.js', () => ({
@@ -118,5 +144,62 @@ describe('VectorEmbeddingRepository.saveEmbedding', () => {
         model: 'embedding-model',
       }),
     );
+  });
+});
+
+describe('VectorEmbeddingRepository.searchSimilar server scoping', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    andWhereCalls.length = 0;
+    getRawManyMock.mockResolvedValue([]);
+  });
+
+  const scopeCall = () => andWhereCalls.find((call) => call.clause.includes('content_id'));
+
+  it('does not restrict by server when no server names are given', async () => {
+    const repository = new VectorEmbeddingRepository();
+
+    await repository.searchSimilar([0.1, 0.2], 10, 0.3, ['tool']);
+
+    expect(scopeCall()).toBeUndefined();
+  });
+
+  it('restricts by server in SQL so the limit counts usable rows', async () => {
+    const repository = new VectorEmbeddingRepository();
+
+    await repository.searchSimilar([0.1, 0.2], 10, 0.3, ['tool'], ['alpha', 'beta']);
+
+    const call = scopeCall();
+    // Tools are keyed `<serverName>:<toolName>` and the server-level row is
+    // keyed `<serverName>`, so both forms have to match.
+    expect(call?.clause).toBe(
+      '(vector_embedding.content_id IN (:...scopedServerNames)' +
+        " OR vector_embedding.content_id LIKE :scopedServerPrefix0 ESCAPE '\\'" +
+        " OR vector_embedding.content_id LIKE :scopedServerPrefix1 ESCAPE '\\')",
+    );
+    expect(call?.parameters).toEqual({
+      scopedServerNames: ['alpha', 'beta'],
+      scopedServerPrefix0: 'alpha:%',
+      scopedServerPrefix1: 'beta:%',
+    });
+  });
+
+  it('escapes LIKE wildcards in server names', async () => {
+    const repository = new VectorEmbeddingRepository();
+
+    await repository.searchSimilar([0.1, 0.2], 10, 0.3, ['tool'], ['we_ird%name']);
+
+    expect(scopeCall()?.parameters).toEqual({
+      scopedServerNames: ['we_ird%name'],
+      scopedServerPrefix0: 'we\\_ird\\%name:%',
+    });
+  });
+
+  it('ignores empty server names instead of matching everything', async () => {
+    const repository = new VectorEmbeddingRepository();
+
+    await repository.searchSimilar([0.1, 0.2], 10, 0.3, ['tool'], ['']);
+
+    expect(scopeCall()).toBeUndefined();
   });
 });
