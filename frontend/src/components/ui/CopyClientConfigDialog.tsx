@@ -61,11 +61,11 @@ const CopyClientConfigDialog = ({ isOpen, onClose, target }: CopyClientConfigDia
   const handleCopy = async (key: string, value: string) => {
     const ok = await copyText(value);
     if (!ok) {
-      showToast(t('common.copyFailed') || 'Copy failed', 'error');
+      showToast(t('common.copyFailed'), 'error');
       return;
     }
     setCopiedBlock(key);
-    showToast(t('common.copySuccess') || 'Copied to clipboard', 'success');
+    showToast(t('common.copySuccess'), 'success');
     setTimeout(() => setCopiedBlock((current) => (current === key ? null : current)), 1500);
   };
 
@@ -128,41 +128,50 @@ const CopyClientConfigDialog = ({ isOpen, onClose, target }: CopyClientConfigDia
         </div>
 
         <div className="px-4 pb-4 pt-2 space-y-3 max-h-[60vh] overflow-auto">
-          {blocks.map((block) => {
-            const key = `${activeId}:${block.kind}`;
-            const copied = copiedBlock === key;
-            return (
-              <div key={key}>
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-[12px]" style={{ color: 'var(--hub-ink-2)' }}>
-                    {t(
-                      block.kind === 'command' ? 'clientConfig.commandBlock' : 'clientConfig.configBlock',
-                    )}
-                  </span>
-                  <button
-                    className="hub-btn sm"
-                    onClick={() => void handleCopy(key, block.text)}
+          {blocks.length === 0 ? (
+            // OpenAPI-backed servers have no client-side transport to copy.
+            <p className="text-[12px]" style={{ color: 'var(--hub-ink-3)' }}>
+              {t('clientConfig.noTransport')}
+            </p>
+          ) : (
+            blocks.map((block) => {
+              const key = `${activeId}:${block.kind}`;
+              const copied = copiedBlock === key;
+              return (
+                <div key={key}>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[12px]" style={{ color: 'var(--hub-ink-2)' }}>
+                      {t(
+                        block.kind === 'command'
+                          ? 'clientConfig.commandBlock'
+                          : 'clientConfig.configBlock',
+                      )}
+                    </span>
+                    <button
+                      className="hub-btn sm"
+                      onClick={() => void handleCopy(key, block.text)}
+                    >
+                      {copied ? <Check size={12} className="text-[var(--hub-ok)]" /> : <Copy size={12} />}
+                      {copied ? t('clientConfig.copied') : t('common.copy')}
+                    </button>
+                  </div>
+                  <pre
+                    className="hub-mono m-0 p-3 rounded-md overflow-auto"
+                    style={{
+                      background: 'var(--hub-bg-2)',
+                      border: '1px solid var(--hub-line-2)',
+                      fontSize: 12,
+                      lineHeight: 1.5,
+                      color: 'var(--hub-ink-2)',
+                      maxHeight: 320,
+                    }}
                   >
-                    {copied ? <Check size={12} className="text-[var(--hub-ok)]" /> : <Copy size={12} />}
-                    {copied ? t('clientConfig.copied') : t('common.copy')}
-                  </button>
+                    <code>{block.text}</code>
+                  </pre>
                 </div>
-                <pre
-                  className="hub-mono m-0 p-3 rounded-md overflow-auto"
-                  style={{
-                    background: 'var(--hub-bg-2)',
-                    border: '1px solid var(--hub-line-2)',
-                    fontSize: 12,
-                    lineHeight: 1.5,
-                    color: 'var(--hub-ink-2)',
-                    maxHeight: 320,
-                  }}
-                >
-                  <code>{block.text}</code>
-                </pre>
-              </div>
-            );
-          })}
+              );
+            })
+          )}
         </div>
 
         <div

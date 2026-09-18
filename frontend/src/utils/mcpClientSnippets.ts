@@ -4,9 +4,14 @@
  * MCPHub hands out HTTP endpoints, so every preset describes the same target -
  * a name, an optional URL/headers pair (HTTP) or command/args/env triple
  * (stdio) - in the shape the selected client expects. Client schemas verified
- * against their primary sources: Codex (`codex-rs/config/src/mcp_types.rs`),
- * VS Code (MCP configuration reference), OpenCode (mcp-servers docs) and
- * Cherry Studio (`mcpProtocolInstall.ts`).
+ * against their primary sources (all URLs re-checked 2026-02):
+ * - Codex `codex-rs/config/src/mcp_types.rs`:
+ *   https://github.com/openai/codex/blob/main/codex-rs/config/src/mcp_types.rs
+ * - VS Code MCP configuration reference:
+ *   https://code.visualstudio.com/docs/copilot/customization/mcp-servers
+ * - OpenCode mcp-servers docs: https://opencode.ai/docs/mcp-servers/
+ * - Cherry Studio `mcpProtocolInstall.ts`:
+ *   https://github.com/CherryHQ/cherry-studio/blob/main/src/shared/data/types/mcpProtocolInstall.ts
  */
 
 export type ClientSnippetId =
@@ -57,6 +62,8 @@ export const CLIENT_SNIPPET_PRESETS: readonly ClientSnippetPreset[] = [
 
 export interface ClientSnippetTarget {
   name: string;
+  /** Stored transport type; `sse` is called out so clients do not misdial it as http. */
+  type?: 'stdio' | 'sse' | 'streamable-http' | 'openapi';
   /** HTTP targets carry a URL (and usually an Authorization header). */
   url?: string;
   headers?: Record<string, string>;
@@ -79,7 +86,7 @@ export interface ClientSnippetOptions {
 
 /** Placeholder MCPHub uses for snippets that need a token pasted in by hand. */
 export const ACCESS_TOKEN_PLACEHOLDER = '<your-access-token>';
-export const TOKEN_INPUT_ID = 'mcphub-token';
+const TOKEN_INPUT_ID = 'mcphub-token';
 
 const isHttpTarget = (target: ClientSnippetTarget): boolean => Boolean(target.url);
 
@@ -106,6 +113,10 @@ const stdioEntry = (target: ClientSnippetTarget): Record<string, unknown> => {
 const httpEntry = (target: ClientSnippetTarget): Record<string, unknown> => {
   const headers = definedHeaders(target);
   return {
+    // Only `sse` is spelled out: it is the one HTTP transport a client might
+    // otherwise misdial as streamable HTTP. Every other target keeps the bare
+    // `url` + `headers` shape these presets always produced.
+    ...(target.type === 'sse' ? { type: 'sse' } : {}),
     url: target.url ?? '',
     ...(headers ? { headers } : {}),
   };
@@ -136,7 +147,12 @@ const vscodeSnippet = (target: ClientSnippetTarget, options: ClientSnippetOption
     : headers;
 
   const entry = isHttpTarget(target)
-    ? { type: 'http', url: target.url, ...(body ? { headers: body } : {}) }
+    ? {
+        // VS Code distinguishes the SSE transport from streamable HTTP.
+        type: target.type === 'sse' ? 'sse' : 'http',
+        url: target.url,
+        ...(body ? { headers: body } : {}),
+      }
     : { type: 'stdio', ...stdioEntry(target) };
 
   return JSON.stringify(
@@ -235,14 +251,16 @@ const openCodeSnippet = (target: ClientSnippetTarget): string => {
   );
 };
 
-// Cherry Studio's install schema is a strict object: remote servers use
-// `baseUrl` + `type: 'streamableHttp'` (no `url` key), stdio uses
-// command/args/env, and both carry its own name/isActive metadata.
+// Cherry Studio's `ProtocolMcpServerConfigSchema` is a strict object: remote
+// servers use `baseUrl` + `type: 'streamableHttp'` (no `url` key) and stdio
+// servers use command/args/env. Install-time metadata (`installSource`,
+// `isTrusted`, `installedAt`, `isActive: false`) belongs to the separate
+// `ProtocolMcpServerInstallSchema` request, not to this hand-pasted config,
+// so an extra `isActive` key would make the entry invalid for both schemas.
 const cherryStudioSnippet = (target: ClientSnippetTarget): string => {
   const base = {
     name: target.name,
     description: target.description ?? '',
-    isActive: true,
   };
 
   const headers = definedHeaders(target);
@@ -260,8 +278,15 @@ const cherryStudioSnippet = (target: ClientSnippetTarget): string => {
 
 const CLI_SAFE = /^[A-Za-z0-9._:@/=-]+$/;
 
+// Single quotes are the only reliable POSIX quoting for a pasted command:
+// double quotes still let the shell expand `$(...)`, backticks and `${...}`
+// inside them. Within single quotes nothing is expanded, so the only character
+// needing special handling is `'` itself, escaped as `'\''` (close quote,
+// escaped quote, reopen).
+const shellQuote = (value: string): string => `'${value.replace(/'/g, "'\\''")}'`;
+
 const cliArg = (value: string): string =>
-  CLI_SAFE.test(value) ? value : `"${value.replace(/"/g, '\\"')}"`;
+  CLI_SAFE.test(value) ? value : shellQuote(value);
 
 // Claude Code's one-liner equivalent of the JSON block.
 const claudeCodeCommand = (target: ClientSnippetTarget): string | undefined => {
@@ -269,7 +294,16 @@ const claudeCodeCommand = (target: ClientSnippetTarget): string | undefined => {
     return undefined;
   }
 
-  const parts = ['claude', 'mcp', 'add', '--transport', 'http', cliArg(target.name), cliArg(target.url ?? '')];
+  const parts = [
+    'claude',
+    'mcp',
+    'add',
+    '--transport',
+    // SSE endpoints must not be dialed as streamable HTTP.
+    target.type === 'sse' ? 'sse' : 'http',
+    cliArg(target.name),
+    cliArg(target.url ?? ''),
+  ];
   for (const [name, value] of Object.entries(definedHeaders(target) ?? {})) {
     parts.push('--header', cliArg(`${name}: ${value}`));
   }
@@ -278,6 +312,19 @@ const claudeCodeCommand = (target: ClientSnippetTarget): string | undefined => {
 
 const asString = (value: unknown): string | undefined =>
   typeof value === 'string' && value.length > 0 ? value : undefined;
+
+/** Narrow a stored `type` to the four legal server types; anything else is dropped. */
+const asServerType = (value: unknown): ClientSnippetTarget['type'] => {
+  switch (value) {
+    case 'stdio':
+    case 'sse':
+    case 'streamable-http':
+    case 'openapi':
+      return value;
+    default:
+      return undefined;
+  }
+};
 
 const asStringRecord = (value: unknown): Record<string, string> | undefined => {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
@@ -311,6 +358,7 @@ export const toClientSnippetTarget = (
 
   return {
     name,
+    ...(asServerType(source.type) ? { type: asServerType(source.type) } : {}),
     ...(asString(source.url) ? { url: asString(source.url) } : {}),
     ...(asStringRecord(source.headers) ? { headers: asStringRecord(source.headers) } : {}),
     ...(asString(source.command) ? { command: asString(source.command) } : {}),
@@ -354,6 +402,13 @@ export const buildClientSnippetBlocks = (
   target: ClientSnippetTarget,
   options: ClientSnippetOptions = {},
 ): ClientSnippetBlock[] => {
+  // OpenAPI-backed servers carry neither a URL nor a command, so every preset
+  // would degrade to filler like `command: ""`. Return no blocks and let the
+  // dialog explain that there is no client-side transport to copy.
+  if (!target.url && !target.command) {
+    return [];
+  }
+
   const blocks: ClientSnippetBlock[] = [{ kind: 'config', text: configSnippet(id, target, options) }];
 
   if (id === 'claude-code') {

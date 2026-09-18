@@ -322,7 +322,6 @@
     "copyId": "ID'yi Kopyala",
     "copyUrl": "URL'yi Kopyala",
     "copyOpenApiUrl": "OpenAPI URL'sini Kopyala",
-    "copyJson": "JSON'u Kopyala",
     "copySuccess": "Panoya kopyalandı",
     "copyFailed": "Kopyalama başarısız",
     "copied": "Kopyalandı",
@@ -363,6 +362,7 @@
     "configBlock": "Yapılandırma",
     "commandBlock": "CLI komutu",
     "copied": "Kopyalandı",
+    "noTransport": "Bu sunucunun istemci tarafı bir MCP taşıması yok (OpenAPI desteklidir). Bunun yerine hub'ı veya bir grup uç noktasını kullanın.",
     "clients": {
       "generic-mcp-servers": {
         "label": "Genel (mcpServers)",

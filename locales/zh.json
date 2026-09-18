@@ -323,7 +323,6 @@
     "copyId": "复制ID",
     "copyUrl": "复制URL",
     "copyOpenApiUrl": "复制OpenAPI URL",
-    "copyJson": "复制JSON",
     "copySuccess": "已复制到剪贴板",
     "copyFailed": "复制失败",
     "copied": "已复制",
@@ -358,12 +357,13 @@
   },
   "clientConfig": {
     "title": "复制 MCP 配置",
-    "description": "选择你的客户端，复制 {{name}} 可直接粘贴的配置。",
+    "description": "选择你的客户端，复制可直接粘贴的 {{name}} 配置。",
     "menuItem": "复制 MCP 配置",
     "tokenPrompt": "MCPHub 访问令牌",
     "configBlock": "配置内容",
     "commandBlock": "命令行",
     "copied": "已复制",
+    "noTransport": "该服务器没有客户端侧的 MCP 传输方式（它由 OpenAPI 支撑）。请改用 hub 或分组端点。",
     "clients": {
       "generic-mcp-servers": {
         "label": "通用（mcpServers）",
@@ -383,7 +383,7 @@
       },
       "vscode": {
         "label": "VS Code / Copilot",
-        "hint": "VS Code / Copilot：工作区 .vscode/mcp.json，或用户 profile 中的 mcp.json。"
+        "hint": "VS Code / Copilot：工作区 .vscode/mcp.json，或用户配置中的 mcp.json。"
       },
       "codex": {
         "label": "Codex",

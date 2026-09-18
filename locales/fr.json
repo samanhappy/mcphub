@@ -322,7 +322,6 @@
     "copyId": "Copier l'ID",
     "copyUrl": "Copier l'URL",
     "copyOpenApiUrl": "Copier l'URL OpenAPI",
-    "copyJson": "Copier le JSON",
     "copySuccess": "Copié dans le presse-papiers",
     "copyFailed": "Échec de la copie",
     "copied": "Copié",
@@ -363,6 +362,7 @@
     "configBlock": "Configuration",
     "commandBlock": "Commande CLI",
     "copied": "Copié",
+    "noTransport": "Ce serveur n'a aucun transport MCP côté client (il est adossé à OpenAPI). Utilisez plutôt le hub ou un endpoint de groupe.",
     "clients": {
       "generic-mcp-servers": {
         "label": "Générique (mcpServers)",
@@ -370,7 +370,7 @@
       },
       "generic-http": {
         "label": "HTTP générique",
-        "hint": "Tout client acceptant une entrée HTTP MCP brute : collez-la dans la table de serveurs du client en conservant l'URL et la valeur Authorization."
+        "hint": "Tout client acceptant une entrée HTTP MCP brute : collez-la dans la liste des serveurs du client en conservant l'URL et la valeur Authorization."
       },
       "claude-code": {
         "label": "Claude Code",

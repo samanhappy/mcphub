@@ -78,6 +78,11 @@ const GroupCard = ({ group, servers, onEdit, onDelete, cost }: GroupCardProps) =
   };
 
   const groupEndpoint = `${baseUrl}/mcp/${group.name}`;
+  // Only the client-config dialog needs a URL-encoded path segment: group names
+  // may contain spaces/CJK, and the generated client snippets must be valid URLs.
+  // The raw groupEndpoint above is intentionally left as-is for the legacy
+  // "Copy URL" actions.
+  const clientConfigEndpoint = `${baseUrl}/mcp/${encodeURIComponent(group.name)}`;
   const groupOpenApiEndpoint = `${baseUrl}/api/${group.name}`;
 
   const serverNames = getServerNames(group.servers);
@@ -199,7 +204,7 @@ const GroupCard = ({ group, servers, onEdit, onDelete, cost }: GroupCardProps) =
                     setShowCopyDropdown(false);
                     setClientConfigTarget({
                       name: group.name,
-                      url: groupEndpoint,
+                      url: clientConfigEndpoint,
                       headers: { Authorization: `Bearer ${ACCESS_TOKEN_PLACEHOLDER}` },
                     });
                   }}

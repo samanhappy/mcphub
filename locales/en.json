@@ -321,7 +321,6 @@
     "copyId": "Copy ID",
     "copyUrl": "Copy URL",
     "copyOpenApiUrl": "Copy OpenAPI URL",
-    "copyJson": "Copy JSON",
     "copySuccess": "Copied to clipboard",
     "copyFailed": "Copy failed",
     "copied": "Copied",
@@ -362,6 +361,7 @@
     "configBlock": "Configuration",
     "commandBlock": "CLI command",
     "copied": "Copied",
+    "noTransport": "This server has no client-side MCP transport (it is OpenAPI-backed). Use the hub or a group endpoint instead.",
     "clients": {
       "generic-mcp-servers": {
         "label": "Generic (mcpServers)",
