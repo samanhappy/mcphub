@@ -1,613 +1,76 @@
 ---
-title: '监控与分析'
-description: '全面监控 MCP 服务器性能、健康状况和使用情况'
+title: '监控与可观测性'
+description: 'MCPHub 提供的健康检查、日志和活动追踪能力'
 ---
 
-## 概述
+MCPHub 提供三个可观测性入口。MCPHub **没有**内置 Prometheus exporter、OpenTelemetry SDK 或告警管线；如需这些能力，请使用外部基础设施工具接入下面的端点。
 
-MCPHub 提供全面的监控和分析功能，帮助您跟踪 MCP 服务器的性能、健康状况和使用模式。系统提供实时指标、历史分析和智能警报。
+## 健康检查端点
 
-## 实时监控
-
-### 仪表板概览
-
-主监控仪表板显示关键指标：
+`GET /health` —— 公开访问，无需认证。
 
 ```bash
-# 访问监控仪表板
-curl -X GET http://localhost:3000/api/monitoring/dashboard \
-  -H "Authorization: Bearer $TOKEN"
+curl http://localhost:3000/health
 ```
 
 响应示例：
 
 ```json
 {
-  "overview": {
-    "totalServers": 12,
-    "activeServers": 10,
-    "totalRequests": 15420,
-    "avgResponseTime": "245ms",
-    "errorRate": "0.3%",
-    "uptime": "99.9%"
-  },
-  "realtime": {
-    "requestsPerMinute": 85,
-    "activeConnections": 156,
-    "memoryUsage": "68%",
-    "cpuUsage": "42%"
-  }
+  "status": "healthy",
+  "message": "All enabled MCP servers are ready",
+  "servers": { "connected": 3, "connecting": 0, "disconnected": 0, "total": 3 },
+  "timestamp": "2026-05-18T12:34:56.789Z"
 }
 ```
 
-### 服务器健康状态
+`status` 的取值如下：
 
-```bash
-# 获取所有服务器状态
-curl -X GET http://localhost:3000/api/monitoring/servers/health \
-  -H "Authorization: Bearer $TOKEN"
-```
+| 值          | HTTP 状态码 | 含义                                                        |
+| ----------- | ----------- | ----------------------------------------------------------- |
+| `healthy`   | `200`       | 所有启用的 MCP 服务器均已连接；数据库（如果启用）状态正常。 |
+| `degraded`  | `200`       | 部分启用的 MCP 服务器尚未连接，但 MCPHub 本身正常运行。     |
+| `unhealthy` | `503`       | 数据库模式下的数据库健康检查失败，或发生内部错误。          |
 
-## 性能指标
+因此，`/health` 适合用于存活和就绪探针。详见 `src/controllers/healthController.ts`。
 
-### 响应时间监控
+## 进程内日志
 
-```json
-{
-  "responseTime": {
-    "metrics": [
-      {
-        "serverId": "server-1",
-        "average": "180ms",
-        "p50": "150ms",
-        "p95": "300ms",
-        "p99": "500ms"
-      }
-    ],
-    "alerts": {
-      "slowResponse": {
-        "threshold": "1s",
-        "current": "180ms",
-        "status": "normal"
-      }
-    }
-  }
-}
-```
+MCPHub 维护一个滚动的进程内存日志缓冲区（`src/services/logService.ts`），供控制台的日志查看器使用。
 
-### 吞吐量分析
+| 方法与路径             | 说明                                               |
+| ---------------------- | -------------------------------------------------- |
+| `GET /api/logs`        | 以 JSON 返回缓冲区中的日志条目。                   |
+| `DELETE /api/logs`     | 清空日志缓冲区。                                   |
+| `GET /api/logs/stream` | 以 Server-Sent Events 的方式推送新产生的日志条目。 |
 
-```bash
-# 获取吞吐量统计
-curl -X GET http://localhost:3000/api/monitoring/throughput \
-  -H "Authorization: Bearer $TOKEN" \
-  -G -d "timeRange=1h" -d "granularity=5m"
-```
+日志流会为每个事件发送一行 `data:`，并包含初始的 `{ "type": "initial", "logs": [...] }` 快照。以上三个端点都要求已认证的管理员权限（控制台 JWT、`accessType: all` 的 bearer key、OAuth token 或 Better Auth session）。
 
-响应示例：
+该缓冲区只存在于当前进程。在多实例部署中，请将 `stdout` 发送到日志聚合器，不要依赖此端点。
 
-```json
-{
-  "timeRange": "1h",
-  "granularity": "5m",
-  "data": [
-    {
-      "timestamp": "2024-01-01T12:00:00Z",
-      "totalRequests": 450,
-      "successfulRequests": 448,
-      "failedRequests": 2,
-      "avgResponseTime": "230ms"
-    }
-  ],
-  "summary": {
-    "peakThroughput": 520,
-    "averageThroughput": 412,
-    "totalRequests": 4944
-  }
-}
-```
+## 活动日志（数据库模式）
 
-### 资源使用监控
+当 MCPHub 使用 PostgreSQL 运行时（参见[数据库配置](/zh/configuration/database-configuration)），每个 MCP 请求和响应都会由 `src/services/activityLoggingService.ts` 持久化到 `mcphub_activity` 表。控制台通过以下端点提供访问：
 
-```json
-{
-  "resources": {
-    "cpu": {
-      "usage": "42%",
-      "cores": 8,
-      "processes": [
-        { "name": "mcp-server-1", "cpu": "15%" },
-        { "name": "mcp-server-2", "cpu": "12%" }
-      ]
-    },
-    "memory": {
-      "total": "32GB",
-      "used": "21.6GB",
-      "available": "10.4GB",
-      "byProcess": [
-        { "name": "mcp-server-1", "memory": "2.1GB" },
-        { "name": "mcp-server-2", "memory": "1.8GB" }
-      ]
-    },
-    "network": {
-      "bytesIn": "1.2GB",
-      "bytesOut": "890MB",
-      "packetsIn": 1250000,
-      "packetsOut": 980000
-    },
-    "disk": {
-      "total": "1TB",
-      "used": "340GB",
-      "available": "660GB",
-      "iops": 1200
-    }
-  }
-}
-```
+| 方法与路径                       | 说明                                                                                                                                                |
+| -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /api/activities/available`  | 活动日志启用时（数据库模式）返回 `{ available: true }`。                                                                                            |
+| `GET /api/activities`            | 分页查询活动记录。查询参数：`page`、`limit`、`server`、`tool`、`status`（`success`/`error`）、`group`、`keyId`、`keyName`、`startDate`、`endDate`。 |
+| `GET /api/activities/stats`      | 使用相同筛选条件返回聚合统计数据。                                                                                                                  |
+| `GET /api/activities/filters`    | 返回筛选下拉框所需的去重值。                                                                                                                        |
+| `GET /api/activities/:id`        | 返回包含请求输入和响应输出的完整记录。                                                                                                              |
+| `DELETE /api/activities/cleanup` | 删除早于配置保留期限的活动记录。                                                                                                                    |
 
-## 日志管理
+在文件模式下，这些端点返回 `404`，控制台也会隐藏活动页面。
 
-### 集中化日志收集
+## 进程级指标
 
-配置日志聚合：
+控制台通过 `getServerConnectionStats()` 展示基础的服务器连接统计信息，该信息也嵌入在 `/health` 响应中。如需导出更丰富的进程指标，可以：
 
-```json
-{
-  "logging": {
-    "centralized": true,
-    "storage": {
-      "type": "elasticsearch",
-      "config": {
-        "hosts": ["localhost:9200"],
-        "index": "mcphub-logs",
-        "retention": "30d"
-      }
-    },
-    "levels": ["error", "warn", "info", "debug"],
-    "sources": ["application", "mcp-servers", "nginx", "system"]
-  }
-}
-```
+- 使用能够自动包装 `http`/`express` 的 Node.js APM agent。
+- 或从监控平台抓取 `/health` 和 `/api/activities/stats`。
 
-### 实时日志查看
+## 另请参阅
 
-```bash
-# 获取实时日志流
-curl -X GET http://localhost:3000/api/monitoring/logs/stream \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Accept: text/event-stream"
-
-# 过滤日志
-curl -X GET http://localhost:3000/api/monitoring/logs \
-  -H "Authorization: Bearer $TOKEN" \
-  -G -d "level=error" -d "server=server-1" -d "limit=100"
-```
-
-### 日志分析
-
-```bash
-# 错误模式分析
-curl -X GET http://localhost:3000/api/monitoring/logs/analysis \
-  -H "Authorization: Bearer $TOKEN" \
-  -G -d "type=error-patterns" -d "timeRange=24h"
-```
-
-响应示例：
-
-```json
-{
-  "analysis": {
-    "errorPatterns": [
-      {
-        "pattern": "Connection timeout",
-        "occurrences": 45,
-        "trend": "increasing",
-        "affectedServers": ["server-2", "server-3"]
-      },
-      {
-        "pattern": "Memory allocation failed",
-        "occurrences": 12,
-        "trend": "stable",
-        "affectedServers": ["server-1"]
-      }
-    ],
-    "recommendations": ["检查服务器网络连接", "增加内存限制配置"]
-  }
-}
-```
-
-## 警报系统
-
-### 配置警报规则
-
-```json
-{
-  "alerts": [
-    {
-      "name": "high-response-time",
-      "description": "响应时间过高警报",
-      "condition": "avg(response_time) > 1000ms over 5m",
-      "severity": "warning",
-      "notifications": {
-        "email": ["admin@company.com"],
-        "slack": "#alerts",
-        "webhook": "https://hooks.company.com/alerts"
-      }
-    },
-    {
-      "name": "server-down",
-      "description": "服务器宕机警报",
-      "condition": "server_status == 'down'",
-      "severity": "critical",
-      "notifications": {
-        "email": ["oncall@company.com"],
-        "sms": ["+1234567890"],
-        "pagerduty": "service-key"
-      }
-    },
-    {
-      "name": "high-error-rate",
-      "description": "错误率过高",
-      "condition": "error_rate > 5% over 10m",
-      "severity": "error",
-      "notifications": {
-        "slack": "#dev-team"
-      }
-    }
-  ]
-}
-```
-
-### 警报通知
-
-```bash
-# 测试警报通知
-curl -X POST http://localhost:3000/api/monitoring/alerts/test \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer $TOKEN" \
-  -d '{
-    "alertName": "high-response-time",
-    "channel": "email"
-  }'
-```
-
-### 警报历史
-
-```bash
-# 获取警报历史
-curl -X GET http://localhost:3000/api/monitoring/alerts/history \
-  -H "Authorization: Bearer $TOKEN" \
-  -G -d "timeRange=7d" -d "severity=critical"
-```
-
-## 用户活动监控
-
-### 用户会话跟踪
-
-```json
-{
-  "userActivity": {
-    "activeSessions": 156,
-    "totalUsers": 89,
-    "sessionsByUser": [
-      {
-        "userId": "user123",
-        "sessions": 3,
-        "lastActivity": "2024-01-01T12:30:00Z",
-        "totalRequests": 245
-      }
-    ],
-    "topUsers": [
-      { "userId": "power-user", "requests": 1250 },
-      { "userId": "regular-user", "requests": 890 }
-    ]
-  }
-}
-```
-
-### 使用模式分析
-
-```bash
-# 获取使用模式分析
-curl -X GET http://localhost:3000/api/monitoring/usage-patterns \
-  -H "Authorization: Bearer $TOKEN" \
-  -G -d "timeRange=30d"
-```
-
-响应示例：
-
-```json
-{
-  "patterns": {
-    "peakHours": [9, 10, 14, 15, 16],
-    "peakDays": ["tuesday", "wednesday", "thursday"],
-    "toolUsage": [
-      {"tool": "filesystem", "usage": 45%},
-      {"tool": "web-search", "usage": 30%},
-      {"tool": "database", "usage": 25%}
-    ],
-    "userBehavior": {
-      "avgSessionDuration": "45m",
-      "avgRequestsPerSession": 23,
-      "returnRate": "78%"
-    }
-  }
-}
-```
-
-## 容量规划
-
-### 资源预测
-
-```json
-{
-  "capacityPlanning": {
-    "currentCapacity": {
-      "cpu": "42%",
-      "memory": "68%",
-      "network": "35%",
-      "storage": "34%"
-    },
-    "predictions": {
-      "timeHorizon": "30d",
-      "cpuForecast": [
-        { "date": "2024-01-07", "usage": "48%" },
-        { "date": "2024-01-14", "usage": "52%" },
-        { "date": "2024-01-21", "usage": "56%" },
-        { "date": "2024-01-28", "usage": "61%" }
-      ],
-      "recommendations": [
-        "考虑在第3周增加CPU资源",
-        "内存使用稳定，暂不需要扩容",
-        "建议监控网络带宽趋势"
-      ]
-    }
-  }
-}
-```
-
-### 自动扩缩容
-
-```json
-{
-  "autoScaling": {
-    "enabled": true,
-    "policies": [
-      {
-        "metric": "cpu_usage",
-        "scaleUp": {
-          "threshold": "80%",
-          "duration": "5m",
-          "action": "add_instance"
-        },
-        "scaleDown": {
-          "threshold": "30%",
-          "duration": "15m",
-          "action": "remove_instance"
-        }
-      },
-      {
-        "metric": "request_queue_length",
-        "scaleUp": {
-          "threshold": 100,
-          "duration": "2m",
-          "action": "add_instance"
-        }
-      }
-    ]
-  }
-}
-```
-
-## 性能分析报告
-
-### 生成性能报告
-
-```bash
-# 生成周报
-curl -X POST http://localhost:3000/api/monitoring/reports \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer $TOKEN" \
-  -d '{
-    "type": "performance",
-    "timeRange": "7d",
-    "format": "pdf",
-    "sections": [
-      "overview",
-      "response_times",
-      "error_analysis",
-      "resource_usage",
-      "recommendations"
-    ],
-    "recipients": ["manager@company.com"]
-  }'
-```
-
-### 自定义报告
-
-```json
-{
-  "customReport": {
-    "name": "monthly-summary",
-    "schedule": "0 0 1 * *",
-    "template": "executive-summary",
-    "data": {
-      "kpis": ["uptime", "avg_response_time", "total_requests", "error_rate", "user_satisfaction"],
-      "comparisons": {
-        "previousMonth": true,
-        "yearOverYear": true
-      }
-    },
-    "distribution": {
-      "email": ["executives@company.com"],
-      "dashboard": true,
-      "archive": true
-    }
-  }
-}
-```
-
-## 监控 API
-
-### 指标查询
-
-```bash
-# 查询自定义指标
-curl -X POST http://localhost:3000/api/monitoring/query \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer $TOKEN" \
-  -d '{
-    "query": "avg(response_time) by (server_id)",
-    "timeRange": "1h",
-    "step": "5m"
-  }'
-```
-
-### 事件跟踪
-
-```bash
-# 记录自定义事件
-curl -X POST http://localhost:3000/api/monitoring/events \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer $TOKEN" \
-  -d '{
-    "type": "deployment",
-    "title": "服务器更新",
-    "description": "部署新版本 v2.1.0",
-    "tags": ["deployment", "version-2.1.0"],
-    "metadata": {
-      "version": "2.1.0",
-      "servers": ["server-1", "server-2"]
-    }
-  }'
-```
-
-## 第三方集成
-
-### Prometheus 集成
-
-```yaml
-# prometheus.yml
-global:
-  scrape_interval: 15s
-
-scrape_configs:
-  - job_name: 'mcphub'
-    static_configs:
-      - targets: ['localhost:3000']
-    metrics_path: '/api/monitoring/prometheus'
-    scrape_interval: 30s
-```
-
-### Grafana 仪表板
-
-```json
-{
-  "dashboard": {
-    "title": "MCPHub 监控",
-    "panels": [
-      {
-        "title": "请求率",
-        "type": "graph",
-        "targets": [
-          {
-            "expr": "rate(mcphub_requests_total[5m])",
-            "legendFormat": "{{server_id}}"
-          }
-        ]
-      },
-      {
-        "title": "响应时间",
-        "type": "graph",
-        "targets": [
-          {
-            "expr": "histogram_quantile(0.95, mcphub_response_time_histogram)",
-            "legendFormat": "95th percentile"
-          }
-        ]
-      }
-    ]
-  }
-}
-```
-
-### ELK Stack 集成
-
-```json
-{
-  "logstash": {
-    "input": {
-      "beats": {
-        "port": 5044
-      }
-    },
-    "filter": {
-      "if": "[fields][service] == 'mcphub'",
-      "json": {
-        "source": "message"
-      },
-      "date": {
-        "match": ["timestamp", "ISO8601"]
-      }
-    },
-    "output": {
-      "elasticsearch": {
-        "hosts": ["localhost:9200"],
-        "index": "mcphub-logs-%{+YYYY.MM.dd}"
-      }
-    }
-  }
-}
-```
-
-## 故障排除
-
-### 监控问题诊断
-
-```bash
-# 检查监控服务状态
-curl -X GET http://localhost:3000/api/monitoring/health \
-  -H "Authorization: Bearer $TOKEN"
-
-# 验证指标收集
-curl -X GET http://localhost:3000/api/monitoring/metrics/validation \
-  -H "Authorization: Bearer $TOKEN"
-```
-
-### 性能问题分析
-
-```bash
-# 性能瓶颈分析
-curl -X GET http://localhost:3000/api/monitoring/performance/bottlenecks \
-  -H "Authorization: Bearer $TOKEN" \
-  -G -d "timeRange=1h"
-```
-
-### 常见监控问题
-
-1. **指标丢失**
-
-   - 检查收集器配置
-   - 验证网络连接
-   - 检查存储空间
-
-2. **警报不触发**
-
-   - 验证警报规则语法
-   - 检查通知配置
-   - 测试通知渠道
-
-3. **仪表板加载缓慢**
-   - 优化查询时间范围
-   - 增加数据聚合
-   - 检查数据库性能
-
-## 最佳实践
-
-1. **监控层次化**: 建立应用、基础设施和业务三层监控
-2. **合理的警报**: 避免警报疲劳，设置合适的阈值
-3. **数据保留**: 根据业务需求设置适当的数据保留期
-4. **安全监控**: 监控安全相关的指标和事件
-5. **持续优化**: 定期审查和优化监控配置
-
-有关更多信息，请参阅 [智能路由](/zh/features/smart-routing) 和 [服务器管理](/zh/features/server-management) 文档。
+- [数据库配置](/zh/configuration/database-configuration) —— 启用 PostgreSQL 以使用活动日志。
+- [认证与安全](/zh/features/authentication) —— 了解管理 API 和 bearer key 认证。
