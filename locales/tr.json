@@ -163,7 +163,7 @@
     "deselectAllShareUsers": "Tümünün seçimini kaldır",
     "noMatchingShareUsers": "Aramanızla eşleşen kullanıcı yok.",
     "command": "Komut",
-    "packageVersion": "Kurulu paket sürümü",
+    "packageVersion": "Kurulu paket sürümü (runner önbelleğindeki son kurulum)",
     "updateAvailable": "Kayıt defterinde daha yeni bir sürüm mevcut",
     "arguments": "Argümanlar",
     "envVars": "Ortam Değişkenleri",

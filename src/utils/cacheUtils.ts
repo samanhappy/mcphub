@@ -111,6 +111,34 @@ export const packageNameFromSpec = (spec: string): string => {
 };
 
 /**
+ * Strip the constraint/extras/marker from a PEP 508 uvx package spec:
+ * `cowsay==1.2` -> `cowsay`, `cowsay>=1.0` -> `cowsay`, `pkg[extra]` -> `pkg`,
+ * `pkg; python_version < "3.12"` -> `pkg`, `pkg @ https://...` -> `pkg`.
+ * uvx specs are PEP 508, so the npm-style `@version` strip above does not apply.
+ */
+export const uvxPackageNameFromSpec = (spec: string): string => {
+  let name = spec.trim();
+  const extras = name.indexOf('[');
+  if (extras > 0) name = name.slice(0, extras);
+  const marker = name.indexOf(';');
+  if (marker > 0) name = name.slice(0, marker);
+  const directReference = name.indexOf(' @ ');
+  if (directReference > 0) name = name.slice(0, directReference);
+  const constraint = name.search(/[<>=~!]/);
+  if (constraint > 0) name = name.slice(0, constraint);
+  return name.trim();
+};
+
+/**
+ * Lenient whitelist for package names handed to `npm view` / `uv pip compile`:
+ * anything else (a leading `-`, spaces, `=` constraints that failed to strip)
+ * is skipped instead of being interpolated into a subprocess argument or a
+ * filesystem path. Scoped npm names keep their `/`.
+ */
+export const isValidPackageName = (name: string): boolean =>
+  /^[@a-zA-Z0-9][a-zA-Z0-9@_.\-/]*$/.test(name);
+
+/**
  * Decide whether one `_npx` entry belongs to the packages being reinstalled.
  *
  * Two shapes have to be recognised, because the field to match on depends on
@@ -270,16 +298,41 @@ export const getUvCacheDir = (): string => {
  * own args.
  */
 export const resolveUvxPackageSpec = (args: string[]): string | undefined => {
+  // Every uvx option that takes a value (from `uvx --help`), long and short
+  // forms, so their values are skipped instead of being mistaken for the
+  // package. `--from` is handled separately since it names the package.
   const valueOptions = new Set([
     '--from',
     '--with',
+    '-w',
     '--with-editable',
+    '--with-requirements',
+    '-c',
+    '--constraints',
+    '-b',
+    '--build-constraints',
+    '--overrides',
+    '--env-file',
+    '--python-platform',
+    '--torch-backend',
     '-p',
     '--python',
     '--index',
     '--default-index',
-    '--find-links',
+    '-i',
+    '--index-url',
     '--extra-index-url',
+    '-f',
+    '--find-links',
+    '--index-strategy',
+    '--keyring-provider',
+    '-P',
+    '--upgrade-package',
+    '--upgrade-group',
+    '--resolution',
+    '--prerelease',
+    '--prerelease-package',
+    '--fork-strategy',
   ]);
 
   for (let i = 0; i < args.length; i += 1) {
@@ -315,7 +368,8 @@ export const resolveUvxPackageSpec = (args: string[]): string | undefined => {
  * PEP 503 name normalization, matching how pip/uv spell dist-info directories:
  * `mcp-server-fetch` and `mcp_server.fetch` both become `mcp_server_fetch`.
  */
-const normalizePackageName = (name: string): string => name.toLowerCase().replace(/[-_.]+/g, '_');
+export const normalizePackageName = (name: string): string =>
+  name.toLowerCase().replace(/[-_.]+/g, '_');
 
 /**
  * Read the installed version of `packageName` from a python environment root
@@ -411,8 +465,8 @@ const listUvCacheEnvironments = async (cacheDir: string): Promise<string[]> => {
 export const resolveUvxPackageVersion = async (args: string[]): Promise<string | undefined> => {
   const spec = resolveUvxPackageSpec(args);
   if (!spec) return undefined;
-  const packageName = packageNameFromSpec(spec);
-  if (!packageName) return undefined;
+  const packageName = uvxPackageNameFromSpec(spec);
+  if (!packageName || !isValidPackageName(packageName)) return undefined;
 
   const toolDir = getUvToolDir();
   const cacheDir = getUvCacheDir();
@@ -483,6 +537,7 @@ export const resolveNpxPackageVersion = async (args: string[]): Promise<string |
   const specs = resolveNpxPackageSpecs(args);
   if (specs.length === 0) return undefined;
   const primaryName = packageNameFromSpec(specs[0]);
+  if (!primaryName || !isValidPackageName(primaryName)) return undefined;
   const cacheDir = getNpxCacheDir();
 
   let entries: string[];

@@ -293,6 +293,13 @@ export const normalizeServerConfigForPersistence = (config: ServerConfig): Serve
         : undefined,
   };
 
+  // Runtime-only fields surfaced on the API response (npx/uvx package version
+  // and update hint, #1166) must never be persisted into the config blob, even
+  // if a client round-trips the fetched config verbatim.
+  delete (normalized as unknown as Record<string, unknown>).packageVersion;
+  delete (normalized as unknown as Record<string, unknown>).latestVersion;
+  delete (normalized as unknown as Record<string, unknown>).updateAvailable;
+
   if (normalizedType === 'openapi') {
     normalized.url = undefined;
     normalized.command = undefined;

@@ -96,6 +96,23 @@ describe('normalizeServerConfigForPersistence', () => {
     expect(normalized).toHaveProperty('keepAliveInterval', undefined);
   });
 
+  it('strips runtime-only npx/uvx package fields so they never persist (#1166)', () => {
+    const normalized = normalizeServerConfigForPersistence({
+      type: 'stdio',
+      command: 'npx',
+      args: ['-y', 'cowsay'],
+      // Round-tripped verbatim from the API response:
+      packageVersion: '1.6.0',
+      latestVersion: '2.0.0',
+      updateAvailable: true,
+    });
+
+    expect(normalized).toMatchObject({ type: 'stdio', command: 'npx', args: ['-y', 'cowsay'] });
+    expect(normalized).not.toHaveProperty('packageVersion');
+    expect(normalized).not.toHaveProperty('latestVersion');
+    expect(normalized).not.toHaveProperty('updateAvailable');
+  });
+
   it('preserves an explicitly enabled per-session client', () => {
     const normalized = normalizeServerConfigForPersistence({
       type: 'stdio',

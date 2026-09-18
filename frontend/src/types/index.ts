@@ -213,11 +213,6 @@ export interface ServerConfig {
   description?: string;
   url?: string;
   command?: string;
-  // Resolved npx/uvx package version backing a stdio server (#1166).
-  packageVersion?: string;
-  // Newest registry version + update flag for npx/uvx servers (#1166).
-  latestVersion?: string;
-  updateAvailable?: boolean;
   args?: string[];
   env?: Record<string, string>;
   headers?: Record<string, string>;
@@ -339,6 +334,11 @@ export interface Server {
   resources?: Resource[];
   config?: ServerConfig;
   enabled?: boolean;
+  // Resolved npx/uvx package version + registry update hint for stdio servers
+  // (#1166). Runtime state at the top level, like `version`.
+  packageVersion?: string;
+  latestVersion?: string;
+  updateAvailable?: boolean;
   oauth?: {
     authorizationUrl?: string;
     state?: string;

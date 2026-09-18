@@ -44,6 +44,13 @@ describe('parseUvCompileVersion', () => {
     ).toBe('2026.8.18');
   });
 
+  it('normalizes PEP 503 name forms on both sides', () => {
+    // The dist-info scan spells names with underscores; uv emits dashes.
+    expect(
+      parseUvCompileVersion(compileOutput('mcp-server-fetch==2026.8.18'), 'mcp_server_fetch'),
+    ).toBe('2026.8.18');
+  });
+
   it('returns undefined when the package is absent', () => {
     expect(parseUvCompileVersion('anyio==4.15.1\n    # via pydantic\n', 'cowsay')).toBeUndefined();
   });
@@ -74,8 +81,18 @@ describe('isNewerVersion', () => {
     expect(isNewerVersion('v2.0.0', '1.9.0')).toBe(true);
   });
 
-  it('falls back to string order on non-numeric segments', () => {
-    expect(isNewerVersion('1.0.beta', '1.0.alpha')).toBe(true);
+  it('treats a non-numeric segment as not comparable (never guesses)', () => {
+    expect(isNewerVersion('1.0.beta', '1.0.alpha')).toBe(false);
+  });
+
+  it('does not report a pre-release latest as newer than an installed stable', () => {
+    expect(isNewerVersion('1.0.0-rc.1', '1.0.0')).toBe(false);
+    expect(isNewerVersion('1.0.beta', '1.0.0')).toBe(false);
+  });
+
+  it('ignores build metadata when comparing cores', () => {
+    expect(isNewerVersion('2.0.0+build.5', '1.9.9')).toBe(true);
+    expect(isNewerVersion('1.6.0+build.5', '1.6.0')).toBe(false);
   });
 
   it('treats digit-prefixed prerelease suffixes as their numeric prefix', () => {
@@ -176,5 +193,72 @@ describe('checkPackageUpdate', () => {
     await checkPackageUpdate('npx', ['-y', 'cowsay'], '1.0.0', opts);
 
     expect(queryLatest).toHaveBeenCalledTimes(2);
+  });
+
+  it('strips a PEP 508 constraint from a pinned uvx --from spec', async () => {
+    const queryLatest = jest.fn(async () => '1.5.0');
+    const result = await checkPackageUpdate('uvx', ['--from', 'cowsay==1.2', 'cowsay'], '1.2', {
+      ...baseOpts,
+      queryLatest,
+    });
+
+    expect(result).toEqual({ latestVersion: '1.5.0', updateAvailable: true });
+    expect(queryLatest).toHaveBeenCalledWith('uvx', 'cowsay', expect.anything());
+  });
+
+  it('negative-caches failed queries within the failure TTL', async () => {
+    const queryLatest = jest.fn(async () => undefined);
+    const opts = { ...baseOpts, queryLatest };
+
+    await checkPackageUpdate('npx', ['-y', 'cowsay'], '1.0.0', opts);
+    await checkPackageUpdate('npx', ['-y', 'cowsay'], '1.0.0', opts);
+
+    expect(queryLatest).toHaveBeenCalledTimes(1);
+  });
+
+  it('re-queries a failure after the failure TTL expires', async () => {
+    const queryLatest = jest.fn(async () => undefined);
+    const opts = { ...baseOpts, failureTtlMs: 1, queryLatest };
+
+    await checkPackageUpdate('npx', ['-y', 'cowsay'], '1.0.0', opts);
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    await checkPackageUpdate('npx', ['-y', 'cowsay'], '1.0.0', opts);
+
+    expect(queryLatest).toHaveBeenCalledTimes(2);
+  });
+
+  it('limits concurrent registry queries', async () => {
+    let active = 0;
+    let maxActive = 0;
+    const queryLatest = jest.fn(async () => {
+      active += 1;
+      maxActive = Math.max(maxActive, active);
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      active -= 1;
+      return '2.0.0';
+    });
+
+    await Promise.all(
+      Array.from({ length: 8 }, (_, index) =>
+        checkPackageUpdate('npx', ['-y', `pkg-${index}`], '1.0.0', {
+          ...baseOpts,
+          queryLatest,
+        }),
+      ),
+    );
+
+    expect(queryLatest).toHaveBeenCalledTimes(8);
+    expect(maxActive).toBeLessThanOrEqual(4);
+  });
+
+  it('skips a package name that fails validation', async () => {
+    const queryLatest = jest.fn(async () => '2.0.0');
+    const result = await checkPackageUpdate('uvx', ['--from', '--help', 'whatever'], '1.0.0', {
+      ...baseOpts,
+      queryLatest,
+    });
+
+    expect(result).toBeUndefined();
+    expect(queryLatest).not.toHaveBeenCalled();
   });
 });

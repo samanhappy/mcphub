@@ -1026,6 +1026,7 @@ export const connected = (): boolean => {
 
 // Global cleanup function to close all connections
 export const cleanupAllServers = (): void => {
+  stopPackageUpdateSweep();
   principalRuntimes.invalidate();
   for (const serverInfo of serverInfos) {
     try {
@@ -2399,6 +2400,12 @@ export const getServersInfo = async (
           resources: resourcesWithEnabled,
           createTime,
           enabled,
+          // Resolved npx/uvx package version + registry update hint (#1166).
+          // Runtime state, kept at the top level like `version` so it can never
+          // be round-tripped into a persisted ServerConfig.
+          ...(packageVersion ? { packageVersion } : {}),
+          ...(latestVersion ? { latestVersion } : {}),
+          ...(updateAvailable !== undefined ? { updateAvailable } : {}),
           oauth:
             oauth || oauthConnected
               ? {
@@ -2414,7 +2421,7 @@ export const getServersInfo = async (
                 }
               : undefined,
           config:
-            resolvedType || serverConfig?.description || serverConfig?.command || packageVersion || latestVersion || updateAvailable
+            resolvedType || serverConfig?.description || serverConfig?.command
               ? {
                   ...(resolvedType ? { type: resolvedType } : {}),
                   ...(hasCredentialTemplate(serverConfig) ? { credentialTemplate: validateCredentialTemplate(serverConfig!) } : {}),
@@ -2423,11 +2430,6 @@ export const getServersInfo = async (
                   // supported (npx/uvx only). This is not a secret — it's the
                   // runner binary name (e.g. "npx", "uvx").
                   ...(serverConfig?.command ? { command: serverConfig.command } : {}),
-                  // Resolved npx/uvx package version backing this server (#1166).
-                  ...(packageVersion ? { packageVersion } : {}),
-                  // Newest registry version + update flag for npx/uvx servers.
-                  ...(latestVersion ? { latestVersion } : {}),
-                  ...(updateAvailable !== undefined ? { updateAvailable } : {}),
                 }
               : undefined,
         };
@@ -2500,6 +2502,9 @@ export const reconnectServer = async (serverName: string): Promise<void> => {
  * actually running" (see #1166). Also checks the configured registry for a
  * newer version and marks updateAvailable. Fire-and-forget: best-effort
  * display data — a resolution failure must never break or delay a connection.
+ *
+ * On any failure the runtime fields are cleared so the UI never shows a stale
+ * version or a stale "update available" hint from an earlier, healthier check.
  */
 const applyResolvedPackageVersion = (
   info: ServerInfo,
@@ -2511,7 +2516,12 @@ const applyResolvedPackageVersion = (
     try {
       const args = config.args ?? [];
       const version = await resolveRunnerPackageVersion(command, args);
-      if (!version) return;
+      if (!version) {
+        info.packageVersion = undefined;
+        info.latestVersion = undefined;
+        info.updateAvailable = undefined;
+        return;
+      }
       info.packageVersion = version;
 
       const systemConfig = await getSystemConfigDao().get();
@@ -2522,9 +2532,16 @@ const applyResolvedPackageVersion = (
       if (update?.latestVersion) {
         info.latestVersion = update.latestVersion;
         info.updateAvailable = update.updateAvailable;
+      } else {
+        // Registry unreachable or no metadata: hide the hint rather than keep
+        // a stale "update available" from a previous successful check.
+        info.latestVersion = undefined;
+        info.updateAvailable = undefined;
       }
     } catch (error) {
       logger.warn(`Failed to resolve package update for ${info.name}`, { error });
+      info.latestVersion = undefined;
+      info.updateAvailable = undefined;
     }
   })();
 };
@@ -2533,6 +2550,10 @@ const applyResolvedPackageVersion = (
 // Each check respects the TTL cache inside checkPackageUpdate, so this only
 // re-queries packages whose last registry lookup has gone stale. The timer is
 // unref'd so it never keeps the process alive by itself.
+//
+// Note: personal-runtime servers (credential-template bindings) are not part of
+// `serverInfos` and are therefore not swept here — their flags refresh when a
+// new per-user connection is created in createPrincipalRuntime instead.
 const PACKAGE_UPDATE_SWEEP_MS = 6 * 60 * 60 * 1000;
 const packageUpdateSweepTimer = setInterval(() => {
   for (const info of serverInfos) {
@@ -2541,6 +2562,11 @@ const packageUpdateSweepTimer = setInterval(() => {
   }
 }, PACKAGE_UPDATE_SWEEP_MS);
 packageUpdateSweepTimer.unref?.();
+
+/** Stop the periodic package-update sweep (called on shutdown). */
+export const stopPackageUpdateSweep = (): void => {
+  clearInterval(packageUpdateSweepTimer);
+};
 
 // Reinstall server: clear package cache and reconnect.
 // For npx: deletes ~/.npm/_npx before reconnect (--ignore-existing removed in npm 7+).

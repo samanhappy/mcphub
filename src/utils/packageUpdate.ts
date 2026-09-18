@@ -8,6 +8,9 @@ import {
   resolveNpxPackageSpecs,
   resolveUvxPackageSpec,
   packageNameFromSpec,
+  uvxPackageNameFromSpec,
+  isValidPackageName,
+  normalizePackageName,
 } from './cacheUtils.js';
 
 const execFileAsync = promisify(execFile);
@@ -19,6 +22,8 @@ export interface PackageUpdateOptions {
   pythonIndexUrl?: string;
   /** How long a resolved "latest" is trusted before re-querying the registry (ms). */
   cacheTtlMs?: number;
+  /** How long a failed lookup is remembered before being retried (ms). */
+  failureTtlMs?: number;
   /** Test seam: overrides the registry query. */
   queryLatest?: (
     command: string,
@@ -35,16 +40,45 @@ export interface PackageUpdateResult {
 /** Default freshness window for registry lookups (6h). */
 export const DEFAULT_UPDATE_TTL_MS = 6 * 60 * 60 * 1000;
 
+/** How long a failed lookup is remembered before being retried (15 min). */
+export const DEFAULT_FAILURE_TTL_MS = 15 * 60 * 1000;
+
+/** Maximum number of registry subprocesses running at once. */
+export const QUERY_CONCURRENCY_LIMIT = 4;
+
 /** Subprocess timeout: registry queries run out of band, so give them room. */
 const QUERY_TIMEOUT_MS = 30_000;
 
 interface LatestCacheEntry {
-  version: string;
+  /** Absent for negative-cached failures. */
+  version?: string;
   checkedAt: number;
 }
 
 const latestCache = new Map<string, LatestCacheEntry>();
 const inFlight = new Map<string, Promise<string | undefined>>();
+
+/** Simple semaphore so a sweep of N packages never spawns N subprocesses. */
+let activeQueries = 0;
+const queryWaiters: Array<() => void> = [];
+
+const acquireQuerySlot = (): Promise<() => void> => {
+  const release = (): void => {
+    activeQueries -= 1;
+    const next = queryWaiters.shift();
+    if (next) {
+      activeQueries += 1;
+      next();
+    }
+  };
+  if (activeQueries < QUERY_CONCURRENCY_LIMIT) {
+    activeQueries += 1;
+    return Promise.resolve(release);
+  }
+  return new Promise((resolve) => {
+    queryWaiters.push(() => resolve(release));
+  });
+};
 
 const cacheKey = (command: string, packageName: string, opts: PackageUpdateOptions): string =>
   `${command}:${packageName}:${opts.npmRegistry ?? ''}:${opts.pythonIndexUrl ?? ''}`;
@@ -63,14 +97,16 @@ export const parseNpmViewVersion = (stdout: string): string | undefined => {
 /**
  * Parse the output of `uv pip compile`: the `NAME==VERSION` line for the
  * requested package. Transitive dependencies also appear as `==` lines, so the
- * package name must match exactly.
+ * package name must match — with PEP 503 normalization on both sides, matching
+ * how the dist-info scan spells names (`mcp-server-fetch` / `mcp_server.fetch`).
  */
 export const parseUvCompileVersion = (stdout: string, packageName: string): string | undefined => {
+  const normalizedPackage = normalizePackageName(packageName);
   for (const raw of stdout.split('\n')) {
     const line = raw.trim().split(' ')[0];
     if (!line.includes('==')) continue;
     const separator = line.indexOf('==');
-    if (line.slice(0, separator) !== packageName) continue;
+    if (normalizePackageName(line.slice(0, separator)) !== normalizedPackage) continue;
     const version = line.slice(separator + 2);
     if (version) return version;
   }
@@ -78,23 +114,30 @@ export const parseUvCompileVersion = (stdout: string, packageName: string): stri
 };
 
 /**
- * Compare two versions numerically, segment by segment, ignoring a leading `v`.
- * Falls back to plain string order when a segment is not numeric (pre-release
- * or build metadata), which is only an approximation — good enough for a UI
- * "update available" hint.
+ * Compare two versions for the "update available" hint.
+ *
+ * Only the numeric core is compared: pre-release (`1.0.0-rc.1`) and build
+ * (`1.0.0+build`) suffixes are stripped, and a version whose core has a
+ * non-numeric segment is treated as equal (conservative — never claim an
+ * update when the comparison is ambiguous). A pre-release `latest` therefore
+ * never outranks an installed stable with the same core.
  */
 export const isNewerVersion = (latest: string, installed: string): boolean => {
   const stripV = (version: string): string =>
     version.startsWith('v') ? version.slice(1) : version;
-  const latestParts = stripV(latest).split('.');
-  const installedParts = stripV(installed).split('.');
+  const core = (version: string): string => stripV(version).split(/[-+]/)[0];
+  const latestCore = core(latest);
+  const installedCore = core(installed);
+
+  const latestParts = latestCore.split('.');
+  const installedParts = installedCore.split('.');
   const length = Math.max(latestParts.length, installedParts.length);
 
   for (let i = 0; i < length; i += 1) {
     const latestSegment = Number.parseInt(latestParts[i] ?? '0', 10);
     const installedSegment = Number.parseInt(installedParts[i] ?? '0', 10);
     if (Number.isNaN(latestSegment) || Number.isNaN(installedSegment)) {
-      return stripV(latest) > stripV(installed);
+      return false; // not comparable — do not guess
     }
     if (latestSegment !== installedSegment) return latestSegment > installedSegment;
   }
@@ -109,9 +152,15 @@ const queryLatestNpmVersion = async (
   try {
     const env = { ...process.env };
     if (registry) env.npm_config_registry = registry;
+    // On Windows `npm` is the npm.cmd batch wrapper, which execFile cannot
+    // launch without a shell (same handling as clearAllCaches). The package
+    // name is validated upstream (isValidPackageName), so shell interpolation
+    // is not a concern here.
+    const execOptions = process.platform === 'win32' ? { shell: true } : {};
     const { stdout } = await execFileAsync('npm', ['view', packageName, 'version'], {
       env,
       timeout: QUERY_TIMEOUT_MS,
+      ...execOptions,
     });
     return parseNpmViewVersion(stdout);
   } catch (error) {
@@ -163,11 +212,33 @@ const queryLatestPackageVersion = async (
   return undefined;
 };
 
+/** Maximum cache entries before stale/oldest entries are evicted. */
+const MAX_CACHE_ENTRIES = 1024;
+
+/** Evict stale entries; if still over the cap, drop the oldest one. */
+const pruneCache = (now: number, ttlMs: number): void => {
+  for (const [key, entry] of latestCache) {
+    if (now - entry.checkedAt >= ttlMs) latestCache.delete(key);
+  }
+  if (latestCache.size <= MAX_CACHE_ENTRIES) return;
+  let oldestKey: string | undefined;
+  let oldestCheckedAt = Infinity;
+  for (const [key, entry] of latestCache) {
+    if (entry.checkedAt < oldestCheckedAt) {
+      oldestCheckedAt = entry.checkedAt;
+      oldestKey = key;
+    }
+  }
+  if (oldestKey !== undefined) latestCache.delete(oldestKey);
+};
+
 /**
  * Query the newest version a registry offers for an npx/uvx package, with a TTL
- * cache (keyed by command + package + configured mirror) and in-flight
- * deduplication so a startup sweep of many servers only queries each package
- * once. Never throws: registry failures surface as undefined.
+ * cache (keyed by command + package + configured mirror), in-flight
+ * deduplication and a concurrency gate, so a startup sweep of many servers only
+ * queries each package once and never spawns a subprocess storm. Failures are
+ * negative-cached for a short window. Never throws: registry failures surface
+ * as undefined.
  */
 export const checkPackageUpdate = async (
   command: string,
@@ -182,34 +253,45 @@ export const checkPackageUpdate = async (
         ? resolveUvxPackageSpec(args)
         : undefined;
   if (!spec) return undefined;
-  const packageName = packageNameFromSpec(spec);
-  if (!packageName) return undefined;
+  const packageName = command === 'uvx' ? uvxPackageNameFromSpec(spec) : packageNameFromSpec(spec);
+  if (!packageName || !isValidPackageName(packageName)) return undefined;
 
   const ttlMs = opts.cacheTtlMs ?? DEFAULT_UPDATE_TTL_MS;
+  const failureTtlMs = opts.failureTtlMs ?? DEFAULT_FAILURE_TTL_MS;
   const key = cacheKey(command, packageName, opts);
   const query = opts.queryLatest ?? queryLatestPackageVersion;
 
+  const now = Date.now();
+  pruneCache(now, ttlMs);
+
   const cached = latestCache.get(key);
-  if (cached && Date.now() - cached.checkedAt < ttlMs) {
-    return {
-      latestVersion: cached.version,
-      updateAvailable: isNewerVersion(cached.version, installedVersion),
-    };
+  if (cached) {
+    const age = now - cached.checkedAt;
+    const entryTtl = cached.version === undefined ? failureTtlMs : ttlMs;
+    if (age < entryTtl) {
+      if (cached.version === undefined) return undefined; // negative cache hit
+      return {
+        latestVersion: cached.version,
+        updateAvailable: isNewerVersion(cached.version, installedVersion),
+      };
+    }
+    latestCache.delete(key);
   }
 
   let pending = inFlight.get(key);
   if (!pending) {
-    pending = query(command, packageName, opts)
-      .then((version) => {
-        if (version) {
-          latestCache.set(key, { version, checkedAt: Date.now() });
-          return version;
-        }
-        return undefined;
-      })
-      .finally(() => {
-        inFlight.delete(key);
-      });
+    pending = (async () => {
+      const release = await acquireQuerySlot();
+      try {
+        const version = await query(command, packageName, opts);
+        latestCache.set(key, { version, checkedAt: Date.now() });
+        return version;
+      } finally {
+        release();
+      }
+    })().finally(() => {
+      inFlight.delete(key);
+    });
     inFlight.set(key, pending);
   }
 
@@ -221,7 +303,7 @@ export const checkPackageUpdate = async (
   };
 };
 
-/** Drop all cached and in-flight lookups (used by tests and on config changes). */
+/** Drop all cached and in-flight lookups (test isolation; the cache is also self-pruning). */
 export const clearPackageUpdateCache = (): void => {
   latestCache.clear();
   inFlight.clear();

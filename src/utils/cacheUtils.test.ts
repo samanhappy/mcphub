@@ -8,7 +8,13 @@
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
-import { clearRunnerCache, getNpxCacheDir, resolveRunnerPackageVersion } from './cacheUtils.js';
+import {
+  clearRunnerCache,
+  getNpxCacheDir,
+  resolveRunnerPackageVersion,
+  resolveUvxPackageSpec,
+  uvxPackageNameFromSpec,
+} from './cacheUtils.js';
 
 describe('clearRunnerCache for npx', () => {
   let tmpRoot: string;
@@ -386,6 +392,44 @@ describe('clearRunnerCache for npx', () => {
       makeInstalledEntry('aaaaaaaaaaaaaaaa', ['cowsay'], { cowsay: '6.1.0' });
 
       await expect(resolveRunnerPackageVersion('node', ['server.js'])).resolves.toBeUndefined();
+    });
+
+    describe('uvxPackageNameFromSpec', () => {
+      it('strips PEP 508 constraints, extras, markers and direct references', () => {
+        expect(uvxPackageNameFromSpec('cowsay')).toBe('cowsay');
+        expect(uvxPackageNameFromSpec('cowsay==1.2')).toBe('cowsay');
+        expect(uvxPackageNameFromSpec('cowsay>=1.0,<2.0')).toBe('cowsay');
+        expect(uvxPackageNameFromSpec('pkg[extra]')).toBe('pkg');
+        expect(uvxPackageNameFromSpec('pkg; python_version < "3.12"')).toBe('pkg');
+        expect(uvxPackageNameFromSpec('pkg @ https://example.com/pkg-1.0.whl')).toBe('pkg');
+      });
+    });
+
+    describe('resolveUvxPackageSpec value options', () => {
+      it('skips --with-requirements and its file argument', () => {
+        expect(
+          resolveUvxPackageSpec(['--with-requirements', '/tmp/reqs.txt', 'cowsay', '--port', '1']),
+        ).toBe('cowsay');
+      });
+
+      it('skips the --constraints short form value', () => {
+        expect(resolveUvxPackageSpec(['-c', 'constraints.txt', 'cowsay'])).toBe('cowsay');
+      });
+    });
+
+    describe('resolveRunnerPackageVersion with a pinned uvx --from spec', () => {
+      it('resolves the version even when the spec carries a PEP 508 constraint', async () => {
+        process.env.UV_CACHE_DIR = path.join(tmpRoot, 'cache', 'uv');
+        makePythonEnv(
+          path.join(process.env.UV_CACHE_DIR, 'environments-v2', 'pyhash', 'envhash'),
+          '3.12',
+          'cowsay-1.2.dist-info',
+        );
+
+        await expect(
+          resolveRunnerPackageVersion('uvx', ['--from', 'cowsay==1.2', 'cowsay']),
+        ).resolves.toBe('1.2');
+      });
     });
   });
 });
