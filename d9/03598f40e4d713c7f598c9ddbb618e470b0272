@@ -1,0 +1,38 @@
+frontend/src/components/ServerCard.tsx
+  h_18676a549cd52a 547,553,556,562
+frontend/src/types/index.ts
+  h_18676a549cd52a 337-341
+locales/en.json
+  h_18676a549cd52a 166
+locales/fr.json
+  h_18676a549cd52a 166
+locales/tr.json
+  h_18676a549cd52a 166
+locales/zh.json
+  h_18676a549cd52a 166
+src/services/mcpService.ts
+  h_18676a549cd52a 1029,2403-2408,2424,2505-2507,2519-2524,2535-2539,2543-2544,2553-2556,2566-2570
+src/utils/cacheUtils.test.ts
+  h_18676a549cd52a 11-17,396-433
+src/utils/cacheUtils.ts
+  h_18676a549cd52a 113-140,301-303,307,309-317,322-323,325-335,371-372,468-469,540
+src/utils/packageUpdate.test.ts
+  h_18676a549cd52a 47-53,84-95,197-263
+src/utils/packageUpdate.ts
+  h_18676a549cd52a 11-13,25-26,43-48,53-54,61-82,100-101,104,109,117-123,128-133,140,155-159,163,215-234,237-241,256-257,260,264-266,268-278,283-294,306
+src/utils/serverConfigPersistence.ts
+  h_18676a549cd52a 296-302
+tests/utils/serverConfigPersistence.test.ts
+  h_18676a549cd52a 99-115
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "d903598f40e4d713c7f598c9ddbb618e470b0272",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
