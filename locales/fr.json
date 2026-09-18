@@ -374,7 +374,7 @@
       },
       "generic-http": {
         "label": "HTTP générique",
-        "hint": "Tout client acceptant une entrée HTTP MCP brute : collez-la dans la liste des serveurs du client en conservant l'URL et la valeur Authorization."
+        "hint": "Solution de repli avec l'entrée brute : un endpoint distant donne une entrée HTTP brute, un serveur local une entrée stdio brute (command/args/env). Collez-la dans la table de serveurs du client ; pour la plupart des clients, utilisez Générique (mcpServers)."
       },
       "claude-code": {
         "label": "Claude Code",

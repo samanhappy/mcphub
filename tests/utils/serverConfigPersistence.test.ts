@@ -1,4 +1,5 @@
 import { normalizeServerConfigForPersistence } from '../../src/utils/serverConfigPersistence.js';
+import { ServerConfig, ServerInfo } from '../../src/types/index.js';
 
 describe('normalizeServerConfigForPersistence', () => {
   it('keeps remote keep-alive checks disabled by default', () => {
@@ -97,15 +98,20 @@ describe('normalizeServerConfigForPersistence', () => {
   });
 
   it('strips runtime-only npx/uvx package fields so they never persist (#1166)', () => {
-    const normalized = normalizeServerConfigForPersistence({
+    // These runtime-only fields (packageVersion/latestVersion/updateAvailable) are
+    // added by #1186 as top-level ServerInfo fields surfaced on the API response.
+    // The config is typed as ServerConfig & those ServerInfo fields to honestly
+    // express a client round-tripping the fetched config verbatim back into a save.
+    const input: ServerConfig &
+      Pick<ServerInfo, 'packageVersion' | 'latestVersion' | 'updateAvailable'> = {
       type: 'stdio',
       command: 'npx',
       args: ['-y', 'cowsay'],
-      // Round-tripped verbatim from the API response:
       packageVersion: '1.6.0',
       latestVersion: '2.0.0',
       updateAvailable: true,
-    });
+    };
+    const normalized = normalizeServerConfigForPersistence(input);
 
     expect(normalized).toMatchObject({ type: 'stdio', command: 'npx', args: ['-y', 'cowsay'] });
     expect(normalized).not.toHaveProperty('packageVersion');
@@ -264,5 +270,60 @@ describe('normalizeServerConfigForPersistence', () => {
     });
 
     expect(normalized.openapi?.specSecurity).toEqual(specSecurity);
+  });
+
+  it('preserves oauth redirectUri and revocationEndpoint through normalization', () => {
+    // These two fields are consumed downstream (redirectUri -> preferred redirect URI
+    // for DCR/authorization URLs; revocationEndpoint -> token revocation on disconnect)
+    // and must survive the oauth whitelist rather than being silently stripped on save.
+    const normalized = normalizeServerConfigForPersistence({
+      type: 'streamable-http',
+      url: 'https://example.com/mcp',
+      oauth: {
+        clientId: 'client-id',
+        clientSecret: 'client-secret',
+        scopes: ['read', 'write'],
+        accessToken: 'access-token',
+        refreshToken: 'refresh-token',
+        authorizationEndpoint: 'https://example.com/authorize',
+        tokenEndpoint: 'https://example.com/token',
+        resource: 'https://api.example.com',
+        redirectUri: 'https://example.com/mcp/callback',
+        revocationEndpoint: 'https://example.com/revoke',
+        dynamicRegistration: { enabled: true, issuer: 'https://auth.example.com' },
+      },
+    });
+
+    expect(normalized.oauth).toEqual({
+      clientId: 'client-id',
+      clientSecret: 'client-secret',
+      scopes: ['read', 'write'],
+      accessToken: 'access-token',
+      refreshToken: 'refresh-token',
+      authorizationEndpoint: 'https://example.com/authorize',
+      tokenEndpoint: 'https://example.com/token',
+      resource: 'https://api.example.com',
+      redirectUri: 'https://example.com/mcp/callback',
+      revocationEndpoint: 'https://example.com/revoke',
+      dynamicRegistration: { enabled: true, issuer: 'https://auth.example.com' },
+    });
+  });
+
+  it('does not fabricate redirectUri or revocationEndpoint when oauth lacks them', () => {
+    const normalized = normalizeServerConfigForPersistence({
+      type: 'sse',
+      url: 'https://example.com/sse',
+      oauth: {
+        clientId: 'client-id',
+        clientSecret: 'client-secret',
+      },
+    });
+
+    expect(normalized.oauth).not.toHaveProperty('redirectUri');
+    expect(normalized.oauth).not.toHaveProperty('revocationEndpoint');
+    expect(normalized.oauth).toMatchObject({
+      clientId: 'client-id',
+      clientSecret: 'client-secret',
+    });
   });
 });

@@ -24,6 +24,8 @@ MCPHub supports four upstream transports. Pick the one that matches your server 
 2. **Click "Add Server"** and choose a transport.
 3. Fill in the fields that apply to that transport. Common optional fields available on every transport: `enabled`, `owner`, `description`, `passthroughHeaders`, `oauth`, `proxy`. See [MCP Settings](/configuration/mcp-settings) for the full schema.
 
+The server card menu also offers **Duplicate**, which opens the Add Server form prefilled with the source server's configuration under the name `<name>-copy`; OAuth authorization state is not copied.
+
 ### Via Configuration File
 
 Edit your `mcp_settings.json` file. Examples for each transport:
@@ -250,16 +252,20 @@ curl -X POST http://localhost:3000/api/servers \
 
 Both server cards and group cards offer a copy action that opens a client preset dialog, so you can paste a ready-made configuration into your favorite MCP client:
 
-- **Copy MCP config** (group card menu): generates the configuration for the group's aggregated endpoint.
-- **Copy** (server card menu): generates the configuration for that server's endpoint.
+- **Copy MCP config** (group card menu): generates the configuration for the group's aggregated endpoint (`<baseUrl>/mcp/<group>`), which multiplexes every server in the group behind one URL.
+- **Copy** (server card menu): wraps that server's own stored configuration (its `command`/`args`/`env` for stdio servers, or its `url`/`headers` for HTTP/SSE servers) in the shape the selected client expects.
+
+Servers backed by the `openapi` transport have no client-side transport of their own, so the dialog shows a "no transport" notice instead of presets; this is expected, not an error. Servers using the `sse` transport keep their `"type": "sse"` marker in the generated JSON (and the Claude Code command switches to `--transport sse`) so clients do not misdial them as streamable HTTP.
 
 The dialog provides presets for the following clients: Generic (mcpServers), Generic HTTP, Claude Code, Cursor, VS Code / Copilot, Codex, OpenCode, Windsurf, Cherry Studio, CodeBuddy Code, Qoder, TRAE, ZCode, and WorkBuddy.
 
 The **Claude Code** tab additionally offers a one-liner CLI command:
 
 ```bash
-claude mcp add --transport http <name> <url> --header "Authorization: Bearer <token>"
+claude mcp add --transport http <name> <url> --header 'Authorization: Bearer <token>'
 ```
+
+Values containing characters outside a safe CLI set are wrapped in single quotes (as the header above is), so the command can be pasted verbatim into a POSIX shell; on Windows shells that do not parse single quotes, re-quote the affected values.
 
 A few clients use their own key names in the generated configuration: Codex uses `http_headers` (there is no `headers` key), VS Code uses `servers` plus a `type` field, and Cherry Studio uses `baseUrl` with `streamableHttp`.
 

@@ -20,6 +20,13 @@ const stdioTarget: ClientSnippetTarget = {
   env: { TZ: 'Asia/Shanghai' },
 };
 
+const sseTarget: ClientSnippetTarget = {
+  name: 'legacy',
+  type: 'sse',
+  url: 'https://hub.example.com/sse',
+  headers: { Authorization: 'Bearer <your-access-token>' },
+};
+
 const configOf = (id: Parameters<typeof buildClientSnippetBlocks>[0], target: ClientSnippetTarget) =>
   buildClientSnippetBlocks(id, target).find((block) => block.kind === 'config')?.text ?? '';
 
@@ -34,8 +41,15 @@ const STDIO_ENTRY = {
   env: { TZ: 'Asia/Shanghai' },
 };
 
+const SSE_ENTRY = {
+  type: 'sse',
+  url: 'https://hub.example.com/sse',
+  headers: { Authorization: 'Bearer <your-access-token>' },
+};
+
 const MCP_SERVERS_HTTP = { mcpServers: { u8: HTTP_ENTRY } };
 const MCP_SERVERS_STDIO = { mcpServers: { time: STDIO_ENTRY } };
+const MCP_SERVERS_SSE = { mcpServers: { legacy: SSE_ENTRY } };
 
 describe('buildClientSnippetBlocks', () => {
   it('lists exactly the fourteen presets in their tab order', () => {
@@ -226,6 +240,19 @@ describe('buildClientSnippetBlocks', () => {
     });
   });
 
+  it('maps SSE upstreams to type sse for Cherry Studio and leaves other transports alone', () => {
+    // `ProtocolMcpServerConfigSchema` dials remote servers as either 'sse' or
+    // 'streamableHttp', so an SSE upstream must not be spelled 'streamableHttp'.
+    expect(JSON.parse(configOf('cherry-studio', sseTarget)).mcpServers.legacy.type).toBe('sse');
+    expect(
+      JSON.parse(configOf('cherry-studio', { ...httpTarget, type: 'streamable-http' })).mcpServers
+        .u8.type,
+    ).toBe('streamableHttp');
+    expect(JSON.parse(configOf('cherry-studio', httpTarget)).mcpServers.u8.type).toBe(
+      'streamableHttp',
+    );
+  });
+
   it('uses the stdio shape for Cherry Studio servers without a URL', () => {
     expect(JSON.parse(configOf('cherry-studio', stdioTarget))).toEqual({
       mcpServers: {
@@ -273,6 +300,20 @@ describe('buildClientSnippetBlocks', () => {
     expect(blocks[1].text).toBe(
       "claude mcp add --transport http u8 https://hub.example.com/mcp/u8 --header 'Authorization: Bearer <your-access-token>'",
     );
+  });
+
+  it('omits the CLI block when a positional value starts with a dash', () => {
+    // SERVER_NAME_PATTERN admits names like `-foo`, and such a positional
+    // would be parsed as one of the CLI's own options; the tab then falls
+    // back to the JSON config block alone instead of a command that cannot
+    // run as written.
+    const dashName = { ...httpTarget, name: '-foo' };
+    const dashUrl = { ...httpTarget, url: '-https://hub.example.com/mcp/u8' };
+
+    for (const target of [dashName, dashUrl]) {
+      const blocks = buildClientSnippetBlocks('claude-code', target);
+      expect(blocks.map((block) => block.kind)).toEqual(['config']);
+    }
   });
 
   it('omits the CLI block for stdio targets it cannot express', () => {
@@ -398,24 +439,49 @@ describe('buildClientSnippetBlocks', () => {
   });
 });
 
-type PresetShape = { http: unknown; stdio: unknown };
+type PresetShape = { http: unknown; sse: unknown; stdio: unknown };
 
-// Exact shape every preset must emit for the shared HTTP and stdio targets.
-// `codex` emits TOML, so its two shapes are compared as whole strings.
+// Exact shape every preset must emit for the shared HTTP, SSE and stdio
+// targets. `codex` emits TOML, so its shapes are compared as whole strings.
+// Only codex and opencode leave SSE unspoken: the Codex TOML infers the
+// transport from which keys are present (url vs command), and OpenCode files
+// every remote server under the single `type: 'remote'`.
 const PRESET_SHAPES: Record<ClientSnippetId, PresetShape> = {
-  'generic-mcp-servers': { http: MCP_SERVERS_HTTP, stdio: MCP_SERVERS_STDIO },
+  'generic-mcp-servers': {
+    http: MCP_SERVERS_HTTP,
+    sse: MCP_SERVERS_SSE,
+    stdio: MCP_SERVERS_STDIO,
+  },
   'generic-http': {
     http: { type: 'http', ...HTTP_ENTRY },
+    sse: SSE_ENTRY,
     stdio: STDIO_ENTRY,
   },
-  'claude-code': { http: MCP_SERVERS_HTTP, stdio: MCP_SERVERS_STDIO },
-  cursor: { http: MCP_SERVERS_HTTP, stdio: MCP_SERVERS_STDIO },
+  'claude-code': { http: MCP_SERVERS_HTTP, sse: MCP_SERVERS_SSE, stdio: MCP_SERVERS_STDIO },
+  cursor: { http: MCP_SERVERS_HTTP, sse: MCP_SERVERS_SSE, stdio: MCP_SERVERS_STDIO },
   vscode: {
     http: {
       servers: {
         u8: {
           type: 'http',
           url: 'https://hub.example.com/mcp/u8',
+          headers: { Authorization: 'Bearer ${input:mcphub-token}' },
+        },
+      },
+      inputs: [
+        {
+          id: 'mcphub-token',
+          type: 'promptString',
+          description: 'MCPHub access token',
+          password: true,
+        },
+      ],
+    },
+    sse: {
+      servers: {
+        legacy: {
+          type: 'sse',
+          url: 'https://hub.example.com/sse',
           headers: { Authorization: 'Bearer ${input:mcphub-token}' },
         },
       },
@@ -440,6 +506,11 @@ const PRESET_SHAPES: Record<ClientSnippetId, PresetShape> = {
       'url = "https://hub.example.com/mcp/u8"',
       'http_headers = { Authorization = "Bearer <your-access-token>" }',
     ].join('\n'),
+    sse: [
+      '[mcp_servers.legacy]',
+      'url = "https://hub.example.com/sse"',
+      'http_headers = { Authorization = "Bearer <your-access-token>" }',
+    ].join('\n'),
     stdio: [
       '[mcp_servers.time]',
       'command = "npx"',
@@ -459,6 +530,15 @@ const PRESET_SHAPES: Record<ClientSnippetId, PresetShape> = {
         },
       },
     },
+    sse: {
+      mcp: {
+        legacy: {
+          type: 'remote',
+          url: 'https://hub.example.com/sse',
+          headers: { Authorization: 'Bearer <your-access-token>' },
+        },
+      },
+    },
     stdio: {
       mcp: {
         time: {
@@ -469,7 +549,7 @@ const PRESET_SHAPES: Record<ClientSnippetId, PresetShape> = {
       },
     },
   },
-  windsurf: { http: MCP_SERVERS_HTTP, stdio: MCP_SERVERS_STDIO },
+  windsurf: { http: MCP_SERVERS_HTTP, sse: MCP_SERVERS_SSE, stdio: MCP_SERVERS_STDIO },
   'cherry-studio': {
     http: {
       mcpServers: {
@@ -478,6 +558,17 @@ const PRESET_SHAPES: Record<ClientSnippetId, PresetShape> = {
           description: '',
           type: 'streamableHttp',
           baseUrl: 'https://hub.example.com/mcp/u8',
+          headers: { Authorization: 'Bearer <your-access-token>' },
+        },
+      },
+    },
+    sse: {
+      mcpServers: {
+        legacy: {
+          name: 'legacy',
+          description: '',
+          type: 'sse',
+          baseUrl: 'https://hub.example.com/sse',
           headers: { Authorization: 'Bearer <your-access-token>' },
         },
       },
@@ -495,27 +586,30 @@ const PRESET_SHAPES: Record<ClientSnippetId, PresetShape> = {
       },
     },
   },
-  codebuddy: { http: MCP_SERVERS_HTTP, stdio: MCP_SERVERS_STDIO },
-  qoder: { http: MCP_SERVERS_HTTP, stdio: MCP_SERVERS_STDIO },
-  trae: { http: MCP_SERVERS_HTTP, stdio: MCP_SERVERS_STDIO },
-  zcode: { http: MCP_SERVERS_HTTP, stdio: MCP_SERVERS_STDIO },
-  workbuddy: { http: MCP_SERVERS_HTTP, stdio: MCP_SERVERS_STDIO },
+  codebuddy: { http: MCP_SERVERS_HTTP, sse: MCP_SERVERS_SSE, stdio: MCP_SERVERS_STDIO },
+  qoder: { http: MCP_SERVERS_HTTP, sse: MCP_SERVERS_SSE, stdio: MCP_SERVERS_STDIO },
+  trae: { http: MCP_SERVERS_HTTP, sse: MCP_SERVERS_SSE, stdio: MCP_SERVERS_STDIO },
+  zcode: { http: MCP_SERVERS_HTTP, sse: MCP_SERVERS_SSE, stdio: MCP_SERVERS_STDIO },
+  workbuddy: { http: MCP_SERVERS_HTTP, sse: MCP_SERVERS_SSE, stdio: MCP_SERVERS_STDIO },
 };
 
 describe('preset shape locks', () => {
   it.each(Object.entries(PRESET_SHAPES) as [ClientSnippetId, PresetShape][])(
-    'locks the exact config shape for %s over HTTP and stdio',
-    (id, { http, stdio }) => {
+    'locks the exact config shape for %s over HTTP, SSE and stdio',
+    (id, { http, sse, stdio }) => {
       const httpText = configOf(id, httpTarget);
+      const sseText = configOf(id, sseTarget);
       const stdioText = configOf(id, stdioTarget);
 
-      if (typeof http === 'string' && typeof stdio === 'string') {
+      if (typeof http === 'string' && typeof sse === 'string' && typeof stdio === 'string') {
         expect(httpText).toBe(http);
+        expect(sseText).toBe(sse);
         expect(stdioText).toBe(stdio);
         return;
       }
 
       expect(JSON.parse(httpText)).toEqual(http);
+      expect(JSON.parse(sseText)).toEqual(sse);
       expect(JSON.parse(stdioText)).toEqual(stdio);
     },
   );
@@ -560,6 +654,30 @@ describe('toClientSnippetTarget', () => {
       args: ['-y', 'time-mcp'],
       env: { TZ: 'UTC' },
     });
+  });
+
+  it('keeps only the string elements of a mixed args array', () => {
+    const target = toClientSnippetTarget('mixed', {
+      type: 'stdio',
+      command: 'npx',
+      args: [1, null, 'ok'],
+    });
+
+    expect(target).toEqual({
+      name: 'mixed',
+      type: 'stdio',
+      command: 'npx',
+      args: ['ok'],
+    });
+  });
+
+  it('drops args entirely when no element is a string', () => {
+    const target = toClientSnippetTarget('mixed', {
+      command: 'npx',
+      args: [1, null, {}],
+    });
+
+    expect(target).toEqual({ name: 'mixed', command: 'npx' });
   });
 
   it('ignores values of the wrong shape', () => {

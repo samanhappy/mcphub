@@ -20,6 +20,8 @@ MCPHub 的服务器管理系统允许您从单个仪表板集中配置、监控�
    - **环境变量**: 环境设置的键值对
    - **工作目录**: 命令的可选工作目录
 
+服务器卡片菜单还提供 **Duplicate** 选项，会以 `<name>-copy` 作为预填名称、携带源服务器的配置打开 Add Server 表单；OAuth 授权状态不会被复制。
+
 ### 通过配置文件
 
 编辑您的 `mcp_settings.json` 文件：
@@ -234,16 +236,20 @@ curl -X POST http://localhost:3000/api/servers \
 
 服务器卡片和分组卡片都提供复制操作，会打开客户端预设弹窗，方便你将现成的配置粘贴到常用的 MCP 客户端中：
 
-- **Copy MCP config**（分组卡片菜单）：为分组聚合端点生成配置。
-- **Copy**（服务器卡片菜单）：为该服务器端点生成配置。
+- **Copy MCP config**（分组卡片菜单）：为分组聚合端点（`<baseUrl>/mcp/<group>`）生成配置，分组下所有服务器共用一个 URL。
+- **Copy**（服务器卡片菜单）：将该服务器自身的存储配置（stdio 服务器为 `command`/`args`/`env`，HTTP/SSE 服务器为 `url`/`headers`）包装为所选客户端所需的形态。
+
+使用 `openapi` 传输的服务器没有自身的客户端传输，弹窗会显示"无传输"提示而非预设，这是预期行为，并非出错。使用 `sse` 传输的服务器会在生成的 JSON 中保留 `"type": "sse"` 标记（Claude Code 命令也会切换为 `--transport sse`），避免客户端将其误当作 streamable HTTP。
 
 弹窗为以下客户端提供预设：Generic (mcpServers)、Generic HTTP、Claude Code、Cursor、VS Code / Copilot、Codex、OpenCode、Windsurf、Cherry Studio、CodeBuddy Code、Qoder、TRAE、ZCode 和 WorkBuddy。
 
 **Claude Code** 标签页还会额外提供一行 CLI 命令：
 
 ```bash
-claude mcp add --transport http <name> <url> --header "Authorization: Bearer <token>"
+claude mcp add --transport http <name> <url> --header 'Authorization: Bearer <token>'
 ```
+
+取值中只要包含安全 CLI 字符集之外的字符就会被单引号包裹（如上例中的 header），因此可直接原样粘贴到 POSIX shell；在不识别单引号的 Windows shell 中，请自行调整引号。
 
 部分客户端在生成的配置中使用自己的键名：Codex 使用 `http_headers`（没有 `headers` 键），VS Code 使用 `servers` 加 `type` 字段，Cherry Studio 使用 `baseUrl` 搭配 `streamableHttp`。
 

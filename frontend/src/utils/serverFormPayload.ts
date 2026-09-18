@@ -66,6 +66,18 @@ const buildOptions = (options?: ServerFormData['options']) => {
   return nextOptions;
 };
 
+// OAuth sub-fields that have no in-form editor but must not be dropped on the
+// edit/duplicate → submit round-trip (#F1). The backend `normalizeOAuth`
+// (src/utils/serverConfigPersistence.ts) whitelist preserves them
+// (`dynamicRegistration` verbatim; `revocationEndpoint` (RFC 7009) and
+// `redirectUri` were added to the whitelist in the same PR), so a faithful
+// re-emission survives persistence.
+type OAuthCarryOver = {
+  dynamicRegistration?: NonNullable<ServerConfig['oauth']>['dynamicRegistration'];
+  revocationEndpoint?: NonNullable<ServerConfig['oauth']>['revocationEndpoint'];
+  redirectUri?: NonNullable<ServerConfig['oauth']>['redirectUri'];
+};
+
 const buildOAuthConfig = (
   oauth?: ServerFormData['oauth'],
 ): Partial<NonNullable<ServerConfig['oauth']>> => {
@@ -100,6 +112,23 @@ const buildOAuthConfig = (
   if (authorizationEndpoint) nextOAuth.authorizationEndpoint = authorizationEndpoint;
   if (tokenEndpoint) nextOAuth.tokenEndpoint = tokenEndpoint;
   if (resource) nextOAuth.resource = resource;
+
+  // Faithful pass-through of the non-editable OAuth sub-fields: the
+  // `dynamicRegistration` sub-object (RFC7591) plus `revocationEndpoint`
+  // (RFC 7009) and `redirectUri`. Read via the opaque carry type because
+  // `ServerFormData['oauth']` does not declare them; they are never rendered
+  // in the form, only round-tripped, and the backend `normalizeOAuth`
+  // whitelist preserves them (same PR).
+  const carry = oauth as ServerFormData['oauth'] & OAuthCarryOver;
+  if (carry.dynamicRegistration) {
+    nextOAuth.dynamicRegistration = carry.dynamicRegistration;
+  }
+  if (carry.revocationEndpoint) {
+    nextOAuth.revocationEndpoint = carry.revocationEndpoint;
+  }
+  if (carry.redirectUri) {
+    nextOAuth.redirectUri = carry.redirectUri;
+  }
 
   return nextOAuth;
 };

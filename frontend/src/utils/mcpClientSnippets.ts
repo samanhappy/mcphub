@@ -3,8 +3,12 @@
  *
  * MCPHub hands out HTTP endpoints, so every preset describes the same target -
  * a name, an optional URL/headers pair (HTTP) or command/args/env triple
- * (stdio) - in the shape the selected client expects. Client schemas verified
- * against their primary sources (all URLs re-checked 2026-02):
+ * (stdio) - in the shape the selected client expects. Four presets were
+ * verified against the upstream sources below (URLs re-checked 2026-09, the
+ * month this file landed); the other ten have no client-specific schema to
+ * check against and reuse the generic `mcpServers` shape (or, for the
+ * generic-http escape hatch, the bare entry) these copy actions always
+ * produced:
  * - Codex `codex-rs/config/src/mcp_types.rs`:
  *   https://github.com/openai/codex/blob/main/codex-rs/config/src/mcp_types.rs
  * - VS Code MCP configuration reference:
@@ -252,8 +256,8 @@ const openCodeSnippet = (target: ClientSnippetTarget): string => {
 };
 
 // Cherry Studio's `ProtocolMcpServerConfigSchema` is a strict object: remote
-// servers use `baseUrl` + `type: 'streamableHttp'` (no `url` key) and stdio
-// servers use command/args/env. Install-time metadata (`installSource`,
+// servers use `baseUrl` + `type: 'sse' | 'streamableHttp'` (no `url` key) and
+// stdio servers use command/args/env. Install-time metadata (`installSource`,
 // `isTrusted`, `installedAt`, `isActive: false`) belongs to the separate
 // `ProtocolMcpServerInstallSchema` request, not to this hand-pasted config,
 // so an extra `isActive` key would make the entry invalid for both schemas.
@@ -267,7 +271,9 @@ const cherryStudioSnippet = (target: ClientSnippetTarget): string => {
   const entry = isHttpTarget(target)
     ? {
         ...base,
-        type: 'streamableHttp',
+        // The schema accepts exactly two remote transports; keep SSE upstreams
+        // spelled out so Cherry Studio does not dial them as streamable HTTP.
+        type: target.type === 'sse' ? 'sse' : 'streamableHttp',
         baseUrl: target.url,
         ...(headers ? { headers } : {}),
       }
@@ -288,9 +294,23 @@ const shellQuote = (value: string): string => `'${value.replace(/'/g, "'\\''")}'
 const cliArg = (value: string): string =>
   CLI_SAFE.test(value) ? value : shellQuote(value);
 
-// Claude Code's one-liner equivalent of the JSON block.
+// Claude Code's one-liner equivalent of the JSON block, in the documented
+// HTTP shape: `claude mcp add --transport <t> <name> <url> [--header ...]`.
+//
+// A positional that starts with `-` cannot be spelled safely in that shape:
+// shell quoting is gone by the time the CLI's tokenizer sees the value, and
+// the documented `--` separator belongs to the stdio form, so relying on it
+// for the HTTP form would be an unverified parsing assumption. Since
+// SERVER_NAME_PATTERN admits names like `-foo`, a name or URL starting with
+// a dash omits the command block outright - the JSON config block still
+// carries the full entry - rather than emitting a command the CLI would
+// misparse as one of its own options.
 const claudeCodeCommand = (target: ClientSnippetTarget): string | undefined => {
   if (!isHttpTarget(target)) {
+    return undefined;
+  }
+
+  if (target.name.startsWith('-') || (target.url ?? '').startsWith('-')) {
     return undefined;
   }
 

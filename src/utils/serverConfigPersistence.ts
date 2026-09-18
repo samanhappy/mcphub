@@ -154,6 +154,8 @@ const normalizeOAuth = (oauth?: ServerConfig['oauth']): ServerConfig['oauth'] | 
   const authorizationEndpoint = trimToUndefined(oauth.authorizationEndpoint);
   const tokenEndpoint = trimToUndefined(oauth.tokenEndpoint);
   const resource = trimToUndefined(oauth.resource);
+  const redirectUri = trimToUndefined(oauth.redirectUri);
+  const revocationEndpoint = trimToUndefined(oauth.revocationEndpoint);
   const scopes = normalizeStringArray(oauth.scopes);
 
   if (clientId) normalized.clientId = clientId;
@@ -164,6 +166,14 @@ const normalizeOAuth = (oauth?: ServerConfig['oauth']): ServerConfig['oauth'] | 
   if (authorizationEndpoint) normalized.authorizationEndpoint = authorizationEndpoint;
   if (tokenEndpoint) normalized.tokenEndpoint = tokenEndpoint;
   if (resource) normalized.resource = resource;
+  // redirectUri and revocationEndpoint were missing from this whitelist, so any save
+  // (dashboard edit, Duplicate, API write) silently stripped them. Both are consumed
+  // downstream: redirectUri feeds oauthRedirectUri.ts's preferred redirect URI for
+  // dynamic client registration and authorization URLs, and revocationEndpoint drives
+  // upstreamOAuthDisconnectService.ts's token revocation on disconnect. Keep them (the
+  // frontend side of this same PR mirrors them back for fidelity).
+  if (redirectUri) normalized.redirectUri = redirectUri;
+  if (revocationEndpoint) normalized.revocationEndpoint = revocationEndpoint;
 
   if (oauth.dynamicRegistration) {
     normalized.dynamicRegistration = oauth.dynamicRegistration;

@@ -4,7 +4,6 @@ describe('canViewSystemLogs', () => {
   it('allows admins to access the system logs menu', () => {
     expect(
       canViewSystemLogs({
-        username: 'admin',
         isAdmin: true,
       }),
     ).toBe(true);
@@ -13,7 +12,6 @@ describe('canViewSystemLogs', () => {
   it('hides the system logs menu from ordinary users', () => {
     expect(
       canViewSystemLogs({
-        username: 'user',
         isAdmin: false,
       }),
     ).toBe(false);

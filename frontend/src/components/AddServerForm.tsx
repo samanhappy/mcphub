@@ -143,7 +143,14 @@ const AddServerForm = ({
 
       {modalVisible && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          {/* B1: keyed on the source name so switching the duplicate source
+              forces ServerForm to remount. ServerForm seeds its internal state
+              from `initialData` only on mount, so without a key a change to
+              `duplicateSource` while the modal stays open would leave the form
+              showing the old server while `handleSubmit` re-attaches the new
+              source's capability overrides (form/source mismatch). */}
           <ServerForm
+            key={duplicateSource?.name ?? 'add'}
             onSubmit={handleSubmit}
             onCancel={closeModal}
             initialData={duplicatePrefill}
