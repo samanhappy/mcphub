@@ -38,6 +38,9 @@ jobs:
       - name: Run type checking
         run: pnpm backend:build
 
+      - name: Run frontend type checking
+        run: pnpm frontend:typecheck
+
       - name: Run tests
         run: pnpm test:ci
 

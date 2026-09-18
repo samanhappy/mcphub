@@ -32,6 +32,7 @@
     "test:ci": "jest --ci --coverage --watchAll=false",
     "frontend:dev": "cd frontend && vite",
     "frontend:build": "cd frontend && vite build",
+    "frontend:typecheck": "tsc --noEmit -p frontend/tsconfig.json",
     "frontend:preview": "cd frontend && vite preview",
     "dev": "concurrently \"pnpm backend:dev\" \"pnpm frontend:dev\"",
     "debug": "concurrently \"pnpm backend:debug\" \"pnpm frontend:dev\"",
