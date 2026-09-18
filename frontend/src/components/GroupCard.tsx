@@ -4,6 +4,12 @@ import { useTranslation } from 'react-i18next';
 import { Edit3, Trash2, Copy, Check, Link as LinkIcon, FileCode, ChevronDown } from 'lucide-react';
 import { Group, Server, IGroupServerConfig, GroupCost } from '@/types';
 import DeleteDialog from '@/components/ui/DeleteDialog';
+import CopyClientConfigDialog from '@/components/ui/CopyClientConfigDialog';
+import {
+  ACCESS_TOKEN_PLACEHOLDER,
+  type ClientSnippetTarget,
+} from '@/utils/mcpClientSnippets';
+import { copyText } from '@/utils/clipboard';
 import { useToast } from '@/contexts/ToastContext';
 import { useSettingsData } from '@/hooks/useSettingsData';
 import { formatTokens, percentSaved } from '@/utils/contextCost';
@@ -35,31 +41,6 @@ const getServerDisplayName = (group: Group, serverName: string): string => {
   return config.alias?.trim() || serverName;
 };
 
-const copyText = async (value: string): Promise<boolean> => {
-  try {
-    if (navigator.clipboard && window.isSecureContext) {
-      await navigator.clipboard.writeText(value);
-      return true;
-    }
-  } catch {
-    /* noop */
-  }
-  try {
-    const el = document.createElement('textarea');
-    el.value = value;
-    el.style.position = 'fixed';
-    el.style.left = '-9999px';
-    document.body.appendChild(el);
-    el.focus();
-    el.select();
-    const ok = document.execCommand('copy');
-    document.body.removeChild(el);
-    return ok;
-  } catch {
-    return false;
-  }
-};
-
 const GroupCard = ({ group, servers, onEdit, onDelete, cost }: GroupCardProps) => {
   const { t } = useTranslation();
   const { auth } = useAuth();
@@ -69,6 +50,7 @@ const GroupCard = ({ group, servers, onEdit, onDelete, cost }: GroupCardProps) =
   const baseUrl = installConfig?.baseUrl?.replace(/\/+$/, '') || '';
 
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [clientConfigTarget, setClientConfigTarget] = useState<ClientSnippetTarget | null>(null);
   const [copied, setCopied] = useState(false);
   const [showCopyDropdown, setShowCopyDropdown] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -213,25 +195,17 @@ const GroupCard = ({ group, servers, onEdit, onDelete, cost }: GroupCardProps) =
                   <LinkIcon size={12} /> {t('common.copyOpenApiUrl')}
                 </button>
                 <button
-                  onClick={() =>
-                    doCopy(
-                      JSON.stringify(
-                        {
-                          mcpServers: {
-                            [group.name]: {
-                              url: groupEndpoint,
-                              headers: { Authorization: 'Bearer <your-access-token>' },
-                            },
-                          },
-                        },
-                        null,
-                        2,
-                      ),
-                    )
-                  }
+                  onClick={() => {
+                    setShowCopyDropdown(false);
+                    setClientConfigTarget({
+                      name: group.name,
+                      url: groupEndpoint,
+                      headers: { Authorization: `Bearer ${ACCESS_TOKEN_PLACEHOLDER}` },
+                    });
+                  }}
                   className="flex items-center gap-2 w-full px-2.5 py-1.5 text-[13px] rounded-md hover:bg-[var(--hub-surface-hover)] text-left"
                 >
-                  <FileCode size={12} /> {t('common.copyJson')}
+                  <FileCode size={12} /> {t('clientConfig.menuItem')}
                 </button>
               </div>
             )}
@@ -440,6 +414,12 @@ const GroupCard = ({ group, servers, onEdit, onDelete, cost }: GroupCardProps) =
           </button>
         )}
       </div>
+
+      <CopyClientConfigDialog
+        isOpen={clientConfigTarget !== null}
+        target={clientConfigTarget}
+        onClose={() => setClientConfigTarget(null)}
+      />
 
       <DeleteDialog
         isOpen={showDeleteDialog}

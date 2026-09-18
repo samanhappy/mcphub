@@ -354,6 +354,73 @@
     "docs": "Docs",
     "all": "All"
   },
+  "clientConfig": {
+    "title": "Copy MCP configuration",
+    "description": "Pick your client to copy a ready-to-paste configuration for {{name}}.",
+    "menuItem": "Copy MCP config",
+    "tokenPrompt": "MCPHub access token",
+    "configBlock": "Configuration",
+    "commandBlock": "CLI command",
+    "copied": "Copied",
+    "clients": {
+      "generic-mcp-servers": {
+        "label": "Generic (mcpServers)",
+        "hint": "Widely accepted mcpServers block: Claude Desktop, Cline, Cherry Studio and most clients."
+      },
+      "generic-http": {
+        "label": "Generic HTTP",
+        "hint": "Any client that accepts a raw HTTP MCP entry: paste it into that client's own server map, keeping the URL and Authorization value."
+      },
+      "claude-code": {
+        "label": "Claude Code",
+        "hint": "Claude Code: `claude mcp add`, or the mcpServers block in ~/.claude.json."
+      },
+      "cursor": {
+        "label": "Cursor",
+        "hint": "Cursor: .cursor/mcp.json in a project, or ~/.cursor/mcp.json globally."
+      },
+      "vscode": {
+        "label": "VS Code / Copilot",
+        "hint": "VS Code / Copilot: .vscode/mcp.json in the workspace, or mcp.json in your user profile."
+      },
+      "codex": {
+        "label": "Codex",
+        "hint": "Codex: ~/.codex/config.toml, or a project-level .codex/config.toml."
+      },
+      "opencode": {
+        "label": "OpenCode",
+        "hint": "OpenCode: ~/.config/opencode/opencode.json globally, or opencode.json in the project."
+      },
+      "windsurf": {
+        "label": "Windsurf",
+        "hint": "Windsurf: ~/.codeium/windsurf/mcp_config.json."
+      },
+      "cherry-studio": {
+        "label": "Cherry Studio",
+        "hint": "Cherry Studio: Settings > MCP Servers > Add Server > Import JSON."
+      },
+      "codebuddy": {
+        "label": "CodeBuddy Code",
+        "hint": "CodeBuddy Code: ~/.codebuddy/.mcp.json globally, or .mcp.json in the project."
+      },
+      "qoder": {
+        "label": "Qoder",
+        "hint": "Qoder: Settings > MCP > Add Manually, then paste the JSON."
+      },
+      "trae": {
+        "label": "TRAE",
+        "hint": "TRAE: Settings > MCP > Add > Add Manually, then paste the JSON."
+      },
+      "zcode": {
+        "label": "ZCode",
+        "hint": "ZCode: Settings > MCP Servers > New MCP Server > Full configuration."
+      },
+      "workbuddy": {
+        "label": "WorkBuddy",
+        "hint": "WorkBuddy: Plugins > MCP Servers > Configure MCP, or ~/.workbuddy/mcp.json."
+      }
+    }
+  },
   "pagination": {
     "rowsPerPage": "Rows per page",
     "showing": "Showing {{from}}-{{to}} of {{total}}"

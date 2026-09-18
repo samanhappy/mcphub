@@ -26,6 +26,9 @@ import PromptCard from '@/components/ui/PromptCard';
 import ResourceCard from '@/components/ui/ResourceCard';
 import DeleteDialog from '@/components/ui/DeleteDialog';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
+import CopyClientConfigDialog from '@/components/ui/CopyClientConfigDialog';
+import { toClientSnippetTarget, type ClientSnippetTarget } from '@/utils/mcpClientSnippets';
+import { copyText } from '@/utils/clipboard';
 import { Switch } from '@/components/ui/ToggleGroup';
 import { useToast } from '@/contexts/ToastContext';
 import { useSettingsData } from '@/hooks/useSettingsData';
@@ -160,6 +163,7 @@ const ServerCard = ({
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showReinstallDialog, setShowReinstallDialog] = useState(false);
   const [showOAuthDisconnectDialog, setShowOAuthDisconnectDialog] = useState(false);
+  const [clientConfigTarget, setClientConfigTarget] = useState<ClientSnippetTarget | null>(null);
   const [isToggling, setIsToggling] = useState(false);
   const [isUpdatingVisibility, setIsUpdatingVisibility] = useState(false);
   const [isReloading, setIsReloading] = useState(false);
@@ -277,31 +281,6 @@ const ServerCard = ({
     }
   };
 
-  const copyText = async (value: string) => {
-    try {
-      if (navigator.clipboard && window.isSecureContext) {
-        await navigator.clipboard.writeText(value);
-        return true;
-      }
-    } catch {
-      /* noop */
-    }
-    try {
-      const el = document.createElement('textarea');
-      el.value = value;
-      el.style.position = 'fixed';
-      el.style.left = '-9999px';
-      document.body.appendChild(el);
-      el.focus();
-      el.select();
-      const ok = document.execCommand('copy');
-      document.body.removeChild(el);
-      return ok;
-    } catch {
-      return false;
-    }
-  };
-
   const handleCopyError = async (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!server.error) return;
@@ -321,16 +300,12 @@ const ServerCard = ({
     if (!canManage) return;
     try {
       const result = await exportMCPSettings(server.name);
-      if (!result || !result.success || !result.data) {
+      const exported = result?.data?.mcpServers?.[server.name];
+      if (!result || !result.success || !exported) {
         showToast(result?.message || t('common.copyFailed') || 'Copy failed', 'error');
         return;
       }
-      const json = JSON.stringify(result.data, null, 2);
-      const ok = await copyText(json);
-      showToast(
-        ok ? t('common.copySuccess') || 'Copied' : t('common.copyFailed') || 'Copy failed',
-        ok ? 'success' : 'error',
-      );
+      setClientConfigTarget(toClientSnippetTarget(server.name, exported));
     } catch (error) {
       console.error('Error copying server configuration:', error);
       showToast(t('common.copyFailed') || 'Copy failed', 'error');
@@ -1014,6 +989,12 @@ const ServerCard = ({
           </div>
         )}
       </div>
+
+      <CopyClientConfigDialog
+        isOpen={clientConfigTarget !== null}
+        target={clientConfigTarget}
+        onClose={() => setClientConfigTarget(null)}
+      />
 
       <DeleteDialog
         isOpen={showDeleteDialog}
