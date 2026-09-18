@@ -145,10 +145,12 @@ const AddServerForm = ({
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           {/* B1: keyed on the source name so switching the duplicate source
               forces ServerForm to remount. ServerForm seeds its internal state
-              from `initialData` only on mount, so without a key a change to
-              `duplicateSource` while the modal stays open would leave the form
-              showing the old server while `handleSubmit` re-attaches the new
-              source's capability overrides (form/source mismatch). */}
+              from `initialData` only on mount, so the key guarantees the form
+              re-initializes from the current source in every case. This is
+              defence in depth rather than a reachable defect path: the modal
+              overlay blocks further clicks while it is open, and the
+              ServersPage request-id guard already drops superseded duplicate
+              responses before they can swap the source mid-session. */}
           <ServerForm
             key={duplicateSource?.name ?? 'add'}
             onSubmit={handleSubmit}

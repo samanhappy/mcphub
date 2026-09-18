@@ -267,7 +267,7 @@ claude mcp add --transport http <name> <url> --header 'Authorization: Bearer <to
 
 Values containing characters outside a safe CLI set are wrapped in single quotes (as the header above is), so the command can be pasted verbatim into a POSIX shell; on Windows shells that do not parse single quotes, re-quote the affected values.
 
-A few clients use their own key names in the generated configuration: Codex uses `http_headers` (there is no `headers` key), VS Code uses `servers` plus a `type` field, and Cherry Studio uses `baseUrl` with `streamableHttp`.
+A few clients use their own key names in the generated configuration: Codex uses `http_headers` (there is no `headers` key), VS Code uses `servers` plus a `type` field, and Cherry Studio uses `baseUrl` with a `type` of `streamableHttp` — or `sse` when the upstream is an SSE endpoint.
 
 ## Server Lifecycle Management
 

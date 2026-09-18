@@ -251,7 +251,7 @@ claude mcp add --transport http <name> <url> --header 'Authorization: Bearer <to
 
 取值中只要包含安全 CLI 字符集之外的字符就会被单引号包裹（如上例中的 header），因此可直接原样粘贴到 POSIX shell；在不识别单引号的 Windows shell 中，请自行调整引号。
 
-部分客户端在生成的配置中使用自己的键名：Codex 使用 `http_headers`（没有 `headers` 键），VS Code 使用 `servers` 加 `type` 字段，Cherry Studio 使用 `baseUrl` 搭配 `streamableHttp`。
+部分客户端在生成的配置中使用自己的键名：Codex 使用 `http_headers`（没有 `headers` 键），VS Code 使用 `servers` 加 `type` 字段，Cherry Studio 使用 `baseUrl` 并将 `type` 设为 `streamableHttp`——上游为 SSE 端点时为 `sse`。
 
 ## 服务器生命周期管理
 

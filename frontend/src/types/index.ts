@@ -418,6 +418,18 @@ export interface ServerFormData {
     authorizationEndpoint?: string;
     tokenEndpoint?: string;
     resource?: string;
+    // Round-trip-only OAuth sub-fields (#1193). The form has no editors for
+    // them, so the edit/duplicate flows carry the stored values through
+    // `ServerFormData` to the submit payload instead of dropping them.
+    // Declared once here and typed by indexed access into the frontend
+    // `ServerConfig['oauth']` contract, which mirrors the backend
+    // `ServerConfig['oauth']` (src/types/index.ts) field for field, so the two
+    // shapes cannot drift and `buildServerPayload`'s `Partial<ServerConfig>`
+    // return type stays assignment-compatible without casts.
+    // Note: `dynamicRegistration` is the RFC7591 sub-object (not a boolean).
+    dynamicRegistration?: NonNullable<ServerConfig['oauth']>['dynamicRegistration'];
+    redirectUri?: NonNullable<ServerConfig['oauth']>['redirectUri'];
+    revocationEndpoint?: NonNullable<ServerConfig['oauth']>['revocationEndpoint'];
   };
   // OpenAPI specific fields
   openapi?: {

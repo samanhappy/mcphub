@@ -1,3 +1,4 @@
+import type { ServerFormData } from '../../frontend/src/types';
 import { buildServerPayload } from '../../frontend/src/utils/serverFormPayload';
 
 describe('buildServerPayload', () => {
@@ -223,36 +224,35 @@ describe('buildServerPayload', () => {
     initialAccessToken: 'reg-token',
   };
 
-  const buildSseForm = (oauth: Record<string, unknown>) =>
-    ({
-      name: 'oauth-server',
-      description: '',
-      url: 'https://example.com/mcp',
-      command: '',
-      arguments: '',
-      args: [],
-      env: [],
-      headers: [],
+  const buildSseForm = (oauth: ServerFormData['oauth']): ServerFormData => ({
+    name: 'oauth-server',
+    description: '',
+    url: 'https://example.com/mcp',
+    command: '',
+    arguments: '',
+    args: [],
+    env: [],
+    headers: [],
+    passthroughHeaders: '',
+    options: {
+      timeout: 60000,
+      resetTimeoutOnProgress: false,
+      maxTotalTimeout: undefined,
+    },
+    keepAlive: {
+      enabled: false,
+      interval: 60000,
+    },
+    oauth,
+    openapi: {
+      inputMode: 'url',
+      url: '',
+      schema: '',
+      version: '3.1.0',
+      securityType: 'none',
       passthroughHeaders: '',
-      options: {
-        timeout: 60000,
-        resetTimeoutOnProgress: false,
-        maxTotalTimeout: undefined,
-      },
-      keepAlive: {
-        enabled: false,
-        interval: 60000,
-      },
-      oauth,
-      openapi: {
-        inputMode: 'url',
-        url: '',
-        schema: '',
-        version: '3.1.0',
-        securityType: 'none',
-        passthroughHeaders: '',
-      },
-    }) as any;
+    },
+  });
 
   it('preserves a full dynamicRegistration sub-object verbatim (deep equal)', () => {
     const payload = buildServerPayload({

@@ -202,10 +202,12 @@ describe('carryOverCapabilityOverrides', () => {
     expect(result.config.tools).toEqual({ issues: { enabled: false } });
   });
 
-  it('keeps and renames a bare upstream name that collides with the source prefix', () => {
+  it('keeps a bare upstream tool name verbatim when it collides with the source prefix', () => {
     // Source `db` / separator `-` / runtime name `db-db-query`: the upstream
     // tool is really called `db-query`, and the execution-time lookup falls
-    // back to `config.tools['db-query']`. The copy must not drop it as stale.
+    // back to `config.tools['db-query']`. Keep the bare key verbatim - the
+    // copy's lookups only consult `db-copy-db-query` and the bare `db-query`,
+    // so renaming it to `db-copy-query` would produce a key nothing reads.
     const source = buildServer({
       name: 'db',
       tools: [{ name: 'db-db-query', description: '', inputSchema: { type: 'object' } }],
@@ -222,7 +224,29 @@ describe('carryOverCapabilityOverrides', () => {
       source,
     );
 
-    expect(result.config.tools).toEqual({ 'db-copy-query': { enabled: false } });
+    expect(result.config.tools).toEqual({ 'db-query': { enabled: false } });
+  });
+
+  it('keeps a bare key verbatim even when prefixing it yields a known runtime name', () => {
+    // Regression: source `weather` / runtime `weather-beta` / bare key `beta`.
+    // Prefixing `beta` with `weather-` yields the runtime name `weather-beta`,
+    // but `beta` does not itself start with the source prefix - renaming it
+    // produced the dead key `weather-copy` (`rename('beta')` =
+    // `'weather-copy' + 'beta'.slice(7)`). The copy's lookups consult
+    // `weather-copy-beta` and the bare `beta`, so `beta` must stay verbatim.
+    const source = buildServer({
+      tools: [{ name: 'weather-beta', description: '', inputSchema: { type: 'object' } }],
+      config: {
+        type: 'streamable-http',
+        tools: {
+          beta: { enabled: false },
+        },
+      },
+    });
+
+    const result = carryOverCapabilityOverrides(payload, source);
+
+    expect(result.config.tools).toEqual({ beta: { enabled: false } });
   });
 
   it('drops a genuinely stale prefixed tool key that matches no runtime name or bare name', () => {
@@ -328,49 +352,67 @@ describe('carryOverCapabilityOverrides', () => {
 });
 
 describe('resolveDuplicateResponse', () => {
-  // B1 guard for the Duplicate interleave race: each accepted click tags its
-  // request with a monotonically increasing id, and the caller keeps the latest
-  // id in a counter that is never reset. A response commits only while its id
-  // is still the latest; a superseded response is 'stale' and is dropped.
+  // Pure-function contract for the B1 guard wired in
+  // frontend/src/pages/ServersPage.tsx:104-143: each accepted click tags its
+  // request with an id from a monotonically increasing counter that is never
+  // reset (`++duplicateRequestId.current`), and the decision is consulted
+  // TWICE per response - once before committing the prefill and once in the
+  // `finally` that clears the busy indicator. The three cases below pin the
+  // invariants that wiring depends on, via a small timeline simulation
+  // (clicks auto-increment the id; each response compares its id against the
+  // latest). The repo has no jsdom/@testing-library, so the component-layer
+  // wiring cannot be unit-tested; the invariants are fixed here as a
+  // pure-function contract instead (no new test dependencies introduced).
 
-  it('commits a request that is still the latest (single click)', () => {
-    // One click -> one request id, which is the latest.
-    expect(resolveDuplicateResponse(1, 1)).toBe('commit');
+  const startDuplicateTimeline = () => {
+    let latestRequestId = 0; // mirrors duplicateRequestId.current: never reset
+    const click = () => ++latestRequestId; // an accepted click tags its request
+    // The two consultations ServersPage makes per response: the commit check
+    // before `setDuplicateServer` and the busy-clear check in the `finally`.
+    const decide = (requestId: number) => ({
+      commitCheck: resolveDuplicateResponse(requestId, latestRequestId),
+      busyClearCheck: resolveDuplicateResponse(requestId, latestRequestId),
+    });
+    return { click, decide, latestRequestId: () => latestRequestId };
+  };
+
+  it('emits strictly increasing ids and commits the winning request at both checks', () => {
+    const timeline = startDuplicateTimeline();
+    const first = timeline.click();
+    const second = timeline.click(); // supersedes `first`
+    const third = timeline.click(); // supersedes `second`; counter never resets
+
+    expect([first, second, third]).toEqual([1, 2, 3]); // monotonic, never reset
+    expect(timeline.latestRequestId()).toBe(third);
+
+    const decision = timeline.decide(third);
+    expect(decision.commitCheck).toBe('commit'); // prefill committed
+    expect(decision.busyClearCheck).toBe('commit'); // busy indicator cleared
   });
 
-  it('marks a superseded request as stale (dropped)', () => {
-    // Click A (id 1), then click B (id 2). A is superseded.
-    expect(resolveDuplicateResponse(1, 2)).toBe('stale');
+  it('marks a superseded request stale at both checks so it touches no state', () => {
+    const timeline = startDuplicateTimeline();
+    const superseded = timeline.click();
+    const winner = timeline.click(); // supersedes `superseded`
+
+    const decision = timeline.decide(superseded);
+
+    expect(decision.commitCheck).toBe('stale'); // no setDuplicateServer
+    expect(decision.busyClearCheck).toBe('stale'); // no early setDuplicatingServer(null)
   });
 
-  it('commits the later winning request after a superseded one', () => {
-    // After A (id 1) is superseded by B (id 2), B is the latest and commits.
-    expect(resolveDuplicateResponse(2, 2)).toBe('commit');
-  });
+  it('still commits the newest request after repeated supersessions', () => {
+    const timeline = startDuplicateTimeline();
+    const ids = [timeline.click(), timeline.click(), timeline.click()];
 
-  it('keeps the monotonic latest id stable so the same id yields the same decision twice', () => {
-    // The caller checks the SAME (requestId, latestRequestId) pair twice: once
-    // to decide whether to commit the prefill, and again in the `finally` to
-    // decide whether to clear the busy indicator. Because the latest id is a
-    // monotonic counter that is never reset, the winning request sees the same
-    // pair in both checks and gets the same 'commit' result, so the busy
-    // indicator is always cleared on the winning path.
-    const latestRequestId = 3;
-    const requestId = 3; // the winning request
+    for (const id of ids.slice(0, -1)) {
+      expect(timeline.decide(id).commitCheck).toBe('stale');
+      expect(timeline.decide(id).busyClearCheck).toBe('stale');
+    }
 
-    const commitCheck = resolveDuplicateResponse(requestId, latestRequestId);
-    const busyClearCheck = resolveDuplicateResponse(requestId, latestRequestId);
-
-    expect(commitCheck).toBe('commit');
-    expect(busyClearCheck).toBe('commit');
-    expect(commitCheck).toBe(busyClearCheck);
-  });
-
-  it('never clears busy early for a superseded request', () => {
-    // A (id 1) is superseded by B (id 2). A's busy-clear check must NOT commit,
-    // so it cannot erase B's in-flight spinner.
-    expect(resolveDuplicateResponse(1, 2)).toBe('stale');
-    // B's own busy-clear check still commits.
-    expect(resolveDuplicateResponse(2, 2)).toBe('commit');
+    const winner = ids[ids.length - 1];
+    const decision = timeline.decide(winner);
+    expect(decision.commitCheck).toBe('commit');
+    expect(decision.busyClearCheck).toBe('commit');
   });
 });

@@ -375,7 +375,7 @@
       },
       "generic-http": {
         "label": "通用 HTTP",
-        "hint": "输出裸条目的兜底出口：远程端点给出裸 HTTP 条目，本地服务器给出裸 stdio 条目（command/args/env），粘进目标客户端自己的服务器表即可；大多数客户端请用「通用（mcpServers）」。"
+        "hint": "输出裸条目的兜底出口：远程端点给出裸 HTTP 条目（SSE 上游会带上 \"type\": \"sse\" 标记），本地服务器给出裸 stdio 条目（command/args/env），粘进目标客户端自己的服务器表即可；大多数客户端请用「通用（mcpServers）」。"
       },
       "claude-code": {
         "label": "Claude Code",

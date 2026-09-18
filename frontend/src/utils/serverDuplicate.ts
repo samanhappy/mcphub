@@ -82,19 +82,20 @@ const remapKeys = <T>(
  * tool names identify tool keys that belong to the source. A tool key that
  * carries the `<source.name><separator>` prefix can be one of three things:
  * a known runtime name (renamed onto the copy), the bare upstream name of a
- * known runtime tool (the execution-time lookup falls back to it, so it is
- * kept and renamed onto the copy), or genuinely stale (dropped, because the
- * copy's tools resolve under the copy's own prefix and the key can never
- * match). Prompts are matched with the configured separator.
+ * known runtime tool that itself starts with the source prefix (e.g.
+ * `db-query` for runtime name `db-db-query`; kept verbatim, because renaming
+ * it would produce a key none of the copy's lookups can reach), or genuinely
+ * stale (dropped, because the copy's tools resolve under the copy's own
+ * prefix and the key can never match). Prompts are matched with the
+ * configured separator.
  * `config.resources` is keyed by resource URI and needs no rewrite.
  *
- * A disconnected source has no discovered tools, so its prefixed tool keys are
- * all attributable by prefix alone: stale ones are dropped, bare keys are kept
- * verbatim. When the source *is* connected, a prefixed key can also be the
- * bare upstream name of a known runtime tool (e.g. `db-query` for runtime
- * name `db-db-query`); those are kept and renamed onto the copy because the
- * execution-time lookup falls back to them. Prompt and resource overrides are
- * keyed unambiguously and always follow the copy.
+ * Bare keys - the ones without the `<source.name><separator>` prefix - are
+ * always kept verbatim: the execution-time lookup falls back to the bare
+ * upstream name, so the override still takes effect on the copy. A
+ * disconnected source has no discovered tools, so its prefixed tool keys are
+ * all attributable by prefix alone and the stale ones are dropped. Prompt and
+ * resource overrides are keyed unambiguously and always follow the copy.
  */
 export const carryOverCapabilityOverrides = (
   payload: { name: string; config: Partial<ServerConfig> },
@@ -112,10 +113,11 @@ export const carryOverCapabilityOverrides = (
 
   // A bare tool key is a documented shape (the execution-time lookup falls
   // back to it), so it is kept verbatim. Known runtime names are renamed onto
-  // the copy. A key that carries the source prefix can also be the bare
-  // upstream name of a known runtime tool (e.g. `db-query` for runtime name
-  // `db-db-query`); those are kept and renamed onto the copy because the
-  // execution-time lookup falls back to them. A key that carries the source
+  // the copy. A key that itself carries the source prefix can also be the
+  // bare upstream name of a known runtime tool (e.g. `db-query` for runtime
+  // name `db-db-query`); it is kept verbatim too - the copy's lookups consult
+  // `<copy><separator><upstream>` and the bare upstream name, and renaming
+  // would produce a key neither can reach. A key that carries the source
   // prefix but matches neither a runtime name nor a runtime tool's bare name
   // is stale (e.g. left behind by a rename) and is dropped, since it can never
   // resolve on the copy.
@@ -126,9 +128,12 @@ export const carryOverCapabilityOverrides = (
           if (runtimeToolNames.has(key)) {
             return [[rename(key), value]];
           }
-          if (runtimeToolNames.has(`${sourcePrefix}${key}`)) {
-            // Bare upstream name of a known runtime tool: keep and rename.
-            return [[rename(key), value]];
+          if (key.startsWith(sourcePrefix) && runtimeToolNames.has(`${sourcePrefix}${key}`)) {
+            // The bare upstream name of a known runtime tool, itself carrying
+            // the source prefix: keep it verbatim. The copy's execution-time
+            // lookups consult `<copy><separator><upstream>` and the bare
+            // upstream name, so renaming would produce a key neither can reach.
+            return [[key, value]];
           }
           if (key.startsWith(sourcePrefix)) {
             return [];

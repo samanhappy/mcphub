@@ -35,6 +35,8 @@ const HTTP_ENTRY = {
   headers: { Authorization: 'Bearer <your-access-token>' },
 };
 
+const HTTP_ENTRY_TYPED = { type: 'http', ...HTTP_ENTRY };
+
 const STDIO_ENTRY = {
   command: 'npx',
   args: ['-y', 'time-mcp'],
@@ -292,6 +294,7 @@ describe('buildClientSnippetBlocks', () => {
     expect(JSON.parse(blocks[0].text)).toEqual({
       mcpServers: {
         u8: {
+          type: 'http',
           url: 'https://hub.example.com/mcp/u8',
           headers: { Authorization: 'Bearer <your-access-token>' },
         },
@@ -300,6 +303,77 @@ describe('buildClientSnippetBlocks', () => {
     expect(blocks[1].text).toBe(
       "claude mcp add --transport http u8 https://hub.example.com/mcp/u8 --header 'Authorization: Bearer <your-access-token>'",
     );
+  });
+
+  it('writes an explicit http transport into the Claude Code JSON block', () => {
+    // Claude Code reports an entry that has a `url` but no `type` as a
+    // configuration error and skips the server, so the http shape must
+    // always carry `"type": "http"`.
+    const config = configOf('claude-code', httpTarget);
+
+    expect(config).toContain('"type": "http"');
+    expect(JSON.parse(config)).toEqual({
+      mcpServers: {
+        u8: {
+          type: 'http',
+          url: 'https://hub.example.com/mcp/u8',
+          headers: { Authorization: 'Bearer <your-access-token>' },
+        },
+      },
+    });
+  });
+
+  it('writes an explicit http transport into the CodeBuddy config', () => {
+    // CodeBuddy's field table marks `type` as Required, fixed to `"http"`
+    // for the HTTP form and `"sse"` for the SSE form.
+    const config = configOf('codebuddy', httpTarget);
+
+    expect(config).toContain('"type": "http"');
+    expect(JSON.parse(config)).toEqual({
+      mcpServers: {
+        u8: {
+          type: 'http',
+          url: 'https://hub.example.com/mcp/u8',
+          headers: { Authorization: 'Bearer <your-access-token>' },
+        },
+      },
+    });
+  });
+
+  it('writes the fixed "stdio" type into the CodeBuddy stdio entry', () => {
+    // CodeBuddy's field table marks `type` as Required with the fixed value
+    // `"stdio"`, so its stdio entry always carries the type (unlike Claude
+    // Code, which reads a type-less entry as stdio).
+    const config = configOf('codebuddy', stdioTarget);
+
+    expect(config).toContain('"type": "stdio"');
+    expect(JSON.parse(config)).toEqual({
+      mcpServers: {
+        time: {
+          type: 'stdio',
+          command: 'npx',
+          args: ['-y', 'time-mcp'],
+          env: { TZ: 'Asia/Shanghai' },
+        },
+      },
+    });
+  });
+
+  it('keeps the Claude Code stdio entry free of a type key', () => {
+    // Claude Code reads a type-less entry as stdio, so its stdio shape
+    // deliberately omits `type` even though CodeBuddy's must carry it.
+    const config = configOf('claude-code', stdioTarget);
+
+    expect(config).not.toContain('"type"');
+    expect(JSON.parse(config)).toEqual({
+      mcpServers: {
+        time: {
+          command: 'npx',
+          args: ['-y', 'time-mcp'],
+          env: { TZ: 'Asia/Shanghai' },
+        },
+      },
+    });
   });
 
   it('omits the CLI block when a positional value starts with a dash', () => {
@@ -457,7 +531,7 @@ const PRESET_SHAPES: Record<ClientSnippetId, PresetShape> = {
     sse: SSE_ENTRY,
     stdio: STDIO_ENTRY,
   },
-  'claude-code': { http: MCP_SERVERS_HTTP, sse: MCP_SERVERS_SSE, stdio: MCP_SERVERS_STDIO },
+  'claude-code': { http: { mcpServers: { u8: HTTP_ENTRY_TYPED } }, sse: MCP_SERVERS_SSE, stdio: MCP_SERVERS_STDIO },
   cursor: { http: MCP_SERVERS_HTTP, sse: MCP_SERVERS_SSE, stdio: MCP_SERVERS_STDIO },
   vscode: {
     http: {
@@ -586,7 +660,13 @@ const PRESET_SHAPES: Record<ClientSnippetId, PresetShape> = {
       },
     },
   },
-  codebuddy: { http: MCP_SERVERS_HTTP, sse: MCP_SERVERS_SSE, stdio: MCP_SERVERS_STDIO },
+  codebuddy: {
+    http: { mcpServers: { u8: HTTP_ENTRY_TYPED } },
+    sse: MCP_SERVERS_SSE,
+    // CodeBuddy's field table marks `type` as Required with the fixed value
+    // `"stdio"`, so unlike Claude Code its stdio entry always carries the type.
+    stdio: { mcpServers: { time: { type: 'stdio', ...STDIO_ENTRY } } },
+  },
   qoder: { http: MCP_SERVERS_HTTP, sse: MCP_SERVERS_SSE, stdio: MCP_SERVERS_STDIO },
   trae: { http: MCP_SERVERS_HTTP, sse: MCP_SERVERS_SSE, stdio: MCP_SERVERS_STDIO },
   zcode: { http: MCP_SERVERS_HTTP, sse: MCP_SERVERS_SSE, stdio: MCP_SERVERS_STDIO },

@@ -70,8 +70,30 @@ const ServersPage: React.FC = () => {
     }
   }, [clientPagination.page, currentPage, setCurrentPage]);
 
+  // Edit opens the modal from a `GET /servers/<name>` response, so it has the
+  // same interleave race the Duplicate B1 guard fixes: click Edit on A, then
+  // click Edit on B while A's request is still in flight - A's late response
+  // would otherwise overwrite `editingServer` after B's already opened, and
+  // `EditServerForm.handleSubmit` would `PUT` B's form values onto A (silent
+  // cross-server write, same causal mechanism as the Duplicate race).
+  //
+  // Fix: same B1 pattern - a monotonically increasing request id that is never
+  // reset. Each accepted click bumps it; the response is only committed if its
+  // id is still the latest, so a superseded/stale response is dropped. The
+  // commit check is a plain equality comparison (the `resolveDuplicateResponse`
+  // helper is left to the Duplicate flow, whose busy-clear `finally` is the
+  // only consumer of the 'commit' | 'stale' wording). Edit has no busy
+  // indicator, so there is no spinner state to guard here. The ref is separate
+  // from `duplicateRequestId` on purpose: the two flows are unrelated, and
+  // sharing one counter would let a click in one flow discard the other's
+  // in-flight response.
+  const editRequestId = useRef(0); // bumped on every accepted click
   const handleEditClick = async (server: Server) => {
+    const requestId = ++editRequestId.current;
     const fullServerData = await handleServerEdit(server);
+    // Drop a stale response: a newer click superseded this request, so
+    // committing it would open the modal for the wrong server.
+    if (requestId !== editRequestId.current) return;
     if (fullServerData) setEditingServer(fullServerData);
   };
 

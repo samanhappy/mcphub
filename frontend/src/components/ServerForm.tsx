@@ -90,7 +90,8 @@ const ServerForm = ({
 
   const getInitialOAuthConfig = (data: Server | null): ServerFormData['oauth'] => {
     const oauth = data?.config?.oauth;
-    const nextOAuth: ServerFormData['oauth'] = {
+
+    return {
       clientId: oauth?.clientId || '',
       clientSecret: oauth?.clientSecret || '',
       scopes: oauth?.scopes ? oauth.scopes.join(' ') : '',
@@ -99,28 +100,18 @@ const ServerForm = ({
       authorizationEndpoint: oauth?.authorizationEndpoint || '',
       tokenEndpoint: oauth?.tokenEndpoint || '',
       resource: oauth?.resource || '',
+      // Faithful pass-through (#F1): carry the non-editable OAuth sub-fields —
+      // the `dynamicRegistration` sub-object (RFC7591), `revocationEndpoint`
+      // (RFC 7009) and `redirectUri` — through the edit/duplicate round-trip so
+      // a save does not silently drop them. They have no in-form editors and
+      // are never rendered; they are re-emitted verbatim by buildServerPayload
+      // and preserved by the backend `normalizeOAuth` whitelist (#1193). Each
+      // key is only added when the stored config actually has it, so the
+      // payload does not gain absent fields.
+      ...(oauth?.dynamicRegistration && { dynamicRegistration: oauth.dynamicRegistration }),
+      ...(oauth?.revocationEndpoint && { revocationEndpoint: oauth.revocationEndpoint }),
+      ...(oauth?.redirectUri && { redirectUri: oauth.redirectUri }),
     };
-    // Opaque pass-through (#F1): carry the non-editable OAuth sub-fields — the
-    // `dynamicRegistration` sub-object (RFC7591), `revocationEndpoint`
-    // (RFC 7009) and `redirectUri` — through the edit/duplicate round-trip so
-    // a save does not silently drop them. They have no in-form editors and
-    // are never rendered; they are re-emitted verbatim by buildServerPayload
-    // and preserved by the backend `normalizeOAuth` whitelist (same PR).
-    const carry = nextOAuth as ServerFormData['oauth'] & {
-      dynamicRegistration?: unknown;
-      revocationEndpoint?: string;
-      redirectUri?: string;
-    };
-    if (oauth?.dynamicRegistration) {
-      carry.dynamicRegistration = oauth.dynamicRegistration;
-    }
-    if (oauth?.revocationEndpoint) {
-      carry.revocationEndpoint = oauth.revocationEndpoint;
-    }
-    if (oauth?.redirectUri) {
-      carry.redirectUri = oauth.redirectUri;
-    }
-    return nextOAuth;
   };
 
   const [serverType, setServerType] = useState<'stdio' | 'sse' | 'streamable-http' | 'openapi'>(

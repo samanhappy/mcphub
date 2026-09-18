@@ -374,7 +374,7 @@
       },
       "generic-http": {
         "label": "Genel HTTP",
-        "hint": "Ham girdiyle çıkış yolu: uzak uç nokta ham bir HTTP girdisi, yerel sunucu ham bir stdio girdisi (command/args/env) verir. İstemcinin kendi sunucu tablosuna yapıştırın; çoğu istemci için Genel (mcpServers) sekmesini kullanın."
+        "hint": "Ham girdiyle çıkış yolu: uzak uç nokta ham bir HTTP girdisi (SSE üzerinde \"type\": \"sse\" işaretini taşır), yerel sunucu ham bir stdio girdisi (command/args/env) verir. İstemcinin kendi sunucu tablosuna yapıştırın; çoğu istemci için Genel (mcpServers) sekmesini kullanın."
       },
       "claude-code": {
         "label": "Claude Code",

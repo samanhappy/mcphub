@@ -3,19 +3,59 @@
  *
  * MCPHub hands out HTTP endpoints, so every preset describes the same target -
  * a name, an optional URL/headers pair (HTTP) or command/args/env triple
- * (stdio) - in the shape the selected client expects. Four presets were
- * verified against the upstream sources below (URLs re-checked 2026-09, the
- * month this file landed); the other ten have no client-specific schema to
- * check against and reuse the generic `mcpServers` shape (or, for the
- * generic-http escape hatch, the bare entry) these copy actions always
- * produced:
+ * (stdio) - in the shape the selected client expects. Eleven of the fourteen
+ * presets were verified against the upstream sources below (URLs re-checked
+ * 2026-09, the month this file landed); the remaining three reuse the generic
+ * `mcpServers` shape (or, for the generic-http escape hatch, the bare entry)
+ * these copy actions always produced.
+ *
+ * Which clients document an explicit transport field, and which do not:
+ * - Documents a transport field (the `type` key is written into the entry):
+ *   claude-code (`type: "http" | "sse" | "stdio"`; a remote entry with `url`
+ *   but no `type` is a configuration error per
+ *   https://code.claude.com/docs/en/mcp), vscode (`"http" | "sse" | "stdio"`,
+ *   final URL after the 2026-09 migration:
+ *   https://code.visualstudio.com/docs/agent-customization/mcp-servers),
+ *   codebuddy (`type` marked Required; fixed `"http"` for HTTP, `"sse"` for
+ *   SSE and `"stdio"` for stdio, per
+ *   https://www.codebuddy.ai/docs/cli/mcp), qoder (every remote
+ *   example carries `type`; for Streamable HTTP the doc says to configure the
+ *   URL the same way as SSE and the IDE auto-detects it, so the http target
+ *   deliberately keeps the bare `url` + `headers` shape rather than tagging
+ *   it `sse`; https://docs.qoder.com/zh/user-guide/chat/model-context-protocol),
+ *   cherry-studio (`baseUrl` + `'sse' | 'streamableHttp'`, strict schema),
+ *   opencode (`type: 'remote' | 'local'`).
+ * - Field table does not list a transport key: cursor
+ *   (https://cursor.com/docs/mcp), trae (https://docs.trae.ai/ide/add-mcp-servers),
+ *   zcode (https://zcode.z.ai/en/docs/mcp-services), windsurf
+ *   (https://docs.windsurf.com/windsurf/cascade/mcp). The `type: "sse"` marker
+ *   the generic shape injects for SSE targets on these presets is added on
+ *   the assumption that unknown keys are ignored, not required by their
+ *   documented shape; it is kept because SSE upstreams must not be dialed as
+ *   streamable HTTP.
+ * - Verified but the format carries no `type` key at all: codex (TOML;
+ *   `codex-rs/config/src/mcp_types.rs`,
+ *   https://github.com/openai/codex/blob/main/codex-rs/config/src/mcp_types.rs).
+ *   (The generic-http escape hatch, one of the three unverified presets, is not
+ *   a "no `type`" format: for a remote target it always writes an explicit
+ *   `type` - `"http"`, or `"sse"` for an SSE upstream.)
+ *
+ * Upstream sources used:
+ * - Claude Code MCP configuration: https://code.claude.com/docs/en/mcp
+ * - Cursor MCP docs: https://cursor.com/docs/mcp
+ * - VS Code MCP configuration reference:
+ *   https://code.visualstudio.com/docs/agent-customization/mcp-servers
  * - Codex `codex-rs/config/src/mcp_types.rs`:
  *   https://github.com/openai/codex/blob/main/codex-rs/config/src/mcp_types.rs
- * - VS Code MCP configuration reference:
- *   https://code.visualstudio.com/docs/copilot/customization/mcp-servers
  * - OpenCode mcp-servers docs: https://opencode.ai/docs/mcp-servers/
  * - Cherry Studio `mcpProtocolInstall.ts`:
  *   https://github.com/CherryHQ/cherry-studio/blob/main/src/shared/data/types/mcpProtocolInstall.ts
+ * - CodeBuddy MCP CLI docs: https://www.codebuddy.ai/docs/cli/mcp
+ * - Qoder MCP user guide:
+ *   https://docs.qoder.com/zh/user-guide/chat/model-context-protocol
+ * - Trae MCP docs: https://docs.trae.ai/ide/add-mcp-servers
+ * - Windsurf MCP docs: https://docs.windsurf.com/windsurf/cascade/mcp
+ * - ZCode MCP docs: https://zcode.z.ai/en/docs/mcp-services
  */
 
 export type ClientSnippetId =
@@ -114,6 +154,43 @@ const stdioEntry = (target: ClientSnippetTarget): Record<string, unknown> => {
   };
 };
 
+/**
+ * HTTP/stdio entry for clients whose docs make the transport a required field.
+ * Claude Code skips an entry that has a `url` but no `type` (it reads the
+ * entry as stdio and reports a configuration error), and CodeBuddy's field
+ * table marks `type` as Required, fixed to `"http"` for the HTTP form and
+ * `"sse"` for the SSE form.
+ *
+ * Stdio targets differ between the two clients. Claude Code reads a type-less
+ * entry as stdio (https://code.claude.com/docs/en/mcp), so its stdio shape
+ * keeps the plain command/args/env form with no `type` key. CodeBuddy's docs
+ * mark `type` as Required with the fixed value `"stdio"`
+ * (https://www.codebuddy.ai/docs/cli/mcp), so its stdio shape writes
+ * `"type": "stdio"`; pass `stdioType` only for CodeBuddy.
+ */
+const typedTransportEntry = (
+  target: ClientSnippetTarget,
+  stdioType: boolean = false,
+): Record<string, unknown> => {
+  if (!isHttpTarget(target)) {
+    return stdioType ? { type: 'stdio', ...stdioEntry(target) } : stdioEntry(target);
+  }
+
+  const headers = definedHeaders(target);
+  return {
+    type: target.type === 'sse' ? 'sse' : 'http',
+    url: target.url ?? '',
+    ...(headers ? { headers } : {}),
+  };
+};
+
+// This helper feeds the generic `mcpServers` shape for the generic-mcp-servers,
+// qoder, cursor, windsurf, trae, zcode and workbuddy presets. Only qoder's
+// upstream docs carry a transport field for this shape; for the rest
+// (generic-mcp-servers, cursor, windsurf, trae, zcode, workbuddy) the
+// `type: "sse"` marker is added on the assumption that unknown keys are
+// ignored, so it is unverified against a field table. It is kept because an
+// SSE upstream must not be dialed as streamable HTTP.
 const httpEntry = (target: ClientSnippetTarget): Record<string, unknown> => {
   const headers = definedHeaders(target);
   return {
@@ -189,9 +266,12 @@ const tomlInlineTable = (entries: Record<string, string>): string =>
     .map(([key, value]) => `${tomlKey(key)} = ${tomlValue(value)}`)
     .join(', ')} }`;
 
-// Codex calls the header map `http_headers` (there is no `headers` key, and the
-// config shape rejects unknown fields), and needs quoted table keys for names
-// that are not bare TOML keys - group names may contain spaces or CJK.
+// Codex calls the header map `http_headers` (there is no `headers` key), and
+// needs quoted table keys for names that are not bare TOML keys - group names
+// may contain spaces or CJK. Note `#[schemars(deny_unknown_fields)]` in
+// `mcp_types.rs` only constrains the generated JSON Schema; the Rust struct
+// itself has no `#[serde(deny_unknown_fields)]`, so TOML parsing may silently
+// ignore unknown fields instead of rejecting them.
 const codexSnippet = (target: ClientSnippetTarget): string => {
   const key = tomlKey(target.name);
   const lines = [`[mcp_servers.${key}]`];
@@ -257,10 +337,11 @@ const openCodeSnippet = (target: ClientSnippetTarget): string => {
 
 // Cherry Studio's `ProtocolMcpServerConfigSchema` is a strict object: remote
 // servers use `baseUrl` + `type: 'sse' | 'streamableHttp'` (no `url` key) and
-// stdio servers use command/args/env. Install-time metadata (`installSource`,
-// `isTrusted`, `installedAt`, `isActive: false`) belongs to the separate
-// `ProtocolMcpServerInstallSchema` request, not to this hand-pasted config,
-// so an extra `isActive` key would make the entry invalid for both schemas.
+// stdio servers use command/args/env. The install-time metadata
+// (`installSource`, `isTrusted`, `installedAt`, `isActive: false`) belongs to
+// `ProtocolMcpServerInstallSchema`, the install *request* schema, not to this
+// hand-pasted config; an entry carrying `isActive` would not satisfy
+// `ProtocolMcpServerConfigSchema` (which has no such key).
 const cherryStudioSnippet = (target: ClientSnippetTarget): string => {
   const base = {
     name: target.name,
@@ -412,6 +493,12 @@ const configSnippet = (
       return openCodeSnippet(target);
     case 'cherry-studio':
       return cherryStudioSnippet(target);
+    case 'claude-code':
+      return withWrappedName('mcpServers', target.name, typedTransportEntry(target));
+    case 'codebuddy':
+      // CodeBuddy's field table marks `type` as Required, fixed to `"stdio"`
+      // for stdio entries, so unlike Claude Code it always carries the type.
+      return withWrappedName('mcpServers', target.name, typedTransportEntry(target, true));
     default:
       return jsonSnippet(target);
   }
