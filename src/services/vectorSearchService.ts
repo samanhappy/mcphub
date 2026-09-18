@@ -1441,12 +1441,22 @@ export const searchToolsByVector = async (
     )() as VectorEmbeddingRepository;
     const queryEmbedding = await generateEmbedding(query);
 
+    // Scope the search in SQL, not after the fact: `limit` has to count rows the
+    // caller can actually use. Embeddings are keyed per server, and the same tool
+    // set is usually present under several server entries (a read-only entry, a
+    // write twin, per-user copies), so a group-scoped search that filtered only
+    // in JS spent most of its budget on rows it was about to discard — and could
+    // legitimately return nothing while good matches sat well above the
+    // threshold. The JS filter below stays as a safety net for rows whose
+    // metadata serverName disagrees with their content_id.
+    const scopedServerNames = serverNames && serverNames.length > 0 ? serverNames : undefined;
+
     const [toolResults, rawServerResults] = await Promise.all([
-      vectorRepository.searchSimilar(queryEmbedding, limit, threshold, ['tool']),
-      vectorRepository.searchSimilar(queryEmbedding, 50, 0.1, ['server']),
+      vectorRepository.searchSimilar(queryEmbedding, limit, threshold, ['tool'], scopedServerNames),
+      vectorRepository.searchSimilar(queryEmbedding, 50, 0.1, ['server'], scopedServerNames),
     ]);
 
-    const allowedServerNames = serverNames && serverNames.length > 0 ? new Set(serverNames) : null;
+    const allowedServerNames = scopedServerNames ? new Set(scopedServerNames) : null;
     const serverScoreMap = new Map<string, number>();
 
     for (const result of rawServerResults) {

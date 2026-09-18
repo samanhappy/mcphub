@@ -130,18 +130,45 @@ export class VectorEmbeddingRepository extends BaseRepository<VectorEmbedding> {
   }
 
   /**
+   * Build the `content_id` predicate that restricts a search to a set of
+   * servers. Embeddings are keyed by server: tools as `<serverName>:<toolName>`
+   * and the server-level row as `<serverName>`, so one predicate covers both
+   * content types. Returns undefined when no restriction applies.
+   */
+  private buildServerScopeFilter(
+    serverNames: string[],
+  ): { clause: string; parameters: Record<string, unknown> } | undefined {
+    const names = serverNames.filter((name) => typeof name === 'string' && name.length > 0);
+    if (names.length === 0) {
+      return undefined;
+    }
+    const parameters: Record<string, unknown> = { scopedServerNames: names };
+    const clauses = ['vector_embedding.content_id IN (:...scopedServerNames)'];
+    names.forEach((name, index) => {
+      const key = `scopedServerPrefix${index}`;
+      parameters[key] = `${escapeLikePattern(name)}:%`;
+      clauses.push(`vector_embedding.content_id LIKE :${key} ESCAPE '\\'`);
+    });
+    return { clause: `(${clauses.join(' OR ')})`, parameters };
+  }
+
+  /**
    * Search for similar embeddings using cosine similarity
    * @param embedding Vector embedding to search against
    * @param limit Maximum number of results (default: 10)
    * @param threshold Similarity threshold (default: 0.7)
    * @param contentTypes Optional content types to filter by
+   * @param serverNames Optional server names to restrict the search to. Applied
+   *   in SQL so that `limit` counts rows the caller can actually use.
    */
   async searchSimilar(
     embedding: number[],
     limit = 10,
     threshold = 0.7,
     contentTypes?: string[],
+    serverNames?: string[],
   ): Promise<Array<{ embedding: VectorEmbedding; similarity: number }>> {
+    const serverScope = serverNames ? this.buildServerScopeFilter(serverNames) : undefined;
     try {
       // Try using vector similarity operator first
       try {
@@ -167,6 +194,11 @@ export class VectorEmbeddingRepository extends BaseRepository<VectorEmbedding> {
             .setParameter('contentTypes', contentTypes);
         }
 
+        // Restrict to the requested servers before the limit is applied
+        if (serverScope) {
+          query = query.andWhere(serverScope.clause, serverScope.parameters);
+        }
+
         // Execute query
         const results = await query.getRawMany();
 
@@ -189,6 +221,11 @@ export class VectorEmbeddingRepository extends BaseRepository<VectorEmbedding> {
           query = query
             .where('vector_embedding.content_type IN (:...contentTypes)')
             .setParameter('contentTypes', contentTypes);
+        }
+
+        // Restrict to the requested servers before the limit is applied
+        if (serverScope) {
+          query = query.andWhere(serverScope.clause, serverScope.parameters);
         }
 
         // Limit results
@@ -216,6 +253,7 @@ export class VectorEmbeddingRepository extends BaseRepository<VectorEmbedding> {
    * @param limit Maximum number of results
    * @param threshold Similarity threshold
    * @param contentTypes Optional content types to filter by
+   * @param serverNames Optional server names to restrict the search to
    */
   async searchByText(
     text: string,
@@ -223,13 +261,14 @@ export class VectorEmbeddingRepository extends BaseRepository<VectorEmbedding> {
     limit = 10,
     threshold = 0.7,
     contentTypes?: string[],
+    serverNames?: string[],
   ): Promise<Array<{ embedding: VectorEmbedding; similarity: number }>> {
     try {
       // Get embedding for the search text
       const embedding = await getEmbeddingFunc(text);
 
       // Search by embedding
-      return this.searchSimilar(embedding, limit, threshold, contentTypes);
+      return this.searchSimilar(embedding, limit, threshold, contentTypes, serverNames);
     } catch (error) {
       logger.error('Error searching by text:', error);
       return [];
