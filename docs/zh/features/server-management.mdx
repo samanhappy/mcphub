@@ -230,6 +230,23 @@ curl -X POST http://localhost:3000/api/servers \
   </Accordion>
 </AccordionGroup>
 
+## 复制客户端配置
+
+服务器卡片和分组卡片都提供复制操作，会打开客户端预设弹窗，方便你将现成的配置粘贴到常用的 MCP 客户端中：
+
+- **Copy MCP config**（分组卡片菜单）：为分组聚合端点生成配置。
+- **Copy**（服务器卡片菜单）：为该服务器端点生成配置。
+
+弹窗为以下客户端提供预设：Generic (mcpServers)、Generic HTTP、Claude Code、Cursor、VS Code / Copilot、Codex、OpenCode、Windsurf、Cherry Studio、CodeBuddy Code、Qoder、TRAE、ZCode 和 WorkBuddy。
+
+**Claude Code** 标签页还会额外提供一行 CLI 命令：
+
+```bash
+claude mcp add --transport http <name> <url> --header "Authorization: Bearer <token>"
+```
+
+部分客户端在生成的配置中使用自己的键名：Codex 使用 `http_headers`（没有 `headers` 键），VS Code 使用 `servers` 加 `type` 字段，Cherry Studio 使用 `baseUrl` 搭配 `streamableHttp`。
+
 ## 服务器生命周期管理
 
 ### 启动服务器

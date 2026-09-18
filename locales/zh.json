@@ -327,7 +327,6 @@
     "copyId": "复制ID",
     "copyUrl": "复制URL",
     "copyOpenApiUrl": "复制OpenAPI URL",
-    "copyJson": "复制JSON",
     "copySuccess": "已复制到剪贴板",
     "copyFailed": "复制失败",
     "copied": "已复制",
@@ -359,6 +358,74 @@
     "viewAll": "查看全部",
     "docs": "文档",
     "all": "全部"
+  },
+  "clientConfig": {
+    "title": "复制 MCP 配置",
+    "description": "选择你的客户端，复制可直接粘贴的 {{name}} 配置。",
+    "menuItem": "复制 MCP 配置",
+    "tokenPrompt": "MCPHub 访问令牌",
+    "configBlock": "配置内容",
+    "commandBlock": "命令行",
+    "copied": "已复制",
+    "noTransport": "该服务器没有客户端侧的 MCP 传输方式（它由 OpenAPI 支撑）。请改用 hub 或分组端点。",
+    "clients": {
+      "generic-mcp-servers": {
+        "label": "通用（mcpServers）",
+        "hint": "最通用的 mcpServers 结构：Claude Desktop、Cline、Cherry Studio 等大多数客户端都可用。"
+      },
+      "generic-http": {
+        "label": "通用 HTTP",
+        "hint": "任意客户端：把这条裸 HTTP 条目粘进该客户端自己的服务器表，保留 URL 与 Authorization 值。"
+      },
+      "claude-code": {
+        "label": "Claude Code",
+        "hint": "Claude Code：`claude mcp add`，或写入 ~/.claude.json 的 mcpServers。"
+      },
+      "cursor": {
+        "label": "Cursor",
+        "hint": "Cursor：项目内 .cursor/mcp.json，或全局 ~/.cursor/mcp.json。"
+      },
+      "vscode": {
+        "label": "VS Code / Copilot",
+        "hint": "VS Code / Copilot：工作区 .vscode/mcp.json，或用户配置中的 mcp.json。"
+      },
+      "codex": {
+        "label": "Codex",
+        "hint": "Codex：~/.codex/config.toml，或项目级 .codex/config.toml。"
+      },
+      "opencode": {
+        "label": "OpenCode",
+        "hint": "OpenCode：全局 ~/.config/opencode/opencode.json，或项目内 opencode.json。"
+      },
+      "windsurf": {
+        "label": "Windsurf",
+        "hint": "Windsurf：~/.codeium/windsurf/mcp_config.json。"
+      },
+      "cherry-studio": {
+        "label": "Cherry Studio",
+        "hint": "Cherry Studio：设置 > MCP 服务器 > 添加服务器 > 从 JSON 导入。"
+      },
+      "codebuddy": {
+        "label": "CodeBuddy Code",
+        "hint": "CodeBuddy Code：全局 ~/.codebuddy/.mcp.json，或项目内 .mcp.json。"
+      },
+      "qoder": {
+        "label": "Qoder",
+        "hint": "Qoder：设置 > MCP > 手动添加，粘贴 JSON。"
+      },
+      "trae": {
+        "label": "TRAE",
+        "hint": "TRAE：设置 > MCP > 添加 > 手动添加，粘贴 JSON。"
+      },
+      "zcode": {
+        "label": "ZCode",
+        "hint": "ZCode：设置 > MCP 服务器 > 新建 MCP 服务器 > 完整配置。"
+      },
+      "workbuddy": {
+        "label": "WorkBuddy",
+        "hint": "WorkBuddy：侧边栏插件 > MCP 服务器 > 配置 MCP，或 ~/.workbuddy/mcp.json。"
+      }
+    }
   },
   "pagination": {
     "rowsPerPage": "每页行数",

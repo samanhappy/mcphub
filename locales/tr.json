@@ -326,7 +326,6 @@
     "copyId": "ID'yi Kopyala",
     "copyUrl": "URL'yi Kopyala",
     "copyOpenApiUrl": "OpenAPI URL'sini Kopyala",
-    "copyJson": "JSON'u Kopyala",
     "copySuccess": "Panoya kopyalandı",
     "copyFailed": "Kopyalama başarısız",
     "copied": "Kopyalandı",
@@ -358,6 +357,74 @@
     "viewAll": "Tümünü gör",
     "docs": "Belgeler",
     "all": "Tümü"
+  },
+  "clientConfig": {
+    "title": "MCP yapılandırmasını kopyala",
+    "description": "{{name}} için doğrudan yapıştırılabilir yapılandırmayı kopyalamak üzere istemcinizi seçin.",
+    "menuItem": "MCP yapılandırmasını kopyala",
+    "tokenPrompt": "MCPHub erişim jetonu",
+    "configBlock": "Yapılandırma",
+    "commandBlock": "CLI komutu",
+    "copied": "Kopyalandı",
+    "noTransport": "Bu sunucunun istemci tarafı bir MCP taşıması yok (OpenAPI desteklidir). Bunun yerine hub'ı veya bir grup uç noktasını kullanın.",
+    "clients": {
+      "generic-mcp-servers": {
+        "label": "Genel (mcpServers)",
+        "hint": "Yaygın kabul gören mcpServers bloğu: Claude Desktop, Cline, Cherry Studio ve çoğu istemci."
+      },
+      "generic-http": {
+        "label": "Genel HTTP",
+        "hint": "Ham HTTP MCP girdisini kabul eden her istemci: URL'yi ve Authorization değerini koruyarak istemcinin kendi sunucu tablosuna yapıştırın."
+      },
+      "claude-code": {
+        "label": "Claude Code",
+        "hint": "Claude Code: `claude mcp add` veya ~/.claude.json içindeki mcpServers bloğu."
+      },
+      "cursor": {
+        "label": "Cursor",
+        "hint": "Cursor: proje içinde .cursor/mcp.json veya genel olarak ~/.cursor/mcp.json."
+      },
+      "vscode": {
+        "label": "VS Code / Copilot",
+        "hint": "VS Code / Copilot: çalışma alanında .vscode/mcp.json veya kullanıcı profilinizdeki mcp.json."
+      },
+      "codex": {
+        "label": "Codex",
+        "hint": "Codex: ~/.codex/config.toml veya proje düzeyinde .codex/config.toml."
+      },
+      "opencode": {
+        "label": "OpenCode",
+        "hint": "OpenCode: genel olarak ~/.config/opencode/opencode.json veya proje içinde opencode.json."
+      },
+      "windsurf": {
+        "label": "Windsurf",
+        "hint": "Windsurf: ~/.codeium/windsurf/mcp_config.json."
+      },
+      "cherry-studio": {
+        "label": "Cherry Studio",
+        "hint": "Cherry Studio: Ayarlar > MCP Sunucuları > Sunucu Ekle > JSON İçe Aktar."
+      },
+      "codebuddy": {
+        "label": "CodeBuddy Code",
+        "hint": "CodeBuddy Code: genel olarak ~/.codebuddy/.mcp.json veya proje içinde .mcp.json."
+      },
+      "qoder": {
+        "label": "Qoder",
+        "hint": "Qoder: Ayarlar > MCP > Elle Ekle, ardından JSON'u yapıştırın."
+      },
+      "trae": {
+        "label": "TRAE",
+        "hint": "TRAE: Ayarlar > MCP > Ekle > Elle Ekle, ardından JSON'u yapıştırın."
+      },
+      "zcode": {
+        "label": "ZCode",
+        "hint": "ZCode: Ayarlar > MCP Sunucuları > Yeni MCP Sunucusu > Tam yapılandırma."
+      },
+      "workbuddy": {
+        "label": "WorkBuddy",
+        "hint": "WorkBuddy: Eklentiler > MCP Sunucuları > MCP Yapılandır veya ~/.workbuddy/mcp.json."
+      }
+    }
   },
   "pagination": {
     "rowsPerPage": "Sayfa başına satır",

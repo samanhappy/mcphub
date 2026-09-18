@@ -2,32 +2,8 @@ import React, { useState } from 'react';
 import { Copy, Check } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useToast } from '@/contexts/ToastContext';
+import { copyText } from '@/utils/clipboard';
 import { cn } from '@/utils/cn';
-
-const copyText = async (value: string): Promise<boolean> => {
-  try {
-    if (navigator.clipboard && window.isSecureContext) {
-      await navigator.clipboard.writeText(value);
-      return true;
-    }
-  } catch {
-    // fall through to fallback
-  }
-  try {
-    const el = document.createElement('textarea');
-    el.value = value;
-    el.style.position = 'fixed';
-    el.style.left = '-9999px';
-    document.body.appendChild(el);
-    el.focus();
-    el.select();
-    const ok = document.execCommand('copy');
-    document.body.removeChild(el);
-    return ok;
-  } catch {
-    return false;
-  }
-};
 
 interface EndpointCopyProps {
   url: string;

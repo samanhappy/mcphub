@@ -246,6 +246,23 @@ curl -X POST http://localhost:3000/api/servers \
   </Accordion>
 </AccordionGroup>
 
+## Copying a client configuration
+
+Both server cards and group cards offer a copy action that opens a client preset dialog, so you can paste a ready-made configuration into your favorite MCP client:
+
+- **Copy MCP config** (group card menu): generates the configuration for the group's aggregated endpoint.
+- **Copy** (server card menu): generates the configuration for that server's endpoint.
+
+The dialog provides presets for the following clients: Generic (mcpServers), Generic HTTP, Claude Code, Cursor, VS Code / Copilot, Codex, OpenCode, Windsurf, Cherry Studio, CodeBuddy Code, Qoder, TRAE, ZCode, and WorkBuddy.
+
+The **Claude Code** tab additionally offers a one-liner CLI command:
+
+```bash
+claude mcp add --transport http <name> <url> --header "Authorization: Bearer <token>"
+```
+
+A few clients use their own key names in the generated configuration: Codex uses `http_headers` (there is no `headers` key), VS Code uses `servers` plus a `type` field, and Cherry Studio uses `baseUrl` with `streamableHttp`.
+
 ## Server Lifecycle Management
 
 ### Starting Servers
