@@ -33,6 +33,20 @@ interface ServerFormProps {
   initialData?: Server | null;
   modalTitle: string;
   formError?: string | null;
+  /**
+   * Which flow this form drives. `initialData` pre-fills the form for the edit
+   * flow *and* for create flows that start from an existing configuration
+   * (marketplace/registry install, duplicate), so it cannot decide this on its
+   * own: it defaults to 'edit' when `initialData` is set, matching the install
+   * forms, and callers that create a server pass 'create' explicitly.
+   */
+  mode?: 'create' | 'edit';
+  /**
+   * Server whose share candidates the visibility picker loads. Defaults to
+   * `initialData.name`, which is right for the edit flow; the duplicate flow
+   * points it at the source server because the copy does not exist yet (#1187).
+   */
+  shareCandidatesFrom?: string | null;
 }
 
 const ServerForm = ({
@@ -41,6 +55,8 @@ const ServerForm = ({
   initialData = null,
   modalTitle,
   formError = null,
+  mode,
+  shareCandidatesFrom = null,
 }: ServerFormProps) => {
   const { t } = useTranslation();
 
@@ -206,8 +222,10 @@ const ServerForm = ({
   const [shareCandidatesError, setShareCandidatesError] = useState(false);
   const [shareUserSearch, setShareUserSearch] = useState('');
 
+  const shareCandidatesServer = shareCandidatesFrom || initialData?.name;
+
   useEffect(() => {
-    if (formData.visibility !== 'group' || !initialData?.name) {
+    if (formData.visibility !== 'group' || !shareCandidatesServer) {
       return;
     }
 
@@ -216,7 +234,7 @@ const ServerForm = ({
     setShareCandidatesError(false);
 
     void apiGet<{ success: boolean; data?: string[] }>(
-      `/servers/${encodeURIComponent(initialData.name)}/share-candidates`,
+      `/servers/${encodeURIComponent(shareCandidatesServer)}/share-candidates`,
     )
       .then((response) => {
         if (cancelled) return;
@@ -241,7 +259,7 @@ const ServerForm = ({
     return () => {
       cancelled = true;
     };
-  }, [formData.visibility, initialData?.name]);
+  }, [formData.visibility, shareCandidatesServer]);
 
   const selectableShareUsers = getSelectableShareUsers(
     formData.sharedWithUsers || [],
@@ -321,7 +339,7 @@ const ServerForm = ({
   const [isKeepAliveSectionExpanded, setIsKeepAliveSectionExpanded] = useState<boolean>(false);
   const [isAdvancedExpanded, setIsAdvancedExpanded] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const isEdit = !!initialData;
+  const isEdit = mode ? mode === 'edit' : !!initialData;
 
   const markOpenApiSecurityTouched = () => {
     openApiSecurityTouched.current = true;
