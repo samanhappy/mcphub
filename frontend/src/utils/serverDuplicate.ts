@@ -78,14 +78,18 @@ const remapKeys = <T>(
  * carry `dbx-greet` from a previous name (renaming a server rewrites its record
  * and leaves the override keys behind), and matching on the bare source name
  * would rewrite that stale key into a name nothing can resolve. Known runtime
- * tool names identify tool keys; prompts are matched with the configured
- * separator. `config.resources` is keyed by resource URI and needs no rewrite.
+ * tool names identify tool keys that belong to the source; a tool key that is
+ * not a known runtime name but still carries the `<source.name><separator>`
+ * prefix is stale and is dropped, because the copy's tools resolve under the
+ * copy's own prefix and the stale key can never match. Bare tool keys survive:
+ * the execution-time lookup falls back to them. Prompts are matched with the
+ * configured separator. `config.resources` is keyed by resource URI and needs
+ * no rewrite.
  *
- * Recognising prefixed tool keys needs the source's discovered tools, so a
- * source that is currently disconnected keeps its tool overrides verbatim; the
- * copy then has no matching tool and the override stays inert, which is the
- * same outcome as not carrying it. Prompt and resource overrides are keyed
- * unambiguously and always follow the copy.
+ * A disconnected source has no discovered tools, so its prefixed tool keys are
+ * all attributable by prefix alone: stale ones are dropped, bare keys are kept
+ * verbatim. Prompt and resource overrides are keyed unambiguously and always
+ * follow the copy.
  */
 export const carryOverCapabilityOverrides = (
   payload: { name: string; config: Partial<ServerConfig> },
@@ -101,16 +105,29 @@ export const carryOverCapabilityOverrides = (
   const runtimeToolNames = new Set((source.tools ?? []).map((tool) => tool.name));
   const rename = (key: string) => `${payload.name}${key.slice(source.name.length)}`;
 
-  // A bare tool key is a documented shape (the execution-time lookup falls back
-  // to it), so only keys that are known runtime names get renamed.
-  const tools = remapKeys(sourceConfig.tools, (key) =>
-    runtimeToolNames.has(key) ? rename(key) : key,
-  );
+  // A bare tool key is a documented shape (the execution-time lookup falls
+  // back to it), so it is kept verbatim. Known runtime names are renamed onto
+  // the copy; a key that carries the source prefix but matches no runtime name
+  // is stale (e.g. left behind by a rename) and is dropped, since it can never
+  // resolve on the copy.
+  const sourcePrefix = `${source.name}${nameSeparator}`;
+  const tools = sourceConfig.tools
+    ? Object.fromEntries(
+        Object.entries(sourceConfig.tools).flatMap(([key, value]) => {
+          if (runtimeToolNames.has(key)) {
+            return [[rename(key), value]];
+          }
+          if (key.startsWith(sourcePrefix)) {
+            return [];
+          }
+          return [[key, value]];
+        }),
+      )
+    : undefined;
   // Prompts are always stored prefixed - there is no bare-name fallback - so
   // the source name plus the configured separator identifies them.
-  const promptPrefix = `${source.name}${nameSeparator}`;
   const prompts = remapKeys(sourceConfig.prompts, (key) =>
-    key.startsWith(promptPrefix) ? rename(key) : key,
+    key.startsWith(sourcePrefix) ? rename(key) : key,
   );
 
   const overrides: Partial<ServerConfig> = {};

@@ -44,6 +44,7 @@ interface ServerCardProps {
   onRemove: (serverName: string) => void;
   onEdit: (server: Server) => void;
   onDuplicate?: (server: Server) => void;
+  isDuplicating?: boolean;
   onToggle?: (server: Server, enabled: boolean) => Promise<boolean>;
   onVisibilityChange?: (server: Server, visibility: 'private' | 'group' | 'public') => Promise<boolean>;
   onRefresh?: () => void;
@@ -143,6 +144,7 @@ const ServerCard = ({
   onRemove,
   onEdit,
   onDuplicate,
+  isDuplicating = false,
   onToggle,
   onVisibilityChange,
   onRefresh,
@@ -761,8 +763,13 @@ const ServerCard = ({
                   setShowMenu((v) => !v);
                 }}
                 aria-label="More"
+                aria-busy={isDuplicating}
               >
-                <MoreHorizontal size={14} />
+                {isDuplicating ? (
+                  <RefreshCw size={14} className="animate-spin" />
+                ) : (
+                  <MoreHorizontal size={14} />
+                )}
               </button>
             )}
             {canManage && showMenu && (
@@ -787,12 +794,20 @@ const ServerCard = ({
                     onClick={(e) => {
                       e.stopPropagation();
                       setShowMenu(false);
+                      if (isDuplicating) return;
                       onDuplicate(server);
                     }}
-                    className="flex items-center gap-2 w-full px-2.5 py-1.5 text-[13px] rounded-md hover:bg-[var(--hub-surface-hover)] text-left"
+                    disabled={isDuplicating}
+                    aria-busy={isDuplicating}
+                    className="flex items-center gap-2 w-full px-2.5 py-1.5 text-[13px] rounded-md hover:bg-[var(--hub-surface-hover)] text-left disabled:opacity-50 disabled:cursor-not-allowed"
                     style={{ color: 'var(--hub-ink)' }}
                   >
-                    <CopyPlus size={13} /> {t('server.duplicate')}
+                    {isDuplicating ? (
+                      <RefreshCw size={13} className="animate-spin" />
+                    ) : (
+                      <CopyPlus size={13} />
+                    )}{' '}
+                    {t('server.duplicate')}
                   </button>
                 )}
                 <button

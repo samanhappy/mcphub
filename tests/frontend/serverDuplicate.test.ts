@@ -187,18 +187,78 @@ describe('carryOverCapabilityOverrides', () => {
 
   it('leaves bare tool override keys untouched', () => {
     const source = buildServer({
-      // No runtime tool names, so `weather-issues` is a bare key rather than a
-      // prefixed one even though it starts with the server name.
+      // A key that does not carry the `<source><separator>` prefix is a bare
+      // key; the execution-time lookup falls back to it, so it stays verbatim.
       tools: [],
       config: {
         type: 'streamable-http',
-        tools: { 'weather-issues': { enabled: false } },
+        tools: { issues: { enabled: false } },
       },
     });
 
     const result = carryOverCapabilityOverrides(payload, source);
 
-    expect(result.config.tools).toEqual({ 'weather-issues': { enabled: false } });
+    expect(result.config.tools).toEqual({ issues: { enabled: false } });
+  });
+
+  it('drops stale prefixed tool keys when the source is disconnected but keeps bare keys', () => {
+    // A disconnected source has no discovered tools, so `weather-alpha` in
+    // `config.tools` cannot match a runtime name; it is a stale prefixed key
+    // (e.g. left over from a rename) and would never resolve on the copy.
+    const source = buildServer({
+      tools: [],
+      config: {
+        type: 'streamable-http',
+        tools: {
+          'weather-alpha': { enabled: false },
+          beta: { enabled: true, description: 'Bare key' },
+        },
+      },
+    });
+
+    const result = carryOverCapabilityOverrides(payload, source);
+
+    expect(result.config.tools).toEqual({ beta: { enabled: true, description: 'Bare key' } });
+    expect(result.config.tools).not.toHaveProperty('weather-copy-alpha');
+    expect(result.config.tools).not.toHaveProperty('weather-alpha');
+  });
+
+  it('uses the configured separator to decide which stale tool keys to drop', () => {
+    const source = buildServer({
+      tools: [],
+      config: {
+        type: 'streamable-http',
+        tools: {
+          weather_alpha: { enabled: false },
+          'weather-alpha': { enabled: true },
+        },
+      },
+    });
+
+    const result = carryOverCapabilityOverrides(payload, source, { nameSeparator: '_' });
+
+    expect(result.config.tools).toEqual({ 'weather-alpha': { enabled: true } });
+    expect(result.config.tools).not.toHaveProperty('weather_alpha');
+  });
+
+  it('still re-keys known runtime tool names onto the copy when the source is connected', () => {
+    const source = buildServer({
+      tools: [{ name: 'weather-alpha', description: '', inputSchema: {} }],
+      config: {
+        type: 'streamable-http',
+        tools: {
+          'weather-alpha': { enabled: false },
+          beta: { enabled: true },
+        },
+      },
+    });
+
+    const result = carryOverCapabilityOverrides(payload, source);
+
+    expect(result.config.tools).toEqual({
+      'weather-copy-alpha': { enabled: false },
+      beta: { enabled: true },
+    });
   });
 
   it('copies resource overrides verbatim because they are keyed by URI', () => {

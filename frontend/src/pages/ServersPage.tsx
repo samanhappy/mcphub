@@ -46,6 +46,7 @@ const ServersPage: React.FC = () => {
 
   const [editingServer, setEditingServer] = useState<Server | null>(null);
   const [duplicateServer, setDuplicateServer] = useState<Server | null>(null);
+  const [duplicatingServer, setDuplicatingServer] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showMcpbUpload, setShowMcpbUpload] = useState(false);
   const [showJsonImport, setShowJsonImport] = useState(false);
@@ -77,8 +78,16 @@ const ServersPage: React.FC = () => {
   // configuration the edit flow loads - the card only carries the list
   // projection, which has no env/headers/credential template (#1187).
   const handleDuplicateClick = async (server: Server) => {
-    const fullServerData = await handleServerEdit(server);
-    if (fullServerData) setDuplicateServer(fullServerData);
+    // Ignore repeat clicks while this server's stored config is still loading,
+    // so a slow request cannot fire twice.
+    if (duplicatingServer === server.name) return;
+    setDuplicatingServer(server.name);
+    try {
+      const fullServerData = await handleServerEdit(server);
+      if (fullServerData) setDuplicateServer(fullServerData);
+    } finally {
+      setDuplicatingServer(null);
+    }
   };
 
   const handleRefresh = async () => {
@@ -236,6 +245,7 @@ const ServersPage: React.FC = () => {
                 onRemove={handleServerRemove}
                 onEdit={handleEditClick}
                 onDuplicate={handleDuplicateClick}
+                isDuplicating={duplicatingServer === server.name}
                 onToggle={handleServerToggle}
                 onVisibilityChange={handleServerVisibilityChange}
                 onRefresh={triggerRefresh}
