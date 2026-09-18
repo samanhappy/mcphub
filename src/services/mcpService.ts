@@ -94,7 +94,8 @@ import {
   isAppOnlyTool,
   stripMcpAppsMetadata,
 } from '../utils/mcpApps.js';
-import { supportsCacheRefresh, injectRefreshFlag, clearRunnerCache } from '../utils/cacheUtils.js';
+import { supportsCacheRefresh, injectRefreshFlag, clearRunnerCache, resolveRunnerPackageVersion } from '../utils/cacheUtils.js';
+import { checkPackageUpdate } from '../utils/packageUpdate.js';
 
 const servers: { [sessionId: string]: Server } = {};
 
@@ -1025,6 +1026,7 @@ export const connected = (): boolean => {
 
 // Global cleanup function to close all connections
 export const cleanupAllServers = (): void => {
+  stopPackageUpdateSweep();
   principalRuntimes.invalidate();
   for (const serverInfo of serverInfos) {
     try {
@@ -2070,6 +2072,8 @@ export const initializeClientsFromSettings = async (
           const serverVersion = client.getServerVersion?.();
           info.version = serverVersion?.version;
           info.instructions = client.getInstructions?.();
+          // Record the resolved npx/uvx package version backing this server.
+          applyResolvedPackageVersion(info, expandedConf);
           const capabilities: ServerCapabilities | undefined = client.getServerCapabilities();
           logger.log('Server capabilities', JSON.stringify(capabilities));
 
@@ -2333,6 +2337,9 @@ export const getServersInfo = async (
       ({
         name,
         version,
+        packageVersion,
+        latestVersion,
+        updateAvailable,
         instructions,
         owner,
         visibility,
@@ -2393,6 +2400,12 @@ export const getServersInfo = async (
           resources: resourcesWithEnabled,
           createTime,
           enabled,
+          // Resolved npx/uvx package version + registry update hint (#1166).
+          // Runtime state, kept at the top level like `version` so it can never
+          // be round-tripped into a persisted ServerConfig.
+          ...(packageVersion ? { packageVersion } : {}),
+          ...(latestVersion ? { latestVersion } : {}),
+          ...(updateAvailable !== undefined ? { updateAvailable } : {}),
           oauth:
             oauth || oauthConnected
               ? {
@@ -2481,6 +2494,78 @@ export const reconnectServer = async (serverName: string): Promise<void> => {
   await initializeClientsFromSettings(false, serverName);
 
   logger.log(`Successfully reconnected server: ${serverName}`);
+};
+
+/**
+ * Resolve the installed package version for an npx/uvx stdio server and record
+ * it on the live ServerInfo, so the dashboard can answer "what version is
+ * actually running" (see #1166). Also checks the configured registry for a
+ * newer version and marks updateAvailable. Fire-and-forget: best-effort
+ * display data — a resolution failure must never break or delay a connection.
+ *
+ * On any failure the runtime fields are cleared so the UI never shows a stale
+ * version or a stale "update available" hint from an earlier, healthier check.
+ */
+const applyResolvedPackageVersion = (
+  info: ServerInfo,
+  config: { command?: string; args?: string[] } | undefined,
+): void => {
+  const command = config?.command;
+  if (!command || !supportsCacheRefresh(command)) return;
+  void (async () => {
+    try {
+      const args = config.args ?? [];
+      const version = await resolveRunnerPackageVersion(command, args);
+      if (!version) {
+        info.packageVersion = undefined;
+        info.latestVersion = undefined;
+        info.updateAvailable = undefined;
+        return;
+      }
+      info.packageVersion = version;
+
+      const systemConfig = await getSystemConfigDao().get();
+      const update = await checkPackageUpdate(command, args, version, {
+        npmRegistry: systemConfig?.install?.npmRegistry,
+        pythonIndexUrl: systemConfig?.install?.pythonIndexUrl,
+      });
+      if (update?.latestVersion) {
+        info.latestVersion = update.latestVersion;
+        info.updateAvailable = update.updateAvailable;
+      } else {
+        // Registry unreachable or no metadata: hide the hint rather than keep
+        // a stale "update available" from a previous successful check.
+        info.latestVersion = undefined;
+        info.updateAvailable = undefined;
+      }
+    } catch (error) {
+      logger.warn(`Failed to resolve package update for ${info.name}`, { error });
+      info.latestVersion = undefined;
+      info.updateAvailable = undefined;
+    }
+  })();
+};
+
+// Periodically refresh the "update available" flag for npx/uvx servers (#1166).
+// Each check respects the TTL cache inside checkPackageUpdate, so this only
+// re-queries packages whose last registry lookup has gone stale. The timer is
+// unref'd so it never keeps the process alive by itself.
+//
+// Note: personal-runtime servers (credential-template bindings) are not part of
+// `serverInfos` and are therefore not swept here — their flags refresh when a
+// new per-user connection is created in createPrincipalRuntime instead.
+const PACKAGE_UPDATE_SWEEP_MS = 6 * 60 * 60 * 1000;
+const packageUpdateSweepTimer = setInterval(() => {
+  for (const info of serverInfos) {
+    if (!info.config?.command) continue;
+    applyResolvedPackageVersion(info, info.config);
+  }
+}, PACKAGE_UPDATE_SWEEP_MS);
+packageUpdateSweepTimer.unref?.();
+
+/** Stop the periodic package-update sweep (called on shutdown). */
+export const stopPackageUpdateSweep = (): void => {
+  clearInterval(packageUpdateSweepTimer);
 };
 
 // Reinstall server: clear package cache and reconnect.
@@ -2882,6 +2967,8 @@ const ensureServerReady = async (serverInfo: ServerInfo): Promise<void> => {
     serverInfo.version = client.getServerVersion?.()?.version;
     serverInfo.instructions = client.getInstructions?.();
     serverInfo.config = expandedConf;
+    // Record the resolved npx/uvx package version backing this server.
+    applyResolvedPackageVersion(serverInfo, expandedConf);
     serverInfo.status = 'connected';
     serverInfo.error = null;
 
@@ -4523,6 +4610,8 @@ const createPrincipalRuntime = async (
           normalizeResourceForCache,
         );
       info.version = client.getServerVersion()?.version;
+      // Record the resolved npx/uvx package version backing this server.
+      applyResolvedPackageVersion(info, resolvedConfig);
       client.onclose = () => {
         info.status = 'disconnected';
       };

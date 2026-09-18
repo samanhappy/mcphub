@@ -563,6 +563,15 @@ export interface OpenAPISecurityConfig {
 export interface ServerInfo {
   name: string; // Unique name of the server
   version?: string; // Upstream server version reported during MCP initialization
+  // Resolved package version for stdio servers launched via npx/uvx (see #1166).
+  // Read from the runner's install cache (npm _npx / uv tool environments),
+  // distinct from `version` which is what the server reports about itself.
+  packageVersion?: string;
+  // Newest version the configured registry offers for this npx/uvx package
+  // (see #1166). Only present once the registry has been queried.
+  latestVersion?: string;
+  // True when the registry has a newer version than the installed one.
+  updateAvailable?: boolean;
   instructions?: string; // Upstream server instructions reported during MCP initialization
   owner?: string; // Owner of the server, defaults to 'admin' user
   visibility?: ServerVisibility; // Carried over from ServerConfig so dataService.filterData can apply #817 visibility rules at runtime.

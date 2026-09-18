@@ -544,6 +544,24 @@ const ServerCard = ({
                 >
                   {server.name}
                 </span>
+                {supportsReinstall && server.packageVersion && (
+                  <span
+                    className="hub-tag flex-shrink-0"
+                    title={t('server.packageVersion')}
+                    style={{ fontSize: 11 }}
+                  >
+                    v{server.packageVersion}
+                  </span>
+                )}
+                {supportsReinstall && server.updateAvailable && server.latestVersion && (
+                  <span
+                    className="hub-tag flex-shrink-0"
+                    title={t('server.updateAvailable')}
+                    style={{ fontSize: 11, color: 'var(--hub-warn)' }}
+                  >
+                    ↑ {server.latestVersion}
+                  </span>
+                )}
                 {isMcpApp && (
                   <span className="hub-tag accent flex-shrink-0" title={t('server.mcpApp')}>
                     App

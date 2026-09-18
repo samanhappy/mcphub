@@ -334,6 +334,11 @@ export interface Server {
   resources?: Resource[];
   config?: ServerConfig;
   enabled?: boolean;
+  // Resolved npx/uvx package version + registry update hint for stdio servers
+  // (#1166). Runtime state at the top level, like `version`.
+  packageVersion?: string;
+  latestVersion?: string;
+  updateAvailable?: boolean;
   oauth?: {
     authorizationUrl?: string;
     state?: string;
