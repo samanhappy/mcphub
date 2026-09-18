@@ -37,8 +37,8 @@ describe('bearerKeyScopeFilter', () => {
 
   it('builds unique scope filter options for system and user owners', () => {
     expect(getBearerKeyScopeFilterOptions(t, bearerKeys, [
-      { username: 'bob' },
-      { username: 'alice' },
+      { username: 'bob', isAdmin: false },
+      { username: 'alice', isAdmin: false },
     ])).toEqual([
       { value: 'all', label: 'All' },
       { value: 'system', label: 'System-level' },

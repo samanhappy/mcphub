@@ -60,7 +60,17 @@ const EditServerForm = ({ server, onEdit, onCancel }: EditServerFormProps) => {
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+      {/* B1 (edit path): keyed on the server name so switching the editing
+          target forces ServerForm to remount. ServerForm seeds its internal
+          `formData` from `initialData` only on mount, so without a key a
+          change to `server` while the modal stays open would leave the form
+          showing the old server's values while `handleSubmit` PUTs them onto
+          the new server (form/submit-target mismatch). The ServersPage
+          request-id guard already drops superseded edit responses, so this
+          key is defence in depth: the form re-initializes per target in every
+          case. */}
       <ServerForm
+        key={server.name}
         onSubmit={handleSubmit}
         onCancel={onCancel}
         initialData={server}

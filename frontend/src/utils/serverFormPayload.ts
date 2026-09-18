@@ -101,6 +101,25 @@ const buildOAuthConfig = (
   if (tokenEndpoint) nextOAuth.tokenEndpoint = tokenEndpoint;
   if (resource) nextOAuth.resource = resource;
 
+  // Faithful pass-through of the non-editable OAuth sub-fields: the
+  // `dynamicRegistration` sub-object (RFC7591) plus `revocationEndpoint`
+  // (RFC 7009) and `redirectUri`. They are never rendered in the form, only
+  // round-tripped, and the backend `normalizeOAuth`
+  // (src/utils/serverConfigPersistence.ts) whitelist preserves them (#1193),
+  // so a faithful re-emission survives persistence. The three fields are
+  // declared once on `ServerFormData['oauth']` (frontend/src/types/index.ts),
+  // so they can be read directly here; a key is only emitted when the form
+  // actually carries it.
+  if (oauth.dynamicRegistration) {
+    nextOAuth.dynamicRegistration = oauth.dynamicRegistration;
+  }
+  if (oauth.revocationEndpoint) {
+    nextOAuth.revocationEndpoint = oauth.revocationEndpoint;
+  }
+  if (oauth.redirectUri) {
+    nextOAuth.redirectUri = oauth.redirectUri;
+  }
+
   return nextOAuth;
 };
 

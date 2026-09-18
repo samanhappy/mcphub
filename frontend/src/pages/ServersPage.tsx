@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { Plus, RefreshCw, Search, Upload, FileCode, AlertCircle, X } from 'lucide-react';
@@ -12,6 +12,7 @@ import Pagination from '@/components/ui/Pagination';
 import { useServerData } from '@/hooks/useServerData';
 import { useCostData } from '@/hooks/useCostData';
 import { selectServerPage, getServerFilterCounts, type ServerFilter } from '@/utils/serverFilters';
+import { resolveDuplicateResponse } from '@/utils/serverDuplicate';
 
 const ServersPage: React.FC = () => {
   const { t } = useTranslation();
@@ -69,24 +70,75 @@ const ServersPage: React.FC = () => {
     }
   }, [clientPagination.page, currentPage, setCurrentPage]);
 
+  // Edit opens the modal from a `GET /servers/<name>` response, so it has the
+  // same interleave race the Duplicate B1 guard fixes: click Edit on A, then
+  // click Edit on B while A's request is still in flight - A's late response
+  // would otherwise overwrite `editingServer` after B's already opened, and
+  // `EditServerForm.handleSubmit` would `PUT` B's form values onto A (silent
+  // cross-server write, same causal mechanism as the Duplicate race).
+  //
+  // Fix: same B1 pattern - a monotonically increasing request id that is never
+  // reset. Each accepted click bumps it; the response is only committed if its
+  // id is still the latest, so a superseded/stale response is dropped. The
+  // commit check is a plain equality comparison (the `resolveDuplicateResponse`
+  // helper is left to the Duplicate flow, whose busy-clear `finally` is the
+  // only consumer of the 'commit' | 'stale' wording). Edit has no busy
+  // indicator, so there is no spinner state to guard here. The ref is separate
+  // from `duplicateRequestId` on purpose: the two flows are unrelated, and
+  // sharing one counter would let a click in one flow discard the other's
+  // in-flight response.
+  const editRequestId = useRef(0); // bumped on every accepted click
   const handleEditClick = async (server: Server) => {
+    const requestId = ++editRequestId.current;
     const fullServerData = await handleServerEdit(server);
+    // Drop a stale response: a newer click superseded this request, so
+    // committing it would open the modal for the wrong server.
+    if (requestId !== editRequestId.current) return;
     if (fullServerData) setEditingServer(fullServerData);
   };
 
   // Duplicate pre-fills the add form, so it needs the same full stored
   // configuration the edit flow loads - the card only carries the list
   // projection, which has no env/headers/credential template (#1187).
+  //
+  // B1: guard against interleaved clicks. A slow `GET /servers/A` can still be
+  // in flight when the user clicks Duplicate on B (the `duplicatingServer`
+  // guard only blocks re-clicking the *same* name). Without a guard the two
+  // responses would race and the stale one could overwrite the prefill after
+  // the modal already opened, so the form would show one server while
+  // `handleSubmit` re-attaches another server's capability overrides to the
+  // payload (silent cross-server data corruption).
+  //
+  // Fix: a monotonically increasing request id (never reset). Each accepted
+  // click bumps it; the response is only committed if its request id is still
+  // the latest (any superseded/stale response is dropped). The `finally` also
+  // only clears the busy indicator when this request is still the latest, so a
+  // superseded request's late return can no longer clear the newer request's
+  // spinner early. Because the id is monotonic and never reset, the winning
+  // request always satisfies `requestId === duplicateRequestId.current` in both
+  // the commit check and the `finally`, so the busy indicator is always cleared.
+  const duplicateRequestId = useRef(0); // bumped on every accepted click
   const handleDuplicateClick = async (server: Server) => {
     // Ignore repeat clicks while this server's stored config is still loading,
     // so a slow request cannot fire twice.
     if (duplicatingServer === server.name) return;
+    const requestId = ++duplicateRequestId.current;
     setDuplicatingServer(server.name);
     try {
       const fullServerData = await handleServerEdit(server);
+      // Drop a stale response: a newer click superseded this request, so
+      // committing it would overwrite the prefill with the wrong server.
+      if (resolveDuplicateResponse(requestId, duplicateRequestId.current) === 'stale') return;
       if (fullServerData) setDuplicateServer(fullServerData);
     } finally {
-      setDuplicatingServer(null);
+      // Only clear the busy indicator when this request is still the latest;
+      // a superseded request must not erase the newer request's spinner. On the
+      // winning path `resolveDuplicateResponse` returns 'commit'
+      // (`requestId === duplicateRequestId.current` holds), so the busy
+      // indicator is always cleared here.
+      if (resolveDuplicateResponse(requestId, duplicateRequestId.current) === 'commit') {
+        setDuplicatingServer(null);
+      }
     }
   };
 

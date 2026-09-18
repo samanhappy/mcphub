@@ -7,7 +7,8 @@ import { SERVER_NAME_MAX_LENGTH } from './serverName';
  * normal `POST /servers` path.
  */
 
-export const DUPLICATE_NAME_SUFFIX = '-copy';
+// Internal suffix for the duplicate name; not part of the module's public API.
+const DUPLICATE_NAME_SUFFIX = '-copy';
 
 /**
  * Server names are unique, so the duplicate is pre-filled with `<source>-copy`.
@@ -78,18 +79,23 @@ const remapKeys = <T>(
  * carry `dbx-greet` from a previous name (renaming a server rewrites its record
  * and leaves the override keys behind), and matching on the bare source name
  * would rewrite that stale key into a name nothing can resolve. Known runtime
- * tool names identify tool keys that belong to the source; a tool key that is
- * not a known runtime name but still carries the `<source.name><separator>`
- * prefix is stale and is dropped, because the copy's tools resolve under the
- * copy's own prefix and the stale key can never match. Bare tool keys survive:
- * the execution-time lookup falls back to them. Prompts are matched with the
- * configured separator. `config.resources` is keyed by resource URI and needs
- * no rewrite.
+ * tool names identify tool keys that belong to the source. A tool key that
+ * carries the `<source.name><separator>` prefix can be one of three things:
+ * a known runtime name (renamed onto the copy), the bare upstream name of a
+ * known runtime tool that itself starts with the source prefix (e.g.
+ * `db-query` for runtime name `db-db-query`; kept verbatim, because renaming
+ * it would produce a key none of the copy's lookups can reach), or genuinely
+ * stale (dropped, because the copy's tools resolve under the copy's own
+ * prefix and the key can never match). Prompts are matched with the
+ * configured separator.
+ * `config.resources` is keyed by resource URI and needs no rewrite.
  *
- * A disconnected source has no discovered tools, so its prefixed tool keys are
- * all attributable by prefix alone: stale ones are dropped, bare keys are kept
- * verbatim. Prompt and resource overrides are keyed unambiguously and always
- * follow the copy.
+ * Bare keys - the ones without the `<source.name><separator>` prefix - are
+ * always kept verbatim: the execution-time lookup falls back to the bare
+ * upstream name, so the override still takes effect on the copy. A
+ * disconnected source has no discovered tools, so its prefixed tool keys are
+ * all attributable by prefix alone and the stale ones are dropped. Prompt and
+ * resource overrides are keyed unambiguously and always follow the copy.
  */
 export const carryOverCapabilityOverrides = (
   payload: { name: string; config: Partial<ServerConfig> },
@@ -107,7 +113,12 @@ export const carryOverCapabilityOverrides = (
 
   // A bare tool key is a documented shape (the execution-time lookup falls
   // back to it), so it is kept verbatim. Known runtime names are renamed onto
-  // the copy; a key that carries the source prefix but matches no runtime name
+  // the copy. A key that itself carries the source prefix can also be the
+  // bare upstream name of a known runtime tool (e.g. `db-query` for runtime
+  // name `db-db-query`); it is kept verbatim too - the copy's lookups consult
+  // `<copy><separator><upstream>` and the bare upstream name, and renaming
+  // would produce a key neither can reach. A key that carries the source
+  // prefix but matches neither a runtime name nor a runtime tool's bare name
   // is stale (e.g. left behind by a rename) and is dropped, since it can never
   // resolve on the copy.
   const sourcePrefix = `${source.name}${nameSeparator}`;
@@ -116,6 +127,13 @@ export const carryOverCapabilityOverrides = (
         Object.entries(sourceConfig.tools).flatMap(([key, value]) => {
           if (runtimeToolNames.has(key)) {
             return [[rename(key), value]];
+          }
+          if (key.startsWith(sourcePrefix) && runtimeToolNames.has(`${sourcePrefix}${key}`)) {
+            // The bare upstream name of a known runtime tool, itself carrying
+            // the source prefix: keep it verbatim. The copy's execution-time
+            // lookups consult `<copy><separator><upstream>` and the bare
+            // upstream name, so renaming would produce a key neither can reach.
+            return [[key, value]];
           }
           if (key.startsWith(sourcePrefix)) {
             return [];
@@ -149,3 +167,27 @@ export const carryOverCapabilityOverrides = (
     },
   };
 };
+
+/**
+ * B1 guard decision for the Duplicate interleave race on the servers page.
+ *
+ * Clicking Duplicate on a server fires a `GET /servers/<name>`; the add modal
+ * opens from the response. A slow request can still be in flight when the user
+ * clicks Duplicate on another server, so two responses can race. Without a
+ * guard the stale response could overwrite the prefill after the modal already
+ * opened, silently mounting one server's capability overrides onto another's
+ * payload.
+ *
+ * Each accepted click tags its request with a monotonically increasing id; the
+ * caller keeps the *latest* id in a counter that is never reset. A response is
+ * 'commit'-able only while its id is still the latest (`requestId ===
+ * latestRequestId`); otherwise it is 'stale' and is dropped. Because the latest
+ * id is monotonic and never reset, the winning request satisfies the equality
+ * in *both* the commit check and the busy-clear `finally`, so the busy
+ * indicator is always cleared on the winning path (and never cleared early by
+ * a superseded request's late return).
+ */
+export const resolveDuplicateResponse = (
+  requestId: number,
+  latestRequestId: number,
+): 'commit' | 'stale' => (requestId === latestRequestId ? 'commit' : 'stale');
