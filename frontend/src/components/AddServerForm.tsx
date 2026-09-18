@@ -4,6 +4,7 @@ import ServerForm from './ServerForm'
 import { apiPost } from '../utils/fetchInterceptor'
 import { detectVariables } from '../utils/variableDetection'
 import { buildDuplicateSource, carryOverCapabilityOverrides } from '../utils/serverDuplicate'
+import { useSettingsData } from '../hooks/useSettingsData'
 import { Server } from '../types'
 
 interface AddServerFormProps {
@@ -23,6 +24,7 @@ const AddServerForm = ({
   onDuplicateCancel,
 }: AddServerFormProps) => {
   const { t } = useTranslation()
+  const { nameSeparator } = useSettingsData()
   const [addModalVisible, setAddModalVisible] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [confirmationVisible, setConfirmationVisible] = useState(false)
@@ -106,7 +108,7 @@ const AddServerForm = ({
       // The create payload is rebuilt from form fields, so a duplicate has to
       // get the source's capability overrides re-attached (#1187).
       const nextPayload = duplicateSource
-        ? carryOverCapabilityOverrides(payload, duplicateSource)
+        ? carryOverCapabilityOverrides(payload, duplicateSource, { nameSeparator })
         : payload
 
       // Check for variables in the payload

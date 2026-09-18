@@ -44,6 +44,15 @@ export const buildDuplicateSource = (server: Server): Server => {
   };
 };
 
+export interface CarryOverOptions {
+  /**
+   * Separator MCPHub uses to prefix runtime names (`<serverName><separator>
+   * <name>`). The backend resolves it from the system configuration, so callers
+   * pass the value the dashboard already holds instead of guessing it.
+   */
+  nameSeparator?: string;
+}
+
 const remapKeys = <T>(
   map: Record<string, T> | undefined,
   mapKey: (key: string) => string,
@@ -64,11 +73,13 @@ const remapKeys = <T>(
  *
  * Tool and prompt overrides are stored under the name the dashboard toggled,
  * which is the runtime server-prefixed name (`<serverName><separator><name>`).
- * The separator is operator-configurable, but the copy only has to swap the
- * server part of the key, so the separator never has to be known: known runtime
- * tool names and prompt keys starting with the source name are re-keyed onto
- * the new server name, everything else is copied as-is. `config.resources` is
- * keyed by resource URI and needs no rewrite.
+ * The copy only swaps the server part of the key, so the separator is kept as
+ * it is - but it has to be part of the match: a server called `db` can still
+ * carry `dbx-greet` from a previous name (renaming a server rewrites its record
+ * and leaves the override keys behind), and matching on the bare source name
+ * would rewrite that stale key into a name nothing can resolve. Known runtime
+ * tool names identify tool keys; prompts are matched with the configured
+ * separator. `config.resources` is keyed by resource URI and needs no rewrite.
  *
  * Recognising prefixed tool keys needs the source's discovered tools, so a
  * source that is currently disconnected keeps its tool overrides verbatim; the
@@ -79,12 +90,14 @@ const remapKeys = <T>(
 export const carryOverCapabilityOverrides = (
   payload: { name: string; config: Partial<ServerConfig> },
   source: Server,
+  options: CarryOverOptions = {},
 ): { name: string; config: Partial<ServerConfig> } => {
   const sourceConfig = source.config;
   if (!sourceConfig) {
     return payload;
   }
 
+  const nameSeparator = options.nameSeparator || '-';
   const runtimeToolNames = new Set((source.tools ?? []).map((tool) => tool.name));
   const rename = (key: string) => `${payload.name}${key.slice(source.name.length)}`;
 
@@ -94,9 +107,10 @@ export const carryOverCapabilityOverrides = (
     runtimeToolNames.has(key) ? rename(key) : key,
   );
   // Prompts are always stored prefixed - there is no bare-name fallback - so
-  // the source-name prefix is enough to recognise them.
+  // the source name plus the configured separator identifies them.
+  const promptPrefix = `${source.name}${nameSeparator}`;
   const prompts = remapKeys(sourceConfig.prompts, (key) =>
-    key.startsWith(source.name) ? rename(key) : key,
+    key.startsWith(promptPrefix) ? rename(key) : key,
   );
 
   const overrides: Partial<ServerConfig> = {};

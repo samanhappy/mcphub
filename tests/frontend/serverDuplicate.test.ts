@@ -142,6 +142,49 @@ describe('carryOverCapabilityOverrides', () => {
     });
   });
 
+  it('leaves stale prompt keys of a similarly named server alone', () => {
+    // Renaming a server rewrites its record but not its override keys, so a
+    // server called `db` can still carry `dbx-greet` from a previous `dbx`.
+    const source = buildServer({
+      name: 'db',
+      config: {
+        type: 'streamable-http',
+        prompts: { 'dbx-greet': { enabled: false } },
+      },
+    });
+
+    const result = carryOverCapabilityOverrides(
+      { name: 'db-copy', config: { type: 'streamable-http' as const } },
+      source,
+    );
+
+    expect(result.config.prompts).toEqual({ 'dbx-greet': { enabled: false } });
+  });
+
+  it('honours a custom name separator when re-keying prompts', () => {
+    const source = buildServer({
+      name: 'db',
+      config: {
+        type: 'streamable-http',
+        prompts: {
+          db_greet: { enabled: false },
+          'db-greet': { enabled: true },
+        },
+      },
+    });
+
+    const result = carryOverCapabilityOverrides(
+      { name: 'db-copy', config: { type: 'streamable-http' as const } },
+      source,
+      { nameSeparator: '_' },
+    );
+
+    expect(result.config.prompts).toEqual({
+      'db-copy_greet': { enabled: false },
+      'db-greet': { enabled: true },
+    });
+  });
+
   it('leaves bare tool override keys untouched', () => {
     const source = buildServer({
       // No runtime tool names, so `weather-issues` is a bare key rather than a
