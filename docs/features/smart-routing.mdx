@@ -918,7 +918,9 @@ curl -X POST http://localhost:3000/api/smart-routing/feedback \
     3. Use more specific queries
     4. Check tool metadata quality
     ```bash
-    # Re-index all tools
+    # Re-index all tools (full rebuild: clears vector_embeddings first, then
+    # regenerates embeddings for every connected server; runs synchronously and
+    # streams per-server progress through SSE embedding-sync-progress events)
     curl -X POST http://localhost:3000/api/smart-routing/reindex \
       -H "Authorization: Bearer YOUR_JWT_TOKEN"
     ```
@@ -937,7 +939,8 @@ curl -X POST http://localhost:3000/api/smart-routing/feedback \
     3. Reduce batch sizes
     4. Monitor system resources
     ```bash
-    # Check system performance
+    # Check vector store status and performance (config, database connection,
+    # row counts, per-model/per-server breakdown, sync freshness, coverage)
     curl http://localhost:3000/api/smart-routing/performance \
       -H "Authorization: Bearer YOUR_JWT_TOKEN"
     ```

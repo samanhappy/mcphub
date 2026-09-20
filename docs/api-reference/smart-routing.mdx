@@ -27,3 +27,32 @@ Smart Routing is MCPHub's intelligent tool discovery system that uses vector sem
 - PostgreSQL with pgvector extension
 - LLM Provider (OpenAI or compatible) API key
 - Enable Smart Routing in MCPHub settings
+
+## Diagnostics & Maintenance API
+
+The following admin endpoints live under the authenticated Dashboard API and
+require a valid Dashboard session (JWT) or a system-level all-access bearer key
+(`Authorization: Bearer mcphub_...`), like any other `/api/*` route.
+
+### Index Status & Performance
+
+Returns Smart Routing configuration, database connection state, vector store
+size (tool/server row counts, distinct servers, dimensions), per-model and
+per-server statistics, sync freshness, and index coverage.
+
+```bash
+curl http://localhost:3000/api/smart-routing/performance \
+  -H "Authorization: Bearer YOUR_JWT_OR_BEARER_KEY"
+```
+
+### Reindex
+
+Force a full rebuild of the vector index: `vector_embeddings` is cleared first,
+then embeddings are regenerated for every connected server. Runs synchronously
+and returns a summary; per-server progress is streamed over SSE
+`embedding-sync-progress` events.
+
+```bash
+curl -X POST http://localhost:3000/api/smart-routing/reindex \
+  -H "Authorization: Bearer YOUR_JWT_OR_BEARER_KEY"
+```

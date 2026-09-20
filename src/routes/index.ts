@@ -33,6 +33,10 @@ import {
   getGroupCostsHandler,
 } from '../controllers/contextCostController.js';
 import {
+  getSmartRoutingPerformance,
+  reindexSmartRouting,
+} from '../controllers/smartRoutingController.js';
+import {
   getGroups,
   getGroup,
   createNewGroup,
@@ -303,6 +307,10 @@ export const initRoutes = async (app: express.Application): Promise<void> => {
   // Context Footprint cost routes
   authenticatedRouter.get('/cost/servers', getServerCostsHandler);
   authenticatedRouter.get('/cost/groups', getGroupCostsHandler);
+
+  // Smart Routing diagnostics and maintenance
+  authenticatedRouter.get('/smart-routing/performance', getSmartRoutingPerformance);
+  authenticatedRouter.post('/smart-routing/reindex', reindexSmartRouting);
 
   // Group management routes
   authenticatedRouter.get('/groups', getGroups);
