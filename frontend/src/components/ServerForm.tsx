@@ -90,6 +90,7 @@ const ServerForm = ({
 
   const getInitialOAuthConfig = (data: Server | null): ServerFormData['oauth'] => {
     const oauth = data?.config?.oauth;
+
     return {
       clientId: oauth?.clientId || '',
       clientSecret: oauth?.clientSecret || '',
@@ -99,6 +100,17 @@ const ServerForm = ({
       authorizationEndpoint: oauth?.authorizationEndpoint || '',
       tokenEndpoint: oauth?.tokenEndpoint || '',
       resource: oauth?.resource || '',
+      // Faithful pass-through (#F1): carry the non-editable OAuth sub-fields —
+      // the `dynamicRegistration` sub-object (RFC7591), `revocationEndpoint`
+      // (RFC 7009) and `redirectUri` — through the edit/duplicate round-trip so
+      // a save does not silently drop them. They have no in-form editors and
+      // are never rendered; they are re-emitted verbatim by buildServerPayload
+      // and preserved by the backend `normalizeOAuth` whitelist (#1193). Each
+      // key is only added when the stored config actually has it, so the
+      // payload does not gain absent fields.
+      ...(oauth?.dynamicRegistration && { dynamicRegistration: oauth.dynamicRegistration }),
+      ...(oauth?.revocationEndpoint && { revocationEndpoint: oauth.revocationEndpoint }),
+      ...(oauth?.redirectUri && { redirectUri: oauth.redirectUri }),
     };
   };
 

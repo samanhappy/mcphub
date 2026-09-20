@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Check, Copy, X } from 'lucide-react';
 import {
@@ -27,12 +27,28 @@ const CopyClientConfigDialog = ({ isOpen, onClose, target }: CopyClientConfigDia
   const { showToast } = useToast();
   const [activeId, setActiveId] = useState<ClientSnippetId>(DEFAULT_CLIENT_SNIPPET_ID);
   const [copiedBlock, setCopiedBlock] = useState<string | null>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const returnFocusRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     if (!isOpen) {
       setCopiedBlock(null);
       setActiveId(DEFAULT_CLIENT_SNIPPET_ID);
     }
+  }, [isOpen]);
+
+  // Like the other hand-rolled modals in this codebase the dialog does not trap
+  // focus; it does move focus inside on open and hand it back to the trigger on
+  // close, so keyboard users are not left behind on the page underneath.
+  useEffect(() => {
+    if (!isOpen) return;
+    returnFocusRef.current =
+      document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    dialogRef.current?.focus();
+
+    return () => {
+      returnFocusRef.current?.focus();
+    };
   }, [isOpen]);
 
   useEffect(() => {
@@ -77,6 +93,8 @@ const CopyClientConfigDialog = ({ isOpen, onClose, target }: CopyClientConfigDia
       }}
     >
       <div
+        ref={dialogRef}
+        tabIndex={-1}
         className="hub-card w-full max-w-2xl"
         role="dialog"
         aria-modal="true"
@@ -99,33 +117,44 @@ const CopyClientConfigDialog = ({ isOpen, onClose, target }: CopyClientConfigDia
           </button>
         </div>
 
-        <div className="px-4 pt-3">
-          <div className="flex flex-wrap gap-1" role="tablist" aria-label={t('clientConfig.title')}>
-            {CLIENT_SNIPPET_PRESETS.map((preset) => {
-              const active = preset.id === activeId;
-              return (
-                <button
-                  key={preset.id}
-                  role="tab"
-                  aria-selected={active}
-                  onClick={() => setActiveId(preset.id)}
-                  className="px-2.5 py-1 rounded-md text-[12px] transition-colors hover:bg-[var(--hub-surface-hover)]"
-                  style={{
-                    background: active ? 'var(--hub-surface)' : 'transparent',
-                    border: '1px solid ' + (active ? 'var(--hub-line)' : 'transparent'),
-                    color: active ? 'var(--hub-ink)' : 'var(--hub-ink-2)',
-                  }}
-                >
-                  {t(`clientConfig.clients.${preset.id}.label`)}
-                </button>
-              );
-            })}
-          </div>
+        {/* A target with neither URL nor command (OpenAPI-backed servers) has no
+            transport, so every preset returns the same empty result: offering 14
+            clickable tabs would only suggest the dialog is broken. The tab strip
+            and its per-client hint are therefore hidden and only the explanation
+            below is shown. */}
+        {blocks.length > 0 && (
+          <div className="px-4 pt-3">
+            <div
+              className="flex flex-wrap gap-1"
+              role="tablist"
+              aria-label={t('clientConfig.title')}
+            >
+              {CLIENT_SNIPPET_PRESETS.map((preset) => {
+                const active = preset.id === activeId;
+                return (
+                  <button
+                    key={preset.id}
+                    role="tab"
+                    aria-selected={active}
+                    onClick={() => setActiveId(preset.id)}
+                    className="px-2.5 py-1 rounded-md text-[12px] transition-colors hover:bg-[var(--hub-surface-hover)]"
+                    style={{
+                      background: active ? 'var(--hub-surface)' : 'transparent',
+                      border: '1px solid ' + (active ? 'var(--hub-line)' : 'transparent'),
+                      color: active ? 'var(--hub-ink)' : 'var(--hub-ink-2)',
+                    }}
+                  >
+                    {t(`clientConfig.clients.${preset.id}.label`)}
+                  </button>
+                );
+              })}
+            </div>
 
-          <p className="text-[12px] mt-3" style={{ color: 'var(--hub-ink-3)' }}>
-            {t(`clientConfig.clients.${activeId}.hint`)}
-          </p>
-        </div>
+            <p className="text-[12px] mt-3" style={{ color: 'var(--hub-ink-3)' }}>
+              {t(`clientConfig.clients.${activeId}.hint`)}
+            </p>
+          </div>
+        )}
 
         <div className="px-4 pb-4 pt-2 space-y-3 max-h-[60vh] overflow-auto">
           {blocks.length === 0 ? (

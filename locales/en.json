@@ -373,7 +373,7 @@
       },
       "generic-http": {
         "label": "Generic HTTP",
-        "hint": "Any client that accepts a raw HTTP MCP entry: paste it into that client's own server map, keeping the URL and Authorization value."
+        "hint": "Escape hatch with the bare entry: remote endpoints give a raw HTTP entry (SSE upstreams carry a \"type\": \"sse\" marker), local servers a raw stdio entry (command/args/env). Paste it into your client's own server map; for most clients use Generic (mcpServers)."
       },
       "claude-code": {
         "label": "Claude Code",

@@ -1,30 +1,37 @@
 import { filterServers, getServerFilterCounts, selectServerPage } from '../../frontend/src/utils/serverFilters';
+import type { Server, Tool } from '../../frontend/src/types';
+
+const makeTool = (name: string): Tool => ({
+  name,
+  description: '',
+  inputSchema: { type: 'object' },
+});
 
 describe('serverFilters', () => {
-  const servers = [
+  const servers: Server[] = [
     {
       name: 'online-server',
-      status: 'connected' as const,
+      status: 'connected',
       enabled: true,
-      tools: [{ name: 'search' }],
+      tools: [makeTool('search')],
     },
     {
       name: 'issue-server',
-      status: 'disconnected' as const,
+      status: 'disconnected',
       enabled: true,
-      tools: [{ name: 'fetch' }],
+      tools: [makeTool('fetch')],
     },
     {
       name: 'disabled-online-server',
-      status: 'connected' as const,
+      status: 'connected',
       enabled: false,
-      tools: [{ name: 'analyze' }],
+      tools: [makeTool('analyze')],
     },
     {
       name: 'disabled-offline-server',
-      status: 'disconnected' as const,
+      status: 'disconnected',
       enabled: false,
-      tools: [{ name: 'archive' }],
+      tools: [makeTool('archive')],
     },
   ];
 
@@ -57,10 +64,10 @@ describe('serverFilters', () => {
 
 describe('selectServerPage', () => {
   // Build a list where disabled servers do NOT land on page 1 (limit 5).
-  const online = (name: string) => ({ name, status: 'connected' as const, enabled: true, tools: [] });
-  const disabled = (name: string) => ({ name, status: 'disconnected' as const, enabled: false, tools: [] });
+  const online = (name: string): Server => ({ name, status: 'connected', enabled: true, tools: [] });
+  const disabled = (name: string): Server => ({ name, status: 'disconnected', enabled: false, tools: [] });
 
-  const allServers = [
+  const allServers: Server[] = [
     online('online-1'),
     online('online-2'),
     online('online-3'),
