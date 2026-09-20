@@ -109,6 +109,7 @@ describe('betterAuth bootstrap', () => {
           scopes: ['openid', 'profile', 'email'],
           pkce: true,
           prompt: 'login',
+          mapProfileToUser: expect.any(Function),
         },
       ],
     });
@@ -136,6 +137,7 @@ describe('betterAuth bootstrap', () => {
                   scopes: ['openid', 'profile', 'email'],
                   pkce: true,
                   prompt: 'login',
+                  mapProfileToUser: expect.any(Function),
                 },
               ],
             },
@@ -143,6 +145,30 @@ describe('betterAuth bootstrap', () => {
         ],
       }),
     );
+  });
+
+  it('synthesizes a display name when the OIDC profile has no name claim', async () => {
+    await import('../../src/betterAuth.js');
+
+    const options = genericOAuthMock.mock.calls[0][0] as {
+      config: Array<{
+        mapProfileToUser?: (profile: Record<string, unknown>) => { name?: string };
+      }>;
+    };
+    const mapProfileToUser = options.config[0]?.mapProfileToUser;
+    expect(mapProfileToUser).toBeDefined();
+
+    // An explicit name claim always wins.
+    expect(mapProfileToUser?.({ name: 'Alice', email: 'alice@example.com' }).name).toBe('Alice');
+    // Other preferred-name claims are honored before falling through.
+    expect(mapProfileToUser?.({ nickname: 'nick', email: 'x@y.z' }).name).toBe('nick');
+    expect(mapProfileToUser?.({ preferred_username: 'pref', email: 'x@y.z' }).name).toBe('pref');
+    // GitLab < 16.0 ID tokens carry email but no name: use the email local part.
+    expect(
+      mapProfileToUser?.({ email: 'wurongjie@uniontech.com', sub: '177' }).name,
+    ).toBe('wurongjie');
+    // Last-resort fallback derived from the subject identifier.
+    expect(mapProfileToUser?.({ sub: '177' }).name).toBe('oidc-177');
   });
 
   it('prefers BETTER_AUTH_URL over install.baseUrl when deriving the Better Auth base URL', async () => {
@@ -203,6 +229,7 @@ describe('betterAuth bootstrap', () => {
           scopes: ['openid', 'profile', 'email'],
           pkce: true,
           prompt: 'login',
+          mapProfileToUser: expect.any(Function),
         },
       ],
     });

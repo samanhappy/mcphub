@@ -64,6 +64,19 @@ if (
           scopes: runtimeConfig.providers.oidc.scopes,
           pkce: runtimeConfig.providers.oidc.pkce,
           prompt: runtimeConfig.providers.oidc.prompt,
+          // Some OIDC issuers (e.g. self-hosted GitLab < 16.0) do not include
+          // a `name` claim in the ID token; better-auth only exposes it via
+          // the userinfo endpoint, which it skips whenever an id_token is
+          // present. Synthesize a display name from the remaining claims so
+          // that sign-in succeeds for such issuers.
+          mapProfileToUser: (profile) => ({
+            name:
+              profile.name ||
+              profile.nickname ||
+              profile.preferred_username ||
+              (typeof profile.email === 'string' && profile.email.split('@')[0]) ||
+              `oidc-${String(profile.id ?? profile.sub ?? '')}`,
+          }),
         },
       ],
     }),
