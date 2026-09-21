@@ -528,7 +528,9 @@ curl -X POST http://localhost:3000/api/smart-routing/feedback \
     3. 使用更具体的查询
     4. 检查工具元数据质量
     ```bash
-    # 重新索引所有工具（全量强制：先清空 vector_embeddings，再对全部已连接服务器重新生成嵌入；同步执行，逐台进度通过 SSE embedding-sync-progress 事件推送）
+    # 重新索引所有工具（全量强制：先清空 vector_embeddings，再对全部已启用服务器重新生成嵌入；
+    # 需要个人凭据的服务器会以已绑定凭据的用户身份（所有者优先）重建，并索引其可见工具的并集；
+    # 同步执行，逐台进度通过 SSE embedding-sync-progress 事件推送）
     curl -X POST http://localhost:3000/api/smart-routing/reindex \
       -H "Authorization: Bearer YOUR_JWT_TOKEN"
     ```

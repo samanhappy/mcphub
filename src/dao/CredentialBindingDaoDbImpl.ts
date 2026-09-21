@@ -16,6 +16,14 @@ export class CredentialBindingDaoDbImpl implements CredentialBindingDao {
     return this.repository.findOneBy({ serverName, username });
   }
 
+  async listUsernames(serverName: string): Promise<string[]> {
+    const rows = await this.repository.find({
+      where: { serverName },
+      select: { username: true },
+    });
+    return rows.map((row) => row.username);
+  }
+
   async save(binding: StoredCredentialBinding): Promise<void> {
     await this.repository.upsert(binding, ['serverName', 'username']);
   }

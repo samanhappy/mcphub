@@ -1015,15 +1015,18 @@
     "smartRoutingIndexCoverage": "覆盖率",
     "smartRoutingIndexLastSynced": "最近同步",
     "smartRoutingIndexPerServer": "每台服务器的工具数",
-    "smartRoutingIndexMissingIndex": "有 {{count}} 台已连接服务器缺少索引",
+    "smartRoutingIndexMissingIndex": "有 {{count}} 台已启用服务器缺少索引",
     "smartRoutingIndexSyncedRange": "同步范围：{{oldest}} → {{newest}}",
-    "smartRoutingIndexReindexDone": "重新索引完成：同步 {{synced}} 台服务器，失败 {{failed}} 台，共 {{total}} 个工具",
+    "smartRoutingIndexReindexDone": "重新索引完成：同步 {{synced}} 台，失败 {{failed}} 台，跳过 {{skipped}} 台，共 {{total}} 个工具",
     "smartRoutingIndexReindexFailed": "重新索引失败：{{message}}",
     "smartRoutingIndexReindexStarting": "开始重建…",
     "smartRoutingIndexReindexingServer": "正在重建“{{server}}”",
-    "smartRoutingIndexReindexSummary": "重建完成 · 同步 {{synced}} 台，失败 {{failed}} 台，共 {{total}} 个工具",
+    "smartRoutingIndexReindexSummary": "重建完成 · 同步 {{synced}} 台，失败 {{failed}} 台，跳过 {{skipped}} 台，共 {{total}} 个工具",
     "smartRoutingIndexReindexConfirmTitle": "确认重建向量索引？",
-    "smartRoutingIndexReindexConfirmMessage": "将清空所有现有向量并从头重新生成。此操作可能需要较长时间，并会消耗 embedding API 额度。"
+    "smartRoutingIndexReindexConfirmMessage": "将清空所有现有向量并从头重新生成。此操作可能需要较长时间，并会消耗 embedding API 额度。",
+    "smartRoutingIndexPersonalCredentials": "需个人凭据的服务器",
+    "smartRoutingIndexSkippedReason": "已跳过",
+    "smartRoutingIndexIndexedAs": "以 {{principals}} 的身份索引"
   },
   "mcpb": {
     "upload": "上传",

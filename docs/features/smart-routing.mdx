@@ -919,8 +919,10 @@ curl -X POST http://localhost:3000/api/smart-routing/feedback \
     4. Check tool metadata quality
     ```bash
     # Re-index all tools (full rebuild: clears vector_embeddings first, then
-    # regenerates embeddings for every connected server; runs synchronously and
-    # streams per-server progress through SSE embedding-sync-progress events)
+    # regenerates embeddings for every enabled server; servers that require
+    # personal credentials are reached through the users holding a binding,
+    # indexing the union of the tools those users can see; runs synchronously
+    # and streams per-server progress through SSE embedding-sync-progress events)
     curl -X POST http://localhost:3000/api/smart-routing/reindex \
       -H "Authorization: Bearer YOUR_JWT_TOKEN"
     ```

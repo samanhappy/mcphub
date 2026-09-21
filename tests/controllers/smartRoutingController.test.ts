@@ -7,6 +7,9 @@ const mockInitializeDatabase = jest.fn();
 const mockGetAppDataSource = jest.fn();
 const mockSaveToolsAsVectorEmbeddings = jest.fn();
 const mockGetServersInfo = jest.fn();
+const mockGetServerToolsForPrincipal = jest.fn();
+const mockListBindingUsernames = jest.fn();
+const mockFindUserByUsername = jest.fn();
 
 jest.mock('../../src/utils/smartRouting.js', () => ({
   getSmartRoutingConfig: mockGetSmartRoutingConfig,
@@ -25,6 +28,12 @@ jest.mock('../../src/services/vectorSearchService.js', () => ({
 
 jest.mock('../../src/services/mcpService.js', () => ({
   getServersInfo: mockGetServersInfo,
+  getServerToolsForPrincipal: mockGetServerToolsForPrincipal,
+}));
+
+jest.mock('../../src/dao/DaoFactory.js', () => ({
+  getCredentialBindingDao: () => ({ listUsernames: mockListBindingUsernames }),
+  getUserDao: () => ({ findByUsername: mockFindUserByUsername }),
 }));
 
 import {
@@ -55,6 +64,8 @@ const defaultServer = {
   tools: [{ name: 'fetch_html', description: 'Fetch HTML' }],
 };
 
+const credentialTemplate = [{ target: 'headers', name: 'Authorization' }];
+
 const defaultDatabaseHealth = { connected: true, healthy: true, lastError: null };
 
 const mockDataSourceQuery = jest.fn();
@@ -70,6 +81,9 @@ beforeEach(() => {
   mockGetAppDataSource.mockReturnValue(mockDataSource);
   mockSaveToolsAsVectorEmbeddings.mockResolvedValue(undefined);
   mockGetServersInfo.mockResolvedValue([defaultServer]);
+  mockGetServerToolsForPrincipal.mockResolvedValue([]);
+  mockListBindingUsernames.mockResolvedValue([]);
+  mockFindUserByUsername.mockResolvedValue(null);
 });
 
 describe('getSmartRoutingPerformance', () => {
@@ -130,10 +144,38 @@ describe('getSmartRoutingPerformance', () => {
       byServer: [{ serverName: 'fetch', toolCount: 2 }],
     });
     expect(payload.data.coverage).toEqual({
+      totalServers: 1,
       connectedServers: 1,
+      personalCredentialServers: 0,
       indexedServers: 1,
       missingIndexServerCount: 0,
       missingIndexServers: [],
+    });
+  });
+
+  it('counts personal-credential servers in coverage even while disconnected', async () => {
+    setupVectorRows();
+    mockGetServersInfo.mockResolvedValue([
+      defaultServer,
+      {
+        name: 'private-api',
+        status: 'disconnected',
+        enabled: true,
+        tools: [],
+        config: { credentialTemplate },
+      },
+    ]);
+    const res = mockRes();
+    await getSmartRoutingPerformance({} as Request, res);
+
+    const payload = res.json.mock.calls[0][0];
+    expect(payload.data.coverage).toEqual({
+      totalServers: 2,
+      connectedServers: 1,
+      personalCredentialServers: 1,
+      indexedServers: 1,
+      missingIndexServerCount: 1,
+      missingIndexServers: ['private-api'],
     });
   });
 
@@ -187,7 +229,6 @@ describe('reindexSmartRouting', () => {
     mockGetServersInfo.mockResolvedValue([
       { name: 'fetch', status: 'connected', enabled: true, tools: [{ name: 'a' }] },
       { name: 'timeout', status: 'connected', enabled: true, tools: [{ name: 'b' }] },
-      { name: 'down', status: 'error', enabled: true, tools: [{ name: 'c' }] },
     ]);
     const res = mockRes();
     await reindexSmartRouting({} as Request, res);
@@ -205,12 +246,167 @@ describe('reindexSmartRouting', () => {
     expect(payload.data).toEqual({
       syncedServers: 2,
       failedServers: 0,
+      skippedServers: 0,
       totalTools: 2,
       results: [
         { serverName: 'fetch', toolCount: 1, ok: true },
         { serverName: 'timeout', toolCount: 1, ok: true },
       ],
     });
+  });
+
+  it('indexes a personal-credential server on behalf of its binding users', async () => {
+    mockDataSourceQuery.mockResolvedValueOnce([]); // DELETE
+    mockGetServersInfo.mockResolvedValue([
+      {
+        name: 'private-api',
+        status: 'disconnected',
+        enabled: true,
+        tools: [],
+        config: { credentialTemplate, owner: 'alice' },
+      },
+    ]);
+    mockListBindingUsernames.mockResolvedValue(['bob', 'alice']);
+    mockFindUserByUsername.mockImplementation(async (username: string) => ({
+      username,
+      isAdmin: username === 'alice',
+    }));
+    mockGetServerToolsForPrincipal.mockImplementation(
+      async (_server: string, principal: { username: string }) =>
+        principal.username === 'alice'
+          ? [
+              { name: 'shared-tool' },
+              { name: 'admin-only-tool' },
+            ]
+          : [{ name: 'shared-tool' }],
+    );
+
+    const res = mockRes();
+    await reindexSmartRouting({} as Request, res);
+
+    // Owner binding is tried first, and the union of both principals is indexed.
+    expect(mockGetServerToolsForPrincipal).toHaveBeenNthCalledWith(
+      1,
+      'private-api',
+      expect.objectContaining({ username: 'alice', isAdmin: true }),
+    );
+    expect(mockGetServerToolsForPrincipal).toHaveBeenNthCalledWith(
+      2,
+      'private-api',
+      expect.objectContaining({ username: 'bob', isAdmin: false }),
+    );
+    expect(mockSaveToolsAsVectorEmbeddings).toHaveBeenCalledWith(
+      'private-api',
+      [{ name: 'shared-tool' }, { name: 'admin-only-tool' }],
+      { reportProgress: true },
+    );
+
+    const payload = res.json.mock.calls[0][0];
+    expect(payload.data).toMatchObject({
+      syncedServers: 1,
+      failedServers: 0,
+      skippedServers: 0,
+      totalTools: 2,
+    });
+    expect(payload.data.results[0]).toEqual({
+      serverName: 'private-api',
+      toolCount: 2,
+      ok: true,
+      principals: ['alice', 'bob'],
+    });
+  });
+
+  it('skips a personal-credential server nobody bound credentials for', async () => {
+    mockDataSourceQuery.mockResolvedValueOnce([]); // DELETE
+    mockGetServersInfo.mockResolvedValue([
+      {
+        name: 'private-api',
+        status: 'disconnected',
+        enabled: true,
+        tools: [],
+        config: { credentialTemplate },
+      },
+    ]);
+    mockListBindingUsernames.mockResolvedValue([]);
+
+    const res = mockRes();
+    await reindexSmartRouting({} as Request, res);
+
+    expect(mockGetServerToolsForPrincipal).not.toHaveBeenCalled();
+    expect(mockSaveToolsAsVectorEmbeddings).not.toHaveBeenCalled();
+    const payload = res.json.mock.calls[0][0];
+    expect(payload.data.skippedServers).toBe(1);
+    expect(payload.data.results[0]).toMatchObject({
+      serverName: 'private-api',
+      skipped: true,
+      ok: false,
+    });
+  });
+
+  it('reports a personal-credential server as failed when no principal resolves tools', async () => {
+    mockDataSourceQuery.mockResolvedValueOnce([]); // DELETE
+    mockGetServersInfo.mockResolvedValue([
+      {
+        name: 'private-api',
+        status: 'disconnected',
+        enabled: true,
+        tools: [],
+        config: { credentialTemplate },
+      },
+    ]);
+    mockListBindingUsernames.mockResolvedValue(['bob']);
+    mockFindUserByUsername.mockResolvedValue({ username: 'bob', isAdmin: false });
+    mockGetServerToolsForPrincipal.mockRejectedValue(
+      new Error("Unable to connect 'private-api' with your personal credentials."),
+    );
+
+    const res = mockRes();
+    await reindexSmartRouting({} as Request, res);
+
+    const payload = res.json.mock.calls[0][0];
+    expect(payload.data.failedServers).toBe(1);
+    expect(payload.data.skippedServers).toBe(0);
+    expect(payload.data.results[0]).toMatchObject({
+      serverName: 'private-api',
+      ok: false,
+      principals: [],
+    });
+    expect(payload.data.results[0].error).toContain('personal credentials');
+  });
+
+  it('reports disconnected servers as skipped instead of dropping them silently', async () => {
+    mockDataSourceQuery.mockResolvedValueOnce([]); // DELETE
+    mockGetServersInfo.mockResolvedValue([
+      { name: 'fetch', status: 'connected', enabled: true, tools: [{ name: 'a' }] },
+      { name: 'down', status: 'error', enabled: true, tools: [{ name: 'c' }] },
+    ]);
+
+    const res = mockRes();
+    await reindexSmartRouting({} as Request, res);
+
+    const payload = res.json.mock.calls[0][0];
+    expect(payload.data.syncedServers).toBe(1);
+    expect(payload.data.skippedServers).toBe(1);
+    expect(payload.data.results[1]).toMatchObject({
+      serverName: 'down',
+      skipped: true,
+      ok: false,
+    });
+    expect(payload.data.results[1].error).toContain('not connected');
+  });
+
+  it('ignores disabled servers', async () => {
+    mockDataSourceQuery.mockResolvedValueOnce([]); // DELETE
+    mockGetServersInfo.mockResolvedValue([
+      { name: 'fetch', status: 'connected', enabled: true, tools: [{ name: 'a' }] },
+      { name: 'off', status: 'disconnected', enabled: false, tools: [] },
+    ]);
+
+    const res = mockRes();
+    await reindexSmartRouting({} as Request, res);
+
+    const payload = res.json.mock.calls[0][0];
+    expect(payload.data.results.map((item: any) => item.serverName)).toEqual(['fetch']);
   });
 
   it('counts per-server failures without aborting the batch', async () => {

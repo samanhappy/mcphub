@@ -1010,15 +1010,18 @@
     "smartRoutingIndexCoverage": "Kapsam",
     "smartRoutingIndexLastSynced": "Son senkronizasyon",
     "smartRoutingIndexPerServer": "Sunucu başına araçlar",
-    "smartRoutingIndexMissingIndex": "İndeksi olmayan {{count}} bağlı sunucu",
+    "smartRoutingIndexMissingIndex": "İndeksi olmayan {{count}} etkin sunucu",
     "smartRoutingIndexSyncedRange": "Senkronizasyon aralığı: {{oldest}} → {{newest}}",
-    "smartRoutingIndexReindexDone": "Yeniden indeksleme tamamlandı: {{synced}} sunucu senkronize, {{failed}} hata, toplam {{total}} araç",
+    "smartRoutingIndexReindexDone": "Yeniden indeksleme tamamlandı: {{synced}} senkronize, {{failed}} hata, {{skipped}} atlandı, toplam {{total}} araç",
     "smartRoutingIndexReindexFailed": "Yeniden indeksleme başarısız: {{message}}",
     "smartRoutingIndexReindexStarting": "Yeniden indeksleme başlıyor…",
     "smartRoutingIndexReindexingServer": "{{server}} yeniden indeksleniyor",
-    "smartRoutingIndexReindexSummary": "Yeniden indeksleme tamam · {{synced}} sunucu senkronize, {{failed}} hata, {{total}} araç",
+    "smartRoutingIndexReindexSummary": "Yeniden indeksleme tamam · {{synced}} senkronize, {{failed}} hata, {{skipped}} atlandı, {{total}} araç",
     "smartRoutingIndexReindexConfirmTitle": "Vektör indeksi yeniden oluşturulsun mu?",
-    "smartRoutingIndexReindexConfirmMessage": "Mevcut tüm embedding’ler temizlenecek ve sıfırdan yeniden üretilecek. Bu biraz zaman alabilir ve embedding API kotası harcar."
+    "smartRoutingIndexReindexConfirmMessage": "Mevcut tüm embedding’ler temizlenecek ve sıfırdan yeniden üretilecek. Bu biraz zaman alabilir ve embedding API kotası harcar.",
+    "smartRoutingIndexPersonalCredentials": "Kişisel kimlik bilgisi gerektiren sunucular",
+    "smartRoutingIndexSkippedReason": "Atlandı",
+    "smartRoutingIndexIndexedAs": "{{principals}} olarak indekslendi"
   },
   "mcpb": {
     "upload": "Yükle",

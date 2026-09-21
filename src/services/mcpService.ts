@@ -4628,6 +4628,31 @@ const createPrincipalRuntime = async (
 
 const principalRuntimes = new PrincipalRuntimeService(createPrincipalRuntime, closeServerRuntime);
 
+/**
+ * Resolve the tools of a personal-credential server on behalf of an explicit
+ * principal, outside any request context.
+ *
+ * Servers that declare a credential template are never connected globally (see
+ * the `hasCredentialTemplate` branch in `initializeClientsFromSettings`); their
+ * runtime only exists for the principals who bound their own credentials. Any
+ * caller that needs the tool list of such a server — smart routing reindex, for
+ * instance — must therefore borrow one of those principals instead of relying
+ * on the ambient request user, which may hold no binding at all.
+ *
+ * The returned list is a snapshot: the lease is released before returning.
+ */
+export const getServerToolsForPrincipal = async (
+  serverName: string,
+  principal: RequestPrincipal,
+): Promise<Tool[]> => {
+  const lease = await principalRuntimes.acquire(serverName, principal);
+  try {
+    return lease.info.tools ?? [];
+  } finally {
+    lease.release();
+  }
+};
+
 type McpHandler = (request: any, extra: any) => Promise<any>;
 const withPrincipalServers =
   (handler: McpHandler, operation: 'list' | 'tool' | 'prompt' | 'resource'): McpHandler =>

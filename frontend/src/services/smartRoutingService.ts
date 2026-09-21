@@ -25,7 +25,9 @@ export interface SmartRoutingPerformanceData {
     newestUpdatedAt: string | null;
   };
   coverage: {
+    totalServers: number;
     connectedServers: number;
+    personalCredentialServers: number;
     indexedServers: number;
     missingIndexServerCount: number;
     missingIndexServers: string[];
@@ -35,12 +37,15 @@ export interface SmartRoutingPerformanceData {
 export interface SmartRoutingReindexResult {
   syncedServers: number;
   failedServers: number;
+  skippedServers: number;
   totalTools: number;
   results: Array<{
     serverName: string;
     toolCount: number;
     ok: boolean;
+    skipped?: boolean;
     error?: string;
+    principals?: string[];
   }>;
 }
 

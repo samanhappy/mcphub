@@ -48,9 +48,15 @@ curl http://localhost:3000/api/smart-routing/performance \
 ### Reindex
 
 Force a full rebuild of the vector index: `vector_embeddings` is cleared first,
-then embeddings are regenerated for every connected server. Runs synchronously
+then embeddings are regenerated for every enabled server. Runs synchronously
 and returns a summary; per-server progress is streamed over SSE
 `embedding-sync-progress` events.
+
+Servers that declare a personal credential template are never connected
+globally, so they are reached on behalf of the users who bound credentials (the
+server owner first) and the union of the tools those users can see is indexed.
+A server nobody bound credentials for is reported as skipped with a reason in
+the response `results`.
 
 ```bash
 curl -X POST http://localhost:3000/api/smart-routing/reindex \

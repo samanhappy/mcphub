@@ -1011,15 +1011,18 @@
     "smartRoutingIndexCoverage": "Couverture",
     "smartRoutingIndexLastSynced": "Dernière synchro",
     "smartRoutingIndexPerServer": "Outils par serveur",
-    "smartRoutingIndexMissingIndex": "{{count}} serveur(s) connecté(s) sans index",
+    "smartRoutingIndexMissingIndex": "{{count}} serveur(s) activé(s) sans index",
     "smartRoutingIndexSyncedRange": "Plage de synchro : {{oldest}} → {{newest}}",
-    "smartRoutingIndexReindexDone": "Réindexation terminée : {{synced}} serveur(s) synchronisé(s), {{failed}} échec(s), {{total}} outils au total",
+    "smartRoutingIndexReindexDone": "Réindexation terminée : {{synced}} synchronisé(s), {{failed}} échec(s), {{skipped}} ignoré(s), {{total}} outils au total",
     "smartRoutingIndexReindexFailed": "Échec de la réindexation : {{message}}",
     "smartRoutingIndexReindexStarting": "Démarrage de la réindexation…",
     "smartRoutingIndexReindexingServer": "Réindexation de « {{server}} »",
-    "smartRoutingIndexReindexSummary": "Réindexation effectuée · {{synced}} serveur(s) synchronisé(s), {{failed}} échec(s), {{total}} outils",
+    "smartRoutingIndexReindexSummary": "Réindexation effectuée · {{synced}} synchronisé(s), {{failed}} échec(s), {{skipped}} ignoré(s), {{total}} outils",
     "smartRoutingIndexReindexConfirmTitle": "Reconstruire l’index vectoriel ?",
-    "smartRoutingIndexReindexConfirmMessage": "Tous les embeddings existants seront effacés puis régénérés depuis zéro. Cela peut prendre du temps et consommer du quota API d’embedding."
+    "smartRoutingIndexReindexConfirmMessage": "Tous les embeddings existants seront effacés puis régénérés depuis zéro. Cela peut prendre du temps et consommer du quota API d’embedding.",
+    "smartRoutingIndexPersonalCredentials": "Serveurs à identifiants personnels",
+    "smartRoutingIndexSkippedReason": "Ignoré",
+    "smartRoutingIndexIndexedAs": "indexé en tant que {{principals}}"
   },
   "mcpb": {
     "upload": "Télécharger",

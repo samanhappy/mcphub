@@ -43,7 +43,9 @@ curl http://localhost:3000/api/smart-routing/performance \
 
 ### 重新索引
 
-全量强制重建向量索引：先清空 `vector_embeddings`，再对所有已连接服务器重新生成嵌入。同步执行并返回汇总；重建进度会通过 SSE `embedding-sync-progress` 事件实时推送。
+全量强制重建向量索引：先清空 `vector_embeddings`，再对全部已启用服务器重新生成嵌入。同步执行并返回汇总；重建进度会通过 SSE `embedding-sync-progress` 事件实时推送。
+
+需要**个人凭据**（`credentialTemplate`）的服务器不会参与全局连接，因此会以已绑定凭据的用户身份（服务器所有者优先）建立连接，并把这些用户可见工具的**并集**写入索引；没有任何用户绑定凭据的服务器会被跳过，并在响应的 `results` 中给出原因。
 
 ```bash
 curl -X POST http://localhost:3000/api/smart-routing/reindex \

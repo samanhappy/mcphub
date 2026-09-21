@@ -1012,15 +1012,18 @@
     "smartRoutingIndexCoverage": "Coverage",
     "smartRoutingIndexLastSynced": "Last synced",
     "smartRoutingIndexPerServer": "Tools per server",
-    "smartRoutingIndexMissingIndex": "{{count}} connected server(s) missing an index",
+    "smartRoutingIndexMissingIndex": "{{count}} enabled server(s) missing an index",
     "smartRoutingIndexSyncedRange": "Sync range: {{oldest}} → {{newest}}",
-    "smartRoutingIndexReindexDone": "Reindex completed: {{synced}} server(s) synced, {{failed}} failed, {{total}} tools in total",
+    "smartRoutingIndexReindexDone": "Reindex completed: {{synced}} server(s) synced, {{failed}} failed, {{skipped}} skipped, {{total}} tools in total",
     "smartRoutingIndexReindexFailed": "Reindex failed: {{message}}",
     "smartRoutingIndexReindexStarting": "Starting reindex…",
     "smartRoutingIndexReindexingServer": "Reindexing \"{{server}}\"",
-    "smartRoutingIndexReindexSummary": "Reindex done · {{synced}} server(s) synced, {{failed}} failed, {{total}} tools",
+    "smartRoutingIndexReindexSummary": "Reindex done · {{synced}} synced, {{failed}} failed, {{skipped}} skipped, {{total}} tools",
     "smartRoutingIndexReindexConfirmTitle": "Rebuild vector index?",
-    "smartRoutingIndexReindexConfirmMessage": "All existing embeddings will be cleared and regenerated from scratch. This can take a while and consumes embedding API quota."
+    "smartRoutingIndexReindexConfirmMessage": "All existing embeddings will be cleared and regenerated from scratch. This can take a while and consumes embedding API quota.",
+    "smartRoutingIndexPersonalCredentials": "Personal-credential servers",
+    "smartRoutingIndexSkippedReason": "Skipped",
+    "smartRoutingIndexIndexedAs": "indexed as {{principals}}"
   },
   "mcpb": {
     "upload": "Upload",

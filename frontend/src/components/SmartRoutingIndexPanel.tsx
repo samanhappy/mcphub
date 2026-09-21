@@ -117,6 +117,7 @@ const SmartRoutingIndexPanel: React.FC<SmartRoutingIndexPanelProps> = ({ enabled
         t('settings.smartRoutingIndexReindexDone', {
           synced: result.syncedServers,
           failed: result.failedServers,
+          skipped: result.skippedServers,
           total: result.totalTools,
         }),
         'success',
@@ -170,7 +171,11 @@ const SmartRoutingIndexPanel: React.FC<SmartRoutingIndexPanelProps> = ({ enabled
         },
         {
           label: t('settings.smartRoutingIndexCoverage'),
-          value: `${perf.coverage.indexedServers}/${perf.coverage.connectedServers}`,
+          value: `${perf.coverage.indexedServers}/${perf.coverage.totalServers}`,
+        },
+        {
+          label: t('settings.smartRoutingIndexPersonalCredentials'),
+          value: String(perf.coverage.personalCredentialServers),
         },
         {
           label: t('settings.smartRoutingIndexLastSynced'),
@@ -180,7 +185,8 @@ const SmartRoutingIndexPanel: React.FC<SmartRoutingIndexPanelProps> = ({ enabled
     : [];
 
   const dbOk = perf?.database.healthy;
-  const failedItems = reindexSummary?.results.filter((item) => !item.ok) ?? [];
+  const failedItems = reindexSummary?.results.filter((item) => !item.ok && !item.skipped) ?? [];
+  const skippedItems = reindexSummary?.results.filter((item) => item.skipped) ?? [];
 
   return (
     <div className="hub-card" style={{ padding: 18 }}>
@@ -425,38 +431,76 @@ const SmartRoutingIndexPanel: React.FC<SmartRoutingIndexPanelProps> = ({ enabled
       )}
 
       {reindexSummary && !reindexing && (
-        <div
-          className="mt-3 flex items-center gap-2"
-          style={{
-            padding: '8px 12px',
-            borderRadius: 7,
-            fontSize: 12.5,
-            background:
-              failedItems.length > 0
-                ? 'var(--hub-warn-soft, rgba(234,179,8,0.10))'
-                : 'rgba(34,197,94,0.10)',
-            color:
-              failedItems.length > 0 ? 'var(--hub-warn, #b45309)' : '#166534',
-          }}
-        >
-          {failedItems.length > 0 ? (
-            <AlertTriangle size={14} className="shrink-0" />
-          ) : (
-            <CheckCircle2 size={14} className="shrink-0" />
-          )}
-          <span>
-            {t('settings.smartRoutingIndexReindexSummary', {
-              synced: reindexSummary.syncedServers,
-              failed: reindexSummary.failedServers,
-              total: reindexSummary.totalTools,
-            })}
-            {failedItems.length > 0 && (
-              <span>
-                {' '}
-                {failedItems.map((item) => item.serverName).join(', ')}
-              </span>
+        <div className="mt-3">
+          <div
+            className="flex items-center gap-2"
+            style={{
+              padding: '8px 12px',
+              borderRadius: 7,
+              fontSize: 12.5,
+              background:
+                failedItems.length > 0
+                  ? 'var(--hub-warn-soft, rgba(234,179,8,0.10))'
+                  : 'rgba(34,197,94,0.10)',
+              color:
+                failedItems.length > 0 ? 'var(--hub-warn, #b45309)' : '#166534',
+            }}
+          >
+            {failedItems.length > 0 ? (
+              <AlertTriangle size={14} className="shrink-0" />
+            ) : (
+              <CheckCircle2 size={14} className="shrink-0" />
             )}
-          </span>
+            <span>
+              {t('settings.smartRoutingIndexReindexSummary', {
+                synced: reindexSummary.syncedServers,
+                failed: reindexSummary.failedServers,
+                skipped: reindexSummary.skippedServers,
+                total: reindexSummary.totalTools,
+              })}
+              {failedItems.length > 0 && (
+                <span> {failedItems.map((item) => item.serverName).join(', ')}</span>
+              )}
+            </span>
+          </div>
+
+          {(failedItems.length > 0 || skippedItems.length > 0) && (
+            <ul
+              className="mt-2"
+              style={{
+                listStyle: 'none',
+                padding: 0,
+                margin: 0,
+                fontSize: 12,
+                color: 'var(--hub-ink-2)',
+              }}
+            >
+              {[...failedItems, ...skippedItems].map((item) => (
+                <li key={item.serverName} className="flex items-start gap-1.5 py-0.5">
+                  {item.skipped ? (
+                    <XCircle size={12} className="mt-0.5 shrink-0" />
+                  ) : (
+                    <AlertTriangle size={12} className="mt-0.5 shrink-0" />
+                  )}
+                  <span>
+                    <strong style={{ color: 'var(--hub-ink)' }}>{item.serverName}</strong>
+                    {': '}
+                    {item.skipped
+                      ? item.error || t('settings.smartRoutingIndexSkippedReason')
+                      : item.error}
+                    {item.principals && item.principals.length > 0 && (
+                      <span className="text-[var(--hub-ink-3)]">
+                        {' '}
+                        ({t('settings.smartRoutingIndexIndexedAs', {
+                          principals: item.principals.join(', '),
+                        })})
+                      </span>
+                    )}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       )}
 
