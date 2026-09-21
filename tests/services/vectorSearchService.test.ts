@@ -1,5 +1,3 @@
-import { createHash } from 'node:crypto';
-
 const mockVectorRepository = {
   countByServerNameAndModel: jest.fn(),
   getToolIdentityByServerNameAndModel: jest.fn(),
@@ -72,48 +70,11 @@ jest.mock('openai', () => ({
 }));
 
 import {
+  buildToolSetHash,
   removeServerToolEmbeddings,
   saveToolsAsVectorEmbeddings,
   searchToolsByVector,
 } from '../../src/services/vectorSearchService.js';
-
-const stableHashSerialize = (value: unknown): string => {
-  if (value === null || value === undefined) {
-    return JSON.stringify(value);
-  }
-
-  if (Array.isArray(value)) {
-    return `[${value.map((item) => stableHashSerialize(item)).join(',')}]`;
-  }
-
-  if (typeof value === 'object') {
-    const entries = Object.entries(value as Record<string, unknown>).sort(([a], [b]) =>
-      a.localeCompare(b),
-    );
-    return `{${entries
-      .map(([key, val]) => `${JSON.stringify(key)}:${stableHashSerialize(val)}`)
-      .join(',')}}`;
-  }
-
-  return JSON.stringify(value);
-};
-
-const buildToolSetHash = (
-  tools: Array<{ name: string; description?: string; inputSchema?: unknown }>,
-) =>
-  createHash('sha256')
-    .update(
-      stableHashSerialize(
-        tools
-          .map((tool) => ({
-            name: tool.name || '',
-            description: tool.description || '',
-            inputSchema: tool.inputSchema || null,
-          }))
-          .sort((a, b) => a.name.localeCompare(b.name)),
-      ),
-    )
-    .digest('hex');
 
 describe('vectorSearchService', () => {
   beforeEach(() => {
@@ -651,5 +612,38 @@ describe('vectorSearchService', () => {
     await removeServerToolEmbeddings('redis');
 
     expect(mockVectorRepository.deleteByServerName).toHaveBeenCalledWith('redis');
+  });
+
+  describe('buildToolSetHash (issue #1198)', () => {
+    const tool = (overrides: { hasDescriptionOverride?: boolean; description?: string }) => ({
+      name: 'redis-get',
+      description: overrides.description ?? 'Get a cache value',
+      hasDescriptionOverride: overrides.hasDescriptionOverride,
+      inputSchema: { type: 'object', properties: {} },
+    });
+
+    it('is stable across raw upstream description churn when there is no override', () => {
+      const first = buildToolSetHash([tool({ description: 'raw description v1' }) as any]);
+      const second = buildToolSetHash([tool({ description: 'raw description v2 entirely different' }) as any]);
+      expect(first).toBe(second);
+    });
+
+    it('changes when an overridden description changes', () => {
+      const first = buildToolSetHash([
+        tool({ hasDescriptionOverride: true, description: 'SHORT override' }) as any,
+      ]);
+      const second = buildToolSetHash([
+        tool({ hasDescriptionOverride: true, description: 'DIFFERENT override' }) as any,
+      ]);
+      expect(first).not.toBe(second);
+    });
+
+    it('changes when an override is added or removed', () => {
+      const withoutOverride = buildToolSetHash([tool({}) as any]);
+      const withOverride = buildToolSetHash([
+        tool({ hasDescriptionOverride: true, description: 'SHORT override' }) as any,
+      ]);
+      expect(withoutOverride).not.toBe(withOverride);
+    });
   });
 });

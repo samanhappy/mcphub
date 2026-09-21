@@ -606,7 +606,13 @@ export const syncToolEmbedding = async (serverName: string, toolName: string) =>
     logger.warn(`Server not found: ${serverName}`);
     return;
   }
-  const tool = serverInfo.tools.find((t) => t.name === toolName);
+  // The runtime cache names tools with the server prefix, but a direct API call
+  // (or a client that only knows the upstream name) may pass the bare name.
+  // Match both, mirroring the dual lookup used for the disabled-tool check, so a
+  // description update always reaches the right tool (see #1198).
+  const tool =
+    serverInfo.tools.find((t) => t.name === toolName) ??
+    serverInfo.tools.find((t) => normalizeToolNameForServer(serverInfo.name, t.name) === toolName);
   if (!tool) {
     logger.warn(`Tool not found: ${toolName} on server: ${serverName}`);
     return;
@@ -670,12 +676,43 @@ const buildToolWithDescriptionMetadata = (
   };
 };
 
+// Apply any per-tool description override before the tool text is embedded for
+// Smart Routing search. Deliberately narrower than buildToolWithDescriptionMetadata:
+// only `description` (plus the hasDescriptionOverride marker used by the
+// tool-set hash) is touched, so serverInfo.tools (built by
+// normalizeToolForCache/updateServerToolsCache) still never carries `enabled` --
+// preserving the existing invariant that execution gating reads the persisted
+// config directly, not this projection. Without this step, overrides only
+// affected client-facing output (tools/list, describe_tool, dashboard) while
+// search_tools embeddings kept ranking against the raw upstream description (#1198).
+const applyDescriptionOverridesForEmbedding = async (
+  serverName: string,
+  tools: Tool[],
+): Promise<Tool[]> => {
+  const serverConfig = await getServerDao().findById(serverName);
+  if (!serverConfig?.tools) {
+    return tools;
+  }
+  return tools.map((tool) => {
+    const bareToolName = normalizeToolNameForServer(serverName, tool.name);
+    const toolConfig = serverConfig.tools?.[tool.name] ?? serverConfig.tools?.[bareToolName];
+    return hasDescriptionOverride(toolConfig)
+      ? {
+          ...tool,
+          description: resolveDescriptionOverride(tool.description, toolConfig),
+          hasDescriptionOverride: true,
+        }
+      : tool;
+  });
+};
+
 const syncToolsAsVectorEmbeddings = async (
   serverName: string,
   tools: Tool[],
   options?: { reportProgress?: boolean },
 ): Promise<void> => {
-  const modelVisibleTools = filterModelVisibleTools(tools);
+  const toolsWithOverrides = await applyDescriptionOverridesForEmbedding(serverName, tools);
+  const modelVisibleTools = filterModelVisibleTools(toolsWithOverrides);
   if (modelVisibleTools.length === 0) {
     await removeServerToolEmbeddings(serverName);
     return;
