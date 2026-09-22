@@ -1069,16 +1069,24 @@ const stableHashSerialize = (value: unknown): string => {
   return JSON.stringify(value);
 };
 
-const buildToolSetHash = (tools: Tool[]): string => {
-  // Exclude description from the hash — some MCP servers (e.g. Wiz, Cortex) inject
-  // dynamic content into descriptions (permission checks, scope warnings) that changes
-  // on every connection, causing cache misses and unnecessary embedding regeneration.
-  // The tool's identity and schema (name + inputSchema) are stable structural properties
-  // and sufficient to detect real tool-set changes.
+export const buildToolSetHash = (tools: Tool[]): string => {
+  // Exclude raw upstream descriptions from the hash — some MCP servers (e.g.
+  // Wiz, Cortex) inject dynamic content into descriptions (permission checks,
+  // scope warnings) that changes on every connection, causing cache misses and
+  // unnecessary embedding regeneration. The tool's identity and schema
+  // (name + inputSchema) are stable structural properties and sufficient to
+  // detect real tool-set changes.
+  //
+  // An MCPHub description *override* is the opposite: stable user intent whose
+  // change MUST invalidate the cache so the new text gets re-embedded (#1198).
+  // Tools carrying the hasDescriptionOverride marker therefore contribute
+  // their (overridden) description to the hash; tools without an override
+  // contribute `null` and stay immune to upstream description churn.
   const normalized = tools
     .map((tool) => ({
       name: tool.name || '',
       inputSchema: tool.inputSchema || null,
+      description: tool.hasDescriptionOverride ? (tool.description ?? '') : null,
     }))
     .sort((a, b) => a.name.localeCompare(b.name));
 
@@ -1137,6 +1145,8 @@ export const saveToolsAsVectorEmbeddings = async (
   tools: Tool[],
   options: {
     reportProgress?: boolean;
+    // Partial updates must never remove tools omitted from this request.
+    partial?: boolean;
   } = {},
 ): Promise<void> => {
   tools = filterModelVisibleTools(tools);
@@ -1161,6 +1171,7 @@ export const saveToolsAsVectorEmbeddings = async (
 
   try {
     if (tools.length === 0) {
+      if (options.partial) return;
       await removeServerToolEmbeddings(serverName);
       return;
     }
@@ -1373,7 +1384,7 @@ export const saveToolsAsVectorEmbeddings = async (
     // Remove stale tool embeddings left over from previously-removed tools.
     // Without this, count(existing) > count(expected) and the skip check on the
     // next restart would always fail, forcing a full re-generation every time.
-    if (toolEmbeddings.length > 0) {
+    if (!options.partial && toolEmbeddings.length > 0) {
       const currentContentIds = toolEmbeddings.map(({ tool }) => `${serverName}:${tool.name}`);
       const staleCount = await vectorRepository.deleteStaleToolEmbeddings(
         serverName,
