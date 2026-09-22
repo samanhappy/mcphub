@@ -1,0 +1,25 @@
+src/services/mcpService.ts
+  s_5f8cb214aead3e::t_bc0f066dd1d7be 624,712,717
+src/services/vectorSearchService.ts
+  s_5f8cb214aead3e::t_4495b519916fb4 1089,1148-1149,1174,1387
+tests/services/mcpService-description-override-embedding.test.ts
+  s_5f8cb214aead3e::t_3eab766424fa68 258,266
+tests/services/vectorSearchService.test.ts
+  s_5f8cb214aead3e::t_7fb04e1895068f 312-317,331-364,667-669,673-680
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "343b86816d20bb0e914b939db4b87276bcf71821",
+  "prompts": {},
+  "sessions": {
+    "s_5f8cb214aead3e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0c953-c366-7de0-8c97-72cf586de01b",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
