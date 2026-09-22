@@ -2,6 +2,8 @@ import { apiGet, apiPost } from '../utils/fetchInterceptor';
 
 export interface SmartRoutingPerformanceData {
   enabled: boolean;
+  /** True while a reindex pass is running anywhere in this hub process. */
+  reindexing: boolean;
   config: {
     provider: string;
     model: string | null;
@@ -53,6 +55,9 @@ export interface SmartRoutingApiResponse<T> {
   success: boolean;
   data: T;
   error?: string;
+  // Dashboard error responses carry `message` (e.g. the 403 admin gate and the
+  // 409 concurrency guard), so surface it when `error` is absent.
+  message?: string;
 }
 
 export const fetchSmartRoutingPerformance = async (): Promise<SmartRoutingPerformanceData> => {
@@ -60,7 +65,7 @@ export const fetchSmartRoutingPerformance = async (): Promise<SmartRoutingPerfor
     '/smart-routing/performance',
   );
   if (!response.success) {
-    throw new Error(response.error || 'Failed to load smart routing performance');
+    throw new Error(response.error || response.message || 'Failed to load smart routing performance');
   }
   return response.data;
 };
@@ -70,7 +75,7 @@ export const reindexSmartRouting = async (): Promise<SmartRoutingReindexResult> 
     '/smart-routing/reindex',
   );
   if (!response.success) {
-    throw new Error(response.error || 'Failed to rebuild smart routing index');
+    throw new Error(response.error || response.message || 'Failed to rebuild smart routing index');
   }
   return response.data;
 };

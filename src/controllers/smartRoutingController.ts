@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { ApiResponse, Tool } from '../types/index.js';
 import { getSmartRoutingConfig, type SmartRoutingConfig } from '../utils/smartRouting.js';
 import { hasCredentialTemplate } from '../utils/credentialTemplate.js';
+import { requireAdmin } from '../utils/requireAdmin.js';
 import { logger } from '../utils/logger.js';
 import { getCredentialBindingDao, getUserDao } from '../dao/DaoFactory.js';
 import {
@@ -117,16 +118,30 @@ const queryVectorStoreStats = async (): Promise<{
 };
 
 /**
+ * Serializes reindex passes inside this process. Overlapping runs would
+ * interleave their DELETE and re-embed work — leaving partially indexed servers
+ * behind — and double-spend embedding quota, so a second caller is rejected
+ * with 409 instead of racing the run in flight.
+ */
+let reindexInFlight = false;
+
+/**
  * GET /api/smart-routing/performance
  *
  * Returns a read-only snapshot of smart routing health and the vector store:
  * resolved embedding configuration, database connection state, row counts,
  * per-model/per-server breakdown, and sync freshness.
+ *
+ * Admin-only: the dashboard renders this section behind the admin-only
+ * `settings:smart_routing` permission, and the snapshot exposes global
+ * operational state (database configuration, index coverage).
  */
 export const getSmartRoutingPerformance = async (
-  _req: Request,
+  req: Request,
   res: Response,
 ): Promise<void> => {
+  if (!(await requireAdmin(req, res))) return;
+
   try {
     const smartRoutingConfig = await getSmartRoutingConfig();
     const databaseHealth = getDatabaseHealth();
@@ -180,6 +195,7 @@ export const getSmartRoutingPerformance = async (
     const provider = smartRoutingConfig.embeddingProvider || 'openai';
     const data = {
       enabled: smartRoutingConfig.enabled,
+      reindexing: reindexInFlight,
       config: {
         provider,
         model: resolvePersistedEmbeddingModel(smartRoutingConfig),
@@ -307,11 +323,25 @@ const collectToolsForPrincipals = async (
  * Progress is streamed to authenticated clients through the existing
  * embedding-sync-progress SSE events emitted by saveToolsAsVectorEmbeddings.
  * Response is sent only when the whole pass finishes (synchronous execution).
+ *
+ * Admin-only, and serialized: it clears a global table and spends embedding
+ * quota, so a second concurrent call is answered with 409.
  */
 export const reindexSmartRouting = async (
-  _req: Request,
+  req: Request,
   res: Response,
 ): Promise<void> => {
+  if (!(await requireAdmin(req, res))) return;
+
+  if (reindexInFlight) {
+    res.status(409).json({
+      success: false,
+      message: 'A reindex pass is already running',
+    });
+    return;
+  }
+
+  reindexInFlight = true;
   try {
     const smartRoutingConfig = await getSmartRoutingConfig();
 
@@ -450,5 +480,7 @@ export const reindexSmartRouting = async (
   } catch (error) {
     logger.error('Failed to rebuild smart routing index:', error);
     res.status(500).json({ success: false, message: 'Failed to rebuild smart routing index' });
+  } finally {
+    reindexInFlight = false;
   }
 };

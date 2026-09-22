@@ -10,9 +10,14 @@ const mockGetServersInfo = jest.fn();
 const mockGetServerToolsForPrincipal = jest.fn();
 const mockListBindingUsernames = jest.fn();
 const mockFindUserByUsername = jest.fn();
+const mockRequireAdmin = jest.fn();
 
 jest.mock('../../src/utils/smartRouting.js', () => ({
   getSmartRoutingConfig: mockGetSmartRoutingConfig,
+}));
+
+jest.mock('../../src/utils/requireAdmin.js', () => ({
+  requireAdmin: mockRequireAdmin,
 }));
 
 jest.mock('../../src/db/connection.js', () => ({
@@ -84,7 +89,15 @@ beforeEach(() => {
   mockGetServerToolsForPrincipal.mockResolvedValue([]);
   mockListBindingUsernames.mockResolvedValue([]);
   mockFindUserByUsername.mockResolvedValue(null);
+  mockRequireAdmin.mockResolvedValue(true);
 });
+
+// Mirrors the real gate: writes 403 and reports denial to the caller.
+const denyAdmin = () =>
+  mockRequireAdmin.mockImplementation(async (_req: Request, res: Response) => {
+    res.status(403).json({ success: false, message: 'Admin privileges required' });
+    return false;
+  });
 
 describe('getSmartRoutingPerformance', () => {
   const setupVectorRows = () => {
@@ -206,9 +219,99 @@ describe('getSmartRoutingPerformance', () => {
     await getSmartRoutingPerformance({} as Request, res);
     expect(res.status).toHaveBeenCalledWith(500);
   });
+
+  it('rejects non-admin callers without touching the database', async () => {
+    denyAdmin();
+    const res = mockRes();
+    await getSmartRoutingPerformance({} as Request, res);
+
+    expect(res.status).toHaveBeenCalledWith(403);
+    expect(res.json).toHaveBeenCalledWith({
+      success: false,
+      message: 'Admin privileges required',
+    });
+    expect(mockDataSourceQuery).not.toHaveBeenCalled();
+    expect(mockGetServersInfo).not.toHaveBeenCalled();
+  });
 });
 
 describe('reindexSmartRouting', () => {
+  it('rejects non-admin callers without clearing the index', async () => {
+    denyAdmin();
+    const res = mockRes();
+    await reindexSmartRouting({} as Request, res);
+
+    expect(res.status).toHaveBeenCalledWith(403);
+    expect(mockDataSourceQuery).not.toHaveBeenCalled();
+    expect(mockSaveToolsAsVectorEmbeddings).not.toHaveBeenCalled();
+  });
+
+  it('rejects a second pass while one is already running', async () => {
+    mockDataSourceQuery.mockResolvedValue([]); // DELETE
+    mockGetServersInfo.mockResolvedValue([
+      { name: 'fetch', status: 'connected', enabled: true, tools: [{ name: 'a' }] },
+    ]);
+    let releaseWrite: () => void = () => {};
+    mockSaveToolsAsVectorEmbeddings.mockImplementation(
+      () =>
+        new Promise<void>((resolve) => {
+          releaseWrite = resolve;
+        }),
+    );
+
+    const firstRes = mockRes();
+    const firstPass = reindexSmartRouting({} as Request, firstRes);
+    // Let the first pass reach the embedding write before racing it.
+    await new Promise((resolve) => setImmediate(resolve));
+
+    const secondRes = mockRes();
+    await reindexSmartRouting({} as Request, secondRes);
+
+    expect(secondRes.status).toHaveBeenCalledWith(409);
+    expect(secondRes.json).toHaveBeenCalledWith({
+      success: false,
+      message: 'A reindex pass is already running',
+    });
+    expect(mockDataSourceQuery).toHaveBeenCalledTimes(1);
+    expect(mockSaveToolsAsVectorEmbeddings).toHaveBeenCalledTimes(1);
+
+    releaseWrite();
+    await firstPass;
+    expect(firstRes.json.mock.calls[0][0].success).toBe(true);
+  });
+
+  it('accepts a new pass once the previous one finished', async () => {
+    mockDataSourceQuery.mockResolvedValue([]); // DELETE
+    mockGetServersInfo.mockResolvedValue([
+      { name: 'fetch', status: 'connected', enabled: true, tools: [{ name: 'a' }] },
+    ]);
+
+    await reindexSmartRouting({} as Request, mockRes());
+    const res = mockRes();
+    await reindexSmartRouting({} as Request, res);
+
+    expect(res.status).not.toHaveBeenCalledWith(409);
+    expect(res.json.mock.calls[0][0].success).toBe(true);
+  });
+
+  it('releases the guard when a pass fails', async () => {
+    mockGetSmartRoutingConfig.mockRejectedValueOnce(new Error('boom'));
+    const failed = mockRes();
+    await reindexSmartRouting({} as Request, failed);
+    expect(failed.status).toHaveBeenCalledWith(500);
+
+    mockGetSmartRoutingConfig.mockResolvedValue({ ...baseConfig });
+    mockDataSourceQuery.mockResolvedValue([]);
+    mockGetServersInfo.mockResolvedValue([
+      { name: 'fetch', status: 'connected', enabled: true, tools: [{ name: 'a' }] },
+    ]);
+    const res = mockRes();
+    await reindexSmartRouting({} as Request, res);
+
+    expect(res.status).not.toHaveBeenCalledWith(409);
+    expect(res.json.mock.calls[0][0].success).toBe(true);
+  });
+
   it('rejects when smart routing is disabled', async () => {
     mockGetSmartRoutingConfig.mockResolvedValue({ ...baseConfig, enabled: false });
     const res = mockRes();

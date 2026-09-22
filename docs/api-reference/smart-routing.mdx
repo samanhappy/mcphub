@@ -32,7 +32,9 @@ Smart Routing is MCPHub's intelligent tool discovery system that uses vector sem
 
 The following admin endpoints live under the authenticated Dashboard API and
 require a valid Dashboard session (JWT) or a system-level all-access bearer key
-(`Authorization: Bearer mcphub_...`), like any other `/api/*` route.
+(`Authorization: Bearer mcphub_...`), like any other `/api/*` route. Both are
+additionally **admin-only**: an authenticated non-admin identity receives
+`403 Admin privileges required`.
 
 ### Index Status & Performance
 
@@ -57,6 +59,11 @@ globally, so they are reached on behalf of the users who bound credentials (the
 server owner first) and the union of the tools those users can see is indexed.
 A server nobody bound credentials for is reported as skipped with a reason in
 the response `results`.
+
+Only one pass runs at a time: a call made while another pass is in flight is
+rejected with `409 A reindex pass is already running`. The
+`GET /api/smart-routing/performance` payload exposes the same state as
+`reindexing`, so a dashboard can disable its button while a pass is running.
 
 ```bash
 curl -X POST http://localhost:3000/api/smart-routing/reindex \

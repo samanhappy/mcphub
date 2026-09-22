@@ -53,6 +53,11 @@ const SmartRoutingIndexPanel: React.FC<SmartRoutingIndexPanelProps> = ({ enabled
   const [progress, setProgress] = useState<ReindexProgress | null>(null);
   const [reindexSummary, setReindexSummary] = useState<SmartRoutingReindexResult | null>(null);
 
+  // The hub rejects overlapping passes with 409, so reflect a pass started
+  // elsewhere (another admin, another tab) instead of offering a button that
+  // can only fail.
+  const busy = reindexing || Boolean(perf?.reindexing);
+
   const runIdRef = useRef(0);
   const unsubscribeRef = useRef<(() => void) | null>(null);
 
@@ -207,7 +212,7 @@ const SmartRoutingIndexPanel: React.FC<SmartRoutingIndexPanelProps> = ({ enabled
           <button
             type="button"
             onClick={loadPerformance}
-            disabled={reindexing || loadingPerf}
+            disabled={busy || loadingPerf}
             className="hub-btn"
             style={{ padding: '6px 10px', fontSize: 12.5 }}
           >
@@ -217,16 +222,16 @@ const SmartRoutingIndexPanel: React.FC<SmartRoutingIndexPanelProps> = ({ enabled
           <button
             type="button"
             onClick={() => setConfirmOpen(true)}
-            disabled={reindexing || loadingPerf || !enabled}
+            disabled={busy || loadingPerf || !enabled}
             className="hub-btn primary"
             style={{ padding: '6px 10px', fontSize: 12.5 }}
           >
-            {reindexing ? (
+            {busy ? (
               <RefreshCw size={13} className="animate-spin" />
             ) : (
               <RefreshCw size={13} />
             )}
-            {reindexing
+            {busy
               ? t('settings.smartRoutingIndexReindexing')
               : t('settings.smartRoutingIndexReindex')}
           </button>

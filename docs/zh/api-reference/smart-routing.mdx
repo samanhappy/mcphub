@@ -30,7 +30,7 @@ description: "使用向量语义搜索进行智能工具发现。"
 
 ## 诊断与维护 API
 
-以下管理端点位于已认证的 Dashboard API 下，与其它 `/api/*` 路由一样，需要有效的 Dashboard 会话（JWT）或系统级 All-Access Bearer Key（`Authorization: Bearer mcphub_...`）。
+以下管理端点位于已认证的 Dashboard API 下，与其它 `/api/*` 路由一样，需要有效的 Dashboard 会话（JWT）或系统级 All-Access Bearer Key（`Authorization: Bearer mcphub_...`）。两个端点还额外**仅限管理员**：已认证但非管理员的身份会收到 `403 Admin privileges required`。
 
 ### 索引状态与性能
 
@@ -46,6 +46,8 @@ curl http://localhost:3000/api/smart-routing/performance \
 全量强制重建向量索引：先清空 `vector_embeddings`，再对全部已启用服务器重新生成嵌入。同步执行并返回汇总；重建进度会通过 SSE `embedding-sync-progress` 事件实时推送。
 
 需要**个人凭据**（`credentialTemplate`）的服务器不会参与全局连接，因此会以已绑定凭据的用户身份（服务器所有者优先）建立连接，并把这些用户可见工具的**并集**写入索引；没有任何用户绑定凭据的服务器会被跳过，并在响应的 `results` 中给出原因。
+
+同一时间只允许一次重建：若已有重建在执行，新的调用会收到 `409 A reindex pass is already running`。`GET /api/smart-routing/performance` 的返回中通过 `reindexing` 暴露同一状态，前端可据此在执行期间禁用按钮。
 
 ```bash
 curl -X POST http://localhost:3000/api/smart-routing/reindex \
