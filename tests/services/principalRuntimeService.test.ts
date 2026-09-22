@@ -125,3 +125,14 @@ test('rejects a config mutated during startup against the original snapshot', as
   expect(close).toHaveBeenCalledWith(child);
   pool.invalidate();
 });
+
+test('preserves upstream errors and evicts failed connection attempts', async () => {
+  const failure = Object.assign(new Error('upstream timed out'), { code: 'ETIMEDOUT' });
+  const connect = jest.fn().mockRejectedValueOnce(failure).mockResolvedValueOnce(info());
+  const pool = new PrincipalRuntimeService(connect, jest.fn());
+  await expect(pool.acquire('shared', alice)).rejects.toBe(failure);
+  const lease = await pool.acquire('shared', alice);
+  expect(connect).toHaveBeenCalledTimes(2);
+  lease.release();
+  pool.invalidate();
+});

@@ -4,7 +4,7 @@
  */
 
 const REDACTED_VALUE = '[REDACTED]';
-const REMOTE_ERROR_REDACTED_MESSAGE = '[Remote request failed; response details omitted]';
+const REMOTE_MESSAGE_LIMIT = 2048;
 
 const SENSITIVE_LOG_KEY_NAMES = new Set([
   'authorization',
@@ -74,12 +74,31 @@ const isSensitiveLogKey = (key: string): boolean => {
 export const sanitizeStringForLogging = (value: string): string => {
   let sanitized = value;
 
+  sanitized = sanitized.replace(/\b(?:set-cookie|cookie)\s*:\s*[^\r\n]+/gi, 'Cookie: [REDACTED]');
+  sanitized = sanitized.replace(
+    /\b(?:sk-[A-Za-z0-9_-]+|(?:ghp|gho|ghu|ghs|ghr)_[A-Za-z0-9]+|github_pat_[A-Za-z0-9_]+)\b/g,
+    REDACTED_VALUE,
+  );
+  sanitized = sanitized.replace(
+    /\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b/g,
+    REDACTED_VALUE,
+  );
+
   sanitized = sanitized.replace(AUTHORIZATION_CREDENTIAL_RE, `$1${REDACTED_VALUE}`);
   sanitized = sanitized.replace(BEARER_BASIC_CREDENTIAL_RE, `$1 ${REDACTED_VALUE}`);
   sanitized = sanitized.replace(SENSITIVE_QUERY_PARAM_RE, `$1${REDACTED_VALUE}`);
   sanitized = sanitized.replace(SENSITIVE_EQUALS_RE, `$1${REDACTED_VALUE}`);
   sanitized = sanitized.replace(SENSITIVE_JSON_DOUBLE_QUOTE_RE, `$1${REDACTED_VALUE}$3`);
   sanitized = sanitized.replace(SENSITIVE_JSON_SINGLE_QUOTE_RE, `$1${REDACTED_VALUE}$3`);
+
+  // URLs may embed credentials in userinfo, paths, or arbitrary query keys.
+  sanitized = sanitized.replace(/https?:\/\/[^\s<>"']+/gi, (url) => {
+    try {
+      return new URL(url).origin;
+    } catch {
+      return '[REDACTED_URL]';
+    }
+  });
 
   return sanitized;
 };
@@ -118,7 +137,7 @@ const serializeRemoteError = (error: Error): Record<string, unknown> => {
 
   return {
     name: error.name,
-    message: REMOTE_ERROR_REDACTED_MESSAGE,
+    message: sanitizeStringForLogging(error.message).slice(0, REMOTE_MESSAGE_LIMIT),
     code: candidate.code,
     status: typeof candidate.status === 'number' ? candidate.status : candidate.response?.status,
     requestId: typeof requestId === 'string' ? requestId : undefined,

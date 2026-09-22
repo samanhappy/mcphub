@@ -28,6 +28,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
   ],
 }));
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
+  if (request.params.arguments?.fail) throw new Error(`Unsupported input; echoed ${process.env.PERSONAL_KEY}`);
   await new Promise((resolve) => setTimeout(resolve, request.params.arguments?.delay || 0));
   return { content: [{ type: 'text', text: identity() }] };
 });
