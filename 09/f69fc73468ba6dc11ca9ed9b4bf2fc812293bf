@@ -1,0 +1,21 @@
+tests/integration/personal-credentials.test.ts
+  s_b72b5f2a9c6dec::t_6ce08e4c874014 21,54-55,159,591-714
+src/services/mcpService.ts
+  s_b72b5f2a9c6dec::t_c5c1a9ac7b36db 4680-4688,4690-4701
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "09f69fc73468ba6dc11ca9ed9b4bf2fc812293bf",
+  "prompts": {},
+  "sessions": {
+    "s_b72b5f2a9c6dec": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0c941-ef83-7650-bd5b-d87a64ffe007",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
