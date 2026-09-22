@@ -23,6 +23,7 @@ jest.mock('../../src/services/mcpService.js', () => ({
 }));
 
 import { getSystemConfigDao } from '../../src/dao/index.js';
+import { getRegisteredClient } from '../../src/services/oauthClientRegistration.js';
 import { MCPHubOAuthProvider, createOAuthProvider } from '../../src/services/mcpOAuthProvider.js';
 
 describe('MCPHubOAuthProvider redirect URI resolution', () => {
@@ -96,6 +97,58 @@ describe('MCPHubOAuthProvider redirect URI resolution', () => {
       'https://backup.example.com/oauth/callback',
       'https://base.example.com/oauth/callback',
     ]);
+  });
+});
+
+describe('MCPHubOAuthProvider client information', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    (getSystemConfigDao as jest.Mock).mockReturnValue({
+      get: jest.fn().mockResolvedValue({}),
+    });
+  });
+
+  it('preserves client_secret_post for persisted static credentials', async () => {
+    (getRegisteredClient as jest.Mock).mockReturnValue(undefined);
+
+    const provider = await MCPHubOAuthProvider.create('hospitable', {
+      url: 'https://mcp.hospitable.com/mcp',
+      oauth: {
+        clientId: 'client-id',
+        clientSecret: 'client-secret',
+      },
+    } as any);
+
+    expect(provider.clientInformation()).toEqual({
+      client_id: 'client-id',
+      client_secret: 'client-secret',
+      token_endpoint_auth_method: 'client_secret_post',
+    });
+  });
+
+  it('preserves an explicitly configured method for a cached client', async () => {
+    (getRegisteredClient as jest.Mock).mockReturnValue({
+      clientId: 'client-id',
+      clientSecret: 'client-secret',
+    });
+
+    const provider = await MCPHubOAuthProvider.create('example', {
+      url: 'https://mcp.example.com/mcp',
+      oauth: {
+        clientSecret: 'client-secret',
+        dynamicRegistration: {
+          metadata: {
+            token_endpoint_auth_method: 'client_secret_basic',
+          },
+        },
+      },
+    } as any);
+
+    expect(provider.clientInformation()).toEqual({
+      client_id: 'client-id',
+      client_secret: 'client-secret',
+      token_endpoint_auth_method: 'client_secret_basic',
+    });
   });
 });
 
