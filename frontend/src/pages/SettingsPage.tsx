@@ -14,6 +14,7 @@ import type { BearerKey, User } from '@/types';
 import { useServerContext } from '@/contexts/ServerContext';
 import { useGroupData } from '@/hooks/useGroupData';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
+import SmartRoutingIndexPanel from '@/components/SmartRoutingIndexPanel';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiGet, apiPost } from '@/utils/fetchInterceptor';
 import {
@@ -2699,6 +2700,10 @@ const SettingsPage: React.FC = () => {
                 >
                   {t('common.save')}
                 </button>
+              </div>
+
+              <div style={{ marginTop: 20 }}>
+                <SmartRoutingIndexPanel enabled={smartRoutingConfig.enabled} />
               </div>
             </div>
           )}

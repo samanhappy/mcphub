@@ -7,6 +7,12 @@ import type { StoredCredentialBinding } from '../types/index.js';
 export interface CredentialBindingDao {
   hasBindings(): Promise<boolean>;
   get(serverName: string, username: string): Promise<StoredCredentialBinding | null>;
+  /**
+   * List the usernames that hold a binding for a server. Used by maintenance
+   * paths (e.g. smart routing reindex) that must reach a personal-credential
+   * server on behalf of the users who can actually authenticate against it.
+   */
+  listUsernames(serverName: string): Promise<string[]>;
   save(binding: StoredCredentialBinding): Promise<void>;
   delete(filter: { serverName?: string; username?: string }): Promise<void>;
 }
@@ -45,6 +51,12 @@ export class CredentialBindingDaoImpl implements CredentialBindingDao {
       this.readAll().find((item) => item.serverName === serverName && item.username === username) ??
       null
     );
+  }
+
+  async listUsernames(serverName: string): Promise<string[]> {
+    return this.readAll()
+      .filter((item) => item.serverName === serverName)
+      .map((item) => item.username);
   }
 
   async save(binding: StoredCredentialBinding): Promise<void> {

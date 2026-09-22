@@ -212,6 +212,11 @@ jest.mock('../../src/controllers/contextCostController.js', () => ({
   getGroupCostsHandler: routeHandler,
 }));
 
+jest.mock('../../src/controllers/smartRoutingController.js', () => ({
+  getSmartRoutingPerformance: routeHandler,
+  reindexSmartRouting: routeHandler,
+}));
+
 jest.mock('../../src/middlewares/auth.js', () => ({
   auth: authMiddleware,
 }));

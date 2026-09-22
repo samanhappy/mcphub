@@ -528,7 +528,9 @@ curl -X POST http://localhost:3000/api/smart-routing/feedback \
     3. 使用更具体的查询
     4. 检查工具元数据质量
     ```bash
-    # 重新索引所有工具
+    # 重新索引所有工具（全量强制：先清空 vector_embeddings，再对全部已启用服务器重新生成嵌入；
+    # 需要个人凭据的服务器会以已绑定凭据的用户身份（所有者优先）重建，并索引其可见工具的并集；
+    # 同步执行，逐台进度通过 SSE embedding-sync-progress 事件推送）
     curl -X POST http://localhost:3000/api/smart-routing/reindex \
       -H "Authorization: Bearer YOUR_JWT_TOKEN"
     ```
@@ -547,7 +549,7 @@ curl -X POST http://localhost:3000/api/smart-routing/feedback \
     3. 减少批处理大小
     4. 监控系统资源
     ```bash
-    # 检查系统性能
+    # 查看向量库状态与性能指标（配置、数据库连接状态、行数、按模型/服务器统计、同步新鲜度、索引覆盖率）
     curl http://localhost:3000/api/smart-routing/performance \
       -H "Authorization: Bearer YOUR_JWT_TOKEN"
     ```
