@@ -1086,7 +1086,7 @@ export const buildToolSetHash = (tools: Tool[]): string => {
     .map((tool) => ({
       name: tool.name || '',
       inputSchema: tool.inputSchema || null,
-      description: tool.hasDescriptionOverride ? tool.description || null : null,
+      description: tool.hasDescriptionOverride ? (tool.description ?? '') : null,
     }))
     .sort((a, b) => a.name.localeCompare(b.name));
 
@@ -1145,6 +1145,8 @@ export const saveToolsAsVectorEmbeddings = async (
   tools: Tool[],
   options: {
     reportProgress?: boolean;
+    // Partial updates must never remove tools omitted from this request.
+    partial?: boolean;
   } = {},
 ): Promise<void> => {
   tools = filterModelVisibleTools(tools);
@@ -1169,6 +1171,7 @@ export const saveToolsAsVectorEmbeddings = async (
 
   try {
     if (tools.length === 0) {
+      if (options.partial) return;
       await removeServerToolEmbeddings(serverName);
       return;
     }
@@ -1381,7 +1384,7 @@ export const saveToolsAsVectorEmbeddings = async (
     // Remove stale tool embeddings left over from previously-removed tools.
     // Without this, count(existing) > count(expected) and the skip check on the
     // next restart would always fail, forcing a full re-generation every time.
-    if (toolEmbeddings.length > 0) {
+    if (!options.partial && toolEmbeddings.length > 0) {
       const currentContentIds = toolEmbeddings.map(({ tool }) => `${serverName}:${tool.name}`);
       const staleCount = await vectorRepository.deleteStaleToolEmbeddings(
         serverName,

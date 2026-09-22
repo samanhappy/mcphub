@@ -309,6 +309,12 @@ describe('vectorSearchService', () => {
       } as any,
     ]);
 
+    expect(mockVectorRepository.deleteStaleToolEmbeddings).toHaveBeenCalledWith(
+      'redis',
+      ['redis:redis-get'],
+      'text-embedding-3-small',
+    );
+
     expect(mockVectorRepository.saveEmbedding).toHaveBeenCalledWith(
       'server',
       'redis',
@@ -320,6 +326,40 @@ describe('vectorSearchService', () => {
       },
       'text-embedding-3-small',
     );
+  });
+
+  it('preserves sibling embeddings during a partial tool update', async () => {
+    mockVectorRepository.countByServerNameAndModel.mockResolvedValue(2);
+    mockVectorRepository.saveEmbedding.mockResolvedValue({});
+
+    await saveToolsAsVectorEmbeddings(
+      'redis',
+      [
+        {
+          name: 'redis-get',
+          description: 'Updated description',
+          inputSchema: { type: 'object' },
+        },
+      ],
+      { partial: true },
+    );
+
+    expect(mockVectorRepository.saveEmbedding).toHaveBeenCalledWith(
+      'tool',
+      'redis:redis-get',
+      expect.any(String),
+      expect.any(Array),
+      expect.any(Object),
+      'text-embedding-3-small',
+    );
+    expect(mockVectorRepository.deleteStaleToolEmbeddings).not.toHaveBeenCalled();
+    expect(mockVectorRepository.deleteByServerName).not.toHaveBeenCalled();
+  });
+
+  it('does not remove server embeddings for an empty partial update', async () => {
+    await saveToolsAsVectorEmbeddings('redis', [], { partial: true });
+    expect(mockVectorRepository.deleteByServerName).not.toHaveBeenCalled();
+    expect(mockVectorRepository.deleteStaleToolEmbeddings).not.toHaveBeenCalled();
   });
 
   it('uses configured dimensions, the Dashboard API key, and normalized provider output', async () => {
@@ -624,8 +664,18 @@ describe('vectorSearchService', () => {
 
     it('is stable across raw upstream description churn when there is no override', () => {
       const first = buildToolSetHash([tool({ description: 'raw description v1' }) as any]);
-      const second = buildToolSetHash([tool({ description: 'raw description v2 entirely different' }) as any]);
+      const second = buildToolSetHash([
+        tool({ description: 'raw description v2 entirely different' }) as any,
+      ]);
       expect(first).toBe(second);
+    });
+
+    it('distinguishes an empty override from no override', () => {
+      const withoutOverride = buildToolSetHash([tool({}) as any]);
+      const emptyOverride = buildToolSetHash([
+        tool({ hasDescriptionOverride: true, description: '' }) as any,
+      ]);
+      expect(emptyOverride).not.toBe(withoutOverride);
     });
 
     it('changes when an overridden description changes', () => {

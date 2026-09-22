@@ -255,6 +255,7 @@ describe('MCP Service — description override applied to embedding text (#1198)
       tools: { 'redis-get': { description: 'BARE KEY override' } },
     });
 
+    serverInfo.tools.push({ ...rawTool('redis-set'), name: 'redis::redis-set' });
     syncToolEmbedding('redis', 'redis-get');
     await flushPromises();
 
@@ -262,5 +263,6 @@ describe('MCP Service — description override applied to embedding text (#1198)
     const syncedTools = mockSaveToolsAsVectorEmbeddings.mock.calls[0][1] as Tool[];
     expect(syncedTools).toHaveLength(1);
     expect(syncedTools[0].description).toBe('BARE KEY override');
+    expect(mockSaveToolsAsVectorEmbeddings.mock.calls[0][2]).toEqual({ partial: true });
   });
 });

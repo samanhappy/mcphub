@@ -621,7 +621,7 @@ export const syncToolEmbedding = async (serverName: string, toolName: string) =>
     return;
   }
   // Save tool as vector embedding for search
-  syncToolsAsVectorEmbeddings(serverName, [tool]).catch((error) => {
+  syncToolsAsVectorEmbeddings(serverName, [tool], { partial: true }).catch((error) => {
     logger.warn(
       `[EMBED_SYNC_ERROR] Failed to sync embedding for tool "${toolName}" on server "${serverName}"`,
     );
@@ -709,11 +709,12 @@ const applyDescriptionOverridesForEmbedding = async (
 const syncToolsAsVectorEmbeddings = async (
   serverName: string,
   tools: Tool[],
-  options?: { reportProgress?: boolean },
+  options?: { reportProgress?: boolean; partial?: boolean },
 ): Promise<void> => {
   const toolsWithOverrides = await applyDescriptionOverridesForEmbedding(serverName, tools);
   const modelVisibleTools = filterModelVisibleTools(toolsWithOverrides);
   if (modelVisibleTools.length === 0) {
+    if (options?.partial) return;
     await removeServerToolEmbeddings(serverName);
     return;
   }
