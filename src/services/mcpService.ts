@@ -100,6 +100,11 @@ import { checkPackageUpdate } from '../utils/packageUpdate.js';
 const servers: { [sessionId: string]: Server } = {};
 
 import { setupClientKeepAlive } from './keepAliveService.js';
+import {
+  createUpstreamRequestError,
+  isUpstreamConnectionFailure,
+  UpstreamRequestError,
+} from '../utils/upstreamError.js';
 import { logger } from '../utils/logger.js';
 
 type FetchLike = (url: string | URL, init?: RequestInit) => Promise<Response>;
@@ -2323,9 +2328,9 @@ export const getServersInfo = async (
         return {
           ...info,
           error:
-            error instanceof CredentialBindingError
+            error instanceof CredentialBindingError || error instanceof UpstreamRequestError
               ? error.message
-              : 'Unable to resolve personal credentials',
+              : 'Unable to prepare upstream server',
         };
       }
     }),
@@ -4563,11 +4568,11 @@ const createPrincipalRuntime = async (
         return async (...args: unknown[]) => {
           try {
             return await value.apply(target, args);
-          } catch {
-            info.status = 'disconnected';
-            throw new CredentialBindingError(
-              `Personal credential request failed for '${name}'. Check your binding in Credentials.`,
-            );
+          } catch (error) {
+            if (isUpstreamConnectionFailure(error)) info.status = 'disconnected';
+            const failure = createUpstreamRequestError(name, String(property), error, resolvedConfig);
+            logger.error(failure.message);
+            throw failure;
           }
         };
       },
@@ -4618,11 +4623,11 @@ const createPrincipalRuntime = async (
     }
     info.status = 'connected';
     return info;
-  } catch {
+  } catch (error) {
     closeServerRuntime(info);
-    throw new CredentialBindingError(
-      `Unable to connect '${name}' with your personal credentials. Check your binding in Credentials.`,
-    );
+    const failure = createUpstreamRequestError(name, 'connect', error, resolvedConfig);
+    logger.error(failure.message);
+    throw failure;
   }
 };
 
@@ -4724,9 +4729,9 @@ const withPrincipalServers =
           } catch (error) {
             failures.set(
               info.name,
-              error instanceof CredentialBindingError
+              error instanceof CredentialBindingError || error instanceof UpstreamRequestError
                 ? error
-                : new CredentialBindingError('Unable to resolve personal credentials'),
+                : new Error(`Unable to prepare upstream '${info.name}'`),
             );
           }
         }),

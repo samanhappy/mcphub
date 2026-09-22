@@ -7,7 +7,44 @@ import {
 } from '../../src/utils/serialization.js';
 
 describe('serialization utilities', () => {
-  it('safeStringify redacts OAuth tokens and remote HTTP error details from logs', () => {
+  it('preserves bounded remote diagnostics without response bodies or URL credentials', () => {
+    const error = Object.assign(
+      new Error('connect ETIMEDOUT https://user:secret@example.com/mcp?custom=hidden'),
+      {
+        code: 'ETIMEDOUT',
+        config: {},
+      },
+    );
+    const summary = summarizeErrorForLogging(error);
+    expect(summary.message).toContain('ETIMEDOUT');
+    expect(summary.message).toContain('example.com');
+    expect(JSON.stringify(summary)).not.toContain('secret');
+    expect(JSON.stringify(summary)).not.toContain('hidden');
+    expect(summary.hasResponseBody).toBe(false);
+    const rejected = Object.assign(new Error('Model only supports text input'), {
+      status: 400,
+      response: { data: { message: 'body-secret' } },
+    });
+    expect(summarizeErrorForLogging(rejected).message).toBe('Model only supports text input');
+    expect(safeStringify(rejected)).not.toContain('body-secret');
+    expect(
+      String(
+        summarizeErrorForLogging(Object.assign(new Error('x'.repeat(5000)), { status: 500 }))
+          .message,
+      ).length,
+    ).toBeLessThanOrEqual(2048);
+  });
+
+  it('redacts unlabeled API keys and cookie headers from diagnostic strings', () => {
+    expect(sanitizeStringForLogging('Invalid API key: sk-example-secret')).not.toContain(
+      'sk-example-secret',
+    );
+    expect(sanitizeStringForLogging('Cookie: session=example-secret')).not.toContain(
+      'example-secret',
+    );
+  });
+
+  it('safeStringify preserves sanitized remote messages without response bodies', () => {
     const remoteError = Object.assign(new Error('access_token=super-secret'), {
       code: 'ERR_BAD_REQUEST',
       response: {
@@ -34,7 +71,7 @@ describe('serialization utilities', () => {
     expect(result).toContain('"accessToken":"[REDACTED]"');
     expect(result).toContain('"authorization":"[REDACTED]"');
     expect(result).toContain('"clientSecret":"[REDACTED]"');
-    expect(result).toContain('"message":"[Remote request failed; response details omitted]"');
+    expect(result).toContain('"message":"access_token=[REDACTED]"');
     expect(result).toContain('"status":401');
     expect(result).toContain('"requestId":"req-123"');
     expect(result).not.toContain('super-secret');
@@ -78,7 +115,7 @@ describe('serialization utilities', () => {
     expect(safePayload.self).toBe('[Circular Reference]');
   });
 
-  it('summarizeErrorForLogging and formatErrorForLogging omit remote response details', () => {
+  it('summarizeErrorForLogging and formatErrorForLogging keep sanitized messages', () => {
     const error = Object.assign(new Error('oauth response: {"access_token":"top-secret"}'), {
       code: 'ERR_BAD_REQUEST',
       response: {
@@ -97,23 +134,22 @@ describe('serialization utilities', () => {
 
     expect(summary).toEqual(
       expect.objectContaining({
-        message: '[Remote request failed; response details omitted]',
+        message: 'oauth response: {"access_token":"[REDACTED]"}',
         status: 401,
         code: 'ERR_BAD_REQUEST',
         requestId: 'req-456',
       }),
     );
     expect(JSON.stringify(summary)).not.toContain('top-secret');
-    expect(formatted).toContain('[Remote request failed; response details omitted]');
+    expect(formatted).toContain('oauth response:');
     expect(formatted).toContain('status=401');
     expect(formatted).not.toContain('top-secret');
   });
 
   it('formatErrorForLogging includes numeric transport error codes', () => {
-    const error = Object.assign(
-      new Error('Streamable HTTP error: Error POSTing to endpoint: '),
-      { code: 502 },
-    );
+    const error = Object.assign(new Error('Streamable HTTP error: Error POSTing to endpoint: '), {
+      code: 502,
+    });
 
     const summary = summarizeErrorForLogging(error);
     const formatted = formatErrorForLogging(error);
@@ -163,9 +199,7 @@ describe('serialization utilities', () => {
     expect(safeStringify({ error_description: `expired ${jwt}` })).toBe(
       '{"error_description":"[REDACTED]"}',
     );
-    expect(safeStringify({ codeVerifier: 'pkce-secret' })).toBe(
-      '{"codeVerifier":"[REDACTED]"}',
-    );
+    expect(safeStringify({ codeVerifier: 'pkce-secret' })).toBe('{"codeVerifier":"[REDACTED]"}');
   });
 
   it('createSafeJSON keeps shared (diamond) references instead of dropping them as circular', () => {

@@ -99,11 +99,7 @@ export class PrincipalRuntimeService {
           if (info) this.close(info);
           if (this.entries.get(key) === created) this.entries.delete(key);
           created.valid = false;
-          throw error instanceof CredentialBindingError
-            ? error
-            : new CredentialBindingError(
-                `Unable to connect '${serverName}' with your personal credentials. Check your binding in Credentials.`,
-              );
+          throw error;
         }
       })();
       entry = created;

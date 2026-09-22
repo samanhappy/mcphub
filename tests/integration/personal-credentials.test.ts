@@ -1,3 +1,4 @@
+import { logger } from '../../src/utils/logger.js';
 import {
   getGroups,
   getGroup,
@@ -712,3 +713,60 @@ test.each(['-', '__'])(
     }
   },
 );
+
+test('upstream tool errors preserve diagnosis, redact personal values, and keep the runtime reusable', async () => {
+  await bind(alice, 'opaque-personal-sentinel');
+  const client = await connect(alice);
+  const name = `shared${getNameSeparator()}identity`;
+  const before = parseIdentity(await client.callTool({ name }));
+  const failure = await client.callTool({ name, arguments: { fail: true } });
+  expect(failure.isError).toBe(true);
+  expect(JSON.stringify(failure)).toContain('Unsupported input');
+  expect(JSON.stringify(failure)).toContain('callTool');
+  expect(JSON.stringify(failure)).not.toContain('opaque-personal-sentinel');
+  expect(JSON.stringify(failure)).not.toContain('Check your binding');
+  const after = parseIdentity(await client.callTool({ name }));
+  expect(after.pid).toBe(before.pid);
+});
+
+test('HTTP handshake failures survive acquisition wrappers without credential blame or secret logs', async () => {
+  app.post('/unavailable-upstream', (_req, res) =>
+    res.status(503).send('Temporary upstream outage; opaque-http-sentinel'),
+  );
+  await getServerDao().create({
+    name: 'unavailableHttp',
+    type: 'streamable-http',
+    oauth: {},
+    url: `${baseUrl}/unavailable-upstream`,
+    owner: 'admin',
+    visibility: 'public',
+    credentialTemplate: [{ target: 'headers', name: 'X-Personal-Key' }],
+  });
+  await initializeClientsFromSettings(false);
+  await request(app)
+    .put('/api/credentials/unavailableHttp')
+    .set('x-auth-token', apiToken(alice))
+    .send({ values: { 'headers.X-Personal-Key': 'opaque-http-sentinel' } });
+  const log = jest.spyOn(logger, 'error');
+  try {
+    const failure = await UserContextService.getInstance().runWithContext(
+      () =>
+        handleCallToolRequest(
+          { params: { name: 'identity' } },
+          { server: 'unavailableHttp', group: 'unavailableHttp' },
+        ),
+      { username: alice, password: '', isAdmin: false },
+    );
+    expect(failure.isError).toBe(true);
+    expect(JSON.stringify(failure)).toContain('unavailableHttp');
+    expect(JSON.stringify(failure)).toContain('connect');
+    expect(JSON.stringify(failure)).toContain('503');
+    expect(JSON.stringify(failure)).not.toMatch(
+      /opaque-http-sentinel|Check your binding|Unable to resolve personal credentials/,
+    );
+    expect(log).toHaveBeenCalled();
+    expect(JSON.stringify(log.mock.calls)).not.toContain('opaque-http-sentinel');
+  } finally {
+    log.mockRestore();
+  }
+});

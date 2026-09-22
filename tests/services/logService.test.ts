@@ -47,7 +47,7 @@ describe('logService error serialization', () => {
 
     expect(lastLog).toBeDefined();
     expect(lastLog?.message).toContain('OAuth exchange failed:');
-    expect(lastLog?.message).toContain('[Remote request failed; response details omitted]');
+    expect(lastLog?.message).toContain('oauth access_token=[REDACTED]');
     expect(lastLog?.message).toContain('"status": 400');
     expect(lastLog?.message).toContain('"requestId": "req-remote"');
     expect(lastLog?.message).not.toContain('top-secret');
