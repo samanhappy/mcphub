@@ -49,6 +49,9 @@ import {
 import { getServerByName } from './mcpService.js';
 import { logger } from '../utils/logger.js';
 
+type OAuthClientInformationWithAuthMethod = OAuthClientInformation &
+  Pick<OAuthClientMetadata, 'token_endpoint_auth_method'>;
+
 /**
  * MCPHub OAuth Provider for server-side OAuth flows
  *
@@ -187,8 +190,13 @@ export class MCPHubOAuthProvider implements OAuthClientProvider {
   /**
    * Get previously registered client information
    */
-  clientInformation(): OAuthClientInformation | undefined {
+  clientInformation(): OAuthClientInformationWithAuthMethod | undefined {
     const clientInfo = getRegisteredClient(this.serverName);
+    // The SDK uses this hint when authorization-server metadata omits
+    // token_endpoint_auth_methods_supported. Keep it alongside credentials so
+    // refresh requests use the same authentication method that MCPHub selected
+    // for registration/static configuration.
+    const tokenEndpointAuthMethod = this.clientMetadata.token_endpoint_auth_method;
 
     if (!clientInfo) {
       // Try to use static client configuration from cached serverConfig
@@ -200,6 +208,7 @@ export class MCPHubOAuthProvider implements OAuthClientProvider {
         return {
           client_id: serverConfig.oauth.clientId,
           client_secret: serverConfig.oauth.clientSecret,
+          token_endpoint_auth_method: tokenEndpointAuthMethod,
         };
       }
       return undefined;
@@ -208,6 +217,7 @@ export class MCPHubOAuthProvider implements OAuthClientProvider {
     return {
       client_id: clientInfo.clientId,
       client_secret: clientInfo.clientSecret,
+      token_endpoint_auth_method: tokenEndpointAuthMethod,
     };
   }
 
