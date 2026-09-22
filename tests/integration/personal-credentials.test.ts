@@ -18,6 +18,7 @@ import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/
 import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 import {
   getServerDao,
+  getSystemConfigDao,
   getGroupDao,
   getBearerKeyDao,
   getBuiltinPromptDao,
@@ -50,6 +51,8 @@ import {
   handleGetPromptRequest,
   handleReadResourceRequest,
 } from '../../src/services/mcpService.js';
+import { executeToolViaOpenAPI } from '../../src/controllers/openApiController.js';
+import { PrincipalRuntimeService } from '../../src/services/principalRuntimeService.js';
 import { UserContextService } from '../../src/services/userContextService.js';
 import { createOAuthProvider } from '../../src/services/mcpOAuthProvider.js';
 import { JsonFileDaoFactory, setDaoFactory } from '../../src/dao/DaoFactory.js';
@@ -153,6 +156,7 @@ beforeAll(async () => {
   app = express();
   app.use(express.json());
   app.use('/api', authenticatedRouteRateLimiter, auth, userContextMiddleware);
+  app.post('/api/tools/:serverName/:toolName', executeToolViaOpenAPI);
   app.get('/api/credentials', listMyCredentials);
   app.put('/api/credentials/:name', updateMyCredential);
   app.delete('/api/credentials/:name', updateMyCredential);
@@ -584,3 +588,127 @@ test('group APIs validate visibility, sanitize nested metadata, and keep sharing
     .set('x-auth-token', apiToken(alice));
   expect(candidates.status).toBe(404);
 });
+
+test.each([false, true])(
+  'qualified dashboard calls prefer the explicit server (reverse order: %s)',
+  async (reverse) => {
+    const names = reverse ? ['demo-cred', 'demo'] : ['demo', 'demo-cred'];
+    for (const name of names) {
+      await getServerDao().create({
+        name,
+        type: 'stdio',
+        command: process.execPath,
+        args: [fixture],
+        owner: 'admin',
+        visibility: 'public',
+        startOnDemand: true,
+        ...(name === 'demo-cred'
+          ? {
+              credentialTemplate: [{ target: 'env' as const, name: 'PERSONAL_KEY' }],
+            }
+          : {}),
+      });
+    }
+    await initializeClientsFromSettings(true);
+    const acquire = jest.spyOn(PrincipalRuntimeService.prototype, 'acquire');
+    try {
+      const binding = await request(app)
+        .put('/api/credentials/demo-cred')
+        .set('x-auth-token', apiToken(alice))
+        .send({ values: { 'env.PERSONAL_KEY': 'prefix-sentinel' } });
+      expect(binding.status).toBe(200);
+      for (const toolName of [`demo-cred${getNameSeparator()}identity`, 'identity']) {
+        acquire.mockClear();
+        const response = await request(app)
+          .post(`/api/tools/demo-cred/${toolName}`)
+          .set('x-auth-token', apiToken(alice))
+          .send({});
+        expect(response.status).toBe(200);
+        expect(response.body.isError).not.toBe(true);
+        expect(parseIdentity(response.body).credential).toBe('prefix-sentinel');
+        expect(acquire.mock.calls.map(([name]) => name)).toEqual(['demo-cred']);
+      }
+      acquire.mockClear();
+      const invalid = await request(app)
+        .post('/api/tools/missing-server/demo-cred-identity')
+        .set('x-auth-token', apiToken(alice))
+        .send({});
+      expect(invalid.status).toBe(500);
+      expect(invalid.body.message).toContain('Tool not available');
+      expect(acquire).not.toHaveBeenCalled();
+      await request(app).delete('/api/credentials/demo-cred').set('x-auth-token', apiToken(alice));
+      const missing = await request(app)
+        .post('/api/tools/demo-cred/demo-cred-identity')
+        .set('x-auth-token', apiToken(alice))
+        .send({});
+      expect(missing.body.isError).toBe(true);
+      expect(JSON.stringify(missing.body)).toContain('Credentials');
+    } finally {
+      acquire.mockRestore();
+      for (const name of names) await getServerDao().delete(name);
+      await initializeClientsFromSettings(true);
+    }
+  },
+);
+
+test.each(['-', '__'])(
+  'group calls select the longest exposed alias with separator %s',
+  async (separator) => {
+    const previousSeparator = getNameSeparator();
+    await getSystemConfigDao().update({ nameSeparator: separator });
+    clearSettingsCache();
+    await bind(alice, 'alias-sentinel');
+    const name = 'x';
+    await getServerDao().create({
+      name,
+      type: 'stdio',
+      command: process.execPath,
+      args: [fixture],
+      owner: 'admin',
+      visibility: 'public',
+      startOnDemand: true,
+      credentialTemplate: [{ target: 'env', name: 'PERSONAL_KEY' }],
+    });
+    await request(app)
+      .put(`/api/credentials/${name}`)
+      .set('x-auth-token', apiToken(alice))
+      .send({ values: { 'env.PERSONAL_KEY': 'alias-sentinel' } });
+    const group = await getGroupDao().create({
+      name: 'prefix-alias-team',
+      owner: 'admin',
+      visibility: 'public',
+      servers: [
+        { name: 'shared', alias: 'demo', tools: 'all' },
+        { name, alias: `demo${separator}cred`, tools: 'all' },
+      ],
+    });
+    await initializeClientsFromSettings(true);
+    const acquire = jest.spyOn(PrincipalRuntimeService.prototype, 'acquire');
+    try {
+      for (const smart of [false, true]) {
+        acquire.mockClear();
+        const toolName = `demo${separator}cred${separator}identity`;
+        const result = await UserContextService.getInstance().runWithContext(
+          () =>
+            handleCallToolRequest(
+              {
+                params: smart ? { name: 'call_tool', arguments: { toolName } } : { name: toolName },
+              },
+              { group: group.name },
+            ),
+          { username: alice, password: '', isAdmin: false },
+        );
+        expect(result.isError).not.toBe(true);
+        expect(parseIdentity(result).credential).toBe('alias-sentinel');
+        expect(acquire.mock.calls.map(([serverName]) => serverName)).toEqual([name]);
+      }
+    } finally {
+      acquire.mockRestore();
+      await getGroupDao().delete(group.id);
+      await getServerDao().delete(name);
+      await getSystemConfigDao().update({ nameSeparator: previousSeparator });
+      clearSettingsCache();
+      await initializeClientsFromSettings(true);
+    }
+  },
+);

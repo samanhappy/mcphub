@@ -4677,14 +4677,28 @@ const withPrincipalServers =
     const requestedName = ['call_tool', 'describe_tool'].includes(request?.params?.name)
       ? request.params.arguments?.toolName
       : request?.params?.name;
-    const target = candidates.find((info) => {
-      const exposedName = getExposedServerName(info.name, serverConfigsByName.get(info.name));
-      return (
-        extra?.server === info.name ||
-        (typeof requestedName === 'string' &&
-          requestedName.startsWith(`${exposedName}${getNameSeparator()}`))
+    // An explicit REST target takes precedence over every qualified-name prefix.
+    // Otherwise prefer the longest exposed prefix, including group aliases.
+    let target = extra?.server
+      ? candidates.find((info) => info.name === extra.server)
+      : undefined;
+    if (extra?.server && !target && (operation === 'tool' || operation === 'prompt')) {
+      throw new ToolUnavailableError(
+        `Tool not available: ${requestedName}`,
+        'server-or-name-not-found',
       );
-    });
+    }
+    if (!extra?.server && typeof requestedName === 'string') {
+      let longestPrefix = 0;
+      for (const info of candidates) {
+        const exposedName = getExposedServerName(info.name, serverConfigsByName.get(info.name));
+        const prefix = `${exposedName}${getNameSeparator()}`;
+        if (prefix.length > longestPrefix && requestedName.startsWith(prefix)) {
+          target = info;
+          longestPrefix = prefix.length;
+        }
+      }
+    }
     // A call to a known target must not spawn or keep unrelated personal children alive.
     const selected =
       target && (operation === 'tool' || operation === 'prompt') ? [target] : candidates;
