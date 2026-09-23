@@ -121,8 +121,22 @@ if (!databaseUrl) {
   throw new Error('DB_URL is required for Better Auth PostgreSQL storage.');
 }
 
+// Keep the Better Auth pool aligned with the main TypeORM pool so a DB
+// incident cannot make Better Auth requests queue forever: pg defaults have no
+// connection timeout (wait indefinitely) and a max of 10 on top of TypeORM's
+// pool. Postgres-side safety valves (0 = PostgreSQL default / disabled) stop a
+// hung query or idle-in-transaction session from holding a connection
+// indefinitely (#1205).
 const pool = new Pool({
   connectionString: databaseUrl,
+  max: parseInt(process.env.DB_POOL_SIZE || '10', 10),
+  connectionTimeoutMillis: parseInt(process.env.DB_CONNECTION_TIMEOUT || '60000', 10),
+  idleTimeoutMillis: parseInt(process.env.DB_POOL_IDLE_TIMEOUT || '30000', 10),
+  statement_timeout: parseInt(process.env.DB_STATEMENT_TIMEOUT || '0', 10),
+  idle_in_transaction_session_timeout: parseInt(
+    process.env.DB_IDLE_IN_TRANSACTION_TIMEOUT || '0',
+    10,
+  ),
 });
 
 const database = new PostgresDialect({

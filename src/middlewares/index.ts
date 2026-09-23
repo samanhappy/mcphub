@@ -5,6 +5,7 @@ import { i18nMiddleware } from './i18n.js';
 import config from '../config/index.js';
 import { getSystemConfigDao } from '../dao/index.js';
 import { getBetterAuthRuntimeConfig } from '../services/betterAuthConfig.js';
+import { getCachedSystemConfig } from '../utils/systemConfigCache.js';
 import { resolveJsonBodyLimit } from '../utils/bearerAuth.js';
 import { logger } from '../utils/logger.js';
 
@@ -33,7 +34,12 @@ export const initMiddlewares = (app: express.Application): void => {
     // TODO exclude sse responses by mcp endpoint
     try {
       const basePath = config.basePath;
-      const systemConfig = await getSystemConfigDao().get();
+      // Read system config from the in-memory cache (hydrated at startup and
+      // refreshed on dashboard saves) instead of querying the database on
+      // every request. This keeps the hot path usable when the DB pool is
+      // degraded or exhausted (#1205); fall back to the DAO only when the
+      // cache is empty.
+      const systemConfig = getCachedSystemConfig() ?? (await getSystemConfigDao().get());
       const betterAuthConfig = await getBetterAuthRuntimeConfig(systemConfig);
       const betterAuthPath = `${basePath}${betterAuthConfig.basePath}`;
 
@@ -63,7 +69,11 @@ export const initMiddlewares = (app: express.Application): void => {
   // Protect API routes with authentication middleware, but exclude auth endpoints
   app.use(`${config.basePath}/api`, async (req, res, next) => {
     try {
-      const betterAuthConfig = await getBetterAuthRuntimeConfig();
+      // Prefer the cached system config (see above); falls back to a DB read
+      // only when the cache is empty.
+      const betterAuthConfig = await getBetterAuthRuntimeConfig(
+        getCachedSystemConfig() ?? undefined,
+      );
       const betterAuthApiPath = betterAuthConfig.basePath.startsWith('/api')
         ? betterAuthConfig.basePath.replace(/^\/api/, '') || '/'
         : null;

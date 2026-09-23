@@ -16,13 +16,26 @@ export const assertUniqueGroupNames = async (dataSource: DataSource): Promise<vo
   }
 };
 
-export const initializeWithGroupNameCheck = async (dataSource: DataSource): Promise<void> => {
+export interface InitializeGroupNameCheckOptions {
+  /**
+   * Skip `dataSource.synchronize()` (DDL) after initialization. Used on the
+   * reconnection path: re-running schema DDL in a transaction while serving
+   * traffic risks blocking on locks and leaving a connection stuck in
+   * `idle in transaction`, which can wedge pool teardown (see #1205).
+   */
+  skipSynchronize?: boolean;
+}
+
+export const initializeWithGroupNameCheck = async (
+  dataSource: DataSource,
+  options?: InitializeGroupNameCheckOptions,
+): Promise<void> => {
   const synchronize = dataSource.options.synchronize;
   dataSource.setOptions({ synchronize: false });
   try {
     await dataSource.initialize();
     await assertUniqueGroupNames(dataSource);
-    if (synchronize) await dataSource.synchronize();
+    if (synchronize && !options?.skipSynchronize) await dataSource.synchronize();
   } catch (error) {
     if (dataSource.isInitialized) await dataSource.destroy();
     throw error;

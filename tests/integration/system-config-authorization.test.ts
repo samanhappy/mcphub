@@ -15,6 +15,13 @@ jest.mock('../../src/dao/index.js', () => ({
   })),
 }));
 
+// Force the auth middleware to fall back to the DAO (per-request read) in this
+// test so routing decisions come from the mock config, mirroring the previous
+// behavior. The cached-config fast path is covered by the unit tests.
+jest.mock('../../src/utils/systemConfigCache.js', () => ({
+  getCachedSystemConfig: jest.fn().mockReturnValue(null),
+}));
+
 jest.mock('../../src/dao/DaoFactory.js', () => ({
   getBearerKeyDao: jest.fn(),
   getGroupDao: jest.fn(),

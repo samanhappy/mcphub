@@ -7,6 +7,7 @@ import { isOAuthServerEnabled } from '../services/oauthServerService.js';
 import { getBearerKeyDao, getSystemConfigDao } from '../dao/index.js';
 import { BearerKey, SystemConfig } from '../types/index.js';
 import { getBetterAuthRuntimeConfig } from '../services/betterAuthConfig.js';
+import { getCachedSystemConfig } from '../utils/systemConfigCache.js';
 import { safeCompare } from '../utils/safeCompare.js';
 import { getBearerTokenFromHeaders } from '../utils/bearerAuth.js';
 import { logger } from '../utils/logger.js';
@@ -112,8 +113,11 @@ export const auth = async (req: Request, res: Response, next: NextFunction): Pro
     return;
   }
 
-  // Check if authentication is disabled globally
-  const systemConfig = await getSystemConfigDao().get();
+  // Read system config from the in-memory cache (hydrated at startup and
+  // refreshed on dashboard saves) instead of querying the database on every
+  // request, so the API surface stays usable while the DB pool is degraded
+  // (#1205). Falls back to the DAO only when the cache is empty.
+  const systemConfig = getCachedSystemConfig() ?? (await getSystemConfigDao().get());
   const routingConfig = systemConfig?.routing || {
     enableGlobalRoute: true,
     enableGroupNameRoute: true,
