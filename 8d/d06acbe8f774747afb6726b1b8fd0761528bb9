@@ -1,0 +1,38 @@
+docs/configuration/environment-variables.mdx
+  h_18676a549cd52a 102,107-109,112
+src/betterAuth.ts
+  h_18676a549cd52a 124-129,132-139
+src/db/connection.test.ts
+  h_18676a549cd52a 157-203
+src/db/connection.ts
+  h_18676a549cd52a 10,23-35,39,122-126,464-471,545-553,558-561,573-577,591-595
+src/db/groupSchema.test.ts
+  h_18676a549cd52a 1-44
+src/db/groupSchema.ts
+  h_18676a549cd52a 19-32,38
+src/middlewares/auth.test.ts
+  h_18676a549cd52a 16-17,24,28-31,69-70,473-486
+src/middlewares/auth.ts
+  h_18676a549cd52a 10,116-120
+src/middlewares/index.test.ts
+  h_18676a549cd52a 32-34,37,41-44,75-76,130-156
+src/middlewares/index.ts
+  h_18676a549cd52a 8,37-42,72-76
+src/utils/withTimeout.test.ts
+  h_18676a549cd52a 1-30
+src/utils/withTimeout.ts
+  h_18676a549cd52a 1-34
+tests/integration/system-config-authorization.test.ts
+  h_18676a549cd52a 18-24
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "8dd06acbe8f774747afb6726b1b8fd0761528bb9",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
