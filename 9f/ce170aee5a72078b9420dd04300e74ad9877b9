@@ -1,0 +1,57 @@
+src/db/repositories/BuiltinPromptRepository.ts
+  s_6044c813cbd222::t_4ccc98db248e75 9-10
+src/middlewares/auth.ts
+  s_6044c813cbd222::t_4ccc98db248e75 115-116
+src/db/repositories/BuiltinResourceRepository.ts
+  s_6044c813cbd222::t_4ccc98db248e75 9-10
+src/db/repositories/OAuthTokenRepository.ts
+  s_6044c813cbd222::t_4ccc98db248e75 19-21
+src/db/repositories/GroupRepository.ts
+  s_6044c813cbd222::t_4ccc98db248e75 9-10
+src/db/repositories/ActivityRepository.ts
+  s_6044c813cbd222::t_4ccc98db248e75 10-11
+src/middlewares/index.ts
+  s_6044c813cbd222::t_4ccc98db248e75 72-73
+src/db/repositories/BearerKeyRepository.ts
+  s_6044c813cbd222::t_4ccc98db248e75 19-21
+src/db/repositories/UserConfigRepository.ts
+  s_6044c813cbd222::t_4ccc98db248e75 9-10
+src/db/repositories/BaseRepository.ts
+  s_6044c813cbd222::t_4ccc98db248e75 19-21,24-27
+src/db/repositories/OAuthClientRepository.ts
+  s_6044c813cbd222::t_4ccc98db248e75 9-10
+tests/integration/system-config-authorization.test.ts
+  s_6044c813cbd222::t_8a0a0cc6b88e10 5,20,85,96-105
+  s_6044c813cbd222::t_1afbf2098bb827 106-107
+src/db/connection.test.ts
+  s_6044c813cbd222::t_8a0a0cc6b88e10 159-163,173-180
+  s_6044c813cbd222::t_4ccc98db248e75 151-153,164-172,198-200
+  s_6044c813cbd222::t_726651d0cc7e07 154-158
+src/db/repositories/reconnection.test.ts
+  s_6044c813cbd222::t_4ccc98db248e75 20-96,98-105
+  s_6044c813cbd222::t_69166bddbc9b5e 1-19,97,106-117
+src/middlewares/auth.test.ts
+  s_6044c813cbd222::t_4ccc98db248e75 475,484
+src/db/repositories/UserRepository.ts
+  s_6044c813cbd222::t_4ccc98db248e75 19-21
+src/db/connection.ts
+  s_6044c813cbd222::t_4ccc98db248e75 32,537,553-556,595-596
+src/db/repositories/ServerRepository.ts
+  s_6044c813cbd222::t_4ccc98db248e75 9-10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "9fce170aee5a72078b9420dd04300e74ad9877b9",
+  "prompts": {},
+  "sessions": {
+    "s_6044c813cbd222": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0cc33-8def-7b32-a061-c7bff4a1ce94",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
