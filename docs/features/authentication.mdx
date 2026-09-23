@@ -44,6 +44,8 @@ curl http://localhost:3000/api/servers \
 
 The JWT is signed with `JWT_SECRET`. If `JWT_SECRET` is not set, MCPHub generates an ephemeral random secret at startup; this is fine for development but means every restart invalidates outstanding tokens. **Set `JWT_SECRET` explicitly in production.**
 
+Issued JWTs expire after a fixed 24 hours (`TOKEN_EXPIRY` in `src/controllers/authController.ts`); the lifetime is not configurable via environment variables.
+
 The first admin account is created at startup by `initializeDefaultUser()`. If no users exist, MCPHub creates `admin` and uses `ADMIN_PASSWORD` if set. When running through `pnpm dev`, it uses `admin123`; other starts generate a random password and print it to the server logs.
 
 ## Bearer keys
