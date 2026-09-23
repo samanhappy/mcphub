@@ -252,7 +252,6 @@ services:
       - NODE_ENV=production
       - PORT=3000
       - JWT_SECRET=${JWT_SECRET}
-      - JWT_EXPIRES_IN=${JWT_EXPIRES_IN:-24h}
       - DB_URL=postgresql://mcphub:${POSTGRES_PASSWORD}@postgres:5432/mcphub
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - REDIS_URL=redis://redis:6379
@@ -331,7 +330,6 @@ networks:
 # 应用程序
 NODE_ENV=production
 JWT_SECRET=your-super-secret-jwt-key-change-this
-JWT_EXPIRES_IN=24h
 
 # 数据库
 POSTGRES_PASSWORD=your-secure-database-password

@@ -265,7 +265,6 @@ services:
       - PORT=3000
       - TRUST_PROXY=1
       - JWT_SECRET=${JWT_SECRET}
-      - JWT_EXPIRES_IN=${JWT_EXPIRES_IN:-24h}
       - DB_URL=postgresql://mcphub:${POSTGRES_PASSWORD}@postgres:5432/mcphub
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - REDIS_URL=redis://redis:6379
@@ -345,7 +344,6 @@ Create a `.env` file for Docker Compose:
 NODE_ENV=production
 TRUST_PROXY=1
 JWT_SECRET=your-super-secret-jwt-key-change-this
-JWT_EXPIRES_IN=24h
 
 # Database
 POSTGRES_PASSWORD=your-secure-database-password
