@@ -98,7 +98,7 @@ describe('system configuration authorization', () => {
     mockGetCachedSystemConfig.mockReturnValue(staleConfig);
     mockGetSystemConfig.mockResolvedValueOnce(staleConfig);
     const app = express();
-    app.get('/api/protected', auth, (_req, res) => res.sendStatus(200));
+    app.get('/api/protected', authenticatedRouteRateLimiter, auth, (_req, res) => res.sendStatus(200));
 
     expect((await request(app).get('/api/protected')).status).toBe(200);
     // The database now requires authentication, while this instance's cache is stale.
@@ -129,10 +129,10 @@ describe('system configuration authorization', () => {
   it('rejects a non-admin JWT on activity and system log routes', async () => {
     const app = express();
     app.use(express.json());
-    app.get('/api/activities', auth, getActivities);
-    app.get('/api/logs', auth, getAllLogs);
-    app.delete('/api/logs', auth, clearLogs);
-    app.get('/api/logs/stream', auth, streamLogs);
+    app.get('/api/activities', authenticatedRouteRateLimiter, auth, getActivities);
+    app.get('/api/logs', authenticatedRouteRateLimiter, auth, getAllLogs);
+    app.delete('/api/logs', authenticatedRouteRateLimiter, auth, clearLogs);
+    app.get('/api/logs/stream', authenticatedRouteRateLimiter, auth, streamLogs);
 
     const token = createUserToken('regular-user', false);
     const responses = [
