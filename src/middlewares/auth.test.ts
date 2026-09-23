@@ -472,7 +472,7 @@ describe('auth middleware', () => {
   });
 
   describe('system config sourcing', () => {
-    it('reads routing decisions from the cached system config without a database read', async () => {
+    it('reads current routing decisions even when a cached config exists', async () => {
       mockGetCachedSystemConfig.mockReturnValue(currentSystemConfig);
 
       const app = createApp();
@@ -481,7 +481,7 @@ describe('auth middleware', () => {
         .set('Authorization', 'Bearer test-key');
 
       expect(response.status).toBe(200);
-      expect(mockGetSystemConfig).not.toHaveBeenCalled();
+      expect(mockGetSystemConfig).toHaveBeenCalled();
     });
   });
 });

@@ -148,8 +148,36 @@ describe('database connection recovery', () => {
       const recovery = reconnectDatabase();
       await jest.runAllTimersAsync();
 
-      await expect(recovery).resolves.toBe(dataSource);
-      expect(dataSource.initialize).toHaveBeenCalledTimes(1);
+      const recovered = await recovery;
+      expect(recovered).not.toBe(dataSource);
+      expect(recovered.isInitialized).toBe(true);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('keeps the recovered connection usable when the old destroy finishes late', async () => {
+    jest.useFakeTimers();
+    const oldSource = await updateDataSourceConfig();
+    oldSource.isInitialized = true;
+    let finishDestroy!: () => void;
+    oldSource.destroy.mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          finishDestroy = () => {
+            oldSource.isInitialized = false;
+            resolve();
+          };
+        }),
+    );
+    try {
+      const recovery = reconnectDatabase();
+      await jest.runAllTimersAsync();
+      const recovered = await recovery;
+      finishDestroy();
+      await Promise.resolve();
+      expect(recovered.isInitialized).toBe(true);
+      expect(await initializeDatabase()).toBe(recovered);
     } finally {
       jest.useRealTimers();
     }
@@ -167,9 +195,10 @@ describe('database connection recovery', () => {
       const recovery = reconnectDatabase();
       await jest.runAllTimersAsync();
 
-      await expect(recovery).resolves.toBe(dataSource);
+      const recovered = await recovery;
+      expect(recovered).not.toBe(dataSource);
+      expect(recovered.isInitialized).toBe(true);
       expect(dataSource.destroy).toHaveBeenCalledTimes(1);
-      expect(dataSource.initialize).toHaveBeenCalledTimes(1);
     } finally {
       jest.useRealTimers();
     }

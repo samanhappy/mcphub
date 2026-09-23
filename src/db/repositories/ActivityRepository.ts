@@ -7,10 +7,8 @@ import { IActivityFilter, IActivityStats } from '../../types/index.js';
  * Repository for Activity entity
  */
 export class ActivityRepository {
-  private repository: Repository<Activity>;
-
-  constructor() {
-    this.repository = getAppDataSource().getRepository(Activity);
+  private get repository(): Repository<Activity> {
+    return getAppDataSource().getRepository(Activity);
   }
 
   /**

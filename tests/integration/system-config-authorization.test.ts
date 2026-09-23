@@ -2,6 +2,7 @@ import express from 'express';
 import request from 'supertest';
 
 const mockGetSystemConfig = jest.fn();
+const mockGetCachedSystemConfig = jest.fn();
 
 jest.mock('../../src/dao/index.js', () => ({
   getSystemConfigDao: jest.fn(() => ({
@@ -15,11 +16,8 @@ jest.mock('../../src/dao/index.js', () => ({
   })),
 }));
 
-// Force the auth middleware to fall back to the DAO (per-request read) in this
-// test so routing decisions come from the mock config, mirroring the previous
-// behavior. The cached-config fast path is covered by the unit tests.
 jest.mock('../../src/utils/systemConfigCache.js', () => ({
-  getCachedSystemConfig: jest.fn().mockReturnValue(null),
+  getCachedSystemConfig: mockGetCachedSystemConfig,
 }));
 
 jest.mock('../../src/dao/DaoFactory.js', () => ({
@@ -84,6 +82,7 @@ import { createUserToken } from '../utils/testHelpers.js';
 
 describe('system configuration authorization', () => {
   beforeEach(() => {
+    mockGetCachedSystemConfig.mockReturnValue(null);
     mockGetSystemConfig.mockResolvedValue({
       routing: {
         enableGlobalRoute: true,
@@ -92,6 +91,18 @@ describe('system configuration authorization', () => {
         skipAuth: false,
       },
     });
+  });
+
+  it('rejects anonymous requests after another instance disables skipAuth', async () => {
+    const staleConfig = { routing: { skipAuth: true, enableBearerAuth: false } };
+    mockGetCachedSystemConfig.mockReturnValue(staleConfig);
+    mockGetSystemConfig.mockResolvedValueOnce(staleConfig);
+    const app = express();
+    app.get('/api/protected', auth, (_req, res) => res.sendStatus(200));
+
+    expect((await request(app).get('/api/protected')).status).toBe(200);
+    // The database now requires authentication, while this instance's cache is stale.
+    expect((await request(app).get('/api/protected')).status).toBe(401);
   });
 
   it('rejects a non-admin JWT before updating global configuration', async () => {

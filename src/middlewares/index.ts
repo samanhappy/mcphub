@@ -69,11 +69,8 @@ export const initMiddlewares = (app: express.Application): void => {
   // Protect API routes with authentication middleware, but exclude auth endpoints
   app.use(`${config.basePath}/api`, async (req, res, next) => {
     try {
-      // Prefer the cached system config (see above); falls back to a DB read
-      // only when the cache is empty.
-      const betterAuthConfig = await getBetterAuthRuntimeConfig(
-        getCachedSystemConfig() ?? undefined,
-      );
+      // Route exemptions must reflect the current shared authentication policy.
+      const betterAuthConfig = await getBetterAuthRuntimeConfig();
       const betterAuthApiPath = betterAuthConfig.basePath.startsWith('/api')
         ? betterAuthConfig.basePath.replace(/^\/api/, '') || '/'
         : null;

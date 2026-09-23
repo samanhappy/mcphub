@@ -29,10 +29,7 @@ const CONNECTION_CONFIG = {
   // per-connection via the startup packet so a hung query or a session left in
   // `idle in transaction` cannot hold a pooled connection indefinitely.
   statementTimeout: parseInt(process.env.DB_STATEMENT_TIMEOUT || '0', 10),
-  idleInTransactionSessionTimeout: parseInt(
-    process.env.DB_IDLE_IN_TRANSACTION_TIMEOUT || '0',
-    10,
-  ),
+  idleInTransactionSessionTimeout: parseInt(process.env.DB_IDLE_IN_TRANSACTION_TIMEOUT || '0', 10),
 
   // Health check settings
   healthCheckIntervalMs: parseInt(process.env.DB_HEALTH_CHECK_INTERVAL || '30000', 10), // 30 seconds
@@ -537,7 +534,7 @@ const attemptReconnection = (): Promise<DataSource> => {
         return await initializeDatabase();
       }
 
-      const dataSource = appDataSource;
+      let dataSource = appDataSource;
 
       if (dataSource.isInitialized) {
         try {
@@ -553,13 +550,10 @@ const attemptReconnection = (): Promise<DataSource> => {
           );
         } catch (closeError: any) {
           logger.warn('[DB Reconnect] Error closing connection:', closeError.message);
-          // TypeORM only clears this flag after driver.disconnect() succeeds.
-          // If the driver pool is already gone, destroy() throws first and leaves
-          // the DataSource incorrectly marked as initialized. The same applies
-          // when destroy() times out: force the flag so initialize() below
-          // builds a brand-new pool (PostgresDriver.connect() always creates
-          // one) instead of reusing the wedged one.
-          Object.assign(dataSource, { isInitialized: false });
+          // The old destroy may still finish later and mutate its driver and
+          // isInitialized flag. Never initialize that same instance again.
+          dataSource = new DataSource({ ...dataSource.options });
+          appDataSource = dataSource;
         }
       }
 
@@ -598,7 +592,8 @@ const attemptReconnection = (): Promise<DataSource> => {
                 '[DB Reconnect] Error cleaning up partially initialized connection:',
                 destroyError.message,
               );
-              Object.assign(dataSource, { isInitialized: false });
+              dataSource = new DataSource({ ...dataSource.options });
+              appDataSource = dataSource;
             }
           }
 

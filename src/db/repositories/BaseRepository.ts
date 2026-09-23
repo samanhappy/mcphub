@@ -16,11 +16,15 @@ const DEFAULT_RETRY_OPTIONS: RetryOptions = {
  * for handling transient database connection failures.
  */
 export class BaseRepository<T extends ObjectLiteral> {
-  protected readonly repository: Repository<T>;
+  protected get repository(): Repository<T> {
+    return getAppDataSource().getRepository(this.entityClass);
+  }
   protected readonly retryOptions: RetryOptions;
 
-  constructor(entityClass: EntityTarget<T>, retryOptions?: RetryOptions) {
-    this.repository = getAppDataSource().getRepository(entityClass);
+  constructor(
+    private readonly entityClass: EntityTarget<T>,
+    retryOptions?: RetryOptions,
+  ) {
     this.retryOptions = { ...DEFAULT_RETRY_OPTIONS, ...retryOptions };
   }
 

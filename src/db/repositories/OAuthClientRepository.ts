@@ -6,10 +6,8 @@ import { getAppDataSource } from '../connection.js';
  * Repository for OAuthClient entity
  */
 export class OAuthClientRepository {
-  private repository: Repository<OAuthClient>;
-
-  constructor() {
-    this.repository = getAppDataSource().getRepository(OAuthClient);
+  private get repository(): Repository<OAuthClient> {
+    return getAppDataSource().getRepository(OAuthClient);
   }
 
   /**

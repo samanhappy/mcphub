@@ -16,11 +16,12 @@ const DEFAULT_RETRY_OPTIONS: RetryOptions = {
  * Repository for BearerKey entity with automatic retry logic
  */
 export class BearerKeyRepository {
-  private repository: Repository<BearerKey>;
+  private get repository(): Repository<BearerKey> {
+    return getAppDataSource().getRepository(BearerKey);
+  }
   private retryOptions: RetryOptions;
 
   constructor(retryOptions?: RetryOptions) {
-    this.repository = getAppDataSource().getRepository(BearerKey);
     this.retryOptions = { ...DEFAULT_RETRY_OPTIONS, ...retryOptions };
   }
 

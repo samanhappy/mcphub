@@ -16,11 +16,12 @@ const DEFAULT_RETRY_OPTIONS: RetryOptions = {
  * Repository for User entity with automatic retry logic
  */
 export class UserRepository {
-  private repository: Repository<User>;
+  private get repository(): Repository<User> {
+    return getAppDataSource().getRepository(User);
+  }
   private retryOptions: RetryOptions;
 
   constructor(retryOptions?: RetryOptions) {
-    this.repository = getAppDataSource().getRepository(User);
     this.retryOptions = { ...DEFAULT_RETRY_OPTIONS, ...retryOptions };
   }
 

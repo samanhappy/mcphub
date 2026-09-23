@@ -6,10 +6,8 @@ import { getAppDataSource } from '../connection.js';
  * Repository for BuiltinResource entity
  */
 export class BuiltinResourceRepository {
-  private repository: Repository<BuiltinResource>;
-
-  constructor() {
-    this.repository = getAppDataSource().getRepository(BuiltinResource);
+  private get repository(): Repository<BuiltinResource> {
+    return getAppDataSource().getRepository(BuiltinResource);
   }
 
   async findAll(): Promise<BuiltinResource[]> {
