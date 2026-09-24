@@ -655,6 +655,67 @@ describe('serverController - getAllSettings', () => {
       expect(payload.data.systemConfig.smartRouting.enabled).toBe(true);
     });
   });
+
+  describe('smart routing env override reporting (issue #642)', () => {
+    const adminReq = { user: { username: 'admin', isAdmin: true } } as unknown as Request;
+    const originalOpenaiKey = process.env.OPENAI_API_KEY;
+
+    afterEach(() => {
+      if (originalOpenaiKey === undefined) {
+        delete process.env.OPENAI_API_KEY;
+      } else {
+        process.env.OPENAI_API_KEY = originalOpenaiKey;
+      }
+    });
+
+    it('tells the dashboard which env var is shadowing a saved key', async () => {
+      process.env.OPENAI_API_KEY = 'sk-stale-from-env';
+      mockSystemConfigDao.get.mockResolvedValue({
+        install: { baseUrl: 'https://hub.example.com' },
+        smartRouting: { llmProviderApiKey: 'sk-fresh-from-dashboard' },
+      });
+      const res = { json: jest.fn(), status: jest.fn().mockReturnThis() } as unknown as Response;
+
+      await getAllSettings(adminReq, res);
+
+      const payload = (res.json as jest.Mock).mock.calls[0][0];
+      // The saved key is still returned so the form can show it...
+      expect(payload.data.systemConfig.smartRouting.llmProviderApiKey).toBe(
+        'sk-fresh-from-dashboard',
+      );
+      // ...but the dashboard now knows it is not the key the runtime actually uses.
+      expect(payload.data.systemConfig.smartRouting.envOverriddenFields).toEqual([
+        { field: 'llmProviderApiKey', envVar: 'OPENAI_API_KEY' },
+      ]);
+    });
+
+    it('reports nothing when no env var is involved', async () => {
+      delete process.env.OPENAI_API_KEY;
+      const res = { json: jest.fn(), status: jest.fn().mockReturnThis() } as unknown as Response;
+
+      await getAllSettings(adminReq, res);
+
+      const payload = (res.json as jest.Mock).mock.calls[0][0];
+      expect(payload.data.systemConfig.smartRouting.envOverriddenFields).toEqual([]);
+    });
+
+    it('keeps the metadata out of the persisted system config', async () => {
+      // The file-backed DAO returns its cached settings object by reference, so a
+      // field attached to systemConfig.smartRouting directly would be serialised
+      // into mcp_settings.json by the next save.
+      process.env.OPENAI_API_KEY = 'sk-stale-from-env';
+      const persisted: { install: { baseUrl: string }; smartRouting: Record<string, any> } = {
+        install: { baseUrl: 'https://hub.example.com' },
+        smartRouting: { llmProviderApiKey: 'sk-fresh-from-dashboard' },
+      };
+      mockSystemConfigDao.get.mockResolvedValue(persisted);
+      const res = { json: jest.fn(), status: jest.fn().mockReturnThis() } as unknown as Response;
+
+      await getAllSettings(adminReq, res);
+
+      expect(persisted.smartRouting.envOverriddenFields).toBeUndefined();
+    });
+  });
 });
 
 describe('serverController - updateSystemConfig', () => {

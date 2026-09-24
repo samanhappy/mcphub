@@ -210,6 +210,10 @@ SMART_ROUTING_ENABLED=true
 EMBEDDING_MODEL=text-embedding-3-small
 ```
 
+Every Smart Routing setting above takes precedence over the matching field in the dashboard: resolution order is **environment variable → dashboard setting → built-in default**. A leftover variable in `.env` therefore wins over a value you save in the UI, which is a silent failure mode rather than an error — the dashboard shows the value you typed while the runtime keeps using the env var (issue #642). Affected fields now carry a warning naming the variable that is actually in use.
+
+The same order applies to the `Enabled` toggle and `DB URL`, but the dashboard reflects those directly instead of warning: the toggle mirrors the env var, and the URL field shows a `${DB_URL}` placeholder.
+
 ### Configuration Options
 
 <AccordionGroup>
@@ -947,7 +951,27 @@ curl -X POST http://localhost:3000/api/smart-routing/feedback \
       -H "Authorization: Bearer YOUR_JWT_TOKEN"
     ```
 
+  <Accordion title="Authentication Errors Despite a Valid Dashboard Key">
+    **Symptoms:**
+    - Tool indexing fails with an authentication (401/403) error
+    - A valid key is saved in the dashboard, yet requests keep being rejected
+
+    **Cause:** an environment variable outranks the dashboard value, so the key you saved is never used (issue #642). Recent versions show a warning under the affected field naming the variable in use.
+
+    **Solutions:**
+    1. Look for `OPENAI_API_KEY` / `AZURE_OPENAI_API_KEY` in `.env*` files, your shell profile, or the container/service definition
+    2. Remove the stale variable and restart, then re-index if the provider or model also changed
+    3. Confirm the key actually in use with a manual request:
+
+    ```bash
+    curl -X POST "${OPENAI_API_BASE_URL:-https://api.openai.com/v1}/embeddings" \
+      -H "Authorization: Bearer $OPENAI_API_KEY" \
+      -H "Content-Type: application/json" \
+      -d '{"input": "test", "model": "text-embedding-3-small"}'
+    ```
+
   </Accordion>
+
 </AccordionGroup>
 
 ## Best Practices

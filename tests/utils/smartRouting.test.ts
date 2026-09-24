@@ -115,7 +115,7 @@ describe('smartRouting config resolution', () => {
     });
   });
 
-  describe('getConfigValue priority chain', () => {
+  describe('config value priority chain (env > settings > default)', () => {
     it('migrates legacy persisted provider fields to their neutral names', async () => {
       mockGet.mockResolvedValue({
         smartRouting: {
@@ -224,6 +224,68 @@ describe('smartRouting config resolution', () => {
     });
   });
 
+  describe('envOverriddenFields reporting (issue #642)', () => {
+    it('reports the env var that shadows a dashboard value', async () => {
+      process.env.OPENAI_API_KEY = 'sk-from-env';
+      mockGet.mockResolvedValue({ smartRouting: { llmProviderApiKey: 'sk-from-dashboard' } });
+
+      const config = await getSmartRoutingConfig();
+
+      // Resolution order is unchanged (env still wins) — the dashboard just needs
+      // to be told, so it can explain why the key it shows is not the key in use.
+      expect(config.llmProviderApiKey).toBe('sk-from-env');
+      expect(config.envOverriddenFields).toContainEqual({
+        field: 'llmProviderApiKey',
+        envVar: 'OPENAI_API_KEY',
+      });
+    });
+
+    it('reports nothing when the dashboard value is the one in use', async () => {
+      mockGet.mockResolvedValue({ smartRouting: { llmProviderApiKey: 'sk-from-dashboard' } });
+
+      const config = await getSmartRoutingConfig();
+
+      expect(config.llmProviderApiKey).toBe('sk-from-dashboard');
+      expect(config.envOverriddenFields).toEqual([]);
+    });
+
+    it('names the alias that actually won, not the first one listed', async () => {
+      process.env.OPENAI_API_EMBEDDING_MODEL = 'legacy-alias-model';
+      mockGet.mockResolvedValue({ smartRouting: { embeddingModel: 'dashboard-model' } });
+
+      const config = await getSmartRoutingConfig();
+
+      expect(config.embeddingModel).toBe('legacy-alias-model');
+      expect(config.envOverriddenFields).toContainEqual({
+        field: 'embeddingModel',
+        envVar: 'OPENAI_API_EMBEDDING_MODEL',
+      });
+    });
+
+    it('omits enabled and dbUrl, which the dashboard already handles itself', async () => {
+      process.env.SMART_ROUTING_ENABLED = 'true';
+      process.env.DB_URL = 'postgres://env/db';
+
+      const config = await getSmartRoutingConfig();
+
+      expect(config.enabled).toBe(true);
+      expect(config.dbUrl).toBe('postgres://env/db');
+      // #1179 already reflects env enablement in the toggle, and dbUrl renders a
+      // `${DB_URL}` placeholder — a "shadowed by env" warning would be noise.
+      expect(config.envOverriddenFields).toEqual([]);
+    });
+
+    it('treats an empty-string env var as unset, so nothing is reported', async () => {
+      process.env.OPENAI_API_KEY = '';
+      mockGet.mockResolvedValue({ smartRouting: { llmProviderApiKey: 'sk-from-dashboard' } });
+
+      const config = await getSmartRoutingConfig();
+
+      expect(config.llmProviderApiKey).toBe('sk-from-dashboard');
+      expect(config.envOverriddenFields).toEqual([]);
+    });
+  });
+
   describe('getSmartRoutingConfig integration — defaults with empty settings & no env', () => {
     it('returns all documented defaults', async () => {
       const config = await getSmartRoutingConfig();
@@ -246,6 +308,7 @@ describe('smartRouting config resolution', () => {
         progressiveDisclosure: false,
         serverDescriptionMode: 'names',
         embeddingMaxTokens: undefined,
+        envOverriddenFields: [],
       });
     });
   });

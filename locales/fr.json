@@ -885,6 +885,7 @@
     "llmProviderBaseUrlPlaceholder": "https://api.openai.com/v1",
     "llmProviderApiKey": "Clé API du fournisseur LLM",
     "llmProviderApiKeyPlaceholder": "Entrez la clé API du fournisseur LLM",
+    "smartRoutingEnvOverrideWarning": "Actuellement fourni par la variable d'environnement {{envVar}} — la valeur enregistrée ici est ignorée à l'exécution.",
     "embeddingModel": "Nom du modèle d'intégration",
     "embeddingModelPlaceholder": "text-embedding-3-small",
     "basePacingDelayMs": "Délai de pacing de base (ms)",

@@ -889,6 +889,7 @@
     "llmProviderApiKey": "LLM 提供商 API 密钥",
     "llmProviderApiKeyDescription": "用于访问嵌入服务的 API 密钥",
     "llmProviderApiKeyPlaceholder": "请输入 LLM 提供商 API 密钥",
+    "smartRoutingEnvOverrideWarning": "当前实际使用的是环境变量 {{envVar}}，此处保存的值在运行时不会生效。",
     "embeddingModel": "嵌入模型名称",
     "embeddingModelPlaceholder": "text-embedding-3-small",
     "basePacingDelayMs": "基础节流延迟（毫秒）",

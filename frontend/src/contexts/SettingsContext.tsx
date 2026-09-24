@@ -47,6 +47,12 @@ interface SmartRoutingConfig {
   azureOpenaiEmbeddingModel?: string;
   progressiveDisclosure: boolean;
   embeddingMaxTokens?: number;
+  /**
+   * Read-only metadata from the server (issue #642): fields whose runtime value
+   * comes from an environment variable, so whatever is typed into the form for
+   * them is currently ignored. Never sent back on save.
+   */
+  envOverriddenFields?: Array<{ field: string; envVar: string }>;
 }
 
 type ToolResultCompressionStrategy = 'auto' | 'json' | 'log' | 'search' | 'diff' | 'text';
@@ -462,6 +468,7 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
             data.data.systemConfig.smartRouting.azureOpenaiEmbeddingModel || '',
           progressiveDisclosure: data.data.systemConfig.smartRouting.progressiveDisclosure ?? false,
           embeddingMaxTokens: data.data.systemConfig.smartRouting.embeddingMaxTokens,
+          envOverriddenFields: data.data.systemConfig.smartRouting.envOverriddenFields ?? [],
         });
       }
       if (data.success && data.data?.systemConfig?.toolResultCompression) {

@@ -147,6 +147,14 @@ Smart Routing performs vector search over upstream tools to surface only the few
 | `AZURE_OPENAI_EMBEDDING_DEPLOYMENT` | Deployment name. |
 | `AZURE_OPENAI_EMBEDDING_MODEL` | The underlying OpenAI model the deployment maps to (e.g. `text-embedding-3-small`). Used for tokenizer and limit selection. |
 
+<Note>
+  **Environment variables win over the dashboard.** Every setting above overrides the matching field saved in the dashboard. Resolution order is **environment variable → dashboard setting → built-in default**, so a stale value left in `.env` silently shadows a key you just pasted into the UI — embeddings then fail with an authentication error while the form still shows the new key (issue #642).
+
+  The dashboard now reports this: affected fields carry a warning naming the environment variable that is actually in use. To switch to the dashboard value, remove the variable from the environment and restart.
+
+  `Smart Routing → Enabled` and `DB URL` follow the same order but are reflected directly by the UI instead of a warning — the toggle mirrors the env var, and the URL field renders a `${DB_URL}` placeholder.
+</Note>
+
 ## MCPRouter (optional upstream catalog)
 
 | Variable | Description |
