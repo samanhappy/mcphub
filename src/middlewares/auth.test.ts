@@ -13,14 +13,20 @@ const currentSystemConfig = {
 };
 
 const findEnabledMock = jest.fn();
+const mockGetSystemConfig = jest.fn();
+const mockGetCachedSystemConfig = jest.fn();
 
 jest.mock('../dao/index.js', () => ({
   getBearerKeyDao: jest.fn(() => ({
     findEnabled: findEnabledMock,
   })),
   getSystemConfigDao: jest.fn(() => ({
-    get: jest.fn().mockImplementation(async () => currentSystemConfig),
+    get: mockGetSystemConfig,
   })),
+}));
+
+jest.mock('../utils/systemConfigCache.js', () => ({
+  getCachedSystemConfig: mockGetCachedSystemConfig,
 }));
 
 jest.mock('../config/index.js', () => ({
@@ -60,6 +66,8 @@ describe('auth middleware', () => {
     currentSystemConfig.routing.enableBearerAuth = true;
     currentSystemConfig.routing.bearerAuthHeaderName = 'Authorization';
     currentSystemConfig.routing.skipAuth = false;
+    mockGetSystemConfig.mockImplementation(async () => currentSystemConfig);
+    mockGetCachedSystemConfig.mockReturnValue(null);
     findEnabledMock.mockResolvedValue([
       {
         id: 'key-1',
@@ -460,6 +468,20 @@ describe('auth middleware', () => {
         username: 'jwt-user',
         isAdmin: false,
       });
+    });
+  });
+
+  describe('system config sourcing', () => {
+    it('reads current routing decisions even when a cached config exists', async () => {
+      mockGetCachedSystemConfig.mockReturnValue(currentSystemConfig);
+
+      const app = createApp();
+      const response = await request(app)
+        .get('/api/protected')
+        .set('Authorization', 'Bearer test-key');
+
+      expect(response.status).toBe(200);
+      expect(mockGetSystemConfig).toHaveBeenCalled();
     });
   });
 });

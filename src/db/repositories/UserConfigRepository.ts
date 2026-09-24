@@ -6,10 +6,8 @@ import { getAppDataSource } from '../connection.js';
  * Repository for UserConfig entity
  */
 export class UserConfigRepository {
-  private repository: Repository<UserConfig>;
-
-  constructor() {
-    this.repository = getAppDataSource().getRepository(UserConfig);
+  private get repository(): Repository<UserConfig> {
+    return getAppDataSource().getRepository(UserConfig);
   }
 
   /**

@@ -6,10 +6,8 @@ import { getAppDataSource } from '../connection.js';
  * Repository for Server entity
  */
 export class ServerRepository {
-  private repository: Repository<Server>;
-
-  constructor() {
-    this.repository = getAppDataSource().getRepository(Server);
+  private get repository(): Repository<Server> {
+    return getAppDataSource().getRepository(Server);
   }
 
   /**

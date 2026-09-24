@@ -112,7 +112,7 @@ export const auth = async (req: Request, res: Response, next: NextFunction): Pro
     return;
   }
 
-  // Check if authentication is disabled globally
+  // Authentication policy must reflect updates made by other DB instances.
   const systemConfig = await getSystemConfigDao().get();
   const routingConfig = systemConfig?.routing || {
     enableGlobalRoute: true,

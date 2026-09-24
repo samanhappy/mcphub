@@ -148,7 +148,83 @@ describe('database connection recovery', () => {
       const recovery = reconnectDatabase();
       await jest.runAllTimersAsync();
 
-      await expect(recovery).resolves.toBe(dataSource);
+      const recovered = await recovery;
+      expect(recovered).not.toBe(dataSource);
+      expect(recovered.isInitialized).toBe(true);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('keeps the recovered connection usable when the old destroy finishes late', async () => {
+    jest.useFakeTimers();
+    const oldSource = await updateDataSourceConfig();
+    oldSource.isInitialized = true;
+    let finishDestroy!: () => void;
+    oldSource.destroy.mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          finishDestroy = () => {
+            oldSource.isInitialized = false;
+            resolve();
+          };
+        }),
+    );
+    try {
+      const recovery = reconnectDatabase();
+      await jest.runAllTimersAsync();
+      const recovered = await recovery;
+      finishDestroy();
+      await Promise.resolve();
+      expect(recovered.isInitialized).toBe(true);
+      expect(await initializeDatabase()).toBe(recovered);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('bails out of a hung pool destroy instead of wedging reconnection forever', async () => {
+    jest.useFakeTimers();
+    const dataSource = await updateDataSourceConfig();
+    dataSource.isInitialized = true;
+    // Simulate a checked-out client stuck in an open transaction (idle in
+    // transaction): pg-pool end() would wait for it forever.
+    dataSource.destroy.mockReturnValueOnce(new Promise(() => {}));
+
+    try {
+      const recovery = reconnectDatabase();
+      await jest.runAllTimersAsync();
+
+      const recovered = await recovery;
+      expect(recovered).not.toBe(dataSource);
+      expect(recovered.isInitialized).toBe(true);
+      expect(dataSource.destroy).toHaveBeenCalledTimes(1);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('recovers via reconnection when the health check query hangs instead of wedging', async () => {
+    jest.useFakeTimers();
+    const dataSource = await updateDataSourceConfig();
+    dataSource.isInitialized = true;
+    dataSource.query.mockImplementation((sql: string) => {
+      const text = String(sql);
+      if (text.includes('SELECT 1')) {
+        return new Promise(() => {});
+      }
+      if (text.includes('to_regclass')) {
+        return Promise.resolve([{ exists: false }]);
+      }
+      return Promise.resolve([]);
+    });
+
+    try {
+      const health = checkDatabaseHealth();
+      await jest.runAllTimersAsync();
+
+      await expect(health).resolves.toBe(true);
+      expect(dataSource.destroy).toHaveBeenCalledTimes(1);
       expect(dataSource.initialize).toHaveBeenCalledTimes(1);
     } finally {
       jest.useRealTimers();

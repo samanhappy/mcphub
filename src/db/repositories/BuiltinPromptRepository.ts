@@ -6,10 +6,8 @@ import { getAppDataSource } from '../connection.js';
  * Repository for BuiltinPrompt entity
  */
 export class BuiltinPromptRepository {
-  private repository: Repository<BuiltinPrompt>;
-
-  constructor() {
-    this.repository = getAppDataSource().getRepository(BuiltinPrompt);
+  private get repository(): Repository<BuiltinPrompt> {
+    return getAppDataSource().getRepository(BuiltinPrompt);
   }
 
   async findAll(): Promise<BuiltinPrompt[]> {

@@ -2,6 +2,7 @@ import express from 'express';
 import request from 'supertest';
 
 const mockGetSystemConfig = jest.fn();
+const mockGetCachedSystemConfig = jest.fn();
 
 jest.mock('../../src/dao/index.js', () => ({
   getSystemConfigDao: jest.fn(() => ({
@@ -13,6 +14,10 @@ jest.mock('../../src/dao/index.js', () => ({
   getOAuthTokenDao: jest.fn(() => ({
     findAll: jest.fn().mockResolvedValue([]),
   })),
+}));
+
+jest.mock('../../src/utils/systemConfigCache.js', () => ({
+  getCachedSystemConfig: mockGetCachedSystemConfig,
 }));
 
 jest.mock('../../src/dao/DaoFactory.js', () => ({
@@ -77,6 +82,7 @@ import { createUserToken } from '../utils/testHelpers.js';
 
 describe('system configuration authorization', () => {
   beforeEach(() => {
+    mockGetCachedSystemConfig.mockReturnValue(null);
     mockGetSystemConfig.mockResolvedValue({
       routing: {
         enableGlobalRoute: true,
@@ -85,6 +91,18 @@ describe('system configuration authorization', () => {
         skipAuth: false,
       },
     });
+  });
+
+  it('rejects anonymous requests after another instance disables skipAuth', async () => {
+    const staleConfig = { routing: { skipAuth: true, enableBearerAuth: false } };
+    mockGetCachedSystemConfig.mockReturnValue(staleConfig);
+    mockGetSystemConfig.mockResolvedValueOnce(staleConfig);
+    const app = express();
+    app.get('/api/protected', authenticatedRouteRateLimiter, auth, (_req, res) => res.sendStatus(200));
+
+    expect((await request(app).get('/api/protected')).status).toBe(200);
+    // The database now requires authentication, while this instance's cache is stale.
+    expect((await request(app).get('/api/protected')).status).toBe(401);
   });
 
   it('rejects a non-admin JWT before updating global configuration', async () => {
@@ -111,10 +129,10 @@ describe('system configuration authorization', () => {
   it('rejects a non-admin JWT on activity and system log routes', async () => {
     const app = express();
     app.use(express.json());
-    app.get('/api/activities', auth, getActivities);
-    app.get('/api/logs', auth, getAllLogs);
-    app.delete('/api/logs', auth, clearLogs);
-    app.get('/api/logs/stream', auth, streamLogs);
+    app.get('/api/activities', authenticatedRouteRateLimiter, auth, getActivities);
+    app.get('/api/logs', authenticatedRouteRateLimiter, auth, getAllLogs);
+    app.delete('/api/logs', authenticatedRouteRateLimiter, auth, clearLogs);
+    app.get('/api/logs/stream', authenticatedRouteRateLimiter, auth, streamLogs);
 
     const token = createUserToken('regular-user', false);
     const responses = [
