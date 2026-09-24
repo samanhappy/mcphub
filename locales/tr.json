@@ -843,6 +843,7 @@
     "clearCacheSkipped": "kurulu değil",
     "clearingCache": "Temizleniyor...",
     "systemConfigUpdated": "Sistem yapılandırması başarıyla güncellendi",
+    "noChanges": "Kaydedilecek değişiklik yok",
     "betterAuthTitle": "Better Auth",
     "betterAuthEnvNote": "İstemci kimlikleri ve gizli anahtarlar hâlâ ortam değişkenlerinden gelir. Better Auth ayarlarını değiştirmek uygulamanın yeniden başlatılmasını gerektirebilir; kurulum temel URL kaynağı da güvenilen kaynaklara otomatik olarak eklenir.",
     "enableBetterAuth": "Better Auth'u etkinleştir",

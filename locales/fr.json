@@ -844,6 +844,7 @@
     "clearCacheSkipped": "non installé",
     "clearingCache": "Vidage...",
     "systemConfigUpdated": "Configuration système mise à jour avec succès",
+    "noChanges": "Aucune modification à enregistrer",
     "betterAuthTitle": "Better Auth",
     "betterAuthEnvNote": "Les identifiants et secrets client proviennent toujours des variables d'environnement. Modifier les paramètres Better Auth peut nécessiter un redémarrage de l'application, et l'origine de l'URL de base d'installation est ajoutée automatiquement aux origines approuvées.",
     "enableBetterAuth": "Activer Better Auth",

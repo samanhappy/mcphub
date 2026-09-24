@@ -847,6 +847,7 @@
     "clearCacheSkipped": "未安装",
     "clearingCache": "清除中...",
     "systemConfigUpdated": "系统配置更新成功",
+    "noChanges": "没有需要保存的更改",
     "betterAuthTitle": "Better Auth",
     "betterAuthEnvNote": "客户端 ID 和密钥仍然来自环境变量。修改 Better Auth 设置后可能需要重启应用；同时，安装配置中的基础地址来源会自动加入受信任来源。",
     "enableBetterAuth": "启用 Better Auth",
