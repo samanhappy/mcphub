@@ -1,0 +1,40 @@
+docs/configuration/environment-variables.mdx
+  h_18676a549cd52a 150-157
+docs/features/smart-routing.mdx
+  h_18676a549cd52a 213-216,954-972,974
+docs/zh/configuration/environment-variables.mdx
+  h_18676a549cd52a 137-144
+docs/zh/features/smart-routing.mdx
+  h_18676a549cd52a 416-421,563-581
+frontend/src/contexts/SettingsContext.tsx
+  h_18676a549cd52a 50-55,471
+frontend/src/pages/SettingsPage.tsx
+  h_18676a549cd52a 618-636,2347,2370,2393,2420,2442
+locales/en.json
+  h_18676a549cd52a 889
+locales/fr.json
+  h_18676a549cd52a 888
+locales/tr.json
+  h_18676a549cd52a 887
+locales/zh.json
+  h_18676a549cd52a 892
+src/controllers/serverController.ts
+  h_18676a549cd52a 63,432-441,452-466,2094,2150-2152
+src/utils/smartRouting.ts
+  h_18676a549cd52a 74-97,110-112,124-154,157-162,169-175,177-179,188-190,204-209,223-225,234-236,243-245,251-253,259-264,270-272,278-280,286-288,294-296,302-304,312-314,320-322,335-337,345-346,351-363,365,369-370,372,377,379-380,383,394,401
+tests/controllers/serverController.test.ts
+  h_18676a549cd52a 658-718
+tests/utils/smartRouting.test.ts
+  h_18676a549cd52a 118,227-288,311
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "b07379d4e489589c8decf2f9baf31461eaaff41e",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
