@@ -32,6 +32,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Validate docs (MDX)
+        run: pnpm docs:validate
+
       - name: Run linter
         run: pnpm lint
 

@@ -30,6 +30,7 @@
     "test:coverage": "jest --coverage",
     "test:verbose": "jest --verbose",
     "test:ci": "jest --ci --coverage --watchAll=false",
+    "docs:validate": "node scripts/validate-docs.js",
     "frontend:dev": "cd frontend && vite",
     "frontend:build": "cd frontend && vite build",
     "frontend:typecheck": "tsc --noEmit -p frontend/tsconfig.json",
@@ -94,6 +95,7 @@
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.3",
     "@eslint/js": "^9.39.2",
+    "@mdx-js/mdx": "^3.1.1",
     "@radix-ui/react-accordion": "^1.2.12",
     "@radix-ui/react-slot": "^1.2.3",
     "@shadcn/ui": "^0.0.4",
@@ -134,6 +136,7 @@
     "react-dom": "19.2.7",
     "react-i18next": "^16.2.4",
     "react-router-dom": "^7.18.2",
+    "remark-frontmatter": "^5.0.0",
     "supertest": "^7.2.2",
     "tailwind-merge": "^3.3.1",
     "tailwind-scrollbar-hide": "^4.0.0",
