@@ -413,6 +413,12 @@ EMBEDDING_DIMENSIONS=768
   Google 提供慷慨的**免费额度（100 RPM）**，非常适合自托管或低流量部署。
 </Tip>
 
+<Note>
+  **环境变量优先于面板配置。** 上述任何智能路由配置都会覆盖 Dashboard 中保存的同名字段，解析顺序为 **环境变量 → 面板配置 → 内置默认值**。因此 `.env` 里遗留的变量会覆盖你在界面上保存的值，而且这种失败是静默的：面板显示你填写的值，运行时却一直使用环境变量（issue #642）。受影响字段现在会显示警告，并指出实际生效的变量名。
+
+  `启用` 开关与 `DB URL` 同样遵循该顺序，但面板会直接反映环境变量的结果而不显示警告：开关跟随环境变量，URL 字段显示 `${DB_URL}` 占位符。
+</Note>
+
 ### 自定义嵌入
 
 使用自定义嵌入模型：
@@ -552,6 +558,25 @@ curl -X POST http://localhost:3000/api/smart-routing/feedback \
     # 查看向量库状态与性能指标（配置、数据库连接状态、行数、按模型/服务器统计、同步新鲜度、索引覆盖率）
     curl http://localhost:3000/api/smart-routing/performance \
       -H "Authorization: Bearer YOUR_JWT_TOKEN"
+    ```
+
+  <Accordion title="密钥已在面板填对，仍然报鉴权失败">
+    **症状：**
+    - 工具索引失败，返回鉴权错误（401/403）
+    - 面板里保存的密钥是有效的，但请求仍被拒绝
+
+    **原因：** 环境变量的优先级高于面板配置，因此你保存的密钥从未被使用（issue #642）。新版本会在对应字段下方显示警告，并指出实际生效的变量名。
+
+    **解决方案：**
+    1. 检查 `.env*` 文件、shell 配置以及容器/服务定义中的 `OPENAI_API_KEY` / `AZURE_OPENAI_API_KEY`
+    2. 移除遗留变量并重启；若提供商或模型也发生变化，请重新索引
+    3. 确认实际生效的密钥是否可用：
+
+    ```bash
+    curl -X POST "${OPENAI_API_BASE_URL:-https://api.openai.com/v1}/embeddings" \
+      -H "Authorization: Bearer $OPENAI_API_KEY" \
+      -H "Content-Type: application/json" \
+      -d '{"input": "test", "model": "text-embedding-3-small"}'
     ```
 
   </Accordion>

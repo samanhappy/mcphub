@@ -134,6 +134,14 @@ OIDC_CLIENT_SECRET=your-oidc-client-secret
 | `AZURE_OPENAI_EMBEDDING_DEPLOYMENT` | Azure 中的嵌入 deployment 名称。 |
 | `AZURE_OPENAI_EMBEDDING_MODEL` | deployment 背后的实际 OpenAI 模型名称，用于 tokenizer 和 token 上限选择。 |
 
+<Note>
+  **环境变量优先于面板配置。** 上表中的每个变量都会覆盖 Dashboard 中保存的同名字段。解析顺序为 **环境变量 → 面板配置 → 内置默认值**。因此 `.env` 里遗留的旧值会静默覆盖你刚在面板里填入的密钥：嵌入请求会以鉴权失败告终，而界面上仍然显示着新密钥（issue #642）。
+
+  面板现在会提示这一点：受影响字段下方会显示警告，并指出实际生效的环境变量名。若要让面板配置生效，请从环境中移除该变量并重启。
+
+  「智能路由 → 启用」与「数据库 URL」同样遵循该顺序，但面板会直接反映环境变量的结果，而不是显示警告：开关会跟随环境变量，URL 字段会显示 `${DB_URL}` 占位符。
+</Note>
+
 ## 配置示例
 
 ### 开发环境

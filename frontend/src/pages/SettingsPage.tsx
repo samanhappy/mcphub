@@ -615,6 +615,25 @@ const SettingsPage: React.FC = () => {
     refreshBearerKeys,
   } = useSettingsData();
 
+  // Smart routing resolves env vars first, so a value typed here can be shadowed
+  // without any visible change: the form shows the key you just pasted while the
+  // runtime keeps calling the provider with a stale OPENAI_API_KEY from .env, and
+  // the only symptom is a 401 far away in the logs (issue #642). The API reports
+  // which fields are in that state, so say it next to the input.
+  const renderEnvOverrideWarning = (field: string) => {
+    const envVar = smartRoutingConfig.envOverriddenFields?.find(
+      (entry) => entry.field === field,
+    )?.envVar;
+    if (!envVar) {
+      return null;
+    }
+    return (
+      <p className="mt-2 text-xs text-amber-700 dark:text-amber-400">
+        {t('settings.smartRoutingEnvOverrideWarning', { envVar })}
+      </p>
+    );
+  };
+
   // Update local installConfig when savedInstallConfig changes
   useEffect(() => {
     if (savedInstallConfig) {
@@ -2325,6 +2344,7 @@ const SettingsPage: React.FC = () => {
                         disabled={loading}
                       />
                     </div>
+                    {renderEnvOverrideWarning('llmProviderApiKey')}
                   </div>
 
                   <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-md">
@@ -2347,6 +2367,7 @@ const SettingsPage: React.FC = () => {
                         required
                       />
                     </div>
+                    {renderEnvOverrideWarning('llmProviderBaseUrl')}
                   </div>
 
                   <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-md">
@@ -2369,6 +2390,7 @@ const SettingsPage: React.FC = () => {
                         required
                       />
                     </div>
+                    {renderEnvOverrideWarning('embeddingModel')}
                   </div>
                 </>
               ) : (
@@ -2395,6 +2417,7 @@ const SettingsPage: React.FC = () => {
                         disabled={loading}
                       />
                     </div>
+                    {renderEnvOverrideWarning('azureOpenaiEndpoint')}
                   </div>
 
                   <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-md">
@@ -2416,6 +2439,7 @@ const SettingsPage: React.FC = () => {
                         disabled={loading}
                       />
                     </div>
+                    {renderEnvOverrideWarning('azureOpenaiApiKey')}
                   </div>
 
                   <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-md">

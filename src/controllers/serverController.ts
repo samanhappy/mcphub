@@ -60,7 +60,7 @@ import { isPrivilegedServerConfig } from '../utils/serverConfigValidation.js';
 import { validateServerName } from '../utils/serverNameValidation.js';
 import { setCachedSystemConfig } from '../utils/systemConfigCache.js';
 import { DEFAULT_INSTALL_BASE_URL, withResolvedInstallBaseUrl } from '../utils/installBaseUrl.js';
-import { parseBooleanEnvVar } from '../utils/smartRouting.js';
+import { getSmartRoutingConfig, parseBooleanEnvVar } from '../utils/smartRouting.js';
 import { previewOpenApiToolStats } from '../services/openApiToolStatsService.js';
 import { logger } from '../utils/logger.js';
 
@@ -429,6 +429,16 @@ export const getAllSettings = async (req: Request, res: Response): Promise<void>
       }
     }
 
+    // Same idea one level down (issue #642): an env var silently outranks the
+    // value the user typed into the dashboard — e.g. a stale OPENAI_API_KEY in
+    // .env shadows a freshly pasted valid key, and embeddings fail with 401 while
+    // the form happily shows the new key. Reuse getSmartRoutingConfig() so the
+    // field→env-var mapping lives in exactly one place instead of being repeated
+    // here; this endpoint is admin-only and low-traffic, so the extra DAO read is
+    // not worth optimising away.
+    const smartRoutingEnvOverriddenFields =
+      (await getSmartRoutingConfig()).envOverriddenFields ?? [];
+
     if (!systemConfig.toolResultCompression) {
       systemConfig.toolResultCompression = {
         enabled: false,
@@ -439,7 +449,21 @@ export const getAllSettings = async (req: Request, res: Response): Promise<void>
     }
 
     const systemConfigForResponse = withResolvedInstallBaseUrl(
-      systemConfig,
+      {
+        ...systemConfig,
+        // Response-only copy: `envOverriddenFields` is display metadata, not part
+        // of the persisted schema. The file-backed DAO returns its cached settings
+        // object by reference, so attaching the field to systemConfig.smartRouting
+        // directly would leak it into mcp_settings.json on the next write.
+        ...(systemConfig.smartRouting
+          ? {
+              smartRouting: {
+                ...systemConfig.smartRouting,
+                envOverriddenFields: smartRoutingEnvOverriddenFields,
+              },
+            }
+          : {}),
+      },
       DEFAULT_INSTALL_BASE_URL,
     );
 
@@ -2067,8 +2091,7 @@ export const updateSystemConfig = async (req: Request, res: Response): Promise<v
         systemConfig.smartRouting.llmProviderApiKey = smartRouting.llmProviderApiKey?.trim();
       }
       if (typeof smartRouting.embeddingModel === 'string') {
-        systemConfig.smartRouting.embeddingModel =
-          smartRouting.embeddingModel?.trim();
+        systemConfig.smartRouting.embeddingModel = smartRouting.embeddingModel?.trim();
       }
 
       if (typeof smartRouting.azureOpenaiEndpoint === 'string') {
@@ -2124,9 +2147,9 @@ export const updateSystemConfig = async (req: Request, res: Response): Promise<v
           systemConfig.smartRouting.embeddingDimensionsApiPassthrough ||
         previousSmartRoutingConfig.llmProviderBaseUrl !==
           systemConfig.smartRouting.llmProviderBaseUrl ||
-        previousSmartRoutingConfig.llmProviderApiKey !== systemConfig.smartRouting.llmProviderApiKey ||
-        previousSmartRoutingConfig.embeddingModel !==
-          systemConfig.smartRouting.embeddingModel ||
+        previousSmartRoutingConfig.llmProviderApiKey !==
+          systemConfig.smartRouting.llmProviderApiKey ||
+        previousSmartRoutingConfig.embeddingModel !== systemConfig.smartRouting.embeddingModel ||
         previousSmartRoutingConfig.azureOpenaiEndpoint !==
           systemConfig.smartRouting.azureOpenaiEndpoint ||
         previousSmartRoutingConfig.azureOpenaiApiKey !==
