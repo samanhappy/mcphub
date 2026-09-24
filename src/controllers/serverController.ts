@@ -1690,6 +1690,8 @@ export const updateSystemConfig = async (req: Request, res: Response): Promise<v
         typeof smartRouting.azureOpenaiApiVersion === 'string' ||
         typeof smartRouting.azureOpenaiEmbeddingDeployment === 'string' ||
         typeof smartRouting.progressiveDisclosure === 'boolean' ||
+        smartRouting.serverDescriptionMode === 'names' ||
+        smartRouting.serverDescriptionMode === 'full' ||
         typeof smartRouting.embeddingMaxTokens === 'number' ||
         smartRouting.embeddingMaxTokens === null);
 
@@ -2086,6 +2088,13 @@ export const updateSystemConfig = async (req: Request, res: Response): Promise<v
 
       if (typeof smartRouting.progressiveDisclosure === 'boolean') {
         systemConfig.smartRouting.progressiveDisclosure = smartRouting.progressiveDisclosure;
+      }
+
+      if (
+        smartRouting.serverDescriptionMode === 'names' ||
+        smartRouting.serverDescriptionMode === 'full'
+      ) {
+        systemConfig.smartRouting.serverDescriptionMode = smartRouting.serverDescriptionMode;
       }
 
       if (

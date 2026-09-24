@@ -819,6 +819,27 @@ describe('serverController - updateSystemConfig', () => {
     );
   });
 
+  it('persists the smart routing server description mode', async () => {
+    mockRequest.body = { smartRouting: { serverDescriptionMode: 'full' } };
+
+    await updateSystemConfig(mockRequest as Request, mockResponse as Response);
+
+    expect(mockSystemConfigDao.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        smartRouting: expect.objectContaining({ serverDescriptionMode: 'full' }),
+      }),
+    );
+  });
+
+  it('rejects an unknown smart routing server description mode', async () => {
+    mockRequest.body = { smartRouting: { serverDescriptionMode: 'verbose' } };
+
+    await updateSystemConfig(mockRequest as Request, mockResponse as Response);
+
+    expect(mockStatus).toHaveBeenCalledWith(400);
+    expect(mockSystemConfigDao.update).not.toHaveBeenCalled();
+  });
+
   it('normalizes legacy smart-routing request fields before persisting the update', async () => {
     mockRequest.body = {
       smartRouting: {
