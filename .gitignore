@@ -37,3 +37,5 @@ temp-test-config/
 *.credentials.json.*.tmp
 *.credentials.key
 *.credentials.key.*.tmp
+
+.workbuddy
