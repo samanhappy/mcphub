@@ -1690,6 +1690,8 @@ export const updateSystemConfig = async (req: Request, res: Response): Promise<v
         typeof smartRouting.azureOpenaiApiVersion === 'string' ||
         typeof smartRouting.azureOpenaiEmbeddingDeployment === 'string' ||
         typeof smartRouting.progressiveDisclosure === 'boolean' ||
+        typeof smartRouting.azureOpenaiEmbeddingModel === 'string' ||
+        typeof smartRouting.serverDescriptionMode === 'string' ||
         typeof smartRouting.embeddingMaxTokens === 'number' ||
         smartRouting.embeddingMaxTokens === null);
 
@@ -2083,9 +2085,19 @@ export const updateSystemConfig = async (req: Request, res: Response): Promise<v
         systemConfig.smartRouting.azureOpenaiEmbeddingDeployment =
           smartRouting.azureOpenaiEmbeddingDeployment?.trim();
       }
+      if (typeof smartRouting.azureOpenaiEmbeddingModel === 'string') {
+        systemConfig.smartRouting.azureOpenaiEmbeddingModel =
+          smartRouting.azureOpenaiEmbeddingModel.trim();
+      }
 
       if (typeof smartRouting.progressiveDisclosure === 'boolean') {
         systemConfig.smartRouting.progressiveDisclosure = smartRouting.progressiveDisclosure;
+      }
+
+      if (typeof smartRouting.serverDescriptionMode === 'string') {
+        // Same normalization as getSmartRoutingConfig(), so the API and the env var agree
+        const normalized = smartRouting.serverDescriptionMode.trim().toLowerCase();
+        systemConfig.smartRouting.serverDescriptionMode = normalized === 'full' ? 'full' : 'names';
       }
 
       if (
@@ -2123,6 +2135,8 @@ export const updateSystemConfig = async (req: Request, res: Response): Promise<v
           systemConfig.smartRouting.azureOpenaiApiVersion ||
         previousSmartRoutingConfig.azureOpenaiEmbeddingDeployment !==
           systemConfig.smartRouting.azureOpenaiEmbeddingDeployment ||
+        previousSmartRoutingConfig.azureOpenaiEmbeddingModel !==
+          systemConfig.smartRouting.azureOpenaiEmbeddingModel ||
         previousSmartRoutingConfig.embeddingMaxTokens !==
           systemConfig.smartRouting.embeddingMaxTokens;
 

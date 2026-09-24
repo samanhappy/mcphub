@@ -45,6 +45,7 @@ const mockBearerKeyDao = {
 };
 
 const mockRemoveServerToolEmbeddings = jest.fn();
+const mockSyncAllServerToolsEmbeddings = jest.fn();
 const mockNotifyToolChanged = jest.fn();
 const mockBroadcastToolListChanged = jest.fn();
 const mockBroadcastPromptListChanged = jest.fn();
@@ -94,7 +95,9 @@ jest.mock('../../src/services/mcpService.js', () => ({
 }));
 
 jest.mock('../../src/services/vectorSearchService.js', () => ({
-  syncAllServerToolsEmbeddings: jest.fn(),
+  syncAllServerToolsEmbeddings: jest.fn((...args: unknown[]) =>
+    mockSyncAllServerToolsEmbeddings(...args),
+  ),
   removeServerToolEmbeddings: jest.fn((...args: unknown[]) =>
     mockRemoveServerToolEmbeddings(...args),
   ),
@@ -817,6 +820,67 @@ describe('serverController - updateSystemConfig', () => {
         }),
       }),
     );
+  });
+
+  it('persists the server description mode alongside other smart routing fields', async () => {
+    mockRequest.body = {
+      smartRouting: { progressiveDisclosure: true, serverDescriptionMode: 'full' },
+    };
+
+    await updateSystemConfig(mockRequest as Request, mockResponse as Response);
+
+    expect(mockSystemConfigDao.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        smartRouting: expect.objectContaining({
+          progressiveDisclosure: true,
+          serverDescriptionMode: 'full',
+        }),
+      }),
+    );
+  });
+
+  it.each([
+    [' FULL ', 'full'],
+    ['names', 'names'],
+    ['verbose', 'names'],
+  ])(
+    'normalizes server description mode %p to %p like the env var reader',
+    async (input, expected) => {
+      mockRequest.body = { smartRouting: { serverDescriptionMode: input } };
+
+      await updateSystemConfig(mockRequest as Request, mockResponse as Response);
+
+      expect(mockSystemConfigDao.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          smartRouting: expect.objectContaining({ serverDescriptionMode: expected }),
+        }),
+      );
+    },
+  );
+
+  it('persists the Azure embedding model name and re-syncs embeddings when it changes', async () => {
+    mockSyncAllServerToolsEmbeddings.mockResolvedValue(undefined);
+    mockRequest.body = { smartRouting: { azureOpenaiEmbeddingModel: ' text-embedding-3-large ' } };
+    mockSystemConfigDao.get.mockResolvedValue({
+      routing: {},
+      smartRouting: {
+        enabled: true,
+        dbUrl: 'postgres://localhost/test',
+        embeddingProvider: 'azure_openai',
+        azureOpenaiEmbeddingModel: 'text-embedding-3-small',
+      },
+    });
+
+    await updateSystemConfig(mockRequest as Request, mockResponse as Response);
+
+    expect(mockSystemConfigDao.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        smartRouting: expect.objectContaining({
+          azureOpenaiEmbeddingModel: 'text-embedding-3-large',
+        }),
+      }),
+    );
+    expect(mockSyncAllServerToolsEmbeddings).toHaveBeenCalled();
   });
 
   it('normalizes legacy smart-routing request fields before persisting the update', async () => {
