@@ -16,6 +16,7 @@ Use the commands defined in `package.json`; the following are the repository's c
 | Watch tests | `pnpm test:watch` |
 | Build all | `pnpm build` |
 | Verify distribution | `node scripts/verify-dist.js` |
+| Validate docs | `pnpm docs:validate` |
 | Start production build | `pnpm start` |
 
 The backend listens on `:3000` unless `PORT` is set. The frontend dev server listens on `:5173` and proxies API and MCP requests to the backend.
@@ -24,6 +25,7 @@ The backend listens on `:3000` unless `PORT` is set. The frontend dev server lis
 
 - For backend startup or MCP wiring changes, run `pnpm dev`, call `GET /health`, and inspect logs for successful upstream connections.
 - For frontend changes, run `pnpm frontend:dev` and exercise the affected path in the browser; automated tests do not replace UX verification.
+- For changes under `docs/`, run `pnpm docs:validate`. The Mintlify check parses only the paths a commit touches, so a page broken by an earlier commit stays invisible until that page is edited again; this compiles every page and reports the same `file:line:column`.
 - MCP servers that require missing API keys may fail to connect locally; distinguish that expected environment failure from an MCPHub regression.
 - The pre-commit validation gate is `pnpm lint && pnpm test:ci && pnpm build`. Fix failures instead of bypassing hooks with `--no-verify`.
 

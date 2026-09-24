@@ -15,6 +15,7 @@ MCPHub (`@samanhappy/mcphub`) is a TypeScript/Node.js ESM hub that aggregates MC
 - Backend typecheck/build: `pnpm backend:build`
 - Full build: `pnpm build`
 - Distribution verification: `node scripts/verify-dist.js`
+- Mintlify docs validation: `pnpm docs:validate`
 
 ## Scoped guides
 
