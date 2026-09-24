@@ -72,6 +72,18 @@ export interface SmartRoutingConfig {
    */
   embeddingMaxTokens?: number;
   /**
+   * Text prepended to the search query before it is embedded. Asymmetric retrieval models
+   * are trained with task prefixes, e.g. EmbeddingGemma expects "task: search result | query: ".
+   * Default: '' (the raw query is embedded, as before).
+   */
+  embeddingQueryPrefix?: string;
+  /**
+   * Text prepended to each tool and server document before it is embedded, e.g.
+   * "title: none | text: " for EmbeddingGemma. Changing it re-embeds every server.
+   * Default: '' (existing embeddings stay valid).
+   */
+  embeddingDocumentPrefix?: string;
+  /**
    * Fields whose effective value currently comes from an environment variable
    * instead of the persisted (dashboard) setting.
    *
@@ -341,6 +353,25 @@ export async function getSmartRoutingConfig(): Promise<SmartRoutingConfig> {
         const parsed = parseInt(String(value), 10);
         return Number.isNaN(parsed) || parsed <= 0 ? undefined : parsed;
       },
+    ),
+
+    // Task prefixes for asymmetric embedding models. Kept verbatim (no trim):
+    // the trailing space is part of the prefix.
+    embeddingQueryPrefix: cfg(
+      'embeddingQueryPrefix',
+      { SMART_ROUTING_EMBEDDING_QUERY_PREFIX: process.env.SMART_ROUTING_EMBEDDING_QUERY_PREFIX },
+      smartRoutingSettings.embeddingQueryPrefix,
+      '',
+      String,
+    ),
+    embeddingDocumentPrefix: cfg(
+      'embeddingDocumentPrefix',
+      {
+        SMART_ROUTING_EMBEDDING_DOCUMENT_PREFIX: process.env.SMART_ROUTING_EMBEDDING_DOCUMENT_PREFIX,
+      },
+      smartRoutingSettings.embeddingDocumentPrefix,
+      '',
+      String,
     ),
 
     envOverriddenFields,

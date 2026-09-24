@@ -498,6 +498,8 @@ const SettingsPage: React.FC = () => {
     azureOpenaiEmbeddingModel: string;
     // Empty string = use model default; numeric string = explicit override
     embeddingMaxTokens: string;
+    embeddingQueryPrefix: string;
+    embeddingDocumentPrefix: string;
   }>({
     dbUrl: '',
     basePacingDelayMs: '',
@@ -515,6 +517,8 @@ const SettingsPage: React.FC = () => {
     azureOpenaiEmbeddingDeployment: '',
     azureOpenaiEmbeddingModel: '',
     embeddingMaxTokens: '',
+    embeddingQueryPrefix: '',
+    embeddingDocumentPrefix: '',
   });
 
   const [tempToolResultCompressionConfig, setTempToolResultCompressionConfig] = useState<{
@@ -680,6 +684,8 @@ const SettingsPage: React.FC = () => {
           smartRoutingConfig.embeddingMaxTokens != null
             ? String(smartRoutingConfig.embeddingMaxTokens)
             : '',
+        embeddingQueryPrefix: smartRoutingConfig.embeddingQueryPrefix || '',
+        embeddingDocumentPrefix: smartRoutingConfig.embeddingDocumentPrefix || '',
       });
     }
   }, [smartRoutingConfig]);
@@ -910,7 +916,9 @@ const SettingsPage: React.FC = () => {
       | 'azureOpenaiApiVersion'
       | 'azureOpenaiEmbeddingDeployment'
       | 'azureOpenaiEmbeddingModel'
-      | 'embeddingMaxTokens',
+      | 'embeddingMaxTokens'
+      | 'embeddingQueryPrefix'
+      | 'embeddingDocumentPrefix',
     value: string,
   ) => {
     setTempSmartRoutingConfig({
@@ -1250,6 +1258,19 @@ const SettingsPage: React.FC = () => {
         updates.azureOpenaiEmbeddingModel = tempSmartRoutingConfig.azureOpenaiEmbeddingModel;
       }
 
+      if (
+        tempSmartRoutingConfig.embeddingQueryPrefix !==
+        (smartRoutingConfig.embeddingQueryPrefix || '')
+      ) {
+        updates.embeddingQueryPrefix = tempSmartRoutingConfig.embeddingQueryPrefix;
+      }
+      if (
+        tempSmartRoutingConfig.embeddingDocumentPrefix !==
+        (smartRoutingConfig.embeddingDocumentPrefix || '')
+      ) {
+        updates.embeddingDocumentPrefix = tempSmartRoutingConfig.embeddingDocumentPrefix;
+      }
+
       // embeddingMaxTokens: empty string → null (clear override), numeric string → number
       const parsedTokens = parseEmbeddingMaxTokensForUpdate(
         tempSmartRoutingConfig.embeddingMaxTokens,
@@ -1328,6 +1349,19 @@ const SettingsPage: React.FC = () => {
       smartRoutingConfig.azureOpenaiEmbeddingModel
     ) {
       updates.azureOpenaiEmbeddingModel = tempSmartRoutingConfig.azureOpenaiEmbeddingModel;
+    }
+
+    if (
+      tempSmartRoutingConfig.embeddingQueryPrefix !==
+      (smartRoutingConfig.embeddingQueryPrefix || '')
+    ) {
+      updates.embeddingQueryPrefix = tempSmartRoutingConfig.embeddingQueryPrefix;
+    }
+    if (
+      tempSmartRoutingConfig.embeddingDocumentPrefix !==
+      (smartRoutingConfig.embeddingDocumentPrefix || '')
+    ) {
+      updates.embeddingDocumentPrefix = tempSmartRoutingConfig.embeddingDocumentPrefix;
     }
 
     // embeddingMaxTokens: empty string → null (clear override), numeric string → number
@@ -2688,7 +2722,46 @@ const SettingsPage: React.FC = () => {
                   })()}
                 </p>
               </div>
-              
+
+              <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-md">
+                <div className="mb-2">
+                  <h3 className="font-medium text-gray-700">
+                    {t('settings.embeddingPrefixes')}
+                  </h3>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {t('settings.embeddingPrefixesDescription')}
+                  </p>
+                </div>
+                <label className="block text-xs text-gray-600 mt-2">
+                  {t('settings.embeddingQueryPrefix')}
+                </label>
+                <input
+                  type="text"
+                  value={tempSmartRoutingConfig.embeddingQueryPrefix}
+                  onChange={(e) =>
+                    handleSmartRoutingConfigChange('embeddingQueryPrefix', e.target.value)
+                  }
+                  placeholder="task: search result | query: "
+                  className="mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm form-input font-mono"
+                  disabled={loading}
+                />
+                {renderEnvOverrideWarning('embeddingQueryPrefix')}
+                <label className="block text-xs text-gray-600 mt-3">
+                  {t('settings.embeddingDocumentPrefix')}
+                </label>
+                <input
+                  type="text"
+                  value={tempSmartRoutingConfig.embeddingDocumentPrefix}
+                  onChange={(e) =>
+                    handleSmartRoutingConfigChange('embeddingDocumentPrefix', e.target.value)
+                  }
+                  placeholder="title: none | text: "
+                  className="mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm form-input font-mono"
+                  disabled={loading}
+                />
+                {renderEnvOverrideWarning('embeddingDocumentPrefix')}
+              </div>
+
               <div
                 className="flex items-center justify-between"
                 style={{

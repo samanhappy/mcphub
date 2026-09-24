@@ -1716,6 +1716,8 @@ export const updateSystemConfig = async (req: Request, res: Response): Promise<v
         typeof smartRouting.progressiveDisclosure === 'boolean' ||
         typeof smartRouting.azureOpenaiEmbeddingModel === 'string' ||
         typeof smartRouting.serverDescriptionMode === 'string' ||
+        typeof smartRouting.embeddingQueryPrefix === 'string' ||
+        typeof smartRouting.embeddingDocumentPrefix === 'string' ||
         typeof smartRouting.embeddingMaxTokens === 'number' ||
         smartRouting.embeddingMaxTokens === null);
 
@@ -2123,6 +2125,14 @@ export const updateSystemConfig = async (req: Request, res: Response): Promise<v
         systemConfig.smartRouting.serverDescriptionMode = normalized === 'full' ? 'full' : 'names';
       }
 
+      // Stored verbatim, not trimmed: the trailing space is part of a task prefix
+      if (typeof smartRouting.embeddingQueryPrefix === 'string') {
+        systemConfig.smartRouting.embeddingQueryPrefix = smartRouting.embeddingQueryPrefix;
+      }
+      if (typeof smartRouting.embeddingDocumentPrefix === 'string') {
+        systemConfig.smartRouting.embeddingDocumentPrefix = smartRouting.embeddingDocumentPrefix;
+      }
+
       if (
         typeof smartRouting.embeddingMaxTokens === 'number' &&
         !isNaN(smartRouting.embeddingMaxTokens)
@@ -2160,6 +2170,8 @@ export const updateSystemConfig = async (req: Request, res: Response): Promise<v
           systemConfig.smartRouting.azureOpenaiEmbeddingDeployment ||
         previousSmartRoutingConfig.azureOpenaiEmbeddingModel !==
           systemConfig.smartRouting.azureOpenaiEmbeddingModel ||
+        (previousSmartRoutingConfig.embeddingDocumentPrefix ?? '') !==
+          (systemConfig.smartRouting.embeddingDocumentPrefix ?? '') ||
         previousSmartRoutingConfig.embeddingMaxTokens !==
           systemConfig.smartRouting.embeddingMaxTokens;
 
