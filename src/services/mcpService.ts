@@ -714,20 +714,60 @@ const applyDescriptionOverridesForEmbedding = async (
   });
 };
 
-const syncToolsAsVectorEmbeddings = async (
+// Tail of the embedding syncs queued per server. A per-user connect and a
+// reindex, or two users connecting at once, often race on the same tool set;
+// queued behind the first run, the second one hits the skip check in
+// saveToolsAsVectorEmbeddings instead of embedding every tool a second time.
+const embeddingSyncTails = new Map<string, Promise<void>>();
+
+export const syncToolsAsVectorEmbeddings = (
   serverName: string,
   tools: Tool[],
   options?: { reportProgress?: boolean; partial?: boolean },
 ): Promise<void> => {
-  const toolsWithOverrides = await applyDescriptionOverridesForEmbedding(serverName, tools);
-  const modelVisibleTools = filterModelVisibleTools(toolsWithOverrides);
-  if (modelVisibleTools.length === 0) {
-    if (options?.partial) return;
-    await removeServerToolEmbeddings(serverName);
-    return;
-  }
+  const run = (embeddingSyncTails.get(serverName) ?? Promise.resolve()).then(async () => {
+    const toolsWithOverrides = await applyDescriptionOverridesForEmbedding(serverName, tools);
+    const modelVisibleTools = filterModelVisibleTools(toolsWithOverrides);
+    if (modelVisibleTools.length === 0) {
+      if (options?.partial) return;
+      await removeServerToolEmbeddings(serverName);
+      return;
+    }
 
-  await saveToolsAsVectorEmbeddings(serverName, modelVisibleTools, options);
+    await saveToolsAsVectorEmbeddings(serverName, modelVisibleTools, options);
+  });
+  const tail = run.catch(() => undefined);
+  embeddingSyncTails.set(serverName, tail);
+  void tail.then(() => {
+    if (embeddingSyncTails.get(serverName) === tail) embeddingSyncTails.delete(serverName);
+  });
+  return run;
+};
+
+/**
+ * Embed the tools a per-user runtime of a credential server listed. Used on
+ * every per-user connect and by the reindex endpoint, so both must produce the
+ * same tool set, or each would undo the other's rows.
+ *
+ * Tools disabled in the server's tools config are dropped first. Search
+ * filters them out of the hits anyway, but only after they have taken result
+ * slots. A toggle reaches the index without extra wiring: the tools config is
+ * part of the runtime revision, so the next acquire reconnects and re-syncs.
+ *
+ * The rows hold one tool list per server. If the list depends on whose
+ * credentials listed it, the latest connect wins until a reindex embeds the
+ * union of all bindings again.
+ *
+ * Resolves to the number of tools handed to the vector store.
+ */
+export const syncCredentialServerToolEmbeddings = async (
+  serverName: string,
+  tools: Tool[],
+  options?: { reportProgress?: boolean },
+): Promise<number> => {
+  const enabledTools = await filterToolsByConfig(serverName, tools);
+  await syncToolsAsVectorEmbeddings(serverName, enabledTools, options);
+  return enabledTools.length;
 };
 
 // Normalize prompt payload to satisfy MCP ListPrompts response schema
@@ -4628,7 +4668,8 @@ const handleReadResourceRequestImpl = async (request: any, extra: any) => {
   }
 };
 
-// Personal runtimes never enter serverInfos, config exports, or shared embedding caches.
+// Personal runtimes never enter serverInfos or config exports. Their tool list
+// is embedded under the server name, the same rows the reindex endpoint writes.
 const createPrincipalRuntime = async (
   name: string,
   resolvedConfig: ServerConfig,
@@ -4723,6 +4764,11 @@ const createPrincipalRuntime = async (
       };
     }
     info.status = 'connected';
+    // A credential server never connects globally, so this is the only place
+    // its tools are seen outside a reindex. Unchanged tool sets are skipped.
+    syncCredentialServerToolEmbeddings(name, info.tools).catch(() => {
+      logger.warn(`[EMBED_SYNC_ERROR] Failed to sync tool embeddings for "${name}"`);
+    });
     return info;
   } catch (error) {
     closeServerRuntime(info);

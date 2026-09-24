@@ -51,6 +51,10 @@ import {
   handleReadResourceRequest,
 } from '../../src/services/mcpService.js';
 import { executeToolViaOpenAPI } from '../../src/controllers/openApiController.js';
+import {
+  removeServerToolEmbeddings,
+  saveToolsAsVectorEmbeddings,
+} from '../../src/services/vectorSearchService.js';
 import { PrincipalRuntimeService } from '../../src/services/principalRuntimeService.js';
 import { UserContextService } from '../../src/services/userContextService.js';
 import { createOAuthProvider } from '../../src/services/mcpOAuthProvider.js';
@@ -766,5 +770,37 @@ test('HTTP handshake failures survive acquisition wrappers without credential bl
     expect(JSON.stringify(log.mock.calls)).not.toContain('opaque-http-sentinel');
   } finally {
     log.mockRestore();
+  }
+});
+
+test('a per-user connect indexes the tools it lists, minus the ones disabled in the config', async () => {
+  const save = jest.mocked(saveToolsAsVectorEmbeddings);
+  const remove = jest.mocked(removeServerToolEmbeddings);
+  const settle = async (done: () => boolean) => {
+    for (let attempt = 0; attempt < 100 && !done(); attempt += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    }
+  };
+  const name = `shared${getNameSeparator()}identity`;
+  save.mockClear();
+  // A rotated binding forces a fresh per-user runtime on the next request.
+  await bind(alice, 'index-sentinel');
+  await (await connect(alice)).listTools();
+  await settle(() => save.mock.calls.length > 0);
+  expect(save).toHaveBeenCalledWith('shared', [expect.objectContaining({ name })], undefined);
+  expect(JSON.stringify(save.mock.calls)).not.toContain('index-sentinel');
+
+  const original = (await getServerDao().findById('shared'))?.tools ?? {};
+  await getServerDao().updateTools('shared', { identity: { enabled: false } });
+  try {
+    save.mockClear();
+    remove.mockClear();
+    // The tools config is part of the runtime revision, so this reconnects.
+    await (await connect(alice)).listTools();
+    await settle(() => remove.mock.calls.length > 0);
+    expect(remove).toHaveBeenCalledWith('shared');
+    expect(save).not.toHaveBeenCalled();
+  } finally {
+    await getServerDao().updateTools('shared', original);
   }
 });
