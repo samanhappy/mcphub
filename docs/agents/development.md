@@ -37,4 +37,31 @@ The backend listens on `:3000` unless `PORT` is set. The frontend dev server lis
 - Use `pnpm backend:build` for the full TypeScript error output.
 - For a port conflict, change `PORT` or identify and stop the process holding the port.
 
+## Agent shell `PATH`
+
+Agent bash shells run non-interactively with a minimal `PATH` and do not load
+the user's shell profile, so bare `gh`, `pnpm`, `node`, or `npx` can report
+`command not found` **even when the user has them installed** — this is not an
+install problem and varies by machine. First confirm what resolves and where
+the rest lives:
+
+```bash
+command -v gh pnpm node git curl
+ls ~/.nvm/versions/node/*/bin 2>/dev/null   # nvm-managed Node toolchain
+ls /opt/homebrew/bin 2>/dev/null            # Homebrew (Apple Silicon)
+ls /usr/local/bin 2>/dev/null               # Homebrew (Intel macOS) / other prefixes
+```
+
+Export the directories that hold the toolchain, then rerun the failed command.
+On this repo's primary development machine that is:
+
+```bash
+export PATH="/opt/homebrew/bin:$HOME/.nvm/versions/node/v24.15.0/bin:$PATH"
+gh issue view 643
+pnpm backend:build
+```
+
+If the exports still do not resolve the tools, ask the user for the install
+location instead of guessing.
+
 The supported Node.js range is `^18.0.0 || >=20.0.0`; CI uses Node 20.x and the published Docker image uses Node 22.

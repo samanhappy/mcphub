@@ -3,6 +3,7 @@
 - Use Conventional Commits such as `feat:`, `fix:`, `chore:`, and `refactor:` in imperative present tense.
 - Pull requests should describe the behavior change, list automated and manual validation, attach before/after evidence for UI work, and link related issues.
 - Keep generated artifacts out of commits and pull requests.
+- `gh` is not guaranteed to be on the agent shell `PATH`: agent shells run non-interactively with a minimal `PATH` and do not load the user's profile, so a bare `gh ...` can fail with `command not found` even when `gh` is installed. See [development.md](development.md) ("Agent shell `PATH`") for how to locate and export it.
 
 ## Issue tracker
 
