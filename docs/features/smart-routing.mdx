@@ -324,6 +324,22 @@ The same order applies to the `Enabled` toggle and `DB URL`, but the dashboard r
 
   </Accordion>
 
+  <Accordion title="Embedding Task Prefixes">
+    Asymmetric retrieval models are trained with different task prefixes for queries and
+    documents, and score noticeably worse on raw text. Set the prefixes your model expects
+    in Settings → Smart Routing or via environment variables:
+
+    ```bash
+    # EmbeddingGemma
+    SMART_ROUTING_EMBEDDING_QUERY_PREFIX="task: search result | query: "
+    SMART_ROUTING_EMBEDDING_DOCUMENT_PREFIX="title: none | text: "
+    ```
+
+    Both are empty by default, which embeds raw text as before. Prefixes are used verbatim,
+    so keep the trailing space. Changing the document prefix re-embeds every server's tools;
+    changing the query prefix takes effect on the next search.
+  </Accordion>
+
   <Accordion title="Search Parameters">
     ```bash
     # Similarity threshold (0.0 to 1.0)

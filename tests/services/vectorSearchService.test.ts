@@ -654,6 +654,120 @@ describe('vectorSearchService', () => {
     expect(mockVectorRepository.deleteByServerName).toHaveBeenCalledWith('redis');
   });
 
+  describe('embedding task prefixes', () => {
+    const QUERY_PREFIX = 'task: search result | query: ';
+    const DOCUMENT_PREFIX = 'title: none | text: ';
+    const tools = [{ name: 'redis-get', description: 'Get a cache value', inputSchema: {} } as any];
+
+    beforeEach(() => {
+      mockGetSmartRoutingConfig.mockResolvedValue({
+        enabled: true,
+        dbUrl: 'postgres://localhost/test',
+        embeddingProvider: 'openai',
+        embeddingEncodingFormat: 'float',
+        embeddingModel: 'text-embedding-3-small',
+        llmProviderBaseUrl: 'https://embeddings.example.com/v1',
+        llmProviderApiKey: 'sk-test',
+        embeddingQueryPrefix: QUERY_PREFIX,
+        embeddingDocumentPrefix: DOCUMENT_PREFIX,
+      });
+      mockEmbeddingCreate.mockResolvedValue({ data: [{ embedding: new Array(100).fill(0.1) }] });
+      mockVectorRepository.saveEmbedding.mockResolvedValue({});
+      mockVectorRepository.deleteStaleToolEmbeddings.mockResolvedValue(0);
+    });
+
+    const embeddedInputs = () =>
+      mockEmbeddingCreate.mock.calls.map((call: any[]) => call[0].input as string);
+
+    it('prepends the query prefix to search queries', async () => {
+      mockVectorRepository.searchSimilar.mockResolvedValue([]);
+
+      await searchToolsByVector('read recent   messages', 10, 0.3);
+
+      expect(embeddedInputs()).toEqual([`${QUERY_PREFIX}read recent messages`]);
+    });
+
+    it('prepends the document prefix to tool and server documents, but stores the bare text', async () => {
+      mockVectorRepository.countByServerNameAndModel.mockResolvedValue(0);
+
+      await saveToolsAsVectorEmbeddings('redis', tools);
+
+      expect(embeddedInputs()).toEqual([
+        `${DOCUMENT_PREFIX}redis-get Get a cache value`,
+        `${DOCUMENT_PREFIX}redis Fast in-memory data store and cache`,
+      ]);
+      const storedTexts = mockVectorRepository.saveEmbedding.mock.calls.map(
+        (call: any[]) => call[2],
+      );
+      expect(storedTexts).toEqual([
+        'redis-get Get a cache value',
+        'redis Fast in-memory data store and cache',
+      ]);
+    });
+
+    it('embeds the raw text when no prefixes are configured', async () => {
+      mockGetSmartRoutingConfig.mockResolvedValue({
+        ...(await mockGetSmartRoutingConfig()),
+        embeddingQueryPrefix: '',
+        embeddingDocumentPrefix: '',
+      });
+      mockVectorRepository.searchSimilar.mockResolvedValue([]);
+
+      await searchToolsByVector('read messages', 10, 0.3);
+
+      expect(embeddedInputs()).toEqual(['read messages']);
+    });
+
+    it('re-embeds a server indexed before the document prefix was set', async () => {
+      mockVectorRepository.countByServerNameAndModel.mockResolvedValue(1);
+      mockVectorRepository.getToolIdentityByServerNameAndModel.mockResolvedValue([
+        { contentId: 'redis:redis-get', toolSetHash: buildToolSetHash(tools) },
+      ]);
+      mockVectorRepository.findEmbeddingStatus.mockResolvedValue({
+        model: 'text-embedding-3-small',
+        text_content: 'redis Fast in-memory data store and cache',
+        hasEmbedding: true,
+      });
+
+      await saveToolsAsVectorEmbeddings('redis', tools);
+
+      expect(mockEmbeddingCreate).toHaveBeenCalled();
+      expect(mockVectorRepository.saveEmbedding).toHaveBeenCalledWith(
+        'tool',
+        'redis:redis-get',
+        'redis-get Get a cache value',
+        expect.any(Array),
+        expect.objectContaining({ toolSetHash: buildToolSetHash(tools, DOCUMENT_PREFIX) }),
+        'text-embedding-3-small',
+      );
+    });
+
+    it('skips a server already indexed with the current document prefix', async () => {
+      mockVectorRepository.countByServerNameAndModel.mockResolvedValue(1);
+      mockVectorRepository.getToolIdentityByServerNameAndModel.mockResolvedValue([
+        { contentId: 'redis:redis-get', toolSetHash: buildToolSetHash(tools, DOCUMENT_PREFIX) },
+      ]);
+      mockVectorRepository.findEmbeddingStatus.mockResolvedValue({
+        model: 'text-embedding-3-small',
+        text_content: 'redis Fast in-memory data store and cache',
+        hasEmbedding: true,
+      });
+
+      await saveToolsAsVectorEmbeddings('redis', tools);
+
+      expect(mockEmbeddingCreate).not.toHaveBeenCalled();
+      expect(mockVectorRepository.saveEmbedding).not.toHaveBeenCalled();
+    });
+
+    it('keeps the tool-set hash unchanged when the document prefix is empty', () => {
+      expect(buildToolSetHash(tools, '')).toBe(buildToolSetHash(tools));
+      expect(buildToolSetHash(tools, DOCUMENT_PREFIX)).not.toBe(buildToolSetHash(tools));
+      expect(buildToolSetHash(tools, 'passage: ')).not.toBe(
+        buildToolSetHash(tools, DOCUMENT_PREFIX),
+      );
+    });
+  });
+
   describe('buildToolSetHash (issue #1198)', () => {
     const tool = (overrides: { hasDescriptionOverride?: boolean; description?: string }) => ({
       name: 'redis-get',

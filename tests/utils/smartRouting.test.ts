@@ -30,6 +30,8 @@ const SMART_ROUTING_ENV_VARS = [
   'AZURE_OPENAI_EMBEDDING_MODEL',
   'SMART_ROUTING_PROGRESSIVE_DISCLOSURE',
   'SMART_ROUTING_SERVER_DESCRIPTION_MODE',
+  'SMART_ROUTING_EMBEDDING_QUERY_PREFIX',
+  'SMART_ROUTING_EMBEDDING_DOCUMENT_PREFIX',
   'EMBEDDING_MAX_TOKENS',
 ];
 
@@ -308,6 +310,8 @@ describe('smartRouting config resolution', () => {
         progressiveDisclosure: false,
         serverDescriptionMode: 'names',
         embeddingMaxTokens: undefined,
+        embeddingQueryPrefix: '',
+        embeddingDocumentPrefix: '',
         envOverriddenFields: [],
       });
     });
@@ -485,6 +489,31 @@ describe('smartRouting config resolution', () => {
         process.env.EMBEDDING_MAX_TOKENS = 'nope';
         const config = await getSmartRoutingConfig();
         expect(config.embeddingMaxTokens).toBeUndefined();
+      });
+    });
+
+    describe('embedding prefixes', () => {
+      it('keeps env prefixes verbatim, including the trailing space', async () => {
+        process.env.SMART_ROUTING_EMBEDDING_QUERY_PREFIX = 'task: search result | query: ';
+        process.env.SMART_ROUTING_EMBEDDING_DOCUMENT_PREFIX = 'title: none | text: ';
+        const config = await getSmartRoutingConfig();
+        expect(config.embeddingQueryPrefix).toBe('task: search result | query: ');
+        expect(config.embeddingDocumentPrefix).toBe('title: none | text: ');
+        expect(config.envOverriddenFields).toEqual(
+          expect.arrayContaining([
+            { field: 'embeddingQueryPrefix', envVar: 'SMART_ROUTING_EMBEDDING_QUERY_PREFIX' },
+            { field: 'embeddingDocumentPrefix', envVar: 'SMART_ROUTING_EMBEDDING_DOCUMENT_PREFIX' },
+          ]),
+        );
+      });
+
+      it('reads prefixes from settings when env is absent', async () => {
+        mockGet.mockResolvedValue({
+          smartRouting: { embeddingQueryPrefix: 'query: ', embeddingDocumentPrefix: 'passage: ' },
+        });
+        const config = await getSmartRoutingConfig();
+        expect(config.embeddingQueryPrefix).toBe('query: ');
+        expect(config.embeddingDocumentPrefix).toBe('passage: ');
       });
     });
   });

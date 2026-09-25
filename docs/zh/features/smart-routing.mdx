@@ -159,6 +159,18 @@ description: '使用向量语义搜索的 AI 工具发现系统'
     使用 `names`（默认值）可保持原来的紧凑列表。
   </Accordion>
 
+  <Accordion title="嵌入任务前缀">
+    非对称检索模型在训练时对查询和文档使用不同的任务前缀，直接嵌入原始文本时效果明显变差。可在 设置 → 智能路由 中或通过环境变量设置模型所需的前缀：
+
+    ```bash
+    # EmbeddingGemma
+    SMART_ROUTING_EMBEDDING_QUERY_PREFIX="task: search result | query: "
+    SMART_ROUTING_EMBEDDING_DOCUMENT_PREFIX="title: none | text: "
+    ```
+
+    两者默认均为空，即与以前一样嵌入原始文本。前缀按原样使用，请保留末尾空格。修改文档前缀会重新生成所有服务器的工具嵌入；修改查询前缀在下一次搜索时生效。
+  </Accordion>
+
   <Accordion title="标准模式（默认）">
     当渐进式披露**禁用**（默认）时，智能路由提供两个工具：
     

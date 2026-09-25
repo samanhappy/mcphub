@@ -944,6 +944,68 @@ describe('serverController - updateSystemConfig', () => {
     expect(mockSyncAllServerToolsEmbeddings).toHaveBeenCalled();
   });
 
+  describe('embedding task prefixes', () => {
+    beforeEach(() => {
+      mockSyncAllServerToolsEmbeddings.mockResolvedValue(undefined);
+      mockSystemConfigDao.get.mockResolvedValue({
+        routing: {},
+        smartRouting: {
+          enabled: true,
+          dbUrl: 'postgres://localhost/test',
+          embeddingProvider: 'openai',
+          embeddingModel: 'embeddinggemma',
+        },
+      });
+    });
+
+    it('persists both prefixes verbatim, keeping the trailing space', async () => {
+      mockRequest.body = {
+        smartRouting: {
+          embeddingQueryPrefix: 'task: search result | query: ',
+          embeddingDocumentPrefix: 'title: none | text: ',
+        },
+      };
+
+      await updateSystemConfig(mockRequest as Request, mockResponse as Response);
+
+      expect(mockSystemConfigDao.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          smartRouting: expect.objectContaining({
+            embeddingQueryPrefix: 'task: search result | query: ',
+            embeddingDocumentPrefix: 'title: none | text: ',
+          }),
+        }),
+      );
+    });
+
+    it('re-syncs embeddings when the document prefix changes', async () => {
+      mockRequest.body = { smartRouting: { embeddingDocumentPrefix: 'title: none | text: ' } };
+
+      await updateSystemConfig(mockRequest as Request, mockResponse as Response);
+
+      expect(mockSyncAllServerToolsEmbeddings).toHaveBeenCalled();
+    });
+
+    it('does not re-sync embeddings for a query prefix change', async () => {
+      mockRequest.body = {
+        smartRouting: { embeddingQueryPrefix: 'task: search result | query: ' },
+      };
+
+      await updateSystemConfig(mockRequest as Request, mockResponse as Response);
+
+      expect(mockSystemConfigDao.update).toHaveBeenCalled();
+      expect(mockSyncAllServerToolsEmbeddings).not.toHaveBeenCalled();
+    });
+
+    it('does not re-sync when clearing a document prefix that was never set', async () => {
+      mockRequest.body = { smartRouting: { embeddingDocumentPrefix: '' } };
+
+      await updateSystemConfig(mockRequest as Request, mockResponse as Response);
+
+      expect(mockSyncAllServerToolsEmbeddings).not.toHaveBeenCalled();
+    });
+  });
+
   it('normalizes legacy smart-routing request fields before persisting the update', async () => {
     mockRequest.body = {
       smartRouting: {

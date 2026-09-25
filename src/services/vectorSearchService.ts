@@ -764,9 +764,11 @@ const supportBase64Embeddings = async (baseURL: string = ''): Promise<boolean> =
  * you may need to rebuild your vector database indices after switching.
  *
  * @param text Text to generate embeddings for
+ * @param kind Whether the text is a search query or an indexed document; selects the
+ *   configured task prefix (embeddingQueryPrefix / embeddingDocumentPrefix)
  * @returns Promise with vector embedding as number array
  */
-async function generateEmbedding(text: string): Promise<number[]> {
+async function generateEmbedding(text: string, kind: 'query' | 'document'): Promise<number[]> {
   const smartRoutingConfig = await getSmartRoutingConfig();
   applyConfiguredBasePacingDelay(smartRoutingConfig.basePacingDelayMs);
   const provider = smartRoutingConfig.embeddingProvider || 'openai';
@@ -776,6 +778,15 @@ async function generateEmbedding(text: string): Promise<number[]> {
   // and other whitespace that introduce noise into the vector representation,
   // potentially affecting the quality of semantic search results.
   text = text.replace(/\s+/g, ' ').trim();
+
+  // The task prefix goes on after normalization so its trailing space survives, and
+  // before truncation so it is never the part that gets cut. The lexical fallback
+  // embeds the bare text: prefix words would only add noise to it.
+  const prefix =
+    (kind === 'query'
+      ? smartRoutingConfig.embeddingQueryPrefix
+      : smartRoutingConfig.embeddingDocumentPrefix) || '';
+  const input = prefix + text;
 
   if (provider === 'azure_openai') {
     const azureConfig = getAzureOpenAIConfig(smartRoutingConfig);
@@ -787,7 +798,7 @@ async function generateEmbedding(text: string): Promise<number[]> {
 
     try {
       return await withEmbeddingQueue(() =>
-        executeWithRetry(() => generateAzureOpenAIEmbedding(text, smartRoutingConfig), {
+        executeWithRetry(() => generateAzureOpenAIEmbedding(input, smartRoutingConfig), {
           provider: 'azure_openai',
           model: smartRoutingConfig.azureOpenaiEmbeddingModel,
           baseURL: azureConfig.endpoint,
@@ -828,7 +839,7 @@ async function generateEmbedding(text: string): Promise<number[]> {
   const _truncateStart = Date.now();
   try {
     truncatedText = await truncateToTokenLimit(
-      text,
+      input,
       maxTokens,
       config.embeddingModel,
       config.apiKey,
@@ -841,10 +852,10 @@ async function generateEmbedding(text: string): Promise<number[]> {
     );
     // As a fallback, use the shared conservative character-based heuristic (~3 chars/token)
     // to prevent oversized text from causing a failure in the embedding API call.
-    truncatedText = truncateWithHeuristic(text, maxTokens);
+    truncatedText = truncateWithHeuristic(input, maxTokens);
   }
   logger.debug(
-    `[Embedding] Truncation: ${text.length} → ${truncatedText.length} chars (${Date.now() - _truncateStart}ms, maxTokens=${maxTokens})`,
+    `[Embedding] Truncation: ${input.length} → ${truncatedText.length} chars (${Date.now() - _truncateStart}ms, maxTokens=${maxTokens})`,
   );
 
   // Determine encoding format based on configuration
@@ -1069,7 +1080,7 @@ const stableHashSerialize = (value: unknown): string => {
   return JSON.stringify(value);
 };
 
-export const buildToolSetHash = (tools: Tool[]): string => {
+export const buildToolSetHash = (tools: Tool[], documentPrefix = ''): string => {
   // Exclude raw upstream descriptions from the hash — some MCP servers (e.g.
   // Wiz, Cortex) inject dynamic content into descriptions (permission checks,
   // scope warnings) that changes on every connection, causing cache misses and
@@ -1089,12 +1100,16 @@ export const buildToolSetHash = (tools: Tool[]): string => {
       description: tool.hasDescriptionOverride ? (tool.description ?? '') : null,
     }))
     .sort((a, b) => a.name.localeCompare(b.name));
+  // The document prefix is part of what gets embedded, so changing it must invalidate
+  // the stored rows. It only joins the hash when set, so hashes computed before the
+  // setting existed stay valid.
+  const hashInput = documentPrefix ? { tools: normalized, documentPrefix } : normalized;
 
   // Derive the cache key with a memory-hard KDF (scrypt) rather than a bare
   // digest: inputs may embed configuration-derived content, so a deliberately
   // expensive keyed derivation is the appropriate construction. Parameters
   // are tuned down (~2ms) because this runs on tool-set refreshes only.
-  return scryptSync(stableHashSerialize(normalized), TOOLSET_HASH_KEY, 32, {
+  return scryptSync(stableHashSerialize(hashInput), TOOLSET_HASH_KEY, 32, {
     N: 2048,
     r: 8,
     p: 1,
@@ -1200,7 +1215,7 @@ export const saveToolsAsVectorEmbeddings = async (
     const expectedContentIds = tools
       .map((tool) => `${serverName}:${tool.name}`)
       .sort((a, b) => a.localeCompare(b));
-    const expectedToolSetHash = buildToolSetHash(tools);
+    const expectedToolSetHash = buildToolSetHash(tools, smartRoutingConfig.embeddingDocumentPrefix);
 
     // ── Skip check: avoid regenerating embeddings that are already up-to-date ──
     // Validate exact content IDs and a tool-set hash/version marker to avoid
@@ -1304,7 +1319,7 @@ export const saveToolsAsVectorEmbeddings = async (
       );
 
       try {
-        const embedding = await generateEmbedding(searchableText);
+        const embedding = await generateEmbedding(searchableText, 'document');
         toolEmbeddings.push({ tool, searchableText, embedding });
         emitProgress(_toolIdx + 1, 'in_progress');
       } catch (error: any) {
@@ -1322,7 +1337,7 @@ export const saveToolsAsVectorEmbeddings = async (
 
     let serverEmbedding: number[];
     try {
-      serverEmbedding = await generateEmbedding(serverSearchableText);
+      serverEmbedding = await generateEmbedding(serverSearchableText, 'document');
     } catch (error: any) {
       const status = extractErrorStatus(error);
       logger.warn('[EMBED_SYNC_ERROR] Failed while embedding server metadata', {
@@ -1450,7 +1465,7 @@ export const searchToolsByVector = async (
     const vectorRepository = getRepositoryFactory(
       'vectorEmbeddings',
     )() as VectorEmbeddingRepository;
-    const queryEmbedding = await generateEmbedding(query);
+    const queryEmbedding = await generateEmbedding(query, 'query');
 
     // Scope the search in SQL, not after the fact: `limit` has to count rows the
     // caller can actually use. Embeddings are keyed per server, and the same tool
