@@ -31,3 +31,4 @@ MCPHub (`@samanhappy/mcphub`) is a TypeScript/Node.js ESM hub that aggregates MC
 - [Domain documentation](docs/agents/domain.md)
 - [GitHub issue tracker](docs/agents/issue-tracker.md)
 - [Triage labels](docs/agents/triage-labels.md)
+- [Security advisory lifecycle](docs/agents/security-advisories.md)
