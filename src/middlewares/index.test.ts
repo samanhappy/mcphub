@@ -58,9 +58,18 @@ jest.mock('../services/betterAuthConfig.js', () => ({
   getBetterAuthRuntimeConfig: jest.fn(() => ({
     basePath: '/better-auth',
   })),
+  isApiAuthExemptPath: jest.fn(() => false),
+}));
+
+jest.mock('../utils/rateLimit.js', () => ({
+  apiAuthGateRateLimiter: jest.fn((_req, _res, next) => next()),
 }));
 
 import { initMiddlewares } from './index.js';
+import { apiAuthGateRateLimiter } from '../utils/rateLimit.js';
+import { auth } from './auth.js';
+import { userContextMiddleware } from './userContext.js';
+import { isApiAuthExemptPath } from '../services/betterAuthConfig.js';
 
 describe('initMiddlewares', () => {
   beforeEach(() => {
@@ -153,5 +162,59 @@ describe('initMiddlewares', () => {
     expect(mockExpressJson).toHaveBeenCalledWith({ limit: '4mb' });
     expect(mockJsonMiddleware).toHaveBeenCalled();
     expect(mockGetSystemConfig).not.toHaveBeenCalled();
+  });
+
+  it('mounts the /api rate-limit gate before the auth middleware', () => {
+    const app = {
+      use: jest.fn(),
+    } as any;
+
+    initMiddlewares(app);
+
+    // Registration order: i18n (0), JSON body wrapper (1), /api rate-limit gate
+    // (2), /api auth middleware (3), error handler (4). The gate must run ahead
+    // of the auth check so failed-auth requests are rate-limited too.
+    expect(app.use.mock.calls[2][0]).toBe('/test/api');
+    expect(app.use.mock.calls[2][1]).toBe(apiAuthGateRateLimiter);
+    expect(app.use.mock.calls[3][0]).toBe('/test/api');
+    expect(app.use.mock.calls[3][1]).toEqual(expect.any(Function));
+  });
+
+  it('skips auth for exempt public auth routes via the shared exemption helper', async () => {
+    (isApiAuthExemptPath as jest.Mock).mockReturnValue(true);
+
+    const app = {
+      use: jest.fn(),
+    } as any;
+
+    initMiddlewares(app);
+
+    const authMiddleware = app.use.mock.calls[3][1];
+    const next = jest.fn();
+
+    await authMiddleware({ path: '/auth/login' }, {}, next);
+
+    expect(isApiAuthExemptPath).toHaveBeenCalledWith('/auth/login', { basePath: '/better-auth' });
+    expect(auth).not.toHaveBeenCalled();
+    expect(next).toHaveBeenCalled();
+  });
+
+  it('applies auth and user context for non-exempt API routes', async () => {
+    (isApiAuthExemptPath as jest.Mock).mockReturnValue(false);
+
+    const app = {
+      use: jest.fn(),
+    } as any;
+
+    initMiddlewares(app);
+
+    const authMiddleware = app.use.mock.calls[3][1];
+    const next = jest.fn();
+
+    await authMiddleware({ path: '/servers' }, {}, next);
+
+    expect(isApiAuthExemptPath).toHaveBeenCalledWith('/servers', { basePath: '/better-auth' });
+    expect(auth).toHaveBeenCalled();
+    expect(userContextMiddleware).toHaveBeenCalled();
   });
 });

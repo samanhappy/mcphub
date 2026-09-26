@@ -10,6 +10,7 @@ import {
 } from '../../src/controllers/serverController.js';
 import { auth } from '../../src/middlewares/auth.js';
 import { userContextMiddleware } from '../../src/middlewares/userContext.js';
+import { authenticatedRouteRateLimiter } from '../../src/utils/rateLimit.js';
 import { JsonFileDaoFactory, setDaoFactory } from '../../src/dao/DaoFactory.js';
 import { clearSettingsCache } from '../../src/config/index.js';
 import { createUserToken } from '../utils/testHelpers.js';
@@ -75,7 +76,7 @@ beforeAll(async () => {
 
   app = express();
   app.use(express.json());
-  app.use('/api', auth, userContextMiddleware);
+  app.use('/api', authenticatedRouteRateLimiter, auth, userContextMiddleware);
   app.post('/api/servers', createServer);
   app.put('/api/servers/:name', updateServer);
   app.get('/api/servers/:name', getServerConfig);

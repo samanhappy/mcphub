@@ -1,4 +1,5 @@
 import rateLimit from 'express-rate-limit';
+import type { Request, Response } from 'express';
 import dotenv from 'dotenv';
 import { logger } from './logger.js';
 
@@ -68,8 +69,9 @@ export const createStandardRateLimiter = (options: {
   windowMs: number;
   max: number | typeof UNLIMITED;
   skipSuccessfulRequests?: boolean;
+  skip?: (request: Request, response: Response) => boolean | Promise<boolean>;
 }) => {
-  const { max, ...rest } = options;
+  const { max, skip, ...rest } = options;
 
   return rateLimit({
     ...rest,
@@ -77,7 +79,10 @@ export const createStandardRateLimiter = (options: {
     max: max === UNLIMITED ? Number.MAX_SAFE_INTEGER : max,
     standardHeaders: true,
     legacyHeaders: false,
-    skip: () => isTestEnv || max === UNLIMITED,
+    // A caller-provided `skip` (e.g. path exemptions) is combined with the
+    // built-in test/unlimited skips.
+    skip: (request, response) =>
+      isTestEnv || max === UNLIMITED || (skip !== undefined && skip(request, response)),
     // The rest of the API answers with JSON; without this the 429 body is bare
     // text, so clients that parse the response as JSON lose the error entirely.
     message: { success: false, message: 'Too many requests, please try again later.' },
@@ -92,6 +97,25 @@ export const templateRateLimiter = createStandardRateLimiter({
 export const authenticatedRouteRateLimiter = createStandardRateLimiter({
   windowMs: envInt('API_RATE_LIMIT_WINDOW_MS', MINUTES_15),
   max: envLimit('API_RATE_LIMIT_MAX', 600),
+});
+
+// Rate-limit gate mounted ahead of the shared `/api` authorization middleware
+// in src/middlewares/index.ts. Without it, failed-auth requests answer 401
+// before any route-level limiter runs, leaving the auth check itself uncapped
+// and brute-forceable (CodeQL js/missing-rate-limiting). It shares the
+// authenticated-route budget (API_RATE_LIMIT_MAX) and skips the public auth
+// routes that carry their own limiters (login, register, better-auth), so those
+// keep using their dedicated budgets instead of consuming the shared one.
+export const apiAuthGateRateLimiter = createStandardRateLimiter({
+  windowMs: envInt('API_RATE_LIMIT_WINDOW_MS', MINUTES_15),
+  max: envLimit('API_RATE_LIMIT_MAX', 600),
+  skip: async (req) => {
+    const { getBetterAuthRuntimeConfig, isApiAuthExemptPath } = await import(
+      '../services/betterAuthConfig.js'
+    );
+    const betterAuthConfig = await getBetterAuthRuntimeConfig();
+    return isApiAuthExemptPath(req.path, betterAuthConfig);
+  },
 });
 
 export const hostedInternalEventRateLimiter = createStandardRateLimiter({

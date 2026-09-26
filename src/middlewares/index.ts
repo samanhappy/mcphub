@@ -4,9 +4,13 @@ import { userContextMiddleware } from './userContext.js';
 import { i18nMiddleware } from './i18n.js';
 import config from '../config/index.js';
 import { getSystemConfigDao } from '../dao/index.js';
-import { getBetterAuthRuntimeConfig } from '../services/betterAuthConfig.js';
+import {
+  getBetterAuthRuntimeConfig,
+  isApiAuthExemptPath,
+} from '../services/betterAuthConfig.js';
 import { getCachedSystemConfig } from '../utils/systemConfigCache.js';
 import { resolveJsonBodyLimit } from '../utils/bearerAuth.js';
+import { apiAuthGateRateLimiter } from '../utils/rateLimit.js';
 import { logger } from '../utils/logger.js';
 
 export const errorHandler = (
@@ -66,21 +70,22 @@ export const initMiddlewares = (app: express.Application): void => {
     }
   });
 
+  // Rate-limit the shared /api authorization gate BEFORE the auth check runs.
+  // Failed-auth requests answer 401 without ever reaching the authenticated
+  // sub-router's limiter, so without this gate the auth check itself would be
+  // uncapped and brute-forceable (CodeQL js/missing-rate-limiting). Public auth
+  // routes (login, register, better-auth) are skipped here - they carry their
+  // own limiters - so they do not consume the shared authenticated-route budget.
+  app.use(`${config.basePath}/api`, apiAuthGateRateLimiter);
+
   // Protect API routes with authentication middleware, but exclude auth endpoints
   app.use(`${config.basePath}/api`, async (req, res, next) => {
     try {
       // Route exemptions must reflect the current shared authentication policy.
       const betterAuthConfig = await getBetterAuthRuntimeConfig();
-      const betterAuthApiPath = betterAuthConfig.basePath.startsWith('/api')
-        ? betterAuthConfig.basePath.replace(/^\/api/, '') || '/'
-        : null;
 
       // Skip authentication for login endpoint
-      if (
-        req.path === '/auth/login' ||
-        (betterAuthApiPath !== null && req.path.startsWith(betterAuthApiPath)) ||
-        req.path.startsWith('/better-auth')
-      ) {
+      if (isApiAuthExemptPath(req.path, betterAuthConfig)) {
         next();
         return;
       }

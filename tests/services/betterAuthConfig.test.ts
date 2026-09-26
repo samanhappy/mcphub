@@ -462,4 +462,45 @@ describe('betterAuthConfig', () => {
 
     expect(getSystemConfigMock).not.toHaveBeenCalled();
   });
+
+  describe('isApiAuthExemptPath', () => {
+    const loadHelper = async () =>
+      (await import('../../src/services/betterAuthConfig.js')).isApiAuthExemptPath;
+
+    it('exempts the login endpoint regardless of the better-auth mount point', async () => {
+      const isApiAuthExemptPath = await loadHelper();
+
+      expect(isApiAuthExemptPath('/auth/login', { basePath: '/auth' })).toBe(true);
+      expect(isApiAuthExemptPath('/auth/login', { basePath: '/api/auth/better' })).toBe(true);
+    });
+
+    it('exempts better-auth paths mounted under /api using their base path', async () => {
+      const isApiAuthExemptPath = await loadHelper();
+
+      expect(isApiAuthExemptPath('/auth/better/sign-in', { basePath: '/api/auth/better' })).toBe(
+        true,
+      );
+      expect(isApiAuthExemptPath('/auth/better', { basePath: '/api/auth/better' })).toBe(true);
+    });
+
+    it('exempts the legacy /better-auth prefix', async () => {
+      const isApiAuthExemptPath = await loadHelper();
+
+      expect(isApiAuthExemptPath('/better-auth/session', { basePath: '/auth' })).toBe(true);
+    });
+
+    it('does not exempt protected API routes', async () => {
+      const isApiAuthExemptPath = await loadHelper();
+
+      expect(isApiAuthExemptPath('/servers', { basePath: '/api/auth/better' })).toBe(false);
+      expect(isApiAuthExemptPath('/groups', { basePath: '/auth' })).toBe(false);
+      expect(isApiAuthExemptPath('/auth/login2', { basePath: '/auth' })).toBe(false);
+    });
+
+    it('does not exempt a better-auth base path that is not under /api', async () => {
+      const isApiAuthExemptPath = await loadHelper();
+
+      expect(isApiAuthExemptPath('/custom-auth/sign-in', { basePath: '/custom-auth' })).toBe(false);
+    });
+  });
 });

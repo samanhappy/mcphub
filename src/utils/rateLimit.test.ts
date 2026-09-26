@@ -24,6 +24,12 @@ jest.mock('./logger.js', () => ({
   logger: { warn: warnMock, info: jest.fn(), error: jest.fn(), debug: jest.fn() },
 }));
 
+jest.mock('../services/betterAuthConfig.js', () => ({
+  __esModule: true,
+  getBetterAuthRuntimeConfig: jest.fn(async () => ({ basePath: '/api/auth/better' })),
+  isApiAuthExemptPath: jest.fn((reqPath: string) => reqPath === '/auth/login'),
+}));
+
 const ENV_KEYS = [
   'AUTH_RATE_LIMIT_MAX',
   'AUTH_RATE_LIMIT_WINDOW_MS',
@@ -115,6 +121,12 @@ describe('rateLimit configuration', () => {
       standardHeaders: true,
       legacyHeaders: false,
     });
+    expect(mod.apiAuthGateRateLimiter).toMatchObject({
+      windowMs: 15 * 60 * 1000,
+      max: 600,
+      standardHeaders: true,
+      legacyHeaders: false,
+    });
     expect(mod.mcpConnectionRateLimiter).toMatchObject({
       windowMs: 60 * 1000,
       max: 480,
@@ -163,6 +175,7 @@ describe('rateLimit configuration', () => {
         mod.spaPageRateLimiter,
         mod.hostedInternalEventRateLimiter,
         mod.authRegistrationRateLimiter,
+        mod.apiAuthGateRateLimiter,
       ]) {
         expect(limiter).not.toMatchObject({ skipSuccessfulRequests: true });
       }
@@ -261,6 +274,7 @@ describe('rateLimit configuration', () => {
 
       expect(mod.templateRateLimiter).toMatchObject({ max: 11 });
       expect(mod.authenticatedRouteRateLimiter).toMatchObject({ max: 12 });
+      expect(mod.apiAuthGateRateLimiter).toMatchObject({ max: 12 });
       expect(mod.hostedInternalEventRateLimiter).toMatchObject({ max: 13 });
       expect(mod.mcpConnectionRateLimiter).toMatchObject({ max: 14 });
       expect(mod.authAttemptRateLimiter).toMatchObject({ max: 15 });
@@ -281,6 +295,27 @@ describe('rateLimit configuration', () => {
       const mod = await loadRateLimit({ AUTH_RATE_LIMIT_MAX: '   ' });
 
       expect(mod.authAttemptRateLimiter).toMatchObject({ max: 20 });
+    });
+  });
+
+  describe('api auth gate limiter', () => {
+    it('skips automatically in test environments', async () => {
+      const mod = await loadRateLimit();
+
+      expect((mod.apiAuthGateRateLimiter as unknown as { skip: () => boolean }).skip()).toBe(true);
+    });
+
+    it('delegates the per-path exemption to isApiAuthExemptPath in production', async () => {
+      const mod = await loadRateLimit({}, { productionLike: true });
+
+      const skip = (
+        mod.apiAuthGateRateLimiter as unknown as {
+          skip: (req: { path: string }) => Promise<boolean>;
+        }
+      ).skip;
+
+      await expect(skip({ path: '/auth/login' })).resolves.toBe(true);
+      await expect(skip({ path: '/servers' })).resolves.toBe(false);
     });
   });
 });
