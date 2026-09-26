@@ -78,13 +78,14 @@ Upload a MCPB (MCP Bundle) file to import server configurations.
 
 - **Endpoint**: `/api/mcpb/upload`
 - **Method**: `POST`
-- **Authentication**: Required
+- **Authentication**: Required (admin only)
 - **Content-Type**: `multipart/form-data`
 - **Body**:
   - `mcpbFile` (file, required): The MCPB bundle file to upload.
 
 **Security notes:**
 
+- **Admin only**: the uploaded bundle's code is extracted to the deterministic `data/uploads/mcpb/server-<name>` path that existing stdio server configurations execute from, so non-admin uploads are rejected with `403` before the request body is staged on disk.
 - `manifest.json` must include a safe `name` value using only letters, numbers, `.`, `_`, and `-`.
 - Uploads are rejected if the manifest name contains path separators, `..`, or other unsafe path characters.
 

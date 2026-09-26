@@ -175,6 +175,7 @@ import {
   importConfigTemplate,
 } from '../controllers/templateController.js';
 import { auth } from '../middlewares/auth.js';
+import { requireAdminMiddleware } from '../utils/requireAdmin.js';
 import { getBetterAuthRuntimeConfig } from '../services/betterAuthConfig.js';
 import {
   authAttemptRateLimiter,
@@ -398,8 +399,13 @@ export const initRoutes = async (app: express.Application): Promise<void> => {
   authenticatedRouter.delete('/resources/:id', deleteBuiltinResource);
   authenticatedRouter.post('/resources/read', readResource);
 
-  // MCPB upload routes
-  authenticatedRouter.post('/mcpb/upload', uploadMiddleware, uploadMcpbFile);
+  // MCPB upload routes. Admin-only: the handler replaces the code at the
+  // deterministic `data/uploads/mcpb/server-<name>` path that existing stdio
+  // server configurations point into, so an unprivileged upload would be a
+  // second write path to the stdio execution boundary (GHSA-xf2m-3c3x-53vp).
+  // The admin gate must run before `uploadMiddleware` so multer never stages a
+  // non-admin upload body on disk.
+  authenticatedRouter.post('/mcpb/upload', requireAdminMiddleware, uploadMiddleware, uploadMcpbFile);
 
   // Market routes
   authenticatedRouter.get('/market/servers', getAllMarketServers);

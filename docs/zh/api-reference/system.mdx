@@ -78,13 +78,14 @@ curl "http://localhost:3000/health"
 
 - **端点**: `/api/mcpb/upload`
 - **方法**: `POST`
-- **身份验证**: 必需
+- **身份验证**: 必需（仅限管理员）
 - **Content-Type**: `multipart/form-data`
 - **正文**:
   - `mcpbFile` (文件, 必需): 要上传的 MCPB 文件。
 
 **安全说明：**
 
+- **仅限管理员**：上传的 bundle 代码会被解压到确定性的 `data/uploads/mcpb/server-<name>` 路径，现有的 stdio 服务器配置会从该路径执行代码，因此非管理员上传会在请求体写入磁盘之前被 `403` 拒绝。
 - `manifest.json` 中的 `name` 只能包含字母、数字、`.`、`_` 和 `-`。
 - 如果清单名称包含路径分隔符、`..` 或其他不安全的路径字符，上传会被拒绝。
 

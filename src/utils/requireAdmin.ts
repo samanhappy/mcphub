@@ -1,4 +1,4 @@
-import { Request, Response } from 'express';
+import { NextFunction, Request, Response } from 'express';
 
 // Shared dashboard-API admin gate. Mirrors the inline checks in
 // userController/serverController so every global-scope mutation enforces the
@@ -13,4 +13,17 @@ export const requireAdmin = async (req: Request, res: Response): Promise<boolean
     return false;
   }
   return true;
+};
+
+// Express middleware adapter for requireAdmin. Use it on routes whose handler
+// or earlier middleware would otherwise consume untrusted request data before
+// an authorization check (e.g. multer staging an upload body to disk).
+export const requireAdminMiddleware = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
+  if (await requireAdmin(req, res)) {
+    next();
+  }
 };

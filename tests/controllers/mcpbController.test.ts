@@ -48,6 +48,18 @@ describe('mcpbController - uploadMcpbFile', () => {
     return mcpbFilePath;
   };
 
+  const createAdminRequest = (mcpbFilePath: string): Request =>
+    ({
+      file: { path: mcpbFilePath },
+      user: { username: 'admin', isAdmin: true },
+    }) as Request;
+
+  const createNonAdminRequest = (mcpbFilePath: string): Request =>
+    ({
+      file: { path: mcpbFilePath },
+      user: { username: 'alice', isAdmin: false },
+    }) as Request;
+
   beforeEach(() => {
     tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'mcpb-controller-'));
     cwdSpy = jest.spyOn(process, 'cwd').mockReturnValue(tempRoot);
@@ -62,11 +74,7 @@ describe('mcpbController - uploadMcpbFile', () => {
   it('rejects manifest names that attempt path traversal', async () => {
     const mcpbFilePath = createMcpbFile('../../../escaped/server');
     const { response, json, status } = createResponse();
-    const request = {
-      file: {
-        path: mcpbFilePath,
-      },
-    } as Request;
+    const request = createAdminRequest(mcpbFilePath);
     const uploadDir = path.join(tempRoot, 'data/uploads/mcpb');
     const escapedDir = path.resolve(uploadDir, 'server-../../../escaped/server');
 
@@ -87,11 +95,7 @@ describe('mcpbController - uploadMcpbFile', () => {
   it('extracts MCPB files into the upload directory when the manifest name is safe', async () => {
     const mcpbFilePath = createMcpbFile('weather-server');
     const { response, json, status } = createResponse();
-    const request = {
-      file: {
-        path: mcpbFilePath,
-      },
-    } as Request;
+    const request = createAdminRequest(mcpbFilePath);
     const uploadDir = path.join(tempRoot, 'data/uploads/mcpb');
     const finalExtractDir = path.join(uploadDir, 'server-weather-server');
 
@@ -111,5 +115,42 @@ describe('mcpbController - uploadMcpbFile', () => {
     );
     expect(fs.existsSync(path.join(finalExtractDir, 'manifest.json'))).toBe(true);
     expect(fs.existsSync(path.join(finalExtractDir, 'server.js'))).toBe(true);
+  });
+
+  it('rejects uploads from non-admin users without extracting anything', async () => {
+    const mcpbFilePath = createMcpbFile('weather-server');
+    const { response, json, status } = createResponse();
+    const request = createNonAdminRequest(mcpbFilePath);
+    const uploadDir = path.join(tempRoot, 'data/uploads/mcpb');
+    const finalExtractDir = path.join(uploadDir, 'server-weather-server');
+
+    await uploadMcpbFile(request, response);
+
+    expect(status).toHaveBeenCalledWith(403);
+    expect(json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        success: false,
+        message: 'Admin privileges required',
+      }),
+    );
+    // The handler must not delete or replace any existing bundle content.
+    expect(fs.existsSync(finalExtractDir)).toBe(false);
+    expect(fs.readdirSync(uploadDir).filter((file) => file.startsWith('temp-extracted-'))).toHaveLength(0);
+  });
+
+  it('rejects uploads when no authenticated identity is present', async () => {
+    const mcpbFilePath = createMcpbFile('weather-server');
+    const { response, json, status } = createResponse();
+    const request = { file: { path: mcpbFilePath } } as Request;
+
+    await uploadMcpbFile(request, response);
+
+    expect(status).toHaveBeenCalledWith(403);
+    expect(json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        success: false,
+        message: 'Admin privileges required',
+      }),
+    );
   });
 });

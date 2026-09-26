@@ -5,6 +5,7 @@ import fs from 'fs';
 import AdmZip from 'adm-zip';
 import { ApiResponse } from '../types/index.js';
 import { logger } from '../utils/logger.js';
+import { requireAdmin } from '../utils/requireAdmin.js';
 import { validateServerName } from '../utils/serverNameValidation.js';
 
 // Configure multer for file uploads
@@ -96,6 +97,13 @@ const cleanupOldMcpbServer = (serverName: string): void => {
 
 export const uploadMcpbFile = async (req: Request, res: Response): Promise<void> => {
   try {
+    // Defense in depth: the route already gates this endpoint behind
+    // requireAdminMiddleware (before multer stages the body). Re-check here so
+    // the handler stays safe even if it is invoked through another path, since
+    // it replaces executable code at a deterministic path that existing stdio
+    // server configurations point into (GHSA-xf2m-3c3x-53vp).
+    if (!(await requireAdmin(req, res))) return;
+
     if (!req.file) {
       res.status(400).json({
         success: false,
