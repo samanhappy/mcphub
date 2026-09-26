@@ -1,0 +1,26 @@
+docs/api-reference/system.mdx
+  h_18676a549cd52a 81,88
+docs/zh/api-reference/system.mdx
+  h_18676a549cd52a 81,88
+src/controllers/mcpbController.ts
+  h_18676a549cd52a 8,100-106
+src/routes/index.ts
+  h_18676a549cd52a 178,402-408
+src/utils/requireAdmin.ts
+  h_18676a549cd52a 1,17-29
+tests/controllers/mcpbController.test.ts
+  h_18676a549cd52a 51-62,77,98,119-155
+tests/routes/index.test.ts
+  h_18676a549cd52a 232,312-336
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "e56f9d966e0382ef72c4db08752c988d540ca114",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
