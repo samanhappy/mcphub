@@ -64,4 +64,30 @@ pnpm backend:build
 If the exports still do not resolve the tools, ask the user for the install
 location instead of guessing.
 
+## Agent shell file sandbox
+
+Agent bash shells also run under a file sandbox that denies writes outside the
+repo workspace (default policy: workspace-write). Commands that succeed in the
+user's own terminal can fail here purely because of the sandbox:
+
+- `npx -y <pkg>` fails with `EPERM` on `~/.npm/_cacache/tmp/***`. npm's
+  "Your cache folder contains root-owned files" message is misleading — the
+  files are user-owned; `touch ~/.npm/_cacache/tmp/x` returning
+  `Operation not permitted` is the sandbox denying the write.
+- Any other tool that writes a cache under the user's home (`uvx`, pip, …)
+  is subject to the same restriction.
+
+This breaks `pnpm test` runs when a suite spawns a real MCP server via `npx`:
+`tests/integration/sse-service-real-client.test.ts` uses `npx -y time-mcp`
+(see `tests/utils/mockSettings.ts`), so the upstream never starts and the
+suite's `beforeAll` hooks time out (60s), even though the identical run
+passes in the user's terminal.
+
+Workarounds, in order of preference:
+
+1. Redirect the tool's cache into the workspace, e.g.
+   `NPM_CONFIG_CACHE=<workspace>/.npm-cache-test pnpm test <suite>`;
+   delete the cache directory afterwards.
+2. Request a wider sandbox permission for the run.
+
 The supported Node.js range is `^18.0.0 || >=20.0.0`; CI uses Node 20.x and the published Docker image uses Node 22.
