@@ -5,6 +5,7 @@ import request from 'supertest';
 jest.mock('../../src/services/mcpService.js', () => ({
   getServerByName: jest.fn(),
   getServerByOAuthState: jest.fn(),
+  getServerByPendingOAuthState: jest.fn(),
   connectClientWithDiagnostics: jest.fn(),
   createTransportFromConfig: jest.fn(),
   updateServerToolsCache: jest.fn(),
@@ -23,6 +24,7 @@ import {
   connectClientWithDiagnostics,
   createTransportFromConfig,
   getServerByOAuthState,
+  getServerByPendingOAuthState,
 } from '../../src/services/mcpService.js';
 import { loadServerConfig } from '../../src/services/oauthSettingsStore.js';
 
@@ -64,13 +66,18 @@ describe('OAuth callback reconnect integration', () => {
     });
 
     (getServerByOAuthState as jest.Mock).mockReturnValue(serverInfo);
+    (getServerByPendingOAuthState as jest.Mock).mockReturnValue(undefined);
     (loadServerConfig as jest.Mock).mockResolvedValue(serverInfo.config);
     (createTransportFromConfig as jest.Mock).mockResolvedValue(refreshedTransport);
     (connectClientWithDiagnostics as jest.Mock).mockResolvedValue(undefined);
 
     const response = await request(app)
       .get('/oauth/callback')
-      .query({ code: 'auth-code', state: 'state-123' });
+      .query({
+        code: 'auth-code',
+        state: 'state-123',
+        iss: 'https://as.example.com',
+      });
 
     expect(response.status).toBe(200);
     expect(connectClientWithDiagnostics).toHaveBeenCalledWith(
@@ -79,5 +86,59 @@ describe('OAuth callback reconnect integration', () => {
       expect.objectContaining({ timeout: 60000 }),
     );
     expect(serverInfo.status).toBe('connected');
+  });
+
+  it('rejects an unauthenticated forged-state callback without redeeming the code', async () => {
+    const serverInfo = {
+      name: 'oauth-server',
+      status: 'oauth_required' as const,
+      config: {
+        url: 'https://upstream.example.com/mcp',
+        oauth: { dynamicRegistration: { enabled: true } },
+      },
+      options: undefined,
+      transport: {
+        finishAuth: jest.fn().mockResolvedValue(undefined),
+        close: jest.fn().mockResolvedValue(undefined),
+      },
+      client: {
+        getServerCapabilities: jest.fn().mockReturnValue({ tools: {} }),
+        listTools: jest.fn().mockResolvedValue({ tools: [] }),
+      },
+      tools: [],
+      prompts: [],
+      resources: [],
+      oauth: {
+        authorizationUrl: 'https://as.example.com/authorize',
+        state: 'state-123',
+      },
+    };
+    const finishAuth = serverInfo.transport.finishAuth as jest.Mock;
+    const app = express();
+    const limiter = rateLimit({
+      windowMs: 15 * 60 * 1000,
+      max: 100,
+    });
+    app.use(limiter);
+    app.get('/oauth/callback', (req, res) => {
+      void handleOAuthCallback(req, res);
+    });
+
+    // The legacy attack payload: base64url({"server":"oauth-server"}).
+    const forgedState = Buffer.from(JSON.stringify({ server: 'oauth-server' }))
+      .toString('base64')
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_')
+      .replace(/=+$/, '');
+
+    (getServerByOAuthState as jest.Mock).mockReturnValueOnce(undefined);
+    (getServerByPendingOAuthState as jest.Mock).mockReturnValue(undefined);
+
+    const response = await request(app)
+      .get('/oauth/callback')
+      .query({ code: 'attacker-code', state: forgedState });
+
+    expect(response.status).toBe(400);
+    expect(finishAuth).not.toHaveBeenCalled();
   });
 });

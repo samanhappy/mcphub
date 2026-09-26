@@ -2492,6 +2492,15 @@ export const getServerByOAuthState = (state: string): ServerInfo | undefined => 
   return serverInfos.find((serverInfo) => serverInfo.oauth?.state === state);
 };
 
+// Get server by the persisted pending-authorization state (restart recovery).
+// This is an exact match against a stored, server-generated state — never a
+// lookup derived from attacker-controlled input (see GHSA-vc28-27px-x492).
+export const getServerByPendingOAuthState = (state: string): ServerInfo | undefined => {
+  return serverInfos.find(
+    (serverInfo) => serverInfo.config?.oauth?.pendingAuthorization?.state === state,
+  );
+};
+
 /**
  * Reconnect a server after OAuth authorization or configuration change
  * This will close the existing connection and reinitialize the server

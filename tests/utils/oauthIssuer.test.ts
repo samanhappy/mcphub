@@ -38,11 +38,26 @@ describe('oauthIssuer (RFC 9207 iss validation)', () => {
   });
 
   describe('validateAuthorizationIss', () => {
-    it('passes without checking when iss is absent (legacy servers)', () => {
+    it('rejects a missing iss when the expected issuer is known', () => {
       const result = validateAuthorizationIss({
         authorizationUrl: 'https://as.example.com/authorize',
       });
-      expect(result).toEqual({ valid: true, checked: false });
+      expect(result.valid).toBe(false);
+      if (!result.valid) {
+        expect(result.checked).toBe(true);
+        expect(result.reason).toContain('iss');
+      }
+    });
+
+    it('passes without checking when iss is absent and no issuer is expected', () => {
+      // Legacy servers with no established issuer expectation: nothing to bind
+      // the response to, so the flow continues unchecked.
+      expect(
+        validateAuthorizationIss({
+          authorizationUrl: 'not-a-url',
+        }),
+      ).toEqual({ valid: true, checked: false });
+      expect(validateAuthorizationIss({})).toEqual({ valid: true, checked: false });
     });
 
     it('accepts an iss matching the authorization endpoint origin', () => {

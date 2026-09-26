@@ -46,7 +46,13 @@ export const expectedIssValues = (ctx: AuthorizationResponseIssContext): string[
 /**
  * Validate the `iss` authorization-response parameter.
  *
- * - Absent `iss` → valid but unchecked (older servers do not send it).
+ * - Absent `iss` with a known expected issuer → invalid (RFC 9207 requires
+ *   `iss` in the authorization response; when MCPHub knows which issuer it
+ *   sent the request to, a response without `iss` cannot be bound to that
+ *   request — GHSA-vc28-27px-x492).
+ * - Absent `iss` with no way to establish the expected issuer → valid but
+ *   unchecked (older servers do not send it and no mix-up is possible when no
+ *   issuer expectation exists).
  * - Present `iss` with nothing to compare against → unchecked fail-safe pass,
  *   since we cannot establish what the client expected (no mix-up possible
  *   when only one AS is involved in a flow keyed by our own state parameter).
@@ -58,6 +64,14 @@ export const validateAuthorizationIss = (
   const { iss } = ctx;
 
   if (!iss) {
+    const expected = expectedIssValues(ctx);
+    if (expected.length > 0) {
+      return {
+        valid: false,
+        checked: true,
+        reason: 'iss parameter is missing from the authorization response',
+      };
+    }
     return { valid: true, checked: false };
   }
 

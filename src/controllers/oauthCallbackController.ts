@@ -17,8 +17,8 @@
 
 import { Request, Response } from 'express';
 import {
-  getServerByName,
   getServerByOAuthState,
+  getServerByPendingOAuthState,
   connectClientWithDiagnostics,
   createTransportFromConfig,
   updateServerToolsCache,
@@ -136,24 +136,95 @@ const normalizeQueryParam = (value: unknown): string | undefined => {
   return undefined;
 };
 
-const extractServerNameFromState = (stateValue: string): string | undefined => {
-  try {
-    const normalized = stateValue.replace(/-/g, '+').replace(/_/g, '/');
-    const padding = (4 - (normalized.length % 4)) % 4;
-    const base64 = normalized + '='.repeat(padding);
-    const decoded = Buffer.from(base64, 'base64').toString('utf8');
-    const payload = JSON.parse(decoded);
+/**
+ * OAuth `state` is a server-generated, unguessable, single-use value bound to
+ * the in-flight authorization of exactly one server (see
+ * MCPHubOAuthProvider.generateState). The callback MUST resolve the target
+ * server only by exact match against a stored state — never by decoding the
+ * supplied value or falling back to a server name embedded in it
+ * (GHSA-vc28-27px-x492).
+ */
+const OAUTH_STATE_TTL_MS = 10 * 60 * 1000; // 10 minutes
 
-    if (payload && typeof payload.server === 'string') {
-      return payload.server;
+/** States whose authorization has already been completed (single-use). */
+const consumedOAuthStates = new Map<string, number>(); // state -> consumedAt
+
+const pruneConsumedOAuthStates = (): void => {
+  const now = Date.now();
+  for (const [state, consumedAt] of consumedOAuthStates) {
+    if (now - consumedAt > OAUTH_STATE_TTL_MS) {
+      consumedOAuthStates.delete(state);
     }
-  } catch (error) {
-    // Ignore decoding errors and fall back to delimiter-based parsing
+  }
+};
+
+/**
+ * Reset the in-memory OAuth state bookkeeping (the consumed-state set). This is
+ * a no-op in production use and exists so test suites start from a clean slate
+ * between cases.
+ */
+export const resetOAuthStateTrackingForTests = (): void => {
+  consumedOAuthStates.clear();
+};
+
+/**
+ * True when `state` is the current in-flight authorization state of the server.
+ * Requires an exact match against the stored state (in-memory or persisted) and
+ * rejects states that are stale beyond the TTL.
+ */
+const isOAuthStateCurrent = (serverInfo: ServerInfo, state: string): boolean => {
+  const inMemoryState = serverInfo.oauth?.state;
+  const pendingState = serverInfo.config?.oauth?.pendingAuthorization?.state;
+  const storedStates = [inMemoryState, pendingState].filter(
+    (s): s is string => typeof s === 'string',
+  );
+
+  // Exact match only. A state that does not equal the server's current
+  // in-flight authorization is rejected outright.
+  if (storedStates.length === 0 || !storedStates.includes(state)) {
+    return false;
   }
 
-  const separatorIndex = stateValue.indexOf(':');
-  if (separatorIndex > 0) {
-    return stateValue.slice(0, separatorIndex);
+  const createdAt = serverInfo.config?.oauth?.pendingAuthorization?.createdAt;
+  if (createdAt !== undefined && Date.now() - createdAt > OAUTH_STATE_TTL_MS) {
+    logger.warn('OAuth callback state expired; rejecting', {
+      serverName: serverInfo.name,
+    });
+    return false;
+  }
+
+  return true;
+};
+
+/**
+ * Resolve the server targeted by an OAuth callback from its `state` parameter.
+ *
+ * The state must be an unexpired, unconsumed, exact match against a stored
+ * server-generated state. There is deliberately no fallback that interprets the
+ * state as a server name — an attacker who forges `state` cannot select which
+ * server's authorization to drive (GHSA-vc28-27px-x492).
+ */
+const resolveServerByOAuthState = (state: string): ServerInfo | undefined => {
+  pruneConsumedOAuthStates();
+
+  if (consumedOAuthStates.has(state)) {
+    logger.warn('OAuth callback state already consumed; rejecting', {
+      serverName: '<redacted>',
+    });
+    return undefined;
+  }
+
+  // In-memory match: serverInfo.oauth.state is set when redirectToAuthorization
+  // ran against a live transport in this process.
+  const serverInfo = getServerByOAuthState(state);
+  if (serverInfo && isOAuthStateCurrent(serverInfo, state)) {
+    return serverInfo;
+  }
+
+  // Restart recovery: match against the persisted pendingAuthorization.state.
+  const pendingServerInfo = getServerByPendingOAuthState(state);
+  if (pendingServerInfo && isOAuthStateCurrent(pendingServerInfo, state)) {
+    return pendingServerInfo;
   }
 
   return undefined;
@@ -167,7 +238,8 @@ const extractServerNameFromState = (stateValue: string): string | undefined => {
  *
  * Expected query parameters:
  * - code: Authorization code from OAuth provider
- * - state: Encoded server identifier used for OAuth session validation
+ * - state: Server-generated, unguessable, single-use authorization state bound
+ *   to the in-flight authorization of exactly one server
  * - error: Optional error code if authorization failed
  * - error_description: Optional error description
  */
@@ -232,27 +304,13 @@ export const handleOAuthCallback = async (req: Request, res: Response) => {
 
     logger.log('OAuth callback received', { hasCode: true, state: stateParam });
 
-    // Find server by state parameter
-    let serverInfo: ServerInfo | undefined;
-
-    serverInfo = getServerByOAuthState(stateParam);
-
-    let decodedServerName: string | undefined;
-    if (!serverInfo) {
-      decodedServerName = extractServerNameFromState(stateParam);
-      if (decodedServerName) {
-        logger.log('State lookup failed; decoded server name from state', {
-          decodedServerName,
-        });
-        serverInfo = getServerByName(decodedServerName);
-      }
-    }
+    // Find the target server by the state parameter. Resolution is exact-match
+    // only against a stored, server-generated state; a forged state cannot name
+    // a server (GHSA-vc28-27px-x492).
+    const serverInfo = resolveServerByOAuthState(stateParam);
 
     if (!serverInfo) {
-      logger.error('No server found for OAuth callback', {
-        state: stateParam,
-        decodedServerName,
-      });
+      logger.error('No server found for OAuth callback', { state: stateParam });
       return res
         .status(400)
         .send(
@@ -263,17 +321,6 @@ export const handleOAuthCallback = async (req: Request, res: Response) => {
             `${t('oauthCallback.serverNotFoundMessage')}\n${t('oauthCallback.sessionExpiredMessage')}`,
           ),
         );
-    }
-
-    // Optional: Validate state parameter for additional security
-    if (serverInfo.oauth?.state && serverInfo.oauth.state !== stateParam) {
-      logger.warn('OAuth state mismatch detected', {
-        serverName: serverInfo.name,
-        // State values are considered sensitive and are not logged
-        expectedState: '<redacted>',
-        receivedState: '<redacted>',
-      });
-      // Note: We log a warning but don't fail the request since we have server name as primary identifier
     }
 
     logger.log('Processing OAuth callback for server', { serverName: serverInfo.name });
@@ -319,6 +366,11 @@ export const handleOAuthCallback = async (req: Request, res: Response) => {
         logger.log('Calling transport.finishAuth for server', { serverName: serverInfo.name });
         const currentTransport = serverInfo.transport as any;
         await currentTransport.finishAuth(codeParam);
+
+        // The state has served its purpose: the code was exchanged and the
+        // server now holds the resulting tokens. Mark it consumed so a replayed
+        // callback with the same state is rejected (single-use, GHSA-vc28-27px-x492).
+        consumedOAuthStates.set(stateParam, Date.now());
 
         logger.log('Successfully exchanged authorization code for tokens', {
           serverName: serverInfo.name,
