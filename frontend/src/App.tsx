@@ -24,10 +24,10 @@ const ActivityPage = lazy(() => import('./pages/ActivityPage'));
 const PromptsPage = lazy(() => import('./pages/PromptsPage'));
 const ResourcesPage = lazy(() => import('./pages/ResourcesPage'));
 
-// Helper component to redirect cloud server routes to market
+// Helper component to redirect legacy cloud server routes to the local market page
 const CloudRedirect: React.FC = () => {
   const { serverName } = useParams<{ serverName: string }>();
-  return <Navigate to={`/market/${serverName}?tab=cloud`} replace />;
+  return <Navigate to={`/market/${serverName}`} replace />;
 };
 
 const RouteFallback: React.FC = () => (
@@ -80,8 +80,8 @@ function App() {
                       <Route path="/users" element={<UsersPage />} />
                       <Route path="/market" element={<MarketPage />} />
                       <Route path="/market/:serverName" element={<MarketPage />} />
-                      {/* Legacy cloud routes redirect to market with cloud tab */}
-                      <Route path="/cloud" element={<Navigate to="/market?tab=cloud" replace />} />
+                      {/* Legacy cloud routes redirect to the local market page */}
+                      <Route path="/cloud" element={<Navigate to="/market" replace />} />
                       <Route path="/cloud/:serverName" element={<CloudRedirect />} />
                       <Route path="/logs" element={<LogsPage />} />
                       <Route path="/activity" element={<ActivityPage />} />
