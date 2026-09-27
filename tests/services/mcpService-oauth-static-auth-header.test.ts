@@ -1,11 +1,16 @@
-const mockBaseFetch = jest.fn(async (_url: string | URL, _init?: RequestInit) => ({
-  ok: true,
-  status: 200,
-  headers: new Headers(),
-  body: {
-    cancel: jest.fn(),
-  },
-} as any));
+import { SSEClientTransport, StreamableHTTPClientTransport } from '@modelcontextprotocol/client';
+
+const mockBaseFetch = jest.fn(
+  async (_url: string | URL, _init?: RequestInit) =>
+    ({
+      ok: true,
+      status: 200,
+      headers: new Headers(),
+      body: {
+        cancel: jest.fn(),
+      },
+    }) as any,
+);
 
 jest.mock('../../src/services/oauthService.js', () => ({
   initializeAllOAuthClients: jest.fn(),
@@ -74,16 +79,12 @@ jest.mock('../../src/dao/index.js', () => ({
   })),
 }));
 
-jest.mock('@modelcontextprotocol/sdk/client/streamableHttp.js', () => ({
+jest.mock('@modelcontextprotocol/client', () => ({
+  ...jest.requireActual('@modelcontextprotocol/client'),
   StreamableHTTPClientTransport: jest.fn(),
-}));
-
-jest.mock('@modelcontextprotocol/sdk/client/sse.js', () => ({
   SSEClientTransport: jest.fn(),
 }));
 
-import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
-import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { createOAuthProvider } from '../../src/services/mcpOAuthProvider.js';
 import { createTransportFromConfig } from '../../src/services/mcpService.js';
 

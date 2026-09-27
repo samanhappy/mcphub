@@ -190,7 +190,6 @@ describe('mcpService group server alias', () => {
     expect(result.isError).toBe(false);
     expect(mockCallTool).toHaveBeenCalledWith(
       { name: 'fetch_url', arguments: { url: 'https://example.com' } },
-      undefined,
       expect.anything(),
     );
   });

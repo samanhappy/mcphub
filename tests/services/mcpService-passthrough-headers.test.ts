@@ -1,11 +1,17 @@
-const mockBaseFetch = jest.fn(async (_url: string | URL, _init?: RequestInit) => ({
-  ok: true,
-  status: 200,
-  headers: new Headers(),
-  body: {
-    cancel: jest.fn(),
-  },
-} as any));
+import { StdioClientTransport } from '@modelcontextprotocol/client/stdio';
+import { SSEClientTransport, StreamableHTTPClientTransport } from '@modelcontextprotocol/client';
+
+const mockBaseFetch = jest.fn(
+  async (_url: string | URL, _init?: RequestInit) =>
+    ({
+      ok: true,
+      status: 200,
+      headers: new Headers(),
+      body: {
+        cancel: jest.fn(),
+      },
+    }) as any,
+);
 
 jest.mock('../../src/services/oauthService.js', () => ({
   initializeAllOAuthClients: jest.fn(),
@@ -85,29 +91,26 @@ jest.mock('../../src/config/index.js', () => ({
   },
 }));
 
-jest.mock('@modelcontextprotocol/sdk/client/sse.js', () => ({
+jest.mock('@modelcontextprotocol/client', () => ({
+  ...jest.requireActual('@modelcontextprotocol/client'),
   SSEClientTransport: jest.fn().mockImplementation((url: URL, options: any) => ({
     url,
     options,
   })),
-}));
-
-jest.mock('@modelcontextprotocol/sdk/client/streamableHttp.js', () => ({
   StreamableHTTPClientTransport: jest.fn().mockImplementation((url: URL, options: any) => ({
     url,
     options,
   })),
 }));
 
-jest.mock('@modelcontextprotocol/sdk/client/stdio.js', () => ({
+jest.mock('@modelcontextprotocol/client/stdio', () => ({
   StdioClientTransport: jest.fn(),
 }));
-
-import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
-import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
-import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { RequestContextService } from '../../src/services/requestContextService.js';
-import { createTransportFromConfig } from '../../src/services/mcpService.js';
+import {
+  createRequestContextAwareFetch,
+  createTransportFromConfig,
+} from '../../src/services/mcpService.js';
 
 describe('MCP Service - passthrough headers for upstream MCP transports', () => {
   beforeEach(() => {
@@ -164,6 +167,23 @@ describe('MCP Service - passthrough headers for upstream MCP transports', () => 
       }),
     );
   });
+
+  it.each([
+    new Headers({ Authorization: 'Bearer static-token' }),
+    [['authorization', 'Bearer static-token']],
+    { authorization: 'Bearer static-token' },
+  ] satisfies HeadersInit[])(
+    'replaces authorization without duplicate casing for %p',
+    async (headers) => {
+      const fetch = createRequestContextAwareFetch(mockBaseFetch, ['Authorization']);
+      await RequestContextService.getInstance().runWithCustomRequestContext(
+        { headers: { authorization: 'Bearer user-token' } },
+        () => fetch('https://example.com/mcp', { headers }),
+      );
+      const sentHeaders = new Headers(mockBaseFetch.mock.calls[0][1]?.headers);
+      expect(sentHeaders.get('authorization')).toBe('Bearer user-token');
+    },
+  );
 
   it('should expose passthrough-aware fetch for SSE connect and message requests', async () => {
     await createTransportFromConfig('demo-sse', {

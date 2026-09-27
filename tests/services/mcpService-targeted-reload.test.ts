@@ -7,7 +7,8 @@ const mockClientClose = jest.fn();
 const mockListTools = jest.fn().mockResolvedValue({ tools: [] });
 const mockGetServerCapabilities = jest.fn(() => ({ tools: {} }));
 
-jest.mock('@modelcontextprotocol/sdk/client/index.js', () => ({
+jest.mock('@modelcontextprotocol/client', () => ({
+  ...jest.requireActual('@modelcontextprotocol/client'),
   Client: jest.fn().mockImplementation(() => ({
     connect: mockClientConnect,
     close: mockClientClose,
@@ -18,6 +19,8 @@ jest.mock('@modelcontextprotocol/sdk/client/index.js', () => ({
     listPrompts: jest.fn().mockResolvedValue({ prompts: [] }),
     listResources: jest.fn().mockResolvedValue({ resources: [] }),
   })),
+  StreamableHTTPClientTransport: MockStreamableHTTPClientTransport,
+  SSEClientTransport: jest.fn(),
 }));
 
 class MockStreamableHTTPClientTransport {
@@ -28,15 +31,7 @@ class MockStreamableHTTPClientTransport {
   }
 }
 
-jest.mock('@modelcontextprotocol/sdk/client/streamableHttp.js', () => ({
-  StreamableHTTPClientTransport: MockStreamableHTTPClientTransport,
-}));
-
-jest.mock('@modelcontextprotocol/sdk/client/sse.js', () => ({
-  SSEClientTransport: jest.fn(),
-}));
-
-jest.mock('@modelcontextprotocol/sdk/client/stdio.js', () => ({
+jest.mock('@modelcontextprotocol/client/stdio', () => ({
   StdioClientTransport: jest.fn(),
 }));
 

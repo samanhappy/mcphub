@@ -6,8 +6,7 @@
  * fetch implementation that uses Node.js http/https agents with proxy support.
  *
  */
-
-import { FetchLike } from '@modelcontextprotocol/sdk/shared/transport.js';
+import { FetchLike } from '@modelcontextprotocol/server';
 
 /**
  * Configuration options for HTTP/HTTPS proxy settings.

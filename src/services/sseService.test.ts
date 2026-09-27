@@ -24,6 +24,10 @@ const defaultSystemConfig = {
   enableSessionRebuild: false,
 };
 
+import { isInitializeRequest } from '@modelcontextprotocol/server';
+import { NodeStreamableHTTPServerTransport } from '@modelcontextprotocol/node';
+import { SSEServerTransport } from '@modelcontextprotocol/server-legacy/sse';
+
 // Mutable mock config that can be changed in tests
 let currentSystemConfig = { ...defaultSystemConfig };
 
@@ -102,7 +106,7 @@ jest.mock('./userContextService.js', () => ({
   },
 }));
 
-jest.mock('@modelcontextprotocol/sdk/server/sse.js', () => ({
+jest.mock('@modelcontextprotocol/server-legacy/sse', () => ({
   SSEServerTransport: jest.fn().mockImplementation((_path, _res) => ({
     sessionId: 'test-session-id',
     connect: jest.fn(),
@@ -110,22 +114,19 @@ jest.mock('@modelcontextprotocol/sdk/server/sse.js', () => ({
   })),
 }));
 
-jest.mock('@modelcontextprotocol/sdk/server/streamableHttp.js', () => ({
-  StreamableHTTPServerTransport: jest
+jest.mock('@modelcontextprotocol/node', () => ({
+  NodeStreamableHTTPServerTransport: jest
     .fn()
     .mockImplementation(() => mockStreamableHTTPServerTransport),
 }));
 
-jest.mock('@modelcontextprotocol/sdk/types.js', () => ({
+jest.mock('@modelcontextprotocol/server', () => ({
   isInitializeRequest: jest.fn(() => true),
 }));
 
 // Import mocked modules
 import { getMcpServer } from './mcpService.js';
 import { UserContextService } from './userContextService.js';
-import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
-import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
-import { isInitializeRequest } from '@modelcontextprotocol/sdk/types.js';
 import { getBearerKeyDao, getGroupDao, getUserDao } from '../dao/index.js';
 
 // Helper function to update the mock system config
@@ -820,7 +821,7 @@ describe('sseService', () => {
 
       await handleMcpPostRequest(req, res);
 
-      expect(StreamableHTTPServerTransport).toHaveBeenCalled();
+      expect(NodeStreamableHTTPServerTransport).toHaveBeenCalled();
       expect(getMcpServer).toHaveBeenCalled();
     });
 
@@ -880,9 +881,11 @@ describe('sseService', () => {
       await handleMcpPostRequest(req, res);
 
       // With session rebuild enabled, invalid sessions should be transparently rebuilt
-      expect(StreamableHTTPServerTransport).toHaveBeenCalled();
+      expect(NodeStreamableHTTPServerTransport).toHaveBeenCalled();
       const mockInstance = (
-        StreamableHTTPServerTransport as jest.MockedClass<typeof StreamableHTTPServerTransport>
+        NodeStreamableHTTPServerTransport as jest.MockedClass<
+          typeof NodeStreamableHTTPServerTransport
+        >
       ).mock.results[0].value as typeof mockStreamableHTTPServerTransport;
       expect(mockInstance.handleRequest).toHaveBeenCalledWith(req, res, req.body);
     });
@@ -1016,7 +1019,7 @@ describe('sseService', () => {
 
       expect(res.status).toHaveBeenCalledWith(200);
       expect(res.end).toHaveBeenCalled();
-      expect(StreamableHTTPServerTransport).not.toHaveBeenCalled();
+      expect(NodeStreamableHTTPServerTransport).not.toHaveBeenCalled();
     });
 
     describe('bearer key group scope escalation (GHSA-454m-4vm6-842f)', () => {

@@ -1,8 +1,10 @@
-import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
-import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
-import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
-import { RequestOptions } from '@modelcontextprotocol/sdk/shared/protocol.js';
+import { StdioClientTransport } from '@modelcontextprotocol/client/stdio';
+import {
+  Client,
+  SSEClientTransport,
+  StreamableHTTPClientTransport,
+  RequestOptions,
+} from '@modelcontextprotocol/client';
 import { SmartRoutingConfig } from '../utils/smartRouting.js';
 
 // User interface
@@ -437,7 +439,9 @@ export interface ServerConfig {
   tools?: Record<string, { enabled: boolean; description?: string }>; // Tool-specific configurations with enable/disable state and custom descriptions
   prompts?: Record<string, { enabled: boolean; description?: string }>; // Prompt-specific configurations with enable/disable state and custom descriptions
   resources?: Record<string, { enabled: boolean; description?: string }>; // Resource-specific configurations with enable/disable state and custom descriptions
-  options?: Partial<Pick<RequestOptions, 'timeout' | 'resetTimeoutOnProgress' | 'maxTotalTimeout'>> & {
+  options?: Partial<
+    Pick<RequestOptions, 'timeout' | 'resetTimeoutOnProgress' | 'maxTotalTimeout'>
+  > & {
     // Internal persistence carriers for startOnDemand/idleTimeoutMs (see below). The
     // database-backed ServerDao has no dedicated columns for those two fields, so
     // serverConfigPersistence.ts piggybacks them onto this schema-less JSON blob

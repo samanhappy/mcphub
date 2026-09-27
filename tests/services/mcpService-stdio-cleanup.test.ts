@@ -1,5 +1,8 @@
 // Tests that stdio MCP server child processes are fully terminated on
 // delete/disable — not just the direct child wrapper, but the whole process
+import { Client } from '@modelcontextprotocol/client';
+import { StdioClientTransport } from '@modelcontextprotocol/client/stdio';
+
 // tree. Regression coverage for issue #920.
 
 const mockRemoveServerToolEmbeddings = jest.fn().mockResolvedValue(undefined);
@@ -19,7 +22,8 @@ const stdioInstances: Array<{ pid: number | null }> = [];
 // file. We expose a setter that the test can call after import.
 let currentTestPid: number | null = 12345;
 
-jest.mock('@modelcontextprotocol/sdk/client/index.js', () => ({
+jest.mock('@modelcontextprotocol/client', () => ({
+  ...jest.requireActual('@modelcontextprotocol/client'),
   Client: jest.fn().mockImplementation(() => ({
     connect: mockClientConnect,
     close: mockClientClose,
@@ -28,7 +32,7 @@ jest.mock('@modelcontextprotocol/sdk/client/index.js', () => ({
   })),
 }));
 
-jest.mock('@modelcontextprotocol/sdk/client/stdio.js', () => {
+jest.mock('@modelcontextprotocol/client/stdio', () => {
   class FakeStdioClientTransport {
     pid: number | null;
     stderr: { on: jest.Mock };
@@ -147,16 +151,14 @@ jest.mock('../../src/services/activityLoggingService.js', () => ({
 // we hand to the helper. We just want to verify the call was attempted.
 const originalProcessKill = process.kill.bind(process);
 const installProcessKillMock = (): void => {
-  jest.spyOn(process, 'kill').mockImplementation(
-    ((pid: number, signal?: string | number) => {
-      // Pretend the live pid is dead, so the SIGKILL fallback is NOT triggered
-      // in tests by default — we only want to assert SIGTERM was sent.
-      if (pid === currentTestPid && (signal === 0 || signal === undefined)) {
-        throw Object.assign(new Error('ESRCH'), { code: 'ESRCH' });
-      }
-      return originalProcessKill(pid, signal as any);
-    }) as any,
-  );
+  jest.spyOn(process, 'kill').mockImplementation(((pid: number, signal?: string | number) => {
+    // Pretend the live pid is dead, so the SIGKILL fallback is NOT triggered
+    // in tests by default — we only want to assert SIGTERM was sent.
+    if (pid === currentTestPid && (signal === 0 || signal === undefined)) {
+      throw Object.assign(new Error('ESRCH'), { code: 'ESRCH' });
+    }
+    return originalProcessKill(pid, signal as any);
+  }) as any);
 };
 
 // Import after mocks
@@ -167,9 +169,6 @@ import {
   toggleServerStatus,
 } from '../../src/services/mcpService.js';
 import type { ServerInfo } from '../../src/types/index.js';
-import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
-import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-
 const makeStdioServerInfo = (name: string): ServerInfo =>
   ({
     name,
@@ -245,7 +244,7 @@ describe('orphan stdio process cleanup (issue #920)', () => {
     it('kicks in for any transport with a numeric `pid` (duck-typing, not instanceof)', async () => {
       // A non-SDK transport with a `pid` getter should still be tree-killed.
       // This guards against the "dual package hazard" where pnpm loads two
-      // copies of @modelcontextprotocol/sdk and `instanceof` returns false.
+      // copies of @modelcontextprotocol/client and `instanceof` returns false.
       currentTestPid = 8686;
       const info = makeStdioServerInfo('duck-server');
       info.transport = {
@@ -276,14 +275,15 @@ describe('orphan stdio process cleanup (issue #920)', () => {
       try {
         // Make the "is alive?" probe say the process is still alive, so the
         // SIGKILL fallback fires.
-        (process.kill as jest.Mock).mockImplementation(
-          ((_pid: number, signal?: string | number) => {
-            if (signal === 0 || signal === undefined) {
-              return true;
-            }
+        (process.kill as jest.Mock).mockImplementation(((
+          _pid: number,
+          signal?: string | number,
+        ) => {
+          if (signal === 0 || signal === undefined) {
             return true;
-          }) as any,
-        );
+          }
+          return true;
+        }) as any);
 
         currentTestPid = 4242;
         const info = makeStdioServerInfo('stubborn-server');
@@ -308,14 +308,15 @@ describe('orphan stdio process cleanup (issue #920)', () => {
       try {
         // process.kill(pid, 0) throws EPERM when the process exists but we
         // can't signal it. isProcessAlive() should count that as alive.
-        (process.kill as jest.Mock).mockImplementation(
-          ((_pid: number, signal?: string | number) => {
-            if (signal === 0 || signal === undefined) {
-              throw Object.assign(new Error('EPERM'), { code: 'EPERM' });
-            }
-            return true;
-          }) as any,
-        );
+        (process.kill as jest.Mock).mockImplementation(((
+          _pid: number,
+          signal?: string | number,
+        ) => {
+          if (signal === 0 || signal === undefined) {
+            throw Object.assign(new Error('EPERM'), { code: 'EPERM' });
+          }
+          return true;
+        }) as any);
 
         currentTestPid = 5151;
         const info = makeStdioServerInfo('eperm-server');

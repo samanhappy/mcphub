@@ -1,7 +1,7 @@
 /**
  * MCP OAuth Provider Implementation
  *
- * Implements OAuthClientProvider interface from @modelcontextprotocol/sdk/client/auth.js
+ * Implements OAuthClientProvider interface from @modelcontextprotocol/client
  * to handle OAuth 2.0 authentication for upstream MCP servers using the SDK's built-in
  * OAuth support.
  *
@@ -15,13 +15,11 @@ import { randomBytes } from 'node:crypto';
 import type {
   OAuthClientProvider,
   OAuthDiscoveryState,
-} from '@modelcontextprotocol/sdk/client/auth.js';
-import type {
   OAuthClientInformation,
   OAuthClientInformationFull,
   OAuthClientMetadata,
   OAuthTokens,
-} from '@modelcontextprotocol/sdk/shared/auth.js';
+} from '@modelcontextprotocol/client';
 import { ServerConfig } from '../types/index.js';
 import { getSystemConfigDao } from '../dao/index.js';
 import {

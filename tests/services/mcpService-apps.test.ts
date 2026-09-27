@@ -1,3 +1,5 @@
+import { Client } from '@modelcontextprotocol/client';
+
 const createMockClient = () => ({
   connect: jest.fn().mockResolvedValue(undefined),
   close: jest.fn(),
@@ -21,25 +23,20 @@ const mockClient = createMockClient();
 // precedence over the shared default.
 const mockClientsByServer = new Map<string, ReturnType<typeof createMockClient>>();
 
-jest.mock('@modelcontextprotocol/sdk/client/index.js', () => ({
+jest.mock('@modelcontextprotocol/client', () => ({
+  ...jest.requireActual('@modelcontextprotocol/client'),
   Client: jest.fn().mockImplementation((clientInfo: { name: string }) => {
     const serverName = clientInfo.name.replace(/^mcp-client-/, '');
     return mockClientsByServer.get(serverName) ?? mockClient;
   }),
+  SSEClientTransport: jest.fn(),
+  StreamableHTTPClientTransport: jest.fn(),
 }));
 
-jest.mock('@modelcontextprotocol/sdk/client/stdio.js', () => ({
+jest.mock('@modelcontextprotocol/client/stdio', () => ({
   StdioClientTransport: jest.fn().mockImplementation(() => ({
     close: jest.fn(),
   })),
-}));
-
-jest.mock('@modelcontextprotocol/sdk/client/sse.js', () => ({
-  SSEClientTransport: jest.fn(),
-}));
-
-jest.mock('@modelcontextprotocol/sdk/client/streamableHttp.js', () => ({
-  StreamableHTTPClientTransport: jest.fn(),
 }));
 
 jest.mock('../../src/services/oauthService.js', () => ({
@@ -155,8 +152,6 @@ jest.mock('../../src/config/index.js', () => ({
     initTimeout: 60000,
   },
 }));
-
-import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import {
   broadcastToolListChanged,
   cleanupAllServers,
@@ -308,7 +303,6 @@ describe('mcpService MCP Apps transparent proxy', () => {
         expect(result.isError).toBe(false);
         expect(mockClient.callTool).toHaveBeenLastCalledWith(
           { name: 'open-dashboard', arguments: {} },
-          undefined,
           expect.anything(),
         );
       }
@@ -360,7 +354,6 @@ describe('mcpService MCP Apps transparent proxy', () => {
     expect(appsResult.isError).toBe(false);
     expect(mockClient.callTool).toHaveBeenCalledWith(
       { name: 'poll-dashboard', arguments: {} },
-      undefined,
       expect.anything(),
     );
     expect(ordinaryResult.isError).toBe(true);
@@ -507,7 +500,6 @@ describe('mcpService MCP Apps transparent proxy', () => {
       expect(result.isError).toBe(false);
       expect(mockClient.callTool).toHaveBeenCalledWith(
         { name: 'poll-dashboard', arguments: {} },
-        undefined,
         expect.anything(),
       );
     });

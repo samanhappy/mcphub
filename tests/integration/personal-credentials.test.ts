@@ -13,10 +13,10 @@ import path from 'node:path';
 import { randomBytes } from 'node:crypto';
 import type { Server as HttpServer } from 'node:http';
 import express from 'express';
+import { Client, StreamableHTTPClientTransport } from '@modelcontextprotocol/client';
+import { NodeStreamableHTTPServerTransport } from '@modelcontextprotocol/node';
+import { Server as McpServer } from '@modelcontextprotocol/server';
 import request from 'supertest';
-import { Server as McpServer } from '@modelcontextprotocol/sdk/server/index.js';
-import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
-import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 import {
   getServerDao,
   getSystemConfigDao,
@@ -25,8 +25,6 @@ import {
   getBuiltinPromptDao,
   getBuiltinResourceDao,
 } from '../../src/dao/DaoFactory.js';
-import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { auth } from '../../src/middlewares/auth.js';
 import {
   sseUserContextMiddleware,
@@ -386,15 +384,15 @@ test('HTTP and OpenAPI resolve the latest personal headers without passthrough o
       { name: 'http-fixture', version: '1' },
       { capabilities: { tools: {} } },
     );
-    upstream.setRequestHandler(ListToolsRequestSchema, async () => ({
+    upstream.setRequestHandler('tools/list', async () => ({
       tools: [{ name: 'identity', inputSchema: { type: 'object' } }],
     }));
-    upstream.setRequestHandler(CallToolRequestSchema, async () => ({
+    upstream.setRequestHandler('tools/call', async () => ({
       content: [
         { type: 'text', text: JSON.stringify({ credential: req.headers['x-personal-key'] }) },
       ],
     }));
-    const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
+    const transport = new NodeStreamableHTTPServerTransport({ sessionIdGenerator: undefined });
     res.on('close', () => {
       void transport.close();
       void upstream.close();

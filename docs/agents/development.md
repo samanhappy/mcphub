@@ -90,4 +90,4 @@ Workarounds, in order of preference:
    delete the cache directory afterwards.
 2. Request a wider sandbox permission for the run.
 
-The supported Node.js range is `^18.0.0 || >=20.0.0`; CI uses Node 20.x and the published Docker image uses Node 22.
+The supported Node.js range is `>=20.0.0`; CI tests Node 20.x and 22.x; the published Docker image uses Node 22.

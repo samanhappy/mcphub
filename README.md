@@ -56,7 +56,7 @@ It works with MCP clients such as Claude Code, Cursor, Cherry Studio, OpenWebUI,
 ### Prerequisites
 
 - **Docker** (recommended) — the fastest way to run MCPHub; all commands below use it
-- **Node.js** `^18.0.0 || >=20.0.0` and **pnpm** `10.12.4` — only needed to run from source or develop locally (see [Local Development](#local-development))
+- **Node.js** `>=20.0.0` and **pnpm** `10.12.4` — only needed to run from source or develop locally (see [Local Development](#local-development))
 
 ### Start with Docker
 

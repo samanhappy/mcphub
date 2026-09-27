@@ -1,38 +1,36 @@
+import { LegacyMcpClient } from '../clients/legacyMcpClient.js';
+import { LEGACY_PROTOCOL_VERSIONS } from '../utils/mcpProtocol.js';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { canAccessGroupRoute } from '../utils/groupAccess.js';
 import type { RequestPrincipal } from './authorizationService.js';
 import { PrincipalRuntimeService } from './principalRuntimeService.js';
 import { UserContextService } from './userContextService.js';
 import { deleteCredentialBindings, missingCredentialError } from './credentialBindingService.js';
-import { CredentialBindingError, hasCredentialTemplate, validateCredentialTemplate } from '../utils/credentialTemplate.js';
+import {
+  CredentialBindingError,
+  hasCredentialTemplate,
+  validateCredentialTemplate,
+} from '../utils/credentialTemplate.js';
 import os from 'os';
 import path from 'path';
 import fs from 'fs';
 import treeKill from 'tree-kill';
 import { isProcessTreeKillAvailable } from '../utils/processTree.js';
-import { Server } from '@modelcontextprotocol/sdk/server/index.js';
+import { StdioClientTransport } from '@modelcontextprotocol/client/stdio';
 import {
-  CallToolRequestSchema,
-  ListToolsRequestSchema,
-  ListPromptsRequestSchema,
-  GetPromptRequestSchema,
-  ListResourcesRequestSchema,
-  ListResourceTemplatesRequestSchema,
-  ReadResourceRequestSchema,
-  ServerCapabilities,
-  type Prompt as McpPrompt,
-  type Resource as McpResource,
-  type Tool as McpTool,
-} from '@modelcontextprotocol/sdk/types.js';
-import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
-import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
-import {
+  type Client,
+  SSEClientTransport,
   StreamableHTTPClientTransport,
   StreamableHTTPClientTransportOptions,
-} from '@modelcontextprotocol/sdk/client/streamableHttp.js';
-import { normalizeHeaders, type Transport } from '@modelcontextprotocol/sdk/shared/transport.js';
-import type { RequestOptions } from '@modelcontextprotocol/sdk/shared/protocol.js';
+} from '@modelcontextprotocol/client';
+import { Server, ServerCapabilities } from '@modelcontextprotocol/server';
+import type {
+  Prompt as McpPrompt,
+  Resource as McpResource,
+  Tool as McpTool,
+  Transport,
+  RequestOptions,
+} from '@modelcontextprotocol/server';
 import { createFetchWithProxy, getProxyConfigFromEnv } from './proxy.js';
 import { assertSafeUrl, createRedirectValidatingFetch } from '../utils/ssrf.js';
 import { createAbortIsolatingFetch } from '../utils/abortIsolatingFetch.js';
@@ -94,7 +92,12 @@ import {
   isAppOnlyTool,
   stripMcpAppsMetadata,
 } from '../utils/mcpApps.js';
-import { supportsCacheRefresh, injectRefreshFlag, clearRunnerCache, resolveRunnerPackageVersion } from '../utils/cacheUtils.js';
+import {
+  supportsCacheRefresh,
+  injectRefreshFlag,
+  clearRunnerCache,
+  resolveRunnerPackageVersion,
+} from '../utils/cacheUtils.js';
 import { checkPackageUpdate } from '../utils/packageUpdate.js';
 
 const servers: { [sessionId: string]: Server } = {};
@@ -946,7 +949,7 @@ const createUpstreamMcpClient = (
   name: string,
   getServerInfo: () => ServerInfo | undefined,
 ): Client => {
-  return new Client(
+  return new LegacyMcpClient(
     {
       name: `mcp-client-${name}`,
       version: '1.0.0',
@@ -1058,7 +1061,9 @@ export const summarizeServerConnections = (
 
 export const getServerConnectionStats = (): ServerConnectionStats => {
   // Personal definitions have no shared connection whose readiness can be checked.
-  return summarizeServerConnections(serverInfos.filter((info) => !hasCredentialTemplate(info.config)));
+  return summarizeServerConnections(
+    serverInfos.filter((info) => !hasCredentialTemplate(info.config)),
+  );
 };
 
 // Returns true if all enabled servers are connected
@@ -1382,10 +1387,20 @@ export const createRequestContextAwareFetch = (
       return baseFetch(url, init);
     }
 
+    const headers = init?.headers;
+    const entries =
+      headers instanceof Headers
+        ? [...headers.entries()]
+        : Array.isArray(headers)
+          ? headers
+          : Object.entries(headers ?? {});
+    const replacedNames = new Set(
+      Object.keys(passthroughHeaders).map((name) => name.toLowerCase()),
+    );
     return baseFetch(url, {
       ...init,
       headers: {
-        ...normalizeHeaders(init?.headers),
+        ...Object.fromEntries(entries.filter(([name]) => !replacedNames.has(name.toLowerCase()))),
         ...passthroughHeaders,
       },
     });
@@ -1431,7 +1446,11 @@ export const createTransportFromConfig = async (name: string, conf: ServerConfig
 
   if (conf.type === 'streamable-http') {
     const options: StreamableHTTPClientTransportOptions = {};
-    let headers = conf.headers ? (hasCredentialTemplate(conf) ? conf.headers : replaceEnvVars(conf.headers, env)) : {};
+    let headers = conf.headers
+      ? hasCredentialTemplate(conf)
+        ? conf.headers
+        : replaceEnvVars(conf.headers, env)
+      : {};
     const baseFetch = createAbortIsolatingFetch(createFetchWithProxy(getProxyConfigFromEnv(env)));
     const requestAwareFetch = createRedirectValidatingFetch(
       createRequestContextAwareFetch(baseFetch, conf.passthroughHeaders),
@@ -1439,7 +1458,9 @@ export const createTransportFromConfig = async (name: string, conf: ServerConfig
     );
 
     // Create OAuth provider if configured - SDK will handle authentication automatically
-    const authProvider = hasCredentialTemplate(conf) ? undefined : await createOAuthProvider(name, conf);
+    const authProvider = hasCredentialTemplate(conf)
+      ? undefined
+      : await createOAuthProvider(name, conf);
     if (authProvider) {
       options.authProvider = authProvider;
       // When the OAuth provider is active, strip any static Authorization
@@ -1464,7 +1485,11 @@ export const createTransportFromConfig = async (name: string, conf: ServerConfig
   } else if (conf.url) {
     // SSE transport
     const options: any = {};
-    let headers = conf.headers ? (hasCredentialTemplate(conf) ? conf.headers : replaceEnvVars(conf.headers, env)) : {};
+    let headers = conf.headers
+      ? hasCredentialTemplate(conf)
+        ? conf.headers
+        : replaceEnvVars(conf.headers, env)
+      : {};
     const baseFetch = createAbortIsolatingFetch(createFetchWithProxy(getProxyConfigFromEnv(env)));
     const requestAwareFetch = createRedirectValidatingFetch(
       createRequestContextAwareFetch(baseFetch, conf.passthroughHeaders),
@@ -1472,7 +1497,9 @@ export const createTransportFromConfig = async (name: string, conf: ServerConfig
     );
 
     // Create OAuth provider if configured - SDK will handle authentication automatically
-    const authProvider = hasCredentialTemplate(conf) ? undefined : await createOAuthProvider(name, conf);
+    const authProvider = hasCredentialTemplate(conf)
+      ? undefined
+      : await createOAuthProvider(name, conf);
     if (authProvider) {
       options.authProvider = authProvider;
       // Drop static Authorization header when OAuth manages auth (see above).
@@ -1552,10 +1579,13 @@ export const createTransportFromConfig = async (name: string, conf: ServerConfig
       transport.stderr.on('data', () => undefined); // Personal upstream diagnostics can contain raw credentials.
     } else if (transport.stderr) {
       observeStdioStderr(transport, transport.stderr, (message) => {
-        logger.log('Upstream server stderr', JSON.stringify({
-          serverName: name,
-          message,
-        }));
+        logger.log(
+          'Upstream server stderr',
+          JSON.stringify({
+            serverName: name,
+            message,
+          }),
+        );
       });
     }
   } else {
@@ -1589,12 +1619,12 @@ const callToolWithReconnect = async (
   }
 
   if (hasCredentialTemplate(serverInfo.config)) {
-    return client.callTool(toolParams, undefined, options || {});
+    return client.callTool(toolParams, options || {});
   }
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
-      const result = await client.callTool(toolParams, undefined, options || {});
+      const result = await client.callTool(toolParams, options || {});
       // Check auth error
       checkAuthError(result);
       return result;
@@ -1784,10 +1814,18 @@ export const initializeClientsFromSettings = async (
       if (hasCredentialTemplate(expandedConf)) {
         validateCredentialTemplate(expandedConf);
         nextServerInfos.push({
-          name, owner: expandedConf.owner, visibility: expandedConf.visibility,
-          sharedWithUsers: expandedConf.sharedWithUsers, enabled: true,
-          status: 'disconnected', error: null, tools: [], prompts: [], resources: [],
-          createTime: Date.now(), config: expandedConf,
+          name,
+          owner: expandedConf.owner,
+          visibility: expandedConf.visibility,
+          sharedWithUsers: expandedConf.sharedWithUsers,
+          enabled: true,
+          status: 'disconnected',
+          error: null,
+          tools: [],
+          prompts: [],
+          resources: [],
+          createTime: Date.now(),
+          config: expandedConf,
         });
         continue;
       }
@@ -2408,7 +2446,8 @@ export const getServersInfo = async (
         // either way instead of always showing enabled:true for one of them.
         const toolsWithEnabled = tools.map((tool) => {
           const bareToolName = normalizeToolNameForServer(name, tool.name);
-          const toolConfig = serverConfig?.tools?.[tool.name] ?? serverConfig?.tools?.[bareToolName];
+          const toolConfig =
+            serverConfig?.tools?.[tool.name] ?? serverConfig?.tools?.[bareToolName];
           return buildToolWithDescriptionMetadata(tool, toolConfig);
         });
 
@@ -2467,7 +2506,9 @@ export const getServersInfo = async (
             resolvedType || serverConfig?.description || serverConfig?.command
               ? {
                   ...(resolvedType ? { type: resolvedType } : {}),
-                  ...(hasCredentialTemplate(serverConfig) ? { credentialTemplate: validateCredentialTemplate(serverConfig!) } : {}),
+                  ...(hasCredentialTemplate(serverConfig)
+                    ? { credentialTemplate: validateCredentialTemplate(serverConfig!) }
+                    : {}),
                   ...(serverConfig?.description ? { description: serverConfig.description } : {}),
                   // Expose command so the frontend can determine if reinstall is
                   // supported (npx/uvx only). This is not a secret — it's the
@@ -3117,7 +3158,7 @@ const primeOnDemandServers = (gate?: ConnectGate): Promise<void> => {
   // Priming happens right after init, so it competes for the same machine.
   // Share the pass's concurrency limit rather than waking every sleeping server
   // at once and undoing the pacing above.
-  const run = gate ? gate.run : <T,>(start: () => Promise<T>) => start();
+  const run = gate ? gate.run : <T>(start: () => Promise<T>) => start();
   return Promise.allSettled(
     targets.map(async (si) => {
       try {
@@ -3890,7 +3931,11 @@ const handleCallToolRequestImpl = async (request: any, extra: any) => {
       // Call the tool on the target server (MCP servers)
       // For servers with perSessionClient: true, use a per-session dedicated client
       let isolatedCtx: IsolatedClientContext | undefined;
-      if (targetServerInfo.config?.perSessionClient && !hasCredentialTemplate(targetServerInfo.config) && sessionId) {
+      if (
+        targetServerInfo.config?.perSessionClient &&
+        !hasCredentialTemplate(targetServerInfo.config) &&
+        sessionId
+      ) {
         const isolated = await getOrCreateIsolatedClient(sessionId, targetServerInfo);
         isolatedCtx = { sessionId, client: isolated.client, transport: isolated.transport };
       } else if (!targetServerInfo.client) {
@@ -4092,7 +4137,11 @@ const handleCallToolRequestImpl = async (request: any, extra: any) => {
     // Handle MCP servers
     // For servers with perSessionClient: true, use a per-session dedicated client
     let isolatedCtx: IsolatedClientContext | undefined;
-    if (serverInfo.config?.perSessionClient && !hasCredentialTemplate(serverInfo.config) && sessionId) {
+    if (
+      serverInfo.config?.perSessionClient &&
+      !hasCredentialTemplate(serverInfo.config) &&
+      sessionId
+    ) {
       const isolated = await getOrCreateIsolatedClient(sessionId, serverInfo);
       isolatedCtx = { sessionId, client: isolated.client, transport: isolated.transport };
     } else if (!serverInfo.client) {
@@ -4617,7 +4666,12 @@ const createPrincipalRuntime = async (
             return await value.apply(target, args);
           } catch (error) {
             if (isUpstreamConnectionFailure(error)) info.status = 'disconnected';
-            const failure = createUpstreamRequestError(name, String(property), error, resolvedConfig);
+            const failure = createUpstreamRequestError(
+              name,
+              String(property),
+              error,
+              resolvedConfig,
+            );
             logger.error(failure.message);
             throw failure;
           }
@@ -4629,16 +4683,14 @@ const createPrincipalRuntime = async (
       const client = new OpenAPIClient(resolvedConfig);
       await client.initialize();
       info.openApiClient = protectClient(client);
-      info.tools = client
-        .getTools()
-        .map((tool) => ({
-          ...tool,
-          name: `${name}${getNameSeparator()}${tool.name}`,
-          inputSchema: cleanInputSchema(tool.inputSchema),
-        }));
+      info.tools = client.getTools().map((tool) => ({
+        ...tool,
+        name: `${name}${getNameSeparator()}${tool.name}`,
+        inputSchema: cleanInputSchema(tool.inputSchema),
+      }));
     } else {
       const transport = await createTransportFromConfig(name, resolvedConfig);
-      const client = new Client(
+      const client = new LegacyMcpClient(
         { name: `mcp-client-${name}`, version: '1.0.0' },
         {
           capabilities: MCP_APPS_CAPABILITIES,
@@ -4731,9 +4783,7 @@ const withPrincipalServers =
       : request?.params?.name;
     // An explicit REST target takes precedence over every qualified-name prefix.
     // Otherwise prefer the longest exposed prefix, including group aliases.
-    let target = extra?.server
-      ? candidates.find((info) => info.name === extra.server)
-      : undefined;
+    let target = extra?.server ? candidates.find((info) => info.name === extra.server) : undefined;
     if (extra?.server && !target && (operation === 'tool' || operation === 'prompt')) {
       throw new ToolUnavailableError(
         `Tool not available: ${requestedName}`,
@@ -4873,6 +4923,7 @@ export const createMcpServer = (
   const server = new Server(
     { name: serverName, version },
     {
+      supportedProtocolVersions: LEGACY_PROTOCOL_VERSIONS,
       capabilities: {
         tools: { listChanged: true },
         prompts: { listChanged: true },
@@ -4884,13 +4935,13 @@ export const createMcpServer = (
         : {}),
     },
   );
-  server.setRequestHandler(ListToolsRequestSchema, handleListToolsRequest);
-  server.setRequestHandler(CallToolRequestSchema, handleCallToolRequest);
-  server.setRequestHandler(GetPromptRequestSchema, handleGetPromptRequest);
-  server.setRequestHandler(ListPromptsRequestSchema, handleListPromptsRequest);
-  server.setRequestHandler(ListResourcesRequestSchema, handleListResourcesRequest);
-  server.setRequestHandler(ListResourceTemplatesRequestSchema, handleListResourceTemplatesRequest);
-  server.setRequestHandler(ReadResourceRequestSchema, handleReadResourceRequest);
+  server.setRequestHandler('tools/list', handleListToolsRequest);
+  server.setRequestHandler('tools/call', handleCallToolRequest);
+  server.setRequestHandler('prompts/get', handleGetPromptRequest);
+  server.setRequestHandler('prompts/list', handleListPromptsRequest);
+  server.setRequestHandler('resources/list', handleListResourcesRequest);
+  server.setRequestHandler('resources/templates/list', handleListResourceTemplatesRequest);
+  server.setRequestHandler('resources/read', handleReadResourceRequest);
   return server;
 };
 

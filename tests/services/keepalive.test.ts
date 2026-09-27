@@ -89,7 +89,7 @@ const mockTransportInstance = {
   onclose: null,
 };
 
-jest.mock('@modelcontextprotocol/sdk/server/sse.js', () => ({
+jest.mock('@modelcontextprotocol/server-legacy/sse', () => ({
   SSEServerTransport: jest.fn().mockImplementation(() => mockTransportInstance),
 }));
 

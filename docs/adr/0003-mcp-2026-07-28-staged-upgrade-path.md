@@ -3,7 +3,7 @@
 MCPHub adopts the MCP `2026-07-28` specification (stateless core: no `initialize` handshake, no `Mcp-Session-Id`) in three decoupled steps instead of a single migration:
 
 1. **OAuth hardening on the current SDK** (no wire change): add RFC 9207 `iss` to our authorization server's authorize responses (`oauthServerController.ts` builds redirects with only `code`/`state` today) and validate `iss` when redeeming codes as an upstream OAuth client; add Client ID Metadata Documents (CIMD) alongside Dynamic Client Registration — DCR is formally deprecated in the new revision but keeps working.
-2. **SDK v2 API migration, wire unchanged**: move from the monolithic `@modelcontextprotocol/sdk` (currently ^1.29.0, negotiating `2025-11-25`) to the v2 split packages (`@modelcontextprotocol/server`, `/client`, HTTP adapters), using the official codemod. Servers keep speaking `2025-11-25` until step 3.
+2. **SDK v2 API migration, wire unchanged**: move from the monolithic `@modelcontextprotocol/sdk` (v1, negotiating `2025-11-25`) to the v2 split packages (`@modelcontextprotocol/server`, `/client`, HTTP adapters), using the official codemod. Servers keep speaking `2025-11-25` until step 3.
 3. **Protocol enablement via dual-stack handler**: serve both revisions from one endpoint with v2's `createMcpHandler`, run a deprecation window on the legacy SSE transport, then remove the session layer.
 
 The path's shape comes from what the code actually binds to sessions. Most downstream state is derivable: the `enableSessionRebuild` mechanism already reconstructs full sessions from `(sessionId, group)` alone, per-session `Server` instances (`mcpService.ts`) are pure functions of group, and bearer auth is revalidated on every request. Two pieces are genuinely sticky and block step 3: `perSessionClient` upstream isolation plus OpenAPI per-session cookie jars (need an explicit-handle or header-correlation redesign), and the legacy SSE `/messages` endpoint whose group lives only in the session (dies with the transport). We use no sampling/elicitation/roots anywhere, so Multi Round-Trip Requests require zero migration.
@@ -16,8 +16,16 @@ The path's shape comes from what the code actually binds to sessions. Most downs
 
 ## Consequences
 
-- Step 2 drops Node 18 from the support matrix (v2 is ESM-only, Node 20+): update `engines`, CI matrix, and Docker base image together.
+- Step 2 drops Node 18 from the support matrix (v2 is ESM-first with CommonJS builds, Node 20+): require Node 20+ in `engines` and documentation, test Node 20/22 in CI, and retain the existing Node 22 Docker runtime.
 - The legacy HTTP+SSE transport carries a ≥12-month deprecation window per spec policy; its removal takes the group-in-session quirk and the session-rebuild machinery with it.
 - `perSessionClient` isolation must gain an explicit design (tool-minted handles passed as arguments, per the spec's recommended pattern, or a header correlation key) before the session layer can be deleted.
 - During the dual-stack period, the group-resolution fallback chain must preserve the GHSA-454m-4vm6-842f scope-validation behavior for requests arriving under either revision.
 - Session-continuity tests (cached-session-id reuse after rebuild, initialize-gated session creation) are rewritten at step 3, not patched beforehand.
+
+## Step 2 compatibility boundary
+
+- SDK v2 uses the legacy handshake and the existing protocol preference list, starting with `2025-11-25`. Modern discovery and stateless routing remain deferred to step 3.
+- `@modelcontextprotocol/server-legacy` preserves the SSE server transport and OAuth authorization-server helpers. It does not depend on the v1 monolithic SDK.
+- Upstream list methods retain single-page discovery, including output-schema validation, instead of adopting v2's automatic pagination. The resilient validator still tolerates uncompilable upstream schemas.
+- Session rebuild still restores the Node transport's internal web-standard session state. Real v1-client integration tests cover that private SDK dependency; check them when updating SDK versions.
+- The v1 SDK is retained only under a development dependency alias for independent compatibility tests. Google GenAI's unused optional v1 SDK peer is excluded from production dependencies; MCPHub uses GenAI for embeddings, not its MCP integration.
