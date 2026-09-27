@@ -496,6 +496,8 @@ export interface ServerConfig {
     // Pending OAuth session metadata for PKCE/state recovery between restarts
     pendingAuthorization?: {
       authorizationUrl?: string;
+      issuer?: string;
+      issRequired?: boolean;
       state?: string;
       codeVerifier?: string;
       createdAt?: number;
@@ -596,6 +598,8 @@ export interface ServerInfo {
   lastUsedAt?: number; // Timestamp of last tool call (ms since epoch)
   oauth?: {
     // OAuth authorization state
+    issuer?: string;
+    issRequired?: boolean;
     authorizationUrl?: string; // OAuth authorization URL for user to visit
     state?: string; // OAuth state parameter for CSRF protection
     connected?: boolean; // True when stored upstream OAuth tokens exist

@@ -12,7 +12,10 @@
  */
 
 import { randomBytes } from 'node:crypto';
-import type { OAuthClientProvider } from '@modelcontextprotocol/sdk/client/auth.js';
+import type {
+  OAuthClientProvider,
+  OAuthDiscoveryState,
+} from '@modelcontextprotocol/sdk/client/auth.js';
 import type {
   OAuthClientInformation,
   OAuthClientInformationFull,
@@ -62,6 +65,8 @@ type OAuthClientInformationWithAuthMethod = OAuthClientInformation &
 export class MCPHubOAuthProvider implements OAuthClientProvider {
   private serverName: string;
   private serverConfig: ServerConfig;
+  private _issuer?: string;
+  private _issRequired?: boolean;
   private _codeVerifier?: string;
   private _currentState?: string;
   private _systemInstallBaseUrl?: string;
@@ -320,6 +325,18 @@ export class MCPHubOAuthProvider implements OAuthClientProvider {
     logger.log('Saved OAuth tokens', { serverName: this.serverName });
   }
 
+  // Capture the SDK's actual discovery result before redirecting. Keep this
+  // snapshot with the pending flow so callback validation survives restarts.
+  saveDiscoveryState(state: OAuthDiscoveryState): void {
+    const metadata = state.authorizationServerMetadata;
+    this._issuer = metadata?.issuer;
+    this._issRequired = Boolean(
+      metadata &&
+        'authorization_response_iss_parameter_supported' in metadata &&
+        metadata.authorization_response_iss_parameter_supported === true,
+    );
+  }
+
   /**
    * Redirect to authorization URL
    * In a server environment, we can't directly redirect the user
@@ -344,6 +361,8 @@ export class MCPHubOAuthProvider implements OAuthClientProvider {
     try {
       const pendingUpdate: Partial<NonNullable<ServerConfig['oauth']>['pendingAuthorization']> = {
         authorizationUrl,
+        issuer: this._issuer ?? this.serverConfig.oauth?.dynamicRegistration?.issuer,
+        issRequired: this._issRequired,
         state,
       };
 
@@ -368,6 +387,8 @@ export class MCPHubOAuthProvider implements OAuthClientProvider {
       serverInfo.status = 'oauth_required';
       serverInfo.oauth = {
         authorizationUrl,
+        issuer: this._issuer ?? this.serverConfig.oauth?.dynamicRegistration?.issuer,
+        issRequired: this._issRequired,
         state,
         // codeVerifier is intentionally NOT stored on serverInfo.oauth: it is a
         // PKCE credential, and storing it on the long-lived ServerInfo taints the

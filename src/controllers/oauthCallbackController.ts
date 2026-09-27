@@ -328,14 +328,20 @@ export const handleOAuthCallback = async (req: Request, res: Response) => {
     // RFC 9207 / SEP-2468: when the authorization response carries `iss`,
     // validate it against the issuer we sent the authorization request to
     // before redeeming the code (mix-up attack mitigation). Legacy servers
-    // that omit `iss` are allowed through.
+    // that do not advertise support may omit `iss`.
     const issParam = normalizeQueryParam(req.query.iss);
     const issResult = validateAuthorizationIss({
       iss: issParam,
       authorizationUrl:
         serverInfo.oauth?.authorizationUrl ??
         serverInfo.config?.oauth?.pendingAuthorization?.authorizationUrl,
-      configuredIssuer: serverInfo.config?.oauth?.dynamicRegistration?.issuer,
+      configuredIssuer:
+        serverInfo.oauth?.issuer ??
+        serverInfo.config?.oauth?.pendingAuthorization?.issuer ??
+        serverInfo.config?.oauth?.dynamicRegistration?.issuer,
+      issRequired:
+        serverInfo.oauth?.issRequired ??
+        serverInfo.config?.oauth?.pendingAuthorization?.issRequired,
     });
     if (!issResult.valid) {
       logger.error('OAuth callback iss validation failed', {
