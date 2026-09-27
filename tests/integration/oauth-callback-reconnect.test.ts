@@ -19,7 +19,10 @@ jest.mock('../../src/config/index.js', () => ({
   replaceEnvVars: jest.fn((value: unknown) => value),
 }));
 
-import { handleOAuthCallback } from '../../src/controllers/oauthCallbackController.js';
+import {
+  handleOAuthCallback,
+  resetOAuthStateTrackingForTests,
+} from '../../src/controllers/oauthCallbackController.js';
 import {
   connectClientWithDiagnostics,
   createTransportFromConfig,
@@ -29,64 +32,82 @@ import {
 import { loadServerConfig } from '../../src/services/oauthSettingsStore.js';
 
 describe('OAuth callback reconnect integration', () => {
-  it('reconnects an existing client after replacing its transport', async () => {
-    const serverInfo = {
-      name: 'oauth-server',
-      status: 'oauth_required' as const,
-      config: {
-        url: 'https://upstream.example.com/mcp',
-        oauth: { dynamicRegistration: { enabled: true } },
-      },
-      options: undefined,
-      transport: {
-        finishAuth: jest.fn().mockResolvedValue(undefined),
-        close: jest.fn().mockResolvedValue(undefined),
-      },
-      client: {
-        getServerCapabilities: jest.fn().mockReturnValue({ tools: {} }),
-        listTools: jest.fn().mockResolvedValue({ tools: [] }),
-      },
-      tools: [],
-      prompts: [],
-      resources: [],
-      oauth: {
-        authorizationUrl: 'https://as.example.com/authorize',
-        state: 'state-123',
-      },
-    };
-    const refreshedTransport = { close: jest.fn().mockResolvedValue(undefined) };
-    const app = express();
-    const limiter = rateLimit({
-      windowMs: 15 * 60 * 1000,
-      max: 100,
-    });
-    app.use(limiter);
-    app.get('/oauth/callback', (req, res) => {
-      void handleOAuthCallback(req, res);
-    });
-
-    (getServerByOAuthState as jest.Mock).mockReturnValue(serverInfo);
-    (getServerByPendingOAuthState as jest.Mock).mockReturnValue(undefined);
-    (loadServerConfig as jest.Mock).mockResolvedValue(serverInfo.config);
-    (createTransportFromConfig as jest.Mock).mockResolvedValue(refreshedTransport);
-    (connectClientWithDiagnostics as jest.Mock).mockResolvedValue(undefined);
-
-    const response = await request(app)
-      .get('/oauth/callback')
-      .query({
-        code: 'auth-code',
-        state: 'state-123',
-        iss: 'https://as.example.com',
+  it.each([
+    { issRequired: false, iss: undefined, status: 200 },
+    { issRequired: true, iss: undefined, status: 400 },
+    { issRequired: true, iss: 'https://as.example.com/tenant', status: 200 },
+    { issRequired: false, iss: 'https://as.example.com', status: 400 },
+  ])(
+    'validates persisted issuer context before reconnecting: %j',
+    async ({ issRequired, iss, status }) => {
+      resetOAuthStateTrackingForTests();
+      const serverInfo = {
+        name: 'oauth-server',
+        status: 'oauth_required' as const,
+        config: {
+          url: 'https://upstream.example.com/mcp',
+          oauth: {
+            dynamicRegistration: { enabled: true },
+            pendingAuthorization: { issuer: 'https://as.example.com/tenant', issRequired },
+          },
+        },
+        options: undefined,
+        transport: {
+          finishAuth: jest.fn().mockResolvedValue(undefined),
+          close: jest.fn().mockResolvedValue(undefined),
+        },
+        client: {
+          getServerCapabilities: jest.fn().mockReturnValue({ tools: {} }),
+          listTools: jest.fn().mockResolvedValue({ tools: [] }),
+        },
+        tools: [],
+        prompts: [],
+        resources: [],
+        oauth: {
+          authorizationUrl: 'https://as.example.com/authorize',
+          state: 'state-123',
+        },
+      };
+      const finishAuth = serverInfo.transport.finishAuth;
+      const refreshedTransport = { close: jest.fn().mockResolvedValue(undefined) };
+      const app = express();
+      const limiter = rateLimit({
+        windowMs: 15 * 60 * 1000,
+        max: 100,
+      });
+      app.use(limiter);
+      app.get('/oauth/callback', (req, res) => {
+        void handleOAuthCallback(req, res);
       });
 
-    expect(response.status).toBe(200);
-    expect(connectClientWithDiagnostics).toHaveBeenCalledWith(
-      serverInfo.client,
-      refreshedTransport,
-      expect.objectContaining({ timeout: 60000 }),
-    );
-    expect(serverInfo.status).toBe('connected');
-  });
+      (getServerByOAuthState as jest.Mock).mockReturnValue(serverInfo);
+      (getServerByPendingOAuthState as jest.Mock).mockReturnValue(undefined);
+      (loadServerConfig as jest.Mock).mockResolvedValue(serverInfo.config);
+      (createTransportFromConfig as jest.Mock).mockResolvedValue(refreshedTransport);
+      (connectClientWithDiagnostics as jest.Mock).mockResolvedValue(undefined);
+
+      const response = await request(app)
+        .get('/oauth/callback')
+        .query({
+          code: 'auth-code',
+          state: 'state-123',
+          ...(iss ? { iss } : {}),
+        });
+
+      expect(response.status).toBe(status);
+      if (status === 400) {
+        expect(finishAuth).not.toHaveBeenCalled();
+        return;
+      }
+      expect(finishAuth).toHaveBeenCalledWith('auth-code');
+      expect(connectClientWithDiagnostics).toHaveBeenCalledWith(
+        serverInfo.client,
+        refreshedTransport,
+        expect.objectContaining({ timeout: 60000 }),
+      );
+      expect(serverInfo.status).toBe('connected');
+    },
+  );
 
   it('rejects an unauthenticated forged-state callback without redeeming the code', async () => {
     const serverInfo = {

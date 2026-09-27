@@ -1,7 +1,4 @@
-import {
-  expectedIssValues,
-  validateAuthorizationIss,
-} from '../../src/utils/oauthIssuer.js';
+import { expectedIssValues, validateAuthorizationIss } from '../../src/utils/oauthIssuer.js';
 
 describe('oauthIssuer (RFC 9207 iss validation)', () => {
   describe('expectedIssValues', () => {
@@ -47,6 +44,37 @@ describe('oauthIssuer (RFC 9207 iss validation)', () => {
         expect(result.checked).toBe(true);
         expect(result.reason).toContain('iss');
       }
+    });
+
+    it('allows a missing iss only when the flow records legacy support', () => {
+      expect(
+        validateAuthorizationIss({
+          authorizationUrl: 'https://as.example.com/authorize',
+          issRequired: false,
+        }),
+      ).toEqual({ valid: true, checked: false });
+      expect(validateAuthorizationIss({ issRequired: true }).valid).toBe(false);
+    });
+
+    it('rejects an explicitly empty iss even for a legacy server', () => {
+      expect(
+        validateAuthorizationIss({
+          iss: '',
+          configuredIssuer: 'https://as.example.com',
+          issRequired: false,
+        }).valid,
+      ).toBe(false);
+    });
+
+    it('does not accept an origin in place of a complete issuer', () => {
+      expect(
+        validateAuthorizationIss({
+          iss: 'https://as.example.com',
+          configuredIssuer: 'https://as.example.com/tenant',
+          authorizationUrl: 'https://as.example.com/tenant/authorize',
+          issRequired: false,
+        }).valid,
+      ).toBe(false);
     });
 
     it('passes without checking when iss is absent and no issuer is expected', () => {

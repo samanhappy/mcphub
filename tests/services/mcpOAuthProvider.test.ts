@@ -220,3 +220,43 @@ describe('createOAuthProvider - 401 auto-discovery guard', () => {
     expect(provider).toBeInstanceOf(MCPHubOAuthProvider);
   });
 });
+
+describe('MCPHubOAuthProvider issuer snapshot', () => {
+  it.each([true, false, undefined])(
+    'persists advertised support %s with the flow',
+    async (supported) => {
+      const { updatePendingAuthorization } = await import(
+        '../../src/services/oauthSettingsStore.js'
+      );
+      const { getServerByName } = await import('../../src/services/mcpService.js');
+      const serverInfo = { oauth: undefined };
+      (getServerByName as jest.Mock).mockReturnValue(serverInfo);
+      const provider = new MCPHubOAuthProvider('upstream', { url: 'https://as.example.com/mcp' });
+      provider.saveDiscoveryState({
+        authorizationServerUrl: 'https://as.example.com/tenant',
+        authorizationServerMetadata: {
+          issuer: 'https://as.example.com/tenant',
+          authorization_endpoint: 'https://as.example.com/tenant/authorize',
+          token_endpoint: 'https://as.example.com/tenant/token',
+          response_types_supported: ['code'],
+          authorization_response_iss_parameter_supported: supported,
+        },
+      });
+      await expect(
+        provider.redirectToAuthorization(
+          new URL('https://as.example.com/tenant/authorize?state=snapshot-state'),
+        ),
+      ).rejects.toThrow('OAuth authorization required');
+      const expected = {
+        issuer: 'https://as.example.com/tenant',
+        issRequired: supported === true,
+        state: 'snapshot-state',
+      };
+      expect(updatePendingAuthorization).toHaveBeenCalledWith(
+        'upstream',
+        expect.objectContaining(expected),
+      );
+      expect(serverInfo.oauth).toEqual(expect.objectContaining(expected));
+    },
+  );
+});
