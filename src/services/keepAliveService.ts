@@ -1,5 +1,4 @@
-import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
-import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
+import { SSEClientTransport, StreamableHTTPClientTransport } from '@modelcontextprotocol/client';
 import { ServerInfo, ServerConfig } from '../types/index.js';
 import { formatErrorForLogging } from '../utils/serialization.js';
 import { logger } from '../utils/logger.js';

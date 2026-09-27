@@ -14,11 +14,12 @@ jest.mock('openid-client', () => ({
 
 import { Server } from 'http';
 import { AppServer } from '../../src/server.js';
+// Keep an independent v1 client to verify the v2 server's wire compatibility.
+import { Client } from '@modelcontextprotocol/sdk-v1/client/index.js';
+import { SSEClientTransport } from '@modelcontextprotocol/sdk-v1/client/sse.js';
+import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk-v1/client/streamableHttp.js';
 import { TestServerHelper } from '../utils/testServerHelper.js';
 import * as mockSettings from '../utils/mockSettings.js';
-import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
-import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { cleanupAllServers, deleteMcpServer } from '../../src/services/mcpService.js';
 import { transports } from '../../src/services/sseService.js';
 

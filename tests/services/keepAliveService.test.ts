@@ -1,5 +1,4 @@
-import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
-import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
+import { SSEClientTransport, StreamableHTTPClientTransport } from '@modelcontextprotocol/client';
 import { setupClientKeepAlive } from '../../src/services/keepAliveService.js';
 import { ServerConfig, ServerInfo } from '../../src/types/index.js';
 
@@ -65,10 +64,9 @@ describe('setupClientKeepAlive', () => {
 
   it('includes HTTP error metadata in the displayed keep-alive error', async () => {
     jest.useFakeTimers();
-    const error = Object.assign(
-      new Error('Streamable HTTP error: Error POSTing to endpoint: '),
-      { code: 502 },
-    );
+    const error = Object.assign(new Error('Streamable HTTP error: Error POSTing to endpoint: '), {
+      code: 502,
+    });
     const ping = jest.fn().mockRejectedValue(error);
     const serverInfo = makeServerInfo(
       new StreamableHTTPClientTransport(new URL('https://example.com/mcp')),

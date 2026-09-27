@@ -1,3 +1,5 @@
+import { SSEClientTransport, StreamableHTTPClientTransport } from '@modelcontextprotocol/client';
+
 const mockBaseFetch = jest.fn();
 
 jest.mock('../../src/services/oauthService.js', () => ({
@@ -67,26 +69,21 @@ jest.mock('../../src/dao/index.js', () => ({
   })),
 }));
 
-jest.mock('@modelcontextprotocol/sdk/client/sse.js', () => ({
+jest.mock('@modelcontextprotocol/client', () => ({
+  ...jest.requireActual('@modelcontextprotocol/client'),
   SSEClientTransport: jest.fn().mockImplementation((url: URL, options: any) => ({
     url,
     options,
   })),
-}));
-
-jest.mock('@modelcontextprotocol/sdk/client/streamableHttp.js', () => ({
   StreamableHTTPClientTransport: jest.fn().mockImplementation((url: URL, options: any) => ({
     url,
     options,
   })),
 }));
 
-jest.mock('@modelcontextprotocol/sdk/client/stdio.js', () => ({
+jest.mock('@modelcontextprotocol/client/stdio', () => ({
   StdioClientTransport: jest.fn(),
 }));
-
-import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
-import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { createTransportFromConfig } from '../../src/services/mcpService.js';
 
 describe('MCP Service - header env var expansion from server config', () => {

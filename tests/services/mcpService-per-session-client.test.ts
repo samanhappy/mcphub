@@ -8,7 +8,8 @@ const makeOkResult = () => ({
   isError: false,
 });
 
-jest.mock('@modelcontextprotocol/sdk/client/index.js', () => ({
+jest.mock('@modelcontextprotocol/client', () => ({
+  ...jest.requireActual('@modelcontextprotocol/client'),
   Client: jest.fn().mockImplementation(() => {
     const client = {
       connect: jest.fn().mockResolvedValue(undefined),
@@ -22,6 +23,8 @@ jest.mock('@modelcontextprotocol/sdk/client/index.js', () => ({
     mockCreatedClients.push(client);
     return client;
   }),
+  StreamableHTTPClientTransport: MockStreamableHTTPClientTransport,
+  SSEClientTransport: MockSSEClientTransport,
 }));
 
 const mockCreatedTransports: any[] = [];
@@ -57,15 +60,7 @@ class MockStdioClientTransport {
   }
 }
 
-jest.mock('@modelcontextprotocol/sdk/client/streamableHttp.js', () => ({
-  StreamableHTTPClientTransport: MockStreamableHTTPClientTransport,
-}));
-
-jest.mock('@modelcontextprotocol/sdk/client/sse.js', () => ({
-  SSEClientTransport: MockSSEClientTransport,
-}));
-
-jest.mock('@modelcontextprotocol/sdk/client/stdio.js', () => ({
+jest.mock('@modelcontextprotocol/client/stdio', () => ({
   StdioClientTransport: MockStdioClientTransport,
 }));
 
@@ -176,14 +171,12 @@ import * as mcpService from '../../src/services/mcpService.js';
 // report "dead" (ESRCH) for our fake pid so the 2s SIGKILL timer never fires.
 const originalProcessKill = process.kill.bind(process);
 const installProcessKillMock = (): void => {
-  jest.spyOn(process, 'kill').mockImplementation(
-    ((pid: number, signal?: string | number) => {
-      if (pid === 4242 && (signal === 0 || signal === undefined)) {
-        throw Object.assign(new Error('ESRCH'), { code: 'ESRCH' });
-      }
-      return originalProcessKill(pid, signal as any);
-    }) as any,
-  );
+  jest.spyOn(process, 'kill').mockImplementation(((pid: number, signal?: string | number) => {
+    if (pid === 4242 && (signal === 0 || signal === undefined)) {
+      throw Object.assign(new Error('ESRCH'), { code: 'ESRCH' });
+    }
+    return originalProcessKill(pid, signal as any);
+  }) as any);
 };
 
 type IsolatedConfig = Record<string, unknown>;
@@ -315,9 +308,7 @@ describe('mcpService per-session client isolation (perSessionClient)', () => {
     mcpService.setServerInfosForTest([serverInfo]);
 
     await callTool('session-A');
-    const stdioTransport = mockCreatedTransports.find(
-      (t) => t instanceof MockStdioClientTransport,
-    );
+    const stdioTransport = mockCreatedTransports.find((t) => t instanceof MockStdioClientTransport);
     expect(stdioTransport).toBeDefined();
 
     mcpService.deleteMcpServer('session-A');
@@ -338,7 +329,7 @@ describe('mcpService per-session client isolation (perSessionClient)', () => {
 
     // Make the next isolated client's handshake fail so we exercise the
     // connect-failure cleanup path (transport + process tree must be torn down).
-    const { Client: MockClient } = jest.requireMock('@modelcontextprotocol/sdk/client/index.js');
+    const { Client: MockClient } = jest.requireMock('@modelcontextprotocol/client');
     MockClient.mockImplementationOnce(() => {
       const client = {
         connect: jest.fn().mockRejectedValue(new Error('handshake failed')),

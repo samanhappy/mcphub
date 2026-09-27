@@ -5,19 +5,14 @@ const mockCallTool = jest.fn().mockResolvedValue({
   isError: false,
 });
 
-jest.mock('@modelcontextprotocol/sdk/client/index.js', () => ({
+jest.mock('@modelcontextprotocol/client', () => ({
+  ...jest.requireActual('@modelcontextprotocol/client'),
   Client: jest.fn(),
-}));
-
-jest.mock('@modelcontextprotocol/sdk/client/sse.js', () => ({
   SSEClientTransport: jest.fn(),
-}));
-
-jest.mock('@modelcontextprotocol/sdk/client/streamableHttp.js', () => ({
   StreamableHTTPClientTransport: jest.fn(),
 }));
 
-jest.mock('@modelcontextprotocol/sdk/client/stdio.js', () => ({
+jest.mock('@modelcontextprotocol/client/stdio', () => ({
   StdioClientTransport: jest.fn(),
 }));
 

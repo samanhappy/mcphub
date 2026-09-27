@@ -51,13 +51,18 @@
     "@apidevtools/swagger-parser": "^12.1.0",
     "@google/genai": "^1.44.0",
     "@huggingface/tokenizers": "^0.1.3",
-    "@modelcontextprotocol/sdk": "^1.29.0",
+    "@modelcontextprotocol/client": "^2.1.0",
+    "@modelcontextprotocol/node": "^2.1.0",
+    "@modelcontextprotocol/server": "^2.1.0",
+    "@modelcontextprotocol/server-legacy": "^2.1.0",
     "@node-oauth/oauth2-server": "^5.2.1",
     "@types/adm-zip": "^0.5.7",
     "@types/bcrypt": "^6.0.0",
     "@types/multer": "^2.0.0",
     "@types/pg": "^8.15.5",
     "adm-zip": "^0.6.0",
+    "ajv": "^8.18.0",
+    "ajv-formats": "^3.0.1",
     "axios": "^1.12.2",
     "bcrypt": "^6.0.0",
     "bcryptjs": "^3.0.2",
@@ -96,6 +101,7 @@
     "@eslint/eslintrc": "^3.3.3",
     "@eslint/js": "^9.39.2",
     "@mdx-js/mdx": "^3.1.1",
+    "@modelcontextprotocol/sdk-v1": "npm:@modelcontextprotocol/sdk@1.29.0",
     "@radix-ui/react-accordion": "^1.2.12",
     "@radix-ui/react-slot": "^1.2.3",
     "@shadcn/ui": "^0.0.4",
@@ -149,7 +155,7 @@
     "zod": "^4.4.3"
   },
   "engines": {
-    "node": "^18.0.0 || >=20.0.0"
+    "node": ">=20.0.0"
   },
   "packageManager": "pnpm@10.12.4+sha256.cadfd9e6c9fcc2cb76fe7c0779a5250b632898aea5f53d833a73690c77a778d9",
   "pnpm": {

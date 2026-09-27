@@ -1,10 +1,9 @@
 import { Request, Response } from 'express';
 import { randomUUID } from 'node:crypto';
 import { canAccessGroupRoute } from '../utils/groupAccess.js';
-import { Transport } from '@modelcontextprotocol/sdk/shared/transport.js';
-import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
-import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
-import { isInitializeRequest } from '@modelcontextprotocol/sdk/types.js';
+import { NodeStreamableHTTPServerTransport } from '@modelcontextprotocol/node';
+import { SSEServerTransport } from '@modelcontextprotocol/server-legacy/sse';
+import { Transport, isInitializeRequest } from '@modelcontextprotocol/server';
 import { deleteMcpServer, getMcpServer } from './mcpService.js';
 import config from '../config/index.js';
 import {
@@ -59,7 +58,8 @@ type RehydratableWebStandardTransport = {
 };
 
 // Session creation locks to prevent concurrent session creation conflicts
-const sessionCreationLocks: { [sessionId: string]: Promise<StreamableHTTPServerTransport> } = {};
+const sessionCreationLocks: { [sessionId: string]: Promise<NodeStreamableHTTPServerTransport> } =
+  {};
 
 export const getGroup = (sessionId: string): string => {
   return transports[sessionId]?.group || '';
@@ -103,7 +103,7 @@ const sendSessionNotFoundText = (res: Response): void => {
 };
 
 const rehydrateRebuiltTransport = (
-  transport: StreamableHTTPServerTransport,
+  transport: NodeStreamableHTTPServerTransport,
   sessionId: string,
 ): boolean => {
   const transportRecord = transport as unknown as Record<string, unknown>;
@@ -764,7 +764,7 @@ async function createSessionWithId(
   group: string,
   username?: string,
   hostedAuth?: HostedAuthContext,
-): Promise<StreamableHTTPServerTransport> {
+): Promise<NodeStreamableHTTPServerTransport> {
   logger.log(
     `[SESSION REBUILD] Starting session rebuild for ID: ${sessionId}${username ? ` for user: ${username}` : ''}`,
   );
@@ -772,7 +772,7 @@ async function createSessionWithId(
   // Create a new server instance to ensure clean state
   const server = await getMcpServer(sessionId, group);
 
-  const transport = new StreamableHTTPServerTransport({
+  const transport = new NodeStreamableHTTPServerTransport({
     sessionIdGenerator: () => sessionId, // Use the specified sessionId
     onsessioninitialized: (initializedSessionId) => {
       logger.log(
@@ -818,13 +818,13 @@ async function createNewSession(
   group: string,
   username?: string,
   hostedAuth?: HostedAuthContext,
-): Promise<StreamableHTTPServerTransport> {
+): Promise<NodeStreamableHTTPServerTransport> {
   const newSessionId = randomUUID();
   logger.log(
     `[SESSION NEW] Creating new session with ID: ${newSessionId}${username ? ` for user: ${username}` : ''}`,
   );
 
-  const transport = new StreamableHTTPServerTransport({
+  const transport = new NodeStreamableHTTPServerTransport({
     sessionIdGenerator: () => newSessionId,
     onsessioninitialized: (sessionId) => {
       transports[sessionId] = { transport, group, hostedAuth };
@@ -886,7 +886,7 @@ export const handleMcpPostRequest = async (req: Request, res: Response): Promise
     return;
   }
 
-  let transport: StreamableHTTPServerTransport;
+  let transport: NodeStreamableHTTPServerTransport;
   let transportInfo: (typeof transports)[string] | undefined;
 
   if (sessionId) {
@@ -898,7 +898,7 @@ export const handleMcpPostRequest = async (req: Request, res: Response): Promise
     logger.log(
       `[SESSION REUSE] Reusing existing session: ${sessionId}${username ? ` for user: ${username}` : ''}`,
     );
-    transport = transportInfo.transport as StreamableHTTPServerTransport;
+    transport = transportInfo.transport as NodeStreamableHTTPServerTransport;
   } else if (sessionId) {
     // Case 2: SessionId exists but transport is missing (server restart), check if session rebuild is enabled
     const enableSessionRebuild = systemConfig?.enableSessionRebuild || false;
@@ -1111,7 +1111,7 @@ export const handleMcpOtherRequest = async (req: Request, res: Response) => {
   const { transport } = transportEntry;
 
   try {
-    await (transport as StreamableHTTPServerTransport).handleRequest(req, res);
+    await (transport as NodeStreamableHTTPServerTransport).handleRequest(req, res);
   } catch (error: any) {
     if (error?.message?.includes('Server not initialized')) {
       logger.warn(

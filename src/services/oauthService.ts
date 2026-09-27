@@ -1,5 +1,4 @@
-import { ProxyOAuthServerProvider } from '@modelcontextprotocol/sdk/server/auth/providers/proxyProvider.js';
-import { mcpAuthRouter } from '@modelcontextprotocol/sdk/server/auth/router.js';
+import { ProxyOAuthServerProvider, mcpAuthRouter } from '@modelcontextprotocol/server-legacy/auth';
 import { RequestHandler } from 'express';
 import { getServerDao, getSystemConfigDao } from '../dao/index.js';
 import { initializeOAuthForServer, refreshAccessToken } from './oauthClientRegistration.js';

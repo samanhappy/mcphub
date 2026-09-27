@@ -7,20 +7,15 @@
 // that feed it (updateServerToolsCache on connect/reload, syncToolEmbedding on
 // PUT/DELETE description) and assert what text reaches the vector store.
 
-jest.mock('@modelcontextprotocol/sdk/client/index.js', () => ({
+jest.mock('@modelcontextprotocol/client', () => ({
+  ...jest.requireActual('@modelcontextprotocol/client'),
   Client: jest.fn(),
-}));
-
-jest.mock('@modelcontextprotocol/sdk/client/stdio.js', () => ({
-  StdioClientTransport: jest.fn(),
-}));
-
-jest.mock('@modelcontextprotocol/sdk/client/sse.js', () => ({
   SSEClientTransport: jest.fn(),
+  StreamableHTTPClientTransport: jest.fn(),
 }));
 
-jest.mock('@modelcontextprotocol/sdk/client/streamableHttp.js', () => ({
-  StreamableHTTPClientTransport: jest.fn(),
+jest.mock('@modelcontextprotocol/client/stdio', () => ({
+  StdioClientTransport: jest.fn(),
 }));
 
 jest.mock('../../src/services/oauthService.js', () => ({

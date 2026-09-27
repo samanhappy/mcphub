@@ -1,13 +1,5 @@
-import { Server } from '@modelcontextprotocol/sdk/server/index.js';
-import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import {
-  CallToolRequestSchema,
-  ListToolsRequestSchema,
-  ListPromptsRequestSchema,
-  GetPromptRequestSchema,
-  ListResourcesRequestSchema,
-  ReadResourceRequestSchema,
-} from '@modelcontextprotocol/sdk/types.js';
+import { StdioServerTransport } from '@modelcontextprotocol/server/stdio';
+import { Server } from '@modelcontextprotocol/server';
 
 const server = new Server(
   { name: 'personal-fixture', version: '1.0' },
@@ -19,7 +11,7 @@ const identity = () =>
     pid: process.pid,
     masterKeyInherited: !!process.env.MCPHUB_CREDENTIAL_ENCRYPTION_KEY,
   });
-server.setRequestHandler(ListToolsRequestSchema, async () => ({
+server.setRequestHandler('tools/list', async () => ({
   tools: [
     {
       name: 'identity',
@@ -27,21 +19,22 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     },
   ],
 }));
-server.setRequestHandler(CallToolRequestSchema, async (request) => {
-  if (request.params.arguments?.fail) throw new Error(`Unsupported input; echoed ${process.env.PERSONAL_KEY}`);
+server.setRequestHandler('tools/call', async (request) => {
+  if (request.params.arguments?.fail)
+    throw new Error(`Unsupported input; echoed ${process.env.PERSONAL_KEY}`);
   await new Promise((resolve) => setTimeout(resolve, request.params.arguments?.delay || 0));
   return { content: [{ type: 'text', text: identity() }] };
 });
-server.setRequestHandler(ListPromptsRequestSchema, async () => ({
+server.setRequestHandler('prompts/list', async () => ({
   prompts: [{ name: 'identity' }],
 }));
-server.setRequestHandler(GetPromptRequestSchema, async () => ({
+server.setRequestHandler('prompts/get', async () => ({
   messages: [{ role: 'user', content: { type: 'text', text: identity() } }],
 }));
-server.setRequestHandler(ListResourcesRequestSchema, async () => ({
+server.setRequestHandler('resources/list', async () => ({
   resources: [{ name: 'identity', uri: 'personal://identity' }],
 }));
-server.setRequestHandler(ReadResourceRequestSchema, async () => ({
+server.setRequestHandler('resources/read', async () => ({
   contents: [{ uri: 'personal://identity', text: identity() }],
 }));
 await server.connect(new StdioServerTransport());
