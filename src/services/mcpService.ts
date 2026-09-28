@@ -1639,11 +1639,13 @@ const callToolWithReconnect = async (
         );
 
         try {
-          const server = await getServerDao().findById(serverInfo.name);
-          if (!server) {
+          const rawConfig = await getServerDao().findById(serverInfo.name);
+          if (!rawConfig) {
             throw new Error(`Server configuration not found for: ${serverInfo.name}`);
           }
 
+          // Match initial connection expansion before URL validation and transport creation.
+          const server = replaceEnvVars(rawConfig) as ServerConfigWithName;
           const newTransport = await createTransportFromConfig(serverInfo.name, server);
           const newClient = createUpstreamMcpClient(serverInfo.name, () => serverInfo);
 

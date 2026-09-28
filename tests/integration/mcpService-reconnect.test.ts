@@ -1,5 +1,10 @@
 /// <reference types="jest" />
-import { StreamableHTTPClientTransport } from '@modelcontextprotocol/client';
+import { SSEClientTransport, StreamableHTTPClientTransport } from '@modelcontextprotocol/client';
+
+// Keep DNS deterministic while exercising the real SSRF URL validation.
+jest.mock('node:dns/promises', () => ({
+  lookup: jest.fn(async () => [{ address: '93.184.216.34', family: 4 }]),
+}));
 
 const mockReconnectClient = {
   connect: jest.fn().mockResolvedValue(undefined),
@@ -131,8 +136,7 @@ jest.mock('../../src/dao/index.js', () => ({
 }));
 
 jest.mock('../../src/config/index.js', () => ({
-  expandEnvVars: jest.fn((value: string) => value),
-  replaceEnvVars: jest.fn((value: any) => value),
+  ...jest.requireActual('../../src/config/index.js'),
   getNameSeparator: jest.fn(() => '::'),
   default: {
     mcpHubName: 'test-hub',
@@ -142,7 +146,7 @@ jest.mock('../../src/config/index.js', () => ({
 }));
 
 import * as mcpService from '../../src/services/mcpService.js';
-describe('mcpService streamable-http reconnect', () => {
+describe('mcpService reconnect config integration', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
@@ -206,6 +210,51 @@ describe('mcpService streamable-http reconnect', () => {
       { name: 'get_current_time', arguments: {} },
       {},
     );
+  });
+
+  it.each(['sse', 'streamable-http'])('expands URL credentials on %s reconnect', async (type) => {
+    const previousToken = process.env.MCPHUB_TEST_RECONNECT_TOKEN;
+    process.env.MCPHUB_TEST_RECONNECT_TOKEN = 'reconnect-secret';
+    const rawConfig = {
+      name: 'clock-server',
+      type,
+      url: 'https://example.com/mcp?token=${MCPHUB_TEST_RECONNECT_TOKEN}',
+      enabled: true,
+    };
+    mockServerDao.findById.mockResolvedValueOnce(rawConfig);
+    const initialTransport =
+      type === 'sse'
+        ? new SSEClientTransport(new URL('https://example.com/mcp?token=reconnect-secret'))
+        : new StreamableHTTPClientTransport(
+            new URL('https://example.com/mcp?token=reconnect-secret'),
+          );
+    const serverInfo = createServerInfo(
+      jest
+        .fn()
+        .mockRejectedValue(type === 'sse' ? new Error('Request timed out') : { status: 404 }),
+      initialTransport,
+    ) as any;
+    mcpService.setServerInfosForTest([serverInfo]);
+    try {
+      const result = await mcpService.handleCallToolRequest(
+        {
+          params: {
+            name: 'call_tool',
+            arguments: { toolName: 'clock-server::get_current_time', arguments: {} },
+          },
+        },
+        { sessionId: 'session-1', server: 'clock-server' },
+      );
+      expect(result.isError).toBe(false);
+      expect(serverInfo.transport.url.searchParams.get('token')).toBe('reconnect-secret');
+      expect(serverInfo.status).toBe('connected');
+      expect(mockReconnectClient.callTool).toHaveBeenCalledTimes(1);
+      expect(rawConfig.url).toContain('${MCPHUB_TEST_RECONNECT_TOKEN}');
+    } finally {
+      if (previousToken === undefined) delete process.env.MCPHUB_TEST_RECONNECT_TOKEN;
+      else process.env.MCPHUB_TEST_RECONNECT_TOKEN = previousToken;
+      mcpService.setServerInfosForTest([]);
+    }
   });
 
   it('reconnects when the HTTP status is exposed via error.status', async () => {
