@@ -307,13 +307,19 @@ const registerAndPersistClient = async (
       resolveInstallBaseUrl(systemConfig),
     );
 
-    // Determine scopes: priority is metadata.scope > autoDetectedScopes > configured scopes > 'openid'
+    // Determine scopes: priority is metadata.scope > autoDetectedScopes > configured scopes > 'openid'.
+    // autoDetectedScopes and serverConfig.oauth.scopes are `string[] | undefined`: `undefined`
+    // means "not detected / not configured", while `[]` is a valid, meaningful result (the
+    // upstream server published an empty `scopes_supported` list, i.e. it uses no scopes at
+    // all). Checking `.length > 0` instead of `!== undefined` collapses that distinction and
+    // silently falls back to 'openid', which many zero-scope authorization servers reject
+    // outright during dynamic client registration (see #1227).
     let scopeValue: string;
     if (metadata.scope) {
       scopeValue = metadata.scope;
-    } else if (autoDetectedScopes && autoDetectedScopes.length > 0) {
+    } else if (autoDetectedScopes !== undefined) {
       scopeValue = autoDetectedScopes.join(' ');
-    } else if (serverConfig.oauth?.scopes) {
+    } else if (serverConfig.oauth?.scopes !== undefined) {
       scopeValue = serverConfig.oauth.scopes.join(' ');
     } else {
       scopeValue = 'openid';
@@ -405,13 +411,15 @@ export const getAuthorizationUrl = async (
     // Generate code challenge for PKCE (required by MCP spec)
     const codeChallenge = await client.calculatePKCECodeChallenge(codeVerifier);
 
-    // Build authorization parameters
+    // Build authorization parameters. See the comment in registerAndPersistClient for why
+    // `!== undefined` (not `.length > 0` / truthiness) is required here.
+    const configuredScopes = serverConfig.oauth?.scopes;
     const params: Record<string, string> = {
       redirect_uri: redirectUri,
       state,
       code_challenge: codeChallenge,
       code_challenge_method: 'S256',
-      scope: serverConfig.oauth?.scopes?.join(' ') || 'openid',
+      scope: configuredScopes !== undefined ? configuredScopes.join(' ') : 'openid',
     };
 
     // Add resource parameter for MCP (RFC8707)

@@ -75,7 +75,9 @@ export const persistClientCredentials = async (
     oauth.clientId = credentials.clientId;
     oauth.clientSecret = credentials.clientSecret;
 
-    if (credentials.scopes && credentials.scopes.length > 0) {
+    // `!== undefined` (not `.length > 0`): an explicitly empty scope list is a meaningful
+    // result (the upstream server uses no scopes) and must be persisted, not dropped (#1227).
+    if (credentials.scopes !== undefined) {
       oauth.scopes = credentials.scopes;
     }
     if (credentials.authorizationEndpoint) {
@@ -94,8 +96,10 @@ export const persistClientCredentials = async (
   }
 
   logger.log(`Persisted OAuth client credentials for server: ${serverName}`);
-  if (credentials.scopes && credentials.scopes.length > 0) {
-    logger.log(`Stored OAuth scopes for ${serverName}: ${credentials.scopes.join(', ')}`);
+  if (credentials.scopes !== undefined) {
+    logger.log(
+      `Stored OAuth scopes for ${serverName}: ${credentials.scopes.length > 0 ? credentials.scopes.join(', ') : '(none)'}`,
+    );
   }
 
   return updated;

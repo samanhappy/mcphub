@@ -36,6 +36,18 @@ const normalizeSharedUsers = (value?: string[]): string[] | undefined => {
   return normalized ? Array.from(new Set(normalized)) : undefined;
 };
 
+// Unlike normalizeStringArray, this preserves an explicitly empty array instead of collapsing
+// it to `undefined`. For oauth.scopes, `[]` is a meaningful, distinct value from "not
+// configured" (it says the upstream server uses no OAuth scopes at all) and downstream OAuth
+// registration/authorization logic relies on being able to tell the two apart (see #1227) —
+// collapsing `[]` to `undefined` here silently discarded that signal on every save.
+const normalizeOAuthScopes = (value?: string[]): string[] | undefined => {
+  if (!Array.isArray(value)) {
+    return undefined;
+  }
+  return value.map((item) => item.trim()).filter((item) => item.length > 0);
+};
+
 /**
  * Unpacks the startOnDemand/idleTimeoutMs values mirrored into the `options`
  * blob by normalizeOptions() (see below) back to top-level fields, stripping
@@ -156,11 +168,11 @@ const normalizeOAuth = (oauth?: ServerConfig['oauth']): ServerConfig['oauth'] | 
   const resource = trimToUndefined(oauth.resource);
   const redirectUri = trimToUndefined(oauth.redirectUri);
   const revocationEndpoint = trimToUndefined(oauth.revocationEndpoint);
-  const scopes = normalizeStringArray(oauth.scopes);
+  const scopes = normalizeOAuthScopes(oauth.scopes);
 
   if (clientId) normalized.clientId = clientId;
   if (clientSecret) normalized.clientSecret = clientSecret;
-  if (scopes) normalized.scopes = scopes;
+  if (scopes !== undefined) normalized.scopes = scopes;
   if (accessToken) normalized.accessToken = accessToken;
   if (refreshToken) normalized.refreshToken = refreshToken;
   if (authorizationEndpoint) normalized.authorizationEndpoint = authorizationEndpoint;
