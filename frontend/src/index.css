@@ -837,7 +837,7 @@ textarea.form-input:focus {
 body {
   margin: 0;
   font-family:
-    'Inter',
+    system-ui,
     'PingFang SC',
     -apple-system,
     BlinkMacSystemFont,
