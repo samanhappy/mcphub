@@ -1,0 +1,16 @@
+docs/features/smart-routing.mdx
+  h_18676a549cd52a 954-955
+docs/zh/features/smart-routing.mdx
+  h_18676a549cd52a 563-564
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "fd4a7e55026a87f23f0ad703f8bcb1420ae48c48",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

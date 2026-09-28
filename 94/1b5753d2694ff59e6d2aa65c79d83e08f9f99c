@@ -1,0 +1,26 @@
+src/middlewares/index.test.ts
+  h_18676a549cd52a 61-65,69-72,166-219
+src/middlewares/index.ts
+  h_18676a549cd52a 7-10,13,73-80,88
+src/services/betterAuthConfig.ts
+  h_18676a549cd52a 352-376
+src/utils/rateLimit.test.ts
+  h_18676a549cd52a 27-32,124-129,178,277,300-320
+src/utils/rateLimit.ts
+  h_18676a549cd52a 2,72,74,82-85,102-120
+tests/integration/server-config-persistence.test.ts
+  h_18676a549cd52a 13,79
+tests/services/betterAuthConfig.test.ts
+  h_18676a549cd52a 465-505
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "941b5753d2694ff59e6d2aa65c79d83e08f9f99c",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
