@@ -554,6 +554,34 @@ export const getRegisteredClient = (serverName: string): RegisteredClientInfo | 
  * @param autoDetectedScopes - Optional scopes from auto-detection
  * @returns RegisteredClientInfo or null
  */
+/**
+ * Discover and persist scopes for a server whose `oauth` block already exists but hasn't had
+ * scopes resolved yet -- used by callers that reach `initializeOAuthForServer` directly instead
+ * of through `createOAuthProvider` (which already runs its own pre-registration discovery for
+ * the "no oauth block at all" case). Without this, a server pre-registered at startup or via
+ * `getServerOAuthToken` with `dynamicRegistration.enabled: true` and no configured scopes would
+ * register with the default `scope: 'openid'`, reproducing #1227 in these two call sites too.
+ */
+const ensureScopesResolved = async (serverName: string, serverConfig: ServerConfig): Promise<void> => {
+  if (!serverConfig.oauth || serverConfig.oauth.scopes !== undefined || !serverConfig.url) {
+    return;
+  }
+  try {
+    const scopes = await fetchScopesFromServer(serverConfig.url, await createOAuthFetch(serverConfig));
+    if (scopes !== undefined) {
+      serverConfig.oauth.scopes = scopes;
+      const updatedConfig = await mutateOAuthSettings(serverName, ({ oauth }) => {
+        oauth.scopes = scopes;
+      });
+      if (updatedConfig) {
+        logger.log('Stored auto-detected OAuth scopes', { serverName, scopes });
+      }
+    }
+  } catch (error) {
+    logger.warn('Failed to auto-detect OAuth scopes', { serverName, error });
+  }
+};
+
 export const initializeOAuthForServer = async (
   serverName: string,
   serverConfig: ServerConfig,
@@ -562,6 +590,12 @@ export const initializeOAuthForServer = async (
 ): Promise<RegisteredClientInfo | null> => {
   if (!serverConfig.oauth) {
     return null;
+  }
+
+  // Only when the caller didn't already hand us auto-detected scopes (401-driven discovery
+  // already resolved them in that case) -- see ensureScopesResolved's docstring.
+  if (autoDetectedScopes === undefined) {
+    await ensureScopesResolved(serverName, serverConfig);
   }
 
   // Check if dynamic registration should be attempted
@@ -593,11 +627,15 @@ export const initializeOAuthForServer = async (
   if (serverConfig.oauth.clientId) {
     const safeFetch = await createOAuthFetch(serverConfig);
 
-    // Try to fetch and store scopes if not already configured
-    if (!serverConfig.oauth.scopes && serverConfig.url) {
+    // Try to fetch and store scopes if not already resolved. `=== undefined` (not `!scopes`):
+    // an already-resolved empty array is a meaningful "this server uses no scopes" result and
+    // must not trigger a re-fetch, same reasoning as the rest of #1227.
+    if (serverConfig.oauth.scopes === undefined && serverConfig.url) {
       try {
         const fetchedScopes = await fetchScopesFromServer(serverConfig.url, safeFetch);
-        if (fetchedScopes && fetchedScopes.length > 0) {
+        // `!== undefined` (not `.length > 0`): persist an explicitly empty result too, or a
+        // static client with a zero-scope server repeats the original #1227 failure here.
+        if (fetchedScopes !== undefined) {
           await mutateOAuthSettings(serverName, ({ oauth }) => {
             oauth.scopes = fetchedScopes;
           });

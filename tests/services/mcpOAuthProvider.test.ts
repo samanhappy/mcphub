@@ -7,6 +7,7 @@ jest.mock('../../src/services/oauthClientRegistration.js', () => ({
   getRegisteredClient: jest.fn(),
   removeRegisteredClient: jest.fn(),
   fetchScopesFromServer: jest.fn(),
+  createOAuthFetch: jest.fn().mockResolvedValue(jest.fn()),
 }));
 
 jest.mock('../../src/services/oauthSettingsStore.js', () => ({
@@ -23,7 +24,11 @@ jest.mock('../../src/services/mcpService.js', () => ({
 }));
 
 import { getSystemConfigDao } from '../../src/dao/index.js';
-import { getRegisteredClient } from '../../src/services/oauthClientRegistration.js';
+import {
+  getRegisteredClient,
+  fetchScopesFromServer,
+} from '../../src/services/oauthClientRegistration.js';
+import { mutateOAuthSettings } from '../../src/services/oauthSettingsStore.js';
 import { MCPHubOAuthProvider, createOAuthProvider } from '../../src/services/mcpOAuthProvider.js';
 
 describe('MCPHubOAuthProvider redirect URI resolution', () => {
@@ -218,6 +223,90 @@ describe('createOAuthProvider - 401 auto-discovery guard', () => {
     } as any);
 
     expect(provider).toBeInstanceOf(MCPHubOAuthProvider);
+  });
+});
+
+describe('createOAuthProvider - scope discovery before first registration (#1227)', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    (getSystemConfigDao as jest.Mock).mockReturnValue({
+      get: jest.fn().mockResolvedValue({}),
+    });
+  });
+
+  it('discovers scopes for a URL-only config and the first registration sees them, not openid', async () => {
+    // Exact repro from the upstream review: `{ type: 'streamable-http', url: '...' }` with no
+    // `oauth` key at all -- the very first connection attempt, before any registration has
+    // happened. Scope discovery must run here so the *first* registration already knows the
+    // upstream server uses no scopes, instead of only finding out after defaulting to 'openid'.
+    // Asserting the resulting `clientMetadata.scope` (not just that the mocks were called) is
+    // what actually proves the behavior the maintainer asked for.
+    (fetchScopesFromServer as jest.Mock).mockResolvedValue([]);
+    (mutateOAuthSettings as jest.Mock).mockImplementation(async (_name, mutator) => {
+      const oauth: Record<string, unknown> = {};
+      mutator({ oauth, serverConfig: {} });
+      return { oauth };
+    });
+
+    const provider = await createOAuthProvider('pcloud', {
+      type: 'streamable-http',
+      url: 'https://mcp.pcloud.com/mcp',
+    } as any);
+
+    expect(fetchScopesFromServer).toHaveBeenCalledWith(
+      'https://mcp.pcloud.com/mcp',
+      expect.any(Function),
+    );
+    expect(mutateOAuthSettings).toHaveBeenCalledWith('pcloud', expect.any(Function));
+    expect((provider as MCPHubOAuthProvider).clientMetadata.scope).toBe('');
+  });
+
+  it('keeps the openid default when discovery finds nothing, without persisting anything', async () => {
+    (fetchScopesFromServer as jest.Mock).mockResolvedValue(undefined);
+
+    const provider = await createOAuthProvider('undiscoverable', {
+      type: 'streamable-http',
+      url: 'https://example.com/mcp',
+    } as any);
+
+    expect(fetchScopesFromServer).toHaveBeenCalledWith(
+      'https://example.com/mcp',
+      expect.any(Function),
+    );
+    expect(mutateOAuthSettings).not.toHaveBeenCalled();
+    expect((provider as MCPHubOAuthProvider).clientMetadata.scope).toBe('openid');
+  });
+
+  it('does not throw and keeps the openid default when discovery itself fails', async () => {
+    (fetchScopesFromServer as jest.Mock).mockRejectedValue(new Error('network error'));
+
+    const provider = await createOAuthProvider('flaky', {
+      type: 'streamable-http',
+      url: 'https://example.com/mcp',
+    } as any);
+
+    expect(mutateOAuthSettings).not.toHaveBeenCalled();
+    expect((provider as MCPHubOAuthProvider).clientMetadata.scope).toBe('openid');
+  });
+
+  it('does not re-fetch scopes when they were already resolved to an empty array', async () => {
+    await createOAuthProvider('pcloud', {
+      type: 'streamable-http',
+      url: 'https://mcp.pcloud.com/mcp',
+      oauth: { scopes: [] },
+    } as any);
+
+    expect(fetchScopesFromServer).not.toHaveBeenCalled();
+  });
+
+  it('does not re-fetch scopes when a non-empty scope list is already configured', async () => {
+    await createOAuthProvider('example', {
+      type: 'streamable-http',
+      url: 'https://example.com/mcp',
+      oauth: { scopes: ['read', 'write'] },
+    } as any);
+
+    expect(fetchScopesFromServer).not.toHaveBeenCalled();
   });
 });
 

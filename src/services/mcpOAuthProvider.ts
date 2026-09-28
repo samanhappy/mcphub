@@ -546,9 +546,9 @@ const prepopulateScopesIfMissing = async (
   serverName: string,
   serverConfig: ServerConfig,
 ): Promise<void> => {
-  // `scopes !== undefined` (not `?.length`): an already-resolved empty scope list must skip
-  // re-fetching just like a non-empty one would.
-  if (!serverConfig.oauth || serverConfig.oauth.scopes !== undefined) {
+  // `[]` means resolved-to-no-scopes; a missing `oauth` block means never resolved, so
+  // discovery must still run before the first registration too (#1227).
+  if (serverConfig.oauth?.scopes !== undefined) {
     return;
   }
 
@@ -557,17 +557,19 @@ const prepopulateScopesIfMissing = async (
   }
 
   try {
-    const scopes = await fetchScopesFromServer(serverConfig.url);
+    const scopes = await fetchScopesFromServer(serverConfig.url, await createOAuthFetch(serverConfig));
     // `scopes !== undefined`: persist and honor an explicitly empty result too (see #1227).
     if (scopes !== undefined) {
-      const updatedConfig = await mutateOAuthSettings(serverName, ({ oauth }) => {
-        oauth.scopes = scopes;
-      });
-
+      // Update the in-memory config first: if the DAO write below throws, this connection
+      // attempt still proceeds with the correct scopes instead of falling back to 'openid'.
       if (!serverConfig.oauth) {
         serverConfig.oauth = {};
       }
       serverConfig.oauth.scopes = scopes;
+
+      const updatedConfig = await mutateOAuthSettings(serverName, ({ oauth }) => {
+        oauth.scopes = scopes;
+      });
 
       if (updatedConfig) {
         logger.log('Stored auto-detected OAuth scopes during provider initialization', {
@@ -626,7 +628,7 @@ export const createOAuthProvider = async (
     return undefined;
   }
 
-  // Ensure scopes are pre-populated if dynamic registration already ran previously
+  // Discover and persist scopes before the first registration attempt, not only on later ones.
   await prepopulateScopesIfMissing(serverName, serverConfig);
 
   // Initialize OAuth for the server (performs registration if needed)
