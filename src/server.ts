@@ -12,6 +12,7 @@ import {
   handleSseMessage,
   handleMcpPostRequest,
   handleMcpOtherRequest,
+  closeModernMcpHandler,
 } from './services/sseService.js';
 import { initializeDefaultUser } from './models/User.js';
 import { sseUserContextMiddleware } from './middlewares/userContext.js';
@@ -254,9 +255,10 @@ export class AppServer {
       ? closeHttpServer(this.server, this.connections)
       : Promise.resolve();
 
-    // Close all MCP clients
+    // Close all MCP clients and stateless modern MCP exchanges.
     try {
       cleanupAllServers();
+      await closeModernMcpHandler();
       logger.log('[SHUTDOWN] MCP clients closed');
     } catch (error) {
       logger.error('[SHUTDOWN] Error closing MCP clients', safeStringify({ error }));
