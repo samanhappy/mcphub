@@ -103,6 +103,12 @@ jest.mock('../../src/services/vectorSearchService.js', () => ({
   ),
 }));
 
+// Tool and prompt toggles are keyed by `<server><separator><item>`; pin the separator
+jest.mock('../../src/config/index.js', () => ({
+  ...(jest.requireActual('../../src/config/index.js') as object),
+  getNameSeparator: jest.fn(() => '::'),
+}));
+
 jest.mock('../../src/services/userContextService.js', () => ({
   UserContextService: {
     getInstance: jest.fn(() => ({
@@ -1695,6 +1701,73 @@ describe('serverController - updateServer', () => {
         success: true,
         message: 'Server renamed and updated successfully',
       });
+    });
+
+    it('moves prefixed tool and prompt toggles to the new name', async () => {
+      mockRequest.body.config = {
+        ...mockRequest.body.config,
+        tools: {
+          'test-server::delete_note': { enabled: false },
+          'test-server::list_notes': { enabled: true, description: 'Custom description' },
+          // Bare keys do not depend on the server name
+          search_notes: { enabled: false },
+        },
+        prompts: { 'test-server::summarize': { enabled: false } },
+      };
+
+      await updateServer(mockRequest as Request, mockResponse as Response);
+
+      const [, savedConfig] = mockAddOrUpdateServer.mock.calls[0] as [string, any, boolean];
+      expect(savedConfig.tools).toEqual({
+        'renamed-server::delete_note': { enabled: false },
+        'renamed-server::list_notes': { enabled: true, description: 'Custom description' },
+        search_notes: { enabled: false },
+      });
+      expect(savedConfig.prompts).toEqual({ 'renamed-server::summarize': { enabled: false } });
+    });
+
+    it('moves the stored toggles when the request does not send them', async () => {
+      // Without them the update merge would keep the stored map, old keys and all
+      mockServerDao.findById.mockResolvedValue({
+        name: 'test-server',
+        type: 'sse',
+        url: 'https://example.com/sse',
+        enabled: true,
+        owner: 'admin',
+        visibility: 'private',
+        tools: { 'test-server::delete_note': { enabled: false } },
+        prompts: { 'test-server::summarize': { enabled: false } },
+      });
+
+      await updateServer(mockRequest as Request, mockResponse as Response);
+
+      const [, savedConfig] = mockAddOrUpdateServer.mock.calls[0] as [string, any, boolean];
+      expect(savedConfig.tools).toEqual({ 'renamed-server::delete_note': { enabled: false } });
+      expect(savedConfig.prompts).toEqual({ 'renamed-server::summarize': { enabled: false } });
+    });
+
+    it('keeps the toggle that was in effect when both prefixes are present', async () => {
+      mockRequest.body.config = {
+        ...mockRequest.body.config,
+        tools: {
+          // Left over from an earlier server of that name; it never matched anything
+          'renamed-server::delete_note': { enabled: true },
+          'test-server::delete_note': { enabled: false },
+        },
+      };
+
+      await updateServer(mockRequest as Request, mockResponse as Response);
+
+      const [, savedConfig] = mockAddOrUpdateServer.mock.calls[0] as [string, any, boolean];
+      expect(savedConfig.tools).toEqual({ 'renamed-server::delete_note': { enabled: false } });
+    });
+
+    it('adds no tools or prompts maps to a server that has none', async () => {
+      await updateServer(mockRequest as Request, mockResponse as Response);
+
+      const [, savedConfig] = mockAddOrUpdateServer.mock.calls[0] as [string, any, boolean];
+      expect(savedConfig).not.toHaveProperty('tools');
+      expect(savedConfig).not.toHaveProperty('prompts');
     });
 
     it('still succeeds when embedding cleanup fails', async () => {
