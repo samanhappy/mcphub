@@ -248,7 +248,7 @@ describe('Real Client Transport Integration Tests', () => {
 
   describe('MCP 2026-07-28 Dual-stack Tests', () => {
     it('should serve modern requests without creating a downstream session', async () => {
-      const sessionCountBefore = Object.keys(transports).length;
+      const sessionIdsBefore = new Set(Object.keys(transports));
       const transport = new ModernStreamableHTTPClientTransport(new URL(`${baseURL}/mcp`), {
         requestInit: {
           headers: {
@@ -276,7 +276,9 @@ describe('Real Client Transport Integration Tests', () => {
 
         // 2026-07-28 HTTP is per-request/stateless and must not populate
         // MCPHub's legacy downstream session map.
-        expect(Object.keys(transports).length).toBe(sessionCountBefore);
+        expect(Object.keys(transports).every((sessionId) => sessionIdsBefore.has(sessionId))).toBe(
+          true,
+        );
       } finally {
         await client.close();
       }
