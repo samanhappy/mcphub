@@ -84,6 +84,19 @@ export interface SmartRoutingConfig {
    */
   embeddingDocumentPrefix?: string;
   /**
+   * Minimum cosine similarity (0-1) a tool must reach to be returned by search_tools.
+   * Default: unset, which keeps the query-length heuristic (0.2 for short queries,
+   * 0.4 for long or "specific"/"exact" ones, 0.3 otherwise).
+   */
+  similarityThreshold?: number;
+  /**
+   * Number of top search_tools hits that carry their full tool definition
+   * (inputSchema and the rest). Lower-ranked hits only carry name, description
+   * and score, and describe_tool is exposed to fetch their schema.
+   * Ignored in progressive disclosure mode. Default: unset (every hit is full).
+   */
+  fullSchemaTopN?: number;
+  /**
    * Fields whose effective value currently comes from an environment variable
    * instead of the persisted (dashboard) setting.
    *
@@ -374,6 +387,24 @@ export async function getSmartRoutingConfig(): Promise<SmartRoutingConfig> {
       String,
     ),
 
+    // Unset (undefined) keeps the per-query heuristic in handleSearchToolsRequest
+    similarityThreshold: cfg<number | undefined>(
+      'similarityThreshold',
+      { SMART_ROUTING_SIMILARITY_THRESHOLD: process.env.SMART_ROUTING_SIMILARITY_THRESHOLD },
+      smartRoutingSettings.similarityThreshold,
+      undefined,
+      parseSimilarityThreshold,
+    ),
+
+    // Unset (undefined) returns the full definition for every hit
+    fullSchemaTopN: cfg<number | undefined>(
+      'fullSchemaTopN',
+      { SMART_ROUTING_FULL_SCHEMA_TOP_N: process.env.SMART_ROUTING_FULL_SCHEMA_TOP_N },
+      smartRoutingSettings.fullSchemaTopN,
+      undefined,
+      parseFullSchemaTopN,
+    ),
+
     envOverriddenFields,
   };
 }
@@ -430,6 +461,30 @@ function resolveConfigValue<T>(
 
   // Return default value
   return { value: defaultValue, source: 'default' };
+}
+
+/**
+ * Parses a similarity threshold. Anything that is not a number in [0, 1]
+ * yields undefined, i.e. "use the default heuristic".
+ */
+export function parseSimilarityThreshold(value: unknown): number | undefined {
+  if (value === null || value === undefined || String(value).trim() === '') {
+    return undefined;
+  }
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed >= 0 && parsed <= 1 ? parsed : undefined;
+}
+
+/**
+ * Parses the number of search hits that keep their full tool definition.
+ * Anything that is not a non-negative integer yields undefined, i.e. "all".
+ */
+export function parseFullSchemaTopN(value: unknown): number | undefined {
+  if (value === null || value === undefined || String(value).trim() === '') {
+    return undefined;
+  }
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed >= 0 ? parsed : undefined;
 }
 
 /**

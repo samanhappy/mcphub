@@ -5,7 +5,11 @@ jest.mock('../../src/dao/DaoFactory.js', () => ({
   getSystemConfigDao: jest.fn(() => ({ get: mockGet, update: mockUpdate })),
 }));
 
-import { getSmartRoutingConfig } from '../../src/utils/smartRouting.js';
+import {
+  getSmartRoutingConfig,
+  parseFullSchemaTopN,
+  parseSimilarityThreshold,
+} from '../../src/utils/smartRouting.js';
 
 // List of every smart-routing-related env var this suite manipulates. We delete
 // them all in beforeEach so global setup (tests/setup.ts sets DB_URL, etc.) does
@@ -32,6 +36,8 @@ const SMART_ROUTING_ENV_VARS = [
   'SMART_ROUTING_SERVER_DESCRIPTION_MODE',
   'SMART_ROUTING_EMBEDDING_QUERY_PREFIX',
   'SMART_ROUTING_EMBEDDING_DOCUMENT_PREFIX',
+  'SMART_ROUTING_SIMILARITY_THRESHOLD',
+  'SMART_ROUTING_FULL_SCHEMA_TOP_N',
   'EMBEDDING_MAX_TOKENS',
 ];
 
@@ -312,6 +318,8 @@ describe('smartRouting config resolution', () => {
         embeddingMaxTokens: undefined,
         embeddingQueryPrefix: '',
         embeddingDocumentPrefix: '',
+        similarityThreshold: undefined,
+        fullSchemaTopN: undefined,
         envOverriddenFields: [],
       });
     });
@@ -516,6 +524,37 @@ describe('smartRouting config resolution', () => {
         expect(config.embeddingDocumentPrefix).toBe('passage: ');
       });
     });
+
+    describe('search result settings', () => {
+      it('reads the threshold and top-N from env and reports the override', async () => {
+        process.env.SMART_ROUTING_SIMILARITY_THRESHOLD = '0.45';
+        process.env.SMART_ROUTING_FULL_SCHEMA_TOP_N = '3';
+        const config = await getSmartRoutingConfig();
+        expect(config.similarityThreshold).toBe(0.45);
+        expect(config.fullSchemaTopN).toBe(3);
+        expect(config.envOverriddenFields).toEqual(
+          expect.arrayContaining([
+            { field: 'similarityThreshold', envVar: 'SMART_ROUTING_SIMILARITY_THRESHOLD' },
+            { field: 'fullSchemaTopN', envVar: 'SMART_ROUTING_FULL_SCHEMA_TOP_N' },
+          ]),
+        );
+      });
+
+      it('reads them from settings when env is absent, 0 included', async () => {
+        mockGet.mockResolvedValue({ smartRouting: { similarityThreshold: 0, fullSchemaTopN: 0 } });
+        const config = await getSmartRoutingConfig();
+        expect(config.similarityThreshold).toBe(0);
+        expect(config.fullSchemaTopN).toBe(0);
+      });
+
+      it('falls back to the defaults for invalid env values', async () => {
+        process.env.SMART_ROUTING_SIMILARITY_THRESHOLD = '1.5';
+        process.env.SMART_ROUTING_FULL_SCHEMA_TOP_N = '-1';
+        const config = await getSmartRoutingConfig();
+        expect(config.similarityThreshold).toBeUndefined();
+        expect(config.fullSchemaTopN).toBeUndefined();
+      });
+    });
   });
 
   describe('settings override via mockGet', () => {
@@ -541,5 +580,28 @@ describe('smartRouting config resolution', () => {
       expect(config.enabled).toBe(false);
       expect(config.serverDescriptionMode).toBe('names');
     });
+  });
+});
+
+describe('search result setting parsers', () => {
+  it('accepts a similarity threshold in [0, 1] only', () => {
+    expect(parseSimilarityThreshold('0.4')).toBe(0.4);
+    expect(parseSimilarityThreshold(0)).toBe(0);
+    expect(parseSimilarityThreshold(1)).toBe(1);
+    expect(parseSimilarityThreshold(-0.1)).toBeUndefined();
+    expect(parseSimilarityThreshold(1.1)).toBeUndefined();
+    expect(parseSimilarityThreshold('abc')).toBeUndefined();
+    expect(parseSimilarityThreshold('')).toBeUndefined();
+    expect(parseSimilarityThreshold(null)).toBeUndefined();
+  });
+
+  it('accepts a non-negative integer top-N only', () => {
+    expect(parseFullSchemaTopN('3')).toBe(3);
+    expect(parseFullSchemaTopN(0)).toBe(0);
+    expect(parseFullSchemaTopN(2.5)).toBeUndefined();
+    expect(parseFullSchemaTopN(-1)).toBeUndefined();
+    expect(parseFullSchemaTopN('x')).toBeUndefined();
+    expect(parseFullSchemaTopN(' ')).toBeUndefined();
+    expect(parseFullSchemaTopN(undefined)).toBeUndefined();
   });
 });

@@ -323,22 +323,6 @@ The same order applies to the `Enabled` toggle and `DB URL`, but the dashboard r
 
   </Accordion>
 
-  <Accordion title="Embedding Task Prefixes">
-    Asymmetric retrieval models are trained with different task prefixes for queries and
-    documents, and score noticeably worse on raw text. Set the prefixes your model expects
-    in Settings → Smart Routing or via environment variables:
-
-    ```bash
-    # EmbeddingGemma
-    SMART_ROUTING_EMBEDDING_QUERY_PREFIX="task: search result | query: "
-    SMART_ROUTING_EMBEDDING_DOCUMENT_PREFIX="title: none | text: "
-    ```
-
-    Both are empty by default, which embeds raw text as before. Prefixes are used verbatim,
-    so keep the trailing space. Changing the document prefix re-embeds every server's tools;
-    changing the query prefix takes effect on the next search.
-  </Accordion>
-
   <Accordion title="Search Parameters">
     ```bash
     # Similarity threshold (0.0 to 1.0)
@@ -495,6 +479,50 @@ Progressive Disclosure is an optimization feature that reduces token usage when 
     Use `names` (default) to keep the legacy compact list.
   </Accordion>
 
+  <Accordion title="Embedding Task Prefixes">
+    Asymmetric retrieval models are trained with different task prefixes for queries and
+    documents, and score noticeably worse on raw text. Set the prefixes your model expects
+    in Settings → Smart Routing or via environment variables:
+
+    ```bash
+    # EmbeddingGemma
+    SMART_ROUTING_EMBEDDING_QUERY_PREFIX="task: search result | query: "
+    SMART_ROUTING_EMBEDDING_DOCUMENT_PREFIX="title: none | text: "
+    ```
+
+    Both are empty by default, which embeds raw text as before. Prefixes are used verbatim,
+    so keep the trailing space. Changing the document prefix re-embeds every server's tools;
+    changing the query prefix takes effect on the next search.
+
+    Prefixes shift the similarity scores (for EmbeddingGemma, weak matches drop more than
+    strong ones), so a threshold tuned on raw text may need recalibrating after you enable them (see
+    **Search Results** below; each hit reports its `score`). A prefix also counts toward the
+    embedding token limit (`EMBEDDING_MAX_TOKENS` or the model default): it is kept and the
+    tool text is truncated that many tokens earlier.
+  </Accordion>
+
+  <Accordion title="Search Results: Scores, Threshold and Schema Budget">
+    Every `search_tools` hit carries a `score`: the cosine similarity between the query and
+    the tool (0-1, two decimals), the same value the threshold is compared with. Results are
+    ordered by relevance, which also weighs how well the tool's server matches the query.
+
+    ```bash
+    # Minimum similarity for a hit (0-1). Unset: by query length —
+    # 0.2 for short queries, 0.4 for long or "specific"/"exact" ones, 0.3 otherwise.
+    SMART_ROUTING_SIMILARITY_THRESHOLD=0.45
+
+    # Only the first N hits carry their full definition (inputSchema etc.); the rest
+    # carry name, description and score, and describe_tool is listed to fetch them.
+    # Unset: every hit is returned in full. Ignored with Progressive Disclosure.
+    SMART_ROUTING_FULL_SCHEMA_TOP_N=3
+    ```
+
+    Both can also be set in Settings → Smart Routing → Search Results, and neither one
+    re-embeds anything. When no tool clears the threshold, the response says so, names the
+    threshold and lists the servers that were searched, so the model can tell the user the
+    capability is not available instead of calling the nearest unrelated tool.
+  </Accordion>
+
   <Accordion title="Standard Mode (Default)">
     When Progressive Disclosure is **disabled** (default), Smart Routing provides two tools:
     
@@ -506,6 +534,8 @@ Progressive Disclosure is an optimization feature that reduces token usage when 
     | `call_tool` | Execute a tool with the provided arguments |
     
     This mode is simpler but uses more tokens due to full schemas in search results.
+    `SMART_ROUTING_FULL_SCHEMA_TOP_N` caps that cost: only the top N hits carry a schema,
+    and `describe_tool` is listed for the rest.
   </Accordion>
 
   <Accordion title="Progressive Disclosure Mode">
@@ -543,7 +573,8 @@ Progressive Disclosure is an optimization feature that reduces token usage when 
               "encoding": { "type": "string", "default": "utf-8" }
             },
             "required": ["path"]
-          }
+          },
+          "score": 0.71
         }
       ]
     }
@@ -555,7 +586,8 @@ Progressive Disclosure is an optimization feature that reduces token usage when 
       "tools": [
         {
           "name": "read_file",
-          "description": "Read contents of a file"
+          "description": "Read contents of a file",
+          "score": 0.71
         }
       ],
       "metadata": {
@@ -932,7 +964,8 @@ curl -X POST http://localhost:3000/api/smart-routing/feedback \
     - Missing expected tools
 
     **Solutions:**
-    1. Adjust similarity threshold
+    1. Adjust the similarity threshold (`SMART_ROUTING_SIMILARITY_THRESHOLD`), using the
+       `score` of each hit to pick a value
     2. Re-index tools with better descriptions
     3. Use more specific queries
     4. Check tool metadata quality

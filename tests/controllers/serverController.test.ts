@@ -1006,6 +1006,63 @@ describe('serverController - updateSystemConfig', () => {
     });
   });
 
+  describe('search result settings', () => {
+    beforeEach(() => {
+      mockSyncAllServerToolsEmbeddings.mockResolvedValue(undefined);
+      mockSystemConfigDao.get.mockResolvedValue({
+        routing: {},
+        smartRouting: {
+          enabled: true,
+          dbUrl: 'postgres://localhost/test',
+          embeddingProvider: 'openai',
+          embeddingModel: 'embeddinggemma',
+          similarityThreshold: 0.5,
+          fullSchemaTopN: 2,
+        },
+      });
+    });
+
+    it('persists the threshold and top-N without re-syncing embeddings', async () => {
+      mockRequest.body = { smartRouting: { similarityThreshold: 0.35, fullSchemaTopN: 0 } };
+
+      await updateSystemConfig(mockRequest as Request, mockResponse as Response);
+
+      expect(mockSystemConfigDao.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          smartRouting: expect.objectContaining({ similarityThreshold: 0.35, fullSchemaTopN: 0 }),
+        }),
+      );
+      expect(mockSyncAllServerToolsEmbeddings).not.toHaveBeenCalled();
+    });
+
+    it('clears both back to the defaults with null', async () => {
+      mockRequest.body = { smartRouting: { similarityThreshold: null, fullSchemaTopN: null } };
+
+      await updateSystemConfig(mockRequest as Request, mockResponse as Response);
+
+      const saved = (mockSystemConfigDao.update as jest.Mock).mock.calls[0][0] as any;
+      expect(saved.smartRouting.similarityThreshold).toBeUndefined();
+      expect(saved.smartRouting.fullSchemaTopN).toBeUndefined();
+    });
+
+    it.each([
+      [{ similarityThreshold: 1.2 }, 'similarityThreshold'],
+      [{ similarityThreshold: 'high' }, 'similarityThreshold'],
+      [{ fullSchemaTopN: -1 }, 'fullSchemaTopN'],
+      [{ fullSchemaTopN: 1.5 }, 'fullSchemaTopN'],
+    ])('rejects an invalid value %j with 400 and saves nothing', async (smartRouting, field) => {
+      mockRequest.body = { smartRouting };
+
+      await updateSystemConfig(mockRequest as Request, mockResponse as Response);
+
+      expect(mockResponse.status).toHaveBeenCalledWith(400);
+      expect(mockResponse.json).toHaveBeenCalledWith(
+        expect.objectContaining({ message: expect.stringContaining(field) }),
+      );
+      expect(mockSystemConfigDao.update).not.toHaveBeenCalled();
+    });
+  });
+
   it('normalizes legacy smart-routing request fields before persisting the update', async () => {
     mockRequest.body = {
       smartRouting: {

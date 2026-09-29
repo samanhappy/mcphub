@@ -178,6 +178,8 @@ describe('vectorSearchService', () => {
     expect(results.map((result) => result.toolName)).toEqual(['redis-set', 'mail-send']);
     expect(results[0].similarity).toBeCloseTo(0.76);
     expect(results[1].similarity).toBeCloseTo(0.6);
+    // The raw tool similarity is kept next to the blended ranking score
+    expect(results.map((result) => result.toolSimilarity)).toEqual([0.7, 0.75]);
     expect(mockVectorRepository.searchSimilar).toHaveBeenCalledTimes(2);
     expect(mockVectorRepository.searchSimilar.mock.calls[0][0]).toBe(
       mockVectorRepository.searchSimilar.mock.calls[1][0],

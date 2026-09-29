@@ -25,11 +25,11 @@ How a client consumes a Group or all-servers scope, which determines what defini
 _Avoid_: routing type, access mode
 
 **Meta-tool**:
-One of the fixed scaffolding tools Smart Routing registers in place of the underlying tools: `search_tools` and `call_tool` always, plus `describe_tool` under Progressive Disclosure. A Meta-tool's definition is not constant — its description embeds the in-scope server names and group name, so its Definition Cost varies slightly by scope.
+One of the fixed scaffolding tools Smart Routing registers in place of the underlying tools: `search_tools` and `call_tool` always, plus `describe_tool` under Progressive Disclosure or when `fullSchemaTopN` limits which search hits carry a schema. A Meta-tool's definition is not constant — its description embeds the in-scope server names and group name, so its Definition Cost varies slightly by scope.
 _Avoid_: virtual tool, proxy tool, system tool
 
 **Smart Routing Footprint**:
-The Context Footprint of a scope under Smart Routing — the summed Definition Cost of its Meta-tool set (two Meta-tools normally, three under Progressive Disclosure) as constructed for that scope. Far smaller than the Direct/Exposed Footprint; this contrast is the feature's headline value.
+The Context Footprint of a scope under Smart Routing — the summed Definition Cost of its Meta-tool set (two Meta-tools normally, three under Progressive Disclosure or with `fullSchemaTopN` set) as constructed for that scope. Far smaller than the Direct/Exposed Footprint; this contrast is the feature's headline value.
 _Avoid_: smart cost, routing cost
 
 **Progressive Disclosure**:

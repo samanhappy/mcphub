@@ -49,6 +49,8 @@ interface SmartRoutingConfig {
   embeddingMaxTokens?: number;
   embeddingQueryPrefix?: string;
   embeddingDocumentPrefix?: string;
+  similarityThreshold?: number;
+  fullSchemaTopN?: number;
   /**
    * Read-only metadata from the server (issue #642): fields whose runtime value
    * comes from an environment variable, so whatever is typed into the form for
@@ -377,6 +379,8 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
     embeddingMaxTokens: undefined,
     embeddingQueryPrefix: '',
     embeddingDocumentPrefix: '',
+    similarityThreshold: undefined,
+    fullSchemaTopN: undefined,
   });
 
   const [toolResultCompressionConfig, setToolResultCompressionConfig] =
@@ -475,6 +479,8 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
           embeddingQueryPrefix: data.data.systemConfig.smartRouting.embeddingQueryPrefix || '',
           embeddingDocumentPrefix:
             data.data.systemConfig.smartRouting.embeddingDocumentPrefix || '',
+          similarityThreshold: data.data.systemConfig.smartRouting.similarityThreshold,
+          fullSchemaTopN: data.data.systemConfig.smartRouting.fullSchemaTopN,
           envOverriddenFields: data.data.systemConfig.smartRouting.envOverriddenFields ?? [],
         });
       }
