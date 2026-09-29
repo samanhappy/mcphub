@@ -464,15 +464,25 @@ function resolveConfigValue<T>(
 }
 
 /**
+ * A number as given, or a non-blank numeric string (env vars). Anything else,
+ * including booleans and arrays that Number() would coerce, is not a value.
+ */
+function toSettingNumber(value: unknown): number | undefined {
+  if (typeof value === 'number') {
+    return value;
+  }
+  return typeof value === 'string' && value.trim() !== '' ? Number(value) : undefined;
+}
+
+/**
  * Parses a similarity threshold. Anything that is not a number in [0, 1]
  * yields undefined, i.e. "use the default heuristic".
  */
 export function parseSimilarityThreshold(value: unknown): number | undefined {
-  if (value === null || value === undefined || String(value).trim() === '') {
-    return undefined;
-  }
-  const parsed = Number(value);
-  return Number.isFinite(parsed) && parsed >= 0 && parsed <= 1 ? parsed : undefined;
+  const parsed = toSettingNumber(value);
+  return parsed !== undefined && Number.isFinite(parsed) && parsed >= 0 && parsed <= 1
+    ? parsed
+    : undefined;
 }
 
 /**
@@ -480,11 +490,8 @@ export function parseSimilarityThreshold(value: unknown): number | undefined {
  * Anything that is not a non-negative integer yields undefined, i.e. "all".
  */
 export function parseFullSchemaTopN(value: unknown): number | undefined {
-  if (value === null || value === undefined || String(value).trim() === '') {
-    return undefined;
-  }
-  const parsed = Number(value);
-  return Number.isInteger(parsed) && parsed >= 0 ? parsed : undefined;
+  const parsed = toSettingNumber(value);
+  return parsed !== undefined && Number.isInteger(parsed) && parsed >= 0 ? parsed : undefined;
 }
 
 /**

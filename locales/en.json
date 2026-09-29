@@ -932,6 +932,7 @@
     "similarityThresholdPlaceholder": "Empty = by query length (0.2 / 0.3 / 0.4)",
     "fullSchemaTopN": "Full schemas for the top N results",
     "fullSchemaTopNPlaceholder": "Empty = all results; lower ones get describe_tool",
+    "invalidSearchSettings": "Invalid value for {{fields}}. The similarity threshold must be between 0 and 1, and top N a whole number of 0 or more.",
     "smartRoutingConfigUpdated": "Smart routing configuration updated successfully",
     "smartRoutingRequiredFields": "Database URL is required to enable smart routing. An LLM Provider API Key is required for cloud-based providers (local LLMs usually don't require an API key, enter any value to pass the form validation)",
     "smartRoutingValidationError": "Please fill in the required fields before enabling Smart Routing: {{fields}}",

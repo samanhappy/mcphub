@@ -1050,6 +1050,8 @@ describe('serverController - updateSystemConfig', () => {
       [{ similarityThreshold: 'high' }, 'similarityThreshold'],
       [{ fullSchemaTopN: -1 }, 'fullSchemaTopN'],
       [{ fullSchemaTopN: 1.5 }, 'fullSchemaTopN'],
+      [{ similarityThreshold: true }, 'similarityThreshold'],
+      [{ fullSchemaTopN: [3] }, 'fullSchemaTopN'],
     ])('rejects an invalid value %j with 400 and saves nothing', async (smartRouting, field) => {
       mockRequest.body = { smartRouting };
 

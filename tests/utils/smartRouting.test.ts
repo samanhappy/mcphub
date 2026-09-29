@@ -595,6 +595,13 @@ describe('search result setting parsers', () => {
     expect(parseSimilarityThreshold(null)).toBeUndefined();
   });
 
+  it('rejects types Number() would coerce', () => {
+    for (const value of [true, false, [0.5], [], {}]) {
+      expect(parseSimilarityThreshold(value)).toBeUndefined();
+      expect(parseFullSchemaTopN(value)).toBeUndefined();
+    }
+  });
+
   it('accepts a non-negative integer top-N only', () => {
     expect(parseFullSchemaTopN('3')).toBe(3);
     expect(parseFullSchemaTopN(0)).toBe(0);

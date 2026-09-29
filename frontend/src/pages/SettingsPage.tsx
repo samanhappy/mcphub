@@ -1177,6 +1177,29 @@ const SettingsPage: React.FC = () => {
     await updateNameSeparator(tempNameSeparator);
   };
 
+  // Labels of the search settings the API would reject. Saving stops on any of
+  // them instead of silently leaving the stored value in place.
+  const getInvalidSearchSettingLabels = (): string[] => {
+    const invalid: string[] = [];
+    const threshold = tempSmartRoutingConfig.similarityThreshold.trim();
+    if (threshold && !isSimilarityThreshold(Number(threshold))) {
+      invalid.push(t('settings.similarityThreshold'));
+    }
+    const topN = tempSmartRoutingConfig.fullSchemaTopN.trim();
+    if (topN && !isFullSchemaTopN(Number(topN))) {
+      invalid.push(t('settings.fullSchemaTopN'));
+    }
+    return invalid;
+  };
+
+  const reportInvalidSearchSettings = (): boolean => {
+    const invalid = getInvalidSearchSettingLabels();
+    if (invalid.length > 0) {
+      showToast(t('settings.invalidSearchSettings', { fields: invalid.join(', ') }), 'error');
+    }
+    return invalid.length > 0;
+  };
+
   const handleSmartRoutingEnabledChange = async (value: boolean) => {
     // If enabling Smart Routing, validate required fields and save any unsaved changes
     if (value) {
@@ -1235,6 +1258,9 @@ const SettingsPage: React.FC = () => {
             fields: missingFields.join(', '),
           }),
         );
+        return;
+      }
+      if (reportInvalidSearchSettings()) {
         return;
       }
 
@@ -1353,6 +1379,9 @@ const SettingsPage: React.FC = () => {
   };
 
   const handleSaveSmartRoutingConfig = async () => {
+    if (reportInvalidSearchSettings()) {
+      return;
+    }
     const updates: any = {};
 
     if (tempSmartRoutingConfig.dbUrl !== smartRoutingConfig.dbUrl) {
