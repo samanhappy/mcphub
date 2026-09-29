@@ -29,8 +29,12 @@ One of the fixed scaffolding tools Smart Routing registers in place of the under
 _Avoid_: virtual tool, proxy tool, system tool
 
 **Smart Routing Footprint**:
-The Context Footprint of a scope under Smart Routing — the summed Definition Cost of its Meta-tool set (two Meta-tools normally, three under Progressive Disclosure or with `fullSchemaTopN` set) as constructed for that scope. Far smaller than the Direct/Exposed Footprint; this contrast is the feature's headline value.
+The Context Footprint of a scope under Smart Routing — the summed Definition Cost of its Meta-tool set (two Meta-tools normally, three under Progressive Disclosure or with `fullSchemaTopN` set) as constructed for that scope, plus that of its Pinned Tools. Far smaller than the Direct/Exposed Footprint; this contrast is the feature's headline value.
 _Avoid_: smart cost, routing cost
+
+**Pinned Tool**:
+A tool a Group lists by name on its `$smart/{group}` endpoint next to the Meta-tools, chosen per member server with `pinnedTools`. It is still searchable and callable through the Meta-tools; pinning only saves the `search_tools` round trip for a tool used in nearly every session.
+_Avoid_: hot tool, always-exposed tool, favourite
 
 **Progressive Disclosure**:
 A global Smart Routing mode that adds the `describe_tool` Meta-tool and keeps tool schemas out of search results, fetching them on demand. It raises the upfront Smart Routing Footprint by one Meta-tool while shrinking each search response — a trade this feature measures only on the upfront (definition) side.

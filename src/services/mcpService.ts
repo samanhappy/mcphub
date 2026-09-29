@@ -3617,20 +3617,12 @@ const projectToolForDownstream = (
   };
 };
 
-const handleListToolsRequestImpl = async (_: any, extra: any) => {
-  const sessionId = extra.sessionId || '';
-  const group = getGroup(sessionId);
-  logger.log(`Handling ListToolsRequest for group: ${group}`);
-
-  // Special handling for $smart group to return smart routing tools
-  // Support both $smart and $smart/{group} patterns
-  if (isSmartRoutingGroup(group)) {
-    return getSmartRoutingTools(group);
-  }
-
-  const { filteredServerInfos, serverConfigsByName } = await getFilteredServerInfosForGroup(group);
-  const appsRouteContext = await getMcpAppsRouteContext(sessionId, group);
-
+const listGroupTools = async (
+  group: string | undefined,
+  filteredServerInfos: ServerInfo[],
+  serverConfigsByName: Map<string, IGroupServerConfig>,
+  appsRouteContext: McpAppsRouteContext,
+): Promise<Tool[]> => {
   // If the startup prime of an on-demand server is still in flight, wait for it
   // so this list reflects the freshly cached tools instead of returning empty.
   // No wake is triggered from list itself; the prime handles that. See #1029.
@@ -3677,8 +3669,73 @@ const handleListToolsRequestImpl = async (_: any, extra: any) => {
     }
   }
 
+  return allTools;
+};
+
+// Tools a $smart/<group> lists next to its meta-tools: each member's pinnedTools,
+// narrowed to its tools selection and then run through the same filtering and
+// projection as a direct group listing.
+const getPinnedSmartRoutingTools = async (group: string | undefined): Promise<Tool[]> => {
+  const lookupGroup = getGroupLookupName(group);
+  if (!lookupGroup) {
+    return [];
+  }
+
+  const { filteredServerInfos, serverConfigsByName } =
+    await getFilteredServerInfosForGroup(lookupGroup);
+  const pinnedConfigsByName = new Map<string, IGroupServerConfig>();
+  for (const [serverName, serverConfig] of serverConfigsByName) {
+    const selection = serverConfig.tools;
+    const pinnedTools = (serverConfig.pinnedTools ?? []).filter(
+      (toolName) => !Array.isArray(selection) || selection.includes(toolName),
+    );
+    if (pinnedTools.length > 0) {
+      pinnedConfigsByName.set(serverName, { ...serverConfig, tools: pinnedTools });
+    }
+  }
+  if (pinnedConfigsByName.size === 0) {
+    return [];
+  }
+
+  return listGroupTools(
+    lookupGroup,
+    filteredServerInfos.filter((serverInfo) => pinnedConfigsByName.has(serverInfo.name)),
+    pinnedConfigsByName,
+    { enabled: false },
+  );
+};
+
+const handleListToolsRequestImpl = async (_: any, extra: any) => {
+  const sessionId = extra.sessionId || '';
+  const group = getGroup(sessionId);
+  logger.log(`Handling ListToolsRequest for group: ${group}`);
+
+  // Special handling for $smart group to return smart routing tools
+  // Support both $smart and $smart/{group} patterns
+  if (isSmartRoutingGroup(group)) {
+    const smartRoutingTools = await getSmartRoutingTools(group);
+    let pinnedTools: Tool[] = [];
+    try {
+      // A pin named like a meta-tool (e.g. alias "call" + separator "_" + tool
+      // "tool") would be shadowed by it on call, so it is not listed at all
+      const metaToolNames = new Set(smartRoutingTools.tools.map((tool) => tool.name));
+      pinnedTools = (await getPinnedSmartRoutingTools(group)).filter(
+        (tool) => !metaToolNames.has(tool.name),
+      );
+    } catch (error) {
+      // Pins are an optimisation: failing to resolve them must not cost the meta-tools
+      logger.warn(`Failed to list pinned tools for ${group}; returning meta-tools only`, error);
+    }
+    return pinnedTools.length > 0
+      ? { tools: [...smartRoutingTools.tools, ...pinnedTools] }
+      : smartRoutingTools;
+  }
+
+  const { filteredServerInfos, serverConfigsByName } = await getFilteredServerInfosForGroup(group);
+  const appsRouteContext = await getMcpAppsRouteContext(sessionId, group);
+
   return {
-    tools: allTools,
+    tools: await listGroupTools(group, filteredServerInfos, serverConfigsByName, appsRouteContext),
   };
 };
 

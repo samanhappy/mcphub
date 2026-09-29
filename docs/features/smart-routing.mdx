@@ -436,6 +436,30 @@ Smart Routing now supports group-scoped searches, allowing you to limit tool dis
   </Accordion>
 </AccordionGroup>
 
+### Pinned Tools
+
+A `$smart/{group}` endpoint lists only the meta-tools, so even a tool the model calls in nearly every session costs a `search_tools` round trip first. Pin such tools on the group's server entry and the endpoint lists their full definitions next to the meta-tools:
+
+```json
+{
+  "name": "production",
+  "servers": [{ "name": "time", "tools": "all", "pinnedTools": ["get_current_time"] }]
+}
+```
+
+In the dashboard, edit the group, expand the server and click the pin icon next to a selected tool. The icon is shown only while Smart Routing is enabled.
+
+- Pins use the bare tool name, like the `tools` selection. A pin only takes effect for a tool the group selects and that is enabled; other pins are ignored.
+- A pinned tool is listed exactly as on the direct `/mcp/{group}` endpoint — under the server's exposed name, with its description override — and is called directly by that name. It stays in the search index and keeps working through `search_tools`, `describe_tool` and `call_tool`.
+- The global `$smart` endpoint has no group and never lists pinned tools. A group without pins lists exactly the meta-tools, as before.
+- The Smart Routing footprint shown for a group includes the definition cost of its pinned tools.
+- Deselecting a tool, in the dashboard or through `PUT /api/groups/:id/server-configs/:serverName/tools`, also removes its pin.
+- Like every Smart Routing endpoint, `$smart/{group}` is not an MCP Apps route: pinned tools are listed without Apps metadata, and app-only tools cannot be pinned.
+
+<Warning>
+Behind `call_tool`, every tool shares a single client-side approval decision. A pinned tool is listed under its own name, so a client that approves tools one by one applies its per-tool rules to it — review that before pinning a tool that writes.
+</Warning>
+
 ### Progressive Disclosure Mode
 
 Progressive Disclosure is an optimization feature that reduces token usage when working with Smart Routing. When enabled, the tool discovery workflow changes from a 2-step to a 3-step process.
