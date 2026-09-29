@@ -326,4 +326,33 @@ describe('normalizeServerConfigForPersistence', () => {
       clientSecret: 'client-secret',
     });
   });
+
+  it('preserves an explicitly empty oauth.scopes array on save (#1227)', () => {
+    // Unlike passthroughHeaders and similar fields, where "empty" and "unset" are the same
+    // thing, oauth.scopes distinguishes "server uses no scopes" ([]) from "not yet resolved"
+    // (absent) -- the generic normalizeStringArray helper collapses [] to undefined, which
+    // silently made "no scope" unconfigurable. normalizeOAuthScopes must not do that.
+    const normalized = normalizeServerConfigForPersistence({
+      type: 'streamable-http',
+      url: 'https://mcp.pcloud.com/mcp',
+      oauth: {
+        clientId: 'client-id',
+        scopes: [],
+      },
+    });
+
+    expect(normalized.oauth).toHaveProperty('scopes', []);
+  });
+
+  it('still drops oauth.scopes when not configured at all', () => {
+    const normalized = normalizeServerConfigForPersistence({
+      type: 'streamable-http',
+      url: 'https://example.com/mcp',
+      oauth: {
+        clientId: 'client-id',
+      },
+    });
+
+    expect(normalized.oauth).not.toHaveProperty('scopes');
+  });
 });

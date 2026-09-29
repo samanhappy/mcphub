@@ -123,6 +123,14 @@ export class MCPHubOAuthProvider implements OAuthClientProvider {
           ? 'client_secret_post'
           : 'none';
 
+    // `oauth.scopes` is `string[] | undefined`: `undefined` means "not configured/detected",
+    // `[]` means the upstream server explicitly publishes no scopes and should get none. Using
+    // `||` here would treat `''` (from an empty array) the same as "unset" and always fall back
+    // to 'openid', which zero-scope authorization servers commonly reject (see #1227).
+    const configuredScopes = this.serverConfig.oauth?.scopes;
+    const scope =
+      metadata.scope || (configuredScopes !== undefined ? configuredScopes.join(' ') : 'openid');
+
     return {
       ...metadata, // Include any additional custom metadata
       client_name: metadata.client_name || `MCPHub - ${this.serverName}`,
@@ -130,7 +138,7 @@ export class MCPHubOAuthProvider implements OAuthClientProvider {
       grant_types: metadata.grant_types || ['authorization_code', 'refresh_token'],
       response_types: metadata.response_types || ['code'],
       token_endpoint_auth_method: tokenEndpointAuthMethod,
-      scope: metadata.scope || this.serverConfig.oauth?.scopes?.join(' ') || 'openid',
+      scope,
     };
   }
 
@@ -142,7 +150,10 @@ export class MCPHubOAuthProvider implements OAuthClientProvider {
       return existingScopes;
     }
 
-    if (existingScopes && existingScopes.length > 0) {
+    // `existingScopes !== undefined` (not `.length > 0`): an empty array is a previously
+    // resolved "this server uses no scopes" result and must short-circuit re-fetching just like
+    // a non-empty one would.
+    if (existingScopes !== undefined) {
       return existingScopes;
     }
 
@@ -151,7 +162,9 @@ export class MCPHubOAuthProvider implements OAuthClientProvider {
         serverUrl,
         await createOAuthFetch(this.serverConfig),
       );
-      if (scopes && scopes.length > 0) {
+      // `scopes !== undefined`: persist and honor an explicitly empty result too, not only a
+      // non-empty one (see #1227).
+      if (scopes !== undefined) {
         const updatedConfig = await mutateOAuthSettings(this.serverName, ({ oauth }) => {
           oauth.scopes = scopes;
         });
@@ -533,7 +546,9 @@ const prepopulateScopesIfMissing = async (
   serverName: string,
   serverConfig: ServerConfig,
 ): Promise<void> => {
-  if (!serverConfig.oauth || serverConfig.oauth.scopes?.length) {
+  // `[]` means resolved-to-no-scopes; a missing `oauth` block means never resolved, so
+  // discovery must still run before the first registration too (#1227).
+  if (serverConfig.oauth?.scopes !== undefined) {
     return;
   }
 
@@ -542,16 +557,19 @@ const prepopulateScopesIfMissing = async (
   }
 
   try {
-    const scopes = await fetchScopesFromServer(serverConfig.url);
-    if (scopes && scopes.length > 0) {
-      const updatedConfig = await mutateOAuthSettings(serverName, ({ oauth }) => {
-        oauth.scopes = scopes;
-      });
-
+    const scopes = await fetchScopesFromServer(serverConfig.url, await createOAuthFetch(serverConfig));
+    // `scopes !== undefined`: persist and honor an explicitly empty result too (see #1227).
+    if (scopes !== undefined) {
+      // Update the in-memory config first: if the DAO write below throws, this connection
+      // attempt still proceeds with the correct scopes instead of falling back to 'openid'.
       if (!serverConfig.oauth) {
         serverConfig.oauth = {};
       }
       serverConfig.oauth.scopes = scopes;
+
+      const updatedConfig = await mutateOAuthSettings(serverName, ({ oauth }) => {
+        oauth.scopes = scopes;
+      });
 
       if (updatedConfig) {
         logger.log('Stored auto-detected OAuth scopes during provider initialization', {
@@ -610,7 +628,7 @@ export const createOAuthProvider = async (
     return undefined;
   }
 
-  // Ensure scopes are pre-populated if dynamic registration already ran previously
+  // Discover and persist scopes before the first registration attempt, not only on later ones.
   await prepopulateScopesIfMissing(serverName, serverConfig);
 
   // Initialize OAuth for the server (performs registration if needed)
