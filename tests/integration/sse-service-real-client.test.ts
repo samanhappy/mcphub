@@ -18,6 +18,10 @@ import { AppServer } from '../../src/server.js';
 import { Client } from '@modelcontextprotocol/sdk-v1/client/index.js';
 import { SSEClientTransport } from '@modelcontextprotocol/sdk-v1/client/sse.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk-v1/client/streamableHttp.js';
+import {
+  Client as ModernClient,
+  StreamableHTTPClientTransport as ModernStreamableHTTPClientTransport,
+} from '@modelcontextprotocol/client';
 import { TestServerHelper } from '../utils/testServerHelper.js';
 import * as mockSettings from '../utils/mockSettings.js';
 import { cleanupAllServers, deleteMcpServer } from '../../src/services/mcpService.js';
@@ -239,6 +243,43 @@ describe('Real Client Transport Integration Tests', () => {
 
       expect(error).toBeNull();
       expect(isConnected).toBe(true);
+    }, 60000);
+  });
+
+  describe('MCP 2026-07-28 Dual-stack Tests', () => {
+    it('should serve modern requests without creating a downstream session', async () => {
+      const sessionCountBefore = Object.keys(transports).length;
+      const transport = new ModernStreamableHTTPClientTransport(new URL(`${baseURL}/mcp`), {
+        requestInit: {
+          headers: {
+            Authorization: 'Bearer test-auth-token-123',
+          },
+        },
+      });
+      const client = new ModernClient(
+        {
+          name: 'modern-http-test-client',
+          version: '1.0.0',
+        },
+        {
+          versionNegotiation: { mode: 'auto' },
+        },
+      );
+
+      try {
+        await client.connect(transport);
+
+        expect(client.getProtocolEra()).toBe('modern');
+
+        const tools = await client.listTools({});
+        expect(Array.isArray(tools.tools)).toBe(true);
+
+        // 2026-07-28 HTTP is per-request/stateless and must not populate
+        // MCPHub's legacy downstream session map.
+        expect(Object.keys(transports).length).toBe(sessionCountBefore);
+      } finally {
+        await client.close();
+      }
     }, 60000);
   });
 
