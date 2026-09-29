@@ -258,7 +258,7 @@ export class AppServer {
     // Close all MCP clients and stateless modern MCP exchanges.
     try {
       cleanupAllServers();
-      await closeModernMcpHandler();
+      await closeModernMcpHandler?.();
       logger.log('[SHUTDOWN] MCP clients closed');
     } catch (error) {
       logger.error('[SHUTDOWN] Error closing MCP clients', safeStringify({ error }));
