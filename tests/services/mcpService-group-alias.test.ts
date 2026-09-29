@@ -1,3 +1,4 @@
+import { RequestContextService } from '../../src/services/requestContextService.js';
 import { jest } from '@jest/globals';
 import type { IGroup, ServerInfo } from '../../src/types/index.js';
 
@@ -20,11 +21,13 @@ const mockCallTool = jest.fn();
 const mockGetPrompt = jest.fn();
 
 const mockGroupDao = {
+  findAll: jest.fn(async () => [teamGroup]),
   findByName: jest.fn(async (name: string) => (name === teamGroup.name ? teamGroup : null)),
   findById: jest.fn(async (id: string) => (id === teamGroup.id ? teamGroup : null)),
 };
 
 const mockServerDao = {
+  findAll: jest.fn(async () => [{ name: 'u17__fetch', enabled: true }]),
   findById: jest.fn(async (name: string) =>
     name === 'u17__fetch'
       ? {
@@ -128,6 +131,9 @@ import {
   handleGetPromptRequest,
   handleListPromptsRequest,
   handleListToolsRequest,
+  handleListResourcesRequest,
+  handleListResourceTemplatesRequest,
+  handleReadResourceRequest,
   setServerInfosForTest,
 } from '../../src/services/mcpService.js';
 
@@ -150,10 +156,14 @@ const aliasedServerInfo = (): ServerInfo =>
         arguments: [],
       },
     ],
-    resources: [],
+    resources: [{ name: 'guide', uri: 'test://guide' }],
     client: {
       callTool: mockCallTool,
       getPrompt: mockGetPrompt,
+      listResourceTemplates: jest.fn(async () => ({
+        resourceTemplates: [{ name: 'guide', uriTemplate: 'test://{id}' }],
+      })),
+      readResource: jest.fn(async () => ({ contents: [{ uri: 'test://guide', text: 'guide' }] })),
     },
     options: {},
   }) as unknown as ServerInfo;
@@ -205,5 +215,76 @@ describe('mcpService group server alias', () => {
       name: 'summarize',
       arguments: { topic: 'docs' },
     });
+  });
+  it.each([
+    ['request context', 'team-a', { group: 'missing', sessionId: 'unknown' }],
+    ['explicit group', undefined, { group: 'team-a' }],
+    ['legacy session', undefined, { sessionId: 'team-session' }],
+    ['smart request context', '$smart/team-a', { group: 'missing' }],
+  ])('routes prompts and resources through %s', async (_label, group, extra) => {
+    await RequestContextService.getInstance().runWithCustomRequestContext(
+      { headers: {}, group },
+      async () => {
+        const prompts = await handleListPromptsRequest({}, extra);
+        expect(prompts.prompts.map((prompt) => prompt.name)).toEqual(['fetch::summarize']);
+        expect(
+          (await handleGetPromptRequest({ params: { name: 'fetch::summarize' } }, extra))
+            .messages[0].content.text,
+        ).toBe('summary');
+        expect(
+          (await handleListResourcesRequest({}, extra)).resources.map((resource) => resource.uri),
+        ).toEqual(['test://guide']);
+        expect(
+          (await handleListResourceTemplatesRequest({}, extra)).resourceTemplates.map(
+            (template) => template.uriTemplate,
+          ),
+        ).toEqual(['test://{id}']);
+        expect(
+          (await handleReadResourceRequest({ params: { uri: 'test://guide' } }, extra)).contents[0]
+            .text,
+        ).toBe('guide');
+      },
+    );
+  });
+
+  it('isolates concurrent sessionless tool lists by request group', async () => {
+    const context = RequestContextService.getInstance();
+    const lists = await Promise.all(
+      ['team-a', 'missing'].map((group) =>
+        context.runWithCustomRequestContext({ headers: {}, group }, async () => {
+          await Promise.resolve();
+          return handleListToolsRequest({}, { sessionId: 'team-session' });
+        }),
+      ),
+    );
+    expect(lists[0].tools.map((tool) => tool.name)).toEqual(['fetch::fetch_url']);
+    expect(lists[1].tools).toEqual([]);
+  });
+
+  it('keeps an explicit global context instead of falling back to a session group', async () => {
+    const result = await RequestContextService.getInstance().runWithCustomRequestContext(
+      { headers: {}, group: '' },
+      () => handleListToolsRequest({}, { group: 'team-a', sessionId: 'team-session' }),
+    );
+    expect(result.tools.map((tool) => tool.name)).toEqual(['u17__fetch::fetch_url']);
+  });
+  it('routes sessionless calls and direct server lists using request context', async () => {
+    const context = RequestContextService.getInstance();
+    const call = (group: string) =>
+      context.runWithCustomRequestContext({ headers: {}, group }, () =>
+        handleCallToolRequest(
+          { params: { name: 'fetch::fetch_url', arguments: {} } },
+          { group: 'missing' },
+        ),
+      );
+    expect((await call('team-a')).isError).toBe(false);
+    mockCallTool.mockClear();
+    expect((await call('missing')).isError).toBe(true);
+    expect(mockCallTool).not.toHaveBeenCalled();
+    const tools = await context.runWithCustomRequestContext(
+      { headers: {}, group: 'u17__fetch' },
+      () => handleListToolsRequest({}, {}),
+    );
+    expect(tools.tools.map((tool) => tool.name)).toEqual(['u17__fetch::fetch_url']);
   });
 });

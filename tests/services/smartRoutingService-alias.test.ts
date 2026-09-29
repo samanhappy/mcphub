@@ -1,3 +1,4 @@
+import { RequestContextService } from '../../src/services/requestContextService.js';
 import { jest } from '@jest/globals';
 
 const mockGetGroup = jest.fn();
@@ -130,5 +131,19 @@ describe('smartRoutingService group server alias', () => {
 
     expect(mockSearchToolsByVector).not.toHaveBeenCalled();
     expect(payload.tools).toEqual([]);
+  });
+  it('uses request context for sessionless search and describe', async () => {
+    mockGetGroup.mockReturnValue('$smart/wrong-group');
+    await RequestContextService.getInstance().runWithCustomRequestContext(
+      { headers: {}, group: '$smart/team-a' },
+      async () => {
+        const search = await handleSearchToolsRequest('fetch', 10, '');
+        expect(JSON.parse(search.content[0].text).tools[0].name).toBe('fetch::fetch_url');
+        await handleDescribeToolRequest('fetch::fetch_url', '');
+        expect(mockGetServerConfigsInGroup).toHaveBeenCalledWith('team-a');
+        expect(mockGetServerConfigsInGroup).not.toHaveBeenCalledWith('wrong-group');
+        expect(mockGetGroup).not.toHaveBeenCalled();
+      },
+    );
   });
 });

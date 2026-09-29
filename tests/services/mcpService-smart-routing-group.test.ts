@@ -189,7 +189,12 @@ describe('MCP Service - Smart Routing with Group Support', () => {
       await mcpService.handleCallToolRequest(request, { sessionId: 'session-smart' });
 
       // handleSearchToolsRequest should be called with the query, limit, and sessionId
-      expect(handleSearchToolsRequest).toHaveBeenCalledWith('test query', 10, 'session-smart');
+      expect(handleSearchToolsRequest).toHaveBeenCalledWith(
+        'test query',
+        10,
+        'session-smart',
+        '$smart',
+      );
     });
 
     it('should filter servers when using $smart/{group}', async () => {
@@ -211,6 +216,7 @@ describe('MCP Service - Smart Routing with Group Support', () => {
         'test query',
         10,
         'session-smart-group',
+        '$smart/test-group',
       );
     });
 
@@ -231,6 +237,7 @@ describe('MCP Service - Smart Routing with Group Support', () => {
         'test query',
         10,
         'session-smart-empty',
+        '$smart/empty-group',
       );
     });
 
