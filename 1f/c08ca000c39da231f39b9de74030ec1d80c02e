@@ -1,0 +1,49 @@
+src/types/index.ts
+  s_2a4b8898441646::t_e7b80896d5056b 511,532
+docs/adr/0003-mcp-2026-07-28-staged-upgrade-path.md
+  s_2a4b8898441646::t_449dc1b58bee6c 32-39
+tests/services/mcpService-per-session-client.test.ts
+  s_2a4b8898441646::t_449dc1b58bee6c 311-323
+  s_2a4b8898441646::t_c9b67e65579d0b 330-335
+  s_2a4b8898441646::t_83cc53eb7cdc77 169-176,277-310,324-329,336-374,383
+  s_2a4b8898441646::t_a7d44cd7794100 375-382
+src/services/mcpService.ts
+  s_2a4b8898441646::t_c9b67e65579d0b 982-986,4154-4158
+  s_2a4b8898441646::t_b3acf73aa3c3a1 960-981,987-1025,1207-1209,3919-3924,4077-4080,4092,4147-4148,4153,4301-4304,4316,4368-4369,4374-4375,4479
+src/services/requestContextService.ts
+  s_2a4b8898441646::t_fcbdb45171a133 13-15
+src/services/sseService.ts
+  s_2a4b8898441646::t_fcbdb45171a133 2,953-954,956-958,960-963
+  s_2a4b8898441646::t_b3acf73aa3c3a1 955,959
+  s_2a4b8898441646::t_2a8c68fcb2c272 964
+tests/integration/sse-service-real-client.test.ts
+  s_2a4b8898441646::t_e7b80896d5056b 32,255-256,263-264,266,276-277,282,293-300,304-306,308-310,314,316-321
+  s_2a4b8898441646::t_449dc1b58bee6c 27-31,257-260,262,267-274,278-281,283-292,301-303,311-313
+  s_2a4b8898441646::t_3a97305abff13f 275,315
+  s_2a4b8898441646::t_f2b41ac57f639c 261,265,307
+docs/configuration/mcp-settings.mdx
+  s_2a4b8898441646::t_449dc1b58bee6c 207-232
+docs/zh/configuration/mcp-settings.mdx
+  s_2a4b8898441646::t_c91fa1fc0a0b60 186-207
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "1fc08ca000c39da231f39b9de74030ec1d80c02e",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_2a4b8898441646": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0f132-a8b7-7a10-be5b-e5911d30ce78",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
