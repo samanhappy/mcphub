@@ -98,7 +98,6 @@ useDatabase = (USE_DB === 'true') OR (USE_DB unset AND DB_URL is set)
 | --- | --- | --- |
 | `USE_DB` | unset | Force database mode (`true`) or file mode (`false`). |
 | `DB_URL` | unset | PostgreSQL connection URL. Required for database mode. |
-| `USE_DAO_LAYER` | unset | Force the DAO layer on even in file mode (advanced; usually unnecessary). |
 | `DB_POOL_SIZE` | `10` | Maximum TypeORM connection pool size (also applied to the Better Auth pool). |
 | `DB_POOL_IDLE_TIMEOUT` | `30000` | Idle pool connection timeout (ms). |
 | `DB_CONNECTION_TIMEOUT` | `60000` | Initial connect timeout (ms). |
@@ -196,14 +195,11 @@ EMBEDDING_MODEL=text-embedding-3-small
 
 ## Loading order
 
-MCPHub loads variables in this order; later sources override earlier ones:
+At startup MCPHub reads one file, `.env` in the working directory. `.env.local` and `.env.{NODE_ENV}` (e.g. `.env.production`) are not read.
 
-1. System environment variables.
-2. `.env.local` (gitignored).
-3. `.env.{NODE_ENV}` (e.g. `.env.production`).
-4. `.env`.
+A variable already set in the process environment (your shell, Docker `-e` / `env_file`, a Kubernetes manifest) takes precedence; `.env` never overrides it.
 
-`dotenv-expand` is enabled, so `${VAR}` interpolation works inside `.env*` files.
+Values in `.env` are used as written: `${VAR}` references inside `.env` are not expanded. `${VAR}` expansion is available in `mcp_settings.json` instead; see [MCP Settings](/configuration/mcp-settings).
 
 ## Security best practices
 
