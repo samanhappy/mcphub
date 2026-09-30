@@ -1,3 +1,4 @@
+import { getMcpRequestGroup } from '../utils/mcpRequestGroup.js';
 import { LegacyMcpClient } from '../clients/legacyMcpClient.js';
 import { LEGACY_PROTOCOL_VERSIONS } from '../utils/mcpProtocol.js';
 import { AsyncLocalStorage } from 'node:async_hooks';
@@ -3773,7 +3774,7 @@ const getPinnedSmartRoutingTools = async (group: string | undefined): Promise<To
 
 const handleListToolsRequestImpl = async (_: any, extra: any) => {
   const sessionId = extra.sessionId || '';
-  const group = getGroup(sessionId);
+  const group = getMcpRequestGroup(extra);
   logger.log(`Handling ListToolsRequest for group: ${group}`);
 
   // Special handling for $smart group to return smart routing tools
@@ -3834,8 +3835,7 @@ const handleCallToolRequestImpl = async (request: any, extra: any) => {
 
   // Extract group and key info from request context (set by SSE/HTTP handlers)
   // Fallback to extra for backward compatibility (e.g., direct API calls)
-  const group =
-    requestContextService.getGroupContext() || extra?.group || getGroup(sessionId) || undefined;
+  const group = getMcpRequestGroup(extra);
   const username =
     requestContextService.getUsernameContext() ||
     extra?.username ||
@@ -3875,13 +3875,13 @@ const handleCallToolRequestImpl = async (request: any, extra: any) => {
     // Special handling for smart routing tools
     if (request.params.name === 'search_tools') {
       const { query, limit = 10 } = request.params.arguments || {};
-      return await handleSearchToolsRequest(query, limit, sessionId);
+      return await handleSearchToolsRequest(query, limit, sessionId, group);
     }
 
     // Special handling for describe_tool (progressive disclosure mode)
     if (request.params.name === 'describe_tool') {
       const { toolName } = request.params.arguments || {};
-      return await handleDescribeToolRequest(toolName, sessionId);
+      return await handleDescribeToolRequest(toolName, sessionId, group);
     }
 
     // Special handling for call_tool
@@ -4379,8 +4379,7 @@ const handleCallToolRequestImpl = async (request: any, extra: any) => {
 const handleGetPromptRequestImpl = async (request: any, extra: any) => {
   try {
     const { name, arguments: promptArgs } = request.params;
-    const sessionId = extra?.sessionId || '';
-    const group = extra?.group || getGroup(sessionId) || undefined;
+    const group = getMcpRequestGroup(extra);
 
     // Check built-in prompts first
     const builtinPrompt = await getBuiltinPromptDao().findByName(name);
@@ -4476,8 +4475,7 @@ const handleGetPromptRequestImpl = async (request: any, extra: any) => {
 };
 
 const handleListPromptsRequestImpl = async (_: any, extra: any) => {
-  const sessionId = extra.sessionId || '';
-  const group = getGroup(sessionId);
+  const group = getMcpRequestGroup(extra);
   const lookupGroup = getGroupLookupName(group);
   logger.log(`Handling ListPromptsRequest for group: ${group}`);
 
@@ -4539,7 +4537,7 @@ const handleListPromptsRequestImpl = async (_: any, extra: any) => {
 
 const handleListResourcesRequestImpl = async (_: any, extra: any) => {
   const sessionId = extra.sessionId || '';
-  const group = getGroup(sessionId);
+  const group = getMcpRequestGroup(extra);
   const lookupGroup = getGroupLookupName(group);
   logger.log(`Handling ListResourcesRequest for group: ${group}`);
   const appsRouteContext = await getMcpAppsRouteContext(sessionId, group);
@@ -4601,7 +4599,7 @@ const handleListResourcesRequestImpl = async (_: any, extra: any) => {
 
 const handleListResourceTemplatesRequestImpl = async (_: any, extra: any) => {
   const sessionId = extra.sessionId || '';
-  const group = getGroup(sessionId);
+  const group = getMcpRequestGroup(extra);
   const lookupGroup = getGroupLookupName(group);
   logger.log(`Handling ListResourceTemplatesRequest for group: ${group}`);
   const appsRouteContext = await getMcpAppsRouteContext(sessionId, group);
@@ -4643,7 +4641,7 @@ const handleReadResourceRequestImpl = async (request: any, extra: any) => {
   try {
     const { uri } = request.params;
     const sessionId = extra.sessionId || '';
-    const group = getGroup(sessionId);
+    const group = getMcpRequestGroup(extra);
     const lookupGroup = getGroupLookupName(group);
     const appsRouteContext = await getMcpAppsRouteContext(sessionId, group);
 
@@ -4904,11 +4902,7 @@ const withPrincipalServers =
       const builtin = await getBuiltinResourceDao().findByUri(request.params?.uri);
       if (builtin && builtin.enabled !== false) return handler(request, extra);
     }
-    const group =
-      RequestContextService.getInstance().getGroupContext() ||
-      extra?.group ||
-      getGroup(extra?.sessionId || '') ||
-      undefined;
+    const group = getMcpRequestGroup(extra);
     const { filteredServerInfos: candidates, serverConfigsByName } =
       await getFilteredServerInfosForGroup(getGroupLookupName(group));
     const requestedName = ['call_tool', 'describe_tool'].includes(request?.params?.name)

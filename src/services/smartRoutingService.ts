@@ -14,7 +14,7 @@ import {
 import { searchToolsByVector } from './vectorSearchService.js';
 import { getSmartRoutingConfig, type SmartRoutingConfig } from '../utils/smartRouting.js';
 import { getServerDao } from '../dao/index.js';
-import { getGroup } from './sseService.js';
+import { getMcpRequestGroup } from '../utils/mcpRequestGroup.js';
 import { isAppOnlyTool } from '../utils/mcpApps.js';
 import { getNameSeparator } from '../config/index.js';
 import { logger } from '../utils/logger.js';
@@ -452,6 +452,7 @@ export const handleSearchToolsRequest = async (
   query: string,
   limit: number,
   sessionId: string,
+  requestGroup?: string,
 ): Promise<any> => {
   if (!query || typeof query !== 'string') {
     throw new Error('Query parameter is required and must be a string');
@@ -468,7 +469,7 @@ export const handleSearchToolsRequest = async (
   logger.log(`Using similarity threshold: ${thresholdNum} for query: "${query}"`);
 
   // Determine server filtering based on group
-  let group = getGroup(sessionId);
+  let group = getMcpRequestGroup({ sessionId, group: requestGroup });
   const visibleServerNames = new Set(getServerInfos().map((serverInfo) => serverInfo.name));
   let servers: string[] = Array.from(visibleServerNames);
   let serverConfigsByName = new Map<string, IGroupServerConfig>();
@@ -666,6 +667,7 @@ export const handleSearchToolsRequest = async (
 export const handleDescribeToolRequest = async (
   toolName: string,
   sessionId: string,
+  requestGroup?: string,
 ): Promise<any> => {
   if (!toolName || typeof toolName !== 'string') {
     throw new Error('toolName parameter is required and must be a string');
@@ -674,7 +676,7 @@ export const handleDescribeToolRequest = async (
   logger.log(`Handling describe_tool request for: ${toolName}`);
 
   // Determine group filtering
-  let group = getGroup(sessionId);
+  let group = getMcpRequestGroup({ sessionId, group: requestGroup });
   const targetGroup = getSmartTargetGroup(group);
   const serverConfigsByName = await getGroupServerConfigMap(targetGroup);
   if (targetGroup) {

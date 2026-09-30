@@ -1,3 +1,4 @@
+import { RequestContextService } from '../../src/services/requestContextService.js';
 import { logger } from '../../src/utils/logger.js';
 import {
   getGroups,
@@ -47,6 +48,7 @@ import {
   getServersInfo,
   getServerConnectionStats,
   handleCallToolRequest,
+  handleListToolsRequest,
   handleGetPromptRequest,
   handleReadResourceRequest,
 } from '../../src/services/mcpService.js';
@@ -690,6 +692,19 @@ test.each(['-', '__'])(
     await initializeClientsFromSettings(true);
     const acquire = jest.spyOn(PrincipalRuntimeService.prototype, 'acquire');
     try {
+      await UserContextService.getInstance().runWithContext(
+        () =>
+          RequestContextService.getInstance().runWithCustomRequestContext(
+            { headers: {}, group: group.name },
+            async () => {
+              const result = await handleListToolsRequest({}, { group: 'missing-group' });
+              expect(result.tools.map((tool) => tool.name).sort()).toEqual(
+                [`demo${separator}identity`, `demo${separator}cred${separator}identity`].sort(),
+              );
+            },
+          ),
+        { username: alice, password: '', isAdmin: false },
+      );
       for (const smart of [false, true]) {
         acquire.mockClear();
         const toolName = `demo${separator}cred${separator}identity`;
