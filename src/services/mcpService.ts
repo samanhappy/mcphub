@@ -3672,6 +3672,10 @@ const listGroupTools = async (
   return allTools;
 };
 
+// Names the call handler always routes to a meta-tool on a Smart Routing session,
+// whichever of them the current mode lists (see handleCallToolRequestImpl)
+const SMART_ROUTING_META_TOOL_NAMES = new Set(['search_tools', 'describe_tool', 'call_tool']);
+
 // Tools a $smart/<group> lists next to its meta-tools: each member's pinnedTools,
 // narrowed to its tools selection and then run through the same filtering and
 // projection as a direct group listing.
@@ -3716,11 +3720,11 @@ const handleListToolsRequestImpl = async (_: any, extra: any) => {
     const smartRoutingTools = await getSmartRoutingTools(group);
     let pinnedTools: Tool[] = [];
     try {
-      // A pin named like a meta-tool (e.g. alias "call" + separator "_" + tool
-      // "tool") would be shadowed by it on call, so it is not listed at all
-      const metaToolNames = new Set(smartRoutingTools.tools.map((tool) => tool.name));
+      // A pin named like a meta-tool (e.g. alias "describe" + separator "_" +
+      // tool "tool") would be intercepted by it on call, even in a mode that
+      // does not list that meta-tool, so it is not listed at all
       pinnedTools = (await getPinnedSmartRoutingTools(group)).filter(
-        (tool) => !metaToolNames.has(tool.name),
+        (tool) => !SMART_ROUTING_META_TOOL_NAMES.has(tool.name),
       );
     } catch (error) {
       // Pins are an optimisation: failing to resolve them must not cost the meta-tools

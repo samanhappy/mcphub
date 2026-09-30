@@ -38,6 +38,16 @@ const groups: Record<string, IGroup> = {
     name: 'failing',
     servers: [{ name: 'notes', tools: 'all', pinnedTools: ['search_notes'] }],
   },
+  // With a '_' separator these pins project onto meta-tool names:
+  // describe + _ + tool = describe_tool, search + _ + tools = search_tools
+  reserved: {
+    id: 'group-reserved',
+    name: 'reserved',
+    servers: [
+      { name: 'widgets', alias: 'describe', tools: 'all', pinnedTools: ['tool', 'ping'] },
+      { name: 'gadgets', alias: 'search', tools: 'all', pinnedTools: ['tools'] },
+    ],
+  },
   unpinned: {
     id: 'group-unpinned',
     name: 'unpinned',
@@ -97,6 +107,7 @@ jest.mock('../../src/services/sseService.js', () => ({
     if (sessionId === 'smart-unpinned') return '$smart/unpinned';
     if (sessionId === 'smart-global') return '$smart';
     if (sessionId === 'smart-extras') return '$smart/extras';
+    if (sessionId === 'smart-reserved') return '$smart/reserved';
     if (sessionId === 'smart-broken') return '$smart/broken';
     if (sessionId === 'smart-failing') return '$smart/failing';
     return undefined;
@@ -158,7 +169,11 @@ jest.mock('../../src/config/index.js', () => ({
   },
 }));
 
-import { getSmartRoutingTools } from '../../src/services/smartRoutingService.js';
+import { getNameSeparator } from '../../src/config/index.js';
+import {
+  getSmartRoutingTools,
+  handleDescribeToolRequest,
+} from '../../src/services/smartRoutingService.js';
 import {
   cleanupAllServers,
   handleCallToolRequest,
@@ -300,14 +315,57 @@ describe('mcpService $smart/<group> pinned tools', () => {
     ]);
   });
 
-  it('does not list a pin whose name a meta-tool already uses', async () => {
-    // Possible with a '_' separator: alias 'call' + tool 'tool' projects to 'call_tool'
-    const clashing = { tools: [{ name: 'search_tools' }, { name: 'notes::search_notes' }] };
-    jest.mocked(getSmartRoutingTools).mockResolvedValueOnce(clashing as any);
+  describe('pins projected onto a meta-tool name', () => {
+    const underscoreServer = (name: string, toolNames: string[], callTool = jest.fn()) =>
+      ({
+        name,
+        status: 'connected',
+        enabled: true,
+        config: {},
+        tools: toolNames.map((toolName) => ({
+          name: `${name}_${toolName}`,
+          description: `${toolName} description`,
+          inputSchema: { type: 'object' },
+        })),
+        prompts: [],
+        resources: [],
+        client: { callTool },
+        options: {},
+      }) as unknown as ServerInfo;
+    const widgetsCallTool = jest.fn();
 
-    const result = await handleListToolsRequest({}, { sessionId: 'smart-extras' });
+    beforeEach(() => {
+      jest.mocked(getNameSeparator).mockReturnValue('_');
+      setServerInfosForTest([
+        underscoreServer('widgets', ['tool', 'ping'], widgetsCallTool),
+        underscoreServer('gadgets', ['tools']),
+      ]);
+    });
 
-    expect(result).toBe(clashing);
+    afterEach(() => {
+      jest.mocked(getNameSeparator).mockReturnValue('::');
+    });
+
+    it('lists none of them, including describe_tool while progressive disclosure is off', async () => {
+      // The meta-tools of this mode are search_tools and call_tool only
+      const result = await handleListToolsRequest({}, { sessionId: 'smart-reserved' });
+
+      expect(result.tools.map((listed: { name: string }) => listed.name)).toEqual([
+        'search_tools',
+        'call_tool',
+        'describe_ping',
+      ]);
+    });
+
+    it('would not reach the pinned tool anyway: the call handler takes describe_tool', async () => {
+      await handleCallToolRequest(
+        { params: { name: 'describe_tool', arguments: { toolName: 'x' } } },
+        { sessionId: 'smart-reserved' },
+      );
+
+      expect(handleDescribeToolRequest).toHaveBeenCalled();
+      expect(widgetsCallTool).not.toHaveBeenCalled();
+    });
   });
 
   it('ignores pins stored in a malformed shape instead of failing the listing', async () => {
