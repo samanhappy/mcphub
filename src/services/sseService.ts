@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { canAccessGroupRoute } from '../utils/groupAccess.js';
 import {
   NodeStreamableHTTPServerTransport,
@@ -949,6 +949,18 @@ export const handleMcpPostRequest = async (req: Request, res: Response): Promise
       requestContextService.setUsernameContext(username);
       requestContextService.setKeyKindContext(bearerAuthResult.kind);
       requestContextService.setHostedAuthContext(bearerAuthResult.hostedAuth);
+
+      const context = requestContextService.getRequestContext()!;
+      context.stateless = true;
+      context.sessionId = undefined;
+      // Bind explicit state to the authenticated credential, user and route.
+      // Never treat an arbitrary header or an unauthenticated token as identity.
+      const token = getBearerTokenFromHeaders(req.headers, systemConfig);
+      if (token && (systemConfig?.routing?.enableBearerAuth ?? true)) {
+        context.clientStateScope = createHash('sha256')
+          .update(JSON.stringify([token, username || '', group || '']))
+          .digest('hex');
+      }
 
       await getModernMcpNodeHandler()(req, res, req.body);
     });

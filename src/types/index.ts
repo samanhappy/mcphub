@@ -508,7 +508,7 @@ export interface ServerConfig {
       createdAt?: number;
     };
   };
-  perSessionClient?: boolean; // When true, creates a dedicated upstream client per downstream session (session isolation for stateful servers like Playwright)
+  perSessionClient?: boolean; // Dedicated upstream client per legacy session or explicit modern client state
   // On-demand spawning: start the stdio process only when a tool call arrives,
   // and shut it down automatically after a period of inactivity.
   // This reduces persistent memory usage for rarely-used servers.
@@ -529,7 +529,7 @@ export interface ServerConfig {
     // `security`.
     specSecurity?: OpenAPISecurityConfig;
     passthroughHeaders?: string[]; // Header names to pass through from tool call requests to upstream OpenAPI endpoints
-    cookieSession?: boolean; // Opt-in: capture upstream Set-Cookie and replay on later calls, isolated per downstream MCP session
+    cookieSession?: boolean; // Capture/replay cookies per legacy session or explicit modern client state
   };
 }
 
