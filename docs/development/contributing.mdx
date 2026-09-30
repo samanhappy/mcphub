@@ -83,13 +83,14 @@ git remote add upstream https://github.com/samanhappy/mcphub.git
 # 3. Install dependencies
 pnpm install
 
-# 4. Set up environment
-cp .env.example .env.development
+# 4. Set up environment (MCPHub reads .env in the project root)
+cp .env.example .env
 
-# 5. Start development environment
-docker-compose -f docker-compose.dev.yml up -d
-pnpm run migrate
-pnpm run seed
+# 5. Optional: use PostgreSQL instead of the default file storage.
+#    Start only the database service, then add to .env:
+#    DB_URL=postgresql://mcphub:mcphub_password@localhost:5432/mcphub
+#    The schema is created when MCPHub starts.
+docker compose -f docker-compose.db.yml up -d postgres
 
 # 6. Start development server
 pnpm run dev
@@ -138,13 +139,14 @@ We use ESLint and Prettier to maintain code quality:
 pnpm run lint
 
 # Fix automatically fixable issues
-pnpm run lint:fix
+pnpm run lint --fix
 
 # Format code
 pnpm run format
 
-# Type check
-pnpm run type-check
+# Type check (backend and frontend)
+pnpm run backend:build
+pnpm run frontend:typecheck
 ```
 
 #### TypeScript Best Practices
@@ -388,9 +390,10 @@ git rebase main
 
 # 3. Run all checks
 pnpm run lint
-pnpm run type-check
+pnpm run frontend:typecheck
 pnpm run test
 pnpm run build
+pnpm run docs:validate   # if you changed docs/
 
 # 4. Update documentation if needed
 # 5. Add/update tests for your changes
@@ -505,26 +508,27 @@ pnpm run build
 
 ```bash
 # Run tests with verbose output
-pnpm run test -- --verbose
+pnpm run test:verbose
 
 # Run specific test file
-pnpm test src/services/mcpService.test.ts
+pnpm test tests/services/mcpService-headers.test.ts
 
-# Debug tests
-pnpm run test:debug
+# Debug tests (then attach a debugger, e.g. chrome://inspect)
+node --inspect-brk node_modules/jest/bin/jest.js --runInBand tests/services/mcpService-headers.test.ts
 ```
 
 **Database Issues**
 
+The schema is created and updated automatically when MCPHub starts in database mode, so there is no separate migration step.
+
 ```bash
-# Reset database
-pnpm run db:reset
+# Reset the local database started with docker-compose.db.yml (deletes its data)
+docker compose -f docker-compose.db.yml down -v
+docker compose -f docker-compose.db.yml up -d postgres
 
-# Run migrations
-pnpm run migrate
-
-# Seed development data
-pnpm run seed
+# Import users, servers and groups from mcp_settings.json into the database
+# (MCPHub also does this on first start when the database has no users)
+pnpm exec tsx src/scripts/migrate-to-database.ts
 ```
 
 ### Getting Support
@@ -541,7 +545,7 @@ If you need help:
 
 Contributors will be recognized in several ways:
 
-- **Contributors file**: All contributors are listed in CONTRIBUTORS.md
+- **GitHub contributors**: Merged commits are credited on the repository's contributors page
 - **Release notes**: Significant contributions are mentioned in release notes
 - **GitHub badges**: Active contributors receive special recognition
 - **Community showcase**: Outstanding contributions are featured in our blog
