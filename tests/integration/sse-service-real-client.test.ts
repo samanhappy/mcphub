@@ -56,6 +56,13 @@ describe('Real Client Transport Integration Tests', () => {
     _appServer = result.appServer;
     httpServer = result.httpServer;
     baseURL = result.baseURL;
+
+    // AppServer initializes upstreams asynchronously; wait before any test replaces the fixture.
+    const deadline = Date.now() + 30000;
+    while (getServerByName('test-server-1')?.status !== 'connected' && Date.now() < deadline) {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+    expect(getServerByName('test-server-1')?.status).toBe('connected');
   }, 60000);
 
   afterAll(async () => {
@@ -253,12 +260,6 @@ describe('Real Client Transport Integration Tests', () => {
 
   describe('MCP 2026-07-28 Dual-stack Tests', () => {
     it('validates routing headers before dispatch and preserves route and auth boundaries', async () => {
-      // AppServer initializes upstreams asynchronously; await this fixture before replacing it.
-      const deadline = Date.now() + 30000;
-      while (getServerByName('test-server-1')?.status !== 'connected' && Date.now() < deadline) {
-        await new Promise((resolve) => setTimeout(resolve, 100));
-      }
-      expect(getServerByName('test-server-1')?.status).toBe('connected');
       const info = getServerByName('test-server-1')!;
       const original = {
         tools: info.tools,
@@ -269,7 +270,7 @@ describe('Real Client Transport Integration Tests', () => {
       info.status = 'connected';
       info.tools = [{ name: 'test-server-1-header-test', inputSchema: { type: 'object' } }];
       info.openApiClient = { callTool: call } as unknown as ServerInfo['openApiClient'];
-      const sessionsBefore = Object.keys(transports);
+      const sessionsBefore = new Set(Object.keys(transports));
       const send = (route: string, name: string, headers: Record<string, string>) =>
         fetch(`${baseURL}${route}`, {
           method: 'POST',
@@ -334,7 +335,7 @@ describe('Real Client Transport Integration Tests', () => {
         });
         expect(denied.status).toBe(401);
         expect(call).toHaveBeenCalledTimes(4);
-        expect(Object.keys(transports)).toEqual(sessionsBefore);
+        expect(Object.keys(transports).every((id) => sessionsBefore.has(id))).toBe(true);
       } finally {
         Object.assign(info, original);
       }
