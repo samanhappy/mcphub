@@ -61,6 +61,29 @@ describe('Environment Variable Expansion - Comprehensive Tests', () => {
       process.env.PADDED_VAR = '  padded-value  ';
       expect(expandEnvVars('${PADDED_VAR}')).toBe('padded-value');
     });
+
+    it('should keep a "$" inside an expanded ${VAR} value', () => {
+      process.env.API_KEY = 'sk-abc$XYZ123';
+      process.env.XYZ123 = 'leaked';
+      expect(expandEnvVars('${API_KEY}')).toBe('sk-abc$XYZ123');
+    });
+
+    it('should keep a "$" inside a password embedded in a URL', () => {
+      process.env.DB_PASS = 'Pa$SWORD!';
+      expect(expandEnvVars('postgres://user:${DB_PASS}@db:5432/app')).toBe(
+        'postgres://user:Pa$SWORD!@db:5432/app',
+      );
+    });
+
+    it('should keep a "$" inside an expanded $VAR value', () => {
+      process.env.TOKEN = 'a$B';
+      process.env.B = 'b';
+      expect(expandEnvVars('Bearer $TOKEN')).toBe('Bearer a$B');
+    });
+
+    it('should leave "$" alone when no variable name follows it', () => {
+      expect(expandEnvVars('cost: $5, ${ and $lower')).toBe('cost: $5, ${ and $lower');
+    });
   });
 
   describe('replaceEnvVars - Recursive expansion', () => {

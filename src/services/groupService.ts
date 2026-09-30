@@ -18,12 +18,18 @@ export const normalizeGroupServers = (
     }
     // New format: ensure capability selections default to 'all' if not specified
     const alias = server.alias?.trim();
+    // Only the controllers validate pinnedTools; template imports and hand-edited
+    // settings reach this point unchecked, so keep string entries only.
+    const pinnedTools = Array.isArray(server.pinnedTools)
+      ? server.pinnedTools.filter((toolName): toolName is string => typeof toolName === 'string')
+      : [];
     return {
       name: server.name,
       ...(alias ? { alias } : {}),
       tools: server.tools || 'all',
       prompts: server.prompts || 'all',
       resources: server.resources || 'all',
+      ...(pinnedTools.length > 0 ? { pinnedTools } : {}),
     };
   });
 };
@@ -388,8 +394,18 @@ export const updateServerToolsInGroup = async (
       return null; // Server not in group
     }
 
-    // Update the tools configuration for the server
-    normalizedServers[serverIndex].tools = tools;
+    // Update the tools configuration for the server; like the dashboard editor,
+    // a tool that is no longer selected loses its pin
+    const serverConfig = normalizedServers[serverIndex];
+    serverConfig.tools = tools;
+    if (Array.isArray(tools) && serverConfig.pinnedTools) {
+      const pinnedTools = serverConfig.pinnedTools.filter((toolName) => tools.includes(toolName));
+      if (pinnedTools.length > 0) {
+        serverConfig.pinnedTools = pinnedTools;
+      } else {
+        delete serverConfig.pinnedTools;
+      }
+    }
 
     const updatedGroup = await groupDao.update(groupId, { servers: normalizedServers });
 

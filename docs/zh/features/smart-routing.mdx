@@ -116,6 +116,31 @@ description: '使用向量语义搜索的 AI 工具发现系统'
   </Accordion>
 </AccordionGroup>
 
+### 固定工具
+
+`$smart/{group}` 端点只列出元工具，因此即使是模型几乎每次会话都会调用的工具，也要先经过一次 `search_tools` 往返。在分组的服务器条目上固定这些工具后，端点会在元工具旁列出它们的完整定义：
+
+```json
+{
+  "name": "production",
+  "servers": [{ "name": "time", "tools": "all", "pinnedTools": ["get_current_time"] }]
+}
+```
+
+在控制台中编辑分组，展开服务器，然后点击已选工具旁的图钉图标。仅在启用智能路由时显示该图标。
+
+- 固定使用不带前缀的工具名，与 `tools` 选择相同。只有分组已选择且已启用的工具才会生效，其余固定会被忽略。
+- 固定工具的列出方式与直接的 `/mcp/{group}` 端点完全相同（使用服务器的对外名称和自定义描述），并可直接按该名称调用。它仍保留在搜索索引中，`search_tools`、`describe_tool` 和 `call_tool` 照常可用。
+- 全局 `$smart` 端点没有分组，从不列出固定工具。没有固定工具的分组与之前一样只列出元工具。
+- 如果固定工具列出的名称与元工具名称（`search_tools`、`describe_tool`、`call_tool`，例如别名 `describe` + 分隔符 `_` + 工具 `tool`）相同，则在任何模式下都不会列出：对这些名称的调用始终交给元工具处理。
+- 分组显示的智能路由占用包含其固定工具的定义成本。
+- 在控制台中或通过 `PUT /api/groups/:id/server-configs/:serverName/tools` 取消选择某个工具时，也会移除它的固定。
+- 与所有智能路由端点一样，`$smart/{group}` 不是 MCP Apps 路由：固定工具不带 Apps 元数据，仅限 Apps 的工具无法固定。
+
+<Warning>
+通过 `call_tool` 调用时，所有工具共享客户端的同一个审批决定。固定工具以自己的名称列出，逐个审批工具的客户端会对其应用单独的规则——固定会写入数据的工具前请先确认这一点。
+</Warning>
+
 ### 渐进式披露模式
 
 渐进式披露是一个优化功能，可以减少使用智能路由时的 Token 消耗。启用后，工具发现工作流从 2 步变为 3 步。
@@ -169,6 +194,24 @@ description: '使用向量语义搜索的 AI 工具发现系统'
     ```
 
     两者默认均为空，即与以前一样嵌入原始文本。前缀按原样使用，请保留末尾空格。修改文档前缀会重新生成所有服务器的工具嵌入；修改查询前缀在下一次搜索时生效。
+
+    前缀会改变相似度分数（以 EmbeddingGemma 为例，弱匹配下降得比强匹配更多），因此基于原始文本调好的阈值在启用前缀后可能需要重新校准（参见下方的 **搜索结果**；每个结果都会返回 `score`）。前缀也计入嵌入的 Token 上限（`EMBEDDING_MAX_TOKENS` 或模型默认值）：前缀会被保留，工具文本会相应提前截断。
+  </Accordion>
+
+  <Accordion title="搜索结果：分数、阈值与 Schema 预算">
+    每个 `search_tools` 结果都带有 `score`：查询与工具之间的余弦相似度（0-1，保留两位小数），也就是与阈值比较的值。结果按相关性排序，排序时还会考虑工具所在服务器与查询的匹配程度。
+
+    ```bash
+    # 结果的最低相似度（0-1）。未设置时按查询长度决定：
+    # 短查询 0.2，长查询或包含 "specific"/"exact" 的查询 0.4，其余 0.3。
+    SMART_ROUTING_SIMILARITY_THRESHOLD=0.45
+
+    # 只有前 N 个结果带完整定义（inputSchema 等）；其余结果只有名称、描述和分数，
+    # 并会列出 describe_tool 以获取其 schema。未设置时所有结果都返回完整定义。启用渐进式披露时忽略。
+    SMART_ROUTING_FULL_SCHEMA_TOP_N=3
+    ```
+
+    两者也可以在 设置 → 智能路由 → 搜索结果 中设置，且都不会触发重新嵌入。当没有工具达到阈值时，响应会明确说明，给出阈值并列出已搜索的服务器，让模型可以告诉用户该能力不可用，而不是去调用最接近但无关的工具。
   </Accordion>
 
   <Accordion title="标准模式（默认）">
@@ -181,7 +224,7 @@ description: '使用向量语义搜索的 AI 工具发现系统'
     | `search_tools` | 按查询查找工具，返回包含 `inputSchema` 的完整工具信息 |
     | `call_tool` | 使用提供的参数执行工具 |
     
-    这种模式更简单，但由于搜索结果中包含完整模式，会使用更多 Token。
+    这种模式更简单，但由于搜索结果中包含完整模式，会使用更多 Token。`SMART_ROUTING_FULL_SCHEMA_TOP_N` 可以限制这部分开销：只有前 N 个结果带 schema，其余结果通过列出的 `describe_tool` 获取。
   </Accordion>
 
   <Accordion title="渐进式披露模式">
@@ -219,7 +262,8 @@ description: '使用向量语义搜索的 AI 工具发现系统'
               "encoding": { "type": "string", "default": "utf-8" }
             },
             "required": ["path"]
-          }
+          },
+          "score": 0.71
         }
       ]
     }
@@ -231,7 +275,8 @@ description: '使用向量语义搜索的 AI 工具发现系统'
       "tools": [
         {
           "name": "read_file",
-          "description": "读取文件内容"
+          "description": "读取文件内容",
+          "score": 0.71
         }
       ],
       "metadata": {
@@ -541,7 +586,7 @@ curl -X POST http://localhost:3000/api/smart-routing/feedback \
     - 缺少预期的工具
 
     **解决方案：**
-    1. 调整相似性阈值
+    1. 调整相似性阈值（`SMART_ROUTING_SIMILARITY_THRESHOLD`），可参考每个结果的 `score` 选择数值
     2. 使用更好的描述重新索引工具
     3. 使用更具体的查询
     4. 检查工具元数据质量

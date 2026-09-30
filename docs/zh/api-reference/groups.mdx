@@ -164,6 +164,8 @@ import { Card, Cards } from 'mintlify';
   }
   ```
 
+服务器配置对象还可以包含 `pinnedTools`：不带前缀的工具名数组，这些工具会在分组的 `$smart/{group}` 端点中与元工具一同列出（参见 [固定工具](/zh/features/smart-routing#固定工具)）。只有同时在 `tools` 中选中的固定工具才会生效。
+
 ---
 
 ### 获取群组服务器配置
@@ -203,7 +205,7 @@ import { Card, Cards } from 'mintlify';
   - `:id` (string, 必填): 群组的 ID 或名称。
   - `:serverName` (string, 必填): 要更新的服务器的名称。
 - **正文**:
-  - `tools` (string or array of strings, 必填): 字符串 `"all"` 表示启用所有工具，或一个工具名称数组以指定启用哪些工具。
+  - `tools` (string or array of strings, 必填): 字符串 `"all"` 表示启用所有工具，或一个工具名称数组以指定启用哪些工具。未包含在数组中的工具会被移除固定（`pinnedTools`）。
 - **请求示例**:
   ```json
   {

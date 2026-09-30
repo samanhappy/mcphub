@@ -1155,6 +1155,25 @@ const parseEmbeddingMetadata = (metadata: unknown): Record<string, any> | null =
  * @param serverName Server name
  * @param tools Array of tools to save
  */
+/** The text a tool is embedded from, and stored as its row's text_content. */
+const buildToolSearchableText = (tool: Tool): string =>
+  [
+    tool.name,
+    tool.description,
+    // Include input schema properties if available
+    ...(tool.inputSchema && typeof tool.inputSchema === 'object'
+      ? Object.keys(tool.inputSchema).filter((key) => key !== 'type' && key !== 'properties')
+      : []),
+    // Include schema property names if available
+    ...(tool.inputSchema &&
+    tool.inputSchema.properties &&
+    typeof tool.inputSchema.properties === 'object'
+      ? Object.keys(tool.inputSchema.properties)
+      : []),
+  ]
+    .filter(Boolean)
+    .join(' ');
+
 export const saveToolsAsVectorEmbeddings = async (
   serverName: string,
   tools: Tool[],
@@ -1217,13 +1236,54 @@ export const saveToolsAsVectorEmbeddings = async (
       .sort((a, b) => a.localeCompare(b));
     const expectedToolSetHash = buildToolSetHash(tools, smartRoutingConfig.embeddingDocumentPrefix);
 
+    // ── Partial updates: only embed tools whose row is missing or out of date ──
+    // A partial list is one view of the server's index (a single tool update, or
+    // the tools one user's credentials list), so the whole-set check below can
+    // never match it. Compare per tool instead: same content id, model and text.
+    if (options.partial && isDatabaseConnected()) {
+      try {
+        const partialRepo = getRepositoryFactory('vectorEmbeddings')() as VectorEmbeddingRepository;
+        const existingText = new Map(
+          (
+            await partialRepo.getToolIdentityByServerNameAndModel(
+              serverName,
+              persistedEmbeddingModel,
+            )
+          ).map((item) => [item.contentId, item.textContent]),
+        );
+        const staleTools = tools.filter(
+          (tool) =>
+            existingText.get(`${serverName}:${tool.name}`) !== buildToolSearchableText(tool),
+        );
+        const serverEmbStatus = await partialRepo.findEmbeddingStatus('server', serverName);
+        const hasCurrentServerEmbedding =
+          serverEmbStatus?.model === persistedEmbeddingModel &&
+          serverEmbStatus.text_content === serverSearchableText &&
+          serverEmbStatus.hasEmbedding === true;
+        if (staleTools.length === 0 && hasCurrentServerEmbedding) {
+          logger.log(
+            `[Embedding] [${serverName}] Skipping — all ${tools.length} tool(s) of the partial update already indexed (model=${persistedEmbeddingModel})`,
+          );
+          return;
+        }
+        logger.log(
+          `[Embedding] [${serverName}] Partial update: embedding ${staleTools.length} of ${tools.length} tool(s) (model=${persistedEmbeddingModel})`,
+        );
+        tools = staleTools;
+      } catch (partialCheckError: any) {
+        logger.warn(
+          `[Embedding] [${serverName}] Partial freshness check failed, embedding every listed tool: ${partialCheckError?.message ?? partialCheckError}`,
+        );
+      }
+    }
+
     // ── Skip check: avoid regenerating embeddings that are already up-to-date ──
     // Validate exact content IDs and a tool-set hash/version marker to avoid
     // false positives when only counts match but the actual tool set changed.
     // This is an optimization to skip the expensive embedding generation phase when
     // nothing changed, which can save a lot of time for servers with many tools and
     // slow embedding providers. It also prevents rewrites on every server restart.
-    if (isDatabaseConnected()) {
+    if (!options.partial && isDatabaseConnected()) {
       try {
         const skipCheckRepo = getRepositoryFactory(
           'vectorEmbeddings',
@@ -1296,23 +1356,7 @@ export const saveToolsAsVectorEmbeddings = async (
     for (let _toolIdx = 0; _toolIdx < tools.length; _toolIdx++) {
       const tool = tools[_toolIdx];
 
-      // Create searchable text from tool information
-      const searchableText = [
-        tool.name,
-        tool.description,
-        // Include input schema properties if available
-        ...(tool.inputSchema && typeof tool.inputSchema === 'object'
-          ? Object.keys(tool.inputSchema).filter((key) => key !== 'type' && key !== 'properties')
-          : []),
-        // Include schema property names if available
-        ...(tool.inputSchema &&
-        tool.inputSchema.properties &&
-        typeof tool.inputSchema.properties === 'object'
-          ? Object.keys(tool.inputSchema.properties)
-          : []),
-      ]
-        .filter(Boolean)
-        .join(' ');
+      const searchableText = buildToolSearchableText(tool);
 
       logger.debug(
         `[Embedding] [${serverName}] Tool ${_toolIdx + 1}/${tools.length}: "${tool.name}" | raw text: ${searchableText.length} chars | preview: "${searchableText.substring(0, 200).replace(/\s+/g, ' ')}"`,
@@ -1457,7 +1501,10 @@ export const searchToolsByVector = async (
     toolName: string;
     description: string;
     inputSchema: any;
+    /** Ranking score: tool similarity blended with its server's similarity. */
     similarity: number;
+    /** Raw query-to-tool cosine similarity, the value the threshold is applied to. */
+    toolSimilarity: number;
     searchableText: string;
   }>
 > => {
@@ -1523,6 +1570,7 @@ export const searchToolsByVector = async (
               serverSimilarityBoost !== undefined
                 ? result.similarity * 0.8 + serverSimilarityBoost * 0.2
                 : result.similarity,
+            toolSimilarity: result.similarity,
             searchableText: result.embedding.text_content,
           };
         }
@@ -1551,6 +1599,7 @@ export const searchToolsByVector = async (
             serverSimilarityBoost !== undefined
               ? result.similarity * 0.8 + serverSimilarityBoost * 0.2
               : result.similarity,
+          toolSimilarity: result.similarity,
           searchableText: textContent,
         };
       })
@@ -1705,6 +1754,41 @@ export const removeServerToolEmbeddings = async (serverName: string): Promise<vo
     logger.log('Removed server embeddings', safeStringify({ serverName, removedCount }));
   } catch (error) {
     logger.error('Error removing server embeddings', safeStringify({ serverName, error }));
+  }
+};
+
+/**
+ * Remove the embeddings of specific tools of a server, e.g. tools disabled in
+ * its config, without touching its other rows.
+ * @param serverName Server name
+ * @param toolNames Tool names as cached (`<server><separator><tool>`)
+ */
+export const removeToolEmbeddings = async (
+  serverName: string,
+  toolNames: string[],
+): Promise<void> => {
+  if (toolNames.length === 0) return;
+  try {
+    const smartRoutingConfig = await getSmartRoutingConfig();
+    if (!smartRoutingConfig.dbUrl && !process.env.DB_URL) {
+      return;
+    }
+
+    if (!isDatabaseConnected()) {
+      await initializeDatabase();
+    }
+
+    const vectorRepository = getRepositoryFactory(
+      'vectorEmbeddings',
+    )() as VectorEmbeddingRepository;
+    const removedCount = await vectorRepository.deleteToolEmbeddingsByContentIds(
+      toolNames.map((toolName) => `${serverName}:${toolName}`),
+    );
+    if (removedCount > 0) {
+      logger.log(`[Embedding] [${serverName}] Removed ${removedCount} disabled tool embedding(s)`);
+    }
+  } catch (error) {
+    logger.error('Error removing tool embeddings', safeStringify({ serverName, toolNames, error }));
   }
 };
 

@@ -5,7 +5,8 @@ const mockGetDatabaseHealth = jest.fn();
 const mockIsDatabaseConnected = jest.fn();
 const mockInitializeDatabase = jest.fn();
 const mockGetAppDataSource = jest.fn();
-const mockSaveToolsAsVectorEmbeddings = jest.fn();
+const mockSyncToolsAsVectorEmbeddings = jest.fn();
+const mockSyncCredentialServerToolEmbeddings = jest.fn();
 const mockGetServersInfo = jest.fn();
 const mockGetServerToolsForPrincipal = jest.fn();
 const mockListBindingUsernames = jest.fn();
@@ -27,13 +28,11 @@ jest.mock('../../src/db/connection.js', () => ({
   getAppDataSource: mockGetAppDataSource,
 }));
 
-jest.mock('../../src/services/vectorSearchService.js', () => ({
-  saveToolsAsVectorEmbeddings: mockSaveToolsAsVectorEmbeddings,
-}));
-
 jest.mock('../../src/services/mcpService.js', () => ({
   getServersInfo: mockGetServersInfo,
   getServerToolsForPrincipal: mockGetServerToolsForPrincipal,
+  syncToolsAsVectorEmbeddings: mockSyncToolsAsVectorEmbeddings,
+  syncCredentialServerToolEmbeddings: mockSyncCredentialServerToolEmbeddings,
 }));
 
 jest.mock('../../src/dao/DaoFactory.js', () => ({
@@ -84,7 +83,10 @@ beforeEach(() => {
   mockIsDatabaseConnected.mockReturnValue(true);
   mockInitializeDatabase.mockResolvedValue(undefined);
   mockGetAppDataSource.mockReturnValue(mockDataSource);
-  mockSaveToolsAsVectorEmbeddings.mockResolvedValue(undefined);
+  mockSyncToolsAsVectorEmbeddings.mockResolvedValue(undefined);
+  mockSyncCredentialServerToolEmbeddings.mockImplementation(
+    async (_server: string, tools: unknown[]) => tools.length,
+  );
   mockGetServersInfo.mockResolvedValue([defaultServer]);
   mockGetServerToolsForPrincipal.mockResolvedValue([]);
   mockListBindingUsernames.mockResolvedValue([]);
@@ -243,7 +245,7 @@ describe('reindexSmartRouting', () => {
 
     expect(res.status).toHaveBeenCalledWith(403);
     expect(mockDataSourceQuery).not.toHaveBeenCalled();
-    expect(mockSaveToolsAsVectorEmbeddings).not.toHaveBeenCalled();
+    expect(mockSyncToolsAsVectorEmbeddings).not.toHaveBeenCalled();
   });
 
   it('rejects a second pass while one is already running', async () => {
@@ -252,7 +254,7 @@ describe('reindexSmartRouting', () => {
       { name: 'fetch', status: 'connected', enabled: true, tools: [{ name: 'a' }] },
     ]);
     let releaseWrite: () => void = () => {};
-    mockSaveToolsAsVectorEmbeddings.mockImplementation(
+    mockSyncToolsAsVectorEmbeddings.mockImplementation(
       () =>
         new Promise<void>((resolve) => {
           releaseWrite = resolve;
@@ -273,7 +275,7 @@ describe('reindexSmartRouting', () => {
       message: 'A reindex pass is already running',
     });
     expect(mockDataSourceQuery).toHaveBeenCalledTimes(1);
-    expect(mockSaveToolsAsVectorEmbeddings).toHaveBeenCalledTimes(1);
+    expect(mockSyncToolsAsVectorEmbeddings).toHaveBeenCalledTimes(1);
 
     releaseWrite();
     await firstPass;
@@ -337,8 +339,8 @@ describe('reindexSmartRouting', () => {
     await reindexSmartRouting({} as Request, res);
 
     expect(mockDataSourceQuery).toHaveBeenCalledWith('DELETE FROM vector_embeddings');
-    expect(mockSaveToolsAsVectorEmbeddings).toHaveBeenCalledTimes(2);
-    expect(mockSaveToolsAsVectorEmbeddings).toHaveBeenCalledWith(
+    expect(mockSyncToolsAsVectorEmbeddings).toHaveBeenCalledTimes(2);
+    expect(mockSyncToolsAsVectorEmbeddings).toHaveBeenCalledWith(
       'fetch',
       [{ name: 'a' }],
       { reportProgress: true },
@@ -398,7 +400,8 @@ describe('reindexSmartRouting', () => {
       'private-api',
       expect.objectContaining({ username: 'bob', isAdmin: false }),
     );
-    expect(mockSaveToolsAsVectorEmbeddings).toHaveBeenCalledWith(
+    expect(mockSyncToolsAsVectorEmbeddings).not.toHaveBeenCalled();
+    expect(mockSyncCredentialServerToolEmbeddings).toHaveBeenCalledWith(
       'private-api',
       [{ name: 'shared-tool' }, { name: 'admin-only-tool' }],
       { reportProgress: true },
@@ -419,6 +422,30 @@ describe('reindexSmartRouting', () => {
     });
   });
 
+  it('reports the tools left after the disabled-tool mask for a personal-credential server', async () => {
+    mockDataSourceQuery.mockResolvedValueOnce([]); // DELETE
+    mockGetServersInfo.mockResolvedValue([
+      {
+        name: 'private-api',
+        status: 'disconnected',
+        enabled: true,
+        tools: [],
+        config: { credentialTemplate },
+      },
+    ]);
+    mockListBindingUsernames.mockResolvedValue(['bob']);
+    mockFindUserByUsername.mockResolvedValue({ username: 'bob', isAdmin: false });
+    mockGetServerToolsForPrincipal.mockResolvedValue([{ name: 'read' }, { name: 'write' }]);
+    mockSyncCredentialServerToolEmbeddings.mockResolvedValue(1);
+
+    const res = mockRes();
+    await reindexSmartRouting({} as Request, res);
+
+    const payload = res.json.mock.calls[0][0];
+    expect(payload.data.totalTools).toBe(1);
+    expect(payload.data.results[0]).toMatchObject({ serverName: 'private-api', toolCount: 1 });
+  });
+
   it('skips a personal-credential server nobody bound credentials for', async () => {
     mockDataSourceQuery.mockResolvedValueOnce([]); // DELETE
     mockGetServersInfo.mockResolvedValue([
@@ -436,7 +463,7 @@ describe('reindexSmartRouting', () => {
     await reindexSmartRouting({} as Request, res);
 
     expect(mockGetServerToolsForPrincipal).not.toHaveBeenCalled();
-    expect(mockSaveToolsAsVectorEmbeddings).not.toHaveBeenCalled();
+    expect(mockSyncCredentialServerToolEmbeddings).not.toHaveBeenCalled();
     const payload = res.json.mock.calls[0][0];
     expect(payload.data.skippedServers).toBe(1);
     expect(payload.data.results[0]).toMatchObject({
@@ -514,7 +541,7 @@ describe('reindexSmartRouting', () => {
 
   it('counts per-server failures without aborting the batch', async () => {
     mockDataSourceQuery.mockResolvedValueOnce([]); // DELETE
-    mockSaveToolsAsVectorEmbeddings
+    mockSyncToolsAsVectorEmbeddings
       .mockRejectedValueOnce(new Error('embedding provider rate limited'))
       .mockResolvedValueOnce(undefined);
     mockGetServersInfo.mockResolvedValue([

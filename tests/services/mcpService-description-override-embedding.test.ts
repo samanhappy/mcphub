@@ -48,8 +48,10 @@ jest.mock('../../src/services/sseService.js', () => ({
 
 const mockSaveToolsAsVectorEmbeddings = jest.fn().mockResolvedValue(undefined);
 
+const mockRemoveToolEmbeddings = jest.fn();
 jest.mock('../../src/services/vectorSearchService.js', () => ({
   removeServerToolEmbeddings: jest.fn().mockResolvedValue(undefined),
+  removeToolEmbeddings: mockRemoveToolEmbeddings,
   saveToolsAsVectorEmbeddings: mockSaveToolsAsVectorEmbeddings,
 }));
 
@@ -125,7 +127,9 @@ jest.mock('../../src/config/index.js', () => ({
 
 import {
   setServerInfosForTest,
+  syncCredentialServerToolEmbeddings,
   syncToolEmbedding,
+  syncToolsAsVectorEmbeddings,
   updateServerToolsCache,
 } from '../../src/services/mcpService.js';
 import type { ServerInfo, Tool } from '../../src/types/index.js';
@@ -259,5 +263,106 @@ describe('MCP Service — description override applied to embedding text (#1198)
     expect(syncedTools).toHaveLength(1);
     expect(syncedTools[0].description).toBe('BARE KEY override');
     expect(mockSaveToolsAsVectorEmbeddings.mock.calls[0][2]).toEqual({ partial: true });
+  });
+});
+
+describe('MCP Service — embedding syncs per server', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockFindServerById.mockResolvedValue(null);
+    mockSaveToolsAsVectorEmbeddings.mockResolvedValue(undefined);
+  });
+
+  it('runs syncs of one server one after another, and of different servers side by side', async () => {
+    let finishFirst!: () => void;
+    mockSaveToolsAsVectorEmbeddings.mockImplementationOnce(
+      () => new Promise<void>((resolve) => (finishFirst = resolve)),
+    );
+
+    const first = syncToolsAsVectorEmbeddings('redis', [rawTool('a')]);
+    const second = syncToolsAsVectorEmbeddings('redis', [rawTool('b')]);
+    const other = syncToolsAsVectorEmbeddings('fetch', [rawTool('c')]);
+    await other;
+    await flushPromises();
+
+    expect(mockSaveToolsAsVectorEmbeddings.mock.calls.map((call) => call[0])).toEqual([
+      'redis',
+      'fetch',
+    ]);
+
+    finishFirst();
+    await Promise.all([first, second]);
+    expect(mockSaveToolsAsVectorEmbeddings).toHaveBeenCalledTimes(3);
+    expect(mockSaveToolsAsVectorEmbeddings.mock.calls[2][1]).toEqual([rawTool('b')]);
+  });
+
+  it('keeps the queue moving after a failed sync', async () => {
+    mockSaveToolsAsVectorEmbeddings.mockRejectedValueOnce(new Error('provider down'));
+
+    await expect(syncToolsAsVectorEmbeddings('redis', [rawTool('a')])).rejects.toThrow(
+      'provider down',
+    );
+    await syncToolsAsVectorEmbeddings('redis', [rawTool('a')]);
+    expect(mockSaveToolsAsVectorEmbeddings).toHaveBeenCalledTimes(2);
+  });
+
+  it('drops tools disabled in the config before embedding a credential server', async () => {
+    mockFindServerById.mockResolvedValue({
+      name: 'redis',
+      tools: { 'redis::redis-set': { enabled: false }, 'redis-del': { enabled: false } },
+    });
+
+    const count = await syncCredentialServerToolEmbeddings('redis', [
+      { ...rawTool('redis-get'), name: 'redis::redis-get' },
+      { ...rawTool('redis-set'), name: 'redis::redis-set' },
+      { ...rawTool('redis-del'), name: 'redis::redis-del' },
+    ]);
+
+    expect(count).toBe(1);
+    const syncedTools = mockSaveToolsAsVectorEmbeddings.mock.calls[0][1] as Tool[];
+    expect(syncedTools.map((tool) => tool.name)).toEqual(['redis::redis-get']);
+  });
+
+  it('adds a per-user list without pruning, and removes only its disabled tools, first', async () => {
+    mockRemoveToolEmbeddings.mockResolvedValue(undefined);
+    mockFindServerById.mockResolvedValue({
+      name: 'redis',
+      tools: { 'redis::redis-set': { enabled: false } },
+    });
+
+    const count = await syncCredentialServerToolEmbeddings(
+      'redis',
+      [
+        { ...rawTool('redis-get'), name: 'redis::redis-get' },
+        { ...rawTool('redis-set'), name: 'redis::redis-set' },
+      ],
+      { partial: true },
+    );
+
+    expect(count).toBe(1);
+    expect(mockRemoveToolEmbeddings).toHaveBeenCalledWith('redis', ['redis::redis-set']);
+    const [serverName, syncedTools, options] = mockSaveToolsAsVectorEmbeddings.mock.calls[0];
+    expect(serverName).toBe('redis');
+    expect((syncedTools as Tool[]).map((tool) => tool.name)).toEqual(['redis::redis-get']);
+    expect(options).toEqual({ partial: true });
+    // Queued on the same per-server queue, ahead of the sync
+    expect(mockRemoveToolEmbeddings.mock.invocationCallOrder[0]).toBeLessThan(
+      mockSaveToolsAsVectorEmbeddings.mock.invocationCallOrder[0],
+    );
+  });
+
+  it('removes nothing by name for a complete list, which the vector store prunes itself', async () => {
+    mockFindServerById.mockResolvedValue({
+      name: 'redis',
+      tools: { 'redis::redis-set': { enabled: false } },
+    });
+
+    await syncCredentialServerToolEmbeddings('redis', [
+      { ...rawTool('redis-get'), name: 'redis::redis-get' },
+      { ...rawTool('redis-set'), name: 'redis::redis-set' },
+    ]);
+
+    expect(mockRemoveToolEmbeddings).not.toHaveBeenCalled();
+    expect(mockSaveToolsAsVectorEmbeddings.mock.calls[0][2]).toBeUndefined();
   });
 });
