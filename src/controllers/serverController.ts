@@ -35,6 +35,7 @@ import {
   syncAllServerToolsEmbeddings,
 } from '../services/vectorSearchService.js';
 import { createSafeJSON } from '../utils/serialization.js';
+import { getNameSeparator } from '../config/index.js';
 import { cloneDefaultOAuthServerConfig } from '../constants/oauthServerDefaults.js';
 import {
   getBearerKeyDao,
@@ -943,6 +944,69 @@ export const deleteServer = async (req: Request, res: Response): Promise<void> =
   }
 };
 
+/**
+ * Move the keys of a server's `tools` or `prompts` map from the old name's
+ * prefix to the new one. The dashboard stores toggles and description
+ * overrides under the prefixed item name (`<server><separator><item>`), so
+ * after a rename the old keys match nothing: a tool disabled under them comes
+ * back enabled and callable, and its description override is lost. Keys
+ * without the old prefix are left as they are; if both prefixes are present,
+ * the old one wins, since it is the one that was in effect.
+ *
+ * With the default `-` separator a key such as `notes-delete_note` can also be
+ * the bare name of an upstream tool called `notes-delete_note`, which tool
+ * toggles accept as well. `keepOldKey` says which old-prefix keys to keep next
+ * to their moved copy, so that meaning survives the rename too.
+ */
+const movePrefixedItemKeys = <T>(
+  entries: Record<string, T> | undefined,
+  oldName: string,
+  newName: string,
+  keepOldKey: (key: string) => boolean = () => false,
+): Record<string, T> | undefined => {
+  if (!entries) {
+    return entries;
+  }
+
+  const separator = getNameSeparator();
+  const oldPrefix = `${oldName}${separator}`;
+  const newPrefix = `${newName}${separator}`;
+  const moved = Object.fromEntries(
+    Object.entries(entries).filter(([key]) => !key.startsWith(oldPrefix)),
+  ) as Record<string, T>;
+  for (const [key, value] of Object.entries(entries)) {
+    if (key.startsWith(oldPrefix)) {
+      moved[`${newPrefix}${key.substring(oldPrefix.length)}`] = value;
+      if (keepOldKey(key)) {
+        moved[key] = value;
+      }
+    }
+  }
+  return moved;
+};
+
+/**
+ * Whether an old-prefix `tools` key may be a bare upstream tool name. Tool
+ * toggles accept the bare name as well as the prefixed one, so `notes-x` on
+ * server `notes` applies both to tool `x` and to a tool literally named
+ * `notes-x`. The cached tool list says which bare names exist; without one
+ * (server not connected yet) every such key is kept, which is harmless when
+ * no such tool exists.
+ */
+const bareToolNameCheck = (serverName: string): ((key: string) => boolean) => {
+  const prefix = `${serverName}${getNameSeparator()}`;
+  const cachedTools = getServerByName(serverName)?.tools ?? [];
+  if (cachedTools.length === 0) {
+    return () => true;
+  }
+  const bareNames = new Set(
+    cachedTools.map((tool) =>
+      tool.name.startsWith(prefix) ? tool.name.substring(prefix.length) : tool.name,
+    ),
+  );
+  return (key) => bareNames.has(key);
+};
+
 export const updateServer = async (req: Request, res: Response): Promise<void> => {
   try {
     const { name } = req.params;
@@ -1084,6 +1148,9 @@ export const updateServer = async (req: Request, res: Response): Promise<void> =
         return;
       }
 
+      // Read the cached tool list before the runtime under the old name is closed
+      const isBareToolName = bareToolNameCheck(name);
+
       // Rename the server
       const renamed = await serverDao.rename(name, targetName);
       if (!renamed) {
@@ -1109,6 +1176,28 @@ export const updateServer = async (req: Request, res: Response): Promise<void> =
       // Update references in bearer keys
       const bearerKeyDao = getBearerKeyDao();
       await bearerKeyDao.updateServerName(name, targetName);
+
+      // Move tool and prompt toggles to the new prefix. A request without the
+      // map would keep the stored one through the update merge, old keys and
+      // all, so the stored map is moved in that case. Prompt lookups use the
+      // prefixed name only, so prompt keys are always moved.
+      const tools = movePrefixedItemKeys(
+        normalizedConfig.tools ?? existingServer.tools,
+        name,
+        targetName,
+        isBareToolName,
+      );
+      if (tools) {
+        normalizedConfig.tools = tools;
+      }
+      const prompts = movePrefixedItemKeys(
+        normalizedConfig.prompts ?? existingServer.prompts,
+        name,
+        targetName,
+      );
+      if (prompts) {
+        normalizedConfig.prompts = prompts;
+      }
 
       // Drop embeddings stored under the old name so search_tools does not
       // advertise phantom tools; addOrUpdateServer below regenerates them
