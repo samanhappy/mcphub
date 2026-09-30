@@ -3999,6 +3999,12 @@ const handleCallToolRequestImpl = async (request: any, extra: any) => {
           }
         }
 
+        if (targetServerInfo.config?.openapi?.cookieSession && !cookieSessionId) {
+          throw new Error(
+            `OpenAPI server '${targetServerInfo.name}' requires cookie-session state and is not yet available on stateless MCP requests`,
+          );
+        }
+
         await reserveHostedIfNeeded(targetServerInfo.name, cleanToolName);
         const result = await openApiClient.callTool(
           cleanToolName,
@@ -4058,9 +4064,13 @@ const handleCallToolRequestImpl = async (request: any, extra: any) => {
       let isolatedCtx: IsolatedClientContext | undefined;
       if (
         targetServerInfo.config?.perSessionClient &&
-        !hasCredentialTemplate(targetServerInfo.config) &&
-        sessionId
+        !hasCredentialTemplate(targetServerInfo.config)
       ) {
+        if (!sessionId) {
+          throw new Error(
+            `Server '${targetServerInfo.name}' requires per-session client isolation and is not yet available on stateless MCP requests`,
+          );
+        }
         const isolated = await getOrCreateIsolatedClient(sessionId, targetServerInfo);
         isolatedCtx = { sessionId, client: isolated.client, transport: isolated.transport };
       } else if (!targetServerInfo.client) {
@@ -4205,6 +4215,12 @@ const handleCallToolRequestImpl = async (request: any, extra: any) => {
       }
 
       const finalArgs = request.params.arguments || {};
+      if (serverInfo.config?.openapi?.cookieSession && !cookieSessionId) {
+        throw new Error(
+          `OpenAPI server '${serverInfo.name}' requires cookie-session state and is not yet available on stateless MCP requests`,
+        );
+      }
+
       await reserveHostedIfNeeded(serverInfo.name, cleanToolName);
       const result = await openApiClient.callTool(
         cleanToolName,
@@ -4262,11 +4278,12 @@ const handleCallToolRequestImpl = async (request: any, extra: any) => {
     // Handle MCP servers
     // For servers with perSessionClient: true, use a per-session dedicated client
     let isolatedCtx: IsolatedClientContext | undefined;
-    if (
-      serverInfo.config?.perSessionClient &&
-      !hasCredentialTemplate(serverInfo.config) &&
-      sessionId
-    ) {
+    if (serverInfo.config?.perSessionClient && !hasCredentialTemplate(serverInfo.config)) {
+      if (!sessionId) {
+        throw new Error(
+          `Server '${serverInfo.name}' requires per-session client isolation and is not yet available on stateless MCP requests`,
+        );
+      }
       const isolated = await getOrCreateIsolatedClient(sessionId, serverInfo);
       isolatedCtx = { sessionId, client: isolated.client, transport: isolated.transport };
     } else if (!serverInfo.client) {

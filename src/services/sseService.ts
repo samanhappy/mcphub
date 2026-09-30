@@ -1,9 +1,18 @@
 import { Request, Response } from 'express';
 import { randomUUID } from 'node:crypto';
 import { canAccessGroupRoute } from '../utils/groupAccess.js';
-import { NodeStreamableHTTPServerTransport } from '@modelcontextprotocol/node';
+import {
+  NodeStreamableHTTPServerTransport,
+  toNodeHandler,
+  toWebRequest,
+} from '@modelcontextprotocol/node';
 import { SSEServerTransport } from '@modelcontextprotocol/server-legacy/sse';
-import { Transport, isInitializeRequest } from '@modelcontextprotocol/server';
+import {
+  Transport,
+  createMcpHandler,
+  isInitializeRequest,
+  isLegacyRequest,
+} from '@modelcontextprotocol/server';
 import { deleteMcpServer, getMcpServer } from './mcpService.js';
 import config from '../config/index.js';
 import {
@@ -60,6 +69,43 @@ type RehydratableWebStandardTransport = {
 // Session creation locks to prevent concurrent session creation conflicts
 const sessionCreationLocks: { [sessionId: string]: Promise<NodeStreamableHTTPServerTransport> } =
   {};
+
+let modernMcpHandler: ReturnType<typeof createMcpHandler> | undefined;
+let modernMcpNodeHandler: ReturnType<typeof toNodeHandler> | undefined;
+
+const getModernMcpNodeHandler = (): ReturnType<typeof toNodeHandler> => {
+  if (modernMcpNodeHandler) {
+    return modernMcpNodeHandler;
+  }
+
+  modernMcpHandler = createMcpHandler(
+    async () => {
+      const requestContextService = RequestContextService.getInstance();
+      return getMcpServer(undefined, requestContextService.getGroupContext());
+    },
+    {
+      legacy: 'reject',
+      onerror: (error) => {
+        logger.error('[MCP 2026] Modern handler error:', error);
+      },
+    },
+  );
+  modernMcpNodeHandler = toNodeHandler(modernMcpHandler, {
+    onerror: (error) => {
+      logger.error('[MCP 2026] Node adapter error:', error);
+    },
+  });
+
+  return modernMcpNodeHandler;
+};
+
+export const closeModernMcpHandler = async (): Promise<void> => {
+  if (modernMcpHandler) {
+    await modernMcpHandler.close();
+  }
+  modernMcpHandler = undefined;
+  modernMcpNodeHandler = undefined;
+};
 
 export const getGroup = (sessionId: string): string => {
   return transports[sessionId]?.group || '';
@@ -883,6 +929,29 @@ export const handleMcpPostRequest = async (req: Request, res: Response): Promise
   };
   if (!group && !routingConfig.enableGlobalRoute) {
     res.status(403).send('Global routes are disabled. Please specify a group ID.');
+    return;
+  }
+
+  // MCP 2026-07-28 is stateless over HTTP. Keep the existing sessionful
+  // Streamable HTTP path for 2025-era clients, and let the SDK's own
+  // classifier route modern (or malformed-modern) traffic to createMcpHandler.
+  const webRequest = await toWebRequest(req, req.body);
+  const legacyRequest = await isLegacyRequest(webRequest, req.body);
+  if (!legacyRequest) {
+    logger.log(
+      `[MCP 2026] Handling stateless request in group: ${group || 'global'}${username ? ` for user: ${username}` : ''}`,
+    );
+
+    const requestContextService = RequestContextService.getInstance();
+    await requestContextService.runWithRequestContext(req, async () => {
+      requestContextService.setBearerKeyContext(bearerAuthResult.keyId, bearerAuthResult.keyName);
+      requestContextService.setGroupContext(group);
+      requestContextService.setUsernameContext(username);
+      requestContextService.setKeyKindContext(bearerAuthResult.kind);
+      requestContextService.setHostedAuthContext(bearerAuthResult.hostedAuth);
+
+      await getModernMcpNodeHandler()(req, res, req.body);
+    });
     return;
   }
 

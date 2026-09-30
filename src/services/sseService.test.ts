@@ -118,10 +118,16 @@ jest.mock('@modelcontextprotocol/node', () => ({
   NodeStreamableHTTPServerTransport: jest
     .fn()
     .mockImplementation(() => mockStreamableHTTPServerTransport),
+  toWebRequest: jest.fn(async () => ({})),
+  toNodeHandler: jest.fn(() => jest.fn()),
 }));
 
 jest.mock('@modelcontextprotocol/server', () => ({
   isInitializeRequest: jest.fn(() => true),
+  isLegacyRequest: jest.fn(async () => true),
+  createMcpHandler: jest.fn(() => ({
+    close: jest.fn().mockResolvedValue(undefined),
+  })),
 }));
 
 // Import mocked modules
