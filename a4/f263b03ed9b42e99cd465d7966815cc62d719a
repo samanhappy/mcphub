@@ -1,0 +1,32 @@
+src/services/smartRoutingService.ts
+  s_4d862959584514::t_6b02a45bd61e95 17,393,417,586,595
+tests/integration/personal-credentials.test.ts
+  s_4d862959584514::t_6b02a45bd61e95 1,51,689-701
+src/services/mcpService.ts
+  s_4d862959584514::t_6b02a45bd61e95 1,3715,3755,3761,4276,4372,4434,4496,4538,4791
+  s_4d862959584514::t_bd55411dd04ab2 3623
+src/utils/mcpRequestGroup.ts
+  s_4d862959584514::t_6b02a45bd61e95 1-9
+tests/services/mcpService-smart-routing-group.test.ts
+  s_4d862959584514::t_6b02a45bd61e95 192-197,219,240
+tests/services/smartRoutingService-alias.test.ts
+  s_4d862959584514::t_6b02a45bd61e95 1,135-147
+tests/services/mcpService-group-alias.test.ts
+  s_4d862959584514::t_6b02a45bd61e95 1,24,30,134-136,159,163-166,219-289
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "a4f263b03ed9b42e99cd465d7966815cc62d719a",
+  "prompts": {},
+  "sessions": {
+    "s_4d862959584514": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0f0f7-11d1-7820-bc80-b55f2e680bae",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
