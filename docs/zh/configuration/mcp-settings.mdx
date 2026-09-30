@@ -183,6 +183,31 @@ MCP 自身的 `--isolated` 标志不同，后者控制 Playwright 侧的浏览�
 数量随并发会话数成倍增长，因此对无状态服务器请保持关闭。
 </Tip>
 
+### MCP 2026-07-28 的路由请求头
+
+新版请求使用 `MCP-Protocol-Version: 2026-07-28`，并携带与 JSON-RPC 方法一致的
+`Mcp-Method`。`tools/call` 和 `prompts/get` 还需要与 `params.name` 一致的
+`Mcp-Name`；`resources/read` 则需要与 `params.uri` 一致。列表方法无需
+`Mcp-Name`。SDK v2 HTTP 客户端会自动设置这些请求头。
+
+例如，向 `/mcp` 调用 `params.name` 为 `my-server-my-tool` 的工具时发送：
+
+```http
+MCP-Protocol-Version: 2026-07-28
+Mcp-Method: tools/call
+Mcp-Name: my-server-my-tool
+```
+
+这些请求头与正常的 JSON-RPC 请求体一起发送，请求体仍需包含新版协议的
+`params._meta` 协议版本与客户端能力信息。请求头不选择分组，也不授予访问权限；
+可访问的服务器仍由 URL 和 bearer 权限决定。使用服务器专属 URL 时，请求体与
+请求头都应使用该 URL 下暴露的工具名称。非 ASCII 名称在 `Mcp-Name` 中使用
+SDK 的 `=?base64?<UTF-8 Base64>?=` 编码。
+
+缺失必需请求头、请求头与请求体不一致或名称编码非法时，在执行前返回 HTTP 400
+和 JSON-RPC 错误 `-32020`。旧版 `2025-11-25` 请求继续使用原有握手与会话机制，
+无需这些路由请求头。
+
 ### MCP 2026-07-28 的有状态工具
 
 新版 MCP 请求不创建下游传输会话。调用启用 `perSessionClient: true` 或 OpenAPI

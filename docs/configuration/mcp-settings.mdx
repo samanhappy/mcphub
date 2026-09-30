@@ -204,6 +204,35 @@ It multiplies upstream connections (and stdio child processes) by the number of
 concurrent sessions, so leave it off for stateless servers.
 </Tip>
 
+### Routing headers over MCP 2026-07-28
+
+Modern requests use `MCP-Protocol-Version: 2026-07-28` and `Mcp-Method`
+matching the JSON-RPC method. `tools/call` and `prompts/get` also require
+`Mcp-Name` matching `params.name`; `resources/read` requires it to match
+`params.uri`. List methods do not require `Mcp-Name`. The SDK v2 HTTP client
+sets these headers automatically.
+
+For example, a tool call to `/mcp` with `params.name` set to
+`my-server-my-tool` sends:
+
+```http
+MCP-Protocol-Version: 2026-07-28
+Mcp-Method: tools/call
+Mcp-Name: my-server-my-tool
+```
+
+These headers accompany the normal JSON-RPC body, including the modern
+`params._meta` protocol-version and client-capability envelope. They do not
+select a group or grant access: the URL and bearer permissions still determine
+the available servers. On a server-specific URL, use the tool name exposed by
+that URL in both the body and header. Non-ASCII names use the SDK's
+`=?base64?<UTF-8 Base64>?=` encoding in `Mcp-Name`.
+
+Missing required headers, header/body mismatches and invalid name encodings
+return HTTP 400 with JSON-RPC error `-32020` before dispatch. Legacy
+`2025-11-25` requests retain their existing handshake and session behavior and
+do not require these routing headers.
+
 ### Stateful tools over MCP 2026-07-28
 
 Modern MCP requests do not create a downstream transport session. To call tools

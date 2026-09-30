@@ -56,6 +56,13 @@ describe('Real Client Transport Integration Tests', () => {
     _appServer = result.appServer;
     httpServer = result.httpServer;
     baseURL = result.baseURL;
+
+    // AppServer initializes upstreams asynchronously; wait before any test replaces the fixture.
+    const deadline = Date.now() + 30000;
+    while (getServerByName('test-server-1')?.status !== 'connected' && Date.now() < deadline) {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+    expect(getServerByName('test-server-1')?.status).toBe('connected');
   }, 60000);
 
   afterAll(async () => {
@@ -252,6 +259,88 @@ describe('Real Client Transport Integration Tests', () => {
   });
 
   describe('MCP 2026-07-28 Dual-stack Tests', () => {
+    it('validates routing headers before dispatch and preserves route and auth boundaries', async () => {
+      const info = getServerByName('test-server-1')!;
+      const original = {
+        tools: info.tools,
+        openApiClient: info.openApiClient,
+        status: info.status,
+      };
+      const call = jest.fn(async () => ({ ok: true }));
+      info.status = 'connected';
+      info.tools = [{ name: 'test-server-1-header-test', inputSchema: { type: 'object' } }];
+      info.openApiClient = { callTool: call } as unknown as ServerInfo['openApiClient'];
+      const sessionsBefore = new Set(Object.keys(transports));
+      const send = (route: string, name: string, headers: Record<string, string>) =>
+        fetch(`${baseURL}${route}`, {
+          method: 'POST',
+          headers: {
+            Authorization: 'Bearer test-auth-token-123',
+            'Content-Type': 'application/json',
+            Accept: 'application/json, text/event-stream',
+            'MCP-Protocol-Version': '2026-07-28',
+            ...headers,
+          },
+          body: JSON.stringify({
+            jsonrpc: '2.0',
+            id: 1,
+            method: 'tools/call',
+            params: {
+              name,
+              arguments: {},
+              _meta: {
+                'io.modelcontextprotocol/protocolVersion': '2026-07-28',
+                'io.modelcontextprotocol/clientCapabilities': {},
+              },
+            },
+          }),
+        });
+      try {
+        for (const [route, name] of [
+          ['/mcp', 'test-server-1-header-test'],
+          ['/mcp/integration-test-group', 'test-server-1-header-test'],
+          ['/mcp/test-server-1', 'header-test'],
+        ]) {
+          const response = await send(route, name, {
+            'Mcp-Method': 'tools/call',
+            'Mcp-Name': name,
+          });
+          expect(response.status).toBe(200);
+          expect((await response.json()).result.isError).not.toBe(true);
+        }
+        const name = 'test-server-1-header-test';
+        const encoded = await send('/mcp', name, {
+          'mcp-method': 'tools/call',
+          'mcp-name': `=?base64?${Buffer.from(name).toString('base64')}?=`,
+        });
+        expect(encoded.status).toBe(200);
+        expect((await encoded.json()).result.isError).not.toBe(true);
+        expect(call).toHaveBeenCalledTimes(4);
+        for (const headers of [
+          { 'Mcp-Name': name },
+          { 'Mcp-Method': 'tools/call' },
+          { 'Mcp-Method': 'tools/list', 'Mcp-Name': name },
+          { 'Mcp-Method': 'tools/call', 'Mcp-Name': 'other-tool' },
+          { 'Mcp-Method': 'tools/call', 'Mcp-Name': '=?base64?!!!?=' },
+        ]) {
+          const response = await send('/mcp', name, headers as Record<string, string>);
+          expect(response.status).toBe(400);
+          expect((await response.json()).error.code).toBe(-32020);
+          expect(call).toHaveBeenCalledTimes(4);
+        }
+        const denied = await send('/mcp', name, {
+          'Mcp-Method': 'tools/call',
+          'Mcp-Name': name,
+          Authorization: 'Bearer invalid-key',
+        });
+        expect(denied.status).toBe(401);
+        expect(call).toHaveBeenCalledTimes(4);
+        expect(Object.keys(transports).every((id) => sessionsBefore.has(id))).toBe(true);
+      } finally {
+        Object.assign(info, original);
+      }
+    });
+
     it('binds explicit application state to authenticated routes without downstream sessions', async () => {
       const info = getServerByName('test-server-1')!;
       const original = {

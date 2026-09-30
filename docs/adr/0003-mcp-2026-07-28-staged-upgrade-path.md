@@ -37,3 +37,13 @@ Modern stateful tool calls use the MCPHub extension `X-MCPHub-State-Id` (a clien
 The existing isolated upstream clients and OpenAPI cookie jars use this explicit state key. Active calls hold a lease; idle state expires after 30 minutes and the process admits at most 1,000 modern state scopes. Cleanup closes isolated upstream connections and clears the tracked cookie jars, including clients in principal runtimes. State is process-local; replicas require sticky routing and expiry/restart requires rebuilding application state.
 
 This change covers state ownership and lifecycle only. Cache hints, MCP Apps capability handling, and legacy SSE/session deprecation remain separate work under #1220. Tool-minted handles can be considered later if clients need correlation without custom HTTP headers.
+
+## Routing headers during the dual-stack period
+
+Modern requests retain their `Mcp-Method` and `Mcp-Name` headers through the Node
+adapter. SDK v2's `createMcpHandler` validates required headers, method/name
+agreement with the body, and encoded names before dispatch. MCPHub does not
+maintain a separate header router: URL group resolution and bearer authorization
+remain authoritative. Real HTTP integration coverage exercises global, group and
+server routes, invalid headers, bearer rejection and absence of downstream
+sessions; existing modern explicit-state and v1-client tests cover both lifecycles.
