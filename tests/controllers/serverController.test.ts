@@ -1672,11 +1672,22 @@ describe('serverController - updateServer', () => {
       mockBearerKeyDao.updateServerName.mockResolvedValue(undefined);
       mockAddOrUpdateServer.mockResolvedValue({ success: true });
       mockRemoveServerToolEmbeddings.mockResolvedValue(undefined);
+      // The runtime's cached tool list, named `<server><separator><upstream name>`
+      mockGetServerByName.mockReturnValue({
+        name: 'test-server',
+        tools: ['delete_note', 'list_notes', 'search_notes'].map((tool) => ({
+          name: `test-server::${tool}`,
+        })),
+      });
 
       mockRequest.body = {
         ...mockRequest.body,
         newName: 'renamed-server',
       };
+    });
+
+    afterEach(() => {
+      mockGetServerByName.mockReset();
     });
 
     it('updates every reference to the old name, including vector embeddings', async () => {
@@ -1760,6 +1771,48 @@ describe('serverController - updateServer', () => {
 
       const [, savedConfig] = mockAddOrUpdateServer.mock.calls[0] as [string, any, boolean];
       expect(savedConfig.tools).toEqual({ 'renamed-server::delete_note': { enabled: false } });
+    });
+
+    it('keeps a bare key that is itself an upstream tool name starting with the server prefix', async () => {
+      // An upstream tool literally named 'test-server::delete_note' is cached as
+      // 'test-server::test-server::delete_note'; its bare toggle must survive
+      mockGetServerByName.mockReturnValue({
+        name: 'test-server',
+        tools: [{ name: 'test-server::test-server::delete_note' }],
+      });
+      mockRequest.body.config = {
+        ...mockRequest.body.config,
+        tools: { 'test-server::delete_note': { enabled: false } },
+      };
+
+      await updateServer(mockRequest as Request, mockResponse as Response);
+
+      const [, savedConfig] = mockAddOrUpdateServer.mock.calls[0] as [string, any, boolean];
+      expect(savedConfig.tools).toEqual({
+        // the bare key, still matching the upstream tool of that name
+        'test-server::delete_note': { enabled: false },
+        // and the prefixed meaning of the same key, moved to the new name
+        'renamed-server::delete_note': { enabled: false },
+      });
+    });
+
+    it('keeps old-prefix tool keys next to their moved copy while the tool list is unknown', async () => {
+      mockGetServerByName.mockReturnValue(undefined);
+      mockRequest.body.config = {
+        ...mockRequest.body.config,
+        tools: { 'test-server::delete_note': { enabled: false } },
+        prompts: { 'test-server::summarize': { enabled: false } },
+      };
+
+      await updateServer(mockRequest as Request, mockResponse as Response);
+
+      const [, savedConfig] = mockAddOrUpdateServer.mock.calls[0] as [string, any, boolean];
+      expect(savedConfig.tools).toEqual({
+        'test-server::delete_note': { enabled: false },
+        'renamed-server::delete_note': { enabled: false },
+      });
+      // Prompt lookups never accept bare names, so prompt keys are always moved
+      expect(savedConfig.prompts).toEqual({ 'renamed-server::summarize': { enabled: false } });
     });
 
     it('adds no tools or prompts maps to a server that has none', async () => {
