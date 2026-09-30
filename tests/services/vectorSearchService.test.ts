@@ -7,6 +7,7 @@ const mockVectorRepository = {
   searchSimilar: jest.fn(),
   deleteByServerName: jest.fn(),
   deleteStaleToolEmbeddings: jest.fn(),
+  deleteToolEmbeddingsByContentIds: jest.fn(),
 };
 
 const mockGetRepositoryFactory = jest.fn(() => () => mockVectorRepository);
@@ -72,6 +73,7 @@ jest.mock('openai', () => ({
 import {
   buildToolSetHash,
   removeServerToolEmbeddings,
+  removeToolEmbeddings,
   saveToolsAsVectorEmbeddings,
   searchToolsByVector,
 } from '../../src/services/vectorSearchService.js';
@@ -353,6 +355,90 @@ describe('vectorSearchService', () => {
       'text-embedding-3-small',
     );
     expect(mockVectorRepository.deleteStaleToolEmbeddings).not.toHaveBeenCalled();
+    expect(mockVectorRepository.deleteByServerName).not.toHaveBeenCalled();
+  });
+
+  describe('partial updates (one view of the index, e.g. one user of a credential server)', () => {
+    const getTool = {
+      name: 'redis-get',
+      description: 'Get a cache value',
+      inputSchema: { type: 'object', properties: { key: { type: 'string' } } },
+    };
+    const setTool = {
+      name: 'redis-set',
+      description: 'Set a cache value',
+      inputSchema: { type: 'object', properties: { key: { type: 'string' } } },
+    };
+    const currentServerRow = {
+      model: 'text-embedding-3-small',
+      text_content: 'redis Fast in-memory data store and cache',
+      hasEmbedding: true,
+    };
+    const savedToolIds = () =>
+      mockVectorRepository.saveEmbedding.mock.calls
+        .filter((call) => call[0] === 'tool')
+        .map((call) => call[1]);
+
+    beforeEach(() => {
+      mockVectorRepository.saveEmbedding.mockResolvedValue({});
+      mockVectorRepository.findEmbeddingStatus.mockResolvedValue(currentServerRow);
+    });
+
+    it('embeds only the tools whose stored text is missing or different', async () => {
+      mockVectorRepository.getToolIdentityByServerNameAndModel.mockResolvedValue([
+        { contentId: 'redis:redis-get', textContent: 'redis-get Get a cache value key' },
+        { contentId: 'redis:redis-set', textContent: 'redis-set An older description key' },
+      ]);
+
+      await saveToolsAsVectorEmbeddings('redis', [getTool, setTool] as any, { partial: true });
+
+      expect(savedToolIds()).toEqual(['redis:redis-set']);
+      expect(mockVectorRepository.deleteStaleToolEmbeddings).not.toHaveBeenCalled();
+    });
+
+    it('writes nothing when every listed tool and the server row are current', async () => {
+      mockVectorRepository.getToolIdentityByServerNameAndModel.mockResolvedValue([
+        { contentId: 'redis:redis-get', textContent: 'redis-get Get a cache value key' },
+        // A tool only another user sees: not listed here, and left alone
+        { contentId: 'redis:redis-flush', textContent: 'redis-flush Flush the cache' },
+      ]);
+
+      await saveToolsAsVectorEmbeddings('redis', [getTool] as any, { partial: true });
+
+      expect(mockVectorRepository.saveEmbedding).not.toHaveBeenCalled();
+      expect(mockVectorRepository.deleteStaleToolEmbeddings).not.toHaveBeenCalled();
+    });
+
+    it('still writes a missing server row when every tool is current', async () => {
+      mockVectorRepository.getToolIdentityByServerNameAndModel.mockResolvedValue([
+        { contentId: 'redis:redis-get', textContent: 'redis-get Get a cache value key' },
+      ]);
+      mockVectorRepository.findEmbeddingStatus.mockResolvedValue(null);
+
+      await saveToolsAsVectorEmbeddings('redis', [getTool] as any, { partial: true });
+
+      expect(savedToolIds()).toEqual([]);
+      expect(mockVectorRepository.saveEmbedding).toHaveBeenCalledWith(
+        'server',
+        'redis',
+        expect.any(String),
+        expect.any(Array),
+        expect.any(Object),
+        'text-embedding-3-small',
+      );
+    });
+  });
+
+  it('removes exactly the named tool rows of a server', async () => {
+    mockVectorRepository.deleteToolEmbeddingsByContentIds.mockResolvedValue(1);
+
+    await removeToolEmbeddings('redis', ['redis-set']);
+    await removeToolEmbeddings('redis', []);
+
+    expect(mockVectorRepository.deleteToolEmbeddingsByContentIds).toHaveBeenCalledTimes(1);
+    expect(mockVectorRepository.deleteToolEmbeddingsByContentIds).toHaveBeenCalledWith([
+      'redis:redis-set',
+    ]);
     expect(mockVectorRepository.deleteByServerName).not.toHaveBeenCalled();
   });
 

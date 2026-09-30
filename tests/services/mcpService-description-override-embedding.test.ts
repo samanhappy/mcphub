@@ -48,8 +48,10 @@ jest.mock('../../src/services/sseService.js', () => ({
 
 const mockSaveToolsAsVectorEmbeddings = jest.fn().mockResolvedValue(undefined);
 
+const mockRemoveToolEmbeddings = jest.fn();
 jest.mock('../../src/services/vectorSearchService.js', () => ({
   removeServerToolEmbeddings: jest.fn().mockResolvedValue(undefined),
+  removeToolEmbeddings: mockRemoveToolEmbeddings,
   saveToolsAsVectorEmbeddings: mockSaveToolsAsVectorEmbeddings,
 }));
 
@@ -319,5 +321,48 @@ describe('MCP Service — embedding syncs per server', () => {
     expect(count).toBe(1);
     const syncedTools = mockSaveToolsAsVectorEmbeddings.mock.calls[0][1] as Tool[];
     expect(syncedTools.map((tool) => tool.name)).toEqual(['redis::redis-get']);
+  });
+
+  it('adds a per-user list without pruning, and removes only its disabled tools, first', async () => {
+    mockRemoveToolEmbeddings.mockResolvedValue(undefined);
+    mockFindServerById.mockResolvedValue({
+      name: 'redis',
+      tools: { 'redis::redis-set': { enabled: false } },
+    });
+
+    const count = await syncCredentialServerToolEmbeddings(
+      'redis',
+      [
+        { ...rawTool('redis-get'), name: 'redis::redis-get' },
+        { ...rawTool('redis-set'), name: 'redis::redis-set' },
+      ],
+      { partial: true },
+    );
+
+    expect(count).toBe(1);
+    expect(mockRemoveToolEmbeddings).toHaveBeenCalledWith('redis', ['redis::redis-set']);
+    const [serverName, syncedTools, options] = mockSaveToolsAsVectorEmbeddings.mock.calls[0];
+    expect(serverName).toBe('redis');
+    expect((syncedTools as Tool[]).map((tool) => tool.name)).toEqual(['redis::redis-get']);
+    expect(options).toEqual({ partial: true });
+    // Queued on the same per-server queue, ahead of the sync
+    expect(mockRemoveToolEmbeddings.mock.invocationCallOrder[0]).toBeLessThan(
+      mockSaveToolsAsVectorEmbeddings.mock.invocationCallOrder[0],
+    );
+  });
+
+  it('removes nothing by name for a complete list, which the vector store prunes itself', async () => {
+    mockFindServerById.mockResolvedValue({
+      name: 'redis',
+      tools: { 'redis::redis-set': { enabled: false } },
+    });
+
+    await syncCredentialServerToolEmbeddings('redis', [
+      { ...rawTool('redis-get'), name: 'redis::redis-get' },
+      { ...rawTool('redis-set'), name: 'redis::redis-set' },
+    ]);
+
+    expect(mockRemoveToolEmbeddings).not.toHaveBeenCalled();
+    expect(mockSaveToolsAsVectorEmbeddings.mock.calls[0][2]).toBeUndefined();
   });
 });

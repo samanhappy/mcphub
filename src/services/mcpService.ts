@@ -49,7 +49,11 @@ import config from '../config/index.js';
 import { validateServerName } from '../utils/serverNameValidation.js';
 import { getGroup } from './sseService.js';
 import { getServerConfigInGroup, normalizeGroupServers } from './groupService.js';
-import { removeServerToolEmbeddings, saveToolsAsVectorEmbeddings } from './vectorSearchService.js';
+import {
+  removeServerToolEmbeddings,
+  removeToolEmbeddings,
+  saveToolsAsVectorEmbeddings,
+} from './vectorSearchService.js';
 import { OpenAPIClient } from '../clients/openapi.js';
 import { RequestContextService } from './requestContextService.js';
 import { getDataService } from './services.js';
@@ -714,18 +718,30 @@ const applyDescriptionOverridesForEmbedding = async (
   });
 };
 
-// Tail of the embedding syncs queued per server. A per-user connect and a
+// Tail of the embedding tasks queued per server. A per-user connect and a
 // reindex, or two users connecting at once, often race on the same tool set;
 // queued behind the first run, the second one hits the skip check in
 // saveToolsAsVectorEmbeddings instead of embedding every tool a second time.
 const embeddingSyncTails = new Map<string, Promise<void>>();
 
+// Run `task` after every embedding task already queued for the server. A task
+// must not wait for another queued task of the same server, or both stall.
+const enqueueEmbeddingTask = (serverName: string, task: () => Promise<void>): Promise<void> => {
+  const run = (embeddingSyncTails.get(serverName) ?? Promise.resolve()).then(task);
+  const tail = run.catch(() => undefined);
+  embeddingSyncTails.set(serverName, tail);
+  void tail.then(() => {
+    if (embeddingSyncTails.get(serverName) === tail) embeddingSyncTails.delete(serverName);
+  });
+  return run;
+};
+
 export const syncToolsAsVectorEmbeddings = (
   serverName: string,
   tools: Tool[],
   options?: { reportProgress?: boolean; partial?: boolean },
-): Promise<void> => {
-  const run = (embeddingSyncTails.get(serverName) ?? Promise.resolve()).then(async () => {
+): Promise<void> =>
+  enqueueEmbeddingTask(serverName, async () => {
     const toolsWithOverrides = await applyDescriptionOverridesForEmbedding(serverName, tools);
     const modelVisibleTools = filterModelVisibleTools(toolsWithOverrides);
     if (modelVisibleTools.length === 0) {
@@ -736,36 +752,42 @@ export const syncToolsAsVectorEmbeddings = (
 
     await saveToolsAsVectorEmbeddings(serverName, modelVisibleTools, options);
   });
-  const tail = run.catch(() => undefined);
-  embeddingSyncTails.set(serverName, tail);
-  void tail.then(() => {
-    if (embeddingSyncTails.get(serverName) === tail) embeddingSyncTails.delete(serverName);
-  });
-  return run;
-};
 
 /**
- * Embed the tools a per-user runtime of a credential server listed. Used on
- * every per-user connect and by the reindex endpoint, so both must produce the
- * same tool set, or each would undo the other's rows.
- *
- * Tools disabled in the server's tools config are dropped first. Search
+ * Embed the tools of a credential server, which never connects globally.
+ * Tools disabled in the server's tools config are never embedded: search
  * filters them out of the hits anyway, but only after they have taken result
  * slots. A toggle reaches the index without extra wiring: the tools config is
  * part of the runtime revision, so the next acquire reconnects and re-syncs.
  *
- * The rows hold one tool list per server. If the list depends on whose
- * credentials listed it, the latest connect wins until a reindex embeds the
- * union of all bindings again.
+ * Two callers, two scopes:
+ * - `partial: true` (every per-user connect): the list is what one user's
+ *   credentials show, and users may see different tools. The rows of the
+ *   listed, enabled tools are added or refreshed and nothing else is pruned,
+ *   so tools only other users see stay indexed. The listed tools that are
+ *   disabled are removed by name, queued before the sync.
+ * - otherwise (the reindex endpoint, which passes the union of every binding's
+ *   tools): the list is complete, so rows of tools outside it are pruned.
  *
  * Resolves to the number of tools handed to the vector store.
  */
 export const syncCredentialServerToolEmbeddings = async (
   serverName: string,
   tools: Tool[],
-  options?: { reportProgress?: boolean },
+  options?: { reportProgress?: boolean; partial?: boolean },
 ): Promise<number> => {
   const enabledTools = await filterToolsByConfig(serverName, tools);
+  if (options?.partial) {
+    const enabledNames = new Set(enabledTools.map((tool) => tool.name));
+    const disabledNames = tools
+      .map((tool) => tool.name)
+      .filter((toolName) => !enabledNames.has(toolName));
+    if (disabledNames.length > 0) {
+      void enqueueEmbeddingTask(serverName, () =>
+        removeToolEmbeddings(serverName, disabledNames),
+      ).catch(() => undefined);
+    }
+  }
   await syncToolsAsVectorEmbeddings(serverName, enabledTools, options);
   return enabledTools.length;
 };
@@ -4669,7 +4691,8 @@ const handleReadResourceRequestImpl = async (request: any, extra: any) => {
 };
 
 // Personal runtimes never enter serverInfos or config exports. Their tool list
-// is embedded under the server name, the same rows the reindex endpoint writes.
+// is added to the rows under the server name, the index the reindex endpoint
+// rebuilds from every binding.
 const createPrincipalRuntime = async (
   name: string,
   resolvedConfig: ServerConfig,
@@ -4765,8 +4788,9 @@ const createPrincipalRuntime = async (
     }
     info.status = 'connected';
     // A credential server never connects globally, so this is the only place
-    // its tools are seen outside a reindex. Unchanged tool sets are skipped.
-    syncCredentialServerToolEmbeddings(name, info.tools).catch(() => {
+    // its tools are seen outside a reindex. One user's list is not the whole
+    // server's, so this only adds and refreshes rows; unchanged ones are skipped.
+    syncCredentialServerToolEmbeddings(name, info.tools, { partial: true }).catch(() => {
       logger.warn(`[EMBED_SYNC_ERROR] Failed to sync tool embeddings for "${name}"`);
     });
     return info;
