@@ -24,7 +24,12 @@ import {
 } from '@modelcontextprotocol/client';
 import { TestServerHelper } from '../utils/testServerHelper.js';
 import * as mockSettings from '../utils/mockSettings.js';
-import { cleanupAllServers, deleteMcpServer } from '../../src/services/mcpService.js';
+import {
+  cleanupAllServers,
+  deleteMcpServer,
+  getServerByName,
+} from '../../src/services/mcpService.js';
+import type { ServerInfo } from '../../src/types/index.js';
 import { transports } from '../../src/services/sseService.js';
 
 describe('Real Client Transport Integration Tests', () => {
@@ -247,6 +252,73 @@ describe('Real Client Transport Integration Tests', () => {
   });
 
   describe('MCP 2026-07-28 Dual-stack Tests', () => {
+    it('binds explicit application state to authenticated routes without downstream sessions', async () => {
+      const info = getServerByName('test-server-1')!;
+      const original = {
+        tools: info.tools,
+        config: info.config,
+        openApiClient: info.openApiClient,
+        status: info.status,
+      };
+      const call = jest.fn(async (_name, _args, _headers, _raw, id) => ({ state: id }));
+      const clear = jest.fn();
+      info.status = 'connected';
+      info.tools = [{ name: 'test-server-1-stateful', inputSchema: { type: 'object' } }];
+      info.config = {
+        ...info.config,
+        openapi: { ...info.config?.openapi, cookieSession: true },
+      } as ServerInfo['config'];
+      info.openApiClient = {
+        callTool: call,
+        clearSessionCookies: clear,
+      } as unknown as ServerInfo['openApiClient'];
+      const sessionIdsBefore = new Set(Object.keys(transports));
+      const clients: ModernClient[] = [];
+      const connect = async (route: string, handle?: string) => {
+        const client = new ModernClient(
+          { name: 'state-test', version: '1.0.0' },
+          { versionNegotiation: { mode: 'auto' } },
+        );
+        clients.push(client);
+        await client.connect(
+          new ModernStreamableHTTPClientTransport(new URL(`${baseURL}${route}`), {
+            requestInit: {
+              headers: {
+                Authorization: 'Bearer test-auth-token-123',
+                ...(handle ? { 'X-MCPHub-State-Id': handle } : {}),
+              },
+            },
+          }),
+        );
+        return client;
+      };
+      try {
+        const handle = '65b523af-e4d0-4d99-8e06-461a62a14967';
+        const a = await connect('/mcp', handle);
+        const b = await connect('/mcp', handle);
+        const c = await connect('/mcp/test-server-1', handle);
+        for (const client of [a, b]) {
+          expect(
+            (await client.callTool({ name: 'test-server-1-stateful', arguments: {} })).isError,
+          ).not.toBe(true);
+        }
+        expect(call).toHaveBeenCalledTimes(2);
+        expect(call.mock.calls[0][4]).toBe(call.mock.calls[1][4]);
+        expect((await c.callTool({ name: 'stateful', arguments: {} })).isError).not.toBe(true);
+        expect(call).toHaveBeenCalledTimes(3);
+        expect(call.mock.calls[2][4]).not.toBe(call.mock.calls[0][4]);
+        const missing = await connect('/mcp');
+        expect(
+          (await missing.callTool({ name: 'test-server-1-stateful', arguments: {} })).isError,
+        ).toBe(true);
+        expect(call).toHaveBeenCalledTimes(3);
+        expect(Object.keys(transports).every((id) => sessionIdsBefore.has(id))).toBe(true);
+      } finally {
+        await Promise.all(clients.map((client) => client.close()));
+        Object.assign(info, original);
+      }
+    }, 60000);
+
     it('should serve modern requests without creating a downstream session', async () => {
       const sessionIdsBefore = new Set(Object.keys(transports));
       const transport = new ModernStreamableHTTPClientTransport(new URL(`${baseURL}/mcp`), {

@@ -957,6 +957,72 @@ const sessionIsolatedClients = new Map<string, Map<string, { client: Client; tra
 // Locks to prevent concurrent creation of the same isolated client
 const isolatedClientCreationLocks = new Map<string, Promise<any>>();
 
+// Explicit application state for modern clients, independent of MCP transports.
+// Active calls pin entries; idle state expires and admission is bounded.
+const CLIENT_STATE_IDLE_MS = 30 * 60 * 1000;
+const MAX_CLIENT_STATES = 1000;
+const clientStates = new Map<
+  string,
+  { active: number; lastUsed: number; cookieClients: Set<NonNullable<ServerInfo['openApiClient']>> }
+>();
+let clientStateSweep: ReturnType<typeof setInterval> | undefined;
+
+const removeClientState = (id: string): void => {
+  const state = clientStates.get(id);
+  if (!state) return;
+  clientStates.delete(id);
+  cleanupIsolatedSession(id);
+  for (const client of state.cookieClients) client.clearSessionCookies(id);
+};
+
+const acquireClientState = (serverInfo: ServerInfo): { id: string; release: () => void } => {
+  const contextService = RequestContextService.getInstance();
+  const scope = contextService.getRequestContext()?.clientStateScope;
+  const handle = contextService.getHeader('x-mcphub-state-id');
+  if (
+    !scope ||
+    typeof handle !== 'string' ||
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(handle)
+  ) {
+    throw new Error(
+      'Stateful tools on stateless MCP require authenticated bearer access and X-MCPHub-State-Id (UUID v4)',
+    );
+  }
+  const id = `client-state:${scope}:${handle.toLowerCase()}`;
+  let state = clientStates.get(id);
+  if (state && state.active === 0 && Date.now() - state.lastUsed >= CLIENT_STATE_IDLE_MS) {
+    removeClientState(id);
+    state = undefined;
+  }
+  if (!state) {
+    if (clientStates.size >= MAX_CLIENT_STATES) {
+      throw new Error('Client state capacity reached; retry after idle state expires');
+    }
+    state = { active: 0, lastUsed: Date.now(), cookieClients: new Set() };
+    clientStates.set(id, state);
+  }
+  if (!clientStateSweep) {
+    clientStateSweep = setInterval(() => {
+      for (const [key, entry] of clientStates) {
+        if (entry.active === 0 && Date.now() - entry.lastUsed >= CLIENT_STATE_IDLE_MS) {
+          removeClientState(key);
+        }
+      }
+    }, 60 * 1000);
+    clientStateSweep.unref();
+  }
+  if (serverInfo.openApiClient) state.cookieClients.add(serverInfo.openApiClient);
+  state.active++;
+  const entry = state;
+  return {
+    id,
+    release: () => {
+      entry.active--;
+      entry.lastUsed = Date.now();
+    },
+  };
+};
+
 export const connectClientWithDiagnostics = async (
   client: Client,
   transport: Transport,
@@ -1138,6 +1204,9 @@ export const connected = (): boolean => {
 // Global cleanup function to close all connections
 export const cleanupAllServers = (): void => {
   stopPackageUpdateSweep();
+  if (clientStateSweep) clearInterval(clientStateSweep);
+  clientStateSweep = undefined;
+  for (const id of clientStates.keys()) removeClientState(id);
   principalRuntimes.invalidate();
   for (const serverInfo of serverInfos) {
     try {
@@ -3847,6 +3916,12 @@ const handleCallToolRequestImpl = async (request: any, extra: any) => {
   const sourceIp = requestContextService.getRequestContext()?.remoteAddress || undefined;
   let hostedReservation: HostedCreditReservation | null = null;
   let releaseOnDemandToolCall: (() => void) | undefined;
+  let clientStateLease: ReturnType<typeof acquireClientState> | undefined;
+  const getToolStateId = (info: ServerInfo, legacyId: string | undefined): string | undefined => {
+    if (!requestContextService.getRequestContext()?.stateless) return legacyId;
+    clientStateLease ??= acquireClientState(info);
+    return clientStateLease.id;
+  };
 
   const reserveHostedIfNeeded = async (serverName: string, toolName: string) => {
     const hostedAuth = requestContextService.getHostedAuthContext();
@@ -3999,7 +4074,10 @@ const handleCallToolRequestImpl = async (request: any, extra: any) => {
           }
         }
 
-        if (targetServerInfo.config?.openapi?.cookieSession && !cookieSessionId) {
+        const stateId = targetServerInfo.config?.openapi?.cookieSession
+          ? getToolStateId(targetServerInfo, cookieSessionId)
+          : cookieSessionId;
+        if (targetServerInfo.config?.openapi?.cookieSession && !stateId) {
           throw new Error(
             `OpenAPI server '${targetServerInfo.name}' requires cookie-session state and is not yet available on stateless MCP requests`,
           );
@@ -4011,7 +4089,7 @@ const handleCallToolRequestImpl = async (request: any, extra: any) => {
           finalArgs,
           passthroughHeaders,
           false,
-          cookieSessionId,
+          stateId,
         );
         await settleHostedIfNeeded({
           success: true,
@@ -4066,13 +4144,18 @@ const handleCallToolRequestImpl = async (request: any, extra: any) => {
         targetServerInfo.config?.perSessionClient &&
         !hasCredentialTemplate(targetServerInfo.config)
       ) {
-        if (!sessionId) {
+        const stateId = getToolStateId(targetServerInfo, sessionId);
+        if (!stateId) {
           throw new Error(
             `Server '${targetServerInfo.name}' requires per-session client isolation and is not yet available on stateless MCP requests`,
           );
         }
-        const isolated = await getOrCreateIsolatedClient(sessionId, targetServerInfo);
-        isolatedCtx = { sessionId, client: isolated.client, transport: isolated.transport };
+        const isolated = await getOrCreateIsolatedClient(stateId, targetServerInfo);
+        isolatedCtx = {
+          sessionId: stateId,
+          client: isolated.client,
+          transport: isolated.transport,
+        };
       } else if (!targetServerInfo.client) {
         throw new Error(`Client not found for server: ${targetServerInfo.name}`);
       }
@@ -4215,7 +4298,10 @@ const handleCallToolRequestImpl = async (request: any, extra: any) => {
       }
 
       const finalArgs = request.params.arguments || {};
-      if (serverInfo.config?.openapi?.cookieSession && !cookieSessionId) {
+      const stateId = serverInfo.config?.openapi?.cookieSession
+        ? getToolStateId(serverInfo, cookieSessionId)
+        : cookieSessionId;
+      if (serverInfo.config?.openapi?.cookieSession && !stateId) {
         throw new Error(
           `OpenAPI server '${serverInfo.name}' requires cookie-session state and is not yet available on stateless MCP requests`,
         );
@@ -4227,7 +4313,7 @@ const handleCallToolRequestImpl = async (request: any, extra: any) => {
         finalArgs,
         passthroughHeaders,
         false,
-        cookieSessionId,
+        stateId,
       );
       await settleHostedIfNeeded({
         success: true,
@@ -4279,13 +4365,14 @@ const handleCallToolRequestImpl = async (request: any, extra: any) => {
     // For servers with perSessionClient: true, use a per-session dedicated client
     let isolatedCtx: IsolatedClientContext | undefined;
     if (serverInfo.config?.perSessionClient && !hasCredentialTemplate(serverInfo.config)) {
-      if (!sessionId) {
+      const stateId = getToolStateId(serverInfo, sessionId);
+      if (!stateId) {
         throw new Error(
           `Server '${serverInfo.name}' requires per-session client isolation and is not yet available on stateless MCP requests`,
         );
       }
-      const isolated = await getOrCreateIsolatedClient(sessionId, serverInfo);
-      isolatedCtx = { sessionId, client: isolated.client, transport: isolated.transport };
+      const isolated = await getOrCreateIsolatedClient(stateId, serverInfo);
+      isolatedCtx = { sessionId: stateId, client: isolated.client, transport: isolated.transport };
     } else if (!serverInfo.client) {
       throw new Error(`Client not found for server: ${serverInfo.name}`);
     }
@@ -4389,6 +4476,7 @@ const handleCallToolRequestImpl = async (request: any, extra: any) => {
       isError: true,
     };
   } finally {
+    clientStateLease?.release();
     releaseOnDemandToolCall?.();
   }
 };

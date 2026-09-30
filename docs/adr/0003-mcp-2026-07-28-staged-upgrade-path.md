@@ -29,3 +29,11 @@ The path's shape comes from what the code actually binds to sessions. Most downs
 - Upstream list methods retain single-page discovery, including output-schema validation, instead of adopting v2's automatic pagination. The resilient validator still tolerates uncompilable upstream schemas.
 - Session rebuild still restores the Node transport's internal web-standard session state. Real v1-client integration tests cover that private SDK dependency; check them when updating SDK versions.
 - The v1 SDK is retained only under a development dependency alias for independent compatibility tests. Google GenAI's unused optional v1 SDK peer is excluded from production dependencies; MCPHub uses GenAI for embeddings, not its MCP integration.
+
+## Explicit state during the dual-stack period
+
+Modern stateful tool calls use the MCPHub extension `X-MCPHub-State-Id` (a client-generated UUID v4). The gateway binds it to the authenticated bearer credential, user and route, without creating a downstream MCP transport session. Anonymous callers cannot opt into shared state by supplying a header. Legacy requests retain their session-based lifecycle.
+
+The existing isolated upstream clients and OpenAPI cookie jars use this explicit state key. Active calls hold a lease; idle state expires after 30 minutes and the process admits at most 1,000 modern state scopes. Cleanup closes isolated upstream connections and clears the tracked cookie jars, including clients in principal runtimes. State is process-local; replicas require sticky routing and expiry/restart requires rebuilding application state.
+
+This change covers state ownership and lifecycle only. Cache hints, MCP Apps capability handling, and legacy SSE/session deprecation remain separate work under #1220. Tool-minted handles can be considered later if clients need correlation without custom HTTP headers.

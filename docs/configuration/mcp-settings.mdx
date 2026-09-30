@@ -204,6 +204,32 @@ It multiplies upstream connections (and stdio child processes) by the number of
 concurrent sessions, so leave it off for stateless servers.
 </Tip>
 
+### Stateful tools over MCP 2026-07-28
+
+Modern MCP requests do not create a downstream transport session. To call tools
+on servers with `perSessionClient: true` or OpenAPI `cookieSession: true`, enable
+bearer authentication and send `X-MCPHub-State-Id` with a client-generated UUID v4
+on each request that belongs to the same application workflow. For example:
+
+```http
+Authorization: Bearer <your-key>
+X-MCPHub-State-Id: 65b523af-e4d0-4d99-8e06-461a62a14967
+```
+
+This is an MCPHub extension, independent of `Mcp-Session-Id` and the MCP handshake.
+The same state ID reuses isolated upstream clients and cookie jars only within
+the same bearer credential, user and route. Use a different UUID for each
+independent workflow. Missing or invalid IDs, or unauthenticated requests, fail
+with a tool error for stateful tools; other tools need no state ID.
+
+State lives in memory on one MCPHub process. It expires after 30 minutes without
+an active call; running calls pin their state until completion. Expiry and shutdown
+close isolated upstream clients and clear cookie jars. The process admits at most
+1,000 modern state scopes; excess scopes receive a tool error until capacity is
+available. Restart, expiry, bearer rotation or a route change starts fresh state.
+Use sticky routing when running multiple replicas. Legacy `2025-11-25` clients
+continue using their existing downstream session lifecycle.
+
 ### File and System Servers
 
 #### Filesystem Server
