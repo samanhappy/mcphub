@@ -60,7 +60,12 @@ import { isPrivilegedServerConfig } from '../utils/serverConfigValidation.js';
 import { validateServerName } from '../utils/serverNameValidation.js';
 import { setCachedSystemConfig } from '../utils/systemConfigCache.js';
 import { DEFAULT_INSTALL_BASE_URL, withResolvedInstallBaseUrl } from '../utils/installBaseUrl.js';
-import { getSmartRoutingConfig, parseBooleanEnvVar } from '../utils/smartRouting.js';
+import {
+  getSmartRoutingConfig,
+  parseBooleanEnvVar,
+  parseFullSchemaTopN,
+  parseSimilarityThreshold,
+} from '../utils/smartRouting.js';
 import { previewOpenApiToolStats } from '../services/openApiToolStatsService.js';
 import { logger } from '../utils/logger.js';
 
@@ -1719,7 +1724,9 @@ export const updateSystemConfig = async (req: Request, res: Response): Promise<v
         typeof smartRouting.embeddingQueryPrefix === 'string' ||
         typeof smartRouting.embeddingDocumentPrefix === 'string' ||
         typeof smartRouting.embeddingMaxTokens === 'number' ||
-        smartRouting.embeddingMaxTokens === null);
+        smartRouting.embeddingMaxTokens === null ||
+        smartRouting.similarityThreshold !== undefined ||
+        smartRouting.fullSchemaTopN !== undefined);
 
     const hasToolResultCompressionUpdate =
       toolResultCompression &&
@@ -2141,6 +2148,36 @@ export const updateSystemConfig = async (req: Request, res: Response): Promise<v
       } else if (smartRouting.embeddingMaxTokens === null) {
         // null explicitly clears the override, restoring the per-model default
         systemConfig.smartRouting.embeddingMaxTokens = undefined;
+      }
+
+      // Search-time settings: null clears them back to the default, and neither
+      // one touches the stored embeddings, so they do not trigger a re-sync.
+      if (smartRouting.similarityThreshold === null) {
+        systemConfig.smartRouting.similarityThreshold = undefined;
+      } else if (smartRouting.similarityThreshold !== undefined) {
+        const threshold = parseSimilarityThreshold(smartRouting.similarityThreshold);
+        if (threshold === undefined) {
+          res.status(400).json({
+            success: false,
+            message: 'smartRouting.similarityThreshold must be a number between 0 and 1',
+          });
+          return;
+        }
+        systemConfig.smartRouting.similarityThreshold = threshold;
+      }
+
+      if (smartRouting.fullSchemaTopN === null) {
+        systemConfig.smartRouting.fullSchemaTopN = undefined;
+      } else if (smartRouting.fullSchemaTopN !== undefined) {
+        const topN = parseFullSchemaTopN(smartRouting.fullSchemaTopN);
+        if (topN === undefined) {
+          res.status(400).json({
+            success: false,
+            message: 'smartRouting.fullSchemaTopN must be a non-negative integer',
+          });
+          return;
+        }
+        systemConfig.smartRouting.fullSchemaTopN = topN;
       }
 
       // Check if we need to sync embeddings

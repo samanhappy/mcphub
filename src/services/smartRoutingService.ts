@@ -140,14 +140,42 @@ const projectToolForGroup = (tool: any, serverConfigsByName: Map<string, IGroupS
   };
 };
 
+const describeToolInputSchema = {
+  type: 'object',
+  properties: {
+    toolName: {
+      type: 'string',
+      description: 'The exact name of the tool to describe (from search_tools results)',
+    },
+  },
+  required: ['toolName'],
+};
+
+/** Sentence telling the model which search_tools hits come without an inputSchema. */
+const describeFullSchemaTopN = (fullSchemaTopN: number): string => {
+  if (fullSchemaTopN === 0) {
+    return 'Results do not include the inputSchema; use describe_tool to get it before calling a tool.';
+  }
+  const top =
+    fullSchemaTopN === 1
+      ? 'Only the first result includes'
+      : `Only the first ${fullSchemaTopN} results include`;
+  return `${top} the full inputSchema; use describe_tool to get it for any other result before calling it.`;
+};
+
 /**
  * Build meta-tool definitions for a given scope.
  * Pure function — no I/O, no config reads.
+ *
+ * `fullSchemaTopN` only applies to the standard mode: when set, search_tools
+ * says which hits come without a schema and describe_tool is listed so the
+ * model can fetch it. Unset keeps the standard mode's two tools as they were.
  */
 export const buildSmartRoutingMetaTools = (
   scopeDescription: string,
   serversList: string,
   progressiveDisclosure: boolean,
+  fullSchemaTopN?: number,
 ): any[] => {
   const tools: any[] = [];
 
@@ -190,16 +218,7 @@ Available servers: ${serversList}`,
         name: 'describe_tool',
         description:
           'STEP 2 of 3: Use this tool AFTER search_tools to get the full parameter schema for a specific tool. This provides the complete inputSchema needed to correctly invoke the tool with call_tool.\n\nWorkflow: search_tools → describe_tool → call_tool',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            toolName: {
-              type: 'string',
-              description: 'The exact name of the tool to describe (from search_tools results)',
-            },
-          },
-          required: ['toolName'],
-        },
+        inputSchema: describeToolInputSchema,
         annotations: {
           title: 'Describe Tool',
           readOnlyHint: true,
@@ -232,7 +251,9 @@ Available servers: ${serversList}`,
       },
     );
   } else {
-    // Standard mode: search_tools returns full schema
+    // Standard mode: search_tools returns full schema (for the top N hits if limited)
+    const schemaNote =
+      fullSchemaTopN === undefined ? '' : `\n\n${describeFullSchemaTopN(fullSchemaTopN)}`;
     tools.push(
       {
         name: 'search_tools',
@@ -240,7 +261,7 @@ Available servers: ${serversList}`,
 
 For optimal results, use specific queries matching your exact needs. Call this tool multiple times with different queries for different parts of complex tasks. Example queries: "image generation tools", "code review tools", "data analysis", "translation capabilities", etc. Results are sorted by relevance using vector similarity.
 
-After finding relevant tools, you MUST use the call_tool to actually execute them. The search_tools only finds tools - it doesn't execute them.
+After finding relevant tools, you MUST use the call_tool to actually execute them. The search_tools only finds tools - it doesn't execute them.${schemaNote}
 
 Available servers: ${serversList}`,
         inputSchema: {
@@ -265,6 +286,20 @@ Available servers: ${serversList}`,
           readOnlyHint: true,
         },
       },
+      ...(fullSchemaTopN === undefined
+        ? []
+        : [
+            {
+              name: 'describe_tool',
+              description:
+                'Use this tool to get the full parameter schema of a search_tools result that was returned without an inputSchema, before invoking it with call_tool.',
+              inputSchema: describeToolInputSchema,
+              annotations: {
+                title: 'Describe Tool',
+                readOnlyHint: true,
+              },
+            },
+          ]),
       {
         name: 'call_tool',
         description:
@@ -360,7 +395,12 @@ export const getSmartRoutingMetaToolDefinitions = async (
     group,
     smartRoutingConfig,
   );
-  return buildSmartRoutingMetaTools(scopeDescription, serversList, progressiveDisclosure);
+  return buildSmartRoutingMetaTools(
+    scopeDescription,
+    serversList,
+    progressiveDisclosure,
+    smartRoutingConfig.fullSchemaTopN,
+  );
 };
 
 /**
@@ -379,9 +419,31 @@ export const getSmartRoutingTools = async (
   );
 
   return {
-    tools: buildSmartRoutingMetaTools(scopeDescription, serversList, progressiveDisclosure),
+    tools: buildSmartRoutingMetaTools(
+      scopeDescription,
+      serversList,
+      progressiveDisclosure,
+      smartRoutingConfig.fullSchemaTopN,
+    ),
   };
 };
+
+/**
+ * Default similarity threshold when none is configured: lower for short, general
+ * queries (more diverse results), higher for long or explicitly precise ones.
+ */
+export const getHeuristicSimilarityThreshold = (query: string): number => {
+  if (query.length > 30 || query.includes('specific') || query.includes('exact')) {
+    return 0.4;
+  }
+  if (query.length < 10 || query.split(' ').length <= 2) {
+    return 0.2;
+  }
+  return 0.3;
+};
+
+/** Similarity rounded to two decimals, as reported to the model. */
+const roundScore = (similarity: number): number => Math.round(similarity * 100) / 100;
 
 /**
  * Handle the search_tools request for smart routing
@@ -397,18 +459,11 @@ export const handleSearchToolsRequest = async (
 
   const limitNum = Math.min(Math.max(parseInt(String(limit)) || 10, 1), 100);
 
-  // Dynamically adjust threshold based on query characteristics
-  let thresholdNum = 0.3; // Default threshold
-
-  // For more general queries, use a lower threshold to get more diverse results
-  if (query.length < 10 || query.split(' ').length <= 2) {
-    thresholdNum = 0.2;
-  }
-
-  // For very specific queries, use a higher threshold for more precise results
-  if (query.length > 30 || query.includes('specific') || query.includes('exact')) {
-    thresholdNum = 0.4;
-  }
+  const smartRoutingConfig = await getSmartRoutingConfig();
+  const progressiveDisclosure = smartRoutingConfig.progressiveDisclosure ?? false;
+  const fullSchemaTopN = progressiveDisclosure ? undefined : smartRoutingConfig.fullSchemaTopN;
+  const thresholdNum =
+    smartRoutingConfig.similarityThreshold ?? getHeuristicSimilarityThreshold(query);
 
   logger.log(`Using similarity threshold: ${thresholdNum} for query: "${query}"`);
 
@@ -439,10 +494,6 @@ export const handleSearchToolsRequest = async (
   const searchResults =
     servers.length > 0 ? await searchToolsByVector(query, limitNum, thresholdNum, servers) : [];
   logger.log(`Search results: ${JSON.stringify(searchResults)}`);
-
-  // Get smart routing config to check progressive disclosure setting
-  const smartRoutingConfig = await getSmartRoutingConfig();
-  const progressiveDisclosure = smartRoutingConfig.progressiveDisclosure ?? false;
 
   // Find actual tool information from serverInfos by serverName and toolName
   const resolvedTools = await Promise.all(
@@ -506,7 +557,13 @@ export const handleSearchToolsRequest = async (
       }
     }),
   );
-  const modelVisibleTools = resolvedTools.filter((tool) => tool !== null);
+  // `score` is the raw query-to-tool similarity, the value compared with the
+  // threshold; the order also weighs how well the tool's server matches.
+  const scoredTools = resolvedTools.map((tool, index) => {
+    const result = searchResults[index];
+    return tool && { ...tool, score: roundScore(result.toolSimilarity ?? result.similarity) };
+  });
+  const modelVisibleTools = scoredTools.filter((tool) => tool !== null);
 
   // Filter the resolved tools
   const filterResults = await Promise.all(
@@ -528,30 +585,57 @@ export const handleSearchToolsRequest = async (
   );
   const tools = modelVisibleTools
     .filter((_, i) => filterResults[i])
-    .map((tool) => projectToolForGroup(tool, serverConfigsByName));
+    .map((tool) => projectToolForGroup(tool, serverConfigsByName))
+    // Past the first fullSchemaTopN hits, keep only what is needed to pick a tool
+    .map((tool, index) =>
+      fullSchemaTopN === undefined || index < fullSchemaTopN
+        ? tool
+        : {
+            name: tool.name,
+            description: tool.description,
+            serverName: tool.serverName,
+            score: tool.score,
+          },
+    );
 
   // Build response based on mode
   let guideline: string;
   let nextSteps: string;
 
-  if (progressiveDisclosure) {
+  if (tools.length === 0) {
+    // Say what was searched, so the model can conclude the capability is not
+    // here instead of retrying the same search with other words
+    const searchedServers = servers
+      .filter((serverName) =>
+        getServerInfos().some(
+          (serverInfo) =>
+            serverInfo.name === serverName &&
+            serverInfo.status === 'connected' &&
+            serverInfo.enabled !== false,
+        ),
+      )
+      .map((serverName) => getExposedServerName(serverName, serverConfigsByName.get(serverName)));
     guideline =
-      tools.length > 0
-        ? "Found relevant tools. Use describe_tool to get the full parameter schema before calling. If these tools don't match exactly what you need, try another search with more specific keywords."
-        : 'No tools found. Try broadening your search or using different keywords.';
+      searchedServers.length > 0
+        ? `No tool matched the query with a similarity of at least ${thresholdNum}. Searched servers: ${searchedServers.join(', ')}. If none of them covers the task, it is not available here.`
+        : 'No tools found: no connected server is available to search.';
     nextSteps =
-      tools.length > 0
-        ? 'Use describe_tool with the toolName to get the full inputSchema, then use call_tool to execute.'
-        : 'Consider searching for related capabilities or more general terms.';
+      searchedServers.length > 0
+        ? 'Try different keywords for the same task, or tell the user that no available tool covers it.'
+        : 'Tell the user that no tools are currently available.';
+  } else if (progressiveDisclosure) {
+    guideline =
+      "Found tools, most relevant first; score is the query-to-tool similarity (0-1). Use describe_tool to get the full parameter schema before calling. If these tools don't match exactly what you need, try another search with more specific keywords.";
+    nextSteps =
+      'Use describe_tool with the toolName to get the full inputSchema, then use call_tool to execute.';
   } else {
-    guideline =
-      tools.length > 0
-        ? "Found relevant tools. If these tools don't match exactly what you need, try another search with more specific keywords."
-        : 'No tools found. Try broadening your search or using different keywords.';
-    nextSteps =
-      tools.length > 0
-        ? 'To use a tool, call call_tool with the toolName and required arguments.'
-        : 'Consider searching for related capabilities or more general terms.';
+    const trimmedSchemas = fullSchemaTopN !== undefined && tools.length > fullSchemaTopN;
+    guideline = `Found tools, most relevant first; score is the query-to-tool similarity (0-1).${
+      trimmedSchemas ? ` ${describeFullSchemaTopN(fullSchemaTopN)}` : ''
+    } If these tools don't match exactly what you need, try another search with more specific keywords.`;
+    nextSteps = trimmedSchemas
+      ? 'To use a tool, call call_tool with the toolName and required arguments; call describe_tool first for a result without an inputSchema.'
+      : 'To use a tool, call call_tool with the toolName and required arguments.';
   }
 
   const response = {

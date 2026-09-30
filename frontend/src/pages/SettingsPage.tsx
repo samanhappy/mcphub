@@ -448,6 +448,32 @@ function parseEmbeddingDimensionsForUpdate(
   return parsed !== currentValue ? parsed : undefined;
 }
 
+/**
+ * Parses an optional search setting (similarity threshold, full-schema top N).
+ * Empty clears it back to the default (null), a value `parse` accepts is sent
+ * as a number, and anything else or an unchanged value sends nothing.
+ */
+function parseOptionalSearchSettingForUpdate(
+  rawValue: string,
+  currentValue: number | null | undefined,
+  parse: (value: number) => boolean,
+): number | null | undefined {
+  const trimmed = rawValue.trim();
+  if (!trimmed) {
+    return currentValue == null ? undefined : null;
+  }
+
+  const parsed = Number(trimmed);
+  if (!Number.isFinite(parsed) || !parse(parsed)) {
+    return undefined;
+  }
+
+  return parsed !== currentValue ? parsed : undefined;
+}
+
+const isSimilarityThreshold = (value: number) => value >= 0 && value <= 1;
+const isFullSchemaTopN = (value: number) => Number.isInteger(value) && value >= 0;
+
 function parseBasePacingDelayForUpdate(
   rawValue: string,
   currentValue: number | null | undefined,
@@ -500,6 +526,9 @@ const SettingsPage: React.FC = () => {
     embeddingMaxTokens: string;
     embeddingQueryPrefix: string;
     embeddingDocumentPrefix: string;
+    // Empty string = default (query heuristic / every hit in full)
+    similarityThreshold: string;
+    fullSchemaTopN: string;
   }>({
     dbUrl: '',
     basePacingDelayMs: '',
@@ -519,6 +548,8 @@ const SettingsPage: React.FC = () => {
     embeddingMaxTokens: '',
     embeddingQueryPrefix: '',
     embeddingDocumentPrefix: '',
+    similarityThreshold: '',
+    fullSchemaTopN: '',
   });
 
   const [tempToolResultCompressionConfig, setTempToolResultCompressionConfig] = useState<{
@@ -686,6 +717,14 @@ const SettingsPage: React.FC = () => {
             : '',
         embeddingQueryPrefix: smartRoutingConfig.embeddingQueryPrefix || '',
         embeddingDocumentPrefix: smartRoutingConfig.embeddingDocumentPrefix || '',
+        similarityThreshold:
+          smartRoutingConfig.similarityThreshold != null
+            ? String(smartRoutingConfig.similarityThreshold)
+            : '',
+        fullSchemaTopN:
+          smartRoutingConfig.fullSchemaTopN != null
+            ? String(smartRoutingConfig.fullSchemaTopN)
+            : '',
       });
     }
   }, [smartRoutingConfig]);
@@ -918,7 +957,9 @@ const SettingsPage: React.FC = () => {
       | 'azureOpenaiEmbeddingModel'
       | 'embeddingMaxTokens'
       | 'embeddingQueryPrefix'
-      | 'embeddingDocumentPrefix',
+      | 'embeddingDocumentPrefix'
+      | 'similarityThreshold'
+      | 'fullSchemaTopN',
     value: string,
   ) => {
     setTempSmartRoutingConfig({
@@ -1136,6 +1177,29 @@ const SettingsPage: React.FC = () => {
     await updateNameSeparator(tempNameSeparator);
   };
 
+  // Labels of the search settings the API would reject. Saving stops on any of
+  // them instead of silently leaving the stored value in place.
+  const getInvalidSearchSettingLabels = (): string[] => {
+    const invalid: string[] = [];
+    const threshold = tempSmartRoutingConfig.similarityThreshold.trim();
+    if (threshold && !isSimilarityThreshold(Number(threshold))) {
+      invalid.push(t('settings.similarityThreshold'));
+    }
+    const topN = tempSmartRoutingConfig.fullSchemaTopN.trim();
+    if (topN && !isFullSchemaTopN(Number(topN))) {
+      invalid.push(t('settings.fullSchemaTopN'));
+    }
+    return invalid;
+  };
+
+  const reportInvalidSearchSettings = (): boolean => {
+    const invalid = getInvalidSearchSettingLabels();
+    if (invalid.length > 0) {
+      showToast(t('settings.invalidSearchSettings', { fields: invalid.join(', ') }), 'error');
+    }
+    return invalid.length > 0;
+  };
+
   const handleSmartRoutingEnabledChange = async (value: boolean) => {
     // If enabling Smart Routing, validate required fields and save any unsaved changes
     if (value) {
@@ -1194,6 +1258,9 @@ const SettingsPage: React.FC = () => {
             fields: missingFields.join(', '),
           }),
         );
+        return;
+      }
+      if (reportInvalidSearchSettings()) {
         return;
       }
 
@@ -1286,6 +1353,22 @@ const SettingsPage: React.FC = () => {
       if (parsedDimensions !== undefined) {
         updates.embeddingDimensions = parsedDimensions;
       }
+      const parsedThreshold = parseOptionalSearchSettingForUpdate(
+        tempSmartRoutingConfig.similarityThreshold,
+        smartRoutingConfig.similarityThreshold,
+        isSimilarityThreshold,
+      );
+      if (parsedThreshold !== undefined) {
+        updates.similarityThreshold = parsedThreshold;
+      }
+      const parsedTopN = parseOptionalSearchSettingForUpdate(
+        tempSmartRoutingConfig.fullSchemaTopN,
+        smartRoutingConfig.fullSchemaTopN,
+        isFullSchemaTopN,
+      );
+      if (parsedTopN !== undefined) {
+        updates.fullSchemaTopN = parsedTopN;
+      }
 
       // Save all changes in a single batch update
       await updateSmartRoutingConfigBatch(updates);
@@ -1296,6 +1379,9 @@ const SettingsPage: React.FC = () => {
   };
 
   const handleSaveSmartRoutingConfig = async () => {
+    if (reportInvalidSearchSettings()) {
+      return;
+    }
     const updates: any = {};
 
     if (tempSmartRoutingConfig.dbUrl !== smartRoutingConfig.dbUrl) {
@@ -1378,6 +1464,22 @@ const SettingsPage: React.FC = () => {
     );
     if (parsedEmbeddingDimensions !== undefined) {
       updates.embeddingDimensions = parsedEmbeddingDimensions;
+    }
+    const parsedSimilarityThreshold = parseOptionalSearchSettingForUpdate(
+      tempSmartRoutingConfig.similarityThreshold,
+      smartRoutingConfig.similarityThreshold,
+      isSimilarityThreshold,
+    );
+    if (parsedSimilarityThreshold !== undefined) {
+      updates.similarityThreshold = parsedSimilarityThreshold;
+    }
+    const parsedFullSchemaTopN = parseOptionalSearchSettingForUpdate(
+      tempSmartRoutingConfig.fullSchemaTopN,
+      smartRoutingConfig.fullSchemaTopN,
+      isFullSchemaTopN,
+    );
+    if (parsedFullSchemaTopN !== undefined) {
+      updates.fullSchemaTopN = parsedFullSchemaTopN;
     }
 
     if (Object.keys(updates).length > 0) {
@@ -2759,6 +2861,50 @@ const SettingsPage: React.FC = () => {
                     disabled={loading}
                   />
                   {renderEnvOverrideWarning('embeddingDocumentPrefix')}
+                </div>
+
+                <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-md">
+                  <div className="mb-2">
+                    <h3 className="font-medium text-gray-700">{t('settings.searchResults')}</h3>
+                    <p className="text-xs text-gray-500 mt-1">
+                      {t('settings.searchResultsDescription')}
+                    </p>
+                  </div>
+                  <label htmlFor="similarityThreshold" className="block text-xs text-gray-600 mt-2">
+                    {t('settings.similarityThreshold')}
+                  </label>
+                  <input
+                    id="similarityThreshold"
+                    type="number"
+                    min="0"
+                    max="1"
+                    step="0.05"
+                    value={tempSmartRoutingConfig.similarityThreshold}
+                    onChange={(e) =>
+                      handleSmartRoutingConfigChange('similarityThreshold', e.target.value)
+                    }
+                    placeholder={t('settings.similarityThresholdPlaceholder')}
+                    className="mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm form-input"
+                    disabled={loading}
+                  />
+                  {renderEnvOverrideWarning('similarityThreshold')}
+                  <label htmlFor="fullSchemaTopN" className="block text-xs text-gray-600 mt-3">
+                    {t('settings.fullSchemaTopN')}
+                  </label>
+                  <input
+                    id="fullSchemaTopN"
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={tempSmartRoutingConfig.fullSchemaTopN}
+                    onChange={(e) =>
+                      handleSmartRoutingConfigChange('fullSchemaTopN', e.target.value)
+                    }
+                    placeholder={t('settings.fullSchemaTopNPlaceholder')}
+                    className="mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm form-input"
+                    disabled={loading}
+                  />
+                  {renderEnvOverrideWarning('fullSchemaTopN')}
                 </div>
 
                 <div
