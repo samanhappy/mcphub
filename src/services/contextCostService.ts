@@ -73,8 +73,11 @@ const shortName = (full: string, server: string, sep: string): string => {
 const isSelected = (selection: string[] | 'all' | undefined, short: string): boolean =>
   selection === undefined || selection === 'all' || selection.includes(short);
 
-/** Compute the Smart Routing meta-tool token cost for a group scope. */
-const smartRoutingCostFor = async (groupName: string): Promise<SmartRoutingCost> => {
+/** Smart Routing cost for a group scope: its meta-tools plus the pinned tools' cost. */
+const smartRoutingCostFor = async (
+  groupName: string,
+  pinnedCost: number,
+): Promise<SmartRoutingCost> => {
   const ref = `$smart/${groupName}`;
   const sumCost = async (tools: any[]): Promise<number> => {
     const counts = await Promise.all(
@@ -94,7 +97,10 @@ const smartRoutingCostFor = async (groupName: string): Promise<SmartRoutingCost>
     getSmartRoutingMetaToolDefinitions(ref, false),
     getSmartRoutingMetaToolDefinitions(ref, true),
   ]);
-  return { base: await sumCost(baseTools), progressiveDisclosure: await sumCost(pdTools) };
+  return {
+    base: (await sumCost(baseTools)) + pinnedCost,
+    progressiveDisclosure: (await sumCost(pdTools)) + pinnedCost,
+  };
 };
 
 /** Per-group Context Footprint — Direct (gross/exposed) + Smart Routing costs. */
@@ -113,6 +119,7 @@ export async function getGroupCosts(): Promise<GroupCost[]> {
       const members: IGroupServerConfig[] = normalizeGroupServers(group.servers);
       let exposed = 0;
       let gross = 0;
+      let pinnedCost = 0;
       let connectedCount = 0;
 
       for (const member of members) {
@@ -131,6 +138,9 @@ export async function getGroupCosts(): Promise<GroupCost[]> {
           const key = item.kind === 'resource' ? item.name : shortName(item.name, member.name, sep);
           if (item.enabled && isSelected(selection, key)) {
             exposed += item.cost;
+            if (item.kind === 'tool' && member.pinnedTools?.includes(key)) {
+              pinnedCost += item.cost;
+            }
           }
         }
       }
@@ -141,7 +151,7 @@ export async function getGroupCosts(): Promise<GroupCost[]> {
         connectedCount,
         totalCount: members.length,
         direct: { exposed, gross },
-        smartRouting: smartEnabled ? await smartRoutingCostFor(group.name) : null,
+        smartRouting: smartEnabled ? await smartRoutingCostFor(group.name, pinnedCost) : null,
       };
     }),
   );

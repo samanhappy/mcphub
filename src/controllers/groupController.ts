@@ -38,6 +38,14 @@ const isValidServerAlias = (value: unknown): boolean => {
   return value === undefined || typeof value === 'string';
 };
 
+const isValidPinnedTools = (value: unknown): boolean => {
+  return (
+    value === undefined || (Array.isArray(value) && value.every((item) => typeof item === 'string'))
+  );
+};
+
+const PINNED_TOOLS_MESSAGE = 'Server pinnedTools must be an array of tool names';
+
 const validateGroupServersConfig = (servers: unknown): string | null => {
   if (servers === undefined) {
     return null;
@@ -64,6 +72,10 @@ const validateGroupServersConfig = (servers: unknown): string | null => {
 
     if (!isValidServerAlias(serverConfig.alias)) {
       return 'Server alias must be a string when provided';
+    }
+
+    if (!isValidPinnedTools(serverConfig.pinnedTools)) {
+      return PINNED_TOOLS_MESSAGE;
     }
 
     if (
@@ -238,6 +250,10 @@ export const batchCreateGroups = async (req: Request, res: Response): Promise<vo
                 valid: false,
                 message: 'Server alias must be a string when provided',
               };
+            }
+
+            if (!isValidPinnedTools(server.pinnedTools)) {
+              return { valid: false, message: PINNED_TOOLS_MESSAGE };
             }
 
             if (
@@ -445,6 +461,10 @@ export const updateGroupServersBatch = async (req: Request, res: Response): Prom
             success: false,
             message: 'Server alias must be a string when provided',
           });
+          return;
+        }
+        if (!isValidPinnedTools(server.pinnedTools)) {
+          res.status(400).json({ success: false, message: PINNED_TOOLS_MESSAGE });
           return;
         }
         if (

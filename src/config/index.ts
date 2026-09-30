@@ -205,12 +205,20 @@ export function replaceEnvVars(
   return input;
 }
 
+const isVarNameStart = (char: string | undefined): boolean =>
+  char !== undefined && ((char >= 'A' && char <= 'Z') || char === '_');
+
+const isVarNameChar = (char: string | undefined): boolean =>
+  isVarNameStart(char) || (char !== undefined && char >= '0' && char <= '9');
+
 /**
- * Expand `${VAR}` references via a linear scan. A manual scan is used instead
- * of a regular expression so that adversarial input (many '${' sequences)
- * cannot trigger catastrophic backtracking.
+ * Expand `${VAR}` and `$VAR` references in a single linear scan. Substituted
+ * values are copied as-is and never scanned again, so a secret containing
+ * `$` (e.g. `Pa$SWORD`) is not expanded a second time. A manual scan is used
+ * instead of a regular expression so that adversarial input (many '${'
+ * sequences) cannot trigger catastrophic backtracking.
  */
-const expandDollarBraceVars = (
+const expandVarReferences = (
   value: string,
   envSource: Record<string, string | undefined>,
 ): string => {
@@ -225,6 +233,15 @@ const expandDollarBraceVars = (
         i = closeIndex + 1;
         continue;
       }
+    } else if (value[i] === '$' && isVarNameStart(value[i + 1])) {
+      // $VAR format (common on Unix-like systems)
+      let end = i + 2;
+      while (isVarNameChar(value[end])) {
+        end += 1;
+      }
+      result += envSource[value.slice(i + 1, end)] || '';
+      i = end;
+      continue;
     }
     result += value[i];
     i += 1;
@@ -244,11 +261,7 @@ export const expandEnvVars = (
   if (typeof value !== 'string') {
     return String(value);
   }
-  // Replace ${VAR} format
-  let result = expandDollarBraceVars(value, envSource);
-  // Also replace $VAR format (common on Unix-like systems)
-  result = result.replace(/\$([A-Z_][A-Z0-9_]*)/g, (_, key) => envSource[key] || '');
-  return result.trim();
+  return expandVarReferences(value, envSource).trim();
 };
 
 export default defaultConfig;

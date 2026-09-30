@@ -11,8 +11,12 @@ import {
   initializeDatabase,
   isDatabaseConnected,
 } from '../db/connection.js';
-import { saveToolsAsVectorEmbeddings } from '../services/vectorSearchService.js';
-import { getServerToolsForPrincipal, getServersInfo } from '../services/mcpService.js';
+import {
+  getServerToolsForPrincipal,
+  getServersInfo,
+  syncCredentialServerToolEmbeddings,
+  syncToolsAsVectorEmbeddings,
+} from '../services/mcpService.js';
 
 /**
  * Resolve the effective embedding model that the vector store is (or will be)
@@ -444,12 +448,22 @@ export const reindexSmartRouting = async (
       }
 
       try {
-        await saveToolsAsVectorEmbeddings(server.name, tools, { reportProgress: true });
+        // The same sync a connect runs, so the rows written here (description
+        // overrides, and for credential servers the disabled-tool mask) are the
+        // ones the next connect expects and skips.
+        let toolCount = tools.length;
+        if (hasCredentialTemplate(server.config)) {
+          toolCount = await syncCredentialServerToolEmbeddings(server.name, tools, {
+            reportProgress: true,
+          });
+        } else {
+          await syncToolsAsVectorEmbeddings(server.name, tools, { reportProgress: true });
+        }
         syncedServers += 1;
-        totalTools += tools.length;
+        totalTools += toolCount;
         results.push({
           serverName: server.name,
-          toolCount: tools.length,
+          toolCount,
           ok: true,
           ...(principals ? { principals } : {}),
         });

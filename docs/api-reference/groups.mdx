@@ -187,6 +187,7 @@ Each detailed server object accepts these optional capability selectors:
 - `tools`: `"all"` or an array of tool names.
 - `prompts`: `"all"` or an array of prompt names.
 - `resources`: `"all"` or an array of resource URIs.
+- `pinnedTools`: an array of bare tool names listed next to the meta-tools on the group's `$smart/{group}` endpoint (see [Pinned Tools](/features/smart-routing#pinned-tools)). Only pins that are also selected in `tools` take effect.
 
 ---
 
@@ -231,7 +232,7 @@ Updates the tool selection for a specific server within a group.
   - `:id` (string, required): The ID or name of the group.
   - `:serverName` (string, required): The name of the server to update.
 - **Body**:
-  - `tools` (string or array of strings, required): Either the string `"all"` to enable all tools, or an array of tool names to enable specifically.
+  - `tools` (string or array of strings, required): Either the string `"all"` to enable all tools, or an array of tool names to enable specifically. Pins (`pinnedTools`) of tools left out of the array are removed.
 - **Request Example**:
   ```json
   {

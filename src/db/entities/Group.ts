@@ -29,6 +29,7 @@ export class Group {
         tools?: string[] | 'all';
         prompts?: string[] | 'all';
         resources?: string[] | 'all';
+        pinnedTools?: string[];
       }
   >;
 
