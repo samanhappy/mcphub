@@ -17,6 +17,10 @@ server.setRequestHandler('tools/list', async () => ({
       name: 'identity',
       inputSchema: { type: 'object', properties: { delay: { type: 'number' } } },
     },
+    // A credential with more rights lists more tools, as upstream servers often do
+    ...(process.env.PERSONAL_KEY?.startsWith('full-')
+      ? [{ name: 'rotate_identity', inputSchema: { type: 'object', properties: {} } }]
+      : []),
   ],
 }));
 server.setRequestHandler('tools/call', async (request) => {

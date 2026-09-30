@@ -1112,7 +1112,10 @@ export const updateServer = async (req: Request, res: Response): Promise<void> =
 
       // Drop embeddings stored under the old name so search_tools does not
       // advertise phantom tools; addOrUpdateServer below regenerates them
-      // under the new name. A failure here must not abort the rename.
+      // under the new name. A credential server never connects globally, so
+      // its rows come back on the first per-user connect after a user binds
+      // credentials again (the bindings were dropped above), or on a reindex.
+      // A failure here must not abort the rename.
       try {
         await removeServerToolEmbeddings(name);
       } catch (error) {

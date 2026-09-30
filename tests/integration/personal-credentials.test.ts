@@ -51,6 +51,11 @@ import {
   handleReadResourceRequest,
 } from '../../src/services/mcpService.js';
 import { executeToolViaOpenAPI } from '../../src/controllers/openApiController.js';
+import {
+  removeServerToolEmbeddings,
+  removeToolEmbeddings,
+  saveToolsAsVectorEmbeddings,
+} from '../../src/services/vectorSearchService.js';
 import { PrincipalRuntimeService } from '../../src/services/principalRuntimeService.js';
 import { UserContextService } from '../../src/services/userContextService.js';
 import { createOAuthProvider } from '../../src/services/mcpOAuthProvider.js';
@@ -66,6 +71,7 @@ import type { McpSettings } from '../../src/types/index.js';
 jest.mock('../../src/services/oauthService.js', () => ({ initializeAllOAuthClients: jest.fn() }));
 jest.mock('../../src/services/vectorSearchService.js', () => ({
   removeServerToolEmbeddings: jest.fn(),
+  removeToolEmbeddings: jest.fn(),
   saveToolsAsVectorEmbeddings: jest.fn(),
   syncAllServerToolsEmbeddings: jest.fn(),
 }));
@@ -767,4 +773,74 @@ test('HTTP handshake failures survive acquisition wrappers without credential bl
   } finally {
     log.mockRestore();
   }
+});
+
+const settleUntil = async (done: () => boolean) => {
+  for (let attempt = 0; attempt < 100 && !done(); attempt += 1) {
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  }
+};
+
+test('a per-user connect adds the tools it lists, and removes by name only the disabled ones', async () => {
+  const save = jest.mocked(saveToolsAsVectorEmbeddings);
+  const removeServer = jest.mocked(removeServerToolEmbeddings);
+  const removeTools = jest.mocked(removeToolEmbeddings);
+  const name = `shared${getNameSeparator()}identity`;
+  save.mockClear();
+  // A rotated binding forces a fresh per-user runtime on the next request.
+  await bind(alice, 'index-sentinel');
+  await (await connect(alice)).listTools();
+  await settleUntil(() => save.mock.calls.length > 0);
+  // One user's list is not the whole server's: add and refresh, never prune
+  expect(save).toHaveBeenCalledWith('shared', [expect.objectContaining({ name })], {
+    partial: true,
+  });
+  expect(JSON.stringify(save.mock.calls)).not.toContain('index-sentinel');
+
+  const original = (await getServerDao().findById('shared'))?.tools ?? {};
+  await getServerDao().updateTools('shared', { identity: { enabled: false } });
+  try {
+    save.mockClear();
+    removeServer.mockClear();
+    removeTools.mockClear();
+    // The tools config is part of the runtime revision, so this reconnects.
+    await (await connect(alice)).listTools();
+    await settleUntil(() => removeTools.mock.calls.length > 0);
+    expect(removeTools).toHaveBeenCalledWith('shared', [name]);
+    expect(removeServer).not.toHaveBeenCalled();
+    expect(save).not.toHaveBeenCalled();
+  } finally {
+    await getServerDao().updateTools('shared', original);
+  }
+});
+
+test('a user who sees fewer tools does not remove the others from the shared index', async () => {
+  const save = jest.mocked(saveToolsAsVectorEmbeddings);
+  const removeServer = jest.mocked(removeServerToolEmbeddings);
+  const removeTools = jest.mocked(removeToolEmbeddings);
+  const separator = getNameSeparator();
+  const listedNames = (call: unknown[]) => (call[1] as Array<{ name: string }>).map((t) => t.name);
+
+  // Alice's credential lists identity and rotate_identity, Bob's only identity
+  await bind(alice, 'full-alice');
+  save.mockClear();
+  await (await connect(alice)).listTools();
+  await settleUntil(() => save.mock.calls.length > 0);
+  expect(listedNames(save.mock.calls[0])).toEqual([
+    `shared${separator}identity`,
+    `shared${separator}rotate_identity`,
+  ]);
+
+  await bind(bob, 'bob-only');
+  save.mockClear();
+  removeServer.mockClear();
+  removeTools.mockClear();
+  await (await connect(bob)).listTools();
+  await settleUntil(() => save.mock.calls.length > 0);
+
+  expect(listedNames(save.mock.calls[0])).toEqual([`shared${separator}identity`]);
+  // partial: the vector store leaves rotate_identity's row alone
+  expect(save.mock.calls[0][2]).toEqual({ partial: true });
+  expect(removeServer).not.toHaveBeenCalled();
+  expect(removeTools).not.toHaveBeenCalled();
 });

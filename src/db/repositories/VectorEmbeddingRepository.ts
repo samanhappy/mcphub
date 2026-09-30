@@ -300,21 +300,22 @@ export class VectorEmbeddingRepository extends BaseRepository<VectorEmbedding> {
   async getToolIdentityByServerNameAndModel(
     serverName: string,
     model: string,
-  ): Promise<Array<{ contentId: string; toolSetHash?: string }>> {
+  ): Promise<Array<{ contentId: string; toolSetHash?: string; textContent?: string }>> {
     // Use raw SQL to bypass TypeORM's entity mapping for pgvector columns.
     // TypeORM's QueryBuilder with getMany() and .andWhere('ve.embedding IS NOT NULL')
     // on a vector-type column may silently return 0 rows due to type-mapping issues.
     const prefix = `${escapeLikePattern(serverName)}:%`;
 
-    const rows: Array<{ content_id: string; metadata: unknown }> = await getAppDataSource().query(
-      `SELECT content_id, metadata
+    const rows: Array<{ content_id: string; metadata: unknown; text_content: string | null }> =
+      await getAppDataSource().query(
+        `SELECT content_id, metadata, text_content
        FROM vector_embeddings
        WHERE content_type = $1
          AND content_id LIKE $2 ESCAPE '\\'
          AND model = $3
          AND embedding IS NOT NULL`,
-      ['tool', prefix, model],
-    );
+        ['tool', prefix, model],
+      );
 
     return rows.map((row) => {
       const rawMeta = row.metadata;
@@ -333,6 +334,7 @@ export class VectorEmbeddingRepository extends BaseRepository<VectorEmbedding> {
       return {
         contentId: row.content_id,
         toolSetHash: meta?.toolSetHash?.toString(),
+        textContent: row.text_content ?? undefined,
       };
     });
   }
@@ -366,6 +368,27 @@ export class VectorEmbeddingRepository extends BaseRepository<VectorEmbedding> {
       return result.rowCount ?? 0;
     } catch (error) {
       logger.error('Error deleting stale tool embeddings for server', serverName, error);
+      return 0;
+    }
+  }
+
+  /**
+   * Delete specific tool embeddings, e.g. tools that were disabled.
+   * @param contentIds content_ids of the tools to delete (e.g. "server:tool-name")
+   * @returns Number of deleted rows
+   */
+  async deleteToolEmbeddingsByContentIds(contentIds: string[]): Promise<number> {
+    if (contentIds.length === 0) return 0;
+    try {
+      const result = await getAppDataSource().query(
+        `DELETE FROM vector_embeddings
+         WHERE content_type = $1
+           AND content_id IN (SELECT unnest($2::text[]))`,
+        ['tool', contentIds],
+      );
+      return result.rowCount ?? result[1] ?? 0;
+    } catch (error) {
+      logger.error('Error deleting tool embeddings', contentIds, error);
       return 0;
     }
   }
