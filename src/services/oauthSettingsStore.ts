@@ -154,7 +154,7 @@ export const updatePendingAuthorization = async (
  */
 export const clearOAuthData = async (
   serverName: string,
-  scope: 'all' | 'client' | 'tokens' | 'verifier',
+  scope: 'all' | 'client' | 'tokens' | 'verifier' | 'discovery',
 ): Promise<ServerConfigWithOAuth | undefined> => {
   return mutateOAuthSettings(serverName, ({ oauth }) => {
     if (scope === 'tokens' || scope === 'all') {
@@ -165,6 +165,12 @@ export const clearOAuthData = async (
     if (scope === 'client' || scope === 'all') {
       delete oauth.clientId;
       delete oauth.clientSecret;
+    }
+
+    if (scope === 'discovery' && oauth.pendingAuthorization) {
+      delete oauth.pendingAuthorization.discoveryState;
+      delete oauth.pendingAuthorization.issuer;
+      delete oauth.pendingAuthorization.issRequired;
     }
 
     if (scope === 'verifier' || scope === 'all') {

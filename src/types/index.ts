@@ -4,6 +4,7 @@ import {
   SSEClientTransport,
   StreamableHTTPClientTransport,
   RequestOptions,
+  type OAuthDiscoveryState,
 } from '@modelcontextprotocol/client';
 import { SmartRoutingConfig } from '../utils/smartRouting.js';
 
@@ -505,6 +506,7 @@ export interface ServerConfig {
       issRequired?: boolean;
       state?: string;
       codeVerifier?: string;
+      discoveryState?: OAuthDiscoveryState;
       createdAt?: number;
     };
   };

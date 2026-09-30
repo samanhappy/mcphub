@@ -63,6 +63,7 @@ type OAuthClientInformationWithAuthMethod = OAuthClientInformation &
 export class MCPHubOAuthProvider implements OAuthClientProvider {
   private serverName: string;
   private serverConfig: ServerConfig;
+  private _discoveryState?: OAuthDiscoveryState;
   private _issuer?: string;
   private _issRequired?: boolean;
   private _codeVerifier?: string;
@@ -327,6 +328,9 @@ export class MCPHubOAuthProvider implements OAuthClientProvider {
 
     this._codeVerifier = undefined;
     this._currentState = undefined;
+    this._discoveryState = undefined;
+    this._issuer = undefined;
+    this._issRequired = undefined;
 
     const serverInfo = getServerByName(this.serverName);
     if (serverInfo) {
@@ -339,6 +343,7 @@ export class MCPHubOAuthProvider implements OAuthClientProvider {
   // Capture the SDK's actual discovery result before redirecting. Keep this
   // snapshot with the pending flow so callback validation survives restarts.
   saveDiscoveryState(state: OAuthDiscoveryState): void {
+    this._discoveryState = state;
     const metadata = state.authorizationServerMetadata;
     this._issuer = metadata?.issuer;
     this._issRequired = Boolean(
@@ -346,6 +351,18 @@ export class MCPHubOAuthProvider implements OAuthClientProvider {
         'authorization_response_iss_parameter_supported' in metadata &&
         metadata.authorization_response_iss_parameter_supported === true,
     );
+  }
+
+  async discoveryState(): Promise<OAuthDiscoveryState | undefined> {
+    if (this._discoveryState) return this._discoveryState;
+
+    const storedConfig = await loadServerConfig(this.serverName);
+    const state = storedConfig?.oauth?.pendingAuthorization?.discoveryState;
+    if (state && storedConfig) {
+      this.serverConfig = storedConfig;
+      this.saveDiscoveryState(state);
+    }
+    return state;
   }
 
   /**
@@ -372,6 +389,7 @@ export class MCPHubOAuthProvider implements OAuthClientProvider {
     try {
       const pendingUpdate: Partial<NonNullable<ServerConfig['oauth']>['pendingAuthorization']> = {
         authorizationUrl,
+        discoveryState: this._discoveryState,
         issuer: this._issuer ?? this.serverConfig.oauth?.dynamicRegistration?.issuer,
         issRequired: this._issRequired,
         state,
@@ -390,6 +408,7 @@ export class MCPHubOAuthProvider implements OAuthClientProvider {
         serverName: this.serverName,
         error,
       });
+      throw error;
     }
 
     // Store the authorization URL in ServerInfo for the frontend to access
@@ -474,7 +493,14 @@ export class MCPHubOAuthProvider implements OAuthClientProvider {
    * Invalidate cached OAuth credentials when the SDK detects they are no longer valid.
    * This keeps stored configuration in sync and forces a fresh authorization flow.
    */
-  async invalidateCredentials(scope: 'all' | 'client' | 'tokens' | 'verifier'): Promise<void> {
+  async invalidateCredentials(
+    scope: 'all' | 'client' | 'tokens' | 'verifier' | 'discovery',
+  ): Promise<void> {
+    if (scope === 'discovery' || scope === 'verifier' || scope === 'all') {
+      this._discoveryState = undefined;
+      this._issuer = undefined;
+      this._issRequired = undefined;
+    }
     const storedConfig = await loadServerConfig(this.serverName);
 
     if (!storedConfig?.oauth) {
@@ -521,6 +547,10 @@ export class MCPHubOAuthProvider implements OAuthClientProvider {
       }
     }
 
+    if (scope === 'discovery' && currentConfig.oauth.pendingAuthorization) {
+      assignUpdatedConfig(await clearOAuthData(this.serverName, 'discovery'));
+    }
+
     if (scope === 'verifier' || scope === 'all') {
       this._codeVerifier = undefined;
       this._currentState = undefined;
@@ -557,7 +587,10 @@ const prepopulateScopesIfMissing = async (
   }
 
   try {
-    const scopes = await fetchScopesFromServer(serverConfig.url, await createOAuthFetch(serverConfig));
+    const scopes = await fetchScopesFromServer(
+      serverConfig.url,
+      await createOAuthFetch(serverConfig),
+    );
     // `scopes !== undefined`: persist and honor an explicitly empty result too (see #1227).
     if (scopes !== undefined) {
       // Update the in-memory config first: if the DAO write below throws, this connection

@@ -126,7 +126,7 @@ describe('oauthCallbackController iss validation', () => {
     );
 
     expect(res.statusCode).toBe(200);
-    expect(originalFinishAuth).toHaveBeenCalledWith('auth-code');
+    expect(originalFinishAuth).toHaveBeenCalledWith('auth-code', 'https://as.example.com');
   });
 
   it('rejects a mismatched iss without redeeming the code', async () => {
@@ -170,7 +170,7 @@ describe('oauthCallbackController iss validation', () => {
     );
 
     expect(res.statusCode).toBe(200);
-    expect(originalFinishAuth).toHaveBeenCalledWith('auth-code');
+    expect(originalFinishAuth).toHaveBeenCalledWith('auth-code', undefined);
   });
 
   it('reconnects a previously initialized client with the refreshed transport', async () => {
@@ -362,7 +362,7 @@ describe('oauthCallbackController iss validation', () => {
     );
 
     expect(res.statusCode).toBe(200);
-    expect(originalFinishAuth).toHaveBeenCalledWith('auth-code');
+    expect(originalFinishAuth).toHaveBeenCalledWith('auth-code', 'https://as.example.com');
   });
 
   it('rejects a replayed state after the authorization completed', async () => {
