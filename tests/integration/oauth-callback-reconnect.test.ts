@@ -99,7 +99,7 @@ describe('OAuth callback reconnect integration', () => {
         expect(finishAuth).not.toHaveBeenCalled();
         return;
       }
-      expect(finishAuth).toHaveBeenCalledWith('auth-code');
+      expect(finishAuth).toHaveBeenCalledWith('auth-code', iss);
       expect(connectClientWithDiagnostics).toHaveBeenCalledWith(
         serverInfo.client,
         refreshedTransport,

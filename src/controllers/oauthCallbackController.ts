@@ -371,7 +371,7 @@ export const handleOAuthCallback = async (req: Request, res: Response) => {
       try {
         logger.log('Calling transport.finishAuth for server', { serverName: serverInfo.name });
         const currentTransport = serverInfo.transport as any;
-        await currentTransport.finishAuth(codeParam);
+        await currentTransport.finishAuth(codeParam, issParam);
 
         // The state has served its purpose: the code was exchanged and the
         // server now holds the resulting tokens. Mark it consumed so a replayed
