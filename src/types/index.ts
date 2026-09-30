@@ -34,6 +34,7 @@ export interface IGroupServerConfig {
   tools?: string[] | 'all'; // Array of specific tool names to include, or 'all' for all tools (default: 'all')
   prompts?: string[] | 'all'; // Array of specific prompt names to include, or 'all' for all prompts (default: 'all')
   resources?: string[] | 'all'; // Array of specific resource URIs to include, or 'all' for all resources (default: 'all')
+  pinnedTools?: string[]; // Tool names listed next to the meta-tools on $smart/<group> (must also be selected in tools)
 }
 
 // Market server types

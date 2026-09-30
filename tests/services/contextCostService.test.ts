@@ -265,4 +265,40 @@ describe('getGroupCosts', () => {
     expect(costs[0].smartRouting!.progressiveDisclosure).toBeGreaterThan(0);
     expect(costs[0].smartRouting!.progressiveDisclosure).toBeGreaterThan(costs[0].smartRouting!.base);
   });
+
+  it('(e) pinned tools add their definition cost to the smartRouting footprint', async () => {
+    const toolA = { name: `s1${SEP}a`, description: 'tool a description', inputSchema: { type: 'object', properties: {} }, enabled: true };
+    const toolB = { name: `s1${SEP}b`, description: 'tool b description', inputSchema: { type: 'object', properties: {} }, enabled: true };
+    const info = { name: 's1', status: 'connected', error: null, tools: [toolA, toolB], prompts: [], resources: [] };
+    mockGetServersInfo.mockResolvedValue([info]);
+
+    mockGetAllGroups.mockResolvedValue([
+      { id: 'g1', name: 'unpinned', servers: [{ name: 's1', tools: 'all' }] },
+      { id: 'g2', name: 'pinned', servers: [{ name: 's1', tools: 'all', pinnedTools: ['a'] }] },
+      // A pin outside the tools selection is not exposed, so it costs nothing
+      { id: 'g3', name: 'unselected', servers: [{ name: 's1', tools: ['b'], pinnedTools: ['a'] }] },
+    ]);
+    mockNormalizeGroupServers.mockImplementation((servers: string[] | IGroupServerConfig[]) =>
+      servers.map((s: string | IGroupServerConfig) =>
+        typeof s === 'string'
+          ? { name: s, tools: 'all' as const, prompts: 'all' as const, resources: 'all' as const }
+          : { tools: 'all' as const, prompts: 'all' as const, resources: 'all' as const, ...s },
+      ),
+    );
+    mockGetSmartRoutingConfig.mockResolvedValue({ enabled: true });
+    mockGetSmartRoutingMetaToolDefinitions.mockResolvedValue([
+      { name: 'search_tools', description: 'search', inputSchema: { type: 'object' } },
+    ]);
+
+    const costs = await getGroupCosts();
+    const toolACost = (await serverCostFromInfo(info as ServerInfo)).items.find(
+      (item) => item.name === toolA.name,
+    )!.cost;
+    const [unpinned, pinned, unselected] = costs.map((cost) => cost.smartRouting!);
+
+    expect(toolACost).toBeGreaterThan(0);
+    expect(pinned.base).toBe(unpinned.base + toolACost);
+    expect(pinned.progressiveDisclosure).toBe(unpinned.progressiveDisclosure + toolACost);
+    expect(unselected.base).toBe(unpinned.base);
+  });
 });
