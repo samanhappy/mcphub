@@ -57,6 +57,8 @@ Execute a specific tool on an MCP server with given arguments.
   }
   ```
 
+The response keeps the `success` / `data` envelope. `data` preserves the tool result fields, including `structuredContent`, `isError`, and `_meta` when present, alongside `toolName` and the converted `arguments`. Missing `content` defaults to `[]`. A tool execution failure is indicated by `data.isError: true`; the envelope's `success: true` means the API returned a tool result, not that the tool succeeded.
+
 **Example Request:**
 
 ```bash
