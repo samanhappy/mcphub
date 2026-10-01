@@ -224,4 +224,112 @@ describe('OpenAPIClient - Input Schema Generation', () => {
       required: ['Authorization'],
     });
   });
+
+  test('applies path-level parameters to every operation under the path', async () => {
+    const config: ServerConfig = {
+      type: 'openapi',
+      openapi: {
+        schema: {
+          openapi: '3.0.0',
+          info: { title: 'Test API', version: '1.0.0' },
+          paths: {
+            '/users/{userId}': {
+              parameters: [
+                {
+                  name: 'userId',
+                  in: 'path',
+                  required: true,
+                  description: 'User id',
+                  schema: { type: 'string' },
+                },
+              ],
+              get: {
+                operationId: 'getUser',
+                responses: { '200': { description: 'Success' } },
+              },
+              delete: {
+                operationId: 'deleteUser',
+                parameters: [{ name: 'force', in: 'query', schema: { type: 'boolean' } }],
+                responses: { '204': { description: 'Deleted' } },
+              },
+            },
+          },
+        } as OpenAPIV3.Document,
+      },
+    };
+
+    const client = new OpenAPIClient(config);
+    await client.initialize();
+
+    const [getUser, deleteUser] = client.getTools();
+    expect(getUser.inputSchema).toEqual({
+      type: 'object',
+      properties: { userId: { type: 'string', description: 'User id' } },
+      required: ['userId'],
+    });
+    expect(deleteUser.inputSchema).toEqual({
+      type: 'object',
+      properties: {
+        userId: { type: 'string', description: 'User id' },
+        force: { type: 'boolean', description: 'Query parameter: force' },
+      },
+      required: ['userId'],
+    });
+
+    const request = jest.fn().mockResolvedValue({ data: { ok: true } });
+    (client as unknown as { httpClient: { request: jest.Mock } }).httpClient = { request };
+    await client.callTool('deleteUser', { userId: 'u/1', force: true });
+    expect(request.mock.calls[0][0]).toMatchObject({
+      method: 'delete',
+      url: '/users/u%2F1',
+      params: { force: true },
+    });
+  });
+
+  test('lets an operation parameter override a path-level one with the same name and location', async () => {
+    const config: ServerConfig = {
+      type: 'openapi',
+      openapi: {
+        schema: {
+          openapi: '3.0.0',
+          info: { title: 'Test API', version: '1.0.0' },
+          paths: {
+            '/reports': {
+              parameters: [
+                { name: 'format', in: 'query', description: 'Shared', schema: { type: 'string' } },
+                { name: 'X-Tenant-Id', in: 'header', schema: { type: 'string' } },
+              ],
+              get: {
+                operationId: 'listReports',
+                parameters: [
+                  {
+                    name: 'format',
+                    in: 'query',
+                    required: true,
+                    description: 'Report format',
+                    schema: { type: 'string', enum: ['csv', 'json'] },
+                  },
+                ],
+                responses: { '200': { description: 'Success' } },
+              },
+            },
+          },
+        } as OpenAPIV3.Document,
+      },
+    };
+
+    const client = new OpenAPIClient(config);
+    await client.initialize();
+
+    const tool = client.getTools()[0];
+    expect(tool.parameters).toHaveLength(2);
+    expect(tool.inputSchema).toEqual({
+      type: 'object',
+      properties: {
+        format: { type: 'string', enum: ['csv', 'json'], description: 'Report format' },
+        'X-Tenant-Id': { type: 'string', description: 'Header parameter: X-Tenant-Id' },
+      },
+      required: ['format'],
+    });
+  });
 });
