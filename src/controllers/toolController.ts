@@ -90,7 +90,8 @@ export const callTool = async (req: Request, res: Response): Promise<void> => {
     const response: ApiResponse = {
       success: true,
       data: {
-        content: result.content || [],
+        ...result,
+        content: result.content ?? [],
         toolName,
         arguments: convertedArgs,
       },

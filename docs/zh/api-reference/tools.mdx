@@ -55,6 +55,8 @@ import { Card, Cards } from 'mintlify';
   }
   ```
 
+响应保留 `success` / `data` 包装。`data` 保留工具结果中的字段，包括存在时的 `structuredContent`、`isError` 和 `_meta`，并附带 `toolName` 与类型转换后的 `arguments`。缺少 `content` 时默认返回 `[]`。工具执行失败由 `data.isError: true` 表示；外层的 `success: true` 表示 API 返回了工具结果，并不代表工具执行成功。
+
 **请求示例：**
 
 ```bash
