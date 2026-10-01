@@ -67,6 +67,22 @@ function encodePathParameterValue(value: unknown): string {
   return encodeURIComponent(String(value));
 }
 
+// Path Item parameters apply to every operation under that path; an operation
+// parameter with the same name and location overrides the path-level one.
+function mergeOperationParameters(
+  pathLevel: OpenAPIV3.PathItemObject['parameters'],
+  operationLevel: OpenAPIV3.OperationObject['parameters'],
+): OpenAPIV3.ParameterObject[] | undefined {
+  if (!pathLevel?.length) {
+    return operationLevel as OpenAPIV3.ParameterObject[] | undefined;
+  }
+  const merged = new Map<string, OpenAPIV3.ParameterObject>();
+  for (const param of [...pathLevel, ...(operationLevel ?? [])] as OpenAPIV3.ParameterObject[]) {
+    merged.set(`${param.in}:${param.name}`, param);
+  }
+  return [...merged.values()];
+}
+
 function isPrintableAscii(value: string): boolean {
   return /^[\x20-\x7E]*$/.test(value);
 }
@@ -655,8 +671,12 @@ export class OpenAPIClient {
       ] as const;
 
       for (const method of methods) {
-        const operation = pathItem[method] as OpenAPIV3.OperationObject | undefined;
-        if (!operation) continue;
+        const declaredOperation = pathItem[method] as OpenAPIV3.OperationObject | undefined;
+        if (!declaredOperation) continue;
+        const operation: OpenAPIV3.OperationObject = {
+          ...declaredOperation,
+          parameters: mergeOperationParameters(pathItem.parameters, declaredOperation.parameters),
+        };
 
         // Generate operation name: use operationId first, otherwise generate unique name
         let operationName: string;
