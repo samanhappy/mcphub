@@ -1995,7 +1995,9 @@ async function checkDatabaseVectorDimensions(dimensionsNeeded: number): Promise<
     return false;
   } catch (error: any) {
     logger.error('Error checking or updating vector dimensions', { error });
-    throw new Error(`Vector dimension check failed: ${error?.message || 'Unknown error'}`);
+    throw new Error(`Vector dimension check failed: ${error?.message || 'Unknown error'}`, {
+      cause: error,
+    });
   }
 }
 

@@ -121,7 +121,7 @@ export const auth = async (req: Request, res: Response, next: NextFunction): Pro
   };
 
   // Check if bearer auth via configured keys can validate this request
-  let matchingBearerKey: BearerKey | null = null;
+  let matchingBearerKey: BearerKey | null;
   try {
     matchingBearerKey = await validateBearerAuth(req, systemConfig);
   } catch (error) {

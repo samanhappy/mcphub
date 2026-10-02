@@ -28,7 +28,7 @@ export interface ResourceTarget {
  * - anything else -> `unknown`
  */
 export function parseResourceTarget(raw: string): ResourceTarget {
-  let pathname = '';
+  let pathname: string;
   try {
     pathname = new URL(raw).pathname;
   } catch {

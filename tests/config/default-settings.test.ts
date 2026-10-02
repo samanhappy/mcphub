@@ -8,7 +8,7 @@ const readJsonFile = (filename: string) => {
     return JSON.parse(fs.readFileSync(path.join(projectRoot, filename), 'utf8'));
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    throw new Error(`Failed to read ${filename}: ${message}`);
+    throw new Error(`Failed to read ${filename}: ${message}`, { cause: error });
   }
 };
 

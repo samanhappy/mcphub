@@ -102,6 +102,7 @@ export function createFetchWithProxy(
         'Proxy support requires the "undici" package. ' +
           'Install it with: npm install undici\n' +
           `Original error: ${error instanceof Error ? error.message : String(error)}`,
+        { cause: error },
       );
     }
   }) as FetchLike;

@@ -1773,7 +1773,9 @@ const callToolWithReconnect = async (
         try {
           const rawConfig = await getServerDao().findById(serverInfo.name);
           if (!rawConfig) {
-            throw new Error(`Server configuration not found for: ${serverInfo.name}`);
+            throw new Error(`Server configuration not found for: ${serverInfo.name}`, {
+              cause: error,
+            });
           }
 
           // Match initial connection expansion before URL validation and transport creation.
@@ -3910,7 +3912,7 @@ const handleCallToolRequestImpl = async (request: any, extra: any) => {
     extra?.username ||
     (requestContextService.getKeyKindContext() === 'system' ? 'system' : undefined) ||
     undefined;
-  let appsRouteContext: McpAppsRouteContext = { enabled: false };
+  let appsRouteContext: McpAppsRouteContext;
   const keyId = bearerKeyContext.keyId || extra?.keyId || undefined;
   const keyName = bearerKeyContext.keyName || extra?.keyName || undefined;
   const sourceIp = requestContextService.getRequestContext()?.remoteAddress || undefined;
