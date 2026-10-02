@@ -519,6 +519,7 @@ export class OpenAPIClient {
       const errorMessage = error instanceof Error ? error.message : String(error);
       throw new Error(
         `Failed to load OpenAPI specification: ${sanitizeStringForLogging(errorMessage)}`,
+        { cause: error },
       );
     }
   }
@@ -1112,6 +1113,7 @@ export class OpenAPIClient {
         responseDetails = sanitizeStringForLogging(responseDetails);
         throw new Error(
           `API call failed: ${status} ${statusText}${responseDetails ? ` ${responseDetails}` : ''}`,
+          { cause: error },
         );
       }
       throw error;

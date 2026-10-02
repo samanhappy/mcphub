@@ -232,6 +232,7 @@ export const discoverIssuer = async (
     logger.error('Failed to discover OAuth issuer', { issuerUrl, error });
     throw new Error(
       `OAuth issuer discovery failed: ${error instanceof Error ? error.message : String(error)}`,
+      { cause: error },
     );
   }
 };

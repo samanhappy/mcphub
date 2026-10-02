@@ -105,7 +105,7 @@ export const loadOriginalSettings = (): McpSettings => {
     logger.log(`Loaded settings from ${settingsPath}`);
     return settings;
   } catch (error) {
-    throw new Error(`Failed to load settings from ${settingsPath}: ${error}`);
+    throw new Error(`Failed to load settings from ${settingsPath}: ${error}`, { cause: error });
   }
 };
 
