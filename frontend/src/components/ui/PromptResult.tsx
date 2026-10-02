@@ -141,10 +141,10 @@ const PromptResult: React.FC<PromptResultProps> = ({ result, onClose }) => {
           <div>
             <div className="flex items-center space-x-2 mb-3">
               <AlertCircle size={16} className="text-red-500" />
-              <span className="text-sm font-medium text-red-700">{t('prompt.error')}</span>
+              <span className="text-sm font-medium text-red-700 dark:text-red-300">{t('prompt.error')}</span>
             </div>
-            <div className="bg-red-50 border border-red-300 rounded-md p-3">
-              <pre className="text-sm text-red-800 whitespace-pre-wrap">
+            <div className="bg-red-50 dark:bg-red-900/20 border border-red-300 dark:border-red-700/60 rounded-md p-3">
+              <pre className="text-sm text-red-800 dark:text-red-300 whitespace-pre-wrap">
                 {result.error || result.message || t('prompt.unknownError')}
               </pre>
             </div>
