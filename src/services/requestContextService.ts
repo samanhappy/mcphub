@@ -13,6 +13,8 @@ export interface RequestContext {
   /** Set only after HTTP authentication and modern-protocol classification. */
   clientStateScope?: string;
   stateless?: boolean;
+  /** Per-request client capabilities declared by 2026-07-28 stateless clients. */
+  clientCapabilities?: unknown;
   userAgent?: string;
   remoteAddress?: string;
   group?: string;

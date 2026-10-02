@@ -163,6 +163,7 @@ import {
   initUpstreamServers,
 } from '../../src/services/mcpService.js';
 import { MCP_APPS_CAPABILITIES } from '../../src/utils/mcpApps.js';
+import { RequestContextService } from '../../src/services/requestContextService.js';
 
 const appsTools = [
   {
@@ -274,6 +275,23 @@ describe('mcpService MCP Apps transparent proxy', () => {
         _meta: { trace: 'keep-me' },
       }),
     ]);
+  });
+
+  it('uses per-request client capabilities on the stateless path', async () => {
+    await initUpstreamServers();
+    await flushPromises();
+
+    const run = (clientCapabilities: unknown) =>
+      RequestContextService.getInstance().runWithCustomRequestContext(
+        { headers: {}, stateless: true, group: 'apps-server', clientCapabilities } as any,
+        () => handleListToolsRequest({}, { sessionId: undefined as any, group: 'apps-server' } as any),
+      );
+
+    const enabled = await run(MCP_APPS_CAPABILITIES);
+    expect(enabled.tools.map((tool) => tool.name)).toEqual(['open-dashboard', 'poll-dashboard']);
+
+    const disabled = await run({});
+    expect(disabled.tools.map((tool) => tool.name)).toEqual(['apps-server::open-dashboard']);
   });
 
   it('passes complete Apps metadata and raw tool names on an eligible single-upstream route', async () => {
