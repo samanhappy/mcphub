@@ -225,8 +225,8 @@ const McpbUploadForm: React.FC<McpbUploadFormProps> = ({ onSuccess, onCancel }) 
             </div>
 
             {error && (
-              <div className="mb-4 bg-red-50 border-l-4 border-red-500 p-4 rounded">
-                <p className="text-red-700">{error}</p>
+              <div className="mb-4 bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500 p-4 rounded">
+                <p className="text-red-700 dark:text-red-300">{error}</p>
               </div>
             )}
 
@@ -344,8 +344,8 @@ const McpbUploadForm: React.FC<McpbUploadFormProps> = ({ onSuccess, onCancel }) 
         </div>
 
         {error && (
-          <div className="mb-4 bg-red-50 border-l-4 border-red-500 p-4 rounded">
-            <p className="text-red-700">{error}</p>
+          <div className="mb-4 bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500 p-4 rounded">
+            <p className="text-red-700 dark:text-red-300">{error}</p>
           </div>
         )}
 
@@ -353,7 +353,7 @@ const McpbUploadForm: React.FC<McpbUploadFormProps> = ({ onSuccess, onCancel }) 
         <div
           className={`relative border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
             isDragging
-              ? 'border-blue-500 bg-blue-50'
+              ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
               : selectedFile
                 ? 'border-gray-500 '
                 : 'border-gray-300 hover:border-gray-400'

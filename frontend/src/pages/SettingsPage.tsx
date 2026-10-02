@@ -1791,7 +1791,7 @@ const SettingsPage: React.FC = () => {
           {sectionsVisible.bearerKeys && (
             <div className="space-y-4 pb-4 px-6 pt-4 border-t border-[var(--hub-line-2)]">
               {createdBearerToken && (
-                <div className="p-3 rounded-md border border-amber-300 bg-amber-50 text-sm">
+                <div className="p-3 rounded-md border border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-700/60 dark:bg-amber-900/20 dark:text-amber-300 text-sm">
                   <div className="font-medium">
                     {t('settings.bearerKeyShownOnce') || 'Copy this token now. It will not be shown again.'}
                   </div>

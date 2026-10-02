@@ -174,7 +174,7 @@ const MarketServerDetail: React.FC<MarketServerDetailProps> = ({
 
         <div className="flex items-center">
           {server.is_official && (
-            <span className="bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 text-sm font-normal px-4 py-2 rounded mr-2 flex items-center label-primary">
+            <span className="bg-blue-100 text-blue-800 dark:text-blue-300 dark:bg-blue-900/40 dark:text-blue-300 text-sm font-normal px-4 py-2 rounded mr-2 flex items-center label-primary">
               {t('market.official')}
             </span>
           )}
@@ -204,7 +204,7 @@ const MarketServerDetail: React.FC<MarketServerDetailProps> = ({
             server.tags.map((tag, index) => (
               <span
                 key={`tag-${index}`}
-                className="bg-gray-100 dark:bg-gray-800 text-green-700 px-2 py-1 rounded text-sm"
+                className="bg-gray-100 dark:bg-gray-800 text-green-700 dark:text-green-300 px-2 py-1 rounded text-sm"
               >
                 #{tag}
               </span>
@@ -347,7 +347,7 @@ const MarketServerDetail: React.FC<MarketServerDetailProps> = ({
               {t('server.confirmVariables')}
             </h3>
             <p className="text-gray-600 mb-4">{t('server.variablesDetected')}</p>
-            <div className="bg-yellow-50 border border-yellow-200 rounded p-3 mb-4">
+            <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700/60 rounded p-3 mb-4">
               <div className="flex items-start">
                 <div className="flex-shrink-0">
                   <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
@@ -359,10 +359,10 @@ const MarketServerDetail: React.FC<MarketServerDetailProps> = ({
                   </svg>
                 </div>
                 <div className="ml-3">
-                  <h4 className="text-sm font-medium text-yellow-800">
+                  <h4 className="text-sm font-medium text-yellow-800 dark:text-yellow-300">
                     {t('server.detectedVariables')}:
                   </h4>
-                  <ul className="mt-1 text-sm text-yellow-700">
+                  <ul className="mt-1 text-sm text-yellow-700 dark:text-yellow-300">
                     {detectedVariables.map((variable, index) => (
                       <li key={index} className="font-mono">
                         ${`{${variable}}`}

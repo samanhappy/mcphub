@@ -95,16 +95,16 @@ const TemplateImportForm: React.FC<TemplateImportFormProps> = ({ onSuccess, onCa
         </div>
 
         {error && (
-          <div className="mb-4 bg-red-50 border-l-4 border-red-500 p-4 rounded">
-            <p className="text-red-700">{error}</p>
+          <div className="mb-4 bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500 p-4 rounded">
+            <p className="text-red-700 dark:text-red-300">{error}</p>
           </div>
         )}
 
         {result && (
           <div
-            className={`mb-4 p-4 rounded border-l-4 ${result.success ? 'bg-green-50 border-green-500' : 'bg-yellow-50 border-yellow-500'}`}
+            className={`mb-4 p-4 rounded border-l-4 ${result.success ? 'bg-green-50 dark:bg-green-900/20 border-green-500' : 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-500'}`}
           >
-            <p className={result.success ? 'text-green-700' : 'text-yellow-700'}>
+            <p className={result.success ? 'text-green-700 dark:text-green-300' : 'text-yellow-700 dark:text-yellow-300'}>
               {t('template.importResult', {
                 serversCreated: result.serversCreated,
                 serversSkipped: result.serversSkipped,
@@ -113,11 +113,11 @@ const TemplateImportForm: React.FC<TemplateImportFormProps> = ({ onSuccess, onCa
               })}
             </p>
             {result.requiredEnvVars.length > 0 && (
-              <div className="mt-2 p-2 bg-orange-50 border border-orange-200 rounded">
-                <p className="text-sm font-medium text-orange-800">
+              <div className="mt-2 p-2 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-700/60 rounded">
+                <p className="text-sm font-medium text-orange-800 dark:text-orange-300">
                   {t('template.envVarsNeeded')}
                 </p>
-                <ul className="mt-1 text-sm text-orange-700">
+                <ul className="mt-1 text-sm text-orange-700 dark:text-orange-300">
                   {result.requiredEnvVars.map((v) => (
                     <li key={v} className="font-mono">
                       {v}
@@ -228,11 +228,11 @@ const TemplateImportForm: React.FC<TemplateImportFormProps> = ({ onSuccess, onCa
               </div>
 
               {template.requiredEnvVars.length > 0 && (
-                <div className="p-3 bg-orange-50 border border-orange-200 rounded-md">
-                  <h4 className="text-sm font-medium text-orange-800">
+                <div className="p-3 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-700/60 rounded-md">
+                  <h4 className="text-sm font-medium text-orange-800 dark:text-orange-300">
                     {t('template.envVarsNeeded')}
                   </h4>
-                  <ul className="mt-1 text-sm text-orange-700 font-mono">
+                  <ul className="mt-1 text-sm text-orange-700 dark:text-orange-300 font-mono">
                     {template.requiredEnvVars.map((v) => (
                       <li key={v}>{v}</li>
                     ))}

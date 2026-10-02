@@ -63,17 +63,24 @@ const Toast: React.FC<ToastProps> = ({
   };
 
   const bgColors = {
-    success: 'bg-green-50 border-green-200',
-    error: 'bg-red-50 border-red-200',
-    info: 'bg-blue-50 border-blue-200',
-    warning: 'bg-yellow-50 border-yellow-200',
+    success: 'bg-green-50 border-green-200 dark:bg-green-950 dark:border-green-800',
+    error: 'bg-red-50 border-red-200 dark:bg-red-950 dark:border-red-800',
+    info: 'bg-blue-50 border-blue-200 dark:bg-blue-950 dark:border-blue-800',
+    warning: 'bg-yellow-50 border-yellow-200 dark:bg-yellow-950 dark:border-yellow-800',
   };
 
   const textColors = {
-    success: 'text-green-800',
-    error: 'text-red-800',
-    info: 'text-blue-800',
-    warning: 'text-yellow-800',
+    success: 'text-green-800 dark:text-green-200',
+    error: 'text-red-800 dark:text-red-200',
+    info: 'text-blue-800 dark:text-blue-200',
+    warning: 'text-yellow-800 dark:text-yellow-200',
+  };
+
+  const closeStyles = {
+    success: 'hover:bg-green-100 dark:hover:bg-green-900 focus:ring-green-500',
+    error: 'hover:bg-red-100 dark:hover:bg-red-900 focus:ring-red-500',
+    info: 'hover:bg-blue-100 dark:hover:bg-blue-900 focus:ring-blue-500',
+    warning: 'hover:bg-yellow-100 dark:hover:bg-yellow-900 focus:ring-yellow-500',
   };
 
   const accentBorders = {
@@ -88,6 +95,7 @@ const Toast: React.FC<ToastProps> = ({
       className={cn(
         'fixed top-4 right-4 z-50 max-w-sm p-4 rounded-md shadow-lg border',
         bgColors[type],
+        textColors[type],
         accentBorders[type],
         'transform transition-all duration-300 ease-in-out',
         visible ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0',
@@ -104,7 +112,8 @@ const Toast: React.FC<ToastProps> = ({
               onClick={onClose}
               className={cn(
                 'inline-flex rounded-md p-1.5',
-                `hover:bg-${type}-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-${type}-500`,
+                'focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-gray-900',
+                closeStyles[type],
               )}
             >
               <span className="sr-only">{t('common.dismiss')}</span>

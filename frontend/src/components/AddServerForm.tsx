@@ -177,7 +177,7 @@ const AddServerForm = ({
             <p className="text-gray-600 mb-4">
               {t('server.variablesDetected')}
             </p>
-            <div className="bg-yellow-50 border border-yellow-200 rounded p-3 mb-4">
+            <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700/60 rounded p-3 mb-4">
               <div className="flex items-start">
                 <div className="flex-shrink-0">
                   <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
@@ -185,10 +185,10 @@ const AddServerForm = ({
                   </svg>
                 </div>
                 <div className="ml-3">
-                  <h4 className="text-sm font-medium text-yellow-800">
+                  <h4 className="text-sm font-medium text-yellow-800 dark:text-yellow-300">
                     {t('server.detectedVariables')}:
                   </h4>
-                  <ul className="mt-1 text-sm text-yellow-700">
+                  <ul className="mt-1 text-sm text-yellow-700 dark:text-yellow-300">
                     {detectedVariables.map((variable, index) => (
                       <li key={index} className="font-mono">
                         ${`{${variable}}`}

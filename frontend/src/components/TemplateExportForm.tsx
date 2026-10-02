@@ -82,8 +82,8 @@ const TemplateExportForm: React.FC<TemplateExportFormProps> = ({ groups, onCance
         </div>
 
         {error && (
-          <div className="mb-4 bg-red-50 border-l-4 border-red-500 p-4 rounded">
-            <p className="text-red-700">{error}</p>
+          <div className="mb-4 bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500 p-4 rounded">
+            <p className="text-red-700 dark:text-red-300">{error}</p>
           </div>
         )}
 
@@ -121,7 +121,7 @@ const TemplateExportForm: React.FC<TemplateExportFormProps> = ({ groups, onCance
               </label>
               <button
                 onClick={handleSelectAll}
-                className="text-sm text-blue-600 hover:text-blue-800"
+                className="text-sm text-blue-600 hover:text-blue-800 dark:text-blue-300"
               >
                 {selectedGroupIds.length === groups.length
                   ? t('template.deselectAll')
@@ -163,8 +163,8 @@ const TemplateExportForm: React.FC<TemplateExportFormProps> = ({ groups, onCance
           </label>
         </div>
 
-        <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
-          <p className="text-sm text-blue-700">{t('template.exportNote')}</p>
+        <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700/60 rounded-md">
+          <p className="text-sm text-blue-700 dark:text-blue-300">{t('template.exportNote')}</p>
         </div>
 
         <div className="flex justify-end space-x-4 mt-6">
