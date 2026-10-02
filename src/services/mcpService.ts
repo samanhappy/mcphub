@@ -3492,11 +3492,14 @@ const getMcpAppsRouteContext = async (
   sessionId: string,
   group: string | undefined,
 ): Promise<McpAppsRouteContext> => {
-  if (
-    !sessionId ||
-    isSmartRoutingGroup(group) ||
-    !hasMcpAppsCapability(servers[sessionId]?.getClientCapabilities())
-  ) {
+  // Stateless (2026-07-28) requests have no session; capabilities arrive per request.
+  const requestContext = RequestContextService.getInstance().getRequestContext();
+  const clientCapabilities = requestContext?.stateless
+    ? requestContext.clientCapabilities
+    : sessionId
+      ? servers[sessionId]?.getClientCapabilities()
+      : undefined;
+  if (isSmartRoutingGroup(group) || !hasMcpAppsCapability(clientCapabilities as any)) {
     return { enabled: false };
   }
 
