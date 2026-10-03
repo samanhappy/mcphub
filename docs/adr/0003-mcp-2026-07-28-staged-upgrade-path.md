@@ -17,7 +17,7 @@ The path's shape comes from what the code actually binds to sessions. Most downs
 ## Consequences
 
 - Step 2 drops Node 18 from the support matrix (v2 is ESM-first with CommonJS builds, Node 20+): require Node 20+ in `engines` and documentation, test Node 20/22 in CI, and retain the existing Node 22 Docker runtime.
-- The legacy HTTP+SSE transport carries a ≥12-month deprecation window per spec policy; its removal takes the group-in-session quirk and the session-rebuild machinery with it.
+- The legacy HTTP+SSE transport carries a ≥12-month deprecation window per spec policy; its removal deletes only SSE-specific routing and message dispatch. Shared session-rebuild machinery remains necessary for legacy Streamable HTTP.
 - `perSessionClient` isolation must gain an explicit design (tool-minted handles passed as arguments, per the spec's recommended pattern, or a header correlation key) before the session layer can be deleted.
 - During the dual-stack period, the group-resolution fallback chain must preserve the GHSA-454m-4vm6-842f scope-validation behavior for requests arriving under either revision.
 - Session-continuity tests (cached-session-id reuse after rebuild, initialize-gated session creation) are rewritten at step 3, not patched beforehand.

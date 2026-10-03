@@ -93,3 +93,95 @@ TTL and restrict sharing to the requesting authorization context. Missing or
 invalid TTLs, built-in resources and gateway-generated read errors use zero.
 These hints do not add a gateway response cache. Full positive list TTL
 propagation requires a separate invalidation design.
+
+## Legacy SSE deprecation plan
+
+The public notice will accompany the next release that includes this plan.
+The release notes must record the actual notice date **N** and the earliest
+eligible removal date **N + 12 calendar months**. This page and the ADR do not
+establish an earlier notice date. Until those release notes are published, the
+notice date and removal date remain unannounced.
+
+The intended removal release is the first major release on or after that date
+that meets the readiness criteria below. If readiness is incomplete, postpone
+removal and publish the revised target; do not shorten the notice window.
+Publish the exact target release and date at least 90 days before removal,
+remind users 30 days before removal, and include the migration instructions in
+each announcement. Actual removal requires a separate reviewed change.
+
+### Preserve route scope and authentication
+
+Prefix every URL below with the deployment's configured base path, if any.
+Group IDs remain preferable to names; retain the same route identifier and
+bearer header name/value. Group names take precedence over server names.
+
+| Existing SSE connection | Streamable HTTP replacement | SSE message endpoint being retired |
+| ----------------------- | --------------------------- | ---------------------------------- |
+| `/sse`                  | `/mcp`                      | `/messages`                        |
+| `/sse/{group}`          | `/mcp/{group}`              | `/messages`                        |
+| `/sse/{server}`         | `/mcp/{server}`             | `/messages`                        |
+| `/{user}/sse`           | `/{user}/mcp`               | `/{user}/messages`                 |
+| `/{user}/sse/{group}`   | `/{user}/mcp/{group}`       | `/{user}/messages`                 |
+| `/{user}/sse/{server}`  | `/{user}/mcp/{server}`      | `/{user}/messages`                 |
+
+Smart Routing suffixes such as `$smart/{group}` are preserved as well. The SSE
+client follows its advertised message URL and session query; do not translate
+that message URL into a new HTTP endpoint. Replace the connection URL and let
+the HTTP transport manage its requests.
+
+First migrate the transport independently of the protocol revision. For example,
+with the legacy TypeScript SDK (`@modelcontextprotocol/sdk` 1.29.0, the version
+used by MCPHub's independent compatibility tests):
+
+```typescript
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
+
+const client = new Client({ name: 'my-client', version: '1.0.0' });
+await client.connect(
+  new StreamableHTTPClientTransport(new URL('https://hub.example.com/alice/mcp/my-group-id'), {
+    requestInit: { headers: { Authorization: 'Bearer YOUR_EXISTING_KEY' } },
+  }),
+);
+const tools = await client.listTools();
+// Use the returned tool names; retain this client for the workflow.
+await client.close();
+```
+
+This keeps the legacy initialization and `Mcp-Session-Id` lifecycle. Existing
+stateful tools keep session isolation; no `X-MCPHub-State-Id` is required for
+this transport-only migration. Modern discovery and explicit state are a
+separate upgrade described above. Existing SSE session IDs cannot be carried
+across transports: start a new HTTP workflow and repeat any login/tool setup.
+
+### Readiness and removal boundaries
+
+Before announcing the exact removal target, maintainers must record:
+
+- The release containing the public notice and its actual date, plus proof that
+  at least 12 calendar months will have elapsed at removal.
+- Passing legacy SSE and Streamable HTTP compatibility suites throughout the
+  window, including authenticated global, group, server and user routes,
+  session continuation/rebuild and stateful-tool isolation.
+- A migration checklist for each documented client integration: HTTP transport,
+  preserved route/authentication, successful listing/calling, and resources,
+  Apps or stateful workflows where used. Record tested client versions and
+  unresolved blockers; there must be zero unresolved release-blocking migration
+  defects. Operator confirmations may supplement this checklist; absence of
+  telemetry is not evidence that nobody uses SSE.
+- Published release notes and documentation in both languages, the 90-day and
+  30-day reminders, and a support path for deployments that still use SSE.
+
+The removal inventory is limited to the SSE GET routes, their POST message
+routes, `handleSseConnection`, `handleSseMessage`, SSE transport construction,
+and SSE-only tests/imports. Audit every caller before removing shared helpers.
+Retain `/mcp` POST/GET/DELETE routes, legacy HTTP initialization, session maps
+and cleanup, session creation/rebuild locks, bearer/group authorization,
+`perSessionClient` isolation, OpenAPI cookie jars and modern explicit state.
+The `server-legacy` package also supplies shared legacy HTTP/OAuth functionality;
+SSE retirement alone is not grounds to remove the dependency.
+
+The plan is tracked in [#1272](https://github.com/samanhappy/mcphub/issues/1272).
+The notice release must open a separate removal task carrying the actual dates,
+client checklist and inventory. Legacy `2025-11-25` Streamable HTTP remains
+supported independently.

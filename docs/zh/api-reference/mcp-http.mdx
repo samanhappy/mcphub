@@ -85,3 +85,81 @@ MCP Apps 透传还取决于请求路由和可见的上游服务器；`$smart` �
 缓存，在有效的上游 TTL 中扣减处理耗时，并将共享范围限制在请求方认证上下文内。
 缺失或无效 TTL、内置资源及网关生成的读取错误均使用零。这些提示不会新增网关
 响应缓存；完整的列表正 TTL 透传需要独立的失效机制设计。
+
+## 旧版 SSE 弃用计划
+
+公开通知随包含本计划的下一次版本发布。发布说明必须记录实际通知日期
+**N** 和最早可移除日期 **N 加 12 个日历月**。本页面和 ADR 不构成更早的
+通知日期。在该发布说明发布之前，通知日期和移除日期均未公布。
+
+计划在达到上述日期且满足下方迁移就绪条件后的第一个主版本中移除 SSE。
+条件未满足时延后移除并公布调整后的目标，不缩短通知窗口。至少提前 90 天
+公布确切的目标版本和日期，提前 30 天再次提醒，每次公告附迁移说明。
+实际移除必须通过独立代码评审。
+
+### 保留路由范围和认证
+
+部署配置了基础路径时，为下表所有 URL 加上该前缀。建议使用分组 ID；
+保留原来的路由标识以及 bearer 请求头名称和值。分组名与服务器名相同时，
+分组优先。
+
+| 原 SSE 连接            | Streamable HTTP 替代地址 | 将退役的 SSE 消息端点 |
+| ---------------------- | ------------------------ | --------------------- |
+| `/sse`                 | `/mcp`                   | `/messages`           |
+| `/sse/{group}`         | `/mcp/{group}`           | `/messages`           |
+| `/sse/{server}`        | `/mcp/{server}`          | `/messages`           |
+| `/{user}/sse`          | `/{user}/mcp`            | `/{user}/messages`    |
+| `/{user}/sse/{group}`  | `/{user}/mcp/{group}`    | `/{user}/messages`    |
+| `/{user}/sse/{server}` | `/{user}/mcp/{server}`   | `/{user}/messages`    |
+
+同时保留 `$smart/{group}` 等智能路由后缀。SSE 客户端使用服务端公布的
+消息 URL 和会话查询参数；不要把消息 URL 转换成 HTTP 新端点。替换连接
+URL，让 HTTP transport 管理后续请求。
+
+先独立迁移传输方式，再考虑升级协议。例如使用旧版 TypeScript SDK
+（`@modelcontextprotocol/sdk` 1.29.0，与 MCPHub 独立兼容性测试一致）：
+
+```typescript
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
+
+const client = new Client({ name: 'my-client', version: '1.0.0' });
+await client.connect(
+  new StreamableHTTPClientTransport(new URL('https://hub.example.com/alice/mcp/my-group-id'), {
+    requestInit: { headers: { Authorization: 'Bearer YOUR_EXISTING_KEY' } },
+  }),
+);
+const tools = await client.listTools();
+// 使用返回的工具名；在整个工作流中复用此客户端。
+await client.close();
+```
+
+此迁移保留旧版初始化和 `Mcp-Session-Id` 生命周期。有状态工具仍按会话
+隔离，单纯迁移传输方式不需要 `X-MCPHub-State-Id`。现代协议发现和显式
+状态是上文描述的独立升级。SSE 会话 ID 不能跨传输方式复用：建立新的
+HTTP 工作流，重新执行登录或工具初始化。
+
+### 就绪条件和移除边界
+
+公布确切移除目标之前，维护者必须记录：
+
+- 包含公开通知的版本、实际发布日期，以及移除时已满 12 个日历月的依据。
+- 整个窗口内旧版 SSE 和 Streamable HTTP 兼容性测试持续通过，覆盖认证后的
+  全局、分组、服务器和用户路由，会话续接／重建及有状态工具隔离。
+- 每个文档列出的客户端集成的迁移清单：HTTP transport、保留路由／认证、
+  列表和调用成功，以及实际使用的资源、Apps 或有状态工作流。记录测试版本
+  和未解决阻碍；阻碍发布的迁移缺陷必须为零。可补充部署者确认，不能把
+  缺少遥测当作无人使用 SSE 的证据。
+- 中英双语发布说明和文档、提前 90 天和 30 天的提醒，以及仍使用 SSE 的
+  部署的支持渠道。
+
+移除清单仅包括 SSE GET 路由、对应 POST 消息路由、`handleSseConnection`、
+`handleSseMessage`、SSE transport 创建以及 SSE 专用测试／导入。删除共享
+辅助函数前必须检查所有调用方。保留 `/mcp` POST/GET/DELETE、旧版 HTTP
+初始化、会话映射与清理、创建／重建锁、bearer／分组认证、`perSessionClient`
+隔离、OpenAPI cookie jar 和现代显式状态。`server-legacy` 还提供共享的
+旧版 HTTP／OAuth 功能，不能仅因 SSE 退役就删除该依赖。
+
+本计划由 [#1272](https://github.com/samanhappy/mcphub/issues/1272) 跟踪。
+发布通知的版本必须建立独立移除任务，记录实际日期、客户端清单和删除清单。
+旧版 `2025-11-25` Streamable HTTP 支持独立保留。

@@ -285,6 +285,44 @@ describe('Real Client Transport Integration Tests', () => {
     }, 60000);
   });
 
+  it('migrates SSE route scopes to legacy HTTP without upgrading protocol or sharing sessions', async () => {
+    const info = getServerByName('test-server-1')!;
+    const visibility = info.visibility;
+    info.visibility = 'public';
+    try {
+      for (const suffix of ['', '/integration-test-group', '/test-server-1']) {
+        for (const prefix of ['', '/testuser']) {
+          const options = {
+            requestInit: { headers: { Authorization: 'Bearer test-auth-token-123' } },
+          };
+          const sse = new Client({ name: 'migration-sse', version: '1.0.0' });
+          const http = new Client({ name: 'migration-http', version: '1.0.0' });
+          const httpTransport = new StreamableHTTPClientTransport(
+            new URL(`${baseURL}${prefix}/mcp${suffix}`),
+            options,
+          );
+          try {
+            await sse.connect(
+              new SSEClientTransport(new URL(`${baseURL}${prefix}/sse${suffix}`), options),
+            );
+            const before = await sse.listTools();
+            const sseSessions = new Set(Object.keys(transports));
+            expect(before.tools.length).toBeGreaterThan(0);
+            await http.connect(httpTransport);
+            expect((await http.listTools()).tools).toEqual(before.tools);
+            expect(httpTransport.sessionId).toBeDefined();
+            expect(sseSessions.has(httpTransport.sessionId!)).toBe(false);
+            expect(httpTransport.protocolVersion).toBe('2025-11-25');
+          } finally {
+            await Promise.all([sse.close(), http.close()]);
+          }
+        }
+      }
+    } finally {
+      info.visibility = visibility;
+    }
+  }, 60000);
+
   describe('MCP 2026-07-28 Dual-stack Tests', () => {
     it('rejects invalid modern protocol metadata before upstream dispatch or legacy session creation', async () => {
       const info = getServerByName('test-server-1')!;
