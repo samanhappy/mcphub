@@ -1,3 +1,5 @@
+import { UserContextService } from '../../src/services/userContextService.js';
+import { recordListFreshness, invalidateListFreshness } from '../../src/utils/listFreshness.js';
 import { Client } from '@modelcontextprotocol/client';
 
 const createMockClient = () => ({
@@ -9,6 +11,7 @@ const createMockClient = () => ({
   listTools: jest.fn(),
   listPrompts: jest.fn(),
   listResources: jest.fn(),
+  listResourceTemplates: jest.fn(),
   readResource: jest.fn(),
   callTool: jest.fn(),
 });
@@ -118,10 +121,24 @@ jest.mock('../../src/services/proxy.js', () => ({
 
 const mockFindAll = jest.fn();
 const mockFindById = jest.fn();
+const mockUserFindByUsername = jest.fn(async () => ({
+  username: 'ttl-user',
+  password: 'unused',
+  isAdmin: false,
+}));
+const mockBearerFindById = jest.fn(async () => ({
+  id: 'test-key',
+  enabled: true,
+  accessType: 'all',
+}));
+const mockBuiltinPrompts = jest.fn(async () => [] as any[]);
+const mockBuiltinResources = jest.fn(async () => [] as any[]);
 const mockFindBuiltinResourceByUri = jest.fn();
 const mockGroupFindByName = jest.fn(async (_name: string) => null as any);
 
 jest.mock('../../src/dao/index.js', () => ({
+  getUserDao: jest.fn(() => ({ findByUsername: mockUserFindByUsername })),
+  getBearerKeyDao: jest.fn(() => ({ findById: mockBearerFindById })),
   getServerDao: jest.fn(() => ({
     findAll: mockFindAll,
     findById: mockFindById,
@@ -134,10 +151,10 @@ jest.mock('../../src/dao/index.js', () => ({
     get: jest.fn(async () => ({})),
   })),
   getBuiltinPromptDao: jest.fn(() => ({
-    findEnabled: jest.fn(async () => []),
+    findEnabled: mockBuiltinPrompts,
   })),
   getBuiltinResourceDao: jest.fn(() => ({
-    findEnabled: jest.fn(async () => []),
+    findEnabled: mockBuiltinResources,
     findByUri: mockFindBuiltinResourceByUri,
   })),
 }));
@@ -221,9 +238,13 @@ describe('mcpService MCP Apps transparent proxy', () => {
     mockGetServerConfigsInGroup.mockResolvedValue([]);
     mockGroupFindByName.mockImplementation(async () => null);
     mockFindBuiltinResourceByUri.mockResolvedValue(undefined);
-    mockClient.listTools.mockResolvedValue({ tools: appsTools });
+    mockBearerFindById.mockResolvedValue({ id: 'test-key', enabled: true, accessType: 'all' });
+    mockBuiltinPrompts.mockResolvedValue([]);
+    mockBuiltinResources.mockResolvedValue([]);
+    mockClient.listTools.mockResolvedValue({ tools: [...appsTools] });
     mockClient.listPrompts.mockResolvedValue({ prompts: [] });
     mockClient.listResources.mockResolvedValue({ resources: [] });
+    mockClient.listResourceTemplates.mockResolvedValue({ resourceTemplates: [] });
     mockClient.readResource.mockResolvedValue({
       contents: [
         {
@@ -242,6 +263,172 @@ describe('mcpService MCP Apps transparent proxy', () => {
 
   afterEach(() => {
     cleanupAllServers();
+  });
+
+  it('preserves positive discovery expiry on modern lists and leaves legacy shapes unchanged', async () => {
+    for (const [method, field] of [
+      ['listTools', 'tools'],
+      ['listPrompts', 'prompts'],
+      ['listResources', 'resources'],
+    ] as const) {
+      const result = await mockClient[method]();
+      recordListFreshness(result[field], 60000, performance.now());
+      mockClient[method].mockResolvedValue(result);
+    }
+    await initUpstreamServers();
+    await flushPromises();
+    for (const handler of [
+      handleListToolsRequest,
+      handleListPromptsRequest,
+      handleListResourcesRequest,
+    ]) {
+      const result = await RequestContextService.getInstance().runWithCustomRequestContext(
+        { headers: {}, stateless: true, group: 'apps-server' },
+        () => handler({}, { group: 'apps-server' }),
+      );
+      expect(result).toMatchObject({ cacheScope: 'private' });
+      expect(result.ttlMs).toBeGreaterThan(0);
+      expect(result.ttlMs).toBeLessThanOrEqual(5000);
+      expect(await handler({}, { sessionId: 'ordinary-session' })).not.toHaveProperty('ttlMs');
+    }
+  });
+
+  it('reprojects caller capabilities and forces zero after invalidation or a config change during projection', async () => {
+    const { tools } = await mockClient.listTools();
+    recordListFreshness(tools, 60000, performance.now());
+    await initUpstreamServers();
+    await flushPromises();
+    const list = (clientCapabilities = {}) =>
+      RequestContextService.getInstance().runWithCustomRequestContext(
+        { headers: {}, stateless: true, clientCapabilities, group: 'apps-server' },
+        () => handleListToolsRequest({}, { group: 'apps-server' }),
+      );
+    const ordinary = await list();
+    const apps = await list(MCP_APPS_CAPABILITIES);
+    expect(ordinary.tools.some((tool: any) => tool.name.includes('poll-dashboard'))).toBe(false);
+    expect(apps.tools.some((tool: any) => tool.name.includes('poll-dashboard'))).toBe(true);
+    expect(ordinary.ttlMs).toBeGreaterThan(0);
+    expect(apps.ttlMs).toBeGreaterThan(0);
+    expect(apps.cacheScope).toBe('private');
+    mockFindById.mockImplementation(async (name: string) => {
+      const changed = {
+        ...makeServerConfig(name),
+        tools: { 'apps-server::open-dashboard': { enabled: false } },
+      };
+      mockFindAll.mockResolvedValue([changed]);
+      return changed;
+    });
+    expect((await list()).ttlMs).toBe(0);
+    invalidateListFreshness(tools);
+    expect((await list()).ttlMs).toBe(0);
+  });
+
+  it('bounds aggregate lists by a fresh empty peer and refuses unknown peers', async () => {
+    mockFindAll.mockResolvedValue([
+      makeServerConfig('apps-server'),
+      makeServerConfig('other-server'),
+    ]);
+    const other = createMockClient();
+    other.listTools.mockResolvedValue({ tools: [] });
+    other.listPrompts.mockResolvedValue({ prompts: [] });
+    other.listResources.mockResolvedValue({ resources: [] });
+    mockClientsByServer.set('other-server', other);
+    const { tools } = await mockClient.listTools();
+    recordListFreshness(tools, 60000, performance.now());
+    await initUpstreamServers();
+    await flushPromises();
+    const list = () =>
+      RequestContextService.getInstance().runWithCustomRequestContext(
+        { headers: {}, stateless: true },
+        () => handleListToolsRequest({}, {}),
+      );
+    expect((await list()).ttlMs).toBe(0);
+    const peer = getServerByName('other-server')!;
+    recordListFreshness(peer.tools, 2000, performance.now());
+    const result = await list();
+    expect(result.ttlMs).toBeGreaterThan(0);
+    expect(result.ttlMs).toBeLessThanOrEqual(2000);
+    recordListFreshness(peer.tools, 1, performance.now() - 100);
+    expect((await list()).ttlMs).toBe(0);
+  });
+
+  it('does not advertise positive freshness for built-in content', async () => {
+    const { prompts } = await mockClient.listPrompts();
+    const { resources } = await mockClient.listResources();
+    recordListFreshness(prompts, 60000, performance.now());
+    recordListFreshness(resources, 60000, performance.now());
+    mockBuiltinPrompts.mockResolvedValue([{ name: 'builtin', arguments: [] }]);
+    mockBuiltinResources.mockResolvedValue([{ uri: 'builtin://resource', name: 'Built-in' }]);
+    await initUpstreamServers();
+    await flushPromises();
+    for (const handler of [handleListPromptsRequest, handleListResourcesRequest]) {
+      const result = await RequestContextService.getInstance().runWithCustomRequestContext(
+        { headers: {}, stateless: true, group: 'apps-server' },
+        () => handler({}, { group: 'apps-server' }),
+      );
+      expect(result.ttlMs).toBe(0);
+    }
+  });
+
+  it('keeps live template provenance revocable across awaited projection checks', async () => {
+    const templates = [{ uriTemplate: 'test://{id}', name: 'Template' }];
+    recordListFreshness(templates, 60000, performance.now());
+    mockClient.listResourceTemplates.mockResolvedValue({ resourceTemplates: templates });
+    await initUpstreamServers();
+    await flushPromises();
+    const list = () =>
+      RequestContextService.getInstance().runWithCustomRequestContext(
+        { headers: {}, stateless: true, group: 'apps-server' },
+        () => handleListResourceTemplatesRequest({}, { group: 'apps-server' }),
+      );
+    expect((await list()).ttlMs).toBeGreaterThan(0);
+    mockFindAll.mockImplementationOnce(async () => [makeServerConfig('apps-server')]);
+    mockFindAll.mockImplementationOnce(async () => {
+      invalidateListFreshness(templates);
+      return [makeServerConfig('apps-server')];
+    });
+    expect((await list()).ttlMs).toBe(0);
+    mockClient.listResourceTemplates.mockRejectedValueOnce(new Error('upstream failed'));
+    expect((await list()).ttlMs).toBe(0);
+  });
+
+  it('does not certify a projection if the bearer key is revoked during the build', async () => {
+    const { tools } = await mockClient.listTools();
+    recordListFreshness(tools, 60000, performance.now());
+    await initUpstreamServers();
+    await flushPromises();
+    mockFindById.mockImplementation(async (name: string) => {
+      mockBearerFindById.mockResolvedValue({ id: 'test-key', enabled: false, accessType: 'all' });
+      return makeServerConfig(name);
+    });
+    const list = () =>
+      RequestContextService.getInstance().runWithCustomRequestContext(
+        { headers: {}, stateless: true, keyId: 'test-key', group: 'apps-server' },
+        () => handleListToolsRequest({}, { group: 'apps-server' }),
+      );
+    expect((await list()).ttlMs).toBe(0);
+    expect((await list()).ttlMs).toBe(0);
+  });
+
+  it('does not certify a projection with a stale administrator context', async () => {
+    const { tools } = await mockClient.listTools();
+    recordListFreshness(tools, 60000, performance.now());
+    await initUpstreamServers();
+    await flushPromises();
+    const user = jest.spyOn(UserContextService.getInstance(), 'getCurrentUser').mockReturnValue({
+      username: 'ttl-user',
+      password: 'unused',
+      isAdmin: true,
+    });
+    try {
+      const result = await RequestContextService.getInstance().runWithCustomRequestContext(
+        { headers: {}, stateless: true, group: 'apps-server' },
+        () => handleListToolsRequest({}, { group: 'apps-server' }),
+      );
+      expect(result.ttlMs).toBe(0);
+    } finally {
+      user.mockRestore();
+    }
   });
 
   it('emits private, immediately stale hints for every modern list', async () => {

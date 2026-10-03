@@ -1,3 +1,5 @@
+import { InMemoryTransport, Server as UpstreamServer } from '@modelcontextprotocol/server';
+import { LegacyMcpClient } from '../../src/clients/legacyMcpClient.js';
 // Mock openid-client before importing services
 jest.mock('openid-client', () => ({
   discovery: jest.fn(),
@@ -28,6 +30,7 @@ import {
   cleanupAllServers,
   deleteMcpServer,
   getServerByName,
+  updateServerToolsCache,
 } from '../../src/services/mcpService.js';
 import type { ServerInfo } from '../../src/types/index.js';
 import { transports } from '../../src/services/sseService.js';
@@ -654,6 +657,89 @@ describe('Real Client Transport Integration Tests', () => {
         Object.assign(info, original);
       }
     }, 60000);
+
+    it('advertises private positive list TTLs from real upstream envelopes without renewing discovery age', async () => {
+      const info = getServerByName('test-server-1')!;
+      const original = { client: info.client, tools: info.tools, visibility: info.visibility };
+      const upstream = new UpstreamServer(
+        { name: 'ttl-upstream', version: '1' },
+        {
+          supportedProtocolVersions: ['2025-11-25'],
+          capabilities: { tools: {}, resources: {} },
+        },
+      );
+      const listTools = jest.fn(async () => ({
+        tools: [{ name: 'positive-list', inputSchema: { type: 'object' } }],
+        ttlMs: 60000,
+        cacheScope: 'public' as const,
+      }));
+      upstream.setRequestHandler('tools/list', listTools);
+      upstream.setRequestHandler('resources/templates/list', async () => ({
+        resourceTemplates: [{ name: 'Template', uriTemplate: 'test://{id}' }],
+        ttlMs: 60000,
+      }));
+      const client = new LegacyMcpClient({ name: 'ttl-client', version: '1' });
+      const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+      const now = performance.now();
+      const time = jest.spyOn(performance, 'now').mockReturnValue(now);
+      const sessions = new Set(Object.keys(transports));
+      const send = async (method: string, token = 'test-auth-token-123') => {
+        const response = await fetch(`${baseURL}/mcp/test-server-1`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+            Accept: 'application/json, text/event-stream',
+            'MCP-Protocol-Version': '2026-07-28',
+            'Mcp-Method': method,
+          },
+          body: JSON.stringify({
+            jsonrpc: '2.0',
+            id: 1,
+            method,
+            params: {
+              _meta: {
+                'io.modelcontextprotocol/protocolVersion': '2026-07-28',
+                'io.modelcontextprotocol/clientCapabilities': {},
+              },
+            },
+          }),
+        });
+        expect(response.status).toBe(200);
+        expect(response.headers.get('mcp-session-id')).toBeNull();
+        return (await response.json()).result;
+      };
+      try {
+        await upstream.connect(serverTransport);
+        await client.connect(clientTransport);
+        info.client = client;
+        info.visibility = 'public';
+        const { tools } = await client.listTools({});
+        updateServerToolsCache(info, tools);
+        expect(await send('tools/list')).toMatchObject({ ttlMs: 5000, cacheScope: 'private' });
+        expect(await send('resources/templates/list')).toMatchObject({
+          ttlMs: 5000,
+          cacheScope: 'private',
+        });
+        for (const token of ['state-alice-token', 'state-bob-token']) {
+          expect(await send('tools/list', token)).toMatchObject({
+            ttlMs: 5000,
+            cacheScope: 'private',
+          });
+        }
+        time.mockReturnValue(now + 59000);
+        expect(await send('tools/list')).toMatchObject({ ttlMs: 1000, cacheScope: 'private' });
+        time.mockReturnValue(now + 60001);
+        expect(await send('tools/list')).toMatchObject({ ttlMs: 0, cacheScope: 'private' });
+        expect(listTools).toHaveBeenCalledTimes(1);
+        expect(Object.keys(transports).every((id) => sessions.has(id))).toBe(true);
+      } finally {
+        time.mockRestore();
+        Object.assign(info, original);
+        await client.close();
+        await upstream.close();
+      }
+    });
 
     it('restricts upstream resource cache hints on the modern HTTP wire', async () => {
       const info = getServerByName('test-server-1')!;

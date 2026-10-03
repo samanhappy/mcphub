@@ -1,6 +1,6 @@
 # Bound positive modern list TTLs by discovery age and gateway projection
 
-Status: design agreed with the operator; implementation pending (#1271).
+Status: design agreed with the operator; implementation submitted for review (#1271).
 
 ## Decision
 
@@ -84,6 +84,11 @@ unchanged. Legacy list shapes and discovery behavior remain unchanged.
    English/Chinese cache guidance. Run focused suites, full lint/tests/build and
    review the final diff before submitting the implementation PR.
 
-The existing zero/private baseline stays in production until these slices pass.
+The implementation retains zero/private whenever any dependency is unknown.
 The design does not upgrade legacy upstream negotiation or promise optional client
 conformance. An upstream that supplies no valid TTL continues to yield zero.
+
+Upstream list calls use the legacy client’s raw `request` path, which bypasses
+the SDK list response cache while preserving single-page behavior. Provenance is
+recorded before those calls and shared by normalized snapshots. Hosted permission
+freshness remains unknown and therefore uses zero.

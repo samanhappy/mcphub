@@ -1,3 +1,8 @@
+import {
+  preserveListFreshness,
+  combineListFreshness,
+  remainingListTtl,
+} from '../utils/listFreshness.js';
 import { expandServerConfig, getServerEnvironment } from './serverConfigEnvironment.js';
 import { getMcpRequestGroup } from '../utils/mcpRequestGroup.js';
 import { LegacyMcpClient } from '../clients/legacyMcpClient.js';
@@ -60,6 +65,7 @@ import { OpenAPIClient } from '../clients/openapi.js';
 import { RequestContextService } from './requestContextService.js';
 import { getDataService } from './services.js';
 import {
+  getBearerKeyDao,
   getServerDao,
   getGroupDao,
   getSystemConfigDao,
@@ -1055,7 +1061,10 @@ export const updateServerToolsCache = (
   tools: McpTool[],
   options?: { reportEmbeddingProgress?: boolean },
 ): void => {
-  serverInfo.tools = tools.map((tool) => normalizeToolForCache(serverInfo.name, tool));
+  serverInfo.tools = preserveListFreshness(
+    tools,
+    tools.map((tool) => normalizeToolForCache(serverInfo.name, tool)),
+  );
   syncToolsAsVectorEmbeddings(serverInfo.name, serverInfo.tools, {
     reportProgress: options?.reportEmbeddingProgress === true,
   }).catch(() => {
@@ -1064,11 +1073,14 @@ export const updateServerToolsCache = (
 };
 
 const updateServerPromptsCache = (serverInfo: ServerInfo, prompts: McpPrompt[]): void => {
-  serverInfo.prompts = prompts.map((prompt) => normalizePromptForCache(serverInfo.name, prompt));
+  serverInfo.prompts = preserveListFreshness(
+    prompts,
+    prompts.map((prompt) => normalizePromptForCache(serverInfo.name, prompt)),
+  );
 };
 
 const updateServerResourcesCache = (serverInfo: ServerInfo, resources: McpResource[]): void => {
-  serverInfo.resources = resources.map(normalizeResourceForCache);
+  serverInfo.resources = preserveListFreshness(resources, resources.map(normalizeResourceForCache));
 };
 
 const logListChangedRefreshError = (listType: 'tool' | 'prompt' | 'resource'): void => {
@@ -1089,6 +1101,7 @@ const createUpstreamMcpClient = (
       jsonSchemaValidator: new ResilientJsonSchemaValidator(),
       listChanged: {
         tools: {
+          debounceMs: 0,
           onChanged: (error, tools) => {
             const serverInfo = getServerInfo();
             if (error) {
@@ -1103,6 +1116,7 @@ const createUpstreamMcpClient = (
           },
         },
         prompts: {
+          debounceMs: 0,
           onChanged: (error, prompts) => {
             const serverInfo = getServerInfo();
             if (error) {
@@ -1117,6 +1131,7 @@ const createUpstreamMcpClient = (
           },
         },
         resources: {
+          debounceMs: 0,
           onChanged: (error, resources) => {
             const serverInfo = getServerInfo();
             if (error) {
@@ -4719,6 +4734,7 @@ const handleListResourceTemplatesRequestImpl = async (_: any, extra: any) => {
     },
   );
 
+  const snapshots: object[] = [];
   const results = await Promise.allSettled(
     filteredServerInfos.map(async (serverInfo) => {
       if (!serverInfo.client?.listResourceTemplates) {
@@ -4726,6 +4742,7 @@ const handleListResourceTemplatesRequestImpl = async (_: any, extra: any) => {
       }
 
       const templates = await serverInfo.client.listResourceTemplates({}, serverInfo.options || {});
+      snapshots.push(templates.resourceTemplates);
       const filteredTemplates = await filterResourceTemplatesByGroup(
         lookupGroup,
         serverInfo.name,
@@ -4738,11 +4755,16 @@ const handleListResourceTemplatesRequestImpl = async (_: any, extra: any) => {
     }),
   );
 
-  return {
-    resourceTemplates: results.flatMap((result) =>
-      result.status === 'fulfilled' ? result.value : [],
-    ),
-  };
+  const resourceTemplates = results.flatMap((result) =>
+    result.status === 'fulfilled' ? result.value : [],
+  );
+  if (
+    results.every((result) => result.status === 'fulfilled') &&
+    snapshots.length === filteredServerInfos.length
+  ) {
+    combineListFreshness(snapshots, resourceTemplates);
+  }
+  return { resourceTemplates };
 };
 
 const handleReadResourceRequestImpl = async (request: any, extra: any) => {
@@ -4943,18 +4965,24 @@ const createPrincipalRuntime = async (
       info.client = protectClient(client);
       await client.connect(transport, resolvedConfig.options || {});
       const capabilities = client.getServerCapabilities();
-      if (capabilities?.tools)
-        info.tools = (await client.listTools({}, resolvedConfig.options)).tools.map((tool) =>
-          normalizeToolForCache(name, tool),
+      if (capabilities?.tools) {
+        const { tools } = await client.listTools({}, resolvedConfig.options);
+        info.tools = preserveListFreshness(
+          tools,
+          tools.map((tool) => normalizeToolForCache(name, tool)),
         );
-      if (capabilities?.prompts)
-        info.prompts = (await client.listPrompts({}, resolvedConfig.options)).prompts.map(
-          (prompt) => normalizePromptForCache(name, prompt),
+      }
+      if (capabilities?.prompts) {
+        const { prompts } = await client.listPrompts({}, resolvedConfig.options);
+        info.prompts = preserveListFreshness(
+          prompts,
+          prompts.map((prompt) => normalizePromptForCache(name, prompt)),
         );
-      if (capabilities?.resources)
-        info.resources = (await client.listResources({}, resolvedConfig.options)).resources.map(
-          normalizeResourceForCache,
-        );
+      }
+      if (capabilities?.resources) {
+        const { resources } = await client.listResources({}, resolvedConfig.options);
+        info.resources = preserveListFreshness(resources, resources.map(normalizeResourceForCache));
+      }
       info.version = client.getServerVersion()?.version;
       // Record the resolved npx/uvx package version backing this server.
       applyResolvedPackageVersion(info, resolvedConfig);
@@ -5124,16 +5152,99 @@ const withPrincipalServers =
     }
   };
 
+type ListField = 'tools' | 'prompts' | 'resources' | 'resourceTemplates';
+
+// Re-read authoritative inputs across awaits; no projected response is cached.
+const listProjectionInputs = async (group: string | undefined, field: ListField) => {
+  const user = UserContextService.getInstance().getCurrentUser();
+  const keyId = RequestContextService.getInstance().getBearerKeyContext().keyId;
+  const liveUser = user?.username ? await getUserDao().findByUsername(user.username) : undefined;
+  const key = keyId ? await getBearerKeyDao().findById(keyId) : undefined;
+  if (
+    (user?.username && (!liveUser || Boolean(user.isAdmin) !== Boolean(liveUser.isAdmin))) ||
+    (keyId && !key?.enabled)
+  )
+    return undefined;
+  const lookupGroup = getGroupLookupName(group);
+  const groupDao = getGroupDao();
+  let routeGroup = lookupGroup ? await groupDao.findByName(lookupGroup) : undefined;
+  if (
+    !routeGroup &&
+    lookupGroup &&
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(lookupGroup)
+  ) {
+    routeGroup = await groupDao.findById(lookupGroup);
+  }
+  return JSON.stringify([
+    await getServerDao().findAll(),
+    routeGroup,
+    await getSystemConfigDao().get(),
+    field === 'prompts' ? await getBuiltinPromptDao().findEnabled() : undefined,
+    field === 'resources' ? await getBuiltinResourceDao().findEnabled() : undefined,
+    liveUser,
+    key,
+    RequestContextService.getInstance().getRequestContext()?.clientCapabilities,
+    getVisibleServerInfos().map((info) => ({
+      name: info.name,
+      status: info.status,
+      enabled: info.enabled,
+      owner: info.owner,
+      visibility: info.visibility,
+      sharedWithUsers: info.sharedWithUsers,
+      config: info.config,
+    })),
+  ]);
+};
+
 // Lists combine cached discovery with live gateway configuration and authorization.
 // Upstream freshness alone cannot guarantee freshness of the resulting projection.
 const withCacheHints =
-  (handler: McpHandler, passthroughTtl = false): McpHandler =>
+  (handler: McpHandler, passthroughTtl = false, listField?: ListField): McpHandler =>
   async (request, extra) => {
     if (!RequestContextService.getInstance().getRequestContext()?.stateless) {
       return handler(request, extra);
     }
     const startedAt = performance.now();
+    const group = getMcpRequestGroup(extra);
+    const inputs = listField ? await listProjectionInputs(group, listField) : undefined;
+    const before = listField
+      ? await getFilteredServerInfosForGroup(getGroupLookupName(group))
+      : undefined;
+    const snapshots =
+      before && listField && listField !== 'resourceTemplates'
+        ? before.filteredServerInfos.map((info) => info[listField])
+        : [];
+    const clients = before?.filteredServerInfos.map((info) => info.client);
     const result = await handler(request, extra);
+    if (listField) {
+      const after = await getFilteredServerInfosForGroup(getGroupLookupName(group));
+      const stable =
+        typeof inputs === 'string' &&
+        inputs === (await listProjectionInputs(group, listField)) &&
+        before?.filteredServerInfos.length === after.filteredServerInfos.length &&
+        before.filteredServerInfos.every(
+          (info, index) =>
+            info === after.filteredServerInfos[index] &&
+            info.client === clients?.[index] &&
+            info.status === 'connected' &&
+            (listField === 'resourceTemplates' || info[listField] === snapshots[index]),
+        );
+      const generated =
+        (listField === 'tools' && isSmartRoutingGroup(group)) ||
+        (listField === 'prompts' && (await getBuiltinPromptDao().findEnabled()).length > 0) ||
+        (listField === 'resources' && (await getBuiltinResourceDao().findEnabled()).length > 0);
+      const unknownPermissions = RequestContextService.getInstance().getHostedAuthContext();
+      const dependencies =
+        listField === 'resourceTemplates' ? [result.resourceTemplates] : snapshots;
+      return {
+        ...result,
+        ttlMs:
+          stable && !generated && !unknownPermissions
+            ? remainingListTtl(dependencies, startedAt, performance.now())
+            : 0,
+        cacheScope: 'private',
+      };
+    }
     const upstreamTtl: unknown = result.ttlMs;
     const ttlMs =
       passthroughTtl &&
@@ -5148,21 +5259,21 @@ const withCacheHints =
   };
 
 export const handleListToolsRequest = withPrincipalServers(
-  withCacheHints(handleListToolsRequestImpl),
+  withCacheHints(handleListToolsRequestImpl, false, 'tools'),
   'list',
 );
 export const handleCallToolRequest = withPrincipalServers(handleCallToolRequestImpl, 'tool');
 export const handleGetPromptRequest = withPrincipalServers(handleGetPromptRequestImpl, 'prompt');
 export const handleListPromptsRequest = withPrincipalServers(
-  withCacheHints(handleListPromptsRequestImpl),
+  withCacheHints(handleListPromptsRequestImpl, false, 'prompts'),
   'list',
 );
 export const handleListResourcesRequest = withPrincipalServers(
-  withCacheHints(handleListResourcesRequestImpl),
+  withCacheHints(handleListResourcesRequestImpl, false, 'resources'),
   'list',
 );
 export const handleListResourceTemplatesRequest = withPrincipalServers(
-  withCacheHints(handleListResourceTemplatesRequestImpl),
+  withCacheHints(handleListResourceTemplatesRequestImpl, false, 'resourceTemplates'),
   'list',
 );
 export const handleReadResourceRequest = withPrincipalServers(
