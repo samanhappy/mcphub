@@ -1,6 +1,6 @@
 ---
-title: "MCP HTTP Endpoints"
-description: "Connect to your MCP servers using the unified HTTP endpoint."
+title: 'MCP HTTP Endpoints'
+description: 'Connect to your MCP servers using the unified HTTP endpoint.'
 ---
 
 MCPHub provides a unified streamable HTTP interface for all your MCP servers. This allows you to send requests to any configured MCP server and receive responses in real-time.
@@ -33,3 +33,63 @@ For direct access to individual servers, use the server-specific HTTP endpoint.
   - `{server}`: The name of the server.
 
 > **Note**: If a server name and group name are the same, the group will take precedence.
+
+## Protocol compatibility
+
+The same `/mcp` URL serves legacy `2025-11-25` and modern `2026-07-28`
+clients. Group and server URLs use the same protocol handling. Changing the URL
+from `/sse` to `/mcp` does not by itself upgrade the client's protocol revision.
+
+| Behavior                  | Legacy HTTP+SSE (`/sse`)                    | HTTP `2025-11-25` (`/mcp`)        | HTTP `2026-07-28` (`/mcp`)                                            |
+| ------------------------- | ------------------------------------------- | --------------------------------- | --------------------------------------------------------------------- |
+| Status                    | Deprecated; still supported                 | Supported for compatibility       | Supported; migration work continues                                   |
+| Startup                   | `initialize` over the SSE transport         | `initialize` over Streamable HTTP | No `initialize` handshake; SDK discovery                              |
+| Downstream session        | SSE connection and session message endpoint | `Mcp-Session-Id`                  | No downstream transport session                                       |
+| Routing headers           | Legacy transport behavior                   | Legacy transport behavior         | `Mcp-Method`; `Mcp-Name` for named calls and resource reads           |
+| Stateful tools            | Existing session lifecycle                  | Existing session lifecycle        | Bearer authentication plus `X-MCPHub-State-Id`                        |
+| MCP Apps capabilities     | Declared during initialization              | Declared during initialization    | Declared in each request's `params._meta`                             |
+| List cache hints          | Existing legacy response shape              | Existing legacy response shape    | `ttlMs: 0`, `cacheScope: "private"`                                   |
+| Resource-read cache hints | Existing upstream hints preserved           | Existing upstream hints preserved | Valid remaining upstream TTL, restricted to `private`; otherwise zero |
+
+MCP Apps passthrough also depends on the route and visible upstream servers;
+`$smart` routes remain ordinary MCP routes. See [MCP Apps](/features/mcp-apps).
+Upstream MCP connections currently retain legacy protocol negotiation; a modern
+downstream request does not upgrade an upstream server.
+
+## Migrating a client
+
+1. Replace the legacy SSE client transport with an HTTP transport, and change
+   `/sse` to `/mcp`, preserving any group, server or user route scope. Keep the
+   same bearer credentials. A legacy HTTP client can make this transport change
+   while retaining its initialization and session lifecycle.
+2. To adopt `2026-07-28`, use a client that supports modern HTTP discovery and
+   the per-request metadata envelope. The SDK v2 HTTP client supplies the
+   protocol and routing headers. A custom client must send the normal JSON-RPC
+   body with `params._meta["io.modelcontextprotocol/protocolVersion"]` set to
+   `2026-07-28` and declare client capabilities under
+   `params._meta["io.modelcontextprotocol/clientCapabilities"]`. Send matching
+   `MCP-Protocol-Version` and `Mcp-Method` headers; `tools/call` and `prompts/get`
+   require `Mcp-Name` matching `params.name`, and `resources/read` requires it
+   matching `params.uri`. Use names returned by that route's list response.
+3. For `perSessionClient` or OpenAPI `cookieSession` tools, create a UUID v4 for
+   each independent workflow and send it as `X-MCPHub-State-Id` on tool calls.
+   Stateless tools do not need it. Reuse is limited to the same bearer
+   credential, user and route. State is process-local, expires after 30 idle
+   minutes, and requires sticky routing across replicas. Restart, expiry or
+   credential/route changes require rebuilding application state. See
+   [explicit-state configuration](/configuration/mcp-settings#stateful-tools-over-mcp-2026-07-28).
+4. Verify listing and calling tools with your actual permissions, then verify
+   resource reads and MCP Apps if used. Modern Apps hosts must declare their UI
+   capability on each request. Modern calls do not depend on `Mcp-Session-Id`
+   or `enableSessionRebuild`; those remain legacy mechanisms.
+
+## Cache behavior
+
+Modern list results combine upstream discovery snapshots with current gateway
+configuration, permissions and client capabilities. They are immediately stale
+and private; a positive upstream list TTL is not propagated. Modern resource
+reads bypass the SDK response cache, subtract handling time from a valid upstream
+TTL and restrict sharing to the requesting authorization context. Missing or
+invalid TTLs, built-in resources and gateway-generated read errors use zero.
+These hints do not add a gateway response cache. Full positive list TTL
+propagation requires a separate invalidation design.

@@ -1,6 +1,6 @@
 ---
-title: "MCP HTTP 端点"
-description: "使用统一的 HTTP 端点连接到您的 MCP 服务器。"
+title: 'MCP HTTP 端点'
+description: '使用统一的 HTTP 端点连接到您的 MCP 服务器。'
 ---
 
 MCPHub 为您的所有 MCP 服务器提供统一的可流式 HTTP 接口。这使您可以向任何配置的 MCP 服务器发送请求并实时接收响应。
@@ -33,3 +33,55 @@ MCPHub 为您的所有 MCP 服务器提供统一的可流式 HTTP 接口。这�
   - `{server}`: 服务器的名称。
 
 > **注意**: 如果服务器名称和群组名称相同，则群组将优先。
+
+## 协议兼容矩阵
+
+同一个 `/mcp` URL 同时服务旧版 `2025-11-25` 和新版 `2026-07-28` 客户端。
+群组和服务器端点使用相同的协议处理方式。仅将 URL 从 `/sse` 改成 `/mcp`，
+不会自动升级客户端的协议版本。
+
+| 行为             | 旧版 HTTP+SSE（`/sse`）        | HTTP `2025-11-25`（`/mcp`）            | HTTP `2026-07-28`（`/mcp`）                            |
+| ---------------- | ------------------------------ | -------------------------------------- | ------------------------------------------------------ |
+| 支持状态         | 已弃用，仍受支持               | 保留兼容支持                           | 已支持，迁移工作仍在继续                               |
+| 启动             | 通过 SSE 传输执行 `initialize` | 通过 Streamable HTTP 执行 `initialize` | 无需 `initialize` 握手，使用 SDK 发现机制              |
+| 下游会话         | SSE 连接及会话消息端点         | `Mcp-Session-Id`                       | 不创建下游传输会话                                     |
+| 路由请求头       | 使用旧版传输行为               | 使用旧版传输行为                       | `Mcp-Method`；具名调用和资源读取还需 `Mcp-Name`        |
+| 有状态工具       | 使用已有会话生命周期           | 使用已有会话生命周期                   | Bearer 认证及 `X-MCPHub-State-Id`                      |
+| MCP Apps 能力    | 初始化时声明                   | 初始化时声明                           | 每次请求在 `params._meta` 中声明                       |
+| 列表缓存提示     | 保留已有旧版响应结构           | 保留已有旧版响应结构                   | `ttlMs: 0`、`cacheScope: "private"`                    |
+| 资源读取缓存提示 | 保留已有上游提示               | 保留已有上游提示                       | 有效的上游剩余 TTL，范围收紧为 `private`；其他情况为零 |
+
+MCP Apps 透传还取决于请求路由和可见的上游服务器；`$smart` 路由仍按普通 MCP
+路由处理。参见 [MCP Apps](/zh/features/mcp-apps)。上游 MCP 连接目前继续使用
+旧版协议协商；新版下游请求不会自动升级上游服务器。
+
+## 客户端迁移
+
+1. 将旧 SSE 客户端传输改为 HTTP 传输，将 `/sse` 改为 `/mcp`，保留原有群组、
+   服务器或用户路由范围，以及 Bearer 凭据。旧版 HTTP 客户端可以先完成传输迁移，
+   继续使用原有初始化和会话生命周期。
+2. 要采用 `2026-07-28`，需使用支持新版 HTTP 发现机制及逐请求元数据的客户端。
+   SDK v2 HTTP 客户端会自动设置协议和路由请求头。自定义客户端需发送常规
+   JSON-RPC 请求体，将 `params._meta["io.modelcontextprotocol/protocolVersion"]`
+   设为 `2026-07-28`，并在
+   `params._meta["io.modelcontextprotocol/clientCapabilities"]` 中声明客户端能力。
+   同时发送一致的 `MCP-Protocol-Version` 和 `Mcp-Method` 请求头；`tools/call`
+   和 `prompts/get` 需要与 `params.name` 一致的 `Mcp-Name`，`resources/read`
+   则需要与 `params.uri` 一致。工具名称应使用该路由列表响应中的名称。
+3. 使用 `perSessionClient` 或 OpenAPI `cookieSession` 工具时，为每个独立工作流
+   生成 UUID v4，并通过工具调用的 `X-MCPHub-State-Id` 请求头发送。无状态工具
+   不需要此头。只有相同 Bearer 凭据、用户和路由才能复用状态。状态仅保存在当前
+   进程中，闲置 30 分钟后过期，多副本部署需要粘性路由。进程重启、状态过期或
+   凭据、路由变化后需要重新建立应用状态。参见
+   [显式状态配置](/zh/configuration/mcp-settings#mcp-2026-07-28-的有状态工具)。
+4. 使用实际权限验证工具列表和调用，再验证所用的资源读取及 MCP Apps 功能。
+   新版 Apps 宿主需在每次请求中声明 UI 能力。新版调用不依赖 `Mcp-Session-Id`
+   或 `enableSessionRebuild`，这两者仍属于旧版机制。
+
+## 缓存行为
+
+新版列表响应由上游发现快照、当前网关配置、权限和客户端能力共同生成，因此使用
+立即过期的私有缓存提示，不透传上游列表的正 TTL。新版资源读取绕过 SDK 响应
+缓存，在有效的上游 TTL 中扣减处理耗时，并将共享范围限制在请求方认证上下文内。
+缺失或无效 TTL、内置资源及网关生成的读取错误均使用零。这些提示不会新增网关
+响应缓存；完整的列表正 TTL 透传需要独立的失效机制设计。

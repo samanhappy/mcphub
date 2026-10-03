@@ -1,9 +1,11 @@
 ---
-title: "MCP SSE 端点 (已弃用)"
-description: "使用 SSE 端点连接到您的 MCP 服务器。"
+title: 'MCP SSE 端点 (已弃用)'
+description: '使用 SSE 端点连接到您的 MCP 服务器。'
 ---
 
-SSE 端点已弃用，并将在未来版本中删除。请改用 [MCP HTTP 端点](/api-reference/mcp-http)。
+旧版 HTTP+SSE 端点已弃用，但迁移期间仍受支持。新接入请使用 [MCP HTTP 端点与迁移指南](/zh/api-reference/mcp-http)。目前尚未公布移除版本或日期。
+
+分阶段升级 ADR 要求至少 12 个月的弃用窗口。移除前需要公布时间计划并验证迁移路径。这不代表弃用旧版 `2025-11-25` HTTP 客户端的会话生命周期：旧版和新版 HTTP 继续受支持。
 
 **安全提示**：MCP 端点默认需要身份验证，以避免暴露已连接的工具和数据。若需对 MCP 端点开放匿名访问，请在密钥设置中关闭 **启用 Bearer 认证**。**免登录开关**仅影响仪表盘登录。
 
