@@ -329,6 +329,52 @@ describe('mcpService per-session client isolation (perSessionClient)', () => {
     expect(mockCreatedClients[0].callTool).toHaveBeenCalledTimes(2);
   });
 
+  it('bounds modern state admission and recovers after idle cleanup without shared fallback', async () => {
+    jest.useFakeTimers();
+    const info = makeServerInfo({ perSessionClient: true });
+    mcpService.setServerInfosForTest([info]);
+    try {
+      for (let i = 0; i < 1000; i++) {
+        expect((await modernCall(`credential-${i}`)).isError).toBe(false);
+      }
+      expect(mockCreatedClients).toHaveLength(1000);
+      const rejected = await modernCall('overflow');
+      expect(rejected.isError).toBe(true);
+      expect(JSON.stringify(rejected.content)).toContain('Client state capacity reached');
+      expect(mockCreatedClients).toHaveLength(1000);
+      expect((await modernCall('credential-0')).isError).toBe(false);
+      expect(mockCreatedClients).toHaveLength(1000);
+      expect(info.sharedClient.callTool).not.toHaveBeenCalled();
+
+      const pinned = mockCreatedClients[0];
+      let finish!: (value: ReturnType<typeof makeOkResult>) => void;
+      pinned.callTool.mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            finish = resolve;
+          }),
+      );
+      const running = modernCall('credential-0');
+      for (let i = 0; i < 100 && !finish; i++) await Promise.resolve();
+      expect(finish).toBeDefined();
+      jest.advanceTimersByTime(31 * 60 * 1000);
+      expect(pinned.close).not.toHaveBeenCalled();
+      expect(
+        mockCreatedClients.slice(1).every((client) => client.close.mock.calls.length === 1),
+      ).toBe(true);
+      expect((await modernCall('overflow')).isError).toBe(false);
+      expect(mockCreatedClients).toHaveLength(1001);
+      finish(makeOkResult());
+      await running;
+      expect((await modernCall('credential-0')).isError).toBe(false);
+      expect(mockCreatedClients).toHaveLength(1001);
+      expect(info.sharedClient.callTool).not.toHaveBeenCalled();
+    } finally {
+      mcpService.cleanupAllServers();
+      jest.useRealTimers();
+    }
+  });
+
   it('expires idle modern clients but pins running tool calls', async () => {
     jest.useFakeTimers();
     mcpService.setServerInfosForTest([makeServerInfo({ perSessionClient: true })]);
