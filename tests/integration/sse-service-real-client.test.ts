@@ -32,6 +32,7 @@ import {
 import type { ServerInfo } from '../../src/types/index.js';
 import { transports } from '../../src/services/sseService.js';
 import { MCP_APPS_CAPABILITIES } from '../../src/utils/mcpApps.js';
+import { getSystemConfigDao } from '../../src/dao/index.js';
 
 describe('Real Client Transport Integration Tests', () => {
   let _appServer: AppServer;
@@ -260,6 +261,67 @@ describe('Real Client Transport Integration Tests', () => {
   });
 
   describe('MCP 2026-07-28 Dual-stack Tests', () => {
+    it('ignores legacy session scope when authorizing modern global routing', async () => {
+      const transport = new StreamableHTTPClientTransport(
+        new URL(`${baseURL}/mcp/integration-test-group`),
+        { requestInit: { headers: { Authorization: 'Bearer test-auth-token-123' } } },
+      );
+      const client = new Client({ name: 'legacy-route-boundary', version: '1.0.0' });
+      const dao = getSystemConfigDao();
+      const systemConfig = await dao.get();
+      let configSpy: jest.SpyInstance | undefined;
+      try {
+        await client.connect(transport);
+        expect(transport.sessionId).toBeDefined();
+        configSpy = jest.spyOn(dao, 'get');
+        for (const enableGlobalRoute of [false, true]) {
+          configSpy.mockResolvedValue({
+            ...systemConfig,
+            routing: { ...systemConfig?.routing, enableGlobalRoute },
+          });
+          for (const sessionSource of ['none', 'header', 'query']) {
+            const response = await fetch(
+              `${baseURL}/mcp${sessionSource === 'query' ? `?sessionId=${transport.sessionId}` : ''}`,
+              {
+                method: 'POST',
+                headers: {
+                  Authorization: 'Bearer test-auth-token-123',
+                  'Content-Type': 'application/json',
+                  Accept: 'application/json, text/event-stream',
+                  'MCP-Protocol-Version': '2026-07-28',
+                  'Mcp-Method': 'tools/list',
+                  ...(sessionSource === 'header' ? { 'Mcp-Session-Id': transport.sessionId! } : {}),
+                },
+                body: JSON.stringify({
+                  jsonrpc: '2.0',
+                  id: 1,
+                  method: 'tools/list',
+                  params: {
+                    _meta: {
+                      'io.modelcontextprotocol/protocolVersion': '2026-07-28',
+                      'io.modelcontextprotocol/clientCapabilities': {},
+                    },
+                  },
+                }),
+              },
+            );
+            expect({ source: sessionSource, status: response.status }).toEqual({
+              source: sessionSource,
+              status: enableGlobalRoute ? 200 : 403,
+            });
+            if (enableGlobalRoute) {
+              expect((await response.json()).result.tools).toBeDefined();
+            } else {
+              expect(await response.text()).toContain('Global routes are disabled');
+            }
+          }
+        }
+      } finally {
+        configSpy?.mockRestore();
+        await client.close();
+      }
+    });
+
     it('validates routing headers before dispatch and preserves route and auth boundaries', async () => {
       const info = getServerByName('test-server-1')!;
       const original = {
