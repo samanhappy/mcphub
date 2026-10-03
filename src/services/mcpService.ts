@@ -4797,9 +4797,16 @@ const handleReadResourceRequestImpl = async (request: any, extra: any) => {
     }
 
     let result: any;
+    // A cached SDK body carries its original TTL, not the remaining lifetime.
+    // Fetch modern reads afresh so forwarding the TTL cannot renew stale content.
+    const readOptions = RequestContextService.getInstance().getRequestContext()?.stateless
+      ? { cacheMode: 'bypass' as const }
+      : undefined;
 
     if (server?.client) {
-      result = await server.client.readResource({ uri });
+      result = readOptions
+        ? await server.client.readResource({ uri }, readOptions)
+        : await server.client.readResource({ uri });
       if (!result || !Array.isArray(result.contents)) {
         throw new Error(`Failed to read resource: ${uri}`);
       }
@@ -4819,7 +4826,9 @@ const handleReadResourceRequestImpl = async (request: any, extra: any) => {
           continue;
         }
         try {
-          const candidateResult = await candidate.client.readResource({ uri });
+          const candidateResult = readOptions
+            ? await candidate.client.readResource({ uri }, readOptions)
+            : await candidate.client.readResource({ uri });
           if (candidateResult && Array.isArray(candidateResult.contents)) {
             result = candidateResult;
             break;
@@ -5117,20 +5126,49 @@ const withPrincipalServers =
     }
   };
 
-export const handleListToolsRequest = withPrincipalServers(handleListToolsRequestImpl, 'list');
+// Lists combine cached discovery with live gateway configuration and authorization.
+// Upstream freshness alone cannot guarantee freshness of the resulting projection.
+const withCacheHints =
+  (handler: McpHandler, passthroughTtl = false): McpHandler =>
+  async (request, extra) => {
+    if (!RequestContextService.getInstance().getRequestContext()?.stateless) {
+      return handler(request, extra);
+    }
+    const startedAt = performance.now();
+    const result = await handler(request, extra);
+    const upstreamTtl: unknown = result.ttlMs;
+    const ttlMs =
+      passthroughTtl &&
+      typeof upstreamTtl === 'number' &&
+      Number.isSafeInteger(upstreamTtl) &&
+      upstreamTtl >= 0
+        ? Math.max(0, upstreamTtl - Math.ceil(performance.now() - startedAt))
+        : 0;
+    // Even public upstream content is projected through caller-specific permissions
+    // and capabilities. Shared caches must not reuse the gateway result across users.
+    return { ...result, ttlMs, cacheScope: 'private' };
+  };
+
+export const handleListToolsRequest = withPrincipalServers(
+  withCacheHints(handleListToolsRequestImpl),
+  'list',
+);
 export const handleCallToolRequest = withPrincipalServers(handleCallToolRequestImpl, 'tool');
 export const handleGetPromptRequest = withPrincipalServers(handleGetPromptRequestImpl, 'prompt');
-export const handleListPromptsRequest = withPrincipalServers(handleListPromptsRequestImpl, 'list');
+export const handleListPromptsRequest = withPrincipalServers(
+  withCacheHints(handleListPromptsRequestImpl),
+  'list',
+);
 export const handleListResourcesRequest = withPrincipalServers(
-  handleListResourcesRequestImpl,
+  withCacheHints(handleListResourcesRequestImpl),
   'list',
 );
 export const handleListResourceTemplatesRequest = withPrincipalServers(
-  handleListResourceTemplatesRequestImpl,
+  withCacheHints(handleListResourceTemplatesRequestImpl),
   'list',
 );
 export const handleReadResourceRequest = withPrincipalServers(
-  handleReadResourceRequestImpl,
+  withCacheHints(handleReadResourceRequestImpl, true),
   'resource',
 );
 
