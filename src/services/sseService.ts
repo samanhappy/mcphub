@@ -530,8 +530,12 @@ const validateBearerAuth = async (req: Request): Promise<BearerAuthResult> => {
 };
 
 // Recheck every request, including existing sessions and smart group routes.
-const authorizeGroupRoute = async (req: Request, res: Response): Promise<boolean> => {
-  const sessionId = getRequestSessionId(req);
+const authorizeGroupRoute = async (
+  req: Request,
+  res: Response,
+  legacySession = true,
+): Promise<boolean> => {
+  const sessionId = legacySession ? getRequestSessionId(req) : undefined;
   const session = sessionId ? transports[sessionId] : undefined;
   if (session && !(await groupRouteReferencesMatch(req.params.group, session.group))) {
     res.status(403).json({ error: 'forbidden', error_description: 'Session route mismatch' });
@@ -896,9 +900,14 @@ export const handleMcpPostRequest = async (req: Request, res: Response): Promise
   // User context is now set by sseUserContextMiddleware
   const userContextService = UserContextService.getInstance();
 
-  // Streamable HTTP clients may continue an existing session on the global route.
-  // Reuse the session's group before bearer-scope validation in that case.
-  attachSessionGroupToRequest(req);
+  // Classify before restoring legacy session scope. Modern routing and auth must
+  // depend on the request URL, not on an unrelated legacy session ID.
+  const webRequest = await toWebRequest(req, req.body);
+  const legacyRequest = await isLegacyRequest(webRequest, req.body);
+  if (legacyRequest) {
+    // Legacy clients may continue a group session through the global route.
+    attachSessionGroupToRequest(req);
+  }
 
   // Check bearer auth using filtered settings
   const bearerAuthResult = await validateBearerAuth(req);
@@ -908,7 +917,7 @@ export const handleMcpPostRequest = async (req: Request, res: Response): Promise
   }
 
   attachUserContextFromBearer(bearerAuthResult, res);
-  if (!(await authorizeGroupRoute(req, res))) return;
+  if (!(await authorizeGroupRoute(req, res, legacyRequest))) return;
 
   const currentUser = userContextService.getCurrentUser();
   const username = currentUser?.username;
@@ -935,8 +944,6 @@ export const handleMcpPostRequest = async (req: Request, res: Response): Promise
   // MCP 2026-07-28 is stateless over HTTP. Keep the existing sessionful
   // Streamable HTTP path for 2025-era clients, and let the SDK's own
   // classifier route modern (or malformed-modern) traffic to createMcpHandler.
-  const webRequest = await toWebRequest(req, req.body);
-  const legacyRequest = await isLegacyRequest(webRequest, req.body);
   if (!legacyRequest) {
     logger.log(
       `[MCP 2026] Handling stateless request in group: ${group || 'global'}${username ? ` for user: ${username}` : ''}`,
