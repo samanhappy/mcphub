@@ -32,6 +32,7 @@ import {
 import type { ServerInfo } from '../../src/types/index.js';
 import { transports } from '../../src/services/sseService.js';
 import { MCP_APPS_CAPABILITIES } from '../../src/utils/mcpApps.js';
+import { UserContextService } from '../../src/services/userContextService.js';
 import { getSystemConfigDao } from '../../src/dao/index.js';
 
 describe('Real Client Transport Integration Tests', () => {
@@ -42,6 +43,30 @@ describe('Real Client Transport Integration Tests', () => {
 
   beforeAll(async () => {
     const settings = mockSettings.createMockSettings({
+      users: ['testuser', 'state-alice', 'state-bob'].map((username) => ({
+        username,
+        password: 'unused',
+        isAdmin: false,
+      })),
+      bearerKeys: [
+        {
+          id: 'system',
+          name: 'system',
+          token: 'test-auth-token-123',
+          kind: 'system',
+          enabled: true,
+          accessType: 'all',
+        },
+        ...['alice', 'alice-second', 'bob'].map((name) => ({
+          id: name,
+          name,
+          token: `state-${name}-token`,
+          kind: 'user' as const,
+          owner: name === 'bob' ? 'state-bob' : 'state-alice',
+          enabled: true,
+          accessType: 'all' as const,
+        })),
+      ],
       systemConfig: {
         routing: {
           enableGlobalRoute: true,
@@ -261,6 +286,72 @@ describe('Real Client Transport Integration Tests', () => {
   });
 
   describe('MCP 2026-07-28 Dual-stack Tests', () => {
+    it('rejects invalid modern protocol metadata before upstream dispatch or legacy session creation', async () => {
+      const info = getServerByName('test-server-1')!;
+      const original = { tools: info.tools, openApiClient: info.openApiClient };
+      const call = jest.fn(async () => ({ accepted: true }));
+      info.tools = [{ name: 'test-server-1-protocol-check', inputSchema: { type: 'object' } }];
+      info.openApiClient = { callTool: call } as unknown as ServerInfo['openApiClient'];
+      const sessions = Object.keys(transports).sort();
+      const versionKey = 'io.modelcontextprotocol/protocolVersion';
+      const capabilitiesKey = 'io.modelcontextprotocol/clientCapabilities';
+      const cases = [
+        { header: '', meta: { [versionKey]: '2099-01-01', [capabilitiesKey]: {} } },
+        { header: '', meta: { [versionKey]: 2026, [capabilitiesKey]: {} } },
+        { header: '2099-01-01', meta: { [versionKey]: '2099-01-01', [capabilitiesKey]: {} } },
+        { header: '2026-07-28', meta: { [versionKey]: '2025-11-25', [capabilitiesKey]: {} } },
+        { header: '2025-11-25', meta: { [versionKey]: '2026-07-28', [capabilitiesKey]: {} } },
+        { header: '2026-07-28', meta: {} },
+        { header: '2026-07-28', meta: { [versionKey]: 2026, [capabilitiesKey]: {} } },
+        {
+          header: '2026-07-28',
+          meta: { [versionKey]: '2026-07-28', [capabilitiesKey]: 'invalid' },
+        },
+      ];
+      try {
+        for (const { header, meta, valid } of [
+          ...cases.map((entry) => ({ ...entry, valid: false })),
+          {
+            header: '2026-07-28',
+            meta: { [versionKey]: '2026-07-28', [capabilitiesKey]: {} },
+            valid: true,
+          },
+        ]) {
+          const response = await fetch(`${baseURL}/mcp/test-server-1`, {
+            method: 'POST',
+            headers: {
+              Authorization: 'Bearer test-auth-token-123',
+              'Content-Type': 'application/json',
+              Accept: 'application/json, text/event-stream',
+              ...(header ? { 'MCP-Protocol-Version': header } : {}),
+              'Mcp-Method': 'tools/call',
+              'Mcp-Name': 'protocol-check',
+            },
+            body: JSON.stringify({
+              jsonrpc: '2.0',
+              id: 1,
+              method: 'tools/call',
+              params: { name: 'protocol-check', arguments: { timezone: 'UTC' }, _meta: meta },
+            }),
+          });
+          expect({ header, meta, status: response.status }).toMatchObject({
+            status: valid ? 200 : 400,
+          });
+          expect(response.headers.get('mcp-session-id')).toBeNull();
+          if (valid) {
+            expect((await response.json()).result.isError).not.toBe(true);
+            expect(call).toHaveBeenCalledTimes(1);
+          } else {
+            expect((await response.json()).error).toBeDefined();
+            expect(call).not.toHaveBeenCalled();
+          }
+          expect(Object.keys(transports).every((id) => sessions.includes(id))).toBe(true);
+        }
+      } finally {
+        Object.assign(info, original);
+      }
+    });
+
     it('ignores legacy session scope when authorizing modern global routing', async () => {
       const transport = new StreamableHTTPClientTransport(
         new URL(`${baseURL}/mcp/integration-test-group`),
@@ -407,17 +498,23 @@ describe('Real Client Transport Integration Tests', () => {
     it('binds explicit application state to authenticated routes without downstream sessions', async () => {
       const info = getServerByName('test-server-1')!;
       const original = {
+        visibility: info.visibility,
         tools: info.tools,
         config: info.config,
         openApiClient: info.openApiClient,
         status: info.status,
       };
-      const call = jest.fn(async (_name, _args, _headers, _raw, id) => ({ state: id }));
+      const call = jest.fn(async (_name, _args, _headers, _raw, id) => ({
+        state: id,
+        user: UserContextService.getInstance().getCurrentUser()?.username,
+      }));
       const clear = jest.fn();
       info.status = 'connected';
+      info.visibility = 'public';
       info.tools = [{ name: 'test-server-1-stateful', inputSchema: { type: 'object' } }];
       info.config = {
         ...info.config,
+        visibility: 'public',
         openapi: { ...info.config?.openapi, cookieSession: true },
       } as ServerInfo['config'];
       info.openApiClient = {
@@ -426,7 +523,7 @@ describe('Real Client Transport Integration Tests', () => {
       } as unknown as ServerInfo['openApiClient'];
       const sessionIdsBefore = new Set(Object.keys(transports));
       const clients: ModernClient[] = [];
-      const connect = async (route: string, handle?: string) => {
+      const connect = async (route: string, handle?: string, token = 'test-auth-token-123') => {
         const client = new ModernClient(
           { name: 'state-test', version: '1.0.0' },
           { versionNegotiation: { mode: 'auto' } },
@@ -436,7 +533,7 @@ describe('Real Client Transport Integration Tests', () => {
           new ModernStreamableHTTPClientTransport(new URL(`${baseURL}${route}`), {
             requestInit: {
               headers: {
-                Authorization: 'Bearer test-auth-token-123',
+                Authorization: `Bearer ${token}`,
                 ...(handle ? { 'X-MCPHub-State-Id': handle } : {}),
               },
             },
@@ -459,11 +556,60 @@ describe('Real Client Transport Integration Tests', () => {
         expect((await c.callTool({ name: 'stateful', arguments: {} })).isError).not.toBe(true);
         expect(call).toHaveBeenCalledTimes(3);
         expect(call.mock.calls[2][4]).not.toBe(call.mock.calls[0][4]);
+        const userStates: string[] = [];
+        for (const [token, username] of [
+          ['state-alice-token', 'state-alice'],
+          ['state-alice-second-token', 'state-alice'],
+          ['state-bob-token', 'state-bob'],
+        ]) {
+          const userClient = await connect('/mcp/test-server-1', handle, token);
+          const first = await userClient.callTool({ name: 'stateful', arguments: {} });
+          const second = await userClient.callTool({ name: 'stateful', arguments: {} });
+          expect(first.isError).not.toBe(true);
+          expect(second.isError).not.toBe(true);
+          const identity = JSON.parse((first.content[0] as { text: string }).text);
+          expect(identity.user).toBe(username);
+          expect(JSON.parse((second.content[0] as { text: string }).text).state).toBe(
+            identity.state,
+          );
+          userStates.push(identity.state);
+        }
+        expect(new Set([...userStates, call.mock.calls[0][4], call.mock.calls[2][4]]).size).toBe(5);
+        const callsBeforeDenied = call.mock.calls.length;
+        const denied = await fetch(`${baseURL}/state-bob/mcp/test-server-1`, {
+          method: 'POST',
+          headers: {
+            Authorization: 'Bearer state-alice-token',
+            'Content-Type': 'application/json',
+            Accept: 'application/json, text/event-stream',
+            'MCP-Protocol-Version': '2026-07-28',
+            'Mcp-Method': 'tools/call',
+            'Mcp-Name': 'stateful',
+            'X-MCPHub-State-Id': handle,
+          },
+          body: JSON.stringify({
+            jsonrpc: '2.0',
+            id: 1,
+            method: 'tools/call',
+            params: {
+              name: 'stateful',
+              arguments: {},
+              _meta: {
+                'io.modelcontextprotocol/protocolVersion': '2026-07-28',
+                'io.modelcontextprotocol/clientCapabilities': {},
+              },
+            },
+          }),
+        });
+        expect(denied.status).toBe(403);
+        expect(denied.headers.get('mcp-session-id')).toBeNull();
+        await denied.text();
+        expect(call).toHaveBeenCalledTimes(callsBeforeDenied);
         const missing = await connect('/mcp');
         expect(
           (await missing.callTool({ name: 'test-server-1-stateful', arguments: {} })).isError,
         ).toBe(true);
-        expect(call).toHaveBeenCalledTimes(3);
+        expect(call).toHaveBeenCalledTimes(callsBeforeDenied);
         expect(Object.keys(transports).every((id) => sessionIdsBefore.has(id))).toBe(true);
       } finally {
         await Promise.all(clients.map((client) => client.close()));
