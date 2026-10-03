@@ -36,7 +36,7 @@ Modern stateful tool calls use the MCPHub extension `X-MCPHub-State-Id` (a clien
 
 The existing isolated upstream clients and OpenAPI cookie jars use this explicit state key. Active calls hold a lease; idle state expires after 30 minutes and the process admits at most 1,000 modern state scopes. Cleanup closes isolated upstream connections and clears the tracked cookie jars, including clients in principal runtimes. State is process-local; replicas require sticky routing and expiry/restart requires rebuilding application state.
 
-This change covers state ownership and lifecycle only. Cache hints, MCP Apps capability handling, and legacy SSE/session deprecation remain separate work under #1220. Tool-minted handles can be considered later if clients need correlation without custom HTTP headers.
+This change covers state ownership and lifecycle only. Legacy SSE/session deprecation remains separate work under #1220. Tool-minted handles can be considered later if clients need correlation without custom HTTP headers.
 
 ## Routing headers during the dual-stack period
 
@@ -47,3 +47,22 @@ maintain a separate header router: URL group resolution and bearer authorization
 remain authoritative. Real HTTP integration coverage exercises global, group and
 server routes, invalid headers, bearer rejection and absence of downstream
 sessions; existing modern explicit-state and v1-client tests cover both lifecycles.
+
+## Cache hints during the dual-stack period
+
+Modern `tools/list`, `prompts/list`, `resources/list` and
+`resources/templates/list` responses explicitly emit `ttlMs: 0` and
+`cacheScope: "private"`. These lists combine discovery snapshots with live
+configuration, built-in content, caller permissions and MCP Apps capabilities;
+an upstream TTL does not guarantee freshness of the gateway projection. Positive
+list TTLs require a separate configuration and discovery invalidation design.
+
+Modern `resources/read` forwards a valid upstream TTL after subtracting time
+spent handling the read, and restricts the scope to `private`. Missing or invalid
+TTLs, built-in resources and gateway-generated error results use zero. Modern
+reads bypass the SDK response cache so a cached body cannot be reissued with its
+original TTL. Contents and unrelated metadata remain intact, including on MCP
+Apps routes. Legacy handlers retain their existing response shape and read path.
+
+These fields are client freshness hints; this change does not add a gateway
+response cache or promise that authorization remains valid throughout a TTL.

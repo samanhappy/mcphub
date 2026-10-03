@@ -159,6 +159,9 @@ import {
   getServerByName,
   handleCallToolRequest,
   handleListToolsRequest,
+  handleListPromptsRequest,
+  handleListResourcesRequest,
+  handleListResourceTemplatesRequest,
   handleReadResourceRequest,
   initUpstreamServers,
 } from '../../src/services/mcpService.js';
@@ -241,6 +244,112 @@ describe('mcpService MCP Apps transparent proxy', () => {
     cleanupAllServers();
   });
 
+  it('emits private, immediately stale hints for every modern list', async () => {
+    await initUpstreamServers();
+    await flushPromises();
+    for (const handler of [
+      handleListToolsRequest,
+      handleListPromptsRequest,
+      handleListResourcesRequest,
+      handleListResourceTemplatesRequest,
+    ]) {
+      const result = await RequestContextService.getInstance().runWithCustomRequestContext(
+        { headers: {}, stateless: true, group: 'apps-server' },
+        () => handler({}, { group: 'apps-server' }),
+      );
+      expect(result).toMatchObject({ ttlMs: 0, cacheScope: 'private' });
+      const legacy = await handler({}, { sessionId: 'ordinary-session' });
+      expect(legacy).not.toHaveProperty('ttlMs');
+      expect(legacy).not.toHaveProperty('cacheScope');
+    }
+  });
+
+  it.each([60000, 0, undefined, -1, 1.5, Infinity, '60000'])(
+    'forwards only valid resource TTLs and never public scope (%s)',
+    async (ttlMs) => {
+      await initUpstreamServers();
+      await flushPromises();
+      mockClient.readResource.mockResolvedValue({
+        contents: [{ uri: 'ui://apps/dashboard.html', text: 'resource' }],
+        ttlMs,
+        cacheScope: 'public',
+        _meta: { trace: 'preserved' },
+      });
+      const result = await RequestContextService.getInstance().runWithCustomRequestContext(
+        {
+          headers: {},
+          stateless: true,
+          group: 'apps-server',
+          clientCapabilities: MCP_APPS_CAPABILITIES,
+        },
+        () =>
+          handleReadResourceRequest(
+            { params: { uri: 'ui://apps/dashboard.html' } },
+            { group: 'apps-server' },
+          ),
+      );
+      expect(result.cacheScope).toBe('private');
+      expect(result.ttlMs).toBeGreaterThanOrEqual(0);
+      expect(result.ttlMs).toBeLessThanOrEqual(ttlMs === 60000 ? 60000 : 0);
+      expect(result._meta).toEqual({ trace: 'preserved' });
+      expect(mockClient.readResource).toHaveBeenCalledWith(
+        { uri: 'ui://apps/dashboard.html' },
+        expect.objectContaining({ cacheMode: 'bypass' }),
+      );
+    },
+  );
+
+  it('subtracts elapsed read time without renewing upstream freshness', async () => {
+    await initUpstreamServers();
+    await flushPromises();
+    mockClient.readResource.mockResolvedValue({
+      contents: [{ uri: 'ui://apps/dashboard.html', text: 'resource' }],
+      ttlMs: 100,
+      cacheScope: 'public',
+    });
+    const clock = jest
+      .spyOn(performance, 'now')
+      .mockReturnValueOnce(1000)
+      .mockReturnValueOnce(1040.2);
+    try {
+      const result = await RequestContextService.getInstance().runWithCustomRequestContext(
+        {
+          headers: {},
+          stateless: true,
+          group: 'apps-server',
+          clientCapabilities: MCP_APPS_CAPABILITIES,
+        },
+        () =>
+          handleReadResourceRequest(
+            { params: { uri: 'ui://apps/dashboard.html' } },
+            { group: 'apps-server' },
+          ),
+      );
+      expect(result).toMatchObject({ ttlMs: 59, cacheScope: 'private' });
+    } finally {
+      clock.mockRestore();
+    }
+  });
+
+  it('preserves legacy resource hints and the existing upstream read path', async () => {
+    await initUpstreamServers();
+    await flushPromises();
+    await markSessionAsAppsCapable('apps-session', 'apps-server');
+    const upstream = {
+      contents: [{ uri: 'ui://apps/dashboard.html', text: 'resource' }],
+      ttlMs: 60000,
+      cacheScope: 'public',
+    };
+    mockClient.readResource.mockResolvedValue(upstream);
+    expect(
+      await handleReadResourceRequest(
+        { params: { uri: 'ui://apps/dashboard.html' } },
+        { sessionId: 'apps-session' },
+      ),
+    ).toEqual(upstream);
+    expect(mockClient.readResource).toHaveBeenCalledWith({ uri: 'ui://apps/dashboard.html' });
+  });
+
   it('advertises MCP Apps upstream and configures dynamic list refresh callbacks', async () => {
     await initUpstreamServers();
 
@@ -284,7 +393,8 @@ describe('mcpService MCP Apps transparent proxy', () => {
     const run = (clientCapabilities: unknown) =>
       RequestContextService.getInstance().runWithCustomRequestContext(
         { headers: {}, stateless: true, group: 'apps-server', clientCapabilities } as any,
-        () => handleListToolsRequest({}, { sessionId: undefined as any, group: 'apps-server' } as any),
+        () =>
+          handleListToolsRequest({}, { sessionId: undefined as any, group: 'apps-server' } as any),
       );
 
     const enabled = await run(MCP_APPS_CAPABILITIES);

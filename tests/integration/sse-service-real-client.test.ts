@@ -408,6 +408,54 @@ describe('Real Client Transport Integration Tests', () => {
       }
     }, 60000);
 
+    it('restricts upstream resource cache hints on the modern HTTP wire', async () => {
+      const info = getServerByName('test-server-1')!;
+      const resources = info.resources;
+      info.resources = [{ uri: 'test://cache-hints', name: 'Cache hints' }];
+      const read = jest.spyOn(info.client!, 'readResource').mockResolvedValue({
+        contents: [{ uri: 'test://cache-hints', text: 'resource' }],
+        ttlMs: 60000,
+        cacheScope: 'public',
+        _meta: { trace: 'preserved' },
+      });
+      try {
+        const response = await fetch(`${baseURL}/mcp/test-server-1`, {
+          method: 'POST',
+          headers: {
+            Authorization: 'Bearer test-auth-token-123',
+            'Content-Type': 'application/json',
+            Accept: 'application/json, text/event-stream',
+            'MCP-Protocol-Version': '2026-07-28',
+            'Mcp-Method': 'resources/read',
+            'Mcp-Name': 'test://cache-hints',
+          },
+          body: JSON.stringify({
+            jsonrpc: '2.0',
+            id: 1,
+            method: 'resources/read',
+            params: {
+              uri: 'test://cache-hints',
+              _meta: {
+                'io.modelcontextprotocol/protocolVersion': '2026-07-28',
+                'io.modelcontextprotocol/clientCapabilities': {},
+              },
+            },
+          }),
+        });
+        expect(response.status).toBe(200);
+        const { result } = await response.json();
+        expect(result.cacheScope).toBe('private');
+        expect(result.ttlMs).toBeGreaterThan(0);
+        expect(result.ttlMs).toBeLessThanOrEqual(60000);
+        expect(result.contents).toEqual([{ uri: 'test://cache-hints', text: 'resource' }]);
+        expect(result._meta).toMatchObject({ trace: 'preserved' });
+        expect(read).toHaveBeenCalledWith({ uri: 'test://cache-hints' }, { cacheMode: 'bypass' });
+      } finally {
+        read.mockRestore();
+        info.resources = resources;
+      }
+    });
+
     it('should serve modern requests without creating a downstream session', async () => {
       const sessionIdsBefore = new Set(Object.keys(transports));
       const transport = new ModernStreamableHTTPClientTransport(new URL(`${baseURL}/mcp`), {
@@ -434,6 +482,14 @@ describe('Real Client Transport Integration Tests', () => {
 
         const tools = await client.listTools({});
         expect(Array.isArray(tools.tools)).toBe(true);
+        for (const result of [
+          tools,
+          await client.listPrompts({}),
+          await client.listResources({}),
+          await client.listResourceTemplates({}),
+        ]) {
+          expect(result).toMatchObject({ ttlMs: 0, cacheScope: 'private' });
+        }
 
         // 2026-07-28 HTTP is per-request/stateless and must not populate
         // MCPHub's legacy downstream session map.
