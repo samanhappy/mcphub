@@ -71,6 +71,10 @@ export function createFetchWithProxy(
       fetchInput = url;
     }
 
+    // A caller enforcing connection-time DNS validation supplies its dispatcher.
+    // Do not replace it with a proxy that resolves the target independently.
+    if (init && 'dispatcher' in init) return baseFetch(fetchInput, init);
+
     // Check if host should bypass proxy
     if (shouldBypassProxy(targetUrl.hostname, noProxyList)) {
       return baseFetch(fetchInput, init);

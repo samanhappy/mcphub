@@ -280,3 +280,14 @@ describe('createRedirectValidatingFetch', () => {
     expect(baseFetch).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('connection-time SSRF protection', () => {
+  it('supplies a guarded dispatcher to the actual fetch', async () => {
+    const baseFetch = jest.fn<typeof fetch>().mockResolvedValue(new Response('ok'));
+    await createRedirectValidatingFetch(baseFetch, false)('https://8.8.8.8/mcp');
+    expect(baseFetch).toHaveBeenCalledWith(
+      'https://8.8.8.8/mcp',
+      expect.objectContaining({ dispatcher: expect.any(Object) }),
+    );
+  });
+});

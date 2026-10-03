@@ -11,7 +11,12 @@ import {
   OpenAPISecurityConfig,
   OpenAPIDeclaredSecurity,
 } from '../types/index.js';
-import { assertSafeUrl, UnsafeUrlError, createRedirectValidatingFetch } from '../utils/ssrf.js';
+import {
+  assertSafeUrl,
+  UnsafeUrlError,
+  createRedirectValidatingFetch,
+  ssrfConnectionOptions,
+} from '../utils/ssrf.js';
 import { getUserDao } from '../dao/index.js';
 import { sanitizeStringForLogging, createSafeJSON } from '../utils/serialization.js';
 import {
@@ -379,6 +384,7 @@ export class OpenAPIClient {
     });
 
     const response = await this.httpClient.request({
+      ...ssrfConnectionOptions(this.allowInternalNetworks),
       method: 'post',
       url: safeTokenUrl,
       baseURL: undefined,
@@ -464,6 +470,7 @@ export class OpenAPIClient {
           allowInternal: this.allowInternalNetworks,
         });
         const requestConfig: AxiosRequestConfig = {
+          ...ssrfConnectionOptions(this.allowInternalNetworks),
           responseType: 'text',
           transformResponse: [(data: unknown) => data],
         };
@@ -1058,6 +1065,7 @@ export class OpenAPIClient {
       }
       authorizationUsedForRequest = this.getDefaultAuthorizationHeader();
       attemptedUpstreamRequest = true;
+      Object.assign(requestConfig, ssrfConnectionOptions(this.allowInternalNetworks));
       const response = await this.httpClient.request(requestConfig);
 
       if (cookieSessionEnabled && resolvedTarget) {

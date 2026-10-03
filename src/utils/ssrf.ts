@@ -1,5 +1,8 @@
 import { lookup as dnsLookup } from 'node:dns/promises';
-import { isIP } from 'node:net';
+import { isIP, type LookupFunction } from 'node:net';
+import { Agent as HttpAgent } from 'node:http';
+import { Agent as HttpsAgent } from 'node:https';
+import { Agent } from 'undici';
 
 export class UnsafeUrlError extends Error {
   constructor(message: string) {
@@ -103,6 +106,40 @@ const defaultLookup: SsrfLookup = async (host) => {
   return records.map((r) => r.address);
 };
 
+/** Validate the very DNS result handed to the socket, without a second resolution. */
+export const createSafeLookup =
+  (lookup: SsrfLookup = defaultLookup): LookupFunction =>
+  (hostname, options, callback) => {
+    void lookup(hostname)
+      .then((addresses) => {
+        if (!addresses.length || addresses.some(isBlockedIp)) {
+          throw new UnsafeUrlError(`Blocked or empty DNS result for ${hostname}`);
+        }
+        const records = addresses
+          .map((address) => ({ address, family: isIP(address) }))
+          .filter((record) => !options.family || record.family === options.family);
+        if (!records.length) throw new UnsafeUrlError(`No matching address for ${hostname}`);
+        if (options.all) callback(null, records);
+        else callback(null, records[0].address, records[0].family);
+      })
+      .catch((error: Error) => callback(error, []));
+  };
+
+const safeLookup = createSafeLookup();
+const safeDispatcher = new Agent({ connect: { lookup: safeLookup } });
+const safeHttpAgent = new HttpAgent({ lookup: safeLookup });
+const safeHttpsAgent = new HttpsAgent({ lookup: safeLookup });
+
+/** Proxy-side DNS cannot enforce this boundary; guarded requests connect directly. */
+export const ssrfConnectionOptions = (allowInternal: boolean) =>
+  allowInternal
+    ? {}
+    : {
+        httpAgent: safeHttpAgent,
+        httpsAgent: safeHttpsAgent,
+        proxy: false as const,
+      };
+
 export async function assertSafeUrl(
   rawUrl: string,
   opts: AssertSafeUrlOptions = {},
@@ -163,11 +200,20 @@ export function createRedirectValidatingFetch(
   lookup: SsrfLookup = defaultLookup,
 ): FetchLike {
   const maxHops = 5;
+  const dispatcher = allowInternal
+    ? undefined
+    : lookup === defaultLookup
+      ? safeDispatcher
+      : new Agent({ connect: { lookup: createSafeLookup(lookup) } });
   return async (url, init) => {
     let currentUrl = typeof url === 'string' ? url : url.toString();
     let hops = 0;
     currentUrl = await assertSafeUrl(currentUrl, { allowInternal, lookup });
-    let response = await baseFetch(currentUrl, { ...init, redirect: 'manual' });
+    let response = await baseFetch(currentUrl, {
+      ...init,
+      ...(dispatcher ? { dispatcher } : {}),
+      redirect: 'manual',
+    });
     while (
       response.status >= 300 &&
       response.status < 400 &&
@@ -181,7 +227,11 @@ export function createRedirectValidatingFetch(
       const resolvedUrl = new URL(location, currentUrl).toString();
       currentUrl = await assertSafeUrl(resolvedUrl, { allowInternal, lookup });
       hops++;
-      response = await baseFetch(currentUrl, { ...init, redirect: 'manual' });
+      response = await baseFetch(currentUrl, {
+        ...init,
+        ...(dispatcher ? { dispatcher } : {}),
+        redirect: 'manual',
+      });
     }
     if (response.status >= 300 && response.status < 400 && response.status !== 304) {
       throw new UnsafeUrlError('Too many redirects');
