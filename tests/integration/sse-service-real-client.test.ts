@@ -31,6 +31,7 @@ import {
 } from '../../src/services/mcpService.js';
 import type { ServerInfo } from '../../src/types/index.js';
 import { transports } from '../../src/services/sseService.js';
+import { MCP_APPS_CAPABILITIES } from '../../src/utils/mcpApps.js';
 
 describe('Real Client Transport Integration Tests', () => {
   let _appServer: AppServer;
@@ -453,6 +454,61 @@ describe('Real Client Transport Integration Tests', () => {
       } finally {
         read.mockRestore();
         info.resources = resources;
+      }
+    });
+
+    it('evaluates MCP Apps capabilities independently on each modern HTTP request', async () => {
+      const info = getServerByName('test-server-1')!;
+      const tools = info.tools;
+      info.tools = [
+        {
+          name: 'test-server-1-app-public',
+          description: 'Public',
+          inputSchema: { type: 'object' },
+          _meta: { ui: { resourceUri: 'ui://test/app' } },
+        },
+        {
+          name: 'test-server-1-app-only',
+          description: 'App only',
+          inputSchema: { type: 'object' },
+          _meta: { ui: { resourceUri: 'ui://test/app', visibility: ['app'] } },
+        },
+      ];
+      try {
+        // Revisit the ordinary capability set after the Apps request to catch leakage.
+        for (const capabilities of [{}, MCP_APPS_CAPABILITIES, {}]) {
+          const response = await fetch(`${baseURL}/mcp/test-server-1`, {
+            method: 'POST',
+            headers: {
+              Authorization: 'Bearer test-auth-token-123',
+              'Content-Type': 'application/json',
+              Accept: 'application/json, text/event-stream',
+              'MCP-Protocol-Version': '2026-07-28',
+              'Mcp-Method': 'tools/list',
+            },
+            body: JSON.stringify({
+              jsonrpc: '2.0',
+              id: 1,
+              method: 'tools/list',
+              params: {
+                _meta: {
+                  'io.modelcontextprotocol/protocolVersion': '2026-07-28',
+                  'io.modelcontextprotocol/clientCapabilities': capabilities,
+                },
+              },
+            }),
+          });
+          expect(response.status).toBe(200);
+          const { result } = await response.json();
+          const enabled = capabilities === MCP_APPS_CAPABILITIES;
+          expect(result.tools.map((tool: { name: string }) => tool.name)).toEqual(
+            enabled ? ['app-public', 'app-only'] : ['test-server-1-app-public'],
+          );
+          if (enabled) expect(result.tools[0]._meta.ui.resourceUri).toBe('ui://test/app');
+          else expect(result.tools[0]._meta?.ui).toBeUndefined();
+        }
+      } finally {
+        info.tools = tools;
       }
     });
 

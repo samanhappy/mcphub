@@ -7,7 +7,7 @@ description: 'Proxy interactive MCP Apps through MCPHub routes, including multi-
 
 MCPHub supports [MCP Apps](https://github.com/modelcontextprotocol/ext-apps) as a transparent proxy. It forwards UI-linked tool metadata, app-only tools, `ui://` resources, and upstream list-change notifications. MCPHub does not render app UIs in its dashboard.
 
-No MCPHub configuration switch is required. Support is enabled automatically when the downstream host advertises the `io.modelcontextprotocol/ui` extension with the `text/html;profile=mcp-app` MIME type.
+No MCPHub configuration switch is required. Support is enabled automatically when the downstream host advertises the `io.modelcontextprotocol/ui` extension with the `text/html;profile=mcp-app` MIME type. Legacy clients declare this during initialization; modern `2026-07-28` clients declare it on each request under `params._meta["io.modelcontextprotocol/clientCapabilities"]`. See the [protocol compatibility matrix](/api-reference/mcp-http#protocol-compatibility).
 
 ## Routing Requirements
 
@@ -46,4 +46,3 @@ Ordinary listed resources remain readable, but Apps-specific metadata is removed
 ## Dynamic Lists
 
 MCPHub subscribes to upstream `tools/list_changed`, `resources/list_changed`, and `prompts/list_changed` notifications. It refreshes its cache, updates Smart Routing embeddings for model-visible tools, and notifies connected downstream clients.
-

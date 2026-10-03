@@ -66,3 +66,28 @@ Apps routes. Legacy handlers retain their existing response shape and read path.
 
 These fields are client freshness hints; this change does not add a gateway
 response cache or promise that authorization remains valid throughout a TTL.
+
+## Public compatibility and migration guidance
+
+The [HTTP endpoint guide](../api-reference/mcp-http.mdx) and
+[Chinese version](../zh/api-reference/mcp-http.mdx) describe the current
+compatibility matrix and client migration steps. The step 2 boundary above
+records the intermediate migration stage; modern downstream HTTP is now enabled,
+while upstream clients retain legacy negotiation.
+
+Legacy HTTP+SSE is documented as deprecated, with no announced removal release
+or date. Its removal requires a published schedule respecting the planned
+at-least-12-month window and a verified client migration path. Legacy
+`2025-11-25` Streamable HTTP sessions remain supported independently of SSE
+transport deprecation.
+
+Compatibility coverage is maintained in these suites:
+
+| Boundary                                                                                                                                                                                   | Coverage                                               |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------ |
+| Legacy SSE and v1 HTTP; modern discovery without sessions; routing-header validation and bearer rejection; route-bound explicit state; resource cache hints; per-request Apps capabilities | `tests/integration/sse-service-real-client.test.ts`    |
+| Explicit-state credential/handle isolation, invalid and anonymous handles, idle expiry, active-call pinning and OpenAPI cookie cleanup                                                     | `tests/services/mcpService-per-session-client.test.ts` |
+| Caller capability filtering, single/multi-server Apps routing, metadata preservation, modern cache hints and legacy read behavior                                                          | `tests/services/mcpService-apps.test.ts`               |
+
+These suites cover the documented gateway behavior; they are not a certification
+of every client implementation or every optional MCP feature.

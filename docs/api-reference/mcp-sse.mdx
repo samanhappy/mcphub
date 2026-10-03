@@ -1,9 +1,11 @@
 ---
-title: "MCP SSE Endpoints (Deprecated)"
-description: "Connect to your MCP servers using the SSE endpoint."
+title: 'MCP SSE Endpoints (Deprecated)'
+description: 'Connect to your MCP servers using the SSE endpoint.'
 ---
 
-The SSE endpoint is deprecated and will be removed in a future version. Please use the [MCP HTTP Endpoints](/api-reference/mcp-http) instead.
+The legacy HTTP+SSE endpoint is deprecated but remains supported during migration. Use the [MCP HTTP endpoints and migration guide](/api-reference/mcp-http) for new integrations. No removal release or date has been announced.
+
+The staged-upgrade ADR calls for a deprecation window of at least 12 months. Removal requires a published schedule and a verified migration path. This does not deprecate the session lifecycle of legacy `2025-11-25` HTTP clients: both legacy and modern HTTP remain supported.
 
 **Security note**: MCP endpoints require authentication by default to avoid exposing connected tools and data. If you intentionally want public MCP access, disable **Enable Bearer Authentication** in the Keys settings. **Skip Authentication** only affects dashboard login. By default MCPHub reads Bearer credentials from the `Authorization` header, but this is configurable via **Bearer Auth Header Name** if upstream passthrough headers would otherwise conflict.
 
