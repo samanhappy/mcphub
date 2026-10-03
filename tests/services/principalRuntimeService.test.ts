@@ -11,6 +11,7 @@ const mockDefinition: ServerConfigWithName = {
 };
 let mockRevision = 'first';
 jest.mock('../../src/dao/DaoFactory.js', () => ({
+  getUserDao: () => ({ findByUsername: async () => ({ isAdmin: true }) }),
   getServerDao: () => ({ findById: async () => mockDefinition }),
 }));
 jest.mock('../../src/services/credentialBindingService.js', () => ({
