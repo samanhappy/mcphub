@@ -98,7 +98,7 @@ useDatabase = (USE_DB === 'true') OR (USE_DB unset AND DB_URL is set)
 | --- | --- | --- |
 | `USE_DB` | unset | Force database mode (`true`) or file mode (`false`). |
 | `DB_URL` | unset | PostgreSQL connection URL. Required for database mode. |
-| `DB_POOL_SIZE` | `10` | Maximum TypeORM connection pool size (also applied to the Better Auth pool). |
+| `DB_POOL_SIZE` | `10` | Maximum connections **per pool**. Applied independently to the TypeORM pool and to the Better Auth pool, so it is not a process-wide cap — see the note below. |
 | `DB_POOL_IDLE_TIMEOUT` | `30000` | Idle pool connection timeout (ms). |
 | `DB_CONNECTION_TIMEOUT` | `60000` | Initial connect timeout (ms). |
 | `DB_CONNECTION_RETRY_DELAY` | `3000` | Base delay between automatic reconnection attempts (ms). |
@@ -109,6 +109,12 @@ useDatabase = (USE_DB === 'true') OR (USE_DB unset AND DB_URL is set)
 | `DB_ENABLE_HEALTH_CHECK` | `true` | Run periodic DB health probes (consumed by `/health`). |
 | `DB_HEALTH_CHECK_INTERVAL` | `30000` | Health-probe interval (ms). |
 | `DB_HEALTH_CHECK_QUERY_TIMEOUT` | `5000` | Timeout (ms) for the `SELECT 1` health probe. |
+
+<Note>
+  **`DB_POOL_SIZE` is a per-pool limit.** MCPHub opens one pool for TypeORM and, when Better Auth is enabled, a second one for Better Auth, each sized to `DB_POOL_SIZE`. When both are in use, budget roughly **2 × `DB_POOL_SIZE`** PostgreSQL connections per replica (for example `DB_POOL_SIZE=20` → about 40), plus headroom for other clients and ops tooling against the same database.
+
+  This is the combined *configured* pool capacity, not a strict process-wide cap. During an automatic reconnection, the old pool is torn down with `DB_DESTROY_TIMEOUT`; if that teardown times out, connections from the old pool may linger briefly while the new pool is already open.
+</Note>
 
 See [Database Configuration](/configuration/database-configuration) for end-to-end setup.
 
