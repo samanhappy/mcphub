@@ -2,6 +2,32 @@ import type { ServerFormData } from '../../frontend/src/types';
 import { buildServerPayload } from '../../frontend/src/utils/serverFormPayload';
 
 describe('buildServerPayload', () => {
+  it('preserves stdio argument boundaries, empty values, and literal shell syntax', () => {
+    const args = [
+      '-c',
+      'exec cli --api-key "$my_api_key"',
+      '/path with spaces',
+      '',
+      '  padded  ',
+      'a"b\\c',
+    ];
+    const payload = buildServerPayload({
+      formData: {
+        name: 'wrapped',
+        url: '',
+        command: 'sh',
+        arguments: '',
+        args,
+        env: [],
+        headers: [],
+      },
+      serverType: 'stdio',
+      envVars: [],
+      headerVars: [],
+    });
+    expect(payload.config.args).toEqual(args);
+  });
+
   it('keeps empty headers and env payloads explicit for SSE servers', () => {
     const payload = buildServerPayload({
       formData: {

@@ -123,12 +123,7 @@ const ServerForm = ({
     description: (initialData && initialData.config && initialData.config.description) || '',
     url: (initialData && initialData.config && initialData.config.url) || '',
     command: (initialData && initialData.config && initialData.config.command) || '',
-    arguments:
-      initialData && initialData.config && initialData.config.args
-        ? Array.isArray(initialData.config.args)
-          ? initialData.config.args.join(' ')
-          : String(initialData.config.args)
-        : '',
+    arguments: '',
     args: (initialData && initialData.config && initialData.config.args) || [],
     type: getInitialServerType(), // Initialize the type field
     env: getInitialServerEnvVars(initialData),
@@ -361,12 +356,6 @@ const ServerForm = ({
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData({ ...formData, [name]: value });
-  };
-
-  // Transform space-separated arguments string into array
-  const handleArgsChange = (value: string) => {
-    const args = value.split(' ').filter((arg) => arg.trim() !== '');
-    setFormData({ ...formData, arguments: value, args });
   };
 
   const updateServerType = (type: 'stdio' | 'sse' | 'streamable-http' | 'openapi') => {
@@ -1640,21 +1629,51 @@ const ServerForm = ({
                   />
                 </div>
                 <div className="mb-4">
-                  <label
-                    className="block text-sm font-medium mb-1.5 text-gray-700 dark:text-gray-300"
-                    htmlFor="arguments"
-                  >
-                    {t('server.arguments')}
-                  </label>
-                  <input
-                    type="text"
-                    name="arguments"
-                    id="arguments"
-                    value={formData.arguments}
-                    onChange={(e) => handleArgsChange(e.target.value)}
-                    className="w-full py-2 px-3 form-input"
-                    placeholder="e.g.: -y time-mcp"
-                  />
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                      {t('server.arguments')}
+                    </span>
+                    <button
+                      type="button"
+                      className="text-sm text-blue-600 dark:text-blue-400"
+                      onClick={() =>
+                        setFormData((prev) => ({ ...prev, args: [...(prev.args || []), ''] }))
+                      }
+                    >
+                      {t('server.addArgument')}
+                    </button>
+                  </div>
+                  <p className="text-xs text-gray-500 mb-2">{t('server.argumentsHint')}</p>
+                  {(formData.args || []).map((arg, index) => (
+                    <div key={index} className="flex items-center gap-2 mb-2">
+                      <input
+                        type="text"
+                        aria-label={t('server.argumentLabel', { index: index + 1 })}
+                        value={arg}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          setFormData((prev) => ({
+                            ...prev,
+                            args: prev.args?.map((item, i) => (i === index ? value : item)),
+                          }));
+                        }}
+                        className="w-full py-2 px-3 form-input"
+                      />
+                      <button
+                        type="button"
+                        aria-label={t('server.removeArgument', { index: index + 1 })}
+                        onClick={() =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            args: prev.args?.filter((_, i) => i !== index),
+                          }))
+                        }
+                        className="text-gray-500 hover:text-red-600"
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
+                  ))}
                 </div>
 
                 <div className="mb-4">
