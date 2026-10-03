@@ -1,0 +1,31 @@
+tests/services/serverConfigEnvironment.test.ts
+  s_a463a729881b49::t_9de6141f572c91 1-64
+tests/services/principalRuntimeService.test.ts
+  s_a463a729881b49::t_9de6141f572c91 14
+src/controllers/oauthCallbackController.ts
+  s_a463a729881b49::t_9de6141f572c91 26,391
+src/services/principalRuntimeService.ts
+  s_a463a729881b49::t_9de6141f572c91 5,61
+src/services/mcpService.ts
+  s_a463a729881b49::t_9de6141f572c91 1,1560,1683,1780,1927,3165
+tests/services/mcpService-header-env-from-config.test.ts
+  s_a463a729881b49::t_9de6141f572c91 57-59,90,109,128,146-176
+src/services/serverConfigEnvironment.ts
+  s_a463a729881b49::t_9de6141f572c91 1-28
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "445e58fbc2a35dc15266c21019d28accb962ccd3",
+  "prompts": {},
+  "sessions": {
+    "s_a463a729881b49": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a10031-0694-7b30-a3db-4465dbc76a9f",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
