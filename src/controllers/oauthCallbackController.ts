@@ -23,7 +23,7 @@ import {
   createTransportFromConfig,
   updateServerToolsCache,
 } from '../services/mcpService.js';
-import { replaceEnvVars } from '../config/index.js';
+import { expandServerConfig } from '../services/serverConfigEnvironment.js';
 import { loadServerConfig } from '../services/oauthSettingsStore.js';
 import { validateAuthorizationIss } from '../utils/oauthIssuer.js';
 import type { ServerInfo } from '../types/index.js';
@@ -388,7 +388,7 @@ export const handleOAuthCallback = async (req: Request, res: Response) => {
         // have environment variable references expanded, consistent with initial server setup.
         const freshConfig = await loadServerConfig(serverInfo.name);
         const effectiveConfig = freshConfig
-          ? (replaceEnvVars(freshConfig as any) as typeof freshConfig)
+          ? await expandServerConfig(freshConfig)
           : serverInfo.config;
 
         if (!effectiveConfig) {

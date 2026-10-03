@@ -1,3 +1,4 @@
+import { expandServerConfig, getServerEnvironment } from './serverConfigEnvironment.js';
 import { getMcpRequestGroup } from '../utils/mcpRequestGroup.js';
 import { LegacyMcpClient } from '../clients/legacyMcpClient.js';
 import { LEGACY_PROTOCOL_VERSIONS } from '../utils/mcpProtocol.js';
@@ -1556,10 +1557,7 @@ const stripAuthorizationHeader = (headers: Record<string, string>): Record<strin
 
 export const createTransportFromConfig = async (name: string, conf: ServerConfig): Promise<any> => {
   let transport;
-  const env: Record<string, string> = {
-    ...(process.env as Record<string, string>),
-    ...(hasCredentialTemplate(conf) ? conf.env : replaceEnvVars(conf.env || {})),
-  };
+  const env = await getServerEnvironment(conf);
 
   // The encryption key belongs only to the hub, never to a child process.
   delete env.MCPHUB_CREDENTIAL_ENCRYPTION_KEY;
@@ -1682,7 +1680,7 @@ export const createTransportFromConfig = async (name: string, conf: ServerConfig
     }
 
     // Apply proxychains4 wrapper if proxy is configured (Linux/macOS only)
-    let resolvedArgs = replaceEnvVars(conf.args ?? []) as string[];
+    let resolvedArgs = replaceEnvVars(conf.args ?? [], env) as string[];
 
     // If this server is pending a reinstall, inject cache-busting flags (uvx only).
     // For npx, the cache directory was already cleared before reconnect.
@@ -1779,7 +1777,7 @@ const callToolWithReconnect = async (
           }
 
           // Match initial connection expansion before URL validation and transport creation.
-          const server = replaceEnvVars(rawConfig) as ServerConfigWithName;
+          const server = await expandServerConfig(rawConfig);
           const newTransport = await createTransportFromConfig(serverInfo.name, server);
           const newClient = createUpstreamMcpClient(serverInfo.name, () => serverInfo);
 
@@ -1926,7 +1924,7 @@ export const initializeClientsFromSettings = async (
       }
 
       // Expand environment variables in all configuration values
-      const expandedConf = replaceEnvVars(conf as any) as ServerConfigWithName;
+      const expandedConf = await expandServerConfig(conf);
 
       // Skip disabled servers
       if (expandedConf.enabled === false) {
@@ -3164,7 +3162,7 @@ const ensureServerReady = async (serverInfo: ServerInfo): Promise<void> => {
     if (rawConfig.enabled === false) {
       throw new Error(`Cannot start disabled on-demand server: ${rawConfig.name}`);
     }
-    const expandedConf = replaceEnvVars(rawConfig as any) as ServerConfigWithName;
+    const expandedConf = await expandServerConfig(rawConfig);
 
     // startOnDemand is a stdio-only optimisation; OpenAPI/HTTP servers have no
     // deferred process to spawn, so there is nothing to wake.

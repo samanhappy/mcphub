@@ -2,7 +2,7 @@ import { getServerDao } from '../dao/DaoFactory.js';
 import { credentialBindingEvents, resolveCredentialBinding } from './credentialBindingService.js';
 import { authorizationService, type RequestPrincipal } from './authorizationService.js';
 import { CredentialBindingError, hasCredentialTemplate } from '../utils/credentialTemplate.js';
-import { replaceEnvVars } from '../config/index.js';
+import { expandServerConfig } from './serverConfigEnvironment.js';
 import type { ServerConfig, ServerInfo } from '../types/index.js';
 
 interface RuntimeEntry {
@@ -58,7 +58,7 @@ export class PrincipalRuntimeService {
     const resolved = await resolveCredentialBinding(
       serverName,
       principal.username,
-      replaceEnvVars(definition) as ServerConfig,
+      await expandServerConfig(definition),
     );
     const revision = JSON.stringify([definitionSnapshot, resolved.revision]);
     const key = JSON.stringify([serverName, principal.username]);
