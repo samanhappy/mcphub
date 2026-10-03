@@ -1,3 +1,4 @@
+import { remainingListTtl, preserveListFreshness } from '../../src/utils/listFreshness.js';
 import { InMemoryTransport, Server } from '@modelcontextprotocol/server';
 import { LegacyMcpClient } from '../../src/clients/legacyMcpClient.js';
 import { LEGACY_PROTOCOL_VERSIONS } from '../../src/utils/mcpProtocol.js';
@@ -21,7 +22,7 @@ describe('SDK v2 with legacy protocol behavior', () => {
       { name: 'legacy-upstream', version: '1' },
       {
         supportedProtocolVersions: LEGACY_PROTOCOL_VERSIONS,
-        capabilities: { tools: {}, prompts: {}, resources: {} },
+        capabilities: { tools: { listChanged: true }, prompts: {}, resources: {} },
       },
     );
     server.setRequestHandler('tools/list', listTools);
@@ -34,7 +35,10 @@ describe('SDK v2 with legacy protocol behavior', () => {
     }));
     client = new LegacyMcpClient(
       { name: 'mcphub', version: '1' },
-      { jsonSchemaValidator: new ResilientJsonSchemaValidator() },
+      {
+        jsonSchemaValidator: new ResilientJsonSchemaValidator(),
+        listChanged: { tools: { debounceMs: 0, onChanged: jest.fn() } },
+      },
     );
     const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
     await server.connect(serverTransport);
@@ -49,6 +53,83 @@ describe('SDK v2 with legacy protocol behavior', () => {
   afterEach(async () => {
     await client.close();
     await server.close();
+  });
+
+  it('does not certify an obsolete discovery response that finishes after a newer refresh', async () => {
+    let finish!: (result: { tools: []; ttlMs: number }) => void;
+    listTools.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        }),
+    );
+    listTools.mockResolvedValue({ tools: [], ttlMs: 60000 });
+    const pending = client.listTools({});
+    for (let i = 0; i < 100 && !finish; i++) await Promise.resolve();
+    expect(finish).toBeDefined();
+    const newest = await client.listTools({});
+    finish({ tools: [], ttlMs: 60000 });
+    const obsolete = await pending;
+    const now = performance.now();
+    expect(remainingListTtl([obsolete.tools], now, now)).toBe(0);
+    expect(remainingListTtl([newest.tools], now, now)).toBe(5000);
+  });
+
+  it('tracks all four list envelopes and refuses TTL on incomplete pages', async () => {
+    listTools.mockResolvedValue({ tools: [], ttlMs: 60000 });
+    server.setRequestHandler('prompts/list', async () => ({ prompts: [], ttlMs: 60000 }));
+    server.setRequestHandler('resources/list', async () => ({ resources: [], ttlMs: 60000 }));
+    server.setRequestHandler('resources/templates/list', async () => ({
+      resourceTemplates: [],
+      ttlMs: 60000,
+    }));
+    const snapshots = [
+      (await client.listTools({})).tools,
+      (await client.listPrompts({})).prompts,
+      (await client.listResources({})).resources,
+      (await client.listResourceTemplates({})).resourceTemplates,
+    ];
+    const now = performance.now();
+    expect(remainingListTtl(snapshots, now, now)).toBe(5000);
+    listTools.mockResolvedValue({ tools: [], ttlMs: 60000, nextCursor: 'more' });
+    const partial = await client.listTools({});
+    expect(remainingListTtl([partial.tools], now, performance.now())).toBe(0);
+  });
+
+  it('revokes discovery freshness while a list-change refresh is still running', async () => {
+    listTools.mockResolvedValue({ tools: [], ttlMs: 60000 });
+    const { tools } = await client.listTools({});
+    const normalized = preserveListFreshness(tools, [...tools]);
+    let finish!: (result: { tools: []; ttlMs: number }) => void;
+    listTools.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        }),
+    );
+    await server.sendToolListChanged();
+    for (let i = 0; i < 100 && !finish; i++) await Promise.resolve();
+    expect(finish).toBeDefined();
+    const now = performance.now();
+    expect(remainingListTtl([normalized], now, now)).toBe(0);
+    finish({ tools: [], ttlMs: 60000 });
+  });
+
+  it('captures real discovery envelopes and invalidates normalized snapshots on refresh and close', async () => {
+    listTools.mockResolvedValue({
+      tools: [{ name: 'echo', inputSchema: { type: 'object' } }],
+      ttlMs: 60000,
+    });
+    const result = await client.listTools({});
+    const normalized = preserveListFreshness(result.tools, [...result.tools]);
+    const now = performance.now();
+    expect(remainingListTtl([normalized], now, now)).toBe(5000);
+    listTools.mockRejectedValueOnce(new Error('refresh failed'));
+    await expect(client.listTools({})).rejects.toThrow('refresh failed');
+    expect(remainingListTtl([normalized], now, performance.now())).toBe(0);
+    const fresh = await client.listTools({});
+    await client.close();
+    expect(remainingListTtl([fresh.tools], now, performance.now())).toBe(0);
   });
 
   it('keeps initialize/initialized and single-page discovery for every list method', async () => {

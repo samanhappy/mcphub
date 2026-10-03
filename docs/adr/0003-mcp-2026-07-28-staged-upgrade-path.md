@@ -50,12 +50,13 @@ sessions; existing modern explicit-state and v1-client tests cover both lifecycl
 
 ## Cache hints during the dual-stack period
 
-Modern `tools/list`, `prompts/list`, `resources/list` and
-`resources/templates/list` responses explicitly emit `ttlMs: 0` and
-`cacheScope: "private"`. These lists combine discovery snapshots with live
-configuration, built-in content, caller permissions and MCP Apps capabilities;
-an upstream TTL does not guarantee freshness of the gateway projection. Positive
-list TTLs require a separate configuration and discovery invalidation design.
+Modern lists advertise private freshness bounded by every participating upstream's
+original discovery expiry and a five-second gateway projection window. Unknown
+provenance, partial discovery, built-in content, Smart Routing entries and unknown
+hosted permission freshness remain zero. Projection inputs are rebuilt for every
+request and changes during the build force zero. See
+[ADR-0004](0004-positive-list-cache-hints.md) for the rules and client-staleness
+boundary; server invalidation cannot retract already-issued client caches.
 
 Modern `resources/read` forwards a valid upstream TTL after subtracting time
 spent handling the read, and restricts the scope to `private`. Missing or invalid

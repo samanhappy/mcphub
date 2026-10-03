@@ -40,16 +40,16 @@ The same `/mcp` URL serves legacy `2025-11-25` and modern `2026-07-28`
 clients. Group and server URLs use the same protocol handling. Changing the URL
 from `/sse` to `/mcp` does not by itself upgrade the client's protocol revision.
 
-| Behavior                  | Legacy HTTP+SSE (`/sse`)                    | HTTP `2025-11-25` (`/mcp`)        | HTTP `2026-07-28` (`/mcp`)                                            |
-| ------------------------- | ------------------------------------------- | --------------------------------- | --------------------------------------------------------------------- |
-| Status                    | Deprecated; still supported                 | Supported for compatibility       | Supported; migration work continues                                   |
-| Startup                   | `initialize` over the SSE transport         | `initialize` over Streamable HTTP | No `initialize` handshake; SDK discovery                              |
-| Downstream session        | SSE connection and session message endpoint | `Mcp-Session-Id`                  | No downstream transport session                                       |
-| Routing headers           | Legacy transport behavior                   | Legacy transport behavior         | `Mcp-Method`; `Mcp-Name` for named calls and resource reads           |
-| Stateful tools            | Existing session lifecycle                  | Existing session lifecycle        | Bearer authentication plus `X-MCPHub-State-Id`                        |
-| MCP Apps capabilities     | Declared during initialization              | Declared during initialization    | Declared in each request's `params._meta`                             |
-| List cache hints          | Existing legacy response shape              | Existing legacy response shape    | `ttlMs: 0`, `cacheScope: "private"`                                   |
-| Resource-read cache hints | Existing upstream hints preserved           | Existing upstream hints preserved | Valid remaining upstream TTL, restricted to `private`; otherwise zero |
+| Behavior                  | Legacy HTTP+SSE (`/sse`)                    | HTTP `2025-11-25` (`/mcp`)        | HTTP `2026-07-28` (`/mcp`)                                             |
+| ------------------------- | ------------------------------------------- | --------------------------------- | ---------------------------------------------------------------------- |
+| Status                    | Deprecated; still supported                 | Supported for compatibility       | Supported; migration work continues                                    |
+| Startup                   | `initialize` over the SSE transport         | `initialize` over Streamable HTTP | No `initialize` handshake; SDK discovery                               |
+| Downstream session        | SSE connection and session message endpoint | `Mcp-Session-Id`                  | No downstream transport session                                        |
+| Routing headers           | Legacy transport behavior                   | Legacy transport behavior         | `Mcp-Method`; `Mcp-Name` for named calls and resource reads            |
+| Stateful tools            | Existing session lifecycle                  | Existing session lifecycle        | Bearer authentication plus `X-MCPHub-State-Id`                         |
+| MCP Apps capabilities     | Declared during initialization              | Declared during initialization    | Declared in each request's `params._meta`                              |
+| List cache hints          | Existing legacy response shape              | Existing legacy response shape    | Remaining upstream TTL, capped at 5 seconds; `private`; otherwise zero |
+| Resource-read cache hints | Existing upstream hints preserved           | Existing upstream hints preserved | Valid remaining upstream TTL, restricted to `private`; otherwise zero  |
 
 MCP Apps passthrough also depends on the route and visible upstream servers;
 `$smart` routes remain ordinary MCP routes. See [MCP Apps](/features/mcp-apps).
@@ -85,14 +85,30 @@ downstream request does not upgrade an upstream server.
 
 ## Cache behavior
 
-Modern list results combine upstream discovery snapshots with current gateway
-configuration, permissions and client capabilities. They are immediately stale
-and private; a positive upstream list TTL is not propagated. Modern resource
-reads bypass the SDK response cache, subtract handling time from a valid upstream
-TTL and restrict sharing to the requesting authorization context. Missing or
-invalid TTLs, built-in resources and gateway-generated read errors use zero.
-These hints do not add a gateway response cache. Full positive list TTL
-propagation requires a separate invalidation design.
+Modern list results combine upstream discovery snapshots with live configuration,
+permissions and per-request capabilities. Positive hints are private and bounded
+by the shortest remaining upstream freshness and a maximum five-second projection
+window. Discovery age is retained; repeated gateway lists do not renew it. Empty
+upstream lists also participate in the bound. Unknown/invalid TTLs, partial pages,
+failed or incomplete discovery, gateway-generated Smart Routing entries, built-in
+prompts/resources and unknown hosted permission freshness use zero.
+
+Every request rebuilds its projection. Configuration, membership, permission or
+runtime changes detected during projection force zero. List refreshes revoke the
+previous snapshot's freshness before awaiting a new envelope; failure, disconnect
+or replacement cannot establish new freshness. Template lists use the actual
+responses fetched for that request. No gateway response cache is added.
+
+Clients may retain an already-issued list for at most five seconds after a local
+configuration/permission change; server invalidation cannot retract client caches.
+Keep caches separate by endpoint, authenticated identity and per-request
+capabilities. A cached list never authorizes a call: MCPHub rechecks access on each
+request. Use zero when an upstream supplies no trustworthy freshness.
+
+Modern resource reads continue to bypass the SDK response cache, subtract handling
+time from a valid upstream TTL and restrict sharing to the requesting authorization
+context. Missing or invalid TTLs, built-in resources and gateway-generated read
+errors use zero. Legacy response shapes and session behavior are unchanged.
 
 ## Legacy SSE deprecation plan
 
