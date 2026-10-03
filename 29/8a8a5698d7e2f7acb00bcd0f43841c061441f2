@@ -1,0 +1,19 @@
+docs/adr/0004-positive-list-cache-hints.md
+  s_63a8cee02d73a8::t_73a33de6c9b7a9 1-89
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "298a8a5698d7e2f7acb00bcd0f43841c061441f2",
+  "prompts": {},
+  "sessions": {
+    "s_63a8cee02d73a8": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1020c-ea82-7211-a6ea-653a086c3172",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
