@@ -1835,6 +1835,7 @@ const callToolWithReconnect = async (
             serverInfo.client = newClient;
             serverInfo.transport = newTransport;
             serverInfo.status = 'connected';
+            setupServerKeepAlive(serverInfo, server);
           }
 
           // Point the local refs at the new connection for the next attempt.
