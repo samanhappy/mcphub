@@ -103,7 +103,9 @@ jest.mock('../../src/services/activityLoggingService.js', () => ({
 }));
 
 jest.mock('../../src/services/keepAliveService.js', () => ({
-  setupClientKeepAlive: jest.fn().mockResolvedValue(undefined),
+  setupClientKeepAlive: jest.fn(
+    jest.requireActual('../../src/services/keepAliveService.js').setupClientKeepAlive,
+  ),
 }));
 
 const mockBaseFetch = jest.fn();
@@ -145,6 +147,7 @@ jest.mock('../../src/config/index.js', () => ({
   },
 }));
 
+import { setupClientKeepAlive } from '../../src/services/keepAliveService.js';
 import * as mcpService from '../../src/services/mcpService.js';
 describe('mcpService reconnect config integration', () => {
   beforeEach(() => {
@@ -168,6 +171,108 @@ describe('mcpService reconnect config integration', () => {
       initialClientClose,
     };
   };
+
+  it.each([true, false])(
+    'preserves keepalive opt-in (%s) after shared tool reconnect',
+    async (enabled) => {
+      jest.useFakeTimers();
+      const config = {
+        name: 'clock-server',
+        type: 'streamable-http',
+        url: 'https://example.com/mcp',
+        enabled: true,
+        enableKeepAlive: enabled,
+        keepAliveInterval: 1000,
+      };
+      mockServerDao.findById.mockResolvedValueOnce(config);
+      const serverInfo = createServerInfo(jest.fn().mockRejectedValue({ status: 404 })) as any;
+      mcpService.setServerInfosForTest([serverInfo]);
+      try {
+        await setupClientKeepAlive(serverInfo, config);
+        const oldTimer = serverInfo.keepAliveIntervalId;
+        jest.mocked(setupClientKeepAlive).mockClear();
+        const result = await mcpService.handleCallToolRequest(
+          {
+            params: {
+              name: 'call_tool',
+              arguments: { toolName: 'clock-server::get_current_time', arguments: {} },
+            },
+          },
+          { sessionId: 'session-keepalive', server: 'clock-server' },
+        );
+        expect(result.isError).toBe(false);
+        expect(jest.getTimerCount()).toBe(enabled ? 1 : 0);
+        if (enabled) {
+          expect(serverInfo.keepAliveIntervalId).toBeDefined();
+          expect(serverInfo.keepAliveIntervalId).not.toBe(oldTimer);
+          expect(setupClientKeepAlive).toHaveBeenCalledWith(serverInfo, config, {
+            reconnectServer: expect.any(Function),
+          });
+          // A later outage must still be detected by the replacement timer.
+          mockReconnectClient.listTools.mockRejectedValueOnce(new Error('upstream offline'));
+          await jest.advanceTimersByTimeAsync(1000);
+          expect(serverInfo.status).toBe('disconnected');
+          expect(serverInfo.error).toContain('upstream offline');
+          const configReads = mockServerDao.findById.mock.calls.length;
+          await jest.advanceTimersByTimeAsync(1000);
+          expect(mockServerDao.findById.mock.calls.length).toBeGreaterThan(configReads);
+          expect(mockServerDao.findAll).toHaveBeenCalledTimes(1);
+        }
+      } finally {
+        jest.clearAllTimers();
+        jest.useRealTimers();
+        mcpService.setServerInfosForTest([]);
+      }
+    },
+  );
+
+  it('does not replace the shared keepalive timer on isolated session reconnect', async () => {
+    jest.useFakeTimers();
+    const config = {
+      name: 'clock-server',
+      type: 'streamable-http',
+      url: 'https://example.com/mcp',
+      enabled: true,
+      perSessionClient: true,
+      enableKeepAlive: true,
+      keepAliveInterval: 1000,
+    };
+    mockServerDao.findById.mockResolvedValueOnce(config);
+    const serverInfo = createServerInfo(jest.fn()) as any;
+    serverInfo.config = config;
+    const sharedClient = serverInfo.client;
+    const sharedTransport = serverInfo.transport;
+    mockReconnectClient.callTool.mockRejectedValueOnce({ status: 404 });
+    mcpService.setServerInfosForTest([serverInfo]);
+    try {
+      await setupClientKeepAlive(serverInfo, config);
+      const sharedTimer = serverInfo.keepAliveIntervalId;
+      jest.mocked(setupClientKeepAlive).mockClear();
+      const result = await mcpService.handleCallToolRequest(
+        {
+          params: {
+            name: 'call_tool',
+            arguments: { toolName: 'clock-server::get_current_time', arguments: {} },
+          },
+        },
+        { sessionId: 'session-isolated-keepalive', server: 'clock-server' },
+      );
+      expect(result.isError).toBe(false);
+      expect(mockReconnectClient.connect).toHaveBeenCalledTimes(2);
+      expect(serverInfo.client).toBe(sharedClient);
+      expect(serverInfo.transport).toBe(sharedTransport);
+      expect(serverInfo.keepAliveIntervalId).toBe(sharedTimer);
+      expect(jest.getTimerCount()).toBe(1);
+      expect(setupClientKeepAlive).not.toHaveBeenCalled();
+      expect(sharedClient.close).not.toHaveBeenCalled();
+      expect(sharedTransport.close).not.toHaveBeenCalled();
+    } finally {
+      mcpService.deleteMcpServer('session-isolated-keepalive');
+      jest.clearAllTimers();
+      jest.useRealTimers();
+      mcpService.setServerInfosForTest([]);
+    }
+  });
 
   it('reconnects when streamable-http tool calls fail with HTTP 404 session errors', async () => {
     const initialCallTool = jest.fn().mockRejectedValue({
