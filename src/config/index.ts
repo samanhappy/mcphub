@@ -44,9 +44,12 @@ const ensureOAuthServerDefaults = (settings: McpSettings): boolean => {
 // Settings cache
 let settingsCache: McpSettings | null = null;
 // mtime of the settings file our cache snapshot was read from. The file is
-// re-read when it is newer, mirroring JsonFileBaseDao so system settings do
+// re-read when it changes, mirroring JsonFileBaseDao so system settings do
 // not behave differently from server definitions on external edits (#1081).
 let lastModified = 0;
+// In-process writes can share the same filesystem mtime.
+let settingsGeneration = 0;
+export const getSettingsGeneration = (): number => settingsGeneration;
 
 export const getSettingsPath = (): string => {
   return getConfigFilePath('mcp_settings.json', 'Settings');
@@ -57,7 +60,7 @@ export const loadOriginalSettings = (): McpSettings => {
   if (settingsCache) {
     try {
       const stats = fs.statSync(getSettingsPath());
-      if (lastModified >= stats.mtime.getTime()) {
+      if (lastModified === stats.mtimeMs) {
         return settingsCache;
       }
     } catch {
@@ -86,6 +89,7 @@ export const loadOriginalSettings = (): McpSettings => {
     if (initialized) {
       try {
         fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2), 'utf8');
+        clearSettingsCache();
       } catch (writeError) {
         logger.error('Failed to persist default OAuth server configuration', {
           writeError,
@@ -97,7 +101,7 @@ export const loadOriginalSettings = (): McpSettings => {
     // Update cache
     settingsCache = settings;
     try {
-      lastModified = fs.statSync(settingsPath).mtime.getTime();
+      lastModified = fs.statSync(settingsPath).mtimeMs;
     } catch {
       lastModified = Date.now();
     }
@@ -119,9 +123,10 @@ export const saveSettings = (settings: McpSettings, user?: IUser): boolean => {
     const mergedSettings = dataService.mergeSettings!(loadOriginalSettings(), settings, user);
     fs.writeFileSync(settingsPath, JSON.stringify(mergedSettings, null, 2), 'utf8');
 
-    // Update cache after successful save
+    // Invalidate every DAO snapshot, including writes in the same mtime tick.
+    clearSettingsCache();
     settingsCache = mergedSettings;
-    lastModified = Date.now();
+    lastModified = fs.statSync(settingsPath).mtimeMs;
 
     return true;
   } catch (error) {
@@ -134,6 +139,7 @@ export const saveSettings = (settings: McpSettings, user?: IUser): boolean => {
  * Clear settings cache, force next loadSettings call to re-read from file
  */
 export const clearSettingsCache = (): void => {
+  settingsGeneration += 1;
   settingsCache = null;
   lastModified = 0;
 };
