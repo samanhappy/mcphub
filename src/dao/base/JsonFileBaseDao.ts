@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { McpSettings } from '../../types/index.js';
-import { getSettingsPath, clearSettingsCache } from '../../config/index.js';
+import { getSettingsPath, clearSettingsCache, getSettingsGeneration } from '../../config/index.js';
 import { logger } from '../../utils/logger.js';
 
 /**
@@ -10,6 +10,7 @@ import { logger } from '../../utils/logger.js';
 export abstract class JsonFileBaseDao {
   private settingsCache: McpSettings | null = null;
   private lastModified: number = 0;
+  private settingsGeneration = -1;
 
   /**
    * Load settings from JSON file with caching
@@ -18,10 +19,14 @@ export abstract class JsonFileBaseDao {
     try {
       const settingsPath = getSettingsPath();
       const stats = fs.statSync(settingsPath);
-      const fileModified = stats.mtime.getTime();
+      const fileModified = stats.mtimeMs;
 
       // Check if cache is still valid
-      if (this.settingsCache && this.lastModified >= fileModified) {
+      if (
+        this.settingsCache &&
+        this.settingsGeneration === getSettingsGeneration() &&
+        this.lastModified === fileModified
+      ) {
         return this.settingsCache;
       }
 
@@ -31,6 +36,7 @@ export abstract class JsonFileBaseDao {
       // Update cache
       this.settingsCache = settings;
       this.lastModified = fileModified;
+      this.settingsGeneration = getSettingsGeneration();
 
       return settings;
     } catch (error) {
@@ -65,11 +71,11 @@ export abstract class JsonFileBaseDao {
 
       fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2), 'utf8');
 
-      // Update cache
-      this.settingsCache = settings;
-      this.lastModified = Date.now();
-
+      // Invalidate sibling DAOs even when filesystem timestamps are equal.
       clearSettingsCache();
+      this.settingsCache = settings;
+      this.lastModified = fs.statSync(settingsPath).mtimeMs;
+      this.settingsGeneration = getSettingsGeneration();
     } catch (error) {
       logger.error(`Failed to save settings:`, error);
       throw error;
