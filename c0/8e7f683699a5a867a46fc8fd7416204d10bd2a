@@ -1,0 +1,24 @@
+tests/dao/json-settings-cache.test.ts
+  s_1bd607da352e8b::t_8faa3b85686f5f 19-27
+  s_1bd607da352e8b::t_2ba0bc3db94444 1-18,28-96
+src/dao/base/JsonFileBaseDao.ts
+  s_1bd607da352e8b::t_8faa3b85686f5f 4,13,22,25-29,39,74,76-78
+src/config/index.ts
+  s_1bd607da352e8b::t_8faa3b85686f5f 47,50-52,63,92,104,126-127,129,142
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "c08e7f683699a5a867a46fc8fd7416204d10bd2a",
+  "prompts": {},
+  "sessions": {
+    "s_1bd607da352e8b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a104e3-7cd9-7d32-b9eb-c099fd352993",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
