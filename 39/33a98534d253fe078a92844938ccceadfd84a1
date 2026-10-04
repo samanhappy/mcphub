@@ -1,0 +1,32 @@
+src/utils/processTree.test.ts
+  s_7814ec3aca854a::t_315fd1a0ab41a3 1-93
+Dockerfile
+  s_7814ec3aca854a::t_2a3c86ef549b9e 7-9
+tests/services/mcpService-stdio-cleanup.test.ts
+  s_7814ec3aca854a::t_8232692818c47c 184
+  s_7814ec3aca854a::t_6ff14032f57e69 50-52,54-56
+  s_7814ec3aca854a::t_7bd05d3a8cdda3 346-412
+  s_7814ec3aca854a::t_51bfcc6e71dfb4 53
+src/services/mcpService.ts
+  s_7814ec3aca854a::t_76329c0a5d22bf 2695-2706,2712
+  s_7814ec3aca854a::t_0c9b6b042dacb6 2643-2647,2649-2664
+  s_7814ec3aca854a::t_86c7f934ac2b06 5
+src/utils/processTree.ts
+  s_7814ec3aca854a::t_ffcdad8825c3b8 1-52
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "3933a98534d253fe078a92844938ccceadfd84a1",
+  "prompts": {},
+  "sessions": {
+    "s_7814ec3aca854a": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_fceb59b10ffeZEm4NuFeOEuV9H",
+        "model": "x-preview-f-free"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

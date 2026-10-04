@@ -1,0 +1,14 @@
+.github/codeql/extensions/mcphub-javascript/codeql-pack.yml
+  h_18676a549cd52a 5-7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "91957d200f674f73a3bb9aab0aefc19caf4b2f1b",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

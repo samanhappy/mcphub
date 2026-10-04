@@ -1,0 +1,41 @@
+src/controllers/oauthServerController.ts
+  s_f6ad850d1ee010::t_451daa7afa18e6 648-649
+  s_f6ad850d1ee010::t_e0810bce0e4715 346-355
+tests/controllers/oauthDynamicRegistrationController.test.ts
+  s_f6ad850d1ee010::t_6379033172f3f5 22-27
+  s_f6ad850d1ee010::t_6d830b9b103d90 102-159
+  s_f6ad850d1ee010::t_35883614076293 160
+tests/services/oauthServerClientAuth.test.ts
+  s_f6ad850d1ee010::t_61c0b8152ac308 10
+  s_f6ad850d1ee010::t_9161e149bb7196 1-9,11-138
+tests/controllers/oauthServerController.metadata.test.ts
+  s_f6ad850d1ee010::t_ef5c8665da224c 81,162,246
+src/controllers/oauthDynamicRegistrationController.ts
+  s_f6ad850d1ee010::t_c871ade4026376 71-72,74-78
+  s_f6ad850d1ee010::t_4fff0486f06d42 11
+  s_f6ad850d1ee010::t_80e80772185df9 68-70,73,79-81
+  s_f6ad850d1ee010::t_bbb6d9ce0066c9 82-83
+src/services/oauthServerService.ts
+  s_f6ad850d1ee010::t_1336bd64b96cd8 54-56,63-70
+  s_f6ad850d1ee010::t_35b3d6f0272c6a 396-397,399
+  s_f6ad850d1ee010::t_c30e1d52da1455 25-28,36-38
+tests/controllers/oauthServerController.shell.test.ts
+  s_f6ad850d1ee010::t_06918b71bf4de4 278-279
+  s_f6ad850d1ee010::t_fd8e67c07aca62 74-76
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "ea09a7cb512d7652f36e3de9a857320bd51a9b1b",
+  "prompts": {},
+  "sessions": {
+    "s_f6ad850d1ee010": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_fd33ad616ffe1S2hjbNZxMUA71",
+        "model": "x-preview-f-free"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

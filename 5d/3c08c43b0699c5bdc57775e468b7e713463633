@@ -1,0 +1,36 @@
+frontend/src/components/ServerCard.tsx
+  h_18676a549cd52a 547-564
+frontend/src/types/index.ts
+  h_18676a549cd52a 216-220
+locales/en.json
+  h_18676a549cd52a 166-167
+locales/fr.json
+  h_18676a549cd52a 166-167
+locales/tr.json
+  h_18676a549cd52a 166-167
+locales/zh.json
+  h_18676a549cd52a 166-167
+src/services/mcpService.ts
+  h_18676a549cd52a 97-98,2074-2075,2339-2341,2417,2426-2430,2497-2544,2944-2945,4587-4588
+src/types/index.ts
+  h_18676a549cd52a 566-574
+src/utils/cacheUtils.test.ts
+  h_18676a549cd52a 11,139,152-390
+src/utils/cacheUtils.ts
+  h_18676a549cd52a 108,226-541
+src/utils/packageUpdate.test.ts
+  h_18676a549cd52a 1-180
+src/utils/packageUpdate.ts
+  h_18676a549cd52a 1-228
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "5d3c08c43b0699c5bdc57775e468b7e713463633",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

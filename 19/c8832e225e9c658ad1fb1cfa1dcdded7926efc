@@ -1,0 +1,22 @@
+frontend/src/pages/CredentialsPage.tsx
+  s_29d7282f1637cb::t_8492356aadda30 55-57,70,82,90,123,125-126,133-137,139-141,143-145
+  s_29d7282f1637cb::t_082937878b977c 76
+frontend/src/components/layout/Header.tsx
+  s_29d7282f1637cb::t_8492356aadda30 23
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "19c8832e225e9c658ad1fb1cfa1dcdded7926efc",
+  "prompts": {},
+  "sessions": {
+    "s_29d7282f1637cb": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a070d1-21c4-7f83-9701-a94ba6815dc8",
+        "model": "gpt-reserve"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

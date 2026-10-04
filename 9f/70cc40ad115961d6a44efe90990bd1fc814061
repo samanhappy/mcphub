@@ -1,0 +1,27 @@
+src/clients/openapi.ts
+  s_f6b1ce8c5ff834::t_7edf4ad6c113a2 12-19
+src/utils/openApiRequestBody.test.ts
+  s_f6b1ce8c5ff834::t_8cd3c7c50c9d11 8
+  s_f6b1ce8c5ff834::t_faacd88c84459e 84,87-89,91
+  s_f6b1ce8c5ff834::t_ba6e3094680deb 77
+  s_f6b1ce8c5ff834::t_8bbd180e19f1e5 1-7,9-76,78-83,85-86,90,92-135,137-160
+  s_f6b1ce8c5ff834::t_6578651ca109d8 136
+src/utils/openApiRequestBody.ts
+  s_f6b1ce8c5ff834::t_d179624d0205ad 1-291
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "9f70cc40ad115961d6a44efe90990bd1fc814061",
+  "prompts": {},
+  "sessions": {
+    "s_f6b1ce8c5ff834": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_fc3b75752ffe9yjZwPNKgTtjFV",
+        "model": "x-preview-f-free"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

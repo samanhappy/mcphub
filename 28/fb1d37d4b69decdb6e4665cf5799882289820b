@@ -1,0 +1,74 @@
+tests/utils/smartRouting.test.ts
+  s_ddc1ac442e77e1::t_4d8c95fb98c894 297-301
+  s_ddc1ac442e77e1::t_ee4241d2fe3b6a 21,180,284-296
+  s_ddc1ac442e77e1::t_78a1eb25fec3bc 302-303
+src/utils/smartRouting.ts
+  s_ddc1ac442e77e1::t_243c5ba3c95894 19-23,132-138
+  s_ddc1ac442e77e1::t_79d94f99ad2577 139-141
+docs/zh/features/smart-routing.mdx
+  s_ddc1ac442e77e1::t_8232e1fdd30d01 388,397
+  s_ddc1ac442e77e1::t_0ddc8296da59ac 387
+locales/en.json
+  s_ddc1ac442e77e1::t_8fbbea379ee50f 802-808,824-826
+frontend/src/pages/SettingsPage.tsx
+  s_ddc1ac442e77e1::t_22bc07d339dc3a 2232-2234,2499
+  s_ddc1ac442e77e1::t_1d9afdf7d44cf5 2235-2274,2472-2498
+  s_ddc1ac442e77e1::t_2e10290c9ca393 486,488,503,505,631-634,641-644
+  s_ddc1ac442e77e1::t_bce135b977e3e2 368-414,433-448,1294
+  s_ddc1ac442e77e1::t_7a14536311c860 874,889-901
+  s_ddc1ac442e77e1::t_83ec7b51a906d2 1208-1214,1288-1293
+  s_ddc1ac442e77e1::t_88d56ded8d8985 449
+frontend/src/services/configService.ts
+  s_ddc1ac442e77e1::t_6fb282b28043b8 25
+docs/api-reference/config.mdx
+  s_ddc1ac442e77e1::t_f7c2315b7b00d6 46
+locales/fr.json
+  s_ddc1ac442e77e1::t_8fbbea379ee50f 801-807,823-825
+frontend/src/contexts/SettingsContext.tsx
+  s_ddc1ac442e77e1::t_6fb282b28043b8 38,355,446
+src/controllers/serverController.ts
+  s_ddc1ac442e77e1::t_60f9c57fd7a786 1636-1637,1918-1927,2056-2057
+  s_ddc1ac442e77e1::t_13c2c1f1f0b94e 1745,1799
+src/services/vectorSearchService.ts
+  s_ddc1ac442e77e1::t_9f246f478695f1 1488,1495-1498,1513-1516
+  s_ddc1ac442e77e1::t_4d8c95fb98c894 816
+  s_ddc1ac442e77e1::t_a022a4a75a0a87 61-75
+  s_ddc1ac442e77e1::t_2cda82c2c6a82e 44-49,83,139-141,156,675-679,872,876
+  s_ddc1ac442e77e1::t_90abfbcae0e270 855-857
+docs/zh/api-reference/config.mdx
+  s_ddc1ac442e77e1::t_f7c2315b7b00d6 44
+locales/tr.json
+  s_ddc1ac442e77e1::t_8fbbea379ee50f 800-806,822-824
+docs/configuration/environment-variables.mdx
+  s_ddc1ac442e77e1::t_f7c2315b7b00d6 124
+locales/zh.json
+  s_ddc1ac442e77e1::t_8fbbea379ee50f 804-810,827-829
+docs/zh/configuration/environment-variables.mdx
+  s_ddc1ac442e77e1::t_f7c2315b7b00d6 113
+docs/features/smart-routing.mdx
+  s_ddc1ac442e77e1::t_f7c2315b7b00d6 236-237,299-300
+tests/services/vectorSearchService.test.ts
+  s_ddc1ac442e77e1::t_581cbc978c76c4 21-22,59,64,114-115,124,279-293,309-334,336
+  s_ddc1ac442e77e1::t_53337df15aeef9 294-308
+  s_ddc1ac442e77e1::t_bdf6f8a4843d18 335
+  s_ddc1ac442e77e1::t_3cff451408b772 337-338
+tests/controllers/serverController.test.ts
+  s_ddc1ac442e77e1::t_4185722992abfd 665-698
+  s_ddc1ac442e77e1::t_2db5d66e7bb6ed 662-664
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "28fb1d37d4b69decdb6e4665cf5799882289820b",
+  "prompts": {},
+  "sessions": {
+    "s_ddc1ac442e77e1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a05810-2863-7ed1-9ac8-c725da689ed6",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

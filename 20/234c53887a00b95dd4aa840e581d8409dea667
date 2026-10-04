@@ -1,0 +1,46 @@
+tests/controllers/activityController.test.ts
+  s_2259e194b1a47b::t_87767c61715557 4-6,15-17,32,34-35,48,67-69,110-140
+  s_2259e194b1a47b::t_2bab2284eef6b9 141
+tests/controllers/logController.test.ts
+  s_2259e194b1a47b::t_87767c61715557 1-31,33-37,39-51
+  s_2259e194b1a47b::t_0a1e2b0bedc2c6 32,38
+tests/services/oauthClientRegistration.test.ts
+  s_2259e194b1a47b::t_8235356aa4426a 2,8,34,49,158-175,177-179
+  s_2259e194b1a47b::t_87767c61715557 4,9,33,38,120-157
+  s_2259e194b1a47b::t_cfad2f82d1a00a 69-75,77-78
+  s_2259e194b1a47b::t_0a1e2b0bedc2c6 5,28,48,89-91,117-119
+src/controllers/activityController.ts
+  s_2259e194b1a47b::t_0a1e2b0bedc2c6 5,23-24,113-114,153-154,214-215,257-258
+src/controllers/logController.ts
+  s_2259e194b1a47b::t_0a1e2b0bedc2c6 5,8-10,21-23,34-36
+src/utils/ssrf.ts
+  s_2259e194b1a47b::t_0a1e2b0bedc2c6 168
+tests/integration/system-config-authorization.test.ts
+  s_2259e194b1a47b::t_ca412b2dc7d950 63-70,74-75,110-133
+  s_2259e194b1a47b::t_20908860b3c21d 134
+src/services/oauthClientRegistration.ts
+  s_2259e194b1a47b::t_7887ca54a86e6b 45-48
+  s_2259e194b1a47b::t_0a1e2b0bedc2c6 13,18,38-44,83,92-93,131-134,146,221,225,227,315,317,319,560-561,565,607,609
+  s_2259e194b1a47b::t_0154b1f4ec26bf 49,226,318,608
+src/services/mcpOAuthProvider.ts
+  s_2259e194b1a47b::t_0a1e2b0bedc2c6 36
+  s_2259e194b1a47b::t_cfad2f82d1a00a 144-147
+src/utils/__tests__/ssrf.test.ts
+  s_2259e194b1a47b::t_87767c61715557 165-172
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "20234c53887a00b95dd4aa840e581d8409dea667",
+  "prompts": {},
+  "sessions": {
+    "s_2259e194b1a47b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a05c81-2374-74b0-8308-6b446e193b67",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

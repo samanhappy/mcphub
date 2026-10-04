@@ -1,0 +1,28 @@
+src/clients/__tests__/openapi-request-body-content-types.test.ts
+  s_f6b1ce8c5ff834::t_e2c256ebd0006c 1-351
+src/clients/openapi.ts
+  s_f6b1ce8c5ff834::t_b882f6715562e8 1096-1101
+  s_f6b1ce8c5ff834::t_a583826b3583b2 875
+  s_f6b1ce8c5ff834::t_a1708359d55b02 1062-1065
+  s_f6b1ce8c5ff834::t_650ca84e8826cf 827-846,849,855-857
+  s_f6b1ce8c5ff834::t_101f4357da3001 1040-1042,1044-1061,1066-1072
+  s_f6b1ce8c5ff834::t_862a8e1095d15e 2
+  s_f6b1ce8c5ff834::t_09cdea9f4253fb 46-325
+  s_f6b1ce8c5ff834::t_c0b1f37c22b7aa 940-944,946,948-952
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "30c4038cc7d958a0239ef06d48eaa73483f86cd0",
+  "prompts": {},
+  "sessions": {
+    "s_f6b1ce8c5ff834": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_fc3b75752ffe9yjZwPNKgTtjFV",
+        "model": "x-preview-f-free"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

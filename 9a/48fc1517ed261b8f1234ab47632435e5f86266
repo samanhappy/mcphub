@@ -1,0 +1,50 @@
+docs/api-reference/config.mdx
+  h_18676a549cd52a 46-47
+docs/configuration/environment-variables.mdx
+  h_18676a549cd52a 125
+docs/features/smart-routing.mdx
+  h_18676a549cd52a 239-245
+docs/zh/api-reference/config.mdx
+  h_18676a549cd52a 44-45
+docs/zh/configuration/environment-variables.mdx
+  h_18676a549cd52a 114
+docs/zh/features/smart-routing.mdx
+  h_18676a549cd52a 390-395
+frontend/src/contexts/SettingsContext.tsx
+  h_18676a549cd52a 39,357,449-450
+frontend/src/pages/SettingsPage.tsx
+  h_18676a549cd52a 489,507,647-648,2502-2520
+frontend/src/services/configService.ts
+  h_18676a549cd52a 26
+locales/en.json
+  h_18676a549cd52a 827-828
+locales/fr.json
+  h_18676a549cd52a 826-827
+locales/tr.json
+  h_18676a549cd52a 825-826
+locales/zh.json
+  h_18676a549cd52a 830-831
+src/controllers/serverController.ts
+  h_18676a549cd52a 1638,1929-1933,2064-2065
+src/services/vectorSearchService.ts
+  h_18676a549cd52a 135-143,148,708-744,860-869,872-874
+src/utils/smartRouting.ts
+  h_18676a549cd52a 24-36,155-161
+tests/controllers/serverController.test.ts
+  h_18676a549cd52a 699-735
+tests/services/vectorSearchService.test.ts
+  h_18676a549cd52a 27-31,121,345-528
+tests/utils/smartRouting.test.ts
+  h_18676a549cd52a 22,182,306-332
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "9a48fc1517ed261b8f1234ab47632435e5f86266",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,16 @@
+package.json
+  h_18676a549cd52a 184-185,196
+pnpm-lock.yaml
+  h_18676a549cd52a 35-36,47,4610-4611,4855-4856,4867-4868,5320,7385,7547,7562,8193,8228,10048,10050-10051,10387,10407,10411,10546
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "79b6eb0e5db6e48f2f6b6aad7b7176b42f4b05ca",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

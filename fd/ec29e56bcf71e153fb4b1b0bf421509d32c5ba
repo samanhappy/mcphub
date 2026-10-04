@@ -1,0 +1,18 @@
+frontend/src/components/ui/Button.tsx
+  h_18676a549cd52a 14-16
+frontend/src/contexts/EmbeddingSyncContext.tsx
+  h_18676a549cd52a 96-99,101-104,109-112,117,119-120,123
+frontend/tsconfig.json
+  h_18676a549cd52a 22
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "fdec29e56bcf71e153fb4b1b0bf421509d32c5ba",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

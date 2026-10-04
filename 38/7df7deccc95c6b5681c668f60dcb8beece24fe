@@ -1,0 +1,26 @@
+src/controllers/oauthCallbackController.ts
+  s_784bd9551a98e9::t_770feb90bf2275 384,387-389
+  s_784bd9551a98e9::t_67be445180cd8f 418-446,448,452
+  s_784bd9551a98e9::t_5e26051f5fc973 376-377,383,385-386,390,392-417
+tests/controllers/oauthCallbackController.test.ts
+  s_784bd9551a98e9::t_09513ea0b65397 26,28,34-38,55,143-200
+  s_784bd9551a98e9::t_5e26051f5fc973 39-44
+tests/integration/oauth-callback-reconnect.test.ts
+  s_784bd9551a98e9::t_2f0e2df3dea1f5 1-77
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "387df7deccc95c6b5681c668f60dcb8beece24fe",
+  "prompts": {},
+  "sessions": {
+    "s_784bd9551a98e9": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a066ee-2144-76a1-b82f-0fdb21e8e93f",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

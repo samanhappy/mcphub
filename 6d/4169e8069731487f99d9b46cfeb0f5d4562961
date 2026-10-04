@@ -1,0 +1,26 @@
+src/services/mcpService.ts
+  s_4125a0e606f928::t_ade10ffbd2967e 2031-2039,2050
+tests/services/mcpService-server-metadata.test.ts
+  s_4125a0e606f928::t_da96721a378655 4,264-340
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "6d4169e8069731487f99d9b46cfeb0f5d4562961",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_4125a0e606f928": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7d67945b-60f3-49dc-add7-d338ba643e3d",
+        "model": "unknown"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

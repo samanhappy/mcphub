@@ -1,0 +1,23 @@
+src/controllers/serverController.ts
+  s_b2ce0f777ba71b::t_ea8559ab0955f3 1515,1993-1994
+  s_b2ce0f777ba71b::t_834de560797a2f 1995-1996
+tests/controllers/serverController.test.ts
+  s_b2ce0f777ba71b::t_d5e1cc6ec7c7bc 510-546
+  s_b2ce0f777ba71b::t_ea8559ab0955f3 429,472
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "f0f2025ea61a547ecb3eff0bcb4b52380fbd954b",
+  "prompts": {},
+  "sessions": {
+    "s_b2ce0f777ba71b": {
+      "agent_id": {
+        "tool": "github-copilot",
+        "id": "9b58c864-c91f-4612-b7e5-a7fc0040b052",
+        "model": "copilot/kimi-k3"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

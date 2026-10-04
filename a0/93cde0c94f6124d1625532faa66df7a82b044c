@@ -1,0 +1,16 @@
+src/services/mcpOAuthProvider.ts
+  h_18676a549cd52a 595
+src/services/mcpService.ts
+  h_18676a549cd52a 1393,1396
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "a093cde0c94f6124d1625532faa66df7a82b044c",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,20 @@
+src/services/mcpService.ts
+  h_18676a549cd52a 609-615,679-708,714-715
+src/services/vectorSearchService.ts
+  h_18676a549cd52a 1072-1084,1089
+tests/services/mcpService-description-override-embedding.test.ts
+  h_18676a549cd52a 1-266
+tests/services/vectorSearchService.test.ts
+  h_18676a549cd52a 73,616-648
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "ab13a706c2faa751e61f2dc5defc11602b26f64b",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+frontend/src/pages/SettingsPage.tsx
+  s_c408b98bd74d09::t_0bd09138c3f5fb 1794
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "02d7b59fd69361d7931c6031e058d7bcbe511b98",
+  "prompts": {},
+  "sessions": {
+    "s_c408b98bd74d09": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0fd31-ece8-7331-b4f4-fcbf79d7fd26",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

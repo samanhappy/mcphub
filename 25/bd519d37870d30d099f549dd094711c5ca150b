@@ -1,0 +1,43 @@
+frontend/src/components/ServerForm.tsx
+  s_96f34492908f5e::t_66b84a3de84000 13-17,256-259,262,264,267-272,285-288
+  s_96f34492908f5e::t_dd46c9cad1785f 443-446,455,1221,1293
+  s_96f34492908f5e::t_059d94ae86b9ec 467
+  s_96f34492908f5e::t_f47ee878edc1d8 811
+  s_96f34492908f5e::t_f5a4b0cac37955 765-796
+  s_96f34492908f5e::t_03df351acd69b3 409-417
+  s_96f34492908f5e::t_749079603204c6 475
+  s_96f34492908f5e::t_b8d7126b05307a 265-266,365-367,384-388,391,396-397,399-408,418-425,427-434,437-438,454,457,460,462,464-466,468-473,476-492
+  s_96f34492908f5e::t_75a996ed818019 806-808
+  s_96f34492908f5e::t_8d66838ac0e4e8 798
+  s_96f34492908f5e::t_a095916114b5c9 289
+tests/frontend/openApiSourceAnalysis.test.ts
+  s_96f34492908f5e::t_9213673ceb7b25 1-6,8-23,27,29,31,34-36
+  s_96f34492908f5e::t_dd46c9cad1785f 25
+  s_96f34492908f5e::t_580aa4f1e5e598 37-52,54-67
+tests/frontend/openApiSecurityPrefill.test.ts
+  s_96f34492908f5e::t_9ae74b1f21533c 1-58
+frontend/src/utils/openApiSecurityPrefill.ts
+  s_96f34492908f5e::t_07f3148d587656 30-33,55,61,142,149
+  s_96f34492908f5e::t_b36bb7ee025db9 137-138
+  s_96f34492908f5e::t_dd46c9cad1785f 29,168-172
+frontend/src/utils/openApiSourceAnalysis.ts
+  s_96f34492908f5e::t_9213673ceb7b25 1-12,15-20,23-24,28-46,48-52,54-56
+  s_96f34492908f5e::t_790e77b8cbfa80 47,53
+  s_96f34492908f5e::t_dd46c9cad1785f 13-14
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "25bd519d37870d30d099f549dd094711c5ca150b",
+  "prompts": {},
+  "sessions": {
+    "s_96f34492908f5e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a04735-9bec-7c51-922f-0abe31579f52",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

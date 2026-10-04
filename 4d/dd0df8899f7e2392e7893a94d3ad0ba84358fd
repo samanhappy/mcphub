@@ -1,0 +1,21 @@
+docs/api-reference/openapi.json
+  s_1f86e269e80dcf::t_0a7a4e8dff667c 7
+package.json
+  s_1f86e269e80dcf::t_0a7a4e8dff667c 48
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "4ddd0df8899f7e2392e7893a94d3ad0ba84358fd",
+  "prompts": {},
+  "sessions": {
+    "s_1f86e269e80dcf": {
+      "agent_id": {
+        "tool": "github-copilot",
+        "id": "68587a22-6a15-4e0d-800d-bacdf44d68b3",
+        "model": "copilot/kimi-k3"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

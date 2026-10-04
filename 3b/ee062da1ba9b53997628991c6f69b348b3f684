@@ -1,0 +1,16 @@
+AGENTS.md
+  h_18676a549cd52a 11
+docs/agents/git-and-contribution.md
+  h_18676a549cd52a 11-27
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "3bee062da1ba9b53997628991c6f69b348b3f684",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

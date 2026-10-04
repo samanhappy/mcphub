@@ -1,0 +1,41 @@
+src/services/mcpOAuthProvider.ts
+  s_ba5162b68c8b5b::t_ef3c1dcf62b052 331-337
+  s_ba5162b68c8b5b::t_7381ae6b5fc249 68-69,328-330,338-339,364-365,390-391
+  s_ba5162b68c8b5b::t_68f357850aa8e0 15-18
+src/controllers/oauthCallbackController.ts
+  s_ba5162b68c8b5b::t_7381ae6b5fc249 331,338-344
+tests/integration/oauth-callback-reconnect.test.ts
+  s_ba5162b68c8b5b::t_dfaf75bf926ab9 71,99,102
+  s_ba5162b68c8b5b::t_55fcf013dc02c7 39,89-95
+  s_ba5162b68c8b5b::t_68f357850aa8e0 23-25,35-38,40-70,72-81,83-87,97-98,100-101,103-110
+  s_ba5162b68c8b5b::t_08d24a61972735 22
+tests/services/mcpOAuthProvider.test.ts
+  s_ba5162b68c8b5b::t_55fcf013dc02c7 245-249
+  s_ba5162b68c8b5b::t_68f357850aa8e0 223-244,250-262
+tests/utils/oauthIssuer.test.ts
+  s_ba5162b68c8b5b::t_944fdcc96b3671 59,67-68,78
+  s_ba5162b68c8b5b::t_68f357850aa8e0 1,49-58,69-77
+  s_ba5162b68c8b5b::t_dfaf75bf926ab9 60-66
+  s_ba5162b68c8b5b::t_682c6334d2ff6a 79
+src/types/index.ts
+  s_ba5162b68c8b5b::t_7381ae6b5fc249 499-500,601-602
+src/utils/oauthIssuer.ts
+  s_ba5162b68c8b5b::t_7381ae6b5fc249 15-16,41,51-54,63
+  s_ba5162b68c8b5b::t_944fdcc96b3671 19,44-45,61
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "dd84e367457d50dd203f695cc97c650159e23f7d",
+  "prompts": {},
+  "sessions": {
+    "s_ba5162b68c8b5b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0e145-13e6-71e0-8521-9bfeea114076",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

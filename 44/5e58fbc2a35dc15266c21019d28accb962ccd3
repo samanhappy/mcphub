@@ -1,0 +1,61 @@
+tests/services/serverConfigEnvironment.test.ts
+  s_a463a729881b49::t_9de6141f572c91 1-64
+  s_6330331b42af80::t_59bb785444bb29 1-2,4-8,10-26,28-35,51-52,54-64
+  s_6330331b42af80::t_b992fbdb6766f7 3
+  s_6330331b42af80::t_59d979a242bccd 9
+  s_6330331b42af80::t_a1cc9193a156d7 27
+  s_6330331b42af80::t_50ad774e134495 53
+  s_a463a729881b49::t_a3c2b891436e59 36-50
+tests/services/principalRuntimeService.test.ts
+  s_a463a729881b49::t_9de6141f572c91 14
+  s_6330331b42af80::t_2922e1c0099411 14
+src/controllers/oauthCallbackController.ts
+  s_a463a729881b49::t_9de6141f572c91 26,391
+  s_6330331b42af80::t_3b7db2fa656c09 26,391
+src/services/principalRuntimeService.ts
+  s_a463a729881b49::t_9de6141f572c91 5,61
+  s_6330331b42af80::t_1a7916abd14400 5,61
+src/services/mcpService.ts
+  s_a463a729881b49::t_9de6141f572c91 1,1560,1683,1780,1927,3165
+  s_6330331b42af80::t_bc47b4320a0dc2 1683
+  s_6330331b42af80::t_f7dd3fd94cdfcd 1,1560,1780,1927,3165
+tests/services/mcpService-header-env-from-config.test.ts
+  s_a463a729881b49::t_9de6141f572c91 57-59,90,109,128,146-176
+  s_6330331b42af80::t_ac2a77dbd1a6fd 109,128,146-150,152-159
+  s_6330331b42af80::t_028bcc57cdeec3 151
+  s_a463a729881b49::t_a3c2b891436e59 90
+  s_a463a729881b49::t_17ef69c7ab3011 57-59,160-176
+src/services/serverConfigEnvironment.ts
+  s_a463a729881b49::t_9de6141f572c91 1-28
+  s_6330331b42af80::t_55344862e2eaa7 1,4-7,9,18
+  s_6330331b42af80::t_bc47b4320a0dc2 3,15
+  s_6330331b42af80::t_425050e55bc167 2
+  s_6330331b42af80::t_9d774ea89bc48e 8
+  s_6330331b42af80::t_672f73946a6d02 10-14
+  s_6330331b42af80::t_c1150019f8cb20 16-17
+  s_a463a729881b49::t_5caae6da1aa473 19-28
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "445e58fbc2a35dc15266c21019d28accb962ccd3",
+  "prompts": {},
+  "sessions": {
+    "s_6330331b42af80": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a10017-d4ad-7f33-b65f-76d1f60f776b",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    },
+    "s_a463a729881b49": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a10031-0694-7b30-a3db-4465dbc76a9f",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

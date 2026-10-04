@@ -1,0 +1,33 @@
+src/types/index.ts
+  s_f6ad850d1ee010::t_12ad52f08b2e11 756
+src/controllers/templateController.ts
+  s_f6ad850d1ee010::t_02601425873757 28
+  s_f6ad850d1ee010::t_603b5d10c4e294 57-61
+src/services/templateService.ts
+  s_f6ad850d1ee010::t_a6e39d303e7a86 462
+  s_f6ad850d1ee010::t_7f8847928bce3a 16-17
+  s_f6ad850d1ee010::t_a2a39f94596006 406-409,418-419,421-423,425-429,431-432
+  s_f6ad850d1ee010::t_916174e3392a88 424
+  s_f6ad850d1ee010::t_93c55621a8b0d4 8
+  s_f6ad850d1ee010::t_439d42c9842e56 493-496,501,507-512,518
+  s_f6ad850d1ee010::t_4810ee9fa2627d 13
+  s_f6ad850d1ee010::t_bab85b71459234 420
+tests/services/templateService-export-auth.test.ts
+  s_f6ad850d1ee010::t_7c0c3accee5321 1-124
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "feb106a43808574cf8a87eec036627a4f312c8d6",
+  "prompts": {},
+  "sessions": {
+    "s_f6ad850d1ee010": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_fd33ad616ffe1S2hjbNZxMUA71",
+        "model": "x-preview-f-free"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,22 @@
+.agents/skills/polish-release/SKILL.md
+  h_18676a549cd52a 2-3,6,10,12,14,16-19,23,25-29,31,34-37,39,43,45,50,55
+.github/release-notes-template.md
+  h_18676a549cd52a 31-32
+scripts/build-release-notes.js
+  h_18676a549cd52a 1-192
+scripts/validate-release-notes.js
+  h_18676a549cd52a 12-31,34,45-48,98-154,181-199,212-216
+tests/scripts/validate-release-notes.test.ts
+  h_18676a549cd52a 1-202
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "337410c1b94d08ab17b130f7a6e92245b47e2a28",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

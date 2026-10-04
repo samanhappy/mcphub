@@ -1,0 +1,22 @@
+src/clients/openapi.ts
+  s_4177dfb1e151a6::t_13ba0a7af56857 698-701,703-705
+  s_4177dfb1e151a6::t_5007e0b617a8f7 27-42
+src/clients/__tests__/openapi-path-params.test.ts
+  s_4177dfb1e151a6::t_9581f80e6f87c3 1-170
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "47aba23de8b4e26f7cba89ded0d1486185636cc5",
+  "prompts": {},
+  "sessions": {
+    "s_4177dfb1e151a6": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_fc3c87e0bffePh76JhFEjqVX6G",
+        "model": "x-preview-f-free"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

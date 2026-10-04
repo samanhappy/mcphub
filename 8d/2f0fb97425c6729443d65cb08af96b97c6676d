@@ -1,0 +1,46 @@
+frontend/src/contexts/SettingsContext.tsx
+  h_18676a549cd52a 80,211,519-520
+frontend/src/pages/SettingsPage.tsx
+  h_18676a549cd52a 547,554,712-715,934-938,992-1010,3107-3145
+locales/en.json
+  h_18676a549cd52a 920-923
+locales/fr.json
+  h_18676a549cd52a 919-922
+locales/tr.json
+  h_18676a549cd52a 918-921
+locales/zh.json
+  h_18676a549cd52a 923-926
+mcp_settings.json
+  h_18676a549cd52a 57-58
+src/constants/oauthServerDefaults.ts
+  h_18676a549cd52a 15
+src/controllers/oauthDynamicRegistrationController.ts
+  h_18676a549cd52a 5,9-10,145,158-160,523
+src/controllers/serverController.ts
+  h_18676a549cd52a 1728,2225-2232
+src/dao/OAuthClientDaoDbImpl.ts
+  h_18676a549cd52a 43,57,98,109
+src/db/entities/OAuthClient.ts
+  h_18676a549cd52a 39-41
+src/models/OAuth.ts
+  h_18676a549cd52a 2,12-21,100-145,348-410
+src/types/index.ts
+  h_18676a549cd52a 291,343
+src/utils/migration.ts
+  h_18676a549cd52a 242
+tests/controllers/oauthDynamicRegistrationController.test.ts
+  h_18676a549cd52a 20-22
+tests/models/oauth.test.ts
+  h_18676a549cd52a 2,4,14-16,23,52-57,100,306-471
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "8d2f0fb97425c6729443d65cb08af96b97c6676d",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

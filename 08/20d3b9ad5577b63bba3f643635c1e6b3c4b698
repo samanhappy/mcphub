@@ -1,0 +1,52 @@
+locales/tr.json
+  s_0c4e5caa9ccf88::t_90c588db14e3ea 726-727
+src/types/index.ts
+  s_0c4e5caa9ccf88::t_31524d04945f4f 209
+locales/fr.json
+  s_0c4e5caa9ccf88::t_90c588db14e3ea 727-728
+docs/zh/configuration/environment-variables.mdx
+  s_0c4e5caa9ccf88::t_90c588db14e3ea 66
+frontend/src/contexts/SettingsContext.tsx
+  s_0c4e5caa9ccf88::t_6ae6ebfe16441f 96,215,254,283
+frontend/src/services/configService.ts
+  s_0c4e5caa9ccf88::t_6ae6ebfe16441f 68
+tests/services/betterAuthConfig.test.ts
+  s_0c4e5caa9ccf88::t_34b5edc4377b05 221-274
+tests/services/betterAuth.bootstrap.test.ts
+  s_0c4e5caa9ccf88::t_34b5edc4377b05 7,75,96,157,168-187
+  s_0c4e5caa9ccf88::t_5c9011ac58676c 188-191
+src/services/betterAuthConfig.ts
+  s_0c4e5caa9ccf88::t_31524d04945f4f 148-154,246
+frontend/src/pages/SettingsPage.tsx
+  s_0c4e5caa9ccf88::t_1e40efb8a613f9 3051-3053
+  h_18676a549cd52a 486,494,637,906,929,938-941,3034-3050
+docs/configuration/environment-variables.mdx
+  s_0c4e5caa9ccf88::t_90c588db14e3ea 54
+locales/en.json
+  s_0c4e5caa9ccf88::t_90c588db14e3ea 736-737
+src/betterAuth.ts
+  s_0c4e5caa9ccf88::t_31524d04945f4f 6-9,91,93
+locales/zh.json
+  s_0c4e5caa9ccf88::t_90c588db14e3ea 738-739
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "0820d3b9ad5577b63bba3f643635c1e6b3c4b698",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_0c4e5caa9ccf88": {
+      "agent_id": {
+        "tool": "github-copilot",
+        "id": "973e693d-6851-4bbb-91e8-9143fceccd8c",
+        "model": "copilot/kimi-k3"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

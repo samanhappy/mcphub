@@ -1,0 +1,42 @@
+docs/configuration/docker-setup.mdx
+  s_d0a33e8c2a1c6b::t_18a08e83aea4a4 120,195,397
+  s_d0a33e8c2a1c6b::t_eaed0a0795f9b1 24,28-29,31,46,63,70
+  s_d0a33e8c2a1c6b::t_c198279a91f9c8 30
+tests/scripts/docker-entrypoint.test.ts
+  s_d0a33e8c2a1c6b::t_c198279a91f9c8 16-19,25-27,29,31-40
+  s_d0a33e8c2a1c6b::t_e8f7db9405bf01 28
+  s_d0a33e8c2a1c6b::t_b3437c5d1e6c86 1-15,20-24,30,41-60
+docs/zh/configuration/docker-setup.mdx
+  s_d0a33e8c2a1c6b::t_18a08e83aea4a4 119,193,394
+  s_d0a33e8c2a1c6b::t_eaed0a0795f9b1 24,28-29,31,46,63,70
+  s_d0a33e8c2a1c6b::t_c198279a91f9c8 30
+README.md
+  s_d0a33e8c2a1c6b::t_18a08e83aea4a4 75
+  s_d0a33e8c2a1c6b::t_eaed0a0795f9b1 61,64,69,71,96,107,111
+README.zh.md
+  s_d0a33e8c2a1c6b::t_eaed0a0795f9b1 60,63,68,70,95,106,110
+  s_d0a33e8c2a1c6b::t_18a08e83aea4a4 74
+README.fr.md
+  s_d0a33e8c2a1c6b::t_18a08e83aea4a4 72
+  s_d0a33e8c2a1c6b::t_eaed0a0795f9b1 58,61,66,68,93,104,108
+entrypoint.sh
+  s_d0a33e8c2a1c6b::t_c198279a91f9c8 3-11
+Dockerfile
+  s_d0a33e8c2a1c6b::t_c198279a91f9c8 58-59
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "da23ed549d8b90ac5c035b8dd000e5fb2e182567",
+  "prompts": {},
+  "sessions": {
+    "s_d0a33e8c2a1c6b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a08fe8-171b-7560-948d-d206fccb8305",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

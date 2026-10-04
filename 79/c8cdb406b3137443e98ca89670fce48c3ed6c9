@@ -1,0 +1,26 @@
+tests/index.boot.test.ts
+  s_f6ad850d1ee010::t_0076b1b05f6054 68,85,88,93-99
+  s_f6ad850d1ee010::t_0ebc3c554a66d7 17
+  s_f6ad850d1ee010::t_91420aaf6e3f94 86-87,91-92
+  s_f6ad850d1ee010::t_d327c782182cd5 41
+  s_f6ad850d1ee010::t_688c22d9822bc8 89-90
+src/index.ts
+  s_f6ad850d1ee010::t_aef61b9926ce07 6
+  s_f6ad850d1ee010::t_5cd84e848c6a86 183-194
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "79c8cdb406b3137443e98ca89670fce48c3ed6c9",
+  "prompts": {},
+  "sessions": {
+    "s_f6ad850d1ee010": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_fd33ad616ffe1S2hjbNZxMUA71",
+        "model": "x-preview-f-free"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

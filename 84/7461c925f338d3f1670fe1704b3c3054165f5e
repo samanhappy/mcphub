@@ -1,0 +1,19 @@
+Dockerfile
+  s_b55d9dd6e3e4fe::t_1e9c05ca8df47c 3,34
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "847461c925f338d3f1670fe1704b3c3054165f5e",
+  "prompts": {},
+  "sessions": {
+    "s_b55d9dd6e3e4fe": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f937c-f32d-7012-ab13-4793f8043e4a",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

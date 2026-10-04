@@ -1,0 +1,25 @@
+docs/configuration/mcp-settings.mdx
+  s_913842cc8b3011::t_2aa8de4a3f004d 106,111-119
+docs/zh/configuration/mcp-settings.mdx
+  s_913842cc8b3011::t_8bf37d871e27e5 90-104
+src/clients/__tests__/openapi-spec-auth.test.ts
+  s_913842cc8b3011::t_68621ee4f31f17 1-295
+src/clients/openapi.ts
+  s_913842cc8b3011::t_000382b47b8fdb 4,7,278-286,289-303,305-307,324-328,330-343
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "d431589bafd32bb7a9359652bc49565340af5945",
+  "prompts": {},
+  "sessions": {
+    "s_913842cc8b3011": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "27b38392-ae26-4027-be4a-0ff0966335c5",
+        "model": "unknown"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,26 @@
+tests/controllers/serverController.test.ts
+  s_f06e7d2c79006f::t_80a68907858e3c 352-355,377-396
+  s_f06e7d2c79006f::t_d909067ec1acaf 397-398
+src/controllers/serverController.ts
+  s_f06e7d2c79006f::t_383ff763a4159e 1419-1427
+tests/integration/system-config-authorization.test.ts
+  s_f06e7d2c79006f::t_f77fa0e8a33b7f 1-2,63-67,79-99
+  s_f06e7d2c79006f::t_cbf268cbd491d1 3-12,16-62,68-78
+  s_f06e7d2c79006f::t_8bbd41caa4de4b 13-15
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "cb55196bad992ef347cad5c267ad33bd5cd8939f",
+  "prompts": {},
+  "sessions": {
+    "s_f06e7d2c79006f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ffafe-ddb8-7ae3-b847-ef6c88a3d2c9",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,31 @@
+tests/controllers/builtinConfigAuth.test.ts
+  s_f6ad850d1ee010::t_11d42a0a52eb0e 1-166
+src/controllers/builtinPromptController.ts
+  s_f6ad850d1ee010::t_dbb3a24fcbebc9 84
+  s_f6ad850d1ee010::t_5fb0bfe8190c61 109
+  s_f6ad850d1ee010::t_22d67c294206e0 4
+  s_f6ad850d1ee010::t_d3f125d60f24f8 53
+src/controllers/builtinResourceController.ts
+  s_f6ad850d1ee010::t_c0507aaf3c313c 85
+  s_f6ad850d1ee010::t_e739fe65c3098a 110
+  s_f6ad850d1ee010::t_81a77180e3cba2 54
+  s_f6ad850d1ee010::t_0c7b10fc80da1c 5
+src/utils/requireAdmin.ts
+  s_f6ad850d1ee010::t_cf329f550c5f28 1-16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "763381fadf3d38ca6c6be6f413ddb8a03b408862",
+  "prompts": {},
+  "sessions": {
+    "s_f6ad850d1ee010": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_fd33ad616ffe1S2hjbNZxMUA71",
+        "model": "x-preview-f-free"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

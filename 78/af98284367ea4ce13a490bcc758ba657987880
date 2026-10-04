@@ -1,0 +1,22 @@
+package.json
+  s_ced2f06dc6167e::t_636721187a9b4b 154,158,160-162,164-167,169-171
+  s_ced2f06dc6167e::t_cfad3ccb6559a0 136
+pnpm-lock.yaml
+  s_ced2f06dc6167e::t_ae730a5e5261ad 8,12,14-16,18-21,23-25,308-309,1003-1004,2500-2501,2504-2505,2508-2509,2691-2694,3036-3037,3346-3347,4339-4340,4409-4410,4416-4417,4582-4583,4913-4916,5691,5700,5985,6942,7143,7160,7163,7170,7174,7341,7354-7355,7702,7707,7718,7753,7793,8122,8872,8876,9166,9243,9247,9249,9477,9811-9816
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "78af98284367ea4ce13a490bcc758ba657987880",
+  "prompts": {},
+  "sessions": {
+    "s_ced2f06dc6167e": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_fd38b1380ffeQxsnbPIB1b1WR2",
+        "model": "x-preview-f-free"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

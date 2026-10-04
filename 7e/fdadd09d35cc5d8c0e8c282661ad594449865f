@@ -1,0 +1,20 @@
+docs/zh/features/monitoring.mdx
+  s_2cb54369891944::t_b3cd803e4b98a6 2-3,6,8,10,13,20-23,27,35,37,39,45,47,49,51,53,64,66,68,70-71,73,75-76
+  s_2cb54369891944::t_8b8bca20bae875 29-33,41-44,55-62
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "7efdadd09d35cc5d8c0e8c282661ad594449865f",
+  "prompts": {},
+  "sessions": {
+    "s_2cb54369891944": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0b32a-e135-72d1-b791-f5a7f667761a",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

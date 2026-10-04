@@ -1,0 +1,24 @@
+src/services/credentialBindingService.ts
+  s_29d7282f1637cb::t_116f11b56908db 127-137
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "e94c50807c21c9c70da0184197c541a2802b786b",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_29d7282f1637cb": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a070d1-21c4-7f83-9701-a94ba6815dc8",
+        "model": "gpt-reserve"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

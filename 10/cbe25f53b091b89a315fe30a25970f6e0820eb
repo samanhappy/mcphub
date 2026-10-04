@@ -1,0 +1,20 @@
+frontend/src/components/ServerForm.tsx
+  s_29d7282f1637cb::t_28a90fe1f190c7 1696-1698
+  s_29d7282f1637cb::t_73dae3f05e0720 1691-1695,1699-1763
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "10cbe25f53b091b89a315fe30a25970f6e0820eb",
+  "prompts": {},
+  "sessions": {
+    "s_29d7282f1637cb": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a070d1-21c4-7f83-9701-a94ba6815dc8",
+        "model": "gpt-reserve"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,25 @@
+docs/adr/0003-mcp-2026-07-28-staged-upgrade-path.md
+  s_63a8cee02d73a8::t_701b9ef3856dfc 20
+docs/api-reference/mcp-http.mdx
+  s_63a8cee02d73a8::t_701b9ef3856dfc 96-187
+docs/zh/api-reference/mcp-http.mdx
+  s_63a8cee02d73a8::t_701b9ef3856dfc 88-165
+tests/integration/sse-service-real-client.test.ts
+  s_63a8cee02d73a8::t_0fede9753e9738 288-325
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "ac45cb97c161626c1d9fa7afe97dcdd632dbec29",
+  "prompts": {},
+  "sessions": {
+    "s_63a8cee02d73a8": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1020c-ea82-7211-a6ea-653a086c3172",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

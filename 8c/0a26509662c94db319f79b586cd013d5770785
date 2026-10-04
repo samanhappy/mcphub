@@ -1,0 +1,33 @@
+frontend/src/components/McpbUploadForm.tsx
+  s_c408b98bd74d09::t_ee686ef579b75d 228-229,347-348,356
+frontend/src/components/ui/Toast.tsx
+  s_c408b98bd74d09::t_ee686ef579b75d 66-69,73-83,98,115-116
+frontend/src/components/AddServerForm.tsx
+  s_c408b98bd74d09::t_ee686ef579b75d 180,188,191
+frontend/src/components/TemplateImportForm.tsx
+  s_c408b98bd74d09::t_ee686ef579b75d 98-99,105,107,116-117,120,231-232,235
+frontend/src/components/ui/ToolResult.tsx
+  s_c408b98bd74d09::t_ee686ef579b75d 277,285-286
+frontend/src/components/MarketServerDetail.tsx
+  s_c408b98bd74d09::t_ee686ef579b75d 177,207,350,362,365
+frontend/src/components/TemplateExportForm.tsx
+  s_c408b98bd74d09::t_ee686ef579b75d 85-86,124,166-167
+frontend/src/components/ui/PromptResult.tsx
+  s_c408b98bd74d09::t_ee686ef579b75d 144,146-147
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "8c0a26509662c94db319f79b586cd013d5770785",
+  "prompts": {},
+  "sessions": {
+    "s_c408b98bd74d09": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0fd31-ece8-7331-b4f4-fcbf79d7fd26",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
