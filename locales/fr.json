@@ -191,6 +191,8 @@
     "disconnectOAuthSuccess": "OAuth du serveur déconnecté",
     "disconnectOAuthError": "Échec de la déconnexion OAuth du serveur {{serverName}}",
     "requestOptions": "Configuration de la connexion",
+    "maxBufferSize": "Limite du tampon stdio (octets)",
+    "maxBufferSizeDescription": "Taille maximale du tampon de lecture stdio. Laissez vide pour la valeur par défaut du SDK (10 Mio). Une limite supérieure permet une utilisation mémoire plus élevée.",
     "timeout": "Délai d'attente de la requête",
     "timeoutDescription": "Délai d'attente pour les requêtes vers le serveur MCP (ms)",
     "maxTotalTimeout": "Délai d'attente total maximum",

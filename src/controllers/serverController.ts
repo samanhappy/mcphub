@@ -1,4 +1,5 @@
 import { deleteCredentialBindings } from '../services/credentialBindingService.js';
+import { StdioOptionsError } from '../utils/stdioOptions.js';
 import { CredentialBindingError } from '../utils/credentialTemplate.js';
 import { isDeepStrictEqual } from 'node:util';
 import { Request, Response } from 'express';
@@ -685,10 +686,17 @@ export const createServer = async (req: Request, res: Response): Promise<void> =
       });
     }
   } catch (error) {
-    res.status(error instanceof CredentialBindingError ? 400 : 500).json({
-      success: false,
-      message: error instanceof CredentialBindingError ? error.message : 'Internal server error',
-    });
+    res
+      .status(
+        error instanceof CredentialBindingError || error instanceof StdioOptionsError ? 400 : 500,
+      )
+      .json({
+        success: false,
+        message:
+          error instanceof CredentialBindingError || error instanceof StdioOptionsError
+            ? error.message
+            : 'Internal server error',
+      });
   }
 };
 
@@ -803,7 +811,13 @@ export const batchCreateServers = async (req: Request, res: Response): Promise<v
       const { name, config } = server;
 
       // Validate server configuration
-      const validation = validateServerConfig(name, config);
+      let validation: ReturnType<typeof validateServerConfig>;
+      try {
+        validation = validateServerConfig(name, config);
+      } catch (error) {
+        if (!(error instanceof StdioOptionsError)) throw error;
+        validation = { valid: false, message: error.message };
+      }
       if (!validation.valid) {
         results.push({
           name: name || 'unknown',
@@ -1272,10 +1286,17 @@ export const updateServer = async (req: Request, res: Response): Promise<void> =
       });
     }
   } catch (error) {
-    res.status(error instanceof CredentialBindingError ? 400 : 500).json({
-      success: false,
-      message: error instanceof CredentialBindingError ? error.message : 'Internal server error',
-    });
+    res
+      .status(
+        error instanceof CredentialBindingError || error instanceof StdioOptionsError ? 400 : 500,
+      )
+      .json({
+        success: false,
+        message:
+          error instanceof CredentialBindingError || error instanceof StdioOptionsError
+            ? error.message
+            : 'Internal server error',
+      });
   }
 };
 

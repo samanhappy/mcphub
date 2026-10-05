@@ -191,6 +191,8 @@
     "disconnectOAuthSuccess": "Server OAuth disconnected",
     "disconnectOAuthError": "Failed to disconnect OAuth for server {{serverName}}",
     "requestOptions": "Connection Configuration",
+    "maxBufferSize": "Stdio buffer limit (bytes)",
+    "maxBufferSizeDescription": "Maximum stdio read buffer size. Leave blank for the SDK default (10 MiB). Larger limits allow higher memory use.",
     "timeout": "Request Timeout",
     "timeoutDescription": "Timeout for requests to the MCP server (ms)",
     "maxTotalTimeout": "Maximum Total Timeout",

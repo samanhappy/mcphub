@@ -63,6 +63,13 @@ const buildOptions = (options?: ServerFormData['options']) => {
     nextOptions.maxTotalTimeout = options.maxTotalTimeout;
   }
 
+  if (options?.maxBufferSize !== undefined) {
+    if (!Number.isSafeInteger(options.maxBufferSize) || options.maxBufferSize <= 0) {
+      throw new Error('options.maxBufferSize must be a positive safe integer in bytes');
+    }
+    nextOptions.maxBufferSize = options.maxBufferSize;
+  }
+
   return nextOptions;
 };
 

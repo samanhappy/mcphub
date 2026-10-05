@@ -132,6 +132,7 @@ const ServerForm = ({
     visibility: (initialData?.config?.visibility ?? 'private') as 'private' | 'group' | 'public',
     sharedWithUsers: initialData?.config?.sharedWithUsers || [],
     options: {
+      maxBufferSize: initialData?.config?.options?.maxBufferSize,
       timeout:
         (initialData &&
           initialData.config &&
@@ -410,7 +411,7 @@ const ServerForm = ({
 
   // Handle options changes
   const handleOptionsChange = (
-    field: 'timeout' | 'resetTimeoutOnProgress' | 'maxTotalTimeout',
+    field: 'timeout' | 'resetTimeoutOnProgress' | 'maxTotalTimeout' | 'maxBufferSize',
     value: number | boolean | undefined,
   ) => {
     setFormData((prev) => ({
@@ -2064,6 +2065,34 @@ const ServerForm = ({
                   {isRequestOptionsExpanded && (
                     <div className="border border-gray-200 dark:border-gray-700 rounded-b p-4 bg-gray-50 dark:bg-gray-800 border-t-0">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {serverType === 'stdio' && (
+                          <div>
+                            <label
+                              className="block text-gray-600 text-sm font-medium mb-1"
+                              htmlFor="maxBufferSize"
+                            >
+                              {t('server.maxBufferSize')}
+                            </label>
+                            <input
+                              type="number"
+                              id="maxBufferSize"
+                              value={formData.options?.maxBufferSize ?? ''}
+                              onChange={(e) =>
+                                handleOptionsChange(
+                                  'maxBufferSize',
+                                  e.target.value === '' ? undefined : Number(e.target.value),
+                                )
+                              }
+                              className="w-full py-2 px-3 form-input"
+                              placeholder="10485760"
+                              min="1"
+                              step="1"
+                            />
+                            <p className="text-xs text-gray-500 mt-1">
+                              {t('server.maxBufferSizeDescription')}
+                            </p>
+                          </div>
+                        )}
                         <div>
                           <label
                             className="block text-gray-600 text-sm font-medium mb-1"

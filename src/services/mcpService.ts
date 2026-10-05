@@ -53,6 +53,7 @@ import {
 } from '../types/index.js';
 import { expandEnvVars, replaceEnvVars, getNameSeparator } from '../config/index.js';
 import config from '../config/index.js';
+import { validateMaxBufferSize } from '../utils/stdioOptions.js';
 import { validateServerName } from '../utils/serverNameValidation.js';
 import { getGroup } from './sseService.js';
 import { getServerConfigInGroup, normalizeGroupServers } from './groupService.js';
@@ -1719,6 +1720,7 @@ export const createTransportFromConfig = async (name: string, conf: ServerConfig
       args: finalArgs,
       env: env,
       stderr: 'pipe',
+      maxBufferSize: validateMaxBufferSize(conf.options?.maxBufferSize),
     });
     if (transport.stderr && hasCredentialTemplate(conf)) {
       transport.stderr.on('data', () => undefined); // Personal upstream diagnostics can contain raw credentials.
@@ -2930,6 +2932,7 @@ export const addServer = async (
   name: string,
   config: ServerConfig,
 ): Promise<{ success: boolean; message?: string }> => {
+  validateMaxBufferSize(config.options?.maxBufferSize);
   validateCredentialTemplate(config);
   const server: ServerConfigWithName = { name, ...config };
   const result = await getServerDao().create(server);
@@ -2973,6 +2976,7 @@ export const addOrUpdateServer = async (
   allowOverride: boolean = false,
 ): Promise<{ success: boolean; message?: string }> => {
   try {
+    validateMaxBufferSize(config.options?.maxBufferSize);
     validateCredentialTemplate(config);
     const exists = await getServerDao().exists(name);
     if (exists && !allowOverride) {

@@ -1,4 +1,5 @@
 import { validateCredentialTemplate } from './credentialTemplate.js';
+import { validateMaxBufferSize } from './stdioOptions.js';
 import { ServerConfig } from '../types/index.js';
 
 const trimToUndefined = (value?: string): string | undefined => {
@@ -118,6 +119,8 @@ const normalizeOptions = (
   const normalized: NonNullable<ServerConfig['options']> = {};
 
   if (options) {
+    const maxBufferSize = validateMaxBufferSize(options.maxBufferSize);
+    if (maxBufferSize !== undefined) normalized.maxBufferSize = maxBufferSize;
     if (typeof options.timeout === 'number' && !Number.isNaN(options.timeout)) {
       normalized.timeout = options.timeout;
     }

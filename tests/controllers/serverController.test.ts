@@ -375,6 +375,64 @@ describe('serverController - server name charset validation', () => {
     url: 'http://localhost:3001/mcp',
   };
 
+  it.each([0, -1, 1.5, NaN, Infinity, null, '1024'])(
+    'rejects invalid buffer limits with HTTP 400 on create/update: %s',
+    async (maxBufferSize) => {
+      for (const handler of [createServer, updateServer]) {
+        const { status, json, response } = createResponse();
+        const request = {
+          params: { name: 'big' },
+          body: {
+            name: 'big',
+            config: { type: 'stdio', command: 'node', options: { maxBufferSize } },
+          },
+          user: adminUser,
+        } as unknown as Request;
+        await handler(request, response);
+        expect(status).toHaveBeenCalledWith(400);
+        expect(json).toHaveBeenCalledWith({
+          success: false,
+          message: 'options.maxBufferSize must be a positive safe integer in bytes',
+        });
+      }
+      expect(mockAddServer).not.toHaveBeenCalled();
+      expect(mockAddOrUpdateServer).not.toHaveBeenCalled();
+    },
+  );
+
+  it('rejects an invalid batch buffer limit without rejecting valid siblings', async () => {
+    const { json, status, response } = createResponse();
+    await batchCreateServers(
+      {
+        body: {
+          servers: [
+            {
+              name: 'valid',
+              config: { type: 'stdio', command: 'node', options: { maxBufferSize: 16777216 } },
+            },
+            {
+              name: 'invalid',
+              config: { type: 'stdio', command: 'node', options: { maxBufferSize: 0 } },
+            },
+          ],
+        },
+        user: adminUser,
+      } as unknown as Request,
+      response,
+    );
+    expect(status).toHaveBeenCalledWith(207);
+    expect(mockAddServer).toHaveBeenCalledTimes(1);
+    expect(mockAddServer).toHaveBeenCalledWith(
+      'valid',
+      expect.objectContaining({ options: { maxBufferSize: 16777216 } }),
+    );
+    expect(json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ successCount: 1, failureCount: 1 }),
+      }),
+    );
+  });
+
   it('rejects a server name containing spaces on create', async () => {
     const { json, status, response } = createResponse();
     const request = {
@@ -1608,7 +1666,11 @@ describe('serverController - updateServer', () => {
     await updateServer(mockRequest as Request, mockResponse as Response);
 
     expect(mockServerDao.update).toHaveBeenCalled();
-    expect(mockUpdateServerInfoVisibility).toHaveBeenCalledWith('test-server', 'private', undefined);
+    expect(mockUpdateServerInfoVisibility).toHaveBeenCalledWith(
+      'test-server',
+      'private',
+      undefined,
+    );
     expect(mockBroadcastToolListChanged).toHaveBeenCalled();
     expect(mockAddOrUpdateServer).not.toHaveBeenCalled();
     expect(mockNotifyToolChanged).not.toHaveBeenCalled();
