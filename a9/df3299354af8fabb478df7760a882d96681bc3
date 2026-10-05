@@ -1,0 +1,53 @@
+docs/configuration/mcp-settings.mdx
+  s_c8c8691f75c696::t_7e29eb88a26aac 776-790
+docs/zh/configuration/mcp-settings.mdx
+  s_c8c8691f75c696::t_c39f9dceb200cc 709-723
+frontend/src/components/ServerForm.tsx
+  s_c8c8691f75c696::t_faa8cb4dbaba24 135,414,2068-2095
+frontend/src/types/index.ts
+  s_c8c8691f75c696::t_cbcc7ebd51eb7f 238,400
+frontend/src/utils/serverFormPayload.ts
+  s_c8c8691f75c696::t_a4eef6892b25b5 66-72
+locales/en.json
+  s_c8c8691f75c696::t_f0f48f80c676b0 194-195
+locales/fr.json
+  s_c8c8691f75c696::t_657b04ec1468f2 194-195
+locales/tr.json
+  s_c8c8691f75c696::t_43b33718364635 194-195
+locales/zh.json
+  s_c8c8691f75c696::t_299611861892a9 194-195
+src/controllers/serverController.ts
+  s_c8c8691f75c696::t_ac269f05686b8e 2,689-699,814-820,1289-1299
+src/services/mcpService.ts
+  s_c8c8691f75c696::t_c9e78c62e4bb5c 56,1723,2935,2979
+src/types/index.ts
+  s_c8c8691f75c696::t_97c00eb1742cf4 447
+src/utils/serverConfigPersistence.ts
+  s_c8c8691f75c696::t_c0172ba3792fe9 2,122-123
+src/utils/stdioOptions.ts
+  s_c8c8691f75c696::t_3daadf0a966d87 1-9
+tests/controllers/serverController.test.ts
+  s_c8c8691f75c696::t_1499136e130d8d 378-435,1669-1673
+tests/frontend/serverFormPayload.test.ts
+  s_c8c8691f75c696::t_059aef84733621 410-435
+tests/services/mcpService-stdio-buffer.test.ts
+  s_c8c8691f75c696::t_7ac4f5ad88d6f7 1-135
+tests/utils/serverConfigPersistence.test.ts
+  s_c8c8691f75c696::t_4c12a5ffbe1fe1 359-380
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "a9df3299354af8fabb478df7760a882d96681bc3",
+  "prompts": {},
+  "sessions": {
+    "s_c8c8691f75c696": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a10cb2-83b7-71e3-841f-579ef0964434",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
