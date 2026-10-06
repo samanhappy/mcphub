@@ -4,6 +4,7 @@ import path from 'node:path';
 import { getMetadataArgsStorage } from 'typeorm';
 import { Server } from '../../src/db/entities/Server.js';
 import { Group } from '../../src/db/entities/Group.js';
+import { initializeDatabaseMode } from '../../src/utils/migration.js';
 import { syncSettingsToDatabase } from '../../src/utils/settingsSync.js';
 
 let settingsPath: string;
@@ -43,9 +44,46 @@ const transaction = jest.fn(async (run: (manager: unknown) => Promise<void>) => 
     throw error;
   }
 });
-jest.mock('../../src/db/connection.js', () => ({ getAppDataSource: () => ({ transaction }) }));
+const seedServer = jest.fn(async (value: Record<string, unknown>) => {
+  servers.set(value.name as string, { id: `id-${value.name}`, ...value });
+});
+const seedGroup = jest.fn(async (value: Record<string, unknown>) => {
+  groups.set(value.name as string, { id: `id-${value.name}`, ...value });
+});
+const seedUser = jest.fn();
+jest.mock('../../src/db/connection.js', () => ({
+  initializeDatabase: jest.fn(),
+  getAppDataSource: () => ({ transaction }),
+}));
+jest.mock('../../src/dao/DaoFactory.js', () => ({ setDaoFactory: jest.fn() }));
+jest.mock('../../src/dao/DatabaseDaoFactory.js', () => ({
+  DatabaseDaoFactory: { getInstance: () => ({}) },
+}));
+jest.mock('../../src/dao/CredentialBindingDao.js', () => ({
+  CredentialBindingDaoImpl: jest.fn(() => ({ readAll: () => [] })),
+}));
+jest.mock('../../src/db/repositories/UserRepository.js', () => ({
+  UserRepository: jest.fn(() => ({
+    count: async () => 0,
+    exists: async () => false,
+    create: seedUser,
+  })),
+}));
+jest.mock('../../src/db/repositories/ServerRepository.js', () => ({
+  ServerRepository: jest.fn(() => ({
+    exists: async (name: string) => servers.has(name),
+    create: seedServer,
+  })),
+}));
+jest.mock('../../src/db/repositories/GroupRepository.js', () => ({
+  GroupRepository: jest.fn(() => ({
+    existsByName: async (name: string) => groups.has(name),
+    create: seedGroup,
+  })),
+}));
 jest.mock('../../src/config/index.js', () => ({
   getSettingsPath: () => settingsPath,
+  loadOriginalSettings: () => JSON.parse(fs.readFileSync(settingsPath, 'utf8')),
   replaceEnvVars: jest.requireActual('../../src/config/index.js').replaceEnvVars,
 }));
 
@@ -223,4 +261,57 @@ test('salts persisted fingerprints independently while retaining authorization a
   write({ mcpServers: { alpha: { ...config, oauth: { clientSecret: 'a'.repeat(99) + 'b' } } } });
   await syncSettingsToDatabase();
   expect(servers.get('alpha')?.oauth).toEqual({ clientSecret: 'a'.repeat(99) + 'b' });
+});
+
+test('first boot seeds users but imports server OAuth only through sync', async () => {
+  write({
+    users: [{ username: 'admin', password: 'hashed', isAdmin: true }],
+    mcpServers: {
+      remote: {
+        ...remote,
+        oauth: {
+          clientId: 'declared',
+          accessToken: 'file-token',
+          refreshToken: 'file-refresh',
+          pendingAuthorization: { state: 'file-state' },
+        },
+      },
+    },
+    groups: [{ name: 'team', servers: ['remote'] }],
+  });
+  await expect(initializeDatabaseMode()).resolves.toBe(true);
+  expect(seedUser).toHaveBeenCalled();
+  expect(seedServer).not.toHaveBeenCalled();
+  expect(seedGroup).not.toHaveBeenCalled();
+  expect(servers.get('remote')?.oauth).toEqual({ clientId: 'declared' });
+  expect(groups.get('team')?.servers).toEqual(['remote']);
+});
+
+test('first boot rejects duplicate groups without persisting servers or groups', async () => {
+  write({ mcpServers: { remote }, groups: [{ name: 'team' }, { name: 'team' }] });
+  await expect(initializeDatabaseMode()).resolves.toBe(false);
+  expect(servers.size).toBe(0);
+  expect(groups.size).toBe(0);
+  expect(transaction).not.toHaveBeenCalled();
+});
+
+test('first boot rolls back all server and group writes on sync failure', async () => {
+  write({ mcpServers: { remote }, groups: [{ name: 'team' }] });
+  failGroupSave = true;
+  await expect(initializeDatabaseMode()).resolves.toBe(false);
+  expect(servers.size).toBe(0);
+  expect(groups.size).toBe(0);
+});
+
+test('first boot without sync retains the original server and group seed', async () => {
+  delete process.env.MCPHUB_SETTINGS_SYNC;
+  write({
+    mcpServers: { remote: { ...remote, oauth: { accessToken: 'seed-token' } } },
+    groups: [{ name: 'team', servers: ['remote'] }],
+  });
+  await expect(initializeDatabaseMode()).resolves.toBe(true);
+  expect(seedServer).toHaveBeenCalledTimes(1);
+  expect(seedGroup).toHaveBeenCalledTimes(1);
+  expect(servers.get('remote')?.oauth).toEqual({ accessToken: 'seed-token' });
+  expect(transaction).not.toHaveBeenCalled();
 });
