@@ -29,6 +29,7 @@ describe('persistClientCredentials: explicitly-empty vs unset scopes (#1227)', (
     expect(update).toHaveBeenCalledWith(
       'pcloud',
       expect.objectContaining({ oauth: expect.objectContaining({ scopes: [] }) }),
+      { runtimeOAuth: true },
     );
     expect(result?.oauth.scopes).toEqual([]);
   });

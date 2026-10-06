@@ -52,7 +52,11 @@ export const mutateOAuthSettings = async (
 
   mutator(context);
 
-  const updated = await serverDao.update(serverName, { oauth: serverConfig.oauth });
+  const updated = await serverDao.update(
+    serverName,
+    { oauth: serverConfig.oauth },
+    { runtimeOAuth: true },
+  );
   if (!updated) {
     throw new Error(`Failed to persist OAuth settings for server ${serverName}`);
   }

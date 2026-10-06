@@ -65,9 +65,11 @@ describe('OAuth registration persistence', () => {
 
       const registered = await registerClient(serverName, config);
       expect(registered.clientId).toBe('client-2');
-      expect(mockUpdate).toHaveBeenLastCalledWith(serverName, {
-        oauth: expect.objectContaining({ clientId: 'client-2', clientSecret: 'secret' }),
-      });
+      expect(mockUpdate).toHaveBeenLastCalledWith(
+        serverName,
+        { oauth: expect.objectContaining({ clientId: 'client-2', clientSecret: 'secret' }) },
+        { runtimeOAuth: true },
+      );
       expect(config.oauth?.clientId).toBe('client-2');
       expect(getRegisteredClient(serverName)).toBe(registered);
       expect(await registerClient(serverName, config)).toBe(registered);

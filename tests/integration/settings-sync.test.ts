@@ -1,3 +1,10 @@
+import { ServerDaoDbImpl } from '../../src/dao/ServerDaoDbImpl.js';
+import {
+  clearOAuthData,
+  persistClientCredentials,
+  persistTokens,
+} from '../../src/services/oauthSettingsStore.js';
+import { logger } from '../../src/utils/logger.js';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -11,6 +18,7 @@ let settingsPath: string;
 const servers = new Map<string, Record<string, unknown>>();
 const groups = new Map<string, Record<string, unknown>>();
 let failGroupSave = false;
+const saveDeclaration = jest.fn();
 const transaction = jest.fn(async (run: (manager: unknown) => Promise<void>) => {
   const beforeServers = new Map(servers);
   const beforeGroups = new Map(groups);
@@ -30,6 +38,7 @@ const transaction = jest.fn(async (run: (manager: unknown) => Promise<void>) => 
           findOneBy: async ({ name }: { name: string }) => rows.get(name) ?? null,
           create: (value: Record<string, unknown>) => value,
           save: async (value: Record<string, unknown>) => {
+            saveDeclaration(entity);
             if (entity === Group && failGroupSave) throw new Error('DB write failed');
             rows.set(value.name as string, { id: value.id ?? `id-${value.name}`, ...value });
           },
@@ -55,6 +64,10 @@ jest.mock('../../src/db/connection.js', () => ({
   initializeDatabase: jest.fn(),
   getAppDataSource: () => ({ transaction }),
 }));
+jest.mock('../../src/dao/index.js', () => ({
+  getServerDao: () => new ServerDaoDbImpl(),
+  getUserDao: () => ({ findByUsername: async () => ({ isAdmin: false }) }),
+}));
 jest.mock('../../src/dao/DaoFactory.js', () => ({ setDaoFactory: jest.fn() }));
 jest.mock('../../src/dao/DatabaseDaoFactory.js', () => ({
   DatabaseDaoFactory: { getInstance: () => ({}) },
@@ -73,6 +86,14 @@ jest.mock('../../src/db/repositories/ServerRepository.js', () => ({
   ServerRepository: jest.fn(() => ({
     exists: async (name: string) => servers.has(name),
     create: seedServer,
+    findByName: async (name: string) => servers.get(name) ?? null,
+    update: async (name: string, patch: Record<string, unknown>) => {
+      const current = servers.get(name);
+      if (!current) return null;
+      const updated = { ...current, ...patch };
+      servers.set(name, updated);
+      return updated;
+    },
   })),
 }));
 jest.mock('../../src/db/repositories/GroupRepository.js', () => ({
@@ -245,7 +266,9 @@ test('discards tokens obtained after a dashboard edit to declared OAuth credenti
   const config = { ...remote, oauth: { clientId: 'git-client' } };
   write({ mcpServers: { remote: config } });
   await syncSettingsToDatabase();
-  servers.get('remote')!.oauth = { clientId: 'dashboard-client', accessToken: 'dashboard-token' };
+  await new ServerDaoDbImpl().update('remote', {
+    oauth: { clientId: 'dashboard-client', accessToken: 'dashboard-token' },
+  });
   await syncSettingsToDatabase();
   expect(servers.get('remote')?.oauth).toEqual(config.oauth);
 });
@@ -314,4 +337,127 @@ test('first boot without sync retains the original server and group seed', async
   expect(seedGroup).toHaveBeenCalledTimes(1);
   expect(servers.get('remote')?.oauth).toEqual({ accessToken: 'seed-token' });
   expect(transaction).not.toHaveBeenCalled();
+});
+
+test('retains runtime registration scopes and discovered endpoints on unchanged declarations', async () => {
+  const config = {
+    ...remote,
+    oauth: { scopes: ['read', 'write'], dynamicRegistration: { enabled: true } },
+  };
+  write({ mcpServers: { remote: config } });
+  await syncSettingsToDatabase();
+  const hash = servers.get('remote')?.settingsSyncHash;
+  await persistClientCredentials('remote', {
+    clientId: 'registered',
+    clientSecret: 'secret',
+    scopes: ['read'],
+    authorizationEndpoint: 'https://example.com/auth',
+    tokenEndpoint: 'https://example.com/token',
+  });
+  await persistTokens('remote', { accessToken: 'live', refreshToken: 'refresh' });
+  const oauth = servers.get('remote')?.oauth;
+  expect(servers.get('remote')?.settingsSyncHash).toBe(hash);
+  await syncSettingsToDatabase();
+  expect(servers.get('remote')?.oauth).toEqual(oauth);
+  expect(await new ServerDaoDbImpl().findById('remote')).not.toHaveProperty('settingsSyncHash');
+  await new ServerDaoDbImpl().update('remote', {
+    oauth: { ...config.oauth, scopes: ['admin'], accessToken: 'dashboard' },
+  });
+  await syncSettingsToDatabase();
+  expect(servers.get('remote')?.oauth).toEqual(config.oauth);
+});
+
+test('an edit to undeclared OAuth fields invalidates authorization instead of triggering adoption', async () => {
+  write({
+    mcpServers: { remote: { ...remote, oauth: { dynamicRegistration: { enabled: true } } } },
+  });
+  await syncSettingsToDatabase();
+  await persistClientCredentials('remote', { clientId: 'discovered' });
+  await persistTokens('remote', { accessToken: 'live' });
+  await new ServerDaoDbImpl().update('remote', {
+    oauth: { clientId: 'dashboard', accessToken: 'dashboard-token' },
+  });
+  await syncSettingsToDatabase();
+  expect(servers.get('remote')?.oauth).toEqual({ dynamicRegistration: { enabled: true } });
+});
+
+test('omitted ownership is cleared on adoption; explicitly declared ownership is retained', async () => {
+  servers.set('remote', {
+    id: 'owned',
+    name: 'remote',
+    ...remote,
+    owner: 'alice',
+    sharedWithUsers: [],
+  });
+  groups.set('team', { id: 'owned-group', name: 'team', owner: 'alice', sharedWithUsers: [] });
+  write({ mcpServers: { remote }, groups: [{ name: 'team' }] });
+  await syncSettingsToDatabase();
+  expect(servers.get('remote')).toMatchObject({ id: 'owned', owner: null, sharedWithUsers: null });
+  expect(groups.get('team')).toMatchObject({
+    id: 'owned-group',
+    owner: null,
+    sharedWithUsers: null,
+  });
+  write({
+    mcpServers: { remote: { ...remote, owner: 'alice' } },
+    groups: [{ name: 'team', owner: 'alice' }],
+  });
+  await syncSettingsToDatabase();
+  expect(servers.get('remote')?.owner).toBe('alice');
+  expect(groups.get('team')?.owner).toBe('alice');
+});
+
+test('reports created, updated and unchanged entries and skips unchanged saves', async () => {
+  const log = jest.spyOn(logger, 'log');
+  write({ mcpServers: { remote }, groups: [{ name: 'team', servers: ['remote'] }] });
+  await syncSettingsToDatabase();
+  expect(log).toHaveBeenLastCalledWith(
+    'Settings sync completed: servers (1 created, 0 updated, 0 unchanged); groups (1 created, 0 updated, 0 unchanged)',
+  );
+  saveDeclaration.mockClear();
+  await syncSettingsToDatabase();
+  expect(saveDeclaration).not.toHaveBeenCalled();
+  expect(log).toHaveBeenLastCalledWith(
+    'Settings sync completed: servers (0 created, 0 updated, 1 unchanged); groups (0 created, 0 updated, 1 unchanged)',
+  );
+  write({
+    mcpServers: { remote: { ...remote, description: 'new' } },
+    groups: [{ name: 'team', servers: [] }],
+  });
+  await syncSettingsToDatabase();
+  expect(log).toHaveBeenLastCalledWith(
+    'Settings sync completed: servers (0 created, 1 updated, 0 unchanged); groups (0 created, 1 updated, 0 unchanged)',
+  );
+  log.mockRestore();
+});
+
+test('configuration edits invalidate provenance while unrelated and identical edits retain it', async () => {
+  write({ mcpServers: { remote } });
+  await syncSettingsToDatabase();
+  await persistClientCredentials('remote', { clientId: 'dynamic' });
+  await persistTokens('remote', { accessToken: 'live' });
+  const dao = new ServerDaoDbImpl();
+  const hash = servers.get('remote')?.settingsSyncHash;
+  await dao.update('remote', { description: 'dashboard description' });
+  await dao.update('remote', { oauth: (await dao.findById('remote'))!.oauth });
+  expect(servers.get('remote')?.settingsSyncHash).toBe(hash);
+  await syncSettingsToDatabase();
+  expect((servers.get('remote')?.oauth as Record<string, unknown>).accessToken).toBe('live');
+  await dao.update('remote', { env: { AUTH_TARGET: 'changed' } });
+  await persistTokens('remote', { accessToken: 'dashboard-target-token' });
+  await syncSettingsToDatabase();
+  expect(servers.get('remote')?.oauth).toBeNull();
+});
+
+test('restores declared client credentials after runtime clearing without restoring old tokens', async () => {
+  const config = {
+    ...remote,
+    oauth: { clientId: 'static', clientSecret: 'secret', scopes: ['read'] },
+  };
+  write({ mcpServers: { remote: config } });
+  await syncSettingsToDatabase();
+  await persistTokens('remote', { accessToken: 'old', refreshToken: 'old-refresh' });
+  await clearOAuthData('remote', 'all');
+  await syncSettingsToDatabase();
+  expect(servers.get('remote')?.oauth).toEqual(config.oauth);
 });

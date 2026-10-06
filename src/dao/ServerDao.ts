@@ -18,6 +18,13 @@ export interface PaginatedResult<T> {
  * Server DAO interface with server-specific operations
  */
 export interface ServerDao extends BaseDao<ServerConfigWithName, string> {
+  /** Runtime OAuth writes preserve the last reconciled declaration fingerprint. */
+  update(
+    name: string,
+    entity: Partial<ServerConfigWithName>,
+    options?: { runtimeOAuth?: boolean },
+  ): Promise<ServerConfigWithName | null>;
+
   /**
    * Find all servers with pagination
    */

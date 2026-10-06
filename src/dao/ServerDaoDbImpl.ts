@@ -1,3 +1,4 @@
+import { isDeepStrictEqual } from 'node:util';
 import { ServerDao, ServerConfigWithName, PaginatedResult } from './index.js';
 import { ServerRepository } from '../db/repositories/ServerRepository.js';
 import { ServerConfig } from '../types/index.js';
@@ -121,6 +122,7 @@ export class ServerDaoDbImpl implements ServerDao {
   async update(
     name: string,
     entity: Partial<ServerConfigWithName>,
+    options?: { runtimeOAuth?: boolean },
   ): Promise<ServerConfigWithName | null> {
     const updateData: Record<string, unknown> = {};
     const hasOwn = <K extends keyof ServerConfigWithName>(key: K) =>
@@ -193,6 +195,22 @@ export class ServerDaoDbImpl implements ServerDao {
 
       const options = mirrorStartOnDemandIntoOptions(baseOptions, startOnDemand, idleTimeoutMs);
       updateData.options = options ?? null;
+    }
+
+    if (!options?.runtimeOAuth) {
+      const authorizationFields = ['type', 'url', 'owner', 'env', 'oauth'] as const;
+      if (authorizationFields.some((key) => hasOwn(key))) {
+        const current = await this.repository.findByName(name);
+        if (
+          current?.settingsSyncHash &&
+          authorizationFields.some(
+            (key) => hasOwn(key) && !isDeepStrictEqual(current[key] ?? null, entity[key] ?? null),
+          )
+        ) {
+          // Keep a marker so the next sync cannot mistake this for first adoption.
+          updateData.settingsSyncHash = 'invalidated';
+        }
+      }
     }
 
     const server = await this.repository.update(name, updateData as any);

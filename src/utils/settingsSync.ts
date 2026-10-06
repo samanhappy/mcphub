@@ -163,6 +163,11 @@ export async function syncSettingsToDatabase(): Promise<void> {
     }),
   );
 
+  const counts = {
+    servers: { created: 0, updated: 0, unchanged: 0 },
+    groups: { created: 0, updated: 0, unchanged: 0 },
+  };
+
   await getAppDataSource().transaction(async (manager) => {
     const serverRepo = manager.getRepository(Server);
     for (const { serverName, config, signature } of servers) {
@@ -176,10 +181,13 @@ export async function syncSettingsToDatabase(): Promise<void> {
       const declaredOAuthMatches = Object.entries(config.oauth ?? {}).every(([key, value]) =>
         isDeepStrictEqual(value, existing?.oauth?.[key]),
       );
-      const sameOAuth =
-        declaredOAuthMatches && (!existing?.settingsSyncHash || existing.settingsSyncHash === hash);
+      const sameOAuth = existing?.settingsSyncHash
+        ? existing.settingsSyncHash === hash
+        : declaredOAuthMatches;
+      // Runtime registration may refine scopes/endpoints. Restore declared fields
+      // missing after a disconnect, but retain the upstream's existing values.
       const oauth =
-        sameTarget && sameOAuth ? { ...existing?.oauth, ...config.oauth } : config.oauth;
+        sameTarget && sameOAuth ? { ...config.oauth, ...existing?.oauth } : config.oauth;
       const data: Record<string, unknown> = {
         name: serverName,
         enabled: config.enabled ?? true,
@@ -198,23 +206,36 @@ export async function syncSettingsToDatabase(): Promise<void> {
               : (config[column.propertyName as keyof ServerConfig] ?? null);
         }
       }
-      await serverRepo.save(serverRepo.create({ ...existing, ...data }));
+      const unchanged =
+        existing &&
+        Object.entries(data).every(([key, value]) =>
+          isDeepStrictEqual(existing[key as keyof Server] ?? null, value ?? null),
+        );
+      counts.servers[!existing ? 'created' : unchanged ? 'unchanged' : 'updated']++;
+      if (!unchanged) await serverRepo.save(serverRepo.create({ ...existing, ...data }));
     }
     const groupRepo = manager.getRepository(Group);
     for (const group of declaration.groups ?? []) {
       const existing = await groupRepo.findOneBy({ name: group.name });
-      await groupRepo.save(
-        groupRepo.create({
-          ...existing,
-          name: group.name,
-          servers: group.servers,
-          description: group.description ?? null,
-          owner: group.owner ?? null,
-          visibility: group.visibility ?? null,
-          sharedWithUsers: group.sharedWithUsers ?? null,
-        } as unknown as Group),
-      );
+      const data = {
+        name: group.name,
+        servers: group.servers,
+        description: group.description ?? null,
+        owner: group.owner ?? null,
+        visibility: group.visibility ?? null,
+        sharedWithUsers: group.sharedWithUsers ?? null,
+      };
+      const unchanged =
+        existing &&
+        Object.entries(data).every(([key, value]) =>
+          isDeepStrictEqual(existing[key as keyof Group] ?? null, value ?? null),
+        );
+      counts.groups[!existing ? 'created' : unchanged ? 'unchanged' : 'updated']++;
+      if (!unchanged)
+        await groupRepo.save(groupRepo.create({ ...existing, ...data } as unknown as Group));
     }
   });
-  logger.log(`Settings sync completed: ${servers.length} servers, ${names.length} groups`);
+  logger.log(
+    `Settings sync completed: servers (${counts.servers.created} created, ${counts.servers.updated} updated, ${counts.servers.unchanged} unchanged); groups (${counts.groups.created} created, ${counts.groups.updated} updated, ${counts.groups.unchanged} unchanged)`,
+  );
 }
