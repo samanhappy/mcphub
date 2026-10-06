@@ -9,6 +9,7 @@ import { LegacyMcpClient } from '../clients/legacyMcpClient.js';
 import { LEGACY_PROTOCOL_VERSIONS } from '../utils/mcpProtocol.js';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { canAccessGroupRoute } from '../utils/groupAccess.js';
+import { canServeToolRequests } from '../utils/serverAvailability.js';
 import type { RequestPrincipal } from './authorizationService.js';
 import { PrincipalRuntimeService } from './principalRuntimeService.js';
 import { UserContextService } from './userContextService.js';
@@ -3670,13 +3671,8 @@ const resolveToolInGroup = async (
     filteredServerInfos.length === 1;
 
   for (const serverInfo of filteredServerInfos) {
-    // A disconnected on-demand server may still have a cached tool list from a
-    // previous wake-up; allow it through so it can be selected and woken by the
-    // caller. Other disconnected servers cannot serve the request. See #1029.
-    if (
-      (serverInfo.status !== 'connected' && !serverInfo.config?.startOnDemand) ||
-      serverInfo.enabled === false
-    ) {
+    // An idle on-demand server is selected here and woken by the caller (#1029)
+    if (!canServeToolRequests(serverInfo)) {
       continue;
     }
 
