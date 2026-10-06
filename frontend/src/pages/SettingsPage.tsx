@@ -473,6 +473,17 @@ function parseOptionalSearchSettingForUpdate(
 
 const isSimilarityThreshold = (value: number) => value >= 0 && value <= 1;
 const isFullSchemaTopN = (value: number) => Number.isInteger(value) && value >= 0;
+// Mirrors TOOL_DEFINITION_FIELDS / DEFAULT_TOOL_DEFINITION_FIELDS in
+// src/constants/smartRoutingDefaults.ts (the server validates against those)
+const TOOL_DEFINITION_FIELDS = [
+  'title',
+  'annotations',
+  'outputSchema',
+  'execution',
+  'icons',
+  '_meta',
+] as const;
+const DEFAULT_TOOL_DEFINITION_FIELDS: readonly string[] = ['title', 'annotations'];
 
 function parseBasePacingDelayForUpdate(
   rawValue: string,
@@ -2905,6 +2916,38 @@ const SettingsPage: React.FC = () => {
                     disabled={loading}
                   />
                   {renderEnvOverrideWarning('fullSchemaTopN')}
+                  <p className="block text-xs text-gray-600 mt-3">
+                    {t('settings.toolDefinitionFields')}
+                  </p>
+                  <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1">
+                    {TOOL_DEFINITION_FIELDS.map((field) => {
+                      const selected =
+                        smartRoutingConfig.toolDefinitionFields ?? DEFAULT_TOOL_DEFINITION_FIELDS;
+                      return (
+                        <label key={field} className="flex items-center gap-1 text-sm font-mono">
+                          <input
+                            type="checkbox"
+                            className="form-checkbox h-4 w-4"
+                            checked={selected.includes(field)}
+                            onChange={(e) =>
+                              updateSmartRoutingConfig(
+                                'toolDefinitionFields',
+                                TOOL_DEFINITION_FIELDS.filter((name) =>
+                                  name === field ? e.target.checked : selected.includes(name),
+                                ),
+                              )
+                            }
+                            disabled={loading}
+                          />
+                          {field}
+                        </label>
+                      );
+                    })}
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {t('settings.toolDefinitionFieldsDescription')}
+                  </p>
+                  {renderEnvOverrideWarning('toolDefinitionFields')}
                 </div>
 
                 <div

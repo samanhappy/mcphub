@@ -13,6 +13,10 @@ import {
 } from './groupService.js';
 import { searchToolsByVector } from './vectorSearchService.js';
 import { getSmartRoutingConfig, type SmartRoutingConfig } from '../utils/smartRouting.js';
+import {
+  DEFAULT_TOOL_DEFINITION_FIELDS,
+  type ToolDefinitionField,
+} from '../constants/smartRoutingDefaults.js';
 import { getServerDao } from '../dao/index.js';
 import { getMcpRequestGroup } from '../utils/mcpRequestGroup.js';
 import { isAppOnlyTool } from '../utils/mcpApps.js';
@@ -68,6 +72,27 @@ const cleanInputSchema = (schema: any): any => {
 
   return cleanedSchema;
 };
+
+/**
+ * The tool as a model sees it in search_tools and describe_tool results: name,
+ * description, the cleaned inputSchema and serverName, plus the optional fields
+ * the smartRouting.toolDefinitionFields setting selects. Not a spread of the
+ * cached tool, which also carries client-facing data such as base64 icons.
+ */
+const buildModelFacingTool = (
+  tool: Tool,
+  description: string,
+  serverName: string,
+  fields: readonly ToolDefinitionField[],
+) => ({
+  name: tool.name,
+  description,
+  inputSchema: cleanInputSchema(tool.inputSchema),
+  ...Object.fromEntries(
+    fields.filter((field) => tool[field] !== undefined).map((field) => [field, tool[field]]),
+  ),
+  serverName,
+});
 
 const getSmartTargetGroup = (group: string | undefined): string | undefined => {
   return group?.startsWith('$smart/') ? group.substring(7) || undefined : undefined;
@@ -463,6 +488,8 @@ export const handleSearchToolsRequest = async (
   const smartRoutingConfig = await getSmartRoutingConfig();
   const progressiveDisclosure = smartRoutingConfig.progressiveDisclosure ?? false;
   const fullSchemaTopN = progressiveDisclosure ? undefined : smartRoutingConfig.fullSchemaTopN;
+  const toolDefinitionFields =
+    smartRoutingConfig.toolDefinitionFields ?? DEFAULT_TOOL_DEFINITION_FIELDS;
   const thresholdNum =
     smartRoutingConfig.similarityThreshold ?? getHeuristicSimilarityThreshold(query);
 
@@ -530,12 +557,13 @@ export const handleSearchToolsRequest = async (
                 serverName: result.serverName,
               };
             } else {
-              // Standard mode: return full tool info
-              return {
-                ...actualTool,
-                description: toolConfig?.description || actualTool.description,
-                serverName: result.serverName,
-              };
+              // Standard mode: return the full definition
+              return buildModelFacingTool(
+                actualTool,
+                toolConfig?.description || actualTool.description,
+                result.serverName,
+                toolDefinitionFields,
+              );
             }
           }
         }
@@ -715,12 +743,16 @@ export const handleDescribeToolRequest = async (
     const serverConfig = await getServerDao().findById(serverInfo.name);
     const toolConfig = serverConfig?.tools?.[tool.name];
 
-    // Return full tool information
+    // Return the full definition, with the same fields as a search_tools hit
+    const { toolDefinitionFields } = await getSmartRoutingConfig();
     const toolInfo = {
+      ...buildModelFacingTool(
+        tool,
+        toolConfig?.description || tool.description,
+        getExposedServerName(serverInfo.name, serverConfigsByName.get(serverInfo.name)),
+        toolDefinitionFields ?? DEFAULT_TOOL_DEFINITION_FIELDS,
+      ),
       name: projectNameForGroup(tool.name, serverInfo.name, serverConfigsByName),
-      description: toolConfig?.description || tool.description,
-      inputSchema: cleanInputSchema(tool.inputSchema),
-      serverName: getExposedServerName(serverInfo.name, serverConfigsByName.get(serverInfo.name)),
     };
 
     return {

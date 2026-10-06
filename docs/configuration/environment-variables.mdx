@@ -138,6 +138,7 @@ Smart Routing performs vector search over upstream tools to surface only the few
 | `SMART_ROUTING_EMBEDDING_DOCUMENT_PREFIX` | empty | Text prepended to tool and server documents before embedding (e.g. `title: none \| text: ` for EmbeddingGemma). Changing it re-embeds every server. |
 | `SMART_ROUTING_SIMILARITY_THRESHOLD` | unset | Minimum query-to-tool similarity (0-1) for a `search_tools` hit. Unset keeps the query-length heuristic (0.2 / 0.3 / 0.4). |
 | `SMART_ROUTING_FULL_SCHEMA_TOP_N` | unset | Only the first N `search_tools` hits carry their full definition; the rest carry name, description and score, and `describe_tool` is listed to fetch them. Unset returns every hit in full. Ignored with Progressive Disclosure. |
+| `SMART_ROUTING_TOOL_DEFINITION_FIELDS` | `title,annotations` | Comma-separated optional tool fields that full `search_tools` hits and `describe_tool` carry next to name, description and `inputSchema`: `title`, `annotations`, `outputSchema`, `execution`, `icons`, `_meta`. `none` sends none of them. |
 
 ### OpenAI
 

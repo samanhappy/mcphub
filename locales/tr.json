@@ -940,6 +940,8 @@
     "similarityThresholdPlaceholder": "Boş = sorgu uzunluğuna göre (0.2 / 0.3 / 0.4)",
     "fullSchemaTopN": "İlk N sonuç için tam şemalar",
     "fullSchemaTopNPlaceholder": "Boş = tüm sonuçlar; diğerleri describe_tool kullanır",
+    "toolDefinitionFields": "Sonuçlardaki araç alanları",
+    "toolDefinitionFieldsDescription": "search_tools ve describe_tool sonuçlarının ad, açıklama ve inputSchema dışında içerdiği isteğe bağlı alanlar. Varsayılan: title ve annotations. Diğerleri çoğunlukla istemciler içindir ve büyük olabilir (simgeler base64 görsellerdir).",
     "invalidSearchSettings": "{{fields}} için geçersiz değer. Benzerlik eşiği 0 ile 1 arasında, N ise 0 veya daha büyük bir tam sayı olmalıdır.",
     "smartRoutingRequiredFields": "Akıllı yönlendirmeyi etkinleştirmek için Veritabanı URL'si gereklidir. LLM Sağlayıcı API Anahtarı yalnızca bulut tabanlı sağlayıcılar için gereklidir (yerel LLM'ler genellikle API anahtarı gerektirmez, form doğrulamasını geçmek için herhangi bir değer girin)",
     "smartRoutingValidationError": "Akıllı Yönlendirmeyi etkinleştirmeden önce lütfen gerekli alanları doldurun: {{fields}}",

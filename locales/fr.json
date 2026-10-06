@@ -941,6 +941,8 @@
     "similarityThresholdPlaceholder": "Vide = selon la longueur de la requête (0,2 / 0,3 / 0,4)",
     "fullSchemaTopN": "Schémas complets pour les N premiers résultats",
     "fullSchemaTopNPlaceholder": "Vide = tous les résultats ; les suivants passent par describe_tool",
+    "toolDefinitionFields": "Champs d'outil dans les résultats",
+    "toolDefinitionFieldsDescription": "Champs facultatifs que les résultats de search_tools et describe_tool incluent en plus du nom, de la description et de l'inputSchema. Par défaut : title et annotations. Les autres servent surtout aux clients et peuvent être volumineux (les icônes sont des images base64).",
     "invalidSearchSettings": "Valeur invalide pour {{fields}}. Le seuil de similarité doit être compris entre 0 et 1, et N un nombre entier supérieur ou égal à 0.",
     "smartRoutingRequiredFields": "L'URL de la base de données est requise pour activer le routage intelligent. Une clé API du fournisseur LLM est requise pour les fournisseurs cloud (les LLM locaux ne nécessitent généralement pas de clé API, entrez n'importe quelle valeur pour passer la validation du formulaire)",
     "smartRoutingValidationError": "Veuillez remplir les champs obligatoires avant d'activer le routage intelligent : {{fields}}",

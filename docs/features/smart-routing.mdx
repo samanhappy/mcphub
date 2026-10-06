@@ -540,10 +540,18 @@ Progressive Disclosure is an optimization feature that reduces token usage when 
     # carry name, description and score, and describe_tool is listed to fetch them.
     # Unset: every hit is returned in full. Ignored with Progressive Disclosure.
     SMART_ROUTING_FULL_SCHEMA_TOP_N=3
+
+    # Optional tool fields a full hit (and describe_tool) carries next to name,
+    # description and inputSchema: title, annotations, outputSchema, execution,
+    # icons, _meta. "none" sends none of them. Default: title,annotations.
+    SMART_ROUTING_TOOL_DEFINITION_FIELDS=title,annotations
     ```
 
-    Both can also be set in Settings → Smart Routing → Search Results, and neither one
-    re-embeds anything. When no tool clears the threshold, the response says so, names the
+    All three can also be set in Settings → Smart Routing → Search Results, and none of
+    them re-embeds anything. The fields left out by default are meant for clients rather
+    than models and can be large: an upstream server may ship base64 `icons` or a long
+    `outputSchema` with every tool, and in a search result they would only cost tokens.
+    The `inputSchema` is always sent, with its `$schema` key removed. When no tool clears the threshold, the response says so, names the
     threshold and lists the servers that were searched, so the model can tell the user the
     capability is not available instead of calling the nearest unrelated tool.
   </Accordion>

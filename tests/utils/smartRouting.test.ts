@@ -9,6 +9,7 @@ import {
   getSmartRoutingConfig,
   parseFullSchemaTopN,
   parseSimilarityThreshold,
+  parseToolDefinitionFields,
 } from '../../src/utils/smartRouting.js';
 
 // List of every smart-routing-related env var this suite manipulates. We delete
@@ -38,6 +39,7 @@ const SMART_ROUTING_ENV_VARS = [
   'SMART_ROUTING_EMBEDDING_DOCUMENT_PREFIX',
   'SMART_ROUTING_SIMILARITY_THRESHOLD',
   'SMART_ROUTING_FULL_SCHEMA_TOP_N',
+  'SMART_ROUTING_TOOL_DEFINITION_FIELDS',
   'EMBEDDING_MAX_TOKENS',
 ];
 
@@ -320,6 +322,7 @@ describe('smartRouting config resolution', () => {
         embeddingDocumentPrefix: '',
         similarityThreshold: undefined,
         fullSchemaTopN: undefined,
+        toolDefinitionFields: ['title', 'annotations'],
         envOverriddenFields: [],
       });
     });
@@ -554,6 +557,36 @@ describe('smartRouting config resolution', () => {
         expect(config.similarityThreshold).toBeUndefined();
         expect(config.fullSchemaTopN).toBeUndefined();
       });
+
+      it('reads the tool definition fields from env and reports the override', async () => {
+        process.env.SMART_ROUTING_TOOL_DEFINITION_FIELDS = 'outputSchema, title';
+        const config = await getSmartRoutingConfig();
+        expect(config.toolDefinitionFields).toEqual(['title', 'outputSchema']);
+        expect(config.envOverriddenFields).toContainEqual({
+          field: 'toolDefinitionFields',
+          envVar: 'SMART_ROUTING_TOOL_DEFINITION_FIELDS',
+        });
+      });
+
+      it('takes "none" in env as no optional fields', async () => {
+        process.env.SMART_ROUTING_TOOL_DEFINITION_FIELDS = 'none';
+        const config = await getSmartRoutingConfig();
+        expect(config.toolDefinitionFields).toEqual([]);
+      });
+
+      it('reads the tool definition fields from settings, an empty list included', async () => {
+        mockGet.mockResolvedValue({ smartRouting: { toolDefinitionFields: [] } });
+        const config = await getSmartRoutingConfig();
+        expect(config.toolDefinitionFields).toEqual([]);
+      });
+
+      it('skips an invalid env value for the tool definition fields', async () => {
+        process.env.SMART_ROUTING_TOOL_DEFINITION_FIELDS = 'icons,favicon';
+        mockGet.mockResolvedValue({ smartRouting: { toolDefinitionFields: ['icons'] } });
+        const config = await getSmartRoutingConfig();
+        expect(config.toolDefinitionFields).toEqual(['icons']);
+        expect(config.envOverriddenFields).toEqual([]);
+      });
     });
   });
 
@@ -610,5 +643,27 @@ describe('search result setting parsers', () => {
     expect(parseFullSchemaTopN('x')).toBeUndefined();
     expect(parseFullSchemaTopN(' ')).toBeUndefined();
     expect(parseFullSchemaTopN(undefined)).toBeUndefined();
+  });
+});
+
+describe('parseToolDefinitionFields', () => {
+  it('returns known fields deduplicated, in result order', () => {
+    expect(parseToolDefinitionFields(['_meta', 'title', 'title'])).toEqual(['title', '_meta']);
+    expect(parseToolDefinitionFields(' icons , annotations ')).toEqual(['annotations', 'icons']);
+  });
+
+  it('treats an empty list, "none" and a blank string as no fields', () => {
+    expect(parseToolDefinitionFields([])).toEqual([]);
+    expect(parseToolDefinitionFields('none')).toEqual([]);
+    expect(parseToolDefinitionFields(' ')).toEqual([]);
+  });
+
+  it('rejects unknown fields and non-list values', () => {
+    expect(parseToolDefinitionFields(['title', 'inputSchema'])).toBeUndefined();
+    expect(parseToolDefinitionFields(['Title'])).toBeUndefined();
+    expect(parseToolDefinitionFields([1])).toBeUndefined();
+    for (const value of [null, undefined, true, 3, {}]) {
+      expect(parseToolDefinitionFields(value)).toBeUndefined();
+    }
   });
 });

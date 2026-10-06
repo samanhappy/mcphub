@@ -2,6 +2,11 @@ import { expandEnvVars } from '../config/index.js';
 import { getSystemConfigDao } from '../dao/DaoFactory.js';
 import { migrateLegacySmartRoutingConfig } from '../dao/SystemConfigDao.js';
 import { logger } from './logger.js';
+import {
+  DEFAULT_TOOL_DEFINITION_FIELDS,
+  TOOL_DEFINITION_FIELDS,
+  type ToolDefinitionField,
+} from '../constants/smartRoutingDefaults.js';
 
 /**
  * Smart routing configuration interface
@@ -96,6 +101,12 @@ export interface SmartRoutingConfig {
    * Ignored in progressive disclosure mode. Default: unset (every hit is full).
    */
   fullSchemaTopN?: number;
+  /**
+   * Optional tool fields that search_tools hits and describe_tool include next
+   * to name, description, inputSchema and serverName. An empty list sends only
+   * those. Default: DEFAULT_TOOL_DEFINITION_FIELDS (title, annotations).
+   */
+  toolDefinitionFields?: readonly ToolDefinitionField[];
   /**
    * Fields whose effective value currently comes from an environment variable
    * instead of the persisted (dashboard) setting.
@@ -405,6 +416,26 @@ export async function getSmartRoutingConfig(): Promise<SmartRoutingConfig> {
       parseFullSchemaTopN,
     ),
 
+    // An invalid value throws, so resolveConfigValue logs it and falls through
+    // to the next source instead of silently dropping fields
+    toolDefinitionFields: cfg<readonly ToolDefinitionField[]>(
+      'toolDefinitionFields',
+      {
+        SMART_ROUTING_TOOL_DEFINITION_FIELDS: process.env.SMART_ROUTING_TOOL_DEFINITION_FIELDS,
+      },
+      smartRoutingSettings.toolDefinitionFields,
+      DEFAULT_TOOL_DEFINITION_FIELDS,
+      (value: unknown) => {
+        const fields = parseToolDefinitionFields(value);
+        if (!fields) {
+          throw new Error(
+            `toolDefinitionFields must list only ${TOOL_DEFINITION_FIELDS.join(', ')} (or be "none")`,
+          );
+        }
+        return fields;
+      },
+    ),
+
     envOverriddenFields,
   };
 }
@@ -492,6 +523,29 @@ export function parseSimilarityThreshold(value: unknown): number | undefined {
 export function parseFullSchemaTopN(value: unknown): number | undefined {
   const parsed = toSettingNumber(value);
   return parsed !== undefined && Number.isInteger(parsed) && parsed >= 0 ? parsed : undefined;
+}
+
+/**
+ * Parses the optional tool fields for search results: an array of field names,
+ * or a comma-separated string (env vars), where "none" means an empty list.
+ * Returns them deduplicated in TOOL_DEFINITION_FIELDS order, or undefined when
+ * the value is not a list or names an unknown field.
+ */
+export function parseToolDefinitionFields(value: unknown): ToolDefinitionField[] | undefined {
+  let names: unknown[];
+  if (Array.isArray(value)) {
+    names = value;
+  } else if (typeof value === 'string') {
+    names = value.trim().toLowerCase() === 'none' ? [] : value.split(',').map((n) => n.trim());
+    names = names.filter((name) => name !== '');
+  } else {
+    return undefined;
+  }
+  const known: readonly string[] = TOOL_DEFINITION_FIELDS;
+  if (!names.every((name) => typeof name === 'string' && known.includes(name))) {
+    return undefined;
+  }
+  return TOOL_DEFINITION_FIELDS.filter((field) => names.includes(field));
 }
 
 /**
