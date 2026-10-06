@@ -356,3 +356,25 @@ describe('normalizeServerConfigForPersistence', () => {
     expect(normalized.oauth).not.toHaveProperty('scopes');
   });
 });
+
+describe('stdio buffer persistence', () => {
+  it('preserves the buffer size alongside request options', () => {
+    expect(
+      normalizeServerConfigForPersistence({
+        command: 'node',
+        options: { timeout: 60000, maxBufferSize: 268435456 },
+      }).options,
+    ).toEqual({ timeout: 60000, maxBufferSize: 268435456 });
+  });
+  it.each([0, -1, 1.5, NaN, Infinity, -Infinity, Number.MAX_SAFE_INTEGER + 1, null, '1024'])(
+    'rejects invalid maxBufferSize %s',
+    (maxBufferSize) => {
+      expect(() =>
+        normalizeServerConfigForPersistence({
+          command: 'node',
+          options: { maxBufferSize: maxBufferSize as number },
+        }),
+      ).toThrow('positive safe integer');
+    },
+  );
+});

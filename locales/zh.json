@@ -191,6 +191,8 @@
     "disconnectOAuthSuccess": "服务器 OAuth 已断开",
     "disconnectOAuthError": "断开服务器 {{serverName}} 的 OAuth 失败",
     "requestOptions": "连接配置",
+    "maxBufferSize": "Stdio 缓冲区上限（字节）",
+    "maxBufferSizeDescription": "Stdio 读取缓冲区的最大大小。留空使用 SDK 默认值（10 MiB）。提高上限会允许使用更多内存。",
     "timeout": "请求超时",
     "timeoutDescription": "请求超时时间（毫秒）",
     "maxTotalTimeout": "最大总超时",

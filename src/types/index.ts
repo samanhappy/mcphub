@@ -444,6 +444,7 @@ export interface ServerConfig {
   options?: Partial<
     Pick<RequestOptions, 'timeout' | 'resetTimeoutOnProgress' | 'maxTotalTimeout'>
   > & {
+    maxBufferSize?: number; // Stdio read buffer limit in bytes; omitted uses the SDK default (10 MiB).
     // Internal persistence carriers for startOnDemand/idleTimeoutMs (see below). The
     // database-backed ServerDao has no dedicated columns for those two fields, so
     // serverConfigPersistence.ts piggybacks them onto this schema-less JSON blob

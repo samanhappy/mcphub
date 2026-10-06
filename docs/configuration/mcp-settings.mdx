@@ -773,3 +773,18 @@ Common validation errors and solutions:
 4. **Command not found**: Verify installation and PATH */}
 
 This comprehensive guide covers all aspects of configuring MCP servers in MCPHub for various use cases and environments.
+
+### Stdio response buffer
+
+Set `options.maxBufferSize` to a positive safe integer in bytes to allow larger stdio responses:
+
+```json
+{
+  "type": "stdio",
+  "command": "node",
+  "args": ["server.js"],
+  "options": { "maxBufferSize": 268435456 }
+}
+```
+
+Omitting this option retains the SDK default of 10 MiB (10485760 bytes). The limit applies to the read buffer containing the serialized MCP message, including its envelope. A response that exceeds the limit closes the transport. Raising the limit allows greater memory use; choose a finite limit appropriate for the server. Zero, negative values, fractions, and non-finite values are rejected. This option does not change HTTP transports or the SDK's large-message processing performance.

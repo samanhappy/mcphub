@@ -191,6 +191,8 @@
     "disconnectOAuthSuccess": "Sunucu OAuth bağlantısı kesildi",
     "disconnectOAuthError": "{{serverName}} sunucusunun OAuth bağlantısı kesilemedi",
     "requestOptions": "Bağlantı Yapılandırması",
+    "maxBufferSize": "Stdio arabellek sınırı (bayt)",
+    "maxBufferSizeDescription": "Stdio okuma arabelleğinin en büyük boyutu. SDK varsayılanı (10 MiB) için boş bırakın. Daha yüksek sınırlar daha fazla bellek kullanımına izin verir.",
     "timeout": "İstek Zaman Aşımı",
     "timeoutDescription": "MCP sunucusuna yapılan istekler için zaman aşımı (ms)",
     "maxTotalTimeout": "Maksimum Toplam Zaman Aşımı",

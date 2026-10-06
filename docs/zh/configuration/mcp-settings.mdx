@@ -706,3 +706,18 @@ ls -la /path/to/server
 4. **找不到命令**：验证安装和 PATH
 
 这个全面的指南涵盖了在 MCPHub 中为各种用例和环境配置 MCP 服务器的所有方面。
+
+### Stdio 响应缓冲区
+
+将 `options.maxBufferSize` 设置为以字节为单位的正安全整数，可接收更大的 stdio 响应：
+
+```json
+{
+  "type": "stdio",
+  "command": "node",
+  "args": ["server.js"],
+  "options": { "maxBufferSize": 268435456 }
+}
+```
+
+省略该选项时保留 SDK 默认值 10 MiB（10485760 字节）。上限用于读取包含 MCP 消息封装的序列化数据的缓冲区。响应超过上限会关闭传输连接。提高上限会允许使用更多内存，请按服务器需求设置有限上限。零、负数、小数和非有限值均被拒绝。该选项不会改变 HTTP 传输或 SDK 处理大消息的性能。

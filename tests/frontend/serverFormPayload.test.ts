@@ -407,3 +407,29 @@ describe('buildServerPayload', () => {
     expect(Object.keys(payload.config.oauth ?? {})).toEqual(['clientId', 'scopes']);
   });
 });
+
+describe('stdio buffer form payload', () => {
+  const payload = (maxBufferSize?: number) =>
+    buildServerPayload({
+      formData: {
+        name: 'big',
+        command: 'node',
+        url: '',
+        arguments: '',
+        args: [],
+        env: [],
+        headers: [],
+        options: { maxBufferSize },
+      },
+      serverType: 'stdio',
+      envVars: [],
+      headerVars: [],
+    });
+  it('preserves an explicit limit and omits an unset limit', () => {
+    expect(payload(268435456).config.options).toEqual({ maxBufferSize: 268435456 });
+    expect(payload().config.options).toEqual({});
+  });
+  it.each([0, -1, 1.5, NaN, Infinity])('rejects invalid limits %s', (size) => {
+    expect(() => payload(size)).toThrow('positive safe integer');
+  });
+});
