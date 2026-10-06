@@ -1,6 +1,6 @@
 import fs from 'node:fs';
-import { createHash } from 'node:crypto';
-import { isDeepStrictEqual } from 'node:util';
+import { pbkdf2, randomBytes } from 'node:crypto';
+import { promisify, isDeepStrictEqual } from 'node:util';
 import { z } from 'zod';
 import { getSettingsPath } from '../config/index.js';
 import { getAppDataSource } from '../db/connection.js';
@@ -10,6 +10,19 @@ import { expandServerConfig } from '../services/serverConfigEnvironment.js';
 import { ServerConfig } from '../types/index.js';
 import { normalizeServerConfigForPersistence } from './serverConfigPersistence.js';
 import { logger } from './logger.js';
+
+const deriveFingerprint = promisify(pbkdf2);
+
+// The declaration may contain client secrets. Salt and stretch it before persistence.
+const fingerprintDeclaration = async (declaration: string, previous?: string): Promise<string> => {
+  const [previousSalt, previousHash] = previous?.split(':') ?? [];
+  const salt =
+    /^[a-f0-9]{32}$/.test(previousSalt ?? '') && /^[a-f0-9]{64}$/.test(previousHash ?? '')
+      ? previousSalt
+      : randomBytes(16).toString('hex');
+  const hash = (await deriveFingerprint(declaration, salt, 600_000, 32, 'sha256')).toString('hex');
+  return `${salt}:${hash}`;
+};
 
 const name = z
   .string()
@@ -138,26 +151,23 @@ export async function syncSettingsToDatabase(): Promise<void> {
       }
       config.oauth = oauth;
       const expanded = await expandServerConfig(config);
-      const hash = createHash('sha256')
-        .update(
-          JSON.stringify(
-            canonical({
-              type: expanded.type,
-              url: expanded.url,
-              owner: config.owner ?? null,
-              oauth: expanded.oauth ?? null,
-            }),
-          ),
-        )
-        .digest('hex');
-      return { serverName, config, hash };
+      const signature = JSON.stringify(
+        canonical({
+          type: expanded.type,
+          url: expanded.url,
+          owner: config.owner ?? null,
+          oauth: expanded.oauth ?? null,
+        }),
+      );
+      return { serverName, config, signature };
     }),
   );
 
   await getAppDataSource().transaction(async (manager) => {
     const serverRepo = manager.getRepository(Server);
-    for (const { serverName, config, hash } of servers) {
+    for (const { serverName, config, signature } of servers) {
       const existing = await serverRepo.findOneBy({ name: serverName });
+      const hash = await fingerprintDeclaration(signature, existing?.settingsSyncHash);
       const sameTarget =
         existing &&
         normalizeServerConfigForPersistence(existing as ServerConfig).type === config.type &&

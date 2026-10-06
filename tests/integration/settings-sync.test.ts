@@ -211,3 +211,16 @@ test('discards tokens obtained after a dashboard edit to declared OAuth credenti
   await syncSettingsToDatabase();
   expect(servers.get('remote')?.oauth).toEqual(config.oauth);
 });
+
+test('salts persisted fingerprints independently while retaining authorization after restart', async () => {
+  const config = { ...remote, oauth: { clientSecret: 'a'.repeat(100) } };
+  write({ mcpServers: { alpha: config, beta: config } });
+  await syncSettingsToDatabase();
+  expect(servers.get('alpha')?.settingsSyncHash).not.toEqual(servers.get('beta')?.settingsSyncHash);
+  servers.get('alpha')!.oauth = { ...config.oauth, accessToken: 'live' };
+  await syncSettingsToDatabase();
+  expect(servers.get('alpha')?.oauth).toEqual({ ...config.oauth, accessToken: 'live' });
+  write({ mcpServers: { alpha: { ...config, oauth: { clientSecret: 'a'.repeat(99) + 'b' } } } });
+  await syncSettingsToDatabase();
+  expect(servers.get('alpha')?.oauth).toEqual({ clientSecret: 'a'.repeat(99) + 'b' });
+});

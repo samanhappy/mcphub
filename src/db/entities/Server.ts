@@ -93,7 +93,7 @@ export class Server {
   credentialTemplate?: CredentialSlot[];
 
   // Internal declaration fingerprint; never exposed through the server DAO.
-  @Column({ type: 'varchar', length: 64, nullable: true })
+  @Column({ type: 'varchar', length: 128, nullable: true })
   settingsSyncHash?: string;
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamp' })
