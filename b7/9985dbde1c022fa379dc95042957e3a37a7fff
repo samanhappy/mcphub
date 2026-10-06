@@ -1,0 +1,44 @@
+src/db/entities/Server.ts
+  s_43cf7f80dabc0c::t_0c3c08a6d3e5a3 95-98
+src/utils/settingsSync.ts
+  s_43cf7f80dabc0c::t_0c3c08a6d3e5a3 1-13,19-31,60-120,123,132-138,141-144,149-153,155-160,167-168,171-210
+  s_43cf7f80dabc0c::t_9b5ef7b360b160 14-18,32-59,124-131,161-163
+  s_43cf7f80dabc0c::t_af855b7fd8ef74 121-122,139-140,145-148,154,164-166,169-170
+src/utils/migration.ts
+  s_43cf7f80dabc0c::t_0c3c08a6d3e5a3 1,391
+  s_43cf7f80dabc0c::t_9b5ef7b360b160 32
+  s_43cf7f80dabc0c::t_111d563801aa51 392
+src/config/index.ts
+  s_43cf7f80dabc0c::t_9b5ef7b360b160 58,89
+tests/integration/settings-sync.test.ts
+  s_43cf7f80dabc0c::t_9b5ef7b360b160 1-174,179,181-182,185,188,190,194,197-199,202-204,208-209,211-213
+  s_43cf7f80dabc0c::t_03728c760d1c2f 175-178,180,183-184,186-187,189,191-193,195-196,200-201,205-207,210
+docs/agents/architecture.md
+  s_43cf7f80dabc0c::t_9948c19746ff11 39-42
+docs/configuration/database-configuration.mdx
+  s_43cf7f80dabc0c::t_8e6f40df8f95df 186-206
+docs/configuration/mcp-settings.mdx
+  s_43cf7f80dabc0c::t_18048f2d42908a 560
+docs/zh/configuration/database-configuration.mdx
+  s_43cf7f80dabc0c::t_7c2c5201b393e0 186-206
+tests/config/loadOriginalSettings.test.ts
+  s_43cf7f80dabc0c::t_3378121a368a2c 68-78
+tests/utils/settings-sync-startup.test.ts
+  s_43cf7f80dabc0c::t_377862f0562b10 1-29
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b79985dbde1c022fa379dc95042957e3a37a7fff",
+  "prompts": {},
+  "sessions": {
+    "s_43cf7f80dabc0c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a10fb3-d295-7fd3-a9d2-2db70afa614e",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
