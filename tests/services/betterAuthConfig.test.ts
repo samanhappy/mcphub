@@ -13,6 +13,7 @@ const BETTER_AUTH_ENV_KEYS = [
   'BETTER_AUTH_OIDC_PKCE',
   'BETTER_AUTH_OIDC_PROMPT',
   'BETTER_AUTH_OIDC_TRUST_EMAIL',
+  'BETTER_AUTH_DISABLE_PASSWORD_LOGIN',
   'INSTALL_BASE_URL',
   'GOOGLE_CLIENT_ID',
   'GOOGLE_CLIENT_SECRET',
@@ -49,6 +50,65 @@ describe('betterAuthConfig', () => {
     process.env = originalEnv;
   });
 
+  describe('disablePasswordLogin', () => {
+    const oidcSettings = (disablePasswordLogin?: boolean) => ({
+      auth: {
+        betterAuth: {
+          enabled: true,
+          ...(disablePasswordLogin === undefined ? {} : { disablePasswordLogin }),
+          providers: {
+            oidc: {
+              enabled: true,
+              discoveryUrl: 'https://auth.example.com/.well-known/openid-configuration',
+            },
+          },
+        },
+      },
+    });
+    const resolve = async () => {
+      const { getBetterAuthRuntimeConfig } = await import('../../src/services/betterAuthConfig.js');
+      return (await getBetterAuthRuntimeConfig()).disablePasswordLogin;
+    };
+
+    beforeEach(() => {
+      process.env.OIDC_CLIENT_ID = 'oidc-client-id';
+      process.env.OIDC_CLIENT_SECRET = 'oidc-client-secret';
+    });
+
+    it('is off by default', async () => {
+      getSystemConfigMock.mockResolvedValue(oidcSettings());
+      expect(await resolve()).toBe(false);
+    });
+
+    it('follows the stored setting while an SSO provider is enabled', async () => {
+      getSystemConfigMock.mockResolvedValue(oidcSettings(true));
+      expect(await resolve()).toBe(true);
+    });
+
+    it('is ignored without an enabled SSO provider, so nobody is locked out', async () => {
+      process.env.OIDC_CLIENT_SECRET = '';
+      getSystemConfigMock.mockResolvedValue(oidcSettings(true));
+      expect(await resolve()).toBe(false);
+    });
+
+    it('is ignored outside database mode, where Better Auth cannot run', async () => {
+      process.env.USE_DB = 'false';
+      process.env.DB_URL = '';
+      getSystemConfigMock.mockResolvedValue(oidcSettings(true));
+      expect(await resolve()).toBe(false);
+    });
+
+    it('lets the environment variable override the stored setting both ways', async () => {
+      process.env.BETTER_AUTH_DISABLE_PASSWORD_LOGIN = 'false';
+      getSystemConfigMock.mockResolvedValue(oidcSettings(true));
+      expect(await resolve()).toBe(false);
+
+      process.env.BETTER_AUTH_DISABLE_PASSWORD_LOGIN = 'true';
+      getSystemConfigMock.mockResolvedValue(oidcSettings(false));
+      expect(await resolve()).toBe(true);
+    });
+  });
+
   it('enables Better Auth when only the OIDC provider is configured', async () => {
     process.env.OIDC_CLIENT_ID = 'oidc-client-id';
     process.env.OIDC_CLIENT_SECRET = 'oidc-client-secret';
@@ -79,6 +139,7 @@ describe('betterAuthConfig', () => {
       basePath: '/api/auth/better',
       trustedOrigins: ['https://mcp.imdevinc.home'],
       disableAutoCreate: false,
+      disablePasswordLogin: false,
       providers: {
         google: {
           enabled: false,
@@ -124,6 +185,7 @@ describe('betterAuthConfig', () => {
       basePath: '/api/auth/better',
       trustedOrigins: [],
       disableAutoCreate: false,
+      disablePasswordLogin: false,
       providers: {
         google: {
           enabled: false,
@@ -172,6 +234,7 @@ describe('betterAuthConfig', () => {
       basePath: '/api/auth/better',
       trustedOrigins: ['https://mcp.imdevinc.home'],
       disableAutoCreate: false,
+      disablePasswordLogin: false,
       providers: {
         google: {
           enabled: false,
@@ -332,6 +395,7 @@ describe('betterAuthConfig', () => {
         'https://public.example.com',
       ],
       disableAutoCreate: false,
+      disablePasswordLogin: false,
       providers: {
         google: {
           enabled: false,
@@ -380,6 +444,7 @@ describe('betterAuthConfig', () => {
       basePath: '/api/auth/better',
       trustedOrigins: [],
       disableAutoCreate: false,
+      disablePasswordLogin: false,
       providers: {
         google: {
           enabled: false,
@@ -441,6 +506,7 @@ describe('betterAuthConfig', () => {
       basePath: '/custom-auth',
       trustedOrigins: ['https://dao-backed.example.com'],
       disableAutoCreate: false,
+      disablePasswordLogin: false,
       providers: {
         google: {
           enabled: false,

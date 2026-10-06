@@ -33,6 +33,7 @@ Better Auth 的非敏感配置现在既可以来自环境变量，也可以来�
 - `BETTER_AUTH_URL`
 - `BETTER_AUTH_BASE_PATH`
 - `BETTER_AUTH_TRUSTED_ORIGINS`
+- `BETTER_AUTH_DISABLE_PASSWORD_LOGIN`（参见下文“仅允许 SSO 登录”）
 - `BETTER_AUTH_GOOGLE_ENABLED` + `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`
 - `BETTER_AUTH_GITHUB_ENABLED` + `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET`
 - `BETTER_AUTH_OIDC_ENABLED`
@@ -69,6 +70,15 @@ Better Auth 登录成功后，MCPHub 会把会话映射回本地用户：
 如果本地不存在对应 `username`，MCPHub 会自动创建一个**非管理员**用户。
 
 > OIDC / GitHub / Google 登录都不会自动授予管理员权限。只有本地已存在同名且 `isAdmin=true` 的用户，映射后才会拥有管理员权限。
+
+### 仅允许 SSO 登录
+
+如需只允许通过 SSO 提供商登录，可在 设置 → Better Auth 中开启 **禁用密码登录**，或设置 `systemConfig.auth.betterAuth.disablePasswordLogin: true`。此时登录页只显示提供商按钮，`POST /api/auth/login` 返回 `403`。与其他 Better Auth 设置不同，它无需重启即可生效。
+
+- **不会锁死：** 仅在至少有一个提供商真正可用时生效（Better Auth 已开启、数据库模式、凭据齐全）；否则密码登录保持可用。
+- **恢复：** `BETTER_AUTH_DISABLE_PASSWORD_LOGIN` 在两个方向上都优先于已保存的设置。如果身份提供商不可用，将其设为 `false` 并重启，即可重新使用本地密码登录。为此请给本地管理员保留一个强密码。
+- **脚本和 CLI** 在禁用期间无法使用密码登录。请使用访问类型为 `all` 的系统级 Bearer 密钥，它可以访问管理 API（CLI 使用 `mcphub config set-token <key> --bearer`）。
+- 之前通过密码登录签发的令牌在过期前仍然有效。修改本地密码仍然可用，因此可以轮换用于恢复的密码。
 
 ## 身份认证方法
 

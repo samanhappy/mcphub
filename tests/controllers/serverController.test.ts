@@ -1298,6 +1298,29 @@ describe('serverController - updateSystemConfig', () => {
       }),
     );
   });
+
+  it('persists a disablePasswordLogin-only Better Auth update', async () => {
+    mockRequest.body = { auth: { betterAuth: { disablePasswordLogin: true } } };
+    mockSystemConfigDao.get.mockResolvedValue({
+      routing: { skipAuth: false },
+      auth: { betterAuth: { enabled: true, disableAutoCreate: true } },
+    });
+
+    await updateSystemConfig(mockRequest as Request, mockResponse as Response);
+
+    expect(mockStatus).not.toHaveBeenCalledWith(400);
+    expect(mockSystemConfigDao.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        auth: expect.objectContaining({
+          betterAuth: expect.objectContaining({
+            enabled: true,
+            disableAutoCreate: true,
+            disablePasswordLogin: true,
+          }),
+        }),
+      }),
+    );
+  });
 });
 
 describe('serverController - resetToolDescription', () => {

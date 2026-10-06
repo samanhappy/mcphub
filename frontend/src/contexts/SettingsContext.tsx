@@ -109,6 +109,7 @@ interface BetterAuthConfig {
   baseUrl: string;
   basePath: string;
   trustedOrigins: string[];
+  disablePasswordLogin: boolean;
   providers: {
     google: BetterAuthProviderToggle;
     github: BetterAuthProviderToggle;
@@ -229,6 +230,7 @@ const getDefaultBetterAuthConfig = (): BetterAuthConfig => ({
   baseUrl: '',
   basePath: '/api/auth/better',
   trustedOrigins: [],
+  disablePasswordLogin: false,
   providers: {
     google: {
       enabled: true,
@@ -268,6 +270,7 @@ const normalizeBetterAuthConfig = (
     baseUrl: config?.baseUrl?.trim() || defaults.baseUrl,
     basePath: config?.basePath?.trim() || defaults.basePath,
     trustedOrigins: normalizeStringArray(config?.trustedOrigins, defaults.trustedOrigins),
+    disablePasswordLogin: config?.disablePasswordLogin ?? defaults.disablePasswordLogin,
     providers: {
       google: {
         enabled: config?.providers?.google?.enabled ?? defaults.providers.google.enabled,

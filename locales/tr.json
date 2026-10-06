@@ -857,6 +857,8 @@
     "betterAuthEnvNote": "İstemci kimlikleri ve gizli anahtarlar hâlâ ortam değişkenlerinden gelir. Better Auth ayarlarını değiştirmek uygulamanın yeniden başlatılmasını gerektirebilir; kurulum temel URL kaynağı da güvenilen kaynaklara otomatik olarak eklenir.",
     "enableBetterAuth": "Better Auth'u etkinleştir",
     "enableBetterAuthDescription": "Gerekli ortam değişkenleri yapılandırıldığında sosyal giriş ve OIDC girişini etkinleştirin.",
+    "disablePasswordLogin": "Parola ile girişi devre dışı bırak",
+    "disablePasswordLoginDescription": "Yalnızca SSO sağlayıcıları üzerinden girişe izin verir: kullanıcı adı/parola formu ve POST /api/auth/login kapatılır. Yalnızca en az bir sağlayıcı etkinken geçerlidir. BETTER_AUTH_DISABLE_PASSWORD_LOGIN bu ayarı geçersiz kılar; kimlik sağlayıcı erişilemezse false yapmak yeniden giriş yolunu açar.",
     "betterAuthBaseUrl": "Temel URL",
     "betterAuthBaseUrlDescription": "Better Auth yönlendirme URI'lerini oluşturmak için kullanılan genel temel URL. Boş bırakılırsa kurulum temel URL'si kullanılır; BETTER_AUTH_URL ortam değişkeni önceliklidir.",
     "betterAuthBasePath": "Kimlik doğrulama temel yolu",
@@ -1148,6 +1150,7 @@
     "errors": {
       "readonly": "Demo ortamı için salt okunur",
       "invalid_credentials": "Geçersiz kullanıcı adı veya şifre",
+      "password_login_disabled": "Parola ile giriş devre dışı. SSO ile giriş yapın veya API erişimi için bir bearer anahtarı kullanın.",
       "serverNameRequired": "Sunucu adı gereklidir",
       "serverConfigRequired": "Sunucu yapılandırması gereklidir",
       "serverConfigInvalid": "Sunucu yapılandırması bir URL, OpenAPI şartname URL'si veya şema, ya da argümanlı komut içermelidir",

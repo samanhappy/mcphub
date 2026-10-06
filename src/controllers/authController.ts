@@ -13,6 +13,7 @@ import { JWT_SECRET } from '../config/jwt.js';
 import { validatePasswordStrength, isDefaultPassword } from '../utils/passwordValidation.js';
 import { getPackageVersion } from '../utils/version.js';
 import { logger } from '../utils/logger.js';
+import { getBetterAuthRuntimeConfig } from '../services/betterAuthConfig.js';
 
 const dataService: DataService = getDataService();
 
@@ -22,6 +23,11 @@ const TOKEN_EXPIRY = '24h';
 export const login = async (req: Request, res: Response): Promise<void> => {
   // Get translation function from request
   const t = (req as any).t;
+
+  if ((await getBetterAuthRuntimeConfig()).disablePasswordLogin) {
+    res.status(403).json({ success: false, message: t('api.errors.password_login_disabled') });
+    return;
+  }
 
   // Validate request
   const errors = validationResult(req);

@@ -22,6 +22,11 @@ export interface BetterAuthRuntimeConfig {
   basePath: string;
   trustedOrigins: string[];
   disableAutoCreate: boolean;
+  /**
+   * Username/password login is refused. Only ever true while an SSO provider is
+   * enabled, so the switch cannot leave a deployment without any way to log in.
+   */
+  disablePasswordLogin: boolean;
   providers: {
     google: {
       enabled: boolean;
@@ -313,11 +318,22 @@ export const resolveBetterAuthRuntimeConfig = (
     false,
   );
 
+  // The env var wins in both directions, so it is also the recovery switch when
+  // the identity provider is unavailable
+  const disablePasswordLogin =
+    anyProviderEnabled &&
+    resolveBooleanSetting(
+      process.env.BETTER_AUTH_DISABLE_PASSWORD_LOGIN,
+      betterAuthSettings.disablePasswordLogin,
+      false,
+    );
+
   return {
     enabled: anyProviderEnabled,
     basePath,
     trustedOrigins,
     disableAutoCreate,
+    disablePasswordLogin,
     providers: {
       google: {
         enabled: googleEnabled,

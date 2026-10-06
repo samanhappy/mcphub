@@ -65,6 +65,8 @@ Authenticates a user and returns a JWT token along with user details.
   }
   ```
 
+- **Password login disabled**: while Better Auth's `disablePasswordLogin` is in effect, the endpoint answers `403` with `{"success": false, "message": "Password login is disabled. Sign in with SSO, or use a bearer key for API access."}`. See [SSO-only sign-in](/features/authentication#sso-only-sign-in).
+
 ---
 
 ### Register

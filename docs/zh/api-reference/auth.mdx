@@ -65,6 +65,8 @@ import { Card, Cards } from 'mintlify';
   }
   ```
 
+- **已禁用密码登录**：当 Better Auth 的 `disablePasswordLogin` 生效时，该端点返回 `403`，正文为 `{"success": false, "message": "..."}`。参见 [仅允许 SSO 登录](/zh/features/authentication)。
+
 ---
 
 ### 注册

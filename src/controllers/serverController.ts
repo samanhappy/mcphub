@@ -1882,6 +1882,7 @@ export const updateSystemConfig = async (req: Request, res: Response): Promise<v
         typeof auth.betterAuth.baseUrl === 'string' ||
         typeof auth.betterAuth.basePath === 'string' ||
         Array.isArray(auth.betterAuth.trustedOrigins) ||
+        typeof auth.betterAuth.disablePasswordLogin === 'boolean' ||
         (auth.betterAuth.providers &&
           (typeof auth.betterAuth.providers.google?.enabled === 'boolean' ||
             typeof auth.betterAuth.providers.github?.enabled === 'boolean' ||
@@ -2447,6 +2448,10 @@ export const updateSystemConfig = async (req: Request, res: Response): Promise<v
 
       if (typeof auth.betterAuth.basePath === 'string') {
         target.basePath = auth.betterAuth.basePath.trim();
+      }
+
+      if (typeof auth.betterAuth.disablePasswordLogin === 'boolean') {
+        target.disablePasswordLogin = auth.betterAuth.disablePasswordLogin;
       }
 
       if (Array.isArray(auth.betterAuth.trustedOrigins)) {
