@@ -557,7 +557,7 @@ In file mode, MCPHub re-reads `mcp_settings.json` when it changes, without a res
 - **System settings** (`systemConfig`, e.g. `nameSeparator`) are picked up on the next read once the file has changed.
 - Settings that are read once at process startup still require a restart to take effect: the Better Auth bootstrap, `skipAuth`, the listening port, and anything driven by environment variables.
 
-In database mode (`USE_DB=true`), `mcp_settings.json` is only a one-time seed; edit configuration through the dashboard, API, or CLI instead.
+In database mode, `mcp_settings.json` is a one-time seed by default. Set `MCPHUB_SETTINGS_SYNC=upsert` to apply server and group declarations on each startup; see [declarative database configuration](/configuration/database-configuration#declarative-servers-and-groups-gitops) for precedence and OAuth state handling.
 
 {/* ### Access Control
 

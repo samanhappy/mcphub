@@ -1,3 +1,4 @@
+import { syncSettingsToDatabase } from './settingsSync.js';
 import { CredentialBindingDaoImpl } from '../dao/CredentialBindingDao.js';
 import { CredentialBindingDaoDbImpl } from '../dao/CredentialBindingDaoDbImpl.js';
 import { loadOriginalSettings } from '../config/index.js';
@@ -28,7 +29,7 @@ export async function migrateToDatabase(): Promise<boolean> {
     logger.log('Database connection established');
 
     // Load current settings from file
-    const settings = loadOriginalSettings();
+    const settings = loadOriginalSettings(process.env.MCPHUB_SETTINGS_SYNC !== 'upsert');
     logger.log('Loaded settings from file');
 
     // Create repositories
@@ -386,6 +387,8 @@ export async function initializeDatabaseMode(): Promise<boolean> {
         }
       }
     }
+
+    await syncSettingsToDatabase();
 
     logger.log('✅ Database mode initialized successfully');
     return true;

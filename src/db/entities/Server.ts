@@ -92,6 +92,10 @@ export class Server {
   @Column({ type: 'simple-json', nullable: true })
   credentialTemplate?: CredentialSlot[];
 
+  // Internal declaration fingerprint; never exposed through the server DAO.
+  @Column({ type: 'varchar', length: 64, nullable: true })
+  settingsSyncHash?: string;
+
   @CreateDateColumn({ name: 'created_at', type: 'timestamp' })
   createdAt: Date;
 

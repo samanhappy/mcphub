@@ -183,7 +183,27 @@ node dist/scripts/migrate-to-database.js
 
 Web 仪表板的工作方式完全相同，但现在将更改存储在数据库中而不是文件中。
 
-启用数据库模式时，`mcp_settings.json` 仅在首次初始化时作为一次性种子配置使用。首次迁移后，PostgreSQL 是唯一的配置来源；之后对 `mcp_settings.json` 的修改不会自动导入。数据库模式下请通过仪表板、API 或 CLI 管理配置。
+启用数据库模式时，`mcp_settings.json` 仅在首次初始化时作为一次性种子配置使用。首次迁移后，PostgreSQL 是唯一的配置来源；之后对 `mcp_settings.json` 的修改不会自动导入。数据库模式下可通过仪表板、API 或 CLI 管理配置，或启用下面的启动同步。
+
+## 声明式服务器与分组（GitOps）
+
+在数据库模式下设置 `MCPHUB_SETTINGS_SYNC=upsert`，每次启动都会从 `mcp_settings.json` 同步 `mcpServers` 和 `groups`。可用 `MCPHUB_SETTING_PATH` 指向只读 ConfigMap。修改文件后需重启；暂不支持文件监听或 SIGHUP。
+
+```bash
+USE_DB=true
+MCPHUB_SETTINGS_SYNC=upsert
+MCPHUB_SETTING_PATH=/etc/mcphub/mcp_settings.json
+```
+
+- 按全局唯一名称匹配并保留已有数据库 ID。同名条目以文件为准，包括通过仪表板创建或修改的条目。
+- 文件声明控制整个条目的配置；省略的可选字段会清空或恢复默认值。服务器默认启用且为私有。分组成员、别名、选择列表及固定工具以文件为准。
+- 文件中未声明的条目保持不变。移除或重命名条目不会删除原数据库条目；本版本不支持清理或 managed 标记。
+- 仅同步服务器和分组声明。用户、Bearer 密钥、MCPHub OAuth 客户端及令牌、个人凭据绑定、系统配置等运行数据仍保存在数据库中。用户表为空时仍执行原有的首次初始化迁移。
+- 同步忽略文件中的上游 OAuth access/refresh token 和待授权状态。连接目标及 OAuth 声明不变时保留数据库中的运行授权状态，包括动态注册的客户端凭据；变化时清除旧状态，可能需要重新授权。服务器内部可空的 `settingsSyncHash` 列用于检测声明变化（包括字段移除和环境变量值变化），不保存展开后的密钥。
+- 首次接管已有服务器时，仅在连接目标及所有显式声明的 OAuth 字段与数据库一致时保留授权。未声明的自动发现字段会保留至声明发生变化。
+- 环境变量占位符保持原样持久化，由现有运行逻辑展开。文件缺失、JSON 或声明格式错误、重复分组名、不支持的同步模式以及数据库错误都会导致启动失败。服务器与分组写入在同一事务中执行。
+
+不设置 `MCPHUB_SETTINGS_SYNC` 时保持原有的一次性初始化行为；该开关仅适用于数据库模式。启用后不会向配置文件回写，包括首次初始化迁移。
 
 ## 数据库架构
 

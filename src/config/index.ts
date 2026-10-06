@@ -55,7 +55,7 @@ export const getSettingsPath = (): string => {
   return getConfigFilePath('mcp_settings.json', 'Settings');
 };
 
-export const loadOriginalSettings = (): McpSettings => {
+export const loadOriginalSettings = (persistDefaults = true): McpSettings => {
   // If cache exists and the file hasn't changed, return cached data directly.
   if (settingsCache) {
     try {
@@ -86,7 +86,7 @@ export const loadOriginalSettings = (): McpSettings => {
     const settingsData = fs.readFileSync(settingsPath, 'utf8');
     const settings = JSON.parse(settingsData);
     const initialized = ensureOAuthServerDefaults(settings);
-    if (initialized) {
+    if (initialized && persistDefaults) {
       try {
         fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2), 'utf8');
         clearSettingsCache();

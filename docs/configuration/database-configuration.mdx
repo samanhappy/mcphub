@@ -183,7 +183,27 @@ Once running in database mode, all configuration changes are stored in the datab
 
 The web dashboard works exactly the same way, but now stores changes in the database instead of the file.
 
-`mcp_settings.json` is used as a one-time seed when database mode is initialized. After the initial migration, PostgreSQL is the authoritative configuration source; later edits to `mcp_settings.json` are not imported automatically. Use the dashboard, API, or CLI to manage configuration in database mode.
+`mcp_settings.json` is used as a one-time seed when database mode is initialized. After the initial migration, PostgreSQL is the authoritative configuration source; later edits to `mcp_settings.json` are not imported automatically. Use the dashboard, API, or CLI to manage configuration in database mode, or opt into the startup sync below.
+
+## Declarative servers and groups (GitOps)
+
+Set `MCPHUB_SETTINGS_SYNC=upsert` in database mode to reconcile `mcpServers` and `groups` from `mcp_settings.json` on every startup. `MCPHUB_SETTING_PATH` can point to a read-only ConfigMap mount. Update the file and restart MCPHub to apply changes; there is no file watcher or SIGHUP handler.
+
+```bash
+USE_DB=true
+MCPHUB_SETTINGS_SYNC=upsert
+MCPHUB_SETTING_PATH=/etc/mcphub/mcp_settings.json
+```
+
+- Entries match by their globally unique names. Existing IDs are retained. The file wins even when the same-name entry was created or edited through the dashboard.
+- The entire declared entry controls its configuration: omitted optional fields are cleared or reset to defaults. Servers default to enabled and private. Group memberships, aliases, selections, and pinned tools come from the declaration.
+- Entries absent from the file remain untouched. Removing or renaming an entry does not delete the old database entry. No managed flag or pruning is provided.
+- Only server/group declarations are reconciled. Users, bearer keys, MCPHub OAuth clients/tokens, personal credential bindings, system configuration, and other runtime data remain in the database. The existing first-boot seed migration still applies on an empty user table.
+- Upstream OAuth tokens and pending authorization supplied in the file are ignored by sync. Existing upstream OAuth state (including dynamically registered client credentials) is retained while the connection target and OAuth declaration are unchanged. Changes to either clear the old state and may require authorization again. A nullable internal `settingsSyncHash` column on servers detects declaration changes, including removed OAuth fields and expanded environment values, without storing resolved secrets.
+- On first adoption for an existing server, OAuth state is retained only if the target matches and every explicitly declared OAuth field matches its stored value. Undeclared discovered OAuth fields are retained until the declaration changes.
+- Environment placeholders remain unexpanded in persisted declarations and use the existing runtime expansion. JSON must be valid; duplicate group names, malformed declarations, missing files, unsupported sync modes, or database errors fail startup. Server/group writes are applied in one transaction.
+
+Leave `MCPHUB_SETTINGS_SYNC` unset to retain the existing one-time seed behavior. This switch applies only in database mode. Sync never writes back to the settings file, including during the initial seed in this mode.
 
 ## Database Schema
 
