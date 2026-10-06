@@ -119,6 +119,7 @@ OIDC_CLIENT_SECRET=your-oidc-client-secret
 | `SMART_ROUTING_EMBEDDING_DOCUMENT_PREFIX` | 空 | 嵌入前添加到工具和服务器文档开头的任务前缀（如 EmbeddingGemma 的 `title: none \| text: `）。修改后会重新生成所有服务器的嵌入。 |
 | `SMART_ROUTING_SIMILARITY_THRESHOLD` | 未设置 | `search_tools` 结果的最低查询-工具相似度（0-1）。未设置时按查询长度启发式决定（0.2 / 0.3 / 0.4）。 |
 | `SMART_ROUTING_FULL_SCHEMA_TOP_N` | 未设置 | 只有前 N 个 `search_tools` 结果带完整定义；其余结果只有名称、描述和分数，并列出 `describe_tool` 以获取完整定义。未设置时返回全部完整结果。启用渐进式披露时忽略。 |
+| `SMART_ROUTING_TOOL_DEFINITION_FIELDS` | `title,annotations` | 以逗号分隔的可选工具字段，完整的 `search_tools` 结果和 `describe_tool` 会在名称、描述和 `inputSchema` 之外附带：`title`、`annotations`、`outputSchema`、`execution`、`icons`、`_meta`。`none` 表示都不附带。 |
 
 ### OpenAI 或兼容服务
 

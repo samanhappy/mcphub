@@ -1051,6 +1051,31 @@ describe('serverController - updateSystemConfig', () => {
       expect(saved.smartRouting.fullSchemaTopN).toBeUndefined();
     });
 
+    it('persists the tool definition fields in result order without re-syncing', async () => {
+      mockRequest.body = { smartRouting: { toolDefinitionFields: ['icons', 'title'] } };
+
+      await updateSystemConfig(mockRequest as Request, mockResponse as Response);
+
+      expect(mockSystemConfigDao.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          smartRouting: expect.objectContaining({ toolDefinitionFields: ['title', 'icons'] }),
+        }),
+      );
+      expect(mockSyncAllServerToolsEmbeddings).not.toHaveBeenCalled();
+    });
+
+    it('persists an empty tool definition field list and clears it with null', async () => {
+      mockRequest.body = { smartRouting: { toolDefinitionFields: [] } };
+      await updateSystemConfig(mockRequest as Request, mockResponse as Response);
+      let saved = (mockSystemConfigDao.update as jest.Mock).mock.calls[0][0] as any;
+      expect(saved.smartRouting.toolDefinitionFields).toEqual([]);
+
+      mockRequest.body = { smartRouting: { toolDefinitionFields: null } };
+      await updateSystemConfig(mockRequest as Request, mockResponse as Response);
+      saved = (mockSystemConfigDao.update as jest.Mock).mock.calls[1][0] as any;
+      expect(saved.smartRouting.toolDefinitionFields).toBeUndefined();
+    });
+
     it.each([
       [{ similarityThreshold: 1.2 }, 'similarityThreshold'],
       [{ similarityThreshold: 'high' }, 'similarityThreshold'],
@@ -1058,6 +1083,8 @@ describe('serverController - updateSystemConfig', () => {
       [{ fullSchemaTopN: 1.5 }, 'fullSchemaTopN'],
       [{ similarityThreshold: true }, 'similarityThreshold'],
       [{ fullSchemaTopN: [3] }, 'fullSchemaTopN'],
+      [{ toolDefinitionFields: ['inputSchema'] }, 'toolDefinitionFields'],
+      [{ toolDefinitionFields: 'title' }, 'toolDefinitionFields'],
     ])('rejects an invalid value %j with 400 and saves nothing', async (smartRouting, field) => {
       mockRequest.body = { smartRouting };
 

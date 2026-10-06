@@ -66,7 +66,9 @@ import {
   parseBooleanEnvVar,
   parseFullSchemaTopN,
   parseSimilarityThreshold,
+  parseToolDefinitionFields,
 } from '../utils/smartRouting.js';
+import { TOOL_DEFINITION_FIELDS } from '../constants/smartRoutingDefaults.js';
 import { previewOpenApiToolStats } from '../services/openApiToolStatsService.js';
 import { logger } from '../utils/logger.js';
 
@@ -1818,7 +1820,8 @@ export const updateSystemConfig = async (req: Request, res: Response): Promise<v
         typeof smartRouting.embeddingMaxTokens === 'number' ||
         smartRouting.embeddingMaxTokens === null ||
         smartRouting.similarityThreshold !== undefined ||
-        smartRouting.fullSchemaTopN !== undefined);
+        smartRouting.fullSchemaTopN !== undefined ||
+        smartRouting.toolDefinitionFields !== undefined);
 
     const hasToolResultCompressionUpdate =
       toolResultCompression &&
@@ -2242,8 +2245,8 @@ export const updateSystemConfig = async (req: Request, res: Response): Promise<v
         systemConfig.smartRouting.embeddingMaxTokens = undefined;
       }
 
-      // Search-time settings: null clears them back to the default, and neither
-      // one touches the stored embeddings, so they do not trigger a re-sync.
+      // Search-time settings: null clears them back to the default, and none of
+      // them touches the stored embeddings, so they do not trigger a re-sync.
       if (smartRouting.similarityThreshold === null) {
         systemConfig.smartRouting.similarityThreshold = undefined;
       } else if (smartRouting.similarityThreshold !== undefined) {
@@ -2270,6 +2273,23 @@ export const updateSystemConfig = async (req: Request, res: Response): Promise<v
           return;
         }
         systemConfig.smartRouting.fullSchemaTopN = topN;
+      }
+
+      if (smartRouting.toolDefinitionFields === null) {
+        systemConfig.smartRouting.toolDefinitionFields = undefined;
+      } else if (smartRouting.toolDefinitionFields !== undefined) {
+        // An array only: the comma-separated form is for the env var
+        const fields = Array.isArray(smartRouting.toolDefinitionFields)
+          ? parseToolDefinitionFields(smartRouting.toolDefinitionFields)
+          : undefined;
+        if (fields === undefined) {
+          res.status(400).json({
+            success: false,
+            message: `smartRouting.toolDefinitionFields must be an array of: ${TOOL_DEFINITION_FIELDS.join(', ')}`,
+          });
+          return;
+        }
+        systemConfig.smartRouting.toolDefinitionFields = fields;
       }
 
       // Check if we need to sync embeddings

@@ -41,6 +41,7 @@ import {
   buildSmartRoutingMetaTools,
   getHeuristicSimilarityThreshold,
   getSmartRoutingTools,
+  handleDescribeToolRequest,
   handleSearchToolsRequest,
   initSmartRoutingService,
 } from '../../src/services/smartRoutingService.js';
@@ -190,6 +191,103 @@ describe('smartRoutingService search_tools results', () => {
       expect(payload.metadata.guideline).toBe(
         'No tools found: no connected server is available to search.',
       );
+    });
+  });
+
+  describe('tool definition fields', () => {
+    // A tool as an upstream server reports it, with every optional field set
+    const richTool = {
+      name: 'chat::list_messages',
+      title: 'List messages',
+      description: 'List messages',
+      inputSchema: { $schema: 'http://json-schema.org/draft-07/schema#', ...schema('chatId') },
+      outputSchema: { type: 'object', properties: { messages: { type: 'array' } } },
+      annotations: { readOnlyHint: true },
+      execution: { taskSupport: 'optional' },
+      icons: [{ src: 'data:image/png;base64,AAAA', mimeType: 'image/png' }],
+      _meta: { 'example/ui': { resourceUri: 'ui://chat/list' } },
+    };
+
+    beforeEach(() => {
+      mockSearchToolsByVector.mockResolvedValue([hit('chat::list_messages', 0.62, 0.64)]);
+      initSmartRoutingService(
+        () => [{ name: 'chat', status: 'connected', enabled: true, tools: [richTool] }] as any,
+        jest.fn(async (_serverName, tools) => tools),
+        jest.fn(async (_group, _serverName, tools) => tools),
+      );
+    });
+
+    const describeTool = async () => {
+      const result = await handleDescribeToolRequest('chat::list_messages', 'smart-session');
+      return JSON.parse(result.content[0].text).tool;
+    };
+
+    it('sends title and annotations by default, never the client-only fields', async () => {
+      const expected = {
+        name: 'chat::list_messages',
+        title: 'List messages',
+        description: 'List messages',
+        inputSchema: schema('chatId'),
+        annotations: { readOnlyHint: true },
+        serverName: 'chat',
+      };
+
+      const payload = await search();
+
+      expect(payload.tools).toEqual([{ ...expected, score: 0.64 }]);
+      expect(await describeTool()).toEqual(expected);
+    });
+
+    it('adds the configured fields, in result order', async () => {
+      mockGetSmartRoutingConfig.mockResolvedValue({
+        progressiveDisclosure: false,
+        toolDefinitionFields: ['outputSchema', 'icons', '_meta'],
+      });
+
+      const [tool] = (await search()).tools;
+
+      expect(Object.keys(tool)).toEqual([
+        'name',
+        'description',
+        'inputSchema',
+        'outputSchema',
+        'icons',
+        '_meta',
+        'serverName',
+        'score',
+      ]);
+      expect(tool.icons).toEqual(richTool.icons);
+      expect(Object.keys(await describeTool())).toEqual(Object.keys(tool).slice(0, -1));
+    });
+
+    it('sends only name, description, inputSchema and serverName for an empty list', async () => {
+      mockGetSmartRoutingConfig.mockResolvedValue({
+        progressiveDisclosure: false,
+        toolDefinitionFields: [],
+      });
+
+      expect((await search()).tools).toEqual([
+        {
+          name: 'chat::list_messages',
+          description: 'List messages',
+          inputSchema: schema('chatId'),
+          serverName: 'chat',
+          score: 0.64,
+        },
+      ]);
+    });
+
+    it('leaves out a configured field the tool does not have', async () => {
+      initSmartRoutingService(
+        () => [{ name: 'chat', status: 'connected', enabled: true, tools: chatTools }] as any,
+        jest.fn(async (_serverName, tools) => tools),
+        jest.fn(async (_group, _serverName, tools) => tools),
+      );
+
+      const [tool] = (await search()).tools;
+
+      expect(tool).not.toHaveProperty('title');
+      expect(tool).not.toHaveProperty('annotations');
     });
   });
 

@@ -942,6 +942,8 @@
     "similarityThresholdPlaceholder": "留空 = 按查询长度（0.2 / 0.3 / 0.4）",
     "fullSchemaTopN": "前 N 个结果返回完整 schema",
     "fullSchemaTopNPlaceholder": "留空 = 全部结果；其余结果通过 describe_tool 获取",
+    "toolDefinitionFields": "结果中的工具字段",
+    "toolDefinitionFieldsDescription": "search_tools 和 describe_tool 结果在名称、描述和 inputSchema 之外附带的可选字段。默认：title 和 annotations。其余字段主要供客户端使用，可能很大（图标是 base64 图片）。",
     "invalidSearchSettings": "{{fields}} 的值无效。相似度阈值必须在 0 到 1 之间，N 必须是大于或等于 0 的整数。",
     "smartRoutingConfigUpdated": "智能路由配置更新成功",
     "smartRoutingRequiredFields": "启用智能路由需要填写数据库连接地址。LLM 提供商 API 密钥仅在使用云端提供商时才需要（本地 LLM 通常不需要 API 密钥，可输入任意值通过表单验证）",

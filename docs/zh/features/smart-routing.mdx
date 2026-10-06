@@ -209,9 +209,13 @@ description: '使用向量语义搜索的 AI 工具发现系统'
     # 只有前 N 个结果带完整定义（inputSchema 等）；其余结果只有名称、描述和分数，
     # 并会列出 describe_tool 以获取其 schema。未设置时所有结果都返回完整定义。启用渐进式披露时忽略。
     SMART_ROUTING_FULL_SCHEMA_TOP_N=3
+
+    # 完整结果（以及 describe_tool）在名称、描述和 inputSchema 之外附带的可选工具字段：
+    # title、annotations、outputSchema、execution、icons、_meta。"none" 表示都不附带。默认：title,annotations。
+    SMART_ROUTING_TOOL_DEFINITION_FIELDS=title,annotations
     ```
 
-    两者也可以在 设置 → 智能路由 → 搜索结果 中设置，且都不会触发重新嵌入。当没有工具达到阈值时，响应会明确说明，给出阈值并列出已搜索的服务器，让模型可以告诉用户该能力不可用，而不是去调用最接近但无关的工具。
+    三者也可以在 设置 → 智能路由 → 搜索结果 中设置，且都不会触发重新嵌入。默认不附带的字段主要供客户端而非模型使用，而且可能很大：上游服务器可能为每个工具附带 base64 格式的 `icons` 或很长的 `outputSchema`，放在搜索结果里只会消耗 Token。`inputSchema` 始终返回，并去掉其中的 `$schema` 键。当没有工具达到阈值时，响应会明确说明，给出阈值并列出已搜索的服务器，让模型可以告诉用户该能力不可用，而不是去调用最接近但无关的工具。
   </Accordion>
 
   <Accordion title="标准模式（默认）">
