@@ -1,4 +1,7 @@
-import { deleteCredentialBindings } from '../services/credentialBindingService.js';
+import {
+  copyCredentialBindings,
+  deleteCredentialBindings,
+} from '../services/credentialBindingService.js';
 import { StdioOptionsError } from '../utils/stdioOptions.js';
 import { CredentialBindingError } from '../utils/credentialTemplate.js';
 import { isDeepStrictEqual } from 'node:util';
@@ -233,7 +236,9 @@ const toConnectionRelevantConfig = (
   const normalized = normalizeServerConfigForPersistence(config) as Record<string, unknown>;
   const picked: Record<string, unknown> = {};
   for (const field of CONNECTION_RELEVANT_CONFIG_FIELDS) {
-    picked[field] = normalized[field];
+    // Database mode reads unset columns (e.g. `proxy`) back as null, while a
+    // request leaves them out; both mean "not set".
+    picked[field] = normalized[field] ?? undefined;
   }
   const comparable = stripUndefinedDeep(picked) as Record<string, unknown>;
   // Treat the default request timeout (60000, the dashboard form default) as
@@ -1167,9 +1172,26 @@ export const updateServer = async (req: Request, res: Response): Promise<void> =
       // Read the cached tool list before the runtime under the old name is closed
       const isBareToolName = bareToolNameCheck(name);
 
+      // Personal credential bindings follow a plain rename. A rename that also
+      // changes the connection (target, headers, credential slots, ...) drops
+      // them, so users bind again against the new definition. They are copied
+      // before the definition moves, so a binding that cannot be copied fails
+      // the request with the server, its references and every binding unchanged.
+      const keepBindings = !hasConnectionRelevantChange(existingServer, normalizedConfig);
+      if (keepBindings) {
+        await copyCredentialBindings(name, targetName);
+      }
+
       // Rename the server
-      const renamed = await serverDao.rename(name, targetName);
+      let renamed: boolean;
+      try {
+        renamed = await serverDao.rename(name, targetName);
+      } catch (error) {
+        if (keepBindings) await deleteCredentialBindings({ serverName: targetName });
+        throw error;
+      }
       if (!renamed) {
+        if (keepBindings) await deleteCredentialBindings({ serverName: targetName });
         res.status(404).json({
           success: false,
           message: 'Server not found',
@@ -1183,6 +1205,8 @@ export const updateServer = async (req: Request, res: Response): Promise<void> =
       // rebuilds serverInfos. Without this explicit close the old stdio child
       // process tree is orphaned and leaks until the process restarts.
       closeServer(name);
+
+      // Kept bindings now have their copies under the new name.
       await deleteCredentialBindings({ serverName: name });
 
       // Update references in groups
@@ -1218,8 +1242,8 @@ export const updateServer = async (req: Request, res: Response): Promise<void> =
       // Drop embeddings stored under the old name so search_tools does not
       // advertise phantom tools; addOrUpdateServer below regenerates them
       // under the new name. A credential server never connects globally, so
-      // its rows come back on the first per-user connect after a user binds
-      // credentials again (the bindings were dropped above), or on a reindex.
+      // its rows come back on the first per-user connect under the new name
+      // (with a moved binding, or after a user binds again), or on a reindex.
       // A failure here must not abort the rename.
       try {
         await removeServerToolEmbeddings(name);
