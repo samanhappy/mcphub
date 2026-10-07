@@ -52,6 +52,35 @@ describe('isBlockedIp', () => {
   });
 });
 
+// 100.64.0.0/10 (RFC 6598 CGNAT) spans exactly 100.64.0.0 - 100.127.255.255.
+// The rest of 100/8 and the adjacent 101/8 are ordinary public space.
+describe('isBlockedIp CGNAT 100.64.0.0/10 boundaries', () => {
+  it.each([
+    ['100.64.0.0', 'CGNAT lower bound'],
+    ['100.64.0.1', 'CGNAT just above lower bound'],
+    ['100.100.100.100', 'CGNAT middle'],
+    ['100.127.255.254', 'CGNAT just below upper bound'],
+    ['100.127.255.255', 'CGNAT upper bound'],
+    ['::ffff:100.64.0.1', 'IPv4-mapped CGNAT'],
+  ])('blocks %s (%s)', (ip) => {
+    expect(isBlockedIp(ip)).toBe(true);
+  });
+
+  it.each([
+    ['99.255.255.255', 'just below 100/8'],
+    ['100.0.0.1', 'public 100.0.0.0/10'],
+    ['100.20.30.40', 'public (AWS)'],
+    ['100.63.255.255', 'just below CGNAT'],
+    ['100.128.0.0', 'just above CGNAT'],
+    ['100.255.255.255', 'top of 100/8'],
+    ['101.0.0.1', 'public 101/8'],
+    ['101.127.255.255', 'public 101/8'],
+    ['::ffff:100.20.30.40', 'IPv4-mapped public 100.x'],
+  ])('allows %s (%s)', (ip) => {
+    expect(isBlockedIp(ip)).toBe(false);
+  });
+});
+
 const lookup = (map: Record<string, string[]>) => (host: string) =>
   Promise.resolve(map[host] ?? []);
 
@@ -113,6 +142,27 @@ describe('assertSafeUrl', () => {
         lookup: lookup({ 'public.example': ['93.184.216.34'] }),
       }),
     ).resolves.toBe('https://public.example/api');
+  });
+
+  it('allows an IP-literal URL in public 100.0.0.0/10 (outside CGNAT)', async () => {
+    await expect(assertSafeUrl('http://100.20.30.40/')).resolves.toBe('http://100.20.30.40/');
+  });
+
+  it('rejects an IP-literal CGNAT URL', async () => {
+    await expect(assertSafeUrl('http://100.64.0.1/')).rejects.toThrow(UnsafeUrlError);
+  });
+
+  it('allows a hostname resolving to public 100.x but rejects one resolving to CGNAT', async () => {
+    await expect(
+      assertSafeUrl('https://aws.example/api', {
+        lookup: lookup({ 'aws.example': ['100.20.30.40'] }),
+      }),
+    ).resolves.toBe('https://aws.example/api');
+    await expect(
+      assertSafeUrl('https://cgnat.example/api', {
+        lookup: lookup({ 'cgnat.example': ['100.127.255.255'] }),
+      }),
+    ).rejects.toThrow(UnsafeUrlError);
   });
 });
 

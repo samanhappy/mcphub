@@ -25,7 +25,7 @@ export interface AssertSafeUrlOptions {
 const IPV4_BLOCKED_RANGES: Array<[number, number]> = [
   [0x00000000, 0x00ffffff], // 0.0.0.0/8 unspecified
   [0x0a000000, 0x0affffff], // 10.0.0.0/8 RFC1918
-  [0x64000000, 0x657fffff], // 100.64.0.0/10 CGNAT
+  [0x64400000, 0x647fffff], // 100.64.0.0/10 CGNAT (100.64.0.0 - 100.127.255.255)
   [0x7f000000, 0x7fffffff], // 127.0.0.0/8 loopback
   [0xa9fe0000, 0xa9feffff], // 169.254.0.0/16 link-local (IMDS)
   [0xac100000, 0xac1fffff], // 172.16.0.0/12 RFC1918
