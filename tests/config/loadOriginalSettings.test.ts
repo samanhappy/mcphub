@@ -65,6 +65,17 @@ describe('settings file cache staleness (#1081)', () => {
     return import('../../src/config/index.js');
   };
 
+  it('can load defaults without writing to a read-only declaration file', async () => {
+    writeSettings(settingsPath, { mcpServers: {}, users: [] });
+    const before = fs.readFileSync(settingsPath, 'utf8');
+    const config = await loadConfigModule();
+    const writeSpy = jest.spyOn(fs, 'writeFileSync');
+    expect(config.loadOriginalSettings(false).systemConfig?.oauthServer).toBeDefined();
+    expect(writeSpy).not.toHaveBeenCalled();
+    writeSpy.mockRestore();
+    expect(fs.readFileSync(settingsPath, 'utf8')).toBe(before);
+  });
+
   it('re-reads mcp_settings.json when the file is externally modified', async () => {
     writeSettings(settingsPath, {
       mcpServers: {},

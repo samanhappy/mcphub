@@ -1,3 +1,4 @@
+import { syncSettingsToDatabase } from './settingsSync.js';
 import { CredentialBindingDaoImpl } from '../dao/CredentialBindingDao.js';
 import { CredentialBindingDaoDbImpl } from '../dao/CredentialBindingDaoDbImpl.js';
 import { loadOriginalSettings } from '../config/index.js';
@@ -19,7 +20,7 @@ import { logger } from './logger.js';
 /**
  * Migrate from file-based configuration to database
  */
-export async function migrateToDatabase(): Promise<boolean> {
+export async function migrateToDatabase(seedServersAndGroups = true): Promise<boolean> {
   try {
     logger.log('Starting migration from file to database...');
 
@@ -28,7 +29,7 @@ export async function migrateToDatabase(): Promise<boolean> {
     logger.log('Database connection established');
 
     // Load current settings from file
-    const settings = loadOriginalSettings();
+    const settings = loadOriginalSettings(process.env.MCPHUB_SETTINGS_SYNC !== 'upsert');
     logger.log('Loaded settings from file');
 
     // Create repositories
@@ -63,8 +64,8 @@ export async function migrateToDatabase(): Promise<boolean> {
       }
     }
 
-    // Migrate servers
-    if (settings.mcpServers) {
+    // Startup sync owns these declarations and applies them in one transaction.
+    if (seedServersAndGroups && settings.mcpServers) {
       const serverNames = Object.keys(settings.mcpServers);
       logger.log(`Migrating ${serverNames.length} servers...`);
       for (const [name, config] of Object.entries(settings.mcpServers)) {
@@ -118,11 +119,12 @@ export async function migrateToDatabase(): Promise<boolean> {
     // Ciphertext is portable between persistence backends; the encryption key stays external.
     const credentialDao = new CredentialBindingDaoDbImpl();
     for (const binding of new CredentialBindingDaoImpl().readAll()) {
-      if (!(await credentialDao.get(binding.serverName, binding.username))) await credentialDao.save(binding);
+      if (!(await credentialDao.get(binding.serverName, binding.username)))
+        await credentialDao.save(binding);
     }
 
     // Migrate groups
-    if (settings.groups && settings.groups.length > 0) {
+    if (seedServersAndGroups && settings.groups && settings.groups.length > 0) {
       logger.log(`Migrating ${settings.groups.length} groups...`);
       for (const group of settings.groups) {
         const exists = await groupRepo.existsByName(group.name);
@@ -348,7 +350,7 @@ export async function initializeDatabaseMode(): Promise<boolean> {
 
     if (userCount === 0) {
       logger.log('No users found in database, running migration...');
-      const migrated = await migrateToDatabase();
+      const migrated = await migrateToDatabase(process.env.MCPHUB_SETTINGS_SYNC !== 'upsert');
       if (!migrated) {
         throw new Error('Migration failed');
       }
@@ -386,6 +388,8 @@ export async function initializeDatabaseMode(): Promise<boolean> {
         }
       }
     }
+
+    await syncSettingsToDatabase();
 
     logger.log('✅ Database mode initialized successfully');
     return true;
