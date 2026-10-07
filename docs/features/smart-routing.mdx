@@ -502,6 +502,13 @@ Progressive Disclosure is an optimization feature that reduces token usage when 
     ```
 
     Use `names` (default) to keep the legacy compact list.
+
+    The list names the servers `search_tools` actually searches: enabled servers that are
+    connected or start on demand. An on-demand server stays listed while it is not connected,
+    whether it shut down after idle or failed to start, since `call_tool` starts it; any other
+    server that failed to connect is left out until it reconnects. Upstream instructions only
+    arrive on connect, so in `full` mode a server that has not connected yet shows its
+    configured description, or just its name.
   </Accordion>
 
   <Accordion title="Embedding Task Prefixes">

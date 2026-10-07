@@ -34,6 +34,7 @@ jest.mock('../../src/config/index.js', () => ({
   getNameSeparator: jest.fn(() => '::'),
 }));
 
+import { getServersInGroup } from '../../src/services/groupService.js';
 import {
   buildSmartRoutingMetaTools,
   getSmartRoutingMetaToolDefinitions,
@@ -147,5 +148,73 @@ describe('buildSmartRoutingMetaTools', () => {
     await getSmartRoutingTools(undefined);
 
     expect(mockGetSmartRoutingConfig).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('search_tools server list', () => {
+  const server = (name: string, fields: Record<string, unknown>) => ({
+    name,
+    error: null,
+    instructions: '',
+    tools: [],
+    prompts: [],
+    resources: [],
+    createTime: 0,
+    ...fields,
+  });
+
+  const serverList = async (group?: string) => {
+    const tools = await getSmartRoutingMetaToolDefinitions(group, false);
+    const search = tools.find((t) => t.name === 'search_tools')!;
+    return search.description.slice(search.description.indexOf('Available servers:'));
+  };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockGetSmartRoutingConfig.mockResolvedValue({ progressiveDisclosure: false });
+    initSmartRoutingService(
+      () =>
+        [
+          server('live', { status: 'connected', enabled: true }),
+          server('idle', {
+            status: 'disconnected',
+            enabled: true,
+            config: { startOnDemand: true, description: 'Wakes on the first call' },
+          }),
+          server('failed', { status: 'disconnected', enabled: true, config: {} }),
+          server('off', {
+            status: 'disconnected',
+            enabled: false,
+            config: { startOnDemand: true },
+          }),
+        ] as any,
+      jest.fn(async (_serverName, tools) => tools),
+      jest.fn(async (_group, _serverName, tools) => tools),
+    );
+  });
+
+  it('lists an idle on-demand server, since call_tool wakes it', async () => {
+    expect(await serverList()).toBe('Available servers: live, idle');
+  });
+
+  it('includes the idle server description in full mode', async () => {
+    mockGetSmartRoutingConfig.mockResolvedValue({
+      progressiveDisclosure: false,
+      serverDescriptionMode: 'full',
+    });
+
+    expect(await serverList()).toContain('\n- idle: Wakes on the first call');
+  });
+
+  it('lists only the available servers of the group', async () => {
+    (getServersInGroup as jest.Mock).mockResolvedValue(['idle', 'failed', 'off']);
+
+    expect(await serverList('$smart/team')).toBe('Available servers: idle');
+  });
+
+  it('lists no server for a group without servers, as search covers none', async () => {
+    (getServersInGroup as jest.Mock).mockResolvedValue([]);
+
+    expect(await serverList('$smart/empty')).toBe('Available servers: ');
   });
 });

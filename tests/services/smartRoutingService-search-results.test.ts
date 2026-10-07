@@ -139,11 +139,7 @@ describe('smartRoutingService search_tools results', () => {
 
       const payload = await search('fetch');
 
-      expect(mockSearchToolsByVector).toHaveBeenCalledWith('fetch', 10, 0.55, [
-        'chat',
-        'code',
-        'offline',
-      ]);
+      expect(mockSearchToolsByVector).toHaveBeenCalledWith('fetch', 10, 0.55, ['chat', 'code']);
       expect(payload.metadata.threshold).toBe(0.55);
     });
 
@@ -288,6 +284,74 @@ describe('smartRoutingService search_tools results', () => {
 
       expect(tool).not.toHaveProperty('title');
       expect(tool).not.toHaveProperty('annotations');
+    });
+  });
+
+  describe('idle on-demand servers', () => {
+    const notesTool = {
+      name: 'notes::find_note',
+      description: 'Find a note by title',
+      inputSchema: schema('title'),
+    };
+
+    beforeEach(() => {
+      mockGetServersInGroup.mockResolvedValue(['chat', 'notes', 'offline']);
+      initSmartRoutingService(
+        () =>
+          [
+            { name: 'chat', status: 'connected', enabled: true, tools: chatTools },
+            // Shut down after idle: disconnected, tool list kept for the next wake-up
+            {
+              name: 'notes',
+              status: 'disconnected',
+              enabled: true,
+              config: { startOnDemand: true },
+              tools: [notesTool],
+            },
+            { name: 'offline', status: 'disconnected', enabled: true, config: {}, tools: [] },
+          ] as any,
+        jest.fn(async (_serverName, tools) => tools),
+        jest.fn(async (_group, _serverName, tools) => tools),
+      );
+    });
+
+    it('searches them, but not a disconnected server that cannot be woken', async () => {
+      await search();
+
+      expect(mockSearchToolsByVector).toHaveBeenCalledWith(
+        expect.any(String),
+        10,
+        expect.any(Number),
+        ['chat', 'notes'],
+      );
+    });
+
+    it('returns a hit from the cached definition, not the stored embedding', async () => {
+      mockSearchToolsByVector.mockResolvedValue([
+        { ...hit('notes::find_note', 0.6, 0.6), serverName: 'notes' },
+      ]);
+
+      const payload = await search('find my note');
+
+      expect(payload.tools).toEqual([{ ...notesTool, serverName: 'notes', score: 0.6 }]);
+    });
+
+    it('names them in the no-match message', async () => {
+      mockSearchToolsByVector.mockResolvedValue([]);
+
+      const payload = await search();
+
+      expect(payload.metadata.guideline).toContain('Searched servers: chat, notes.');
+    });
+
+    it('describes their tools', async () => {
+      const result = await handleDescribeToolRequest('notes::find_note', 'smart-session');
+
+      expect(result.isError).toBeUndefined();
+      expect(JSON.parse(result.content[0].text).tool).toEqual({
+        ...notesTool,
+        serverName: 'notes',
+      });
     });
   });
 

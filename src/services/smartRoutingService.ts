@@ -20,6 +20,7 @@ import {
 import { getServerDao } from '../dao/index.js';
 import { getMcpRequestGroup } from '../utils/mcpRequestGroup.js';
 import { isAppOnlyTool } from '../utils/mcpApps.js';
+import { canServeToolRequests } from '../utils/serverAvailability.js';
 import { getNameSeparator } from '../config/index.js';
 import { logger } from '../utils/logger.js';
 
@@ -359,6 +360,23 @@ Available servers: ${serversList}`,
 /**
  * Compute the scope (server list + scope description) for a smart routing group.
  */
+/**
+ * The servers Smart Routing covers for a request: visible to the caller, able
+ * to serve a tool call (connected, or idle and started on demand, which
+ * call_tool wakes), and in the target group when there is one. The
+ * search_tools description, the search itself, its no-match message and
+ * describe_tool all use this one set, so they cannot disagree about what is
+ * available.
+ */
+const getAvailableServers = async (targetGroup: string | undefined): Promise<ServerInfo[]> => {
+  const servers = getServerInfos().filter(canServeToolRequests);
+  if (!targetGroup) {
+    return servers;
+  }
+  const serversInGroup = new Set(await getServersInGroup(targetGroup));
+  return servers.filter((server) => serversInGroup.has(server.name));
+};
+
 const computeSmartRoutingScope = async (
   group: string | undefined,
   smartRoutingConfig: SmartRoutingConfig,
@@ -369,18 +387,7 @@ const computeSmartRoutingScope = async (
   const targetGroup = getSmartTargetGroup(group);
   const serverConfigsByName = await getGroupServerConfigMap(targetGroup);
 
-  // Get info about available servers, filtered by target group if specified
-  let availableServers = getServerInfos().filter(
-    (server) => server.status === 'connected' && server.enabled !== false,
-  );
-
-  // If a target group is specified, filter servers to only those in the group
-  if (targetGroup) {
-    const serversInGroup = await getServersInGroup(targetGroup);
-    if (serversInGroup && serversInGroup.length > 0) {
-      availableServers = availableServers.filter((server) => serversInGroup.includes(server.name));
-    }
-  }
+  const availableServers = await getAvailableServers(targetGroup);
 
   // Create simple server information with only server names or include descriptions when configured
   const serversList =
@@ -495,28 +502,21 @@ export const handleSearchToolsRequest = async (
 
   logger.log(`Using similarity threshold: ${thresholdNum} for query: "${query}"`);
 
-  // Determine server filtering based on group
+  // Determine server filtering based on group ($smart/{group})
   let group = getMcpRequestGroup({ sessionId, group: requestGroup });
-  const visibleServerNames = new Set(getServerInfos().map((serverInfo) => serverInfo.name));
-  let servers: string[] = Array.from(visibleServerNames);
-  let serverConfigsByName = new Map<string, IGroupServerConfig>();
-
-  // If group is in format $smart/{group}, filter servers to that group
   const targetGroup = getSmartTargetGroup(group);
   if (targetGroup) {
-    if (targetGroup) {
-      group = targetGroup;
-    }
-    serverConfigsByName = await getGroupServerConfigMap(targetGroup);
-    const serversInGroup = await getServersInGroup(targetGroup);
-    if (serversInGroup !== undefined && serversInGroup !== null) {
-      servers = serversInGroup.filter((serverName) => visibleServerNames.has(serverName));
-      if (servers && servers.length > 0) {
-        logger.log(`Filtering search to servers in group "${targetGroup}": ${servers.join(', ')}`);
-      } else {
-        logger.log(`Group "${targetGroup}" has no servers, search will return no results`);
-      }
-    }
+    group = targetGroup;
+  }
+  const serverConfigsByName = await getGroupServerConfigMap(targetGroup);
+  const availableServers = await getAvailableServers(targetGroup);
+  const servers = availableServers.map((server) => server.name);
+  if (targetGroup) {
+    logger.log(
+      servers.length > 0
+        ? `Filtering search to servers in group "${targetGroup}": ${servers.join(', ')}`
+        : `Group "${targetGroup}" has no servers, search will return no results`,
+    );
   }
 
   const searchResults =
@@ -526,13 +526,9 @@ export const handleSearchToolsRequest = async (
   // Find actual tool information from serverInfos by serverName and toolName
   const resolvedTools = await Promise.all(
     searchResults.map(async (result) => {
-      // Find the server in serverInfos
-      const server = getServerInfos().find(
-        (serverInfo) =>
-          serverInfo.name === result.serverName &&
-          serverInfo.status === 'connected' &&
-          serverInfo.enabled !== false,
-      );
+      // An idle server still has its cached tools; without them the hit
+      // falls back to the stored embedding below
+      const server = availableServers.find((serverInfo) => serverInfo.name === result.serverName);
       if (server && server.tools && server.tools.length > 0) {
         // Find the tool in server.tools
         const actualTool = server.tools.find((tool) => tool.name === result.toolName);
@@ -634,16 +630,9 @@ export const handleSearchToolsRequest = async (
   if (tools.length === 0) {
     // Say what was searched, so the model can conclude the capability is not
     // here instead of retrying the same search with other words
-    const searchedServers = servers
-      .filter((serverName) =>
-        getServerInfos().some(
-          (serverInfo) =>
-            serverInfo.name === serverName &&
-            serverInfo.status === 'connected' &&
-            serverInfo.enabled !== false,
-        ),
-      )
-      .map((serverName) => getExposedServerName(serverName, serverConfigsByName.get(serverName)));
+    const searchedServers = servers.map((serverName) =>
+      getExposedServerName(serverName, serverConfigsByName.get(serverName)),
+    );
     guideline =
       searchedServers.length > 0
         ? `No tool matched the query with a similarity of at least ${thresholdNum}. Searched servers: ${searchedServers.join(', ')}. If none of them covers the task, it is not available here.`
@@ -711,12 +700,8 @@ export const handleDescribeToolRequest = async (
     group = targetGroup;
   }
 
-  // Find the tool across all connected servers
-  for (const serverInfo of getServerInfos()) {
-    if (serverInfo.status !== 'connected' || serverInfo.enabled === false) {
-      continue;
-    }
-
+  // Find the tool across the available servers, an idle one included: call_tool wakes it
+  for (const serverInfo of await getAvailableServers(targetGroup)) {
     const resolvedToolName = resolveNameFromGroup(toolName, serverInfo.name, serverConfigsByName);
 
     // Check if this server has the tool
