@@ -414,6 +414,17 @@ export class MCPHubOAuthProvider implements OAuthClientProvider {
     // Store the authorization URL in ServerInfo for the frontend to access
     const serverInfo = getServerByName(this.serverName);
     if (serverInfo) {
+      // Keep serverInfo.config in sync with the freshly persisted pending
+      // authorization (new state + createdAt). The OAuth callback's TTL check
+      // (isOAuthStateCurrent) reads createdAt from serverInfo.config, not from
+      // this provider's private this.serverConfig. Without this, serverInfo.config
+      // keeps whatever stale pendingAuthorization snapshot was loaded at server
+      // init/last reconnect, so the TTL check compares against an ever-older
+      // timestamp and eventually rejects fresh, well-within-TTL callbacks as
+      // "expired" even though serverInfo.oauth.state matches correctly.
+      if (this.serverConfig) {
+        serverInfo.config = this.serverConfig;
+      }
       serverInfo.status = 'oauth_required';
       serverInfo.oauth = {
         authorizationUrl,
