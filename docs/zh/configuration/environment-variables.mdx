@@ -110,7 +110,7 @@ OIDC_CLIENT_SECRET=your-oidc-client-secret
 | `FORWARD_AUTH_MODE` | 验证模式，目前仅支持 `jwks`。 |
 | `FORWARD_AUTH_JWKS_URI` | 身份提供方的 JWKS 端点。必须为 `https`（仅 `localhost` 允许 `http`）。必填。 |
 | `FORWARD_AUTH_ISSUER` | 期望的 `iss` 声明。必填。 |
-| `FORWARD_AUTH_AUDIENCE` | 接受的 `aud` 值，支持逗号分隔、空白分隔或 JSON 数组。必填。 |
+| `FORWARD_AUTH_AUDIENCE` | 接受的 `aud` 值，支持逗号分隔或 JSON 数组；值中可以包含空格。必填。 |
 | `FORWARD_AUTH_ALGORITHMS` | 允许的非对称算法，默认 `RS256,ES256`。永远不接受 `HS*` 和 `none`。 |
 | `FORWARD_AUTH_USERNAME_CLAIM` | 新建用户的用户名所用声明，默认 `preferred_username`。 |
 | `FORWARD_AUTH_EMAIL_CLAIM` | 新建用户的邮箱所用声明，默认 `email`。 |

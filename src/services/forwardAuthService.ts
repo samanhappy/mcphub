@@ -9,6 +9,8 @@ import {
 } from '../models/User.js';
 import { ForwardAuthConfig, ForwardAuthMode, IUser, SystemConfig } from '../types/index.js';
 import {
+  normalizeOptionalString,
+  normalizeStringArray,
   resolveBooleanSetting,
   resolveStringArraySetting,
   resolveStringSetting,
@@ -92,6 +94,24 @@ const isAllowedJwksUri = (uri: string): boolean => {
   }
 };
 
+// Audience names may contain spaces (e.g. "My API"), so a plain string is split
+// on commas only. Arrays and JSON-array strings use the shared parser.
+const parseAudience = (value: unknown): string[] => {
+  const text = normalizeOptionalString(value);
+  if (text && !text.startsWith('[')) {
+    return text
+      .split(',')
+      .map((item) => item.trim())
+      .filter((item) => item.length > 0);
+  }
+  return normalizeStringArray(value);
+};
+
+const resolveAudienceSetting = (envValue: string | undefined, settingsValue: unknown): string[] => {
+  const envAudience = parseAudience(envValue);
+  return envAudience.length > 0 ? envAudience : parseAudience(settingsValue);
+};
+
 export const resolveForwardAuthRuntimeConfig = (
   systemConfig?: SystemConfig | null,
 ): ForwardAuthRuntimeConfig => {
@@ -106,11 +126,7 @@ export const resolveForwardAuthRuntimeConfig = (
   const mode = resolveStringSetting(process.env.FORWARD_AUTH_MODE, settings.mode, 'jwks');
   const jwksUri = resolveStringSetting(process.env.FORWARD_AUTH_JWKS_URI, jwksSettings.uri);
   const issuer = resolveStringSetting(process.env.FORWARD_AUTH_ISSUER, jwksSettings.issuer);
-  const audience = resolveStringArraySetting(
-    process.env.FORWARD_AUTH_AUDIENCE,
-    jwksSettings.audience,
-    [],
-  );
+  const audience = resolveAudienceSetting(process.env.FORWARD_AUTH_AUDIENCE, jwksSettings.audience);
   const configuredAlgorithms = resolveStringArraySetting(
     process.env.FORWARD_AUTH_ALGORITHMS,
     jwksSettings.algorithms,

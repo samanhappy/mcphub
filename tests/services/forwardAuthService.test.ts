@@ -83,6 +83,28 @@ describe('resolveForwardAuthRuntimeConfig', () => {
   });
 
   it.each([
+    ['a single value with spaces', 'My API', ['My API']],
+    ['comma-separated values with spaces', 'My API, mcphub', ['My API', 'mcphub']],
+    ['a JSON array', '["My API","mcphub"]', ['My API', 'mcphub']],
+  ])(
+    'parses FORWARD_AUTH_AUDIENCE as %s without splitting on whitespace',
+    (_label, env, expected) => {
+      process.env.FORWARD_AUTH_AUDIENCE = env;
+      expect(resolveForwardAuthRuntimeConfig(withForwardAuth(validSettings)).audience).toEqual(
+        expected,
+      );
+    },
+  );
+
+  it('keeps a settings audience with spaces intact', () => {
+    const settings = {
+      ...validSettings,
+      jwks: { ...validSettings.jwks, audience: 'My API' },
+    };
+    expect(resolveForwardAuthRuntimeConfig(withForwardAuth(settings)).audience).toEqual(['My API']);
+  });
+
+  it.each([
     ['issuer is missing', { ...validSettings, jwks: { ...validSettings.jwks, issuer: '' } }],
     ['audience is missing', { ...validSettings, jwks: { ...validSettings.jwks, audience: [] } }],
     ['the JWKS uri is missing', { ...validSettings, jwks: { ...validSettings.jwks, uri: '' } }],

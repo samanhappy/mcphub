@@ -97,7 +97,7 @@ Forward auth trusts a JWT issued to users by an upstream gateway and verifies it
 | `FORWARD_AUTH_MODE` | Verification mode. Only `jwks` is supported. |
 | `FORWARD_AUTH_JWKS_URI` | JWKS endpoint of the identity provider. Must be `https` (plain `http` only for `localhost`). Required. |
 | `FORWARD_AUTH_ISSUER` | Expected `iss` claim. Required. |
-| `FORWARD_AUTH_AUDIENCE` | Accepted `aud` value(s). Accepts a comma-separated list, whitespace-separated list, or JSON array. Required. |
+| `FORWARD_AUTH_AUDIENCE` | Accepted `aud` value(s). Accepts a comma-separated list or JSON array; values may contain spaces (for example `My API`). Required. |
 | `FORWARD_AUTH_ALGORITHMS` | Allowed asymmetric algorithms. Defaults to `RS256,ES256`. `HS*` and `none` are never accepted. |
 | `FORWARD_AUTH_USERNAME_CLAIM` | Claim used for the username of newly created users. Defaults to `preferred_username`. |
 | `FORWARD_AUTH_EMAIL_CLAIM` | Claim used for the email of newly created users. Defaults to `email`. |
