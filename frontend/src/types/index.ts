@@ -241,6 +241,7 @@ export interface ServerConfig {
   proxy?: ProxychainsConfig;
   // OAuth authentication for upstream MCP servers
   oauth?: {
+    allowInsecureTokenEndpoint?: boolean; // Admin-only HTTP token endpoint exception
     clientId?: string; // OAuth client ID
     clientSecret?: string; // OAuth client secret
     redirectUri?: string; // Preferred redirect URI for authorization requests and registration
@@ -414,6 +415,7 @@ export interface ServerFormData {
   idleTimeoutMs?: number;
   oauth?: {
     clientId?: string;
+    allowInsecureTokenEndpoint?: boolean;
     clientSecret?: string;
     scopes?: string;
     accessToken?: string;
@@ -792,6 +794,7 @@ export interface TemplateServerConfig {
   proxy?: ProxychainsConfig;
   oauth?: {
     clientId?: string;
+    allowInsecureTokenEndpoint?: boolean;
     clientSecret?: string;
     scopes?: string[];
     accessToken?: string;

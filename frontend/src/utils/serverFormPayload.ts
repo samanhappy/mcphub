@@ -81,6 +81,9 @@ const buildOAuthConfig = (
   }
 
   const nextOAuth: Partial<NonNullable<ServerConfig['oauth']>> = {};
+  if (oauth.allowInsecureTokenEndpoint !== undefined) {
+    nextOAuth.allowInsecureTokenEndpoint = oauth.allowInsecureTokenEndpoint;
+  }
   const clientId = oauth.clientId?.trim();
   const clientSecret = oauth.clientSecret?.trim();
   const scopes = oauth.scopes?.trim();

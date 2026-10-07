@@ -1,5 +1,6 @@
 import { validateCredentialTemplate } from './credentialTemplate.js';
 import { validateMaxBufferSize } from './stdioOptions.js';
+import { ServerConfigValidationError } from './serverConfigValidation.js';
 import { ServerConfig } from '../types/index.js';
 
 const trimToUndefined = (value?: string): string | undefined => {
@@ -161,6 +162,13 @@ const normalizeOAuth = (oauth?: ServerConfig['oauth']): ServerConfig['oauth'] | 
   }
 
   const normalized: NonNullable<ServerConfig['oauth']> = {};
+
+  if (oauth.allowInsecureTokenEndpoint !== undefined) {
+    if (typeof oauth.allowInsecureTokenEndpoint !== 'boolean') {
+      throw new ServerConfigValidationError('oauth.allowInsecureTokenEndpoint must be a boolean');
+    }
+    normalized.allowInsecureTokenEndpoint = oauth.allowInsecureTokenEndpoint;
+  }
 
   const clientId = trimToUndefined(oauth.clientId);
   const clientSecret = trimToUndefined(oauth.clientSecret);

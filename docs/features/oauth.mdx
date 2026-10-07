@@ -66,6 +66,30 @@ Other providers do not support dynamic registration. GitHub’s MCP endpoint (`h
 - Update the dashboard or configuration file whenever you rotate secrets.
 - Replace `scopes` with the exact scope strings required by the provider.
 
+## HTTP Token Endpoints in Private Networks
+
+Since v1.0.42, the MCP SDK rejects non-HTTPS OAuth token endpoints except loopback hosts (`localhost`, `127.0.0.1`, and `::1`). This affects both authorization-code exchange and token refresh; reconnecting or re-authorizing does not bypass the check.
+
+HTTPS is recommended. Administrators can explicitly allow HTTP token endpoints for one upstream in its dashboard **OAuth Configuration** section, or in the operator-managed configuration file:
+
+```json
+{
+  "mcpServers": {
+    "internal-gitlab": {
+      "type": "streamable-http",
+      "url": "http://gitlab.internal.example/api/v4/mcp",
+      "oauth": {
+        "allowInsecureTokenEndpoint": true
+      }
+    }
+  }
+}
+```
+
+The option defaults to `false`. Credentials, authorization codes, and tokens can be exposed in transit when enabled; use it only on a trusted network. Each HTTP token request using the exception logs a warning. Non-admin users cannot enable the exception through creation, editing, batch import, or template import, and cannot edit a server while its exception is enabled. Disabling it also blocks pending callbacks and refreshes on existing providers. The exception does not disable SSRF protection, authorize other upstreams, or change MCPHub's own OAuth endpoints for downstream clients.
+
+The SDK client is pinned to 2.1.0 with a pnpm patch adding a per-provider exception hook. The patched client is bundled into the backend build so npm/npx installs also receive it. When upgrading it, port or replace the patch and run `tests/integration/oauth-insecure-token-endpoint.test.ts`.
+
 ## Configuration Options
 You can rely on auto-detection for most servers or declare OAuth settings explicitly in `mcp_settings.json`. Only populate the fields you need.
 

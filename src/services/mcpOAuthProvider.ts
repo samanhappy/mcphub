@@ -93,6 +93,20 @@ export class MCPHubOAuthProvider implements OAuthClientProvider {
     return this._systemInstallBaseUrl;
   }
 
+  async allowInsecureTokenEndpoint(endpoint: URL): Promise<boolean> {
+    // Re-read the admin-controlled setting so a revoked exception cannot be
+    // reused by an old transport or a pending authorization callback.
+    const config = await loadServerConfig(this.serverName);
+    if (endpoint.protocol !== 'http:' || config?.oauth?.allowInsecureTokenEndpoint !== true) {
+      return false;
+    }
+    logger.warn('Sending OAuth credentials over HTTP with an admin-enabled exception', {
+      serverName: this.serverName,
+      tokenEndpointOrigin: endpoint.origin,
+    });
+    return true;
+  }
+
   /**
    * Get redirect URL for OAuth callback
    */

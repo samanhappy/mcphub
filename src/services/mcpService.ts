@@ -30,7 +30,7 @@ import {
   SSEClientTransport,
   StreamableHTTPClientTransport,
   StreamableHTTPClientTransportOptions,
-} from '@modelcontextprotocol/client';
+} from '../clients/mcpSdkClient.js';
 import { Server, ServerCapabilities } from '@modelcontextprotocol/server';
 import type {
   Prompt as McpPrompt,

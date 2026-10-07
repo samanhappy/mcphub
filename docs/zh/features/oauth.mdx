@@ -66,6 +66,30 @@
 - 凭据轮换时需要同步更新控制台或配置文件。
 - 将 `scopes` 替换为服务端要求的具体 Scope。
 
+## 私有网络中的 HTTP 令牌端点
+
+从 v1.0.42 开始，MCP SDK 会拒绝非 HTTPS 的 OAuth 令牌端点，loopback 主机（`localhost`、`127.0.0.1` 和 `::1`）除外。此检查同时作用于授权码兑换和令牌刷新，重连或重新授权无法绕过。
+
+建议使用 HTTPS。管理员可以在上游服务器的 **OAuth 配置** 中显式启用 HTTP 令牌端点，也可以通过运维管理的配置文件设置：
+
+```json
+{
+  "mcpServers": {
+    "internal-gitlab": {
+      "type": "streamable-http",
+      "url": "http://gitlab.internal.example/api/v4/mcp",
+      "oauth": {
+        "allowInsecureTokenEndpoint": true
+      }
+    }
+  }
+}
+```
+
+此选项默认 `false`。启用后，凭据、授权码和令牌可能在传输过程中泄露，仅应在可信网络中使用。每次使用例外发送 HTTP 令牌请求时都会记录警告。普通用户不能通过创建、编辑、批量导入或模板导入启用此选项，也不能编辑已启用例外的服务器。关闭选项后，待完成的回调和已有 provider 的刷新也会被阻止。此例外不会关闭 SSRF 防护、放行其他上游，也不会改变 MCPHub 向下游客户端公布的 OAuth 端点。
+
+SDK 客户端固定为 2.1.0，通过 pnpm 补丁增加按 provider 判断的例外接口。修补后的客户端会打包进后端构建产物，npm/npx 安装也会获得修复。升级 SDK 时需要迁移或替换补丁，并运行 `tests/integration/oauth-insecure-token-endpoint.test.ts`。
+
 ## 配置方式
 大多数场景可依赖自动检测，也可以在 `mcp_settings.json` 中显式声明 OAuth 配置。只填写确实需要的字段。
 

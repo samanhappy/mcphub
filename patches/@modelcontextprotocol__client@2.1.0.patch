@@ -1,0 +1,164 @@
+diff --git a/dist/index.cjs b/dist/index.cjs
+index 7fcd70198a8f0afea21d9bbdc1ed14cf86f8b08d..903e72a0c1f01a3a37e0f91d9ed124f20cc100dd 100644
+--- a/dist/index.cjs
++++ b/dist/index.cjs
+@@ -791,6 +791,7 @@ async function authInternal(provider, { serverUrl, authorizationCode, iss, scope
+ 				refreshToken: tokens.refresh_token,
+ 				resource,
+ 				addClientAuthentication: provider.addClientAuthentication,
++				allowInsecureTokenEndpoint: provider.allowInsecureTokenEndpoint?.bind(provider),
+ 				dpop: await provider.dpop?.(),
+ 				fetchFn
+ 			});
+@@ -1236,8 +1237,9 @@ function prepareAuthorizationCodeRequest(authorizationCode, codeVerifier, redire
+ * Internal helper to execute a token request with the given parameters.
+ * Used by {@linkcode exchangeAuthorization}, {@linkcode refreshAuthorization}, and {@linkcode fetchToken}.
+ */
+-async function executeTokenRequest(authorizationServerUrl, { metadata, tokenRequestParams, clientInformation, addClientAuthentication, resource, dpop, fetchFn }) {
+-	const tokenUrl = assertSecureTokenEndpoint(metadata?.token_endpoint ?? new URL("/token", authorizationServerUrl));
++async function executeTokenRequest(authorizationServerUrl, { metadata, tokenRequestParams, clientInformation, addClientAuthentication, resource, dpop, fetchFn, allowInsecureTokenEndpoint }) {
++	const endpoint = new URL(metadata?.token_endpoint ?? new URL("/token", authorizationServerUrl));
++	const tokenUrl = endpoint.protocol === "http:" && await allowInsecureTokenEndpoint?.(endpoint) === true ? endpoint : assertSecureTokenEndpoint(endpoint);
+ 	const headers = new Headers({
+ 		"Content-Type": "application/x-www-form-urlencoded",
+ 		Accept: "application/json"
+@@ -1314,7 +1316,7 @@ async function exchangeAuthorization(authorizationServerUrl, { metadata, clientI
+ * @returns Promise resolving to OAuth tokens (preserves original `refresh_token` if not replaced)
+ * @throws {Error} When token refresh fails or authentication is invalid
+ */
+-async function refreshAuthorization(authorizationServerUrl, { metadata, clientInformation, refreshToken, resource, addClientAuthentication, dpop, fetchFn }) {
++async function refreshAuthorization(authorizationServerUrl, { metadata, clientInformation, refreshToken, resource, addClientAuthentication, dpop, fetchFn, allowInsecureTokenEndpoint }) {
+ 	return {
+ 		refresh_token: refreshToken,
+ 		...await executeTokenRequest(authorizationServerUrl, {
+@@ -1327,7 +1329,8 @@ async function refreshAuthorization(authorizationServerUrl, { metadata, clientIn
+ 			addClientAuthentication,
+ 			resource,
+ 			dpop,
+-			fetchFn
++			fetchFn,
++			allowInsecureTokenEndpoint
+ 		})
+ 	};
+ }
+@@ -1378,6 +1381,7 @@ async function fetchToken(provider, authorizationServerUrl, { metadata, resource
+ 		tokenRequestParams,
+ 		clientInformation: clientInformation ?? void 0,
+ 		addClientAuthentication: provider.addClientAuthentication,
++		allowInsecureTokenEndpoint: provider.allowInsecureTokenEndpoint?.bind(provider),
+ 		resource,
+ 		dpop: await provider.dpop?.(),
+ 		fetchFn
+diff --git a/dist/index.d.cts b/dist/index.d.cts
+index d4bf5b7a6a951122e45d3d054a2f019d5d240101..91eb054bc61a480ce61c7a1406304b61b5cab624 100644
+--- a/dist/index.d.cts
++++ b/dist/index.d.cts
+@@ -330,6 +330,8 @@ interface OAuthClientInformationContext {
+  * No changes are needed to existing implementations.
+  */
+ interface OAuthClientProvider {
++  /** MCPHub patch: explicit per-provider HTTP token endpoint exception. Defaults to denied. */
++  allowInsecureTokenEndpoint?(endpoint: URL): boolean | Promise<boolean>;
+   /**
+    * The URL to redirect the user agent to after authorization.
+    * Return `undefined` for non-interactive flows that don't require user interaction
+@@ -1019,7 +1021,8 @@ declare function refreshAuthorization(authorizationServerUrl: string | URL, {
+   resource,
+   addClientAuthentication,
+   dpop,
+-  fetchFn
++  fetchFn,
++  allowInsecureTokenEndpoint
+ }: {
+   metadata?: AuthorizationServerMetadata;
+   clientInformation: OAuthClientInformationMixed;
+@@ -1029,6 +1032,7 @@ declare function refreshAuthorization(authorizationServerUrl: string | URL, {
+   /** SEP-1932 / RFC 9449: see {@linkcode executeTokenRequest}'s `dpop` option. */
+   dpop?: DpopSession;
+   fetchFn?: FetchLike;
++  allowInsecureTokenEndpoint?: OAuthClientProvider['allowInsecureTokenEndpoint'];
+ }): Promise<OAuthTokens>;
+ /**
+  * Unified token fetching that works with any grant type via {@linkcode OAuthClientProvider.prepareTokenRequest | prepareTokenRequest()}.
+diff --git a/dist/index.d.mts b/dist/index.d.mts
+index ed84f00fc5742424f16a5c1a73d4c7fa090ee284..d4776ea7f6647a217530644bbf3b9f88c0c7fc10 100644
+--- a/dist/index.d.mts
++++ b/dist/index.d.mts
+@@ -330,6 +330,8 @@ interface OAuthClientInformationContext {
+  * No changes are needed to existing implementations.
+  */
+ interface OAuthClientProvider {
++  /** MCPHub patch: explicit per-provider HTTP token endpoint exception. Defaults to denied. */
++  allowInsecureTokenEndpoint?(endpoint: URL): boolean | Promise<boolean>;
+   /**
+    * The URL to redirect the user agent to after authorization.
+    * Return `undefined` for non-interactive flows that don't require user interaction
+@@ -1019,7 +1021,8 @@ declare function refreshAuthorization(authorizationServerUrl: string | URL, {
+   resource,
+   addClientAuthentication,
+   dpop,
+-  fetchFn
++  fetchFn,
++  allowInsecureTokenEndpoint
+ }: {
+   metadata?: AuthorizationServerMetadata;
+   clientInformation: OAuthClientInformationMixed;
+@@ -1029,6 +1032,7 @@ declare function refreshAuthorization(authorizationServerUrl: string | URL, {
+   /** SEP-1932 / RFC 9449: see {@linkcode executeTokenRequest}'s `dpop` option. */
+   dpop?: DpopSession;
+   fetchFn?: FetchLike;
++  allowInsecureTokenEndpoint?: OAuthClientProvider['allowInsecureTokenEndpoint'];
+ }): Promise<OAuthTokens>;
+ /**
+  * Unified token fetching that works with any grant type via {@linkcode OAuthClientProvider.prepareTokenRequest | prepareTokenRequest()}.
+diff --git a/dist/index.mjs b/dist/index.mjs
+index d1caa75c0cf1c5b9eaa8ec409d6261e56ef75e92..f0427f81390b391af5e154574064c042a250d29e 100644
+--- a/dist/index.mjs
++++ b/dist/index.mjs
+@@ -788,6 +788,7 @@ async function authInternal(provider, { serverUrl, authorizationCode, iss, scope
+ 				refreshToken: tokens.refresh_token,
+ 				resource,
+ 				addClientAuthentication: provider.addClientAuthentication,
++				allowInsecureTokenEndpoint: provider.allowInsecureTokenEndpoint?.bind(provider),
+ 				dpop: await provider.dpop?.(),
+ 				fetchFn
+ 			});
+@@ -1233,8 +1234,9 @@ function prepareAuthorizationCodeRequest(authorizationCode, codeVerifier, redire
+ * Internal helper to execute a token request with the given parameters.
+ * Used by {@linkcode exchangeAuthorization}, {@linkcode refreshAuthorization}, and {@linkcode fetchToken}.
+ */
+-async function executeTokenRequest(authorizationServerUrl, { metadata, tokenRequestParams, clientInformation, addClientAuthentication, resource, dpop, fetchFn }) {
+-	const tokenUrl = assertSecureTokenEndpoint(metadata?.token_endpoint ?? new URL("/token", authorizationServerUrl));
++async function executeTokenRequest(authorizationServerUrl, { metadata, tokenRequestParams, clientInformation, addClientAuthentication, resource, dpop, fetchFn, allowInsecureTokenEndpoint }) {
++	const endpoint = new URL(metadata?.token_endpoint ?? new URL("/token", authorizationServerUrl));
++	const tokenUrl = endpoint.protocol === "http:" && await allowInsecureTokenEndpoint?.(endpoint) === true ? endpoint : assertSecureTokenEndpoint(endpoint);
+ 	const headers = new Headers({
+ 		"Content-Type": "application/x-www-form-urlencoded",
+ 		Accept: "application/json"
+@@ -1311,7 +1313,7 @@ async function exchangeAuthorization(authorizationServerUrl, { metadata, clientI
+ * @returns Promise resolving to OAuth tokens (preserves original `refresh_token` if not replaced)
+ * @throws {Error} When token refresh fails or authentication is invalid
+ */
+-async function refreshAuthorization(authorizationServerUrl, { metadata, clientInformation, refreshToken, resource, addClientAuthentication, dpop, fetchFn }) {
++async function refreshAuthorization(authorizationServerUrl, { metadata, clientInformation, refreshToken, resource, addClientAuthentication, dpop, fetchFn, allowInsecureTokenEndpoint }) {
+ 	return {
+ 		refresh_token: refreshToken,
+ 		...await executeTokenRequest(authorizationServerUrl, {
+@@ -1324,7 +1326,8 @@ async function refreshAuthorization(authorizationServerUrl, { metadata, clientIn
+ 			addClientAuthentication,
+ 			resource,
+ 			dpop,
+-			fetchFn
++			fetchFn,
++			allowInsecureTokenEndpoint
+ 		})
+ 	};
+ }
+@@ -1375,6 +1378,7 @@ async function fetchToken(provider, authorizationServerUrl, { metadata, resource
+ 		tokenRequestParams,
+ 		clientInformation: clientInformation ?? void 0,
+ 		addClientAuthentication: provider.addClientAuthentication,
++		allowInsecureTokenEndpoint: provider.allowInsecureTokenEndpoint?.bind(provider),
+ 		resource,
+ 		dpop: await provider.dpop?.(),
+ 		fetchFn

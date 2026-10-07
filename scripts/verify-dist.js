@@ -1,5 +1,6 @@
 // scripts/verify-dist.js
 import fs from 'fs';
+import assert from 'node:assert/strict';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -45,6 +46,26 @@ if (!fs.existsSync(cliMainPath)) {
   console.error('CLI subcommand dispatch will fail. Run "npm run backend:build" again.');
   process.exit(1);
 }
+
+// npm installs do not apply pnpm patches. Verify the bundled OAuth client
+// retains both the TLS default and the explicit per-provider exception.
+const { refreshAuthorization, InsecureTokenEndpointError } = await import(
+  '../dist/clients/mcpSdkClient.js'
+);
+const tokenOptions = {
+  clientInformation: { client_id: 'distribution-check' },
+  refreshToken: 'fake-refresh-token',
+  fetchFn: async () => Response.json({ access_token: 'fake-access-token', token_type: 'Bearer' }),
+};
+await assert.rejects(
+  refreshAuthorization('http://upstream.example', tokenOptions),
+  InsecureTokenEndpointError,
+);
+const tokens = await refreshAuthorization('http://upstream.example', {
+  ...tokenOptions,
+  allowInsecureTokenEndpoint: () => true,
+});
+assert.equal(tokens.access_token, 'fake-access-token');
 
 // All checks passed
 console.log('✅ Verification passed! Frontend and backend dist files are present.');

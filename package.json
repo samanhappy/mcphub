@@ -18,7 +18,7 @@
   ],
   "scripts": {
     "build": "pnpm backend:build && pnpm frontend:build",
-    "backend:build": "tsc",
+    "backend:build": "tsc && node scripts/build-mcp-client.js",
     "start": "node dist/index.js",
     "cli": "tsx src/cli/main.ts",
     "backend:dev": "node scripts/dev-backend.js",
@@ -51,7 +51,7 @@
     "@apidevtools/swagger-parser": "^12.1.0",
     "@google/genai": "^1.44.0",
     "@huggingface/tokenizers": "^0.1.3",
-    "@modelcontextprotocol/client": "^2.1.0",
+    "@modelcontextprotocol/client": "2.1.0",
     "@modelcontextprotocol/node": "^2.1.0",
     "@modelcontextprotocol/server": "^2.1.0",
     "@modelcontextprotocol/server-legacy": "^2.1.0",
@@ -129,6 +129,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "concurrently": "^9.2.0",
+    "esbuild": "0.27.2",
     "eslint": "^10.9.1",
     "globals": "^17.8.0",
     "i18next-browser-languagedetector": "^8.2.0",
@@ -208,6 +209,9 @@
       "esbuild",
       "sharp",
       "unrs-resolver"
-    ]
+    ],
+    "patchedDependencies": {
+      "@modelcontextprotocol/client@2.1.0": "patches/@modelcontextprotocol__client@2.1.0.patch"
+    }
   }
 }

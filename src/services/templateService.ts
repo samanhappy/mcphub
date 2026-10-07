@@ -180,6 +180,9 @@ function stripOAuthSecrets(oauth: NonNullable<ServerConfig['oauth']>): {
   const placeholders: string[] = [];
 
   if (oauth.clientId) sanitized.clientId = oauth.clientId;
+  if (oauth.allowInsecureTokenEndpoint !== undefined) {
+    sanitized.allowInsecureTokenEndpoint = oauth.allowInsecureTokenEndpoint;
+  }
   if (oauth.scopes) sanitized.scopes = [...oauth.scopes];
   if (oauth.resource) sanitized.resource = oauth.resource;
   if (oauth.authorizationEndpoint) sanitized.authorizationEndpoint = oauth.authorizationEndpoint;
@@ -608,7 +611,10 @@ export async function importTemplate(
         type: 'server',
         name: serverName,
         action: 'failed',
-        message: 'Only admins can import stdio-based server configurations',
+        message:
+          config.oauth?.allowInsecureTokenEndpoint === true
+            ? 'Only admins can import servers allowing HTTP OAuth token endpoints'
+            : 'Only admins can import stdio-based server configurations',
       });
       continue;
     }

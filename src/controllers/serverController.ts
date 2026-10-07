@@ -61,7 +61,10 @@ import {
 import { disconnectUpstreamOAuth } from '../services/upstreamOAuthDisconnectService.js';
 import type { UpstreamOAuthDisconnectScope } from '../services/upstreamOAuthDisconnectService.js';
 import { normalizeServerConfigForPersistence } from '../utils/serverConfigPersistence.js';
-import { isPrivilegedServerConfig } from '../utils/serverConfigValidation.js';
+import {
+  isPrivilegedServerConfig,
+  ServerConfigValidationError,
+} from '../utils/serverConfigValidation.js';
 import { validateServerName } from '../utils/serverNameValidation.js';
 import { setCachedSystemConfig } from '../utils/systemConfigCache.js';
 import { DEFAULT_INSTALL_BASE_URL, withResolvedInstallBaseUrl } from '../utils/installBaseUrl.js';
@@ -140,7 +143,10 @@ const ensureNonAdminCanManageConfig = (
   if (isPrivilegedServerConfig(config)) {
     res.status(403).json({
       success: false,
-      message: 'Only admins can create or modify stdio-based servers',
+      message:
+        config.oauth?.allowInsecureTokenEndpoint === true
+          ? 'Only admins can create or modify servers allowing HTTP OAuth token endpoints'
+          : 'Only admins can create or modify stdio-based servers',
     });
     return false;
   }
@@ -695,12 +701,18 @@ export const createServer = async (req: Request, res: Response): Promise<void> =
   } catch (error) {
     res
       .status(
-        error instanceof CredentialBindingError || error instanceof StdioOptionsError ? 400 : 500,
+        error instanceof CredentialBindingError ||
+          error instanceof StdioOptionsError ||
+          error instanceof ServerConfigValidationError
+          ? 400
+          : 500,
       )
       .json({
         success: false,
         message:
-          error instanceof CredentialBindingError || error instanceof StdioOptionsError
+          error instanceof CredentialBindingError ||
+          error instanceof StdioOptionsError ||
+          error instanceof ServerConfigValidationError
             ? error.message
             : 'Internal server error',
       });
@@ -822,7 +834,11 @@ export const batchCreateServers = async (req: Request, res: Response): Promise<v
       try {
         validation = validateServerConfig(name, config);
       } catch (error) {
-        if (!(error instanceof StdioOptionsError)) throw error;
+        if (
+          !(error instanceof StdioOptionsError) &&
+          !(error instanceof ServerConfigValidationError)
+        )
+          throw error;
         validation = { valid: false, message: error.message };
       }
       if (!validation.valid) {
@@ -852,7 +868,10 @@ export const batchCreateServers = async (req: Request, res: Response): Promise<v
           results.push({
             name: serverName,
             success: false,
-            message: 'Only admins can create or modify stdio-based servers',
+            message:
+              normalizedConfig.oauth?.allowInsecureTokenEndpoint === true
+                ? 'Only admins can create or modify servers allowing HTTP OAuth token endpoints'
+                : 'Only admins can create or modify stdio-based servers',
           });
           failureCount++;
           continue;
@@ -1124,7 +1143,11 @@ export const updateServer = async (req: Request, res: Response): Promise<void> =
       return;
     }
 
-    if (!ensureNonAdminCanManageConfig(req, res, normalizedConfig)) {
+    if (
+      (existingServer.oauth?.allowInsecureTokenEndpoint === true &&
+        !ensureNonAdminCanManageConfig(req, res, existingServer)) ||
+      !ensureNonAdminCanManageConfig(req, res, normalizedConfig)
+    ) {
       return;
     }
 
@@ -1314,12 +1337,18 @@ export const updateServer = async (req: Request, res: Response): Promise<void> =
   } catch (error) {
     res
       .status(
-        error instanceof CredentialBindingError || error instanceof StdioOptionsError ? 400 : 500,
+        error instanceof CredentialBindingError ||
+          error instanceof StdioOptionsError ||
+          error instanceof ServerConfigValidationError
+          ? 400
+          : 500,
       )
       .json({
         success: false,
         message:
-          error instanceof CredentialBindingError || error instanceof StdioOptionsError
+          error instanceof CredentialBindingError ||
+          error instanceof StdioOptionsError ||
+          error instanceof ServerConfigValidationError
             ? error.message
             : 'Internal server error',
       });
