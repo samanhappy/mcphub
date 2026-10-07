@@ -17,6 +17,17 @@ const VALID_OIDC_PROMPTS = new Set<string>([
   'login consent',
 ]);
 
+export type SsoProviderName = 'google' | 'github' | 'oidc';
+
+// SSO providers whose Better Auth handler this process mounted at startup.
+// Providers are registered once, when `src/betterAuth.ts` loads, so one enabled
+// later in Settings has no working sign-in route until a restart.
+let mountedSsoProviders: ReadonlySet<SsoProviderName> = new Set();
+
+export const setMountedSsoProviders = (providers: Iterable<SsoProviderName>): void => {
+  mountedSsoProviders = new Set(providers);
+};
+
 export interface BetterAuthRuntimeConfig {
   enabled: boolean;
   basePath: string;
@@ -24,7 +35,8 @@ export interface BetterAuthRuntimeConfig {
   disableAutoCreate: boolean;
   /**
    * Username/password login is refused. Only ever true while an SSO provider is
-   * enabled, so the switch cannot leave a deployment without any way to log in.
+   * enabled and its sign-in route is mounted, so the switch cannot leave a
+   * deployment without any way to log in.
    */
   disablePasswordLogin: boolean;
   providers: {
@@ -318,10 +330,17 @@ export const resolveBetterAuthRuntimeConfig = (
     false,
   );
 
+  // Counts only a provider that is enabled now and was mounted at startup: one
+  // enabled in Settings since then shows a sign-in button with no route behind it
+  const ssoSignInAvailable =
+    (googleEnabled && mountedSsoProviders.has('google')) ||
+    (githubEnabled && mountedSsoProviders.has('github')) ||
+    (oidcEnabled && mountedSsoProviders.has('oidc'));
+
   // The env var wins in both directions, so it is also the recovery switch when
   // the identity provider is unavailable
   const disablePasswordLogin =
-    anyProviderEnabled &&
+    ssoSignInAvailable &&
     resolveBooleanSetting(
       process.env.BETTER_AUTH_DISABLE_PASSWORD_LOGIN,
       betterAuthSettings.disablePasswordLogin,

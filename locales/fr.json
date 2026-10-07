@@ -859,7 +859,7 @@
     "enableBetterAuth": "Activer Better Auth",
     "enableBetterAuthDescription": "Activez la connexion sociale et OIDC lorsque les variables d'environnement requises sont configurées.",
     "disablePasswordLogin": "Désactiver la connexion par mot de passe",
-    "disablePasswordLoginDescription": "N'autoriser la connexion que via les fournisseurs SSO : le formulaire nom d'utilisateur/mot de passe et POST /api/auth/login sont désactivés. Ne s'applique que si au moins un fournisseur est activé. BETTER_AUTH_DISABLE_PASSWORD_LOGIN prime sur ce réglage ; le mettre à false permet de se reconnecter si le fournisseur d'identité est indisponible.",
+    "disablePasswordLoginDescription": "N'autoriser la connexion que via les fournisseurs SSO : le formulaire nom d'utilisateur/mot de passe et POST /api/auth/login sont désactivés. Ne s'applique que si au moins un fournisseur est activé et l'était déjà au démarrage de l'application. BETTER_AUTH_DISABLE_PASSWORD_LOGIN prime sur ce réglage ; le mettre à false permet de se reconnecter si le fournisseur d'identité est indisponible.",
     "betterAuthBaseUrl": "URL de base",
     "betterAuthBaseUrlDescription": "URL de base publique utilisée pour construire les URI de redirection Better Auth. Si vide, l'URL de base d'installation est utilisée ; la variable d'environnement BETTER_AUTH_URL est prioritaire.",
     "betterAuthBasePath": "Chemin de base d'authentification",

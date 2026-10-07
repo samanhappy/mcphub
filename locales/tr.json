@@ -858,7 +858,7 @@
     "enableBetterAuth": "Better Auth'u etkinleştir",
     "enableBetterAuthDescription": "Gerekli ortam değişkenleri yapılandırıldığında sosyal giriş ve OIDC girişini etkinleştirin.",
     "disablePasswordLogin": "Parola ile girişi devre dışı bırak",
-    "disablePasswordLoginDescription": "Yalnızca SSO sağlayıcıları üzerinden girişe izin verir: kullanıcı adı/parola formu ve POST /api/auth/login kapatılır. Yalnızca en az bir sağlayıcı etkinken geçerlidir. BETTER_AUTH_DISABLE_PASSWORD_LOGIN bu ayarı geçersiz kılar; kimlik sağlayıcı erişilemezse false yapmak yeniden giriş yolunu açar.",
+    "disablePasswordLoginDescription": "Yalnızca SSO sağlayıcıları üzerinden girişe izin verir: kullanıcı adı/parola formu ve POST /api/auth/login kapatılır. Yalnızca en az bir sağlayıcı etkinken ve uygulama başlatıldığında zaten etkinse geçerlidir. BETTER_AUTH_DISABLE_PASSWORD_LOGIN bu ayarı geçersiz kılar; kimlik sağlayıcı erişilemezse false yapmak yeniden giriş yolunu açar.",
     "betterAuthBaseUrl": "Temel URL",
     "betterAuthBaseUrlDescription": "Better Auth yönlendirme URI'lerini oluşturmak için kullanılan genel temel URL. Boş bırakılırsa kurulum temel URL'si kullanılır; BETTER_AUTH_URL ortam değişkeni önceliklidir.",
     "betterAuthBasePath": "Kimlik doğrulama temel yolu",

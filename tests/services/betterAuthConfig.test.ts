@@ -1,3 +1,5 @@
+import type { SsoProviderName } from '../../src/services/betterAuthConfig.js';
+
 const getSystemConfigMock = jest.fn();
 const BETTER_AUTH_ENV_KEYS = [
   'BETTER_AUTH_ENABLED',
@@ -65,8 +67,12 @@ describe('betterAuthConfig', () => {
         },
       },
     });
-    const resolve = async () => {
-      const { getBetterAuthRuntimeConfig } = await import('../../src/services/betterAuthConfig.js');
+    // `mounted`: the providers whose sign-in route was mounted at startup
+    const resolve = async (mounted: SsoProviderName[] = ['oidc']) => {
+      const { getBetterAuthRuntimeConfig, setMountedSsoProviders } = await import(
+        '../../src/services/betterAuthConfig.js'
+      );
+      setMountedSsoProviders(mounted);
       return (await getBetterAuthRuntimeConfig()).disablePasswordLogin;
     };
 
@@ -89,6 +95,26 @@ describe('betterAuthConfig', () => {
       process.env.OIDC_CLIENT_SECRET = '';
       getSystemConfigMock.mockResolvedValue(oidcSettings(true));
       expect(await resolve()).toBe(false);
+    });
+
+    it('is ignored while the enabled provider was not mounted at startup', async () => {
+      getSystemConfigMock.mockResolvedValue(oidcSettings(true));
+      expect(await resolve([])).toBe(false);
+    });
+
+    it('is ignored when the mounted provider has been disabled since startup', async () => {
+      process.env.GITHUB_CLIENT_ID = 'github-client-id';
+      process.env.GITHUB_CLIENT_SECRET = 'github-client-secret';
+      const settings = oidcSettings(true);
+      getSystemConfigMock.mockResolvedValue({
+        auth: {
+          betterAuth: {
+            ...settings.auth.betterAuth,
+            providers: { ...settings.auth.betterAuth.providers, github: { enabled: false } },
+          },
+        },
+      });
+      expect(await resolve(['github'])).toBe(false);
     });
 
     it('is ignored outside database mode, where Better Auth cannot run', async () => {

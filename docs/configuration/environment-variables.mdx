@@ -55,7 +55,7 @@ Provider client credentials remain environment-variable only.
 | `BETTER_AUTH_URL` | Public base URL used to build Better Auth redirect URIs. Takes precedence over `systemConfig.auth.betterAuth.baseUrl` (configurable in Settings → Better Auth) and `systemConfig.install.baseUrl`. Its origin is also auto-added to the trusted origin list. |
 | `BETTER_AUTH_BASE_PATH` | Mount path for the Better Auth handler. Defaults to `/api/auth/better`. |
 | `BETTER_AUTH_TRUSTED_ORIGINS` | Optional additional origins allowed to start Better Auth login flows. Accepts a comma-separated list, whitespace-separated list, or JSON array. When omitted, MCPHub still auto-trusts the origins from `BETTER_AUTH_URL` and `systemConfig.install.baseUrl`. |
-| `BETTER_AUTH_DISABLE_PASSWORD_LOGIN` | Turn off username/password login (`POST /api/auth/login` and the login form) while at least one SSO provider is enabled. Overrides the stored `disablePasswordLogin` setting in both directions, so `false` is also the recovery switch when the identity provider is unavailable. Defaults to `false`. |
+| `BETTER_AUTH_DISABLE_PASSWORD_LOGIN` | Turn off username/password login (`POST /api/auth/login` and the login form) while at least one SSO provider is enabled (and was enabled at startup). Overrides the stored `disablePasswordLogin` setting in both directions, so `false` is also the recovery switch when the identity provider is unavailable. Defaults to `false`. |
 | `BETTER_AUTH_GOOGLE_ENABLED` | Enable or disable the Google provider after credentials are present. Defaults to `true`. |
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Google OAuth app credentials. |
 | `BETTER_AUTH_GITHUB_ENABLED` | Enable or disable the GitHub provider after credentials are present. Defaults to `true`. |

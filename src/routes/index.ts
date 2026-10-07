@@ -176,7 +176,10 @@ import {
 } from '../controllers/templateController.js';
 import { auth } from '../middlewares/auth.js';
 import { requireAdminMiddleware } from '../utils/requireAdmin.js';
-import { getBetterAuthRuntimeConfig } from '../services/betterAuthConfig.js';
+import {
+  getBetterAuthRuntimeConfig,
+  setMountedSsoProviders,
+} from '../services/betterAuthConfig.js';
 import {
   authAttemptRateLimiter,
   authRegistrationRateLimiter,
@@ -197,14 +200,15 @@ export const initRoutes = async (app: express.Application): Promise<void> => {
   const betterAuthConfig = await getBetterAuthRuntimeConfig();
 
   if (betterAuthConfig.enabled && !isTestEnv) {
-    const [{ auth: betterAuth, ensureBetterAuthSchema }, { toNodeHandler }] = await Promise.all([
-      import('../betterAuth.js'),
-      import('better-auth/node'),
-    ]);
+    const [
+      { auth: betterAuth, ensureBetterAuthSchema, registeredSsoProviders },
+      { toNodeHandler },
+    ] = await Promise.all([import('../betterAuth.js'), import('better-auth/node')]);
     await ensureBetterAuthSchema();
     const betterAuthPath = `${config.basePath}${betterAuthConfig.basePath}`;
     app.all(`${betterAuthPath}`, toNodeHandler(betterAuth));
     app.all(`${betterAuthPath}/*`, toNodeHandler(betterAuth));
+    setMountedSsoProviders(registeredSsoProviders);
   }
 
   // Health check endpoint (no auth required, accessible at /health)

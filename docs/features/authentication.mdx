@@ -146,7 +146,7 @@ Local OIDC login follows the same mapping rule as GitHub / Google login: MCPHub 
 
 To allow sign-in only through the SSO providers, turn on **Disable password login** in Settings → Better Auth, or set `systemConfig.auth.betterAuth.disablePasswordLogin: true`. The login page then shows only the provider buttons, and `POST /api/auth/login` answers `403`. Unlike the other Better Auth settings, it takes effect without a restart.
 
-- **No lockout:** it applies only while at least one provider is actually enabled (Better Auth on, database mode, credentials present). Otherwise password login stays available.
+- **No lockout:** it applies only while at least one provider is actually enabled (Better Auth on, database mode, credentials present) and was enabled when MCPHub started, since a provider's sign-in route is set up only at startup. Otherwise password login stays available: after enabling a new provider, restart MCPHub before the switch applies.
 - **Recovery:** `BETTER_AUTH_DISABLE_PASSWORD_LOGIN` overrides the stored setting in both directions. If the identity provider is unavailable, set it to `false` and restart to sign in with a local password again. Keep a strong password on the local admin for that case.
 - **Scripts and the CLI** cannot use the password login while it is disabled. Use a system-level bearer key with access type `all`, which authenticates the management API (`mcphub config set-token <key> --bearer` for the CLI).
 - Tokens issued by earlier password logins stay valid until they expire. Changing a local password still works, so the recovery password can be rotated.

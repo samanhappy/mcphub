@@ -860,7 +860,7 @@
     "enableBetterAuth": "Enable Better Auth",
     "enableBetterAuthDescription": "Enable social and OIDC login when the required environment variables are configured.",
     "disablePasswordLogin": "Disable password login",
-    "disablePasswordLoginDescription": "Only allow sign-in through the SSO providers: the username/password form and POST /api/auth/login are turned off. Takes effect only while at least one provider is enabled. BETTER_AUTH_DISABLE_PASSWORD_LOGIN overrides this setting, and setting it to false is the way back in if the identity provider is unavailable.",
+    "disablePasswordLoginDescription": "Only allow sign-in through the SSO providers: the username/password form and POST /api/auth/login are turned off. Takes effect only while at least one provider is enabled and was already enabled when the application started. BETTER_AUTH_DISABLE_PASSWORD_LOGIN overrides this setting, and setting it to false is the way back in if the identity provider is unavailable.",
     "betterAuthBaseUrl": "Base URL",
     "betterAuthBaseUrlDescription": "Public base URL used to build Better Auth redirect URIs. Falls back to the install base URL when empty; the BETTER_AUTH_URL environment variable takes precedence.",
     "betterAuthBasePath": "Auth base path",
