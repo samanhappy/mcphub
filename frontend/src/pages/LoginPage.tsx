@@ -37,6 +37,8 @@ const LoginPage: React.FC = () => {
   const [socialLoading, setSocialLoading] = useState<SocialProvider | null>(null);
   const [socialError, setSocialError] = useState<string | null>(null);
   const [betterAuthBasePath, setBetterAuthBasePath] = useState<string | undefined>(undefined);
+  // Set from the public config: only SSO sign-in is offered
+  const [passwordLoginDisabled, setPasswordLoginDisabled] = useState(false);
   const [socialProviders, setSocialProviders] = useState({
     google: false,
     github: false,
@@ -116,6 +118,7 @@ const LoginPage: React.FC = () => {
         return;
       }
       setBetterAuthBasePath(betterAuth.basePath);
+      setPasswordLoginDisabled(betterAuth.disablePasswordLogin === true);
       setOidcProviderId(betterAuth.providers?.oidc?.providerId || 'oidc');
       setSocialProviders({
         google: betterAuth.providers?.google?.enabled === true,
@@ -290,87 +293,91 @@ const LoginPage: React.FC = () => {
               boxShadow: '0 1px 2px rgba(0,0,0,0.02)',
             }}
           >
-            <form className="space-y-3" onSubmit={handleSubmit}>
-              <div>
-                <label
-                  htmlFor="username"
-                  className="hub-sect block"
-                  style={{ marginBottom: 6 }}
-                >
-                  {t('auth.username')}
-                </label>
-                <input
-                  id="username"
-                  name="username"
-                  type="text"
-                  autoComplete="username"
-                  required
-                  className="hub-input"
-                  placeholder={t('auth.username')}
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                />
-              </div>
-              <div>
-                <label
-                  htmlFor="password"
-                  className="hub-sect block"
-                  style={{ marginBottom: 6 }}
-                >
-                  {t('auth.password')}
-                </label>
-                <input
-                  id="password"
-                  name="password"
-                  type="password"
-                  autoComplete="current-password"
-                  required
-                  className="hub-input"
-                  placeholder={t('auth.password')}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                />
-              </div>
-
-              {error && (
-                <div
-                  className="flex items-center gap-2"
-                  style={{
-                    padding: '8px 10px',
-                    borderRadius: 7,
-                    border: '1px solid oklch(0.85 0.1 25)',
-                    background: 'oklch(0.97 0.03 25)',
-                    color: 'oklch(0.4 0.18 25)',
-                    fontSize: 12.5,
-                  }}
-                >
-                  <AlertCircle size={13} className="flex-shrink-0" />
-                  <span>{error}</span>
+            {!passwordLoginDisabled && (
+              <form className="space-y-3" onSubmit={handleSubmit}>
+                <div>
+                  <label
+                    htmlFor="username"
+                    className="hub-sect block"
+                    style={{ marginBottom: 6 }}
+                  >
+                    {t('auth.username')}
+                  </label>
+                  <input
+                    id="username"
+                    name="username"
+                    type="text"
+                    autoComplete="username"
+                    required
+                    className="hub-input"
+                    placeholder={t('auth.username')}
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                  />
                 </div>
-              )}
+                <div>
+                  <label
+                    htmlFor="password"
+                    className="hub-sect block"
+                    style={{ marginBottom: 6 }}
+                  >
+                    {t('auth.password')}
+                  </label>
+                  <input
+                    id="password"
+                    name="password"
+                    type="password"
+                    autoComplete="current-password"
+                    required
+                    className="hub-input"
+                    placeholder={t('auth.password')}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                  />
+                </div>
 
-              <button
-                type="submit"
-                disabled={loading}
-                className="hub-btn primary w-full justify-center"
-                style={{ height: 34 }}
-              >
-                {loading ? t('auth.loggingIn') : t('auth.login')}
-              </button>
-            </form>
+                {error && (
+                  <div
+                    className="flex items-center gap-2"
+                    style={{
+                      padding: '8px 10px',
+                      borderRadius: 7,
+                      border: '1px solid oklch(0.85 0.1 25)',
+                      background: 'oklch(0.97 0.03 25)',
+                      color: 'oklch(0.4 0.18 25)',
+                      fontSize: 12.5,
+                    }}
+                  >
+                    <AlertCircle size={13} className="flex-shrink-0" />
+                    <span>{error}</span>
+                  </div>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="hub-btn primary w-full justify-center"
+                  style={{ height: 34 }}
+                >
+                  {loading ? t('auth.loggingIn') : t('auth.login')}
+                </button>
+              </form>
+            )}
 
             {(socialProviders.google || socialProviders.github || socialProviders.oidc) && (
-              <div className="mt-5 space-y-3">
-                <div className="flex items-center gap-3">
-                  <div className="h-px flex-1" style={{ background: 'var(--hub-line)' }} />
-                  <span
-                    className="hub-sect"
-                    style={{ textTransform: 'uppercase', letterSpacing: '0.08em' }}
-                  >
-                    {t('auth.orContinue')}
-                  </span>
-                  <div className="h-px flex-1" style={{ background: 'var(--hub-line)' }} />
-                </div>
+              <div className={passwordLoginDisabled ? 'space-y-3' : 'mt-5 space-y-3'}>
+                {!passwordLoginDisabled && (
+                  <div className="flex items-center gap-3">
+                    <div className="h-px flex-1" style={{ background: 'var(--hub-line)' }} />
+                    <span
+                      className="hub-sect"
+                      style={{ textTransform: 'uppercase', letterSpacing: '0.08em' }}
+                    >
+                      {t('auth.orContinue')}
+                    </span>
+                    <div className="h-px flex-1" style={{ background: 'var(--hub-line)' }} />
+                  </div>
+                )}
 
                 {socialError && (
                   <div

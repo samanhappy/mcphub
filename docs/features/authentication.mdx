@@ -110,6 +110,7 @@ Provider credentials remain environment-variable only. Required variables (see `
 - `BETTER_AUTH_URL` — public base URL of MCPHub (used to build redirect URIs).
 - `BETTER_AUTH_BASE_PATH` — optional mount path override for the Better Auth handler.
 - `BETTER_AUTH_TRUSTED_ORIGINS` — optional extra trusted origins (comma-separated, whitespace-separated, or JSON array).
+- `BETTER_AUTH_DISABLE_PASSWORD_LOGIN` — turn off username/password login while an SSO provider is enabled (see [SSO-only sign-in](#sso-only-sign-in)).
 - `BETTER_AUTH_GOOGLE_ENABLED` — enable / disable Google login when credentials are present.
 - `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` — for Google login.
 - `BETTER_AUTH_GITHUB_ENABLED` — enable / disable GitHub login when credentials are present.
@@ -140,6 +141,15 @@ If the dashboard runs behind a different public origin, set `BETTER_AUTH_TRUSTED
 When enabled, Better Auth mounts at `${BASE_PATH}${betterAuthConfig.basePath}` (default `/api/auth/better`). `BETTER_AUTH_BASE_PATH` overrides the stored `betterAuth.basePath` value at startup. A valid Better Auth session cookie counts as authentication for the dashboard API. The mapped MCPHub user is admin only if a local user with the same username exists and is marked admin.
 
 Local OIDC login follows the same mapping rule as GitHub / Google login: MCPHub resolves a local username from the Better Auth session (`email ?? name ?? id`). If that username does not exist yet, MCPHub auto-creates a **non-admin** local user. OIDC login never auto-promotes a user to admin.
+
+### SSO-only sign-in
+
+To allow sign-in only through the SSO providers, turn on **Disable password login** in Settings → Better Auth, or set `systemConfig.auth.betterAuth.disablePasswordLogin: true`. The login page then shows only the provider buttons, and `POST /api/auth/login` answers `403`. Unlike the other Better Auth settings, it takes effect without a restart.
+
+- **No lockout:** it applies only while at least one provider is actually enabled (Better Auth on, database mode, credentials present) and was enabled when MCPHub started, since a provider's sign-in route is set up only at startup. Otherwise password login stays available: after enabling a new provider, restart MCPHub before the switch applies.
+- **Recovery:** `BETTER_AUTH_DISABLE_PASSWORD_LOGIN` overrides the stored setting in both directions. If the identity provider is unavailable, set it to `false` and restart to sign in with a local password again. Keep a strong password on the local admin for that case.
+- **Scripts and the CLI** cannot use the password login while it is disabled. Use a system-level bearer key with access type `all`, which authenticates the management API (`mcphub config set-token <key> --bearer` for the CLI).
+- Tokens issued by earlier password logins stay valid until they expire. Changing a local password still works, so the recovery password can be rotated.
 
 ## Read-only mode
 

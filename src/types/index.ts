@@ -216,6 +216,7 @@ export interface BetterAuthConfig {
   basePath?: string; // Base path to mount Better Auth handler
   trustedOrigins?: string[]; // Explicitly trusted origins for social/OIDC login requests
   disableAutoCreate?: boolean; // When true, SSO login will not auto-create new users
+  disablePasswordLogin?: boolean; // When true and an SSO provider is enabled, username/password login is refused
   providers?: {
     google?: BetterAuthProviderToggle;
     github?: BetterAuthProviderToggle;

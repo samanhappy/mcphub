@@ -861,6 +861,8 @@
     "betterAuthEnvNote": "客户端 ID 和密钥仍然来自环境变量。修改 Better Auth 设置后可能需要重启应用；同时，安装配置中的基础地址来源会自动加入受信任来源。",
     "enableBetterAuth": "启用 Better Auth",
     "enableBetterAuthDescription": "当所需环境变量配置完成后，启用社交登录和 OIDC 登录。",
+    "disablePasswordLogin": "禁用密码登录",
+    "disablePasswordLoginDescription": "仅允许通过 SSO 提供商登录：用户名/密码表单和 POST /api/auth/login 将被关闭。仅在至少启用一个提供商且应用启动时已启用时生效。BETTER_AUTH_DISABLE_PASSWORD_LOGIN 优先于此设置；当身份提供商不可用时，将其设为 false 即可恢复登录。",
     "betterAuthBaseUrl": "基础地址",
     "betterAuthBaseUrlDescription": "用于生成 Better Auth 回调 URL 的公网访问地址。留空时回退到安装配置中的基础地址；BETTER_AUTH_URL 环境变量优先级更高。",
     "betterAuthBasePath": "认证基础路径",
@@ -1155,6 +1157,7 @@
     "errors": {
       "readonly": "演示环境无法修改数据",
       "invalid_credentials": "用户名或密码错误",
+      "password_login_disabled": "已禁用密码登录。请使用 SSO 登录，或使用 Bearer 密钥访问 API。",
       "serverNameRequired": "服务器名称是必需的",
       "serverConfigRequired": "服务器配置是必需的",
       "serverConfigInvalid": "服务器配置必须包含 URL、OpenAPI 规范 URL 或模式，或者带参数的命令",

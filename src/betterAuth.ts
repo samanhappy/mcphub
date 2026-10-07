@@ -6,6 +6,7 @@ import defaultConfig, { loadSettings } from './config/index.js';
 import {
   resolveBetterAuthBaseUrl,
   resolveBetterAuthRuntimeConfig,
+  SsoProviderName,
 } from './services/betterAuthConfig.js';
 import { getCachedSystemConfig, isDatabaseModeEnabled } from './utils/systemConfigCache.js';
 import { logger } from './utils/logger.js';
@@ -27,6 +28,8 @@ const systemConfig = resolveSystemConfig();
 const runtimeConfig = resolveBetterAuthRuntimeConfig(systemConfig);
 const socialProviders: Record<string, { clientId: string; clientSecret: string }> = {};
 const plugins: any[] = [];
+// The providers this auth instance can sign in with; fixed for the process lifetime
+export const registeredSsoProviders: SsoProviderName[] = [];
 if (
   runtimeConfig.providers.google.enabled &&
   process.env.GOOGLE_CLIENT_ID &&
@@ -36,6 +39,7 @@ if (
     clientId: process.env.GOOGLE_CLIENT_ID,
     clientSecret: process.env.GOOGLE_CLIENT_SECRET,
   };
+  registeredSsoProviders.push('google');
 }
 if (
   runtimeConfig.providers.github.enabled &&
@@ -46,6 +50,7 @@ if (
     clientId: process.env.GITHUB_CLIENT_ID,
     clientSecret: process.env.GITHUB_CLIENT_SECRET,
   };
+  registeredSsoProviders.push('github');
 }
 if (
   runtimeConfig.providers.oidc.enabled &&
@@ -81,6 +86,7 @@ if (
       ],
     }),
   );
+  registeredSsoProviders.push('oidc');
 }
 
 const trimTrailingSlashes = (value: string): string => {

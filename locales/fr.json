@@ -858,6 +858,8 @@
     "betterAuthEnvNote": "Les identifiants et secrets client proviennent toujours des variables d'environnement. Modifier les paramètres Better Auth peut nécessiter un redémarrage de l'application, et l'origine de l'URL de base d'installation est ajoutée automatiquement aux origines approuvées.",
     "enableBetterAuth": "Activer Better Auth",
     "enableBetterAuthDescription": "Activez la connexion sociale et OIDC lorsque les variables d'environnement requises sont configurées.",
+    "disablePasswordLogin": "Désactiver la connexion par mot de passe",
+    "disablePasswordLoginDescription": "N'autoriser la connexion que via les fournisseurs SSO : le formulaire nom d'utilisateur/mot de passe et POST /api/auth/login sont désactivés. Ne s'applique que si au moins un fournisseur est activé et l'était déjà au démarrage de l'application. BETTER_AUTH_DISABLE_PASSWORD_LOGIN prime sur ce réglage ; le mettre à false permet de se reconnecter si le fournisseur d'identité est indisponible.",
     "betterAuthBaseUrl": "URL de base",
     "betterAuthBaseUrlDescription": "URL de base publique utilisée pour construire les URI de redirection Better Auth. Si vide, l'URL de base d'installation est utilisée ; la variable d'environnement BETTER_AUTH_URL est prioritaire.",
     "betterAuthBasePath": "Chemin de base d'authentification",
@@ -1151,6 +1153,7 @@
     "errors": {
       "readonly": "Lecture seule pour l'environnement de démonstration",
       "invalid_credentials": "Nom d'utilisateur ou mot de passe invalide",
+      "password_login_disabled": "La connexion par mot de passe est désactivée. Connectez-vous via SSO, ou utilisez une clé bearer pour l'accès API.",
       "serverNameRequired": "Le nom du serveur est requis",
       "serverConfigRequired": "La configuration du serveur est requise",
       "serverConfigInvalid": "La configuration du serveur doit inclure une URL, une URL de spécification OpenAPI ou un schéma, ou une commande avec des arguments",

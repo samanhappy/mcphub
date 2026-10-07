@@ -3588,6 +3588,24 @@ const SettingsPage: React.FC = () => {
                 />
               </div>
 
+              <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-md">
+                <div>
+                  <h3 className="font-medium text-gray-700">
+                    {t('settings.disablePasswordLogin')}
+                  </h3>
+                  <p className="text-sm text-gray-500">
+                    {t('settings.disablePasswordLoginDescription')}
+                  </p>
+                </div>
+                <Switch
+                  disabled={loading}
+                  checked={betterAuthConfig.disablePasswordLogin}
+                  onCheckedChange={(checked) =>
+                    handleBetterAuthToggle({ disablePasswordLogin: checked })
+                  }
+                />
+              </div>
+
               <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-md">
                 <div className="mb-2">
                   <h3 className="font-medium text-gray-700">

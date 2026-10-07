@@ -221,8 +221,25 @@ jest.mock('../../src/middlewares/auth.js', () => ({
   auth: authMiddleware,
 }));
 
+const mockGetBetterAuthRuntimeConfig = jest.fn(() => ({
+  enabled: false,
+  basePath: '/better-auth',
+}));
+const mockSetMountedSsoProviders = jest.fn();
+
 jest.mock('../../src/services/betterAuthConfig.js', () => ({
-  getBetterAuthRuntimeConfig: () => ({ enabled: false, basePath: '/better-auth' }),
+  getBetterAuthRuntimeConfig: mockGetBetterAuthRuntimeConfig,
+  setMountedSsoProviders: mockSetMountedSsoProviders,
+}));
+
+jest.mock('../../src/betterAuth.js', () => ({
+  auth: {},
+  ensureBetterAuthSchema: jest.fn(async () => undefined),
+  registeredSsoProviders: ['oidc'],
+}));
+
+jest.mock('better-auth/node', () => ({
+  toNodeHandler: jest.fn(() => jest.fn()),
 }));
 
 import {
@@ -405,5 +422,24 @@ describe('initRoutes authenticated API rate limiting', () => {
     expect(findAppRoute(app, 'get', '/api/openapi.yaml')).toBeDefined();
     expect(findAppRoute(app, 'get', '/api/:name/openapi.json')).toBeDefined();
     expect(findAppRoute(app, 'get', '/api/:name/openapi.yaml')).toBeDefined();
+  });
+
+  it('records the Better Auth providers as mounted once their handler is mounted', async () => {
+    mockGetBetterAuthRuntimeConfig.mockReturnValueOnce({
+      enabled: true,
+      basePath: '/api/auth/better',
+    });
+    // initRoutes never mounts Better Auth under a test runner
+    const { JEST_WORKER_ID, NODE_ENV } = process.env;
+    delete process.env.JEST_WORKER_ID;
+    process.env.NODE_ENV = 'production';
+    try {
+      await initRoutes(express());
+    } finally {
+      process.env.JEST_WORKER_ID = JEST_WORKER_ID;
+      process.env.NODE_ENV = NODE_ENV;
+    }
+
+    expect(mockSetMountedSsoProviders).toHaveBeenCalledWith(['oidc']);
   });
 });
