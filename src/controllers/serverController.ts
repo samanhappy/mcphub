@@ -1,6 +1,6 @@
 import {
+  copyCredentialBindings,
   deleteCredentialBindings,
-  renameCredentialBindings,
 } from '../services/credentialBindingService.js';
 import { StdioOptionsError } from '../utils/stdioOptions.js';
 import { CredentialBindingError } from '../utils/credentialTemplate.js';
@@ -1172,9 +1172,26 @@ export const updateServer = async (req: Request, res: Response): Promise<void> =
       // Read the cached tool list before the runtime under the old name is closed
       const isBareToolName = bareToolNameCheck(name);
 
+      // Personal credential bindings follow a plain rename. A rename that also
+      // changes the connection (target, headers, credential slots, ...) drops
+      // them, so users bind again against the new definition. They are copied
+      // before the definition moves, so a binding that cannot be copied fails
+      // the request with the server, its references and every binding unchanged.
+      const keepBindings = !hasConnectionRelevantChange(existingServer, normalizedConfig);
+      if (keepBindings) {
+        await copyCredentialBindings(name, targetName);
+      }
+
       // Rename the server
-      const renamed = await serverDao.rename(name, targetName);
+      let renamed: boolean;
+      try {
+        renamed = await serverDao.rename(name, targetName);
+      } catch (error) {
+        if (keepBindings) await deleteCredentialBindings({ serverName: targetName });
+        throw error;
+      }
       if (!renamed) {
+        if (keepBindings) await deleteCredentialBindings({ serverName: targetName });
         res.status(404).json({
           success: false,
           message: 'Server not found',
@@ -1189,14 +1206,8 @@ export const updateServer = async (req: Request, res: Response): Promise<void> =
       // process tree is orphaned and leaks until the process restarts.
       closeServer(name);
 
-      // Personal credential bindings follow a plain rename. A rename that also
-      // changes the connection (target, headers, credential slots, ...) drops
-      // them, so users bind again against the new definition.
-      if (hasConnectionRelevantChange(existingServer, normalizedConfig)) {
-        await deleteCredentialBindings({ serverName: name });
-      } else {
-        await renameCredentialBindings(name, targetName);
-      }
+      // Kept bindings now have their copies under the new name.
+      await deleteCredentialBindings({ serverName: name });
 
       // Update references in groups
       const groupDao = getGroupDao();

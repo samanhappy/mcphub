@@ -8,7 +8,7 @@ import {
   saveCredentialBinding,
   resolveCredentialBinding,
   deleteCredentialBindings,
-  renameCredentialBindings,
+  copyCredentialBindings,
   credentialBindingEvents,
   missingCredentialError,
 } from '../../src/services/credentialBindingService.js';
@@ -143,12 +143,13 @@ test('re-encrypts bindings under the new name when a server is renamed', async (
   const listener = (filter: unknown) => invalidated.push(filter);
   credentialBindingEvents.on('invalidate', listener);
   try {
-    await renameCredentialBindings('old', 'new');
+    await copyCredentialBindings('old', 'new');
   } finally {
     credentialBindingEvents.off('invalidate', listener);
   }
 
-  expect(await dao.listUsernames('old')).toEqual([]);
+  // The originals stay until the caller has renamed the server
+  expect((await dao.listUsernames('old')).sort()).toEqual(['alice', 'bob']);
   expect((await dao.listUsernames('new')).sort()).toEqual(['alice', 'bob']);
   for (const username of ['alice', 'bob'])
     expect((await resolveCredentialBinding('new', username, stdio)).config.env?.PERSONAL_KEY).toBe(
@@ -160,25 +161,70 @@ test('re-encrypts bindings under the new name when a server is renamed', async (
   const moved = (await dao.get('new', 'alice'))!;
   expect(moved.updatedAt).toBe(before.updatedAt);
   expect(moved.encryptedValues).not.toBe(before.encryptedValues);
-  // Still bound to the server name: the moved ciphertext does not open under the old one
+  // Still bound to the server name: the copied ciphertext does not open under the old one
   await dao.save({ ...moved, serverName: 'old' });
   await expect(resolveCredentialBinding('old', 'alice', stdio)).rejects.toThrow('Unable to unlock');
-  expect(invalidated).toEqual([{ serverName: 'old' }, { serverName: 'new' }]);
+  expect(invalidated).toEqual([{ serverName: 'new' }]);
 });
 
-test('drops a binding that cannot be decrypted when a server is renamed', async () => {
+test('fails a rename without writing when a binding cannot be decrypted', async () => {
   const dao = new CredentialBindingDaoImpl();
   await saveCredentialBinding('old', 'alice', stdio, { 'env.PERSONAL_KEY': 'alice-secret' });
   // Alice's ciphertext under Bob's name fails authentication
   await dao.save({ ...(await dao.get('old', 'alice'))!, username: 'bob' });
 
-  await renameCredentialBindings('old', 'new');
+  await expect(copyCredentialBindings('old', 'new')).rejects.toThrow(
+    "the credential binding of user 'bob' cannot be decrypted",
+  );
 
-  expect(await dao.listUsernames('old')).toEqual([]);
-  expect(await dao.listUsernames('new')).toEqual(['alice']);
+  expect(await dao.listUsernames('new')).toEqual([]);
+  expect((await dao.listUsernames('old')).sort()).toEqual(['alice', 'bob']);
+});
+
+test('keeps the ciphertext when the encryption key is unavailable during a rename', async () => {
+  const dao = new CredentialBindingDaoImpl();
+  await saveCredentialBinding('old', 'alice', stdio, { 'env.PERSONAL_KEY': 'alice-secret' });
+  const stored = (await dao.get('old', 'alice'))!;
+  const key = process.env.MCPHUB_CREDENTIAL_ENCRYPTION_KEY;
+  delete process.env.MCPHUB_CREDENTIAL_ENCRYPTION_KEY;
+
+  await expect(copyCredentialBindings('old', 'new')).rejects.toThrow('key is missing');
+  expect(await dao.get('old', 'alice')).toEqual(stored);
+  expect(await dao.listUsernames('new')).toEqual([]);
+
+  // Restoring the key recovers the binding
+  process.env.MCPHUB_CREDENTIAL_ENCRYPTION_KEY = key;
+  await copyCredentialBindings('old', 'new');
   expect((await resolveCredentialBinding('new', 'alice', stdio)).config.env?.PERSONAL_KEY).toBe(
     'alice-secret',
   );
+});
+
+test('removes partial copies when saving a binding fails during a rename', async () => {
+  const dao = new CredentialBindingDaoImpl();
+  await saveCredentialBinding('old', 'alice', stdio, { 'env.PERSONAL_KEY': 'alice-secret' });
+  await saveCredentialBinding('old', 'bob', stdio, { 'env.PERSONAL_KEY': 'bob-secret' });
+  const save = CredentialBindingDaoImpl.prototype.save;
+  let calls = 0;
+  const spy = jest.spyOn(CredentialBindingDaoImpl.prototype, 'save').mockImplementation(function (
+    this: CredentialBindingDaoImpl,
+    binding,
+  ) {
+    if (++calls === 2) return Promise.reject(new Error('disk full'));
+    return save.call(this, binding);
+  });
+  try {
+    await expect(copyCredentialBindings('old', 'new')).rejects.toThrow('disk full');
+  } finally {
+    spy.mockRestore();
+  }
+
+  expect(calls).toBe(2);
+  expect(await dao.listUsernames('new')).toEqual([]);
+  for (const username of ['alice', 'bob'])
+    expect((await resolveCredentialBinding('old', username, stdio)).config.env?.PERSONAL_KEY).toBe(
+      `${username}-secret`,
+    );
 });
 
 test('generates one private persistent key and reuses it after loading a fresh service', async () => {

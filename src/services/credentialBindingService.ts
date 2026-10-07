@@ -199,12 +199,16 @@ export const deleteCredentialBindings = async (filter: {
   credentialBindingEvents.emit('invalidate', filter);
 };
 
-// The server name is part of the ciphertext's associated data, so a binding is
-// re-encrypted under the new name rather than moved. One that cannot be
-// decrypted (lost or rotated key) is dropped and logged rather than failing the
-// rename.
-export const renameCredentialBindings = async (oldName: string, newName: string): Promise<void> => {
+// Copies every binding of a server being renamed to the new name. The server
+// name is part of the ciphertext's associated data, so each binding is
+// re-encrypted rather than moved. The originals stay until the caller deletes
+// them after the rename has succeeded. All bindings are decrypted before the
+// first write: if one cannot be (missing, unreadable or wrong key, damaged
+// row), nothing is written and the rename fails, so a recoverable binding is
+// never discarded. A failed save removes the copies already written.
+export const copyCredentialBindings = async (oldName: string, newName: string): Promise<void> => {
   const dao = getCredentialBindingDao();
+  const copies: StoredCredentialBinding[] = [];
   for (const username of await dao.listUsernames(oldName)) {
     const binding = await dao.get(oldName, username);
     if (!binding) continue;
@@ -212,21 +216,28 @@ export const renameCredentialBindings = async (oldName: string, newName: string)
     try {
       values = await decrypt(binding);
     } catch (error) {
-      logger.warn('Dropping a credential binding that cannot be decrypted during a server rename', {
-        serverName: oldName,
-        newName,
-        username,
-        error: error instanceof Error ? error.message : String(error),
-      });
-      continue;
+      throw new CredentialBindingError(
+        `Cannot rename '${oldName}': the credential binding of user '${username}' cannot be decrypted (${error instanceof Error ? error.message : String(error)}). Restore the encryption key, or have the user replace or delete that binding, then rename again`,
+      );
     }
-    await dao.save({
+    copies.push({
       ...binding,
       serverName: newName,
       encryptedValues: await encrypt(newName, username, values),
     });
   }
-  await deleteCredentialBindings({ serverName: oldName });
+  try {
+    for (const copy of copies) await dao.save(copy);
+  } catch (error) {
+    await deleteCredentialBindings({ serverName: newName }).catch((cleanupError) =>
+      logger.error('Failed to remove partial credential binding copies after a failed rename', {
+        serverName: oldName,
+        newName,
+        error: cleanupError instanceof Error ? cleanupError.message : String(cleanupError),
+      }),
+    );
+    throw error;
+  }
   credentialBindingEvents.emit('invalidate', { serverName: newName });
 };
 

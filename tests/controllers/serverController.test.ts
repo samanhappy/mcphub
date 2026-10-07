@@ -63,7 +63,7 @@ const mockGetServersInfo = jest.fn();
 const mockGetCurrentUser = jest.fn();
 const mockDisconnectUpstreamOAuth = jest.fn();
 const mockDeleteCredentialBindings = jest.fn();
-const mockRenameCredentialBindings = jest.fn();
+const mockCopyCredentialBindings = jest.fn();
 
 jest.mock('../../src/dao/DaoFactory.js', () => ({
   getCredentialBindingDao: jest.fn(() => ({ delete: jest.fn().mockResolvedValue(undefined) })),
@@ -122,7 +122,7 @@ jest.mock('../../src/services/userContextService.js', () => ({
 jest.mock('../../src/services/credentialBindingService.js', () => ({
   ...(jest.requireActual('../../src/services/credentialBindingService.js') as object),
   deleteCredentialBindings: jest.fn((...args: unknown[]) => mockDeleteCredentialBindings(...args)),
-  renameCredentialBindings: jest.fn((...args: unknown[]) => mockRenameCredentialBindings(...args)),
+  copyCredentialBindings: jest.fn((...args: unknown[]) => mockCopyCredentialBindings(...args)),
 }));
 
 jest.mock('../../src/services/upstreamOAuthDisconnectService.js', () => ({
@@ -1994,7 +1994,7 @@ describe('serverController - updateServer', () => {
         mockRequest.body.config = { ...credentialServer };
       });
 
-      it('moves the bindings to the new name on a plain rename', async () => {
+      it('copies the bindings before the rename and removes the originals after it', async () => {
         // Database mode reads an unset column back as null
         mockServerDao.findById.mockResolvedValue({
           name: 'test-server',
@@ -2005,8 +2005,39 @@ describe('serverController - updateServer', () => {
 
         await updateServer(mockRequest as Request, mockResponse as Response);
 
-        expect(mockRenameCredentialBindings).toHaveBeenCalledWith('test-server', 'renamed-server');
+        expect(mockCopyCredentialBindings).toHaveBeenCalledWith('test-server', 'renamed-server');
+        expect(mockDeleteCredentialBindings).toHaveBeenCalledTimes(1);
+        expect(mockDeleteCredentialBindings).toHaveBeenCalledWith({ serverName: 'test-server' });
+        expect(mockCopyCredentialBindings.mock.invocationCallOrder[0]).toBeLessThan(
+          mockServerDao.rename.mock.invocationCallOrder[0],
+        );
+        expect(mockServerDao.rename.mock.invocationCallOrder[0]).toBeLessThan(
+          mockDeleteCredentialBindings.mock.invocationCallOrder[0],
+        );
+      });
+
+      it('leaves the server, its references and the bindings untouched when the copy fails', async () => {
+        mockCopyCredentialBindings.mockRejectedValueOnce(new Error('disk full'));
+
+        await updateServer(mockRequest as Request, mockResponse as Response);
+
+        expect(mockResponse.status).toHaveBeenCalledWith(500);
+        expect(mockServerDao.rename).not.toHaveBeenCalled();
+        expect(mockGroupDao.updateServerName).not.toHaveBeenCalled();
+        expect(mockBearerKeyDao.updateServerName).not.toHaveBeenCalled();
         expect(mockDeleteCredentialBindings).not.toHaveBeenCalled();
+        expect(mockAddOrUpdateServer).not.toHaveBeenCalled();
+      });
+
+      it('removes the copies when the server rename itself fails', async () => {
+        mockServerDao.rename.mockRejectedValueOnce(new Error('db unavailable'));
+
+        await updateServer(mockRequest as Request, mockResponse as Response);
+
+        expect(mockResponse.status).toHaveBeenCalledWith(500);
+        expect(mockDeleteCredentialBindings).toHaveBeenCalledTimes(1);
+        expect(mockDeleteCredentialBindings).toHaveBeenCalledWith({ serverName: 'renamed-server' });
+        expect(mockGroupDao.updateServerName).not.toHaveBeenCalled();
       });
 
       it.each([
@@ -2018,7 +2049,7 @@ describe('serverController - updateServer', () => {
         await updateServer(mockRequest as Request, mockResponse as Response);
 
         expect(mockDeleteCredentialBindings).toHaveBeenCalledWith({ serverName: 'test-server' });
-        expect(mockRenameCredentialBindings).not.toHaveBeenCalled();
+        expect(mockCopyCredentialBindings).not.toHaveBeenCalled();
       });
     });
 
