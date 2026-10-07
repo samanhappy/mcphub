@@ -1,4 +1,7 @@
-import { deleteCredentialBindings } from '../services/credentialBindingService.js';
+import {
+  deleteCredentialBindings,
+  renameCredentialBindings,
+} from '../services/credentialBindingService.js';
 import { StdioOptionsError } from '../utils/stdioOptions.js';
 import { CredentialBindingError } from '../utils/credentialTemplate.js';
 import { isDeepStrictEqual } from 'node:util';
@@ -233,7 +236,9 @@ const toConnectionRelevantConfig = (
   const normalized = normalizeServerConfigForPersistence(config) as Record<string, unknown>;
   const picked: Record<string, unknown> = {};
   for (const field of CONNECTION_RELEVANT_CONFIG_FIELDS) {
-    picked[field] = normalized[field];
+    // Database mode reads unset columns (e.g. `proxy`) back as null, while a
+    // request leaves them out; both mean "not set".
+    picked[field] = normalized[field] ?? undefined;
   }
   const comparable = stripUndefinedDeep(picked) as Record<string, unknown>;
   // Treat the default request timeout (60000, the dashboard form default) as
@@ -1183,7 +1188,15 @@ export const updateServer = async (req: Request, res: Response): Promise<void> =
       // rebuilds serverInfos. Without this explicit close the old stdio child
       // process tree is orphaned and leaks until the process restarts.
       closeServer(name);
-      await deleteCredentialBindings({ serverName: name });
+
+      // Personal credential bindings follow a plain rename. A rename that also
+      // changes the connection (target, headers, credential slots, ...) drops
+      // them, so users bind again against the new definition.
+      if (hasConnectionRelevantChange(existingServer, normalizedConfig)) {
+        await deleteCredentialBindings({ serverName: name });
+      } else {
+        await renameCredentialBindings(name, targetName);
+      }
 
       // Update references in groups
       const groupDao = getGroupDao();
@@ -1218,8 +1231,8 @@ export const updateServer = async (req: Request, res: Response): Promise<void> =
       // Drop embeddings stored under the old name so search_tools does not
       // advertise phantom tools; addOrUpdateServer below regenerates them
       // under the new name. A credential server never connects globally, so
-      // its rows come back on the first per-user connect after a user binds
-      // credentials again (the bindings were dropped above), or on a reindex.
+      // its rows come back on the first per-user connect under the new name
+      // (with a moved binding, or after a user binds again), or on a reindex.
       // A failure here must not abort the rename.
       try {
         await removeServerToolEmbeddings(name);

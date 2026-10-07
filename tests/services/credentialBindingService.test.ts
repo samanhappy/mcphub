@@ -8,6 +8,8 @@ import {
   saveCredentialBinding,
   resolveCredentialBinding,
   deleteCredentialBindings,
+  renameCredentialBindings,
+  credentialBindingEvents,
   missingCredentialError,
 } from '../../src/services/credentialBindingService.js';
 import { validateCredentialTemplate } from '../../src/utils/credentialTemplate.js';
@@ -128,6 +130,54 @@ test('authenticates ciphertext against both server and principal', async () => {
   process.env.MCPHUB_CREDENTIAL_ENCRYPTION_KEY = randomBytes(32).toString('base64');
   await expect(resolveCredentialBinding('shared', 'alice', stdio)).rejects.toThrow(
     'Unable to unlock',
+  );
+});
+
+test('re-encrypts bindings under the new name when a server is renamed', async () => {
+  const dao = new CredentialBindingDaoImpl();
+  await saveCredentialBinding('old', 'alice', stdio, { 'env.PERSONAL_KEY': 'alice-secret' });
+  await saveCredentialBinding('old', 'bob', stdio, { 'env.PERSONAL_KEY': 'bob-secret' });
+  await saveCredentialBinding('other', 'alice', stdio, { 'env.PERSONAL_KEY': 'other-secret' });
+  const before = (await dao.get('old', 'alice'))!;
+  const invalidated: unknown[] = [];
+  const listener = (filter: unknown) => invalidated.push(filter);
+  credentialBindingEvents.on('invalidate', listener);
+  try {
+    await renameCredentialBindings('old', 'new');
+  } finally {
+    credentialBindingEvents.off('invalidate', listener);
+  }
+
+  expect(await dao.listUsernames('old')).toEqual([]);
+  expect((await dao.listUsernames('new')).sort()).toEqual(['alice', 'bob']);
+  for (const username of ['alice', 'bob'])
+    expect((await resolveCredentialBinding('new', username, stdio)).config.env?.PERSONAL_KEY).toBe(
+      `${username}-secret`,
+    );
+  expect((await resolveCredentialBinding('other', 'alice', stdio)).config.env?.PERSONAL_KEY).toBe(
+    'other-secret',
+  );
+  const moved = (await dao.get('new', 'alice'))!;
+  expect(moved.updatedAt).toBe(before.updatedAt);
+  expect(moved.encryptedValues).not.toBe(before.encryptedValues);
+  // Still bound to the server name: the moved ciphertext does not open under the old one
+  await dao.save({ ...moved, serverName: 'old' });
+  await expect(resolveCredentialBinding('old', 'alice', stdio)).rejects.toThrow('Unable to unlock');
+  expect(invalidated).toEqual([{ serverName: 'old' }, { serverName: 'new' }]);
+});
+
+test('drops a binding that cannot be decrypted when a server is renamed', async () => {
+  const dao = new CredentialBindingDaoImpl();
+  await saveCredentialBinding('old', 'alice', stdio, { 'env.PERSONAL_KEY': 'alice-secret' });
+  // Alice's ciphertext under Bob's name fails authentication
+  await dao.save({ ...(await dao.get('old', 'alice'))!, username: 'bob' });
+
+  await renameCredentialBindings('old', 'new');
+
+  expect(await dao.listUsernames('old')).toEqual([]);
+  expect(await dao.listUsernames('new')).toEqual(['alice']);
+  expect((await resolveCredentialBinding('new', 'alice', stdio)).config.env?.PERSONAL_KEY).toBe(
+    'alice-secret',
   );
 });
 

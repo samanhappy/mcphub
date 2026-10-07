@@ -62,6 +62,8 @@ const mockUpdateServerInfoVisibility = jest.fn();
 const mockGetServersInfo = jest.fn();
 const mockGetCurrentUser = jest.fn();
 const mockDisconnectUpstreamOAuth = jest.fn();
+const mockDeleteCredentialBindings = jest.fn();
+const mockRenameCredentialBindings = jest.fn();
 
 jest.mock('../../src/dao/DaoFactory.js', () => ({
   getCredentialBindingDao: jest.fn(() => ({ delete: jest.fn().mockResolvedValue(undefined) })),
@@ -115,6 +117,12 @@ jest.mock('../../src/services/userContextService.js', () => ({
       getCurrentUser: mockGetCurrentUser,
     })),
   },
+}));
+
+jest.mock('../../src/services/credentialBindingService.js', () => ({
+  ...(jest.requireActual('../../src/services/credentialBindingService.js') as object),
+  deleteCredentialBindings: jest.fn((...args: unknown[]) => mockDeleteCredentialBindings(...args)),
+  renameCredentialBindings: jest.fn((...args: unknown[]) => mockRenameCredentialBindings(...args)),
 }));
 
 jest.mock('../../src/services/upstreamOAuthDisconnectService.js', () => ({
@@ -1969,6 +1977,49 @@ describe('serverController - updateServer', () => {
       const [, savedConfig] = mockAddOrUpdateServer.mock.calls[0] as [string, any, boolean];
       expect(savedConfig).not.toHaveProperty('tools');
       expect(savedConfig).not.toHaveProperty('prompts');
+    });
+
+    describe('with personal credential bindings', () => {
+      const credentialServer = {
+        type: 'streamable-http',
+        url: 'https://example.com/mcp',
+        enabled: true,
+        owner: 'admin',
+        visibility: 'public',
+        credentialTemplate: [{ target: 'headers', name: 'Authorization' }],
+      };
+
+      beforeEach(() => {
+        mockServerDao.findById.mockResolvedValue({ name: 'test-server', ...credentialServer });
+        mockRequest.body.config = { ...credentialServer };
+      });
+
+      it('moves the bindings to the new name on a plain rename', async () => {
+        // Database mode reads an unset column back as null
+        mockServerDao.findById.mockResolvedValue({
+          name: 'test-server',
+          ...credentialServer,
+          proxy: null,
+        });
+        mockRequest.body.config.description = 'Renamed and described';
+
+        await updateServer(mockRequest as Request, mockResponse as Response);
+
+        expect(mockRenameCredentialBindings).toHaveBeenCalledWith('test-server', 'renamed-server');
+        expect(mockDeleteCredentialBindings).not.toHaveBeenCalled();
+      });
+
+      it.each([
+        ['the URL', { url: 'https://other.example.com/mcp' }],
+        ['the credential slots', { credentialTemplate: [{ target: 'headers', name: 'X-Key' }] }],
+      ])('drops the bindings when the rename also changes %s', async (_label, change) => {
+        Object.assign(mockRequest.body.config, change);
+
+        await updateServer(mockRequest as Request, mockResponse as Response);
+
+        expect(mockDeleteCredentialBindings).toHaveBeenCalledWith({ serverName: 'test-server' });
+        expect(mockRenameCredentialBindings).not.toHaveBeenCalled();
+      });
     });
 
     it('still succeeds when embedding cleanup fails', async () => {

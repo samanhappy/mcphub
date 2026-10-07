@@ -6,6 +6,7 @@ import { getSettingsPath } from '../config/index.js';
 import { getCredentialBindingDao } from '../dao/DaoFactory.js';
 import { RequestContextService } from './requestContextService.js';
 import { getT } from '../utils/i18n.js';
+import { logger } from '../utils/logger.js';
 import type { ServerConfig, StoredCredentialBinding } from '../types/index.js';
 import {
   CredentialBindingError,
@@ -196,6 +197,37 @@ export const deleteCredentialBindings = async (filter: {
 }): Promise<void> => {
   await getCredentialBindingDao().delete(filter);
   credentialBindingEvents.emit('invalidate', filter);
+};
+
+// The server name is part of the ciphertext's associated data, so a binding is
+// re-encrypted under the new name rather than moved. One that cannot be
+// decrypted (lost or rotated key) is dropped and logged rather than failing the
+// rename.
+export const renameCredentialBindings = async (oldName: string, newName: string): Promise<void> => {
+  const dao = getCredentialBindingDao();
+  for (const username of await dao.listUsernames(oldName)) {
+    const binding = await dao.get(oldName, username);
+    if (!binding) continue;
+    let values: Record<string, string>;
+    try {
+      values = await decrypt(binding);
+    } catch (error) {
+      logger.warn('Dropping a credential binding that cannot be decrypted during a server rename', {
+        serverName: oldName,
+        newName,
+        username,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      continue;
+    }
+    await dao.save({
+      ...binding,
+      serverName: newName,
+      encryptedValues: await encrypt(newName, username, values),
+    });
+  }
+  await deleteCredentialBindings({ serverName: oldName });
+  credentialBindingEvents.emit('invalidate', { serverName: newName });
 };
 
 export const resolveCredentialBinding = async (
