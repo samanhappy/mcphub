@@ -35,6 +35,7 @@ import {
 } from './hostedAuthService.js';
 import type { HostedAuthContext } from './hostedAuthService.js';
 import { isHostedModeEnabled } from './hostedMode.js';
+import { authenticateForwardAuthToken } from './forwardAuthService.js';
 import { logger } from '../utils/logger.js';
 
 export interface SessionContext {
@@ -60,6 +61,7 @@ const SESSION_NOT_FOUND_MESSAGE = 'Session not found. Please reinitialize the se
  * authentication method instead of leaving the field blank.
  */
 const OAUTH_AUTH_METHOD_LABEL = 'OAuth';
+const FORWARD_AUTH_METHOD_LABEL = 'Forward auth';
 
 type RehydratableWebStandardTransport = {
   sessionId?: string;
@@ -436,6 +438,25 @@ const validateBearerAuth = async (req: Request): Promise<BearerAuthResult> => {
       }
       throw error;
     }
+  }
+
+  // Forward auth runs before keys and OAuth tokens: a JWT from the configured
+  // issuer either authenticates here or is rejected, with no fallback.
+  const forwardAuthResult = await authenticateForwardAuthToken(presentedToken, systemConfig);
+  if (forwardAuthResult.status === 'rejected') {
+    return { valid: false, reason: 'invalid' };
+  }
+  if (forwardAuthResult.status === 'authenticated') {
+    const requestedUsername = req.params.user;
+    if (requestedUsername && requestedUsername !== forwardAuthResult.user.username) {
+      return { valid: false, reason: 'forbidden' };
+    }
+    logger.log('Authenticated request using forward-auth JWT');
+    return {
+      valid: true,
+      user: forwardAuthResult.user,
+      keyName: FORWARD_AUTH_METHOD_LABEL,
+    };
   }
 
   if (!enableBearerAuth) {

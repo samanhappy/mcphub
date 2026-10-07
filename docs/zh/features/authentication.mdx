@@ -80,6 +80,56 @@ Better Auth 登录成功后，MCPHub 会把会话映射回本地用户：
 - **脚本和 CLI** 在禁用期间无法使用密码登录。请使用访问类型为 `all` 的系统级 Bearer 密钥，它可以访问管理 API（CLI 使用 `mcphub config set-token <key> --bearer`）。
 - 之前通过密码登录签发的令牌在过期前仍然有效。修改本地密码仍然可用，因此可以轮换用于恢复的密码。
 
+## 转发认证（基于 JWKS 验证的网关身份）
+
+当 MCPHub 部署在已完成用户认证的 API 网关或身份感知代理之后时，转发认证允许 MCPHub 信任网关传来的 JWT，用户无需再次登录。MCPHub 会使用身份提供方的 JWKS 自行验证令牌，因此 MCPHub 仍然是安全边界。转发认证**默认关闭**，同时作用于仪表盘 API 和 MCP 传输路由（`/mcp/*`、`/sse/*` 及其用户级路由）。
+
+```json
+"systemConfig": {
+  "auth": {
+    "forwardAuth": {
+      "enabled": true,
+      "mode": "jwks",
+      "jwks": {
+        "uri": "https://idp.example.com/.well-known/jwks.json",
+        "issuer": "https://idp.example.com/",
+        "audience": "mcphub",
+        "algorithms": ["RS256", "ES256"]
+      },
+      "usernameClaim": "preferred_username",
+      "emailClaim": "email",
+      "autoCreate": true
+    }
+  }
+}
+```
+
+JWT 从配置的 Bearer 请求头中读取（默认为 `Authorization: Bearer <jwt>`）。
+
+**验证**
+
+- 令牌使用 `jwks.uri` 进行验证。密钥会被缓存，遇到未知 `kid` 时会重新获取，因此身份提供方轮换密钥无需重启。
+- 始终校验 `iss`、`aud` 和 `exp`；`sub` 与 `exp` 为必需声明。允许 30 秒的时钟偏差。
+- 仅接受非对称算法（`RS*`、`PS*`、`ES*`、`EdDSA`；默认 `RS256` 和 `ES256`）。配置 `HS*` 或 `none` 会使转发认证被禁用。
+- `jwks.uri` 必须使用 `https`（仅 `localhost` 允许 `http`）。`issuer` 和 `audience` 为必填项。配置不完整或无效时，转发认证保持禁用并记录错误日志。
+
+**请求处理**
+
+- 转发认证先于 Bearer 密钥、OAuth 令牌、Better Auth 会话和仪表盘 JWT 进行检查。
+- 非 JWT 令牌，或 `iss` 不是所配置签发方的令牌会被忽略，其他认证方式照常执行。
+- 来自所配置签发方但验证失败（签名错误、已过期、受众错误、算法不允许）或无法映射到用户的令牌会返回 `401`，MCPHub **不会回退**到其他认证方式。
+
+**身份映射**
+
+- 身份由（`iss`、`sub`）确定，以 `forward-auth:` 命名空间存储在用户的 `ssoUserId` 中，与 Better Auth 身份相互隔离。Better Auth 登录不会接管转发认证用户，反之亦然。
+- 首次出现时，MCPHub 会创建一个**非管理员**本地用户。用户名取自 `usernameClaim`，其次为 `emailClaim`，最后为 `sub`。
+- **不会**通过用户名或邮箱关联已有账户。如果用户名或邮箱已属于其他账户（包括 `admin`），请求会返回 `401`。
+- 绑定后，即使用户在身份提供方处改名，本地用户名也不会改变，因为服务器、分组和密钥都引用用户名。
+- 管理员身份始终取自本地用户记录，JWT 中的角色声明会被忽略。
+- 设置 `autoCreate: false` 时，只接受已绑定本地用户的身份。由于不会关联已有账户，这实际上会拒绝所有新身份。
+
+转发认证配置在每次请求时读取，修改后无需重启。每个字段都可以通过环境变量覆盖，参见[环境变量](/zh/configuration/environment-variables)。
+
 ## 身份认证方法
 
 ### 基于环境变量的认证

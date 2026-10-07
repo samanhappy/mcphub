@@ -7,6 +7,7 @@ import { isOAuthServerEnabled } from '../services/oauthServerService.js';
 import { getBearerKeyDao, getSystemConfigDao } from '../dao/index.js';
 import { BearerKey, SystemConfig } from '../types/index.js';
 import { getBetterAuthRuntimeConfig } from '../services/betterAuthConfig.js';
+import { authenticateForwardAuthToken } from '../services/forwardAuthService.js';
 import { safeCompare } from '../utils/safeCompare.js';
 import { getBearerTokenFromHeaders } from '../utils/bearerAuth.js';
 import { logger } from '../utils/logger.js';
@@ -119,6 +120,25 @@ export const auth = async (req: Request, res: Response, next: NextFunction): Pro
     enableGroupNameRoute: true,
     skipAuth: false,
   };
+
+  // Forward auth runs first: a JWT from the configured issuer either
+  // authenticates here or is rejected, and never falls back to other methods.
+  const forwardAuthResult = await authenticateForwardAuthToken(
+    getBearerTokenFromHeaders(req.headers, systemConfig),
+    systemConfig,
+  );
+  if (forwardAuthResult.status === 'rejected') {
+    res.status(401).json({ success: false, message: 'Token is not valid' });
+    return;
+  }
+  if (forwardAuthResult.status === 'authenticated') {
+    (req as any).user = {
+      username: forwardAuthResult.user.username,
+      isAdmin: forwardAuthResult.user.isAdmin || false,
+    };
+    next();
+    return;
+  }
 
   // Check if bearer auth via configured keys can validate this request
   let matchingBearerKey: BearerKey | null;

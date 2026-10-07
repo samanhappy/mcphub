@@ -150,6 +150,9 @@ importers:
       ipaddr.js:
         specifier: ^2.4.0
         version: 2.4.0
+      jose:
+        specifier: ^6.2.4
+        version: 6.2.4
       js-yaml:
         specifier: 4.3.2
         version: 4.3.2

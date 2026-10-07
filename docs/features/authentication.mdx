@@ -151,6 +151,56 @@ To allow sign-in only through the SSO providers, turn on **Disable password logi
 - **Scripts and the CLI** cannot use the password login while it is disabled. Use a system-level bearer key with access type `all`, which authenticates the management API (`mcphub config set-token <key> --bearer` for the CLI).
 - Tokens issued by earlier password logins stay valid until they expire. Changing a local password still works, so the recovery password can be rotated.
 
+## Forward auth (JWKS-verified gateway identity)
+
+When MCPHub runs behind an API gateway or identity-aware proxy that already authenticates users, forward auth lets MCPHub trust the gateway's JWT instead of asking users to log in again. MCPHub verifies the token itself against the identity provider's JWKS, so it remains the security boundary. Forward auth is **off by default** and applies to both the dashboard API and the MCP transport routes (`/mcp/*`, `/sse/*`, and their user-scoped variants).
+
+```json
+"systemConfig": {
+  "auth": {
+    "forwardAuth": {
+      "enabled": true,
+      "mode": "jwks",
+      "jwks": {
+        "uri": "https://idp.example.com/.well-known/jwks.json",
+        "issuer": "https://idp.example.com/",
+        "audience": "mcphub",
+        "algorithms": ["RS256", "ES256"]
+      },
+      "usernameClaim": "preferred_username",
+      "emailClaim": "email",
+      "autoCreate": true
+    }
+  }
+}
+```
+
+The JWT is read from the configured bearer header (`Authorization: Bearer <jwt>` by default).
+
+**Verification**
+
+- The token is verified against `jwks.uri`. Keys are cached and refetched when a token carries an unknown `kid`, so key rotation at the identity provider needs no restart.
+- `iss`, `aud`, and `exp` are always validated; `sub` and `exp` are required. A 30-second clock tolerance applies.
+- Only asymmetric algorithms are accepted (`RS*`, `PS*`, `ES*`, `EdDSA`; default `RS256` and `ES256`). Listing `HS*` or `none` disables forward auth.
+- `jwks.uri` must use `https` (plain `http` is allowed only for `localhost`). `issuer` and `audience` are required. If the configuration is incomplete or invalid, forward auth stays disabled and MCPHub logs an error.
+
+**Request handling**
+
+- Forward auth is checked before bearer keys, OAuth tokens, Better Auth sessions, and dashboard JWTs.
+- A token that is not a JWT, or whose `iss` is not the configured issuer, is ignored and the other methods run as usual.
+- A token from the configured issuer that fails verification (bad signature, expired, wrong audience, disallowed algorithm) or cannot be mapped to a user is rejected with `401`. MCPHub **never falls back** to another authentication method for it.
+
+**Identity mapping**
+
+- The identity is the pair (`iss`, `sub`). It is stored in the user's `ssoUserId` under a `forward-auth:` namespace, separate from Better Auth identities. A Better Auth login never adopts a forward-auth user, and forward auth never adopts a Better Auth user.
+- On first sight, MCPHub creates a **non-admin** local user. Its username comes from `usernameClaim`, falling back to `emailClaim`, then `sub`.
+- Existing accounts are **never linked** by username or email. If the username or email already belongs to another account, including `admin`, the request is rejected with `401`.
+- Once bound, the local username does not change when the user is renamed at the identity provider, because servers, groups, and keys reference the username.
+- Admin status always comes from the local user record. Role claims in the JWT are ignored.
+- With `autoCreate: false`, only identities already bound to a local user are accepted. Because existing accounts are never linked, this effectively rejects every new identity.
+
+Forward-auth settings are read on each request, so changes do not require a restart. Each field can be overridden by an environment variable; see [Environment variables](/configuration/environment-variables#forward-auth).
+
 ## Read-only mode
 
 Set `READONLY=true` to prevent any mutating request from succeeding. The middleware permits:

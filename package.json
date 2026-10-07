@@ -79,6 +79,7 @@
     "i18next": "^25.5.0",
     "i18next-fs-backend": "^2.6.7",
     "ipaddr.js": "^2.4.0",
+    "jose": "^6.2.4",
     "js-yaml": "4.3.2",
     "jsonwebtoken": "^9.0.2",
     "kysely": "^0.28.9",

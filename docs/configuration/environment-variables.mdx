@@ -87,6 +87,22 @@ OIDC_CLIENT_ID=your-oidc-client-id
 OIDC_CLIENT_SECRET=your-oidc-client-secret
 ```
 
+### Forward auth
+
+Forward auth trusts a JWT issued to users by an upstream gateway and verifies it against the identity provider's JWKS. See [Authentication → Forward auth](/features/authentication#forward-auth-jwks-verified-gateway-identity) for the behavior. Values resolve in this order: `FORWARD_AUTH_*` environment variables, then `systemConfig.auth.forwardAuth`, then built-in defaults. Settings are read per request, so no restart is needed.
+
+| Variable | Description |
+| --- | --- |
+| `FORWARD_AUTH_ENABLED` | Enable forward auth. Defaults to `false`. |
+| `FORWARD_AUTH_MODE` | Verification mode. Only `jwks` is supported. |
+| `FORWARD_AUTH_JWKS_URI` | JWKS endpoint of the identity provider. Must be `https` (plain `http` only for `localhost`). Required. |
+| `FORWARD_AUTH_ISSUER` | Expected `iss` claim. Required. |
+| `FORWARD_AUTH_AUDIENCE` | Accepted `aud` value(s). Accepts a comma-separated list, whitespace-separated list, or JSON array. Required. |
+| `FORWARD_AUTH_ALGORITHMS` | Allowed asymmetric algorithms. Defaults to `RS256,ES256`. `HS*` and `none` are never accepted. |
+| `FORWARD_AUTH_USERNAME_CLAIM` | Claim used for the username of newly created users. Defaults to `preferred_username`. |
+| `FORWARD_AUTH_EMAIL_CLAIM` | Claim used for the email of newly created users. Defaults to `email`. |
+| `FORWARD_AUTH_AUTO_CREATE` | Create a non-admin local user for a new identity. Defaults to `true`. |
+
 ## Storage
 
 MCPHub picks file or database storage at boot:
