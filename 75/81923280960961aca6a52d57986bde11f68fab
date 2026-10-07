@@ -1,0 +1,100 @@
+src/services/mcpOAuthProvider.ts
+  s_2e9a7a7ccf9e23::t_169d9b369f5c11 96-109
+tests/frontend/serverFormPayload.test.ts
+  s_2e9a7a7ccf9e23::t_ce49996b353692 436-438,451-453
+  s_2e9a7a7ccf9e23::t_316507c3bde914 439-450
+src/controllers/serverController.ts
+  s_2e9a7a7ccf9e23::t_b1e33bb8f26b34 1146,1149-1150
+  s_2e9a7a7ccf9e23::t_5eb57f1f517dd5 1147-1148
+  s_2e9a7a7ccf9e23::t_316507c3bde914 64-67,146-149,704-708,713-715,837-841,871-874,1340-1344,1349-1351
+locales/en.json
+  s_2e9a7a7ccf9e23::t_5eb57f1f517dd5 278-279
+src/clients/legacyMcpClient.ts
+  s_2e9a7a7ccf9e23::t_e3bdbaef4635f1 2
+src/utils/serverConfigPersistence.ts
+  s_2e9a7a7ccf9e23::t_169d9b369f5c11 3,166-171
+  s_2e9a7a7ccf9e23::t_3087891bf52d34 172
+tests/controllers/serverController.test.ts
+  s_2e9a7a7ccf9e23::t_ce49996b353692 3050-3052,3055-3061,3068-3069,3094,3115-3118,3127-3130,3151
+  s_2e9a7a7ccf9e23::t_316507c3bde914 3053-3054,3062-3067,3070-3093,3095-3114,3119-3126,3131-3150
+src/types/index.ts
+  s_2e9a7a7ccf9e23::t_169d9b369f5c11 462-463
+tests/utils/serverConfigPersistence.test.ts
+  s_2e9a7a7ccf9e23::t_ce49996b353692 381-382,388-389
+  s_2e9a7a7ccf9e23::t_316507c3bde914 383-387
+tests/integration/oauth-insecure-token-endpoint.test.ts
+  s_2e9a7a7ccf9e23::t_316507c3bde914 1-5,39-40,49-56,73-76,83-84,95-97,108-111,118-119,124-127
+  s_2e9a7a7ccf9e23::t_12ea7b6a55c344 6-38,41-48,57-72,77-82,85-94,98-107,112-117,120-123,128-129
+frontend/src/types/index.ts
+  s_2e9a7a7ccf9e23::t_b1e33bb8f26b34 244
+  s_2e9a7a7ccf9e23::t_169d9b369f5c11 418,797
+locales/tr.json
+  s_2e9a7a7ccf9e23::t_5eb57f1f517dd5 278-279
+src/clients/mcpSdkClient.ts
+  s_2e9a7a7ccf9e23::t_e3bdbaef4635f1 1-2
+Dockerfile
+  s_2e9a7a7ccf9e23::t_e3bdbaef4635f1 47
+frontend/src/utils/serverFormPayload.ts
+  s_2e9a7a7ccf9e23::t_169d9b369f5c11 84-86
+docs/zh/features/oauth.mdx
+  s_2e9a7a7ccf9e23::t_ce49996b353692 69-90,92
+  s_2e9a7a7ccf9e23::t_270c18ebf1b8b1 91
+src/services/keepAliveService.ts
+  s_2e9a7a7ccf9e23::t_e3bdbaef4635f1 1
+frontend/src/components/ServerForm.tsx
+  s_2e9a7a7ccf9e23::t_5eb57f1f517dd5 2022-2023
+  s_2e9a7a7ccf9e23::t_169d9b369f5c11 3,63,98-100
+  s_2e9a7a7ccf9e23::t_4696a92789fa41 406
+  s_2e9a7a7ccf9e23::t_316507c3bde914 2024-2040
+locales/fr.json
+  s_2e9a7a7ccf9e23::t_5eb57f1f517dd5 278-279
+scripts/verify-dist.js
+  s_2e9a7a7ccf9e23::t_3251584fa6f1d5 3,50-69,72
+src/utils/serverConfigValidation.ts
+  s_2e9a7a7ccf9e23::t_169d9b369f5c11 3-4,9-10,15
+tests/services/templateService-import-privilege.test.ts
+  s_2e9a7a7ccf9e23::t_316507c3bde914 157-165,169-173
+  s_2e9a7a7ccf9e23::t_ce49996b353692 154-156,166-168,174
+scripts/build-mcp-client.js
+  s_2e9a7a7ccf9e23::t_e3bdbaef4635f1 1-17
+docs/features/oauth.mdx
+  s_2e9a7a7ccf9e23::t_ce49996b353692 69-90,92
+  s_2e9a7a7ccf9e23::t_270c18ebf1b8b1 91
+src/services/mcpService.ts
+  s_2e9a7a7ccf9e23::t_e3bdbaef4635f1 33
+package.json
+  s_2e9a7a7ccf9e23::t_e3bdbaef4635f1 21
+  s_2e9a7a7ccf9e23::t_b1e33bb8f26b34 54
+  s_2e9a7a7ccf9e23::t_bee87ec9d46e3a 132
+  s_2e9a7a7ccf9e23::t_4fa0675d4f2ec5 212-215
+src/services/templateService.ts
+  s_2e9a7a7ccf9e23::t_b1e33bb8f26b34 183-185
+  s_2e9a7a7ccf9e23::t_316507c3bde914 614-617
+locales/zh.json
+  s_2e9a7a7ccf9e23::t_5eb57f1f517dd5 278-279
+patches/@modelcontextprotocol__client@2.1.0.patch
+  s_2e9a7a7ccf9e23::t_73deb67f46b245 1-164
+pnpm-lock.yaml
+  s_2e9a7a7ccf9e23::t_504b0e50f934ee 20,22,51-55,70-71,298-300,357,6408,10753,10771
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7581923280960961aca6a52d57986bde11f68fab",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_2e9a7a7ccf9e23": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1165b-178a-7572-9a94-d5b275e68658",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
