@@ -1,0 +1,31 @@
+docs/zh/configuration/mcp-settings.mdx
+  s_599a5e26082593::t_45ea276250fc3b 186-210
+docs/adr/0003-mcp-2026-07-28-staged-upgrade-path.md
+  s_599a5e26082593::t_45ea276250fc3b 40-49
+tests/integration/sse-service-real-client.test.ts
+  s_599a5e26082593::t_181cc2f2689786 256-261,263-267,303-306,311-317,328,336
+  s_599a5e26082593::t_25ef41a87626ab 255,262,268-302,307-310,318-327,329-335,337-342
+docs/configuration/mcp-settings.mdx
+  s_599a5e26082593::t_45ea276250fc3b 207-235
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "c690bcf3248317d6b8ceadfe975683310cbd3b9f",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_599a5e26082593": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0f174-a1bc-7031-9586-37945042f4a8",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,39 @@
+docs/api-reference/mcp-sse.mdx
+  s_f4b4f644fb9fb0::t_32ae04ca763e9f 2-3
+  s_f4b4f644fb9fb0::t_1d025fff5c3919 6-8
+docs/zh/api-reference/mcp-http.mdx
+  s_f4b4f644fb9fb0::t_32ae04ca763e9f 2-3,43-52
+  s_f4b4f644fb9fb0::t_1d025fff5c3919 36-42,53-87
+docs/zh/features/mcp-apps.mdx
+  s_f4b4f644fb9fb0::t_32ae04ca763e9f 3,10,14,17-18,20,31-33,37-40
+docs/features/mcp-apps.mdx
+  s_f4b4f644fb9fb0::t_3eefc8676c573c 10
+docs/adr/0003-mcp-2026-07-28-staged-upgrade-path.md
+  s_f4b4f644fb9fb0::t_503edec8ab6d9c 83-93
+  s_f4b4f644fb9fb0::t_3eefc8676c573c 69-82
+tests/integration/sse-service-real-client.test.ts
+  s_f4b4f644fb9fb0::t_32ae04ca763e9f 34,460-511
+  s_f4b4f644fb9fb0::t_2c1bc278277f81 512-514
+docs/api-reference/mcp-http.mdx
+  s_f4b4f644fb9fb0::t_1d025fff5c3919 36-42,53-95
+  s_f4b4f644fb9fb0::t_32ae04ca763e9f 2-3,43-52
+docs/zh/api-reference/mcp-sse.mdx
+  s_f4b4f644fb9fb0::t_32ae04ca763e9f 2-3
+  s_f4b4f644fb9fb0::t_1d025fff5c3919 6-8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "56f8633cac986bc1d72da458b3fccb24dbc1d47f",
+  "prompts": {},
+  "sessions": {
+    "s_f4b4f644fb9fb0": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a10017-1e94-7172-9f79-834de0978301",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

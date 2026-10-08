@@ -1,0 +1,23 @@
+src/services/sseService.ts
+  s_63a8cee02d73a8::t_c731e6c8b1e1ee 533-538,920
+  s_63a8cee02d73a8::t_d96e8aaf012619 903-910
+tests/integration/sse-service-real-client.test.ts
+  s_63a8cee02d73a8::t_54b639a9a75fff 35,265-275,281,318-324
+  s_63a8cee02d73a8::t_1b4d848f31688c 264,276-280,282-317
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "7a65342e9741b47e3aeb6e37fa5aff66d7dbfbe9",
+  "prompts": {},
+  "sessions": {
+    "s_63a8cee02d73a8": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1020c-ea82-7211-a6ea-653a086c3172",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

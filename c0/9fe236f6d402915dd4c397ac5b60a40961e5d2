@@ -1,0 +1,31 @@
+tests/services/principalRuntimeService.test.ts
+  s_66f29d81f542ec::t_9dc3b650769870 139-169
+tests/integration/personal-credentials.test.ts
+  s_66f29d81f542ec::t_c475722e2f7621 922-929
+  s_66f29d81f542ec::t_d0b82f84b68ea9 862-921,930-936
+src/services/mcpService.ts
+  s_66f29d81f542ec::t_d4729344ab13ae 966-971,974,982,1008-1013,1026-1034,5077
+src/services/principalRuntimeService.ts
+  s_66f29d81f542ec::t_b86f1cc1d3f9b6 44,128-138
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "c09fe236f6d402915dd4c397ac5b60a40961e5d2",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_66f29d81f542ec": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0f14d-4e14-7f91-b4cc-b67f8c1ddbca",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

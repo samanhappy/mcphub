@@ -1,0 +1,119 @@
+docs/zh/api-reference/groups.mdx
+  s_a925409bd35277::t_f5902f218eac5e 167-168,208
+docs/zh/configuration/environment-variables.mdx
+  s_a925409bd35277::t_f5902f218eac5e 120-121
+src/db/repositories/VectorEmbeddingRepository.ts
+  s_a925409bd35277::t_f5902f218eac5e 303,309-311,317-318,337,375-391
+  s_a925409bd35277::t_4fa5abef9cd673 392-395
+locales/tr.json
+  s_a925409bd35277::t_f5902f218eac5e 551-553,931-937
+tests/services/smartRoutingService-search-results.test.ts
+  s_a925409bd35277::t_f5902f218eac5e 1-308
+tests/controllers/serverController.test.ts
+  s_a925409bd35277::t_f5902f218eac5e 106-111,1015-1073,1734-1740,1748-1751,1776-1883
+  s_a925409bd35277::t_87082c55b3d214 1884
+src/services/contextCostService.ts
+  s_a925409bd35277::t_f5902f218eac5e 76-80,100-103,122,141-143,154
+tests/config/replaceEnvVars.test.ts
+  s_a925409bd35277::t_f5902f218eac5e 64-86
+frontend/src/contexts/SettingsContext.tsx
+  s_a925409bd35277::t_f5902f218eac5e 52-53,382-383,482-483
+tests/services/groupService-capabilities.test.ts
+  s_a925409bd35277::t_f5902f218eac5e 3,5,10,25-32,39-43,64,77,82,92,135-198
+  s_a925409bd35277::t_1dc99dae91c53a 199
+tests/utils/smartRouting.test.ts
+  s_a925409bd35277::t_f5902f218eac5e 8-12,39-40,321-322,527-557,585-613
+  s_a925409bd35277::t_1723f50ede5180 614
+frontend/src/components/ServerToolConfig.tsx
+  s_a925409bd35277::t_f5902f218eac5e 4,48,137-141,178-193,528-530,549-564,566,569-571,573-613
+tests/controllers/smartRoutingController.test.ts
+  s_a925409bd35277::t_f5902f218eac5e 8-9,34-35,86-89,248,257,278,342-343,403-404,425-448,466,544
+CONTEXT.md
+  s_a925409bd35277::t_f5902f218eac5e 28,32,35-37
+  s_a925409bd35277::t_87ff70e3cda8b1 38
+tests/services/mcpService-smart-routing-pinned-tools.test.ts
+  s_a925409bd35277::t_f5902f218eac5e 1-382
+tests/services/vectorSearchService.test.ts
+  s_a925409bd35277::t_f5902f218eac5e 10,76,183-184,363-443,445
+  s_a925409bd35277::t_4aafbb9f21302e 444,446
+tests/services/mcpService-description-override-embedding.test.ts
+  s_a925409bd35277::t_f5902f218eac5e 51,54,130,132,268-367
+  s_a925409bd35277::t_64c831354da7ac 368
+src/controllers/smartRoutingController.ts
+  s_a925409bd35277::t_f5902f218eac5e 14-19,451-461,463,466
+tests/db/repositories/vectorEmbeddingRepository.test.ts
+  s_a925409bd35277::t_f5902f218eac5e 1-62
+src/types/index.ts
+  s_a925409bd35277::t_f5902f218eac5e 37
+src/services/vectorSearchService.ts
+  s_a925409bd35277::t_f5902f218eac5e 1158-1176,1239-1279,1286,1359,1504,1506-1507,1573,1602,1760-1791
+  s_a925409bd35277::t_ecb080c4d56af9 1792-1794
+docs/configuration/environment-variables.mdx
+  s_a925409bd35277::t_f5902f218eac5e 134-135
+locales/zh.json
+  s_a925409bd35277::t_f5902f218eac5e 554-556,935-941
+docs/api-reference/groups.mdx
+  s_a925409bd35277::t_f5902f218eac5e 190,235
+tests/fixtures/credential-server.mjs
+  s_a925409bd35277::t_f5902f218eac5e 20-23
+docs/features/smart-routing.mdx
+  s_a925409bd35277::t_f5902f218eac5e 439-463,507-550,562-563,601-602,614-615,992-993
+src/services/smartRoutingService.ts
+  s_a925409bd35277::t_f5902f218eac5e 143-165,169-172,178,221,254-256,264,289-302,398-403,422-427,431-447,463-467,561-567,589-600,606-618,620-622,624-627,629,631-639
+src/services/mcpService.ts
+  s_a925409bd35277::t_f5902f218eac5e 53-57,722-740,744-752,754-793,3683-3688,3735-3776,3778-3803,3805,4752-4754,4849-4854
+  s_a925409bd35277::t_bffbe40d6b584d 3777
+tests/services/contextCostService.test.ts
+  s_a925409bd35277::t_f5902f218eac5e 268-303
+locales/fr.json
+  s_a925409bd35277::t_f5902f218eac5e 551-553,932-938
+src/controllers/groupController.ts
+  s_a925409bd35277::t_f5902f218eac5e 41-48,77-80,255-258,466-467
+  s_a925409bd35277::t_3d1a3d3bac03d8 468-469
+src/config/index.ts
+  s_a925409bd35277::t_f5902f218eac5e 208-213,215-219,221,236-244,264
+src/controllers/serverController.ts
+  s_a925409bd35277::t_f5902f218eac5e 38,64-69,947-1009,1151-1153,1180-1201,1204-1207,1819-1821,2245-2273
+  s_a925409bd35277::t_b0fca9178b1cad 2274
+src/services/groupService.ts
+  s_a925409bd35277::t_f5902f218eac5e 21-25,32,397-408
+tests/integration/personal-credentials.test.ts
+  s_a925409bd35277::t_f5902f218eac5e 56-60,76,792-861
+src/db/entities/Group.ts
+  s_a925409bd35277::t_f5902f218eac5e 32
+frontend/src/types/index.ts
+  s_a925409bd35277::t_f5902f218eac5e 360
+tests/controllers/groupController.pinnedTools.test.ts
+  s_a925409bd35277::t_f5902f218eac5e 1-102
+frontend/src/pages/SettingsPage.tsx
+  s_a925409bd35277::t_f5902f218eac5e 451-476,529-531,551-552,720-727,960-962,1180-1202,1263-1265,1356-1371,1382-1384,1468-1483,2866-2907
+  s_a925409bd35277::t_6877b5d9a1ebad 2908-2909
+locales/en.json
+  s_a925409bd35277::t_f5902f218eac5e 552-554,932-938
+src/utils/smartRouting.ts
+  s_a925409bd35277::t_f5902f218eac5e 86-98,390-407,466-495
+  s_a925409bd35277::t_ec4d16b4844ec1 496
+docs/zh/features/smart-routing.mdx
+  s_a925409bd35277::t_f5902f218eac5e 119-143,197-214,227,265-266,278-279,589
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "a5993abe098fde3c8da50f33530bb60ffb24344b",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_a925409bd35277": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0f0ea-dad8-7123-940a-31bfdf896ca3",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
