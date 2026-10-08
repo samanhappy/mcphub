@@ -275,6 +275,8 @@
     "oauth": {
       "sectionTitle": "Configuration OAuth",
       "sectionDescription": "Configurez les identifiants client pour les serveurs protégés par OAuth (optionnel).",
+      "allowInsecureTokenEndpoint": "Autoriser les endpoints de jetons OAuth HTTP",
+      "allowInsecureTokenEndpointHelp": "Administrateurs uniquement. Désactivé par défaut. Les identifiants et jetons de ce serveur sont transmis sans TLS. Activez uniquement sur un réseau de confiance ; HTTPS est recommandé. Une fois activée, seuls les administrateurs peuvent modifier toute la configuration de ce serveur, même si son propriétaire n’est pas administrateur.",
       "clientId": "Identifiant client",
       "clientSecret": "Secret client",
       "authorizationEndpoint": "Point de terminaison d'autorisation",

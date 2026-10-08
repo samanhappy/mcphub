@@ -3047,3 +3047,105 @@ describe('serverController - getAllServers OAuth session scrub (#1036)', () => {
     );
   });
 });
+
+describe('admin-controlled HTTP OAuth token endpoints (#1292)', () => {
+  const config = {
+    type: 'streamable-http',
+    url: 'http://gitlab.internal.example/api/v4/mcp',
+    oauth: { allowInsecureTokenEndpoint: true },
+  };
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockAddServer.mockResolvedValue({ success: true });
+    mockAddOrUpdateServer.mockResolvedValue({ success: true });
+    mockNotifyToolChanged.mockResolvedValue(undefined);
+    mockServerDao.findById.mockResolvedValue({
+      name: 'gitlab',
+      owner: 'alice',
+      type: 'streamable-http',
+      url: config.url,
+    });
+  });
+
+  it.each([createServer, updateServer, batchCreateServers])(
+    'rejects non-admin writes through %p',
+    async (handler) => {
+      const status = jest.fn().mockReturnThis();
+      const json = jest.fn();
+      await handler(
+        {
+          params: { name: 'gitlab' },
+          body: { name: 'gitlab', config, servers: [{ name: 'gitlab', config }] },
+          user: { username: 'alice', isAdmin: false },
+        } as unknown as Request,
+        { status, json } as unknown as Response,
+      );
+      expect(mockAddServer).not.toHaveBeenCalled();
+      expect(mockAddOrUpdateServer).not.toHaveBeenCalled();
+      if (handler === batchCreateServers) {
+        expect(json).toHaveBeenCalledWith(
+          expect.objectContaining({ data: expect.objectContaining({ failureCount: 1 }) }),
+        );
+      } else {
+        expect(status).toHaveBeenCalledWith(403);
+      }
+    },
+  );
+
+  it.each([createServer, updateServer, batchCreateServers])(
+    'accepts admin writes through %p',
+    async (handler) => {
+      const status = jest.fn().mockReturnThis();
+      await handler(
+        {
+          params: { name: 'gitlab' },
+          body: { name: 'gitlab', config, servers: [{ name: 'gitlab', config }] },
+          user: { username: 'admin', isAdmin: true },
+        } as unknown as Request,
+        { status, json: jest.fn() } as unknown as Response,
+      );
+      const write = handler === updateServer ? mockAddOrUpdateServer : mockAddServer;
+      expect(write.mock.calls[0].slice(0, 2)).toEqual([
+        'gitlab',
+        expect.objectContaining({ oauth: { allowInsecureTokenEndpoint: true } }),
+      ]);
+      expect(status).not.toHaveBeenCalledWith(403);
+    },
+  );
+
+  it('prevents the owner from changing the target or removing an existing admin exception', async () => {
+    mockServerDao.findById.mockResolvedValue({ name: 'gitlab', owner: 'alice', ...config });
+    const status = jest.fn().mockReturnThis();
+    await updateServer(
+      {
+        params: { name: 'gitlab' },
+        body: { config: { type: 'streamable-http', url: 'http://another.example/mcp' } },
+        user: { username: 'alice', isAdmin: false },
+      } as unknown as Request,
+      { status, json: jest.fn() } as unknown as Response,
+    );
+    expect(status).toHaveBeenCalledWith(403);
+    expect(mockAddOrUpdateServer).not.toHaveBeenCalled();
+  });
+
+  it.each([createServer, updateServer])(
+    'rejects a non-boolean flag through %p',
+    async (handler) => {
+      const status = jest.fn().mockReturnThis();
+      await handler(
+        {
+          params: { name: 'gitlab' },
+          body: {
+            name: 'gitlab',
+            config: { ...config, oauth: { allowInsecureTokenEndpoint: 'true' } },
+          },
+          user: { username: 'admin', isAdmin: true },
+        } as unknown as Request,
+        { status, json: jest.fn() } as unknown as Response,
+      );
+      expect(status).toHaveBeenCalledWith(400);
+      expect(mockAddServer).not.toHaveBeenCalled();
+      expect(mockAddOrUpdateServer).not.toHaveBeenCalled();
+    },
+  );
+});

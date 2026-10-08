@@ -1,4 +1,4 @@
-import { SSEClientTransport, StreamableHTTPClientTransport } from '@modelcontextprotocol/client';
+import { SSEClientTransport, StreamableHTTPClientTransport } from '../clients/mcpSdkClient.js';
 import { ServerInfo, ServerConfig } from '../types/index.js';
 import { formatErrorForLogging } from '../utils/serialization.js';
 import { logger } from '../utils/logger.js';

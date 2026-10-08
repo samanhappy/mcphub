@@ -1,5 +1,5 @@
 import { invalidateListFreshness, recordListFreshness } from '../utils/listFreshness.js';
-import { Client, type Tool } from '@modelcontextprotocol/client';
+import { Client, type Tool } from './mcpSdkClient.js';
 import { LEGACY_PROTOCOL_VERSIONS } from '../utils/mcpProtocol.js';
 
 /** Keep v1's single-page discovery and output validation while using SDK v2. */

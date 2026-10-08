@@ -378,3 +378,12 @@ describe('stdio buffer persistence', () => {
     },
   );
 });
+
+it.each([undefined, false, true])('round-trips HTTP OAuth exception=%s', (value) => {
+  const config = normalizeServerConfigForPersistence({
+    type: 'streamable-http',
+    url: 'http://gitlab.example/mcp',
+    oauth: { allowInsecureTokenEndpoint: value },
+  });
+  expect(config.oauth?.allowInsecureTokenEndpoint).toBe(value);
+});

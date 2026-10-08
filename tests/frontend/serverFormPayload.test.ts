@@ -433,3 +433,21 @@ describe('stdio buffer form payload', () => {
     expect(() => payload(size)).toThrow('positive safe integer');
   });
 });
+
+it.each([undefined, false, true])('round-trips HTTP OAuth exception=%s from the form', (value) => {
+  const payload = buildServerPayload({
+    formData: {
+      name: 'gitlab',
+      url: 'http://gitlab.example/mcp',
+      command: '',
+      arguments: '',
+      env: [],
+      headers: [],
+      oauth: { allowInsecureTokenEndpoint: value },
+    },
+    serverType: 'streamable-http',
+    envVars: [],
+    headerVars: [],
+  });
+  expect(payload.config.oauth?.allowInsecureTokenEndpoint).toBe(value);
+});

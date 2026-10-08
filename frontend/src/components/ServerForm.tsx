@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useAuth } from '../contexts/AuthContext';
 import { X } from 'lucide-react';
 import { Server, EnvVar, ServerFormData, OpenApiToolStats } from '@/types';
 import { apiGet, apiPost } from '../utils/fetchInterceptor';
@@ -59,6 +60,7 @@ const ServerForm = ({
   shareCandidatesFrom = null,
 }: ServerFormProps) => {
   const { t } = useTranslation();
+  const { auth } = useAuth();
 
   // Native `pattern`/`maxLength` on the name field are enforced on create and
   // on edit of an already-valid name. Editing a legacy (invalid) name without
@@ -93,6 +95,9 @@ const ServerForm = ({
 
     return {
       clientId: oauth?.clientId || '',
+      ...(oauth?.allowInsecureTokenEndpoint !== undefined && {
+        allowInsecureTokenEndpoint: oauth.allowInsecureTokenEndpoint,
+      }),
       clientSecret: oauth?.clientSecret || '',
       scopes: oauth?.scopes ? oauth.scopes.join(' ') : '',
       accessToken: oauth?.accessToken || '',
@@ -398,7 +403,7 @@ const ServerForm = ({
 
   const handleOAuthChange = <K extends keyof NonNullable<ServerFormData['oauth']>>(
     field: K,
-    value: string,
+    value: NonNullable<ServerFormData['oauth']>[K],
   ) => {
     setFormData((prev) => ({
       ...prev,
@@ -2014,6 +2019,25 @@ const ServerForm = ({
                       <p className="text-xs text-gray-500 mb-3">
                         {t('server.oauth.sectionDescription')}
                       </p>
+                      {(serverType === 'sse' || serverType === 'streamable-http') &&
+                        (auth.user?.isAdmin || formData.oauth?.allowInsecureTokenEndpoint) && (
+                          <div className="mb-3">
+                            <label className="flex items-center gap-2 text-sm">
+                              <input
+                                type="checkbox"
+                                checked={formData.oauth?.allowInsecureTokenEndpoint === true}
+                                disabled={!auth.user?.isAdmin}
+                                onChange={(e) =>
+                                  handleOAuthChange('allowInsecureTokenEndpoint', e.target.checked)
+                                }
+                              />
+                              {t('server.oauth.allowInsecureTokenEndpoint')}
+                            </label>
+                            <p className="text-xs text-amber-700 dark:text-amber-400 mt-1">
+                              {t('server.oauth.allowInsecureTokenEndpointHelp')}
+                            </p>
+                          </div>
+                        )}
                       <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                         <div>
                           <label className="block text-xs text-gray-600 mb-1">

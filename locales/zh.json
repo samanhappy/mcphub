@@ -275,6 +275,8 @@
     "oauth": {
       "sectionTitle": "OAuth 配置",
       "sectionDescription": "为需要 OAuth 的服务器配置客户端凭据（可选）。",
+      "allowInsecureTokenEndpoint": "允许 HTTP OAuth 令牌端点",
+      "allowInsecureTokenEndpointHelp": "仅管理员可设置，默认关闭。此上游的凭据和令牌将通过未加密的 HTTP 传输。仅在可信网络中启用，建议使用 HTTPS。 启用后，整个服务器配置仅限管理员编辑，非管理员所有者也无法编辑。",
       "clientId": "客户端 ID",
       "clientSecret": "客户端密钥",
       "authorizationEndpoint": "授权端点",

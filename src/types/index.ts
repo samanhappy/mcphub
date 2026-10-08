@@ -459,6 +459,8 @@ export interface ServerConfig {
   proxy?: ProxychainsConfig;
   // OAuth authentication for upstream MCP servers
   oauth?: {
+    // Admin-only, default false: permit HTTP token exchange/refresh for this upstream.
+    allowInsecureTokenEndpoint?: boolean;
     // Static client configuration (traditional OAuth flow)
     clientId?: string; // OAuth client ID
     clientSecret?: string; // OAuth client secret
