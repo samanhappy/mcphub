@@ -3317,11 +3317,20 @@ const primeOnDemandServers = (gate?: ConnectGate): Promise<void> => {
   return Promise.allSettled(
     targets.map(async (si) => {
       try {
-        await run(() => ensureServerReady(si));
+        await run(
+          () => ensureServerReady(si),
+          // A reload may replace this runtime or finish its discovery while it
+          // waits for a slot. Neither needs another child from the old queue.
+          () => serverInfos.includes(si) && si.enabled !== false && si.tools.length === 0,
+        );
         // Sleep the child unless a tool call is using it; keep the cached tool list.
         shutdownOnDemandServer(si);
         logger.log('On-demand server tool cache primed');
       } catch (error) {
+        if (error instanceof QueuedConnectCancelledError) {
+          logger.log('Cancelled queued on-demand discovery', { serverName: si.name });
+          return;
+        }
         logger.warn('Failed to prime on-demand server', {
           error: summarizeErrorForLogging(error),
         });

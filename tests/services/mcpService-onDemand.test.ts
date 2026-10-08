@@ -93,10 +93,14 @@ jest.mock('../../src/services/proxy.js', () => ({
 
 const mockFindAll = jest.fn(async () => []);
 const mockFindById = jest.fn();
+const mockExists = jest.fn().mockResolvedValue(true);
+const mockUpdate = jest.fn().mockResolvedValue(undefined);
 jest.mock('../../src/dao/index.js', () => ({
   getServerDao: jest.fn(() => ({
     findAll: mockFindAll,
     findById: mockFindById,
+    exists: mockExists,
+    update: mockUpdate,
   })),
   getSystemConfigDao: jest.fn(() => ({
     get: jest.fn(async () => ({})),
@@ -440,6 +444,74 @@ describe('startOnDemand lifecycle', () => {
     // spawningPromise is cleared by ensureServerReady elsewhere; nothing to
     // assert here beyond the list reflecting the populated cache.
   });
+
+  it.each(['edited', 'preserved'])(
+    'does not restart an already primed queued runtime after the runtime is %s during reload',
+    async (mode) => {
+      const priorConcurrency = process.env.STARTUP_CONNECT_CONCURRENCY;
+      process.env.STARTUP_CONNECT_CONCURRENCY = '1';
+      const configs = [
+        { ...ON_DEMAND_CONFIG, name: 'alpha', startOnDemand: false },
+        { ...ON_DEMAND_CONFIG, name: 'beta', args: ['old.js'] },
+      ];
+      mockFindAll.mockImplementation(async () => configs);
+      mockFindById.mockImplementation(async (name: string) =>
+        configs.find((conf) => conf.name === name),
+      );
+      mockUpdate.mockImplementation(async (name: string, config: typeof ON_DEMAND_CONFIG) => {
+        const index = configs.findIndex((conf) => conf.name === name);
+        configs[index] = { ...config, name };
+      });
+      mcpService.setServerInfosForTest([]);
+      createTransportSpy.mockImplementation(async (name: string) => ({ name }));
+      const firstConnect = deferred<void>();
+      const firstStarted = deferred<void>();
+      mockConnect.mockImplementation((transport: { name: string }) => {
+        if (transport.name === 'alpha') {
+          firstStarted.resolve();
+          return firstConnect.promise;
+        }
+        return Promise.resolve();
+      });
+      const flush = async () => {
+        for (let i = 0; i < 100; i += 1) await Promise.resolve();
+      };
+
+      try {
+        await mcpService.initializeClientsFromSettings(true);
+        await firstStarted.promise;
+        expect(mockConnect).toHaveBeenCalledTimes(1);
+        const queued = mcpService.getServerByName('beta');
+        expect(queued?.spawningPromise).toBeUndefined();
+        if (mode === 'edited') {
+          expect(
+            await mcpService.addOrUpdateServer('beta', { ...configs[1], args: ['new.js'] }, true),
+          ).toEqual({ success: true, message: 'Server updated successfully' });
+        }
+        await mcpService.initializeClientsFromSettings(
+          false,
+          mode === 'edited' ? 'beta' : 'unrelated',
+        );
+        if (mode === 'edited') expect(mcpService.getServerByName('beta')).not.toBe(queued);
+        else expect(mcpService.getServerByName('beta')).toBe(queued);
+        expect(mcpService.getServerByName('beta')?.tools.map((tool) => tool.name)).toEqual([
+          'beta::ping',
+        ]);
+        expect(createTransportSpy.mock.calls.filter(([name]) => name === 'beta')).toHaveLength(1);
+
+        firstConnect.resolve();
+        await flush();
+        expect(createTransportSpy.mock.calls.filter(([name]) => name === 'beta')).toHaveLength(1);
+      } finally {
+        firstConnect.resolve();
+        await flush();
+        mcpService.closeServer('alpha');
+        mcpService.closeServer('beta');
+        if (priorConcurrency === undefined) delete process.env.STARTUP_CONNECT_CONCURRENCY;
+        else process.env.STARTUP_CONNECT_CONCURRENCY = priorConcurrency;
+      }
+    },
+  );
 
   it('awaits prime on a targeted reload so the tool cache is populated before returning', async () => {
     // Regression for #1032: editing an already-connected server to enable
