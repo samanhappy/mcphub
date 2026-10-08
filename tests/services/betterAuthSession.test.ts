@@ -308,4 +308,43 @@ describe('resolveBetterAuthUser', () => {
       expect(result!.username).toBe('erruser');
     });
   });
+
+  // ── Forward-auth identities stay separate ────────────────────
+
+  describe('forward-auth users', () => {
+    const forwardUser = {
+      username: 'gateway-user',
+      email: 'shared@example.com',
+      ssoUserId: 'forward-auth:abc123',
+      isAdmin: false,
+    };
+
+    it('should not adopt a forward-auth user matched by email', async () => {
+      mockSessionGet.mockResolvedValue({
+        user: { id: 'ba-999', email: 'shared@example.com', name: 'Shared' },
+      });
+      mockFindBySsoUserId.mockResolvedValue(null);
+      mockFindByEmail.mockResolvedValue(forwardUser);
+
+      const result = await resolveBetterAuthUser(makeReq());
+
+      expect(result).toBeNull();
+      expect(mockUpdate).not.toHaveBeenCalled();
+      expect(mockCreateWithHashedPassword).not.toHaveBeenCalled();
+    });
+
+    it('should not adopt a forward-auth user matched by username', async () => {
+      mockSessionGet.mockResolvedValue({
+        user: { id: 'ba-999', email: undefined, name: 'gateway-user' },
+      });
+      mockFindBySsoUserId.mockResolvedValue(null);
+      mockFindByUsername.mockResolvedValue(forwardUser);
+
+      const result = await resolveBetterAuthUser(makeReq());
+
+      expect(result).toBeNull();
+      expect(mockUpdate).not.toHaveBeenCalled();
+      expect(mockCreateWithHashedPassword).not.toHaveBeenCalled();
+    });
+  });
 });

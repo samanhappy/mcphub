@@ -1,7 +1,14 @@
-import { expandEnvVars, loadSettings } from '../config/index.js';
+import { loadSettings } from '../config/index.js';
 import { getSystemConfigDao } from '../dao/DaoFactory.js';
 import { BetterAuthConfig, BetterAuthOidcProviderConfig, SystemConfig } from '../types/index.js';
 import { resolveInstallBaseUrl } from '../utils/installBaseUrl.js';
+import {
+  normalizeOptionalString,
+  normalizeStringArray,
+  resolveBooleanSetting,
+  resolveStringArraySetting,
+  resolveStringSetting,
+} from '../utils/settingResolvers.js';
 import { getCachedSystemConfig, isDatabaseModeEnabled } from '../utils/systemConfigCache.js';
 
 const DEFAULT_BETTER_AUTH_BASE_PATH = '/api/auth/better';
@@ -58,40 +65,6 @@ export interface BetterAuthRuntimeConfig {
   };
 }
 
-const parseBoolean = (value: unknown): boolean | undefined => {
-  if (typeof value === 'boolean') {
-    return value;
-  }
-
-  if (typeof value !== 'string') {
-    return undefined;
-  }
-
-  const normalizedValue = value.trim().toLowerCase();
-  if (!normalizedValue) {
-    return undefined;
-  }
-
-  if (['true', '1', 'yes', 'on'].includes(normalizedValue)) {
-    return true;
-  }
-
-  if (['false', '0', 'no', 'off'].includes(normalizedValue)) {
-    return false;
-  }
-
-  return undefined;
-};
-
-const normalizeOptionalString = (value: unknown): string | undefined => {
-  if (typeof value !== 'string') {
-    return undefined;
-  }
-
-  const trimmedValue = expandEnvVars(value).trim();
-  return trimmedValue || undefined;
-};
-
 const normalizePath = (value: unknown): string => {
   const normalizedValue = normalizeOptionalString(value);
   if (!normalizedValue) {
@@ -113,44 +86,6 @@ const normalizeTrustedOrigin = (value: unknown): string | null => {
   }
 };
 
-const splitStringArray = (value: string): string[] => {
-  const normalizedValue = expandEnvVars(value).trim();
-  if (!normalizedValue) {
-    return [];
-  }
-
-  if (normalizedValue.startsWith('[')) {
-    try {
-      const parsedValue = JSON.parse(normalizedValue);
-      if (Array.isArray(parsedValue)) {
-        return parsedValue
-          .map((item) => normalizeOptionalString(item))
-          .filter((item): item is string => Boolean(item));
-      }
-    } catch {
-      // Fall back to delimiter-based parsing below.
-    }
-  }
-
-  const delimiter = normalizedValue.includes(',') ? /,/ : /\s+/;
-  return normalizedValue
-    .split(delimiter)
-    .map((item) => item.trim())
-    .filter((item) => item.length > 0);
-};
-
-const normalizeStringArray = (value: unknown, fallback: string[] = []): string[] => {
-  const normalized = Array.isArray(value)
-    ? value
-        .map((item) => normalizeOptionalString(item))
-        .filter((item): item is string => Boolean(item))
-    : typeof value === 'string'
-      ? splitStringArray(value)
-      : [];
-
-  return normalized.length > 0 ? normalized : fallback;
-};
-
 const normalizePrompt = (value: unknown): BetterAuthOidcProviderConfig['prompt'] | undefined => {
   const normalizedValue = normalizeOptionalString(value);
   if (!normalizedValue || !VALID_OIDC_PROMPTS.has(normalizedValue)) {
@@ -164,62 +99,6 @@ export const resolveBetterAuthBaseUrl = (systemConfig?: SystemConfig | null): st
   normalizeOptionalString(process.env.BETTER_AUTH_URL) ||
   normalizeOptionalString(systemConfig?.auth?.betterAuth?.baseUrl) ||
   resolveInstallBaseUrl(systemConfig);
-
-const resolveBooleanSetting = (
-  envValue: string | undefined,
-  settingsValue: unknown,
-  defaultValue: boolean,
-): boolean => {
-  const envOverride = parseBoolean(envValue);
-  if (envOverride !== undefined) {
-    return envOverride;
-  }
-
-  const settingsOverride = parseBoolean(settingsValue);
-  if (settingsOverride !== undefined) {
-    return settingsOverride;
-  }
-
-  return defaultValue;
-};
-
-const resolveStringSetting = (
-  envValue: string | undefined,
-  settingsValue: unknown,
-  defaultValue?: string,
-): string | undefined => {
-  const envOverride = normalizeOptionalString(envValue);
-  if (envOverride !== undefined) {
-    return envOverride;
-  }
-
-  const settingsOverride = normalizeOptionalString(settingsValue);
-  if (settingsOverride !== undefined) {
-    return settingsOverride;
-  }
-
-  return defaultValue;
-};
-
-const resolveStringArraySetting = (
-  envValue: string | undefined,
-  settingsValue: unknown,
-  defaultValue: string[] = [],
-): string[] => {
-  if (envValue !== undefined) {
-    const envOverride = normalizeStringArray(envValue, []);
-    if (envOverride.length > 0) {
-      return envOverride;
-    }
-  }
-
-  const settingsOverride = normalizeStringArray(settingsValue, []);
-  if (settingsOverride.length > 0) {
-    return settingsOverride;
-  }
-
-  return defaultValue;
-};
 
 const resolvePromptSetting = (
   envValue: string | undefined,

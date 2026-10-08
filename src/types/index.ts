@@ -224,6 +224,24 @@ export interface BetterAuthConfig {
   };
 }
 
+export type ForwardAuthMode = 'jwks';
+
+export interface ForwardAuthJwksConfig {
+  uri?: string; // JWKS endpoint of the upstream identity provider (https required)
+  issuer?: string; // Expected `iss` claim; tokens with this issuer are verified and never fall back
+  audience?: string | string[]; // Accepted `aud` claim value(s)
+  algorithms?: string[]; // Allowed asymmetric algorithms (default: RS256, ES256)
+}
+
+export interface ForwardAuthConfig {
+  enabled?: boolean; // Enable/disable trusting identity from an upstream gateway (default: false)
+  mode?: ForwardAuthMode; // Verification mode; only 'jwks' is supported
+  jwks?: ForwardAuthJwksConfig;
+  usernameClaim?: string; // Claim used for the local username of new users (default: preferred_username)
+  emailClaim?: string; // Claim used for the email of new users (default: email)
+  autoCreate?: boolean; // Create a local non-admin user on first sight of an identity (default: true)
+}
+
 export type ToolResultCompressionStrategy = 'auto' | 'json' | 'log' | 'search' | 'diff' | 'text';
 
 export interface ToolResultCompressionConfig {
@@ -262,6 +280,7 @@ export interface SystemConfig {
   enableSessionRebuild?: boolean; // Controls whether server session rebuild is enabled
   auth?: {
     betterAuth?: BetterAuthConfig; // Better Auth integration configuration
+    forwardAuth?: ForwardAuthConfig; // Trust identity asserted by an upstream gateway (JWKS-verified JWT)
   };
   discovery?: {
     // Public unauthenticated read-only discovery API for the local market catalog.

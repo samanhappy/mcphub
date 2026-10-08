@@ -94,12 +94,13 @@ There are three classes of HTTP route, all defined in `src/routes/index.ts` and 
    - All `${basePath}/api/openapi*` and `${basePath}/api/tools/...` OpenAPI endpoints.
    - `POST /api/auth/login`, `POST /api/auth/register`.
 2. **Authenticated dashboard / management API** under `${basePath}/api/*`. Authentication is enforced by `src/middlewares/auth.ts`, which accepts (in order):
+   - A forward-auth JWT from the configured issuer, verified against its JWKS (`src/services/forwardAuthService.ts`, when `systemConfig.auth.forwardAuth` is enabled). A token from that issuer that fails verification is rejected without trying the methods below.
    - A configured system-level bearer key (`/api/auth/keys`) whose `accessType` is `all`.
    - An OAuth access token issued by MCPHub's authorization server (when enabled).
    - A Better Auth session cookie (when enabled).
    - An `x-auth-token` JWT issued by `/api/auth/login`, or the same value as a `?token=` query.
    - If `systemConfig.routing.skipAuth` is `true`, unauthenticated dashboard API calls receive a synthetic `guest` user with admin privileges.
-3. **MCP transport routes**: `${basePath}/mcp/:group?`, `${basePath}/sse/:group?`, plus their user-scoped variants `${basePath}/:user/mcp/...` and `${basePath}/:user/sse/...`. These are rate-limited via `mcpConnectionRateLimiter` and pass through `sseUserContextMiddleware` before being dispatched by `sseService.ts`. System-level key scopes are enforced inside `sseService.ts`; user-level keys restore their owner's live user context so server visibility filtering applies.
+3. **MCP transport routes**: `${basePath}/mcp/:group?`, `${basePath}/sse/:group?`, plus their user-scoped variants `${basePath}/:user/mcp/...` and `${basePath}/:user/sse/...`. These are rate-limited via `mcpConnectionRateLimiter` and pass through `sseUserContextMiddleware` before being dispatched by `sseService.ts`. Forward-auth JWTs are checked first, with the same no-fallback rule as the dashboard API. System-level key scopes are enforced inside `sseService.ts`; user-level keys restore their owner's live user context so server visibility filtering applies.
 
 ## Observability
 

@@ -9,6 +9,7 @@ import {
 import { IUser } from '../types/index.js';
 import { getBetterAuthRuntimeConfig } from './betterAuthConfig.js';
 import { getUserDao } from '../dao/index.js';
+import { isForwardAuthUser } from './forwardAuthService.js';
 import { logger } from '../utils/logger.js';
 
 export const getBetterAuthSession = async (req: Request): Promise<any | null> => {
@@ -28,6 +29,18 @@ export const getBetterAuthSession = async (req: Request): Promise<any | null> =>
     logger.warn('Better Auth session lookup failed:', error);
     return null;
   }
+};
+
+// Forward-auth users belong to the upstream gateway's identity provider and are
+// never adopted by a Better Auth login, even when the email or username matches.
+const rejectForwardAuthUser = (user: IUser | undefined): IUser | null | undefined => {
+  if (user && isForwardAuthUser(user)) {
+    logger.warn(
+      `Better Auth login refused: user "${user.username}" is bound to a forward-auth identity`,
+    );
+    return null;
+  }
+  return user;
 };
 
 export const resolveBetterAuthUser = async (req: Request): Promise<IUser | null> => {
@@ -59,7 +72,10 @@ export const resolveBetterAuthUser = async (req: Request): Promise<IUser | null>
 
   // Priority 2: Email match (fallback for users created before ssoUserId support)
   if (email) {
-    const emailMatch = await findUserByEmail(email);
+    const emailMatch = rejectForwardAuthUser(await findUserByEmail(email));
+    if (emailMatch === null) {
+      return null;
+    }
     if (emailMatch) {
       // Backfill ssoUserId for stable matching on subsequent logins
       if (ssoUserId && !emailMatch.ssoUserId) {
@@ -77,7 +93,10 @@ export const resolveBetterAuthUser = async (req: Request): Promise<IUser | null>
   // Priority 3: Username match (backward compatibility)
   const username = email || session.user?.name || session.user?.id;
   if (username) {
-    const usernameMatch = await findUserByUsername(username);
+    const usernameMatch = rejectForwardAuthUser(await findUserByUsername(username));
+    if (usernameMatch === null) {
+      return null;
+    }
     if (usernameMatch) {
       // Backfill both ssoUserId and email for existing users
       const userDao = getUserDao();
@@ -123,6 +142,6 @@ export const resolveBetterAuthUser = async (req: Request): Promise<IUser | null>
   }
 
   // Handle race condition: another request created the user between our check and create
-  const refreshedUser = await findUserByUsername(username);
+  const refreshedUser = rejectForwardAuthUser(await findUserByUsername(username));
   return refreshedUser || null;
 };

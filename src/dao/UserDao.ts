@@ -49,6 +49,18 @@ export interface UserDao extends BaseDao<IUser, string> {
   findAdmins(): Promise<IUser[]>;
 }
 
+// Serializes user writes in JSON mode. Each write reads, checks and rewrites the
+// whole user list, so concurrent writes could otherwise both pass a uniqueness
+// check (e.g. two first logins claiming the same username) or drop each other's
+// changes. Database mode relies on unique constraints instead.
+let userWriteQueue: Promise<unknown> = Promise.resolve();
+
+const runUserWrite = <T>(write: () => Promise<T>): Promise<T> => {
+  const result = userWriteQueue.then(write);
+  userWriteQueue = result.catch(() => undefined);
+  return result;
+};
+
 /**
  * JSON file-based User DAO implementation
  */
@@ -115,43 +127,55 @@ export class UserDaoImpl extends JsonFileBaseDao implements UserDao {
     email?: string,
     ssoUserId?: string,
   ): Promise<IUser> {
-    const users = await this.getAll();
-
-    // Check if user already exists
-    if (users.find((user) => user.username === username)) {
-      throw new Error(`User ${username} already exists`);
-    }
-
+    // Hash outside the write lock: it is slow and needs no shared state.
     const hashedPassword = await bcrypt.hash(password, 10);
-    const newUser: IUser = {
-      username,
-      password: hashedPassword,
-      isAdmin,
-      email,
-      ssoUserId,
-    };
 
-    users.push(newUser);
-    await this.saveAll(users);
+    return runUserWrite(async () => {
+      const users = await this.getAll();
 
-    return newUser;
+      // Mirror the unique constraints the database enforces on these columns.
+      if (users.find((user) => user.username === username)) {
+        throw new Error(`User ${username} already exists`);
+      }
+      if (email && users.find((user) => user.email === email)) {
+        throw new Error(`User with email ${email} already exists`);
+      }
+      if (ssoUserId && users.find((user) => user.ssoUserId === ssoUserId)) {
+        throw new Error('User with this SSO user ID already exists');
+      }
+
+      const newUser: IUser = {
+        username,
+        password: hashedPassword,
+        isAdmin,
+        email,
+        ssoUserId,
+      };
+
+      users.push(newUser);
+      await this.saveAll(users);
+
+      return newUser;
+    });
   }
 
   async update(username: string, updates: Partial<IUser>): Promise<IUser | null> {
-    const users = await this.getAll();
-    const index = users.findIndex((user) => user.username === username);
+    return runUserWrite(async () => {
+      const users = await this.getAll();
+      const index = users.findIndex((user) => user.username === username);
 
-    if (index === -1) {
-      return null;
-    }
+      if (index === -1) {
+        return null;
+      }
 
-    // Don't allow username changes
-    const { username: _, ...allowedUpdates } = updates;
-    const updatedUser = this.updateEntity(users[index], allowedUpdates);
-    users[index] = updatedUser;
+      // Don't allow username changes
+      const { username: _, ...allowedUpdates } = updates;
+      const updatedUser = this.updateEntity(users[index], allowedUpdates);
+      users[index] = updatedUser;
 
-    await this.saveAll(users);
-    return updatedUser;
+      await this.saveAll(users);
+      return updatedUser;
+    });
   }
 
   async updatePassword(username: string, newPassword: string): Promise<boolean> {
@@ -161,16 +185,18 @@ export class UserDaoImpl extends JsonFileBaseDao implements UserDao {
   }
 
   async delete(username: string): Promise<boolean> {
-    const users = await this.getAll();
-    const index = users.findIndex((user) => user.username === username);
+    return runUserWrite(async () => {
+      const users = await this.getAll();
+      const index = users.findIndex((user) => user.username === username);
 
-    if (index === -1) {
-      return false;
-    }
+      if (index === -1) {
+        return false;
+      }
 
-    users.splice(index, 1);
-    await this.saveAll(users);
-    return true;
+      users.splice(index, 1);
+      await this.saveAll(users);
+      return true;
+    });
   }
 
   async exists(username: string): Promise<boolean> {

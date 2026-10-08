@@ -100,6 +100,22 @@ OIDC_CLIENT_ID=your-oidc-client-id
 OIDC_CLIENT_SECRET=your-oidc-client-secret
 ```
 
+### 转发认证
+
+转发认证信任上游网关签发给用户的 JWT，并使用身份提供方的 JWKS 进行验证。行为说明参见[认证 → 转发认证](/zh/features/authentication)。取值优先级：`FORWARD_AUTH_*` 环境变量，其次为 `systemConfig.auth.forwardAuth`，最后为内置默认值。配置在每次请求时读取，无需重启。
+
+| 变量 | 说明 |
+| --- | --- |
+| `FORWARD_AUTH_ENABLED` | 启用转发认证。默认 `false`。 |
+| `FORWARD_AUTH_MODE` | 验证模式，目前仅支持 `jwks`。 |
+| `FORWARD_AUTH_JWKS_URI` | 身份提供方的 JWKS 端点。必须为 `https`（仅 `localhost` 允许 `http`）。必填。 |
+| `FORWARD_AUTH_ISSUER` | 期望的 `iss` 声明。必填。 |
+| `FORWARD_AUTH_AUDIENCE` | 接受的 `aud` 值，支持逗号分隔或 JSON 数组；值中可以包含空格。必填。 |
+| `FORWARD_AUTH_ALGORITHMS` | 允许的非对称算法，默认 `RS256,ES256`。永远不接受 `HS*` 和 `none`。 |
+| `FORWARD_AUTH_USERNAME_CLAIM` | 新建用户的用户名所用声明，默认 `preferred_username`。 |
+| `FORWARD_AUTH_EMAIL_CLAIM` | 新建用户的邮箱所用声明，默认 `email`。 |
+| `FORWARD_AUTH_AUTO_CREATE` | 为新身份创建非管理员本地用户，默认 `true`。 |
+
 ## 智能路由与嵌入
 
 智能路由使用 PostgreSQL + pgvector 和嵌入服务，对上游工具执行向量搜索。启用智能路由至少需要配置 `DB_URL`、OpenAI 兼容嵌入服务和开关变量。
