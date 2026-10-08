@@ -3518,8 +3518,21 @@ const getMcpAppsRouteContext = async (
     : sessionId
       ? servers[sessionId]?.getClientCapabilities()
       : undefined;
-  if (isSmartRoutingGroup(group) || !hasMcpAppsCapability(clientCapabilities as any)) {
+  if (!hasMcpAppsCapability(clientCapabilities as any)) {
     return { enabled: false };
+  }
+
+  if (isSmartRoutingGroup(group)) {
+    // Only pinned tools are listed under their own descriptor, so only the servers
+    // that pin something can own a widget here. Always the multi-server shape:
+    // names stay qualified and calls resolve through the group, so a pin never
+    // widens what the group allows.
+    const pinned = await resolvePinnedSmartRoutingServers(group);
+    // An idle on-demand server still advertises its cached tools, so it keeps its
+    // widget link: dropping it here would hand the host a descriptor without one
+    // that the next call, which wakes the server, can no longer correct.
+    const eligible = (pinned?.pinnedServerInfos ?? []).filter(canServeToolRequests);
+    return eligible.length > 0 ? { enabled: true, serverInfos: eligible } : { enabled: false };
   }
 
   const { filteredServerInfos } = await getFilteredServerInfosForGroup(group);
@@ -3827,13 +3840,12 @@ const listGroupTools = async (
 // whichever of them the current mode lists (see handleCallToolRequestImpl)
 const SMART_ROUTING_META_TOOL_NAMES = new Set(['search_tools', 'describe_tool', 'call_tool']);
 
-// Tools a $smart/<group> lists next to its meta-tools: each member's pinnedTools,
-// narrowed to its tools selection and then run through the same filtering and
-// projection as a direct group listing.
-const getPinnedSmartRoutingTools = async (group: string | undefined): Promise<Tool[]> => {
+// Each member's pinnedTools, narrowed to its tools selection. Empty when the
+// route is not a $smart/<group> or the group pins nothing.
+const resolvePinnedSmartRoutingServers = async (group: string | undefined) => {
   const lookupGroup = getGroupLookupName(group);
   if (!lookupGroup) {
-    return [];
+    return undefined;
   }
 
   const { filteredServerInfos, serverConfigsByName } =
@@ -3849,14 +3861,35 @@ const getPinnedSmartRoutingTools = async (group: string | undefined): Promise<To
     }
   }
   if (pinnedConfigsByName.size === 0) {
+    return undefined;
+  }
+
+  return {
+    lookupGroup,
+    pinnedServerInfos: filteredServerInfos.filter((serverInfo) =>
+      pinnedConfigsByName.has(serverInfo.name),
+    ),
+    pinnedConfigsByName,
+  };
+};
+
+// Tools a $smart/<group> lists next to its meta-tools: each member's pinnedTools,
+// narrowed to its tools selection and then run through the same filtering and
+// projection as a direct group listing.
+const getPinnedSmartRoutingTools = async (
+  group: string | undefined,
+  appsRouteContext: McpAppsRouteContext = { enabled: false },
+): Promise<Tool[]> => {
+  const pinned = await resolvePinnedSmartRoutingServers(group);
+  if (!pinned) {
     return [];
   }
 
   return listGroupTools(
-    lookupGroup,
-    filteredServerInfos.filter((serverInfo) => pinnedConfigsByName.has(serverInfo.name)),
-    pinnedConfigsByName,
-    { enabled: false },
+    pinned.lookupGroup,
+    pinned.pinnedServerInfos,
+    pinned.pinnedConfigsByName,
+    appsRouteContext,
   );
 };
 
@@ -3871,10 +3904,11 @@ const handleListToolsRequestImpl = async (_: any, extra: any) => {
     const smartRoutingTools = await getSmartRoutingTools(group);
     let pinnedTools: Tool[] = [];
     try {
+      const appsRouteContext = await getMcpAppsRouteContext(sessionId, group);
       // A pin named like a meta-tool (e.g. alias "describe" + separator "_" +
       // tool "tool") would be intercepted by it on call, even in a mode that
       // does not list that meta-tool, so it is not listed at all
-      pinnedTools = (await getPinnedSmartRoutingTools(group)).filter(
+      pinnedTools = (await getPinnedSmartRoutingTools(group, appsRouteContext)).filter(
         (tool) => !SMART_ROUTING_META_TOOL_NAMES.has(tool.name),
       );
     } catch (error) {
