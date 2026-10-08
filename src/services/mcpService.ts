@@ -3528,10 +3528,11 @@ const getMcpAppsRouteContext = async (
     // names stay qualified and calls resolve through the group, so a pin never
     // widens what the group allows.
     const pinned = await resolvePinnedSmartRoutingServers(group);
-    const connected = (pinned?.pinnedServerInfos ?? []).filter(
-      (serverInfo) => serverInfo.status === 'connected' && !!serverInfo.client,
-    );
-    return connected.length > 0 ? { enabled: true, serverInfos: connected } : { enabled: false };
+    // An idle on-demand server still advertises its cached tools, so it keeps its
+    // widget link: dropping it here would hand the host a descriptor without one
+    // that the next call, which wakes the server, can no longer correct.
+    const eligible = (pinned?.pinnedServerInfos ?? []).filter(canServeToolRequests);
+    return eligible.length > 0 ? { enabled: true, serverInfos: eligible } : { enabled: false };
   }
 
   const { filteredServerInfos } = await getFilteredServerInfosForGroup(group);

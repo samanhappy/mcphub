@@ -438,6 +438,36 @@ describe('mcpService $smart/<group> pinned tools', () => {
       ]);
     });
 
+    it('keeps the widget link on a pinned tool of an idle on-demand server', async () => {
+      const [viewer] = [serverInfo('viewer', ['show'], viewerCallTool, { startOnDemand: true })];
+      viewer.tools[0]._meta = { ui: { resourceUri: 'ui://viewer/show' } };
+      viewer.status = 'disconnected';
+      delete (viewer as any).client;
+      setServerInfosForTest([viewer]);
+
+      const result = await asClient(appsCapabilities, () =>
+        handleListToolsRequest({}, { sessionId: 'smart-apps' }),
+      );
+
+      expect(result.tools.find((t: { name: string }) => t.name === 'viewer::show')?._meta).toEqual({
+        ui: { resourceUri: 'ui://viewer/show' },
+      });
+    });
+
+    it('strips the widget link of an idle server that is not on-demand', async () => {
+      const viewer = serverInfo('viewer', ['show'], viewerCallTool);
+      viewer.tools[0]._meta = { ui: { resourceUri: 'ui://viewer/show' } };
+      viewer.status = 'disconnected';
+      setServerInfosForTest([viewer]);
+
+      const result = await asClient(appsCapabilities, () =>
+        handleListToolsRequest({}, { sessionId: 'smart-apps' }),
+      );
+
+      const listed = result.tools.find((t: { name: string }) => t.name === 'viewer::show');
+      expect(listed?._meta).toBeUndefined();
+    });
+
     it('still strips the widget link for a client without Apps support', async () => {
       const result = await asClient({}, () =>
         handleListToolsRequest({}, { sessionId: 'smart-apps' }),
