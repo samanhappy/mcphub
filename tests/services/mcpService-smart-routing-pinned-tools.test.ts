@@ -48,6 +48,14 @@ const groups: Record<string, IGroup> = {
       { name: 'gadgets', alias: 'search', tools: 'all', pinnedTools: ['tools'] },
     ],
   },
+  apps: {
+    id: 'group-apps',
+    name: 'apps',
+    servers: [
+      { name: 'viewer', tools: 'all', pinnedTools: ['show'] },
+      { name: 'time', tools: 'all' },
+    ],
+  },
   unpinned: {
     id: 'group-unpinned',
     name: 'unpinned',
@@ -66,6 +74,7 @@ const mockGroupDao = {
 };
 
 const mockServerDao = {
+  findAll: jest.fn(async () => []),
   findById: jest.fn(async (name: string) =>
     name === 'time'
       ? {
@@ -106,6 +115,8 @@ jest.mock('../../src/services/sseService.js', () => ({
     if (sessionId === 'smart-pinned') return '$smart/pinned';
     if (sessionId === 'smart-unpinned') return '$smart/unpinned';
     if (sessionId === 'smart-global') return '$smart';
+    if (sessionId === 'smart-apps') return '$smart/apps';
+    if (sessionId === 'smart-apps-global') return '$smart';
     if (sessionId === 'smart-extras') return '$smart/extras';
     if (sessionId === 'smart-reserved') return '$smart/reserved';
     if (sessionId === 'smart-broken') return '$smart/broken';
@@ -178,8 +189,10 @@ import {
   cleanupAllServers,
   handleCallToolRequest,
   handleListToolsRequest,
+  handleReadResourceRequest,
   setServerInfosForTest,
 } from '../../src/services/mcpService.js';
+import { RequestContextService } from '../../src/services/requestContextService.js';
 
 const tool = (server: string, name: string) => ({
   name: `${server}::${name}`,
@@ -378,5 +391,99 @@ describe('mcpService $smart/<group> pinned tools', () => {
     const result = await handleListToolsRequest({}, { sessionId: 'smart-failing' });
 
     expect(result).toBe(metaTools);
+  });
+
+  describe('MCP Apps widgets on a pinned tool', () => {
+    const appsCapabilities = {
+      extensions: { 'io.modelcontextprotocol/ui': { mimeTypes: ['text/html;profile=mcp-app'] } },
+    };
+    const viewerCallTool = jest.fn();
+    const viewerReadResource = jest.fn();
+
+    // A stateless request declares its capabilities per request
+    const asClient = <T>(clientCapabilities: unknown, callback: () => Promise<T>) =>
+      RequestContextService.getInstance().runWithCustomRequestContext(
+        { headers: {}, stateless: true, clientCapabilities } as any,
+        callback,
+      );
+
+    beforeEach(() => {
+      const viewer = serverInfo('viewer', ['show', 'other'], viewerCallTool);
+      viewer.tools[0]._meta = { ui: { resourceUri: 'ui://viewer/show' } };
+      viewer.tools.push({
+        ...tool('viewer', 'refresh'),
+        _meta: { ui: { resourceUri: 'ui://viewer/show', visibility: ['app'] } },
+      } as any);
+      (viewer.client as any).readResource = viewerReadResource;
+      setServerInfosForTest([viewer]);
+      viewerCallTool.mockResolvedValue({ content: [{ type: 'text', text: 'ok' }], isError: false });
+      viewerReadResource.mockResolvedValue({
+        contents: [
+          { uri: 'ui://viewer/show', mimeType: 'text/html;profile=mcp-app', text: '<html/>' },
+        ],
+      });
+    });
+
+    it('keeps the widget link on the pinned tool for an Apps-capable client', async () => {
+      const result = await asClient(appsCapabilities, () =>
+        handleListToolsRequest({}, { sessionId: 'smart-apps' }),
+      );
+
+      const listed = result.tools.filter((t: { name: string }) => t.name.startsWith('viewer'));
+      expect(listed).toEqual([
+        expect.objectContaining({
+          name: 'viewer::show',
+          _meta: { ui: { resourceUri: 'ui://viewer/show' } },
+        }),
+      ]);
+    });
+
+    it('still strips the widget link for a client without Apps support', async () => {
+      const result = await asClient({}, () =>
+        handleListToolsRequest({}, { sessionId: 'smart-apps' }),
+      );
+
+      const listed = result.tools.find((t: { name: string }) => t.name === 'viewer::show');
+      expect(listed).toBeDefined();
+      expect(listed._meta).toBeUndefined();
+    });
+
+    it('does not enable Apps on the global $smart route', async () => {
+      const result = await asClient(appsCapabilities, () =>
+        handleListToolsRequest({}, { sessionId: 'smart-apps-global' }),
+      );
+
+      expect(result.tools).toEqual(metaTools.tools);
+    });
+
+    it('lets the widget call an app-only tool of its server, but not without Apps support', async () => {
+      const call = (caps: unknown) =>
+        asClient(caps, () =>
+          handleCallToolRequest(
+            { params: { name: 'viewer::refresh', arguments: {} } },
+            { sessionId: 'smart-apps' },
+          ),
+        );
+
+      expect((await call(appsCapabilities)).isError).toBe(false);
+      expect(viewerCallTool.mock.calls[0][0]).toEqual({ name: 'refresh', arguments: {} });
+      expect((await call({})).isError).toBe(true);
+      expect(viewerCallTool).toHaveBeenCalledTimes(1);
+    });
+
+    it('serves the ui:// resource of the pinned tool to an Apps-capable client only', async () => {
+      const read = (caps: unknown) =>
+        asClient(caps, () =>
+          handleReadResourceRequest(
+            { params: { uri: 'ui://viewer/show' } },
+            { sessionId: 'smart-apps' },
+          ),
+        );
+
+      const served = await read(appsCapabilities);
+      expect(served.contents[0].text).toBe('<html/>');
+      const refused = await read({});
+      expect(refused.contents?.[0]?.text ?? '').not.toBe('<html/>');
+    });
   });
 });

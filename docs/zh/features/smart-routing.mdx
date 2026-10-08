@@ -135,7 +135,7 @@ description: '使用向量语义搜索的 AI 工具发现系统'
 - 如果固定工具列出的名称与元工具名称（`search_tools`、`describe_tool`、`call_tool`，例如别名 `describe` + 分隔符 `_` + 工具 `tool`）相同，则在任何模式下都不会列出：对这些名称的调用始终交给元工具处理。
 - 分组显示的智能路由占用包含其固定工具的定义成本。
 - 在控制台中或通过 `PUT /api/groups/:id/server-configs/:serverName/tools` 取消选择某个工具时，也会移除它的固定。
-- 与所有智能路由端点一样，`$smart/{group}` 不是 MCP Apps 路由：固定工具不带 Apps 元数据，仅限 Apps 的工具无法固定。
+- 在 `$smart/{group}` 上，对声明支持 MCP Apps 的客户端，固定工具会保留其 MCP Apps 元数据（`_meta.ui`），因此其小部件可以渲染，该服务器的 `ui://` 资源和仅限 Apps 的辅助工具也可从小部件访问；不支持 MCP Apps 的客户端仍会去除这些元数据。只有固定工具才带有小部件：通过 `search_tools` 和 `call_tool` 调用的工具没有可供宿主关联小部件的独立描述，因此请固定需要小部件的工具。全局 `$smart` 端点始终不是 MCP Apps 路由。
 
 <Warning>
 通过 `call_tool` 调用时，所有工具共享客户端的同一个审批决定。固定工具以自己的名称列出，逐个审批工具的客户端会对其应用单独的规则——固定会写入数据的工具前请先确认这一点。
