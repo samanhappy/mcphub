@@ -156,7 +156,7 @@ const normalizeOptions = (
   return Object.keys(normalized).length > 0 ? normalized : undefined;
 };
 
-const normalizeOAuth = (oauth?: ServerConfig['oauth']): ServerConfig['oauth'] | undefined => {
+export const normalizeOAuth = (oauth?: ServerConfig['oauth']): ServerConfig['oauth'] | undefined => {
   if (!oauth) {
     return undefined;
   }

@@ -172,3 +172,28 @@ it.each([false, true])('HTTP OAuth exception template requires admin=%s', async 
       expect.objectContaining({ oauth: { allowInsecureTokenEndpoint: true } }),
     );
 });
+
+it.each(['true', 'false', 1, 0, null, {}, []])(
+  'rejects malformed HTTP OAuth exception %p before persistence for every caller',
+  async (value) => {
+    for (const user of [alice, admin, undefined]) {
+      const result = await importTemplate(
+        templateWith({
+          remote: {
+            type: 'streamable-http',
+            url: 'http://gitlab.example/mcp',
+            oauth: { allowInsecureTokenEndpoint: value },
+          },
+        }),
+        user?.username,
+        user,
+      );
+      expect(result.serversCreated).toBe(0);
+      expect(result.details[0]).toMatchObject({
+        action: 'failed',
+        message: 'oauth.allowInsecureTokenEndpoint must be a boolean',
+      });
+      expect(addServer).not.toHaveBeenCalled();
+    }
+  },
+);

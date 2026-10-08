@@ -276,7 +276,7 @@
       "sectionTitle": "OAuth Configuration",
       "sectionDescription": "Configure client credentials for OAuth-protected servers (optional).",
       "allowInsecureTokenEndpoint": "Allow HTTP OAuth token endpoints",
-      "allowInsecureTokenEndpointHelp": "Admin only. Disabled by default. Sends credentials and tokens without TLS for this upstream. Enable only on a trusted network; HTTPS is recommended.",
+      "allowInsecureTokenEndpointHelp": "Admin only. Disabled by default. Sends credentials and tokens without TLS for this upstream. Enable only on a trusted network; HTTPS is recommended. Once enabled, only administrators can edit this entire server configuration; a non-admin owner cannot edit it.",
       "clientId": "Client ID",
       "clientSecret": "Client Secret",
       "authorizationEndpoint": "Authorization Endpoint",

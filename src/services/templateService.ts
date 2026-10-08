@@ -12,6 +12,7 @@ import {
 import { getServerDao, getGroupDao } from '../dao/index.js';
 import type { ServerConfigWithName } from '../dao/ServerDao.js';
 import { isPrivilegedServerConfig } from '../utils/serverConfigValidation.js';
+import { normalizeOAuth } from '../utils/serverConfigPersistence.js';
 import { validateServerName } from '../utils/serverNameValidation.js';
 import { createGroup } from './groupService.js';
 import { addServer } from './mcpService.js';
@@ -606,25 +607,20 @@ export async function importTemplate(
     }
     const serverName = nameValidation.normalized as string;
 
-    if (requestingUser && !requestingUser.isAdmin && isPrivilegedServerConfig(config)) {
-      details.push({
-        type: 'server',
-        name: serverName,
-        action: 'failed',
-        message:
-          config.oauth?.allowInsecureTokenEndpoint === true
-            ? 'Only admins can import servers allowing HTTP OAuth token endpoints'
-            : 'Only admins can import stdio-based server configurations',
-      });
-      continue;
-    }
-
     try {
       const serverConfig: ServerConfig = {
         ...config,
         enabled: config.enabled ?? true,
         owner: owner || 'admin',
+        oauth: normalizeOAuth(config.oauth),
       };
+      if (requestingUser && !requestingUser.isAdmin && isPrivilegedServerConfig(serverConfig)) {
+        throw new Error(
+          serverConfig.oauth?.allowInsecureTokenEndpoint === true
+            ? 'Only admins can import servers allowing HTTP OAuth token endpoints'
+            : 'Only admins can import stdio-based server configurations',
+        );
+      }
       await addServer(serverName, serverConfig);
       details.push({ type: 'server', name: serverName, action: 'created' });
       serversCreated++;

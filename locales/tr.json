@@ -276,7 +276,7 @@
       "sectionTitle": "OAuth Yapılandırması",
       "sectionDescription": "OAuth korumalı sunucular için istemci kimlik bilgilerini yapılandırın (isteğe bağlı).",
       "allowInsecureTokenEndpoint": "HTTP OAuth token uç noktalarına izin ver",
-      "allowInsecureTokenEndpointHelp": "Yalnızca yöneticiler. Varsayılan olarak kapalıdır. Bu sunucunun kimlik bilgileri ve tokenları TLS olmadan gönderilir. Yalnızca güvenilir bir ağda etkinleştirin; HTTPS önerilir.",
+      "allowInsecureTokenEndpointHelp": "Yalnızca yöneticiler. Varsayılan olarak kapalıdır. Bu sunucunun kimlik bilgileri ve tokenları TLS olmadan gönderilir. Yalnızca güvenilir bir ağda etkinleştirin; HTTPS önerilir. Etkinleştirildiğinde, yönetici olmayan sahibi dahil yalnızca yöneticiler bu sunucunun tüm yapılandırmasını düzenleyebilir.",
       "clientId": "İstemci ID",
       "clientSecret": "İstemci Gizli Anahtarı",
       "authorizationEndpoint": "Yetkilendirme Uç Noktası",
