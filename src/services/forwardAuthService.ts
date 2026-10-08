@@ -252,6 +252,11 @@ const resolveForwardAuthUser = async (
   if (username.length > MAX_USERNAME_LENGTH) {
     return { status: 'rejected', reason: 'username claim is too long' };
   }
+  // The username is used as-is, but ownership checks trim owners, so a padded
+  // username could alias another account. Reject it rather than normalize it.
+  if (/^\s|\s$/.test(username)) {
+    return { status: 'rejected', reason: 'username has leading or trailing whitespace' };
+  }
 
   // Never link an existing account by username or email, so a gateway identity
   // cannot take over a local, Better Auth or admin account.

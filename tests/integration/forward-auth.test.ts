@@ -306,15 +306,34 @@ describe('forward auth identity isolation', () => {
     const res = await whoami({
       Authorization: `Bearer ${await signToken({
         sub: 'verbatim-sub',
-        claims: { username: ' Verbatim.User ', email: ' Verbatim@Example.test ' },
+        claims: { username: 'Verbatim.User', email: 'Verbatim@Example.test' },
       })}`,
     });
 
     expect(res.status).toBe(200);
-    expect(res.body.user.username).toBe(' Verbatim.User ');
-    const stored = await getUserDao().findByUsername(' Verbatim.User ');
-    expect(stored?.email).toBe(' Verbatim@Example.test ');
-    expect(await getUserDao().findByUsername('Verbatim.User')).toBeNull();
+    expect(res.body.user.username).toBe('Verbatim.User');
+    const stored = await getUserDao().findByUsername('Verbatim.User');
+    expect(stored?.email).toBe('Verbatim@Example.test');
+  });
+
+  it.each([
+    ['a padded username claim', { username: ' local.user ' }],
+    ['a padded email fallback', { email: ' local.user ' }],
+  ])('rejects %s instead of letting it alias an existing owner', async (_label, claims) => {
+    const res = await whoami({
+      Authorization: `Bearer ${await signToken({ sub: `padded-${_label}`, claims })}`,
+    });
+
+    expect(res.status).toBe(401);
+    expect(await getUserDao().findByUsername(' local.user ')).toBeNull();
+  });
+
+  it('rejects a padded sub when it becomes the username', async () => {
+    const res = await whoami({
+      Authorization: `Bearer ${await signToken({ sub: ' local.user ', claims: {} })}`,
+    });
+    expect(res.status).toBe(401);
+    expect(await getUserDao().findByUsername(' local.user ')).toBeNull();
   });
 
   it('rejects a blank subject', async () => {
