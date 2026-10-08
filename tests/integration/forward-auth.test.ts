@@ -10,6 +10,7 @@ import type { CryptoKey } from 'jose';
 import { Client, StreamableHTTPClientTransport } from '@modelcontextprotocol/client';
 import { getUserDao, JsonFileDaoFactory, setDaoFactory } from '../../src/dao/DaoFactory.js';
 import { auth } from '../../src/middlewares/auth.js';
+import { getBetterAuthUser } from '../../src/controllers/betterAuthController.js';
 import { sseUserContextMiddleware } from '../../src/middlewares/userContext.js';
 import { handleMcpPostRequest, transports } from '../../src/services/sseService.js';
 import { cleanupAllServers, initializeClientsFromSettings } from '../../src/services/mcpService.js';
@@ -147,6 +148,7 @@ beforeAll(async () => {
   app.get('/api/whoami', auth, (req, res) => {
     res.json({ user: (req as any).user });
   });
+  app.get('/api/better-auth/user', auth, getBetterAuthUser);
   app.post('/mcp', sseUserContextMiddleware, handleMcpPostRequest);
   app.post('/:user/mcp', sseUserContextMiddleware, handleMcpPostRequest);
   hubServer = await listen(app);
@@ -264,6 +266,79 @@ describe('forward auth (JWKS) on the dashboard API', () => {
     } finally {
       delete process.env.FORWARD_AUTH_AUTO_CREATE;
     }
+  });
+});
+
+describe('forward auth identity isolation', () => {
+  it('binds a contested username to exactly one identity under concurrent first logins', async () => {
+    const tokens = await Promise.all(
+      ['race-sub-a', 'race-sub-b', 'race-sub-c'].map((sub) =>
+        signToken({ sub, claims: { username: 'race.user' } }),
+      ),
+    );
+
+    const responses = await Promise.all(
+      tokens.map((token) => whoami({ Authorization: `Bearer ${token}` })),
+    );
+
+    expect(responses.filter((res) => res.status === 200)).toHaveLength(1);
+    expect(responses.filter((res) => res.status === 401)).toHaveLength(2);
+    const users = await getUserDao().findAll();
+    expect(users.filter((user) => user.username === 'race.user')).toHaveLength(1);
+  });
+
+  it('keeps whitespace-distinct subjects as separate identities', async () => {
+    const plain = await whoami({
+      Authorization: `Bearer ${await signToken({ sub: 'ws-sub', claims: { username: 'ws.one' } })}`,
+    });
+    const padded = await whoami({
+      Authorization: `Bearer ${await signToken({ sub: ' ws-sub ', claims: { username: 'ws.two' } })}`,
+    });
+
+    expect(plain.body.user.username).toBe('ws.one');
+    expect(padded.body.user.username).toBe('ws.two');
+    const one = await getUserDao().findByUsername('ws.one');
+    const two = await getUserDao().findByUsername('ws.two');
+    expect(one?.ssoUserId).not.toBe(two?.ssoUserId);
+  });
+
+  it('stores username and email claims exactly as issued', async () => {
+    const res = await whoami({
+      Authorization: `Bearer ${await signToken({
+        sub: 'verbatim-sub',
+        claims: { username: ' Verbatim.User ', email: ' Verbatim@Example.test ' },
+      })}`,
+    });
+
+    expect(res.status).toBe(200);
+    expect(res.body.user.username).toBe(' Verbatim.User ');
+    const stored = await getUserDao().findByUsername(' Verbatim.User ');
+    expect(stored?.email).toBe(' Verbatim@Example.test ');
+    expect(await getUserDao().findByUsername('Verbatim.User')).toBeNull();
+  });
+
+  it('rejects a blank subject', async () => {
+    const res = await whoami({
+      Authorization: `Bearer ${await signToken({ sub: '   ', claims: { username: 'blank.sub' } })}`,
+    });
+    expect(res.status).toBe(401);
+    expect(await getUserDao().findByUsername('blank.sub')).toBeNull();
+  });
+});
+
+describe('forward auth dashboard bootstrap', () => {
+  it('returns the gateway-authenticated user from the dashboard bootstrap endpoint', async () => {
+    const res = await request(app)
+      .get('/api/better-auth/user')
+      .set('Authorization', `Bearer ${await signToken()}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.user).toMatchObject({ username: 'gateway.user', isAdmin: false });
+  });
+
+  it('still rejects the bootstrap endpoint without any credentials', async () => {
+    const res = await request(app).get('/api/better-auth/user');
+    expect(res.status).toBe(401);
   });
 });
 

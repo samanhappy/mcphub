@@ -208,13 +208,11 @@ export const resetForwardAuthStateForTests = (): void => {
   reportedConfigErrors.clear();
 };
 
+// Claims are used exactly as issued and never normalized. A missing, non-string
+// or whitespace-only claim counts as absent.
 const readStringClaim = (payload: JWTPayload, claim: string): string | undefined => {
   const value = payload[claim];
-  if (typeof value !== 'string') {
-    return undefined;
-  }
-  const trimmed = value.trim();
-  return trimmed || undefined;
+  return typeof value === 'string' && value.trim() ? value : undefined;
 };
 
 export const buildForwardAuthSsoUserId = (issuer: string, subject: string): string =>
@@ -230,9 +228,10 @@ const resolveForwardAuthUser = async (
   payload: JWTPayload,
   config: ForwardAuthRuntimeConfig,
 ): Promise<ForwardAuthResult> => {
-  const subject = typeof payload.sub === 'string' ? payload.sub.trim() : '';
+  // `sub` is the identity key; normalizing it could merge distinct identities.
+  const subject = readStringClaim(payload, 'sub');
   if (!subject || !config.issuer) {
-    return { status: 'rejected', reason: 'token has no sub claim' };
+    return { status: 'rejected', reason: 'token has no usable sub claim' };
   }
 
   const ssoUserId = buildForwardAuthSsoUserId(config.issuer, subject);

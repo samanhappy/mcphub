@@ -136,6 +136,7 @@ export const auth = async (req: Request, res: Response, next: NextFunction): Pro
       username: forwardAuthResult.user.username,
       isAdmin: forwardAuthResult.user.isAdmin || false,
     };
+    (req as any).forwardAuthUser = forwardAuthResult.user;
     next();
     return;
   }
