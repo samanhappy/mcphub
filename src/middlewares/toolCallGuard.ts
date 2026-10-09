@@ -152,32 +152,96 @@ const SHELL_CHAINING: GuardRule = {
  * Download-and-execute pattern, e.g. `curl http://... | sh` or
  * `wget -O- ... | bash`, including the `sh -c "$(curl ...)"` form.
  *
- * The shell is intentionally not required to sit at the end of the line:
- * real invocations commonly pass arguments (`sh -s arg`) or append a
- * trailing comment (`sh # install`), and neither prevents the downloaded
- * content from running. This rule is execution-scoped, so downloaders that
- * merely appear as examples inside prose/documentation are not matched.
+ * The piped form is detected with a linear scan: the line is split at each
+ * pipe and a single pass records whether a downloader appeared before the
+ * pipe and whether a shell follows it. The previous expression used
+ * `curl/wget` followed by `[^|\n]*` running to the terminator, so a string
+ * of repeated command words (`'curl '.repeat(40000)`) made the engine retry
+ * from each word and produced quadratic time. The shell is not required to
+ * sit at the end of the line: real invocations pass arguments (`sh -s`) or
+ * append comments (`sh # install`), and this rule is execution-scoped so
+ * downloaders merely quoted in prose are not matched.
  */
 const DOWNLOADER_PIPE: GuardRule = {
   id: 'downloader-pipe',
   scope: 'execution',
-  test: (v) =>
-    /(?:curl|wget)\b[^|\n]*\|\s*(?:sudo\s+)?(?:ba|z|fi|k|t?c)?sh\b/.test(v) ||
-    /(?:ba|z|fi|k|t?c)?sh\s+-c\s+["']?\$\((?:curl|wget)\b/.test(v),
+  test: (v) => {
+    if (SH_C_CURL.test(v)) return true;
+    for (const line of v.split('\n')) {
+      if (hasDownloaderPipedToShell(line)) return true;
+    }
+    return false;
+  },
+};
+
+/** The `sh -c "$(curl ...)"` download-and-execute form. */
+const SH_C_CURL = /(?:ba|z|fi|k|t?c)?sh\s+-c\s+["']?\$\((?:curl|wget)\b/;
+
+/** A shell command name (bash/sh/zsh/fish/ksh/tcsh). */
+const SHELL_AFTER_PIPE = /^(?:sudo\s+)?(?:ba|z|fi|k|t?c)?sh\b/;
+
+/** A downloader command name. */
+const DOWNLOADER_IN_SEGMENT = /\b(?:curl|wget)\b/;
+
+/**
+ * Linear detection of `downloader ... | shell` within one line. The line is
+ * split at pipes and visited once; every segment is inspected with a
+ * bounded regex that does not run to an end-of-line terminator.
+ */
+const hasDownloaderPipedToShell = (line: string): boolean => {
+  let downloaderSeen = false;
+  for (const segment of line.split('|')) {
+    if (SHELL_AFTER_PIPE.test(segment.trimStart()) && downloaderSeen) return true;
+    if (DOWNLOADER_IN_SEGMENT.test(segment)) downloaderSeen = true;
+  }
+  return false;
 };
 
 /**
  * Reading sensitive account files through a shell command, including their
  * use inside command substitution. `passwd` alone is harmless (it contains
- * only public account names), so a shell action must be present.
+ * only public account names), so a reader command must precede it; `shadow`
+ * is sensitive regardless.
+ *
+ * Detected with a linear token scan: the line is split on whitespace and
+ * visited once, recording whether a reader command appeared before the
+ * `/etc/passwd` token. The previous expression used a reader word followed
+ * by `[^\n]*` running to the path, so repeated command words
+ * (`'cat '.repeat(50000)`) caused quadratic retries.
  */
 const SENSITIVE_FILE_READ: GuardRule = {
   id: 'sensitive-file-read',
   scope: 'execution',
-  test: (v) =>
-    /(?:cat|head|tail|less|more|tac|nl|od|xxd|cp|mv|grep|open)\b[^\n]*\/etc\/(passwd|shadow)(?![\w.-])/.test(
-      v,
-    ) || /\/etc\/shadow(?![\w.-])/.test(v),
+  test: (v) => {
+    for (const line of v.split('\n')) {
+      if (SHADOW_PATH.test(line)) return true;
+      if (hasReaderThenPasswd(line)) return true;
+    }
+    return false;
+  },
+};
+
+/** A reference to `/etc/shadow`; sensitive even without an explicit reader. */
+const SHADOW_PATH = /\/etc\/shadow(?![\w.-])/;
+
+/** A `/etc/passwd` token at the end of a whitespace-delimited word. */
+const PASSWD_TOKEN = /\/etc\/passwd(?![\w.-])$/;
+
+/** A command that reads a file. */
+const FILE_READER_WORD = /^(?:cat|head|tail|less|more|tac|nl|od|xxd|cp|mv|grep|open)$/;
+
+/**
+ * Linear detection of a reader command followed later by `/etc/passwd`
+ * within one line. Tokens are visited once; a reader seen earlier is
+ * remembered when the path token is reached.
+ */
+const hasReaderThenPasswd = (line: string): boolean => {
+  let readerSeen = false;
+  for (const token of line.split(/\s+/)) {
+    if (PASSWD_TOKEN.test(token) && readerSeen) return true;
+    if (FILE_READER_WORD.test(token)) readerSeen = true;
+  }
+  return false;
 };
 
 /**

@@ -252,6 +252,31 @@ describe('inspectToolArguments - bounded scan time (reviewer runtime cases)', ()
     expect(result).toEqual({ blocked: false });
   });
 
+  it('returns promptly for many repeated curl words', () => {
+    // Third-round reviewer case: 'curl '.repeat(40000) (~200 KB) stalled the
+    // downloader rule for >3s: the old pattern ran from each word to the
+    // terminator and retried quadratically. No pipe is present, so it is not
+    // an attack; the linear segment scan returns promptly.
+    const payload = { command: 'curl '.repeat(40_000) };
+    const started = performance.now();
+    const result = inspectToolArguments(payload);
+    const elapsedMs = performance.now() - started;
+    expect(elapsedMs).toBeLessThan(50);
+    expect(result).toEqual({ blocked: false });
+  });
+
+  it('returns promptly for many repeated cat words', () => {
+    // Third-round reviewer case: 'cat '.repeat(50000) (~200 KB) stalled the
+    // sensitive-file rule for >3s via the same quadratic retry. No /etc path
+    // is present, so the linear token scan returns promptly.
+    const payload = { command: 'cat '.repeat(50_000) };
+    const started = performance.now();
+    const result = inspectToolArguments(payload);
+    const elapsedMs = performance.now() - started;
+    expect(elapsedMs).toBeLessThan(50);
+    expect(result).toEqual({ blocked: false });
+  });
+
   it('still blocks a real root deletion even with long repeated flags', () => {
     const payload = { command: 'rm ' + '-r'.repeat(2500) + ' /' };
     expect(inspectToolArguments(payload)).toEqual({
