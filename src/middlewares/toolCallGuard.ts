@@ -207,7 +207,9 @@ const hasDownloaderPipedToShell = (line: string): boolean => {
  * visited once, recording whether a reader command appeared before the
  * `/etc/passwd` token. The previous expression used a reader word followed
  * by `[^\n]*` running to the path, so repeated command words
- * (`'cat '.repeat(50000)`) caused quadratic retries.
+ * (`'cat '.repeat(50000)`) caused quadratic retries. Quoted path tokens
+ * (`cat "/etc/passwd"`) and absolute reader paths (`/bin/cat`) are handled
+ * by normalising each token before comparison.
  */
 const SENSITIVE_FILE_READ: GuardRule = {
   id: 'sensitive-file-read',
@@ -224,22 +226,65 @@ const SENSITIVE_FILE_READ: GuardRule = {
 /** A reference to `/etc/shadow`; sensitive even without an explicit reader. */
 const SHADOW_PATH = /\/etc\/shadow(?![\w.-])/;
 
-/** A `/etc/passwd` token at the end of a whitespace-delimited word. */
-const PASSWD_TOKEN = /\/etc\/passwd(?![\w.-])$/;
+/**
+ * Removes a single matching pair of surrounding quotes from a whitespace
+ * token, so a path written as `"/etc/passwd"` is recognised the same as the
+ * unquoted form.
+ */
+const stripQuotes = (token: string): string => {
+  if (token.length < 2) return token;
+  const first = token[0];
+  const last = token[token.length - 1];
+  if ((first === '"' || first === "'") && last === first) {
+    return token.slice(1, -1);
+  }
+  return token;
+};
 
-/** A command that reads a file. */
-const FILE_READER_WORD = /^(?:cat|head|tail|less|more|tac|nl|od|xxd|cp|mv|grep|open)$/;
+/** True when a (possibly quote-wrapped) token ends in `/etc/passwd`. */
+const isPasswdToken = (token: string): boolean =>
+  /\/etc\/passwd(?![\w.-])$/.test(stripQuotes(token));
+
+/** Basenames of commands that read a file. */
+const FILE_READER_WORDS: ReadonlySet<string> = new Set([
+  'cat',
+  'head',
+  'tail',
+  'less',
+  'more',
+  'tac',
+  'nl',
+  'od',
+  'xxd',
+  'cp',
+  'mv',
+  'grep',
+  'open',
+]);
+
+/**
+ * True when a whitespace token is a file-reader command, whether given as a
+ * bare name (`cat`) or an absolute executable path (`/bin/cat`,
+ * `/usr/bin/cat`).
+ */
+const isFileReaderToken = (token: string): boolean => {
+  const slash = token.lastIndexOf('/');
+  const name = slash === -1 ? token : token.slice(slash + 1);
+  return FILE_READER_WORDS.has(name);
+};
 
 /**
  * Linear detection of a reader command followed later by `/etc/passwd`
  * within one line. Tokens are visited once; a reader seen earlier is
- * remembered when the path token is reached.
+ * remembered when the path token is reached. Quoted paths and absolute
+ * reader-command paths are handled by {@link isPasswdToken} and
+ * {@link isFileReaderToken}.
  */
 const hasReaderThenPasswd = (line: string): boolean => {
   let readerSeen = false;
   for (const token of line.split(/\s+/)) {
-    if (PASSWD_TOKEN.test(token) && readerSeen) return true;
-    if (FILE_READER_WORD.test(token)) readerSeen = true;
+    if (isPasswdToken(token) && readerSeen) return true;
+    if (isFileReaderToken(token)) readerSeen = true;
   }
   return false;
 };
@@ -284,14 +329,60 @@ const hasRecursiveForceFlag = (line: string): boolean => {
   return false;
 };
 
-/** Reverse-shell starters. */
+/**
+ * Reverse-shell starters.
+ *
+ * The `/dev/tcp/host/port` and `nc -e /bin/sh` forms are detected with
+ * linear scans rather than run-on regexes. The previous expressions were
+ * `/dev/tcp/\S+/\d+` and `\bnc\b[^\n]*-e\s+/…/sh`; on a string of repeated
+ * prefixes (`'/dev/tcp/'.repeat(20000)` or `'nc '.repeat(60000)`) each
+ * match advanced while scanning to the end of the line for a suffix that
+ * was absent, producing quadratic retries.
+ */
 const REVERSE_SHELL: GuardRule = {
   id: 'reverse-shell',
   scope: 'execution',
-  test: (v) =>
-    /\/dev\/tcp\/\S+\/\d+/.test(v) ||
-    /bash\s+-i\b/.test(v) ||
-    /\bnc\b[^\n]*-e\s+\/(?:bin|usr\/bin)\/sh\b/.test(v),
+  test: (v) => {
+    if (hasDevTcpRedirect(v)) return true;
+    if (/bash\s+-i\b/.test(v)) return true;
+    for (const line of v.split('\n')) {
+      if (hasNetcatExecShell(line)) return true;
+    }
+    return false;
+  },
+};
+
+const DEV_TCP_PREFIX = '/dev/tcp/';
+
+/**
+ * Linear detection of a bash `/dev/tcp/host/port` redirect. Each prefix
+ * occurrence advances a single cursor (there is no rescanning of earlier
+ * text); the host/port portion is examined with a fixed amount of bounded
+ * work rather than a `\S+` run.
+ */
+const hasDevTcpRedirect = (value: string): boolean => {
+  let from = 0;
+  for (;;) {
+    const start = value.indexOf(DEV_TCP_PREFIX, from);
+    if (start === -1) return false;
+    const restStart = start + DEV_TCP_PREFIX.length;
+    let end = restStart;
+    while (end < value.length && !/\s/.test(value[end])) end += 1;
+    const segment = value.slice(restStart, end);
+    const slash = segment.lastIndexOf('/');
+    if (slash !== -1 && /^\d+$/.test(segment.slice(slash + 1))) return true;
+    from = end;
+  }
+};
+
+/**
+ * Linear detection of a netcat/ncat reverse shell within one line. Both the
+ * starter and the `-e /…/sh` execute form are matched with bounded patterns;
+ * neither runs to the end of the line, so repeated `nc` words do not retry.
+ */
+const hasNetcatExecShell = (line: string): boolean => {
+  if (!/\bnc(?:at)?\b/.test(line)) return false;
+  return /(?:^|\s)-e\s+\/(?:bin|usr\/bin)\/sh(?![\w.-])/.test(line);
 };
 
 /** PowerShell download cradles (download + execute APIs used together). */
