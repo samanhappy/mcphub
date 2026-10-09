@@ -1,3 +1,4 @@
+import { Client, ProtocolError, StreamableHTTPClientTransport } from '../clients/mcpSdkClient.js';
 import { CliApiError } from './errors.js';
 
 export type TokenKind = 'jwt' | 'bearer';
@@ -102,7 +103,57 @@ export class ApiClient {
   // name, '$smart' for smart routing, or null for the global endpoint.
   async mcpCall<T = unknown>(group: string | '$smart' | null, payload: unknown): Promise<T> {
     const suffix = group ? `/${encodeURIComponent(group)}` : '';
-    return this.request<T>('POST', `/mcp${suffix}`, payload);
+    const request = payload as {
+      id: string | number;
+      params: Parameters<Client['callTool']>[0];
+    };
+    const transport = new StreamableHTTPClientTransport(new URL(`${this.baseUrl}/mcp${suffix}`), {
+      requestInit: { headers: this.buildHeaders() },
+      fetch: async (url, init) => {
+        const response = await this.fetchImpl(url, init);
+        // Keep HTTP failures in the CLI's API-error/exit-code contract.
+        if (!response.ok && init?.method === 'POST') {
+          const text = await response.text();
+          let body: unknown = text;
+          try {
+            body = JSON.parse(text);
+          } catch {
+            /* Preserve non-JSON errors. */
+          }
+          throw new CliApiError({
+            status: response.status,
+            message: extractMessage(body) ?? `POST /mcp${suffix} failed with ${response.status}`,
+            body,
+            requiresLogin: response.status === 401,
+          });
+        }
+        return response;
+      },
+    });
+    const client = new Client({ name: 'mcphub-cli', version: '1.0.0' });
+    try {
+      // Use the sessionful protocol supported by both older and current hubs.
+      await client.connect(transport, { prior: { kind: 'legacy' } });
+      const result = await client.callTool(request.params);
+      return { jsonrpc: '2.0', id: request.id, result } as T;
+    } catch (error) {
+      if (error instanceof ProtocolError) {
+        return {
+          jsonrpc: '2.0',
+          id: request.id,
+          error: { code: error.code, message: error.message, data: error.data },
+        } as T;
+      }
+      throw error;
+    } finally {
+      try {
+        await transport.terminateSession();
+      } catch {
+        // Session cleanup must not replace a tool result or the original error.
+      } finally {
+        await client.close();
+      }
+    }
   }
 }
 
