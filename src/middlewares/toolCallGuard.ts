@@ -7,12 +7,23 @@
  * matching call is blocked before it reaches the upstream MCP server
  * (fail-closed).
  *
- * This module is intentionally narrow:
- * - It inspects only string values inside the call arguments.
- * - Every pattern is a high-confidence indicator of an attack, so benign
- *   arguments (including prose mentioning punctuation such as `|` or `;`)
- *   do not match.
- * - No network access and no third-party dependencies are required.
+ * Rules are split into two tiers:
+ * - **Always-on** rules detect payloads that are dangerous in any field,
+ *   not only an executable one: cloud instance-metadata endpoints and
+ *   credential paths (SSRF / credential hijack). These are checked on
+ *   every string value.
+ * - **Execution** rules detect shell/RCE content (chaining, command
+ *   substitution, download-and-execute, sensitive-file reads, destructive
+ *   deletion, reverse shells, PowerShell cradles). Because shell-like text
+ *   and punctuation routinely appear inside ordinary prose, documentation
+ *   and messaging arguments, these rules are applied only to values held
+ *   in fields explicitly named to carry executable content
+ *   (`command`, `cmd`, `script`, `run`, … — see {@link EXECUTION_KEYS}).
+ *
+ * Every pattern is a high-confidence indicator of an attack and every
+ * inspection is linear in the size of its input (no catastrophic
+ * backtracking). No network access and no third-party dependencies are
+ * required.
  *
  * Enable with `TOOL_CALL_GUARD_ENABLED=true`. The guard is off by default
  * and performs no work unless explicitly enabled.
@@ -37,27 +48,91 @@ export class ToolCallBlockedError extends Error {
 export const isToolCallGuardEnabled = (env: NodeJS.ProcessEnv = process.env): boolean =>
   env.TOOL_CALL_GUARD_ENABLED === 'true';
 
+/**
+ * Selects which arguments carry executable content and are therefore
+ * inspected under the execution-tier rules.
+ */
+type RuleScope = 'always' | 'execution';
+
 interface GuardRule {
   id: string;
+  /** When the rule applies. */
+  scope: RuleScope;
   /** Returns true when the rule's dangerous pattern is present in the string. */
   test: (value: string) => boolean;
 }
 
 /**
+ * Normalised names of object keys whose values hold executable content.
+ * A key matches when its lower-cased name, after removing `_`, `-` and
+ * spaces, is one of these tokens, or ends with one of the suffixes in
+ * {@link EXECUTION_KEY_SUFFIXES}.
+ */
+const EXECUTION_KEYS: ReadonlySet<string> = new Set([
+  'command',
+  'cmd',
+  'cmds',
+  'script',
+  'exec',
+  'execute',
+  'shell',
+  'run',
+  'code',
+  'statement',
+  'expression',
+]);
+
+/** Normalised key suffixes that indicate executable content. */
+const EXECUTION_KEY_SUFFIXES: readonly string[] = ['command', 'commands', 'script'];
+
+/** Returns true when an object key is explicitly named to carry a command. */
+const isExecutionKey = (key: string): boolean => {
+  const normalised = key.toLowerCase().replace(/[_\-\s]/g, '');
+  if (EXECUTION_KEYS.has(normalised)) return true;
+  return EXECUTION_KEY_SUFFIXES.some((suffix) => normalised.endsWith(suffix));
+};
+
+/**
  * Command substitution / execution expansions. These forms execute the
  * embedded command whenever a shell interprets the value, so they are a
- * direct RCE indicator. Backtick pairs are matched only when they contain
- * shell syntax, since single backticks are common in prose/markdown.
+ * direct RCE indicator.
+ *
+ * `$( ... )` is matched directly. Backtick pairs are inspected with a
+ * linear scan rather than a single regex, because a single opening
+ * backtick followed by a long run of non-backtick characters made the old
+ * backtick expression retry across the whole string.
  */
 const COMMAND_EXPANSION: GuardRule = {
   id: 'command-expansion',
-  test: (v) =>
-    /\$\([^)]/.test(v) ||
-    /`[^`]*[;&|$()/]{1,2}[^`]*`/.test(v) ||
-    /`\s*(?:sudo\s+)?(?:cat|ls|id|whoami|uname|wget|curl|bash|sh|nc|python|perl|ruby|chmod|chown|rm|cp|mv)\s+[^`]+`/.test(
-      v,
-    ),
+  scope: 'execution',
+  test: (v) => /\$\([^)]/.test(v) || backtickSpanContains(v, SHELL_SYNTAX_CHARS),
 };
+
+/** Matches characters that indicate the content of a backtick span is shell syntax. */
+const SHELL_SYNTAX_CHARS = /[;&|$/]/;
+
+/**
+ * Linear scan for backtick-delimited spans that contain shell syntax or a
+ * known command. Each character is visited once; there is no backtracking.
+ */
+const backtickSpanContains = (value: string, syntax: RegExp): boolean => {
+  let open = -1;
+  for (let i = 0; i < value.length; i += 1) {
+    if (value[i] !== '`') continue;
+    if (open === -1) {
+      open = i;
+    } else {
+      const span = value.slice(open + 1, i);
+      if (syntax.test(span) || COMMAND_IN_BACKTICK.test(span)) return true;
+      open = -1;
+    }
+  }
+  return false;
+};
+
+/** A backtick span that runs a known command with an argument. */
+const COMMAND_IN_BACKTICK =
+  /^\s*(?:sudo\s+)?(?:cat|ls|id|whoami|uname|wget|curl|bash|sh|nc|python|perl|ruby|chmod|chown|rm|cp|mv)\s+\S/;
 
 /**
  * Classic shell metacharacter chaining (`;`, `&&`, `||`) immediately
@@ -66,10 +141,8 @@ const COMMAND_EXPANSION: GuardRule = {
  */
 const SHELL_CHAINING: GuardRule = {
   id: 'shell-chaining',
+  scope: 'execution',
   test: (v) =>
-    // `echo`/`export` are intentionally excluded: they are extremely common
-    // English/configuration words, so including them blocked ordinary prose
-    // such as "...; echo is a shell builtin.".
     /(?:;|&&|\|\|)\s*(?:sudo\s+)?(?:cat|ls|id|whoami|uname|wget|curl|bash|sh|nc|python|perl|ruby|chmod|chown|rm|cp|mv)\b/.test(
       v,
     ),
@@ -79,16 +152,17 @@ const SHELL_CHAINING: GuardRule = {
  * Download-and-execute pattern, e.g. `curl http://... | sh` or
  * `wget -O- ... | bash`, including the `sh -c "$(curl ...)"` form.
  *
- * The piped form requires the shell to sit at the end of the line (only
- * optional trailing whitespace), which is how a real command is written.
- * A downloader mentioned as an example inside a longer sentence — e.g.
- * "a Markdown example containing `curl ... | sh` is also blocked" — does
- * not match, so documentation/messaging tools are not interrupted.
+ * The shell is intentionally not required to sit at the end of the line:
+ * real invocations commonly pass arguments (`sh -s arg`) or append a
+ * trailing comment (`sh # install`), and neither prevents the downloaded
+ * content from running. This rule is execution-scoped, so downloaders that
+ * merely appear as examples inside prose/documentation are not matched.
  */
 const DOWNLOADER_PIPE: GuardRule = {
   id: 'downloader-pipe',
+  scope: 'execution',
   test: (v) =>
-    /(?:curl|wget)\b[^|\n]*\|\s*(?:sudo\s+)?(?:ba|z|fi|k|t?c)?sh\b\s*(?:[;&|]|\s*$)/m.test(v) ||
+    /(?:curl|wget)\b[^|\n]*\|\s*(?:sudo\s+)?(?:ba|z|fi|k|t?c)?sh\b/.test(v) ||
     /(?:ba|z|fi|k|t?c)?sh\s+-c\s+["']?\$\((?:curl|wget)\b/.test(v),
 };
 
@@ -99,6 +173,7 @@ const DOWNLOADER_PIPE: GuardRule = {
  */
 const SENSITIVE_FILE_READ: GuardRule = {
   id: 'sensitive-file-read',
+  scope: 'execution',
   test: (v) =>
     /(?:cat|head|tail|less|more|tac|nl|od|xxd|cp|mv|grep|open)\b[^\n]*\/etc\/(passwd|shadow)(?![\w.-])/.test(
       v,
@@ -109,27 +184,46 @@ const SENSITIVE_FILE_READ: GuardRule = {
  * Forced recursive deletion of a system/home root.
  *
  * Implemented as a linear per-line scan instead of a single regex. The
- * original combined three greedy `[^\n]*` segments in one expression,
- * which on long runs of dashes (e.g. `rm ` + `-r`.repeat(5000)) produced
- * catastrophic backtracking and never finished. The three checks below
- * run independently on each line, so the total work is O(n) with no
- * backtracking across segments.
+ * original combined three greedy `[^\n]*` segments in one expression, and
+ * even the intermediate `/-[^\s]*[rf]/` flag check retried from each dash,
+ * so long runs of dashes (e.g. `rm ` + `'-'.repeat(100000)) produced
+ * catastrophic backtracking. The checks below run independently on each
+ * line, inspecting only whitespace-delimited flag tokens, so the total work
+ * is O(n) with no backtracking across segments.
  */
 const FORCE_DELETE_ROOT: GuardRule = {
   id: 'force-delete-root',
+  scope: 'execution',
   test: (v) => {
     for (const line of v.split('\n')) {
       if (!/\brm\b/.test(line)) continue;
-      if (!/-[^\s]*[rf]/.test(line)) continue;
+      if (!hasRecursiveForceFlag(line)) continue;
       if (/(?:--no-preserve-root\b)?\s\/(?:\s|$|\*)/.test(line)) return true;
     }
     return false;
   },
 };
 
+/**
+ * Returns true when the line carries a recursive flag (a single-dash flag
+ * token containing `r`), or `--no-preserve-root`. Recursive deletion of the
+ * root target is dangerous with `-r` alone, so `-f` is not required. Only
+ * whitespace-delimited tokens are inspected, so a run of dashes that never
+ * forms such a token is visited once and rejected.
+ */
+const hasRecursiveForceFlag = (line: string): boolean => {
+  if (line.includes('--no-preserve-root')) return true;
+  for (const token of line.split(/\s+/)) {
+    if (token.length < 2 || token[0] !== '-' || token[1] === '-') continue;
+    if (token.slice(1).includes('r')) return true;
+  }
+  return false;
+};
+
 /** Reverse-shell starters. */
 const REVERSE_SHELL: GuardRule = {
   id: 'reverse-shell',
+  scope: 'execution',
   test: (v) =>
     /\/dev\/tcp\/\S+\/\d+/.test(v) ||
     /bash\s+-i\b/.test(v) ||
@@ -139,6 +233,7 @@ const REVERSE_SHELL: GuardRule = {
 /** PowerShell download cradles (download + execute APIs used together). */
 const POWERSHELL_CRADLE: GuardRule = {
   id: 'powershell-cradle',
+  scope: 'execution',
   test: (v) => {
     const lower = v.toLowerCase();
     const downloads =
@@ -154,10 +249,12 @@ const POWERSHELL_CRADLE: GuardRule = {
  * Cloud instance metadata service targets (AWS / GCP / Azure / Alibaba /
  * Oracle / DigitalOcean / OpenStack), in dotted, decimal or hex form for the
  * AWS IMDS address. The IMDS hostnames are not routable on any ordinary
- * network, so a match is always an SSRF attempt.
+ * network, so a match is always an SSRF attempt regardless of the field it
+ * appears in.
  */
 const CLOUD_METADATA_URL: GuardRule = {
   id: 'cloud-metadata-url',
+  scope: 'always',
   test: (v) =>
     /https?:\/\/(?:169\.254\.169\.254|2852039166|0xa9fea9fe)(?::\d+)?\//.test(v) ||
     /https?:\/\/(?:metadata\.google\.internal|169\.254\.169\.254\.metadata\.azure\.com|100\.100\.100\.200)\//.test(
@@ -168,6 +265,7 @@ const CLOUD_METADATA_URL: GuardRule = {
 /** Well-known cloud credential / IMDS token paths or hostnames. */
 const CLOUD_CREDENTIAL_PATH: GuardRule = {
   id: 'cloud-credential-path',
+  scope: 'always',
   test: (v) =>
     /\/latest\/(?:meta-data|api\/token)/.test(v) ||
     /\/computeMetadata\/v1\//.test(v) ||
@@ -212,7 +310,11 @@ export interface InspectToolArgumentsResult {
  * Inspect tool call arguments for high-confidence dangerous payloads.
  *
  * Every string value reachable from the arguments object (including arrays
- * and nested objects) is checked. Non-string values are ignored.
+ * and nested objects) is checked. Strings inside a field whose key is named
+ * for executable content (and everything nested beneath it) are also
+ * checked against the execution-tier rules; other strings are checked only
+ * against the always-on (SSRF/credential) rules. Non-string values are
+ * ignored.
  *
  * @returns `{ blocked: false }` when nothing matched, otherwise the id of
  *          the first matching rule.
@@ -220,7 +322,7 @@ export interface InspectToolArgumentsResult {
 export const inspectToolArguments = (args: unknown): InspectToolArgumentsResult => {
   let budget = MAX_SCAN_BYTES;
 
-  const scan = (node: unknown): string | undefined => {
+  const scan = (node: unknown, execution: boolean): string | undefined => {
     if (typeof node === 'string') {
       // Fail closed: if this string cannot be fully inspected within the
       // remaining budget, block the call instead of silently passing the
@@ -228,27 +330,33 @@ export const inspectToolArguments = (args: unknown): InspectToolArgumentsResult 
       if (node.length > budget) return SCAN_LIMIT_RULE_ID;
       budget -= node.length;
       for (const rule of RULES) {
+        if (rule.scope === 'execution' && !execution) continue;
         if (rule.test(node)) return rule.id;
       }
       return undefined;
     }
     if (Array.isArray(node)) {
       for (const item of node) {
-        const hit = scan(item);
+        const hit = scan(item, execution);
         if (hit) return hit;
       }
       return undefined;
     }
     if (node !== null && typeof node === 'object') {
-      for (const value of Object.values(node as Record<string, unknown>)) {
-        const hit = scan(value);
+      for (const [key, value] of Object.entries(node as Record<string, unknown>)) {
+        // A command-named field puts its whole subtree into execution scope;
+        // other fields keep the scope inherited from their parent.
+        const hit = scan(value, execution || isExecutionKey(key));
         if (hit) return hit;
       }
     }
     return undefined;
   };
 
-  const ruleId = scan(args);
+  // A top-level bare string is not a named execution field, so only the
+  // always-on rules apply to it. (In MCP, tool call arguments are an object;
+  // bare-string inputs exist mainly for testing.)
+  const ruleId = scan(args, false);
   return ruleId ? { blocked: true, ruleId } : { blocked: false };
 };
 
