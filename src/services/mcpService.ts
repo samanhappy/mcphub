@@ -4886,15 +4886,18 @@ const handleReadResourceRequestImpl = async (request: any, extra: any) => {
         : (appsRouteContext.serverInfos ?? []);
 
       for (const candidate of candidates) {
-        // An idle on-demand candidate still advertises its cached widget link,
-        // so a host may read the ui:// resource before any tool call has woken
-        // it. Wake it the same way the call path does, and hold off its idle
-        // shutdown while the read is in flight.
+        // An on-demand candidate may be idle yet still advertise its cached widget
+        // link, so a host can read the ui:// resource before any tool call has
+        // woken it. Hold off its idle shutdown for every read, awake or not, so an
+        // armed idle timer or an overlapping read cannot close the server mid-read,
+        // then wake it the same way the call path does if it is not running.
         let releaseOnDemandRead: (() => void) | undefined;
         try {
-          if (!candidate.client && candidate.config?.startOnDemand && candidate.enabled !== false) {
+          if (candidate.config?.startOnDemand && candidate.enabled !== false) {
             releaseOnDemandRead = beginOnDemandToolCall(candidate);
-            await ensureServerReady(candidate);
+            if (!candidate.client) {
+              await ensureServerReady(candidate);
+            }
             candidate.lastUsedAt = Date.now();
           }
           if (!candidate.client) {
