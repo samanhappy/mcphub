@@ -95,3 +95,19 @@ it('does not grant allowlist access to callers explicitly opting out', async () 
   ).rejects.toThrow();
   expect(baseFetch).not.toHaveBeenCalled();
 });
+
+it('reuses a strict dispatcher across empty-allowlist wrappers', async () => {
+  const first = jest.fn(async (_url: string | URL, _init?: RequestInit) => new Response('ok'));
+  const second = jest.fn(async (_url: string | URL, _init?: RequestInit) => new Response('ok'));
+  await createRedirectValidatingFetch(first, false, undefined, [])('http://8.8.8.8/one');
+  await createRedirectValidatingFetch(second, false, undefined, [])('http://8.8.8.8/two');
+  expect(first.mock.calls[0][1]).toEqual(
+    expect.objectContaining({ dispatcher: expect.any(Object) }),
+  );
+  expect(second.mock.calls[0][1]).toEqual(
+    expect.objectContaining({ dispatcher: expect.any(Object) }),
+  );
+  const firstOptions = first.mock.calls[0][1] as RequestInit & { dispatcher: unknown };
+  const secondOptions = second.mock.calls[0][1] as RequestInit & { dispatcher: unknown };
+  expect(firstOptions.dispatcher).toBe(secondOptions.dispatcher);
+});

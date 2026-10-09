@@ -160,6 +160,9 @@ export const createSafeLookup =
 
 const safeLookup = createSafeLookup();
 const safeDispatcher = new Agent({ connect: { lookup: safeLookup } });
+const publicOnlyDispatcher = new Agent({
+  connect: { lookup: createSafeLookup(defaultLookup, []) },
+});
 const safeHttpAgent = new HttpAgent({ lookup: safeLookup });
 const safeHttpsAgent = new HttpsAgent({ lookup: safeLookup });
 
@@ -238,7 +241,9 @@ export function createRedirectValidatingFetch(
     ? undefined
     : lookup === defaultLookup && allowedCidrs === undefined
       ? safeDispatcher
-      : new Agent({ connect: { lookup: createSafeLookup(lookup, allowedCidrs) } });
+      : lookup === defaultLookup && allowedCidrs?.length === 0
+        ? publicOnlyDispatcher
+        : new Agent({ connect: { lookup: createSafeLookup(lookup, allowedCidrs) } });
   return async (url, init) => {
     let currentUrl = typeof url === 'string' ? url : url.toString();
     let hops = 0;

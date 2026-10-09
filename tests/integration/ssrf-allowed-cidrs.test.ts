@@ -1,3 +1,5 @@
+import { lookup as dnsLookup } from 'node:dns/promises';
+jest.mock('node:dns/promises', () => ({ lookup: jest.fn() }));
 import { createServer, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import axios from 'axios';
@@ -51,6 +53,26 @@ it('blocks rebinding from an allowed subnet to an unlisted subnet before connect
     await expect(
       createRedirectValidatingFetch(fetch, false, lookup)('http://rebind.invalid:3999/mcp'),
     ).rejects.toThrow();
+    expect(lookup).toHaveBeenCalledTimes(2);
+  } finally {
+    mockCidrs = [];
+  }
+});
+
+it('keeps the shared public-only dispatcher strict during DNS rebinding despite the global allowlist', async () => {
+  mockCidrs = ['127.0.0.1/32'];
+  const lookup = dnsLookup as jest.Mock;
+  lookup
+    .mockReset()
+    .mockResolvedValueOnce([{ address: '8.8.8.8', family: 4 }])
+    .mockResolvedValue([{ address: '127.0.0.1', family: 4 }]);
+  try {
+    const safeFetch = createRedirectValidatingFetch(fetch, false, undefined, []);
+    await expect(safeFetch('http://strict.invalid:3999/metadata')).rejects.toMatchObject({
+      cause: expect.objectContaining({
+        message: expect.stringContaining('Blocked or empty DNS result for strict.invalid'),
+      }),
+    });
     expect(lookup).toHaveBeenCalledTimes(2);
   } finally {
     mockCidrs = [];
