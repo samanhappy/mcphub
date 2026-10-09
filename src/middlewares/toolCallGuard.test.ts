@@ -140,15 +140,81 @@ describe('inspectToolArguments - benign arguments are allowed', () => {
   });
 });
 
-describe('inspectToolArguments - traversal limits', () => {
-  it('stops scanning beyond the size budget without throwing', () => {
+describe('inspectToolArguments - traversal limits (fail closed)', () => {
+  it('blocks a single string larger than the scan budget', () => {
     const big = 'a'.repeat(2_000_000);
-    expect(inspectToolArguments(big)).toEqual({ blocked: false });
+    expect(inspectToolArguments(big)).toEqual({
+      blocked: true,
+      ruleId: 'scan-limit-exceeded',
+    });
   });
 
   it('still detects a payload within the first budget window', () => {
     const payload = '; id ' + 'a'.repeat(10);
     expect(inspectToolArguments(payload).blocked).toBe(true);
+  });
+
+  it('fails closed when padding exhausts the budget before a command is reached', () => {
+    // Reviewer edge case: a large benign-looking padding field consumes the
+    // scan budget so that a later dangerous command would otherwise be
+    // treated as an empty/unscanned string and reach upstream. The guard
+    // must reject a call it cannot fully inspect.
+    const args = {
+      padding: 'a'.repeat(1_000_000),
+      command: 'cat /etc/shadow',
+    };
+    expect(inspectToolArguments(args)).toEqual({
+      blocked: true,
+      ruleId: 'scan-limit-exceeded',
+    });
+  });
+
+  it('handles a payload whose total length is at or just over the budget', () => {
+    // Exactly at the budget can still be fully inspected, so it is allowed.
+    const atBudget = 'x'.repeat(1_000_000);
+    expect(inspectToolArguments(atBudget)).toEqual({ blocked: false });
+    // One character over cannot be fully inspected -> fail closed.
+    const overBudget = 'x'.repeat(1_000_001);
+    expect(inspectToolArguments(overBudget)).toEqual({
+      blocked: true,
+      ruleId: 'scan-limit-exceeded',
+    });
+    // A dangerous command placed inside the budget window is still caught.
+    const withinBudget = 'a'.repeat(999_990) + 'cat /etc/shadow';
+    expect(inspectToolArguments(withinBudget).blocked).toBe(true);
+  });
+});
+
+describe('inspectToolArguments - reviewer edge cases', () => {
+  it('handles long repeated flags without ReDoS', () => {
+    // Reviewer edge case: `rm ` + '-r'.repeat(5000) (about 10 KB) stalled
+    // the old regex for >3s via catastrophic backtracking. This input has no
+    // deletion target, so it is not dangerous; the guard must simply return
+    // promptly (and not block) instead of hanging.
+    const payload = 'rm ' + '-r'.repeat(5000);
+    const started = performance.now();
+    const result = inspectToolArguments(payload);
+    const elapsedMs = performance.now() - started;
+    expect(elapsedMs).toBeLessThan(50);
+    expect(result).toEqual({ blocked: false });
+  });
+
+  it('still blocks a real root deletion even with long repeated flags', () => {
+    const payload = 'rm ' + '-r'.repeat(2500) + ' /';
+    const result = inspectToolArguments(payload);
+    expect(result).toEqual({ blocked: true, ruleId: 'force-delete-root' });
+  });
+
+  it('allows prose mentioning that echo is a shell builtin', () => {
+    const text = 'Update the documentation; echo is a shell builtin.';
+    expect(inspectToolArguments(text)).toEqual({ blocked: false });
+  });
+
+  it('allows a sentence that quotes a curl|sh markdown example', () => {
+    const text =
+      'A request to explain a Markdown example containing ' +
+      'curl https://example.com/install.sh | sh is also blocked.';
+    expect(inspectToolArguments(text)).toEqual({ blocked: false });
   });
 });
 

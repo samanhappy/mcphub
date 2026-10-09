@@ -67,7 +67,10 @@ const COMMAND_EXPANSION: GuardRule = {
 const SHELL_CHAINING: GuardRule = {
   id: 'shell-chaining',
   test: (v) =>
-    /(?:;|&&|\|\|)\s*(?:sudo\s+)?(?:cat|ls|id|whoami|uname|wget|curl|bash|sh|nc|python|perl|ruby|chmod|chown|rm|cp|mv|export|echo)\b/.test(
+    // `echo`/`export` are intentionally excluded: they are extremely common
+    // English/configuration words, so including them blocked ordinary prose
+    // such as "...; echo is a shell builtin.".
+    /(?:;|&&|\|\|)\s*(?:sudo\s+)?(?:cat|ls|id|whoami|uname|wget|curl|bash|sh|nc|python|perl|ruby|chmod|chown|rm|cp|mv)\b/.test(
       v,
     ),
 };
@@ -75,11 +78,17 @@ const SHELL_CHAINING: GuardRule = {
 /**
  * Download-and-execute pattern, e.g. `curl http://... | sh` or
  * `wget -O- ... | bash`, including the `sh -c "$(curl ...)"` form.
+ *
+ * The piped form requires the shell to sit at the end of the line (only
+ * optional trailing whitespace), which is how a real command is written.
+ * A downloader mentioned as an example inside a longer sentence — e.g.
+ * "a Markdown example containing `curl ... | sh` is also blocked" — does
+ * not match, so documentation/messaging tools are not interrupted.
  */
 const DOWNLOADER_PIPE: GuardRule = {
   id: 'downloader-pipe',
   test: (v) =>
-    /(?:curl|wget)\b[^|\n]*\|\s*(?:sudo\s+)?(?:ba|z|fi|k|t?c)?sh\b/.test(v) ||
+    /(?:curl|wget)\b[^|\n]*\|\s*(?:sudo\s+)?(?:ba|z|fi|k|t?c)?sh\b\s*(?:[;&|]|\s*$)/m.test(v) ||
     /(?:ba|z|fi|k|t?c)?sh\s+-c\s+["']?\$\((?:curl|wget)\b/.test(v),
 };
 
@@ -96,10 +105,26 @@ const SENSITIVE_FILE_READ: GuardRule = {
     ) || /\/etc\/shadow(?![\w.-])/.test(v),
 };
 
-/** Forced recursive deletion of a system/home root. */
+/**
+ * Forced recursive deletion of a system/home root.
+ *
+ * Implemented as a linear per-line scan instead of a single regex. The
+ * original combined three greedy `[^\n]*` segments in one expression,
+ * which on long runs of dashes (e.g. `rm ` + `-r`.repeat(5000)) produced
+ * catastrophic backtracking and never finished. The three checks below
+ * run independently on each line, so the total work is O(n) with no
+ * backtracking across segments.
+ */
 const FORCE_DELETE_ROOT: GuardRule = {
   id: 'force-delete-root',
-  test: (v) => /\brm\b[^\n]*-[^\n]*[rf][^\n]*\s(?:--no-preserve-root\b)?\/(?:\s|$|\*)/.test(v),
+  test: (v) => {
+    for (const line of v.split('\n')) {
+      if (!/\brm\b/.test(line)) continue;
+      if (!/-[^\s]*[rf]/.test(line)) continue;
+      if (/(?:--no-preserve-root\b)?\s\/(?:\s|$|\*)/.test(line)) return true;
+    }
+    return false;
+  },
 };
 
 /** Reverse-shell starters. */
@@ -163,12 +188,19 @@ const RULES: readonly GuardRule[] = [
 ];
 
 /**
- * Cap on total argument text inspected per call. Deep or oversized payloads
- * stop being scanned at this boundary, which keeps a single call from doing
- * unbounded work. Dangerous payloads reachable by an attacker are far below
- * this size.
+ * Cap on total argument text inspected per call. When a single call contains
+ * more text than this, it cannot be fully inspected and the guard blocks the
+ * call (fail-closed) rather than treating the unexamined portion as safe.
+ * This keeps a single call from doing unbounded work while preventing an
+ * attacker from padding a payload past the budget to smuggle a command.
  */
 const MAX_SCAN_BYTES = 1_000_000;
+
+/**
+ * Rule id reported when a call contains more text than the scan budget and
+ * therefore cannot be fully inspected.
+ */
+const SCAN_LIMIT_RULE_ID = 'scan-limit-exceeded';
 
 export interface InspectToolArgumentsResult {
   blocked: boolean;
@@ -190,14 +222,10 @@ export const inspectToolArguments = (args: unknown): InspectToolArgumentsResult 
 
   const scan = (node: unknown): string | undefined => {
     if (typeof node === 'string') {
-      if (node.length > budget) {
-        const slice = node.slice(0, budget);
-        budget = 0;
-        for (const rule of RULES) {
-          if (rule.test(slice)) return rule.id;
-        }
-        return undefined;
-      }
+      // Fail closed: if this string cannot be fully inspected within the
+      // remaining budget, block the call instead of silently passing the
+      // unexamined content through.
+      if (node.length > budget) return SCAN_LIMIT_RULE_ID;
       budget -= node.length;
       for (const rule of RULES) {
         if (rule.test(node)) return rule.id;
