@@ -1,3 +1,4 @@
+import { validateAllowedCidrs } from '../utils/ssrf.js';
 import {
   copyCredentialBindings,
   deleteCredentialBindings,
@@ -1849,7 +1850,18 @@ export const updateSystemConfig = async (req: Request, res: Response): Promise<v
       oauthServer,
       auth,
       activityLog,
+      network,
     } = req.body;
+    const hasNetworkUpdate = network !== undefined;
+    if (hasNetworkUpdate && (!network || !validateAllowedCidrs(network.allowedCidrs))) {
+      res
+        .status(400)
+        .json({
+          success: false,
+          message: 'network.allowedCidrs must be an array of valid IPv4 or IPv6 CIDRs',
+        });
+      return;
+    }
     const { smartRouting } = migrateLegacySmartRoutingConfig(requestSmartRouting);
 
     const hasRoutingUpdate =
@@ -1961,7 +1973,8 @@ export const updateSystemConfig = async (req: Request, res: Response): Promise<v
       !hasSessionRebuildUpdate &&
       !hasOAuthServerUpdate &&
       !hasBetterAuthUpdate &&
-      !hasActivityLogUpdate
+      !hasActivityLogUpdate &&
+      !hasNetworkUpdate
     ) {
       res.status(400).json({
         success: false,
@@ -2604,6 +2617,10 @@ export const updateSystemConfig = async (req: Request, res: Response): Promise<v
         ...systemConfig.activityLog,
         storeToolPayload: activityLog.storeToolPayload,
       };
+    }
+
+    if (hasNetworkUpdate) {
+      systemConfig.network = { allowedCidrs: [...new Set<string>(network.allowedCidrs)] };
     }
 
     // Save using DAO (supports both file and database modes)

@@ -787,6 +787,9 @@
     "restoreDefaultFailed": "Échec de la restauration de la description par défaut de l'invite"
   },
   "settings": {
+    "allowedCidrs": "Plages CIDR autorisées pour les services en amont",
+    "allowedCidrsDescription": "Un CIDR IPv4 ou IPv6 par ligne. Tous les utilisateurs peuvent accéder aux services MCP, OpenAPI et OAuth de ces plages. Une liste vide ne donne aucun accès supplémentaire. Les serveurs appartenant aux administrateurs gardent leur accès interne. Évitez les plages larges et les adresses de métadonnées ou de boucle locale. Les changements concernent les nouvelles requêtes, sans fermer les connexions existantes.",
+    "allowedCidrsUpdateFailed": "Échec de la mise à jour des plages CIDR",
     "subtitle": "Configurez les paramètres système, l'authentification, le routage et les intégrations de serveurs MCP.",
     "enableGlobalRoute": "Activer la route globale",
     "enableGlobalRouteDescription": "Autoriser les connexions au point de terminaison /sse sans spécifier d'ID de groupe",

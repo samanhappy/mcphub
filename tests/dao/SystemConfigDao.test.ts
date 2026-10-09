@@ -29,6 +29,15 @@ describe('SystemConfigDaoImpl smart-routing migration', () => {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   });
 
+  it('persists and clears CIDR ranges without losing other settings', async () => {
+    writeSettings(settingsPath, { mcpServers: {}, systemConfig: { nameSeparator: '::' } });
+    const dao = new SystemConfigDaoImpl();
+    await dao.update({ network: { allowedCidrs: ['192.168.1.0/24'] } });
+    expect((await dao.get()).network?.allowedCidrs).toEqual(['192.168.1.0/24']);
+    await dao.update({ network: { allowedCidrs: [] } });
+    expect(await dao.get()).toMatchObject({ nameSeparator: '::', network: { allowedCidrs: [] } });
+  });
+
   it('returns migrated settings when a read-only config rejects writeback', async () => {
     writeSettings(settingsPath, {
       mcpServers: {},

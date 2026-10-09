@@ -252,6 +252,9 @@ export interface ToolResultCompressionConfig {
 }
 
 export interface SystemConfig {
+  network?: {
+    allowedCidrs?: string[]; // Admin-managed ranges reachable by non-admin-owned upstreams.
+  };
   routing?: {
     enableGlobalRoute?: boolean; // Controls whether the /sse endpoint without group is enabled
     enableGroupNameRoute?: boolean; // Controls whether group routing by name is allowed

@@ -148,6 +148,7 @@ export async function migrateToDatabase(seedServersAndGroups = true): Promise<bo
     if (settings.systemConfig) {
       logger.log('Migrating system configuration...');
       const systemConfig = {
+        network: settings.systemConfig.network || {},
         routing: settings.systemConfig.routing || {},
         install: settings.systemConfig.install || {},
         smartRouting: settings.systemConfig.smartRouting || {},

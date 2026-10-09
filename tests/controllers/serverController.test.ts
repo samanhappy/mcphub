@@ -834,6 +834,26 @@ describe('serverController - updateSystemConfig', () => {
     mockSystemConfigDao.update.mockResolvedValue(true);
   });
 
+  it('saves and clears an admin CIDR allowlist', async () => {
+    for (const allowedCidrs of [['192.168.1.0/24', 'fd00::/64'], []]) {
+      mockRequest.body = { network: { allowedCidrs } };
+      await updateSystemConfig(mockRequest as Request, mockResponse as Response);
+      expect(mockSystemConfigDao.update).toHaveBeenLastCalledWith(
+        expect.objectContaining({ network: { allowedCidrs } }),
+      );
+    }
+  });
+
+  it.each([null, {}, { allowedCidrs: '192.168.1.0/24' }, { allowedCidrs: ['192.168.1.0/33'] }])(
+    'rejects invalid network configuration %s without saving',
+    async (network) => {
+      mockRequest.body = { network, routing: { skipAuth: true } };
+      await updateSystemConfig(mockRequest as Request, mockResponse as Response);
+      expect(mockStatus).toHaveBeenCalledWith(400);
+      expect(mockSystemConfigDao.update).not.toHaveBeenCalled();
+    },
+  );
+
   it('rejects system configuration updates from non-admin users', async () => {
     mockRequest.user = {
       username: 'regular-user',

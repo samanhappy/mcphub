@@ -788,3 +788,25 @@ Set `options.maxBufferSize` to a positive safe integer in bytes to allow larger 
 ```
 
 Omitting this option retains the SDK default of 10 MiB (10485760 bytes). The limit applies to the read buffer containing the serialized MCP message, including its envelope. A response that exceeds the limit closes the transport. Raising the limit allows greater memory use; choose a finite limit appropriate for the server. Zero, negative values, fractions, and non-finite values are rejected. This option does not change HTTP transports or the SDK's large-message processing performance.
+
+## Allowing internal upstream networks
+
+Administrators can maintain **Allowed upstream CIDR ranges** in Settings, or set `systemConfig.network.allowedCidrs` in JSON storage:
+
+```json
+{
+  "systemConfig": {
+    "network": {
+      "allowedCidrs": ["192.168.1.0/24", "fd00:1234::/64"]
+    }
+  }
+}
+```
+
+The list defaults to empty. It permits all users' upstream MCP (SSE and Streamable HTTP), OpenAPI, and upstream OAuth requests to addresses in those ranges. Public addresses remain accessible; admin-owned servers retain their existing unrestricted internal-network access. Server visibility and sharing permissions are unchanged.
+
+Each entry must be an IPv4 or IPv6 address with a prefix length (for example `/32` for one IPv4 address or `/128` for one IPv6 address). All DNS answers, each redirect destination, and connection-time DNS answers are checked. Removing a range affects subsequent requests, but does not close existing connections or clear cached data. Anonymous OAuth client metadata (CIMD) URLs remain restricted to public addresses.
+
+Only admins can update the list through `PUT /api/system-config` with `{"network":{"allowedCidrs":["192.168.1.0/24"]}}`. Sending an empty array clears it. Invalid lists return HTTP 400 without saving. Database installations should use the dashboard or API; the field is stored in the system configuration table.
+
+Use the smallest necessary ranges. Broad ranges such as `0.0.0.0/0` or `::/0` also allow sensitive internal destinations, including loopback and cloud metadata endpoints.

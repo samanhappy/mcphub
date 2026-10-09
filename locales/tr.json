@@ -787,6 +787,9 @@
     "restoreDefaultFailed": "Varsayılan istek açıklamasına dönülemedi"
   },
   "settings": {
+    "allowedCidrs": "İzin verilen üst sunucu CIDR aralıkları",
+    "allowedCidrsDescription": "Her satıra bir IPv4 veya IPv6 CIDR girin. Tüm kullanıcılar bu aralıklardaki MCP, OpenAPI ve OAuth uç noktalarına erişebilir. Boş liste ek erişim sağlamaz. Yöneticiye ait sunucular iç ağ erişimini korur. Geniş aralıklardan, meta veri ve geri döngü adreslerinden kaçının. Değişiklikler yeni isteklere uygulanır; mevcut bağlantılar kapanmaz.",
+    "allowedCidrsUpdateFailed": "İzin verilen CIDR aralıkları güncellenemedi",
     "subtitle": "Sistem ayarlarını, kimlik doğrulamayı, yönlendirmeyi ve MCP sunucu entegrasyonlarını yapılandırın.",
     "enableGlobalRoute": "Global Yönlendirmeyi Etkinleştir",
     "enableGlobalRouteDescription": "Grup ID'si belirtmeden /sse uç noktasına bağlantıya izin ver",
