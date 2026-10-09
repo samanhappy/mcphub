@@ -155,6 +155,7 @@ export const mapCimdDocument = (
 const fetchCimdDocument = async (clientIdUrl: string): Promise<IOAuthClient | undefined> => {
   await assertSafeUrl(clientIdUrl, {
     allowInternal: false,
+    allowedCidrs: [],
     ...(ssrfLookupOverride ? { lookup: ssrfLookupOverride } : {}),
   });
 
@@ -162,6 +163,7 @@ const fetchCimdDocument = async (clientIdUrl: string): Promise<IOAuthClient | un
     (url, init) => fetchImpl(url, init),
     false,
     ssrfLookupOverride,
+    [],
   );
   const response = await validatingFetch(clientIdUrl, {
     method: 'GET',

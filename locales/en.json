@@ -788,6 +788,9 @@
     "restoreDefaultFailed": "Failed to restore the default prompt description"
   },
   "settings": {
+    "allowedCidrs": "Allowed upstream CIDR ranges",
+    "allowedCidrsDescription": "One IPv4 or IPv6 CIDR per line. All users can connect upstream MCP, OpenAPI and OAuth endpoints in these ranges. Empty means no additional access. Admin-owned servers retain unrestricted internal access. Avoid broad ranges and metadata or loopback addresses unless required. Changes apply to new requests; existing connections are not closed.",
+    "allowedCidrsUpdateFailed": "Failed to update allowed CIDR ranges",
     "subtitle": "Configure system settings, authentication, routing, and MCP server integrations.",
     "enableGlobalRoute": "Enable Global Route",
     "enableGlobalRouteDescription": "Allow connections to /sse endpoint without specifying a group ID",

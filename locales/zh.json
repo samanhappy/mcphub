@@ -790,6 +790,9 @@
     "restoreDefaultFailed": "恢复默认提示词描述失败"
   },
   "settings": {
+    "allowedCidrs": "允许访问的上游 CIDR 范围",
+    "allowedCidrsDescription": "每行一个 IPv4 或 IPv6 CIDR。所有用户均可连接这些范围内的上游 MCP、OpenAPI 和 OAuth 端点。留空表示不额外放行。管理员拥有的服务器仍可访问所有内网地址。请按需配置，避免过大的范围以及元数据或回环地址。修改对新请求生效，不会关闭已有连接。",
+    "allowedCidrsUpdateFailed": "更新 CIDR 白名单失败",
     "subtitle": "配置系统设置、认证、路由及 MCP 服务器集成。",
     "enableGlobalRoute": "启用全局路由",
     "enableGlobalRouteDescription": "允许不指定组 ID 就连接到 /sse 端点",

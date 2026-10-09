@@ -639,6 +639,8 @@ const SettingsPage: React.FC = () => {
     betterAuthConfig,
     nameSeparator,
     enableSessionRebuild,
+    allowedCidrs,
+    updateAllowedCidrs,
     storeToolPayload,
     loading,
     bearerKeys,
@@ -660,6 +662,11 @@ const SettingsPage: React.FC = () => {
     deleteBearerKey,
     refreshBearerKeys,
   } = useSettingsData();
+
+  const [tempAllowedCidrs, setTempAllowedCidrs] = useState('');
+  useEffect(() => {
+    setTempAllowedCidrs(allowedCidrs.join('\n'));
+  }, [allowedCidrs]);
 
   // Smart routing resolves env vars first, so a value typed here can be shadowed
   // without any visible change: the form shows the key you just pasted while the
@@ -3942,6 +3949,31 @@ const SettingsPage: React.FC = () => {
           )}
         </div>
       </PermissionChecker>
+
+      {isAdmin && (
+        <div className="hub-card mb-6 p-5 space-y-3">
+          <label htmlFor="allowed-cidrs" className="block font-medium text-[var(--hub-ink)]">
+            {t('settings.allowedCidrs')}
+          </label>
+          <p className="text-sm text-[var(--hub-ink-2)]">{t('settings.allowedCidrsDescription')}</p>
+          <textarea
+            id="allowed-cidrs"
+            value={tempAllowedCidrs}
+            onChange={(event) => setTempAllowedCidrs(event.target.value)}
+            placeholder={'192.168.1.0/24\nfd00::/64'}
+            rows={4}
+            disabled={loading}
+            className="block w-full py-2 px-3 border border-gray-300 rounded-md form-input font-mono"
+          />
+          <button
+            className="hub-btn primary"
+            disabled={loading}
+            onClick={() => updateAllowedCidrs(tempAllowedCidrs.split(/\s+/).filter(Boolean))}
+          >
+            {t('common.save')}
+          </button>
+        </div>
+      )}
 
       {/* Route Configuration Settings */}
       <PermissionChecker permissions={PERMISSIONS.SETTINGS_ROUTE_CONFIG}>

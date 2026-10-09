@@ -132,6 +132,7 @@ interface SystemSettings {
       betterAuth?: Partial<BetterAuthConfig>;
     };
     enableSessionRebuild?: boolean;
+    network?: { allowedCidrs?: string[] };
     activityLog?: {
       storeToolPayload?: boolean;
     };
@@ -157,6 +158,8 @@ interface SettingsContextValue {
   betterAuthConfig: BetterAuthConfig;
   nameSeparator: string;
   enableSessionRebuild: boolean;
+  allowedCidrs: string[];
+  updateAllowedCidrs: (value: string[]) => Promise<boolean>;
   storeToolPayload: boolean;
   bearerKeys: BearerKey[];
   loading: boolean;
@@ -412,6 +415,7 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
 
   const [nameSeparator, setNameSeparator] = useState<string>('-');
   const [enableSessionRebuild, setEnableSessionRebuild] = useState<boolean>(false);
+  const [allowedCidrs, setAllowedCidrs] = useState<string[]>([]);
   const [storeToolPayload, setStoreToolPayload] = useState<boolean>(true);
   const [bearerKeys, setBearerKeys] = useState<BearerKey[]>([]);
 
@@ -554,6 +558,7 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
           normalizeBetterAuthConfig(data.data?.systemConfig?.auth?.betterAuth),
         );
       }
+      if (data.success) setAllowedCidrs(data.data?.systemConfig?.network?.allowedCidrs ?? []);
       if (data.success && data.data?.systemConfig?.nameSeparator !== undefined) {
         setNameSeparator(data.data.systemConfig.nameSeparator);
       }
@@ -1045,6 +1050,25 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
     }
   };
 
+  const updateAllowedCidrs = async (value: string[]): Promise<boolean> => {
+    setLoading(true);
+    try {
+      const data = await apiPut('/system-config', { network: { allowedCidrs: value } });
+      if (!data.success) {
+        showToast(data.message || data.error || t('settings.allowedCidrsUpdateFailed'));
+        return false;
+      }
+      setAllowedCidrs(data.data.network.allowedCidrs);
+      showToast(t('settings.systemConfigUpdated'));
+      return true;
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : t('settings.allowedCidrsUpdateFailed'));
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const updateStoreToolPayload = async (value: boolean) => {
     setLoading(true);
     setError(null);
@@ -1195,6 +1219,8 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
     betterAuthConfig,
     nameSeparator,
     enableSessionRebuild,
+    allowedCidrs,
+    updateAllowedCidrs,
     storeToolPayload,
     bearerKeys,
     loading,
