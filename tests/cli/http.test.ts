@@ -6,11 +6,10 @@ type FetchCall = {
   init: RequestInit;
 };
 
-function mockFetch(response: {
-  status?: number;
-  body?: unknown;
-  text?: string;
-}): { fn: typeof fetch; calls: FetchCall[] } {
+function mockFetch(response: { status?: number; body?: unknown; text?: string }): {
+  fn: typeof fetch;
+  calls: FetchCall[];
+} {
   const calls: FetchCall[] = [];
   const fn = (async (url: any, init: any) => {
     calls.push({ url: String(url), init });
@@ -19,8 +18,8 @@ function mockFetch(response: {
       response.text !== undefined
         ? response.text
         : response.body !== undefined
-        ? JSON.stringify(response.body)
-        : '';
+          ? JSON.stringify(response.body)
+          : '';
     return {
       ok: status >= 200 && status < 300,
       status,
@@ -112,18 +111,5 @@ describe('ApiClient', () => {
     const headers = calls[0].init.headers as Record<string, string>;
     expect(headers['x-auth-token']).toBeUndefined();
     expect(headers.Authorization).toBeUndefined();
-  });
-
-  it('mcpCall routes to /mcp and /mcp/<group>', async () => {
-    const { fn, calls } = mockFetch({ body: { jsonrpc: '2.0' } });
-    const client = new ApiClient({ baseUrl: 'http://hub.test', token: 't', fetchImpl: fn });
-    await client.mcpCall(null, { method: 'tools/call' });
-    await client.mcpCall('$smart', { method: 'tools/call' });
-    await client.mcpCall('my-group', { method: 'tools/call' });
-    expect(calls.map((c) => c.url)).toEqual([
-      'http://hub.test/mcp',
-      'http://hub.test/mcp/%24smart',
-      'http://hub.test/mcp/my-group',
-    ]);
   });
 });

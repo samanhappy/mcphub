@@ -4,16 +4,26 @@ import { ApiClient } from '../../../src/cli/http.js';
 function makeClient(response: unknown) {
   const calls: Array<{ method: string; url: string; body: any }> = [];
   const fetchImpl = (async (url: any, init: any) => {
-    calls.push({
-      method: init.method,
-      url: String(url),
-      body: init.body ? JSON.parse(init.body) : undefined,
-    });
-    return {
-      ok: true,
-      status: 200,
-      text: async () => JSON.stringify(response),
-    } as unknown as Response;
+    const body = init.body ? JSON.parse(init.body) : undefined;
+    if (body?.method === 'tools/call') {
+      calls.push({ method: init.method, url: String(url), body: { ...body, id: 1 } });
+      return Response.json({ ...(response as object), id: body.id });
+    }
+    if (body?.method === 'initialize') {
+      return Response.json(
+        {
+          jsonrpc: '2.0',
+          id: body.id,
+          result: {
+            protocolVersion: '2025-11-25',
+            capabilities: { tools: {} },
+            serverInfo: { name: 'test', version: '1.0.0' },
+          },
+        },
+        { headers: { 'mcp-session-id': 'test-session' } },
+      );
+    }
+    return new Response(null, { status: init.method === 'GET' ? 405 : 202 });
   }) as unknown as typeof fetch;
   return { client: new ApiClient({ baseUrl: 'http://hub.test', token: 't', fetchImpl }), calls };
 }
@@ -36,31 +46,31 @@ describe('call command', () => {
   });
 
   it('--group routes to /mcp/<group>', async () => {
-    const { client, calls } = makeClient({ jsonrpc: '2.0', id: 1, result: {} });
+    const { client, calls } = makeClient({ jsonrpc: '2.0', id: 1, result: { content: [] } });
     await call.run(['echo', '--group', 'dev'], {}, { client });
     expect(calls[0].url).toBe('http://hub.test/mcp/dev');
   });
 
   it('--server routes to /mcp/<server> (same wire surface as --group)', async () => {
-    const { client, calls } = makeClient({ jsonrpc: '2.0', id: 1, result: {} });
+    const { client, calls } = makeClient({ jsonrpc: '2.0', id: 1, result: { content: [] } });
     await call.run(['echo', '--server', 'fetch'], {}, { client });
     expect(calls[0].url).toBe('http://hub.test/mcp/fetch');
   });
 
   it('--server wins over --group when both are present', async () => {
-    const { client, calls } = makeClient({ jsonrpc: '2.0', id: 1, result: {} });
+    const { client, calls } = makeClient({ jsonrpc: '2.0', id: 1, result: { content: [] } });
     await call.run(['echo', '--group', 'dev', '--server', 'fetch'], {}, { client });
     expect(calls[0].url).toBe('http://hub.test/mcp/fetch');
   });
 
   it('--smart wins over --group', async () => {
-    const { client, calls } = makeClient({ jsonrpc: '2.0', id: 1, result: {} });
+    const { client, calls } = makeClient({ jsonrpc: '2.0', id: 1, result: { content: [] } });
     await call.run(['echo', '--group', 'dev', '--smart'], {}, { client });
     expect(calls[0].url).toBe('http://hub.test/mcp/%24smart');
   });
 
   it('--params-json overrides positional args', async () => {
-    const { client, calls } = makeClient({ jsonrpc: '2.0', id: 1, result: {} });
+    const { client, calls } = makeClient({ jsonrpc: '2.0', id: 1, result: { content: [] } });
     await call.run(['echo', 'ignored=1', '--params-json', '{"deep":{"v":1}}'], {}, { client });
     expect(calls[0].body.params.arguments).toEqual({ deep: { v: 1 } });
   });
@@ -80,7 +90,7 @@ describe('call command', () => {
   });
 
   it('--no-coerce keeps string values', async () => {
-    const { client, calls } = makeClient({ jsonrpc: '2.0', id: 1, result: {} });
+    const { client, calls } = makeClient({ jsonrpc: '2.0', id: 1, result: { content: [] } });
     await call.run(['echo', 'n=42', '--no-coerce'], {}, { client });
     expect(calls[0].body.params.arguments).toEqual({ n: '42' });
   });

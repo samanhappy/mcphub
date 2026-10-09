@@ -196,6 +196,8 @@ Notes:
 - `--env KEY=VAL` (repeatable) injects environment values — both predeclared and additional keys are merged into the resulting `env` block.
 - `--to file` writes atomically (temp file + rename), so a crashed write can't corrupt your client config.
 
+`mcphub call` initializes an MCP session before invoking the tool, accepts JSON or SSE responses, and closes the session after the call. This supports both older sessionful hubs and current hubs through their compatible Streamable HTTP endpoint.
+
 ## Exit codes
 
 | Code | Meaning |
