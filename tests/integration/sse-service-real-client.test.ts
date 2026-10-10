@@ -87,12 +87,15 @@ describe('Real Client Transport Integration Tests', () => {
     httpServer = result.httpServer;
     baseURL = result.baseURL;
 
-    // AppServer initializes upstreams asynchronously; wait before any test replaces the fixture.
+    // AppServer initializes upstreams asynchronously; wait for discovery to finish before tests replace the fixture.
     const deadline = Date.now() + 30000;
-    while (getServerByName('test-server-1')?.status !== 'connected' && Date.now() < deadline) {
+    while (Date.now() < deadline) {
+      const info = getServerByName('test-server-1');
+      if (info?.status === 'connected' && info.tools?.length) break;
       await new Promise((resolve) => setTimeout(resolve, 100));
     }
     expect(getServerByName('test-server-1')?.status).toBe('connected');
+    expect(getServerByName('test-server-1')?.tools?.length).toBeGreaterThan(0);
   }, 60000);
 
   afterAll(async () => {
@@ -651,6 +654,73 @@ describe('Real Client Transport Integration Tests', () => {
           (await missing.callTool({ name: 'test-server-1-stateful', arguments: {} })).isError,
         ).toBe(true);
         expect(call).toHaveBeenCalledTimes(callsBeforeDenied);
+        expect(Object.keys(transports).every((id) => sessionIdsBefore.has(id))).toBe(true);
+      } finally {
+        await Promise.all(clients.map((client) => client.close()));
+        Object.assign(info, original);
+      }
+    }, 60000);
+
+    it('uses authenticated OpenAI conversation metadata as fallback state for modern stateful tools', async () => {
+      const info = getServerByName('test-server-1')!;
+      const original = {
+        visibility: info.visibility,
+        tools: info.tools,
+        config: info.config,
+        openApiClient: info.openApiClient,
+        status: info.status,
+      };
+      const call = jest.fn(async (_name, _args, _headers, _raw, id) => ({ state: id }));
+      const sessionIdsBefore = new Set(Object.keys(transports));
+      const clients: ModernClient[] = [];
+      const connect = async (token = 'test-auth-token-123') => {
+        const client = new ModernClient(
+          { name: 'openai-mcp (Codex)', version: '1.0.0' },
+          { versionNegotiation: { mode: 'auto' } },
+        );
+        clients.push(client);
+        await client.connect(
+          new ModernStreamableHTTPClientTransport(new URL(`${baseURL}/mcp`), {
+            requestInit: { headers: { Authorization: `Bearer ${token}` } },
+          }),
+        );
+        return client;
+      };
+      const callWithSession = (client: ModernClient, session: string) =>
+        client.callTool({
+          name: 'test-server-1-stateful',
+          arguments: {},
+          _meta: { 'openai/session': session },
+        });
+
+      try {
+        const a = await connect();
+        const b = await connect();
+        const c = await connect();
+        info.status = 'connected';
+        info.visibility = 'public';
+        info.tools = [{ name: 'test-server-1-stateful', inputSchema: { type: 'object' } }];
+        info.config = {
+          ...info.config,
+          visibility: 'public',
+          openapi: { ...info.config?.openapi, cookieSession: true },
+        } as ServerInfo['config'];
+        info.openApiClient = {
+          callTool: call,
+          clearSessionCookies: jest.fn(),
+        } as unknown as ServerInfo['openApiClient'];
+
+        const first = await callWithSession(a, 'v1/work-session-A');
+        const second = await callWithSession(b, 'v1/work-session-A');
+        const third = await callWithSession(c, 'v1/work-session-B');
+        expect(first.isError).not.toBe(true);
+        expect(second.isError).not.toBe(true);
+        expect(third.isError).not.toBe(true);
+        expect(call).toHaveBeenCalledTimes(3);
+        expect(call.mock.calls[0][4]).toBe(call.mock.calls[1][4]);
+        expect(call.mock.calls[2][4]).not.toBe(call.mock.calls[0][4]);
+        expect(call.mock.calls[0][4]).toMatch(/:openai:[0-9a-f]{64}$/);
+        expect(call.mock.calls[0][4]).not.toContain('work-session-A');
         expect(Object.keys(transports).every((id) => sessionIdsBefore.has(id))).toBe(true);
       } finally {
         await Promise.all(clients.map((client) => client.close()));
