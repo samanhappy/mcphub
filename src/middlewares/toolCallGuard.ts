@@ -354,11 +354,15 @@ const REVERSE_SHELL: GuardRule = {
 
 const DEV_TCP_PREFIX = '/dev/tcp/';
 
+/** Characters that terminate a shell word even without whitespace. */
+const isShellDelimiter = (ch: string): boolean => /[;|&'"`><)]/.test(ch);
+
 /**
  * Linear detection of a bash `/dev/tcp/host/port` redirect. Each prefix
  * occurrence advances a single cursor (there is no rescanning of earlier
- * text); the host/port portion is examined with a fixed amount of bounded
- * work rather than a `\S+` run.
+ * text). The host/port token ends at whitespace or a shell delimiter such as
+ * `;` or a closing quote, so a port immediately followed by `;` is still
+ * recognised; both the host and the port are validated.
  */
 const hasDevTcpRedirect = (value: string): boolean => {
   let from = 0;
@@ -367,10 +371,20 @@ const hasDevTcpRedirect = (value: string): boolean => {
     if (start === -1) return false;
     const restStart = start + DEV_TCP_PREFIX.length;
     let end = restStart;
-    while (end < value.length && !/\s/.test(value[end])) end += 1;
+    while (end < value.length) {
+      const ch = value[end];
+      if (/\s/.test(ch) || isShellDelimiter(ch)) break;
+      end += 1;
+    }
     const segment = value.slice(restStart, end);
-    const slash = segment.lastIndexOf('/');
-    if (slash !== -1 && /^\d+$/.test(segment.slice(slash + 1))) return true;
+    const slash = segment.indexOf('/');
+    if (
+      slash > 0 &&
+      /^[A-Za-z0-9_.[\]:-]+$/.test(segment.slice(0, slash)) &&
+      /^\d+$/.test(segment.slice(slash + 1))
+    ) {
+      return true;
+    }
     from = end;
   }
 };
