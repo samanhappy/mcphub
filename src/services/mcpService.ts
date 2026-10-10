@@ -10,6 +10,11 @@ import { LEGACY_PROTOCOL_VERSIONS } from '../utils/mcpProtocol.js';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { canAccessGroupRoute } from '../utils/groupAccess.js';
 import { canServeToolRequests } from '../utils/serverAvailability.js';
+import {
+  assertToolCallArgumentsSafe,
+  isToolCallGuardEnabled,
+  ToolCallBlockedError,
+} from '../middlewares/toolCallGuard.js';
 import type { RequestPrincipal } from './authorizationService.js';
 import { PrincipalRuntimeService } from './principalRuntimeService.js';
 import { UserContextService } from './userContextService.js';
@@ -3941,6 +3946,35 @@ const handleCallToolRequestImpl = async (request: any, extra: any) => {
   logger.log('Handling CallToolRequest for tool', summarizeToolRequestForLogging(request.params));
   const startTime = Date.now();
   const activityLogger = getActivityLoggingService();
+
+  // Opt-in fail-closed guard for high-confidence command-injection / SSRF /
+  // cloud-credential-theft payloads in tool call arguments. Disabled by
+  // default (TOOL_CALL_GUARD_ENABLED=true to enable); see
+  // src/middlewares/toolCallGuard.ts.
+  if (isToolCallGuardEnabled()) {
+    try {
+      assertToolCallArgumentsSafe(request?.params?.arguments);
+    } catch (guardError) {
+      if (guardError instanceof ToolCallBlockedError) {
+        logger.warn(
+          `Tool call blocked by guard: server/tool=${
+            request?.params?.name ?? 'unknown'
+          }, rule=${guardError.ruleId}`,
+        );
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Error: ${guardError.message}`,
+            },
+          ],
+          isError: true,
+          errorCode: -32001,
+        };
+      }
+      throw guardError;
+    }
+  }
 
   // Get request context for activity logging
   const requestContextService = RequestContextService.getInstance();

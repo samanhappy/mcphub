@@ -191,6 +191,12 @@ Smart Routing performs vector search over upstream tools to surface only the few
 | `MCPROUTER_REFERER` | Optional `Referer` header sent on MCPRouter requests. |
 | `MCPROUTER_TITLE` | Optional `Title` header sent on MCPRouter requests. |
 
+## Tool call guard (optional)
+
+| Variable | Default | Description |
+| --- | --- | --- |
+| `TOOL_CALL_GUARD_ENABLED` | `false` | When set to exactly `true`, `tools/call` requests are inspected before being forwarded. Calls whose arguments contain high-confidence command-injection / reverse-shell patterns or cloud instance-metadata (credential-theft) targets are rejected fail-closed. Benign arguments are unaffected. Any other value leaves the guard off. |
+
 ## Configuration examples
 
 ### Development
