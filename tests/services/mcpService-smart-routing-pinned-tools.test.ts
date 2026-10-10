@@ -649,6 +649,49 @@ describe('mcpService $smart/<group> pinned tools', () => {
         }
       });
 
+      it('keeps an upstream open while a registered widget URI is read again', async () => {
+        jest.useFakeTimers();
+        try {
+          const awake = serverInfo('viewer', ['show'], viewerCallTool, {
+            type: 'stdio',
+            command: 'node',
+            startOnDemand: true,
+            idleTimeoutMs: 1000,
+          });
+          awake.tools[0]._meta = { ui: { resourceUri: 'ui://viewer/show' } };
+          let finishRead!: (value: typeof widget) => void;
+          const pending = new Promise<typeof widget>((resolve) => {
+            finishRead = resolve;
+          });
+          (awake.client as any).readResource = jest
+            .fn()
+            .mockResolvedValueOnce(widget)
+            .mockReturnValueOnce(pending);
+          setServerInfosForTest([awake]);
+
+          // The first read finishes and re-arms the idle timer
+          await readWidget();
+          expect(awake.idleTimeoutId).toBeTruthy();
+
+          // The wake-up refreshed resources/list, so the URI is now registered and
+          // the next read takes the direct branch instead of the fallback loop
+          awake.resources = [{ uri: 'ui://viewer/show', name: 'show' }] as any;
+          const second = readWidget();
+          await jest.advanceTimersByTimeAsync(1500);
+          expect(awake.activeToolCalls).toBe(1);
+          expect(awake.status).toBe('connected');
+
+          finishRead(widget);
+          const result = await second;
+          expect(result.contents[0].text).toBe('<html/>');
+          expect(awake.activeToolCalls).toBe(0);
+          expect(awake.idleTimeoutId).toBeTruthy();
+          clearTimeout(awake.idleTimeoutId);
+        } finally {
+          jest.useRealTimers();
+        }
+      });
+
       it('reports the resource as not found when the upstream fails to wake', async () => {
         mockWakeClient.connect.mockRejectedValueOnce(new Error('spawn failed'));
 

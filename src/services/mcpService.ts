@@ -4868,9 +4868,18 @@ const handleReadResourceRequestImpl = async (request: any, extra: any) => {
       : undefined;
 
     if (server?.client) {
-      result = readOptions
-        ? await server.client.readResource({ uri }, readOptions)
-        : await server.client.readResource({ uri });
+      // A widget URI the upstream also lists in resources/list is read here, not in
+      // the fallback loop below, so it needs the same idle guard: otherwise an
+      // idle timer armed by an earlier read can close an on-demand upstream while
+      // this read is still in flight.
+      const releaseOnDemandRead = beginOnDemandToolCall(server);
+      try {
+        result = readOptions
+          ? await server.client.readResource({ uri }, readOptions)
+          : await server.client.readResource({ uri });
+      } finally {
+        releaseOnDemandRead?.();
+      }
       if (!result || !Array.isArray(result.contents)) {
         throw new Error(`Failed to read resource: ${uri}`);
       }
