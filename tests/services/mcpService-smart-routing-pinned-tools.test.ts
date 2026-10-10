@@ -88,6 +88,20 @@ const mockServerDao = {
   ),
 };
 
+// The client an idle on-demand server connects when a ui:// read wakes it
+const mockWakeClient = {
+  connect: jest.fn(async () => undefined),
+  close: jest.fn(),
+  getServerVersion: jest.fn(() => ({ version: '1.0.0' })),
+  getInstructions: jest.fn(() => undefined),
+  getServerCapabilities: jest.fn(() => ({})),
+  readResource: jest.fn(),
+};
+jest.mock('@modelcontextprotocol/client', () => ({
+  ...jest.requireActual<Record<string, unknown>>('@modelcontextprotocol/client'),
+  Client: jest.fn().mockImplementation(() => mockWakeClient),
+}));
+
 jest.mock('../../src/dao/index.js', () => ({
   getGroupDao: jest.fn(() => mockGroupDao),
   getServerDao: jest.fn(() => mockServerDao),
@@ -192,6 +206,7 @@ import {
   handleReadResourceRequest,
   setServerInfosForTest,
 } from '../../src/services/mcpService.js';
+import * as mcpService from '../../src/services/mcpService.js';
 import { RequestContextService } from '../../src/services/requestContextService.js';
 
 const tool = (server: string, name: string) => ({
@@ -514,6 +529,198 @@ describe('mcpService $smart/<group> pinned tools', () => {
       expect(served.contents[0].text).toBe('<html/>');
       const refused = await read({});
       expect(refused.contents?.[0]?.text ?? '').not.toBe('<html/>');
+    });
+
+    describe('ui:// read of an idle on-demand server', () => {
+      const widget = {
+        contents: [
+          { uri: 'ui://viewer/show', mimeType: 'text/html;profile=mcp-app', text: '<html/>' },
+        ],
+      };
+      const readWidget = () =>
+        asClient(appsCapabilities, () =>
+          handleReadResourceRequest(
+            { params: { uri: 'ui://viewer/show' } },
+            { sessionId: 'smart-apps' },
+          ),
+        );
+      let createTransportSpy: jest.SpiedFunction<typeof mcpService.createTransportFromConfig>;
+      let sleeping: ServerInfo;
+
+      beforeEach(() => {
+        createTransportSpy = jest
+          .spyOn(mcpService, 'createTransportFromConfig')
+          .mockResolvedValue({} as any);
+        mockWakeClient.readResource.mockResolvedValue(widget);
+        mockServerDao.findById.mockImplementation(async (name: string) =>
+          name === 'viewer'
+            ? ({ name: 'viewer', type: 'stdio', command: 'node', startOnDemand: true } as any)
+            : null,
+        );
+        sleeping = serverInfo('viewer', ['show'], viewerCallTool, {
+          type: 'stdio',
+          command: 'node',
+          startOnDemand: true,
+        });
+        sleeping.tools[0]._meta = { ui: { resourceUri: 'ui://viewer/show' } };
+        sleeping.status = 'disconnected';
+        delete (sleeping as any).client;
+        setServerInfosForTest([sleeping]);
+      });
+
+      afterEach(() => {
+        createTransportSpy.mockRestore();
+        if (sleeping.idleTimeoutId) clearTimeout(sleeping.idleTimeoutId);
+        mockServerDao.findById.mockImplementation(async (name: string) =>
+          name === 'time'
+            ? ({
+                name: 'time',
+                tools: {
+                  'time::get_current_time': {
+                    enabled: true,
+                    description: 'Current time (override)',
+                  },
+                  'time::convert_time': { enabled: false },
+                },
+              } as any)
+            : null,
+        );
+      });
+
+      it('wakes the upstream to serve the widget before any tool call', async () => {
+        const result = await readWidget();
+
+        expect(createTransportSpy).toHaveBeenCalledTimes(1);
+        expect(mockWakeClient.connect).toHaveBeenCalledTimes(1);
+        expect(mockWakeClient.readResource).toHaveBeenCalledWith(
+          { uri: 'ui://viewer/show' },
+          expect.anything(),
+        );
+        expect(result.contents[0].text).toBe('<html/>');
+        expect(sleeping.status).toBe('connected');
+        expect(viewerCallTool).not.toHaveBeenCalled();
+      });
+
+      it('arms idle shutdown again once the read is done', async () => {
+        await readWidget();
+
+        expect(sleeping.activeToolCalls).toBe(0);
+        expect(sleeping.idleTimeoutId).toBeTruthy();
+      });
+
+      it('keeps an already-awake upstream open while a later read is in flight', async () => {
+        jest.useFakeTimers();
+        try {
+          const awake = serverInfo('viewer', ['show'], viewerCallTool, {
+            type: 'stdio',
+            command: 'node',
+            startOnDemand: true,
+            idleTimeoutMs: 1000,
+          });
+          awake.tools[0]._meta = { ui: { resourceUri: 'ui://viewer/show' } };
+          let finishRead!: (value: typeof widget) => void;
+          const pending = new Promise<typeof widget>((resolve) => {
+            finishRead = resolve;
+          });
+          (awake.client as any).readResource = jest
+            .fn()
+            .mockResolvedValueOnce(widget)
+            .mockReturnValueOnce(pending);
+          setServerInfosForTest([awake]);
+
+          // The first read finishes and re-arms the idle timer
+          await readWidget();
+          expect(awake.idleTimeoutId).toBeTruthy();
+
+          // A second read is in flight when the idle period elapses
+          const second = readWidget();
+          await jest.advanceTimersByTimeAsync(1500);
+          expect(awake.activeToolCalls).toBe(1);
+          expect(awake.status).toBe('connected');
+
+          finishRead(widget);
+          const result = await second;
+          expect(result.contents[0].text).toBe('<html/>');
+          expect(awake.activeToolCalls).toBe(0);
+          expect(awake.idleTimeoutId).toBeTruthy();
+          clearTimeout(awake.idleTimeoutId);
+        } finally {
+          jest.useRealTimers();
+        }
+      });
+
+      it('keeps an upstream open while a registered widget URI is read again', async () => {
+        jest.useFakeTimers();
+        try {
+          const awake = serverInfo('viewer', ['show'], viewerCallTool, {
+            type: 'stdio',
+            command: 'node',
+            startOnDemand: true,
+            idleTimeoutMs: 1000,
+          });
+          awake.tools[0]._meta = { ui: { resourceUri: 'ui://viewer/show' } };
+          let finishRead!: (value: typeof widget) => void;
+          const pending = new Promise<typeof widget>((resolve) => {
+            finishRead = resolve;
+          });
+          (awake.client as any).readResource = jest
+            .fn()
+            .mockResolvedValueOnce(widget)
+            .mockReturnValueOnce(pending);
+          setServerInfosForTest([awake]);
+
+          // The first read finishes and re-arms the idle timer
+          await readWidget();
+          expect(awake.idleTimeoutId).toBeTruthy();
+
+          // The wake-up refreshed resources/list, so the URI is now registered and
+          // the next read takes the direct branch instead of the fallback loop
+          awake.resources = [{ uri: 'ui://viewer/show', name: 'show' }] as any;
+          const second = readWidget();
+          await jest.advanceTimersByTimeAsync(1500);
+          expect(awake.activeToolCalls).toBe(1);
+          expect(awake.status).toBe('connected');
+
+          finishRead(widget);
+          const result = await second;
+          expect(result.contents[0].text).toBe('<html/>');
+          expect(awake.activeToolCalls).toBe(0);
+          expect(awake.idleTimeoutId).toBeTruthy();
+          clearTimeout(awake.idleTimeoutId);
+        } finally {
+          jest.useRealTimers();
+        }
+      });
+
+      it('reports the resource as not found when the upstream fails to wake', async () => {
+        mockWakeClient.connect.mockRejectedValueOnce(new Error('spawn failed'));
+
+        const result = await readWidget();
+
+        expect(result.contents[0].text).toContain('Resource not found');
+        expect(sleeping.status).toBe('disconnected');
+      });
+
+      it('does not wake a disabled upstream', async () => {
+        sleeping.enabled = false;
+
+        const result = await readWidget();
+
+        expect(createTransportSpy).not.toHaveBeenCalled();
+        expect(result.contents[0].text).toContain('Resource not found');
+      });
+
+      it('does not wake anything for a client without Apps support', async () => {
+        const result = await asClient({}, () =>
+          handleReadResourceRequest(
+            { params: { uri: 'ui://viewer/show' } },
+            { sessionId: 'smart-apps' },
+          ),
+        );
+
+        expect(createTransportSpy).not.toHaveBeenCalled();
+        expect(result.contents[0].text).toContain('Resource not found');
+      });
     });
   });
 });
