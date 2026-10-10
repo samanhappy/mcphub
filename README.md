@@ -186,6 +186,10 @@ Contributions welcome! See our [Discord community](https://discord.gg/2BJehJZVH5
 
 Chinese users can also support via WeChat Pay — see [中文版](README.zh.md).
 
+## Acknowledgements
+
+- [AtomGit](https://atomgit.com/samanhappy/mcphub): Hosts MCPHub in China, making the project easier to access for users in mainland China.
+
 ## 🌟 Star History
 
 [![Star History Chart](https://star-history.dera.page/svg?repos=samanhappy/mcphub&type=Date)](https://star-history.dera.page/#samanhappy/mcphub&Date)
