@@ -983,8 +983,8 @@ export const handleMcpPostRequest = async (req: Request, res: Response): Promise
       context.sessionId = undefined;
       const requestMeta = (Array.isArray(req.body) ? req.body[0] : req.body)?.params?._meta;
       context.clientCapabilities = requestMeta?.['io.modelcontextprotocol/clientCapabilities'];
-      // Bind explicit state to the authenticated credential, user and route.
-      // Never treat an arbitrary header or an unauthenticated token as identity.
+      // Bind application state to the authenticated credential, user and route.
+      // Never treat caller-provided correlation metadata as identity.
       const token = getBearerTokenFromHeaders(req.headers, systemConfig);
       if (token && (systemConfig?.routing?.enableBearerAuth ?? true)) {
         context.clientStateScope = createHash('sha256')

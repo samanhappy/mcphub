@@ -248,8 +248,16 @@ X-MCPHub-State-Id: 65b523af-e4d0-4d99-8e06-461a62a14967
 This is an MCPHub extension, independent of `Mcp-Session-Id` and the MCP handshake.
 The same state ID reuses isolated upstream clients and cookie jars only within
 the same bearer credential, user and route. Use a different UUID for each
-independent workflow. Missing or invalid IDs, or unauthenticated requests, fail
-with a tool error for stateful tools; other tools need no state ID.
+independent workflow.
+
+Authenticated OpenAI/ChatGPT tool calls that cannot set this extension may omit
+it and send the client-declared `_meta["openai/session"]` conversation hint that
+ChatGPT includes with tool calls. MCPHub hashes the hint before using it for state
+correlation. The hint never authenticates or authorizes a request, and reuse is
+still bounded by the verified bearer credential, user and route. If
+`X-MCPHub-State-Id` is present but invalid, MCPHub fails closed instead of falling
+back. If neither usable correlation value is present, stateful tools return a tool
+error. Other tools need no state ID.
 
 State lives in memory on one MCPHub process. It expires after 30 minutes without
 an active call; running calls pin their state until completion. Expiry and shutdown

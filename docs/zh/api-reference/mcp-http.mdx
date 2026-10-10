@@ -46,7 +46,7 @@ MCPHub 为您的所有 MCP 服务器提供统一的可流式 HTTP 接口。这�
 | 启动             | 通过 SSE 传输执行 `initialize` | 通过 Streamable HTTP 执行 `initialize` | 无需 `initialize` 握手，使用 SDK 发现机制              |
 | 下游会话         | SSE 连接及会话消息端点         | `Mcp-Session-Id`                       | 不创建下游传输会话                                     |
 | 路由请求头       | 使用旧版传输行为               | 使用旧版传输行为                       | `Mcp-Method`；具名调用和资源读取还需 `Mcp-Name`        |
-| 有状态工具       | 使用已有会话生命周期           | 使用已有会话生命周期                   | Bearer 认证及 `X-MCPHub-State-Id`                      |
+| 有状态工具       | 使用已有会话生命周期           | 使用已有会话生命周期                   | Bearer 认证及显式状态 ID 或 OpenAI 会话元数据          |
 | MCP Apps 能力    | 初始化时声明                   | 初始化时声明                           | 每次请求在 `params._meta` 中声明                       |
 | 列表缓存提示     | 保留已有旧版响应结构           | 保留已有旧版响应结构                   | 上游剩余 TTL，最长 5 秒，私有；否则为零                |
 | 资源读取缓存提示 | 保留已有上游提示               | 保留已有上游提示                       | 有效的上游剩余 TTL，范围收紧为 `private`；其他情况为零 |
@@ -69,9 +69,12 @@ MCP Apps 透传还取决于请求路由和可见的上游服务器；`$smart` �
    和 `prompts/get` 需要与 `params.name` 一致的 `Mcp-Name`，`resources/read`
    则需要与 `params.uri` 一致。工具名称应使用该路由列表响应中的名称。
 3. 使用 `perSessionClient` 或 OpenAPI `cookieSession` 工具时，为每个独立工作流
-   生成 UUID v4，并通过工具调用的 `X-MCPHub-State-Id` 请求头发送。无状态工具
-   不需要此头。只有相同 Bearer 凭据、用户和路由才能复用状态。状态仅保存在当前
-   进程中，闲置 30 分钟后过期，多副本部署需要粘性路由。进程重启、状态过期或
+   生成 UUID v4，并通过工具调用的 `X-MCPHub-State-Id` 请求头发送。无法设置该
+   扩展的已认证 OpenAI/ChatGPT 工具调用，在显式请求头缺失时也可复用客户端声明的
+   `_meta["openai/session"]` 会话提示。MCPHub 会先对该提示做哈希；它只用于状态
+   关联，不用于认证。显式状态请求头一旦存在但非法，将直接失败而不会回退。无状态
+   工具无需这两个值。只有相同 Bearer 凭据、用户和路由才能复用状态。状态仅保存在
+   当前进程中，闲置 30 分钟后过期，多副本部署需要粘性路由。进程重启、状态过期或
    凭据、路由变化后需要重新建立应用状态。参见
    [显式状态配置](/zh/configuration/mcp-settings#mcp-2026-07-28-的有状态工具)。
 4. 使用实际权限验证工具列表和调用，再验证所用的资源读取及 MCP Apps 功能。

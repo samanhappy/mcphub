@@ -8,6 +8,7 @@ import { getMcpRequestGroup } from '../utils/mcpRequestGroup.js';
 import { LegacyMcpClient } from '../clients/legacyMcpClient.js';
 import { LEGACY_PROTOCOL_VERSIONS } from '../utils/mcpProtocol.js';
 import { AsyncLocalStorage } from 'node:async_hooks';
+import { createHash } from 'node:crypto';
 import { canAccessGroupRoute } from '../utils/groupAccess.js';
 import { canServeToolRequests } from '../utils/serverAvailability.js';
 import type { RequestPrincipal } from './authorizationService.js';
@@ -984,20 +985,37 @@ const removeClientState = (id: string): void => {
   for (const client of state.cookieClients) client.clearSessionCookies(id);
 };
 
-const acquireClientState = (serverInfo: ServerInfo): { id: string; release: () => void } => {
+const acquireClientState = (
+  serverInfo: ServerInfo,
+  openAiSession?: unknown,
+): { id: string; release: () => void } => {
   const contextService = RequestContextService.getInstance();
   const scope = contextService.getRequestContext()?.clientStateScope;
-  const handle = contextService.getHeader('x-mcphub-state-id');
-  if (
-    !scope ||
-    typeof handle !== 'string' ||
-    !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(handle)
-  ) {
+  const explicitHandle = contextService.getHeader('x-mcphub-state-id');
+  if (!scope) {
     throw new Error(
-      'Stateful tools on stateless MCP require authenticated bearer access and X-MCPHub-State-Id (UUID v4)',
+      'Stateful tools on stateless MCP require authenticated bearer access and an application state handle',
     );
   }
-  const id = `client-state:${scope}:${handle.toLowerCase()}`;
+
+  let handle: string;
+  if (explicitHandle !== undefined) {
+    if (
+      typeof explicitHandle !== 'string' ||
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(explicitHandle)
+    ) {
+      throw new Error('X-MCPHub-State-Id must be a UUID v4');
+    }
+    handle = explicitHandle.toLowerCase();
+  } else if (typeof openAiSession === 'string' && openAiSession.trim()) {
+    handle = `openai:${createHash('sha256').update(openAiSession).digest('hex')}`;
+  } else {
+    throw new Error(
+      'Stateful tools on stateless MCP require X-MCPHub-State-Id (UUID v4) or _meta["openai/session"]',
+    );
+  }
+
+  const id = `client-state:${scope}:${handle}`;
   let state = clientStates.get(id);
   if (state && state.active === 0 && Date.now() - state.lastUsed >= CLIENT_STATE_IDLE_MS) {
     removeClientState(id);
@@ -3981,7 +3999,7 @@ const handleCallToolRequestImpl = async (request: any, extra: any) => {
   let clientStateLease: ReturnType<typeof acquireClientState> | undefined;
   const getToolStateId = (info: ServerInfo, legacyId: string | undefined): string | undefined => {
     if (!requestContextService.getRequestContext()?.stateless) return legacyId;
-    clientStateLease ??= acquireClientState(info);
+    clientStateLease ??= acquireClientState(info, request.params?._meta?.['openai/session']);
     return clientStateLease.id;
   };
 

@@ -32,11 +32,11 @@ The path's shape comes from what the code actually binds to sessions. Most downs
 
 ## Explicit state during the dual-stack period
 
-Modern stateful tool calls use the MCPHub extension `X-MCPHub-State-Id` (a client-generated UUID v4). The gateway binds it to the authenticated bearer credential, user and route, without creating a downstream MCP transport session. Anonymous callers cannot opt into shared state by supplying a header. Legacy requests retain their session-based lifecycle.
+Modern stateful tool calls prefer the MCPHub extension `X-MCPHub-State-Id` (a client-generated UUID v4). When that header is absent, an authenticated OpenAI tool call may instead use its client-declared `_meta["openai/session"]` conversation hint; MCPHub hashes the hint before using it as a state handle. An explicitly supplied but invalid `X-MCPHub-State-Id` never falls back. In either case, the gateway binds state to the authenticated bearer credential, user and route, without creating a downstream MCP transport session. Client metadata is correlation only and never grants access. Legacy requests retain their session-based lifecycle.
 
-The existing isolated upstream clients and OpenAPI cookie jars use this explicit state key. Active calls hold a lease; idle state expires after 30 minutes and the process admits at most 1,000 modern state scopes. Cleanup closes isolated upstream connections and clears the tracked cookie jars, including clients in principal runtimes. State is process-local; replicas require sticky routing and expiry/restart requires rebuilding application state.
+The existing isolated upstream clients and OpenAPI cookie jars use this application state key. Active calls hold a lease; idle state expires after 30 minutes and the process admits at most 1,000 modern state scopes. Cleanup closes isolated upstream connections and clears the tracked cookie jars, including clients in principal runtimes. State is process-local; replicas require sticky routing and expiry/restart requires rebuilding application state.
 
-This change covers state ownership and lifecycle only. Legacy SSE/session deprecation remains separate work under #1220. Tool-minted handles can be considered later if clients need correlation without custom HTTP headers.
+This change covers state ownership and lifecycle only. Legacy SSE/session deprecation remains separate work under #1220.
 
 ## Routing headers during the dual-stack period
 
