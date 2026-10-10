@@ -173,6 +173,10 @@ Les contributions sont les bienvenues ! Rejoignez notre [communauté Discord](ht
 
 Les utilisateurs en Chine peuvent aussi soutenir via WeChat Pay — voir [中文版](README.zh.md).
 
+## Remerciements
+
+- [AtomGit](https://atomgit.com/samanhappy/mcphub) : héberge MCPHub en Chine et facilite l’accès au projet pour les utilisateurs en Chine continentale.
+
 ## 🌟 Historique des étoiles
 
 [![Historique des étoiles](https://star-history.dera.page/svg?repos=samanhappy/mcphub&type=Date)](https://star-history.dera.page/#samanhappy/mcphub&Date)

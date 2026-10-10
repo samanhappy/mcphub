@@ -188,6 +188,8 @@ pnpm dev
 
 ## 致谢
 
+- [AtomGit](https://atomgit.com/samanhappy/mcphub)：为 MCPHub 提供国内代码托管，方便中国大陆用户访问项目。
+
 感谢以下朋友的赞赏：小白、唐秀川、琛、孔、黄祥取、兰军飞、无名之辈、Kyle，以及其他匿名支持者。
 
 ## 🌟 Star 历史趋势
