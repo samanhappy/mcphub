@@ -182,7 +182,7 @@ pnpm dev
 
 如果觉得项目有帮助，不妨请我喝杯咖啡 ☕️
 
-<iframe src="https://github.com/sponsors/samanhappy/button" title="Sponsor samanhappy" height="32" width="114" style="border: 0; border-radius: 6px;"></iframe>
+[![Sponsor samanhappy](https://img.shields.io/badge/Sponsor-samanhappy-ea4aaa?logo=githubsponsors&logoColor=white)](https://github.com/sponsors/samanhappy)
 
 <img src="assets/reward.png" width="350">
 

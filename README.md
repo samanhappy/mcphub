@@ -182,7 +182,7 @@ Contributions welcome! See our [Discord community](https://discord.gg/2BJehJZVH5
 
 ## ❤️ Sponsor
 
-<iframe src="https://github.com/sponsors/samanhappy/button" title="Sponsor samanhappy" height="32" width="114" style="border: 0; border-radius: 6px;"></iframe>
+[![Sponsor samanhappy](https://img.shields.io/badge/Sponsor-samanhappy-ea4aaa?logo=githubsponsors&logoColor=white)](https://github.com/sponsors/samanhappy)
 
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/samanhappy)
 
