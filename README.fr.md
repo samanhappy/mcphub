@@ -169,6 +169,8 @@ Les contributions sont les bienvenues ! Rejoignez notre [communauté Discord](ht
 
 ## ❤️ Sponsor
 
+<iframe src="https://github.com/sponsors/samanhappy/button" title="Sponsor samanhappy" height="32" width="114" style="border: 0; border-radius: 6px;"></iframe>
+
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/samanhappy)
 
 Les utilisateurs en Chine peuvent aussi soutenir via WeChat Pay — voir [中文版](README.zh.md).

@@ -182,6 +182,8 @@ pnpm dev
 
 如果觉得项目有帮助，不妨请我喝杯咖啡 ☕️
 
+<iframe src="https://github.com/sponsors/samanhappy/button" title="Sponsor samanhappy" height="32" width="114" style="border: 0; border-radius: 6px;"></iframe>
+
 <img src="assets/reward.png" width="350">
 
 海外用户可通过 [ko-fi](https://ko-fi.com/samanhappy) 支持。
