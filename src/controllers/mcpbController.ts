@@ -162,8 +162,12 @@ export const uploadMcpbFile = async (req: Request, res: Response): Promise<void>
 
       // Clean up any existing version of this server
       cleanupOldMcpbServer(safeServerName);
-      if (!fs.existsSync(finalExtractDir)) {
-        fs.mkdirSync(finalExtractDir, { recursive: true });
+      // renameSync replaces an existing empty directory on POSIX but fails with
+      // EPERM on Windows, so the target must not exist when we move into place.
+      // cleanupOldMcpbServer swallows its own errors, so re-check rather than
+      // assume the path is already clear.
+      if (fs.existsSync(finalExtractDir)) {
+        fs.rmSync(finalExtractDir, { recursive: true, force: true });
       }
 
       // Move the temporary directory to the final location
