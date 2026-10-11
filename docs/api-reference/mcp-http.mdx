@@ -46,7 +46,7 @@ from `/sse` to `/mcp` does not by itself upgrade the client's protocol revision.
 | Startup                   | `initialize` over the SSE transport         | `initialize` over Streamable HTTP | No `initialize` handshake; SDK discovery                               |
 | Downstream session        | SSE connection and session message endpoint | `Mcp-Session-Id`                  | No downstream transport session                                        |
 | Routing headers           | Legacy transport behavior                   | Legacy transport behavior         | `Mcp-Method`; `Mcp-Name` for named calls and resource reads            |
-| Stateful tools            | Existing session lifecycle                  | Existing session lifecycle        | Bearer authentication plus `X-MCPHub-State-Id`                         |
+| Stateful tools            | Existing session lifecycle                  | Existing session lifecycle        | Bearer auth plus explicit state ID or OpenAI conversation metadata     |
 | MCP Apps capabilities     | Declared during initialization              | Declared during initialization    | Declared in each request's `params._meta`                              |
 | List cache hints          | Existing legacy response shape              | Existing legacy response shape    | Remaining upstream TTL, capped at 5 seconds; `private`; otherwise zero |
 | Resource-read cache hints | Existing upstream hints preserved           | Existing upstream hints preserved | Valid remaining upstream TTL, restricted to `private`; otherwise zero  |
@@ -73,10 +73,15 @@ downstream request does not upgrade an upstream server.
    matching `params.uri`. Use names returned by that route's list response.
 3. For `perSessionClient` or OpenAPI `cookieSession` tools, create a UUID v4 for
    each independent workflow and send it as `X-MCPHub-State-Id` on tool calls.
-   Stateless tools do not need it. Reuse is limited to the same bearer
-   credential, user and route. State is process-local, expires after 30 idle
-   minutes, and requires sticky routing across replicas. Restart, expiry or
-   credential/route changes require rebuilding application state. See
+   Authenticated OpenAI/ChatGPT tool calls that cannot set this extension may
+   instead reuse their client-declared `_meta["openai/session"]` conversation
+   hint when the explicit header is absent. MCPHub hashes that hint before use;
+   it is correlation metadata, not authentication. An invalid explicit state
+   header fails closed and never falls back. Stateless tools need neither value.
+   Reuse is limited to the same bearer credential, user and route. State is
+   process-local, expires after 30 idle minutes, and requires sticky routing
+   across replicas. Restart, expiry or credential/route changes require
+   rebuilding application state. See
    [explicit-state configuration](/configuration/mcp-settings#stateful-tools-over-mcp-2026-07-28).
 4. Verify listing and calling tools with your actual permissions, then verify
    resource reads and MCP Apps if used. Modern Apps hosts must declare their UI

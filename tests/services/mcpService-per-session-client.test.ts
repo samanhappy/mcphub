@@ -175,6 +175,12 @@ const modernCall = (scope = 'credential-A', handle: string | string[] | undefine
     () => callTool(''),
   );
 
+const modernOpenAiSessionCall = (session: unknown, scope = 'credential-A') =>
+  RequestContextService.getInstance().runWithCustomRequestContext(
+    { headers: {}, stateless: true, clientStateScope: scope },
+    () => callTool('', { 'openai/session': session }),
+  );
+
 // The SIGKILL fallback probes liveness with process.kill(pid, 0). Force it to
 // report "dead" (ESRCH) for our fake pid so the 2s SIGKILL timer never fires.
 const originalProcessKill = process.kill.bind(process);
@@ -216,7 +222,7 @@ const makeServerInfo = (config: IsolatedConfig) => {
   } as any;
 };
 
-const callTool = (sessionId: string) =>
+const callTool = (sessionId: string, meta?: Record<string, unknown>) =>
   mcpService.handleCallToolRequest(
     {
       params: {
@@ -225,6 +231,7 @@ const callTool = (sessionId: string) =>
           toolName: 'iso-server::do_thing',
           arguments: {},
         },
+        ...(meta ? { _meta: meta } : {}),
       },
     },
     { sessionId, server: 'iso-server' },
@@ -283,6 +290,62 @@ describe('mcpService per-session client isolation (perSessionClient)', () => {
     await modernCall('credential-B');
     await modernCall('credential-A', '2f036dc7-734e-43e8-a78f-80821d1dc123');
     expect(mockCreatedClients).toHaveLength(3);
+    expect(info.sharedClient.callTool).not.toHaveBeenCalled();
+  });
+
+  it('uses OpenAI conversation metadata as fallback state when the explicit state header is absent', async () => {
+    const info = makeServerInfo({ perSessionClient: true });
+    mcpService.setServerInfosForTest([info]);
+
+    const first = await modernOpenAiSessionCall('v1/work-session-A');
+    const second = await modernOpenAiSessionCall('v1/work-session-A');
+    expect(first.isError).not.toBe(true);
+    expect(second.isError).not.toBe(true);
+    expect(mockCreatedClients).toHaveLength(1);
+
+    await modernOpenAiSessionCall('v1/work-session-B');
+    await modernOpenAiSessionCall('v1/work-session-A', 'credential-B');
+    expect(mockCreatedClients).toHaveLength(3);
+    expect(info.sharedClient.callTool).not.toHaveBeenCalled();
+  });
+
+  it('does not bypass an invalid explicit state header with OpenAI conversation metadata', async () => {
+    const info = makeServerInfo({ perSessionClient: true });
+    mcpService.setServerInfosForTest([info]);
+    const result = await RequestContextService.getInstance().runWithCustomRequestContext(
+      {
+        headers: { 'x-mcphub-state-id': 'invalid' },
+        stateless: true,
+        clientStateScope: 'credential-A',
+      },
+      () => callTool('', { 'openai/session': 'v1/work-session-A' }),
+    );
+    expect(result.isError).toBe(true);
+    expect(mockCreatedClients).toHaveLength(0);
+    expect(info.sharedClient.callTool).not.toHaveBeenCalled();
+  });
+
+  it.each(['', '   ', 42, {}, []])(
+    'rejects unusable OpenAI conversation metadata without a shared fallback: %p',
+    async (session) => {
+      const info = makeServerInfo({ perSessionClient: true });
+      mcpService.setServerInfosForTest([info]);
+      const result = await modernOpenAiSessionCall(session);
+      expect(result.isError).toBe(true);
+      expect(mockCreatedClients).toHaveLength(0);
+      expect(info.sharedClient.callTool).not.toHaveBeenCalled();
+    },
+  );
+
+  it('rejects OpenAI conversation metadata without an authenticated state scope', async () => {
+    const info = makeServerInfo({ perSessionClient: true });
+    mcpService.setServerInfosForTest([info]);
+    const result = await RequestContextService.getInstance().runWithCustomRequestContext(
+      { headers: {}, stateless: true },
+      () => callTool('', { 'openai/session': 'v1/work-session-A' }),
+    );
+    expect(result.isError).toBe(true);
+    expect(mockCreatedClients).toHaveLength(0);
     expect(info.sharedClient.callTool).not.toHaveBeenCalled();
   });
 
