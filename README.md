@@ -182,6 +182,8 @@ Contributions welcome! See our [Discord community](https://discord.gg/2BJehJZVH5
 
 ## ❤️ Sponsor
 
+[![Sponsor samanhappy](https://img.shields.io/badge/Sponsor-samanhappy-ea4aaa?logo=githubsponsors&logoColor=white)](https://github.com/sponsors/samanhappy)
+
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/samanhappy)
 
 Chinese users can also support via WeChat Pay — see [中文版](README.zh.md).

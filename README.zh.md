@@ -182,6 +182,8 @@ pnpm dev
 
 如果觉得项目有帮助，不妨请我喝杯咖啡 ☕️
 
+[![Sponsor samanhappy](https://img.shields.io/badge/Sponsor-samanhappy-ea4aaa?logo=githubsponsors&logoColor=white)](https://github.com/sponsors/samanhappy)
+
 <img src="assets/reward.png" width="350">
 
 海外用户可通过 [ko-fi](https://ko-fi.com/samanhappy) 支持。
