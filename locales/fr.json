@@ -1400,6 +1400,8 @@
     "description": "Associez vos identifiants aux serveurs partagés. Chaque requête utilise les identifiants de son utilisateur.",
     "slots": "Champs d’identifiants personnels",
     "slotsHint": "Déclarez uniquement les noms des champs. Chaque champ est obligatoire, sans repli sur les identifiants de l’organisation.",
+    "target": "Destination du champ",
+    "argsHint": "Pour les champs d’argument, utilisez {{placeholder}} dans un argument en remplaçant API_KEY par le nom du champ. Les valeurs sont insérées littéralement sans shell.",
     "fieldName": "Nom du champ",
     "label": "Libellé (facultatif)",
     "addSlot": "Ajouter un champ",

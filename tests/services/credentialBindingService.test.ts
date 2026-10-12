@@ -385,3 +385,20 @@ test('rejects values embedded in templates, duplicate headers, and wrong transpo
     }),
   ).toThrow();
 });
+
+test('validates args slots and their references independently of env slots', () => {
+  const config: ServerConfig = {
+    ...stdio,
+    args: ['--key={{args.KEY}}', '{{args.KEY}}'],
+    credentialTemplate: [
+      { target: 'env', name: 'KEY' },
+      { target: 'args', name: 'KEY' },
+    ],
+  };
+  expect(validateCredentialTemplate(config)).toEqual(config.credentialTemplate);
+  for (const args of [[], ['{{args.UNKNOWN}}'], ['{{args.bad-name}}'], ['{{args.KEY']]) {
+    expect(() => validateCredentialTemplate({ ...config, args })).toThrow();
+  }
+  expect(() => validateCredentialTemplate({ ...config, type: 'sse' })).toThrow();
+  expect(() => validateCredentialTemplate({ ...config, credentialTemplate: undefined })).toThrow();
+});

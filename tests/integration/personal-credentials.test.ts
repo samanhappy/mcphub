@@ -224,6 +224,78 @@ const connect = async (username: string, serverName = 'shared') => {
   return client;
 };
 
+test('args credentials reach the child literally, isolate users, and redact failures', async () => {
+  const name = 'argsShared';
+  await getServerDao().create({
+    name,
+    type: 'stdio',
+    command: process.execPath,
+    args: [fixture, '{{args.KEY}}', '--again={{args.KEY}}', '$STATIC_ARG'],
+    env: { STATIC_ARG: 'operator-value' },
+    owner: 'admin',
+    visibility: 'public',
+    credentialTemplate: [{ target: 'args', name: 'KEY' }],
+  });
+  await initializeClientsFromSettings(false);
+  const values = ['  alice "quoted" $STATIC_ARG ${HOME} {{args.KEY}} ;&  ', 'bob-secret'];
+  const log = jest.spyOn(logger, 'error');
+  const warn = jest.spyOn(logger, 'warn');
+  const info = jest.spyOn(logger, 'log');
+  try {
+    for (const [index, username] of [alice, bob].entries()) {
+      const saved = await request(app)
+        .put(`/api/credentials/${name}`)
+        .set('x-auth-token', apiToken(username))
+        .send({ values: { 'args.KEY': values[index] } });
+      expect(saved.status).toBe(200);
+    }
+    const [a, b] = await Promise.all([connect(alice, name), connect(bob, name)]);
+    const toolName = (await a.listTools()).tools[0].name;
+    const results = await Promise.all([a, b].map((client) => client.callTool({ name: toolName })));
+    for (const [index, result] of results.entries()) {
+      expect(parseIdentity(result).args).toEqual([
+        values[index],
+        `--again=${values[index]}`,
+        'operator-value',
+      ]);
+    }
+    const failure = await a.callTool({ name: toolName, arguments: { fail: true } });
+    expect(failure.isError).toBe(true);
+    expect(JSON.stringify(failure)).toContain('Unsupported input');
+    expect(JSON.stringify(failure)).not.toContain('alice');
+    const status = await request(app).get('/api/credentials').set('x-auth-token', apiToken(alice));
+    expect(JSON.stringify(status.body)).not.toContain(values[0]);
+    const config = await request(app)
+      .get(`/api/servers/${name}`)
+      .set('x-auth-token', apiToken(alice));
+    expect(config.body.data.config).not.toHaveProperty('args');
+    expect(JSON.stringify(log.mock.calls)).not.toContain('quoted');
+    expect(JSON.stringify(warn.mock.calls)).not.toContain('quoted');
+    expect(JSON.stringify(info.mock.calls)).not.toContain('quoted');
+    expect((await getServerDao().findById(name))?.args).toEqual([
+      fixture,
+      '{{args.KEY}}',
+      '--again={{args.KEY}}',
+      '$STATIC_ARG',
+    ]);
+    await request(app)
+      .put(`/api/credentials/${name}`)
+      .set('x-auth-token', apiToken(alice))
+      .send({ values: { 'args.KEY': 'rotated-secret' } });
+    expect(parseIdentity(await a.callTool({ name: toolName })).credential).toBe('rotated-secret');
+    expect(parseIdentity(await b.callTool({ name: toolName })).credential).toBe(values[1]);
+    await request(app).delete(`/api/credentials/${name}`).set('x-auth-token', apiToken(alice));
+    expect((await a.callTool({ name: toolName })).isError).toBe(true);
+    expect(parseIdentity(await b.callTool({ name: toolName })).credential).toBe(values[1]);
+  } finally {
+    log.mockRestore();
+    warn.mockRestore();
+    info.mockRestore();
+    await getServerDao().delete(name);
+    await initializeClientsFromSettings(true);
+  }
+});
+
 test('dashboard bindings are write-only, self-scoped, and preserve the shared safe view', async () => {
   expect(getServerConnectionStats()).toEqual({ total: 0, connected: 0, disconnected: 0 });
   expect((await request(app).get('/api/credentials')).status).toBe(401);

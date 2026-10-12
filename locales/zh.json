@@ -1404,6 +1404,8 @@
     "description": "为共享服务器绑定自己的凭据。每次请求使用当前调用用户的凭据。",
     "slots": "个人凭据字段",
     "slotsHint": "仅声明字段名。所有字段均需用户绑定，缺失时不会回退到组织凭据。",
+    "target": "凭据目标",
+    "argsHint": "参数字段请在参数中使用 {{placeholder}}，将 API_KEY 替换为字段名。值按原样传入，无需 shell。",
     "fieldName": "字段名",
     "label": "显示名称（可选）",
     "addSlot": "添加字段",

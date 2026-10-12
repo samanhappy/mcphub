@@ -1746,11 +1746,35 @@ const ServerForm = ({
               <fieldset className="space-y-3 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
                 <legend className="px-1 font-medium">{t('credentials.slots')}</legend>
                 <p className="text-sm text-gray-500">{t('credentials.slotsHint')}</p>
+                {serverType === 'stdio' && (
+                  <p className="text-sm text-gray-500">
+                    {t('credentials.argsHint', { placeholder: '{{args.API_KEY}}' })}
+                  </p>
+                )}
                 {(formData.credentialTemplate || []).map((slot, index) => (
                   <div key={index} className="flex flex-wrap items-center gap-2">
-                    <span className="text-sm">
-                      {t(serverType === 'stdio' ? 'server.envVars' : 'server.headers')}
-                    </span>
+                    {serverType === 'stdio' ? (
+                      <select
+                        aria-label={t('credentials.target')}
+                        value={slot.target === 'args' ? 'args' : 'env'}
+                        className="py-2 px-3 form-input"
+                        onChange={(event) =>
+                          setFormData({
+                            ...formData,
+                            credentialTemplate: formData.credentialTemplate?.map((item, i) =>
+                              i === index
+                                ? { ...item, target: event.target.value as 'env' | 'args' }
+                                : item,
+                            ),
+                          })
+                        }
+                      >
+                        <option value="env">{t('server.envVars')}</option>
+                        <option value="args">{t('server.arguments')}</option>
+                      </select>
+                    ) : (
+                      <span className="text-sm">{t('server.headers')}</span>
+                    )}
                     <input
                       required
                       maxLength={128}

@@ -2,6 +2,29 @@ import type { ServerFormData } from '../../frontend/src/types';
 import { buildServerPayload } from '../../frontend/src/utils/serverFormPayload';
 
 describe('buildServerPayload', () => {
+  it('preserves args credential targets and placeholders when editing stdio servers', () => {
+    const credentialTemplate: ServerFormData['credentialTemplate'] = [
+      { target: 'env', name: 'ENV_KEY' },
+      { target: 'args', name: 'API_KEY' },
+    ];
+    const payload = buildServerPayload({
+      formData: {
+        name: 'cli',
+        url: '',
+        command: 'node',
+        arguments: '',
+        args: ['--key={{args.API_KEY}}'],
+        env: [],
+        headers: [],
+        credentialTemplate,
+      },
+      serverType: 'stdio',
+      envVars: [],
+      headerVars: [],
+    });
+    expect(payload.config.credentialTemplate).toEqual(credentialTemplate);
+    expect(payload.config.args).toEqual(['--key={{args.API_KEY}}']);
+  });
   it('preserves stdio argument boundaries, empty values, and literal shell syntax', () => {
     const args = [
       '-c',

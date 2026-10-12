@@ -18,6 +18,7 @@ import { deleteCredentialBindings, missingCredentialError } from './credentialBi
 import {
   CredentialBindingError,
   hasCredentialTemplate,
+  resolveCredentialArguments,
   validateCredentialTemplate,
 } from '../utils/credentialTemplate.js';
 import os from 'os';
@@ -269,13 +270,19 @@ const sanitizeArgs = (args: string[]): string[] => {
   return args.map((arg) => {
     // Remove shell metacharacters that could be used for injection
     // Allow common flags (-f, --flag, -vvv) and paths
-    if (/^[a-zA-Z0-9._/\\:@=+,-]+$/.test(arg)) {
+    if (
+      /^[a-zA-Z0-9._/\\:@=+,-]+$/.test(
+        arg.replace(/\{\{args\.[A-Za-z_][A-Za-z0-9_]*\}\}/g, 'slot'),
+      )
+    ) {
       return arg;
     }
     // For arguments with special characters, log a warning
     // Also block redirection operators (>, <, >>) and newlines
     logger.warn(`[proxychains] Potentially unsafe argument blocked: ${arg}`);
-    return arg.replace(/[;&|`$(){}[\]!><\n\r]/g, '');
+    return arg.replace(/\{\{args\.[A-Za-z_][A-Za-z0-9_]*\}\}|[;&|`$(){}[\]!><\n\r]/g, (match) =>
+      match.startsWith('{{args.') ? match : '',
+    );
   });
 };
 
@@ -1736,7 +1743,8 @@ export const createTransportFromConfig = async (name: string, conf: ServerConfig
     transport = new StdioClientTransport({
       cwd: process.cwd(),
       command: finalCommand,
-      args: finalArgs,
+      // Substitute after expansion and proxy argument cleaning so secrets stay literal.
+      args: resolveCredentialArguments(conf, finalArgs),
       env: env,
       stderr: 'pipe',
       maxBufferSize: validateMaxBufferSize(conf.options?.maxBufferSize),
