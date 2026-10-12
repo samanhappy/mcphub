@@ -15,8 +15,9 @@ module.exports = {
         tsconfig: './tsconfig.test.json',
       },
     ],
-    // jose ships ESM only; compile it to CommonJS for the Jest runtime.
-    '^.+/node_modules/jose/dist/.+\\.js$': [
+    // jose ships ESM only; compile it to CommonJS for the Jest runtime. The
+    // separators are a class because Jest matches Windows paths with backslashes.
+    '^.+[\\\\/]node_modules[\\\\/]jose[\\\\/]dist[\\\\/].+\\.js$': [
       'ts-jest',
       {
         tsconfig: { allowJs: true, module: 'commonjs', target: 'ES2022', isolatedModules: true },
