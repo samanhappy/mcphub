@@ -7,7 +7,8 @@ const server = new Server(
 );
 const identity = () =>
   JSON.stringify({
-    credential: process.env.PERSONAL_KEY,
+    credential: process.argv[2] ?? process.env.PERSONAL_KEY,
+    args: process.argv.slice(2),
     pid: process.pid,
     masterKeyInherited: !!process.env.MCPHUB_CREDENTIAL_ENCRYPTION_KEY,
   });
@@ -25,7 +26,7 @@ server.setRequestHandler('tools/list', async () => ({
 }));
 server.setRequestHandler('tools/call', async (request) => {
   if (request.params.arguments?.fail)
-    throw new Error(`Unsupported input; echoed ${process.env.PERSONAL_KEY}`);
+    throw new Error(`Unsupported input; echoed ${process.argv[2] ?? process.env.PERSONAL_KEY}`);
   await new Promise((resolve) => setTimeout(resolve, request.params.arguments?.delay || 0));
   return { content: [{ type: 'text', text: identity() }] };
 });

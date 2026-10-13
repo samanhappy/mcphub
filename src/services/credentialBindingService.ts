@@ -10,6 +10,7 @@ import { logger } from '../utils/logger.js';
 import type { ServerConfig, StoredCredentialBinding } from '../types/index.js';
 import {
   CredentialBindingError,
+  argumentCredentialBindings,
   credentialSlotId,
   validateCredentialTemplate,
 } from '../utils/credentialTemplate.js';
@@ -255,9 +256,14 @@ export const resolveCredentialBinding = async (
     env: { ...config.env },
     headers: { ...config.headers },
   };
+  const argumentValues: Record<string, string> = Object.create(null);
   for (const slot of slots) {
     const value = values[credentialSlotId(slot)];
     if (typeof value !== 'string' || !value.length) throw missingCredentialError(serverName);
+    if (slot.target === 'args') {
+      argumentValues[slot.name] = value;
+      continue;
+    }
     if (slot.target === 'headers') {
       for (const name of Object.keys(resolved.headers!)) {
         if (name.toLowerCase() === slot.name.toLowerCase()) delete resolved.headers![name];
@@ -265,6 +271,7 @@ export const resolveCredentialBinding = async (
     }
     resolved[slot.target]![slot.name] = value;
   }
+  argumentCredentialBindings.set(resolved, argumentValues);
   // Caller-supplied passthrough headers must never override a bound slot.
   const boundHeaders = new Set(
     slots.filter((slot) => slot.target === 'headers').map((slot) => slot.name.toLowerCase()),

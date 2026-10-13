@@ -1399,6 +1399,8 @@
     "description": "Paylaşılan sunuculara kendi kimlik bilgilerinizi bağlayın. Her istek, çağrıyı yapan kullanıcının bilgilerini kullanır.",
     "slots": "Kişisel kimlik bilgisi alanları",
     "slotsHint": "Yalnızca alan adlarını tanımlayın. Tüm alanlar zorunludur; kuruluş bilgilerine otomatik dönüş yapılmaz.",
+    "target": "Kimlik bilgisi hedefi",
+    "argsHint": "Argüman alanları için bir argümanda {{placeholder}} kullanın ve API_KEY yerine alan adını yazın. Değerler kabuk kullanılmadan olduğu gibi aktarılır.",
     "fieldName": "Alan adı",
     "label": "Etiket (isteğe bağlı)",
     "addSlot": "Alan ekle",

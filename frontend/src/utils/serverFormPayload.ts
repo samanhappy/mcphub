@@ -247,7 +247,7 @@ export const buildServerPayload = ({
       formData.visibility === 'group' ? normalizeSharedUsers(formData.sharedWithUsers) : undefined,
     credentialTemplate: formData.credentialTemplate?.map((slot) => ({
       ...slot,
-      target: serverType === 'stdio' ? 'env' : 'headers',
+      target: serverType === 'stdio' ? (slot.target === 'args' ? 'args' : 'env') : 'headers',
     })),
     perSessionClient: formData.perSessionClient === true ? true : undefined,
     startOnDemand: formData.startOnDemand === true ? true : undefined,

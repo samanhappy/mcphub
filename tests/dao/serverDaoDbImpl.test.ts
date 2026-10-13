@@ -367,7 +367,10 @@ describe('ServerDaoDbImpl', () => {
 
 test('credential templates survive database create, partial update and explicit removal', async () => {
   const dao = new ServerDaoDbImpl();
-  const credentialTemplate = [{ target: 'env' as const, name: 'PERSONAL_KEY' }];
+  const credentialTemplate = [
+    { target: 'env' as const, name: 'PERSONAL_KEY' },
+    { target: 'args' as const, name: 'API_KEY' },
+  ];
   mockRepository.create.mockResolvedValue({ name: 'shared', enabled: true, credentialTemplate });
   expect((await dao.create({ name: 'shared', credentialTemplate })).credentialTemplate).toEqual(credentialTemplate);
   expect(mockRepository.create).toHaveBeenCalledWith(expect.objectContaining({ credentialTemplate }));

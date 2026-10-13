@@ -427,7 +427,7 @@ export interface ProxychainsConfig {
 export type ServerVisibility = 'private' | 'group' | 'public';
 
 export interface CredentialSlot {
-  target: 'env' | 'headers';
+  target: 'env' | 'headers' | 'args';
   name: string;
   label?: string;
 }

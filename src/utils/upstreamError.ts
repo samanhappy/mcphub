@@ -1,4 +1,5 @@
 import type { ServerConfig } from '../types/index.js';
+import { argumentCredentialBindings } from './credentialTemplate.js';
 import {
   formatErrorForLogging,
   sanitizeStringForLogging,
@@ -22,7 +23,11 @@ export const createUpstreamRequestError = (
   // Personal values can be opaque strings with no recognizable token shape.
   // Remove them before formatting/truncation, including URL-encoded echoes.
   const secrets = (config.credentialTemplate ?? [])
-    .map((slot) => config[slot.target]?.[slot.name])
+    .map((slot) =>
+      slot.target === 'args'
+        ? argumentCredentialBindings.get(config)?.[slot.name]
+        : config[slot.target]?.[slot.name],
+    )
     .filter((value): value is string => typeof value === 'string' && value.length > 0)
     .flatMap((value) => [value, value.replace(/^(?:Bearer|Basic)\s+/i, '')])
     .flatMap((value) => {
