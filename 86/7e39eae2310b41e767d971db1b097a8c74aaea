@@ -1,0 +1,70 @@
+tests/integration/personal-credentials.test.ts
+  s_7a32489a5abb40::t_7dfd9f7b2ee668 281-286
+  s_7a32489a5abb40::t_b37d765d39904c 276-279
+  s_7a32489a5abb40::t_4802d1ce1c8f55 227-229,233,238-242,244-245,250-255,261-267,271-273,287-290,294-298
+  s_7a32489a5abb40::t_8a16981723abf9 237
+  s_7a32489a5abb40::t_109dee95ddd024 243,274-275,280,293
+  s_7a32489a5abb40::t_49a0047b7b37c4 230-232,234-236,246-249,256-260,268-270,291-292
+frontend/src/components/ServerForm.tsx
+  s_7a32489a5abb40::t_369101ce4fdfd4 1749,1753,1756-1764,1768-1777
+  s_7a32489a5abb40::t_109dee95ddd024 1750-1752
+  s_7a32489a5abb40::t_7dfd9f7b2ee668 1765-1767
+frontend/src/types/index.ts
+  s_7a32489a5abb40::t_7ba3986d5f8043 196
+docs/zh/features/per-user-credentials.mdx
+  s_7a32489a5abb40::t_49a0047b7b37c4 20,56,60-62,64,69-73
+tests/frontend/serverFormPayload.test.ts
+  s_7a32489a5abb40::t_49a0047b7b37c4 12-19,21-23
+  s_7a32489a5abb40::t_109dee95ddd024 6,9
+  s_7a32489a5abb40::t_4802d1ce1c8f55 5,7-8,10-11,20,24-27
+src/services/credentialBindingService.ts
+  s_7a32489a5abb40::t_7ba3986d5f8043 13,259,263-266,274
+src/utils/upstreamError.ts
+  s_7a32489a5abb40::t_7ba3986d5f8043 2,26-30
+src/services/mcpService.ts
+  s_7a32489a5abb40::t_369101ce4fdfd4 21,283-285,1746-1747
+  s_7a32489a5abb40::t_7dfd9f7b2ee668 273-277
+docs/features/per-user-credentials.mdx
+  s_7a32489a5abb40::t_8a16981723abf9 20,56,60-62,64,69-73
+src/types/index.ts
+  s_7a32489a5abb40::t_7ba3986d5f8043 430
+frontend/src/utils/serverFormPayload.ts
+  s_7a32489a5abb40::t_7ba3986d5f8043 250
+tests/fixtures/credential-server.mjs
+  s_7a32489a5abb40::t_4802d1ce1c8f55 10-11,29
+tests/services/mcpService-passthrough-headers.test.ts
+  s_7a32489a5abb40::t_d738fd0b45dec1 131-132,140-144,148-153,157-158
+  s_7a32489a5abb40::t_8ebddbb7c2214b 3-6,129-130,133-139,145-147,154-156,159
+  s_7a32489a5abb40::t_4bcaa04ed49511 160-161
+src/utils/credentialTemplate.ts
+  s_7a32489a5abb40::t_7ba3986d5f8043 5-20,27,38,46,49,53-69
+tests/dao/serverDaoDbImpl.test.ts
+  s_7a32489a5abb40::t_7dfd9f7b2ee668 370-373
+tests/services/credentialBindingService.test.ts
+  s_7a32489a5abb40::t_109dee95ddd024 390,397
+  s_7a32489a5abb40::t_4802d1ce1c8f55 388-389,391-396,398-404
+locales/en.json
+  s_7a32489a5abb40::t_15f8a0c2bd4436 1405-1406
+locales/fr.json
+  s_7a32489a5abb40::t_8da658f2fcbf30 1403-1404
+locales/tr.json
+  s_7a32489a5abb40::t_b054e04795e824 1402-1403
+locales/zh.json
+  s_7a32489a5abb40::t_7054459f2351d5 1407-1408
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "867e39eae2310b41e767d971db1b097a8c74aaea",
+  "prompts": {},
+  "sessions": {
+    "s_7a32489a5abb40": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a12e4e-6b9a-7e52-a212-9116661bc99d",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
