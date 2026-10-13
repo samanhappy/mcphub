@@ -77,7 +77,14 @@ export class PrincipalRuntimeService {
       const created: RuntimeEntry = {
         serverName,
         username: principal.username,
-        revision,
+        // This context advances only after its own successful CAS writes. External
+        // binding changes still differ from its version and invalidate the runtime.
+        get revision() {
+          return JSON.stringify([
+            definitionSnapshot,
+            personalOAuthContexts.get(resolved.config)?.version || resolved.revision,
+          ]);
+        },
         valid: true,
         active: 0,
         promise: undefined!,

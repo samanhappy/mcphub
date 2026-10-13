@@ -130,3 +130,23 @@ test('changing an environment-expanded destination requires fresh personal autho
     else process.env.MCPHUB_TEST_OAUTH_DESTINATION = oldEnv;
   }
 });
+
+
+test('an unpersisted successful refresh expires while concurrent calls share its response', async () => {
+  const context = await PersonalOAuthContext.load('gitlab', 'alice', mockDefinition);
+  const fetch = jest.fn(async () => new Response(JSON.stringify({ invalid: true }), { status: 200 }));
+  const wrapped = context.wrapFetch(fetch);
+  const init = { body: new URLSearchParams({ grant_type: 'refresh_token', refresh_token: 'refresh' }) };
+  jest.useFakeTimers();
+  try {
+    const responses = await Promise.all([wrapped('https://example.com/token', init), wrapped('https://example.com/token', init)]);
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(await responses[0].json()).toEqual({ invalid: true });
+    expect(await responses[1].json()).toEqual({ invalid: true });
+    jest.advanceTimersByTime(1000);
+    await wrapped('https://example.com/token', init);
+    expect(fetch).toHaveBeenCalledTimes(2);
+  } finally {
+    jest.useRealTimers();
+  }
+});

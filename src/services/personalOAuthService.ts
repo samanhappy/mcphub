@@ -95,11 +95,21 @@ export class PersonalOAuthContext {
       if (this.refresh?.key !== key) {
         const response = fetchFn(input, init);
         this.refresh = { key, response };
-        void response.catch(() => {
-          if (this.refresh?.response === response) this.refresh = undefined;
-        });
+        void response.then(
+          () => {
+            // The SDK may reject an HTTP 200 payload without persisting tokens.
+            // Bound coalescing so that an unusable response cannot poison retries.
+            const timer = setTimeout(() => {
+              if (this.refresh?.response === response) this.refresh = undefined;
+            }, 1000);
+            timer.unref?.();
+          },
+          () => {
+            if (this.refresh?.response === response) this.refresh = undefined;
+          },
+        );
       }
-      // Share the response until token persistence completes, so concurrent
+      // Briefly share the response until token persistence completes, so concurrent
       // SDK calls do not redeem a rotating refresh token twice.
       const refresh = this.refresh!;
       const response = await refresh.response;

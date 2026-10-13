@@ -939,6 +939,39 @@ test('a user who sees fewer tools does not remove the others from the shared ind
   expect(removeTools).not.toHaveBeenCalled();
 });
 
+test('a runtime keeps active leases after its own token refresh but rejects external rotation', async () => {
+  const { PersonalOAuthContext, personalOAuthContexts } = await import('../../src/services/personalOAuthService.js');
+  await getServerDao().create({ name: 'refreshOAuth', type: 'streamable-http', owner: 'admin', visibility: 'public', url: `${baseUrl}/unused`, oauth: { identityMode: 'personal' } });
+  const close = jest.fn();
+  let runtimeContext: InstanceType<typeof PersonalOAuthContext> | undefined;
+  const connectRuntime = jest.fn(async (name: string, config: import('../../src/types/index.js').ServerConfig) => {
+    runtimeContext = personalOAuthContexts.get(config);
+    return { name, status: 'connected' as const, tools: [], prompts: [], resources: [], error: null, createTime: Date.now() };
+  });
+  const pool = new PrincipalRuntimeService(connectRuntime, close);
+  try {
+    const definition = (await getServerDao().findById('refreshOAuth'))!;
+    const seed = await PersonalOAuthContext.load('refreshOAuth', alice, definition);
+    await seed.persistTokens('refreshOAuth', { accessToken: 'initial', refreshToken: 'refresh' });
+    const first = await pool.acquire('refreshOAuth', { username: alice });
+    await runtimeContext!.persistTokens('refreshOAuth', { accessToken: 'refreshed' });
+    const next = await pool.acquire('refreshOAuth', { username: alice });
+    expect(next.info).toBe(first.info);
+    expect(close).not.toHaveBeenCalled();
+    expect(connectRuntime).toHaveBeenCalledTimes(1);
+    const external = await PersonalOAuthContext.load('refreshOAuth', alice, definition);
+    await external.persistTokens('refreshOAuth', { accessToken: 'external' });
+    const rotated = await pool.acquire('refreshOAuth', { username: alice });
+    expect(rotated.info).not.toBe(first.info);
+    expect(close).toHaveBeenCalledWith(first.info);
+    first.release(); next.release(); rotated.release();
+  } finally {
+    pool.invalidate();
+    await getCredentialBindingDao().delete({ serverName: 'refreshOAuth' });
+    await getServerDao().delete('refreshOAuth');
+  }
+});
+
 test('personal OAuth tokens survive a plain server rename but not a destination change', async () => {
   const { PersonalOAuthContext } = await import('../../src/services/personalOAuthService.js');
   const { copyCredentialBindings } = await import('../../src/services/credentialBindingService.js');
