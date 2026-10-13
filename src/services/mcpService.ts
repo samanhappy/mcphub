@@ -2579,21 +2579,22 @@ export const getServersInfo = async (
         principal.credentialEligible === false
       )
         return info;
-      const personal = hasPersonalOAuth(info.config)
-        ? await PersonalOAuthContext.load(
-            info.name,
-            principal.username,
-            (await getServerDao().findById(info.name))!,
-          )
-        : undefined;
-      const ownOAuth: ServerInfo['oauth'] = personal
-        ? {
-            identityMode: 'personal' as const,
-            connected: Boolean(personal.config.oauth.accessToken),
-            authorizationUrl: personal.authorizationUrl,
-          }
-        : undefined;
+      let ownOAuth: ServerInfo['oauth'];
       try {
+        const personal = hasPersonalOAuth(info.config)
+          ? await PersonalOAuthContext.load(
+              info.name,
+              principal.username,
+              (await getServerDao().findById(info.name))!,
+            )
+          : undefined;
+        ownOAuth = personal
+          ? {
+              identityMode: 'personal' as const,
+              connected: Boolean(personal.config.oauth.accessToken),
+              authorizationUrl: personal.authorizationUrl,
+            }
+          : undefined;
         const lease = await principalRuntimes.acquire(info.name, principal);
         try {
           return { ...lease.info, config: info.config, ...(ownOAuth ? { oauth: ownOAuth } : {}) };

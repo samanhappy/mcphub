@@ -20,6 +20,7 @@ import { Server as McpServer } from '@modelcontextprotocol/server';
 import request from 'supertest';
 import {
   getServerDao,
+  getCredentialBindingDao,
   getSystemConfigDao,
   getGroupDao,
   getBearerKeyDao,
@@ -862,6 +863,12 @@ test('HTTP handshake failures survive acquisition wrappers without credential bl
   }
 });
 
+const originalLiteralHeader = process.env.LITERAL_HEADER;
+afterAll(() => {
+  if (originalLiteralHeader === undefined) delete process.env.LITERAL_HEADER;
+  else process.env.LITERAL_HEADER = originalLiteralHeader;
+});
+
 const settleUntil = async (done: () => boolean) => {
   for (let attempt = 0; attempt < 100 && !done(); attempt += 1) {
     await new Promise((resolve) => setTimeout(resolve, 20));
@@ -932,9 +939,28 @@ test('a user who sees fewer tools does not remove the others from the shared ind
   expect(removeTools).not.toHaveBeenCalled();
 });
 
+test('an unreadable personal OAuth binding only fails its own dashboard entry', async () => {
+  await getServerDao().create({ name: 'damagedOAuth', type: 'streamable-http', owner: 'admin', visibility: 'public', url: `${baseUrl}/unused`, oauth: { identityMode: 'personal' } });
+  await getCredentialBindingDao().save({ serverName: 'damagedOAuth', username: alice, encryptedValues: 'damaged-ciphertext', updatedAt: new Date().toISOString() });
+  await initializeClientsFromSettings(true);
+  try {
+    const infos = await UserContextService.getInstance().runWithContext(
+      () => getServersInfo(),
+      { username: alice, password: '', isAdmin: false },
+    );
+    expect(infos.find((info) => info.name === 'damagedOAuth')?.error).toBeTruthy();
+    expect(infos.some((info) => info.name === 'shared')).toBe(true);
+  } finally {
+    await getCredentialBindingDao().delete({ serverName: 'damagedOAuth' });
+    await getServerDao().delete('damagedOAuth');
+  }
+});
+
 test('personal OAuth follows user keys through a group endpoint and disconnect affects only its owner', async () => {
+  process.env.LITERAL_HEADER = 'literal-$TOKEN-${VAR}';
   const { PersonalOAuthContext, disconnectPersonalOAuth } = await import('../../src/services/personalOAuthService.js');
   app.post('/oauth-identity-upstream', async (req, res) => {
+    expect(req.headers['x-literal']).toBe('literal-$TOKEN-${VAR}');
     const upstream = new McpServer({ name: 'oauth-identity', version: '1' }, { capabilities: { tools: {} } });
     upstream.setRequestHandler('tools/list', async () => ({ tools: [{ name: 'identity', inputSchema: { type: 'object' } }] }));
     upstream.setRequestHandler('tools/call', async () => ({ content: [{ type: 'text', text: JSON.stringify({ credential: req.headers.authorization }) }] }));
@@ -943,7 +969,7 @@ test('personal OAuth follows user keys through a group endpoint and disconnect a
     await upstream.connect(transport); await transport.handleRequest(req, res, req.body);
   });
   const definition = await getServerDao().create({ name: 'personalGitlab', type: 'streamable-http', owner: 'admin', visibility: 'public',
-    url: `${baseUrl}/oauth-identity-upstream`, headers: { Authorization: 'Bearer organization' }, passthroughHeaders: ['Authorization'], oauth: { identityMode: 'personal', clientId: 'client', scopes: ['mcp'] } });
+    url: `${baseUrl}/oauth-identity-upstream`, headers: { Authorization: 'Bearer organization', 'X-Literal': '${LITERAL_HEADER}' }, passthroughHeaders: ['Authorization'], oauth: { identityMode: 'personal', clientId: 'client', scopes: ['mcp'] } });
   expect(definition).toBeTruthy();
   const persistedDefinition = await getServerDao().findById('personalGitlab');
   for (const username of [alice, bob]) {
@@ -972,13 +998,14 @@ test('personal OAuth follows user keys through a group endpoint and disconnect a
 });
 
 test('dashboard personal OAuth uses DCR and PKCE, consumes callbacks once, and hides other users authorization URLs', async () => {
+  process.env.LITERAL_HEADER = 'literal-$TOKEN-${VAR}';
   const { managePersonalOAuth } = await import('../../src/controllers/personalOAuthController.js');
   const { handleOAuthCallback } = await import('../../src/controllers/oauthCallbackController.js');
   const { PersonalOAuthContext } = await import('../../src/services/personalOAuthService.js');
-  app.post('/api/servers/:name/oauth/personal', managePersonalOAuth);
-  app.get('/api/servers/:name/oauth/personal', managePersonalOAuth);
-  app.delete('/api/servers/:name/oauth/personal', managePersonalOAuth);
-  app.get('/oauth/callback', handleOAuthCallback);
+  app.post('/api/servers/:name/oauth/personal', authenticatedRouteRateLimiter, managePersonalOAuth);
+  app.get('/api/servers/:name/oauth/personal', authenticatedRouteRateLimiter, managePersonalOAuth);
+  app.delete('/api/servers/:name/oauth/personal', authenticatedRouteRateLimiter, managePersonalOAuth);
+  app.get('/oauth/callback', mcpConnectionRateLimiter, handleOAuthCallback);
   app.get('/.well-known/oauth-protected-resource/oauth-protected', (_req, res) => res.json({ resource: `${baseUrl}/oauth-protected`, authorization_servers: [baseUrl], scopes_supported: ['mcp'] }));
   app.get('/.well-known/oauth-authorization-server', (_req, res) => res.json({ issuer: baseUrl, authorization_endpoint: `${baseUrl}/authorize`, token_endpoint: `${baseUrl}/personal-token`, registration_endpoint: `${baseUrl}/personal-register`, revocation_endpoint: `${baseUrl}/personal-revoke`, scopes_supported: ['mcp'], response_types_supported: ['code'], grant_types_supported: ['authorization_code', 'refresh_token'], code_challenge_methods_supported: ['S256'], token_endpoint_auth_methods_supported: ['none'] }));
   let registrations = 0;
@@ -991,10 +1018,11 @@ test('dashboard personal OAuth uses DCR and PKCE, consumes callbacks once, and h
     res.json({ access_token: `token-${req.body.code}`, refresh_token: `refresh-${req.body.code}`, token_type: 'Bearer' });
   });
   app.post('/oauth-protected', (req, res) => {
+    expect(req.headers['x-literal']).toBe('literal-$TOKEN-${VAR}');
     if (!req.headers.authorization) res.status(401).set('WWW-Authenticate', `Bearer resource_metadata="${baseUrl}/.well-known/oauth-protected-resource/oauth-protected"`).end();
     else res.json({ jsonrpc: '2.0', id: req.body.id, result: {} });
   });
-  await getServerDao().create({ name: 'oauthDcr', type: 'streamable-http', owner: 'admin', visibility: 'public', url: `${baseUrl}/oauth-protected`, oauth: { identityMode: 'personal', scopes: ['mcp'], redirectUri: `${baseUrl}/oauth/callback` } });
+  await getServerDao().create({ name: 'oauthDcr', type: 'streamable-http', owner: 'admin', visibility: 'public', url: `${baseUrl}/oauth-protected`, headers: { 'X-Literal': '${LITERAL_HEADER}' }, oauth: { identityMode: 'personal', scopes: ['mcp'], redirectUri: `${baseUrl}/oauth/callback` } });
   const start = await request(app).post('/api/servers/oauthDcr/oauth/personal').set('x-auth-token', apiToken(alice)).send({ username: bob });
   expect(start.status).toBe(200);
   const authorization = new URL(start.body.data.authorizationUrl);

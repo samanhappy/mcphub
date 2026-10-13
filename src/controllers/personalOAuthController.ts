@@ -5,13 +5,11 @@ import { authorizationService, type RequestPrincipal } from '../services/authori
 import { credentialBindingEvents } from '../services/credentialBindingService.js';
 import {
   PersonalOAuthContext,
-  personalOAuthContexts,
   hasPersonalOAuth,
   findPersonalOAuthFlow,
   disconnectPersonalOAuth,
 } from '../services/personalOAuthService.js';
 import { createTransportFromConfig } from '../services/mcpService.js';
-import { expandServerConfig } from '../services/serverConfigEnvironment.js';
 import { validateAuthorizationIss } from '../utils/oauthIssuer.js';
 import { CredentialBindingError } from '../utils/credentialTemplate.js';
 
@@ -73,8 +71,7 @@ export const managePersonalOAuth = async (req: Request, res: Response): Promise<
         serverName: definition.name,
         username: user.username,
       });
-      const config = await expandServerConfig(context.config);
-      personalOAuthContexts.set(config, context);
+      const config = context.config;
       const transport = await createTransportFromConfig(definition.name, config);
       const client = new LegacyMcpClient({ name: 'mcphub-personal-oauth', version: '1.0.0' });
       try {
@@ -127,8 +124,7 @@ export const completePersonalOAuth = async (
   await context.mutate(({ oauth }) => {
     delete oauth.pendingAuthorization!.state;
   });
-  const config = await expandServerConfig(context.config);
-  personalOAuthContexts.set(config, context);
+  const config = context.config;
   const transport = await createTransportFromConfig(context.serverName, config);
   try {
     if (!('finishAuth' in transport)) throw new Error('OAuth transport required');

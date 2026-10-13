@@ -66,11 +66,6 @@ export class PrincipalRuntimeService {
       principal.username,
       hasPersonalOAuth(definition) ? definition : await expandServerConfig(definition),
     );
-    if (hasPersonalOAuth(definition)) {
-      const context = personalOAuthContexts.get(resolved.config)!;
-      resolved.config = await expandServerConfig(resolved.config);
-      personalOAuthContexts.set(resolved.config, context);
-    }
     const revision = JSON.stringify([definitionSnapshot, resolved.revision]);
     const key = JSON.stringify([serverName, principal.username]);
     let entry = this.entries.get(key);
