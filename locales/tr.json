@@ -285,7 +285,16 @@
       "scopesPlaceholder": "scope1 scope2",
       "resource": "Kaynak / Hedef Kitle",
       "accessToken": "Erişim Tokeni",
-      "refreshToken": "Yenileme Tokeni"
+      "refreshToken": "Yenileme Tokeni",
+      "identityMode": "OAuth kimliği",
+      "sharedIdentity": "Paylaşılan hesap",
+      "personalIdentity": "Her kullanıcı ayrı yetkilendirir",
+      "personalIdentityHelp": "Her kullanıcı panelde yetkilendirmelidir. Kullanıcı anahtarları sahibinin kimliğini kullanır; paylaşılan anahtarlar desteklenmez.",
+      "personalConnect": "Yetkilendir",
+      "personalReconnect": "Yeniden yetkilendir",
+      "personalDisconnect": "Bağlantıyı kes",
+      "personalError": "Kişisel yetkilendirme başarısız",
+      "personalSuccess": "Kişisel yetkilendirme kaydedildi. Panel → Sunucular bölümüne dönün."
     }
   },
   "status": {

@@ -285,7 +285,16 @@
       "scopesPlaceholder": "scope1 scope2",
       "resource": "资源 / 受众",
       "accessToken": "访问令牌",
-      "refreshToken": "刷新令牌"
+      "refreshToken": "刷新令牌",
+      "identityMode": "OAuth 身份",
+      "sharedIdentity": "共享账号",
+      "personalIdentity": "每位用户独立授权",
+      "personalIdentityHelp": "个人模式要求每位用户在 Dashboard 授权。用户密钥使用其拥有者身份；共享或服务密钥不支持。",
+      "personalConnect": "连接授权",
+      "personalReconnect": "重新授权",
+      "personalDisconnect": "断开授权",
+      "personalError": "个人授权失败",
+      "personalSuccess": "个人授权已保存，请返回 Dashboard → 服务器。"
     }
   },
   "status": {

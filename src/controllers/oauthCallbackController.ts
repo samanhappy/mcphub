@@ -1,3 +1,4 @@
+import { completePersonalOAuth } from './personalOAuthController.js';
 /**
  * OAuth Callback Controller
  *
@@ -298,6 +299,32 @@ export const handleOAuthCallback = async (req: Request, res: Response) => {
             'error',
             t('oauthCallback.invalidRequest'),
             t('oauthCallback.missingCodeParameter'),
+          ),
+        );
+    }
+
+    try {
+      if (await completePersonalOAuth(stateParam, codeParam, normalizeQueryParam(req.query.iss))) {
+        return res.send(
+          generateHtmlResponse(
+            t,
+            'success',
+            t('oauthCallback.authorizationSuccessful'),
+            t('server.oauth.personalSuccess'),
+            undefined,
+            true,
+          ),
+        );
+      }
+    } catch {
+      return res
+        .status(400)
+        .send(
+          generateHtmlResponse(
+            t,
+            'error',
+            t('oauthCallback.authorizationFailed'),
+            'Personal authorization failed; reconnect in Dashboard → Servers.',
           ),
         );
     }

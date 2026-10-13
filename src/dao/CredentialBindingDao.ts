@@ -14,6 +14,7 @@ export interface CredentialBindingDao {
    */
   listUsernames(serverName: string): Promise<string[]>;
   save(binding: StoredCredentialBinding): Promise<void>;
+  compareAndSave(binding: StoredCredentialBinding, expected?: string): Promise<boolean>;
   delete(filter: { serverName?: string; username?: string }): Promise<void>;
 }
 
@@ -64,6 +65,16 @@ export class CredentialBindingDaoImpl implements CredentialBindingDao {
       (item) => item.serverName !== binding.serverName || item.username !== binding.username,
     );
     this.write([...bindings, binding]);
+  }
+
+  async compareAndSave(binding: StoredCredentialBinding, expected?: string): Promise<boolean> {
+    const bindings = this.readAll();
+    const current = bindings.find(
+      (row) => row.serverName === binding.serverName && row.username === binding.username,
+    );
+    if (current?.encryptedValues !== expected) return false;
+    this.write([...bindings.filter((row) => row !== current), binding]);
+    return true;
   }
 
   async delete(filter: { serverName?: string; username?: string }): Promise<void> {

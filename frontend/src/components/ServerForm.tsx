@@ -94,6 +94,7 @@ const ServerForm = ({
     const oauth = data?.config?.oauth;
 
     return {
+      identityMode: oauth?.identityMode || 'shared',
       clientId: oauth?.clientId || '',
       ...(oauth?.allowInsecureTokenEndpoint !== undefined && {
         allowInsecureTokenEndpoint: oauth.allowInsecureTokenEndpoint,
@@ -2043,6 +2044,30 @@ const ServerForm = ({
                       <p className="text-xs text-gray-500 mb-3">
                         {t('server.oauth.sectionDescription')}
                       </p>
+                      {(serverType === 'sse' || serverType === 'streamable-http') && (
+                        <div className="mb-3">
+                          <label htmlFor="oauthIdentityMode" className="text-sm">
+                            {t('server.oauth.identityMode')}
+                          </label>
+                          <select
+                            id="oauthIdentityMode"
+                            className="w-full p-2 border rounded bg-white dark:bg-gray-800"
+                            value={formData.oauth?.identityMode || 'shared'}
+                            onChange={(e) =>
+                              handleOAuthChange(
+                                'identityMode',
+                                e.target.value as 'shared' | 'personal',
+                              )
+                            }
+                          >
+                            <option value="shared">{t('server.oauth.sharedIdentity')}</option>
+                            <option value="personal">{t('server.oauth.personalIdentity')}</option>
+                          </select>
+                          <p className="text-xs text-gray-500 mt-1">
+                            {t('server.oauth.personalIdentityHelp')}
+                          </p>
+                        </div>
+                      )}
                       {(serverType === 'sse' || serverType === 'streamable-http') &&
                         (auth.user?.isAdmin || formData.oauth?.allowInsecureTokenEndpoint) && (
                           <div className="mb-3">

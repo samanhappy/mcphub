@@ -36,3 +36,13 @@ describe('CredentialBindingDaoDbImpl.listUsernames', () => {
     ).resolves.toEqual([]);
   });
 });
+
+test('conditional database writes reject a stale OAuth binding revision', async () => {
+  const update = jest.fn().mockResolvedValueOnce({ affected: 0 }).mockResolvedValueOnce({ affected: 1 });
+  Object.assign(mockRepository, { update });
+  const dao = new CredentialBindingDaoDbImpl();
+  const binding = { serverName: 'gitlab', username: 'alice', encryptedValues: 'new', updatedAt: new Date().toISOString() };
+  expect(await dao.compareAndSave(binding, 'stale')).toBe(false);
+  expect(await dao.compareAndSave(binding, 'current')).toBe(true);
+  expect(update).toHaveBeenLastCalledWith({ serverName: 'gitlab', username: 'alice', encryptedValues: 'current' }, binding);
+});

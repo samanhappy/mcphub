@@ -1,3 +1,4 @@
+import PersonalOAuthControls from './PersonalOAuthControls';
 import { Link } from 'react-router-dom';
 import { useState, useRef, useEffect, type CSSProperties, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -202,7 +203,7 @@ const ServerCard = ({
   // Reinstall is only available for stdio servers using npx or uvx
   const supportsReinstall =
     server.config?.command === 'npx' || server.config?.command === 'uvx';
-  const supportsOAuthDisconnect = Boolean(server.oauth?.connected && onOAuthDisconnect);
+  const supportsOAuthDisconnect = Boolean(server.config?.oauth?.identityMode !== 'personal' && server.oauth?.connected && onOAuthDisconnect);
 
   const handleToggle = async (nextEnabled: boolean) => {
     if (!canManage || isToggling || !onToggle) return;
@@ -745,6 +746,8 @@ const ServerCard = ({
               />
             </LoadingControl>
           </div>
+
+          {server.config?.oauth?.identityMode === 'personal' && <PersonalOAuthControls serverName={server.name} />}
 
           {/* Menu */}
           <div className="relative" ref={menuRef}>

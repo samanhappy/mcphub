@@ -70,8 +70,11 @@ export const unpackStartOnDemandOptions = (
     return { options: undefined, startOnDemand: undefined, idleTimeoutMs: undefined };
   }
 
-  const { startOnDemand: rawStartOnDemand, idleTimeoutMs: rawIdleTimeoutMs, ...rest } =
-    options as Record<string, unknown>;
+  const {
+    startOnDemand: rawStartOnDemand,
+    idleTimeoutMs: rawIdleTimeoutMs,
+    ...rest
+  } = options as Record<string, unknown>;
 
   return {
     options: Object.keys(rest).length > 0 ? (rest as ServerConfig['options']) : undefined,
@@ -156,12 +159,20 @@ const normalizeOptions = (
   return Object.keys(normalized).length > 0 ? normalized : undefined;
 };
 
-export const normalizeOAuth = (oauth?: ServerConfig['oauth']): ServerConfig['oauth'] | undefined => {
+export const normalizeOAuth = (
+  oauth?: ServerConfig['oauth'],
+): ServerConfig['oauth'] | undefined => {
   if (!oauth) {
     return undefined;
   }
 
   const normalized: NonNullable<ServerConfig['oauth']> = {};
+
+  if (oauth.identityMode !== undefined) {
+    if (!['shared', 'personal'].includes(oauth.identityMode))
+      throw new ServerConfigValidationError('Invalid OAuth identity mode');
+    normalized.identityMode = oauth.identityMode;
+  }
 
   if (oauth.allowInsecureTokenEndpoint !== undefined) {
     if (typeof oauth.allowInsecureTokenEndpoint !== 'boolean') {
@@ -288,6 +299,18 @@ export const normalizeServerConfigForPersistence = (config: ServerConfig): Serve
     config.idleTimeoutMs,
   );
   const oauth = normalizeOAuth(config.oauth);
+  if (
+    oauth?.identityMode === 'personal' &&
+    (!['sse', 'streamable-http'].includes(normalizedType || '') ||
+      oauth.accessToken ||
+      oauth.refreshToken ||
+      oauth.pendingAuthorization ||
+      config.credentialTemplate?.length)
+  ) {
+    throw new ServerConfigValidationError(
+      'Personal OAuth requires an HTTP MCP server without shared tokens, pending authorization or credential slots',
+    );
+  }
   const openapi = normalizeOpenApi(config.openapi);
 
   // Default visibility to 'private' so file-defined and freshly-created servers behave

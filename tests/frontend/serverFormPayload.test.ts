@@ -474,3 +474,16 @@ it.each([undefined, false, true])('round-trips HTTP OAuth exception=%s from the 
   });
   expect(payload.config.oauth?.allowInsecureTokenEndpoint).toBe(value);
 });
+
+test('preserves personal OAuth mode in an HTTP server form payload', () => {
+  const result = buildServerPayload({
+    formData: { name: 'gitlab', url: 'https://gitlab.example/mcp', command: '', arguments: '', args: [], env: [], headers: [], oauth: { identityMode: 'personal', clientId: 'client', scopes: 'mcp' } },
+    serverType: 'streamable-http', envVars: [], headerVars: [],
+  });
+  expect(result.config.oauth).toMatchObject({ identityMode: 'personal', clientId: 'client', scopes: ['mcp'] });
+});
+
+test('switching a shared OAuth server to personal mode removes shared tokens from the form payload', () => {
+  const result = buildServerPayload({ formData: { name: 'gitlab', url: 'https://gitlab.example/mcp', command: '', arguments: '', args: [], env: [], headers: [], oauth: { identityMode: 'personal', accessToken: 'old-shared', refreshToken: 'old-refresh' } }, serverType: 'streamable-http', envVars: [], headerVars: [] });
+  expect(result.config.oauth).toEqual({ identityMode: 'personal' });
+});

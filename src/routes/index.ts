@@ -1,3 +1,4 @@
+import { managePersonalOAuth } from '../controllers/personalOAuthController.js';
 import { listMyCredentials, updateMyCredential } from '../controllers/credentialBindingController.js';
 import express from 'express';
 import { check } from 'express-validator';
@@ -281,6 +282,9 @@ export const initRoutes = async (app: express.Application): Promise<void> => {
   authenticatedRouter.post('/servers/:name/toggle', toggleServer);
   authenticatedRouter.post('/servers/:name/reload', reloadServer);
   authenticatedRouter.post('/servers/:name/reinstall', reinstallServerHandler);
+  authenticatedRouter.get('/servers/:name/oauth/personal', managePersonalOAuth);
+  authenticatedRouter.post('/servers/:name/oauth/personal', managePersonalOAuth);
+  authenticatedRouter.delete('/servers/:name/oauth/personal', managePersonalOAuth);
   authenticatedRouter.post('/servers/:name/oauth/disconnect', disconnectServerOAuth);
   authenticatedRouter.post('/servers/:serverName/tools/:toolName/toggle', toggleTool);
   authenticatedRouter.put(

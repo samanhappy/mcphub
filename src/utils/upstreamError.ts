@@ -1,3 +1,4 @@
+import { personalOAuthContexts } from '../services/personalOAuthService.js';
 import type { ServerConfig } from '../types/index.js';
 import { argumentCredentialBindings } from './credentialTemplate.js';
 import {
@@ -22,12 +23,15 @@ export const createUpstreamRequestError = (
 ): UpstreamRequestError => {
   // Personal values can be opaque strings with no recognizable token shape.
   // Remove them before formatting/truncation, including URL-encoded echoes.
+  const oauth = personalOAuthContexts.get(config)?.config.oauth || config.oauth;
+  const oauthSecrets = [oauth?.accessToken, oauth?.refreshToken, oauth?.clientSecret, oauth?.pendingAuthorization?.codeVerifier];
   const secrets = (config.credentialTemplate ?? [])
     .map((slot) =>
       slot.target === 'args'
         ? argumentCredentialBindings.get(config)?.[slot.name]
         : config[slot.target]?.[slot.name],
     )
+    .concat(oauthSecrets)
     .filter((value): value is string => typeof value === 'string' && value.length > 0)
     .flatMap((value) => [value, value.replace(/^(?:Bearer|Basic)\s+/i, '')])
     .flatMap((value) => {

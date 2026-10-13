@@ -28,6 +28,24 @@ export class CredentialBindingDaoDbImpl implements CredentialBindingDao {
     await this.repository.upsert(binding, ['serverName', 'username']);
   }
 
+  async compareAndSave(binding: StoredCredentialBinding, expected?: string): Promise<boolean> {
+    if (expected !== undefined) {
+      const result = await this.repository.update(
+        { serverName: binding.serverName, username: binding.username, encryptedValues: expected },
+        binding,
+      );
+      return result.affected === 1;
+    }
+    const result = await this.repository
+      .createQueryBuilder()
+      .insert()
+      .values(binding)
+      .orIgnore()
+      .returning(['serverName'])
+      .execute();
+    return result.raw.length === 1;
+  }
+
   async delete(filter: { serverName?: string; username?: string }): Promise<void> {
     await this.repository.delete(filter);
   }

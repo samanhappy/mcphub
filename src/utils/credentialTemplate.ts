@@ -21,6 +21,9 @@ export const resolveCredentialArguments = (config: ServerConfig, args: string[])
 export const hasCredentialTemplate = (config?: ServerConfig): boolean =>
   Array.isArray(config?.credentialTemplate) && config.credentialTemplate.length > 0;
 
+export const hasPersonalAuthentication = (config?: ServerConfig): boolean =>
+  hasCredentialTemplate(config) || config?.oauth?.identityMode === 'personal';
+
 export const credentialSlotId = (slot: CredentialSlot): string => `${slot.target}.${slot.name}`;
 
 export const validateCredentialTemplate = (config: ServerConfig): CredentialSlot[] | undefined => {

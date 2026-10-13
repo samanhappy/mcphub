@@ -1,7 +1,12 @@
+import {
+  hasPersonalOAuth,
+  resolvePersonalOAuth,
+  personalOAuthContexts,
+} from './personalOAuthService.js';
 import { getServerDao } from '../dao/DaoFactory.js';
 import { credentialBindingEvents, resolveCredentialBinding } from './credentialBindingService.js';
 import { authorizationService, type RequestPrincipal } from './authorizationService.js';
-import { CredentialBindingError, hasCredentialTemplate } from '../utils/credentialTemplate.js';
+import { CredentialBindingError, hasPersonalAuthentication } from '../utils/credentialTemplate.js';
 import { expandServerConfig } from './serverConfigEnvironment.js';
 import type { ServerConfig, ServerInfo } from '../types/index.js';
 
@@ -48,18 +53,24 @@ export class PrincipalRuntimeService {
     if (
       !definition ||
       definition.enabled === false ||
-      !hasCredentialTemplate(definition) ||
+      !hasPersonalAuthentication(definition) ||
       !authorizationService.can('server.invoke', definition, principal)
     ) {
       throw new CredentialBindingError('Server not available');
     }
     // These snapshots only detect runtime changes in memory; they are never persisted or logged.
     const definitionSnapshot = JSON.stringify(definition);
-    const resolved = await resolveCredentialBinding(
+    const resolver = hasPersonalOAuth(definition) ? resolvePersonalOAuth : resolveCredentialBinding;
+    const resolved = await resolver(
       serverName,
       principal.username,
-      await expandServerConfig(definition),
+      hasPersonalOAuth(definition) ? definition : await expandServerConfig(definition),
     );
+    if (hasPersonalOAuth(definition)) {
+      const context = personalOAuthContexts.get(resolved.config)!;
+      resolved.config = await expandServerConfig(resolved.config);
+      personalOAuthContexts.set(resolved.config, context);
+    }
     const revision = JSON.stringify([definitionSnapshot, resolved.revision]);
     const key = JSON.stringify([serverName, principal.username]);
     let entry = this.entries.get(key);
@@ -82,11 +93,12 @@ export class PrincipalRuntimeService {
         try {
           info = await this.connect(serverName, resolved.config);
           // A rotation/deletion may have raced the initial read or async handshake.
-          const latest = await resolveCredentialBinding(serverName, principal.username, definition);
+          const latest = await resolver(serverName, principal.username, definition);
           const currentDefinition = await getServerDao().findById(serverName);
           if (
             !created.valid ||
-            latest.revision !== resolved.revision ||
+            latest.revision !==
+              (personalOAuthContexts.get(resolved.config)?.version || resolved.revision) ||
             JSON.stringify(currentDefinition) !== definitionSnapshot
           ) {
             throw new CredentialBindingError(

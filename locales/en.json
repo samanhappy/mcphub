@@ -285,7 +285,16 @@
       "scopesPlaceholder": "scope1 scope2",
       "resource": "Resource / Audience",
       "accessToken": "Access Token",
-      "refreshToken": "Refresh Token"
+      "refreshToken": "Refresh Token",
+      "identityMode": "OAuth identity",
+      "sharedIdentity": "Shared account",
+      "personalIdentity": "Each user authorizes independently",
+      "personalIdentityHelp": "Personal mode requires dashboard authorization for each user. User-associated keys use their owner; shared/service keys are ineligible.",
+      "personalConnect": "Connect",
+      "personalReconnect": "Reconnect",
+      "personalDisconnect": "Disconnect",
+      "personalError": "Personal authorization failed",
+      "personalSuccess": "Personal authorization saved. Return to Dashboard → Servers."
     }
   },
   "status": {

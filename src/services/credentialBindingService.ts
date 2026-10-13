@@ -81,7 +81,7 @@ const encryptionKey = async (allowCreate = false): Promise<Buffer> => {
 const bindingIdentity = (serverName: string, username: string): Buffer =>
   Buffer.from(JSON.stringify([serverName, username]));
 
-const encrypt = async (
+export const encryptCredentialValues = async (
   serverName: string,
   username: string,
   values: Record<string, string>,
@@ -98,7 +98,7 @@ const encrypt = async (
   ].join('.');
 };
 
-const decrypt = async (binding: StoredCredentialBinding): Promise<Record<string, string>> => {
+export const decryptCredentialValues = async (binding: StoredCredentialBinding): Promise<Record<string, string>> => {
   const key = await encryptionKey();
   try {
     const [version, iv, tag, ciphertext] = binding.encryptedValues.split('.');
@@ -145,7 +145,7 @@ export const getCredentialBindingStatus = async (
 ) => {
   const binding = await getCredentialBindingDao().get(serverName, username);
   const slots = validateCredentialTemplate(config) || [];
-  const values = binding ? await decrypt(binding) : {};
+  const values = binding ? await decryptCredentialValues(binding) : {};
   const configuredSlots = slots
     .map(credentialSlotId)
     .filter((id) => typeof values[id] === 'string' && values[id].length > 0);
@@ -186,7 +186,7 @@ export const saveCredentialBinding = async (
   await getCredentialBindingDao().save({
     serverName,
     username,
-    encryptedValues: await encrypt(serverName, username, record as Record<string, string>),
+    encryptedValues: await encryptCredentialValues(serverName, username, record as Record<string, string>),
     updatedAt: new Date().toISOString(),
   });
   credentialBindingEvents.emit('invalidate', { serverName, username });
@@ -215,7 +215,7 @@ export const copyCredentialBindings = async (oldName: string, newName: string): 
     if (!binding) continue;
     let values: Record<string, string>;
     try {
-      values = await decrypt(binding);
+      values = await decryptCredentialValues(binding);
     } catch (error) {
       throw new CredentialBindingError(
         `Cannot rename '${oldName}': the credential binding of user '${username}' cannot be decrypted (${error instanceof Error ? error.message : String(error)}). Restore the encryption key, or have the user replace or delete that binding, then rename again`,
@@ -224,7 +224,7 @@ export const copyCredentialBindings = async (oldName: string, newName: string): 
     copies.push({
       ...binding,
       serverName: newName,
-      encryptedValues: await encrypt(newName, username, values),
+      encryptedValues: await encryptCredentialValues(newName, username, values),
     });
   }
   try {
@@ -250,7 +250,7 @@ export const resolveCredentialBinding = async (
   const slots = validateCredentialTemplate(config) || [];
   const binding = await getCredentialBindingDao().get(serverName, username);
   if (!binding) throw missingCredentialError(serverName);
-  const values = await decrypt(binding);
+  const values = await decryptCredentialValues(binding);
   const resolved: ServerConfig = {
     ...config,
     env: { ...config.env },

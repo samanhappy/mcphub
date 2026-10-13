@@ -45,17 +45,19 @@ const presentSafeServerConfig = (config: ServerConfigLike): ServerConfigLike => 
       safe[field] = clone(config[field]);
     }
   }
+  if ((config.oauth as { identityMode?: string } | undefined)?.identityMode === 'personal')
+    safe.oauth = { identityMode: 'personal' };
   if (Array.isArray(config.credentialTemplate)) {
-    safe.credentialTemplate = config.credentialTemplate.map(({ target, name, label }: CredentialSlot) => ({ target, name, ...(label ? { label } : {}) }));
+    safe.credentialTemplate = config.credentialTemplate.map(
+      ({ target, name, label }: CredentialSlot) => ({ target, name, ...(label ? { label } : {}) }),
+    );
   }
   // Explicit marker so callers (and the dashboard) can tell a restricted view
   // apart from "this server genuinely has no credentials".
   return { ...safe, configRestricted: true };
 };
 
-const presentSafeServerInfoOauth = (
-  oauth: Record<string, unknown>,
-): Record<string, unknown> => {
+const presentSafeServerInfoOauth = (oauth: Record<string, unknown>): Record<string, unknown> => {
   const safeOauth: Record<string, unknown> = {};
   for (const key of SAFE_SERVER_INFO_OAUTH_KEYS) {
     if (oauth[key] !== undefined) {
@@ -109,7 +111,15 @@ export const presentServerInfoForPrincipal = <T extends object>(
   const entry = { ...(info as ServerConfigLike) };
 
   if (entry.oauth && typeof entry.oauth === 'object') {
-    entry.oauth = presentSafeServerInfoOauth(entry.oauth as Record<string, unknown>);
+    const oauth = entry.oauth as Record<string, unknown>;
+    entry.oauth =
+      oauth.identityMode === 'personal'
+        ? {
+            identityMode: 'personal',
+            connected: oauth.connected,
+            authorizationUrl: oauth.authorizationUrl,
+          }
+        : presentSafeServerInfoOauth(oauth);
   }
 
   if (entry.config && typeof entry.config === 'object') {

@@ -285,7 +285,16 @@
       "scopesPlaceholder": "scope1 scope2",
       "resource": "Ressource / Audience",
       "accessToken": "Jeton d'accès",
-      "refreshToken": "Jeton d'actualisation"
+      "refreshToken": "Jeton d'actualisation",
+      "identityMode": "Identité OAuth",
+      "sharedIdentity": "Compte partagé",
+      "personalIdentity": "Autorisation individuelle",
+      "personalIdentityHelp": "Chaque utilisateur doit autoriser dans le tableau de bord. Les clés utilisateur utilisent leur propriétaire ; les clés partagées sont exclues.",
+      "personalConnect": "Autoriser",
+      "personalReconnect": "Réautoriser",
+      "personalDisconnect": "Déconnecter",
+      "personalError": "Échec de l’autorisation personnelle",
+      "personalSuccess": "Autorisation personnelle enregistrée. Retournez au tableau de bord → Serveurs."
     }
   },
   "status": {
