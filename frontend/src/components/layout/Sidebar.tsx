@@ -13,6 +13,8 @@ import {
   Activity,
   ScrollText,
   KeyRound,
+  FolderKanban,
+  Bot,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useServerContext } from '@/contexts/ServerContext';
@@ -21,6 +23,7 @@ import { canViewSystemLogs } from '@/utils/navigationPermissions';
 import { usePermissionCheck } from '../PermissionChecker';
 import UserProfileMenu from '@/components/ui/UserProfileMenu';
 import { checkActivityAvailable } from '@/services/activityService';
+import { alazabServices } from '@/data/alazabServices';
 
 interface SidebarProps {
   collapsed: boolean;
@@ -66,9 +69,16 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
       badge: groups.length || undefined,
     },
     { path: '/prompts', label: t('nav.prompts'), icon: <MessageSquare className="h-4 w-4" /> },
+    { path: '/connections/chatgpt', label: 'ChatGPT / AI', icon: <Bot className="h-4 w-4" /> },
     { path: '/resources', label: t('nav.resources'), icon: <FileText className="h-4 w-4" /> },
     { path: '/market', label: t('nav.market'), icon: <Store className="h-4 w-4" /> },
   ];
+
+  const integrationItems: MenuItem[] = alazabServices.map((service) => ({
+    path: `/integrations/${service.id}`,
+    label: service.label,
+    icon: <FolderKanban className="h-4 w-4" />,
+  }));
 
   const systemItems: MenuItem[] = [
     ...(userCanManageUsers
@@ -94,8 +104,8 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
           'group flex items-center gap-2.5 rounded-md text-[13.5px] transition-colors',
           collapsed ? 'justify-center px-2 py-2' : 'px-2.5 py-1.5',
           isActive
-            ? 'bg-[var(--hub-surface)] text-[var(--hub-ink)] ring-1 ring-inset ring-[var(--hub-line)]'
-            : 'text-[var(--hub-ink-2)] hover:bg-[var(--hub-surface-hover)] hover:text-[var(--hub-ink)]',
+            ? 'bg-[#FFB900] text-[#030957] ring-1 ring-inset ring-[#FFB900]'
+            : 'text-white/80 hover:bg-white/10 hover:text-white',
         ].join(' ')
       }
     >
@@ -104,8 +114,8 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
           <span
             className={
               isActive
-                ? 'text-[var(--hub-ink)] flex-shrink-0'
-                : 'text-[var(--hub-ink-3)] group-hover:text-[var(--hub-ink-2)] flex-shrink-0'
+                ? 'text-[#030957] flex-shrink-0'
+                : 'text-white/70 group-hover:text-white flex-shrink-0'
             }
           >
             {item.icon}
@@ -114,7 +124,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
             <>
               <span className="truncate">{item.label}</span>
               {item.badge != null && (
-                <span className="ml-auto hub-mono hub-num text-[11px] text-[var(--hub-ink-3)]">
+                <span className="ml-auto hub-mono hub-num text-[11px] text-white/70">
                   {item.badge}
                 </span>
               )}
@@ -129,7 +139,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
     <aside
       className={
         'flex flex-col h-full relative shrink-0 transition-[width] duration-200 ease-out ' +
-        'bg-[var(--hub-bg-2)] border-r border-[var(--hub-line)] ' +
+        'bg-[#030957] border-r border-[#151C6A] ' +
         (collapsed ? 'w-14' : 'w-[232px]')
       }
     >
@@ -138,12 +148,11 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
         <div
           className="relative grid h-7 w-7 place-items-center rounded-md text-white hub-mono text-[12px] font-semibold"
           style={{
-            background:
-              'linear-gradient(135deg, var(--hub-accent), oklch(0.62 0.18 285))',
+            background: '#FFB900',
             boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.14)',
           }}
         >
-          <span>M</span>
+          <span className="text-[#030957]">A</span>
           <span
             className="absolute -right-0.5 -bottom-0.5 w-[6px] h-[6px] rounded-full"
             style={{
@@ -154,8 +163,8 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
         </div>
         {!collapsed && (
           <div className="flex items-baseline gap-1.5 min-w-0">
-            <span className="font-semibold tracking-tight text-[var(--hub-ink)] truncate">
-              {t('app.title')}
+            <span className="font-semibold tracking-tight text-white truncate">
+              Alazab MCP Hub
             </span>
             {appVersion && (
               <span className="hub-mono text-[10.5px] text-[var(--hub-ink-3)] flex-shrink-0">
@@ -167,9 +176,14 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
       </div>
 
       <div className="flex-1 overflow-y-auto pb-2">
-        {!collapsed && <div className="hub-sect px-3 pt-2 pb-1.5">{t('nav.workspace')}</div>}
+        {!collapsed && <div className="hub-sect px-3 pt-2 pb-1.5 text-white/70">{t('nav.workspace')}</div>}
         <nav className={'flex flex-col gap-px ' + (collapsed ? 'px-1.5' : 'px-2')}>
           {workspaceItems.map(renderItem)}
+        </nav>
+
+        {!collapsed && <div className="hub-sect px-3 pt-3 pb-1.5 text-white/70">Alazab Services · /mnt/mcp</div>}
+        <nav aria-label="Alazab integrations" className={'flex flex-col gap-px ' + (collapsed ? 'px-1.5 mt-1' : 'px-2')}>
+          {integrationItems.map(renderItem)}
         </nav>
 
         {!collapsed && <div className="hub-sect px-3 pt-3 pb-1.5">{t('nav.system')}</div>}
@@ -178,7 +192,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
         </nav>
       </div>
 
-      <div className="p-2.5 border-t border-[var(--hub-line)]">
+      <div className="p-2.5 border-t border-white/20">
         <UserProfileMenu collapsed={collapsed} version={appVersion} />
       </div>
     </aside>
