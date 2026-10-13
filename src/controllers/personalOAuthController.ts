@@ -31,10 +31,15 @@ export const managePersonalOAuth = async (req: Request, res: Response): Promise<
       return;
     }
     if (req.method === 'DELETE') {
-      const binding = await PersonalOAuthContext.load(definition.name, user.username, definition);
+      // Revocation is best effort: unreadable tokens must not prevent local disconnect.
+      const binding = await PersonalOAuthContext.load(
+        definition.name,
+        user.username,
+        definition,
+      ).catch(() => undefined);
       await disconnectPersonalOAuth(definition.name, user.username);
-      const oauth = binding.config.oauth;
-      if (oauth.revocationEndpoint) {
+      const oauth = binding?.config.oauth;
+      if (binding && oauth?.revocationEndpoint) {
         const { revokeToken, canServerOwnerReachInternalUrls } = await import(
           '../services/upstreamOAuthDisconnectService.js'
         );

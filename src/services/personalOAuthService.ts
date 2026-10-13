@@ -32,8 +32,11 @@ export const personalAuthorizationRequired = (name: string) =>
   );
 
 // The declaration, not resolved tokens/client registration, binds a flow to its destination.
-const fingerprint = (config: ServerConfig, expanded: ServerConfig): string =>
-  JSON.stringify([config, expanded.url, expanded.oauth]);
+const fingerprint = (config: ServerConfig, expanded: ServerConfig): string => {
+  // Bindings follow a plain rename; the display name does not change the destination.
+  const { name: _, ...declaration } = config as ServerConfig & { name?: string };
+  return JSON.stringify([declaration, expanded.url, expanded.oauth]);
+};
 export class PersonalOAuthContext {
   private revision: string | undefined;
   private declaration: string;

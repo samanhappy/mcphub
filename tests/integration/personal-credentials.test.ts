@@ -939,6 +939,31 @@ test('a user who sees fewer tools does not remove the others from the shared ind
   expect(removeTools).not.toHaveBeenCalled();
 });
 
+test('personal OAuth tokens survive a plain server rename but not a destination change', async () => {
+  const { PersonalOAuthContext } = await import('../../src/services/personalOAuthService.js');
+  const { copyCredentialBindings } = await import('../../src/services/credentialBindingService.js');
+  await getServerDao().create({ name: 'renameOAuth', type: 'streamable-http', owner: 'admin', visibility: 'public', url: `${baseUrl}/unused`, oauth: { identityMode: 'personal' } });
+  try {
+    const definition = (await getServerDao().findById('renameOAuth'))!;
+    const context = await PersonalOAuthContext.load('renameOAuth', alice, definition);
+    await context.persistTokens('renameOAuth', { accessToken: 'rename-token', refreshToken: 'rename-refresh' });
+    await copyCredentialBindings('renameOAuth', 'renamedOAuth');
+    expect(await getServerDao().rename('renameOAuth', 'renamedOAuth')).toBe(true);
+    const renamed = (await getServerDao().findById('renamedOAuth'))!;
+    const restored = await PersonalOAuthContext.load('renamedOAuth', alice, renamed);
+    expect(restored.config.oauth.accessToken).toBe('rename-token');
+    expect(restored.config.oauth.refreshToken).toBe('rename-refresh');
+    await restored.assertCurrent();
+    const changed = await PersonalOAuthContext.load('renamedOAuth', alice, { ...renamed, url: `${baseUrl}/different` });
+    expect(changed.config.oauth.accessToken).toBeUndefined();
+  } finally {
+    for (const serverName of ['renameOAuth', 'renamedOAuth']) {
+      await getCredentialBindingDao().delete({ serverName });
+      await getServerDao().delete(serverName);
+    }
+  }
+});
+
 test('an unreadable personal OAuth binding only fails its own dashboard entry', async () => {
   await getServerDao().create({ name: 'damagedOAuth', type: 'streamable-http', owner: 'admin', visibility: 'public', url: `${baseUrl}/unused`, oauth: { identityMode: 'personal' } });
   await getCredentialBindingDao().save({ serverName: 'damagedOAuth', username: alice, encryptedValues: 'damaged-ciphertext', updatedAt: new Date().toISOString() });
@@ -950,6 +975,15 @@ test('an unreadable personal OAuth binding only fails its own dashboard entry', 
     );
     expect(infos.find((info) => info.name === 'damagedOAuth')?.error).toBeTruthy();
     expect(infos.some((info) => info.name === 'shared')).toBe(true);
+    const { managePersonalOAuth } = await import('../../src/controllers/personalOAuthController.js');
+    const { PersonalOAuthContext } = await import('../../src/services/personalOAuthService.js');
+    app.delete('/api/servers/:name/oauth/personal', authenticatedRouteRateLimiter, managePersonalOAuth);
+    const disconnected = await request(app).delete('/api/servers/damagedOAuth/oauth/personal').set('x-auth-token', apiToken(alice));
+    expect(disconnected.status).toBe(200);
+    const context = await PersonalOAuthContext.load('damagedOAuth', alice, (await getServerDao().findById('damagedOAuth'))!);
+    expect(context.config.oauth.accessToken).toBeUndefined();
+    await context.updatePendingAuthorization('damagedOAuth', { state: 'personal.reconnected', authorizationUrl: `${baseUrl}/authorize` });
+    expect(context.authorizationUrl).toBe(`${baseUrl}/authorize`);
   } finally {
     await getCredentialBindingDao().delete({ serverName: 'damagedOAuth' });
     await getServerDao().delete('damagedOAuth');
