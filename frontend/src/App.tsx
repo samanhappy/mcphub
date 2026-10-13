@@ -23,6 +23,8 @@ const LogsPage = lazy(() => import('./pages/LogsPage'));
 const ActivityPage = lazy(() => import('./pages/ActivityPage'));
 const PromptsPage = lazy(() => import('./pages/PromptsPage'));
 const ResourcesPage = lazy(() => import('./pages/ResourcesPage'));
+const AIConnectionsPage = lazy(() => import('./pages/AIConnectionsPage'));
+const AlazabServicePage = lazy(() => import('./pages/AlazabServicePage'));
 
 // Helper component to redirect legacy cloud server routes to the local market page
 const CloudRedirect: React.FC = () => {
@@ -74,6 +76,8 @@ function App() {
                       <Route path="/" element={<DashboardPage />} />
                       <Route path="/credentials" element={<CredentialsPage />} />
                       <Route path="/servers" element={<ServersPage />} />
+                      <Route path="/connections/chatgpt" element={<AIConnectionsPage />} />
+                      <Route path="/integrations/:serviceId" element={<AlazabServicePage />} />
                       <Route path="/groups" element={<GroupsPage />} />
                       <Route path="/prompts" element={<PromptsPage />} />
                       <Route path="/resources" element={<ResourcesPage />} />
