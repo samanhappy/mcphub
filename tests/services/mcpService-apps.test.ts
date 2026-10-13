@@ -17,6 +17,15 @@ const createMockClient = () => ({
 });
 
 const mockClient = createMockClient();
+const mockOpenApiClient = {
+  initialize: jest.fn().mockResolvedValue(undefined),
+  getTools: jest.fn(),
+  callTool: jest.fn(),
+};
+
+jest.mock('../../src/clients/openapi.js', () => ({
+  OpenAPIClient: jest.fn().mockImplementation(() => mockOpenApiClient),
+}));
 
 // Most tests only ever deal with one upstream server, so every constructed
 // Client shares the single `mockClient` above by default. A handful of new
@@ -259,6 +268,14 @@ describe('mcpService MCP Apps transparent proxy', () => {
       content: [{ type: 'text', text: 'ok' }],
       isError: false,
     });
+    mockOpenApiClient.getTools.mockReturnValue([
+      {
+        name: 'search-memories',
+        description: 'Search memories',
+        inputSchema: { type: 'object' },
+      },
+    ]);
+    mockOpenApiClient.callTool.mockResolvedValue({ memories: ['work style'] });
   });
 
   afterEach(() => {
@@ -764,22 +781,41 @@ describe('mcpService MCP Apps transparent proxy', () => {
       },
     );
 
-    it('does not allow raw names when a configured peer is disabled', async () => {
-      setUpPairGroup();
-      mockFindAll.mockResolvedValue([
-        makeServerConfig('apps-server'),
-        { ...makeServerConfig('other-server'), enabled: false },
-      ]);
-      await initUpstreamServers();
-      await flushPromises();
-      await getMcpServer('aggregate-session', 'pair');
-      const result = await handleCallToolRequest(
-        { params: { name: 'open-dashboard', arguments: {} } },
-        { sessionId: 'aggregate-session' },
-      );
-      expect(result.isError).toBe(true);
-      expect(mockClient.callTool).not.toHaveBeenCalled();
-    });
+    it.each([false, true])(
+      'does not allow raw names when a configured peer is disabled (Apps=%s)',
+      async (appsCapable) => {
+        setUpPairGroup();
+        mockFindAll.mockResolvedValue([
+          makeServerConfig('apps-server'),
+          { ...makeServerConfig('other-server'), enabled: false },
+        ]);
+        await initUpstreamServers();
+        await flushPromises();
+        if (appsCapable) {
+          await markSessionAsAppsCapable('aggregate-session', 'pair');
+        } else {
+          await getMcpServer('aggregate-session', 'pair');
+        }
+
+        const list = await handleListToolsRequest({}, { sessionId: 'aggregate-session' });
+        expect(list.tools.map((tool) => tool.name)).toEqual(
+          appsCapable
+            ? ['apps-server::open-dashboard', 'apps-server::poll-dashboard']
+            : ['apps-server::open-dashboard'],
+        );
+        for (const params of [
+          { name: 'open-dashboard', arguments: {} },
+          { name: 'call_tool', arguments: { toolName: 'open-dashboard', arguments: {} } },
+        ]) {
+          const result = await handleCallToolRequest(
+            { params },
+            { sessionId: 'aggregate-session' },
+          );
+          expect(result.isError).toBe(true);
+        }
+        expect(mockClient.callTool).not.toHaveBeenCalled();
+      },
+    );
 
     it('keeps qualified tool names and full Apps metadata on a multi-server Apps route', async () => {
       setUpPairGroup();
@@ -905,6 +941,207 @@ describe('mcpService MCP Apps transparent proxy', () => {
 
       expect(result.contents[0].text).toContain('Resource not found');
     });
+  });
+
+  describe('mixed MCP and OpenAPI Apps routes', () => {
+    const routes = [
+      { name: 'root', group: undefined },
+      { name: 'group', group: 'mixed' },
+    ];
+
+    const setUpMixedRoute = async () => {
+      const configs = [
+        makeServerConfig('apps-server'),
+        {
+          name: 'openapi-server',
+          type: 'openapi' as const,
+          enabled: true,
+          openapi: {
+            schema: {
+              openapi: '3.0.3',
+              info: { title: 'Memories', version: '1.0.0' },
+              paths: {},
+            },
+          },
+        },
+      ];
+      mockFindAll.mockResolvedValue(configs);
+      mockFindById.mockImplementation(async (name: string) =>
+        configs.find((config) => config.name === name),
+      );
+      mockGroupFindByName.mockImplementation(async (name: string) =>
+        name === 'mixed' ? { servers: ['apps-server', 'openapi-server'] } : null,
+      );
+      await initUpstreamServers();
+      await flushPromises();
+    };
+
+    const withAppsRoute = <T>(group: string | undefined, action: () => Promise<T>) =>
+      RequestContextService.getInstance().runWithCustomRequestContext(
+        { headers: {}, stateless: true, group, clientCapabilities: MCP_APPS_CAPABILITIES },
+        action,
+      );
+
+    it.each(routes)('keeps qualified tool names on a mixed $name Apps route', async ({ group }) => {
+      await setUpMixedRoute();
+
+      const result = await withAppsRoute(group, () => handleListToolsRequest({}, { group }));
+
+      expect(result.tools.map((tool) => tool.name)).toEqual([
+        'apps-server::open-dashboard',
+        'apps-server::poll-dashboard',
+        'openapi-server::search-memories',
+      ]);
+      expect(result.tools[0]._meta).toEqual(appsTools[0]._meta);
+      expect(getServerByName('openapi-server')?.openApiClient).toBe(mockOpenApiClient);
+      expect(getServerByName('openapi-server')?.client).toBeUndefined();
+    });
+
+    it.each(routes.flatMap((route) => ['direct', 'wrapped'].map((mode) => ({ ...route, mode }))))(
+      'dispatches qualified OpenAPI calls on a mixed $name Apps route ($mode)',
+      async ({ group, mode }) => {
+        await setUpMixedRoute();
+        const args = { query: 'work style' };
+        const params =
+          mode === 'direct'
+            ? { name: 'openapi-server::search-memories', arguments: args }
+            : {
+                name: 'call_tool',
+                arguments: { toolName: 'openapi-server::search-memories', arguments: args },
+              };
+
+        const result = await withAppsRoute(group, () =>
+          handleCallToolRequest({ params }, { group }),
+        );
+
+        expect(result.content).toEqual([
+          { type: 'text', text: JSON.stringify({ memories: ['work style'] }) },
+        ]);
+        expect(result.isError).not.toBe(true);
+        expect(mockOpenApiClient.callTool).toHaveBeenCalledWith(
+          'search-memories',
+          args,
+          undefined,
+          false,
+          undefined,
+        );
+        expect(mockClient.callTool).not.toHaveBeenCalled();
+
+        const mcpParams =
+          mode === 'direct'
+            ? { name: 'apps-server::poll-dashboard', arguments: {} }
+            : {
+                name: 'call_tool',
+                arguments: { toolName: 'apps-server::poll-dashboard', arguments: {} },
+              };
+        const mcpResult = await withAppsRoute(group, () =>
+          handleCallToolRequest({ params: mcpParams }, { group }),
+        );
+        expect(mcpResult.isError).toBe(false);
+        expect(mockClient.callTool).toHaveBeenCalledWith(
+          { name: 'poll-dashboard', arguments: {} },
+          expect.anything(),
+        );
+        expect(mockOpenApiClient.callTool).toHaveBeenCalledTimes(1);
+      },
+    );
+
+    it.each(routes.flatMap((route) => ['direct', 'wrapped'].map((mode) => ({ ...route, mode }))))(
+      'rejects raw names on a mixed $name Apps route ($mode)',
+      async ({ group, mode }) => {
+        await setUpMixedRoute();
+        const params =
+          mode === 'direct'
+            ? { name: 'open-dashboard', arguments: {} }
+            : { name: 'call_tool', arguments: { toolName: 'open-dashboard', arguments: {} } };
+
+        const result = await withAppsRoute(group, () =>
+          handleCallToolRequest({ params }, { group }),
+        );
+
+        expect(result.isError).toBe(true);
+        expect(mockClient.callTool).not.toHaveBeenCalled();
+        expect(mockOpenApiClient.callTool).not.toHaveBeenCalled();
+      },
+    );
+
+    it.each(['direct', 'wrapped'])(
+      'resolves group aliases on a mixed Apps route (%s)',
+      async (mode) => {
+        await setUpMixedRoute();
+        mockGroupFindByName.mockImplementation(async (name: string) =>
+          name === 'mixed'
+            ? {
+                servers: [
+                  { name: 'apps-server', alias: 'apps' },
+                  { name: 'openapi-server', alias: 'memories' },
+                ],
+              }
+            : null,
+        );
+        const list = await withAppsRoute('mixed', () =>
+          handleListToolsRequest({}, { group: 'mixed' }),
+        );
+        expect(list.tools.map((tool) => tool.name)).toEqual([
+          'apps::open-dashboard',
+          'apps::poll-dashboard',
+          'memories::search-memories',
+        ]);
+        const args = { query: 'work style' };
+        const params =
+          mode === 'direct'
+            ? { name: 'memories::search-memories', arguments: args }
+            : {
+                name: 'call_tool',
+                arguments: { toolName: 'memories::search-memories', arguments: args },
+              };
+        const result = await withAppsRoute('mixed', () =>
+          handleCallToolRequest({ params }, { group: 'mixed' }),
+        );
+        expect(result.isError).not.toBe(true);
+        expect(mockOpenApiClient.callTool).toHaveBeenCalledWith(
+          'search-memories',
+          args,
+          undefined,
+          false,
+          undefined,
+        );
+        expect(mockClient.callTool).not.toHaveBeenCalled();
+      },
+    );
+
+    it.each(['direct', 'wrapped'])(
+      'does not widen group tool selection on a mixed Apps route (%s)',
+      async (mode) => {
+        await setUpMixedRoute();
+        mockGroupFindByName.mockImplementation(async (name: string) =>
+          name === 'mixed'
+            ? { servers: ['apps-server', { name: 'openapi-server', tools: [] }] }
+            : null,
+        );
+        const list = await withAppsRoute('mixed', () =>
+          handleListToolsRequest({}, { group: 'mixed' }),
+        );
+        expect(list.tools.map((tool) => tool.name)).toEqual([
+          'apps-server::open-dashboard',
+          'apps-server::poll-dashboard',
+        ]);
+        const params =
+          mode === 'direct'
+            ? { name: 'openapi-server::search-memories', arguments: {} }
+            : {
+                name: 'call_tool',
+                arguments: { toolName: 'openapi-server::search-memories', arguments: {} },
+              };
+        const result = await withAppsRoute('mixed', () =>
+          handleCallToolRequest({ params }, { group: 'mixed' }),
+        );
+
+        expect(result.isError).toBe(true);
+        expect(mockClient.callTool).not.toHaveBeenCalled();
+        expect(mockOpenApiClient.callTool).not.toHaveBeenCalled();
+      },
+    );
   });
 
   it('does not read a listed resource through a different single-server route', async () => {
