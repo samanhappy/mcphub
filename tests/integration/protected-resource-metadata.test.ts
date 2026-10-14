@@ -22,7 +22,11 @@ jest.mock('../../src/services/betterAuthSession.js', () => ({
 
 import express from 'express';
 import request from 'supertest';
-import { getProtectedResourceMetadata } from '../../src/controllers/oauthServerController.js';
+import { mcpConnectionRateLimiter } from '../../src/utils/rateLimit.js';
+import {
+  getMetadata,
+  getProtectedResourceMetadata,
+} from '../../src/controllers/oauthServerController.js';
 import { getPublicResourceUrl, getResourceMetadataUrl } from '../../src/utils/protectedResource.js';
 
 jest.mock('../../src/config/index.js', () => ({
@@ -44,6 +48,7 @@ it.each(['/mcp', '/mcp/team', '/alice/mcp/team', '/sse/team', '/mcp/team%20one']
         '/.well-known/oauth-protected-resource',
         '/.well-known/oauth-protected-resource/:resourcePath(*)',
       ],
+      mcpConnectionRateLimiter,
       getProtectedResourceMetadata,
     );
     app.get(`/internal${path}`, (req, res) => {
@@ -69,3 +74,45 @@ it.each(['/mcp', '/mcp/team', '/alice/mcp/team', '/sse/team', '/mcp/team%20one']
     expect(metadata.body.authorization_servers).toEqual(['https://public.example/hub/']);
   },
 );
+
+it('uses the forwarded public authority throughout OAuth discovery without configured URLs', async () => {
+  const originalBaseUrl = process.env.INSTALL_BASE_URL;
+  delete process.env.INSTALL_BASE_URL;
+  try {
+    getSystemConfigMock.mockResolvedValue({
+      oauthServer: { enabled: true, dynamicRegistration: { enabled: true } },
+    });
+    const app = express();
+    app.get(
+      '/.well-known/oauth-protected-resource/:resourcePath(*)',
+      mcpConnectionRateLimiter,
+      getProtectedResourceMetadata,
+    );
+    app.get('/.well-known/oauth-authorization-server', mcpConnectionRateLimiter, getMetadata);
+    const headers = {
+      Host: 'mcphub:3000',
+      'X-Forwarded-Host': 'public.example',
+      'X-Forwarded-Proto': 'https',
+    };
+    const resource = await request(app)
+      .get('/.well-known/oauth-protected-resource/internal/mcp')
+      .set(headers)
+      .expect(200);
+    expect(resource.body.resource).toBe('https://public.example/internal/mcp');
+    expect(resource.body.authorization_servers).toEqual(['https://public.example']);
+    const authorization = await request(app)
+      .get('/.well-known/oauth-authorization-server')
+      .set(headers)
+      .expect(200);
+    expect(authorization.body).toMatchObject({
+      issuer: 'https://public.example',
+      authorization_endpoint: 'https://public.example/oauth/authorize',
+      token_endpoint: 'https://public.example/oauth/token',
+      userinfo_endpoint: 'https://public.example/oauth/userinfo',
+      registration_endpoint: 'https://public.example/oauth/register',
+    });
+  } finally {
+    if (originalBaseUrl === undefined) delete process.env.INSTALL_BASE_URL;
+    else process.env.INSTALL_BASE_URL = originalBaseUrl;
+  }
+});

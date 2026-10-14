@@ -54,15 +54,14 @@ describe('oauthServerController postAuthorize redirect_uri validation', () => {
   beforeEach(() => {
     jest.clearAllMocks();
 
-    (findOAuthClientIncludingCimd as jest.Mock).mockImplementation(
-      (clientId: string) =>
-        clientId === 'trusted-client'
-          ? Promise.resolve({
-              clientId: 'trusted-client',
-              name: 'Trusted Client',
-              redirectUris: ['https://trusted.example.com/callback'],
-            })
-          : Promise.resolve(undefined),
+    (findOAuthClientIncludingCimd as jest.Mock).mockImplementation((clientId: string) =>
+      clientId === 'trusted-client'
+        ? Promise.resolve({
+            clientId: 'trusted-client',
+            name: 'Trusted Client',
+            redirectUris: ['https://trusted.example.com/callback'],
+          })
+        : Promise.resolve(undefined),
     );
 
     (getSystemConfigDao as jest.Mock).mockReturnValue({
@@ -139,6 +138,35 @@ describe('oauthServerController postAuthorize redirect_uri validation', () => {
     expect(res.redirect).toHaveBeenCalledWith(
       'https://trusted.example.com/callback?code=code-abc&iss=https%3A%2F%2Fhub.example.com&state=state-123',
     );
+  });
+
+  it('uses the forwarded public issuer in authorization callbacks without a configured URL', async () => {
+    const originalBaseUrl = process.env.INSTALL_BASE_URL;
+    delete process.env.INSTALL_BASE_URL;
+    try {
+      (getSystemConfigDao as jest.Mock).mockReturnValue({ get: async () => ({}) });
+      const req = createRequest({
+        headers: {
+          host: 'mcphub:3000',
+          'x-forwarded-host': 'public.example',
+          'x-forwarded-proto': 'https',
+        },
+        body: {
+          allow: 'false',
+          client_id: 'trusted-client',
+          redirect_uri: 'https://trusted.example.com/callback',
+          state: 'state-123',
+        },
+      });
+      const res = createResponse();
+      await postAuthorize(req as any, res as any);
+      expect(res.redirect).toHaveBeenCalledWith(
+        'https://trusted.example.com/callback?error=access_denied&iss=https%3A%2F%2Fpublic.example&state=state-123',
+      );
+    } finally {
+      if (originalBaseUrl === undefined) delete process.env.INSTALL_BASE_URL;
+      else process.env.INSTALL_BASE_URL = originalBaseUrl;
+    }
   });
 
   it('adds RFC 9207 iss to OAuth error redirects', async () => {

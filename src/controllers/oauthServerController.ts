@@ -11,8 +11,7 @@ import jwt from 'jsonwebtoken';
 import { JWT_SECRET } from '../config/jwt.js';
 import { resolveBetterAuthUser } from '../services/betterAuthSession.js';
 import { cloneDefaultOAuthServerConfig } from '../constants/oauthServerDefaults.js';
-import { getPublicResourceUrl } from '../utils/protectedResource.js';
-import { resolveInstallBaseUrl } from '../utils/installBaseUrl.js';
+import { getPublicInstallBaseUrl } from '../utils/protectedResource.js';
 import { logger } from '../utils/logger.js';
 import {
   injectOAuthConsentShell,
@@ -155,9 +154,7 @@ async function validateClientRedirectUri(
 async function resolveIssuer(req: Request): Promise<string | undefined> {
   try {
     const systemConfig = await getSystemConfigDao().get();
-    const host = typeof req.get === 'function' ? req.get('host') : undefined;
-    const fallback = host ? `${req.protocol ?? 'http'}://${host}` : undefined;
-    return resolveInstallBaseUrl(systemConfig, fallback);
+    return getPublicInstallBaseUrl(req, systemConfig);
   } catch {
     return undefined;
   }
@@ -668,7 +665,7 @@ export const getMetadata = async (req: Request, res: Response): Promise<void> =>
       return;
     }
 
-    const baseUrl = resolveInstallBaseUrl(systemConfig, `${req.protocol}://${req.get('host')}`);
+    const baseUrl = getPublicInstallBaseUrl(req, systemConfig);
     const allowedScopes = oauthConfig.allowedScopes || ['read', 'write'];
 
     const metadata: any = {
@@ -716,13 +713,13 @@ export const getProtectedResourceMetadata = async (req: Request, res: Response):
       return;
     }
 
-    const baseUrl = resolveInstallBaseUrl(systemConfig, `${req.protocol}://${req.get('host')}`);
+    const baseUrl = getPublicInstallBaseUrl(req, systemConfig);
     const allowedScopes = oauthConfig.allowedScopes || ['read', 'write'];
 
     // Return protected resource metadata according to RFC 9728
     res.json({
       resource: req.params?.resourcePath
-        ? `${new URL(getPublicResourceUrl(req, systemConfig)).origin}/${req.path.slice('/.well-known/oauth-protected-resource/'.length)}`
+        ? `${new URL(baseUrl!).origin}/${req.path.slice('/.well-known/oauth-protected-resource/'.length)}`
         : baseUrl,
       authorization_servers: [baseUrl],
       scopes_supported: allowedScopes,

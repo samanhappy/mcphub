@@ -3,16 +3,24 @@ import type { SystemConfig } from '../types/index.js';
 import config from '../config/index.js';
 import { resolveInstallBaseUrl } from './installBaseUrl.js';
 
-export const getPublicResourceUrl = (req: Request, systemConfig?: SystemConfig | null): string => {
+export const getPublicInstallBaseUrl = (
+  req: Request,
+  systemConfig?: SystemConfig | null,
+): string | undefined => {
   const protocol =
-    (req.headers['x-forwarded-proto'] as string | undefined)?.split(',')[0].trim() ||
+    (req.headers?.['x-forwarded-proto'] as string | undefined)?.split(',')[0].trim() ||
     req.protocol ||
     'http';
   const host =
-    (req.headers['x-forwarded-host'] as string | undefined)?.split(',')[0].trim() ||
-    req.headers.host ||
-    (req.headers[':authority'] as string | undefined);
-  const baseUrl = resolveInstallBaseUrl(systemConfig, `${protocol}://${host}`)!;
+    (req.headers?.['x-forwarded-host'] as string | undefined)?.split(',')[0].trim() ||
+    req.headers?.host ||
+    (typeof req.get === 'function' ? req.get('host') : undefined) ||
+    (req.headers?.[':authority'] as string | undefined);
+  return resolveInstallBaseUrl(systemConfig, host ? `${protocol}://${host}` : undefined);
+};
+
+export const getPublicResourceUrl = (req: Request, systemConfig?: SystemConfig | null): string => {
+  const baseUrl = getPublicInstallBaseUrl(req, systemConfig)!;
   const path = (req.originalUrl || req.path || '/').split('?')[0];
   const basePath = (config.basePath || '').replace(/\/+$/, '');
   const resourcePath =
