@@ -271,9 +271,7 @@ const sanitizeArgs = (args: string[]): string[] => {
     // Remove shell metacharacters that could be used for injection
     // Allow common flags (-f, --flag, -vvv) and paths
     if (
-      /^[a-zA-Z0-9._/\\:@=+,-]+$/.test(
-        arg.replace(/\{\{args\.[A-Za-z_][A-Za-z0-9_]*\}\}/g, 'slot'),
-      )
+      /^[a-zA-Z0-9._/\\:@=+,-]+$/.test(arg.replace(/\{\{args\.[A-Za-z_][A-Za-z0-9_]*\}\}/g, 'slot'))
     ) {
       return arg;
     }
@@ -3530,13 +3528,14 @@ export const toggleServerStatus = async (
 
 type McpAppsRouteContext = {
   enabled: boolean;
-  // Set when the route resolves to exactly one connected upstream server.
+  // Set when the route has exactly one configured upstream and a connected MCP client.
   // Preserves the existing behavior of exposing raw (unqualified) tool
   // names, which most Apps widgets assume when calling back into a
   // single-server host.
   serverInfo?: ServerInfo;
-  // Set when the route resolves to more than one connected upstream
-  // server. Tool names stay qualified (server::tool) in this case so
+  // Connected MCP clients on an aggregate route. Tool names stay qualified
+  // (server::tool), even when other configured upstreams use OpenAPI or their
+  // personal runtimes have not been acquired for this request, so
   // calls can still be routed unambiguously; Apps metadata and app-only
   // tools are still surfaced, unlike ordinary (non-Apps) group routes.
   serverInfos?: ServerInfo[];
@@ -3570,7 +3569,7 @@ const getMcpAppsRouteContext = async (
     return eligible.length > 0 ? { enabled: true, serverInfos: eligible } : { enabled: false };
   }
 
-  const { filteredServerInfos } = await getFilteredServerInfosForGroup(group);
+  const { filteredServerInfos, serverConfigsByName } = await getFilteredServerInfosForGroup(group);
   const connectedServerInfos = filteredServerInfos.filter(
     (serverInfo) => serverInfo.status === 'connected' && !!serverInfo.client,
   );
@@ -3579,7 +3578,14 @@ const getMcpAppsRouteContext = async (
     return { enabled: false };
   }
 
-  if (connectedServerInfos.length === 1) {
+  // Connection availability must not turn an aggregate route into a raw-name
+  // route: OpenAPI uses openApiClient, and tool calls acquire only the target
+  // personal runtime. Match resolveToolInGroup's configured-route ambiguity check.
+  if (
+    connectedServerInfos.length === 1 &&
+    filteredServerInfos.length === 1 &&
+    serverConfigsByName.size <= 1
+  ) {
     return {
       enabled: true,
       serverInfo: connectedServerInfos[0],
@@ -3799,7 +3805,7 @@ const projectToolForDownstream = (
 
   const projectedTool = appsRouteContext.enabled ? tool : stripMcpAppsMetadata(tool);
 
-  // Single connected server: keep the existing raw (unqualified) name so
+  // Single configured server: keep the existing raw (unqualified) name so
   // widgets that call back with the bare tool name continue to work.
   if (appsRouteContext.serverInfo) {
     return {
@@ -3808,7 +3814,7 @@ const projectToolForDownstream = (
     };
   }
 
-  // Multiple connected servers (Apps-enabled) or Apps disabled: qualify the
+  // Aggregate routes (Apps-enabled) or Apps disabled: qualify the
   // name so it can still be routed to the right server unambiguously.
   return {
     ...projectedTool,
