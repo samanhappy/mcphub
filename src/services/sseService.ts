@@ -36,6 +36,7 @@ import {
 import type { HostedAuthContext } from './hostedAuthService.js';
 import { isHostedModeEnabled } from './hostedMode.js';
 import { authenticateForwardAuthToken } from './forwardAuthService.js';
+import { getPublicResourceUrl, getResourceMetadataUrl } from '../utils/protectedResource.js';
 import { logger } from '../utils/logger.js';
 
 export interface SessionContext {
@@ -602,44 +603,11 @@ const escapeHeaderValue = (value: string): string => {
   return value.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
 };
 
-const buildResourceMetadataUrl = (req: Request): string | undefined => {
-  const forwardedProto = (req.headers['x-forwarded-proto'] as string | undefined)
-    ?.split(',')[0]
-    ?.trim();
-  const protocol = forwardedProto || req.protocol || 'http';
-
-  const forwardedHost = (req.headers['x-forwarded-host'] as string | undefined)
-    ?.split(',')[0]
-    ?.trim();
-  const host =
-    forwardedHost ||
-    (req.headers.host as string | undefined) ||
-    (req.headers[':authority'] as string | undefined);
-
-  if (!host) {
-    return undefined;
-  }
-
-  const origin = `${protocol}://${host}`;
-  const basePath = config.basePath || '';
-
-  if (!basePath || basePath === '/') {
-    return `${origin}/.well-known/oauth-protected-resource`;
-  }
-
-  const normalizedBasePath = `${basePath.startsWith('/') ? '' : '/'}${basePath}`.replace(
-    /\/+$/,
-    '',
-  );
-
-  return `${origin}/.well-known/oauth-protected-resource${normalizedBasePath}`;
-};
-
-const sendBearerAuthError = (
+const sendBearerAuthError = async (
   req: Request,
   res: Response,
   reason: 'missing' | 'invalid' | 'forbidden' | 'unavailable',
-): void => {
+): Promise<void> => {
   if (reason === 'forbidden') {
     res.status(403).json({
       error: 'forbidden',
@@ -660,7 +628,8 @@ const sendBearerAuthError = (
   const errorDescription =
     reason === 'missing' ? 'No authorization provided' : 'Invalid bearer token';
 
-  const resourceMetadataUrl = buildResourceMetadataUrl(req);
+  const systemConfig = await getSystemConfigDao().get();
+  const resourceMetadataUrl = getResourceMetadataUrl(getPublicResourceUrl(req, systemConfig));
   const headerParts = [
     'error="invalid_token"',
     `error_description="${escapeHeaderValue(errorDescription)}"`,
@@ -701,7 +670,7 @@ export const handleSseConnection = async (req: Request, res: Response): Promise<
   // Check bearer auth using filtered settings
   const bearerAuthResult = await validateBearerAuth(req);
   if (!bearerAuthResult.valid) {
-    sendBearerAuthError(req, res, bearerAuthResult.reason);
+    await sendBearerAuthError(req, res, bearerAuthResult.reason);
     return;
   }
 
@@ -778,7 +747,7 @@ export const handleSseMessage = async (req: Request, res: Response): Promise<voi
   // Check bearer auth using filtered settings
   const bearerAuthResult = await validateBearerAuth(req);
   if (!bearerAuthResult.valid) {
-    sendBearerAuthError(req, res, bearerAuthResult.reason);
+    await sendBearerAuthError(req, res, bearerAuthResult.reason);
     return;
   }
 
@@ -933,7 +902,7 @@ export const handleMcpPostRequest = async (req: Request, res: Response): Promise
   // Check bearer auth using filtered settings
   const bearerAuthResult = await validateBearerAuth(req);
   if (!bearerAuthResult.valid) {
-    sendBearerAuthError(req, res, bearerAuthResult.reason);
+    await sendBearerAuthError(req, res, bearerAuthResult.reason);
     return;
   }
 
@@ -1144,7 +1113,7 @@ export const handleMcpOtherRequest = async (req: Request, res: Response) => {
   // Check bearer auth using filtered settings
   const bearerAuthResult = await validateBearerAuth(req);
   if (!bearerAuthResult.valid) {
-    sendBearerAuthError(req, res, bearerAuthResult.reason);
+    await sendBearerAuthError(req, res, bearerAuthResult.reason);
     return;
   }
 

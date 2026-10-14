@@ -11,6 +11,7 @@ import jwt from 'jsonwebtoken';
 import { JWT_SECRET } from '../config/jwt.js';
 import { resolveBetterAuthUser } from '../services/betterAuthSession.js';
 import { cloneDefaultOAuthServerConfig } from '../constants/oauthServerDefaults.js';
+import { getPublicResourceUrl } from '../utils/protectedResource.js';
 import { resolveInstallBaseUrl } from '../utils/installBaseUrl.js';
 import { logger } from '../utils/logger.js';
 import {
@@ -720,7 +721,9 @@ export const getProtectedResourceMetadata = async (req: Request, res: Response):
 
     // Return protected resource metadata according to RFC 9728
     res.json({
-      resource: baseUrl,
+      resource: req.params?.resourcePath
+        ? `${new URL(getPublicResourceUrl(req, systemConfig)).origin}/${req.path.slice('/.well-known/oauth-protected-resource/'.length)}`
+        : baseUrl,
       authorization_servers: [baseUrl],
       scopes_supported: allowedScopes,
       bearer_methods_supported: ['header'],
