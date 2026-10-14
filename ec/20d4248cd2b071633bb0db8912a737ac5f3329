@@ -1,0 +1,31 @@
+src/utils/protectedResource.ts
+  s_2c8ef62f350b5a::t_dbdd19017a6a6c 10-11,38-58
+  s_2c8ef62f350b5a::t_75a061446d9c0a 59
+tests/controllers/oauthServerController.test.ts
+  s_2c8ef62f350b5a::t_dbdd19017a6a6c 143
+  s_2c8ef62f350b5a::t_c81b0d77e56bfd 164
+tests/utils/protectedResource.test.ts
+  s_2c8ef62f350b5a::t_dbdd19017a6a6c 25,28,30
+src/controllers/oauthServerController.ts
+  s_2c8ef62f350b5a::t_dbdd19017a6a6c 14-17,720-724,729
+tests/integration/protected-resource-metadata.test.ts
+  s_2c8ef62f350b5a::t_dbdd19017a6a6c 37-65,67-80,133-134
+  s_2c8ef62f350b5a::t_39c42331daa806 101-102,129-131,142-144
+  s_2c8ef62f350b5a::t_d6390bdc796323 81-97,99-100,103-125
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ec20d4248cd2b071633bb0db8912a737ac5f3329",
+  "prompts": {},
+  "sessions": {
+    "s_2c8ef62f350b5a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a13946-f691-7600-8315-fbb8c2657183",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
