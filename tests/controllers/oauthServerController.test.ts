@@ -140,7 +140,7 @@ describe('oauthServerController postAuthorize redirect_uri validation', () => {
     );
   });
 
-  it('uses the forwarded public issuer in authorization callbacks without a configured URL', async () => {
+  it('ignores forwarded authority in authorization callbacks without a configured URL', async () => {
     const originalBaseUrl = process.env.INSTALL_BASE_URL;
     delete process.env.INSTALL_BASE_URL;
     try {
@@ -161,7 +161,7 @@ describe('oauthServerController postAuthorize redirect_uri validation', () => {
       const res = createResponse();
       await postAuthorize(req as any, res as any);
       expect(res.redirect).toHaveBeenCalledWith(
-        'https://trusted.example.com/callback?error=access_denied&iss=https%3A%2F%2Fpublic.example&state=state-123',
+        'https://trusted.example.com/callback?error=access_denied&iss=https%3A%2F%2Fmcphub%3A3000&state=state-123',
       );
     } finally {
       if (originalBaseUrl === undefined) delete process.env.INSTALL_BASE_URL;

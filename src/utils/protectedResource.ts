@@ -7,12 +7,9 @@ export const getPublicInstallBaseUrl = (
   req: Request,
   systemConfig?: SystemConfig | null,
 ): string | undefined => {
-  const protocol =
-    (req.headers?.['x-forwarded-proto'] as string | undefined)?.split(',')[0].trim() ||
-    req.protocol ||
-    'http';
+  // Express resolves protocol according to the deployment's trust proxy setting.
+  const protocol = req.protocol || 'http';
   const host =
-    (req.headers?.['x-forwarded-host'] as string | undefined)?.split(',')[0].trim() ||
     req.headers?.host ||
     (typeof req.get === 'function' ? req.get('host') : undefined) ||
     (req.headers?.[':authority'] as string | undefined);
@@ -37,4 +34,26 @@ export const getPublicResourceUrl = (req: Request, systemConfig?: SystemConfig |
 export const getResourceMetadataUrl = (resource: string): string => {
   const url = new URL(resource);
   return `${url.origin}/.well-known/oauth-protected-resource${url.pathname}${url.search}`;
+};
+
+export const getProtectedResourceUrlFromMetadataRequest = (
+  req: Request,
+  systemConfig?: SystemConfig | null,
+): string | undefined => {
+  const baseUrl = getPublicInstallBaseUrl(req, systemConfig);
+  if (!baseUrl || !req.params?.resourcePath) return baseUrl;
+  const publicBase = new URL(baseUrl);
+  const prefix =
+    systemConfig?.install?.baseUrl?.trim() || process.env.INSTALL_BASE_URL?.trim()
+      ? publicBase.pathname.replace(/\/+$/, '')
+      : (config.basePath || '').replace(/\/+$/, '');
+  const path = req.path.slice('/.well-known/oauth-protected-resource'.length);
+  if (prefix && !path.startsWith(`${prefix}/`)) return undefined;
+  const transportPath = path.slice(prefix.length);
+  if (
+    !/^\/(?:mcp(?:\/.*)?|sse(?:\/.*)?|messages)$/.test(transportPath) &&
+    !/^\/[^/]+\/(?:mcp(?:\/.*)?|sse(?:\/.*)?|messages)$/.test(transportPath)
+  )
+    return undefined;
+  return `${publicBase.origin}${path}`;
 };

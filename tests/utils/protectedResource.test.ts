@@ -22,12 +22,12 @@ const req = {
   },
 } as Request;
 
-it('preserves the deployment prefix using forwarded headers without a public URL', () => {
+it('ignores forwarded headers while preserving the deployment prefix without a public URL', () => {
   delete process.env.INSTALL_BASE_URL;
   const resource = getPublicResourceUrl(req);
-  expect(resource).toBe('https://public.example/internal/mcp/team%20one');
+  expect(resource).toBe('http://localhost:3000/internal/mcp/team%20one');
   expect(getResourceMetadataUrl(resource)).toBe(
-    'https://public.example/.well-known/oauth-protected-resource/internal/mcp/team%20one',
+    'http://localhost:3000/.well-known/oauth-protected-resource/internal/mcp/team%20one',
   );
 });
 

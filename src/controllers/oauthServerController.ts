@@ -11,7 +11,10 @@ import jwt from 'jsonwebtoken';
 import { JWT_SECRET } from '../config/jwt.js';
 import { resolveBetterAuthUser } from '../services/betterAuthSession.js';
 import { cloneDefaultOAuthServerConfig } from '../constants/oauthServerDefaults.js';
-import { getPublicInstallBaseUrl } from '../utils/protectedResource.js';
+import {
+  getPublicInstallBaseUrl,
+  getProtectedResourceUrlFromMetadataRequest,
+} from '../utils/protectedResource.js';
 import { logger } from '../utils/logger.js';
 import {
   injectOAuthConsentShell,
@@ -714,13 +717,16 @@ export const getProtectedResourceMetadata = async (req: Request, res: Response):
     }
 
     const baseUrl = getPublicInstallBaseUrl(req, systemConfig);
+    const resource = getProtectedResourceUrlFromMetadataRequest(req, systemConfig);
+    if (!resource) {
+      res.status(404).json({ error: 'Protected resource not found' });
+      return;
+    }
     const allowedScopes = oauthConfig.allowedScopes || ['read', 'write'];
 
     // Return protected resource metadata according to RFC 9728
     res.json({
-      resource: req.params?.resourcePath
-        ? `${new URL(baseUrl!).origin}/${req.path.slice('/.well-known/oauth-protected-resource/'.length)}`
-        : baseUrl,
+      resource,
       authorization_servers: [baseUrl],
       scopes_supported: allowedScopes,
       bearer_methods_supported: ['header'],
