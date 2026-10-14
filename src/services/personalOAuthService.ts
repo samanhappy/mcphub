@@ -26,6 +26,12 @@ const serialize = async <T>(key: string, action: () => Promise<T>): Promise<T> =
     if (queues.get(key) === next) queues.delete(key);
   }
 };
+export const withPersonalOAuthLock = <T>(
+  serverName: string,
+  username: string,
+  action: () => Promise<T>,
+): Promise<T> => serialize(JSON.stringify([serverName, username]), action);
+
 export const personalAuthorizationRequired = (name: string) =>
   new CredentialBindingError(
     `Personal authorization required for '${name}'. Connect in Dashboard → Servers.`,
@@ -142,7 +148,7 @@ export class PersonalOAuthContext {
       );
   }
   async mutate(mutator: (context: OAuthSettingsContext) => void): Promise<ServerConfigWithOAuth> {
-    return serialize(JSON.stringify([this.serverName, this.username]), async () => {
+    return withPersonalOAuthLock(this.serverName, this.username, async () => {
       await this.assertCurrent();
       const dao = getCredentialBindingDao();
       const current = await dao.get(this.serverName, this.username);
@@ -279,7 +285,7 @@ export const disconnectPersonalOAuth = async (
   serverName: string,
   username: string,
 ): Promise<void> => {
-  await serialize(JSON.stringify([serverName, username]), async () => {
+  await withPersonalOAuthLock(serverName, username, async () => {
     // Retain an encrypted tombstone so even a pre-save, unbound context becomes stale.
     await getCredentialBindingDao().save({
       serverName,

@@ -63,11 +63,9 @@ export default function PersonalOAuthControls({ serverName }: { serverName: stri
           {t('status.clickToAuthorize')}
         </a>
       )}
-      {(connected || authorizationUrl) && (
-        <button className="hub-icon-btn" disabled={busy} onClick={() => void act(true)}>
-          {t('server.oauth.personalDisconnect')}
-        </button>
-      )}
+      <button className="hub-icon-btn" disabled={busy} onClick={() => void act(true)}>
+        {t('server.oauth.personalDisconnect')}
+      </button>
     </div>
   );
 }

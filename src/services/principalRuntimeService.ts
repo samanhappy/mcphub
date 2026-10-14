@@ -2,6 +2,7 @@ import {
   hasPersonalOAuth,
   resolvePersonalOAuth,
   personalOAuthContexts,
+  withPersonalOAuthLock,
 } from './personalOAuthService.js';
 import { getServerDao } from '../dao/DaoFactory.js';
 import { credentialBindingEvents, resolveCredentialBinding } from './credentialBindingService.js';
@@ -61,63 +62,74 @@ export class PrincipalRuntimeService {
     // These snapshots only detect runtime changes in memory; they are never persisted or logged.
     const definitionSnapshot = JSON.stringify(definition);
     const resolver = hasPersonalOAuth(definition) ? resolvePersonalOAuth : resolveCredentialBinding;
-    const resolved = await resolver(
-      serverName,
-      principal.username,
-      hasPersonalOAuth(definition) ? definition : await expandServerConfig(definition),
-    );
-    const revision = JSON.stringify([definitionSnapshot, resolved.revision]);
-    const key = JSON.stringify([serverName, principal.username]);
-    let entry = this.entries.get(key);
-    if (entry && (entry.revision !== revision || entry.info?.status === 'disconnected')) {
-      this.invalidate({ serverName, username: principal.username });
-      entry = undefined;
-    }
-    if (!entry) {
-      const created: RuntimeEntry = {
+    const prepare = async () => {
+      const resolved = await resolver(
         serverName,
-        username: principal.username,
-        // This context advances only after its own successful CAS writes. External
-        // binding changes still differ from its version and invalidate the runtime.
-        get revision() {
-          return JSON.stringify([
-            definitionSnapshot,
-            personalOAuthContexts.get(resolved.config)?.version || resolved.revision,
-          ]);
-        },
-        valid: true,
-        active: 0,
-        promise: undefined!,
-      };
-      this.entries.set(key, created);
-      created.promise = (async () => {
-        let info: ServerInfo | undefined;
-        try {
-          info = await this.connect(serverName, resolved.config);
-          // A rotation/deletion may have raced the initial read or async handshake.
-          const latest = await resolver(serverName, principal.username, definition);
-          const currentDefinition = await getServerDao().findById(serverName);
-          if (
-            !created.valid ||
-            latest.revision !==
-              (personalOAuthContexts.get(resolved.config)?.version || resolved.revision) ||
-            JSON.stringify(currentDefinition) !== definitionSnapshot
-          ) {
-            throw new CredentialBindingError(
-              'Personal credentials or server configuration changed; retry the request',
-            );
+        principal.username,
+        hasPersonalOAuth(definition) ? definition : await expandServerConfig(definition),
+      );
+      const revision = JSON.stringify([definitionSnapshot, resolved.revision]);
+      const key = JSON.stringify([serverName, principal.username]);
+      let entry = this.entries.get(key);
+      if (entry && (entry.revision !== revision || entry.info?.status === 'disconnected')) {
+        this.invalidate({ serverName, username: principal.username });
+        entry = undefined;
+      }
+      if (!entry) {
+        const created: RuntimeEntry = {
+          serverName,
+          username: principal.username,
+          // This context advances only after its own successful CAS writes. External
+          // binding changes still differ from its version and invalidate the runtime.
+          get revision() {
+            return JSON.stringify([
+              definitionSnapshot,
+              personalOAuthContexts.get(resolved.config)?.version || resolved.revision,
+            ]);
+          },
+          valid: true,
+          active: 0,
+          promise: undefined!,
+        };
+        this.entries.set(key, created);
+        created.promise = (async () => {
+          let info: ServerInfo | undefined;
+          try {
+            info = await this.connect(serverName, resolved.config);
+            // A rotation/deletion may have raced the initial read or async handshake.
+            const verify = async () => {
+              const latest = await resolver(serverName, principal.username, definition);
+              const currentDefinition = await getServerDao().findById(serverName);
+              if (
+                !created.valid ||
+                latest.revision !==
+                  (personalOAuthContexts.get(resolved.config)?.version || resolved.revision) ||
+                JSON.stringify(currentDefinition) !== definitionSnapshot
+              ) {
+                throw new CredentialBindingError(
+                  'Personal credentials or server configuration changed; retry the request',
+                );
+              }
+            };
+            if (hasPersonalOAuth(definition))
+              await withPersonalOAuthLock(serverName, principal.username, verify);
+            else await verify();
+            created.info = info;
+            return info;
+          } catch (error) {
+            if (info) this.close(info);
+            if (this.entries.get(key) === created) this.entries.delete(key);
+            created.valid = false;
+            throw error;
           }
-          created.info = info;
-          return info;
-        } catch (error) {
-          if (info) this.close(info);
-          if (this.entries.get(key) === created) this.entries.delete(key);
-          created.valid = false;
-          throw error;
-        }
-      })();
-      entry = created;
-    }
+        })();
+        entry = created;
+      }
+      return entry;
+    };
+    const entry = hasPersonalOAuth(definition)
+      ? await withPersonalOAuthLock(serverName, principal.username, prepare)
+      : await prepare();
     clearTimeout(entry.timer);
     entry.active += 1;
     const held = entry;
