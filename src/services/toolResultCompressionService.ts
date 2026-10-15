@@ -278,7 +278,9 @@ function parseSearchLine(line: string): SearchLine | null {
   ) {
     return null;
   }
-  const match = /^(.*?)(?::|-)(\d+)(?::|-)(.*)$/.exec(line);
+  // Match lines are `file:line:body`; context lines are `file-line-body`. Try the
+  // match form first so file names containing `-<digits>-` are not split early.
+  const match = /^(.*?):(\d+):(.*)$/.exec(line) ?? /^(.*?)-(\d+)-(.*)$/.exec(line);
   if (!match) return null;
   const parsedLine = Number(match[2]);
   if (!Number.isFinite(parsedLine)) return null;

@@ -143,6 +143,30 @@ describe('toolResultCompressionService', () => {
     expect(result.content?.[0].text).toContain('strategy=search');
   });
 
+  it('keeps file names that contain -<digits>- intact when compressing search output', async () => {
+    setCachedSystemConfig({
+      toolResultCompression: {
+        enabled: true,
+        minTokens: 1,
+        maxOutputTokens: 120,
+        strategy: 'search',
+      },
+    });
+
+    const searchOutput = Array.from(
+      { length: 60 },
+      (_value, index) => `docs/step-1-intro.md:${index + 1}:const value${index} = ${index};`,
+    ).join('\n');
+
+    const result = await maybeCompressToolResult({
+      content: [{ type: 'text', text: searchOutput }],
+    });
+
+    const text = result.content?.[0].text as string;
+    expect(text).toContain('docs/step-1-intro.md:1:const value0 = 0;');
+    expect(text).toContain('[... 54 more matches in docs/step-1-intro.md]');
+  });
+
   it('does not misclassify timestamped logs as search output', async () => {
     setCachedSystemConfig({
       toolResultCompression: {
