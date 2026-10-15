@@ -144,7 +144,7 @@ export const getServerOAuthToken = async (serverName: string): Promise<string | 
   const serverDao = getServerDao();
   const serverConfig = await serverDao.findById(serverName);
 
-  if (!serverConfig?.oauth) {
+  if (!serverConfig?.oauth || serverConfig.oauth.identityMode === 'personal') {
     return undefined;
   }
 
@@ -236,6 +236,7 @@ export const initializeAllOAuthClients = async (): Promise<void> => {
   const registrationPromises: Promise<void>[] = [];
 
   for (const serverConfig of allServers) {
+    if (serverConfig.oauth?.identityMode === 'personal') continue;
     const serverName = serverConfig.name;
 
     // Only initialize servers with explicitly enabled dynamic registration

@@ -81,6 +81,7 @@ const buildOAuthConfig = (
   }
 
   const nextOAuth: Partial<NonNullable<ServerConfig['oauth']>> = {};
+  if (oauth.identityMode) nextOAuth.identityMode = oauth.identityMode;
   if (oauth.allowInsecureTokenEndpoint !== undefined) {
     nextOAuth.allowInsecureTokenEndpoint = oauth.allowInsecureTokenEndpoint;
   }
@@ -105,8 +106,8 @@ const buildOAuthConfig = (
       nextOAuth.scopes = parsedScopes;
     }
   }
-  if (accessToken) nextOAuth.accessToken = accessToken;
-  if (refreshToken) nextOAuth.refreshToken = refreshToken;
+  if (accessToken && oauth.identityMode !== 'personal') nextOAuth.accessToken = accessToken;
+  if (refreshToken && oauth.identityMode !== 'personal') nextOAuth.refreshToken = refreshToken;
   if (authorizationEndpoint) nextOAuth.authorizationEndpoint = authorizationEndpoint;
   if (tokenEndpoint) nextOAuth.tokenEndpoint = tokenEndpoint;
   if (resource) nextOAuth.resource = resource;

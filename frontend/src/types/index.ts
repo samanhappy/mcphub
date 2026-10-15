@@ -241,6 +241,7 @@ export interface ServerConfig {
   proxy?: ProxychainsConfig;
   // OAuth authentication for upstream MCP servers
   oauth?: {
+    identityMode?: 'shared' | 'personal';
     allowInsecureTokenEndpoint?: boolean; // Admin-only HTTP token endpoint exception
     clientId?: string; // OAuth client ID
     clientSecret?: string; // OAuth client secret
@@ -344,6 +345,7 @@ export interface Server {
   latestVersion?: string;
   updateAvailable?: boolean;
   oauth?: {
+    identityMode?: 'shared' | 'personal';
     authorizationUrl?: string;
     state?: string;
     connected?: boolean;
@@ -414,6 +416,7 @@ export interface ServerFormData {
   startOnDemand?: boolean;
   idleTimeoutMs?: number;
   oauth?: {
+    identityMode?: 'shared' | 'personal';
     clientId?: string;
     allowInsecureTokenEndpoint?: boolean;
     clientSecret?: string;
@@ -793,6 +796,7 @@ export interface TemplateServerConfig {
   options?: ServerConfig['options'];
   proxy?: ProxychainsConfig;
   oauth?: {
+    identityMode?: 'shared' | 'personal';
     clientId?: string;
     allowInsecureTokenEndpoint?: boolean;
     clientSecret?: string;

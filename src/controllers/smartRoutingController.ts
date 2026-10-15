@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { ApiResponse, Tool } from '../types/index.js';
 import { getSmartRoutingConfig, type SmartRoutingConfig } from '../utils/smartRouting.js';
-import { hasCredentialTemplate } from '../utils/credentialTemplate.js';
+import { hasPersonalAuthentication } from '../utils/credentialTemplate.js';
 import { requireAdmin } from '../utils/requireAdmin.js';
 import { logger } from '../utils/logger.js';
 import { getCredentialBindingDao, getUserDao } from '../dao/DaoFactory.js';
@@ -183,7 +183,7 @@ export const getSmartRoutingPerformance = async (
       enabledServerNames = enabled.map((server) => server.name);
       connectedServers = enabled.filter((server) => server.status === 'connected').length;
       personalCredentialServers = enabled.filter((server) =>
-        hasCredentialTemplate(server.config),
+        hasPersonalAuthentication(server.config),
       ).length;
     } catch (error) {
       logger.warn('Failed to resolve servers for performance stats:', error);
@@ -390,7 +390,7 @@ export const reindexSmartRouting = async (
       let tools: Tool[];
       let principals: string[] | undefined;
 
-      if (hasCredentialTemplate(server.config)) {
+      if (hasPersonalAuthentication(server.config)) {
         // Personal-credential server: borrow the principals that can reach it.
         const usernames = await listBindingUsernames(server.name, server.config?.owner);
         if (usernames.length === 0) {
@@ -452,7 +452,7 @@ export const reindexSmartRouting = async (
         // overrides, and for credential servers the disabled-tool mask) are the
         // ones the next connect expects and skips.
         let toolCount = tools.length;
-        if (hasCredentialTemplate(server.config)) {
+        if (hasPersonalAuthentication(server.config)) {
           toolCount = await syncCredentialServerToolEmbeddings(server.name, tools, {
             reportProgress: true,
           });

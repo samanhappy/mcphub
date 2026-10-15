@@ -1,4 +1,10 @@
 import {
+  hasPersonalOAuth,
+  PersonalOAuthContext,
+  personalOAuthContexts,
+  personalAuthorizationRequired,
+} from './personalOAuthService.js';
+import {
   preserveListFreshness,
   combineListFreshness,
   remainingListTtl,
@@ -18,6 +24,7 @@ import { deleteCredentialBindings, missingCredentialError } from './credentialBi
 import {
   CredentialBindingError,
   hasCredentialTemplate,
+  hasPersonalAuthentication,
   resolveCredentialArguments,
   validateCredentialTemplate,
 } from '../utils/credentialTemplate.js';
@@ -1232,7 +1239,7 @@ export const summarizeServerConnections = (
 export const getServerConnectionStats = (): ServerConnectionStats => {
   // Personal definitions have no shared connection whose readiness can be checked.
   return summarizeServerConnections(
-    serverInfos.filter((info) => !hasCredentialTemplate(info.config)),
+    serverInfos.filter((info) => !hasPersonalAuthentication(info.config)),
   );
 };
 
@@ -1617,7 +1624,7 @@ export const createTransportFromConfig = async (name: string, conf: ServerConfig
   if (conf.type === 'streamable-http') {
     const options: StreamableHTTPClientTransportOptions = {};
     let headers = conf.headers
-      ? hasCredentialTemplate(conf)
+      ? hasPersonalAuthentication(conf)
         ? conf.headers
         : replaceEnvVars(conf.headers, env)
       : {};
@@ -1649,14 +1656,15 @@ export const createTransportFromConfig = async (name: string, conf: ServerConfig
       };
     }
 
-    options.fetch = requestAwareFetch;
+    options.fetch =
+      personalOAuthContexts.get(conf)?.wrapFetch(requestAwareFetch) || requestAwareFetch;
 
     transport = new StreamableHTTPClientTransport(new URL(conf.url || ''), options);
   } else if (conf.url) {
     // SSE transport
     const options: any = {};
     let headers = conf.headers
-      ? hasCredentialTemplate(conf)
+      ? hasPersonalAuthentication(conf)
         ? conf.headers
         : replaceEnvVars(conf.headers, env)
       : {};
@@ -1680,18 +1688,19 @@ export const createTransportFromConfig = async (name: string, conf: ServerConfig
     if (Object.keys(headers).length > 0) {
       options.eventSourceInit = {
         headers,
-        fetch: requestAwareFetch,
+        fetch: personalOAuthContexts.get(conf)?.wrapFetch(requestAwareFetch) || requestAwareFetch,
       };
       options.requestInit = {
         headers,
       };
     } else {
       options.eventSourceInit = {
-        fetch: requestAwareFetch,
+        fetch: personalOAuthContexts.get(conf)?.wrapFetch(requestAwareFetch) || requestAwareFetch,
       };
     }
 
-    options.fetch = requestAwareFetch;
+    options.fetch =
+      personalOAuthContexts.get(conf)?.wrapFetch(requestAwareFetch) || requestAwareFetch;
 
     transport = new SSEClientTransport(new URL(conf.url), options);
   } else if (conf.command) {
@@ -1747,7 +1756,7 @@ export const createTransportFromConfig = async (name: string, conf: ServerConfig
       stderr: 'pipe',
       maxBufferSize: validateMaxBufferSize(conf.options?.maxBufferSize),
     });
-    if (transport.stderr && hasCredentialTemplate(conf)) {
+    if (transport.stderr && hasPersonalAuthentication(conf)) {
       transport.stderr.on('data', () => undefined); // Personal upstream diagnostics can contain raw credentials.
     } else if (transport.stderr) {
       observeStdioStderr(transport, transport.stderr, (message) => {
@@ -1790,7 +1799,7 @@ const callToolWithReconnect = async (
     throw new Error(`Client not found for server: ${serverInfo.name}`);
   }
 
-  if (hasCredentialTemplate(serverInfo.config)) {
+  if (hasPersonalAuthentication(serverInfo.config)) {
     return client.callTool(toolParams, options || {});
   }
 
@@ -1988,7 +1997,7 @@ export const initializeClientsFromSettings = async (
         continue;
       }
 
-      if (hasCredentialTemplate(expandedConf)) {
+      if (hasPersonalAuthentication(expandedConf)) {
         validateCredentialTemplate(expandedConf);
         nextServerInfos.push({
           name,
@@ -2564,22 +2573,38 @@ export const getServersInfo = async (
   const presentedInfos = await Promise.all(
     filterServerInfos.map(async (info) => {
       if (
-        !hasCredentialTemplate(info.config) ||
+        !hasPersonalAuthentication(info.config) ||
         info.enabled === false ||
         !principal?.username ||
         principal.credentialEligible === false
       )
         return info;
+      let ownOAuth: ServerInfo['oauth'];
       try {
+        const personal = hasPersonalOAuth(info.config)
+          ? await PersonalOAuthContext.load(
+              info.name,
+              principal.username,
+              (await getServerDao().findById(info.name))!,
+            )
+          : undefined;
+        ownOAuth = personal
+          ? {
+              identityMode: 'personal' as const,
+              connected: Boolean(personal.config.oauth.accessToken),
+              authorizationUrl: personal.authorizationUrl,
+            }
+          : undefined;
         const lease = await principalRuntimes.acquire(info.name, principal);
         try {
-          return { ...lease.info, config: info.config };
+          return { ...lease.info, config: info.config, ...(ownOAuth ? { oauth: ownOAuth } : {}) };
         } finally {
           lease.release();
         }
       } catch (error) {
         return {
           ...info,
+          ...(ownOAuth ? { status: 'oauth_required' as const, oauth: ownOAuth } : {}),
           error:
             error instanceof CredentialBindingError || error instanceof UpstreamRequestError
               ? error.message
@@ -2670,6 +2695,8 @@ export const getServersInfo = async (
               ? {
                   ...(oauth
                     ? {
+                        ...(oauth.identityMode ? { identityMode: oauth.identityMode } : {}),
+                        ...(oauth.connected ? { connected: true } : {}),
                         authorizationUrl: oauth.authorizationUrl,
                         state: oauth.state,
                         ...(oauth.clientIdConfigured ? { clientIdConfigured: true } : {}),
@@ -2683,8 +2710,11 @@ export const getServersInfo = async (
             resolvedType || serverConfig?.description || serverConfig?.command
               ? {
                   ...(resolvedType ? { type: resolvedType } : {}),
-                  ...(hasCredentialTemplate(serverConfig)
+                  ...(hasPersonalAuthentication(serverConfig)
                     ? { credentialTemplate: validateCredentialTemplate(serverConfig!) }
+                    : {}),
+                  ...(hasPersonalOAuth(serverConfig)
+                    ? { oauth: { identityMode: 'personal' as const } }
                     : {}),
                   ...(serverConfig?.description ? { description: serverConfig.description } : {}),
                   // Expose command so the frontend can determine if reinstall is
@@ -3141,7 +3171,7 @@ const scheduleIdleShutdown = (serverInfo: ServerInfo): void => {
   if (
     !serverInfo.config?.startOnDemand ||
     !isStdioServer(serverInfo.config) ||
-    hasCredentialTemplate(serverInfo.config) ||
+    hasPersonalAuthentication(serverInfo.config) ||
     serverInfo.status !== 'connected' ||
     !serverInfo.client ||
     serverInfo.activeToolCalls
@@ -3161,7 +3191,7 @@ const beginOnDemandToolCall = (serverInfo: ServerInfo): (() => void) | undefined
   if (
     !serverInfo.config?.startOnDemand ||
     !isStdioServer(serverInfo.config) ||
-    hasCredentialTemplate(serverInfo.config)
+    hasPersonalAuthentication(serverInfo.config)
   ) {
     return undefined;
   }
@@ -3326,7 +3356,7 @@ const primeOnDemandServers = (gate?: ConnectGate): Promise<void> => {
   const targets = serverInfos.filter(
     (si) =>
       si.config?.startOnDemand === true &&
-      !hasCredentialTemplate(si.config) &&
+      !hasPersonalAuthentication(si.config) &&
       isStdioServer(si.config) &&
       si.tools.length === 0 &&
       si.enabled !== false,
@@ -4211,7 +4241,7 @@ const handleCallToolRequestImpl = async (request: any, extra: any) => {
           keyId,
           keyName,
           sourceIp,
-          hasCredentialTemplate: hasCredentialTemplate(targetServerInfo.config),
+          hasCredentialTemplate: hasPersonalAuthentication(targetServerInfo.config),
         });
 
         return await maybeCompressToolResult(
@@ -4236,7 +4266,7 @@ const handleCallToolRequestImpl = async (request: any, extra: any) => {
       let isolatedCtx: IsolatedClientContext | undefined;
       if (
         targetServerInfo.config?.perSessionClient &&
-        !hasCredentialTemplate(targetServerInfo.config)
+        !hasPersonalAuthentication(targetServerInfo.config)
       ) {
         const stateId = getToolStateId(targetServerInfo, sessionId);
         if (!stateId) {
@@ -4302,7 +4332,7 @@ const handleCallToolRequestImpl = async (request: any, extra: any) => {
         keyId,
         keyName,
         sourceIp,
-        hasCredentialTemplate: hasCredentialTemplate(targetServerInfo.config),
+        hasCredentialTemplate: hasPersonalAuthentication(targetServerInfo.config),
         errorMessage: result.isError ? 'Tool returned error response' : undefined,
       });
 
@@ -4435,7 +4465,7 @@ const handleCallToolRequestImpl = async (request: any, extra: any) => {
         keyId,
         keyName,
         sourceIp,
-        hasCredentialTemplate: hasCredentialTemplate(serverInfo.config),
+        hasCredentialTemplate: hasPersonalAuthentication(serverInfo.config),
       });
 
       return await maybeCompressToolResult(
@@ -4458,7 +4488,7 @@ const handleCallToolRequestImpl = async (request: any, extra: any) => {
     // Handle MCP servers
     // For servers with perSessionClient: true, use a per-session dedicated client
     let isolatedCtx: IsolatedClientContext | undefined;
-    if (serverInfo.config?.perSessionClient && !hasCredentialTemplate(serverInfo.config)) {
+    if (serverInfo.config?.perSessionClient && !hasPersonalAuthentication(serverInfo.config)) {
       const stateId = getToolStateId(serverInfo, sessionId);
       if (!stateId) {
         throw new Error(
@@ -4505,7 +4535,7 @@ const handleCallToolRequestImpl = async (request: any, extra: any) => {
       keyId,
       keyName,
       sourceIp,
-      hasCredentialTemplate: hasCredentialTemplate(serverInfo.config),
+      hasCredentialTemplate: hasPersonalAuthentication(serverInfo.config),
       errorMessage: result.isError ? 'Tool returned error response' : undefined,
     });
 
@@ -4548,7 +4578,7 @@ const handleCallToolRequestImpl = async (request: any, extra: any) => {
       keyId,
       keyName,
       sourceIp,
-      hasCredentialTemplate: hasCredentialTemplate(serverInfo?.config),
+      hasCredentialTemplate: hasPersonalAuthentication(serverInfo?.config),
       // The reason is an internal diagnostic; the caller-facing message stays
       // identical for hidden and nonexistent targets.
       errorMessage: unavailable
@@ -5100,6 +5130,11 @@ const createPrincipalRuntime = async (
     return info;
   } catch (error) {
     closeServerRuntime(info);
+    if (
+      hasPersonalOAuth(resolvedConfig) &&
+      personalOAuthContexts.get(resolvedConfig)?.config.oauth.pendingAuthorization
+    )
+      throw personalAuthorizationRequired(name);
     const failure = createUpstreamRequestError(name, 'connect', error, resolvedConfig);
     logger.error(failure.message);
     throw failure;
@@ -5137,7 +5172,7 @@ type McpHandler = (request: any, extra: any) => Promise<any>;
 const withPrincipalServers =
   (handler: McpHandler, operation: 'list' | 'tool' | 'prompt' | 'resource'): McpHandler =>
   async (request, extra) => {
-    if (!serverInfos.some((info) => hasCredentialTemplate(info.config)))
+    if (!serverInfos.some((info) => hasPersonalAuthentication(info.config)))
       return handler(request, extra);
     // Built-in content does not require an upstream credential.
     if (operation === 'prompt') {
@@ -5176,7 +5211,7 @@ const withPrincipalServers =
     // A call to a known target must not spawn or keep unrelated personal children alive.
     const selected =
       target && (operation === 'tool' || operation === 'prompt') ? [target] : candidates;
-    const templated = selected.filter((info) => hasCredentialTemplate(info.config));
+    const templated = selected.filter((info) => hasPersonalAuthentication(info.config));
     if (!templated.length) return handler(request, extra);
     const user = UserContextService.getInstance().getCurrentUser() as RequestPrincipal | null;
     const releases: Array<() => void> = [];
@@ -5191,7 +5226,9 @@ const withPrincipalServers =
               user.credentialEligible === false ||
               RequestContextService.getInstance().getKeyKindContext() === 'system'
             )
-              throw missingCredentialError(info.name);
+              throw hasPersonalOAuth(info.config)
+                ? personalAuthorizationRequired(info.name)
+                : missingCredentialError(info.name);
             const lease = await principalRuntimes.acquire(info.name, user);
             releases.push(lease.release);
             scoped.set(info.name, lease.info);
@@ -5225,7 +5262,7 @@ const withPrincipalServers =
       if (
         operation === 'tool' &&
         extra?.server &&
-        hasCredentialTemplate(scoped.get(extra.server)?.config)
+        hasPersonalAuthentication(scoped.get(extra.server)?.config)
       ) {
         const prefix = `${extra.server}${getNameSeparator()}`;
         if (typeof requestedName === 'string' && !requestedName.startsWith(prefix)) {

@@ -20,6 +20,7 @@ import { Server as McpServer } from '@modelcontextprotocol/server';
 import request from 'supertest';
 import {
   getServerDao,
+  getCredentialBindingDao,
   getSystemConfigDao,
   getGroupDao,
   getBearerKeyDao,
@@ -862,6 +863,12 @@ test('HTTP handshake failures survive acquisition wrappers without credential bl
   }
 });
 
+const originalLiteralHeader = process.env.LITERAL_HEADER;
+afterAll(() => {
+  if (originalLiteralHeader === undefined) delete process.env.LITERAL_HEADER;
+  else process.env.LITERAL_HEADER = originalLiteralHeader;
+});
+
 const settleUntil = async (done: () => boolean) => {
   for (let attempt = 0; attempt < 100 && !done(); attempt += 1) {
     await new Promise((resolve) => setTimeout(resolve, 20));
@@ -930,4 +937,179 @@ test('a user who sees fewer tools does not remove the others from the shared ind
   expect(save.mock.calls[0][2]).toEqual({ partial: true });
   expect(removeServer).not.toHaveBeenCalled();
   expect(removeTools).not.toHaveBeenCalled();
+});
+
+test('a runtime keeps active leases after its own token refresh but rejects external rotation', async () => {
+  const { PersonalOAuthContext, personalOAuthContexts } = await import('../../src/services/personalOAuthService.js');
+  await getServerDao().create({ name: 'refreshOAuth', type: 'streamable-http', owner: 'admin', visibility: 'public', url: `${baseUrl}/unused`, oauth: { identityMode: 'personal' } });
+  const close = jest.fn();
+  let runtimeContext: InstanceType<typeof PersonalOAuthContext> | undefined;
+  const connectRuntime = jest.fn(async (name: string, config: import('../../src/types/index.js').ServerConfig) => {
+    runtimeContext = personalOAuthContexts.get(config);
+    return { name, status: 'connected' as const, tools: [], prompts: [], resources: [], error: null, createTime: Date.now() };
+  });
+  const pool = new PrincipalRuntimeService(connectRuntime, close);
+  try {
+    const definition = (await getServerDao().findById('refreshOAuth'))!;
+    const seed = await PersonalOAuthContext.load('refreshOAuth', alice, definition);
+    await seed.persistTokens('refreshOAuth', { accessToken: 'initial', refreshToken: 'refresh' });
+    const first = await pool.acquire('refreshOAuth', { username: alice });
+    await runtimeContext!.persistTokens('refreshOAuth', { accessToken: 'refreshed' });
+    const next = await pool.acquire('refreshOAuth', { username: alice });
+    expect(next.info).toBe(first.info);
+    expect(close).not.toHaveBeenCalled();
+    expect(connectRuntime).toHaveBeenCalledTimes(1);
+    const external = await PersonalOAuthContext.load('refreshOAuth', alice, definition);
+    await external.persistTokens('refreshOAuth', { accessToken: 'external' });
+    const rotated = await pool.acquire('refreshOAuth', { username: alice });
+    expect(rotated.info).not.toBe(first.info);
+    expect(close).toHaveBeenCalledWith(first.info);
+    first.release(); next.release(); rotated.release();
+  } finally {
+    pool.invalidate();
+    await getCredentialBindingDao().delete({ serverName: 'refreshOAuth' });
+    await getServerDao().delete('refreshOAuth');
+  }
+});
+
+test('personal OAuth tokens survive a plain server rename but not a destination change', async () => {
+  const { PersonalOAuthContext } = await import('../../src/services/personalOAuthService.js');
+  const { copyCredentialBindings } = await import('../../src/services/credentialBindingService.js');
+  await getServerDao().create({ name: 'renameOAuth', type: 'streamable-http', owner: 'admin', visibility: 'public', url: `${baseUrl}/unused`, oauth: { identityMode: 'personal' } });
+  try {
+    const definition = (await getServerDao().findById('renameOAuth'))!;
+    const context = await PersonalOAuthContext.load('renameOAuth', alice, definition);
+    await context.persistTokens('renameOAuth', { accessToken: 'rename-token', refreshToken: 'rename-refresh' });
+    await copyCredentialBindings('renameOAuth', 'renamedOAuth');
+    expect(await getServerDao().rename('renameOAuth', 'renamedOAuth')).toBe(true);
+    const renamed = (await getServerDao().findById('renamedOAuth'))!;
+    const restored = await PersonalOAuthContext.load('renamedOAuth', alice, renamed);
+    expect(restored.config.oauth.accessToken).toBe('rename-token');
+    expect(restored.config.oauth.refreshToken).toBe('rename-refresh');
+    await restored.assertCurrent();
+    const changed = await PersonalOAuthContext.load('renamedOAuth', alice, { ...renamed, url: `${baseUrl}/different` });
+    expect(changed.config.oauth.accessToken).toBeUndefined();
+  } finally {
+    for (const serverName of ['renameOAuth', 'renamedOAuth']) {
+      await getCredentialBindingDao().delete({ serverName });
+      await getServerDao().delete(serverName);
+    }
+  }
+});
+
+test('an unreadable personal OAuth binding only fails its own dashboard entry', async () => {
+  await getServerDao().create({ name: 'damagedOAuth', type: 'streamable-http', owner: 'admin', visibility: 'public', url: `${baseUrl}/unused`, oauth: { identityMode: 'personal' } });
+  await getCredentialBindingDao().save({ serverName: 'damagedOAuth', username: alice, encryptedValues: 'damaged-ciphertext', updatedAt: new Date().toISOString() });
+  await initializeClientsFromSettings(true);
+  try {
+    const infos = await UserContextService.getInstance().runWithContext(
+      () => getServersInfo(),
+      { username: alice, password: '', isAdmin: false },
+    );
+    expect(infos.find((info) => info.name === 'damagedOAuth')?.error).toBeTruthy();
+    expect(infos.some((info) => info.name === 'shared')).toBe(true);
+    const { managePersonalOAuth } = await import('../../src/controllers/personalOAuthController.js');
+    const { PersonalOAuthContext } = await import('../../src/services/personalOAuthService.js');
+    app.delete('/api/servers/:name/oauth/personal', authenticatedRouteRateLimiter, managePersonalOAuth);
+    const disconnected = await request(app).delete('/api/servers/damagedOAuth/oauth/personal').set('x-auth-token', apiToken(alice));
+    expect(disconnected.status).toBe(200);
+    const context = await PersonalOAuthContext.load('damagedOAuth', alice, (await getServerDao().findById('damagedOAuth'))!);
+    expect(context.config.oauth.accessToken).toBeUndefined();
+    await context.updatePendingAuthorization('damagedOAuth', { state: 'personal.reconnected', authorizationUrl: `${baseUrl}/authorize` });
+    expect(context.authorizationUrl).toBe(`${baseUrl}/authorize`);
+  } finally {
+    await getCredentialBindingDao().delete({ serverName: 'damagedOAuth' });
+    await getServerDao().delete('damagedOAuth');
+  }
+});
+
+test('personal OAuth follows user keys through a group endpoint and disconnect affects only its owner', async () => {
+  process.env.LITERAL_HEADER = 'literal-$TOKEN-${VAR}';
+  const { PersonalOAuthContext, disconnectPersonalOAuth } = await import('../../src/services/personalOAuthService.js');
+  app.post('/oauth-identity-upstream', async (req, res) => {
+    expect(req.headers['x-literal']).toBe('literal-$TOKEN-${VAR}');
+    const upstream = new McpServer({ name: 'oauth-identity', version: '1' }, { capabilities: { tools: {} } });
+    upstream.setRequestHandler('tools/list', async () => ({ tools: [{ name: 'identity', inputSchema: { type: 'object' } }] }));
+    upstream.setRequestHandler('tools/call', async () => ({ content: [{ type: 'text', text: JSON.stringify({ credential: req.headers.authorization }) }] }));
+    const transport = new NodeStreamableHTTPServerTransport({ sessionIdGenerator: undefined });
+    res.on('close', () => { void transport.close(); void upstream.close(); });
+    await upstream.connect(transport); await transport.handleRequest(req, res, req.body);
+  });
+  const definition = await getServerDao().create({ name: 'personalGitlab', type: 'streamable-http', owner: 'admin', visibility: 'public',
+    url: `${baseUrl}/oauth-identity-upstream`, headers: { Authorization: 'Bearer organization', 'X-Literal': '${LITERAL_HEADER}' }, passthroughHeaders: ['Authorization'], oauth: { identityMode: 'personal', clientId: 'client', scopes: ['mcp'] } });
+  expect(definition).toBeTruthy();
+  const persistedDefinition = await getServerDao().findById('personalGitlab');
+  for (const username of [alice, bob]) {
+    const context = await PersonalOAuthContext.load('personalGitlab', username, persistedDefinition!);
+    await context.persistTokens('personalGitlab', { accessToken: `oauth-${username}` });
+  }
+  jest.mocked(createOAuthProvider).mockImplementation(async (name, config) => {
+    if (config.oauth?.identityMode !== 'personal') return undefined;
+    const actual = jest.requireActual('../../src/services/mcpOAuthProvider.js');
+    return actual.createOAuthProvider(name, config);
+  });
+  await getGroupDao().create({ id: 'oauth-group', name: 'oauth-group', owner: 'admin', visibility: 'public', servers: ['personalGitlab'] });
+  await initializeClientsFromSettings(true);
+  const a = await connect(alice, 'oauth-group'); const b = await connect(bob, 'oauth-group');
+  expect(parseIdentity(await a.callTool({ name: `personalGitlab${getNameSeparator()}identity` })).credential).toBe(`Bearer oauth-${alice}`);
+  expect(parseIdentity(await b.callTool({ name: `personalGitlab${getNameSeparator()}identity` })).credential).toBe(`Bearer oauth-${bob}`);
+  await getBearerKeyDao().create({ name: 'oauth-system', token: 'oauth-system-bearer', kind: 'system', owner: alice, enabled: true, accessType: 'all', createdAt: new Date().toISOString() });
+  const systemClient = await connect('oauth-system', 'oauth-group');
+  const systemDenied = await systemClient.callTool({ name: `personalGitlab${getNameSeparator()}identity` });
+  expect(systemDenied.isError).toBe(true);
+  expect(JSON.stringify(systemDenied)).toContain('Personal authorization required');
+  await disconnectPersonalOAuth('personalGitlab', alice);
+  const denied = await a.callTool({ name: `personalGitlab${getNameSeparator()}identity` });
+  expect(denied.isError).toBe(true); expect(JSON.stringify(denied)).toContain('Personal authorization required');
+  expect(parseIdentity(await b.callTool({ name: `personalGitlab${getNameSeparator()}identity` })).credential).toBe(`Bearer oauth-${bob}`);
+});
+
+test('dashboard personal OAuth uses DCR and PKCE, consumes callbacks once, and hides other users authorization URLs', async () => {
+  process.env.LITERAL_HEADER = 'literal-$TOKEN-${VAR}';
+  const { managePersonalOAuth } = await import('../../src/controllers/personalOAuthController.js');
+  const { handleOAuthCallback } = await import('../../src/controllers/oauthCallbackController.js');
+  const { PersonalOAuthContext } = await import('../../src/services/personalOAuthService.js');
+  app.post('/api/servers/:name/oauth/personal', authenticatedRouteRateLimiter, managePersonalOAuth);
+  app.get('/api/servers/:name/oauth/personal', authenticatedRouteRateLimiter, managePersonalOAuth);
+  app.delete('/api/servers/:name/oauth/personal', authenticatedRouteRateLimiter, managePersonalOAuth);
+  app.get('/oauth/callback', mcpConnectionRateLimiter, handleOAuthCallback);
+  app.get('/.well-known/oauth-protected-resource/oauth-protected', (_req, res) => res.json({ resource: `${baseUrl}/oauth-protected`, authorization_servers: [baseUrl], scopes_supported: ['mcp'] }));
+  app.get('/.well-known/oauth-authorization-server', (_req, res) => res.json({ issuer: baseUrl, authorization_endpoint: `${baseUrl}/authorize`, token_endpoint: `${baseUrl}/personal-token`, registration_endpoint: `${baseUrl}/personal-register`, revocation_endpoint: `${baseUrl}/personal-revoke`, scopes_supported: ['mcp'], response_types_supported: ['code'], grant_types_supported: ['authorization_code', 'refresh_token'], code_challenge_methods_supported: ['S256'], token_endpoint_auth_methods_supported: ['none'] }));
+  let registrations = 0;
+  app.post('/personal-register', (_req, res) => res.status(201).json({ client_id: `client-${++registrations}`, token_endpoint_auth_method: 'none', redirect_uris: [`${baseUrl}/oauth/callback`] }));
+  let revoked = 0;
+  app.post('/personal-revoke', (_req, res) => { revoked++; res.status(503).end(); });
+  const exchanged: Array<Record<string, string>> = [];
+  app.post('/personal-token', express.urlencoded({ extended: false }), (req, res) => {
+    exchanged.push(req.body);
+    res.json({ access_token: `token-${req.body.code}`, refresh_token: `refresh-${req.body.code}`, token_type: 'Bearer' });
+  });
+  app.post('/oauth-protected', (req, res) => {
+    expect(req.headers['x-literal']).toBe('literal-$TOKEN-${VAR}');
+    if (!req.headers.authorization) res.status(401).set('WWW-Authenticate', `Bearer resource_metadata="${baseUrl}/.well-known/oauth-protected-resource/oauth-protected"`).end();
+    else res.json({ jsonrpc: '2.0', id: req.body.id, result: {} });
+  });
+  await getServerDao().create({ name: 'oauthDcr', type: 'streamable-http', owner: 'admin', visibility: 'public', url: `${baseUrl}/oauth-protected`, headers: { 'X-Literal': '${LITERAL_HEADER}' }, oauth: { identityMode: 'personal', scopes: ['mcp'], redirectUri: `${baseUrl}/oauth/callback` } });
+  const start = await request(app).post('/api/servers/oauthDcr/oauth/personal').set('x-auth-token', apiToken(alice)).send({ username: bob });
+  expect(start.status).toBe(200);
+  const authorization = new URL(start.body.data.authorizationUrl);
+  expect(authorization.searchParams.get('code_challenge_method')).toBe('S256');
+  expect(registrations).toBe(1);
+  const bobStatus = await request(app).get('/api/servers/oauthDcr/oauth/personal').set('x-auth-token', apiToken(bob));
+  expect(bobStatus.body.data.authorizationUrl).toBeUndefined();
+  const definition = (await getServerDao().findById('oauthDcr'))!;
+  const a = await PersonalOAuthContext.load('oauthDcr', alice, definition);
+  const verifier = a.config.oauth.pendingAuthorization?.codeVerifier;
+  const state = authorization.searchParams.get('state')!;
+  expect((await request(app).get('/oauth/callback').query({ code: 'alice-code', state, iss: 'https://wrong.example' })).status).toBe(400);
+  expect(exchanged).toHaveLength(0);
+  expect((await request(app).get('/oauth/callback').query({ code: 'alice-code', state, iss: baseUrl, username: bob })).status).toBe(200);
+  expect(exchanged[0].code_verifier).toBe(verifier);
+  expect((await PersonalOAuthContext.load('oauthDcr', alice, definition)).config.oauth.accessToken).toBe('token-alice-code');
+  expect((await PersonalOAuthContext.load('oauthDcr', bob, definition)).config.oauth.accessToken).toBeUndefined();
+  expect((await request(app).get('/oauth/callback').query({ code: 'alice-code', state })).status).toBe(400);
+  expect(exchanged).toHaveLength(1);
+  expect((await request(app).delete('/api/servers/oauthDcr/oauth/personal').set('x-auth-token', apiToken(alice))).status).toBe(200);
+  expect(revoked).toBe(2);
+  expect((await PersonalOAuthContext.load('oauthDcr', alice, definition)).config.oauth.accessToken).toBeUndefined();
 });

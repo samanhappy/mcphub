@@ -1,3 +1,10 @@
+import * as sharedOAuthSettings from './oauthSettingsStore.js';
+import {
+  personalOAuthContexts,
+  hasPersonalOAuth,
+  personalAuthorizationRequired,
+  type PersonalOAuthContext,
+} from './personalOAuthService.js';
 /**
  * MCP OAuth Provider Implementation
  *
@@ -36,15 +43,7 @@ import {
   fetchScopesFromServer,
   createOAuthFetch,
 } from './oauthClientRegistration.js';
-import {
-  clearOAuthData,
-  loadServerConfig,
-  mutateOAuthSettings,
-  persistClientCredentials,
-  persistTokens,
-  updatePendingAuthorization,
-  ServerConfigWithOAuth,
-} from './oauthSettingsStore.js';
+import { loadServerConfig, type ServerConfigWithOAuth } from './oauthSettingsStore.js';
 
 // Import getServerByName to access ServerInfo
 import { getServerByName } from './mcpService.js';
@@ -61,6 +60,8 @@ type OAuthClientInformationWithAuthMethod = OAuthClientInformation &
  * so the authorization flow requires external handling (e.g., via web UI).
  */
 export class MCPHubOAuthProvider implements OAuthClientProvider {
+  private personal?: PersonalOAuthContext;
+  private settings: typeof sharedOAuthSettings | PersonalOAuthContext;
   private serverName: string;
   private serverConfig: ServerConfig;
   private _discoveryState?: OAuthDiscoveryState;
@@ -71,8 +72,14 @@ export class MCPHubOAuthProvider implements OAuthClientProvider {
   private _systemInstallBaseUrl?: string;
 
   constructor(serverName: string, serverConfig: ServerConfig, systemInstallBaseUrl?: string) {
+    this.personal = personalOAuthContexts.get(serverConfig);
+    if (hasPersonalOAuth(serverConfig) && !this.personal)
+      throw personalAuthorizationRequired(serverName);
+    this.settings = this.personal || sharedOAuthSettings;
     this.serverName = serverName;
-    this.serverConfig = serverConfig;
+    this.serverConfig = this.personal
+      ? { ...serverConfig, oauth: this.personal.config.oauth }
+      : serverConfig;
     this._systemInstallBaseUrl = systemInstallBaseUrl;
   }
 
@@ -180,9 +187,12 @@ export class MCPHubOAuthProvider implements OAuthClientProvider {
       // `scopes !== undefined`: persist and honor an explicitly empty result too, not only a
       // non-empty one (see #1227).
       if (scopes !== undefined) {
-        const updatedConfig = await mutateOAuthSettings(this.serverName, ({ oauth }) => {
-          oauth.scopes = scopes;
-        });
+        const updatedConfig = await this.settings.mutateOAuthSettings(
+          this.serverName,
+          ({ oauth }) => {
+            oauth.scopes = scopes;
+          },
+        );
         if (updatedConfig) {
           this.serverConfig = updatedConfig;
         }
@@ -208,7 +218,10 @@ export class MCPHubOAuthProvider implements OAuthClientProvider {
       nonce: randomBytes(16).toString('hex'),
     };
     const base64 = Buffer.from(JSON.stringify(payload)).toString('base64');
-    return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    return (
+      (this.personal ? 'personal.' : '') +
+      base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+    );
   }
 
   async state(): Promise<string> {
@@ -222,7 +235,7 @@ export class MCPHubOAuthProvider implements OAuthClientProvider {
    * Get previously registered client information
    */
   clientInformation(): OAuthClientInformationWithAuthMethod | undefined {
-    const clientInfo = getRegisteredClient(this.serverName);
+    const clientInfo = this.personal ? undefined : getRegisteredClient(this.serverName);
     // The SDK uses this hint when authorization-server metadata omits
     // token_endpoint_auth_methods_supported. Keep it alongside credentials so
     // refresh requests use the same authentication method that MCPHub selected
@@ -266,7 +279,7 @@ export class MCPHubOAuthProvider implements OAuthClientProvider {
         : undefined;
 
     try {
-      const updatedConfig = await persistClientCredentials(this.serverName, {
+      const updatedConfig = await this.settings.persistClientCredentials(this.serverName, {
         clientId: info.client_id,
         clientSecret: info.client_secret,
         scopes,
@@ -330,7 +343,7 @@ export class MCPHubOAuthProvider implements OAuthClientProvider {
       hasRefreshToken: Boolean(tokens.refresh_token),
     });
 
-    const updatedConfig = await persistTokens(this.serverName, {
+    const updatedConfig = await this.settings.persistTokens(this.serverName, {
       accessToken: tokens.access_token,
       refreshToken: refreshTokenProvided ? (tokens.refresh_token ?? null) : undefined,
       clearPendingAuthorization: hadPending,
@@ -346,7 +359,7 @@ export class MCPHubOAuthProvider implements OAuthClientProvider {
     this._issuer = undefined;
     this._issRequired = undefined;
 
-    const serverInfo = getServerByName(this.serverName);
+    const serverInfo = this.personal ? undefined : getServerByName(this.serverName);
     if (serverInfo) {
       serverInfo.oauth = undefined;
     }
@@ -370,7 +383,7 @@ export class MCPHubOAuthProvider implements OAuthClientProvider {
   async discoveryState(): Promise<OAuthDiscoveryState | undefined> {
     if (this._discoveryState) return this._discoveryState;
 
-    const storedConfig = await loadServerConfig(this.serverName);
+    const storedConfig = await this.settings.loadServerConfig(this.serverName);
     const state = storedConfig?.oauth?.pendingAuthorization?.discoveryState;
     if (state && storedConfig) {
       this.serverConfig = storedConfig;
@@ -387,7 +400,7 @@ export class MCPHubOAuthProvider implements OAuthClientProvider {
   async redirectToAuthorization(url: URL): Promise<void> {
     logger.log('='.repeat(80));
     logger.log(`OAuth Authorization Required for server: ${this.serverName}`);
-    logger.log(`Authorization URL: ${url.toString()}`);
+    if (!this.personal) logger.log(`Authorization URL: ${url.toString()}`);
     logger.log('='.repeat(80));
     let state = url.searchParams.get('state') || undefined;
 
@@ -413,7 +426,10 @@ export class MCPHubOAuthProvider implements OAuthClientProvider {
         pendingUpdate.codeVerifier = this._codeVerifier;
       }
 
-      const updatedConfig = await updatePendingAuthorization(this.serverName, pendingUpdate);
+      const updatedConfig = await this.settings.updatePendingAuthorization(
+        this.serverName,
+        pendingUpdate,
+      );
       if (updatedConfig) {
         this.serverConfig = updatedConfig;
       }
@@ -426,7 +442,7 @@ export class MCPHubOAuthProvider implements OAuthClientProvider {
     }
 
     // Store the authorization URL in ServerInfo for the frontend to access
-    const serverInfo = getServerByName(this.serverName);
+    const serverInfo = this.personal ? undefined : getServerByName(this.serverName);
     if (serverInfo) {
       // Keep serverInfo.config in sync with the freshly persisted pending
       // authorization (new state + createdAt). The OAuth callback's TTL check
@@ -479,7 +495,7 @@ export class MCPHubOAuthProvider implements OAuthClientProvider {
   async saveCodeVerifier(verifier: string): Promise<void> {
     this._codeVerifier = verifier;
     try {
-      const updatedConfig = await updatePendingAuthorization(this.serverName, {
+      const updatedConfig = await this.settings.updatePendingAuthorization(this.serverName, {
         codeVerifier: verifier,
       });
       if (updatedConfig) {
@@ -502,7 +518,7 @@ export class MCPHubOAuthProvider implements OAuthClientProvider {
       return this._codeVerifier;
     }
 
-    const storedConfig = await loadServerConfig(this.serverName);
+    const storedConfig = await this.settings.loadServerConfig(this.serverName);
     const storedVerifier = storedConfig?.oauth?.pendingAuthorization?.codeVerifier;
 
     if (storedVerifier) {
@@ -526,7 +542,7 @@ export class MCPHubOAuthProvider implements OAuthClientProvider {
       this._issuer = undefined;
       this._issRequired = undefined;
     }
-    const storedConfig = await loadServerConfig(this.serverName);
+    const storedConfig = await this.settings.loadServerConfig(this.serverName);
 
     if (!storedConfig?.oauth) {
       if (scope === 'verifier' || scope === 'all') {
@@ -550,7 +566,7 @@ export class MCPHubOAuthProvider implements OAuthClientProvider {
 
     if (scope === 'tokens' || scope === 'all') {
       if (currentConfig.oauth.accessToken || currentConfig.oauth.refreshToken) {
-        const updated = await clearOAuthData(this.serverName, 'tokens');
+        const updated = await this.settings.clearOAuthData(this.serverName, 'tokens');
         assignUpdatedConfig(updated);
         changed = true;
         logger.warn('Cleared OAuth tokens', { serverName: this.serverName });
@@ -564,8 +580,8 @@ export class MCPHubOAuthProvider implements OAuthClientProvider {
         supportsDynamicClient &&
         (currentConfig.oauth.clientId || currentConfig.oauth.clientSecret)
       ) {
-        removeRegisteredClient(this.serverName);
-        const updated = await clearOAuthData(this.serverName, 'client');
+        if (!this.personal) removeRegisteredClient(this.serverName);
+        const updated = await this.settings.clearOAuthData(this.serverName, 'client');
         assignUpdatedConfig(updated);
         changed = true;
         logger.warn('Cleared OAuth client registration', { serverName: this.serverName });
@@ -573,14 +589,14 @@ export class MCPHubOAuthProvider implements OAuthClientProvider {
     }
 
     if (scope === 'discovery' && currentConfig.oauth.pendingAuthorization) {
-      assignUpdatedConfig(await clearOAuthData(this.serverName, 'discovery'));
+      assignUpdatedConfig(await this.settings.clearOAuthData(this.serverName, 'discovery'));
     }
 
     if (scope === 'verifier' || scope === 'all') {
       this._codeVerifier = undefined;
       this._currentState = undefined;
       if (currentConfig.oauth.pendingAuthorization) {
-        const updated = await clearOAuthData(this.serverName, 'verifier');
+        const updated = await this.settings.clearOAuthData(this.serverName, 'verifier');
         assignUpdatedConfig(updated);
         changed = true;
       }
@@ -588,7 +604,7 @@ export class MCPHubOAuthProvider implements OAuthClientProvider {
 
     if (changed) {
       this._currentState = undefined;
-      const serverInfo = getServerByName(this.serverName);
+      const serverInfo = this.personal ? undefined : getServerByName(this.serverName);
       if (serverInfo) {
         serverInfo.status = 'oauth_required';
         serverInfo.oauth = undefined;
@@ -625,7 +641,8 @@ const prepopulateScopesIfMissing = async (
       }
       serverConfig.oauth.scopes = scopes;
 
-      const updatedConfig = await mutateOAuthSettings(serverName, ({ oauth }) => {
+      const store = personalOAuthContexts.get(serverConfig) || sharedOAuthSettings;
+      const updatedConfig = await store.mutateOAuthSettings(serverName, ({ oauth }) => {
         oauth.scopes = scopes;
       });
 
@@ -663,6 +680,8 @@ export const createOAuthProvider = async (
   serverConfig: ServerConfig,
 ): Promise<OAuthClientProvider | undefined> => {
   const oauth = serverConfig.oauth;
+  if (hasPersonalOAuth(serverConfig) && !personalOAuthContexts.has(serverConfig))
+    throw personalAuthorizationRequired(serverName);
 
   // Create a provider when OAuth is explicitly configured, OR when the server
   // has no static Authorization header. The SDK's StreamableHTTPClientTransport
@@ -672,7 +691,8 @@ export const createOAuthProvider = async (
   // alone so that header is preserved verbatim (see #1013, #1045).
   const hasOAuthConfig = Boolean(
     oauth &&
-      (oauth.clientId ||
+      (oauth.identityMode === 'personal' ||
+        oauth.clientId ||
         oauth.accessToken ||
         oauth.refreshToken ||
         oauth.authorizationEndpoint ||
@@ -692,7 +712,7 @@ export const createOAuthProvider = async (
   // Initialize OAuth for the server (performs registration if needed)
   // This ensures the client is registered before the SDK tries to use it
   try {
-    await initializeOAuthForServer(serverName, serverConfig);
+    if (!hasPersonalOAuth(serverConfig)) await initializeOAuthForServer(serverName, serverConfig);
   } catch (error) {
     logger.warn('Failed to initialize OAuth for server', { serverName, error });
     // Continue anyway - the SDK might be able to handle it

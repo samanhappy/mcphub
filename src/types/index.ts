@@ -481,6 +481,7 @@ export interface ServerConfig {
   proxy?: ProxychainsConfig;
   // OAuth authentication for upstream MCP servers
   oauth?: {
+    identityMode?: 'shared' | 'personal';
     // Admin-only, default false: permit HTTP token exchange/refresh for this upstream.
     allowInsecureTokenEndpoint?: boolean;
     // Static client configuration (traditional OAuth flow)
@@ -630,6 +631,7 @@ export interface ServerInfo {
   idleTimeoutId?: NodeJS.Timeout; // Timer ID for idle-shutdown (cleared/reset on each tool call)
   lastUsedAt?: number; // Timestamp of last tool call (ms since epoch)
   oauth?: {
+    identityMode?: 'shared' | 'personal';
     // OAuth authorization state
     issuer?: string;
     issRequired?: boolean;

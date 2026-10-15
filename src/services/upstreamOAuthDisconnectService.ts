@@ -64,7 +64,7 @@ const getTokensToRevoke = (serverConfig: ServerConfig): RevokeableToken[] => {
   return tokens;
 };
 
-const revokeToken = async (
+export const revokeToken = async (
   endpoint: string,
   serverConfig: ServerConfig,
   token: RevokeableToken,
@@ -115,7 +115,7 @@ const revokeToken = async (
   }
 };
 
-const canServerOwnerReachInternalUrls = async (serverConfig: ServerConfig): Promise<boolean> => {
+export const canServerOwnerReachInternalUrls = async (serverConfig: ServerConfig): Promise<boolean> => {
   if (!serverConfig.owner) {
     return false;
   }

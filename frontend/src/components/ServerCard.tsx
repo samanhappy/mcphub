@@ -1,3 +1,4 @@
+import PersonalOAuthControls from './PersonalOAuthControls';
 import { Link } from 'react-router-dom';
 import { useState, useRef, useEffect, type CSSProperties, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -202,7 +203,7 @@ const ServerCard = ({
   // Reinstall is only available for stdio servers using npx or uvx
   const supportsReinstall =
     server.config?.command === 'npx' || server.config?.command === 'uvx';
-  const supportsOAuthDisconnect = Boolean(server.oauth?.connected && onOAuthDisconnect);
+  const supportsOAuthDisconnect = Boolean(server.config?.oauth?.identityMode !== 'personal' && server.oauth?.connected && onOAuthDisconnect);
 
   const handleToggle = async (nextEnabled: boolean) => {
     if (!canManage || isToggling || !onToggle) return;
@@ -633,13 +634,17 @@ const ServerCard = ({
 
           {/* Status */}
           <div className="hub-server-card-status-cell min-w-0">
-            <ServerStatusDot
-              status={server.status}
-              enabled={server.enabled}
-              startOnDemand={server.config?.startOnDemand === true}
-              onAuthClick={handleOAuth}
-              className="hub-server-card-status"
-            />
+            {server.config?.oauth?.identityMode === 'personal' ? (
+              <PersonalOAuthControls serverName={server.name} enabled={enabled} />
+            ) : (
+              <ServerStatusDot
+                status={server.status}
+                enabled={server.enabled}
+                startOnDemand={server.config?.startOnDemand === true}
+                onAuthClick={handleOAuth}
+                className="hub-server-card-status"
+              />
+            )}
           </div>
 
           {/* Transport */}

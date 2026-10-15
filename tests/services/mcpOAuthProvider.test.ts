@@ -349,3 +349,9 @@ describe('MCPHubOAuthProvider issuer snapshot', () => {
     },
   );
 });
+
+test('personal OAuth cannot create an unscoped provider or read a shared token', () => {
+  expect(() => new MCPHubOAuthProvider('gitlab', {
+    url: 'https://gitlab.example/mcp', oauth: { identityMode: 'personal', accessToken: 'shared' },
+  })).toThrow('Personal authorization required');
+});
