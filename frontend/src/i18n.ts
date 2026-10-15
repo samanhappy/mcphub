@@ -7,6 +7,7 @@ import enTranslation from '../../locales/en.json';
 import zhTranslation from '../../locales/zh.json';
 import frTranslation from '../../locales/fr.json';
 import trTranslation from '../../locales/tr.json';
+import esTranslation from '../../locales/es.json';
 
 i18n
   // Detect user language
@@ -27,6 +28,9 @@ i18n
       },
       tr: {
         translation: trTranslation,
+      },
+      es: {
+        translation: esTranslation,
       },
     },
     fallbackLng: 'en',
