@@ -634,13 +634,17 @@ const ServerCard = ({
 
           {/* Status */}
           <div className="hub-server-card-status-cell min-w-0">
-            <ServerStatusDot
-              status={server.status}
-              enabled={server.enabled}
-              startOnDemand={server.config?.startOnDemand === true}
-              onAuthClick={handleOAuth}
-              className="hub-server-card-status"
-            />
+            {server.config?.oauth?.identityMode === 'personal' ? (
+              <PersonalOAuthControls serverName={server.name} enabled={enabled} />
+            ) : (
+              <ServerStatusDot
+                status={server.status}
+                enabled={server.enabled}
+                startOnDemand={server.config?.startOnDemand === true}
+                onAuthClick={handleOAuth}
+                className="hub-server-card-status"
+              />
+            )}
           </div>
 
           {/* Transport */}
@@ -746,8 +750,6 @@ const ServerCard = ({
               />
             </LoadingControl>
           </div>
-
-          {server.config?.oauth?.identityMode === 'personal' && <PersonalOAuthControls serverName={server.name} />}
 
           {/* Menu */}
           <div className="relative" ref={menuRef}>
