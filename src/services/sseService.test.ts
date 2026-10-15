@@ -156,7 +156,7 @@ type MockResponse = Response & {
   headersStore: Record<string, string>;
 };
 
-const EXPECTED_METADATA_URL = 'http://localhost:3000/.well-known/oauth-protected-resource/test';
+const EXPECTED_METADATA_URL = 'http://localhost:3000/.well-known/oauth-protected-resource/test/sse';
 
 // Create mock instances for testing
 const mockStreamableHTTPServerTransport = {
@@ -273,6 +273,20 @@ describe('sseService', () => {
 
       expectBearerUnauthorized(res, 'No authorization provided');
     });
+
+    it.each(['/mcp', '/mcp/team', '/alice/mcp/team'])(
+      'advertises path-aware metadata for %s',
+      async (path) => {
+        setMockSystemConfig({ install: { baseUrl: 'https://public.example/hub' } } as any);
+        const req = createMockRequest({ originalUrl: `/test${path}?ignored=true` });
+        const res = createMockResponse();
+        await handleMcpOtherRequest(req, res);
+        expect(res.status).toHaveBeenCalledWith(401);
+        expect(res.headersStore['WWW-Authenticate']).toContain(
+          `resource_metadata="https://public.example/.well-known/oauth-protected-resource/hub${path}"`,
+        );
+      },
+    );
 
     it('should pass when bearer auth is disabled', async () => {
       setMockSystemConfig({

@@ -253,7 +253,7 @@ type ExpressLayer = {
   handle?: ExpressLayerHandle;
   name?: string;
   route?: {
-    path: string;
+    path: string | string[];
     methods: Record<string, boolean>;
     stack?: ExpressLayer[];
   };
@@ -282,7 +282,10 @@ const routerContainsRoute = (
   path: string,
 ): boolean =>
   routerHandle.stack?.some(
-    (layer) => layer.route?.path === path && Boolean(layer.route.methods[method.toLowerCase()]),
+    (layer) =>
+      (Array.isArray(layer.route?.path)
+        ? layer.route.path.includes(path)
+        : layer.route?.path === path) && Boolean(layer.route?.methods[method.toLowerCase()]),
   ) ?? false;
 
 const findAppRoute = (
@@ -293,7 +296,10 @@ const findAppRoute = (
   const appRouter = (app as express.Application & { _router?: { stack?: ExpressLayer[] } })._router;
 
   return appRouter?.stack?.find(
-    (layer) => layer.route?.path === path && Boolean(layer.route.methods[method.toLowerCase()]),
+    (layer) =>
+      (Array.isArray(layer.route?.path)
+        ? layer.route.path.includes(path)
+        : layer.route?.path === path) && Boolean(layer.route?.methods[method.toLowerCase()]),
   );
 };
 
@@ -442,4 +448,13 @@ describe('initRoutes authenticated API rate limiting', () => {
 
     expect(mockSetMountedSsoProviders).toHaveBeenCalledWith(['oidc']);
   });
+});
+
+it('registers root and path-aware resource metadata before the dashboard', async () => {
+  const app = express();
+  await initRoutes(app);
+  expect(findAppRoute(app, 'get', '/.well-known/oauth-protected-resource')).toBeDefined();
+  expect(
+    findAppRoute(app, 'get', '/.well-known/oauth-protected-resource/:resourcePath(*)'),
+  ).toBeDefined();
 });

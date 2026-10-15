@@ -242,7 +242,10 @@ export const initRoutes = async (app: express.Application): Promise<void> => {
   app.get('/oauth/userinfo', mcpConnectionRateLimiter, getUserInfo); // Validates OAuth token
   app.get('/.well-known/oauth-authorization-server', mcpConnectionRateLimiter, getMetadata); // Public metadata endpoint
   app.get(
-    '/.well-known/oauth-protected-resource',
+    [
+      '/.well-known/oauth-protected-resource',
+      '/.well-known/oauth-protected-resource/:resourcePath(*)',
+    ],
     mcpConnectionRateLimiter,
     getProtectedResourceMetadata,
   ); // Public protected resource metadata
