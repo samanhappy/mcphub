@@ -69,9 +69,10 @@ export const createStandardRateLimiter = (options: {
   windowMs: number;
   max: number | typeof UNLIMITED;
   skipSuccessfulRequests?: boolean;
+  message?: Record<string, string>;
   skip?: (request: Request, response: Response) => boolean | Promise<boolean>;
 }) => {
-  const { max, skip, ...rest } = options;
+  const { max, skip, message, ...rest } = options;
 
   return rateLimit({
     ...rest,
@@ -85,7 +86,7 @@ export const createStandardRateLimiter = (options: {
       isTestEnv || max === UNLIMITED || (skip !== undefined && skip(request, response)),
     // The rest of the API answers with JSON; without this the 429 body is bare
     // text, so clients that parse the response as JSON lose the error entirely.
-    message: { success: false, message: 'Too many requests, please try again later.' },
+    message: message ?? { success: false, message: 'Too many requests, please try again later.' },
   });
 };
 
@@ -126,6 +127,31 @@ export const hostedInternalEventRateLimiter = createStandardRateLimiter({
 export const mcpConnectionRateLimiter = createStandardRateLimiter({
   windowMs: envInt('MCP_RATE_LIMIT_WINDOW_MS', MINUTE_1),
   max: envLimit('MCP_RATE_LIMIT_MAX', 480),
+});
+
+// Independent stores prevent MCP traffic, discovery bursts and dynamic client
+// registration from consuming the budget needed to authorize or refresh tokens.
+const oauthRateLimitMessage = {
+  error: 'temporarily_unavailable',
+  error_description: 'Too many requests, please try again later.',
+};
+
+export const oauthRateLimiter = createStandardRateLimiter({
+  windowMs: envInt('OAUTH_RATE_LIMIT_WINDOW_MS', MINUTE_1),
+  max: envLimit('OAUTH_RATE_LIMIT_MAX', 480),
+  message: oauthRateLimitMessage,
+});
+
+export const oauthDiscoveryRateLimiter = createStandardRateLimiter({
+  windowMs: envInt('OAUTH_DISCOVERY_RATE_LIMIT_WINDOW_MS', MINUTE_1),
+  max: envLimit('OAUTH_DISCOVERY_RATE_LIMIT_MAX', 480),
+  message: oauthRateLimitMessage,
+});
+
+export const oauthRegistrationRateLimiter = createStandardRateLimiter({
+  windowMs: envInt('OAUTH_REGISTRATION_RATE_LIMIT_WINDOW_MS', MINUTE_1),
+  max: envLimit('OAUTH_REGISTRATION_RATE_LIMIT_MAX', 480),
+  message: oauthRateLimitMessage,
 });
 
 export const authAttemptRateLimiter = createStandardRateLimiter({

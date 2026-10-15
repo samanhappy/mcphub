@@ -22,6 +22,28 @@ MCPHub reads the following environment variables at startup. The authoritative l
 | `NODE_ENV` | `development` | `development` / `production` / `test`. |
 | `DEBUG` | `false` | Set to `true` to enable verbose startup logging for frontend-path discovery. |
 
+## MCP and OAuth request budgets
+
+Each family below has its own per-client-IP store. MCP tool traffic cannot exhaust
+OAuth discovery or token refresh, and discovery/registration bursts cannot spend
+the authorization budget. Requests within a family share its budget, including
+failed requests; these limits do not replace authentication or permissions.
+
+| Maximum variable | Default | Window variable (default milliseconds) | Routes |
+| --- | --- | --- | --- |
+| `MCP_RATE_LIMIT_MAX` | `480` | `MCP_RATE_LIMIT_WINDOW_MS` (`60000`) | MCP, SSE and message transports |
+| `OAUTH_RATE_LIMIT_MAX` | `480` | `OAUTH_RATE_LIMIT_WINDOW_MS` (`60000`) | OAuth callback, authorization, token exchange/refresh and userinfo |
+| `OAUTH_DISCOVERY_RATE_LIMIT_MAX` | `480` | `OAUTH_DISCOVERY_RATE_LIMIT_WINDOW_MS` (`60000`) | Authorization-server and protected-resource metadata, including scoped paths |
+| `OAUTH_REGISTRATION_RATE_LIMIT_MAX` | `480` | `OAUTH_REGISTRATION_RATE_LIMIT_WINDOW_MS` (`60000`) | Dynamic client registration and client configuration |
+
+Existing `MCP_RATE_LIMIT_*` overrides now affect only transport traffic. Set the
+OAuth overrides separately if needed. Windows must be positive integers; maximums
+also accept `0`, `off` or `unlimited` to disable that family. Keep proxy trust set
+to your actual ingress topology so clients cannot spoof the IP used for limiting.
+OAuth limits return HTTP 429 with `Retry-After`, rate-limit headers and OAuth
+`error`/`error_description` JSON. Clients should wait and retry; rate limiting does
+not revoke stored grants or tokens.
+
 ## Authentication
 
 | Variable | Default | Description |

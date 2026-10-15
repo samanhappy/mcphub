@@ -39,6 +39,12 @@ const ENV_KEYS = [
   'API_RATE_LIMIT_WINDOW_MS',
   'MCP_RATE_LIMIT_MAX',
   'MCP_RATE_LIMIT_WINDOW_MS',
+  'OAUTH_RATE_LIMIT_MAX',
+  'OAUTH_RATE_LIMIT_WINDOW_MS',
+  'OAUTH_DISCOVERY_RATE_LIMIT_MAX',
+  'OAUTH_DISCOVERY_RATE_LIMIT_WINDOW_MS',
+  'OAUTH_REGISTRATION_RATE_LIMIT_MAX',
+  'OAUTH_REGISTRATION_RATE_LIMIT_WINDOW_MS',
   'TEMPLATE_RATE_LIMIT_MAX',
   'TEMPLATE_RATE_LIMIT_WINDOW_MS',
   'SPA_RATE_LIMIT_MAX',
@@ -127,6 +133,18 @@ describe('rateLimit configuration', () => {
       standardHeaders: true,
       legacyHeaders: false,
     });
+    for (const limiter of [
+      mod.oauthRateLimiter,
+      mod.oauthDiscoveryRateLimiter,
+      mod.oauthRegistrationRateLimiter,
+    ]) {
+      expect(limiter).toMatchObject({
+        windowMs: 60000,
+        max: 480,
+        standardHeaders: true,
+        legacyHeaders: false,
+      });
+    }
     expect(mod.mcpConnectionRateLimiter).toMatchObject({
       windowMs: 60 * 1000,
       max: 480,
@@ -171,6 +189,9 @@ describe('rateLimit configuration', () => {
       for (const limiter of [
         mod.authenticatedRouteRateLimiter,
         mod.mcpConnectionRateLimiter,
+        mod.oauthRateLimiter,
+        mod.oauthDiscoveryRateLimiter,
+        mod.oauthRegistrationRateLimiter,
         mod.templateRateLimiter,
         mod.spaPageRateLimiter,
         mod.hostedInternalEventRateLimiter,
@@ -235,6 +256,9 @@ describe('rateLimit configuration', () => {
       for (const limiter of [
         mod.authenticatedRouteRateLimiter,
         mod.mcpConnectionRateLimiter,
+        mod.oauthRateLimiter,
+        mod.oauthDiscoveryRateLimiter,
+        mod.oauthRegistrationRateLimiter,
         mod.authRegistrationRateLimiter,
       ]) {
         expect((limiter as unknown as { skip: () => boolean }).skip()).toBe(false);
@@ -270,6 +294,12 @@ describe('rateLimit configuration', () => {
         MCP_RATE_LIMIT_MAX: '14',
         AUTH_RATE_LIMIT_MAX: '15',
         SPA_RATE_LIMIT_MAX: '16',
+        OAUTH_RATE_LIMIT_MAX: '17',
+        OAUTH_DISCOVERY_RATE_LIMIT_MAX: '18',
+        OAUTH_REGISTRATION_RATE_LIMIT_MAX: '19',
+        OAUTH_RATE_LIMIT_WINDOW_MS: '2000',
+        OAUTH_DISCOVERY_RATE_LIMIT_WINDOW_MS: '3000',
+        OAUTH_REGISTRATION_RATE_LIMIT_WINDOW_MS: '4000',
       });
 
       expect(mod.templateRateLimiter).toMatchObject({ max: 11 });
@@ -279,6 +309,9 @@ describe('rateLimit configuration', () => {
       expect(mod.mcpConnectionRateLimiter).toMatchObject({ max: 14 });
       expect(mod.authAttemptRateLimiter).toMatchObject({ max: 15 });
       expect(mod.spaPageRateLimiter).toMatchObject({ max: 16 });
+      expect(mod.oauthRateLimiter).toMatchObject({ max: 17, windowMs: 2000 });
+      expect(mod.oauthDiscoveryRateLimiter).toMatchObject({ max: 18, windowMs: 3000 });
+      expect(mod.oauthRegistrationRateLimiter).toMatchObject({ max: 19, windowMs: 4000 });
     });
 
     it('falls back to the default when the value is not a positive integer', async () => {

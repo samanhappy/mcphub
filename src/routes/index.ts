@@ -186,7 +186,9 @@ import {
   authRegistrationRateLimiter,
   authenticatedRouteRateLimiter,
   hostedInternalEventRateLimiter,
-  mcpConnectionRateLimiter,
+  oauthRateLimiter,
+  oauthDiscoveryRateLimiter,
+  oauthRegistrationRateLimiter,
   templateRateLimiter,
 } from '../utils/rateLimit.js';
 
@@ -224,38 +226,38 @@ export const initRoutes = async (app: express.Application): Promise<void> => {
   );
 
   // OAuth callback endpoint (no auth required, public callback URL)
-  app.get('/oauth/callback', mcpConnectionRateLimiter, handleOAuthCallback);
+  app.get('/oauth/callback', oauthRateLimiter, handleOAuthCallback);
 
   // OAuth Authorization Server endpoints (no auth required for OAuth flow)
-  app.get('/oauth/authorize', mcpConnectionRateLimiter, getAuthorize);
+  app.get('/oauth/authorize', oauthRateLimiter, getAuthorize);
   app.post(
     '/oauth/authorize',
     express.urlencoded({ extended: true }),
-    mcpConnectionRateLimiter,
+    oauthRateLimiter,
     postAuthorize,
   );
   app.post(
     '/oauth/token',
     express.urlencoded({ extended: true }),
-    mcpConnectionRateLimiter,
+    oauthRateLimiter,
     postToken,
   ); // Public endpoint for token exchange
-  app.get('/oauth/userinfo', mcpConnectionRateLimiter, getUserInfo); // Validates OAuth token
-  app.get('/.well-known/oauth-authorization-server', mcpConnectionRateLimiter, getMetadata); // Public metadata endpoint
+  app.get('/oauth/userinfo', oauthRateLimiter, getUserInfo); // Validates OAuth token
+  app.get('/.well-known/oauth-authorization-server', oauthDiscoveryRateLimiter, getMetadata); // Public metadata endpoint
   app.get(
     [
       '/.well-known/oauth-protected-resource',
       '/.well-known/oauth-protected-resource/:resourcePath(*)',
     ],
-    mcpConnectionRateLimiter,
+    oauthDiscoveryRateLimiter,
     getProtectedResourceMetadata,
   ); // Public protected resource metadata
 
   // RFC 7591 Dynamic Client Registration endpoints (public for registration)
-  app.post('/oauth/register', mcpConnectionRateLimiter, registerClient); // Register new OAuth client
-  app.get('/oauth/register/:clientId', mcpConnectionRateLimiter, getClientConfiguration); // Read client configuration
-  app.put('/oauth/register/:clientId', mcpConnectionRateLimiter, updateClientConfiguration); // Update client configuration
-  app.delete('/oauth/register/:clientId', mcpConnectionRateLimiter, deleteClientRegistration); // Delete client registration
+  app.post('/oauth/register', oauthRegistrationRateLimiter, registerClient); // Register new OAuth client
+  app.get('/oauth/register/:clientId', oauthRegistrationRateLimiter, getClientConfiguration); // Read client configuration
+  app.put('/oauth/register/:clientId', oauthRegistrationRateLimiter, updateClientConfiguration); // Update client configuration
+  app.delete('/oauth/register/:clientId', oauthRegistrationRateLimiter, deleteClientRegistration); // Delete client registration
 
   authenticatedRouter.use(authenticatedRouteRateLimiter);
   // `authenticatedRouter` is mounted at the end of this function, after the public
