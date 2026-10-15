@@ -133,4 +133,42 @@ describe('changelogService', () => {
       source: 'npm-fallback',
     });
   });
+
+  it.each(['', '   '])('uses the default cache TTL when it is %j', async (ttl) => {
+    process.env.MCPHUB_UPDATE_CHECK_CACHE_TTL_SECONDS = ttl;
+    const payload = {
+      latestVersion: '1.0.12',
+      hasUpdate: true,
+      entries: [],
+      totalUpdateCount: 1,
+      changelogUrl: 'https://www.mcphub.app/changelog/1.0.12',
+      allChangelogUrl: 'https://www.mcphub.app/changelog',
+      source: 'mcphub-web',
+    };
+    (global.fetch as jest.Mock).mockResolvedValue({
+      ok: true,
+      json: async () => ({ success: true, data: payload }),
+    });
+
+    await getChangelogUpdateInfo({ currentVersion: '1.0.11', locale: 'en' });
+    await getChangelogUpdateInfo({ currentVersion: '1.0.11', locale: 'en' });
+
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('still honors an explicit TTL of 0 (no caching)', async () => {
+    process.env.MCPHUB_UPDATE_CHECK_CACHE_TTL_SECONDS = '0';
+    (global.fetch as jest.Mock).mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        success: true,
+        data: { latestVersion: '1.0.12', hasUpdate: true, entries: [], totalUpdateCount: 1 },
+      }),
+    });
+
+    await getChangelogUpdateInfo({ currentVersion: '1.0.11', locale: 'en' });
+    await getChangelogUpdateInfo({ currentVersion: '1.0.11', locale: 'en' });
+
+    expect(global.fetch).toHaveBeenCalledTimes(2);
+  });
 });
