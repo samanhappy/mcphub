@@ -167,6 +167,78 @@ describe('toolResultCompressionService', () => {
     expect(text).toContain('[... 54 more matches in docs/step-1-intro.md]');
   });
 
+  it('keeps a context line whose body contains :<digits>: grouped under its own file', async () => {
+    setCachedSystemConfig({
+      toolResultCompression: {
+        enabled: true,
+        minTokens: 1,
+        maxOutputTokens: 120,
+        strategy: 'search',
+      },
+    });
+
+    // Context lines are `file-line-body`; a time such as 12:34:56 in the body must not be taken as the line number.
+    const searchOutput = Array.from(
+      { length: 60 },
+      (_value, index) => `src/app.ts-${index + 1}-const time${index} = "12:34:56";`,
+    ).join('\n');
+
+    const result = await maybeCompressToolResult({
+      content: [{ type: 'text', text: searchOutput }],
+    });
+
+    const text = result.content?.[0].text as string;
+    expect(text).toContain('[... 54 more matches in src/app.ts]');
+    expect(text).not.toContain('more matches in src/app.ts-');
+  });
+
+  it('keeps a context line with a stack trace in its body grouped under its own file', async () => {
+    setCachedSystemConfig({
+      toolResultCompression: {
+        enabled: true,
+        minTokens: 1,
+        maxOutputTokens: 120,
+        strategy: 'search',
+      },
+    });
+
+    // The body ends in `lib/util.ts:14:5)`: the `:` form would take everything before it as the file name.
+    const searchOutput = Array.from(
+      { length: 60 },
+      (_value, index) => `src/app.ts-${index + 1}-  at handler (lib/util.ts:14:5)`,
+    ).join('\n');
+
+    const result = await maybeCompressToolResult({
+      content: [{ type: 'text', text: searchOutput }],
+    });
+
+    const text = result.content?.[0].text as string;
+    expect(text).toContain('[... 54 more matches in src/app.ts]');
+  });
+
+  it('still groups the matches of a file whose name contains a space', async () => {
+    setCachedSystemConfig({
+      toolResultCompression: {
+        enabled: true,
+        minTokens: 1,
+        maxOutputTokens: 120,
+        strategy: 'search',
+      },
+    });
+
+    const searchOutput = Array.from(
+      { length: 60 },
+      (_value, index) => `docs/my notes.md:${index + 1}:const value${index} = ${index};`,
+    ).join('\n');
+
+    const result = await maybeCompressToolResult({
+      content: [{ type: 'text', text: searchOutput }],
+    });
+
+    const text = result.content?.[0].text as string;
+    expect(text).toContain('[... 54 more matches in docs/my notes.md]');
+  });
+
   it('does not misclassify timestamped logs as search output', async () => {
     setCachedSystemConfig({
       toolResultCompression: {
