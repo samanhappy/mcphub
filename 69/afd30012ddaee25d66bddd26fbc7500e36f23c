@@ -1,0 +1,35 @@
+tests/frontend/personalOAuthControls.test.ts
+  s_7a32489a5abb40::t_828f409d65bfaf 6-8
+  s_7a32489a5abb40::t_e455b0dd043cd9 13-19
+  s_7a32489a5abb40::t_885396dd77d1d5 1-5,9-12,20-24
+frontend/src/components/PersonalOAuthControls.tsx
+  s_7a32489a5abb40::t_828f409d65bfaf 66-68
+tests/integration/personal-oauth-runtime.test.ts
+  s_7a32489a5abb40::t_f54decc8928f6a 123-126,128-156
+  s_7a32489a5abb40::t_e455b0dd043cd9 4,75-88,127
+  s_7a32489a5abb40::t_7473c30c6a47ec 50-52,64-70
+  s_7a32489a5abb40::t_14c6930b79310b 1-3,5-9,11-49,53-63,71-74,89-122
+  s_7a32489a5abb40::t_828f409d65bfaf 10
+src/services/principalRuntimeService.ts
+  s_7a32489a5abb40::t_7473c30c6a47ec 5,65-66,68-123,125-132
+tsconfig.test.json
+  s_7a32489a5abb40::t_885396dd77d1d5 5
+src/services/personalOAuthService.ts
+  s_7a32489a5abb40::t_7473c30c6a47ec 29-34,151,288
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "69afd30012ddaee25d66bddd26fbc7500e36f23c",
+  "prompts": {},
+  "sessions": {
+    "s_7a32489a5abb40": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a12e4e-6b9a-7e52-a212-9116661bc99d",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

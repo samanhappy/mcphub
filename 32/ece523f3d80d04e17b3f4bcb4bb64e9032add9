@@ -1,0 +1,23 @@
+tests/integration/personal-credentials.test.ts
+  s_4d9f7ed7ebbf92::t_41ad0bbcc6b6ae 942-966,978-986
+src/controllers/personalOAuthController.ts
+  s_4d9f7ed7ebbf92::t_6ffa0d72114031 34-39,41-42
+src/services/personalOAuthService.ts
+  s_4d9f7ed7ebbf92::t_5b124aac861f82 35-39
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "32ece523f3d80d04e17b3f4bcb4bb64e9032add9",
+  "prompts": {},
+  "sessions": {
+    "s_4d9f7ed7ebbf92": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a13557-13f3-7fe1-964b-7704d74e4bc9",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
