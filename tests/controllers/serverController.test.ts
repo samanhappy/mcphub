@@ -2645,6 +2645,25 @@ describe('serverController - getAllServers', () => {
       }),
     );
   });
+
+  it.each([
+    ['page', { page: 'abc', limit: '5' }],
+    ['limit', { page: '1', limit: 'abc' }],
+  ])(
+    'rejects a non-numeric %s with 400 instead of querying the DAO with NaN',
+    async (_name, query) => {
+      mockGetServersInfo.mockResolvedValue([]);
+      const json = jest.fn();
+      const status = jest.fn().mockReturnValue({ json });
+      const req = { query } as unknown as Request;
+      const res = { json, status } as unknown as Response;
+
+      await getAllServers(req, res);
+
+      expect(mockServerDao.findAllPaginated).not.toHaveBeenCalled();
+      expect(status).toHaveBeenCalledWith(400);
+    },
+  );
 });
 
 describe('serverController - toggleServer (issue #938)', () => {
