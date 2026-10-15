@@ -12,7 +12,8 @@ const LanguageSwitch: React.FC = () => {
     { code: 'en', label: 'English' },
     { code: 'zh', label: '中文' },
     { code: 'fr', label: 'Français' },
-    { code: 'tr', label: 'Türkçe' }
+    { code: 'tr', label: 'Türkçe' },
+    { code: 'es', label: 'Español' }
   ];
 
   // Update current language when it changes
