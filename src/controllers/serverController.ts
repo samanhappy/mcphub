@@ -281,7 +281,7 @@ export const getAllServers = async (req: Request, res: Response): Promise<void> 
     const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : undefined;
 
     // Validate pagination parameters
-    if (page < 1) {
+    if (!Number.isInteger(page) || page < 1) {
       res.status(400).json({
         success: false,
         message: 'Page number must be greater than 0',
@@ -289,7 +289,7 @@ export const getAllServers = async (req: Request, res: Response): Promise<void> 
       return;
     }
 
-    if (limit !== undefined && (limit < 1 || limit > 1000)) {
+    if (limit !== undefined && (!Number.isInteger(limit) || limit < 1 || limit > 1000)) {
       res.status(400).json({
         success: false,
         message: 'Limit must be between 1 and 1000',
