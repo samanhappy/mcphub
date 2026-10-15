@@ -43,6 +43,7 @@ jest.mock('../../src/services/userContextService.js', () => ({
   },
 }));
 
+import { notifyToolChanged } from '../../src/services/mcpService.js';
 import {
   createGroup,
   getAllGroups,
@@ -117,6 +118,18 @@ describe('groupService authorization', () => {
       updateServerToolsInGroup('group-1', 'server-1', ['dangerous-tool']),
     ).resolves.toBeNull();
     expect(mockGroupDao.update).not.toHaveBeenCalled();
+  });
+
+  it('notifies tool list listeners when a server is removed from a group, like every other group mutation', async () => {
+    mockUserContextService.getCurrentUser.mockReturnValue({
+      username: 'superadmin',
+      isAdmin: true,
+    });
+
+    await expect(removeServerFromGroup('group-1', 'server-1')).resolves.toEqual(
+      expect.objectContaining({ servers: [] }),
+    );
+    expect(notifyToolChanged).toHaveBeenCalledTimes(1);
   });
 
   it('allows admins to mutate groups they do not own', async () => {
