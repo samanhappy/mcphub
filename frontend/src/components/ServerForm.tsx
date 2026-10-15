@@ -2046,12 +2046,12 @@ const ServerForm = ({
                       </p>
                       {(serverType === 'sse' || serverType === 'streamable-http') && (
                         <div className="mb-3">
-                          <label htmlFor="oauthIdentityMode" className="text-sm">
+                          <label htmlFor="oauthIdentityMode" className="block text-xs text-gray-600 mb-1">
                             {t('server.oauth.identityMode')}
                           </label>
                           <select
                             id="oauthIdentityMode"
-                            className="w-full p-2 border rounded bg-white dark:bg-gray-800"
+                            className="w-full py-2 px-3 form-input"
                             value={formData.oauth?.identityMode || 'shared'}
                             onChange={(e) =>
                               handleOAuthChange(
