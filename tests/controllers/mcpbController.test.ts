@@ -117,6 +117,31 @@ describe('mcpbController - uploadMcpbFile', () => {
     expect(fs.existsSync(path.join(finalExtractDir, 'server.js'))).toBe(true);
   });
 
+  it('renames the extracted bundle into an absent destination on every platform', async () => {
+    const mcpbFilePath = createMcpbFile('weather-server');
+    const { response, json, status } = createResponse();
+    const finalExtractDir = path.join(tempRoot, 'data/uploads/mcpb/server-weather-server');
+    const destinationExistsAtRename: boolean[] = [];
+    const renameSync = fs.renameSync.bind(fs);
+    const renameSpy = jest.spyOn(fs, 'renameSync').mockImplementation((source, destination) => {
+      destinationExistsAtRename.push(fs.existsSync(destination));
+      renameSync(source, destination);
+    });
+
+    try {
+      await uploadMcpbFile(createAdminRequest(mcpbFilePath), response);
+
+      expect(destinationExistsAtRename).toEqual([false]);
+      expect(renameSpy).toHaveBeenCalledWith(expect.any(String), finalExtractDir);
+      expect(status).not.toHaveBeenCalled();
+      expect(json).toHaveBeenCalledWith(expect.objectContaining({ success: true }));
+      expect(fs.existsSync(path.join(finalExtractDir, 'manifest.json'))).toBe(true);
+      expect(fs.existsSync(path.join(finalExtractDir, 'server.js'))).toBe(true);
+    } finally {
+      renameSpy.mockRestore();
+    }
+  });
+
   it('rejects uploads from non-admin users without extracting anything', async () => {
     const mcpbFilePath = createMcpbFile('weather-server');
     const { response, json, status } = createResponse();
