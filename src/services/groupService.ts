@@ -333,7 +333,13 @@ export const removeServerFromGroup = async (
     const normalizedServers = normalizeGroupServers(group.servers);
     const filteredServers = normalizedServers.filter((server) => server.name !== serverName);
 
-    return await groupDao.update(groupId, { servers: filteredServers });
+    const updatedGroup = await groupDao.update(groupId, { servers: filteredServers });
+
+    if (updatedGroup) {
+      notifyToolChanged();
+    }
+
+    return updatedGroup;
   } catch (error) {
     logger.error(`Failed to remove server ${serverName} from group ${groupId}:`, error);
     return null;
