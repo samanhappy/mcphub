@@ -1,0 +1,19 @@
+frontend/src/components/ServerForm.tsx
+  s_6fdc657ae7ff3f::t_6b9ca8b77ac878 2049,2054
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2d16b3d6f49ef0aee14fec160be01e1b562a4f49",
+  "prompts": {},
+  "sessions": {
+    "s_6fdc657ae7ff3f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a13dc7-856a-7fc2-99b8-8584b61267ba",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": null
+    }
+  }
+}
