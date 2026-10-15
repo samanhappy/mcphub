@@ -50,16 +50,20 @@ export const getBearerAuthHeaderValue = (
   return Array.isArray(headerValue) ? headerValue[0] : headerValue;
 };
 
+/**
+ * Parse an Authorization header value of the form `Bearer <token>`.
+ * The auth-scheme is matched case-insensitively (RFC 7235 section 2.1).
+ */
+export const parseBearerAuthorization = (value: string | undefined | null): string | null => {
+  const match = /^bearer[ \t]+(.*)$/i.exec(value ?? '');
+  return match?.[1].trim() || null;
+};
+
 export const getBearerTokenFromHeaders = (
   headers: IncomingHttpHeaders | Record<string, HeaderValue>,
   systemConfig?: SystemConfig | null,
 ): string | null => {
   const authHeader = getBearerAuthHeaderValue(headers, systemConfig);
 
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return null;
-  }
-
-  const token = authHeader.substring(7).trim();
-  return token || null;
+  return parseBearerAuthorization(authHeader);
 };
