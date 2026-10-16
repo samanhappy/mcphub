@@ -1,0 +1,93 @@
+src/dao/base/JsonFileBaseDao.ts
+  s_dae2bd887020e1::t_7248fad2513892 2,66
+tests/utils/smartRoutingPath.test.ts
+  s_dae2bd887020e1::t_5bf256b0d3a958 2-59
+  s_dae2bd887020e1::t_ad74eb9168811f 1
+README.md
+  s_dae2bd887020e1::t_a98bcc90a58f0c 130-131
+frontend/src/utils/runtime.ts
+  s_dae2bd887020e1::t_7248fad2513892 106-107
+src/utils/oauthConsentResource.ts
+  s_dae2bd887020e1::t_7248fad2513892 1-3,51,54-62
+  s_dae2bd887020e1::t_5bf256b0d3a958 52-53
+tests/integration/server-smart-routing.test.ts
+  s_dae2bd887020e1::t_dff40bc479d717 29-32,118,121-123
+  s_dae2bd887020e1::t_9588e8db59315a 139-141
+  s_dae2bd887020e1::t_5bf256b0d3a958 63,66-68,78-81,116-117,124-138,143-156,163-166
+  s_dae2bd887020e1::t_911e28300c2987 4-6,64-65,119-120,167-174,177-179
+  s_dae2bd887020e1::t_dc596ed41e153f 142,157-162,175-176,180
+tests/integration/settings-sync.test.ts
+  s_dae2bd887020e1::t_2790a1eb963048 464-490
+src/config/DaoConfigService.ts
+  s_dae2bd887020e1::t_7248fad2513892 1,76
+src/db/repositories/ServerRepository.ts
+  s_dae2bd887020e1::t_7248fad2513892 1,32,45-46,168
+README.fr.md
+  s_dae2bd887020e1::t_a98bcc90a58f0c 127-128
+src/utils/smartRoutingPath.ts
+  s_dae2bd887020e1::t_5bf256b0d3a958 7-9
+  s_dae2bd887020e1::t_7248fad2513892 1-6,10-13,15,24-46
+  s_dae2bd887020e1::t_2b15eccee5e700 14,16-23
+src/db/repositories/GroupRepository.ts
+  s_dae2bd887020e1::t_7248fad2513892 1,39,52-53
+src/server.ts
+  s_dae2bd887020e1::t_5bf256b0d3a958 2-5,113-116
+  s_dae2bd887020e1::t_7248fad2513892 6,112,117-120,133,146,153,160,169,182,189,196
+docs/zh/configuration/environment-variables.mdx
+  s_dae2bd887020e1::t_a98bcc90a58f0c 219-225
+  s_dae2bd887020e1::t_dff40bc479d717 21
+src/dao/GroupDao.ts
+  s_dae2bd887020e1::t_dff40bc479d717 1,93,109
+src/dao/ServerDao.ts
+  s_dae2bd887020e1::t_dff40bc479d717 1,184,215,388
+README.zh.md
+  s_dae2bd887020e1::t_a98bcc90a58f0c 129-130
+tests/integration/smart-routing-path-auth.test.ts
+  s_dae2bd887020e1::t_a98bcc90a58f0c 1,6-110,112-114,116-146
+  s_dae2bd887020e1::t_97ec2ea36e55b5 111,115
+  s_dae2bd887020e1::t_9f7455d9e0fe30 2-5
+src/config/index.ts
+  s_dae2bd887020e1::t_5bf256b0d3a958 2-5
+  s_dae2bd887020e1::t_7248fad2513892 22,129
+frontend/src/types/runtime.ts
+  s_dae2bd887020e1::t_7248fad2513892 4
+src/utils/migration.ts
+  s_dae2bd887020e1::t_2790a1eb963048 1,35
+frontend/src/pages/Dashboard.tsx
+  s_dae2bd887020e1::t_7248fad2513892 1,278
+src/controllers/configController.ts
+  s_dae2bd887020e1::t_7248fad2513892 40
+tests/utils/oauthConsentResource.test.ts
+  s_dae2bd887020e1::t_5bf256b0d3a958 60-84
+docs/configuration/environment-variables.mdx
+  s_dae2bd887020e1::t_dff40bc479d717 14
+  s_dae2bd887020e1::t_a98bcc90a58f0c 26-32
+src/utils/settingsSync.ts
+  s_dae2bd887020e1::t_2790a1eb963048 1,131-133
+frontend/src/pages/SettingsPage.tsx
+  s_dae2bd887020e1::t_7248fad2513892 1,2290
+docs/agents/architecture.md
+  s_dae2bd887020e1::t_45d311e51c63eb 35
+src/controllers/groupController.ts
+  s_dae2bd887020e1::t_bda85248f9de29 1,149-150,292-293,364-365
+src/utils/serverNameValidation.ts
+  s_dae2bd887020e1::t_7124dafeefdc43 1,35-36
+tests/db/smart-routing-path-reservation.test.ts
+  s_dae2bd887020e1::t_70a237a331a11f 1-40
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5c2bfffc39093efd02da4e8b5d6af2cd28ec05d0",
+  "prompts": {},
+  "sessions": {
+    "s_dae2bd887020e1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a144fb-373a-7793-a41c-37da615b9c7e",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
