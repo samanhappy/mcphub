@@ -1,3 +1,5 @@
+import { useAuth } from '../contexts/AuthContext';
+import { getServerConfigPermissionError } from '../utils/serverPermissions.js';
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -8,7 +10,7 @@ import {
   ServerConfig,
 } from '@/types';
 import ServerForm from './ServerForm';
-import { slugifyServerName } from '@/utils/serverName';
+import { slugifyServerName } from '../utils/serverName.js';
 
 interface RegistryServerDetailProps {
   serverEntry: RegistryServerEntry;
@@ -28,6 +30,11 @@ const RegistryServerDetail: React.FC<RegistryServerDetailProps> = ({
   fetchVersions,
 }) => {
   const { t } = useTranslation();
+  const { auth } = useAuth();
+  const installPermissionError = getServerConfigPermissionError(
+    { type: 'stdio' },
+    auth.user?.isAdmin,
+  );
   const { server, _meta } = serverEntry;
 
   const [_selectedVersion, _setSelectedVersion] = useState<string>(server.version);
@@ -98,6 +105,7 @@ const RegistryServerDetail: React.FC<RegistryServerDetailProps> = ({
     type: 'package' | 'remote',
     option: RegistryPackage | RegistryRemote,
   ) => {
+    if (type === 'package' && installPermissionError) return;
     setSelectedInstallType(type);
     setSelectedOption(option);
     setInstallError(null);
@@ -202,11 +210,11 @@ const RegistryServerDetail: React.FC<RegistryServerDetailProps> = ({
           </div>
           <button
             onClick={() => handleInstallClick('package', pkg)}
-            disabled={isInstalled || installing}
+            disabled={isInstalled || installing || Boolean(installPermissionError)}
             className={`px-4 py-2 rounded text-sm font-medium transition-colors ${
               isInstalled
                 ? 'hub-btn cursor-default'
-                : installing
+                : installing || installPermissionError
                   ? 'hub-btn cursor-not-allowed opacity-50'
                   : 'hub-btn primary'
             }`}
@@ -218,6 +226,12 @@ const RegistryServerDetail: React.FC<RegistryServerDetailProps> = ({
                 : t('registry.install')}
           </button>
         </div>
+
+        {installPermissionError && (
+          <p role="status" className="text-sm text-amber-700 dark:text-amber-300 mb-3">
+            {t(installPermissionError)}
+          </p>
+        )}
 
         {/* Package details */}
         {pkg.registryType && (

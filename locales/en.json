@@ -109,6 +109,8 @@
     "passwordStrengthHint": "Password must be at least 8 characters and contain letters, numbers, and special characters"
   },
   "server": {
+    "localExecutionRequiresAdmin": "Local command execution requires an administrator.",
+    "httpOAuthRequiresAdmin": "Allowing HTTP OAuth token endpoints requires an administrator.",
     "startOnDemand": "Start On Demand",
     "startOnDemandDescription": "Skip startup connect and spawn this server only when a tool call arrives. The process is shut down automatically after the idle timeout, then restarted on the next call. Reduces persistent memory usage for rarely-used servers.",
     "idleTimeoutMs": "Idle shutdown timeout (ms)",

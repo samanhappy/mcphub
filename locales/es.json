@@ -109,6 +109,8 @@
     "passwordStrengthHint": "La contraseña debe tener al menos 8 caracteres y contener letras, números y caracteres especiales"
   },
   "server": {
+    "localExecutionRequiresAdmin": "La ejecución de comandos locales requiere un administrador.",
+    "httpOAuthRequiresAdmin": "Permitir endpoints de tokens OAuth por HTTP requiere un administrador.",
     "startOnDemand": "Inicio bajo demanda",
     "startOnDemandDescription": "Omite la conexión al arrancar y lanza este servidor solo cuando llega una llamada de herramienta. El proceso se apaga automáticamente tras el tiempo de inactividad y se reinicia en la siguiente llamada. Reduce el uso persistente de memoria en servidores poco utilizados.",
     "idleTimeoutMs": "Tiempo de inactividad antes del apagado (ms)",

@@ -1,3 +1,5 @@
+import { useAuth } from '../contexts/AuthContext';
+import { getServerConfigPermissionError } from '../utils/serverPermissions.js';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { MarketServer, MarketServerInstallation } from '@/types';
@@ -22,6 +24,11 @@ const MarketServerDetail: React.FC<MarketServerDetailProps> = ({
   isInstalled = false,
 }) => {
   const { t } = useTranslation();
+  const { auth } = useAuth();
+  const installPermissionError = getServerConfigPermissionError(
+    { type: 'stdio' },
+    auth.user?.isAdmin,
+  );
   const [modalVisible, setModalVisible] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmationVisible, setConfirmationVisible] = useState(false);
@@ -45,9 +52,8 @@ const MarketServerDetail: React.FC<MarketServerDetailProps> = ({
       };
     } else {
       return {
-        className:
-          'hub-btn primary',
-        disabled: false,
+        className: `hub-btn primary ${installPermissionError ? 'opacity-50 cursor-not-allowed' : ''}`,
+        disabled: Boolean(installPermissionError),
         text: t('market.install'),
       };
     }
@@ -80,7 +86,7 @@ const MarketServerDetail: React.FC<MarketServerDetailProps> = ({
   };
 
   const handleInstall = () => {
-    if (!isInstalled) {
+    if (!isInstalled && !installPermissionError) {
       toggleModal();
     }
   };
@@ -187,6 +193,12 @@ const MarketServerDetail: React.FC<MarketServerDetailProps> = ({
           </button>
         </div>
       </div>
+
+      {installPermissionError && (
+        <p role="status" className="text-sm text-amber-700 dark:text-amber-300 mb-4">
+          {t(installPermissionError)}
+        </p>
+      )}
 
       <p className="text-gray-700 mb-6">{server.description}</p>
 
