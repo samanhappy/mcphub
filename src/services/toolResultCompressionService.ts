@@ -278,7 +278,18 @@ function parseSearchLine(line: string): SearchLine | null {
   ) {
     return null;
   }
-  const match = /^(.*?)(?::|-)(\d+)(?::|-)(.*)$/.exec(line);
+  // Match lines are `file:line:body`; context lines are `file-line-body`. A file name can contain
+  // `-<digits>-` and a body can contain `:<digits>:` (a time such as 12:34:56, or `lib/util.ts:14:5`
+  // in a stack trace), so neither form can simply win. Take the candidate whose file part ends in an
+  // extension (`.ts`, `.md`) and has no whitespace; when neither does, as with `Makefile`, keep the
+  // match form first. A context line of an extensionless file whose body contains `:<digits>:` stays
+  // ambiguous.
+  const colon = /^(.*?):(\d+):(.*)$/.exec(line);
+  const hyphen = /^(.*?)-(\d+)-(.*)$/.exec(line);
+  const match =
+    [colon, hyphen].find((m) => m && !/\s/.test(m[1]) && /\.[A-Za-z0-9]{1,10}$/.test(m[1])) ??
+    colon ??
+    hyphen;
   if (!match) return null;
   const parsedLine = Number(match[2]);
   if (!Number.isFinite(parsedLine)) return null;
