@@ -126,6 +126,8 @@ http://localhost:3000/mcp/$smart    # 智能路由
 http://localhost:3000/mcp/$smart/{group}  # 智能路由（特定分组）
 ```
 
+设置 `SMART_ROUTING_PATH=my_smart` 后，可使用不含 `$` 的 `/mcp/my_smart` 和 `/mcp/my_smart/{group}`。修改后重启生效，旧 `/mcp/$smart` 地址继续可用；配置了 `BASE_PATH` 时需加在 `/mcp` 前。自定义路径段不能与已有服务器名、分组名或分组 ID 冲突。
+
 > **安全提示**：MCP 端点默认需要身份验证，以避免意外暴露。若需对 MCP 端点开放匿名访问，请在密钥设置中关闭 **启用 Bearer 认证**。**免登录开关**仅影响仪表盘登录。仅建议在受信任环境中使用。
 
 📖 查看 [API 参考](https://docs.mcphub.app/zh/api-reference)了解详细的端点文档。

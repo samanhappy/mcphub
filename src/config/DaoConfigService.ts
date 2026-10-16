@@ -1,3 +1,4 @@
+import { assertSmartRoutingSettingsAvailable } from '../utils/smartRoutingPath.js';
 import { McpSettings, IUser, ServerConfig } from '../types/index.js';
 import { logger } from '../utils/logger.js';
 import {
@@ -72,6 +73,7 @@ export class DaoConfigService {
         settings = this.mergeSettingsForUser(currentSettings, settings, user);
       }
 
+      assertSmartRoutingSettingsAvailable(settings);
       // Save each component using respective DAOs
       const promises: Promise<any>[] = [];
 

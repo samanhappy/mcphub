@@ -1,4 +1,9 @@
 import express from 'express';
+import {
+  smartRoutingPathMiddleware,
+  assertSmartRoutingNameAvailable,
+} from './utils/smartRoutingPath.js';
+import { getGroupDao, getServerDao } from './dao/DaoFactory.js';
 import cors, { type CorsOptions } from 'cors';
 import config, { isWebDisabled } from './config/index.js';
 import path from 'path';
@@ -104,6 +109,15 @@ export class AppServer {
       // Initialize OAuth authorization server (for MCPHub's own OAuth)
       await initOAuthServer();
 
+      if (config.smartRoutingPath && config.smartRoutingPath !== '$smart') {
+        const [groups, servers] = await Promise.all([
+          getGroupDao().findAll(),
+          getServerDao().findAll(),
+        ]);
+        for (const target of [...groups, ...servers]) assertSmartRoutingNameAvailable(target.name);
+        for (const group of groups) assertSmartRoutingNameAvailable(group.id);
+      }
+
       initMiddlewares(this.app);
       await initRoutes(this.app);
       logger.log('Server initialized successfully');
@@ -116,6 +130,7 @@ export class AppServer {
           this.app.get(
             `${this.basePath}/sse/:group(.*)?`,
             mcpConnectionRateLimiter,
+            smartRoutingPathMiddleware,
             sseUserContextMiddleware,
             (req, res) => handleSseConnection(req, res),
           );
@@ -128,18 +143,21 @@ export class AppServer {
           this.app.post(
             `${this.basePath}/mcp/:group(.*)?`,
             mcpConnectionRateLimiter,
+            smartRoutingPathMiddleware,
             sseUserContextMiddleware,
             handleMcpPostRequest,
           );
           this.app.get(
             `${this.basePath}/mcp/:group(.*)?`,
             mcpConnectionRateLimiter,
+            smartRoutingPathMiddleware,
             sseUserContextMiddleware,
             handleMcpOtherRequest,
           );
           this.app.delete(
             `${this.basePath}/mcp/:group(.*)?`,
             mcpConnectionRateLimiter,
+            smartRoutingPathMiddleware,
             sseUserContextMiddleware,
             handleMcpOtherRequest,
           );
@@ -148,6 +166,7 @@ export class AppServer {
           this.app.get(
             `${this.basePath}/:user/sse/:group(.*)?`,
             mcpConnectionRateLimiter,
+            smartRoutingPathMiddleware,
             sseUserContextMiddleware,
             (req, res) => handleSseConnection(req, res),
           );
@@ -160,18 +179,21 @@ export class AppServer {
           this.app.post(
             `${this.basePath}/:user/mcp/:group(.*)?`,
             mcpConnectionRateLimiter,
+            smartRoutingPathMiddleware,
             sseUserContextMiddleware,
             handleMcpPostRequest,
           );
           this.app.get(
             `${this.basePath}/:user/mcp/:group(.*)?`,
             mcpConnectionRateLimiter,
+            smartRoutingPathMiddleware,
             sseUserContextMiddleware,
             handleMcpOtherRequest,
           );
           this.app.delete(
             `${this.basePath}/:user/mcp/:group(.*)?`,
             mcpConnectionRateLimiter,
+            smartRoutingPathMiddleware,
             sseUserContextMiddleware,
             handleMcpOtherRequest,
           );

@@ -1,3 +1,6 @@
+import { normalizeBasePath } from './basePath.js';
+import { normalizeSmartRoutingGroup } from './smartRoutingPath.js';
+
 /**
  * Human-readable description of an RFC 8707 `resource` URI for the OAuth
  * consent screen. The resource tells the user which MCPHub target the client
@@ -45,7 +48,19 @@ export function parseResourceTarget(raw: string): ResourceTarget {
     return { raw, path: clean, kind: 'all' };
   }
 
-  if (clean === '/mcp/$smart') {
+  const basePath = normalizeBasePath(process.env.BASE_PATH);
+  const routePath =
+    basePath && clean.startsWith(`${basePath}/`) ? clean.slice(basePath.length) : clean;
+  const transportMatch =
+    routePath.match(/^\/mcp\/(.+)$/) ?? routePath.match(/^\/[^/]+\/mcp\/(.+)$/);
+  let group = transportMatch?.[1];
+  try {
+    if (group) group = decodeURIComponent(group);
+  } catch {
+    // Keep malformed encodings unchanged for best-effort display.
+  }
+  const normalizedGroup = normalizeSmartRoutingGroup(group);
+  if (normalizedGroup === '$smart' || normalizedGroup?.startsWith('$smart/')) {
     return { raw, path: clean, kind: 'smart' };
   }
 

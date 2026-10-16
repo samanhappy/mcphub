@@ -11,6 +11,7 @@ MCPHub reads the following environment variables at startup. The authoritative l
 | --- | --- | --- |
 | `PORT` | `3000` | HTTP server port. |
 | `BASE_PATH` | `''` | Mount-point prefix when MCPHub is served under a sub-path (e.g. `/mcphub`). |
+| `SMART_ROUTING_PATH` | `$smart` | Smart Routing path segment, e.g. `my_smart` for `/mcp/my_smart`. Use 1–64 ASCII letters, digits, hyphens or underscores. Restart required. The legacy `$smart` endpoint remains available. Server/group names and group IDs must not conflict with this value. |
 | `DEFAULT_REQUEST_TIMEOUT` | `60000` | Default request timeout (ms) for upstream MCP server requests when a server does not set `options.timeout`. |
 | `INIT_TIMEOUT` | `300000` | Initial timeout (ms) used when starting upstream MCP servers. |
 | `STARTUP_CONNECT_CONCURRENCY` | `0` | How many upstream servers may connect at once during startup. `0` (or unset) connects them all in parallel. On deployments with many `stdio` servers, a bound keeps them from competing for CPU, network and disk hard enough to exhaust `INIT_TIMEOUT`. Time spent queueing does not count against a server's timeout. |
@@ -21,6 +22,13 @@ MCPHub reads the following environment variables at startup. The authoritative l
 | `INSTALL_BASE_URL` | `http://localhost:3000` | Public installation base URL used when `systemConfig.install.baseUrl` is unset. The dashboard/API setting still takes precedence; this env var is useful for declarative Docker/Kubernetes deployments and OAuth callback URLs. |
 | `NODE_ENV` | `development` | `development` / `production` / `test`. |
 | `DEBUG` | `false` | Set to `true` to enable verbose startup logging for frontend-path discovery. |
+
+
+### Custom Smart Routing URL
+
+For example, with `PORT=6001`, `BASE_PATH=/mcp_manage` and `SMART_ROUTING_PATH=my_smart`, connect using Streamable HTTP at `http://localhost:6001/mcp_manage/mcp/my_smart`. Append `/<group>` to restrict Smart Routing to a group, or prepend `/<user>` before `/mcp` for a user-scoped route. The same alias also works under `/sse` for legacy clients.
+
+The configured segment is reserved for Smart Routing. Startup rejects existing server/group name or group ID conflicts, and configuration writes reject new conflicts. Change the segment or rename the conflicting target first. Changing the segment requires a restart and updating clients using the previous custom URL; `$smart` remains available for compatibility, including CLI calls. This setting does not change authentication or permissions.
 
 ## Authentication
 

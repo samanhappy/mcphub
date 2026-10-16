@@ -1,3 +1,4 @@
+import { getSmartRoutingNameError } from '../utils/smartRoutingPath.js';
 import { getGroupDao, getUserDao } from '../dao/index.js';
 import { validateGroupAccess } from '../utils/groupAccess.js';
 import { Request, Response } from 'express';
@@ -145,7 +146,8 @@ export const getGroup = async (req: Request, res: Response): Promise<void> => {
 export const createNewGroup = async (req: Request, res: Response): Promise<void> => {
   try {
     const { name, description, servers, visibility, sharedWithUsers } = req.body;
-    const accessError = validateGroupAccess({ visibility, sharedWithUsers });
+    const accessError =
+      getSmartRoutingNameError(name) || validateGroupAccess({ visibility, sharedWithUsers });
     if (accessError) {
       res.status(400).json({ success: false, message: accessError });
       return;
@@ -287,7 +289,8 @@ export const batchCreateGroups = async (req: Request, res: Response): Promise<vo
       const { name, description, servers, visibility, sharedWithUsers } = groupData;
 
       // Validate group configuration
-      const accessError = validateGroupAccess(groupData);
+      const accessError =
+        getSmartRoutingNameError(groupData.name) || validateGroupAccess(groupData);
       const validation = accessError
         ? { valid: false, message: accessError }
         : validateGroupConfig(groupData);
@@ -358,7 +361,8 @@ export const updateExistingGroup = async (req: Request, res: Response): Promise<
   try {
     const { id } = req.params;
     const { name, description, servers, visibility, sharedWithUsers } = req.body;
-    const accessError = validateGroupAccess({ visibility, sharedWithUsers });
+    const accessError =
+      getSmartRoutingNameError(name) || validateGroupAccess({ visibility, sharedWithUsers });
     if (accessError) {
       res.status(400).json({ success: false, message: accessError });
       return;

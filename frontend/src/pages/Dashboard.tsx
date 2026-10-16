@@ -1,3 +1,4 @@
+import { getSmartRoutingPath } from '@/utils/runtime';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -274,7 +275,7 @@ const DashboardPage: React.FC = () => {
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
           <EndpointCopy label="ALL" url={`${baseUrl}/mcp`} />
-          <EndpointCopy label="SMART" url={`${baseUrl}/mcp/$smart`} />
+          <EndpointCopy label="SMART" url={`${baseUrl}/mcp/${getSmartRoutingPath()}`} />
           {groups.slice(0, 2).map((g) => (
             <EndpointCopy key={g.id} label="GROUP" url={`${baseUrl}/mcp/${g.name}`} />
           ))}

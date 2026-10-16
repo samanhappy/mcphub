@@ -32,7 +32,7 @@ Bearer keys have explicit kinds. Legacy and operator-created keys use `kind: 'sy
 
 ## Routing surface
 
-- `/mcp/{group|server}` routes to a group, server, or `$smart`.
+- `/mcp/{group|server}` routes to a group, server, or `$smart`. `SMART_ROUTING_PATH` adds a reserved alias for `$smart`; transport middleware normalizes the alias before authentication while preserving the original OAuth resource URL.
 - `/:user/mcp/{group|server}` and `/:user/sse/{group}` are user-scoped variants.
 - `AppServer.initialize()` in `src/server.ts` is the route-registration entry point.
 - Authentication spans dashboard JWT/bcrypt, bearer keys, MCPHub's OAuth authorization server, and optional Better Auth. Inspect the current middleware and route code before changing auth behavior.

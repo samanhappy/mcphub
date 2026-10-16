@@ -1,6 +1,7 @@
 // Global runtime configuration interface
 export interface RuntimeConfig {
   basePath: string;
+  smartRoutingPath?: string;
   version: string;
   name: string;
 }

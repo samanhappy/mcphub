@@ -127,6 +127,8 @@ http://localhost:3000/mcp/$smart    # Smart routing
 http://localhost:3000/mcp/$smart/{group}  # Smart routing within group
 ```
 
+Set `SMART_ROUTING_PATH=my_smart` to use `/mcp/my_smart` (and `/mcp/my_smart/{group}`) without `$`. Restart to apply; `/mcp/$smart` remains supported. Include `BASE_PATH` before `/mcp` when configured. The custom segment must not match an existing server name, group name or group ID.
+
 > **Security note**: MCP endpoints require authentication by default to prevent accidental exposure. To allow unauthenticated MCP access, disable **Enable Bearer Authentication** in the Keys section. **Skip Authentication** only affects dashboard login. Use only in trusted environments.
 
 📖 See [API Reference](https://docs.mcphub.app/api-reference) for detailed endpoint documentation.

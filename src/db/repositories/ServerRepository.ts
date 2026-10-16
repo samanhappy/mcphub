@@ -1,3 +1,4 @@
+import { assertSmartRoutingNameAvailable } from '../../utils/smartRoutingPath.js';
 import { Repository } from 'typeorm';
 import { Server } from '../entities/Server.js';
 import { getAppDataSource } from '../connection.js';
@@ -28,6 +29,7 @@ export class ServerRepository {
    * Create a new server
    */
   async create(server: Omit<Server, 'id' | 'createdAt' | 'updatedAt'>): Promise<Server> {
+    assertSmartRoutingNameAvailable(server.name);
     const newServer = this.repository.create(server);
     return await this.repository.save(newServer);
   }
@@ -40,6 +42,8 @@ export class ServerRepository {
     if (!server) {
       return null;
     }
+    assertSmartRoutingNameAvailable(serverData.name);
+    assertSmartRoutingNameAvailable(serverData.id);
     const updated = this.repository.merge(server, serverData);
     return await this.repository.save(updated);
   }
@@ -161,6 +165,7 @@ export class ServerRepository {
     if (!server) {
       return false;
     }
+    assertSmartRoutingNameAvailable(newName);
     server.name = newName;
     await this.repository.save(server);
     return true;

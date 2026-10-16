@@ -1,3 +1,4 @@
+import { assertSmartRoutingSettingsAvailable } from './smartRoutingPath.js';
 import { syncSettingsToDatabase } from './settingsSync.js';
 import { CredentialBindingDaoImpl } from '../dao/CredentialBindingDao.js';
 import { CredentialBindingDaoDbImpl } from '../dao/CredentialBindingDaoDbImpl.js';
@@ -31,6 +32,7 @@ export async function migrateToDatabase(seedServersAndGroups = true): Promise<bo
     // Load current settings from file
     const settings = loadOriginalSettings(process.env.MCPHUB_SETTINGS_SYNC !== 'upsert');
     logger.log('Loaded settings from file');
+    if (seedServersAndGroups) assertSmartRoutingSettingsAvailable(settings);
 
     // Create repositories
     const userRepo = new UserRepository();

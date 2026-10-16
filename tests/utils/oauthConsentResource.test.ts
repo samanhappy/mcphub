@@ -57,3 +57,32 @@ describe('parseResourceTarget', () => {
     });
   });
 });
+
+it.each(['my_smart', 'mcp'])(
+  'recognizes %s and legacy smart resources with a base path, user and group',
+  (alias) => {
+    const oldPath = process.env.SMART_ROUTING_PATH;
+    const oldBase = process.env.BASE_PATH;
+    process.env.SMART_ROUTING_PATH = alias;
+    process.env.BASE_PATH = '/hub';
+    try {
+      for (const path of [
+        `/hub/mcp/${alias}`,
+        `/hub/mcp/${alias}/team`,
+        `/hub/alice/mcp/${alias}/team`,
+        '/hub/mcp/%24smart/team',
+      ]) {
+        expect(parseResourceTarget(`https://example.com${path}`)).toMatchObject({
+          kind: 'smart',
+          path,
+        });
+      }
+      expect(parseResourceTarget(`/hub/mcp/${alias}-other`).kind).not.toBe('smart');
+    } finally {
+      if (oldPath === undefined) delete process.env.SMART_ROUTING_PATH;
+      else process.env.SMART_ROUTING_PATH = oldPath;
+      if (oldBase === undefined) delete process.env.BASE_PATH;
+      else process.env.BASE_PATH = oldBase;
+    }
+  },
+);
