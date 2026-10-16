@@ -1,3 +1,4 @@
+import { getSmartRoutingNameError } from './smartRoutingPath.js';
 /**
  * Server name validation.
  *
@@ -31,6 +32,8 @@ export const validateServerName = (name: unknown): ServerNameValidationResult =>
   }
 
   const normalized = name.trim();
+  const reservedNameError = getSmartRoutingNameError(normalized);
+  if (reservedNameError) return { valid: false, message: reservedNameError };
 
   if (normalized.length > SERVER_NAME_MAX_LENGTH) {
     return {

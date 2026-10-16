@@ -1,4 +1,8 @@
 import dotenv from 'dotenv';
+import {
+  getSmartRoutingPath,
+  assertSmartRoutingSettingsAvailable,
+} from '../utils/smartRoutingPath.js';
 import fs from 'fs';
 import { McpSettings, IUser } from '../types/index.js';
 import { getConfigFilePath } from '../utils/path.js';
@@ -15,6 +19,7 @@ const defaultConfig = {
   port: process.env.PORT || 3000,
   initTimeout: process.env.INIT_TIMEOUT || 300000,
   basePath: normalizeBasePath(process.env.BASE_PATH),
+  smartRoutingPath: getSmartRoutingPath(),
   readonly: 'true' === process.env.READONLY || false,
   mcpHubName: 'mcphub',
   mcpHubVersion: getPackageVersion(),
@@ -121,6 +126,7 @@ export const saveSettings = (settings: McpSettings, user?: IUser): boolean => {
   const settingsPath = getSettingsPath();
   try {
     const mergedSettings = dataService.mergeSettings!(loadOriginalSettings(), settings, user);
+    assertSmartRoutingSettingsAvailable(mergedSettings);
     fs.writeFileSync(settingsPath, JSON.stringify(mergedSettings, null, 2), 'utf8');
 
     // Invalidate every DAO snapshot, including writes in the same mtime tick.

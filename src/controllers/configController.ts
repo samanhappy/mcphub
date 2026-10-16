@@ -37,6 +37,7 @@ export const getRuntimeConfig = (req: Request, res: Response): void => {
   try {
     const runtimeConfig = {
       basePath: config.basePath,
+      smartRoutingPath: config.smartRoutingPath,
       version: config.mcpHubVersion,
       name: config.mcpHubName,
     };

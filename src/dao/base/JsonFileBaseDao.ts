@@ -1,4 +1,5 @@
 import fs from 'fs';
+import { assertSmartRoutingSettingsAvailable } from '../../utils/smartRoutingPath.js';
 import path from 'path';
 import { McpSettings } from '../../types/index.js';
 import { getSettingsPath, clearSettingsCache, getSettingsGeneration } from '../../config/index.js';
@@ -62,6 +63,7 @@ export abstract class JsonFileBaseDao {
    */
   protected async saveSettings(settings: McpSettings): Promise<void> {
     try {
+      assertSmartRoutingSettingsAvailable(settings);
       // Ensure directory exists
       const settingsPath = getSettingsPath();
       const dir = path.dirname(settingsPath);

@@ -124,6 +124,8 @@ http://localhost:3000/mcp/$smart    # Routage intelligent
 http://localhost:3000/mcp/$smart/{group}  # Routage intelligent dans un groupe
 ```
 
+Définissez `SMART_ROUTING_PATH=my_smart` pour utiliser `/mcp/my_smart` et `/mcp/my_smart/{group}` sans `$`. Redémarrez pour appliquer ; `/mcp/$smart` reste disponible. Ajoutez `BASE_PATH` avant `/mcp` si configuré. Le segment ne doit correspondre à aucun nom de serveur, nom de groupe ou identifiant de groupe existant.
+
 > **Note de sécurité** : Les points de terminaison MCP nécessitent une authentification par défaut pour éviter toute exposition accidentelle. Pour autoriser l'accès MCP sans authentification, désactivez **Activer l'authentification Bearer** dans la section Clés. **Ignorer l'authentification** n'affecte que la connexion au tableau de bord. À utiliser uniquement dans des environnements de confiance.
 
 📖 Consultez la [Référence API](https://docs.mcphub.app/api-reference) pour la documentation détaillée des points de terminaison.

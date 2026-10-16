@@ -57,3 +57,28 @@ describe('parseResourceTarget', () => {
     });
   });
 });
+
+it('recognizes custom and legacy smart resources with a base path, user and group', () => {
+  const oldPath = process.env.SMART_ROUTING_PATH;
+  const oldBase = process.env.BASE_PATH;
+  process.env.SMART_ROUTING_PATH = 'my_smart';
+  process.env.BASE_PATH = '/hub';
+  try {
+    for (const path of [
+      '/hub/mcp/my_smart',
+      '/hub/alice/mcp/my_smart/team',
+      '/hub/mcp/%24smart/team',
+    ]) {
+      expect(parseResourceTarget(`https://example.com${path}`)).toMatchObject({
+        kind: 'smart',
+        path,
+      });
+    }
+    expect(parseResourceTarget('/hub/mcp/my_smart-other').kind).not.toBe('smart');
+  } finally {
+    if (oldPath === undefined) delete process.env.SMART_ROUTING_PATH;
+    else process.env.SMART_ROUTING_PATH = oldPath;
+    if (oldBase === undefined) delete process.env.BASE_PATH;
+    else process.env.BASE_PATH = oldBase;
+  }
+});

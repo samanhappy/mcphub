@@ -461,3 +461,30 @@ test('restores declared client credentials after runtime clearing without restor
   await syncSettingsToDatabase();
   expect(servers.get('remote')?.oauth).toEqual(config.oauth);
 });
+
+test.each(['server', 'group'])(
+  'rejects a reserved %s declaration before opening the sync transaction',
+  async (kind) => {
+    const previous = process.env.SMART_ROUTING_PATH;
+    process.env.SMART_ROUTING_PATH = 'my_smart';
+    try {
+      fs.writeFileSync(
+        settingsPath,
+        JSON.stringify(
+          kind === 'server'
+            ? {
+                mcpServers: {
+                  my_smart: { type: 'streamable-http', url: 'http://example.test/mcp' },
+                },
+              }
+            : { groups: [{ name: 'my_smart', servers: [] }] },
+        ),
+      );
+      await expect(syncSettingsToDatabase()).rejects.toThrow('SMART_ROUTING_PATH');
+      expect(transaction).not.toHaveBeenCalled();
+    } finally {
+      if (previous === undefined) delete process.env.SMART_ROUTING_PATH;
+      else process.env.SMART_ROUTING_PATH = previous;
+    }
+  },
+);

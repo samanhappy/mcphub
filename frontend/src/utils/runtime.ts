@@ -103,3 +103,5 @@ export const loadRuntimeConfig = async (): Promise<RuntimeConfig> => {
     };
   }
 };
+
+export const getSmartRoutingPath = (): string => getRuntimeConfig().smartRoutingPath || '$smart';

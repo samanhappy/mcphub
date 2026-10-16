@@ -1,3 +1,4 @@
+import { assertSmartRoutingNameAvailable } from '../utils/smartRoutingPath.js';
 import { ServerConfig } from '../types/index.js';
 import { BaseDao } from './base/BaseDao.js';
 import { JsonFileBaseDao } from './base/JsonFileBaseDao.js';
@@ -180,6 +181,7 @@ export class ServerDaoImpl extends JsonFileBaseDao implements ServerDao {
   async create(
     data: Omit<ServerConfigWithName, 'name'> & { name: string },
   ): Promise<ServerConfigWithName> {
+    assertSmartRoutingNameAvailable(data.name);
     const servers = await this.getAll();
 
     // Check if server already exists
@@ -210,6 +212,7 @@ export class ServerDaoImpl extends JsonFileBaseDao implements ServerDao {
       return null;
     }
 
+    assertSmartRoutingNameAvailable(updates.name);
     const updatedServer = this.updateEntity(servers[index], updates);
     servers[index] = updatedServer;
 
@@ -382,6 +385,7 @@ export class ServerDaoImpl extends JsonFileBaseDao implements ServerDao {
   }
 
   async rename(oldName: string, newName: string): Promise<boolean> {
+    assertSmartRoutingNameAvailable(newName);
     const servers = await this.getAll();
     const index = servers.findIndex((server) => server.name === oldName);
 

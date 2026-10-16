@@ -1,3 +1,4 @@
+import { assertSmartRoutingNameAvailable } from '../utils/smartRoutingPath.js';
 import { IGroup } from '../types/index.js';
 import { BaseDao } from './base/BaseDao.js';
 import { JsonFileBaseDao } from './base/JsonFileBaseDao.js';
@@ -89,6 +90,7 @@ export class GroupDaoImpl extends JsonFileBaseDao implements GroupDao {
   }
 
   async create(data: Omit<IGroup, 'id'>): Promise<IGroup> {
+    assertSmartRoutingNameAvailable(data.name);
     const groups = await this.getAll();
 
     // Check if group name already exists
@@ -104,6 +106,7 @@ export class GroupDaoImpl extends JsonFileBaseDao implements GroupDao {
   }
 
   async update(id: string, updates: Partial<IGroup>): Promise<IGroup | null> {
+    assertSmartRoutingNameAvailable(updates.name);
     const groups = await this.getAll();
     const index = groups.findIndex((group) => group.id === id);
 

@@ -1,3 +1,4 @@
+import { assertSmartRoutingNameAvailable } from './smartRoutingPath.js';
 import fs from 'node:fs';
 import { pbkdf2, randomBytes } from 'node:crypto';
 import { promisify, isDeepStrictEqual } from 'node:util';
@@ -127,6 +128,9 @@ export async function syncSettingsToDatabase(): Promise<void> {
   const declaration = declarationSchema.parse(
     JSON.parse(fs.readFileSync(getSettingsPath(), 'utf8')),
   );
+  for (const name of Object.keys(declaration.mcpServers ?? {}))
+    assertSmartRoutingNameAvailable(name);
+  for (const group of declaration.groups ?? []) assertSmartRoutingNameAvailable(group.name);
   const names = declaration.groups?.map((group) => group.name) ?? [];
   if (new Set(names).size !== names.length) throw new Error('Duplicate group names in settings');
 

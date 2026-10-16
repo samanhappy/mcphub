@@ -18,6 +18,7 @@ MCPHub 使用环境变量进行配置。本指南涵盖了所有可用的变量�
 | `INIT_TIMEOUT` | `300000` | 应用程序的初始超时时间 |
 | `STARTUP_CONNECT_CONCURRENCY` | `0` | 启动时最多允许多少个上游服务器同时连接。`0`（或不设置）表示全部并行连接。当部署了大量 `stdio` 服务器时，设置上限可以避免它们争抢 CPU、网络和磁盘，进而耗尽 `INIT_TIMEOUT`。排队等待的时间不计入服务器自身的超时预算。 |
 | `BASE_PATH` | `''` | 应用程序的基本路径 |
+| `SMART_ROUTING_PATH` | `$smart` | 智能路由路径段，例如 `my_smart` 对应 `/mcp/my_smart`。允许 1–64 位英文字母、数字、连字符和下划线；修改后重启生效。旧 `$smart` 地址继续可用，服务器名、分组名及分组 ID 不得与配置值冲突。 |
 | `READONLY` | `false` | 设置为 `true` 以启用只读模式 |
 | `MCPHUB_SETTING_PATH` | | MCPHub 设置文件的路径 |
 | `INSTALL_BASE_URL` | `http://localhost:3000` | 当 `systemConfig.install.baseUrl` 未设置时使用的公网安装地址。Dashboard/API 中显式保存的 Base URL 优先于该环境变量，适合 Docker/Kubernetes 等声明式部署和 OAuth 回调地址。 |
@@ -215,3 +216,10 @@ MCPHub 启动时只读取工作目录下的 `.env` 一个文件，不会读取 `
 4. **使用特定于环境的文件**
 5. **在启动时验证所有环境变量**
 6. **为容器部署使用 Docker 密钥**
+
+
+### 自定义智能路由地址
+
+例如配置 `PORT=6001`、`BASE_PATH=/mcp_manage` 和 `SMART_ROUTING_PATH=my_smart` 后，Streamable HTTP 连接地址为 `http://localhost:6001/mcp_manage/mcp/my_smart`。追加 `/<group>` 可限定到分组；在 `/mcp` 前加 `/<user>` 可使用用户范围路由。旧版客户端使用的 `/sse` 同样支持该别名。
+
+配置的路径段将保留给智能路由。启动时若存在同名服务器、分组或分组 ID，将明确报错；后续配置写入也拒绝新增冲突。请先修改路径段或重命名冲突目标。修改路径段后需要重启，并更新使用旧自定义地址的客户端；`$smart` 始终保留兼容，CLI 也继续使用该入口。此配置不改变鉴权和权限范围。

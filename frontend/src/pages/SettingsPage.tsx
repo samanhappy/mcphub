@@ -1,3 +1,4 @@
+import { getSmartRoutingPath } from '@/utils/runtime';
 import React, { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -2286,7 +2287,7 @@ const SettingsPage: React.FC = () => {
                     </div>
                     <EndpointCopy
                       label="SMART"
-                      url={`${(installConfig.baseUrl || '').replace(/\/+$/, '')}/mcp/$smart`}
+                      url={`${(installConfig.baseUrl || '').replace(/\/+$/, '')}/mcp/${getSmartRoutingPath()}`}
                     />
                   </div>
                   <div style={{ background: 'var(--hub-line)', height: 36 }} />

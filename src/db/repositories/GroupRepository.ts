@@ -1,3 +1,4 @@
+import { assertSmartRoutingNameAvailable } from '../../utils/smartRoutingPath.js';
 import { Repository } from 'typeorm';
 import { Group } from '../entities/Group.js';
 import { getAppDataSource } from '../connection.js';
@@ -35,6 +36,7 @@ export class GroupRepository {
    * Create a new group
    */
   async create(group: Omit<Group, 'id' | 'createdAt' | 'updatedAt'>): Promise<Group> {
+    assertSmartRoutingNameAvailable(group.name);
     const newGroup = this.repository.create(group);
     return await this.repository.save(newGroup);
   }
@@ -47,6 +49,8 @@ export class GroupRepository {
     if (!group) {
       return null;
     }
+    assertSmartRoutingNameAvailable(groupData.name);
+    assertSmartRoutingNameAvailable(groupData.id);
     const updated = this.repository.merge(group, groupData);
     return await this.repository.save(updated);
   }
