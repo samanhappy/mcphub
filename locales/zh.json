@@ -109,6 +109,8 @@
     "passwordStrengthHint": "密码必须至少 8 个字符，且包含字母、数字和特殊字符"
   },
   "server": {
+    "localExecutionRequiresAdmin": "本地命令执行需要管理员权限。",
+    "httpOAuthRequiresAdmin": "允许 HTTP OAuth 令牌端点需要管理员权限。",
     "startOnDemand": "按需启动",
     "startOnDemandDescription": "跳过启动时连接，仅在收到工具调用时才启动此服务器。进程在空闲超时后自动关闭，下次调用时再重新启动。可减少不常用服务器的常驻内存占用。",
     "idleTimeoutMs": "空闲关闭超时（毫秒）",

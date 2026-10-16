@@ -109,6 +109,8 @@
     "passwordStrengthHint": "Le mot de passe doit contenir au moins 8 caractères et inclure des lettres, des chiffres et des caractères spéciaux"
   },
   "server": {
+    "localExecutionRequiresAdmin": "L’exécution de commandes locales nécessite un administrateur.",
+    "httpOAuthRequiresAdmin": "Autoriser les points de terminaison de jetons OAuth en HTTP nécessite un administrateur.",
     "startOnDemand": "Démarrage à la demande",
     "startOnDemandDescription": "Ignore la connexion au démarrage et lance ce serveur uniquement lorsqu'un appel d'outil se produit. Le processus est arrêté automatiquement après le délai d'inactivité, puis redémarré au prochain appel. Réduit l'utilisation de la mémoire pour les serveurs rarement utilisés.",
     "idleTimeoutMs": "Délai d'arrêt en inactivité (ms)",

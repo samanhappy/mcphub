@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../contexts/AuthContext';
+import { getServerConfigPermissionError } from '../utils/serverPermissions.js';
 import { X } from 'lucide-react';
 import { Server, EnvVar, ServerFormData, OpenApiToolStats } from '@/types';
 import { apiGet, apiPost } from '../utils/fetchInterceptor';
@@ -581,6 +582,12 @@ const ServerForm = ({
         headerVars,
       });
 
+      const permissionError = getServerConfigPermissionError(payload.config, auth.user?.isAdmin);
+      if (permissionError) {
+        setError(t(permissionError));
+        return;
+      }
+
       onSubmit(payload);
     } catch (err) {
       setError(`Error: ${err instanceof Error ? err.message : String(err)}`);
@@ -657,6 +664,14 @@ const ServerForm = ({
             {t('server.sectionConnection', 'Connection')}
           </h3>
 
+          {auth.user?.isAdmin !== true && (
+            <p
+              id="local-execution-permission"
+              className="text-sm text-amber-700 dark:text-amber-300 mb-3"
+            >
+              {t('server.localExecutionRequiresAdmin')}
+            </p>
+          )}
           <div className="mb-4">
             <label className="block text-sm font-medium mb-1.5 text-[var(--hub-ink-2)]">
               {t('server.type')}
@@ -668,6 +683,8 @@ const ServerForm = ({
                   id="command"
                   name="serverType"
                   value="command"
+                  disabled={auth.user?.isAdmin !== true}
+                  aria-describedby={auth.user?.isAdmin ? undefined : 'local-execution-permission'}
                   checked={serverType === 'stdio'}
                   onChange={() => updateServerType('stdio')}
                   className="mr-1"
