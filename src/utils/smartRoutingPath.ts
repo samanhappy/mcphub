@@ -13,7 +13,9 @@ export const getSmartRoutingPath = (): string => {
 
 export const getSmartRoutingNameError = (name?: string): string | undefined => {
   const path = getSmartRoutingPath();
-  return path !== '$smart' && name === path
+  return path !== '$smart' &&
+    typeof name === 'string' &&
+    (name === path || name.startsWith(`${path}/`))
     ? `Name "${name}" is reserved by SMART_ROUTING_PATH`
     : undefined;
 };

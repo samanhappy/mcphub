@@ -38,16 +38,22 @@ it('normalizes only a complete alias segment and retains the legacy path', () =>
     expect(normalizeSmartRoutingGroup(input)).toBe(expected);
 });
 
-it('rejects collisions in server names, group names and group IDs', () => {
-  process.env.SMART_ROUTING_PATH = 'my_smart';
-  for (const settings of [
-    { mcpServers: { my_smart: {} } },
-    { mcpServers: {}, groups: [{ id: 'team', name: 'my_smart', servers: [] }] },
-    { mcpServers: {}, groups: [{ id: 'my_smart', name: 'team', servers: [] }] },
-  ])
-    expect(() => assertSmartRoutingSettingsAvailable(settings)).toThrow('reserved');
-  expect(() => assertSmartRoutingSettingsAvailable({ mcpServers: { smart: {} } })).not.toThrow();
-});
+it.each(['my_smart', 'my_smart/', 'my_smart/team', 'my_smart/team/nested'])(
+  'rejects reserved name %s in server names, group names and group IDs',
+  (name) => {
+    process.env.SMART_ROUTING_PATH = 'my_smart';
+    for (const settings of [
+      { mcpServers: { [name]: {} } },
+      { mcpServers: {}, groups: [{ id: 'team', name, servers: [] }] },
+      { mcpServers: {}, groups: [{ id: name, name: 'team', servers: [] }] },
+    ])
+      expect(() => assertSmartRoutingSettingsAvailable(settings)).toThrow('reserved');
+    for (const allowed of ['smart', 'my_smart-other', 'team/my_smart'])
+      expect(() =>
+        assertSmartRoutingSettingsAvailable({ mcpServers: { [allowed]: {} } }),
+      ).not.toThrow();
+  },
+);
 
 it('reports reserved server names through the existing name validator', () => {
   process.env.SMART_ROUTING_PATH = 'my_smart';

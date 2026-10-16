@@ -1,3 +1,4 @@
+import { mcpConnectionRateLimiter } from '../../src/utils/rateLimit.js';
 import {
   createNewGroup,
   updateExistingGroup,
@@ -81,6 +82,7 @@ beforeAll(() => {
   app.post('/api/groups/batch', batchCreateGroups);
   app.get(
     '/hub/mcp/:group(.*)',
+    mcpConnectionRateLimiter,
     smartRoutingPathMiddleware,
     sseUserContextMiddleware,
     handleMcpOtherRequest,
@@ -130,17 +132,17 @@ it('rejects JSON creates, renames and settings imports without changing persiste
   expect(await servers.findById('existing')).not.toBeNull();
 });
 
-it('returns actionable errors for reserved group creates, renames and batch imports', async () => {
-  const created = await request(app).post('/api/groups').send({ name: 'my_smart' }).expect(400);
-  expect(created.body.message).toContain('SMART_ROUTING_PATH');
-  const renamed = await request(app)
-    .put('/api/groups/team-id')
-    .send({ name: 'my_smart' })
-    .expect(400);
-  expect(renamed.body.message).toContain('SMART_ROUTING_PATH');
-  const batch = await request(app)
-    .post('/api/groups/batch')
-    .send({ groups: [{ name: 'my_smart' }] })
-    .expect(400);
-  expect(JSON.stringify(batch.body)).toContain('SMART_ROUTING_PATH');
-});
+it.each(['my_smart', 'my_smart/team'])(
+  'returns actionable errors for reserved group %s creates, renames and batch imports',
+  async (name) => {
+    const created = await request(app).post('/api/groups').send({ name }).expect(400);
+    expect(created.body.message).toContain('SMART_ROUTING_PATH');
+    const renamed = await request(app).put('/api/groups/team-id').send({ name }).expect(400);
+    expect(renamed.body.message).toContain('SMART_ROUTING_PATH');
+    const batch = await request(app)
+      .post('/api/groups/batch')
+      .send({ groups: [{ name }] })
+      .expect(400);
+    expect(JSON.stringify(batch.body)).toContain('SMART_ROUTING_PATH');
+  },
+);
