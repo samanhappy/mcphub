@@ -2,7 +2,10 @@ import { maybeCompressToolResult } from '../../src/services/toolResultCompressio
 import { setCachedSystemConfig } from '../../src/utils/systemConfigCache.js';
 
 const largeLines = (prefix: string, count: number): string =>
-  Array.from({ length: count }, (_value, index) => `${prefix} line ${index} with repeated payload data`).join('\n');
+  Array.from(
+    { length: count },
+    (_value, index) => `${prefix} line ${index} with repeated payload data`,
+  ).join('\n');
 
 describe('toolResultCompressionService', () => {
   afterEach(() => {
@@ -87,10 +90,7 @@ describe('toolResultCompressionService', () => {
 
     const imageBlock = { type: 'image', data: 'abc123', mimeType: 'image/png' };
     const result = await maybeCompressToolResult({
-      content: [
-        { type: 'text', text: largeLines('mixed', 250) },
-        imageBlock,
-      ],
+      content: [{ type: 'text', text: largeLines('mixed', 250) }, imageBlock],
     });
 
     expect(result.content?.[0].text).toContain('strategy=text');
@@ -190,6 +190,54 @@ describe('toolResultCompressionService', () => {
     const text = result.content?.[0].text as string;
     expect(text).toContain('[... 54 more matches in src/app.ts]');
     expect(text).not.toContain('more matches in src/app.ts-');
+  });
+
+  it('keeps a context line whose whitespace-free body holds a file:line:col text under its own file', async () => {
+    setCachedSystemConfig({
+      toolResultCompression: {
+        enabled: true,
+        minTokens: 1,
+        maxOutputTokens: 120,
+        strategy: 'search',
+      },
+    });
+
+    // Both readings pass the extension and no-whitespace checks; the earlier separator is the file's.
+    const searchOutput = Array.from(
+      { length: 60 },
+      (_value, index) => `src/app.ts-${index + 1}-console.log("lib/util.ts:14:5");`,
+    ).join('\n');
+
+    const result = await maybeCompressToolResult({
+      content: [{ type: 'text', text: searchOutput }],
+    });
+
+    const text = result.content?.[0].text as string;
+    expect(text).toContain('[... 54 more matches in src/app.ts]');
+    expect(text).not.toContain('more matches in src/app.ts-');
+  });
+
+  it.each([
+    ['docs/release-1.2-3-notes.md', 'docs/release-1.2-3-notes.md:7:Release notes'],
+    ['dist/app.min-2-x.js', 'dist/app.min-2-x.js:7:var a=1;'],
+  ])('keeps the file %s whole on a match line', async (file, line) => {
+    setCachedSystemConfig({
+      toolResultCompression: {
+        enabled: true,
+        minTokens: 1,
+        maxOutputTokens: 120,
+        strategy: 'search',
+      },
+    });
+
+    const searchOutput = Array.from({ length: 60 }, () => line).join('\n');
+
+    const result = await maybeCompressToolResult({
+      content: [{ type: 'text', text: searchOutput }],
+    });
+
+    const text = result.content?.[0].text as string;
+    expect(text).toContain(`[... 54 more matches in ${file}]`);
   });
 
   it('keeps a context line with a stack trace in its body grouped under its own file', async () => {

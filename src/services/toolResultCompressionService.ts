@@ -280,14 +280,19 @@ function parseSearchLine(line: string): SearchLine | null {
   }
   // Match lines are `file:line:body`; context lines are `file-line-body`. A file name can contain
   // `-<digits>-` and a body can contain `:<digits>:` (a time such as 12:34:56, or `lib/util.ts:14:5`
-  // in a stack trace), so neither form can simply win. Take the candidate whose file part ends in an
-  // extension (`.ts`, `.md`) and has no whitespace; when neither does, as with `Makefile`, keep the
-  // match form first. A context line of an extensionless file whose body contains `:<digits>:` stays
-  // ambiguous.
+  // in a stack trace), so neither form can simply win. Take the candidate whose file part is made of
+  // path characters only and ends in an extension (`.ts`, `.md`); the colon form is tried first. A
+  // quote, a space or a parenthesis marks body text, so `src/app.ts-12-console.log("lib/util.ts:14:5")`
+  // reads as file `src/app.ts`. The trade-off: a route directory such as `app/(group)/page.tsx` is not
+  // a path by this test and falls back to the colon form. When neither candidate qualifies, as with
+  // `Makefile`, the colon form is kept first. A context line of an extensionless file whose body
+  // contains `:<digits>:` stays ambiguous.
   const colon = /^(.*?):(\d+):(.*)$/.exec(line);
   const hyphen = /^(.*?)-(\d+)-(.*)$/.exec(line);
   const match =
-    [colon, hyphen].find((m) => m && !/\s/.test(m[1]) && /\.[A-Za-z0-9]{1,10}$/.test(m[1])) ??
+    [colon, hyphen].find(
+      (m) => m && /^[\w./@+~,=-]+$/.test(m[1]) && /\.[A-Za-z0-9]{1,10}$/.test(m[1]),
+    ) ??
     colon ??
     hyphen;
   if (!match) return null;
