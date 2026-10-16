@@ -51,7 +51,8 @@ export function parseResourceTarget(raw: string): ResourceTarget {
   const basePath = normalizeBasePath(process.env.BASE_PATH);
   const routePath =
     basePath && clean.startsWith(`${basePath}/`) ? clean.slice(basePath.length) : clean;
-  const transportMatch = routePath.match(/^\/(?:[^/]+\/)?mcp\/(.+)$/);
+  const transportMatch =
+    routePath.match(/^\/mcp\/(.+)$/) ?? routePath.match(/^\/[^/]+\/mcp\/(.+)$/);
   let group = transportMatch?.[1];
   try {
     if (group) group = decodeURIComponent(group);
