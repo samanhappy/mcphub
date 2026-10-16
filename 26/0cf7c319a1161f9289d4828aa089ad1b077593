@@ -1,0 +1,45 @@
+locales/en.json
+  s_89afbf8ab5d62f::t_023d81507bc7d4 112-113
+locales/es.json
+  s_89afbf8ab5d62f::t_023d81507bc7d4 112-113
+tests/frontend/serverPermissions.test.ts
+  s_89afbf8ab5d62f::t_6b79d5dcaa08df 1-3,5,45-55,57-77,79-80
+  s_89afbf8ab5d62f::t_9fffe4c8a46009 4,56,78,81
+frontend/src/components/MarketServerDetail.tsx
+  s_89afbf8ab5d62f::t_023d81507bc7d4 1-2,27-29,31,55-56,89,198-200
+  s_89afbf8ab5d62f::t_8ea559989d8615 30,197,201-202
+frontend/src/components/ServerForm.tsx
+  s_89afbf8ab5d62f::t_5708dba3c6853d 667-674,686-687
+  s_89afbf8ab5d62f::t_023d81507bc7d4 4,585-589
+  s_89afbf8ab5d62f::t_fafb37ca393284 590
+locales/tr.json
+  s_89afbf8ab5d62f::t_023d81507bc7d4 112-113
+frontend/src/components/RegistryServerDetail.tsx
+  s_89afbf8ab5d62f::t_023d81507bc7d4 1-2,13,33-35,37,108,213,217,231-233
+  s_89afbf8ab5d62f::t_5bea25cc72e93f 36,230,234-235
+locales/fr.json
+  s_89afbf8ab5d62f::t_023d81507bc7d4 112-113
+frontend/src/utils/serverPermissions.ts
+  s_89afbf8ab5d62f::t_023d81507bc7d4 1-2,23-41
+  s_89afbf8ab5d62f::t_afbdab1a8b2154 42
+tests/frontend/marketInstallPermissions.test.ts
+  s_89afbf8ab5d62f::t_c144c97101bc82 1-84
+locales/zh.json
+  s_89afbf8ab5d62f::t_023d81507bc7d4 112-113
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "260cf7c319a1161f9289d4828aa089ad1b077593",
+  "prompts": {},
+  "sessions": {
+    "s_89afbf8ab5d62f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a144fa-2e70-7f32-809e-c201649639bd",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
