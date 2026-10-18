@@ -208,7 +208,6 @@ jest.mock('../../src/services/hostedControlPlaneClient.js', () => ({
 // ---------------------------------------------------------------------------
 
 import * as mcpService from '../../src/services/mcpService.js';
-import { logger } from '../../src/utils/logger.js';
 
 // ---------------------------------------------------------------------------
 // Test data
@@ -290,7 +289,7 @@ describe('hidden-server tool/prompt errors (issue #1103)', () => {
   };
 
   it.each([false, true])('logs error context and target tool (wrapped: %s)', async (wrapped) => {
-    const errorLog = jest.spyOn(logger, 'error').mockImplementation(() => {});
+    const errorLog = jest.spyOn(console, 'error').mockImplementation(() => {});
     const toolName = 'MissingServer::missingTool';
     try {
       const result = await mcpService.handleCallToolRequest(
@@ -312,8 +311,8 @@ describe('hidden-server tool/prompt errors (issue #1103)', () => {
         expect.objectContaining({
           group: '$smart/operations',
           username: 'alice',
-          keyId: 'key-1',
-          keyName: 'monitoring-agent',
+          callerId: 'key-1',
+          callerLabel: 'monitoring-agent',
           toolName,
           reason: 'server-or-name-not-found',
         }),

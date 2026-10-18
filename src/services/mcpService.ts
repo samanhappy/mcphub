@@ -4553,8 +4553,8 @@ const handleCallToolRequestImpl = async (request: any, extra: any) => {
     logger.error('Error handling CallToolRequest', {
       group,
       username,
-      keyId,
-      keyName,
+      callerId: keyId,
+      callerLabel: keyName,
       toolName: activityToolName,
       ...summarizeErrorForLogging(error),
       ...(unavailable ? { reason: unavailable.reason } : {}),
