@@ -59,6 +59,7 @@ import {
   Tool,
   Resource,
   ProxychainsConfig,
+  IGroup,
   IGroupServerConfig,
 } from '../types/index.js';
 import { expandEnvVars, replaceEnvVars, getNameSeparator } from '../config/index.js';
@@ -371,12 +372,29 @@ type McpServerDescriptor = {
   appendGroupSuffix?: boolean;
 };
 
+// Blank parts are dropped; nothing left means no instructions at all, not "".
+const joinInstructions = (...parts: (string | undefined)[]): string | undefined =>
+  parts
+    .map((part) => part?.trim())
+    .filter(Boolean)
+    .join('\n\n') || undefined;
+
+// Instructions of the group a route names ($smart/<group> or <group>), for a
+// caller allowed on that route. Bare $smart and server-name routes have no group.
+const getGroupInstructions = async (group?: string): Promise<string | undefined> => {
+  const lookupGroup = getGroupLookupName(group);
+  const foundGroup = lookupGroup ? await findRouteGroup(lookupGroup) : null;
+  return foundGroup && canAccessGroupRoute(foundGroup) ? foundGroup.instructions : undefined;
+};
+
 const getMcpServerDescriptor = async (group?: string): Promise<McpServerDescriptor> => {
+  const groupInstructions = await getGroupInstructions(group);
   if (!group || isSmartRoutingGroup(group)) {
     return {
       name: config.mcpHubName,
       version: config.mcpHubVersion,
       group,
+      instructions: joinInstructions(groupInstructions),
     };
   }
 
@@ -386,7 +404,7 @@ const getMcpServerDescriptor = async (group?: string): Promise<McpServerDescript
     return {
       name: serverInfo.name,
       version: serverInfo.version || config.mcpHubVersion,
-      instructions: serverInfo.instructions,
+      instructions: joinInstructions(groupInstructions, serverInfo.instructions),
       appendGroupSuffix: false,
     };
   }
@@ -395,6 +413,7 @@ const getMcpServerDescriptor = async (group?: string): Promise<McpServerDescript
     name: config.mcpHubName,
     version: config.mcpHubVersion,
     group,
+    instructions: joinInstructions(groupInstructions),
     appendGroupSuffix: true,
   };
 };
@@ -5471,6 +5490,15 @@ type FilteredGroupServersResult = {
   serverConfigsByName: Map<string, IGroupServerConfig>;
 };
 
+// The group a route segment names: by name, or by id when it is a UUID.
+const findRouteGroup = async (group: string): Promise<IGroup | null> => {
+  const groupDao = getGroupDao();
+  const foundGroup = await groupDao.findByName(group);
+  if (foundGroup) return foundGroup;
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  return uuidRegex.test(group) ? groupDao.findById(group) : null;
+};
+
 export const getFilteredServerInfosForGroup = async (
   group: string | undefined,
   options?: { requireClient?: boolean },
@@ -5479,14 +5507,7 @@ export const getFilteredServerInfosForGroup = async (
   let matchedGroup = false;
   let serverConfigs: IGroupServerConfig[] = [];
   if (group) {
-    const groupDao = getGroupDao();
-    let foundGroup = await groupDao.findByName(group);
-    if (!foundGroup) {
-      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-      if (uuidRegex.test(group)) {
-        foundGroup = await groupDao.findById(group);
-      }
-    }
+    const foundGroup = await findRouteGroup(group);
     if (foundGroup) {
       matchedGroup = true;
       if (!canAccessGroupRoute(foundGroup)) {

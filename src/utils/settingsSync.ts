@@ -83,6 +83,7 @@ const declarationSchema = z.object({
       z.object({
         name,
         description: z.string().optional(),
+        instructions: z.string().optional(),
         owner: z.string().optional(),
         visibility: z.enum(['private', 'group', 'public']).optional(),
         sharedWithUsers: z.array(z.string()).optional(),
@@ -225,6 +226,7 @@ export async function syncSettingsToDatabase(): Promise<void> {
         name: group.name,
         servers: group.servers,
         description: group.description ?? null,
+        instructions: group.instructions ?? null,
         owner: group.owner ?? null,
         visibility: group.visibility ?? null,
         sharedWithUsers: group.sharedWithUsers ?? null,

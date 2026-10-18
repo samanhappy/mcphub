@@ -146,7 +146,7 @@ export const createGroup = async (
   description?: string,
   servers: string[] | IGroupServerConfig[] = [],
   owner?: string,
-  access: Pick<IGroup, 'visibility' | 'sharedWithUsers'> = {},
+  access: Pick<IGroup, 'visibility' | 'sharedWithUsers' | 'instructions'> = {},
 ): Promise<IGroup | null> => {
   try {
     const groupDao = getGroupDao();
@@ -168,6 +168,7 @@ export const createGroup = async (
       id: randomUUID(),
       name,
       description,
+      ...(access.instructions ? { instructions: access.instructions } : {}),
       servers: validServers,
       owner: owner || 'admin',
       visibility: access.visibility ?? 'private',

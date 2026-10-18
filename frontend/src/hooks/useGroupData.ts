@@ -42,7 +42,7 @@ export const useGroupData = () => {
     name: string,
     description?: string,
     servers: string[] | IGroupServerConfig[] = [],
-    access: Pick<Group, 'visibility' | 'sharedWithUsers'> = {},
+    access: Pick<Group, 'visibility' | 'sharedWithUsers' | 'instructions'> = {},
   ) => {
     try {
       const result: ApiResponse<Group> = await apiPost('/groups', {
@@ -70,7 +70,10 @@ export const useGroupData = () => {
   const updateGroup = async (
     id: string,
     data: Partial<
-      Pick<Group, 'name' | 'description' | 'servers' | 'visibility' | 'sharedWithUsers'>
+      Pick<
+        Group,
+        'name' | 'description' | 'instructions' | 'servers' | 'visibility' | 'sharedWithUsers'
+      >
     >,
   ) => {
     try {
