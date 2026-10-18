@@ -240,6 +240,60 @@ describe('toolResultCompressionService', () => {
     expect(text).toContain(`[... 54 more matches in ${file}]`);
   });
 
+  it.each([
+    ['app/(group)/page.tsx', 'app/(group)/page.tsx-${n}-console.log("lib/util.ts:14:5");'],
+    ['src/中文.ts', 'src/中文.ts-${n}-const time = "12:34:56";'],
+    ['src/a.ts', 'src/a.ts-${n}-foo(bar.ts:14:5'],
+  ])('keeps a context line of %s grouped under its own file', async (file, template) => {
+    setCachedSystemConfig({
+      toolResultCompression: {
+        enabled: true,
+        minTokens: 1,
+        maxOutputTokens: 120,
+        strategy: 'search',
+      },
+    });
+
+    const searchOutput = Array.from({ length: 60 }, (_value, index) =>
+      template.replace('${n}', String(index + 1)),
+    ).join('\n');
+
+    const result = await maybeCompressToolResult({
+      content: [{ type: 'text', text: searchOutput }],
+    });
+
+    const text = result.content?.[0].text as string;
+    expect(text).toContain(`[... 54 more matches in ${file}]`);
+  });
+
+  it('leaves a line unparsed when both forms match and neither file looks like a path', async () => {
+    setCachedSystemConfig({
+      toolResultCompression: {
+        enabled: true,
+        minTokens: 1,
+        maxOutputTokens: 120,
+        strategy: 'search',
+      },
+    });
+
+    // Unbalanced parenthesis on the colon side and no extension on the hyphen side: no reliable reading.
+    const ambiguous = 'Makefile-12-run(lib/util.ts:14:5';
+    // Before, the 60 lines were grouped under an invented file `Makefile-12-run(lib/util.ts`.
+    const searchOutput = [
+      ...Array.from({ length: 60 }, () => ambiguous),
+      ...Array.from({ length: 10 }, (_value, index) => `src/app.ts:${index + 1}:match`),
+    ].join('\n');
+
+    const result = await maybeCompressToolResult({
+      content: [{ type: 'text', text: searchOutput }],
+    });
+
+    const text = result.content?.[0].text as string;
+    expect(text).toContain(ambiguous);
+    expect(text).not.toContain('more matches in Makefile-12-run(lib');
+    expect(text).not.toContain('Makefile:12:');
+  });
+
   it('keeps a context line with a stack trace in its body grouped under its own file', async () => {
     setCachedSystemConfig({
       toolResultCompression: {
