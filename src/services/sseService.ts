@@ -27,7 +27,11 @@ import { RequestContextService } from './requestContextService.js';
 import { IUser, BearerKey, BearerKeyKind } from '../types/index.js';
 import { resolveOAuthUserFromToken } from '../utils/oauthBearer.js';
 import { safeCompare } from '../utils/safeCompare.js';
-import { getBearerAuthHeaderValue, getBearerTokenFromHeaders } from '../utils/bearerAuth.js';
+import {
+  getBearerAuthHeaderValue,
+  getBearerTokenFromHeaders,
+  parseBearerAuthorization,
+} from '../utils/bearerAuth.js';
 import {
   HostedAuthUnavailableError,
   isHostedApiKey,
@@ -396,21 +400,16 @@ const validateBearerAuth = async (req: Request): Promise<BearerAuthResult> => {
   const enabledKeys = await bearerKeyDao.findEnabled();
 
   const authHeader = getBearerAuthHeaderValue(req.headers, systemConfig);
-  const hasBearerHeader = !!authHeader && authHeader.startsWith('Bearer ');
+  const hasBearerHeader = parseBearerAuthorization(authHeader) !== null;
   const standardAuthHeader = getBearerAuthHeaderValue(req.headers, null);
   const hostedAuthHeader =
-    standardAuthHeader && standardAuthHeader.startsWith('Bearer ')
-      ? standardAuthHeader
-      : authHeader;
+    parseBearerAuthorization(standardAuthHeader) !== null ? standardAuthHeader : authHeader;
   const presentedToken = hasBearerHeader
     ? getBearerTokenFromHeaders(req.headers, systemConfig)
     : null;
 
   if (isHostedModeEnabled()) {
-    const hostedToken =
-      hostedAuthHeader && hostedAuthHeader.startsWith('Bearer ')
-        ? hostedAuthHeader.substring(7).trim()
-        : null;
+    const hostedToken = parseBearerAuthorization(hostedAuthHeader);
 
     if (!hostedToken) {
       return { valid: false, reason: 'missing' };
