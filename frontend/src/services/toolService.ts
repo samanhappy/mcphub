@@ -123,6 +123,39 @@ export const updateToolDescription = async (
 };
 
 /**
+ * Set the top-level input parameters of a tool that models do not see
+ */
+export const updateToolHiddenParams = async (
+  serverName: string,
+  toolName: string,
+  hiddenParams: string[],
+): Promise<{ success: boolean; error?: string; hiddenParams?: string[] }> => {
+  try {
+    const response = await apiPut<any>(
+      `/servers/${encodeURIComponent(serverName)}/tools/${encodeURIComponent(toolName)}/hidden-params`,
+      { hiddenParams },
+      {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('mcphub_token')}`,
+        },
+      },
+    );
+
+    return {
+      success: response.success,
+      error: response.success ? undefined : response.message,
+      hiddenParams: response.data?.hiddenParams,
+    };
+  } catch (error) {
+    console.error('Error updating tool hidden parameters', { serverName, toolName, error });
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error occurred',
+    };
+  }
+};
+
+/**
  * Reset a tool's description override for a specific server
  */
 export const resetToolDescription = async (

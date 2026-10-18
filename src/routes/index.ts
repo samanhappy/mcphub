@@ -22,6 +22,7 @@ import {
   toggleTool,
   updateToolDescription,
   resetToolDescription,
+  updateToolHiddenParams,
   togglePrompt,
   updatePromptDescription,
   resetPromptDescription,
@@ -296,6 +297,10 @@ export const initRoutes = async (app: express.Application): Promise<void> => {
   authenticatedRouter.delete(
     '/servers/:serverName/tools/:toolName/description',
     resetToolDescription,
+  );
+  authenticatedRouter.put(
+    '/servers/:serverName/tools/:toolName/hidden-params',
+    updateToolHiddenParams,
   );
   authenticatedRouter.post('/servers/:serverName/prompts/:promptName/toggle', togglePrompt);
   authenticatedRouter.put(

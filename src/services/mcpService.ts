@@ -24,6 +24,12 @@ import {
   isToolCallGuardEnabled,
   ToolCallBlockedError,
 } from '../middlewares/toolCallGuard.js';
+import {
+  applyHiddenParams,
+  findToolConfig,
+  removeHiddenArguments,
+  type ToolConfig,
+} from '../utils/toolConfig.js';
 import type { RequestPrincipal } from './authorizationService.js';
 import { PrincipalRuntimeService } from './principalRuntimeService.js';
 import { UserContextService } from './userContextService.js';
@@ -722,10 +728,9 @@ const resolveDescriptionOverride = (
   return hasDescriptionOverride(config) ? config?.description || '' : defaultDescription || '';
 };
 
-const buildToolWithDescriptionMetadata = (
-  tool: Tool,
-  toolConfig?: { enabled: boolean; description?: string },
-): Tool => {
+// The dashboard/API projection keeps the full input schema (the dashboard
+// lists every parameter to choose what to hide) and reports the configured list.
+const buildToolWithDescriptionMetadata = (tool: Tool, toolConfig?: ToolConfig): Tool => {
   const upstreamDescription = tool.description || '';
 
   return {
@@ -733,14 +738,16 @@ const buildToolWithDescriptionMetadata = (
     description: resolveDescriptionOverride(upstreamDescription, toolConfig),
     defaultDescription: upstreamDescription,
     hasDescriptionOverride: hasDescriptionOverride(toolConfig),
+    ...(toolConfig?.hiddenParams?.length ? { hiddenParams: toolConfig.hiddenParams } : {}),
     enabled: toolConfig?.enabled !== false,
   };
 };
 
-// Apply any per-tool description override before the tool text is embedded for
-// Smart Routing search. Deliberately narrower than buildToolWithDescriptionMetadata:
-// only `description` (plus the hasDescriptionOverride marker used by the
-// tool-set hash) is touched, so serverInfo.tools (built by
+// Apply any per-tool description override and hidden parameters before the tool
+// text is embedded for Smart Routing search. Deliberately narrower than
+// buildToolWithDescriptionMetadata: only `description` (plus the
+// hasDescriptionOverride marker used by the tool-set hash) and `inputSchema`
+// are touched, so serverInfo.tools (built by
 // normalizeToolForCache/updateServerToolsCache) still never carries `enabled` --
 // preserving the existing invariant that execution gating reads the persisted
 // config directly, not this projection. Without this step, overrides only
@@ -755,15 +762,15 @@ const applyDescriptionOverridesForEmbedding = async (
     return tools;
   }
   return tools.map((tool) => {
-    const bareToolName = normalizeToolNameForServer(serverName, tool.name);
-    const toolConfig = serverConfig.tools?.[tool.name] ?? serverConfig.tools?.[bareToolName];
+    const toolConfig = findToolConfig(serverConfig.tools, serverName, tool.name);
+    const visibleTool = applyHiddenParams(tool, toolConfig);
     return hasDescriptionOverride(toolConfig)
       ? {
-          ...tool,
+          ...visibleTool,
           description: resolveDescriptionOverride(tool.description, toolConfig),
           hasDescriptionOverride: true,
         }
-      : tool;
+      : visibleTool;
   });
 };
 
@@ -1813,6 +1820,15 @@ type IsolatedClientContext = {
   transport: any;
 };
 
+// Call arguments without the tool's hidden parameters; `toolName` is the bare upstream name.
+const withoutHiddenArguments = <T>(serverInfo: ServerInfo, toolName: string, args: T): T => {
+  const tool = serverInfo.tools?.find(
+    (candidate) => normalizeToolNameForServer(serverInfo.name, candidate.name) === toolName,
+  );
+  const toolConfig = findToolConfig(serverInfo.config?.tools, serverInfo.name, toolName);
+  return removeHiddenArguments(args, tool?.inputSchema, toolConfig);
+};
+
 // Helper function to handle client.callTool with reconnection logic
 const callToolWithReconnect = async (
   serverInfo: ServerInfo,
@@ -1829,6 +1845,12 @@ const callToolWithReconnect = async (
   if (!client) {
     throw new Error(`Client not found for server: ${serverInfo.name}`);
   }
+
+  // Both MCP call paths pass through here, so hidden parameters are dropped once.
+  toolParams = {
+    ...toolParams,
+    arguments: withoutHiddenArguments(serverInfo, toolParams.name, toolParams.arguments),
+  };
 
   if (hasPersonalAuthentication(serverInfo.config)) {
     return client.callTool(toolParams, options || {});
@@ -2677,12 +2699,12 @@ export const getServersInfo = async (
         // as the dashboard sends, or bare, as a direct API call may) with no
         // normalization — check both so the dashboard reflects a disable set
         // either way instead of always showing enabled:true for one of them.
-        const toolsWithEnabled = tools.map((tool) => {
-          const bareToolName = normalizeToolNameForServer(name, tool.name);
-          const toolConfig =
-            serverConfig?.tools?.[tool.name] ?? serverConfig?.tools?.[bareToolName];
-          return buildToolWithDescriptionMetadata(tool, toolConfig);
-        });
+        const toolsWithEnabled = tools.map((tool) =>
+          buildToolWithDescriptionMetadata(
+            tool,
+            findToolConfig(serverConfig?.tools, name, tool.name),
+          ),
+        );
 
         const promptsWithEnabled = prompts.map((prompt) => {
           const promptConfig = serverConfig?.prompts?.[prompt.name];
@@ -3911,12 +3933,12 @@ const listGroupTools = async (
       // If this is a group request, apply group-level tool filtering
       tools = await filterToolsByGroup(group, serverInfo.name, tools, groupServerConfig);
 
-      // Apply custom descriptions from server configuration
+      // Apply custom descriptions and hidden parameters from server configuration
       const serverConfig = await getServerDao().findById(serverInfo.name);
       const toolsWithCustomDescriptions = tools.map((tool) => {
-        const toolConfig = serverConfig?.tools?.[tool.name];
+        const toolConfig = findToolConfig(serverConfig?.tools, serverInfo.name, tool.name);
         return {
-          ...tool,
+          ...applyHiddenParams(tool, toolConfig),
           description: resolveDescriptionOverride(tool.description, toolConfig),
         };
       });
@@ -4273,7 +4295,7 @@ const handleCallToolRequestImpl = async (request: any, extra: any) => {
         await reserveHostedIfNeeded(targetServerInfo.name, cleanToolName);
         const result = await openApiClient.callTool(
           cleanToolName,
-          finalArgs,
+          withoutHiddenArguments(targetServerInfo, cleanToolName, finalArgs),
           passthroughHeaders,
           false,
           stateId,
@@ -4499,7 +4521,7 @@ const handleCallToolRequestImpl = async (request: any, extra: any) => {
       await reserveHostedIfNeeded(serverInfo.name, cleanToolName);
       const result = await openApiClient.callTool(
         cleanToolName,
-        finalArgs,
+        withoutHiddenArguments(serverInfo, cleanToolName, finalArgs),
         passthroughHeaders,
         false,
         stateId,

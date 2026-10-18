@@ -81,7 +81,7 @@ A server entry has the shape `"<server-name>": ServerConfig`. The relevant field
 | `enableKeepAlive` | boolean | no | For `sse` / `streamable-http`: enable periodic health checks and automatic reconnect attempts. |
 | `keepAliveInterval` | number | no | Health check and reconnect interval in milliseconds. Defaults to `60000`. |
 | `perSessionClient` | boolean | no | Create a dedicated upstream client per downstream MCP session instead of sharing one connection across all sessions. Use for stateful servers like Playwright. See [Per-session client isolation](#per-session-client-isolation-stateful-servers). |
-| `tools`, `prompts`, `resources` | object | no | Per-item overrides: `{ "<name>": { "enabled": true, "description": "..." } }`. Managed via the dashboard or the per-resource API endpoints. |
+| `tools`, `prompts`, `resources` | object | no | Per-item overrides: `{ "<name>": { "enabled": true, "description": "..." } }`, keyed by the bare upstream name or the server-prefixed name. A tool entry can also carry `hiddenParams`: top-level input parameters removed from the schema models receive and dropped from their calls (required ones are never hidden). `enabled` is required in every entry. Managed via the dashboard or the per-resource API endpoints. |
 
 ### `type: "stdio"` (default)
 

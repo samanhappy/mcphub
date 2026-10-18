@@ -473,6 +473,13 @@ test('rejects non-string group instructions', async () => {
   expect(groups.size).toBe(0);
 });
 
+test('keeps hiddenParams in per-tool server config', async () => {
+  const tools = { scrape: { enabled: true, hiddenParams: ['profile'] } };
+  write({ mcpServers: { remote: { ...remote, tools } } });
+  await syncSettingsToDatabase();
+  expect(servers.get('remote')?.tools).toEqual(tools);
+});
+
 test('reports created, updated and unchanged entries and skips unchanged saves', async () => {
   const log = jest.spyOn(logger, 'log');
   write({ mcpServers: { remote }, groups: [{ name: 'team', servers: ['remote'] }] });

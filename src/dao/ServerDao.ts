@@ -75,7 +75,7 @@ export interface ServerDao extends BaseDao<ServerConfigWithName, string> {
    */
   updateTools(
     name: string,
-    tools: Record<string, { enabled: boolean; description?: string }>,
+    tools: Record<string, { enabled: boolean; description?: string; hiddenParams?: string[] }>,
   ): Promise<boolean>;
 
   /**
@@ -362,7 +362,7 @@ export class ServerDaoImpl extends JsonFileBaseDao implements ServerDao {
 
   async updateTools(
     name: string,
-    tools: Record<string, { enabled: boolean; description?: string }>,
+    tools: Record<string, { enabled: boolean; description?: string; hiddenParams?: string[] }>,
   ): Promise<boolean> {
     const result = await this.update(name, { tools });
     return result !== null;

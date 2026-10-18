@@ -63,7 +63,7 @@ export class Server {
   keepAliveInterval?: number;
 
   @Column({ type: 'simple-json', nullable: true })
-  tools?: Record<string, { enabled: boolean; description?: string }>;
+  tools?: Record<string, { enabled: boolean; description?: string; hiddenParams?: string[] }>;
 
   @Column({ type: 'simple-json', nullable: true })
   prompts?: Record<string, { enabled: boolean; description?: string }>;
