@@ -4,6 +4,7 @@ import LanguageDetector from 'i18next-browser-languagedetector';
 
 // Import shared translations from root locales directory
 import enTranslation from '../../locales/en.json';
+import viTranslation from '../../locales/vi.json';//hdkp81														
 import zhTranslation from '../../locales/zh.json';
 import frTranslation from '../../locales/fr.json';
 import trTranslation from '../../locales/tr.json';
@@ -20,6 +21,9 @@ i18n
       en: {
         translation: enTranslation,
       },
+	  vi: {//hdkp81
+        translation: viTranslation,
+      },			  
       zh: {
         translation: zhTranslation,
       },
