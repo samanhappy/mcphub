@@ -131,6 +131,12 @@ const buildOAuthConfig = (
     nextOAuth.redirectUri = oauth.redirectUri;
   }
 
+  // The default shared identity label alone does not configure OAuth. Keep
+  // the empty object so editing can still explicitly clear previous settings.
+  if (nextOAuth.identityMode === 'shared' && Object.keys(nextOAuth).length === 1) {
+    delete nextOAuth.identityMode;
+  }
+
   return nextOAuth;
 };
 

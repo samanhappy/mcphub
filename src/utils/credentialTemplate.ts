@@ -70,7 +70,14 @@ export const validateCredentialTemplate = (config: ServerConfig): CredentialSlot
   if (slots.some((slot) => slot.target === 'args' && !referencedArgs.has(slot.name))) {
     throw new CredentialBindingError('Every args slot must be referenced in arguments');
   }
-  if (slots.length && config.oauth && Object.keys(config.oauth).length > 0) {
+  // Older dashboard versions persisted the default identity label even when
+  // OAuth was never configured. Only that bare shared label is harmless.
+  const hasOAuthConfig =
+    config.oauth &&
+    Object.keys(config.oauth).some(
+      (key) => key !== 'identityMode' || config.oauth?.identityMode !== 'shared',
+    );
+  if (slots.length && hasOAuthConfig) {
     throw new CredentialBindingError(
       'Per-user credential slots cannot be combined with shared OAuth',
     );
