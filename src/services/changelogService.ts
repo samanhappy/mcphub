@@ -143,7 +143,8 @@ function timeoutMs(): number {
 }
 
 function cacheTtlMs(): number {
-  const value = Number(process.env.MCPHUB_UPDATE_CHECK_CACHE_TTL_SECONDS);
+  const raw = process.env.MCPHUB_UPDATE_CHECK_CACHE_TTL_SECONDS;
+  const value = raw?.trim() ? Number(raw) : NaN;
   const seconds =
     Number.isFinite(value) && value >= 0 ? Math.floor(value) : DEFAULT_CACHE_TTL_SECONDS;
   return seconds * 1000;
