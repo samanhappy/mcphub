@@ -54,6 +54,7 @@ describe.each(['sse', 'streamable-http'] as const)('%s dashboard credential slot
     const legacy = { ...buildPayload(type), oauth: { identityMode: 'shared' as const } };
     expect(validateCredentialTemplate(legacy)).toEqual(slots);
     expect(normalizeServerConfigForPersistence(legacy).credentialTemplate).toEqual(slots);
+    expect(normalizeServerConfigForPersistence(legacy).oauth).toBeUndefined();
   });
 
   test('preserves personal OAuth mode even without client configuration', () => {

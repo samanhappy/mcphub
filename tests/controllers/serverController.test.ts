@@ -2037,6 +2037,30 @@ describe('serverController - updateServer', () => {
         mockRequest.body.config = { ...credentialServer };
       });
 
+      it.each(['sse', 'streamable-http'])(
+        'preserves bindings when renaming a legacy %s server with default-only OAuth',
+        async (type) => {
+          mockServerDao.findById.mockResolvedValue({
+            name: 'test-server',
+            ...credentialServer,
+            type,
+            oauth: { identityMode: 'shared' },
+          });
+          // The dashboard drops the default shared label when saving (#1333).
+          mockRequest.body.config = { ...credentialServer, type, oauth: {} };
+
+          await updateServer(mockRequest as Request, mockResponse as Response);
+
+          expect(mockCopyCredentialBindings).toHaveBeenCalledWith('test-server', 'renamed-server');
+          expect(mockServerDao.rename).toHaveBeenCalledWith('test-server', 'renamed-server');
+          expect(mockCopyCredentialBindings.mock.invocationCallOrder[0]).toBeLessThan(
+            mockServerDao.rename.mock.invocationCallOrder[0],
+          );
+          expect(mockDeleteCredentialBindings).toHaveBeenCalledTimes(1);
+          expect(mockDeleteCredentialBindings).toHaveBeenCalledWith({ serverName: 'test-server' });
+        },
+      );
+
       it('copies the bindings before the rename and removes the originals after it', async () => {
         // Database mode reads an unset column back as null
         mockServerDao.findById.mockResolvedValue({

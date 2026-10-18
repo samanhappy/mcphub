@@ -217,6 +217,12 @@ export const normalizeOAuth = (
     normalized.pendingAuthorization = oauth.pendingAuthorization;
   }
 
+  // Match dashboard saves and empty OAuth configs so legacy default labels do
+  // not appear to change the connection or discard bindings during a rename.
+  if (normalized.identityMode === 'shared' && Object.keys(normalized).length === 1) {
+    return undefined;
+  }
+
   return Object.keys(normalized).length > 0 ? normalized : undefined;
 };
 
