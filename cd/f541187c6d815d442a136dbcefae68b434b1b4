@@ -1,0 +1,22 @@
+tests/services/mcpService-hidden-server.test.ts
+  s_2b574b63e9c2ce::t_cc5c6649613a5b 211,292-325
+  s_2b574b63e9c2ce::t_30abebcab71f47 326
+src/services/mcpService.ts
+  s_2b574b63e9c2ce::t_bc4b7a94a0be74 4552,4554-4558
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "cdf541187c6d815d442a136dbcefae68b434b1b4",
+  "prompts": {},
+  "sessions": {
+    "s_2b574b63e9c2ce": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a14f40-012d-7ce2-975b-82dac86de9f1",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
