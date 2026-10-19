@@ -4135,6 +4135,8 @@ const handleCallToolRequestImpl = async (request: any, extra: any) => {
         );
       }
 
+      setMetricsServer(targetServerInfo.name);
+
       // If the target is an on-demand server that is not yet running, wake it up now.
       // Concurrent callers are serialised via ensureServerReady's singleton promise.
       releaseOnDemandToolCall = beginOnDemandToolCall(targetServerInfo);
@@ -4214,7 +4216,6 @@ const handleCallToolRequestImpl = async (request: any, extra: any) => {
         }
 
         await reserveHostedIfNeeded(targetServerInfo.name, cleanToolName);
-        setMetricsServer(targetServerInfo.name);
         const result = await openApiClient.callTool(
           cleanToolName,
           finalArgs,
@@ -4303,7 +4304,6 @@ const handleCallToolRequestImpl = async (request: any, extra: any) => {
 
       const cleanToolName = normalizeToolNameForServer(targetServerInfo.name, targetToolName);
       await reserveHostedIfNeeded(targetServerInfo.name, cleanToolName);
-      setMetricsServer(targetServerInfo.name);
       const result = await callToolWithReconnect(
         targetServerInfo,
         {
@@ -4378,6 +4378,7 @@ const handleCallToolRequestImpl = async (request: any, extra: any) => {
       );
     }
     assertToolAvailableForRoute(tool, appsRouteContext);
+    setMetricsServer(serverInfo.name);
 
     // Wake the on-demand server before invoking the tool. It may be asleep with
     // a cached tool list (visible above) but no live client. Mirrors the
@@ -4440,7 +4441,6 @@ const handleCallToolRequestImpl = async (request: any, extra: any) => {
       }
 
       await reserveHostedIfNeeded(serverInfo.name, cleanToolName);
-      setMetricsServer(serverInfo.name);
       const result = await openApiClient.callTool(
         cleanToolName,
         finalArgs,
@@ -4512,7 +4512,6 @@ const handleCallToolRequestImpl = async (request: any, extra: any) => {
 
     const cleanToolName = normalizeToolNameForServer(serverInfo.name, routeToolName);
     await reserveHostedIfNeeded(serverInfo.name, cleanToolName);
-    setMetricsServer(serverInfo.name);
     const result = await callToolWithReconnect(
       serverInfo,
       { ...request.params, name: cleanToolName },
