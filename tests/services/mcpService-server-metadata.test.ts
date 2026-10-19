@@ -31,11 +31,16 @@ jest.mock('../../src/services/mcpOAuthProvider.js', () => ({
 }));
 
 const mockGetServerConfigsInGroup = jest.fn();
+const mockFindGroupByName = jest.fn();
+const mockIsSmartRoutingGroup = jest.fn((_group?: string) => false);
 
 jest.mock('../../src/services/groupService.js', () => ({
   getServersInGroup: jest.fn(),
   getServerConfigInGroup: jest.fn(),
   getServerConfigsInGroup: mockGetServerConfigsInGroup,
+  normalizeGroupServers: jest.fn((servers: any[]) =>
+    servers.map((server) => (typeof server === 'string' ? { name: server } : server)),
+  ),
 }));
 
 jest.mock('../../src/services/sseService.js', () => ({
@@ -47,9 +52,11 @@ jest.mock('../../src/services/vectorSearchService.js', () => ({
   saveToolsAsVectorEmbeddings: jest.fn().mockResolvedValue(undefined),
 }));
 
+const mockFilterData = jest.fn((data: any) => data);
+
 jest.mock('../../src/services/services.js', () => ({
   getDataService: jest.fn(() => ({
-    filterData: (data: any) => data,
+    filterData: mockFilterData,
   })),
 }));
 
@@ -58,7 +65,7 @@ jest.mock('../../src/services/smartRoutingService.js', () => ({
   getSmartRoutingTools: jest.fn(),
   handleSearchToolsRequest: jest.fn(),
   handleDescribeToolRequest: jest.fn(),
-  isSmartRoutingGroup: jest.fn(() => false),
+  isSmartRoutingGroup: mockIsSmartRoutingGroup,
 }));
 
 jest.mock('../../src/services/activityLoggingService.js', () => ({
@@ -88,7 +95,7 @@ jest.mock('../../src/dao/index.js', () => ({
     findById: jest.fn(),
   })),
   getGroupDao: jest.fn(() => ({
-    findByName: jest.fn(async () => null),
+    findByName: mockFindGroupByName,
     findById: jest.fn(async () => null),
   })),
   getSystemConfigDao: jest.fn(() => ({
@@ -124,6 +131,9 @@ import {
 describe('mcpService initialize metadata', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockFindGroupByName.mockResolvedValue(null);
+    mockFilterData.mockImplementation((data: any) => data);
+    mockIsSmartRoutingGroup.mockImplementation(() => false);
     cleanupAllServers();
   });
 
@@ -185,6 +195,103 @@ describe('mcpService initialize metadata', () => {
       version: '1.0.0',
     });
     expect((server as any)._instructions).toBeUndefined();
+  });
+
+  describe('group instructions', () => {
+    const twoServers = [
+      { name: 'weather-server', type: 'stdio', command: 'node', args: ['w.js'], enabled: true },
+      { name: 'calendar-server', type: 'stdio', command: 'node', args: ['c.js'], enabled: true },
+    ];
+    const groupWith = (instructions: string, servers = ['weather-server', 'calendar-server']) => ({
+      id: 'group-a',
+      name: 'team-a',
+      owner: 'admin',
+      instructions,
+      servers,
+    });
+
+    it('sends the group instructions for a multi-server group', async () => {
+      mockFindAll.mockResolvedValue(twoServers);
+      mockGetServerConfigsInGroup.mockResolvedValue([
+        { name: 'weather-server', tools: 'all', prompts: 'all', resources: 'all' },
+        { name: 'calendar-server', tools: 'all', prompts: 'all', resources: 'all' },
+      ]);
+      mockFindGroupByName.mockResolvedValue(groupWith('Prefer the calendar for dates.'));
+      await initUpstreamServers();
+
+      const server = await getMcpServer('session-1', 'team-a');
+
+      expect(mockFindGroupByName).toHaveBeenCalledWith('team-a');
+      expect((server as any)._instructions).toBe('Prefer the calendar for dates.');
+    });
+
+    it('puts the group instructions before the upstream ones for a single-server group', async () => {
+      mockFindAll.mockResolvedValue([twoServers[0]]);
+      mockGetServerConfigsInGroup.mockResolvedValue([
+        { name: 'weather-server', tools: 'all', prompts: 'all', resources: 'all' },
+      ]);
+      mockFindGroupByName.mockResolvedValue(
+        groupWith('  Ask before calling paid APIs.\n', ['weather-server']),
+      );
+      await initUpstreamServers();
+
+      const server = await getMcpServer('session-1', 'team-a');
+
+      expect((server as any)._serverInfo).toEqual({ name: 'weather-server', version: '1.2.3' });
+      expect((server as any)._instructions).toBe(
+        'Ask before calling paid APIs.\n\nUse the weather tools for forecast lookups.',
+      );
+    });
+
+    it('sends the group instructions on $smart/<group>', async () => {
+      mockIsSmartRoutingGroup.mockImplementation((group?: string) => !!group?.startsWith('$smart'));
+      mockFindGroupByName.mockResolvedValue(groupWith('Search before you call.'));
+
+      const server = await getMcpServer('session-1', '$smart/team-a');
+
+      expect(mockFindGroupByName).toHaveBeenCalledWith('team-a');
+      expect((server as any)._serverInfo).toEqual({
+        name: 'test-hub_$smart/team-a_group',
+        version: '1.0.0',
+      });
+      expect((server as any)._instructions).toBe('Search before you call.');
+    });
+
+    it('sends no instructions on bare $smart', async () => {
+      mockIsSmartRoutingGroup.mockImplementation((group?: string) => !!group?.startsWith('$smart'));
+
+      const server = await getMcpServer('session-1', '$smart');
+
+      expect(mockFindGroupByName).not.toHaveBeenCalled();
+      expect((server as any)._instructions).toBeUndefined();
+    });
+
+    it('sends no group instructions to a caller who cannot access the group', async () => {
+      mockIsSmartRoutingGroup.mockImplementation((group?: string) => !!group?.startsWith('$smart'));
+      mockFindGroupByName.mockResolvedValue({
+        ...groupWith('Internal notes.'),
+        visibility: 'private',
+      });
+      mockFilterData.mockImplementation(() => []);
+
+      const server = await getMcpServer('session-1', '$smart/team-a');
+
+      expect((server as any)._instructions).toBeUndefined();
+    });
+
+    it('treats blank group instructions as none', async () => {
+      mockFindAll.mockResolvedValue(twoServers);
+      mockGetServerConfigsInGroup.mockResolvedValue([
+        { name: 'weather-server', tools: 'all', prompts: 'all', resources: 'all' },
+        { name: 'calendar-server', tools: 'all', prompts: 'all', resources: 'all' },
+      ]);
+      mockFindGroupByName.mockResolvedValue(groupWith('   '));
+      await initUpstreamServers();
+
+      const server = await getMcpServer('session-1', 'team-a');
+
+      expect((server as any)._instructions).toBeUndefined();
+    });
   });
 
   it('uses visibility-aware pagination and returns owner metadata for non-admin server lists', async () => {

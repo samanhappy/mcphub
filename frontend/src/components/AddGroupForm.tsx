@@ -26,6 +26,7 @@ const AddGroupForm = ({ onAdd, onCancel }: AddGroupFormProps) => {
     sharedWithUsers: [],
     name: '',
     description: '',
+    instructions: '',
     servers: [] as IGroupServerConfig[],
   });
 
@@ -57,6 +58,7 @@ const AddGroupForm = ({ onAdd, onCancel }: AddGroupFormProps) => {
       const result = await createGroup(formData.name, formData.description, formData.servers, {
         visibility: formData.visibility,
         sharedWithUsers: formData.sharedWithUsers,
+        instructions: formData.instructions,
       });
       if (!result || !result.success) {
         setError(result?.message || t('groups.createError'));
@@ -101,6 +103,25 @@ const AddGroupForm = ({ onAdd, onCancel }: AddGroupFormProps) => {
                   placeholder={t('groups.namePlaceholder')}
                   required
                 />
+              </div>
+
+              <div>
+                <label
+                  className="block text-gray-700 text-sm font-bold mb-2"
+                  htmlFor="instructions"
+                >
+                  {t('groups.instructions')}
+                </label>
+                <textarea
+                  id="instructions"
+                  name="instructions"
+                  value={formData.instructions}
+                  onChange={handleChange}
+                  rows={3}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder={t('groups.instructionsPlaceholder')}
+                />
+                <p className="text-xs text-gray-500 mt-1">{t('groups.instructionsHelp')}</p>
               </div>
 
               <div>

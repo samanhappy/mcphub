@@ -2,7 +2,10 @@ import { maybeCompressToolResult } from '../../src/services/toolResultCompressio
 import { setCachedSystemConfig } from '../../src/utils/systemConfigCache.js';
 
 const largeLines = (prefix: string, count: number): string =>
-  Array.from({ length: count }, (_value, index) => `${prefix} line ${index} with repeated payload data`).join('\n');
+  Array.from(
+    { length: count },
+    (_value, index) => `${prefix} line ${index} with repeated payload data`,
+  ).join('\n');
 
 describe('toolResultCompressionService', () => {
   afterEach(() => {
@@ -87,10 +90,7 @@ describe('toolResultCompressionService', () => {
 
     const imageBlock = { type: 'image', data: 'abc123', mimeType: 'image/png' };
     const result = await maybeCompressToolResult({
-      content: [
-        { type: 'text', text: largeLines('mixed', 250) },
-        imageBlock,
-      ],
+      content: [{ type: 'text', text: largeLines('mixed', 250) }, imageBlock],
     });
 
     expect(result.content?.[0].text).toContain('strategy=text');
@@ -141,6 +141,204 @@ describe('toolResultCompressionService', () => {
     });
 
     expect(result.content?.[0].text).toContain('strategy=search');
+  });
+
+  it('keeps file names that contain -<digits>- intact when compressing search output', async () => {
+    setCachedSystemConfig({
+      toolResultCompression: {
+        enabled: true,
+        minTokens: 1,
+        maxOutputTokens: 120,
+        strategy: 'search',
+      },
+    });
+
+    const searchOutput = Array.from(
+      { length: 60 },
+      (_value, index) => `docs/step-1-intro.md:${index + 1}:const value${index} = ${index};`,
+    ).join('\n');
+
+    const result = await maybeCompressToolResult({
+      content: [{ type: 'text', text: searchOutput }],
+    });
+
+    const text = result.content?.[0].text as string;
+    expect(text).toContain('docs/step-1-intro.md:1:const value0 = 0;');
+    expect(text).toContain('[... 54 more matches in docs/step-1-intro.md]');
+  });
+
+  it('keeps a context line whose body contains :<digits>: grouped under its own file', async () => {
+    setCachedSystemConfig({
+      toolResultCompression: {
+        enabled: true,
+        minTokens: 1,
+        maxOutputTokens: 120,
+        strategy: 'search',
+      },
+    });
+
+    // Context lines are `file-line-body`; a time such as 12:34:56 in the body must not be taken as the line number.
+    const searchOutput = Array.from(
+      { length: 60 },
+      (_value, index) => `src/app.ts-${index + 1}-const time${index} = "12:34:56";`,
+    ).join('\n');
+
+    const result = await maybeCompressToolResult({
+      content: [{ type: 'text', text: searchOutput }],
+    });
+
+    const text = result.content?.[0].text as string;
+    expect(text).toContain('[... 54 more matches in src/app.ts]');
+    expect(text).not.toContain('more matches in src/app.ts-');
+  });
+
+  it('keeps a context line whose whitespace-free body holds a file:line:col text under its own file', async () => {
+    setCachedSystemConfig({
+      toolResultCompression: {
+        enabled: true,
+        minTokens: 1,
+        maxOutputTokens: 120,
+        strategy: 'search',
+      },
+    });
+
+    // Both readings pass the extension and no-whitespace checks; the earlier separator is the file's.
+    const searchOutput = Array.from(
+      { length: 60 },
+      (_value, index) => `src/app.ts-${index + 1}-console.log("lib/util.ts:14:5");`,
+    ).join('\n');
+
+    const result = await maybeCompressToolResult({
+      content: [{ type: 'text', text: searchOutput }],
+    });
+
+    const text = result.content?.[0].text as string;
+    expect(text).toContain('[... 54 more matches in src/app.ts]');
+    expect(text).not.toContain('more matches in src/app.ts-');
+  });
+
+  it.each([
+    ['docs/release-1.2-3-notes.md', 'docs/release-1.2-3-notes.md:7:Release notes'],
+    ['dist/app.min-2-x.js', 'dist/app.min-2-x.js:7:var a=1;'],
+  ])('keeps the file %s whole on a match line', async (file, line) => {
+    setCachedSystemConfig({
+      toolResultCompression: {
+        enabled: true,
+        minTokens: 1,
+        maxOutputTokens: 120,
+        strategy: 'search',
+      },
+    });
+
+    const searchOutput = Array.from({ length: 60 }, () => line).join('\n');
+
+    const result = await maybeCompressToolResult({
+      content: [{ type: 'text', text: searchOutput }],
+    });
+
+    const text = result.content?.[0].text as string;
+    expect(text).toContain(`[... 54 more matches in ${file}]`);
+  });
+
+  it.each([
+    ['app/(group)/page.tsx', 'app/(group)/page.tsx-${n}-console.log("lib/util.ts:14:5");'],
+    ['src/中文.ts', 'src/中文.ts-${n}-const time = "12:34:56";'],
+    ['src/a.ts', 'src/a.ts-${n}-foo(bar.ts:14:5'],
+  ])('keeps a context line of %s grouped under its own file', async (file, template) => {
+    setCachedSystemConfig({
+      toolResultCompression: {
+        enabled: true,
+        minTokens: 1,
+        maxOutputTokens: 120,
+        strategy: 'search',
+      },
+    });
+
+    const searchOutput = Array.from({ length: 60 }, (_value, index) =>
+      template.replace('${n}', String(index + 1)),
+    ).join('\n');
+
+    const result = await maybeCompressToolResult({
+      content: [{ type: 'text', text: searchOutput }],
+    });
+
+    const text = result.content?.[0].text as string;
+    expect(text).toContain(`[... 54 more matches in ${file}]`);
+  });
+
+  it('leaves a line unparsed when both forms match and neither file looks like a path', async () => {
+    setCachedSystemConfig({
+      toolResultCompression: {
+        enabled: true,
+        minTokens: 1,
+        maxOutputTokens: 120,
+        strategy: 'search',
+      },
+    });
+
+    // Unbalanced parenthesis on the colon side and no extension on the hyphen side: no reliable reading.
+    const ambiguous = 'Makefile-12-run(lib/util.ts:14:5';
+    // Before, the 60 lines were grouped under an invented file `Makefile-12-run(lib/util.ts`.
+    const searchOutput = [
+      ...Array.from({ length: 60 }, () => ambiguous),
+      ...Array.from({ length: 10 }, (_value, index) => `src/app.ts:${index + 1}:match`),
+    ].join('\n');
+
+    const result = await maybeCompressToolResult({
+      content: [{ type: 'text', text: searchOutput }],
+    });
+
+    const text = result.content?.[0].text as string;
+    expect(text).toContain(ambiguous);
+    expect(text).not.toContain('more matches in Makefile-12-run(lib');
+    expect(text).not.toContain('Makefile:12:');
+  });
+
+  it('keeps a context line with a stack trace in its body grouped under its own file', async () => {
+    setCachedSystemConfig({
+      toolResultCompression: {
+        enabled: true,
+        minTokens: 1,
+        maxOutputTokens: 120,
+        strategy: 'search',
+      },
+    });
+
+    // The body ends in `lib/util.ts:14:5)`: the `:` form would take everything before it as the file name.
+    const searchOutput = Array.from(
+      { length: 60 },
+      (_value, index) => `src/app.ts-${index + 1}-  at handler (lib/util.ts:14:5)`,
+    ).join('\n');
+
+    const result = await maybeCompressToolResult({
+      content: [{ type: 'text', text: searchOutput }],
+    });
+
+    const text = result.content?.[0].text as string;
+    expect(text).toContain('[... 54 more matches in src/app.ts]');
+  });
+
+  it('still groups the matches of a file whose name contains a space', async () => {
+    setCachedSystemConfig({
+      toolResultCompression: {
+        enabled: true,
+        minTokens: 1,
+        maxOutputTokens: 120,
+        strategy: 'search',
+      },
+    });
+
+    const searchOutput = Array.from(
+      { length: 60 },
+      (_value, index) => `docs/my notes.md:${index + 1}:const value${index} = ${index};`,
+    ).join('\n');
+
+    const result = await maybeCompressToolResult({
+      content: [{ type: 'text', text: searchOutput }],
+    });
+
+    const text = result.content?.[0].text as string;
+    expect(text).toContain('[... 54 more matches in docs/my notes.md]');
   });
 
   it('does not misclassify timestamped logs as search output', async () => {

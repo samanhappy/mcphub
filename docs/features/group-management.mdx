@@ -295,6 +295,33 @@ curl -X POST http://localhost:3000/mcp/web-tools \
 
 Response will only include tools from `fetch` and `playwright` servers.
 
+### Group instructions
+
+MCP clients receive an optional `instructions` string from the `initialize`
+response, and most of them add it to the model's system prompt. It is the place
+to tell the model when to use a connection, for example to prefer the group's
+fetch tool over a built-in one, or which tool to try when another fails.
+
+Set it with the group's `instructions` field (dashboard, `POST`/`PUT
+/api/groups`, or the group entry in `mcp_settings.json`). It is sent on:
+
+- `/mcp/{group}`: for a group with several servers, the group's text alone.
+  For a single-server group, the group's text followed by the server's own
+  upstream instructions (a single-server group already forwarded those).
+- `/mcp/$smart/{group}`: the group's text.
+
+Bare `/mcp/$smart`, the global route and server-name routes have no group, so
+they send no group instructions. Clients read instructions once per session:
+reconnect after changing them.
+
+```json
+{
+  "name": "web",
+  "instructions": "For web pages use fetch first. If it fails (403, blocked, empty or JavaScript-only page), retry the same URL with firecrawl_scrape.",
+  "servers": ["fetch", "firecrawl"]
+}
+```
+
 ## Dynamic Group Management
 
 ### Adding Servers to Groups

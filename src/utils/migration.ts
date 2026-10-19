@@ -136,6 +136,7 @@ export async function migrateToDatabase(seedServersAndGroups = true): Promise<bo
           await groupRepo.create({
             name: group.name,
             description: group.description,
+            instructions: group.instructions,
             servers: Array.isArray(group.servers) ? group.servers : [],
             owner: group.owner,
             visibility: group.visibility,

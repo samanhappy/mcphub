@@ -458,6 +458,21 @@ test('omitted ownership is cleared on adoption; explicitly declared ownership is
   expect(groups.get('team')?.owner).toBe('alice');
 });
 
+test('syncs group instructions and clears them when the key is removed', async () => {
+  write({ mcpServers: { remote }, groups: [{ name: 'team', instructions: 'Use fetch first.' }] });
+  await syncSettingsToDatabase();
+  expect(groups.get('team')?.instructions).toBe('Use fetch first.');
+  write({ mcpServers: { remote }, groups: [{ name: 'team' }] });
+  await syncSettingsToDatabase();
+  expect(groups.get('team')?.instructions).toBeNull();
+});
+
+test('rejects non-string group instructions', async () => {
+  write({ mcpServers: { remote }, groups: [{ name: 'team', instructions: 42 }] });
+  await expect(syncSettingsToDatabase()).rejects.toThrow();
+  expect(groups.size).toBe(0);
+});
+
 test('reports created, updated and unchanged entries and skips unchanged saves', async () => {
   const log = jest.spyOn(logger, 'log');
   write({ mcpServers: { remote }, groups: [{ name: 'team', servers: ['remote'] }] });

@@ -27,6 +27,7 @@ const EditGroupForm = ({ group, onEdit, onCancel }: EditGroupFormProps) => {
     sharedWithUsers: group.sharedWithUsers || [],
     name: group.name,
     description: group.description || '',
+    instructions: group.instructions || '',
     servers: group.servers || [],
   });
 
@@ -60,6 +61,7 @@ const EditGroupForm = ({ group, onEdit, onCancel }: EditGroupFormProps) => {
         sharedWithUsers: formData.sharedWithUsers,
         name: formData.name,
         description: formData.description,
+        instructions: formData.instructions,
         servers: formData.servers,
       });
 
@@ -106,6 +108,25 @@ const EditGroupForm = ({ group, onEdit, onCancel }: EditGroupFormProps) => {
                   placeholder={t('groups.namePlaceholder')}
                   required
                 />
+              </div>
+
+              <div>
+                <label
+                  className="block text-gray-700 text-sm font-bold mb-2"
+                  htmlFor="instructions"
+                >
+                  {t('groups.instructions')}
+                </label>
+                <textarea
+                  id="instructions"
+                  name="instructions"
+                  value={formData.instructions}
+                  onChange={handleChange}
+                  rows={3}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder={t('groups.instructionsPlaceholder')}
+                />
+                <p className="text-xs text-gray-500 mt-1">{t('groups.instructionsHelp')}</p>
               </div>
 
               <div>
