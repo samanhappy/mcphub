@@ -96,6 +96,10 @@ export class Server {
   @Column({ type: 'varchar', length: 128, nullable: true })
   settingsSyncHash?: string;
 
+  // Internal sync ownership; retained when configuration is edited through the dashboard.
+  @Column({ type: 'boolean', default: false })
+  settingsSyncManaged?: boolean;
+
   @CreateDateColumn({ name: 'created_at', type: 'timestamp' })
   createdAt: Date;
 

@@ -45,6 +45,10 @@ export class Group {
   @Column({ type: 'simple-json', nullable: true })
   sharedWithUsers?: string[];
 
+  // Internal sync ownership; retained when configuration is edited through the dashboard.
+  @Column({ type: 'boolean', default: false })
+  settingsSyncManaged?: boolean;
+
   @CreateDateColumn({ name: 'created_at', type: 'timestamp' })
   createdAt: Date;
 

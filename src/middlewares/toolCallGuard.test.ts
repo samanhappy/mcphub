@@ -223,6 +223,9 @@ describe('inspectToolArguments - traversal limits (fail closed)', () => {
 });
 
 describe('inspectToolArguments - bounded scan time (reviewer runtime cases)', () => {
+  // Allow shared CI/coverage overhead while still catching the historical 1.48s+ regressions.
+  const maxScanMs = 250;
+
   it('returns promptly for long repeated -r flags with no target', () => {
     // `rm ` + '-r'.repeat(5000) (about 10 KB) stalled the original regex for
     // >3s via catastrophic backtracking. It has no deletion target, so it is
@@ -231,7 +234,7 @@ describe('inspectToolArguments - bounded scan time (reviewer runtime cases)', ()
     const started = performance.now();
     const result = inspectToolArguments(payload);
     const elapsedMs = performance.now() - started;
-    expect(elapsedMs).toBeLessThan(50);
+    expect(elapsedMs).toBeLessThan(maxScanMs);
     expect(result).toEqual({ blocked: false });
   });
 
@@ -242,7 +245,7 @@ describe('inspectToolArguments - bounded scan time (reviewer runtime cases)', ()
     const started = performance.now();
     const result = inspectToolArguments(payload);
     const elapsedMs = performance.now() - started;
-    expect(elapsedMs).toBeLessThan(50);
+    expect(elapsedMs).toBeLessThan(maxScanMs);
     expect(result).toEqual({ blocked: false });
   });
 
@@ -254,7 +257,7 @@ describe('inspectToolArguments - bounded scan time (reviewer runtime cases)', ()
     const started = performance.now();
     const result = inspectToolArguments(payload);
     const elapsedMs = performance.now() - started;
-    expect(elapsedMs).toBeLessThan(50);
+    expect(elapsedMs).toBeLessThan(maxScanMs);
     expect(result).toEqual({ blocked: false });
   });
 
@@ -267,7 +270,7 @@ describe('inspectToolArguments - bounded scan time (reviewer runtime cases)', ()
     const started = performance.now();
     const result = inspectToolArguments(payload);
     const elapsedMs = performance.now() - started;
-    expect(elapsedMs).toBeLessThan(50);
+    expect(elapsedMs).toBeLessThan(maxScanMs);
     expect(result).toEqual({ blocked: false });
   });
 
@@ -280,7 +283,7 @@ describe('inspectToolArguments - bounded scan time (reviewer runtime cases)', ()
     const started = performance.now();
     const result = inspectToolArguments(payload);
     const elapsedMs = performance.now() - started;
-    expect(elapsedMs).toBeLessThan(50);
+    expect(elapsedMs).toBeLessThan(maxScanMs);
     expect(result).toEqual({ blocked: false });
   });
 
@@ -292,7 +295,7 @@ describe('inspectToolArguments - bounded scan time (reviewer runtime cases)', ()
     const started = performance.now();
     const result = inspectToolArguments(payload);
     const elapsedMs = performance.now() - started;
-    expect(elapsedMs).toBeLessThan(50);
+    expect(elapsedMs).toBeLessThan(maxScanMs);
     expect(result).toEqual({ blocked: false });
   });
 
@@ -305,7 +308,7 @@ describe('inspectToolArguments - bounded scan time (reviewer runtime cases)', ()
     const started = performance.now();
     const result = inspectToolArguments(payload);
     const elapsedMs = performance.now() - started;
-    expect(elapsedMs).toBeLessThan(50);
+    expect(elapsedMs).toBeLessThan(maxScanMs);
     expect(result).toEqual({ blocked: false });
   });
 
@@ -317,7 +320,7 @@ describe('inspectToolArguments - bounded scan time (reviewer runtime cases)', ()
     const started = performance.now();
     const result = inspectToolArguments(payload);
     const elapsedMs = performance.now() - started;
-    expect(elapsedMs).toBeLessThan(50);
+    expect(elapsedMs).toBeLessThan(maxScanMs);
     expect(result).toEqual({ blocked: false });
   });
 

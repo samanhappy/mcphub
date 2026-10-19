@@ -1,3 +1,4 @@
+import { loadOriginalSettings } from '../../src/config/index.js';
 import { ServerDaoDbImpl } from '../../src/dao/ServerDaoDbImpl.js';
 import {
   clearOAuthData,
@@ -10,6 +11,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { getMetadataArgsStorage } from 'typeorm';
 import { Server } from '../../src/db/entities/Server.js';
+import { CredentialBinding } from '../../src/db/entities/CredentialBinding.js';
 import { Group } from '../../src/db/entities/Group.js';
 import { initializeDatabaseMode } from '../../src/utils/migration.js';
 import { syncSettingsToDatabase } from '../../src/utils/settingsSync.js';
@@ -18,14 +20,34 @@ let settingsPath: string;
 const servers = new Map<string, Record<string, unknown>>();
 const groups = new Map<string, Record<string, unknown>>();
 let failGroupSave = false;
+let failDelete = false;
+let vectorTableExists = true;
+const bindings = new Map<string, Record<string, unknown>>();
+const embeddings = new Map<string, Record<string, unknown>>();
+const query = jest.fn(async (sql: string, parameters?: string[]) => {
+  if (sql.startsWith('SELECT')) return [{ exists: vectorTableExists }];
+  const serverName = parameters![0];
+  for (const [key, row] of embeddings) {
+    if (
+      (row.content_type === 'server' && row.content_id === serverName) ||
+      (row.content_type === 'tool' && String(row.content_id).startsWith(`${serverName}:`))
+    ) {
+      embeddings.delete(key);
+    }
+  }
+  return [];
+});
 const saveDeclaration = jest.fn();
 const transaction = jest.fn(async (run: (manager: unknown) => Promise<void>) => {
   const beforeServers = new Map(servers);
   const beforeGroups = new Map(groups);
+  const beforeBindings = new Map(bindings);
+  const beforeEmbeddings = new Map(embeddings);
   try {
     await run({
+      query,
       getRepository: (entity: unknown) => {
-        const rows = entity === Server ? servers : groups;
+        const rows = entity === Server ? servers : entity === Group ? groups : bindings;
         return {
           metadata: {
             columns: getMetadataArgsStorage()
@@ -34,6 +56,20 @@ const transaction = jest.fn(async (run: (manager: unknown) => Promise<void>) => 
                 propertyName: column.propertyName,
                 isNullable: column.options.nullable,
               })),
+          },
+          find: async () => [...rows.values()],
+          delete: async (criteria: Record<string, unknown>) => {
+            if (failDelete && entity === Server) throw new Error('DB delete failed');
+            for (const [key, row] of rows) {
+              if (Object.entries(criteria).every(([field, value]) => row[field] === value))
+                rows.delete(key);
+            }
+          },
+          update: async (criteria: Record<string, unknown>, patch: Record<string, unknown>) => {
+            for (const [key, row] of rows) {
+              if (Object.entries(criteria).every(([field, value]) => row[field] === value))
+                rows.set(key, { ...row, ...patch });
+            }
           },
           findOneBy: async ({ name }: { name: string }) => rows.get(name) ?? null,
           create: (value: Record<string, unknown>) => value,
@@ -48,6 +84,10 @@ const transaction = jest.fn(async (run: (manager: unknown) => Promise<void>) => 
   } catch (error) {
     servers.clear();
     groups.clear();
+    bindings.clear();
+    embeddings.clear();
+    beforeBindings.forEach((value, key) => bindings.set(key, value));
+    beforeEmbeddings.forEach((value, key) => embeddings.set(key, value));
     beforeServers.forEach((value, key) => servers.set(key, value));
     beforeGroups.forEach((value, key) => groups.set(key, value));
     throw error;
@@ -104,7 +144,7 @@ jest.mock('../../src/db/repositories/GroupRepository.js', () => ({
 }));
 jest.mock('../../src/config/index.js', () => ({
   getSettingsPath: () => settingsPath,
-  loadOriginalSettings: () => JSON.parse(fs.readFileSync(settingsPath, 'utf8')),
+  loadOriginalSettings: jest.fn(() => JSON.parse(fs.readFileSync(settingsPath, 'utf8'))),
   replaceEnvVars: jest.requireActual('../../src/config/index.js').replaceEnvVars,
 }));
 
@@ -119,6 +159,10 @@ beforeEach(() => {
   servers.clear();
   groups.clear();
   failGroupSave = false;
+  failDelete = false;
+  vectorTableExists = true;
+  bindings.clear();
+  embeddings.clear();
   process.env.MCPHUB_SETTINGS_SYNC = 'upsert';
 });
 afterEach(() => {
@@ -209,28 +253,35 @@ test('invalidates OAuth when the upstream URL or an expanded secret changes', as
   delete process.env.SYNC_TEST_SECRET;
 });
 
-test('validates all declarations before writing and rolls back failed database writes', async () => {
-  write({ mcpServers: { remote }, groups: [{ name: 'duplicate' }, { name: 'duplicate' }] });
-  await expect(syncSettingsToDatabase()).rejects.toThrow('Duplicate');
-  expect(transaction).not.toHaveBeenCalled();
-  write({ mcpServers: { remote, invalid: { type: 'stdio' } } });
-  await expect(syncSettingsToDatabase()).rejects.toThrow('connection configuration');
-  expect(transaction).not.toHaveBeenCalled();
-  write({ mcpServers: { remote }, groups: [{ name: 'team' }] });
-  failGroupSave = true;
-  await expect(syncSettingsToDatabase()).rejects.toThrow('DB write failed');
-  expect(servers.size).toBe(0);
-});
+test.each(['upsert', 'prune'])(
+  'validates declarations and rolls back failed writes in %s mode',
+  async (mode) => {
+    process.env.MCPHUB_SETTINGS_SYNC = mode;
+    write({ mcpServers: { remote }, groups: [{ name: 'duplicate' }, { name: 'duplicate' }] });
+    await expect(syncSettingsToDatabase()).rejects.toThrow('Duplicate');
+    expect(transaction).not.toHaveBeenCalled();
+    write({ mcpServers: { remote, invalid: { type: 'stdio' } } });
+    await expect(syncSettingsToDatabase()).rejects.toThrow('connection configuration');
+    expect(transaction).not.toHaveBeenCalled();
+    write({ mcpServers: { remote }, groups: [{ name: 'team' }] });
+    failGroupSave = true;
+    await expect(syncSettingsToDatabase()).rejects.toThrow('DB write failed');
+    expect(servers.size).toBe(0);
+  },
+);
 
-test('disabled mode does not read the file; invalid mode or missing file fails explicitly', async () => {
-  delete process.env.MCPHUB_SETTINGS_SYNC;
-  await syncSettingsToDatabase();
-  expect(transaction).not.toHaveBeenCalled();
-  process.env.MCPHUB_SETTINGS_SYNC = 'prune';
-  await expect(syncSettingsToDatabase()).rejects.toThrow('Unsupported');
-  process.env.MCPHUB_SETTINGS_SYNC = 'upsert';
-  await expect(syncSettingsToDatabase()).rejects.toThrow();
-});
+test.each(['upsert', 'prune'])(
+  'disabled mode does not read files; invalid mode or missing file fails explicitly (%s)',
+  async (mode) => {
+    delete process.env.MCPHUB_SETTINGS_SYNC;
+    await syncSettingsToDatabase();
+    expect(transaction).not.toHaveBeenCalled();
+    process.env.MCPHUB_SETTINGS_SYNC = 'unknown';
+    await expect(syncSettingsToDatabase()).rejects.toThrow('Unsupported');
+    process.env.MCPHUB_SETTINGS_SYNC = mode;
+    await expect(syncSettingsToDatabase()).rejects.toThrow();
+  },
+);
 
 test('adopts matching UI-created OAuth state and ignores formatting-only changes', async () => {
   const state = {
@@ -427,13 +478,13 @@ test('reports created, updated and unchanged entries and skips unchanged saves',
   write({ mcpServers: { remote }, groups: [{ name: 'team', servers: ['remote'] }] });
   await syncSettingsToDatabase();
   expect(log).toHaveBeenLastCalledWith(
-    'Settings sync completed: servers (1 created, 0 updated, 0 unchanged); groups (1 created, 0 updated, 0 unchanged)',
+    'Settings sync completed: servers (1 created, 0 updated, 0 unchanged, 0 deleted); groups (1 created, 0 updated, 0 unchanged, 0 deleted)',
   );
   saveDeclaration.mockClear();
   await syncSettingsToDatabase();
   expect(saveDeclaration).not.toHaveBeenCalled();
   expect(log).toHaveBeenLastCalledWith(
-    'Settings sync completed: servers (0 created, 0 updated, 1 unchanged); groups (0 created, 0 updated, 1 unchanged)',
+    'Settings sync completed: servers (0 created, 0 updated, 1 unchanged, 0 deleted); groups (0 created, 0 updated, 1 unchanged, 0 deleted)',
   );
   write({
     mcpServers: { remote: { ...remote, description: 'new' } },
@@ -441,7 +492,7 @@ test('reports created, updated and unchanged entries and skips unchanged saves',
   });
   await syncSettingsToDatabase();
   expect(log).toHaveBeenLastCalledWith(
-    'Settings sync completed: servers (0 created, 1 updated, 0 unchanged); groups (0 created, 1 updated, 0 unchanged)',
+    'Settings sync completed: servers (0 created, 1 updated, 0 unchanged, 0 deleted); groups (0 created, 1 updated, 0 unchanged, 0 deleted)',
   );
   log.mockRestore();
 });
@@ -503,3 +554,105 @@ test.each(['server', 'group'])(
     }
   },
 );
+
+test('prunes only managed entries, including legacy fingerprinted servers, and cleans references and runtime data', async () => {
+  write({ mcpServers: { remote }, groups: [{ name: 'managed', servers: ['remote'] }] });
+  await syncSettingsToDatabase();
+  servers.set('legacy', { id: 'legacy', name: 'legacy', settingsSyncHash: 'invalidated' });
+  servers.set('ui', { id: 'ui', name: 'ui' });
+  groups.set('ui', {
+    id: 'ui',
+    name: 'ui',
+    servers: ['remote', { name: 'legacy', alias: 'old' }, 'ui'],
+  });
+  bindings.set('remote', { serverName: 'remote', username: 'alice' });
+  bindings.set('ui', { serverName: 'ui', username: 'alice' });
+  embeddings.set('remote', { content_type: 'server', content_id: 'remote' });
+  embeddings.set('tool', { content_type: 'tool', content_id: 'remote:search' });
+  embeddings.set('other', { content_type: 'tool', content_id: 'remote-other:search' });
+  process.env.MCPHUB_SETTINGS_SYNC = 'prune';
+  write({ mcpServers: {}, groups: [] });
+  await syncSettingsToDatabase();
+  expect([...servers.keys()]).toEqual(['ui']);
+  expect([...groups.keys()]).toEqual(['ui']);
+  expect(groups.get('ui')?.servers).toEqual(['ui']);
+  expect([...bindings.keys()]).toEqual(['ui']);
+  expect([...embeddings.keys()]).toEqual(['other']);
+  await syncSettingsToDatabase();
+  expect([...servers.keys()]).toEqual(['ui']);
+});
+
+test('omitted sections retain managed entries; empty sections prune only their own type', async () => {
+  write({ mcpServers: { remote }, groups: [{ name: 'managed' }] });
+  await syncSettingsToDatabase();
+  process.env.MCPHUB_SETTINGS_SYNC = 'prune';
+  write({});
+  await syncSettingsToDatabase();
+  expect(servers.has('remote')).toBe(true);
+  expect(groups.has('managed')).toBe(true);
+  write({ groups: [] });
+  await syncSettingsToDatabase();
+  expect(groups.size).toBe(0);
+  expect(servers.has('remote')).toBe(true);
+  vectorTableExists = false;
+  write({ mcpServers: {} });
+  await syncSettingsToDatabase();
+  expect(servers.size).toBe(0);
+  expect(query).not.toHaveBeenCalledWith(expect.stringContaining('DELETE'), expect.anything());
+});
+
+test('upsert retains removed managed entries and dashboard edits retain ownership', async () => {
+  write({ mcpServers: { remote }, groups: [{ name: 'managed' }] });
+  await syncSettingsToDatabase();
+  await new ServerDaoDbImpl().update('remote', { description: 'UI edit' });
+  write({ mcpServers: {}, groups: [] });
+  await syncSettingsToDatabase();
+  expect(servers.get('remote')?.settingsSyncManaged).toBe(true);
+  expect(groups.get('managed')?.settingsSyncManaged).toBe(true);
+  expect(await new ServerDaoDbImpl().findById('remote')).not.toHaveProperty('settingsSyncManaged');
+});
+
+test('prune rolls back upserts, deletions, references and credentials on failure', async () => {
+  write({ mcpServers: { remote }, groups: [{ name: 'managed' }] });
+  await syncSettingsToDatabase();
+  groups.set('ui', { id: 'ui', name: 'ui', servers: ['remote'] });
+  bindings.set('remote', { serverName: 'remote' });
+  embeddings.set('remote', { content_type: 'server', content_id: 'remote' });
+  process.env.MCPHUB_SETTINGS_SYNC = 'prune';
+  write({ mcpServers: { added: remote }, groups: [] });
+  failDelete = true;
+  await expect(syncSettingsToDatabase()).rejects.toThrow('DB delete failed');
+  expect([...servers.keys()]).toEqual(['remote']);
+  expect(groups.has('managed')).toBe(true);
+  expect(groups.get('ui')?.servers).toEqual(['remote']);
+  expect(bindings.has('remote')).toBe(true);
+  expect(embeddings.has('remote')).toBe(true);
+});
+
+test('rejects declared groups referencing a pruned server without applying changes', async () => {
+  write({ mcpServers: { remote } });
+  await syncSettingsToDatabase();
+  process.env.MCPHUB_SETTINGS_SYNC = 'prune';
+  write({ mcpServers: {}, groups: [{ name: 'team', servers: [{ name: 'remote' }] }] });
+  await expect(syncSettingsToDatabase()).rejects.toThrow('references a server being pruned');
+  expect(servers.has('remote')).toBe(true);
+  expect(groups.size).toBe(0);
+});
+
+test('prune first boot skips legacy seeds and never writes to the settings file', async () => {
+  process.env.MCPHUB_SETTINGS_SYNC = 'prune';
+  write({ mcpServers: { remote }, groups: [{ name: 'team' }] });
+  fs.chmodSync(settingsPath, 0o444);
+  const writeSpy = jest.spyOn(fs, 'writeFileSync');
+  try {
+    await expect(initializeDatabaseMode()).resolves.toBe(true);
+    expect(writeSpy).not.toHaveBeenCalled();
+    expect(loadOriginalSettings).toHaveBeenLastCalledWith(false);
+    expect(seedServer).not.toHaveBeenCalled();
+    expect(seedGroup).not.toHaveBeenCalled();
+    expect(servers.get('remote')?.settingsSyncManaged).toBe(true);
+    expect(groups.get('team')?.settingsSyncManaged).toBe(true);
+  } finally {
+    writeSpy.mockRestore();
+  }
+});
