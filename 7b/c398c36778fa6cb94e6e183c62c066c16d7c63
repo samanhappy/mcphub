@@ -1,0 +1,23 @@
+docs/features/authentication.mdx
+  s_9bd1bf61c53ab1::t_0cf3710257aa40 8
+docs/zh/features/authentication.mdx
+  s_9bd1bf61c53ab1::t_7b3a3d261c62f0 8
+frontend/src/pages/SettingsPage.tsx
+  s_9bd1bf61c53ab1::t_ae1cb4dbf118cf 3972-4011
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7bc398c36778fa6cb94e6e183c62c066c16d7c63",
+  "prompts": {},
+  "sessions": {
+    "s_9bd1bf61c53ab1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a153fc-cebf-7053-a7df-3e24423a5ca1",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
