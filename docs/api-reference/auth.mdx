@@ -71,20 +71,19 @@ Authenticates a user and returns a JWT token along with user details.
 
 ### Register
 
-Registers a new user and returns a JWT token.
+Registers a regular user and returns a JWT token. Requires `systemConfig.auth.allowRegistration: true` (default: false) and password login to be enabled; otherwise returns HTTP 403.
 
 - **Endpoint**: `/api/auth/register`
 - **Method**: `POST`
 - **Body**:
   - `username` (string, required): The desired username.
-  - `password` (string, required): The desired password (must be at least 6 characters).
-  - `isAdmin` (boolean, optional): Whether the user should have admin privileges.
+  - `password` (string, required): The desired password (at least 8 characters, including a letter, a number, and a special character).
+  - Administrator privileges cannot be requested; `isAdmin` is ignored.
 - **Request Example**:
   ```json
   {
     "username": "newuser",
-    "password": "password123",
-    "isAdmin": false
+    "password": "Password123!"
   }
   ```
 - **Success Response**:

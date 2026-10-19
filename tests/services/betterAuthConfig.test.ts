@@ -559,6 +559,12 @@ describe('betterAuthConfig', () => {
     const loadHelper = async () =>
       (await import('../../src/services/betterAuthConfig.js')).isApiAuthExemptPath;
 
+    it('allows public registration without exempting similarly named paths', async () => {
+      const helper = await loadHelper();
+      expect(helper('/auth/register', { basePath: '/api/auth/better' })).toBe(true);
+      expect(helper('/auth/register-admin', { basePath: '/api/auth/better' })).toBe(false);
+    });
+
     it('exempts the login endpoint regardless of the better-auth mount point', async () => {
       const isApiAuthExemptPath = await loadHelper();
 

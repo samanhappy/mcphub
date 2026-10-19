@@ -7,6 +7,7 @@ import {
   createUser,
   updateUserPassword,
 } from '../models/User.js';
+import { getSystemConfigDao } from '../dao/DaoFactory.js';
 import { getDataService } from '../services/services.js';
 import { DataService } from '../services/dataService.js';
 import { JWT_SECRET } from '../config/jwt.js';
@@ -120,11 +121,28 @@ export const register = async (req: Request, res: Response): Promise<void> => {
   const { username, password } = req.body;
 
   try {
+    const systemConfig = await getSystemConfigDao().get();
+    const runtime = await getBetterAuthRuntimeConfig(systemConfig);
+    if (systemConfig?.auth?.allowRegistration !== true || runtime.disablePasswordLogin) {
+      res.status(403).json({ success: false, message: t('auth.error.signup_disabled') });
+      return;
+    }
+    const strength = validatePasswordStrength(password);
+    if (!strength.isValid) {
+      res
+        .status(400)
+        .json({
+          success: false,
+          message: t('auth.passwordStrengthError'),
+          errors: strength.errors,
+        });
+      return;
+    }
     // Create new user
     const newUser = await createUser({ username, password, isAdmin: false });
 
     if (!newUser) {
-      res.status(400).json({ success: false, message: 'User already exists' });
+      res.status(400).json({ success: false, message: t('auth.userAlreadyExists') });
       return;
     }
 

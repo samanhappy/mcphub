@@ -129,6 +129,7 @@ interface SystemSettings {
     nameSeparator?: string;
     oauthServer?: OAuthServerConfig;
     auth?: {
+      allowRegistration?: boolean;
       betterAuth?: Partial<BetterAuthConfig>;
     };
     enableSessionRebuild?: boolean;
@@ -155,6 +156,8 @@ interface SettingsContextValue {
   toolResultCompressionConfig: ToolResultCompressionConfig;
   mcpRouterConfig: MCPRouterConfig;
   oauthServerConfig: OAuthServerConfig;
+  allowRegistration: boolean;
+  updateAllowRegistration: (value: boolean) => Promise<void>;
   betterAuthConfig: BetterAuthConfig;
   nameSeparator: string;
   enableSessionRebuild: boolean;
@@ -193,9 +196,7 @@ interface SettingsContextValue {
   updateOAuthServerConfigBatch: (
     updates: Partial<OAuthServerConfig>,
   ) => Promise<boolean | undefined>;
-  updateBetterAuthConfigBatch: (
-    updates: Partial<BetterAuthConfig>,
-  ) => Promise<boolean | undefined>;
+  updateBetterAuthConfigBatch: (updates: Partial<BetterAuthConfig>) => Promise<boolean | undefined>;
   updateNameSeparator: (value: string) => Promise<boolean | undefined>;
   updateSessionRebuild: (value: boolean) => Promise<boolean | undefined>;
   updateStoreToolPayload: (value: boolean) => Promise<boolean | undefined>;
@@ -265,9 +266,7 @@ const normalizeStringArray = (value: unknown, fallback: string[] = []): string[]
   return normalized.length > 0 ? normalized : [...fallback];
 };
 
-const normalizeBetterAuthConfig = (
-  config?: Partial<BetterAuthConfig>,
-): BetterAuthConfig => {
+const normalizeBetterAuthConfig = (config?: Partial<BetterAuthConfig>): BetterAuthConfig => {
   const defaults = getDefaultBetterAuthConfig();
 
   return {
@@ -409,6 +408,7 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
   const [oauthServerConfig, setOAuthServerConfig] = useState<OAuthServerConfig>(
     getDefaultOAuthServerConfig(),
   );
+  const [allowRegistration, setAllowRegistration] = useState(false);
   const [betterAuthConfig, setBetterAuthConfig] = useState<BetterAuthConfig>(
     getDefaultBetterAuthConfig(),
   );
@@ -554,9 +554,8 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
           setOAuthServerConfig(getDefaultOAuthServerConfig());
         }
 
-        setBetterAuthConfig(
-          normalizeBetterAuthConfig(data.data?.systemConfig?.auth?.betterAuth),
-        );
+        setAllowRegistration(data.data?.systemConfig?.auth?.allowRegistration === true);
+        setBetterAuthConfig(normalizeBetterAuthConfig(data.data?.systemConfig?.auth?.betterAuth));
       }
       if (data.success) setAllowedCidrs(data.data?.systemConfig?.network?.allowedCidrs ?? []);
       if (data.success && data.data?.systemConfig?.nameSeparator !== undefined) {
@@ -961,6 +960,24 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
     }
   };
 
+  const updateAllowRegistration = async (value: boolean) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await apiPut('/system-config', { auth: { allowRegistration: value } });
+      if (data.success) {
+        setAllowRegistration(value);
+        showToast(t('settings.systemConfigUpdated'));
+      } else {
+        showToast(t('errors.failedToUpdateSettings'));
+      }
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Failed to update registration setting');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Batch update Better Auth configuration
   const updateBetterAuthConfigBatch = async (updates: Partial<BetterAuthConfig>) => {
     setLoading(true);
@@ -1216,6 +1233,8 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
     toolResultCompressionConfig,
     mcpRouterConfig,
     oauthServerConfig,
+    allowRegistration,
+    updateAllowRegistration,
     betterAuthConfig,
     nameSeparator,
     enableSessionRebuild,

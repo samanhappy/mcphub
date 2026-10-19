@@ -30,6 +30,9 @@ const sanitizeReturnUrl = (value: string | null): string | null => {
 
 const LoginPage: React.FC = () => {
   const { t } = useTranslation();
+  const [allowRegistration, setAllowRegistration] = useState(false);
+  const [registering, setRegistering] = useState(false);
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -46,7 +49,7 @@ const LoginPage: React.FC = () => {
   });
   const [oidcProviderId, setOidcProviderId] = useState<string>('oidc');
   const [showDefaultPasswordWarning, setShowDefaultPasswordWarning] = useState(false);
-  const { login, auth } = useAuth();
+  const { login, register, auth } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const returnUrl = useMemo(() => {
@@ -112,6 +115,7 @@ const LoginPage: React.FC = () => {
   useEffect(() => {
     const loadAuthProviders = async () => {
       const publicConfig = await getPublicConfig();
+      setAllowRegistration(publicConfig.allowRegistration === true);
       const betterAuth = publicConfig.betterAuth;
       if (!betterAuth?.enabled) {
         setSocialProviders({ google: false, github: false, oidc: false });
@@ -140,17 +144,29 @@ const LoginPage: React.FC = () => {
         setLoading(false);
         return;
       }
+      if (registering) {
+        if (password !== confirmPassword) {
+          setError(t('auth.passwordsNotMatch'));
+          return;
+        }
+        if (await register(username, password)) redirectAfterLogin();
+        return;
+      }
       const result = await login(username, password);
       if (result.success) {
         if (result.isUsingDefaultPassword) setShowDefaultPasswordWarning(true);
         else redirectAfterLogin();
       } else {
         const message = result.message;
-        setError(isServerUnavailableError(message) ? t('auth.serverUnavailable') : t('auth.loginFailed'));
+        setError(
+          isServerUnavailableError(message) ? t('auth.serverUnavailable') : t('auth.loginFailed'),
+        );
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : undefined;
-      setError(isServerUnavailableError(message) ? t('auth.serverUnavailable') : t('auth.loginError'));
+      setError(
+        isServerUnavailableError(message) ? t('auth.serverUnavailable') : t('auth.loginError'),
+      );
     } finally {
       setLoading(false);
     }
@@ -182,6 +198,8 @@ const LoginPage: React.FC = () => {
       setSocialLoading(null);
     }
   };
+
+  const formError = error || (registering ? auth.error : null);
 
   const handleCloseWarning = () => {
     setShowDefaultPasswordWarning(false);
@@ -327,7 +345,8 @@ const LoginPage: React.FC = () => {
                     id="password"
                     name="password"
                     type="password"
-                    autoComplete="current-password"
+                    autoComplete={registering ? 'new-password' : 'current-password'}
+                    minLength={registering ? 8 : undefined}
                     required
                     className="hub-input"
                     placeholder={t('auth.password')}
@@ -336,8 +355,27 @@ const LoginPage: React.FC = () => {
                   />
                 </div>
 
-                {error && (
-                  <div
+                {registering && (
+                  <div>
+                    <p className="hub-sub mb-3">{t('auth.passwordStrengthHint')}</p>
+                    <label htmlFor="confirmPassword" className="hub-sect block mb-1.5">
+                      {t('auth.confirmPassword')}
+                    </label>
+                    <input
+                      id="confirmPassword"
+                      name="confirmPassword"
+                      type="password"
+                      autoComplete="new-password"
+                      required
+                      className="hub-input"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                    />
+                  </div>
+                )}
+
+                {formError && (
+                  <div role="alert"
                     className="flex items-center gap-2"
                     style={{
                       padding: '8px 10px',
@@ -349,7 +387,7 @@ const LoginPage: React.FC = () => {
                     }}
                   >
                     <AlertCircle size={13} className="flex-shrink-0" />
-                    <span>{error}</span>
+                    <span>{formError}</span>
                   </div>
                 )}
 
@@ -359,8 +397,25 @@ const LoginPage: React.FC = () => {
                   className="hub-btn primary w-full justify-center"
                   style={{ height: 34 }}
                 >
-                  {loading ? t('auth.loggingIn') : t('auth.login')}
+                  {loading
+                    ? t('common.loading')
+                    : t(registering ? 'auth.createAccount' : 'auth.login')}
                 </button>
+                {allowRegistration && (
+                  <button
+                    type="button"
+                    disabled={loading}
+                    className="hub-btn w-full justify-center"
+                    onClick={() => {
+                      setRegistering(!registering);
+                      setError(null);
+                      setPassword('');
+                      setConfirmPassword('');
+                    }}
+                  >
+                    {t(registering ? 'auth.backToLogin' : 'auth.createAccount')}
+                  </button>
+                )}
               </form>
             )}
 

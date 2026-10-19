@@ -283,6 +283,7 @@ export interface SystemConfig {
   oauthServer?: OAuthServerConfig; // OAuth authorization server configuration for MCPHub itself
   enableSessionRebuild?: boolean; // Controls whether server session rebuild is enabled
   auth?: {
+    allowRegistration?: boolean; // Allow public local account registration (default: false)
     betterAuth?: BetterAuthConfig; // Better Auth integration configuration
     forwardAuth?: ForwardAuthConfig; // Trust identity asserted by an upstream gateway (JWKS-verified JWT)
   };

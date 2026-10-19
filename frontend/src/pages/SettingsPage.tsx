@@ -637,6 +637,8 @@ const SettingsPage: React.FC = () => {
     toolResultCompressionConfig,
     mcpRouterConfig,
     oauthServerConfig,
+    allowRegistration,
+    updateAllowRegistration,
     betterAuthConfig,
     nameSeparator,
     enableSessionRebuild,
@@ -3540,6 +3542,21 @@ const SettingsPage: React.FC = () => {
               </div>
             </div>
           )}
+        </div>
+      </PermissionChecker>
+
+      <PermissionChecker permissions={PERMISSIONS.SETTINGS_SYSTEM_CONFIG}>
+        <div className="hub-card mb-6 p-5 flex items-center justify-between gap-4">
+          <div>
+            <h2 className="font-medium">{t('settings.allowRegistration')}</h2>
+            <p className="text-sm text-gray-500">{t('settings.allowRegistrationDescription')}</p>
+          </div>
+          <Switch
+            aria-label={t('settings.allowRegistration')}
+            disabled={loading}
+            checked={allowRegistration}
+            onCheckedChange={updateAllowRegistration}
+          />
         </div>
       </PermissionChecker>
 

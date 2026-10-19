@@ -63,6 +63,9 @@
     "system": "Sistema"
   },
   "auth": {
+    "createAccount": "Crear cuenta",
+    "backToLogin": "Volver al inicio de sesión",
+    "userAlreadyExists": "El nombre de usuario ya existe",
     "login": "Iniciar sesión",
     "loginTitle": "Iniciar sesión en MCPHub",
     "slogan": "Pasarela y plano de control MCP de código abierto y autoalojado",
@@ -802,6 +805,8 @@
     "restoreDefaultFailed": "Error al restaurar la descripción predeterminada del prompt"
   },
   "settings": {
+    "allowRegistration": "Permitir el registro público",
+    "allowRegistrationDescription": "Permite crear cuentas normales desde la página de inicio de sesión. Desactivado por defecto; no disponible si se desactiva el acceso con contraseña.",
     "allowedCidrs": "Rangos CIDR ascendentes permitidos",
     "allowedCidrsDescription": "Un CIDR IPv4 o IPv6 por línea. Todos los usuarios pueden conectar con endpoints MCP, OpenAPI y OAuth ascendentes en estos rangos. Vacío significa sin acceso adicional. Los servidores propiedad de administradores conservan acceso interno sin restricciones. Evita rangos amplios y direcciones de metadatos o loopback salvo que sean necesarias. Los cambios se aplican a las nuevas solicitudes; las conexiones existentes no se cierran.",
     "allowedCidrsUpdateFailed": "Error al actualizar los rangos CIDR permitidos",

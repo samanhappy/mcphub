@@ -1973,6 +1973,7 @@ export const updateSystemConfig = async (req: Request, res: Response): Promise<v
       !hasSessionRebuildUpdate &&
       !hasOAuthServerUpdate &&
       !hasBetterAuthUpdate &&
+      typeof auth?.allowRegistration !== 'boolean' &&
       !hasActivityLogUpdate &&
       !hasNetworkUpdate
     ) {
@@ -2518,6 +2519,10 @@ export const updateSystemConfig = async (req: Request, res: Response): Promise<v
 
         target.dynamicRegistration = dynamicTarget;
       }
+    }
+
+    if (typeof auth?.allowRegistration === 'boolean') {
+      systemConfig.auth.allowRegistration = auth.allowRegistration;
     }
 
     if (auth?.betterAuth) {

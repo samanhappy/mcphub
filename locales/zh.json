@@ -63,6 +63,9 @@
     "system": "系统"
   },
   "auth": {
+    "createAccount": "创建账号",
+    "backToLogin": "返回登录",
+    "userAlreadyExists": "用户名已存在",
     "login": "登录",
     "loginTitle": "登录 MCPHub",
     "slogan": "开源、自托管的 MCP 网关与控制平面",
@@ -804,6 +807,8 @@
     "restoreDefaultFailed": "恢复默认提示词描述失败"
   },
   "settings": {
+    "allowRegistration": "允许自助注册",
+    "allowRegistrationDescription": "允许访客从登录页创建普通账号。默认关闭；禁用密码登录时不可用。",
     "allowedCidrs": "允许访问的上游 CIDR 范围",
     "allowedCidrsDescription": "每行一个 IPv4 或 IPv6 CIDR。所有用户均可连接这些范围内的上游 MCP、OpenAPI 和 OAuth 端点。留空表示不额外放行。管理员拥有的服务器仍可访问所有内网地址。请按需配置，避免过大的范围以及元数据或回环地址。修改对新请求生效，不会关闭已有连接。",
     "allowedCidrsUpdateFailed": "更新 CIDR 白名单失败",
