@@ -24,6 +24,7 @@ export interface IGroup {
   id: string; // Unique UUID for the group
   name: string; // Display name of the group
   description?: string; // Optional description of the group
+  instructions?: string; // Sent as the MCP initialize instructions on this group's routes
   servers: string[] | IGroupServerConfig[]; // Array of server names or server configurations that belong to this group
   owner?: string; // Owner of the group, defaults to 'admin' user
 }
@@ -749,6 +750,7 @@ export interface AddGroupRequest {
   sharedWithUsers?: string[];
   name: string; // Name of the group to add
   description?: string; // Optional description of the group
+  instructions?: string; // Optional MCP initialize instructions for the group's routes
   servers?: string[] | IGroupServerConfig[]; // Array of server names or server configurations
 }
 

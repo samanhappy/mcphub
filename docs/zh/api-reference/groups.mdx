@@ -51,6 +51,7 @@ import { Card, Cards } from 'mintlify';
 - **正文**:
   - `name` (string, 必填): 群组的名称。
   - `description` (string, 可选): 群组的描述。
+  - `instructions` (string, 可选): 在该群组路由上作为 MCP `initialize` 的 instructions 发送。参见[分组说明](/zh/features/group-management#分组说明)。
   - `servers` (array of strings, 可选): 要包含在群组中的服务器名称列表。
 - **请求示例**:
   ```json
@@ -85,6 +86,7 @@ import { Card, Cards } from 'mintlify';
 - **正文**:
   - `name` (string, 可选): 群组的新名称。
   - `description` (string, 可选): 群组的新描述。
+  - `instructions` (string, 可选): 群组的新说明；空字符串表示移除。
   - `servers` (array, 可选): 群组的新服务器列表。格式请参阅 [批量更新群组服务器](#batch-update-group-servers)。
 - **请求示例**:
   ```json

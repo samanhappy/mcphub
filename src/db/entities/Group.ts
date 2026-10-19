@@ -20,6 +20,9 @@ export class Group {
   @Column({ type: 'text', nullable: true })
   description?: string;
 
+  @Column({ type: 'text', nullable: true })
+  instructions?: string;
+
   @Column({ type: 'simple-json' })
   servers: Array<
     | string
