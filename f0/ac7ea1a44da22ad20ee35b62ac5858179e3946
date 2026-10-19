@@ -1,0 +1,26 @@
+frontend/src/contexts/ServerContext.tsx
+  s_7dd833a912c78a::t_6efa61f1a3683c 4,122,130-133,135-136,138-143,145-150,154,156,158-159,161-166,171,173-174,177,197
+  s_7dd833a912c78a::t_148e01e675f9c5 85-86,94-96,144,151-153,168
+tests/frontend/serverPolling.test.ts
+  s_7dd833a912c78a::t_6efa61f1a3683c 1-23,34-51
+  s_7dd833a912c78a::t_382cb03351a4c3 24-33
+frontend/src/utils/serverPolling.ts
+  s_7dd833a912c78a::t_382cb03351a4c3 11,23,30-31
+  s_7dd833a912c78a::t_6efa61f1a3683c 1-10,12-22,24-29,32-39
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f0ac7ea1a44da22ad20ee35b62ac5858179e3946",
+  "prompts": {},
+  "sessions": {
+    "s_7dd833a912c78a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a15433-2dee-7fb3-91c3-3953da2ca731",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
