@@ -39,6 +39,10 @@ jest.mock('../../src/dao/DaoFactory.js', () => ({
   getSystemConfigDao: () => ({ get: async () => ({ auth: { allowRegistration: true } }) }),
 }));
 
+jest.mock('../../src/services/registrationService.js', () => ({
+  isRegistrationUsernameReserved: async () => false,
+}));
+
 import { login, register } from '../../src/controllers/authController.js';
 
 describe('authController.register', () => {

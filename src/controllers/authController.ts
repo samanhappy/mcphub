@@ -8,6 +8,7 @@ import {
   updateUserPassword,
 } from '../models/User.js';
 import { getSystemConfigDao } from '../dao/DaoFactory.js';
+import { isRegistrationUsernameReserved } from '../services/registrationService.js';
 import { getDataService } from '../services/services.js';
 import { DataService } from '../services/dataService.js';
 import { JWT_SECRET } from '../config/jwt.js';
@@ -136,6 +137,10 @@ export const register = async (req: Request, res: Response): Promise<void> => {
           message: t('auth.passwordStrengthError'),
           errors: strength.errors,
         });
+      return;
+    }
+    if (await isRegistrationUsernameReserved(username)) {
+      res.status(400).json({ success: false, message: t('auth.userAlreadyExists') });
       return;
     }
     // Create new user
