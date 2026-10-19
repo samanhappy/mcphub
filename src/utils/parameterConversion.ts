@@ -55,14 +55,25 @@ export function convertParametersToTypes(
           }
           break;
 
-        case 'array':
+        case 'array': {
           // Handle array conversion if needed (e.g., comma-separated strings)
-          if (typeof value === 'string' && value.includes(',')) {
-            convertedParams[key] = value.split(',').map((item) => item.trim());
+          const items =
+            typeof value === 'string' && value.includes(',')
+              ? value.split(',').map((item) => item.trim())
+              : value;
+          if (
+            Array.isArray(items) &&
+            ['integer', 'number', 'boolean'].includes(propDef.items?.type)
+          ) {
+            convertedParams[key] = items.map(
+              (item) =>
+                convertParametersToTypes({ item }, { properties: { item: propDef.items } }).item,
+            );
           } else {
-            convertedParams[key] = value;
+            convertedParams[key] = items;
           }
           break;
+        }
 
         case 'object':
           // Handle object conversion if needed

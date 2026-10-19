@@ -166,6 +166,8 @@ curl -X POST "http://localhost:3000/api/tools/playwright/playwright-browser_navi
 
 Execute MCP tools via OpenAPI-compatible endpoints.
 
+String array items submitted by the dashboard are converted according to the tool's `items.type` (`integer`, `number`, or `boolean`) before being forwarded to the MCP server.
+
 **Path Parameters:**
 
 <ParamField path="serverName" type="string" required>
