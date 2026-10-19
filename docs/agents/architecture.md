@@ -39,4 +39,4 @@ Bearer keys have explicit kinds. Legacy and operator-created keys use `kind: 'sy
 
 ## Declarative database configuration
 
-`MCPHUB_SETTINGS_SYNC=upsert` reconciles server/group declarations at startup only; see `src/utils/settingsSync.ts`. Keep runtime authentication state outside reconciliation. The internal server declaration fingerprint must stay out of public DAO mappings and settings exports; unchanged declarations retain upstream OAuth state, while changes invalidate it.
+`MCPHUB_SETTINGS_SYNC=upsert|prune` reconciles server/group declarations at startup only; see `src/utils/settingsSync.ts`. Keep runtime authentication state outside reconciliation. Internal sync ownership markers and the server declaration fingerprint must stay out of public DAO mappings and settings exports; unchanged declarations retain upstream OAuth state, while changes invalidate it. Pruning deletes only managed entries in explicitly supplied collections, with associated cleanup in the same transaction.

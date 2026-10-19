@@ -30,7 +30,9 @@ export async function migrateToDatabase(seedServersAndGroups = true): Promise<bo
     logger.log('Database connection established');
 
     // Load current settings from file
-    const settings = loadOriginalSettings(process.env.MCPHUB_SETTINGS_SYNC !== 'upsert');
+    const settings = loadOriginalSettings(
+      !['upsert', 'prune'].includes(process.env.MCPHUB_SETTINGS_SYNC ?? ''),
+    );
     logger.log('Loaded settings from file');
     if (seedServersAndGroups) assertSmartRoutingSettingsAvailable(settings);
 
@@ -353,7 +355,9 @@ export async function initializeDatabaseMode(): Promise<boolean> {
 
     if (userCount === 0) {
       logger.log('No users found in database, running migration...');
-      const migrated = await migrateToDatabase(process.env.MCPHUB_SETTINGS_SYNC !== 'upsert');
+      const migrated = await migrateToDatabase(
+        !['upsert', 'prune'].includes(process.env.MCPHUB_SETTINGS_SYNC ?? ''),
+      );
       if (!migrated) {
         throw new Error('Migration failed');
       }
