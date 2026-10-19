@@ -1,3 +1,4 @@
+import { observeToolCall, setMetricsServer } from './metricsService.js';
 import {
   hasPersonalOAuth,
   PersonalOAuthContext,
@@ -1242,6 +1243,11 @@ export const getServerConnectionStats = (): ServerConnectionStats => {
     serverInfos.filter((info) => !hasPersonalAuthentication(info.config)),
   );
 };
+
+export const getMetricsServerSnapshot = () =>
+  serverInfos
+    .filter((info) => info.enabled !== false && !hasPersonalAuthentication(info.config))
+    .map((info) => ({ status: info.status, type: inferServerType(info.config) || 'unknown' }));
 
 // Returns true if all enabled servers are connected
 export const connected = (): boolean => {
@@ -4208,6 +4214,7 @@ const handleCallToolRequestImpl = async (request: any, extra: any) => {
         }
 
         await reserveHostedIfNeeded(targetServerInfo.name, cleanToolName);
+        setMetricsServer(targetServerInfo.name);
         const result = await openApiClient.callTool(
           cleanToolName,
           finalArgs,
@@ -4296,6 +4303,7 @@ const handleCallToolRequestImpl = async (request: any, extra: any) => {
 
       const cleanToolName = normalizeToolNameForServer(targetServerInfo.name, targetToolName);
       await reserveHostedIfNeeded(targetServerInfo.name, cleanToolName);
+      setMetricsServer(targetServerInfo.name);
       const result = await callToolWithReconnect(
         targetServerInfo,
         {
@@ -4432,6 +4440,7 @@ const handleCallToolRequestImpl = async (request: any, extra: any) => {
       }
 
       await reserveHostedIfNeeded(serverInfo.name, cleanToolName);
+      setMetricsServer(serverInfo.name);
       const result = await openApiClient.callTool(
         cleanToolName,
         finalArgs,
@@ -4503,6 +4512,7 @@ const handleCallToolRequestImpl = async (request: any, extra: any) => {
 
     const cleanToolName = normalizeToolNameForServer(serverInfo.name, routeToolName);
     await reserveHostedIfNeeded(serverInfo.name, cleanToolName);
+    setMetricsServer(serverInfo.name);
     const result = await callToolWithReconnect(
       serverInfo,
       { ...request.params, name: cleanToolName },
@@ -5404,7 +5414,9 @@ export const handleListToolsRequest = withPrincipalServers(
   withCacheHints(handleListToolsRequestImpl, false, 'tools'),
   'list',
 );
-export const handleCallToolRequest = withPrincipalServers(handleCallToolRequestImpl, 'tool');
+const callToolWithPrincipal = withPrincipalServers(handleCallToolRequestImpl, 'tool');
+export const handleCallToolRequest = (request: any, extra: any) =>
+  observeToolCall(() => callToolWithPrincipal(request, extra));
 export const handleGetPromptRequest = withPrincipalServers(handleGetPromptRequestImpl, 'prompt');
 export const handleListPromptsRequest = withPrincipalServers(
   withCacheHints(handleListPromptsRequestImpl, false, 'prompts'),

@@ -3,7 +3,7 @@ title: 'Monitoring & Observability'
 description: 'What MCPHub exposes for health checks, logs, and activity tracking'
 ---
 
-MCPHub ships three observability surfaces. There is **no** built-in Prometheus exporter, OpenTelemetry SDK, or alerting pipeline — wire up your own infrastructure tooling against the endpoints below.
+MCPHub exposes health checks, an optional Prometheus metrics endpoint, logs, and activity tracking. OpenTelemetry exporters and alerting pipelines are not bundled.
 
 ## Health endpoint
 
@@ -33,6 +33,30 @@ Sample response:
 | `unhealthy` | `503` | Database health check failed (in DB mode) or an internal error occurred. |
 
 This makes `/health` suitable for liveness/readiness probes. See `src/controllers/healthController.ts`.
+
+## Prometheus metrics
+
+Set `ENABLE_METRICS=true` to enable `GET /metrics` at the root, independently of `BASE_PATH`. It returns 404 when disabled (the default). Set `METRICS_TOKEN` to require `Authorization: Bearer <token>`; this is a dedicated scrape credential, not a dashboard or MCP bearer key. Without this variable the enabled endpoint is public. Restrict access to your monitoring network or configure the token, especially on multi-tenant deployments.
+
+```yaml
+scrape_configs:
+  - job_name: mcphub
+    static_configs:
+      - targets: ['mcphub:3000']
+    authorization:
+      credentials_file: /etc/prometheus/mcphub-token
+```
+
+| Metric | Labels | Meaning |
+| ------ | ------ | ------- |
+| `mcphub_servers_total` | `status`, `type` | Gauge of enabled shared server definitions. Includes `oauth_required` and OpenAPI. Personal credential runtimes are excluded. An idle on-demand server may be disconnected without being unhealthy. |
+| `mcphub_tool_calls_total` | `server`, `status` | Completed client tool calls (`success` or `error`), including Smart Routing meta-tools and failures before execution. |
+| `mcphub_tool_call_duration_seconds` | `server` | Histogram of complete call duration, including credential preparation, upstream connection, and retries. |
+| `mcphub_active_sessions` | none | Gauge of stateful client transport sessions, excluding stateless HTTP and synthetic REST session IDs. |
+
+Calls through MCP, Dashboard and the OpenAPI tool API share instrumentation. One client call counts once regardless of internal retries; both thrown errors and `isError` results count as failures. Calls without a resolved upstream (including search/describe meta-tools and credential preparation failures) use `server="unknown"`. These counters do not include HTTP authentication rejections before the tool handler. There are no group, user, session, tool-name or raw-error labels. Error categories and an OTel exporter are outside this initial implementation.
+
+Metrics work without a database or activity logging. Each process owns its counters, which reset on restart; scrape each replica separately. Server/session gauges refresh at scrape time without connecting to upstreams. Time series for removed server names remain until restart, so avoid continually creating new server names.
 
 ## In-process logs
 

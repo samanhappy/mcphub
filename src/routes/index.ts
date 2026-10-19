@@ -1,3 +1,4 @@
+import { metrics } from '../controllers/metricsController.js';
 import { managePersonalOAuth } from '../controllers/personalOAuthController.js';
 import { listMyCredentials, updateMyCredential } from '../controllers/credentialBindingController.js';
 import express from 'express';
@@ -214,6 +215,7 @@ export const initRoutes = async (app: express.Application): Promise<void> => {
 
   // Health check endpoint (no auth required, accessible at /health)
   app.get('/health', healthCheck);
+  app.get('/metrics', metrics);
 
   // Hosted data-plane webhook ingress. HMAC-authenticated by INTERNAL_API_SECRET.
   app.post('/internal/v1/events', hostedInternalEventRateLimiter, receiveHostedInternalEvent);

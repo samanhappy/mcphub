@@ -3,7 +3,7 @@ title: '监控与可观测性'
 description: 'MCPHub 提供的健康检查、日志和活动追踪能力'
 ---
 
-MCPHub 提供三个可观测性入口。MCPHub **没有**内置 Prometheus exporter、OpenTelemetry SDK 或告警管线；如需这些能力，请使用外部基础设施工具接入下面的端点。
+MCPHub 提供健康检查、可选的 Prometheus 指标端点、日志和活动记录。未内置 OpenTelemetry exporter 或告警管线。
 
 ## 健康检查端点
 
@@ -74,3 +74,18 @@ MCPHub 维护一个滚动的进程内存日志缓冲区（`src/services/logServi
 
 - [数据库配置](/zh/configuration/database-configuration) —— 启用 PostgreSQL 以使用活动日志。
 - [认证与安全](/zh/features/authentication) —— 了解管理 API 和 bearer key 认证。
+
+## Prometheus 指标
+
+设置 `ENABLE_METRICS=true` 启用根路径 `GET /metrics`，不受 `BASE_PATH` 影响；默认关闭并返回 404。设置 `METRICS_TOKEN` 后，抓取请求必须携带 `Authorization: Bearer <token>`。这是独立的监控凭据，不使用 Dashboard 或 MCP bearer key。启用后如未设置 token，端点可公开访问；多租户部署应设置 token 或限制监控网络访问。
+
+| 指标 | 标签 | 含义 |
+| ---- | ---- | ---- |
+| `mcphub_servers_total` | `status`, `type` | 已启用的共享服务器定义数量（Gauge），包含 `oauth_required` 和 `openapi`。不包含个人凭据运行实例；按需服务器空闲时断开不代表故障。 |
+| `mcphub_tool_calls_total` | `server`, `status` | 已完成的客户端调用数，包含 Smart Routing 元工具和执行前失败。状态为 `success` 或 `error`。 |
+| `mcphub_tool_call_duration_seconds` | `server` | 完整调用耗时直方图，包含凭据准备、连接和重试。 |
+| `mcphub_active_sessions` | 无 | 有状态客户端 transport 会话数，不包含无状态 HTTP 请求或 REST 合成会话 ID。 |
+
+MCP、Dashboard 和 OpenAPI 工具 API 共用埋点。内部重试不会重复计数；异常和 `isError` 返回均视为失败。未解析到上游的调用（包括搜索、描述元工具及凭据准备失败）使用 `server="unknown"`。工具处理器执行前的 HTTP 鉴权拒绝不计入工具调用。首版不增加 group、用户、会话、工具名、原始错误标签或错误分类，也不提供 OTel exporter。
+
+指标不依赖数据库或活动日志。每个进程独立计数，重启归零；多副本部署应分别抓取。服务器和会话 Gauge 在抓取时刷新，不触发上游连接。已删除服务器的历史时间序列保留到重启，避免持续创建不同的服务器名称。Prometheus 抓取配置示例见[英文页面](/features/monitoring)。

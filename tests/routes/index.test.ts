@@ -137,6 +137,8 @@ jest.mock('../../src/controllers/mcpbController.js', () => ({
   uploadMiddleware,
 }));
 
+jest.mock('../../src/controllers/metricsController.js', () => ({ metrics: routeHandler }));
+
 jest.mock('../../src/controllers/healthController.js', () => ({
   healthCheck: routeHandler,
 }));
@@ -459,4 +461,11 @@ it('registers root and path-aware resource metadata before the dashboard', async
   expect(
     findAppRoute(app, 'get', '/.well-known/oauth-protected-resource/:resourcePath(*)'),
   ).toBeDefined();
+});
+
+
+it('registers metrics at the root independently of dashboard API authentication', async () => {
+  const app = express();
+  await initRoutes(app);
+  expect(findAppRoute(app, 'get', '/metrics')).toBeDefined();
 });
