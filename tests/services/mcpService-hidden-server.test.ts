@@ -288,6 +288,41 @@ describe('hidden-server tool/prompt errors (issue #1103)', () => {
     currentUserForFilter = aliceUser;
   };
 
+  it.each([false, true])('logs error context and target tool (wrapped: %s)', async (wrapped) => {
+    const errorLog = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const toolName = 'MissingServer::missingTool';
+    try {
+      const result = await mcpService.handleCallToolRequest(
+        {
+          params: wrapped
+            ? { name: 'call_tool', arguments: { toolName, arguments: {} } }
+            : { name: toolName, arguments: {} },
+        },
+        {
+          sessionId: 'session-1',
+          group: '$smart/operations',
+          username: 'alice',
+          keyId: 'key-1',
+          keyName: 'monitoring-agent',
+        },
+      );
+      expect(errorLog).toHaveBeenCalledWith(
+        'Error handling CallToolRequest',
+        expect.objectContaining({
+          group: '$smart/operations',
+          username: 'alice',
+          callerId: 'key-1',
+          callerLabel: 'monitoring-agent',
+          toolName,
+          reason: 'server-or-name-not-found',
+        }),
+      );
+      expect(result.content[0].text).toBe(`Error: Tool not available: ${toolName}`);
+    } finally {
+      errorLog.mockRestore();
+    }
+  });
+
   it('returns a unified "Tool not available" result for a hidden server tool, identical to a nonexistent one', async () => {
     const toolName = 'SecretSauce::secretPing';
 

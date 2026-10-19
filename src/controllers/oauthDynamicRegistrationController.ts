@@ -12,6 +12,7 @@ import {
 import { IOAuthClient } from '../types/index.js';
 import { getSystemConfigDao } from '../dao/DaoFactory.js';
 import { auth } from '../middlewares/auth.js';
+import { parseBearerAuthorization } from '../utils/bearerAuth.js';
 import { resolveInstallBaseUrl } from '../utils/installBaseUrl.js';
 import { logger } from '../utils/logger.js';
 
@@ -233,7 +234,8 @@ export const getClientConfiguration = async (req: Request, res: Response): Promi
     const { clientId } = req.params;
     const authHeader = req.headers.authorization;
 
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    const token = parseBearerAuthorization(authHeader);
+    if (!token) {
       res.status(401).json({
         error: 'invalid_token',
         error_description: 'Registration access token required',
@@ -241,7 +243,6 @@ export const getClientConfiguration = async (req: Request, res: Response): Promi
       return;
     }
 
-    const token = authHeader.substring(7);
     const tokenClientId = verifyRegistrationToken(token);
 
     if (!tokenClientId || tokenClientId !== clientId) {
@@ -306,7 +307,8 @@ export const updateClientConfiguration = async (req: Request, res: Response): Pr
     const { clientId } = req.params;
     const authHeader = req.headers.authorization;
 
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    const token = parseBearerAuthorization(authHeader);
+    if (!token) {
       res.status(401).json({
         error: 'invalid_token',
         error_description: 'Registration access token required',
@@ -314,7 +316,6 @@ export const updateClientConfiguration = async (req: Request, res: Response): Pr
       return;
     }
 
-    const token = authHeader.substring(7);
     const tokenClientId = verifyRegistrationToken(token);
 
     if (!tokenClientId || tokenClientId !== clientId) {
@@ -490,7 +491,8 @@ export const deleteClientRegistration = async (req: Request, res: Response): Pro
     const { clientId } = req.params;
     const authHeader = req.headers.authorization;
 
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    const token = parseBearerAuthorization(authHeader);
+    if (!token) {
       res.status(401).json({
         error: 'invalid_token',
         error_description: 'Registration access token required',
@@ -498,7 +500,6 @@ export const deleteClientRegistration = async (req: Request, res: Response): Pro
       return;
     }
 
-    const token = authHeader.substring(7);
     const tokenClientId = verifyRegistrationToken(token);
 
     if (!tokenClientId || tokenClientId !== clientId) {

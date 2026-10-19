@@ -4549,7 +4549,13 @@ const handleCallToolRequestImpl = async (request: any, extra: any) => {
       error instanceof ToolUnavailableError
         ? { message: error.message, reason: error.reason }
         : undefined;
+    const activityToolName = getActivityToolNameFromRequest(request);
     logger.error('Error handling CallToolRequest', {
+      group,
+      username,
+      callerId: keyId,
+      callerLabel: keyName,
+      toolName: activityToolName,
       ...summarizeErrorForLogging(error),
       ...(unavailable ? { reason: unavailable.reason } : {}),
     });
@@ -4561,7 +4567,6 @@ const handleCallToolRequestImpl = async (request: any, extra: any) => {
       requestContent: getActivityInputFromToolRequest(request),
       responseContent: { error: formatErrorForLogging(error) },
     });
-    const activityToolName = getActivityToolNameFromRequest(request);
     const serverInfo =
       (typeof extra?.server === 'string' ? getServerByName(extra.server) : undefined) ||
       getServerByTool(activityToolName);

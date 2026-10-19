@@ -3,7 +3,7 @@ import { getToken as getOAuthStoredToken } from '../models/OAuth.js';
 import { findUserByUsername } from '../models/User.js';
 import { IUser, SystemConfig } from '../types/index.js';
 import { safeCompare } from './safeCompare.js';
-import { getBearerTokenFromHeaders } from './bearerAuth.js';
+import { getBearerTokenFromHeaders, parseBearerAuthorization } from './bearerAuth.js';
 
 /**
  * Resolve an MCPHub user from a raw OAuth bearer token.
@@ -33,11 +33,7 @@ export const resolveOAuthUserFromToken = async (token?: string): Promise<IUser |
 export const resolveOAuthUserFromAuthHeader = async (
   authHeader?: string,
 ): Promise<IUser | null> => {
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return null;
-  }
-
-  const token = authHeader.substring(7).trim();
+  const token = parseBearerAuthorization(authHeader);
   if (!token) {
     return null;
   }
