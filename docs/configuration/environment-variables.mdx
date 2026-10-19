@@ -21,6 +21,8 @@ MCPHub reads the following environment variables at startup. The authoritative l
 | `MCPHUB_SETTING_PATH` | `mcp_settings.json` | Override the path of the settings file used by file-mode storage. |
 | `INSTALL_BASE_URL` | `http://localhost:3000` | Public installation base URL used when `systemConfig.install.baseUrl` is unset. The dashboard/API setting still takes precedence; this env var is useful for declarative Docker/Kubernetes deployments and OAuth callback URLs. |
 | `NODE_ENV` | `development` | `development` / `production` / `test`. |
+| `ENABLE_METRICS` | `false` | Enable the root `/metrics` Prometheus endpoint. |
+| `METRICS_TOKEN` | unset | Dedicated bearer token for metrics scraping. Without it, an enabled endpoint is public; restrict network access. |
 | `DEBUG` | `false` | Set to `true` to enable verbose startup logging for frontend-path discovery. |
 
 

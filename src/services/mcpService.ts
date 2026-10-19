@@ -1,3 +1,4 @@
+import { observeToolCall, setMetricsServer } from './metricsService.js';
 import {
   hasPersonalOAuth,
   PersonalOAuthContext,
@@ -1266,6 +1267,11 @@ export const getServerConnectionStats = (): ServerConnectionStats => {
     serverInfos.filter((info) => !hasPersonalAuthentication(info.config)),
   );
 };
+
+export const getMetricsServerSnapshot = () =>
+  serverInfos
+    .filter((info) => info.enabled !== false && !hasPersonalAuthentication(info.config))
+    .map((info) => ({ status: info.status, type: inferServerType(info.config) || 'unknown' }));
 
 // Returns true if all enabled servers are connected
 export const connected = (): boolean => {
@@ -4182,6 +4188,8 @@ const handleCallToolRequestImpl = async (request: any, extra: any) => {
         );
       }
 
+      setMetricsServer(targetServerInfo.name);
+
       // If the target is an on-demand server that is not yet running, wake it up now.
       // Concurrent callers are serialised via ensureServerReady's singleton promise.
       releaseOnDemandToolCall = beginOnDemandToolCall(targetServerInfo);
@@ -4423,6 +4431,7 @@ const handleCallToolRequestImpl = async (request: any, extra: any) => {
       );
     }
     assertToolAvailableForRoute(tool, appsRouteContext);
+    setMetricsServer(serverInfo.name);
 
     // Wake the on-demand server before invoking the tool. It may be asleep with
     // a cached tool list (visible above) but no live client. Mirrors the
@@ -5457,7 +5466,9 @@ export const handleListToolsRequest = withPrincipalServers(
   withCacheHints(handleListToolsRequestImpl, false, 'tools'),
   'list',
 );
-export const handleCallToolRequest = withPrincipalServers(handleCallToolRequestImpl, 'tool');
+const callToolWithPrincipal = withPrincipalServers(handleCallToolRequestImpl, 'tool');
+export const handleCallToolRequest = (request: any, extra: any) =>
+  observeToolCall(() => callToolWithPrincipal(request, extra));
 export const handleGetPromptRequest = withPrincipalServers(handleGetPromptRequestImpl, 'prompt');
 export const handleListPromptsRequest = withPrincipalServers(
   withCacheHints(handleListPromptsRequestImpl, false, 'prompts'),
