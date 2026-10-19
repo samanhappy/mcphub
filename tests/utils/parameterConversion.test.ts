@@ -81,6 +81,42 @@ describe('Parameter Conversion Utilities', () => {
       expect(result.config).toEqual({ key: 'value', nested: { prop: 123 } });
     });
 
+    it.each([
+      ['integer', ['0', '-2', '42'], [0, -2, 42]],
+      ['number', ['0', '-2.5', '19.99'], [0, -2.5, 19.99]],
+      ['boolean', ['true', 'false', '1'], [true, false, true]],
+    ])('should convert form array items with type %s', (type, values, expected) => {
+      const schema = { properties: { values: { type: 'array', items: { type } } } };
+
+      expect(convertParametersToTypes({ values }, schema).values).toEqual(expected);
+    });
+
+    it('should convert comma-separated values using the array item schema', () => {
+      const schema = { properties: { ids: { type: 'array', items: { type: 'integer' } } } };
+
+      expect(convertParametersToTypes({ ids: '1, 2, 3' }, schema).ids).toEqual([1, 2, 3]);
+    });
+
+    it('should preserve typed array items and invalid numeric strings', () => {
+      const schema = { properties: { values: { type: 'array', items: { type: 'number' } } } };
+
+      expect(convertParametersToTypes({ values: [0, 2.5, 'invalid', ''] }, schema).values).toEqual([
+        0,
+        2.5,
+        'invalid',
+        '',
+      ]);
+    });
+
+    it('should keep string array items as strings', () => {
+      const schema = { properties: { values: { type: 'array', items: { type: 'string' } } } };
+
+      expect(convertParametersToTypes({ values: ['1', 'false'] }, schema).values).toEqual([
+        '1',
+        'false',
+      ]);
+    });
+
     it('should keep values unchanged when they already have the correct type', () => {
       const params = { count: 42, enabled: true, tags: ['a', 'b'] };
       const schema = {
