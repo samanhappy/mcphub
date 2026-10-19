@@ -40,6 +40,34 @@ describe('server polling policy', () => {
     expect(policy.success([server('connected'), { ...other, status: 'connecting' }])).toBe(2000);
   });
 
+  it.each([undefined, 'connecting', 'connected'])(
+    'starts a fresh bounded fast window after a prolonged outage (previous: %s)',
+    (previousStatus) => {
+      let now = 0;
+      const policy = createServerPollingPolicy(() => now);
+      if (previousStatus) policy.success([server(previousStatus)]);
+      policy.failure();
+      now = 90000;
+      policy.failure();
+      expect(policy.success([server('connecting')])).toBe(2000);
+      now = 149999;
+      expect(policy.success([server('connecting')])).toBe(2000);
+      now = 150000;
+      expect(policy.success([server('connecting')])).toBe(30000);
+    },
+  );
+
+  it('returns to normal after stable recovery without a status change', () => {
+    let now = 0;
+    const policy = createServerPollingPolicy(() => now);
+    for (let i = 0; i < 3; i++) policy.success([server('connected')]);
+    policy.failure();
+    now = 90000;
+    expect(policy.success([server('connected')])).toBe(2000);
+    expect(policy.success([server('connected')])).toBe(2000);
+    expect(policy.success([server('connected')])).toBe(30000);
+  });
+
   it('backs off failures and resets the backoff after recovery', () => {
     const policy = createServerPollingPolicy();
     expect(Array.from({ length: 7 }, () => policy.failure())).toEqual([

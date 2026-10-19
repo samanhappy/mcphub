@@ -18,9 +18,9 @@ export const createServerPollingPolicy = (now = Date.now) => {
       const signature = JSON.stringify(
         servers.map(({ name, status }) => [name, status]).sort(([a], [b]) => a.localeCompare(b)),
       );
-      // Only actual changes reopen an expired window. A persistently connecting
-      // server must not keep the whole dashboard polling rapidly forever.
-      if (!fast && previous !== undefined && previous !== signature) {
+      // Recovery starts a fresh window even if the last status is unchanged.
+      // Otherwise, only a status change reopens a completed window.
+      if (failures > 0 || (!fast && previous !== undefined && previous !== signature)) {
         fastUntil = now() + FAST_WINDOW;
       }
       stableSamples = signature === previous ? stableSamples + 1 : 1;
