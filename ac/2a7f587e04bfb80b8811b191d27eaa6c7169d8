@@ -1,0 +1,19 @@
+src/middlewares/toolCallGuard.test.ts
+  s_eaf178d266acd9::t_c222bf0a08863e 226-228,237,248,260,273,286,298,311,323
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ac2a7f587e04bfb80b8811b191d27eaa6c7169d8",
+  "prompts": {},
+  "sessions": {
+    "s_eaf178d266acd9": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a15268-80db-7f60-b6e3-f9af5b748537",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
