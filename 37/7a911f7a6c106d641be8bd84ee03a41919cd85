@@ -1,0 +1,33 @@
+tests/integration/oauth-registration-persistence.test.ts
+  s_1e0539af1d355d::t_843fee5d556b19 51-68,70,72-79
+  s_1e0539af1d355d::t_eff6abfd2d77f9 13-15,69,71
+  s_1e0539af1d355d::t_f30b5fceb13647 80
+src/utils/oauthRedirectUri.ts
+  s_1e0539af1d355d::t_843fee5d556b19 67-68,71
+tests/services/oauthClientRegistration.test.ts
+  s_1e0539af1d355d::t_843fee5d556b19 89
+  s_1e0539af1d355d::t_eff6abfd2d77f9 70
+tests/services/mcpOAuthProvider.test.ts
+  s_1e0539af1d355d::t_eff6abfd2d77f9 51,79,83
+tests/utils/oauthRedirectUri.test.ts
+  s_1e0539af1d355d::t_843fee5d556b19 18-23,33-35
+  s_1e0539af1d355d::t_d735b3a217250d 1-17,24-32,36-51
+src/services/oauthClientRegistration.ts
+  s_1e0539af1d355d::t_843fee5d556b19 336
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "377a911f7a6c106d641be8bd84ee03a41919cd85",
+  "prompts": {},
+  "sessions": {
+    "s_1e0539af1d355d": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a15367-321e-7911-ab88-c28651ef9bc3",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
