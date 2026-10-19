@@ -110,7 +110,7 @@ describe('OpenAPIClient - error handling', () => {
     };
 
     await expect(client.callTool('get_users', {})).rejects.toThrow(
-      'API call failed: 401 Unauthorized {"error":"invalid_token","error_description":"[REDACTED]"}',
+      'API call failed: 401 Unauthorized {"error":"invalid_token","error_description":"JWT [REDACTED] leaked"}',
     );
     await expect(client.callTool('get_users', {})).rejects.not.toThrow('eyJhbGciOiJIUzI1NiI');
   });

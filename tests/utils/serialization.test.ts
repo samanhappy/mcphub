@@ -185,20 +185,56 @@ describe('serialization utilities', () => {
     expect(formatted).not.toContain('top-secret');
   });
 
-  it('redacts OAuth error response fields that may carry tokens', () => {
-    const jwt = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9';
-    const rawJson = `{"error":"invalid_token","error_description":"expired ${jwt}","error_uri":"https://auth.example.com/debug?token=${jwt}","error_code":"${jwt}","codeVerifier":"pkce-secret"}`;
-    const rawText = `error_description=expired-${jwt}; error_uri=https://auth.example.com/debug?token=${jwt}; error_code=${jwt}; code_verifier=pkce-secret`;
+  it.each(['token_endpoint_auth_method must be none', 'redirect_uris is required'])(
+    'preserves OAuth failure diagnostics: %s',
+    (description) => {
+      const response = {
+        error: 'invalid_client_metadata',
+        error_description: description,
+        error_code: 'invalid_metadata',
+        error_uri: 'https://auth.example.com',
+      };
+      const raw = JSON.stringify(response);
+      expect(sanitizeStringForLogging(raw)).toBe(raw);
+      expect(safeStringify(response)).toBe(raw);
+      expect(sanitizeStringForLogging(`error_description=${description}`)).toBe(
+        `error_description=${description}`,
+      );
+      const error = Object.assign(
+        new Error(`Dynamic Client Registration rejected (HTTP 400): ${raw}`),
+        { status: 400 },
+      );
+      expect(formatErrorForLogging(error)).toContain(raw);
+    },
+  );
 
-    expect(sanitizeStringForLogging(rawJson)).toBe(
-      '{"error":"invalid_token","error_description":"[REDACTED]","error_uri":"[REDACTED]","error_code":"[REDACTED]","codeVerifier":"[REDACTED]"}',
-    );
-    expect(sanitizeStringForLogging(rawText)).toBe(
-      'error_description=[REDACTED]; error_uri=[REDACTED]; error_code=[REDACTED]; code_verifier=[REDACTED]',
-    );
-    expect(safeStringify({ error_description: `expired ${jwt}` })).toBe(
-      '{"error_description":"[REDACTED]"}',
-    );
+  it.each([
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9',
+    'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjMifQ.signature',
+    'Bearer opaque-credential',
+    'client_secret=opaque-credential',
+    'sk-example-secret',
+  ])('redacts credentials inside OAuth diagnostics: %s', (credential) => {
+    const response = {
+      error: 'invalid_token',
+      error_description: `rejected ${credential}`,
+      error_code: credential,
+      error_uri: `https://user:password@auth.example.com/debug?custom=${credential}`,
+      codeVerifier: 'pkce-secret',
+    };
+    for (const result of [
+      sanitizeStringForLogging(JSON.stringify(response)),
+      safeStringify(response),
+      sanitizeStringForLogging(`error_description=rejected ${credential}`),
+    ]) {
+      expect(result).toContain('rejected');
+      expect(result).not.toContain(credential);
+      expect(result).not.toContain('opaque-credential');
+      expect(result).not.toContain('pkce-secret');
+      expect(result).not.toContain('user:password');
+      expect(result).not.toContain('/debug');
+      expect(result).not.toContain('?custom=');
+    }
     expect(safeStringify({ codeVerifier: 'pkce-secret' })).toBe('{"codeVerifier":"[REDACTED]"}');
   });
 

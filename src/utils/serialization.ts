@@ -25,13 +25,10 @@ const SENSITIVE_LOG_KEY_NAMES = new Set([
   'codeverifier',
   'privatekey',
   'assertion',
-  'errordescription',
-  'erroruri',
-  'errorcode',
 ]);
 
 const SENSITIVE_INLINE_KEY_PATTERN =
-  'access_token|refresh_token|id_token|client_secret|api_key|token|password|authorization|secret|error_description|error_uri|error_code|code_verifier|codeverifier';
+  'access_token|refresh_token|id_token|client_secret|api_key|token|password|authorization|secret|code_verifier|codeverifier';
 
 const AUTHORIZATION_CREDENTIAL_RE =
   /((?:authorization|proxy-authorization)\s*[:=]\s*(?:bearer|basic)\s+)[^\s",;]+/gi;
@@ -79,10 +76,7 @@ export const sanitizeStringForLogging = (value: string): string => {
     /\b(?:sk-[A-Za-z0-9_-]+|(?:ghp|gho|ghu|ghs|ghr)_[A-Za-z0-9]+|github_pat_[A-Za-z0-9_]+)\b/g,
     REDACTED_VALUE,
   );
-  sanitized = sanitized.replace(
-    /\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b/g,
-    REDACTED_VALUE,
-  );
+  sanitized = sanitized.replace(/\beyJ[A-Za-z0-9_-]+(?:\.[A-Za-z0-9_-]+){0,2}\b/g, REDACTED_VALUE);
 
   sanitized = sanitized.replace(AUTHORIZATION_CREDENTIAL_RE, `$1${REDACTED_VALUE}`);
   sanitized = sanitized.replace(BEARER_BASIC_CREDENTIAL_RE, `$1 ${REDACTED_VALUE}`);
