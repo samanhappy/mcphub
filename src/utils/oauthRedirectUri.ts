@@ -64,21 +64,9 @@ export const resolvePreferredRedirectUris = (
   systemInstallBaseUrl?: string,
 ): string[] => {
   const configuredRedirectUris = getConfiguredRedirectUris(serverConfig);
-  const systemConfigured = buildRedirectUriFromBase(systemInstallBaseUrl);
-  const preferredRedirectUri =
-    configuredRedirectUris[0] ?? systemConfigured ?? DEFAULT_OAUTH_REDIRECT_URI;
-
-  const redirectUris: string[] = [preferredRedirectUri];
-
-  for (const uri of configuredRedirectUris) {
-    if (!redirectUris.includes(uri)) {
-      redirectUris.push(uri);
-    }
+  if (configuredRedirectUris.length > 0) {
+    return configuredRedirectUris;
   }
 
-  if (systemConfigured && !redirectUris.includes(systemConfigured)) {
-    redirectUris.push(systemConfigured);
-  }
-
-  return redirectUris;
+  return [buildRedirectUriFromBase(systemInstallBaseUrl) ?? DEFAULT_OAUTH_REDIRECT_URI];
 };

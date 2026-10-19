@@ -48,7 +48,7 @@ describe('MCPHubOAuthProvider redirect URI resolution', () => {
     (getSystemConfigDao as jest.Mock).mockReturnValue({
       get: jest.fn().mockResolvedValue({
         install: {
-          baseUrl: 'https://base.example.com',
+          baseUrl: 'http://base.example.com',
         },
       }),
     });
@@ -76,11 +76,11 @@ describe('MCPHubOAuthProvider redirect URI resolution', () => {
     expect(provider.redirectUrl).toBe('https://env.example.com/mcphub/oauth/callback');
   });
 
-  it('registers the preferred redirect URI ahead of the Base URL in client metadata', async () => {
+  it('registers only explicit redirect URIs in client metadata', async () => {
     (getSystemConfigDao as jest.Mock).mockReturnValue({
       get: jest.fn().mockResolvedValue({
         install: {
-          baseUrl: 'https://base.example.com',
+          baseUrl: 'http://base.example.com',
         },
       }),
     });
@@ -100,7 +100,6 @@ describe('MCPHubOAuthProvider redirect URI resolution', () => {
     expect(provider.clientMetadata.redirect_uris).toEqual([
       'https://custom.example.com/oauth/callback',
       'https://backup.example.com/oauth/callback',
-      'https://base.example.com/oauth/callback',
     ]);
   });
 });

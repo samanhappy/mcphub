@@ -328,12 +328,12 @@ const registerAndPersistClient = async (
 
     const clientMetadata: Partial<client.ClientMetadata> = {
       client_name: metadata.client_name || `MCPHub - ${serverName}`,
-      redirect_uris: redirectUris,
       grant_types: metadata.grant_types || ['authorization_code', 'refresh_token'],
       response_types: metadata.response_types || ['code'],
       token_endpoint_auth_method: metadata.token_endpoint_auth_method || 'client_secret_post',
       scope: scopeValue,
       ...metadata, // Include any additional custom metadata
+      redirect_uris: redirectUris,
     };
 
     logger.log('Registering OAuth client', {
