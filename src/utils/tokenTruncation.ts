@@ -92,7 +92,7 @@ export function truncateWithHeuristic(text: string, maxTokens: number): string {
  * @returns          The original text if it fits, or a truncated prefix.
  */
 async function truncateWithGptTokenizer(text: string, maxTokens: number): Promise<string> {
-  const { encode, decode } = await import('gpt-tokenizer');
+  const { encode, decode } = await import('gpt-tokenizer/encoding/cl100k_base');
   const tokens = encode(text);
   if (tokens.length <= maxTokens) {
     return text;

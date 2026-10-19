@@ -39,6 +39,20 @@ describe('ConfigController - getPublicConfig', () => {
     };
   });
 
+  it.each([
+    [undefined, false, false],
+    [false, false, false],
+    [true, false, true],
+    [true, true, false],
+  ])('publishes effective registration policy (%s, %s)', async (allowRegistration, disablePasswordLogin, expected) => {
+    getSystemConfigMock.mockResolvedValue({ auth: { allowRegistration } });
+    getBetterAuthRuntimeConfigMock.mockResolvedValue({ disablePasswordLogin });
+    await getPublicConfig(mockRequest as Request, mockResponse as Response);
+    expect(mockJson).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ allowRegistration: expected }),
+    }));
+  });
+
   it('uses DAO-backed routing and Better Auth configuration for public config', async () => {
     const systemConfig = {
       routing: {
@@ -86,6 +100,7 @@ describe('ConfigController - getPublicConfig', () => {
       success: true,
       data: {
         skipAuth: true,
+        allowRegistration: false,
         permissions: {
           settings: ['manage'],
         },

@@ -198,13 +198,25 @@ MCPHUB_SETTING_PATH=/etc/mcphub/mcp_settings.json
 - Entries match by their globally unique names. Existing IDs are retained. The file wins even when the same-name entry was created or edited through the dashboard.
 - The entire declared entry controls its configuration: omitted optional fields are cleared or reset to defaults. Servers default to enabled and private. Group memberships, aliases, selections, and pinned tools come from the declaration.
 - On adoption, an omitted `owner` clears the existing owner, including a non-admin owner. Declare `owner` explicitly to retain ownership. Omitted `sharedWithUsers` is cleared as well. Review these fields before enabling sync on an existing deployment.
-- Entries absent from the file remain untouched. Removing or renaming an entry does not delete the old database entry. No managed flag or pruning is provided.
-- Only server/group declarations are reconciled. Users, bearer keys, MCPHub OAuth clients/tokens, personal credential bindings, system configuration, and other runtime data remain in the database. The existing first-boot seed migration still applies on an empty user table.
+- In `upsert` mode, entries absent from the file remain untouched. Removing or renaming an entry does not delete the old database entry.
+- In `upsert` mode, only server/group declarations are reconciled. Users, bearer keys, MCPHub OAuth clients/tokens, personal credential bindings, system configuration, and other runtime data remain in the database. The existing first-boot seed migration still applies on an empty user table.
 - Upstream OAuth tokens and pending authorization supplied in the file are ignored by sync. Existing upstream OAuth state (including dynamically registered client credentials) is retained while the connection target and OAuth declaration are unchanged. Changes to either clear the old state and may require authorization again. A nullable internal `settingsSyncHash` column on servers detects declaration changes, including removed OAuth fields and expanded environment values, without storing resolved secrets. Fingerprints use PBKDF2-SHA256 with 600,000 iterations and a random salt per server; the existing salt is reused on subsequent startups.
 - On first adoption for an existing server, OAuth state is retained only if the target matches and every explicitly declared OAuth field matches its stored value. Undeclared discovered OAuth fields are retained until the declaration changes.
 - Environment placeholders remain unexpanded in persisted declarations and use the existing runtime expansion. JSON must be valid; duplicate group names, malformed declarations, missing files, unsupported sync modes, or database errors fail startup. Server/group writes are applied in one transaction.
 
 Leave `MCPHUB_SETTINGS_SYNC` unset to retain the existing one-time seed behavior. This switch applies only in database mode. Sync never writes back to the settings file, including during the initial seed in this mode.
+
+### Pruning managed entries
+
+Set `MCPHUB_SETTINGS_SYNC=prune` to upsert declarations and delete previously managed servers/groups that are no longer declared. This is opt-in; `upsert` and the unset mode retain their existing behavior.
+
+- Both sync modes mark declared entries as internally managed, including same-name entries adopted from the dashboard. Dashboard edits do not release that ownership. Unmanaged entries remain untouched, so this is not a full database mirror.
+- Omit `mcpServers` or `groups` to leave that collection unpruned. Explicit `mcpServers: {}` or `groups: []` prunes all managed entries in that collection. Renaming a managed entry creates the new entry and deletes the old one, including its runtime credentials.
+- Servers synced by older versions are recognized by their existing declaration fingerprint. Older groups have no ownership marker: declare them once with either sync mode before removing them. Historical groups already removed from the file require manual deletion.
+- Pruning removes personal credential bindings and server/tool embeddings for deleted servers, and removes their references from retained, undeclared groups. A declared group referencing a server being pruned fails startup instead of silently changing its declaration. Users, bearer-key scopes, MCPHub OAuth clients/tokens, and system configuration are not pruned.
+- All upserts, deletions, reference updates, and credential/embedding cleanup share one transaction. Invalid declarations or database failures roll back that transaction and fail startup. Missing optional vector storage is skipped. Sync still runs only at startup and never writes to the settings file.
+
+Review the complete configuration before enabling `prune`: deletion is permanent, and re-adding a server does not restore its credentials.
 
 ## Database Schema
 

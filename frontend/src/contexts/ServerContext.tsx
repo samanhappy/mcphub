@@ -1,6 +1,7 @@
 import React, { createContext, useState, useEffect, useRef, useCallback, useContext } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Server, ApiResponse } from '@/types';
+import { createServerPollingPolicy } from '@/utils/serverPolling';
 import { applyServerListPatch } from '@/utils/serverListState';
 import { disconnectServerOAuth as disconnectServerOAuthRequest } from '@/services/serverOAuthService';
 import { apiDelete, apiGet, apiPost, apiPut } from '../utils/fetchInterceptor';
@@ -22,19 +23,6 @@ const getInitialServersPerPage = (): number => {
 
   const parsed = Number(saved);
   return VALID_PAGE_SIZES.has(parsed) ? parsed : DEFAULT_SERVERS_PER_PAGE;
-};
-
-// Configuration options
-const CONFIG = {
-  // Initialization phase configuration
-  startup: {
-    maxAttempts: 60, // Maximum number of attempts during initialization
-    pollingInterval: 3000, // Polling interval during initialization (3 seconds)
-  },
-  // Normal operation phase configuration
-  normal: {
-    pollingInterval: 30000, // Polling interval during normal operation (30 seconds)
-  },
 };
 
 // Pagination info type
@@ -94,10 +82,8 @@ export const ServerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [currentPage, setCurrentPage] = useState(1);
   const [serversPerPage, setServersPerPage] = useState(getInitialServersPerPage);
 
-  // Timer reference for polling
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
-  // Track current attempt count to avoid dependency cycles
-  const attemptsRef = useRef<number>(0);
+  // Schedule the next poll only after the current request completes.
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Track last fetch time to implement smart refresh
   const lastFetchTimeRef = useRef<number>(0);
   // Minimum interval between manual refreshes (5 seconds in dev, 3 seconds in prod)
@@ -105,9 +91,9 @@ export const ServerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   // Clear the timer
   const clearTimer = () => {
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = null;
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
     }
   };
 
@@ -132,159 +118,63 @@ export const ServerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     setPagination(null);
   }, []);
 
-  // Start normal polling
-  const startNormalPolling = useCallback(
-    (options?: { immediate?: boolean }) => {
-      const immediate = options?.immediate ?? true;
-      // Ensure no other timers are running
-      clearTimer();
-
-      const fetchServers = async () => {
-        try {
-          console.log('[ServerContext] Fetching servers from API...');
-          // Build query parameters for pagination
-          const params = new URLSearchParams();
-          params.append('page', currentPage.toString());
-          params.append('limit', serversPerPage.toString());
-
-          const serverData = (await apiGet(`/servers?${params.toString()}`)) as ServerListResponse;
-
-          // Update last fetch time
-          lastFetchTimeRef.current = Date.now();
-          applyServerResponse(serverData);
-
-          // Reset error state
-          setError(null);
-        } catch (err) {
-          console.error('Error fetching servers during normal polling', { err });
-
-          // Use friendly error message
-          if (!navigator.onLine) {
-            setError(t('errors.network'));
-          } else if (
-            err instanceof TypeError &&
-            (err.message.includes('NetworkError') || err.message.includes('Failed to fetch'))
-          ) {
-            setError(t('errors.serverConnection'));
-          } else {
-            setError(t('errors.serverFetch'));
-          }
-        }
-      };
-
-      // Execute immediately unless explicitly skipped
-      if (immediate) {
-        fetchServers();
-      }
-
-      // Set up regular polling
-      intervalRef.current = setInterval(fetchServers, CONFIG.normal.pollingInterval);
-    },
-    [applyServerResponse, t, currentPage, serversPerPage],
-  );
-
-  // Watch for authentication status changes
   useEffect(() => {
-    if (auth.isAuthenticated) {
-      console.log('[ServerContext] User authenticated, triggering refresh');
-      // When user logs in, trigger a refresh to load servers
-      setRefreshKey((prevKey) => prevKey + 1);
-    } else {
-      console.log('[ServerContext] User not authenticated, clearing data and stopping polling');
-      // When user logs out, clear data and stop polling
-      clearTimer();
+    if (!auth.isAuthenticated) {
       setServers([]);
       setAllServers([]);
       setIsInitialLoading(false);
       setError(null);
-    }
-  }, [auth.isAuthenticated]);
-
-  useEffect(() => {
-    // If not authenticated, don't poll
-    if (!auth.isAuthenticated) {
-      console.log('[ServerContext] User not authenticated, skipping polling setup');
       return;
     }
 
-    // Reset attempt count
-    if (refreshKey > 0) {
-      attemptsRef.current = 0;
-      setFetchAttempts(0);
-    }
+    let active = true;
+    const controller = new AbortController();
+    const policy = createServerPollingPolicy();
+    setFetchAttempts(0);
 
-    // Initialization phase request function
-    const fetchInitialData = async () => {
+    const fetchServers = async () => {
+      let delay: number;
       try {
-        console.log('[ServerContext] Initial fetch - attempt', attemptsRef.current + 1);
-        // Build query parameters for pagination
-        const params = new URLSearchParams();
-        params.append('page', currentPage.toString());
-        params.append('limit', serversPerPage.toString());
-
-        const serverData = (await apiGet(`/servers?${params.toString()}`)) as ServerListResponse;
-
-        // Update last fetch time
-        lastFetchTimeRef.current = Date.now();
-        applyServerResponse(serverData);
-
-        setIsInitialLoading(false);
-        // Initialization successful, start normal polling (skip immediate to avoid duplicate fetch)
-        startNormalPolling({ immediate: false });
-        return true;
-      } catch (err) {
-        // Increment attempt count, use ref to avoid triggering effect rerun
-        attemptsRef.current += 1;
-        console.error('Initial loading attempt failed', {
-          attempt: attemptsRef.current,
-          err,
+        const params = new URLSearchParams({
+          page: currentPage.toString(),
+          limit: serversPerPage.toString(),
         });
-
-        // Update state for display
-        setFetchAttempts(attemptsRef.current);
-
-        // Set appropriate error message
-        if (!navigator.onLine) {
-          setError(t('errors.network'));
-        } else {
-          setError(t('errors.initialStartup'));
+        const response = (await apiGet(`/servers?${params}`, {
+          signal: controller.signal,
+        })) as ServerListResponse | Server[];
+        if (!active) return;
+        if (!Array.isArray(response) && (!response.success || !Array.isArray(response.data))) {
+          throw new Error('Invalid server list response');
         }
-
-        // If maximum attempt count is exceeded, give up initialization and switch to normal polling
-        if (attemptsRef.current >= CONFIG.startup.maxAttempts) {
-          console.log('Maximum startup attempts reached, switching to normal polling');
-          setIsInitialLoading(false);
-          // Clear initialization polling
-          clearTimer();
-          // Switch to normal polling mode
-          startNormalPolling();
-        }
-
-        return false;
+        const all = Array.isArray(response)
+          ? response
+          : Array.isArray(response.allServers)
+            ? response.allServers
+            : response.data!;
+        delay = policy.success(all);
+        lastFetchTimeRef.current = Date.now();
+        applyServerResponse(response);
+        setIsInitialLoading(false);
+        setFetchAttempts(0);
+        setError(null);
+      } catch (err) {
+        if (!active) return;
+        delay = policy.failure();
+        setFetchAttempts((attempts) => attempts + 1);
+        setIsInitialLoading(false);
+        console.error('Error fetching servers', { err });
+        setError(t(!navigator.onLine ? 'errors.network' : 'errors.serverFetch'));
       }
+      if (active) timerRef.current = setTimeout(fetchServers, delay);
     };
 
-    // On component mount, set appropriate polling based on current state
-    if (isInitialLoading) {
-      // Ensure no other timers are running
-      clearTimer();
-
-      // Execute initial request immediately
-      fetchInitialData();
-
-      // Set polling interval for initialization phase
-      intervalRef.current = setInterval(fetchInitialData, CONFIG.startup.pollingInterval);
-      console.log(`Started initial polling with interval: ${CONFIG.startup.pollingInterval}ms`);
-    } else {
-      // Initialization completed, start normal polling
-      startNormalPolling();
-    }
-
-    // Cleanup function
+    void fetchServers();
     return () => {
+      active = false;
+      controller.abort();
       clearTimer();
     };
-  }, [applyServerResponse, refreshKey, t, isInitialLoading, startNormalPolling, currentPage, serversPerPage]);
+  }, [auth.isAuthenticated, applyServerResponse, refreshKey, t, currentPage, serversPerPage]);
 
   useEffect(() => {
     if (!pagination) {
@@ -302,16 +192,9 @@ export const ServerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     // Clear current timer
     clearTimer();
 
-    // If in initialization phase, reset initialization state
-    if (isInitialLoading) {
-      setIsInitialLoading(true);
-      attemptsRef.current = 0;
-      setFetchAttempts(0);
-    }
-
     // Change in refreshKey will trigger useEffect to run again
     setRefreshKey((prevKey) => prevKey + 1);
-  }, [isInitialLoading]);
+  }, []);
 
   // Smart refresh with debounce (only refresh if enough time has passed)
   const refreshIfNeeded = useCallback(() => {

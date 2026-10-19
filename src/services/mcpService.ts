@@ -1,3 +1,4 @@
+import { observeToolCall, setMetricsServer } from './metricsService.js';
 import {
   hasPersonalOAuth,
   PersonalOAuthContext,
@@ -17,6 +18,11 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 import { createHash } from 'node:crypto';
 import { canAccessGroupRoute } from '../utils/groupAccess.js';
 import { canServeToolRequests } from '../utils/serverAvailability.js';
+import {
+  assertToolCallArgumentsSafe,
+  isToolCallGuardEnabled,
+  ToolCallBlockedError,
+} from '../middlewares/toolCallGuard.js';
 import type { RequestPrincipal } from './authorizationService.js';
 import { PrincipalRuntimeService } from './principalRuntimeService.js';
 import { UserContextService } from './userContextService.js';
@@ -59,6 +65,7 @@ import {
   Tool,
   Resource,
   ProxychainsConfig,
+  IGroup,
   IGroupServerConfig,
 } from '../types/index.js';
 import { expandEnvVars, replaceEnvVars, getNameSeparator } from '../config/index.js';
@@ -371,12 +378,29 @@ type McpServerDescriptor = {
   appendGroupSuffix?: boolean;
 };
 
+// Blank parts are dropped; nothing left means no instructions at all, not "".
+const joinInstructions = (...parts: (string | undefined)[]): string | undefined =>
+  parts
+    .map((part) => part?.trim())
+    .filter(Boolean)
+    .join('\n\n') || undefined;
+
+// Instructions of the group a route names ($smart/<group> or <group>), for a
+// caller allowed on that route. Bare $smart and server-name routes have no group.
+const getGroupInstructions = async (group?: string): Promise<string | undefined> => {
+  const lookupGroup = getGroupLookupName(group);
+  const foundGroup = lookupGroup ? await findRouteGroup(lookupGroup) : null;
+  return foundGroup && canAccessGroupRoute(foundGroup) ? foundGroup.instructions : undefined;
+};
+
 const getMcpServerDescriptor = async (group?: string): Promise<McpServerDescriptor> => {
+  const groupInstructions = await getGroupInstructions(group);
   if (!group || isSmartRoutingGroup(group)) {
     return {
       name: config.mcpHubName,
       version: config.mcpHubVersion,
       group,
+      instructions: joinInstructions(groupInstructions),
     };
   }
 
@@ -386,7 +410,7 @@ const getMcpServerDescriptor = async (group?: string): Promise<McpServerDescript
     return {
       name: serverInfo.name,
       version: serverInfo.version || config.mcpHubVersion,
-      instructions: serverInfo.instructions,
+      instructions: joinInstructions(groupInstructions, serverInfo.instructions),
       appendGroupSuffix: false,
     };
   }
@@ -395,6 +419,7 @@ const getMcpServerDescriptor = async (group?: string): Promise<McpServerDescript
     name: config.mcpHubName,
     version: config.mcpHubVersion,
     group,
+    instructions: joinInstructions(groupInstructions),
     appendGroupSuffix: true,
   };
 };
@@ -1242,6 +1267,11 @@ export const getServerConnectionStats = (): ServerConnectionStats => {
     serverInfos.filter((info) => !hasPersonalAuthentication(info.config)),
   );
 };
+
+export const getMetricsServerSnapshot = () =>
+  serverInfos
+    .filter((info) => info.enabled !== false && !hasPersonalAuthentication(info.config))
+    .map((info) => ({ status: info.status, type: inferServerType(info.config) || 'unknown' }));
 
 // Returns true if all enabled servers are connected
 export const connected = (): boolean => {
@@ -4004,6 +4034,35 @@ const handleCallToolRequestImpl = async (request: any, extra: any) => {
   const startTime = Date.now();
   const activityLogger = getActivityLoggingService();
 
+  // Opt-in fail-closed guard for high-confidence command-injection / SSRF /
+  // cloud-credential-theft payloads in tool call arguments. Disabled by
+  // default (TOOL_CALL_GUARD_ENABLED=true to enable); see
+  // src/middlewares/toolCallGuard.ts.
+  if (isToolCallGuardEnabled()) {
+    try {
+      assertToolCallArgumentsSafe(request?.params?.arguments);
+    } catch (guardError) {
+      if (guardError instanceof ToolCallBlockedError) {
+        logger.warn(
+          `Tool call blocked by guard: server/tool=${
+            request?.params?.name ?? 'unknown'
+          }, rule=${guardError.ruleId}`,
+        );
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Error: ${guardError.message}`,
+            },
+          ],
+          isError: true,
+          errorCode: -32001,
+        };
+      }
+      throw guardError;
+    }
+  }
+
   // Get request context for activity logging
   const requestContextService = RequestContextService.getInstance();
   const bearerKeyContext = requestContextService.getBearerKeyContext();
@@ -4128,6 +4187,8 @@ const handleCallToolRequestImpl = async (request: any, extra: any) => {
           classifyUnavailableReason(toolName),
         );
       }
+
+      setMetricsServer(targetServerInfo.name);
 
       // If the target is an on-demand server that is not yet running, wake it up now.
       // Concurrent callers are serialised via ensureServerReady's singleton promise.
@@ -4370,6 +4431,7 @@ const handleCallToolRequestImpl = async (request: any, extra: any) => {
       );
     }
     assertToolAvailableForRoute(tool, appsRouteContext);
+    setMetricsServer(serverInfo.name);
 
     // Wake the on-demand server before invoking the tool. It may be asleep with
     // a cached tool list (visible above) but no live client. Mirrors the
@@ -5404,7 +5466,9 @@ export const handleListToolsRequest = withPrincipalServers(
   withCacheHints(handleListToolsRequestImpl, false, 'tools'),
   'list',
 );
-export const handleCallToolRequest = withPrincipalServers(handleCallToolRequestImpl, 'tool');
+const callToolWithPrincipal = withPrincipalServers(handleCallToolRequestImpl, 'tool');
+export const handleCallToolRequest = (request: any, extra: any) =>
+  observeToolCall(() => callToolWithPrincipal(request, extra));
 export const handleGetPromptRequest = withPrincipalServers(handleGetPromptRequestImpl, 'prompt');
 export const handleListPromptsRequest = withPrincipalServers(
   withCacheHints(handleListPromptsRequestImpl, false, 'prompts'),
@@ -5476,6 +5540,15 @@ type FilteredGroupServersResult = {
   serverConfigsByName: Map<string, IGroupServerConfig>;
 };
 
+// The group a route segment names: by name, or by id when it is a UUID.
+const findRouteGroup = async (group: string): Promise<IGroup | null> => {
+  const groupDao = getGroupDao();
+  const foundGroup = await groupDao.findByName(group);
+  if (foundGroup) return foundGroup;
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  return uuidRegex.test(group) ? groupDao.findById(group) : null;
+};
+
 export const getFilteredServerInfosForGroup = async (
   group: string | undefined,
   options?: { requireClient?: boolean },
@@ -5484,14 +5557,7 @@ export const getFilteredServerInfosForGroup = async (
   let matchedGroup = false;
   let serverConfigs: IGroupServerConfig[] = [];
   if (group) {
-    const groupDao = getGroupDao();
-    let foundGroup = await groupDao.findByName(group);
-    if (!foundGroup) {
-      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-      if (uuidRegex.test(group)) {
-        foundGroup = await groupDao.findById(group);
-      }
-    }
+    const foundGroup = await findRouteGroup(group);
     if (foundGroup) {
       matchedGroup = true;
       if (!canAccessGroupRoute(foundGroup)) {

@@ -272,13 +272,36 @@ type SearchLine = {
   body: string;
 };
 
+function looksLikePath(candidate: string): boolean {
+  if (!/^[^\s"'`<>|;*?]+$/u.test(candidate)) return false;
+  if (!/\.[\p{L}\p{N}]{1,10}$/u.test(candidate)) return false;
+  let depth = 0;
+  for (const char of candidate) {
+    if (char === '(') depth += 1;
+    else if (char === ')' && --depth < 0) return false;
+  }
+  return depth === 0;
+}
+
 function parseSearchLine(line: string): SearchLine | null {
   if (
     /^(?:\d{4}-\d{2}-\d{2}|\d{2}:\d{2}:\d{2}|\[\d{4}-\d{2}-\d{2}|\[\d{2}:\d{2}:\d{2})/.test(line)
   ) {
     return null;
   }
-  const match = /^(.*?)(?::|-)(\d+)(?::|-)(.*)$/.exec(line);
+  // Match lines are `file:line:body`; context lines are `file-line-body`. A file name can contain
+  // `-<digits>-` and a body can contain `:<digits>:` (a time such as 12:34:56, or `lib/util.ts:14:5`
+  // in a stack trace), so neither form can simply win. A candidate file must look like a path: no
+  // whitespace, quote or shell punctuation, parentheses only when balanced (`app/(group)/page.tsx`),
+  // any letters including non-Latin ones (`src/中文.ts`), and an extension at the end. The colon form is
+  // tried first, so `docs/release-1.2-3-notes.md:7:` keeps its name. When only one form matches the line
+  // it is used as before (`Makefile:12:`). When both match and neither file looks like a path, the line
+  // is not parsed and stays as it was, rather than inventing a file and a line number.
+  const colon = /^(.*?):(\d+):(.*)$/.exec(line);
+  const hyphen = /^(.*?)-(\d+)-(.*)$/.exec(line);
+  const match =
+    [colon, hyphen].find((m) => m && looksLikePath(m[1])) ??
+    (colon && hyphen ? null : (colon ?? hyphen));
   if (!match) return null;
   const parsedLine = Number(match[2]);
   if (!Number.isFinite(parsedLine)) return null;

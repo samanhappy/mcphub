@@ -63,6 +63,9 @@
     "system": "System"
   },
   "auth": {
+    "createAccount": "Create account",
+    "backToLogin": "Back to sign in",
+    "userAlreadyExists": "Username already exists",
     "login": "Login",
     "loginTitle": "Login to MCPHub",
     "slogan": "Open-source, self-hosted MCP gateway and control plane",
@@ -535,6 +538,9 @@
     "deleteWarning": "Deleting group '{{name}}' will remove it and all its server associations. This action cannot be undone.",
     "name": "Group Name",
     "namePlaceholder": "Enter group name",
+    "instructions": "Instructions",
+    "instructionsHelp": "Optional. Sent to MCP clients when they connect to this group (also as $smart/<group>); most clients add it to the model's system prompt.",
+    "instructionsPlaceholder": "e.g. Use fetch for web pages; if it fails, use firecrawl_scrape.",
     "nameRequired": "Group name is required",
     "description": "Description",
     "descriptionPlaceholder": "Enter group description (optional)",
@@ -799,6 +805,8 @@
     "restoreDefaultFailed": "Failed to restore the default prompt description"
   },
   "settings": {
+    "allowRegistration": "Allow self-registration",
+    "allowRegistrationDescription": "Allow visitors to create regular accounts from the login page. Disabled by default; unavailable while password login is disabled.",
     "allowedCidrs": "Allowed upstream CIDR ranges",
     "allowedCidrsDescription": "One IPv4 or IPv6 CIDR per line. All users can connect upstream MCP, OpenAPI and OAuth endpoints in these ranges. Empty means no additional access. Admin-owned servers retain unrestricted internal access. Avoid broad ranges and metadata or loopback addresses unless required. Changes apply to new requests; existing connections are not closed.",
     "allowedCidrsUpdateFailed": "Failed to update allowed CIDR ranges",

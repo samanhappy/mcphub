@@ -71,20 +71,21 @@ import { Card, Cards } from 'mintlify';
 
 ### 注册
 
-注册一个新用户并返回 JWT 令牌。
+注册一个普通用户并返回 JWT 令牌。
+
+本地自助注册要求 `systemConfig.auth.allowRegistration: true`（默认关闭）且密码登录可用，否则返回 HTTP 403。新账号始终为普通用户；`isAdmin` 参数不生效。密码至少八位，包含字母、数字和特殊字符。
 
 - **端点**: `/api/auth/register`
 - **方法**: `POST`
 - **正文**:
   - `username` (string, 必填): 新的用户名。
-  - `password` (string, 必填): 新的用户密码 (至少6个字符)。
-  - `isAdmin` (boolean, 可选): 用户是否应有管理员权限。
+  - `password` (string, 必填): 新的用户密码（至少八位，包含字母、数字和特殊字符）。
+  - 不能申请管理员权限；`isAdmin` 参数会被忽略。
 - **请求示例**:
   ```json
   {
     "username": "newuser",
-    "password": "password123",
-    "isAdmin": false
+    "password": "Password123!"
   }
   ```
 - **成功响应**:

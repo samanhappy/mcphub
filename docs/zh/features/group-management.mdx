@@ -295,6 +295,25 @@ curl -X POST http://localhost:3000/mcp/web-tools \
 
 响应将只包含来自 `fetch` 和 `playwright` 服务器的工具。
 
+### 分组说明
+
+MCP 客户端会从 `initialize` 响应中收到可选的 `instructions` 字符串，大多数客户端会把它加入模型的系统提示。这里适合告诉模型何时使用该连接，例如优先使用分组中的 fetch 工具而不是客户端内置的工具，或者某个工具失败时改用哪个工具。
+
+通过分组的 `instructions` 字段设置（控制台、`POST`/`PUT /api/groups`，或 `mcp_settings.json` 中的分组条目）。发送规则：
+
+- `/mcp/{group}`：包含多个服务器的分组只发送分组的说明；单服务器分组先发送分组的说明，再附上该服务器自身的上游 instructions（单服务器分组原本就会转发它们）。
+- `/mcp/$smart/{group}`：发送分组的说明。
+
+单独的 `/mcp/$smart`、全局路由和按服务器名的路由不对应任何分组，因此不发送分组说明。客户端每个会话只读取一次 instructions：修改后需重新连接。
+
+```json
+{
+  "name": "web",
+  "instructions": "For web pages use fetch first. If it fails (403, blocked, empty or JavaScript-only page), retry the same URL with firecrawl_scrape.",
+  "servers": ["fetch", "firecrawl"]
+}
+```
+
 ## 动态分组管理
 
 ### 向分组添加服务器

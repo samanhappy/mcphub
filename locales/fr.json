@@ -63,6 +63,9 @@
     "system": "Système"
   },
   "auth": {
+    "createAccount": "Créer un compte",
+    "backToLogin": "Retour à la connexion",
+    "userAlreadyExists": "Ce nom d’utilisateur existe déjà",
     "login": "Connexion",
     "loginTitle": "Se connecter à MCPHub",
     "slogan": "Passerelle et plan de contrôle MCP open source et auto-hébergés",
@@ -534,6 +537,9 @@
     "deleteWarning": "La suppression du groupe '{{name}}' le supprimera ainsi que toutes ses associations de serveurs. Cette action est irréversible.",
     "name": "Nom du groupe",
     "namePlaceholder": "Entrez le nom du groupe",
+    "instructions": "Instructions",
+    "instructionsHelp": "Facultatif. Envoyées aux clients MCP à la connexion à ce groupe (y compris $smart/<group>) ; la plupart les ajoutent au prompt système du modèle.",
+    "instructionsPlaceholder": "Ex. : Utilisez fetch pour les pages web ; en cas d'échec, firecrawl_scrape.",
     "nameRequired": "Le nom du groupe est requis",
     "description": "Description",
     "descriptionPlaceholder": "Entrez la description du groupe (facultatif)",
@@ -798,6 +804,8 @@
     "restoreDefaultFailed": "Échec de la restauration de la description par défaut de l'invite"
   },
   "settings": {
+    "allowRegistration": "Autoriser les inscriptions",
+    "allowRegistrationDescription": "Permet aux visiteurs de créer un compte standard depuis la page de connexion. Désactivé par défaut et indisponible si la connexion par mot de passe est désactivée.",
     "allowedCidrs": "Plages CIDR autorisées pour les services en amont",
     "allowedCidrsDescription": "Un CIDR IPv4 ou IPv6 par ligne. Tous les utilisateurs peuvent accéder aux services MCP, OpenAPI et OAuth de ces plages. Une liste vide ne donne aucun accès supplémentaire. Les serveurs appartenant aux administrateurs gardent leur accès interne. Évitez les plages larges et les adresses de métadonnées ou de boucle locale. Les changements concernent les nouvelles requêtes, sans fermer les connexions existantes.",
     "allowedCidrsUpdateFailed": "Échec de la mise à jour des plages CIDR",

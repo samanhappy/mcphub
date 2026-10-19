@@ -1354,6 +1354,24 @@ describe('serverController - updateSystemConfig', () => {
     );
   });
 
+  it.each([true, false])(
+    'persists an allowRegistration-only update: %s',
+    async (allowRegistration) => {
+      mockRequest.body = { auth: { allowRegistration } };
+      mockSystemConfigDao.get.mockResolvedValue({ auth: { betterAuth: { enabled: true } } });
+      await updateSystemConfig(mockRequest as Request, mockResponse as Response);
+      expect(mockStatus).not.toHaveBeenCalledWith(400);
+      expect(mockSystemConfigDao.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          auth: expect.objectContaining({
+            allowRegistration,
+            betterAuth: expect.objectContaining({ enabled: true }),
+          }),
+        }),
+      );
+    },
+  );
+
   it('persists a disablePasswordLogin-only Better Auth update', async () => {
     mockRequest.body = { auth: { betterAuth: { disablePasswordLogin: true } } };
     mockSystemConfigDao.get.mockResolvedValue({

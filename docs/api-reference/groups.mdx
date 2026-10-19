@@ -51,6 +51,7 @@ Creates a new server group.
 - **Body**:
   - `name` (string, required): The name of the group.
   - `description` (string, optional): A description for the group.
+  - `instructions` (string, optional): Sent as the MCP `initialize` instructions on the group's routes. See [Group instructions](/features/group-management#group-instructions).
   - `servers` (array, optional): A list of server names or capability-scoped server configuration objects.
 - **Request Example**:
   ```json
@@ -84,7 +85,7 @@ Retrieves details for a specific group by its ID or name.
 
 ### Update a Group
 
-Updates an existing group's name, description, or server list.
+Updates an existing group's name, description, instructions, or server list.
 
 - **Endpoint**: `/api/groups/:id`
 - **Method**: `PUT`
@@ -93,6 +94,7 @@ Updates an existing group's name, description, or server list.
 - **Body**:
   - `name` (string, optional): The new name for the group.
   - `description` (string, optional): The new description for the group.
+  - `instructions` (string, optional): The new instructions for the group; an empty string removes them.
   - `servers` (array, optional): The new list of servers for the group. See [Batch Update Group Servers](#batch-update-group-servers) for format.
 - **Request Example**:
   ```json

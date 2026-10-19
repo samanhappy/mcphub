@@ -92,6 +92,11 @@ const validateGroupServersConfig = (servers: unknown): string | null => {
 };
 
 // Get all groups
+const getInstructionsError = (instructions: unknown): string | undefined =>
+  instructions !== undefined && typeof instructions !== 'string'
+    ? 'Group instructions must be a string'
+    : undefined;
+
 export const getGroups = async (_: Request, res: Response): Promise<void> => {
   try {
     const groups = await getAllGroups();
@@ -145,9 +150,11 @@ export const getGroup = async (req: Request, res: Response): Promise<void> => {
 // Create a new group
 export const createNewGroup = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { name, description, servers, visibility, sharedWithUsers } = req.body;
+    const { name, description, instructions, servers, visibility, sharedWithUsers } = req.body;
     const accessError =
-      getSmartRoutingNameError(name) || validateGroupAccess({ visibility, sharedWithUsers });
+      getSmartRoutingNameError(name) ||
+      validateGroupAccess({ visibility, sharedWithUsers }) ||
+      getInstructionsError(instructions);
     if (accessError) {
       res.status(400).json({ success: false, message: accessError });
       return;
@@ -177,6 +184,7 @@ export const createNewGroup = async (req: Request, res: Response): Promise<void>
     const newGroup = await createGroup(name, description, serverList, owner, {
       visibility,
       sharedWithUsers,
+      instructions,
     });
     if (!newGroup) {
       res.status(400).json({
@@ -230,6 +238,11 @@ export const batchCreateGroups = async (req: Request, res: Response): Promise<vo
 
       if (group.description !== undefined && typeof group.description !== 'string') {
         return { valid: false, message: 'Group description must be a string' };
+      }
+
+      const instructionsError = getInstructionsError(group.instructions);
+      if (instructionsError) {
+        return { valid: false, message: instructionsError };
       }
 
       if (group.servers !== undefined && !Array.isArray(group.servers)) {
@@ -286,7 +299,7 @@ export const batchCreateGroups = async (req: Request, res: Response): Promise<vo
     const defaultOwner = currentUser?.username || 'admin';
 
     for (const groupData of groups) {
-      const { name, description, servers, visibility, sharedWithUsers } = groupData;
+      const { name, description, instructions, servers, visibility, sharedWithUsers } = groupData;
 
       // Validate group configuration
       const accessError =
@@ -309,6 +322,7 @@ export const batchCreateGroups = async (req: Request, res: Response): Promise<vo
         const newGroup = await createGroup(name, description, serverList, defaultOwner, {
           visibility,
           sharedWithUsers,
+          instructions,
         });
 
         if (newGroup) {
@@ -360,9 +374,11 @@ export const batchCreateGroups = async (req: Request, res: Response): Promise<vo
 export const updateExistingGroup = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    const { name, description, servers, visibility, sharedWithUsers } = req.body;
+    const { name, description, instructions, servers, visibility, sharedWithUsers } = req.body;
     const accessError =
-      getSmartRoutingNameError(name) || validateGroupAccess({ visibility, sharedWithUsers });
+      getSmartRoutingNameError(name) ||
+      validateGroupAccess({ visibility, sharedWithUsers }) ||
+      getInstructionsError(instructions);
     if (accessError) {
       res.status(400).json({ success: false, message: accessError });
       return;
@@ -384,6 +400,7 @@ export const updateExistingGroup = async (req: Request, res: Response): Promise<
       ];
     if (name !== undefined) updateData.name = name;
     if (description !== undefined) updateData.description = description;
+    if (instructions !== undefined) updateData.instructions = instructions;
     if (servers !== undefined) {
       const validationError = validateGroupServersConfig(servers);
       if (validationError) {
@@ -400,7 +417,7 @@ export const updateExistingGroup = async (req: Request, res: Response): Promise<
       res.status(400).json({
         success: false,
         message:
-          'At least one field (name, description, servers, visibility, or sharedWithUsers) is required to update',
+          'At least one field (name, description, instructions, servers, visibility, or sharedWithUsers) is required to update',
       });
       return;
     }

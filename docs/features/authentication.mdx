@@ -3,6 +3,20 @@ title: 'Authentication & Security'
 description: 'How clients authenticate against MCPHub'
 ---
 
+## Self-registration
+
+Administrators can enable **Allow self-registration** under **Settings → Security**. It is disabled by default.
+When enabled, the login page offers **Create account**. New accounts are always regular users;
+registration cannot grant administrator privileges. Usernames still referenced by resource
+ownership, sharing lists, authentication state, or user configuration cannot be claimed
+through self-registration, even after the original account is deleted. Passwords must contain at least eight
+characters, including a letter, a number, and a special character.
+
+The setting is stored as `systemConfig.auth.allowRegistration` in `mcp_settings.json`
+and works with both file and database storage. It takes effect without a restart.
+When password login is disabled by the effective SSO configuration, local registration is
+also refused and the registration entry is hidden. Existing accounts remain available.
+
 ## Overview
 
 MCPHub supports several stacked authentication paths. The same middleware (`src/middlewares/auth.ts`) evaluates them in order on every authenticated request:

@@ -24,6 +24,7 @@ export interface IGroup {
   id: string; // Unique UUID for the group
   name: string; // Display name of the group
   description?: string; // Optional description of the group
+  instructions?: string; // Sent as the MCP initialize instructions on this group's routes
   servers: string[] | IGroupServerConfig[]; // Array of server names or server configurations that belong to this group
   owner?: string; // Owner of the group, defaults to 'admin' user
 }
@@ -282,6 +283,7 @@ export interface SystemConfig {
   oauthServer?: OAuthServerConfig; // OAuth authorization server configuration for MCPHub itself
   enableSessionRebuild?: boolean; // Controls whether server session rebuild is enabled
   auth?: {
+    allowRegistration?: boolean; // Allow public local account registration (default: false)
     betterAuth?: BetterAuthConfig; // Better Auth integration configuration
     forwardAuth?: ForwardAuthConfig; // Trust identity asserted by an upstream gateway (JWKS-verified JWT)
   };
@@ -749,6 +751,7 @@ export interface AddGroupRequest {
   sharedWithUsers?: string[];
   name: string; // Name of the group to add
   description?: string; // Optional description of the group
+  instructions?: string; // Optional MCP initialize instructions for the group's routes
   servers?: string[] | IGroupServerConfig[]; // Array of server names or server configurations
 }
 

@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { getSettingsPath } from '../config/index.js';
 import { getAppDataSource } from '../db/connection.js';
 import { Server } from '../db/entities/Server.js';
+import { CredentialBinding } from '../db/entities/CredentialBinding.js';
 import { Group } from '../db/entities/Group.js';
 import { expandServerConfig } from '../services/serverConfigEnvironment.js';
 import { ServerConfig } from '../types/index.js';
@@ -83,6 +84,7 @@ const declarationSchema = z.object({
       z.object({
         name,
         description: z.string().optional(),
+        instructions: z.string().optional(),
         owner: z.string().optional(),
         visibility: z.enum(['private', 'group', 'public']).optional(),
         sharedWithUsers: z.array(z.string()).optional(),
@@ -123,7 +125,8 @@ const canonical = (value: unknown): unknown => {
 export async function syncSettingsToDatabase(): Promise<void> {
   const mode = process.env.MCPHUB_SETTINGS_SYNC;
   if (!mode) return;
-  if (mode !== 'upsert') throw new Error(`Unsupported MCPHUB_SETTINGS_SYNC: ${mode}`);
+  if (mode !== 'upsert' && mode !== 'prune')
+    throw new Error(`Unsupported MCPHUB_SETTINGS_SYNC: ${mode}`);
 
   const declaration = declarationSchema.parse(
     JSON.parse(fs.readFileSync(getSettingsPath(), 'utf8')),
@@ -168,8 +171,8 @@ export async function syncSettingsToDatabase(): Promise<void> {
   );
 
   const counts = {
-    servers: { created: 0, updated: 0, unchanged: 0 },
-    groups: { created: 0, updated: 0, unchanged: 0 },
+    servers: { created: 0, updated: 0, unchanged: 0, deleted: 0 },
+    groups: { created: 0, updated: 0, unchanged: 0, deleted: 0 },
   };
 
   await getAppDataSource().transaction(async (manager) => {
@@ -198,6 +201,7 @@ export async function syncSettingsToDatabase(): Promise<void> {
         visibility: config.visibility ?? 'private',
         enableKeepAlive: config.enableKeepAlive ?? false,
         settingsSyncHash: hash,
+        settingsSyncManaged: true,
       };
       // Emit null for every omitted nullable configuration column. TypeORM skips undefined.
       for (const column of serverRepo.metadata.columns) {
@@ -223,8 +227,10 @@ export async function syncSettingsToDatabase(): Promise<void> {
       const existing = await groupRepo.findOneBy({ name: group.name });
       const data = {
         name: group.name,
+        settingsSyncManaged: true,
         servers: group.servers,
         description: group.description ?? null,
+        instructions: group.instructions ?? null,
         owner: group.owner ?? null,
         visibility: group.visibility ?? null,
         sharedWithUsers: group.sharedWithUsers ?? null,
@@ -238,8 +244,63 @@ export async function syncSettingsToDatabase(): Promise<void> {
       if (!unchanged)
         await groupRepo.save(groupRepo.create({ ...existing, ...data } as unknown as Group));
     }
+    if (mode === 'prune') {
+      const declaredServers = new Set(Object.keys(declaration.mcpServers ?? {}));
+      const declaredGroups = new Set(names);
+      const removedServers = new Set<string>();
+      if (declaration.mcpServers !== undefined) {
+        for (const server of await serverRepo.find()) {
+          // Fingerprints identify servers adopted before the ownership column existed.
+          if (
+            (server.settingsSyncManaged || server.settingsSyncHash) &&
+            !declaredServers.has(server.name)
+          ) {
+            removedServers.add(server.name);
+          }
+        }
+      }
+      for (const group of await groupRepo.find()) {
+        if (
+          declaration.groups !== undefined &&
+          group.settingsSyncManaged &&
+          !declaredGroups.has(group.name)
+        ) {
+          await groupRepo.delete({ id: group.id });
+          counts.groups.deleted++;
+          continue;
+        }
+        const remaining = group.servers.filter(
+          (server) => !removedServers.has(typeof server === 'string' ? server : server.name),
+        );
+        if (remaining.length !== group.servers.length) {
+          if (declaredGroups.has(group.name)) {
+            throw new Error(`Group ${group.name} references a server being pruned`);
+          }
+          await groupRepo.update({ id: group.id }, { servers: remaining });
+        }
+      }
+      if (removedServers.size) {
+        // Vector storage is optional; a missing table must not prevent pruning.
+        const [{ exists }] = await manager.query(
+          "SELECT to_regclass('vector_embeddings') IS NOT NULL AS exists",
+        );
+        for (const serverName of removedServers) {
+          await manager.getRepository(CredentialBinding).delete({ serverName });
+          if (exists) {
+            await manager.query(
+              `DELETE FROM vector_embeddings
+               WHERE (content_type = 'server' AND content_id = $1)
+                  OR (content_type = 'tool' AND left(content_id, length($1) + 1) = $1 || ':')`,
+              [serverName],
+            );
+          }
+          await serverRepo.delete({ name: serverName });
+          counts.servers.deleted++;
+        }
+      }
+    }
   });
   logger.log(
-    `Settings sync completed: servers (${counts.servers.created} created, ${counts.servers.updated} updated, ${counts.servers.unchanged} unchanged); groups (${counts.groups.created} created, ${counts.groups.updated} updated, ${counts.groups.unchanged} unchanged)`,
+    `Settings sync completed: servers (${counts.servers.created} created, ${counts.servers.updated} updated, ${counts.servers.unchanged} unchanged, ${counts.servers.deleted} deleted); groups (${counts.groups.created} created, ${counts.groups.updated} updated, ${counts.groups.unchanged} unchanged, ${counts.groups.deleted} deleted)`,
   );
 }

@@ -446,3 +446,79 @@ describe('hidden-server tool/prompt errors (issue #1103)', () => {
     expect(result.content[0].text).not.toContain('Tool not available');
   });
 });
+
+describe('tool metrics at the shared handler boundary', () => {
+  it('counts denied calls without exposing hidden server names', async () => {
+    const { metricsRegistry } = await import('../../src/services/metricsService.js');
+    const previous = process.env.ENABLE_METRICS;
+    process.env.ENABLE_METRICS = 'true';
+    metricsRegistry.resetMetrics();
+    currentUserForFilter = aliceUser;
+    mockUserContextService.getCurrentUser.mockReturnValue(aliceUser);
+    mcpService.setServerInfosForTest(serverInfosFixture);
+    try {
+      await mcpService.handleCallToolRequest(
+        { params: { name: 'SecretSauce::secretPing', arguments: {} } },
+        { sessionId: 'session-1' },
+      );
+      const output = await metricsRegistry.metrics();
+      expect(output).toContain('mcphub_tool_calls_total{server="unknown",status="error"} 1');
+      expect(output).not.toContain('SecretSauce');
+    } finally {
+      if (previous === undefined) delete process.env.ENABLE_METRICS;
+      else process.env.ENABLE_METRICS = previous;
+      metricsRegistry.resetMetrics();
+    }
+  });
+
+  it.each(['direct', 'call_tool'])(
+    'attributes %s missing-client failures to the resolved server',
+    async (mode) => {
+      const { metricsRegistry } = await import('../../src/services/metricsService.js');
+      const previous = process.env.ENABLE_METRICS;
+      process.env.ENABLE_METRICS = 'true';
+      metricsRegistry.resetMetrics();
+      currentUserForFilter = aliceUser;
+      mockUserContextService.getCurrentUser.mockReturnValue(aliceUser);
+      mcpService.setServerInfosForTest(serverInfosFixture);
+      try {
+        const params =
+          mode === 'direct'
+            ? { name: 'PublicServer::publicPing', arguments: {} }
+            : {
+                name: 'call_tool',
+                arguments: { toolName: 'PublicServer::publicPing', arguments: {} },
+              };
+        const result = await mcpService.handleCallToolRequest(
+          { params },
+          { sessionId: 'session-1' },
+        );
+        expect(result.isError).toBe(true);
+        expect(result.content[0].text).toContain('Client not found');
+        const output = await metricsRegistry.metrics();
+        expect(output).toContain('mcphub_tool_calls_total{server="PublicServer",status="error"} 1');
+        expect(output).toContain(
+          'mcphub_tool_call_duration_seconds_count{server="PublicServer"} 1',
+        );
+        expect(output).not.toContain('server="unknown"');
+      } finally {
+        if (previous === undefined) delete process.env.ENABLE_METRICS;
+        else process.env.ENABLE_METRICS = previous;
+        metricsRegistry.resetMetrics();
+      }
+    },
+  );
+
+  it('omits disabled definitions and infers transport types without connecting', () => {
+    mcpService.setServerInfosForTest([
+      { ...serverInfosFixture[0], config: { command: 'unused' } },
+      { ...serverInfosFixture[1], status: 'oauth_required', config: { type: 'openapi' } },
+      { ...serverInfosFixture[0], enabled: false },
+      { ...serverInfosFixture[0], config: { oauth: { identityMode: 'personal' } } },
+    ]);
+    expect(mcpService.getMetricsServerSnapshot()).toEqual([
+      { status: 'connected', type: 'stdio' },
+      { status: 'oauth_required', type: 'openapi' },
+    ]);
+  });
+});

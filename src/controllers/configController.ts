@@ -67,6 +67,7 @@ export const getPublicConfig = async (req: Request, res: Response): Promise<void
   try {
     const systemConfig = await getSystemConfigDao().get();
     const skipAuth = systemConfig?.routing?.skipAuth || false;
+    const betterAuth = await getBetterAuthRuntimeConfig(systemConfig);
     let permissions = {};
     if (skipAuth) {
       const user: IUser = {
@@ -85,8 +86,11 @@ export const getPublicConfig = async (req: Request, res: Response): Promise<void
       success: true,
       data: {
         skipAuth,
+        allowRegistration:
+          systemConfig?.auth?.allowRegistration === true &&
+          !betterAuth.disablePasswordLogin,
         permissions,
-        betterAuth: await getBetterAuthRuntimeConfig(systemConfig),
+        betterAuth,
       },
     });
   } catch (error) {

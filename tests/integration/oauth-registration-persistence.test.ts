@@ -10,7 +10,9 @@ jest.mock('openid-client', () => ({
 
 jest.mock('../../src/dao/index.js', () => ({
   getServerDao: () => ({ findById: mockFindById, update: mockUpdate }),
-  getSystemConfigDao: () => ({ get: async () => ({}) }),
+  getSystemConfigDao: () => ({
+    get: async () => ({ install: { baseUrl: 'http://internal.example.com' } }),
+  }),
   getUserDao: () => ({ findByUsername: async () => undefined }),
 }));
 
@@ -45,6 +47,36 @@ describe('OAuth registration persistence', () => {
     removeRegisteredClient(serverName);
     jest.restoreAllMocks();
   });
+
+  it.each([false, true])(
+    'registers explicit HTTPS callbacks with metadata=%s',
+    async (withMetadata) => {
+      const config = makeConfig();
+      config.oauth!.redirectUri = 'https://public.example.com/oauth/callback?server=test';
+      if (withMetadata) {
+        config.oauth!.dynamicRegistration!.metadata = {
+          redirect_uris: ['https://backup.example.com/oauth/callback'],
+        };
+      }
+      const expectedUris = [
+        'https://public.example.com/oauth/callback',
+        ...(withMetadata ? ['https://backup.example.com/oauth/callback'] : []),
+      ];
+      mockDynamicClientRegistration.mockImplementationOnce(async (_issuer, metadata) => {
+        expect(metadata.redirect_uris).toEqual(expectedUris);
+        return { client_id: 'https-client', serverMetadata: () => ({}) };
+      });
+
+      const registered = await registerClient(serverName, config);
+
+      expect(registered.clientId).toBe('https-client');
+      expect(mockUpdate).toHaveBeenCalledWith(
+        serverName,
+        { oauth: expect.objectContaining({ clientId: 'https-client' }) },
+        { runtimeOAuth: true },
+      );
+    },
+  );
 
   it.each(['missing record', 'write rejection', 'empty update result'])(
     'leaves registration retryable after %s',
