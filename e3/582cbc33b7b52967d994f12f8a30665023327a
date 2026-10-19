@@ -1,0 +1,25 @@
+src/clients/__tests__/openapi-error-handling.test.ts
+  s_6e9260e5394e69::t_a03d6d70a70d88 113
+src/utils/serialization.ts
+  s_6e9260e5394e69::t_5b7fb34747ef1d 31
+  s_6e9260e5394e69::t_2832784b174058 79
+tests/utils/serialization.test.ts
+  s_6e9260e5394e69::t_fbd81856471f5d 188-194,196-237
+  s_6e9260e5394e69::t_48c9ba7c381987 195
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e3582cbc33b7b52967d994f12f8a30665023327a",
+  "prompts": {},
+  "sessions": {
+    "s_6e9260e5394e69": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a15366-da7b-7203-8b74-ad609f7659b4",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
