@@ -131,8 +131,6 @@ export class MCPHubOAuthProvider implements OAuthClientProvider {
     const dynamicConfig = this.serverConfig.oauth?.dynamicRegistration;
     const metadata = dynamicConfig?.metadata || {};
 
-    // Use redirectUrl getter to ensure consistent callback URL
-    const redirectUri = this.redirectUrl;
     const redirectUris = resolvePreferredRedirectUris(
       this.serverConfig,
       this.getSystemInstallBaseUrl(),

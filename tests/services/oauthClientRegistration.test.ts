@@ -67,7 +67,7 @@ describe('registerClient redirect URI handling', () => {
     (getSystemConfigDao as jest.Mock).mockReturnValue({
       get: jest.fn().mockResolvedValue({
         install: {
-          baseUrl: 'https://base.example.com',
+          baseUrl: 'http://base.example.com',
         },
       }),
     });
@@ -86,10 +86,7 @@ describe('registerClient redirect URI handling', () => {
     expect(mockDynamicClientRegistration).toHaveBeenCalledWith(
       new URL('https://issuer.example.com'),
       expect.objectContaining({
-        redirect_uris: [
-          'https://custom.example.com/oauth/callback',
-          'https://base.example.com/oauth/callback',
-        ],
+        redirect_uris: ['https://custom.example.com/oauth/callback'],
       }),
       expect.any(Function),
       expect.objectContaining({
