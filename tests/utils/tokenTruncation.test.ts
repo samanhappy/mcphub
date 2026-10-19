@@ -127,13 +127,29 @@ describe('truncateToTokenLimit – OpenAI branch (gpt-tokenizer)', () => {
     const result = await truncateToTokenLimit(longText, maxTokens, 'text-embedding-3-small');
 
     // Re-encode the truncated result to verify token count
-    const { encode } = await import('gpt-tokenizer');
+    const { encode } = await import('gpt-tokenizer/encoding/cl100k_base');
     const tokenCount = encode(result).length;
 
     expect(tokenCount).toBeLessThanOrEqual(maxTokens);
     // Should be as close to maxTokens as possible (not under-truncated)
     expect(tokenCount).toBeGreaterThan(maxTokens - 5);
   });
+
+  it.each(['text-embedding-3-small', 'text-embedding-3-large', 'text-embedding-ada-002'])(
+    'uses cl100k_base to truncate CJK text for %s',
+    async (model) => {
+      const { encode } = await import('gpt-tokenizer/encoding/cl100k_base');
+      const text = '你好世界'.repeat(50);
+      const maxTokens = 50;
+
+      expect(encode(text).length).toBeGreaterThan(maxTokens);
+
+      const result = await truncateToTokenLimit(text, maxTokens, model);
+
+      expect(encode(result).length).toBe(maxTokens);
+      expect(text.startsWith(result)).toBe(true);
+    },
+  );
 
   it('(d) does not modify a short text in the OpenAI branch', async () => {
     const shortText = 'hello world';
@@ -377,7 +393,7 @@ describe('truncateToTokenLimit – model limit validation', () => {
 
     const result = await truncateToTokenLimit(hugeText, maxTokens, 'text-embedding-3-small');
 
-    const { encode } = await import('gpt-tokenizer');
+    const { encode } = await import('gpt-tokenizer/encoding/cl100k_base');
     const tokenCount = encode(result).length;
 
     // Must be within model limit
@@ -417,7 +433,7 @@ describe('truncateToTokenLimit – large text handling', () => {
 
     const result = await truncateToTokenLimit(largeText, maxTokens, 'text-embedding-3-small');
 
-    const { encode } = await import('gpt-tokenizer');
+    const { encode } = await import('gpt-tokenizer/encoding/cl100k_base');
     const tokenCount = encode(result).length;
 
     expect(tokenCount).toBeLessThanOrEqual(maxTokens);
