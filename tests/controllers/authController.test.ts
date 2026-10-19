@@ -35,9 +35,20 @@ jest.mock('../../src/services/betterAuthConfig.js', () => ({
   getBetterAuthRuntimeConfig: getBetterAuthRuntimeConfigMock,
 }));
 
+jest.mock('../../src/dao/DaoFactory.js', () => ({
+  getSystemConfigDao: () => ({ get: async () => ({ auth: { allowRegistration: true } }) }),
+}));
+
+jest.mock('../../src/services/registrationService.js', () => ({
+  isRegistrationUsernameReserved: async () => false,
+}));
+
 import { login, register } from '../../src/controllers/authController.js';
 
 describe('authController.register', () => {
+  beforeEach(() => {
+    getBetterAuthRuntimeConfigMock.mockResolvedValue({ disablePasswordLogin: false });
+  });
   it('forces self-registration to create a non-admin user', async () => {
     createUserMock.mockResolvedValue({
       username: 'alice',

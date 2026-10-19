@@ -53,7 +53,7 @@ export const register = async (credentials: RegisterCredentials): Promise<AuthRe
     console.error('Register error', { error });
     return {
       success: false,
-      message: 'An error occurred during registration',
+      message: error instanceof Error ? error.message : 'An error occurred during registration',
     };
   }
 };

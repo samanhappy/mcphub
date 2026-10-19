@@ -637,6 +637,8 @@ const SettingsPage: React.FC = () => {
     toolResultCompressionConfig,
     mcpRouterConfig,
     oauthServerConfig,
+    allowRegistration,
+    updateAllowRegistration,
     betterAuthConfig,
     nameSeparator,
     enableSessionRebuild,
@@ -3951,31 +3953,6 @@ const SettingsPage: React.FC = () => {
         </div>
       </PermissionChecker>
 
-      {isAdmin && (
-        <div className="hub-card mb-6 p-5 space-y-3">
-          <label htmlFor="allowed-cidrs" className="block font-medium text-[var(--hub-ink)]">
-            {t('settings.allowedCidrs')}
-          </label>
-          <p className="text-sm text-[var(--hub-ink-2)]">{t('settings.allowedCidrsDescription')}</p>
-          <textarea
-            id="allowed-cidrs"
-            value={tempAllowedCidrs}
-            onChange={(event) => setTempAllowedCidrs(event.target.value)}
-            placeholder={'192.168.1.0/24\nfd00::/64'}
-            rows={4}
-            disabled={loading}
-            className="block w-full py-2 px-3 border border-gray-300 rounded-md form-input font-mono"
-          />
-          <button
-            className="hub-btn primary"
-            disabled={loading}
-            onClick={() => updateAllowedCidrs(tempAllowedCidrs.split(/\s+/).filter(Boolean))}
-          >
-            {t('common.save')}
-          </button>
-        </div>
-      )}
-
       {/* Route Configuration Settings */}
       <PermissionChecker permissions={PERMISSIONS.SETTINGS_ROUTE_CONFIG}>
         <div className="hub-card mb-6 overflow-hidden">
@@ -3992,6 +3969,46 @@ const SettingsPage: React.FC = () => {
 
           {sectionsVisible.routingConfig && (
             <div className="space-y-4 pb-4 px-6 pt-4 border-t border-[var(--hub-line-2)]">
+              <PermissionChecker permissions={PERMISSIONS.SETTINGS_SYSTEM_CONFIG}>
+                <div className="flex items-center justify-between gap-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-md">
+                  <div>
+                    <h3 className="font-medium text-gray-700">{t('settings.allowRegistration')}</h3>
+                    <p className="text-sm text-gray-500">{t('settings.allowRegistrationDescription')}</p>
+                  </div>
+                  <Switch
+                    aria-label={t('settings.allowRegistration')}
+                    disabled={loading}
+                    checked={allowRegistration}
+                    onCheckedChange={updateAllowRegistration}
+                  />
+                </div>
+              </PermissionChecker>
+
+              {isAdmin && (
+                <div className="space-y-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-md">
+                  <label htmlFor="allowed-cidrs" className="block font-medium text-[var(--hub-ink)]">
+                    {t('settings.allowedCidrs')}
+                  </label>
+                  <p className="text-sm text-[var(--hub-ink-2)]">{t('settings.allowedCidrsDescription')}</p>
+                  <textarea
+                    id="allowed-cidrs"
+                    value={tempAllowedCidrs}
+                    onChange={(event) => setTempAllowedCidrs(event.target.value)}
+                    placeholder={'192.168.1.0/24\nfd00::/64'}
+                    rows={4}
+                    disabled={loading}
+                    className="block w-full py-2 px-3 border border-gray-300 rounded-md form-input font-mono"
+                  />
+                  <button
+                    className="hub-btn primary"
+                    disabled={loading}
+                    onClick={() => updateAllowedCidrs(tempAllowedCidrs.split(/\s+/).filter(Boolean))}
+                  >
+                    {t('common.save')}
+                  </button>
+                </div>
+              )}
+
               <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-md">
                 <div>
                   <h3 className="font-medium text-gray-700">{t('settings.enableGlobalRoute')}</h3>

@@ -41,6 +41,7 @@ export interface SystemConfig {
   };
   nameSeparator?: string;
   auth?: {
+    allowRegistration?: boolean;
     betterAuth?: {
       enabled?: boolean;
       basePath?: string;
@@ -94,6 +95,7 @@ export interface PublicConfigResponse {
   success: boolean;
   data?: {
     skipAuth?: boolean;
+    allowRegistration?: boolean;
     permissions?: any;
     betterAuth?: BetterAuthConfig;
   };
@@ -113,6 +115,7 @@ export interface SystemConfigResponse {
  */
 export const getPublicConfig = async (): Promise<{
   skipAuth: boolean;
+  allowRegistration?: boolean;
   permissions?: any;
   betterAuth?: BetterAuthConfig;
 }> => {
@@ -129,6 +132,7 @@ export const getPublicConfig = async (): Promise<{
       const data: PublicConfigResponse = await response.json();
       return {
         skipAuth: data.data?.skipAuth === true,
+        allowRegistration: data.data?.allowRegistration === true,
         permissions: data.data?.permissions || {},
         betterAuth: data.data?.betterAuth,
       };

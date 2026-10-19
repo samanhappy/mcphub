@@ -283,6 +283,7 @@ export const isApiAuthExemptPath = (
     : null;
   return (
     reqPath === '/auth/login' ||
+    reqPath === '/auth/register' ||
     (betterAuthApiPath !== null && reqPath.startsWith(betterAuthApiPath)) ||
     reqPath.startsWith('/better-auth')
   );

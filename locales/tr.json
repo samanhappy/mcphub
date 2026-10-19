@@ -63,6 +63,9 @@
     "system": "Sistem"
   },
   "auth": {
+    "createAccount": "Hesap oluştur",
+    "backToLogin": "Girişe dön",
+    "userAlreadyExists": "Kullanıcı adı zaten mevcut",
     "login": "Giriş Yap",
     "loginTitle": "MCPHub'a Giriş Yap",
     "slogan": "Açık kaynaklı, kendi kendine barındırılan MCP ağ geçidi ve kontrol düzlemi",
@@ -801,6 +804,8 @@
     "restoreDefaultFailed": "Varsayılan istek açıklamasına dönülemedi"
   },
   "settings": {
+    "allowRegistration": "Kendi kendine kayda izin ver",
+    "allowRegistrationDescription": "Ziyaretçilerin giriş sayfasından normal hesap oluşturmasına izin verir. Varsayılan olarak kapalıdır; parola ile giriş kapalıyken kullanılamaz.",
     "allowedCidrs": "İzin verilen üst sunucu CIDR aralıkları",
     "allowedCidrsDescription": "Her satıra bir IPv4 veya IPv6 CIDR girin. Tüm kullanıcılar bu aralıklardaki MCP, OpenAPI ve OAuth uç noktalarına erişebilir. Boş liste ek erişim sağlamaz. Yöneticiye ait sunucular iç ağ erişimini korur. Geniş aralıklardan, meta veri ve geri döngü adreslerinden kaçının. Değişiklikler yeni isteklere uygulanır; mevcut bağlantılar kapanmaz.",
     "allowedCidrsUpdateFailed": "İzin verilen CIDR aralıkları güncellenemedi",

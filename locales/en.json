@@ -63,6 +63,9 @@
     "system": "System"
   },
   "auth": {
+    "createAccount": "Create account",
+    "backToLogin": "Back to sign in",
+    "userAlreadyExists": "Username already exists",
     "login": "Login",
     "loginTitle": "Login to MCPHub",
     "slogan": "Open-source, self-hosted MCP gateway and control plane",
@@ -802,6 +805,8 @@
     "restoreDefaultFailed": "Failed to restore the default prompt description"
   },
   "settings": {
+    "allowRegistration": "Allow self-registration",
+    "allowRegistrationDescription": "Allow visitors to create regular accounts from the login page. Disabled by default; unavailable while password login is disabled.",
     "allowedCidrs": "Allowed upstream CIDR ranges",
     "allowedCidrsDescription": "One IPv4 or IPv6 CIDR per line. All users can connect upstream MCP, OpenAPI and OAuth endpoints in these ranges. Empty means no additional access. Admin-owned servers retain unrestricted internal access. Avoid broad ranges and metadata or loopback addresses unless required. Changes apply to new requests; existing connections are not closed.",
     "allowedCidrsUpdateFailed": "Failed to update allowed CIDR ranges",
