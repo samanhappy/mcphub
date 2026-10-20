@@ -761,8 +761,10 @@ const applyDescriptionOverridesForEmbedding = async (
   if (!serverConfig?.tools) {
     return tools;
   }
+  // A partial sync passes only some tools; the key rule needs all of them
+  const runtimeNames = (getServerByName(serverName)?.tools ?? tools).map((tool) => tool.name);
   return tools.map((tool) => {
-    const toolConfig = findToolConfig(serverConfig.tools, serverName, tool.name);
+    const toolConfig = findToolConfig(serverConfig.tools, serverName, tool.name, runtimeNames);
     const visibleTool = applyHiddenParams(tool, toolConfig);
     return hasDescriptionOverride(toolConfig)
       ? {
@@ -1827,7 +1829,12 @@ type IsolatedClientContext = {
 const withoutHiddenArguments = <T>(serverInfo: ServerInfo, toolName: string, args: T): T => {
   const runtimeName = `${serverInfo.name}${getNameSeparator()}${toolName}`;
   const tool = serverInfo.tools?.find((candidate) => candidate.name === runtimeName);
-  const toolConfig = findToolConfig(serverInfo.config?.tools, serverInfo.name, runtimeName);
+  const toolConfig = findToolConfig(
+    serverInfo.config?.tools,
+    serverInfo.name,
+    runtimeName,
+    (serverInfo.tools ?? []).map((candidate) => candidate.name),
+  );
   return removeHiddenArguments(args, tool?.inputSchema, toolConfig);
 };
 
@@ -2701,10 +2708,11 @@ export const getServersInfo = async (
         // as the dashboard sends, or bare, as a direct API call may) with no
         // normalization — check both so the dashboard reflects a disable set
         // either way instead of always showing enabled:true for one of them.
+        const runtimeNames = tools.map((tool) => tool.name);
         const toolsWithEnabled = tools.map((tool) =>
           buildToolWithDescriptionMetadata(
             tool,
-            findToolConfig(serverConfig?.tools, name, tool.name),
+            findToolConfig(serverConfig?.tools, name, tool.name, runtimeNames),
           ),
         );
 
@@ -2979,12 +2987,12 @@ const filterToolsByConfig = async (serverName: string, tools: Tool[]): Promise<T
     return tools;
   }
 
+  // Callers may pass a subset; the key rule needs every tool of the server
+  const runtimeNames = (getServerByName(serverName)?.tools ?? tools).map((tool) => tool.name);
   return tools.filter((tool) => {
-    // toggleTool stores the disable under whatever key string the caller used
-    // (bare upstream name or server-prefixed name, never normalized) — check
-    // both, same as findToolOnServer's execution-time gate.
-    const bareToolName = normalizeToolNameForServer(serverName, tool.name);
-    const toolConfig = serverConfig.tools?.[tool.name] ?? serverConfig.tools?.[bareToolName];
+    // A disable may be stored under the runtime or the bare name — same key rule
+    // as findToolOnServer's execution-time gate (findToolConfig).
+    const toolConfig = findToolConfig(serverConfig.tools, serverName, tool.name, runtimeNames);
     // If tool is not in config, it's enabled by default
     return toolConfig?.enabled !== false;
   });
@@ -3766,17 +3774,16 @@ const findToolOnServer = (
   // which is a different object. So the persisted per-tool config must be
   // consulted directly here.
   //
-  // toggleTool (serverController.ts) stores `tools[toolName] = ...` using
-  // whatever string the caller passed as :toolName, with no normalization.
-  // The dashboard sends the already-prefixed `tool.name`, matching what
-  // getServersInfo's toolsWithEnabled already reads — but any other caller
-  // (REST API used directly, scripts, docs examples) can just as validly
-  // pass the bare upstream name, which then never matches a prefixed-only
-  // lookup. Check both so a disable takes effect regardless of which form
-  // was used to set it.
-  const bareToolName = normalizeToolNameForServer(serverInfo.name, tool.name);
-  const toolConfig =
-    serverInfo.config?.tools?.[tool.name] ?? serverInfo.config?.tools?.[bareToolName];
+  // A disable may be stored under the runtime (prefixed) name, as the
+  // dashboard writes it, or under the bare upstream name, as a settings file
+  // or a direct API call may. findToolConfig checks both, and never reads
+  // another tool's runtime key as this tool's bare name.
+  const toolConfig = findToolConfig(
+    serverInfo.config?.tools,
+    serverInfo.name,
+    tool.name,
+    serverInfo.tools.map((candidate) => candidate.name),
+  );
   if (toolConfig && toolConfig.enabled === false) {
     return undefined;
   }
@@ -3937,8 +3944,14 @@ const listGroupTools = async (
 
       // Apply custom descriptions and hidden parameters from server configuration
       const serverConfig = await getServerDao().findById(serverInfo.name);
+      const runtimeNames = serverInfo.tools.map((tool) => tool.name);
       const toolsWithCustomDescriptions = tools.map((tool) => {
-        const toolConfig = findToolConfig(serverConfig?.tools, serverInfo.name, tool.name);
+        const toolConfig = findToolConfig(
+          serverConfig?.tools,
+          serverInfo.name,
+          tool.name,
+          runtimeNames,
+        );
         return {
           ...applyHiddenParams(tool, toolConfig),
           description: resolveDescriptionOverride(tool.description, toolConfig),

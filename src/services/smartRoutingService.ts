@@ -543,7 +543,12 @@ export const handleSearchToolsRequest = async (
           if (tools.length > 0) {
             // Apply custom description and hidden parameters from configuration
             const serverConfig = await getServerDao().findById(server.name);
-            const toolConfig = findToolConfig(serverConfig?.tools, server.name, actualTool.name);
+            const toolConfig = findToolConfig(
+              serverConfig?.tools,
+              server.name,
+              actualTool.name,
+              server.tools.map((tool) => tool.name),
+            );
 
             // Return the actual tool info from serverInfos with custom description
             if (progressiveDisclosure) {
@@ -727,7 +732,12 @@ export const handleDescribeToolRequest = async (
 
     // Get custom description and hidden parameters from configuration
     const serverConfig = await getServerDao().findById(serverInfo.name);
-    const toolConfig = findToolConfig(serverConfig?.tools, serverInfo.name, tool.name);
+    const toolConfig = findToolConfig(
+      serverConfig?.tools,
+      serverInfo.name,
+      tool.name,
+      serverInfo.tools.map((candidate) => candidate.name),
+    );
 
     // Return the full definition, with the same fields as a search_tools hit
     const { toolDefinitionFields } = await getSmartRoutingConfig();

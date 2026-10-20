@@ -6,6 +6,7 @@ import {
   applyHiddenParams,
   findToolConfig,
   findToolConfigKey,
+  resolveRuntimeToolName,
   getEffectiveHiddenParams,
   removeHiddenArguments,
 } from '../../src/utils/toolConfig.js';
@@ -16,14 +17,32 @@ const schema = {
   required: ['url'],
 };
 
-describe('findToolConfig', () => {
-  it('finds a config stored under the prefixed or the bare name, prefixed first', () => {
-    const bare = { enabled: true, description: 'bare' };
-    const prefixed = { enabled: true, description: 'prefixed' };
+// Server `fc` with upstream tools `scrape` and `fc-scrape`: runtime names
+// `fc-scrape` and `fc-fc-scrape`, so `fc-scrape` is both the first tool's
+// runtime name and the second tool's bare name.
+const oneTool = ['fc-scrape'];
+const twoTools = ['fc-scrape', 'fc-fc-scrape'];
 
-    expect(findToolConfig({ scrape: bare }, 'fc', 'fc-scrape')).toBe(bare);
-    expect(findToolConfig({ 'fc-scrape': prefixed }, 'fc', 'scrape')).toBe(prefixed);
-    expect(findToolConfig({ scrape: bare, 'fc-scrape': prefixed }, 'fc', 'scrape')).toBe(prefixed);
+describe('findToolConfig', () => {
+  it('finds a config stored under the runtime or the bare name, runtime first', () => {
+    const bare = { enabled: true, description: 'bare' };
+    const runtime = { enabled: true, description: 'runtime' };
+
+    expect(findToolConfig({ scrape: bare }, 'fc', 'fc-scrape', oneTool)).toBe(bare);
+    expect(findToolConfig({ 'fc-scrape': runtime }, 'fc', 'scrape', oneTool)).toBe(runtime);
+    expect(findToolConfig({ scrape: bare, 'fc-scrape': runtime }, 'fc', 'fc-scrape', oneTool)).toBe(
+      runtime,
+    );
+  });
+
+  it("never reads another tool's runtime key as a bare name", () => {
+    const first = { enabled: false };
+    const tools = { 'fc-scrape': first };
+
+    expect(findToolConfig(tools, 'fc', 'fc-scrape', twoTools)).toBe(first);
+    expect(findToolConfig(tools, 'fc', 'fc-fc-scrape', twoTools)).toBeUndefined();
+    // Alone on its server, `fc-scrape` is the bare name of `fc-fc-scrape`
+    expect(findToolConfig(tools, 'fc', 'fc-fc-scrape', ['fc-fc-scrape'])).toBe(first);
   });
 
   it('ignores inherited object keys', () => {
@@ -32,20 +51,45 @@ describe('findToolConfig', () => {
   });
 });
 
+describe('resolveRuntimeToolName', () => {
+  it('prefers a runtime name, then a bare name, and is undefined for an unknown tool', () => {
+    expect(resolveRuntimeToolName('fc', 'fc-scrape', twoTools)).toBe('fc-scrape');
+    expect(resolveRuntimeToolName('fc', 'scrape', twoTools)).toBe('fc-scrape');
+    expect(resolveRuntimeToolName('fc', 'fc-fc-scrape', twoTools)).toBe('fc-fc-scrape');
+    expect(resolveRuntimeToolName('fc', 'other', twoTools)).toBeUndefined();
+  });
+});
+
 describe('findToolConfigKey', () => {
-  it('returns the existing entry under any name the tool is addressed by', () => {
-    expect(findToolConfigKey({ scrape: { enabled: true } }, 'fc', 'fc-scrape')).toBe('scrape');
-    expect(findToolConfigKey({ 'fc-scrape': { enabled: true } }, 'fc', 'scrape')).toBe('fc-scrape');
-    // Upstream `fc-scrape`: runtime `fc-fc-scrape`, stored under the bare name
-    expect(findToolConfigKey({ 'fc-scrape': { enabled: true } }, 'fc', 'fc-fc-scrape')).toBe(
+  it("reuses the requested tool's existing entry under either of its names", () => {
+    expect(findToolConfigKey({ scrape: { enabled: true } }, 'fc', 'fc-scrape', oneTool)).toBe(
+      'scrape',
+    );
+    expect(findToolConfigKey({ 'fc-scrape': { enabled: true } }, 'fc', 'scrape', oneTool)).toBe(
       'fc-scrape',
     );
+    // Upstream `fc-scrape` alone: runtime `fc-fc-scrape`, stored under the bare name
+    expect(
+      findToolConfigKey({ 'fc-scrape': { enabled: true } }, 'fc', 'fc-fc-scrape', ['fc-fc-scrape']),
+    ).toBe('fc-scrape');
   });
 
-  it('falls back to the name as given, ignoring inherited keys', () => {
-    expect(findToolConfigKey({}, 'fc', 'fc-scrape')).toBe('fc-scrape');
-    expect(findToolConfigKey(undefined, 'fc', 'scrape')).toBe('scrape');
-    expect(findToolConfigKey({}, 'fc', 'constructor')).toBe('constructor');
+  it("never writes to another tool's entry", () => {
+    // Only the second tool has an entry; the dashboard addresses the first one
+    expect(
+      findToolConfigKey({ 'fc-fc-scrape': { enabled: true } }, 'fc', 'fc-scrape', twoTools),
+    ).toBe('fc-scrape');
+    expect(
+      findToolConfigKey({ 'fc-scrape': { enabled: true } }, 'fc', 'fc-fc-scrape', twoTools),
+    ).toBe('fc-fc-scrape');
+  });
+
+  it('writes an unresolved tool under the name as given, ignoring inherited keys', () => {
+    expect(findToolConfigKey({ scrape: { enabled: true } }, 'fc', 'fc-scrape', [])).toBe(
+      'fc-scrape',
+    );
+    expect(findToolConfigKey(undefined, 'fc', 'scrape', oneTool)).toBe('scrape');
+    expect(findToolConfigKey({}, 'fc', 'constructor', ['fc-constructor'])).toBe('constructor');
   });
 });
 

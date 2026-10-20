@@ -378,4 +378,68 @@ describe('updateToolHiddenParams', () => {
     expect(thrown.status).toHaveBeenCalledWith(500);
     expect(thrown.json).toHaveBeenCalledWith({ success: false, message: 'Internal server error' });
   });
+
+  it("never writes to another tool's entry when names overlap", async () => {
+    // Upstream tools `scrape` and `firecrawl-scrape`: runtime names
+    // `firecrawl-scrape` and `firecrawl-firecrawl-scrape`. Only the second one
+    // has an entry; the dashboard edits the first one by its runtime name.
+    mcpService.setServerInfosForTest([
+      {
+        name: 'firecrawl',
+        owner: 'admin',
+        visibility: 'public',
+        status: 'connected',
+        error: null,
+        tools: [
+          { name: 'firecrawl-scrape', description: 'Scrape', inputSchema: scrapeSchema },
+          {
+            name: 'firecrawl-firecrawl-scrape',
+            description: 'Scrape too',
+            inputSchema: scrapeSchema,
+          },
+        ],
+        prompts: [],
+        resources: [],
+        createTime: Date.now(),
+        enabled: true,
+        client: { callTool: mockCallTool } as any,
+        config: { tools: {} } as any,
+      } as any,
+    ]);
+    const second = { enabled: true, description: 'Second.', hiddenParams: ['profile'] };
+    toolsStore.firecrawl = { 'firecrawl-firecrawl-scrape': second };
+
+    await toggleTool(request('firecrawl-scrape', { enabled: false }), mockRes());
+    await updateToolDescription(request('firecrawl-scrape', { description: 'First.' }), mockRes());
+    await updateToolHiddenParams(
+      request('firecrawl-scrape', { hiddenParams: ['alexandria'] }),
+      mockRes(),
+    );
+
+    expect(toolsStore.firecrawl).toEqual({
+      'firecrawl-scrape': { enabled: false, description: 'First.', hiddenParams: ['alexandria'] },
+      'firecrawl-firecrawl-scrape': second,
+    });
+
+    const first = await mcpService.handleCallToolRequest(
+      { params: { name: 'firecrawl-scrape', arguments: { url: 'u' } } },
+      { sessionId: 'session-1' },
+    );
+    expect(first.isError).toBe(true);
+
+    await mcpService.handleCallToolRequest(
+      {
+        params: {
+          name: 'firecrawl-firecrawl-scrape',
+          arguments: { url: 'u', alexandria: {}, profile: {} },
+        },
+      },
+      { sessionId: 'session-1' },
+    );
+    expect(mockCallTool).toHaveBeenCalledTimes(1);
+    expect((mockCallTool.mock.calls[0] as any[])[0]).toEqual({
+      name: 'firecrawl-scrape',
+      arguments: { url: 'u', alexandria: {} },
+    });
+  });
 });

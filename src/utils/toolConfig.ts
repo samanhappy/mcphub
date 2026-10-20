@@ -5,42 +5,82 @@ export type ToolConfig = NonNullable<ServerConfig['tools']>[string];
 
 type InputSchema = Record<string, unknown> | undefined;
 
+const hasKey = (tools: NonNullable<ServerConfig['tools']>, key: string): boolean =>
+  Object.prototype.hasOwnProperty.call(tools, key);
+
 /**
- * Per-tool config is stored under whatever name its writer used: the
- * server-prefixed name (the dashboard) or the bare upstream name (a direct API
- * call, a hand-written settings file). Accept either, own keys only.
+ * The keys a tool's config may be stored under, given its runtime
+ * (server-prefixed) name: that name, then the bare upstream name, which the
+ * dashboard and a hand-written settings file use respectively. A runtime name
+ * always belongs to its own tool, so the bare fallback is skipped when it is
+ * another tool's runtime name: on server `fc` with tools `scrape` and
+ * `fc-scrape`, key `fc-scrape` is the runtime name of `scrape`, never the bare
+ * name of `fc-scrape`.
+ */
+const toolConfigKeys = (
+  serverName: string,
+  runtimeName: string,
+  runtimeNames: readonly string[],
+): string[] => {
+  const bareName = runtimeName.slice(`${serverName}${getNameSeparator()}`.length);
+  return runtimeNames.includes(bareName) ? [runtimeName] : [runtimeName, bareName];
+};
+
+/**
+ * A tool's config, looked up by its runtime name (a bare name is accepted too
+ * when it does not start with the server prefix). `runtimeNames` lists the
+ * runtime names of the server's tools, to keep one tool from reading another's
+ * entry; own keys only.
  */
 export const findToolConfig = (
   tools: ServerConfig['tools'] | undefined,
   serverName: string,
   toolName: string,
+  runtimeNames: readonly string[] = [],
 ): ToolConfig | undefined => {
   if (!tools) return undefined;
   const prefix = `${serverName}${getNameSeparator()}`;
-  const bareName = toolName.startsWith(prefix) ? toolName.slice(prefix.length) : toolName;
-  for (const key of [`${prefix}${bareName}`, bareName]) {
-    if (Object.prototype.hasOwnProperty.call(tools, key)) return tools[key];
-  }
-  return undefined;
+  const runtimeName = toolName.startsWith(prefix) ? toolName : `${prefix}${toolName}`;
+  const key = toolConfigKeys(serverName, runtimeName, runtimeNames).find((candidate) =>
+    hasKey(tools, candidate),
+  );
+  return key === undefined ? undefined : tools[key];
 };
 
 /**
- * The key to write a tool's config under: the entry that already exists under
- * any name the tool may be addressed by (as given, server-prefixed, or with one
- * prefix removed), else the name as given. Writing into that entry keeps one
- * entry per tool, so a description edit or a toggle never creates a second entry
- * that shadows settings stored under the other name.
+ * The runtime name of the tool a caller means by `toolName`: a runtime name
+ * first (what the dashboard sends), else a bare upstream name. Undefined when
+ * the server does not list such a tool (e.g. it is not connected).
+ */
+export const resolveRuntimeToolName = (
+  serverName: string,
+  toolName: string,
+  runtimeNames: readonly string[],
+): string | undefined => {
+  if (runtimeNames.includes(toolName)) return toolName;
+  const prefixed = `${serverName}${getNameSeparator()}${toolName}`;
+  return runtimeNames.includes(prefixed) ? prefixed : undefined;
+};
+
+/**
+ * The key to write a tool's config under. The requested tool is resolved first,
+ * then its existing entry is reused under the same keys `findToolConfig` reads,
+ * so a description edit or a toggle never creates a second entry that shadows
+ * settings stored under the other name, nor writes to another tool's entry. An
+ * unresolved tool (server not connected) is written under the name as given.
  */
 export const findToolConfigKey = (
   tools: ServerConfig['tools'] | undefined,
   serverName: string,
   toolName: string,
+  runtimeNames: readonly string[],
 ): string => {
-  if (!tools) return toolName;
-  const prefix = `${serverName}${getNameSeparator()}`;
-  const candidates = [toolName, `${prefix}${toolName}`];
-  if (toolName.startsWith(prefix)) candidates.push(toolName.slice(prefix.length));
-  return candidates.find((key) => Object.prototype.hasOwnProperty.call(tools, key)) ?? toolName;
+  const runtimeName = resolveRuntimeToolName(serverName, toolName, runtimeNames);
+  if (!tools || !runtimeName) return toolName;
+  return (
+    toolConfigKeys(serverName, runtimeName, runtimeNames).find((key) => hasKey(tools, key)) ??
+    toolName
+  );
 };
 
 /** The configured hidden parameters that take effect: required ones never do. */
