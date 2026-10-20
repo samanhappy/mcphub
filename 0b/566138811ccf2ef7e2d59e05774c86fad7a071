@@ -1,0 +1,34 @@
+src/services/registrationService.ts
+  s_9bd1bf61c53ab1::t_250d4e5dd86e9d 1-39
+src/controllers/authController.ts
+  s_9bd1bf61c53ab1::t_250d4e5dd86e9d 11,142-143
+  s_9bd1bf61c53ab1::t_c66469c5d89c54 144-145
+tests/integration/self-registration.test.ts
+  s_9bd1bf61c53ab1::t_22ac92956a8136 21-23,55-60,102-155
+  s_9bd1bf61c53ab1::t_1aa8d74d26ba32 8-14,16-20,61,99-101,156-171
+  s_9bd1bf61c53ab1::t_250d4e5dd86e9d 172-177
+tests/controllers/authController.test.ts
+  s_9bd1bf61c53ab1::t_250d4e5dd86e9d 42-45
+tests/integration/registration-ownership-lifecycle.test.ts
+  s_9bd1bf61c53ab1::t_22ac92956a8136 1-55
+docs/features/authentication.mdx
+  s_9bd1bf61c53ab1::t_c170ee181fdb9b 10-12
+docs/zh/features/authentication.mdx
+  s_9bd1bf61c53ab1::t_595756910b46ca 9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0b566138811ccf2ef7e2d59e05774c86fad7a071",
+  "prompts": {},
+  "sessions": {
+    "s_9bd1bf61c53ab1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a153fc-cebf-7053-a7df-3e24423a5ca1",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

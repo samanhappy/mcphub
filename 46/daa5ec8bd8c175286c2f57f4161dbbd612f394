@@ -1,0 +1,82 @@
+locales/zh.json
+  s_9bd1bf61c53ab1::t_8897028f77ea0e 66-68
+  s_9bd1bf61c53ab1::t_a6d32bad60ad64 810-811
+locales/es.json
+  s_9bd1bf61c53ab1::t_8897028f77ea0e 66-68
+  s_9bd1bf61c53ab1::t_dc899a42f97f96 808-809
+tests/services/betterAuthConfig.test.ts
+  s_9bd1bf61c53ab1::t_0432df65f77664 562-567
+tests/controllers/authController.test.ts
+  s_9bd1bf61c53ab1::t_8897028f77ea0e 45-47
+  s_9bd1bf61c53ab1::t_0d73a189ee8306 38-41
+src/controllers/authController.ts
+  s_9bd1bf61c53ab1::t_0d73a189ee8306 10,124-131,139-140,145
+  s_9bd1bf61c53ab1::t_8897028f77ea0e 132-138
+locales/fr.json
+  s_9bd1bf61c53ab1::t_8897028f77ea0e 66-68
+  s_9bd1bf61c53ab1::t_fbff6d73e2a29e 807-808
+src/controllers/configController.ts
+  s_9bd1bf61c53ab1::t_8897028f77ea0e 89-90
+  s_9bd1bf61c53ab1::t_33f00ba9ade206 70,91,93
+src/types/index.ts
+  s_9bd1bf61c53ab1::t_0d73a189ee8306 286
+locales/en.json
+  s_9bd1bf61c53ab1::t_8897028f77ea0e 66-68
+  s_9bd1bf61c53ab1::t_30a708ba7ae236 808-809
+locales/tr.json
+  s_9bd1bf61c53ab1::t_8897028f77ea0e 66-68
+  s_9bd1bf61c53ab1::t_3bfec73cbb7822 807-808
+tests/controllers/serverController.test.ts
+  s_9bd1bf61c53ab1::t_8897028f77ea0e 1357-1374
+docs/api-reference/auth.mdx
+  s_9bd1bf61c53ab1::t_8897028f77ea0e 74,80-81,86
+docs/zh/api-reference/auth.mdx
+  s_9bd1bf61c53ab1::t_33f00ba9ade206 74-76,82-83
+  s_9bd1bf61c53ab1::t_8897028f77ea0e 88
+tests/integration/self-registration.test.ts
+  s_9bd1bf61c53ab1::t_7ebe52e2db78af 1-29,38-57,63-76
+  s_9bd1bf61c53ab1::t_8897028f77ea0e 30-37,58-62
+frontend/src/services/authService.ts
+  s_9bd1bf61c53ab1::t_0d73a189ee8306 56
+frontend/src/pages/SettingsPage.tsx
+  s_9bd1bf61c53ab1::t_0d73a189ee8306 640-641,3548-3553
+  s_9bd1bf61c53ab1::t_8897028f77ea0e 3554-3559
+  s_9bd1bf61c53ab1::t_21184394d219a8 3560-3562
+docs/features/authentication.mdx
+  s_9bd1bf61c53ab1::t_8897028f77ea0e 6-17
+frontend/src/pages/LoginPage.tsx
+  s_9bd1bf61c53ab1::t_0d73a189ee8306 33-35,52,118,147-154,348-349,358-363,374-375,404,416-418
+  s_9bd1bf61c53ab1::t_8897028f77ea0e 161-163,167-169,202,364-373,377-378,390,400-402,405-415
+  s_9bd1bf61c53ab1::t_6745df67b2b5c2 203,376
+frontend/src/services/configService.ts
+  s_9bd1bf61c53ab1::t_0d73a189ee8306 44,98,118,135
+frontend/src/contexts/SettingsContext.tsx
+  s_9bd1bf61c53ab1::t_0d73a189ee8306 132,159-160,411,557,963-964,966-980,1236-1237
+  s_9bd1bf61c53ab1::t_738e374ad01546 965
+  s_9bd1bf61c53ab1::t_8897028f77ea0e 199,269,558
+src/controllers/serverController.ts
+  s_9bd1bf61c53ab1::t_0d73a189ee8306 1976,2524-2525
+  s_9bd1bf61c53ab1::t_d563bf8d2fb055 2526-2527
+docs/zh/features/authentication.mdx
+  s_9bd1bf61c53ab1::t_8897028f77ea0e 6-13
+src/services/betterAuthConfig.ts
+  s_9bd1bf61c53ab1::t_dd0d6118fcd1ef 286
+tests/controllers/configController.publicConfig.test.ts
+  s_9bd1bf61c53ab1::t_48cf5b596cb589 42-55,103
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "46daa5ec8bd8c175286c2f57f4161dbbd612f394",
+  "prompts": {},
+  "sessions": {
+    "s_9bd1bf61c53ab1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a153fc-cebf-7053-a7df-3e24423a5ca1",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
