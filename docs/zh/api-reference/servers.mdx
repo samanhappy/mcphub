@@ -225,6 +225,26 @@ import { Card, Cards } from 'mintlify';
 
 ---
 
+### 隐藏工具参数
+
+设置模型看不到的工具顶层输入参数。这些参数会从 `tools/list`、`search_tools` 结果、`describe_tool`、智能路由的嵌入文本、生成的 OpenAPI 规范和上下文成本统计中的输入 schema 里移除，并在转发调用前从参数中丢弃，由上游默认值生效。适用于部署无法使用的选项，例如自托管后端的云端专属功能。控制台仍显示完整 schema。
+
+- **端点**: `/api/servers/:serverName/tools/:toolName/hidden-params`
+- **方法**: `PUT`
+- **参数**:
+  - `:serverName` (string, 必填): 服务器的名称。
+  - `:toolName` (string, 必填): 工具的名称，可带或不带服务器前缀。
+- **正文**:
+  ```json
+  {
+    "hiddenParams": ["profile", "zeroDataRetention"]
+  }
+  ```
+  - `hiddenParams` (string[], 必填): 顶层参数名。空数组表示移除该设置。
+- **错误**: 参数名不属于该工具或列在其 `required` 中时返回 `400`。这些检查在服务器已连接时进行；否则按原样保存，且必填参数始终不会被隐藏。
+
+---
+
 ### 更新系统配置
 
 更新系统范围的配置设置。

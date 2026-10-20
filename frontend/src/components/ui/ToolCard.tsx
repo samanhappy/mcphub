@@ -15,6 +15,7 @@ import {
   ToolCallResult,
   updateToolDescription,
   resetToolDescription,
+  updateToolHiddenParams,
 } from '@/services/toolService';
 import { useSettingsData } from '@/hooks/useSettingsData';
 import { useToast } from '@/contexts/ToastContext';
@@ -24,6 +25,7 @@ import ToolResult from './ToolResult';
 import ResetDescriptionButton from './ResetDescriptionButton';
 import { formatTokens } from '@/utils/contextCost';
 import { getToolDescriptionInfo } from '@/utils/toolDescription';
+import { nextHiddenParams } from '@/utils/hiddenParams';
 
 interface ToolCardProps {
   server: string;
@@ -62,6 +64,8 @@ const ToolCard = ({ tool, server, readOnly = false, onToggle, onDescriptionUpdat
   const descriptionTextRef = useRef<HTMLSpanElement>(null);
   const [textWidth, setTextWidth] = useState<number>(0);
   const [copiedToolName, setCopiedToolName] = useState(false);
+  const [hiddenParams, setHiddenParams] = useState<string[]>(tool.hiddenParams || []);
+  const [isSavingHiddenParams, setIsSavingHiddenParams] = useState(false);
 
   // Focus the input when editing mode is activated
   useEffect(() => {
@@ -84,6 +88,31 @@ const ToolCard = ({ tool, server, readOnly = false, onToggle, onDescriptionUpdat
   useEffect(() => {
     setCustomDescription(tool.description || '');
   }, [tool.description]);
+
+  useEffect(() => {
+    setHiddenParams(tool.hiddenParams || []);
+  }, [tool.hiddenParams]);
+
+  const schemaProperties = Object.keys(tool.inputSchema?.properties || {});
+  const requiredParams: string[] = Array.isArray(tool.inputSchema?.required)
+    ? tool.inputSchema.required
+    : [];
+
+  const handleParamVisibilityChange = async (param: string, visible: boolean) => {
+    if (readOnly) return;
+    const next = nextHiddenParams(hiddenParams, param, visible, schemaProperties, requiredParams);
+    setIsSavingHiddenParams(true);
+    try {
+      const result = await updateToolHiddenParams(server, tool.name, next);
+      if (result.success) {
+        setHiddenParams(result.hiddenParams ?? next);
+      } else {
+        showToast(result.error || t('tool.hiddenParamsFailed'), 'error');
+      }
+    } finally {
+      setIsSavingHiddenParams(false);
+    }
+  };
 
   const toolDisplayName = tool.name.replace(server + nameSeparator, '');
   const descriptionInfo = getToolDescriptionInfo(tool, t('tool.noDescription'));
@@ -391,6 +420,38 @@ const ToolCard = ({ tool, server, readOnly = false, onToggle, onDescriptionUpdat
               <span className="whitespace-pre-wrap break-words">
                 {descriptionInfo.defaultDescription}
               </span>
+            </div>
+          )}
+
+          {/* Parameters a model sees; required ones cannot be hidden */}
+          {!showRunForm && schemaProperties.length > 0 && (
+            <div style={{ background: 'var(--hub-bg-2)', borderRadius: 7, padding: '8px 12px', border: '1px solid var(--hub-line)' }}>
+              <div className="hub-sect" style={{ marginBottom: 4 }}>{t('tool.visibleParams')}</div>
+              <div style={{ fontSize: 11.5, color: 'var(--hub-ink-3)', marginBottom: 6 }}>
+                {t('tool.visibleParamsHelp')}
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 14px' }}>
+                {schemaProperties.map((param) => {
+                  const required = requiredParams.includes(param);
+                  return (
+                    <label
+                      key={param}
+                      className="hub-mono"
+                      style={{ fontSize: 11.5, display: 'flex', alignItems: 'center', gap: 5 }}
+                      title={required ? t('tool.requiredParam') : undefined}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={required || !hiddenParams.includes(param)}
+                        disabled={readOnly || required || isSavingHiddenParams}
+                        onChange={(e) => handleParamVisibilityChange(param, e.target.checked)}
+                      />
+                      {param}
+                      {required && ' *'}
+                    </label>
+                  );
+                })}
+              </div>
             </div>
           )}
 
