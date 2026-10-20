@@ -79,6 +79,7 @@ import {
 import { TOOL_DEFINITION_FIELDS } from '../constants/smartRoutingDefaults.js';
 import { previewOpenApiToolStats } from '../services/openApiToolStatsService.js';
 import { logger } from '../utils/logger.js';
+import { findToolConfigKey } from '../utils/toolConfig.js';
 
 type DescribableConfig = Record<
   string,
@@ -1673,8 +1674,9 @@ export const toggleTool = async (req: Request, res: Response): Promise<void> => 
     // Initialize tools config if it doesn't exist
     const tools = server.tools || {};
 
-    // Set the tool's enabled state (preserve existing description if any)
-    tools[toolName] = { ...tools[toolName], enabled };
+    // Set the tool's enabled state in its existing entry (keeps description and hidden parameters)
+    const configKey = findToolConfigKey(tools, serverName, toolName);
+    tools[configKey] = { ...tools[configKey], enabled };
 
     // Update via DAO (supports both file and database modes)
     const result = await serverDao.updateTools(serverName, tools);
@@ -1749,10 +1751,11 @@ export const updateToolDescription = async (req: Request, res: Response): Promis
     const tools = server.tools || {};
 
     // Set the tool's description
-    if (!tools[toolName]) {
-      tools[toolName] = { enabled: true };
+    const configKey = findToolConfigKey(tools, serverName, toolName);
+    if (!tools[configKey]) {
+      tools[configKey] = { enabled: true };
     }
-    tools[toolName].description = description;
+    tools[configKey].description = description;
 
     // Update via DAO (supports both file and database modes)
     const result = await serverDao.updateTools(serverName, tools);
@@ -1824,13 +1827,13 @@ export const updateToolHiddenParams = async (req: Request, res: Response): Promi
 
     // Checked against the live schema when the tool is known; a disconnected
     // server's settings are stored as given, and required ones are never hidden.
-    const separator = getNameSeparator();
-    const bareToolName = toolName.startsWith(`${serverName}${separator}`)
-      ? toolName.slice(serverName.length + separator.length)
-      : toolName;
-    const liveTool = getServerByName(serverName)?.tools?.find(
-      (tool) => tool.name === `${serverName}${separator}${bareToolName}`,
-    );
+    // The dashboard sends the runtime (prefixed) name, a direct caller may send
+    // the bare one.
+    const prefixedToolName = `${serverName}${getNameSeparator()}${toolName}`;
+    const liveTools = getServerByName(serverName)?.tools ?? [];
+    const liveTool =
+      liveTools.find((tool) => tool.name === toolName) ??
+      liveTools.find((tool) => tool.name === prefixedToolName);
     if (liveTool) {
       const schema = liveTool.inputSchema as { properties?: object; required?: unknown };
       const required = Array.isArray(schema.required) ? schema.required : [];
@@ -1844,7 +1847,7 @@ export const updateToolHiddenParams = async (req: Request, res: Response): Promi
           success: false,
           message: required.includes(invalid)
             ? `Parameter '${invalid}' is required and cannot be hidden`
-            : `Tool ${bareToolName} has no parameter '${invalid}'`,
+            : `Tool ${toolName} has no parameter '${invalid}'`,
         });
         return;
       }
@@ -1853,10 +1856,7 @@ export const updateToolHiddenParams = async (req: Request, res: Response): Promi
     // Write into the entry that already exists under either name, so a bare-name
     // description and a prefixed-name hiddenParams never shadow each other.
     const tools: DescribableConfig = { ...(server.tools || {}) };
-    const configKey =
-      [toolName, `${serverName}${separator}${bareToolName}`, bareToolName].find((key) =>
-        Object.prototype.hasOwnProperty.call(tools, key),
-      ) ?? toolName;
+    const configKey = findToolConfigKey(tools, serverName, toolName);
     const { hiddenParams: _previous, ...toolConfig } = tools[configKey] ?? { enabled: true };
     const nextConfig = hiddenParams.length
       ? { ...toolConfig, hiddenParams: [...new Set<string>(hiddenParams)] }
@@ -1918,7 +1918,10 @@ export const resetToolDescription = async (req: Request, res: Response): Promise
 
     const serverDao = getServerDao();
 
-    const tools = clearDescriptionOverride(server.tools || {}, toolName);
+    const tools = clearDescriptionOverride(
+      server.tools || {},
+      findToolConfigKey(server.tools, serverName, toolName),
+    );
 
     const result = await serverDao.updateTools(serverName, tools);
 

@@ -181,6 +181,8 @@ jest.mock('../../src/services/mcpService.js', () => {
 
 import {
   resetToolDescription,
+  toggleTool,
+  updateToolDescription,
   updateToolHiddenParams,
 } from '../../src/controllers/serverController.js';
 import * as mcpService from '../../src/services/mcpService.js';
@@ -305,5 +307,75 @@ describe('updateToolHiddenParams', () => {
     expect(toolsStore.firecrawl).toEqual({
       'firecrawl-scrape': { enabled: true, hiddenParams: ['profile'] },
     });
+  });
+
+  it('keeps one entry and its hidden parameters through dashboard edits in sequence', async () => {
+    // Declared in a settings file under the bare name; the dashboard addresses
+    // the tool by its runtime (prefixed) name.
+    toolsStore.firecrawl = { scrape: { enabled: true, hiddenParams: ['profile'] } };
+
+    await updateToolDescription(request('firecrawl-scrape', { description: 'Short.' }), mockRes());
+    await toggleTool(request('firecrawl-scrape', { enabled: false }), mockRes());
+    await toggleTool(request('firecrawl-scrape', { enabled: true }), mockRes());
+    expect(toolsStore.firecrawl).toEqual({
+      scrape: { enabled: true, description: 'Short.', hiddenParams: ['profile'] },
+    });
+
+    await resetToolDescription(request('firecrawl-scrape', {}), mockRes());
+    expect(toolsStore.firecrawl).toEqual({ scrape: { enabled: true, hiddenParams: ['profile'] } });
+
+    await mcpService.handleCallToolRequest(
+      { params: { name: 'firecrawl-scrape', arguments: { url: 'u', profile: { name: 'p' } } } },
+      { sessionId: 'session-1' },
+    );
+    expect((mockCallTool.mock.calls[0] as any[])[0]).toEqual({
+      name: 'scrape',
+      arguments: { url: 'u' },
+    });
+  });
+
+  it('rejects a reserved tool name', async () => {
+    const res = mockRes();
+    await updateToolHiddenParams(request('__proto__', { hiddenParams: [] }), res);
+
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(controllerServerDao.updateTools).not.toHaveBeenCalled();
+  });
+
+  it('answers 404 for an unknown server', async () => {
+    controllerServerDao.findById.mockResolvedValueOnce(null as any);
+    const res = mockRes();
+    await updateToolHiddenParams(request('scrape', { hiddenParams: ['profile'] }), res);
+
+    expect(res.status).toHaveBeenCalledWith(404);
+    expect(controllerServerDao.updateTools).not.toHaveBeenCalled();
+  });
+
+  it('stores the list as given while the server is not connected', async () => {
+    mcpService.setServerInfosForTest([]);
+    const res = mockRes();
+    await updateToolHiddenParams(request('scrape', { hiddenParams: ['not_known_yet'] }), res);
+
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: true }));
+    expect(toolsStore.firecrawl).toEqual({
+      scrape: { enabled: true, hiddenParams: ['not_known_yet'] },
+    });
+  });
+
+  it('answers 500 when the settings cannot be saved', async () => {
+    controllerServerDao.updateTools.mockResolvedValueOnce(false);
+    const failed = mockRes();
+    await updateToolHiddenParams(request('scrape', { hiddenParams: ['profile'] }), failed);
+    expect(failed.status).toHaveBeenCalledWith(500);
+    expect(failed.json).toHaveBeenCalledWith({
+      success: false,
+      message: 'Failed to save settings',
+    });
+
+    controllerServerDao.updateTools.mockRejectedValueOnce(new Error('db down'));
+    const thrown = mockRes();
+    await updateToolHiddenParams(request('scrape', { hiddenParams: ['profile'] }), thrown);
+    expect(thrown.status).toHaveBeenCalledWith(500);
+    expect(thrown.json).toHaveBeenCalledWith({ success: false, message: 'Internal server error' });
   });
 });

@@ -5,6 +5,7 @@ jest.mock('../../src/config/index.js', () => ({
 import {
   applyHiddenParams,
   findToolConfig,
+  findToolConfigKey,
   getEffectiveHiddenParams,
   removeHiddenArguments,
 } from '../../src/utils/toolConfig.js';
@@ -28,6 +29,23 @@ describe('findToolConfig', () => {
   it('ignores inherited object keys', () => {
     expect(findToolConfig({}, 'fc', 'constructor')).toBeUndefined();
     expect(findToolConfig(undefined, 'fc', 'scrape')).toBeUndefined();
+  });
+});
+
+describe('findToolConfigKey', () => {
+  it('returns the existing entry under any name the tool is addressed by', () => {
+    expect(findToolConfigKey({ scrape: { enabled: true } }, 'fc', 'fc-scrape')).toBe('scrape');
+    expect(findToolConfigKey({ 'fc-scrape': { enabled: true } }, 'fc', 'scrape')).toBe('fc-scrape');
+    // Upstream `fc-scrape`: runtime `fc-fc-scrape`, stored under the bare name
+    expect(findToolConfigKey({ 'fc-scrape': { enabled: true } }, 'fc', 'fc-fc-scrape')).toBe(
+      'fc-scrape',
+    );
+  });
+
+  it('falls back to the name as given, ignoring inherited keys', () => {
+    expect(findToolConfigKey({}, 'fc', 'fc-scrape')).toBe('fc-scrape');
+    expect(findToolConfigKey(undefined, 'fc', 'scrape')).toBe('scrape');
+    expect(findToolConfigKey({}, 'fc', 'constructor')).toBe('constructor');
   });
 });
 

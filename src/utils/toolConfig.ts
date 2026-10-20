@@ -24,6 +24,25 @@ export const findToolConfig = (
   return undefined;
 };
 
+/**
+ * The key to write a tool's config under: the entry that already exists under
+ * any name the tool may be addressed by (as given, server-prefixed, or with one
+ * prefix removed), else the name as given. Writing into that entry keeps one
+ * entry per tool, so a description edit or a toggle never creates a second entry
+ * that shadows settings stored under the other name.
+ */
+export const findToolConfigKey = (
+  tools: ServerConfig['tools'] | undefined,
+  serverName: string,
+  toolName: string,
+): string => {
+  if (!tools) return toolName;
+  const prefix = `${serverName}${getNameSeparator()}`;
+  const candidates = [toolName, `${prefix}${toolName}`];
+  if (toolName.startsWith(prefix)) candidates.push(toolName.slice(prefix.length));
+  return candidates.find((key) => Object.prototype.hasOwnProperty.call(tools, key)) ?? toolName;
+};
+
 /** The configured hidden parameters that take effect: required ones never do. */
 export const getEffectiveHiddenParams = (
   inputSchema: InputSchema,

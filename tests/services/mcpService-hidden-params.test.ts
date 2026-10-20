@@ -226,4 +226,39 @@ describe('hidden tool parameters', () => {
     const embedded = (mockSaveEmbeddings.mock.calls[0] as any[])[1][0];
     expect(Object.keys(embedded.inputSchema.properties)).toEqual(['url', 'formats', 'profile']);
   });
+
+  it.each([
+    ['the bare upstream name', 'firecrawl-scrape'],
+    ['the runtime name', 'firecrawl-firecrawl-scrape'],
+  ])(
+    'drops hidden arguments for an upstream name that starts with the server prefix (%s)',
+    async (_label, key) => {
+      // Upstream tool `firecrawl-scrape` on server `firecrawl`: runtime name
+      // `firecrawl-firecrawl-scrape`, so one prefix removal is not the bare name.
+      const server = firecrawl({ [key]: { enabled: true, hiddenParams: ['profile'] } });
+      server.tools = [
+        {
+          name: 'firecrawl-firecrawl-scrape',
+          description: 'Scrape one URL',
+          inputSchema: scrapeSchema,
+        },
+      ];
+      mcpService.setServerInfosForTest([server]);
+
+      await mcpService.handleCallToolRequest(
+        {
+          params: {
+            name: 'firecrawl-firecrawl-scrape',
+            arguments: { url: 'u', profile: { name: 'p' } },
+          },
+        },
+        { sessionId: 'session-1' },
+      );
+
+      expect((mockCallTool.mock.calls[0] as any[])[0]).toEqual({
+        name: 'firecrawl-scrape',
+        arguments: { url: 'u' },
+      });
+    },
+  );
 });

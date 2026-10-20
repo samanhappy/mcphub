@@ -1821,11 +1821,13 @@ type IsolatedClientContext = {
 };
 
 // Call arguments without the tool's hidden parameters; `toolName` is the bare upstream name.
+// Looked up by the cached runtime name: findToolConfig removes one server prefix,
+// so a bare name that itself starts with the prefix (server `fc`, tool
+// `fc-scrape`) would otherwise resolve to the wrong entry.
 const withoutHiddenArguments = <T>(serverInfo: ServerInfo, toolName: string, args: T): T => {
-  const tool = serverInfo.tools?.find(
-    (candidate) => normalizeToolNameForServer(serverInfo.name, candidate.name) === toolName,
-  );
-  const toolConfig = findToolConfig(serverInfo.config?.tools, serverInfo.name, toolName);
+  const runtimeName = `${serverInfo.name}${getNameSeparator()}${toolName}`;
+  const tool = serverInfo.tools?.find((candidate) => candidate.name === runtimeName);
+  const toolConfig = findToolConfig(serverInfo.config?.tools, serverInfo.name, runtimeName);
   return removeHiddenArguments(args, tool?.inputSchema, toolConfig);
 };
 
