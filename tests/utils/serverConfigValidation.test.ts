@@ -4,6 +4,13 @@ import { ServerConfig } from '../../src/types/index.js';
 const config = (partial: Partial<ServerConfig>): ServerConfig => partial as ServerConfig;
 
 describe('isPrivilegedServerConfig', () => {
+  it.each([
+    { url: 'https://example.com/mcp', passthroughHeaders: ['X-Tenant'] },
+    { openapi: { url: 'https://example.com/schema', passthroughHeaders: ['X-Tenant'] } },
+  ])('flags caller header forwarding as privileged: %p', (value) => {
+    expect(isPrivilegedServerConfig(config(value))).toBe(true);
+  });
+
   it('flags explicit stdio type', () => {
     expect(isPrivilegedServerConfig(config({ type: 'stdio', url: 'http://x' }))).toBe(true);
   });

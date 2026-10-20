@@ -196,7 +196,7 @@ describe('MCP Service - passthrough headers for upstream MCP transports', () => 
       expect.objectContaining({
         method: 'POST',
         headers: expect.objectContaining({
-          Authorization: 'Bearer user-token',
+          Authorization: 'Bearer static-token',
           'X-Custom-User-Id': 'user-42',
           'X-Static': 'static-value',
           'Content-Type': 'application/json',
@@ -210,7 +210,7 @@ describe('MCP Service - passthrough headers for upstream MCP transports', () => 
     [['authorization', 'Bearer static-token']],
     { authorization: 'Bearer static-token' },
   ] satisfies HeadersInit[])(
-    'replaces authorization without duplicate casing for %p',
+    'preserves upstream authorization without forwarding caller credentials for %p',
     async (headers) => {
       const fetch = createRequestContextAwareFetch(mockBaseFetch, ['Authorization']);
       await RequestContextService.getInstance().runWithCustomRequestContext(
@@ -218,9 +218,29 @@ describe('MCP Service - passthrough headers for upstream MCP transports', () => 
         () => fetch('https://example.com/mcp', { headers }),
       );
       const sentHeaders = new Headers(mockBaseFetch.mock.calls[0][1]?.headers);
-      expect(sentHeaders.get('authorization')).toBe('Bearer user-token');
+      expect(sentHeaders.get('authorization')).toBe('Bearer static-token');
     },
   );
+
+  it('blocks caller credentials from existing configs while forwarding business headers', async () => {
+    const names = [
+      'Authorization',
+      'COOKIE',
+      'proxy-authorization',
+      'x-auth-token',
+      'x-api-key',
+      'X-Tenant',
+    ];
+    const fetch = createRequestContextAwareFetch(mockBaseFetch, names);
+    await RequestContextService.getInstance().runWithCustomRequestContext(
+      { headers: Object.fromEntries(names.map((name) => [name.toLowerCase(), 'secret'])) },
+      () => fetch('https://example.com/mcp'),
+    );
+    expect(new Headers(mockBaseFetch.mock.calls[0][1]?.headers).get('x-tenant')).toBe('secret');
+    for (const name of names.slice(0, -1)) {
+      expect(new Headers(mockBaseFetch.mock.calls[0][1]?.headers).has(name)).toBe(false);
+    }
+  });
 
   it('should expose passthrough-aware fetch for SSE connect and message requests', async () => {
     await createTransportFromConfig('demo-sse', {
@@ -265,7 +285,6 @@ describe('MCP Service - passthrough headers for upstream MCP transports', () => 
       expect.objectContaining({
         method: 'GET',
         headers: expect.objectContaining({
-          Authorization: 'Bearer user-token',
           'X-Custom-User-Id': 'user-99',
           'X-Static': 'static-value',
           Accept: 'text/event-stream',
@@ -279,7 +298,6 @@ describe('MCP Service - passthrough headers for upstream MCP transports', () => 
       expect.objectContaining({
         method: 'POST',
         headers: expect.objectContaining({
-          Authorization: 'Bearer user-token',
           'X-Custom-User-Id': 'user-99',
           'Content-Type': 'application/json',
         }),

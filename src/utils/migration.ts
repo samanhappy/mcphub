@@ -273,6 +273,7 @@ export async function migrateToDatabase(seedServersAndGroups = true): Promise<bo
             scope: token.scope,
             clientId: token.clientId,
             username: token.username,
+            sessionVersion: token.sessionVersion,
           });
           logger.log(`  - Created OAuth token for client: ${token.clientId}`);
         } else {

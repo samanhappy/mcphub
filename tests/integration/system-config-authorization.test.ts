@@ -5,6 +5,9 @@ const mockGetSystemConfig = jest.fn();
 const mockGetCachedSystemConfig = jest.fn();
 
 jest.mock('../../src/dao/index.js', () => ({
+  getUserDao: () => ({
+    findByUsername: async (username: string) => ({ username, password: 'unused', isAdmin: false }),
+  }),
   getSystemConfigDao: jest.fn(() => ({
     get: mockGetSystemConfig,
   })),
@@ -98,7 +101,9 @@ describe('system configuration authorization', () => {
     mockGetCachedSystemConfig.mockReturnValue(staleConfig);
     mockGetSystemConfig.mockResolvedValueOnce(staleConfig);
     const app = express();
-    app.get('/api/protected', authenticatedRouteRateLimiter, auth, (_req, res) => res.sendStatus(200));
+    app.get('/api/protected', authenticatedRouteRateLimiter, auth, (_req, res) =>
+      res.sendStatus(200),
+    );
 
     expect((await request(app).get('/api/protected')).status).toBe(200);
     // The database now requires authentication, while this instance's cache is stale.

@@ -2291,6 +2291,30 @@ describe('serverController - authorization hardening', () => {
     jest.clearAllMocks();
   });
 
+  it.each([
+    {
+      type: 'streamable-http',
+      url: 'https://example.com/mcp',
+      passthroughHeaders: ['Authorization'],
+    },
+    {
+      type: 'openapi',
+      openapi: { url: 'https://example.com/schema', passthroughHeaders: ['cookie'] },
+    },
+  ])('rejects non-admin header forwarding: %p', async (config) => {
+    const status = jest.fn().mockReturnThis();
+    const json = jest.fn();
+    await createServer(
+      {
+        body: { name: 'malicious', config },
+        user: { username: 'alice', isAdmin: false },
+      } as unknown as Request,
+      { status, json } as unknown as Response,
+    );
+    expect(status).toHaveBeenCalledWith(403);
+    expect(mockAddServer).not.toHaveBeenCalled();
+  });
+
   it('rejects non-admin stdio server creation', async () => {
     const json = jest.fn();
     const status = jest.fn().mockReturnThis();

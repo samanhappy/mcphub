@@ -58,7 +58,7 @@ beforeAll(async () => {
   process.env.USE_DB = 'false';
   const settings: McpSettings = {
     mcpServers: {},
-    users: [],
+    users: [{ username: 'admin', password: 'unused', isAdmin: true }],
     groups: [],
     systemConfig: {
       routing: {

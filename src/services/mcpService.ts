@@ -1,3 +1,4 @@
+import { isSafePassthroughHeader } from '../utils/passthroughHeaders.js';
 import { observeToolCall, setMetricsServer } from './metricsService.js';
 import {
   hasPersonalOAuth,
@@ -1567,7 +1568,7 @@ export const collectPassthroughHeaders = (
 
   for (const headerName of passthroughHeaderNames) {
     const normalizedHeaderName = headerName.trim();
-    if (!normalizedHeaderName) {
+    if (!isSafePassthroughHeader(normalizedHeaderName)) {
       continue;
     }
 
@@ -4248,6 +4249,7 @@ const handleCallToolRequestImpl = async (request: any, extra: any) => {
         if (requestHeaders && targetServerInfo.config?.openapi?.passthroughHeaders) {
           passthroughHeaders = {};
           for (const headerName of targetServerInfo.config.openapi.passthroughHeaders) {
+            if (!isSafePassthroughHeader(headerName)) continue;
             // Handle different header name cases (Express normalizes headers to lowercase)
             const headerValue =
               requestHeaders[headerName] || requestHeaders[headerName.toLowerCase()];
@@ -4472,6 +4474,7 @@ const handleCallToolRequestImpl = async (request: any, extra: any) => {
       if (requestHeaders && serverInfo.config?.openapi?.passthroughHeaders) {
         passthroughHeaders = {};
         for (const headerName of serverInfo.config.openapi.passthroughHeaders) {
+          if (!isSafePassthroughHeader(headerName)) continue;
           // Handle different header name cases (Express normalizes headers to lowercase)
           const headerValue =
             requestHeaders[headerName] || requestHeaders[headerName.toLowerCase()];

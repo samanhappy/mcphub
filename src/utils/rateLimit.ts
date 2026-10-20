@@ -138,7 +138,7 @@ export const authAttemptRateLimiter = createStandardRateLimiter({
   skipSuccessfulRequests: true,
 });
 
-// /auth/register is ungated and a successful request creates an account, so this
+// /auth/register creates an account on success, so this
 // limiter deliberately counts every request -- successes are the thing being
 // capped. It is separate from the login limiter so the two cannot exhaust each
 // other's budget.

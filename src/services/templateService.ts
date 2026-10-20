@@ -618,7 +618,9 @@ export async function importTemplate(
         throw new Error(
           serverConfig.oauth?.allowInsecureTokenEndpoint === true
             ? 'Only admins can import servers allowing HTTP OAuth token endpoints'
-            : 'Only admins can import stdio-based server configurations',
+            : serverConfig.passthroughHeaders?.length || serverConfig.openapi?.passthroughHeaders?.length
+              ? 'Only admins can import servers forwarding caller headers'
+              : 'Only admins can import stdio-based server configurations',
         );
       }
       await addServer(serverName, serverConfig);

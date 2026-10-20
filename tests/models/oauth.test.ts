@@ -1,3 +1,4 @@
+import { getUserSessionVersion } from '../../src/utils/userSession.js';
 import {
   cleanupExpired,
   createOAuthClient,
@@ -28,6 +29,9 @@ jest.mock('../../src/dao/index.js', () => {
 
   return {
     ...originalModule,
+    getUserDao: () => ({
+      findByUsername: async (username: string) => ({ username, password: 'hashed' }),
+    }),
     getOAuthClientDao: jest.fn(() => ({
       findAll: jest.fn(async () => [...mockOAuthClients]),
       findByClientId: jest.fn(
@@ -200,6 +204,7 @@ describe('OAuth Model', () => {
           scope: 'read',
           clientId: 'test-client',
           username: 'testuser',
+          sessionVersion: getUserSessionVersion({ username: 'testuser', password: 'hashed' }),
         },
         -1, // Expired
       );
@@ -233,6 +238,7 @@ describe('OAuth Model', () => {
           scope: 'read write',
           clientId: 'test-client',
           username: 'testuser',
+          sessionVersion: getUserSessionVersion({ username: 'testuser', password: 'hashed' }),
         },
         3600, // accessTokenLifetime
         86400, // refreshTokenLifetime
@@ -254,6 +260,7 @@ describe('OAuth Model', () => {
           scope: 'read',
           clientId: 'test-client',
           username: 'testuser',
+          sessionVersion: getUserSessionVersion({ username: 'testuser', password: 'hashed' }),
         },
         3600,
         86400,
@@ -272,6 +279,7 @@ describe('OAuth Model', () => {
           scope: 'read',
           clientId: 'test-client',
           username: 'testuser',
+          sessionVersion: getUserSessionVersion({ username: 'testuser', password: 'hashed' }),
         },
         -1, // Expired
       );
@@ -288,6 +296,7 @@ describe('OAuth Model', () => {
           scope: 'read',
           clientId: 'test-client',
           username: 'testuser',
+          sessionVersion: getUserSessionVersion({ username: 'testuser', password: 'hashed' }),
         },
         3600,
         86400,
@@ -379,6 +388,7 @@ describe('OAuth Model', () => {
           scope: 'read',
           clientId: client.clientId,
           username: 'testuser',
+          sessionVersion: getUserSessionVersion({ username: 'testuser', password: 'hashed' }),
         },
         3600,
         86400,
@@ -399,6 +409,7 @@ describe('OAuth Model', () => {
           scope: 'read',
           clientId: client.clientId,
           username: 'testuser',
+          sessionVersion: getUserSessionVersion({ username: 'testuser', password: 'hashed' }),
         },
         300,
       );
@@ -459,6 +470,7 @@ describe('OAuth Model', () => {
           scope: 'read',
           clientId: client.clientId,
           username: 'testuser',
+          sessionVersion: getUserSessionVersion({ username: 'testuser', password: 'hashed' }),
         },
         -3600,
         86400,

@@ -1,3 +1,4 @@
+import { getUserSessionVersion, resolveUserSession } from '../utils/userSession.js';
 import OAuth2Server from '@node-oauth/oauth2-server';
 import { Request as ExpressRequest, Response as ExpressResponse } from 'express';
 import { getSystemConfigDao } from '../dao/index.js';
@@ -93,12 +94,17 @@ const oauthModel: OAuth2Server.AuthorizationCodeModel & OAuth2Server.RefreshToke
 
     const scopeString = Array.isArray(code.scope) ? code.scope.join(' ') : code.scope;
 
+    const currentUser = await resolveUserSession(user);
+    if (!currentUser) throw new OAuth2Server.InvalidGrantError('User no longer exists');
+    const sessionVersion = getUserSessionVersion(currentUser);
+
     const authCode = saveAuthorizationCode(
       {
         redirectUri: code.redirectUri,
         scope: scopeString,
         clientId: client.id,
         username: user.username,
+        sessionVersion,
         codeChallenge: code.codeChallenge,
         codeChallengeMethod: code.codeChallengeMethod,
       },
@@ -124,7 +130,7 @@ const oauthModel: OAuth2Server.AuthorizationCodeModel & OAuth2Server.RefreshToke
    */
   getAuthorizationCode: async (authorizationCode: string) => {
     const code = getAuthorizationCode(authorizationCode);
-    if (!code) {
+    if (!code || !(await resolveUserSession(code))) {
       return false;
     }
 
@@ -149,6 +155,7 @@ const oauthModel: OAuth2Server.AuthorizationCodeModel & OAuth2Server.RefreshToke
       },
       user: {
         username: code.username,
+        sessionVersion: code.sessionVersion,
       },
       codeChallenge: code.codeChallenge,
       codeChallengeMethod: code.codeChallengeMethod,
@@ -179,11 +186,16 @@ const oauthModel: OAuth2Server.AuthorizationCodeModel & OAuth2Server.RefreshToke
 
     const scopeString = Array.isArray(token.scope) ? token.scope.join(' ') : token.scope;
 
+    if (!(await resolveUserSession(user))) {
+      throw new OAuth2Server.InvalidGrantError('User session is no longer valid');
+    }
+
     const savedToken = await saveToken(
       {
         scope: scopeString,
         clientId: client.id,
         username: user.username,
+        sessionVersion: user.sessionVersion,
       },
       accessTokenLifetime,
       refreshTokenLifetime,
@@ -233,6 +245,7 @@ const oauthModel: OAuth2Server.AuthorizationCodeModel & OAuth2Server.RefreshToke
       },
       user: {
         username: token.username,
+        sessionVersion: token.sessionVersion,
       },
     };
   },
@@ -266,6 +279,7 @@ const oauthModel: OAuth2Server.AuthorizationCodeModel & OAuth2Server.RefreshToke
       },
       user: {
         username: token.username,
+        sessionVersion: token.sessionVersion,
       },
     };
   },
@@ -393,6 +407,7 @@ export const authenticateUser = async (
   return {
     username: user.username,
     isAdmin: user.isAdmin,
+    sessionVersion: getUserSessionVersion(user),
   };
 };
 

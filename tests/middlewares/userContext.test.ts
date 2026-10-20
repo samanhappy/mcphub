@@ -1,3 +1,4 @@
+import { getUserSessionVersion } from '../../src/utils/userSession.js';
 import { describe, expect, it, jest, beforeEach } from '@jest/globals';
 import jwt from 'jsonwebtoken';
 import { Request, Response } from 'express';
@@ -83,7 +84,16 @@ describe('sseUserContextMiddleware', () => {
   });
 
   it('allows user-scoped SSE requests when JWT user exists and matches the route user', async () => {
-    const token = jwt.sign({ user: { username: 'alice', isAdmin: false } }, JWT_SECRET);
+    const token = jwt.sign(
+      {
+        user: {
+          username: 'alice',
+          isAdmin: false,
+          sessionVersion: getUserSessionVersion({ username: 'alice', password: 'hashed' }),
+        },
+      },
+      JWT_SECRET,
+    );
     findByUsernameMock.mockResolvedValue({ username: 'alice', password: 'hashed', isAdmin: false });
     const { response, status } = createResponse();
     const next = jest.fn();
@@ -102,7 +112,16 @@ describe('sseUserContextMiddleware', () => {
   });
 
   it('rejects user-scoped SSE requests when authenticated user does not match route user', async () => {
-    const token = jwt.sign({ user: { username: 'alice', isAdmin: false } }, JWT_SECRET);
+    const token = jwt.sign(
+      {
+        user: {
+          username: 'alice',
+          isAdmin: false,
+          sessionVersion: getUserSessionVersion({ username: 'alice', password: 'hashed' }),
+        },
+      },
+      JWT_SECRET,
+    );
     findByUsernameMock.mockResolvedValue({ username: 'alice', password: 'hashed', isAdmin: false });
     const { response, status, json } = createResponse();
     const next = jest.fn();
@@ -126,10 +145,18 @@ describe('sseUserContextMiddleware', () => {
     expect(next).not.toHaveBeenCalled();
   });
 
-  it('allows user-scoped SSE requests when no users are configured (no user management)', async () => {
-    // Simulates deployments with smart routing disabled or fresh installs —
-    // no users in storage means user-scoped JWT claims are trusted as-is.
-    const token = jwt.sign({ user: { username: 'alice', isAdmin: false } }, JWT_SECRET);
+  it('rejects user-scoped SSE requests even when no users remain', async () => {
+    // Removing the last persisted identity must not restore trust in old claims.
+    const token = jwt.sign(
+      {
+        user: {
+          username: 'alice',
+          isAdmin: false,
+          sessionVersion: getUserSessionVersion({ username: 'alice', password: 'hashed' }),
+        },
+      },
+      JWT_SECRET,
+    );
     findByUsernameMock.mockResolvedValue(null);
     countMock.mockResolvedValue(0); // no users in system
     const { response, status } = createResponse();
@@ -144,7 +171,7 @@ describe('sseUserContextMiddleware', () => {
     await sseUserContextMiddleware(req, response, next);
     await waitForAsyncMiddleware();
 
-    expect(next).toHaveBeenCalledTimes(1);
-    expect(status).not.toHaveBeenCalled();
+    expect(next).not.toHaveBeenCalled();
+    expect(status).toHaveBeenCalledWith(401);
   });
 });

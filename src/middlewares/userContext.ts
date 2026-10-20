@@ -1,29 +1,11 @@
+import { resolveJwtUser } from '../utils/userSession.js';
 import { Request, Response, NextFunction } from 'express';
-import jwt from 'jsonwebtoken';
-import { getSystemConfigDao, getUserDao } from '../dao/index.js';
-import { JWT_SECRET } from '../config/jwt.js';
+import { getSystemConfigDao } from '../dao/index.js';
 import { UserContextService } from '../services/userContextService.js';
 import { IUser } from '../types/index.js';
 import { resolveOAuthUserFromHeaders } from '../utils/oauthBearer.js';
 import { getBearerTokenFromHeaders } from '../utils/bearerAuth.js';
 import { logger } from '../utils/logger.js';
-
-const resolveJwtUser = (req: Request): IUser | null => {
-  const headerToken = req.header('x-auth-token');
-  const queryToken = typeof req.query.token === 'string' ? req.query.token : undefined;
-  const token = headerToken || queryToken;
-
-  if (!token) {
-    return null;
-  }
-
-  try {
-    const decoded = jwt.verify(token, JWT_SECRET) as { user?: IUser };
-    return decoded.user || null;
-  } catch {
-    return null;
-  }
-};
 
 const resolveAuthenticatedUserForSse = async (req: Request): Promise<IUser | null> => {
   const systemConfig = await getSystemConfigDao().get();
@@ -37,25 +19,10 @@ const resolveAuthenticatedUserForSse = async (req: Request): Promise<IUser | nul
     return null;
   }
 
-  const jwtUser = resolveJwtUser(req);
-  if (!jwtUser?.username) {
-    return null;
-  }
-
-  const persistedUser = await getUserDao().findByUsername(jwtUser.username);
-  if (persistedUser) {
-    return persistedUser;
-  }
-
-  // No matching user found — check if user management is configured at all.
-  // When no users exist in the system (e.g. smart routing disabled, fresh install),
-  // fall back to trusting the JWT payload rather than hard-denying.
-  const totalUsers = await getUserDao().count();
-  if (totalUsers === 0) {
-    return jwtUser;
-  }
-
-  return null;
+  const headerToken = req.header('x-auth-token');
+  const queryToken = typeof req.query.token === 'string' ? req.query.token : undefined;
+  const token = headerToken || queryToken;
+  return token ? resolveJwtUser(token) : null;
 };
 
 /**

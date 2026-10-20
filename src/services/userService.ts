@@ -1,5 +1,6 @@
+import { revokeUserTokens } from '../models/OAuth.js';
 import { IUser } from '../types/index.js';
-import { getBearerKeyDao, getUserDao } from '../dao/index.js';
+import { getBearerKeyDao, getUserDao, getGroupDao, getServerDao } from '../dao/index.js';
 import { logger } from '../utils/logger.js';
 
 // Get all users
@@ -116,11 +117,28 @@ export const deleteUser = async (username: string): Promise<boolean> => {
       return false; // Cannot delete the last admin
     }
 
-    const deleted = await userDao.delete(username);
-    if (deleted) {
+    if (userToDelete) {
       await getBearerKeyDao().deleteByOwner(username);
+      await revokeUserTokens(username);
+      const groupDao = getGroupDao();
+      for (const group of await groupDao.findAll()) {
+        if (group.sharedWithUsers?.includes(username)) {
+          await groupDao.update(group.id, {
+            sharedWithUsers: group.sharedWithUsers.filter((name) => name !== username),
+          });
+        }
+      }
+      const serverDao = getServerDao();
+      for (const server of await serverDao.findAll()) {
+        if (server.sharedWithUsers?.includes(username)) {
+          const sharedWithUsers = server.sharedWithUsers.filter((name) => name !== username);
+          await serverDao.update(server.name, { sharedWithUsers });
+          const { updateServerInfoVisibility } = await import('./mcpService.js');
+          updateServerInfoVisibility(server.name, server.visibility, sharedWithUsers);
+        }
+      }
     }
-    return deleted;
+    return userToDelete ? await userDao.delete(username) : false;
   } catch (error) {
     logger.error('Failed to delete user:', error);
     return false;

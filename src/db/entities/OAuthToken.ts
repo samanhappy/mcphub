@@ -41,6 +41,9 @@ export class OAuthToken {
   @Column({ type: 'varchar', length: 255 })
   username: string;
 
+  @Column({ name: 'session_version', type: 'varchar', length: 64, nullable: true })
+  sessionVersion?: string;
+
   @CreateDateColumn({ name: 'created_at', type: 'timestamp' })
   createdAt: Date;
 

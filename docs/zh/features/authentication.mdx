@@ -15,6 +15,16 @@ description: '为 MCPHub 配置身份认证和安全设置'
 
 MCPHub 提供灵活的身份认证机制来保护您的 MCP 服务器管理平台。系统支持多种身份认证方法和基于角色的访问控制。
 
+## 本地用户与凭据失效
+
+Dashboard JWT 和 MCPHub 内置 OAuth 授权绑定签发时的用户密码哈希。删除本地用户或修改密码后，旧凭据失效；重建同名用户不会恢复旧凭据。JWT 请求使用用户当前的管理员权限。删除用户还会清理 OAuth token、处理实例内待兑换的授权码，以及服务器和组的共享名单。
+
+从没有会话版本的旧凭据升级后，需要重新登录并重新连接 OAuth 客户端。数据库模式会通过正常的启动 schema 同步为 `oauth_tokens` 添加可空的 `session_version` 列。升级时应重启所有副本。
+
+`POST /api/auth/register` 遵循上文默认关闭的自助注册策略，并始终创建普通用户。角色分配请使用管理员用户管理 API。
+
+内置 OAuth token 可用于 MCP 传输接口及 `/oauth/userinfo`，不能访问 `/api/*` 管理接口。管理操作请使用 Dashboard JWT、Better Auth session、已配置的 forward auth 或系统级全访问 bearer key。
+
 ## Better Auth（GitHub / Google / 本地 OIDC）
 
 MCPHub 可以通过 Better Auth 为 Dashboard 提供第三方登录。当前支持：

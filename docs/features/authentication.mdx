@@ -19,13 +19,12 @@ also refused and the registration entry is hidden. Existing accounts remain avai
 
 ## Overview
 
-MCPHub supports several stacked authentication paths. The same middleware (`src/middlewares/auth.ts`) evaluates them in order on every authenticated request:
+The dashboard API supports the following authentication paths (configured forward auth is evaluated first):
 
 1. **Bearer key** — a static token created from the dashboard or `/api/auth/keys`.
-2. **MCPHub OAuth access token** — issued by MCPHub's own authorization server (optional).
-3. **Better Auth session cookie** — issued by GitHub / Google login (optional).
-4. **JWT** — issued by `POST /api/auth/login`, sent via the `x-auth-token` header or `?token=` query.
-5. **`skipAuth` guest** — only when `systemConfig.routing.skipAuth` is `true`, the dashboard API treats unauthenticated calls as a synthetic admin `guest` user.
+2. **Better Auth session cookie** — issued by GitHub / Google login (optional).
+3. **JWT** — issued by `POST /api/auth/login`, sent via the `x-auth-token` header or `?token=` query.
+4. **`skipAuth` guest** — only when `systemConfig.routing.skipAuth` is `true`, the dashboard API treats unauthenticated calls as a synthetic admin `guest` user.
 
 All persistent user records are stored as `{ username, password, isAdmin }`. There are no `manager` or `viewer` roles; permissions are binary (admin or not). Social accounts that log in via Better Auth live in a separate `mcphub_better_auth_*` table but are mapped to the same `username` / `isAdmin` shape at request time.
 
@@ -59,6 +58,12 @@ curl http://localhost:3000/api/servers \
 The JWT is signed with `JWT_SECRET`. If `JWT_SECRET` is not set, MCPHub generates an ephemeral random secret at startup; this is fine for development but means every restart invalidates outstanding tokens. **Set `JWT_SECRET` explicitly in production.**
 
 Issued JWTs expire after a fixed 24 hours (`TOKEN_EXPIRY` in `src/controllers/authController.ts`); the lifetime is not configurable via environment variables.
+
+JWTs and MCPHub OAuth grants are bound to the user's current password hash. Deleting the local user or changing their password invalidates those credentials; recreating the same username does not restore them. JWT authorization reads the user's current administrator status. User deletion also removes OAuth tokens, pending authorization codes on the handling instance, and entries in server/group sharing lists.
+
+Upgrading from credentials without a session version requires signing in again and reconnecting OAuth clients. Database deployments add a nullable `session_version` column to `oauth_tokens` through the normal startup schema synchronization. Restart every replica when upgrading.
+
+`POST /api/auth/register` follows the opt-in self-registration policy above and always creates a non-admin user. Use the administrator user-management API to assign roles.
 
 The first admin account is created at startup by `initializeDefaultUser()`. If no users exist, MCPHub creates `admin` and uses `ADMIN_PASSWORD` if set. When running through `pnpm dev`, it uses `admin123`; other starts generate a random password and print it to the server logs.
 
@@ -106,7 +111,7 @@ When `systemConfig.oauthServer.enabled` is `true`, MCPHub exposes an OAuth 2.0 /
 | `POST /oauth/register`, `GET/PUT/DELETE /oauth/register/:clientId` | RFC 7591 dynamic client registration. |
 | `GET/POST/PUT/DELETE /api/oauth/clients[...]` | Admin-only client CRUD. |
 
-OAuth access tokens issued here are accepted by `src/middlewares/auth.ts`.
+OAuth access tokens issued here authenticate MCP transport requests and `/oauth/userinfo`. They are not dashboard API credentials and are rejected on `/api/*`; use a dashboard JWT, Better Auth session, configured forward auth, or a system all-access bearer key for management.
 
 ## Better Auth (GitHub / Google / local OIDC)
 

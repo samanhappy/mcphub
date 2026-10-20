@@ -1,9 +1,6 @@
+import { resolveJwtUser } from '../utils/userSession.js';
 import { Request, Response, NextFunction } from 'express';
-import jwt from 'jsonwebtoken';
 import defaultConfig from '../config/index.js';
-import { JWT_SECRET } from '../config/jwt.js';
-import { getToken } from '../models/OAuth.js';
-import { isOAuthServerEnabled } from '../services/oauthServerService.js';
 import { getBearerKeyDao, getSystemConfigDao } from '../dao/index.js';
 import { BearerKey, SystemConfig } from '../types/index.js';
 import { getBetterAuthRuntimeConfig } from '../services/betterAuthConfig.js';
@@ -161,27 +158,6 @@ export const auth = async (req: Request, res: Response, next: NextFunction): Pro
     return;
   }
 
-  // Check for OAuth access token in the configured bearer auth header
-  const accessToken = getBearerTokenFromHeaders(req.headers, systemConfig);
-  if (accessToken && isOAuthServerEnabled()) {
-    const oauthToken = await getToken(accessToken);
-
-    if (oauthToken && oauthToken.accessToken === accessToken) {
-      // Valid OAuth token - look up user to get admin status
-      const { findUserByUsername } = await import('../models/User.js');
-      const user = await findUserByUsername(oauthToken.username);
-
-      // Set user context with proper admin status
-      (req as any).user = {
-        username: oauthToken.username,
-        isAdmin: user?.isAdmin || false,
-      };
-      (req as any).oauthToken = oauthToken;
-      next();
-      return;
-    }
-  }
-
   const betterAuthConfig = await getBetterAuthRuntimeConfig(systemConfig);
   if (betterAuthConfig.enabled) {
     const betterAuthUser = await resolveBetterAuthUserSafe(req);
@@ -214,10 +190,12 @@ export const auth = async (req: Request, res: Response, next: NextFunction): Pro
 
   // Verify JWT token
   try {
-    const decoded = jwt.verify(token, JWT_SECRET);
-
-    // Add user from payload to request
-    (req as any).user = (decoded as any).user;
+    const user = await resolveJwtUser(token);
+    if (!user) {
+      res.status(401).json({ success: false, message: 'Token is not valid' });
+      return;
+    }
+    (req as any).user = { username: user.username, isAdmin: user.isAdmin || false };
     next();
   } catch (error) {
     res.status(401).json({ success: false, message: 'Token is not valid' });
