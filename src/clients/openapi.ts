@@ -1,3 +1,4 @@
+import { isSafePassthroughHeader } from '../utils/passthroughHeaders.js';
 import { AxiosHeaders } from 'axios';
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
 import { randomUUID } from 'node:crypto';
@@ -991,7 +992,7 @@ export class OpenAPIClient {
       // Add passthrough headers based on configuration
       if (passthroughHeaders && this.config.openapi?.passthroughHeaders) {
         for (const headerName of this.config.openapi.passthroughHeaders) {
-          if (passthroughHeaders[headerName]) {
+          if (isSafePassthroughHeader(headerName) && passthroughHeaders[headerName]) {
             allHeaders[headerName] = passthroughHeaders[headerName];
           }
         }

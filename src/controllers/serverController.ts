@@ -147,7 +147,9 @@ const ensureNonAdminCanManageConfig = (
       message:
         config.oauth?.allowInsecureTokenEndpoint === true
           ? 'Only admins can create or modify servers allowing HTTP OAuth token endpoints'
-          : 'Only admins can create or modify stdio-based servers',
+          : config.passthroughHeaders?.length || config.openapi?.passthroughHeaders?.length
+            ? 'Only admins can create or modify servers forwarding caller headers'
+            : 'Only admins can create or modify stdio-based servers',
     });
     return false;
   }
@@ -872,7 +874,10 @@ export const batchCreateServers = async (req: Request, res: Response): Promise<v
             message:
               normalizedConfig.oauth?.allowInsecureTokenEndpoint === true
                 ? 'Only admins can create or modify servers allowing HTTP OAuth token endpoints'
-                : 'Only admins can create or modify stdio-based servers',
+                : normalizedConfig.passthroughHeaders?.length ||
+                    normalizedConfig.openapi?.passthroughHeaders?.length
+                  ? 'Only admins can create or modify servers forwarding caller headers'
+                  : 'Only admins can create or modify stdio-based servers',
           });
           failureCount++;
           continue;
@@ -1145,7 +1150,11 @@ export const updateServer = async (req: Request, res: Response): Promise<void> =
     }
 
     if (
-      (existingServer.oauth?.allowInsecureTokenEndpoint === true &&
+      ((existingServer.oauth?.allowInsecureTokenEndpoint === true ||
+        Boolean(
+          existingServer.passthroughHeaders?.length ||
+            existingServer.openapi?.passthroughHeaders?.length,
+        )) &&
         !ensureNonAdminCanManageConfig(req, res, existingServer)) ||
       !ensureNonAdminCanManageConfig(req, res, normalizedConfig)
     ) {
