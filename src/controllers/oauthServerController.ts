@@ -1,3 +1,4 @@
+import { getUserSessionVersion, resolveJwtUser } from '../utils/userSession.js';
 import { Request, Response } from 'express';
 import {
   getOAuthServer,
@@ -7,8 +8,6 @@ import {
 import { findOAuthClientIncludingCimd, isCimdClientId } from '../services/cimdClientService.js';
 import { getSystemConfigDao, getGroupDao, getServerDao } from '../dao/index.js';
 import OAuth2Server from '@node-oauth/oauth2-server';
-import jwt from 'jsonwebtoken';
-import { JWT_SECRET } from '../config/jwt.js';
 import { resolveBetterAuthUser } from '../services/betterAuthSession.js';
 import { cloneDefaultOAuthServerConfig } from '../constants/oauthServerDefaults.js';
 import {
@@ -28,6 +27,7 @@ const { Request: OAuth2Request, Response: OAuth2Response } = OAuth2Server;
 type AuthenticatedUser = {
   username: string;
   isAdmin?: boolean;
+  sessionVersion?: string;
 };
 
 /**
@@ -48,6 +48,7 @@ async function resolveBetterAuthUserForAuthorize(req: Request): Promise<Authenti
       const authenticatedUser: AuthenticatedUser = {
         username: user.username,
         isAdmin: !!user.isAdmin,
+        sessionVersion: getUserSessionVersion(user),
       };
       (req as any).user = authenticatedUser;
       return authenticatedUser;
@@ -61,7 +62,7 @@ async function resolveBetterAuthUserForAuthorize(req: Request): Promise<Authenti
 /**
  * Attempt to attach a user to the request based on a JWT token present in header, query, or body.
  */
-function resolveUserFromRequest(req: Request): AuthenticatedUser | null {
+async function resolveUserFromRequest(req: Request): Promise<AuthenticatedUser | null> {
   const headerToken = req.header('x-auth-token');
   const queryToken = typeof req.query.token === 'string' ? req.query.token : undefined;
   const bodyToken =
@@ -74,16 +75,14 @@ function resolveUserFromRequest(req: Request): AuthenticatedUser | null {
     return null;
   }
 
-  try {
-    const decoded = jwt.verify(token, JWT_SECRET) as { user?: AuthenticatedUser };
-    if (decoded?.user) {
-      return decoded.user;
-    }
-  } catch (error) {
-    logger.warn('Invalid JWT supplied to OAuth authorize endpoint:', error);
-  }
-
-  return null;
+  const user = await resolveJwtUser(token);
+  return user
+    ? {
+        username: user.username,
+        isAdmin: !!user.isAdmin,
+        sessionVersion: getUserSessionVersion(user),
+      }
+    : null;
 }
 
 /**
@@ -390,7 +389,7 @@ export const getAuthorize = async (req: Request, res: Response): Promise<void> =
     // Check if user is authenticated (including via JWT token)
     let user = (req as any).user;
     if (!user) {
-      const tokenUser = resolveUserFromRequest(req);
+      const tokenUser = await resolveUserFromRequest(req);
       if (tokenUser) {
         (req as any).user = tokenUser;
         user = tokenUser;
@@ -532,7 +531,7 @@ export const postAuthorize = async (req: Request, res: Response): Promise<void> 
     // Better Auth session cookie for social-login users — see #815).
     let user = (req as any).user;
     if (!user) {
-      const tokenUser = resolveUserFromRequest(req);
+      const tokenUser = await resolveUserFromRequest(req);
       if (tokenUser) {
         (req as any).user = tokenUser;
         user = tokenUser;

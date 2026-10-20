@@ -340,6 +340,7 @@ export interface IOAuthAuthorizationCode {
   redirectUri: string; // Redirect URI used in the authorization request
   scope?: string; // Granted scopes
   clientId: string; // Client ID
+  sessionVersion?: string; // Credential version at authorization
   username: string; // User who authorized
   codeChallenge?: string; // PKCE code challenge
   codeChallengeMethod?: string; // PKCE code challenge method
@@ -353,6 +354,7 @@ export interface IOAuthToken {
   refreshTokenExpiresAt?: Date; // Refresh token expiration
   scope?: string; // Granted scopes
   clientId: string; // Client ID
+  sessionVersion?: string; // Credential version at issuance
   username: string; // Username
 }
 

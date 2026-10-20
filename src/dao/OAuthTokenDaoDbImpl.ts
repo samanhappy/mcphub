@@ -50,6 +50,7 @@ export class OAuthTokenDaoDbImpl implements OAuthTokenDao {
       scope: entity.scope,
       clientId: entity.clientId,
       username: entity.username,
+      sessionVersion: entity.sessionVersion,
     });
     return this.mapToOAuthToken(token);
   }
@@ -108,6 +109,7 @@ export class OAuthTokenDaoDbImpl implements OAuthTokenDao {
     scope?: string;
     clientId: string;
     username: string;
+    sessionVersion?: string;
   }): IOAuthToken {
     return {
       accessToken: token.accessToken,
@@ -117,6 +119,7 @@ export class OAuthTokenDaoDbImpl implements OAuthTokenDao {
       scope: token.scope,
       clientId: token.clientId,
       username: token.username,
+      sessionVersion: token.sessionVersion,
     };
   }
 }

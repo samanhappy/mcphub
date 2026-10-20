@@ -1,3 +1,4 @@
+import { getUserSessionVersion } from '../utils/userSession.js';
 import express from 'express';
 import request from 'supertest';
 import { jest } from '@jest/globals';
@@ -17,6 +18,9 @@ const mockGetSystemConfig = jest.fn();
 const mockGetCachedSystemConfig = jest.fn();
 
 jest.mock('../dao/index.js', () => ({
+  getUserDao: () => ({
+    findByUsername: async (username: string) => ({ username, password: 'hashed' }),
+  }),
   getBearerKeyDao: jest.fn(() => ({
     findEnabled: findEnabledMock,
   })),
@@ -459,7 +463,16 @@ describe('auth middleware', () => {
         },
       );
 
-      const token = jwt.sign({ user: { username: 'jwt-user', isAdmin: false } }, 'test-secret');
+      const token = jwt.sign(
+        {
+          user: {
+            username: 'jwt-user',
+            isAdmin: false,
+            sessionVersion: getUserSessionVersion({ username: 'jwt-user', password: 'hashed' }),
+          },
+        },
+        'test-secret',
+      );
 
       const response = await request(app).get('/api/protected').set('x-auth-token', token);
 

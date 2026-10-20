@@ -1,3 +1,4 @@
+import { getUserSessionVersion } from '../utils/userSession.js';
 import { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import { validationResult } from 'express-validator';
@@ -71,6 +72,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     const payload = {
       user: {
         username: user.username,
+        sessionVersion: getUserSessionVersion(user),
         isAdmin: user.isAdmin || false,
       },
     };
@@ -155,6 +157,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
     const payload = {
       user: {
         username: newUser.username,
+        sessionVersion: getUserSessionVersion(newUser),
         isAdmin: newUser.isAdmin || false,
       },
     };

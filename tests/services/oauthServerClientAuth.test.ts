@@ -1,3 +1,4 @@
+import { getUserSessionVersion } from '../../src/utils/userSession.js';
 // Regression tests for GHSA-3m7m-37xf-xp9x: OAuth authorization server must
 // authenticate confidential clients and require PKCE S256 for public clients.
 
@@ -7,6 +8,9 @@ jest.mock('@node-oauth/oauth2-server', () => {
 });
 
 jest.mock('../../src/dao/index.js', () => ({
+  getUserDao: () => ({
+    findByUsername: async (username: string) => ({ username, password: 'hashed' }),
+  }),
   getSystemConfigDao: jest.fn(() => ({ get: jest.fn().mockResolvedValue({}) })),
   getBearerKeyDao: jest.fn(),
 }));
@@ -85,7 +89,10 @@ describe('oauthModel.saveAuthorizationCode requires PKCE S256 for public clients
     codeChallenge: undefined as string | undefined,
     codeChallengeMethod: undefined as string | undefined,
   };
-  const user = { username: 'alice' };
+  const user = {
+    username: 'alice',
+    sessionVersion: getUserSessionVersion({ username: 'alice', password: 'hashed' }),
+  };
 
   beforeEach(() => {
     mockSaveAuthorizationCode.mockReset();

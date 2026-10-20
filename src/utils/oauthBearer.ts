@@ -1,6 +1,6 @@
+import { resolveUserSession } from './userSession.js';
 import { isOAuthServerEnabled } from '../services/oauthServerService.js';
 import { getToken as getOAuthStoredToken } from '../models/OAuth.js';
-import { findUserByUsername } from '../models/User.js';
 import { IUser, SystemConfig } from '../types/index.js';
 import { safeCompare } from './safeCompare.js';
 import { getBearerTokenFromHeaders, parseBearerAuthorization } from './bearerAuth.js';
@@ -18,7 +18,8 @@ export const resolveOAuthUserFromToken = async (token?: string): Promise<IUser |
     return null;
   }
 
-  const dbUser = await findUserByUsername(oauthToken.username);
+  const dbUser = await resolveUserSession(oauthToken);
+  if (!dbUser) return null;
 
   return {
     username: oauthToken.username,

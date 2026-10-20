@@ -1,3 +1,4 @@
+import { resolveUserSession } from '../utils/userSession.js';
 import crypto from 'crypto';
 import { getOAuthClientDao, getOAuthTokenDao, getSystemConfigDao } from '../dao/index.js';
 import { IOAuthClient, IOAuthAuthorizationCode, IOAuthToken } from '../types/index.js';
@@ -5,9 +6,6 @@ import { logger } from '../utils/logger.js';
 
 // In-memory storage for authorization codes (short-lived, no persistence needed)
 const authorizationCodes = new Map<string, IOAuthAuthorizationCode>();
-
-// In-memory cache for tokens (also persisted via DAO)
-const tokensCache = new Map<string, IOAuthToken>();
 
 // In-memory registration access tokens (RFC 7591 §3.2). Expiry is enforced
 // lazily on verification; cleanupExpired() sweeps entries that are never used
@@ -18,33 +16,6 @@ const REGISTRATION_TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 
 // Default idle TTL for dynamically-registered clients (see oauthServerDefaults).
 const DEFAULT_DYNAMIC_CLIENT_TTL_SECONDS = 30 * 24 * 60 * 60; // 30 days
-
-// Flag to track if we've initialized from DAO
-let initialized = false;
-
-/**
- * Initialize token cache from DAO (async)
- */
-const initializeTokenCache = async (): Promise<void> => {
-  if (initialized) return;
-  initialized = true;
-
-  try {
-    const tokenDao = getOAuthTokenDao();
-    const allTokens = await tokenDao.findAll();
-    for (const token of allTokens) {
-      tokensCache.set(token.accessToken, token);
-      if (token.refreshToken) {
-        tokensCache.set(token.refreshToken, token);
-      }
-    }
-  } catch (error) {
-    logger.error('Failed to initialize OAuth tokens from DAO:', error);
-  }
-};
-
-// Initialize on module load (fire and forget for backward compatibility)
-initializeTokenCache().catch(logger.error);
 
 /**
  * Get all OAuth clients from configuration
@@ -221,19 +192,7 @@ export const saveToken = async (
     ...tokenData,
   };
 
-  // Update cache
-  tokensCache.set(accessToken, token);
-  if (refreshToken) {
-    tokensCache.set(refreshToken, token);
-  }
-
-  // Persist to DAO
-  try {
-    const tokenDao = getOAuthTokenDao();
-    await tokenDao.create(token);
-  } catch (error) {
-    logger.error('Failed to persist OAuth token to DAO:', error);
-  }
+  await getOAuthTokenDao().create(token);
 
   return token;
 };
@@ -242,25 +201,10 @@ export const saveToken = async (
  * Get token by access token or refresh token
  */
 export const getToken = async (token: string): Promise<IOAuthToken | undefined> => {
-  // First check cache
-  let tokenData = tokensCache.get(token);
-
-  // If not in cache, try DAO
-  if (!tokenData) {
-    const tokenDao = getOAuthTokenDao();
-    tokenData =
-      (await tokenDao.findByAccessToken(token)) ||
-      (await tokenDao.findByRefreshToken(token)) ||
-      undefined;
-
-    // Update cache if found
-    if (tokenData) {
-      tokensCache.set(tokenData.accessToken, tokenData);
-      if (tokenData.refreshToken) {
-        tokensCache.set(tokenData.refreshToken, tokenData);
-      }
-    }
-  }
+  // Read through the DAO so revocation on another instance takes effect immediately.
+  const tokenDao = getOAuthTokenDao();
+  const tokenData =
+    (await tokenDao.findByAccessToken(token)) || (await tokenDao.findByRefreshToken(token));
 
   if (!tokenData) {
     return undefined;
@@ -280,28 +224,22 @@ export const getToken = async (token: string): Promise<IOAuthToken | undefined> 
     return undefined;
   }
 
-  return tokenData;
+  return (await resolveUserSession(tokenData)) ? tokenData : undefined;
 };
 
 /**
  * Revoke token (both access and refresh tokens)
  */
 export const revokeToken = async (token: string): Promise<void> => {
-  const tokenData = tokensCache.get(token);
-  if (tokenData) {
-    tokensCache.delete(tokenData.accessToken);
-    if (tokenData.refreshToken) {
-      tokensCache.delete(tokenData.refreshToken);
-    }
-  }
+  await getOAuthTokenDao().revokeToken(token);
+};
 
-  // Also remove from DAO
-  try {
-    const tokenDao = getOAuthTokenDao();
-    await tokenDao.revokeToken(token);
-  } catch (error) {
-    logger.error('Failed to remove OAuth token from DAO:', error);
+/** Revoke the user's persisted tokens and pending in-process authorization codes. */
+export const revokeUserTokens = async (username: string): Promise<void> => {
+  for (const [code, authorization] of authorizationCodes) {
+    if (authorization.username === username) authorizationCodes.delete(code);
   }
+  await getOAuthTokenDao().revokeUserTokens(username);
 };
 
 /**
@@ -314,27 +252,6 @@ export const cleanupExpired = async (): Promise<void> => {
   for (const [code, authCode] of authorizationCodes.entries()) {
     if (authCode.expiresAt < now) {
       authorizationCodes.delete(code);
-    }
-  }
-
-  // Clean up expired tokens from cache
-  const processedTokens = new Set<string>();
-  for (const [_key, token] of tokensCache.entries()) {
-    // Skip if we've already processed this token
-    if (processedTokens.has(token.accessToken)) {
-      continue;
-    }
-    processedTokens.add(token.accessToken);
-
-    const accessExpired = token.accessTokenExpiresAt < now;
-    const refreshExpired = token.refreshTokenExpiresAt && token.refreshTokenExpiresAt < now;
-
-    // If both are expired, remove from cache
-    if (accessExpired && (!token.refreshToken || refreshExpired)) {
-      tokensCache.delete(token.accessToken);
-      if (token.refreshToken) {
-        tokensCache.delete(token.refreshToken);
-      }
     }
   }
 
@@ -371,9 +288,6 @@ const cleanupIdleDynamicClients = async (now: Date): Promise<void> => {
 
     for (const [, authCode] of authorizationCodes.entries()) {
       liveClientIds.add(authCode.clientId);
-    }
-    for (const [, token] of tokensCache.entries()) {
-      liveClientIds.add(token.clientId);
     }
     const persistedTokens = await getOAuthTokenDao().findAll();
     for (const token of persistedTokens) {

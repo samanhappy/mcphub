@@ -11,6 +11,8 @@ const mockFindAdmins = jest.fn();
 const mockDeleteBearerKeysByOwner = jest.fn();
 
 jest.mock('../../src/dao/index.js', () => ({
+  getGroupDao: () => ({ findAll: async () => [] }),
+  getServerDao: () => ({ findAll: async () => [] }),
   getUserDao: jest.fn(() => ({
     findByUsername: mockFindByUsername,
     findByEmail: mockFindByEmail,
@@ -27,11 +29,9 @@ jest.mock('../../src/dao/index.js', () => ({
   })),
 }));
 
-import {
-  createNewUser,
-  updateUser,
-  deleteUser,
-} from '../../src/services/userService.js';
+jest.mock('../../src/models/OAuth.js', () => ({ revokeUserTokens: jest.fn() }));
+
+import { createNewUser, updateUser, deleteUser } from '../../src/services/userService.js';
 
 describe('userService', () => {
   beforeEach(() => {

@@ -1,3 +1,4 @@
+import { getUserSessionVersion } from '../../src/utils/userSession.js';
 // Test utilities and helpers
 import express from 'express';
 import request from 'supertest';
@@ -37,6 +38,7 @@ export const createUserToken = (username = 'testuser', isAdmin = false): string 
   const payload = {
     user: {
       username,
+      sessionVersion: getUserSessionVersion({ username, password: 'unused' }),
       isAdmin,
     },
   };
@@ -144,7 +146,7 @@ export const DbHelpers = {
  * Wait for async operations to complete
  */
 export const waitFor = (ms: number): Promise<void> => {
-  return new Promise(resolve => setTimeout(resolve, ms));
+  return new Promise((resolve) => setTimeout(resolve, ms));
 };
 
 /**
