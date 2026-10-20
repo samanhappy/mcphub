@@ -42,10 +42,12 @@ src/services/userService.ts
   s_21b8f8c3fdd1b5::t_310d995206acd7 120,137,141
 docs/zh/features/authentication.mdx
   s_21b8f8c3fdd1b5::t_a1ccfd560e9a20 18-23,25-27
+  s_21b8f8c3fdd1b5::t_6d04865fcd4ebc 24
 src/db/entities/OAuthToken.ts
   s_21b8f8c3fdd1b5::t_9e11d247de8cb2 44-46
 docs/features/authentication.mdx
   s_21b8f8c3fdd1b5::t_a1ccfd560e9a20 22,25-27,62-65,67,114
+  s_21b8f8c3fdd1b5::t_6d04865fcd4ebc 66
 src/controllers/authController.ts
   s_21b8f8c3fdd1b5::t_9e11d247de8cb2 1,75,160
 src/dao/OAuthTokenDaoDbImpl.ts
@@ -53,6 +55,7 @@ src/dao/OAuthTokenDaoDbImpl.ts
 tests/integration/user-offboarding.test.ts
   s_21b8f8c3fdd1b5::t_5dacb625b9f8f7 39-44,46-48,55-56,60-61,70-72,81-83,90-94,100-110,124-132,140-143,149-151,155-158,163-189,206-208,210-212,217-219,222-224,242-244,246-248,255-269,271-280,289-296,300-302,304-306,324-326
   s_21b8f8c3fdd1b5::t_589d6a67b88981 1-38,45,49-54,57-59,62-64,68-69,73-80,84-89,95-99,111-123,133-139,144-146,148,152-154,159-162,190-205,209,213-216,220-221,225-241,245,249-250,252-253,282-288,297-299,303,307-323,327-329
+  s_21b8f8c3fdd1b5::t_6d04865fcd4ebc 65-67,147,251,254,270,281
 tests/services/userService.test.ts
   s_21b8f8c3fdd1b5::t_5dacb625b9f8f7 34
   s_21b8f8c3fdd1b5::t_2b9546e773dd1a 14-15,32
