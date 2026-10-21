@@ -150,3 +150,55 @@ test('an unpersisted successful refresh expires while concurrent calls share its
     jest.useRealTimers();
   }
 });
+
+test('unrelated declaration edits keep the personal binding intact (#1362)', async () => {
+  const alice = await PersonalOAuthContext.load('gitlab', 'alice', mockDefinition);
+  await alice.persistTokens('gitlab', {
+    accessToken: 'alice-secret',
+    refreshToken: 'alice-refresh',
+  });
+  const original = {
+    visibility: mockDefinition.visibility,
+    sharedWithUsers: mockDefinition.sharedWithUsers,
+    description: mockDefinition.description,
+    options: mockDefinition.options,
+  };
+  try {
+    // Editing access-control or cosmetic fields must not invalidate the binding:
+    // the destination (type/url/OAuth client+endpoints) is unchanged.
+    mockDefinition.visibility = 'group';
+    mockDefinition.sharedWithUsers = ['alice', 'bob'];
+    mockDefinition.description = 'edited note';
+    mockDefinition.options = { timeout: 120_000 };
+    const restored = await PersonalOAuthContext.load('gitlab', 'alice', mockDefinition);
+    expect(restored.config.oauth?.accessToken).toBe('alice-secret');
+    expect(restored.config.oauth?.refreshToken).toBe('alice-refresh');
+    expect(
+      (await resolvePersonalOAuth('gitlab', 'alice', mockDefinition)).config.oauth?.accessToken,
+    ).toBe('alice-secret');
+  } finally {
+    mockDefinition.visibility = original.visibility;
+    mockDefinition.sharedWithUsers = original.sharedWithUsers;
+    mockDefinition.description = original.description;
+    mockDefinition.options = original.options;
+  }
+});
+
+test('changing OAuth client metadata still invalidates the personal binding (#1362)', async () => {
+  const alice = await PersonalOAuthContext.load('gitlab', 'alice', mockDefinition);
+  await alice.persistTokens('gitlab', {
+    accessToken: 'alice-secret',
+    refreshToken: 'alice-refresh',
+  });
+  const originalClientId = mockDefinition.oauth?.clientId;
+  try {
+    mockDefinition.oauth = { ...mockDefinition.oauth, clientId: 'other-client' };
+    const restored = await PersonalOAuthContext.load('gitlab', 'alice', mockDefinition);
+    expect(restored.config.oauth?.accessToken).toBeUndefined();
+    await expect(resolvePersonalOAuth('gitlab', 'alice', mockDefinition)).rejects.toThrow(
+      'Personal authorization required',
+    );
+  } finally {
+    mockDefinition.oauth = { ...mockDefinition.oauth, clientId: originalClientId };
+  }
+});

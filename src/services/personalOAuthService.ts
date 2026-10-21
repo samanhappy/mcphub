@@ -38,11 +38,24 @@ export const personalAuthorizationRequired = (name: string) =>
   );
 
 // The declaration, not resolved tokens/client registration, binds a flow to its destination.
-const fingerprint = (config: ServerConfig, expanded: ServerConfig): string => {
-  // Bindings follow a plain rename; the display name does not change the destination.
-  const { name: _, ...declaration } = config as ServerConfig & { name?: string };
-  return JSON.stringify([declaration, expanded.url, expanded.oauth]);
+// Only destination-relevant fields participate: transport type, endpoint URL, and the OAuth
+// client/endpoint metadata. Unrelated declaration edits (visibility, sharedWithUsers,
+// description, options, tools, ...) must not invalidate existing personal bindings (#1362).
+// `enabled` and `server.invoke` access checks are enforced separately by assertCurrent() and
+// principalRuntimeService, so they are intentionally absent here. Runtime token/session fields
+// (accessToken, refreshToken, pendingAuthorization) never belong to a stored declaration.
+// Bindings follow a plain rename; the display name does not change the destination.
+const declarationOAuth = (oauth?: OAuth): OAuth => {
+  const {
+    accessToken: _,
+    refreshToken: __,
+    pendingAuthorization: ___,
+    ...declaration
+  } = oauth || {};
+  return declaration;
 };
+const fingerprint = (expanded: ServerConfig): string =>
+  JSON.stringify([expanded.type, expanded.url, declarationOAuth(expanded.oauth)]);
 export class PersonalOAuthContext {
   private revision: string | undefined;
   private declaration: string;
@@ -54,12 +67,7 @@ export class PersonalOAuthContext {
     declaration: string,
   ) {
     this.declaration = declaration;
-    const {
-      accessToken: _,
-      refreshToken: __,
-      pendingAuthorization: ___,
-      ...oauth
-    } = config.oauth || {};
+    const oauth = declarationOAuth(config.oauth);
     this.config = {
       ...config,
       oauth,
@@ -74,7 +82,7 @@ export class PersonalOAuthContext {
       serverName,
       username,
       expanded,
-      fingerprint(definition, expanded),
+      fingerprint(expanded),
     );
     const binding = await getCredentialBindingDao().get(serverName, username);
     if (binding) {
@@ -140,7 +148,7 @@ export class PersonalOAuthContext {
       !user ||
       definition.enabled === false ||
       !hasPersonalOAuth(definition) ||
-      fingerprint(definition, await expandServerConfig(definition)) !== this.declaration ||
+      fingerprint(await expandServerConfig(definition)) !== this.declaration ||
       !authorizationService.can('server.invoke', definition, { ...user, username: this.username })
     )
       throw new CredentialBindingError(
