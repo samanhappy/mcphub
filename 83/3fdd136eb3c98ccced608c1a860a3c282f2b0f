@@ -1,0 +1,16 @@
+src/services/personalOAuthService.ts
+  h_18676a549cd52a 41-55,57-58,70,85,151
+tests/services/personalOAuthService.test.ts
+  h_18676a549cd52a 153-204
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "833fdd136eb3c98ccced608c1a860a3c282f2b0f",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
