@@ -13,6 +13,7 @@ import {
 import { CredentialBindingDaoImpl } from '../../src/dao/CredentialBindingDao.js';
 import { getServerDao } from '../../src/dao/index.js';
 import { logger } from '../../src/utils/logger.js';
+import { normalizeServerConfigForPersistence } from '../../src/utils/serverConfigPersistence.js';
 import type { ServerConfigWithName } from '../../src/types/index.js';
 
 jest.mock('../../src/dao/index.js', () => ({ getServerDao: jest.fn() }));
@@ -176,4 +177,31 @@ test('a failed refresh response does not poison subsequent refresh attempts', as
   };
   expect((await wrapped(`${issuer}/token`, request)).status).toBe(503);
   expect((await wrapped(`${issuer}/token`, request)).status).toBe(200);
+});
+
+test('an active personal OAuth flow survives normalization of the default SSE type', async () => {
+  const originalType = mockDefinition.type;
+  try {
+    delete mockDefinition.type;
+    const a = await provider('alice');
+    await a.provider.saveTokens({
+      access_token: 'old',
+      refresh_token: 'refresh-alice',
+      token_type: 'Bearer',
+    });
+    Object.assign(mockDefinition, normalizeServerConfigForPersistence(mockDefinition));
+    expect(mockDefinition.type).toBe('sse');
+    await expect(auth(a.provider, { serverUrl: mockDefinition.url!, fetchFn })).resolves.toBe(
+      'AUTHORIZED',
+    );
+    expect((await provider('alice')).provider.tokens()?.access_token).toBe('token-alice');
+    expect(tokenRequests[0].get('refresh_token')).toBe('refresh-alice');
+    mockDefinition.type = 'streamable-http';
+    await expect(
+      a.provider.saveTokens({ access_token: 'late', token_type: 'Bearer' }),
+    ).rejects.toThrow('changed');
+    expect((await provider('alice')).provider.tokens()).toBeUndefined();
+  } finally {
+    mockDefinition.type = originalType;
+  }
 });

@@ -75,12 +75,18 @@ const canonicalJson = (value: unknown): string => {
   return JSON.stringify(value) ?? 'null';
 };
 const fingerprint = (expanded: ServerConfig): string =>
-  canonicalJson([expanded.type, expanded.url, declarationOAuth(expanded.oauth)]);
+  // URL-only MCP declarations use SSE; dashboard saves make that default explicit.
+  canonicalJson([expanded.type ?? 'sse', expanded.url, declarationOAuth(expanded.oauth)]);
 // Bindings persisted before #1362 stored the whole declaration:
 // JSON.stringify([declaration, expanded.url, expanded.oauth]). Normalize such a stored
 // value to the current destination-only format so an upgrade does not orphan every
 // binding, while a genuine destination/client change still fails the comparison.
 const normalizeLegacyDeclaration = (stored: string): string | undefined => {
+  // The destination-only format before type normalization serialized an omitted
+  // type as the literal `undefined`, so it cannot be read with JSON.parse.
+  if (stored.startsWith('[undefined,')) {
+    return `["sse",${stored.slice('[undefined,'.length)}`;
+  }
   let parsed: unknown;
   try {
     parsed = JSON.parse(stored);
@@ -93,7 +99,7 @@ const normalizeLegacyDeclaration = (stored: string): string | undefined => {
   // type string. Only treat object-leading values as legacy.
   if (typeof declaration !== 'object' || declaration === null) return undefined;
   return canonicalJson([
-    (declaration as { type?: string }).type,
+    (declaration as { type?: string }).type ?? 'sse',
     url,
     declarationOAuth(oauth as OAuth | undefined),
   ]);

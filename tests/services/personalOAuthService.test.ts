@@ -294,3 +294,43 @@ test('OAuth key reordering on save does not invalidate the personal binding (#13
     await getCredentialBindingDao().delete({ serverName: 'gitlab', username: 'alice' });
   }
 });
+
+test.each(['new', 'legacy', 'destination-only'] as const)(
+  '%s bindings survive a dashboard save that makes the default SSE type explicit',
+  async (format) => {
+    const originalType = mockDefinition.type;
+    try {
+      delete mockDefinition.type;
+      const context = await PersonalOAuthContext.load('gitlab', 'alice', mockDefinition);
+      await context.persistTokens('gitlab', { accessToken: 'sse-token' });
+      if (format !== 'new') {
+        const expanded = await expandServerConfig(mockDefinition);
+        const { name: _, ...declaration } = mockDefinition;
+        const stored =
+          format === 'legacy'
+            ? JSON.stringify([declaration, expanded.url, expanded.oauth])
+            : `[undefined,${JSON.stringify(expanded.url)},{"clientId":"client","identityMode":"personal"}]`;
+        await getCredentialBindingDao().save({
+          serverName: 'gitlab',
+          username: 'alice',
+          encryptedValues: await encryptCredentialValues('gitlab', 'alice', {
+            oauthDeclaration: stored,
+            oauth: JSON.stringify({ accessToken: 'sse-token' }),
+          }),
+          updatedAt: new Date().toISOString(),
+        });
+      }
+      Object.assign(mockDefinition, normalizeServerConfigForPersistence(mockDefinition));
+      expect(mockDefinition.type).toBe('sse');
+      expect(
+        (await resolvePersonalOAuth('gitlab', 'alice', mockDefinition)).config.oauth.accessToken,
+      ).toBe('sse-token');
+      mockDefinition.type = 'streamable-http';
+      await expect(resolvePersonalOAuth('gitlab', 'alice', mockDefinition)).rejects.toThrow(
+        'required',
+      );
+    } finally {
+      mockDefinition.type = originalType;
+    }
+  },
+);
