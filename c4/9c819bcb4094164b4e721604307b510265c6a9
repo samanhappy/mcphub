@@ -1,0 +1,22 @@
+src/services/__tests__/toolCallGuard.integration.test.ts
+  s_41d0e63aa58b72::t_28d9140f49f4a8 2-5,14-16,18-21,30-40
+  s_41d0e63aa58b72::t_e857a09dcd00ab 53-57
+pnpm-lock.yaml
+  s_41d0e63aa58b72::t_e3fe4c66eac83a 1556,1562,1568,1574,1580,1586,1592,1598,1604,1610,1616,1622,1628,1705,1712,1719,1726,1733,1740,1857,1864,1871,1878,1885,1892,1899,1906,2282,2288,2294,2300,2306,2312,2318,2324,3396,3962,3969,3976,3983,3990,3997,4004,4011
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c49c819bcb4094164b4e721604307b510265c6a9",
+  "prompts": {},
+  "sessions": {
+    "s_41d0e63aa58b72": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a15cf2-edc9-7a42-9486-acd4b5784f90",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
