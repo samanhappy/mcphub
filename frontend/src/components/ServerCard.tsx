@@ -203,6 +203,8 @@ const ServerCard = ({
   // Reinstall is only available for stdio servers using npx or uvx
   const supportsReinstall =
     server.config?.command === 'npx' || server.config?.command === 'uvx';
+  const packageVersion = supportsReinstall ? server.packageVersion : undefined;
+  const displayedVersion = packageVersion || server.version;
   const supportsOAuthDisconnect = Boolean(server.config?.oauth?.identityMode !== 'personal' && server.oauth?.connected && onOAuthDisconnect);
 
   const handleToggle = async (nextEnabled: boolean) => {
@@ -525,13 +527,13 @@ const ServerCard = ({
                 >
                   {server.name}
                 </span>
-                {supportsReinstall && server.packageVersion && (
+                {displayedVersion && (
                   <span
                     className="hub-tag flex-shrink-0"
-                    title={t('server.packageVersion')}
+                    title={t(packageVersion ? 'server.packageVersion' : 'server.reportedVersion')}
                     style={{ fontSize: 11 }}
                   >
-                    v{server.packageVersion}
+                    v{displayedVersion}
                   </span>
                 )}
                 {supportsReinstall && server.updateAvailable && server.latestVersion && (

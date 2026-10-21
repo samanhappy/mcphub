@@ -171,6 +171,7 @@
     "noMatchingShareUsers": "No users match your search.",
     "command": "Command",
     "packageVersion": "Installed package version (last installed by the runner cache)",
+    "reportedVersion": "Version reported by the server",
     "updateAvailable": "A newer version is available on the registry",
     "arguments": "Arguments",
     "addArgument": "Add argument",

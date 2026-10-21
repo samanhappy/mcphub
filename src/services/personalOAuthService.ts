@@ -38,10 +38,71 @@ export const personalAuthorizationRequired = (name: string) =>
   );
 
 // The declaration, not resolved tokens/client registration, binds a flow to its destination.
-const fingerprint = (config: ServerConfig, expanded: ServerConfig): string => {
-  // Bindings follow a plain rename; the display name does not change the destination.
-  const { name: _, ...declaration } = config as ServerConfig & { name?: string };
-  return JSON.stringify([declaration, expanded.url, expanded.oauth]);
+// Only destination-relevant fields participate: transport type, endpoint URL, and the OAuth
+// client/endpoint metadata. Unrelated declaration edits (visibility, sharedWithUsers,
+// description, options, tools, ...) must not invalidate existing personal bindings (#1362).
+// `enabled` and `server.invoke` access checks are enforced separately by assertCurrent() and
+// principalRuntimeService, so they are intentionally absent here. Runtime token/session fields
+// (accessToken, refreshToken, pendingAuthorization) never belong to a stored declaration.
+// Bindings follow a plain rename; the display name does not change the destination.
+const declarationOAuth = (oauth?: OAuth): OAuth => {
+  const {
+    accessToken: _,
+    refreshToken: __,
+    pendingAuthorization: ___,
+    ...declaration
+  } = oauth || {};
+  return declaration;
+};
+// JSON.stringify is key-order sensitive, and the dashboard save path normalizes the
+// OAuth object into a fixed key order (normalizeOAuth in serverConfigPersistence.ts),
+// so a share-list-only edit could still flip a naive stringify (#1362). Canonicalize
+// object keys (array order is preserved) so identical destination/client values always
+// yield the same fingerprint regardless of property order.
+const canonicalJson = (value: unknown): string => {
+  if (value === undefined) return 'undefined';
+  if (value === null) return 'null';
+  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(',')}]`;
+  if (typeof value === 'object') {
+    const entries = Object.keys(value as Record<string, unknown>)
+      .sort()
+      .map(
+        (key) =>
+          `${JSON.stringify(key)}:${canonicalJson((value as Record<string, unknown>)[key])}`,
+      );
+    return `{${entries.join(',')}}`;
+  }
+  return JSON.stringify(value) ?? 'null';
+};
+const fingerprint = (expanded: ServerConfig): string =>
+  // URL-only MCP declarations use SSE; dashboard saves make that default explicit.
+  canonicalJson([expanded.type ?? 'sse', expanded.url, declarationOAuth(expanded.oauth)]);
+// Bindings persisted before #1362 stored the whole declaration:
+// JSON.stringify([declaration, expanded.url, expanded.oauth]). Normalize such a stored
+// value to the current destination-only format so an upgrade does not orphan every
+// binding, while a genuine destination/client change still fails the comparison.
+const normalizeLegacyDeclaration = (stored: string): string | undefined => {
+  // The destination-only format before type normalization serialized an omitted
+  // type as the literal `undefined`, so it cannot be read with JSON.parse.
+  if (stored.startsWith('[undefined,')) {
+    return `["sse",${stored.slice('[undefined,'.length)}`;
+  }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(stored);
+  } catch {
+    return undefined;
+  }
+  if (!Array.isArray(parsed) || parsed.length !== 3) return undefined;
+  const [declaration, url, oauth] = parsed as [unknown, unknown, unknown];
+  // The legacy form leads with the declaration object; the current form leads with the
+  // type string. Only treat object-leading values as legacy.
+  if (typeof declaration !== 'object' || declaration === null) return undefined;
+  return canonicalJson([
+    (declaration as { type?: string }).type ?? 'sse',
+    url,
+    declarationOAuth(oauth as OAuth | undefined),
+  ]);
 };
 export class PersonalOAuthContext {
   private revision: string | undefined;
@@ -54,12 +115,7 @@ export class PersonalOAuthContext {
     declaration: string,
   ) {
     this.declaration = declaration;
-    const {
-      accessToken: _,
-      refreshToken: __,
-      pendingAuthorization: ___,
-      ...oauth
-    } = config.oauth || {};
+    const oauth = declarationOAuth(config.oauth);
     this.config = {
       ...config,
       oauth,
@@ -74,12 +130,17 @@ export class PersonalOAuthContext {
       serverName,
       username,
       expanded,
-      fingerprint(definition, expanded),
+      fingerprint(expanded),
     );
     const binding = await getCredentialBindingDao().get(serverName, username);
     if (binding) {
       const values = await decryptCredentialValues(binding);
-      if (values.oauthDeclaration === context.declaration && values.oauth) {
+      const legacy = normalizeLegacyDeclaration(values.oauthDeclaration || '');
+      if (
+        values.oauth &&
+        (values.oauthDeclaration === context.declaration ||
+          (legacy !== undefined && legacy === context.declaration))
+      ) {
         context.config.oauth = { ...context.config.oauth, ...JSON.parse(values.oauth) };
       }
       context.revision = binding.encryptedValues;
@@ -140,7 +201,7 @@ export class PersonalOAuthContext {
       !user ||
       definition.enabled === false ||
       !hasPersonalOAuth(definition) ||
-      fingerprint(definition, await expandServerConfig(definition)) !== this.declaration ||
+      fingerprint(await expandServerConfig(definition)) !== this.declaration ||
       !authorizationService.can('server.invoke', definition, { ...user, username: this.username })
     )
       throw new CredentialBindingError(
