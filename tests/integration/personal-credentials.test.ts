@@ -1113,3 +1113,59 @@ test('dashboard personal OAuth uses DCR and PKCE, consumes callbacks once, and h
   expect(revoked).toBe(2);
   expect((await PersonalOAuthContext.load('oauthDcr', alice, definition)).config.oauth.accessToken).toBeUndefined();
 });
+
+test('a share-list edit keeps personal OAuth for retained users, and access removal blocks the removed user (#1362)', async () => {
+  const { PersonalOAuthContext } = await import('../../src/services/personalOAuthService.js');
+  app.post('/oauth-share-upstream', async (req, res) => {
+    const upstream = new McpServer({ name: 'oauth-share', version: '1' }, { capabilities: { tools: {} } });
+    upstream.setRequestHandler('tools/list', async () => ({ tools: [{ name: 'whoami', inputSchema: { type: 'object' } }] }));
+    upstream.setRequestHandler('tools/call', async () => ({ content: [{ type: 'text', text: JSON.stringify({ credential: req.headers.authorization }) }] }));
+    const transport = new NodeStreamableHTTPServerTransport({ sessionIdGenerator: undefined });
+    res.on('close', () => { void transport.close(); void upstream.close(); });
+    await upstream.connect(transport);
+    await transport.handleRequest(req, res, req.body);
+  });
+  const created = await getServerDao().create({
+    name: 'shareOAuth',
+    type: 'streamable-http',
+    owner: 'admin',
+    visibility: 'group',
+    sharedWithUsers: [alice, bob],
+    url: `${baseUrl}/oauth-share-upstream`,
+    oauth: { identityMode: 'personal', clientId: 'client', scopes: ['mcp'] },
+  });
+  expect(created).toBeTruthy();
+  const persisted = (await getServerDao().findById('shareOAuth'))!;
+  for (const username of [alice, bob]) {
+    const context = await PersonalOAuthContext.load('shareOAuth', username, persisted);
+    await context.persistTokens('shareOAuth', { accessToken: `oauth-${username}` });
+  }
+  jest.mocked(createOAuthProvider).mockImplementation(async (name, config) => {
+    if (config.oauth?.identityMode !== 'personal') return undefined;
+    return jest.requireActual('../../src/services/mcpOAuthProvider.js').createOAuthProvider(name, config);
+  });
+  await initializeClientsFromSettings(true);
+  try {
+    const a = await connect(alice, 'shareOAuth');
+    const b = await connect(bob, 'shareOAuth');
+    const whoami = (await a.listTools()).tools[0].name;
+    expect(parseIdentity(await a.callTool({ name: whoami })).credential).toBe(`Bearer oauth-${alice}`);
+    expect(parseIdentity(await b.callTool({ name: whoami })).credential).toBe(`Bearer oauth-${bob}`);
+
+    // Adding a user to the share list (destination unchanged) keeps retained users authorized.
+    await getServerDao().update('shareOAuth', { sharedWithUsers: [alice, bob, 'carol@example.com'] });
+    expect(parseIdentity(await a.callTool({ name: whoami })).credential).toBe(`Bearer oauth-${alice}`);
+    expect(parseIdentity(await b.callTool({ name: whoami })).credential).toBe(`Bearer oauth-${bob}`);
+
+    // Removing a user from the share list revokes their access but leaves the others working.
+    await getServerDao().update('shareOAuth', { sharedWithUsers: [alice] });
+    expect(parseIdentity(await a.callTool({ name: whoami })).credential).toBe(`Bearer oauth-${alice}`);
+    const removed = await b.callTool({ name: whoami });
+    expect(removed.isError).toBe(true);
+    expect(JSON.stringify(removed)).not.toContain(`oauth-${bob}`);
+  } finally {
+    jest.mocked(createOAuthProvider).mockReset();
+    await getCredentialBindingDao().delete({ serverName: 'shareOAuth' });
+    await getServerDao().delete('shareOAuth');
+  }
+});

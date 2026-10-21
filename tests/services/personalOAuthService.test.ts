@@ -3,6 +3,10 @@ import os from 'node:os';
 import path from 'node:path';
 import { randomBytes } from 'node:crypto';
 import { CredentialBindingDaoImpl } from '../../src/dao/CredentialBindingDao.js';
+import { getCredentialBindingDao } from '../../src/dao/DaoFactory.js';
+import { encryptCredentialValues } from '../../src/services/credentialBindingService.js';
+import { expandServerConfig } from '../../src/services/serverConfigEnvironment.js';
+import { normalizeServerConfigForPersistence } from '../../src/utils/serverConfigPersistence.js';
 import {
   PersonalOAuthContext,
   disconnectPersonalOAuth,
@@ -150,3 +154,183 @@ test('an unpersisted successful refresh expires while concurrent calls share its
     jest.useRealTimers();
   }
 });
+
+test('unrelated declaration edits keep the personal binding intact (#1362)', async () => {
+  const alice = await PersonalOAuthContext.load('gitlab', 'alice', mockDefinition);
+  await alice.persistTokens('gitlab', {
+    accessToken: 'alice-secret',
+    refreshToken: 'alice-refresh',
+  });
+  const original = {
+    visibility: mockDefinition.visibility,
+    sharedWithUsers: mockDefinition.sharedWithUsers,
+    description: mockDefinition.description,
+    options: mockDefinition.options,
+  };
+  try {
+    // Editing access-control or cosmetic fields must not invalidate the binding:
+    // the destination (type/url/OAuth client+endpoints) is unchanged.
+    mockDefinition.visibility = 'group';
+    mockDefinition.sharedWithUsers = ['alice', 'bob'];
+    mockDefinition.description = 'edited note';
+    mockDefinition.options = { timeout: 120_000 };
+    const restored = await PersonalOAuthContext.load('gitlab', 'alice', mockDefinition);
+    expect(restored.config.oauth?.accessToken).toBe('alice-secret');
+    expect(restored.config.oauth?.refreshToken).toBe('alice-refresh');
+    expect(
+      (await resolvePersonalOAuth('gitlab', 'alice', mockDefinition)).config.oauth?.accessToken,
+    ).toBe('alice-secret');
+  } finally {
+    mockDefinition.visibility = original.visibility;
+    mockDefinition.sharedWithUsers = original.sharedWithUsers;
+    mockDefinition.description = original.description;
+    mockDefinition.options = original.options;
+  }
+});
+
+test('changing OAuth client metadata still invalidates the personal binding (#1362)', async () => {
+  const alice = await PersonalOAuthContext.load('gitlab', 'alice', mockDefinition);
+  await alice.persistTokens('gitlab', {
+    accessToken: 'alice-secret',
+    refreshToken: 'alice-refresh',
+  });
+  const originalClientId = mockDefinition.oauth?.clientId;
+  try {
+    mockDefinition.oauth = { ...mockDefinition.oauth, clientId: 'other-client' };
+    const restored = await PersonalOAuthContext.load('gitlab', 'alice', mockDefinition);
+    expect(restored.config.oauth?.accessToken).toBeUndefined();
+    await expect(resolvePersonalOAuth('gitlab', 'alice', mockDefinition)).rejects.toThrow(
+      'Personal authorization required',
+    );
+  } finally {
+    mockDefinition.oauth = { ...mockDefinition.oauth, clientId: originalClientId };
+  }
+});
+
+test('legacy-format bindings (pre-#1362 fingerprints) restore tokens and pending flow (#1362)', async () => {
+  // Simulate a binding persisted before the destination-only fingerprint change: its
+  // oauthDeclaration stores the old whole-declaration format.
+  const expanded = await expandServerConfig(mockDefinition);
+  const { name: _, ...declaration } = mockDefinition;
+  const legacyFingerprint = JSON.stringify([declaration, expanded.url, expanded.oauth]);
+  const pending = { state: 'personal.legacy', codeVerifier: 'legacy-verifier', createdAt: Date.now() };
+  await getCredentialBindingDao().save({
+    serverName: 'gitlab',
+    username: 'alice',
+    encryptedValues: await encryptCredentialValues('gitlab', 'alice', {
+      oauthDeclaration: legacyFingerprint,
+      oauth: JSON.stringify({
+        accessToken: 'legacy-token',
+        refreshToken: 'legacy-refresh',
+        pendingAuthorization: pending,
+      }),
+    }),
+    updatedAt: new Date().toISOString(),
+  });
+  try {
+    const restored = await PersonalOAuthContext.load('gitlab', 'alice', mockDefinition);
+    expect(restored.config.oauth?.accessToken).toBe('legacy-token');
+    expect(restored.config.oauth?.refreshToken).toBe('legacy-refresh');
+    expect(restored.config.oauth?.pendingAuthorization?.state).toBe('personal.legacy');
+    expect((await findPersonalOAuthFlow('personal.legacy'))?.username).toBe('alice');
+    expect(
+      (await resolvePersonalOAuth('gitlab', 'alice', mockDefinition)).config.oauth?.accessToken,
+    ).toBe('legacy-token');
+  } finally {
+    await getCredentialBindingDao().delete({ serverName: 'gitlab', username: 'alice' });
+  }
+});
+
+test('legacy-format bindings still reject a destination change (#1362)', async () => {
+  const expanded = await expandServerConfig(mockDefinition);
+  const { name: _, ...declaration } = mockDefinition;
+  const legacyFingerprint = JSON.stringify([declaration, expanded.url, expanded.oauth]);
+  await getCredentialBindingDao().save({
+    serverName: 'gitlab',
+    username: 'alice',
+    encryptedValues: await encryptCredentialValues('gitlab', 'alice', {
+      oauthDeclaration: legacyFingerprint,
+      oauth: JSON.stringify({ accessToken: 'legacy-token', refreshToken: 'legacy-refresh' }),
+    }),
+    updatedAt: new Date().toISOString(),
+  });
+  const originalUrl = mockDefinition.url;
+  try {
+    mockDefinition.url = 'https://other.example/mcp';
+    const restored = await PersonalOAuthContext.load('gitlab', 'alice', mockDefinition);
+    expect(restored.config.oauth?.accessToken).toBeUndefined();
+    await expect(resolvePersonalOAuth('gitlab', 'alice', mockDefinition)).rejects.toThrow(
+      'Personal authorization required',
+    );
+  } finally {
+    mockDefinition.url = originalUrl;
+    await getCredentialBindingDao().delete({ serverName: 'gitlab', username: 'alice' });
+  }
+});
+
+test('OAuth key reordering on save does not invalidate the personal binding (#1362)', async () => {
+  const originalOAuth = mockDefinition.oauth;
+  try {
+    // A file-defined server may declare oauth keys in any order; the dashboard save path
+    // (normalizeServerConfigForPersistence -> normalizeOAuth) rewrites them in a fixed
+    // order even when the values are unchanged.
+    mockDefinition.oauth = { clientId: 'client', identityMode: 'personal', scopes: ['mcp'] };
+    const alice = await PersonalOAuthContext.load('gitlab', 'alice', mockDefinition);
+    await alice.persistTokens('gitlab', {
+      accessToken: 'reorder-secret',
+      refreshToken: 'reorder-refresh',
+    });
+    const normalized = normalizeServerConfigForPersistence(mockDefinition);
+    // Sanity: the save path actually rewrote the OAuth keys into a different order.
+    expect(Object.keys(normalized.oauth || {})).toEqual(['identityMode', 'clientId', 'scopes']);
+    const restored = await PersonalOAuthContext.load('gitlab', 'alice', normalized);
+    expect(restored.config.oauth?.accessToken).toBe('reorder-secret');
+    expect(restored.config.oauth?.refreshToken).toBe('reorder-refresh');
+    expect(
+      (await resolvePersonalOAuth('gitlab', 'alice', normalized)).config.oauth?.accessToken,
+    ).toBe('reorder-secret');
+  } finally {
+    mockDefinition.oauth = originalOAuth;
+    await getCredentialBindingDao().delete({ serverName: 'gitlab', username: 'alice' });
+  }
+});
+
+test.each(['new', 'legacy', 'destination-only'] as const)(
+  '%s bindings survive a dashboard save that makes the default SSE type explicit',
+  async (format) => {
+    const originalType = mockDefinition.type;
+    try {
+      delete mockDefinition.type;
+      const context = await PersonalOAuthContext.load('gitlab', 'alice', mockDefinition);
+      await context.persistTokens('gitlab', { accessToken: 'sse-token' });
+      if (format !== 'new') {
+        const expanded = await expandServerConfig(mockDefinition);
+        const { name: _, ...declaration } = mockDefinition;
+        const stored =
+          format === 'legacy'
+            ? JSON.stringify([declaration, expanded.url, expanded.oauth])
+            : `[undefined,${JSON.stringify(expanded.url)},{"clientId":"client","identityMode":"personal"}]`;
+        await getCredentialBindingDao().save({
+          serverName: 'gitlab',
+          username: 'alice',
+          encryptedValues: await encryptCredentialValues('gitlab', 'alice', {
+            oauthDeclaration: stored,
+            oauth: JSON.stringify({ accessToken: 'sse-token' }),
+          }),
+          updatedAt: new Date().toISOString(),
+        });
+      }
+      Object.assign(mockDefinition, normalizeServerConfigForPersistence(mockDefinition));
+      expect(mockDefinition.type).toBe('sse');
+      expect(
+        (await resolvePersonalOAuth('gitlab', 'alice', mockDefinition)).config.oauth.accessToken,
+      ).toBe('sse-token');
+      mockDefinition.type = 'streamable-http';
+      await expect(resolvePersonalOAuth('gitlab', 'alice', mockDefinition)).rejects.toThrow(
+        'required',
+      );
+    } finally {
+      mockDefinition.type = originalType;
+    }
+  },
+);
