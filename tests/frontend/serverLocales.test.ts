@@ -3,7 +3,7 @@ import path from 'path';
 
 describe('server visibility locale strings', () => {
   it('provides sharing labels in every supported locale', () => {
-    for (const locale of ['en', 'es', 'fr', 'tr', 'zh']) {
+    for (const locale of ['en', 'es', 'fr', 'tr', 'vi','zh']) {
       const localePath = path.join(process.cwd(), 'locales', `${locale}.json`);
       const translations = JSON.parse(fs.readFileSync(localePath, 'utf8'));
 
