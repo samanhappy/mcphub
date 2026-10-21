@@ -120,6 +120,7 @@ export interface Tool {
   description: string;
   defaultDescription?: string;
   hasDescriptionOverride?: boolean;
+  hiddenParams?: string[];
   inputSchema: ToolInputSchema;
   annotations?: Record<string, unknown>;
   _meta?: Record<string, unknown>;

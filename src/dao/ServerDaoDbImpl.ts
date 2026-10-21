@@ -251,7 +251,7 @@ export class ServerDaoDbImpl implements ServerDao {
 
   async updateTools(
     name: string,
-    tools: Record<string, { enabled: boolean; description?: string }>,
+    tools: Record<string, { enabled: boolean; description?: string; hiddenParams?: string[] }>,
   ): Promise<boolean> {
     const result = await this.update(name, { tools });
     return result !== null;
@@ -297,7 +297,7 @@ export class ServerDaoDbImpl implements ServerDao {
     sharedWithUsers?: string[];
     enableKeepAlive?: boolean;
     keepAliveInterval?: number;
-    tools?: Record<string, { enabled: boolean; description?: string }>;
+    tools?: Record<string, { enabled: boolean; description?: string; hiddenParams?: string[] }>;
     prompts?: Record<string, { enabled: boolean; description?: string }>;
     resources?: Record<string, { enabled: boolean; description?: string }>;
     options?: Record<string, any>;

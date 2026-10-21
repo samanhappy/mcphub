@@ -465,7 +465,7 @@ export interface ServerConfig {
   sharedWithUsers?: string[]; // Local MCPHub usernames allowed when visibility is 'group'.
   enableKeepAlive?: boolean; // Enable remote health checks and automatic reconnect attempts
   keepAliveInterval?: number; // Health check and reconnect interval in milliseconds (default: 60000ms for SSE servers)
-  tools?: Record<string, { enabled: boolean; description?: string }>; // Tool-specific configurations with enable/disable state and custom descriptions
+  tools?: Record<string, { enabled: boolean; description?: string; hiddenParams?: string[] }>; // Tool-specific configurations: enable/disable state, custom description, top-level input parameters hidden from models
   prompts?: Record<string, { enabled: boolean; description?: string }>; // Prompt-specific configurations with enable/disable state and custom descriptions
   resources?: Record<string, { enabled: boolean; description?: string }>; // Resource-specific configurations with enable/disable state and custom descriptions
   options?: Partial<
@@ -656,6 +656,7 @@ export interface Tool {
   description: string; // Brief description of the tool
   defaultDescription?: string; // Upstream tool description before any MCPHub override is applied
   hasDescriptionOverride?: boolean; // Whether MCPHub is currently overriding the upstream description
+  hiddenParams?: string[]; // Configured top-level input parameters hidden from models (dashboard/API projection)
   inputSchema: Record<string, unknown>; // Input schema for the tool
   outputSchema?: Record<string, unknown>; // Optional schema for structured output
   annotations?: Record<string, unknown>; // Standard MCP tool annotations

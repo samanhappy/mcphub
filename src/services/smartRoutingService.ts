@@ -23,6 +23,7 @@ import { isAppOnlyTool } from '../utils/mcpApps.js';
 import { canServeToolRequests } from '../utils/serverAvailability.js';
 import { getNameSeparator } from '../config/index.js';
 import { logger } from '../utils/logger.js';
+import { applyHiddenParams, findToolConfig } from '../utils/toolConfig.js';
 
 // Reference to serverInfos from mcpService - will be set via init
 let serverInfosRef: ServerInfo[] = [];
@@ -540,9 +541,14 @@ export const handleSearchToolsRequest = async (
           // Check if the tool is enabled in configuration
           const tools = await filterToolsByConfigFn(server.name, [actualTool]);
           if (tools.length > 0) {
-            // Apply custom description from configuration
+            // Apply custom description and hidden parameters from configuration
             const serverConfig = await getServerDao().findById(server.name);
-            const toolConfig = serverConfig?.tools?.[actualTool.name];
+            const toolConfig = findToolConfig(
+              serverConfig?.tools,
+              server.name,
+              actualTool.name,
+              server.tools.map((tool) => tool.name),
+            );
 
             // Return the actual tool info from serverInfos with custom description
             if (progressiveDisclosure) {
@@ -555,7 +561,7 @@ export const handleSearchToolsRequest = async (
             } else {
               // Standard mode: return the full definition
               return buildModelFacingTool(
-                actualTool,
+                applyHiddenParams(actualTool, toolConfig),
                 toolConfig?.description || actualTool.description,
                 result.serverName,
                 toolDefinitionFields,
@@ -724,15 +730,20 @@ export const handleDescribeToolRequest = async (
       }
     }
 
-    // Get custom description from configuration
+    // Get custom description and hidden parameters from configuration
     const serverConfig = await getServerDao().findById(serverInfo.name);
-    const toolConfig = serverConfig?.tools?.[tool.name];
+    const toolConfig = findToolConfig(
+      serverConfig?.tools,
+      serverInfo.name,
+      tool.name,
+      serverInfo.tools.map((candidate) => candidate.name),
+    );
 
     // Return the full definition, with the same fields as a search_tools hit
     const { toolDefinitionFields } = await getSmartRoutingConfig();
     const toolInfo = {
       ...buildModelFacingTool(
-        tool,
+        applyHiddenParams(tool, toolConfig),
         toolConfig?.description || tool.description,
         getExposedServerName(serverInfo.name, serverConfigsByName.get(serverInfo.name)),
         toolDefinitionFields ?? DEFAULT_TOOL_DEFINITION_FIELDS,

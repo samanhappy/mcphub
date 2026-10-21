@@ -21,6 +21,7 @@ import {
   serializeToolDefinition,
 } from '../utils/tokenCost.js';
 import { getServersInfo } from './mcpService.js';
+import { applyHiddenParams } from '../utils/toolConfig.js';
 import { getNameSeparator } from '../config/index.js';
 import { getAllGroups, normalizeGroupServers } from './groupService.js';
 import { getSmartRoutingConfig } from '../utils/smartRouting.js';
@@ -39,7 +40,8 @@ export async function serverCostFromInfo(info: ServerInfo): Promise<ServerCost> 
   // Tools and prompts carry an explicit `enabled` boolean set by getServersInfo.
   // Count all three kinds concurrently rather than awaiting each batch in sequence.
   const [tools, prompts, resources] = await Promise.all([
-    Promise.all((info.tools ?? []).map((t) => itemCostForTool(t))),
+    // Cost what a model receives: hidden parameters are not in the schema it sees
+    Promise.all((info.tools ?? []).map((t) => itemCostForTool(applyHiddenParams(t, t)))),
     Promise.all((info.prompts ?? []).map((p) => itemCostForPrompt(p))),
     Promise.all((info.resources ?? []).map((r) => itemCostForResource(r))),
   ]);

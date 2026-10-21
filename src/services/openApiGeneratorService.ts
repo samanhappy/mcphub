@@ -5,6 +5,7 @@ import config, { getNameSeparator } from '../config/index.js';
 import { getSystemConfigDao } from '../dao/index.js';
 import { resolveInstallBaseUrl } from '../utils/installBaseUrl.js';
 import { filterModelVisibleTools } from '../utils/mcpApps.js';
+import { applyHiddenParams } from '../utils/toolConfig.js';
 
 /**
  * Service for generating OpenAPI 3.x specifications from MCP tools
@@ -220,7 +221,8 @@ export async function generateOpenAPISpec(
     }
 
     for (const tool of filteredTools) {
-      allTools.push({ tool, serverName: serverInfo.name });
+      // getServersInfo carries the configured hiddenParams on each tool
+      allTools.push({ tool: applyHiddenParams(tool, tool), serverName: serverInfo.name });
     }
   }
 

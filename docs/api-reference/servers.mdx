@@ -16,6 +16,7 @@ import { Card, Cards } from 'mintlify';
 <Card title="POST /api/servers/:serverName/tools/:toolName/toggle" href="#toggle-a-tool">Enable or disable a tool.</Card>
 <Card title="PUT /api/servers/:serverName/tools/:toolName/description" href="#update-tool-description">Override a tool description.</Card>
 <Card title="DELETE /api/servers/:serverName/tools/:toolName/description" href="#reset-tool-description">Reset a tool description to upstream.</Card>
+<Card title="PUT /api/servers/:serverName/tools/:toolName/hidden-params" href="#hide-tool-parameters">Hide top-level input parameters from models.</Card>
 <Card title="Prompts on servers" href="#prompts">Toggle / describe / reset prompts.</Card>
 <Card title="Resources on servers" href="#resources">Toggle / describe / reset resources.</Card>
 <Card title="GET /api/settings" href="#get-settings">Read everything: servers, groups, system config.</Card>
@@ -225,6 +226,26 @@ Drops the override stored in MCPHub and falls back to the upstream tool descript
 
 - **Endpoint**: `DELETE /api/servers/:serverName/tools/:toolName/description`
 - **Authentication**: Required.
+
+---
+
+### Hide Tool Parameters
+
+Sets the top-level input parameters of a tool that models do not see. They are removed from the input schema in `tools/list`, `search_tools` results, `describe_tool`, the Smart Routing embedding text, generated OpenAPI specs and context cost figures, and dropped from the arguments of a call before it is forwarded, so the upstream default applies. Use it for options a deployment cannot use, such as cloud-only features of a self-hosted backend. The dashboard keeps showing the full schema.
+
+- **Endpoint**: `/api/servers/:serverName/tools/:toolName/hidden-params`
+- **Method**: `PUT`
+- **Parameters**:
+  - `:serverName` (string, required): The name of the server.
+  - `:toolName` (string, required): The name of the tool, bare or server-prefixed.
+- **Body**:
+  ```json
+  {
+    "hiddenParams": ["profile", "zeroDataRetention"]
+  }
+  ```
+  - `hiddenParams` (string[], required): Top-level parameter names. An empty array removes the setting.
+- **Errors**: `400` when a name is not a parameter of the tool or is listed in its `required`. These checks run when the server is connected; otherwise the list is stored as given, and a required parameter is still never hidden.
 
 ---
 

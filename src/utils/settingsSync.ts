@@ -57,7 +57,11 @@ const declarationSchema = z.object({
           tools: z
             .record(
               z.string(),
-              z.object({ enabled: z.boolean(), description: z.string().optional() }),
+              z.object({
+                enabled: z.boolean(),
+                description: z.string().optional(),
+                hiddenParams: z.array(z.string()).optional(),
+              }),
             )
             .optional(),
           prompts: z

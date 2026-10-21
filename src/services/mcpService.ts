@@ -24,6 +24,12 @@ import {
   isToolCallGuardEnabled,
   ToolCallBlockedError,
 } from '../middlewares/toolCallGuard.js';
+import {
+  applyHiddenParams,
+  findToolConfig,
+  removeHiddenArguments,
+  type ToolConfig,
+} from '../utils/toolConfig.js';
 import type { RequestPrincipal } from './authorizationService.js';
 import { PrincipalRuntimeService } from './principalRuntimeService.js';
 import { UserContextService } from './userContextService.js';
@@ -722,10 +728,9 @@ const resolveDescriptionOverride = (
   return hasDescriptionOverride(config) ? config?.description || '' : defaultDescription || '';
 };
 
-const buildToolWithDescriptionMetadata = (
-  tool: Tool,
-  toolConfig?: { enabled: boolean; description?: string },
-): Tool => {
+// The dashboard/API projection keeps the full input schema (the dashboard
+// lists every parameter to choose what to hide) and reports the configured list.
+const buildToolWithDescriptionMetadata = (tool: Tool, toolConfig?: ToolConfig): Tool => {
   const upstreamDescription = tool.description || '';
 
   return {
@@ -733,14 +738,16 @@ const buildToolWithDescriptionMetadata = (
     description: resolveDescriptionOverride(upstreamDescription, toolConfig),
     defaultDescription: upstreamDescription,
     hasDescriptionOverride: hasDescriptionOverride(toolConfig),
+    ...(toolConfig?.hiddenParams?.length ? { hiddenParams: toolConfig.hiddenParams } : {}),
     enabled: toolConfig?.enabled !== false,
   };
 };
 
-// Apply any per-tool description override before the tool text is embedded for
-// Smart Routing search. Deliberately narrower than buildToolWithDescriptionMetadata:
-// only `description` (plus the hasDescriptionOverride marker used by the
-// tool-set hash) is touched, so serverInfo.tools (built by
+// Apply any per-tool description override and hidden parameters before the tool
+// text is embedded for Smart Routing search. Deliberately narrower than
+// buildToolWithDescriptionMetadata: only `description` (plus the
+// hasDescriptionOverride marker used by the tool-set hash) and `inputSchema`
+// are touched, so serverInfo.tools (built by
 // normalizeToolForCache/updateServerToolsCache) still never carries `enabled` --
 // preserving the existing invariant that execution gating reads the persisted
 // config directly, not this projection. Without this step, overrides only
@@ -754,16 +761,18 @@ const applyDescriptionOverridesForEmbedding = async (
   if (!serverConfig?.tools) {
     return tools;
   }
+  // A partial sync passes only some tools; the key rule needs all of them
+  const runtimeNames = (getServerByName(serverName)?.tools ?? tools).map((tool) => tool.name);
   return tools.map((tool) => {
-    const bareToolName = normalizeToolNameForServer(serverName, tool.name);
-    const toolConfig = serverConfig.tools?.[tool.name] ?? serverConfig.tools?.[bareToolName];
+    const toolConfig = findToolConfig(serverConfig.tools, serverName, tool.name, runtimeNames);
+    const visibleTool = applyHiddenParams(tool, toolConfig);
     return hasDescriptionOverride(toolConfig)
       ? {
-          ...tool,
+          ...visibleTool,
           description: resolveDescriptionOverride(tool.description, toolConfig),
           hasDescriptionOverride: true,
         }
-      : tool;
+      : visibleTool;
   });
 };
 
@@ -1813,6 +1822,22 @@ type IsolatedClientContext = {
   transport: any;
 };
 
+// Call arguments without the tool's hidden parameters; `toolName` is the bare upstream name.
+// Looked up by the cached runtime name: findToolConfig removes one server prefix,
+// so a bare name that itself starts with the prefix (server `fc`, tool
+// `fc-scrape`) would otherwise resolve to the wrong entry.
+const withoutHiddenArguments = <T>(serverInfo: ServerInfo, toolName: string, args: T): T => {
+  const runtimeName = `${serverInfo.name}${getNameSeparator()}${toolName}`;
+  const tool = serverInfo.tools?.find((candidate) => candidate.name === runtimeName);
+  const toolConfig = findToolConfig(
+    serverInfo.config?.tools,
+    serverInfo.name,
+    runtimeName,
+    (serverInfo.tools ?? []).map((candidate) => candidate.name),
+  );
+  return removeHiddenArguments(args, tool?.inputSchema, toolConfig);
+};
+
 // Helper function to handle client.callTool with reconnection logic
 const callToolWithReconnect = async (
   serverInfo: ServerInfo,
@@ -1829,6 +1854,12 @@ const callToolWithReconnect = async (
   if (!client) {
     throw new Error(`Client not found for server: ${serverInfo.name}`);
   }
+
+  // Both MCP call paths pass through here, so hidden parameters are dropped once.
+  toolParams = {
+    ...toolParams,
+    arguments: withoutHiddenArguments(serverInfo, toolParams.name, toolParams.arguments),
+  };
 
   if (hasPersonalAuthentication(serverInfo.config)) {
     return client.callTool(toolParams, options || {});
@@ -2677,12 +2708,13 @@ export const getServersInfo = async (
         // as the dashboard sends, or bare, as a direct API call may) with no
         // normalization — check both so the dashboard reflects a disable set
         // either way instead of always showing enabled:true for one of them.
-        const toolsWithEnabled = tools.map((tool) => {
-          const bareToolName = normalizeToolNameForServer(name, tool.name);
-          const toolConfig =
-            serverConfig?.tools?.[tool.name] ?? serverConfig?.tools?.[bareToolName];
-          return buildToolWithDescriptionMetadata(tool, toolConfig);
-        });
+        const runtimeNames = tools.map((tool) => tool.name);
+        const toolsWithEnabled = tools.map((tool) =>
+          buildToolWithDescriptionMetadata(
+            tool,
+            findToolConfig(serverConfig?.tools, name, tool.name, runtimeNames),
+          ),
+        );
 
         const promptsWithEnabled = prompts.map((prompt) => {
           const promptConfig = serverConfig?.prompts?.[prompt.name];
@@ -2955,12 +2987,12 @@ const filterToolsByConfig = async (serverName: string, tools: Tool[]): Promise<T
     return tools;
   }
 
+  // Callers may pass a subset; the key rule needs every tool of the server
+  const runtimeNames = (getServerByName(serverName)?.tools ?? tools).map((tool) => tool.name);
   return tools.filter((tool) => {
-    // toggleTool stores the disable under whatever key string the caller used
-    // (bare upstream name or server-prefixed name, never normalized) — check
-    // both, same as findToolOnServer's execution-time gate.
-    const bareToolName = normalizeToolNameForServer(serverName, tool.name);
-    const toolConfig = serverConfig.tools?.[tool.name] ?? serverConfig.tools?.[bareToolName];
+    // A disable may be stored under the runtime or the bare name — same key rule
+    // as findToolOnServer's execution-time gate (findToolConfig).
+    const toolConfig = findToolConfig(serverConfig.tools, serverName, tool.name, runtimeNames);
     // If tool is not in config, it's enabled by default
     return toolConfig?.enabled !== false;
   });
@@ -3742,17 +3774,16 @@ const findToolOnServer = (
   // which is a different object. So the persisted per-tool config must be
   // consulted directly here.
   //
-  // toggleTool (serverController.ts) stores `tools[toolName] = ...` using
-  // whatever string the caller passed as :toolName, with no normalization.
-  // The dashboard sends the already-prefixed `tool.name`, matching what
-  // getServersInfo's toolsWithEnabled already reads — but any other caller
-  // (REST API used directly, scripts, docs examples) can just as validly
-  // pass the bare upstream name, which then never matches a prefixed-only
-  // lookup. Check both so a disable takes effect regardless of which form
-  // was used to set it.
-  const bareToolName = normalizeToolNameForServer(serverInfo.name, tool.name);
-  const toolConfig =
-    serverInfo.config?.tools?.[tool.name] ?? serverInfo.config?.tools?.[bareToolName];
+  // A disable may be stored under the runtime (prefixed) name, as the
+  // dashboard writes it, or under the bare upstream name, as a settings file
+  // or a direct API call may. findToolConfig checks both, and never reads
+  // another tool's runtime key as this tool's bare name.
+  const toolConfig = findToolConfig(
+    serverInfo.config?.tools,
+    serverInfo.name,
+    tool.name,
+    serverInfo.tools.map((candidate) => candidate.name),
+  );
   if (toolConfig && toolConfig.enabled === false) {
     return undefined;
   }
@@ -3911,12 +3942,18 @@ const listGroupTools = async (
       // If this is a group request, apply group-level tool filtering
       tools = await filterToolsByGroup(group, serverInfo.name, tools, groupServerConfig);
 
-      // Apply custom descriptions from server configuration
+      // Apply custom descriptions and hidden parameters from server configuration
       const serverConfig = await getServerDao().findById(serverInfo.name);
+      const runtimeNames = serverInfo.tools.map((tool) => tool.name);
       const toolsWithCustomDescriptions = tools.map((tool) => {
-        const toolConfig = serverConfig?.tools?.[tool.name];
+        const toolConfig = findToolConfig(
+          serverConfig?.tools,
+          serverInfo.name,
+          tool.name,
+          runtimeNames,
+        );
         return {
-          ...tool,
+          ...applyHiddenParams(tool, toolConfig),
           description: resolveDescriptionOverride(tool.description, toolConfig),
         };
       });
@@ -4273,7 +4310,7 @@ const handleCallToolRequestImpl = async (request: any, extra: any) => {
         await reserveHostedIfNeeded(targetServerInfo.name, cleanToolName);
         const result = await openApiClient.callTool(
           cleanToolName,
-          finalArgs,
+          withoutHiddenArguments(targetServerInfo, cleanToolName, finalArgs),
           passthroughHeaders,
           false,
           stateId,
@@ -4499,7 +4536,7 @@ const handleCallToolRequestImpl = async (request: any, extra: any) => {
       await reserveHostedIfNeeded(serverInfo.name, cleanToolName);
       const result = await openApiClient.callTool(
         cleanToolName,
-        finalArgs,
+        withoutHiddenArguments(serverInfo, cleanToolName, finalArgs),
         passthroughHeaders,
         false,
         stateId,

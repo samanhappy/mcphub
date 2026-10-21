@@ -418,6 +418,41 @@ describe('smartRoutingService search_tools results', () => {
       expect(payload.metadata.guideline).not.toContain('Only the first');
     });
   });
+
+  describe('per-tool config', () => {
+    // Stored under the bare name, as a settings file or a direct API call writes it
+    const sendConfig = {
+      tools: { send_message: { enabled: true, description: 'Post.', hiddenParams: ['silent'] } },
+    };
+
+    beforeEach(() => {
+      chatTools[2].inputSchema = {
+        type: 'object',
+        properties: { text: { type: 'string' }, silent: { type: 'boolean' } },
+      };
+      mockFindById.mockResolvedValue(sendConfig);
+      mockSearchToolsByVector.mockResolvedValue([hit('chat::send_message', 0.6, 0.6)]);
+    });
+
+    afterEach(() => {
+      chatTools[2].inputSchema = schema('text');
+    });
+
+    it('hides parameters and applies a bare-name description in search_tools hits', async () => {
+      const payload = await search('send a chat message');
+
+      expect(payload.tools[0].description).toBe('Post.');
+      expect(Object.keys(payload.tools[0].inputSchema.properties)).toEqual(['text']);
+    });
+
+    it('hides parameters and applies a bare-name description in describe_tool', async () => {
+      const result = await handleDescribeToolRequest('chat::send_message', 'smart-session');
+      const { tool } = JSON.parse(result.content[0].text);
+
+      expect(tool.description).toBe('Post.');
+      expect(Object.keys(tool.inputSchema.properties)).toEqual(['text']);
+    });
+  });
 });
 
 describe('smartRoutingService meta-tools with fullSchemaTopN', () => {
