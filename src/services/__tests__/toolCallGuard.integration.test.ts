@@ -1,4 +1,8 @@
 jest.mock('openid-client', () => ({}));
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
+import { clearSettingsCache } from '../../config/index.js';
 import { addServer, handleCallToolRequest, removeServer } from '../mcpService.js';
 
 const makeRequest = (args: unknown) => ({
@@ -7,7 +11,14 @@ const makeRequest = (args: unknown) => ({
 });
 
 describe('handleCallToolRequest tool-call guard integration', () => {
+  let tmpDir: string;
+  const originalSettingsPath = process.env.MCPHUB_SETTING_PATH;
+
   beforeAll(async () => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mcphub-tool-call-guard-'));
+    process.env.MCPHUB_SETTING_PATH = path.join(tmpDir, 'settings.json');
+    fs.writeFileSync(process.env.MCPHUB_SETTING_PATH, JSON.stringify({ mcpServers: {} }));
+    clearSettingsCache();
     await addServer('test', {
       command: 'node',
       args: ['-e', ''],
@@ -16,7 +27,17 @@ describe('handleCallToolRequest tool-call guard integration', () => {
   });
 
   afterAll(async () => {
-    await removeServer('test');
+    try {
+      await removeServer('test');
+    } finally {
+      if (originalSettingsPath === undefined) {
+        delete process.env.MCPHUB_SETTING_PATH;
+      } else {
+        process.env.MCPHUB_SETTING_PATH = originalSettingsPath;
+      }
+      clearSettingsCache();
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
   });
 
   afterEach(() => {
@@ -28,6 +49,11 @@ describe('handleCallToolRequest tool-call guard integration', () => {
     result?.errorCode === -32001 &&
     typeof result?.content?.[0]?.text === 'string' &&
     result.content[0].text.toLowerCase().includes('blocked by tool call guard');
+
+  it('persists the test server only in the isolated settings file', () => {
+    const settings = JSON.parse(fs.readFileSync(path.join(tmpDir, 'settings.json'), 'utf8'));
+    expect(settings.mcpServers.test).toMatchObject({ command: 'node', transport: 'stdio' });
+  });
 
   it('blocks the call before any MCP client is reached when guard is enabled', async () => {
     process.env.TOOL_CALL_GUARD_ENABLED = 'true';
