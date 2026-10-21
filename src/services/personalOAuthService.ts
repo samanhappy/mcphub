@@ -54,8 +54,28 @@ const declarationOAuth = (oauth?: OAuth): OAuth => {
   } = oauth || {};
   return declaration;
 };
+// JSON.stringify is key-order sensitive, and the dashboard save path normalizes the
+// OAuth object into a fixed key order (normalizeOAuth in serverConfigPersistence.ts),
+// so a share-list-only edit could still flip a naive stringify (#1362). Canonicalize
+// object keys (array order is preserved) so identical destination/client values always
+// yield the same fingerprint regardless of property order.
+const canonicalJson = (value: unknown): string => {
+  if (value === undefined) return 'undefined';
+  if (value === null) return 'null';
+  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(',')}]`;
+  if (typeof value === 'object') {
+    const entries = Object.keys(value as Record<string, unknown>)
+      .sort()
+      .map(
+        (key) =>
+          `${JSON.stringify(key)}:${canonicalJson((value as Record<string, unknown>)[key])}`,
+      );
+    return `{${entries.join(',')}}`;
+  }
+  return JSON.stringify(value) ?? 'null';
+};
 const fingerprint = (expanded: ServerConfig): string =>
-  JSON.stringify([expanded.type, expanded.url, declarationOAuth(expanded.oauth)]);
+  canonicalJson([expanded.type, expanded.url, declarationOAuth(expanded.oauth)]);
 // Bindings persisted before #1362 stored the whole declaration:
 // JSON.stringify([declaration, expanded.url, expanded.oauth]). Normalize such a stored
 // value to the current destination-only format so an upgrade does not orphan every
@@ -72,7 +92,7 @@ const normalizeLegacyDeclaration = (stored: string): string | undefined => {
   // The legacy form leads with the declaration object; the current form leads with the
   // type string. Only treat object-leading values as legacy.
   if (typeof declaration !== 'object' || declaration === null) return undefined;
-  return JSON.stringify([
+  return canonicalJson([
     (declaration as { type?: string }).type,
     url,
     declarationOAuth(oauth as OAuth | undefined),

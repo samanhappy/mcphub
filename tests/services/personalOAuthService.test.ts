@@ -6,6 +6,7 @@ import { CredentialBindingDaoImpl } from '../../src/dao/CredentialBindingDao.js'
 import { getCredentialBindingDao } from '../../src/dao/DaoFactory.js';
 import { encryptCredentialValues } from '../../src/services/credentialBindingService.js';
 import { expandServerConfig } from '../../src/services/serverConfigEnvironment.js';
+import { normalizeServerConfigForPersistence } from '../../src/utils/serverConfigPersistence.js';
 import {
   PersonalOAuthContext,
   disconnectPersonalOAuth,
@@ -263,6 +264,33 @@ test('legacy-format bindings still reject a destination change (#1362)', async (
     );
   } finally {
     mockDefinition.url = originalUrl;
+    await getCredentialBindingDao().delete({ serverName: 'gitlab', username: 'alice' });
+  }
+});
+
+test('OAuth key reordering on save does not invalidate the personal binding (#1362)', async () => {
+  const originalOAuth = mockDefinition.oauth;
+  try {
+    // A file-defined server may declare oauth keys in any order; the dashboard save path
+    // (normalizeServerConfigForPersistence -> normalizeOAuth) rewrites them in a fixed
+    // order even when the values are unchanged.
+    mockDefinition.oauth = { clientId: 'client', identityMode: 'personal', scopes: ['mcp'] };
+    const alice = await PersonalOAuthContext.load('gitlab', 'alice', mockDefinition);
+    await alice.persistTokens('gitlab', {
+      accessToken: 'reorder-secret',
+      refreshToken: 'reorder-refresh',
+    });
+    const normalized = normalizeServerConfigForPersistence(mockDefinition);
+    // Sanity: the save path actually rewrote the OAuth keys into a different order.
+    expect(Object.keys(normalized.oauth || {})).toEqual(['identityMode', 'clientId', 'scopes']);
+    const restored = await PersonalOAuthContext.load('gitlab', 'alice', normalized);
+    expect(restored.config.oauth?.accessToken).toBe('reorder-secret');
+    expect(restored.config.oauth?.refreshToken).toBe('reorder-refresh');
+    expect(
+      (await resolvePersonalOAuth('gitlab', 'alice', normalized)).config.oauth?.accessToken,
+    ).toBe('reorder-secret');
+  } finally {
+    mockDefinition.oauth = originalOAuth;
     await getCredentialBindingDao().delete({ serverName: 'gitlab', username: 'alice' });
   }
 });
