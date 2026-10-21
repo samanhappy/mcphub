@@ -171,6 +171,7 @@
     "noMatchingShareUsers": "Ningún usuario coincide con tu búsqueda.",
     "command": "Comando",
     "packageVersion": "Versión del paquete instalada (última instalada por la caché del runner)",
+    "reportedVersion": "Versión indicada por el servidor",
     "updateAvailable": "Hay una versión más reciente disponible en el registro",
     "arguments": "Argumentos",
     "addArgument": "Añadir argumento",

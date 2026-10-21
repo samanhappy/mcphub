@@ -171,6 +171,7 @@
     "noMatchingShareUsers": "Aramanızla eşleşen kullanıcı yok.",
     "command": "Komut",
     "packageVersion": "Kurulu paket sürümü (runner önbelleğindeki son kurulum)",
+    "reportedVersion": "Sunucu tarafından bildirilen sürüm",
     "updateAvailable": "Kayıt defterinde daha yeni bir sürüm mevcut",
     "arguments": "Argümanlar",
     "addArgument": "Argüman ekle",
