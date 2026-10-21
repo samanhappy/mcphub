@@ -403,7 +403,7 @@
       },
       "cursor": {
         "label": "Cursor",
-        "hint": "Cursor: .cursor/mcp.json trong thư mục dự án, hoặc ~/.cursor/mcp.json trên toàn cầu."
+        "hint": "Cursor: .cursor/mcp.json trong thư mục dự án, hoặc ~/.cursor/mcp.json trên toàn hệ thống."
       },
       "vscode": {
         "label": "VS Code / Copilot",
@@ -415,31 +415,31 @@
       },
       "opencode": {
         "label": "OpenCode",
-        "hint": "OpenCode: ~/.config/opencode/opencode.json toàn cầu, hoặc opencode.json trong dự án."
+        "hint": "OpenCode: ~/.config/opencode/opencode.json toàn hệ thống, hoặc opencode.json trong dự án."
       },
       "windsurf": {
         "label": "Windsurf",
-        "hint": "Windsurf: ~/.codeium/windsurf/mcp_config.json."
+        "hint": "Windsurf: Đường dẫn tệp cấu hình tại ~/.codeium/windsurf/mcp_config.json."
       },
       "cherry-studio": {
         "label": "Cherry Studio",
-        "hint": "Cherry Studio: Settings > MCP Servers > Add Server > Import JSON."
+        "hint": "Cherry Studio: Vào Cài đặt (Settings) > Máy chủ MCP (MCP Servers) > Thêm máy chủ (Add Server) > Nhập JSON (Import JSON)."
       },
       "codebuddy": {
         "label": "CodeBuddy Code",
-        "hint": "CodeBuddy Code: ~/.codebuddy/.mcp.json toàn cầu, hoặc .mcp.json trong dự án."
+        "hint": "CodeBuddy Code: ~/.codebuddy/.mcp.json Toàn hệ thống, hoặc .mcp.json trong dự án."
       },
       "qoder": {
         "label": "Qoder",
-        "hint": "Qoder: Settings > MCP > Add Manually, rồi dán chuỗi JSON."
+        "hint": "Qoder: Settings > MCP > Thêm thủ công, rồi dán chuỗi JSON."
       },
       "trae": {
         "label": "TRAE",
-        "hint": "TRAE: Settings > MCP > Add > Add Manually, rồi dán chuỗi JSON."
+        "hint": "TRAE: Settings > MCP > Add > Thêm thủ công, rồi dán chuỗi JSON vào."
       },
       "zcode": {
         "label": "ZCode",
-        "hint": "ZCode: Settings > MCP Servers > New MCP Server > Full configuration."
+        "hint": "ZCode: Vào Cài đặt (Settings) > Máy chủ MCP (MCP Servers) > Máy chủ MCP mới (New MCP Server) > Cấu hình đầy đủ (Full configuration)."
       },
       "workbuddy": {
         "label": "WorkBuddy",
@@ -768,6 +768,10 @@
     "descriptionUpdateFailed": "Cập nhật mô tả công cụ thất bại",
     "descriptionModifiedBadge": "Đã chỉnh sửa",
     "defaultDescriptionLabel": "Mô tả mặc định",
+    "visibleParams": "Các tham số hiển thị cho mô hình",
+    "visibleParamsHelp": "Các tham số không được chọn sẽ bị loại bỏ khỏi lược đồ mà các mô hình nhận được, đồng thời cũng bị lược bỏ khỏi các lệnh gọi của chúng. Các tham số bắt buộc (*) không thể ẩn đi.",
+    "requiredParam": "Các tham số bắt buộc không thể bị ẩn đi",
+    "hiddenParamsFailed": "Không thể cập nhật các tham số ẩn",
     "defaultDescriptionTooltip": "Mô tả mặc định: {{description}}",
     "restoreDefault": "Khôi phục mặc định",
     "restoreDefaultSuccess": "Đã khôi phục mô tả công cụ về mặc định",
@@ -811,7 +815,7 @@
     "allowedCidrsDescription": "Một dải IPv4 hoặc IPv6 CIDR trên mỗi dòng. Tất cả người dùng có thể kết nối với các endpoint MCP, OpenAPI và OAuth upstream trong các dải này. Bỏ trống nghĩa là không cấp thêm quyền truy cập. Các máy chủ thuộc sở hữu admin giữ nguyên quyền truy cập nội bộ không hạn chế. Tránh dùng các dải quá rộng, địa chỉ metadata hoặc loopback trừ khi thật sự cần thiết. Thay đổi áp dụng cho các yêu cầu mới; các kết nối hiện tại không bị đóng.",
     "allowedCidrsUpdateFailed": "Cập nhật các dải CIDR được phép thất bại",
     "subtitle": "Cấu hình các cài đặt hệ thống, xác thực, định tuyến và tích hợp máy chủ MCP.",
-    "enableGlobalRoute": "Bật Tuyến đường Toàn cầu (Global Route)",
+    "enableGlobalRoute": "Bật Tuyến đường toàn hệ thống (Global Route)",
     "enableGlobalRouteDescription": "Cho phép kết nối đến endpoint /sse mà không cần chỉ định ID nhóm",
     "enableGroupNameRoute": "Bật Tuyến đường theo Tên nhóm",
     "enableGroupNameRouteDescription": "Cho phép kết nối đến endpoint /sse sử dụng tên nhóm thay vì chỉ dùng ID nhóm",
