@@ -56,6 +56,28 @@ const declarationOAuth = (oauth?: OAuth): OAuth => {
 };
 const fingerprint = (expanded: ServerConfig): string =>
   JSON.stringify([expanded.type, expanded.url, declarationOAuth(expanded.oauth)]);
+// Bindings persisted before #1362 stored the whole declaration:
+// JSON.stringify([declaration, expanded.url, expanded.oauth]). Normalize such a stored
+// value to the current destination-only format so an upgrade does not orphan every
+// binding, while a genuine destination/client change still fails the comparison.
+const normalizeLegacyDeclaration = (stored: string): string | undefined => {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(stored);
+  } catch {
+    return undefined;
+  }
+  if (!Array.isArray(parsed) || parsed.length !== 3) return undefined;
+  const [declaration, url, oauth] = parsed as [unknown, unknown, unknown];
+  // The legacy form leads with the declaration object; the current form leads with the
+  // type string. Only treat object-leading values as legacy.
+  if (typeof declaration !== 'object' || declaration === null) return undefined;
+  return JSON.stringify([
+    (declaration as { type?: string }).type,
+    url,
+    declarationOAuth(oauth as OAuth | undefined),
+  ]);
+};
 export class PersonalOAuthContext {
   private revision: string | undefined;
   private declaration: string;
@@ -87,7 +109,12 @@ export class PersonalOAuthContext {
     const binding = await getCredentialBindingDao().get(serverName, username);
     if (binding) {
       const values = await decryptCredentialValues(binding);
-      if (values.oauthDeclaration === context.declaration && values.oauth) {
+      const legacy = normalizeLegacyDeclaration(values.oauthDeclaration || '');
+      if (
+        values.oauth &&
+        (values.oauthDeclaration === context.declaration ||
+          (legacy !== undefined && legacy === context.declaration))
+      ) {
         context.config.oauth = { ...context.config.oauth, ...JSON.parse(values.oauth) };
       }
       context.revision = binding.encryptedValues;
