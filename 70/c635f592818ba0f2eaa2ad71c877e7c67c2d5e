@@ -1,0 +1,66 @@
+src/services/elicitationService.ts
+  s_bfdb462e92d15f::t_07ffcb7bed3be8 20,24,47,59-62
+  s_bfdb462e92d15f::t_40cd195493ec0f 10,35,44-46,48-58
+  s_bfdb462e92d15f::t_1738faca2ebc3c 74,85
+  s_bfdb462e92d15f::t_97e7239d64cdb2 1,8-9,11-13,17-19,21-23,25-34,36-43,63-73,75-79,83-84,86-116,118
+  s_bfdb462e92d15f::t_913519621145b2 117
+  s_bfdb462e92d15f::t_9a80e2898b9262 2-7,14-16,80-82
+tests/fixtures/elicitation-server.mjs
+  s_bfdb462e92d15f::t_a0e01f2717457b 1-41
+docs/configuration/mcp-settings.mdx
+  s_bfdb462e92d15f::t_8a747a94910af5 202-203
+  s_bfdb462e92d15f::t_e909d3307bf589 205
+docs/zh/api-reference/mcp-http.mdx
+  s_bfdb462e92d15f::t_19e02c17829873 66-68
+  s_bfdb462e92d15f::t_8a747a94910af5 58-65,69-76
+  s_bfdb462e92d15f::t_89214d82dcb9c8 57
+docs/api-reference/mcp-http.mdx
+  s_bfdb462e92d15f::t_8a747a94910af5 59-71,77-87
+  s_bfdb462e92d15f::t_19e02c17829873 72-76
+src/services/sseService.ts
+  s_bfdb462e92d15f::t_74bfd7d19d2d50 917
+tests/integration/elicitation-forwarding.test.ts
+  s_bfdb462e92d15f::t_0a1fe6f9222c46 24,55,274-276,281,289-294,309,322,326-329,334-341,363-377,382-386
+  s_bfdb462e92d15f::t_fb803475894e1a 32,49-50,112-113,387-389,394-395,405
+  s_bfdb462e92d15f::t_e909d3307bf589 279
+  s_bfdb462e92d15f::t_5efa10b6ff3a88 295-296
+  s_bfdb462e92d15f::t_40cd195493ec0f 97,102-105
+  s_bfdb462e92d15f::t_7cdffd78a59c94 297-298,302,307-308,313,316-318,330-333
+  s_bfdb462e92d15f::t_a0e01f2717457b 1-23,25,30-31,37-40,53-54,56-75,87-96,106,108-111,114-139,145-147,154-159,175-194,201-203,208-209,214-229,236-239,243-248,258-265,406
+  s_bfdb462e92d15f::t_90b784c0bc038e 299-301,303-306
+  s_bfdb462e92d15f::t_49dea5275bcae9 390-393,396-404
+  s_bfdb462e92d15f::t_48ee7f2d60ac9b 26-29,42-46,98-101,277-278,280,282-288,310-312,314-315,319-321,323-325,342-362,378-381
+  s_bfdb462e92d15f::t_266c398ef95acc 107
+  s_bfdb462e92d15f::t_9a80e2898b9262 33-36,41,47-48,51-52,76-86,140-144,148-153,160-174,195-200,204-207,210-213,230-235,240-242,249-257,266-273
+docs/adr/0003-mcp-2026-07-28-staged-upgrade-path.md
+  s_bfdb462e92d15f::t_fdb784f1275b1a 11-18
+  s_bfdb462e92d15f::t_266c398ef95acc 19
+src/services/mcpService.ts
+  s_bfdb462e92d15f::t_0aac5563620268 17-22,543,582,1169,1171-1172,1178,1229-1230,1884,1894
+  s_bfdb462e92d15f::t_19e02c17829873 1889-1893
+  s_bfdb462e92d15f::t_0a1fe6f9222c46 1897-1900
+  s_bfdb462e92d15f::t_9a80e2898b9262 549,566,1885-1888
+  s_bfdb462e92d15f::t_07ffcb7bed3be8 4403-4409,4633-4639
+  s_bfdb462e92d15f::t_74bfd7d19d2d50 70,1861,4440,4653
+docs/zh/configuration/mcp-settings.mdx
+  s_bfdb462e92d15f::t_e909d3307bf589 184
+  s_bfdb462e92d15f::t_8a747a94910af5 182-183
+tests/services/elicitationService.test.ts
+  s_bfdb462e92d15f::t_fb803475894e1a 1-34
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "70c635f592818ba0f2eaa2ad71c877e7c67c2d5e",
+  "prompts": {},
+  "sessions": {
+    "s_bfdb462e92d15f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a16313-fd1f-7352-8fe1-c6885ad563c8",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
