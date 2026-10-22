@@ -32,6 +32,14 @@ Groups are named collections of MCP servers that can be accessed through dedicat
 
 4. **Add Servers**: Select servers to include in the group
 
+### Bulk Capability Selection
+
+Expand a server in the group editor to search tools, prompts, or resources by name (resource URI) or description. Search is a case-insensitive substring match, not a glob or regular expression. **Select visible**, **Deselect visible**, and **Invert visible** affect only the filtered items; other selections stay unchanged.
+
+Tools also support explicit `readOnlyHint`, `destructiveHint`, and `idempotentHint` filters. Switch between the flat list and risk groups (Read/Create/Update/Delete/Other) for per-group counters and batch selection. Classification uses upstream hints and name heuristics as an editing aid, not a safety guarantee. Group actions also respect the current filters.
+
+These actions modify this group's selection only, not the server's global enabled state. Deselecting tools clears their Smart Routing pins. Editing an explicit subset stores a snapshot of tool names; it does not automatically select future tools. The existing whole-section **Select All** retains the dynamic `all` selection behavior.
+
 ### Via API
 
 Create groups programmatically:

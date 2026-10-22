@@ -951,3 +951,14 @@ export interface OpenApiToolStats {
   /** Effective security requirement the spec declares, for form prefill (#1077). */
   declaredSecurity?: OpenAPIDeclaredSecurity;
 }
+
+/** One-shot updates to currently discovered tools; patterns are not persisted. */
+export interface BatchToggleToolsRequest {
+  enabled: boolean;
+  tools: string[];
+}
+
+export interface BatchToggleToolsResponse {
+  matchedTools: string[];
+  enabled: boolean;
+}
