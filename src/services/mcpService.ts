@@ -14,6 +14,12 @@ import {
 import { expandServerConfig, getServerEnvironment } from './serverConfigEnvironment.js';
 import { getMcpRequestGroup } from '../utils/mcpRequestGroup.js';
 import { LegacyMcpClient } from '../clients/legacyMcpClient.js';
+import {
+  getElicitationCapabilities,
+  installElicitationRelay,
+  isElicitationClientClosed,
+  withElicitation,
+} from './elicitationService.js';
 import { LEGACY_PROTOCOL_VERSIONS } from '../utils/mcpProtocol.js';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { createHash } from 'node:crypto';
@@ -61,6 +67,7 @@ import type {
   Tool as McpTool,
   Transport,
   RequestOptions,
+  ServerContext,
 } from '@modelcontextprotocol/server';
 import { createFetchWithProxy, getProxyConfigFromEnv } from './proxy.js';
 import { assertSafeUrl, createRedirectValidatingFetch } from '../utils/ssrf.js';
@@ -533,12 +540,13 @@ const setSessionIsolatedClient = (
 const getOrCreateIsolatedClient = async (
   sessionId: string,
   serverInfo: ServerInfo,
+  downstream?: Server,
 ): Promise<{ client: Client; transport: any }> => {
   // Quick check without lock — already exists
   const sessionClients = sessionIsolatedClients.get(sessionId);
   if (sessionClients) {
     const existing = sessionClients.get(serverInfo.name);
-    if (existing) {
+    if (existing && !isElicitationClientClosed(existing.client)) {
       return existing;
     }
   }
@@ -555,7 +563,7 @@ const getOrCreateIsolatedClient = async (
     const sessionClientsAfterLock = sessionIsolatedClients.get(sessionId);
     if (sessionClientsAfterLock) {
       const existing = sessionClientsAfterLock.get(serverInfo.name);
-      if (existing) {
+      if (existing && !isElicitationClientClosed(existing.client)) {
         return existing;
       }
     }
@@ -571,7 +579,7 @@ const getOrCreateIsolatedClient = async (
 
     const reservedClients = sessionIsolatedClients.get(sessionId);
     const transport = await createTransportFromConfig(serverInfo.name, serverConfig);
-    const client = createUpstreamMcpClient(serverInfo.name, () => serverInfo);
+    const client = createUpstreamMcpClient(serverInfo.name, () => serverInfo, downstream);
 
     try {
       await connectClientWithDiagnostics(client, transport, serverInfo.options || {});
@@ -1158,14 +1166,16 @@ const logListChangedRefreshError = (listType: 'tool' | 'prompt' | 'resource'): v
 const createUpstreamMcpClient = (
   name: string,
   getServerInfo: () => ServerInfo | undefined,
+  downstream?: Server,
 ): Client => {
-  return new LegacyMcpClient(
+  const elicitation = getElicitationCapabilities(downstream);
+  const client = new LegacyMcpClient(
     {
       name: `mcp-client-${name}`,
       version: '1.0.0',
     },
     {
-      capabilities: MCP_APPS_CAPABILITIES,
+      capabilities: { ...MCP_APPS_CAPABILITIES, ...(elicitation ? { elicitation } : {}) },
       jsonSchemaValidator: new ResilientJsonSchemaValidator(),
       listChanged: {
         tools: {
@@ -1216,6 +1226,8 @@ const createUpstreamMcpClient = (
       },
     },
   );
+  if (elicitation && downstream) installElicitationRelay(client, downstream);
+  return client;
 };
 
 export interface ServerConnectionStats {
@@ -1846,6 +1858,7 @@ const callToolWithReconnect = async (
   options?: any,
   maxRetries: number = 1,
   isolated?: IsolatedClientContext,
+  extra?: Pick<ServerContext, 'mcpReq'>,
 ): Promise<any> => {
   // Local, reassignable refs so a reconnect can swap in the new connection for
   // the next retry attempt. For isolated calls these track the per-session
@@ -1868,11 +1881,23 @@ const callToolWithReconnect = async (
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
-      const result = await client.callTool(toolParams, options || {});
-      // Check auth error
-      checkAuthError(result);
+      const currentClient = client;
+      const result = await withElicitation(
+        currentClient,
+        extra?.mcpReq,
+        options || {},
+        async (callOptions) => {
+          const result = await currentClient.callTool(toolParams, callOptions);
+          checkAuthError(result);
+          return result;
+        },
+      );
       return result;
     } catch (error: any) {
+      if (isElicitationClientClosed(client)) {
+        closeIsolatedClient(serverInfo.name, client, transport);
+        throw error;
+      }
       const isHttp40xError = isRecoverableHttp4xxError(error);
       // Only retry for StreamableHTTPClientTransport and SSE transports
       const isStreamableHttp = transport instanceof StreamableHTTPClientTransport;
@@ -4375,7 +4400,13 @@ const handleCallToolRequestImpl = async (request: any, extra: any) => {
             `Server '${targetServerInfo.name}' requires per-session client isolation and is not yet available on stateless MCP requests`,
           );
         }
-        const isolated = await getOrCreateIsolatedClient(stateId, targetServerInfo);
+        const isolated = await getOrCreateIsolatedClient(
+          stateId,
+          targetServerInfo,
+          extra.mcpReq && !requestContextService.getRequestContext()?.stateless
+            ? servers[sessionId]
+            : undefined,
+        );
         isolatedCtx = {
           sessionId: stateId,
           client: isolated.client,
@@ -4406,6 +4437,7 @@ const handleCallToolRequestImpl = async (request: any, extra: any) => {
         targetServerInfo.options || {},
         1,
         isolatedCtx,
+        extra,
       );
       await settleHostedIfNeeded({
         success: !result.isError,
@@ -4598,7 +4630,13 @@ const handleCallToolRequestImpl = async (request: any, extra: any) => {
           `Server '${serverInfo.name}' requires per-session client isolation and is not yet available on stateless MCP requests`,
         );
       }
-      const isolated = await getOrCreateIsolatedClient(stateId, serverInfo);
+      const isolated = await getOrCreateIsolatedClient(
+        stateId,
+        serverInfo,
+        extra.mcpReq && !requestContextService.getRequestContext()?.stateless
+          ? servers[sessionId]
+          : undefined,
+      );
       isolatedCtx = { sessionId: stateId, client: isolated.client, transport: isolated.transport };
     } else if (!serverInfo.client) {
       throw new Error(`Client not found for server: ${serverInfo.name}`);
@@ -4612,6 +4650,7 @@ const handleCallToolRequestImpl = async (request: any, extra: any) => {
       serverInfo.options || {},
       1,
       isolatedCtx,
+      extra,
     );
     await settleHostedIfNeeded({
       success: !result.isError,

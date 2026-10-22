@@ -913,9 +913,8 @@ export const handleMcpPostRequest = async (req: Request, res: Response): Promise
 
   const sessionId = req.headers['mcp-session-id'] as string | undefined;
   const group = req.params.group;
-  const body = req.body;
   logger.log(
-    `Handling MCP post request for sessionId: ${sessionId} and group: ${group}${username ? ` for user: ${username}` : ''} with body: ${JSON.stringify(body)}`,
+    `Handling MCP post request for sessionId: ${sessionId} and group: ${group}${username ? ` for user: ${username}` : ''}`,
   );
 
   // Get filtered settings based on user context (after setting user context)

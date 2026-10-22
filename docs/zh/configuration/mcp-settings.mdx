@@ -179,8 +179,9 @@ MCP 自身的 `--isolated` 标志不同，后者控制 Playwright 侧的浏览�
 ```
 
 <Tip>
-仅对真正持有会话级状态的服务器启用 `perSessionClient`。它会让上游连接（以及 stdio 子进程）
-数量随并发会话数成倍增长，因此对无状态服务器请保持关闭。
+对持有会话级状态或需要[旧协议工具 elicitation 转发](/zh/api-reference/mcp-http#elicitation-转发)
+的服务器启用 `perSessionClient`。它会让上游连接（以及 stdio 子进程）
+数量随并发会话数成倍增长，不需要以上功能时请保持关闭。
 </Tip>
 
 ### MCP 2026-07-28 的路由请求头
