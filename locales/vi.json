@@ -171,6 +171,7 @@
     "noMatchingShareUsers": "Không có người dùng nào khớp với tìm kiếm của bạn.",
     "command": "Lệnh",
     "packageVersion": "Phiên bản gói đã cài (cài đặt lần cuối bởi bộ nhớ đệm runner)",
+    "reportedVersion": "Phiên bản từ máy chủ",
     "updateAvailable": "Đã có phiên bản mới hơn trên registry",
     "arguments": "Đối số",
     "addArgument": "Thêm đối số",
