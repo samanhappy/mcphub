@@ -1,0 +1,19 @@
+tests/integration/elicitation-forwarding.test.ts
+  s_bfdb462e92d15f::t_f597ffb2a7e2fe 41,110-114
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "613083092aac219807e354b8feb5167709d268f3",
+  "prompts": {},
+  "sessions": {
+    "s_bfdb462e92d15f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a16313-fd1f-7352-8fe1-c6885ad563c8",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
