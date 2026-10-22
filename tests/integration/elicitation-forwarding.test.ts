@@ -38,6 +38,7 @@ import type { ClientCapabilities, ElicitResult } from '@modelcontextprotocol/sdk
 import { clearSettingsCache, getNameSeparator } from '../../src/config/index.js';
 import { JsonFileDaoFactory, setDaoFactory } from '../../src/dao/DaoFactory.js';
 import { sseUserContextMiddleware } from '../../src/middlewares/userContext.js';
+import { mcpConnectionRateLimiter } from '../../src/utils/rateLimit.js';
 import {
   cleanupAllServers,
   getServerByName,
@@ -106,11 +107,11 @@ beforeAll(async () => {
   const app = express();
   app.use('/mcp', express.json());
   const routes = ['/mcp', '/mcp/:group'];
-  app.post(routes, sseUserContextMiddleware, handleMcpPostRequest);
-  app.get(routes, sseUserContextMiddleware, handleMcpOtherRequest);
-  app.delete(routes, sseUserContextMiddleware, handleMcpOtherRequest);
-  app.get('/sse', sseUserContextMiddleware, handleSseConnection);
-  app.post('/messages', sseUserContextMiddleware, handleSseMessage);
+  app.post(routes, mcpConnectionRateLimiter, sseUserContextMiddleware, handleMcpPostRequest);
+  app.get(routes, mcpConnectionRateLimiter, sseUserContextMiddleware, handleMcpOtherRequest);
+  app.delete(routes, mcpConnectionRateLimiter, sseUserContextMiddleware, handleMcpOtherRequest);
+  app.get('/sse', mcpConnectionRateLimiter, sseUserContextMiddleware, handleSseConnection);
+  app.post('/messages', mcpConnectionRateLimiter, sseUserContextMiddleware, handleSseMessage);
   server = await new Promise<HttpServer>((resolve) => {
     const listener = app.listen(0, '127.0.0.1', () => resolve(listener));
   });
