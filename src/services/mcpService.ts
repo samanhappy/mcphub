@@ -1898,6 +1898,9 @@ const callToolWithReconnect = async (
         closeIsolatedClient(serverInfo.name, client, transport);
         throw error;
       }
+      // A cancelled queued call never reached the upstream. In particular, do
+      // not let the generic SSE retry replace its healthy isolated connection.
+      if (extra?.mcpReq?.signal.aborted) throw error;
       const isHttp40xError = isRecoverableHttp4xxError(error);
       // Only retry for StreamableHTTPClientTransport and SSE transports
       const isStreamableHttp = transport instanceof StreamableHTTPClientTransport;

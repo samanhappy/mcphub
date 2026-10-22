@@ -80,17 +80,20 @@ class ElicitationRelay {
     this.tail = new Promise<void>((resolve) => {
       release = resolve;
     });
+    let callStarted = false;
     try {
       await previous;
       if (!context) throw new Error('Elicitation requires a downstream request');
       const signal = AbortSignal.any([context.signal, this.lifetime.signal]);
       signal.throwIfAborted();
       this.active = { context, options };
+      callStarted = true;
       return await call({ ...options, signal });
     } catch (error) {
       // A timed-out call can still elicit later; never hand its connection to
       // the next caller. Session lookup replaces this closed client on demand.
-      this.lifetime.abort();
+      // Cancelling a queued call has not affected the upstream connection.
+      if (callStarted || !context) this.lifetime.abort();
       throw error;
     } finally {
       this.active = undefined;

@@ -1,5 +1,5 @@
 import type { Client } from '../../src/clients/mcpSdkClient.js';
-import type { Server } from '@modelcontextprotocol/server';
+import type { Server, ServerContext } from '@modelcontextprotocol/server';
 import {
   installElicitationRelay,
   isElicitationClientClosed,
@@ -31,4 +31,35 @@ test('invalidates the relay when a caller lacks a downstream request context', a
   await expect(withElicitation(client, undefined, {}, call)).rejects.toThrow('downstream request');
   expect(call).not.toHaveBeenCalled();
   expect(isElicitationClientClosed(client)).toBe(true);
+});
+
+test('cancelling an unsent queued call preserves the connection for later calls', async () => {
+  const { client } = setup();
+  const context = (signal: AbortSignal): Pick<ServerContext['mcpReq'], 'send' | 'signal'> => ({
+    signal,
+    send: jest.fn(),
+  });
+  let release!: () => void;
+  const first = withElicitation(client, context(new AbortController().signal), {}, () =>
+    new Promise<void>((resolve) => {
+      release = resolve;
+    }),
+  );
+  await Promise.resolve();
+  const abort = new AbortController();
+  const secondCall = jest.fn();
+  const second = withElicitation(client, context(abort.signal), {}, secondCall);
+  const rejection = expect(second).rejects.toThrow();
+  const thirdCall = jest.fn(async () => 'ok');
+  const third = withElicitation(client, context(new AbortController().signal), {}, thirdCall);
+  // Attach before releasing the queue so an unexpected rejection is handled.
+  const outcome = expect(third).resolves.toBe('ok');
+  abort.abort();
+  release();
+  await first;
+  await rejection;
+  await outcome;
+  expect(secondCall).not.toHaveBeenCalled();
+  expect(thirdCall).toHaveBeenCalledTimes(1);
+  expect(isElicitationClientClosed(client)).toBe(false);
 });
