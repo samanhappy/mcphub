@@ -1427,6 +1427,8 @@
     "slots": "Các khe cắm (slots) thông tin xác thực theo người dùng",
     "slotsHint": "Chỉ khai báo tên trường. Mỗi khe cắm đều yêu cầu ràng buộc cá nhân; thông tin xác thực tổ chức không bao giờ được dùng làm phương án dự phòng.",
     "target": "Mục tiêu xác thực",
+    "urlHint": "Với khe URL, đặt {{placeholder}} làm nhãn máy chủ hoặc đoạn đường dẫn hoàn chỉnh và liệt kê các giá trị được phép.",
+    "allowed": "Giá trị được phép (mỗi dòng một giá trị)",
     "argsHint": "Đối với các khe cắm thuộc đối số, hãy dùng {{placeholder}} trong đối số đó, thay thế API_KEY bằng tên trường. Giá trị sẽ được chèn trực tiếp mà không qua shell.",
     "fieldName": "Tên trường",
     "label": "Nhãn (tùy chọn)",

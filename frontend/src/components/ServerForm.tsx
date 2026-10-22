@@ -1769,6 +1769,11 @@ const ServerForm = ({
                     {t('credentials.argsHint', { placeholder: '{{args.API_KEY}}' })}
                   </p>
                 )}
+                {(serverType === 'sse' || serverType === 'streamable-http') && (
+                  <p className="text-sm text-gray-500">
+                    {t('credentials.urlHint', { placeholder: '{{url.region}}' })}
+                  </p>
+                )}
                 {(formData.credentialTemplate || []).map((slot, index) => (
                   <div key={index} className="flex flex-wrap items-center gap-2">
                     {serverType === 'stdio' ? (
@@ -1791,7 +1796,30 @@ const ServerForm = ({
                         <option value="args">{t('server.arguments')}</option>
                       </select>
                     ) : (
-                      <span className="text-sm">{t('server.headers')}</span>
+                      <select
+                        aria-label={t('credentials.target')}
+                        value={slot.target === 'url' ? 'url' : 'headers'}
+                        className="py-2 px-3 form-input"
+                        onChange={(event) =>
+                          setFormData({
+                            ...formData,
+                            credentialTemplate: formData.credentialTemplate?.map((item, i) =>
+                              i === index
+                                ? {
+                                    ...item,
+                                    target: event.target.value as 'headers' | 'url',
+                                    allowed: event.target.value === 'url' ? [] : undefined,
+                                  }
+                                : item,
+                            ),
+                          })
+                        }
+                      >
+                        <option value="headers">{t('server.headers')}</option>
+                        {(serverType === 'sse' || serverType === 'streamable-http') && (
+                          <option value="url">URL</option>
+                        )}
+                      </select>
                     )}
                     <input
                       required
@@ -1824,6 +1852,25 @@ const ServerForm = ({
                         })
                       }
                     />
+                    {slot.target === 'url' && (
+                      <textarea
+                        required
+                        aria-label={t('credentials.allowed')}
+                        placeholder={t('credentials.allowed')}
+                        value={(slot.allowed || []).join('\n')}
+                        className="w-full py-2 px-3 form-input"
+                        onChange={(event) =>
+                          setFormData({
+                            ...formData,
+                            credentialTemplate: formData.credentialTemplate?.map((item, i) =>
+                              i === index
+                                ? { ...item, allowed: event.target.value.split('\n') }
+                                : item,
+                            ),
+                          })
+                        }
+                      />
+                    )}
                     <button
                       type="button"
                       aria-label={t('credentials.removeSlot')}
@@ -2063,7 +2110,10 @@ const ServerForm = ({
                       </p>
                       {(serverType === 'sse' || serverType === 'streamable-http') && (
                         <div className="mb-3">
-                          <label htmlFor="oauthIdentityMode" className="block text-xs text-gray-600 mb-1">
+                          <label
+                            htmlFor="oauthIdentityMode"
+                            className="block text-xs text-gray-600 mb-1"
+                          >
                             {t('server.oauth.identityMode')}
                           </label>
                           <select

@@ -56,20 +56,36 @@ const CredentialForm = ({
               {slot.label || slot.name}{' '}
               <span className="hub-mono text-xs font-normal text-[var(--hub-ink-3)]">({id})</span>
             </span>
-            <input
-              type="password"
-              required
-              autoComplete="new-password"
-              maxLength={16384}
-              value={values[id] || ''}
-              placeholder={t(
-                binding.configuredSlots.includes(id)
-                  ? 'credentials.replaceValue'
-                  : 'credentials.enterValue',
-              )}
-              className="hub-input"
-              onChange={(event) => setValues({ ...values, [id]: event.target.value })}
-            />
+            {slot.target === 'url' ? (
+              <select
+                required
+                className="hub-input"
+                value={values[id] || ''}
+                onChange={(event) => setValues({ ...values, [id]: event.target.value })}
+              >
+                <option value="">{t('credentials.enterValue')}</option>
+                {slot.allowed?.map((value) => (
+                  <option key={value} value={value}>
+                    {value}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <input
+                type="password"
+                required
+                autoComplete="new-password"
+                maxLength={16384}
+                value={values[id] || ''}
+                placeholder={t(
+                  binding.configuredSlots.includes(id)
+                    ? 'credentials.replaceValue'
+                    : 'credentials.enterValue',
+                )}
+                className="hub-input"
+                onChange={(event) => setValues({ ...values, [id]: event.target.value })}
+              />
+            )}
           </label>
         );
       })}
@@ -131,7 +147,11 @@ export default function CredentialsPage() {
         </button>
       )}
       {error && (
-        <div className="hub-card px-4 py-3 text-sm" style={{ color: 'var(--hub-err)' }} role="alert">
+        <div
+          className="hub-card px-4 py-3 text-sm"
+          style={{ color: 'var(--hub-err)' }}
+          role="alert"
+        >
           {error}
         </div>
       )}

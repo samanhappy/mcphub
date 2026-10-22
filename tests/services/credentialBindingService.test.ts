@@ -82,9 +82,7 @@ test('encrypts at rest, isolates email principals, and returns status only', asy
 });
 
 test('requires all declared slots without implicit organization fallback', async () => {
-  await expect(resolveCredentialBinding('shared', 'alice', stdio)).rejects.toThrow(
-    'Credentials',
-  );
+  await expect(resolveCredentialBinding('shared', 'alice', stdio)).rejects.toThrow('Credentials');
   for (const values of [
     {},
     { 'env.PERSONAL_KEY': '' },
@@ -98,9 +96,7 @@ test('requires all declared slots without implicit organization fallback', async
     'second',
   );
   await deleteCredentialBindings({ serverName: 'shared', username: 'alice' });
-  await expect(resolveCredentialBinding('shared', 'alice', stdio)).rejects.toThrow(
-    'Credentials',
-  );
+  await expect(resolveCredentialBinding('shared', 'alice', stdio)).rejects.toThrow('Credentials');
 });
 
 test('localizes missing credential guidance from the request language', async () => {
@@ -401,4 +397,164 @@ test('validates args slots and their references independently of env slots', () 
   }
   expect(() => validateCredentialTemplate({ ...config, type: 'sse' })).toThrow();
   expect(() => validateCredentialTemplate({ ...config, credentialTemplate: undefined })).toThrow();
+});
+
+const regionalHttp: ServerConfig = {
+  type: 'streamable-http',
+  url: 'https://mcp.{{url.region}}.example.com/{{url.tenant}}/mcp',
+  credentialTemplate: [
+    { target: 'url', name: 'region', allowed: ['us', 'eu'] },
+    { target: 'url', name: 'tenant', allowed: ['team_a', 'team-b'] },
+    { target: 'headers', name: 'X-Key' },
+  ],
+};
+
+test('isolates URL selections, preserves metadata and retires narrowed choices', async () => {
+  for (const [user, region] of [
+    ['alice', 'us'],
+    ['bob', 'eu'],
+  ]) {
+    await saveCredentialBinding('regional', user, regionalHttp, {
+      'url.region': region,
+      'url.tenant': 'team_a',
+      'headers.X-Key': user,
+    });
+    const resolved = await resolveCredentialBinding('regional', user, regionalHttp);
+    expect(resolved.config.url).toBe(`https://mcp.${region}.example.com/team_a/mcp`);
+    expect(resolved.config.headers?.['X-Key']).toBe(user);
+  }
+  expect(presentServerForPrincipal(regionalHttp, { username: 'alice' }).data).toHaveProperty(
+    'credentialTemplate',
+    regionalHttp.credentialTemplate,
+  );
+  const narrowed: ServerConfig = {
+    ...regionalHttp,
+    credentialTemplate: regionalHttp.credentialTemplate!.map((slot) =>
+      slot.name === 'region' ? { ...slot, allowed: ['eu'] } : slot,
+    ),
+  };
+  await expect(resolveCredentialBinding('regional', 'alice', narrowed)).rejects.toThrow();
+  expect(await getCredentialBindingStatus('regional', 'alice', narrowed)).toMatchObject({
+    configured: false,
+  });
+  await expect(
+    saveCredentialBinding('regional', 'alice', narrowed, {
+      'url.region': 'us',
+      'url.tenant': 'team_a',
+      'headers.X-Key': 'key',
+    }),
+  ).rejects.toThrow();
+  expect(regionalHttp.url).toContain('{{url.region}}');
+});
+
+test.each(['https://{{url.region}}.example.com/mcp', 'https://example.com/{{url.region}}/mcp'])(
+  'accepts complete URL components: %s',
+  (url) => {
+    expect(
+      validateCredentialTemplate({
+        ...regionalHttp,
+        url,
+        credentialTemplate: [regionalHttp.credentialTemplate![0]],
+      }),
+    ).toEqual([regionalHttp.credentialTemplate![0]]);
+  },
+);
+
+test.each([
+  'https://prefix-{{url.region}}.example.com/mcp',
+  'https://example.com/prefix-{{url.region}}',
+  '{{url.region}}://example.com/mcp',
+  'https://example.com:{{url.region}}/mcp',
+  'https://{{url.region}}@example.com/mcp',
+  'https://example.com/?region={{url.region}}',
+  'https://example.com/#{{url.region}}',
+  'https://example.com/{{url.missing}}',
+  'https://example.com/{{url.region',
+  'https://example.com/mcp',
+])('rejects unsafe or unused URL references: %s', (url) => {
+  expect(() =>
+    validateCredentialTemplate({
+      ...regionalHttp,
+      url,
+      credentialTemplate: [regionalHttp.credentialTemplate![0]],
+    }),
+  ).toThrow();
+});
+
+test.each(['..', '.', 'a/b', 'a\\b', '%2f', '%2e%2e', 'a?b', 'a#b', '', 'a@b'])(
+  'rejects structural path values: %s',
+  (value) => {
+    expect(() =>
+      validateCredentialTemplate({
+        type: 'sse',
+        url: 'https://example.com/{{url.region}}',
+        credentialTemplate: [{ target: 'url', name: 'region', allowed: [value] }],
+      }),
+    ).toThrow();
+  },
+);
+
+test.each(['a.b', '-us', 'us-', 'a_b', 'a:80', 'a@b'])(
+  'rejects invalid host labels: %s',
+  (value) => {
+    expect(() =>
+      validateCredentialTemplate({
+        type: 'sse',
+        url: 'https://{{url.region}}.example.com',
+        credentialTemplate: [{ target: 'url', name: 'region', allowed: [value] }],
+      }),
+    ).toThrow();
+  },
+);
+
+test.each([undefined, [], ['us', 'us'], ['us', 1], Array(257).fill('us')])(
+  'requires a bounded non-empty unique URL allowlist: %j',
+  (allowed) => {
+    expect(() =>
+      validateCredentialTemplate({
+        type: 'sse',
+        url: 'https://example.com/{{url.region}}',
+        credentialTemplate: [{ target: 'url', name: 'region', allowed } as never],
+      }),
+    ).toThrow();
+  },
+);
+
+test('keeps URL names case-sensitive and permits static ports', () => {
+  const config: ServerConfig = {
+    type: 'sse',
+    url: 'https://{{url.region}}.{{url.Region}}:8443/mcp',
+    credentialTemplate: [
+      { target: 'url', name: 'region', allowed: ['us'] },
+      { target: 'url', name: 'Region', allowed: ['eu'] },
+    ],
+  };
+  expect(validateCredentialTemplate(config)).toEqual(config.credentialTemplate);
+  expect(() =>
+    validateCredentialTemplate({ ...config, oauth: { identityMode: 'personal' } }),
+  ).toThrow('OAuth');
+  expect(() => validateCredentialTemplate({ ...config, type: 'openapi' })).toThrow();
+});
+
+test('rejects long malformed URL templates without ambiguous component matching', () => {
+  expect(() =>
+    validateCredentialTemplate({
+      type: 'sse',
+      url: 'http://' + '"'.repeat(20_000) + '?\n',
+      credentialTemplate: [{ target: 'url', name: 'region', allowed: ['us'] }],
+    }),
+  ).toThrow('Invalid URL credential template');
+});
+
+test.each([
+  'https://{{url.region}}.example.com',
+  'https://{{url.region}}.example.com?key=value#fragment',
+  'https://example.com/{{url.region}}/mcp?key=value#fragment',
+])('preserves URL component boundaries: %s', (url) => {
+  const config: ServerConfig = {
+    type: 'sse',
+    url,
+    credentialTemplate: [{ target: 'url', name: 'region', allowed: ['us'] }],
+  };
+  expect(validateCredentialTemplate(config)).toEqual(config.credentialTemplate);
 });

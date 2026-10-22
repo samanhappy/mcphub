@@ -10,6 +10,8 @@ import { logger } from '../utils/logger.js';
 import type { ServerConfig, StoredCredentialBinding } from '../types/index.js';
 import {
   CredentialBindingError,
+  isCredentialValueAllowed,
+  resolveCredentialUrl,
   argumentCredentialBindings,
   credentialSlotId,
   validateCredentialTemplate,
@@ -98,7 +100,9 @@ export const encryptCredentialValues = async (
   ].join('.');
 };
 
-export const decryptCredentialValues = async (binding: StoredCredentialBinding): Promise<Record<string, string>> => {
+export const decryptCredentialValues = async (
+  binding: StoredCredentialBinding,
+): Promise<Record<string, string>> => {
   const key = await encryptionKey();
   try {
     const [version, iv, tag, ciphertext] = binding.encryptedValues.split('.');
@@ -147,8 +151,8 @@ export const getCredentialBindingStatus = async (
   const slots = validateCredentialTemplate(config) || [];
   const values = binding ? await decryptCredentialValues(binding) : {};
   const configuredSlots = slots
-    .map(credentialSlotId)
-    .filter((id) => typeof values[id] === 'string' && values[id].length > 0);
+    .filter((slot) => isCredentialValueAllowed(slot, values[credentialSlotId(slot)]))
+    .map(credentialSlotId);
   return {
     configured: slots.length > 0 && configuredSlots.length === slots.length,
     configuredSlots,
@@ -183,10 +187,16 @@ export const saveCredentialBinding = async (
     throw new CredentialBindingError(
       'Provide a non-empty value for every declared slot; undeclared slots and invalid header values are not allowed',
     );
+  if (slots.some((slot) => !isCredentialValueAllowed(slot, record[credentialSlotId(slot)])))
+    throw new CredentialBindingError('Invalid URL credential binding');
   await getCredentialBindingDao().save({
     serverName,
     username,
-    encryptedValues: await encryptCredentialValues(serverName, username, record as Record<string, string>),
+    encryptedValues: await encryptCredentialValues(
+      serverName,
+      username,
+      record as Record<string, string>,
+    ),
     updatedAt: new Date().toISOString(),
   });
   credentialBindingEvents.emit('invalidate', { serverName, username });
@@ -253,6 +263,7 @@ export const resolveCredentialBinding = async (
   const values = await decryptCredentialValues(binding);
   const resolved: ServerConfig = {
     ...config,
+    url: resolveCredentialUrl(config, values),
     env: { ...config.env },
     headers: { ...config.headers },
   };
@@ -260,6 +271,7 @@ export const resolveCredentialBinding = async (
   for (const slot of slots) {
     const value = values[credentialSlotId(slot)];
     if (typeof value !== 'string' || !value.length) throw missingCredentialError(serverName);
+    if (slot.target === 'url') continue;
     if (slot.target === 'args') {
       argumentValues[slot.name] = value;
       continue;

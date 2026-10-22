@@ -1429,6 +1429,8 @@
     "slots": "个人凭据字段",
     "slotsHint": "仅声明字段名。所有字段均需用户绑定，缺失时不会回退到组织凭据。",
     "target": "凭据目标",
+    "urlHint": "URL 槽请将 {{placeholder}} 放在完整的主机标签或路径段位置，并在下方填写允许值。",
+    "allowed": "允许的值（每行一个）",
     "argsHint": "参数字段请在参数中使用 {{placeholder}}，将 API_KEY 替换为字段名。值按原样传入，无需 shell。",
     "fieldName": "字段名",
     "label": "显示名称（可选）",
