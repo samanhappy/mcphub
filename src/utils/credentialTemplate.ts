@@ -41,7 +41,7 @@ const validateUrlSlots = (config: ServerConfig, slots: CredentialSlot[]): void =
   if (!hasUrlCredentialSlots(config) && !url.includes('{{url.')) return;
   if (!['sse', 'streamable-http', undefined].includes(config.type))
     throw new CredentialBindingError('URL slots require an SSE or Streamable HTTP server');
-  const parts = /^(https?:\/\/)([^/?#]+)([^?#]*)(.*)$/.exec(url);
+  const parts = /^(https?:\/\/)([^/?#]+)(\/[^?#]*)?([?#].*)?$/.exec(url);
   if (!parts) throw new CredentialBindingError('Invalid URL credential template');
   const checkComponent = (part: string, host: boolean): string => {
     const match = /^\{\{url\.([A-Za-z_][A-Za-z0-9_]*)\}\}$/.exec(part);
@@ -64,11 +64,11 @@ const validateUrlSlots = (config: ServerConfig, slots: CredentialSlot[]): void =
     .split(/\.(?![^{}]*\}\})/)
     .map((part) => checkComponent(part, true))
     .join('.');
-  const pathname = parts[3]
+  const pathname = (parts[3] || '')
     .split('/')
     .map((part) => checkComponent(part, false))
     .join('/');
-  const replaced = parts[1] + authority + port + pathname + parts[4];
+  const replaced = parts[1] + authority + port + pathname + (parts[4] || '');
   if (
     replaced.includes('{{url.') ||
     slots.some((slot) => slot.target === 'url' && !referenced.has(slot.name))

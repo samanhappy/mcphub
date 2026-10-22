@@ -535,3 +535,26 @@ test('keeps URL names case-sensitive and permits static ports', () => {
   ).toThrow('OAuth');
   expect(() => validateCredentialTemplate({ ...config, type: 'openapi' })).toThrow();
 });
+
+test('rejects long malformed URL templates without ambiguous component matching', () => {
+  expect(() =>
+    validateCredentialTemplate({
+      type: 'sse',
+      url: 'http://' + '"'.repeat(20_000) + '?\n',
+      credentialTemplate: [{ target: 'url', name: 'region', allowed: ['us'] }],
+    }),
+  ).toThrow('Invalid URL credential template');
+});
+
+test.each([
+  'https://{{url.region}}.example.com',
+  'https://{{url.region}}.example.com?key=value#fragment',
+  'https://example.com/{{url.region}}/mcp?key=value#fragment',
+])('preserves URL component boundaries: %s', (url) => {
+  const config: ServerConfig = {
+    type: 'sse',
+    url,
+    credentialTemplate: [{ target: 'url', name: 'region', allowed: ['us'] }],
+  };
+  expect(validateCredentialTemplate(config)).toEqual(config.credentialTemplate);
+});
