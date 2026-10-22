@@ -1,3 +1,4 @@
+import { hasPersonalAuthentication } from '../utils/credentialTemplate.js';
 import { matchesNamePattern } from '../utils/namePattern.js';
 import { validateAllowedCidrs } from '../utils/ssrf.js';
 import {
@@ -22,6 +23,7 @@ import {
 } from '../types/index.js';
 import {
   getServersInfo,
+  getServerToolsForPrincipal,
   addServer,
   addOrUpdateServer,
   removeServer,
@@ -1673,7 +1675,25 @@ export const batchToggleTools = async (req: Request, res: Response): Promise<voi
     const server = await loadAuthorizedServer(req, res, serverName);
     if (!server) return;
     const liveServer = getServerByName(serverName);
-    if (!liveServer?.tools) {
+    let inventory = liveServer?.tools;
+    if (hasPersonalAuthentication(server)) {
+      const principal = getRequestUser(req);
+      // Never borrow another user's inventory or fall back to the global placeholder.
+      if (!principal) {
+        res.status(403).json({ success: false, message: 'Forbidden' });
+        return;
+      }
+      try {
+        inventory = await getServerToolsForPrincipal(serverName, principal);
+      } catch {
+        res.status(409).json({
+          success: false,
+          message: 'Personal tool inventory is unavailable; connect with your personal authentication first',
+        });
+        return;
+      }
+    }
+    if (!inventory) {
       res
         .status(409)
         .json({
@@ -1682,7 +1702,7 @@ export const batchToggleTools = async (req: Request, res: Response): Promise<voi
         });
       return;
     }
-    const runtimeNames = liveServer.tools.map((tool) => tool.name);
+    const runtimeNames = inventory.map((tool) => tool.name);
     const prefix = `${serverName}${getNameSeparator()}`;
     const matchedTools = runtimeNames.filter((name) =>
       patterns.some((pattern) => {
@@ -1704,7 +1724,7 @@ export const batchToggleTools = async (req: Request, res: Response): Promise<voi
         res.status(500).json({ success: false, message: 'Failed to save settings' });
         return;
       }
-      if (liveServer.config) liveServer.config = { ...liveServer.config, tools };
+      if (liveServer?.config) liveServer.config = { ...liveServer.config, tools };
       notifyToolChanged();
     }
     const data: BatchToggleToolsResponse = { matchedTools, enabled };

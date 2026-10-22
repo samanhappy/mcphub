@@ -52,6 +52,7 @@ const mockBroadcastPromptListChanged = jest.fn();
 const mockBroadcastResourceListChanged = jest.fn();
 const mockSyncToolEmbedding = jest.fn();
 const mockGetServerByName = jest.fn();
+const mockGetServerToolsForPrincipal = jest.fn();
 const mockAddServer = jest.fn();
 const mockAddOrUpdateServer = jest.fn();
 const mockRemoveServer = jest.fn();
@@ -79,6 +80,7 @@ jest.mock('../../src/dao/DaoFactory.js', () => ({
 
 jest.mock('../../src/services/mcpService.js', () => ({
   getServersInfo: mockGetServersInfo,
+  getServerToolsForPrincipal: mockGetServerToolsForPrincipal,
   addServer: mockAddServer,
   addOrUpdateServer: mockAddOrUpdateServer,
   removeServer: mockRemoveServer,
@@ -3343,6 +3345,44 @@ describe('batchToggleTools', () => {
     await batchToggleTools(request({ enabled: false, tools: ['*'] }), res);
     expect(res.status).toHaveBeenCalledWith(404);
     expect(mockServerDao.updateTools).not.toHaveBeenCalled();
+  });
+  it.each([
+    { oauth: { identityMode: 'personal' } },
+    { credentialTemplate: [{ target: 'env', name: 'PERSONAL_KEY' }] },
+  ])('uses the requesting principal inventory for %j', async (personalConfig) => {
+    mockServerDao.findById.mockResolvedValue({ name: 'svc', owner: 'admin', ...personalConfig });
+    live.tools = [];
+    mockGetServerToolsForPrincipal.mockResolvedValue([{ name: 'svc::owner_tool' }]);
+    const res = response();
+    await batchToggleTools(request({ enabled: false, tools: ['*'] }), res);
+    expect(mockGetServerToolsForPrincipal).toHaveBeenCalledWith('svc', {
+      username: 'admin',
+      isAdmin: true,
+    });
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        success: true,
+        data: { matchedTools: ['svc::owner_tool'], enabled: false },
+      }),
+    );
+    expect(mockServerDao.updateTools).toHaveBeenCalledWith('svc', {
+      'svc::owner_tool': { enabled: false },
+    });
+  });
+  it('does not fall back to the global inventory when personal authentication fails', async () => {
+    mockServerDao.findById.mockResolvedValue({
+      name: 'svc',
+      owner: 'admin',
+      oauth: { identityMode: 'personal' },
+    });
+    mockGetServerToolsForPrincipal.mockRejectedValue(new Error('private upstream failure'));
+    const res = response();
+    await batchToggleTools(request({ enabled: false, tools: ['*'] }), res);
+    expect(res.status).toHaveBeenCalledWith(409);
+    expect(mockServerDao.updateTools).not.toHaveBeenCalled();
+    expect(JSON.stringify(jest.mocked(res.json).mock.calls)).not.toContain(
+      'private upstream failure',
+    );
   });
   it('returns a successful no-op for unmatched patterns', async () => {
     const res = response();

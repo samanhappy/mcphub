@@ -36,7 +36,7 @@ import {
   listMyCredentials,
   updateMyCredential,
 } from '../../src/controllers/credentialBindingController.js';
-import { getServerConfig } from '../../src/controllers/serverController.js';
+import { getServerConfig, batchToggleTools } from '../../src/controllers/serverController.js';
 import {
   handleMcpPostRequest,
   handleSseConnection,
@@ -47,6 +47,8 @@ import {
   initializeClientsFromSettings,
   cleanupAllServers,
   getServersInfo,
+  getServerByName,
+  removeServer,
   getServerConnectionStats,
   handleCallToolRequest,
   handleListToolsRequest,
@@ -169,6 +171,7 @@ beforeAll(async () => {
   app.put('/api/credentials/:name', updateMyCredential);
   app.delete('/api/credentials/:name', updateMyCredential);
   app.get('/api/servers/:name', getServerConfig);
+  app.post('/api/servers/:serverName/tools/toggle', batchToggleTools);
   app.get('/api/groups', getGroups);
   app.get('/api/groups/:id', getGroup);
   app.post('/api/groups', createNewGroup);
@@ -1167,5 +1170,55 @@ test('a share-list edit keeps personal OAuth for retained users, and access remo
     jest.mocked(createOAuthProvider).mockReset();
     await getCredentialBindingDao().delete({ serverName: 'shareOAuth' });
     await getServerDao().delete('shareOAuth');
+  }
+});
+
+test('batch tool status uses the owner personal inventory and immediately gates discovery and calls', async () => {
+  const name = 'batchPersonal';
+  const prefix = `${name}${getNameSeparator()}`;
+  await getServerDao().create({
+    name,
+    type: 'stdio',
+    command: process.execPath,
+    args: [fixture],
+    owner: alice,
+    visibility: 'public',
+    credentialTemplate: [{ target: 'env', name: 'PERSONAL_KEY' }],
+  });
+  try {
+    await initializeClientsFromSettings(true);
+    for (const [username, value] of [
+      [alice, 'owner-only'],
+      [bob, 'full-other'],
+    ]) {
+      await request(app)
+        .put(`/api/credentials/${name}`)
+        .set('x-auth-token', apiToken(username))
+        .send({ values: { 'env.PERSONAL_KEY': value } })
+        .expect(200);
+    }
+    const ownerClient = await connect(alice, name);
+    const otherClient = await connect(bob, name);
+    expect((await ownerClient.listTools()).tools.map((tool) => tool.name)).toEqual([
+      `${prefix}identity`,
+    ]);
+    expect((await otherClient.listTools()).tools).toHaveLength(2);
+    expect(getServerByName(name)?.tools).toEqual([]);
+    const toggle = (enabled: boolean) =>
+      request(app)
+        .post(`/api/servers/${name}/tools/toggle`)
+        .set('x-auth-token', apiToken(alice))
+        .send({ enabled, tools: ['*'] });
+    const disabled = await toggle(false).expect(200);
+    expect(disabled.body.data.matchedTools).toEqual([`${prefix}identity`]);
+    expect((await ownerClient.listTools()).tools).toEqual([]);
+    expect((await ownerClient.callTool({ name: `${prefix}identity` })).isError).toBe(true);
+    expect((await otherClient.listTools()).tools.map((tool) => tool.name)).toEqual([
+      `${prefix}rotate_identity`,
+    ]);
+    await toggle(true).expect(200);
+    expect((await ownerClient.callTool({ name: `${prefix}identity` })).isError).toBeFalsy();
+  } finally {
+    await removeServer(name);
   }
 });
