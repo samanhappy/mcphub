@@ -199,9 +199,10 @@ Or with a locally spawned Playwright MCP using its `--isolated` flag:
 ```
 
 <Tip>
-Only enable `perSessionClient` for servers that actually hold per-session state.
+Enable `perSessionClient` for servers that hold per-session state or need
+[legacy tool-call elicitation forwarding](/api-reference/mcp-http#elicitation-forwarding).
 It multiplies upstream connections (and stdio child processes) by the number of
-concurrent sessions, so leave it off for stateless servers.
+concurrent sessions, so leave it off when neither feature is needed.
 </Tip>
 
 ### Routing headers over MCP 2026-07-28

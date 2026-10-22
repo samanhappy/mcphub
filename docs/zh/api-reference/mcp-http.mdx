@@ -55,6 +55,26 @@ MCP Apps 透传还取决于请求路由和可见的上游服务器；`$smart` �
 路由处理。参见 [MCP Apps](/zh/features/mcp-apps)。上游 MCP 连接目前继续使用
 旧版协议协商；新版下游请求不会自动升级上游服务器。
 
+## Elicitation 转发
+
+旧协议客户端调用工具时，若上游服务器启用了 `perSessionClient: true`，MCPHub 会转发
+form 和 URL 模式的 `elicitation/create` 请求。独立连接只声明下游客户端支持的模式；
+旧式空能力 `elicitation: {}` 仅表示支持 form。accept、decline 和 cancel 响应原样返回
+上游，URL 完成通知仅发送给所属下游会话。普通工具调用和智能路由的 `call_tool` 均支持。
+
+旧协议没有可移植的父调用标识，因此同一会话内、启用 elicitation 的上游连接会串行执行
+工具调用；不同会话使用不同连接。取消调用、结束会话或超时会中止等待中的交互。请求
+抛出异常时会丢弃上游连接，不自动重放调用；下次调用重新连接，上游会话状态需要重新
+建立。正常返回的 `isError` 工具响应仍按原样交付。
+
+首期不支持共享上游连接、个人凭据/OAuth 运行时、提示词或资源操作，也不支持新版
+`2026-07-28` 多轮 elicitation；这些路径不会声明 elicitation 能力。
+新版客户端即使携带 `X-MCPHub-State-Id` 也不会启用 elicitation。
+
+form 模式用于普通结构化输入。密码、API Key 和访问令牌必须使用 URL 模式，在上游
+服务页面收集，不能通过 MCP 表单传递。交互界面由连接的 MCP 客户端提供，MCPHub
+不会新增控制台输入弹窗。
+
 ## 客户端迁移
 
 1. 将旧 SSE 客户端传输改为 HTTP 传输，将 `/sse` 改为 `/mcp`，保留原有群组、

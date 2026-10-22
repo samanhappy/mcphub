@@ -56,6 +56,35 @@ MCP Apps passthrough also depends on the route and visible upstream servers;
 Upstream MCP connections currently retain legacy protocol negotiation; a modern
 downstream request does not upgrade an upstream server.
 
+## Elicitation forwarding
+
+For legacy clients, MCPHub forwards form and URL `elicitation/create` requests
+during tool calls when the upstream server has `perSessionClient: true`.
+The isolated connection advertises only the modes declared by its downstream
+client; the legacy empty `elicitation: {}` capability means form support only.
+Accept, decline and cancel responses are returned to the upstream unchanged.
+URL completion notifications are sent only to the owning downstream session.
+This works for direct calls and Smart Routing's `call_tool`.
+
+Calls on an elicitation-enabled upstream connection run sequentially within
+each downstream session because legacy requests do not provide a portable
+parent-call identifier. Other sessions use separate connections. Cancelling a
+call, ending the session, or a timeout aborts the pending interaction. A thrown
+request error discards the upstream connection without automatically replaying
+the call, so the next call creates a fresh connection and any upstream session
+state must be rebuilt. A completed tool response with `isError` is still returned
+normally.
+
+Shared upstream connections, personal-credential/OAuth runtimes, prompt/resource
+operations, and modern `2026-07-28` multi-round-trip elicitation are not supported
+in this initial implementation. These paths do not advertise elicitation.
+Enabling `X-MCPHub-State-Id` does not enable elicitation for modern clients.
+
+Form elicitation is for ordinary structured input. Passwords, API keys and
+access tokens must use URL mode, with sensitive input collected on the upstream
+service's page rather than in an MCP form. MCPHub does not add a dashboard input
+dialog; the connected MCP client provides the interaction UI.
+
 ## Migrating a client
 
 1. Replace the legacy SSE client transport with an HTTP transport, and change
