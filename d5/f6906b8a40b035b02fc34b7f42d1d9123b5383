@@ -1,0 +1,26 @@
+src/services/personalOAuthService.ts
+  s_f1d898ca26682f::t_5511ec8f7cd091 78-79,85-89,102
+tests/integration/personal-oauth.test.ts
+  s_f1d898ca26682f::t_06f91a0f1e167b 194-196,200-202
+  s_f1d898ca26682f::t_0288390b852130 16,181-193,197-199,203-206
+  s_f1d898ca26682f::t_326cfdca565b33 207
+tests/services/personalOAuthService.test.ts
+  s_f1d898ca26682f::t_06f91a0f1e167b 309-312,325-327,329-331
+  s_f1d898ca26682f::t_0288390b852130 297-308,313-324,328,332-336
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d5f6906b8a40b035b02fc34b7f42d1d9123b5383",
+  "prompts": {},
+  "sessions": {
+    "s_f1d898ca26682f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a15eb9-003f-7683-803b-c5903a50ee5d",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,31 @@
+frontend/src/components/ServerCard.tsx
+  s_6f7fd9a552afdf::t_d5b20863a6609b 206-207,530,533,536
+frontend/src/types/index.ts
+  s_6f7fd9a552afdf::t_38236af868eb6f 334
+locales/en.json
+  s_6f7fd9a552afdf::t_ea7049a873a019 174
+locales/es.json
+  s_6f7fd9a552afdf::t_46cf666332ae85 174
+locales/fr.json
+  s_6f7fd9a552afdf::t_7a9babb2266ae9 174
+locales/tr.json
+  s_6f7fd9a552afdf::t_ffc30ba662f253 174
+locales/zh.json
+  s_6f7fd9a552afdf::t_c6f11c9b4d0cd1 174
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0584df927cf18ed445e1bbdc8f9c8f630ada97e6",
+  "prompts": {},
+  "sessions": {
+    "s_6f7fd9a552afdf": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a15ec2-e055-7433-99b0-c16f719b38ed",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
