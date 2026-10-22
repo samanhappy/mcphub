@@ -1424,6 +1424,8 @@
     "slots": "Kişisel kimlik bilgisi alanları",
     "slotsHint": "Yalnızca alan adlarını tanımlayın. Tüm alanlar zorunludur; kuruluş bilgilerine otomatik dönüş yapılmaz.",
     "target": "Kimlik bilgisi hedefi",
+    "urlHint": "URL alanları için {{placeholder}} ifadesini tam bir ana makine etiketi veya yol bölümü olarak kullanın ve izin verilen değerleri listeleyin.",
+    "allowed": "İzin verilen değerler (her satıra bir değer)",
     "argsHint": "Argüman alanları için bir argümanda {{placeholder}} kullanın ve API_KEY yerine alan adını yazın. Değerler kabuk kullanılmadan olduğu gibi aktarılır.",
     "fieldName": "Alan adı",
     "label": "Etiket (isteğe bağlı)",

@@ -103,3 +103,28 @@ describe.each(['sse', 'streamable-http'] as const)('%s dashboard credential slot
     expect(() => normalizeServerConfigForPersistence(payload)).toThrow('OAuth');
   });
 });
+
+test.each(['sse', 'streamable-http'] as const)(
+  '%s URL slots survive dashboard persistence',
+  (serverType) => {
+    const credentialTemplate = [{ target: 'url' as const, name: 'region', allowed: ['us', 'eu'] }];
+    const payload = buildServerPayload({
+      formData: {
+        name: 'regional',
+        url: 'https://mcp.{{url.region}}.example.com/mcp',
+        command: '',
+        arguments: '',
+        args: [],
+        env: [],
+        headers: [],
+        credentialTemplate,
+      },
+      serverType,
+      envVars: [],
+      headerVars: [],
+    }).config as ServerConfig;
+    expect(normalizeServerConfigForPersistence(payload).credentialTemplate).toEqual(
+      credentialTemplate,
+    );
+  },
+);

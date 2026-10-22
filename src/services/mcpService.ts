@@ -39,6 +39,7 @@ import {
   hasCredentialTemplate,
   hasPersonalAuthentication,
   resolveCredentialArguments,
+  hasUrlCredentialSlots,
   validateCredentialTemplate,
 } from '../utils/credentialTemplate.js';
 import os from 'os';
@@ -1655,7 +1656,7 @@ export const createTransportFromConfig = async (name: string, conf: ServerConfig
   // skip the internal-IP blocklist. allowInternal also governs per-hop
   // redirect validation in createRedirectValidatingFetch below.
   const ownerUser = conf.owner ? await getUserDao().findByUsername(conf.owner) : null;
-  const allowInternal = !!ownerUser?.isAdmin;
+  const allowInternal = !!ownerUser?.isAdmin && !hasUrlCredentialSlots(conf);
 
   if (conf.url) {
     await assertSafeUrl(conf.url, { allowInternal });

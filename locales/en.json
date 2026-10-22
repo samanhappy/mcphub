@@ -1427,6 +1427,8 @@
     "slots": "Per-user credential slots",
     "slotsHint": "Declare field names only. Every slot requires a personal binding; organization credentials are never used as a fallback.",
     "target": "Credential target",
+    "urlHint": "For URL slots, place {{placeholder}} as a complete host label or path segment and list allowed values below.",
+    "allowed": "Allowed values (one per line)",
     "argsHint": "For argument slots, use {{placeholder}} in an argument, replacing API_KEY with the field name. Values are inserted literally without a shell.",
     "fieldName": "Field name",
     "label": "Label (optional)",

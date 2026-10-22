@@ -175,3 +175,35 @@ describe('MCP Service - header env var expansion from server config', () => {
     },
   );
 });
+
+describe.each(['sse', 'streamable-http'] as const)('%s personal URL SSRF protection', (type) => {
+  test('does not inherit the admin internal-network exemption', async () => {
+    await expect(
+      createTransportFromConfig('regional', {
+        type,
+        owner: 'admin',
+        url: 'http://127.0.0.1/mcp',
+        credentialTemplate: [{ target: 'url', name: 'region', allowed: ['us'] }],
+      }),
+    ).rejects.toThrow('Blocked target IP');
+  });
+
+  test('validates redirects for admin-owned personal URL slots', async () => {
+    await createTransportFromConfig('regional', {
+      type,
+      owner: 'admin',
+      url: 'https://8.8.8.8/mcp',
+      credentialTemplate: [{ target: 'url', name: 'region', allowed: ['us'] }],
+    });
+    mockBaseFetch.mockResolvedValueOnce(
+      new Response(null, {
+        status: 302,
+        headers: { location: 'http://127.0.0.1/metadata' },
+      }),
+    );
+    const transport = type === 'sse' ? SSEClientTransport : StreamableHTTPClientTransport;
+    const options = (transport as jest.Mock).mock.calls.at(-1)[1];
+    const fetch = type === 'sse' ? options.eventSourceInit.fetch : options.fetch;
+    await expect(fetch('https://8.8.8.8/mcp')).rejects.toThrow('Blocked target IP');
+  });
+});

@@ -49,7 +49,12 @@ const presentSafeServerConfig = (config: ServerConfigLike): ServerConfigLike => 
     safe.oauth = { identityMode: 'personal' };
   if (Array.isArray(config.credentialTemplate)) {
     safe.credentialTemplate = config.credentialTemplate.map(
-      ({ target, name, label }: CredentialSlot) => ({ target, name, ...(label ? { label } : {}) }),
+      ({ target, name, label, allowed }: CredentialSlot) => ({
+        target,
+        name,
+        ...(label ? { label } : {}),
+        ...(allowed ? { allowed: [...allowed] } : {}),
+      }),
     );
   }
   // Explicit marker so callers (and the dashboard) can tell a restricted view

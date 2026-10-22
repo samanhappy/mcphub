@@ -194,7 +194,8 @@ export interface ProxychainsConfig {
 }
 
 export interface CredentialSlot {
-  target: 'env' | 'headers' | 'args';
+  target: 'env' | 'headers' | 'args' | 'url';
+  allowed?: string[];
   name: string;
   label?: string;
 }

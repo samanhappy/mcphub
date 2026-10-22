@@ -1425,6 +1425,8 @@
     "slots": "Champs d’identifiants personnels",
     "slotsHint": "Déclarez uniquement les noms des champs. Chaque champ est obligatoire, sans repli sur les identifiants de l’organisation.",
     "target": "Destination du champ",
+    "urlHint": "Pour les champs URL, utilisez {{placeholder}} comme étiquette d’hôte ou segment de chemin complet et listez les valeurs autorisées.",
+    "allowed": "Valeurs autorisées (une par ligne)",
     "argsHint": "Pour les champs d’argument, utilisez {{placeholder}} dans un argument en remplaçant API_KEY par le nom du champ. Les valeurs sont insérées littéralement sans shell.",
     "fieldName": "Nom du champ",
     "label": "Libellé (facultatif)",

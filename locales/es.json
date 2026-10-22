@@ -1427,6 +1427,8 @@
     "slots": "Campos de credenciales por usuario",
     "slotsHint": "Declara solo nombres de campos. Cada campo requiere una vinculación personal; las credenciales de la organización nunca se usan como alternativa.",
     "target": "Destino de la credencial",
+    "urlHint": "Para campos URL, use {{placeholder}} como etiqueta de host o segmento de ruta completo e indique los valores permitidos.",
+    "allowed": "Valores permitidos (uno por línea)",
     "argsHint": "Para campos de argumento, usa {{placeholder}} en un argumento, sustituyendo API_KEY por el nombre del campo. Los valores se insertan literalmente sin shell.",
     "fieldName": "Nombre del campo",
     "label": "Etiqueta (opcional)",
