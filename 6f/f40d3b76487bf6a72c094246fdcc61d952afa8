@@ -1,0 +1,21 @@
+src/utils/credentialTemplate.ts
+  s_b0941a93fde056::t_128658b152e39e 44,67,71
+tests/services/credentialBindingService.test.ts
+  s_b0941a93fde056::t_128658b152e39e 538-560
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6ff40d3b76487bf6a72c094246fdcc61d952afa8",
+  "prompts": {},
+  "sessions": {
+    "s_b0941a93fde056": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a16150-6ab3-7411-9989-1be3fbf43f62",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
