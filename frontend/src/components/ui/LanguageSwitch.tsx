@@ -10,6 +10,7 @@ const LanguageSwitch: React.FC = () => {
   // Available languages
   const availableLanguages = [
     { code: 'en', label: 'English' },
+    { code: 'vi', label: 'Tiếng Việt' },
     { code: 'zh', label: '中文' },
     { code: 'fr', label: 'Français' },
     { code: 'tr', label: 'Türkçe' },
