@@ -1,0 +1,24 @@
+frontend/src/components/ServerCard.tsx
+  s_9b79f822634d1a::t_f0b1d3d3303772 520,522-523,533-534,537,542,546
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2e57671261ea3e32bc415e18672e1b27d594409d",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_9b79f822634d1a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1695a-ed02-7d32-b89a-9e1767469033",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
