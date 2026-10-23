@@ -1,0 +1,29 @@
+frontend/src/index.css
+  s_6b122fc47ec5f8::t_31d5277a0a59ca 285-287,411-413
+  s_6b122fc47ec5f8::t_9f0fad6ebf7be8 282-284
+  s_6b122fc47ec5f8::t_ed156b91f92e86 408-410
+  s_6b122fc47ec5f8::t_5b9f8785aa3cc2 378,380,1137-1156
+frontend/src/components/ServerCard.tsx
+  s_6b122fc47ec5f8::t_fa7949e4388b61 522,541-542
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4ca5f036588c8e6bb5c4ba194d0d2a0fc1a227b6",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_6b122fc47ec5f8": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "7a8e193a-98ef-45c9-b4d4-07498ea933f8",
+        "model": "claude-sonnet-5.5"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
