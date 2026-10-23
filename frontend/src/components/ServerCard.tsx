@@ -883,6 +883,26 @@ const ServerCard = ({
               padding: '14px 16px 16px 38px',
             }}
           >
+            {server.config?.description && (
+              <section
+                className="mb-3"
+                aria-labelledby={`server-about-${server.name}`}
+              >
+                <h3
+                  id={`server-about-${server.name}`}
+                  className="text-[11px] font-medium tracking-wide uppercase"
+                  style={{ color: 'var(--hub-ink-3)', marginBottom: 6 }}
+                >
+                  {t('server.description')}
+                </h3>
+                <p
+                  className="text-[13px] leading-5 whitespace-pre-wrap break-words m-0"
+                  style={{ color: 'var(--hub-ink-2)' }}
+                >
+                  {server.config.description}
+                </p>
+              </section>
+            )}
             {/* Capability tabs + endpoint on same row */}
             <div className="flex items-center gap-1 mb-2 flex-wrap">
               {capabilitySummaries.map((tab) => {
