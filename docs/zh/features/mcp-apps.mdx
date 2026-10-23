@@ -30,7 +30,7 @@ MCPHub 支持将 [MCP Apps](https://github.com/modelcontextprotocol/ext-apps) �
 
 分组和聚合路由始终使用限定名（如 `weather-station::forecast`），即使只有一个成员。分组别名和配置的名称分隔符仍然生效。这些路由上的组件应使用工具列表或宿主上下文中的限定名。
 
-先前公布的原始名和限定名，在路由能够无歧义解析时仍可调用，并遵守相同的工具可见性和访问限制。Apps 支持情况仍决定 Apps 元数据和仅 App 可用工具的可见性。
+先前公布的原始名和限定名，在路由能够无歧义解析时仍可调用，并遵守相同的工具可见性和访问限制。直接路由优先匹配上游原名；与旧限定名冲突时，以原名为准，`call_tool`、`search_tools` 和 `describe_tool` 等名称也适用。Apps 支持情况仍决定 Apps 元数据和仅 App 可用工具的可见性。
 
 ## UI 资源
 

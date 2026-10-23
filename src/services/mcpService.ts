@@ -3783,12 +3783,22 @@ const findToolOnServer = (
   serverInfo: ServerInfo,
   toolName: string,
   allowRawName: boolean,
+  preferRawName = false,
 ): Tool | undefined => {
-  const tool = serverInfo.tools.find(
-    (tool) =>
-      tool.name === toolName ||
-      (allowRawName && normalizeToolNameForServer(serverInfo.name, tool.name) === toolName),
-  );
+  // A listed upstream name takes precedence over a colliding legacy cache alias.
+  const rawTool =
+    preferRawName && allowRawName
+      ? serverInfo.tools.find(
+          (tool) => normalizeToolNameForServer(serverInfo.name, tool.name) === toolName,
+        )
+      : undefined;
+  const tool =
+    rawTool ||
+    serverInfo.tools.find(
+      (tool) =>
+        tool.name === toolName ||
+        (allowRawName && normalizeToolNameForServer(serverInfo.name, tool.name) === toolName),
+    );
   if (!tool) {
     return undefined;
   }
@@ -3853,7 +3863,12 @@ const resolveToolInGroup = async (
 
     const serverConfig = serverConfigsByName.get(serverInfo.name);
     const internalToolName = resolveNameFromGroup(toolName, serverInfo.name, serverConfig);
-    const tool = findToolOnServer(serverInfo, internalToolName, allowRawName);
+    const tool = findToolOnServer(
+      serverInfo,
+      internalToolName,
+      allowRawName,
+      serverConfigsByName.size === 0,
+    );
     if (!tool) {
       continue;
     }
@@ -4198,20 +4213,31 @@ const handleCallToolRequestImpl = async (request: any, extra: any) => {
   try {
     appsRouteContext = await getMcpAppsRouteContext(sessionId, group);
 
+    const lookupRoute = getGroupLookupName(group);
+    // Direct routes own their listed raw names, even when a tool is disabled.
+    const upstreamOwnsMetaName =
+      SMART_ROUTING_META_TOOL_NAMES.has(request.params.name) &&
+      !!lookupRoute &&
+      !isSmartRoutingGroup(group) &&
+      !(await findRouteGroup(lookupRoute)) &&
+      getVisibleServerByName(lookupRoute)?.tools.some(
+        (tool) => normalizeToolNameForServer(lookupRoute, tool.name) === request.params.name,
+      );
+
     // Special handling for smart routing tools
-    if (request.params.name === 'search_tools') {
+    if (!upstreamOwnsMetaName && request.params.name === 'search_tools') {
       const { query, limit = 10 } = request.params.arguments || {};
       return await handleSearchToolsRequest(query, limit, sessionId, group);
     }
 
     // Special handling for describe_tool (progressive disclosure mode)
-    if (request.params.name === 'describe_tool') {
+    if (!upstreamOwnsMetaName && request.params.name === 'describe_tool') {
       const { toolName } = request.params.arguments || {};
       return await handleDescribeToolRequest(toolName, sessionId, group);
     }
 
     // Special handling for call_tool
-    if (request.params.name === 'call_tool') {
+    if (!upstreamOwnsMetaName && request.params.name === 'call_tool') {
       const { toolName } = request.params.arguments || {};
       if (!toolName) {
         throw new Error('toolName parameter is required');

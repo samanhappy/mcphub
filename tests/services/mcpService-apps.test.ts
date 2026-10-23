@@ -666,6 +666,70 @@ describe('mcpService MCP Apps transparent proxy', () => {
     }
   });
 
+  it.each(['direct', 'wrapped'])(
+    'prefers listed raw names over cached aliases (%s)',
+    async (mode) => {
+      mockClient.listTools.mockResolvedValue({
+        tools: ['check', 'apps-server::check'].map((name) => ({ ...appsTools[0], name })),
+      });
+      await initUpstreamServers();
+      await flushPromises();
+      await getMcpServer('ordinary-session', 'apps-server');
+      const listed = await handleListToolsRequest({}, { sessionId: 'ordinary-session' });
+      expect(listed.tools.map((tool) => tool.name)).toEqual(['check', 'apps-server::check']);
+      for (const name of ['check', 'apps-server::check', 'apps-server::apps-server::check']) {
+        const params =
+          mode === 'direct'
+            ? { name, arguments: {} }
+            : { name: 'call_tool', arguments: { toolName: name, arguments: {} } };
+        const result = await handleCallToolRequest({ params }, { sessionId: 'ordinary-session' });
+        expect(result.isError).toBe(false);
+        expect(mockClient.callTool).toHaveBeenLastCalledWith(
+          { name: name === 'check' ? 'check' : 'apps-server::check', arguments: {} },
+          expect.anything(),
+        );
+      }
+    },
+  );
+
+  it.each(['call_tool', 'search_tools', 'describe_tool'])(
+    'forwards a listed direct upstream %s',
+    async (name) => {
+      mockClient.listTools.mockResolvedValue({ tools: [{ ...appsTools[0], name }] });
+      await initUpstreamServers();
+      await flushPromises();
+      await getMcpServer('ordinary-session', 'apps-server');
+      const listed = await handleListToolsRequest({}, { sessionId: 'ordinary-session' });
+      expect(listed.tools[0].name).toBe(name);
+      const result = await handleCallToolRequest(
+        { params: { name, arguments: { upstream: true } } },
+        { sessionId: 'ordinary-session' },
+      );
+      expect(result.isError).toBe(false);
+      expect(mockClient.callTool).toHaveBeenLastCalledWith(
+        { name, arguments: { upstream: true } },
+        expect.anything(),
+      );
+    },
+  );
+
+  it.each(['call_tool', 'search_tools', 'describe_tool'])(
+    'does not intercept a disabled upstream %s',
+    async (name) => {
+      mockClient.listTools.mockResolvedValue({ tools: [{ ...appsTools[0], name }] });
+      await initUpstreamServers();
+      await flushPromises();
+      await getMcpServer('ordinary-session', 'apps-server');
+      getServerByName('apps-server')!.config!.tools = { [name]: { enabled: false } };
+      const result = await handleCallToolRequest(
+        { params: { name, arguments: {} } },
+        { sessionId: 'ordinary-session' },
+      );
+      expect(result.isError).toBe(true);
+      expect(mockClient.callTool).not.toHaveBeenCalled();
+    },
+  );
+
   it('passes complete Apps metadata and raw tool names on an eligible single-upstream route', async () => {
     await initUpstreamServers();
     await flushPromises();

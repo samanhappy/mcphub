@@ -32,7 +32,7 @@ Direct server routes such as `/mcp/weather-station` expose upstream tool names u
 
 Group and aggregate routes keep qualified names (`weather-station::forecast`), even with only one member. Group aliases and the configured name separator still apply. Apps widgets on these routes should use the qualified name from the tool listing or host context.
 
-Previously advertised raw and qualified names remain callable where the route resolves them unambiguously, subject to the same tool visibility and access restrictions. Apps support still controls Apps metadata and app-only tool visibility.
+Previously advertised raw and qualified names remain callable where the route resolves them unambiguously, subject to the same tool visibility and access restrictions. On direct routes, upstream raw names take precedence over colliding legacy qualified aliases, including names such as `call_tool`, `search_tools`, and `describe_tool`. Apps support still controls Apps metadata and app-only tool visibility.
 
 ## UI Resources
 
