@@ -80,12 +80,12 @@ const EditGroupForm = ({ group, onEdit, onCancel }: EditGroupFormProps) => {
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg max-w-3xl w-full max-h-[90vh] flex flex-col">
+      <div className="hub-card shadow-lg max-w-3xl w-full max-h-[90vh] flex flex-col">
         <div className="p-6 flex-shrink-0">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">{t('groups.edit')}</h2>
+          <h2 className="text-xl font-semibold text-[var(--hub-ink)] mb-4">{t('groups.edit')}</h2>
 
           {error && (
-            <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-md border border-gray-200 dark:border-gray-700">
+            <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-md border border-[var(--hub-line)]">
               {error}
             </div>
           )}
@@ -95,7 +95,7 @@ const EditGroupForm = ({ group, onEdit, onCancel }: EditGroupFormProps) => {
           <div className="flex-1 overflow-y-auto px-6">
             <div className="space-y-4">
               <div>
-                <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="name">
+                <label className="block text-[var(--hub-ink-2)] text-sm font-bold mb-2" htmlFor="name">
                   {t('groups.name')} *
                 </label>
                 <input
@@ -104,7 +104,7 @@ const EditGroupForm = ({ group, onEdit, onCancel }: EditGroupFormProps) => {
                   name="name"
                   value={formData.name}
                   onChange={handleChange}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full border border-[var(--hub-line)] bg-[var(--hub-surface)] rounded-md px-3 py-2 text-[var(--hub-ink)] placeholder:text-[var(--hub-ink-3)] focus:outline-none focus:border-[var(--hub-ink-2)]"
                   placeholder={t('groups.namePlaceholder')}
                   required
                 />
@@ -112,7 +112,7 @@ const EditGroupForm = ({ group, onEdit, onCancel }: EditGroupFormProps) => {
 
               <div>
                 <label
-                  className="block text-gray-700 text-sm font-bold mb-2"
+                  className="block text-[var(--hub-ink-2)] text-sm font-bold mb-2"
                   htmlFor="instructions"
                 >
                   {t('groups.instructions')}
@@ -123,21 +123,21 @@ const EditGroupForm = ({ group, onEdit, onCancel }: EditGroupFormProps) => {
                   value={formData.instructions}
                   onChange={handleChange}
                   rows={3}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full border border-[var(--hub-line)] bg-[var(--hub-surface)] rounded-md px-3 py-2 text-[var(--hub-ink)] placeholder:text-[var(--hub-ink-3)] focus:outline-none focus:border-[var(--hub-ink-2)]"
                   placeholder={t('groups.instructionsPlaceholder')}
                 />
-                <p className="text-xs text-gray-500 mt-1">{t('groups.instructionsHelp')}</p>
+                <p className="text-xs text-[var(--hub-ink-3)] mt-1">{t('groups.instructionsHelp')}</p>
               </div>
 
               <div>
-                <label className="block text-gray-700 text-sm font-bold mb-2">
+                <label className="block text-[var(--hub-ink-2)] text-sm font-bold mb-2">
                   {t('groups.configureCapabilities')}
                 </label>
                 <ServerToolConfig
                   servers={availableServers}
                   value={formData.servers as IGroupServerConfig[]}
                   onChange={(servers) => setFormData((prev) => ({ ...prev, servers }))}
-                  className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-gray-50 dark:bg-gray-800"
+                  className="border border-[var(--hub-line)] rounded-lg p-4 bg-[var(--hub-bg-2)]"
                   serverCosts={serverCosts}
                 />
               </div>
