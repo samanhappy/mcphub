@@ -516,10 +516,11 @@ const ServerCard = ({
                 flexShrink: 0,
               }}
             />
-            <div className="min-w-0">
-              <div className="flex items-center gap-2">
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                 <span
-                  className="hub-mono truncate"
+                  className="hub-mono min-w-0 max-w-full truncate"
+                  title={server.name}
                   style={{
                     fontSize: 13.5,
                     color: enabled ? 'var(--hub-ink)' : 'var(--hub-ink-3)',
@@ -529,20 +530,20 @@ const ServerCard = ({
                 </span>
                 {displayedVersion && (
                   <span
-                    className="hub-tag flex-shrink-0"
-                    title={t(packageVersion ? 'server.packageVersion' : 'server.reportedVersion')}
+                    className="hub-tag min-w-0"
+                    title={`${t(packageVersion ? 'server.packageVersion' : 'server.reportedVersion')}: ${displayedVersion}`}
                     style={{ fontSize: 11 }}
                   >
-                    v{displayedVersion}
+                    <span className="truncate">v{displayedVersion}</span>
                   </span>
                 )}
                 {supportsReinstall && server.updateAvailable && server.latestVersion && (
                   <span
-                    className="hub-tag flex-shrink-0"
-                    title={t('server.updateAvailable')}
+                    className="hub-tag min-w-0"
+                    title={`${t('server.updateAvailable')}: ${server.latestVersion}`}
                     style={{ fontSize: 11, color: 'var(--hub-warn)' }}
                   >
-                    ↑ {server.latestVersion}
+                    <span className="truncate">↑ {server.latestVersion}</span>
                   </span>
                 )}
                 {isMcpApp && (
