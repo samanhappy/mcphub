@@ -1200,7 +1200,7 @@ test('batch tool status uses the owner personal inventory and immediately gates 
     const ownerClient = await connect(alice, name);
     const otherClient = await connect(bob, name);
     expect((await ownerClient.listTools()).tools.map((tool) => tool.name)).toEqual([
-      `${prefix}identity`,
+      'identity',
     ]);
     expect((await otherClient.listTools()).tools).toHaveLength(2);
     expect(getServerByName(name)?.tools).toEqual([]);
@@ -1212,12 +1212,12 @@ test('batch tool status uses the owner personal inventory and immediately gates 
     const disabled = await toggle(false).expect(200);
     expect(disabled.body.data.matchedTools).toEqual([`${prefix}identity`]);
     expect((await ownerClient.listTools()).tools).toEqual([]);
-    expect((await ownerClient.callTool({ name: `${prefix}identity` })).isError).toBe(true);
+    expect((await ownerClient.callTool({ name: 'identity' })).isError).toBe(true);
     expect((await otherClient.listTools()).tools.map((tool) => tool.name)).toEqual([
-      `${prefix}rotate_identity`,
+      'rotate_identity',
     ]);
     await toggle(true).expect(200);
-    expect((await ownerClient.callTool({ name: `${prefix}identity` })).isError).toBeFalsy();
+    expect((await ownerClient.callTool({ name: 'identity' })).isError).toBeFalsy();
   } finally {
     await removeServer(name);
   }
