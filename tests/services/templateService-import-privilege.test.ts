@@ -40,6 +40,85 @@ beforeEach(() => {
 });
 
 describe('template import privileged-config policy (#1094)', () => {
+  it.each([
+    { type: 'stdio', command: 'node' },
+    { type: 'streamable-http', url: 'https://example.com/mcp', oauth: { accessToken: 'shared' } },
+    { type: 'sse', url: 'https://example.com/sse', oauth: { refreshToken: 'shared' } },
+    {
+      type: 'sse',
+      url: 'https://example.com/sse',
+      oauth: { pendingAuthorization: { state: 'pending' } },
+    },
+    {
+      type: 'sse',
+      url: 'https://example.com/sse',
+      credentialTemplate: [{ target: 'headers', name: 'Authorization' }],
+    },
+  ])('rejects incompatible personal OAuth before persistence: %j', async (config) => {
+    const result = await importTemplate(
+      templateWith({
+        remote: {
+          ...config,
+          oauth: { ...config.oauth, identityMode: 'personal' },
+        },
+      }),
+      'admin',
+      admin,
+    );
+    expect(result.serversCreated).toBe(0);
+    expect(result.details[0].message).toContain('Personal OAuth requires');
+    expect(addServer).not.toHaveBeenCalled();
+  });
+
+  it('normalizes transport fields and sharing before persistence', async () => {
+    const result = await importTemplate(
+      templateWith({
+        remote: {
+          type: 'streamable-http',
+          url: 'https://example.com/mcp',
+          command: 'node',
+          args: ['ignored'],
+          visibility: 'group',
+          sharedWithUsers: [' alice ', 'alice', ' bob '],
+        },
+      }),
+      'admin',
+      admin,
+    );
+    expect(result.serversCreated).toBe(1);
+    expect(addServer).toHaveBeenCalledWith(
+      'remote',
+      expect.objectContaining({
+        command: undefined,
+        args: undefined,
+        visibility: 'group',
+        sharedWithUsers: ['alice', 'bob'],
+      }),
+    );
+  });
+
+  it('accepts valid personal OAuth and defaults visibility to private', async () => {
+    const result = await importTemplate(
+      templateWith({
+        remote: {
+          type: 'streamable-http',
+          url: 'https://example.com/mcp',
+          oauth: { identityMode: 'personal' },
+        },
+      }),
+      'alice',
+      alice,
+    );
+    expect(result.serversCreated).toBe(1);
+    expect(addServer).toHaveBeenCalledWith(
+      'remote',
+      expect.objectContaining({
+        visibility: 'private',
+        oauth: expect.objectContaining({ identityMode: 'personal' }),
+      }),
+    );
+  });
+
   it('non-admin import of a stdio server is rejected before persistence', async () => {
     const result = await importTemplate(
       templateWith({ evil: { type: 'stdio', command: 'touch', args: ['/tmp/pwned'] } }),

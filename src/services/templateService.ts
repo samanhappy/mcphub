@@ -12,7 +12,7 @@ import {
 import { getServerDao, getGroupDao } from '../dao/index.js';
 import type { ServerConfigWithName } from '../dao/ServerDao.js';
 import { isPrivilegedServerConfig } from '../utils/serverConfigValidation.js';
-import { normalizeOAuth } from '../utils/serverConfigPersistence.js';
+import { normalizeServerConfigForPersistence } from '../utils/serverConfigPersistence.js';
 import { validateServerName } from '../utils/serverNameValidation.js';
 import { createGroup } from './groupService.js';
 import { addServer } from './mcpService.js';
@@ -612,7 +612,6 @@ export async function importTemplate(
         ...config,
         enabled: config.enabled ?? true,
         owner: owner || 'admin',
-        oauth: normalizeOAuth(config.oauth),
       };
       if (requestingUser && !requestingUser.isAdmin && isPrivilegedServerConfig(serverConfig)) {
         throw new Error(
@@ -623,7 +622,7 @@ export async function importTemplate(
               : 'Only admins can import stdio-based server configurations',
         );
       }
-      await addServer(serverName, serverConfig);
+      await addServer(serverName, normalizeServerConfigForPersistence(serverConfig));
       details.push({ type: 'server', name: serverName, action: 'created' });
       serversCreated++;
     } catch (error) {

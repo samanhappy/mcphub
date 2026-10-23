@@ -3889,6 +3889,28 @@ const resolveToolInGroup = async (
   return undefined;
 };
 
+const findEnabledPromptOnServer = async (
+  serverInfo: ServerInfo,
+  name: string,
+  allowRawName = false,
+) => {
+  if (serverInfo.status !== 'connected' || serverInfo.enabled === false) return undefined;
+  const prompt = serverInfo.prompts.find(
+    (item) =>
+      item.name === name ||
+      (allowRawName && item.name === `${serverInfo.name}${getNameSeparator()}${name}`),
+  );
+  if (!prompt) return undefined;
+  const config = await getServerDao().findById(serverInfo.name);
+  const promptConfig = findToolConfig(
+    config?.prompts,
+    serverInfo.name,
+    prompt.name,
+    serverInfo.prompts.map((item) => item.name),
+  );
+  return config?.enabled === false || promptConfig?.enabled === false ? undefined : prompt;
+};
+
 async function resolvePromptInGroup(
   group: string | undefined,
   promptName: string,
@@ -3908,7 +3930,7 @@ async function resolvePromptInGroup(
 
     const serverConfig = serverConfigsByName.get(serverInfo.name);
     const internalPromptName = resolveNameFromGroup(promptName, serverInfo.name, serverConfig);
-    const prompt = serverInfo.prompts.find((item) => item.name === internalPromptName);
+    const prompt = await findEnabledPromptOnServer(serverInfo, internalPromptName);
     if (!prompt) {
       continue;
     }
@@ -4782,7 +4804,7 @@ const handleGetPromptRequestImpl = async (request: any, extra: any) => {
     const group = getMcpRequestGroup(extra);
 
     // Check built-in prompts first
-    const builtinPrompt = await getBuiltinPromptDao().findByName(name);
+    const builtinPrompt = !extra?.server && (await getBuiltinPromptDao().findByName(name));
     if (builtinPrompt && builtinPrompt.enabled !== false) {
       // Perform {{param}} template substitution
       let content = builtinPrompt.template;
@@ -4805,7 +4827,12 @@ const handleGetPromptRequestImpl = async (request: any, extra: any) => {
     let promptNameForServer = name;
     const lookupGroup = getGroupLookupName(group);
     if (extra && extra.server) {
-      server = getVisibleServerByName(extra.server);
+      const candidate = getVisibleServerByName(extra.server);
+      const prompt = candidate && (await findEnabledPromptOnServer(candidate, name, true));
+      if (prompt) {
+        server = candidate;
+        promptNameForServer = prompt.name;
+      }
     } else if (lookupGroup) {
       const groupPrompt = await resolvePromptInGroup(lookupGroup, name);
       if (groupPrompt) {
@@ -4813,13 +4840,14 @@ const handleGetPromptRequestImpl = async (request: any, extra: any) => {
         promptNameForServer = groupPrompt.promptName;
       }
     } else {
-      // Find the first server that has this prompt
-      server = getVisibleServerInfos().find(
-        (serverInfo) =>
-          serverInfo.status === 'connected' &&
-          serverInfo.enabled !== false &&
-          serverInfo.prompts.find((prompt) => prompt.name === name),
-      );
+      for (const candidate of getVisibleServerInfos()) {
+        const prompt = await findEnabledPromptOnServer(candidate, name);
+        if (prompt) {
+          server = candidate;
+          promptNameForServer = prompt.name;
+          break;
+        }
+      }
     }
     if (!server) {
       throw new ToolUnavailableError(
@@ -4903,7 +4931,12 @@ const handleListPromptsRequestImpl = async (_: any, extra: any) => {
       let enabledPrompts = serverInfo.prompts;
       if (serverConfig && serverConfig.prompts) {
         enabledPrompts = serverInfo.prompts.filter((prompt: any) => {
-          const promptConfig = serverConfig.prompts?.[prompt.name];
+          const promptConfig = findToolConfig(
+            serverConfig.prompts,
+            serverInfo.name,
+            prompt.name,
+            serverInfo.prompts.map((item) => item.name),
+          );
           // If prompt is not in config, it's enabled by default
           return promptConfig?.enabled !== false;
         });
@@ -5128,6 +5161,15 @@ const handleReadResourceRequestImpl = async (request: any, extra: any) => {
         : (appsRouteContext.serverInfos ?? []);
 
       for (const candidate of candidates) {
+        const config = await getServerDao().findById(candidate.name);
+        if (config?.resources?.[uri]?.enabled === false) continue;
+        const allowed = await filterResourcesByGroup(
+          lookupGroup,
+          candidate.name,
+          [{ uri }],
+          serverConfigsByName.get(candidate.name),
+        );
+        if (allowed.length === 0) continue;
         // An on-demand candidate may be idle yet still advertise its cached widget
         // link, so a host can read the ui:// resource before any tool call has
         // woken it. Hold off its idle shutdown for every read, awake or not, so an
@@ -5346,7 +5388,7 @@ const withPrincipalServers =
     if (!serverInfos.some((info) => hasPersonalAuthentication(info.config)))
       return handler(request, extra);
     // Built-in content does not require an upstream credential.
-    if (operation === 'prompt') {
+    if (operation === 'prompt' && !extra?.server) {
       const builtin = await getBuiltinPromptDao().findByName(request.params?.name);
       if (builtin && builtin.enabled !== false) return handler(request, extra);
     } else if (operation === 'resource') {

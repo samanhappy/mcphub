@@ -37,6 +37,7 @@ import {
   updateMyCredential,
 } from '../../src/controllers/credentialBindingController.js';
 import { getServerConfig, batchToggleTools } from '../../src/controllers/serverController.js';
+import { getPrompt } from '../../src/controllers/promptController.js';
 import {
   handleMcpPostRequest,
   handleSseConnection,
@@ -166,6 +167,7 @@ beforeAll(async () => {
   app = express();
   app.use(express.json());
   app.use('/api', authenticatedRouteRateLimiter, auth, userContextMiddleware);
+  app.post('/api/mcp/:serverName/prompts/:promptName', getPrompt);
   app.post('/api/tools/:serverName/:toolName', executeToolViaOpenAPI);
   app.get('/api/credentials', listMyCredentials);
   app.put('/api/credentials/:name', updateMyCredential);
@@ -733,6 +735,62 @@ test.each([false, true])(
     }
   },
 );
+
+test('REST prompts bind both URL targets and acquire only the requested personal runtime', async () => {
+  const names = ['prompt-target', 'prompt-peer'];
+  for (const name of names) {
+    await getServerDao().create({
+      name,
+      type: 'stdio',
+      command: process.execPath,
+      args: [fixture],
+      owner: 'admin',
+      visibility: 'public',
+      startOnDemand: true,
+      credentialTemplate: [{ target: 'env', name: 'PERSONAL_KEY' }],
+    });
+  }
+  await initializeClientsFromSettings(true);
+  const builtin = await getBuiltinPromptDao().create({
+    name: 'identity',
+    template: 'Wrong target',
+  });
+  const acquire = jest.spyOn(PrincipalRuntimeService.prototype, 'acquire');
+  try {
+    for (const name of names) {
+      const binding = await request(app)
+        .put(`/api/credentials/${name}`)
+        .set('x-auth-token', apiToken(alice))
+        .send({ values: { 'env.PERSONAL_KEY': name } });
+      expect(binding.status).toBe(200);
+    }
+    const invoke = (serverName: string, promptName: string, bodyName: string) =>
+      request(app)
+        .post(`/api/mcp/${serverName}/prompts/${promptName}`)
+        .set('x-auth-token', apiToken(alice))
+        .send({ name: bodyName });
+    acquire.mockClear();
+    const response = await invoke('prompt-target', 'identity', 'prompt-peer-identity');
+    expect(response.status).toBe(200);
+    expect(JSON.parse(response.body.data.messages[0].content.text).credential).toBe(
+      'prompt-target',
+    );
+    expect(acquire.mock.calls.map(([name]) => name)).toEqual(['prompt-target']);
+
+    acquire.mockClear();
+    expect((await invoke('missing-server', 'identity', 'prompt-target-identity')).status).toBe(500);
+    expect(acquire).not.toHaveBeenCalled();
+
+    await getServerDao().updatePrompts('prompt-target', {
+      [`prompt-target${getNameSeparator()}identity`]: { enabled: false },
+    });
+    expect((await invoke('prompt-target', 'identity', 'identity')).status).toBe(500);
+  } finally {
+    acquire.mockRestore();
+    await getBuiltinPromptDao().delete(builtin.id);
+    for (const name of names) await removeServer(name);
+  }
+});
 
 test.each(['-', '__'])(
   'group calls select the longest exposed alias with separator %s',

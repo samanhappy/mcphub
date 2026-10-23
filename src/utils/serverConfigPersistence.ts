@@ -89,9 +89,7 @@ export const unpackStartOnDemandOptions = (
  * `options` (unlike normalizeOptions() below, which only forwards a fixed
  * whitelist). Used by ServerDaoDbImpl itself as a persistence-layer safety
  * net: normalizeServerConfigForPersistence() is the primary place that does
- * this, but not every caller routes through it (e.g.
- * templateService.importTemplate() -> mcpService.addServer() calls
- * ServerDao.create()/update() directly), so the DAO mirrors the fields
+ * this, but direct DAO callers may bypass it, so the DAO mirrors the fields
  * unconditionally to guarantee they're never silently dropped in database
  * mode regardless of how the DAO was invoked.
  */

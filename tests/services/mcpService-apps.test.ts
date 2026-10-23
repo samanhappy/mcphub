@@ -856,6 +856,66 @@ describe('mcpService MCP Apps transparent proxy', () => {
     expect(result.contents[0]._meta).toEqual({ trace: 'keep-me' });
   });
 
+  it.each([false, true])('does not probe disabled ui resources (listed: %s)', async (listed) => {
+    const uri = 'ui://apps/dashboard.html';
+    mockFindById.mockImplementation(async (name: string) => ({
+      ...makeServerConfig(name),
+      resources: { [uri]: { enabled: false } },
+    }));
+    mockClient.listResources.mockResolvedValue({
+      resources: listed ? [{ uri, name: 'Dashboard' }] : [],
+    });
+    await initUpstreamServers();
+    await flushPromises();
+    await markSessionAsAppsCapable('apps-session', 'apps-server');
+    const result = await handleReadResourceRequest(
+      { params: { uri } },
+      { sessionId: 'apps-session' },
+    );
+    expect(result.contents[0].text).toContain('Resource not found');
+    expect(mockClient.readResource).not.toHaveBeenCalled();
+  });
+
+  it.each([false, true])(
+    'does not probe group-excluded ui resources (listed: %s)',
+    async (listed) => {
+      const uri = 'ui://apps/dashboard.html';
+      mockGroupFindByName.mockResolvedValue({
+        name: 'pair',
+        servers: [{ name: 'apps-server', resources: [] }],
+      });
+      mockClient.listResources.mockResolvedValue({
+        resources: listed ? [{ uri, name: 'Dashboard' }] : [],
+      });
+      await initUpstreamServers();
+      await flushPromises();
+      await markSessionAsAppsCapable('aggregate-session', 'pair');
+      const result = await handleReadResourceRequest(
+        { params: { uri } },
+        { sessionId: 'aggregate-session' },
+      );
+      expect(result.contents[0].text).toContain('Resource not found');
+      expect(mockClient.readResource).not.toHaveBeenCalled();
+    },
+  );
+
+  it('reads a dynamic ui resource explicitly selected by a group', async () => {
+    const uri = 'ui://apps/dashboard.html';
+    mockGroupFindByName.mockResolvedValue({
+      name: 'pair',
+      servers: [{ name: 'apps-server', resources: [uri] }],
+    });
+    await initUpstreamServers();
+    await flushPromises();
+    await markSessionAsAppsCapable('aggregate-session', 'pair');
+    const result = await handleReadResourceRequest(
+      { params: { uri } },
+      { sessionId: 'aggregate-session' },
+    );
+    expect(result.contents[0].text).toBe('<html></html>');
+    expect(mockClient.readResource).toHaveBeenCalledWith({ uri });
+  });
+
   it('returns a readable error when an upstream resource response is malformed', async () => {
     mockClient.listResources.mockResolvedValue({
       resources: [{ uri: 'resource://apps/broken', name: 'Broken' }],

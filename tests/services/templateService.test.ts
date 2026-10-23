@@ -499,7 +499,7 @@ describe('templateService', () => {
       expect(result.requiredEnvVars).toContain('API_KEY');
     });
 
-    it('should import expanded template server fields', async () => {
+    it('should import expanded fields while stripping fields for other transports', async () => {
       mockServerDao.findAll.mockResolvedValue([]);
       mockGroupDao.findByName.mockResolvedValue(null);
       mockAddServer.mockResolvedValue(undefined);
@@ -543,16 +543,13 @@ describe('templateService', () => {
       expect(mockAddServer).toHaveBeenCalledWith(
         's1',
         expect.objectContaining({
-          enableKeepAlive: true,
-          keepAliveInterval: 30000,
+          enableKeepAlive: undefined,
+          keepAliveInterval: undefined,
           proxy: expect.objectContaining({
             host: 'proxy.local',
             password: '${PROXY_PASSWORD}',
           }),
-          oauth: expect.objectContaining({
-            clientId: 'client-id',
-            clientSecret: '${OAUTH_CLIENT_SECRET}',
-          }),
+          oauth: undefined,
           openapi: expect.objectContaining({
             schema: expect.objectContaining({ openapi: '3.1.0' }),
           }),

@@ -171,6 +171,13 @@ const aliasedServerInfo = (): ServerInfo =>
 describe('mcpService group server alias', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockServerDao.findById
+      .mockReset()
+      .mockImplementation(async (name: string) =>
+        name === 'u17__fetch'
+          ? { name, enabled: true, tools: {}, prompts: {}, resources: {} }
+          : null,
+      );
     cleanupAllServers();
     setServerInfosForTest([aliasedServerInfo()]);
     mockCallTool.mockResolvedValue({ content: [{ type: 'text', text: 'ok' }], isError: false });
@@ -215,6 +222,68 @@ describe('mcpService group server alias', () => {
       name: 'summarize',
       arguments: { topic: 'docs' },
     });
+  });
+
+  it.each([
+    ['global', {}, 'u17__fetch::summarize'],
+    ['direct', { server: 'u17__fetch' }, 'summarize'],
+    ['group', { group: 'team-a' }, 'fetch::summarize'],
+  ])('rejects disabled prompts on the %s path', async (_label, extra, name) => {
+    mockServerDao.findById.mockResolvedValueOnce({
+      name: 'u17__fetch',
+      enabled: true,
+      tools: {},
+      resources: {},
+      prompts: { 'u17__fetch::summarize': { enabled: false } },
+    });
+    const result = await handleGetPromptRequest({ params: { name } }, extra);
+    expect(result.isError).toBe(true);
+    expect(mockGetPrompt).not.toHaveBeenCalled();
+  });
+
+  it.each(['summarize', 'u17__fetch::summarize'])(
+    'honors persisted prompt disablement under %s',
+    async (key) => {
+      mockServerDao.findById.mockResolvedValueOnce({
+        name: 'u17__fetch',
+        enabled: true,
+        tools: {},
+        resources: {},
+        prompts: { [key]: { enabled: false } },
+      });
+      const result = await handleGetPromptRequest(
+        { params: { name: 'u17__fetch::summarize' } },
+        {},
+      );
+      expect(result.isError).toBe(true);
+      expect(mockGetPrompt).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(['disabled', 'disconnected', 'unlisted'])(
+    'rejects a direct prompt when the target is %s',
+    async (kind) => {
+      const info = aliasedServerInfo();
+      if (kind === 'disabled') info.enabled = false;
+      if (kind === 'disconnected') info.status = 'disconnected';
+      if (kind === 'unlisted') info.prompts = [];
+      setServerInfosForTest([info]);
+      const result = await handleGetPromptRequest(
+        { params: { name: 'summarize' } },
+        { server: info.name },
+      );
+      expect(result.isError).toBe(true);
+      expect(mockGetPrompt).not.toHaveBeenCalled();
+    },
+  );
+
+  it('retrieves an enabled raw prompt on an explicit server', async () => {
+    const result = await handleGetPromptRequest(
+      { params: { name: 'summarize' } },
+      { server: 'u17__fetch' },
+    );
+    expect(result.messages[0].content.text).toBe('summary');
+    expect(mockGetPrompt).toHaveBeenCalledWith({ name: 'summarize', arguments: undefined });
   });
   it.each([
     ['request context', 'team-a', { group: 'missing', sessionId: 'unknown' }],
