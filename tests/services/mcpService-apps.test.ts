@@ -579,7 +579,7 @@ describe('mcpService MCP Apps transparent proxy', () => {
 
     expect(result.tools).toEqual([
       expect.objectContaining({
-        name: 'apps-server::open-dashboard',
+        name: 'open-dashboard',
         title: 'Open dashboard',
         outputSchema: { type: 'object' },
         annotations: { readOnlyHint: true },
@@ -605,7 +605,65 @@ describe('mcpService MCP Apps transparent proxy', () => {
     expect(enabled.tools.map((tool) => tool.name)).toEqual(['open-dashboard', 'poll-dashboard']);
 
     const disabled = await run({});
-    expect(disabled.tools.map((tool) => tool.name)).toEqual(['apps-server::open-dashboard']);
+    expect(disabled.tools.map((tool) => tool.name)).toEqual(['open-dashboard']);
+  });
+
+  it.each([undefined, MCP_APPS_CAPABILITIES])(
+    'keeps direct names across idle transitions with capabilities %j',
+    async (clientCapabilities) => {
+      await initUpstreamServers();
+      await flushPromises();
+      const upstream = getServerByName('apps-server')!;
+      upstream.config!.startOnDemand = true;
+      const list = () =>
+        RequestContextService.getInstance().runWithCustomRequestContext(
+          { headers: {}, stateless: true, group: 'apps-server', clientCapabilities },
+          () => handleListToolsRequest({}, { group: 'apps-server' }),
+        );
+      const before = await list();
+      upstream.status = 'disconnected';
+      upstream.client = undefined;
+      const after = await list();
+      expect(after.tools.map((tool) => tool.name)).toEqual(before.tools.map((tool) => tool.name));
+      expect(after.tools[0].name).toBe('open-dashboard');
+    },
+  );
+
+  it.each(['single-group', undefined])(
+    'qualifies names on a single-member route %s',
+    async (group) => {
+      await initUpstreamServers();
+      await flushPromises();
+      mockGroupFindByName.mockImplementation(async (name: string) =>
+        name === 'single-group' ? { servers: ['apps-server'] } : null,
+      );
+      const result = await RequestContextService.getInstance().runWithCustomRequestContext(
+        { headers: {}, stateless: true, group, clientCapabilities: MCP_APPS_CAPABILITIES },
+        () => handleListToolsRequest({}, { group }),
+      );
+      expect(result.tools[0].name).toBe('apps-server::open-dashboard');
+    },
+  );
+
+  it.each(['direct', 'wrapped'])('preserves upstream-owned prefixes on %s calls', async (mode) => {
+    mockClient.listTools.mockResolvedValue({
+      tools: [{ ...appsTools[0], name: 'apps-server::check' }],
+    });
+    await initUpstreamServers();
+    await flushPromises();
+    await getMcpServer('ordinary-session', 'apps-server');
+    for (const name of ['apps-server::check', 'apps-server::apps-server::check']) {
+      const params =
+        mode === 'direct'
+          ? { name, arguments: {} }
+          : { name: 'call_tool', arguments: { toolName: name, arguments: {} } };
+      const result = await handleCallToolRequest({ params }, { sessionId: 'ordinary-session' });
+      expect(result.isError).toBe(false);
+      expect(mockClient.callTool).toHaveBeenLastCalledWith(
+        { name: 'apps-server::check', arguments: {} },
+        expect.anything(),
+      );
+    }
   });
 
   it('passes complete Apps metadata and raw tool names on an eligible single-upstream route', async () => {
@@ -652,22 +710,26 @@ describe('mcpService MCP Apps transparent proxy', () => {
     },
   );
 
-  it('keeps group tool filtering when accepting raw names', async () => {
-    mockGroupFindByName.mockImplementation(async (name: string) =>
-      name === 'apps-server' ? { servers: [{ name: 'apps-server', tools: [] }] } : null,
-    );
-    await initUpstreamServers();
-    await flushPromises();
-    await getMcpServer('ordinary-session', 'apps-server');
-    for (const params of [
-      { name: 'open-dashboard', arguments: {} },
-      { name: 'call_tool', arguments: { toolName: 'open-dashboard', arguments: {} } },
-    ]) {
-      const result = await handleCallToolRequest({ params }, { sessionId: 'ordinary-session' });
-      expect(result.isError).toBe(true);
-    }
-    expect(mockClient.callTool).not.toHaveBeenCalled();
-  });
+  it.each([false, true])(
+    'keeps group tool filtering when accepting raw names (Apps=%s)',
+    async (apps) => {
+      mockGroupFindByName.mockImplementation(async (name: string) =>
+        name === 'apps-server' ? { servers: [{ name: 'apps-server', tools: [] }] } : null,
+      );
+      await initUpstreamServers();
+      await flushPromises();
+      await getMcpServer('ordinary-session', 'apps-server');
+      if (apps) await markSessionAsAppsCapable('ordinary-session', 'apps-server');
+      for (const params of [
+        { name: 'open-dashboard', arguments: {} },
+        { name: 'call_tool', arguments: { toolName: 'open-dashboard', arguments: {} } },
+      ]) {
+        const result = await handleCallToolRequest({ params }, { sessionId: 'ordinary-session' });
+        expect(result.isError).toBe(true);
+      }
+      expect(mockClient.callTool).not.toHaveBeenCalled();
+    },
+  );
 
   it('allows raw app-only calls only on an eligible Apps route', async () => {
     await initUpstreamServers();

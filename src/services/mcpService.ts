@@ -3650,12 +3650,10 @@ export const toggleServerStatus = async (
 
 type McpAppsRouteContext = {
   enabled: boolean;
-  // Set when the route has exactly one configured upstream and a connected MCP client.
-  // Preserves the existing behavior of exposing raw (unqualified) tool
-  // names, which most Apps widgets assume when calling back into a
-  // single-server host.
+  // Set when the route has exactly one eligible MCP upstream (including idle on-demand).
+  // Used for Apps resource routing and legacy unqualified aggregate calls.
   serverInfo?: ServerInfo;
-  // Connected MCP clients on an aggregate route. Tool names stay qualified
+  // Eligible MCP upstreams on an aggregate route. Tool names stay qualified
   // (server::tool), even when other configured upstreams use OpenAPI or their
   // personal runtimes have not been acquired for this request, so
   // calls can still be routed unambiguously; Apps metadata and app-only
@@ -3692,11 +3690,13 @@ const getMcpAppsRouteContext = async (
   }
 
   const { filteredServerInfos, serverConfigsByName } = await getFilteredServerInfosForGroup(group);
-  const connectedServerInfos = filteredServerInfos.filter(
-    (serverInfo) => serverInfo.status === 'connected' && !!serverInfo.client,
+  const eligibleServerInfos = filteredServerInfos.filter(
+    (serverInfo) =>
+      canServeToolRequests(serverInfo) &&
+      (!!serverInfo.client || serverInfo.config?.startOnDemand === true),
   );
 
-  if (connectedServerInfos.length === 0) {
+  if (eligibleServerInfos.length === 0) {
     return { enabled: false };
   }
 
@@ -3704,19 +3704,19 @@ const getMcpAppsRouteContext = async (
   // route: OpenAPI uses openApiClient, and tool calls acquire only the target
   // personal runtime. Match resolveToolInGroup's configured-route ambiguity check.
   if (
-    connectedServerInfos.length === 1 &&
+    eligibleServerInfos.length === 1 &&
     filteredServerInfos.length === 1 &&
     serverConfigsByName.size <= 1
   ) {
     return {
       enabled: true,
-      serverInfo: connectedServerInfos[0],
+      serverInfo: eligibleServerInfos[0],
     };
   }
 
   return {
     enabled: true,
-    serverInfos: connectedServerInfos,
+    serverInfos: eligibleServerInfos,
   };
 };
 
@@ -3919,6 +3919,7 @@ const projectToolForDownstream = (
   tool: Tool,
   appsRouteContext: McpAppsRouteContext,
   serverConfig?: IGroupServerConfig,
+  useRawName = false,
 ): Tool | undefined => {
   if (!appsRouteContext.enabled && isAppOnlyTool(tool)) {
     return undefined;
@@ -3926,17 +3927,15 @@ const projectToolForDownstream = (
 
   const projectedTool = appsRouteContext.enabled ? tool : stripMcpAppsMetadata(tool);
 
-  // Single configured server: keep the existing raw (unqualified) name so
-  // widgets that call back with the bare tool name continue to work.
-  if (appsRouteContext.serverInfo) {
+  // Naming follows the route, independently of Apps capabilities or connection state.
+  if (useRawName) {
     return {
       ...projectedTool,
       name: normalizeToolNameForServer(serverName, projectedTool.name),
     };
   }
 
-  // Aggregate routes (Apps-enabled) or Apps disabled: qualify the
-  // name so it can still be routed to the right server unambiguously.
+  // Group and aggregate routes keep qualified names, including single-member groups.
   return {
     ...projectedTool,
     name: projectNameForGroup(projectedTool.name, serverName, serverConfig),
@@ -3960,6 +3959,7 @@ const listGroupTools = async (
       .map((si) => si.spawningPromise as Promise<void>),
   );
 
+  const useRawName = !!group && !isSmartRoutingGroup(group) && !(await findRouteGroup(group));
   const allTools = [];
   for (const serverInfo of filteredServerInfos) {
     if (serverInfo.tools && serverInfo.tools.length > 0) {
@@ -3994,6 +3994,7 @@ const listGroupTools = async (
             tool,
             appsRouteContext,
             groupServerConfig,
+            useRawName,
           );
           return projectedTool ? [projectedTool] : [];
         }),
@@ -4217,11 +4218,9 @@ const handleCallToolRequestImpl = async (request: any, extra: any) => {
       }
 
       const { arguments: toolArgs } = request.params.arguments || {};
-      // A single connected server on an Apps-enabled route is addressed by
-      // its raw (unqualified) tool name, same as before. A multi-server
-      // Apps-enabled route falls through to qualified-name group
-      // resolution below, same as an ordinary (non-Apps) group route.
-      const singleServerAppsRoute = !!appsRouteContext.serverInfo;
+      // Preserve legacy raw aggregate calls; explicit routes use the shared
+      // resolver so cached names still obey group filtering.
+      const singleServerAppsRoute = !getGroupLookupName(group) && !!appsRouteContext.serverInfo;
       let targetServerInfo: ServerInfo | undefined;
       let targetToolName = toolName;
       let targetTool: Tool | undefined;
@@ -4297,7 +4296,7 @@ const handleCallToolRequestImpl = async (request: any, extra: any) => {
         });
 
         // Remove server prefix from tool name if present
-        const cleanToolName = normalizeToolNameForServer(targetServerInfo.name, targetToolName);
+        const cleanToolName = normalizeToolNameForServer(targetServerInfo.name, tool.name);
 
         // Extract passthrough headers from extra or request context
         let passthroughHeaders: Record<string, string> | undefined;
@@ -4429,7 +4428,7 @@ const handleCallToolRequestImpl = async (request: any, extra: any) => {
         perSessionClient: !!targetServerInfo.config?.perSessionClient,
       });
 
-      const cleanToolName = normalizeToolNameForServer(targetServerInfo.name, targetToolName);
+      const cleanToolName = normalizeToolNameForServer(targetServerInfo.name, tool.name);
       await reserveHostedIfNeeded(targetServerInfo.name, cleanToolName);
       const result = await callToolWithReconnect(
         targetServerInfo,
@@ -4481,13 +4480,9 @@ const handleCallToolRequestImpl = async (request: any, extra: any) => {
 
     // Regular tool handling
     const lookupGroup = getGroupLookupName(group);
-    // A single connected server on an Apps-enabled route is addressed
-    // directly, using its raw (unqualified) tool name, same as before. A
-    // multi-server Apps-enabled route resolves via the qualified-name
-    // group lookup below, same as an ordinary (non-Apps) group route,
-    // just without stripping Apps metadata or hiding app-only tools
-    // (assertToolAvailableForRoute below still gates on appsRouteContext.enabled).
-    const singleServerAppsRoute = !!appsRouteContext.serverInfo;
+    // Explicit routes share name resolution and group filtering regardless of
+    // Apps support; keep legacy raw aggregate calls compatible.
+    const singleServerAppsRoute = !getGroupLookupName(group) && !!appsRouteContext.serverInfo;
     const groupTool =
       !singleServerAppsRoute && lookupGroup
         ? await resolveToolInGroup(group, request.params.name)
@@ -4523,7 +4518,7 @@ const handleCallToolRequestImpl = async (request: any, extra: any) => {
       const openApiClient = serverInfo.openApiClient;
 
       // Remove server prefix from tool name if present
-      const cleanToolName = normalizeToolNameForServer(serverInfo.name, routeToolName);
+      const cleanToolName = normalizeToolNameForServer(serverInfo.name, tool.name);
 
       logger.log('Invoking OpenAPI tool', {
         toolName: cleanToolName,
@@ -4645,7 +4640,7 @@ const handleCallToolRequestImpl = async (request: any, extra: any) => {
       throw new Error(`Client not found for server: ${serverInfo.name}`);
     }
 
-    const cleanToolName = normalizeToolNameForServer(serverInfo.name, routeToolName);
+    const cleanToolName = normalizeToolNameForServer(serverInfo.name, tool.name);
     await reserveHostedIfNeeded(serverInfo.name, cleanToolName);
     const result = await callToolWithReconnect(
       serverInfo,
