@@ -1,0 +1,33 @@
+frontend/src/index.css
+  s_968d126ba78827::t_d10022e86ebbec 931-932
+  s_968d126ba78827::t_027eda11f5391f 903-904,925
+  s_968d126ba78827::t_cf6ab8f0a31243 14,35,168,549,615,840,842-843,863-868,871-874,877-881,884-889,892-894,897-900,907-908,911-917,920-921,924,926-928,935-937,976,980,990,1067,1071-1072
+  s_968d126ba78827::t_d1fa5c07e994f7 1088-1091,1126-1131
+frontend/src/components/EditGroupForm.tsx
+  s_968d126ba78827::t_027eda11f5391f 83
+  s_968d126ba78827::t_3160c22b35fd56 85,88,98,107,115,126,129,133,140
+frontend/src/components/ServerToolConfig.tsx
+  s_968d126ba78827::t_c523fb11b7f28e 398,415,417,424,444,465,469,477,490,501,568,570,575,596,618
+  s_968d126ba78827::t_1ba182ac050522 640
+frontend/src/components/AddGroupForm.tsx
+  s_968d126ba78827::t_027eda11f5391f 78
+  s_968d126ba78827::t_5f62bcbe8be28c 80,83,93,102,110,121,124,128,135
+frontend/src/components/GroupVisibilityFields.tsx
+  s_968d126ba78827::t_16d1f3a241eafa 69,75,79,88,103,108,112,116,120,128,147,182
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8e5b67081167dcbbf471777776732214803acde0",
+  "prompts": {},
+  "sessions": {
+    "s_968d126ba78827": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a16792-d4e7-7d90-b569-4583df0f8609",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": null
+    }
+  }
+}
