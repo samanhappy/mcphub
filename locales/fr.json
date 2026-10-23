@@ -112,6 +112,8 @@
     "passwordStrengthHint": "Le mot de passe doit contenir au moins 8 caractères et inclure des lettres, des chiffres et des caractères spéciaux"
   },
   "server": {
+    "protocolVersion": "Protocole MCP",
+    "protocolVersionUnknown": "Indisponible",
     "localExecutionRequiresAdmin": "L’exécution de commandes locales nécessite un administrateur.",
     "httpOAuthRequiresAdmin": "Autoriser les points de terminaison de jetons OAuth en HTTP nécessite un administrateur.",
     "startOnDemand": "Démarrage à la demande",

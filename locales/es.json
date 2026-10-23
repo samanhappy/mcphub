@@ -112,6 +112,8 @@
     "passwordStrengthHint": "La contraseña debe tener al menos 8 caracteres y contener letras, números y caracteres especiales"
   },
   "server": {
+    "protocolVersion": "Protocolo MCP",
+    "protocolVersionUnknown": "No disponible",
     "localExecutionRequiresAdmin": "La ejecución de comandos locales requiere un administrador.",
     "httpOAuthRequiresAdmin": "Permitir endpoints de tokens OAuth por HTTP requiere un administrador.",
     "startOnDemand": "Inicio bajo demanda",

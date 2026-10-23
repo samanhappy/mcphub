@@ -27,6 +27,8 @@ import { Card, Cards } from 'mintlify';
 
 Retrieves a list of all configured MCP servers, including their status and available tools.
 
+Connected, enabled MCP servers include an optional `protocolVersion` field containing the current connection's negotiated MCP protocol version. It is omitted for disconnected, disabled, and OpenAPI servers, or when unavailable. This is separate from the server software `version`.
+
 - **Endpoint**: `/api/servers`
 - **Method**: `GET`
 - **Response**:

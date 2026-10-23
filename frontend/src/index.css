@@ -1154,3 +1154,19 @@ button.hub-btn.primary.is-loading::after {
     gap: 4px;
   }
 }
+
+.hub-server-card-transport-cell {
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 3px;
+  height: auto;
+  min-height: 30px;
+}
+
+.hub-server-card-protocol {
+  color: var(--hub-ink-3);
+  font-size: 10.5px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}

@@ -662,6 +662,16 @@ const ServerCard = ({
             ) : (
               <span style={{ color: 'var(--hub-ink-3)', fontSize: 12 }}>—</span>
             )}
+            {server.config?.type !== 'openapi' && (
+              <span className="hub-server-card-protocol" title={t('server.protocolVersion')}>
+                MCP{' '}
+                {enabled && server.status === 'connected' && server.protocolVersion ? (
+                  <span className="whitespace-nowrap">{server.protocolVersion}</span>
+                ) : (
+                  t('server.protocolVersionUnknown')
+                )}
+              </span>
+            )}
           </div>
 
           <div className="hub-server-card-visibility min-w-0" onClick={(e) => e.stopPropagation()}>

@@ -112,6 +112,8 @@
     "passwordStrengthHint": "Mật khẩu phải dài ít nhất 8 ký tự và chứa chữ cái, chữ số, và ký tự đặc biệt"
   },
   "server": {
+    "protocolVersion": "Giao thức MCP",
+    "protocolVersionUnknown": "Chưa có",
     "localExecutionRequiresAdmin": "Thực thi lệnh cục bộ yêu cầu quyền quản trị viên.",
     "httpOAuthRequiresAdmin": "Cho phép các endpoint token HTTP OAuth yêu cầu quyền quản trị viên.",
     "startOnDemand": "Khởi động theo yêu cầu",
