@@ -2711,6 +2711,7 @@ export const getServersInfo = async (
       ({
         name,
         version,
+        client,
         packageVersion,
         latestVersion,
         updateAvailable,
@@ -2766,6 +2767,10 @@ export const getServersInfo = async (
         return {
           name,
           version,
+          protocolVersion:
+            enabled && status === 'connected' && resolvedType !== 'openapi'
+              ? client?.getNegotiatedProtocolVersion?.()
+              : undefined,
           instructions,
           owner,
           visibility,

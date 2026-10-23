@@ -112,6 +112,8 @@
     "passwordStrengthHint": "Şifre en az 8 karakter olmalı ve harf, rakam ve özel karakter içermelidir"
   },
   "server": {
+    "protocolVersion": "MCP protokolü",
+    "protocolVersionUnknown": "Mevcut değil",
     "localExecutionRequiresAdmin": "Yerel komut çalıştırmak yönetici yetkisi gerektirir.",
     "httpOAuthRequiresAdmin": "HTTP OAuth belirteç uç noktalarına izin vermek yönetici yetkisi gerektirir.",
     "startOnDemand": "Talep üzerine başlat",

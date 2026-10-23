@@ -72,6 +72,8 @@ import { Card, Cards } from 'mintlify';
 
 ### 获取所有服务器
 
+已连接且已启用的 MCP 服务器会返回可选的 `protocolVersion` 字段，表示当前连接实际协商的 MCP 协议版本。断开、禁用、OpenAPI 服务器或版本不可用时省略该字段；此字段与服务器软件版本 `version` 不同。
+
 检索所有已配置的 MCP 服务器的列表，包括其状态和可用工具。
 
 - **端点**: `/api/servers`

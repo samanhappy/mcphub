@@ -2,6 +2,7 @@ const mockClient = {
   connect: jest.fn().mockResolvedValue(undefined),
   close: jest.fn(),
   getServerCapabilities: jest.fn(() => ({ tools: {}, prompts: {}, resources: {} })),
+  getNegotiatedProtocolVersion: jest.fn(() => '2025-03-26'),
   getServerVersion: jest.fn(() => ({ name: 'upstream-weather', version: '1.2.3' })),
   getInstructions: jest.fn(() => 'Use the weather tools for forecast lookups.'),
   listTools: jest.fn().mockResolvedValue({ tools: [] }),
@@ -126,6 +127,7 @@ import {
   getMcpServer,
   getServersInfo,
   initUpstreamServers,
+  setServerInfosForTest,
 } from '../../src/services/mcpService.js';
 
 describe('mcpService initialize metadata', () => {
@@ -162,6 +164,45 @@ describe('mcpService initialize metadata', () => {
       version: '1.2.3',
     });
     expect((server as any)._instructions).toBe('Use the weather tools for forecast lookups.');
+  });
+
+  it('exposes the negotiated protocol separately from the server software version', async () => {
+    mockFindAll.mockResolvedValue([
+      { name: 'weather-server', type: 'stdio', command: 'node', args: ['server.js'] },
+    ]);
+    await initUpstreamServers();
+    const [server] = await getServersInfo();
+    expect(server.version).toBe('1.2.3');
+    expect(server.protocolVersion).toBe('2025-03-26');
+  });
+
+  it('does not invent a protocol version before initialization', async () => {
+    mockFindAll.mockResolvedValue([
+      { name: 'waiting', type: 'stdio', command: 'node', enabled: false },
+    ]);
+    const [server] = await getServersInfo();
+    expect(server.protocolVersion).toBeUndefined();
+  });
+
+  it.each([
+    { type: 'stdio', status: 'disconnected', enabled: true },
+    { type: 'stdio', status: 'connected', enabled: false },
+    { type: 'openapi', status: 'connected', enabled: true },
+  ] as const)('omits the protocol for $type/$status/enabled=$enabled', async (state) => {
+    mockFindAll.mockResolvedValue([{ name: 'metadata', ...state }]);
+    setServerInfosForTest([
+      {
+        name: 'metadata',
+        status: state.status,
+        client: mockClient as unknown as import('../../src/clients/mcpSdkClient.js').Client,
+        tools: [],
+        prompts: [],
+        resources: [],
+        createTime: Date.now(),
+      },
+    ]);
+    const [server] = await getServersInfo();
+    expect(server.protocolVersion).toBeUndefined();
   });
 
   it('keeps hub metadata for multi-server groups', async () => {

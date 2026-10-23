@@ -112,6 +112,8 @@
     "passwordStrengthHint": "密码必须至少 8 个字符，且包含字母、数字和特殊字符"
   },
   "server": {
+    "protocolVersion": "MCP 协议",
+    "protocolVersionUnknown": "未获取",
     "localExecutionRequiresAdmin": "本地命令执行需要管理员权限。",
     "httpOAuthRequiresAdmin": "允许 HTTP OAuth 令牌端点需要管理员权限。",
     "startOnDemand": "按需启动",

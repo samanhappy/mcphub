@@ -281,7 +281,7 @@
   grid-template-columns:
     minmax(180px, 1.6fr)
     minmax(96px, 0.4fr)
-    minmax(100px, 0.45fr)
+    minmax(max-content, 0.45fr)
     minmax(100px, 0.5fr)
     repeat(3, minmax(76px, 0.36fr))
     minmax(112px, 0.5fr)
@@ -407,7 +407,7 @@
     grid-template-columns:
       minmax(150px, 1.5fr)
       minmax(84px, 0.4fr)
-      minmax(80px, 0.42fr)
+      minmax(max-content, 0.42fr)
       minmax(88px, 0.5fr)
       repeat(3, minmax(66px, 0.34fr))
       minmax(100px, 0.46fr)
@@ -1141,7 +1141,7 @@ button.hub-btn.primary.is-loading::after {
     grid-template-columns:
       minmax(120px, 1.4fr)
       minmax(72px, 0.4fr)
-      minmax(68px, 0.4fr)
+      minmax(max-content, 0.4fr)
       minmax(80px, 0.45fr)
       repeat(3, minmax(58px, 0.3fr))
       minmax(92px, 0.42fr)
@@ -1153,4 +1153,20 @@ button.hub-btn.primary.is-loading::after {
     padding: 0 5px;
     gap: 4px;
   }
+}
+
+.hub-server-card-transport-cell {
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 3px;
+  height: auto;
+  min-height: 30px;
+}
+
+.hub-server-card-protocol {
+  color: var(--hub-ink-3);
+  font-size: 10.5px;
+  line-height: 1.4;
+  white-space: nowrap;
 }
