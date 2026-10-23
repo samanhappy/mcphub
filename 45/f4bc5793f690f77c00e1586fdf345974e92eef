@@ -1,0 +1,25 @@
+tests/services/elicitationService.test.ts
+  s_1b701c1a274efe::t_a988f650a4a6d0 2,35-64
+  s_1b701c1a274efe::t_0935125f2a1b0d 65
+src/services/mcpService.ts
+  s_1b701c1a274efe::t_0cbb7d432040f6 1903
+  s_1b701c1a274efe::t_eaa40033c7bbef 1901-1902
+src/services/elicitationService.ts
+  s_1b701c1a274efe::t_eaa40033c7bbef 83,90,95-96
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "45f4bc5793f690f77c00e1586fdf345974e92eef",
+  "prompts": {},
+  "sessions": {
+    "s_1b701c1a274efe": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a163ba-0d25-7ce2-acd6-672925e24d55",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
