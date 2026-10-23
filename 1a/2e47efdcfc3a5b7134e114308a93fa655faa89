@@ -1,0 +1,20 @@
+frontend/src/components/ui/AboutDialog.tsx
+  s_25a3aa939953da::t_0526827da9efb2 36-44,98-104,114,117-119
+  s_25a3aa939953da::t_b4ea9559e57ef1 35
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1a2e47efdcfc3a5b7134e114308a93fa655faa89",
+  "prompts": {},
+  "sessions": {
+    "s_25a3aa939953da": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a168a2-7ed2-7ca1-89bf-d2a9d0a2c1f1",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
