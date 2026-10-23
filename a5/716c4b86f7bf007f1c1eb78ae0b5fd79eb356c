@@ -1,0 +1,50 @@
+frontend/src/types/index.ts
+  s_8c231072708f83::t_376b7b1a12cead 335
+locales/es.json
+  s_8c231072708f83::t_376b7b1a12cead 115-116
+locales/tr.json
+  s_8c231072708f83::t_376b7b1a12cead 115-116
+locales/zh.json
+  s_8c231072708f83::t_376b7b1a12cead 115-116
+src/services/mcpService.ts
+  s_8c231072708f83::t_376b7b1a12cead 2714,2770-2773
+locales/en.json
+  s_8c231072708f83::t_376b7b1a12cead 115-116
+locales/fr.json
+  s_8c231072708f83::t_376b7b1a12cead 115-116
+locales/vi.json
+  s_8c231072708f83::t_376b7b1a12cead 115-116
+src/types/index.ts
+  s_8c231072708f83::t_376b7b1a12cead 606
+tests/services/mcpService-server-metadata.test.ts
+  s_8c231072708f83::t_376b7b1a12cead 5,130,169-206
+  s_8c231072708f83::t_5df4b927be43c4 207
+docs/api-reference/servers.mdx
+  s_8c231072708f83::t_7754b92d93983f 30-31
+docs/features/server-management.mdx
+  s_8c231072708f83::t_0acfd079e7307b 10-11
+docs/zh/api-reference/servers.mdx
+  s_8c231072708f83::t_62d5a7490aca14 75-76
+docs/zh/features/server-management.mdx
+  s_8c231072708f83::t_7506bcecb2201a 10-11
+frontend/src/components/ServerCard.tsx
+  s_8c231072708f83::t_f87a992b6c3fa4 665-674
+frontend/src/index.css
+  s_8c231072708f83::t_69d7efa3c10481 1157-1172
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a5716c4b86f7bf007f1c1eb78ae0b5fd79eb356c",
+  "prompts": {},
+  "sessions": {
+    "s_8c231072708f83": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a16964-bf96-73a0-b058-11f6fc04adb5",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
