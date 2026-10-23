@@ -1,0 +1,24 @@
+frontend/src/components/ServerCard.tsx
+  s_6b122fc47ec5f8::t_9294613fb30c3f 519
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "65a2f9159b661f2a1d45f57618961197abe80f2b",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_6b122fc47ec5f8": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "7a8e193a-98ef-45c9-b4d4-07498ea933f8",
+        "model": "claude-sonnet-5.5"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
