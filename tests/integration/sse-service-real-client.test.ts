@@ -904,7 +904,7 @@ describe('Real Client Transport Integration Tests', () => {
           const { result } = await response.json();
           const enabled = capabilities === MCP_APPS_CAPABILITIES;
           expect(result.tools.map((tool: { name: string }) => tool.name)).toEqual(
-            enabled ? ['app-public', 'app-only'] : ['test-server-1-app-public'],
+            enabled ? ['app-public', 'app-only'] : ['app-public'],
           );
           if (enabled) expect(result.tools[0]._meta.ui.resourceUri).toBe('ui://test/app');
           else expect(result.tools[0]._meta?.ui).toBeUndefined();

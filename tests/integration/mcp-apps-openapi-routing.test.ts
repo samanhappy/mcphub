@@ -278,7 +278,9 @@ test("Apps capability does not expose or invoke another user's private OpenAPI c
   const callsBefore = restCalls.length;
   const acquire = jest.spyOn(PrincipalRuntimeService.prototype, 'acquire');
   try {
-    expect((await client.listTools()).tools.map((tool) => tool.name)).toEqual(['identity']);
+    expect((await client.listTools()).tools.map((tool) => tool.name)).toEqual([
+      `shared${getNameSeparator()}identity`,
+    ]);
     const result = await client.callTool({ name: `rest${getNameSeparator()}identity` });
     expect(result.isError).toBe(true);
     expect(restCalls).toHaveLength(callsBefore);

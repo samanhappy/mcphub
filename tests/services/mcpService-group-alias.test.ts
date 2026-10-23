@@ -285,6 +285,6 @@ describe('mcpService group server alias', () => {
       { headers: {}, group: 'u17__fetch' },
       () => handleListToolsRequest({}, {}),
     );
-    expect(tools.tools.map((tool) => tool.name)).toEqual(['u17__fetch::fetch_url']);
+    expect(tools.tools.map((tool) => tool.name)).toEqual(['fetch_url']);
   });
 });
