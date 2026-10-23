@@ -183,7 +183,7 @@ jest.mock('../../src/services/mcpService.js', () => {
   };
 });
 
-import { toggleTool } from '../../src/controllers/serverController.js';
+import { toggleTool, batchToggleTools } from '../../src/controllers/serverController.js';
 import * as mcpService from '../../src/services/mcpService.js';
 
 const mockRes = () => {
@@ -241,6 +241,29 @@ describe('toggleTool -> handleCallToolRequest end-to-end (PR #1178 review gap)',
 
     expect(result.isError).toBe(true);
     expect(mockCallTool).not.toHaveBeenCalled();
+  });
+
+  it('batch disable blocks the next call and batch enable restores it without reconnecting', async () => {
+    const req = {
+      params: { serverName: 'gmail' },
+      body: { enabled: false, tools: ['send_*'] },
+      user: { username: 'admin', isAdmin: true },
+    } as unknown as Request;
+    await batchToggleTools(req, mockRes());
+    const denied = await mcpService.handleCallToolRequest(
+      { params: { name: 'gmail-send_email', arguments: {} } },
+      { sessionId: 'session-1' },
+    );
+    expect(denied.isError).toBe(true);
+    expect(mockCallTool).not.toHaveBeenCalled();
+    req.body.enabled = true;
+    await batchToggleTools(req, mockRes());
+    const allowed = await mcpService.handleCallToolRequest(
+      { params: { name: 'gmail-send_email', arguments: {} } },
+      { sessionId: 'session-1' },
+    );
+    expect(allowed.isError).toBeFalsy();
+    expect(mockCallTool).toHaveBeenCalledTimes(1);
   });
 
   it('still allows the call before any toggle happens', async () => {

@@ -20,6 +20,7 @@ import {
   disconnectServerOAuth,
   clearCache,
   toggleTool,
+  batchToggleTools,
   updateToolDescription,
   resetToolDescription,
   updateToolHiddenParams,
@@ -289,6 +290,7 @@ export const initRoutes = async (app: express.Application): Promise<void> => {
   authenticatedRouter.post('/servers/:name/oauth/personal', managePersonalOAuth);
   authenticatedRouter.delete('/servers/:name/oauth/personal', managePersonalOAuth);
   authenticatedRouter.post('/servers/:name/oauth/disconnect', disconnectServerOAuth);
+  authenticatedRouter.post('/servers/:serverName/tools/toggle', batchToggleTools);
   authenticatedRouter.post('/servers/:serverName/tools/:toolName/toggle', toggleTool);
   authenticatedRouter.put(
     '/servers/:serverName/tools/:toolName/description',

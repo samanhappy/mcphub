@@ -52,6 +52,7 @@ const mockBroadcastPromptListChanged = jest.fn();
 const mockBroadcastResourceListChanged = jest.fn();
 const mockSyncToolEmbedding = jest.fn();
 const mockGetServerByName = jest.fn();
+const mockGetServerToolsForPrincipal = jest.fn();
 const mockAddServer = jest.fn();
 const mockAddOrUpdateServer = jest.fn();
 const mockRemoveServer = jest.fn();
@@ -79,6 +80,7 @@ jest.mock('../../src/dao/DaoFactory.js', () => ({
 
 jest.mock('../../src/services/mcpService.js', () => ({
   getServersInfo: mockGetServersInfo,
+  getServerToolsForPrincipal: mockGetServerToolsForPrincipal,
   addServer: mockAddServer,
   addOrUpdateServer: mockAddOrUpdateServer,
   removeServer: mockRemoveServer,
@@ -141,6 +143,7 @@ import {
   resetResourceDescription,
   resetToolDescription,
   toggleServer,
+  batchToggleTools,
   updateServer,
   updateSystemConfig,
 } from '../../src/controllers/serverController.js';
@@ -3253,4 +3256,165 @@ describe('admin-controlled HTTP OAuth token endpoints (#1292)', () => {
       expect(mockAddOrUpdateServer).not.toHaveBeenCalled();
     },
   );
+});
+
+describe('batchToggleTools', () => {
+  const live = {
+    tools: [{ name: 'svc::get_a' }, { name: 'svc::delete_a' }],
+    config: { tools: {} },
+  };
+  const request = (body: unknown, user = { username: 'admin', isAdmin: true }) =>
+    ({ params: { serverName: 'svc' }, body, user }) as unknown as Request;
+  const response = () =>
+    ({ status: jest.fn().mockReturnThis(), json: jest.fn() }) as unknown as Response;
+  beforeEach(() => {
+    jest.clearAllMocks();
+    live.config = { tools: {} };
+    live.tools = [{ name: 'svc::get_a' }, { name: 'svc::delete_a' }];
+    mockGetServerByName.mockReturnValue(live);
+    mockServerDao.findById.mockResolvedValue({
+      name: 'svc',
+      owner: 'admin',
+      tools: {
+        delete_a: { enabled: true, description: 'Keep', hiddenParams: ['secret'] },
+      },
+    });
+    mockServerDao.updateTools.mockResolvedValue(true);
+  });
+  it('matches bare globs and exact runtime names, deduplicates, preserves overrides, updates live state', async () => {
+    const res = response();
+    await batchToggleTools(request({ enabled: false, tools: ['delete_*', 'svc::delete_a'] }), res);
+    expect(mockServerDao.updateTools).toHaveBeenCalledTimes(1);
+    expect(mockServerDao.updateTools).toHaveBeenCalledWith('svc', {
+      delete_a: { enabled: false, description: 'Keep', hiddenParams: ['secret'] },
+    });
+    expect(live.config.tools).toEqual({
+      delete_a: { enabled: false, description: 'Keep', hiddenParams: ['secret'] },
+    });
+    expect(mockNotifyToolChanged).toHaveBeenCalledTimes(1);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        success: true,
+        data: { matchedTools: ['svc::delete_a'], enabled: false },
+      }),
+    );
+  });
+  it.each([
+    {},
+    { enabled: false, tools: [] },
+    { enabled: 'false', tools: ['*'] },
+    { enabled: true, tools: [1] },
+    { enabled: true, tools: [''] },
+  ])('rejects invalid input %j without writing', async (body) => {
+    const res = response();
+    await batchToggleTools(request(body), res);
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(mockServerDao.updateTools).not.toHaveBeenCalled();
+  });
+  it.each(['get_a', 'svc::get_?', 'get_*'])(
+    'matches selector %s using the configured separator',
+    async (pattern) => {
+      const res = response();
+      await batchToggleTools(request({ enabled: true, tools: [pattern] }), res);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: { matchedTools: ['svc::get_a'], enabled: true },
+        }),
+      );
+    },
+  );
+  it('resolves an exact runtime name before a colliding bare name', async () => {
+    live.tools.push({ name: 'svc::svc::get_a' });
+    const res = response();
+    await batchToggleTools(request({ enabled: false, tools: ['svc::get_a'] }), res);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: { matchedTools: ['svc::get_a'], enabled: false },
+      }),
+    );
+    expect(mockServerDao.updateTools).toHaveBeenCalledWith(
+      'svc',
+      expect.objectContaining({
+        'svc::get_a': { enabled: false },
+      }),
+    );
+  });
+  it('returns 404 for an unknown server without writing', async () => {
+    mockServerDao.findById.mockResolvedValue(undefined);
+    const res = response();
+    await batchToggleTools(request({ enabled: false, tools: ['*'] }), res);
+    expect(res.status).toHaveBeenCalledWith(404);
+    expect(mockServerDao.updateTools).not.toHaveBeenCalled();
+  });
+  it.each([
+    { oauth: { identityMode: 'personal' } },
+    { credentialTemplate: [{ target: 'env', name: 'PERSONAL_KEY' }] },
+  ])('uses the requesting principal inventory for %j', async (personalConfig) => {
+    mockServerDao.findById.mockResolvedValue({ name: 'svc', owner: 'admin', ...personalConfig });
+    live.tools = [];
+    mockGetServerToolsForPrincipal.mockResolvedValue([{ name: 'svc::owner_tool' }]);
+    const res = response();
+    await batchToggleTools(request({ enabled: false, tools: ['*'] }), res);
+    expect(mockGetServerToolsForPrincipal).toHaveBeenCalledWith('svc', {
+      username: 'admin',
+      isAdmin: true,
+    });
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        success: true,
+        data: { matchedTools: ['svc::owner_tool'], enabled: false },
+      }),
+    );
+    expect(mockServerDao.updateTools).toHaveBeenCalledWith('svc', {
+      'svc::owner_tool': { enabled: false },
+    });
+  });
+  it('does not fall back to the global inventory when personal authentication fails', async () => {
+    mockServerDao.findById.mockResolvedValue({
+      name: 'svc',
+      owner: 'admin',
+      oauth: { identityMode: 'personal' },
+    });
+    mockGetServerToolsForPrincipal.mockRejectedValue(new Error('private upstream failure'));
+    const res = response();
+    await batchToggleTools(request({ enabled: false, tools: ['*'] }), res);
+    expect(res.status).toHaveBeenCalledWith(409);
+    expect(mockServerDao.updateTools).not.toHaveBeenCalled();
+    expect(JSON.stringify(jest.mocked(res.json).mock.calls)).not.toContain(
+      'private upstream failure',
+    );
+  });
+  it('returns a successful no-op for unmatched patterns', async () => {
+    const res = response();
+    await batchToggleTools(request({ enabled: false, tools: ['missing*'] }), res);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({ success: true, data: { matchedTools: [], enabled: false } }),
+    );
+    expect(mockServerDao.updateTools).not.toHaveBeenCalled();
+    expect(mockNotifyToolChanged).not.toHaveBeenCalled();
+  });
+  it('does not mutate live config or notify on persistence failure', async () => {
+    mockServerDao.updateTools.mockResolvedValue(false);
+    const res = response();
+    await batchToggleTools(request({ enabled: false, tools: ['*'] }), res);
+    expect(res.status).toHaveBeenCalledWith(500);
+    expect(live.config.tools).toEqual({});
+    expect(mockNotifyToolChanged).not.toHaveBeenCalled();
+  });
+  it('requires configuration access', async () => {
+    const res = response();
+    await batchToggleTools(
+      request({ enabled: false, tools: ['*'] }, { username: 'other', isAdmin: false }),
+      res,
+    );
+    expect(res.status).toHaveBeenCalledWith(403);
+    expect(mockServerDao.updateTools).not.toHaveBeenCalled();
+  });
+  it('rejects a server without a discovered tool inventory', async () => {
+    mockGetServerByName.mockReturnValue(undefined);
+    const res = response();
+    await batchToggleTools(request({ enabled: false, tools: ['*'] }), res);
+    expect(res.status).toHaveBeenCalledWith(409);
+    expect(mockServerDao.updateTools).not.toHaveBeenCalled();
+  });
 });

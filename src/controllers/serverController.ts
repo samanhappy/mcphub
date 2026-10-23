@@ -1,3 +1,5 @@
+import { hasPersonalAuthentication } from '../utils/credentialTemplate.js';
+import { matchesNamePattern } from '../utils/namePattern.js';
 import { validateAllowedCidrs } from '../utils/ssrf.js';
 import {
   copyCredentialBindings,
@@ -9,6 +11,8 @@ import { isDeepStrictEqual } from 'node:util';
 import { Request, Response } from 'express';
 import {
   ApiResponse,
+  BatchToggleToolsRequest,
+  BatchToggleToolsResponse,
   AddServerRequest,
   McpSettings,
   BatchCreateServersRequest,
@@ -19,6 +23,7 @@ import {
 } from '../types/index.js';
 import {
   getServersInfo,
+  getServerToolsForPrincipal,
   addServer,
   addOrUpdateServer,
   removeServer,
@@ -1641,6 +1646,91 @@ export const clearCache = async (req: Request, res: Response): Promise<void> => 
       success: false,
       message: 'Failed to clear cache',
     });
+  }
+};
+
+// Set the status of currently discovered tools in one update.
+export const batchToggleTools = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const serverName = req.params.serverName;
+    const { enabled, tools: patterns } = (req.body ?? {}) as Partial<BatchToggleToolsRequest>;
+    if (
+      typeof enabled !== 'boolean' ||
+      !Array.isArray(patterns) ||
+      patterns.length === 0 ||
+      patterns.length > 100 ||
+      patterns.some(
+        (pattern) => typeof pattern !== 'string' || !pattern.trim() || pattern.length > 256,
+      )
+    ) {
+      res
+        .status(400)
+        .json({
+          success: false,
+          message:
+            'Provide enabled (boolean) and 1–100 non-empty tool names or patterns (up to 256 characters each)',
+        });
+      return;
+    }
+    const server = await loadAuthorizedServer(req, res, serverName);
+    if (!server) return;
+    const liveServer = getServerByName(serverName);
+    let inventory = liveServer?.tools;
+    if (hasPersonalAuthentication(server)) {
+      const principal = getRequestUser(req);
+      // Never borrow another user's inventory or fall back to the global placeholder.
+      if (!principal) {
+        res.status(403).json({ success: false, message: 'Forbidden' });
+        return;
+      }
+      try {
+        inventory = await getServerToolsForPrincipal(serverName, principal);
+      } catch {
+        res.status(409).json({
+          success: false,
+          message: 'Personal tool inventory is unavailable; connect with your personal authentication first',
+        });
+        return;
+      }
+    }
+    if (!inventory) {
+      res
+        .status(409)
+        .json({
+          success: false,
+          message: 'Server tool inventory is unavailable; connect the server first',
+        });
+      return;
+    }
+    const runtimeNames = inventory.map((tool) => tool.name);
+    const prefix = `${serverName}${getNameSeparator()}`;
+    const matchedTools = runtimeNames.filter((name) =>
+      patterns.some((pattern) => {
+        // Exact names follow the same runtime-first resolution as the single-tool API.
+        if (!pattern.includes('*') && !pattern.includes('?')) {
+          return resolveRuntimeToolName(serverName, pattern, runtimeNames) === name;
+        }
+        const bareName = name.startsWith(prefix) ? name.slice(prefix.length) : name;
+        return matchesNamePattern(name, pattern) || matchesNamePattern(bareName, pattern);
+      }),
+    );
+    if (matchedTools.length) {
+      const tools = { ...server.tools };
+      for (const name of matchedTools) {
+        const key = findToolConfigKey(tools, serverName, name, runtimeNames);
+        tools[key] = { ...tools[key], enabled };
+      }
+      if (!(await getServerDao().updateTools(serverName, tools))) {
+        res.status(500).json({ success: false, message: 'Failed to save settings' });
+        return;
+      }
+      if (liveServer?.config) liveServer.config = { ...liveServer.config, tools };
+      notifyToolChanged();
+    }
+    const data: BatchToggleToolsResponse = { matchedTools, enabled };
+    res.json({ success: true, data });
+  } catch {
+    res.status(500).json({ success: false, message: 'Internal server error' });
   }
 };
 

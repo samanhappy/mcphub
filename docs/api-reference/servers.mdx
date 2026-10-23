@@ -182,6 +182,40 @@ Forces MCPHub to disconnect and re-establish the upstream connection (or re-spaw
 
 ---
 
+### Batch Tool Status
+
+`POST /api/servers/:serverName/tools/toggle` enables or disables currently discovered tools in one request. It requires dashboard authentication and the same server configuration access as the single-tool endpoint.
+
+```json
+{
+  "enabled": false,
+  "tools": ["create_*", "delete_*", "specific_tool"]
+}
+```
+
+- `enabled` is a required boolean; repeated requests set the same state.
+- `tools` contains 1–100 non-empty names or patterns, up to 256 characters each. Patterns are case-sensitive full-name matches: `*` matches zero or more characters, `?` matches one; every other character is literal.
+- Exact names resolve runtime (server-prefixed) names first, then original upstream names. Patterns match either form using the configured name separator.
+- Matching tools are deduplicated and saved in one update. Descriptions and hidden parameters are preserved. The change applies across groups and takes effect for discovery and subsequent calls without reconnecting.
+- For personal OAuth or credential bindings, the inventory belongs to the authenticated caller; another user's credentials are never borrowed. If that inventory cannot be acquired, the request returns `409` without changing tool states.
+- Patterns are expanded once against the current inventory, not persisted as policies for future tools. An unavailable inventory returns `409`; an empty match succeeds without writing.
+
+The response lists matched runtime names:
+
+```json
+{
+  "success": true,
+  "data": {
+    "matchedTools": ["example-create_item", "example-delete_item"],
+    "enabled": false
+  }
+}
+```
+
+The existing single-tool endpoint remains available.
+
+---
+
 ### Toggle a Tool
 
 Enables or disables a specific tool on a server.

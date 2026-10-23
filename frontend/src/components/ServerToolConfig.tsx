@@ -1,3 +1,4 @@
+import { CapabilitySelection } from './CapabilitySelection.js';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { IGroupServerConfig, Prompt, Resource, Server, ServerCost, Tool } from '@/types';
@@ -30,6 +31,7 @@ interface ServerToolConfigProps {
 }
 
 interface CapabilityItem {
+  annotations?: Record<string, unknown>;
   key: string;
   value: string;
   description?: string;
@@ -204,6 +206,7 @@ export const ServerToolConfig: React.FC<ServerToolConfigProps> = ({
           key: tool.name,
           value: normalizeNamedCapability(server.name, tool.name),
           description: tool.description,
+          annotations: tool.annotations,
           defaultDescription: tool.defaultDescription,
           hasDescriptionOverride: tool.hasDescriptionOverride,
         }));
@@ -518,8 +521,16 @@ export const ServerToolConfig: React.FC<ServerToolConfigProps> = ({
                             </div>
                           </div>
 
-                          <div className="grid grid-cols-1 gap-2 max-h-32 overflow-y-auto">
-                            {items.map((item) => {
+                          <CapabilitySelection
+                            items={items}
+                            selection={serverConfig?.[key] ?? []}
+                            tools={key === 'tools'}
+                            label={t(titleKey)}
+                            onChange={(selection) =>
+                              updateServerCapability(server.name, key, selection, true)
+                            }
+                          >
+                            {(item) => {
                               const isChecked = isCapabilityItemSelected(
                                 server.name,
                                 key,
@@ -612,8 +623,8 @@ export const ServerToolConfig: React.FC<ServerToolConfigProps> = ({
                                     )}
                                 </div>
                               );
-                            })}
-                          </div>
+                            }}
+                          </CapabilitySelection>
                         </div>
                       );
                     })}
