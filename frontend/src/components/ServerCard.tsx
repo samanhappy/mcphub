@@ -516,7 +516,7 @@ const ServerCard = ({
                 flexShrink: 0,
               }}
             />
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
                 <span
                   className="hub-mono truncate flex-shrink-0 max-w-[70%]"
