@@ -519,7 +519,7 @@ const ServerCard = ({
             <div className="min-w-0">
               <div className="flex items-center gap-2">
                 <span
-                  className="hub-mono truncate"
+                  className="hub-mono truncate flex-shrink-0 max-w-[70%]"
                   style={{
                     fontSize: 13.5,
                     color: enabled ? 'var(--hub-ink)' : 'var(--hub-ink-3)',
@@ -538,8 +538,8 @@ const ServerCard = ({
                 )}
                 {supportsReinstall && server.updateAvailable && server.latestVersion && (
                   <span
-                    className="hub-tag flex-shrink-0"
-                    title={t('server.updateAvailable')}
+                    className="hub-tag min-w-0 truncate"
+                    title={`${t('server.updateAvailable')}: ${server.latestVersion}`}
                     style={{ fontSize: 11, color: 'var(--hub-warn)' }}
                   >
                     ↑ {server.latestVersion}

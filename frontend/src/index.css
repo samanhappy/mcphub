@@ -279,11 +279,12 @@
   align-items: center;
   gap: 10px;
   grid-template-columns:
-    minmax(140px, 1.35fr)
-    minmax(126px, 0.55fr)
-    minmax(146px, 0.65fr)
-    minmax(104px, 0.52fr)
-    repeat(4, minmax(82px, 0.42fr))
+    minmax(180px, 1.6fr)
+    minmax(96px, 0.4fr)
+    minmax(100px, 0.45fr)
+    minmax(100px, 0.5fr)
+    repeat(3, minmax(76px, 0.36fr))
+    minmax(112px, 0.5fr)
     44px
     28px;
 }
@@ -374,9 +375,9 @@
 
 .hub-server-capability-stat.is-empty {
   background: transparent;
-  border-color: transparent;
+  border-color: var(--hub-line-2);
   color: var(--hub-ink-3);
-  opacity: 0.56;
+  opacity: 0.6;
 }
 
 .hub-server-capability-icon {
@@ -404,11 +405,12 @@
   .hub-server-card-row {
     gap: 9px;
     grid-template-columns:
-      minmax(128px, 1.25fr)
-      minmax(112px, 0.55fr)
-      minmax(128px, 0.62fr)
-      minmax(96px, 0.5fr)
-      repeat(4, minmax(76px, 0.4fr))
+      minmax(150px, 1.5fr)
+      minmax(84px, 0.4fr)
+      minmax(80px, 0.42fr)
+      minmax(88px, 0.5fr)
+      repeat(3, minmax(66px, 0.34fr))
+      minmax(100px, 0.46fr)
       44px
       28px;
   }
@@ -1131,4 +1133,24 @@ button.hub-btn.primary.is-loading::after {
 
 @keyframes button-spinner {
   to { transform: rotate(360deg); }
+}
+
+@media (max-width: 1200px) {
+  .hub-server-card-row {
+    gap: 8px;
+    grid-template-columns:
+      minmax(120px, 1.4fr)
+      minmax(72px, 0.4fr)
+      minmax(68px, 0.4fr)
+      minmax(80px, 0.45fr)
+      repeat(3, minmax(58px, 0.3fr))
+      minmax(92px, 0.42fr)
+      40px
+      24px;
+  }
+
+  .hub-server-capability-stat {
+    padding: 0 5px;
+    gap: 4px;
+  }
 }
