@@ -33,6 +33,16 @@ const AboutDialog: React.FC<AboutDialogProps> = ({
   const [localDismissed, setLocalDismissed] = useState(false);
 
   useEffect(() => {
+    if (!isOpen) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
+  useEffect(() => {
     setUpdateInfo(initialUpdateInfo ?? null);
   }, [initialUpdateInfo]);
 
@@ -85,8 +95,13 @@ const AboutDialog: React.FC<AboutDialogProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-      <div className="hub-card w-full max-w-[520px] shadow-xl">
-        <div className="p-5 relative">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="about-dialog-title"
+        className="hub-card flex max-h-[calc(100dvh-2rem)] w-full max-w-[520px] flex-col overflow-hidden shadow-xl"
+      >
+        <div className="p-5 relative shrink-0">
           <button
             onClick={onClose}
             className="hub-icon-btn sm absolute top-4 right-4"
@@ -96,11 +111,12 @@ const AboutDialog: React.FC<AboutDialogProps> = ({
           </button>
 
           <div className="pr-8">
-            <h3 className="hub-h1">{t('about.title')}</h3>
+            <h3 id="about-dialog-title" className="hub-h1">{t('about.title')}</h3>
             <p className="hub-sub">{t('about.versionInfo', { version })}</p>
           </div>
-
-          <div className="mt-5 space-y-4">
+        </div>
+        <div className="min-h-0 overflow-y-auto overscroll-contain px-5 pb-5">
+          <div className="space-y-4">
             {isChecking && !updateInfo ? (
               <div className="flex items-center gap-2 text-[13px]" style={{ color: 'var(--hub-ink-2)' }}>
                 <RefreshCw className="h-4 w-4 animate-spin" style={{ color: 'var(--hub-accent)' }} />
