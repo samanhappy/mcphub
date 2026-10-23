@@ -11,6 +11,7 @@
 
 /* ----- redesign tokens (hairline borders, Linear-style density) ----- */
 :root {
+  color-scheme: light;
   --hub-bg: oklch(0.985 0.002 250);
   --hub-bg-2: oklch(0.975 0.002 250);
   --hub-surface: #ffffff;
@@ -31,6 +32,7 @@
 }
 
 .dark {
+  color-scheme: dark;
   --hub-bg: oklch(0.18 0.005 250);
   --hub-bg-2: oklch(0.21 0.005 250);
   --hub-surface: oklch(0.22 0.005 250);
@@ -163,6 +165,7 @@
 .hub-btn.primary { background: var(--hub-ink); color: var(--hub-bg); border-color: var(--hub-ink); }
 .hub-btn.primary:hover { background: oklch(0.28 0.01 250); }
 .dark .hub-btn.primary { color: oklch(0.18 0.005 250); }
+.dark .hub-btn.primary:hover { background: oklch(0.92 0.005 250); }
 .hub-btn.ghost { border-color: transparent; }
 .hub-btn.ghost:hover { background: var(--hub-surface-hover); border-color: var(--hub-line); }
 .hub-btn.danger { color: var(--hub-err); }
@@ -543,7 +546,7 @@
   box-shadow: none !important;
 }
 
-/* Generic bg-white / dark:bg-gray-800 surface */
+/* Legacy surfaces share the same neutral palette as hub cards. */
 .dark .bg-white,
 .dark .dark\:bg-gray-800 {
   background: var(--hub-surface) !important;
@@ -609,6 +612,7 @@
 }
 
 .btn-secondary {
+  font-size: 0.875rem;
   background: var(--hub-surface) !important;
   color: var(--hub-ink) !important;
   border: 1px solid var(--hub-line) !important;
@@ -833,8 +837,10 @@ textarea.form-input:focus {
 .hub-crumb b { color: var(--hub-ink); font-weight: 500; }
 .hub-crumb .sep { margin: 0 6px; color: var(--hub-ink-3); opacity: 0.5; }
 
-/* Add some custom styles to verify CSS is working correctly */
+/* Application defaults follow the active theme. */
 body {
+  background: var(--hub-bg);
+  color: var(--hub-ink);
   margin: 0;
   font-family:
     system-ui,
@@ -854,69 +860,81 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Dark mode override styles - these will apply when dark class is on html element */
-.dark body {
-  background-color: #1f2a37;
-  color: #e5e7eb;
+/* Keep legacy neutral utilities aligned with the shared theme. */
+.dark .text-gray-900,
+.dark .text-gray-800,
+.dark .dark\:text-gray-100,
+.dark .dark\:text-gray-200 {
+  color: var(--hub-ink) !important;
 }
 
-.dark .bg-white {
-  background-color: #1f2937 !important;
+.dark .text-gray-700,
+.dark .text-gray-600,
+.dark .dark\:text-gray-300 {
+  color: var(--hub-ink-2) !important;
 }
 
-.dark .text-gray-900 {
-  color: #f9fafb !important;
+.dark .text-gray-500,
+.dark .text-gray-400,
+.dark .dark\:text-gray-400,
+.dark .dark\:text-gray-500 {
+  color: var(--hub-ink-3) !important;
 }
 
-.dark .text-gray-800 {
-  color: #f3f4f6 !important;
+.dark .border-gray-100,
+.dark .border-gray-200,
+.dark .border-gray-300,
+.dark .dark\:border-gray-600,
+.dark .dark\:border-gray-700 {
+  border-color: var(--hub-line) !important;
 }
 
-.dark .text-gray-700 {
-  color: #e5e7eb !important;
+.dark .divide-gray-200 > :not([hidden]) ~ :not([hidden]),
+.dark .dark\:divide-gray-700 > :not([hidden]) ~ :not([hidden]) {
+  border-color: var(--hub-line-2) !important;
 }
 
-.dark .text-gray-600 {
-  color: #d1d5db !important;
+.dark .bg-gray-50,
+.dark .bg-gray-100,
+.dark .dark\:bg-gray-700 {
+  background: var(--hub-bg-2) !important;
 }
 
-/* .dark .text-gray-500 {
-  color: #9ca3af !important;
-} */
-
-.dark .border-gray-300 {
-  border-color: #2f3b4c !important;
+.dark .dark\:bg-gray-800\/60 {
+  background: color-mix(in oklab, var(--hub-surface) 60%, transparent) !important;
 }
 
-.dark .border-gray-200 {
-  border-color: #2f3b4c !important;
+.dark .dark\:bg-gray-900 {
+  background: var(--hub-bg) !important;
 }
 
-.dark .divide-gray-200 > :not([hidden]) ~ :not([hidden]) {
-  border-color: #2f3b4c !important;
-}
-
-.dark .bg-gray-100 {
-  background-color: #374151 !important;
-}
-
-/* Specific hover effects for dark mode */
-.dark .hover\:bg-gray-100:hover {
-  background-color: rgba(110, 127, 156, 0.15) !important;
+.dark .hover\:bg-gray-50:hover,
+.dark .hover\:bg-gray-100:hover,
+.dark .hover\:bg-gray-200:hover,
+.dark .dark\:hover\:bg-gray-600:hover,
+.dark .dark\:hover\:bg-gray-700:hover,
+.dark .dark\:hover\:bg-gray-800:hover {
+  background: var(--hub-surface-hover) !important;
 }
 
 .dark .hover\:text-gray-900:hover {
-  color: rgb(190, 188, 185) !important;
+  color: var(--hub-ink) !important;
 }
 
-.dark .bg-gray-50 {
-  background-color: #1f2937 !important;
+/* Native fields without form-input still need an explicit dark surface. */
+.dark :is(input, select, textarea):not([type='checkbox'], [type='radio'], [type='range'], [type='file'], [type='submit'], [type='button'], [type='reset'], [type='color']) {
+  background: var(--hub-surface) !important;
+  border-color: var(--hub-line) !important;
+  color: var(--hub-ink) !important;
 }
 
-.dark .shadow {
-  box-shadow:
-    0 4px 12px rgba(0, 0, 0, 0.15),
-    0 2px 6px rgba(0, 0, 0, 0.1) !important;
+.dark :is(input, select, textarea):focus {
+  border-color: var(--hub-ink-2) !important;
+}
+
+.dark input::placeholder,
+.dark textarea::placeholder {
+  color: var(--hub-ink-3) !important;
 }
 
 .bg-blue-300 {
@@ -929,89 +947,6 @@ body {
 
 .text-custom-white {
   color: #ffffff;
-}
-
-.status-badge-online {
-  background-color: white !important;
-  color: rgba(129, 199, 132, 0.9) !important;
-  border: 1px solid #a6d7b7;
-}
-
-/* Enhanced status badge styles for dark theme */
-.dark .status-badge-online {
-  background-color: rgba(76, 175, 80, 0.15) !important;
-  color: rgba(129, 199, 132, 0.9) !important;
-  border: 1px solid rgba(76, 175, 80, 0.3);
-}
-
-.status-badge-offline {
-  background-color: white !important;
-  color: rgba(107, 114, 128, 0.9) !important;
-  border: 1px solid #d1d5db;
-}
-
-.dark .status-badge-offline {
-  background-color: rgba(107, 114, 128, 0.15) !important;
-  color: rgba(156, 163, 175, 0.9) !important;
-  border: 1px solid rgba(107, 114, 128, 0.3);
-}
-
-.status-badge-connecting {
-  background-color: white !important;
-  color: rgba(255, 213, 79, 0.9) !important;
-  border: 1px solid #ffd57f;
-}
-
-.dark .status-badge-connecting {
-  background-color: rgba(255, 193, 7, 0.15) !important;
-  color: rgba(255, 213, 79, 0.9) !important;
-  border: 1px solid rgba(255, 193, 7, 0.3);
-}
-
-.status-badge-oauth-required {
-  background-color: white !important;
-  color: rgba(156, 39, 176, 0.9) !important;
-  border: 1px solid #ba68c8;
-}
-
-.dark .status-badge-oauth-required {
-  background-color: rgba(156, 39, 176, 0.15) !important;
-  color: rgba(186, 104, 200, 0.9) !important;
-  border: 1px solid rgba(156, 39, 176, 0.3);
-}
-
-/* Enhanced status icons for dark theme */
-.dark .status-icon-blue {
-  background-color: rgba(59, 130, 246, 0.15) !important;
-  color: rgba(96, 165, 250, 0.9) !important;
-}
-
-.dark .status-icon-green {
-  background-color: rgba(76, 175, 80, 0.15) !important;
-  color: rgba(129, 199, 132, 0.9) !important;
-}
-
-.dark .status-icon-red {
-  background-color: rgba(244, 67, 54, 0.15) !important;
-  color: rgba(239, 154, 154, 0.9) !important;
-}
-
-.dark .status-icon-yellow {
-  background-color: rgba(255, 193, 7, 0.15) !important;
-  color: rgba(255, 213, 79, 0.9) !important;
-}
-
-/* Enhanced card hover effects */
-.dashboard-card {
-  transition: all 0.3s ease;
-  border-radius: 12px;
-}
-
-.dashboard-card:hover {
-  transform: translateY(-2px);
-  box-shadow:
-    0 8px 25px rgba(0, 0, 0, 0.2),
-    0 4px 12px rgba(0, 0, 0, 0.15) !important;
 }
 
 /* Icon container hover effects */
@@ -1037,56 +972,22 @@ body {
   background: linear-gradient(90deg, rgba(255, 193, 7, 0.8), rgba(255, 213, 79, 0.6));
 }
 
-/* Table enhancements for dark theme */
-.dark .table-container {
-  border-radius: 12px;
-  overflow: hidden;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-}
-
-.dark thead {
-  background-color: #252d3a !important;
-}
-
 .dark tbody tr {
-  border-bottom: 1px solid #2f3b4c;
+  border-bottom: 1px solid var(--hub-line-2);
 }
 
 tbody tr:hover {
-  background-color: var(--color-gray-100) !important;
+  background-color: var(--hub-surface-hover) !important;
   transition: background-color 0.2s ease;
 }
 
-.dark tbody tr:hover {
-  background-color: rgba(55, 65, 81, 0.5) !important;
-  transition: background-color 0.2s ease;
-}
-
-/* Error box enhancements for dark theme */
-.dark .error-box {
-  background-color: rgba(244, 67, 54, 0.1) !important;
-  border-color: rgba(244, 67, 54, 0.3) !important;
-  border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(244, 67, 54, 0.1);
-}
 
 .dark .error-box h3 {
   color: rgba(239, 154, 154, 0.9) !important;
 }
 
 .dark .error-box p {
-  color: #d1d5db !important;
-}
-
-/* Loading container enhancements */
-.loading-container {
-  border-radius: 12px;
-  backdrop-filter: blur(10px);
-}
-
-.dark .loading-container {
-  background-color: rgba(31, 41, 55, 0.8) !important;
-  border: 1px solid #2f3b4c;
+  color: var(--hub-ink-2) !important;
 }
 
 .label-primary {
@@ -1109,165 +1010,12 @@ tbody tr:hover {
   color: rgba(129, 199, 132, 0.9) !important;
 }
 
-.btn-primary {
-  background-color: #60a5fa !important;
-  color: #ffffff !important;
-  border: none;
-  border-radius: 8px;
-  transition: all 0.3s ease;
-  box-shadow: 0 2px 4px rgba(96, 165, 250, 0.2);
-}
-
-.btn-primary:hover {
-  background-color: #3b82f6 !important;
-  color: #ffffff !important;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
-}
-
-/* Enhanced button styles for dark theme */
-.dark .btn-primary {
-  background-color: rgba(59, 130, 246, 0.15) !important;
-  color: rgba(96, 165, 250, 0.9) !important;
-  border: 1px solid rgba(59, 130, 246, 0.3);
-  transition: all 0.3s ease;
-}
-
-.dark .btn-primary:hover {
-  background-color: rgba(59, 130, 246, 0.25) !important;
-  color: rgba(96, 165, 250, 1) !important;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
-}
-
-.btn-secondary {
-  background-color: #f9fafb !important;
-  color: #374151 !important;
-  border: 1px solid #d1d5db !important;
-  border-radius: 8px;
-  font-size: 0.875rem;
-}
-
-.btn-secondary:hover {
-  background-color: #e5e7eb !important;
-  color: #374151 !important;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
-
-.dark .btn-secondary {
-  background-color: rgba(107, 114, 128, 0.15) !important;
-  color: rgba(156, 163, 175, 0.9) !important;
-  border: 1px solid rgba(107, 114, 128, 0.3) !important;
-  transition: all 0.3s ease;
-}
-
-.dark .btn-secondary:hover {
-  background-color: rgba(107, 114, 128, 0.25) !important;
-  color: rgba(156, 163, 175, 1) !important;
-  transform: translateY(-1px);
-}
-
-.btn-warning {
-  background-color: var(--color-yellow-100) !important;
-  color: var(--color-yellow-800) !important;
-  border: none;
-  border-radius: 8px;
-  transition: all 0.3s ease;
-}
-
-.btn-warning:hover {
-  background-color: var(--color-yellow-200) !important;
-  color: var(--color-yellow-800) !important;
-}
-
-.dark .btn-warning {
-  background-color: rgba(234, 179, 8, 0.15) !important;
-  color: rgba(250, 204, 21, 0.9) !important;
-  border: 1px solid rgba(234, 179, 8, 0.3);
-  transition: all 0.3s ease;
-}
-
 .dark .btn-warning:hover {
   background-color: rgba(234, 179, 8, 0.25) !important;
   color: rgba(250, 204, 21, 1) !important;
   transform: translateY(-1px);
 }
 
-.btn-danger {
-  background-color: var(--color-red-100) !important;
-  color: var(--color-red-800) !important;
-  border: none;
-  border-radius: 8px;
-  transition: all 0.3s ease;
-}
-
-.btn-danger:hover {
-  background-color: var(--color-red-200) !important;
-  color: var(--color-red-800) !important;
-}
-
-.dark .btn-danger {
-  background-color: rgba(244, 67, 54, 0.15) !important;
-  color: rgba(239, 154, 154, 0.9) !important;
-  border: 1px solid rgba(244, 67, 54, 0.3);
-  transition: all 0.3s ease;
-}
-
-.dark .btn-danger:hover {
-  background-color: rgba(244, 67, 54, 0.25) !important;
-  color: rgba(239, 154, 154, 1) !important;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(244, 67, 54, 0.2);
-}
-
-.form-input {
-  background-color: #f9fafb !important;
-  border-color: #d1d5db !important;
-  color: #374151 !important;
-  border-radius: 8px;
-  transition: all 0.3s ease;
-}
-
-.form-input:focus {
-  border-color: rgba(184, 193, 207, 0.5);
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-}
-
-/* Form input enhancements for dark theme */
-.dark .form-input {
-  background-color: #1f2937 !important;
-  border-color: #2f3b4c !important;
-  color: #e5e7eb !important;
-  border-radius: 8px;
-}
-
-.dark .form-input:focus {
-  border-color: rgba(59, 130, 246, 0.5) !important;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
-}
-
-.dark .form-input::placeholder {
-  color: #9ca3af !important;
-}
-
-/* Card spacing and layout improvements */
-.page-card {
-  border-radius: 12px;
-  transition: all 0.3s ease;
-}
-
-.page-card:hover {
-  transform: translateY(-1px);
-}
-
-.dark .page-card {
-  background-color: #1f2937 !important;
-  border: 1px solid #2f3b4c;
-  box-shadow:
-    0 4px 12px rgba(0, 0, 0, 0.15),
-    0 2px 6px rgba(0, 0, 0, 0.1);
-}
 
 /* Custom text color to match status-icon-red */
 .text-status-red {
@@ -1314,33 +1062,19 @@ tbody tr:hover {
   color: rgba(129, 199, 132, 0.9) !important;
 }
 
-/* Empty state styling */
-.dark .empty-state {
-  background-color: #1f2937 !important;
-  border: 1px solid #2f3b4c;
-  border-radius: 12px;
-  text-align: center;
-  padding: 3rem 2rem;
-}
-
-.dark .empty-state p {
-  color: #9ca3af !important;
-}
-
 /* Login page enhancements for dark theme */
 .dark .login-container {
-  background-color: #1f2a37 !important;
+  background-color: var(--hub-bg) !important;
 }
 
 .dark .login-card {
-  background-color: #1f2937 !important;
-  border: 1px solid #2f3b4c;
+  background-color: var(--hub-surface) !important;
+  border: 1px solid var(--hub-line);
   box-shadow:
     0 8px 25px rgba(0, 0, 0, 0.2),
     0 4px 12px rgba(0, 0, 0, 0.15);
   border-radius: 12px;
 }
-
 
 /* --- Unified Button Click & Loading Feedback --- */
 button {
@@ -1351,7 +1085,10 @@ button:not(:disabled):active {
   transform: scale(0.96);
 }
 
-button.is-loading {
+button.is-loading,
+button.is-loading:hover,
+.dark button.is-loading,
+.dark button.is-loading:hover {
   position: relative !important;
   color: transparent !important;
   pointer-events: none !important;
@@ -1381,10 +1118,15 @@ button.bg-blue-600.is-loading::after,
 button.bg-blue-500.is-loading::after,
 button.bg-red-500.is-loading::after,
 button.bg-red-600.is-loading::after,
-button.btn-primary.is-loading::after,
 button.text-white.is-loading::after {
   border: 2px solid rgba(255, 255, 255, 0.3) !important;
   border-top-color: #fff !important;
+}
+
+button.btn-primary.is-loading::after,
+button.hub-btn.primary.is-loading::after {
+  border-color: color-mix(in oklab, var(--hub-bg) 35%, transparent) !important;
+  border-top-color: var(--hub-bg) !important;
 }
 
 @keyframes button-spinner {
