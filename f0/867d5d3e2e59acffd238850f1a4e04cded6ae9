@@ -1,0 +1,35 @@
+src/controllers/promptController.ts
+  s_0b3bcc1918d7f7::t_62d250689c7025 23,25
+src/services/mcpService.ts
+  s_0b3bcc1918d7f7::t_d0fe2aaf7bcd50 3892-3913,3933,4807,4830-4835,4843-4850,4934-4939,5164-5172,5391
+src/services/templateService.ts
+  s_0b3bcc1918d7f7::t_af5643f3db97e8 15,625
+src/utils/serverConfigPersistence.ts
+  s_0b3bcc1918d7f7::t_65aaba5a39d0b3 92
+tests/integration/personal-credentials.test.ts
+  s_0b3bcc1918d7f7::t_70f84751ef5bbf 40,170,739-794
+tests/services/mcpService-apps.test.ts
+  s_0b3bcc1918d7f7::t_70ac51d590cd22 859-918
+tests/services/mcpService-group-alias.test.ts
+  s_0b3bcc1918d7f7::t_c16bba4a8fa0cf 174-180,226-287
+tests/services/templateService-import-privilege.test.ts
+  s_0b3bcc1918d7f7::t_a1b99b88874225 43-121
+tests/services/templateService.test.ts
+  s_0b3bcc1918d7f7::t_f106dc6b3e661b 502,546-547,552
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f0867d5d3e2e59acffd238850f1a4e04cded6ae9",
+  "prompts": {},
+  "sessions": {
+    "s_0b3bcc1918d7f7": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1678b-2c93-7c83-a6a9-b15bb4ab4758",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
