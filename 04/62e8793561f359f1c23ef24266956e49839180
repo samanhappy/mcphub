@@ -1,0 +1,39 @@
+docs/api-reference/mcp-http.mdx
+  s_854a02acf9066f::t_3cb62fd86d76ea 73-75,81-85
+  s_854a02acf9066f::t_8ae2fcb884733a 86
+docs/zh/configuration/mcp-settings.mdx
+  s_854a02acf9066f::t_3cb62fd86d76ea 218-221
+tests/integration/upstream-auto-negotiation.test.ts
+  s_854a02acf9066f::t_3cb62fd86d76ea 268-271,331-334
+  s_854a02acf9066f::t_04801caecc9e22 1,233,236,282,303
+  s_854a02acf9066f::t_7f733424e74a33 32-37,53-55,62-75,77-80,82-84,86-94,96-102,142-149,152,160-166,169,179,181-188,198,258,260,263-267,272,274-281,283-302,305-306,310-316,318,325,327-330,338,340,345,350-352,354-356,358-362,364-365,367-370,372-380,382-383
+  s_854a02acf9066f::t_c17b1f637149b9 76,81,85,95,150-151,167-168,259,261-262,273,304,307-309,317,319-324,326,335-337,339,341-344,346-349,353,357,363,366,371,381
+docs/zh/api-reference/mcp-http.mdx
+  s_854a02acf9066f::t_3cb62fd86d76ea 69-70,75-77
+  s_854a02acf9066f::t_106d131a3c94c6 78
+docs/configuration/mcp-settings.mdx
+  s_854a02acf9066f::t_3cb62fd86d76ea 244-250
+src/services/mcpService.ts
+  s_854a02acf9066f::t_eb9a8ccb02e12f 1016-1017,1194,1199-1202,1204,1217,1229,5322-5359,5386,5403,5520-5591
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0462e8793561f359f1c23ef24266956e49839180",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_854a02acf9066f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a16c92-4a28-7210-801f-1dfb7938b0ef",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
