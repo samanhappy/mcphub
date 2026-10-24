@@ -635,7 +635,6 @@ const ServerForm = ({
                 title={t('server.nameInvalid')}
                 required
               />
-              <p className="text-xs text-[var(--hub-ink-3)] mt-1">{t('server.nameInvalid')}</p>
             </div>
 
             <div className="md:col-span-2">
