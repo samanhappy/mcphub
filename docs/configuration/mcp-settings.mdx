@@ -241,6 +241,13 @@ relevant request. Health checks remain opt-in via `enableKeepAlive`; modern
 connections probe `server/discover` over the network instead of `ping`.
 See the [compatibility matrix](/api-reference/mcp-http#protocol-compatibility).
 
+For modern upstreams with `passthroughHeaders`, discovery clients and snapshots
+are request-local rather than shared across forwarded identities. Each relevant
+request adds a discovery round trip; those descriptors are not published to the
+global cache or vector index. If an upstream refresh fails, only that upstream
+is excluded from the current request; healthy results remain available and
+partial lists have zero TTL. Later requests retry the failed upstream.
+
 ### Routing headers over MCP 2026-07-28
 
 Modern requests use `MCP-Protocol-Version: 2026-07-28` and `Mcp-Method`

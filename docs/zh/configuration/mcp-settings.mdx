@@ -215,6 +215,10 @@ TTL 缺失、为零、无效或列表分页未完成时，下一次相关请求�
 健康检查仍需设置 `enableKeepAlive`；新版连接通过网络 `server/discover` 探测，
 不调用 `ping`。详见[兼容矩阵](/zh/api-reference/mcp-http#协议兼容矩阵)。
 
+配置 `passthroughHeaders` 的新版上游按请求隔离 discovery 客户端和快照，不跨透传身份共享。
+每次相关请求增加一次 discovery 往返，个性化描述不写入全局缓存或向量索引。
+刷新失败只在当前请求中排除该上游，保留健康结果；部分列表返回零 TTL，后续请求会重试。
+
 ### MCP 2026-07-28 的路由请求头
 
 新版请求使用 `MCP-Protocol-Version: 2026-07-28`，并携带与 JSON-RPC 方法一致的

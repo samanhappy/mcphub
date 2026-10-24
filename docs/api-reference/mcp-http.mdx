@@ -70,12 +70,19 @@ server. Stdio and legacy SSE upstreams continue using legacy negotiation.
 
 List revalidation also runs before tool calls, prompt retrieval and resource
 reads so newly added or removed entries affect routing. Resource templates are
-fetched on demand. Expired data is not silently served after a failed refresh;
-the request fails and a later request can retry. No background list polling is
+fetched on demand. A failed refresh excludes only that upstream from the current
+request; healthy upstreams and built-in content remain available. Partial lists
+advertise zero TTL, and later requests retry the failed upstream. No background list polling is
 introduced, and a list does not update until a relevant request occurs. Changed
 shared lists notify connected legacy downstream clients after refresh; personal
 lists remain scoped to their own runtime. Upstream list discovery remains
 single-page; a response with `nextCursor` receives no positive freshness hint.
+
+When `passthroughHeaders` are configured, modern discovery uses a disposable,
+request-local client and snapshots. Lists and pending refreshes are never shared
+between forwarded identities, even with positive TTLs or absent headers. This
+adds a discovery round trip per relevant request; those snapshots do not update
+global descriptors, embeddings or list-change broadcasts.
 
 Automatic negotiation does not treat every connection failure as evidence of a
 legacy server. HTTP probe timeouts, network outages and authentication errors

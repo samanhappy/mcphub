@@ -1013,6 +1013,8 @@ const createConnectGate = (limit: number): ConnectGate => {
 let initGeneration = 0;
 
 const principalServerScope = new AsyncLocalStorage<ServerInfo[]>();
+// Header-dependent discovery must never publish descriptors or embeddings globally.
+const requestDiscoveryInfos = new WeakSet<ServerInfo>();
 
 const getVisibleServerInfos = (): ServerInfo[] => {
   return getDataService().filterData(principalServerScope.getStore() ?? serverInfos);
@@ -1189,16 +1191,17 @@ const refreshModernServerLists = async (
         if (field === 'tools') {
           const { tools } = await client.listTools({}, info.options || {});
           if (!current()) return;
-          if (hasPersonalAuthentication(info.config)) {
+          if (hasPersonalAuthentication(info.config) || requestDiscoveryInfos.has(info)) {
             info.tools = preserveListFreshness(
               tools,
               tools.map((tool) => normalizeToolForCache(info.name, tool)),
             );
-            void syncCredentialServerToolEmbeddings(info.name, info.tools, { partial: true }).catch(
-              () => {
+            if (!requestDiscoveryInfos.has(info))
+              void syncCredentialServerToolEmbeddings(info.name, info.tools, {
+                partial: true,
+              }).catch(() => {
                 logger.warn('[EMBED_SYNC_ERROR] Failed to sync personal tool embeddings');
-              },
-            );
+              });
           } else {
             const previous = JSON.stringify(info.tools);
             updateServerToolsCache(info, tools);
@@ -1211,6 +1214,7 @@ const refreshModernServerLists = async (
             updateServerPromptsCache(info, prompts);
             if (
               !hasPersonalAuthentication(info.config) &&
+              !requestDiscoveryInfos.has(info) &&
               previous !== JSON.stringify(info.prompts)
             )
               broadcastPromptListChanged();
@@ -1222,6 +1226,7 @@ const refreshModernServerLists = async (
             updateServerResourcesCache(info, resources);
             if (
               !hasPersonalAuthentication(info.config) &&
+              !requestDiscoveryInfos.has(info) &&
               previous !== JSON.stringify(info.resources)
             )
               broadcastResourceListChanged();
@@ -5314,6 +5319,44 @@ const handleReadResourceRequestImpl = async (request: any, extra: any) => {
   }
 };
 
+// Preserve credential-safe errors for personal clients in every discovery scope.
+const personalClientMethods = new Set([
+  'callTool',
+  'getPrompt',
+  'readResource',
+  'listTools',
+  'listPrompts',
+  'listResources',
+  'listResourceTemplates',
+]);
+const protectPersonalClient = <T extends object>(
+  client: T,
+  info: ServerInfo,
+  resolvedConfig: ServerConfig,
+): T =>
+  new Proxy(client, {
+    get(target, property) {
+      const value = Reflect.get(target, property);
+      if (typeof value !== 'function') return value;
+      if (!personalClientMethods.has(String(property))) return value.bind(target);
+      return async (...args: unknown[]) => {
+        try {
+          return await value.apply(target, args);
+        } catch (error) {
+          if (isUpstreamConnectionFailure(error)) info.status = 'disconnected';
+          const failure = createUpstreamRequestError(
+            info.name,
+            String(property),
+            error,
+            resolvedConfig,
+          );
+          logger.error(failure.message);
+          throw failure;
+        }
+      };
+    },
+  });
+
 // Personal runtimes never enter serverInfos or config exports. Their tool list
 // is added to the rows under the server name, the index the reindex endpoint
 // rebuilds from every binding.
@@ -5336,43 +5379,11 @@ const createPrincipalRuntime = async (
     resources: [],
     createTime: Date.now(),
   };
-  const safeMethods = new Set([
-    'callTool',
-    'getPrompt',
-    'readResource',
-    'listTools',
-    'listPrompts',
-    'listResources',
-    'listResourceTemplates',
-  ]);
-  const protectClient = <T extends object>(client: T): T =>
-    new Proxy(client, {
-      get(target, property) {
-        const value = Reflect.get(target, property);
-        if (typeof value !== 'function') return value;
-        if (!safeMethods.has(String(property))) return value.bind(target);
-        return async (...args: unknown[]) => {
-          try {
-            return await value.apply(target, args);
-          } catch (error) {
-            if (isUpstreamConnectionFailure(error)) info.status = 'disconnected';
-            const failure = createUpstreamRequestError(
-              name,
-              String(property),
-              error,
-              resolvedConfig,
-            );
-            logger.error(failure.message);
-            throw failure;
-          }
-        };
-      },
-    });
   try {
     if (resolvedConfig.type === 'openapi') {
       const client = new OpenAPIClient(resolvedConfig);
       await client.initialize();
-      info.openApiClient = protectClient(client);
+      info.openApiClient = protectPersonalClient(client, info, resolvedConfig);
       info.tools = client.getTools().map((tool) => ({
         ...tool,
         name: `${name}${getNameSeparator()}${tool.name}`,
@@ -5389,7 +5400,7 @@ const createPrincipalRuntime = async (
         },
       );
       info.transport = transport;
-      info.client = protectClient(client);
+      info.client = protectPersonalClient(client, info, resolvedConfig);
       await client.connect(transport, resolvedConfig.options || {});
       const capabilities = client.getServerCapabilities();
       if (capabilities?.tools) {
@@ -5506,8 +5517,78 @@ const withModernLists =
         .sort((a, b) => b.prefix.length - a.prefix.length);
       if (targets.length) selected = [targets[0].info];
     }
-    await Promise.all(selected.map((info) => refreshModernServerLists(info, fields)));
-    return handler(request, extra);
+    const scoped = new Map(
+      (principalServerScope.getStore() ?? serverInfos).map((info) => [info.name, info]),
+    );
+    const requestClients: Client[] = [];
+    try {
+      await Promise.all(
+        selected.map(async (info) => {
+          try {
+            let discoveryInfo = info;
+            const serverConfig = info.config;
+            if (
+              info.status === 'connected' &&
+              info.client?.getProtocolEra?.() === 'modern' &&
+              serverConfig?.passthroughHeaders?.some(isSafePassthroughHeader)
+            ) {
+              // Reuse neither snapshots nor pending work across forwarded identities.
+              // A disposable modern client also isolates SDK tool definitions and read caches.
+              const transport = await createTransportFromConfig(info.name, serverConfig);
+              const client = new LegacyMcpClient(
+                { name: `mcp-client-${info.name}`, version: '1.0.0' },
+                {
+                  versionNegotiation: {
+                    mode: { pin: info.client.getNegotiatedProtocolVersion()! },
+                  },
+                  capabilities: MCP_APPS_CAPABILITIES,
+                  jsonSchemaValidator: new ResilientJsonSchemaValidator(),
+                },
+              );
+              discoveryInfo = { ...info, client, transport, tools: [], prompts: [], resources: [] };
+              if (hasPersonalAuthentication(serverConfig)) {
+                discoveryInfo.client = protectPersonalClient(client, discoveryInfo, serverConfig);
+              }
+              requestClients.push(discoveryInfo.client!);
+              requestDiscoveryInfos.add(discoveryInfo);
+              scoped.set(info.name, discoveryInfo);
+              await connectClientWithDiagnostics(client, transport, info.options || {});
+            }
+            await refreshModernServerLists(discoveryInfo, fields);
+          } catch {
+            // Exclude only this upstream for this request. Keep its shared state
+            // intact so later requests retry; disconnected projections force TTL zero.
+            scoped.set(info.name, {
+              ...info,
+              status: 'disconnected',
+              client: undefined,
+              tools: [],
+              prompts: [],
+              resources: [],
+            });
+            logger.warn('Failed to refresh upstream discovery for request', {
+              serverName: info.name,
+            });
+          }
+        }),
+      );
+      return await principalServerScope.run([...scoped.values()], () => handler(request, extra));
+    } finally {
+      await Promise.all(
+        [
+          ...new Set([
+            ...requestClients,
+            ...[...scoped.values()]
+              .filter((info) => requestDiscoveryInfos.has(info))
+              .flatMap((info) => (info.client ? [info.client] : [])),
+          ]),
+        ].map((client) =>
+          client.close().catch(() => {
+            logger.warn('Failed to close request discovery client');
+          }),
+        ),
+      );
+    }
   };
 
 const withPrincipalServers =
