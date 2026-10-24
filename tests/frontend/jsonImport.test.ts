@@ -34,3 +34,32 @@ describe('normalizeImportedServers', () => {
     ]);
   });
 });
+
+describe('protocol negotiation JSON import', () => {
+  it.each(['auto', 'legacy'] as const)('retains %s on Streamable HTTP imports', (mode) => {
+    const result = normalizeImportedServers({
+      mcpServers: {
+        remote: {
+          type: 'streamable-http',
+          url: 'https://example.com/mcp',
+          protocolNegotiation: mode,
+        },
+      },
+    });
+    expect(result.issues).toEqual([]);
+    expect(result.servers[0].config.protocolNegotiation).toBe(mode);
+  });
+  it('reports auto on a legacy-only transport', () => {
+    const result = normalizeImportedServers({
+      mcpServers: {
+        local: {
+          type: 'stdio',
+          command: 'node',
+          protocolNegotiation: 'auto',
+        },
+      },
+    });
+    expect(result.servers).toEqual([]);
+    expect(result.issues[0].message).toContain('streamable-http');
+  });
+});

@@ -247,6 +247,7 @@ const CONNECTION_RELEVANT_CONFIG_FIELDS = [
   'startOnDemand',
   'idleTimeoutMs',
   'enableKeepAlive',
+  'protocolNegotiation',
   'keepAliveInterval',
   'proxy',
 ] as const;

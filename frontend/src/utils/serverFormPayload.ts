@@ -280,6 +280,8 @@ export const buildServerPayload = ({
   } else if (serverType === 'sse' || serverType === 'streamable-http') {
     const keepAliveEnabled = formData.keepAlive?.enabled === true;
 
+    config.protocolNegotiation =
+      serverType === 'streamable-http' ? formData.protocolNegotiation : undefined;
     config.url = formData.url.trim();
     config.env = env;
     config.headers = headers;

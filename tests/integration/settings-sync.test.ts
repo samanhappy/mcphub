@@ -663,3 +663,16 @@ test('prune first boot skips legacy seeds and never writes to the settings file'
     writeSpy.mockRestore();
   }
 });
+
+it('round-trips the upstream protocol override and clears it back to automatic negotiation', async () => {
+  write({ mcpServers: { remote: { ...remote, protocolNegotiation: 'legacy' } } });
+  await syncSettingsToDatabase('upsert');
+  const dao = new ServerDaoDbImpl();
+  expect((await dao.findById('remote'))?.protocolNegotiation).toBe('legacy');
+  write({ mcpServers: { remote: { ...remote, protocolNegotiation: 'auto' } } });
+  await syncSettingsToDatabase('upsert');
+  expect((await dao.findById('remote'))?.protocolNegotiation).toBe('auto');
+  write({ mcpServers: { remote } });
+  await syncSettingsToDatabase('upsert');
+  expect((await dao.findById('remote'))?.protocolNegotiation).toBeUndefined();
+});

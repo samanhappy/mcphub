@@ -162,6 +162,7 @@ const ServerForm = ({
     },
     // Per-session client isolation initialization
     perSessionClient: initialData?.config?.perSessionClient === true,
+    protocolNegotiation: initialData?.config?.protocolNegotiation,
     credentialTemplate: initialData?.config?.credentialTemplate || [],
     // Proxychains proxy config: round-trip the stored value so editing the
     // server does not silently drop it (there is no in-form editor for it).

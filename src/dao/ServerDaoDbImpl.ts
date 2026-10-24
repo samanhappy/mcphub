@@ -105,6 +105,7 @@ export class ServerDaoDbImpl implements ServerDao {
       sharedWithUsers: entity.sharedWithUsers,
       enableKeepAlive: entity.enableKeepAlive,
       keepAliveInterval: entity.keepAliveInterval,
+      protocolNegotiation: entity.protocolNegotiation,
       tools: entity.tools,
       prompts: entity.prompts,
       resources: entity.resources,
@@ -159,6 +160,7 @@ export class ServerDaoDbImpl implements ServerDao {
       updateData.enableKeepAlive = entity.enableKeepAlive ?? false;
     }
     assignNullable('keepAliveInterval');
+    assignNullable('protocolNegotiation');
     assignNullable('tools');
     assignNullable('prompts');
     assignNullable('resources');
@@ -305,6 +307,7 @@ export class ServerDaoDbImpl implements ServerDao {
     proxy?: Record<string, any>;
     openapi?: Record<string, any>;
     passthroughHeaders?: string[];
+    protocolNegotiation?: ServerConfig['protocolNegotiation'];
     perSessionClient?: boolean;
     credentialTemplate?: ServerConfig['credentialTemplate'];
   }): ServerConfigWithName {
@@ -333,6 +336,7 @@ export class ServerDaoDbImpl implements ServerDao {
       sharedWithUsers: server.sharedWithUsers,
       enableKeepAlive: server.enableKeepAlive,
       keepAliveInterval: server.keepAliveInterval,
+      protocolNegotiation: server.protocolNegotiation ?? undefined,
       tools: server.tools,
       prompts: server.prompts,
       resources: server.resources,
