@@ -487,3 +487,30 @@ test('switching a shared OAuth server to personal mode removes shared tokens fro
   const result = buildServerPayload({ formData: { name: 'gitlab', url: 'https://gitlab.example/mcp', command: '', arguments: '', args: [], env: [], headers: [], oauth: { identityMode: 'personal', accessToken: 'old-shared', refreshToken: 'old-refresh' } }, serverType: 'streamable-http', envVars: [], headerVars: [] });
   expect(result.config.oauth).toEqual({ identityMode: 'personal' });
 });
+
+describe('upstream protocol config in dashboard payloads', () => {
+  it.each(['auto', 'legacy'] as const)(
+    'preserves %s when editing or duplicating HTTP servers',
+    (mode) => {
+      const input = {
+        formData: {
+          name: 'remote',
+          url: 'https://example.com/mcp',
+          command: '',
+          arguments: '',
+          env: [],
+          headers: [],
+          protocolNegotiation: mode,
+        },
+        envVars: [],
+        headerVars: [],
+      };
+      expect(
+        buildServerPayload({ ...input, serverType: 'streamable-http' }).config.protocolNegotiation,
+      ).toBe(mode);
+      expect(
+        buildServerPayload({ ...input, serverType: 'stdio' }).config.protocolNegotiation,
+      ).toBeUndefined();
+    },
+  );
+});

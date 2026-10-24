@@ -62,6 +62,9 @@ export class Server {
   @Column({ type: 'int', nullable: true })
   keepAliveInterval?: number;
 
+  @Column({ type: 'varchar', length: 16, nullable: true })
+  protocolNegotiation?: 'auto' | 'legacy';
+
   @Column({ type: 'simple-json', nullable: true })
   tools?: Record<string, { enabled: boolean; description?: string; hiddenParams?: string[] }>;
 

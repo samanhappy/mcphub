@@ -257,6 +257,16 @@ describe('mcpService per-session client isolation (perSessionClient)', () => {
     jest.restoreAllMocks();
   });
 
+  it.each([undefined, 'legacy'] as const)('passes %s negotiation policy to isolated HTTP clients', async (mode) => {
+    const info = makeServerInfo({ perSessionClient: true, type: 'streamable-http', url: 'https://example.com/mcp', protocolNegotiation: mode });
+    mcpService.setServerInfosForTest([info]);
+    await callTool('session-negotiation');
+    const { Client } = jest.requireMock('@modelcontextprotocol/client');
+    expect(Client).toHaveBeenLastCalledWith(expect.anything(), expect.objectContaining({
+      versionNegotiation: { mode: mode ?? 'auto' },
+    }));
+  });
+
   it('creates one dedicated upstream client per session and reuses it within a session', async () => {
     const serverInfo = makeServerInfo({ perSessionClient: true });
     mcpService.setServerInfosForTest([serverInfo]);

@@ -40,6 +40,7 @@ const KNOWN_KEYS = new Set<keyof ServerConfig | string>([
   'visibility',
   'keepAliveInterval',
   'enableKeepAlive',
+  'protocolNegotiation',
   'perSessionClient',
   'tools',
   'prompts',
@@ -73,6 +74,19 @@ export const normalizeImportedServers = (parsed: ImportJsonFormat): NormalizeRes
       continue;
     }
 
+    if (config.protocolNegotiation !== undefined) {
+      if (
+        !['auto', 'legacy'].includes(config.protocolNegotiation) ||
+        (config.protocolNegotiation === 'auto' && config.type !== 'streamable-http')
+      ) {
+        issues.push({
+          name,
+          message: 'protocolNegotiation must be auto or legacy; auto requires streamable-http.',
+        });
+        continue;
+      }
+      normalizedConfig.protocolNegotiation = config.protocolNegotiation;
+    }
     if (config.type === 'sse' || config.type === 'streamable-http') {
       normalizedConfig.type = config.type;
       normalizedConfig.url = config.url;

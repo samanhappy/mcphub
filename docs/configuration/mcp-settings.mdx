@@ -205,6 +205,42 @@ It multiplies upstream connections (and stdio child processes) by the number of
 concurrent sessions, so leave it off when neither feature is needed.
 </Tip>
 
+### Upstream protocol negotiation
+
+Streamable HTTP upstreams default to `protocolNegotiation: "auto"`. MCPHub probes
+`server/discover` and uses modern stateless HTTP when supported; legacy servers
+fall back to the existing handshake. HTTP probe timeouts and network or
+authentication failures can fail the connection rather than trigger fallback.
+To skip discovery for a known legacy endpoint, configure:
+
+```json
+{
+  "mcpServers": {
+    "legacy-gateway": {
+      "type": "streamable-http",
+      "url": "https://gateway.example.com/mcp",
+      "protocolNegotiation": "legacy"
+    }
+  }
+}
+```
+
+The optional field accepts `"auto"` or `"legacy"`. `"auto"` requires
+`type: "streamable-http"`; stdio and legacy SSE retain legacy negotiation.
+Configure this advanced option through settings JSON, JSON import or the server
+API; dashboard form edits and duplication preserve it. It is supported in both
+file and database storage, templates and declarative settings sync. Editing it
+reconnects the server. Shared, isolated and personal connections use the same
+policy, except isolated connections forwarding legacy elicitation remain legacy
+until a modern `input_required` bridge is available.
+
+Modern upstreams have no server-push stream. Lists are revalidated on relevant
+requests after their upstream TTL expires, with concurrent refreshes coalesced.
+Missing, zero or unusable TTLs and partial pages are revalidated on the next
+relevant request. Health checks remain opt-in via `enableKeepAlive`; modern
+connections probe `server/discover` over the network instead of `ping`.
+See the [compatibility matrix](/api-reference/mcp-http#protocol-compatibility).
+
 ### Routing headers over MCP 2026-07-28
 
 Modern requests use `MCP-Protocol-Version: 2026-07-28` and `Mcp-Method`
@@ -459,7 +495,8 @@ For advanced use cases, you can provide your own proxychains4 configuration file
 When `configPath` is specified, all other proxy settings (`type`, `host`, `port`, etc.) are ignored, and the custom configuration file is used directly.
 </Tip>
 
-{/* ### Custom Server Scripts
+{/*
+### Custom Server Scripts
 
 #### Local Python Server
 
@@ -535,7 +572,8 @@ Complement `mcp_settings.json` with server metadata:
     }
   }
 }
-``` */}
+```
+*/}
 
 ## Group Management
 
@@ -568,7 +606,8 @@ In file mode, MCPHub re-reads `mcp_settings.json` when it changes, without a res
 
 In database mode, `mcp_settings.json` is a one-time seed by default. Set `MCPHUB_SETTINGS_SYNC=upsert` to apply server and group declarations on each startup, or `prune` to also delete removed managed entries; see [declarative database configuration](/configuration/database-configuration#declarative-servers-and-groups-gitops) for precedence and OAuth state handling.
 
-{/* ### Access Control
+{/*
+### Access Control
 
 | Access Level    | Description                |
 | --------------- | -------------------------- |
@@ -587,9 +626,11 @@ MCPHub supports hot reloading of configurations:
 # Reload configurations without restart
 curl -X POST http://localhost:3000/api/admin/reload-config \
   -H "Authorization: Bearer your-admin-token"
-``` */}
+```
+*/}
 
-{/* ### Configuration Validation
+{/*
+### Configuration Validation
 
 MCPHub validates configurations on startup and reload:
 
@@ -601,7 +642,8 @@ MCPHub validates configurations on startup and reload:
     "requireDocumentation": true
   }
 }
-``` */}
+```
+*/}
 
 ## System Routing Settings
 
@@ -673,7 +715,8 @@ The activity log records the original upstream output before compression, so ope
    }
    ```
 
-{/* 2. **Limit server permissions**:
+{/*
+2. **Limit server permissions**:
    ```json
    {
      "filesystem": {
@@ -684,9 +727,11 @@ The activity log records the original upstream output before compression, so ope
        }
      }
    }
-   ``` */}
+   ```
+*/}
 
-{/* ### Performance
+{/*
+### Performance
 
 1. **Set appropriate timeouts**:
 
@@ -706,9 +751,11 @@ The activity log records the original upstream output before compression, so ope
        "MEMORY_LIMIT": "512MB"
      }
    }
-   ``` */}
+   ```
+*/}
 
-{/* ### Monitoring
+{/*
+### Monitoring
 
 1. **Enable health checks**:
 
@@ -730,9 +777,11 @@ The activity log records the original upstream output before compression, so ope
        "LOG_FORMAT": "json"
      }
    }
-   ``` */}
+   ```
+*/}
 
-{/* ## Troubleshooting
+{/*
+## Troubleshooting
 
 ### Common Issues
 
@@ -741,9 +790,11 @@ The activity log records the original upstream output before compression, so ope
 ```bash
 # Test command manually
 uvx mcp-server-fetch
-``` */}
+```
+*/}
 
-{/* **Environment variables not found**: Verify `.env` file
+{/*
+**Environment variables not found**: Verify `.env` file
 
 ```bash
 # Check environment
@@ -755,9 +806,11 @@ printenv | grep API_KEY
 ```bash
 # Verify executable permissions
 ls -la /path/to/server
-``` */}
+```
+*/}
 
-{/* ### Debug Configuration
+{/*
+### Debug Configuration
 
 Enable debug mode for detailed logging:
 
@@ -770,8 +823,9 @@ Enable debug mode for detailed logging:
     "logStartup": true
   }
 }
-``` */}
-{/* 
+```
+*/}
+{/*
 ### Validation Errors
 
 Common validation errors and solutions:
@@ -779,7 +833,8 @@ Common validation errors and solutions:
 1. **Missing required fields**: Add `command` and `args`
 2. **Invalid timeout**: Use number, not string
 3. **Environment variable not found**: Check `.env` file
-4. **Command not found**: Verify installation and PATH */}
+4. **Command not found**: Verify installation and PATH
+*/}
 
 This comprehensive guide covers all aspects of configuring MCP servers in MCPHub for various use cases and environments.
 

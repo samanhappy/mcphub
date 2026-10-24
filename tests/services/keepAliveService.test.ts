@@ -39,6 +39,22 @@ describe('setupClientKeepAlive', () => {
     jest.useRealTimers();
   });
 
+  it('uses uncached discovery for modern servers without requiring tools or ping', async () => {
+    jest.useFakeTimers();
+    const ping = jest.fn().mockRejectedValue(new Error('Method not found'));
+    const info = makeServerInfo(
+      new StreamableHTTPClientTransport(new URL('https://example.com/mcp')),
+      ping,
+    );
+    const discover = jest.fn().mockResolvedValue({});
+    Object.assign(info.client!, { getProtocolEra: () => 'modern', discover });
+    await setupClientKeepAlive(info, { type: 'streamable-http', enableKeepAlive: true });
+    await jest.advanceTimersByTimeAsync(60000);
+    expect(discover).toHaveBeenCalledWith(expect.objectContaining({ timeout: 5000 }));
+    expect(ping).not.toHaveBeenCalled();
+    expect(info.status).toBe('connected');
+  });
+
   it('marks failed streamable-http servers disconnected when keep-alive is enabled', async () => {
     jest.useFakeTimers();
     const ping = jest.fn().mockRejectedValue(new Error('connect ECONNREFUSED'));

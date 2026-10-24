@@ -53,8 +53,34 @@ from `/sse` to `/mcp` does not by itself upgrade the client's protocol revision.
 
 MCP Apps passthrough also depends on the route and visible upstream servers;
 `$smart` routes remain ordinary MCP routes. See [MCP Apps](/features/mcp-apps).
-Upstream MCP connections currently retain legacy protocol negotiation; a modern
-downstream request does not upgrade an upstream server.
+Upstream Streamable HTTP connections default to automatic protocol negotiation:
+MCPHub probes `server/discover`, uses `2026-07-28` stateless HTTP when supported,
+and falls back to the legacy handshake according to the SDK's negotiation rules.
+The downstream protocol is independent of the upstream protocol. Set the
+per-server `protocolNegotiation: "legacy"` option to skip probing for a legacy
+server. Stdio and legacy SSE upstreams continue using legacy negotiation.
+
+| Upstream behavior                       | Modern Streamable HTTP                                                                    | Legacy upstream                                    |
+| --------------------------------------- | ----------------------------------------------------------------------------------------- | -------------------------------------------------- |
+| Startup                                 | `server/discover`; no transport session or GET stream                                     | `initialize`; existing transport lifecycle         |
+| Lists                                   | On-demand revalidation at the original upstream TTL expiry; concurrent refreshes coalesce | Existing list-changed notifications                |
+| Missing/zero TTL or partial list        | Revalidate on the next relevant request                                                   | Existing discovery behavior                        |
+| Health checks (opt-in)                  | Network `server/discover`, including servers without tools                                | `ping`, with existing method-availability fallback |
+| Elicitation-enabled isolated connection | Uses legacy negotiation while the relay requires legacy requests                          | Existing forwarding support                        |
+
+List revalidation also runs before tool calls, prompt retrieval and resource
+reads so newly added or removed entries affect routing. Resource templates are
+fetched on demand. Expired data is not silently served after a failed refresh;
+the request fails and a later request can retry. No background list polling is
+introduced, and a list does not update until a relevant request occurs. Changed
+shared lists notify connected legacy downstream clients after refresh; personal
+lists remain scoped to their own runtime. Upstream list discovery remains
+single-page; a response with `nextCursor` receives no positive freshness hint.
+
+Automatic negotiation does not treat every connection failure as evidence of a
+legacy server. HTTP probe timeouts, network outages and authentication errors
+can fail the connection rather than trigger fallback. See the
+[upstream configuration guide](/configuration/mcp-settings#upstream-protocol-negotiation).
 
 ## Elicitation forwarding
 

@@ -359,6 +359,8 @@ function serverConfigToTemplate(config: ServerConfig): {
   if (config.args) templateConfig.args = [...config.args];
   if (config.passthroughHeaders) templateConfig.passthroughHeaders = [...config.passthroughHeaders];
   if (config.enabled !== undefined) templateConfig.enabled = config.enabled;
+  if (config.protocolNegotiation !== undefined)
+    templateConfig.protocolNegotiation = config.protocolNegotiation;
   if (config.enableKeepAlive !== undefined) templateConfig.enableKeepAlive = config.enableKeepAlive;
   if (config.keepAliveInterval !== undefined) {
     templateConfig.keepAliveInterval = config.keepAliveInterval;

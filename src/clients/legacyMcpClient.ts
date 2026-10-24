@@ -1,9 +1,16 @@
+import {
+  recordUpstreamList,
+  clearUpstreamLists,
+  upstreamListOwner,
+  type UpstreamList,
+} from '../services/upstreamListRefresh.js';
 import { invalidateListFreshness, recordListFreshness } from '../utils/listFreshness.js';
 import { Client, type Tool } from './mcpSdkClient.js';
 import { LEGACY_PROTOCOL_VERSIONS } from '../utils/mcpProtocol.js';
 
 /** Keep v1's single-page discovery and output validation while using SDK v2. */
 export class LegacyMcpClient extends Client {
+  readonly [upstreamListOwner] = {};
   private readonly listVersions = new Map<string, number>();
   private readonly listSnapshots = new Map<string, object>();
   private readonly listedTools = new Map<string, Tool>();
@@ -11,14 +18,14 @@ export class LegacyMcpClient extends Client {
   constructor(...[info, options]: ConstructorParameters<typeof Client>) {
     super(info, {
       ...options,
-      versionNegotiation: { mode: 'legacy' },
+      versionNegotiation: options?.versionNegotiation ?? { mode: 'legacy' },
       supportedProtocolVersions: LEGACY_PROTOCOL_VERSIONS,
       enforceStrictCapabilities: true,
     });
   }
 
   private async freshList<T extends { ttlMs?: number; nextCursor?: string }>(
-    key: string,
+    key: UpstreamList,
     fetch: () => Promise<T>,
     snapshot: (result: T) => object,
   ): Promise<T> {
@@ -27,16 +34,20 @@ export class LegacyMcpClient extends Client {
     const previous = this.listSnapshots.get(key);
     if (previous) invalidateListFreshness(previous);
     const startedAt = performance.now();
+    recordUpstreamList(this, key, undefined, startedAt);
     const result = await fetch();
     const items = snapshot(result);
     if (this.listVersions.get(key) === version) {
-      recordListFreshness(items, result.nextCursor ? undefined : result.ttlMs, startedAt);
+      const ttl = result.nextCursor ? undefined : result.ttlMs;
+      recordListFreshness(items, ttl, startedAt);
+      recordUpstreamList(this, key, ttl, startedAt);
       this.listSnapshots.set(key, items);
     }
     return result;
   }
 
   override async close(): Promise<void> {
+    clearUpstreamLists(this);
     for (const snapshot of this.listSnapshots.values()) invalidateListFreshness(snapshot);
     this.listSnapshots.clear();
     for (const [key, version] of this.listVersions) this.listVersions.set(key, version + 1);
