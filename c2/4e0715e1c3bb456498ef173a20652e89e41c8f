@@ -1,0 +1,77 @@
+frontend/src/components/ServerCard.tsx
+  s_18deedf6629e68::t_f6862c240e7aef 651,653-655,657-663,665-669
+  s_18deedf6629e68::t_0202a994c23bf9 639,652,656,664
+src/services/keepAliveService.ts
+  s_18deedf6629e68::t_3f8d4dbb7c4674 42-44,60,66
+  s_18deedf6629e68::t_8c333e9b177a8f 38-39,45-59,61-65,67-75,145
+  s_18deedf6629e68::t_f6862c240e7aef 77-78,100-101
+  s_18deedf6629e68::t_565424bc74741e 28-34,76,165
+frontend/src/types/index.ts
+  s_18deedf6629e68::t_8c333e9b177a8f 227,342
+  s_18deedf6629e68::t_769570b25499a3 228
+src/services/mcpService.ts
+  s_18deedf6629e68::t_f6862c240e7aef 2082,2158-2160,2164-2172,3042,3365-3366
+  s_18deedf6629e68::t_8c333e9b177a8f 2128,2144-2147,2174,2896,2940,3066
+  s_18deedf6629e68::t_701adc52ec3e01 2513,2528,2717
+  s_18deedf6629e68::t_f108f99308cc1c 1403,2137-2143,2161-2163,2334-2339,2512
+docs/zh/configuration/mcp-settings.mdx
+  s_18deedf6629e68::t_bf0993c2c44b65 218-219
+docs/configuration/mcp-settings.mdx
+  s_18deedf6629e68::t_bf0993c2c44b65 244-245
+  s_18deedf6629e68::t_3f8d4dbb7c4674 82
+  s_18deedf6629e68::t_1bcc4d2146f921 81
+src/types/index.ts
+  s_18deedf6629e68::t_3f8d4dbb7c4674 482
+  s_18deedf6629e68::t_8c333e9b177a8f 481,647
+docs/zh/api-reference/servers.mdx
+  s_18deedf6629e68::t_bf0993c2c44b65 135
+  s_18deedf6629e68::t_4120fb526d93b4 136
+docs/api-reference/servers.mdx
+  s_18deedf6629e68::t_bf0993c2c44b65 98
+  s_18deedf6629e68::t_a536ffbe226ab9 99
+frontend/src/components/ServerForm.tsx
+  s_18deedf6629e68::t_f46675b054d4bf 2344,2350,2381
+frontend/src/index.css
+  s_18deedf6629e68::t_4ede01c3e23b3e 309-314
+locales/en.json
+  s_18deedf6629e68::t_47748fad65d717 211-215,217
+locales/es.json
+  s_18deedf6629e68::t_f138fe605f54c0 211-215,217
+locales/fr.json
+  s_18deedf6629e68::t_62db50a2141cfd 211-215,217
+locales/tr.json
+  s_18deedf6629e68::t_5285f33679313e 211-215,217
+locales/vi.json
+  s_18deedf6629e68::t_2da8a829038cc2 211-215,217
+locales/zh.json
+  s_18deedf6629e68::t_bdf9abc330de80 211-215,217
+tests/integration/mcpService-reconnect.test.ts
+  s_18deedf6629e68::t_33f1156e552443 217-218,230-307
+tests/services/keepAliveService.test.ts
+  s_18deedf6629e68::t_0ee9563b45449b 2,39-40,221,240,272,312-381
+tests/services/mcpService-request-options.test.ts
+  s_18deedf6629e68::t_19863209d23149 270,299-300
+tests/services/mcpService-server-metadata.test.ts
+  s_18deedf6629e68::t_3d54a572dc37ff 208-231
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c24e0715e1c3bb456498ef173a20652e89e41c8f",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_18deedf6629e68": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1721d-82cb-7c83-a520-bc2ba7dedf7f",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
