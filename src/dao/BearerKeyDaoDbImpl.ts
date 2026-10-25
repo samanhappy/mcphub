@@ -1,6 +1,7 @@
 import { BearerKeyDao } from './BearerKeyDao.js';
 import { BearerKey as BearerKeyModel } from '../types/index.js';
 import { BearerKeyRepository } from '../db/repositories/BearerKeyRepository.js';
+import { SystemConfigRepository } from '../db/repositories/SystemConfigRepository.js';
 
 /**
  * Database-backed implementation of BearerKeyDao
@@ -57,6 +58,8 @@ export class BearerKeyDaoDbImpl implements BearerKeyDao {
     const entity = await this.repository.create({
       name: data.name,
       token: data.token as string,
+      tokenHash: data.tokenHash,
+      tokenPrefix: data.tokenPrefix,
       enabled: data.enabled,
       kind: data.kind ?? 'system',
       owner: data.owner,
@@ -69,7 +72,14 @@ export class BearerKeyDaoDbImpl implements BearerKeyDao {
   }
 
   async hashLegacyTokens(): Promise<number> {
-    return await this.repository.hashLegacyTokens();
+    const count = await this.repository.hashLegacyTokens();
+    // Instances migrated by an older version still carry the raw legacy key
+    const systemConfigRepo = new SystemConfigRepository();
+    const routing = ((await systemConfigRepo.get()) as any)?.routing || {};
+    if (routing.bearerAuthKey) {
+      await systemConfigRepo.updateSection('routing', { ...routing, bearerAuthKey: '' });
+    }
+    return count;
   }
 
   async update(

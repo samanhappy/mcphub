@@ -14,11 +14,16 @@ const key = (extra: object) => ({
 });
 
 describe('bearerKeyToken', () => {
-  it('hashes to a stable 64-char hex digest and keeps an 8-char prefix', () => {
+  it('hashes to a stable 64-char hex digest and keeps a short display prefix', () => {
     const stored = toStoredToken('mcphub_abcdef');
     expect(stored.tokenHash).toMatch(/^[0-9a-f]{64}$/);
     expect(stored.tokenHash).toBe(hashBearerToken('mcphub_abcdef'));
-    expect(stored.tokenPrefix).toBe('mcphub_a');
+    expect(stored.tokenPrefix).toBe('mcph');
+  });
+
+  it('never stores a whole short token as its display prefix', () => {
+    expect(toStoredToken('abc123').tokenPrefix).toBe('ab');
+    expect(toStoredToken('x'.repeat(71)).tokenPrefix).toHaveLength(12);
   });
 
   it('matches hashed keys only on the exact token', () => {
@@ -40,6 +45,7 @@ describe('bearerKeyToken', () => {
 
   it('masks with the prefix only', () => {
     expect(maskBearerKey({ tokenPrefix: 'mcphub_a' })).toBe('mcphub_a...');
-    expect(maskBearerKey({ token: 'legacy-token-value' })).toBe('legacy-t...');
+    expect(maskBearerKey({ token: 'legacy-token-value' })).toBe('legacy-token...');
+    expect(maskBearerKey({ token: 'short-secret' })).toBe('********'); // never reveal short legacy keys
   });
 });

@@ -33,7 +33,7 @@ describe('BearerKeyDaoImpl token hashing', () => {
 
     expect((await dao.findByToken('mcphub_secret123'))?.id).toBe(created.id);
     expect(await dao.findByToken('mcphub_secret124')).toBeUndefined();
-    expect(maskBearerKey((await dao.findById(created.id))!)).toBe('mcphub_s...');
+    expect(maskBearerKey((await dao.findById(created.id))!)).toBe('mcphu...');
   });
 
   it('hashes legacy plaintext keys without breaking them', async () => {
@@ -67,5 +67,19 @@ describe('BearerKeyDaoImpl token hashing', () => {
 
     expect((await dao.findByToken('old-routing-key'))?.name).toBe('default');
     expect(JSON.stringify(read())).not.toContain('old-routing-key');
+  });
+
+  it('clears a legacy routing.bearerAuthKey left by an older version at startup', async () => {
+    fs.writeFileSync(
+      settingsPath,
+      JSON.stringify({
+        mcpServers: {},
+        bearerKeys: [],
+        systemConfig: { routing: { bearerAuthKey: 'left-behind-key' } },
+      }),
+    );
+    clearSettingsCache();
+    await new BearerKeyDaoImpl().hashLegacyTokens();
+    expect(JSON.stringify(read())).not.toContain('left-behind-key');
   });
 });

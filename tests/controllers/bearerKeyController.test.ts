@@ -68,6 +68,7 @@ describe('bearerKeyController', () => {
     await getBearerKeys(makeReq(), res);
 
     expect(mockFindByOwner).toHaveBeenCalledWith('alice');
+    expect(JSON.stringify((res.json as jest.Mock).mock.calls[0][0])).not.toContain('deadbeef');
     expect(res.json).toHaveBeenCalledWith({
       success: true,
       data: [

@@ -140,6 +140,12 @@ export class BearerKeyDaoImpl extends JsonFileBaseDao implements BearerKeyDao {
     if (count > 0) {
       await this.saveKeys(keys);
     }
+    // Instances migrated by an older version still carry the raw legacy key
+    const settings = await this.loadSettings();
+    if (settings.systemConfig?.routing?.bearerAuthKey) {
+      settings.systemConfig.routing.bearerAuthKey = '';
+      await this.saveSettings(settings);
+    }
     return count;
   }
 
