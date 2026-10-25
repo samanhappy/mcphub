@@ -1432,6 +1432,7 @@ export const getServerConfig = async (req: Request, res: Response): Promise<void
         name: serverName,
         status: serverInfo?.status || 'disconnected',
         tools: serverInfo?.tools || [],
+        ...(serverInfo?.capabilityCache ? { capabilityCache: serverInfo.capabilityCache } : {}),
         config: presented.data,
       }),
     };

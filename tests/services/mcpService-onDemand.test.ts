@@ -1,3 +1,7 @@
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { getSettingsPath } from '../../src/config/index.js';
 /// <reference types="jest" />
 
 // Regression tests for issue #1029: startOnDemand servers could never be woken.
@@ -48,6 +52,8 @@ jest.mock('../../src/services/mcpOAuthProvider.js', () => ({
 }));
 
 jest.mock('../../src/services/groupService.js', () => ({
+  normalizeGroupServers: jest.requireActual('../../src/services/groupService.js')
+    .normalizeGroupServers,
   getServersInGroup: jest.fn(),
   getServerConfigInGroup: jest.fn(),
 }));
@@ -106,7 +112,11 @@ jest.mock('../../src/dao/index.js', () => ({
     get: jest.fn(async () => ({})),
   })),
   getGroupDao: jest.fn(() => ({
-    findByName: jest.fn(async () => undefined),
+    findByName: jest.fn(async (name: string) =>
+      name === 'solo'
+        ? { id: 'solo', name: 'solo', servers: [{ name: 'demo', alias: 'alias', tools: 'all' }] }
+        : undefined,
+    ),
     findById: jest.fn(async () => undefined),
   })),
   getBuiltinPromptDao: jest.fn(() => ({
@@ -125,6 +135,9 @@ jest.mock('../../src/config/index.js', () => ({
   expandEnvVars: jest.fn((value: string) => value),
   replaceEnvVars: jest.fn((value: any) => value),
   getNameSeparator: jest.fn(() => '::'),
+  getSettingsPath: jest.fn(() => {
+    throw new Error('No snapshot store in legacy lifecycle tests');
+  }),
   default: {
     mcpHubName: 'test-hub',
     mcpHubVersion: '1.0.0',
@@ -221,6 +234,70 @@ describe('startOnDemand lifecycle', () => {
 
     // Clean up the armed timer so jest can exit.
     if (serverInfo.idleTimeoutId) clearTimeout(serverInfo.idleTimeoutId);
+  });
+
+  describe.each(['direct', 'call_tool'])('post-wake route resolution on %s calls', (operation) => {
+    const call = (name: string, group: string) =>
+      mcpService.handleCallToolRequest(
+        operation === 'direct'
+          ? { params: { name, arguments: {} } }
+          : { params: { name: 'call_tool', arguments: { toolName: name, arguments: {} } } },
+        { sessionId: 'post-wake', group },
+      );
+
+    it.each([
+      ['demo', 'ping'],
+      ['demo', 'demo::ping'],
+      ['solo', 'ping'],
+      ['solo', 'alias::ping'],
+    ])('calls %s using %s on the first wake', async (group, name) => {
+      const info = createSleepingServerInfo();
+      mcpService.setServerInfosForTest([info as any]);
+      try {
+        const result = await call(name, group);
+        expect(result).toEqual(expect.objectContaining({ isError: false }));
+        expect(mockConnect).toHaveBeenCalledTimes(1);
+        expect(mockCallTool).toHaveBeenCalledWith(
+          expect.objectContaining({ name: 'ping' }),
+          expect.anything(),
+        );
+      } finally {
+        mcpService.closeServer('demo');
+      }
+    });
+
+    it('keeps direct-route raw-name precedence over a colliding prefixed name after wake', async () => {
+      const tools = ['ping', 'demo::ping'].map((name) => ({
+        name,
+        inputSchema: { type: 'object' },
+      }));
+      mockListTools.mockResolvedValue({ tools });
+      mcpService.setServerInfosForTest([
+        createSleepingServerInfo({
+          tools: tools.map((tool) => ({ ...tool, name: `demo::${tool.name}` })),
+        }) as any,
+      ]);
+      try {
+        expect((await call('demo::ping', 'demo')).isError).toBe(false);
+        expect(mockCallTool).toHaveBeenCalledWith(
+          expect.objectContaining({ name: 'demo::ping' }),
+          expect.anything(),
+        );
+      } finally {
+        mcpService.closeServer('demo');
+      }
+    });
+
+    it('rejects a raw tool removed during live discovery', async () => {
+      mcpService.setServerInfosForTest([createSleepingServerInfo() as any]);
+      mockListTools.mockResolvedValue({ tools: [] });
+      try {
+        expect((await call('ping', 'demo')).isError).toBe(true);
+        expect(mockCallTool).not.toHaveBeenCalled();
+      } finally {
+        mcpService.closeServer('demo');
+      }
+    });
   });
 
   it('returns an error result when the on-demand server fails to wake', async () => {
@@ -535,5 +612,107 @@ describe('startOnDemand lifecycle', () => {
       'demo',
       expect.objectContaining({ command: 'node' }),
     );
+  });
+  describe('persisted tools (#1219)', () => {
+    let directory: string;
+    let settingsPath: string;
+    beforeEach(() => {
+      directory = fs.mkdtempSync(path.join(os.tmpdir(), 'on-demand-snapshots-'));
+      settingsPath = path.join(directory, 'settings.json');
+      jest.mocked(getSettingsPath).mockImplementation(() => settingsPath);
+      mockFindAll.mockResolvedValue([ON_DEMAND_CONFIG]);
+      mcpService.setServerInfosForTest([]);
+    });
+    afterEach(() => {
+      mcpService.closeServer('demo');
+      jest.mocked(getSettingsPath).mockImplementation(() => {
+        throw new Error('No snapshot store');
+      });
+      fs.rmSync(directory, { recursive: true, force: true });
+    });
+
+    it.each([false, true])(
+      'restores tools after runtime restart without spawning, empty=%s',
+      async (empty) => {
+        if (empty) mockListTools.mockResolvedValue({ tools: [] });
+        await mcpService.initializeClientsFromSettings(false, 'demo');
+        expect(mockConnect).toHaveBeenCalledTimes(1);
+        const snapshot = JSON.parse(
+          fs.readFileSync(`${settingsPath}.capabilities.json`, 'utf8'),
+        )[0];
+        expect(snapshot.tools.map((tool: { name: string }) => tool.name)).toEqual(
+          empty ? [] : ['ping'],
+        );
+        expect(snapshot).not.toHaveProperty('config');
+        mockConnect.mockClear();
+        createTransportSpy.mockClear();
+        mcpService.setServerInfosForTest([]);
+        await mcpService.initializeClientsFromSettings(false, 'demo');
+        const listed = await mcpService.handleListToolsRequest({}, { sessionId: 'restored' });
+        expect(listed.tools.map((tool: { name: string }) => tool.name)).toEqual(
+          empty ? [] : ['demo::ping'],
+        );
+        expect(mockConnect).not.toHaveBeenCalled();
+        expect(createTransportSpy).not.toHaveBeenCalled();
+        expect(mcpService.getServerByName('demo')?.capabilityCache).toEqual({
+          state: 'fresh',
+          capturedAt: snapshot.capturedAt,
+        });
+      },
+    );
+
+    it('invalidates changed configuration and retains live priming on a miss', async () => {
+      await mcpService.initializeClientsFromSettings(false, 'demo');
+      const changed = { ...ON_DEMAND_CONFIG, args: ['changed.js'] };
+      mockFindAll.mockResolvedValue([changed]);
+      mockFindById.mockResolvedValue(changed);
+      mockConnect.mockClear();
+      mcpService.setServerInfosForTest([]);
+      await mcpService.initializeClientsFromSettings(false, 'demo');
+      expect(mockConnect).toHaveBeenCalledTimes(1);
+      expect(createTransportSpy).toHaveBeenLastCalledWith(
+        'demo',
+        expect.objectContaining({ args: ['changed.js'] }),
+      );
+      expect(mcpService.getServerByName('demo')?.capabilityCache?.state).toBe('fresh');
+    });
+
+    it('never executes a cached tool after wake discovers its removal', async () => {
+      await mcpService.initializeClientsFromSettings(false, 'demo');
+      mcpService.setServerInfosForTest([]);
+      await mcpService.initializeClientsFromSettings(false, 'demo');
+      mockListTools.mockResolvedValue({ tools: [] });
+      const result = await mcpService.handleCallToolRequest(
+        { params: { name: 'demo::ping', arguments: {} } },
+        { sessionId: 'removed' },
+      );
+      expect(result.isError).toBe(true);
+      expect(mockCallTool).not.toHaveBeenCalled();
+      expect(mcpService.getServerByName('demo')?.tools).toEqual([]);
+      expect(
+        JSON.parse(fs.readFileSync(`${settingsPath}.capabilities.json`, 'utf8'))[0].tools,
+      ).toEqual([]);
+    });
+
+    it('returns a live removed-tool error, refreshes the snapshot, and does not replay the call', async () => {
+      await mcpService.initializeClientsFromSettings(false, 'demo');
+      await mcpService.handleCallToolRequest(
+        { params: { name: 'demo::ping', arguments: {} } },
+        { sessionId: 'awake' },
+      );
+      mockCallTool.mockClear();
+      mockCallTool.mockRejectedValue(new Error('Unknown tool: ping'));
+      mockListTools.mockResolvedValue({ tools: [] });
+      const result = await mcpService.handleCallToolRequest(
+        { params: { name: 'demo::ping', arguments: {} } },
+        { sessionId: 'removed-live' },
+      );
+      expect(result.isError).toBe(true);
+      expect(mockCallTool).toHaveBeenCalledTimes(1);
+      expect(mcpService.getServerByName('demo')?.tools).toEqual([]);
+      expect(
+        JSON.parse(fs.readFileSync(`${settingsPath}.capabilities.json`, 'utf8'))[0].tools,
+      ).toEqual([]);
+    });
   });
 });

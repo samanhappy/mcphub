@@ -137,3 +137,38 @@ test('preserves upstream errors and evicts failed connection attempts', async ()
   lease.release();
   pool.invalidate();
 });
+
+test('tools-only acquisition restores a directory without creating a child, but calls still connect', async () => {
+  const connect = jest.fn(async () => info());
+  const cached = { ...info(), status: 'disconnected' as const };
+  const restore = jest.fn(async () => cached);
+  const pool = new PrincipalRuntimeService(connect, jest.fn(), restore);
+  const directory = await pool.acquire('shared', alice, true);
+  expect(directory.info).toBe(cached);
+  expect(connect).not.toHaveBeenCalled();
+  expect(restore).toHaveBeenCalledWith('shared', mockDefinition, {
+    username: alice.username,
+    revision: 'first',
+  });
+  directory.release();
+  const live = await pool.acquire('shared', alice);
+  expect(connect).toHaveBeenCalledTimes(1);
+  const repeatedList = await pool.acquire('shared', alice, true);
+  expect(repeatedList.info).toBe(live.info);
+  expect(restore).toHaveBeenCalledTimes(1);
+  repeatedList.release();
+  live.release();
+  pool.invalidate();
+});
+
+test('tools-only restoration rejects a binding rotation during cache lookup', async () => {
+  const pool = new PrincipalRuntimeService(
+    async () => info(),
+    jest.fn(),
+    async () => {
+      mockRevision = 'rotated';
+      return info();
+    },
+  );
+  await expect(pool.acquire('shared', alice, true)).rejects.toThrow('changed');
+});

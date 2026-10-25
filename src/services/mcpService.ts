@@ -38,6 +38,12 @@ import {
   type ToolConfig,
 } from '../utils/toolConfig.js';
 import type { RequestPrincipal } from './authorizationService.js';
+import {
+  prepareCapabilitySnapshot,
+  recordCapabilitySnapshot,
+  flushCapabilitySnapshot,
+  type CapabilityScope,
+} from './capabilitySnapshotService.js';
 import { PrincipalRuntimeService } from './principalRuntimeService.js';
 import { UserContextService } from './userContextService.js';
 import { deleteCredentialBindings, missingCredentialError } from './credentialBindingService.js';
@@ -1143,8 +1149,9 @@ export const setServerInfosForTest = (infos: ServerInfo[]): void => {
 export const updateServerToolsCache = (
   serverInfo: ServerInfo,
   tools: McpTool[],
-  options?: { reportEmbeddingProgress?: boolean },
+  options?: { reportEmbeddingProgress?: boolean; restored?: boolean },
 ): void => {
+  if (!options?.restored) recordCapabilitySnapshot(serverInfo, tools);
   serverInfo.tools = preserveListFreshness(
     tools,
     tools.map((tool) => normalizeToolForCache(serverInfo.name, tool)),
@@ -1196,6 +1203,7 @@ const refreshModernServerLists = async (
               tools,
               tools.map((tool) => normalizeToolForCache(info.name, tool)),
             );
+            if (!requestDiscoveryInfos.has(info)) recordCapabilitySnapshot(info, tools);
             if (!requestDiscoveryInfos.has(info))
               void syncCredentialServerToolEmbeddings(info.name, info.tools, {
                 partial: true,
@@ -1934,6 +1942,34 @@ const withoutHiddenArguments = <T>(serverInfo: ServerInfo, toolName: string, arg
   return removeHiddenArguments(args, tool?.inputSchema, toolConfig);
 };
 
+const failedCallRefreshes = new WeakMap<ServerInfo, Promise<void>>();
+const refreshCapabilitiesAfterFailedCall = async (info: ServerInfo): Promise<void> => {
+  if (!info.capabilityCache || !info.client || info.status !== 'connected') return;
+  const pending = failedCallRefreshes.get(info);
+  if (pending) return pending;
+  const refresh = (async () => {
+    try {
+      const { tools } = await info.client!.listTools({}, info.options || {});
+      if (hasPersonalAuthentication(info.config)) {
+        info.tools = tools.map((tool) => normalizeToolForCache(info.name, tool));
+        recordCapabilitySnapshot(info, tools);
+      } else {
+        updateServerToolsCache(info, tools);
+        broadcastToolListChanged();
+      }
+      await flushCapabilitySnapshot(info);
+    } catch {
+      logger.warn('Unable to refresh capability snapshot after failed call');
+    }
+  })();
+  failedCallRefreshes.set(info, refresh);
+  try {
+    await refresh;
+  } finally {
+    failedCallRefreshes.delete(info);
+  }
+};
+
 // Helper function to handle client.callTool with reconnection logic
 const callToolWithReconnect = async (
   serverInfo: ServerInfo,
@@ -1959,7 +1995,14 @@ const callToolWithReconnect = async (
   };
 
   if (hasPersonalAuthentication(serverInfo.config)) {
-    return client.callTool(toolParams, options || {});
+    try {
+      const result = await client.callTool(toolParams, options || {});
+      if (result.isError) await refreshCapabilitiesAfterFailedCall(serverInfo);
+      return result;
+    } catch (error) {
+      await refreshCapabilitiesAfterFailedCall(serverInfo);
+      throw error;
+    }
   }
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
@@ -1988,8 +2031,10 @@ const callToolWithReconnect = async (
           return result;
         },
       );
+      if (result.isError) await refreshCapabilitiesAfterFailedCall(serverInfo);
       return result;
     } catch (error: any) {
+      await refreshCapabilitiesAfterFailedCall(serverInfo);
       if (isElicitationClientClosed(client)) {
         closeIsolatedClient(serverInfo.name, client, transport);
         throw error;
@@ -2210,6 +2255,8 @@ export const initializeClientsFromSettings = async (
       // connection) so the tool list stays visible to agents even while sleeping.
       if (expandedConf.startOnDemand === true && isStdioServer(expandedConf)) {
         const existingOnDemand = existingServerInfos.find((s) => s.name === name);
+        const configChanged =
+          JSON.stringify(existingOnDemand?.config) !== JSON.stringify(expandedConf);
         // Active calls, spawn promises and idle callbacks must share the same
         // runtime object across reloads, not copies of its mutable state.
         const onDemandInfo: ServerInfo = existingOnDemand ?? {
@@ -2228,6 +2275,13 @@ export const initializeClientsFromSettings = async (
           enabled: true,
           config: expandedConf,
         });
+        const cachedTools = await prepareCapabilitySnapshot(onDemandInfo, expandedConf);
+        if (cachedTools !== undefined) {
+          if (!existingOnDemand || configChanged || onDemandInfo.tools.length === 0)
+            updateServerToolsCache(onDemandInfo, cachedTools, { restored: true });
+        } else if (configChanged || onDemandInfo.capabilityCache?.state === 'stale') {
+          onDemandInfo.tools = [];
+        }
         nextServerInfos.push(onDemandInfo);
         logger.log(`Skipping startup connect for on-demand server: ${name}`);
         continue;
@@ -2782,7 +2836,7 @@ export const getServersInfo = async (
               authorizationUrl: personal.authorizationUrl,
             }
           : undefined;
-        const lease = await principalRuntimes.acquire(info.name, principal);
+        const lease = await principalRuntimes.acquire(info.name, principal, true);
         try {
           return { ...lease.info, config: info.config, ...(ownOAuth ? { oauth: ownOAuth } : {}) };
         } finally {
@@ -2819,6 +2873,7 @@ export const getServersInfo = async (
         prompts,
         resources,
         createTime,
+        capabilityCache,
         error,
         oauth,
       }) => {
@@ -2873,6 +2928,7 @@ export const getServersInfo = async (
           status,
           error,
           tools: toolsWithEnabled,
+          ...(capabilityCache ? { capabilityCache } : {}),
           prompts: promptsWithEnabled,
           resources: resourcesWithEnabled,
           createTime,
@@ -3438,6 +3494,7 @@ const ensureServerReady = async (serverInfo: ServerInfo): Promise<void> => {
       return;
     }
 
+    await prepareCapabilitySnapshot(serverInfo, expandedConf);
     const name = rawConfig.name;
     logger.log(`[${name}] Cold-starting on-demand server…`);
 
@@ -3482,7 +3539,11 @@ const ensureServerReady = async (serverInfo: ServerInfo): Promise<void> => {
           error: summarizeErrorForLogging(error),
         });
       }
+    } else {
+      updateServerToolsCache(serverInfo, []);
+      broadcastToolListChanged();
     }
+    await flushCapabilitySnapshot(serverInfo);
     if (capabilities?.prompts) {
       try {
         const prompts = await client.listPrompts({}, requestOptions);
@@ -3552,6 +3613,7 @@ const primeOnDemandServers = (gate?: ConnectGate): Promise<void> => {
       !hasPersonalAuthentication(si.config) &&
       isStdioServer(si.config) &&
       si.tools.length === 0 &&
+      si.capabilityCache?.state !== 'fresh' &&
       si.enabled !== false,
   );
   if (targets.length === 0) return Promise.resolve();
@@ -3568,7 +3630,11 @@ const primeOnDemandServers = (gate?: ConnectGate): Promise<void> => {
           () => ensureServerReady(si),
           // A reload may replace this runtime or finish its discovery while it
           // waits for a slot. Neither needs another child from the old queue.
-          () => serverInfos.includes(si) && si.enabled !== false && si.tools.length === 0,
+          () =>
+            serverInfos.includes(si) &&
+            si.enabled !== false &&
+            si.tools.length === 0 &&
+            si.capabilityCache?.state !== 'fresh',
         );
         // Sleep the child unless a tool call is using it; keep the cached tool list.
         shutdownOnDemandServer(si);
@@ -3984,7 +4050,8 @@ const resolveToolInGroup = async (
       continue;
     }
 
-    return { serverInfo, toolName: internalToolName, tool };
+    // Retain the resolved identity when callers revalidate discovery after waking.
+    return { serverInfo, toolName: tool.name, tool };
   }
 
   return undefined;
@@ -4092,7 +4159,11 @@ const listGroupTools = async (
   await Promise.allSettled(
     filteredServerInfos
       .filter(
-        (si) => si.config?.startOnDemand === true && si.tools.length === 0 && si.spawningPromise,
+        (si) =>
+          si.config?.startOnDemand === true &&
+          si.tools.length === 0 &&
+          si.capabilityCache?.state !== 'fresh' &&
+          si.spawningPromise,
       )
       .map((si) => si.spawningPromise as Promise<void>),
   );
@@ -4411,6 +4482,8 @@ const handleCallToolRequestImpl = async (request: any, extra: any) => {
       if (targetServerInfo.config?.startOnDemand && targetServerInfo.status !== 'connected') {
         await ensureServerReady(targetServerInfo);
         // Re-read status from the mutated serverInfo after async spawn
+        // Routing may have captured a tool from the persisted directory before wake.
+        targetTool = undefined;
         const freshStatus = (targetServerInfo as ServerInfo).status;
         if (freshStatus !== 'connected') {
           throw new Error(
@@ -4640,7 +4713,7 @@ const handleCallToolRequestImpl = async (request: any, extra: any) => {
       ? appsRouteContext.serverInfo
       : (groupTool?.serverInfo ?? (lookupGroup ? undefined : getServerByTool(request.params.name)));
     const routeToolName = groupTool?.toolName ?? request.params.name;
-    const tool =
+    let tool =
       groupTool?.tool ??
       (serverInfo ? findToolOnServer(serverInfo, routeToolName, singleServerAppsRoute) : undefined);
     if (!serverInfo || !tool) {
@@ -4658,6 +4731,13 @@ const handleCallToolRequestImpl = async (request: any, extra: any) => {
     releaseOnDemandToolCall = beginOnDemandToolCall(serverInfo);
     if (serverInfo.config?.startOnDemand && serverInfo.status !== 'connected') {
       await ensureServerReady(serverInfo);
+      tool = findToolOnServer(serverInfo, routeToolName, singleServerAppsRoute);
+      if (!tool)
+        throw new ToolUnavailableError(
+          `Tool not available: ${request.params.name}`,
+          'tool-not-found',
+        );
+      assertToolAvailableForRoute(tool, appsRouteContext);
     }
     serverInfo.lastUsedAt = Date.now();
 
@@ -5376,7 +5456,9 @@ const protectPersonalClient = <T extends object>(
 const createPrincipalRuntime = async (
   name: string,
   resolvedConfig: ServerConfig,
-): Promise<ServerInfo> => {
+  scope?: CapabilityScope,
+  toolsOnly = false,
+): Promise<ServerInfo | undefined> => {
   const info: ServerInfo = {
     name,
     owner: resolvedConfig.owner,
@@ -5392,6 +5474,16 @@ const createPrincipalRuntime = async (
     resources: [],
     createTime: Date.now(),
   };
+  const cachedTools = await prepareCapabilitySnapshot(info, resolvedConfig, scope);
+  if (toolsOnly) {
+    if (cachedTools === undefined) return undefined;
+    info.tools = cachedTools.map((tool) => normalizeToolForCache(name, tool));
+    void syncCredentialServerToolEmbeddings(name, info.tools, { partial: true }).catch(() => {
+      logger.warn('[EMBED_SYNC_ERROR] Failed to sync personal tool embeddings');
+    });
+    info.status = 'disconnected';
+    return info;
+  }
   try {
     if (resolvedConfig.type === 'openapi') {
       const client = new OpenAPIClient(resolvedConfig);
@@ -5422,7 +5514,11 @@ const createPrincipalRuntime = async (
           tools,
           tools.map((tool) => normalizeToolForCache(name, tool)),
         );
+        recordCapabilitySnapshot(info, tools);
+      } else {
+        recordCapabilitySnapshot(info, []);
       }
+      await flushCapabilitySnapshot(info);
       if (capabilities?.prompts) {
         const { prompts } = await client.listPrompts({}, resolvedConfig.options);
         info.prompts = preserveListFreshness(
@@ -5462,7 +5558,11 @@ const createPrincipalRuntime = async (
   }
 };
 
-const principalRuntimes = new PrincipalRuntimeService(createPrincipalRuntime, closeServerRuntime);
+const principalRuntimes = new PrincipalRuntimeService(
+  async (name, config, scope) => (await createPrincipalRuntime(name, config, scope))!,
+  closeServerRuntime,
+  (name, config, scope) => createPrincipalRuntime(name, config, scope, true),
+);
 
 /**
  * Resolve the tools of a personal-credential server on behalf of an explicit
@@ -5605,7 +5705,10 @@ const withModernLists =
   };
 
 const withPrincipalServers =
-  (handler: McpHandler, operation: 'list' | 'tool' | 'prompt' | 'resource'): McpHandler =>
+  (
+    handler: McpHandler,
+    operation: 'list' | 'tools-list' | 'tool' | 'prompt' | 'resource',
+  ): McpHandler =>
   async (request, extra) => {
     if (!serverInfos.some((info) => hasPersonalAuthentication(info.config)))
       return handler(request, extra);
@@ -5664,7 +5767,11 @@ const withPrincipalServers =
               throw hasPersonalOAuth(info.config)
                 ? personalAuthorizationRequired(info.name)
                 : missingCredentialError(info.name);
-            const lease = await principalRuntimes.acquire(info.name, user);
+            const lease = await principalRuntimes.acquire(
+              info.name,
+              user,
+              operation === 'tools-list',
+            );
             releases.push(lease.release);
             scoped.set(info.name, lease.info);
           } catch (error) {
@@ -5679,7 +5786,10 @@ const withPrincipalServers =
       );
       const requiredTarget =
         target ||
-        (candidates.length === 1 && operation !== 'list' && requestedName !== 'search_tools'
+        (candidates.length === 1 &&
+        operation !== 'list' &&
+        operation !== 'tools-list' &&
+        requestedName !== 'search_tools'
           ? templated[0]
           : undefined);
       const failure = requiredTarget ? failures.get(requiredTarget.name) : undefined;
@@ -5832,7 +5942,7 @@ const withCacheHints =
 
 export const handleListToolsRequest = withPrincipalServers(
   withModernLists(withCacheHints(handleListToolsRequestImpl, false, 'tools'), ['tools']),
-  'list',
+  'tools-list',
 );
 const callToolWithPrincipal = withPrincipalServers(
   withModernLists(handleCallToolRequestImpl, ['tools']),

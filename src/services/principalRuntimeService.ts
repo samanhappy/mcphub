@@ -9,6 +9,7 @@ import { credentialBindingEvents, resolveCredentialBinding } from './credentialB
 import { authorizationService, type RequestPrincipal } from './authorizationService.js';
 import { CredentialBindingError, hasPersonalAuthentication } from '../utils/credentialTemplate.js';
 import { expandServerConfig } from './serverConfigEnvironment.js';
+import type { CapabilityScope } from './capabilitySnapshotService.js';
 import type { ServerConfig, ServerInfo } from '../types/index.js';
 
 interface RuntimeEntry {
@@ -27,8 +28,17 @@ export class PrincipalRuntimeService {
   private readonly entries = new Map<string, RuntimeEntry>();
 
   constructor(
-    private readonly connect: (name: string, config: ServerConfig) => Promise<ServerInfo>,
+    private readonly connect: (
+      name: string,
+      config: ServerConfig,
+      scope?: CapabilityScope,
+    ) => Promise<ServerInfo>,
     private readonly close: (info: ServerInfo) => void,
+    private readonly restoreTools?: (
+      name: string,
+      config: ServerConfig,
+      scope: CapabilityScope,
+    ) => Promise<ServerInfo | undefined>,
   ) {
     credentialBindingEvents.on('invalidate', (filter) => this.invalidate(filter));
   }
@@ -47,6 +57,7 @@ export class PrincipalRuntimeService {
   async acquire(
     serverName: string,
     principal: RequestPrincipal,
+    toolsOnly = false,
   ): Promise<{ info: ServerInfo; release: () => void }> {
     if (principal.credentialEligible === false)
       throw new CredentialBindingError('Personal authentication is required');
@@ -62,6 +73,33 @@ export class PrincipalRuntimeService {
     // These snapshots only detect runtime changes in memory; they are never persisted or logged.
     const definitionSnapshot = JSON.stringify(definition);
     const resolver = hasPersonalOAuth(definition) ? resolvePersonalOAuth : resolveCredentialBinding;
+    if (toolsOnly && this.restoreTools) {
+      const resolved = await resolver(
+        serverName,
+        principal.username,
+        hasPersonalOAuth(definition) ? definition : await expandServerConfig(definition),
+      );
+      const existing = this.entries.get(JSON.stringify([serverName, principal.username]));
+      const live =
+        existing?.valid &&
+        existing.revision === JSON.stringify([definitionSnapshot, resolved.revision]) &&
+        existing.info?.status !== 'disconnected';
+      const cached = live
+        ? undefined
+        : await this.restoreTools(serverName, resolved.config, {
+            username: principal.username,
+            revision: resolved.revision,
+          });
+      if (cached) {
+        const latest = await resolver(serverName, principal.username, definition);
+        const current = await getServerDao().findById(serverName);
+        if (latest.revision !== resolved.revision || JSON.stringify(current) !== definitionSnapshot)
+          throw new CredentialBindingError(
+            'Personal credentials or server configuration changed; retry the request',
+          );
+        return { info: cached, release: () => {} };
+      }
+    }
     const prepare = async () => {
       const resolved = await resolver(
         serverName,
@@ -95,7 +133,10 @@ export class PrincipalRuntimeService {
         created.promise = (async () => {
           let info: ServerInfo | undefined;
           try {
-            info = await this.connect(serverName, resolved.config);
+            info = await this.connect(serverName, resolved.config, {
+              username: principal.username,
+              revision: resolved.revision,
+            });
             // A rotation/deletion may have raced the initial read or async handshake.
             const verify = async () => {
               const latest = await resolver(serverName, principal.username, definition);
