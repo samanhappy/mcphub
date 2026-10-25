@@ -1,4 +1,4 @@
-import { Repository } from 'typeorm';
+import { IsNull, Repository } from 'typeorm';
 import { BearerKey } from '../entities/BearerKey.js';
 import { getAppDataSource } from '../connection.js';
 import { withDbRetry, RetryOptions } from '../../utils/dbRetry.js';
@@ -62,7 +62,11 @@ export class BearerKeyRepository {
    */
   async findByToken(token: string): Promise<BearerKey | null> {
     return this.withRetry(
-      () => this.repository.findOne({ where: { tokenHash: hashBearerToken(token) } }),
+      () =>
+        this.repository.findOne({
+          // unmigrated rows still hold the raw token
+          where: [{ tokenHash: hashBearerToken(token) }, { token, tokenHash: IsNull() }],
+        }),
       'findByToken',
     );
   }
@@ -96,16 +100,12 @@ export class BearerKeyRepository {
    * Create a new bearer key
    */
   async create(
-    data: Omit<
-      BearerKey,
-      'id' | 'createdAt' | 'updatedAt' | 'token' | 'tokenHash' | 'tokenPrefix'
-    > & {
-      token: string;
-    },
+    data: Omit<BearerKey, 'id' | 'createdAt' | 'updatedAt' | 'token'> & { token?: string },
   ): Promise<BearerKey> {
     return this.withRetry(async () => {
+      // Either a raw token (hashed here) or an already hashed tokenHash/tokenPrefix pair
       const { token, ...rest } = data;
-      const entity = this.repository.create({ ...rest, ...toStoredToken(token) });
+      const entity = this.repository.create({ ...rest, ...(token ? toStoredToken(token) : {}) });
       return await this.repository.save(entity);
     }, 'create');
   }

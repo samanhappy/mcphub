@@ -97,8 +97,13 @@ export class AppServer {
       await initializeDefaultUser();
 
       // Replace raw bearer tokens stored by older versions with their hash
-      const hashed = await getBearerKeyDao().hashLegacyTokens();
-      if (hashed > 0) logger.log(`Hashed ${hashed} legacy bearer key(s)`);
+      try {
+        const hashed = await getBearerKeyDao().hashLegacyTokens();
+        if (hashed > 0) logger.log(`Hashed ${hashed} legacy bearer key(s)`);
+      } catch (error) {
+        // e.g. read-only settings file: unmigrated keys keep working until it is writable
+        logger.warn('Could not hash legacy bearer keys:', error);
+      }
 
       // Initialize OAuth provider if configured (for proxying upstream MCP OAuth)
       await initOAuthProvider();

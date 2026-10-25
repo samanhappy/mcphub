@@ -155,7 +155,8 @@ export async function migrateToDatabase(seedServersAndGroups = true): Promise<bo
       logger.log('Migrating system configuration...');
       const systemConfig = {
         network: settings.systemConfig.network || {},
-        routing: settings.systemConfig.routing || {},
+        // the legacy bearerAuthKey is migrated to a hashed bearer key below
+        routing: { ...settings.systemConfig.routing, bearerAuthKey: '' },
         install: settings.systemConfig.install || {},
         smartRouting: settings.systemConfig.smartRouting || {},
         toolResultCompression: settings.systemConfig.toolResultCompression || {},
@@ -179,7 +180,10 @@ export async function migrateToDatabase(seedServersAndGroups = true): Promise<bo
       for (const key of settings.bearerKeys) {
         await bearerKeyRepo.create({
           name: key.name,
-          token: key.token,
+          // Keys created by a hashing-aware version only carry tokenHash/tokenPrefix
+          ...(key.tokenHash
+            ? { tokenHash: key.tokenHash, tokenPrefix: key.tokenPrefix }
+            : { token: key.token }),
           enabled: key.enabled,
           kind: key.kind ?? 'system',
           owner: key.owner,
@@ -390,6 +394,7 @@ export async function initializeDatabaseMode(): Promise<boolean> {
             allowedGroups: [],
             allowedServers: [],
           } as any);
+          await systemConfigRepo.updateSection('routing', { ...routing, bearerAuthKey: '' });
           logger.log(
             `  - Migrated legacy DB routing bearer auth config to key: default (enabled=${enableBearerAuth})`,
           );

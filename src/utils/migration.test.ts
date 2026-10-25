@@ -23,6 +23,7 @@ jest.mock('../dao/DatabaseDaoFactory.js', () => ({
 const loadOriginalSettingsMock = jest.fn(() => ({ users: [] }));
 jest.mock('../config/index.js', () => ({
   loadOriginalSettings: loadOriginalSettingsMock,
+  getSettingsPath: () => '/nonexistent/mcp_settings.json',
 }));
 
 const userRepoCountMock = jest.fn<() => Promise<number>>();
@@ -52,11 +53,29 @@ jest.mock('../db/repositories/BearerKeyRepository.js', () => ({
 }));
 
 const systemConfigGetMock = jest.fn<() => Promise<any>>();
+const systemConfigUpdateSectionMock = jest.fn<() => Promise<any>>();
 jest.mock('../db/repositories/SystemConfigRepository.js', () => ({
   SystemConfigRepository: jest.fn().mockImplementation(() => ({
     get: systemConfigGetMock,
+    update: jest.fn(),
+    updateSection: systemConfigUpdateSectionMock,
   })),
 }));
+
+// Repositories not under test: inert stand-ins so migrateToDatabase can run end to end.
+for (const repo of [
+  'ServerRepository',
+  'GroupRepository',
+  'UserConfigRepository',
+  'OAuthClientRepository',
+  'OAuthTokenRepository',
+  'BuiltinPromptRepository',
+  'BuiltinResourceRepository',
+]) {
+  jest.mock(`../db/repositories/${repo}.js`, () => ({
+    [repo]: jest.fn().mockImplementation(() => ({})),
+  }));
+}
 
 describe('initializeDatabaseMode legacy bearer auth migration', () => {
   beforeEach(() => {
@@ -103,6 +122,10 @@ describe('initializeDatabaseMode legacy bearer auth migration', () => {
       allowedGroups: [],
       allowedServers: [],
     });
+    expect(systemConfigUpdateSectionMock).toHaveBeenCalledWith('routing', {
+      enableBearerAuth: true,
+      bearerAuthKey: '',
+    });
   });
 
   it('does not migrate when routing has no bearerAuthKey', async () => {
@@ -119,5 +142,30 @@ describe('initializeDatabaseMode legacy bearer auth migration', () => {
     expect(loadOriginalSettingsMock).not.toHaveBeenCalled();
     expect(systemConfigGetMock).toHaveBeenCalledTimes(1);
     expect(bearerKeyCreateMock).not.toHaveBeenCalled();
+  });
+
+  it('migrates file keys that are already hashed without re-hashing or needing a raw token', async () => {
+    loadOriginalSettingsMock.mockReturnValueOnce({
+      users: [],
+      mcpServers: {},
+      bearerKeys: [
+        {
+          id: 'k1',
+          name: 'hashed',
+          tokenHash: 'a'.repeat(64),
+          tokenPrefix: 'mcphub_a',
+          enabled: true,
+          accessType: 'all',
+        },
+      ],
+    } as any);
+
+    const { migrateToDatabase } = await import('./migration.js');
+    await migrateToDatabase(false);
+
+    const arg = bearerKeyCreateMock.mock.calls[0][0] as any;
+    expect(arg.tokenHash).toBe('a'.repeat(64));
+    expect(arg.tokenPrefix).toBe('mcphub_a');
+    expect(arg).not.toHaveProperty('token');
   });
 });

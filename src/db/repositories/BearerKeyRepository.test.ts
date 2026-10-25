@@ -31,8 +31,8 @@ describe('BearerKeyRepository token hashing', () => {
 
   it('looks keys up by hash', async () => {
     await new BearerKeyRepository().findByToken('mcphub_secret');
-    expect(mockRepo.findOne).toHaveBeenCalledWith({
-      where: { tokenHash: hashBearerToken('mcphub_secret') },
+    expect(mockRepo.findOne.mock.calls[0][0].where[0]).toEqual({
+      tokenHash: hashBearerToken('mcphub_secret'),
     });
   });
 
@@ -47,5 +47,20 @@ describe('BearerKeyRepository token hashing', () => {
       { id: 'a' },
       { tokenHash: hashBearerToken('old-raw-token'), tokenPrefix: 'old-raw-', token: null },
     );
+  });
+
+  it('accepts an already hashed key (JSON to DB migration of hashed keys)', async () => {
+    await new BearerKeyRepository().create({
+      name: 'k',
+      tokenHash: 'h'.repeat(64),
+      tokenPrefix: 'mcphub_a',
+      enabled: true,
+      kind: 'system',
+      accessType: 'all',
+    } as any);
+    expect(mockRepo.save.mock.calls[0][0]).toMatchObject({
+      tokenHash: 'h'.repeat(64),
+      tokenPrefix: 'mcphub_a',
+    });
   });
 });
