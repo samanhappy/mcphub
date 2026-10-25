@@ -1,3 +1,4 @@
+import { CapabilitySnapshot } from './CapabilitySnapshot.js';
 import { CredentialBinding } from './CredentialBinding.js';
 import { VectorEmbedding } from './VectorEmbedding.js';
 import User from './User.js';
@@ -14,6 +15,7 @@ import BuiltinResource from './BuiltinResource.js';
 
 // Export all entities
 export default [
+  CapabilitySnapshot,
   CredentialBinding,
   VectorEmbedding,
   User,
@@ -31,6 +33,7 @@ export default [
 
 // Export individual entities for direct use
 export {
+  CapabilitySnapshot,
   CredentialBinding,
   VectorEmbedding,
   User,

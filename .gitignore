@@ -39,3 +39,7 @@ temp-test-config/
 *.credentials.key.*.tmp
 
 .workbuddy
+
+# Last-known upstream capability snapshots (runtime data)
+*.capabilities.json
+*.capabilities.json.*.tmp

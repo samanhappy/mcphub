@@ -1,5 +1,9 @@
+import fs from 'node:fs';
 import { StdioServerTransport } from '@modelcontextprotocol/server/stdio';
 import { Server } from '@modelcontextprotocol/server';
+
+if (process.env.MCPHUB_TEST_START_LOG)
+  fs.appendFileSync(process.env.MCPHUB_TEST_START_LOG, `${process.pid}\n`);
 
 const server = new Server(
   { name: 'personal-fixture', version: '1.0' },

@@ -8,6 +8,19 @@ import {
 } from '@modelcontextprotocol/client';
 import { SmartRoutingConfig } from '../utils/smartRouting.js';
 
+export interface CapabilitySnapshot {
+  serverName: string;
+  principal: string;
+  fingerprint: string;
+  capturedAt: string;
+  tools: import('@modelcontextprotocol/client').Tool[];
+}
+
+export interface CapabilityCacheStatus {
+  state: 'fresh' | 'stale' | 'missing';
+  capturedAt?: string;
+}
+
 // User interface
 export interface IUser {
   username: string;
@@ -603,6 +616,7 @@ export interface OpenAPISecurityConfig {
 
 // Information about a server's status and tools
 export interface ServerInfo {
+  capabilityCache?: CapabilityCacheStatus;
   name: string; // Unique name of the server
   protocolVersion?: string; // Negotiated MCP protocol version for the current connection
   version?: string; // Upstream server version reported during MCP initialization

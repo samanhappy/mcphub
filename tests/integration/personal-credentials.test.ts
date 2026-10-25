@@ -1,3 +1,4 @@
+import { credentialBindingEvents } from '../../src/services/credentialBindingService.js';
 import { RequestContextService } from '../../src/services/requestContextService.js';
 import { logger } from '../../src/utils/logger.js';
 import {
@@ -1276,6 +1277,62 @@ test('batch tool status uses the owner personal inventory and immediately gates 
     ]);
     await toggle(true).expect(200);
     expect((await ownerClient.callTool({ name: 'identity' })).isError).toBeFalsy();
+  } finally {
+    await removeServer(name);
+  }
+});
+
+test('on-demand personal snapshots restore isolated tools without spawning and recheck credential rotation (#1219)', async () => {
+  const name = 'snapshot-personal';
+  const starts = path.join(directory, 'snapshot-starts.log');
+  await getServerDao().create({
+    name,
+    type: 'stdio',
+    command: process.execPath,
+    args: [fixture],
+    owner: 'admin',
+    visibility: 'public',
+    startOnDemand: true,
+    env: { MCPHUB_TEST_START_LOG: starts },
+    credentialTemplate: [{ target: 'env', name: 'PERSONAL_KEY' }],
+  });
+  await initializeClientsFromSettings(false, name);
+  const asUser = <T>(username: string, fn: () => T) =>
+    UserContextService.getInstance().runWithContext(fn, { username, password: '', isAdmin: false });
+  const list = (username: string) =>
+    asUser(username, () => handleListToolsRequest({}, { group: name }));
+  const save = (username: string, key: string) =>
+    request(app)
+      .put(`/api/credentials/${name}`)
+      .set('x-auth-token', apiToken(username))
+      .send({ values: { 'env.PERSONAL_KEY': key } });
+  const count = () => fs.readFileSync(starts, 'utf8').trim().split('\n').length;
+  try {
+    expect((await save(alice, 'limited-alice')).status).toBe(200);
+    expect((await save(bob, 'full-bob')).status).toBe(200);
+    expect((await list(alice)).tools).toHaveLength(1);
+    expect((await list(bob)).tools).toHaveLength(2);
+    expect(count()).toBe(2);
+    // Drop principal runtimes while keeping their persisted snapshots.
+    credentialBindingEvents.emit('invalidate', { serverName: name });
+    expect((await list(alice)).tools).toHaveLength(1);
+    expect((await list(bob)).tools).toHaveLength(2);
+    expect(count()).toBe(2);
+    const result = await asUser(alice, () =>
+      handleCallToolRequest(
+        { params: { name: `${name}${getNameSeparator()}identity`, arguments: {} } },
+        { group: name },
+      ),
+    );
+    expect(parseIdentity(result).credential).toBe('limited-alice');
+    expect(count()).toBe(3);
+    expect((await save(alice, 'full-alice')).status).toBe(200);
+    expect((await list(alice)).tools).toHaveLength(2);
+    expect(count()).toBe(4);
+    const stored = fs.readFileSync(`${process.env.MCPHUB_SETTING_PATH}.capabilities.json`, 'utf8');
+    expect(stored).not.toContain('limited-alice');
+    expect(stored).not.toContain('full-bob');
+    expect(stored).not.toContain('full-alice');
   } finally {
     await removeServer(name);
   }

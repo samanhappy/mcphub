@@ -1,3 +1,4 @@
+import { CapabilitySnapshotDaoDbImpl } from './CapabilitySnapshotDaoDbImpl.js';
 import { CredentialBindingDaoDbImpl } from './CredentialBindingDaoDbImpl.js';
 import {
   DaoFactory,
@@ -54,6 +55,10 @@ export class DatabaseDaoFactory implements DaoFactory {
 
   private constructor() {
     // Private constructor for singleton
+  }
+
+  getCapabilitySnapshotDao(): CapabilitySnapshotDaoDbImpl {
+    return new CapabilitySnapshotDaoDbImpl();
   }
 
   getCredentialBindingDao(): CredentialBindingDaoDbImpl {
