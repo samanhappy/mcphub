@@ -16,7 +16,9 @@ export class BearerKeyDaoDbImpl implements BearerKeyDao {
     return {
       id: entity.id,
       name: entity.name,
-      token: entity.token,
+      token: entity.token ?? undefined,
+      tokenHash: entity.tokenHash ?? undefined,
+      tokenPrefix: entity.tokenPrefix ?? undefined,
       enabled: entity.enabled,
       kind: entity.kind ?? 'system',
       owner: entity.owner,
@@ -54,7 +56,7 @@ export class BearerKeyDaoDbImpl implements BearerKeyDao {
   async create(data: Omit<BearerKeyModel, 'id'>): Promise<BearerKeyModel> {
     const entity = await this.repository.create({
       name: data.name,
-      token: data.token,
+      token: data.token as string,
       enabled: data.enabled,
       kind: data.kind ?? 'system',
       owner: data.owner,
@@ -62,7 +64,12 @@ export class BearerKeyDaoDbImpl implements BearerKeyDao {
       allowedGroups: data.allowedGroups ?? [],
       allowedServers: data.allowedServers ?? [],
     } as any);
-    return this.toModel(entity as any);
+    // The raw token is returned here only, so the caller can show it once.
+    return { ...this.toModel(entity as any), token: data.token };
+  }
+
+  async hashLegacyTokens(): Promise<number> {
+    return await this.repository.hashLegacyTokens();
   }
 
   async update(
@@ -71,7 +78,6 @@ export class BearerKeyDaoDbImpl implements BearerKeyDao {
   ): Promise<BearerKeyModel | null> {
     const entity = await this.repository.update(id, {
       name: data.name,
-      token: data.token,
       enabled: data.enabled,
       kind: data.kind,
       owner: data.owner,

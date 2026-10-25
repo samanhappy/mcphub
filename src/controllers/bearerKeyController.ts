@@ -3,6 +3,7 @@ import { Request, Response } from 'express';
 import { ApiResponse, BearerKey, BearerKeyAccessType, BearerKeyKind } from '../types/index.js';
 import { getBearerKeyDao, getUserDao } from '../dao/index.js';
 import { logger } from '../utils/logger.js';
+import { maskBearerKey } from '../utils/bearerKeyToken.js';
 
 const VALID_ACCESS_TYPES: BearerKeyAccessType[] = ['all', 'groups', 'servers', 'custom'];
 
@@ -14,13 +15,10 @@ type AuthenticatedUser = {
 const getAuthenticatedUser = (req: Request): AuthenticatedUser | undefined =>
   (req as any).user as AuthenticatedUser | undefined;
 
-const maskToken = (token: string): string =>
-  token.length > 12 ? `${token.slice(0, 8)}...${token.slice(-4)}` : '********';
-
-const sanitizeKey = (key: BearerKey): BearerKey => ({
+const sanitizeKey = ({ tokenHash, tokenPrefix, ...key }: BearerKey): BearerKey => ({
   ...key,
   kind: key.kind ?? 'system',
-  token: maskToken(key.token),
+  token: maskBearerKey({ token: key.token, tokenPrefix }),
 });
 
 const canManageKey = (user: AuthenticatedUser | undefined, key: BearerKey): boolean =>
@@ -115,9 +113,10 @@ export const createBearerKey = async (req: Request, res: Response): Promise<void
       allowedServers: kind === 'system' && Array.isArray(allowedServers) ? allowedServers : [],
     });
 
+    const { tokenHash: _hash, ...created } = key;
     res.status(201).json({
       success: true,
-      data: key,
+      data: created,
       message: 'Bearer key created. The token is only shown once.',
     } satisfies ApiResponse);
   } catch (error) {

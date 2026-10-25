@@ -26,7 +26,7 @@ import { UserContextService } from './userContextService.js';
 import { RequestContextService } from './requestContextService.js';
 import { IUser, BearerKey, BearerKeyKind } from '../types/index.js';
 import { resolveOAuthUserFromToken } from '../utils/oauthBearer.js';
-import { safeCompare } from '../utils/safeCompare.js';
+import { bearerKeyMatches } from '../utils/bearerKeyToken.js';
 import {
   getBearerAuthHeaderValue,
   getBearerTokenFromHeaders,
@@ -469,7 +469,7 @@ const validateBearerAuth = async (req: Request): Promise<BearerAuthResult> => {
       return { valid: true };
     }
 
-    const matchingKey = enabledKeys.find((key) => safeCompare(key.token, token));
+    const matchingKey = enabledKeys.find((key) => bearerKeyMatches(key, token));
     if (matchingKey) {
       const userKeyResult = await resolveUserLevelKeyUser(req, matchingKey);
       if (!userKeyResult.valid) {
@@ -520,7 +520,7 @@ const validateBearerAuth = async (req: Request): Promise<BearerAuthResult> => {
     return { valid: false, reason: 'invalid' };
   }
 
-  const matchingKey = enabledKeys.find((key) => safeCompare(key.token, token));
+  const matchingKey = enabledKeys.find((key) => bearerKeyMatches(key, token));
   if (matchingKey) {
     const userKeyResult = await resolveUserLevelKeyUser(req, matchingKey);
     if (!userKeyResult.valid) {

@@ -84,6 +84,7 @@ import {
 import { TOOL_DEFINITION_FIELDS } from '../constants/smartRoutingDefaults.js';
 import { previewOpenApiToolStats } from '../services/openApiToolStatsService.js';
 import { logger } from '../utils/logger.js';
+import { maskBearerKey } from '../utils/bearerKeyToken.js';
 import { findToolConfigKey, resolveRuntimeToolName } from '../utils/toolConfig.js';
 
 // Runtime names of a connected server's tools, to resolve which tool a request means
@@ -516,11 +517,10 @@ export const getAllSettings = async (req: Request, res: Response): Promise<void>
       userConfigs,
       oauthClients,
       oauthTokens,
-      bearerKeys: bearerKeys.map((key) => ({
+      bearerKeys: bearerKeys.map(({ tokenHash, tokenPrefix, ...key }) => ({
         ...key,
         kind: key.kind ?? 'system',
-        token:
-          key.token.length > 12 ? `${key.token.slice(0, 8)}...${key.token.slice(-4)}` : '********',
+        token: maskBearerKey({ token: key.token, tokenPrefix }),
       })),
     };
 

@@ -2,6 +2,7 @@ import { Repository } from 'typeorm';
 import { BearerKey } from '../entities/BearerKey.js';
 import { getAppDataSource } from '../connection.js';
 import { withDbRetry, RetryOptions } from '../../utils/dbRetry.js';
+import { hashBearerToken, toStoredToken } from '../../utils/bearerKeyToken.js';
 
 // Default retry options
 const DEFAULT_RETRY_OPTIONS: RetryOptions = {
@@ -57,10 +58,31 @@ export class BearerKeyRepository {
   }
 
   /**
-   * Find bearer key by token value
+   * Find bearer key by token value (looked up by its SHA-256 hash)
    */
   async findByToken(token: string): Promise<BearerKey | null> {
-    return this.withRetry(() => this.repository.findOne({ where: { token } }), 'findByToken');
+    return this.withRetry(
+      () => this.repository.findOne({ where: { tokenHash: hashBearerToken(token) } }),
+      'findByToken',
+    );
+  }
+
+  /**
+   * Replace any raw token still stored with its hash and prefix. Returns the number of keys hashed.
+   */
+  async hashLegacyTokens(): Promise<number> {
+    const legacy = (await this.findAll()).filter((key) => key.token && !key.tokenHash);
+    for (const key of legacy) {
+      await this.withRetry(
+        () =>
+          this.repository.update(
+            { id: key.id },
+            { ...toStoredToken(key.token as string), token: null },
+          ),
+        'hashLegacyTokens',
+      );
+    }
+    return legacy.length;
   }
 
   async findByOwner(owner: string): Promise<BearerKey[]> {
@@ -73,9 +95,14 @@ export class BearerKeyRepository {
   /**
    * Create a new bearer key
    */
-  async create(data: Omit<BearerKey, 'id' | 'createdAt' | 'updatedAt'>): Promise<BearerKey> {
+  async create(
+    data: Omit<BearerKey, 'id' | 'createdAt' | 'updatedAt' | 'token' | 'tokenHash' | 'tokenPrefix'> & {
+      token: string;
+    },
+  ): Promise<BearerKey> {
     return this.withRetry(async () => {
-      const entity = this.repository.create(data);
+      const { token, ...rest } = data;
+      const entity = this.repository.create({ ...rest, ...toStoredToken(token) });
       return await this.repository.save(entity);
     }, 'create');
   }

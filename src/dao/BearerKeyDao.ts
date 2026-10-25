@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { BearerKey } from '../types/index.js';
 import { JsonFileBaseDao } from './base/JsonFileBaseDao.js';
-import { safeCompare } from '../utils/safeCompare.js';
+import { bearerKeyMatches, toStoredToken } from '../utils/bearerKeyToken.js';
 
 /**
  * DAO interface for bearer authentication keys
@@ -16,6 +16,11 @@ export interface BearerKeyDao {
   update(id: string, data: Partial<Omit<BearerKey, 'id'>>): Promise<BearerKey | null>;
   delete(id: string): Promise<boolean>;
   deleteByOwner(owner: string): Promise<number>;
+  /**
+   * Replace raw tokens still stored (keys created before hashing) with their hash and prefix.
+   * Returns the number of keys hashed.
+   */
+  hashLegacyTokens(): Promise<number>;
   /**
    * Update server name in all bearer keys (when server is renamed)
    */
@@ -58,7 +63,7 @@ export class BearerKeyDaoImpl extends JsonFileBaseDao implements BearerKeyDao {
         {
           id: randomUUID(),
           name: 'default',
-          token: rawKey,
+          ...toStoredToken(rawKey),
           enabled: enableBearerAuth,
           kind: 'system',
           accessType: 'all',
@@ -70,6 +75,9 @@ export class BearerKeyDaoImpl extends JsonFileBaseDao implements BearerKeyDao {
 
     // Cases 1 and 4 both result in empty keys list
     settings.bearerKeys = migrated;
+    if (rawKey && settings.systemConfig?.routing) {
+      settings.systemConfig.routing.bearerAuthKey = ''; // do not leave the raw key behind
+    }
     await this.saveSettings(settings);
 
     return migrated;
@@ -97,7 +105,7 @@ export class BearerKeyDaoImpl extends JsonFileBaseDao implements BearerKeyDao {
 
   async findByToken(token: string): Promise<BearerKey | undefined> {
     const keys = await this.loadKeysWithMigration();
-    return keys.find((key) => safeCompare(key.token, token));
+    return keys.find((key) => bearerKeyMatches(key, token));
   }
 
   async findByOwner(owner: string): Promise<BearerKey[]> {
@@ -107,13 +115,32 @@ export class BearerKeyDaoImpl extends JsonFileBaseDao implements BearerKeyDao {
 
   async create(data: Omit<BearerKey, 'id'>): Promise<BearerKey> {
     const keys = await this.loadKeysWithMigration();
-    const newKey: BearerKey = {
+    const { token, ...rest } = data;
+    const stored: BearerKey = {
       id: randomUUID(),
-      ...data,
+      ...rest,
+      ...(token ? toStoredToken(token) : {}),
     };
-    keys.push(newKey);
+    keys.push(stored);
     await this.saveKeys(keys);
-    return newKey;
+    // The raw token is returned here only, so the caller can show it once.
+    return { ...stored, token };
+  }
+
+  async hashLegacyTokens(): Promise<number> {
+    const keys = await this.loadKeysWithMigration();
+    let count = 0;
+    for (const key of keys) {
+      if (key.token && !key.tokenHash) {
+        Object.assign(key, toStoredToken(key.token));
+        delete key.token;
+        count++;
+      }
+    }
+    if (count > 0) {
+      await this.saveKeys(keys);
+    }
+    return count;
   }
 
   async update(id: string, data: Partial<Omit<BearerKey, 'id'>>): Promise<BearerKey | null> {

@@ -3,7 +3,7 @@ import {
   smartRoutingPathMiddleware,
   assertSmartRoutingNameAvailable,
 } from './utils/smartRoutingPath.js';
-import { getGroupDao, getServerDao } from './dao/DaoFactory.js';
+import { getBearerKeyDao, getGroupDao, getServerDao } from './dao/DaoFactory.js';
 import cors, { type CorsOptions } from 'cors';
 import config, { isWebDisabled } from './config/index.js';
 import path from 'path';
@@ -95,6 +95,10 @@ export class AppServer {
 
       // Initialize default admin user if no users exist
       await initializeDefaultUser();
+
+      // Replace raw bearer tokens stored by older versions with their hash
+      const hashed = await getBearerKeyDao().hashLegacyTokens();
+      if (hashed > 0) logger.log(`Hashed ${hashed} legacy bearer key(s)`);
 
       // Initialize OAuth provider if configured (for proxying upstream MCP OAuth)
       await initOAuthProvider();
