@@ -205,6 +205,30 @@ describe('mcpService initialize metadata', () => {
     expect(server.protocolVersion).toBeUndefined();
   });
 
+  it('exposes retry metadata without serializing runtime timers', async () => {
+    mockFindAll.mockResolvedValue([
+      { name: 'remote', type: 'sse', url: 'https://example.com/sse' },
+    ]);
+    const recovery = { attempts: 3, lastAttemptAt: 1000, nextAttemptAt: 2000 };
+    setServerInfosForTest([
+      {
+        name: 'remote',
+        status: 'disconnected',
+        error: 'offline',
+        recovery,
+        tools: [],
+        prompts: [],
+        resources: [],
+        createTime: Date.now(),
+      },
+    ]);
+    const [server] = await getServersInfo();
+    expect(server.recovery).toEqual(recovery);
+    expect(JSON.stringify(server)).not.toContain('keepAliveIntervalId');
+    mockFindAll.mockResolvedValue([{ name: 'remote', type: 'sse', enabled: false }]);
+    expect((await getServersInfo())[0].recovery).toBeUndefined();
+  });
+
   it('keeps hub metadata for multi-server groups', async () => {
     mockFindAll.mockResolvedValue([
       {

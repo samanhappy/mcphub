@@ -267,7 +267,7 @@ describe('mcpService request options defaults', () => {
     );
   });
 
-  it('re-registers keep-alive when an automatic reconnect attempt fails', async () => {
+  it('passes reconnect failures back to the background scheduler', async () => {
     mockFindAll.mockResolvedValue([
       {
         name: 'flaky-http',
@@ -296,18 +296,7 @@ describe('mcpService request options defaults', () => {
       'settings unavailable',
     );
 
-    expect(setupClientKeepAlive).toHaveBeenCalledTimes(2);
-    expect(setupClientKeepAlive).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        name: 'flaky-http',
-      }),
-      expect.objectContaining({
-        name: 'flaky-http',
-        enableKeepAlive: true,
-      }),
-      expect.objectContaining({
-        reconnectServer: expect.any(Function),
-      }),
-    );
+    // The scheduler owns rescheduling; the lifecycle callback must not add a second timer.
+    expect(setupClientKeepAlive).toHaveBeenCalledTimes(1);
   });
 });

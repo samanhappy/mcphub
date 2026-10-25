@@ -1400,18 +1400,7 @@ export const cleanupAllServers = (): void => {
   clientStateSweep = undefined;
   for (const id of clientStates.keys()) removeClientState(id);
   principalRuntimes.invalidate();
-  for (const serverInfo of serverInfos) {
-    try {
-      if (serverInfo.client) {
-        serverInfo.client.close();
-      }
-      if (serverInfo.transport) {
-        serverInfo.transport.close();
-      }
-    } catch (error) {
-      logger.warn('Error closing server', { serverName: serverInfo.name, error });
-    }
-  }
+  for (const serverInfo of serverInfos) closeServerRuntime(serverInfo);
   serverInfos = [];
 
   // Drain all per-session isolated upstream clients (perSessionClient: true),
@@ -2090,6 +2079,7 @@ const callToolWithReconnect = async (
               serverInfo.keepAliveIntervalId = undefined;
             }
             try {
+              if (serverInfo.client) serverInfo.client.onclose = undefined;
               serverInfo.client?.close();
             } catch {
               /* empty */
@@ -2135,6 +2125,7 @@ const callToolWithReconnect = async (
           if (!isolated) {
             serverInfo.status = 'disconnected';
             serverInfo.error = `Failed to reconnect: ${formatErrorForLogging(reconnectError)}`;
+            if (serverInfo.config) setupServerKeepAlive(serverInfo, serverInfo.config);
           }
 
           // If this was the last attempt, throw the original error
@@ -2143,7 +2134,17 @@ const callToolWithReconnect = async (
           }
         }
       } else {
-        // Not an HTTP 40x error or no more retries, throw the original error
+        const status = error?.status ?? error?.response?.status ?? error?.code;
+        const connectionFailed =
+          isUpstreamConnectionFailure(error) ||
+          isUpstreamConnectionFailure(error?.cause) ||
+          (error instanceof TypeError && error.message === 'fetch failed') ||
+          (typeof status === 'number' && status >= 500 && status < 600);
+        if (!isolated && (isStreamableHttp || isSSE) && connectionFailed) {
+          serverInfo.status = 'disconnected';
+          serverInfo.error = formatErrorForLogging(error);
+          if (serverInfo.config) setupServerKeepAlive(serverInfo, serverInfo.config);
+        }
         throw error;
       }
     }
@@ -2154,15 +2155,23 @@ const callToolWithReconnect = async (
 };
 
 const setupServerKeepAlive = (serverInfo: ServerInfo, serverConfig: ServerConfig): void => {
+  const client = serverInfo.client;
+  if (
+    client &&
+    serverInfo.status === 'connected' &&
+    (serverInfo.transport instanceof SSEClientTransport ||
+      serverInfo.transport instanceof StreamableHTTPClientTransport)
+  ) {
+    client.onclose = () => {
+      const current = getServerByName(serverInfo.name);
+      if (current?.client !== client || current.status !== 'connected') return;
+      current.status = 'disconnected';
+      current.error = 'Upstream connection closed';
+      setupServerKeepAlive(current, serverConfig);
+    };
+  }
   setupClientKeepAlive(serverInfo, serverConfig, {
-    reconnectServer: async (serverName) => {
-      try {
-        await reconnectServer(serverName);
-      } catch (error) {
-        setupServerKeepAlive(serverInfo, serverConfig);
-        throw error;
-      }
-    },
+    reconnectServer,
   }).catch((error) =>
     logger.warn('Keepalive setup failed', {
       serverName: serverInfo.name,
@@ -2307,13 +2316,14 @@ export const initializeClientsFromSettings = async (
         (isDifferentServer ||
           (!serverName && (existingServer.status === 'connected' || hasInflightOAuthAuthorization)))
       ) {
-        nextServerInfos.push({
-          ...existingServer,
+        // Timer callbacks must keep owning the published runtime entry.
+        Object.assign(existingServer, {
           owner: expandedConf.owner,
           visibility: expandedConf.visibility,
           sharedWithUsers: expandedConf.sharedWithUsers,
           enabled: expandedConf.enabled === undefined ? true : expandedConf.enabled,
         });
+        nextServerInfos.push(existingServer);
         logger.log(
           hasInflightOAuthAuthorization
             ? `Server '${name}' has an in-flight OAuth authorization; preserving existing state.`
@@ -2321,6 +2331,12 @@ export const initializeClientsFromSettings = async (
         );
         continue;
       }
+
+      if (existingServer?.keepAliveIntervalId) {
+        clearInterval(existingServer.keepAliveIntervalId);
+        existingServer.keepAliveIntervalId = undefined;
+      }
+      if (existingServer?.client) existingServer.client.onclose = undefined;
 
       let transport;
       let openApiClient;
@@ -2494,7 +2510,8 @@ export const initializeClientsFromSettings = async (
         visibility: expandedConf.visibility,
         sharedWithUsers: expandedConf.sharedWithUsers,
         status: 'connecting',
-        error: null,
+        recovery: existingServer?.recovery,
+        error: existingServer?.recovery ? existingServer.error : null,
         tools: [],
         prompts: [],
         resources: [],
@@ -2509,6 +2526,7 @@ export const initializeClientsFromSettings = async (
       const pendingAuth = expandedConf.oauth?.pendingAuthorization;
       if (pendingAuth) {
         serverInfo.status = 'oauth_required';
+        serverInfo.recovery = undefined;
         serverInfo.error = null;
         serverInfo.oauth = {
           authorizationUrl: pendingAuth.authorizationUrl,
@@ -2517,19 +2535,8 @@ export const initializeClientsFromSettings = async (
       }
       nextServerInfos.push(serverInfo);
 
-      // The connect below settles long after this loop returns. If another
-      // initialization pass has run by then, `serverInfo` may no longer be the
-      // object `serverInfos` holds for this server - even when the reuse guard
-      // "preserved" it, because preservation spreads the entry into a fresh
-      // object. Writing the result into a replaced object leaves the server
-      // stuck on 'connecting' for good while the log reports a successful
-      // connect and a full tool list.
-      //
-      // While this pass is still the newest one, `serverInfo` is the entry that
-      // will be published, so it is the right target even before the swap. Once
-      // a later pass has run, resolve the live entry by name and only apply the
-      // result if it still owns this client - which is exactly the case where
-      // the later pass preserved this server rather than reconnecting it.
+      // Before publication this pass owns the entry; after another pass, only
+      // publish connection results if the live runtime still owns this client.
       const liveServerInfo = (): ServerInfo | undefined => {
         if (generation === initGeneration) return serverInfo;
         const current = serverInfos.find((si) => si.name === name);
@@ -2697,6 +2704,7 @@ export const initializeClientsFromSettings = async (
               info.status = 'oauth_required';
             }
             info.error = null;
+            info.recovery = undefined;
           } else {
             logger.error('Failed to connect client for server', {
               serverName: name,
@@ -2875,6 +2883,7 @@ export const getServersInfo = async (
         createTime,
         capabilityCache,
         error,
+        recovery,
         oauth,
       }) => {
         const serverConfig = allServers.find((server) => server.name === name);
@@ -2918,6 +2927,7 @@ export const getServersInfo = async (
         return {
           name,
           version,
+          recovery: enabled ? recovery : undefined,
           protocolVersion:
             enabled && status === 'connected' && resolvedType !== 'openapi'
               ? client?.getNegotiatedProtocolVersion?.()
@@ -3019,6 +3029,7 @@ export const reconnectServer = async (serverName: string): Promise<void> => {
 
   // Close existing connection if any
   if (serverInfo.client) {
+    serverInfo.client.onclose = undefined;
     try {
       serverInfo.client.close();
     } catch (error) {
@@ -3042,7 +3053,7 @@ export const reconnectServer = async (serverName: string): Promise<void> => {
   // Reinitialize the server
   await initializeClientsFromSettings(false, serverName);
 
-  logger.log(`Successfully reconnected server: ${serverName}`);
+  logger.log(`Scheduled connection initialization for server: ${serverName}`);
 };
 
 /**
@@ -3341,6 +3352,8 @@ const clearIdleShutdown = (serverInfo: ServerInfo): void => {
 
 const closeServerRuntime = (serverInfo: ServerInfo): void => {
   clearIdleShutdown(serverInfo);
+  if (serverInfo.client) serverInfo.client.onclose = undefined;
+  serverInfo.recovery = undefined;
   if (serverInfo.keepAliveIntervalId) {
     clearInterval(serverInfo.keepAliveIntervalId);
     serverInfo.keepAliveIntervalId = undefined;

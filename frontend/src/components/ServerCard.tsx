@@ -636,7 +636,7 @@ const ServerCard = ({
           </div>
 
           {/* Status */}
-          <div className="hub-server-card-status-cell min-w-0">
+          <div className={`hub-server-card-status-cell min-w-0${enabled && server.recovery ? ' hub-server-card-recovering' : ''}`}>
             {server.config?.oauth?.identityMode === 'personal' ? (
               <PersonalOAuthControls serverName={server.name} enabled={enabled} />
             ) : (
@@ -647,6 +647,25 @@ const ServerCard = ({
                 onAuthClick={handleOAuth}
                 className="hub-server-card-status"
               />
+            )}
+            {enabled && server.recovery && (
+              <div className="text-xs mt-1" style={{ color: 'var(--hub-ink-3)', maxWidth: 160 }}>
+                <div>
+                  {server.recovery.nextAttemptAt
+                    ? t('server.retryScheduled', {
+                        time: new Date(server.recovery.nextAttemptAt).toLocaleTimeString(undefined, { hour12: false }),
+                      })
+                    : t('server.reconnecting')}
+                </div>
+                {server.recovery.lastAttemptAt && (
+                  <div>
+                    {t('server.lastRetry', {
+                      count: server.recovery.attempts,
+                      time: new Date(server.recovery.lastAttemptAt).toLocaleTimeString(undefined, { hour12: false }),
+                    })}
+                  </div>
+                )}
+              </div>
             )}
           </div>
 

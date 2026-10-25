@@ -192,9 +192,7 @@ describe('initializeClientsFromSettings scoped reload', () => {
     expect(getServerByName('alpha')?.status).toBe('connecting');
 
     // A scoped reload of 'beta' only - e.g. enabling it from the dashboard.
-    // 'alpha' is "preserved" by the reuse guard, but preservation shallow-copies
-    // it into a new object, so the in-flight connect's closure now holds a
-    // reference that is no longer in serverInfos.
+    // The reuse guard keeps alpha's runtime and its in-flight connection.
     await initializeClientsFromSettings(false, 'beta');
 
     // alpha's original connect completes successfully.

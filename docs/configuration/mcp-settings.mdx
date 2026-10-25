@@ -78,8 +78,8 @@ A server entry has the shape `"<server-name>": ServerConfig`. The relevant field
 | `options` | object | no | Per-server runtime options (see `src/types/index.ts`). |
 | `proxy` | object | no | Optional HTTP proxy settings (`url`, `noProxy`, etc.). |
 | `oauth` | object | no | Upstream OAuth client settings (used when the upstream server requires OAuth). |
-| `enableKeepAlive` | boolean | no | For `sse` / `streamable-http`: enable periodic health checks and automatic reconnect attempts. |
-| `keepAliveInterval` | number | no | Health check and reconnect interval in milliseconds. Defaults to `60000`. |
+| `enableKeepAlive` | boolean | no | For `sse` / `streamable-http`: enable periodic health checks. Disconnected remote servers always retry automatically with exponential backoff and jitter (5 seconds to 5 minutes); this interval only controls health probes. |
+| `keepAliveInterval` | number | no | Health check interval in milliseconds. Defaults to `60000`. |
 | `perSessionClient` | boolean | no | Create a dedicated upstream client per downstream MCP session instead of sharing one connection across all sessions. Use for stateful servers like Playwright. See [Per-session client isolation](#per-session-client-isolation-stateful-servers). |
 | `tools`, `prompts`, `resources` | object | no | Per-item overrides: `{ "<name>": { "enabled": true, "description": "..." } }`, keyed by the bare upstream name or the server-prefixed name. A tool entry can also carry `hiddenParams`: top-level input parameters removed from the schema models receive and dropped from their calls (required ones are never hidden). `enabled` is required in every entry. Managed via the dashboard or the per-resource API endpoints. |
 
@@ -240,6 +240,8 @@ Missing, zero or unusable TTLs and partial pages are revalidated on the next
 relevant request. Health checks remain opt-in via `enableKeepAlive`; modern
 connections probe `server/discover` over the network instead of `ping`.
 See the [compatibility matrix](/api-reference/mcp-http#protocol-compatibility).
+
+Shared remote SSE and Streamable HTTP servers retry in the background after a connection failure or a closed connection, even when health checks are disabled. Retries use exponential backoff with jitter, from 5–10 seconds initially up to 150–300 seconds, without a retry limit. Successful connections reset the backoff; disabled servers and servers waiting for OAuth authorization do not retry. With health checks disabled, an outage is detected when a request fails or the connection closes. The dashboard shows the next retry and the last retry time/count through the runtime `recovery` status (`attempts`, `lastAttemptAt`, and `nextAttemptAt`; timestamps are epoch milliseconds).
 
 For modern upstreams with `passthroughHeaders`, discovery clients and snapshots
 are request-local rather than shared across forwarded identities. Each relevant
