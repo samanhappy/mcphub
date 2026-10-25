@@ -1,0 +1,19 @@
+tests/dao/capabilitySnapshotDaoDbImpl.test.ts
+  s_1c4d254b9a0318::t_3416b6018c3ca9 3-11,14-26,28-29,31,33,36-51
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "eb1ce2ff830c1bf87c4b45b02d69bb7dadf3f464",
+  "prompts": {},
+  "sessions": {
+    "s_1c4d254b9a0318": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a152f3-2fd7-76e2-9a10-665519c15e46",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
