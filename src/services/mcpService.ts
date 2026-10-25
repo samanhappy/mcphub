@@ -2316,13 +2316,14 @@ export const initializeClientsFromSettings = async (
         (isDifferentServer ||
           (!serverName && (existingServer.status === 'connected' || hasInflightOAuthAuthorization)))
       ) {
-        nextServerInfos.push({
-          ...existingServer,
+        // Timer callbacks must keep owning the published runtime entry.
+        Object.assign(existingServer, {
           owner: expandedConf.owner,
           visibility: expandedConf.visibility,
           sharedWithUsers: expandedConf.sharedWithUsers,
           enabled: expandedConf.enabled === undefined ? true : expandedConf.enabled,
         });
+        nextServerInfos.push(existingServer);
         logger.log(
           hasInflightOAuthAuthorization
             ? `Server '${name}' has an in-flight OAuth authorization; preserving existing state.`
@@ -2534,19 +2535,8 @@ export const initializeClientsFromSettings = async (
       }
       nextServerInfos.push(serverInfo);
 
-      // The connect below settles long after this loop returns. If another
-      // initialization pass has run by then, `serverInfo` may no longer be the
-      // object `serverInfos` holds for this server - even when the reuse guard
-      // "preserved" it, because preservation spreads the entry into a fresh
-      // object. Writing the result into a replaced object leaves the server
-      // stuck on 'connecting' for good while the log reports a successful
-      // connect and a full tool list.
-      //
-      // While this pass is still the newest one, `serverInfo` is the entry that
-      // will be published, so it is the right target even before the swap. Once
-      // a later pass has run, resolve the live entry by name and only apply the
-      // result if it still owns this client - which is exactly the case where
-      // the later pass preserved this server rather than reconnecting it.
+      // Before publication this pass owns the entry; after another pass, only
+      // publish connection results if the live runtime still owns this client.
       const liveServerInfo = (): ServerInfo | undefined => {
         if (generation === initGeneration) return serverInfo;
         const current = serverInfos.find((si) => si.name === name);

@@ -115,6 +115,7 @@ jest.mock('../../src/services/proxy.js', () => ({
 }));
 
 const mockServerDao = {
+  setEnabled: jest.fn().mockResolvedValue(undefined),
   findAll: jest.fn(async () => []),
   findById: jest.fn(async () => ({
     name: 'clock-server',
@@ -256,6 +257,58 @@ describe('mcpService reconnect config integration', () => {
       jest.clearAllTimers();
       jest.useRealTimers();
     }
+  });
+
+  describe.each(['scoped', 'full'])('health-check ownership after a %s reload', (reload) => {
+    it.each(['disable', 'remove', 'shutdown'])('cancels recovery on %s', async (action) => {
+      jest.useFakeTimers();
+      const config = {
+        name: 'clock-server',
+        type: 'streamable-http',
+        url: 'https://example.com/mcp',
+        enableKeepAlive: true,
+        keepAliveInterval: 1000,
+      };
+      const info = createServerInfo(jest.fn()) as any;
+      info.client.ping = jest.fn().mockRejectedValue(new Error('upstream offline'));
+      const reconnect = jest.fn(async () => {
+        throw new Error('Server not found');
+      });
+      mockServerDao.findAll.mockResolvedValue([
+        config,
+        { name: 'other-server', enabled: false, command: 'node' },
+      ] as never);
+      mcpService.setServerInfosForTest([info]);
+      try {
+        await setupClientKeepAlive(info, config, { reconnectServer: reconnect });
+        await mcpService.initializeClientsFromSettings(
+          false,
+          reload === 'scoped' ? 'other-server' : undefined,
+        );
+        const live = mcpService.getServerByName(info.name)!;
+        await jest.advanceTimersByTimeAsync(1000);
+        const status = live.status;
+        const recovery = live.recovery;
+        if (action === 'disable') {
+          expect((await mcpService.toggleServerStatus(info.name, false)).success).toBe(true);
+        } else if (action === 'remove') {
+          mcpService.closeServer(info.name);
+          mcpService.setServerInfosForTest([]);
+        } else {
+          mcpService.cleanupAllServers();
+        }
+        expect(jest.getTimerCount()).toBe(0);
+        expect(status).toBe('disconnected');
+        expect(recovery?.nextAttemptAt).toBeGreaterThan(Date.now());
+        await jest.advanceTimersByTimeAsync(600000);
+        expect(reconnect).not.toHaveBeenCalled();
+      } finally {
+        mockServerDao.findAll.mockResolvedValue([]);
+        mcpService.cleanupAllServers();
+        jest.clearAllTimers();
+        jest.useRealTimers();
+      }
+    });
   });
 
   it('keeps backing off across asynchronous initialization failures and recovers without health probes', async () => {
