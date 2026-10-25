@@ -52,6 +52,8 @@ jest.mock('../../src/services/mcpOAuthProvider.js', () => ({
 }));
 
 jest.mock('../../src/services/groupService.js', () => ({
+  normalizeGroupServers: jest.requireActual('../../src/services/groupService.js')
+    .normalizeGroupServers,
   getServersInGroup: jest.fn(),
   getServerConfigInGroup: jest.fn(),
 }));
@@ -110,7 +112,11 @@ jest.mock('../../src/dao/index.js', () => ({
     get: jest.fn(async () => ({})),
   })),
   getGroupDao: jest.fn(() => ({
-    findByName: jest.fn(async () => undefined),
+    findByName: jest.fn(async (name: string) =>
+      name === 'solo'
+        ? { id: 'solo', name: 'solo', servers: [{ name: 'demo', alias: 'alias', tools: 'all' }] }
+        : undefined,
+    ),
     findById: jest.fn(async () => undefined),
   })),
   getBuiltinPromptDao: jest.fn(() => ({
@@ -228,6 +234,70 @@ describe('startOnDemand lifecycle', () => {
 
     // Clean up the armed timer so jest can exit.
     if (serverInfo.idleTimeoutId) clearTimeout(serverInfo.idleTimeoutId);
+  });
+
+  describe.each(['direct', 'call_tool'])('post-wake route resolution on %s calls', (operation) => {
+    const call = (name: string, group: string) =>
+      mcpService.handleCallToolRequest(
+        operation === 'direct'
+          ? { params: { name, arguments: {} } }
+          : { params: { name: 'call_tool', arguments: { toolName: name, arguments: {} } } },
+        { sessionId: 'post-wake', group },
+      );
+
+    it.each([
+      ['demo', 'ping'],
+      ['demo', 'demo::ping'],
+      ['solo', 'ping'],
+      ['solo', 'alias::ping'],
+    ])('calls %s using %s on the first wake', async (group, name) => {
+      const info = createSleepingServerInfo();
+      mcpService.setServerInfosForTest([info as any]);
+      try {
+        const result = await call(name, group);
+        expect(result).toEqual(expect.objectContaining({ isError: false }));
+        expect(mockConnect).toHaveBeenCalledTimes(1);
+        expect(mockCallTool).toHaveBeenCalledWith(
+          expect.objectContaining({ name: 'ping' }),
+          expect.anything(),
+        );
+      } finally {
+        mcpService.closeServer('demo');
+      }
+    });
+
+    it('keeps direct-route raw-name precedence over a colliding prefixed name after wake', async () => {
+      const tools = ['ping', 'demo::ping'].map((name) => ({
+        name,
+        inputSchema: { type: 'object' },
+      }));
+      mockListTools.mockResolvedValue({ tools });
+      mcpService.setServerInfosForTest([
+        createSleepingServerInfo({
+          tools: tools.map((tool) => ({ ...tool, name: `demo::${tool.name}` })),
+        }) as any,
+      ]);
+      try {
+        expect((await call('demo::ping', 'demo')).isError).toBe(false);
+        expect(mockCallTool).toHaveBeenCalledWith(
+          expect.objectContaining({ name: 'demo::ping' }),
+          expect.anything(),
+        );
+      } finally {
+        mcpService.closeServer('demo');
+      }
+    });
+
+    it('rejects a raw tool removed during live discovery', async () => {
+      mcpService.setServerInfosForTest([createSleepingServerInfo() as any]);
+      mockListTools.mockResolvedValue({ tools: [] });
+      try {
+        expect((await call('ping', 'demo')).isError).toBe(true);
+        expect(mockCallTool).not.toHaveBeenCalled();
+      } finally {
+        mcpService.closeServer('demo');
+      }
+    });
   });
 
   it('returns an error result when the on-demand server fails to wake', async () => {

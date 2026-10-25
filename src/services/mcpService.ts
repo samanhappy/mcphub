@@ -4050,7 +4050,8 @@ const resolveToolInGroup = async (
       continue;
     }
 
-    return { serverInfo, toolName: internalToolName, tool };
+    // Retain the resolved identity when callers revalidate discovery after waking.
+    return { serverInfo, toolName: tool.name, tool };
   }
 
   return undefined;
