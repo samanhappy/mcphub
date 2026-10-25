@@ -464,6 +464,7 @@ export interface ServerConfig {
   // See issues #817 and #1037.
   visibility?: ServerVisibility;
   sharedWithUsers?: string[]; // Local MCPHub usernames allowed when visibility is 'group'.
+  protocolNegotiation?: 'auto' | 'legacy'; // Streamable HTTP defaults to auto; other transports remain legacy.
   enableKeepAlive?: boolean; // Enable remote health checks and automatic reconnect attempts
   keepAliveInterval?: number; // Health check and reconnect interval in milliseconds (default: 60000ms for SSE servers)
   tools?: Record<string, { enabled: boolean; description?: string; hiddenParams?: string[] }>; // Tool-specific configurations: enable/disable state, custom description, top-level input parameters hidden from models

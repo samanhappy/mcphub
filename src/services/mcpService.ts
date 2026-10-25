@@ -13,6 +13,7 @@ import {
 } from '../utils/listFreshness.js';
 import { expandServerConfig, getServerEnvironment } from './serverConfigEnvironment.js';
 import { getMcpRequestGroup } from '../utils/mcpRequestGroup.js';
+import { revalidateUpstreamList, type UpstreamList } from './upstreamListRefresh.js';
 import { LegacyMcpClient } from '../clients/legacyMcpClient.js';
 import {
   getElicitationCapabilities,
@@ -20,7 +21,7 @@ import {
   isElicitationClientClosed,
   withElicitation,
 } from './elicitationService.js';
-import { LEGACY_PROTOCOL_VERSIONS } from '../utils/mcpProtocol.js';
+import { LEGACY_PROTOCOL_VERSIONS, resolveUpstreamProtocolMode } from '../utils/mcpProtocol.js';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { createHash } from 'node:crypto';
 import { canAccessGroupRoute } from '../utils/groupAccess.js';
@@ -579,7 +580,12 @@ const getOrCreateIsolatedClient = async (
 
     const reservedClients = sessionIsolatedClients.get(sessionId);
     const transport = await createTransportFromConfig(serverInfo.name, serverConfig);
-    const client = createUpstreamMcpClient(serverInfo.name, () => serverInfo, downstream);
+    const client = createUpstreamMcpClient(
+      serverInfo.name,
+      () => serverInfo,
+      serverConfig,
+      downstream,
+    );
 
     try {
       await connectClientWithDiagnostics(client, transport, serverInfo.options || {});
@@ -1007,6 +1013,8 @@ const createConnectGate = (limit: number): ConnectGate => {
 let initGeneration = 0;
 
 const principalServerScope = new AsyncLocalStorage<ServerInfo[]>();
+// Header-dependent discovery must never publish descriptors or embeddings globally.
+const requestDiscoveryInfos = new WeakSet<ServerInfo>();
 
 const getVisibleServerInfos = (): ServerInfo[] => {
   return getDataService().filterData(principalServerScope.getStore() ?? serverInfos);
@@ -1159,6 +1167,76 @@ const updateServerResourcesCache = (serverInfo: ServerInfo, resources: McpResour
   serverInfo.resources = preserveListFreshness(resources, resources.map(normalizeResourceForCache));
 };
 
+// Modern HTTP has no list-changed push stream. Refresh only the lists needed
+// by the current request; TTL and in-flight work are scoped to the live client.
+const refreshModernServerLists = async (
+  info: ServerInfo,
+  fields: Array<Exclude<UpstreamList, 'templates'>>,
+): Promise<void> => {
+  const client = info.client;
+  if (
+    !client ||
+    client.getProtocolEra?.() !== 'modern' ||
+    info.enabled === false ||
+    info.status !== 'connected'
+  )
+    return;
+  const capabilities = client.getServerCapabilities();
+  const current = () =>
+    info.client === client && info.enabled !== false && info.status === 'connected';
+  await Promise.all(
+    fields.map(async (field) => {
+      if (!capabilities?.[field]) return;
+      await revalidateUpstreamList(client, field, async () => {
+        if (field === 'tools') {
+          const { tools } = await client.listTools({}, info.options || {});
+          if (!current()) return;
+          if (hasPersonalAuthentication(info.config) || requestDiscoveryInfos.has(info)) {
+            info.tools = preserveListFreshness(
+              tools,
+              tools.map((tool) => normalizeToolForCache(info.name, tool)),
+            );
+            if (!requestDiscoveryInfos.has(info))
+              void syncCredentialServerToolEmbeddings(info.name, info.tools, {
+                partial: true,
+              }).catch(() => {
+                logger.warn('[EMBED_SYNC_ERROR] Failed to sync personal tool embeddings');
+              });
+          } else {
+            const previous = JSON.stringify(info.tools);
+            updateServerToolsCache(info, tools);
+            if (previous !== JSON.stringify(info.tools)) broadcastToolListChanged();
+          }
+        } else if (field === 'prompts') {
+          const { prompts } = await client.listPrompts({}, info.options || {});
+          if (current()) {
+            const previous = JSON.stringify(info.prompts);
+            updateServerPromptsCache(info, prompts);
+            if (
+              !hasPersonalAuthentication(info.config) &&
+              !requestDiscoveryInfos.has(info) &&
+              previous !== JSON.stringify(info.prompts)
+            )
+              broadcastPromptListChanged();
+          }
+        } else {
+          const { resources } = await client.listResources({}, info.options || {});
+          if (current()) {
+            const previous = JSON.stringify(info.resources);
+            updateServerResourcesCache(info, resources);
+            if (
+              !hasPersonalAuthentication(info.config) &&
+              !requestDiscoveryInfos.has(info) &&
+              previous !== JSON.stringify(info.resources)
+            )
+              broadcastResourceListChanged();
+          }
+        }
+      });
+    }),
+  );
+};
+
 const logListChangedRefreshError = (listType: 'tool' | 'prompt' | 'resource'): void => {
   logger.warn(`Failed to refresh ${listType} list after upstream notification`);
 };
@@ -1166,15 +1244,20 @@ const logListChangedRefreshError = (listType: 'tool' | 'prompt' | 'resource'): v
 const createUpstreamMcpClient = (
   name: string,
   getServerInfo: () => ServerInfo | undefined,
+  serverConfig: ServerConfig,
   downstream?: Server,
 ): Client => {
   const elicitation = getElicitationCapabilities(downstream);
+  // The existing relay only supports legacy server-to-client requests. Keep
+  // elicitation-enabled isolated clients legacy until an input_required bridge exists.
+  const mode = resolveUpstreamProtocolMode(serverConfig, Boolean(elicitation));
   const client = new LegacyMcpClient(
     {
       name: `mcp-client-${name}`,
       version: '1.0.0',
     },
     {
+      versionNegotiation: { mode },
       capabilities: { ...MCP_APPS_CAPABILITIES, ...(elicitation ? { elicitation } : {}) },
       jsonSchemaValidator: new ResilientJsonSchemaValidator(),
       listChanged: {
@@ -1887,7 +1970,20 @@ const callToolWithReconnect = async (
         extra?.mcpReq,
         options || {},
         async (callOptions) => {
-          const result = await currentClient.callTool(toolParams, callOptions);
+          // Isolated clients do not own the refreshed discovery client's tool definitions.
+          const toolDefinition =
+            isolated && currentClient.getProtocolEra?.() === 'modern'
+              ? serverInfo.tools.find(
+                  (tool) =>
+                    normalizeToolNameForServer(serverInfo.name, tool.name) === toolParams.name,
+                )
+              : undefined;
+          const result = await currentClient.callTool(
+            toolParams,
+            toolDefinition
+              ? { ...callOptions, toolDefinition: toolDefinition as McpTool }
+              : callOptions,
+          );
           checkAuthError(result);
           return result;
         },
@@ -1921,7 +2017,7 @@ const callToolWithReconnect = async (
           // Match initial connection expansion before URL validation and transport creation.
           const server = await expandServerConfig(rawConfig);
           const newTransport = await createTransportFromConfig(serverInfo.name, server);
-          const newClient = createUpstreamMcpClient(serverInfo.name, () => serverInfo);
+          const newClient = createUpstreamMcpClient(serverInfo.name, () => serverInfo, server);
 
           // Reconnect with new transport
           await connectClientWithDiagnostics(newClient, newTransport, serverInfo.options || {});
@@ -2320,7 +2416,7 @@ export const initializeClientsFromSettings = async (
       }
 
       const serverInfoRef: { current?: ServerInfo } = {};
-      const client = createUpstreamMcpClient(name, () => serverInfoRef.current);
+      const client = createUpstreamMcpClient(name, () => serverInfoRef.current, expandedConf);
 
       // Get request options from server configuration, with fallbacks
       const serverRequestOptions = expandedConf.options || {};
@@ -3346,7 +3442,7 @@ const ensureServerReady = async (serverInfo: ServerInfo): Promise<void> => {
     logger.log(`[${name}] Cold-starting on-demand server…`);
 
     const transport = await createTransportFromConfig(name, expandedConf);
-    const client = createUpstreamMcpClient(name, () => serverInfo);
+    const client = createUpstreamMcpClient(name, () => serverInfo, expandedConf);
 
     const serverRequestOptions = expandedConf.options || {};
     const defaultRequestTimeout = Number(process.env.DEFAULT_REQUEST_TIMEOUT) || 60000;
@@ -5236,6 +5332,44 @@ const handleReadResourceRequestImpl = async (request: any, extra: any) => {
   }
 };
 
+// Preserve credential-safe errors for personal clients in every discovery scope.
+const personalClientMethods = new Set([
+  'callTool',
+  'getPrompt',
+  'readResource',
+  'listTools',
+  'listPrompts',
+  'listResources',
+  'listResourceTemplates',
+]);
+const protectPersonalClient = <T extends object>(
+  client: T,
+  info: ServerInfo,
+  resolvedConfig: ServerConfig,
+): T =>
+  new Proxy(client, {
+    get(target, property) {
+      const value = Reflect.get(target, property);
+      if (typeof value !== 'function') return value;
+      if (!personalClientMethods.has(String(property))) return value.bind(target);
+      return async (...args: unknown[]) => {
+        try {
+          return await value.apply(target, args);
+        } catch (error) {
+          if (isUpstreamConnectionFailure(error)) info.status = 'disconnected';
+          const failure = createUpstreamRequestError(
+            info.name,
+            String(property),
+            error,
+            resolvedConfig,
+          );
+          logger.error(failure.message);
+          throw failure;
+        }
+      };
+    },
+  });
+
 // Personal runtimes never enter serverInfos or config exports. Their tool list
 // is added to the rows under the server name, the index the reindex endpoint
 // rebuilds from every binding.
@@ -5258,43 +5392,11 @@ const createPrincipalRuntime = async (
     resources: [],
     createTime: Date.now(),
   };
-  const safeMethods = new Set([
-    'callTool',
-    'getPrompt',
-    'readResource',
-    'listTools',
-    'listPrompts',
-    'listResources',
-    'listResourceTemplates',
-  ]);
-  const protectClient = <T extends object>(client: T): T =>
-    new Proxy(client, {
-      get(target, property) {
-        const value = Reflect.get(target, property);
-        if (typeof value !== 'function') return value;
-        if (!safeMethods.has(String(property))) return value.bind(target);
-        return async (...args: unknown[]) => {
-          try {
-            return await value.apply(target, args);
-          } catch (error) {
-            if (isUpstreamConnectionFailure(error)) info.status = 'disconnected';
-            const failure = createUpstreamRequestError(
-              name,
-              String(property),
-              error,
-              resolvedConfig,
-            );
-            logger.error(failure.message);
-            throw failure;
-          }
-        };
-      },
-    });
   try {
     if (resolvedConfig.type === 'openapi') {
       const client = new OpenAPIClient(resolvedConfig);
       await client.initialize();
-      info.openApiClient = protectClient(client);
+      info.openApiClient = protectPersonalClient(client, info, resolvedConfig);
       info.tools = client.getTools().map((tool) => ({
         ...tool,
         name: `${name}${getNameSeparator()}${tool.name}`,
@@ -5305,12 +5407,13 @@ const createPrincipalRuntime = async (
       const client = new LegacyMcpClient(
         { name: `mcp-client-${name}`, version: '1.0.0' },
         {
+          versionNegotiation: { mode: resolveUpstreamProtocolMode(resolvedConfig) },
           capabilities: MCP_APPS_CAPABILITIES,
           jsonSchemaValidator: new ResilientJsonSchemaValidator(),
         },
       );
       info.transport = transport;
-      info.client = protectClient(client);
+      info.client = protectPersonalClient(client, info, resolvedConfig);
       await client.connect(transport, resolvedConfig.options || {});
       const capabilities = client.getServerCapabilities();
       if (capabilities?.tools) {
@@ -5380,6 +5483,7 @@ export const getServerToolsForPrincipal = async (
 ): Promise<Tool[]> => {
   const lease = await principalRuntimes.acquire(serverName, principal);
   try {
+    await refreshModernServerLists(lease.info, ['tools']);
     return lease.info.tools ?? [];
   } finally {
     lease.release();
@@ -5387,6 +5491,119 @@ export const getServerToolsForPrincipal = async (
 };
 
 type McpHandler = (request: any, extra: any) => Promise<any>;
+const withModernLists =
+  (handler: McpHandler, fields: Array<Exclude<UpstreamList, 'templates'>>): McpHandler =>
+  async (request, extra) => {
+    if (
+      !(principalServerScope.getStore() ?? serverInfos).some(
+        (info) => info.client?.getProtocolEra?.() === 'modern',
+      )
+    ) {
+      return handler(request, extra);
+    }
+    // Built-in content must not depend on an unrelated upstream being healthy.
+    if (fields[0] === 'prompts' && request.method === 'prompts/get' && !extra?.server) {
+      const builtin = await getBuiltinPromptDao().findByName(request.params?.name);
+      if (builtin && builtin.enabled !== false) return handler(request, extra);
+    }
+    if (fields[0] === 'resources' && request.method === 'resources/read') {
+      const builtin = await getBuiltinResourceDao().findByUri(request.params?.uri);
+      if (builtin && builtin.enabled !== false) return handler(request, extra);
+    }
+    const { filteredServerInfos, serverConfigsByName } = await getFilteredServerInfosForGroup(
+      getGroupLookupName(getMcpRequestGroup(extra)),
+    );
+    const requestedName = ['call_tool', 'describe_tool'].includes(request?.params?.name)
+      ? request.params.arguments?.toolName
+      : request?.params?.name;
+    let selected = filteredServerInfos;
+    if (extra?.server) {
+      selected = selected.filter((info) => info.name === extra.server);
+    } else if (typeof requestedName === 'string') {
+      // Match the routing resolver's longest exposed prefix, including aliases.
+      const targets = selected
+        .map((info) => ({
+          info,
+          prefix: `${getExposedServerName(info.name, serverConfigsByName.get(info.name))}${getNameSeparator()}`,
+        }))
+        .filter(({ prefix }) => requestedName.startsWith(prefix))
+        .sort((a, b) => b.prefix.length - a.prefix.length);
+      if (targets.length) selected = [targets[0].info];
+    }
+    const scoped = new Map(
+      (principalServerScope.getStore() ?? serverInfos).map((info) => [info.name, info]),
+    );
+    const requestClients: Client[] = [];
+    try {
+      await Promise.all(
+        selected.map(async (info) => {
+          try {
+            let discoveryInfo = info;
+            const serverConfig = info.config;
+            if (
+              info.status === 'connected' &&
+              info.client?.getProtocolEra?.() === 'modern' &&
+              serverConfig?.passthroughHeaders?.some(isSafePassthroughHeader)
+            ) {
+              // Reuse neither snapshots nor pending work across forwarded identities.
+              // A disposable modern client also isolates SDK tool definitions and read caches.
+              const transport = await createTransportFromConfig(info.name, serverConfig);
+              const client = new LegacyMcpClient(
+                { name: `mcp-client-${info.name}`, version: '1.0.0' },
+                {
+                  versionNegotiation: {
+                    mode: { pin: info.client.getNegotiatedProtocolVersion()! },
+                  },
+                  capabilities: MCP_APPS_CAPABILITIES,
+                  jsonSchemaValidator: new ResilientJsonSchemaValidator(),
+                },
+              );
+              discoveryInfo = { ...info, client, transport, tools: [], prompts: [], resources: [] };
+              if (hasPersonalAuthentication(serverConfig)) {
+                discoveryInfo.client = protectPersonalClient(client, discoveryInfo, serverConfig);
+              }
+              requestClients.push(discoveryInfo.client!);
+              requestDiscoveryInfos.add(discoveryInfo);
+              scoped.set(info.name, discoveryInfo);
+              await connectClientWithDiagnostics(client, transport, info.options || {});
+            }
+            await refreshModernServerLists(discoveryInfo, fields);
+          } catch {
+            // Exclude only this upstream for this request. Keep its shared state
+            // intact so later requests retry; disconnected projections force TTL zero.
+            scoped.set(info.name, {
+              ...info,
+              status: 'disconnected',
+              client: undefined,
+              tools: [],
+              prompts: [],
+              resources: [],
+            });
+            logger.warn('Failed to refresh upstream discovery for request', {
+              serverName: info.name,
+            });
+          }
+        }),
+      );
+      return await principalServerScope.run([...scoped.values()], () => handler(request, extra));
+    } finally {
+      await Promise.all(
+        [
+          ...new Set([
+            ...requestClients,
+            ...[...scoped.values()]
+              .filter((info) => requestDiscoveryInfos.has(info))
+              .flatMap((info) => (info.client ? [info.client] : [])),
+          ]),
+        ].map((client) =>
+          client.close().catch(() => {
+            logger.warn('Failed to close request discovery client');
+          }),
+        ),
+      );
+    }
+  };
+
 const withPrincipalServers =
   (handler: McpHandler, operation: 'list' | 'tool' | 'prompt' | 'resource'): McpHandler =>
   async (request, extra) => {
@@ -5614,19 +5831,27 @@ const withCacheHints =
   };
 
 export const handleListToolsRequest = withPrincipalServers(
-  withCacheHints(handleListToolsRequestImpl, false, 'tools'),
+  withModernLists(withCacheHints(handleListToolsRequestImpl, false, 'tools'), ['tools']),
   'list',
 );
-const callToolWithPrincipal = withPrincipalServers(handleCallToolRequestImpl, 'tool');
+const callToolWithPrincipal = withPrincipalServers(
+  withModernLists(handleCallToolRequestImpl, ['tools']),
+  'tool',
+);
 export const handleCallToolRequest = (request: any, extra: any) =>
   observeToolCall(() => callToolWithPrincipal(request, extra));
-export const handleGetPromptRequest = withPrincipalServers(handleGetPromptRequestImpl, 'prompt');
+export const handleGetPromptRequest = withPrincipalServers(
+  withModernLists(handleGetPromptRequestImpl, ['prompts']),
+  'prompt',
+);
 export const handleListPromptsRequest = withPrincipalServers(
-  withCacheHints(handleListPromptsRequestImpl, false, 'prompts'),
+  withModernLists(withCacheHints(handleListPromptsRequestImpl, false, 'prompts'), ['prompts']),
   'list',
 );
 export const handleListResourcesRequest = withPrincipalServers(
-  withCacheHints(handleListResourcesRequestImpl, false, 'resources'),
+  withModernLists(withCacheHints(handleListResourcesRequestImpl, false, 'resources'), [
+    'resources',
+  ]),
   'list',
 );
 export const handleListResourceTemplatesRequest = withPrincipalServers(
@@ -5634,7 +5859,7 @@ export const handleListResourceTemplatesRequest = withPrincipalServers(
   'list',
 );
 export const handleReadResourceRequest = withPrincipalServers(
-  withCacheHints(handleReadResourceRequestImpl, true),
+  withModernLists(withCacheHints(handleReadResourceRequestImpl, true), ['resources']),
   'resource',
 );
 

@@ -387,3 +387,21 @@ it.each([undefined, false, true])('round-trips HTTP OAuth exception=%s', (value)
   });
   expect(config.oauth?.allowInsecureTokenEndpoint).toBe(value);
 });
+
+describe('upstream protocol negotiation configuration', () => {
+  it('rejects unknown modes and auto on transports without modern HTTP discovery', () => {
+    expect(() =>
+      normalizeServerConfigForPersistence({
+        type: 'streamable-http',
+        protocolNegotiation: 'bad',
+      } as any),
+    ).toThrow(/protocolNegotiation/);
+    expect(() =>
+      normalizeServerConfigForPersistence({
+        type: 'stdio',
+        command: 'node',
+        protocolNegotiation: 'auto',
+      } as any),
+    ).toThrow(/streamable-http/);
+  });
+});

@@ -83,7 +83,13 @@ The [HTTP endpoint guide](../api-reference/mcp-http.mdx) and
 [Chinese version](../zh/api-reference/mcp-http.mdx) describe the current
 compatibility matrix and client migration steps. The step 2 boundary above
 records the intermediate migration stage; modern downstream HTTP is now enabled,
-while upstream clients retain legacy negotiation.
+while upstream Streamable HTTP now defaults to automatic negotiation under #1381.
+Stdio, legacy SSE, explicit `protocolNegotiation: "legacy"` overrides, and isolated
+connections forwarding legacy elicitation retain legacy negotiation. Modern
+upstream lists revalidate on demand at their original TTL expiry (unknown/zero
+TTLs and partial pages revalidate on the next request); concurrent refreshes
+coalesce per client, and health checks use network discovery instead of ping.
+The step 2 negotiation boundary above describes the historical migration stage.
 
 Legacy HTTP+SSE is documented as deprecated, with no announced removal release
 or date. Its removal requires a published schedule respecting the planned

@@ -1,3 +1,4 @@
+import { resolveUpstreamProtocolMode } from './mcpProtocol.js';
 import { validateCredentialTemplate } from './credentialTemplate.js';
 import { validateMaxBufferSize } from './stdioOptions.js';
 import { ServerConfigValidationError } from './serverConfigValidation.js';
@@ -289,6 +290,7 @@ const inferServerType = (config: ServerConfig): NonNullable<ServerConfig['type']
 
 export const normalizeServerConfigForPersistence = (config: ServerConfig): ServerConfig => {
   const normalizedType = inferServerType(config);
+  resolveUpstreamProtocolMode({ ...config, type: normalizedType });
   const description = trimToUndefined(config.description);
   const owner = trimToUndefined(config.owner) ?? config.owner;
   const url = trimToUndefined(config.url);
@@ -327,6 +329,7 @@ export const normalizeServerConfigForPersistence = (config: ServerConfig): Serve
   const normalized: ServerConfig = {
     ...config,
     type: normalizedType,
+    protocolNegotiation: config.protocolNegotiation ?? undefined,
     credentialTemplate: validateCredentialTemplate({ ...config, type: normalizedType }),
     description,
     owner,

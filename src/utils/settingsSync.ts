@@ -48,6 +48,7 @@ const declarationSchema = z.object({
           owner: z.string().optional(),
           sharedWithUsers: z.array(z.string()).optional(),
           enableKeepAlive: z.boolean().optional(),
+          protocolNegotiation: z.enum(['auto', 'legacy']).optional(),
           keepAliveInterval: z.number().int().positive().optional(),
           startOnDemand: z.boolean().optional(),
           idleTimeoutMs: z.number().positive().optional(),

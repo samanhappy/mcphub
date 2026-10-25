@@ -94,9 +94,12 @@ export const setupClientKeepAlive = async (
     isChecking = true;
 
     try {
-      // Use client.ping() if available, otherwise fallback to listTools.
-      if (typeof (activeClient as any).ping === 'function') {
-        await (activeClient as any).ping({ ...(serverInfo.options || {}), timeout: 5000 });
+      // Modern HTTP has no ping or server-push channel. Discovery is supported
+      // even by servers that expose no tools and discover() always performs a network request.
+      if (activeClient.getProtocolEra?.() === 'modern') {
+        await activeClient.discover({ ...(serverInfo.options || {}), timeout: 5000 });
+      } else if (typeof activeClient.ping === 'function') {
+        await activeClient.ping({ ...(serverInfo.options || {}), timeout: 5000 });
       } else {
         await activeClient.listTools({}, { ...(serverInfo.options || {}), timeout: 5000 });
       }

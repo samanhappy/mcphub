@@ -191,3 +191,40 @@ describe('SDK v2 with legacy protocol behavior', () => {
     });
   });
 });
+
+describe('opt-in modern upstream negotiation', () => {
+  it('probes in auto mode and falls back to the legacy preference list', async () => {
+    const server = new Server(
+      { name: 'modern', version: '1' },
+      {
+        supportedProtocolVersions: ['2026-07-28', ...LEGACY_PROTOCOL_VERSIONS],
+        capabilities: { tools: {} },
+      },
+    );
+    server.setRequestHandler('tools/list', async () => ({ tools: [], ttlMs: 1000 }));
+    const client = new LegacyMcpClient(
+      { name: 'hub', version: '1' },
+      {
+        versionNegotiation: { mode: 'auto' },
+      },
+    );
+    const [upstream, downstream] = InMemoryTransport.createLinkedPair();
+    try {
+      await server.connect(downstream);
+      const methods: string[] = [];
+      const receive = downstream.onmessage!;
+      downstream.onmessage = (message, extra) => {
+        if ('method' in message) methods.push(message.method);
+        receive(message, extra);
+      };
+      await client.connect(upstream);
+      expect(methods).toContain('server/discover');
+      expect(client.getProtocolEra()).toBe('legacy');
+      expect(client.getNegotiatedProtocolVersion()).toBe('2025-11-25');
+      await expect(client.listTools()).resolves.toMatchObject({ tools: [] });
+    } finally {
+      await client.close();
+      await server.close();
+    }
+  });
+});

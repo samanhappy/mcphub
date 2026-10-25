@@ -184,6 +184,41 @@ MCP 自身的 `--isolated` 标志不同，后者控制 Playwright 侧的浏览�
 数量随并发会话数成倍增长，不需要以上功能时请保持关闭。
 </Tip>
 
+### 上游协议协商
+
+Streamable HTTP 上游默认使用 `protocolNegotiation: "auto"`，先探测
+`server/discover`，支持时使用新版无状态 HTTP，否则按 SDK 规则回退旧版握手。
+HTTP 探测超时、网络故障和认证失败可能使连接失败，而不是回退。
+已知只支持旧版的端点可跳过探测：
+
+```json
+{
+  "mcpServers": {
+    "legacy-gateway": {
+      "type": "streamable-http",
+      "url": "https://gateway.example.com/mcp",
+      "protocolNegotiation": "legacy"
+    }
+  }
+}
+```
+
+该可选字段接受 `"auto"` 和 `"legacy"`。`"auto"` 要求
+`type: "streamable-http"`；stdio 和旧 SSE 保持旧版协商。
+可通过配置 JSON、JSON 导入或服务器 API 设置；表单编辑和复制会保留该字段。
+文件、数据库、模板及声明式配置同步均支持，修改会重连服务器。
+共享、隔离和个人连接使用相同策略，但转发旧版 elicitation 的隔离连接在实现
+modern `input_required` 桥接前仍使用旧版协议。
+
+新版上游没有服务端推送流。相关请求会在上游 TTL 到期后刷新列表，并合并并发刷新。
+TTL 缺失、为零、无效或列表分页未完成时，下一次相关请求重新获取。
+健康检查仍需设置 `enableKeepAlive`；新版连接通过网络 `server/discover` 探测，
+不调用 `ping`。详见[兼容矩阵](/zh/api-reference/mcp-http#协议兼容矩阵)。
+
+配置 `passthroughHeaders` 的新版上游按请求隔离 discovery 客户端和快照，不跨透传身份共享。
+每次相关请求增加一次 discovery 往返，个性化描述不写入全局缓存或向量索引。
+刷新失败只在当前请求中排除该上游，保留健康结果；部分列表返回零 TTL，后续请求会重试。
+
 ### MCP 2026-07-28 的路由请求头
 
 新版请求使用 `MCP-Protocol-Version: 2026-07-28`，并携带与 JSON-RPC 方法一致的
