@@ -96,7 +96,10 @@ export class BearerKeyRepository {
    * Create a new bearer key
    */
   async create(
-    data: Omit<BearerKey, 'id' | 'createdAt' | 'updatedAt' | 'token' | 'tokenHash' | 'tokenPrefix'> & {
+    data: Omit<
+      BearerKey,
+      'id' | 'createdAt' | 'updatedAt' | 'token' | 'tokenHash' | 'tokenPrefix'
+    > & {
       token: string;
     },
   ): Promise<BearerKey> {

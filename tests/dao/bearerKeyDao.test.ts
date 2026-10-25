@@ -3,6 +3,7 @@ import os from 'os';
 import path from 'path';
 
 import { BearerKeyDaoImpl } from '../../src/dao/BearerKeyDao.js';
+import { hashBearerToken } from '../../src/utils/bearerKeyToken.js';
 
 const writeSettings = (settingsPath: string, settings: unknown): void => {
   fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2), 'utf8');
@@ -82,12 +83,13 @@ describe('BearerKeyDaoImpl migration + settings caching behavior', () => {
 
     const enabled1 = await dao.findEnabled();
     expect(enabled1).toHaveLength(1);
-    expect(enabled1[0].token).toBe('legacy-token');
+    expect(enabled1[0].tokenHash).toBe(hashBearerToken('legacy-token'));
+    expect(enabled1[0].token).toBeUndefined();
     expect(enabled1[0].enabled).toBe(true);
 
     const enabled2 = await dao.findEnabled();
     expect(enabled2).toHaveLength(1);
-    expect(enabled2[0].token).toBe('legacy-token');
+    expect(enabled2[0].tokenHash).toBe(hashBearerToken('legacy-token'));
 
     // One write for the migration, no further writes on subsequent reads.
     expect(writeSpy).toHaveBeenCalledTimes(1);

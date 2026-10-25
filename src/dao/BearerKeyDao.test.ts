@@ -39,7 +39,10 @@ describe('BearerKeyDaoImpl token hashing', () => {
   it('hashes legacy plaintext keys without breaking them', async () => {
     fs.writeFileSync(
       settingsPath,
-      JSON.stringify({ mcpServers: {}, bearerKeys: [{ id: '1', ...base, token: 'legacy-token-value' }] }),
+      JSON.stringify({
+        mcpServers: {},
+        bearerKeys: [{ id: '1', ...base, token: 'legacy-token-value' }],
+      }),
     );
     clearSettingsCache();
     const dao = new BearerKeyDaoImpl();
@@ -54,7 +57,10 @@ describe('BearerKeyDaoImpl token hashing', () => {
   it('does not leave the legacy routing.bearerAuthKey behind', async () => {
     fs.writeFileSync(
       settingsPath,
-      JSON.stringify({ mcpServers: {}, systemConfig: { routing: { enableBearerAuth: true, bearerAuthKey: 'old-routing-key' } } }),
+      JSON.stringify({
+        mcpServers: {},
+        systemConfig: { routing: { enableBearerAuth: true, bearerAuthKey: 'old-routing-key' } },
+      }),
     );
     clearSettingsCache();
     const dao = new BearerKeyDaoImpl();
