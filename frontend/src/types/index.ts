@@ -224,8 +224,8 @@ export interface ServerConfig {
   visibility?: 'private' | 'group' | 'public';
   sharedWithUsers?: string[];
   protocolNegotiation?: 'auto' | 'legacy'; // Streamable HTTP defaults to auto; other transports remain legacy.
-  enableKeepAlive?: boolean; // Enable remote health checks and automatic reconnect attempts
-  keepAliveInterval?: number; // Health check and reconnect interval in milliseconds (default: 60000ms)
+  enableKeepAlive?: boolean; // Enable remote health checks; disconnected remote servers always retry
+  keepAliveInterval?: number; // Health check interval in milliseconds (default: 60000ms)
   perSessionClient?: boolean; // Create a dedicated upstream client per downstream session instead of sharing one connection (for stateful servers like Playwright)
   // On-demand spawning: start the stdio process only when a tool call arrives,
   // and shut it down automatically after a period of inactivity (stdio only).
@@ -339,6 +339,7 @@ export interface Server {
   visibility?: 'private' | 'group' | 'public';
   status: ServerStatus;
   error?: string;
+  recovery?: { attempts: number; lastAttemptAt?: number; nextAttemptAt?: number };
   tools?: Tool[];
   prompts?: Prompt[];
   resources?: Resource[];

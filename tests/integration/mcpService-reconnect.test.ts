@@ -214,7 +214,8 @@ describe('mcpService reconnect config integration', () => {
           expect(serverInfo.status).toBe('disconnected');
           expect(serverInfo.error).toContain('upstream offline');
           const configReads = mockServerDao.findById.mock.calls.length;
-          await jest.advanceTimersByTimeAsync(1000);
+          expect(serverInfo.recovery?.nextAttemptAt).toBeDefined();
+          await jest.advanceTimersByTimeAsync(10000);
           expect(mockServerDao.findById.mock.calls.length).toBeGreaterThan(configReads);
           expect(mockServerDao.findAll).toHaveBeenCalledTimes(1);
         }
@@ -225,6 +226,84 @@ describe('mcpService reconnect config integration', () => {
       }
     },
   );
+
+  it.each([
+    { status: 503 },
+    { code: 'ECONNRESET' },
+    new TypeError('fetch failed'),
+    new Error('request failed', { cause: { code: 'ECONNREFUSED' } }),
+  ])('schedules background recovery after a shared remote call fails: %j', async (error) => {
+    jest.useFakeTimers();
+    const serverInfo = createServerInfo(jest.fn().mockRejectedValue(error)) as any;
+    serverInfo.config = { type: 'streamable-http', url: 'https://example.com/mcp' };
+    mcpService.setServerInfosForTest([serverInfo]);
+    try {
+      await mcpService.handleCallToolRequest(
+        {
+          params: {
+            name: 'call_tool',
+            arguments: { toolName: 'clock-server::get_current_time', arguments: {} },
+          },
+        },
+        { sessionId: 'outage', server: 'clock-server' },
+      );
+      expect(serverInfo.status).toBe('disconnected');
+      expect(serverInfo.recovery?.nextAttemptAt).toBeGreaterThan(Date.now());
+      expect(jest.getTimerCount()).toBe(1);
+    } finally {
+      mcpService.closeServer(serverInfo.name);
+      mcpService.setServerInfosForTest([]);
+      jest.clearAllTimers();
+      jest.useRealTimers();
+    }
+  });
+
+  it('keeps backing off across asynchronous initialization failures and recovers without health probes', async () => {
+    jest.useFakeTimers();
+    jest.spyOn(Math, 'random').mockReturnValue(0);
+    const config = {
+      name: 'clock-server',
+      type: 'streamable-http',
+      url: 'https://example.com/mcp',
+    };
+    mockServerDao.findAll.mockResolvedValue([config] as never);
+    mockReconnectClient.connect.mockRejectedValue(new Error('offline'));
+    mcpService.setServerInfosForTest([]);
+    try {
+      await mcpService.initializeClientsFromSettings(false);
+      await jest.advanceTimersByTimeAsync(0);
+      expect(mcpService.getServerByName(config.name)?.recovery?.nextAttemptAt).toBe(
+        Date.now() + 5000,
+      );
+      for (const delay of [5000, 10000, 20000]) {
+        await jest.advanceTimersByTimeAsync(delay);
+      }
+      const failed = mcpService.getServerByName(config.name)!;
+      expect(failed.status).toBe('disconnected');
+      expect(failed.recovery?.attempts).toBe(3);
+      expect(failed.recovery?.nextAttemptAt).toBe(Date.now() + 40000);
+      expect(jest.getTimerCount()).toBe(1);
+      mockReconnectClient.connect.mockResolvedValue(undefined);
+      await jest.advanceTimersByTimeAsync(40000);
+      const recovered = mcpService.getServerByName(config.name)!;
+      expect(recovered.status).toBe('connected');
+      expect(recovered.recovery).toBeUndefined();
+      expect(jest.getTimerCount()).toBe(0);
+      // A later transport closure starts a fresh retry cycle even without probes.
+      recovered.client!.onclose!();
+      expect(recovered.status).toBe('disconnected');
+      expect(recovered.recovery?.nextAttemptAt).toBe(Date.now() + 5000);
+      mcpService.cleanupAllServers();
+      expect(jest.getTimerCount()).toBe(0);
+    } finally {
+      mockServerDao.findAll.mockResolvedValue([]);
+      mockReconnectClient.connect.mockResolvedValue(undefined);
+      mcpService.cleanupAllServers();
+      jest.restoreAllMocks();
+      jest.clearAllTimers();
+      jest.useRealTimers();
+    }
+  });
 
   it('does not replace the shared keepalive timer on isolated session reconnect', async () => {
     jest.useFakeTimers();

@@ -306,6 +306,12 @@
   justify-self: start;
 }
 
+.hub-server-card-status-cell.hub-server-card-recovering {
+  height: auto;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
 .hub-status.hub-server-card-status {
   gap: 5px;
   font-size: 11.5px;

@@ -2341,13 +2341,13 @@ const ServerForm = ({
                           className="mr-2"
                         />
                         <label htmlFor="enableKeepAlive" className="text-gray-600 text-sm">
-                          {t('server.enableKeepAlive', 'Enable Health Checks and Auto Reconnect')}
+                          {t('server.enableKeepAlive', 'Enable Health Checks')}
                         </label>
                       </div>
                       <p className="text-xs text-gray-500 mb-3">
                         {t(
                           'server.keepAliveDescription',
-                          'Run periodic health checks and automatically reconnect this remote server when it becomes disconnected.',
+                          'Run periodic health checks. Disconnected remote servers always reconnect automatically with backoff.',
                         )}
                       </p>
                       <div>
@@ -2378,7 +2378,7 @@ const ServerForm = ({
                         <p className="text-xs text-gray-500 mt-1">
                           {t(
                             'server.keepAliveIntervalDescription',
-                            'Time between health checks and automatic reconnect attempts in milliseconds (default: 60000ms = 1 minute)',
+                            'Time between health checks in milliseconds (default: 60000ms = 1 minute)',
                           )}
                         </p>
                       </div>

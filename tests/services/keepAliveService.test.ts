@@ -1,5 +1,5 @@
 import { SSEClientTransport, StreamableHTTPClientTransport } from '@modelcontextprotocol/client';
-import { setupClientKeepAlive } from '../../src/services/keepAliveService.js';
+import { setupClientKeepAlive, clearClientKeepAlive } from '../../src/services/keepAliveService.js';
 import { ServerConfig, ServerInfo } from '../../src/types/index.js';
 
 const makeServerInfo = (
@@ -36,6 +36,8 @@ const createDeferred = <T>() => {
 
 describe('setupClientKeepAlive', () => {
   afterEach(() => {
+    jest.restoreAllMocks();
+    jest.clearAllTimers();
     jest.useRealTimers();
   });
 
@@ -216,6 +218,7 @@ describe('setupClientKeepAlive', () => {
     jest.useFakeTimers();
     const ping = jest.fn();
     const reconnectServer = jest.fn().mockResolvedValue(undefined);
+    jest.spyOn(Math, 'random').mockReturnValue(0);
     const serverInfo = makeServerInfo(
       new StreamableHTTPClientTransport(new URL('https://example.com/mcp')),
       ping,
@@ -234,7 +237,7 @@ describe('setupClientKeepAlive', () => {
       { reconnectServer },
     );
 
-    await jest.advanceTimersByTimeAsync(60000);
+    await jest.advanceTimersByTimeAsync(10000);
 
     expect(reconnectServer).toHaveBeenCalledWith('remote-server');
     expect(ping).not.toHaveBeenCalled();
@@ -266,7 +269,7 @@ describe('setupClientKeepAlive', () => {
       { reconnectServer },
     );
 
-    await jest.advanceTimersByTimeAsync(60000);
+    await jest.advanceTimersByTimeAsync(10000);
 
     expect(reconnectServer).toHaveBeenCalledWith('remote-server');
     expect(serverInfo.status).toBe('connected');
@@ -305,6 +308,76 @@ describe('setupClientKeepAlive', () => {
     expect(serverInfo.keepAliveIntervalId).toBeUndefined();
     expect(jest.getTimerCount()).toBe(0);
   });
+
+  it.each([false, undefined])(
+    'retries outages with backoff without health checks (%s)',
+    async (enableKeepAlive) => {
+      jest.useFakeTimers();
+      jest.spyOn(Math, 'random').mockReturnValue(0);
+      const info = makeServerInfo(
+        new StreamableHTTPClientTransport(new URL('https://example.com/mcp')),
+        jest.fn(),
+        'disconnected',
+      );
+      const reconnectServer = jest.fn().mockRejectedValue(new Error('offline'));
+      const config = { type: 'streamable-http' as const, enableKeepAlive };
+      await setupClientKeepAlive(info, config, { reconnectServer });
+      for (const delay of [5000, 10000, 20000, 40000, 80000, 150000, 150000]) {
+        expect(info.recovery?.nextAttemptAt).toBe(Date.now() + delay);
+        await jest.advanceTimersByTimeAsync(delay - 1);
+        const attempts = reconnectServer.mock.calls.length;
+        await jest.advanceTimersByTimeAsync(1);
+        expect(reconnectServer).toHaveBeenCalledTimes(attempts + 1);
+        expect(info.recovery?.lastAttemptAt).toBe(Date.now());
+      }
+      info.status = 'connected';
+      await setupClientKeepAlive(info, config, { reconnectServer });
+      expect(info.recovery).toBeUndefined();
+      expect(jest.getTimerCount()).toBe(0);
+    },
+  );
+
+  it('does not postpone an existing recovery after another failed call', async () => {
+    jest.useFakeTimers();
+    jest.spyOn(Math, 'random').mockReturnValue(0);
+    const info = makeServerInfo(
+      new SSEClientTransport(new URL('https://example.com/sse')),
+      jest.fn(),
+      'disconnected',
+    );
+    const reconnectServer = jest.fn().mockResolvedValue(undefined);
+    await setupClientKeepAlive(info, { type: 'sse' }, { reconnectServer });
+    const scheduled = info.recovery?.nextAttemptAt;
+    await jest.advanceTimersByTimeAsync(4000);
+    await setupClientKeepAlive(info, { type: 'sse' }, { reconnectServer });
+    expect(info.recovery?.nextAttemptAt).toBe(scheduled);
+    expect(jest.getTimerCount()).toBe(1);
+    await jest.advanceTimersByTimeAsync(1000);
+    expect(reconnectServer).toHaveBeenCalledTimes(1);
+  });
+
+  it.each(['disabled', 'oauth', 'connected', 'cleared'])(
+    'cancels scheduled recovery when %s',
+    async (state) => {
+      jest.useFakeTimers();
+      const info = makeServerInfo(
+        new SSEClientTransport(new URL('https://example.com/sse')),
+        jest.fn(),
+        'disconnected',
+      );
+      const reconnectServer = jest.fn();
+      await setupClientKeepAlive(info, { type: 'sse' }, { reconnectServer });
+      if (state === 'disabled') info.enabled = false;
+      if (state === 'oauth') info.status = 'oauth_required';
+      if (state === 'connected') info.status = 'connected';
+      if (state === 'cleared') clearClientKeepAlive(info);
+      else await setupClientKeepAlive(info, { type: 'sse' }, { reconnectServer });
+      await jest.advanceTimersByTimeAsync(300000);
+      expect(reconnectServer).not.toHaveBeenCalled();
+      expect(info.recovery).toBeUndefined();
+      expect(jest.getTimerCount()).toBe(0);
+    },
+  );
 
   it('does not schedule checks for stdio servers', async () => {
     jest.useFakeTimers();
