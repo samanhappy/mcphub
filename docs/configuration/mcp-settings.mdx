@@ -884,32 +884,10 @@ Use the smallest necessary ranges. Broad ranges such as `0.0.0.0/0` or `::/0` al
 
 ## On-demand tool snapshots
 
-For stdio servers, `startOnDemand: true` keeps the child process asleep until it
-is needed. MCPHub persists the last successful raw tool discovery so a restart
-can restore `tools/list` without starting every on-demand server. An empty tool
-list is also a valid snapshot. The first tool call still connects to the upstream
-and refreshes discovery; tools removed upstream cannot execute from the snapshot.
-Failed calls trigger a discovery refresh without replaying the call.
+For stdio servers, `startOnDemand: true` keeps the child process asleep until it is needed. MCPHub persists the last successful raw tool discovery so a restart can restore `tools/list` without starting every on-demand server. An empty tool list is also a valid snapshot. The first tool call still connects to the upstream and refreshes discovery; tools removed upstream cannot execute from the snapshot. Failed calls trigger a discovery refresh without replaying the call.
 
-File mode stores snapshots beside the settings file as
-`<settings-path>.capabilities.json`; mount that directory on persistent storage to
-retain snapshots across container replacement. Database mode stores them in the
-`capability_snapshots` table. Snapshots stay outside settings exports and contain
-no launch configuration or credentials. Tool definitions themselves may contain
-private upstream metadata, so protect snapshot storage like other runtime data.
+File mode stores snapshots beside the settings file as `<settings-path>.capabilities.json`; mount that directory on persistent storage to retain snapshots across container replacement. Database mode stores them in the `capability_snapshots` table. Snapshots stay outside settings exports and contain no launch configuration or credentials. Tool definitions themselves may contain private upstream metadata, so protect snapshot storage like other runtime data.
 
-The server-list and server-detail APIs expose `capabilityCache.state`
-(`fresh`, `stale`, or `missing`) and `capabilityCache.capturedAt` when available.
-Here `fresh` means configuration-matching last-known discovery, not guaranteed
-current upstream state. Launch configuration, effective child environment, and
-personal credential binding changes invalidate a snapshot. Server/group tool
-overrides and permissions are reapplied when listing; they are never frozen into
-the snapshot. Personal snapshots are isolated by authenticated user, and listing
-still requires a valid binding and current server access.
+The server-list and server-detail APIs expose `capabilityCache.state` (`fresh`, `stale`, or `missing`) and `capabilityCache.capturedAt` when available. Here `fresh` means configuration-matching last-known discovery, not guaranteed current upstream state. Launch configuration, effective child environment, and personal credential binding changes invalidate a snapshot. Server/group tool overrides and permissions are reapplied when listing; they are never frozen into the snapshot. Personal snapshots are isolated by authenticated user, and listing still requires a valid binding and current server access.
 
-Missing or incompatible snapshots retain live discovery (startup priming for
-shared stdio servers, first authenticated use for personal servers). No fleet-wide
-background refresh is scheduled. Unchanged configuration cannot detect an
-upstream package update or external permission change until the next live
-connection. Prompts and resources are not persisted in this phase; personal
-prompt/resource requests still connect live.
+Missing or incompatible snapshots retain live discovery (startup priming for shared stdio servers, first authenticated use for personal servers). No fleet-wide background refresh is scheduled. Unchanged configuration cannot detect an upstream package update or external permission change until the next live connection. Prompts and resources are not persisted in this phase; personal prompt/resource requests still connect live.

@@ -5,6 +5,11 @@
 - Keep generated artifacts out of commits and pull requests.
 - `gh` is not guaranteed to be on the agent shell `PATH`: agent shells run non-interactively with a minimal `PATH` and do not load the user's profile, so a bare `gh ...` can fail with `command not found` even when `gh` is installed. See [development.md](development.md) ("Agent shell `PATH`") for how to locate and export it.
 
+## Public documentation formatting
+
+- In Markdown and MDX prose, keep each paragraph on one source line and separate paragraphs with a blank line. Do not manually wrap prose to a fixed column width; let the editor or viewer wrap it visually. Preserve intentional line breaks in lists, tables, code blocks, and MDX components.
+- Match the surrounding formatting and apply the same paragraph convention to both English and Chinese documentation. Avoid reformatting unrelated content.
+
 ## Issue tracker
 
 GitHub Issues for `samanhappy/mcphub` are operated with `gh`. See [issue-tracker.md](issue-tracker.md) for commands and [triage-labels.md](triage-labels.md) for the canonical labels.
