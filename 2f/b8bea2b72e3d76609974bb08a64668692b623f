@@ -1,0 +1,25 @@
+docs/agents/git-and-contribution.md
+  s_18deedf6629e68::t_731ba2d9c92bd5 4,8-12
+  s_18deedf6629e68::t_a6d0585bea6692 13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2fb8bea2b72e3d76609974bb08a64668692b623f",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_18deedf6629e68": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1721d-82cb-7c83-a520-bc2ba7dedf7f",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
