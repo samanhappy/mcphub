@@ -35,6 +35,8 @@ describe('Hub default auto upstream over real HTTP', () => {
   let identityGate: Promise<void> | undefined;
   const identityStarted = new Set<string>();
   let failLists = false;
+  let isolatedHeader = 'Tenant';
+  let invalidIsolatedOutput = false;
   let revision = 1;
   let ttlMs: number | undefined = 0;
   const requests: Array<{ method: string; session?: string; version?: string }> = [];
@@ -59,6 +61,35 @@ describe('Hub default auto upstream over real HTTP', () => {
             capabilities: { tools: {}, prompts: {}, resources: {} },
           },
         );
+        if (kind === 'isolated') {
+          server.setRequestHandler('tools/list', async () => ({
+            tools: [
+              {
+                name: 'tool_isolated',
+                inputSchema: {
+                  type: 'object',
+                  properties: { tenant: { type: 'string', 'x-mcp-header': isolatedHeader } },
+                  required: ['tenant'],
+                },
+                outputSchema: {
+                  type: 'object',
+                  properties: { tenant: { type: 'string' } },
+                  required: ['tenant'],
+                },
+              },
+            ],
+            ttlMs: 0,
+          }));
+          server.setRequestHandler('tools/call', async () => {
+            const tenant = requestInfo!.headers.get(`Mcp-Param-${isolatedHeader}`);
+            if (!tenant) throw new Error('Missing mirrored tenant header');
+            return {
+              content: [{ type: 'text', text: tenant }],
+              structuredContent: { tenant: invalidIsolatedOutput ? 42 : tenant },
+            };
+          });
+          return server;
+        }
         if (kind !== 'mcp') {
           const suffix = kind === 'identity' ? identity : kind;
           const beforeList = async () => {
@@ -140,13 +171,14 @@ describe('Hub default auto upstream over real HTTP', () => {
     const { baseURL } = await helper.createTestServer({
       mcpServers: {
         ...Object.fromEntries(
-          ['identity', 'healthy', 'failing'].map((name) => [
+          ['identity', 'healthy', 'failing', 'isolated'].map((name) => [
             name,
             {
               type: 'streamable-http' as const,
               owner: 'admin',
               url: `http://127.0.0.1:${(upstream.address() as AddressInfo).port}/${name}`,
               ...(name === 'identity' ? { passthroughHeaders: ['X-Custom-User-Id'] } : {}),
+              ...(name === 'isolated' ? { perSessionClient: true } : {}),
             },
           ]),
         ),
@@ -274,6 +306,39 @@ describe('Hub default auto upstream over real HTTP', () => {
     );
     return entry;
   };
+
+  it.each(['direct', 'call_tool'])(
+    'passes fresh tool definitions to isolated modern clients for %s calls',
+    async (mode) => {
+      const caller = await identityClient('caller', 'isolated');
+      const call = () =>
+        caller.callTool(
+          mode === 'direct'
+            ? { name: 'tool_isolated', arguments: { tenant: 'alice' } }
+            : {
+                name: 'call_tool',
+                arguments: {
+                  toolName: 'isolated-tool_isolated',
+                  arguments: { tenant: 'alice' },
+                },
+              },
+        );
+      for (const header of ['Tenant', 'Updated-Tenant']) {
+        isolatedHeader = header;
+        const result = await call();
+        expect(result.isError).not.toBe(true);
+        expect(JSON.stringify(result)).toContain('alice');
+      }
+      invalidIsolatedOutput = true;
+      try {
+        const invalid = await call();
+        expect(invalid.isError).toBe(true);
+        expect(JSON.stringify(invalid)).toContain("tool's output schema");
+      } finally {
+        invalidIsolatedOutput = false;
+      }
+    },
+  );
 
   it.each(['tools', 'prompts', 'resources'] as const)(
     'isolates positive-TTL %s by forwarded identity',

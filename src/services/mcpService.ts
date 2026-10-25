@@ -1970,7 +1970,20 @@ const callToolWithReconnect = async (
         extra?.mcpReq,
         options || {},
         async (callOptions) => {
-          const result = await currentClient.callTool(toolParams, callOptions);
+          // Isolated clients do not own the refreshed discovery client's tool definitions.
+          const toolDefinition =
+            isolated && currentClient.getProtocolEra?.() === 'modern'
+              ? serverInfo.tools.find(
+                  (tool) =>
+                    normalizeToolNameForServer(serverInfo.name, tool.name) === toolParams.name,
+                )
+              : undefined;
+          const result = await currentClient.callTool(
+            toolParams,
+            toolDefinition
+              ? { ...callOptions, toolDefinition: toolDefinition as McpTool }
+              : callOptions,
+          );
           checkAuthError(result);
           return result;
         },
