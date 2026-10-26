@@ -1,0 +1,19 @@
+{
+  "mcpServers": {
+    "baizhi-cloud-browser": {
+      "type": "streamable-http",
+      "url": "https://capybrowser.app.baizhi.cloud/mcp",
+      "enabled": false,
+      "owner": "admin",
+      "visibility": "public",
+      "startOnDemand": true,
+      "credentialTemplate": [
+        {
+          "target": "headers",
+          "name": "Authorization",
+          "label": "Browser API key (Bearer <key>)"
+        }
+      ]
+    }
+  }
+}
