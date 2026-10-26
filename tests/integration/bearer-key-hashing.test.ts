@@ -92,7 +92,7 @@ describe('bearer keys are stored hashed', () => {
     expect(JSON.parse(onDisk()).bearerKeys[0].tokenHash).toMatch(/^[0-9a-f]{64}$/);
 
     expect((await get(token)).status).toBe(200);
-    expect((await get(`${token.slice(0, -1)}0`)).status).toBe(401);
+    expect((await get(`${token.slice(0, -1)}${token.endsWith('0') ? '1' : '0'}`)).status).toBe(401);
     expect((await get('mcphub_not-a-real-token')).status).toBe(401);
     expect((await get()).status).toBe(401);
 

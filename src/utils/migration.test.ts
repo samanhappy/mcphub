@@ -1,4 +1,8 @@
 import { jest } from '@jest/globals';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { logger } from './logger.js';
 
 // Mocks must be defined before importing the module under test.
 
@@ -20,10 +24,11 @@ jest.mock('../dao/DatabaseDaoFactory.js', () => ({
   },
 }));
 
+let settingsPathMock = '/nonexistent/mcp_settings.json';
 const loadOriginalSettingsMock = jest.fn(() => ({ users: [] }));
 jest.mock('../config/index.js', () => ({
   loadOriginalSettings: loadOriginalSettingsMock,
-  getSettingsPath: () => '/nonexistent/mcp_settings.json',
+  getSettingsPath: () => settingsPathMock,
 }));
 
 const userRepoCountMock = jest.fn<() => Promise<number>>();
@@ -167,5 +172,57 @@ describe('initializeDatabaseMode legacy bearer auth migration', () => {
     expect(arg.tokenHash).toBe('a'.repeat(64));
     expect(arg.tokenPrefix).toBe('mcphub_a');
     expect(arg).not.toHaveProperty('token');
+  });
+
+  describe('source file scrubbing after a successful migration', () => {
+    let dir: string;
+    let file: string;
+    const original = {
+      users: [],
+      mcpServers: { s: { command: 'x' } },
+      systemConfig: { routing: { enableBearerAuth: true, bearerAuthKey: 'legacy-secret' } },
+      bearerKeys: [
+        { id: 'k1', name: 'a', token: 'plain-token-1234567890', enabled: true, accessType: 'all' },
+      ],
+    };
+
+    beforeEach(() => {
+      dir = fs.mkdtempSync(path.join(os.tmpdir(), 'mig-'));
+      file = path.join(dir, 'mcp_settings.json');
+      fs.writeFileSync(file, JSON.stringify(original));
+      settingsPathMock = file;
+      loadOriginalSettingsMock.mockReturnValueOnce(JSON.parse(JSON.stringify(original)) as any);
+    });
+
+    afterEach(() => {
+      fs.chmodSync(dir, 0o755);
+      fs.rmSync(dir, { recursive: true, force: true });
+      settingsPathMock = '/nonexistent/mcp_settings.json';
+    });
+
+    it('rewrites the file with hashed keys and keeps the rest intact', async () => {
+      const { migrateToDatabase } = await import('./migration.js');
+      expect(await migrateToDatabase(false)).toBe(true);
+
+      const out = JSON.parse(fs.readFileSync(file, 'utf8'));
+      expect(out.bearerKeys[0].tokenHash).toMatch(/^[0-9a-f]{64}$/);
+      expect(out.bearerKeys[0]).not.toHaveProperty('token');
+      expect(out.systemConfig.routing).toEqual({ enableBearerAuth: true, bearerAuthKey: '' });
+      expect(out.mcpServers).toEqual(original.mcpServers);
+      expect(fs.readFileSync(file, 'utf8')).not.toMatch(/plain-token|legacy-secret/);
+    });
+
+    it('warns but still succeeds when the file cannot be rewritten', async () => {
+      // read-only file: the write fails, the migration must not
+      fs.chmodSync(file, 0o444);
+      const warn = jest.spyOn(logger, 'warn').mockImplementation(() => undefined as any);
+      const { migrateToDatabase } = await import('./migration.js');
+      const ok = await migrateToDatabase(false);
+
+      expect(ok).toBe(true);
+      expect(warn).toHaveBeenCalledWith(expect.stringContaining('plaintext bearer tokens may remain'));
+      expect(fs.readFileSync(file, 'utf8')).toContain('plain-token');
+      warn.mockRestore();
+    });
   });
 });
