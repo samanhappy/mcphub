@@ -6,6 +6,7 @@ import { getSettingsPath } from '../config/index.js';
 import { getCredentialBindingDao } from '../dao/DaoFactory.js';
 import { RequestContextService } from './requestContextService.js';
 import { getT } from '../utils/i18n.js';
+import { isDatabaseModeEnabled } from '../utils/systemConfigCache.js';
 import { logger } from '../utils/logger.js';
 import type { ServerConfig, StoredCredentialBinding } from '../types/index.js';
 import {
@@ -51,6 +52,11 @@ const encryptionKey = async (allowCreate = false): Promise<Buffer> => {
       'Personal credential encryption key is missing. Restore the key file or MCPHUB_CREDENTIAL_ENCRYPTION_KEY before using existing bindings',
     );
   if (!allowCreate) throw missing();
+  if (isDatabaseModeEnabled()) {
+    throw new CredentialBindingError(
+      'Database mode requires MCPHUB_CREDENTIAL_ENCRYPTION_KEY before saving personal credentials. Configure a persistent 32-byte base64 key; if bindings already exist, restore their original key. Automatic local key generation is disabled because container replacement can lose the key',
+    );
+  }
   const hasBindings = await getCredentialBindingDao().hasBindings();
   // Another process may have created the key while storage was being checked.
   const createdElsewhere = readKey();
