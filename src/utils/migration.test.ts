@@ -191,13 +191,15 @@ describe('initializeDatabaseMode legacy bearer auth migration', () => {
       file = path.join(dir, 'mcp_settings.json');
       fs.writeFileSync(file, JSON.stringify(original));
       settingsPathMock = file;
-      loadOriginalSettingsMock.mockReturnValueOnce(JSON.parse(JSON.stringify(original)) as any);
+      // the migration reads the same file the scrub rewrites
+      loadOriginalSettingsMock.mockImplementation(() => JSON.parse(fs.readFileSync(file, 'utf8')));
     });
 
     afterEach(() => {
       fs.chmodSync(dir, 0o755);
       fs.rmSync(dir, { recursive: true, force: true });
       settingsPathMock = '/nonexistent/mcp_settings.json';
+      loadOriginalSettingsMock.mockImplementation(() => ({ users: [] }));
     });
 
     it('rewrites the file with hashed keys and keeps the rest intact', async () => {
@@ -221,6 +223,7 @@ describe('initializeDatabaseMode legacy bearer auth migration', () => {
       expect(out.bearerKeys).toEqual([]);
       expect(out.systemConfig.routing.bearerAuthKey).toBe('');
       expect(fs.readFileSync(file, 'utf8')).not.toMatch(/legacy-secret/);
+      expect(bearerKeyCreateMock).not.toHaveBeenCalled();
     });
 
     it('warns but still succeeds when the file cannot be rewritten', async () => {

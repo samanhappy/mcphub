@@ -227,8 +227,8 @@ export async function migrateToDatabase(seedServersAndGroups = true): Promise<bo
     // Migrate bearer auth keys
     logger.log('Migrating bearer authentication keys...');
 
-    // Prefer explicit bearerKeys if present in settings
-    if (Array.isArray(settings.bearerKeys) && settings.bearerKeys.length > 0) {
+    // An existing bearerKeys array (even empty) is authoritative, as in BearerKeyDaoImpl.loadKeysWithMigration()
+    if (Array.isArray(settings.bearerKeys)) {
       for (const key of settings.bearerKeys) {
         await bearerKeyRepo.create({
           name: key.name,
