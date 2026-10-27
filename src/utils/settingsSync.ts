@@ -100,6 +100,7 @@ const declarationSchema = z.object({
               z.object({
                 name,
                 alias: z.string().optional(),
+                preserveToolNames: z.boolean().optional(),
                 tools: selection.optional(),
                 prompts: selection.optional(),
                 resources: selection.optional(),

@@ -579,6 +579,8 @@
     "configureTools": "Araçları Yapılandır",
     "configureCapabilities": "Araçları, istemleri ve kaynakları yapılandır",
     "alias": "Açık Ad",
+    "preserveToolNames": "Özgün araç adlarını koru",
+    "preserveToolNamesHint": "Araçları sunucu öneki olmadan sunar. Araç adları grupta benzersiz olmalıdır. Açık ad, istemler için geçerli kalır.",
     "pinTool": "Sabitle: bu aracı grubun Akıllı Yönlendirme uç noktasında search_tools'un yanında her zaman listele",
     "pinToolLabel": "Akıllı Yönlendirme uç noktasına sabitle",
     "unpinTool": "Sabitlemeyi kaldır: bu araca yalnızca search_tools ile ulaş",

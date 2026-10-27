@@ -47,6 +47,7 @@ export const ServerToolConfig: React.FC<ServerToolConfigProps> = ({
   serverCosts = [],
 }) => {
   const { t } = useTranslation();
+  const aliasInputId = React.useId();
   const { nameSeparator, smartRoutingConfig } = useSettingsData();
   const [expandedServers, setExpandedServers] = useState<Set<string>>(new Set());
 
@@ -466,16 +467,39 @@ export const ServerToolConfig: React.FC<ServerToolConfigProps> = ({
                   <div className="space-y-4">
                     {serverConfig && (
                       <div className="space-y-1" onClick={(e) => e.stopPropagation()}>
-                        <label className="block text-xs font-medium text-[var(--hub-ink-2)]">
+                        <label
+                          htmlFor={`${aliasInputId}-${server.name}`}
+                          className="block text-xs font-medium text-[var(--hub-ink-2)]"
+                        >
                           {t('groups.alias')}
                         </label>
                         <input
                           type="text"
+                          id={`${aliasInputId}-${server.name}`}
                           value={serverConfig.alias || ''}
                           placeholder={server.name}
                           onChange={(event) => updateServerAlias(server.name, event.target.value)}
                           className="hub-input"
                         />
+                        <label className="flex items-center gap-2 text-xs text-[var(--hub-ink-2)]">
+                          <input
+                            type="checkbox"
+                            checked={serverConfig.preserveToolNames === true}
+                            onChange={(event) =>
+                              onChange(
+                                normalizedValue.map((config) =>
+                                  config.name === server.name
+                                    ? { ...config, preserveToolNames: event.target.checked }
+                                    : config,
+                                ),
+                              )
+                            }
+                          />
+                          {t('groups.preserveToolNames')}
+                        </label>
+                        <p className="text-xs text-[var(--hub-ink-3)]">
+                          {t('groups.preserveToolNamesHint')}
+                        </p>
                       </div>
                     )}
                     {serverCapabilities.map(({ key, titleKey, countKey, allKey }) => {

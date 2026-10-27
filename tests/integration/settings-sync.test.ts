@@ -181,7 +181,7 @@ test('upserts by name, retains IDs and unrelated entries, clears removed fields 
   groups.set('team', { id: 'existing-group', name: 'team', owner: 'old-owner' });
   write({
     mcpServers: { remote, local: { command: 'node', startOnDemand: true, idleTimeoutMs: 1000 } },
-    groups: [{ name: 'team', servers: [{ name: 'remote', alias: 'r', tools: ['search'] }] }],
+    groups: [{ name: 'team', servers: [{ name: 'remote', alias: 'r', preserveToolNames: true, tools: ['search'] }] }],
     users: [{ username: 'ignored' }],
     bearerKeys: ['ignored'],
     systemConfig: { routing: {} },
@@ -204,7 +204,7 @@ test('upserts by name, retains IDs and unrelated entries, clears removed fields 
   expect(groups.get('team')).toMatchObject({
     id: 'existing-group',
     owner: null,
-    servers: [{ name: 'remote', alias: 'r', tools: ['search'] }],
+    servers: [{ name: 'remote', alias: 'r', preserveToolNames: true, tools: ['search'] }],
   });
   const snapshot = [...servers.entries()];
   await syncSettingsToDatabase();

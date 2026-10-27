@@ -5,6 +5,7 @@
  * AI-powered tool discovery using vector semantic search.
  */
 
+import { projectGroupToolName, assertValidGroupToolNames } from '../utils/groupToolNames.js';
 import { Tool, ServerInfo, IGroupServerConfig } from '../types/index.js';
 import {
   getGroupServerExposedName,
@@ -135,24 +136,40 @@ const projectNameForGroup = (
   name: string,
   serverName: string,
   serverConfigsByName: Map<string, IGroupServerConfig>,
-): string => {
-  return replacePrefixedServerName(
-    name,
-    serverName,
-    getExposedServerName(serverName, serverConfigsByName.get(serverName)),
-  );
-};
+): string =>
+  projectGroupToolName(name, serverName, serverConfigsByName.get(serverName), getNameSeparator());
 
 const resolveNameFromGroup = (
   name: string,
   serverName: string,
   serverConfigsByName: Map<string, IGroupServerConfig>,
-): string => {
-  return replacePrefixedServerName(
-    name,
-    getExposedServerName(serverName, serverConfigsByName.get(serverName)),
-    serverName,
-  );
+): string =>
+  serverConfigsByName.get(serverName)?.preserveToolNames
+    ? `${serverName}${getNameSeparator()}${name}`
+    : replacePrefixedServerName(
+        name,
+        getExposedServerName(serverName, serverConfigsByName.get(serverName)),
+        serverName,
+      );
+
+// Check the full catalog, rather than just search hits, so routing never depends on result order.
+const validateOriginalToolNames = async (
+  targetGroup: string | undefined,
+  configs: Map<string, IGroupServerConfig>,
+): Promise<void> => {
+  if (![...configs.values()].some((config) => config.preserveToolNames)) return;
+  const tools: Array<{ name: string }> = [];
+  for (const server of await getAvailableServers(targetGroup)) {
+    const enabled = await filterToolsByConfigFn(
+      server.name,
+      server.tools.filter((tool) => !isAppOnlyTool(tool)),
+    );
+    const visible = await filterToolsByGroupFn(targetGroup, server.name, enabled);
+    tools.push(
+      ...visible.map((tool) => ({ name: projectNameForGroup(tool.name, server.name, configs) })),
+    );
+  }
+  assertValidGroupToolNames(tools);
 };
 
 const projectToolForGroup = (tool: any, serverConfigsByName: Map<string, IGroupServerConfig>) => {
@@ -387,6 +404,7 @@ const computeSmartRoutingScope = async (
   // Extract target group if pattern is $smart/{group}
   const targetGroup = getSmartTargetGroup(group);
   const serverConfigsByName = await getGroupServerConfigMap(targetGroup);
+  await validateOriginalToolNames(targetGroup, serverConfigsByName);
 
   const availableServers = await getAvailableServers(targetGroup);
 
@@ -510,6 +528,7 @@ export const handleSearchToolsRequest = async (
     group = targetGroup;
   }
   const serverConfigsByName = await getGroupServerConfigMap(targetGroup);
+  await validateOriginalToolNames(targetGroup, serverConfigsByName);
   const availableServers = await getAvailableServers(targetGroup);
   const servers = availableServers.map((server) => server.name);
   if (targetGroup) {
@@ -702,6 +721,7 @@ export const handleDescribeToolRequest = async (
   let group = getMcpRequestGroup({ sessionId, group: requestGroup });
   const targetGroup = getSmartTargetGroup(group);
   const serverConfigsByName = await getGroupServerConfigMap(targetGroup);
+  await validateOriginalToolNames(targetGroup, serverConfigsByName);
   if (targetGroup) {
     group = targetGroup;
   }

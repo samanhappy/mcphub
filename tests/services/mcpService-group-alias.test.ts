@@ -190,6 +190,108 @@ describe('mcpService group server alias', () => {
     cleanupAllServers();
   });
 
+  describe('original tool names', () => {
+    beforeEach(() => {
+      (teamGroup.servers[0] as any).preserveToolNames = true;
+    });
+    afterEach(() => {
+      delete (teamGroup.servers[0] as any).preserveToolNames;
+      teamGroup.servers.splice(1);
+    });
+
+    it('lists and calls upstream names while preserving prompt aliases', async () => {
+      const tools = await handleListToolsRequest({}, { sessionId: 'team-session' });
+      expect(tools.tools.map((tool) => tool.name)).toEqual(['fetch_url']);
+      const prompts = await handleListPromptsRequest({}, { sessionId: 'team-session' });
+      expect(prompts.prompts.map((prompt) => prompt.name)).toEqual(['fetch::summarize']);
+      for (const sessionId of ['team-session', 'smart-team-session']) {
+        const result = await handleCallToolRequest(
+          { params: { name: 'fetch_url', arguments: {} } },
+          { sessionId },
+        );
+        expect(result.isError).toBe(false);
+        expect(mockCallTool).toHaveBeenLastCalledWith(
+          { name: 'fetch_url', arguments: {} },
+          expect.anything(),
+        );
+      }
+      const wrapped = await handleCallToolRequest(
+        { params: { name: 'call_tool', arguments: { toolName: 'fetch_url', arguments: {} } } },
+        { sessionId: 'smart-team-session' },
+      );
+      expect(wrapped.isError).toBe(false);
+    });
+
+    it('rejects duplicate exposed names before listing or dispatching', async () => {
+      (teamGroup.servers as any[]).push({ name: 'peer', preserveToolNames: true, tools: 'all' });
+      const peer = {
+        ...aliasedServerInfo(),
+        name: 'peer',
+        tools: [{ name: 'peer::fetch_url', inputSchema: { type: 'object' } }],
+      } as ServerInfo;
+      setServerInfosForTest([aliasedServerInfo(), peer]);
+      await expect(handleListToolsRequest({}, { sessionId: 'team-session' })).rejects.toThrow(
+        'Ambiguous group tool name',
+      );
+      const result = await handleCallToolRequest(
+        { params: { name: 'fetch_url', arguments: {} } },
+        { sessionId: 'team-session' },
+      );
+      expect(result.isError).toBe(true);
+      expect(mockCallTool).not.toHaveBeenCalled();
+    });
+
+    it('rejects a raw name that collides with another server’s qualified name', async () => {
+      const primary = aliasedServerInfo();
+      primary.tools[0].name = 'u17__fetch::other::fetch_url';
+      (teamGroup.servers as any[]).push({ name: 'peer', alias: 'other', tools: 'all' });
+      const peer = {
+        ...aliasedServerInfo(),
+        name: 'peer',
+        tools: [{ name: 'peer::fetch_url', inputSchema: { type: 'object' } }],
+      } as ServerInfo;
+      setServerInfosForTest([primary, peer]);
+      await expect(handleListToolsRequest({}, { sessionId: 'team-session' })).rejects.toThrow(
+        'Ambiguous group tool name',
+      );
+      const result = await handleCallToolRequest(
+        { params: { name: 'other::fetch_url', arguments: {} } },
+        { sessionId: 'team-session' },
+      );
+      expect(result.isError).toBe(true);
+      expect(mockCallTool).not.toHaveBeenCalled();
+    });
+
+    it.each(['search_tools', 'describe_tool', 'call_tool'])(
+      'rejects the reserved name %s',
+      async (name) => {
+        const info = aliasedServerInfo();
+        info.tools[0].name = `u17__fetch::${name}`;
+        setServerInfosForTest([info]);
+        await expect(handleListToolsRequest({}, { sessionId: 'team-session' })).rejects.toThrow(
+          'Smart Routing meta-tools',
+        );
+      },
+    );
+
+    it('allows a mixed group with unique prefixed and original names', async () => {
+      (teamGroup.servers as any[]).push({ name: 'peer', alias: 'other', tools: 'all' });
+      const peer = {
+        ...aliasedServerInfo(),
+        name: 'peer',
+        tools: [{ name: 'peer::fetch_url', inputSchema: { type: 'object' } }],
+      } as ServerInfo;
+      setServerInfosForTest([aliasedServerInfo(), peer]);
+      const tools = await handleListToolsRequest({}, { sessionId: 'team-session' });
+      expect(tools.tools.map((tool) => tool.name)).toEqual(['fetch_url', 'other::fetch_url']);
+      const result = await handleCallToolRequest(
+        { params: { name: 'other::fetch_url', arguments: {} } },
+        { sessionId: 'team-session' },
+      );
+      expect(result.isError).toBe(false);
+    });
+  });
+
   it('exposes group tools and prompts with the group server alias', async () => {
     const tools = await handleListToolsRequest({}, { sessionId: 'team-session' });
     const prompts = await handleListPromptsRequest({}, { sessionId: 'team-session' });

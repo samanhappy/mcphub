@@ -35,6 +35,9 @@ const isValidCapabilitySelection = (value: unknown): boolean => {
   );
 };
 
+const isValidPreserveToolNames = (value: unknown): boolean =>
+  value === undefined || typeof value === 'boolean';
+
 const isValidServerAlias = (value: unknown): boolean => {
   return value === undefined || typeof value === 'string';
 };
@@ -69,6 +72,10 @@ const validateGroupServersConfig = (servers: unknown): string | null => {
 
     if (typeof serverConfig.name !== 'string' || serverConfig.name.length === 0) {
       return 'Server configuration must have a name property';
+    }
+
+    if (!isValidPreserveToolNames(serverConfig.preserveToolNames)) {
+      return 'Server preserveToolNames must be a boolean when provided';
     }
 
     if (!isValidServerAlias(serverConfig.alias)) {
@@ -257,6 +264,13 @@ export const batchCreateGroups = async (req: Request, res: Response): Promise<vo
               return {
                 valid: false,
                 message: 'Server configuration must have a name property',
+              };
+            }
+
+            if (!isValidPreserveToolNames(server.preserveToolNames)) {
+              return {
+                valid: false,
+                message: 'Server preserveToolNames must be a boolean when provided',
               };
             }
 
@@ -477,6 +491,16 @@ export const updateGroupServersBatch = async (req: Request, res: Response): Prom
           });
           return;
         }
+        if (!isValidPreserveToolNames(server.preserveToolNames)) {
+          res
+            .status(400)
+            .json({
+              success: false,
+              message: 'Server preserveToolNames must be a boolean when provided',
+            });
+          return;
+        }
+
         if (!isValidServerAlias(server.alias)) {
           res.status(400).json({
             success: false,
