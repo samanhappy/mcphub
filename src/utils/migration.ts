@@ -36,7 +36,8 @@ function scrubSourceFileSecrets(): void {
       Array.isArray(raw.bearerKeys) && raw.bearerKeys.some((k: any) => k.token && !k.tokenHash);
     if (!hasRawKeys && !routing?.bearerAuthKey) return;
 
-    if (Array.isArray(raw.bearerKeys) && raw.bearerKeys.length > 0) {
+    // an existing array (even empty) is authoritative, as in BearerKeyDaoImpl.loadKeysWithMigration()
+    if (Array.isArray(raw.bearerKeys)) {
       for (const key of raw.bearerKeys) {
         if (key.token && !key.tokenHash) {
           Object.assign(key, toStoredToken(key.token));

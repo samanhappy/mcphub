@@ -212,6 +212,17 @@ describe('initializeDatabaseMode legacy bearer auth migration', () => {
       expect(fs.readFileSync(file, 'utf8')).not.toMatch(/plain-token|legacy-secret/);
     });
 
+    it('keeps an explicit empty bearerKeys array empty and clears the stale routing secret', async () => {
+      fs.writeFileSync(file, JSON.stringify({ ...original, bearerKeys: [] }));
+      const { migrateToDatabase } = await import('./migration.js');
+      expect(await migrateToDatabase(false)).toBe(true);
+
+      const out = JSON.parse(fs.readFileSync(file, 'utf8'));
+      expect(out.bearerKeys).toEqual([]);
+      expect(out.systemConfig.routing.bearerAuthKey).toBe('');
+      expect(fs.readFileSync(file, 'utf8')).not.toMatch(/legacy-secret/);
+    });
+
     it('warns but still succeeds when the file cannot be rewritten', async () => {
       // read-only file: the write fails, the migration must not
       fs.chmodSync(file, 0o444);
