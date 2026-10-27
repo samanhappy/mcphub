@@ -166,6 +166,8 @@ curl -X POST "http://localhost:3000/api/tools/playwright/playwright-browser_navi
 
 Execute MCP tools via OpenAPI-compatible endpoints.
 
+Decimal numeric strings are converted in full, including scientific notation (for example, an integer parameter of `1e3` becomes `1000`). Fractional values for integer parameters, non-finite values, and invalid strings are left unchanged for the tool's schema validation; they are not truncated into a different number. Already numeric values are forwarded unchanged.
+
 String array items submitted by the dashboard are converted according to the tool's `items.type` (`integer`, `number`, or `boolean`) before being forwarded to the MCP server.
 
 **Path Parameters:**

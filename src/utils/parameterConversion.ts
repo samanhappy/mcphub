@@ -39,8 +39,15 @@ export function convertParametersToTypes(
         case 'number':
           // Convert string to number
           if (typeof value === 'string') {
-            const numValue = propType === 'integer' ? parseInt(value, 10) : parseFloat(value);
-            convertedParams[key] = isNaN(numValue) ? value : numValue;
+            // Parse the complete decimal value, not a numeric prefix.
+            const normalized = value.trim();
+            const numValue = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?$/i.test(normalized)
+              ? Number(normalized)
+              : NaN;
+            convertedParams[key] =
+              Number.isFinite(numValue) && (propType !== 'integer' || Number.isInteger(numValue))
+                ? numValue
+                : value;
           } else {
             convertedParams[key] = value;
           }
