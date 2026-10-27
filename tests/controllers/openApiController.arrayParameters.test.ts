@@ -62,6 +62,7 @@ describe('HTTP tool numeric parameters', () => {
   it.each(['GET', 'POST', 'dashboard'])(
     'forwards complete numeric values without truncation through %s',
     async (method) => {
+      const longInvalid = '9'.repeat(4000) + 'x';
       mockGetServerByName.mockReturnValue({
         tools: [
           {
@@ -78,6 +79,7 @@ describe('HTTP tool numeric parameters', () => {
                 infinite: { type: 'number' },
                 overflow: { type: 'number' },
                 hex: { type: 'number' },
+                longInvalid: { type: 'number' },
                 ids: { type: 'array', items: { type: 'integer' } },
               },
             },
@@ -95,6 +97,7 @@ describe('HTTP tool numeric parameters', () => {
         infinite: 'Infinity',
         overflow: '1e400',
         hex: '0x10',
+        longInvalid,
         ids: method === 'GET' ? '1e3,2.5' : ['1e3', '2.5'],
       };
       const app = express();
@@ -125,6 +128,7 @@ describe('HTTP tool numeric parameters', () => {
         infinite: 'Infinity',
         overflow: '1e400',
         hex: '0x10',
+        longInvalid,
         ids: [1000, '2.5'],
       });
     },

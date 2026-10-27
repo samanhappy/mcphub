@@ -41,7 +41,7 @@ export function convertParametersToTypes(
           if (typeof value === 'string') {
             // Parse the complete decimal value, not a numeric prefix.
             const normalized = value.trim();
-            const numValue = /^[+-]?(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?$/i.test(normalized)
+            const numValue = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?$/i.test(normalized)
               ? Number(normalized)
               : NaN;
             convertedParams[key] =
