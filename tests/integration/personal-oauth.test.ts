@@ -78,6 +78,7 @@ const fetchFn: typeof fetch = async (input, init) => {
 };
 let directory: string;
 const originalEnv = {
+  useDb: process.env.USE_DB,
   path: process.env.MCPHUB_SETTING_PATH,
   key: process.env.MCPHUB_CREDENTIAL_ENCRYPTION_KEY,
 };
@@ -95,6 +96,8 @@ beforeEach(() => {
   jest.spyOn(logger, 'warn').mockImplementation(() => undefined);
 });
 afterEach(() => {
+  if (originalEnv.useDb === undefined) delete process.env.USE_DB;
+  else process.env.USE_DB = originalEnv.useDb;
   jest.restoreAllMocks();
   fs.rmSync(directory, { recursive: true, force: true });
   if (originalEnv.path === undefined) delete process.env.MCPHUB_SETTING_PATH;
@@ -290,4 +293,15 @@ test('explicit metadata does not bypass MCP resource validation', async () => {
     }),
   ).rejects.toThrow('does not match expected');
   expect(tokenRequests).toHaveLength(0);
+});
+
+test('database mode rejects personal OAuth without a persistent key before storing a flow', async () => {
+  process.env.USE_DB = 'true';
+  delete process.env.MCPHUB_CREDENTIAL_ENCRYPTION_KEY;
+  const alice = await provider('alice');
+  await expect(auth(alice.provider, { serverUrl: mockDefinition.url!, fetchFn })).rejects.toThrow(
+    'MCPHUB_CREDENTIAL_ENCRYPTION_KEY',
+  );
+  expect(await new CredentialBindingDaoImpl().get('gitlab', 'alice')).toBeNull();
+  expect(fs.existsSync(`${process.env.MCPHUB_SETTING_PATH}.credentials.key`)).toBe(false);
 });

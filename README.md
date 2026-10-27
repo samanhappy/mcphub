@@ -102,6 +102,10 @@ Two image variants are published under `samanhappy/mcphub`:
 
 See [Docker Setup](https://docs.mcphub.app/configuration/docker-setup) for build options and Docker-in-Docker configuration.
 
+### Upgrading deployments with personal credentials
+
+Database mode requires a persistent `MCPHUB_CREDENTIAL_ENCRYPTION_KEY` or an existing key file; it no longer generates a local key automatically. Before replacing a working container, back up its original key and preserve the same value in deployment secrets. A database backup alone cannot recover encrypted credentials if the key is lost. See the [Credential Key Upgrade and Recovery Guide](docs/configuration/credential-key-upgrade.mdx) for working deployments and recovery after a failed upgrade.
+
 ### Access Dashboard
 
 Open `http://localhost:3000` (see [Start with Docker](#start-with-docker) for login details). You can also pre-set the password:

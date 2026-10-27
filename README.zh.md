@@ -101,6 +101,10 @@ docker run -p 3000:3000 -v ./data:/app/data samanhappy/mcphub
 
 构建选项与 Docker-in-Docker 配置详见 [Docker 部署文档](https://docs.mcphub.app/zh/configuration/docker-setup)。
 
+### 使用个人凭据的部署如何升级
+
+数据库模式需要持久化的 `MCPHUB_CREDENTIAL_ENCRYPTION_KEY` 或已有密钥文件，不再自动生成本地密钥。更换仍可正常使用的容器前，请备份原密钥，并在部署密钥配置中保留相同值。密钥丢失后，仅有数据库备份无法恢复加密凭据。正常部署的升级步骤和升级后无法使用的恢复方法，见[凭据密钥升级与恢复指南](docs/zh/configuration/credential-key-upgrade.mdx)。
+
 ### 访问控制台
 
 打开 `http://localhost:3000`（登录方式见[使用 Docker 启动](#使用-docker-启动)）。也可以预先设置密码：

@@ -32,18 +32,25 @@ const stdio: ServerConfig = {
 let directory: string;
 const originalPath = process.env.MCPHUB_SETTING_PATH;
 const originalKey = process.env.MCPHUB_CREDENTIAL_ENCRYPTION_KEY;
+const originalUseDb = process.env.USE_DB;
+const originalDbUrl = process.env.DB_URL;
 
 beforeAll(async () => {
   await initI18n();
 });
 
 beforeEach(() => {
+  process.env.USE_DB = 'false';
   directory = fs.mkdtempSync(path.join(os.tmpdir(), 'mcphub-credentials-'));
   process.env.MCPHUB_SETTING_PATH = path.join(directory, 'settings.json');
   process.env.MCPHUB_CREDENTIAL_ENCRYPTION_KEY = randomBytes(32).toString('base64');
 });
 afterEach(() => {
   fs.rmSync(directory, { recursive: true, force: true });
+  if (originalUseDb === undefined) delete process.env.USE_DB;
+  else process.env.USE_DB = originalUseDb;
+  if (originalDbUrl === undefined) delete process.env.DB_URL;
+  else process.env.DB_URL = originalDbUrl;
   if (originalPath === undefined) delete process.env.MCPHUB_SETTING_PATH;
   else process.env.MCPHUB_SETTING_PATH = originalPath;
   if (originalKey === undefined) delete process.env.MCPHUB_CREDENTIAL_ENCRYPTION_KEY;
@@ -557,4 +564,50 @@ test.each([
     credentialTemplate: [{ target: 'url', name: 'region', allowed: ['us'] }],
   };
   expect(validateCredentialTemplate(config)).toEqual(config.credentialTemplate);
+});
+
+test.each(['explicit', 'auto-detected'])(
+  'requires a configured key before saving credentials in %s database mode',
+  async (mode) => {
+    if (mode === 'explicit') process.env.USE_DB = 'true';
+    else {
+      delete process.env.USE_DB;
+      process.env.DB_URL = 'postgres://localhost/mcphub';
+    }
+    delete process.env.MCPHUB_CREDENTIAL_ENCRYPTION_KEY;
+    await expect(
+      saveCredentialBinding('shared', 'alice', stdio, { 'env.PERSONAL_KEY': 'secret' }),
+    ).rejects.toThrow('MCPHUB_CREDENTIAL_ENCRYPTION_KEY');
+    expect(fs.readdirSync(directory)).toEqual([]);
+    expect(await new CredentialBindingDaoImpl().get('shared', 'alice')).toBeNull();
+  },
+);
+
+test.each(['environment', 'existing file'])(
+  'supports the %s key in database mode',
+  async (source) => {
+    process.env.USE_DB = 'true';
+    if (source === 'existing file') {
+      fs.writeFileSync(
+        `${process.env.MCPHUB_SETTING_PATH}.credentials.key`,
+        process.env.MCPHUB_CREDENTIAL_ENCRYPTION_KEY!,
+        { mode: 0o600 },
+      );
+      delete process.env.MCPHUB_CREDENTIAL_ENCRYPTION_KEY;
+    }
+    await saveCredentialBinding('shared', 'alice', stdio, { 'env.PERSONAL_KEY': 'secret' });
+    expect(
+      (await resolveCredentialBinding('shared', 'alice', stdio)).config.env?.PERSONAL_KEY,
+    ).toBe('secret');
+    expect(fs.existsSync(`${process.env.MCPHUB_SETTING_PATH}.credentials.key`)).toBe(
+      source === 'existing file',
+    );
+  },
+);
+
+test('allows local key generation when USE_DB explicitly disables DB_URL auto-detection', async () => {
+  process.env.DB_URL = 'postgres://localhost/mcphub';
+  delete process.env.MCPHUB_CREDENTIAL_ENCRYPTION_KEY;
+  await saveCredentialBinding('shared', 'alice', stdio, { 'env.PERSONAL_KEY': 'secret' });
+  expect(fs.existsSync(`${process.env.MCPHUB_SETTING_PATH}.credentials.key`)).toBe(true);
 });
