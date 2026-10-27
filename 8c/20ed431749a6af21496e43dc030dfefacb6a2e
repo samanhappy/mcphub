@@ -1,0 +1,59 @@
+docs/features/per-user-credentials.mdx
+  s_425084b192e260::t_1d3bfa84712bcd 123-125
+frontend/src/types/index.ts
+  s_425084b192e260::t_eb575595e5d141 276-288,447,851
+src/utils/serverConfigPersistence.ts
+  s_425084b192e260::t_eb575595e5d141 1,184-187,189-191
+  s_425084b192e260::t_71339d1819a9bf 188,192-193
+frontend/src/components/ServerForm.tsx
+  s_425084b192e260::t_eb575595e5d141 118
+docs/features/oauth.mdx
+  s_425084b192e260::t_1d3bfa84712bcd 169-202
+src/types/index.ts
+  s_425084b192e260::t_eb575595e5d141 543
+  s_425084b192e260::t_fe9b33738ec788 542
+frontend/src/utils/serverFormPayload.ts
+  s_425084b192e260::t_eb575595e5d141 124-126
+src/services/mcpOAuthProvider.ts
+  s_425084b192e260::t_c596ee051192fb 399
+  s_425084b192e260::t_eb575595e5d141 1,237-240,394-398,400-407,713
+docs/zh/features/per-user-credentials.mdx
+  s_425084b192e260::t_1d3bfa84712bcd 119-121
+tests/services/templateService.test.ts
+  s_425084b192e260::t_e6874bc4de303f 164
+  s_425084b192e260::t_65f2c35c53ed86 152-163,165-168
+src/services/oauthClientRegistration.ts
+  s_425084b192e260::t_eb575595e5d141 592-593
+src/services/templateService.ts
+  s_425084b192e260::t_eb575595e5d141 183-185
+src/utils/oauthServerMetadata.ts
+  s_425084b192e260::t_eb575595e5d141 1-24
+docs/zh/features/oauth.mdx
+  s_425084b192e260::t_1d3bfa84712bcd 169-202
+tests/frontend/serverFormPayload.test.ts
+  s_425084b192e260::t_3251dfd030010c 390-405
+tests/integration/oauth-insecure-token-endpoint.test.ts
+  s_425084b192e260::t_493f5776ce330d 130-149
+tests/integration/personal-oauth.test.ts
+  s_425084b192e260::t_3cf301cffef994 36-38,54,67-70,72-74,89-92,110-132,134-184,252-293
+tests/services/oauthClientRegistration.test.ts
+  s_425084b192e260::t_5de207d6ae150e 66-83
+tests/utils/serverConfigPersistence.test.ts
+  s_425084b192e260::t_99acf86da8adfa 408-452
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8c20ed431749a6af21496e43dc030dfefacb6a2e",
+  "prompts": {},
+  "sessions": {
+    "s_425084b192e260": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a17ae1-8b02-7ac0-82a5-de583c3b6af1",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
