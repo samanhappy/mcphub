@@ -18,8 +18,15 @@ export class BearerKey {
   @Column({ type: 'varchar', length: 100 })
   name: string;
 
-  @Column({ type: 'varchar', length: 512 })
-  token: string;
+  // Legacy plaintext column: emptied once the key has been hashed at startup
+  @Column({ type: 'varchar', length: 512, nullable: true })
+  token?: string | null;
+
+  @Column({ name: 'token_hash', type: 'varchar', length: 64, nullable: true })
+  tokenHash?: string | null;
+
+  @Column({ name: 'token_prefix', type: 'varchar', length: 16, nullable: true })
+  tokenPrefix?: string | null;
 
   @Column({ type: 'boolean', default: true })
   enabled: boolean;

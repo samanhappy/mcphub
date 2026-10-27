@@ -122,6 +122,26 @@ describe('auth middleware', () => {
     expect(response.body).toEqual({ success: true });
   });
 
+  it('accepts a hashed bearer key and rejects a wrong token', async () => {
+    const { toStoredToken } = await import('../utils/bearerKeyToken.js');
+    findEnabledMock.mockResolvedValue([
+      {
+        id: 'key-2',
+        name: 'hashed',
+        ...toStoredToken('hashed-key'),
+        enabled: true,
+        accessType: 'all',
+      },
+    ]);
+    const app = createApp();
+
+    const ok = await request(app).get('/api/protected').set('Authorization', 'Bearer hashed-key');
+    const bad = await request(app).get('/api/protected').set('Authorization', 'Bearer hashed-kex');
+
+    expect(ok.status).toBe(200);
+    expect(bad.status).toBe(401);
+  });
+
   it('does not accept group-scoped bearer key auth for dashboard API routes', async () => {
     findEnabledMock.mockResolvedValue([
       {

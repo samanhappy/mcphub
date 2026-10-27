@@ -2,7 +2,7 @@ import { ApiClient } from '../http.js';
 import { CliUsageError } from '../errors.js';
 import { GlobalFlags, buildClient, resolveTarget } from '../context.js';
 import { extractFlags } from '../parse-args.js';
-import { green, maskToken, printJson, printLine, printTable } from '../output.js';
+import { green, printJson, printLine, printTable } from '../output.js';
 import type { BearerKey, BearerKeyAccessType } from '../../types/index.js';
 
 interface ApiResponse<T> {
@@ -50,7 +50,7 @@ async function list(client: ApiClient, globals: GlobalFlags): Promise<void> {
       name: k.name,
       enabled: k.enabled ? 'yes' : 'no',
       accessType: k.accessType,
-      token: maskToken(k.token),
+      token: k.token ?? '',
     })),
     ['id', 'name', 'enabled', 'accessType', 'token'],
   );

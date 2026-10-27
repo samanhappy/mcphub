@@ -55,7 +55,8 @@ describe('bearerKeyController', () => {
       {
         id: 'key-1',
         name: 'cursor',
-        token: 'mcphub_abcdefghijklmnopqrstuvwxyz',
+        tokenHash: 'deadbeef',
+        tokenPrefix: 'mcphub_a',
         enabled: true,
         kind: 'user',
         owner: 'alice',
@@ -67,11 +68,12 @@ describe('bearerKeyController', () => {
     await getBearerKeys(makeReq(), res);
 
     expect(mockFindByOwner).toHaveBeenCalledWith('alice');
+    expect(JSON.stringify((res.json as jest.Mock).mock.calls[0][0])).not.toContain('deadbeef');
     expect(res.json).toHaveBeenCalledWith({
       success: true,
       data: [
         expect.objectContaining({
-          token: 'mcphub_a...wxyz',
+          token: 'mcphub_a...',
           kind: 'user',
           owner: 'alice',
         }),
@@ -115,6 +117,7 @@ describe('bearerKeyController', () => {
         data: expect.objectContaining({ token: expect.stringMatching(/^mcphub_/) }),
       }),
     );
+    expect(res.json.mock.calls[0][0].data).not.toHaveProperty('tokenHash');
   });
 
   it('does not allow a user to update another user key', async () => {

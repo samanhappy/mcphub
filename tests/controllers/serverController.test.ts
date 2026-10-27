@@ -588,7 +588,8 @@ describe('serverController - getAllSettings', () => {
       {
         id: 'alice-key',
         name: 'alice',
-        token: 'mcphub_abcdefghijklmnopqrstuvwxyz',
+        tokenHash: 'deadbeef',
+        tokenPrefix: 'mcphub_a',
         enabled: true,
         kind: 'user',
         owner: 'alice',
@@ -597,7 +598,8 @@ describe('serverController - getAllSettings', () => {
       {
         id: 'bob-key',
         name: 'bob',
-        token: 'mcphub_abcdefghijklmnopqrstuvwxyz',
+        tokenHash: 'deadbeef',
+        tokenPrefix: 'mcphub_a',
         enabled: true,
         kind: 'user',
         owner: 'bob',
@@ -606,7 +608,8 @@ describe('serverController - getAllSettings', () => {
       {
         id: 'system-key',
         name: 'system',
-        token: 'mcphub_abcdefghijklmnopqrstuvwxyz',
+        tokenHash: 'deadbeef',
+        tokenPrefix: 'mcphub_a',
         enabled: true,
         kind: 'system',
         accessType: 'all',
@@ -642,7 +645,7 @@ describe('serverController - getAllSettings', () => {
             id: 'alice-key',
             kind: 'user',
             owner: 'alice',
-            token: 'mcphub_a...wxyz',
+            token: 'mcphub_a...',
           }),
         ],
       },

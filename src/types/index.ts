@@ -403,7 +403,9 @@ export type BearerKeyKind = 'system' | 'user';
 export interface BearerKey {
   id: string; // Unique identifier for the key
   name: string; // Human readable key name
-  token: string; // Bearer token value
+  token?: string; // Raw token: only present in the creation response (or on legacy, not yet hashed keys)
+  tokenHash?: string; // SHA-256 hex of the token; what is stored and compared
+  tokenPrefix?: string; // First characters of the token, safe to display
   enabled: boolean; // Whether this key is enabled
   kind?: BearerKeyKind; // Defaults to 'system' for keys created before user-level keys existed
   owner?: string; // Required for user-level keys

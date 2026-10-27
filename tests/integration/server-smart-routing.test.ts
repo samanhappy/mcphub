@@ -63,6 +63,7 @@ jest.mock('../../src/middlewares/userContext.js', () => ({
 jest.mock('../../src/dao/DaoFactory.js', () => ({
   getGroupDao: () => ({ findAll: findGroupsMock }),
   getServerDao: () => ({ findAll: findServersMock }),
+  getBearerKeyDao: () => ({ hashLegacyTokens: async () => 0 }),
 }));
 
 import config from '../../src/config/index.js';

@@ -1,8 +1,11 @@
+import fs from 'node:fs';
+import { randomUUID } from 'node:crypto';
+import { toStoredToken } from './bearerKeyToken.js';
 import { assertSmartRoutingSettingsAvailable } from './smartRoutingPath.js';
 import { syncSettingsToDatabase } from './settingsSync.js';
 import { CredentialBindingDaoImpl } from '../dao/CredentialBindingDao.js';
 import { CredentialBindingDaoDbImpl } from '../dao/CredentialBindingDaoDbImpl.js';
-import { loadOriginalSettings } from '../config/index.js';
+import { getSettingsPath, loadOriginalSettings } from '../config/index.js';
 import { initializeDatabase } from '../db/connection.js';
 import { setDaoFactory } from '../dao/DaoFactory.js';
 import { DatabaseDaoFactory } from '../dao/DatabaseDaoFactory.js';
@@ -17,6 +20,55 @@ import { BearerKeyRepository } from '../db/repositories/BearerKeyRepository.js';
 import { BuiltinPromptRepository } from '../db/repositories/BuiltinPromptRepository.js';
 import { BuiltinResourceRepository } from '../db/repositories/BuiltinResourceRepository.js';
 import { logger } from './logger.js';
+
+/**
+ * Replace usable bearer tokens left in the source settings file with their hashed form
+ * (the format file mode already uses). Never fails the migration: the database copy is done.
+ */
+function scrubSourceFileSecrets(): void {
+  let settingsPath = '';
+  try {
+    settingsPath = getSettingsPath();
+    const raw = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+    const routing = raw.systemConfig?.routing;
+    const legacyKey: string = (routing?.bearerAuthKey || '').trim();
+    const hasRawKeys =
+      Array.isArray(raw.bearerKeys) && raw.bearerKeys.some((k: any) => k.token && !k.tokenHash);
+    if (!hasRawKeys && !routing?.bearerAuthKey) return;
+
+    // an existing array (even empty) is authoritative, as in BearerKeyDaoImpl.loadKeysWithMigration()
+    if (Array.isArray(raw.bearerKeys)) {
+      for (const key of raw.bearerKeys) {
+        if (key.token && !key.tokenHash) {
+          Object.assign(key, toStoredToken(key.token));
+          delete key.token;
+        }
+      }
+    } else if (legacyKey) {
+      // same conversion as the file DAO's legacy migration
+      raw.bearerKeys = [
+        {
+          id: randomUUID(),
+          name: 'default',
+          ...toStoredToken(legacyKey),
+          enabled: !!routing.enableBearerAuth,
+          kind: 'system',
+          accessType: 'all',
+          allowedGroups: [],
+          allowedServers: [],
+        },
+      ];
+    }
+    if (routing) routing.bearerAuthKey = '';
+    fs.writeFileSync(settingsPath, JSON.stringify(raw, null, 2), 'utf8');
+    logger.log('  - Replaced plaintext bearer tokens in the source settings file with hashes');
+  } catch (error) {
+    logger.warn(
+      `Migration succeeded, but plaintext bearer tokens may remain in ${settingsPath || 'the settings file'} ` +
+        `(could not rewrite it: ${error instanceof Error ? error.message : error}). Remove them manually.`,
+    );
+  }
+}
 
 /**
  * Migrate from file-based configuration to database
@@ -155,7 +207,8 @@ export async function migrateToDatabase(seedServersAndGroups = true): Promise<bo
       logger.log('Migrating system configuration...');
       const systemConfig = {
         network: settings.systemConfig.network || {},
-        routing: settings.systemConfig.routing || {},
+        // the legacy bearerAuthKey is migrated to a hashed bearer key below
+        routing: { ...settings.systemConfig.routing, bearerAuthKey: '' },
         install: settings.systemConfig.install || {},
         smartRouting: settings.systemConfig.smartRouting || {},
         toolResultCompression: settings.systemConfig.toolResultCompression || {},
@@ -174,12 +227,15 @@ export async function migrateToDatabase(seedServersAndGroups = true): Promise<bo
     // Migrate bearer auth keys
     logger.log('Migrating bearer authentication keys...');
 
-    // Prefer explicit bearerKeys if present in settings
-    if (Array.isArray(settings.bearerKeys) && settings.bearerKeys.length > 0) {
+    // An existing bearerKeys array (even empty) is authoritative, as in BearerKeyDaoImpl.loadKeysWithMigration()
+    if (Array.isArray(settings.bearerKeys)) {
       for (const key of settings.bearerKeys) {
         await bearerKeyRepo.create({
           name: key.name,
-          token: key.token,
+          // Keys created by a hashing-aware version only carry tokenHash/tokenPrefix
+          ...(key.tokenHash
+            ? { tokenHash: key.tokenHash, tokenPrefix: key.tokenPrefix }
+            : { token: key.token }),
           enabled: key.enabled,
           kind: key.kind ?? 'system',
           owner: key.owner,
@@ -325,6 +381,8 @@ export async function migrateToDatabase(seedServersAndGroups = true): Promise<bo
       }
     }
 
+    scrubSourceFileSecrets();
+
     logger.log('✅ Migration completed successfully');
     return true;
   } catch (error) {
@@ -390,6 +448,7 @@ export async function initializeDatabaseMode(): Promise<boolean> {
             allowedGroups: [],
             allowedServers: [],
           } as any);
+          await systemConfigRepo.updateSection('routing', { ...routing, bearerAuthKey: '' });
           logger.log(
             `  - Migrated legacy DB routing bearer auth config to key: default (enabled=${enableBearerAuth})`,
           );

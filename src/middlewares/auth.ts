@@ -5,7 +5,7 @@ import { getBearerKeyDao, getSystemConfigDao } from '../dao/index.js';
 import { BearerKey, SystemConfig } from '../types/index.js';
 import { getBetterAuthRuntimeConfig } from '../services/betterAuthConfig.js';
 import { authenticateForwardAuthToken } from '../services/forwardAuthService.js';
-import { safeCompare } from '../utils/safeCompare.js';
+import { bearerKeyMatches } from '../utils/bearerKeyToken.js';
 import { getBearerTokenFromHeaders } from '../utils/bearerAuth.js';
 import { logger } from '../utils/logger.js';
 
@@ -46,7 +46,7 @@ const validateBearerAuth = async (
   }
 
   const matchingKey: BearerKey | undefined = enabledKeys.find((key) =>
-    safeCompare(key.token, token),
+    bearerKeyMatches(key, token),
   );
   if (!matchingKey) {
     logger.warn('Bearer auth failed: token did not match any configured bearer key');
