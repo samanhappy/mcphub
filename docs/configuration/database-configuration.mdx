@@ -151,6 +151,14 @@ When you start MCPHub with `USE_DB=true` for the first time:
 3. If no users found, automatically migrates from `mcp_settings.json`
 4. Creates all tables and imports all data
 
+### Personal credential bindings
+
+Personal credentials and personal upstream OAuth bindings are imported from the settings file's `.credentials.json` sidecar independently of user migration, including when database users already exist. Keep the original `.credentials.key` at the same settings path, or set its exact value as `MCPHUB_CREDENTIAL_ENCRYPTION_KEY` before switching modes. Do not generate a replacement key.
+
+Before importing a new batch, MCPHub verifies that the new source bindings and all existing database bindings decrypt with the same configured key. Missing or incompatible keys abort startup before configuration migration; restore the original key and retry. Imports are transactional and never overwrite existing `(serverName, username)` bindings.
+
+The internal `credential_binding_imports` table records processed ciphertext so retained source files do not restore bindings deleted later. Keep these receipts when clearing `credential_bindings` during recovery. Source files remain unchanged; back up the key separately from the database. See [Credential Key Upgrade and Recovery](/configuration/credential-key-upgrade).
+
 ### Manual Migration
 
 Run the migration script:

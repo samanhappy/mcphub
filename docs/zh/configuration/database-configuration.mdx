@@ -151,6 +151,14 @@ MCPHub 在启用数据库模式首次启动时提供自动迁移功能。您也�
 3. 如果未找到用户，自动从 `mcp_settings.json` 迁移
 4. 创建所有表并导入所有数据
 
+### 个人凭据绑定
+
+个人凭据和个人上游 OAuth 绑定会从配置文件旁的 `.credentials.json` 独立迁移，即使数据库已有用户也会补充导入。切换前应保留相同配置路径旁的原 `.credentials.key`，或将其原值设置为 `MCPHUB_CREDENTIAL_ENCRYPTION_KEY`，不要生成新密钥替换。
+
+导入新批次前，MCPHub 会验证待导入的新绑定及数据库已有绑定均可使用当前密钥解密。密钥缺失或不匹配时，启动会在配置迁移前中止；恢复原密钥后重试。导入采用事务，不覆盖已有的 `(serverName, username)` 绑定。
+
+内部表 `credential_binding_imports` 记录已处理的密文，避免保留的源文件恢复后来已删除的绑定。恢复时清空 `credential_bindings` 应保留这些迁移记录。源文件保持不变，密钥需独立于数据库备份。另见[凭据密钥升级与恢复](/zh/configuration/credential-key-upgrade)。
+
 ### 手动迁移
 
 运行迁移脚本：
