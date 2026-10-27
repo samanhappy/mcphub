@@ -1,3 +1,4 @@
+import { MCP_APPS_CAPABILITIES } from '../../src/utils/mcpApps.js';
 import { RequestContextService } from '../../src/services/requestContextService.js';
 import { jest } from '@jest/globals';
 import type { IGroup, ServerInfo } from '../../src/types/index.js';
@@ -220,6 +221,80 @@ describe('mcpService group server alias', () => {
         { sessionId: 'smart-team-session' },
       );
       expect(wrapped.isError).toBe(false);
+    });
+
+    it.each([
+      ['fetch_url', true],
+      ['fetch_url', false],
+      ['call_tool', true],
+    ] as const)(
+      'ignores hidden App-only %s tools (hidden server first: %s)',
+      async (hiddenName, hiddenFirst) => {
+        (teamGroup.servers as any[]).push({ name: 'peer', preserveToolNames: true, tools: 'all' });
+        const hiddenCall = jest.fn();
+        const peer = {
+          ...aliasedServerInfo(),
+          name: 'peer',
+          tools: [
+            {
+              name: `peer::${hiddenName}`,
+              inputSchema: { type: 'object' },
+              _meta: { ui: { visibility: ['app'] } },
+            },
+          ],
+          client: { callTool: hiddenCall },
+        } as unknown as ServerInfo;
+        const visible = aliasedServerInfo();
+        setServerInfosForTest(hiddenFirst ? [peer, visible] : [visible, peer]);
+        const tools = await handleListToolsRequest({}, { sessionId: 'team-session' });
+        expect(tools.tools.map((tool) => tool.name)).toEqual(['fetch_url']);
+        for (const sessionId of ['team-session', 'smart-team-session']) {
+          for (const params of [
+            { name: 'fetch_url', arguments: {} },
+            { name: 'call_tool', arguments: { toolName: 'fetch_url', arguments: {} } },
+          ]) {
+            const result = await handleCallToolRequest({ params }, { sessionId });
+            expect(result.isError).toBe(false);
+          }
+        }
+        expect(mockCallTool).toHaveBeenCalledTimes(4);
+        expect(hiddenCall).not.toHaveBeenCalled();
+      },
+    );
+
+    it('still rejects the collision when the caller can see App-only tools', async () => {
+      (teamGroup.servers as any[]).push({ name: 'peer', preserveToolNames: true, tools: 'all' });
+      const peer = {
+        ...aliasedServerInfo(),
+        name: 'peer',
+        tools: [
+          {
+            name: 'peer::fetch_url',
+            inputSchema: { type: 'object' },
+            _meta: { ui: { visibility: ['app'] } },
+          },
+        ],
+      } as ServerInfo;
+      setServerInfosForTest([peer, aliasedServerInfo()]);
+      await RequestContextService.getInstance().runWithCustomRequestContext(
+        {
+          headers: {},
+          stateless: true,
+          group: 'team-a',
+          clientCapabilities: MCP_APPS_CAPABILITIES,
+        },
+        async () => {
+          await expect(handleListToolsRequest({}, { group: 'team-a' })).rejects.toThrow(
+            'Ambiguous group tool name',
+          );
+          const result = await handleCallToolRequest(
+            { params: { name: 'fetch_url', arguments: {} } },
+            { group: 'team-a' },
+          );
+          expect(result.isError).toBe(true);
+          expect(mockCallTool).not.toHaveBeenCalled();
+        },
+      );
     });
 
     it('rejects duplicate exposed names before listing or dispatching', async () => {

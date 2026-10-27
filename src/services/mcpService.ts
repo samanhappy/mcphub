@@ -4019,6 +4019,7 @@ const assertToolAvailableForRoute = (tool: Tool, appsRouteContext: McpAppsRouteC
 const resolveToolInGroup = async (
   group: string | undefined,
   toolName: string,
+  appsRouteContext: McpAppsRouteContext,
 ): Promise<{ serverInfo: ServerInfo; toolName: string; tool: Tool } | undefined> => {
   const lookupGroup = getGroupLookupName(group);
   if (!lookupGroup) {
@@ -4037,8 +4038,11 @@ const resolveToolInGroup = async (
     filteredServerInfos.length === 1;
 
   // Validate the full visible catalog before routing, even if the client skips tools/list.
-  if ([...serverConfigsByName.values()].some((config) => config.preserveToolNames)) {
-    await listGroupTools(lookupGroup, filteredServerInfos, serverConfigsByName, { enabled: true });
+  const hasOriginalToolNames = [...serverConfigsByName.values()].some(
+    (config) => config.preserveToolNames,
+  );
+  if (hasOriginalToolNames) {
+    await listGroupTools(lookupGroup, filteredServerInfos, serverConfigsByName, appsRouteContext);
   }
 
   for (const serverInfo of filteredServerInfos) {
@@ -4057,7 +4061,7 @@ const resolveToolInGroup = async (
       allowRawName,
       serverConfigsByName.size === 0,
     );
-    if (!tool) {
+    if (!tool || (hasOriginalToolNames && !appsRouteContext.enabled && isAppOnlyTool(tool))) {
       continue;
     }
 
@@ -4473,7 +4477,7 @@ const handleCallToolRequestImpl = async (request: any, extra: any) => {
       } else if (extra && extra.server) {
         targetServerInfo = getVisibleServerByName(extra.server);
       } else if (getGroupLookupName(group)) {
-        const groupTool = await resolveToolInGroup(group, toolName);
+        const groupTool = await resolveToolInGroup(group, toolName, appsRouteContext);
         if (groupTool) {
           targetServerInfo = groupTool.serverInfo;
           targetToolName = groupTool.toolName;
@@ -4731,7 +4735,7 @@ const handleCallToolRequestImpl = async (request: any, extra: any) => {
     const singleServerAppsRoute = !getGroupLookupName(group) && !!appsRouteContext.serverInfo;
     const groupTool =
       !singleServerAppsRoute && lookupGroup
-        ? await resolveToolInGroup(group, request.params.name)
+        ? await resolveToolInGroup(group, request.params.name, appsRouteContext)
         : undefined;
     const serverInfo = singleServerAppsRoute
       ? appsRouteContext.serverInfo
