@@ -101,6 +101,45 @@ describe('smartRoutingService search_tools results', () => {
     );
   });
 
+  describe('original tool names', () => {
+    beforeEach(() => {
+      mockGetServerConfigsInGroup.mockResolvedValue([
+        { name: 'chat', alias: 'messages', preserveToolNames: true, tools: 'all' },
+      ]);
+    });
+    it('uses the same original name for search and describe', async () => {
+      const payload = await search();
+      expect(payload.tools[0].name).toBe('list_messages');
+      expect(payload.tools[0].serverName).toBe('messages');
+      const result = await handleDescribeToolRequest('list_messages', 'smart-session');
+      expect(JSON.parse(result.content[0].text).tool.name).toBe('list_messages');
+    });
+    it('rejects catalog collisions even when search only returns one server', async () => {
+      mockGetServerConfigsInGroup.mockResolvedValue([
+        { name: 'chat', preserveToolNames: true },
+        { name: 'code', preserveToolNames: true },
+      ]);
+      initSmartRoutingService(
+        () =>
+          [
+            { name: 'chat', status: 'connected', enabled: true, tools: chatTools },
+            {
+              name: 'code',
+              status: 'connected',
+              enabled: true,
+              tools: [{ ...chatTools[0], name: 'code::list_messages' }],
+            },
+          ] as any,
+        jest.fn(async (_name, tools) => tools),
+        jest.fn(async (_group, _name, tools) => tools),
+      );
+      await expect(search()).rejects.toThrow('Ambiguous group tool name');
+      await expect(handleDescribeToolRequest('list_messages', 'smart-session')).rejects.toThrow(
+        'Ambiguous group tool name',
+      );
+    });
+  });
+
   describe('scores', () => {
     it('reports the raw tool similarity, rounded to two decimals, in ranking order', async () => {
       const payload = await search();

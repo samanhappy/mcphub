@@ -582,6 +582,8 @@
     "configureTools": "配置工具",
     "configureCapabilities": "配置工具、提示词和资源",
     "alias": "对外名称",
+    "preserveToolNames": "保留原始工具名",
+    "preserveToolNamesHint": "工具名不添加服务器前缀，须在组内唯一。对外名称仍适用于提示词。",
     "pinTool": "固定：始终在此分组的智能路由端点中与 search_tools 一同列出此工具",
     "pinToolLabel": "固定到智能路由端点",
     "unpinTool": "取消固定：仅通过 search_tools 访问此工具",

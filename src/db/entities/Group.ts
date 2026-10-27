@@ -29,6 +29,7 @@ export class Group {
     | {
         name: string;
         alias?: string;
+        preserveToolNames?: boolean;
         tools?: string[] | 'all';
         prompts?: string[] | 'all';
         resources?: string[] | 'all';

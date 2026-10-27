@@ -580,6 +580,8 @@
     "configureTools": "Configurar herramientas",
     "configureCapabilities": "Configurar herramientas, prompts y recursos",
     "alias": "Nombre expuesto",
+    "preserveToolNames": "Conservar los nombres originales de las herramientas",
+    "preserveToolNamesHint": "Expone herramientas sin prefijo del servidor. Los nombres deben ser únicos en el grupo. El nombre expuesto sigue aplicándose a los prompts.",
     "pinTool": "Fijar: muestra siempre esta herramienta en el endpoint de enrutamiento inteligente del grupo, junto a search_tools",
     "pinToolLabel": "Fijar en el endpoint de enrutamiento inteligente",
     "unpinTool": "Desfijar: accede a esta herramienta solo a través de search_tools",

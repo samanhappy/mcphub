@@ -580,6 +580,8 @@
     "configureTools": "Cấu hình công cụ",
     "configureCapabilities": "Cấu hình Công cụ, Lời nhắc, và Tài nguyên",
     "alias": "Tên phơi bày (Exposed Name)",
+    "preserveToolNames": "Giữ tên công cụ gốc",
+    "preserveToolNamesHint": "Hiển thị công cụ không có tiền tố máy chủ. Tên phải duy nhất trong nhóm. Tên hiển thị vẫn áp dụng cho prompt.",
     "pinTool": "Ghim: luôn liệt kê công cụ này trên endpoint Định tuyến Thông minh của nhóm, cạnh search_tools",
     "pinToolLabel": "Ghim vào endpoint Định tuyến Thông minh",
     "unpinTool": "Bỏ ghim: chỉ có thể tiếp cận công cụ này thông qua search_tools",

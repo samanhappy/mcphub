@@ -26,6 +26,7 @@ export const normalizeGroupServers = (
     return {
       name: server.name,
       ...(alias ? { alias } : {}),
+      ...(server.preserveToolNames === true ? { preserveToolNames: true } : {}),
       tools: server.tools || 'all',
       prompts: server.prompts || 'all',
       resources: server.resources || 'all',

@@ -1,3 +1,4 @@
+import { projectGroupToolName, assertValidGroupToolNames } from '../utils/groupToolNames.js';
 import { isSafePassthroughHeader } from '../utils/passthroughHeaders.js';
 import { observeToolCall, setMetricsServer } from './metricsService.js';
 import {
@@ -4018,6 +4019,7 @@ const assertToolAvailableForRoute = (tool: Tool, appsRouteContext: McpAppsRouteC
 const resolveToolInGroup = async (
   group: string | undefined,
   toolName: string,
+  appsRouteContext: McpAppsRouteContext,
 ): Promise<{ serverInfo: ServerInfo; toolName: string; tool: Tool } | undefined> => {
   const lookupGroup = getGroupLookupName(group);
   if (!lookupGroup) {
@@ -4035,6 +4037,14 @@ const resolveToolInGroup = async (
     serverConfigsByName.size <= 1 &&
     filteredServerInfos.length === 1;
 
+  // Validate the full visible catalog before routing, even if the client skips tools/list.
+  const hasOriginalToolNames = [...serverConfigsByName.values()].some(
+    (config) => config.preserveToolNames,
+  );
+  if (hasOriginalToolNames) {
+    await listGroupTools(lookupGroup, filteredServerInfos, serverConfigsByName, appsRouteContext);
+  }
+
   for (const serverInfo of filteredServerInfos) {
     // An idle on-demand server is selected here and woken by the caller (#1029)
     if (!canServeToolRequests(serverInfo)) {
@@ -4042,14 +4052,16 @@ const resolveToolInGroup = async (
     }
 
     const serverConfig = serverConfigsByName.get(serverInfo.name);
-    const internalToolName = resolveNameFromGroup(toolName, serverInfo.name, serverConfig);
+    const internalToolName = serverConfig?.preserveToolNames
+      ? `${serverInfo.name}${getNameSeparator()}${toolName}`
+      : resolveNameFromGroup(toolName, serverInfo.name, serverConfig);
     const tool = findToolOnServer(
       serverInfo,
       internalToolName,
       allowRawName,
       serverConfigsByName.size === 0,
     );
-    if (!tool) {
+    if (!tool || (hasOriginalToolNames && !appsRouteContext.enabled && isAppOnlyTool(tool))) {
       continue;
     }
 
@@ -4156,7 +4168,7 @@ const projectToolForDownstream = (
   // Group and aggregate routes keep qualified names, including single-member groups.
   return {
     ...projectedTool,
-    name: projectNameForGroup(projectedTool.name, serverName, serverConfig),
+    name: projectGroupToolName(projectedTool.name, serverName, serverConfig, getNameSeparator()),
   };
 };
 
@@ -4224,6 +4236,9 @@ const listGroupTools = async (
     }
   }
 
+  if ([...serverConfigsByName.values()].some((config) => config.preserveToolNames)) {
+    assertValidGroupToolNames(allTools);
+  }
   return allTools;
 };
 
@@ -4462,7 +4477,7 @@ const handleCallToolRequestImpl = async (request: any, extra: any) => {
       } else if (extra && extra.server) {
         targetServerInfo = getVisibleServerByName(extra.server);
       } else if (getGroupLookupName(group)) {
-        const groupTool = await resolveToolInGroup(group, toolName);
+        const groupTool = await resolveToolInGroup(group, toolName, appsRouteContext);
         if (groupTool) {
           targetServerInfo = groupTool.serverInfo;
           targetToolName = groupTool.toolName;
@@ -4720,7 +4735,7 @@ const handleCallToolRequestImpl = async (request: any, extra: any) => {
     const singleServerAppsRoute = !getGroupLookupName(group) && !!appsRouteContext.serverInfo;
     const groupTool =
       !singleServerAppsRoute && lookupGroup
-        ? await resolveToolInGroup(group, request.params.name)
+        ? await resolveToolInGroup(group, request.params.name, appsRouteContext)
         : undefined;
     const serverInfo = singleServerAppsRoute
       ? appsRouteContext.serverInfo
@@ -5632,7 +5647,13 @@ const withModernLists =
     let selected = filteredServerInfos;
     if (extra?.server) {
       selected = selected.filter((info) => info.name === extra.server);
-    } else if (typeof requestedName === 'string') {
+    } else if (
+      typeof requestedName === 'string' &&
+      !(
+        fields[0] === 'tools' &&
+        [...serverConfigsByName.values()].some((config) => config.preserveToolNames)
+      )
+    ) {
       // Match the routing resolver's longest exposed prefix, including aliases.
       const targets = selected
         .map((info) => ({
@@ -5748,7 +5769,14 @@ const withPrincipalServers =
         'server-or-name-not-found',
       );
     }
-    if (!extra?.server && typeof requestedName === 'string') {
+    if (
+      !extra?.server &&
+      typeof requestedName === 'string' &&
+      !(
+        operation === 'tool' &&
+        [...serverConfigsByName.values()].some((config) => config.preserveToolNames)
+      )
+    ) {
       let longestPrefix = 0;
       for (const info of candidates) {
         const exposedName = getExposedServerName(info.name, serverConfigsByName.get(info.name));

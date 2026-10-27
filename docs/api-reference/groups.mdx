@@ -186,6 +186,7 @@ Replaces all servers in a group with a new list. The list can be simple strings 
 
 Each detailed server object accepts these optional capability selectors:
 
+- `preserveToolNames`: a boolean (default `false`). Expose upstream tool names without a server prefix on group and Smart Routing routes. Names must be unique in the group; prompts and resources are unchanged. See [Keep original tool names](/features/group-management#keep-original-tool-names).
 - `tools`: `"all"` or an array of tool names.
 - `prompts`: `"all"` or an array of prompt names.
 - `resources`: `"all"` or an array of resource URIs.

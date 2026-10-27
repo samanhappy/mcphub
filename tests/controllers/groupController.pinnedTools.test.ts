@@ -99,4 +99,31 @@ describe('groupController pinnedTools validation', () => {
     expect(res.json).toHaveBeenCalledWith({ success: false, message: MESSAGE });
     expect(updateGroup).not.toHaveBeenCalled();
   });
+  it.each(['create', 'update', 'batch', 'servers'])(
+    'rejects non-boolean preserveToolNames on %s',
+    async (operation) => {
+      const res = mockResponse();
+      const servers = [{ name: 's', preserveToolNames: 'true' }];
+      if (operation === 'create')
+        await createNewGroup({ body: { name: 'g', servers } } as Request, res);
+      if (operation === 'update')
+        await updateExistingGroup(
+          { params: { id: 'g' }, body: { servers } } as unknown as Request,
+          res,
+        );
+      if (operation === 'batch')
+        await batchCreateGroups({ body: { groups: [{ name: 'g', servers }] } } as Request, res);
+      if (operation === 'servers')
+        await updateGroupServersBatch(
+          { params: { id: 'g' }, body: { servers } } as unknown as Request,
+          res,
+        );
+      expect(JSON.stringify((res.json as jest.Mock).mock.calls)).toContain(
+        'Server preserveToolNames must be a boolean',
+      );
+      expect(createGroup).not.toHaveBeenCalled();
+      expect(updateGroup).not.toHaveBeenCalled();
+      expect(updateGroupServers).not.toHaveBeenCalled();
+    },
+  );
 });

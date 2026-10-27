@@ -58,6 +58,7 @@ describe('groupService capability selections', () => {
         {
           name: 'server1',
           alias: 'fetch',
+          preserveToolNames: true,
           tools: ['search'],
           prompts: ['draft_prompt'],
           resources: ['resource://docs/guide'],
@@ -71,6 +72,7 @@ describe('groupService capability selections', () => {
       {
         name: 'server1',
         alias: 'fetch',
+        preserveToolNames: true,
         tools: ['search'],
         prompts: ['draft_prompt'],
         resources: ['resource://docs/guide'],

@@ -650,3 +650,9 @@ before schema synchronization and stops with the conflicting names/counts if any
 Resolve duplicates manually before restarting; MCPHub does not rename or delete them.
 Group names remain globally reserved, including private groups. Contact an administrator
 for conflicts you cannot resolve from your directory.
+
+## Keep original tool names
+
+Enable **Keep original tool names** for a server in a group's capability settings to expose tools using their upstream names, for example `fetch_url` instead of `fetch-fetch_url`. In JSON settings or the groups API, set `preserveToolNames: true` on that server's group entry. This applies to both the group route and `$smart/<group>`; prompts and resources keep their existing naming behavior. The setting defaults to `false`, and an empty **Exposed Name** continues to fall back to the server name.
+
+Names must be unique across the group's visible tools, including tools from servers that still use a prefix. If names collide, tool discovery and group tool calls fail with an ambiguity error; select fewer tools or restore prefixes to resolve the conflict. The names `search_tools`, `describe_tool`, and `call_tool` are reserved for Smart Routing and cannot be exposed when this setting is enabled. Name checks run against the currently available catalog, so a newly connected server can introduce a conflict.
