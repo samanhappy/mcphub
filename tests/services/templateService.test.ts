@@ -149,6 +149,23 @@ describe('templateService', () => {
       ]);
     });
 
+    it('preserves explicit OAuth metadata in exported templates', async () => {
+      const authorizationServerMetadata = {
+        issuer: 'https://as.example.com',
+        authorization_endpoint: 'https://as.example.com/authorize',
+        token_endpoint: 'https://as.example.com/token',
+        response_types_supported: ['code'],
+        code_challenge_methods_supported: ['S256'],
+      };
+      mockServerDao.findAll.mockResolvedValue([
+        { name: 's1', type: 'streamable-http', url: 'https://private.example/mcp',
+          oauth: { clientId: 'client', authorizationServerMetadata } },
+      ]);
+      mockGroupDao.findAll.mockResolvedValue([{ id: 'g1', name: 'G', servers: ['s1'] }]);
+      const template = await exportTemplate({ name: 'Test' });
+      expect(template.servers.s1.oauth?.authorizationServerMetadata).toEqual(authorizationServerMetadata);
+    });
+
     it('should preserve existing ${PLACEHOLDER} patterns', async () => {
       mockServerDao.findAll.mockResolvedValue([
         { name: 's1', command: 'npx', env: { TOKEN: '${MY_TOKEN}', REGION: 'us-east-1' } },

@@ -387,6 +387,22 @@ describe('buildServerPayload', () => {
     expect(payload.config.oauth).not.toHaveProperty('revocationEndpoint');
   });
 
+  it('round-trips explicit authorization server metadata through a form save', () => {
+    const authorizationServerMetadata = {
+      issuer: 'https://as.example.com',
+      authorization_endpoint: 'https://as.example.com/authorize',
+      token_endpoint: 'https://as.example.com/token',
+      response_types_supported: ['code'],
+    };
+    const payload = buildServerPayload({
+      formData: buildSseForm({ authorizationServerMetadata }),
+      serverType: 'sse',
+      envVars: [],
+      headerVars: [],
+    });
+    expect(payload.config.oauth?.authorizationServerMetadata).toEqual(authorizationServerMetadata);
+  });
+
   it('preserves revocationEndpoint, redirectUri and dynamicRegistration together (deep equal)', () => {
     const payload = buildServerPayload({
       formData: buildSseForm({

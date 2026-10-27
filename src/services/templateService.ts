@@ -180,6 +180,9 @@ function stripOAuthSecrets(oauth: NonNullable<ServerConfig['oauth']>): {
   const sanitized: TemplateOAuthConfig = {};
   const placeholders: string[] = [];
 
+  if (oauth.authorizationServerMetadata) {
+    sanitized.authorizationServerMetadata = structuredClone(oauth.authorizationServerMetadata);
+  }
   if (oauth.clientId) sanitized.clientId = oauth.clientId;
   if (oauth.allowInsecureTokenEndpoint !== undefined) {
     sanitized.allowInsecureTokenEndpoint = oauth.allowInsecureTokenEndpoint;

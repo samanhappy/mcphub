@@ -405,3 +405,48 @@ describe('upstream protocol negotiation configuration', () => {
     ).toThrow(/streamable-http/);
   });
 });
+
+describe('explicit OAuth authorization server metadata', () => {
+  const metadata = {
+    issuer: 'https://login.example.com/tenant',
+    authorization_endpoint: 'https://login.example.com/authorize',
+    token_endpoint: 'https://login.example.com/token',
+    response_types_supported: ['code'],
+    code_challenge_methods_supported: ['S256'],
+    authorization_response_iss_parameter_supported: true,
+  };
+  it('preserves metadata through persistence without changing legacy endpoint fields', () => {
+    const config = normalizeServerConfigForPersistence({
+      type: 'streamable-http',
+      url: 'http://internal.example/mcp',
+      oauth: {
+        identityMode: 'personal',
+        clientId: 'client',
+        authorizationServerMetadata: metadata,
+      },
+    });
+    expect(config.oauth?.authorizationServerMetadata).toEqual(metadata);
+    expect(config.oauth).not.toHaveProperty('authorizationEndpoint');
+  });
+  it.each([
+    { issuer: 'https://login.example.com?tenant=1' },
+    { authorization_endpoint: 'javascript:alert(1)' },
+    { token_endpoint: 'https://user:secret@login.example.com/token' },
+    { token_endpoint: 'https://login.example.com/token#fragment' },
+    { token_endpoint: undefined },
+    { response_types_supported: 'code' },
+    { authorization_response_iss_parameter_supported: 'true' },
+  ])('rejects invalid metadata %p', (invalid) => {
+    expect(() =>
+      normalizeServerConfigForPersistence({
+        type: 'streamable-http',
+        url: 'http://internal.example/mcp',
+        oauth: {
+          authorizationServerMetadata: { ...metadata, ...invalid } as unknown as NonNullable<
+            ServerConfig['oauth']
+          >['authorizationServerMetadata'],
+        },
+      }),
+    ).toThrow('Invalid oauth.authorizationServerMetadata');
+  });
+});

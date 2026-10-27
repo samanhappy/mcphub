@@ -166,3 +166,37 @@ SDK 客户端固定为 2.1.0，通过 pnpm 补丁增加按 provider 判断的例
 - 若部署在 HTTPS 域名下，请对外暴露 `/oauth/callback` 或通过反向代理转发。
 - 如无法完成自动发现，可显式提供 `authorizationEndpoint` 与 `tokenEndpoint`。
 - 授权服务器吊销令牌后，可手动清理 `mcp_settings.json` 中的旧令牌，MCPHub 会在下一次请求时重新触发授权。
+
+## 显式授权服务器元数据
+
+私有 HTTP MCP 服务与授权服务器使用不同地址时，可在服务器 JSON 配置中设置 `oauth.authorizationServerMetadata`。它在 SDK OAuth 流程中完整替代授权服务器发现，适用于共享和个人身份，优先于发现的元数据及旧的 `authorizationEndpoint` / `tokenEndpoint` 字段；不配置时保持原有发现行为。
+
+```json
+{
+  "type": "streamable-http",
+  "url": "http://mcp-internal:3000/mcp",
+  "oauth": {
+    "identityMode": "personal",
+    "clientId": "${OAUTH_CLIENT_ID}",
+    "clientSecret": "${OAUTH_CLIENT_SECRET}",
+    "redirectUri": "https://hub.example.com/oauth/callback",
+    "scopes": ["User.Read", "offline_access"],
+    "authorizationServerMetadata": {
+      "issuer": "https://auth.example.com/tenant",
+      "authorization_endpoint": "https://auth.example.com/tenant/authorize",
+      "token_endpoint": "https://auth.example.com/tenant/token",
+      "response_types_supported": ["code"],
+      "code_challenge_methods_supported": ["S256"],
+      "token_endpoint_auth_methods_supported": ["client_secret_post"]
+    }
+  }
+}
+```
+
+填写提供方实际的 issuer 和端点，在提供方注册 MCPHub 回调 URI，并使 scopes 和客户端认证方式与应用注册保持一致。公共客户端省略 `clientSecret` 并使用 `none`；机密客户端根据 token 端点支持情况使用 `client_secret_post` 或 `client_secret_basic`。使用 SDK 动态注册时，配置 `registration_endpoint`，无需预注册客户端。该字段通过 JSON 配置/API 设置，Dashboard 编辑及模板导入导出会保留它，没有专用表单编辑器。
+
+MCP 受保护资源发现和 SDK 的 resource indicator 校验仍针对 MCP URL 执行，不会重写或删除 resource 参数。授权提供方必须接受生成的 resource 参数，并签发上游 MCP 服务接受的 token。该配置不会使内部 broker 自动可供浏览器访问，也不保证绕过 broker 的 token 转换后仍然兼容。直接使用 Microsoft 端点时，应验证所选上游模式的租户 issuer、Graph scopes、resource 参数及 token audience。
+
+选中的元数据随待授权 PKCE/state 保存，支持回调恢复；授权、授权码交换和刷新使用同一配置的授权服务器。回调继续校验 `iss`，元数据声明 `authorization_response_iss_parameter_supported: true` 时必须提供该参数。HTTP token 端点仍需单独启用管理员控制的 `allowInsecureTokenEndpoint` 例外。个人 token 加密、刷新和用户隔离保持不变；修改元数据会使个人绑定失效，需要重新连接。
+
+该服务器级配置独立于 MCPHub 下游的 `systemConfig.oauthServer` 和旧的全局 `systemConfig.oauth` 代理，此流程不需要启用这两项全局配置。

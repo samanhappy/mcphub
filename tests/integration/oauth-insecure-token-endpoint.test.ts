@@ -127,3 +127,23 @@ it.each(['https://as.example.com', 'http://localhost', 'http://127.0.0.1', 'http
     );
   },
 );
+
+it('explicit metadata preserves the HTTP token restriction for a shared static client', async () => {
+  stored.upstream.oauth!.authorizationServerMetadata = {
+    issuer,
+    authorization_endpoint: `${issuer}/external-authorize`,
+    token_endpoint: `${issuer}/token`,
+    response_types_supported: ['code'],
+    code_challenge_methods_supported: ['S256'],
+  };
+  await start(provider());
+  expect(stored.upstream.oauth!.pendingAuthorization?.authorizationUrl).toContain('/external-authorize?');
+  const finish = () => new StreamableHTTPClientTransport(new URL(serverUrl), {
+    authProvider: provider(), fetch: fetchFn,
+  }).finishAuth('code');
+  await expect(finish()).rejects.toThrow('Refusing to send credentials');
+  expect(tokenRequests).toHaveLength(0);
+  stored.upstream.oauth!.allowInsecureTokenEndpoint = true;
+  await finish();
+  expect(tokenRequests[0].get('grant_type')).toBe('authorization_code');
+});
