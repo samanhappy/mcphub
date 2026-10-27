@@ -166,3 +166,37 @@ You can rely on auto-detection for most servers or declare OAuth settings explic
 - When running behind HTTPS, expose the callback URL publicly or configure a reverse proxy at `/oauth/callback`.
 - If discovery fails, supply `authorizationEndpoint` and `tokenEndpoint` explicitly to bypass metadata lookup.
 - Remove stale tokens from `mcp_settings.json` if an authorization server revokes access—MCPHub will prompt for a fresh login on the next request.
+
+## Explicit authorization server metadata
+
+For a private HTTP MCP resource whose authorization server must be reached at a different address, set `oauth.authorizationServerMetadata` in the server JSON configuration. This is a complete, explicit replacement for authorization-server discovery in the SDK OAuth flow, for both shared and personal identities. It takes precedence over discovered authorization-server metadata and the legacy `authorizationEndpoint` / `tokenEndpoint` fields; omitting it retains the existing discovery behavior.
+
+```json
+{
+  "type": "streamable-http",
+  "url": "http://mcp-internal:3000/mcp",
+  "oauth": {
+    "identityMode": "personal",
+    "clientId": "${OAUTH_CLIENT_ID}",
+    "clientSecret": "${OAUTH_CLIENT_SECRET}",
+    "redirectUri": "https://hub.example.com/oauth/callback",
+    "scopes": ["User.Read", "offline_access"],
+    "authorizationServerMetadata": {
+      "issuer": "https://auth.example.com/tenant",
+      "authorization_endpoint": "https://auth.example.com/tenant/authorize",
+      "token_endpoint": "https://auth.example.com/tenant/token",
+      "response_types_supported": ["code"],
+      "code_challenge_methods_supported": ["S256"],
+      "token_endpoint_auth_methods_supported": ["client_secret_post"]
+    }
+  }
+}
+```
+
+Use the provider's actual issuer and endpoints, register MCPHub's callback URI with that provider, and choose scopes and client authentication matching the application registration. A public client omits `clientSecret` and uses `none`; a confidential client can use `client_secret_post` or `client_secret_basic` as supported by its token endpoint. For SDK dynamic registration, provide `registration_endpoint` instead of a pre-registered client. The override is available through JSON configuration/API and is retained by dashboard edits and template export/import; it has no dedicated form editor.
+
+MCP protected-resource discovery and the SDK's resource indicator validation still run against the MCP URL. Resource indicators are not rewritten or suppressed, so a provider must accept the resulting resource parameter and issue tokens the upstream MCP server accepts. This setting does not make an internal broker browser-accessible or guarantee that bypassing its token transformations is compatible. For Microsoft deployments, verify the tenant issuer, Graph scopes, resource parameter and token audience for the chosen upstream mode before using direct Microsoft endpoints.
+
+The selected metadata is captured with pending PKCE/state for callback recovery; authorization, code exchange and refresh use the same configured authority. Callback `iss` validation remains enabled, including required `iss` when metadata declares `authorization_response_iss_parameter_supported: true`. HTTP token endpoints still require the separate administrator-controlled `allowInsecureTokenEndpoint` exception. Personal token encryption, refresh and user isolation are unchanged; changing the metadata invalidates personal bindings and requires reconnecting.
+
+This per-server setting is independent of MCPHub's downstream `systemConfig.oauthServer` and the legacy global `systemConfig.oauth` proxy. Neither global setting is required for this flow.

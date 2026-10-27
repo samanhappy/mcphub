@@ -273,6 +273,19 @@ export interface ServerConfig {
       initialAccessToken?: string;
     };
     resource?: string; // OAuth resource parameter (RFC8707)
+    authorizationServerMetadata?: {
+      issuer: string;
+      authorization_endpoint: string;
+      token_endpoint: string;
+      response_types_supported: string[];
+      code_challenge_methods_supported?: string[];
+      token_endpoint_auth_methods_supported?: string[];
+      scopes_supported?: string[];
+      registration_endpoint?: string;
+      revocation_endpoint?: string;
+      authorization_response_iss_parameter_supported?: boolean;
+      [key: string]: unknown;
+    };
     authorizationEndpoint?: string; // Authorization endpoint (authorization code flow)
     tokenEndpoint?: string; // Token endpoint for exchanging authorization codes for tokens
     revocationEndpoint?: string; // Token revocation endpoint (RFC 7009)
@@ -431,6 +444,7 @@ export interface ServerFormData {
     scopes?: string;
     accessToken?: string;
     refreshToken?: string;
+    authorizationServerMetadata?: NonNullable<ServerConfig['oauth']>['authorizationServerMetadata'];
     authorizationEndpoint?: string;
     tokenEndpoint?: string;
     resource?: string;
@@ -834,6 +848,7 @@ export interface TemplateServerConfig {
       initialAccessToken?: string;
     };
     resource?: string;
+    authorizationServerMetadata?: NonNullable<ServerConfig['oauth']>['authorizationServerMetadata'];
     authorizationEndpoint?: string;
     tokenEndpoint?: string;
   };

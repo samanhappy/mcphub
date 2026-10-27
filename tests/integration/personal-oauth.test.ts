@@ -33,7 +33,9 @@ jest.mock('../../src/services/oauthClientRegistration.js', () => ({
   getRegisteredClient: jest.fn(),
   removeRegisteredClient: jest.fn(),
 }));
-const issuer = 'http://gitlab.internal.example';
+const discoveredIssuer = 'http://gitlab.internal.example';
+let issuer = discoveredIssuer;
+let requestedUrls: string[];
 const mockDefinition: ServerConfigWithName = {
   name: 'gitlab',
   type: 'streamable-http',
@@ -49,6 +51,7 @@ const mockDefinition: ServerConfigWithName = {
 let tokenRequests: URLSearchParams[];
 const fetchFn: typeof fetch = async (input, init) => {
   const url = String(input);
+  requestedUrls.push(url);
   if (url === `${issuer}/token`) {
     const body = new URLSearchParams(String(init?.body));
     tokenRequests.push(body);
@@ -61,11 +64,14 @@ const fetchFn: typeof fetch = async (input, init) => {
     });
   }
   if (url.includes('oauth-protected-resource'))
-    return Response.json({ resource: mockDefinition.url, authorization_servers: [issuer] });
+    return Response.json({
+      resource: mockDefinition.url,
+      authorization_servers: [discoveredIssuer],
+    });
   return Response.json({
-    issuer,
-    authorization_endpoint: `${issuer}/authorize`,
-    token_endpoint: `${issuer}/token`,
+    issuer: discoveredIssuer,
+    authorization_endpoint: `${discoveredIssuer}/authorize`,
+    token_endpoint: `${discoveredIssuer}/token`,
     response_types_supported: ['code'],
     code_challenge_methods_supported: ['S256'],
   });
@@ -80,6 +86,10 @@ beforeEach(() => {
   process.env.MCPHUB_SETTING_PATH = path.join(directory, 'settings.json');
   process.env.MCPHUB_CREDENTIAL_ENCRYPTION_KEY = randomBytes(32).toString('base64');
   tokenRequests = [];
+  requestedUrls = [];
+  issuer = discoveredIssuer;
+  delete mockDefinition.oauth!.authorizationServerMetadata;
+  delete mockDefinition.oauth!.clientSecret;
   jest.mocked(getServerDao).mockReturnValue({ findById: async () => mockDefinition } as any);
   jest.spyOn(logger, 'log').mockImplementation(() => undefined);
   jest.spyOn(logger, 'warn').mockImplementation(() => undefined);
@@ -97,47 +107,81 @@ const provider = async (username: string) => {
   return { context, provider: new MCPHubOAuthProvider('gitlab', context.config) };
 };
 
-test('two SDK authorization flows retain separate PKCE and tokens through restart and refresh', async () => {
-  const a = await provider('alice');
-  const b = await provider('bob');
-  await Promise.all(
-    [a, b].map((p) =>
-      expect(auth(p.provider, { serverUrl: mockDefinition.url!, fetchFn })).rejects.toThrow(
-        'OAuth authorization required',
+test.each([false, true])(
+  'two SDK flows isolate PKCE, exchange and refresh with metadata override=%s',
+  async (override) => {
+    if (override) {
+      issuer = 'https://login.example.com/tenant/v2.0';
+      mockDefinition.oauth!.clientSecret = 'static-secret';
+      mockDefinition.oauth!.authorizationServerMetadata = {
+        issuer,
+        authorization_endpoint: `${issuer}/authorize`,
+        token_endpoint: `${issuer}/token`,
+        response_types_supported: ['code'],
+        code_challenge_methods_supported: ['S256'],
+        token_endpoint_auth_methods_supported: ['client_secret_post'],
+        authorization_response_iss_parameter_supported: true,
+      };
+    }
+    const a = await provider('alice');
+    const b = await provider('bob');
+    await Promise.all(
+      [a, b].map((p) =>
+        expect(auth(p.provider, { serverUrl: mockDefinition.url!, fetchFn })).rejects.toThrow(
+          'OAuth authorization required',
+        ),
       ),
-    ),
-  );
-  const aPending = a.context.config.oauth.pendingAuthorization!;
-  const bPending = b.context.config.oauth.pendingAuthorization!;
-  expect(aPending.state).not.toBe(bPending.state);
-  expect(aPending.codeVerifier).not.toBe(bPending.codeVerifier);
-  expect((await findPersonalOAuthFlow(aPending.state!))?.username).toBe('alice');
-  expect(JSON.stringify(jest.mocked(logger.log).mock.calls)).not.toContain(
-    aPending.authorizationUrl,
-  );
-  const restartedA = await provider('alice');
-  for (const [user, p] of [
-    ['alice', restartedA],
-    ['bob', b],
-  ] as const) {
-    await new StreamableHTTPClientTransport(new URL(mockDefinition.url!), {
-      authProvider: p.provider,
-      fetch: fetchFn,
-    }).finishAuth(user);
-    expect(p.provider.tokens()?.access_token).toBe(`token-${user}`);
-  }
-  expect(tokenRequests[0].get('code_verifier')).toBe(aPending.codeVerifier);
-  expect(tokenRequests[1].get('code_verifier')).toBe(bPending.codeVerifier);
-  expect(await findPersonalOAuthFlow(aPending.state!)).toBeUndefined();
-  await expect(
-    auth(restartedA.provider, { serverUrl: mockDefinition.url!, fetchFn }),
-  ).resolves.toBe('AUTHORIZED');
-  expect(tokenRequests[2].get('refresh_token')).toBe('refresh-alice');
-  expect((await provider('bob')).provider.tokens()?.access_token).toBe('token-bob');
-  expect(mockDefinition.oauth).not.toHaveProperty('accessToken');
-  const persisted = fs.readFileSync(`${process.env.MCPHUB_SETTING_PATH}.credentials.json`, 'utf8');
-  expect(persisted).not.toMatch(/token-alice|refresh-bob|codeVerifier/);
-});
+    );
+    const aPending = a.context.config.oauth.pendingAuthorization!;
+    const bPending = b.context.config.oauth.pendingAuthorization!;
+    const authorizationUrl = new URL(aPending.authorizationUrl!);
+    expect(authorizationUrl.origin + authorizationUrl.pathname).toBe(`${issuer}/authorize`);
+    expect(authorizationUrl.searchParams.get('resource')).toBe(mockDefinition.url);
+    expect(authorizationUrl.searchParams.get('code_challenge_method')).toBe('S256');
+    expect(aPending.issuer).toBe(issuer);
+    expect(aPending.state).not.toBe(bPending.state);
+    expect(aPending.codeVerifier).not.toBe(bPending.codeVerifier);
+    expect((await findPersonalOAuthFlow(aPending.state!))?.username).toBe('alice');
+    expect(JSON.stringify(jest.mocked(logger.log).mock.calls)).not.toContain(
+      aPending.authorizationUrl,
+    );
+    const restartedA = await provider('alice');
+    for (const [user, p] of [
+      ['alice', restartedA],
+      ['bob', b],
+    ] as const) {
+      await new StreamableHTTPClientTransport(new URL(mockDefinition.url!), {
+        authProvider: p.provider,
+        fetch: fetchFn,
+      }).finishAuth(user, override ? issuer : undefined);
+      expect(p.provider.tokens()?.access_token).toBe(`token-${user}`);
+    }
+    expect(tokenRequests[0].get('code_verifier')).toBe(aPending.codeVerifier);
+    expect(tokenRequests[1].get('code_verifier')).toBe(bPending.codeVerifier);
+    expect(await findPersonalOAuthFlow(aPending.state!)).toBeUndefined();
+    await expect(
+      auth(restartedA.provider, { serverUrl: mockDefinition.url!, fetchFn }),
+    ).resolves.toBe('AUTHORIZED');
+    expect(tokenRequests[2].get('refresh_token')).toBe('refresh-alice');
+    for (const request of tokenRequests) {
+      expect(request.get('resource')).toBe(mockDefinition.url);
+      if (override) expect(request.get('client_secret')).toBe('static-secret');
+    }
+    if (override) {
+      expect(requestedUrls.filter((url) => url.includes('oauth-authorization-server'))).toEqual([]);
+      expect(requestedUrls.filter((url) => url.endsWith('/token'))).toEqual(
+        Array(3).fill(`${issuer}/token`),
+      );
+    }
+    expect((await provider('bob')).provider.tokens()?.access_token).toBe('token-bob');
+    expect(mockDefinition.oauth).not.toHaveProperty('accessToken');
+    const persisted = fs.readFileSync(
+      `${process.env.MCPHUB_SETTING_PATH}.credentials.json`,
+      'utf8',
+    );
+    expect(persisted).not.toMatch(/token-alice|refresh-bob|codeVerifier/);
+  },
+);
 
 test('disconnection rejects a late SDK token save and never restores the old binding', async () => {
   const a = await provider('alice');
@@ -204,4 +248,46 @@ test('an active personal OAuth flow survives normalization of the default SSE ty
   } finally {
     mockDefinition.type = originalType;
   }
+});
+
+test('explicit metadata preserves callback issuer validation before token exchange', async () => {
+  mockDefinition.oauth!.authorizationServerMetadata = {
+    issuer: 'https://login.example.com/tenant',
+    authorization_endpoint: 'https://login.example.com/authorize',
+    token_endpoint: 'https://login.example.com/token',
+    response_types_supported: ['code'],
+    code_challenge_methods_supported: ['S256'],
+    authorization_response_iss_parameter_supported: true,
+  };
+  const a = await provider('alice');
+  await expect(auth(a.provider, { serverUrl: mockDefinition.url!, fetchFn })).rejects.toThrow(
+    'OAuth authorization required',
+  );
+  const restarted = await provider('alice');
+  const transport = new StreamableHTTPClientTransport(new URL(mockDefinition.url!), {
+    authProvider: restarted.provider,
+    fetch: fetchFn,
+  });
+  await expect(transport.finishAuth('alice')).rejects.toThrow(/iss/i);
+  await expect(transport.finishAuth('alice', 'https://wrong.example.com')).rejects.toThrow(/iss/i);
+  expect(tokenRequests).toHaveLength(0);
+  expect(requestedUrls.some((url) => url.endsWith('/token'))).toBe(false);
+});
+
+test('explicit metadata does not bypass MCP resource validation', async () => {
+  mockDefinition.oauth!.authorizationServerMetadata = {
+    issuer: 'https://login.example.com',
+    authorization_endpoint: 'https://login.example.com/authorize',
+    token_endpoint: 'https://login.example.com/token',
+    response_types_supported: ['code'],
+    code_challenge_methods_supported: ['S256'],
+  };
+  const a = await provider('alice');
+  await expect(
+    auth(a.provider, {
+      serverUrl: mockDefinition.url!,
+      fetchFn: async () => Response.json({ resource: 'https://unrelated.example/mcp' }),
+    }),
+  ).rejects.toThrow('does not match expected');
+  expect(tokenRequests).toHaveLength(0);
 });

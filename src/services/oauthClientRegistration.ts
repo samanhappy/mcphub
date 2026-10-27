@@ -589,7 +589,8 @@ export const initializeOAuthForServer = async (
   autoDetectedIssuer?: string,
   autoDetectedScopes?: string[],
 ): Promise<RegisteredClientInfo | null> => {
-  if (!serverConfig.oauth) {
+  // Explicit metadata is consumed by the SDK provider, including registration.
+  if (!serverConfig.oauth || serverConfig.oauth.authorizationServerMetadata) {
     return null;
   }
 

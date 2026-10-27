@@ -63,6 +63,24 @@ describe('registerClient redirect URI handling', () => {
     });
   });
 
+  it('leaves explicit metadata registration to the SDK instead of discovering another issuer', async () => {
+    const result = await initializeOAuthForServer('notion', {
+      url: 'https://private.example/mcp',
+      oauth: {
+        dynamicRegistration: { enabled: true, issuer: 'https://legacy.example' },
+        authorizationServerMetadata: {
+          issuer: 'https://as.example.com',
+          authorization_endpoint: 'https://as.example.com/authorize',
+          token_endpoint: 'https://as.example.com/token',
+          response_types_supported: ['code'],
+        },
+      },
+    });
+    expect(result).toBeNull();
+    expect(mockDiscovery).not.toHaveBeenCalled();
+    expect(mockDynamicClientRegistration).not.toHaveBeenCalled();
+  });
+
   it('uses oauth.redirectUri for dynamic client registration when provided', async () => {
     (getSystemConfigDao as jest.Mock).mockReturnValue({
       get: jest.fn().mockResolvedValue({

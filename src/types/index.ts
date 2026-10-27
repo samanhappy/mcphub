@@ -539,6 +539,8 @@ export interface ServerConfig {
     // MCP resource parameter (RFC8707) - the canonical URI of the MCP server
     resource?: string; // e.g., 'https://mcp.example.com/mcp'
 
+    // Explicit authorization-server metadata replaces SDK discovery for this upstream.
+    authorizationServerMetadata?: NonNullable<OAuthDiscoveryState['authorizationServerMetadata']>;
     // Authorization endpoint for user authorization (for authorization code flow)
     authorizationEndpoint?: string;
     // Token endpoint for exchanging authorization codes for tokens

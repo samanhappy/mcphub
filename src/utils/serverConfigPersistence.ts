@@ -1,3 +1,4 @@
+import { oauthServerMetadataSchema } from './oauthServerMetadata.js';
 import { resolveUpstreamProtocolMode } from './mcpProtocol.js';
 import { validateCredentialTemplate } from './credentialTemplate.js';
 import { validateMaxBufferSize } from './stdioOptions.js';
@@ -178,6 +179,16 @@ export const normalizeOAuth = (
       throw new ServerConfigValidationError('oauth.allowInsecureTokenEndpoint must be a boolean');
     }
     normalized.allowInsecureTokenEndpoint = oauth.allowInsecureTokenEndpoint;
+  }
+
+  if (oauth.authorizationServerMetadata !== undefined) {
+    const result = oauthServerMetadataSchema.safeParse(oauth.authorizationServerMetadata);
+    if (!result.success) {
+      throw new ServerConfigValidationError(
+        `Invalid oauth.authorizationServerMetadata: ${result.error.message}`,
+      );
+    }
+    normalized.authorizationServerMetadata = result.data;
   }
 
   const clientId = trimToUndefined(oauth.clientId);

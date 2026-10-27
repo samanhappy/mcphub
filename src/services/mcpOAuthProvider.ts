@@ -1,3 +1,4 @@
+import { oauthServerMetadataSchema } from '../utils/oauthServerMetadata.js';
 import * as sharedOAuthSettings from './oauthSettingsStore.js';
 import {
   personalOAuthContexts,
@@ -233,7 +234,10 @@ export class MCPHubOAuthProvider implements OAuthClientProvider {
    * Get previously registered client information
    */
   clientInformation(): OAuthClientInformationWithAuthMethod | undefined {
-    const clientInfo = this.personal ? undefined : getRegisteredClient(this.serverName);
+    const clientInfo =
+      this.personal || this.serverConfig.oauth?.authorizationServerMetadata
+        ? undefined
+        : getRegisteredClient(this.serverName);
     // The SDK uses this hint when authorization-server metadata omits
     // token_endpoint_auth_methods_supported. Keep it alongside credentials so
     // refresh requests use the same authentication method that MCPHub selected
@@ -387,7 +391,20 @@ export class MCPHubOAuthProvider implements OAuthClientProvider {
       this.serverConfig = storedConfig;
       this.saveDiscoveryState(state);
     }
-    return state;
+    if (state) return state;
+
+    const configured = this.serverConfig.oauth?.authorizationServerMetadata;
+    if (configured !== undefined) {
+      const metadata = oauthServerMetadataSchema.parse(configured);
+      // Seed the authority only; the SDK still discovers and validates the MCP resource.
+      const override: OAuthDiscoveryState = {
+        authorizationServerUrl: metadata.issuer,
+        authorizationServerMetadata: metadata,
+      };
+      this.saveDiscoveryState(override);
+      return override;
+    }
+    return undefined;
   }
 
   /**
@@ -693,6 +710,7 @@ export const createOAuthProvider = async (
         oauth.clientId ||
         oauth.accessToken ||
         oauth.refreshToken ||
+        oauth.authorizationServerMetadata ||
         oauth.authorizationEndpoint ||
         oauth.tokenEndpoint ||
         oauth.dynamicRegistration?.enabled ||
