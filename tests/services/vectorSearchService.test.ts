@@ -18,6 +18,7 @@ const mockReconnectDatabase = jest.fn();
 const mockGetSmartRoutingConfig = jest.fn();
 const mockFindServerById = jest.fn();
 const mockEmbeddingCreate = jest.fn();
+const mockEmbeddingPost = jest.fn();
 const mockOpenAIConstructor = jest.fn();
 const mockGetServerDao = jest.fn(() => ({
   findById: mockFindServerById,
@@ -59,6 +60,7 @@ jest.mock('openai', () => ({
   __esModule: true,
   default: class MockOpenAI {
     apiKey?: string;
+    post = mockEmbeddingPost;
     embeddings = {
       create: mockEmbeddingCreate,
     };
@@ -740,6 +742,173 @@ describe('vectorSearchService', () => {
     await removeServerToolEmbeddings('redis');
 
     expect(mockVectorRepository.deleteByServerName).toHaveBeenCalledWith('redis');
+  });
+
+  describe('embedding encoding negotiation', () => {
+    let endpoint = 0;
+    beforeEach(() => {
+      mockEmbeddingPost.mockReset();
+      mockGetSmartRoutingConfig.mockResolvedValue({
+        enabled: true,
+        embeddingProvider: 'openai',
+        embeddingModel: 'text-embedding-3-small',
+        llmProviderBaseUrl: `https://encoding-${++endpoint}.example.com/v1`,
+        llmProviderApiKey: 'sk-test',
+      });
+      mockVectorRepository.searchSimilar.mockResolvedValue([]);
+      mockEmbeddingCreate.mockResolvedValue({ data: [{ embedding: [3, 4] }] });
+    });
+    const query = () => searchToolsByVector('find a tool', 10, 0.3);
+    const formats = () =>
+      mockEmbeddingCreate.mock.calls.map(([payload]) => payload.encoding_format);
+    const rejection = {
+      status: 400,
+      error: { param: 'encoding_format', message: 'Unsupported encoding_format' },
+    };
+
+    it('uses base64 on unknown endpoints without a probe and decodes the actual response', async () => {
+      const bytes = Buffer.alloc(8);
+      bytes.writeFloatLE(3, 0);
+      bytes.writeFloatLE(4, 4);
+      mockEmbeddingCreate.mockResolvedValue({ data: [{ embedding: bytes.toString('base64') }] });
+      await query();
+      expect(formats()).toEqual(['base64']);
+      expect(mockVectorRepository.searchSimilar).toHaveBeenCalledWith(
+        [0.6, 0.8],
+        10,
+        0.3,
+        ['tool'],
+        undefined,
+      );
+    });
+
+    it('negotiates once for concurrent requests and caches the successful request format', async () => {
+      mockEmbeddingCreate.mockRejectedValueOnce(rejection);
+      await Promise.all([query(), query(), query()]);
+      expect(formats()).toEqual(['base64', 'float', 'float', 'float']);
+    });
+
+    it('omits the parameter through the raw endpoint when both encodings are rejected', async () => {
+      mockEmbeddingCreate.mockRejectedValue(rejection);
+      mockEmbeddingPost.mockResolvedValue({ data: [{ embedding: [3, 4] }] });
+      await query();
+      await query();
+      expect(formats()).toEqual(['base64', 'float']);
+      expect(mockEmbeddingPost).toHaveBeenCalledTimes(2);
+      expect(mockEmbeddingPost).toHaveBeenCalledWith('/embeddings', {
+        body: expect.not.objectContaining({ encoding_format: expect.anything() }),
+      });
+    });
+
+    it.each(['llmProviderBaseUrl', 'embeddingModel', 'llmProviderApiKey'])(
+      'invalidates negotiation when %s changes',
+      async (field) => {
+        mockEmbeddingCreate.mockRejectedValueOnce(rejection);
+        await query();
+        mockGetSmartRoutingConfig.mockResolvedValue({
+          ...(await mockGetSmartRoutingConfig()),
+          [field]: 'changed',
+        });
+        await query();
+        expect(formats()).toEqual(['base64', 'float', 'base64']);
+      },
+    );
+
+    it.each(['float', 'base64'])(
+      'preserves explicit %s overrides without negotiation',
+      async (format) => {
+        mockGetSmartRoutingConfig.mockResolvedValue({
+          ...(await mockGetSmartRoutingConfig()),
+          embeddingEncodingFormat: format,
+        });
+        mockEmbeddingCreate.mockRejectedValue(rejection);
+        await query();
+        expect(formats()).toEqual([format]);
+        expect(mockEmbeddingPost).not.toHaveBeenCalled();
+      },
+    );
+
+    it.each([
+      { status: 401, message: 'Invalid encoding_format credentials' },
+      { status: 400, message: 'Invalid model' },
+      {
+        status: 400,
+        error: { param: 'model', message: 'Invalid model; encoding_format is base64' },
+      },
+      { status: 400, message: 'encoding_format request failed' },
+      { message: 'Network timeout' },
+    ])('does not negotiate unrelated errors: %j', async (error) => {
+      mockEmbeddingCreate.mockRejectedValue(error);
+      await query();
+      expect(formats()).toEqual(['base64']);
+      expect(mockEmbeddingPost).not.toHaveBeenCalled();
+    });
+
+    it.each([undefined, [], [NaN], [Infinity], ['3'], 'invalid!', 'AAAA'])(
+      'rejects malformed vectors: %j',
+      async (embedding) => {
+        mockVectorRepository.searchSimilar.mockClear();
+        mockEmbeddingCreate.mockResolvedValueOnce({ data: [{ embedding }] });
+        await query();
+        expect(mockVectorRepository.searchSimilar).not.toHaveBeenCalled();
+        await query();
+        expect(formats()).toEqual(['base64', 'base64']);
+      },
+    );
+
+    it('retries transient failures without changing the encoding', async () => {
+      const timer = jest.spyOn(global, 'setTimeout').mockImplementation((callback) => {
+        callback();
+        return {} as ReturnType<typeof setTimeout>;
+      });
+      try {
+        mockEmbeddingCreate.mockRejectedValueOnce({
+          status: 503,
+          message: 'Unsupported encoding_format',
+        });
+        await query();
+        expect(formats()).toEqual(['base64', 'base64']);
+      } finally {
+        timer.mockRestore();
+      }
+    });
+
+    it('decodes base64 even when the requested format is float', async () => {
+      mockGetSmartRoutingConfig.mockResolvedValue({
+        ...(await mockGetSmartRoutingConfig()),
+        embeddingEncodingFormat: 'float',
+      });
+      const bytes = Buffer.alloc(8);
+      bytes.writeFloatLE(3, 0);
+      bytes.writeFloatLE(4, 4);
+      mockEmbeddingCreate.mockResolvedValue({ data: [{ embedding: bytes.toString('base64') }] });
+      await query();
+      expect(formats()).toEqual(['float']);
+      expect(mockVectorRepository.searchSimilar).toHaveBeenCalledWith(
+        [0.6, 0.8],
+        10,
+        0.3,
+        ['tool'],
+        undefined,
+      );
+    });
+
+    it('does not cache a failed fallback', async () => {
+      mockEmbeddingCreate.mockRejectedValueOnce(rejection).mockRejectedValueOnce({ status: 401 });
+      await query();
+      await query();
+      expect(formats()).toEqual(['base64', 'float', 'base64']);
+    });
+
+    it('renegotiates a cached format when the provider explicitly rejects it', async () => {
+      mockEmbeddingCreate.mockRejectedValueOnce(rejection);
+      await query();
+      mockEmbeddingCreate.mockRejectedValueOnce(rejection);
+      mockEmbeddingPost.mockResolvedValue({ data: [{ embedding: [3, 4] }] });
+      await query();
+      expect(formats()).toEqual(['base64', 'float', 'float']);
+      expect(mockEmbeddingPost).toHaveBeenCalledTimes(1);
+    });
   });
 
   describe('embedding task prefixes', () => {

@@ -44,7 +44,7 @@ const buildEmbeddingsDebugCurl = (
   payload: {
     model: string;
     input: string;
-    encoding_format: 'base64' | 'float';
+    encoding_format?: 'base64' | 'float';
     dimensions?: number;
   },
 ): string => {
@@ -181,15 +181,8 @@ const GEMINI_EMBEDDING_DIMENSIONS = 3072;
 /** Fallback embedding method (used when no API is configured) produces 100-dimensional vectors */
 const FALLBACK_DIMENSIONS = 100;
 
-// ============================================================================
-// Provider Support Configuration
-// ============================================================================
-/** Base URLs that support base64 embedding encoding (more efficient than float arrays) */
-const BASE64_EMBEDDING_SUPPORTED_PROVIDERS = [
-  'https://api.openai.com',
-  'https://api.siliconflow.cn',
-  'https://openrouter.ai',
-];
+// Successful auto negotiation for the active provider configuration only.
+let embeddingEncodingCache: { key: string; format: 'base64' | 'float' | 'default' } | undefined;
 
 // ============================================================================
 // Adaptive Pacing Configuration (Rate Limiting)
@@ -751,9 +744,40 @@ const getOpenAIClient = async () => {
   });
 };
 
-// Check if the provider supports base64 embeddings
-const supportBase64Embeddings = async (baseURL: string = ''): Promise<boolean> => {
-  return !baseURL || BASE64_EMBEDDING_SUPPORTED_PROVIDERS.some((url) => baseURL.startsWith(url));
+// Only explicit encoding rejections qualify for negotiation, never generic request failures.
+const isEncodingRejected = (error: unknown): boolean => {
+  if (extractErrorStatus(error) !== 400 && extractErrorStatus(error) !== 422) return false;
+  const detail = error as { error?: { param?: string; message?: string }; message?: string };
+  if (detail.error?.param && detail.error.param !== 'encoding_format') return false;
+  const message = detail.error?.message ?? detail.message ?? '';
+  return (
+    (detail.error?.param === 'encoding_format' || /\bencoding_format\b/i.test(message)) &&
+    /unsupported|not supported|does not support|invalid|must be|only|not allowed|unknown|unrecognized/i.test(
+      message,
+    )
+  );
+};
+
+const decodeEmbedding = (value: unknown): number[] => {
+  if (typeof value === 'string') {
+    if (
+      !value.length ||
+      value.length % 4 !== 0 ||
+      !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(value) ||
+      Buffer.from(value, 'base64').length % 4 !== 0
+    ) {
+      throw new Error('Invalid base64 embedding response');
+    }
+    value = toFloat32Array(value);
+  }
+  if (
+    !Array.isArray(value) ||
+    !value.length ||
+    !value.every((n) => typeof n === 'number' && Number.isFinite(n))
+  ) {
+    throw new Error('Embedding response must contain a non-empty array of finite numbers');
+  }
+  return normalizeEmbedding(value);
 };
 
 /**
@@ -860,14 +884,15 @@ async function generateEmbedding(text: string, kind: 'query' | 'document'): Prom
 
   // Determine encoding format based on configuration
   const encodingFormatSetting = smartRoutingConfig.embeddingEncodingFormat || 'auto';
-  let encodingFormat: 'base64' | 'float';
-  if (encodingFormatSetting === 'auto') {
-    const canUseBase64 = await supportBase64Embeddings(config.baseURL);
-    encodingFormat = canUseBase64 ? 'base64' : 'float';
-  } else {
-    encodingFormat = encodingFormatSetting;
-  }
-
+  const encodingCacheKey = JSON.stringify([
+    provider,
+    config.baseURL,
+    config.embeddingModel,
+    config.apiKey,
+    config.embeddingDimensions,
+    smartRoutingConfig.embeddingDimensionsApiPassthrough,
+    encodingFormatSetting,
+  ]);
   // Only forward `dimensions` for models known to support it (or when the user
   // explicitly opts into passthrough). Non-MRL deployments reject the parameter
   // outright — even when the value equals the model's native dimension
@@ -883,66 +908,83 @@ async function generateEmbedding(text: string, kind: 'query' | 'document'): Prom
     ...(forwardDimensions && config.embeddingDimensions !== undefined
       ? { dimensions: config.embeddingDimensions }
       : {}),
-    encoding_format: encodingFormat,
     input: truncatedText,
   } as const;
 
-  if (process.env.DEBUG === 'true') {
-    const debugCurl = buildEmbeddingsDebugCurl(config.baseURL, embeddingPayload);
-
-    logger.log(
-      `[Embedding] HTTP request details: ${JSON.stringify(
-        {
-          url: `${(config.baseURL || 'https://api.openai.com/v1').replace(/\/+$/, '')}/embeddings`,
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${maskApiKey(config.apiKey || '')}`,
-            'Content-Type': 'application/json',
-          },
-          payload: embeddingPayload,
-        },
-        null,
-        2,
-      )}`,
-    );
-    logger.log(
-      `[Embedding] Reproducible curl (copy/paste and replace <YOUR_API_KEY>):\n${debugCurl}`,
-    );
-  }
-
-  logger.debug(
-    `[Embedding] API request → model=${config.embeddingModel}, encoding_format=${encodingFormat}, input_length=${truncatedText.length} chars | input_preview: "${truncatedText.substring(0, 200).replace(/\s+/g, ' ')}"`,
-  );
   const _requestStart = Date.now();
   try {
-    // Call OpenAI-compatible embeddings API with conservative retry/backoff policy.
-    const response = await withEmbeddingQueue(() =>
-      executeWithRetry(
-        () =>
-          openai.embeddings.create({
-            model: embeddingPayload.model,
-            ...(embeddingPayload.dimensions !== undefined
-              ? { dimensions: embeddingPayload.dimensions }
-              : {}),
-            encoding_format: embeddingPayload.encoding_format,
-            input: embeddingPayload.input,
-          }),
-        {
-          provider,
-          model: config.embeddingModel,
-          baseURL: config.baseURL,
-        },
-      ),
-    );
-    logger.debug(`[Embedding] API response OK in ${Date.now() - _requestStart}ms`);
+    return await withEmbeddingQueue(async () => {
+      if (embeddingEncodingCache?.key !== encodingCacheKey) embeddingEncodingCache = undefined;
+      let encodingFormat =
+        encodingFormatSetting === 'auto'
+          ? (embeddingEncodingCache?.format ?? 'base64')
+          : encodingFormatSetting;
+      const request = () => {
+        const payload = {
+          ...embeddingPayload,
+          ...(encodingFormat === 'default' ? {} : { encoding_format: encodingFormat }),
+        };
+        if (process.env.DEBUG === 'true') {
+          logger.log(
+            `[Embedding] HTTP request details: ${JSON.stringify(
+              {
+                url: `${(config.baseURL || 'https://api.openai.com/v1').replace(/\/+$/, '')}/embeddings`,
+                method: 'POST',
+                headers: {
+                  Authorization: `Bearer ${maskApiKey(config.apiKey || '')}`,
+                  'Content-Type': 'application/json',
+                },
+                payload,
+              },
+              null,
+              2,
+            )}`,
+          );
 
-    if (encodingFormat === 'base64' && typeof response.data[0].embedding === 'string') {
-      const embeddingBase64Str = response.data[0].embedding as unknown as string;
-      return normalizeEmbedding(toFloat32Array(embeddingBase64Str));
-    }
-
-    // Return the embedding
-    return normalizeEmbedding(response.data[0].embedding);
+          logger.log(
+            `[Embedding] Reproducible curl (copy/paste and replace <YOUR_API_KEY>):\n${buildEmbeddingsDebugCurl(config.baseURL, payload)}`,
+          );
+        }
+        logger.debug(
+          `[Embedding] API request → model=${config.embeddingModel}, encoding_format=${encodingFormat}, input_length=${truncatedText.length} chars | input_preview: "${truncatedText.substring(0, 200).replace(/\s+/g, ' ')}"`,
+        );
+        return executeWithRetry(
+          () =>
+            // The SDK inserts base64 when the parameter is omitted; use the raw endpoint instead.
+            encodingFormat === 'default'
+              ? openai.post<OpenAI.Embeddings.CreateEmbeddingResponse>('/embeddings', {
+                  body: payload,
+                })
+              : openai.embeddings.create(payload),
+          {
+            provider,
+            model: config.embeddingModel,
+            baseURL: config.baseURL,
+          },
+        );
+      };
+      let response;
+      while (true) {
+        try {
+          response = await request();
+          break;
+        } catch (error) {
+          if (
+            encodingFormatSetting !== 'auto' ||
+            encodingFormat === 'default' ||
+            !isEncodingRejected(error)
+          )
+            throw error;
+          encodingFormat = encodingFormat === 'base64' ? 'float' : 'default';
+        }
+      }
+      logger.debug(`[Embedding] API response OK in ${Date.now() - _requestStart}ms`);
+      const embedding = decodeEmbedding(response.data?.[0]?.embedding);
+      if (encodingFormatSetting === 'auto') {
+        embeddingEncodingCache = { key: encodingCacheKey, format: encodingFormat };
+      }
+      return embedding;
+    });
   } catch (error: any) {
     const status = extractErrorStatus(error);
     logger.warn('OpenAI-compatible embeddings request failed after retries', {
