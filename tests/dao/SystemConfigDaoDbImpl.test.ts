@@ -32,3 +32,16 @@ it('round-trips tool policies through the database mapping and rejects invalid r
     'toolPolicies must be an array',
   );
 });
+
+it.each([null, undefined])(
+  'normalizes unset database policies (%s) on reads, unrelated updates and resets',
+  async (toolPolicies) => {
+    mockGet.mockResolvedValue({ toolPolicies });
+    mockUpdate.mockResolvedValue({ toolPolicies });
+    mockReset.mockResolvedValue({ toolPolicies });
+    const dao = new SystemConfigDaoDbImpl();
+    expect((await dao.get()).toolPolicies).toEqual([]);
+    expect((await dao.update({ nameSeparator: '-' })).toolPolicies).toEqual([]);
+    expect((await dao.reset()).toolPolicies).toEqual([]);
+  },
+);
