@@ -284,7 +284,7 @@ const BearerKeyRow: React.FC<BearerKeyRowProps> = ({
                 <button
                   type="button"
                   onClick={() => setIsEditing(false)}
-                  className="px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 text-gray-700 rounded-md text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 h-[38px]"
+                  className="hub-btn"
                 >
                   {t('common.cancel') || 'Cancel'}
                 </button>
