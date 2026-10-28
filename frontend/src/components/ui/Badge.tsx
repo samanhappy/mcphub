@@ -24,7 +24,7 @@ export function Badge({ children, variant = 'default', className, onClick }: Bad
   return (
     <span
       className={cn(
-        'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold transition-colors',
+        'inline-flex items-center border border-transparent rounded-full px-2.5 py-0.5 text-xs font-semibold transition-colors',
         badgeVariants[variant],
         onClick ? 'cursor-pointer' : '',
         className,
