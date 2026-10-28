@@ -839,6 +839,10 @@
     "restoreDefaultFailed": "恢复默认提示词描述失败"
   },
   "settings": {
+    "resetBearerKey": "重置 Bearer key",
+    "resetBearerKeyConfirm": "确认重置此 Bearer key？原 token 将立即失效，权限和启用状态保持不变。",
+    "resetBearerKeySuccess": "Bearer key 已重置。请在关闭前复制并保存新 token，之后将不再显示。",
+    "resetBearerKeyError": "重置 Bearer key 失败",
     "allowRegistration": "允许自助注册",
     "allowRegistrationDescription": "允许访客从登录页创建普通账号。默认关闭；禁用密码登录时不可用。",
     "allowedCidrs": "允许访问的上游 CIDR 范围",

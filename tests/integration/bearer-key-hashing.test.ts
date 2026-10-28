@@ -5,7 +5,11 @@ import express from 'express';
 import request from 'supertest';
 import { clearSettingsCache, saveSettings } from '../../src/config/index.js';
 import { getBearerKeyDao, JsonFileDaoFactory, setDaoFactory } from '../../src/dao/DaoFactory.js';
-import { createBearerKey, getBearerKeys } from '../../src/controllers/bearerKeyController.js';
+import {
+  createBearerKey,
+  getBearerKeys,
+  resetBearerKey,
+} from '../../src/controllers/bearerKeyController.js';
 import { auth } from '../../src/middlewares/auth.js';
 import { authenticatedRouteRateLimiter } from '../../src/utils/rateLimit.js';
 import type { McpSettings } from '../../src/types/index.js';
@@ -70,7 +74,7 @@ afterAll(() => {
 });
 
 const fakeRes = () => {
-  const res: any = { statusCode: 200, body: undefined };
+  const res: any = { statusCode: 200, body: undefined, setHeader: jest.fn() };
   res.status = (code: number) => ((res.statusCode = code), res);
   res.json = (body: unknown) => ((res.body = body), res);
   return res;
@@ -101,6 +105,90 @@ describe('bearer keys are stored hashed', () => {
     const serialized = JSON.stringify(listed.body);
     expect(serialized).not.toContain(token);
     expect(serialized).not.toContain('tokenHash');
+  });
+
+  it.each([true, false])(
+    'rotates the secret without changing scope or enabled=%s',
+    async (enabled) => {
+      const oldToken = 'old-bearer-token';
+      const metadata = {
+        id: 'rotate',
+        name: 'scoped',
+        enabled,
+        kind: 'system' as const,
+        accessType: 'custom' as const,
+        allowedGroups: ['team'],
+        allowedServers: ['docs'],
+      };
+      writeSettings({ ...baseSettings, bearerKeys: [{ ...metadata, token: oldToken }] });
+      const result = fakeRes();
+      await resetBearerKey(
+        { ...adminReq({ enabled: !enabled, accessType: 'all' }), params: { id: 'rotate' } },
+        result,
+      );
+      expect(result.statusCode).toBe(200);
+      const token = result.body.data.token;
+      expect(token).toMatch(/^mcphub_[0-9a-f]{64}$/);
+      expect(result.body.data).toMatchObject(metadata);
+      expect(result.body.data.tokenHash).toBeUndefined();
+      expect(result.setHeader).toHaveBeenCalledWith('Cache-Control', 'no-store');
+      expect(onDisk()).not.toContain(token);
+      expect(onDisk()).not.toContain(oldToken);
+      expect(await getBearerKeyDao().findByToken(oldToken)).toBeUndefined();
+      expect(await getBearerKeyDao().findByToken(token)).toMatchObject(metadata);
+      expect((await get(oldToken)).status).toBe(401);
+      // Scoped system keys remain ineligible for dashboard authentication.
+      expect((await get(token)).status).toBe(401);
+      const listed = fakeRes();
+      await getBearerKeys(adminReq(), listed);
+      expect(JSON.stringify(listed.body)).not.toContain(token);
+    },
+  );
+
+  it('authenticates with a rotated all-access key and rejects the previous token', async () => {
+    const created = fakeRes();
+    await createBearerKey(adminReq({ name: 'all', accessType: 'all' }), created);
+    const oldToken = created.body.data.token;
+    const result = fakeRes();
+    await resetBearerKey({ ...adminReq(), params: { id: created.body.data.id } }, result);
+    expect((await get(oldToken)).status).toBe(401);
+    expect((await get(result.body.data.token)).status).toBe(200);
+  });
+
+  it('allows the owner to reset a user key but rejects other users and system keys', async () => {
+    const key = {
+      id: 'owned',
+      name: 'personal',
+      enabled: true,
+      kind: 'user' as const,
+      owner: 'alice',
+      accessType: 'all' as const,
+      token: 'old-personal-token',
+    };
+    writeSettings({
+      ...baseSettings,
+      bearerKeys: [
+        key,
+        { ...key, id: 'system', kind: 'system', owner: undefined, token: 'other-system-token' },
+      ],
+    });
+    for (const [username, id] of [
+      ['bob', 'owned'],
+      ['alice', 'system'],
+    ]) {
+      const result = fakeRes();
+      await resetBearerKey({ user: { username, isAdmin: false }, params: { id } } as any, result);
+      expect(result.statusCode).toBe(403);
+    }
+    expect(await getBearerKeyDao().findByToken(key.token)).toMatchObject({ id: 'owned' });
+    const result = fakeRes();
+    await resetBearerKey(
+      { user: { username: 'alice', isAdmin: false }, params: { id: 'owned' } } as any,
+      result,
+    );
+    expect(result.statusCode).toBe(200);
+    expect(result.body.data).toMatchObject({ owner: 'alice', kind: 'user', enabled: true });
+    expect(await getBearerKeyDao().findByToken(key.token)).toBeUndefined();
   });
 
   it('keeps accepting a legacy plaintext key before and after the startup migration', async () => {

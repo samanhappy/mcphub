@@ -2,6 +2,7 @@ import { getSmartRoutingPath } from '@/utils/runtime';
 import React, { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import ResetBearerKeyDialog from '@/components/ResetBearerKeyDialog';
 import ChangePasswordForm from '@/components/ChangePasswordForm';
 import { Switch } from '@/components/ui/ToggleGroup';
 import { MultiSelect } from '@/components/ui/MultiSelect';
@@ -41,6 +42,7 @@ interface BearerKeyRowProps {
     },
   ) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
+  onReset: (key: BearerKey) => void;
 }
 
 const BearerKeyRow: React.FC<BearerKeyRowProps> = ({
@@ -51,6 +53,7 @@ const BearerKeyRow: React.FC<BearerKeyRowProps> = ({
   isAdmin,
   onSave,
   onDelete,
+  onReset,
 }) => {
   const { t } = useTranslation();
   const [isEditing, setIsEditing] = useState(false);
@@ -332,6 +335,15 @@ const BearerKeyRow: React.FC<BearerKeyRowProps> = ({
           title={t('common.edit') || 'Edit'}
         >
           <Edit className="h-4 w-4" />
+        </button>
+        <button
+          onClick={() => onReset(keyData)}
+          disabled={loading || deleting}
+          className="text-blue-600 hover:text-blue-900 mr-4 inline-flex items-center"
+          title={t('settings.resetBearerKey')}
+          aria-label={t('settings.resetBearerKey')}
+        >
+          <RefreshCw className="h-4 w-4" />
         </button>
         <button
           onClick={handleDelete}
@@ -622,6 +634,7 @@ const SettingsPage: React.FC = () => {
 
   const [tempNameSeparator, setTempNameSeparator] = useState<string>('-');
   const [showAddBearerKeyForm, setShowAddBearerKeyForm] = useState(false);
+  const [keyToReset, setKeyToReset] = useState<BearerKey | null>(null);
   const [createdBearerToken, setCreatedBearerToken] = useState('');
   const [users, setUsers] = useState<User[]>([]);
   const [bearerKeyScopeFilter, setBearerKeyScopeFilter] = useState<BearerKeyScopeFilterValue>('all');
@@ -1792,6 +1805,17 @@ const SettingsPage: React.FC = () => {
         <p className="hub-sub">{t('settings.subtitle') || ''}</p>
       </div>
 
+      {keyToReset && (
+        <ResetBearerKeyDialog
+          keyData={keyToReset}
+          onClose={() => setKeyToReset(null)}
+          onReset={async () => {
+            setCreatedBearerToken('');
+            await refreshBearerKeys();
+          }}
+        />
+      )}
+
       {/* Bearer Keys Settings */}
         <div className="hub-card mb-6 overflow-visible">
           <div
@@ -1977,6 +2001,7 @@ const SettingsPage: React.FC = () => {
                           isAdmin={isAdmin}
                           onSave={handleSaveExistingBearerKey}
                           onDelete={handleDeleteExistingBearerKey}
+                          onReset={setKeyToReset}
                         />
                       ))}
                     </tbody>

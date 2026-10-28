@@ -234,6 +234,10 @@ curl -X POST http://localhost:3000/api/groups/{groupId}/users \
 }
 ```
 
+## 重置 Bearer key
+
+管理员和用户级 key 的所有者可在设置中点击**重置 Bearer key**。确认后，`POST /api/auth/keys/:id/reset` 生成新 token，仅展示一次，供查看和复制；原 token 立即失效。key 的 ID、名称、类型、归属用户、启用状态及资源权限均保持不变。存储中仅保留 hash 和前缀，列表仍返回脱敏值。
+
 ## API 认证
 
 ### JWT 令牌认证

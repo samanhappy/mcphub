@@ -837,6 +837,10 @@
     "restoreDefaultFailed": "Failed to restore the default prompt description"
   },
   "settings": {
+    "resetBearerKey": "Reset Bearer key",
+    "resetBearerKeyConfirm": "Reset this Bearer key? The old token will stop working immediately. Permissions and enabled status will stay the same.",
+    "resetBearerKeySuccess": "Bearer key reset. Copy and save the new token before closing; it will not be shown again.",
+    "resetBearerKeyError": "Failed to reset Bearer key",
     "allowRegistration": "Allow self-registration",
     "allowRegistrationDescription": "Allow visitors to create regular accounts from the login page. Disabled by default; unavailable while password login is disabled.",
     "allowedCidrs": "Allowed upstream CIDR ranges",

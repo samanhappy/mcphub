@@ -836,6 +836,10 @@
     "restoreDefaultFailed": "Échec de la restauration de la description par défaut de l'invite"
   },
   "settings": {
+    "resetBearerKey": "Réinitialiser la clé Bearer",
+    "resetBearerKeyConfirm": "Réinitialiser cette clé Bearer ? L’ancien jeton cessera immédiatement de fonctionner. Les autorisations et l’état resteront identiques.",
+    "resetBearerKeySuccess": "Clé réinitialisée. Copiez et conservez le nouveau jeton avant de fermer ; il ne sera plus affiché.",
+    "resetBearerKeyError": "Échec de la réinitialisation de la clé Bearer",
     "allowRegistration": "Autoriser les inscriptions",
     "allowRegistrationDescription": "Permet aux visiteurs de créer un compte standard depuis la page de connexion. Désactivé par défaut et indisponible si la connexion par mot de passe est désactivée.",
     "allowedCidrs": "Plages CIDR autorisées pour les services en amont",
