@@ -26,6 +26,8 @@ When adding or changing a persisted field, update every applicable layer:
 
 Database mode is selected at startup by the code in `src/dao/DaoFactory.ts`: `USE_DB=true` enables it; when `USE_DB` is unset, a configured `DB_URL` enables it; an explicit `USE_DB=false` disables it.
 
+Personal credential import is independent of user seeding. Validate source and destination ciphertext with the existing runtime key before importing, and commit bindings with their internal `credential_binding_imports` receipts in one transaction. Receipts must survive binding deletion to prevent retained source files from restoring revoked credentials; keep them out of configuration exports.
+
 ## Bearer-key invariant
 
 Bearer keys have explicit kinds. Legacy and operator-created keys use `kind: 'system'`; user-level keys use `kind: 'user'` and must have an `owner`. Do not infer the kind from whether `owner` is empty. User-level keys restore the owner's live user context on MCP transport requests and are not dashboard API credentials.

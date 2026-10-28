@@ -3,6 +3,13 @@ import os from 'node:os';
 import path from 'node:path';
 import { randomBytes } from 'node:crypto';
 import { DataSource } from 'typeorm';
+import { CredentialBindingImport } from '../../src/db/entities/CredentialBindingImport.js';
+import { migrateCredentialBindings } from '../../src/utils/credentialBindingMigration.js';
+import { CredentialBindingDaoImpl } from '../../src/dao/CredentialBindingDao.js';
+import {
+  encryptCredentialValues,
+  decryptCredentialValues,
+} from '../../src/services/credentialBindingService.js';
 import { CredentialBinding } from '../../src/db/entities/CredentialBinding.js';
 import { CredentialBindingDaoDbImpl } from '../../src/dao/CredentialBindingDaoDbImpl.js';
 import {
@@ -47,7 +54,7 @@ dbSuite('personal OAuth PostgreSQL persistence', () => {
       username: 'mcphub_test',
       password: 'mcphub_test',
       database: 'mcphub_test',
-      entities: [CredentialBinding],
+      entities: [CredentialBinding, CredentialBindingImport],
       synchronize: true,
     });
     await mockSource.initialize();
@@ -55,6 +62,7 @@ dbSuite('personal OAuth PostgreSQL persistence', () => {
   afterAll(async () => {
     if (mockSource?.isInitialized) {
       await mockSource.getRepository(CredentialBinding).clear();
+      await mockSource.getRepository(CredentialBindingImport).clear();
       await mockSource.destroy();
     }
     if (directory) fs.rmSync(directory, { recursive: true, force: true });
@@ -65,6 +73,8 @@ dbSuite('personal OAuth PostgreSQL persistence', () => {
   });
   beforeEach(async () => {
     await mockSource.getRepository(CredentialBinding).clear();
+    await mockSource.getRepository(CredentialBindingImport).clear();
+    fs.rmSync(`${process.env.MCPHUB_SETTING_PATH}.credentials.json`, { force: true });
   });
   test('atomic insert/update rejects a concurrent or stale binding write', async () => {
     const dao = new CredentialBindingDaoDbImpl();
@@ -108,5 +118,36 @@ dbSuite('personal OAuth PostgreSQL persistence', () => {
     expect(
       (await resolvePersonalOAuth('gitlab', 'bob', mockDefinition)).config.oauth?.accessToken,
     ).toBe('bob-secret');
+  });
+  test('concurrent file imports are atomic and retained files cannot resurrect deleted bindings', async () => {
+    const alice = {
+      serverName: 'gitlab',
+      username: 'alice',
+      encryptedValues: await encryptCredentialValues('gitlab', 'alice', { token: 'secret' }),
+      updatedAt: new Date().toISOString(),
+    };
+    await new CredentialBindingDaoImpl().save(alice);
+    await Promise.all([migrateCredentialBindings(), migrateCredentialBindings()]);
+    expect(await mockSource.getRepository(CredentialBinding).find()).toEqual([alice]);
+    expect(await decryptCredentialValues(alice)).toEqual({ token: 'secret' });
+    expect(await mockSource.getRepository(CredentialBindingImport).count()).toBe(1);
+    await mockSource.getRepository(CredentialBinding).clear();
+    await migrateCredentialBindings();
+    expect(await mockSource.getRepository(CredentialBinding).count()).toBe(0);
+  });
+
+  test('a failed database insert rolls back all bindings and receipts', async () => {
+    const fileDao = new CredentialBindingDaoImpl();
+    for (const username of ['alice', 'x'.repeat(256)]) {
+      await fileDao.save({
+        serverName: 'gitlab',
+        username,
+        encryptedValues: await encryptCredentialValues('gitlab', username, { token: 'secret' }),
+        updatedAt: new Date().toISOString(),
+      });
+    }
+    await expect(migrateCredentialBindings()).rejects.toThrow();
+    expect(await mockSource.getRepository(CredentialBinding).count()).toBe(0);
+    expect(await mockSource.getRepository(CredentialBindingImport).count()).toBe(0);
   });
 });
