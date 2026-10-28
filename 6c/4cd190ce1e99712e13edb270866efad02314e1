@@ -1,0 +1,25 @@
+tests/integration/tool-policy-defaults.test.ts
+  s_a33e9af8757d31::t_699f0857166aa5 1-6,9-22
+  s_a33e9af8757d31::t_44e19ba97db1fb 7-8,23-29
+src/dao/SystemConfigDaoDbImpl.ts
+  s_a33e9af8757d31::t_854078cd05912d 26,47,67
+tests/dao/SystemConfigDaoDbImpl.test.ts
+  s_a33e9af8757d31::t_44e19ba97db1fb 36-47
+  s_a33e9af8757d31::t_699f0857166aa5 35
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6c4cd190ce1e99712e13edb270866efad02314e1",
+  "prompts": {},
+  "sessions": {
+    "s_a33e9af8757d31": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a180ad-0906-7dd1-9b80-7a711e50258b",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
