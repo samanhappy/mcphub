@@ -1,0 +1,22 @@
+tests/services/vectorSearchService.test.ts
+  s_9a21a86371a579::t_e656fb02f2e325 1070-1079,1081-1118
+  s_9a21a86371a579::t_b27da53544b2e1 1080
+src/services/vectorSearchService.ts
+  s_9a21a86371a579::t_e656fb02f2e325 453-464,471,926,957-960,962,966-967
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "754e106af3a3f6220614a4a422ecce3e2e9b1e9f",
+  "prompts": {},
+  "sessions": {
+    "s_9a21a86371a579": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a18068-ad66-7ab2-b8e4-c7c7cc074788",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
