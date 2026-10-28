@@ -28,7 +28,7 @@ function scrubSourceFileSecrets(): void {
   let settingsPath = '';
   try {
     settingsPath = getSettingsPath();
-    const raw = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+    const raw = JSON.parse(fs.readFileSync(settingsPath, 'utf8').replace(/^\uFEFF/, ''));
     const routing = raw.systemConfig?.routing;
     const legacyKey: string = (routing?.bearerAuthKey || '').trim();
     const hasRawKeys =
