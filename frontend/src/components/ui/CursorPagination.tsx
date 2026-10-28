@@ -21,11 +21,7 @@ const CursorPagination: React.FC<CursorPaginationProps> = ({
       <button
         onClick={onPreviousPage}
         disabled={!hasPreviousPage}
-        className={`px-4 py-2 rounded transition-all duration-200 ${
-          hasPreviousPage
-            ? 'bg-gray-200 hover:bg-gray-300 text-gray-700 btn-secondary'
-            : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-        }`}
+        className="hub-btn"
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -43,7 +39,7 @@ const CursorPagination: React.FC<CursorPaginationProps> = ({
       </button>
 
       {/* Current page indicator */}
-      <span className="px-4 py-2 bg-blue-500 text-white rounded btn-primary">
+      <span className="hub-btn primary">
         Page {currentPage}
       </span>
 
@@ -51,11 +47,7 @@ const CursorPagination: React.FC<CursorPaginationProps> = ({
       <button
         onClick={onNextPage}
         disabled={!hasNextPage}
-        className={`px-4 py-2 rounded transition-all duration-200 ${
-          hasNextPage
-            ? 'bg-gray-200 hover:bg-gray-300 text-gray-700 btn-secondary'
-            : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-        }`}
+        className="hub-btn"
       >
         Next
         <svg
