@@ -1109,6 +1109,8 @@
     "smartRoutingIndexSkippedReason": "Atlandı",
     "smartRoutingIndexIndexedAs": "{{principals}} olarak indekslendi",
     "toolPolicies": {
+      "missingReferences": "Bazı kimlikler yüklenen sunucu, anahtar veya gruplarda bulunamadı. Eşleşmeyen ret kuralı koruma sağlamaz; eşleşmeyen izin kuralı erişimi engelleyebilir. Kaydetmeden önce doğrulayın. Gelecekte oluşturulacak kaynaklar için kurallar kaydedilebilir.",
+      "missingReference": "{{policyId}} kuralı: {{selector}} {{value}} bulunamadı.",
       "title": "Araç erişim politikaları",
       "description": "Kurallar, akıllı yönlendirme dahil araç keşfi ve çağrılarına uygulanır. Kaydedildikten sonra etkinleşir.",
       "semantics": "Boş seçiciler herkesi veya her hedefi eşleştirir. Bir kuralın tüm seçicileri eşleşmelidir. Geçerli izin kuralları bir izin listesi oluşturur; ret kuralları önceliklidir. Politikalar mevcut izinleri genişletmez.",

@@ -2,7 +2,10 @@ import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Plus, ShieldCheck, Trash2 } from 'lucide-react';
 import type { ToolPolicyRule } from '../../../src/types/toolPolicy.js';
-import { validateToolPolicies } from '../../../src/utils/toolPolicy.js';
+import {
+  findMissingToolPolicyReferences,
+  validateToolPolicies,
+} from '../../../src/utils/toolPolicy.js';
 import type { BearerKey, Group, Server, User } from '../types';
 import ConfirmDialog from './ui/ConfirmDialog';
 
@@ -52,6 +55,11 @@ const ToolPolicyPanel: React.FC<ToolPolicyPanelProps> = ({
       server.config?.id ? [{ value: server.config.id, label: server.name }] : [],
     ),
   };
+  const missingReferences = findMissingToolPolicyReferences(current, {
+    serverId: options.serverId.map(({ value }) => value),
+    keyId: options.keyId.map(({ value }) => value),
+    groupId: options.groupId.map(({ value }) => value),
+  });
 
   const change = (index: number, key: keyof ToolPolicyRule, value: string) => {
     setError('');
@@ -116,6 +124,21 @@ const ToolPolicyPanel: React.FC<ToolPolicyPanelProps> = ({
           <div className="rounded-md bg-amber-50 dark:bg-amber-950 p-3 text-sm text-amber-900 dark:text-amber-200">
             {t('settings.toolPolicies.semantics')}
           </div>
+          {missingReferences.length > 0 && (
+            <div
+              role="alert"
+              className="rounded-md bg-amber-50 dark:bg-amber-950 p-3 text-sm text-amber-900 dark:text-amber-200 break-all"
+            >
+              <p>{t('settings.toolPolicies.missingReferences')}</p>
+              <ul className="list-disc pl-5">
+                {missingReferences.map(({ policyId, selector, value }, index) => (
+                  <li key={index}>
+                    {t('settings.toolPolicies.missingReference', { policyId, selector, value })}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
           {rules === undefined ? (
             <div role="status" className="text-sm">
               {loadError || t('common.loading')}

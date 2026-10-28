@@ -1111,6 +1111,8 @@
     "smartRoutingIndexSkippedReason": "Bị bỏ qua",
     "smartRoutingIndexIndexedAs": "được lập chỉ mục dưới tư cách {{principals}}",
     "toolPolicies": {
+      "missingReferences": "Không tìm thấy một số ID trong máy chủ, khóa hoặc nhóm đã tải. Quy tắc từ chối không khớp sẽ không bảo vệ; quy tắc cho phép không khớp có thể chặn truy cập. Kiểm tra trước khi lưu. Vẫn có thể lưu quy tắc cho tài nguyên sẽ tạo.",
+      "missingReference": "Quy tắc {{policyId}}: không tìm thấy {{selector}} {{value}}.",
       "title": "Chính sách truy cập công cụ",
       "description": "Quy tắc áp dụng cho việc khám phá và gọi công cụ, kể cả định tuyến thông minh. Có hiệu lực sau khi lưu.",
       "semantics": "Bộ chọn trống khớp mọi chủ thể hoặc mục tiêu. Mọi bộ chọn trong một quy tắc phải khớp. Quy tắc cho phép phù hợp tạo danh sách cho phép; từ chối được ưu tiên. Chính sách không mở rộng quyền hiện có.",

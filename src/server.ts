@@ -1,4 +1,5 @@
 import express from 'express';
+import { warnMissingToolPolicyReferences } from './services/toolPolicyDiagnostics.js';
 import {
   smartRoutingPathMiddleware,
   assertSmartRoutingNameAvailable,
@@ -95,6 +96,7 @@ export class AppServer {
 
       // Initialize default admin user if no users exist
       await initializeDefaultUser();
+      await warnMissingToolPolicyReferences();
 
       // Replace raw bearer tokens stored by older versions with their hash
       try {

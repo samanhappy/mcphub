@@ -4,6 +4,18 @@ type Subject = { username?: string; keyId?: string };
 type Target = { groupId?: string; serverId?: string; tool?: string };
 const selectors = ['username', 'keyId', 'groupId', 'serverId', 'tool'] as const;
 
+export const findMissingToolPolicyReferences = (
+  rules: ToolPolicyRule[],
+  ids: Record<'serverId' | 'keyId' | 'groupId', string[]>,
+) =>
+  rules.flatMap((rule) =>
+    (['serverId', 'keyId', 'groupId'] as const).flatMap((selector) =>
+      rule[selector] && !ids[selector].includes(rule[selector])
+        ? [{ policyId: rule.id, selector, value: rule[selector] }]
+        : [],
+    ),
+  );
+
 export function validateToolPolicies(value: unknown): asserts value is ToolPolicyRule[] {
   if (!Array.isArray(value)) throw new Error('toolPolicies must be an array');
   const ids = new Set<string>();

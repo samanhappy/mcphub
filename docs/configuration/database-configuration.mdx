@@ -214,6 +214,24 @@ MCPHUB_SETTING_PATH=/etc/mcphub/mcp_settings.json
 
 Leave `MCPHUB_SETTINGS_SYNC` unset to retain the existing one-time seed behavior. This switch applies only in database mode. Sync never writes back to the settings file, including during the initial seed in this mode.
 
+### Server IDs and tool policies
+
+Sync matches existing entries by name. Before using a server ID in a tool policy, retrieve `data.config.id` from `GET /api/servers/:name` and pin that exact value in the declaration:
+
+```json
+{
+  "mcpServers": {
+    "time": {
+      "id": "11111111-1111-4111-8111-111111111111",
+      "type": "streamable-http",
+      "url": "https://example.com/mcp"
+    }
+  }
+}
+```
+
+To rename `time` to `clock`, change the entry name but retain its `id`; update group references too. Without a pinned ID, the new name receives a different identity: old server-scoped deny rules no longer restrict it, and in `prune` mode the old entry and its runtime credentials are deleted. Pinning preserves the policy identity, not a promise to migrate name-bound personal credentials or other references; review those separately. A same-name declaration with a different `id` retains the database ID and logs a conflict warning. Startup logs missing policy references after sync; review those warnings before relying on the rules.
+
 ### Pruning managed entries
 
 Set `MCPHUB_SETTINGS_SYNC=prune` to upsert declarations and delete previously managed servers/groups that are no longer declared. This is opt-in; `upsert` and the unset mode retain their existing behavior.

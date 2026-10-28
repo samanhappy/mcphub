@@ -1114,6 +1114,8 @@
     "smartRoutingIndexSkippedReason": "已跳过",
     "smartRoutingIndexIndexedAs": "以 {{principals}} 的身份索引",
     "toolPolicies": {
+      "missingReferences": "部分规则引用的 ID 在已加载的服务器、密钥或分组中不存在。无法匹配的拒绝规则不能提供保护，无法匹配的允许规则可能阻止访问。保存前请核对；仍可保存用于预先配置资源的规则。",
+      "missingReference": "规则 {{policyId}}：未找到 {{selector}} {{value}}。",
       "title": "工具访问策略",
       "description": "规则用于工具发现和调用（包括智能路由），保存后立即生效。",
       "semantics": "留空的选择器匹配所有主体或目标；同一规则的条件必须全部满足。适用于主体的允许规则构成允许列表，匹配的拒绝规则优先。策略不能扩大现有权限。",

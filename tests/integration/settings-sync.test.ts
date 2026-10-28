@@ -676,3 +676,20 @@ it('round-trips the upstream protocol override and clears it back to automatic n
   await syncSettingsToDatabase('upsert');
   expect((await dao.findById('remote'))?.protocolNegotiation).toBeUndefined();
 });
+
+test('warns when a declaration ID conflicts with the retained database identity', async () => {
+  const warn = jest.spyOn(logger, 'warn');
+  servers.set('remote', { id: '11111111-1111-4111-8111-111111111111', name: 'remote', ...remote });
+  write({ mcpServers: { remote: { ...remote, id: '22222222-2222-4222-8222-222222222222' } } });
+  await syncSettingsToDatabase();
+  expect(servers.get('remote')?.id).toBe('11111111-1111-4111-8111-111111111111');
+  expect(warn).toHaveBeenCalledWith(
+    expect.stringContaining('ignoring declared ID'),
+    expect.objectContaining({
+      serverName: 'remote',
+      declaredId: '22222222-2222-4222-8222-222222222222',
+      retainedId: '11111111-1111-4111-8111-111111111111',
+    }),
+  );
+  warn.mockRestore();
+});

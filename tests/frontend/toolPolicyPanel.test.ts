@@ -143,3 +143,35 @@ test('blocks edits while an API operation is in flight', () => {
   );
   expect(editor).toBeDefined();
 });
+
+test('warns about missing stable-ID references without blocking drafts or exposing tokens', () => {
+  openPanel([
+    {
+      id: 'orphan',
+      effect: 'deny',
+      serverId: 'removed-server',
+      keyId: 'removed-key',
+      groupId: 'removed-group',
+    },
+  ]);
+  const html = renderToStaticMarkup(createElement(ToolPolicyPanel, props));
+  expect(html.match(/settings.toolPolicies.missingReference</g)).toHaveLength(3);
+  expect(html).toContain('role="alert"');
+  expect(html).not.toContain('secret-do-not-render');
+});
+
+test('missing references warn but still allow confirmation for preconfigured resources', () => {
+  const setters = openPanel([{ id: 'future', effect: 'deny', serverId: 'future-server' }]);
+  const save = elements(ToolPolicyPanel(props)).find(
+    (node) => node.type === 'button' && node.props.children === 'settings.toolPolicies.save',
+  )!;
+  (save.props.onClick as () => void)();
+  expect(setters[3]).toHaveBeenCalledWith(true);
+});
+
+test('existing stable IDs do not show a missing-reference warning', () => {
+  openPanel();
+  expect(renderToStaticMarkup(createElement(ToolPolicyPanel, props))).not.toContain(
+    'settings.toolPolicies.missingReference',
+  );
+});

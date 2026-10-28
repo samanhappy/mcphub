@@ -1110,6 +1110,8 @@
     "smartRoutingIndexSkippedReason": "Ignoré",
     "smartRoutingIndexIndexedAs": "indexé en tant que {{principals}}",
     "toolPolicies": {
+      "missingReferences": "Certains ID sont absents des serveurs, clés ou groupes chargés. Un refus sans correspondance ne protège pas ; une autorisation sans correspondance peut bloquer l’accès. Vérifiez avant d’enregistrer. Les règles pour de futures ressources restent autorisées.",
+      "missingReference": "Règle {{policyId}} : {{selector}} {{value}} introuvable.",
       "title": "Politiques d’accès aux outils",
       "description": "Les règles couvrent la découverte et les appels, y compris le routage intelligent. Elles prennent effet après enregistrement.",
       "semantics": "Un sélecteur vide correspond à tous. Tous les sélecteurs d’une règle doivent correspondre. Les autorisations applicables forment une liste autorisée ; les refus sont prioritaires. Les politiques n’élargissent pas les permissions existantes.",

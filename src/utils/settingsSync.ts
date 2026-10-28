@@ -187,6 +187,16 @@ export async function syncSettingsToDatabase(): Promise<void> {
     const serverRepo = manager.getRepository(Server);
     for (const { serverName, config, signature } of servers) {
       const existing = await serverRepo.findOneBy({ name: serverName });
+      if (existing && config.id && config.id !== existing.id) {
+        logger.warn(
+          'Settings sync: ignoring declared ID; existing database server ID is retained',
+          {
+            serverName,
+            declaredId: config.id,
+            retainedId: existing.id,
+          },
+        );
+      }
       const hash = await fingerprintDeclaration(signature, existing?.settingsSyncHash);
       const sameTarget =
         existing &&

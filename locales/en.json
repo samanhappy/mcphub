@@ -1111,6 +1111,8 @@
     "smartRoutingIndexSkippedReason": "Skipped",
     "smartRoutingIndexIndexedAs": "indexed as {{principals}}",
     "toolPolicies": {
+      "missingReferences": "Some rule IDs were not found in the loaded servers, keys or groups. An unmatched deny provides no protection; an unmatched allow may block access. Verify these references before saving. You can still save rules for resources you plan to create.",
+      "missingReference": "Rule {{policyId}}: {{selector}} {{value}} was not found.",
       "title": "Tool access policies",
       "description": "Rules apply to tool discovery and invocation, including smart routing. Changes take effect after saving.",
       "semantics": "Blank selectors match everyone or every target. Selectors in a rule must all match. Applicable allow rules form an allowlist for the subject; matching deny rules win. Policies never grant access beyond existing permissions.",

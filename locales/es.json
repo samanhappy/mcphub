@@ -1111,6 +1111,8 @@
     "smartRoutingIndexSkippedReason": "Omitido",
     "smartRoutingIndexIndexedAs": "indexado como {{principals}}",
     "toolPolicies": {
+      "missingReferences": "Algunos ID no se encontraron en los servidores, claves o grupos cargados. Una denegación sin coincidencias no protege; una autorización sin coincidencias puede bloquear el acceso. Verifica antes de guardar. Puedes guardar reglas para recursos futuros.",
+      "missingReference": "Regla {{policyId}}: no se encontró {{selector}} {{value}}.",
       "title": "Políticas de acceso a herramientas",
       "description": "Las reglas se aplican al descubrimiento y la ejecución, incluido el enrutamiento inteligente. Se activan al guardar.",
       "semantics": "Los selectores vacíos coinciden con todos. Todos los selectores de una regla deben coincidir. Las reglas de permiso aplicables forman una lista de permitidos; las denegaciones prevalecen. Las políticas no amplían los permisos existentes.",
