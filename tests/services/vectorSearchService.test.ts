@@ -1067,4 +1067,53 @@ describe('vectorSearchService', () => {
       expect(withoutOverride).not.toBe(withOverride);
     });
   });
+  it.each([false, true])(
+    'paces serialized encoding attempts (transient failure: %s)',
+    async (retryFirst) => {
+      jest.useFakeTimers();
+      jest.setSystemTime(Date.now() + 10000);
+      try {
+        mockGetSmartRoutingConfig.mockResolvedValue({
+          enabled: true,
+          embeddingProvider: 'openai',
+          embeddingModel: 'text-embedding-3-small',
+          llmProviderBaseUrl: `https://paced-encoding-${retryFirst}.example.com/v1`,
+          llmProviderApiKey: 'sk-test',
+          basePacingDelayMs: 1000,
+        });
+        const attempts: Array<{ format: string; at: number }> = [];
+        mockEmbeddingCreate.mockImplementation(async ({ encoding_format }) => {
+          attempts.push({ format: encoding_format, at: Date.now() });
+          if (retryFirst && attempts.length === 1) throw { status: 503 };
+          throw {
+            status: 400,
+            error: { param: 'encoding_format', message: 'Unsupported encoding_format' },
+          };
+        });
+        mockEmbeddingPost.mockImplementation(async () => {
+          attempts.push({ format: 'default', at: Date.now() });
+          return { data: [{ embedding: [3, 4] }] };
+        });
+        mockVectorRepository.searchSimilar.mockResolvedValue([]);
+        const queries = Promise.all([
+          searchToolsByVector('first query', 10, 0.3),
+          searchToolsByVector('second query', 10, 0.3),
+        ]);
+        await jest.runAllTimersAsync();
+        await queries;
+        expect(attempts.map(({ format }) => format)).toEqual([
+          ...(retryFirst ? ['base64'] : []),
+          'base64',
+          'float',
+          'default',
+          'default',
+        ]);
+        const intervals = attempts.slice(1).map(({ at }, index) => at - attempts[index].at);
+        if (retryFirst) expect(intervals.shift()).toBeGreaterThanOrEqual(4000);
+        expect(intervals).toEqual([1000, 1000, 1000]);
+      } finally {
+        jest.useRealTimers();
+      }
+    },
+  );
 });

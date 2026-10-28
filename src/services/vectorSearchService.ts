@@ -450,21 +450,25 @@ const executeWithRetry = async <T>(
   }
 };
 
+const waitForEmbeddingPacing = async (): Promise<void> => {
+  const now = Date.now();
+  const elapsed = now - lastEmbeddingCallAt;
+  const pacingDelayMs = getAdaptivePacingDelayMs();
+  const waitMs = lastEmbeddingCallAt === 0 ? 0 : Math.max(0, pacingDelayMs - elapsed);
+  if (waitMs > 0) {
+    logger.log(`[Embedding][Queue] Pacing wait ${waitMs}ms before next API call`);
+    await sleep(waitMs);
+  }
+  lastEmbeddingCallAt = Date.now();
+};
+
 /**
  * Serializes all embedding API calls through a single promise queue so that
  * parallel sync operations cannot bypass the adaptive pacing delay.
  */
 const withEmbeddingQueue = <T>(operation: () => Promise<T>): Promise<T> => {
   const result = embeddingQueueTail.then(async () => {
-    const now = Date.now();
-    const elapsed = now - lastEmbeddingCallAt;
-    const pacingDelayMs = getAdaptivePacingDelayMs();
-    const waitMs = lastEmbeddingCallAt === 0 ? 0 : Math.max(0, pacingDelayMs - elapsed);
-    if (waitMs > 0) {
-      logger.log(`[Embedding][Queue] Pacing wait ${waitMs}ms before next API call`);
-      await sleep(waitMs);
-    }
-    lastEmbeddingCallAt = Date.now();
+    await waitForEmbeddingPacing();
     return operation();
   });
   // Keep tail void-typed so the chain does not accumulate resolved values.
@@ -919,6 +923,7 @@ async function generateEmbedding(text: string, kind: 'query' | 'document'): Prom
         encodingFormatSetting === 'auto'
           ? (embeddingEncodingCache?.format ?? 'base64')
           : encodingFormatSetting;
+      let firstRequest = true;
       const request = () => {
         const payload = {
           ...embeddingPayload,
@@ -949,13 +954,17 @@ async function generateEmbedding(text: string, kind: 'query' | 'document'): Prom
           `[Embedding] API request → model=${config.embeddingModel}, encoding_format=${encodingFormat}, input_length=${truncatedText.length} chars | input_preview: "${truncatedText.substring(0, 200).replace(/\s+/g, ' ')}"`,
         );
         return executeWithRetry(
-          () =>
+          async () => {
+            // The queue paces the first request; retries and negotiation also need pacing.
+            if (!firstRequest) await waitForEmbeddingPacing();
+            firstRequest = false;
             // The SDK inserts base64 when the parameter is omitted; use the raw endpoint instead.
-            encodingFormat === 'default'
+            return encodingFormat === 'default'
               ? openai.post<OpenAI.Embeddings.CreateEmbeddingResponse>('/embeddings', {
                   body: payload,
                 })
-              : openai.embeddings.create(payload),
+              : openai.embeddings.create(payload);
+          },
           {
             provider,
             model: config.embeddingModel,
