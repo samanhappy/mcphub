@@ -836,6 +836,10 @@
     "restoreDefaultFailed": "Varsayılan istek açıklamasına dönülemedi"
   },
   "settings": {
+    "resetBearerKey": "Bearer anahtarını sıfırla",
+    "resetBearerKeyConfirm": "Bu Bearer anahtarı sıfırlansın mı? Eski belirteç hemen geçersiz olacaktır. İzinler ve etkinlik durumu değişmeyecek.",
+    "resetBearerKeySuccess": "Anahtar sıfırlandı. Kapatmadan önce yeni belirteci kopyalayıp kaydedin; tekrar gösterilmeyecek.",
+    "resetBearerKeyError": "Bearer anahtarı sıfırlanamadı",
     "allowRegistration": "Kendi kendine kayda izin ver",
     "allowRegistrationDescription": "Ziyaretçilerin giriş sayfasından normal hesap oluşturmasına izin verir. Varsayılan olarak kapalıdır; parola ile giriş kapalıyken kullanılamaz.",
     "allowedCidrs": "İzin verilen üst sunucu CIDR aralıkları",

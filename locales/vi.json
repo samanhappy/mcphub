@@ -837,6 +837,10 @@
     "restoreDefaultFailed": "Khôi phục mô tả lời nhắc về mặc định thất bại"
   },
   "settings": {
+    "resetBearerKey": "Đặt lại khóa Bearer",
+    "resetBearerKeyConfirm": "Đặt lại khóa Bearer này? Token cũ sẽ mất hiệu lực ngay. Quyền và trạng thái kích hoạt không thay đổi.",
+    "resetBearerKeySuccess": "Đã đặt lại khóa. Sao chép và lưu token mới trước khi đóng; token sẽ không được hiển thị lại.",
+    "resetBearerKeyError": "Không thể đặt lại khóa Bearer",
     "allowRegistration": "Cho phép tự đăng ký",
     "allowRegistrationDescription": "Cho phép khách truy cập tạo tài khoản thông thường từ trang đăng nhập. Tắt theo mặc định; không khả dụng khi chức năng đăng nhập bằng mật khẩu bị vô hiệu hóa.",
     "allowedCidrs": "Dải CIDR upstream cho phép",

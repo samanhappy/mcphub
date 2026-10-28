@@ -2,6 +2,7 @@ import { getSmartRoutingPath } from '@/utils/runtime';
 import React, { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import ResetBearerKeyDialog from '@/components/ResetBearerKeyDialog';
 import ChangePasswordForm from '@/components/ChangePasswordForm';
 import { Switch } from '@/components/ui/ToggleGroup';
 import { MultiSelect } from '@/components/ui/MultiSelect';
@@ -41,6 +42,7 @@ interface BearerKeyRowProps {
     },
   ) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
+  onReset: (key: BearerKey) => void;
 }
 
 const BearerKeyRow: React.FC<BearerKeyRowProps> = ({
@@ -51,6 +53,7 @@ const BearerKeyRow: React.FC<BearerKeyRowProps> = ({
   isAdmin,
   onSave,
   onDelete,
+  onReset,
 }) => {
   const { t } = useTranslation();
   const [isEditing, setIsEditing] = useState(false);
@@ -309,11 +312,7 @@ const BearerKeyRow: React.FC<BearerKeyRowProps> = ({
       </td>
       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-mono">
         <div className="flex items-center gap-2">
-          <span>
-            {keyData.token.length > 12
-              ? `${keyData.token.substring(0, 8)}...${keyData.token.substring(keyData.token.length - 4)}`
-              : keyData.token}
-          </span>
+          <span>{keyData.token}</span>
         </div>
       </td>
       <td className="px-6 py-4 whitespace-nowrap text-sm">
@@ -332,6 +331,15 @@ const BearerKeyRow: React.FC<BearerKeyRowProps> = ({
           title={t('common.edit') || 'Edit'}
         >
           <Edit className="h-4 w-4" />
+        </button>
+        <button
+          onClick={() => onReset(keyData)}
+          disabled={loading || deleting}
+          className="text-blue-600 hover:text-blue-900 mr-4 inline-flex items-center"
+          title={t('settings.resetBearerKey')}
+          aria-label={t('settings.resetBearerKey')}
+        >
+          <RefreshCw className="h-4 w-4" />
         </button>
         <button
           onClick={handleDelete}
@@ -622,6 +630,7 @@ const SettingsPage: React.FC = () => {
 
   const [tempNameSeparator, setTempNameSeparator] = useState<string>('-');
   const [showAddBearerKeyForm, setShowAddBearerKeyForm] = useState(false);
+  const [keyToReset, setKeyToReset] = useState<BearerKey | null>(null);
   const [createdBearerToken, setCreatedBearerToken] = useState('');
   const [users, setUsers] = useState<User[]>([]);
   const [bearerKeyScopeFilter, setBearerKeyScopeFilter] = useState<BearerKeyScopeFilterValue>('all');
@@ -1792,6 +1801,17 @@ const SettingsPage: React.FC = () => {
         <p className="hub-sub">{t('settings.subtitle') || ''}</p>
       </div>
 
+      {keyToReset && (
+        <ResetBearerKeyDialog
+          keyData={keyToReset}
+          onClose={() => setKeyToReset(null)}
+          onReset={async () => {
+            setCreatedBearerToken('');
+            await refreshBearerKeys();
+          }}
+        />
+      )}
+
       {/* Bearer Keys Settings */}
         <div className="hub-card mb-6 overflow-visible">
           <div
@@ -1977,6 +1997,7 @@ const SettingsPage: React.FC = () => {
                           isAdmin={isAdmin}
                           onSave={handleSaveExistingBearerKey}
                           onDelete={handleDeleteExistingBearerKey}
+                          onReset={setKeyToReset}
                         />
                       ))}
                     </tbody>
@@ -2169,7 +2190,7 @@ const SettingsPage: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => setShowAddBearerKeyForm(false)}
-                          className="px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 text-gray-700 rounded-md text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 h-[38px]"
+                          className="hub-btn"
                         >
                           {t('common.cancel') || 'Cancel'}
                         </button>

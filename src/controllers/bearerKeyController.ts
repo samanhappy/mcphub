@@ -3,7 +3,7 @@ import { Request, Response } from 'express';
 import { ApiResponse, BearerKey, BearerKeyAccessType, BearerKeyKind } from '../types/index.js';
 import { getBearerKeyDao, getUserDao } from '../dao/index.js';
 import { logger } from '../utils/logger.js';
-import { maskBearerKey } from '../utils/bearerKeyToken.js';
+import { maskBearerKey, toStoredToken } from '../utils/bearerKeyToken.js';
 
 const VALID_ACCESS_TYPES: BearerKeyAccessType[] = ['all', 'groups', 'servers', 'custom'];
 
@@ -170,6 +170,38 @@ export const updateBearerKey = async (req: Request, res: Response): Promise<void
   } catch (error) {
     logger.error('Failed to update bearer key:', error);
     res.status(500).json({ success: false, message: 'Failed to update bearer key' });
+  }
+};
+
+// Rotate only the secret; keep ownership, enabled state and resource scope intact.
+export const resetBearerKey = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    if (!id) {
+      res.status(400).json({ success: false, message: 'Key id is required' });
+      return;
+    }
+    const dao = getBearerKeyDao();
+    const existing = await dao.findById(id);
+    if (!existing) {
+      res.status(404).json({ success: false, message: 'Bearer key not found' });
+      return;
+    }
+    if (!canManageKey(getAuthenticatedUser(req), existing)) {
+      res.status(403).json({ success: false, message: 'Forbidden' });
+      return;
+    }
+    const token = `mcphub_${randomBytes(32).toString('hex')}`;
+    const updated = await dao.update(id, { ...toStoredToken(token), token: undefined });
+    if (!updated) {
+      res.status(404).json({ success: false, message: 'Bearer key not found' });
+      return;
+    }
+    res.setHeader('Cache-Control', 'no-store');
+    res.json({ success: true, data: { ...sanitizeKey(updated), token } } satisfies ApiResponse);
+  } catch (error) {
+    logger.error('Failed to reset bearer key:', error);
+    res.status(500).json({ success: false, message: 'Failed to reset bearer key' });
   }
 };
 

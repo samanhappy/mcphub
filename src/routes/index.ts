@@ -159,6 +159,7 @@ import {
   getBearerKeys,
   createBearerKey,
   updateBearerKey,
+  resetBearerKey,
   deleteBearerKey,
 } from '../controllers/bearerKeyController.js';
 import {
@@ -378,6 +379,7 @@ export const initRoutes = async (app: express.Application): Promise<void> => {
   authenticatedRouter.get('/auth/keys', getBearerKeys);
   authenticatedRouter.post('/auth/keys', createBearerKey);
   authenticatedRouter.put('/auth/keys/:id', updateBearerKey);
+  authenticatedRouter.post('/auth/keys/:id/reset', resetBearerKey);
   authenticatedRouter.delete('/auth/keys/:id', deleteBearerKey);
 
   // Activity routes (database mode only)

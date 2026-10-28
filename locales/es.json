@@ -837,6 +837,10 @@
     "restoreDefaultFailed": "Error al restaurar la descripción predeterminada del prompt"
   },
   "settings": {
+    "resetBearerKey": "Restablecer clave Bearer",
+    "resetBearerKeyConfirm": "¿Restablecer esta clave Bearer? El token anterior dejará de funcionar inmediatamente. Los permisos y el estado no cambiarán.",
+    "resetBearerKeySuccess": "Clave restablecida. Copia y guarda el nuevo token antes de cerrar; no volverá a mostrarse.",
+    "resetBearerKeyError": "No se pudo restablecer la clave Bearer",
     "allowRegistration": "Permitir el registro público",
     "allowRegistrationDescription": "Permite crear cuentas normales desde la página de inicio de sesión. Desactivado por defecto; no disponible si se desactiva el acceso con contraseña.",
     "allowedCidrs": "Rangos CIDR ascendentes permitidos",

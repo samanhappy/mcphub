@@ -88,6 +88,9 @@ export class BearerKeyDaoDbImpl implements BearerKeyDao {
   ): Promise<BearerKeyModel | null> {
     const entity = await this.repository.update(id, {
       name: data.name,
+      ...(data.tokenHash !== undefined
+        ? { token: null, tokenHash: data.tokenHash, tokenPrefix: data.tokenPrefix }
+        : {}),
       enabled: data.enabled,
       kind: data.kind,
       owner: data.owner,
