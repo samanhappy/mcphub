@@ -1,0 +1,55 @@
+tests/dao/bearerKeyRotationDb.test.ts
+  s_f8a71ee67f476f::t_fd3801c61a185d 1-36
+locales/es.json
+  s_f8a71ee67f476f::t_1dfc8f54f138db 840-843
+locales/fr.json
+  s_f8a71ee67f476f::t_1dfc8f54f138db 839-842
+locales/en.json
+  s_f8a71ee67f476f::t_1dfc8f54f138db 840-843
+src/controllers/bearerKeyController.ts
+  s_f8a71ee67f476f::t_5c3c1978db1f98 6,176-204
+  s_f8a71ee67f476f::t_14373c8135304a 205-207
+docs/zh/features/authentication.mdx
+  s_f8a71ee67f476f::t_712475c0d6c2b4 237-240
+src/dao/BearerKeyDaoDbImpl.ts
+  s_f8a71ee67f476f::t_5c3c1978db1f98 91-93
+frontend/src/pages/SettingsPage.tsx
+  s_f8a71ee67f476f::t_5c3c1978db1f98 5,45,56,339-347,637,1809-1811,1816,2004
+  s_f8a71ee67f476f::t_a902af3189b0c0 1808,1812-1815,1817-1818
+src/routes/index.ts
+  s_f8a71ee67f476f::t_5c3c1978db1f98 162,382
+docs/features/authentication.mdx
+  s_f8a71ee67f476f::t_fd3801c61a185d 72-74
+frontend/src/components/ResetBearerKeyDialog.tsx
+  s_f8a71ee67f476f::t_203cc9872dc3e1 74
+  s_f8a71ee67f476f::t_5c3c1978db1f98 1-28,30-59,61-63,66-73,75-89,91-94,96-98,100-104
+  s_f8a71ee67f476f::t_11e6406cf7f094 29,60,64-65,90,95,99
+locales/vi.json
+  s_f8a71ee67f476f::t_1dfc8f54f138db 840-843
+locales/tr.json
+  s_f8a71ee67f476f::t_1dfc8f54f138db 839-842
+tests/integration/bearer-key-hashing.test.ts
+  s_f8a71ee67f476f::t_fd3801c61a185d 170-173
+  s_f8a71ee67f476f::t_c9688c5aacf537 140-157,184,192
+  s_f8a71ee67f476f::t_aa1452e2038696 8-12,77,110-139,158-169,174-183,185-191,193
+locales/zh.json
+  s_f8a71ee67f476f::t_1dfc8f54f138db 842-845
+tests/routes/index.test.ts
+  s_f8a71ee67f476f::t_c7e115e10cf5bf 193
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6225bd38c9023434ce3868bd38217d0d66693aed",
+  "prompts": {},
+  "sessions": {
+    "s_f8a71ee67f476f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a17fe1-e1b0-7092-bc57-d3aae5c8ea3e",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
