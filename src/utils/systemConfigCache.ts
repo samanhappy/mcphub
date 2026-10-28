@@ -21,7 +21,9 @@ export const getCachedSystemConfig = (): SystemConfig | null => {
     try {
       const mtime = fs.statSync(settingsPath).mtime.getTime();
       if (lastSeenSettingsFileMtime === null || mtime > lastSeenSettingsFileMtime) {
-        const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8')) as McpSettings;
+        const settings = JSON.parse(
+          fs.readFileSync(settingsPath, 'utf8').replace(/^\uFEFF/, ''),
+        ) as McpSettings;
         cachedSystemConfig = settings.systemConfig ?? null;
         lastSeenSettingsFileMtime = mtime;
       }

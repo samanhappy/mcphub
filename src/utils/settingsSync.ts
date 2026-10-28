@@ -135,7 +135,7 @@ export async function syncSettingsToDatabase(): Promise<void> {
     throw new Error(`Unsupported MCPHUB_SETTINGS_SYNC: ${mode}`);
 
   const declaration = declarationSchema.parse(
-    JSON.parse(fs.readFileSync(getSettingsPath(), 'utf8')),
+    JSON.parse(fs.readFileSync(getSettingsPath(), 'utf8').replace(/^\uFEFF/, '')),
   );
   for (const name of Object.keys(declaration.mcpServers ?? {}))
     assertSmartRoutingNameAvailable(name);

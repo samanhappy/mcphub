@@ -97,6 +97,21 @@ describe('settings file cache staleness (#1081)', () => {
     expect(config.loadOriginalSettings().systemConfig?.nameSeparator).toBe('b');
   });
 
+  it('loads a settings file that starts with a UTF-8 BOM', async () => {
+    // Windows PowerShell 5.1 `Out-File -Encoding utf8` writes a BOM.
+    fs.writeFileSync(
+      settingsPath,
+      '\uFEFF' +
+        JSON.stringify({ mcpServers: {}, users: [], systemConfig: { nameSeparator: 'a' } }),
+      'utf8',
+    );
+    const config = await loadConfigModule();
+    const systemConfigCache = await import('../../src/utils/systemConfigCache.js');
+
+    expect(config.loadOriginalSettings(false).systemConfig?.nameSeparator).toBe('a');
+    expect(systemConfigCache.getCachedSystemConfig()?.nameSeparator).toBe('a');
+  });
+
   it('serves the cached snapshot while the file is unchanged', async () => {
     writeSettings(settingsPath, {
       mcpServers: {},
