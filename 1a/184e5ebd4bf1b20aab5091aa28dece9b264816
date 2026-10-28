@@ -1,0 +1,22 @@
+docs/agents/testing.md
+  s_a33e9af8757d31::t_a9789ec4f38cac 8-23
+tests/integration/tool-policy-db.test.ts
+  s_a33e9af8757d31::t_29ee2fdedb84c4 1-19,21-49,51-74,76-87,89-91,93-96
+  s_a33e9af8757d31::t_79d0a4f69187bb 20,50,75,88,92
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1a184e5ebd4bf1b20aab5091aa28dece9b264816",
+  "prompts": {},
+  "sessions": {
+    "s_a33e9af8757d31": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a180ad-0906-7dd1-9b80-7a711e50258b",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
