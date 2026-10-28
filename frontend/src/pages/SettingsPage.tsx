@@ -312,11 +312,7 @@ const BearerKeyRow: React.FC<BearerKeyRowProps> = ({
       </td>
       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-mono">
         <div className="flex items-center gap-2">
-          <span>
-            {keyData.token.length > 12
-              ? `${keyData.token.substring(0, 8)}...${keyData.token.substring(keyData.token.length - 4)}`
-              : keyData.token}
-          </span>
+          <span>{keyData.token}</span>
         </div>
       </td>
       <td className="px-6 py-4 whitespace-nowrap text-sm">
@@ -2194,7 +2190,7 @@ const SettingsPage: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => setShowAddBearerKeyForm(false)}
-                          className="px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 text-gray-700 rounded-md text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 h-[38px]"
+                          className="hub-btn"
                         >
                           {t('common.cancel') || 'Cancel'}
                         </button>
