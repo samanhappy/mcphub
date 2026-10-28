@@ -2971,6 +2971,7 @@ export const getServersInfo = async (
           config:
             resolvedType || serverConfig?.description || serverConfig?.command
               ? {
+                  ...(serverConfig?.id ? { id: serverConfig.id } : {}),
                   ...(resolvedType ? { type: resolvedType } : {}),
                   ...(hasPersonalAuthentication(serverConfig)
                     ? { credentialTemplate: validateCredentialTemplate(serverConfig!) }

@@ -1,4 +1,4 @@
-import type { ToolPolicyRule, PolicyDecision } from '../types/index.js';
+import type { ToolPolicyRule, PolicyDecision } from '../types/toolPolicy.js';
 
 type Subject = { username?: string; keyId?: string };
 type Target = { groupId?: string; serverId?: string; tool?: string };

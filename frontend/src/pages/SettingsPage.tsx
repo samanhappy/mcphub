@@ -16,6 +16,7 @@ import type { BearerKey, User } from '@/types';
 import { useServerContext } from '@/contexts/ServerContext';
 import { useGroupData } from '@/hooks/useGroupData';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
+import ToolPolicyPanel from '@/components/ToolPolicyPanel';
 import SmartRoutingIndexPanel from '@/components/SmartRoutingIndexPanel';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiGet, apiPost } from '@/utils/fetchInterceptor';
@@ -648,6 +649,10 @@ const SettingsPage: React.FC = () => {
     oauthServerConfig,
     allowRegistration,
     updateAllowRegistration,
+    toolPolicies,
+    updateToolPolicies,
+    error: settingsError,
+    fetchSettings,
     betterAuthConfig,
     nameSeparator,
     enableSessionRebuild,
@@ -1809,6 +1814,21 @@ const SettingsPage: React.FC = () => {
             setCreatedBearerToken('');
             await refreshBearerKeys();
           }}
+        />
+      )}
+
+      {isAdmin && (
+        <ToolPolicyPanel
+          nameSeparator={nameSeparator}
+          rules={toolPolicies}
+          loading={loading}
+          loadError={settingsError}
+          onRetry={fetchSettings}
+          onSave={updateToolPolicies}
+          users={users}
+          bearerKeys={bearerKeys}
+          servers={servers}
+          groups={groups}
         />
       )}
 

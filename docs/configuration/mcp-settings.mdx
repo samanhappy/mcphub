@@ -896,7 +896,7 @@ Missing or incompatible snapshots retain live discovery (startup priming for sha
 
 ## Tool authorization policies
 
-Operators can configure `systemConfig.toolPolicies` in file mode or send `toolPolicies` to the administrator-only `PUT /api/system-config` endpoint in either storage mode. An omitted or empty array preserves existing access. The dashboard has no policy editor.
+Operators can configure `systemConfig.toolPolicies` in file mode or send `toolPolicies` to the administrator-only `PUT /api/system-config` endpoint in either storage mode. An omitted or empty array preserves existing access. Administrators can also manage rules in **Settings → Tool access policies**: add, edit or delete rules, then save the policy set. Blank selectors match any value. Saving an empty set removes policy restrictions while keeping existing permissions.
 
 ```json
 {

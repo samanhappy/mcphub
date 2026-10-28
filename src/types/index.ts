@@ -1,3 +1,4 @@
+import type { ToolPolicyRule, PolicyDecision } from './toolPolicy.js';
 import { StdioClientTransport } from '@modelcontextprotocol/client/stdio';
 import {
   Client,
@@ -266,21 +267,7 @@ export interface ToolResultCompressionConfig {
   strategy?: ToolResultCompressionStrategy;
 }
 
-export interface ToolPolicyRule {
-  id: string;
-  effect: 'allow' | 'deny';
-  username?: string;
-  keyId?: string;
-  groupId?: string;
-  serverId?: string;
-  tool?: string;
-}
-
-export interface PolicyDecision {
-  decision: 'allow' | 'deny';
-  reason: string;
-  policyId?: string;
-}
+export type { ToolPolicyRule, PolicyDecision } from './toolPolicy.js';
 
 export interface ToolPolicyAudit extends PolicyDecision {
   serverId?: string;

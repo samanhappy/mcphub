@@ -210,6 +210,7 @@ export interface MyCredentialBinding {
 
 // Server config types
 export interface ServerConfig {
+  id?: string;
   credentialTemplate?: CredentialSlot[];
   type?: 'stdio' | 'sse' | 'streamable-http' | 'openapi';
   description?: string;

@@ -799,7 +799,7 @@ ls -la /path/to/server
 
 ## 工具授权策略
 
-运营方可以在文件模式配置 `systemConfig.toolPolicies`，也可以在任一存储模式通过仅限管理员的 `PUT /api/system-config` 接口提交 `toolPolicies`。未配置或使用空数组时保留既有访问行为。仪表盘暂不提供策略编辑器。
+运营方可以在文件模式配置 `systemConfig.toolPolicies`，也可以在任一存储模式通过仅限管理员的 `PUT /api/system-config` 接口提交 `toolPolicies`。未配置或使用空数组时保留既有访问行为。管理员也可以在 **设置 → 工具访问策略** 中新增、编辑或删除规则，然后保存策略集。留空的选择器匹配任意值。保存空策略集会移除策略限制，但既有权限仍然生效。
 
 ```json
 {
