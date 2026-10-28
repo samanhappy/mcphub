@@ -87,11 +87,11 @@ const Pagination: React.FC<PaginationProps> = ({
   }
 
   return (
-    <div className="flex justify-center items-center my-6">
+    <div className="flex flex-wrap justify-center items-center gap-y-2 my-6">
       <button
         onClick={() => onPageChange(Math.max(1, currentPage - 1))}
         disabled={disabled || currentPage === 1}
-        className="hub-btn mr-2"
+        className="hub-btn shrink-0 whitespace-nowrap mr-2"
       >
         &laquo; {t('common.previous')}
       </button>
@@ -101,7 +101,7 @@ const Pagination: React.FC<PaginationProps> = ({
       <button
         onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
         disabled={disabled || currentPage === totalPages}
-        className="hub-btn ml-2"
+        className="hub-btn shrink-0 whitespace-nowrap ml-2"
       >
         {t('common.next')} &raquo;
       </button>
