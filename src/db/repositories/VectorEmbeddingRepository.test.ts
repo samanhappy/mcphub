@@ -148,6 +148,46 @@ describe('VectorEmbeddingRepository.saveEmbedding', () => {
 });
 
 describe('VectorEmbeddingRepository.searchSimilar server scoping', () => {
+  it.each([false, true])(
+    'restricts tool IDs before top-k, including fallback=%s',
+    async (fallback) => {
+      const builder: Record<string, jest.Mock> = {};
+      for (const method of ['where', 'andWhere', 'setParameter', 'take'])
+        builder[method] = jest.fn(() => builder);
+      builder.getMany = jest.fn(async () => []);
+      getRepositoryMock.mockReturnValue({ createQueryBuilder: () => builder });
+      if (fallback) getRawManyMock.mockRejectedValueOnce(new Error('vector operator unavailable'));
+      const ids = ['chat:chat-read'];
+      await new VectorEmbeddingRepository().searchSimilar(
+        [0.1, 0.2],
+        1,
+        0.3,
+        ['tool'],
+        ['chat'],
+        ids,
+      );
+      if (fallback) {
+        expect(builder.andWhere).toHaveBeenCalledWith(
+          'vector_embedding.content_id IN (:...allowedContentIds)',
+          { allowedContentIds: ids },
+        );
+        expect(builder.andWhere.mock.invocationCallOrder.at(-1)).toBeLessThan(
+          builder.getMany.mock.invocationCallOrder[0],
+        );
+      } else {
+        expect(andWhereCalls).toContainEqual({
+          clause: 'vector_embedding.content_id IN (:...allowedContentIds)',
+          parameters: { allowedContentIds: ids },
+        });
+      }
+      createQueryBuilderMock.mockClear();
+      expect(
+        await new VectorEmbeddingRepository().searchSimilar([0.1], 1, 0, ['tool'], ['chat'], []),
+      ).toEqual([]);
+      expect(createQueryBuilderMock).not.toHaveBeenCalled();
+    },
+  );
+
   beforeEach(() => {
     jest.clearAllMocks();
     andWhereCalls.length = 0;

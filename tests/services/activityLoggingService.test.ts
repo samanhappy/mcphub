@@ -17,6 +17,32 @@ jest.mock('../../src/utils/systemConfigCache.js', () => ({
 }));
 
 describe('ActivityLoggingService', () => {
+  it('retains policy reasons while personal credential payloads and errors are omitted', async () => {
+    const policy = {
+      decision: 'deny' as const,
+      reason: 'matching-deny',
+      policyId: 'block',
+      serverId: 'server-id',
+      groupId: 'group-id',
+    };
+    await getActivityLoggingService().logToolCall({
+      server: 'demo',
+      tool: 'write',
+      duration: 0,
+      status: 'error',
+      username: 'alice',
+      keyId: 'key-id',
+      policy,
+      hasCredentialTemplate: true,
+      input: { secret: 'never-store' },
+      errorMessage: 'never-store',
+    });
+    expect(mockCreate).toHaveBeenCalledWith(
+      expect.objectContaining({ policy, username: 'alice', keyId: 'key-id' }),
+    );
+    expect(JSON.stringify(mockCreate.mock.calls[0][0])).not.toContain('never-store');
+  });
+
   beforeEach(() => {
     jest.clearAllMocks();
     mockCreate.mockResolvedValue(undefined);

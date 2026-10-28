@@ -10,7 +10,7 @@ import { authorizationService, type RequestPrincipal } from './authorizationServ
 import { CredentialBindingError, hasPersonalAuthentication } from '../utils/credentialTemplate.js';
 import { expandServerConfig } from './serverConfigEnvironment.js';
 import type { CapabilityScope } from './capabilitySnapshotService.js';
-import type { ServerConfig, ServerInfo } from '../types/index.js';
+import type { ServerConfig, ServerInfo, Tool } from '../types/index.js';
 
 interface RuntimeEntry {
   serverName: string;
@@ -26,6 +26,17 @@ interface RuntimeEntry {
 /** Reuses children across MCP sessions, but never across authenticated principals. */
 export class PrincipalRuntimeService {
   private readonly entries = new Map<string, RuntimeEntry>();
+  private readonly toolCatalogs = new Map<
+    string,
+    { serverName: string; username: string; tools: Tool[] }
+  >();
+
+  peekTools(serverName: string, username: string): Tool[] | undefined {
+    const entry = this.entries.get(JSON.stringify([serverName, username]));
+    return entry?.valid && entry.info
+      ? entry.info.tools
+      : this.toolCatalogs.get(JSON.stringify([serverName, username]))?.tools;
+  }
 
   constructor(
     private readonly connect: (
@@ -44,6 +55,11 @@ export class PrincipalRuntimeService {
   }
 
   invalidate(filter: { serverName?: string; username?: string } = {}): void {
+    for (const [key, catalog] of this.toolCatalogs) {
+      if (filter.serverName !== undefined && catalog.serverName !== filter.serverName) continue;
+      if (filter.username !== undefined && catalog.username !== filter.username) continue;
+      this.toolCatalogs.delete(key);
+    }
     for (const [key, entry] of this.entries) {
       if (filter.serverName !== undefined && entry.serverName !== filter.serverName) continue;
       if (filter.username !== undefined && entry.username !== filter.username) continue;
@@ -97,6 +113,11 @@ export class PrincipalRuntimeService {
           throw new CredentialBindingError(
             'Personal credentials or server configuration changed; retry the request',
           );
+        this.toolCatalogs.set(JSON.stringify([serverName, principal.username]), {
+          serverName,
+          username: principal.username,
+          tools: cached.tools,
+        });
         return { info: cached, release: () => {} };
       }
     }

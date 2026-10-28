@@ -13,6 +13,9 @@ import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, Index } from 
 @Index(['keyId'])
 @Index(['timestamp'])
 export class Activity {
+  @Column({ type: 'simple-json', nullable: true })
+  policy?: import('../../types/index.js').ToolPolicyAudit;
+
   @PrimaryGeneratedColumn('uuid')
   id: string;
 

@@ -231,6 +231,245 @@ const connect = async (username: string, serverName = 'shared') => {
   return client;
 };
 
+test.each([alice, 'admin'])(
+  'policy restricts %s user keys before personal OAuth resolution across routes',
+  async (username) => {
+    const suffix = username === 'admin' ? 'admin' : 'user';
+    const name = `policyOAuth-${suffix}`;
+    const group = `policy-group-${suffix}`;
+    const calls: string[] = [];
+    const refreshes: string[] = [];
+    app.post(`/policy-token-${suffix}`, express.urlencoded({ extended: false }), (req, res) => {
+      refreshes.push(req.body.refresh_token);
+      res.json({
+        access_token: `fresh-${username}`,
+        refresh_token: `refresh-${username}`,
+        token_type: 'Bearer',
+      });
+    });
+    app.post(`/policy-upstream-${suffix}`, async (req, res) => {
+      if (req.headers.authorization !== `Bearer fresh-${username}`) {
+        res.set('WWW-Authenticate', 'Bearer').status(401).end();
+        return;
+      }
+      const upstream = new McpServer({ name, version: '1' }, { capabilities: { tools: {} } });
+      upstream.setRequestHandler('tools/list', async () => ({
+        tools: [
+          'identity',
+          'write',
+          'new_tool',
+          'search_tools',
+          `${name}${getNameSeparator()}identity`,
+        ].map((tool) => ({
+          name: tool,
+          inputSchema: { type: 'object' },
+        })),
+      }));
+      upstream.setRequestHandler('tools/call', async (request) => {
+        calls.push(request.params.name);
+        return {
+          content: [
+            { type: 'text', text: JSON.stringify({ credential: req.headers.authorization }) },
+          ],
+        };
+      });
+      const transport = new NodeStreamableHTTPServerTransport({ sessionIdGenerator: undefined });
+      res.on('close', () => {
+        void transport.close();
+        void upstream.close();
+      });
+      await upstream.connect(transport);
+      await transport.handleRequest(req, res, req.body);
+    });
+    const definition = await getServerDao().create({
+      name,
+      type: 'streamable-http',
+      owner: 'admin',
+      visibility: 'public',
+      url: `${baseUrl}/policy-upstream-${suffix}`,
+      oauth: {
+        identityMode: 'personal',
+        clientId: 'client',
+        allowInsecureTokenEndpoint: true,
+        authorizationServerMetadata: {
+          issuer: baseUrl,
+          authorization_endpoint: `${baseUrl}/authorize`,
+          token_endpoint: `${baseUrl}/policy-token-${suffix}`,
+          response_types_supported: ['code'],
+          token_endpoint_auth_methods_supported: ['none'],
+        },
+      },
+    });
+    await getGroupDao().create({
+      id: group,
+      name: group,
+      owner: 'admin',
+      visibility: 'public',
+      servers: [{ name, tools: 'all' }],
+    });
+    const key = await getBearerKeyDao().create({
+      name: `policy-${suffix}`,
+      token: `policy-${suffix}-bearer`,
+      kind: 'user',
+      owner: username,
+      enabled: true,
+      accessType: 'all',
+      createdAt: new Date().toISOString(),
+    });
+    const { PersonalOAuthContext } = await import('../../src/services/personalOAuthService.js');
+    const context = await PersonalOAuthContext.load(name, username, definition!);
+    await context.persistTokens(name, {
+      accessToken: `expired-${username}`,
+      refreshToken: `refresh-${username}`,
+    });
+    jest.mocked(createOAuthProvider).mockImplementation(async (serverName, config) => {
+      if (config.oauth?.identityMode !== 'personal') return undefined;
+      return jest
+        .requireActual('../../src/services/mcpOAuthProvider.js')
+        .createOAuthProvider(serverName, config);
+    });
+    const rule = {
+      id: `read-${suffix}`,
+      effect: 'allow' as const,
+      keyId: key!.id,
+      groupId: group,
+      serverId: definition!.id,
+      tool: 'identity',
+    };
+    try {
+      await getSystemConfigDao().update({ toolPolicies: [rule] });
+      await initializeClientsFromSettings(true);
+      const coldAcquire = jest.spyOn(PrincipalRuntimeService.prototype, 'acquire');
+      try {
+        for (const requested of ['search_tools', `${name}${getNameSeparator()}identity`]) {
+          const denied = await UserContextService.getInstance().runWithContext(
+            () =>
+              RequestContextService.getInstance().runWithCustomRequestContext(
+                { headers: {}, group: name, username, keyId: key!.id, keyKind: 'user' },
+                () =>
+                  handleCallToolRequest(
+                    { params: { name: requested, arguments: { query: 'identity' } } },
+                    { group: name },
+                  ),
+              ),
+            { username, password: '', isAdmin: username === 'admin' },
+          );
+          expect(denied.isError).toBe(true);
+          expect(coldAcquire).not.toHaveBeenCalled();
+        }
+        expect(refreshes).toEqual([]);
+      } finally {
+        coldAcquire.mockRestore();
+      }
+      const client = await connect(`policy-${suffix}`, group);
+      expect((await client.listTools()).tools.map((tool) => tool.name)).toEqual([
+        `${name}${getNameSeparator()}identity`,
+      ]);
+      expect(
+        parseIdentity(await client.callTool({ name: `${name}${getNameSeparator()}identity` }))
+          .credential,
+      ).toBe(`Bearer fresh-${username}`);
+      expect(refreshes).toEqual([`refresh-${username}`]);
+      const acquire = jest.spyOn(PrincipalRuntimeService.prototype, 'acquire');
+      const run = (route: string, toolName: string, wrapper = false) =>
+        UserContextService.getInstance().runWithContext(
+          () =>
+            RequestContextService.getInstance().runWithCustomRequestContext(
+              { headers: {}, group: route, username, keyId: key!.id, keyKind: 'user' },
+              () =>
+                handleCallToolRequest(
+                  {
+                    params: wrapper
+                      ? { name: 'call_tool', arguments: { toolName } }
+                      : { name: toolName, arguments: {} },
+                  },
+                  { group: route },
+                ),
+            ),
+          { username, password: '', isAdmin: username === 'admin' },
+        );
+      try {
+        for (const route of [name, '', '$smart', group, `$smart/${group}`]) {
+          const tool =
+            route === name
+              ? 'identity'
+              : `${name}${getNameSeparator()}${route.includes(group) ? 'write' : 'identity'}`;
+          for (const wrapper of [false, true]) {
+            acquire.mockClear();
+            expect((await run(route, tool, wrapper)).isError).toBe(true);
+            expect(acquire).not.toHaveBeenCalled();
+          }
+        }
+        expect(calls).toEqual(['identity']);
+        expect(mockActivityLogToolCall).toHaveBeenCalledWith(
+          expect.objectContaining({
+            server: name,
+            keyId: key!.id,
+            policy: expect.objectContaining({ decision: 'deny', reason: 'no-matching-allow' }),
+          }),
+        );
+        acquire.mockClear();
+        expect(
+          parseIdentity(await run(`$smart/${group}`, `${name}${getNameSeparator()}identity`, true))
+            .credential,
+        ).toBe(`Bearer fresh-${username}`);
+        expect(acquire).toHaveBeenCalled();
+        await getSystemConfigDao().update({ toolPolicies: [{ ...rule, groupId: undefined }] });
+        for (const route of [name, '', '$smart', group, `$smart/${group}`]) {
+          const exposed = route === name ? 'identity' : `${name}${getNameSeparator()}identity`;
+          expect(parseIdentity(await run(route, exposed)).credential).toBe(
+            `Bearer fresh-${username}`,
+          );
+          expect(parseIdentity(await run(route, exposed, true)).credential).toBe(
+            `Bearer fresh-${username}`,
+          );
+          expect(
+            (await run(route, route === name ? 'new_tool' : `${name}${getNameSeparator()}new_tool`))
+              .isError,
+          ).toBe(true);
+        }
+        acquire.mockClear();
+        expect((await run('$smart', `shared${getNameSeparator()}identity`, true)).isError).toBe(
+          true,
+        );
+        expect(acquire).not.toHaveBeenCalled();
+        await getGroupDao().update(group, { servers: [{ name, alias: 'personal', tools: 'all' }] });
+        expect(
+          parseIdentity(await run(group, `personal${getNameSeparator()}identity`)).credential,
+        ).toBe(`Bearer fresh-${username}`);
+        expect((await run(group, `personal${getNameSeparator()}write`)).isError).toBe(true);
+        await getGroupDao().update(group, {
+          servers: [{ name, preserveToolNames: true, tools: 'all' }],
+        });
+        expect(parseIdentity(await run(group, 'identity')).credential).toBe(
+          `Bearer fresh-${username}`,
+        );
+        expect((await run(group, 'write')).isError).toBe(true);
+        await getGroupDao().update(group, { servers: [{ name, tools: [] }] });
+        expect((await run(group, `${name}${getNameSeparator()}identity`)).isError).toBe(true);
+        await getGroupDao().update(group, { servers: [{ name, tools: 'all' }] });
+        await getSystemConfigDao().update({
+          toolPolicies: [rule, { id: 'block', effect: 'deny', keyId: key!.id, tool: 'identity' }],
+        });
+        acquire.mockClear();
+        expect((await run(group, `${name}${getNameSeparator()}identity`)).isError).toBe(true);
+        expect(acquire).not.toHaveBeenCalled();
+        expect(mockActivityLogToolCall).toHaveBeenCalledWith(
+          expect.objectContaining({
+            policy: expect.objectContaining({ decision: 'deny', policyId: 'block' }),
+          }),
+        );
+      } finally {
+        acquire.mockRestore();
+      }
+    } finally {
+      await getSystemConfigDao().update({ toolPolicies: [] });
+      await getServerDao().delete(name);
+      await getGroupDao().delete(group);
+    }
+  },
+);
+
 test('args credentials reach the child literally, isolate users, and redact failures', async () => {
   const name = 'argsShared';
   await getServerDao().create({

@@ -18,3 +18,17 @@ it('preserves the network policy in database DAO reads, updates and resets', asy
   expect(mockUpdate).toHaveBeenCalledWith({ network });
   expect((await dao.reset()).network).toBeUndefined();
 });
+
+it('round-trips tool policies through the database mapping and rejects invalid rules', async () => {
+  const toolPolicies = [{ id: 'read', effect: 'allow' as const, keyId: 'key', tool: 'read' }];
+  mockGet.mockResolvedValue({ toolPolicies });
+  mockUpdate.mockResolvedValue({ toolPolicies });
+  const dao = new SystemConfigDaoDbImpl();
+  expect((await dao.get()).toolPolicies).toEqual(toolPolicies);
+  expect((await dao.update({ toolPolicies })).toolPolicies).toEqual(toolPolicies);
+  expect(mockUpdate).toHaveBeenLastCalledWith({ toolPolicies });
+  await expect(dao.update({ toolPolicies: null as never })).rejects.toThrow();
+  await expect(dao.updateSection('toolPolicies', null as never)).rejects.toThrow(
+    'toolPolicies must be an array',
+  );
+});

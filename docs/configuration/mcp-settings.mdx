@@ -893,3 +893,41 @@ File mode stores snapshots beside the settings file as `<settings-path>.capabili
 The server-list and server-detail APIs expose `capabilityCache.state` (`fresh`, `stale`, or `missing`) and `capabilityCache.capturedAt` when available. Here `fresh` means configuration-matching last-known discovery, not guaranteed current upstream state. Launch configuration, effective child environment, and personal credential binding changes invalidate a snapshot. Server/group tool overrides and permissions are reapplied when listing; they are never frozen into the snapshot. Personal snapshots are isolated by authenticated user, and listing still requires a valid binding and current server access.
 
 Missing or incompatible snapshots retain live discovery (startup priming for shared stdio servers, first authenticated use for personal servers). No fleet-wide background refresh is scheduled. Unchanged configuration cannot detect an upstream package update or external permission change until the next live connection. Prompts and resources are not persisted in this phase; personal prompt/resource requests still connect live.
+
+## Tool authorization policies
+
+Operators can configure `systemConfig.toolPolicies` in file mode or send `toolPolicies` to the administrator-only `PUT /api/system-config` endpoint in either storage mode. An omitted or empty array preserves existing access. The dashboard has no policy editor.
+
+```json
+{
+  "systemConfig": {
+    "toolPolicies": [
+      {
+        "id": "agent-read",
+        "effect": "allow",
+        "keyId": "USER_KEY_ID",
+        "groupId": "GROUP_ID",
+        "serverId": "SERVER_ID",
+        "tool": "read_document"
+      },
+      {
+        "id": "block-delete",
+        "effect": "deny",
+        "tool": "delete_document"
+      }
+    ]
+  }
+}
+```
+
+Each rule has a unique `id`, an `effect` (`allow` or `deny`), and optional exact-match `username`, `keyId`, `groupId`, `serverId`, and `tool` selectors. Omitted selectors are unconstrained. `tool` is the original upstream name, before server prefixes, group aliases, or `preserveToolNames` projection. Key and group IDs are their existing IDs; administrators can retrieve a server's stable `id` from `GET /api/servers/:name`. File entries without an ID receive a deterministic legacy ID, which is stored on the next DAO write and retained when the server is renamed. New servers receive new IDs; ordinary updates cannot replace an ID.
+
+Username and key selectors establish the subject scope **before** matching the route or tool. For that subject, any fully matching deny wins. If any allow rules apply to the subject, at least one must fully match the requested route/server/tool; otherwise the call is denied. Multiple allows form a union. Without applicable allows or a matching deny, existing access is retained. Policies always intersect with visibility, key scope, group access, enabled state, and capability selections, including for administrator-owned user keys.
+
+A `groupId` selects the resolved endpoint group on normal and `$smart/<group>` routes. Direct server, global, and bare `$smart` routes have no group context. A group-only allow therefore cannot be bypassed through a direct/global endpoint. Add an allow without `groupId` to permit the selected servers/tools through those routes.
+
+Discovery and execution share the policy evaluator. Smart Routing limits eligible candidates before vector ranking/top-k, and execution checks the resolved target again. A denied call does not acquire personal credentials or invoke upstream. Allowed user keys retain the owner's personal OAuth identity and token refresh. Policy configuration errors fail closed. External IdP authentication and claim mapping are outside this policy model.
+
+Activity records include a `policy` object with `decision`, `reason`, optional `policyId`, `serverId`, and `groupId`, alongside caller/key and server/tool identity. File-mode deployments record decisions in application logs; persistent activity history requires database mode. Personal credential payloads remain omitted from activity records, and policy audit metadata never contains credential values.
+
+For direct personal-server endpoints with active policies, list tools before calls that could be interpreted as either raw, prefixed, or gateway wrapper names. Until discovery resolves that ambiguity, all possible targets must be authorized; otherwise the call is denied before credentials are resolved.

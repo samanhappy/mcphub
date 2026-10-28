@@ -1,3 +1,4 @@
+import { validateToolPolicies } from '../utils/toolPolicy.js';
 import { SystemConfig } from '../types/index.js';
 import { JsonFileBaseDao } from './base/JsonFileBaseDao.js';
 
@@ -37,7 +38,7 @@ export interface SystemConfigDao {
   /**
    * Get system configuration
    */
-  get(): Promise<SystemConfig>;
+  get(options?: { failClosed?: boolean }): Promise<SystemConfig>;
 
   /**
    * Update system configuration
@@ -64,8 +65,8 @@ export interface SystemConfigDao {
  * JSON file-based System Configuration DAO implementation
  */
 export class SystemConfigDaoImpl extends JsonFileBaseDao implements SystemConfigDao {
-  async get(): Promise<SystemConfig> {
-    const settings = await this.loadSettings();
+  async get(options?: { failClosed?: boolean }): Promise<SystemConfig> {
+    const settings = await this.loadSettings(options?.failClosed);
     const config = settings.systemConfig || {};
     const { smartRouting, migrated } = migrateLegacySmartRoutingConfig(config.smartRouting);
     if (!migrated) {
@@ -85,6 +86,7 @@ export class SystemConfigDaoImpl extends JsonFileBaseDao implements SystemConfig
   }
 
   async update(config: Partial<SystemConfig>): Promise<SystemConfig> {
+    if (config.toolPolicies !== undefined) validateToolPolicies(config.toolPolicies);
     const settings = await this.loadSettings();
     const currentConfig = settings.systemConfig || {};
 

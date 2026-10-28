@@ -3,6 +3,8 @@ import { ServerConfig } from '../types/index.js';
 import { BaseDao } from './base/BaseDao.js';
 import { JsonFileBaseDao } from './base/JsonFileBaseDao.js';
 import { unpackStartOnDemandOptions } from '../utils/serverConfigPersistence.js';
+import { randomUUID } from 'node:crypto';
+import { legacyServerId } from '../utils/serverIdentity.js';
 
 /**
  * Pagination result interface
@@ -128,6 +130,7 @@ export class ServerDaoImpl extends JsonFileBaseDao implements ServerDao {
       servers.push({
         name,
         ...config,
+        id: config.id ?? legacyServerId(name),
         options,
         ...(startOnDemand !== undefined ? { startOnDemand } : {}),
         ...(idleTimeoutMs !== undefined ? { idleTimeoutMs } : {}),
@@ -164,6 +167,7 @@ export class ServerDaoImpl extends JsonFileBaseDao implements ServerDao {
     return {
       ...existing,
       ...updates,
+      id: existing.id,
       // Keep the existing name unless explicitly updating via rename
       name: updates.name ?? existing.name,
     };
@@ -193,6 +197,7 @@ export class ServerDaoImpl extends JsonFileBaseDao implements ServerDao {
       enabled: true, // Default to enabled
       owner: 'admin', // Default owner
       ...data,
+      id: randomUUID(),
     };
 
     servers.push(newServer);

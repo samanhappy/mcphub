@@ -5,6 +5,7 @@ const mockGetServerConfigsInGroup = jest.fn();
 const mockGetServersInGroup = jest.fn();
 const mockSearchToolsByVector = jest.fn();
 const mockFindById = jest.fn();
+const mockGetPolicyConfig = jest.fn();
 const mockGetSmartRoutingConfig = jest.fn();
 
 jest.mock('../../src/services/groupService.js', () => ({
@@ -28,7 +29,10 @@ jest.mock('../../src/utils/smartRouting.js', () => ({
 }));
 
 jest.mock('../../src/dao/index.js', () => ({
+  getSystemConfigDao: jest.fn(() => ({ get: mockGetPolicyConfig })),
+  getGroupDao: jest.fn(() => ({ findByName: async () => ({ id: 'team-id' }) })),
   getServerDao: jest.fn(() => ({
+    findAll: async () => [{ name: 'chat', id: 'chat-id' }],
     findById: mockFindById,
   })),
 }));
@@ -75,6 +79,7 @@ const search = async (query = 'read recent messages from a chat group') => {
 describe('smartRoutingService search_tools results', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockGetPolicyConfig.mockResolvedValue({});
     mockGetGroup.mockReturnValue('$smart/team');
     mockGetSmartRoutingConfig.mockResolvedValue({ progressiveDisclosure: false });
     mockGetServersInGroup.mockResolvedValue(['chat', 'code', 'offline']);
@@ -98,6 +103,23 @@ describe('smartRoutingService search_tools results', () => {
         ] as any,
       jest.fn(async (_serverName, tools) => tools),
       jest.fn(async (_group, _serverName, tools) => tools),
+    );
+  });
+
+  it('sends only canonical policy-eligible candidates into ranking/top-k', async () => {
+    mockGetPolicyConfig.mockResolvedValue({
+      toolPolicies: [
+        { id: 'read-only', effect: 'allow', serverId: 'chat-id', tool: 'list_messages' },
+      ],
+    });
+    mockSearchToolsByVector.mockResolvedValue([hit('chat::list_messages', 0.8, 0.8)]);
+    await search();
+    expect(mockSearchToolsByVector).toHaveBeenCalledWith(
+      expect.any(String),
+      10,
+      expect.any(Number),
+      ['chat'],
+      ['chat:chat::list_messages'],
     );
   });
 
@@ -497,6 +519,7 @@ describe('smartRoutingService search_tools results', () => {
 describe('smartRoutingService meta-tools with fullSchemaTopN', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockGetPolicyConfig.mockResolvedValue({});
     initSmartRoutingService(
       () => [{ name: 'chat', status: 'connected', enabled: true, tools: [] }] as any,
       jest.fn(async (_serverName, tools) => tools),

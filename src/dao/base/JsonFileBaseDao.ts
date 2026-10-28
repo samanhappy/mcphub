@@ -16,7 +16,7 @@ export abstract class JsonFileBaseDao {
   /**
    * Load settings from JSON file with caching
    */
-  protected async loadSettings(): Promise<McpSettings> {
+  protected async loadSettings(failClosed = false): Promise<McpSettings> {
     try {
       const settingsPath = getSettingsPath();
       const stats = fs.statSync(settingsPath);
@@ -41,6 +41,7 @@ export abstract class JsonFileBaseDao {
 
       return settings;
     } catch (error) {
+      if (failClosed) throw error;
       logger.error(`Failed to load settings:`, error);
       const defaultSettings: McpSettings = {
         mcpServers: {},

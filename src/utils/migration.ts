@@ -1,3 +1,4 @@
+import { legacyServerId } from './serverIdentity.js';
 import fs from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import { toStoredToken } from './bearerKeyToken.js';
@@ -143,6 +144,7 @@ export async function migrateToDatabase(seedServersAndGroups = true): Promise<bo
           };
 
           await serverRepo.create({
+            id: config.id ?? legacyServerId(name),
             name,
             type: config.type,
             description: config.description,
@@ -201,6 +203,7 @@ export async function migrateToDatabase(seedServersAndGroups = true): Promise<bo
     if (settings.systemConfig) {
       logger.log('Migrating system configuration...');
       const systemConfig = {
+        toolPolicies: settings.systemConfig.toolPolicies,
         network: settings.systemConfig.network || {},
         // the legacy bearerAuthKey is migrated to a hashed bearer key below
         routing: { ...settings.systemConfig.routing, bearerAuthKey: '' },

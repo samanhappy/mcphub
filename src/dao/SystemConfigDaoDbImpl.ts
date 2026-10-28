@@ -1,3 +1,4 @@
+import { validateToolPolicies } from '../utils/toolPolicy.js';
 import { migrateLegacySmartRoutingConfig, SystemConfigDao } from './SystemConfigDao.js';
 import { SystemConfig } from '../types/index.js';
 import { SystemConfigRepository } from '../db/repositories/SystemConfigRepository.js';
@@ -22,6 +23,7 @@ export class SystemConfigDaoDbImpl implements SystemConfigDao {
     }
 
     return {
+      toolPolicies: config.toolPolicies,
       network: config.network,
       routing: config.routing as any,
       install: config.install as any,
@@ -39,8 +41,10 @@ export class SystemConfigDaoDbImpl implements SystemConfigDao {
   }
 
   async update(config: Partial<SystemConfig>): Promise<SystemConfig> {
+    if (config.toolPolicies !== undefined) validateToolPolicies(config.toolPolicies);
     const updated = await this.repository.update(config as any);
     return {
+      toolPolicies: updated.toolPolicies,
       network: updated.network,
       routing: updated.routing as any,
       install: updated.install as any,
@@ -60,6 +64,7 @@ export class SystemConfigDaoDbImpl implements SystemConfigDao {
   async reset(): Promise<SystemConfig> {
     const config = await this.repository.reset();
     return {
+      toolPolicies: config.toolPolicies,
       network: config.network,
       routing: config.routing as any,
       install: config.install as any,
@@ -84,6 +89,7 @@ export class SystemConfigDaoDbImpl implements SystemConfigDao {
     section: K,
     value: SystemConfig[K],
   ): Promise<boolean> {
+    if (section === 'toolPolicies') validateToolPolicies(value);
     await this.repository.updateSection(section, value as any);
     return true;
   }

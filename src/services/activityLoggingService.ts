@@ -1,5 +1,5 @@
 import { getActivityDao, isActivityLoggingEnabled } from '../dao/DaoFactory.js';
-import { IActivity, ActivityStatus } from '../types/index.js';
+import { IActivity, ActivityStatus, ToolPolicyAudit } from '../types/index.js';
 import { stringifyWithoutRedaction, sanitizeStringForLogging } from '../utils/serialization.js';
 import { getCachedSystemConfig } from '../utils/systemConfigCache.js';
 import { logger } from '../utils/logger.js';
@@ -43,6 +43,7 @@ export class ActivityLoggingService {
    * Log a tool call activity
    */
   async logToolCall(params: {
+    policy?: ToolPolicyAudit;
     server: string;
     tool: string;
     duration: number;
@@ -79,6 +80,7 @@ export class ActivityLoggingService {
           : sanitizeStringForLogging(params.errorMessage)
         : undefined;
       const activity: Omit<IActivity, 'id'> = {
+        policy: params.policy,
         timestamp: new Date(),
         server: params.server,
         tool: params.tool,
