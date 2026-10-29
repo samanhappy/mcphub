@@ -1,6 +1,21 @@
 import { ServerDaoImpl } from '../../src/dao/ServerDao.js';
 
 describe('ServerDaoImpl', () => {
+  it('retains policy IDs across rename and ignores attempts to replace them', async () => {
+    const settings = { mcpServers: { original: { enabled: true } } };
+    const dao = new ServerDaoImpl();
+    jest.spyOn(dao as any, 'loadSettings').mockResolvedValue(settings);
+    jest.spyOn(dao as any, 'saveSettings').mockResolvedValue(undefined);
+    const original = await dao.findById('original');
+    expect(original?.id).toMatch(/^[a-f0-9-]{36}$/);
+    expect((await dao.findById('original'))?.id).toBe(original?.id);
+    await dao.update('original', { id: 'replacement' });
+    await dao.rename('original', 'renamed');
+    expect((await dao.findById('renamed'))?.id).toBe(original?.id);
+    const recreated = await dao.create({ name: 'original', id: original?.id });
+    expect(recreated.id).not.toBe(original?.id);
+  });
+
   it('includes explicitly shared group servers in paginated user results', async () => {
     const dao = new ServerDaoImpl();
     jest.spyOn(dao as any, 'getAll').mockResolvedValue([

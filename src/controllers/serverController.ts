@@ -1,3 +1,4 @@
+import { validateToolPolicies } from '../utils/toolPolicy.js';
 import { hasPersonalAuthentication } from '../utils/credentialTemplate.js';
 import { matchesNamePattern } from '../utils/namePattern.js';
 import { validateAllowedCidrs } from '../utils/ssrf.js';
@@ -2070,15 +2071,22 @@ export const updateSystemConfig = async (req: Request, res: Response): Promise<v
       auth,
       activityLog,
       network,
+      toolPolicies,
     } = req.body;
+    if (toolPolicies !== undefined) {
+      try {
+        validateToolPolicies(toolPolicies);
+      } catch (error) {
+        res.status(400).json({ success: false, message: (error as Error).message });
+        return;
+      }
+    }
     const hasNetworkUpdate = network !== undefined;
     if (hasNetworkUpdate && (!network || !validateAllowedCidrs(network.allowedCidrs))) {
-      res
-        .status(400)
-        .json({
-          success: false,
-          message: 'network.allowedCidrs must be an array of valid IPv4 or IPv6 CIDRs',
-        });
+      res.status(400).json({
+        success: false,
+        message: 'network.allowedCidrs must be an array of valid IPv4 or IPv6 CIDRs',
+      });
       return;
     }
     const { smartRouting } = migrateLegacySmartRoutingConfig(requestSmartRouting);
@@ -2194,7 +2202,8 @@ export const updateSystemConfig = async (req: Request, res: Response): Promise<v
       !hasBetterAuthUpdate &&
       typeof auth?.allowRegistration !== 'boolean' &&
       !hasActivityLogUpdate &&
-      !hasNetworkUpdate
+      !hasNetworkUpdate &&
+      toolPolicies === undefined
     ) {
       res.status(400).json({
         success: false,
@@ -2846,6 +2855,8 @@ export const updateSystemConfig = async (req: Request, res: Response): Promise<v
     if (hasNetworkUpdate) {
       systemConfig.network = { allowedCidrs: [...new Set<string>(network.allowedCidrs)] };
     }
+
+    if (toolPolicies !== undefined) systemConfig.toolPolicies = toolPolicies;
 
     // Save using DAO (supports both file and database modes)
     try {

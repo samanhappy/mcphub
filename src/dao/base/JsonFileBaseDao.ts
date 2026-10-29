@@ -16,15 +16,15 @@ export abstract class JsonFileBaseDao {
   /**
    * Load settings from JSON file with caching
    */
-  protected async loadSettings(): Promise<McpSettings> {
-    return this.loadSettingsSync();
+  protected async loadSettings(failClosed = false): Promise<McpSettings> {
+    return this.loadSettingsSync(failClosed);
   }
 
   /**
    * Synchronous loadSettings, for read-modify-write sequences that must not interleave
    * with other requests.
    */
-  protected loadSettingsSync(): McpSettings {
+  protected loadSettingsSync(failClosed = false): McpSettings {
     try {
       const settingsPath = getSettingsPath();
       const stats = fs.statSync(settingsPath);
@@ -49,6 +49,7 @@ export abstract class JsonFileBaseDao {
 
       return settings;
     } catch (error) {
+      if (failClosed) throw error;
       logger.error(`Failed to load settings:`, error);
       const defaultSettings: McpSettings = {
         mcpServers: {},

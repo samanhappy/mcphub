@@ -1,3 +1,4 @@
+import type { ToolPolicyRule, PolicyDecision } from './toolPolicy.js';
 import { StdioClientTransport } from '@modelcontextprotocol/client/stdio';
 import {
   Client,
@@ -266,7 +267,15 @@ export interface ToolResultCompressionConfig {
   strategy?: ToolResultCompressionStrategy;
 }
 
+export type { ToolPolicyRule, PolicyDecision } from './toolPolicy.js';
+
+export interface ToolPolicyAudit extends PolicyDecision {
+  serverId?: string;
+  groupId?: string;
+}
+
 export interface SystemConfig {
+  toolPolicies?: ToolPolicyRule[];
   network?: {
     allowedCidrs?: string[]; // Admin-managed ranges reachable by non-admin-owned upstreams.
   };
@@ -462,6 +471,7 @@ export interface StoredCredentialBinding {
 
 // Configuration details for an individual server
 export interface ServerConfig {
+  id?: string; // Stable policy identity; runtime routing remains name-based.
   credentialTemplate?: CredentialSlot[]; // Metadata only; every slot requires a personal binding.
   type?: 'stdio' | 'sse' | 'streamable-http' | 'openapi'; // Type of server
   description?: string; // Optional server note/description for management UI
@@ -806,6 +816,7 @@ export type ActivityStatus = 'success' | 'error';
 
 // Activity interface for tracking tool calls
 export interface IActivity {
+  policy?: ToolPolicyAudit;
   id?: string; // Unique identifier (auto-generated for DB)
   timestamp: Date; // When the tool was called
   server: string; // Server name that handled the call

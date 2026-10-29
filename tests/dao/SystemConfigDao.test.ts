@@ -38,6 +38,21 @@ describe('SystemConfigDaoImpl smart-routing migration', () => {
     expect(await dao.get()).toMatchObject({ nameSeparator: '::', network: { allowedCidrs: [] } });
   });
 
+  it('round-trips policy rules, rejects malformed writes, and fails closed on unreadable configuration', async () => {
+    writeSettings(settingsPath, { mcpServers: {}, systemConfig: {} });
+    const dao = new SystemConfigDaoImpl();
+    const toolPolicies = [{ id: 'read', effect: 'allow' as const, keyId: 'key', tool: 'read' }];
+    await dao.update({ toolPolicies });
+    expect((await new SystemConfigDaoImpl().get({ failClosed: true })).toolPolicies).toEqual(
+      toolPolicies,
+    );
+    await expect(
+      dao.update({ toolPolicies: [{ id: 'bad', effect: 'typo' as 'allow' }] }),
+    ).rejects.toThrow('Invalid toolPolicies');
+    fs.writeFileSync(settingsPath, '{broken json');
+    await expect(new SystemConfigDaoImpl().get({ failClosed: true })).rejects.toThrow();
+  });
+
   it('returns migrated settings when a read-only config rejects writeback', async () => {
     writeSettings(settingsPath, {
       mcpServers: {},

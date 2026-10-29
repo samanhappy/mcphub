@@ -1546,6 +1546,7 @@ export const searchToolsByVector = async (
   limit: number = 10,
   threshold: number = 0.7,
   serverNames?: string[],
+  allowedToolIds?: string[],
 ): Promise<
   Array<{
     serverName: string;
@@ -1559,6 +1560,7 @@ export const searchToolsByVector = async (
     searchableText: string;
   }>
 > => {
+  if (allowedToolIds?.length === 0) return [];
   try {
     const vectorRepository = getRepositoryFactory(
       'vectorEmbeddings',
@@ -1576,7 +1578,14 @@ export const searchToolsByVector = async (
     const scopedServerNames = serverNames && serverNames.length > 0 ? serverNames : undefined;
 
     const [toolResults, rawServerResults] = await Promise.all([
-      vectorRepository.searchSimilar(queryEmbedding, limit, threshold, ['tool'], scopedServerNames),
+      vectorRepository.searchSimilar(
+        queryEmbedding,
+        limit,
+        threshold,
+        ['tool'],
+        scopedServerNames,
+        allowedToolIds,
+      ),
       vectorRepository.searchSimilar(queryEmbedding, 50, 0.1, ['server'], scopedServerNames),
     ]);
 

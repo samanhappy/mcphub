@@ -1,3 +1,4 @@
+import { getToolPolicy } from './toolPolicyService.js';
 /**
  * Smart Routing Service
  *
@@ -387,7 +388,10 @@ Available servers: ${serversList}`,
  * available.
  */
 const getAvailableServers = async (targetGroup: string | undefined): Promise<ServerInfo[]> => {
-  const servers = getServerInfos().filter(canServeToolRequests);
+  const policy = await getToolPolicy(targetGroup);
+  const servers = getServerInfos()
+    .filter(canServeToolRequests)
+    .filter((server) => policy.authorize(server.name, undefined, true).decision === 'allow');
   if (!targetGroup) {
     return servers;
   }
@@ -539,8 +543,27 @@ export const handleSearchToolsRequest = async (
     );
   }
 
+  const policy = await getToolPolicy(group);
+  let allowedToolIds: string[] | undefined;
+  if (policy.active) {
+    allowedToolIds = [];
+    for (const server of availableServers) {
+      const configured = await filterToolsByConfigFn(
+        server.name,
+        server.tools.filter((tool) => !isAppOnlyTool(tool)),
+      );
+      const selected = await filterToolsByGroupFn(targetGroup, server.name, configured);
+      allowedToolIds.push(
+        ...policy.filterTools(server.name, selected).map((tool) => `${server.name}:${tool.name}`),
+      );
+    }
+  }
   const searchResults =
-    servers.length > 0 ? await searchToolsByVector(query, limitNum, thresholdNum, servers) : [];
+    servers.length === 0 || allowedToolIds?.length === 0
+      ? []
+      : allowedToolIds
+        ? await searchToolsByVector(query, limitNum, thresholdNum, servers, allowedToolIds)
+        : await searchToolsByVector(query, limitNum, thresholdNum, servers);
   logger.log(`Search results: ${JSON.stringify(searchResults)}`);
 
   // Find actual tool information from serverInfos by serverName and toolName

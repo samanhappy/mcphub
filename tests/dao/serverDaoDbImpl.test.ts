@@ -28,6 +28,7 @@ describe('ServerDaoDbImpl', () => {
     const dao = new ServerDaoDbImpl();
 
     mockRepository.create.mockResolvedValue({
+      id: 'stable-server-id',
       name: 'serena',
       type: 'stdio',
       command: 'npx',
@@ -52,6 +53,7 @@ describe('ServerDaoDbImpl', () => {
     );
 
     expect(result.description).toBe('my server note');
+    expect(result.id).toBe('stable-server-id');
   });
 
   it('should persist and map passthroughHeaders field', async () => {

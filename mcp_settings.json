@@ -37,6 +37,7 @@
   },
   "users": [],
   "systemConfig": {
+    "toolPolicies": [],
     "oauthServer": {
       "enabled": true,
       "accessTokenLifetime": 3600,

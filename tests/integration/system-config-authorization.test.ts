@@ -119,6 +119,7 @@ describe('system configuration authorization', () => {
       .put('/api/system-config')
       .set('x-auth-token', createUserToken('regular-user', false))
       .send({
+        toolPolicies: [],
         routing: {
           skipAuth: true,
         },

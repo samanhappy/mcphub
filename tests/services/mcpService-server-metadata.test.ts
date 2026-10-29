@@ -176,6 +176,14 @@ describe('mcpService initialize metadata', () => {
     expect(server.protocolVersion).toBe('2025-03-26');
   });
 
+  it('exposes stable server IDs for policy selection, including disabled servers', async () => {
+    mockFindAll.mockResolvedValue([
+      { id: 'persistent-id', name: 'waiting', type: 'stdio', command: 'node', enabled: false },
+    ]);
+    const [server] = await getServersInfo();
+    expect(server.config?.id).toBe('persistent-id');
+  });
+
   it('does not invent a protocol version before initialization', async () => {
     mockFindAll.mockResolvedValue([
       { name: 'waiting', type: 'stdio', command: 'node', enabled: false },

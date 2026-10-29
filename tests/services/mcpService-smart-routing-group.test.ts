@@ -34,6 +34,7 @@ jest.mock('../../src/services/sseService.js', () => ({
 }));
 
 jest.mock('../../src/dao/index.js', () => ({
+  getSystemConfigDao: jest.fn(() => ({ get: async () => ({}) })),
   getGroupDao: jest.fn(() => ({
     findByName: jest.fn(() => Promise.resolve(null)),
     findById: jest.fn(() => Promise.resolve(null)),

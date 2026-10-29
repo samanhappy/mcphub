@@ -840,6 +840,21 @@ describe('serverController - updateSystemConfig', () => {
     mockSystemConfigDao.update.mockResolvedValue(true);
   });
 
+  it('saves and clears operator policies without losing unrelated configuration', async () => {
+    for (const toolPolicies of [[{ id: 'read', effect: 'allow', keyId: 'key', tool: 'read' }], []]) {
+      mockRequest.body = { toolPolicies };
+      await updateSystemConfig(mockRequest as Request, mockResponse as Response);
+      expect(mockSystemConfigDao.update).toHaveBeenLastCalledWith(expect.objectContaining({ toolPolicies, routing: expect.any(Object) }));
+    }
+  });
+
+  it('rejects invalid policies before persisting any configuration', async () => {
+    mockRequest.body = { toolPolicies: [{ id: 'typo', effect: 'allow', server: 'wrong-selector' }] };
+    await updateSystemConfig(mockRequest as Request, mockResponse as Response);
+    expect(mockStatus).toHaveBeenCalledWith(400);
+    expect(mockSystemConfigDao.update).not.toHaveBeenCalled();
+  });
+
   it('saves and clears an admin CIDR allowlist', async () => {
     for (const allowedCidrs of [['192.168.1.0/24', 'fd00::/64'], []]) {
       mockRequest.body = { network: { allowedCidrs } };

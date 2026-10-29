@@ -2,6 +2,7 @@ import { apiGet, fetchWithInterceptors } from '../utils/fetchInterceptor';
 import { getBasePath } from '../utils/runtime';
 
 export interface SystemConfig {
+  toolPolicies?: import('../../../src/types/toolPolicy.js').ToolPolicyRule[];
   routing?: {
     enableGlobalRoute?: boolean;
     enableGroupNameRoute?: boolean;

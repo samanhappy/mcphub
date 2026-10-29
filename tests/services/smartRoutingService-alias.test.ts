@@ -29,6 +29,7 @@ jest.mock('../../src/utils/smartRouting.js', () => ({
 }));
 
 jest.mock('../../src/dao/index.js', () => ({
+  getSystemConfigDao: jest.fn(() => ({ get: async () => ({}) })),
   getServerDao: jest.fn(() => ({
     findById: mockFindById,
   })),

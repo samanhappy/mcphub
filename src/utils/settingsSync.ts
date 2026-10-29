@@ -12,6 +12,7 @@ import { expandServerConfig } from '../services/serverConfigEnvironment.js';
 import { ServerConfig } from '../types/index.js';
 import { normalizeServerConfigForPersistence } from './serverConfigPersistence.js';
 import { logger } from './logger.js';
+import { legacyServerId } from './serverIdentity.js';
 
 const deriveFingerprint = promisify(pbkdf2);
 
@@ -38,6 +39,7 @@ const declarationSchema = z.object({
       name,
       z
         .object({
+          id: z.string().uuid().optional(),
           type: z.enum(['stdio', 'sse', 'streamable-http', 'openapi']).optional(),
           url: z.string().optional(),
           command: z.string().optional(),
@@ -185,6 +187,16 @@ export async function syncSettingsToDatabase(): Promise<void> {
     const serverRepo = manager.getRepository(Server);
     for (const { serverName, config, signature } of servers) {
       const existing = await serverRepo.findOneBy({ name: serverName });
+      if (existing && config.id && config.id !== existing.id) {
+        logger.warn(
+          'Settings sync: ignoring declared ID; existing database server ID is retained',
+          {
+            serverName,
+            declaredId: config.id,
+            retainedId: existing.id,
+          },
+        );
+      }
       const hash = await fingerprintDeclaration(signature, existing?.settingsSyncHash);
       const sameTarget =
         existing &&
@@ -202,6 +214,7 @@ export async function syncSettingsToDatabase(): Promise<void> {
       const oauth =
         sameTarget && sameOAuth ? { ...config.oauth, ...existing?.oauth } : config.oauth;
       const data: Record<string, unknown> = {
+        id: existing?.id ?? config.id ?? legacyServerId(serverName),
         name: serverName,
         enabled: config.enabled ?? true,
         visibility: config.visibility ?? 'private',

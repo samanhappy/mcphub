@@ -257,6 +257,22 @@ describe('vectorSearchService', () => {
     }
   });
 
+  it('passes the eligible tool IDs to the database before ranking', async () => {
+    mockVectorRepository.searchSimilar.mockResolvedValue([]);
+    await searchToolsByVector('read messages', 1, 0.3, ['chat'], ['chat:chat-read']);
+    expect(mockVectorRepository.searchSimilar).toHaveBeenCalledWith(
+      expect.any(Array),
+      1,
+      0.3,
+      ['tool'],
+      ['chat'],
+      ['chat:chat-read'],
+    );
+    mockVectorRepository.searchSimilar.mockClear();
+    expect(await searchToolsByVector('read messages', 1, 0.3, ['chat'], [])).toEqual([]);
+    expect(mockVectorRepository.searchSimilar).not.toHaveBeenCalled();
+  });
+
   it('leaves the search unscoped when no server names are given', async () => {
     mockVectorRepository.searchSimilar.mockResolvedValue([]);
 
@@ -779,6 +795,7 @@ describe('vectorSearchService', () => {
         0.3,
         ['tool'],
         undefined,
+        undefined,
       );
     });
 
@@ -889,6 +906,7 @@ describe('vectorSearchService', () => {
         10,
         0.3,
         ['tool'],
+        undefined,
         undefined,
       );
     });

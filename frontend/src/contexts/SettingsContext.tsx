@@ -8,6 +8,8 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ApiResponse, BearerKey } from '@/types';
+import type { ToolPolicyRule } from '../../../src/types/toolPolicy.js';
+import { validateToolPolicies } from '../../../src/utils/toolPolicy.js';
 import { useToast } from '@/contexts/ToastContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiGet, apiPut, apiPost, apiDelete } from '@/utils/fetchInterceptor';
@@ -121,6 +123,7 @@ interface BetterAuthConfig {
 
 interface SystemSettings {
   systemConfig?: {
+    toolPolicies?: ToolPolicyRule[];
     routing?: RoutingConfig;
     install?: InstallConfig;
     smartRouting?: SmartRoutingConfig;
@@ -148,6 +151,8 @@ interface TempRoutingConfig {
 }
 
 interface SettingsContextValue {
+  toolPolicies: ToolPolicyRule[] | undefined;
+  updateToolPolicies: (rules: ToolPolicyRule[]) => Promise<boolean>;
   routingConfig: RoutingConfig;
   tempRoutingConfig: TempRoutingConfig;
   setTempRoutingConfig: React.Dispatch<React.SetStateAction<TempRoutingConfig>>;
@@ -416,6 +421,7 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
   const [nameSeparator, setNameSeparator] = useState<string>('-');
   const [enableSessionRebuild, setEnableSessionRebuild] = useState<boolean>(false);
   const [allowedCidrs, setAllowedCidrs] = useState<string[]>([]);
+  const [toolPolicies, setToolPolicies] = useState<ToolPolicyRule[]>();
   const [storeToolPayload, setStoreToolPayload] = useState<boolean>(true);
   const [bearerKeys, setBearerKeys] = useState<BearerKey[]>([]);
 
@@ -436,6 +442,13 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
     try {
       const data: ApiResponse<SystemSettings> = await apiGet('/settings');
 
+      if (data.success && data.data?.systemConfig) {
+        const rules = data.data.systemConfig.toolPolicies === undefined
+          ? []
+          : data.data.systemConfig.toolPolicies;
+        validateToolPolicies(rules);
+        setToolPolicies(rules);
+      }
       if (data.success && data.data?.systemConfig?.routing) {
         setRoutingConfig({
           enableGlobalRoute: data.data.systemConfig.routing.enableGlobalRoute ?? true,
@@ -1067,6 +1080,28 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
     }
   };
 
+  const updateToolPolicies = async (rules: ToolPolicyRule[]): Promise<boolean> => {
+    setLoading(true);
+    try {
+      const data = await apiPut('/system-config', { toolPolicies: rules });
+      if (!data.success) {
+        showToast(data.message || data.error || t('settings.toolPolicies.saveFailed'), 'error');
+        return false;
+      }
+      setToolPolicies(rules);
+      showToast(t('settings.systemConfigUpdated'));
+      return true;
+    } catch (error) {
+      showToast(
+        error instanceof Error ? error.message : t('settings.toolPolicies.saveFailed'),
+        'error',
+      );
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const updateAllowedCidrs = async (value: string[]): Promise<boolean> => {
     setLoading(true);
     try {
@@ -1225,6 +1260,8 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
   }, [routingConfig]);
 
   const value: SettingsContextValue = {
+    toolPolicies,
+    updateToolPolicies,
     routingConfig,
     tempRoutingConfig,
     setTempRoutingConfig,

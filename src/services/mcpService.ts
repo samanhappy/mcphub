@@ -1,3 +1,5 @@
+import { getToolPolicy } from './toolPolicyService.js';
+import type { ToolPolicyAudit } from '../types/index.js';
 import { projectGroupToolName, assertValidGroupToolNames } from '../utils/groupToolNames.js';
 import { isSafePassthroughHeader } from '../utils/passthroughHeaders.js';
 import { observeToolCall, setMetricsServer } from './metricsService.js';
@@ -2969,6 +2971,7 @@ export const getServersInfo = async (
           config:
             resolvedType || serverConfig?.description || serverConfig?.command
               ? {
+                  ...(serverConfig?.id ? { id: serverConfig.id } : {}),
                   ...(resolvedType ? { type: resolvedType } : {}),
                   ...(hasPersonalAuthentication(serverConfig)
                     ? { credentialTemplate: validateCredentialTemplate(serverConfig!) }
@@ -4396,12 +4399,14 @@ const handleCallToolRequestImpl = async (request: any, extra: any) => {
   const username =
     requestContextService.getUsernameContext() ||
     extra?.username ||
+    UserContextService.getInstance().getCurrentUser()?.username ||
     (requestContextService.getKeyKindContext() === 'system' ? 'system' : undefined) ||
     undefined;
   let appsRouteContext: McpAppsRouteContext;
   const keyId = bearerKeyContext.keyId || extra?.keyId || undefined;
   const keyName = bearerKeyContext.keyName || extra?.keyName || undefined;
   const sourceIp = requestContextService.getRequestContext()?.remoteAddress || undefined;
+  let policyAudit: ToolPolicyAudit | undefined;
   let hostedReservation: HostedCreditReservation | null = null;
   let releaseOnDemandToolCall: (() => void) | undefined;
   let clientStateLease: ReturnType<typeof acquireClientState> | undefined;
@@ -4412,6 +4417,19 @@ const handleCallToolRequestImpl = async (request: any, extra: any) => {
   };
 
   const reserveHostedIfNeeded = async (serverName: string, toolName: string) => {
+    const policy = await getToolPolicy(group);
+    const decision = policy.authorize(serverName, toolName);
+    policyAudit = { ...decision, serverId: policy.serverId(serverName), groupId: policy.groupId };
+    logger.log('Tool policy decision', {
+      username,
+      callerId: keyId,
+      server: serverName,
+      tool: toolName,
+      ...policyAudit,
+    });
+    if (decision.decision === 'deny') {
+      throw new ToolUnavailableError(`Tool not available: ${toolName}`, decision.reason);
+    }
     const hostedAuth = requestContextService.getHostedAuthContext();
     assertHostedToolAllowed(hostedAuth, serverName, toolName);
     hostedReservation = await reserveHostedToolCall(hostedAuth, serverName, toolName);
@@ -4608,6 +4626,7 @@ const handleCallToolRequestImpl = async (request: any, extra: any) => {
         // Log successful activity
         const duration = Date.now() - startTime;
         await activityLogger.logToolCall({
+          policy: policyAudit,
           server: targetServerInfo.name,
           tool: cleanToolName,
           duration,
@@ -4706,6 +4725,7 @@ const handleCallToolRequestImpl = async (request: any, extra: any) => {
       // Log successful activity
       const duration = Date.now() - startTime;
       await activityLogger.logToolCall({
+        policy: policyAudit,
         server: targetServerInfo.name,
         tool: cleanToolName,
         duration,
@@ -4844,6 +4864,7 @@ const handleCallToolRequestImpl = async (request: any, extra: any) => {
       // Log successful activity
       const duration = Date.now() - startTime;
       await activityLogger.logToolCall({
+        policy: policyAudit,
         server: serverInfo.name,
         tool: cleanToolName,
         duration,
@@ -4921,6 +4942,7 @@ const handleCallToolRequestImpl = async (request: any, extra: any) => {
     // Log successful activity
     const duration = Date.now() - startTime;
     await activityLogger.logToolCall({
+      policy: policyAudit,
       server: serverInfo.name,
       tool: cleanToolName,
       duration,
@@ -4954,7 +4976,7 @@ const handleCallToolRequestImpl = async (request: any, extra: any) => {
       callerLabel: keyName,
       toolName: activityToolName,
       ...summarizeErrorForLogging(error),
-      ...(unavailable ? { reason: unavailable.reason } : {}),
+      ...(unavailable ? { decision: 'deny', reason: unavailable.reason } : {}),
     });
 
     // Log error activity
@@ -4970,6 +4992,8 @@ const handleCallToolRequestImpl = async (request: any, extra: any) => {
     const cleanToolName = stripToolServerPrefix(activityToolName, serverInfo?.name);
 
     await activityLogger.logToolCall({
+      policy:
+        policyAudit ?? (unavailable ? { decision: 'deny', reason: unavailable.reason } : undefined),
       server: serverInfo?.name || 'unknown',
       tool: cleanToolName,
       duration,
@@ -5981,7 +6005,7 @@ const withCacheHints =
     return { ...result, ttlMs, cacheScope: 'private' };
   };
 
-export const handleListToolsRequest = withPrincipalServers(
+const listToolsWithPrincipal = withPrincipalServers(
   withModernLists(withCacheHints(handleListToolsRequestImpl, false, 'tools'), ['tools']),
   'tools-list',
 );
@@ -5989,8 +6013,126 @@ const callToolWithPrincipal = withPrincipalServers(
   withModernLists(handleCallToolRequestImpl, ['tools']),
   'tool',
 );
+// Run before personal-runtime acquisition: rejected targets must not resolve credentials.
+const withToolPolicy = async (
+  handler: McpHandler,
+  request: any,
+  extra: any,
+  invocation: boolean,
+) => {
+  const group = getMcpRequestGroup(extra);
+  const policy = await getToolPolicy(group);
+  if (!policy.active) return handler(request, extra);
+  const { filteredServerInfos: candidates, serverConfigsByName } =
+    await getFilteredServerInfosForGroup(getGroupLookupName(group));
+  const username = UserContextService.getInstance().getCurrentUser()?.username;
+  const preflightInfo = (info: ServerInfo): ServerInfo => {
+    const tools = username ? principalRuntimes.peekTools(info.name, username) : undefined;
+    return tools ? { ...info, tools } : info;
+  };
+  const lookup = getGroupLookupName(group);
+  const direct = !!lookup && !isSmartRoutingGroup(group) && !(await findRouteGroup(lookup));
+  const upstreamOwnsName =
+    direct &&
+    candidates.map(preflightInfo).some((info) =>
+      info.tools.length
+        ? info.tools.some(
+            (tool) => normalizeToolNameForServer(info.name, tool.name) === request.params?.name,
+          )
+        : // Until discovery disambiguates a raw meta-name, require it to be authorized too.
+          hasPersonalAuthentication(info.config) &&
+          policy.authorize(info.name, request.params?.name).decision === 'deny',
+    );
+  const wrapper =
+    !upstreamOwnsName && ['call_tool', 'describe_tool'].includes(request.params?.name);
+  const requested = wrapper ? request.params.arguments?.toolName : request.params?.name;
+  const targetCall = invocation && (upstreamOwnsName || request.params?.name !== 'search_tools');
+  let denied: { server: ServerInfo; tool: string; decision: ToolPolicyAudit } | undefined;
+  const eligible = candidates.filter((info) => {
+    if (extra?.server && info.name !== extra.server) return false;
+    const config = serverConfigsByName.get(info.name);
+    const internal =
+      typeof requested === 'string'
+        ? config?.preserveToolNames
+          ? `${info.name}${getNameSeparator()}${requested}`
+          : resolveNameFromGroup(requested, info.name, config)
+        : undefined;
+    const known = internal
+      ? findToolOnServer(
+          preflightInfo(info),
+          internal,
+          direct || !!extra?.server || candidates.length === 1,
+          direct,
+        )
+      : undefined;
+    const prefix = `${info.name}${getNameSeparator()}`;
+    const tool = known
+      ? normalizeToolNameForServer(info.name, known.name)
+      : internal?.startsWith(prefix)
+        ? internal.slice(prefix.length)
+        : direct || extra?.server || candidates.length === 1 || config?.preserveToolNames
+          ? internal
+          : undefined;
+    if (targetCall && !tool) return false;
+    let decision = policy.authorize(info.name, targetCall ? tool : undefined, !targetCall);
+    if (
+      targetCall &&
+      direct &&
+      !preflightInfo(info).tools.length &&
+      hasPersonalAuthentication(info.config)
+    ) {
+      // Without a catalog, both raw and prefixed/wrapper interpretations must be allowed.
+      for (const alternative of [requested, request.params?.name]) {
+        const alternativeDecision = policy.authorize(info.name, alternative);
+        if (alternativeDecision.decision === 'deny') decision = alternativeDecision;
+      }
+    }
+    if (decision.decision === 'deny') {
+      denied = {
+        server: info,
+        tool: tool || requested || 'unknown',
+        decision: { ...decision, serverId: policy.serverId(info.name), groupId: policy.groupId },
+      };
+      return false;
+    }
+    return true;
+  });
+  if (targetCall && !eligible.length && denied) {
+    const context = RequestContextService.getInstance();
+    const { keyId, keyName } = context.getBearerKeyContext();
+    const username = UserContextService.getInstance().getCurrentUser()?.username;
+    logger.log('Tool policy decision', {
+      username,
+      callerId: keyId,
+      server: denied.server.name,
+      tool: denied.tool,
+      ...denied.decision,
+    });
+    await getActivityLoggingService().logToolCall({
+      server: denied.server.name,
+      tool: denied.tool,
+      duration: 0,
+      status: 'error',
+      username,
+      keyId,
+      keyName,
+      group,
+      policy: denied.decision,
+      sourceIp: context.getRequestContext()?.remoteAddress,
+      hasCredentialTemplate: hasPersonalAuthentication(denied.server.config),
+    });
+    return {
+      content: [{ type: 'text', text: `Error: Tool not available: ${requested}` }],
+      isError: true,
+    };
+  }
+  return principalServerScope.run(eligible, () => handler(request, extra));
+};
+
+export const handleListToolsRequest = (request: any, extra: any) =>
+  withToolPolicy(listToolsWithPrincipal, request, extra, false);
 export const handleCallToolRequest = (request: any, extra: any) =>
-  observeToolCall(() => callToolWithPrincipal(request, extra));
+  observeToolCall(() => withToolPolicy(callToolWithPrincipal, request, extra, true));
 export const handleGetPromptRequest = withPrincipalServers(
   withModernLists(handleGetPromptRequestImpl, ['prompts']),
   'prompt',
@@ -6159,7 +6301,11 @@ async function filterToolsByGroup(
   }
 
   const hostedAuth = RequestContextService.getInstance().getHostedAuthContext();
-  return filterHostedTools(hostedAuth, serverName, tools, getNameSeparator());
+  const policy = await getToolPolicy(getMcpRequestGroup() || group);
+  return policy.filterTools(
+    serverName,
+    filterHostedTools(hostedAuth, serverName, tools, getNameSeparator()),
+  );
 }
 
 const normalizePromptNameForGroup = (serverName: string, promptName: string) => {

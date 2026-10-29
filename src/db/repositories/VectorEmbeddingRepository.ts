@@ -167,7 +167,9 @@ export class VectorEmbeddingRepository extends BaseRepository<VectorEmbedding> {
     threshold = 0.7,
     contentTypes?: string[],
     serverNames?: string[],
+    contentIds?: string[],
   ): Promise<Array<{ embedding: VectorEmbedding; similarity: number }>> {
+    if (contentIds?.length === 0) return [];
     const serverScope = serverNames ? this.buildServerScopeFilter(serverNames) : undefined;
     try {
       // Try using vector similarity operator first
@@ -198,6 +200,11 @@ export class VectorEmbeddingRepository extends BaseRepository<VectorEmbedding> {
         if (serverScope) {
           query = query.andWhere(serverScope.clause, serverScope.parameters);
         }
+
+        if (contentIds)
+          query = query.andWhere('vector_embedding.content_id IN (:...allowedContentIds)', {
+            allowedContentIds: contentIds,
+          });
 
         // Execute query
         const results = await query.getRawMany();
@@ -230,6 +237,11 @@ export class VectorEmbeddingRepository extends BaseRepository<VectorEmbedding> {
 
         // Limit results
         query = query.take(limit);
+
+        if (contentIds)
+          query = query.andWhere('vector_embedding.content_id IN (:...allowedContentIds)', {
+            allowedContentIds: contentIds,
+          });
 
         // Execute query
         const results = await query.getMany();

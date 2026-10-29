@@ -53,6 +53,25 @@ const deferred = () => {
   return { promise, resolve };
 };
 
+test('retains a principal-scoped catalog after snapshot discovery without retaining resolved credentials', async () => {
+  const seed = await PersonalOAuthContext.load('gitlab', 'alice', mockDefinition);
+  await seed.persistTokens('gitlab', { accessToken: 'alice-token' });
+  const tools = [{ name: 'gitlab-read', inputSchema: { type: 'object' as const } }];
+  const cached = { name: 'gitlab', tools } as ServerInfo;
+  const connect = jest.fn();
+  const pool = new PrincipalRuntimeService(connect, jest.fn(), async () => cached);
+  try {
+    (await pool.acquire('gitlab', { username: 'alice' }, true)).release();
+    expect(pool.peekTools('gitlab', 'alice')).toEqual(tools);
+    expect(pool.peekTools('gitlab', 'bob')).toBeUndefined();
+    expect(connect).not.toHaveBeenCalled();
+    pool.invalidate({ username: 'alice' });
+    expect(pool.peekTools('gitlab', 'alice')).toBeUndefined();
+  } finally {
+    pool.invalidate();
+  }
+});
+
 test.each(['reuse', 'handshake'] as const)(
   'does not close an active OAuth runtime when token persistence races the %s revision read',
   async (stage) => {
