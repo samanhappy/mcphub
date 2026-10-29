@@ -6,6 +6,7 @@
  * This is an ESTIMATE for relative comparison, not a per-client-model exact
  * count. See docs/adr/0001-cl100k-tokenizer-for-definition-cost.md.
  */
+import { createHash } from 'node:crypto';
 import type { Tool, Prompt, Resource, ItemCost } from '../types/index.js';
 
 // Lazily-loaded cl100k encoder (matches the dynamic-import pattern in tokenTruncation.ts,
@@ -24,6 +25,30 @@ function getEncoder(): Promise<(text: string) => number[]> {
 export async function countTokens(text: string): Promise<number> {
   const encode = await getEncoder();
   return encode(text).length;
+}
+
+// Cache definitions only: arbitrary tool results must not evict the catalog.
+// Fixed-size hashes avoid retaining large schemas. Pending counts are shared too.
+const MAX_DEFINITION_COUNTS = 10000;
+const definitionCounts = new Map<string, Promise<number>>();
+
+export function countDefinitionTokens(text: string): Promise<number> {
+  const key = createHash('sha256').update(text).digest('hex');
+  const cached = definitionCounts.get(key);
+  if (cached) {
+    definitionCounts.delete(key);
+    definitionCounts.set(key, cached);
+    return cached;
+  }
+  const pending = countTokens(text).catch((error) => {
+    if (definitionCounts.get(key) === pending) definitionCounts.delete(key);
+    throw error;
+  });
+  definitionCounts.set(key, pending);
+  if (definitionCounts.size > MAX_DEFINITION_COUNTS) {
+    definitionCounts.delete(definitionCounts.keys().next().value!);
+  }
+  return pending;
 }
 
 /**
@@ -67,7 +92,7 @@ export async function itemCostForTool(tool: Tool): Promise<ItemCost> {
   return {
     kind: 'tool',
     name: tool.name,
-    cost: await countTokens(serializeToolDefinition(tool)),
+    cost: await countDefinitionTokens(serializeToolDefinition(tool)),
     enabled: isExposed(tool.enabled),
   };
 }
@@ -80,7 +105,7 @@ export async function itemCostForPrompt(prompt: Prompt & { enabled?: boolean }):
   return {
     kind: 'prompt',
     name: prompt.name,
-    cost: await countTokens(serializePromptDefinition(prompt)),
+    cost: await countDefinitionTokens(serializePromptDefinition(prompt)),
     enabled: isExposed(prompt.enabled),
   };
 }
@@ -91,7 +116,7 @@ export async function itemCostForResource(
   return {
     kind: 'resource',
     name: resource.uri,
-    cost: await countTokens(serializeResourceDefinition(resource)),
+    cost: await countDefinitionTokens(serializeResourceDefinition(resource)),
     enabled: isExposed(resource.enabled),
   };
 }

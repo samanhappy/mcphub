@@ -17,7 +17,7 @@ import {
   itemCostForTool,
   itemCostForPrompt,
   itemCostForResource,
-  countTokens,
+  countDefinitionTokens,
   serializeToolDefinition,
 } from '../utils/tokenCost.js';
 import { getServersInfo } from './mcpService.js';
@@ -84,7 +84,7 @@ const smartRoutingCostFor = async (
   const sumCost = async (tools: any[]): Promise<number> => {
     const counts = await Promise.all(
       tools.map((t) =>
-        countTokens(
+        countDefinitionTokens(
           serializeToolDefinition({
             name: t.name,
             description: t.description,

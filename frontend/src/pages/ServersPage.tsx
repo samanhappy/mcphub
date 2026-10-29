@@ -10,6 +10,7 @@ import McpbUploadForm from '@/components/McpbUploadForm';
 import JSONImportForm from '@/components/JSONImportForm';
 import Pagination from '@/components/ui/Pagination';
 import { useServerData } from '@/hooks/useServerData';
+import { serverCostRevision } from '@/utils/costRevision';
 import { useCostData } from '@/hooks/useCostData';
 import { selectServerPage, getServerFilterCounts, type ServerFilter } from '@/utils/serverFilters';
 import { resolveDuplicateResponse } from '@/utils/serverDuplicate';
@@ -38,12 +39,7 @@ const ServersPage: React.FC = () => {
     triggerRefresh,
   } = useServerData({ refreshOnMount: true });
 
-  const { serverCosts, refetch: refetchCost } = useCostData();
-
-  // Re-fetch context footprint whenever server data changes (toggle, reload, edit).
-  useEffect(() => {
-    refetchCost();
-  }, [servers, refetchCost]);
+  const { serverCosts } = useCostData(serverCostRevision(allServers));
 
   const [editingServer, setEditingServer] = useState<Server | null>(null);
   const [duplicateServer, setDuplicateServer] = useState<Server | null>(null);
