@@ -30,5 +30,6 @@ it.each([
   );
 
   expect(html.includes('./assets/reward.png')).toBe(chinese);
-  expect(html.includes('https://ko-fi.com/samanhappy')).toBe(!chinese);
+  const links = [...html.matchAll(/<a\b[^>]*\bhref="([^"]*)"/g)].map((match) => match[1]);
+  expect(links).toEqual(chinese ? [] : ['https://ko-fi.com/samanhappy']);
 });
