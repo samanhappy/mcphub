@@ -1,0 +1,20 @@
+tests/frontend/sponsorLanguage.test.ts
+  s_4c1f03873b0b54::t_31cf0b851a964a 33
+  s_4c1f03873b0b54::t_f25ddadca7dd4a 34
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "02e0aaa66ff30af1a4d55737a1d1f5dc58ca8df3",
+  "prompts": {},
+  "sessions": {
+    "s_4c1f03873b0b54": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1857d-84a3-79f3-acad-5be944f0131e",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
