@@ -49,7 +49,7 @@ i18n
 
     detection: {
       // Order of detection; prioritize localStorage to respect user language choice
-      order: ['localStorage', 'cookie', 'htmlTag', 'navigator'],
+      order: ['localStorage', 'cookie', 'navigator', 'htmlTag'],
       // Cache the language in localStorage
       caches: ['localStorage', 'cookie'],
     },

@@ -212,7 +212,12 @@ export const updateGroup = async (id: string, data: Partial<IGroup>): Promise<IG
       }
     }
 
-    const updatedGroup = await groupDao.update(id, data);
+    // A rename also moves bearer key scopes to the new name in the same atomic write, and
+    // is rejected if the new name equals a group ID (keys match groups by name or ID).
+    const renamed = data.name !== undefined && data.name !== existingGroup.name;
+    const updatedGroup = renamed
+      ? await groupDao.updateWithKeyScopes(id, data)
+      : await groupDao.update(id, data);
 
     if (updatedGroup) {
       notifyToolChanged();

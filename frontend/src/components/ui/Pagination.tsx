@@ -25,10 +25,7 @@ const Pagination: React.FC<PaginationProps> = ({
       <button
         key="first"
         onClick={() => onPageChange(1)}
-        className={`px-3 py-1 mx-1 rounded ${currentPage === 1
-          ? 'bg-blue-500 text-white btn-primary'
-          : 'bg-gray-200 hover:bg-gray-300 text-gray-700 btn-secondary'
-          }`}
+        className={`hub-btn mx-1 ${currentPage === 1 ? 'primary' : ''}`}
       >
         1
       </button>
@@ -52,10 +49,7 @@ const Pagination: React.FC<PaginationProps> = ({
         <button
           key={i}
           onClick={() => onPageChange(i)}
-          className={`px-3 py-1 mx-1 rounded ${currentPage === i
-            ? 'bg-blue-500 text-white btn-primary'
-            : 'bg-gray-200 hover:bg-gray-300 text-gray-700 btn-secondary'
-            }`}
+          className={`hub-btn mx-1 ${currentPage === i ? 'primary' : ''}`}
         >
           {i}
         </button>
@@ -77,10 +71,7 @@ const Pagination: React.FC<PaginationProps> = ({
         <button
           key="last"
           onClick={() => onPageChange(totalPages)}
-          className={`px-3 py-1 mx-1 rounded ${currentPage === totalPages
-            ? 'bg-blue-500 text-white btn-primary'
-            : 'bg-gray-200 hover:bg-gray-300 text-gray-700 btn-secondary'
-            }`}
+          className={`hub-btn mx-1 ${currentPage === totalPages ? 'primary' : ''}`}
         >
           {totalPages}
         </button>
@@ -96,14 +87,11 @@ const Pagination: React.FC<PaginationProps> = ({
   }
 
   return (
-    <div className="flex justify-center items-center my-6">
+    <div className="flex flex-wrap justify-center items-center gap-y-2 my-6">
       <button
         onClick={() => onPageChange(Math.max(1, currentPage - 1))}
         disabled={disabled || currentPage === 1}
-        className={`px-3 py-1 rounded mr-2 ${disabled || currentPage === 1
-          ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-          : 'bg-gray-200 hover:bg-gray-300 text-gray-700 btn-secondary'
-          }`}
+        className="hub-btn shrink-0 whitespace-nowrap mr-2"
       >
         &laquo; {t('common.previous')}
       </button>
@@ -113,10 +101,7 @@ const Pagination: React.FC<PaginationProps> = ({
       <button
         onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
         disabled={disabled || currentPage === totalPages}
-        className={`px-3 py-1 rounded ml-2 ${disabled || currentPage === totalPages
-          ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-          : 'bg-gray-200 hover:bg-gray-300 text-gray-700 btn-secondary'
-          }`}
+        className="hub-btn shrink-0 whitespace-nowrap ml-2"
       >
         {t('common.next')} &raquo;
       </button>

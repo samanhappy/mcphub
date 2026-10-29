@@ -88,7 +88,7 @@ export const loadOriginalSettings = (persistDefaults = true): McpSettings => {
 
   try {
     // Read and parse settings file
-    const settingsData = fs.readFileSync(settingsPath, 'utf8');
+    const settingsData = fs.readFileSync(settingsPath, 'utf8').replace(/^\uFEFF/, '');
     const settings = JSON.parse(settingsData);
     const initialized = ensureOAuthServerDefaults(settings);
     if (initialized && persistDefaults) {

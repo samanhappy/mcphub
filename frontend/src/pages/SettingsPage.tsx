@@ -158,8 +158,7 @@ const BearerKeyRow: React.FC<BearerKeyRowProps> = ({
     return '';
   };
 
-  if (isEditing) {
-    return (
+  const editForm = isEditing ? (
       <tr>
         <td colSpan={5} className="p-0 border-b border-gray-200 dark:border-gray-700">
           <div className="bg-gray-50 dark:bg-gray-800 p-5">
@@ -286,7 +285,7 @@ const BearerKeyRow: React.FC<BearerKeyRowProps> = ({
                 <button
                   type="button"
                   onClick={() => setIsEditing(false)}
-                  className="px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 text-gray-700 rounded-md text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 h-[38px]"
+                  className="hub-btn"
                 >
                   {t('common.cancel') || 'Cancel'}
                 </button>
@@ -303,10 +302,10 @@ const BearerKeyRow: React.FC<BearerKeyRowProps> = ({
           </div>
         </td>
       </tr>
-    );
-  }
+  ) : null;
 
   return (
+    <>
     <tr className="hover:bg-gray-50 dark:bg-gray-800 dark:hover:bg-gray-700">
       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
         {keyData.name}
@@ -327,15 +326,18 @@ const BearerKeyRow: React.FC<BearerKeyRowProps> = ({
       </td>
       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
         <button
-          onClick={() => setIsEditing(true)}
+          onClick={() => setIsEditing((editing) => !editing)}
+          disabled={loading || saving}
+          aria-expanded={isEditing}
+          aria-label={t(isEditing ? 'common.cancel' : 'common.edit')}
           className="text-blue-600 hover:text-blue-900 mr-4 inline-flex items-center"
-          title={t('common.edit') || 'Edit'}
+          title={t(isEditing ? 'common.cancel' : 'common.edit')}
         >
-          <Edit className="h-4 w-4" />
+          {isEditing ? <X className="h-4 w-4" /> : <Edit className="h-4 w-4" />}
         </button>
         <button
           onClick={() => onReset(keyData)}
-          disabled={loading || deleting}
+          disabled={loading || saving || deleting}
           className="text-blue-600 hover:text-blue-900 mr-4 inline-flex items-center"
           title={t('settings.resetBearerKey')}
           aria-label={t('settings.resetBearerKey')}
@@ -344,7 +346,7 @@ const BearerKeyRow: React.FC<BearerKeyRowProps> = ({
         </button>
         <button
           onClick={handleDelete}
-          disabled={deleting}
+          disabled={loading || saving || deleting}
           className="text-red-600 hover:text-red-900 inline-flex items-center"
           title={t('common.delete') || 'Delete'}
         >
@@ -352,6 +354,8 @@ const BearerKeyRow: React.FC<BearerKeyRowProps> = ({
         </button>
       </td>
     </tr>
+    {editForm}
+    </>
   );
 };
 

@@ -17,6 +17,14 @@ export abstract class JsonFileBaseDao {
    * Load settings from JSON file with caching
    */
   protected async loadSettings(failClosed = false): Promise<McpSettings> {
+    return this.loadSettingsSync(failClosed);
+  }
+
+  /**
+   * Synchronous loadSettings, for read-modify-write sequences that must not interleave
+   * with other requests.
+   */
+  protected loadSettingsSync(failClosed = false): McpSettings {
     try {
       const settingsPath = getSettingsPath();
       const stats = fs.statSync(settingsPath);
@@ -31,7 +39,7 @@ export abstract class JsonFileBaseDao {
         return this.settingsCache;
       }
 
-      const settingsData = fs.readFileSync(settingsPath, 'utf8');
+      const settingsData = fs.readFileSync(settingsPath, 'utf8').replace(/^\uFEFF/, '');
       const settings = JSON.parse(settingsData) as McpSettings;
 
       // Update cache
@@ -63,6 +71,13 @@ export abstract class JsonFileBaseDao {
    * Save settings to JSON file and update cache
    */
   protected async saveSettings(settings: McpSettings): Promise<void> {
+    this.saveSettingsSync(settings);
+  }
+
+  /**
+   * Synchronous saveSettings, see loadSettingsSync.
+   */
+  protected saveSettingsSync(settings: McpSettings): void {
     try {
       assertSmartRoutingSettingsAvailable(settings);
       // Ensure directory exists
