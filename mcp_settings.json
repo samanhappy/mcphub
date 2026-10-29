@@ -37,6 +37,7 @@
   },
   "users": [],
   "systemConfig": {
+    "dashboardName": "",
     "toolPolicies": [],
     "oauthServer": {
       "enabled": true,

@@ -29,6 +29,14 @@ describe('SystemConfigDaoImpl smart-routing migration', () => {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   });
 
+  it('persists dashboard branding across reads and clears it without losing other settings', async () => {
+    writeSettings(settingsPath, { mcpServers: {}, systemConfig: { nameSeparator: '::' } });
+    await new SystemConfigDaoImpl().update({ dashboardName: 'Team MCP' });
+    expect((await new SystemConfigDaoImpl().get()).dashboardName).toBe('Team MCP');
+    await new SystemConfigDaoImpl().update({ dashboardName: '' });
+    expect(await new SystemConfigDaoImpl().get()).toMatchObject({ dashboardName: '', nameSeparator: '::' });
+  });
+
   it('persists and clears CIDR ranges without losing other settings', async () => {
     writeSettings(settingsPath, { mcpServers: {}, systemConfig: { nameSeparator: '::' } });
     const dao = new SystemConfigDaoImpl();

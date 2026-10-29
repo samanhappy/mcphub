@@ -933,3 +933,6 @@ Activity records include a `policy` object with `decision`, `reason`, optional `
 For direct personal-server endpoints with active policies, list tools before calls that could be interpreted as either raw, prefixed, or gateway wrapper names. Until discovery resolves that ambiguity, all possible targets must be authorized; otherwise the call is denied before credentials are resolved.
 
 The editor warns about IDs absent from the loaded servers, keys or groups. Startup also checks references after database synchronization and logs warnings. Warnings do not block saving, so resources can be configured in advance. An orphaned deny provides no protection; an allow referencing a missing server or group may block its applicable subjects, while a missing key selector normally matches no subject. These checks cannot determine whether a rule with valid IDs matches an actual request; tool names and usernames are not checked.
+
+
+Administrators can customize the dashboard name in **Settings → System Settings → Dashboard name**, or set `systemConfig.dashboardName` in `mcp_settings.json` (for example, `"dashboardName": "Team MCP"`). The name appears in the sidebar, header, login page, and browser tab. Names are trimmed and limited to 100 characters. Save an empty value to restore the default branding. This setting persists in both file and database storage modes.

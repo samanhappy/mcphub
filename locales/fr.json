@@ -836,6 +836,9 @@
     "restoreDefaultFailed": "Échec de la restauration de la description par défaut de l'invite"
   },
   "settings": {
+    "dashboardName": "Nom du tableau de bord",
+    "dashboardNameDescription": "Affiché dans la barre latérale, l’en-tête, la connexion et l’onglet. Laissez vide pour rétablir le nom par défaut.",
+    "dashboardNameSaveFailed": "Échec de l’enregistrement du nom",
     "resetBearerKey": "Réinitialiser la clé Bearer",
     "resetBearerKeyConfirm": "Réinitialiser cette clé Bearer ? L’ancien jeton cessera immédiatement de fonctionner. Les autorisations et l’état resteront identiques.",
     "resetBearerKeySuccess": "Clé réinitialisée. Copiez et conservez le nouveau jeton avant de fermer ; il ne sera plus affiché.",

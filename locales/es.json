@@ -837,6 +837,9 @@
     "restoreDefaultFailed": "Error al restaurar la descripción predeterminada del prompt"
   },
   "settings": {
+    "dashboardName": "Nombre del panel",
+    "dashboardNameDescription": "Se muestra en la barra lateral, la cabecera, el inicio de sesión y la pestaña. Déjelo vacío para restaurar el nombre predeterminado.",
+    "dashboardNameSaveFailed": "No se pudo guardar el nombre del panel",
     "resetBearerKey": "Restablecer clave Bearer",
     "resetBearerKeyConfirm": "¿Restablecer esta clave Bearer? El token anterior dejará de funcionar inmediatamente. Los permisos y el estado no cambiarán.",
     "resetBearerKeySuccess": "Clave restablecida. Copia y guarda el nuevo token antes de cerrar; no volverá a mostrarse.",

@@ -2066,6 +2066,7 @@ export const updateSystemConfig = async (req: Request, res: Response): Promise<v
       toolResultCompression,
       mcpRouter,
       nameSeparator,
+      dashboardName,
       enableSessionRebuild,
       oauthServer,
       auth,
@@ -2080,6 +2081,18 @@ export const updateSystemConfig = async (req: Request, res: Response): Promise<v
         res.status(400).json({ success: false, message: (error as Error).message });
         return;
       }
+    }
+    if (
+      dashboardName !== undefined &&
+      (typeof dashboardName !== 'string' || dashboardName.trim().length > 100)
+    ) {
+      res
+        .status(400)
+        .json({
+          success: false,
+          message: 'dashboardName must be a string of at most 100 characters',
+        });
+      return;
     }
     const hasNetworkUpdate = network !== undefined;
     if (hasNetworkUpdate && (!network || !validateAllowedCidrs(network.allowedCidrs))) {
@@ -2197,6 +2210,7 @@ export const updateSystemConfig = async (req: Request, res: Response): Promise<v
       !hasToolResultCompressionUpdate &&
       !hasMcpRouterUpdate &&
       !hasNameSeparatorUpdate &&
+      dashboardName === undefined &&
       !hasSessionRebuildUpdate &&
       !hasOAuthServerUpdate &&
       !hasBetterAuthUpdate &&
@@ -2835,6 +2849,10 @@ export const updateSystemConfig = async (req: Request, res: Response): Promise<v
 
         target.providers = providersTarget;
       }
+    }
+
+    if (typeof dashboardName === 'string') {
+      systemConfig.dashboardName = dashboardName.trim();
     }
 
     if (typeof nameSeparator === 'string') {

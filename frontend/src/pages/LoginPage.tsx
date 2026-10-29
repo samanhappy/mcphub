@@ -1,3 +1,4 @@
+import { useBranding } from '@/contexts/BrandingContext';
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -30,6 +31,7 @@ const sanitizeReturnUrl = (value: string | null): string | null => {
 
 const LoginPage: React.FC = () => {
   const { t } = useTranslation();
+  const { dashboardTitle } = useBranding();
   const [allowRegistration, setAllowRegistration] = useState(false);
   const [registering, setRegistering] = useState(false);
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -295,7 +297,7 @@ const LoginPage: React.FC = () => {
                   color: 'var(--hub-ink)',
                 }}
               >
-                {t('app.title')}
+                {dashboardTitle}
               </h1>
               <p className="hub-sub" style={{ marginTop: 4 }}>
                 {t('auth.slogan')}

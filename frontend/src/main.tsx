@@ -1,6 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
+import { BrandingProvider } from './contexts/BrandingContext';
 import './index.css';
 // Import the i18n configuration
 import './i18n';
@@ -21,7 +22,9 @@ async function initializeApp() {
     // Start React app
     ReactDOM.createRoot(document.getElementById('root')!).render(
       <React.StrictMode>
-        <App />
+        <BrandingProvider>
+          <App />
+        </BrandingProvider>
       </React.StrictMode>,
     );
   } catch (error) {
@@ -37,7 +40,9 @@ async function initializeApp() {
 
     ReactDOM.createRoot(document.getElementById('root')!).render(
       <React.StrictMode>
-        <App />
+        <BrandingProvider>
+          <App />
+        </BrandingProvider>
       </React.StrictMode>,
     );
   }

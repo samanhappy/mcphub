@@ -1,3 +1,4 @@
+import { useBranding } from '@/contexts/BrandingContext';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NavLink } from 'react-router-dom';
@@ -36,6 +37,7 @@ interface MenuItem {
 
 const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
   const { t } = useTranslation();
+  const { dashboardTitle } = useBranding();
   const { auth } = useAuth();
   const { allServers } = useServerContext();
   const { groups } = useGroupData();
@@ -136,7 +138,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
       {/* Brand */}
       <div className={'flex items-center gap-2.5 ' + (collapsed ? 'px-2 py-3 justify-center' : 'px-4 py-3')}>
         <div
-          className="relative grid h-7 w-7 place-items-center rounded-md text-white hub-mono text-[12px] font-semibold"
+          className="relative grid shrink-0 h-7 w-7 place-items-center rounded-md text-white hub-mono text-[12px] font-semibold"
           style={{
             background:
               'linear-gradient(135deg, var(--hub-accent), oklch(0.62 0.18 285))',
@@ -153,9 +155,9 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
           />
         </div>
         {!collapsed && (
-          <div className="flex items-baseline gap-1.5 min-w-0">
-            <span className="font-semibold tracking-tight text-[var(--hub-ink)] truncate">
-              {t('app.title')}
+          <div className="flex flex-wrap items-baseline gap-x-1.5 min-w-0">
+            <span className="font-semibold tracking-tight text-[var(--hub-ink)] break-words min-w-0 max-w-full">
+              {dashboardTitle}
             </span>
             {appVersion && (
               <span className="hub-mono text-[10.5px] text-[var(--hub-ink-3)] flex-shrink-0">

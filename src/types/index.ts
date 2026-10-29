@@ -275,6 +275,7 @@ export interface ToolPolicyAudit extends PolicyDecision {
 }
 
 export interface SystemConfig {
+  dashboardName?: string;
   toolPolicies?: ToolPolicyRule[];
   network?: {
     allowedCidrs?: string[]; // Admin-managed ranges reachable by non-admin-owned upstreams.
