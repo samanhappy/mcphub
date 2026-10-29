@@ -1,0 +1,23 @@
+frontend/src/components/ui/SponsorDialog.tsx
+  s_4c1f03873b0b54::t_21470afd1d0d8a 33
+frontend/src/components/ui/UserProfileMenu.tsx
+  s_4c1f03873b0b54::t_21470afd1d0d8a 126
+tests/frontend/sponsorLanguage.test.ts
+  s_4c1f03873b0b54::t_db76e848e74447 1-34
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0ef74e60bbca22d336513582e579a39cd0a75431",
+  "prompts": {},
+  "sessions": {
+    "s_4c1f03873b0b54": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1857d-84a3-79f3-acad-5be944f0131e",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
