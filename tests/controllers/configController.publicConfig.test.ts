@@ -44,14 +44,31 @@ describe('ConfigController - getPublicConfig', () => {
     [false, false, false],
     [true, false, true],
     [true, true, false],
-  ])('publishes effective registration policy (%s, %s)', async (allowRegistration, disablePasswordLogin, expected) => {
-    getSystemConfigMock.mockResolvedValue({ auth: { allowRegistration } });
-    getBetterAuthRuntimeConfigMock.mockResolvedValue({ disablePasswordLogin });
-    await getPublicConfig(mockRequest as Request, mockResponse as Response);
-    expect(mockJson).toHaveBeenCalledWith(expect.objectContaining({
-      data: expect.objectContaining({ allowRegistration: expected }),
-    }));
-  });
+  ])(
+    'publishes effective registration policy (%s, %s)',
+    async (allowRegistration, disablePasswordLogin, expected) => {
+      getSystemConfigMock.mockResolvedValue({ auth: { allowRegistration } });
+      getBetterAuthRuntimeConfigMock.mockResolvedValue({ disablePasswordLogin });
+      await getPublicConfig(mockRequest as Request, mockResponse as Response);
+      expect(mockJson).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ allowRegistration: expected }),
+        }),
+      );
+    },
+  );
+
+  it.each(['Team MCP', '', undefined])(
+    'publishes only the dashboard name for anonymous branding (%s)',
+    async (dashboardName) => {
+      getSystemConfigMock.mockResolvedValue({ dashboardName, install: { npmRegistry: 'secret' } });
+      getBetterAuthRuntimeConfigMock.mockResolvedValue({});
+      await getPublicConfig(mockRequest as Request, mockResponse as Response);
+      const data = mockJson.mock.calls[0][0].data;
+      expect(data.dashboardName).toBe(dashboardName || '');
+      expect(data.install).toBeUndefined();
+    },
+  );
 
   it('uses DAO-backed routing and Better Auth configuration for public config', async () => {
     const systemConfig = {
@@ -99,6 +116,7 @@ describe('ConfigController - getPublicConfig', () => {
     expect(mockJson).toHaveBeenCalledWith({
       success: true,
       data: {
+        dashboardName: '',
         skipAuth: true,
         allowRegistration: false,
         permissions: {

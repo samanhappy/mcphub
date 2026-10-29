@@ -839,6 +839,9 @@
     "restoreDefaultFailed": "恢复默认提示词描述失败"
   },
   "settings": {
+    "dashboardName": "控制台名称",
+    "dashboardNameDescription": "显示在侧栏、页头、登录页和浏览器标签中。留空恢复默认名称。",
+    "dashboardNameSaveFailed": "保存控制台名称失败",
     "resetBearerKey": "重置 Bearer key",
     "resetBearerKeyConfirm": "确认重置此 Bearer key？原 token 将立即失效，权限和启用状态保持不变。",
     "resetBearerKeySuccess": "Bearer key 已重置。请在关闭前复制并保存新 token，之后将不再显示。",

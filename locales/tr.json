@@ -836,6 +836,9 @@
     "restoreDefaultFailed": "Varsayılan istek açıklamasına dönülemedi"
   },
   "settings": {
+    "dashboardName": "Pano adı",
+    "dashboardNameDescription": "Kenar çubuğu, başlık, giriş sayfası ve tarayıcı sekmesinde gösterilir. Varsayılan ad için boş bırakın.",
+    "dashboardNameSaveFailed": "Pano adı kaydedilemedi",
     "resetBearerKey": "Bearer anahtarını sıfırla",
     "resetBearerKeyConfirm": "Bu Bearer anahtarı sıfırlansın mı? Eski belirteç hemen geçersiz olacaktır. İzinler ve etkinlik durumu değişmeyecek.",
     "resetBearerKeySuccess": "Anahtar sıfırlandı. Kapatmadan önce yeni belirteci kopyalayıp kaydedin; tekrar gösterilmeyecek.",

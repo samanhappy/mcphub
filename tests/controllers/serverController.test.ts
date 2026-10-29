@@ -840,6 +840,31 @@ describe('serverController - updateSystemConfig', () => {
     mockSystemConfigDao.update.mockResolvedValue(true);
   });
 
+  it.each([['  Team MCP  ', 'Team MCP'], ['   ', ''], ['x'.repeat(100), 'x'.repeat(100)]])(
+    'saves a trimmed dashboard name and allows resetting it', async (dashboardName, expected) => {
+      mockRequest.body = { dashboardName };
+      await updateSystemConfig(mockRequest as Request, mockResponse as Response);
+      expect(mockSystemConfigDao.update).toHaveBeenCalledWith(expect.objectContaining({
+        dashboardName: expected, routing: expect.any(Object),
+      }));
+    },
+  );
+
+  it.each([null, 42, {}, 'x'.repeat(101)])('rejects invalid dashboard names (%s)', async (dashboardName) => {
+    mockRequest.body = { dashboardName, nameSeparator: '_' };
+    await updateSystemConfig(mockRequest as Request, mockResponse as Response);
+    expect(mockStatus).toHaveBeenCalledWith(400);
+    expect(mockSystemConfigDao.update).not.toHaveBeenCalled();
+  });
+
+  it('does not let non-admin users rename the dashboard', async () => {
+    mockRequest.user = { username: 'user', isAdmin: false } as never;
+    mockRequest.body = { dashboardName: 'Team' };
+    await updateSystemConfig(mockRequest as Request, mockResponse as Response);
+    expect(mockStatus).toHaveBeenCalledWith(403);
+    expect(mockSystemConfigDao.update).not.toHaveBeenCalled();
+  });
+
   it('saves and clears operator policies without losing unrelated configuration', async () => {
     for (const toolPolicies of [[{ id: 'read', effect: 'allow', keyId: 'key', tool: 'read' }], []]) {
       mockRequest.body = { toolPolicies };

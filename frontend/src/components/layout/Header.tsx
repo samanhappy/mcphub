@@ -1,3 +1,4 @@
+import { useBranding } from '@/contexts/BrandingContext';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useParams } from 'react-router-dom';
@@ -13,12 +14,13 @@ interface HeaderProps {
 
 const useCrumbs = (): string[] => {
   const { t } = useTranslation();
+  const { dashboardTitle } = useBranding();
   const location = useLocation();
   const params = useParams();
 
   return useMemo(() => {
     const path = location.pathname;
-    const root = t('app.title');
+    const root = dashboardTitle;
     if (path === '/') return [root, t('nav.dashboard')];
     if (path.startsWith('/credentials')) return [root, t('credentials.title')];
     if (path.startsWith('/servers')) return [root, t('nav.servers')];
@@ -36,7 +38,7 @@ const useCrumbs = (): string[] => {
     if (path.startsWith('/activity')) return [root, t('nav.activity')];
     if (path.startsWith('/settings')) return [root, t('nav.settings')];
     return [root];
-  }, [location.pathname, params, t]);
+  }, [location.pathname, params, t, dashboardTitle]);
 };
 
 const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {

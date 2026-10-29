@@ -45,3 +45,14 @@ it.each([null, undefined])(
     expect((await dao.reset()).toolPolicies).toEqual([]);
   },
 );
+
+it('round-trips dashboard branding through database reads, updates and resets', async () => {
+  mockGet.mockResolvedValue({ dashboardName: 'Team MCP' });
+  mockUpdate.mockResolvedValue({ dashboardName: '' });
+  mockReset.mockResolvedValue({});
+  const dao = new SystemConfigDaoDbImpl();
+  expect((await dao.get()).dashboardName).toBe('Team MCP');
+  expect((await dao.update({ dashboardName: '' })).dashboardName).toBe('');
+  expect(mockUpdate).toHaveBeenLastCalledWith({ dashboardName: '' });
+  expect((await dao.reset()).dashboardName).toBeUndefined();
+});

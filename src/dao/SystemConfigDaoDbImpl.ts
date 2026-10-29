@@ -23,6 +23,7 @@ export class SystemConfigDaoDbImpl implements SystemConfigDao {
     }
 
     return {
+      dashboardName: config.dashboardName,
       toolPolicies: config.toolPolicies ?? [],
       network: config.network,
       routing: config.routing as any,
@@ -44,6 +45,7 @@ export class SystemConfigDaoDbImpl implements SystemConfigDao {
     if (config.toolPolicies !== undefined) validateToolPolicies(config.toolPolicies);
     const updated = await this.repository.update(config as any);
     return {
+      dashboardName: updated.dashboardName,
       toolPolicies: updated.toolPolicies ?? [],
       network: updated.network,
       routing: updated.routing as any,
@@ -64,6 +66,7 @@ export class SystemConfigDaoDbImpl implements SystemConfigDao {
   async reset(): Promise<SystemConfig> {
     const config = await this.repository.reset();
     return {
+      dashboardName: config.dashboardName,
       toolPolicies: config.toolPolicies ?? [],
       network: config.network,
       routing: config.routing as any,

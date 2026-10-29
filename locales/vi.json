@@ -837,6 +837,9 @@
     "restoreDefaultFailed": "Khôi phục mô tả lời nhắc về mặc định thất bại"
   },
   "settings": {
+    "dashboardName": "Tên bảng điều khiển",
+    "dashboardNameDescription": "Hiển thị ở thanh bên, tiêu đề, trang đăng nhập và thẻ trình duyệt. Để trống để khôi phục tên mặc định.",
+    "dashboardNameSaveFailed": "Không thể lưu tên bảng điều khiển",
     "resetBearerKey": "Đặt lại khóa Bearer",
     "resetBearerKeyConfirm": "Đặt lại khóa Bearer này? Token cũ sẽ mất hiệu lực ngay. Quyền và trạng thái kích hoạt không thay đổi.",
     "resetBearerKeySuccess": "Đã đặt lại khóa. Sao chép và lưu token mới trước khi đóng; token sẽ không được hiển thị lại.",

@@ -203,6 +203,7 @@ export async function migrateToDatabase(seedServersAndGroups = true): Promise<bo
     if (settings.systemConfig) {
       logger.log('Migrating system configuration...');
       const systemConfig = {
+        dashboardName: settings.systemConfig.dashboardName,
         toolPolicies: settings.systemConfig.toolPolicies,
         network: settings.systemConfig.network || {},
         // the legacy bearerAuthKey is migrated to a hashed bearer key below
