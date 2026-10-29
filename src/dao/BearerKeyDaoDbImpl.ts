@@ -110,25 +110,26 @@ export class BearerKeyDaoDbImpl implements BearerKeyDao {
   }
 
   async updateServerName(oldName: string, newName: string): Promise<number> {
+    return this.renameScopeEntry('allowedServers', oldName, newName);
+  }
+
+  async updateGroupName(oldName: string, newName: string): Promise<number> {
+    return this.renameScopeEntry('allowedGroups', oldName, newName);
+  }
+
+  private async renameScopeEntry(
+    field: 'allowedServers' | 'allowedGroups',
+    oldName: string,
+    newName: string,
+  ): Promise<number> {
     const allKeys = await this.repository.findAll();
     let updatedCount = 0;
 
     for (const key of allKeys) {
-      let updated = false;
-
-      if (key.allowedServers && key.allowedServers.length > 0) {
-        const newServers = key.allowedServers.map((server) => {
-          if (server === oldName) {
-            updated = true;
-            return newName;
-          }
-          return server;
-        });
-
-        if (updated) {
-          await this.repository.update(key.id, { allowedServers: newServers });
-          updatedCount++;
-        }
+      if (key[field]?.includes(oldName)) {
+        const renamed = key[field]!.map((entry) => (entry === oldName ? newName : entry));
+        await this.repository.update(key.id, { [field]: renamed });
+        updatedCount++;
       }
     }
 

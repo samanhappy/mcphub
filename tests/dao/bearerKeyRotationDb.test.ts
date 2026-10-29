@@ -1,6 +1,9 @@
 const mockUpdate = jest.fn();
+const mockFindAll = jest.fn();
 jest.mock('../../src/db/repositories/BearerKeyRepository.js', () => ({
-  BearerKeyRepository: jest.fn().mockImplementation(() => ({ update: mockUpdate })),
+  BearerKeyRepository: jest
+    .fn()
+    .mockImplementation(() => ({ update: mockUpdate, findAll: mockFindAll })),
 }));
 import { BearerKeyDaoDbImpl } from '../../src/dao/BearerKeyDaoDbImpl.js';
 import { toStoredToken } from '../../src/utils/bearerKeyToken.js';
@@ -33,4 +36,15 @@ it('persists rotated token hashes and clears legacy plaintext in database mode',
     tokenHash: stored.tokenHash,
   });
   expect(updated?.token).toBeUndefined();
+});
+
+it('renames a group in allowedGroups in database mode', async () => {
+  mockUpdate.mockReset();
+  mockFindAll.mockResolvedValue([
+    { id: 'scoped', allowedGroups: ['team-a', 'other'], allowedServers: [] },
+    { id: 'server-only', allowedGroups: [], allowedServers: ['team-a'] },
+  ]);
+  await expect(new BearerKeyDaoDbImpl().updateGroupName('team-a', 'team-b')).resolves.toBe(1);
+  expect(mockUpdate).toHaveBeenCalledTimes(1);
+  expect(mockUpdate).toHaveBeenCalledWith('scoped', { allowedGroups: ['team-b', 'other'] });
 });

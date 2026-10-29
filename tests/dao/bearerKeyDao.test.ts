@@ -96,4 +96,35 @@ describe('BearerKeyDaoImpl migration + settings caching behavior', () => {
 
     writeSpy.mockRestore();
   });
+
+  it('renames a group in allowedGroups without touching other scopes', async () => {
+    const key = (id: string, allowedGroups: string[], allowedServers: string[] = []) => ({
+      id,
+      name: id,
+      tokenHash: hashBearerToken(id),
+      tokenPrefix: id,
+      enabled: true,
+      kind: 'system',
+      accessType: 'custom',
+      allowedGroups,
+      allowedServers,
+    });
+    writeSettings(settingsPath, {
+      mcpServers: {},
+      users: [],
+      bearerKeys: [
+        key('scoped', ['team-a', 'other']),
+        key('server-only', [], ['team-a']),
+        key('unrelated', ['other']),
+      ],
+    });
+
+    const dao = new BearerKeyDaoImpl();
+    expect(await dao.updateGroupName('team-a', 'team-b')).toBe(1);
+
+    const keys = await dao.findAll();
+    expect(keys.find((k) => k.id === 'scoped')?.allowedGroups).toEqual(['team-b', 'other']);
+    expect(keys.find((k) => k.id === 'server-only')?.allowedServers).toEqual(['team-a']);
+    expect(keys.find((k) => k.id === 'unrelated')?.allowedGroups).toEqual(['other']);
+  });
 });

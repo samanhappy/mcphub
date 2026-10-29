@@ -1,0 +1,123 @@
+jest.mock('openid-client', () => ({}));
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import express from 'express';
+import request from 'supertest';
+import { JsonFileDaoFactory, setDaoFactory } from '../../src/dao/DaoFactory.js';
+import { createNewGroup, updateExistingGroup } from '../../src/controllers/groupController.js';
+import { createBearerKey } from '../../src/controllers/bearerKeyController.js';
+import { auth } from '../../src/middlewares/auth.js';
+import {
+  sseUserContextMiddleware,
+  userContextMiddleware,
+} from '../../src/middlewares/userContext.js';
+import { authenticatedRouteRateLimiter } from '../../src/utils/rateLimit.js';
+import { handleMcpPostRequest, transports } from '../../src/services/sseService.js';
+import { cleanupAllServers, initializeClientsFromSettings } from '../../src/services/mcpService.js';
+import { clearSettingsCache } from '../../src/config/index.js';
+import { createUserToken } from '../utils/testHelpers.js';
+import type { McpSettings } from '../../src/types/index.js';
+
+jest.mock('../../src/services/oauthService.js', () => ({ initializeAllOAuthClients: jest.fn() }));
+jest.mock('../../src/services/vectorSearchService.js', () => ({
+  removeServerToolEmbeddings: jest.fn(),
+  removeToolEmbeddings: jest.fn(),
+  saveToolsAsVectorEmbeddings: jest.fn(),
+  syncAllServerToolsEmbeddings: jest.fn(),
+}));
+jest.mock('../../src/services/betterAuthConfig.js', () => ({
+  getBetterAuthRuntimeConfig: jest.fn(async () => ({ enabled: false })),
+}));
+
+const adminToken = createUserToken('admin', true);
+let directory: string;
+let app: express.Express;
+const originalEnv = {
+  MCPHUB_SETTING_PATH: process.env.MCPHUB_SETTING_PATH,
+  USE_DB: process.env.USE_DB,
+};
+
+const admin = (method: 'post' | 'put', url: string, body: object) =>
+  request(app)[method](url).set('x-auth-token', adminToken).send(body);
+const initialize = (group: string, token: string) =>
+  request(app)
+    .post(`/mcp/${group}`)
+    .set('Authorization', `Bearer ${token}`)
+    .set('Accept', 'application/json, text/event-stream')
+    .send({
+      jsonrpc: '2.0',
+      id: 1,
+      method: 'initialize',
+      params: {
+        protocolVersion: '2025-06-18',
+        capabilities: {},
+        clientInfo: { name: 'group-rename-e2e', version: '1' },
+      },
+    });
+
+beforeAll(async () => {
+  directory = fs.mkdtempSync(path.join(os.tmpdir(), 'mcphub-group-rename-'));
+  process.env.MCPHUB_SETTING_PATH = path.join(directory, 'settings.json');
+  process.env.USE_DB = 'false';
+  const settings: McpSettings = {
+    mcpServers: {},
+    users: [{ username: 'admin', password: 'unused', isAdmin: true }],
+    groups: [],
+    bearerKeys: [],
+    systemConfig: {
+      routing: {
+        enableGlobalRoute: true,
+        enableGroupNameRoute: true,
+        enableBearerAuth: true,
+        skipAuth: false,
+      },
+      oauthServer: { enabled: false },
+    },
+  };
+  fs.writeFileSync(process.env.MCPHUB_SETTING_PATH, JSON.stringify(settings));
+  clearSettingsCache();
+  JsonFileDaoFactory.getInstance().resetInstances();
+  setDaoFactory(JsonFileDaoFactory.getInstance());
+  await initializeClientsFromSettings(true);
+
+  app = express();
+  app.use(express.json());
+  app.use('/api', authenticatedRouteRateLimiter, auth, userContextMiddleware);
+  app.post('/api/groups', createNewGroup);
+  app.put('/api/groups/:id', updateExistingGroup);
+  app.post('/api/auth/keys', createBearerKey);
+  app.post('/mcp/:group', sseUserContextMiddleware, handleMcpPostRequest);
+});
+
+afterAll(async () => {
+  for (const entry of Object.values(transports)) await entry.transport.close();
+  cleanupAllServers();
+  fs.rmSync(directory, { recursive: true, force: true });
+  for (const [name, value] of Object.entries(originalEnv)) {
+    if (value === undefined) delete process.env[name];
+    else process.env[name] = value;
+  }
+  clearSettingsCache();
+  JsonFileDaoFactory.getInstance().resetInstances();
+});
+
+it('keeps a group-scoped bearer key on the renamed group, not on a new group reusing the old name', async () => {
+  const group = await admin('post', '/api/groups', { name: 'team-a' }).expect(201);
+  const groupId: string = group.body.data.id;
+  const key = await admin('post', '/api/auth/keys', {
+    name: 'team-a-key',
+    accessType: 'groups',
+    allowedGroups: ['team-a'],
+  }).expect(201);
+  const token: string = key.body.data.token;
+
+  expect((await initialize('team-a', token)).status).toBe(200);
+
+  await admin('put', `/api/groups/${groupId}`, { name: 'team-b' }).expect(200);
+  expect((await initialize('team-b', token)).status).toBe(200);
+  expect((await initialize(groupId, token)).status).toBe(200);
+
+  await admin('post', '/api/groups', { name: 'team-a' }).expect(201);
+  expect((await initialize('team-a', token)).status).toBe(401);
+});

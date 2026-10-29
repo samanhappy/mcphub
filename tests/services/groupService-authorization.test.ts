@@ -14,6 +14,10 @@ const mockServerDao = {
   findById: jest.fn(),
 };
 
+const mockBearerKeyDao = {
+  updateGroupName: jest.fn(),
+};
+
 const mockUserContextService = {
   getCurrentUser: jest.fn(),
 };
@@ -21,6 +25,7 @@ const mockUserContextService = {
 jest.mock('../../src/dao/index.js', () => ({
   getGroupDao: jest.fn(() => mockGroupDao),
   getServerDao: jest.fn(() => mockServerDao),
+  getBearerKeyDao: jest.fn(() => mockBearerKeyDao),
   getSystemConfigDao: jest.fn(() => ({
     get: jest.fn(() => Promise.resolve({ routing: { enableGroupNameRoute: true } })),
   })),
@@ -145,6 +150,20 @@ describe('groupService authorization', () => {
       }),
     );
     expect(mockGroupDao.update).toHaveBeenCalledWith('group-1', { name: 'admin-approved' });
+  });
+
+  it('moves bearer key group scopes to the new name when a group is renamed', async () => {
+    mockUserContextService.getCurrentUser.mockReturnValue({
+      username: 'superadmin',
+      isAdmin: true,
+    });
+
+    await updateGroup('group-1', { name: 'renamed-group' });
+    expect(mockBearerKeyDao.updateGroupName).toHaveBeenCalledWith('admin-group', 'renamed-group');
+
+    mockBearerKeyDao.updateGroupName.mockClear();
+    await updateGroup('group-1', { description: 'same name' });
+    expect(mockBearerKeyDao.updateGroupName).not.toHaveBeenCalled();
   });
 
   it('allows non-admin owners to mutate their own groups', async () => {

@@ -4,7 +4,7 @@ import { IGroup, IGroupServerConfig } from '../types/index.js';
 import { notifyToolChanged } from './mcpService.js';
 import { getDataService } from './services.js';
 import { UserContextService } from './userContextService.js';
-import { getGroupDao, getServerDao, getSystemConfigDao } from '../dao/index.js';
+import { getBearerKeyDao, getGroupDao, getServerDao, getSystemConfigDao } from '../dao/index.js';
 import { logger } from '../utils/logger.js';
 
 // Helper function to normalize group servers configuration
@@ -215,6 +215,10 @@ export const updateGroup = async (id: string, data: Partial<IGroup>): Promise<IG
     const updatedGroup = await groupDao.update(id, data);
 
     if (updatedGroup) {
+      // Bearer keys scope groups by name; keep them pointing at the renamed group.
+      if (updatedGroup.name !== existingGroup.name) {
+        await getBearerKeyDao().updateGroupName(existingGroup.name, updatedGroup.name);
+      }
       notifyToolChanged();
     }
 
