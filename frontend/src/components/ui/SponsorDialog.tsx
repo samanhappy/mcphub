@@ -30,7 +30,7 @@ const SponsorDialog: React.FC<SponsorDialogProps> = ({ open, onOpenChange }) => 
           </h3>
 
           <div className="flex flex-col items-center justify-center py-4">
-            {i18n.language === 'zh' ? (
+            {i18n.resolvedLanguage === 'zh' ? (
               <img
                 src="./assets/reward.png"
                 alt={t('sponsor.rewardAlt')}
