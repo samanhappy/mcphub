@@ -13,7 +13,12 @@ import { execFileSync } from 'child_process';
 
 const REPO = 'samanhappy/mcphub';
 const BOT_RE = /dependabot\[bot\]|github-actions\[bot\]|\[bot\]$|^copilot$/i;
-const NEW_CONTRIBUTOR_RE = /^-\s*@(\S+)\s+made their first contribution in #(\d+)/;
+// GitHub's auto-generated body lists a new contributor as either
+// "- @login made their first contribution in #123" (the template format) or
+// "* @login made their first contribution in <pull url>". Accept both so an
+// existing body can be reused instead of re-detecting contributors.
+const NEW_CONTRIBUTOR_RE =
+  /^[-*]\s*@(\S+)\s+made their first contribution in (?:#(\d+)|https:\/\/github\.com\/[^\s/]+\/[^\s/]+\/pull\/(\d+))\s*$/;
 const PR_LIMIT = 300;
 
 function run(cmd, args, { allowFail = false } = {}) {
@@ -81,12 +86,51 @@ function parseNewContributors(body) {
   const out = [];
   for (const line of content.split('\n')) {
     const m = line.trim().match(NEW_CONTRIBUTOR_RE);
-    if (m) out.push({ login: m[1], number: m[2] });
+    if (m) out.push({ login: m[1], number: m[2] || m[3] });
   }
   return out;
 }
 
 // Fallback detection: an author is new if they had no merged PR before prev.
+//
+// GitHub's `merged:` search qualifier is date-granular, so `merged:<=<day>`
+// also returns PRs merged later on the day the previous release was
+// published — inside this release's range, not before it. Compare exact
+// timestamps instead: a strictly earlier day settles it, and same-day PRs are
+// checked against the previous release's publication time.
+function hasMergedPRBefore(login, prevAt) {
+  const prevDay = new Date(prevAt).toISOString().slice(0, 10);
+  const earlier = gh(
+    ['pr', 'list', '--state', 'merged', '--search', `author:${login} merged:<${prevDay}`, '--limit', '1', '--json', 'number'],
+    { allowFail: true },
+  );
+  if (earlier && earlier.trim() !== '[]') return true;
+
+  const sameDay = gh(
+    [
+      'pr',
+      'list',
+      '--state',
+      'merged',
+      '--search',
+      `author:${login} merged:${prevDay}..${prevDay}`,
+      '--limit',
+      String(PR_LIMIT),
+      '--json',
+      'number,mergedAt',
+    ],
+    { allowFail: true },
+  );
+  if (!sameDay) return false;
+  let sameDayPRs;
+  try {
+    sameDayPRs = JSON.parse(sameDay);
+  } catch {
+    return false;
+  }
+  return sameDayPRs.some((pr) => pr.mergedAt && new Date(pr.mergedAt).getTime() < prevAt);
+}
+
 function detectNewContributors(prs, prevTag) {
   const prevAt = prevTag ? releasePublishedAt(prevTag) : null;
   const authors = [...new Set(prs.map((p) => p.author && p.author.login))].filter(
@@ -98,12 +142,7 @@ function detectNewContributors(prs, prevTag) {
       out.push({ login, number: null });
       continue;
     }
-    const prevDate = new Date(prevAt).toISOString().slice(0, 10);
-    const hit = gh(
-      ['pr', 'list', '--state', 'merged', '--search', `author:${login} merged:<=${prevDate}`, '--limit', '1', '--json', 'number'],
-      { allowFail: true },
-    );
-    if (!hit || hit.trim() === '[]') {
+    if (!hasMergedPRBefore(login, prevAt)) {
       const first = prs.filter((p) => p.author && p.author.login === login).sort((a, b) => new Date(a.mergedAt) - new Date(b.mergedAt))[0];
       out.push({ login, number: first ? first.number : null });
     }
