@@ -159,11 +159,30 @@ describe('groupService authorization', () => {
     });
 
     await updateGroup('group-1', { name: 'renamed-group' });
-    expect(mockBearerKeyDao.updateGroupName).toHaveBeenCalledWith('admin-group', 'renamed-group');
+    expect(mockBearerKeyDao.updateGroupName).toHaveBeenCalledWith('admin-group', 'renamed-group', [
+      'group-1',
+    ]);
 
     mockBearerKeyDao.updateGroupName.mockClear();
     await updateGroup('group-1', { description: 'same name' });
     expect(mockBearerKeyDao.updateGroupName).not.toHaveBeenCalled();
+  });
+
+  it('restores the group when moving bearer key scopes fails', async () => {
+    mockUserContextService.getCurrentUser.mockReturnValue({
+      username: 'superadmin',
+      isAdmin: true,
+    });
+    mockBearerKeyDao.updateGroupName.mockRejectedValueOnce(new Error('write failed'));
+
+    await expect(
+      updateGroup('group-1', { name: 'renamed-group', description: 'new' }),
+    ).resolves.toBeNull();
+    expect(mockGroupDao.update).toHaveBeenLastCalledWith('group-1', {
+      name: 'admin-group',
+      description: 'owned by admin',
+    });
+    expect(notifyToolChanged).not.toHaveBeenCalled();
   });
 
   it('allows non-admin owners to mutate their own groups', async () => {

@@ -26,9 +26,10 @@ export interface BearerKeyDao {
    */
   updateServerName(oldName: string, newName: string): Promise<number>;
   /**
-   * Update group name in all bearer keys (when group is renamed)
+   * Update group name in all bearer keys (when group is renamed).
+   * allowedGroups may also hold group IDs; entries listed in groupIds are left alone.
    */
-  updateGroupName(oldName: string, newName: string): Promise<number>;
+  updateGroupName(oldName: string, newName: string, groupIds?: string[]): Promise<number>;
 }
 
 /**
@@ -194,7 +195,13 @@ export class BearerKeyDaoImpl extends JsonFileBaseDao implements BearerKeyDao {
     return this.renameScopeEntry('allowedServers', oldName, newName);
   }
 
-  async updateGroupName(oldName: string, newName: string): Promise<number> {
+  async updateGroupName(
+    oldName: string,
+    newName: string,
+    groupIds: string[] = [],
+  ): Promise<number> {
+    // An entry equal to an existing group's ID is an ID reference, not this group's old name.
+    if (groupIds.includes(oldName)) return 0;
     return this.renameScopeEntry('allowedGroups', oldName, newName);
   }
 
@@ -203,6 +210,7 @@ export class BearerKeyDaoImpl extends JsonFileBaseDao implements BearerKeyDao {
     oldName: string,
     newName: string,
   ): Promise<number> {
+    // All keys are written in one save, so a failure leaves none of them changed.
     const keys = await this.loadKeysWithMigration();
     let updatedCount = 0;
 

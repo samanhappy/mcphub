@@ -127,4 +127,30 @@ describe('BearerKeyDaoImpl migration + settings caching behavior', () => {
     expect(keys.find((k) => k.id === 'server-only')?.allowedServers).toEqual(['team-a']);
     expect(keys.find((k) => k.id === 'unrelated')?.allowedGroups).toEqual(['other']);
   });
+
+  it('keeps allowedGroups entries that are group IDs when renaming', async () => {
+    writeSettings(settingsPath, {
+      mcpServers: {},
+      users: [],
+      bearerKeys: [
+        {
+          id: 'by-id',
+          name: 'by-id',
+          tokenHash: hashBearerToken('by-id'),
+          tokenPrefix: 'by-id',
+          enabled: true,
+          kind: 'system',
+          accessType: 'groups',
+          allowedGroups: ['group-a-id'],
+          allowedServers: [],
+        },
+      ],
+    });
+
+    const dao = new BearerKeyDaoImpl();
+    expect(await dao.updateGroupName('group-a-id', 'renamed', ['group-a-id', 'group-b-id'])).toBe(
+      0,
+    );
+    expect((await dao.findAll())[0].allowedGroups).toEqual(['group-a-id']);
+  });
 });

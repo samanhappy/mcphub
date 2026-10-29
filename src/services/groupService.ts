@@ -212,12 +212,23 @@ export const updateGroup = async (id: string, data: Partial<IGroup>): Promise<IG
       }
     }
 
+    const renamed = data.name !== undefined && data.name !== existingGroup.name;
+    const groupIds = renamed ? (await groupDao.findAll()).map((group) => group.id) : [];
     const updatedGroup = await groupDao.update(id, data);
 
     if (updatedGroup) {
-      // Bearer keys scope groups by name; keep them pointing at the renamed group.
-      if (updatedGroup.name !== existingGroup.name) {
-        await getBearerKeyDao().updateGroupName(existingGroup.name, updatedGroup.name);
+      if (renamed) {
+        // Bearer keys scope groups by name; keep them pointing at the renamed group.
+        try {
+          await getBearerKeyDao().updateGroupName(existingGroup.name, updatedGroup.name, groupIds);
+        } catch (error) {
+          const previous = existingGroup as unknown as Record<string, unknown>;
+          await groupDao.update(
+            id,
+            Object.fromEntries(Object.keys(data).map((field) => [field, previous[field]])),
+          );
+          throw error;
+        }
       }
       notifyToolChanged();
     }

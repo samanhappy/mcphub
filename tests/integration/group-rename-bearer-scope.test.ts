@@ -5,6 +5,7 @@ import path from 'node:path';
 import express from 'express';
 import request from 'supertest';
 import { JsonFileDaoFactory, setDaoFactory } from '../../src/dao/DaoFactory.js';
+import { BearerKeyDaoImpl } from '../../src/dao/BearerKeyDao.js';
 import { createNewGroup, updateExistingGroup } from '../../src/controllers/groupController.js';
 import { createBearerKey } from '../../src/controllers/bearerKeyController.js';
 import { auth } from '../../src/middlewares/auth.js';
@@ -120,4 +121,44 @@ it('keeps a group-scoped bearer key on the renamed group, not on a new group reu
 
   await admin('post', '/api/groups', { name: 'team-a' }).expect(201);
   expect((await initialize('team-a', token)).status).toBe(401);
+});
+
+it('leaves a key scoped by group ID alone when another group named after that ID is renamed', async () => {
+  const groupA = await admin('post', '/api/groups', { name: 'id-scope-a' }).expect(201);
+  const groupAId: string = groupA.body.data.id;
+  const key = await admin('post', '/api/auth/keys', {
+    name: 'id-scope-key',
+    accessType: 'groups',
+    allowedGroups: [groupAId],
+  }).expect(201);
+  const token: string = key.body.data.token;
+  const groupB = await admin('post', '/api/groups', { name: groupAId }).expect(201);
+
+  await admin('put', `/api/groups/${groupB.body.data.id}`, { name: 'id-scope-b' }).expect(200);
+  expect((await initialize('id-scope-a', token)).status).toBe(200);
+  expect((await initialize('id-scope-b', token)).status).toBe(401);
+});
+
+it('keeps the old group name when the bearer key scopes cannot be moved', async () => {
+  const group = await admin('post', '/api/groups', { name: 'rollback-a' }).expect(201);
+  const key = await admin('post', '/api/auth/keys', {
+    name: 'rollback-key',
+    accessType: 'groups',
+    allowedGroups: ['rollback-a'],
+  }).expect(201);
+  const token: string = key.body.data.token;
+  const spy = jest
+    .spyOn(BearerKeyDaoImpl.prototype, 'updateGroupName')
+    .mockRejectedValueOnce(new Error('write failed'));
+
+  try {
+    const response = await admin('put', `/api/groups/${group.body.data.id}`, {
+      name: 'rollback-b',
+    });
+    expect(response.status).not.toBe(200);
+  } finally {
+    spy.mockRestore();
+  }
+  expect((await initialize('rollback-a', token)).status).toBe(200);
+  expect((await initialize('rollback-b', token)).status).not.toBe(200);
 });
