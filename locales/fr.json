@@ -1506,6 +1506,9 @@
     "failed": "Impossible de gérer les identifiants",
     "showAll": "Afficher tous les serveurs",
     "loading": "Chargement…",
-    "empty": "Aucun serveur partagé ne nécessite d’identifiants personnels."
+    "empty": "Aucun serveur partagé ne nécessite d’identifiants personnels.",
+    "targetUser": "Gérer les identifiants de",
+    "myCredentials": "Mes identifiants",
+    "updatedAt": "Dernière mise à jour"
   }
 }

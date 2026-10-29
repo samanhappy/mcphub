@@ -1505,6 +1505,9 @@
     "failed": "Kimlik bilgileri yönetilemiyor",
     "showAll": "Tüm sunucuları göster",
     "loading": "Yükleniyor…",
-    "empty": "Kişisel kimlik bilgisi gerektiren paylaşılan sunucu yok."
+    "empty": "Kişisel kimlik bilgisi gerektiren paylaşılan sunucu yok.",
+    "targetUser": "Kimlik bilgileri yönetilecek kullanıcı",
+    "myCredentials": "Kimlik bilgilerim",
+    "updatedAt": "Son güncelleme"
   }
 }

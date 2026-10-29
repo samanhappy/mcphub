@@ -1,6 +1,11 @@
 import { metrics } from '../controllers/metricsController.js';
 import { managePersonalOAuth } from '../controllers/personalOAuthController.js';
-import { listMyCredentials, updateMyCredential } from '../controllers/credentialBindingController.js';
+import {
+  listMyCredentials,
+  updateMyCredential,
+  listUserCredentials,
+  updateUserCredential,
+} from '../controllers/credentialBindingController.js';
 import express from 'express';
 import { check } from 'express-validator';
 import config from '../config/index.js';
@@ -272,6 +277,9 @@ export const initRoutes = async (app: express.Application): Promise<void> => {
   // instead of consuming the shared authenticated-route budget.
 
   // API routes protected by auth middleware in middlewares/index.ts and rate limited here
+  authenticatedRouter.get('/users/:username/credentials', listUserCredentials);
+  authenticatedRouter.put('/users/:username/credentials/:name', updateUserCredential);
+  authenticatedRouter.delete('/users/:username/credentials/:name', updateUserCredential);
   authenticatedRouter.get('/credentials', listMyCredentials);
   authenticatedRouter.put('/credentials/:name', updateMyCredential);
   authenticatedRouter.delete('/credentials/:name', updateMyCredential);
@@ -427,7 +435,12 @@ export const initRoutes = async (app: express.Application): Promise<void> => {
   // second write path to the stdio execution boundary (GHSA-xf2m-3c3x-53vp).
   // The admin gate must run before `uploadMiddleware` so multer never stages a
   // non-admin upload body on disk.
-  authenticatedRouter.post('/mcpb/upload', requireAdminMiddleware, uploadMiddleware, uploadMcpbFile);
+  authenticatedRouter.post(
+    '/mcpb/upload',
+    requireAdminMiddleware,
+    uploadMiddleware,
+    uploadMcpbFile,
+  );
 
   // Market routes
   authenticatedRouter.get('/market/servers', getAllMarketServers);

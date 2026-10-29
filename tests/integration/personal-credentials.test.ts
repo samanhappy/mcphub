@@ -34,6 +34,8 @@ import {
   userContextMiddleware,
 } from '../../src/middlewares/userContext.js';
 import {
+  listUserCredentials,
+  updateUserCredential,
   listMyCredentials,
   updateMyCredential,
 } from '../../src/controllers/credentialBindingController.js';
@@ -170,6 +172,9 @@ beforeAll(async () => {
   app.use('/api', authenticatedRouteRateLimiter, auth, userContextMiddleware);
   app.post('/api/mcp/:serverName/prompts/:promptName', getPrompt);
   app.post('/api/tools/:serverName/:toolName', executeToolViaOpenAPI);
+  app.get('/api/users/:username/credentials', listUserCredentials);
+  app.put('/api/users/:username/credentials/:name', updateUserCredential);
+  app.delete('/api/users/:username/credentials/:name', updateUserCredential);
   app.get('/api/credentials', listMyCredentials);
   app.put('/api/credentials/:name', updateMyCredential);
   app.delete('/api/credentials/:name', updateMyCredential);
@@ -567,6 +572,133 @@ test('dashboard bindings are write-only, self-scoped, and preserve the shared sa
         .send({ values: { 'env.PERSONAL_KEY': 'bad' } })
     ).status,
   ).not.toBe(200);
+});
+
+test('admins provision write-only target bindings with live isolation and explicit authentication', async () => {
+  const endpoint = `/api/users/${encodeURIComponent(alice)}/credentials`;
+  const values = { 'env.PERSONAL_KEY': 'admin-provisioned-sentinel' };
+  await bind(bob, 'bob-admin-test');
+  const a = await connect(alice);
+  const b = await connect(bob);
+  const toolName = `shared${getNameSeparator()}identity`;
+  const update = (token: string, body = { values }) =>
+    request(app).put(`${endpoint}/shared`).set('x-auth-token', token).send(body);
+  expect((await update(apiToken(bob))).status).toBe(403);
+  expect((await request(app).get(endpoint).set('x-auth-token', apiToken(bob))).status).toBe(403);
+  expect(
+    (await request(app).delete(`${endpoint}/shared`).set('x-auth-token', apiToken(bob))).status,
+  ).toBe(403);
+  expect((await update(apiToken('admin'))).status).toBe(200);
+  expect(parseIdentity(await a.callTool({ name: toolName })).credential).toBe(
+    values['env.PERSONAL_KEY'],
+  );
+  expect(parseIdentity(await b.callTool({ name: toolName })).credential).toBe('bob-admin-test');
+  const status = await request(app).get(endpoint).set('x-auth-token', apiToken('admin'));
+  expect(status.status).toBe(200);
+  expect(status.body.data.find((entry: any) => entry.serverName === 'shared')).toMatchObject({
+    configured: true,
+    configuredSlots: ['env.PERSONAL_KEY'],
+    updatedAt: expect.any(String),
+  });
+  expect(JSON.stringify(status.body)).not.toContain('admin-provisioned-sentinel');
+  expect(JSON.stringify(status.body)).not.toContain('encryptedValues');
+  expect((await update(apiToken('admin'), { values: { 'env.PERSONAL_KEY': '' } })).status).toBe(
+    400,
+  );
+  for (const method of ['get', 'put', 'delete'] as const) {
+    const suffix = method === 'get' ? '' : '/shared';
+    expect(
+      (
+        await request(app)[method](`/api/users/missing/credentials${suffix}`)
+          .set('x-auth-token', apiToken('admin'))
+          .send({ values })
+      ).status,
+    ).toBe(404);
+  }
+  await getServerDao().create({
+    name: 'admin-only-template',
+    type: 'stdio',
+    command: process.execPath,
+    owner: 'admin',
+    visibility: 'private',
+    credentialTemplate: [{ target: 'env', name: 'PERSONAL_KEY' }],
+  });
+  await getServerDao().create({
+    name: 'no-template',
+    type: 'stdio',
+    command: process.execPath,
+    owner: 'admin',
+    visibility: 'public',
+  });
+  try {
+    for (const name of ['admin-only-template', 'no-template']) {
+      for (const method of ['put', 'delete'] as const) {
+        expect(
+          (
+            await request(app)[method](`${endpoint}/${name}`)
+              .set('x-auth-token', apiToken('admin'))
+              .send({ values })
+          ).status,
+        ).toBe(404);
+      }
+    }
+    const list = await request(app).get(endpoint).set('x-auth-token', apiToken('admin'));
+    expect(list.body.data.map((entry: any) => entry.serverName)).not.toContain(
+      'admin-only-template',
+    );
+  } finally {
+    await getServerDao().delete('admin-only-template');
+    await getServerDao().delete('no-template');
+  }
+  const key = await getBearerKeyDao().create({
+    name: 'admin-provisioner',
+    token: 'admin-provisioner-test',
+    kind: 'system',
+    enabled: true,
+    accessType: 'all',
+    createdAt: new Date().toISOString(),
+  });
+  const config = await getSystemConfigDao().get();
+  try {
+    expect(
+      (
+        await request(app)
+          .put(`${endpoint}/shared`)
+          .set('Authorization', 'Bearer admin-provisioner-test')
+          .send({ values })
+      ).status,
+    ).toBe(200);
+    expect(
+      (
+        await request(app)
+          .get('/api/credentials')
+          .set('Authorization', 'Bearer admin-provisioner-test')
+      ).status,
+    ).toBe(401);
+    expect(
+      (
+        await request(app)
+          .put(`${endpoint}/shared`)
+          .set('Authorization', `Bearer ${alice}-bearer`)
+          .send({ values })
+      ).status,
+    ).toBe(401);
+    await getSystemConfigDao().update({ routing: { ...config!.routing!, skipAuth: true } });
+    expect((await request(app).get(endpoint)).status).toBe(403);
+    expect((await request(app).put(`${endpoint}/shared`).send({ values })).status).toBe(403);
+    expect((await request(app).delete(`${endpoint}/shared`)).status).toBe(403);
+  } finally {
+    await getSystemConfigDao().update(config!);
+    await getBearerKeyDao().delete(key.id);
+  }
+  expect(
+    (await request(app).delete(`${endpoint}/shared`).set('x-auth-token', apiToken('admin'))).status,
+  ).toBe(200);
+  expect((await a.callTool({ name: toolName })).isError).toBe(true);
+  expect(parseIdentity(await b.callTool({ name: toolName })).credential).toBe('bob-admin-test');
+  await bind(alice, 'alice-sentinel');
+  await a.close();
+  await b.close();
 });
 
 test('real stdio calls resolve bearer owners, isolate simultaneous users, and reuse a principal across sessions', async () => {
