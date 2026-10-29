@@ -1026,7 +1026,16 @@ const principalServerScope = new AsyncLocalStorage<ServerInfo[]>();
 const requestDiscoveryInfos = new WeakSet<ServerInfo>();
 
 const getVisibleServerInfos = (): ServerInfo[] => {
-  return getDataService().filterData(principalServerScope.getStore() ?? serverInfos);
+  const visible = getDataService().filterData(principalServerScope.getStore() ?? serverInfos);
+  // A system key with accessType 'exclude' hides its excluded servers (and the
+  // members of excluded groups, already expanded by the auth layer) from every
+  // listing, call resolution and smart-routing surface that reads this list.
+  const excludedServers = RequestContextService.getInstance().getBearerKeyExclusions();
+  if (!excludedServers || excludedServers.length === 0) {
+    return visible;
+  }
+  const excluded = new Set(excludedServers);
+  return visible.filter((serverInfo) => !excluded.has(serverInfo.name));
 };
 
 const getVisibleServerByName = (name: string): ServerInfo | undefined => {

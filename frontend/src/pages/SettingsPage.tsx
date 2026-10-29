@@ -38,9 +38,11 @@ interface BearerKeyRowProps {
     payload: {
       name: string;
       enabled: boolean;
-      accessType: 'all' | 'groups' | 'servers' | 'custom';
+      accessType: 'all' | 'groups' | 'servers' | 'custom' | 'exclude';
       allowedGroups: string;
       allowedServers: string;
+      excludedGroups: string;
+      excludedServers: string;
     },
   ) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
@@ -61,11 +63,13 @@ const BearerKeyRow: React.FC<BearerKeyRowProps> = ({
   const [isEditing, setIsEditing] = useState(false);
   const [name, setName] = useState(keyData.name);
   const [enabled, setEnabled] = useState<boolean>(keyData.enabled);
-  const [accessType, setAccessType] = useState<'all' | 'groups' | 'servers' | 'custom'>(
+  const [accessType, setAccessType] = useState<'all' | 'groups' | 'servers' | 'custom' | 'exclude'>(
     keyData.accessType || 'all',
   );
   const [selectedGroups, setSelectedGroups] = useState<string[]>(keyData.allowedGroups || []);
   const [selectedServers, setSelectedServers] = useState<string[]>(keyData.allowedServers || []);
+  const [excludedGroups, setExcludedGroups] = useState<string[]>(keyData.excludedGroups || []);
+  const [excludedServers, setExcludedServers] = useState<string[]>(keyData.excludedServers || []);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
@@ -76,6 +80,8 @@ const BearerKeyRow: React.FC<BearerKeyRowProps> = ({
       setAccessType(keyData.accessType || 'all');
       setSelectedGroups(keyData.allowedGroups || []);
       setSelectedServers(keyData.allowedServers || []);
+      setExcludedGroups(keyData.excludedGroups || []);
+      setExcludedServers(keyData.excludedServers || []);
     }
   }, [keyData, isEditing]);
 
@@ -101,6 +107,14 @@ const BearerKeyRow: React.FC<BearerKeyRowProps> = ({
       );
       return;
     }
+    if (isSystemKey && accessType === 'exclude' && excludedGroups.length === 0 && excludedServers.length === 0) {
+      showToast(
+        t('settings.selectAtLeastOneExcludedGroupOrServer') ||
+          'Please select at least one group or server to exclude',
+        'error',
+      );
+      return;
+    }
 
     setSaving(true);
     try {
@@ -110,6 +124,8 @@ const BearerKeyRow: React.FC<BearerKeyRowProps> = ({
         accessType,
         allowedGroups: selectedGroups.join(', '),
         allowedServers: selectedServers.join(', '),
+        excludedGroups: excludedGroups.join(', '),
+        excludedServers: excludedServers.join(', '),
       });
       setIsEditing(false);
     } finally {
@@ -131,6 +147,7 @@ const BearerKeyRow: React.FC<BearerKeyRowProps> = ({
 
   const isGroupsMode = accessType === 'groups';
   const isCustomMode = accessType === 'custom';
+  const isExcludeMode = accessType === 'exclude';
 
   // Helper function to format access type display text
   const formatAccessTypeDisplay = (key: BearerKey): string => {
@@ -155,6 +172,20 @@ const BearerKeyRow: React.FC<BearerKeyRowProps> = ({
         parts.push(`${t('settings.bearerKeyAccessServers') || 'Servers'}: ${key.allowedServers}`);
       }
       return `${t('settings.bearerKeyAccessCustom') || 'Custom'}: ${parts.join('; ')}`;
+    }
+    if (key.accessType === 'exclude') {
+      const parts: string[] = [];
+      if (key.excludedGroups && key.excludedGroups.length > 0) {
+        parts.push(
+          `${t('settings.bearerKeyExcludedGroups') || 'Excluded groups'}: ${key.excludedGroups}`,
+        );
+      }
+      if (key.excludedServers && key.excludedServers.length > 0) {
+        parts.push(
+          `${t('settings.bearerKeyExcludedServers') || 'Excluded servers'}: ${key.excludedServers}`,
+        );
+      }
+      return `${t('settings.bearerKeyAccessExclude') || 'All except'}: ${parts.join('; ')}`;
     }
     return '';
   };
@@ -211,7 +242,9 @@ const BearerKeyRow: React.FC<BearerKeyRowProps> = ({
                   className="block w-full py-2 px-3 border border-gray-300 bg-white dark:bg-gray-800 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm form-select transition-shadow duration-200"
                   value={accessType}
                   onChange={(e) =>
-                    setAccessType(e.target.value as 'all' | 'groups' | 'servers' | 'custom')
+                    setAccessType(
+                      e.target.value as 'all' | 'groups' | 'servers' | 'custom' | 'exclude',
+                    )
                   }
                   disabled={loading}
                 >
@@ -225,11 +258,14 @@ const BearerKeyRow: React.FC<BearerKeyRowProps> = ({
                   <option value="custom">
                     {t('settings.bearerKeyAccessCustom') || 'Custom (Groups & Servers)'}
                   </option>
+                  <option value="exclude">
+                    {t('settings.bearerKeyAccessExclude') || 'All except selected groups/servers'}
+                  </option>
                 </select>
               </div>}
 
               {/* Show single selector for groups or servers mode */}
-              {isAdmin && isSystemKey && !isCustomMode && (
+              {isAdmin && isSystemKey && !isCustomMode && !isExcludeMode && (
                 <div className="flex-1 min-w-[200px]">
                   <label
                     className={`block text-sm font-medium mb-1 ${accessType === 'all' ? 'text-gray-400' : 'text-gray-700'}`}
@@ -275,6 +311,36 @@ const BearerKeyRow: React.FC<BearerKeyRowProps> = ({
                       options={availableServers}
                       selected={selectedServers}
                       onChange={setSelectedServers}
+                      placeholder={t('settings.selectServers') || 'Select servers...'}
+                      disabled={loading}
+                    />
+                  </div>
+                </>
+              )}
+
+              {/* Show both selectors for exclude mode */}
+              {isAdmin && isSystemKey && isExcludeMode && (
+                <>
+                  <div className="flex-1 min-w-[200px]">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      {t('settings.bearerKeyExcludedGroups') || 'Excluded groups'}
+                    </label>
+                    <MultiSelect
+                      options={availableGroups}
+                      selected={excludedGroups}
+                      onChange={setExcludedGroups}
+                      placeholder={t('settings.selectGroups') || 'Select groups...'}
+                      disabled={loading}
+                    />
+                  </div>
+                  <div className="flex-1 min-w-[200px]">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      {t('settings.bearerKeyExcludedServers') || 'Excluded servers'}
+                    </label>
+                    <MultiSelect
+                      options={availableServers}
+                      selected={excludedServers}
+                      onChange={setExcludedServers}
                       placeholder={t('settings.selectServers') || 'Select servers...'}
                       disabled={loading}
                     />
@@ -1619,9 +1685,11 @@ const SettingsPage: React.FC = () => {
     enabled: boolean;
     kind: 'system' | 'user';
     owner: string;
-    accessType: 'all' | 'groups' | 'servers' | 'custom';
+    accessType: 'all' | 'groups' | 'servers' | 'custom' | 'exclude';
     allowedGroups: string;
     allowedServers: string;
+    excludedGroups: string;
+    excludedServers: string;
   }>({
     name: '',
     enabled: true,
@@ -1630,10 +1698,14 @@ const SettingsPage: React.FC = () => {
     accessType: 'all',
     allowedGroups: '',
     allowedServers: '',
+    excludedGroups: '',
+    excludedServers: '',
   });
 
   const [newSelectedGroups, setNewSelectedGroups] = useState<string[]>([]);
   const [newSelectedServers, setNewSelectedServers] = useState<string[]>([]);
+  const [newSelectedExcludedGroups, setNewSelectedExcludedGroups] = useState<string[]>([]);
+  const [newSelectedExcludedServers, setNewSelectedExcludedServers] = useState<string[]>([]);
 
   // Prepare options for MultiSelect
   const availableServers = servers.map((server) => ({
@@ -1766,6 +1838,19 @@ const SettingsPage: React.FC = () => {
       );
       return;
     }
+    if (
+      newBearerKey.kind === 'system' &&
+      newBearerKey.accessType === 'exclude' &&
+      newSelectedExcludedGroups.length === 0 &&
+      newSelectedExcludedServers.length === 0
+    ) {
+      showToast(
+        t('settings.selectAtLeastOneExcludedGroupOrServer') ||
+          'Please select at least one group or server to exclude',
+        'error',
+      );
+      return;
+    }
 
     const created = await createBearerKey({
       name: newBearerKey.name,
@@ -1783,6 +1868,14 @@ const SettingsPage: React.FC = () => {
         newSelectedServers.length > 0
           ? newSelectedServers
           : undefined,
+      excludedGroups:
+        newBearerKey.accessType === 'exclude' && newSelectedExcludedGroups.length > 0
+          ? newSelectedExcludedGroups
+          : undefined,
+      excludedServers:
+        newBearerKey.accessType === 'exclude' && newSelectedExcludedServers.length > 0
+          ? newSelectedExcludedServers
+          : undefined,
     } as any);
     if (!created) return;
     setCreatedBearerToken(created.token);
@@ -1795,9 +1888,13 @@ const SettingsPage: React.FC = () => {
       accessType: 'all',
       allowedGroups: '',
       allowedServers: '',
+      excludedGroups: '',
+      excludedServers: '',
     });
     setNewSelectedGroups([]);
     setNewSelectedServers([]);
+    setNewSelectedExcludedGroups([]);
+    setNewSelectedExcludedServers([]);
     await refreshBearerKeys();
   };
 
@@ -1806,9 +1903,11 @@ const SettingsPage: React.FC = () => {
     payload: {
       name: string;
       enabled: boolean;
-      accessType: 'all' | 'groups' | 'servers' | 'custom';
+      accessType: 'all' | 'groups' | 'servers' | 'custom' | 'exclude';
       allowedGroups: string;
       allowedServers: string;
+      excludedGroups: string;
+      excludedServers: string;
     },
   ) => {
     await updateBearerKey(id, {
@@ -1817,6 +1916,8 @@ const SettingsPage: React.FC = () => {
       accessType: payload.accessType,
       allowedGroups: parseCommaSeparated(payload.allowedGroups),
       allowedServers: parseCommaSeparated(payload.allowedServers),
+      excludedGroups: parseCommaSeparated(payload.excludedGroups),
+      excludedServers: parseCommaSeparated(payload.excludedServers),
     } as any);
     await refreshBearerKeys();
   };
@@ -2149,7 +2250,12 @@ const SettingsPage: React.FC = () => {
                           onChange={(e) =>
                             setNewBearerKey((prev) => ({
                               ...prev,
-                              accessType: e.target.value as 'all' | 'groups' | 'servers' | 'custom',
+                              accessType: e.target.value as
+                                | 'all'
+                                | 'groups'
+                                | 'servers'
+                                | 'custom'
+                                | 'exclude',
                             }))
                           }
                           disabled={loading}
@@ -2166,10 +2272,14 @@ const SettingsPage: React.FC = () => {
                           <option value="custom">
                             {t('settings.bearerKeyAccessCustom') || 'Custom (Groups & Servers)'}
                           </option>
+                          <option value="exclude">
+                            {t('settings.bearerKeyAccessExclude') ||
+                              'All except selected groups/servers'}
+                          </option>
                         </select>
                       </div>}
 
-                      {isAdmin && newBearerKey.kind === 'system' && newBearerKey.accessType !== 'custom' && (
+                      {isAdmin && newBearerKey.kind === 'system' && newBearerKey.accessType !== 'custom' && newBearerKey.accessType !== 'exclude' && (
                         <div className="flex-1 min-w-[200px]">
                           <label
                             className={`block text-sm font-medium mb-1 ${newBearerKey.accessType === 'all' ? 'text-gray-400' : 'text-gray-700'}`}
@@ -2226,6 +2336,35 @@ const SettingsPage: React.FC = () => {
                               options={availableServers}
                               selected={newSelectedServers}
                               onChange={setNewSelectedServers}
+                              placeholder={t('settings.selectServers') || 'Select servers...'}
+                              disabled={loading}
+                            />
+                          </div>
+                        </>
+                      )}
+
+                      {isAdmin && newBearerKey.kind === 'system' && newBearerKey.accessType === 'exclude' && (
+                        <>
+                          <div className="flex-1 min-w-[200px]">
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              {t('settings.bearerKeyExcludedGroups') || 'Excluded groups'}
+                            </label>
+                            <MultiSelect
+                              options={availableGroups}
+                              selected={newSelectedExcludedGroups}
+                              onChange={setNewSelectedExcludedGroups}
+                              placeholder={t('settings.selectGroups') || 'Select groups...'}
+                              disabled={loading}
+                            />
+                          </div>
+                          <div className="flex-1 min-w-[200px]">
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              {t('settings.bearerKeyExcludedServers') || 'Excluded servers'}
+                            </label>
+                            <MultiSelect
+                              options={availableServers}
+                              selected={newSelectedExcludedServers}
+                              onChange={setNewSelectedExcludedServers}
                               placeholder={t('settings.selectServers') || 'Select servers...'}
                               disabled={loading}
                             />

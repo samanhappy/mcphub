@@ -133,7 +133,7 @@ jest.mock('@modelcontextprotocol/server', () => ({
 // Import mocked modules
 import { getMcpServer } from './mcpService.js';
 import { UserContextService } from './userContextService.js';
-import { getBearerKeyDao, getGroupDao, getUserDao } from '../dao/index.js';
+import { getBearerKeyDao, getGroupDao, getServerDao, getUserDao } from '../dao/index.js';
 
 // Helper function to update the mock system config
 const setMockSystemConfig = (config: Partial<typeof defaultSystemConfig>) => {
@@ -1159,6 +1159,134 @@ describe('sseService', () => {
         const res = createMockResponse();
 
         await handleMcpPostRequest(req, res);
+        expectBearerUnauthorized(res, 'Invalid bearer token');
+      });
+    });
+
+    describe('bearer key exclude scope (issue #1402)', () => {
+      const excludeKey = (overrides: Record<string, unknown> = {}) => ({
+        id: 'exclude-key',
+        name: 'all-except-key',
+        token: 'exclude-token',
+        enabled: true,
+        kind: 'system',
+        accessType: 'exclude',
+        allowedGroups: [],
+        allowedServers: [],
+        excludedGroups: [],
+        excludedServers: ['secret-server'],
+        ...overrides,
+      });
+
+      const groupDaoFor = (groups: Record<string, { id: string; name: string; servers: string[] }>) => ({
+        findByName: jest.fn((name: string) => Promise.resolve(groups[name] ?? null)),
+        findById: jest.fn((id: string) =>
+          Promise.resolve(Object.values(groups).find((group) => group.id === id) ?? null),
+        ),
+      });
+
+      const post = async (
+        key: Record<string, unknown>,
+        group: string | undefined,
+        queueGroupDao: Array<Record<string, unknown>> = [],
+      ) => {
+        (getBearerKeyDao as jest.MockedFunction<any>).mockReturnValueOnce({
+          findEnabled: jest.fn().mockResolvedValue([key]),
+        });
+        for (const dao of queueGroupDao) {
+          (getGroupDao as jest.MockedFunction<any>).mockReturnValueOnce(dao);
+        }
+        setMockSystemConfig({
+          routing: {
+            enableGlobalRoute: true,
+            enableGroupNameRoute: true,
+            enableBearerAuth: true,
+            bearerAuthKey: 'exclude-token',
+            skipAuth: false,
+          },
+          enableSessionRebuild: false,
+        });
+
+        const req = createMockRequest({
+          params: group === undefined ? {} : { group },
+          body: { jsonrpc: '2.0', method: 'initialize', id: 1 },
+          headers: { authorization: 'Bearer exclude-token' },
+        });
+        const res = createMockResponse();
+        await handleMcpPostRequest(req, res);
+        return res;
+      };
+
+      it('allows the global /mcp route', async () => {
+        const res = await post(excludeKey(), undefined);
+        expect(res.status).not.toHaveBeenCalledWith(401);
+      });
+
+      it('allows the global /mcp/$smart route', async () => {
+        const res = await post(excludeKey(), '$smart');
+        expect(res.status).not.toHaveBeenCalledWith(401);
+      });
+
+      it('denies a route to an excluded server', async () => {
+        (getServerDao as jest.MockedFunction<any>).mockReturnValueOnce({
+          findById: jest.fn().mockResolvedValue({ name: 'secret-server' }),
+        });
+        const res = await post(excludeKey(), 'secret-server');
+        expectBearerUnauthorized(res, 'Invalid bearer token');
+      });
+
+      it('allows a route to a server that is not excluded', async () => {
+        (getServerDao as jest.MockedFunction<any>).mockReturnValueOnce({
+          findById: jest.fn().mockResolvedValue({ name: 'public-server' }),
+        });
+        const res = await post(excludeKey(), 'public-server');
+        expect(res.status).not.toHaveBeenCalledWith(401);
+      });
+
+      it('denies a route to an excluded group', async () => {
+        const blocked = { id: 'blocked-uuid', name: 'blocked-group', servers: ['public-server'] };
+        const dao = groupDaoFor({ 'blocked-group': blocked });
+        const res = await post(
+          excludeKey({ excludedGroups: ['blocked-group'], excludedServers: [] }),
+          'blocked-group',
+          [dao, dao],
+        );
+        expectBearerUnauthorized(res, 'Invalid bearer token');
+      });
+
+      it('allows a non-excluded group and hides only its excluded members', async () => {
+        const mixed = {
+          id: 'mixed-uuid',
+          name: 'mixed-group',
+          servers: ['public-server', 'secret-server'],
+        };
+        const dao = groupDaoFor({ 'mixed-group': mixed });
+        const res = await post(excludeKey(), 'mixed-group', [dao]);
+        expect(res.status).not.toHaveBeenCalledWith(401);
+      });
+
+      it('denies a group whose members are all excluded', async () => {
+        const blockedSet = {
+          id: 'blocked-set-uuid',
+          name: 'blocked-set',
+          servers: ['secret-server'],
+        };
+        const dao = groupDaoFor({ 'blocked-set': blockedSet });
+        const res = await post(excludeKey(), 'blocked-set', [dao]);
+        expectBearerUnauthorized(res, 'Invalid bearer token');
+      });
+
+      it('excludes a server that belongs to an excluded group', async () => {
+        const blocked = { id: 'blocked-uuid', name: 'blocked-group', servers: ['shared-server'] };
+        const dao = groupDaoFor({ 'blocked-group': blocked });
+        (getServerDao as jest.MockedFunction<any>).mockReturnValueOnce({
+          findById: jest.fn().mockResolvedValue({ name: 'shared-server' }),
+        });
+        const res = await post(
+          excludeKey({ excludedGroups: ['blocked-group'], excludedServers: [] }),
+          'shared-server',
+          [dao, dao],
+        );
         expectBearerUnauthorized(res, 'Invalid bearer token');
       });
     });

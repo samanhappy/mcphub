@@ -79,7 +79,7 @@ Bearer keys are long-lived static tokens managed at `/api/auth/keys`. Tokens are
 | `token` | The secret value sent in the `Authorization: Bearer ...` header. |
 | `kind` | `system` for operator-managed scoped keys, or `user` for keys that inherit an owner's visibility. |
 | `owner` | Required for user-level keys. |
-| `accessType` | `all` (dashboard + MCP), or a scoped value enforced inside `sseService.ts` for MCP-only access. |
+| `accessType` | `all` (dashboard + MCP), or a scoped value enforced inside `sseService.ts` for MCP-only access. Scoped values are `groups`, `servers`, `custom`, and `exclude` (all resources except `excludedGroups` / `excludedServers`). |
 | `enabled` | Disabled keys are ignored without being deleted. |
 
 Admins can create and manage all keys. Regular users can create, rename, enable, disable and delete
@@ -92,6 +92,14 @@ key owner.
 System-level keys preserve the original scoped-key behavior. Only system-level keys with
 `accessType === 'all'` are accepted by the dashboard / management API middleware. Restricted
 system-level keys are enforced at the MCP transport layer.
+
+`accessType: 'exclude'` is the inverse of an allow list: the key can use the global `/mcp` and
+`/mcp/$smart` endpoints, but servers named in `excludedServers` and every member of a group named
+in `excludedGroups` disappear from listings, smart routing, and tool/prompt/resource calls. A
+group route whose members are all excluded is rejected, and a server that belongs to both an
+excluded and a non-excluded group stays excluded. Exclusions fail safe when a name goes stale: a
+leftover entry only denies something that no longer exists. The scope requires at least one
+excluded group or server and is available only to system-level keys.
 
 The header name can be customized via `systemConfig.routing.bearerAuthHeaderName` (default `Authorization`). The legacy `systemConfig.routing.bearerAuthKey` field is preserved only for one-time migration into the bearer key store.
 
