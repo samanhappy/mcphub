@@ -1,0 +1,52 @@
+frontend/src/pages/UsersPage.tsx
+  s_3abf4fba614cba::t_92b145443887f3 9-18,171-174,186-193
+  s_3abf4fba614cba::t_d8151fcf5517ce 1
+locales/zh.json
+  s_3abf4fba614cba::t_d8151fcf5517ce 1513-1516
+docs/features/per-user-credentials.mdx
+  s_3abf4fba614cba::t_92b145443887f3 81,89-97
+  s_3abf4fba614cba::t_fea7bafb10c5ca 98
+frontend/src/pages/CredentialsPage.tsx
+  s_3abf4fba614cba::t_2d21498707629a 4-5,10,14,25,54-58,122,130,139,153-161,184-189,194-248
+  s_3abf4fba614cba::t_92b145443887f3 249-250
+  s_3abf4fba614cba::t_dd83566dc73253 251
+locales/es.json
+  s_3abf4fba614cba::t_d8151fcf5517ce 1511-1514
+locales/tr.json
+  s_3abf4fba614cba::t_d8151fcf5517ce 1508-1511
+tests/integration/personal-credentials.test.ts
+  s_3abf4fba614cba::t_92b145443887f3 584-585,588-590,592-594,598-602,605-607,610-616,618-632,636-642,646-648,653-660,663-685,694-696
+  s_3abf4fba614cba::t_c101707e853150 37-38,175-177,577-583,586-587,591,595-597,603-604,608-609,617,633-635,643-645,649-652,661-662,686-693,697-701
+  s_3abf4fba614cba::t_5e8f9f4ef70e3e 702-703
+src/controllers/credentialBindingController.ts
+  s_3abf4fba614cba::t_ca8901c1447cf8 2-3,29-42,45-50,71,92-93,96
+  s_3abf4fba614cba::t_92b145443887f3 52-53,73-74,76-80,94-95,97-98
+locales/en.json
+  s_3abf4fba614cba::t_d8151fcf5517ce 1511-1514
+src/routes/index.ts
+  s_3abf4fba614cba::t_92b145443887f3 3-8,438-443
+  s_3abf4fba614cba::t_ca8901c1447cf8 280-282
+locales/fr.json
+  s_3abf4fba614cba::t_d8151fcf5517ce 1509-1512
+locales/vi.json
+  s_3abf4fba614cba::t_d8151fcf5517ce 1511-1514
+docs/zh/features/per-user-credentials.mdx
+  s_3abf4fba614cba::t_92b145443887f3 81,89-97
+  s_3abf4fba614cba::t_d4dd79a60abe2a 98
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f64d3914ec2c6a48e5c341374b99d64838c04ad5",
+  "prompts": {},
+  "sessions": {
+    "s_3abf4fba614cba": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1873a-8f5f-7b53-be8a-10b6b5f72223",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
