@@ -111,27 +111,6 @@ export class BearerKeyRepository {
   }
 
   /**
-   * Apply several key updates in one transaction: either all are saved or none are.
-   */
-  async updateMany(
-    updates: { id: string; changes: Partial<Omit<BearerKey, 'id' | 'createdAt' | 'updatedAt'>> }[],
-  ): Promise<void> {
-    await this.withRetry(
-      () =>
-        getAppDataSource().transaction(async (manager) => {
-          const repository = manager.getRepository(BearerKey);
-          for (const { id, changes } of updates) {
-            const existing = await repository.findOne({ where: { id } });
-            if (existing) {
-              await repository.save(repository.merge(existing, changes));
-            }
-          }
-        }),
-      'updateMany',
-    );
-  }
-
-  /**
    * Update an existing bearer key
    */
   async update(

@@ -25,11 +25,6 @@ export interface BearerKeyDao {
    * Update server name in all bearer keys (when server is renamed)
    */
   updateServerName(oldName: string, newName: string): Promise<number>;
-  /**
-   * Update group name in all bearer keys (when group is renamed).
-   * allowedGroups may also hold group IDs; entries listed in groupIds are left alone.
-   */
-  updateGroupName(oldName: string, newName: string, groupIds?: string[]): Promise<number>;
 }
 
 /**
@@ -192,32 +187,25 @@ export class BearerKeyDaoImpl extends JsonFileBaseDao implements BearerKeyDao {
   }
 
   async updateServerName(oldName: string, newName: string): Promise<number> {
-    return this.renameScopeEntry('allowedServers', oldName, newName);
-  }
-
-  async updateGroupName(
-    oldName: string,
-    newName: string,
-    groupIds: string[] = [],
-  ): Promise<number> {
-    // An entry equal to an existing group's ID is an ID reference, not this group's old name.
-    if (groupIds.includes(oldName)) return 0;
-    return this.renameScopeEntry('allowedGroups', oldName, newName);
-  }
-
-  private async renameScopeEntry(
-    field: 'allowedServers' | 'allowedGroups',
-    oldName: string,
-    newName: string,
-  ): Promise<number> {
-    // All keys are written in one save, so a failure leaves none of them changed.
     const keys = await this.loadKeysWithMigration();
     let updatedCount = 0;
 
     for (const key of keys) {
-      if (key[field]?.includes(oldName)) {
-        key[field] = key[field]!.map((entry) => (entry === oldName ? newName : entry));
-        updatedCount++;
+      let updated = false;
+
+      if (key.allowedServers && key.allowedServers.length > 0) {
+        const newServers = key.allowedServers.map((server) => {
+          if (server === oldName) {
+            updated = true;
+            return newName;
+          }
+          return server;
+        });
+
+        if (updated) {
+          key.allowedServers = newServers;
+          updatedCount++;
+        }
       }
     }
 

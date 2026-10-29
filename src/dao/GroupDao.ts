@@ -3,6 +3,7 @@ import { IGroup } from '../types/index.js';
 import { BaseDao } from './base/BaseDao.js';
 import { JsonFileBaseDao } from './base/JsonFileBaseDao.js';
 import { randomUUID } from 'node:crypto';
+import { assertGroupNameAvailable, moveGroupKeyScopes } from '../utils/groupKeyScope.js';
 
 /**
  * Group DAO interface with group-specific operations
@@ -42,6 +43,12 @@ export interface GroupDao extends BaseDao<IGroup, string> {
    * Update server name in all groups (when server is renamed)
    */
   updateServerName(oldName: string, newName: string): Promise<number>;
+
+  /**
+   * Update a group and, if it is renamed, move bearer key allowedGroups entries
+   * from the old name to the new one in the same atomic write.
+   */
+  updateWithKeyScopes(id: string, updates: Partial<IGroup>): Promise<IGroup | null>;
 }
 
 /**
@@ -215,6 +222,37 @@ export class GroupDaoImpl extends JsonFileBaseDao implements GroupDao {
 
     const result = await this.update(groupId, { servers: updatedServers });
     return result !== null;
+  }
+
+  async updateWithKeyScopes(id: string, updates: Partial<IGroup>): Promise<IGroup | null> {
+    assertSmartRoutingNameAvailable(updates.name);
+    // Groups and keys live in one settings file. Reading, checking and writing it without
+    // awaiting keeps other requests (e.g. one creating a group under the old name) out.
+    // Work on a copy so a failed write leaves the cached settings unchanged.
+    const settings = structuredClone(this.loadSettingsSync());
+    const groups = settings.groups || [];
+    const index = groups.findIndex((group) => group.id === id);
+    if (index === -1) {
+      return null;
+    }
+
+    const oldName = groups[index].name;
+    const { id: _, ...allowedUpdates } = updates;
+    const updatedGroup = this.updateEntity(groups[index], allowedUpdates);
+    if (updatedGroup.name !== oldName) {
+      assertGroupNameAvailable(groups, id, updatedGroup.name);
+      moveGroupKeyScopes(
+        settings.bearerKeys || [],
+        oldName,
+        updatedGroup.name,
+        groups.map((group) => group.id),
+      );
+    }
+
+    groups[index] = updatedGroup;
+    settings.groups = groups;
+    this.saveSettingsSync(settings);
+    return updatedGroup;
   }
 
   async updateServers(groupId: string, servers: string[] | IGroup['servers']): Promise<boolean> {

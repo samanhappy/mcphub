@@ -86,6 +86,29 @@ export class GroupDaoDbImpl implements GroupDao {
     };
   }
 
+  async updateWithKeyScopes(id: string, entity: Partial<IGroup>): Promise<IGroup | null> {
+    const group = await this.repository.updateWithKeyScopes(id, {
+      name: entity.name,
+      description: entity.description,
+      instructions: entity.instructions ?? undefined,
+      servers: entity.servers as any,
+      owner: entity.owner,
+      visibility: entity.visibility,
+      sharedWithUsers: entity.sharedWithUsers,
+    });
+    if (!group) return null;
+    return {
+      id: group.id,
+      name: group.name,
+      description: group.description,
+      instructions: group.instructions ?? undefined,
+      servers: group.servers as any,
+      owner: group.owner,
+      visibility: group.visibility ?? undefined,
+      sharedWithUsers: group.sharedWithUsers ?? undefined,
+    };
+  }
+
   async delete(id: string): Promise<boolean> {
     return await this.repository.delete(id);
   }

@@ -110,36 +110,28 @@ export class BearerKeyDaoDbImpl implements BearerKeyDao {
   }
 
   async updateServerName(oldName: string, newName: string): Promise<number> {
-    return this.renameScopeEntry('allowedServers', oldName, newName);
-  }
+    const allKeys = await this.repository.findAll();
+    let updatedCount = 0;
 
-  async updateGroupName(
-    oldName: string,
-    newName: string,
-    groupIds: string[] = [],
-  ): Promise<number> {
-    // An entry equal to an existing group's ID is an ID reference, not this group's old name.
-    if (groupIds.includes(oldName)) return 0;
-    return this.renameScopeEntry('allowedGroups', oldName, newName);
-  }
+    for (const key of allKeys) {
+      let updated = false;
 
-  private async renameScopeEntry(
-    field: 'allowedServers' | 'allowedGroups',
-    oldName: string,
-    newName: string,
-  ): Promise<number> {
-    const updates = (await this.repository.findAll())
-      .filter((key) => key[field]?.includes(oldName))
-      .map((key) => ({
-        id: key.id,
-        changes: { [field]: key[field]!.map((entry) => (entry === oldName ? newName : entry)) },
-      }));
+      if (key.allowedServers && key.allowedServers.length > 0) {
+        const newServers = key.allowedServers.map((server) => {
+          if (server === oldName) {
+            updated = true;
+            return newName;
+          }
+          return server;
+        });
 
-    // One transaction, so a failure leaves none of the keys changed.
-    if (updates.length > 0) {
-      await this.repository.updateMany(updates);
+        if (updated) {
+          await this.repository.update(key.id, { allowedServers: newServers });
+          updatedCount++;
+        }
+      }
     }
 
-    return updates.length;
+    return updatedCount;
   }
 }

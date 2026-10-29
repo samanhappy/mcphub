@@ -4,7 +4,7 @@ import { IGroup, IGroupServerConfig } from '../types/index.js';
 import { notifyToolChanged } from './mcpService.js';
 import { getDataService } from './services.js';
 import { UserContextService } from './userContextService.js';
-import { getBearerKeyDao, getGroupDao, getServerDao, getSystemConfigDao } from '../dao/index.js';
+import { getGroupDao, getServerDao, getSystemConfigDao } from '../dao/index.js';
 import { logger } from '../utils/logger.js';
 
 // Helper function to normalize group servers configuration
@@ -212,24 +212,14 @@ export const updateGroup = async (id: string, data: Partial<IGroup>): Promise<IG
       }
     }
 
+    // A rename also moves bearer key scopes to the new name in the same atomic write, and
+    // is rejected if the new name equals a group ID (keys match groups by name or ID).
     const renamed = data.name !== undefined && data.name !== existingGroup.name;
-    const groupIds = renamed ? (await groupDao.findAll()).map((group) => group.id) : [];
-    const updatedGroup = await groupDao.update(id, data);
+    const updatedGroup = renamed
+      ? await groupDao.updateWithKeyScopes(id, data)
+      : await groupDao.update(id, data);
 
     if (updatedGroup) {
-      if (renamed) {
-        // Bearer keys scope groups by name; keep them pointing at the renamed group.
-        try {
-          await getBearerKeyDao().updateGroupName(existingGroup.name, updatedGroup.name, groupIds);
-        } catch (error) {
-          const previous = existingGroup as unknown as Record<string, unknown>;
-          await groupDao.update(
-            id,
-            Object.fromEntries(Object.keys(data).map((field) => [field, previous[field]])),
-          );
-          throw error;
-        }
-      }
       notifyToolChanged();
     }
 

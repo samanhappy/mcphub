@@ -6,16 +6,13 @@ const mockGroupDao = {
   findById: jest.fn(),
   findByName: jest.fn(),
   update: jest.fn(),
+  updateWithKeyScopes: jest.fn(),
   delete: jest.fn(),
 };
 
 const mockServerDao = {
   findAll: jest.fn(),
   findById: jest.fn(),
-};
-
-const mockBearerKeyDao = {
-  updateGroupName: jest.fn(),
 };
 
 const mockUserContextService = {
@@ -25,7 +22,6 @@ const mockUserContextService = {
 jest.mock('../../src/dao/index.js', () => ({
   getGroupDao: jest.fn(() => mockGroupDao),
   getServerDao: jest.fn(() => mockServerDao),
-  getBearerKeyDao: jest.fn(() => mockBearerKeyDao),
   getSystemConfigDao: jest.fn(() => ({
     get: jest.fn(() => Promise.resolve({ routing: { enableGroupNameRoute: true } })),
   })),
@@ -82,6 +78,10 @@ describe('groupService authorization', () => {
     mockGroupDao.findById.mockResolvedValue(adminOwnedGroup);
     mockGroupDao.findByName.mockResolvedValue(null);
     mockGroupDao.update.mockImplementation(async (_id: string, updates: any) => ({
+      ...adminOwnedGroup,
+      ...updates,
+    }));
+    mockGroupDao.updateWithKeyScopes.mockImplementation(async (_id: string, updates: any) => ({
       ...adminOwnedGroup,
       ...updates,
     }));
@@ -149,39 +149,32 @@ describe('groupService authorization', () => {
         name: 'admin-approved',
       }),
     );
-    expect(mockGroupDao.update).toHaveBeenCalledWith('group-1', { name: 'admin-approved' });
+    expect(mockGroupDao.updateWithKeyScopes).toHaveBeenCalledWith('group-1', {
+      name: 'admin-approved',
+    });
   });
 
-  it('moves bearer key group scopes to the new name when a group is renamed', async () => {
+  it('moves bearer key scopes only when the group is renamed', async () => {
     mockUserContextService.getCurrentUser.mockReturnValue({
       username: 'superadmin',
       isAdmin: true,
     });
 
-    await updateGroup('group-1', { name: 'renamed-group' });
-    expect(mockBearerKeyDao.updateGroupName).toHaveBeenCalledWith('admin-group', 'renamed-group', [
-      'group-1',
-    ]);
-
-    mockBearerKeyDao.updateGroupName.mockClear();
     await updateGroup('group-1', { description: 'same name' });
-    expect(mockBearerKeyDao.updateGroupName).not.toHaveBeenCalled();
+    await updateGroup('group-1', { name: 'admin-group', description: 'still same name' });
+    expect(mockGroupDao.updateWithKeyScopes).not.toHaveBeenCalled();
+    expect(mockGroupDao.update).toHaveBeenCalledTimes(2);
   });
 
-  it('restores the group when moving bearer key scopes fails', async () => {
+  it('fails the rename when the atomic group and key update fails', async () => {
     mockUserContextService.getCurrentUser.mockReturnValue({
       username: 'superadmin',
       isAdmin: true,
     });
-    mockBearerKeyDao.updateGroupName.mockRejectedValueOnce(new Error('write failed'));
+    mockGroupDao.updateWithKeyScopes.mockRejectedValueOnce(new Error('write failed'));
 
-    await expect(
-      updateGroup('group-1', { name: 'renamed-group', description: 'new' }),
-    ).resolves.toBeNull();
-    expect(mockGroupDao.update).toHaveBeenLastCalledWith('group-1', {
-      name: 'admin-group',
-      description: 'owned by admin',
-    });
+    await expect(updateGroup('group-1', { name: 'renamed-group' })).resolves.toBeNull();
+    expect(mockGroupDao.update).not.toHaveBeenCalled();
     expect(notifyToolChanged).not.toHaveBeenCalled();
   });
 
