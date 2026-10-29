@@ -1508,6 +1508,9 @@
     "failed": "Unable to manage credentials",
     "showAll": "Show all servers",
     "loading": "Loading…",
-    "empty": "No shared servers require personal credentials."
+    "empty": "No shared servers require personal credentials.",
+    "targetUser": "Manage credentials for",
+    "myCredentials": "My credentials",
+    "updatedAt": "Last updated"
   }
 }

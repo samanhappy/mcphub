@@ -1,14 +1,17 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
-import type { MyCredentialBinding } from '../types';
+import { useAuth } from '../contexts/AuthContext';
+import type { User, MyCredentialBinding } from '../types';
 import { apiDelete, apiGet, apiPut, type ApiResponse } from '../utils/fetchInterceptor';
 
 const CredentialForm = ({
   binding,
+  baseUrl,
   onChange,
 }: {
   binding: MyCredentialBinding;
+  baseUrl: string;
   onChange: () => Promise<void>;
 }) => {
   const { t } = useTranslation();
@@ -19,7 +22,7 @@ const CredentialForm = ({
     setBusy(true);
     setMessage('');
     try {
-      const url = `/credentials/${encodeURIComponent(binding.serverName)}`;
+      const url = `${baseUrl}/${encodeURIComponent(binding.serverName)}`;
       const result = remove
         ? await apiDelete<ApiResponse>(url)
         : await apiPut<ApiResponse>(url, { values });
@@ -48,6 +51,11 @@ const CredentialForm = ({
         </span>
       </div>
       <p className="text-sm text-[var(--hub-ink-3)]">{t('credentials.writeOnly')}</p>
+      {binding.updatedAt && (
+        <p className="text-xs text-[var(--hub-ink-3)]">
+          {t('credentials.updatedAt')}: {new Date(binding.updatedAt).toLocaleString()}
+        </p>
+      )}
       {binding.credentialTemplate.map((slot) => {
         const id = `${slot.target}.${slot.name}`;
         return (
@@ -111,7 +119,7 @@ const CredentialForm = ({
   );
 };
 
-export default function CredentialsPage() {
+function CredentialList({ baseUrl }: { baseUrl: string }) {
   const { t } = useTranslation();
   const [search, setSearch] = useSearchParams();
   const [bindings, setBindings] = useState<MyCredentialBinding[]>([]);
@@ -119,7 +127,7 @@ export default function CredentialsPage() {
   const [error, setError] = useState('');
   const reload = useCallback(async () => {
     try {
-      const result = await apiGet<ApiResponse<MyCredentialBinding[]>>('/credentials');
+      const result = await apiGet<ApiResponse<MyCredentialBinding[]>>(baseUrl);
       if (!result.success) throw new Error(result.message || t('credentials.failed'));
       setBindings(result.data || []);
       setError('');
@@ -128,7 +136,7 @@ export default function CredentialsPage() {
     } finally {
       setLoading(false);
     }
-  }, [t]);
+  }, [baseUrl, t]);
   useEffect(() => {
     void reload();
   }, [reload]);
@@ -142,7 +150,15 @@ export default function CredentialsPage() {
         <p className="hub-sub">{t('credentials.description')}</p>
       </div>
       {search.has('server') && (
-        <button className="hub-btn" onClick={() => setSearch({})}>
+        <button
+          className="hub-btn"
+          onClick={() =>
+            setSearch((params) => {
+              params.delete('server');
+              return params;
+            })
+          }
+        >
           {t('credentials.showAll')}
         </button>
       )}
@@ -165,8 +181,71 @@ export default function CredentialsPage() {
         </div>
       ) : null}
       {visible.map((binding) => (
-        <CredentialForm key={binding.serverName} binding={binding} onChange={reload} />
+        <CredentialForm
+          key={binding.serverName}
+          binding={binding}
+          baseUrl={baseUrl}
+          onChange={reload}
+        />
       ))}
+    </div>
+  );
+}
+
+export default function CredentialsPage() {
+  const { t } = useTranslation();
+  const { auth } = useAuth();
+  const [search, setSearch] = useSearchParams();
+  const [users, setUsers] = useState<User[]>([]);
+  const [error, setError] = useState('');
+  const admin = Boolean(auth.user?.isAdmin);
+  const username = admin ? search.get('user') || '' : '';
+  const baseUrl = username ? `/users/${encodeURIComponent(username)}/credentials` : '/credentials';
+  useEffect(() => {
+    if (!admin) return;
+    let active = true;
+    void apiGet<ApiResponse<User[]>>('/users')
+      .then((result) => {
+        if (!active) return;
+        if (!result.success) throw new Error(result.message || t('credentials.failed'));
+        setUsers(result.data || []);
+      })
+      .catch((error: unknown) => {
+        if (active) setError(error instanceof Error ? error.message : t('credentials.failed'));
+      });
+    return () => {
+      active = false;
+    };
+  }, [admin, t]);
+  return (
+    <div className="space-y-5">
+      {admin && (
+        <div className="max-w-4xl mx-auto">
+          <label className="block space-y-1 text-sm">
+            <span>{t('credentials.targetUser')}</span>
+            <select
+              className="hub-input"
+              value={username}
+              onChange={(event) =>
+                setSearch((params) => {
+                  if (event.target.value) params.set('user', event.target.value);
+                  else params.delete('user');
+                  return params;
+                })
+              }
+            >
+              <option value="">{t('credentials.myCredentials')}</option>
+              {users.map((user) => (
+                <option key={user.username} value={user.username}>
+                  {user.username}
+                </option>
+              ))}
+            </select>
+          </label>
+          {error && <p role="alert">{error}</p>}
+        </div>
+      )}
+      <CredentialList key={baseUrl} baseUrl={baseUrl} />
     </div>
   );
 }

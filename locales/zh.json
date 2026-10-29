@@ -1510,6 +1510,9 @@
     "failed": "无法管理凭据",
     "showAll": "显示所有服务器",
     "loading": "加载中…",
-    "empty": "暂无需要个人凭据的共享服务器。"
+    "empty": "暂无需要个人凭据的共享服务器。",
+    "targetUser": "管理用户凭据",
+    "myCredentials": "我的凭据",
+    "updatedAt": "最后更新"
   }
 }

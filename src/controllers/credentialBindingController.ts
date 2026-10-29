@@ -1,4 +1,6 @@
 import type { Request, Response } from 'express';
+import { getUserByUsername } from '../services/userService.js';
+import type { BearerKey } from '../types/index.js';
 import { getServerDao } from '../dao/DaoFactory.js';
 import { authorizationService, type RequestPrincipal } from '../services/authorizationService.js';
 import {
@@ -24,13 +26,31 @@ const respondError = (res: Response, error: unknown) => {
   });
 };
 
-export const listMyCredentials = async (req: Request, res: Response): Promise<void> => {
-  const user = principal(req);
-  if (!user || user.credentialEligible === false) {
-    res.status(401).json({ success: false });
+// Management credentials authorize the actor; visibility and encryption use the target user.
+const resolveUser = async (req: Request, res: Response, managed: boolean) => {
+  const actor = principal(req);
+  if (!managed) {
+    if (!actor || actor.credentialEligible === false) {
+      res.status(401).json({ success: false });
+      return;
+    }
+    return actor;
+  }
+  const key = (req as Request & { bearerKey?: BearerKey }).bearerKey;
+  const systemKey = key && key.kind !== 'user' && key.accessType === 'all';
+  if (!actor?.isAdmin || (actor.credentialEligible === false && !systemKey)) {
+    res.status(403).json({ success: false, message: 'Authenticated admin privileges required' });
     return;
   }
+  const user = await getUserByUsername(req.params.username);
+  if (!user) res.status(404).json({ success: false, message: 'User not found' });
+  return user;
+};
+
+const listCredentials = async (req: Request, res: Response, managed: boolean): Promise<void> => {
   try {
+    const user = await resolveUser(req, res, managed);
+    if (!user) return;
     const servers = (await getServerDao().findAll()).filter(
       (server) =>
         hasCredentialTemplate(server) && authorizationService.can('server.discover', server, user),
@@ -48,15 +68,16 @@ export const listMyCredentials = async (req: Request, res: Response): Promise<vo
   }
 };
 
-export const updateMyCredential = async (req: Request, res: Response): Promise<void> => {
-  const user = principal(req);
-  if (!user || user.credentialEligible === false) {
-    res.status(401).json({ success: false });
-    return;
-  }
+const updateCredential = async (req: Request, res: Response, managed: boolean): Promise<void> => {
   try {
+    const user = await resolveUser(req, res, managed);
+    if (!user) return;
     const server = await getServerDao().findById(req.params.name);
-    if (!server || !authorizationService.can('server.discover', server, user)) {
+    if (
+      !server ||
+      (managed && !hasCredentialTemplate(server)) ||
+      !authorizationService.can('server.discover', server, user)
+    ) {
       res.status(404).json({ success: false, message: 'Server not available' });
       return;
     }
@@ -68,3 +89,10 @@ export const updateMyCredential = async (req: Request, res: Response): Promise<v
     respondError(res, error);
   }
 };
+
+export const listMyCredentials = (req: Request, res: Response) => listCredentials(req, res, false);
+export const updateMyCredential = (req: Request, res: Response) =>
+  updateCredential(req, res, false);
+export const listUserCredentials = (req: Request, res: Response) => listCredentials(req, res, true);
+export const updateUserCredential = (req: Request, res: Response) =>
+  updateCredential(req, res, true);

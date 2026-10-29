@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { User } from '@/types';
@@ -5,7 +6,16 @@ import { useUserData } from '@/hooks/useUserData';
 import { useAuth } from '@/contexts/AuthContext';
 import AddUserForm from '@/components/AddUserForm';
 import EditUserForm from '@/components/EditUserForm';
-import { Edit3, Trash2, User as UserIcon, Plus, AlertCircle, X, RefreshCw } from 'lucide-react';
+import {
+  KeyRound,
+  Edit3,
+  Trash2,
+  User as UserIcon,
+  Plus,
+  AlertCircle,
+  X,
+  RefreshCw,
+} from 'lucide-react';
 import DeleteDialog from '@/components/ui/DeleteDialog';
 import { StatusDot } from '@/components/ui/StatusDot';
 
@@ -158,7 +168,10 @@ const UsersPage: React.FC = () => {
                 <div className="flex items-center min-w-0">
                   <span
                     className="truncate"
-                    style={{ fontSize: 13, color: user.email ? 'var(--hub-ink)' : 'var(--hub-ink-3)' }}
+                    style={{
+                      fontSize: 13,
+                      color: user.email ? 'var(--hub-ink)' : 'var(--hub-ink-3)',
+                    }}
                   >
                     {user.email || '—'}
                   </span>
@@ -170,6 +183,14 @@ const UsersPage: React.FC = () => {
                   />
                 </div>
                 <div className="flex justify-end gap-1">
+                  <Link
+                    to={`/credentials?user=${encodeURIComponent(user.username)}`}
+                    className="hub-icon-btn sm"
+                    title={t('credentials.title')}
+                    aria-label={`${t('credentials.title')}: ${user.username}`}
+                  >
+                    <KeyRound size={13} />
+                  </Link>
                   <button
                     onClick={() => setEditingUser(user)}
                     className="hub-icon-btn sm"
