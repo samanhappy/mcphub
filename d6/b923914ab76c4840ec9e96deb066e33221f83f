@@ -1,0 +1,73 @@
+frontend/src/components/layout/Header.tsx
+  s_7fe1e0143a2708::t_43a6c27f659541 1,17,23,41
+frontend/src/services/configService.ts
+  s_7fe1e0143a2708::t_17eff6096e9628 5,14,100,121,139
+locales/zh.json
+  s_7fe1e0143a2708::t_43a6c27f659541 842-844
+frontend/src/main.tsx
+  s_7fe1e0143a2708::t_fccce8ed0bdbbf 4,25-27,43-45
+mcp_settings.json
+  s_7fe1e0143a2708::t_eb16b25d44e57b 40
+frontend/src/pages/SettingsPage.tsx
+  s_7fe1e0143a2708::t_43a6c27f659541 1,23,637-639,643-658,3964-3970,3986-3989
+  s_7fe1e0143a2708::t_fccce8ed0bdbbf 640-642,3971-3985
+  s_7fe1e0143a2708::t_e13a792d91c714 3990
+locales/vi.json
+  s_7fe1e0143a2708::t_43a6c27f659541 840-842
+src/dao/SystemConfigDaoDbImpl.ts
+  s_7fe1e0143a2708::t_17eff6096e9628 26,48,69
+frontend/src/contexts/BrandingContext.tsx
+  s_7fe1e0143a2708::t_43a6c27f659541 1-43
+src/controllers/configController.ts
+  s_7fe1e0143a2708::t_17eff6096e9628 88
+locales/es.json
+  s_7fe1e0143a2708::t_43a6c27f659541 840-842
+src/types/index.ts
+  s_7fe1e0143a2708::t_17eff6096e9628 278
+locales/fr.json
+  s_7fe1e0143a2708::t_43a6c27f659541 839-841
+frontend/src/components/layout/Sidebar.tsx
+  s_7fe1e0143a2708::t_81854fd11bc77b 141
+  s_7fe1e0143a2708::t_7a03239b757698 1,40,158-160
+frontend/src/pages/LoginPage.tsx
+  s_7fe1e0143a2708::t_43a6c27f659541 1,34,300
+locales/en.json
+  s_7fe1e0143a2708::t_43a6c27f659541 840-842
+src/db/entities/SystemConfig.ts
+  s_7fe1e0143a2708::t_17eff6096e9628 9-11
+locales/tr.json
+  s_7fe1e0143a2708::t_43a6c27f659541 839-841
+src/utils/migration.ts
+  s_7fe1e0143a2708::t_17eff6096e9628 206
+src/controllers/serverController.ts
+  s_7fe1e0143a2708::t_17eff6096e9628 2069,2085-2092,2094-2096,2213,2854-2856
+  s_7fe1e0143a2708::t_6844d5a275159e 2093,2857
+docs/configuration/mcp-settings.mdx
+  s_7fe1e0143a2708::t_bf33a82f8ea61f 936-938
+docs/zh/configuration/mcp-settings.mdx
+  s_7fe1e0143a2708::t_b80b04bd5beb4a 839-841
+tests/controllers/configController.publicConfig.test.ts
+  s_7fe1e0143a2708::t_6873990bd12b46 47-71,119
+tests/controllers/serverController.test.ts
+  s_7fe1e0143a2708::t_6366a10d6589c5 843-867
+tests/dao/SystemConfigDao.test.ts
+  s_7fe1e0143a2708::t_72dc3653be28ac 32-39
+tests/dao/SystemConfigDaoDbImpl.test.ts
+  s_7fe1e0143a2708::t_ec46bc9124e9bf 48-58
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d6b923914ab76c4840ec9e96deb066e33221f83f",
+  "prompts": {},
+  "sessions": {
+    "s_7fe1e0143a2708": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a187d9-b41a-71f3-a365-c6f07f2a6313",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
