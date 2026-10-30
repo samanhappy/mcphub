@@ -1,8 +1,11 @@
 /**
  * Bearer keys scope groups by name or ID. When a group is renamed, entries holding
- * its old name are moved to the new name. Returns the keys that changed.
+ * its old name are moved to the new name in both allow lists and exclude lists.
+ * Returns the keys that changed.
  */
-export const moveGroupKeyScopes = <K extends { allowedGroups?: string[] | null }>(
+export const moveGroupKeyScopes = <
+  K extends { allowedGroups?: string[] | null; excludedGroups?: string[] | null },
+>(
   keys: K[],
   oldName: string,
   newName: string,
@@ -11,9 +14,14 @@ export const moveGroupKeyScopes = <K extends { allowedGroups?: string[] | null }
   // An entry equal to an existing group's ID is an ID reference, not this group's old name.
   if (groupIds.includes(oldName)) return [];
   return keys.filter((key) => {
-    if (!key.allowedGroups?.includes(oldName)) return false;
-    key.allowedGroups = key.allowedGroups.map((entry) => (entry === oldName ? newName : entry));
-    return true;
+    let changed = false;
+    for (const field of ['allowedGroups', 'excludedGroups'] as const) {
+      const entries = key[field];
+      if (!entries?.includes(oldName)) continue;
+      key[field] = entries.map((entry) => (entry === oldName ? newName : entry));
+      changed = true;
+    }
+    return changed;
   });
 };
 

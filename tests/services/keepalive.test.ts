@@ -74,6 +74,7 @@ const mockRequestContextService = {
   setRequestContext: jest.fn(),
   clearRequestContext: jest.fn(),
   getRequestContext: jest.fn(),
+  getBearerKeyExclusions: jest.fn(() => undefined),
 };
 
 jest.mock('../../src/services/requestContextService.js', () => ({
