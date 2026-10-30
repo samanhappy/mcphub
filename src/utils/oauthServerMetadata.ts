@@ -22,3 +22,31 @@ export const oauthServerMetadataSchema = z
     authorization_response_iss_parameter_supported: z.boolean().optional(),
   })
   .passthrough();
+
+export const authorizationRelaySchema = z
+  .object({
+    allowedRedirectOrigins: z
+      .array(
+        z.url().refine((value) => {
+          const url = new URL(value);
+          return url.protocol === 'https:' && url.origin === value;
+        }, 'Expected an HTTPS origin without a path'),
+      )
+      .min(1)
+      .max(16),
+  })
+  .strict();
+
+export const validateAuthorizationRelay = (oauth: {
+  identityMode?: string;
+  authorizationRelay?: unknown;
+  authorizationServerMetadata?: unknown;
+}): void => {
+  if (oauth.authorizationRelay === undefined) return;
+  authorizationRelaySchema.parse(oauth.authorizationRelay);
+  if (oauth.identityMode !== 'personal')
+    throw new Error('Authorization relay requires personal OAuth');
+  const metadata = oauthServerMetadataSchema.parse(oauth.authorizationServerMetadata);
+  if (new URL(metadata.authorization_endpoint).search)
+    throw new Error('Relay authorization endpoint must not contain a query');
+};

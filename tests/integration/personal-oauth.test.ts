@@ -1,3 +1,11 @@
+import express from 'express';
+import request from 'supertest';
+import { handleOAuthRelay } from '../../src/controllers/oauthRelayController.js';
+import {
+  managePersonalOAuth,
+  completePersonalOAuth,
+} from '../../src/controllers/personalOAuthController.js';
+import { createTransportFromConfig } from '../../src/services/mcpService.js';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -28,7 +36,10 @@ jest.mock('../../src/dao/DaoFactory.js', () => ({
     findByUsername: async (username: string) => ({ username, isAdmin: false }),
   }),
 }));
-jest.mock('../../src/services/mcpService.js', () => ({ getServerByName: jest.fn() }));
+jest.mock('../../src/services/mcpService.js', () => ({
+  getServerByName: jest.fn(),
+  createTransportFromConfig: jest.fn(),
+}));
 jest.mock('../../src/services/oauthClientRegistration.js', () => ({
   getRegisteredClient: jest.fn(),
   removeRegisteredClient: jest.fn(),
@@ -89,6 +100,9 @@ beforeEach(() => {
   tokenRequests = [];
   requestedUrls = [];
   issuer = discoveredIssuer;
+  delete mockDefinition.oauth!.authorizationRelay;
+  delete mockDefinition.oauth!.redirectUri;
+  delete mockDefinition.owner;
   delete mockDefinition.oauth!.authorizationServerMetadata;
   delete mockDefinition.oauth!.clientSecret;
   jest.mocked(getServerDao).mockReturnValue({ findById: async () => mockDefinition } as any);
@@ -305,3 +319,183 @@ test('database mode rejects personal OAuth without a persistent key before stori
   expect(await new CredentialBindingDaoImpl().get('gitlab', 'alice')).toBeNull();
   expect(fs.existsSync(`${process.env.MCPHUB_SETTING_PATH}.credentials.key`)).toBe(false);
 });
+
+const relayApp = () => {
+  const app = express();
+  app.get('/oauth/relay/:name', handleOAuthRelay);
+  app.get('/personal', (req, res) => {
+    Object.assign(req, { user: { username: 'alice', isAdmin: false }, params: { name: 'gitlab' } });
+    return managePersonalOAuth(req, res);
+  });
+  return app;
+};
+const startRelay = async (username = 'alice') => {
+  mockDefinition.oauth!.redirectUri = 'https://hub.example/base/oauth/callback';
+  mockDefinition.oauth!.authorizationRelay = {
+    allowedRedirectOrigins: ['https://login.example.com'],
+  };
+  mockDefinition.oauth!.authorizationServerMetadata = {
+    issuer,
+    authorization_endpoint: `${issuer}/authorize`,
+    token_endpoint: `${issuer}/token`,
+    response_types_supported: ['code'],
+    code_challenge_methods_supported: ['S256'],
+    authorization_response_iss_parameter_supported: true,
+  };
+  const p = await provider(username);
+  await expect(auth(p.provider, { serverUrl: mockDefinition.url!, fetchFn })).rejects.toThrow(
+    'OAuth authorization required',
+  );
+  return p;
+};
+const relayPath = (state: string, name = 'gitlab') =>
+  `/oauth/relay/${name}?state=${encodeURIComponent(state)}`;
+
+test('relay supports two users, recovery, callback consumption, broker exchange, refresh and MCP access', async () => {
+  const alice = await startRelay();
+  const bob = await startRelay('bob');
+  const fetchSpy = jest.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+    const original = new URL(String(input));
+    expect(original.origin).toBe(issuer);
+    expect(original.searchParams.get('resource')).toBe(mockDefinition.url);
+    expect(original.searchParams.get('code_challenge_method')).toBe('S256');
+    expect(init?.redirect).toBe('manual');
+    expect(init?.headers).toEqual({ Accept: 'text/html' });
+    const destination = new URL('https://login.example.com/authorize');
+    // Model broker transformations without implementing them in MCPHub.
+    destination.searchParams.set('state', original.searchParams.get('state')!);
+    destination.searchParams.set('redirect_uri', original.searchParams.get('redirect_uri')!);
+    destination.searchParams.set('code_challenge', 'broker-owned-challenge');
+    return new Response(null, {
+      status: 302,
+      headers: { Location: destination.toString(), 'Set-Cookie': 'private=secret' },
+    });
+  });
+  jest.mocked(createTransportFromConfig).mockImplementation(
+    async (name, config) =>
+      new StreamableHTTPClientTransport(new URL(mockDefinition.url!), {
+        authProvider: new MCPHubOAuthProvider(name, config),
+        fetch: fetchFn,
+      }),
+  );
+  const api = await request(relayApp()).get('/personal').expect(200);
+  const publicUrl = new URL(api.body.data.authorizationUrl);
+  expect(publicUrl.origin + publicUrl.pathname).toBe('https://hub.example/base/oauth/relay/gitlab');
+  expect(publicUrl.searchParams.get('state')).toBe(
+    alice.context.config.oauth.pendingAuthorization!.state,
+  );
+  for (const [username, p] of [
+    ['alice', alice],
+    ['bob', bob],
+  ] as const) {
+    const pending = p.context.config.oauth.pendingAuthorization!;
+    const response = await request(relayApp()).get(relayPath(pending.state!)).expect(302);
+    expect(response.headers['set-cookie']).toBeUndefined();
+    expect(response.headers['cache-control']).toBe('no-store');
+    expect(response.headers['referrer-policy']).toBe('no-referrer');
+    expect(new URL(response.headers.location).searchParams.get('state')).toBe(pending.state);
+    await expect(
+      completePersonalOAuth(pending.state!, username, 'https://wrong.example'),
+    ).rejects.toThrow('issuer');
+    expect(await completePersonalOAuth(pending.state!, username, issuer)).toBe(true);
+    expect(await completePersonalOAuth(pending.state!, username, issuer)).toBe(false);
+    await request(relayApp()).get(relayPath(pending.state!)).expect(400);
+    expect(tokenRequests.at(-1)!.get('code_verifier')).toBe(pending.codeVerifier);
+    const recovered = await provider(username);
+    await expect(
+      auth(recovered.provider, { serverUrl: mockDefinition.url!, fetchFn }),
+    ).resolves.toBe('AUTHORIZED');
+    expect(tokenRequests.at(-1)!.get('refresh_token')).toBe(`refresh-${username}`);
+    // Exercise an authenticated SDK MCP request after refresh.
+    const mcpFetch: typeof fetch = async (_input, init) => {
+      expect(new Headers(init?.headers).get('authorization')).toBe(`Bearer token-${username}`);
+      return new Response(null, { status: 202 });
+    };
+    const transport = new StreamableHTTPClientTransport(new URL(mockDefinition.url!), {
+      authProvider: recovered.provider,
+      fetch: mcpFetch,
+    });
+    await transport.send({ jsonrpc: '2.0', method: 'notifications/initialized' });
+    await transport.close();
+  }
+  expect(fetchSpy).toHaveBeenCalledTimes(2);
+  expect(requestedUrls.filter((url) => url.endsWith('/token'))).toEqual(
+    Array(4).fill(`${issuer}/token`),
+  );
+});
+
+test.each(['expired', 'changed', 'disconnected', 'wrong-connector', 'non-admin'])(
+  'relay rejects %s flows before contacting broker',
+  async (kind) => {
+    const p = await startRelay();
+    const state = p.context.config.oauth.pendingAuthorization!.state!;
+    if (kind === 'expired')
+      await p.context.updatePendingAuthorization('gitlab', { createdAt: Date.now() - 600_001 });
+    if (kind === 'changed')
+      mockDefinition.oauth!.authorizationServerMetadata!.token_endpoint += '/changed';
+    if (kind === 'disconnected') await disconnectPersonalOAuth('gitlab', 'alice');
+    if (kind === 'non-admin') mockDefinition.owner = 'alice';
+    const fetchSpy = jest.spyOn(globalThis, 'fetch');
+    await request(relayApp())
+      .get(relayPath(state, kind === 'wrong-connector' ? 'other' : 'gitlab'))
+      .expect(400);
+    expect(fetchSpy).not.toHaveBeenCalled();
+  },
+);
+
+test.each([
+  [200, 'https://login.example.com/authorize'],
+  [302, 'https://evil.example/authorize'],
+  [302, 'http://login.example.com/authorize'],
+  [302, 'https://user:secret@login.example.com/authorize'],
+  [302, '/internal/next'],
+  [302, 'https://login.example.com/' + 'a'.repeat(8200)],
+  [302, ''],
+])('relay rejects unsupported broker response %s %s', async (status, location) => {
+  const p = await startRelay();
+  jest
+    .spyOn(globalThis, 'fetch')
+    .mockResolvedValue(new Response(null, { status, headers: { Location: location } }));
+  const result = await request(relayApp())
+    .get(relayPath(p.context.config.oauth.pendingAuthorization!.state!))
+    .expect(400);
+  expect(result.text).not.toContain(location || 'private=secret');
+});
+
+test('relay rejects disconnect racing an upstream response and hides broker failures', async () => {
+  const p = await startRelay();
+  const state = p.context.config.oauth.pendingAuthorization!.state!;
+  jest.spyOn(globalThis, 'fetch').mockImplementation(async () => {
+    await disconnectPersonalOAuth('gitlab', 'alice');
+    return new Response(null, {
+      status: 302,
+      headers: { Location: 'https://login.example.com/authorize' },
+    });
+  });
+  await request(relayApp()).get(relayPath(state)).expect(400);
+  const next = await startRelay();
+  jest.mocked(fetch).mockRejectedValue(new Error('secret authorization URL'));
+  const result = await request(relayApp())
+    .get(relayPath(next.context.config.oauth.pendingAuthorization!.state!))
+    .expect(400);
+  expect(result.text).not.toContain('secret');
+});
+
+test('relay rejects a stored authorization URL outside the declared broker endpoint', async () => {
+  const p = await startRelay();
+  const pending = p.context.config.oauth.pendingAuthorization!;
+  await p.context.updatePendingAuthorization('gitlab', {
+    authorizationUrl: `http://other.internal/authorize?state=${pending.state}`,
+  });
+  const fetchSpy = jest.spyOn(globalThis, 'fetch');
+  await request(relayApp()).get(relayPath(pending.state!)).expect(400);
+  expect(fetchSpy).not.toHaveBeenCalled();
+});
+
+test.each(['/oauth/relay/gitlab', '/oauth/relay/gitlab?state=forged', '/oauth/relay/gitlab?state=a&state=b'])(
+  'relay rejects missing or invalid flows: %s', async (path) => {
+    const fetchSpy = jest.spyOn(globalThis, 'fetch');
+    await request(relayApp()).get(path).expect(400);
+    expect(fetchSpy).not.toHaveBeenCalled();
+  },
+);

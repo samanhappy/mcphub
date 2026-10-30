@@ -1,3 +1,4 @@
+import { validateAuthorizationRelay } from '../utils/oauthServerMetadata.js';
 import { expandServerConfig } from './serverConfigEnvironment.js';
 import type { FetchLike } from '../utils/ssrf.js';
 import { getCredentialBindingDao, getServerDao, getUserDao } from '../dao/DaoFactory.js';
@@ -145,6 +146,7 @@ export class PersonalOAuthContext {
       }
       context.revision = binding.encryptedValues;
     }
+    validateAuthorizationRelay(context.config.oauth);
     personalOAuthContexts.set(context.config, context);
     return context;
   }

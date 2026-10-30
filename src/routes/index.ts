@@ -1,3 +1,4 @@
+import { handleOAuthRelay } from '../controllers/oauthRelayController.js';
 import { metrics } from '../controllers/metricsController.js';
 import { managePersonalOAuth } from '../controllers/personalOAuthController.js';
 import {
@@ -234,6 +235,7 @@ export const initRoutes = async (app: express.Application): Promise<void> => {
   );
 
   // OAuth callback endpoint (no auth required, public callback URL)
+  app.get('/oauth/relay/:name', mcpConnectionRateLimiter, handleOAuthRelay);
   app.get('/oauth/callback', mcpConnectionRateLimiter, handleOAuthCallback);
 
   // OAuth Authorization Server endpoints (no auth required for OAuth flow)

@@ -115,6 +115,7 @@ const ServerForm = ({
       // and preserved by the backend `normalizeOAuth` whitelist (#1193). Each
       // key is only added when the stored config actually has it, so the
       // payload does not gain absent fields.
+      ...(oauth?.authorizationRelay && { authorizationRelay: oauth.authorizationRelay }),
       ...(oauth?.authorizationServerMetadata && { authorizationServerMetadata: oauth.authorizationServerMetadata }),
       ...(oauth?.dynamicRegistration && { dynamicRegistration: oauth.dynamicRegistration }),
       ...(oauth?.revocationEndpoint && { revocationEndpoint: oauth.revocationEndpoint }),

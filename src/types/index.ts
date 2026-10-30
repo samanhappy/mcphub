@@ -555,6 +555,7 @@ export interface ServerConfig {
 
     // Explicit authorization-server metadata replaces SDK discovery for this upstream.
     authorizationServerMetadata?: NonNullable<OAuthDiscoveryState['authorizationServerMetadata']>;
+    authorizationRelay?: { allowedRedirectOrigins: string[] };
     // Authorization endpoint for user authorization (for authorization code flow)
     authorizationEndpoint?: string;
     // Token endpoint for exchanging authorization codes for tokens

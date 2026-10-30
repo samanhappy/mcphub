@@ -159,11 +159,14 @@ describe('templateService', () => {
       };
       mockServerDao.findAll.mockResolvedValue([
         { name: 's1', type: 'streamable-http', url: 'https://private.example/mcp',
-          oauth: { clientId: 'client', authorizationServerMetadata } },
+          oauth: { clientId: 'client', identityMode: 'personal', authorizationServerMetadata,
+            authorizationRelay: { allowedRedirectOrigins: ['https://login.example.com'] } } },
       ]);
       mockGroupDao.findAll.mockResolvedValue([{ id: 'g1', name: 'G', servers: ['s1'] }]);
       const template = await exportTemplate({ name: 'Test' });
       expect(template.servers.s1.oauth?.authorizationServerMetadata).toEqual(authorizationServerMetadata);
+      expect(template.servers.s1.oauth?.identityMode).toBe('personal');
+      expect(template.servers.s1.oauth?.authorizationRelay).toEqual({ allowedRedirectOrigins: ['https://login.example.com'] });
     });
 
     it('should preserve existing ${PLACEHOLDER} patterns', async () => {

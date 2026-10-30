@@ -450,3 +450,40 @@ describe('explicit OAuth authorization server metadata', () => {
     ).toThrow('Invalid oauth.authorizationServerMetadata');
   });
 });
+
+describe('authorization relay configuration', () => {
+  const oauth = {
+    identityMode: 'personal' as const,
+    authorizationServerMetadata: {
+      issuer: 'http://broker.internal',
+      authorization_endpoint: 'http://broker.internal/authorize',
+      token_endpoint: 'http://broker.internal/token',
+      response_types_supported: ['code'],
+    },
+    authorizationRelay: { allowedRedirectOrigins: ['https://login.example.com'] },
+  };
+  it('preserves relay settings', () => {
+    const normalized = normalizeServerConfigForPersistence({
+      type: 'streamable-http',
+      url: 'http://broker.internal/mcp',
+      oauth,
+    });
+    expect(normalized.oauth?.authorizationRelay).toEqual(oauth.authorizationRelay);
+  });
+  it.each([
+    { identityMode: 'shared' },
+    { authorizationServerMetadata: undefined },
+    { authorizationRelay: true },
+    { authorizationRelay: { allowedRedirectOrigins: [] } },
+    { authorizationRelay: { allowedRedirectOrigins: ['http://login.example.com'] } },
+    { authorizationRelay: { allowedRedirectOrigins: ['https://login.example.com/path'] } },
+  ])('rejects invalid relay declaration %j', (invalid) => {
+    expect(() =>
+      normalizeServerConfigForPersistence({
+        type: 'streamable-http',
+        url: 'http://broker.internal/mcp',
+        oauth: { ...oauth, ...invalid } as typeof oauth,
+      }),
+    ).toThrow('Invalid oauth.authorizationRelay');
+  });
+});

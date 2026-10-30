@@ -1,4 +1,4 @@
-import { oauthServerMetadataSchema } from './oauthServerMetadata.js';
+import { oauthServerMetadataSchema, validateAuthorizationRelay } from './oauthServerMetadata.js';
 import { resolveUpstreamProtocolMode } from './mcpProtocol.js';
 import { validateCredentialTemplate } from './credentialTemplate.js';
 import { validateMaxBufferSize } from './stdioOptions.js';
@@ -189,6 +189,17 @@ export const normalizeOAuth = (
       );
     }
     normalized.authorizationServerMetadata = result.data;
+  }
+
+  if (oauth.authorizationRelay !== undefined) {
+    try {
+      validateAuthorizationRelay(oauth);
+    } catch {
+      throw new ServerConfigValidationError(
+        'Invalid oauth.authorizationRelay: requires personal OAuth, explicit server metadata and HTTPS redirect origins',
+      );
+    }
+    normalized.authorizationRelay = structuredClone(oauth.authorizationRelay);
   }
 
   const clientId = trimToUndefined(oauth.clientId);

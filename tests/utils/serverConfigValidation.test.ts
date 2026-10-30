@@ -5,9 +5,10 @@ const config = (partial: Partial<ServerConfig>): ServerConfig => partial as Serv
 
 describe('isPrivilegedServerConfig', () => {
   it.each([
+    { url: 'https://example.com/mcp', oauth: { authorizationRelay: { allowedRedirectOrigins: ['https://login.example.com'] } } },
     { url: 'https://example.com/mcp', passthroughHeaders: ['X-Tenant'] },
     { openapi: { url: 'https://example.com/schema', passthroughHeaders: ['X-Tenant'] } },
-  ])('flags caller header forwarding as privileged: %p', (value) => {
+  ])('flags admin-controlled configuration as privileged: %p', (value) => {
     expect(isPrivilegedServerConfig(config(value))).toBe(true);
   });
 
