@@ -1,0 +1,31 @@
+src/services/sseService.ts
+  s_53b92cd3ae51fd::t_89985dd1b36be6 17,96
+src/services/mcpEventBus.ts
+  s_53b92cd3ae51fd::t_89985dd1b36be6 1-6
+src/services/mcpService.ts
+  s_53b92cd3ae51fd::t_89985dd1b36be6 101,650
+tests/integration/sse-service-real-client.test.ts
+  s_53b92cd3ae51fd::t_8baa1eab9e40f2 30-32,39,920-925,928-959,961-967
+  s_53b92cd3ae51fd::t_e3c3292201cddc 926-927
+  s_53b92cd3ae51fd::t_3c2c97a2f155ee 960
+  s_53b92cd3ae51fd::t_b8e7a8b8579903 968-970
+  s_53b92cd3ae51fd::t_f3306a87b84b75 971-972
+src/services/sseService.test.ts
+  s_53b92cd3ae51fd::t_29b6d425483739 126-128
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ef6fe2c43f474bf95784557b90d7cc93a6cafb8d",
+  "prompts": {},
+  "sessions": {
+    "s_53b92cd3ae51fd": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a18aa9-dbee-7772-a2c2-6efbc66a9717",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
