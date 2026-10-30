@@ -169,6 +169,18 @@ describe('betterAuth bootstrap', () => {
     ).toBe('wurongjie');
     // Last-resort fallback derived from the subject identifier.
     expect(mapProfileToUser?.({ sub: '177' }).name).toBe('oidc-177');
+    // Empty and non-string claims must not become display names.
+    expect(
+      mapProfileToUser?.({ name: {}, nickname: 42, preferred_username: true, email: 'alice@example.com' })
+        .name,
+    ).toBe('alice');
+    expect(
+      mapProfileToUser?.({ name: '', nickname: null, preferred_username: [], sub: '177' }).name,
+    ).toBe('oidc-177');
+    expect(
+      mapProfileToUser?.({ name: null, nickname: 'nick', preferred_username: 'pref' }).name,
+    ).toBe('nick');
+    expect(mapProfileToUser?.({ nickname: {}, preferred_username: 'pref' }).name).toBe('pref');
   });
 
   it('prefers BETTER_AUTH_URL over install.baseUrl when deriving the Better Auth base URL', async () => {

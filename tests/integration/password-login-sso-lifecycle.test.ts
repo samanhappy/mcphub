@@ -97,6 +97,21 @@ describe('password login while SSO is enabled without a restart', () => {
     process.env = originalEnv;
   });
 
+  it('registers an OIDC profile mapper that skips non-string display-name claims', async () => {
+    storedConfig = betterAuthSettings(true, false);
+    await startProcess();
+
+    const { genericOAuth } = await import('better-auth/plugins');
+    const { config } = jest.mocked(genericOAuth).mock.calls[0][0];
+    expect(
+      await config[0].mapProfileToUser?.({
+        nickname: { value: 'invalid' },
+        preferred_username: 42,
+        email: 'alice@example.com',
+      }),
+    ).toEqual({ name: 'alice' });
+  });
+
   it('keeps password login until a restart mounts the newly enabled provider', async () => {
     // Started with Better Auth on but no SSO provider mounted
     storedConfig = betterAuthSettings(false, false);
