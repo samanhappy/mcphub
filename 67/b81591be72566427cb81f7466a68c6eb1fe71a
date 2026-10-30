@@ -1,0 +1,19 @@
+tests/integration/personal-oauth.test.ts
+  s_fb2d1fdf707b50::t_089691f552b309 2,326-327
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "67b81591be72566427cb81f7466a68c6eb1fe71a",
+  "prompts": {},
+  "sessions": {
+    "s_fb2d1fdf707b50": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a18bfe-c0fa-7343-ae60-ce5e7c93a4fa",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
