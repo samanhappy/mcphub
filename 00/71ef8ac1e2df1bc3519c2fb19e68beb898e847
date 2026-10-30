@@ -1,0 +1,71 @@
+frontend/src/utils/serverFormPayload.ts
+  s_fb2d1fdf707b50::t_afba7255eab7c1 124
+tests/utils/serverConfigValidation.test.ts
+  s_fb2d1fdf707b50::t_491dd21cf7a634 8,11
+src/utils/oauthServerMetadata.ts
+  s_fb2d1fdf707b50::t_afba7255eab7c1 25,39-46,49-52
+  s_fb2d1fdf707b50::t_b61fe3d05d7722 26-38,47-48
+frontend/src/types/index.ts
+  s_fb2d1fdf707b50::t_afba7255eab7c1 277,450,855
+frontend/src/components/ServerForm.tsx
+  s_fb2d1fdf707b50::t_afba7255eab7c1 118
+src/routes/index.ts
+  s_fb2d1fdf707b50::t_c352ef9113bfdb 1,238
+tests/utils/serverConfigPersistence.test.ts
+  s_fb2d1fdf707b50::t_491dd21cf7a634 465
+  s_fb2d1fdf707b50::t_6f056dc4d2b339 453-457,462-464,471-480,488-489
+  s_fb2d1fdf707b50::t_b61fe3d05d7722 458-461,466-470,481-487
+src/utils/serverConfigPersistence.ts
+  s_fb2d1fdf707b50::t_b61fe3d05d7722 198-200
+  s_fb2d1fdf707b50::t_afba7255eab7c1 1,194-197,201-202
+  s_fb2d1fdf707b50::t_24fdb7933b0675 203-204
+tests/integration/personal-oauth.test.ts
+  s_fb2d1fdf707b50::t_394fb4c35d80bc 482-501
+  s_fb2d1fdf707b50::t_b61fe3d05d7722 4-8,39-42,103-105,322-480
+  s_fb2d1fdf707b50::t_a53ba25e5671d8 1-3,481
+docs/features/oauth.mdx
+  s_fb2d1fdf707b50::t_3cd0fdc0cebf24 203-239
+src/controllers/serverController.ts
+  s_fb2d1fdf707b50::t_b61fe3d05d7722 162-164,894-896
+  s_fb2d1fdf707b50::t_afba7255eab7c1 1174-1175
+src/utils/serverConfigValidation.ts
+  s_fb2d1fdf707b50::t_afba7255eab7c1 17
+tests/controllers/serverController.test.ts
+  s_fb2d1fdf707b50::t_491dd21cf7a634 3464-3497
+src/types/index.ts
+  s_fb2d1fdf707b50::t_afba7255eab7c1 558
+tests/frontend/serverFormPayload.test.ts
+  s_fb2d1fdf707b50::t_491dd21cf7a634 398-399,405
+src/services/personalOAuthService.ts
+  s_fb2d1fdf707b50::t_afba7255eab7c1 1,149
+src/services/templateService.ts
+  s_fb2d1fdf707b50::t_491dd21cf7a634 183,626-628
+  s_fb2d1fdf707b50::t_b61fe3d05d7722 184-185
+src/controllers/oauthRelayController.ts
+  s_fb2d1fdf707b50::t_c352ef9113bfdb 1-29,37,42-44,47-52,58,61-69
+  s_fb2d1fdf707b50::t_b61fe3d05d7722 30-36,38-39,53-57,59-60
+  s_fb2d1fdf707b50::t_9017e21ed94704 40-41,45-46
+src/controllers/personalOAuthController.ts
+  s_fb2d1fdf707b50::t_c352ef9113bfdb 92-93,96-99,104
+  s_fb2d1fdf707b50::t_d1683d6f40824e 94-95
+tests/services/templateService.test.ts
+  s_fb2d1fdf707b50::t_491dd21cf7a634 162-163,168-169
+docs/zh/features/oauth.mdx
+  s_fb2d1fdf707b50::t_3cd0fdc0cebf24 203-239
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0071ef8ac1e2df1bc3519c2fb19e68beb898e847",
+  "prompts": {},
+  "sessions": {
+    "s_fb2d1fdf707b50": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a18bfe-c0fa-7343-ae60-ce5e7c93a4fa",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
