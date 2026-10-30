@@ -305,7 +305,17 @@
       "personalReconnect": "Reconnect",
       "personalDisconnect": "Disconnect",
       "personalError": "Personal authorization failed",
-      "personalSuccess": "Personal authorization saved. Return to Dashboard → Servers."
+      "personalSuccess": "Personal authorization saved. Return to Dashboard → Servers.",
+      "advancedSettings": "Advanced settings",
+      "relayEnabled": "Relay authorization through MCPHub",
+      "relayHelp": "Admin only. Enable when the browser cannot reach the private broker’s authorization endpoint. MCPHub returns its external redirect. The broker must not require private browser callbacks or cookies.",
+      "relayOrigins": "Allowed HTTPS redirect origins",
+      "relayOriginsHelp": "One origin per line, without a path or trailing slash. Only these external destinations are allowed.",
+      "relayMetadata": "Broker authorization-server metadata (JSON)",
+      "relayMetadataHelp": "Required: issuer, authorization_endpoint, token_endpoint and response_types_supported. Use the broker’s actual metadata. Live Microsoft compatibility remains unverified.",
+      "relayOriginsInvalid": "Enter 1–16 HTTPS origins without paths or trailing slashes.",
+      "relayMetadataInvalid": "Enter valid broker metadata JSON with issuer, authorization_endpoint, token_endpoint and non-empty response_types_supported. Endpoints must be HTTP(S); issuer and authorization endpoint must not contain queries.",
+      "relayRequiresAdmin": "Only administrators can configure an OAuth authorization relay."
     }
   },
   "status": {

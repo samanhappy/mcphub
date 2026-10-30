@@ -305,7 +305,17 @@
       "personalReconnect": "重新授权",
       "personalDisconnect": "断开授权",
       "personalError": "个人授权失败",
-      "personalSuccess": "个人授权已保存，请返回 Dashboard → 服务器。"
+      "personalSuccess": "个人授权已保存，请返回 Dashboard → 服务器。",
+      "advancedSettings": "高级设置",
+      "relayEnabled": "通过 MCPHub 中继授权",
+      "relayHelp": "仅管理员可配置。浏览器无法访问私网 broker 的授权入口时启用，由 MCPHub 返回外部登录跳转。broker 不能依赖私网浏览器回调或 cookie。",
+      "relayOrigins": "允许跳转的 HTTPS origin",
+      "relayOriginsHelp": "每行一个 origin，不含路径或末尾斜杠。仅允许跳转到这些外部地址。",
+      "relayMetadata": "Broker 授权服务器元数据（JSON）",
+      "relayMetadataHelp": "必填 issuer、authorization_endpoint、token_endpoint 和 response_types_supported。请使用 broker 的实际元数据，真实 Microsoft 兼容性尚未验证。",
+      "relayOriginsInvalid": "请输入 1–16 个 HTTPS origin，不含路径或末尾斜杠。",
+      "relayMetadataInvalid": "请输入有效的 broker 元数据 JSON，包含 issuer、authorization_endpoint、token_endpoint 和非空 response_types_supported。端点须为 HTTP(S)，issuer 和授权端点不得含查询参数。",
+      "relayRequiresAdmin": "仅管理员可配置 OAuth 授权中继。"
     }
   },
   "status": {

@@ -5,6 +5,7 @@ import { getServerConfigPermissionError } from '../utils/serverPermissions.js';
 import { X } from 'lucide-react';
 import { Server, EnvVar, ServerFormData, OpenApiToolStats } from '@/types';
 import { apiGet, apiPost } from '../utils/fetchInterceptor';
+import { parseOAuthRelayForm } from '../utils/oauthRelayForm';
 import { buildServerPayload } from '../utils/serverFormPayload';
 import {
   deselectShareUsers,
@@ -116,7 +117,9 @@ const ServerForm = ({
       // key is only added when the stored config actually has it, so the
       // payload does not gain absent fields.
       ...(oauth?.authorizationRelay && { authorizationRelay: oauth.authorizationRelay }),
-      ...(oauth?.authorizationServerMetadata && { authorizationServerMetadata: oauth.authorizationServerMetadata }),
+      ...(oauth?.authorizationServerMetadata && {
+        authorizationServerMetadata: oauth.authorizationServerMetadata,
+      }),
       ...(oauth?.dynamicRegistration && { dynamicRegistration: oauth.dynamicRegistration }),
       ...(oauth?.revocationEndpoint && { revocationEndpoint: oauth.revocationEndpoint }),
       ...(oauth?.redirectUri && { redirectUri: oauth.redirectUri }),
@@ -354,6 +357,14 @@ const ServerForm = ({
 
   const [isRequestOptionsExpanded, setIsRequestOptionsExpanded] = useState<boolean>(false);
   const [isOAuthSectionExpanded, setIsOAuthSectionExpanded] = useState<boolean>(false);
+  const [relayOrigins, setRelayOrigins] = useState(
+    initialData?.config?.oauth?.authorizationRelay?.allowedRedirectOrigins.join('\n') || '',
+  );
+  const [relayMetadata, setRelayMetadata] = useState(
+    initialData?.config?.oauth?.authorizationServerMetadata
+      ? JSON.stringify(initialData.config.oauth!.authorizationServerMetadata, null, 2)
+      : '',
+  );
   const [isKeepAliveSectionExpanded, setIsKeepAliveSectionExpanded] = useState<boolean>(false);
   const [isAdvancedExpanded, setIsAdvancedExpanded] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -579,7 +590,12 @@ const ServerForm = ({
 
     try {
       const payload = buildServerPayload({
-        formData,
+        formData: formData.oauth?.authorizationRelay
+          ? {
+              ...formData,
+              oauth: { ...formData.oauth, ...parseOAuthRelayForm(relayOrigins, relayMetadata) },
+            }
+          : formData,
         serverType,
         envVars,
         headerVars,
@@ -593,7 +609,11 @@ const ServerForm = ({
 
       onSubmit(payload);
     } catch (err) {
-      setError(`Error: ${err instanceof Error ? err.message : String(err)}`);
+      setError(
+        err instanceof Error && err.message.startsWith('server.oauth.relay')
+          ? t(err.message)
+          : `Error: ${err instanceof Error ? err.message : String(err)}`,
+      );
     }
   };
 
@@ -607,7 +627,9 @@ const ServerForm = ({
       </div>
 
       {(error || formError) && (
-        <div className="bg-red-50 text-red-700 p-3 rounded mb-4">{formError || error}</div>
+        <div role="alert" className="bg-red-50 text-red-700 p-3 rounded mb-4">
+          {formError || error}
+        </div>
       )}
 
       <form onSubmit={handleSubmit}>
@@ -2122,12 +2144,14 @@ const ServerForm = ({
                             id="oauthIdentityMode"
                             className="w-full py-2 px-3 form-input"
                             value={formData.oauth?.identityMode || 'shared'}
-                            onChange={(e) =>
+                            onChange={(e) => {
                               handleOAuthChange(
                                 'identityMode',
                                 e.target.value as 'shared' | 'personal',
-                              )
-                            }
+                              );
+                              if (e.target.value !== 'personal')
+                                handleOAuthChange('authorizationRelay', undefined);
+                            }}
                           >
                             <option value="shared">{t('server.oauth.sharedIdentity')}</option>
                             <option value="personal">{t('server.oauth.personalIdentity')}</option>
@@ -2155,6 +2179,82 @@ const ServerForm = ({
                               {t('server.oauth.allowInsecureTokenEndpointHelp')}
                             </p>
                           </div>
+                        )}
+                      {(serverType === 'sse' || serverType === 'streamable-http') &&
+                        formData.oauth?.identityMode === 'personal' &&
+                        (auth.user?.isAdmin || formData.oauth.authorizationRelay) && (
+                          <details className="mb-4 rounded border border-gray-200 dark:border-gray-700 p-3">
+                            <summary className="cursor-pointer text-sm font-medium">
+                              {t('server.oauth.advancedSettings')}
+                            </summary>
+                            <div className="mt-3 space-y-3">
+                              <label className="flex items-center gap-2 text-sm">
+                                <input
+                                  type="checkbox"
+                                  id="oauthAuthorizationRelay"
+                                  checked={Boolean(formData.oauth.authorizationRelay)}
+                                  disabled={!auth.user?.isAdmin}
+                                  onChange={(e) =>
+                                    handleOAuthChange(
+                                      'authorizationRelay',
+                                      e.target.checked ? { allowedRedirectOrigins: [] } : undefined,
+                                    )
+                                  }
+                                />
+                                {t('server.oauth.relayEnabled')}
+                              </label>
+                              <p className="text-xs text-gray-500">{t('server.oauth.relayHelp')}</p>
+                              {formData.oauth.authorizationRelay && (
+                                <>
+                                  <div>
+                                    <label
+                                      htmlFor="oauthRelayOrigins"
+                                      className="block text-xs mb-1"
+                                    >
+                                      {t('server.oauth.relayOrigins')}
+                                    </label>
+                                    <textarea
+                                      id="oauthRelayOrigins"
+                                      rows={2}
+                                      required
+                                      disabled={!auth.user?.isAdmin}
+                                      value={relayOrigins}
+                                      onChange={(e) => setRelayOrigins(e.target.value)}
+                                      placeholder="https://login.microsoftonline.com"
+                                      className="w-full py-2 px-3 form-input font-mono text-xs"
+                                    />
+                                    <p className="text-xs text-gray-500 mt-1">
+                                      {t('server.oauth.relayOriginsHelp')}
+                                    </p>
+                                  </div>
+                                  <div>
+                                    <label
+                                      htmlFor="oauthRelayMetadata"
+                                      className="block text-xs mb-1"
+                                    >
+                                      {t('server.oauth.relayMetadata')}
+                                    </label>
+                                    <textarea
+                                      id="oauthRelayMetadata"
+                                      rows={8}
+                                      wrap="off"
+                                      required
+                                      disabled={!auth.user?.isAdmin}
+                                      value={relayMetadata}
+                                      onChange={(e) => setRelayMetadata(e.target.value)}
+                                      placeholder={
+                                        '{\n  "issuer": "http://broker.internal:3000",\n  "authorization_endpoint": "http://broker.internal:3000/authorize",\n  "token_endpoint": "http://broker.internal:3000/token",\n  "response_types_supported": ["code"]\n}'
+                                      }
+                                      className="w-full py-2 px-3 form-input font-mono text-xs"
+                                    />
+                                    <p className="text-xs text-gray-500 mt-1">
+                                      {t('server.oauth.relayMetadataHelp')}
+                                    </p>
+                                  </div>
+                                </>
+                              )}
+                            </div>
+                          </details>
                         )}
                       <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                         <div>

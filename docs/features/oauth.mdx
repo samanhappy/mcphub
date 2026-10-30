@@ -204,6 +204,8 @@ This per-server setting is independent of MCPHub's downstream `systemConfig.oaut
 
 ## Private broker authorization relay
 
+Administrators can also enable this in the server form: select a personal OAuth identity, expand **OAuth Configuration → Advanced settings**, enable **Relay authorization through MCPHub**, and enter the allowed HTTPS origins and broker metadata JSON. Disabling the switch removes the relay configuration; changing to shared identity also disables it.
+
 For a private OAuth broker whose `/authorize` endpoint immediately redirects to an external identity provider, administrators can enable `oauth.authorizationRelay` on a personal-OAuth HTTP connector. Supply explicit broker metadata and an exact list of allowed HTTPS redirect origins:
 
 ```json

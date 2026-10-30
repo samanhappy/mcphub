@@ -204,6 +204,8 @@ MCP 受保护资源发现和 SDK 的 resource indicator 校验仍针对 MCP URL 
 
 ## 私网 broker 授权中继
 
+管理员也可在服务器表单中配置：选择个人 OAuth 身份，展开 **OAuth 配置 → 高级设置**，勾选 **通过 MCPHub 中继授权**，填写允许跳转的 HTTPS origin 和 broker 元数据 JSON。关闭开关会移除 relay 配置，切换为共享身份也会关闭中继。
+
 对于 `/authorize` 立即跳转到外部身份提供方的私网 OAuth broker，管理员可在个人 OAuth HTTP 连接器中启用 `oauth.authorizationRelay`，并显式提供 broker 元数据及允许跳转的 HTTPS origin：
 
 ```json
