@@ -27,6 +27,7 @@ export const getServerConfigPermissionError = (
   isAdmin?: boolean,
 ): string | null => {
   if (isAdmin === true) return null;
+  if (config.oauth?.authorizationRelay) return 'server.oauth.relayRequiresAdmin';
   if (config.oauth?.allowInsecureTokenEndpoint === true) {
     return 'server.httpOAuthRequiresAdmin';
   }

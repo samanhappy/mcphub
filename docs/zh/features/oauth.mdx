@@ -200,3 +200,42 @@ MCP 受保护资源发现和 SDK 的 resource indicator 校验仍针对 MCP URL 
 选中的元数据随待授权 PKCE/state 保存，支持回调恢复；授权、授权码交换和刷新使用同一配置的授权服务器。回调继续校验 `iss`，元数据声明 `authorization_response_iss_parameter_supported: true` 时必须提供该参数。HTTP token 端点仍需单独启用管理员控制的 `allowInsecureTokenEndpoint` 例外。个人 token 加密、刷新和用户隔离保持不变；修改元数据会使个人绑定失效，需要重新连接。
 
 该服务器级配置独立于 MCPHub 下游的 `systemConfig.oauthServer` 和旧的全局 `systemConfig.oauth` 代理，此流程不需要启用这两项全局配置。
+
+
+## 私网 broker 授权中继
+
+管理员也可在服务器表单中配置：选择个人 OAuth 身份，展开 **OAuth 配置 → 高级设置**，勾选 **通过 MCPHub 中继授权**，填写允许跳转的 HTTPS origin 和 broker 元数据 JSON。关闭开关会移除 relay 配置，切换为共享身份也会关闭中继。
+
+对于 `/authorize` 立即跳转到外部身份提供方的私网 OAuth broker，管理员可在个人 OAuth HTTP 连接器中启用 `oauth.authorizationRelay`，并显式提供 broker 元数据及允许跳转的 HTTPS origin：
+
+```json
+{
+  "type": "streamable-http",
+  "url": "http://broker.internal:3000/mcp",
+  "oauth": {
+    "identityMode": "personal",
+    "clientId": "${BROKER_CLIENT_ID}",
+    "clientSecret": "${BROKER_CLIENT_SECRET}",
+    "redirectUri": "https://hub.example.com/oauth/callback",
+    "allowInsecureTokenEndpoint": true,
+    "authorizationServerMetadata": {
+      "issuer": "http://broker.internal:3000",
+      "authorization_endpoint": "http://broker.internal:3000/authorize",
+      "token_endpoint": "http://broker.internal:3000/token",
+      "response_types_supported": ["code"],
+      "code_challenge_methods_supported": ["S256"]
+    },
+    "authorizationRelay": {
+      "allowedRedirectOrigins": ["https://login.microsoftonline.com"]
+    }
+  }
+}
+```
+
+请填写 broker 实际的 issuer、端点、scope 和客户端认证元数据，并在 broker 中允许 MCPHub 的公网 callback。仅 HTTP broker 需要 HTTP token 例外，此时凭据在私网连接上以非 TLS 方式传输。仅管理员可创建或修改 relay 连接器；无 owner 的文件声明视为运维配置，有 owner 时该用户必须仍是管理员。
+
+Dashboard 返回连接器专属的 MCPHub `/oauth/relay/<name>?state=…` 地址，使用公网 callback 的基础路径并保留安装前缀。MCPHub 转发已保存的授权请求，不携带浏览器 cookie 或认证头，仅返回允许的外部跳转。code 兑换和刷新仍通过原 broker，其 issuer、resource、state 及 PKCE 处理保持不变。入口要求有效的个人授权流程，并验证当前连接器声明及用户权限；断开绑定或完成回调后链接失效。该链接属于临时凭据，应在反向代理访问日志中隐藏查询参数。
+
+本功能默认关闭，与旧的全局 OAuth 代理、直接使用 Microsoft Graph token 的集成分开。它不代理 HTML、cookie、内部相对跳转、broker callback 页面或任意 URL；需要浏览器再次访问私网地址的 broker 不适用。授权端点不得包含查询参数；请求超时为 10 秒，响应头有大小上限，响应体直接丢弃，只接受跳转到允许 HTTPS origin 的 302/303/307/308。未配置的连接器行为不变。
+
+Mock 集成测试覆盖不同用户、回调恢复、code 兑换、刷新及带认证的 MCP 请求。真实 Microsoft 兼容性尚未验证，上线前应验证应用注册、broker 模式、scope 及刷新生命周期。

@@ -89,11 +89,19 @@ export const managePersonalOAuth = async (req: Request, res: Response): Promise<
         await transport.close().catch(() => undefined);
       }
     }
+    let authorizationUrl = context.authorizationUrl;
+    if (authorizationUrl && context.config.oauth.authorizationRelay) {
+      const callback = new URL(authorizationUrl).searchParams.get('redirect_uri');
+      if (!callback) throw new Error('Missing authorization callback');
+      const relay = new URL(`relay/${encodeURIComponent(definition.name)}`, callback);
+      relay.searchParams.set('state', context.config.oauth.pendingAuthorization!.state!);
+      authorizationUrl = relay.toString();
+    }
     res.json({
       success: true,
       data: {
         connected: Boolean(context.config.oauth.accessToken),
-        authorizationUrl: context.authorizationUrl,
+        authorizationUrl,
         status: context.config.oauth.accessToken ? 'connected' : 'oauth_required',
       },
     });

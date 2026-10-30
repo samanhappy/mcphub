@@ -121,6 +121,7 @@ const buildOAuthConfig = (
   // declared once on `ServerFormData['oauth']` (frontend/src/types/index.ts),
   // so they can be read directly here; a key is only emitted when the form
   // actually carries it.
+  if (oauth.authorizationRelay) nextOAuth.authorizationRelay = oauth.authorizationRelay;
   if (oauth.authorizationServerMetadata) {
     nextOAuth.authorizationServerMetadata = oauth.authorizationServerMetadata;
   }

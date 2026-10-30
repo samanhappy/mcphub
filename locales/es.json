@@ -305,7 +305,17 @@
       "personalReconnect": "Reconectar",
       "personalDisconnect": "Desconectar",
       "personalError": "Error en la autorización personal",
-      "personalSuccess": "Autorización personal guardada. Vuelve a Panel → Servidores."
+      "personalSuccess": "Autorización personal guardada. Vuelve a Panel → Servidores.",
+      "advancedSettings": "Configuración avanzada",
+      "relayEnabled": "Retransmitir autorización mediante MCPHub",
+      "relayHelp": "Solo administradores. Active si el navegador no puede acceder al broker privado. MCPHub devuelve su redirección externa. El broker no debe requerir callbacks privados ni cookies del navegador.",
+      "relayOrigins": "Orígenes HTTPS de redirección permitidos",
+      "relayOriginsHelp": "Un origen por línea, sin ruta ni barra final. Solo se permiten estos destinos externos.",
+      "relayMetadata": "Metadatos del servidor de autorización del broker (JSON)",
+      "relayMetadataHelp": "Obligatorios: issuer, authorization_endpoint, token_endpoint y response_types_supported. Use los metadatos reales del broker. La compatibilidad con Microsoft aún no se ha verificado.",
+      "relayOriginsInvalid": "Introduzca entre 1 y 16 orígenes HTTPS sin rutas ni barras finales.",
+      "relayMetadataInvalid": "Introduzca JSON válido con issuer, authorization_endpoint, token_endpoint y response_types_supported no vacío. Los endpoints deben ser HTTP(S); issuer y el endpoint de autorización no deben incluir consultas.",
+      "relayRequiresAdmin": "Solo los administradores pueden configurar la retransmisión OAuth."
     }
   },
   "status": {

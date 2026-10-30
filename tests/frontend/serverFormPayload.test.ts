@@ -395,12 +395,14 @@ describe('buildServerPayload', () => {
       response_types_supported: ['code'],
     };
     const payload = buildServerPayload({
-      formData: buildSseForm({ authorizationServerMetadata }),
+      formData: buildSseForm({ authorizationServerMetadata,
+        authorizationRelay: { allowedRedirectOrigins: ['https://login.example.com'] } }),
       serverType: 'sse',
       envVars: [],
       headerVars: [],
     });
     expect(payload.config.oauth?.authorizationServerMetadata).toEqual(authorizationServerMetadata);
+    expect(payload.config.oauth?.authorizationRelay).toEqual({ allowedRedirectOrigins: ['https://login.example.com'] });
   });
 
   it('preserves revocationEndpoint, redirectUri and dynamicRegistration together (deep equal)', () => {

@@ -180,6 +180,9 @@ function stripOAuthSecrets(oauth: NonNullable<ServerConfig['oauth']>): {
   const sanitized: TemplateOAuthConfig = {};
   const placeholders: string[] = [];
 
+  if (oauth.identityMode) sanitized.identityMode = oauth.identityMode;
+  if (oauth.authorizationRelay)
+    sanitized.authorizationRelay = structuredClone(oauth.authorizationRelay);
   if (oauth.authorizationServerMetadata) {
     sanitized.authorizationServerMetadata = structuredClone(oauth.authorizationServerMetadata);
   }
@@ -620,7 +623,9 @@ export async function importTemplate(
       };
       if (requestingUser && !requestingUser.isAdmin && isPrivilegedServerConfig(serverConfig)) {
         throw new Error(
-          serverConfig.oauth?.allowInsecureTokenEndpoint === true
+          serverConfig.oauth?.authorizationRelay
+            ? 'Only admins can import servers using an OAuth authorization relay'
+            : serverConfig.oauth?.allowInsecureTokenEndpoint === true
             ? 'Only admins can import servers allowing HTTP OAuth token endpoints'
             : serverConfig.passthroughHeaders?.length || serverConfig.openapi?.passthroughHeaders?.length
               ? 'Only admins can import servers forwarding caller headers'

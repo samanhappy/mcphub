@@ -159,8 +159,9 @@ const ensureNonAdminCanManageConfig = (
   if (isPrivilegedServerConfig(config)) {
     res.status(403).json({
       success: false,
-      message:
-        config.oauth?.allowInsecureTokenEndpoint === true
+      message: config.oauth?.authorizationRelay
+        ? 'Only admins can create or modify servers using an OAuth authorization relay'
+        : config.oauth?.allowInsecureTokenEndpoint === true
           ? 'Only admins can create or modify servers allowing HTTP OAuth token endpoints'
           : config.passthroughHeaders?.length || config.openapi?.passthroughHeaders?.length
             ? 'Only admins can create or modify servers forwarding caller headers'
@@ -890,8 +891,9 @@ export const batchCreateServers = async (req: Request, res: Response): Promise<v
           results.push({
             name: serverName,
             success: false,
-            message:
-              normalizedConfig.oauth?.allowInsecureTokenEndpoint === true
+            message: normalizedConfig.oauth?.authorizationRelay
+              ? 'Only admins can create or modify servers using an OAuth authorization relay'
+              : normalizedConfig.oauth?.allowInsecureTokenEndpoint === true
                 ? 'Only admins can create or modify servers allowing HTTP OAuth token endpoints'
                 : normalizedConfig.passthroughHeaders?.length ||
                     normalizedConfig.openapi?.passthroughHeaders?.length
@@ -1169,7 +1171,8 @@ export const updateServer = async (req: Request, res: Response): Promise<void> =
     }
 
     if (
-      ((existingServer.oauth?.allowInsecureTokenEndpoint === true ||
+      ((Boolean(existingServer.oauth?.authorizationRelay) ||
+        existingServer.oauth?.allowInsecureTokenEndpoint === true ||
         Boolean(
           existingServer.passthroughHeaders?.length ||
             existingServer.openapi?.passthroughHeaders?.length,

@@ -200,3 +200,42 @@ MCP protected-resource discovery and the SDK's resource indicator validation sti
 The selected metadata is captured with pending PKCE/state for callback recovery; authorization, code exchange and refresh use the same configured authority. Callback `iss` validation remains enabled, including required `iss` when metadata declares `authorization_response_iss_parameter_supported: true`. HTTP token endpoints still require the separate administrator-controlled `allowInsecureTokenEndpoint` exception. Personal token encryption, refresh and user isolation are unchanged; changing the metadata invalidates personal bindings and requires reconnecting.
 
 This per-server setting is independent of MCPHub's downstream `systemConfig.oauthServer` and the legacy global `systemConfig.oauth` proxy. Neither global setting is required for this flow.
+
+
+## Private broker authorization relay
+
+Administrators can also enable this in the server form: select a personal OAuth identity, expand **OAuth Configuration → Advanced settings**, enable **Relay authorization through MCPHub**, and enter the allowed HTTPS origins and broker metadata JSON. Disabling the switch removes the relay configuration; changing to shared identity also disables it.
+
+For a private OAuth broker whose `/authorize` endpoint immediately redirects to an external identity provider, administrators can enable `oauth.authorizationRelay` on a personal-OAuth HTTP connector. Supply explicit broker metadata and an exact list of allowed HTTPS redirect origins:
+
+```json
+{
+  "type": "streamable-http",
+  "url": "http://broker.internal:3000/mcp",
+  "oauth": {
+    "identityMode": "personal",
+    "clientId": "${BROKER_CLIENT_ID}",
+    "clientSecret": "${BROKER_CLIENT_SECRET}",
+    "redirectUri": "https://hub.example.com/oauth/callback",
+    "allowInsecureTokenEndpoint": true,
+    "authorizationServerMetadata": {
+      "issuer": "http://broker.internal:3000",
+      "authorization_endpoint": "http://broker.internal:3000/authorize",
+      "token_endpoint": "http://broker.internal:3000/token",
+      "response_types_supported": ["code"],
+      "code_challenge_methods_supported": ["S256"]
+    },
+    "authorizationRelay": {
+      "allowedRedirectOrigins": ["https://login.microsoftonline.com"]
+    }
+  }
+}
+```
+
+Use the broker's actual issuer, endpoints, supported scopes and client-authentication metadata. Configure its callback allow-list for MCPHub's public callback. The HTTP token exception is needed only for an HTTP broker; credentials then travel over that private connection without TLS. Only administrators can create or edit a relay connector. Operator-owned file declarations without an owner are also trusted; a declared owner must remain an administrator.
+
+The dashboard returns a connector-specific MCPHub `/oauth/relay/<name>?state=…` URL instead of the private authorization URL. It uses the public callback's base path, including any installation prefix. MCPHub forwards the saved authorization request once per relay request, without browser cookies or authorization headers, and returns only an allowed external redirect. Token exchange and refresh continue through the broker; its issuer, resource, state and PKCE handling remain unchanged. Relay access requires an unexpired personal flow bound to the current connector declaration and user permissions. Disconnecting or completing a flow invalidates the relay link. Treat the link as a temporary credential and redact its query from reverse-proxy access logs.
+
+This is an opt-in authorization-entry relay, separate from the legacy global OAuth proxy and direct Microsoft Graph-token integration. It does not proxy HTML, cookies, relative internal redirects, broker callback pages or arbitrary URLs. A broker that requires the browser to revisit its private hostname needs a different deployment. The authorization endpoint must not contain a query; upstream responses have a 10-second timeout and bounded headers, their bodies are discarded, and only 302/303/307/308 redirects to listed HTTPS origins are accepted. Unconfigured connectors retain their existing behavior.
+
+Mocked tests cover independent users, callback recovery, code exchange, refresh and authenticated MCP requests. Live Microsoft compatibility remains unverified; test your application registration, broker mode, scopes and refresh lifecycle before production use.

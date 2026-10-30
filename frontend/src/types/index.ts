@@ -274,6 +274,7 @@ export interface ServerConfig {
       initialAccessToken?: string;
     };
     resource?: string; // OAuth resource parameter (RFC8707)
+    authorizationRelay?: { allowedRedirectOrigins: string[] };
     authorizationServerMetadata?: {
       issuer: string;
       authorization_endpoint: string;
@@ -446,6 +447,7 @@ export interface ServerFormData {
     scopes?: string;
     accessToken?: string;
     refreshToken?: string;
+    authorizationRelay?: { allowedRedirectOrigins: string[] };
     authorizationServerMetadata?: NonNullable<ServerConfig['oauth']>['authorizationServerMetadata'];
     authorizationEndpoint?: string;
     tokenEndpoint?: string;
@@ -852,6 +854,7 @@ export interface TemplateServerConfig {
       initialAccessToken?: string;
     };
     resource?: string;
+    authorizationRelay?: { allowedRedirectOrigins: string[] };
     authorizationServerMetadata?: NonNullable<ServerConfig['oauth']>['authorizationServerMetadata'];
     authorizationEndpoint?: string;
     tokenEndpoint?: string;

@@ -305,7 +305,17 @@
       "personalReconnect": "Yeniden yetkilendir",
       "personalDisconnect": "Bağlantıyı kes",
       "personalError": "Kişisel yetkilendirme başarısız",
-      "personalSuccess": "Kişisel yetkilendirme kaydedildi. Panel → Sunucular bölümüne dönün."
+      "personalSuccess": "Kişisel yetkilendirme kaydedildi. Panel → Sunucular bölümüne dönün.",
+      "advancedSettings": "Gelişmiş ayarlar",
+      "relayEnabled": "Yetkilendirmeyi MCPHub üzerinden ilet",
+      "relayHelp": "Yalnızca yöneticiler. Tarayıcı özel broker’a erişemiyorsa etkinleştirin. MCPHub harici yönlendirmeyi döndürür. Broker özel tarayıcı callback adresleri veya çerezler gerektirmemelidir.",
+      "relayOrigins": "İzin verilen HTTPS yönlendirme origin adresleri",
+      "relayOriginsHelp": "Her satıra bir origin; yol veya sonda eğik çizgi olmadan. Yalnızca bu harici hedeflere izin verilir.",
+      "relayMetadata": "Broker yetkilendirme sunucusu meta verileri (JSON)",
+      "relayMetadataHelp": "Gerekli: issuer, authorization_endpoint, token_endpoint ve response_types_supported. Broker’ın gerçek meta verilerini kullanın. Microsoft uyumluluğu henüz doğrulanmadı.",
+      "relayOriginsInvalid": "Yol veya sonda eğik çizgi içermeyen 1–16 HTTPS origin girin.",
+      "relayMetadataInvalid": "issuer, authorization_endpoint, token_endpoint ve boş olmayan response_types_supported içeren geçerli JSON girin. Uç noktalar HTTP(S) olmalı; issuer ve yetkilendirme uç noktası sorgu içermemelidir.",
+      "relayRequiresAdmin": "OAuth iletimini yalnızca yöneticiler yapılandırabilir."
     }
   },
   "status": {

@@ -305,7 +305,17 @@
       "personalReconnect": "Kết nối lại",
       "personalDisconnect": "Ngắt kết nối",
       "personalError": "Ủy quyền cá nhân thất bại",
-      "personalSuccess": "Đã lưu ủy quyền cá nhân. Quay lại Bảng điều khiển → Máy chủ."
+      "personalSuccess": "Đã lưu ủy quyền cá nhân. Quay lại Bảng điều khiển → Máy chủ.",
+      "advancedSettings": "Cài đặt nâng cao",
+      "relayEnabled": "Chuyển tiếp ủy quyền qua MCPHub",
+      "relayHelp": "Chỉ quản trị viên. Bật khi trình duyệt không truy cập được broker nội bộ. MCPHub trả về chuyển hướng bên ngoài. Broker không được yêu cầu callback nội bộ hoặc cookie trình duyệt.",
+      "relayOrigins": "Các origin HTTPS được phép chuyển hướng",
+      "relayOriginsHelp": "Mỗi dòng một origin, không có đường dẫn hoặc dấu gạch chéo cuối. Chỉ cho phép các đích bên ngoài này.",
+      "relayMetadata": "Siêu dữ liệu máy chủ ủy quyền của broker (JSON)",
+      "relayMetadataHelp": "Bắt buộc: issuer, authorization_endpoint, token_endpoint và response_types_supported. Dùng siêu dữ liệu thực của broker. Chưa xác minh khả năng tương thích Microsoft.",
+      "relayOriginsInvalid": "Nhập 1–16 origin HTTPS không có đường dẫn hoặc dấu gạch chéo cuối.",
+      "relayMetadataInvalid": "Nhập JSON hợp lệ có issuer, authorization_endpoint, token_endpoint và response_types_supported không rỗng. Endpoint phải là HTTP(S); issuer và endpoint ủy quyền không được chứa truy vấn.",
+      "relayRequiresAdmin": "Chỉ quản trị viên được cấu hình chuyển tiếp ủy quyền OAuth."
     }
   },
   "status": {

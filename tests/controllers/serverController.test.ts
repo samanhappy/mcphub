@@ -3461,3 +3461,37 @@ describe('batchToggleTools', () => {
     expect(mockServerDao.updateTools).not.toHaveBeenCalled();
   });
 });
+
+
+describe('admin-controlled authorization relay', () => {
+  const config = {
+    type: 'streamable-http', url: 'http://broker.internal/mcp',
+    oauth: {
+      identityMode: 'personal',
+      authorizationServerMetadata: {
+        issuer: 'http://broker.internal', authorization_endpoint: 'http://broker.internal/authorize',
+        token_endpoint: 'http://broker.internal/token', response_types_supported: ['code'],
+      },
+      authorizationRelay: { allowedRedirectOrigins: ['https://login.example.com'] },
+    },
+  };
+  it.each([createServer, updateServer, batchCreateServers])('rejects non-admin relay writes through %p', async (handler) => {
+    jest.clearAllMocks();
+    mockServerDao.findById.mockResolvedValue({ name: 'broker', owner: 'alice', ...config });
+    const status = jest.fn().mockReturnThis();
+    const json = jest.fn();
+    await handler({ params: { name: 'broker' }, body: { name: 'broker', config, servers: [{ name: 'broker', config }] }, user: { username: 'alice', isAdmin: false } } as unknown as Request, { status, json } as unknown as Response);
+    expect(mockAddServer).not.toHaveBeenCalled();
+    expect(mockAddOrUpdateServer).not.toHaveBeenCalled();
+    if (handler === batchCreateServers) expect(json).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ failureCount: 1 }) }));
+    else expect(status).toHaveBeenCalledWith(403);
+  });
+  it('prevents a non-admin owner from removing relay and changing its target', async () => {
+    jest.clearAllMocks();
+    mockServerDao.findById.mockResolvedValue({ name: 'broker', owner: 'alice', ...config });
+    const status = jest.fn().mockReturnThis();
+    await updateServer({ params: { name: 'broker' }, body: { config: { type: 'streamable-http', url: 'https://another.example/mcp' } }, user: { username: 'alice', isAdmin: false } } as unknown as Request, { status, json: jest.fn() } as unknown as Response);
+    expect(status).toHaveBeenCalledWith(403);
+    expect(mockAddOrUpdateServer).not.toHaveBeenCalled();
+  });
+});
