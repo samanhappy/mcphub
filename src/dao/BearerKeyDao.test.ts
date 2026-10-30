@@ -36,6 +36,25 @@ describe('BearerKeyDaoImpl token hashing', () => {
     expect(maskBearerKey((await dao.findById(created.id))!)).toBe('mcphu...');
   });
 
+  it('rewrites excluded server names when a server is renamed', async () => {
+    const dao = new BearerKeyDaoImpl();
+    await dao.create({
+      ...base,
+      accessType: 'exclude',
+      token: 'mcphub_exclude123',
+      allowedServers: ['keep-server'],
+      excludedServers: ['old-server'],
+      excludedGroups: ['blocked-group'],
+    });
+
+    expect(await dao.updateServerName('old-server', 'new-server')).toBe(1);
+
+    const stored = (await dao.findAll())[0];
+    expect(stored.excludedServers).toEqual(['new-server']);
+    expect(stored.excludedGroups).toEqual(['blocked-group']);
+    expect(stored.allowedServers).toEqual(['keep-server']);
+  });
+
   it('hashes legacy plaintext keys without breaking them', async () => {
     fs.writeFileSync(
       settingsPath,

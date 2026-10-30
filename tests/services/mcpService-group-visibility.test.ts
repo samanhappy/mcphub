@@ -156,6 +156,7 @@ jest.mock('../../src/services/requestContextService.js', () => ({
       getGroupContext: jest.fn(),
       getUsernameContext: jest.fn(),
       getRequestContext: jest.fn(() => ({})),
+      getBearerKeyExclusions: jest.fn(() => undefined),
     })),
   },
 }));

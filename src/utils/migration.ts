@@ -241,6 +241,8 @@ export async function migrateToDatabase(seedServersAndGroups = true): Promise<bo
           accessType: key.accessType,
           allowedGroups: key.allowedGroups ?? [],
           allowedServers: key.allowedServers ?? [],
+          excludedGroups: key.excludedGroups ?? [],
+          excludedServers: key.excludedServers ?? [],
         } as any);
         logger.log(`  - Migrated bearer key: ${key.name} (${key.id ?? 'no-id'})`);
       }

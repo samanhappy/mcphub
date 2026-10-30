@@ -523,7 +523,7 @@ export interface ApiResponse<T = any> {
 }
 
 // Bearer authentication key configuration (frontend view model)
-export type BearerKeyAccessType = 'all' | 'groups' | 'servers' | 'custom';
+export type BearerKeyAccessType = 'all' | 'groups' | 'servers' | 'custom' | 'exclude';
 export type BearerKeyKind = 'system' | 'user';
 
 export interface BearerKey {
@@ -536,6 +536,8 @@ export interface BearerKey {
   accessType: BearerKeyAccessType;
   allowedGroups?: string[];
   allowedServers?: string[];
+  excludedGroups?: string[];
+  excludedServers?: string[];
 }
 
 // Auth types

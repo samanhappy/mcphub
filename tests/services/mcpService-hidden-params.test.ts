@@ -54,6 +54,7 @@ jest.mock('../../src/services/requestContextService.js', () => ({
       getUsernameContext: jest.fn(),
       getKeyKindContext: jest.fn(),
       getRequestContext: jest.fn(() => ({})),
+      getBearerKeyExclusions: jest.fn(() => undefined),
       getSessionId: jest.fn(),
       getHeaders: jest.fn(() => undefined),
     })),

@@ -122,6 +122,34 @@ it('keeps a group-scoped bearer key on the renamed group, not on a new group reu
   expect((await initialize('team-a', token)).status).toBe(401);
 });
 
+it('moves excluded group references when the group is renamed', async () => {
+  const group = await admin('post', '/api/groups', { name: 'exclude-a' }).expect(201);
+  const key = await admin('post', '/api/auth/keys', {
+    name: 'exclude-rename-key',
+    accessType: 'exclude',
+    excludedGroups: ['exclude-a'],
+    excludedServers: [],
+  }).expect(201);
+  const token: string = key.body.data.token;
+
+  expect((await initialize('exclude-a', token)).status).toBe(401);
+
+  await admin('put', `/api/groups/${group.body.data.id}`, { name: 'exclude-b' }).expect(200);
+
+  // The exclusion follows the rename, so the renamed group stays inaccessible.
+  expect((await initialize('exclude-b', token)).status).toBe(401);
+  const stored = JSON.parse(
+    fs.readFileSync(process.env.MCPHUB_SETTING_PATH!, 'utf8'),
+  ) as McpSettings;
+  expect(
+    stored.bearerKeys?.find((k) => k.name === 'exclude-rename-key')?.excludedGroups,
+  ).toEqual(['exclude-b']);
+
+  // The old name is no longer excluded: a new group reusing it is reachable.
+  await admin('post', '/api/groups', { name: 'exclude-a' }).expect(201);
+  expect((await initialize('exclude-a', token)).status).toBe(200);
+});
+
 it('leaves a key scoped by group ID alone when another group named after that ID is renamed', async () => {
   const groupA = await admin('post', '/api/groups', { name: 'id-scope-a' }).expect(201);
   const groupAId: string = groupA.body.data.id;

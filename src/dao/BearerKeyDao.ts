@@ -193,8 +193,11 @@ export class BearerKeyDaoImpl extends JsonFileBaseDao implements BearerKeyDao {
     for (const key of keys) {
       let updated = false;
 
-      if (key.allowedServers && key.allowedServers.length > 0) {
-        const newServers = key.allowedServers.map((server) => {
+      for (const field of ['allowedServers', 'excludedServers'] as const) {
+        const servers = key[field];
+        if (!servers || servers.length === 0) continue;
+
+        const newServers = servers.map((server) => {
           if (server === oldName) {
             updated = true;
             return newName;
@@ -202,10 +205,13 @@ export class BearerKeyDaoImpl extends JsonFileBaseDao implements BearerKeyDao {
           return server;
         });
 
-        if (updated) {
-          key.allowedServers = newServers;
-          updatedCount++;
+        if (newServers.some((server, index) => server !== servers[index])) {
+          key[field] = newServers;
         }
+      }
+
+      if (updated) {
+        updatedCount++;
       }
     }
 

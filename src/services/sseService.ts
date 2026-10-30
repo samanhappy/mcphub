@@ -50,6 +50,7 @@ export interface SessionContext {
   needsInitialization?: boolean;
   keyId?: string;
   keyName?: string;
+  excludedServerNames?: string[];
   hostedAuth?: HostedAuthContext;
 }
 
@@ -183,6 +184,7 @@ type BearerAuthResult =
       keyId?: string;
       keyName?: string;
       kind?: BearerKeyKind;
+      excludedServerNames?: string[];
       hostedAuth?: HostedAuthContext;
     }
   | {
@@ -249,6 +251,32 @@ const groupRouteReferencesMatch = async (
   return Boolean(requested && session && requested.id === session.id);
 };
 
+const getGroupServerNames = (servers: unknown): string[] => {
+  if (!Array.isArray(servers)) return [];
+  return servers.map((server) =>
+    typeof server === 'string' ? server : (server as { name?: string })?.name,
+  ).filter((name): name is string => typeof name === 'string' && name.length > 0);
+};
+
+// 'exclude'-scoped keys deny named servers plus every member of a named group.
+// Stale references fail safe: they only deny something that no longer exists.
+const resolveExcludedServerNames = async (key: BearerKey): Promise<string[]> => {
+  const excluded = new Set<string>(key.excludedServers ?? []);
+  const excludedGroups = key.excludedGroups ?? [];
+  if (excludedGroups.length === 0) return [...excluded];
+
+  const groupDao = getGroupDao();
+  for (const reference of excludedGroups) {
+    const group =
+      (await groupDao.findByName(reference)) ||
+      (isValidUUID(reference) ? await groupDao.findById(reference) : null);
+    for (const name of getGroupServerNames(group?.servers)) {
+      excluded.add(name);
+    }
+  }
+  return [...excluded];
+};
+
 const isBearerKeyAllowedForRequest = async (req: Request, key: BearerKey): Promise<boolean> => {
   if (key.kind === 'user') {
     return true;
@@ -261,15 +289,18 @@ const isBearerKeyAllowedForRequest = async (req: Request, key: BearerKey): Promi
     return true;
   }
 
-  // No parameter value means global route
+  // No parameter value means global route. 'exclude' keys may use it; the
+  // per-server exclusions are applied to the listings and calls themselves.
   if (!paramValue) {
-    // Only accessType 'all' allows global routes
-    return false;
+    return key.accessType === 'exclude';
   }
 
   try {
     const groupDao = getGroupDao();
     const serverDao = getServerDao();
+    const isExcludeScope = key.accessType === 'exclude';
+    const excludedGroups = isExcludeScope ? (key.excludedGroups ?? []) : [];
+    const excludedServers = isExcludeScope ? new Set(await resolveExcludedServerNames(key)) : null;
 
     // Step 1: Try to match as a group (by name or id), since group has higher priority
     let matchedGroup = await groupDao.findByName(paramValue);
@@ -280,6 +311,21 @@ const isBearerKeyAllowedForRequest = async (req: Request, key: BearerKey): Promi
 
     if (matchedGroup) {
       // Matched as a group
+      if (isExcludeScope) {
+        if (excludedGroups.includes(matchedGroup.name) || excludedGroups.includes(matchedGroup.id)) {
+          return false;
+        }
+        const groupServerNames = getGroupServerNames(matchedGroup.servers);
+        // Reject when nothing would remain, rather than exposing an empty catalog.
+        if (
+          groupServerNames.length > 0 &&
+          groupServerNames.every((name) => excludedServers!.has(name))
+        ) {
+          return false;
+        }
+        return true;
+      }
+
       if (key.accessType === 'groups') {
         // For group-scoped keys, check if the matched group is in allowedGroups
         const allowedGroups = key.allowedGroups || [];
@@ -345,6 +391,10 @@ const isBearerKeyAllowedForRequest = async (req: Request, key: BearerKey): Promi
 
     if (matchedServer) {
       // Matched as a server
+      if (isExcludeScope) {
+        return !excludedServers!.has(matchedServer.name);
+      }
+
       if (key.accessType === 'groups') {
         // For group-scoped keys, server access is not allowed
         return false;
@@ -369,6 +419,16 @@ const isBearerKeyAllowedForRequest = async (req: Request, key: BearerKey): Promi
     logger.error('Error checking bearer key request access:', error);
     return false;
   }
+};
+
+const attachExcludedServerNames = async (
+  key: BearerKey,
+  result: Extract<BearerAuthResult, { valid: true }>,
+): Promise<BearerAuthResult> => {
+  if (key.kind === 'user' || key.accessType !== 'exclude') {
+    return result;
+  }
+  return { ...result, excludedServerNames: await resolveExcludedServerNames(key) };
 };
 
 const resolveUserLevelKeyUser = async (req: Request, key: BearerKey): Promise<BearerAuthResult> => {
@@ -482,7 +542,7 @@ const validateBearerAuth = async (req: Request): Promise<BearerAuthResult> => {
         logger.log(
           `Bearer key recognized (auth disabled): id=${matchingKey.id}, name=${matchingKey.name}, accessType=${matchingKey.accessType}`,
         );
-        return userKeyResult;
+        return attachExcludedServerNames(matchingKey, userKeyResult);
       }
 
       logger.warn(
@@ -539,7 +599,7 @@ const validateBearerAuth = async (req: Request): Promise<BearerAuthResult> => {
     logger.log(
       `Bearer key authenticated: id=${matchingKey.id}, name=${matchingKey.name}, accessType=${matchingKey.accessType}`,
     );
-    return userKeyResult;
+    return attachExcludedServerNames(matchingKey, userKeyResult);
   }
 
   const oauthUser = await resolveOAuthUserFromToken(token);
@@ -717,6 +777,7 @@ export const handleSseConnection = async (req: Request, res: Response): Promise<
     group: group,
     keyId: bearerAuthResult.keyId,
     keyName: bearerAuthResult.keyName,
+    excludedServerNames: bearerAuthResult.excludedServerNames,
     hostedAuth: bearerAuthResult.hostedAuth,
   };
 
@@ -775,7 +836,7 @@ export const handleSseMessage = async (req: Request, res: Response): Promise<voi
     return;
   }
 
-  const { transport, group, keyId, keyName } = transportData;
+  const { transport, group, keyId, keyName, excludedServerNames } = transportData;
   req.params.group = group;
   req.query.group = group;
   logger.log(
@@ -794,6 +855,9 @@ export const handleSseMessage = async (req: Request, res: Response): Promise<voi
     requestContextService.setUsernameContext(username);
     requestContextService.setHostedAuthContext(currentHostedAuth);
     requestContextService.setKeyKindContext(bearerAuthResult.kind);
+    requestContextService.setBearerKeyExclusions(
+      bearerAuthResult.excludedServerNames ?? excludedServerNames,
+    );
 
     await (transport as SSEServerTransport).handlePostMessage(req, res);
   });
@@ -945,6 +1009,7 @@ export const handleMcpPostRequest = async (req: Request, res: Response): Promise
       requestContextService.setGroupContext(group);
       requestContextService.setUsernameContext(username);
       requestContextService.setKeyKindContext(bearerAuthResult.kind);
+      requestContextService.setBearerKeyExclusions(bearerAuthResult.excludedServerNames);
       requestContextService.setHostedAuthContext(bearerAuthResult.hostedAuth);
 
       const context = requestContextService.getRequestContext()!;
@@ -1078,6 +1143,9 @@ export const handleMcpPostRequest = async (req: Request, res: Response): Promise
     requestContextService.setGroupContext(group);
     requestContextService.setUsernameContext(username);
     requestContextService.setKeyKindContext(bearerAuthResult.kind);
+    requestContextService.setBearerKeyExclusions(
+      bearerAuthResult.excludedServerNames ?? transportInfo?.excludedServerNames,
+    );
     requestContextService.setHostedAuthContext(
       bearerAuthResult.hostedAuth || transportInfo?.hostedAuth,
     );

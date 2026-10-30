@@ -407,7 +407,7 @@ export interface OAuthServerConfig {
 }
 
 // Bearer authentication key configuration
-export type BearerKeyAccessType = 'all' | 'groups' | 'servers' | 'custom';
+export type BearerKeyAccessType = 'all' | 'groups' | 'servers' | 'custom' | 'exclude';
 export type BearerKeyKind = 'system' | 'user';
 
 export interface BearerKey {
@@ -422,6 +422,8 @@ export interface BearerKey {
   accessType: BearerKeyAccessType; // Access scope type
   allowedGroups?: string[]; // Allowed group names when accessType === 'groups' or 'custom'
   allowedServers?: string[]; // Allowed server names when accessType === 'servers' or 'custom'
+  excludedGroups?: string[]; // Excluded group names when accessType === 'exclude' (system keys only)
+  excludedServers?: string[]; // Excluded server names when accessType === 'exclude' (system keys only)
 }
 
 // Represents the settings for MCP servers

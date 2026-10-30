@@ -1,4 +1,4 @@
-type Row = { id: string; name: string; allowedGroups?: string[] };
+type Row = { id: string; name: string; allowedGroups?: string[]; excludedGroups?: string[] };
 
 let mockGroups: Row[];
 let mockKeys: Row[];
@@ -45,7 +45,12 @@ describe('GroupRepository.updateWithKeyScopes', () => {
       { id: 'id-b', name: 'team-b' },
     ];
     mockKeys = [
-      { id: 'k1', name: 'by-name', allowedGroups: ['team-a', 'other'] },
+      {
+        id: 'k1',
+        name: 'by-name',
+        allowedGroups: ['team-a', 'other'],
+        excludedGroups: ['team-a', 'other-id'],
+      },
       { id: 'k2', name: 'by-id', allowedGroups: ['id-a'] },
       { id: 'k3', name: 'unrelated', allowedGroups: ['team-b'] },
     ];
@@ -62,6 +67,8 @@ describe('GroupRepository.updateWithKeyScopes', () => {
       ['id-a'],
       ['team-b'],
     ]);
+    // The exclude list is part of the same atomic rename.
+    expect(mockKeys[0].excludedGroups).toEqual(['team-c', 'other-id']);
   });
 
   it('rolls back the rename when the key update fails', async () => {
@@ -72,6 +79,7 @@ describe('GroupRepository.updateWithKeyScopes', () => {
     ).rejects.toThrow('key save failed');
     expect(mockGroups.find((g) => g.id === 'id-a')?.name).toBe('team-a');
     expect(mockKeys[0].allowedGroups).toEqual(['team-a', 'other']);
+    expect(mockKeys[0].excludedGroups).toEqual(['team-a', 'other-id']);
   });
 
   it('rejects a new name equal to another group ID', async () => {
@@ -80,6 +88,7 @@ describe('GroupRepository.updateWithKeyScopes', () => {
     ).rejects.toThrow('already used as a group ID');
     expect(mockGroups.find((g) => g.id === 'id-a')?.name).toBe('team-a');
     expect(mockKeys[0].allowedGroups).toEqual(['team-a', 'other']);
+    expect(mockKeys[0].excludedGroups).toEqual(['team-a', 'other-id']);
   });
 
   it('rejects a new name already taken by another group', async () => {
