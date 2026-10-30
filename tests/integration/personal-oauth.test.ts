@@ -1,4 +1,5 @@
 import express from 'express';
+import { authenticatedRouteRateLimiter, mcpConnectionRateLimiter } from '../../src/utils/rateLimit.js';
 import request from 'supertest';
 import { handleOAuthRelay } from '../../src/controllers/oauthRelayController.js';
 import {
@@ -322,8 +323,8 @@ test('database mode rejects personal OAuth without a persistent key before stori
 
 const relayApp = () => {
   const app = express();
-  app.get('/oauth/relay/:name', handleOAuthRelay);
-  app.get('/personal', (req, res) => {
+  app.get('/oauth/relay/:name', mcpConnectionRateLimiter, handleOAuthRelay);
+  app.get('/personal', authenticatedRouteRateLimiter, (req, res) => {
     Object.assign(req, { user: { username: 'alice', isAdmin: false }, params: { name: 'gitlab' } });
     return managePersonalOAuth(req, res);
   });
