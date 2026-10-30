@@ -98,6 +98,7 @@ import config from '../config/index.js';
 import { validateMaxBufferSize } from '../utils/stdioOptions.js';
 import { validateServerName } from '../utils/serverNameValidation.js';
 import { getGroup } from './sseService.js';
+import { mcpEventBus } from './mcpEventBus.js';
 import { getServerConfigInGroup, normalizeGroupServers } from './groupService.js';
 import {
   removeServerToolEmbeddings,
@@ -646,6 +647,7 @@ const broadcastListChanged = (
   listType: 'tool' | 'resource' | 'prompt',
   sendNotification: (server: Server) => Promise<void>,
 ): void => {
+  mcpEventBus.publish({ kind: `${listType}s_list_changed` });
   Object.values(servers).forEach((server) => {
     sendNotification(server)
       .then(() => {
