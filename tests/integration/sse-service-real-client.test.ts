@@ -27,13 +27,16 @@ import {
 import { TestServerHelper } from '../utils/testServerHelper.js';
 import * as mockSettings from '../utils/mockSettings.js';
 import {
+  broadcastToolListChanged,
+  broadcastPromptListChanged,
+  broadcastResourceListChanged,
   cleanupAllServers,
   deleteMcpServer,
   getServerByName,
   updateServerToolsCache,
 } from '../../src/services/mcpService.js';
 import type { ServerInfo } from '../../src/types/index.js';
-import { transports } from '../../src/services/sseService.js';
+import { closeModernMcpHandler, transports } from '../../src/services/sseService.js';
 import { MCP_APPS_CAPABILITIES } from '../../src/utils/mcpApps.js';
 import { UserContextService } from '../../src/services/userContextService.js';
 import { getSystemConfigDao } from '../../src/dao/index.js';
@@ -911,6 +914,59 @@ describe('Real Client Transport Integration Tests', () => {
         }
       } finally {
         info.tools = tools;
+      }
+    });
+
+    it.each([
+      ['tools', broadcastToolListChanged],
+      ['prompts', broadcastPromptListChanged],
+      ['resources', broadcastResourceListChanged],
+    ] as const)('notifies an already-connected modern %s subscriber', async (kind, broadcast) => {
+      const client = new ModernClient(
+        { name: 'list-change-test', version: '1' },
+        { versionNegotiation: { mode: 'auto' } },
+      );
+      const transport = new ModernStreamableHTTPClientTransport(new URL(`${baseURL}/mcp`), {
+        requestInit: { headers: { Authorization: 'Bearer test-auth-token-123' } },
+      });
+      const received = jest.fn();
+      const unrequested = jest.fn();
+      const otherKind = kind === 'tools' ? 'prompts' : 'tools';
+      client.setNotificationHandler(`notifications/${kind}/list_changed`, received);
+      client.setNotificationHandler(`notifications/${otherKind}/list_changed`, unrequested);
+      const info = getServerByName('test-server-1')!;
+      const originalTools = info.tools;
+      try {
+        await client.connect(transport);
+        expect(client.getProtocolEra()).toBe('modern');
+        const subscription = await client.listen({ [`${kind}ListChanged`]: true });
+        if (kind === 'tools') {
+          updateServerToolsCache(info, [
+            { name: 'new-subscribed-tool', inputSchema: { type: 'object' } },
+          ]);
+        }
+        if (otherKind === 'tools') broadcastToolListChanged();
+        else broadcastPromptListChanged();
+        broadcast();
+        const deadline = Date.now() + 2000;
+        while (!received.mock.calls.length && Date.now() < deadline) {
+          await new Promise((resolve) => setTimeout(resolve, 20));
+        }
+        expect(received).toHaveBeenCalledTimes(1);
+        expect(unrequested).not.toHaveBeenCalled();
+        if (kind === 'tools') {
+          expect((await client.listTools({})).tools).toEqual(
+            expect.arrayContaining([
+              expect.objectContaining({ name: 'test-server-1-new-subscribed-tool' }),
+            ]),
+          );
+        }
+        await subscription.close();
+      } finally {
+        info.tools = originalTools;
+        await client.close();
+        await closeModernMcpHandler();
+        expect(() => broadcast()).not.toThrow();
       }
     });
 
