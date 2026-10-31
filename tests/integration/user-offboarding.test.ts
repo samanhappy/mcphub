@@ -213,7 +213,7 @@ describe('local user offboarding', () => {
     expect(tokens).toHaveLength(0);
     expect(groups[0].sharedWithUsers).toEqual(['other']);
     expect(servers[0].sharedWithUsers).toEqual(['other']);
-    expect(getAuthorizationCode(code)).toBeUndefined();
+    expect(await getAuthorizationCode(code)).toBeUndefined();
     expect(
       (await request(app).post('/mcp/g1').auth(livePair.access_token, { type: 'bearer' })).status,
     ).toBe(401);

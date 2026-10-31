@@ -1,4 +1,7 @@
 import { oauthServerMetadataSchema } from '../utils/oauthServerMetadata.js';
+import { isReplicaMode } from '../utils/replicaMode.js';
+import { withReplicaLock } from './replicaLock.js';
+import { expandServerConfig } from './serverConfigEnvironment.js';
 import * as sharedOAuthSettings from './oauthSettingsStore.js';
 import {
   personalOAuthContexts,
@@ -306,7 +309,12 @@ export class MCPHubOAuthProvider implements OAuthClientProvider {
   /**
    * Get stored OAuth tokens
    */
-  tokens(): OAuthTokens | undefined {
+  async tokens(): Promise<OAuthTokens | undefined> {
+    if (isReplicaMode()) {
+      const latest = await this.settings.loadServerConfig(this.serverName);
+      if (!latest) return undefined;
+      this.serverConfig = await expandServerConfig(latest);
+    }
     // Use cached config only (tokens are updated via saveTokens which updates cache)
     const serverConfig = this.serverConfig;
 
@@ -690,7 +698,7 @@ const hasAuthorizationHeader = (headers?: Record<string, string>): boolean => {
  * @param serverConfig - Server configuration
  * @returns OAuthClientProvider instance or undefined if OAuth not configured
  */
-export const createOAuthProvider = async (
+const createOAuthProviderUnlocked = async (
   serverName: string,
   serverConfig: ServerConfig,
 ): Promise<OAuthClientProvider | undefined> => {
@@ -740,3 +748,11 @@ export const createOAuthProvider = async (
   logger.log('Created OAuth provider', JSON.stringify({ serverName }));
   return provider;
 };
+
+export const createOAuthProvider = (
+  name: string,
+  definition: ServerConfig,
+): Promise<OAuthClientProvider | undefined> => withReplicaLock(
+  JSON.stringify(['oauth', name, personalOAuthContexts.get(definition)?.username || 'shared']),
+  () => createOAuthProviderUnlocked(name, definition),
+);

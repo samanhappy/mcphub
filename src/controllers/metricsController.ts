@@ -1,4 +1,6 @@
 import { timingSafeEqual } from 'node:crypto';
+import { isReplicaMode } from '../utils/replicaMode.js';
+import { replicaStatus } from '../services/replicaService.js';
 import type { Request, Response } from 'express';
 import { getMetricsServerSnapshot } from '../services/mcpService.js';
 import { transports } from '../services/sseService.js';
@@ -7,6 +9,7 @@ import {
   metricsRegistry,
   serverGauge,
   sessionGauge,
+  configurationVersionGauge,
 } from '../services/metricsService.js';
 
 export const metrics = async (req: Request, res: Response): Promise<void> => {
@@ -24,6 +27,12 @@ export const metrics = async (req: Request, res: Response): Promise<void> => {
     }
   }
   try {
+    if (isReplicaMode()) {
+      const state = replicaStatus();
+      metricsRegistry.setDefaultLabels({ node: state.nodeId });
+      configurationVersionGauge.set({ state: 'desired' }, Number(state.desiredVersion ?? 0));
+      configurationVersionGauge.set({ state: 'applied' }, Number(state.appliedVersion ?? 0));
+    }
     serverGauge.reset();
     for (const server of getMetricsServerSnapshot()) {
       serverGauge.inc({ status: server.status, type: server.type });

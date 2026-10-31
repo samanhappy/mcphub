@@ -143,6 +143,8 @@ jest.mock('../../src/controllers/metricsController.js', () => ({ metrics: routeH
 
 jest.mock('../../src/controllers/healthController.js', () => ({
   healthCheck: routeHandler,
+  livenessCheck: routeHandler,
+  readinessCheck: routeHandler,
 }));
 
 jest.mock('../../src/controllers/betterAuthController.js', () => ({

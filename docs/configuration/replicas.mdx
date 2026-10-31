@@ -1,0 +1,67 @@
+---
+title: 'Multiple Replicas'
+description: 'Shared PostgreSQL configuration with explicit session and failover boundaries'
+---
+
+Replica mode is opt-in (`MCPHUB_REPLICA_MODE=true`). Identical MCPHub instances share PostgreSQL behind a load balancer. Modern, stateless MCP calls can reach any ready replica. Legacy MCP sessions, `perSessionClient` clients and OpenAPI cookie sessions remain in one process: use affinity and reinitialize after node loss. Active calls are not migrated or replayed.
+
+## Prepare once, then serve
+
+Build the same application version for setup and all replicas. Set `DB_URL`, `USE_DB=true`, a persistent `JWT_SECRET` of at least 32 bytes, and `MCPHUB_CREDENTIAL_ENCRYPTION_KEY` (32 bytes encoded as base64). Every replica must use the same secrets and external installation/OAuth URLs. Set a unique `MCPHUB_NODE_ID` on each replica; the default is its hostname. Set `ADMIN_PASSWORD` when initializing a new deployment.
+
+Run one schema preparation job before starting or upgrading replicas:
+
+```sh
+DB_SYNCHRONIZE=true MCPHUB_REPLICA_MODE=false pnpm db:setup
+```
+
+This uses the existing database initialization and migration path, seeds the administrator if necessary, and installs transactional configuration revision tracking. Back up an existing database before schema preparation. Apply declarative `MCPHUB_SETTINGS_SYNC` in this job only, then unset it on serving nodes. Do not allow multiple setup jobs to run together.
+
+Start each serving replica with schema synchronization disabled:
+
+```sh
+DB_SYNCHRONIZE=false MCPHUB_REPLICA_MODE=true MCPHUB_NODE_ID=a pnpm start
+```
+
+Serving replicas do not create extensions, synchronize tables or rebuild vector indexes at startup. A missing schema, unseeded database, missing persistent secrets, or serving-node `MCPHUB_SETTINGS_SYNC` is a startup error. Keep local binaries, environment variables and files consistent when using stdio servers; their child-process and local filesystem state is not shared.
+
+## Configuration and authorization
+
+Database triggers advance a shared revision in the same transaction as configuration writes, including imports. Nodes check every five seconds and reconcile changed server definitions while preserving unchanged connections. The desired and applied revisions refer to loaded configuration, not successful connectivity to every upstream. An unavailable upstream is reported as degraded separately.
+
+Configuration API reads return `X-MCPHub-Config-Version` and an `ETag`. Send the read ETag in `If-Match` when saving: a stale revision returns `412`. Concurrent requests without a precondition are serialized and return `409` if the revision changes while waiting; callers that omit `If-Match` cannot detect edits made before their request began. Reload and review conflicts instead of automatically resubmitting them. Failed configuration API transactions roll back before responding.
+
+Tool invocation reads current server access and enabled state from PostgreSQL, independently of the polling interval. Shared authorization failures deny invocation. OAuth authorization codes and registration management tokens are shared, expire, and are stored by hash; authorization code consumption is atomic. Credential-scoped PostgreSQL locks serialize OAuth client operations that may rotate tokens, and conditional writes reject obsolete credential updates. These operations require additional pool connections: leave headroom beyond the number of simultaneous OAuth operations.
+
+Configuration application failures retain the previous applied revision and make readiness fail until reconciliation succeeds. Database outages also prevent new invocations. There is no offline authorization mode.
+
+## Load balancer and session affinity
+
+Disable response buffering for SSE and allow sufficiently long response timeouts. Do not enable proxy retries for tool calls with unknown outcomes. Replica mode disables MCPHub's reconnect-and-replay tool retry and OpenAPI 401 replay; an upstream may still enforce its own protocol authentication behavior.
+
+Choose a stable workflow identifier before initialization. The reference Nginx configuration uses `X-MCPHub-Affinity`, falling back to `X-MCPHub-State-Id`, for consistent hashing. The affinity value only selects a node; authentication remains mandatory. Hashing only `Mcp-Session-Id` does not route the initial sessionless handshake consistently. Clients that cannot send an affinity header can use a fixed node endpoint (`/nodes/a/` or `/nodes/b/` in the reference configuration); after failure, select a live node and initialize again. Keep OAuth callback/public resource URLs on the external installation address.
+
+Modern notification subscriptions also belong to their serving process. Nodes broadcast configuration changes locally when they reconcile; this version does not provide a durable, cluster-wide upstream notification bus. Clients should rediscover after reconnecting.
+
+## Health and diagnostics
+
+| Endpoint | Contract |
+| --- | --- |
+| `GET /livez` | Process is alive; database failure does not request a restart. |
+| `GET /readyz` | Initialization complete, accepting traffic, configuration applied, and database reachable. |
+| `GET /health` | Existing database and upstream health summary. |
+| `GET /api/cluster` | Authenticated administrator diagnostics: node ID, desired/applied revisions and last reconciliation error. |
+
+Responses identify the node and request through `X-MCPHub-Node-Id` and `X-Request-Id`. Replica logs carry node/request context; metrics include node identity and desired/applied configuration revision. Restrict diagnostics and metrics to operators.
+
+On shutdown, admission stops, HTTP requests drain for up to ten seconds, and then upstream clients are closed. Configure the orchestrator grace period longer than ten seconds and remove a node from routing before stopping it. Long-lived subscriptions are disconnected at the deadline; clients reconnect. Upstream tool side effects may already have completed when a connection fails: never assume failure means nothing happened.
+
+## Reproducible Docker verification
+
+```sh
+pnpm test:replicas
+```
+
+The test builds a backend-only Node 22 image from the locked dependencies, starts two replicas, PostgreSQL, Nginx and a controlled OpenAPI upstream, and checks configuration convergence, write conflicts, cross-node OAuth, revocation, affinity, response loss, database failure, node loss and draining. It removes its containers and temporary database on exit. The fixture credentials and HTTP endpoints under `tests/docker/replicas/` are for disposable local verification only. The test image omits the dashboard, Python and uv; use the normal project Dockerfile for those deployment capabilities.
+
+This version does not include cross-region disaster recovery, seamless session migration, exactly-once tool execution, a separate control-plane service, or shared stdio/filesystem state. PostgreSQL and the load balancer need their own availability arrangements.

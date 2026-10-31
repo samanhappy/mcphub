@@ -46,6 +46,7 @@ MCPHub offre une manière unifiée de connecter et de gérer plusieurs serveurs 
 - **Tableau de bord Web** - Gérez la configuration et le fonctionnement des serveurs depuis un navigateur
 - **Compression des résultats d'outils** - Réduisez automatiquement les grands résultats texte avant qu'ils n'atteignent les clients
 - **Mode Base de données** - Stockez la configuration dans PostgreSQL pour les environnements de production ([En savoir plus](https://docs.mcphub.app/configuration/database-configuration))
+- **Plusieurs réplicas** - Partagez la configuration PostgreSQL avec affinité des sessions et reconnexion après panne ([Guide](https://docs.mcphub.app/configuration/replicas))
 - **Prêt pour Docker** - Déployez instantanément avec la configuration conteneurisée
 
 ## 🔧 Démarrage rapide

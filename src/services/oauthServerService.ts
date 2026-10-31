@@ -17,6 +17,7 @@ import { safeCompare } from '../utils/safeCompare.js';
 import { cloneDefaultOAuthServerConfig } from '../constants/oauthServerDefaults.js';
 import { resolveCimdClient } from './cimdClientService.js';
 import { logger } from '../utils/logger.js';
+import type { SystemConfig } from '../types/index.js';
 
 const { Request, Response } = OAuth2Server;
 
@@ -98,7 +99,7 @@ const oauthModel: OAuth2Server.AuthorizationCodeModel & OAuth2Server.RefreshToke
     if (!currentUser) throw new OAuth2Server.InvalidGrantError('User no longer exists');
     const sessionVersion = getUserSessionVersion(currentUser);
 
-    const authCode = saveAuthorizationCode(
+    const authCode = await saveAuthorizationCode(
       {
         redirectUri: code.redirectUri,
         scope: scopeString,
@@ -129,7 +130,7 @@ const oauthModel: OAuth2Server.AuthorizationCodeModel & OAuth2Server.RefreshToke
    * Get authorization code
    */
   getAuthorizationCode: async (authorizationCode: string) => {
-    const code = getAuthorizationCode(authorizationCode);
+    const code = await getAuthorizationCode(authorizationCode);
     if (!code || !(await resolveUserSession(code))) {
       return false;
     }
@@ -166,8 +167,7 @@ const oauthModel: OAuth2Server.AuthorizationCodeModel & OAuth2Server.RefreshToke
    * Revoke authorization code
    */
   revokeAuthorizationCode: async (code: OAuth2Server.AuthorizationCode) => {
-    revokeAuthorizationCode(code.authorizationCode);
-    return true;
+    return await revokeAuthorizationCode(code.authorizationCode);
   },
 
   /**
@@ -336,12 +336,12 @@ let oauth: OAuth2Server | null = null;
 /**
  * Initialize OAuth server
  */
-export const initOAuthServer = async (): Promise<void> => {
+export const initOAuthServer = async (configuration?: SystemConfig | null): Promise<void> => {
   // Reset to ensure clean state on re-initialization
   oauth = null;
 
   const systemConfigDao = getSystemConfigDao();
-  const systemConfig = await systemConfigDao.get();
+  const systemConfig = configuration === undefined ? await systemConfigDao.get() : configuration;
   const storedConfig = systemConfig?.oauthServer;
   // Merge stored config with defaults so partial configs still inherit all default values
   const oauthConfig = { ...cloneDefaultOAuthServerConfig(), ...storedConfig };

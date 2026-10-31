@@ -1,4 +1,5 @@
 import { legacyServerId } from './serverIdentity.js';
+import { isReplicaMode } from './replicaMode.js';
 import fs from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import { toStoredToken } from './bearerKeyToken.js';
@@ -417,6 +418,9 @@ export async function initializeDatabaseMode(): Promise<boolean> {
     const systemConfigRepo = new SystemConfigRepository();
 
     const userCount = await userRepo.count();
+
+    if (isReplicaMode() && userCount === 0)
+      throw new Error('Replica database is not seeded; run db:setup before starting replicas');
 
     if (userCount === 0) {
       logger.log('No users found in database, running migration...');

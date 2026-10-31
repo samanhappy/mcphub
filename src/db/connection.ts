@@ -9,6 +9,7 @@ import { createVectorIndex } from '../services/vectorSearchService.js';
 import { isRetryableDbError } from '../utils/dbRetry.js';
 import { withTimeout } from '../utils/withTimeout.js';
 import { logger } from '../utils/logger.js';
+import { scopedDataSource } from './transactionContext.js';
 
 // Connection pool and retry configuration
 const CONNECTION_CONFIG = {
@@ -102,7 +103,7 @@ const getDefaultConfig = async (): Promise<DataSourceOptions> => {
   return {
     type: 'postgres',
     url: await getDatabaseUrl(),
-    synchronize: true,
+    synchronize: process.env.DB_SYNCHRONIZE !== 'false',
     entities: entities,
     subscribers: [VectorEmbeddingSubscriber],
     // Connection pool configuration for better resilience
@@ -158,7 +159,7 @@ export const getAppDataSource = (): DataSource => {
   if (!appDataSource) {
     throw new Error('Database not initialized. Call initializeDatabase() first.');
   }
-  return appDataSource;
+  return scopedDataSource(appDataSource);
 };
 
 // Reconnect the database using the current DataSource configuration
@@ -216,6 +217,9 @@ const performDatabaseInitialization = async (): Promise<DataSource> => {
       // Register the vector type with TypeORM
       await initializeWithGroupNameCheck(appDataSource);
       registerPostgresVectorType(appDataSource);
+
+      // Serving replicas never run DDL; schema preparation is a separate deployment job.
+      if (process.env.DB_SYNCHRONIZE === 'false') return appDataSource;
 
       // Create required PostgreSQL extensions
       await createRequiredExtensions(appDataSource);
